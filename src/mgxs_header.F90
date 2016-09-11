@@ -531,7 +531,7 @@ module mgxs_header
           ! Finally convert the legendre to tabular if needed
           allocate(scatt_coeffs(groups))
           if (this % scatter_type == ANGLE_LEGENDRE .and. &
-              legendre_to_tabular) then
+               legendre_to_tabular) then
             this % scatter_type = ANGLE_TABULAR
             order_dim = legendre_to_tabular_points
             order = order_dim
@@ -889,7 +889,7 @@ module mgxs_header
           ! Finally convert the legendre to tabular if needed
           allocate(scatt_coeffs(groups, this % n_azi, this % n_pol))
           if (this % scatter_type == ANGLE_LEGENDRE .and. &
-              legendre_to_tabular) then
+               legendre_to_tabular) then
             this % scatter_type = ANGLE_TABULAR
             order_dim = legendre_to_tabular_points
             order = order_dim

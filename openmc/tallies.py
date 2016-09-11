@@ -16,7 +16,7 @@ import numpy as np
 from openmc import Trigger, Nuclide
 from openmc.arithmetic import CrossScore, CrossNuclide, CrossFilter, \
     AggregateScore, AggregateNuclide, AggregateFilter
-from openmc.filter import Filter, MeshFilter
+import openmc.filter
 import openmc.checkvalue as cv
 from openmc.clean_xml import clean_xml_indentation
 
@@ -38,7 +38,7 @@ _PRODUCT_TYPES = ['tensor', 'entrywise']
 # Tally.nuclides, and Tally.filters
 _SCORE_CLASSES = (basestring, CrossScore, AggregateScore)
 _NUCLIDE_CLASSES = (basestring, Nuclide, CrossNuclide, AggregateNuclide)
-_FILTER_CLASSES = (Filter, CrossFilter, AggregateFilter)
+_FILTER_CLASSES = (openmc.filter.Filter, CrossFilter, AggregateFilter)
 
 # Valid types of estimators
 ESTIMATOR_TYPES = ['tracklength', 'collision', 'analog']
@@ -1096,8 +1096,8 @@ class Tally(object):
 
         Parameters
         ----------
-        filter_type : str
-            Type of the filter, e.g. 'mesh'
+        filter_type : openmc.filter.FilterMeta
+            Type of the filter, e.g. MeshFilter
 
         Returns
         -------
@@ -1116,7 +1116,7 @@ class Tally(object):
 
         # Look through all of this Tally's Filters for the type requested
         for test_filter in self.filters:
-            if test_filter.short_name.lower() == filter_type.lower():
+            if isinstance(test_filter, filter_type):
                 filter_found = test_filter
                 break
 
@@ -1133,8 +1133,8 @@ class Tally(object):
 
         Parameters
         ----------
-        filter_type : str
-            The type of Filter (e.g., 'cell', 'energy', etc.)
+        filter_type : openmc.filter.FilterMeta
+            Type of the filter, e.g. MeshFilter
         filter_bin : int or tuple
             The bin is an integer ID for 'material', 'surface', 'cell',
             'cellborn', and 'universe' Filters. The bin is an integer for the
@@ -1243,19 +1243,19 @@ class Tally(object):
 
         Parameters
         ----------
-        filters : list of str
-            A list of filter type strings
-            (e.g., ['mesh', 'energy']; default is [])
-        filter_bins : list of Iterables
+        filters : Iterable of openmc.filter.FilterMeta
+            An iterable of filter types
+            (e.g., [MeshFilter, EnergyFilter]; default is [])
+        filter_bins : Iterable of tuple
             A list of tuples of filter bins corresponding to the filter_types
             parameter (e.g., [(1,), ((0., 0.625e-6),)]; default is []). Each
             tuple contains bins for the corresponding filter type in the filters
-            parameter. Each bins is the integer ID for 'material', 'surface',
-            'cell', 'cellborn', and 'universe' Filters. Each bin is an integer
-            for the cell instance ID for 'distribcell' Filters. Each bin is a
-            2-tuple of floats for 'energy' and 'energyout' filters corresponding
+            parameter. Each bin is an integer ID for Material-, Surface-,
+            Cell-, Cellborn-, and Universe- Filters. Each bin is an integer
+            for the cell instance ID for DistribcellFilters. Each bin is a
+            2-tuple of floats for Energy- and Energyout- Filters corresponding
             to the energy boundaries of the bin of interest. The bin is an
-            (x,y,z) 3-tuple for 'mesh' filters corresponding to the mesh cell
+            (x,y,z) 3-tuple for MeshFilters corresponding to the mesh cell
             of interest. The order of the bins in the list must correspond to
             the filter_types parameter.
 
@@ -1266,8 +1266,8 @@ class Tally(object):
 
         """
 
-        cv.check_iterable_type('filters', filters, basestring)
-        cv.check_iterable_type('filter_bins', filter_bins, tuple)
+        cv.check_type('filters', filters, Iterable, openmc.filter.FilterMeta)
+        cv.check_type('filter_bins', filter_bins, Iterable, tuple)
 
         # Determine the score indices from any of the requested scores
         if filters:
@@ -1280,7 +1280,7 @@ class Tally(object):
 
                 # If a user-requested Filter, get the user-requested bins
                 for j, test_filter in enumerate(filters):
-                    if self_filter.type == test_filter:
+                    if isinstance(self_filter, test_filter):
                         bins = filter_bins[j]
                         user_filter = True
                         break
@@ -1288,19 +1288,21 @@ class Tally(object):
                 # If not a user-requested Filter, get all bins
                 if not user_filter:
                     # Create list of 2- or 3-tuples tuples for mesh cell bins
-                    if self_filter.type == 'mesh':
+                    if isinstance(self_filter, openmc.filter.MeshFilter):
                         dimension = self_filter.mesh.dimension
                         xyz = [range(1, x+1) for x in dimension]
                         bins = list(itertools.product(*xyz))
 
                     # Create list of 2-tuples for energy boundary bins
-                    elif self_filter.type in ['energy', 'energyout']:
+                    elif isinstance(self_filter, (openmc.filter.EnergyFilter,
+                        openmc.filter.EnergyoutFilter)):
                         bins = []
                         for k in range(self_filter.num_bins):
                             bins.append((self_filter.bins[k], self_filter.bins[k+1]))
 
                     # Create list of cell instance IDs for distribcell Filters
-                    elif self_filter.type == 'distribcell':
+                    elif isinstance(self_filter,
+                                    openmc.filter.DistribcellFilter):
                         bins = np.arange(self_filter.num_bins)
 
                     # Create list of IDs for bins for all other filter types
@@ -1312,7 +1314,7 @@ class Tally(object):
 
                 # Add indices for each bin in this Filter to the list
                 for j, bin in enumerate(bins):
-                    filter_index = self.get_filter_index(self_filter.type, bin)
+                    filter_index = self.get_filter_index(type(self_filter), bin)
                     filter_indices[i][j] = filter_index
 
                 # Account for stride in each of the previous filters
@@ -1415,9 +1417,9 @@ class Tally(object):
         scores : list of str
             A list of one or more score strings
             (e.g., ['absorption', 'nu-fission']; default is [])
-        filters : list of str
-            A list of filter type strings
-            (e.g., ['mesh', 'energy']; default is [])
+        filters : Iterable of openmc.filter.FilterMeta
+            An iterable of filter types
+            (e.g., [MeshFilter, EnergyFilter]; default is [])
         filter_bins : list of Iterables
             A list of tuples of filter bins corresponding to the filter_types
             parameter (e.g., [(1,), ((0., 0.625e-6),)]; default is []). Each
@@ -2219,13 +2221,13 @@ class Tally(object):
         self._update_filter_strides()
 
         # Construct lists of tuples for the bins in each of the two filters
-        filters = [filter1.type, filter2.type]
-        if filter1.type == 'distribcell':
+        filters = [type(filter1), type(filter2)]
+        if isinstance(filter1, openmc.filter.DistribcellFilter):
             filter1_bins = np.arange(filter1.num_bins)
         else:
-            filter1_bins = [(filter1.get_bin(i)) for i in range(filter1.num_bins)]
+            filter1_bins = [filter1.get_bin(i) for i in range(filter1.num_bins)]
 
-        if filter2.type == 'distribcell':
+        if isinstance(filter2, openmc.filter.DistribcellFilter):
             filter2_bins = np.arange(filter2.num_bins)
         else:
             filter2_bins = [filter2.get_bin(i) for i in range(filter2.num_bins)]
@@ -3545,7 +3547,7 @@ class Tallies(cv.CheckedList):
         already_written = set()
         for tally in self:
             for f in tally.filters:
-                if isinstance(f, MeshFilter):
+                if isinstance(f, openmc.filter.MeshFilter):
                     if f.mesh not in already_written:
                         if len(f.mesh.name) > 0:
                             self._tallies_file.append(ET.Comment(f.mesh.name))

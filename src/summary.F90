@@ -115,36 +115,31 @@ contains
     integer :: i
     character(12), allocatable :: nucnames(:)
     real(8), allocatable :: awrs(:)
-    integer, allocatable :: zaids(:)
 
     ! Write useful data from nuclide objects
     nuclide_group = create_group(file_id, "nuclides")
     call write_dataset(nuclide_group, "n_nuclides_total", n_nuclides_total)
 
-    ! Build array of nuclide names, awrs, and zaids
+    ! Build array of nuclide names and awrs
     allocate(nucnames(n_nuclides_total))
     allocate(awrs(n_nuclides_total))
-    allocate(zaids(n_nuclides_total))
     do i = 1, n_nuclides_total
       if (run_CE) then
         nucnames(i) = nuclides(i) % name
         awrs(i)     = nuclides(i) % awr
-        zaids(i)    = nuclides(i) % zaid
       else
         nucnames(i) = nuclides_MG(i) % obj % name
         awrs(i)     = nuclides_MG(i) % obj % awr
-        zaids(i)    = nuclides_MG(i) % obj % zaid
       end if
     end do
 
-    ! Write nuclide names, awrs and zaids
+    ! Write nuclide names and awrs
     call write_dataset(nuclide_group, "names", nucnames)
     call write_dataset(nuclide_group, "awrs", awrs)
-    call write_dataset(nuclide_group, "zaids", zaids)
 
     call close_group(nuclide_group)
 
-    deallocate(nucnames, awrs, zaids)
+    deallocate(nucnames, awrs)
 
   end subroutine write_nuclides
 
@@ -527,10 +522,10 @@ contains
       call write_dataset(material_group, "index", i)
 
       ! Write name for this material
-      call write_dataset(material_group, "name", m%name)
+      call write_dataset(material_group, "name", m % name)
 
       ! Write atom density with units
-      call write_dataset(material_group, "atom_density", m%density)
+      call write_dataset(material_group, "atom_density", m % density)
       call write_attribute_string(material_group, "atom_density", "units", &
            "atom/b-cm")
 
@@ -572,7 +567,6 @@ contains
     integer(HID_T), intent(in) :: file_id
 
     integer :: i, j, k
-    integer :: i_xs
     integer :: n_order      ! loop index for moment orders
     integer :: nm_order     ! loop index for Ynm moment orders
     integer(HID_T) :: tallies_group
@@ -635,12 +629,7 @@ contains
       allocate(str_array(t%n_nuclide_bins))
       NUCLIDE_LOOP: do j = 1, t%n_nuclide_bins
         if (t%nuclide_bins(j) > 0) then
-          i_xs = index(nuclides(t%nuclide_bins(j))%name, '.')
-          if (i_xs > 0) then
-            str_array(j) = nuclides(t%nuclide_bins(j))%name(1 : i_xs-1)
-          else
-            str_array(j) = nuclides(t%nuclide_bins(j))%name
-          end if
+          str_array(j) = nuclides(t % nuclide_bins(j)) % name
         else
           str_array(j) = 'total'
         end if

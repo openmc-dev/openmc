@@ -822,8 +822,8 @@ class Library(object):
         return pickle.load(open(full_filename, 'rb'))
 
     def get_xsdata(self, domain, xsdata_name, nuclide='total', xs_type='macro',
-                   xs_id='1m', order=None, tabular_legendre=None,
-                   tabular_points=33, subdomain=None):
+                   order=None, tabular_legendre=None, tabular_points=33,
+                   subdomain=None):
         """Generates an openmc.XSdata object describing a multi-group cross section
         data set for eventual combination in to an openmc.MGXSLibrary object
         (i.e., the library).
@@ -841,8 +841,6 @@ class Library(object):
             Provide the macro or micro cross section in units of cm^-1 or
             barns. Defaults to 'macro'. If the Library object is not tallied by
             nuclide this will be set to 'macro' regardless.
-        xs_ids : str
-            Cross section set identifier. Defaults to '1m'.
         order : int
             Scattering order for this data entry.  Default is None,
             which will set the XSdata object to use the order of the
@@ -888,7 +886,6 @@ class Library(object):
         cv.check_type('xsdata_name', xsdata_name, basestring)
         cv.check_type('nuclide', nuclide, basestring)
         cv.check_value('xs_type', xs_type, ['macro', 'micro'])
-        cv.check_type('xs_id', xs_id, basestring)
         cv.check_type('order', order, (type(None), Integral))
         if order is not None:
             cv.check_greater_than('order', order, 0, equality=True)
@@ -915,7 +912,6 @@ class Library(object):
         name = xsdata_name
         if nuclide is not 'total':
             name += '_' + nuclide
-        name += '.' + xs_id
         xsdata = openmc.XSdata(name, self.energy_groups)
 
         if order is None:
@@ -1022,8 +1018,7 @@ class Library(object):
         return xsdata
 
     def create_mg_library(self, xs_type='macro', xsdata_names=None,
-                          xs_ids=None, tabular_legendre=None,
-                          tabular_points=33):
+                          tabular_legendre=None, tabular_points=33):
         """Creates an openmc.MGXSLibrary object to contain the MGXS data for the
         Multi-Group mode of OpenMC.
 
@@ -1036,10 +1031,6 @@ class Library(object):
         xsdata_names : Iterable of str
             List of names to apply to the "xsdata" entries in the
             resultant mgxs data file. Defaults to 'set1', 'set2', ...
-        xs_ids : str or Iterable of str
-            Cross section set identifier (i.e., '71c') for all
-            data sets (if only str) or for each individual one
-            (if iterable of str). Defaults to '1m'.
         tabular_legendre : None or bool
             Flag to denote whether or not the Legendre expansion of the
             scattering angular distribution is to be converted to a tabular
@@ -1087,26 +1078,6 @@ class Library(object):
         # Initialize file
         mgxs_file = openmc.MGXSLibrary(self.energy_groups)
 
-        # Get the number of domains to size arrays with
-        if self.domain_type is 'mesh':
-            num_domains = np.sum(d.num_mesh_cells for d in self.domains)
-        else:
-            num_domains = len(self.domains)
-
-        # Set id names
-        if xs_ids is not None:
-            if isinstance(xs_ids, basestring):
-                # If we only have a string lets convert it now to a list
-                # of strings.
-                all_xs_ids = [xs_ids] * num_domains
-            else:
-                cv.check_iterable_type('xs_ids', xs_ids, basestring)
-                cv.check_length('xs_ids', xs_ids, num_domains, num_domains)
-                all_xs_ids = xs_ids
-
-        else:
-            all_xs_ids = ['1m'] * num_domains
-
         if self.domain_type == 'mesh':
             # Create the xsdata objects and add to the mgxs_file
             i = 0
@@ -1123,7 +1094,6 @@ class Library(object):
 
                     # Create XSdata and Macroscopic for this domain
                     xsdata = self.get_xsdata(domain, xsdata_name,
-                                             xs_id=all_xs_ids[i],
                                              tabular_legendre=tabular_legendre,
                                              tabular_points=tabular_points,
                                              subdomain=subdomain)
@@ -1148,7 +1118,6 @@ class Library(object):
 
                     xsdata = self.get_xsdata(domain, xsdata_name,
                                              nuclide=nuclide, xs_type=xs_type,
-                                             xs_id=all_xs_ids[i],
                                              tabular_legendre=tabular_legendre,
                                              tabular_points=tabular_points)
 
@@ -1156,9 +1125,8 @@ class Library(object):
 
         return mgxs_file
 
-    def create_mg_mode(self, xsdata_names=None, xs_ids=None,
-                       tabular_legendre=None, tabular_points=33,
-                       bc=['reflective'] * 6):
+    def create_mg_mode(self, xsdata_names=None, tabular_legendre=None,
+                       tabular_points=33, bc=['reflective'] * 6):
         """Creates an openmc.MGXSLibrary object to contain the MGXS data for the
         Multi-Group mode of OpenMC as well as the associated openmc.Materials
         and openmc.Geometry objects. The created Geometry is the same as that
@@ -1172,10 +1140,6 @@ class Library(object):
         xsdata_names : Iterable of str
             List of names to apply to the "xsdata" entries in the
             resultant mgxs data file. Defaults to 'set1', 'set2', ...
-        xs_ids : str or Iterable of str
-            Cross section set identifier (i.e., '71c') for all
-            data sets (if only str) or for each individual one
-            (if iterable of str). Defaults to '1m'.
         tabular_legendre : None or bool
             Flag to denote whether or not the Legendre expansion of the
             scattering angular distribution is to be converted to a tabular
@@ -1234,7 +1198,7 @@ class Library(object):
             cv.check_length("domains", self.domains, 1, 1)
 
         # Get the MGXS File Data
-        mgxs_file = self.create_mg_library('macro', xsdata_names, xs_ids,
+        mgxs_file = self.create_mg_library('macro', xsdata_names,
                                            tabular_legendre, tabular_points)
 
         # Now move on the creating the geometry and assigning materials
@@ -1251,10 +1215,10 @@ class Library(object):
 
             for i, subdomain in enumerate(self.domains[0].cell_generator()):
                 xsdata = mgxs_file.xsdatas[i]
-                [name, id] = xsdata.name.split('.')
+
                 # Build the macroscopic and assign it to the cell of
                 # interest
-                macroscopic = openmc.Macroscopic(name=name, xs=id)
+                macroscopic = openmc.Macroscopic(name=xsdata.name)
 
                 # Create Material and add to collection
                 material = openmc.Material(name=xsdata.name)
@@ -1275,9 +1239,8 @@ class Library(object):
             # Create the xsdata object and add it to the mgxs_file
             for i, domain in enumerate(self.domains):
                 xsdata = mgxs_file.xsdatas[i]
-                [name, id] = xsdata.name.split('.')
 
-                macroscopic = openmc.Macroscopic(name=name, xs=id)
+                macroscopic = openmc.Macroscopic(name=xsdata.name)
 
                 # Create Material and add to collection
                 material = openmc.Material(name=xsdata.name)

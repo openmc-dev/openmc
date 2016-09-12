@@ -331,57 +331,6 @@ contains
   end subroutine print_particle
 
 !===============================================================================
-! WRITE_XS_SUMMARY writes information about each nuclide and S(a,b) table to a
-! file called cross_sections.out. This file shows the list of reactions as well
-! as information about their secondary angle/energy distributions, how much
-! memory is consumed, thresholds, etc.
-!===============================================================================
-
-  subroutine write_xs_summary()
-
-    integer :: i       ! loop index
-    integer :: unit_xs ! cross_sections.out file unit
-    character(MAX_FILE_LEN)  :: path ! path of summary file
-
-    ! Create filename for log file
-    path = trim(path_output) // "cross_sections.out"
-
-    ! Open log file for writing
-    open(NEWUNIT=unit_xs, FILE=path, STATUS='replace', ACTION='write')
-
-    if (run_CE) then
-      ! Write header
-      call header("CROSS SECTION TABLES", unit=unit_xs)
-
-      NUCLIDE_LOOP: do i = 1, n_nuclides_total
-        ! Print information about nuclide
-        call nuclides(i) % print(unit=unit_xs)
-      end do NUCLIDE_LOOP
-
-      SAB_TABLES_LOOP: do i = 1, n_sab_tables
-        ! Print information about S(a,b) table
-        call sab_tables(i) % print(unit=unit_xs)
-      end do SAB_TABLES_LOOP
-    else
-      ! Write header
-      call header("MGXS LIBRARY TABLES", unit=unit_xs)
-      NuclideMG_LOOP: do i = 1, n_nuclides_total
-        ! Print information about nuclide
-        call nuclides_mg(i) % obj % print(unit=unit_xs)
-      end do NuclideMG_LOOP
-      call header("MATERIAL MGXS TABLES", unit=unit_xs)
-      MATERIAL_LOOP: do i = 1, n_materials
-        ! Print information about Materials
-        call macro_xs(i) % obj % print(unit=unit_xs)
-      end do MATERIAL_LOOP
-    end if
-
-    ! Close cross section summary file
-    close(unit_xs)
-
-  end subroutine write_xs_summary
-
-!===============================================================================
 ! PRINT_COLUMNS displays a header listing what physical values will displayed
 ! below them
 !===============================================================================

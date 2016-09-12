@@ -3,8 +3,8 @@
 
   <material id="1">
     <density value="19.5" units="g/cc" />
-    <nuclide name="U235" xs="71c" ao="2.0" />
-    <nuclide name="U238" xs="71c" ao="1.0" />
+    <nuclide name="U235" ao="2.0" />
+    <nuclide name="U238" ao="1.0" />
   </material>
 
 </materials>

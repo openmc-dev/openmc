@@ -1,8 +1,5 @@
 <?xml version="1.0"?>
 <materials>
-  <!-- Set default xs set to use 300K data -->
-  <default_xs>300K</default_xs>
-
   <!-- UO2 -->
   <material id="1">
     <density units="macro" value="1.0" />

@@ -89,7 +89,7 @@ contains
     end do
 
     ! ==========================================================================
-    ! READ ALL ACE CROSS SECTION TABLES
+    ! READ ALL MGXS CROSS SECTION TABLES
 
     ! Loop over all files
     MATERIAL_LOOP: do i = 1, n_materials

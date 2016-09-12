@@ -218,3 +218,8 @@ def atomic_mass(isotope):
         isotope = isotope[:isotope.find('_')]
 
     return _ATOMIC_MASS.get(isotope.lower())
+
+# The value of the Boltzman constant in units of MeV / K
+# Values here are from the Committee on Data for Science and Technology
+# (CODATA) 2010 recommendation (doi:10.1103/RevModPhys.84.1527).
+K_BOLTZMANN = 8.6173324E-11

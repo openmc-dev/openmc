@@ -1,9 +1,6 @@
 <?xml version="1.0"?>
 <materials>
 
-  <!-- By default, use 300K cross sections -->
-  <default_xs>71c</default_xs>
-
   <!--
       Since O-18 is not present in ENDF/B-VII, it was necessary to combine the
       atom densities for O-17 and O-18 in any materials containing Oxygen.
@@ -64,7 +61,7 @@
     <nuclide name="H2"   ao="7.4196e-06" />
     <nuclide name="O16"  ao="2.4672e-02" />
     <nuclide name="O17"  ao="6.0099e-05" />
-    <sab name="c_H_in_H2O" xs="71t" />
+    <sab name="c_H_in_H2O" />
   </material>
 
 </materials>

@@ -9,16 +9,21 @@ import openmc
 
 class ResonanceScatteringTestHarness(PyAPITestHarness):
     def _build_inputs(self):
+        # Nuclides
+        u238 = openmc.Nuclide('U238')
+        u235 = openmc.Nuclide('U235')
+        pu239 = openmc.Nuclide('Pu239')
+        h1 = openmc.Nuclide('H1')
+
         # Materials
         mat = openmc.Material(material_id=1)
         mat.set_density('g/cc', 1.0)
-        mat.add_nuclide('U238', 1.0)
-        mat.add_nuclide('U235', 0.02)
-        mat.add_nuclide('Pu239', 0.02)
-        mat.add_nuclide('H1', 20.0)
+        mat.add_nuclide(u238, 1.0)
+        mat.add_nuclide(u235, 0.02)
+        mat.add_nuclide(pu239, 0.02)
+        mat.add_nuclide(h1, 20.0)
 
         mats_file = openmc.Materials([mat])
-        mats_file.default_xs = '71c'
         mats_file.export_to_xml()
 
         # Geometry
@@ -37,29 +42,9 @@ class ResonanceScatteringTestHarness(PyAPITestHarness):
         geometry.export_to_xml()
 
         # Settings
-        nuclide = openmc.Nuclide('U238', '71c')
-        res_scatt_dbrc = openmc.ResonanceScattering()
-        res_scatt_dbrc.nuclide = nuclide
-        res_scatt_dbrc.nuclide_0K = nuclide # This is a bad idea! Just for tests
-        res_scatt_dbrc.method = 'DBRC'
-        res_scatt_dbrc.E_min = 1e-6
-        res_scatt_dbrc.E_max = 210e-6
-
-        nuclide = openmc.Nuclide('U235', '71c')
-        res_scatt_wcm = openmc.ResonanceScattering()
-        res_scatt_wcm.nuclide = nuclide
-        res_scatt_wcm.nuclide_0K = nuclide
-        res_scatt_wcm.method = 'WCM'
-        res_scatt_wcm.E_min = 1e-6
-        res_scatt_wcm.E_max = 210e-6
-
-        nuclide = openmc.Nuclide('Pu239', '71c')
-        res_scatt_ares = openmc.ResonanceScattering()
-        res_scatt_ares.nuclide = nuclide
-        res_scatt_ares.nuclide_0K = nuclide
-        res_scatt_ares.method = 'ARES'
-        res_scatt_ares.E_min = 1e-6
-        res_scatt_ares.E_max = 210e-6
+        res_scatt_dbrc = openmc.ResonanceScattering(u238, 'DBRC', 1e-6, 210e-6)
+        res_scatt_wcm = openmc.ResonanceScattering(u235, 'WCM', 1e-6, 210e-6)
+        res_scatt_ares = openmc.ResonanceScattering(pu239, 'ARES', 1e-6, 210e-6)
 
         sets_file = openmc.Settings()
         sets_file.batches = 10

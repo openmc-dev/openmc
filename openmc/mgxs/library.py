@@ -1006,7 +1006,7 @@ class Library(object):
     def create_mg_library(self, xs_type='macro', xsdata_names=None):
         """Creates an openmc.MGXSLibrary object to contain the MGXS data for the
         Multi-Group mode of OpenMC. Note that this library will not make use
-        of nested temperature tables. Every dataset in te library will be
+        of nested temperature tables. Every dataset in the library will be
         treated as if it was at the same default temperature.
 
         Parameters
@@ -1105,7 +1105,7 @@ class Library(object):
         multi-group data. This method only creates a macroscopic
         MGXS Library even if nuclidic tallies are specified in the Library.
         Note that this library will not make use of nested temperature tables.
-        Every dataset in te library will be treated as if it was at the same
+        Every dataset in the library will be treated as if it was at the same
         default temperature.
 
         Parameters

@@ -1118,7 +1118,7 @@ class Settings(object):
             for r in self.resonance_scattering:
                 elem.append(r.to_xml_element())
 
-    def export_to_xml(self):
+    def export_to_xml(self, path='settings.xml'):
         """Create a settings.xml file that can be used for a simulation.
 
         """
@@ -1162,8 +1162,7 @@ class Settings(object):
 
         # Write the XML Tree to the settings.xml file
         tree = ET.ElementTree(self._settings_file)
-        tree.write("settings.xml", xml_declaration=True,
-                   encoding='utf-8', method="xml")
+        tree.write(path, xml_declaration=True, encoding='utf-8', method="xml")
 
 
 class ResonanceScattering(object):

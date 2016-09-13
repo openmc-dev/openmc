@@ -4948,7 +4948,7 @@ contains
         call names % push_back('Ga0')
         call densities % push_back(density)
       else
-        call names % push_back('Ha69')
+        call names % push_back('Ga69')
         call densities % push_back(density * 0.60108_8)
         call names % push_back('Ga71')
         call densities % push_back(density * 0.39892_8)
@@ -5840,7 +5840,7 @@ contains
           file_id = file_open(libraries(i_library) % path, 'r')
           group_id = open_group(file_id, name)
           call sab_tables(i_sab) % from_hdf5(group_id, sab_temps(i_sab), &
-               temperature_tolerance)
+               temperature_method, temperature_tolerance)
           call close_group(group_id)
           call file_close(file_id)
 

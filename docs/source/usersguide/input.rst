@@ -725,10 +725,12 @@ a material default temperature.
 ``<temperature_method>`` Element
 --------------------------------
 
-The ``<temperature_method>`` element has an accepted value of "nearest" or
-"interpolation". A value of "nearest" indicates that for each cell, the nearest
-temperature at which cross sections are given is to be applied, within a given
-tolerance (see :ref:`temperature_tolerance`). A value of "multipole" indicates
+The ``<temperature_method>`` element has an accepted value of "nearest",
+"interpolation", or "multipole". A value of "nearest" indicates that for each
+cell, the nearest temperature at which cross sections are given is to be
+applied, within a given tolerance (see :ref:`temperature_tolerance`). A value of
+"interpolation" indicates that cross sections are to be interpolated between
+temperatures at which nuclear data are present. A value of "multipole" indicates
 that the windowed multipole method should be used to evaluate
 temperature-dependent cross sections in the resolved resonance range (a
 :ref:`windowed multipole library <multipole_library>` must also be available).

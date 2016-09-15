@@ -150,7 +150,8 @@ problem domain, and score tally results for regions only within that domain.
 In current implementation, a structured Cartesian mesh is utilized to define
 domains. One or more parallel processes are assigned to each domain mesh.
 Material and tally data are allocated during simulation using an on-the-fly
-approach. And multiple state point files are written separately for each domain.
+approach. And domain-specified on-the-fly tally results are written separately
+in multiple groups for each domain in the state point file.
 
 The ``<domain_decomposition>`` element specifies the decomposition of domain
 and process assignments. It has the following attributes/sub-elements:
@@ -194,9 +195,9 @@ and process assignments. It has the following attributes/sub-elements:
 
     *Default*: false
 
-  .. Warning:: Domain decomposition must be run in a MPI parallel mode (OpenMP/threads 
-               parallel is available). The number of parallel processors must be 
-               equal or greater than the number of domains.
+  .. Warning:: Domain decomposition must be run in a MPI parallel mode
+               (OpenMP/threads parallel is available). The number of parallel
+               processors must be equal or greater than the number of domains.
 
 Here is an example of a domain decomposition input:
 

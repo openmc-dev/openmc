@@ -82,7 +82,7 @@ if (domain_decomp_on):
         Flag indicating whether (1) or not (0) to counts all particle
         interactions in all domains.
 
-    **/domain_decomp/n_interaction** (*int[]*)
+    **/domain_decomp/n_interactions** (*int8_t[]*)
 
         The number of particle interactions in all domains.
 

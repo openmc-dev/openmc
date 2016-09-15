@@ -128,8 +128,8 @@ contains
         else
           call write_dataset(dd_group, "count_interactions", 0)
         end if
-        call write_dataset(dd_group, "n_interaction", &
-             domain_decomp % n_interaction)
+        call write_dataset(dd_group, "n_interactions", &
+             domain_decomp % n_interactions_all)
         call write_dataset(dd_group, "nodemap", &
              domain_decomp % domain_load_dist)
 

@@ -19,7 +19,7 @@ module initialize
   use mgxs_data,       only: read_mgxs, create_macro_xs
   use output,          only: title, header, print_version, write_message,     &
                              print_usage, write_xs_summary, print_plot
-  use particle_header,  only: ParticleBuffer
+  use particle_header, only: ParticleBuffer
   use random_lcg,      only: initialize_prng
   use state_point,     only: load_state_point
   use string,          only: to_str, starts_with, ends_with, str_to_int

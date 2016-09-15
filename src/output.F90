@@ -747,20 +747,26 @@ contains
 
   subroutine print_domain_interactions
 
-    character(MAX_FILE_LEN) :: ijk
+    integer                 :: bin        ! bin in domain mesh
+    integer                 :: ijk(3)     ! indices in mesh
+    character(MAX_FILE_LEN) :: ijk_str    ! indices string
 
     ! display header block for geometry debugging section
     if (master) then
       call header("Domain Interaction Counts")
       write(ou, "(1X,A,T30,A)") 'Domain Mesh I-J-K','No. Interactions'
-    end if
 
-    ! TODO: really this should be reduced to master for printing in order, and
-    ! so that no ranks print overtop other ranks
-    ijk = trim(to_str(domain_decomp % ijk(1))) // "-" // &
-          trim(to_str(domain_decomp % ijk(2))) // "-" // &
-          trim(to_str(domain_decomp % ijk(3)))
-    write(ou, "(1X,A,T30,I12)") trim(ijk), domain_decomp % n_interaction
+      do bin= 1, domain_decomp % n_domains
+
+        call bin_to_mesh_indices(domain_decomp % mesh, bin, ijk)
+        ijk_str = trim(to_str(ijk(1))) // "-" // &
+                  trim(to_str(ijk(2))) // "-" // &
+                  trim(to_str(ijk(3)))
+        write(ou, "(1X,A,T30,I12)") trim(ijk_str), &
+             domain_decomp % n_interactions_all(bin)
+      end do
+
+    end if
 
   end subroutine print_domain_interactions
 

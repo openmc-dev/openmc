@@ -54,6 +54,7 @@ contains
 #endif
       if (domain_decomp % local_master) call print_domain_interactions()
     end if
+
     ! Deallocate arrays
     call free_memory()
 

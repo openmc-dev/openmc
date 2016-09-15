@@ -58,7 +58,7 @@ class StatePoint(object):
         Indicate whether to allow particles leaking out of the mesh
     domain_count_interactions : bool
         Indicate whether to counts all particle interactions in all domains
-    domain_n_interaction : numpy.ndarray
+    domain_n_interactions : numpy.ndarray
         Number of particle interactions in all domains
     domain_nodemap : numpy.ndarray
         Load ditribution of all domains
@@ -240,9 +240,9 @@ class StatePoint(object):
             return None
 
     @property
-    def domain_n_interaction(self):
+    def domain_n_interactions(self):
         if self.domain_decomp_on:
-            return self._f['domain_decomp/n_interaction'].value
+            return self._f['domain_decomp/n_interactions'].value
         else:
             return None
 

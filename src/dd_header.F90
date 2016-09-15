@@ -70,8 +70,9 @@ module dd_header
     ! To help with setting nodemaps, we can run in a mode that counts all
     ! particle interactions in a domain(a counter in the while(alive) particle
     ! loop.  This will be printed as output for the domain masters only
-    logical    :: count_interactions = .false.
-    integer(8) :: n_interaction = 0_8
+    logical                  :: count_interactions = .false.
+    integer(8)               :: n_interaction = 0_8
+    integer(8), allocatable  :: n_interactions_all(:) ! index is domain meshbin
 
   contains
     procedure :: deallocate => deallocate_dd
@@ -104,6 +105,8 @@ contains
          deallocate(this % n_scatters_domain)
     if (allocated(this % n_scatters_local)) deallocate(this % n_scatters_local)
     if (allocated(this % scatter_offest)) deallocate(this % scatter_offest)
+    if (allocated(this % n_interactions_all)) &
+         deallocate(this % n_interactions_all)
     call this % bins_dict % clear()
 
   end subroutine deallocate_dd

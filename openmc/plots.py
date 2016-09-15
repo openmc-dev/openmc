@@ -616,7 +616,7 @@ class Plots(cv.CheckedList):
 
             self._plots_file.append(xml_element)
 
-    def export_to_xml(self):
+    def export_to_xml(self, path='plots.xml'):
         """Create a plots.xml file that can be used by OpenMC.
 
         """
@@ -631,5 +631,4 @@ class Plots(cv.CheckedList):
 
         # Write the XML Tree to the plots.xml file
         tree = ET.ElementTree(self._plots_file)
-        tree.write("plots.xml", xml_declaration=True,
-                   encoding='utf-8', method="xml")
+        tree.write(path, xml_declaration=True, encoding='utf-8', method="xml")

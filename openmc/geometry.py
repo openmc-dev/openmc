@@ -64,7 +64,7 @@ class Geometry(object):
                 if cell.id in volume_calc.results:
                     cell.add_volume_information(volume_calc)
 
-    def export_to_xml(self):
+    def export_to_xml(self, path='geometry.xml'):
         """Create a geometry.xml file that can be used for a simulation.
 
         """
@@ -82,8 +82,7 @@ class Geometry(object):
 
         # Write the XML Tree to the geometry.xml file
         tree = ET.ElementTree(geometry_file)
-        tree.write("geometry.xml", xml_declaration=True, encoding='utf-8',
-                   method="xml")
+        tree.write(path, xml_declaration=True, encoding='utf-8', method="xml")
 
     def find(self, point):
         """Find cells/universes/lattices which contain a given point

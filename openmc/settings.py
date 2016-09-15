@@ -133,6 +133,19 @@ class Settings(object):
     use_windowed_multipole : bool
         Whether or not windowed multipole can be used to evaluate resolved
         resonance cross sections.
+    dd_mesh_dimension : tuple or list
+        Number of domain decomposition (DD) mesh cells in the x, y, and z
+        directions, respectively
+    dd_mesh_lower_left : tuple or list
+        Coordinates of the lower-left point of the DD mesh
+    dd_mesh_upper_right : tuple or list
+        Coordinates of the upper-right point of the DD mesh
+    dd_nodemap : tuple or list
+        Load ditribution of all domains
+    dd_allow_leakage : bool
+        Whether or not to allow particles leaking out of the mesh
+    dd_count_interactions : bool
+        Whether or not to counts all particle interactions in all domains
     resonance_scattering : ResonanceScattering or iterable of ResonanceScattering
         The elastic scattering model to use for resonant isotopes
     volume_calculations : VolumeCalculation or iterable of VolumeCalculation

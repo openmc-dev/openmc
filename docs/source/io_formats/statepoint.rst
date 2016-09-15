@@ -62,17 +62,53 @@ The current revision of the statepoint file format is 15.
 
     The number of batches already simulated.
 
-**/domain_decomp** (*int*)
+**/domain_decomp_on** (*int*)
 
     Flag indicating whether domain decomposiiton is on (1) or off (0).
 
-**/n_domains** (*int*)
+if (domain_decomp_on):
 
-    The number of domains.
+    **/domain_decomp/n_domains** (*int*)
 
-**/domain_id** (*int*)
+        The number of domains.
 
-    The mesh bin ID of current domain (each domain has a state_point file).
+    **/domain_decomp/allow_leakage** (*int*)
+
+        Flag indicating whether (1) or not (0) to allow particles leaking out of
+        the mesh.
+
+    **/domain_decomp/count_interactions** (*int*)
+
+        Flag indicating whether (1) or not (0) to counts all particle
+        interactions in all domains.
+
+    **/domain_decomp/n_interaction** (*int[]*)
+
+        The number of particle interactions in all domains.
+
+    **/domain_decomp/nodemap** (*double[]*)
+
+        Load ditribution of all domains.
+
+    **/domain_decomp/mesh/type** (*char[]*)
+
+        Type of mesh.
+
+    **/domain_decomp/mesh/dimension** (*int*)
+
+        Number of mesh cells in each dimension.
+
+    **/domain_decomp/mesh/lower_left** (*double[]*)
+
+        Coordinates of lower-left corner of mesh.
+
+    **/domain_decomp/mesh/upper_right** (*double[]*)
+
+        Coordinates of upper-right corner of mesh.
+
+    **/domain_decomp/mesh/width** (*double[]*)
+
+        Width of each mesh cell in each dimension.
 
 if run_mode == 'k-eigenvalue':
 
@@ -198,13 +234,30 @@ if run_mode == 'k-eigenvalue':
 
     Number of filters used.
 
-**/tallies/tally <uid>/otf_size_results_filters** (*int*)
+**/tallies/tally <uid>/on_the_fly_allocation** (*int*)
 
-    Number of on-the-fly(otf) tally filters used.
+    Flag indicating whether on_the_fly_allocation is on (1) or off (0).
 
-**/tallies/tally <uid>/otf_filter_bin_map** (*int*)
+if (on_the_fly_allocation):
 
-    Map of  on-the-fly(otf) tally filters used.
+    **/tallies/tally <uid>/on_the_fly_results/otf_n_procs** (*int*)
+
+        Number of on-the-fly(otf) tally processes.
+
+    **/tallies/tally <uid>/on_the_fly_results/proc_<j>/otf_size_results_filters**
+    (*int*)
+
+        Number of on-the-fly(otf) tally filters used on process <j>.
+
+    **/tallies/tally <uid>/on_the_fly_results/proc_<j>/otf_filter_bin_map**
+    (*int[]*)
+
+        Map of on-the-fly(otf) tally filters used on process <j>.
+
+    **/tallies/tally <uid>/on_the_fly_results/proc_<j>/results** (Compound type)
+
+        Accumulated sum and sum-of-squares for each bin of the tally. The format
+        is the same as normal tally results.
 
 **/tallies/tally <uid>/filter <j>/type** (*char[]*)
 

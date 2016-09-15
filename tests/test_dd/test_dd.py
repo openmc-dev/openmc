@@ -86,8 +86,8 @@ class DomainDecomTestHarness(TestHarness):
         """Make sure statepoint.* and tallies.out have been created."""
         statepoint = glob.glob(os.path.join(os.getcwd(), self._sp_name))
         tallies = glob.glob(os.path.join(os.getcwd(), 'tallies.domain_*'))
-        assert len(statepoint) == domain_num, \
-            'Wrong number of statepoint files: %s' % len(statepoint)
+        assert len(statepoint) == 1, \
+            'Either multiple or no statepoint files exist'
         assert len(tallies) == domain_num, \
             'Wrong number of tally out files: %s' % len(tallies)
         assert statepoint[0].endswith('h5'), \
@@ -96,8 +96,7 @@ class DomainDecomTestHarness(TestHarness):
     def _get_results(self):
         """Digest info in the statepoint and return as a string."""
         # Read the statepoint file
-        spfile = 'statepoint.20.domain_1.h5'
-        statepoint = glob.glob(os.path.join(os.getcwd(), spfile))[0]
+        statepoint = glob.glob(os.path.join(os.getcwd(), self._sp_name))[0]
         sp = openmc.StatePoint(statepoint)
         
         # Write out k-combined

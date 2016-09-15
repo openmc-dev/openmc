@@ -54,14 +54,12 @@ class StatePoint(object):
         Indicate whether domain decomposition is active
     domain_number : int
         Number of domains
-    domain_id : int
-        Id of current domain
     domain_allow_leakage : bool
         Indicate whether to allow particles leaking out of the mesh
     domain_count_interactions : bool
-        Indicate whether to counts all particle interactions in current domain
-    domain_n_interaction : int
-        Number of particle interactions in current domain
+        Indicate whether to counts all particle interactions in all domains
+    domain_n_interaction : numpy.ndarray
+        Number of particle interactions in all domains
     domain_nodemap : numpy.ndarray
         Load ditribution of all domains
     domain_decomp_mesh : openmc.Mesh
@@ -160,26 +158,6 @@ class StatePoint(object):
             self._domain_decomp_on = self._f['domain_decomp_on'].value > 0
         except: pass
 
-        # Search and link all domain-specified statepoint files
-        if self._domain_decomp_on:
-            if not '.domain_' in filename:
-                warnings.warn('Could not identify domain-specified statepoint '
-                              'files.')
-                self._dd_files = None
-            else:
-                if self._f['domain_decomp/domain_id'].value != 1:
-                    warnings.warn('Global tally infomation is incomplete in '
-                                  'this non-first-domain statepoint file.')
-                
-                dd_files = glob.glob(\
-                    filename.split('.domain_')[0]+'.domain_*.h5')
-                if len(dd_files) != self._f['domain_decomp/n_domains'].value:
-                    warnings.warn('Could not find all domain-specified '
-                                  'statepoint files.')
-                    self._dd_files = None
-                else:
-                    self._dd_files = dd_files
-
         # Automatically link in a summary file if one exists
         if autolink:
             path_summary = os.path.join(os.path.dirname(filename), 'summary.h5')
@@ -244,13 +222,6 @@ class StatePoint(object):
     def domain_number(self):
         if self.domain_decomp_on:
             return self._f['domain_decomp/n_domains'].value
-        else:
-            return None
-
-    @property
-    def domain_id(self):
-        if self.domain_decomp_on:
-            return self._f['domain_decomp/domain_id'].value
         else:
             return None
 
@@ -572,11 +543,11 @@ class StatePoint(object):
                 # Add Tally to the global dictionary of all Tallies
                 tally.sparse = self.sparse
 
-                # Merge on-the-fly tallies from all domain-specified statepoint
-                # files. Only sum and sum_sq data need to be updated.
+                # If this is a on-the-fly tally, read and merge results of all
+                # fragments from different groups.
                 otf_tally = self._f['{0}{1}/on_the_fly_allocation'.format(
                                     base, tally_key)].value > 0
-                if self.domain_decomp_on and self._dd_files and otf_tally:
+                if otf_tally:
                     # Initialize arrays for merged sum and sum_sq
                     sum = np.zeros((tally.num_filter_bins, 
                                     tally.num_nuclides*tally.num_scores))
@@ -584,15 +555,16 @@ class StatePoint(object):
                                        tally.num_nuclides*tally.num_scores))
 
                     # Loop for reading otf tallies and merging by filter bins
-                    import h5py
-                    for file in self._dd_files:
-                        with h5py.File(file, 'r') as sp:
-                            otf_bin = sp['{0}{1}/otf_filter_bin_map'.format(
-                                         base, tally_key)].value
-                            otf_sum = sp['{0}{1}/results'.format(
-                                         base, tally_key)].value['sum']
-                            otf_sum_sq = sp['{0}{1}/results'.format(
-                                            base, tally_key)].value['sum_sq']
+                    base2 = '{0}{1}/on_the_fly_results'.format(base, tally_key)
+                    otf_n_proc = self._f['{0}/otf_n_procs'.format(base2)].value
+                    for p in range(otf_n_proc):
+                        p_group = '{0}/proc_{1}'.format(base2, p)
+                        otf_bin    = self._f['{0}/otf_filter_bin_map'.format(
+                                             p_group)].value
+                        otf_sum    = self._f['{0}/results'.format(
+                                             p_group)].value['sum']
+                        otf_sum_sq = self._f['{0}/results'.format(
+                                             p_group)].value['sum_sq']
 
                         for i, bin in enumerate(otf_bin):
                             sum[bin-1, :] += otf_sum[i, :]

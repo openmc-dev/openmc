@@ -66,6 +66,8 @@ Other Methods
 A good survey of other energy grid techniques, including unionized energy grids,
 can be found in a paper by Leppanen_.
 
+.. _windowed_multipole:
+
 Windowed Multipole Representation
 ---------------------------------
 
@@ -140,6 +142,40 @@ but not always the case.  Future library versions may eliminate this issue.
 
 The data format used by OpenMC to represent windowed multipole data is specified
 in :ref:`io_data_wmp`.
+
+.. _temperature_treatment:
+
+Temperature Treatment
+---------------------
+
+At the beginning of a simulation, OpenMC collects a list of all temperatures
+that are present in a model. It then uses this list to determine what cross
+sections to load. The data that is loaded depends on what temperature method has
+been selected. There are three methods available:
+
+:Nearest: Cross sections are loaded only if they are within a specified
+          tolerance of the actual temperatures in the model.
+
+:Interpolation: Cross sections are loaded at temperatures that bound the actual
+                temperatures in the model. During transport, cross sections for
+                each material are calculated using statistical linear-linear
+                interpolation between bounding temperature. Suppose cross
+                sections are available at temperatures :math:`T_1, T_2, ...,
+                T_n` and a material is assigned a temperature :math:`T` where
+                :math:`T_i < T < T_{i+1}`. Statistical interpolation is applied
+                as follows: a uniformly-distributed random number of the unit
+                interval, :math:`\xi`, is sampled. If :math:`\xi < (T -
+                T_i)/(T_{i+1} - T_i)`, then cross sections at temperature
+                :math:`T_{i+1}` are used. Otherwise, cross sections at
+                :math:`T_i` are used. This procedure is applied for pointwise
+                cross sections in the resolved resonance range, unresolved
+                resonance probability tables, and :math:`S(\alpha,\beta)`
+                thermal scattering tables.
+
+:Multipole: Resolved resonance cross sections are calculated on-the-fly using
+            techniques/data described in :ref:`windowed_multipole`. Cross
+            section data is loaded for a single temperature and is used in the
+            unresolved resonance and fast energy ranges.
 
 ----------------
 Multi-Group Data

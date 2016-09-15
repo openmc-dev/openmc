@@ -53,6 +53,16 @@ Benchmarking
 Coupling and Multi-physics
 --------------------------
 
+- Matthew Ellis, Benoit Forget, Kord Smith, and Derek Gaston, "Continuous
+  Temperature Representation in Coupled OpenMC/MOOSE Simulations," *Proc. PHYSOR
+  2016*, Sun Valley, Idaho, May 1-5, 2016.
+
+- Antonios G. Mylonakis, Melpomeni Varvayanni, and Nicolas Catsaros,
+  "Investigating a Matrix-free, Newton-based, Neutron-Monte
+  Carlo/Thermal-Hydraulic Coupling Scheme", *Proc. Int. Conf. Nuclear Energy for
+  New Europe*, Portoroz, Slovenia, Sep .14-17
+  (2015). `<https://www.researchgate.net/publication/282001032>`_
+
 - Matt Ellis, Benoit Forget, Kord Smith, and Derek Gaston, "Preliminary coupling
   of the Monte Carlo code OpenMC and the Multiphysics Object-Oriented Simulation
   Environment (MOOSE) for analyzing Doppler feedback in Monte Carlo
@@ -80,8 +90,17 @@ Geometry
 Miscellaneous
 -------------
 
+- Yunzhao Li, Qingming He, Liangzhi Cao, Hongchun Wu, and Tiejun Zu, "Resonance
+  Elastic Scattering and Interference Effects Treatments in Subgroup Method,"
+  *Nucl. Eng. Tech.*, **48**, 339-350
+  (2016). `<http://dx.doi.org/10.1016/j.net.2015.12.015>`_
+
 - William Boyd, Sterling Harper, and Paul K. Romano, "Equipping OpenMC for the
-  big data era," Accepted, *PHYSOR 2016*, Sun Valley, Idaho, May 1-5, 2016.
+  big data era," *Proc. PHYSOR*, Sun Valley, Idaho, May 1-5, 2016.
+
+- Michal Kostal, Vojtech Rypar, Jan Milcak, Vlastimil Juricek, Evzen Losa,
+  Benoit Forget, and Sterling Harper, *Ann. Nucl. Energy*, **87**, 601-611
+  (2016). `<http://dx.doi.org/10.1016/j.anucene.2015.10.010>`_
 
 - Qicang Shen, William Boyd, Benoit Forget, and Kord Smith, "Tally precision
   triggers for the OpenMC Monte Carlo code," *Trans. Am. Nucl. Soc.*, **112**,
@@ -94,6 +113,11 @@ Miscellaneous
 ------------------------------------
 Multi-group Cross Section Generation
 ------------------------------------
+
+- Zhaoyuan Liu, Kord Smith, and Benoit Forget, "A Cumulative Migration Method
+  for Computing Rigorous Transport Cross Sections and Diffusion Coefficients for
+  LWR Lattices with Monte Carlo," *Proc. PHYSOR*, Sun Valley, Idaho, May
+  1-5, 2016.
 
 - Adam G. Nelson and William R. Martin, "Improved Monte Carlo tallying of
   multi-group scattering moments using the NDPP code," *Trans. Am. Nucl. Soc.*,
@@ -108,17 +132,42 @@ Multi-group Cross Section Generation
   Computational Methods Applied to Nuclear Science and Engineering*, Sun Valley,
   Idaho, May 5--9 (2013).
 
-------------
-Nuclear Data
-------------
+
+------------------
+Doppler Broadening
+------------------
 
 - Colin Josey, Pablo Ducru, Benoit Forget, and Kord Smith, "Windowed multipole
-  for cross section Doppler broadening," *J. Comput. Phys.*, In Press
+  for cross section Doppler broadening," *J. Comput. Phys.*, **307**, 715-727
   (2016). `<http://dx.doi.org/10.1016/jcp.2015.08.013>`_
+
+- Jonathan A. Walsh, Benoit Forget, Kord S. Smith, and Forrest B. Brown,
+  "On-the-fly Doppler Broadening of Unresolved Resonance Region Cross Sections
+  via Probability Band Interpolation," *Proc. PHYSOR*, Sun Valley, Idaho, May
+  1-5, 2016.
 
 - Colin Josey, Benoit Forget, and Kord Smith, "Windowed multipole sensitivity to
   target accuracy of the optimization procedure," *J. Nucl. Sci. Technol.*,
   **52**, 987-992 (2015). `<http://dx.doi.org/10.1080/00223131.2015.1035353>`_
+
+- Paul K. Romano and Timothy H. Trumbull, "Comparison of algorithms for Doppler
+  broadening pointwise tabulated cross sections," *Ann. Nucl. Energy*, **75**,
+  358--364 (2015). `<http://dx.doi.org/10.1016/j.anucene.2014.08.046>`_
+
+- Tuomas Viitanen, Jaakko Leppanen, and Benoit Forget, "Target motion sampling
+  temperature treatment technique with track-length esimators in OpenMC --
+  Preliminary results," *Proc. PHYSOR*, Kyoto, Japan, Sep. 28--Oct. 3 (2014).
+
+- Benoit Forget, Sheng Xu, and Kord Smith, "Direct Doppler broadening in Monte
+  Carlo simulations using the multipole representation," *Ann. Nucl. Energy*,
+  **64**, 78--85 (2014). `<http://dx.doi.org/10.1016/j.anucene.2013.09.043>`_
+
+------------
+Nuclear Data
+------------
+
+- Paul K. Romano and Sterling M. Harper, "Nuclear data processing capabilities
+  in OpenMC", *Proc. Nuclear Data*, Sep. 11-16, 2016.
 
 - Jonathan A. Walsh, Paul K. Romano, Benoit Forget, and Kord S. Smith,
   "Optimizations of the energy grid search algorithm in continuous-energy Monte
@@ -139,21 +188,9 @@ Nuclear Data
   performance analysis for varying cross section parameter regimes,"
   *Proc. Joint Int. Conf. M&C+SNA+MC*, Nashville, Tennessee, Apr. 19--23 (2015).
 
-- Paul K. Romano and Timothy H. Trumbull, "Comparison of algorithms for Doppler
-  broadening pointwise tabulated cross sections," *Ann. Nucl. Energy*, **75**,
-  358--364 (2015). `<http://dx.doi.org/10.1016/j.anucene.2014.08.046>`_
-
-- Tuomas Viitanen, Jaakko Leppanen, and Benoit Forget, "Target motion sampling
-  temperature treatment technique with track-length esimators in OpenMC --
-  Preliminary results," *Proc. PHYSOR*, Kyoto, Japan, Sep. 28--Oct. 3 (2014).
-
 - Jonathan A. Walsh, Benoit Forget, and Kord S. Smith, "Accelerated sampling
   of the free gas resonance elastic scattering kernel," *Ann. Nucl. Energy*,
   **69**, 116--124 (2014). `<http://dx.doi.org/10.1016/j.anucene.2014.01.017>`_
-
-- Benoit Forget, Sheng Xu, and Kord Smith, "Direct Doppler broadening in Monte
-  Carlo simulations using the multipole representation," *Ann. Nucl. Energy*,
-  **64**, 78--85 (2014). `<http://dx.doi.org/10.1016/j.anucene.2013.09.043>`_
 
 -----------
 Parallelism
@@ -161,7 +198,7 @@ Parallelism
 
 - Paul K. Romano, John R. Tramm, and Andrew R. Siegel, "Efficacy of hardware
   threading for Monte Carlo particle transport calculations on multi- and
-  many-core systems," Accepted, *PHYSOR 2016*, Sun Valley, Idaho, May 1-5, 2016.
+  many-core systems," *PHYSOR 2016*, Sun Valley, Idaho, May 1-5, 2016.
 
 - David Ozog, Allen D. Malony, and Andrew R. Siegel, "A performance analysis of
   SIMD algorithms for Monte Carlo simulations of nuclear reactor cores,"
@@ -228,3 +265,11 @@ Parallelism
 - Paul K. Romano and Benoit Forget, "Parallel Fission Bank Algorithms in Monte
   Carlo Criticality Calculations," *Nucl. Sci. Eng.*, **170**, 125--135
   (2012). `<http://hdl.handle.net/1721.1/73569>`_
+
+---------
+Depletion
+---------
+
+- Kai Huang, Hongchun Wu, Yunzhao Li, and Liangzhi Cao, "Generalized depletion
+  chain simplification based of significance analysis," *Proc. PHYSOR*, Sun
+  Valley, Idaho, May 1-5, 2016.

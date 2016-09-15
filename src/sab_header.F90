@@ -80,10 +80,11 @@ module sab_header
 
 contains
 
-  subroutine salphabeta_from_hdf5(this, group_id, temperature, tolerance)
+  subroutine salphabeta_from_hdf5(this, group_id, temperature, method, tolerance)
     class(SAlphaBeta), intent(inout) :: this
     integer(HID_T),    intent(in)    :: group_id
     type(VectorReal),  intent(in)    :: temperature ! list of temperatures
+    integer,           intent(in)    :: method
     real(8),           intent(in)    :: tolerance
 
     integer :: i, j
@@ -140,25 +141,55 @@ contains
       call read_dataset(temps_available(i), kT_group, trim(dset_names(i)))
       temps_available(i) = temps_available(i) / K_BOLTZMANN
     end do
+    call sort(temps_available)
 
-    ! Determine actual temperatures to read
-    TEMP_LOOP: do i = 1, temperature % size()
-      temp_desired = temperature % data(i)
-      i_closest = minloc(abs(temps_available - temp_desired), dim=1)
-      temp_actual = temps_available(i_closest)
-      if (abs(temp_actual - temp_desired) < tolerance) then
-        if (find(temps_to_read, nint(temp_actual)) == -1) then
-          call temps_to_read % push_back(nint(temp_actual))
+    select case (method)
+    case (TEMPERATURE_NEAREST)
+      ! Determine actual temperatures to read
+      do i = 1, temperature % size()
+        temp_desired = temperature % data(i)
+        i_closest = minloc(abs(temps_available - temp_desired), dim=1)
+        temp_actual = temps_available(i_closest)
+        if (abs(temp_actual - temp_desired) < tolerance) then
+          if (find(temps_to_read, nint(temp_actual)) == -1) then
+            call temps_to_read % push_back(nint(temp_actual))
+          end if
+        else
+          call fatal_error("Nuclear data library does not contain cross sections &
+               &for " // trim(this % name) // " at or near " // &
+               trim(to_str(nint(temp_desired))) // " K.")
         end if
-      else
-        call fatal_error("Nuclear data library does not contain cross sections &
-             &for " // trim(this % name) // " at or near " // &
-             trim(to_str(nint(temp_desired))) // " K.")
-      end if
-    end do TEMP_LOOP
+      end do
 
-    ! TODO: If using interpolation, add a block to add bounding temperatures for
-    ! each
+    case (TEMPERATURE_INTERPOLATION)
+      ! If temperature interpolation or multipole is selected, get a list of
+      ! bounding temperatures for each actual temperature present in the model
+      TEMP_LOOP: do i = 1, temperature % size()
+        temp_desired = temperature % data(i)
+
+        do j = 1, size(temps_available) - 1
+          if (temps_available(j) <= temp_desired .and. &
+               temp_desired < temps_available(j + 1)) then
+            if (find(temps_to_read, nint(temps_available(j))) == -1) then
+              call temps_to_read % push_back(nint(temps_available(j)))
+            end if
+            if (find(temps_to_read, nint(temps_available(j + 1))) == -1) then
+              call temps_to_read % push_back(nint(temps_available(j + 1)))
+            end if
+            cycle TEMP_LOOP
+          end if
+        end do
+
+        call fatal_error("Nuclear data library does not contain cross sections &
+             &for " // trim(this % name) // " at temperatures that bound " // &
+             trim(to_str(nint(temp_desired))) // " K.")
+      end do TEMP_LOOP
+
+    case (TEMPERATURE_MULTIPOLE)
+      ! Add first available temperature
+      call temps_to_read % push_back(nint(temps_available(1)))
+
+    end select
 
     ! Sort temperatures to read
     call sort(temps_to_read)
@@ -297,6 +328,12 @@ contains
               end do
             end associate
           end do
+
+          ! Clear data on correlated angle-energy object
+          deallocate(correlated_dist % breakpoints)
+          deallocate(correlated_dist % interpolation)
+          deallocate(correlated_dist % energy)
+          deallocate(correlated_dist % distribution)
         end if
 
         call close_group(inelastic_group)

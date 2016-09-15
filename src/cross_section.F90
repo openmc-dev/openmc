@@ -162,15 +162,33 @@ contains
           ! temperature. Note that there is no tolerance here, so this
           ! temperature could be very far off!
           kT = sqrtkT**2
+
           i_temp = minloc(abs(nuclides(i_nuclide) % kTs - kT), dim=1)
         end if
       else
-        ! If not using multipole data, do a linear search on temperature
         kT = sqrtkT**2
-        do i_temp = 1, size(nuclides(i_nuclide) % kTs)
-          if (abs(nuclides(i_nuclide) % kTs(i_temp) - kT) < &
-               K_BOLTZMANN*temperature_tolerance) exit
-        end do
+
+        select case (temperature_method)
+        case (TEMPERATURE_NEAREST)
+          ! If using nearest temperature, do linear search on temperature
+          do i_temp = 1, size(nuc % kTs)
+            if (abs(nuc % kTs(i_temp) - kT) < K_BOLTZMANN * &
+                 temperature_tolerance) exit
+          end do
+        case (TEMPERATURE_INTERPOLATION)
+          ! Find temperatures that bound the actual temperature
+          do i_temp = 1, size(nuc % kTs) - 1
+            if (nuc % kTs(i_temp) <= kT .and. kT < nuc % kTs(i_temp + 1)) exit
+          end do
+
+          ! Randomly sample between temperature i and i+1
+          f = (kT - nuc % kTs(i_temp)) / &
+               (nuc % kTs(i_temp + 1) - nuc % kTs(i_temp))
+          if (f > prn()) i_temp = i_temp + 1
+        case (TEMPERATURE_MULTIPOLE)
+          i_temp = minloc(abs(nuclides(i_nuclide) % kTs - kT), dim=1)
+        end select
+
       end if
 
       ! Evaluate multipole or interpolate
@@ -317,10 +335,25 @@ contains
 
     ! Determine temperature for S(a,b) table
     kT = sqrtkT**2
-    do i_temp = 1, size(sab_tables(i_sab) % kTs)
-      if (abs(sab_tables(i_sab) % kTs(i_temp) - kT) < &
-           K_BOLTZMANN*temperature_tolerance) exit
-    end do
+    if (temperature_method == TEMPERATURE_NEAREST) then
+      ! If using nearest temperature, do linear search on temperature
+      do i_temp = 1, size(sab_tables(i_sab) % kTs)
+        if (abs(sab_tables(i_sab) % kTs(i_temp) - kT) < &
+             K_BOLTZMANN*temperature_tolerance) exit
+      end do
+    else
+      ! Find temperatures that bound the actual temperature
+      do i_temp = 1, size(sab_tables(i_sab) % kTs) - 1
+        if (sab_tables(i_sab) % kTs(i_temp) <= kT .and. &
+             kT < sab_tables(i_sab) % kTs(i_temp + 1)) exit
+      end do
+
+      ! Randomly sample between temperature i and i+1
+      f = (kT - sab_tables(i_sab) % kTs(i_temp)) / &
+           (sab_tables(i_sab) % kTs(i_temp + 1) - sab_tables(i_sab) % kTs(i_temp))
+      if (f > prn()) i_temp = i_temp + 1
+    end if
+
 
     ! Get pointer to S(a,b) table
     associate (sab => sab_tables(i_sab) % data(i_temp))

@@ -3261,22 +3261,6 @@ contains
 
             ! Check if total material was specified
             if (trim(sarray(j)) == 'total') then
-
-              ! Check if a delayedgroup filter is present for this tally
-              do l = 1, size(t % filters)
-                select type(filt => t % filters(l) % obj)
-                type is (DelayedGroupFilter)
-                  call warning("A delayedgroup filter was used on a total &
-                       &nuclide tally. Cross section libraries are not &
-                       &guaranteed to have the same delayed group structure &
-                       &across all isotopes. In particular, ENDF/B-VII.1 does &
-                       &not have a consistent delayed group structure across &
-                       &all isotopes while the JEFF 3.1.1 library has the same &
-                       &delayed group structure across all isotopes. Use with &
-                       &caution!")
-                end select
-              end do
-
               t % nuclide_bins(j) = -1
               cycle
             end if
@@ -3321,20 +3305,6 @@ contains
         allocate(t % nuclide_bins(1))
         t % nuclide_bins(1) = -1
         t % n_nuclide_bins = 1
-
-        ! Check if a delayedgroup filter is present for this tally
-        do l = 1, size(t % filters)
-          select type(filt => t % filters(l) % obj)
-          type is (DelayedGroupFilter)
-            call warning("A delayedgroup filter was used on a total nuclide &
-                 &tally. Cross section libraries are not guaranteed to have the&
-                 & same delayed group structure across all isotopes. In &
-                 &particular, ENDF/B-VII.1 does not have a consistent delayed &
-                 &group structure across all isotopes while the JEFF 3.1.1 &
-                 &library has the same delayed group structure across all &
-                 &isotopes. Use with caution!")
-          end select
-        end do
       end if
 
       ! =======================================================================
@@ -3448,8 +3418,9 @@ contains
           end if
 
           ! Check if delayed group filter is used with any score besides
-          ! delayed-nu-fission
-          if (score_name /= 'delayed-nu-fission' .and. &
+          ! delayed-nu-fission or decay-rate
+          if ((score_name /= 'delayed-nu-fission' .and. &
+               score_name /= 'decay-rate') .and. &
                t % find_filter(FILTER_DELAYEDGROUP) > 0) then
             call fatal_error("Cannot tally " // trim(score_name) // " with a &
                  &delayedgroup filter.")
@@ -3603,6 +3574,9 @@ contains
               ! Set tally estimator to analog
               t % estimator = ESTIMATOR_ANALOG
             end if
+          case ('decay-rate')
+            t % score_bins(j) = SCORE_DECAY_RATE
+            t % estimator = ESTIMATOR_ANALOG
           case ('delayed-nu-fission')
             t % score_bins(j) = SCORE_DELAYED_NU_FISSION
             if (t % find_filter(FILTER_ENERGYOUT) > 0) then
@@ -4975,7 +4949,7 @@ contains
         call names % push_back('Ga0')
         call densities % push_back(density)
       else
-        call names % push_back('Ha69')
+        call names % push_back('Ga69')
         call densities % push_back(density * 0.60108_8)
         call names % push_back('Ga71')
         call densities % push_back(density * 0.39892_8)
@@ -5867,7 +5841,7 @@ contains
           file_id = file_open(libraries(i_library) % path, 'r')
           group_id = open_group(file_id, name)
           call sab_tables(i_sab) % from_hdf5(group_id, sab_temps(i_sab), &
-               temperature_tolerance)
+               temperature_method, temperature_tolerance)
           call close_group(group_id)
           call file_close(file_id)
 
@@ -6020,6 +5994,7 @@ contains
 
     integer :: i, j
     integer :: i_library
+    integer :: method
     integer(HID_T) :: file_id
     integer(HID_T) :: group_id
     real(8) :: xs_cdf_sum
@@ -6047,8 +6022,9 @@ contains
         ! Read nuclide data from HDF5
         file_id = file_open(libraries(i_library) % path, 'r')
         group_id = open_group(file_id, name)
+        method = TEMPERATURE_NEAREST
         call resonant_nuc % from_hdf5(group_id, temperature, &
-             TEMPERATURE_NEAREST, 1000.0_8)
+             method, 1000.0_8)
         call close_group(group_id)
         call file_close(file_id)
 

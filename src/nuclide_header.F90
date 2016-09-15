@@ -189,7 +189,7 @@ module nuclide_header
     class(Nuclide),  intent(inout) :: this
     integer(HID_T),  intent(in)    :: group_id
     type(VectorReal), intent(in)   :: temperature ! list of desired temperatures
-    integer,         intent(in)    :: method
+    integer,         intent(inout) :: method
     real(8),         intent(in)    :: tolerance
 
     integer :: i
@@ -236,11 +236,22 @@ module nuclide_header
       call read_dataset(temps_available(i), kT_group, trim(dset_names(i)))
       temps_available(i) = temps_available(i) / K_BOLTZMANN
     end do
+    call sort(temps_available)
 
+    ! If only one temperature is available, revert to nearest temperature
+    if (size(temps_available) == 1 .and. &
+         method == TEMPERATURE_INTERPOLATION) then
+      call warning("Cross sections for " // trim(this % name) // " are only &
+           &available at one temperature. Reverting to nearest temperature &
+           &method.")
+      method = TEMPERATURE_NEAREST
+    end if
+
+    ! Determine actual temperatures to read
     select case (method)
     case (TEMPERATURE_NEAREST)
-      ! Determine actual temperatures to read
-      TEMP_LOOP: do i = 1, temperature % size()
+      ! Find nearest temperatures
+      do i = 1, temperature % size()
         temp_desired = temperature % data(i)
         i_closest = minloc(abs(temps_available - temp_desired), dim=1)
         temp_actual = temps_available(i_closest)
@@ -260,11 +271,31 @@ module nuclide_header
                &for " // trim(this % name) // " at or near " // &
                trim(to_str(nint(temp_desired))) // " K.")
         end if
-      end do TEMP_LOOP
+      end do
 
     case (TEMPERATURE_INTERPOLATION)
-      ! TODO: Get bounding temperatures
-      call fatal_error("Temperature interpolation not yet implemented")
+      ! If temperature interpolation or multipole is selected, get a list of
+      ! bounding temperatures for each actual temperature present in the model
+      TEMP_LOOP: do i = 1, temperature % size()
+        temp_desired = temperature % data(i)
+
+        do j = 1, size(temps_available) - 1
+          if (temps_available(j) <= temp_desired .and. &
+               temp_desired < temps_available(j + 1)) then
+            if (find(temps_to_read, nint(temps_available(j))) == -1) then
+              call temps_to_read % push_back(nint(temps_available(j)))
+            end if
+            if (find(temps_to_read, nint(temps_available(j + 1))) == -1) then
+              call temps_to_read % push_back(nint(temps_available(j + 1)))
+            end if
+            cycle TEMP_LOOP
+          end if
+        end do
+
+        call fatal_error("Nuclear data library does not contain cross sections &
+             &for " // trim(this % name) // " at temperatures that bound " // &
+             trim(to_str(nint(temp_desired))) // " K.")
+      end do TEMP_LOOP
 
     case (TEMPERATURE_MULTIPOLE)
       ! Add first available temperature

@@ -478,7 +478,7 @@ class IncidentNeutron(EqualityMixin):
                 if len(rxs) > 0:
                     data.summed_reactions[mt_sum] = rx = Reaction(mt_sum)
                     for T in data.temperatures:
-                        rx.xs[T] = Sum([rx.xs[T] for rx in rxs])
+                        rx.xs[T] = Sum([rx_i.xs[T] for rx_i in rxs])
 
         # Read unresolved resonance probability tables
         if 'urr' in group:

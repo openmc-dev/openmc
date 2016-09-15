@@ -13,7 +13,7 @@ import openmc
 
 class SourceTestHarness(PyAPITestHarness):
     def _build_inputs(self):
-        mat1 = openmc.Material(material_id=1, temperature='294')
+        mat1 = openmc.Material(material_id=1, temperature=294)
         mat1.set_density('g/cm3', 4.5)
         mat1.add_nuclide(openmc.Nuclide('U235'), 1.0)
         materials = openmc.Materials([mat1])

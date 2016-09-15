@@ -708,7 +708,7 @@ contains
                     score = p % absorb_wgt * yield * &
                          micro_xs(p % event_nuclide) % fission &
                          / micro_xs(p % event_nuclide) % absorption &
-                         * rxn % products(1 + d) % decay_rate * 1.e8_8
+                         * rxn % products(1 + d) % decay_rate
                   end associate
 
                   ! Tally to bin
@@ -733,7 +733,7 @@ contains
                 ! and not the MAX_DELAYED_GROUPS constant for this loop.
                 do d = 1, size(rxn % products) - 2
 
-                  score = score + rxn % products(1 + d) % decay_rate * 1.e8_8 * &
+                  score = score + rxn % products(1 + d) % decay_rate * &
                        p % absorb_wgt * micro_xs(p % event_nuclide) % fission *&
                        nuclides(p % event_nuclide) % nu(E, EMISSION_DELAYED, d)&
                        / micro_xs(p % event_nuclide) % absorption
@@ -769,11 +769,9 @@ contains
               associate (rxn => nuclides(p % event_nuclide) % &
                    reactions(nuclides(p % event_nuclide) % index_fission(1)))
 
-                ! determine score based on bank site weight and keff. Note that
-                ! the units of the decay rate have been converted from inverse
-                ! shakes to inverse seconds (1 shake = 1.e-8 seconds)
+                ! determine score based on bank site weight and keff.
                 score = score + keff * fission_bank(n_bank - p % n_bank + k) &
-                     % wgt * rxn % products(1 + g) % decay_rate * 1.e8_8
+                     % wgt * rxn % products(1 + g) % decay_rate
               end associate
 
               ! if the delayed group filter is present, tally to corresponding

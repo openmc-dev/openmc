@@ -40,6 +40,8 @@ contains
       string = "fission"
     case (SCORE_NU_FISSION)
       string = "nu-fission"
+    case (SCORE_DECAY_RATE)
+      string = "decay-rate"
     case (SCORE_DELAYED_NU_FISSION)
       string = "delayed-nu-fission"
     case (SCORE_PROMPT_NU_FISSION)

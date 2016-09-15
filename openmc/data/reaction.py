@@ -107,7 +107,9 @@ def _get_fission_products(ace):
         for group in range(n_group):
             delayed_neutron = Product('neutron')
             delayed_neutron.emission_mode = 'delayed'
-            delayed_neutron.decay_rate = ace.xss[idx]
+
+            # Convert units of inverse shakes to inverse seconds
+            delayed_neutron.decay_rate = ace.xss[idx] * 1.e8
 
             group_probability = Tabulated1D.from_ace(ace, idx + 1)
             if np.all(group_probability.y == group_probability.y[0]):

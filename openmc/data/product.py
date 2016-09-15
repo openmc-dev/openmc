@@ -100,7 +100,7 @@ class Product(EqualityMixin):
         cv.check_greater_than('product decay rate', decay_rate, 0.0, True)
 
         # Convert the decay rate from units of inverse shakes to inverse seconds
-        self._decay_rate = decay_rate * 1.e-8
+        self._decay_rate = decay_rate * 1.e8
 
     @distribution.setter
     def distribution(self, distribution):

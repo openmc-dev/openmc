@@ -190,7 +190,7 @@ module nuclide_header
     class(Nuclide),  intent(inout) :: this
     integer(HID_T),  intent(in)    :: group_id
     type(VectorReal), intent(in)   :: temperature ! list of desired temperatures
-    integer,         intent(in)    :: method
+    integer,         intent(inout) :: method
     real(8),         intent(in)    :: tolerance
 
     integer :: i
@@ -242,6 +242,15 @@ module nuclide_header
       temps_available(i) = temps_available(i) / K_BOLTZMANN
     end do
     call sort(temps_available)
+
+    ! If only one temperature is available, revert to nearest temperature
+    if (size(temps_available) == 1 .and. &
+         method == TEMPERATURE_INTERPOLATION) then
+      call warning("Cross sections for " // trim(this % name) // " are only &
+           &available at one temperature. Reverting to nearest temperature &
+           &method.")
+      method = TEMPERATURE_NEAREST
+    end if
 
     ! Determine actual temperatures to read
     select case (method)

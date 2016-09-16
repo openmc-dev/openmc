@@ -2594,7 +2594,7 @@ contains
             if (uvw(d1) > 0) then
 
               ! Outward current on d1 max surface
-              if (all(ijk0 >= 1) .and. all(ijk0 <= m % dimension)) then
+              if (all(ijk0 >= 1) .and. all(ijk0(:n_dim) <= m % dimension)) then
                 matching_bins(i_filter_surf) = d1 * 4 - 1
                 matching_bins(i_filter_mesh) = &
                      mesh_indices_to_bin(m, ijk0)
@@ -2634,7 +2634,7 @@ contains
             else
 
               ! Outward current on d1 min surface
-              if (all(ijk0 >= 1) .and. all(ijk0 <= m % dimension)) then
+              if (all(ijk0 >= 1) .and. all(ijk0(:n_dim) <= m % dimension)) then
                 matching_bins(i_filter_surf) = d1 * 4 - 3
                 matching_bins(i_filter_mesh) = &
                      mesh_indices_to_bin(m, ijk0)

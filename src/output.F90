@@ -948,8 +948,6 @@ contains
     integer :: i_filter_ein         ! index for incoming energy filter
     integer :: i_filter_surf        ! index for surface filter
     integer :: n                    ! number of incoming energy bins
-    integer :: len1                 ! length of string
-    integer :: len2                 ! length of string
     integer :: filter_index         ! index in results array for filters
     logical :: print_ebin           ! should incoming energy bin be displayed?
     character(MAX_LINE_LEN) :: string

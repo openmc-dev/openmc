@@ -2669,6 +2669,8 @@ contains
       else
         call MPI_REDUCE(domain_decomp % n_interaction, dummy, 1, &
              MPI_REAL8, MPI_SUM, 0, domain_decomp % comm, mpi_err)
+        ! Reset n_interaction on non-local-master process
+        domain_decomp % n_interaction = 0
       end if
 
       ! Gather to global master

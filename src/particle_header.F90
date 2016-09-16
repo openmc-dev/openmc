@@ -108,7 +108,7 @@ module particle_header
     real(8)    :: stored_uvw(3)
     real(8)    :: stored_distance ! sampled distance to go after changing domain
     real(8)    :: fly_dd_distance ! accumulated distance to domain boundary
-    integer(8) :: prn_seed(N_STREAMS) ! the  next random number seed
+    integer(8) :: prn_seed(N_STREAMS) ! the next random number seed
 
     ! Domain information
     integer    :: dd_meshbin    ! DD meshbin the particle is to be run in next

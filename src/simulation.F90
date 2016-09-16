@@ -101,23 +101,15 @@ contains
               ! Grab particle from particle_buffer
               p = domain_decomp % particle_buffer(i_work)
 
-              ! Initialize particle
-              call initialize_history(p, current_work)
-
-              ! Transport particle
-              call transport(p)
-
-            else
-
-              ! grab source particle from bank
-              call initialize_history(p, current_work)
-
-              ! Transport particle
-              call transport(p)
-
             end if
+              
+            ! Initialize particle
+            call initialize_history(p, current_work)
 
-            end do PARTICLE_LOOP
+            ! Transport particle
+            call transport(p)
+
+          end do PARTICLE_LOOP
 !$omp end parallel do
 
           ! Accumulate time for transport

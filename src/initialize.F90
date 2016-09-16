@@ -327,6 +327,8 @@ contains
     integer                   :: hdf5_err
     integer(HID_T)            :: coordinates_t   ! HDF5 type for 3 reals
     integer(HSIZE_T)          :: dims(1) = (/3/) ! size of coordinates
+    integer(HID_T)            :: seeds_t         ! HDF5 type for prn seeds
+    integer(HSIZE_T)          :: dims2(1) = (/N_STREAMS/) ! size of prn seeds
 
     ! Initialize FORTRAN interface.
     call h5open_f(hdf5_err)
@@ -339,8 +341,14 @@ contains
     call h5tinsert_f(hdf5_tallyresult_t, "sum_sq", h5offsetof(c_loc(tmp(1)), &
          c_loc(tmp(1)%sum_sq)), H5T_NATIVE_DOUBLE, hdf5_err)
 
+    ! Determine type for integer(8)
+    hdf5_integer8_t = h5kind_to_type(8, H5_INTEGER_KIND)
+
     ! Create compound type for xyz and uvw
     call h5tarray_create_f(H5T_NATIVE_DOUBLE, 1, dims, coordinates_t, hdf5_err)
+
+    ! Create compound type for prn seed
+    call h5tarray_create_f(hdf5_integer8_t, 1, dims2, seeds_t, hdf5_err)
 
     ! Create the compound datatype for Bank
     call h5tcreate_f(H5T_COMPOUND_F, h5offsetof(c_loc(tmpb(1)), &
@@ -353,11 +361,10 @@ contains
          c_loc(tmpb(1)%uvw)), coordinates_t, hdf5_err)
     call h5tinsert_f(hdf5_bank_t, "E", h5offsetof(c_loc(tmpb(1)), &
          c_loc(tmpb(1)%E)), H5T_NATIVE_DOUBLE, hdf5_err)
+    call h5tinsert_f(hdf5_bank_t, "prn_seeds", h5offsetof(c_loc(tmpb(1)), &
+         c_loc(tmpb(1)%prn_seed)), seeds_t, hdf5_err)
     call h5tinsert_f(hdf5_bank_t, "delayed_group", h5offsetof(c_loc(tmpb(1)), &
          c_loc(tmpb(1)%delayed_group)), H5T_NATIVE_INTEGER, hdf5_err)
-
-    ! Determine type for integer(8)
-    hdf5_integer8_t = h5kind_to_type(8, H5_INTEGER_KIND)
 
   end subroutine hdf5_initialize
 

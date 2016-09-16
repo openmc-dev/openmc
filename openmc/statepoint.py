@@ -102,8 +102,8 @@ class StatePoint(object):
         Pseudorandom number generator seed
     source : numpy.ndarray of compound datatype
         Array of source sites. The compound datatype has fields 'wgt', 'xyz',
-        'uvw', and 'E' corresponding to the weight, position, direction, and
-        energy of the source site.
+        'uvw', 'prn_seeds' and 'E' corresponding to the weight, position,
+        direction, random number seeds and energy of the source site.
     source_present : bool
         Indicate whether source sites are present
     sparse : bool

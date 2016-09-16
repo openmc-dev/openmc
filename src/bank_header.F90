@@ -16,7 +16,7 @@ module bank_header
     real(C_DOUBLE) :: xyz(3)        ! location of bank particle
     real(C_DOUBLE) :: uvw(3)        ! diretional cosines
     real(C_DOUBLE) :: E             ! energy / energy group if in MG mode.
-    integer(C_LONG_LONG) :: prn_seed(N_STREAMS) ! random number seeds to continue site
+    integer(C_LONG_LONG) :: prn_seed(N_STREAMS) ! prn seeds to continue site
     integer(C_INT) :: delayed_group ! delayed group
   end type Bank
 

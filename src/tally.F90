@@ -2510,8 +2510,8 @@ contains
       n_dim = m % n_dimension
 
       ! Determine indices for starting and ending location
-      call get_mesh_indices(m, xyz0, ijk0(:n_dim), start_in_mesh)
-      call get_mesh_indices(m, xyz1, ijk1(:n_dim), end_in_mesh)
+      call get_mesh_indices(m, xyz0, ijk0, start_in_mesh)
+      call get_mesh_indices(m, xyz1, ijk1, end_in_mesh)
 
       ! Check to see if start or end is in mesh -- if not, check if track still
       ! intersects with mesh
@@ -2594,7 +2594,8 @@ contains
             if (uvw(d1) > 0) then
 
               ! Outward current on d1 max surface
-              if (all(ijk0 >= 1) .and. all(ijk0(:n_dim) <= m % dimension)) then
+              if (all(ijk0(:n_dim) >= 1) .and. &
+                   all(ijk0(:n_dim) <= m % dimension)) then
                 matching_bins(i_filter_surf) = d1 * 4 - 1
                 matching_bins(i_filter_mesh) = &
                      mesh_indices_to_bin(m, ijk0)
@@ -2634,7 +2635,8 @@ contains
             else
 
               ! Outward current on d1 min surface
-              if (all(ijk0 >= 1) .and. all(ijk0(:n_dim) <= m % dimension)) then
+              if (all(ijk0(:n_dim) >= 1) .and. &
+                   all(ijk0(:n_dim) <= m % dimension)) then
                 matching_bins(i_filter_surf) = d1 * 4 - 3
                 matching_bins(i_filter_mesh) = &
                      mesh_indices_to_bin(m, ijk0)

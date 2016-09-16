@@ -94,7 +94,7 @@ module mgxs_header
       integer(HID_T), intent(in)   :: xs_id       ! Library data
       integer, intent(in)          :: groups      ! Number of Energy groups
       type(VectorReal), intent(in) :: temperature ! list of desired temperatures
-      integer, intent(in)          :: method      ! Type of temperature access
+      integer, intent(inout)       :: method      ! Type of temperature access
       real(8), intent(in)          :: tolerance   ! Tolerance on method
       logical, intent(in)          :: get_kfiss   ! Need Kappa-Fission?
       logical, intent(in)          :: get_fiss    ! Should we get fiss data?
@@ -206,7 +206,7 @@ module mgxs_header
       class(Mgxs), intent(inout)     :: this          ! Working Object
       integer(HID_T), intent(in)     :: xs_id         ! Group in H5 file
       type(VectorReal), intent(in)   :: temperature   ! list of desired temperatures
-      integer, intent(in)            :: method        ! Type of temperature access
+      integer, intent(inout)         :: method        ! Type of temperature access
       real(8), intent(in)            :: tolerance     ! Tolerance on method
       type(VectorInt), intent(out)   :: temps_to_read ! Temperatures to read
       integer, intent(out)           :: order_dim     ! Scattering data order size
@@ -244,6 +244,16 @@ module mgxs_header
         ! Convert MeV to Kelvin
         temps_available(i) = temps_available(i) / K_BOLTZMANN
       end do
+      call sort(temps_available)
+
+      ! If only one temperature is available, revert to nearest temperature
+      if (size(temps_available) == 1 .and. &
+           method == TEMPERATURE_INTERPOLATION) then
+        call warning("Cross sections for " // trim(this % name) // " are only &
+             &available at one temperature. Reverting to nearest temperature &
+             &method.")
+        method = TEMPERATURE_NEAREST
+      end if
 
       select case (method)
       case (TEMPERATURE_NEAREST)
@@ -264,8 +274,28 @@ module mgxs_header
         end do TEMP_LOOP
 
       case (TEMPERATURE_INTERPOLATION)
-        ! TODO: Get bounding temperatures
-        call fatal_error("Temperature interpolation not yet implemented")
+        ! If temperature interpolation or multipole is selected, get a list of
+        ! bounding temperatures for each actual temperature present in the model
+        TEMPS_LOOP: do i = 1, temperature % size()
+          temp_desired = temperature % data(i)
+
+          do j = 1, size(temps_available) - 1
+            if (temps_available(j) <= temp_desired .and. &
+                 temp_desired < temps_available(j + 1)) then
+              if (find(temps_to_read, nint(temps_available(j))) == -1) then
+                call temps_to_read % push_back(nint(temps_available(j)))
+              end if
+              if (find(temps_to_read, nint(temps_available(j + 1))) == -1) then
+                call temps_to_read % push_back(nint(temps_available(j + 1)))
+              end if
+              cycle TEMPS_LOOP
+            end if
+          end do
+
+          call fatal_error("MGXS library does not contain cross sections &
+               &for " // trim(this % name) // " at temperatures that bound " // &
+               trim(to_str(nint(temp_desired))) // " K.")
+        end do TEMPS_LOOP
       end select
 
       ! Sort temperatures to read
@@ -369,7 +399,7 @@ module mgxs_header
       integer(HID_T), intent(in)    :: xs_id       ! Group in H5 file
       integer, intent(in)           :: groups      ! Number of Energy groups
       type(VectorReal), intent(in)  :: temperature ! list of desired temperatures
-      integer, intent(in)           :: method      ! Type of temperature access
+      integer, intent(inout)        :: method      ! Type of temperature access
       real(8), intent(in)           :: tolerance   ! Tolerance on method
       logical, intent(in)           :: get_kfiss   ! Need Kappa-Fission?
       logical, intent(in)           :: get_fiss    ! Should we get fiss data?
@@ -660,7 +690,7 @@ module mgxs_header
       integer(HID_T), intent(in)      :: xs_id       ! Group in H5 file
       integer, intent(in)             :: groups      ! Number of Energy groups
       type(VectorReal), intent(in)    :: temperature ! list of desired temperatures
-      integer, intent(in)             :: method      ! Type of temperature access
+      integer, intent(inout)          :: method      ! Type of temperature access
       real(8), intent(in)             :: tolerance   ! Tolerance on method
       logical, intent(in)             :: get_kfiss   ! Need Kappa-Fission?
       logical, intent(in)             :: get_fiss    ! Should we get fiss data?
@@ -1196,7 +1226,8 @@ module mgxs_header
       real(8), allocatable :: temp_mult(:, :), mult_num(:, :), mult_denom(:, :)
       real(8), allocatable :: scatt_coeffs(:, :, :)
       integer :: nuc_t
-      real(8) :: temp_actual, temp_desired
+      integer, allocatable :: nuc_ts(:)
+      real(8) :: temp_actual, temp_desired, interp
       integer :: scatter_type
       type(Jagged2D), allocatable :: nuc_matrix(:)
       integer, allocatable :: gmin(:), gmax(:)
@@ -1243,12 +1274,16 @@ module mgxs_header
         ! Add contribution from each nuclide in material
         NUC_LOOP: do i = 1, mat % n_nuclides
           associate(nuc => nuclides(mat % nuclide(i)) % obj)
+             ! Copy atom density of nuclide in material
+            atom_density = mat % atom_density(i)
+
             select case (method)
             case (TEMPERATURE_NEAREST)
               ! Determine actual temperatures to read
               temp_desired = temps % data(i)
-              nuc_t = minloc(abs(nuc % kTs - temp_desired), dim=1)
-              temp_actual = nuc % kTs(nuc_t)
+              allocate(nuc_ts(1))
+              nuc_ts(1) = minloc(abs(nuc % kTs - temp_desired), dim=1)
+              temp_actual = nuc % kTs(nuc_ts(1))
               if (abs(temp_actual - temp_desired) >= tolerance) then
                 call fatal_error("MGXS library does not contain cross sections &
                      &for " // trim(this % name) // " at or near " // &
@@ -1256,80 +1291,106 @@ module mgxs_header
               end if
 
             case (TEMPERATURE_INTERPOLATION)
-              ! TODO: Get bounding temperatures
-              call fatal_error("Temperature interpolation not yet implemented")
-            end select
+              ! If temperature interpolation or multipole is selected, get a
+              ! list of bounding temperatures for each actual temperature
+              ! present in the model
+              temp_desired = temps % data(i)
+              allocate(nuc_ts(2))
+              do j = 1, size(nuc % kTs) - 1
+                if (nuc % kTs(j) <= temp_desired .and. &
+                     temp_desired < nuc % kTs(j + 1)) then
+                  nuc_ts(1) = j
+                  nuc_ts(2) = j + 1
+                end if
+              end do
 
-             ! Copy atom density of nuclide in material
-            atom_density = mat % atom_density(i)
+              call fatal_error("Nuclear data library does not contain cross sections &
+                   &for " // trim(this % name) // " at temperatures that bound " // &
+                   trim(to_str(nint(temp_desired))) // " K.")
+            end select
 
             select type(nuc)
             type is (MgxsIso)
-              ! Perform our operations which depend upon the type
-              ! Add contributions to total, absorption, and fission data (if necessary)
-              this % xs(t) % total = this % xs(t) % total + &
-                   atom_density * nuc % xs(nuc_t) % total
-              this % xs(t) % absorption = this % xs(t) % absorption + &
-                   atom_density * nuc % xs(nuc_t) % absorption
-              if (nuc % fissionable) then
-                this % xs(t) % chi = this % xs(t) % chi + &
-                     atom_density * nuc % xs(nuc_t) % chi
-                this % xs(t) % nu_fission = this % xs(t) % nu_fission + &
-                     atom_density * nuc % xs(nuc_t) % nu_fission
-                if (allocated(nuc % xs(nuc_t) % fission)) then
-                  this % xs(t) % fission = this % xs(t) % fission + &
-                       atom_density * nuc % xs(nuc_t) % fission
+              do j = 1, size(nuc_ts)
+                nuc_t = nuc_ts(j)
+                if (size(nuc_ts) == 1) then
+                  interp = ONE
+                else if (j == 1) then
+                  interp = (ONE - (temp_desired - nuc % kTs(nuc_ts(1))) / &
+                       (nuc % kTs(nuc_ts(2)) - nuc % kTs(nuc_ts(1))))
+                else
+                  interp = ONE - interp
                 end if
-                if (allocated(nuc % xs(nuc_t) % k_fission)) then
-                  this % xs(t) % k_fission = this % xs(t) % k_fission + &
-                       atom_density * nuc % xs(nuc_t) % k_fission
-                end if
-              end if
 
-              ! We will next gather the multiplicaity and scattering matrices.
-              ! To avoid multiple re-allocations as we resize the storage
-              ! matrix (and/or to avoidlots of duplicate code), we will use a
-              ! dense matrix for this storage, with a reduction to the sparse
-              ! format at the end.
-
-              ! Get the multiplicity matrix
-              ! To combine from nuclidic data we need to use the final relationship
-              ! mult_{gg'} = sum_i(N_i*nuscatt_{i,g,g'}) /
-              !              sum_i(N_i*(nuscatt_{i,g,g'} / mult_{i,g,g'}))
-              ! Developed as follows:
-              ! mult_{gg'} = nuScatt{g,g'} / Scatt{g,g'}
-              ! mult_{gg'} = sum_i(N_i*nuscatt_{i,g,g'}) / sum(N_i*scatt_{i,g,g'})
-              ! mult_{gg'} = sum_i(N_i*nuscatt_{i,g,g'}) /
-              !              sum_i(N_i*(nuscatt_{i,g,g'} / mult_{i,g,g'}))
-              ! nuscatt_{i,g,g'} can be reconstructed from scatter % energy and
-              ! scatter % scattxs
-              do gin = 1, groups
-                do gout = nuc % xs(nuc_t) % scatter % gmin(gin), nuc % xs(nuc_t) % scatter % gmax(gin)
-                  nuscatt = nuc % xs(nuc_t) % scatter % scattxs(gin) * &
-                       nuc % xs(nuc_t) % scatter % energy(gin) % data(gout)
-                  mult_num(gout, gin) = mult_num(gout, gin) + atom_density * &
-                       nuscatt
-                  if (nuc % xs(nuc_t) % scatter % mult(gin) % data(gout) > ZERO) then
-                    mult_denom(gout, gin) = mult_denom(gout,gin) + atom_density * &
-                         nuscatt / nuc % xs(nuc_t) % scatter % mult(gin) % data(gout)
-                  else
-                    ! Avoid division by zero
-                    mult_denom(gout, gin) = mult_denom(gout,gin) + atom_density
+                ! Perform our operations which depend upon the type
+                ! Add contributions to total, absorption, and fission data (if necessary)
+                this % xs(t) % total = this % xs(t) % total + &
+                     atom_density * nuc % xs(nuc_t) % total * interp
+                this % xs(t) % absorption = this % xs(t) % absorption + &
+                     atom_density * nuc % xs(nuc_t) % absorption * interp
+                if (nuc % fissionable) then
+                  this % xs(t) % chi = this % xs(t) % chi + &
+                       atom_density * nuc % xs(nuc_t) % chi * interp
+                  this % xs(t) % nu_fission = this % xs(t) % nu_fission + &
+                       atom_density * nuc % xs(nuc_t) % nu_fission * interp
+                  if (allocated(nuc % xs(nuc_t) % fission)) then
+                    this % xs(t) % fission = this % xs(t) % fission + &
+                         atom_density * nuc % xs(nuc_t) % fission * interp
                   end if
-                end do
-              end do
+                  if (allocated(nuc % xs(nuc_t) % k_fission)) then
+                    this % xs(t) % k_fission = this % xs(t) % k_fission + &
+                         atom_density * nuc % xs(nuc_t) % k_fission * interp
+                  end if
+                end if
 
-              ! Get the complete scattering matrix
-              nuc_order_dim = size(nuc % xs(nuc_t) % scatter % dist(1) % data, dim=1)
-              nuc_order_dim = min(nuc_order_dim, order_dim)
-              call nuc % xs(nuc_t) % scatter % get_matrix(nuc_order_dim, &
-                   nuc_matrix)
-              do gin = 1, groups
-                do gout = nuc % xs(nuc_t) % scatter % gmin(gin), &
-                     nuc % xs(nuc_t) % scatter % gmax(gin)
-                  scatt_coeffs(1:nuc_order_dim, gout, gin) = &
-                       scatt_coeffs(1: nuc_order_dim, gout, gin) + &
-                       atom_density * nuc_matrix(gin) % data(1:nuc_order_dim, gout)
+                ! We will next gather the multiplicaity and scattering matrices.
+                ! To avoid multiple re-allocations as we resize the storage
+                ! matrix (and/or to avoidlots of duplicate code), we will use a
+                ! dense matrix for this storage, with a reduction to the sparse
+                ! format at the end.
+
+                ! Get the multiplicity matrix
+                ! To combine from nuclidic data we need to use the final relationship
+                ! mult_{gg'} = sum_i(N_i*nuscatt_{i,g,g'}) /
+                !              sum_i(N_i*(nuscatt_{i,g,g'} / mult_{i,g,g'}))
+                ! Developed as follows:
+                ! mult_{gg'} = nuScatt{g,g'} / Scatt{g,g'}
+                ! mult_{gg'} = sum_i(N_i*nuscatt_{i,g,g'}) / sum(N_i*scatt_{i,g,g'})
+                ! mult_{gg'} = sum_i(N_i*nuscatt_{i,g,g'}) /
+                !              sum_i(N_i*(nuscatt_{i,g,g'} / mult_{i,g,g'}))
+                ! nuscatt_{i,g,g'} can be reconstructed from scatter % energy and
+                ! scatter % scattxs
+                do gin = 1, groups
+                  do gout = nuc % xs(nuc_t) % scatter % gmin(gin), nuc % xs(nuc_t) % scatter % gmax(gin)
+                    nuscatt = nuc % xs(nuc_t) % scatter % scattxs(gin) * &
+                         nuc % xs(nuc_t) % scatter % energy(gin) % data(gout)
+                    mult_num(gout, gin) = mult_num(gout, gin) + atom_density * &
+                         nuscatt * interp
+                    if (nuc % xs(nuc_t) % scatter % mult(gin) % data(gout) > ZERO) then
+                      mult_denom(gout, gin) = mult_denom(gout,gin) + atom_density * &
+                           nuscatt / nuc % xs(nuc_t) % scatter % mult(gin) % data(gout) * &
+                           interp
+                    else
+                      ! Avoid division by zero
+                      mult_denom(gout, gin) = mult_denom(gout,gin) + atom_density * &
+                           interp
+                    end if
+                  end do
+                end do
+
+                ! Get the complete scattering matrix
+                nuc_order_dim = size(nuc % xs(nuc_t) % scatter % dist(1) % data, dim=1)
+                nuc_order_dim = min(nuc_order_dim, order_dim)
+                call nuc % xs(nuc_t) % scatter % get_matrix(nuc_order_dim, &
+                     nuc_matrix)
+                do gin = 1, groups
+                  do gout = nuc % xs(nuc_t) % scatter % gmin(gin), &
+                       nuc % xs(nuc_t) % scatter % gmax(gin)
+                    scatt_coeffs(1:nuc_order_dim, gout, gin) = &
+                         scatt_coeffs(1: nuc_order_dim, gout, gin) + &
+                         atom_density * interp * &
+                         nuc_matrix(gin) % data(1:nuc_order_dim, gout)
+                  end do
                 end do
               end do
 
@@ -1396,7 +1457,8 @@ module mgxs_header
       real(8), allocatable :: temp_mult(:, :, :, :), mult_num(:, :, :, :)
       real(8), allocatable :: mult_denom(:, :, :, :), scatt_coeffs(:, :, :, :, :)
       integer :: nuc_t
-      real(8) :: temp_actual, temp_desired
+      integer, allocatable :: nuc_ts(:)
+      real(8) :: temp_actual, temp_desired, interp
       integer :: scatter_type
       type(Jagged2D), allocatable :: nuc_matrix(:)
       integer, allocatable :: gmin(:), gmax(:)
@@ -1472,107 +1534,137 @@ module mgxs_header
         ! Add contribution from each nuclide in material
         NUC_LOOP: do i = 1, mat % n_nuclides
           associate(nuc => nuclides(mat % nuclide(i)) % obj)
-            select case (method)
-            case (TEMPERATURE_NEAREST)
-              ! Determine actual temperatures to read
-              temp_desired = temps % data(i)
-              nuc_t = minloc(abs(nuc % kTs - temp_desired), dim=1)
-              temp_actual = nuc % kTs(nuc_t)
-              if (abs(temp_actual - temp_desired) >= tolerance) then
-                call fatal_error("MGXS library does not contain cross sections &
-                     &for " // trim(this % name) // " at or near " // &
-                     trim(to_str(nint(temp_desired / K_BOLTZMANN))) // " K.")
-              end if
 
-            case (TEMPERATURE_INTERPOLATION)
-              ! TODO: Get bounding temperatures
-              call fatal_error("Temperature interpolation not yet implemented")
-            end select
+          select case (method)
+          case (TEMPERATURE_NEAREST)
+            ! Determine actual temperatures to read
+            temp_desired = temps % data(i)
+            allocate(nuc_ts(1))
+            nuc_ts(1) = minloc(abs(nuc % kTs - temp_desired), dim=1)
+            temp_actual = nuc % kTs(nuc_ts(1))
+            if (abs(temp_actual - temp_desired) >= tolerance) then
+              call fatal_error("MGXS library does not contain cross sections &
+                   &for " // trim(this % name) // " at or near " // &
+                   trim(to_str(nint(temp_desired / K_BOLTZMANN))) // " K.")
+            end if
+
+          case (TEMPERATURE_INTERPOLATION)
+            ! If temperature interpolation or multipole is selected, get a
+            ! list of bounding temperatures for each actual temperature
+            ! present in the model
+            temp_desired = temps % data(i)
+            allocate(nuc_ts(2))
+            do j = 1, size(nuc % kTs) - 1
+              if (nuc % kTs(j) <= temp_desired .and. &
+                   temp_desired < nuc % kTs(j + 1)) then
+                nuc_ts(1) = j
+                nuc_ts(2) = j + 1
+              end if
+            end do
+
+            call fatal_error("Nuclear data library does not contain cross sections &
+                 &for " // trim(this % name) // " at temperatures that bound " // &
+                 trim(to_str(nint(temp_desired))) // " K.")
+          end select
 
              ! Copy atom density of nuclide in material
             atom_density = mat % atom_density(i)
 
             select type(nuc)
             type is (MgxsAngle)
-              ! Perform our operations which depend upon the type
-              ! Add contributions to total, absorption, and fission data (if necessary)
-              this % xs(t) % total = this % xs(t) % total + &
-                   atom_density * nuc % xs(nuc_t) % total
-              this % xs(t) % absorption = this % xs(t) % absorption + &
-                   atom_density * nuc % xs(nuc_t) % absorption
-              if (nuc % fissionable) then
-                this % xs(t) % chi = this % xs(t) % chi + &
-                     atom_density * nuc % xs(nuc_t) % chi
-                this % xs(t) % nu_fission = this % xs(t) % nu_fission + &
-                     atom_density * nuc % xs(nuc_t) % nu_fission
-                if (allocated(nuc % xs(nuc_t) % fission)) then
-                  this % xs(t) % fission = this % xs(t) % fission + &
-                       atom_density * nuc % xs(nuc_t) % fission
+              do j = 1, size(nuc_ts)
+                nuc_t = nuc_ts(j)
+                if (size(nuc_ts) == 1) then
+                  interp = ONE
+                else if (j == 1) then
+                  interp = (ONE - (temp_desired - nuc % kTs(nuc_ts(1))) / &
+                       (nuc % kTs(nuc_ts(2)) - nuc % kTs(nuc_ts(1))))
+                else
+                  interp = ONE - interp
                 end if
-                if (allocated(nuc % xs(nuc_t) % k_fission)) then
-                  this % xs(t) % k_fission = this % xs(t) % k_fission + &
-                       atom_density * nuc % xs(nuc_t) % k_fission
+                ! Perform our operations which depend upon the type
+                ! Add contributions to total, absorption, and fission data
+                ! (if necessary)
+                this % xs(t) % total = this % xs(t) % total + &
+                     atom_density * nuc % xs(nuc_t) % total * interp
+                this % xs(t) % absorption = this % xs(t) % absorption + &
+                     atom_density * nuc % xs(nuc_t) % absorption * interp
+                if (nuc % fissionable) then
+                  this % xs(t) % chi = this % xs(t) % chi + &
+                       atom_density * nuc % xs(nuc_t) % chi * interp
+                  this % xs(t) % nu_fission = this % xs(t) % nu_fission + &
+                       atom_density * nuc % xs(nuc_t) % nu_fission * interp
+                  if (allocated(nuc % xs(nuc_t) % fission)) then
+                    this % xs(t) % fission = this % xs(t) % fission + &
+                         atom_density * nuc % xs(nuc_t) % fission * interp
+                  end if
+                  if (allocated(nuc % xs(nuc_t) % k_fission)) then
+                    this % xs(t) % k_fission = this % xs(t) % k_fission + &
+                         atom_density * nuc % xs(nuc_t) % k_fission * interp
+                  end if
                 end if
-              end if
 
-              ! We will next gather the multiplicaity and scattering matrices.
-              ! To avoid multiple re-allocations as we resize the storage
-              ! matrix (and/or to avoidlots of duplicate code), we will use a
-              ! dense matrix for this storage, with a reduction to the sparse
-              ! format at the end.
+                ! We will next gather the multiplicaity and scattering matrices.
+                ! To avoid multiple re-allocations as we resize the storage
+                ! matrix (and/or to avoidlots of duplicate code), we will use a
+                ! dense matrix for this storage, with a reduction to the sparse
+                ! format at the end.
 
-              ! Get the multiplicity matrix
-              ! To combine from nuclidic data we need to use the final relationship
-              ! mult_{gg'} = sum_i(N_i*nuscatt_{i,g,g'}) /
-              !              sum_i(N_i*(nuscatt_{i,g,g'} / mult_{i,g,g'}))
-              ! Developed as follows:
-              ! mult_{gg'} = nuScatt{g,g'} / Scatt{g,g'}
-              ! mult_{gg'} = sum_i(N_i*nuscatt_{i,g,g'}) / sum(N_i*scatt_{i,g,g'})
-              ! mult_{gg'} = sum_i(N_i*nuscatt_{i,g,g'}) /
-              !              sum_i(N_i*(nuscatt_{i,g,g'} / mult_{i,g,g'}))
-              ! nuscatt_{i,g,g'} can be reconstructed from scatter % energy and
-              ! scatter % scattxs
-              do ipol = 1, n_pol
-                do iazi = 1, n_azi
-                  do gin = 1, groups
-                    do gout = nuc % xs(nuc_t) % scatter(iazi, ipol) %obj % gmin(gin), &
-                           nuc % xs(nuc_t) % scatter(iazi, ipol) % obj % gmax(gin)
-                      nuscatt = nuc % xs(nuc_t) % scatter(iazi, ipol) % obj % scattxs(gin) * &
-                           nuc % xs(nuc_t) % scatter(iazi, ipol) % obj % energy(gin) % data(gout)
-                      mult_num(gout, gin, iazi, ipol) = &
-                           mult_num(gout, gin, iazi, ipol) + atom_density * &
-                           nuscatt
-                      if (nuc % xs(nuc_t) % scatter(iazi, ipol) % obj % mult(gin) % data(gout) > ZERO) then
-                        mult_denom(gout, gin, iazi, ipol) = &
-                             mult_denom(gout, gin, iazi, ipol) + atom_density * &
-                             nuscatt / &
-                             nuc % xs(nuc_t) % scatter(iazi, ipol) % obj % mult(gin) % data(gout)
-                      else
-                        ! Avoid division by zero
-                        mult_denom(gout, gin, iazi, ipol) = &
-                             mult_denom(gout, gin, iazi, ipol) + atom_density
-                      end if
+                ! Get the multiplicity matrix
+                ! To combine from nuclidic data we need to use the final relationship
+                ! mult_{gg'} = sum_i(N_i*nuscatt_{i,g,g'}) /
+                !              sum_i(N_i*(nuscatt_{i,g,g'} / mult_{i,g,g'}))
+                ! Developed as follows:
+                ! mult_{gg'} = nuScatt{g,g'} / Scatt{g,g'}
+                ! mult_{gg'} = sum_i(N_i*nuscatt_{i,g,g'}) / sum(N_i*scatt_{i,g,g'})
+                ! mult_{gg'} = sum_i(N_i*nuscatt_{i,g,g'}) /
+                !              sum_i(N_i*(nuscatt_{i,g,g'} / mult_{i,g,g'}))
+                ! nuscatt_{i,g,g'} can be reconstructed from scatter % energy and
+                ! scatter % scattxs
+                do ipol = 1, n_pol
+                  do iazi = 1, n_azi
+                    do gin = 1, groups
+                      do gout = nuc % xs(nuc_t) % scatter(iazi, ipol) %obj % gmin(gin), &
+                             nuc % xs(nuc_t) % scatter(iazi, ipol) % obj % gmax(gin)
+                        nuscatt = nuc % xs(nuc_t) % scatter(iazi, ipol) % obj % scattxs(gin) * &
+                             nuc % xs(nuc_t) % scatter(iazi, ipol) % obj % energy(gin) % data(gout)
+                        mult_num(gout, gin, iazi, ipol) = &
+                             mult_num(gout, gin, iazi, ipol) + atom_density * &
+                             nuscatt * interp
+                        if (nuc % xs(nuc_t) % scatter(iazi, ipol) % obj % mult(gin) % data(gout) > ZERO) then
+                          mult_denom(gout, gin, iazi, ipol) = &
+                               mult_denom(gout, gin, iazi, ipol) + atom_density * &
+                               interp * nuscatt / &
+                               nuc % xs(nuc_t) % scatter(iazi, ipol) % obj % mult(gin) % data(gout)
+                        else
+                          ! Avoid division by zero
+                          mult_denom(gout, gin, iazi, ipol) = &
+                               mult_denom(gout, gin, iazi, ipol) + atom_density * &
+                               interp
+                        end if
+                      end do
                     end do
-                  end do
 
-                  ! Get the complete scattering matrix
-                  nuc_order_dim = &
-                       size(nuc % xs(nuc_t) % scatter(iazi, ipol) % obj % &
-                       dist(1) % data, dim=1)
-                  nuc_order_dim = min(nuc_order_dim, order_dim)
-                  call nuc % xs(nuc_t) % scatter(iazi, ipol) % obj % &
-                       get_matrix(nuc_order_dim, nuc_matrix)
-                  do gin = 1, groups
-                    do gout = &
-                         nuc % xs(nuc_t) % scatter(iazi, ipol) % obj % gmin(gin), &
-                         nuc % xs(nuc_t) % scatter(iazi, ipol) % obj % gmax(gin)
-                      scatt_coeffs(1:nuc_order_dim, gout, gin, iazi, ipol) = &
-                           scatt_coeffs(1: nuc_order_dim, gout, gin, iazi, ipol) + &
-                           atom_density * nuc_matrix(gin) % data(1:nuc_order_dim, gout)
-                    end do ! gout
-                  end do ! gin
-                end do ! iazi
-              end do ! ipol
+                    ! Get the complete scattering matrix
+                    nuc_order_dim = &
+                         size(nuc % xs(nuc_t) % scatter(iazi, ipol) % obj % &
+                         dist(1) % data, dim=1)
+                    nuc_order_dim = min(nuc_order_dim, order_dim)
+                    call nuc % xs(nuc_t) % scatter(iazi, ipol) % obj % &
+                         get_matrix(nuc_order_dim, nuc_matrix)
+                    do gin = 1, groups
+                      do gout = &
+                           nuc % xs(nuc_t) % scatter(iazi, ipol) % obj % gmin(gin), &
+                           nuc % xs(nuc_t) % scatter(iazi, ipol) % obj % gmax(gin)
+                        scatt_coeffs(1:nuc_order_dim, gout, gin, iazi, ipol) = &
+                             scatt_coeffs(1: nuc_order_dim, gout, gin, iazi, ipol) + &
+                             atom_density * interp * &
+                             nuc_matrix(gin) % data(1:nuc_order_dim, gout)
+                      end do ! gout
+                    end do ! gin
+                  end do ! iazi
+                end do ! ipol
+              end do
             type is (MgxsIso)
               call fatal_error("Invalid passing of MgxsIso to MgxsAngle object")
             end select

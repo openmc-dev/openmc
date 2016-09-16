@@ -600,7 +600,7 @@ contains
           ! Now master writes data to the file
 
           ! Create group
-          otf_proc_group = create_group(otf_group, "proc_"// trim(to_str(j)))
+          otf_proc_group = create_group(otf_group, "proc_" // trim(to_str(j)))
 
           ! Write OTF filter size
           call write_dataset(otf_proc_group, "otf_size_results_filters", n)
@@ -873,11 +873,13 @@ contains
     integer(HID_T) :: cmfd_group
     integer(HID_T) :: tallies_group
     integer(HID_T) :: tally_group
+    integer(HID_T) :: dd_group
     real(8) :: real_array(3)
     logical :: source_present
     integer :: sp_run_CE
     character(MAX_WORD_LEN) :: word
     type(TallyObject), pointer :: tally
+    real(8),       allocatable :: domain_load_temp(:)
 
     ! Write message
     call write_message("Loading state point " // trim(path_state_point) &
@@ -902,9 +904,52 @@ contains
 
     ! check domain decomposition
     call read_dataset(int_array(1), file_id, "domain_decomp_on")
-    if (int_array(1) == 1) then
-      call fatal_error("Loading state point file of domain decomposed runs &
-           &is not implemented.")
+    if (int_array(1) == 0 .and. dd_run) then
+      call fatal_error("State point file is not domain decomposed run but &
+                       &current run is domain decomposed!")
+    else if (int_array(1) == 1 .and. .not. dd_run) then
+      call fatal_error("State point file is domain decomposed run but &
+                       &current run is not!")
+    end if
+
+    ! read dd parameters
+    if (dd_run) then
+      dd_group = open_group(file_id, "domain_decomp")
+      call read_dataset(int_array(1), dd_group, "n_domains")
+      if (int_array(1) /= domain_decomp % n_domains) then
+        call fatal_error("The number of domains in state point file &
+                         &is different from current run!")
+      end if
+
+      call read_dataset(int_array(1), dd_group, "allow_leakage")
+      if ((int_array(1) == 1) .neqv. domain_decomp % allow_truncation) then
+        call fatal_error("The parameter allow_leakage in state point file &
+                         &is different from current run!")
+      end if
+
+      call read_dataset(int_array(1), dd_group, "count_interactions")
+      if ((int_array(1) == 1) .neqv. domain_decomp % count_interactions) then
+        call fatal_error("The parameter count_interactions in state point file &
+                         &is different from current run!")
+      end if
+
+      call read_dataset(domain_decomp % n_interactions_all, &
+           dd_group, "n_interactions")
+
+      if (domain_decomp % local_master) then
+        domain_decomp % n_interaction = &
+             domain_decomp % n_interactions_all(domain_decomp % meshbin)
+      end if
+
+      allocate(domain_load_temp(domain_decomp % n_domains))
+      call read_dataset(domain_load_temp, dd_group, "nodemap")
+      if (any(domain_load_temp - domain_decomp % domain_load_dist /= 0)) then
+        call fatal_error("The domain load nodemap in state point file &
+                         &is different from current run!")
+      end if
+      deallocate(domain_load_temp)
+
+      call close_group(dd_group)
     end if
 
     ! Read and overwrite random number seed
@@ -1022,7 +1067,19 @@ contains
           ! Read sum, sum_sq, and N for each bin
           tally_group = open_group(tallies_group, "tally " // &
                trim(to_str(tally % id)))
-          call read_dataset(tally_group, "results", tally % results)
+
+          ! Check if it is an on-the-fly tally
+          call read_dataset(int_array(1), tally_group, "on_the_fly_allocation")
+          if ((int_array(1) == 1) .neqv. tally % on_the_fly_allocation) then
+            call fatal_error("The flag on_the_fly_allocation of tally " &
+                             // trim(to_str(tally % id)) // " in state point &
+                             &file is inconsistent with current run!")
+          end if
+
+          if (.not. tally % on_the_fly_allocation) then
+            call read_dataset(tally_group, "results", tally % results)
+          end if
+
           call read_dataset(tally % n_realizations, tally_group, &
                "n_realizations")
           call close_group(tally_group)
@@ -1032,6 +1089,8 @@ contains
       call close_group(tallies_group)
     end if
 
+    ! Read on-the-fly tallies
+    call read_state_point_otf_tally_data(path_state_point)
 
     ! Read source if in eigenvalue mode
     if (run_mode == MODE_EIGENVALUE) then
@@ -1243,6 +1302,107 @@ contains
     call h5dclose_f(dset, hdf5_err)
 
   end subroutine read_source_bank
+
+!===============================================================================
+! READ_STATE_POINT_OTF_TALLY_DATA reads on-the-fly tallies in separated groups
+! in the statepoint file into different processes
+!===============================================================================
+
+  subroutine read_state_point_otf_tally_data(path_state_point)
+
+    character(MAX_FILE_LEN), intent(in) :: path_state_point
+
+    integer          :: read_int
+    integer          :: i, k
+    integer          :: n ! number of otf filter bins
+    integer          :: otf_proc, otf_n_procs
+    integer          :: real_bin, idx
+    integer(HID_T)   :: file_id
+    integer(HID_T)   :: tallies_group, tally_group, otf_group, otf_proc_group
+    integer, allocatable       :: filter_map(:)
+    type(TallyObject), pointer :: tally => null()
+
+    ! Check if OTF tally exists
+    if (.not. any(tallies(:) % on_the_fly_allocation)) return
+
+    ! Check if dd run
+    if (dd_run) then
+      ! Only domain masters read OTF tallies
+      if (.not. domain_decomp % local_master) return
+
+      ! Total otf groups
+      otf_n_procs = domain_decomp % n_domains
+
+      ! Group of current domain
+      otf_proc = domain_decomp % meshbin
+    else
+      ! Total otf groups
+      otf_n_procs = n_procs
+
+      ! Group of current process
+      otf_proc = rank
+    end if
+
+    ! Open file for reading, not in parallel
+    file_id = file_open(path_state_point, 'r')
+
+    ! Check if tally results are present
+    tallies_group = open_group(file_id, "tallies")
+    call read_dataset(read_int, tallies_group, "tallies_present")
+
+    ! Read in data
+    if (read_int == 1) then
+      do i = 1, n_tallies
+        ! Set pointer to tally
+        tally => tallies(i)
+
+        if (.not. tally % on_the_fly_allocation) cycle
+
+        ! Open tally group
+        tally_group = open_group(tallies_group, "tally " // &
+             trim(to_str(tally % id)))
+        otf_group = open_group(tally_group, "on_the_fly_results")
+
+        ! Read number of total processes
+        call read_dataset(read_int, otf_group, "otf_n_procs")
+        if (read_int /= otf_n_procs) then
+          call fatal_error("The number of on-the-fly processes in state point &
+                       &file is different from current run!")
+        end if
+
+        ! Open otf_proc_group group
+        otf_proc_group = open_group(otf_group, "proc_" // trim(to_str(otf_proc)))
+
+        ! Read size of OTF filter bins
+        call read_dataset(n, otf_proc_group, "otf_size_results_filters")
+
+        ! Read OTF filter bin mapping
+        allocate(filter_map(n))
+        call read_dataset(filter_map, otf_proc_group, "otf_filter_bin_map")
+
+        ! Update the filter maps
+        call tally % filter_index_map % clear()
+        call tally % reverse_filter_index_map % clear()
+        do k = 1, n
+          real_bin = filter_map(k)
+          idx = tally % otf_filter_index(real_bin)
+        end do
+
+        ! Read OTF tally result
+        call read_dataset(otf_proc_group, "results", tally % results(:, 1:n))
+
+        ! Close otf tally group
+        call close_group(otf_proc_group)
+        call close_group(otf_group)
+        call close_group(tally_group)
+      end do
+    end if
+
+    ! Close the file
+    call close_group(tallies_group)
+    call file_close(file_id)
+
+  end subroutine read_state_point_otf_tally_data
 
 !===============================================================================
 ! HEAPSORT_RESULTS performs a heapsort on OTF results arrays within a tally

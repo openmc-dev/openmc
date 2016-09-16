@@ -265,6 +265,8 @@ Again, we need to check whether the denominator is zero. If so, this means that
 the particle's direction of flight is parallel to the plane and it will
 therefore never hit the plane.
 
+.. _cylinder_distance:
+
 Cylinder Parallel to an Axis
 ----------------------------
 
@@ -366,7 +368,74 @@ will then be either both positive or both negative. If they are both positive,
 the smaller (closer) one will be the solution with a negative sign on the square
 root of the discriminant.
 
-.. TODO: Need to add derivation for x-cone, y-cone, and z-cone.
+Cone Parallel to an Axis
+------------------------
+
+The equation for a cone parallel to, for example, the x-axis is :math:`(y -
+y_0)^2 + (z - z_0)^2 = R^2(x - x_0)^2`. Thus, we need to solve :math:`(y + dv -
+y_0)^2 + (z + dw - z_0)^2 = R^2(x + du - x_0)^2`. Let us define :math:`\bar{x} =
+x - x_0`, :math:`\bar{y} = y - y_0`, and :math:`\bar{z} = z - z_0`. We then have
+
+.. math::
+    :label: dist-xcone-1
+
+    (\bar{y} + dv)^2 + (\bar{z} + dw)^2 = R^2(\bar{x} + du)^2
+
+Expanding equation :eq:`dist-xcone-1` and rearranging terms, we obtain
+
+.. math::
+    :label: dist-xcylinder-2
+
+    (v^2 + w^2 - R^2u^2) d^2 + 2 (\bar{y}v + \bar{z}w - R^2\bar{x}u) d +
+    (\bar{y}^2 + \bar{z}^2 - R^2\bar{x}^2) = 0
+
+Defining the terms
+
+.. math::
+    :label: dist-quadric-terms
+
+    a = v^2 + w^2 - R^2u^2
+
+    k = \bar{y}v + \bar{z}w - R^2\bar{x}u
+
+    c = \bar{y}^2 + \bar{z}^2 - R^2\bar{x}^2
+
+we then have the simple quadratic equation :math:`ad^2 + 2kd + c = 0` which can
+be solved as described in :ref:`cylinder_distance`.
+
+General Quadric
+---------------
+
+The equation for a general quadric surface is :math:`Ax^2 + By^2 + Cz^2 + Dxy +
+Eyz + Fxz + Gx + Hy + Jz + K = 0`. Thus, we need to solve the equation
+
+.. math::
+    :label: dist-quadric-1
+
+    A(x+du)^2 + B(y+dv)^2 + C(z+dw)^2 + D(x+du)(y+dv) + E(y+dv)(z+dw) + \\
+    F(x+du)(z+dw) + G(x+du) + H(y+dv) + J(z+dw) + K = 0
+
+Expanding equation :eq:`dist-quadric-1` and rearranging terms, we obtain
+
+.. math::
+    :label: dist-quadric-2
+
+    d^2(uv + vw + uw) + 2d(Aux + Bvy + Cwx + (D(uv + vx) + E(vz + wy) + \\
+    F(wx + uz))/2) + (x(Ax + Dy) + y(By + Ez) + z(Cz + Fx)) = 0
+
+Defining the terms
+
+.. math::
+    :label: dist-quadric-terms
+
+    a = uv + vw + uw
+
+    k = Aux + Bvy + Cwx + (D(uv + vx) + E(vz + wy) + F(wx + uz))/2
+
+    c = x(Ax + Dy) + y(By + Ez) + z(Cz + Fx)
+
+we then have the simple quadratic equation :math:`ad^2 + 2kd + c = 0` which can
+be solved as described in :ref:`cylinder_distance`.
 
 .. _find-cell:
 
@@ -809,6 +878,18 @@ form of the solution:
     \bar{z}^2}
 
     w' = w + \frac{2 (\bar{x}u + \bar{y}v - R^2\bar{z}w)}{R^2 (1 + R^2) \bar{z}}
+
+General Quadric
+---------------
+
+A general quadric surface has the form :math:`f(x,y,z) = Ax^2 + By^2 + Cz^2 +
+Dxy + Eyz + Fxz + Gx + Hy + Jz + K = 0`. Thus, the gradient to the surface is
+
+.. math::
+    :label: reflection-quadric-grad
+
+    \nabla f = \left ( \begin{array}{c} 2Ax + Dy + Fz + G \\ 2By + Dx + Ez + H
+    \\ 2Cz + Ey + Fx + J \end{array} \right ).
 
 
 .. _constructive solid geometry: http://en.wikipedia.org/wiki/Constructive_solid_geometry

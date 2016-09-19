@@ -23,7 +23,7 @@ def reset_auto_mesh_id():
 
 
 class Mesh(object):
-    """A structured Cartesian mesh in two or three dimensions
+    """A structured Cartesian mesh in one, two, or three dimensions
 
     Parameters
     ----------
@@ -147,25 +147,25 @@ class Mesh(object):
     @dimension.setter
     def dimension(self, dimension):
         cv.check_type('mesh dimension', dimension, Iterable, Integral)
-        cv.check_length('mesh dimension', dimension, 2, 3)
+        cv.check_length('mesh dimension', dimension, 1, 3)
         self._dimension = dimension
 
     @lower_left.setter
     def lower_left(self, lower_left):
         cv.check_type('mesh lower_left', lower_left, Iterable, Real)
-        cv.check_length('mesh lower_left', lower_left, 2, 3)
+        cv.check_length('mesh lower_left', lower_left, 1, 3)
         self._lower_left = lower_left
 
     @upper_right.setter
     def upper_right(self, upper_right):
         cv.check_type('mesh upper_right', upper_right, Iterable, Real)
-        cv.check_length('mesh upper_right', upper_right, 2, 3)
+        cv.check_length('mesh upper_right', upper_right, 1, 3)
         self._upper_right = upper_right
 
     @width.setter
     def width(self, width):
         cv.check_type('mesh width', width, Iterable, Real)
-        cv.check_length('mesh width', width, 2, 3)
+        cv.check_length('mesh width', width, 1, 3)
         self._width = width
 
     def __hash__(self):
@@ -204,7 +204,10 @@ class Mesh(object):
 
         """
 
-        if len(self.dimension) == 2:
+        if len(self.dimension) == 1:
+            for x in range(self.dimension[0]):
+                    yield [x + 1, 1, 1]
+        elif len(self.dimension) == 2:
             for x in range(self.dimension[0]):
                 for y in range(self.dimension[1]):
                     yield [x + 1, y + 1, 1]
@@ -272,7 +275,6 @@ class Mesh(object):
 
         """
 
-        twod = len(self.dimension) == 2
         cv.check_length('bc', bc, length_min=4, length_max=6)
         for entry in bc:
             cv.check_value('bc', entry, ['transmission', 'vacuum',
@@ -283,11 +285,18 @@ class Mesh(object):
                                  boundary_type=bc[0]),
                    openmc.XPlane(x0=self.upper_right[0],
                                  boundary_type=bc[1])]
-        yplanes = [openmc.YPlane(y0=self.lower_left[1],
-                                 boundary_type=bc[2]),
-                   openmc.YPlane(y0=self.upper_right[1],
-                                 boundary_type=bc[3])]
-        if twod:
+        if len(self.dimension) == 1:
+            yplanes = [openmc.YPlane(y0=np.finfo(np.float).min,
+                                     boundary_type='reflective'),
+                       openmc.YPlane(y0=np.finfo(np.float).max,
+                                     boundary_type='reflective')]
+        else:
+            yplanes = [openmc.YPlane(y0=self.lower_left[1],
+                                     boundary_type=bc[2]),
+                       openmc.YPlane(y0=self.upper_right[1],
+                                     boundary_type=bc[3])]
+
+        if len(self.dimension) <= 2:
             # Would prefer to have the z ranges be the max supported float, but
             # these values are apparently different between python and Fortran.
             # Choosing a safe and sane default.
@@ -315,7 +324,11 @@ class Mesh(object):
         universes = np.ndarray(self.dimension[::-1], dtype=np.object)
         cells = []
         for [i, j, k] in self.cell_generator():
-            if twod:
+            if len(self.dimension) == 1:
+                universes[i - 1] = openmc.Universe()
+                cells.append(openmc.Cell())
+                universes[i - 1].add_cells([cells[-1]])
+            elif len(self.dimension) == 2:
                 universes[j - 1, i - 1] = openmc.Universe()
                 cells.append(openmc.Cell())
                 universes[j - 1, i - 1].add_cells([cells[-1]])
@@ -332,11 +345,16 @@ class Mesh(object):
         else:
             dx = ((self.upper_right[0] - self.lower_left[0]) /
                   self.dimension[0])
-            dy = ((self.upper_right[1] - self.lower_left[1]) /
-                  self.dimension[1])
-            if twod:
+
+            if len(self.dimension) == 1:
+                lattice.pitch = [dx]
+            elif len(self.dimension) == 2:
+                dy = ((self.upper_right[1] - self.lower_left[1]) /
+                      self.dimension[1])
                 lattice.pitch = [dx, dy]
             else:
+                dy = ((self.upper_right[1] - self.lower_left[1]) /
+                      self.dimension[1])
                 dz = ((self.upper_right[2] - self.lower_left[2]) /
                       self.dimension[2])
                 lattice.pitch = [dx, dy, dz]

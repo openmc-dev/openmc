@@ -17,12 +17,12 @@ _FILTER_TYPES = ['universe', 'material', 'cell', 'cellborn', 'surface',
                  'mesh', 'energy', 'energyout', 'mu', 'polar', 'azimuthal',
                  'distribcell', 'delayedgroup']
 
-_CURRENT_NAMES = {1: 'x-min out', 2: 'x-max out',
-                  3: 'y-min out', 4: 'y-max out',
-                  5: 'z-min out', 6: 'z-max out',
-                  7: 'x-min in', 8: 'x-max in',
-                  9: 'y-min in', 10: 'y-max in',
-                  11: 'z-min in', 12: 'z-max in'}
+_CURRENT_NAMES = {1:  'x-min out', 2:  'x-min in',
+                  3:  'x-max out', 4:  'x-max in',
+                  5:  'y-min out', 6:  'y-min in',
+                  7:  'y-max out', 8:  'y-max in',
+                  9:  'z-min out', 10: 'z-min in',
+                  11: 'z-max out', 12: 'z-max in'}
 
 class Filter(object):
     """A filter used to constrain a tally to a specific criterion, e.g. only

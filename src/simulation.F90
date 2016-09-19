@@ -26,7 +26,8 @@ module simulation
   use tracking,        only: transport
   use volume_calc,     only: run_volume_calculations
   use geometry_header, only: BASE_UNIVERSE
-  use dd_comm,         only: synchronize_bank_dd, synchronize_particles
+  use dd_comm,         only: distribute_source, synchronize_bank_dd, &
+                             synchronize_particles
 
   implicit none
   private
@@ -49,6 +50,9 @@ contains
     if (size(volume_calcs) > 0) call run_volume_calculations()
 
     if (.not. restart_run) call initialize_source()
+
+    ! For dd runs, send source sites to the processes they'll be transported on
+    if (dd_run)  call distribute_source(domain_decomp)
 
     ! Display header
     if (master) then

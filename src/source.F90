@@ -4,8 +4,7 @@ module source
   use constants
   use distribution_univariate, only: Discrete
   use distribution_multivariate, only: SpatialBox
-  use dd_comm,          only: distribute_source
-  use error,            only: fatal_error, warning
+  use error,            only: fatal_error
   use geometry,         only: find_cell
   use geometry_header,  only: BASE_UNIVERSE
   use global
@@ -47,11 +46,6 @@ contains
       ! Read the source from a binary file instead of sampling from some
       ! assumed source distribution
 
-      if (dd_run) then
-        call fatal_error("Reading source from binary file not &
-                          &implemented for domain decomposition.")
-      end if
-
       call write_message('Reading source file from ' // trim(path_source) &
            &// '...', 6)
 
@@ -77,7 +71,6 @@ contains
       ! Generate source sites from specified distribution in user input
 
       do i = 1, work
-
         ! Get pointer to source bank site
         src => source_bank(i)
 
@@ -88,18 +81,10 @@ contains
         ! Sample external source distribution
         call sample_external_source(src)
 
-        ! Store the LCG seed for the particle
+        ! Store the LCG seed for the particle. Only affects dd runs
         src % prn_seed = prn_seed
 
       end do
-
-      if (dd_run) then
-
-        ! Send source sites to the processes they'll be transported on
-        call distribute_source(domain_decomp)
-
-      end if
-
     end if
 
     ! Write out initial source

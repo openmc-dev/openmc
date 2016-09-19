@@ -90,6 +90,10 @@ if (domain_decomp_on):
 
         Load ditribution of all domains.
 
+    **/domain_decomp/work_index** (*int[]*)
+
+        Work ditribution (source bank size) of all proceses.
+
     **/domain_decomp/mesh/type** (*char[]*)
 
         Type of mesh.

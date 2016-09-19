@@ -116,6 +116,7 @@ contains
       if (dd_run) then
         call write_dataset(file_id, "domain_decomp_on", 1)
 
+        ! dd parameters
         dd_group = create_group(file_id, "domain_decomp")
         call write_dataset(dd_group, "n_domains", domain_decomp % n_domains)
         if (domain_decomp % allow_truncation) then
@@ -132,6 +133,11 @@ contains
              domain_decomp % n_interactions_all)
         call write_dataset(dd_group, "nodemap", &
              domain_decomp % domain_load_dist)
+
+        ! work_index of current batch. For dd runs, source banks are divided
+        ! according to domains, so they are not uniformly distributed on
+        ! processes. Writing work_index is useful for restart calculation 
+        call write_dataset(dd_group, "work_index", work_index)
 
         ! dd mesh
         meshp => domain_decomp % mesh
@@ -867,13 +873,13 @@ contains
 
   subroutine load_state_point()
 
-    integer :: i
+    integer :: i, n
     integer :: int_array(3)
     integer(HID_T) :: file_id
     integer(HID_T) :: cmfd_group
     integer(HID_T) :: tallies_group
     integer(HID_T) :: tally_group
-    integer(HID_T) :: dd_group
+    integer(HID_T) :: dd_group, dd_mesh_group
     real(8) :: real_array(3)
     logical :: source_present
     integer :: sp_run_CE
@@ -902,7 +908,7 @@ contains
            &in OpenMC.")
     end if
 
-    ! check domain decomposition
+    ! Check domain decomposition
     call read_dataset(int_array(1), file_id, "domain_decomp_on")
     if (int_array(1) == 0 .and. dd_run) then
       call fatal_error("State point file is not domain decomposed run but &
@@ -912,9 +918,10 @@ contains
                        &current run is not!")
     end if
 
-    ! read dd parameters
+    ! Read dd parameters
     if (dd_run) then
       dd_group = open_group(file_id, "domain_decomp")
+
       call read_dataset(int_array(1), dd_group, "n_domains")
       if (int_array(1) /= domain_decomp % n_domains) then
         call fatal_error("The number of domains in state point file &
@@ -933,20 +940,49 @@ contains
                          &is different from current run!")
       end if
 
+      ! Read and update interaction counts
       call read_dataset(domain_decomp % n_interactions_all, &
            dd_group, "n_interactions")
-
       if (domain_decomp % local_master) then
         domain_decomp % n_interaction = &
              domain_decomp % n_interactions_all(domain_decomp % meshbin)
       end if
 
+      ! Check load distribution
       allocate(domain_load_temp(domain_decomp % n_domains))
       call read_dataset(domain_load_temp, dd_group, "nodemap")
       if (any(domain_load_temp - domain_decomp % domain_load_dist /= 0)) then
         call fatal_error("The domain load nodemap in state point file &
                          &is different from current run!")
       end if
+
+      ! Read work_index of current batch, and re-allocate source bank
+      call read_dataset(work_index, dd_group, "work_index")
+      work = work_index(rank + 1) - work_index(rank)
+      if (allocated(source_bank)) deallocate(source_bank)
+      allocate(source_bank(work))
+      size_source_bank = work
+
+      ! Check dd mesh
+      dd_mesh_group = open_group(dd_group, "mesh")
+      n = domain_decomp % mesh % n_dimension
+      call read_dataset(int_array(1:n), dd_mesh_group, "dimension")
+      if (any(int_array - domain_decomp % mesh % dimension /= 0)) then
+        call fatal_error("The domain mesh dimension in state point file &
+                         &is different from current run!")
+      end if
+      call read_dataset(real_array(1:n), dd_mesh_group, "lower_left")
+      if (any(real_array - domain_decomp % mesh % lower_left /= 0)) then
+        call fatal_error("The domain mesh lower_left in state point file &
+                         &is different from current run!")
+      end if
+      call read_dataset(real_array(1:n), dd_mesh_group, "upper_right")
+      if (any(real_array - domain_decomp % mesh % upper_right /= 0)) then
+        call fatal_error("The domain mesh upper_right in state point file &
+                         &is different from current run!")
+      end if
+      call close_group(dd_mesh_group)
+
       deallocate(domain_load_temp)
 
       call close_group(dd_group)
@@ -1078,10 +1114,10 @@ contains
 
           if (.not. tally % on_the_fly_allocation) then
             call read_dataset(tally_group, "results", tally % results)
+            call read_dataset(tally % n_realizations, tally_group, &
+                 "n_realizations")
           end if
 
-          call read_dataset(tally % n_realizations, tally_group, &
-               "n_realizations")
           call close_group(tally_group)
         end do TALLY_RESULTS
       end if
@@ -1151,8 +1187,8 @@ contains
 
 #ifdef PHDF5
     ! Set size of total dataspace for all procs and rank
-    ! Note "work_index(n_procs)" is the number of total source sites.
-    ! It is equal to "n_particles" for non-dd runs
+    ! Note "work_index(n_procs)" is the number of total source sites. It is
+    ! possibly not equal to "n_particles" for dd runs
     dims(1) = work_index(n_procs)
     call h5screate_simple_f(1, dims, dspace, hdf5_err)
     call h5dcreate_f(group_id, "source_bank", hdf5_bank_t, dspace, dset, hdf5_err)
@@ -1334,7 +1370,7 @@ contains
       otf_n_procs = domain_decomp % n_domains
 
       ! Group of current domain
-      otf_proc = domain_decomp % meshbin
+      otf_proc = domain_decomp % meshbin - 1
     else
       ! Total otf groups
       otf_n_procs = n_procs
@@ -1343,7 +1379,7 @@ contains
       otf_proc = rank
     end if
 
-    ! Open file for reading, not in parallel
+    ! Open file for reading (not in parallel)
     file_id = file_open(path_state_point, 'r')
 
     ! Check if tally results are present
@@ -1361,6 +1397,12 @@ contains
         ! Open tally group
         tally_group = open_group(tallies_group, "tally " // &
              trim(to_str(tally % id)))
+
+        ! Read n_realizations, for all processes
+        call read_dataset(tally % n_realizations, tally_group, &
+             "n_realizations")
+
+        ! Open on_the_fly_results group
         otf_group = open_group(tally_group, "on_the_fly_results")
 
         ! Read number of total processes
@@ -1370,7 +1412,7 @@ contains
                        &file is different from current run!")
         end if
 
-        ! Open otf_proc_group group
+        ! Open proc_i group
         otf_proc_group = open_group(otf_group, "proc_" // trim(to_str(otf_proc)))
 
         ! Read size of OTF filter bins
@@ -1387,6 +1429,7 @@ contains
           real_bin = filter_map(k)
           idx = tally % otf_filter_index(real_bin)
         end do
+        deallocate(filter_map)
 
         ! Read OTF tally result
         call read_dataset(otf_proc_group, "results", tally % results(:, 1:n))

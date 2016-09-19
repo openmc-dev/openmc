@@ -389,7 +389,7 @@ contains
 
           allocate(temp(size(this % domain_id), k))
           temp(:, 1:nm) = hits(:, 1:nm)
-          call move_alloc(FROM=temp, TO=indices)
+          call move_alloc(FROM=temp, TO=hits)
         end if
 
         ! Add an entry to both the indices list and the hits list

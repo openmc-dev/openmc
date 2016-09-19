@@ -303,7 +303,7 @@ contains
     ! Set default value for intersects
     intersects = .false.
 
-    ! Check if line intersects left surface - calculate the intersection point
+    ! Check if line intersects left surface -- calculate the intersection point
     ! y
     if ((x0 < xm0 .and. x1 > xm0) .or. (x0 > xm0 .and. x1 < xm0)) then
       yi = y0 + (xm0 - x0) * (y1 - y0) / (x1 - x0)

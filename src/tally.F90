@@ -2484,6 +2484,7 @@ contains
     real(8) :: filt_score           ! score applied by filters
     logical :: start_in_mesh        ! particle's starting xyz in mesh?
     logical :: end_in_mesh          ! particle's ending xyz in mesh?
+    logical :: cross_surface        ! whether the particle crosses a surface
     type(TallyObject), pointer :: t
     type(RegularMesh), pointer :: m
 
@@ -2607,15 +2608,30 @@ contains
               end if
 
               ! Inward current on d1 min surface
-              if ((n_dim == 1 .and. &
-                   ijk0(d1) >= 0 .and. ijk0(d1) <  m % dimension(d1)) .or. &
-                   (n_dim == 2 .and. &
-                   ijk0(d1) >= 0 .and. ijk0(d1) <  m % dimension(d1) .and. &
-                   ijk0(d2) >= 1 .and. ijk0(d2) <= m % dimension(d2)) .or. &
-                   (n_dim == 3 .and. &
-                   ijk0(d1) >= 0 .and. ijk0(d1) <  m % dimension(d1) .and. &
-                   ijk0(d2) >= 1 .and. ijk0(d2) <= m % dimension(d2) .and. &
-                   ijk0(d3) >= 1 .and. ijk0(d3) <= m % dimension(d3))) then
+              cross_surface = .false.
+              select case(n_dim)
+
+              case (1)
+                if (ijk0(d1) >= 0 .and. ijk0(d1) <  m % dimension(d1)) then
+                  cross_surface = .true.
+                end if
+
+              case (2)
+                if (ijk0(d1) >= 0 .and. ijk0(d1) <  m % dimension(d1) .and. &
+                     ijk0(d2) >= 1 .and. ijk0(d2) <= m % dimension(d2)) then
+                  cross_surface = .true.
+                end if
+
+              case (3)
+                if (ijk0(d1) >= 0 .and. ijk0(d1) <  m % dimension(d1) .and. &
+                     ijk0(d2) >= 1 .and. ijk0(d2) <= m % dimension(d2) .and. &
+                     ijk0(d3) >= 1 .and. ijk0(d3) <= m % dimension(d3)) then
+                  cross_surface = .true.
+                end if
+              end select
+
+              ! If the particle crossed the surface, tally the current
+              if (cross_surface) then
                 ijk0(d1) = ijk0(d1) + 1
                 matching_bins(i_filter_surf) = d1 * 4 - 2
                 matching_bins(i_filter_mesh) = &
@@ -2648,15 +2664,30 @@ contains
               end if
 
               ! Inward current on d1 max surface
-              if ((n_dim == 1 .and. &
-                   ijk0(d1) >  1 .and. ijk0(d1) <= m % dimension(d1) + 1) .or. &
-                   (n_dim == 2 .and. &
-                   ijk0(d1) >  1 .and. ijk0(d1) <= m % dimension(d1) + 1 .and. &
-                   ijk0(d2) >= 1 .and. ijk0(d2) <= m % dimension(d2)) .or. &
-                   (n_dim == 3 .and. &
-                   ijk0(d1) >  1 .and. ijk0(d1) <= m % dimension(d1) + 1 .and. &
-                   ijk0(d2) >= 1 .and. ijk0(d2) <= m % dimension(d2) .and. &
-                   ijk0(d3) >= 1 .and. ijk0(d3) <= m % dimension(d3))) then
+              cross_surface = .false.
+              select case(n_dim)
+
+              case (1)
+                if (ijk0(d1) >  1 .and. ijk0(d1) <= m % dimension(d1) + 1) then
+                  cross_surface = .true.
+                end if
+
+              case (2)
+                if (ijk0(d1) >  1 .and. ijk0(d1) <= m % dimension(d1) + 1 .and.&
+                     ijk0(d2) >= 1 .and. ijk0(d2) <= m % dimension(d2)) then
+                  cross_surface = .true.
+                end if
+
+              case (3)
+                if (ijk0(d1) >  1 .and. ijk0(d1) <= m % dimension(d1) + 1 .and.&
+                     ijk0(d2) >= 1 .and. ijk0(d2) <= m % dimension(d2) .and. &
+                     ijk0(d3) >= 1 .and. ijk0(d3) <= m % dimension(d3)) then
+                  cross_surface = .true.
+                end if
+              end select
+
+              ! If the particle crossed the surface, tally the current
+              if (cross_surface) then
                 ijk0(d1) = ijk0(d1) - 1
                 matching_bins(i_filter_surf) = d1 * 4
                 matching_bins(i_filter_mesh) = &

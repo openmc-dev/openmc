@@ -40,9 +40,9 @@
     <!-- units of MeV/cm -->
     <!-- If no kappa fission tallies, this is not needed; it will not be loaded
          if there is no kappa fission scores anyways -->
-    <k_fission>
+    <kappa_fission>
       1.0 1.0 1.0 1.0 1.0 1.0 1.0
-    </k_fission>
+    </kappa_fission>
 
     <!-- for consistency must include nu-scatter -->
     <!-- will be a matrix of (order+1) x g_in x g_out -->
@@ -100,9 +100,9 @@
     </fission>
 
      <!-- units of MeV/cm -->
-    <k_fission>
+    <kappa_fission>
       1.0 1.0 1.0 1.0 1.0 1.0 1.0
-    </k_fission>
+    </kappa_fission>
 
     <!-- for consistency must include nu-scatter -->
     <!-- will be a matrix of (order+1) x g_in x g_out -->
@@ -156,9 +156,9 @@
     </fission>
 
      <!-- units of MeV/cm -->
-    <k_fission>
+    <kappa_fission>
       1.0 1.0 1.0 1.0 1.0 1.0 1.0
-    </k_fission>
+    </kappa_fission>
 
     <!-- for consistency must include nu-scatter -->
     <!-- will be a matrix of (order+1) x g_in x g_out -->
@@ -212,9 +212,9 @@
     </fission>
 
      <!-- units of MeV/cm -->
-    <k_fission>
+    <kappa_fission>
       1.0 1.0 1.0 1.0 1.0 1.0 1.0
-    </k_fission>
+    </kappa_fission>
 
     <!-- for consistency must include nu-scatter -->
     <!-- will be a matrix of (order+1) x g_in x g_out -->
@@ -262,9 +262,9 @@
     </fission>
 
      <!-- units of MeV/cm -->
-    <k_fission>
+    <kappa_fission>
       1.0 1.0 1.0 1.0 1.0 1.0 1.0
-    </k_fission>
+    </kappa_fission>
 
     <!-- for consistency must include nu-scatter -->
     <!-- will be a matrix of (order+1) x g_in x g_out -->

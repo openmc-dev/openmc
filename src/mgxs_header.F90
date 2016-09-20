@@ -1367,7 +1367,7 @@ module mgxs_header
                        atom_density * nuc % xs(nuc_t) % inv_vel * interp
                 end if
 
-                ! We will next gather the multiplicaity and scattering matrices.
+                ! We will next gather the multiplicity and scattering matrices.
                 ! To avoid multiple re-allocations as we resize the storage
                 ! matrix (and/or to avoidlots of duplicate code), we will use a
                 ! dense matrix for this storage, with a reduction to the sparse
@@ -1634,7 +1634,7 @@ module mgxs_header
                   end if
                 end if
 
-                ! We will next gather the multiplicaity and scattering matrices.
+                ! We will next gather the multiplicity and scattering matrices.
                 ! To avoid multiple re-allocations as we resize the storage
                 ! matrix (and/or to avoidlots of duplicate code), we will use a
                 ! dense matrix for this storage, with a reduction to the sparse

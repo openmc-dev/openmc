@@ -12,6 +12,7 @@ import numpy as np
 
 import openmc
 from openmc.mgxs import MGXS
+from openmc.mgxs.mgxs import _DOMAIN_TO_FILTER
 import openmc.checkvalue as cv
 
 if sys.version_info[0] >= 3:
@@ -322,7 +323,7 @@ class MDGXS(MGXS):
             cv.check_iterable_type('subdomains', subdomains, Integral,
                                    max_depth=3)
             for subdomain in subdomains:
-                filters.append(self.domain_type)
+                filters.append(_DOMAIN_TO_FILTER[self.domain_type])
                 filter_bins.append((subdomain,))
 
         # Construct list of energy group bounds tuples for all requested groups
@@ -1212,7 +1213,7 @@ class ChiDelayed(MDGXS):
             cv.check_iterable_type('subdomains', subdomains, Integral,
                                    max_depth=3)
             for subdomain in subdomains:
-                filters.append(self.domain_type)
+                filters.append(_DOMAIN_TO_FILTER[self.domain_type])
                 filter_bins.append((subdomain,))
 
         # Construct list of energy group bounds tuples for all requested groups

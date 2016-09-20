@@ -330,7 +330,11 @@ class MGXS(object):
 
     @property
     def num_subdomains(self):
-        filter_type = _DOMAIN_TO_FILTER[self.domain_type]
+        if self.domain_type.startswith('avg('):
+            domain_type = self.domain_type[4:-1]
+        else:
+            domain_type = self.domain_type
+        filter_type = _DOMAIN_TO_FILTER[domain_type]
         domain_filter = self.xs_tally.find_filter(filter_type)
         return domain_filter.num_bins
 
@@ -713,14 +717,9 @@ class MGXS(object):
         # Find, slice and store Tallies from StatePoint
         # The tally slicing is needed if tally merging was used
         for tally_type, tally in self.tallies.items():
-            if isinstance(self, Chi):
-                sp_tally = statepoint.get_tally(
-                    tally.scores, tally.filters, tally.nuclides,
-                    estimator=tally.estimator, exact_filters=True)
-            else:
-                sp_tally = statepoint.get_tally(
-                    tally.scores, tally.filters, tally.nuclides,
-                    estimator=tally.estimator, exact_filters=True)
+            sp_tally = statepoint.get_tally(
+                tally.scores, tally.filters, tally.nuclides,
+                estimator=tally.estimator, exact_filters=True)
             sp_tally = sp_tally.get_slice(
                 tally.scores, filters, filter_bins, tally.nuclides)
             sp_tally.sparse = self.sparse
@@ -794,7 +793,7 @@ class MGXS(object):
             cv.check_iterable_type('subdomains', subdomains, Integral,
                                    max_depth=3)
             for subdomain in subdomains:
-                filters.append(self.domain_type)
+                filters.append(_DOMAIN_TO_FILTER[self.domain_type])
                 filter_bins.append((subdomain,))
 
         # Construct list of energy group bounds tuples for all requested groups
@@ -972,7 +971,8 @@ class MGXS(object):
 
         if self.derived:
             avg_xs._rxn_rate_tally = avg_xs.rxn_rate_tally.average(
-                filter_type=self.domain_type, filter_bins=subdomains)
+                filter_type=_DOMAIN_TO_FILTER[self.domain_type],
+                filter_bins=subdomains)
         else:
             avg_xs._rxn_rate_tally = None
             avg_xs._xs_tally = None
@@ -1791,7 +1791,7 @@ class MatrixMGXS(MGXS):
             cv.check_iterable_type('subdomains', subdomains, Integral,
                                    max_depth=3)
             for subdomain in subdomains:
-                filters.append(self.domain_type)
+                filters.append(_DOMAIN_TO_FILTER[self.domain_type])
                 filter_bins.append((subdomain,))
 
         # Construct list of energy group bounds tuples for all requested groups
@@ -3625,7 +3625,7 @@ class ScatterMatrixXS(MatrixMGXS):
         if not isinstance(subdomains, basestring):
             cv.check_iterable_type('subdomains', subdomains, Integral, max_depth=3)
             for subdomain in subdomains:
-                filters.append(self.domain_type)
+                filters.append(_DOMAIN_TO_FILTER[self.domain_type])
                 filter_bins.append((subdomain,))
 
         # Construct list of energy group bounds tuples for all requested groups
@@ -4613,7 +4613,7 @@ class Chi(MGXS):
         if not isinstance(subdomains, basestring):
             cv.check_iterable_type('subdomains', subdomains, Integral, max_depth=3)
             for subdomain in subdomains:
-                filters.append(self.domain_type)
+                filters.append(_DOMAIN_TO_FILTER[self.domain_type])
                 filter_bins.append((subdomain,))
 
         # Construct list of energy group bounds tuples for all requested groups

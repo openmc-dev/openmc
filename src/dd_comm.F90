@@ -1055,6 +1055,8 @@ contains
 
 #endif
 
+    total = work
+
     ! Update the work_index which is not even for dd runs
 #ifdef MPI
     call MPI_ALLGATHER(work, 1, MPI_INTEGER8, work_index(1:n_procs), 1, &
@@ -1064,7 +1066,13 @@ contains
     do i = 1, n_procs
       work_index(i) = work_index(i) + work_index(i-1)
     end do
+
+    total = work_index(n_procs)
 #endif
+
+    ! Since total size of source bank is not equal to n_particles, we need to
+    ! renormalize the weight of the source sites
+    source_bank % wgt = source_bank % wgt * n_particles / total
 
     call time_bank_sendrecv % stop()
 

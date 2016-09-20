@@ -725,13 +725,16 @@ a material default temperature.
 ``<temperature_method>`` Element
 --------------------------------
 
-The ``<temperature_method>`` element has an accepted value of "nearest" or
-"interpolation". A value of "nearest" indicates that for each cell, the nearest
-temperature at which cross sections are given is to be applied, within a given
-tolerance (see :ref:`temperature_tolerance`). A value of "multipole" indicates
-that the windowed multipole method should be used to evaluate
-temperature-dependent cross sections in the resolved resonance range (a
-:ref:`windowed multipole library <multipole_library>` must also be available).
+The ``<temperature_method>`` element has an accepted value of "nearest",
+"interpolation", or "multipole". A value of "nearest" indicates that for each
+cell, the nearest temperature at which cross sections are given is to be
+applied, within a given tolerance (see :ref:`temperature_tolerance`). A value of
+"interpolation" indicates that cross sections are to be linear-linear
+interpolated between temperatures at which nuclear data are present (see
+:ref:`temperature_treatment`). A value of "multipole" indicates that the
+windowed multipole method should be used to evaluate temperature-dependent cross
+sections in the resolved resonance range (a :ref:`windowed multipole library
+<multipole_library>` must also be available).
 
   *Default*: "nearest"
 
@@ -1886,6 +1889,11 @@ The ``<tally>`` element accepts the following sub-elements:
         |                      |energy release data. Energy is assumed to be       |
         |                      |deposited locally. Units are MeV per source        |
         |                      |paticle.                                           |
+        +----------------------+---------------------------------------------------+
+        |decay-rate            |The delayed-nu-fission-weighted decay rate where   |
+        |                      |the decay rate is in units of inverse seconds.     |
+        |                      |This score type is not used in the                 |
+        |                      |multi-group :ref:`energy_mode`.                    |
         +----------------------+---------------------------------------------------+
 
     .. note::

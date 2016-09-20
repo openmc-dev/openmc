@@ -296,7 +296,7 @@ module constants
        EVENT_ABSORB  =  2
 
   ! Tally score type
-  integer, parameter :: N_SCORE_TYPES = 23
+  integer, parameter :: N_SCORE_TYPES = 24
   integer, parameter :: &
        SCORE_FLUX               = -1,  & ! flux
        SCORE_TOTAL              = -2,  & ! total reaction rate
@@ -320,7 +320,8 @@ module constants
        SCORE_PROMPT_NU_FISSION  = -20, & ! prompt neutron production rate
        SCORE_INVERSE_VELOCITY   = -21, & ! flux-weighted inverse velocity
        SCORE_FISS_Q_PROMPT      = -22, & ! prompt fission Q-value
-       SCORE_FISS_Q_RECOV       = -23    ! recoverable fission Q-value
+       SCORE_FISS_Q_RECOV       = -23, & ! recoverable fission Q-value
+       SCORE_DECAY_RATE         = -24    ! delayed neutron precursor decay rate
 
   ! Maximum scattering order supported
   integer, parameter :: MAX_ANG_ORDER = 10
@@ -366,16 +367,16 @@ module constants
   ! Tally surface current directions
   integer, parameter :: &
        OUT_LEFT   = 1,   &   ! x min
-       OUT_RIGHT  = 2,   &   ! x max
-       OUT_BACK   = 3,   &   ! y min
-       OUT_FRONT  = 4,   &   ! y max
-       OUT_BOTTOM = 5,   &   ! z min
-       OUT_TOP    = 6,   &   ! z max
-       IN_LEFT    = 7,   &   ! x min
-       IN_RIGHT   = 8,   &   ! x max
-       IN_BACK    = 9,   &   ! y min
-       IN_FRONT   = 10,  &   ! y max
-       IN_BOTTOM  = 11,  &   ! z min
+       IN_LEFT    = 2,   &   ! x min
+       OUT_RIGHT  = 3,   &   ! x max
+       IN_RIGHT   = 4,   &   ! x max
+       OUT_BACK   = 5,   &   ! y min
+       IN_BACK    = 6,   &   ! y min
+       OUT_FRONT  = 7,   &   ! y max
+       IN_FRONT   = 8,   &   ! y max
+       OUT_BOTTOM = 9,   &   ! z min
+       IN_BOTTOM  = 10,  &   ! z min
+       OUT_TOP    = 11,  &   ! z max
        IN_TOP     = 12       ! z max
 
   ! Tally trigger types and threshold

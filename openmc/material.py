@@ -41,19 +41,16 @@ class Material(object):
     name : str, optional
         Name of the material. If not specified, the name will be the empty
         string.
-    temperature : str, optional
-        The temperature identifier applied to this material. The units are
-        in Kelvin and the temperature rounded to the nearest integer.
-        For example, a tempreature of 293.6K would be provided as '294K'
+    temperature : float, optional
+        Temperature of the material in Kelvin. If not specified, the material
+        inherits the default temperature applied to the model.
 
     Attributes
     ----------
     id : int
         Unique identifier for the material
-    temperature : str
-        The temperature identifier applied to this material. The units are
-        in Kelvin and the temperature rounded to the nearest integer.
-        For example, a tempreature of 293.6K would be provided as '294K'
+    temperature : float
+        Temperature of the material in Kelvin.
     density : float
         Density of the material (units defined separately)
     density_units : str
@@ -217,12 +214,9 @@ class Material(object):
 
     @temperature.setter
     def temperature(self, temperature):
-        if temperature is not None:
-            cv.check_type('Temperature for Material ID="{0}"'.format(self._id),
-                          temperature, basestring)
-            self._temperature = temperature
-        else:
-            self._temperature = ''
+        cv.check_type('Temperature for Material ID="{0}"'.format(self._id),
+                      temperature, (Real, type(None)))
+        self._temperature = temperature
 
     def set_density(self, units, density=None):
         """Set the density of the material
@@ -631,9 +625,9 @@ class Material(object):
             element.set("name", str(self._name))
 
         # Create temperature XML subelement
-        if len(self.temperature) > 0:
+        if self.temperature is not None:
             subelement = ET.SubElement(element, "temperature")
-            subelement.text = self.temperature
+            subelement.text = str(self.temperature)
 
         # Create density XML subelement
         subelement = ET.SubElement(element, "density")
@@ -817,7 +811,7 @@ class Materials(cv.CheckedList):
             xml_element = material.get_material_xml()
             self._materials_file.append(xml_element)
 
-    def export_to_xml(self):
+    def export_to_xml(self, path='materials.xml'):
         """Create a materials.xml file that can be used for a simulation.
 
         """
@@ -833,5 +827,4 @@ class Materials(cv.CheckedList):
 
         # Write the XML Tree to the materials.xml file
         tree = ET.ElementTree(self._materials_file)
-        tree.write("materials.xml", xml_declaration=True,
-                   encoding='utf-8', method="xml")
+        tree.write(path, xml_declaration=True, encoding='utf-8', method="xml")

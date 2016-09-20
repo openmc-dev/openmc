@@ -12,7 +12,8 @@ module tally
   use math,             only: t_percentile, calc_pn, calc_rn
   use mesh,             only: get_mesh_bin, bin_to_mesh_indices, &
                               get_mesh_indices, mesh_indices_to_bin, &
-                              mesh_intersects_2d, mesh_intersects_3d
+                              mesh_intersects_1d, mesh_intersects_2d, &
+                              mesh_intersects_3d
   use mesh_header,      only: RegularMesh
   use output,           only: header
   use particle_header,  only: LocalCoord, Particle
@@ -94,6 +95,8 @@ contains
     integer :: score_bin            ! scoring bin, e.g. SCORE_FLUX
     integer :: score_index          ! scoring bin index
     integer :: d                    ! delayed neutron index
+    integer :: g                    ! delayed neutron index
+    integer :: k                    ! loop index for bank sites
     integer :: d_bin                ! delayed group bin index
     integer :: dg_filter            ! index of delayed group filter
     real(8) :: yield                ! delayed neutron yield
@@ -670,6 +673,141 @@ contains
           end if
         end if
 
+
+      case (SCORE_DECAY_RATE)
+
+        ! Set the delayedgroup filter index
+        dg_filter = t % find_filter(FILTER_DELAYEDGROUP)
+
+        if (survival_biasing) then
+          ! No fission events occur if survival biasing is on -- need to
+          ! calculate fraction of absorptions that would have resulted in
+          ! delayed-nu-fission
+          if (micro_xs(p % event_nuclide) % absorption > ZERO .and. &
+               nuclides(p % event_nuclide) % fissionable) then
+
+            ! Check if the delayed group filter is present
+            if (dg_filter > 0) then
+              select type(filt => t % filters(dg_filter) % obj)
+              type is (DelayedGroupFilter)
+
+                ! Loop over all delayed group bins and tally to them
+                ! individually
+                do d_bin = 1, filt % n_bins
+
+                  ! Get the delayed group for this bin
+                  d = filt % groups(d_bin)
+
+                  ! Compute the yield for this delayed group
+                  yield = nuclides(p % event_nuclide) &
+                       % nu(E, EMISSION_DELAYED, d)
+
+                  associate (rxn => nuclides(p % event_nuclide) % &
+                       reactions(nuclides(p % event_nuclide) % index_fission(1)))
+
+                    ! Compute the score
+                    score = p % absorb_wgt * yield * &
+                         micro_xs(p % event_nuclide) % fission &
+                         / micro_xs(p % event_nuclide) % absorption &
+                         * rxn % products(1 + d) % decay_rate
+                  end associate
+
+                  ! Tally to bin
+                  call score_fission_delayed_dg(t, d_bin, score, score_index)
+                end do
+                cycle SCORE_LOOP
+              end select
+            else
+
+              ! If the delayed group filter is not present, compute the score
+              ! by accumulating the absorbed weight times the decay rate times
+              ! the fraction of the delayed-nu-fission xs to the absorption xs
+              ! for all delayed groups.
+              score = ZERO
+
+              associate (rxn => nuclides(p % event_nuclide) % &
+                   reactions(nuclides(p % event_nuclide) % index_fission(1)))
+
+                ! We need to be careful not to overshoot the number of delayed
+                ! groups since this could cause the range of the rxn % products
+                ! array to be exceeded. Hence, we use the size of this array
+                ! and not the MAX_DELAYED_GROUPS constant for this loop.
+                do d = 1, size(rxn % products) - 2
+
+                  score = score + rxn % products(1 + d) % decay_rate * &
+                       p % absorb_wgt * micro_xs(p % event_nuclide) % fission *&
+                       nuclides(p % event_nuclide) % nu(E, EMISSION_DELAYED, d)&
+                       / micro_xs(p % event_nuclide) % absorption
+                end do
+              end associate
+            end if
+          end if
+        else
+
+          ! Skip any non-fission events
+          if (.not. p % fission) cycle SCORE_LOOP
+          ! If there is no outgoing energy filter, than we only need to
+          ! score to one bin. For the score to be 'analog', we need to
+          ! score the number of particles that were banked in the fission
+          ! bank. Since this was weighted by 1/keff, we multiply by keff
+          ! to get the proper score. Loop over the neutrons produced from
+          ! fission and check which ones are delayed. If a delayed neutron is
+          ! encountered, add its contribution to the fission bank to the
+          ! score.
+
+          score = ZERO
+
+          ! loop over number of particles banked
+          do k = 1, p % n_bank
+
+            ! get the delayed group
+            g = fission_bank(n_bank - p % n_bank + k) % delayed_group
+
+            ! Case for tallying delayed emissions
+            if (g /= 0) then
+
+              ! Accumulate the decay rate times delayed nu fission score
+              associate (rxn => nuclides(p % event_nuclide) % &
+                   reactions(nuclides(p % event_nuclide) % index_fission(1)))
+
+                ! determine score based on bank site weight and keff.
+                score = score + keff * fission_bank(n_bank - p % n_bank + k) &
+                     % wgt * rxn % products(1 + g) % decay_rate
+              end associate
+
+              ! if the delayed group filter is present, tally to corresponding
+              ! delayed group bin if it exists
+              if (dg_filter > 0) then
+
+                ! declare the delayed group filter type
+                select type(filt => t % filters(dg_filter) % obj)
+                type is (DelayedGroupFilter)
+
+                  ! loop over delayed group bins until the corresponding bin is
+                  ! found
+                  do d_bin = 1, filt % n_bins
+                    d = filt % groups(d_bin)
+
+                    ! check whether the delayed group of the particle is equal to
+                    ! the delayed group of this bin
+                    if (d == g) then
+                      call score_fission_delayed_dg(t, d_bin, score, score_index)
+                    end if
+                  end do
+                end select
+
+                ! Reset the score to zero
+                score = ZERO
+              end if
+            end if
+          end do
+
+          ! If the delayed group filter is present, cycle because the
+          ! score_fission_delayed_dg(...) has already tallied the score
+          if (dg_filter > 0) then
+            cycle SCORE_LOOP
+          end if
+        end if
 
       case (SCORE_KAPPA_FISSION)
         ! Determine kappa-fission cross section on the fly. The ENDF standard
@@ -2326,6 +2464,7 @@ contains
     integer :: i
     integer :: i_tally
     integer :: j                    ! loop indices
+    integer :: n_dim                ! num dimensions of the mesh
     integer :: d1                   ! dimension index
     integer :: d2                   ! dimension index
     integer :: d3                   ! dimension index
@@ -2345,6 +2484,7 @@ contains
     real(8) :: filt_score           ! score applied by filters
     logical :: start_in_mesh        ! particle's starting xyz in mesh?
     logical :: end_in_mesh          ! particle's ending xyz in mesh?
+    logical :: cross_surface        ! whether the particle crosses a surface
     type(TallyObject), pointer :: t
     type(RegularMesh), pointer :: m
 
@@ -2368,14 +2508,18 @@ contains
         m => meshes(filt % mesh)
       end select
 
+      n_dim = m % n_dimension
+
       ! Determine indices for starting and ending location
-      call get_mesh_indices(m, xyz0, ijk0(:m % n_dimension), start_in_mesh)
-      call get_mesh_indices(m, xyz1, ijk1(:m % n_dimension), end_in_mesh)
+      call get_mesh_indices(m, xyz0, ijk0, start_in_mesh)
+      call get_mesh_indices(m, xyz1, ijk1, end_in_mesh)
 
       ! Check to see if start or end is in mesh -- if not, check if track still
       ! intersects with mesh
       if ((.not. start_in_mesh) .and. (.not. end_in_mesh)) then
-        if (m % n_dimension == 2) then
+        if (n_dim == 1) then
+          if (.not. mesh_intersects_1d(m, xyz0, xyz1)) cycle
+        else if (n_dim == 2) then
           if (.not. mesh_intersects_2d(m, xyz0, xyz1)) cycle
         else
           if (.not. mesh_intersects_3d(m, xyz0, xyz1)) cycle
@@ -2383,7 +2527,7 @@ contains
       end if
 
       ! Calculate number of surface crossings
-      n_cross = sum(abs(ijk1 - ijk0))
+      n_cross = sum(abs(ijk1(:n_dim) - ijk0(:n_dim)))
       if (n_cross == 0) then
         cycle
       end if
@@ -2401,7 +2545,7 @@ contains
       end if
 
       ! Bounding coordinates
-      do d1 = 1, 3
+      do d1 = 1, n_dim
         if (uvw(d1) > 0) then
           xyz_cross(d1) = m % lower_left(d1) + ijk0(d1) * m % width(d1)
         else
@@ -2413,10 +2557,13 @@ contains
         ! Reset scoring bin index
         matching_bins(i_filter_surf) = 0
 
+        ! Set the distances to infinity
+        d = INFINITY
+
         ! Calculate distance to each bounding surface. We need to treat
         ! special case where the cosine of the angle is zero since this would
         ! result in a divide-by-zero.
-        do d1 = 1, 3
+        do d1 = 1, n_dim
           if (uvw(d1) == 0) then
             d(d1) = INFINITY
           else
@@ -2430,11 +2577,16 @@ contains
         distance = minval(d)
 
         ! Loop over the dimensions
-        do d1 = 1, 3
+        do d1 = 1, n_dim
 
-          ! Get the other dimensions
-          d2 = mod(d1, 3) + 1
-          d3 = mod(d1 + 1, 3) + 1
+          ! Get the other dimensions.
+          if (d1 == 1) then
+            d2 = mod(d1, 3) + 1
+            d3 = mod(d1 + 1, 3) + 1
+          else
+            d2 = mod(d1 + 1, 3) + 1
+            d3 = mod(d1, 3) + 1
+          end if
 
           ! Check whether distance is the shortest distance
           if (distance == d(d1)) then
@@ -2443,8 +2595,9 @@ contains
             if (uvw(d1) > 0) then
 
               ! Outward current on d1 max surface
-              if (all(ijk0 >= 1) .and. all(ijk0 <= m % dimension)) then
-                matching_bins(i_filter_surf) = d1 * 2
+              if (all(ijk0(:n_dim) >= 1) .and. &
+                   all(ijk0(:n_dim) <= m % dimension)) then
+                matching_bins(i_filter_surf) = d1 * 4 - 1
                 matching_bins(i_filter_mesh) = &
                      mesh_indices_to_bin(m, ijk0)
                 filter_index = sum((matching_bins(1:size(t % filters)) - 1) &
@@ -2455,11 +2608,32 @@ contains
               end if
 
               ! Inward current on d1 min surface
-              if (ijk0(d1) >= 0 .and. ijk0(d1) < m % dimension(d1) .and. &
-                   ijk0(d2) >= 1 .and. ijk0(d2) <= m % dimension(d2) .and. &
-                   ijk0(d3) >= 1 .and. ijk0(d3) <= m % dimension(d3)) then
+              cross_surface = .false.
+              select case(n_dim)
+
+              case (1)
+                if (ijk0(d1) >= 0 .and. ijk0(d1) <  m % dimension(d1)) then
+                  cross_surface = .true.
+                end if
+
+              case (2)
+                if (ijk0(d1) >= 0 .and. ijk0(d1) <  m % dimension(d1) .and. &
+                     ijk0(d2) >= 1 .and. ijk0(d2) <= m % dimension(d2)) then
+                  cross_surface = .true.
+                end if
+
+              case (3)
+                if (ijk0(d1) >= 0 .and. ijk0(d1) <  m % dimension(d1) .and. &
+                     ijk0(d2) >= 1 .and. ijk0(d2) <= m % dimension(d2) .and. &
+                     ijk0(d3) >= 1 .and. ijk0(d3) <= m % dimension(d3)) then
+                  cross_surface = .true.
+                end if
+              end select
+
+              ! If the particle crossed the surface, tally the current
+              if (cross_surface) then
                 ijk0(d1) = ijk0(d1) + 1
-                matching_bins(i_filter_surf) = d1 * 2 + 5
+                matching_bins(i_filter_surf) = d1 * 4 - 2
                 matching_bins(i_filter_mesh) = &
                      mesh_indices_to_bin(m, ijk0)
                 filter_index = sum((matching_bins(1:size(t % filters)) - 1) &
@@ -2477,8 +2651,9 @@ contains
             else
 
               ! Outward current on d1 min surface
-              if (all(ijk0 >= 1) .and. all(ijk0 <= m % dimension)) then
-                matching_bins(i_filter_surf) = d1 * 2 - 1
+              if (all(ijk0(:n_dim) >= 1) .and. &
+                   all(ijk0(:n_dim) <= m % dimension)) then
+                matching_bins(i_filter_surf) = d1 * 4 - 3
                 matching_bins(i_filter_mesh) = &
                      mesh_indices_to_bin(m, ijk0)
                 filter_index = sum((matching_bins(1:size(t % filters)) - 1) &
@@ -2489,11 +2664,32 @@ contains
               end if
 
               ! Inward current on d1 max surface
-              if (ijk0(d1) > 1 .and. ijk0(d1) <= m % dimension(d1) + 1 .and. &
-                   ijk0(d2) >= 1 .and. ijk0(d2) <= m % dimension(d2) .and. &
-                   ijk0(d3) >= 1 .and. ijk0(d3) <= m % dimension(d3))  then
+              cross_surface = .false.
+              select case(n_dim)
+
+              case (1)
+                if (ijk0(d1) >  1 .and. ijk0(d1) <= m % dimension(d1) + 1) then
+                  cross_surface = .true.
+                end if
+
+              case (2)
+                if (ijk0(d1) >  1 .and. ijk0(d1) <= m % dimension(d1) + 1 .and.&
+                     ijk0(d2) >= 1 .and. ijk0(d2) <= m % dimension(d2)) then
+                  cross_surface = .true.
+                end if
+
+              case (3)
+                if (ijk0(d1) >  1 .and. ijk0(d1) <= m % dimension(d1) + 1 .and.&
+                     ijk0(d2) >= 1 .and. ijk0(d2) <= m % dimension(d2) .and. &
+                     ijk0(d3) >= 1 .and. ijk0(d3) <= m % dimension(d3)) then
+                  cross_surface = .true.
+                end if
+              end select
+
+              ! If the particle crossed the surface, tally the current
+              if (cross_surface) then
                 ijk0(d1) = ijk0(d1) - 1
-                matching_bins(i_filter_surf) = d1 * 2 + 6
+                matching_bins(i_filter_surf) = d1 * 4
                 matching_bins(i_filter_mesh) = &
                      mesh_indices_to_bin(m, ijk0)
                 filter_index = sum((matching_bins(1:size(t % filters)) - 1) &

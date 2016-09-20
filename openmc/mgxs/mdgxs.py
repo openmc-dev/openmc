@@ -21,7 +21,8 @@ if sys.version_info[0] >= 3:
 # Supported cross section types
 MDGXS_TYPES = ['delayed-nu-fission',
                'chi-delayed',
-               'beta']
+               'beta',
+               'decay-rate']
 
 # Maximum number of delayed groups, from src/constants.F90
 MAX_DELAYED_GROUPS = 8
@@ -214,7 +215,7 @@ class MDGXS(MGXS):
 
         Parameters
         ----------
-        mdgxs_type : {'delayed-nu-fission', 'chi-delayed', 'beta'}
+        mdgxs_type : {'delayed-nu-fission', 'chi-delayed', 'beta', 'decay-rate'}
             The type of multi-delayed-group cross section object to return
         domain : openmc.Material or openmc.Cell or openmc.Universe or
             openmc.Mesh
@@ -250,6 +251,8 @@ class MDGXS(MGXS):
                                delayed_groups)
         elif mdgxs_type == 'beta':
             mdgxs = Beta(domain, domain_type, energy_groups, delayed_groups)
+        elif mdgxs_type == 'decay-rate':
+            mdgxs = DecayRate(domain, domain_type, energy_groups, delayed_groups)
 
         mdgxs.by_nuclide = by_nuclide
         mdgxs.name = name
@@ -1575,5 +1578,157 @@ class Beta(MDGXS):
             # Compute beta
             self._xs_tally = self.rxn_rate_tally / nu_fission
             super(Beta, self)._compute_xs()
+
+        return self._xs_tally
+
+
+class DecayRate(MDGXS):
+    r"""The decay rate for delayed neutron precursors.
+
+    This class can be used for both OpenMC input generation and tally data
+    post-processing to compute spatially-homogenized and energy-integrated
+    multi-group and multi-delayed group cross sections for multi-group
+    neutronics calculations. At a minimum, one needs to set the
+    :attr:`DecayRate.energy_groups` and :attr:`DecayRate.domain` properties.
+    Tallies for the flux and appropriate reaction rates over the specified
+    domain are generated automatically via the :attr:`DecayRate.tallies`
+    property, which can then be appended to a :class:`openmc.Tallies` instance.
+
+    For post-processing, the :meth:`MGXS.load_from_statepoint` will pull in the
+    necessary data to compute multi-group cross sections from a
+    :class:`openmc.StatePoint` instance. The derived multi-group cross section
+    can then be obtained from the :attr:`DecayRate.xs_tally` property.
+
+    For a spatial domain :math:`V`, energy group :math:`[E_g,E_{g-1}]`, and
+    delayed group :math:`d`, the decay rate is calculated as:
+
+    .. math::
+
+       \langle \lambda_d \nu^d \sigma_f \phi \rangle &= \int_{r \in V} dr
+       \int_{4\pi} d\Omega' \int_0^\infty dE' \int_0^\infty dE \; \lambda_d \nu^d
+       \sigma_f (r, E') \psi(r, E', \Omega') \\
+       \langle \nu^d \sigma_f \phi \rangle &= \int_{r \in V} dr \int_{4\pi}
+       d\Omega' \int_0^\infty dE' \int_0^\infty dE \; \chi(E) \nu^d
+       \sigma_f (r, E') \psi(r, E', \Omega') \\
+       \lambda_d &= \frac{\langle \lambda_d \nu^d \sigma_f \phi \rangle}
+       {\langle \nu^d \sigma_f \phi \rangle}
+
+    Parameters
+    ----------
+    domain : openmc.Material or openmc.Cell or openmc.Universe or openmc.Mesh
+        The domain for spatial homogenization
+    domain_type : {'material', 'cell', 'distribcell', 'universe', 'mesh'}
+        The domain type for spatial homogenization
+    groups : openmc.mgxs.EnergyGroups
+        The energy group structure for energy condensation
+    by_nuclide : bool
+        If true, computes cross sections for each nuclide in domain
+    name : str, optional
+        Name of the multi-group cross section. Used as a label to identify
+        tallies in OpenMC 'tallies.xml' file.
+    delayed_groups : list of int
+        Delayed groups to filter out the xs
+
+    Attributes
+    ----------
+    name : str, optional
+        Name of the multi-group cross section
+    rxn_type : str
+        Reaction type (e.g., 'total', 'nu-fission', etc.)
+    by_nuclide : bool
+        If true, computes cross sections for each nuclide in domain
+    domain : Material or Cell or Universe or Mesh
+        Domain for spatial homogenization
+    domain_type : {'material', 'cell', 'distribcell', 'universe', 'mesh'}
+        Domain type for spatial homogenization
+    energy_groups : openmc.mgxs.EnergyGroups
+        Energy group structure for energy condensation
+    delayed_groups : list of int
+        Delayed groups to filter out the xs
+    tally_trigger : openmc.Trigger
+        An (optional) tally precision trigger given to each tally used to
+        compute the cross section
+    scores : list of str
+        The scores in each tally used to compute the multi-group cross section
+    filters : list of openmc.Filter
+        The filters in each tally used to compute the multi-group cross section
+    tally_keys : list of str
+        The keys into the tallies dictionary for each tally used to compute
+        the multi-group cross section
+    estimator : {'tracklength', 'analog'}
+        The tally estimator used to compute the multi-group cross section
+    tallies : collections.OrderedDict
+        OpenMC tallies needed to compute the multi-group cross section. The keys
+        are strings listed in the :attr:`DecayRate.tally_keys` property and
+        values are instances of :class:`openmc.Tally`.
+    rxn_rate_tally : openmc.Tally
+        Derived tally for the reaction rate tally used in the numerator to
+        compute the multi-group cross section. This attribute is None
+        unless the multi-group cross section has been computed.
+    xs_tally : openmc.Tally
+        Derived tally for the multi-group cross section. This attribute
+        is None unless the multi-group cross section has been computed.
+    num_subdomains : int
+        The number of subdomains is unity for 'material', 'cell' and 'universe'
+        domain types. When the  This is equal to the number of cell instances
+        for 'distribcell' domain types (it is equal to unity prior to loading
+        tally data from a statepoint file).
+    num_nuclides : int
+        The number of nuclides for which the multi-group cross section is
+        being tracked. This is unity if the by_nuclide attribute is False.
+    nuclides : Iterable of str or 'sum'
+        The optional user-specified nuclides for which to compute cross
+        sections (e.g., 'U-238', 'O-16'). If by_nuclide is True but nuclides
+        are not specified by the user, all nuclides in the spatial domain
+        are included. This attribute is 'sum' if by_nuclide is false.
+    sparse : bool
+        Whether or not the MGXS' tallies use SciPy's LIL sparse matrix format
+        for compressed data storage
+    loaded_sp : bool
+        Whether or not a statepoint file has been loaded with tally data
+    derived : bool
+        Whether or not the MGXS is merged from one or more other MGXS
+    hdf5_key : str
+        The key used to index multi-group cross sections in an HDF5 data store
+
+    """
+
+    def __init__(self, domain=None, domain_type=None, energy_groups=None,
+                 delayed_groups=None, by_nuclide=False, name=''):
+        super(DecayRate, self).__init__(domain, domain_type, energy_groups,
+                                   delayed_groups, by_nuclide, name)
+        self._rxn_type = 'decay-rate'
+        self._estimator = 'analog'
+
+    @property
+    def scores(self):
+        return ['delayed-nu-fission', 'decay-rate']
+
+    @property
+    def tally_keys(self):
+        return ['delayed-nu-fission', 'decay-rate']
+
+    @property
+    def filters(self):
+
+        # Create the non-domain specific Filters for the Tallies
+        group_edges = self.energy_groups.group_edges
+        energy_filter = openmc.Filter('energy', group_edges)
+
+        if self.delayed_groups != None:
+            delayed_filter = openmc.Filter('delayedgroup', self.delayed_groups)
+            return [[delayed_filter, energy_filter], [delayed_filter, energy_filter]]
+        else:
+            return [[energy_filter], [energy_filter]]
+
+    @property
+    def xs_tally(self):
+
+        if self._xs_tally is None:
+            delayed_nu_fission = self.tallies['delayed-nu-fission']
+
+            # Compute the decay rate
+            self._xs_tally = self.rxn_rate_tally / delayed_nu_fission
+            super(DecayRate, self)._compute_xs()
 
         return self._xs_tally

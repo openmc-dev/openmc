@@ -104,7 +104,7 @@ class Settings(object):
     tabular_legendre : dict
         Determines if a multi-group scattering moment kernel expanded via
         Legendre polynomials is to be converted to a tabular distribution or
-        not. Accepted keys are 'enable', and 'num_points'. The value for
+        not. Accepted keys are 'enable' and 'num_points'. The value for
         'enable' is a bool stating whether the conversion to tabular is
         performed; the value for 'num_points' sets the number of points to use
         in the tabular distribution, should 'enable' be True.

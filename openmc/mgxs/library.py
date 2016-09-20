@@ -827,7 +827,7 @@ class Library(object):
         data set for eventual combination in to an openmc.MGXSLibrary object
         (i.e., the library).  Note that this method does not build an XSdata
         object with nested temperature tables.  The temperature of each
-        XsData object will be left at the default value of 300K.
+        XSdata object will be left at the default value of 300K.
 
         Parameters
         ----------
@@ -908,7 +908,7 @@ class Library(object):
             xsdata.order = min(order, self.legendre_order)
 
         # Right now only 'legendre' data and isotropic weighting is supported
-        self.scatter_type = 'legendre'
+        self.scatter_format = 'legendre'
         self.representation = 'isotropic'
 
         if nuclide is not 'total':

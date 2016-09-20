@@ -2571,6 +2571,7 @@ contains
     f_ptr = c_loc(int_buffer)
     call h5aread_f(attr_id, H5T_NATIVE_INTEGER, f_ptr, hdf5_err)
     call h5aclose_f(attr_id, hdf5_err)
+
     ! Convert to Fortran logical
     if (int_buffer == 0) then
       buffer = .false.

@@ -60,6 +60,7 @@ def parse_args():
     # Parse and return commandline arguments.
     return args
 
+
 def get_data(element, entry):
     try:
         value = element.find(entry).text
@@ -121,9 +122,9 @@ if __name__ == '__main__':
             n_azi = int(get_data(xsdata_elem, 'num_azimuthal'))
             n_pol = int(get_data(xsdata_elem, 'num_polar'))
 
-        scatter_type = get_data(xsdata_elem, 'scatt_type')
-        if scatter_type is None:
-            scatter_type = 'legendre'
+        scatter_format = get_data(xsdata_elem, 'scatt_type')
+        if scatter_format is None:
+            scatter_format = 'legendre'
 
         order = int(get_data(xsdata_elem, 'order'))
 
@@ -149,11 +150,11 @@ if __name__ == '__main__':
             if representation == 'angle':
                 xsd[-1].num_azimuthal = n_azi
                 xsd[-1].num_polar = n_pol
-            xsd[-1].scatter_type = scatter_type
+            xsd[-1].scatter_format = scatter_format
             xsd[-1].order = order
             names.append(name)
 
-        if scatter_type == 'legendre':
+        if scatter_format == 'legendre':
             order_dim = order + 1
         else:
             order_dim = order
@@ -167,6 +168,9 @@ if __name__ == '__main__':
             total = temp.astype(np.float)
             total = np.reshape(total, xsd[i].vector_shape)
             xsd[i].set_total(total, temperature)
+
+        if inverse_velocities is not None:
+            xsd[i].set_inverse_velocities(inverse_velocities, temperature)
 
         temp = get_data(xsdata_elem, 'absorption')
         temp = np.array(temp.split())
@@ -222,9 +226,7 @@ if __name__ == '__main__':
 
     # Build library as we go, but first we have enough to initialize it
     lib = openmc.MGXSLibrary(energy_groups)
-    if inverse_velocities is not None:
-        lib.inverse_velocities = inverse_velocities
 
     lib.add_xsdatas(xsd)
 
-    lib.export_to_hdf5(args['output'], compression=args['compression'])
+    lib.export_to_hdf5(args['output'])

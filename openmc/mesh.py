@@ -286,10 +286,8 @@ class Mesh(object):
                    openmc.XPlane(x0=self.upper_right[0],
                                  boundary_type=bc[1])]
         if len(self.dimension) == 1:
-            yplanes = [openmc.YPlane(y0=np.finfo(np.float).min,
-                                     boundary_type='reflective'),
-                       openmc.YPlane(y0=np.finfo(np.float).max,
-                                     boundary_type='reflective')]
+            yplanes = [openmc.YPlane(y0=1000., boundary_type='reflective'),
+                       openmc.YPlane(y0=1000., boundary_type='reflective')]
         else:
             yplanes = [openmc.YPlane(y0=self.lower_left[1],
                                      boundary_type=bc[2]),
@@ -304,10 +302,8 @@ class Mesh(object):
             # inconsistency between what numpy uses as the max float and what
             # Fortran expects for a real(8), so this avoids code complication
             # and achieves the same goal.
-            zplanes = [openmc.ZPlane(z0=-1000.,
-                                     boundary_type='reflective'),
-                       openmc.ZPlane(z0=1000.,
-                                     boundary_type='reflective')]
+            zplanes = [openmc.ZPlane(z0=-1000., boundary_type='reflective'),
+                       openmc.ZPlane(z0=1000., boundary_type='reflective')]
         else:
             zplanes = [openmc.ZPlane(z0=self.lower_left[2],
                                      boundary_type=bc[4]),

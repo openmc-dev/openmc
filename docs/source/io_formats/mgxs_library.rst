@@ -32,9 +32,6 @@ MGXS Library Specification
              - **group structure** (*double[]*) -- Monotonically increasing
                list of group boundaries, in units of MeV.  The length of this
                array should be the number of groups plus 1.
-             - **inverse velocities** (*double[]*) -- Average inverse velocitiy
-               for each of the groups in the library. This is an optional
-               attribute.
 
 **/<library name>/**
 
@@ -60,12 +57,12 @@ data for the nuclide or material that it represents.
                that the polar angular domain is subdivided if the
                `representation` attribute is "angle". This parameter is
                ignored otherwise.
-             - **scatter-type** (*char[]*) -- The representation of the
+             - **scatter-format** (*char[]*) -- The representation of the
                scattering angular distribution.  The options are either
                "legendre", "histogram", or "tabular".  If not provided, the
                default of "legendre" will be assumed.
              - **order** (*int*) -- Either the Legendre order, number of bins,
-               or number of points (depending on the value of `scatter-type`)
+               or number of points (depending on the value of `scatter-format`)
                used to describe the angular distribution associated with each
                group-to-group transfer probability.
 
@@ -113,6 +110,8 @@ Temperature-dependent data, provided for temperature <TTT>K.
              spectra as well and thus will have one additional dimension
              for the outgoing energy group.  In this case, `nu-fission` has the
              same dimensionality as `multiplicity matrix`.
+           - **inverse velocities** (*double[]*) -- Average inverse velocity
+             for each of the groups in the library. This dataset is optional.
 
 **/<library name>/<TTT>K/scatter data/**
 
@@ -143,7 +142,7 @@ Data specific to neutron scattering for the temperature <TTT>K
              `scatter matrix[num-polar][num-azimuthal][order(+1)][g_in][g_out]`
              The former is used when `representation` is "isotropic", and the
              latter when `representation` is "angle".  Note that if the value of
-             `scatter-type` is "legendre", the order dimension will be one
+             `scatter-format` is "legendre", the order dimension will be one
              larger than the value of `order`, otherwise it will match `order`.
              Finally, the g_out dimension has a dimensionality of
              `g_out bounds`[0] to `g_out bounds`[1].

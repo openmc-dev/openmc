@@ -1120,6 +1120,13 @@ class Tally(object):
                 filter_found = test_filter
                 break
 
+            # Also check to see if the desired filter is wrapped up in an
+            # aggregate
+            elif isinstance(test_filter, AggregateFilter):
+                if isinstance(test_filter.aggregate_filter, filter_type):
+                    filter_found = test_filter
+                    break
+
         # If we did not find the Filter, throw an Exception
         if filter_found is None:
             msg = 'Unable to find filter type "{0}" in ' \

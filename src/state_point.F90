@@ -136,7 +136,7 @@ contains
 
         ! work_index of current batch. For dd runs, source banks are divided
         ! according to domains, so they are not uniformly distributed on
-        ! processes. Writing work_index is useful for restart calculation 
+        ! processes. Writing work_index is useful for restart calculation
         call write_dataset(dd_group, "work_index", work_index)
 
         ! dd mesh

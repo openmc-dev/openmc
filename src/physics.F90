@@ -1,5 +1,6 @@
 module physics
 
+  use algorithm,              only: binary_search
   use constants
   use cross_section,          only: elastic_xs_0K
   use endf,                   only: reaction_name
@@ -15,7 +16,6 @@ module physics
   use physics_common
   use random_lcg,             only: prn, advance_prn_seed, prn_set_stream
   use reaction_header,        only: Reaction
-  use search,                 only: binary_search
   use secondary_uncorrelated, only: UncorrelatedAngleEnergy
   use string,                 only: to_str
 
@@ -59,7 +59,7 @@ contains
     ! Advance URR seed stream 'N' times after energy changes
     if (p % E /= p % last_E) then
       call prn_set_stream(STREAM_URR_PTABLE)
-      call advance_prn_seed(n_nuc_zaid_total)
+      call advance_prn_seed(size(nuclides, kind=8))
       call prn_set_stream(STREAM_TRACKING)
     endif
 
@@ -200,6 +200,7 @@ contains
 
     integer :: i
     integer :: i_grid
+    integer :: i_temp
     real(8) :: f
     real(8) :: prob
     real(8) :: cutoff
@@ -219,6 +220,7 @@ contains
     end if
 
     ! Get grid index and interpolatoin factor and sample fission cdf
+    i_temp = micro_xs(i_nuclide) % index_temp
     i_grid = micro_xs(i_nuclide) % index_grid
     f      = micro_xs(i_nuclide) % interp_factor
     cutoff = prn() * micro_xs(i_nuclide) % fission
@@ -229,13 +231,13 @@ contains
     FISSION_REACTION_LOOP: do i = 1, nuc % n_fission
       i_reaction = nuc % index_fission(i)
 
-      associate (rxn => nuc % reactions(i_reaction))
+      associate (xs => nuc % reactions(i_reaction) % xs(i_temp))
         ! if energy is below threshold for this reaction, skip it
-        if (i_grid < rxn % threshold) cycle
+        if (i_grid < xs % threshold) cycle
 
         ! add to cumulative probability
-        prob = prob + ((ONE - f)*rxn%sigma(i_grid - rxn%threshold + 1) &
-             + f*(rxn%sigma(i_grid - rxn%threshold + 2)))
+        prob = prob + ((ONE - f) * xs % value(i_grid - xs % threshold + 1) &
+             + f*(xs % value(i_grid - xs % threshold + 2)))
       end associate
 
       ! Create fission bank sites if fission occurs
@@ -294,6 +296,7 @@ contains
     integer,        intent(in)    :: i_nuc_mat
 
     integer :: i
+    integer :: i_temp
     integer :: i_grid
     real(8) :: f
     real(8) :: prob
@@ -301,6 +304,7 @@ contains
     real(8) :: uvw_new(3) ! outgoing uvw for iso-in-lab scattering
     real(8) :: uvw_old(3) ! incoming uvw for iso-in-lab scattering
     real(8) :: phi        ! azimuthal angle for iso-in-lab scattering
+    real(8) :: kT         ! temperature in MeV
     type(Nuclide),  pointer :: nuc
 
     ! copy incoming direction
@@ -308,6 +312,7 @@ contains
 
     ! Get pointer to nuclide and grid index/interpolation factor
     nuc    => nuclides(i_nuclide)
+    i_temp =  micro_xs(i_nuclide) % index_temp
     i_grid =  micro_xs(i_nuclide) % index_grid
     f      =  micro_xs(i_nuclide) % interp_factor
 
@@ -328,8 +333,15 @@ contains
              p % E, p % coord(1) % uvw, p % mu)
 
       else
+        ! Determine temperature
+        if (temperature_method == TEMPERATURE_MULTIPOLE) then
+          kT = p % sqrtkT**2
+        else
+          kT = nuc % kTs(micro_xs(i_nuclide) % index_temp)
+        end if
+
         ! Perform collision physics for elastic scattering
-        call elastic_scatter(i_nuclide, nuc % reactions(1), &
+        call elastic_scatter(i_nuclide, nuc % reactions(1), kT, &
              p % E, p % coord(1) % uvw, p % mu, p % wgt)
       end if
 
@@ -352,22 +364,24 @@ contains
                &// trim(nuc % name))
         end if
 
-        associate (rxn => nuc % reactions(i))
+        associate (rx => nuc % reactions(i))
           ! Skip fission reactions
-          if (rxn % MT == N_FISSION .or. rxn % MT == N_F .or. rxn % MT == N_NF &
-               .or. rxn % MT == N_2NF .or. rxn % MT == N_3NF) cycle
+          if (rx % MT == N_FISSION .or. rx % MT == N_F .or. rx % MT == N_NF &
+               .or. rx % MT == N_2NF .or. rx % MT == N_3NF) cycle
 
           ! some materials have gas production cross sections with MT > 200 that
           ! are duplicates. Also MT=4 is total level inelastic scattering which
           ! should be skipped
-          if (rxn % MT >= 200 .or. rxn % MT == N_LEVEL) cycle
+          if (rx % MT >= 200 .or. rx % MT == N_LEVEL) cycle
 
-          ! if energy is below threshold for this reaction, skip it
-          if (i_grid < rxn % threshold) cycle
+          associate (xs => rx % xs(i_temp))
+            ! if energy is below threshold for this reaction, skip it
+            if (i_grid < xs % threshold) cycle
 
-          ! add to cumulative probability
-          prob = prob + ((ONE - f)*rxn%sigma(i_grid - rxn%threshold + 1) &
-               + f*(rxn%sigma(i_grid - rxn%threshold + 2)))
+            ! add to cumulative probability
+            prob = prob + ((ONE - f)*xs % value(i_grid - xs % threshold + 1) &
+                 + f*(xs % value(i_grid - xs % threshold + 2)))
+          end associate
         end associate
       end do
 
@@ -401,9 +415,10 @@ contains
 ! target.
 !===============================================================================
 
-  subroutine elastic_scatter(i_nuclide, rxn, E, uvw, mu_lab, wgt)
+  subroutine elastic_scatter(i_nuclide, rxn, kT, E, uvw, mu_lab, wgt)
     integer, intent(in)     :: i_nuclide
     type(Reaction), intent(in) :: rxn
+    real(8), intent(in)     :: kT      ! temperature in MeV
     real(8), intent(inout)  :: E
     real(8), intent(inout)  :: uvw(3)
     real(8), intent(out)    :: mu_lab
@@ -430,7 +445,7 @@ contains
     ! Sample velocity of target nucleus
     if (.not. micro_xs(i_nuclide) % use_ptable) then
       call sample_target_velocity(nuc, v_t, E, uvw, v_n, wgt, &
-           & micro_xs(i_nuclide) % elastic)
+           micro_xs(i_nuclide) % elastic, kT)
     else
       v_t = ZERO
     end if
@@ -494,6 +509,7 @@ contains
     integer :: i            ! incoming energy bin
     integer :: j            ! outgoing energy bin
     integer :: k            ! outgoing cosine bin
+    integer :: i_temp       ! temperature index
     integer :: n_energy_out ! number of outgoing energy bins
     real(8) :: f            ! interpolation factor
     real(8) :: r            ! used for skewed sampling & continuous
@@ -502,7 +518,6 @@ contains
     real(8) :: mu_ijk       ! outgoing cosine k for E_in(i) and E_out(j)
     real(8) :: mu_i1jk      ! outgoing cosine k for E_in(i+1) and E_out(j)
     real(8) :: prob         ! probability for sampling Bragg edge
-    type(SAlphaBeta), pointer :: sab
     ! Following are needed only for SAB_SECONDARY_CONT scattering
     integer :: l              ! sampled incoming E bin (is i or i + 1)
     real(8) :: E_i_1, E_i_J   ! endpoints on outgoing grid i
@@ -514,213 +529,216 @@ contains
     real(8) :: frac           ! interpolation factor on outgoing energy
     real(8) :: r1             ! RNG for outgoing energy
 
+    i_temp = micro_xs(i_nuclide) % index_temp_sab
+
     ! Get pointer to S(a,b) table
-    sab => sab_tables(i_sab)
+    associate (sab => sab_tables(i_sab) % data(i_temp))
 
-    ! Determine whether inelastic or elastic scattering will occur
-    if (prn() < micro_xs(i_nuclide) % elastic_sab / &
-         micro_xs(i_nuclide) % elastic) then
-      ! elastic scattering
+      ! Determine whether inelastic or elastic scattering will occur
+      if (prn() < micro_xs(i_nuclide) % elastic_sab / &
+           micro_xs(i_nuclide) % elastic) then
+        ! elastic scattering
 
-      ! Get index and interpolation factor for elastic grid
-      if (E < sab % elastic_e_in(1)) then
-        i = 1
-        f = ZERO
-      else
-        i = binary_search(sab % elastic_e_in, sab % n_elastic_e_in, E)
-        f = (E - sab%elastic_e_in(i)) / &
-             (sab%elastic_e_in(i+1) - sab%elastic_e_in(i))
-      end if
-
-      ! Select treatment based on elastic mode
-      if (sab % elastic_mode == SAB_ELASTIC_DISCRETE) then
-        ! With this treatment, we interpolate between two discrete cosines
-        ! corresponding to neighboring incoming energies. This is used for
-        ! data derived in the incoherent approximation
-
-        ! Sample outgoing cosine bin
-        k = 1 + int(prn() * sab % n_elastic_mu)
-
-        ! Determine outgoing cosine corresponding to E_in(i) and E_in(i+1)
-        mu_ijk  = sab % elastic_mu(k,i)
-        mu_i1jk = sab % elastic_mu(k,i+1)
-
-        ! Cosine of angle between incoming and outgoing neutron
-        mu = (1 - f)*mu_ijk + f*mu_i1jk
-
-      elseif (sab % elastic_mode == SAB_ELASTIC_EXACT) then
-        ! This treatment is used for data derived in the coherent
-        ! approximation, i.e. for crystalline structures that have Bragg
-        ! edges.
-
-        ! Sample a Bragg edge between 1 and i
-        prob = prn() * sab % elastic_P(i+1)
-        if (prob < sab % elastic_P(1)) then
-          k = 1
+        ! Get index and interpolation factor for elastic grid
+        if (E < sab % elastic_e_in(1)) then
+          i = 1
+          f = ZERO
         else
-          k = binary_search(sab % elastic_P(1:i+1), i+1, prob)
+          i = binary_search(sab % elastic_e_in, sab % n_elastic_e_in, E)
+          f = (E - sab%elastic_e_in(i)) / &
+               (sab%elastic_e_in(i+1) - sab%elastic_e_in(i))
         end if
 
-        ! Characteristic scattering cosine for this Bragg edge
-        mu = ONE - TWO*sab % elastic_e_in(k) / E
+        ! Select treatment based on elastic mode
+        if (sab % elastic_mode == SAB_ELASTIC_DISCRETE) then
+          ! With this treatment, we interpolate between two discrete cosines
+          ! corresponding to neighboring incoming energies. This is used for
+          ! data derived in the incoherent approximation
 
-      end if
+          ! Sample outgoing cosine bin
+          k = 1 + int(prn() * sab % n_elastic_mu)
 
-      ! Outgoing energy is same as incoming energy -- no need to do anything
+          ! Determine outgoing cosine corresponding to E_in(i) and E_in(i+1)
+          mu_ijk  = sab % elastic_mu(k,i)
+          mu_i1jk = sab % elastic_mu(k,i+1)
 
-    else
-      ! Perform inelastic calculations
+          ! Cosine of angle between incoming and outgoing neutron
+          mu = (1 - f)*mu_ijk + f*mu_i1jk
 
-      ! Get index and interpolation factor for inelastic grid
-      if (E < sab % inelastic_e_in(1)) then
-        i = 1
-        f = ZERO
-      else
-        i = binary_search(sab % inelastic_e_in, sab % n_inelastic_e_in, E)
-        f = (E - sab%inelastic_e_in(i)) / &
-             (sab%inelastic_e_in(i+1) - sab%inelastic_e_in(i))
-      end if
+        elseif (sab % elastic_mode == SAB_ELASTIC_EXACT) then
+          ! This treatment is used for data derived in the coherent
+          ! approximation, i.e. for crystalline structures that have Bragg
+          ! edges.
 
-      ! Now that we have an incoming energy bin, we need to determine the
-      ! outgoing energy bin. This will depend on the "secondary energy
-      ! mode". If the mode is 0, then the outgoing energy bin is chosen from a
-      ! set of equally-likely bins. If the mode is 1, then the first
-      ! two and last two bins are skewed to have lower probabilities than the
-      ! other bins (0.1 for the first and last bins and 0.4 for the second and
-      ! second to last bins, relative to a normal bin probability of 1).
-      ! Finally, if the mode is 2, then a continuous distribution (with
-      ! accompanying PDF and CDF is utilized)
-
-      if ((sab % secondary_mode == SAB_SECONDARY_EQUAL) .or. &
-           (sab % secondary_mode == SAB_SECONDARY_SKEWED)) then
-        if (sab % secondary_mode == SAB_SECONDARY_EQUAL) then
-          ! All bins equally likely
-
-          j = 1 + int(prn() * sab % n_inelastic_e_out)
-        elseif (sab % secondary_mode == SAB_SECONDARY_SKEWED) then
-          ! Distribution skewed away from edge points
-
-          ! Determine number of outgoing energy and angle bins
-          n_energy_out = sab % n_inelastic_e_out
-
-          r = prn() * (n_energy_out - 3)
-          if (r > ONE) then
-            ! equally likely N-4 middle bins
-            j = int(r) + 2
-          elseif (r > 0.6_8) then
-            ! second to last bin has relative probability of 0.4
-            j = n_energy_out - 1
-          elseif (r > HALF) then
-            ! last bin has relative probability of 0.1
-            j = n_energy_out
-          elseif (r > 0.1_8) then
-            ! second bin has relative probability of 0.4
-            j = 2
+          ! Sample a Bragg edge between 1 and i
+          prob = prn() * sab % elastic_P(i+1)
+          if (prob < sab % elastic_P(1)) then
+            k = 1
           else
-            ! first bin has relative probability of 0.1
-            j = 1
+            k = binary_search(sab % elastic_P(1:i+1), i+1, prob)
           end if
+
+          ! Characteristic scattering cosine for this Bragg edge
+          mu = ONE - TWO*sab % elastic_e_in(k) / E
+
         end if
 
-        ! Determine outgoing energy corresponding to E_in(i) and E_in(i+1)
-        E_ij  = sab % inelastic_e_out(j,i)
-        E_i1j = sab % inelastic_e_out(j,i+1)
-
-        ! Outgoing energy
-        E = (1 - f)*E_ij + f*E_i1j
-
-        ! Sample outgoing cosine bin
-        k = 1 + int(prn() * sab % n_inelastic_mu)
-
-        ! Determine outgoing cosine corresponding to E_in(i) and E_in(i+1)
-        mu_ijk  = sab % inelastic_mu(k,j,i)
-        mu_i1jk = sab % inelastic_mu(k,j,i+1)
-
-        ! Cosine of angle between incoming and outgoing neutron
-        mu = (1 - f)*mu_ijk + f*mu_i1jk
-
-      else if (sab % secondary_mode == SAB_SECONDARY_CONT) then
-        ! Continuous secondary energy - this is to be similar to
-        ! Law 61 interpolation on outgoing energy
-
-        ! Sample between ith and (i+1)th bin
-        r = prn()
-        if (f > r) then
-          l = i + 1
-        else
-          l = i
-        end if
-
-        ! Determine endpoints on grid i
-        n_energy_out = sab % inelastic_data(i) % n_e_out
-        E_i_1 = sab % inelastic_data(i) % e_out(1)
-        E_i_J = sab % inelastic_data(i) % e_out(n_energy_out)
-
-        ! Determine endpoints on grid i + 1
-        n_energy_out = sab % inelastic_data(i + 1) % n_e_out
-        E_i1_1 = sab % inelastic_data(i + 1) % e_out(1)
-        E_i1_J = sab % inelastic_data(i + 1) % e_out(n_energy_out)
-
-        E_1 = E_i_1 + f * (E_i1_1 - E_i_1)
-        E_J = E_i_J + f * (E_i1_J - E_i_J)
-
-        ! Determine outgoing energy bin
-        ! (First reset n_energy_out to the right value)
-        n_energy_out = sab % inelastic_data(l) % n_e_out
-        r1 = prn()
-        c_j = sab % inelastic_data(l) % e_out_cdf(1)
-        do j = 1, n_energy_out - 1
-          c_j1 = sab % inelastic_data(l) % e_out_cdf(j + 1)
-          if (r1 < c_j1) exit
-          c_j = c_j1
-        end do
-
-        ! check to make sure k is <= n_energy_out - 1
-        j = min(j, n_energy_out - 1)
-
-        ! Get the data to interpolate between
-        E_l_j = sab % inelastic_data(l) % e_out(j)
-        p_l_j = sab % inelastic_data(l) % e_out_pdf(j)
-
-        ! Next part assumes linear-linear interpolation in standard
-        E_l_j1 = sab % inelastic_data(l) % e_out(j + 1)
-        p_l_j1 = sab % inelastic_data(l) % e_out_pdf(j + 1)
-
-        ! Find secondary energy (variable E)
-        frac = (p_l_j1 - p_l_j) / (E_l_j1 - E_l_j)
-        if (frac == ZERO) then
-          E = E_l_j + (r1 - c_j) / p_l_j
-        else
-          E = E_l_j + (sqrt(max(ZERO, p_l_j * p_l_j + &
-                       TWO * frac * (r1 - c_j))) - p_l_j) / frac
-        end if
-
-        ! Now interpolate between incident energy bins i and i + 1
-        if (l == i) then
-          E = E_1 + (E - E_i_1) * (E_J - E_1) / (E_i_J - E_i_1)
-        else
-          E = E_1 + (E - E_i1_1) * (E_J - E_1) / (E_i1_J - E_i1_1)
-        end if
-
-        ! Find angular distribution for closest outgoing energy bin
-        if (r1 - c_j < c_j1 - r1) then
-          j = j
-        else
-          j = j + 1
-        end if
-
-        ! Sample outgoing cosine bin
-        k = 1 + int(prn() * sab % n_inelastic_mu)
-
-        ! Will use mu from the randomly chosen incoming and closest outgoing
-        ! energy bins
-        mu = sab % inelastic_data(l) % mu(k, j)
+        ! Outgoing energy is same as incoming energy -- no need to do anything
 
       else
-        call fatal_error("Invalid secondary energy mode on S(a,b) table " &
-             &// trim(sab % name))
-      end if  ! (inelastic secondary energy treatment)
-    end if  ! (elastic or inelastic)
+        ! Perform inelastic calculations
+
+        ! Get index and interpolation factor for inelastic grid
+        if (E < sab % inelastic_e_in(1)) then
+          i = 1
+          f = ZERO
+        else
+          i = binary_search(sab % inelastic_e_in, sab % n_inelastic_e_in, E)
+          f = (E - sab%inelastic_e_in(i)) / &
+               (sab%inelastic_e_in(i+1) - sab%inelastic_e_in(i))
+        end if
+
+        ! Now that we have an incoming energy bin, we need to determine the
+        ! outgoing energy bin. This will depend on the "secondary energy
+        ! mode". If the mode is 0, then the outgoing energy bin is chosen from a
+        ! set of equally-likely bins. If the mode is 1, then the first
+        ! two and last two bins are skewed to have lower probabilities than the
+        ! other bins (0.1 for the first and last bins and 0.4 for the second and
+        ! second to last bins, relative to a normal bin probability of 1).
+        ! Finally, if the mode is 2, then a continuous distribution (with
+        ! accompanying PDF and CDF is utilized)
+
+        if ((sab_tables(i_sab) % secondary_mode == SAB_SECONDARY_EQUAL) .or. &
+             (sab_tables(i_sab) % secondary_mode == SAB_SECONDARY_SKEWED)) then
+          if (sab_tables(i_sab) % secondary_mode == SAB_SECONDARY_EQUAL) then
+            ! All bins equally likely
+
+            j = 1 + int(prn() * sab % n_inelastic_e_out)
+          elseif (sab_tables(i_sab) % secondary_mode == SAB_SECONDARY_SKEWED) then
+            ! Distribution skewed away from edge points
+
+            ! Determine number of outgoing energy and angle bins
+            n_energy_out = sab % n_inelastic_e_out
+
+            r = prn() * (n_energy_out - 3)
+            if (r > ONE) then
+              ! equally likely N-4 middle bins
+              j = int(r) + 2
+            elseif (r > 0.6_8) then
+              ! second to last bin has relative probability of 0.4
+              j = n_energy_out - 1
+            elseif (r > HALF) then
+              ! last bin has relative probability of 0.1
+              j = n_energy_out
+            elseif (r > 0.1_8) then
+              ! second bin has relative probability of 0.4
+              j = 2
+            else
+              ! first bin has relative probability of 0.1
+              j = 1
+            end if
+          end if
+
+          ! Determine outgoing energy corresponding to E_in(i) and E_in(i+1)
+          E_ij  = sab % inelastic_e_out(j,i)
+          E_i1j = sab % inelastic_e_out(j,i+1)
+
+          ! Outgoing energy
+          E = (1 - f)*E_ij + f*E_i1j
+
+          ! Sample outgoing cosine bin
+          k = 1 + int(prn() * sab % n_inelastic_mu)
+
+          ! Determine outgoing cosine corresponding to E_in(i) and E_in(i+1)
+          mu_ijk  = sab % inelastic_mu(k,j,i)
+          mu_i1jk = sab % inelastic_mu(k,j,i+1)
+
+          ! Cosine of angle between incoming and outgoing neutron
+          mu = (1 - f)*mu_ijk + f*mu_i1jk
+
+        else if (sab_tables(i_sab) % secondary_mode == SAB_SECONDARY_CONT) then
+          ! Continuous secondary energy - this is to be similar to
+          ! Law 61 interpolation on outgoing energy
+
+          ! Sample between ith and (i+1)th bin
+          r = prn()
+          if (f > r) then
+            l = i + 1
+          else
+            l = i
+          end if
+
+          ! Determine endpoints on grid i
+          n_energy_out = sab % inelastic_data(i) % n_e_out
+          E_i_1 = sab % inelastic_data(i) % e_out(1)
+          E_i_J = sab % inelastic_data(i) % e_out(n_energy_out)
+
+          ! Determine endpoints on grid i + 1
+          n_energy_out = sab % inelastic_data(i + 1) % n_e_out
+          E_i1_1 = sab % inelastic_data(i + 1) % e_out(1)
+          E_i1_J = sab % inelastic_data(i + 1) % e_out(n_energy_out)
+
+          E_1 = E_i_1 + f * (E_i1_1 - E_i_1)
+          E_J = E_i_J + f * (E_i1_J - E_i_J)
+
+          ! Determine outgoing energy bin
+          ! (First reset n_energy_out to the right value)
+          n_energy_out = sab % inelastic_data(l) % n_e_out
+          r1 = prn()
+          c_j = sab % inelastic_data(l) % e_out_cdf(1)
+          do j = 1, n_energy_out - 1
+            c_j1 = sab % inelastic_data(l) % e_out_cdf(j + 1)
+            if (r1 < c_j1) exit
+            c_j = c_j1
+          end do
+
+          ! check to make sure k is <= n_energy_out - 1
+          j = min(j, n_energy_out - 1)
+
+          ! Get the data to interpolate between
+          E_l_j = sab % inelastic_data(l) % e_out(j)
+          p_l_j = sab % inelastic_data(l) % e_out_pdf(j)
+
+          ! Next part assumes linear-linear interpolation in standard
+          E_l_j1 = sab % inelastic_data(l) % e_out(j + 1)
+          p_l_j1 = sab % inelastic_data(l) % e_out_pdf(j + 1)
+
+          ! Find secondary energy (variable E)
+          frac = (p_l_j1 - p_l_j) / (E_l_j1 - E_l_j)
+          if (frac == ZERO) then
+            E = E_l_j + (r1 - c_j) / p_l_j
+          else
+            E = E_l_j + (sqrt(max(ZERO, p_l_j * p_l_j + &
+                 TWO * frac * (r1 - c_j))) - p_l_j) / frac
+          end if
+
+          ! Now interpolate between incident energy bins i and i + 1
+          if (l == i) then
+            E = E_1 + (E - E_i_1) * (E_J - E_1) / (E_i_J - E_i_1)
+          else
+            E = E_1 + (E - E_i1_1) * (E_J - E_1) / (E_i1_J - E_i1_1)
+          end if
+
+          ! Find angular distribution for closest outgoing energy bin
+          if (r1 - c_j < c_j1 - r1) then
+            j = j
+          else
+            j = j + 1
+          end if
+
+          ! Sample outgoing cosine bin
+          k = 1 + int(prn() * sab % n_inelastic_mu)
+
+          ! Will use mu from the randomly chosen incoming and closest outgoing
+          ! energy bins
+          mu = sab % inelastic_data(l) % mu(k, j)
+
+        else
+          call fatal_error("Invalid secondary energy mode on S(a,b) table " &
+               // trim(sab_tables(i_sab) % name))
+        end if  ! (inelastic secondary energy treatment)
+      end if  ! (elastic or inelastic)
+    end associate
 
     ! Because of floating-point roundoff, it may be possible for mu to be
     ! outside of the range [-1,1). In these cases, we just set mu to exactly
@@ -741,19 +759,19 @@ contains
 ! implemented here.
 !===============================================================================
 
-  subroutine sample_target_velocity(nuc, v_target, E, uvw, v_neut, wgt, xs_eff)
+  subroutine sample_target_velocity(nuc, v_target, E, uvw, v_neut, wgt, xs_eff, kT)
     type(Nuclide), intent(in) :: nuc ! target nuclide at temperature T
     real(8), intent(out)   :: v_target(3) ! target velocity
-    real(8), intent(in)    :: v_neut(3)   ! neutron velocity
     real(8), intent(in)    :: E           ! particle energy
     real(8), intent(in)    :: uvw(3)      ! direction cosines
+    real(8), intent(in)    :: v_neut(3)   ! neutron velocity
     real(8), intent(inout) :: wgt         ! particle weight
+    real(8), intent(in)    :: xs_eff      ! effective elastic xs at temperature T
+    real(8), intent(in)    :: kT          ! equilibrium temperature of target in MeV
 
     real(8) :: awr     ! target/neutron mass ratio
-    real(8) :: kT      ! equilibrium temperature of target in MeV
     real(8) :: E_rel   ! trial relative energy
     real(8) :: xs_0K   ! 0K xs at E_rel
-    real(8) :: xs_eff  ! effective elastic xs at temperature T
     real(8) :: wcf     ! weight correction factor
     real(8) :: E_red   ! reduced energy (same as used by Cullen in SIGMA1)
     real(8) :: E_low   ! lowest practical relative energy
@@ -782,7 +800,6 @@ contains
 
     character(80) :: sampling_scheme ! method of target velocity sampling
 
-    kT = nuc % kT
     awr = nuc % awr
 
     ! check if nuclide is a resonant scatterer
@@ -817,12 +834,12 @@ contains
     case ('cxs')
 
       ! sample target velocity with the constant cross section (cxs) approx.
-      call sample_cxs_target_velocity(nuc, v_target, E, uvw)
+      call sample_cxs_target_velocity(nuc, v_target, E, uvw, kT)
 
     case ('wcm')
 
       ! sample target velocity with the constant cross section (cxs) approx.
-      call sample_cxs_target_velocity(nuc, v_target, E, uvw)
+      call sample_cxs_target_velocity(nuc, v_target, E, uvw, kT)
 
       ! adjust weight as prescribed by the weight correction method (wcm)
       E_rel = dot_product((v_neut - v_target), (v_neut - v_target))
@@ -874,7 +891,7 @@ contains
       do
 
         ! sample target velocity with the constant cross section (cxs) approx.
-        call sample_cxs_target_velocity(nuc, v_target, E, uvw)
+        call sample_cxs_target_velocity(nuc, v_target, E, uvw, kT)
 
         ! perform Doppler broadening rejection correction (dbrc)
         E_rel = dot_product((v_neut - v_target), (v_neut - v_target))
@@ -986,13 +1003,13 @@ contains
 ! can be found in FRA-TM-123.
 !===============================================================================
 
-  subroutine sample_cxs_target_velocity(nuc, v_target, E, uvw)
+  subroutine sample_cxs_target_velocity(nuc, v_target, E, uvw, kT)
     type(Nuclide), intent(in) :: nuc ! target nuclide at temperature
     real(8), intent(out)         :: v_target(3)
     real(8), intent(in)          :: E
     real(8), intent(in)          :: uvw(3)
+    real(8), intent(in)          :: kT      ! equilibrium temperature of target in MeV
 
-    real(8) :: kT          ! equilibrium temperature of target in MeV
     real(8) :: awr         ! target/neutron mass ratio
     real(8) :: alpha       ! probability of sampling f2 over f1
     real(8) :: mu          ! cosine of angle between neutron and target vel
@@ -1004,7 +1021,6 @@ contains
     real(8) :: beta_vt_sq  ! (beta * speed of target)^2
     real(8) :: vt          ! speed of target
 
-    kT = nuc % kT
     awr = nuc % awr
 
     beta_vn = sqrt(awr * E / kT)

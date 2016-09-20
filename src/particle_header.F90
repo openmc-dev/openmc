@@ -89,6 +89,7 @@ module particle_header
 
     ! Temperature of the current cell
     real(8)    :: sqrtkT        ! sqrt(k_Boltzmann * temperature) in MeV
+    real(8)    :: last_sqrtKT   ! last temperature
 
     ! Statistical data
     integer    :: n_collision   ! # of collisions
@@ -171,6 +172,7 @@ contains
     this % cell_born         = NONE
     this % material          = NONE
     this % last_material     = NONE
+    this % last_sqrtkT       = NONE
     this % wgt               = ONE
     this % last_wgt          = ONE
     this % absorb_wgt        = ZERO

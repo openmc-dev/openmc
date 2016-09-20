@@ -41,11 +41,16 @@ class Material(object):
     name : str, optional
         Name of the material. If not specified, the name will be the empty
         string.
+    temperature : float, optional
+        Temperature of the material in Kelvin. If not specified, the material
+        inherits the default temperature applied to the model.
 
     Attributes
     ----------
     id : int
         Unique identifier for the material
+    temperature : float
+        Temperature of the material in Kelvin.
     density : float
         Density of the material (units defined separately)
     density_units : str
@@ -63,10 +68,11 @@ class Material(object):
 
     """
 
-    def __init__(self, material_id=None, name=''):
+    def __init__(self, material_id=None, name='', temperature=None):
         # Initialize class attributes
         self.id = material_id
         self.name = name
+        self.temperature = temperature
         self._density = None
         self._density_units = ''
 
@@ -80,7 +86,7 @@ class Material(object):
         # A list of tuples (element, percent, percent type)
         self._elements = []
 
-        # If specified, a list of tuples of (table name, xs identifier)
+        # If specified, a list of table names
         self._sab = []
 
         # If true, the material will be initialized as distributed
@@ -120,6 +126,8 @@ class Material(object):
         string = 'Material\n'
         string += '{0: <16}{1}{2}\n'.format('\tID', '=\t', self._id)
         string += '{0: <16}{1}{2}\n'.format('\tName', '=\t', self._name)
+        string += '{0: <16}{1}{2}\n'.format('\Temperature', '=\t',
+                                            self._temperature)
 
         string += '{0: <16}{1}{2}'.format('\tDensity', '=\t', self._density)
         string += ' [{0}]\n'.format(self._density_units)
@@ -127,13 +135,12 @@ class Material(object):
         string += '{0: <16}\n'.format('\tS(a,b) Tables')
 
         for sab in self._sab:
-            string += '{0: <16}{1}[{2}{3}]\n'.format('\tS(a,b)', '=\t',
-                                                     sab[0], sab[1])
+            string += '{0: <16}{1}{2}\n'.format('\tS(a,b)', '=\t', sab)
 
         string += '{0: <16}\n'.format('\tNuclides')
 
         for nuclide, percent, percent_type in self._nuclides:
-            string += '{0: <16}'.format('\t{0.name}.{0.xs}'.format(nuclide))
+            string += '{0: <16}'.format('\t{0.name}'.format(nuclide))
             string += '=\t{0: <12} [{1}]\n'.format(percent, percent_type)
 
         if self._macroscopic is not None:
@@ -143,7 +150,7 @@ class Material(object):
         string += '{0: <16}\n'.format('\tElements')
 
         for element, percent, percent_type in self._elements:
-            string += '{0: <16}'.format('\t{0.name}.{0.xs}'.format(element))
+            string += '{0: <16}'.format('\t{0.name}'.format(element))
             string += '=\t{0: <12} [{1}]\n'.format(percent, percent_type)
 
         return string
@@ -155,6 +162,10 @@ class Material(object):
     @property
     def name(self):
         return self._name
+
+    @property
+    def temperature(self):
+        return self._temperature
 
     @property
     def density(self):
@@ -200,6 +211,12 @@ class Material(object):
             self._name = name
         else:
             self._name = ''
+
+    @temperature.setter
+    def temperature(self, temperature):
+        cv.check_type('Temperature for Material ID="{0}"'.format(self._id),
+                      temperature, (Real, type(None)))
+        self._temperature = temperature
 
     def set_density(self, units, density=None):
         """Set the density of the material
@@ -458,15 +475,13 @@ class Material(object):
             if element == elm:
                 self._nuclides.remove(elm)
 
-    def add_s_alpha_beta(self, name, xs):
+    def add_s_alpha_beta(self, name):
         r"""Add an :math:`S(\alpha,\beta)` table to the material
 
         Parameters
         ----------
         name : str
             Name of the :math:`S(\alpha,\beta)` table
-        xs : str
-            Cross section identifier, e.g. '71t'
 
         """
 
@@ -480,18 +495,14 @@ class Material(object):
                         'non-string table name "{1}"'.format(self._id, name)
             raise ValueError(msg)
 
-        if not isinstance(xs, basestring):
-            msg = 'Unable to add an S(a,b) table to Material ID="{0}" with a ' \
-                  'non-string cross-section identifier "{1}"'.format(self._id, xs)
-            raise ValueError(msg)
-
         new_name = openmc.data.get_thermal_name(name)
         if new_name != name:
             msg = 'OpenMC S(a,b) tables follow the GND naming convention. ' \
                   'Table "{}" is being renamed as "{}".'.format(name, new_name)
             warnings.warn(msg)
 
-        self._sab.append((new_name, xs))
+        self._sab.append(new_name)
+
 
     def make_isotropic_in_lab(self):
         for nuclide, percent, percent_type in self._nuclides:
@@ -554,9 +565,6 @@ class Material(object):
             else:
                 xml_element.set("wo", str(nuclide[1]))
 
-        if nuclide[0].xs is not None:
-            xml_element.set("xs", nuclide[0].xs)
-
         if not nuclide[0].scattering is None:
             xml_element.set("scattering", nuclide[0].scattering)
 
@@ -565,9 +573,6 @@ class Material(object):
     def _get_macroscopic_xml(self, macroscopic):
         xml_element = ET.Element("macroscopic")
         xml_element.set("name", macroscopic.name)
-
-        if macroscopic.xs is not None:
-            xml_element.set("xs", macroscopic.xs)
 
         return xml_element
 
@@ -580,9 +585,6 @@ class Material(object):
                 xml_element.set("ao", str(element[1]))
             else:
                 xml_element.set("wo", str(element[1]))
-
-        if element[0].xs is not None:
-            xml_element.set("xs", element[0].xs)
 
         if not element[0].scattering is None:
             xml_element.set("scattering", element[0].scattering)
@@ -621,6 +623,11 @@ class Material(object):
 
         if len(self._name) > 0:
             element.set("name", str(self._name))
+
+        # Create temperature XML subelement
+        if self.temperature is not None:
+            subelement = ET.SubElement(element, "temperature")
+            subelement.text = str(self.temperature)
 
         # Create density XML subelement
         subelement = ET.SubElement(element, "density")
@@ -686,8 +693,7 @@ class Material(object):
         if len(self._sab) > 0:
             for sab in self._sab:
                 subelement = ET.SubElement(element, "sab")
-                subelement.set("name", sab[0])
-                subelement.set("xs", sab[1])
+                subelement.set("name", sab)
 
         return element
 
@@ -712,29 +718,13 @@ class Materials(cv.CheckedList):
     materials : Iterable of openmc.Material
         Materials to add to the collection
 
-    Attributes
-    ----------
-    default_xs : str
-        The default cross section identifier applied to a nuclide when none is
-        specified
-
     """
 
     def __init__(self, materials=None):
         super(Materials, self).__init__(Material, 'materials collection')
-        self._default_xs = None
         self._materials_file = ET.Element("materials")
         if materials is not None:
             self += materials
-
-    @property
-    def default_xs(self):
-        return self._default_xs
-
-    @default_xs.setter
-    def default_xs(self, xs):
-        cv.check_type('default xs', xs, basestring)
-        self._default_xs = xs
 
     def add_material(self, material):
         """Append material to collection
@@ -817,15 +807,11 @@ class Materials(cv.CheckedList):
             material.make_isotropic_in_lab()
 
     def _create_material_subelements(self):
-        if self._default_xs is not None:
-            subelement = ET.SubElement(self._materials_file, "default_xs")
-            subelement.text = self._default_xs
-
         for material in self:
             xml_element = material.get_material_xml()
             self._materials_file.append(xml_element)
 
-    def export_to_xml(self):
+    def export_to_xml(self, path='materials.xml'):
         """Create a materials.xml file that can be used for a simulation.
 
         """
@@ -841,5 +827,4 @@ class Materials(cv.CheckedList):
 
         # Write the XML Tree to the materials.xml file
         tree = ET.ElementTree(self._materials_file)
-        tree.write("materials.xml", xml_declaration=True,
-                   encoding='utf-8', method="xml")
+        tree.write(path, xml_declaration=True, encoding='utf-8', method="xml")

@@ -4,6 +4,7 @@ module eigenvalue
   use message_passing
 #endif
 
+  use algorithm,   only: binary_search
   use constants,   only: ZERO
   use error,       only: fatal_error, warning
   use global
@@ -11,7 +12,6 @@ module eigenvalue
   use mesh,        only: count_bank_sites
   use mesh_header, only: RegularMesh
   use random_lcg,  only: prn, set_particle_seed, advance_prn_seed
-  use search,      only: binary_search
   use string,      only: to_str
 
   implicit none

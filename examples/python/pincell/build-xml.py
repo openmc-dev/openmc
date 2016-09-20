@@ -98,11 +98,10 @@ borated_water.add_nuclide(h1, 4.9457e-2)
 borated_water.add_nuclide(h2, 7.4196e-6)
 borated_water.add_nuclide(o16, 2.4672e-2)
 borated_water.add_nuclide(o17, 6.0099e-5)
-borated_water.add_s_alpha_beta('c_H_in_H2O', '71t')
+borated_water.add_s_alpha_beta('c_H_in_H2O')
 
 # Instantiate a Materials collection and export to XML
 materials_file = openmc.Materials([uo2, helium, zircaloy, borated_water])
-materials_file.default_xs = '71c'
 materials_file.export_to_xml()
 
 

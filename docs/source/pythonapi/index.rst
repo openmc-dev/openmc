@@ -299,6 +299,7 @@ Multi-delayed-group Cross Sections
     openmc.mgxs.ChiDelayed
     openmc.mgxs.DelayedNuFissionXS
     openmc.mgxs.Beta
+    openmc.mgxs.DecayRate
 
 Multi-group Cross Section Libraries
 -----------------------------------

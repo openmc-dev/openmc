@@ -566,6 +566,21 @@
       </element>
     </optional>
     <optional>
+      <element name="temperature_default">
+        <data type="double"/>
+      </element>
+    </optional>
+    <optional>
+      <element name="temperature_method">
+        <data type="string"/>
+      </element>
+    </optional>
+    <optional>
+      <element name="temperature_tolerance">
+        <data type="double"/>
+      </element>
+    </optional>
+    <optional>
       <element name="threads">
         <data type="positiveInteger"/>
       </element>
@@ -775,30 +790,6 @@
                 <attribute name="method">
                   <data type="string">
                     <param name="maxLength">16</param>
-                  </data>
-                </attribute>
-              </choice>
-              <choice>
-                <element name="xs_label">
-                  <data type="string">
-                    <param name="maxLength">12</param>
-                  </data>
-                </element>
-                <attribute name="xs_label">
-                  <data type="string">
-                    <param name="maxLength">12</param>
-                  </data>
-                </attribute>
-              </choice>
-              <choice>
-                <element name="xs_label_0K">
-                  <data type="string">
-                    <param name="maxLength">12</param>
-                  </data>
-                </element>
-                <attribute name="xs_label_0K">
-                  <data type="string">
-                    <param name="maxLength">12</param>
                   </data>
                 </attribute>
               </choice>

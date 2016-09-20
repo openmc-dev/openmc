@@ -6,7 +6,7 @@ module dd_init
   use global,     only: master, n_procs, n_particles, rank, mpi_err
   use mesh,       only: bin_to_mesh_indices, mesh_indices_to_bin
   use output,     only: write_message
-  use search,     only: binary_search
+  use algorithm,  only: binary_search
   use string,     only: to_str
 
 #ifdef MPI
@@ -179,7 +179,7 @@ contains
           dd % domain_load_dist(d) = dd % domain_load_dist(d) + 1
         end if
       end do
-      
+
     end if
 
     allocate(dd % domain_n_procs(dd % n_domains))

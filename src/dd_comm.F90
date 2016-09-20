@@ -16,7 +16,7 @@ module dd_comm
   use particle_header,  only: buffer_to_particle, particle_to_buffer
   use random_lcg,       only: prn, prn_seed
   use extend_arr,       only: extend_array
-  use search,           only: binary_search
+  use algorithm,        only: binary_search
   use string,           only: to_str
   use stl_vector,       only: VectorInt
 

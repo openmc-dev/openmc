@@ -106,7 +106,7 @@ contains
               p = domain_decomp % particle_buffer(i_work)
 
             end if
-              
+
             ! Initialize particle
             call initialize_history(p, current_work)
 

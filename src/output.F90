@@ -331,57 +331,6 @@ contains
   end subroutine print_particle
 
 !===============================================================================
-! WRITE_XS_SUMMARY writes information about each nuclide and S(a,b) table to a
-! file called cross_sections.out. This file shows the list of reactions as well
-! as information about their secondary angle/energy distributions, how much
-! memory is consumed, thresholds, etc.
-!===============================================================================
-
-  subroutine write_xs_summary()
-
-    integer :: i       ! loop index
-    integer :: unit_xs ! cross_sections.out file unit
-    character(MAX_FILE_LEN)  :: path ! path of summary file
-
-    ! Create filename for log file
-    path = trim(path_output) // "cross_sections.out"
-
-    ! Open log file for writing
-    open(NEWUNIT=unit_xs, FILE=path, STATUS='replace', ACTION='write')
-
-    if (run_CE) then
-      ! Write header
-      call header("CROSS SECTION TABLES", unit=unit_xs)
-
-      NUCLIDE_LOOP: do i = 1, n_nuclides_total
-        ! Print information about nuclide
-        call nuclides(i) % print(unit=unit_xs)
-      end do NUCLIDE_LOOP
-
-      SAB_TABLES_LOOP: do i = 1, n_sab_tables
-        ! Print information about S(a,b) table
-        call sab_tables(i) % print(unit=unit_xs)
-      end do SAB_TABLES_LOOP
-    else
-      ! Write header
-      call header("MGXS LIBRARY TABLES", unit=unit_xs)
-      NuclideMG_LOOP: do i = 1, n_nuclides_total
-        ! Print information about nuclide
-        call nuclides_mg(i) % obj % print(unit=unit_xs)
-      end do NuclideMG_LOOP
-      call header("MATERIAL MGXS TABLES", unit=unit_xs)
-      MATERIAL_LOOP: do i = 1, n_materials
-        ! Print information about Materials
-        call macro_xs(i) % obj % print(unit=unit_xs)
-      end do MATERIAL_LOOP
-    end if
-
-    ! Close cross section summary file
-    close(unit_xs)
-
-  end subroutine write_xs_summary
-
-!===============================================================================
 ! PRINT_COLUMNS displays a header listing what physical values will displayed
 ! below them
 !===============================================================================
@@ -748,20 +697,31 @@ contains
   subroutine print_domain_interactions
 
     integer                 :: bin        ! bin in domain mesh
+    integer                 :: n_dim      ! number of mesh dimensions
     integer                 :: ijk(3)     ! indices in mesh
     character(MAX_FILE_LEN) :: ijk_str    ! indices string
 
     ! display header block for geometry debugging section
     if (master) then
       call header("Domain Interaction Counts")
-      write(ou, "(1X,A,T30,A)") 'Domain Mesh I-J-K','No. Interactions'
+      write(ou, "(1X,A,T30,A)") 'Domain Mesh','No. Interactions'
+
+      n_dim = domain_decomp % mesh % n_dimension
 
       do bin= 1, domain_decomp % n_domains
 
         call bin_to_mesh_indices(domain_decomp % mesh, bin, ijk)
-        ijk_str = trim(to_str(ijk(1))) // "-" // &
-                  trim(to_str(ijk(2))) // "-" // &
-                  trim(to_str(ijk(3)))
+        if (n_dim == 1) then
+          ijk_str = trim(to_str(ijk(1)))
+        else if (n_dim == 2) then
+          ijk_str = trim(to_str(ijk(1))) // "-" // &
+                    trim(to_str(ijk(2)))
+        else if (n_dim == 3) then
+          ijk_str = trim(to_str(ijk(1))) // "-" // &
+                    trim(to_str(ijk(2))) // "-" // &
+                    trim(to_str(ijk(3)))
+        end if
+
         write(ou, "(1X,A,T30,I12)") trim(ijk_str), &
              domain_decomp % n_interactions_all(bin)
       end do
@@ -818,6 +778,7 @@ contains
     score_names(abs(SCORE_NU_SCATTER_N))       = "Scattering Prod. Rate Moment"
     score_names(abs(SCORE_NU_SCATTER_PN))      = "Scattering Prod. Rate Moment"
     score_names(abs(SCORE_NU_SCATTER_YN))      = "Scattering Prod. Rate Moment"
+    score_names(abs(SCORE_DECAY_RATE))         = "Decay Rate"
     score_names(abs(SCORE_DELAYED_NU_FISSION)) = "Delayed-Nu-Fission Rate"
     score_names(abs(SCORE_PROMPT_NU_FISSION))  = "Prompt-Nu-Fission Rate"
     score_names(abs(SCORE_INVERSE_VELOCITY))   = "Flux-Weighted Inverse Velocity"
@@ -1040,16 +1001,15 @@ contains
     type(TallyObject), intent(in) :: t
     integer, intent(in) :: unit_tally
 
-    integer :: i                    ! mesh index for x
-    integer :: j                    ! mesh index for y
-    integer :: k                    ! mesh index for z
+    integer :: i                    ! mesh index
+    integer :: ijk(3)               ! indices of mesh cells
+    integer :: n_dim                ! number of mesh dimensions
+    integer :: n_cells              ! number of mesh cells
     integer :: l                    ! index for energy
     integer :: i_filter_mesh        ! index for mesh filter
     integer :: i_filter_ein         ! index for incoming energy filter
     integer :: i_filter_surf        ! index for surface filter
     integer :: n                    ! number of incoming energy bins
-    integer :: len1                 ! length of string
-    integer :: len2                 ! length of string
     integer :: filter_index         ! index in results array for filters
     logical :: print_ebin           ! should incoming energy bin be displayed?
     logical :: can_print            ! can we print this bin?
@@ -1077,243 +1037,244 @@ contains
       n = 1
     end if
 
-    do i = 1, m % dimension(1)
-      string = "Mesh Index (" // trim(to_str(i)) // ", "
-      len1 = len_trim(string)
-      do j = 1, m % dimension(2)
-        string = string(1:len1+1) // trim(to_str(j)) // ", "
-        len2 = len_trim(string)
-        do k = 1, m % dimension(3)
-          ! Write mesh cell index
-          string = string(1:len2+1) // trim(to_str(k)) // ")"
-          write(UNIT=unit_tally, FMT='(1X,A)') trim(string)
+    ! Get the dimensions and number of cells in the mesh
+    n_dim = m % n_dimension
+    n_cells = product(m % dimension)
 
-          do l = 1, n
-            if (print_ebin) then
-              ! Set incoming energy bin
-              matching_bins(i_filter_ein) = l
+    ! Loop over all the mesh cells
+    do i = 1, n_cells
 
-              ! Write incoming energy bin
-              write(UNIT=unit_tally, FMT='(3X,A)') &
-                   trim(t % filters(i_filter_ein) % obj % text_label( &
-                   matching_bins(i_filter_ein)))
+      ! Get the indices for this cell
+      call bin_to_mesh_indices(m, i, ijk)
+      matching_bins(i_filter_mesh) = i
+
+      ! Write the header for this cell
+      if (n_dim == 1) then
+        string = "Mesh Index (" // trim(to_str(ijk(1))) // ")"
+      else if (n_dim == 2) then
+        string = "Mesh Index (" // trim(to_str(ijk(1))) // ", " &
+             // trim(to_str(ijk(2))) // ")"
+      else if (n_dim == 3) then
+        string = "Mesh Index (" // trim(to_str(ijk(1))) // ", " &
+             // trim(to_str(ijk(2))) // ", " // trim(to_str(ijk(3))) // ")"
+      end if
+
+      write(UNIT=unit_tally, FMT='(1X,A)') trim(string)
+
+      do l = 1, n
+        if (print_ebin) then
+          ! Set incoming energy bin
+          matching_bins(i_filter_ein) = l
+
+          ! Write incoming energy bin
+          write(UNIT=unit_tally, FMT='(3X,A)') &
+               trim(t % filters(i_filter_ein) % obj % text_label( &
+               matching_bins(i_filter_ein)))
+        end if
+
+        ! Left Surface
+        matching_bins(i_filter_surf) = OUT_LEFT
+        filter_index = sum((matching_bins(1:size(t % filters)) - 1) &
+             * t % stride) + 1
+        can_print = .true.
+        if (t % on_the_fly_allocation) then
+          if (.not. t % filter_index_map % has_key(filter_index)) then
+            can_print = .false.
+          else
+            filter_index = t % filter_index_map % get_key(filter_index)
+          end if
+        end if
+        if (can_print) &
+             write(UNIT=unit_tally, FMT='(5X,A,T35,A,"+/- ",A)') &
+                  "Outgoing Current on Left", &
+                  to_str(t % results(1,filter_index) % sum), &
+                  trim(to_str(t % results(1,filter_index) % sum_sq))
+
+        matching_bins(i_filter_surf) = IN_LEFT
+        filter_index = sum((matching_bins(1:size(t % filters)) - 1) &
+             * t % stride) + 1
+        if (t % on_the_fly_allocation) then
+          if (.not. t % filter_index_map % has_key(filter_index)) then
+            can_print = .false.
+          else
+            filter_index = t % filter_index_map % get_key(filter_index)
+          end if
+        end if
+        if (can_print) &
+             write(UNIT=unit_tally, FMT='(5X,A,T35,A,"+/- ",A)') &
+                  "Incoming Current on Left", &
+                  to_str(t % results(1,filter_index) % sum), &
+                  trim(to_str(t % results(1,filter_index) % sum_sq))
+
+        ! Right Surface
+        matching_bins(i_filter_surf) = OUT_RIGHT
+        filter_index = sum((matching_bins(1:size(t % filters)) - 1) &
+             * t % stride) + 1
+        if (t % on_the_fly_allocation) then
+          if (.not. t % filter_index_map % has_key(filter_index)) then
+            can_print = .false.
+          else
+            filter_index = t % filter_index_map % get_key(filter_index)
+          end if
+        end if
+        if (can_print) &
+             write(UNIT=unit_tally, FMT='(5X,A,T35,A,"+/- ",A)') &
+                  "Outgoing Current on Right", &
+                  to_str(t % results(1,filter_index) % sum), &
+                  trim(to_str(t % results(1,filter_index) % sum_sq))
+
+        matching_bins(i_filter_surf) = IN_RIGHT
+        filter_index = sum((matching_bins(1:size(t % filters)) - 1) &
+             * t % stride) + 1
+        if (t % on_the_fly_allocation) then
+          if (.not. t % filter_index_map % has_key(filter_index)) then
+            can_print = .false.
+          else
+            filter_index = t % filter_index_map % get_key(filter_index)
+          end if
+        end if
+        if (can_print) &
+             write(UNIT=unit_tally, FMT='(5X,A,T35,A,"+/- ",A)') &
+                  "Incoming Current on Right", &
+                  to_str(t % results(1,filter_index) % sum), &
+                  trim(to_str(t % results(1,filter_index) % sum_sq))
+
+        if (n_dim >= 2) then
+
+          ! Back Surface
+          matching_bins(i_filter_surf) = OUT_BACK
+          filter_index = sum((matching_bins(1:size(t % filters)) - 1) &
+               * t % stride) + 1
+          if (t % on_the_fly_allocation) then
+            if (.not. t % filter_index_map % has_key(filter_index)) then
+              can_print = .false.
+            else
+              filter_index = t % filter_index_map % get_key(filter_index)
             end if
+          end if
+          if (can_print) &
+               write(UNIT=unit_tally, FMT='(5X,A,T35,A,"+/- ",A)') &
+                    "Outgoing Current on Back", &
+                    to_str(t % results(1,filter_index) % sum), &
+                    trim(to_str(t % results(1,filter_index) % sum_sq))
 
-            ! Get the bin for this mesh cell
-            matching_bins(i_filter_mesh) = &
-                 mesh_indices_to_bin(m, (/ i, j, k /))
-
-            ! Left Surface
-            matching_bins(i_filter_surf) = OUT_LEFT
-            filter_index = sum((matching_bins(1:size(t % filters)) - 1) &
-                 * t % stride) + 1
-            can_print = .true.
-            if (t % on_the_fly_allocation) then
-              if (.not. t % filter_index_map % has_key(filter_index)) then
-                can_print = .false.
-              else
-                filter_index = t % filter_index_map % get_key(filter_index)
-              end if
+          matching_bins(i_filter_surf) = IN_BACK
+          filter_index = sum((matching_bins(1:size(t % filters)) - 1) &
+               * t % stride) + 1
+          if (t % on_the_fly_allocation) then
+            if (.not. t % filter_index_map % has_key(filter_index)) then
+              can_print = .false.
+            else
+              filter_index = t % filter_index_map % get_key(filter_index)
             end if
-            if (can_print) &
-                 write(UNIT=unit_tally, FMT='(5X,A,T35,A,"+/- ",A)') &
-                   "Outgoing Current on Left", &
-                   to_str(t % results(1,filter_index) % sum), &
-                   trim(to_str(t % results(1,filter_index) % sum_sq))
+          end if
+          if (can_print) &
+               write(UNIT=unit_tally, FMT='(5X,A,T35,A,"+/- ",A)') &
+                    "Incoming Current on Back", &
+                    to_str(t % results(1,filter_index) % sum), &
+                    trim(to_str(t % results(1,filter_index) % sum_sq))
 
-            matching_bins(i_filter_surf) = IN_LEFT
-            filter_index = sum((matching_bins(1:size(t % filters)) - 1) &
-                 * t % stride) + 1
-            can_print = .true.
-            if (t % on_the_fly_allocation) then
-              if (.not. t % filter_index_map % has_key(filter_index)) then
-                can_print = .false.
-              else
-                filter_index = t % filter_index_map % get_key(filter_index)
-              end if
+          ! Front Surface
+          matching_bins(i_filter_surf) = OUT_FRONT
+          filter_index = sum((matching_bins(1:size(t % filters)) - 1) &
+               * t % stride) + 1
+          if (t % on_the_fly_allocation) then
+            if (.not. t % filter_index_map % has_key(filter_index)) then
+              can_print = .false.
+            else
+              filter_index = t % filter_index_map % get_key(filter_index)
             end if
-            if (can_print) &
-                 write(UNIT=unit_tally, FMT='(5X,A,T35,A,"+/- ",A)') &
-                   "Incoming Current on Left", &
-                   to_str(t % results(1,filter_index) % sum), &
-                   trim(to_str(t % results(1,filter_index) % sum_sq))
+          end if
+          if (can_print) &
+               write(UNIT=unit_tally, FMT='(5X,A,T35,A,"+/- ",A)') &
+                    "Net Current on Front", &
+                    to_str(t % results(1,filter_index) % sum), &
+                    trim(to_str(t % results(1,filter_index) % sum_sq))
 
-            ! Right Surface
-            matching_bins(i_filter_surf) = OUT_RIGHT
-            filter_index = sum((matching_bins(1:size(t % filters)) - 1) &
-                 * t % stride) + 1
-            can_print = .true.
-            if (t % on_the_fly_allocation) then
-              if (.not. t % filter_index_map % has_key(filter_index)) then
-                can_print = .false.
-              else
-                filter_index = t % filter_index_map % get_key(filter_index)
-              end if
+          matching_bins(i_filter_surf) = IN_FRONT
+          filter_index = sum((matching_bins(1:size(t % filters)) - 1) &
+               * t % stride) + 1
+          if (t % on_the_fly_allocation) then
+            if (.not. t % filter_index_map % has_key(filter_index)) then
+              can_print = .false.
+            else
+              filter_index = t % filter_index_map % get_key(filter_index)
             end if
-            if (can_print) &
-                 write(UNIT=unit_tally, FMT='(5X,A,T35,A,"+/- ",A)') &
-                   "Outgoing Current on Right", &
-                   to_str(t % results(1,filter_index) % sum), &
-                   trim(to_str(t % results(1,filter_index) % sum_sq))
+          end if
+          if (can_print) &
+               write(UNIT=unit_tally, FMT='(5X,A,T35,A,"+/- ",A)') &
+                    "Net Current on Front", &
+                    to_str(t % results(1,filter_index) % sum), &
+                    trim(to_str(t % results(1,filter_index) % sum_sq))
+        end if
 
-            matching_bins(i_filter_surf) = IN_RIGHT
-            filter_index = sum((matching_bins(1:size(t % filters)) - 1) &
-                 * t % stride) + 1
-            can_print = .true.
-            if (t % on_the_fly_allocation) then
-              if (.not. t % filter_index_map % has_key(filter_index)) then
-                can_print = .false.
-              else
-                filter_index = t % filter_index_map % get_key(filter_index)
-              end if
+        if (n_dim == 3) then
+          ! Bottom Surface
+          matching_bins(i_filter_surf) = OUT_BOTTOM
+          filter_index = sum((matching_bins(1:size(t % filters)) - 1) &
+               * t % stride) + 1
+          if (t % on_the_fly_allocation) then
+            if (.not. t % filter_index_map % has_key(filter_index)) then
+              can_print = .false.
+            else
+              filter_index = t % filter_index_map % get_key(filter_index)
             end if
-            if (can_print) &
-                 write(UNIT=unit_tally, FMT='(5X,A,T35,A,"+/- ",A)') &
-                   "Incoming Current on Right", &
-                   to_str(t % results(1,filter_index) % sum), &
-                   trim(to_str(t % results(1,filter_index) % sum_sq))
+          end if
+          if (can_print) &
+               write(UNIT=unit_tally, FMT='(5X,A,T35,A,"+/- ",A)') &
+                    "Outgoing Current on Bottom", &
+                    to_str(t % results(1,filter_index) % sum), &
+                    trim(to_str(t % results(1,filter_index) % sum_sq))
 
-            ! Back Surface
-            matching_bins(i_filter_surf) = OUT_BACK
-            filter_index = sum((matching_bins(1:size(t % filters)) - 1) &
-                 * t % stride) + 1
-            can_print = .true.
-            if (t % on_the_fly_allocation) then
-              if (.not. t % filter_index_map % has_key(filter_index)) then
-                can_print = .false.
-              else
-                filter_index = t % filter_index_map % get_key(filter_index)
-              end if
+          matching_bins(i_filter_surf) = IN_BOTTOM
+          filter_index = sum((matching_bins(1:size(t % filters)) - 1) &
+               * t % stride) + 1
+          if (t % on_the_fly_allocation) then
+            if (.not. t % filter_index_map % has_key(filter_index)) then
+              can_print = .false.
+            else
+              filter_index = t % filter_index_map % get_key(filter_index)
             end if
-            if (can_print) &
-                 write(UNIT=unit_tally, FMT='(5X,A,T35,A,"+/- ",A)') &
-                   "Outgoing Current on Back", &
-                   to_str(t % results(1,filter_index) % sum), &
-                   trim(to_str(t % results(1,filter_index) % sum_sq))
+          end if
+          if (can_print) &
+               write(UNIT=unit_tally, FMT='(5X,A,T35,A,"+/- ",A)') &
+                    "Incoming Current on Bottom", &
+                    to_str(t % results(1,filter_index) % sum), &
+                    trim(to_str(t % results(1,filter_index) % sum_sq))
 
-            matching_bins(i_filter_surf) = IN_BACK
-            filter_index = sum((matching_bins(1:size(t % filters)) - 1) &
-                 * t % stride) + 1
-            can_print = .true.
-            if (t % on_the_fly_allocation) then
-              if (.not. t % filter_index_map % has_key(filter_index)) then
-                can_print = .false.
-              else
-                filter_index = t % filter_index_map % get_key(filter_index)
-              end if
+          ! Top Surface
+          matching_bins(i_filter_surf) = OUT_TOP
+          filter_index = sum((matching_bins(1:size(t % filters)) - 1) &
+               * t % stride) + 1
+          if (t % on_the_fly_allocation) then
+            if (.not. t % filter_index_map % has_key(filter_index)) then
+              can_print = .false.
+            else
+              filter_index = t % filter_index_map % get_key(filter_index)
             end if
-            if (can_print) &
-                 write(UNIT=unit_tally, FMT='(5X,A,T35,A,"+/- ",A)') &
-                   "Incoming Current on Back", &
-                   to_str(t % results(1,filter_index) % sum), &
-                   trim(to_str(t % results(1,filter_index) % sum_sq))
+          end if
+          if (can_print) &
+               write(UNIT=unit_tally, FMT='(5X,A,T35,A,"+/- ",A)') &
+                    "Outgoing Current on Top", &
+                    to_str(t % results(1,filter_index) % sum), &
+                    trim(to_str(t % results(1,filter_index) % sum_sq))
 
-            ! Front Surface
-            matching_bins(i_filter_surf) = OUT_FRONT
-            filter_index = sum((matching_bins(1:size(t % filters)) - 1) &
-                 * t % stride) + 1
-            can_print = .true.
-            if (t % on_the_fly_allocation) then
-              if (.not. t % filter_index_map % has_key(filter_index)) then
-                can_print = .false.
-              else
-                filter_index = t % filter_index_map % get_key(filter_index)
-              end if
+          matching_bins(i_filter_surf) = IN_TOP
+          filter_index = sum((matching_bins(1:size(t % filters)) - 1) &
+               * t % stride) + 1
+          if (t % on_the_fly_allocation) then
+            if (.not. t % filter_index_map % has_key(filter_index)) then
+              can_print = .false.
+            else
+              filter_index = t % filter_index_map % get_key(filter_index)
             end if
-            if (can_print) &
-                 write(UNIT=unit_tally, FMT='(5X,A,T35,A,"+/- ",A)') &
-                   "Net Current on Front", &
-                   to_str(t % results(1,filter_index) % sum), &
-                   trim(to_str(t % results(1,filter_index) % sum_sq))
-
-            matching_bins(i_filter_surf) = IN_FRONT
-            filter_index = sum((matching_bins(1:size(t % filters)) - 1) &
-                 * t % stride) + 1
-            can_print = .true.
-            if (t % on_the_fly_allocation) then
-              if (.not. t % filter_index_map % has_key(filter_index)) then
-                can_print = .false.
-              else
-                filter_index = t % filter_index_map % get_key(filter_index)
-              end if
-            end if
-            if (can_print) &
-                 write(UNIT=unit_tally, FMT='(5X,A,T35,A,"+/- ",A)') &
-                   "Net Current on Front", &
-                   to_str(t % results(1,filter_index) % sum), &
-                   trim(to_str(t % results(1,filter_index) % sum_sq))
-
-            ! Bottom Surface
-            matching_bins(i_filter_surf) = OUT_BOTTOM
-            filter_index = sum((matching_bins(1:size(t % filters)) - 1) &
-                 * t % stride) + 1
-            can_print = .true.
-            if (t % on_the_fly_allocation) then
-              if (.not. t % filter_index_map % has_key(filter_index)) then
-                can_print = .false.
-              else
-                filter_index = t % filter_index_map % get_key(filter_index)
-              end if
-            end if
-            if (can_print) &
-                 write(UNIT=unit_tally, FMT='(5X,A,T35,A,"+/- ",A)') &
-                   "Outgoing Current on Bottom", &
-                   to_str(t % results(1,filter_index) % sum), &
-                   trim(to_str(t % results(1,filter_index) % sum_sq))
-
-            matching_bins(i_filter_surf) = IN_BOTTOM
-            filter_index = sum((matching_bins(1:size(t % filters)) - 1) &
-                 * t % stride) + 1
-            can_print = .true.
-            if (t % on_the_fly_allocation) then
-              if (.not. t % filter_index_map % has_key(filter_index)) then
-                can_print = .false.
-              else
-                filter_index = t % filter_index_map % get_key(filter_index)
-              end if
-            end if
-            if (can_print) &
-                 write(UNIT=unit_tally, FMT='(5X,A,T35,A,"+/- ",A)') &
-                   "Incoming Current on Bottom", &
-                   to_str(t % results(1,filter_index) % sum), &
-                   trim(to_str(t % results(1,filter_index) % sum_sq))
-
-            ! Top Surface
-            matching_bins(i_filter_surf) = OUT_TOP
-            filter_index = sum((matching_bins(1:size(t % filters)) - 1) &
-                 * t % stride) + 1
-            can_print = .true.
-            if (t % on_the_fly_allocation) then
-              if (.not. t % filter_index_map % has_key(filter_index)) then
-                can_print = .false.
-              else
-                filter_index = t % filter_index_map % get_key(filter_index)
-              end if
-            end if
-            if (can_print) &
-                 write(UNIT=unit_tally, FMT='(5X,A,T35,A,"+/- ",A)') &
-                   "Outgoing Current on Top", &
-                   to_str(t % results(1,filter_index) % sum), &
-                   trim(to_str(t % results(1,filter_index) % sum_sq))
-
-            matching_bins(i_filter_surf) = IN_TOP
-            filter_index = sum((matching_bins(1:size(t % filters)) - 1) &
-                 * t % stride) + 1
-            can_print = .true.
-            if (t % on_the_fly_allocation) then
-              if (.not. t % filter_index_map % has_key(filter_index)) then
-                can_print = .false.
-              else
-                filter_index = t % filter_index_map % get_key(filter_index)
-              end if
-            end if
-            if (can_print) &
-                 write(UNIT=unit_tally, FMT='(5X,A,T35,A,"+/- ",A)') &
-                   "Incoming Current on Top", &
-                   to_str(t % results(1,filter_index) % sum), &
-                   trim(to_str(t % results(1,filter_index) % sum_sq))
-          end do
-        end do
+          end if
+          if (can_print) &
+               write(UNIT=unit_tally, FMT='(5X,A,T35,A,"+/- ",A)') &
+                    "Incoming Current on Top", &
+                    to_str(t % results(1,filter_index) % sum), &
+                    trim(to_str(t % results(1,filter_index) % sum_sq))
+        end if
       end do
     end do
 

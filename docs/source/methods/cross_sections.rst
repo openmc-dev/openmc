@@ -53,18 +53,20 @@ speed up the calculation.
 Logarithmic Mapping
 +++++++++++++++++++
 
-To speed up energy grid searches, OpenMC uses logarithmic mapping technique
-[Brown]_ to limit the range of energies that must be searched for each
-nuclide. The entire energy range is divided up into equal-lethargy segments, and
-the bounding energies of each segment are mapped to bounding indices on each of
-the nuclide energy grids. By default, OpenMC uses 8000 equal-lethargy segments
-as recommended by Brown.
+To speed up energy grid searches, OpenMC uses a `logarithmic mapping technique`_
+to limit the range of energies that must be searched for each nuclide. The
+entire energy range is divided up into equal-lethargy segments, and the bounding
+energies of each segment are mapped to bounding indices on each of the nuclide
+energy grids. By default, OpenMC uses 8000 equal-lethargy segments as
+recommended by Brown.
 
 Other Methods
 +++++++++++++
 
 A good survey of other energy grid techniques, including unionized energy grids,
 can be found in a paper by Leppanen_.
+
+.. _windowed_multipole:
 
 Windowed Multipole Representation
 ---------------------------------
@@ -74,9 +76,9 @@ offers support for an experimental data format called windowed multipole (WMP).
 This data format requires less memory than pointwise cross sections, and it
 allows on-the-fly Doppler broadening to arbitrary temperature.
 
-The multipole method was introduced by [Hwang]_ and the faster windowed
-multipole method by [Josey]_.  In the multipole format, cross section resonances
-are represented by poles, :math:`p_j`, and residues, :math:`r_j`, in the complex
+The multipole method was introduced by Hwang_ and the faster windowed multipole
+method by Josey_. In the multipole format, cross section resonances are
+represented by poles, :math:`p_j`, and residues, :math:`r_j`, in the complex
 plane.  The 0K cross sections in the resolved resonance region can be computed
 by summing up a contribution from each pole:
 
@@ -140,6 +142,40 @@ but not always the case.  Future library versions may eliminate this issue.
 
 The data format used by OpenMC to represent windowed multipole data is specified
 in :ref:`io_data_wmp`.
+
+.. _temperature_treatment:
+
+Temperature Treatment
+---------------------
+
+At the beginning of a simulation, OpenMC collects a list of all temperatures
+that are present in a model. It then uses this list to determine what cross
+sections to load. The data that is loaded depends on what temperature method has
+been selected. There are three methods available:
+
+:Nearest: Cross sections are loaded only if they are within a specified
+          tolerance of the actual temperatures in the model.
+
+:Interpolation: Cross sections are loaded at temperatures that bound the actual
+                temperatures in the model. During transport, cross sections for
+                each material are calculated using statistical linear-linear
+                interpolation between bounding temperature. Suppose cross
+                sections are available at temperatures :math:`T_1, T_2, ...,
+                T_n` and a material is assigned a temperature :math:`T` where
+                :math:`T_i < T < T_{i+1}`. Statistical interpolation is applied
+                as follows: a uniformly-distributed random number of the unit
+                interval, :math:`\xi`, is sampled. If :math:`\xi < (T -
+                T_i)/(T_{i+1} - T_i)`, then cross sections at temperature
+                :math:`T_{i+1}` are used. Otherwise, cross sections at
+                :math:`T_i` are used. This procedure is applied for pointwise
+                cross sections in the resolved resonance range, unresolved
+                resonance probability tables, and :math:`S(\alpha,\beta)`
+                thermal scattering tables.
+
+:Multipole: Resolved resonance cross sections are calculated on-the-fly using
+            techniques/data described in :ref:`windowed_multipole`. Cross
+            section data is loaded for a single temperature and is used in the
+            unresolved resonance and fast energy ranges.
 
 ----------------
 Multi-Group Data
@@ -232,21 +268,10 @@ sections. This allows flexibility for the model to use highly anisotropic
 scattering information in the water while the fuel can be simulated with linear
 or even isotropic scattering.
 
-.. only:: html
-
-   .. rubric:: References
-
-.. [Brown] Forrest B. Brown, "New Hash-based Energy Lookup Algorithm for Monte
-           Carlo codes," LA-UR-14-24530, Los Alamos National Laboratory (2014).
-
-.. [Hwang] R. N. Hwang, "A Rigorous Pole Representation of Multilevel Cross
-           Sections and Its Practical Application,"  *Nucl. Sci. Eng.*, **96**,
-           192-209 (1987).
-
-.. [Josey] Colin Josey, Pablo Ducru, Benoit Forget, and Kord Smith, "Windowed
-           Multipole for Cross Section Doppler Broadening," *J. Comp. Phys*,
-           **307**, 715-727 (2016). http://dx.doi.org/10.1016/j.jcp.2015.08.013
-
+.. _logarithmic mapping technique:
+   https://laws.lanl.gov/vhosts/mcnp.lanl.gov/pdf_files/la-ur-14-24530.pdf
+.. _Hwang: http://www.ans.org/pubs/journals/nse/a_16381
+.. _Josey: http://dx.doi.org/10.1016/j.jcp.2015.08.013
 .. _MCNP: http://mcnp.lanl.gov
 .. _Serpent: http://montecarlo.vtt.fi
 .. _NJOY: http://t2.lanl.gov/codes.shtml

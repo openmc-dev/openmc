@@ -22,13 +22,13 @@ _THERMAL_NAMES = {'al': 'c_Al27', 'al27': 'c_Al27',
                   'bebeo': 'c_Be_in_BeO', 'be-o': 'c_Be_in_BeO', 'be/o': 'c_Be_in_BeO',
                   'benz': 'c_Benzine',
                   'cah': 'c_Ca_in_CaH2',
-                  'dd2o': 'c_D_in_D2O', 'hwtr': 'c_D_in_D2O',
+                  'dd2o': 'c_D_in_D2O', 'hwtr': 'c_D_in_D2O', 'hw': 'c_D_in_D2O',
                   'fe': 'c_Fe56', 'fe56': 'c_Fe56',
-                  'graph': 'c_Graphite', 'grph': 'c_Graphite',
+                  'graph': 'c_Graphite', 'grph': 'c_Graphite', 'gr': 'c_Graphite',
                   'hca': 'c_H_in_CaH2',
-                  'hch2': 'c_H_in_CH2', 'poly': 'c_H_in_CH2',
-                  'hh2o': 'c_H_in_H2O', 'lwtr': 'c_H_in_H2O',
-                  'hzrh': 'c_H_in_ZrH', 'h-zr': 'c_H_in_ZrH', 'h/zr': 'c_H_in_ZrH',
+                  'hch2': 'c_H_in_CH2', 'poly': 'c_H_in_CH2', 'pol': 'c_H_in_CH2',
+                  'hh2o': 'c_H_in_H2O', 'lwtr': 'c_H_in_H2O', 'lw': 'c_H_in_H2O',
+                  'hzrh': 'c_H_in_ZrH', 'h-zr': 'c_H_in_ZrH', 'h/zr': 'c_H_in_ZrH', 'hzr': 'c_H_in_ZrH',
                   'lch4': 'c_liquid_CH4', 'lmeth': 'c_liquid_CH4',
                   'mg': 'c_Mg24',
                   'obeo': 'c_O_in_BeO', 'o-be': 'c_O_in_BeO', 'o/be': 'c_O_in_BeO',
@@ -411,8 +411,8 @@ class ThermalScattering(EqualityMixin):
             else:
                 raise ValueError('Data provided for an incorrect library')
         else:
-            raise Warning('Temperature data set already within '
-                          'IncidentNeutron object')
+            warn('{} already has data for T={:.1f} K'.format(
+                self.name, ace.temperature / K_BOLTZMANN))
 
     @classmethod
     def from_hdf5(cls, group_or_filename):

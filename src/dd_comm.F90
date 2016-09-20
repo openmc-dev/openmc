@@ -1072,7 +1072,7 @@ contains
 
     ! Since total size of source bank is not equal to n_particles, we need to
     ! renormalize the weight of the source sites
-    source_bank % wgt = source_bank % wgt * n_particles / total
+    source_bank(1:work) % wgt = source_bank(1:work) % wgt * n_particles / total
 
     call time_bank_sendrecv % stop()
 

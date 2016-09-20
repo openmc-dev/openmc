@@ -486,7 +486,8 @@ contains
     type(TallyResult), allocatable :: tallyresult_temp(:,:)
 
     ! Check if tallies_on and OTF tally exists
-    if (.not. (tallies_on .and. any(tallies(:) % on_the_fly_allocation))) return
+    if (.not. (tallies_on .and. n_tallies > 0)) return
+    if (.not. any(tallies(:) % on_the_fly_allocation)) return
 
     otf_n_procs = 1
 

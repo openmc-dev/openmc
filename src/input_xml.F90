@@ -870,9 +870,10 @@ contains
         temp_str = to_lower(temp_str)
         if (trim(temp_str) == 'true' .or. trim(temp_str) == '1') &
              domain_decomp % count_interactions = .true.
-
-        allocate(domain_decomp % n_interactions_all(domain_decomp % n_domains))
       end if
+
+      ! Allocate n_interactions_all
+      allocate(domain_decomp % n_interactions_all(domain_decomp % n_domains))
 
       ! Read nodemap
       if (check_for_node(node_dd, "nodemap")) then

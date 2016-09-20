@@ -163,8 +163,6 @@ contains
 
     integer                :: d
 
-    allocate(dd % domain_n_procs(dd % n_domains))
-
     if (.not. allocated(dd % domain_load_dist)) then
 
       if (.not. mod(n_procs, dd % n_domains) == 0) then
@@ -174,19 +172,21 @@ contains
       end if
 
       ! Evenly distribute processes across domains
-      dd % domain_n_procs = n_procs / dd % n_domains
+      allocate(dd % domain_load_dist(dd % n_domains))
+      dd % domain_load_dist = n_procs / dd % n_domains
       do d = 1, dd % n_domains
-        if (d - 1 < mod(n_procs, dd % n_domains)) &
-             dd % domain_n_procs(d) = dd % domain_n_procs(d) + 1
+        if (d - 1 < mod(n_procs, dd % n_domains)) then
+          dd % domain_load_dist(d) = dd % domain_load_dist(d) + 1
+        end if
       end do
-
-    else
-
-      ! TODO: different matching strategies can to be explored, and support for
-      ! having one processes handle multiple domains needs to be added.
-      call distribute_load_peak_shaving(dd)
-
+      
     end if
+
+    allocate(dd % domain_n_procs(dd % n_domains))
+
+    ! TODO: different matching strategies can to be explored, and support for
+    ! having one processes handle multiple domains needs to be added.
+    call distribute_load_peak_shaving(dd)
 
   end subroutine calculate_domain_n_procs
 

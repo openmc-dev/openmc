@@ -30,6 +30,7 @@ module mgxs_header
     real(8), allocatable :: k_fission(:)     ! kappa-fission
     real(8), allocatable :: fission(:)       ! fission
     real(8), allocatable :: chi(:, :)        ! Fission Spectra
+    real(8), allocatable :: inv_vel(:)       ! Inverse velocities
   end type XsDataIso
 
   type :: XsDataAngle
@@ -42,6 +43,7 @@ module mgxs_header
     real(8), allocatable :: k_fission(:, :, :)    ! kappa-fission
     real(8), allocatable :: fission(:, :, :)      ! fission
     real(8), allocatable :: chi(:, :, :, :)       ! Fission Spectra
+    real(8), allocatable :: inv_vel(:, :, :)      ! Inverse velocities
   end type XsDataAngle
 
 !===============================================================================
@@ -55,7 +57,7 @@ module mgxs_header
 
     ! Fission information
     logical :: fissionable  ! mgxs object is fissionable?
-    integer :: scatter_type ! either legendre, histogram, or tabular.
+    integer :: scatter_format ! either legendre, histogram, or tabular.
 
     ! Caching information
     integer :: index_temp ! temperature index for nuclide
@@ -322,20 +324,20 @@ module mgxs_header
       end select
 
       ! Load the remaining metadata
-      if (check_attribute(xs_id, "scatter-type")) then
-        call read_attribute(temp_str, xs_id, "scatter-type")
+      if (check_attribute(xs_id, "scatter-format")) then
+        call read_attribute(temp_str, xs_id, "scatter-format")
         temp_str = trim(temp_str)
         if (to_lower(temp_str) == 'legendre') then
-          this % scatter_type = ANGLE_LEGENDRE
+          this % scatter_format = ANGLE_LEGENDRE
         else if (to_lower(temp_str) == 'histogram') then
-          this % scatter_type = ANGLE_HISTOGRAM
+          this % scatter_format = ANGLE_HISTOGRAM
         else if (to_lower(temp_str) == 'tabular') then
-          this % scatter_type = ANGLE_TABULAR
+          this % scatter_format = ANGLE_TABULAR
         else
-          call fatal_error("Invalid scatter-type option!")
+          call fatal_error("Invalid scatter-format option!")
         end if
       else
-        this % scatter_type = ANGLE_LEGENDRE
+        this % scatter_format = ANGLE_LEGENDRE
       end if
       if (check_attribute(xs_id, "fissionable")) then
         call read_attribute(this % fissionable, xs_id, "fissionable")
@@ -355,7 +357,7 @@ module mgxs_header
       ! However Pn has n+1 sets of points (since you need to
       ! the count the P0 moment).  Adjust for that.  Histogram and Tabular
       ! formats dont need this adjustment.
-      if (this % scatter_type == ANGLE_LEGENDRE) then
+      if (this % scatter_format == ANGLE_LEGENDRE) then
         order_dim = order_dim + 1
       else
         order_dim = order_dim
@@ -538,7 +540,7 @@ module mgxs_header
 
           ! Compare the number of orders given with the maximum order of the
           ! problem.  Strip off the supefluous orders if needed.
-          if (this % scatter_type == ANGLE_LEGENDRE) then
+          if (this % scatter_format == ANGLE_LEGENDRE) then
             order = min(order_dim - 1, max_order)
             order_dim = order + 1
           end if
@@ -560,9 +562,9 @@ module mgxs_header
 
           ! Finally convert the legendre to tabular if needed
           allocate(scatt_coeffs(groups))
-          if (this % scatter_type == ANGLE_LEGENDRE .and. &
+          if (this % scatter_format == ANGLE_LEGENDRE .and. &
                legendre_to_tabular) then
-            this % scatter_type = ANGLE_TABULAR
+            this % scatter_format = ANGLE_TABULAR
             order_dim = legendre_to_tabular_points
             order = order_dim
             dmu = TWO / real(order - 1, 8)
@@ -643,11 +645,11 @@ module mgxs_header
           end if
 
           ! Allocate and initialize our ScattData Object.
-          if (this % scatter_type == ANGLE_HISTOGRAM) then
+          if (this % scatter_format == ANGLE_HISTOGRAM) then
             allocate(ScattDataHistogram :: xs % scatter)
-          else if (this % scatter_type == ANGLE_TABULAR) then
+          else if (this % scatter_format == ANGLE_TABULAR) then
             allocate(ScattDataTabular :: xs % scatter)
-          else if (this % scatter_type == ANGLE_LEGENDRE) then
+          else if (this % scatter_format == ANGLE_LEGENDRE) then
             allocate(ScattDataLegendre :: xs % scatter)
           end if
 
@@ -669,11 +671,17 @@ module mgxs_header
             xs % total(:) = xs % absorption(:) + xs % scatter % scattxs(:)
           end if
 
-          ! Finally, check sigT to ensure it is not 0 since it is
+          ! Check sigT to ensure it is not 0 since it is
           ! often divided by in the tally routines
           do gin = 1, groups
             if (xs % total(gin) == ZERO) xs % total(gin) = 1E-10_8
           end do
+
+          ! Get kinetics data
+          if (check_dataset(xsdata_grp, "inverse-velocities")) then
+            allocate(xs % inv_vel(groups))
+            call read_dataset(xs % inv_vel, xsdata_grp, "inverse-velocities")
+          end if
 
           ! Close the groups we have opened and deallocate
           call close_group(xsdata_grp)
@@ -890,7 +898,7 @@ module mgxs_header
 
           ! Compare the number of orders given with the maximum order of the
           ! problem.  Strip off the superfluous orders if needed.
-          if (this % scatter_type == ANGLE_LEGENDRE) then
+          if (this % scatter_format == ANGLE_LEGENDRE) then
             order = min(order_dim - 1, max_order)
             order_dim = order + 1
           end if
@@ -918,9 +926,9 @@ module mgxs_header
 
           ! Finally convert the legendre to tabular if needed
           allocate(scatt_coeffs(groups, this % n_azi, this % n_pol))
-          if (this % scatter_type == ANGLE_LEGENDRE .and. &
+          if (this % scatter_format == ANGLE_LEGENDRE .and. &
                legendre_to_tabular) then
-            this % scatter_type = ANGLE_TABULAR
+            this % scatter_format = ANGLE_TABULAR
             order_dim = legendre_to_tabular_points
             order = order_dim
             dmu = TWO / real(order - 1, 8)
@@ -1031,11 +1039,11 @@ module mgxs_header
           do ipol = 1, this % n_pol
             do iazi = 1,  this % n_azi
               ! Allocate and initialize our ScattData Object.
-              if (this % scatter_type == ANGLE_HISTOGRAM) then
+              if (this % scatter_format == ANGLE_HISTOGRAM) then
                 allocate(ScattDataHistogram :: xs % scatter(iazi, ipol) % obj)
-              else if (this % scatter_type == ANGLE_TABULAR) then
+              else if (this % scatter_format == ANGLE_TABULAR) then
                 allocate(ScattDataTabular :: xs % scatter(iazi, ipol) % obj)
-              else if (this % scatter_type == ANGLE_LEGENDRE) then
+              else if (this % scatter_format == ANGLE_LEGENDRE) then
                 allocate(ScattDataLegendre :: xs % scatter(iazi, ipol) % obj)
               end if
 
@@ -1075,8 +1083,8 @@ module mgxs_header
             end do
           end if
 
-          ! Finally, check sigT to ensure it is not 0 since it is
-          ! often divided by in the tally routines
+          ! Check sigT to ensure it is not 0 since it is often divided by in
+          ! the tally routines
           do ipol = 1, this % n_pol
             do iazi = 1,  this % n_azi
               do gin = 1, groups
@@ -1086,6 +1094,16 @@ module mgxs_header
               end do
             end do
           end do
+
+          ! Get kinetics data
+          if (check_dataset(xsdata_grp, "inverse-velocities")) then
+            allocate(xs % inv_vel(groups, this % n_azi, this % n_pol))
+            allocate(temp_arr(groups * this % n_azi * this % n_pol))
+            call read_dataset(temp_arr, xsdata_grp, "inverse-velocities")
+            xs % inv_vel = reshape(temp_arr, (/groups, this % n_azi, &
+                                               this % n_pol/))
+            deallocate(temp_arr)
+          end if
 
           ! Close the groups we have opened and deallocate
           call close_group(xsdata_grp)
@@ -1100,13 +1118,13 @@ module mgxs_header
 !===============================================================================
 
     subroutine mgxs_combine(this, temps, mat, nuclides, max_order, &
-                            scatter_type, order_dim)
+                            scatter_format, order_dim)
       class(Mgxs), intent(inout)          :: this ! The Mgxs to initialize
       type(VectorReal), intent(in)        :: temps ! Temperatures to obtain
       type(Material), pointer, intent(in) :: mat  ! base material
       type(MgxsContainer), intent(in)     :: nuclides(:) ! List of nuclides to harvest from
       integer, intent(in)                 :: max_order  ! Maximum requested order
-      integer, intent(out)                :: scatter_type ! Type of scatter
+      integer, intent(out)                :: scatter_format ! Type of scatter
       integer, intent(out)                :: order_dim    ! Scattering data order size
 
       integer :: t, mat_max_order, order
@@ -1138,7 +1156,7 @@ module mgxs_header
 
       ! Determine the scattering type of our data and ensure all scattering orders
       ! are the same.
-      scatter_type = nuclides(mat % nuclide(1)) % obj % scatter_type
+      scatter_format = nuclides(mat % nuclide(1)) % obj % scatter_format
       select type(nuc => nuclides(mat % nuclide(1)) % obj)
       type is (MgxsIso)
         order = size(nuc % xs(1) % scatter % dist(1) % data, dim=1)
@@ -1146,7 +1164,7 @@ module mgxs_header
         order = size(nuc % xs(1) % scatter(1, 1) % obj % dist(1) % data, dim=1)
       end select
       ! If we have tabular only data, then make sure all datasets have same size
-      if (scatter_type == ANGLE_HISTOGRAM) then
+      if (scatter_format == ANGLE_HISTOGRAM) then
         ! Check all scattering data to ensure it is the same size
         do i = 2, mat % n_nuclides
           select type(nuc => nuclides(mat % nuclide(i)) % obj)
@@ -1162,7 +1180,7 @@ module mgxs_header
         end do
         ! Ok, got our order, store the dimensionality
         order_dim = order
-      else if (scatter_type == ANGLE_TABULAR) then
+      else if (scatter_format == ANGLE_TABULAR) then
         ! Check all scattering data to ensure it is the same size
         do i = 2, mat % n_nuclides
           select type(nuc => nuclides(mat % nuclide(i)) % obj)
@@ -1178,7 +1196,7 @@ module mgxs_header
         end do
         ! Ok, got our order, store the dimensionality
         order_dim = order
-      else if (scatter_type == ANGLE_LEGENDRE) then
+      else if (scatter_format == ANGLE_LEGENDRE) then
         ! Need to determine the maximum scattering order of all data in this material
         mat_max_order = 0
         do i = 1, mat % n_nuclides
@@ -1228,14 +1246,14 @@ module mgxs_header
       integer :: nuc_t
       integer, allocatable :: nuc_ts(:)
       real(8) :: temp_actual, temp_desired, interp
-      integer :: scatter_type
+      integer :: scatter_format
       type(Jagged2D), allocatable :: nuc_matrix(:)
       integer, allocatable :: gmin(:), gmax(:)
       type(Jagged2D), allocatable :: jagged_scatt(:)
       type(Jagged1D), allocatable :: jagged_mult(:)
 
       ! Set the meta-data
-      call mgxs_combine(this, temps, mat, nuclides, max_order, scatter_type, &
+      call mgxs_combine(this, temps, mat, nuclides, max_order, scatter_format, &
                         order_dim)
 
       ! Create the Xs Data for each temperature
@@ -1253,6 +1271,8 @@ module mgxs_header
         this % xs(t) % nu_fission(:) = ZERO
         allocate(this % xs(t) % chi(groups,groups))
         this % xs(t) % chi(:, :) = ZERO
+        allocate(this % xs(t) % inv_vel(groups))
+        this % xs(t) % inv_vel(:) = ZERO
         allocate(temp_mult(groups,groups))
         temp_mult(:, :) = ZERO
         allocate(mult_num(groups,groups))
@@ -1262,12 +1282,12 @@ module mgxs_header
         allocate(scatt_coeffs(order_dim,groups,groups))
         scatt_coeffs(:, :, :) = ZERO
 
-        this % scatter_type = scatter_type
-        if (scatter_type == ANGLE_LEGENDRE) then
+        this % scatter_format = scatter_format
+        if (scatter_format == ANGLE_LEGENDRE) then
           allocate(ScattDataLegendre :: this % xs(t) % scatter)
-        else if (scatter_type == ANGLE_TABULAR) then
+        else if (scatter_format == ANGLE_TABULAR) then
           allocate(ScattDataTabular :: this % xs(t) % scatter)
-        else if (scatter_type == ANGLE_HISTOGRAM) then
+        else if (scatter_format == ANGLE_HISTOGRAM) then
           allocate(ScattDataHistogram :: this % xs(t) % scatter)
         end if
 
@@ -1341,6 +1361,10 @@ module mgxs_header
                     this % xs(t) % k_fission = this % xs(t) % k_fission + &
                          atom_density * nuc % xs(nuc_t) % k_fission * interp
                   end if
+                end if
+                if (allocated(nuc % xs(nuc_t) % inv_vel)) then
+                  this % xs(t) % inv_vel = this % xs(t) % inv_vel + &
+                       atom_density * nuc % xs(nuc_t) % inv_vel * interp
                 end if
 
                 ! We will next gather the multiplicaity and scattering matrices.
@@ -1459,14 +1483,14 @@ module mgxs_header
       integer :: nuc_t
       integer, allocatable :: nuc_ts(:)
       real(8) :: temp_actual, temp_desired, interp
-      integer :: scatter_type
+      integer :: scatter_format
       type(Jagged2D), allocatable :: nuc_matrix(:)
       integer, allocatable :: gmin(:), gmax(:)
       type(Jagged2D), allocatable :: jagged_scatt(:)
       type(Jagged1D), allocatable :: jagged_mult(:)
 
       ! Set the meta-data
-      call mgxs_combine(this, temps, mat, nuclides, max_order, scatter_type, &
+      call mgxs_combine(this, temps, mat, nuclides, max_order, scatter_format, &
                         order_dim)
 
       ! Get the number of each polar and azi angles and make sure all the
@@ -1506,6 +1530,8 @@ module mgxs_header
         this % xs(t) % nu_fission = ZERO
         allocate(this % xs(t) % chi(groups, groups, n_azi, n_pol))
         this % xs(t) % chi = ZERO
+        allocate(this % xs(t) % inv_vel(groups, n_azi, n_pol))
+        this % xs(t) % inv_vel = ZERO
         allocate(temp_mult(groups, groups, n_azi, n_pol))
         temp_mult = ZERO
         allocate(mult_num(groups, groups, n_azi, n_pol))
@@ -1518,13 +1544,13 @@ module mgxs_header
         allocate(this % xs(t) % scatter(n_azi, n_pol))
         do ipol = 1, n_pol
           do iazi = 1, n_azi
-            if (scatter_type == ANGLE_LEGENDRE) then
+            if (scatter_format == ANGLE_LEGENDRE) then
               allocate(ScattDataLegendre :: &
                        this % xs(t) % scatter(iazi, ipol) % obj)
-            else if (scatter_type == ANGLE_TABULAR) then
+            else if (scatter_format == ANGLE_TABULAR) then
               allocate(ScattDataTabular :: &
                        this % xs(t) % scatter(iazi, ipol) % obj)
-            else if (scatter_type == ANGLE_HISTOGRAM) then
+            else if (scatter_format == ANGLE_HISTOGRAM) then
               allocate(ScattDataHistogram :: &
                        this % xs(t) % scatter(iazi, ipol) % obj)
             end if
@@ -1589,6 +1615,10 @@ module mgxs_header
                      atom_density * nuc % xs(nuc_t) % total * interp
                 this % xs(t) % absorption = this % xs(t) % absorption + &
                      atom_density * nuc % xs(nuc_t) % absorption * interp
+                if (allocated(nuc % xs(nuc_t) % inv_vel)) then
+                  this % xs(t) % inv_vel = this % xs(t) % inv_vel + &
+                       atom_density * nuc % xs(nuc_t) % inv_vel * interp
+                end if
                 if (nuc % fissionable) then
                   this % xs(t) % chi = this % xs(t) % chi + &
                        atom_density * nuc % xs(nuc_t) % chi * interp
@@ -1811,6 +1841,8 @@ module mgxs_header
           ! user of this code wants the complete 1-outgoing group distribution
           ! which Im not sure what they would do with that.
         end if
+      case('inv_vel')
+        xs = this % xs(t) % inv_vel(gin)
       case default
         xs = ZERO
       end select
@@ -1905,6 +1937,8 @@ module mgxs_header
             ! user of this code wants the complete 1-outgoing group distribution
             ! which Im not sure what they would do with that.
           end if
+        case('inv_vel')
+          xs = this % xs(t) % inv_vel(gin, iazi, ipol)
         case default
           xs = ZERO
         end select

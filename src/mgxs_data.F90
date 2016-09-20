@@ -38,10 +38,10 @@ contains
     type(DictCharInt) :: xsdata_dict
     type(VectorReal), allocatable :: temps(:)
 
-    ! Check if cross_sections.xml exists
+    ! Check if MGXS Library exists
     inquire(FILE=path_cross_sections, EXIST=file_exists)
     if (.not. file_exists) then
-      ! Could not find cross_sections.xml file
+      ! Could not find MGXS Library file
       call fatal_error("Cross sections HDF5 file '" &
            &// trim(path_cross_sections) // "' does not exist!")
     end if

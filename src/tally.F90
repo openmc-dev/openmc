@@ -1222,11 +1222,21 @@ contains
           else
             score = p % last_wgt
           end if
-          score = score * inverse_velocities(p_g) / material_xs % total * flux
+          if (i_nuclide > 0) then
+            score = score * nucxs % get_xs('inv_vel', p_g, UVW=p_uvw) / &
+                 matxs % get_xs('total', p_g, UVW=p_uvw) * flux
+          else
+            score = matxs % get_xs('inv_vel', p_g, UVW=p_uvw) * flux
+          end if
 
         else
           ! For inverse velocity, we need no cross section
-          score = flux * inverse_velocities(p_g)
+          if (i_nuclide > 0) then
+            score = score * nucxs % get_xs('inv_vel', p_g, UVW=p_uvw) * &
+                 atom_density * flux
+          else
+            score = flux * matxs % get_xs('inv_vel', p_g, UVW=p_uvw)
+          end if
         end if
 
 

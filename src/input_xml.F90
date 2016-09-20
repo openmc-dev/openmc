@@ -4618,10 +4618,10 @@ contains
     real(8), allocatable :: rev_energy_bins(:)
     character(len=MAX_WORD_LEN), allocatable :: names(:)
 
-    ! Check if mgxs.h5 exists
+    ! Check if MGXS Library exists
     inquire(FILE=path_cross_sections, EXIST=file_exists)
     if (.not. file_exists) then
-      ! Could not find mgxs.h5 file
+      ! Could not find MGXS Library file
       call fatal_error("Cross sections HDF5 file '" &
            // trim(path_cross_sections) // "' does not exist!")
     end if
@@ -4654,20 +4654,6 @@ contains
     do i = 1, energy_groups
       energy_bin_avg(i) = HALF * (energy_bins(i) + energy_bins(i + 1))
     end do
-
-    allocate(inverse_velocities(energy_groups))
-    if (check_attribute(file_id, "inverse velocities")) then
-      ! Get inverse velocities
-      call read_attribute(inverse_velocities, file_id, "inverse velocities")
-    else
-      ! If not given, estimate them by using average energy in group which is
-      ! assumed to be the midpoint
-      do i = 1, energy_groups
-        inverse_velocities(i) = ONE / &
-             (sqrt(TWO * energy_bin_avg(i) / (MASS_NEUTRON_MEV)) * &
-              C_LIGHT * 100.0_8)
-      end do
-    end if
 
     ! Get the datasets present in the library
     call get_groups(file_id, names)

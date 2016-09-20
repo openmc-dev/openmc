@@ -285,8 +285,8 @@ class Tally(object):
             # Extract Tally data from the file
             data = f['tallies/tally {0}/results'.format(
                 self.id)].value
-            sum = data['sum']
-            sum_sq = data['sum_sq']
+            sum = data['sum'].astype(np.float32)
+            sum_sq = data['sum_sq'].astype(np.float32)
 
             # Reshape the results arrays
             sum = np.reshape(sum, self.shape)
@@ -2229,12 +2229,12 @@ class Tally(object):
         # Construct lists of tuples for the bins in each of the two filters
         filters = [filter1.type, filter2.type]
         if filter1.type == 'distribcell':
-            filter1_bins = np.arange(filter1.num_bins)
+            filter1_bins = [(i,) for i in range(filter1.num_bins)]
         else:
             filter1_bins = [(filter1.get_bin(i)) for i in range(filter1.num_bins)]
 
         if filter2.type == 'distribcell':
-            filter2_bins = np.arange(filter2.num_bins)
+            filter2_bins = [(i,) for i in range(filter2.num_bins)]
         else:
             filter2_bins = [filter2.get_bin(i) for i in range(filter2.num_bins)]
 
@@ -3349,16 +3349,16 @@ class Tally(object):
 
         # Inject this Tally's data along the diagonal of the diagonalized Tally
         if not self.derived and self.sum is not None:
-            new_tally._sum = np.zeros(new_tally.shape, dtype=np.float64)
+            new_tally._sum = np.zeros(new_tally.shape, dtype=np.float32)
             new_tally._sum[diag_indices, :, :] = self.sum
         if not self.derived and self.sum_sq is not None:
-            new_tally._sum_sq = np.zeros(new_tally.shape, dtype=np.float64)
+            new_tally._sum_sq = np.zeros(new_tally.shape, dtype=np.float32)
             new_tally._sum_sq[diag_indices, :, :] = self.sum_sq
         if self.mean is not None:
-            new_tally._mean = np.zeros(new_tally.shape, dtype=np.float64)
+            new_tally._mean = np.zeros(new_tally.shape, dtype=np.float32)
             new_tally._mean[diag_indices, :, :] = self.mean
         if self.std_dev is not None:
-            new_tally._std_dev = np.zeros(new_tally.shape, dtype=np.float64)
+            new_tally._std_dev = np.zeros(new_tally.shape, dtype=np.float32)
             new_tally._std_dev[diag_indices, :, :] = self.std_dev
 
         # Update the new tally's filter strides

@@ -66,7 +66,6 @@ cdef double phaseshift(int l, double rho):
         Hardsphere phase shift
 
     """
-
     if l == 0:
         return rho
     elif l == 1:
@@ -377,7 +376,8 @@ def reconstruct_rm(rm, double E):
     cdef double smin, smax, s, Jmin, Jmax, J, j
     cdef double E_r, gn, gg, gfa, gfb, P_r
     cdef double E_diff, abs_value, gJ
-    cdef double complex Ubar, U_, denominator_inverse
+    cdef double Kr, Ki, x
+    cdef double complex Ubar, U_, factor
     cdef bint hasfission
     cdef np.ndarray[double, ndim=2] one
     cdef np.ndarray[double complex, ndim=2] K, Imat, U
@@ -459,30 +459,23 @@ def reconstruct_rm(rm, double E):
                         # Calculate neutron width at energy E
                         gn = sqrt(P*gn/P_r)
 
-                        # Calculate inverse of denominator of K matrix terms
-                        E_diff = E_r - E
-                        abs_value = E_diff*E_diff + 0.25*gg*gg
-                        denominator_inverse = (E_diff + 0.5j*gg)/abs_value
+                        # Calculate j/2 * inverse of denominator of K matrix terms
+                        factor = 0.5j/(E_r - E - 0.5j*gg)
 
                         # Upper triangular portion of K matrix -- see ENDF-102,
                         # Equation D.28
-                        K[0,0] = K[0,0] + gn*gn*denominator_inverse
+                        K[0,0] = K[0,0] + gn*gn*factor
                         if gfa != 0.0 or gfb != 0.0:
                             # Negate fission widths if necessary
                             gfa = (-1 if gfa < 0 else 1)*sqrt(abs(gfa))
                             gfb = (-1 if gfb < 0 else 1)*sqrt(abs(gfb))
 
-                            K[0,1] = K[0,1] + gn*gfa*denominator_inverse
-                            K[0,2] = K[0,2] + gn*gfb*denominator_inverse
-                            K[1,1] = K[1,1] + gfa*gfa*denominator_inverse
-                            K[1,2] = K[1,2] + gfa*gfb*denominator_inverse
-                            K[2,2] = K[2,2] + gfb*gfb*denominator_inverse
+                            K[0,1] = K[0,1] + gn*gfa*factor
+                            K[0,2] = K[0,2] + gn*gfb*factor
+                            K[1,1] = K[1,1] + gfa*gfa*factor
+                            K[1,2] = K[1,2] + gfa*gfb*factor
+                            K[2,2] = K[2,2] + gfb*gfb*factor
                             hasfission = True
-
-                # multiply by factor of i/2
-                for m in range(3):
-                    for n in range(3):
-                        K[m,n] = K[m,n] * 0.5j
 
                 # Get collision matrix
                 gJ = (2*J + 1)/(4*I + 2)
@@ -500,9 +493,23 @@ def reconstruct_rm(rm, double E):
                     # Calculate fission from ENDF-102, Eq. D.26
                     fission += 4*gJ*(cabs(Imat[1,0])**2 + cabs(Imat[2,0])**2)
                 else:
-                    U_ = Ubar*(2*conj(1 - K[0,0])/cabs(1 - K[0,0])**2 - 1)
-                    elastic += gJ*cabs(1 - U_)**2   # ENDF-102, Eq. D.24
-                    total += 2*gJ*(1 - creal(U_))   # ENDF-102, Eq. D.23
+                    U_ = Ubar*(2/(1 - K[0,0]) - 1)
+                    if abs(creal(K[0,0])) < 3e-4 and abs(phi) < 3e-4:
+                        # If K and phi are both very small, the calculated cross
+                        # sections can lose precision because the real part of U
+                        # ends up very close to unity. To get around this, we
+                        # use Euler's formula to express Ubar by real and
+                        # imaginary parts, expand cos(2phi) = 1 - 2phi^2 +
+                        # O(phi^4), and then simplify
+                        Kr = creal(K[0,0])
+                        Ki = cimag(K[0,0])
+                        x = 2*(-Kr + (Kr*Kr + Ki*Ki)*(1 - phi*phi) + phi*phi -
+                               sin(2*phi)*Ki)/((1 - Kr)*(1 - Kr) + Ki*Ki)
+                        total += 2*gJ*x
+                        elastic += gJ*(x*x + cimag(U_)**2)
+                    else:
+                        total += 2*gJ*(1 - creal(U_))   # ENDF-102, Eq. D.23
+                        elastic += gJ*cabs(1 - U_)**2   # ENDF-102, Eq. D.24
 
     # Calculate capture as difference of other cross sections as per ENDF-102,
     # Equation D.25

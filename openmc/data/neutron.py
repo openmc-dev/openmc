@@ -659,7 +659,7 @@ class IncidentNeutron(EqualityMixin):
 
         # Replace cross sections for elastic, capture, fission
         try:
-            if isinstance(data.resonances.resolved, _RESOLVED):
+            if any(isinstance(r, _RESOLVED) for r in data.resonances):
                 for mt in (2, 102, 18):
                     if mt in data.reactions:
                         rx = data.reactions[mt]

@@ -36,6 +36,10 @@ class Resonances(object):
     def __init__(self, ranges):
         self.ranges = ranges
 
+    def __iter__(self):
+        for r in self.ranges:
+            yield r
+
     @property
     def ranges(self):
         return self._ranges

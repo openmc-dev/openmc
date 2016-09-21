@@ -459,18 +459,21 @@ class ResonancesWithBackground(EqualityMixin):
         # Get background cross section
         xs = self.background(x)
 
-        rrr = self.resonances.resolved
-        if isinstance(x, Iterable):
-            # Determine which energies are within resolved resonance range
-            within_rrr = (rrr.energy_min <= x) & (x <= rrr.energy_max)
+        for r in self.resonances:
+            if not isinstance(r, openmc.data.resonance._RESOLVED):
+                continue
 
-            # Get resonance cross sections and add to background
-            resonant_xs = rrr.reconstruct(x[within_rrr])
-            xs[within_rrr] += resonant_xs[self.mt]
-        else:
-            if rrr.energy_min <= x <= rrr.energy_max:
-                resonant_xs = rrr.reconstruct(x)
-                xs += resonant_xs[self.mt]
+            if isinstance(x, Iterable):
+                # Determine which energies are within resolved resonance range
+                within = (r.energy_min <= x) & (x <= r.energy_max)
+
+                # Get resonance cross sections and add to background
+                resonant_xs = r.reconstruct(x[within])
+                xs[within] += resonant_xs[self.mt]
+            else:
+                if r.energy_min <= x <= r.energy_max:
+                    resonant_xs = r.reconstruct(x)
+                    xs += resonant_xs[self.mt]
 
         return xs
 

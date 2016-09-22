@@ -5,7 +5,7 @@ module tracking
   use error,              only: fatal_error, warning
   use geometry,           only: find_cell, distance_to_boundary, cross_surface, &
                                 cross_lattice, check_cell_overlap, &
-                                distance_to_mesh_surface, calibrate_coord
+                                distance_to_dd_mesh_surface, calibrate_coord
   use geometry_header,    only: Universe, BASE_UNIVERSE
   use global
   use output,             only: write_message
@@ -18,10 +18,8 @@ module tracking
                                 score_collision_tally, score_surface_current
   use track_output,       only: initialize_particle_track, write_particle_track, &
                                 add_particle_track, finalize_particle_track
-  use dd_header,          only: DomainDecomType
   use dd_tracking,        only: check_domain_boundary_crossing, &
                                 cross_domain_boundary
-  use mesh,               only: get_mesh_bin
   implicit none
 
 contains
@@ -124,12 +122,12 @@ contains
            lattice_translation, next_level)
 
       ! Sample a distance to collision
-      if (dd_run .and. p % stored_distance > ZERO) then
-        if (abs(p % stored_distance - d_boundary) < 100*FP_COINCIDENT) then
-          d_boundary  = p % stored_distance
+      if (dd_run .and. p % stored_fly_dist > ZERO) then
+        if (abs(p % stored_fly_dist - d_boundary) < 100*FP_COINCIDENT) then
+          d_boundary  = p % stored_fly_dist
           d_collision = INFINITY
         else
-          d_collision = p % stored_distance
+          d_collision = p % stored_fly_dist
         end if
       else
         if (material_xs % total == ZERO) then
@@ -144,8 +142,8 @@ contains
 
       ! Check domain mesh boundary
       if (dd_run) then
-        call distance_to_mesh_surface(p, domain_decomp % mesh, &
-             distance, d_dd_mesh, meshbin=domain_decomp % meshbin)
+        call distance_to_dd_mesh_surface(p, domain_decomp % mesh, &
+             d_dd_mesh, meshbin=domain_decomp % meshbin)
       end if
 
       dd_boundary_crossed = .false.
@@ -173,8 +171,8 @@ contains
 
       if (.not. dd_boundary_crossed) then
         ! Clear crossing domain info
-        p % stored_distance = ZERO
-        p % fly_dd_distance = ZERO
+        p % stored_fly_dist = ZERO
+        p % tot_domain_dist = ZERO
 
         ! Advance particle
         do j = 1, p % n_coord

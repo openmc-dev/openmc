@@ -139,8 +139,8 @@ contains
     ! Save the transport info needed to restart the particle in the new domain
     p % stored_xyz      = p % coord(1) % xyz
     p % stored_uvw      = p % coord(1) % uvw
-    p % stored_distance = tracking_dist
-    p % fly_dd_distance = domain_dist
+    p % stored_fly_dist = tracking_dist
+    p % tot_domain_dist = domain_dist
     p % prn_seed        = prn_seed
 
     ! Save particle info to particle_buffer. If it is a secondary particle,

@@ -107,8 +107,8 @@ module particle_header
     ! Data needed to restart a particle stored in a bank after changing domains
     real(8)    :: stored_xyz(3)
     real(8)    :: stored_uvw(3)
-    real(8)    :: stored_distance ! sampled distance to go after changing domain
-    real(8)    :: fly_dd_distance ! accumulated distance to domain boundary
+    real(8)    :: stored_fly_dist ! sampled distance to go after changing domain
+    real(8)    :: tot_domain_dist ! accumulated distance to domain boundary
     integer(8) :: prn_seed(N_STREAMS) ! the next random number seed
 
     ! Domain information
@@ -136,8 +136,8 @@ module particle_header
     integer(8) :: prn_seed(N_STREAMS)
     real(8)    :: wgt
     real(8)    :: E
-    real(8)    :: stored_distance
-    real(8)    :: fly_dd_distance
+    real(8)    :: stored_fly_dist
+    real(8)    :: tot_domain_dist
     real(8)    :: last_xyz(3)
     real(8)    :: last_xyz_current(3)
     real(8)    :: stored_xyz(3)
@@ -185,8 +185,8 @@ contains
     this % n_delayed_bank(:) = 0
     this % write_track       = .false.
     this % new_particle      = .true.
-    this % stored_distance   = ZERO
-    this % fly_dd_distance   = ZERO
+    this % stored_fly_dist   = ZERO
+    this % tot_domain_dist   = ZERO
     this % outscatter_destination = NO_OUTSCATTER
     this % g = 1
 
@@ -218,8 +218,8 @@ contains
     buf % stored_xyz       = part % stored_xyz
     buf % stored_uvw       = part % stored_uvw
     buf % prn_seed         = part % prn_seed
-    buf % stored_distance  = part % stored_distance
-    buf % fly_dd_distance  = part % fly_dd_distance
+    buf % stored_fly_dist  = part % stored_fly_dist
+    buf % tot_domain_dist  = part % tot_domain_dist
 
   end subroutine particle_to_buffer
 
@@ -249,8 +249,8 @@ contains
     part % stored_xyz       = buf % stored_xyz
     part % stored_uvw       = buf % stored_uvw
     part % prn_seed         = buf % prn_seed
-    part % stored_distance  = buf % stored_distance
-    part % fly_dd_distance  = buf % fly_dd_distance
+    part % stored_fly_dist  = buf % stored_fly_dist
+    part % tot_domain_dist  = buf % tot_domain_dist
 
   end subroutine buffer_to_particle
 

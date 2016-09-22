@@ -5,9 +5,7 @@ module geometry
   use geometry_header,        only: Cell, Universe, Lattice, &
                                     &RectLattice, HexLattice
   use global
-  use mesh,                   only: get_mesh_bin, bin_to_mesh_indices, &
-                                    distance_to_mesh_intersection_3d, &
-                                    distance_to_mesh_intersection_2d
+  use mesh,                   only: bin_to_mesh_indices
   use output,                 only: write_message
   use particle_header,        only: LocalCoord, Particle
   use particle_restart_write, only: write_particle_restart
@@ -384,15 +382,16 @@ contains
 
 !===============================================================================
 ! CALIBRATE_COORD recalculates lower level coordinates based on level data, to
-! make sure coord() consistent with each other
+! make sure coord(i) numerically consistent with each other, so the reproducible
+! results are obtained for dd runs
 !===============================================================================
   subroutine calibrate_coord(p)
 
     type(Particle), intent(inout) :: p
-    integer :: j                    ! coordinate level index
-    integer :: i_xyz(3)             ! indices in lattice
-    type(Cell),     pointer :: c    ! pointer to cell
-    class(Lattice), pointer :: lat  ! pointer to lattice
+    integer                       :: j        ! coordinate level index
+    integer                       :: i_xyz(3) ! indices in lattice
+    type(Cell),     pointer       :: c        ! pointer to cell
+    class(Lattice), pointer       :: lat      ! pointer to lattice
 
     if (p % n_coord <= 1) return
 
@@ -1046,116 +1045,64 @@ contains
   end subroutine distance_to_boundary
 
 !===============================================================================
-! DISTANCE_TO_MESH_SURFACE returns the distance to the nearest mesh surface for
-! a particle travelling in a certain direction
+! DISTANCE_TO_DD_MESH_SURFACE returns the distance to the nearest mesh surface
+! for a particle travelling in a certain direction
 !===============================================================================
 
-  subroutine distance_to_mesh_surface(p, m, testdist, dist, meshbin)
+  subroutine distance_to_dd_mesh_surface(p, m, dist, meshbin)
 
-    type(Particle),                intent(in) :: p
-    type(RegularMesh),    pointer, intent(in) :: m
-    real(8), intent(in)           :: testdist  ! dist for testing intersection
-    real(8), intent(out)          :: dist
-    integer, intent(in), optional :: meshbin ! specified meshbin
+    type(Particle),             intent(in) :: p
+    type(RegularMesh), pointer, intent(in) :: m
+    real(8), intent(out)                   :: dist
+    integer, intent(in)                    :: meshbin ! specified meshbin
 
-    integer :: bin        ! bin in mesh of particle
-    integer :: ijk(3)     ! indices in mesh
-    real(8) :: xyz(3)     ! copy of starting point
-    real(8) :: xyz1(3)    ! point for testing mesh intersection
-    real(8) :: x, y, z    ! copy of particle position
-    real(8) :: u, v, w    ! copy of particle direction
-    real(8) :: x0, y0, z0 ! oncoming edges of the mesh cell
-    real(8) :: d          ! temporary distance
+    integer :: i            ! dimension index
+    real(8) :: xyz(3)       ! starting point
+    real(8) :: uvw(3)       ! cosine of angle of particle
+    integer :: ijk(3)       ! indices in mesh
+    real(8) :: xyz_cross(3) ! coordinates of bounding surfaces
+    real(8) :: d(3)         ! distance to each bounding surface
 
-    ! Starting point should be moved 'fly_dd_distance' forward for dd case
-    xyz = p % coord(1) % xyz + p % fly_dd_distance * p % coord(1) % uvw
+    ! Copy particle's direction
+    uvw = p % coord(1) % uvw
 
-    dist = INFINITY
+    ! Starting point should be moved 'tot_domain_dist' forward for dd case
+    xyz = p % coord(1) % xyz + p % tot_domain_dist * uvw
 
-    if (present(meshbin)) then
+    ! Find domain meshbin ijk
+    call bin_to_mesh_indices(m, meshbin, ijk)
 
-      bin = meshbin
-
-    else
-
-      call get_mesh_bin(m, xyz, bin)
-      if (bin /= NO_BIN_FOUND .and. &
-           (bin < 1 .or. bin > product(m % dimension))) then
-        call fatal_error("Invalid meshbin: " // trim(to_str(bin)))
-      end if
-
-    end if
-
-    if (bin == NO_BIN_FOUND) then
-
-      ! If we're not in the mesh, we test for intersection
-
-      xyz1 = xyz + testdist * p % coord(1) % uvw
-      if (m % n_dimension == 3) then
-        dist = distance_to_mesh_intersection_3d(m, xyz, xyz1)
+    ! Bounding coordinates
+    do i = 1, m % n_dimension
+      if (uvw(i) > 0) then
+        xyz_cross(i) = m % lower_left(i) + ijk(i) * m % width(i)
       else
-        dist = distance_to_mesh_intersection_2d(m, xyz, xyz1)
+        xyz_cross(i) = m % lower_left(i) + (ijk(i) - 1) * m % width(i)
       end if
+    end do
 
-    else
+    ! Set the distances to infinity
+    d = INFINITY
 
-      ! We're in the mesh
-
-      call bin_to_mesh_indices(m, bin, ijk)
-
-      ! Copy particle position and direction
-      x = xyz(1)
-      y = xyz(2)
-      z = xyz(3)
-      u = p % coord(1) % uvw(1)
-      v = p % coord(1) % uvw(2)
-      w = p % coord(1) % uvw(3)
-
-      ! determine cell center
-      x0 = m % lower_left(1) + m % width(1) * (0.5_8 + dble(ijk(1) - 1))
-      y0 = m % lower_left(2) + m % width(2) * (0.5_8 + dble(ijk(2) - 1))
-
-      ! determine oncoming edge
-      x0 = x0 + sign(0.5_8, u) * m % width(1)
-      y0 = y0 + sign(0.5_8, v) * m % width(2)
-
-      ! left and right sides
-      if (u == ZERO) then
-        d = INFINITY
+    ! Calculate distance to each bounding surface. We need to treat
+    ! special case where the cosine of the angle is zero since this would
+    ! result in a divide-by-zero.
+    do i = 1, m % n_dimension
+      if (uvw(i) == 0) then
+        d(i) = INFINITY
       else
-        d = (x0 - x)/u
+        d(i) = (xyz_cross(i) - xyz(i))/uvw(i)
       end if
-      if (d < dist) dist = d
+    end do
 
-      ! front and back sides
-      if (v == ZERO) then
-        d = INFINITY
-      else
-        d = (y0 - y)/v
-      end if
-      if (d < dist) dist = d
+    ! Determine the closest bounding surface of the mesh cell by
+    ! calculating the minimum distance
+    dist = minval(d)
 
-      if (m % n_dimension == 3) then
+    ! Add 'tot_domain_dist' as accumulative distance
+    dist = dist + p % tot_domain_dist
 
-        z0 = m % lower_left(3) + m % width(3) * (0.5_8 + dble(ijk(3) - 1))
-        z0 = z0 + sign(0.5_8, w) * m % width(3)
-
-        ! top and bottom sides
-        if (w == ZERO) then
-          d = INFINITY
-        else
-          d = (z0 - z)/w
-        end if
-        if (d < dist) dist = d
-
-      end if
-
-    end if
-
-    ! Add 'fly_dd_distance' as accumulative distance
-    dist = dist + p % fly_dd_distance
-
-  end subroutine distance_to_mesh_surface
+  end subroutine distance_to_dd_mesh_surface
 
 !===============================================================================
 ! NEIGHBOR_LISTS builds a list of neighboring cells to each surface to speed up

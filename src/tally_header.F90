@@ -2,7 +2,7 @@ module tally_header
 
   use constants,           only: NONE, N_FILTER_TYPES, OTF_HEADROOM
   use tally_filter_header, only: TallyFilterContainer
-  use dict_header,        only: DictIntInt
+  use dict_header,         only: DictIntInt
   use trigger_header,      only: TriggerObject
 
   use, intrinsic :: ISO_C_BINDING

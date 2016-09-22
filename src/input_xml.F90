@@ -31,10 +31,8 @@ module input_xml
   use tally_initialize, only: add_tallies
   use xml_interface
 
-#ifdef MPI
-  use mpi
-#endif
   implicit none
+  save
 
   type(DictIntInt) :: cells_in_univ_dict ! Used to count how many cells each
                                          ! universe contains

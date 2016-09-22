@@ -902,12 +902,6 @@ contains
           filter_index = t % filter_index_map % get_key(filter_index)
         end if
 
-        ! Print filter information
-        if (size(t % filters) > 0) then
-          write(UNIT=unit_tally, FMT='(1X,2A)') repeat(" ", indent), &
-                 trim(t % filters(j) % obj % text_label(matching_bins(j)))
-        end if
-
         ! Write results for this filter bin combination
         score_index = 0
         if (size(t % filters) > 0) indent = indent + 2

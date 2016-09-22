@@ -1,7 +1,7 @@
 module finalize
 
   use global
-  use output,         only: header, print_runtime, print_results, &
+  use output,         only: print_runtime, print_results, &
                             print_overlap_check, write_tallies, &
                             print_domain_interactions
   use tally,          only: tally_statistics
@@ -11,7 +11,7 @@ module finalize
 #endif
 
   use hdf5_interface, only: hdf5_bank_t, hdf5_tallyresult_t
-  use hdf5, only: h5tclose_f, h5close_f, h5fclose_f
+  use hdf5, only: h5tclose_f, h5close_f
 
   implicit none
 

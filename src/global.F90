@@ -297,6 +297,8 @@ module global
 
   ! Is domain decomposition active
   logical :: dd_run  = .false.
+
+  ! Count of secondary particles in current stage
   integer :: n_stage_secondary = 0
 
   ! ============================================================================

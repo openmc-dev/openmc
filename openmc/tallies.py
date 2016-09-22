@@ -1085,7 +1085,7 @@ class Tally(object):
 
         # Look through all of this Tally's Filters for the type requested
         for test_filter in self.filters:
-            if isinstance(test_filter, filter_type):
+            if type(test_filter) is filter_type:
                 filter_found = True
                 break
 
@@ -1116,7 +1116,7 @@ class Tally(object):
 
         # Look through all of this Tally's Filters for the type requested
         for test_filter in self.filters:
-            if isinstance(test_filter, filter_type):
+            if type(test_filter) is filter_type:
                 filter_found = test_filter
                 break
 

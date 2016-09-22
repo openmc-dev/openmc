@@ -38,7 +38,7 @@ class FilterMeta(ABCMeta):
 
 
 class Filter(with_metaclass(FilterMeta, object)):
-    """A constraint on transport events that can score a tally
+    """A constraint on transport events that can score a tally.
 
     Parameters
     ----------
@@ -64,7 +64,7 @@ class Filter(with_metaclass(FilterMeta, object)):
         self._stride = None
 
     def __eq__(self, other):
-        if type(self) != type(other):
+        if type(self) is not type(other):
             return False
         elif len(self.bins) != len(other.bins):
             return False
@@ -77,7 +77,7 @@ class Filter(with_metaclass(FilterMeta, object)):
         return not self == other
 
     def __gt__(self, other):
-        if type(self) != type(other):
+        if type(self) is not type(other):
             if self.short_name in _FILTER_TYPES and \
                 other.short_name in _FILTER_TYPES:
                 delta = _FILTER_TYPES.index(self.short_name) - \
@@ -101,12 +101,22 @@ class Filter(with_metaclass(FilterMeta, object)):
 
     @classmethod
     def recursive_subclasses(cls):
+        """Return all subclasses and their subclasses, etc."""
         subs = cls.__subclasses__()
         subsubs = [grand for s in subs for grand in s.__subclasses__()]
         return subs + subsubs
 
     @classmethod
     def from_hdf5(cls, group):
+        """Construct a new Filter instance from HDF5 data.
+
+        Parameters
+        ----------
+        group : h5py.Group
+            HDF5 group to read from
+
+        """
+
         if group['type'].value.decode() == cls.short_name.lower():
             out = cls(group['bins'].value)
             out.num_bins = group['n_bins'].value
@@ -133,23 +143,14 @@ class Filter(with_metaclass(FilterMeta, object)):
 
     @bins.setter
     def bins(self, bins):
-        # We might be given a single value.  Stick it into a list.
-        if not isinstance(bins, Iterable):
-            bins = [bins]
-
-        # If the bin is 0D numpy array, promote to 1D
-        elif isinstance(bins, np.ndarray):
-            if bins.shape == ():
-                bins.shape = (1,)
-
-        # If the bins are in a collection, convert it to a list
-        else:
-            bins = list(bins)
-
-        # Convert to a numpy array
+        # Make sure the bins are a numpy array.
         bins = np.array(bins)
 
-        # Check the bin values
+        # If the bin is 0D numpy array, promote to 1D.
+        if bins.shape == ():
+            bins.shape = (1,)
+
+        # Check the bin values.
         self.check_bins(bins)
 
         self._bins = bins
@@ -164,8 +165,8 @@ class Filter(with_metaclass(FilterMeta, object)):
     def stride(self, stride):
         cv.check_type('filter stride', stride, Integral)
         if stride < 0:
-            msg = 'Unable to set stride "{0}" for a "{1}" Filter since it ' \
-                  'is a negative value'.format(stride, self.type)
+            msg = 'Unable to set stride "{0}" for a "{1}" since it ' \
+                  'is a negative value'.format(stride, type(self))
             raise ValueError(msg)
 
         self._stride = stride
@@ -179,9 +180,11 @@ class Filter(with_metaclass(FilterMeta, object)):
         ValueError
 
         """
+
         pass
 
     def to_xml(self):
+        """Return XML Element representing the Filter."""
         element = ET.Element('filter')
         element.set('type', self.short_name.lower())
         element.set('bins', ' '.join(str(b) for b in self.bins))
@@ -202,7 +205,7 @@ class Filter(with_metaclass(FilterMeta, object)):
 
         """
 
-        if type(self) != type(other): return False
+        if type(self) is not type(other): return False
 
         return True
 
@@ -222,8 +225,8 @@ class Filter(with_metaclass(FilterMeta, object)):
         """
 
         if not self.can_merge(other):
-            msg = 'Unable to merge "{0}" with "{1}" ' \
-                  'filters'.format(self.type, other.type)
+            msg = 'Unable to merge "{0}" with "{1}" '.format(
+                type(self), type(other))
             raise ValueError(msg)
 
         # Merge unique filter bins
@@ -251,7 +254,7 @@ class Filter(with_metaclass(FilterMeta, object)):
 
         """
 
-        if type(self) != type(other):
+        if type(self) is not type(other):
             return False
 
         for bin in other.bins:
@@ -405,7 +408,6 @@ class Filter(with_metaclass(FilterMeta, object)):
 
 
 class IntegralFilter(Filter):
-    """A Filter with Integral bins"""
     @property
     def num_bins(self):
         return len(self.bins)
@@ -563,7 +565,7 @@ class MeshFilter(Filter):
 
 class EnergyFilter(Filter):
     def __gt__(self, other):
-        if type(self) == type(other):
+        if type(self) is type(other):
             # Compare largest/smallest energy bin edges in energy filters
             # This logic is used when merging tallies with energy filters
             return self.bins[0] >= other.bins[-1]
@@ -583,13 +585,13 @@ class EnergyFilter(Filter):
     def check_bins(self, bins):
         for edge in bins:
             if not isinstance(edge, Real):
-                msg = 'Unable to add bin edge "{0}" to a "{1}" Filter ' \
+                msg = 'Unable to add bin edge "{0}" to a "{1}" ' \
                       'since it is a non-integer or floating point ' \
-                      'value'.format(edge, self.type)
+                      'value'.format(edge, type(self))
                 raise ValueError(msg)
             elif edge < 0.:
-                msg = 'Unable to add bin edge "{0}" to a "{1}" Filter ' \
-                      'since it is a negative value'.format(edge, self.type)
+                msg = 'Unable to add bin edge "{0}" to a "{1}" ' \
+                      'since it is a negative value'.format(edge, type(self))
                 raise ValueError(msg)
 
         # Check that bin edges are monotonically increasing
@@ -601,7 +603,7 @@ class EnergyFilter(Filter):
                 raise ValueError(msg)
 
     def can_merge(self, other):
-        if type(self) != type(other): return False
+        if type(self) is not type(other): return False
 
         if self.bins[0] == other.bins[-1]:
             # This low energy edge coincides with other's high energy edge
@@ -626,7 +628,7 @@ class EnergyFilter(Filter):
         return type(self)(sorted(merged_bins))
 
     def is_subset(self, other):
-        if type(self) != type(other):
+        if type(self) is not type(other):
             return False
         elif len(self.bins) != len(other.bins):
             return False

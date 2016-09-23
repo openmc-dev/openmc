@@ -21,7 +21,7 @@ assert os.path.isdir(args.mcnpdata)
 
 # Get a list of all ACE files
 endf71x = glob.glob(os.path.join(args.mcnpdata, 'endf71x', '*', '*.71?nc'))
-endf71sab = glob.glob(os.path.join(args.mcnpdata, 'ENDF71SaB' , 'lwtr*.2?t'))
+endf71sab = glob.glob(os.path.join(args.mcnpdata, 'ENDF71SaB' , '*.2?t'))
 
 # There's a bug in H-Zr at 1200 K
 endf71sab.remove(os.path.join(args.mcnpdata, 'ENDF71SaB' , 'h-zr.27t'))

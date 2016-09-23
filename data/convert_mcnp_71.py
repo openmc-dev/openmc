@@ -51,7 +51,7 @@ for basename, xs_list in sorted(suffixes.items()):
         # Add fission energy release data, if available
         if args.fission_energy_release is not None:
             fer = openmc.data.FissionEnergyRelease.from_compact_hdf5(
-                args.fission_energy_release, neutron)
+                args.fission_energy_release, data)
             if fer is not None:
                 data.fission_energy = fer
 

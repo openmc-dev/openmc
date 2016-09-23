@@ -219,7 +219,7 @@ for name, filenames in sorted(tables.items()):
     data.export_to_hdf5(h5_file, 'w')
 
     # Register with library
-    library.register_file(h5_file, 'thermal')
+    library.register_file(h5_file)
 
 # Write cross_sections.xml
 libpath = os.path.join(args.destination, 'cross_sections.xml')

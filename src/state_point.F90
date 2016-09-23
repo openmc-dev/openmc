@@ -1360,6 +1360,7 @@ contains
     type(TallyObject), pointer :: tally => null()
 
     ! Check if OTF tally exists
+    if (.not. (n_tallies > 0)) return
     if (.not. any(tallies(:) % on_the_fly_allocation)) return
 
     ! Check if dd run

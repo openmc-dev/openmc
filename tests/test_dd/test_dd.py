@@ -3,6 +3,7 @@
 import os
 import sys
 import glob
+import shutil
 
 sys.path.insert(0, os.pardir)
 from testing_harness import TestHarness
@@ -20,20 +21,22 @@ class DomainDecomTestHarness(TestHarness):
         try:
             # Run the 1-domain case
             os.chdir('1_domain')
+            shutil.copyfile("../results_true.dat", "./results_true.dat")
             self._run_openmc(1)
             self._test_output_created(1)
             results = self._get_results()
             self._write_results(results)
             self._compare_results()
-            
+
             # Run the 4-domain case
             os.chdir('../4_domains')
+            shutil.copyfile("../results_true.dat", "./results_true.dat")
             self._run_openmc(4)
             self._test_output_created(4)
             results = self._get_results()
             self._write_results(results)
             self._compare_results()
-            
+
         finally:
             os.chdir(base_dir)
             os.chdir('1_domain')
@@ -55,20 +58,11 @@ class DomainDecomTestHarness(TestHarness):
             results = self._get_results()
             self._write_results(results)
             self._overwrite_results()
-            
-            # Run the 4-domain case
-            os.chdir('../4_domains')
-            self._run_openmc(4)
-            self._test_output_created(4)
-            results = self._get_results()
-            self._write_results(results)
-            self._overwrite_results()
-            
+            shutil.copyfile("./results_true.dat", "../results_true.dat")
+
         finally:
             os.chdir(base_dir)
             os.chdir('1_domain')
-            self._cleanup()
-            os.chdir('../4_domains')
             self._cleanup()
 
     def _run_openmc(self, domain_num):
@@ -76,7 +70,7 @@ class DomainDecomTestHarness(TestHarness):
             p_num = 3
         elif domain_num == 4:
             p_num = 5
-        
+
         returncode = openmc.run(mpi_procs=p_num, threads=1,
                                 openmc_exec=self._opts.exe,
                                 mpi_exec=self._opts.mpi_exec)
@@ -92,13 +86,13 @@ class DomainDecomTestHarness(TestHarness):
             'Wrong number of tally out files: %s' % len(tallies)
         assert statepoint[0].endswith('h5'), \
             'Statepoint file is not a HDF5 file.'
-    
+
     def _get_results(self):
         """Digest info in the statepoint and return as a string."""
         # Read the statepoint file
         statepoint = glob.glob(os.path.join(os.getcwd(), self._sp_name))[0]
         sp = openmc.StatePoint(statepoint)
-        
+
         # Write out k-combined
         outstr = 'k-combined:\n'
         form = '{0:12.6E} {1:12.6E}\n'
@@ -123,7 +117,7 @@ class DomainDecomTestHarness(TestHarness):
         """Delete statepoints, tally, and test files."""
         output = glob.glob(os.path.join(os.getcwd(), 'statepoint.*.*'))
         output.append(os.path.join(os.getcwd(), 'summary.h5'))
-        output.append(os.path.join(os.getcwd(), 'results_test.dat'))
+        output.append(os.path.join(os.getcwd(), 'results*.dat'))
         output += glob.glob(os.path.join(os.getcwd(), 'tallies*.out'))
         output += glob.glob(os.path.join(os.getcwd(), 'volume_*.h5'))
         for f in output:

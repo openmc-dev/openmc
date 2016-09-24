@@ -2,14 +2,13 @@
 
 from __future__ import print_function
 import os
-import shutil
-import subprocess
+from collections import defaultdict
 import sys
 import tarfile
 import zipfile
 import glob
-import hashlib
 import argparse
+from string import digits
 
 import openmc.data
 
@@ -26,23 +25,18 @@ else:
 
 download_warning = """
 WARNING: This script will download approximately 9 GB of data. Extracting and
-processing the data may require as much as 30 GB of additional free disk
+processing the data may require as much as 40 GB of additional free disk
 space. Note that if you don't need all 11 temperatures, you can modify the
 'files' list in the script to download only the data you want.
 
 Are you sure you want to continue? ([y]/n)
 """
 
-thermal_suffix = {20: '01t', 100: '02t', 293: '03t', 296: '03t', 323: '04t',
-                  350: '05t', 373: '06t', 400: '07t', 423: '08t', 473: '09t',
-                  500: '10t', 523: '11t', 573: '12t', 600: '13t', 623: '14t',
-                  643: '15t', 647: '15t', 700: '16t', 773: '17t', 800: '18t',
-                  1000: '19t', 1200: '20t', 1600: '21t', 2000: '22t',
-                  3000: '23t'}
-
 parser = argparse.ArgumentParser()
 parser.add_argument('-b', '--batch', action='store_true',
                     help='supresses standard in')
+parser.add_argument('-d', '--destination', default='jeff-3.2-hdf5',
+                    help='Directory to create new library in')
 args = parser.parse_args()
 
 response = askuser(download_warning) if not args.batch else 'y'
@@ -131,21 +125,6 @@ for f in files:
                 os.remove(path)
 
 # ==============================================================================
-# FIX ERRORS
-
-# A few nuclides at 400K has 03c instead of 04c
-print('Assigning new cross section identifiers...')
-wrong_nuclides = ['Mn55', 'Mo95', 'Nb93', 'Pd105', 'Pu239', 'Pu240', 'U235',
-                  'U238', 'Y89']
-for nuc in wrong_nuclides:
-    path = os.path.join('jeff-3.2', 'ACEs_400K', nuc + '.ACE')
-    print('    Fixing {} (03c --> 04c)...'.format(path))
-    if os.path.isfile(path):
-        text = open(path, 'r').read()
-        text = text[:7] + '04c' + text[10:]
-        open(path, 'w').write(text)
-
-# ==============================================================================
 # CHANGE ZAID FOR METASTABLES
 
 metastables = glob.glob(os.path.join('jeff-3.2', '**', '*M.ACE'))
@@ -158,50 +137,90 @@ for path in metastables:
         open(path, 'w').write(text)
 
 # ==============================================================================
-# CHANGE IDENTIFIER FOR S(A,B) TABLES
+# GENERATE HDF5 LIBRARY -- NEUTRON FILES
 
-thermals = glob.glob(os.path.join('jeff-3.2', 'ANNEX_6_3_STLs', '**', '*.ace'))
-for path in thermals:
-    print('    Fixing {} (unique suffix)...'.format(path))
-    basename = os.path.basename(path)
-    temperature = int(basename.split('-')[1][:-4])
-    text = open(path, 'r').read()
-    text = text[:7] + thermal_suffix[temperature] + text[10:]
-    open(path, 'w').write(text)
+# Get a list of all ACE files
+neutron_files = glob.glob(os.path.join('jeff-3.2', '*', '*.ACE'))
+
+# Group together tables for same nuclide
+tables = defaultdict(list)
+for filename in sorted(neutron_files):
+    dirname, basename = os.path.split(filename)
+    name = basename.split('.')[0]
+    tables[name].append(filename)
+
+# Sort temperatures from lowest to highest
+for name, filenames in sorted(tables.items()):
+    filenames.sort(key=lambda x: int(
+        x.split(os.path.sep)[1].split('_')[1][:-1]))
+
+# Create output directory if it doesn't exist
+if not os.path.isdir(args.destination):
+    os.mkdir(args.destination)
+
+library = openmc.data.DataLibrary()
+
+for name, filenames in sorted(tables.items()):
+    # Convert first temperature for the table
+    print('Converting: ' + filenames[0])
+    data = openmc.data.IncidentNeutron.from_ace(filenames[0])
+
+    # For each higher temperature, add cross sections to the existing table
+    for filename in filenames[1:]:
+        print('Adding: ' + filename)
+        data.add_temperature_from_ace(filename)
+
+    # Export HDF5 file
+    h5_file = os.path.join(args.destination, data.name + '.h5')
+    print('Writing {}...'.format(h5_file))
+    data.export_to_hdf5(h5_file, 'w')
+
+    # Register with library
+    library.register_file(h5_file)
 
 # ==============================================================================
-# CONVERT TO BINARY TO SAVE DISK SPACE
+# GENERATE HDF5 LIBRARY -- S(A,B) FILES
 
-# get a list of all ACE files
-ace_files = (glob.glob(os.path.join('jeff-3.2', '**', '*.ACE')) +
-             glob.glob(os.path.join('jeff-3.2', 'ANNEX_6_3_STLs', '**', '*.ace')))
+sab_files = glob.glob(os.path.join('jeff-3.2', 'ANNEX_6_3_STLs', '*', '*.ace'))
 
-# Ask user to convert
-if not args.batch:
-    response = askuser('Convert ACE files to binary? ([y]/n) ')
-else:
-    response = 'y'
+# Group together tables for same nuclide
+tables = defaultdict(list)
+for filename in sorted(sab_files):
+    dirname, basename = os.path.split(filename)
+    name = basename.split('-')[0]
+    tables[name].append(filename)
 
-# Convert files if requested
-if not response or response.lower().startswith('y'):
-    for f in ace_files:
-        print('    Converting {}...'.format(f))
-        openmc.data.ace.ascii_to_binary(f, f)
+# Sort temperatures from lowest to highest
+for name, filenames in sorted(tables.items()):
+    filenames.sort(key=lambda x: int(
+        os.path.split(x)[1].split('-')[1].split('.')[0]))
 
-# ==============================================================================
-# PROMPT USER TO GENERATE HDF5 LIBRARY
+for name, filenames in sorted(tables.items()):
+    # Convert first temperature for the table
+    print('Converting: ' + filenames[0])
 
-# Ask user to convert
-if not args.batch:
-    response = askuser('Generate HDF5 library? ([y]/n) ')
-else:
-    response = 'y'
+    # Take numbers out of table name, e.g. lw10.32t -> lw.32t
+    table = openmc.data.ace.get_table(filenames[0])
+    name, xs = table.name.split('.')
+    table.name = '.'.join((name.strip(digits), xs))
+    data = openmc.data.ThermalScattering.from_ace(table)
 
-# Convert files if requested
-if not response or response.lower().startswith('y'):
-    # Ensure 'import openmc.data' works in the openmc-ace-to-xml script
-    env = os.environ.copy()
-    env['PYTHONPATH'] = os.path.join(os.getcwd(), os.pardir)
+    # For each higher temperature, add cross sections to the existing table
+    for filename in filenames[1:]:
+        print('Adding: ' + filename)
+        table = openmc.data.ace.get_table(filename)
+        name, xs = table.name.split('.')
+        table.name = '.'.join((name.strip(digits), xs))
+        data.add_temperature_from_ace(table)
 
-    subprocess.call(['../scripts/openmc-ace-to-hdf5', '-d', 'jeff-3.2-hdf5']
-                    + sorted(ace_files), env=env)
+    # Export HDF5 file
+    h5_file = os.path.join(args.destination, data.name + '.h5')
+    print('Writing {}...'.format(h5_file))
+    data.export_to_hdf5(h5_file, 'w')
+
+    # Register with library
+    library.register_file(h5_file)
+
+# Write cross_sections.xml
+libpath = os.path.join(args.destination, 'cross_sections.xml')
+library.export_to_xml(libpath)

@@ -8,20 +8,50 @@ from openmc.clean_xml import clean_xml_indentation
 
 
 class DataLibrary(EqualityMixin):
+    """Collection of cross section data libraries.
+
+    Attributes
+    ----------
+    libraries : list of dict
+        List in which each item is a dictionary summarizing cross section data
+        from a single file. The dictionary has keys 'path', 'type', and
+        'materials'.
+
+    """
+
     def __init__(self):
         self.libraries = []
 
-    def register_file(self, filename, filetype='neutron'):
+    def register_file(self, filename):
+        """Register a file with the data library.
+
+        Parameters
+        ----------
+        filename : str
+            Path to the file to be registered.
+
+        """
         h5file = h5py.File(filename, 'r')
 
         materials = []
+        filetype = 'neutron'
         for name in h5file:
+            if name.startswith('c_'):
+                filetype = 'thermal'
             materials.append(name)
 
         library = {'path': filename, 'type': filetype, 'materials': materials}
         self.libraries.append(library)
 
     def export_to_xml(self, path='cross_sections.xml'):
+        """Export cross section data library to an XML file.
+
+        Parameters
+        ----------
+        path : str
+            Path to file to write. Defaults to 'cross_sections.xml'.
+
+        """
         root = ET.Element('cross_sections')
 
         # Determine common directory for library paths

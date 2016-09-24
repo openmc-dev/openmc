@@ -22,13 +22,13 @@ _THERMAL_NAMES = {'al': 'c_Al27', 'al27': 'c_Al27',
                   'bebeo': 'c_Be_in_BeO', 'be-o': 'c_Be_in_BeO', 'be/o': 'c_Be_in_BeO',
                   'benz': 'c_Benzine',
                   'cah': 'c_Ca_in_CaH2',
-                  'dd2o': 'c_D_in_D2O', 'hwtr': 'c_D_in_D2O',
+                  'dd2o': 'c_D_in_D2O', 'hwtr': 'c_D_in_D2O', 'hw': 'c_D_in_D2O',
                   'fe': 'c_Fe56', 'fe56': 'c_Fe56',
-                  'graph': 'c_Graphite', 'grph': 'c_Graphite',
+                  'graph': 'c_Graphite', 'grph': 'c_Graphite', 'gr': 'c_Graphite',
                   'hca': 'c_H_in_CaH2',
-                  'hch2': 'c_H_in_CH2', 'poly': 'c_H_in_CH2',
-                  'hh2o': 'c_H_in_H2O', 'lwtr': 'c_H_in_H2O',
-                  'hzrh': 'c_H_in_ZrH', 'h-zr': 'c_H_in_ZrH', 'h/zr': 'c_H_in_ZrH',
+                  'hch2': 'c_H_in_CH2', 'poly': 'c_H_in_CH2', 'pol': 'c_H_in_CH2',
+                  'hh2o': 'c_H_in_H2O', 'lwtr': 'c_H_in_H2O', 'lw': 'c_H_in_H2O',
+                  'hzrh': 'c_H_in_ZrH', 'h-zr': 'c_H_in_ZrH', 'h/zr': 'c_H_in_ZrH', 'hzr': 'c_H_in_ZrH',
                   'lch4': 'c_liquid_CH4', 'lmeth': 'c_liquid_CH4',
                   'mg': 'c_Mg24',
                   'obeo': 'c_O_in_BeO', 'o-be': 'c_O_in_BeO', 'o/be': 'c_O_in_BeO',
@@ -191,8 +191,6 @@ class ThermalScattering(EqualityMixin):
         self.name = name
         self.atomic_weight_ratio = atomic_weight_ratio
         self.kTs = kTs
-        self.temperatures = [str(int(round(kT / K_BOLTZMANN))) + "K"
-                             for kT in kTs]
         self.elastic_xs = {}
         self.elastic_mu_out = {}
         self.inelastic_xs = {}
@@ -207,6 +205,10 @@ class ThermalScattering(EqualityMixin):
             return "<Thermal Scattering Data: {0}>".format(self.name)
         else:
             return "<Thermal Scattering Data>"
+
+    @property
+    def temperatures(self):
+        return ["{}K".format(int(round(kT / K_BOLTZMANN))) for kT in self.kTs]
 
     def export_to_hdf5(self, path, mode='a'):
         """Export table to an HDF5 file.
@@ -277,142 +279,36 @@ class ThermalScattering(EqualityMixin):
             Thermal scattering data
 
         """
-        if isinstance(ace_or_filename, Table):
-            ace = ace_or_filename
-        else:
-            ace = get_table(ace_or_filename)
+        data = ThermalScattering.from_ace(ace_or_filename, name)
 
-        # Get new name that is GND-consistent
-        ace_name, xs = ace.name.split('.')
-        if name is None:
-            if ace_name.lower() in _THERMAL_NAMES:
-                name = _THERMAL_NAMES[ace_name.lower()]
-            else:
-                # Make an educated guess? This actually works well for JEFF-3.2
-                # which stupidly uses names like lw00.32t, lw01.32t, etc. for
-                # different temperatures
-                matches = get_close_matches(
-                    ace_name.lower(), _THERMAL_NAMES.keys(), cutoff=0.5)
-                if len(matches) > 0:
-                    name = _THERMAL_NAMES[matches[0]]
-                else:
-                    # OK, we give up. Just use the ACE name.
-                    name = 'c_' + ace.name
-                warn('Thermal scattering material "{}" is not recognized. '
-                     'Assigning a name of {}.'.format(ace.name, name))
+        # Check if temprature already exists
+        strT = data.temperatures[0]
+        if strT in self.temperatures:
+            warn('S(a,b) data at T={} already exists.'.format(strT))
+            return
 
-        # If this ACE data matches the data within self then get the data
-        if ace.temperature not in self.kTs:
-            if name == self.name:
-                # Add temperature and kTs
-                strT = str(int(round(ace.temperature / K_BOLTZMANN))) + "K"
-                self.temperatures.append(strT)
-                self.kTs.append(ace.temperature)
+        # Check that name matches
+        if data.name != self.name:
+            raise ValueError('Data provided for an incorrect material.')
 
-                # Incoherent inelastic scattering cross section
-                idx = ace.jxs[1]
-                n_energy = int(ace.xss[idx])
-                energy = ace.xss[idx + 1: idx + 1 + n_energy]
-                xs = ace.xss[idx + 1 + n_energy: idx + 1 + 2 * n_energy]
-                self.inelastic_xs[strT] = Tabulated1D(energy, xs)
+        # Add temperature
+        self.kTs += data.kTs
 
-                # Make sure secondary_mode is always equal. This should always
-                # be the case, but to reduce future debugging should something
-                # change, this will alert the developers to the issue.
-                if ace.nxs[7] == 0:
-                    secondary_mode = 'equal'
-                elif ace.nxs[7] == 1:
-                    secondary_mode = 'skewed'
-                elif ace.nxs[7] == 2:
-                    secondary_mode = 'continuous'
+        # Add inelastic cross section and distributions
+        if strT in data.inelastic_xs:
+            self.inelastic_xs[strT] = data.inelastic_xs[strT]
+        if strT in data.inelastic_e_out:
+            self.inelastic_e_out[strT] = data.inelastic_e_out[strT]
+        if strT in data.inelastic_mu_out:
+            self.inelastic_mu_out[strT] = data.inelastic_mu_out[strT]
+        if strT in data.inelastic_dist:
+            self.inelastic_dist[strT] = data.inelastic_dist[strT]
 
-                if secondary_mode != self.secondary_mode:
-                    raise ValueError('Secondary Modes are inconsistent.')
-
-                n_energy_out = ace.nxs[4]
-                if self.secondary_mode in ('equal', 'skewed'):
-                    n_mu = ace.nxs[3]
-                    idx = ace.jxs[3]
-                    self.inelastic_e_out[strT] = \
-                        ace.xss[idx:idx + n_energy * n_energy_out * (n_mu + 2):
-                                n_mu + 2]
-                    self.inelastic_e_out[strT].shape = \
-                        (n_energy, n_energy_out)
-
-                    self.inelastic_mu_out[strT] = \
-                        ace.xss[idx:idx + n_energy * n_energy_out * (n_mu + 2)]
-                    self.inelastic_mu_out[strT].shape = \
-                        (n_energy, n_energy_out, n_mu + 2)
-                    self.inelastic_mu_out[strT] = \
-                        self.inelastic_mu_out[strT][:, :, 1:]
-                else:
-                    n_mu = ace.nxs[3] - 1
-                    idx = ace.jxs[3]
-                    locc = ace.xss[idx:idx + n_energy].astype(int)
-                    n_energy_out = \
-                        ace.xss[idx + n_energy:idx + 2 * n_energy].astype(int)
-                    energy_out = []
-                    mu_out = []
-                    for i in range(n_energy):
-                        idx = locc[i]
-
-                        # Outgoing energy distribution for incoming energy i
-                        e = ace.xss[idx + 1:idx + 1 + n_energy_out[i]*(n_mu + 3):
-                                    n_mu + 3]
-                        p = ace.xss[idx + 2:idx + 2 + n_energy_out[i]*(n_mu + 3):
-                                    n_mu + 3]
-                        c = ace.xss[idx + 3:idx + 3 + n_energy_out[i]*(n_mu + 3):
-                                    n_mu + 3]
-                        eout_i = Tabular(e, p, 'linear-linear', ignore_negative=True)
-                        eout_i.c = c
-
-                        # Outgoing angle distribution for each
-                        # (incoming, outgoing) energy pair
-                        mu_i = []
-                        for j in range(n_energy_out[i]):
-                            mu = ace.xss[idx + 4:idx + 4 + n_mu]
-                            p_mu = 1. / n_mu * np.ones(n_mu)
-                            mu_ij = Discrete(mu, p_mu)
-                            mu_ij.c = np.cumsum(p_mu)
-                            mu_i.append(mu_ij)
-                            idx += 3 + n_mu
-
-                        energy_out.append(eout_i)
-                        mu_out.append(mu_i)
-
-                    # Create correlated angle-energy distribution
-                    breakpoints = [n_energy]
-                    interpolation = [2]
-                    energy = self.inelastic_xs[strT].x
-                    self.inelastic_dist[strT] = CorrelatedAngleEnergy(
-                        breakpoints, interpolation, energy, energy_out, mu_out)
-
-                # Incoherent/coherent elastic scattering cross section
-                idx = ace.jxs[4]
-                if idx != 0:
-                    n_energy = int(ace.xss[idx])
-                    energy = ace.xss[idx + 1: idx + 1 + n_energy]
-                    P = ace.xss[idx + 1 + n_energy: idx + 1 + 2 * n_energy]
-
-                    if ace.nxs[5] == 4:
-                        self.elastic_xs[strT] = CoherentElastic(energy, P)
-                    else:
-                        self.elastic_xs[strT] = Tabulated1D(energy, P)
-
-                    # Angular distribution
-                    n_mu = ace.nxs[6]
-                    if n_mu != -1:
-                        idx = ace.jxs[6]
-                        self.elastic_mu_out[strT] = \
-                            ace.xss[idx:idx + n_energy * n_mu]
-                        self.elastic_mu_out[strT].shape = \
-                            (n_energy, n_mu)
-
-            else:
-                raise ValueError('Data provided for an incorrect library')
-        else:
-            raise Warning('Temperature data set already within '
-                          'IncidentNeutron object')
+        # Add elastic cross sectoin and angular distribution
+        if strT in data.elastic_xs:
+            self.elastic_xs[strT] = data.elastic_xs[strT]
+        if strT in data.elastic_mu_out:
+            self.elastic_mu_out[strT] = data.elastic_mu_out[strT]
 
     @classmethod
     def from_hdf5(cls, group_or_filename):

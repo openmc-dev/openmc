@@ -617,10 +617,14 @@ class Plots(cv.CheckedList):
             self._plots_file.append(xml_element)
 
     def export_to_xml(self, path='plots.xml'):
-        """Create a plots.xml file that can be used by OpenMC.
+        """Export plot specifications to an XML file.
+
+        Parameters
+        ----------
+        path : str
+            Path to file to write. Defaults to 'plots.xml'.
 
         """
-
         # Reset xml element tree
         self._plots_file.clear()
 

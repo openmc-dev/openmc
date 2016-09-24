@@ -291,6 +291,7 @@ class Cell(object):
 
     @temperature.setter
     def temperature(self, temperature):
+        # Make sure temperatures are positive
         cv.check_type('cell temperature', temperature, (Iterable, Real))
         if isinstance(temperature, Iterable):
             cv.check_type('cell temperature', temperature, Iterable, Real)
@@ -298,7 +299,15 @@ class Cell(object):
                 cv.check_greater_than('cell temperature', T, 0.0, True)
         else:
             cv.check_greater_than('cell temperature', temperature, 0.0, True)
-        self._temperature = temperature
+
+        # If this cell is filled with a universe or lattice, propagate
+        # temperatures to all cells contained. Otherwise, simply assign it.
+        if self.fill_type in ('universe', 'lattice'):
+            for c in self.get_all_cells().values():
+                if c.fill_type == 'material':
+                    c._temperature = temperature
+        else:
+            self._temperature = temperature
 
     @offsets.setter
     def offsets(self, offsets):
@@ -427,9 +436,8 @@ class Cell(object):
         else:
             if self.volume_information is not None:
                 volume = self.volume_information['volume'][0]
-                for full_name, atoms in self.volume_information['atoms']:
-                    name, xs = full_name.split('.')
-                    nuclide = openmc.Nuclide(name, xs)
+                for name, atoms in self.volume_information['atoms']:
+                    nuclide = openmc.Nuclide(name)
                     density = 1.0e-24 * atoms[0]/volume  # density in atoms/b-cm
                     nuclides[name] = (nuclide, density)
             else:

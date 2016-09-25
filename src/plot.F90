@@ -239,10 +239,10 @@ contains
     xyz_ll_plot = pl % origin
     xyz_ur_plot = pl % origin
 
-    xyz_ll_plot(outer) = pl % origin(1) - pl % width(1) / TWO
-    xyz_ll_plot(inner) = pl % origin(2) - pl % width(2) / TWO
-    xyz_ur_plot(outer) = pl % origin(1) + pl % width(1) / TWO
-    xyz_ur_plot(inner) = pl % origin(2) + pl % width(2) / TWO
+    xyz_ll_plot(outer) = pl % origin(outer) - pl % width(1) / TWO
+    xyz_ll_plot(inner) = pl % origin(inner) - pl % width(2) / TWO
+    xyz_ur_plot(outer) = pl % origin(outer) + pl % width(1) / TWO
+    xyz_ur_plot(inner) = pl % origin(inner) + pl % width(2) / TWO
 
     width = xyz_ur_plot - xyz_ll_plot
 

@@ -132,7 +132,7 @@ The current revision of the summary file format is 4.
     Index of this cell in distribcell arrays. Only present if this cell is
     listed in a distribcell filter or if it uses distributed materials.
 
-**/geometry/cells/cell <uid>/distribcell_index** (*char[][]*)
+**/geometry/cells/cell <uid>/paths** (*char[][]*)
 
     The paths traversed through the CSG tree to reach each distribcell
     instance. This consists of the integer IDs for each universe, cell and

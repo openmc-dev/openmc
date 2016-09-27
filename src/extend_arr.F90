@@ -11,15 +11,61 @@ module extend_arr
 !===============================================================================
 
   interface extend_array
-    module procedure extend_array_bank, &
+    module procedure extend_array_integer, &
+                     extend8_array_integer, &
+                     extend_array_bank, &
                      extend8_array_bank, &
-                     extend_array_particle, &
-                     extend8_array_particle, &
                      extend_array_particlebuffer, &
                      extend8_array_particlebuffer
   end interface
 
 contains
+
+!===============================================================================
+! EXTEND_ARRAY_INTEGER
+!===============================================================================
+
+  subroutine extend_array_integer(array, new_size, keep_data, alloc_err)
+
+    integer, allocatable, intent(inout) :: array(:)
+    integer, intent(in)                 :: new_size
+    logical, intent(in)                 :: keep_data
+    integer, intent(out)                :: alloc_err
+
+    integer, allocatable                :: tmp(:)
+
+    if (new_size > size(array)) then
+
+      allocate(tmp(new_size), STAT=alloc_err)
+      if (keep_data) tmp(1:size(array)) = array
+      call move_alloc(FROM=tmp, TO=array)
+
+    end if
+
+  end subroutine extend_array_integer
+
+!===============================================================================
+! EXTEND8_ARRAY_INTEGER
+!===============================================================================
+
+  subroutine extend8_array_integer(array, new_size, keep_data, alloc_err)
+
+    integer, allocatable, intent(inout) :: array(:)
+    integer(8), intent(in)              :: new_size
+    logical, intent(in)                 :: keep_data
+    integer, intent(out)                :: alloc_err
+
+    integer, allocatable                :: tmp(:)
+
+    if (new_size > size(array)) then
+
+      allocate(tmp(new_size), STAT=alloc_err)
+      if (keep_data) tmp(1:size(array)) = array
+      call move_alloc(FROM=tmp, TO=array)
+
+    end if
+
+  end subroutine extend8_array_integer
 
 !===============================================================================
 ! EXTEND_ARRAY_BANK
@@ -66,52 +112,6 @@ contains
     end if
 
   end subroutine extend8_array_bank
-
-!===============================================================================
-! EXTEND_ARRAY_PARTICLE
-!===============================================================================
-
-  subroutine extend_array_particle(array, new_size, keep_data, alloc_err)
-
-    type(Particle), allocatable, intent(inout)     :: array(:)
-    integer, intent(in)                            :: new_size
-    logical, intent(in)                            :: keep_data
-    integer, intent(out)                           :: alloc_err
-
-    type(PArticle), allocatable                    :: tmp(:)
-
-    if (new_size > size(array)) then
-
-      allocate(tmp(new_size), STAT=alloc_err)
-      if (keep_data) tmp(1:size(array)) = array
-      call move_alloc(FROM=tmp, TO=array)
-
-    end if
-
-  end subroutine extend_array_particle
-
-!===============================================================================
-! EXTEND8_ARRAY_PARTICLE
-!===============================================================================
-
-  subroutine extend8_array_particle(array, new_size, keep_data, alloc_err)
-
-    type(Particle), allocatable, intent(inout)     :: array(:)
-    integer(8), intent(in)                         :: new_size
-    logical, intent(in)                            :: keep_data
-    integer, intent(out)                           :: alloc_err
-
-    type(PArticle), allocatable                    :: tmp(:)
-
-    if (new_size > size(array)) then
-
-      allocate(tmp(new_size), STAT=alloc_err)
-      if (keep_data) tmp(1:size(array)) = array
-      call move_alloc(FROM=tmp, TO=array)
-
-    end if
-
-  end subroutine extend8_array_particle
 
 !===============================================================================
 ! EXTEND_ARRAY_PARTICLEBUFFER

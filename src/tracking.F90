@@ -295,11 +295,12 @@ contains
             micro_xs % last_index_sab = NONE
             p % sec_particle = .true.
             n_stage_secondary = n_stage_secondary + 1
-          end if
 
-          ! Add number of events to DD object
-          if (dd_run .and. domain_decomp % count_interactions) then
-            domain_decomp % n_interaction = domain_decomp % n_interaction + n_event
+            ! Add number of events to DD object
+            if (domain_decomp % count_interactions) then
+              domain_decomp % n_interaction = &
+                   domain_decomp % n_interaction + n_event
+            end if
           end if
 
           n_event = 0

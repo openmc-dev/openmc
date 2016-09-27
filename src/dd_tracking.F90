@@ -12,6 +12,7 @@ module dd_tracking
   use random_lcg,        only: prn_seed
   use string,            only: to_str
   use extend_arr,        only: extend_array
+  use particle_header,   only: particle_to_buffer
 
   implicit none
   public
@@ -130,9 +131,6 @@ contains
     ! Convert destination domain meshbin to relative local bin
     to_bin = dd % bins_dict % get_key(to_meshbin)
 
-    ! Note where this particle will be transmitted (after all particles run)
-    p % outscatter_destination = to_bin
-
     ! Increment count of how many are going to the local neighbor
     dd % n_scatters_local(to_bin) = dd % n_scatters_local(to_bin) + 1
 
@@ -146,15 +144,18 @@ contains
     ! Save particle info to particle_buffer. If it is a secondary particle,
     ! add it behind the location of work
     if (.not. p % sec_particle) then
-      dd % particle_buffer(current_work) = p
+      call particle_to_buffer(p, dd % particle_buffer(current_work))
+      dd % buffer_to_bin(current_work) = to_bin
     else
       if (work + n_stage_secondary > dd % size_particle_buffer) then
         size_buff = ceiling(dble(work+n_stage_secondary)*DD_BUFFER_HEADROOM, 8)
         call extend_array(dd % particle_buffer, size_buff, .true., alloc_err)
+        call extend_array(dd % buffer_to_bin, size_buff, .true., alloc_err)
         dd % size_particle_buffer = size(dd % particle_buffer)
       end if
 
-      dd % particle_buffer(work + n_stage_secondary) = p
+      call particle_to_buffer(p, dd % particle_buffer(work + n_stage_secondary))
+      dd % buffer_to_bin(work + n_stage_secondary) = to_bin
     end if
 
   end subroutine cross_domain_boundary

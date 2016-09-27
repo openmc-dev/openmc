@@ -125,6 +125,7 @@ contains
                                     dble(dd % domain_n_procs(dd % meshbin)) * &
                                     DD_BUFFER_HEADROOM)
     allocate(dd % particle_buffer(dd % size_particle_buffer), STAT=alloc_err)
+    allocate(dd % buffer_to_bin(dd % size_particle_buffer), STAT=alloc_err)
 
     ! Check for allocation errors
     if (alloc_err /= 0) then

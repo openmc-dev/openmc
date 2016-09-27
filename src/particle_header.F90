@@ -2,7 +2,7 @@ module particle_header
 
   use bank_header,     only: Bank
   use constants,       only: NEUTRON, ONE, NONE, ZERO, MAX_SECONDARY, &
-                             MAX_DELAYED_GROUPS, ERROR_REAL, NO_OUTSCATTER, &
+                             MAX_DELAYED_GROUPS, ERROR_REAL, &
                              N_STREAMS
   use error,           only: fatal_error
   use geometry_header, only: BASE_UNIVERSE
@@ -111,10 +111,6 @@ module particle_header
     real(8)    :: tot_domain_dist ! accumulated distance to domain boundary
     integer(8) :: prn_seed(N_STREAMS) ! the next random number seed
 
-    ! Domain information
-    integer    :: dd_meshbin    ! DD meshbin the particle is to be run in next
-    integer    :: outscatter_destination = NO_OUTSCATTER ! Domain to transmit
-
   contains
     procedure :: initialize => initialize_particle
     procedure :: clear => clear_particle
@@ -187,7 +183,6 @@ contains
     this % new_particle      = .true.
     this % stored_fly_dist   = ZERO
     this % tot_domain_dist   = ZERO
-    this % outscatter_destination = NO_OUTSCATTER
     this % g = 1
 
     ! Set up base level coordinates

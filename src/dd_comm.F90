@@ -13,7 +13,6 @@ module dd_comm
                               current_gen, gen_per_batch, n_bank, n_batches
   use mesh,             only: get_mesh_bin
   use output,           only: write_message
-  use particle_header,  only: buffer_to_particle, particle_to_buffer
   use random_lcg,       only: prn, prn_seed
   use extend_arr,       only: extend_array
   use algorithm,        only: binary_search
@@ -132,6 +131,7 @@ contains
     end if
 
     call extend_array(dd % particle_buffer, new_source, .false., alloc_err)
+    call extend_array(dd % buffer_to_bin, new_source, .false., alloc_err)
     dd % size_particle_buffer = size(dd % particle_buffer)
 
     ! Receive sites from other processes
@@ -419,7 +419,7 @@ contains
       pr_bin = (to_bin - 1) * dd % max_domain_procs + to_ddrank + 1
       do i = 1, dd % size_particle_buffer
 
-        if (dd % particle_buffer(i) % outscatter_destination == to_bin) then
+        if (dd % buffer_to_bin(i) == to_bin) then
 
           ! Accumulate send info
           dd % send_rank_info(pr_bin) = dd % send_rank_info(pr_bin) + 1
@@ -605,14 +605,11 @@ contains
         do i8 = start, dd % size_particle_buffer
 
           ! Add outscatter particles to send buffer
-          if (dd % particle_buffer(i8) % outscatter_destination == to_bin) then
+          if (dd % buffer_to_bin(i8) == to_bin) then
 
-            if (dd % particle_buffer(i8) % outscatter_destination == NO_OUTSCATTER) then
-              call fatal_error("Trying to send particle that didn't leave domain!")
-            end if
+            ! Copy this particle to send buffer
+            dd % send_buffer(index_pbuffer) = dd % particle_buffer(i8)
 
-            call particle_to_buffer(dd % particle_buffer(i8), &
-                                    dd % send_buffer(index_pbuffer))
             index_pbuffer = index_pbuffer + 1
             n_send = n_send + 1
           end if
@@ -660,6 +657,7 @@ contains
 
       size_buff = ceiling(dble(dd % n_inscatt) * DD_BUFFER_HEADROOM, 8)
       call extend_array(dd % particle_buffer, size_buff, .false., alloc_err)
+      call extend_array(dd % buffer_to_bin, size_buff, .false., alloc_err)
       dd % size_particle_buffer = size(dd % particle_buffer)
 
       ! We also need to resize the source bank and fission bank now that we
@@ -669,14 +667,12 @@ contains
 
       call extend_array(fission_bank, 3_8*size_buff, .true., alloc_err)
       size_fission_bank = size(fission_bank)
-      !TODO: fission bank might not be big enough! This only covers the particle
-      ! buffer from this stage!
 
     end if
 
-    ! Populate the particle particle buffer from the receive buffer
+    ! Populate the particle buffer from the receive buffer
     do i = 1, dd % n_inscatt
-      call buffer_to_particle(dd % recv_buffer(i), dd % particle_buffer(i))
+      dd % particle_buffer(i) = dd % recv_buffer(i)
     end do
 
   end subroutine rebuild_particle_buffer
@@ -935,6 +931,7 @@ contains
     size_bank = ceiling(dble(index_local) * DD_BUFFER_HEADROOM, 8)
     if (index_local > dd % size_particle_buffer) then
       call extend_array(dd % particle_buffer, size_bank, .false.,alloc_err)
+      call extend_array(dd % buffer_to_bin, size_bank, .false.,alloc_err)
       dd % size_particle_buffer = size(dd % particle_buffer)
     end if
 
@@ -946,7 +943,6 @@ contains
       size_fission_bank = size(fission_bank)
 
       call extend_array(temp_sites, 3_8*size_bank, .true., alloc_err)
-      size_fission_bank = size(temp_sites)
     end if
 
     ! ========================================================================

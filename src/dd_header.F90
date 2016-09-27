@@ -42,11 +42,12 @@ module dd_header
     ! For non-DD runs we re-ruse the same particle data structure for each
     ! history, but for DD runs we need to store particles if they would be
     ! transmitted to a neighboring domain.
-    type(Particle), allocatable :: particle_buffer(:)
+    type(ParticleBuffer), allocatable :: particle_buffer(:)
+    integer,              allocatable :: buffer_to_bin(:)
     integer(8) :: size_particle_buffer ! size of particle_buffer
 
     ! During simulation we keep track of where particles will scatter out to
-    ! with p % outscatter_destination, and then send them later during
+    ! with buffer_to_bin(:), and then send them later during
     ! syncronize_banks
     type(ParticleBuffer), allocatable :: send_buffer(:)
     type(ParticleBuffer), allocatable :: recv_buffer(:)
@@ -94,6 +95,7 @@ contains
     if (allocated(this % domain_n_procs)) deallocate(this % domain_n_procs)
     if (allocated(this % domain_masters)) deallocate(this % domain_masters)
     if (allocated(this % particle_buffer)) deallocate(this % particle_buffer)
+    if (allocated(this % buffer_to_bin)) deallocate(this % buffer_to_bin)
     if (allocated(this % send_buffer)) deallocate(this % send_buffer)
     if (allocated(this % recv_buffer)) deallocate(this % recv_buffer)
     if (allocated(this % send_rank_info)) deallocate(this % send_rank_info)

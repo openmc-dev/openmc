@@ -15,7 +15,7 @@ module simulation
   use global
   use output,          only: write_message, header, print_columns, &
                              print_batch_keff, print_generation
-  use particle_header, only: Particle
+  use particle_header, only: Particle, buffer_to_particle
   use random_lcg,      only: set_particle_seed, prn_seed
   use source,          only: initialize_source, sample_external_source
   use state_point,     only: write_state_point, write_source_point
@@ -100,13 +100,6 @@ contains
           PARTICLE_LOOP: do i_work = 1, work
             current_work = i_work
 
-            if (dd_run) then
-
-              ! Grab particle from particle_buffer
-              p = domain_decomp % particle_buffer(i_work)
-
-            end if
-
             ! Initialize particle
             call initialize_history(p, current_work)
 
@@ -185,6 +178,11 @@ contains
 
         ! On all other stages, we're running a particle in the buffer
         ! transferred from other domains, so all we need to do is set the coord
+
+        ! Grab particle from particle_buffer
+        call buffer_to_particle(domain_decomp % particle_buffer(index_source), p)
+
+        ! Set the coordinate
         call p % clear()
         p % coord(1) % universe = BASE_UNIVERSE
         p % n_coord = 1
@@ -198,10 +196,11 @@ contains
           p % E      = energy_bin_avg(p % g)
         end if
 
-        ! Re-initialize the stored outscatter_destination
-        p % outscatter_destination = NO_OUTSCATTER
-
       end if
+
+      ! Reset dd-related data
+      p % sec_particle = .false.
+      p % n_secondary = 0
 
       ! The order of the source bank is scrambled for domain-decomposed runs,
       ! so unless we want to do a distributed sort over all n_partcles, we're
@@ -313,12 +312,7 @@ contains
 
       domain_decomp % n_scatters_local = 0
       domain_decomp % n_scatters_domain = 0
-
-      domain_decomp % particle_buffer % sec_particle = .false.
-      domain_decomp % particle_buffer % n_secondary = 0
-
-      domain_decomp % particle_buffer % id = -1
-      domain_decomp % particle_buffer % outscatter_destination = NO_OUTSCATTER
+      domain_decomp % buffer_to_bin = NO_OUTSCATTER
 
     end if
 

@@ -2867,18 +2867,18 @@ contains
       ! Reduce counts to domain masters
       if (domain_decomp % local_master) then
         call MPI_REDUCE(MPI_IN_PLACE, domain_decomp % n_interaction, 1, &
-             MPI_REAL8, MPI_SUM, 0, domain_decomp % comm, mpi_err)
+             MPI_INTEGER8, MPI_SUM, 0, domain_decomp % comm, mpi_err)
       else
         call MPI_REDUCE(domain_decomp % n_interaction, dummy, 1, &
-             MPI_REAL8, MPI_SUM, 0, domain_decomp % comm, mpi_err)
+             MPI_INTEGER8, MPI_SUM, 0, domain_decomp % comm, mpi_err)
         ! Reset n_interaction on non-local-master process
         domain_decomp % n_interaction = 0
       end if
 
       ! Gather to global master
       if (domain_decomp % local_master) then
-        call MPI_GATHER(domain_decomp % n_interaction, 1, MPI_REAL8, &
-             domain_decomp % n_interactions_all, 1, MPI_REAL8, &
+        call MPI_GATHER(domain_decomp % n_interaction, 1, MPI_INTEGER8, &
+             domain_decomp % n_interactions_all, 1, MPI_INTEGER8, &
              0, domain_decomp % comm_domain_masters, mpi_err)
       end if
     end if

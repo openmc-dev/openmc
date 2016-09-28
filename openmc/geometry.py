@@ -65,10 +65,14 @@ class Geometry(object):
                     cell.add_volume_information(volume_calc)
 
     def export_to_xml(self, path='geometry.xml'):
-        """Create a geometry.xml file that can be used for a simulation.
+        """Export geometry to an XML file.
+
+        Parameters
+        ----------
+        path : str
+            Path to file to write. Defaults to 'geometry.xml'.
 
         """
-
         # Clear OpenMC written IDs used to optimize XML generation
         openmc.universe.WRITTEN_IDS = {}
 

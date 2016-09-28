@@ -367,6 +367,7 @@ Core Classes
     openmc.data.ThermalScattering
     openmc.data.CoherentElastic
     openmc.data.FissionEnergyRelease
+    openmc.data.DataLibrary
 
 Angle-Energy Distributions
 --------------------------

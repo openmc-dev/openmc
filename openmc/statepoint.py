@@ -818,19 +818,10 @@ class StatePoint(object):
             raise ValueError(msg)
 
         for tally_id, tally in self.tallies.items():
-            summary_tally = summary.tallies[tally_id]
-            tally.name = summary_tally.name
+            tally.name = summary.tally_names[tally_id]
             tally.with_summary = True
 
             for tally_filter in tally.filters:
-                summary_filter = summary_tally.find_filter(tally_filter.type)
-
-                if tally_filter.type == 'surface':
-                    surface_ids = []
-                    for bin in tally_filter.bins:
-                        surface_ids.append(bin)
-                    tally_filter.bins = surface_ids
-
                 if tally_filter.type in ['cell', 'distribcell']:
                     distribcell_ids = []
                     for bin in tally_filter.bins:
@@ -838,8 +829,9 @@ class StatePoint(object):
                     tally_filter.bins = distribcell_ids
 
                 if tally_filter.type == 'distribcell':
-                    tally_filter.distribcell_paths = \
-                        summary_filter.distribcell_paths
+                    cell_id = tally_filter.bins[0]
+                    cell = summary.get_cell_by_id(cell_id)
+                    tally_filter.distribcell_paths = cell.distribcell_paths
 
                 if tally_filter.type == 'universe':
                     universe_ids = []

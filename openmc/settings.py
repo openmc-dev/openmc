@@ -15,8 +15,7 @@ if sys.version_info[0] >= 3:
 
 
 class Settings(object):
-    """Settings file used for an OpenMC simulation. Corresponds directly to the
-    settings.xml input file.
+    """Settings used for an OpenMC simulation.
 
     Attributes
     ----------
@@ -1106,7 +1105,12 @@ class Settings(object):
                 elem.append(r.to_xml_element())
 
     def export_to_xml(self, path='settings.xml'):
-        """Create a settings.xml file that can be used for a simulation.
+        """Export simulation settings to an XML file.
+
+        Parameters
+        ----------
+        path : str
+            Path to file to write. Defaults to 'settings.xml'.
 
         """
 

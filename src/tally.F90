@@ -12,7 +12,8 @@ module tally
   use math,             only: t_percentile, calc_pn, calc_rn
   use mesh,             only: get_mesh_bin, bin_to_mesh_indices, &
                               get_mesh_indices, mesh_indices_to_bin, &
-                              mesh_intersects_2d, mesh_intersects_3d
+                              mesh_intersects_1d, mesh_intersects_2d, &
+                              mesh_intersects_3d
   use mesh_header,      only: RegularMesh
   use output,           only: header
   use particle_header,  only: LocalCoord, Particle
@@ -2463,6 +2464,7 @@ contains
     integer :: i
     integer :: i_tally
     integer :: j                    ! loop indices
+    integer :: n_dim                ! num dimensions of the mesh
     integer :: d1                   ! dimension index
     integer :: d2                   ! dimension index
     integer :: d3                   ! dimension index
@@ -2482,6 +2484,7 @@ contains
     real(8) :: filt_score           ! score applied by filters
     logical :: start_in_mesh        ! particle's starting xyz in mesh?
     logical :: end_in_mesh          ! particle's ending xyz in mesh?
+    logical :: cross_surface        ! whether the particle crosses a surface
     type(TallyObject), pointer :: t
     type(RegularMesh), pointer :: m
 
@@ -2505,14 +2508,18 @@ contains
         m => meshes(filt % mesh)
       end select
 
+      n_dim = m % n_dimension
+
       ! Determine indices for starting and ending location
-      call get_mesh_indices(m, xyz0, ijk0(:m % n_dimension), start_in_mesh)
-      call get_mesh_indices(m, xyz1, ijk1(:m % n_dimension), end_in_mesh)
+      call get_mesh_indices(m, xyz0, ijk0, start_in_mesh)
+      call get_mesh_indices(m, xyz1, ijk1, end_in_mesh)
 
       ! Check to see if start or end is in mesh -- if not, check if track still
       ! intersects with mesh
       if ((.not. start_in_mesh) .and. (.not. end_in_mesh)) then
-        if (m % n_dimension == 2) then
+        if (n_dim == 1) then
+          if (.not. mesh_intersects_1d(m, xyz0, xyz1)) cycle
+        else if (n_dim == 2) then
           if (.not. mesh_intersects_2d(m, xyz0, xyz1)) cycle
         else
           if (.not. mesh_intersects_3d(m, xyz0, xyz1)) cycle
@@ -2520,7 +2527,7 @@ contains
       end if
 
       ! Calculate number of surface crossings
-      n_cross = sum(abs(ijk1 - ijk0))
+      n_cross = sum(abs(ijk1(:n_dim) - ijk0(:n_dim)))
       if (n_cross == 0) then
         cycle
       end if
@@ -2538,7 +2545,7 @@ contains
       end if
 
       ! Bounding coordinates
-      do d1 = 1, 3
+      do d1 = 1, n_dim
         if (uvw(d1) > 0) then
           xyz_cross(d1) = m % lower_left(d1) + ijk0(d1) * m % width(d1)
         else
@@ -2550,10 +2557,13 @@ contains
         ! Reset scoring bin index
         matching_bins(i_filter_surf) = 0
 
+        ! Set the distances to infinity
+        d = INFINITY
+
         ! Calculate distance to each bounding surface. We need to treat
         ! special case where the cosine of the angle is zero since this would
         ! result in a divide-by-zero.
-        do d1 = 1, 3
+        do d1 = 1, n_dim
           if (uvw(d1) == 0) then
             d(d1) = INFINITY
           else
@@ -2567,11 +2577,16 @@ contains
         distance = minval(d)
 
         ! Loop over the dimensions
-        do d1 = 1, 3
+        do d1 = 1, n_dim
 
-          ! Get the other dimensions
-          d2 = mod(d1, 3) + 1
-          d3 = mod(d1 + 1, 3) + 1
+          ! Get the other dimensions.
+          if (d1 == 1) then
+            d2 = mod(d1, 3) + 1
+            d3 = mod(d1 + 1, 3) + 1
+          else
+            d2 = mod(d1 + 1, 3) + 1
+            d3 = mod(d1, 3) + 1
+          end if
 
           ! Check whether distance is the shortest distance
           if (distance == d(d1)) then
@@ -2580,8 +2595,9 @@ contains
             if (uvw(d1) > 0) then
 
               ! Outward current on d1 max surface
-              if (all(ijk0 >= 1) .and. all(ijk0 <= m % dimension)) then
-                matching_bins(i_filter_surf) = d1 * 2
+              if (all(ijk0(:n_dim) >= 1) .and. &
+                   all(ijk0(:n_dim) <= m % dimension)) then
+                matching_bins(i_filter_surf) = d1 * 4 - 1
                 matching_bins(i_filter_mesh) = &
                      mesh_indices_to_bin(m, ijk0)
                 filter_index = sum((matching_bins(1:size(t % filters)) - 1) &
@@ -2592,11 +2608,32 @@ contains
               end if
 
               ! Inward current on d1 min surface
-              if (ijk0(d1) >= 0 .and. ijk0(d1) < m % dimension(d1) .and. &
-                   ijk0(d2) >= 1 .and. ijk0(d2) <= m % dimension(d2) .and. &
-                   ijk0(d3) >= 1 .and. ijk0(d3) <= m % dimension(d3)) then
+              cross_surface = .false.
+              select case(n_dim)
+
+              case (1)
+                if (ijk0(d1) >= 0 .and. ijk0(d1) <  m % dimension(d1)) then
+                  cross_surface = .true.
+                end if
+
+              case (2)
+                if (ijk0(d1) >= 0 .and. ijk0(d1) <  m % dimension(d1) .and. &
+                     ijk0(d2) >= 1 .and. ijk0(d2) <= m % dimension(d2)) then
+                  cross_surface = .true.
+                end if
+
+              case (3)
+                if (ijk0(d1) >= 0 .and. ijk0(d1) <  m % dimension(d1) .and. &
+                     ijk0(d2) >= 1 .and. ijk0(d2) <= m % dimension(d2) .and. &
+                     ijk0(d3) >= 1 .and. ijk0(d3) <= m % dimension(d3)) then
+                  cross_surface = .true.
+                end if
+              end select
+
+              ! If the particle crossed the surface, tally the current
+              if (cross_surface) then
                 ijk0(d1) = ijk0(d1) + 1
-                matching_bins(i_filter_surf) = d1 * 2 + 5
+                matching_bins(i_filter_surf) = d1 * 4 - 2
                 matching_bins(i_filter_mesh) = &
                      mesh_indices_to_bin(m, ijk0)
                 filter_index = sum((matching_bins(1:size(t % filters)) - 1) &
@@ -2614,8 +2651,9 @@ contains
             else
 
               ! Outward current on d1 min surface
-              if (all(ijk0 >= 1) .and. all(ijk0 <= m % dimension)) then
-                matching_bins(i_filter_surf) = d1 * 2 - 1
+              if (all(ijk0(:n_dim) >= 1) .and. &
+                   all(ijk0(:n_dim) <= m % dimension)) then
+                matching_bins(i_filter_surf) = d1 * 4 - 3
                 matching_bins(i_filter_mesh) = &
                      mesh_indices_to_bin(m, ijk0)
                 filter_index = sum((matching_bins(1:size(t % filters)) - 1) &
@@ -2626,11 +2664,32 @@ contains
               end if
 
               ! Inward current on d1 max surface
-              if (ijk0(d1) > 1 .and. ijk0(d1) <= m % dimension(d1) + 1 .and. &
-                   ijk0(d2) >= 1 .and. ijk0(d2) <= m % dimension(d2) .and. &
-                   ijk0(d3) >= 1 .and. ijk0(d3) <= m % dimension(d3))  then
+              cross_surface = .false.
+              select case(n_dim)
+
+              case (1)
+                if (ijk0(d1) >  1 .and. ijk0(d1) <= m % dimension(d1) + 1) then
+                  cross_surface = .true.
+                end if
+
+              case (2)
+                if (ijk0(d1) >  1 .and. ijk0(d1) <= m % dimension(d1) + 1 .and.&
+                     ijk0(d2) >= 1 .and. ijk0(d2) <= m % dimension(d2)) then
+                  cross_surface = .true.
+                end if
+
+              case (3)
+                if (ijk0(d1) >  1 .and. ijk0(d1) <= m % dimension(d1) + 1 .and.&
+                     ijk0(d2) >= 1 .and. ijk0(d2) <= m % dimension(d2) .and. &
+                     ijk0(d3) >= 1 .and. ijk0(d3) <= m % dimension(d3)) then
+                  cross_surface = .true.
+                end if
+              end select
+
+              ! If the particle crossed the surface, tally the current
+              if (cross_surface) then
                 ijk0(d1) = ijk0(d1) - 1
-                matching_bins(i_filter_surf) = d1 * 2 + 6
+                matching_bins(i_filter_surf) = d1 * 4
                 matching_bins(i_filter_mesh) = &
                      mesh_indices_to_bin(m, ijk0)
                 filter_index = sum((matching_bins(1:size(t % filters)) - 1) &

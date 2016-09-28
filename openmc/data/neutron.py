@@ -334,11 +334,11 @@ class IncidentNeutron(EqualityMixin):
 
         # Add normal and summed reactions
         for mt in chain(data.reactions, data.summed_reactions):
-            if mt not in self:
-                raise ValueError("Tried to add cross sections for MT={} at T={}"
-                                 " but this reaction doesn't exist.".format(
-                                     mt, strT))
-            self[mt].xs[strT] = data[mt].xs[strT]
+            if mt in self:
+                self[mt].xs[strT] = data[mt].xs[strT]
+            else:
+                warn("Tried to add cross sections for MT={} at T={} but this "
+                     "reaction doesn't exist.".format(mt, strT))
 
         # Add probability tables
         if strT in data.urr:

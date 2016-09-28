@@ -357,6 +357,8 @@ Core Classes
     openmc.data.FissionEnergyRelease
     openmc.data.ThermalScattering
     openmc.data.CoherentElastic
+    openmc.data.FissionEnergyRelease
+    openmc.data.DataLibrary
 
 Core Functions
 --------------

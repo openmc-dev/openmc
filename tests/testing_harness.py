@@ -344,3 +344,10 @@ class PyAPITestHarness(TestHarness):
         for f in output:
             if os.path.exists(f):
                 os.remove(f)
+
+
+class HashedPyAPITestHarness(PyAPITestHarness):
+
+    def _get_results(self):
+        """Digest info in the statepoint and return as a string."""
+        return super(HashedPyAPITestHarness, self)._get_results(True)

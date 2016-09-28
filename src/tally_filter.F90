@@ -9,7 +9,8 @@ module tally_filter
   use mesh_header,         only: RegularMesh
   use mesh,                only: get_mesh_bin, bin_to_mesh_indices, &
                                  get_mesh_indices, mesh_indices_to_bin, &
-                                 mesh_intersects_2d, mesh_intersects_3d
+                                 mesh_intersects_1d, mesh_intersects_2d, &
+                                 mesh_intersects_3d
   use particle_header,     only: Particle
   use string,              only: to_str
   use tally_filter_header, only: TallyFilter, TallyFilterContainer
@@ -79,7 +80,6 @@ module tally_filter
   contains
     procedure :: get_next_bin => get_next_bin_distribcell
     procedure :: to_statepoint => to_statepoint_distribcell
-    procedure :: to_summary => to_summary_distribcell
     procedure :: text_label => text_label_distribcell
     procedure :: initialize => initialize_distribcell
   end type DistribcellFilter
@@ -261,7 +261,12 @@ contains
       ! intersects any part of the mesh.
       if (current_bin == NO_BIN_FOUND) then
         if ((.not. start_in_mesh) .and. (.not. end_in_mesh)) then
-          if (m % n_dimension == 2) then
+          if (m % n_dimension == 1) then
+            if (.not. mesh_intersects_1d(m, xyz0, xyz1)) then
+              next_bin = NO_BIN_FOUND
+              return
+            end if
+          else if (m % n_dimension == 2) then
             if (.not. mesh_intersects_2d(m, xyz0, xyz1)) then
               next_bin = NO_BIN_FOUND
               return
@@ -427,7 +432,9 @@ contains
     m => meshes(this % mesh)
     allocate(ijk(m % n_dimension))
     call bin_to_mesh_indices(m, bin, ijk)
-    if (m % n_dimension == 2) then
+    if (m % n_dimension == 1) then
+      label = "Mesh Index (" // trim(to_str(ijk(1))) // ")"
+    elseif (m % n_dimension == 2) then
       label = "Mesh Index (" // trim(to_str(ijk(1))) // ", " // &
            trim(to_str(ijk(2))) // ")"
     elseif (m % n_dimension == 3) then
@@ -705,36 +712,6 @@ contains
     call write_dataset(filter_group, "n_bins", this % n_bins)
     call write_dataset(filter_group, "bins", this % cell )
   end subroutine to_statepoint_distribcell
-
-  subroutine to_summary_distribcell(this, filter_group)
-    class(DistribcellFilter), intent(in) :: this
-    integer(HID_T),           intent(in) :: filter_group
-
-    integer                              :: offset, k
-    character(MAX_LINE_LEN), allocatable :: paths(:)
-    character(MAX_LINE_LEN)              :: path
-
-    call write_dataset(filter_group, "type", "distribcell")
-    call write_dataset(filter_group, "n_bins", this % n_bins)
-    call write_dataset(filter_group, "bins", this % cell )
-
-    ! Write paths to reach each distribcell instance
-
-    ! Allocate array of strings for each distribcell path
-    allocate(paths(this % n_bins))
-
-    ! Store path for each distribcell instance
-    do k = 1, this % n_bins
-      path = ''
-      offset = 1
-      call find_offset(this % cell, universes(BASE_UNIVERSE), k, offset, path)
-      paths(k) = path
-    end do
-
-    ! Write array of distribcell paths to summary file
-    call write_dataset(filter_group, "paths", paths)
-    deallocate(paths)
-  end subroutine to_summary_distribcell
 
   subroutine initialize_distribcell(this)
     class(DistribcellFilter), intent(inout) :: this

@@ -297,10 +297,13 @@ class Summary(object):
                 cell.region = Region.from_expression(
                     region, {s.id: s for s in self.surfaces.values()})
 
-            # Get the distribcell index
-            ind = self._f['geometry/cells'][key]['distribcell_index'].value
-            if ind != 0:
+            # Get the distribcell data
+            if 'distribcell_index' in self._f['geometry/cells'][key]:
+                ind = self._f['geometry/cells'][key]['distribcell_index'].value
                 cell.distribcell_index = ind
+                paths = self._f['geometry/cells'][key]['paths'][...]
+                paths = [str(path.decode()) for path in paths]
+                cell.distribcell_paths = paths
 
             # Add the Cell to the global dictionary of all Cells
             self.cells[index] = cell
@@ -520,17 +523,14 @@ class Summary(object):
         self.openmc_geometry.root_universe = root_universe
 
     def _read_tallies(self):
-        # Initialize dictionaries for the Tallies
+        # Initialize a dictionary for the tally names
         # Keys     - Tally IDs
-        # Values   - Tally objects
-        self.tallies = {}
+        # Values   - Tally names
+        self.tally_names = {}
 
         # Read the number of tallies
         if 'tallies' not in self._f:
-            self.n_tallies = 0
             return
-
-        self.n_tallies = self._f['tallies/n_tallies'].value
 
         # OpenMC Tally keys
         all_keys = self._f['tallies/'].keys()
@@ -545,34 +545,7 @@ class Summary(object):
 
             # Read Tally name metadata
             tally_name = self._f['{0}/name'.format(subbase)].value.decode()
-
-            # Create Tally object and assign basic properties
-            tally = openmc.Tally(tally_id, tally_name)
-
-            # Read scattering moment order strings (e.g., P3, Y1,2, etc.)
-            moments = self._f['{0}/moment_orders'.format(subbase)].value
-
-            # Read score metadata
-            scores = self._f['{0}/score_bins'.format(subbase)].value
-            for j, score in enumerate(scores):
-                score = score.decode()
-
-                # If this is a moment, use generic moment order
-                pattern = r'-n$|-pn$|-yn$'
-                score = re.sub(pattern, '-' + moments[j].decode(), score)
-                tally.scores.append(score)
-
-            # Read filter metadata
-            num_filters = self._f['{0}/n_filters'.format(subbase)].value
-
-            # Read all filters
-            for j in range(1, num_filters+1):
-                subsubbase = '{0}/filter {1}'.format(subbase, j)
-                new_filter = openmc.Filter.from_hdf5(self._f[subsubbase])
-                tally.filters.append(new_filter)
-
-            # Add Tally to the global dictionary of all Tallies
-            self.tallies[tally_id] = tally
+            self.tally_names[tally_id] = tally_name
 
     def add_volume_information(self, volume_calc):
         """Add volume information to the geometry within the summary file

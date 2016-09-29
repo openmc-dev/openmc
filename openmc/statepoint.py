@@ -554,8 +554,11 @@ class StatePoint(object):
 
                 # If this is a on-the-fly tally, read and merge results of all
                 # fragments from different groups.
-                otf_tally = self._f['{0}{1}/on_the_fly_allocation'.format(
-                                    base, tally_key)].value > 0
+                otf_tally = False
+                try:
+                    otf_tally = self._f['{0}{1}/on_the_fly_allocation'.format(
+                                         base, tally_key)].value > 0
+                except: pass 
                 if otf_tally:
                     # Initialize arrays for merged sum and sum_sq
                     sum = np.zeros((tally.num_filter_bins, 

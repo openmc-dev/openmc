@@ -4,7 +4,7 @@
 Summary File Format
 ===================
 
-The current revision of the summary file format is 1.
+The current revision of the summary file format is 4.
 
 **/filetype** (*char[]*)
 
@@ -129,7 +129,16 @@ The current revision of the summary file format is 1.
 
 **/geometry/cells/cell <uid>/distribcell_index** (*int*)
 
-    Index of this cell in distribcell filter arrays.
+    Index of this cell in distribcell arrays. Only present if this cell is
+    listed in a distribcell filter or if it uses distributed materials.
+
+**/geometry/cells/cell <uid>/paths** (*char[][]*)
+
+    The paths traversed through the CSG tree to reach each distribcell
+    instance. This consists of the integer IDs for each universe, cell and
+    lattice delimited by '->'. Each lattice cell is specified by its (x,y) or
+    (x,y,z) indices. Only present if this cell is listed in a distribcell filter
+    or if it uses distributed materials.
 
 **/geometry/surfaces/surface <uid>/index** (*int*)
 
@@ -244,90 +253,6 @@ The current revision of the summary file format is 1.
 
     Names of S(:math:`\alpha`,:math:`\beta`) tables assigned to the material.
 
-**/tallies/n_tallies** (*int*)
-
-    Number of tallies in the problem.
-
-**/tallies/n_meshes** (*int*)
-
-    Number of meshes in the problem.
-
-**/tallies/mesh <uid>/index** (*int*)
-
-    Index in the meshes array used internally in OpenMC.
-
-**/tallies/mesh <uid>/type** (*char[]*)
-
-    Type of the mesh. The only valid option is currently 'regular'.
-
-**/tallies/mesh <uid>/dimension** (*int[]*)
-
-    Number of mesh cells in each direction.
-
-**/tallies/mesh <uid>/lower_left** (*double[]*)
-
-    Coordinates of the lower-left corner of the mesh.
-
-**/tallies/mesh <uid>/upper_right** (*double[]*)
-
-    Coordinates of the upper-right corner of the mesh.
-
-**/tallies/mesh <uid>/width** (*double[]*)
-
-    Width of a single mesh cell in each direction.
-
-**/tallies/tally <uid>/index** (*int*)
-
-    Index in tallies array used internally in OpenMC.
-
 **/tallies/tally <uid>/name** (*char[]*)
 
     Name of the tally.
-
-**/tallies/tally <uid>/n_filters** (*int*)
-
-    Number of filters applied to the tally.
-
-**/tallies/tally <uid>/filter <j>/type** (*char[]*)
-
-    Type of the j-th filter. Can be 'universe', 'material', 'cell', 'cellborn',
-    'surface', 'mesh', 'energy', 'energyout', or 'distribcell'.
-
-**/tallies/tally <uid>/filter <j>/offset** (*int*)
-
-    Filter offset (used for distribcell filter).
-
-**/tallies/tally <uid>/filter <j>/paths** (*char[][]*)
-
-    The paths traversed through the CSG tree to reach each distribcell
-    instance (for 'distribcell' filters only). This consists of the integer
-    IDs for each universe, cell and lattice delimited by '->'. Each lattice
-    cell is specified by its (x,y) or (x,y,z) indices.
-
-**/tallies/tally <uid>/filter <j>/n_bins** (*int*)
-
-    Number of bins for the j-th filter.
-
-**/tallies/tally <uid>/filter <j>/bins** (*int[]* or *double[]*)
-
-    Value for each filter bin of this type.
-
-**/tallies/tally <uid>/nuclides** (*char[][]*)
-
-    Array of nuclides to tally. Note that if no nuclide is specified in the user
-    input, a single 'total' nuclide appears here.
-
-**/tallies/tally <uid>/n_score_bins** (*int*)
-
-    Number of scoring bins for a single nuclide. In general, this can be greater
-    than the number of user-specified scores since each score might have
-    multiple scoring bins, e.g., scatter-PN.
-
-**/tallies/tally <uid>/moment_orders** (*char[][]*)
-
-    Tallying moment orders for Legendre and spherical harmonic tally expansions
-    (*e.g.*, 'P2', 'Y1,2', etc.).
-
-**/tallies/tally <uid>/score_bins** (*char[][]*)
-
-    Scoring bins for the tally.

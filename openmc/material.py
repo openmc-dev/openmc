@@ -812,7 +812,12 @@ class Materials(cv.CheckedList):
             self._materials_file.append(xml_element)
 
     def export_to_xml(self, path='materials.xml'):
-        """Create a materials.xml file that can be used for a simulation.
+        """Export material collection to an XML file.
+
+        Parameters
+        ----------
+        path : str
+            Path to file to write. Defaults to 'materials.xml'.
 
         """
 

@@ -151,6 +151,7 @@ contains
         size_buff = ceiling(dble(work+n_stage_secondary)*DD_BUFFER_HEADROOM, 8)
         call extend_array(dd % particle_buffer, size_buff, .true., alloc_err)
         call extend_array(dd % buffer_to_bin, size_buff, .true., alloc_err)
+        dd % buffer_to_bin(dd % size_particle_buffer + 1:) = NO_OUTSCATTER
         dd % size_particle_buffer = size(dd % particle_buffer)
       end if
 

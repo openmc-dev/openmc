@@ -132,6 +132,7 @@ contains
 
     call extend_array(dd % particle_buffer, new_source, .false., alloc_err)
     call extend_array(dd % buffer_to_bin, new_source, .false., alloc_err)
+    dd % buffer_to_bin = NO_OUTSCATTER
     dd % size_particle_buffer = size(dd % particle_buffer)
 
     ! Receive sites from other processes
@@ -658,6 +659,7 @@ contains
       size_buff = ceiling(dble(dd % n_inscatt) * DD_BUFFER_HEADROOM, 8)
       call extend_array(dd % particle_buffer, size_buff, .false., alloc_err)
       call extend_array(dd % buffer_to_bin, size_buff, .false., alloc_err)
+      dd % buffer_to_bin = NO_OUTSCATTER
       dd % size_particle_buffer = size(dd % particle_buffer)
 
       ! We also need to resize the source bank and fission bank now that we
@@ -932,6 +934,7 @@ contains
     if (index_local > dd % size_particle_buffer) then
       call extend_array(dd % particle_buffer, size_bank, .false.,alloc_err)
       call extend_array(dd % buffer_to_bin, size_bank, .false.,alloc_err)
+      dd % buffer_to_bin = NO_OUTSCATTER
       dd % size_particle_buffer = size(dd % particle_buffer)
     end if
 

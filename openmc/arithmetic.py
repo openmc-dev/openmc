@@ -754,7 +754,7 @@ class AggregateFilter(object):
         else:
             return self.bins.index(filter_bin)
 
-    def get_pandas_dataframe(self, data_size, summary=None):
+    def get_pandas_dataframe(self, data_size, summary=None, **kwargs):
         """Builds a Pandas DataFrame for the AggregateFilter's bins.
 
         This method constructs a Pandas DataFrame object for the AggregateFilter

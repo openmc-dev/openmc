@@ -18,7 +18,7 @@ class NBodyPhaseSpace(AngleEnergy):
     atomic_weight_ratio : float
         Atomic weight ratio of target nuclide
     q_value : float
-        Q value for reaction in MeV
+        Q value for reaction in MeV or eV, depending on the data source.
 
     Attributes
     ----------
@@ -29,7 +29,7 @@ class NBodyPhaseSpace(AngleEnergy):
     atomic_weight_ratio : float
         Atomic weight ratio of target nuclide
     q_value : float
-        Q value for reaction in MeV
+        Q value for reaction in MeV or eV, depending on the data source.
 
     """
 

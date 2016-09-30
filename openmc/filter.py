@@ -8,7 +8,7 @@ from xml.etree import ElementTree as ET
 
 import numpy as np
 
-from openmc import Mesh
+import openmc
 import openmc.checkvalue as cv
 
 
@@ -506,7 +506,7 @@ class MeshFilter(Filter):
 
     @mesh.setter
     def mesh(self, mesh):
-        cv.check_type('filter mesh', mesh, Mesh)
+        cv.check_type('filter mesh', mesh, openmc.Mesh)
         self._mesh = mesh
         self.bins = mesh.id
 

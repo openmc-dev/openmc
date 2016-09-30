@@ -1557,7 +1557,7 @@ class Tally(object):
             # Append each Filter's DataFrame to the overall DataFrame
             for self_filter in self.filters:
                 filter_df = self_filter.get_pandas_dataframe(
-                    data_size, distribcell_paths)
+                    data_size, distribcell_paths=distribcell_paths)
                 df = pd.concat([df, filter_df], axis=1)
 
         # Include DataFrame column for nuclides if user requested it

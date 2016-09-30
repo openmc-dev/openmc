@@ -38,7 +38,7 @@ class FilterMeta(ABCMeta):
 
 
 class Filter(with_metaclass(FilterMeta, object)):
-    """A constraint on transport events that can score a tally.
+    """Tally modifier that describes phase-space and other characteristics.
 
     Parameters
     ----------
@@ -107,7 +107,7 @@ class Filter(with_metaclass(FilterMeta, object)):
         return subs + subsubs
 
     @classmethod
-    def from_hdf5(cls, group):
+    def from_hdf5(cls, group, **kwargs):
         """Construct a new Filter instance from HDF5 data.
 
         Parameters
@@ -115,16 +115,26 @@ class Filter(with_metaclass(FilterMeta, object)):
         group : h5py.Group
             HDF5 group to read from
 
+        Keyword arguments
+        -----------------
+        meshes : dict
+            Dictionary mapping integer IDs to openmc.Mesh objects.  Only used
+            for openmc.MeshFilter objects.
+
         """
 
+        # If the HDF5 'type' variable matches this class's short_name, then
+        # there is no overriden from_hdf5 method.  Pass the bins to __init__.
         if group['type'].value.decode() == cls.short_name.lower():
             out = cls(group['bins'].value)
             out.num_bins = group['n_bins'].value
             return out
 
+        # Search through all subclasses and find the one matching the HDF5
+        # 'type'.  Call that class's from_hdf5 method.
         for subclass in cls.recursive_subclasses():
             if group['type'].value.decode() == subclass.short_name.lower():
-                return subclass.from_hdf5(group)
+                return subclass.from_hdf5(group, **kwargs)
 
         raise ValueError("Unrecognized Filter class: '"
                          + group['type'].value.decode() + "'")
@@ -447,9 +457,48 @@ class SurfaceFilter(IntegralFilter):
 
 
 class MeshFilter(Filter):
-    def __init__(self, bins):
-        self._mesh = None
-        super(MeshFilter, self).__init__(bins)
+    """Bins tally event locations onto a regular, rectangular mesh.
+
+    Parameters
+    ----------
+    mesh : openmc.Mesh
+        The Mesh object that events will be tallied onto
+
+    Attributes
+    ----------
+    bins : Integral
+        The Mesh ID
+    mesh : openmc.Mesh
+        The Mesh object that events will be tallied onto
+    num_bins : Integral
+        The number of filter bins
+    stride : Integral
+        The number of filter, nuclide and score bins within each of this
+        filter's bins.
+
+    """
+    def __init__(self, mesh):
+        self.mesh = mesh
+        super(MeshFilter, self).__init__(mesh.id)
+
+    @classmethod
+    def from_hdf5(cls, group, **kwargs):
+        if group['type'].value.decode() != cls.short_name.lower():
+            raise ValueError("Expected HDF5 data for filter type '"
+                             + cls.short_name.lower() + "' but got '"
+                             + group['type'].value.decode() + " instead")
+
+        if not 'meshes' in kwargs:
+            raise ValueError(cls.__name__ + " requires a 'meshes' keyword "
+                             "argument.")
+
+        mesh_id = group['bins'].value
+        mesh_obj = kwargs['meshes'][mesh_id]
+
+        out = cls(mesh_obj)
+        out.num_bins = group['n_bins'].value
+
+        return out
 
     @property
     def mesh(self):
@@ -706,7 +755,7 @@ class DistribcellFilter(Filter):
         super(DistribcellFilter, self).__init__(bins)
 
     @classmethod
-    def from_hdf5(cls, group):
+    def from_hdf5(cls, group, **kwargs):
         if group['type'].value.decode() != cls.short_name.lower():
             raise ValueError("Expected HDF5 data for filter type '"
                              + cls.short_name.lower() + "' but got '"

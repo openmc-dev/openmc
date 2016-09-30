@@ -19,8 +19,7 @@ class MGTalliesTestHarness(PyAPITestHarness):
         # Instantiate some tally filters
         energy_filter = openmc.EnergyFilter([0.0, 20.0])
         energyout_filter = openmc.EnergyoutFilter([0.0, 20.0])
-        mesh_filter = openmc.MeshFilter(mesh.id)
-        mesh_filter.mesh = mesh
+        mesh_filter = openmc.MeshFilter(mesh)
 
         mat_filter = openmc.MaterialFilter([1,2,3])
 

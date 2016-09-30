@@ -44,7 +44,8 @@ class Filter(with_metaclass(FilterMeta, object)):
     ----------
     bins : Integral or Iterable of Integral or Iterable of Real
         The bins for the filter. This takes on different meaning for different
-        filters. See the OpenMC online documentation for more details.
+        filters. See the docstrings for sublcasses of this filter or the online
+        documentation for more details.
 
     Attributes
     ----------
@@ -100,7 +101,7 @@ class Filter(with_metaclass(FilterMeta, object)):
         return string
 
     @classmethod
-    def recursive_subclasses(cls):
+    def _recursive_subclasses(cls):
         """Return all subclasses and their subclasses, etc."""
         subs = cls.__subclasses__()
         subsubs = [grand for s in subs for grand in s.__subclasses__()]
@@ -132,7 +133,7 @@ class Filter(with_metaclass(FilterMeta, object)):
 
         # Search through all subclasses and find the one matching the HDF5
         # 'type'.  Call that class's from_hdf5 method.
-        for subclass in cls.recursive_subclasses():
+        for subclass in cls._recursive_subclasses():
             if group['type'].value.decode() == subclass.short_name.lower():
                 return subclass.from_hdf5(group, **kwargs)
 
@@ -215,7 +216,8 @@ class Filter(with_metaclass(FilterMeta, object)):
 
         """
 
-        if type(self) is not type(other): return False
+        if type(self) is not type(other):
+            return False
 
         return True
 
@@ -298,7 +300,7 @@ class Filter(with_metaclass(FilterMeta, object)):
 
         """
 
-        if not filter_bin in self.bins:
+        if filter_bin not in self.bins:
             msg = 'Unable to get the bin index for Filter since "{0}" ' \
                   'is not one of the bins'.format(filter_bin)
             raise ValueError(msg)
@@ -345,7 +347,7 @@ class Filter(with_metaclass(FilterMeta, object)):
         # Return a 1-tuple of the bin.
         return (self.bins[bin_index],)
 
-    def get_pandas_dataframe(self, data_size, distribcell_paths=True):
+    def get_pandas_dataframe(self, data_size, **kwargs):
         """Builds a Pandas DataFrame for the Filter's bins.
 
         This method constructs a Pandas DataFrame object for the filter with
@@ -360,13 +362,15 @@ class Filter(with_metaclass(FilterMeta, object)):
         ----------
         data_size : Integral
             The total number of bins in the tally corresponding to this filter
-        distribcell_paths : bool, optional
-            Construct columns for distribcell tally filters (default is True).
-            The geometric information in the Summary object is embedded into a
-            Multi-index column with a geometric "path" to each distribcell
-            instance. NOTE: This option assumes that all distribcell paths are
-            of the same length and do not have the same universes and cells but
-            different lattice cell indices.
+
+        Keyword arguments
+        -----------------
+        distribcell_paths : bool
+            Only used for DistirbcellFilter.  If True (default), expand
+            distribcell indices into multi-index columns describing the path
+            to that distribcell through the CSG tree.  NOTE: This option assumes
+            that all distribcell paths are of the same length and do not have
+            the same universes and cells but different lattice cell indices.
 
         Returns
         -------
@@ -412,12 +416,32 @@ class Filter(with_metaclass(FilterMeta, object)):
         tile_factor = data_size / len(filter_bins)
         filter_bins = np.tile(filter_bins, tile_factor)
         df = pd.concat([df, pd.DataFrame(
-            {self.short_name.lower() : filter_bins})])
+            {self.short_name.lower(): filter_bins})])
 
         return df
 
 
 class IntegralFilter(Filter):
+    """Tally modifier that describes phase-space and other characteristics.
+
+    Parameters
+    ----------
+    bins : Integral or Iterable of Integral
+        The bins for the filter. This takes on different meaning for different
+        filters. See the docstrings for sublcasses of this filter or the online
+        documentation for more details.
+
+    Attributes
+    ----------
+    bins : Integral or Iterable of Integral
+        The bins for the filter
+    num_bins : Integral
+        The number of filter bins
+    stride : Integral
+        The number of filter, nuclide and score bins within each of this
+        filter's bins.
+
+    """
     @property
     def num_bins(self):
         return len(self.bins)
@@ -434,14 +458,148 @@ class IntegralFilter(Filter):
             cv.check_greater_than('filter bin', edge, 0, equality=True)
 
 
-class UniverseFilter(IntegralFilter): pass
-class MaterialFilter(IntegralFilter): pass
-class CellFilter(IntegralFilter): pass
-class CellbornFilter(IntegralFilter): pass
+class UniverseFilter(IntegralFilter):
+    """Bins tally event locations based on the universe they occured in.
+
+    Parameters
+    ----------
+    bins : Integral or Iterable of Integral
+        openmc.Universe IDs.
+
+    Attributes
+    ----------
+    bins : Integral or Iterable of Integral
+        openmc.Universe IDs.
+    num_bins : Integral
+        The number of filter bins
+    stride : Integral
+        The number of filter, nuclide and score bins within each of this
+        filter's bins.
+
+    """
+
+
+class MaterialFilter(IntegralFilter):
+    """Bins tally events based on which material they occured in.
+
+    Parameters
+    ----------
+    bins : Integral or Iterable of Integral
+        openmc.Material IDs.
+
+    Attributes
+    ----------
+    bins : Integral or Iterable of Integral
+        openmc.Material IDs.
+    num_bins : Integral
+        The number of filter bins
+    stride : Integral
+        The number of filter, nuclide and score bins within each of this
+        filter's bins.
+
+    """
+
+
+class CellFilter(IntegralFilter):
+    """Bins tally event locations based on which cell they occured in.
+
+    Parameters
+    ----------
+    bins : Integral or Iterable of Integral
+        openmc.Cell IDs.
+
+    Attributes
+    ----------
+    bins : Integral or Iterable of Integral
+        openmc.Cell IDs.
+    num_bins : Integral
+        The number of filter bins
+    stride : Integral
+        The number of filter, nuclide and score bins within each of this
+        filter's bins.
+
+    """
+
+
+class CellbornFilter(IntegralFilter):
+    """Bins tally events based on the cell that the particle was born in.
+
+    Parameters
+    ----------
+    bins : Integral or Iterable of Integral
+        openmc.Cell IDs.
+
+    Attributes
+    ----------
+    bins : Integral or Iterable of Integral
+        openmc.Cell IDs.
+    num_bins : Integral
+        The number of filter bins
+    stride : Integral
+        The number of filter, nuclide and score bins within each of this
+        filter's bins.
+
+    """
 
 
 class SurfaceFilter(IntegralFilter):
-    def get_pandas_dataframe(self, data_size, distribcell_paths=True):
+    """Bins particle currents on Mesh surfaces.
+
+    Parameters
+    ----------
+    bins : Iterable of Integral
+        Indices corresponding to which face of a mesh cell the current is
+        crossing.
+
+    Attributes
+    ----------
+    bins : Iterable of Integral
+        Indices corresponding to which face of a mesh cell the current is
+        crossing.
+    num_bins : Integral
+        The number of filter bins
+    stride : Integral
+        The number of filter, nuclide and score bins within each of this
+        filter's bins.
+
+    """
+
+    def get_pandas_dataframe(self, data_size, **kwargs):
+        """Builds a Pandas DataFrame for the Filter's bins.
+
+        This method constructs a Pandas DataFrame object for the filter with
+        columns annotated by filter bin information. This is a helper method for
+        :meth:`Tally.get_pandas_dataframe`.
+
+        This capability has been tested for Pandas >=0.13.1. However, it is
+        recommended to use v0.16 or newer versions of Pandas since this method
+        uses Pandas' Multi-index functionality.
+
+        Parameters
+        ----------
+        data_size : Integral
+            The total number of bins in the tally corresponding to this filter
+
+        Returns
+        -------
+        pandas.DataFrame
+            A Pandas DataFrame with a column of strings describing which surface
+            the current is crossing and which direction it points.  The number
+            of rows in the DataFrame is the same as the total number of bins in
+            the corresponding tally, with the filter bin appropriately tiled to
+            map to the corresponding tally bins.
+
+        Raises
+        ------
+        ImportError
+            When Pandas is not installed
+
+        See also
+        --------
+        Tally.get_pandas_dataframe(), CrossFilter.get_pandas_dataframe()
+
+        """
+
         # Initialize Pandas DataFrame
         import pandas as pd
         df = pd.DataFrame()
@@ -451,7 +609,7 @@ class SurfaceFilter(IntegralFilter):
         filter_bins = np.tile(filter_bins, tile_factor)
         filter_bins = [_CURRENT_NAMES[x] for x in filter_bins]
         df = pd.concat([df, pd.DataFrame(
-            {self.short_name.lower() : filter_bins})])
+            {self.short_name.lower(): filter_bins})])
 
         return df
 
@@ -477,6 +635,7 @@ class MeshFilter(Filter):
         filter's bins.
 
     """
+
     def __init__(self, mesh):
         self.mesh = mesh
         super(MeshFilter, self).__init__(mesh.id)
@@ -488,7 +647,7 @@ class MeshFilter(Filter):
                              + cls.short_name.lower() + "' but got '"
                              + group['type'].value.decode() + " instead")
 
-        if not 'meshes' in kwargs:
+        if 'meshes' not in kwargs:
             raise ValueError(cls.__name__ + " requires a 'meshes' keyword "
                              "argument.")
 
@@ -564,7 +723,42 @@ class MeshFilter(Filter):
             y = bin_index - (x * ny)
             return (x, y)
 
-    def get_pandas_dataframe(self, data_size, distribcell_paths=True):
+    def get_pandas_dataframe(self, data_size, **kwargs):
+        """Builds a Pandas DataFrame for the Filter's bins.
+
+        This method constructs a Pandas DataFrame object for the filter with
+        columns annotated by filter bin information. This is a helper method for
+        :meth:`Tally.get_pandas_dataframe`.
+
+        This capability has been tested for Pandas >=0.13.1. However, it is
+        recommended to use v0.16 or newer versions of Pandas since this method
+        uses Pandas' Multi-index functionality.
+
+        Parameters
+        ----------
+        data_size : Integral
+            The total number of bins in the tally corresponding to this filter
+
+        Returns
+        -------
+        pandas.DataFrame
+            A Pandas DataFrame with three columns describing the x,y,z mesh
+            cell indices corresponding to each filter bin.  The number of rows
+            in the DataFrame is the same as the total number of bins in the
+            corresponding tally, with the filter bin appropriately tiled to map
+            to the corresponding tally bins.
+
+        Raises
+        ------
+        ImportError
+            When Pandas is not installed
+
+        See also
+        --------
+        Tally.get_pandas_dataframe(), CrossFilter.get_pandas_dataframe()
+
+        """
+
         # Initialize Pandas DataFrame
         import pandas as pd
         df = pd.DataFrame()
@@ -613,6 +807,25 @@ class MeshFilter(Filter):
 
 
 class EnergyFilter(Filter):
+    """Bins tally events based on incident particle energy.
+
+    Parameters
+    ----------
+    bins : Iterable of Real
+        A grid of energy values (in MeV).
+
+    Attributes
+    ----------
+    bins : Iterable of Real
+        A grid of energy values (in MeV).
+    num_bins : Integral
+        The number of filter bins
+    stride : Integral
+        The number of filter, nuclide and score bins within each of this
+        filter's bins.
+
+    """
+
     def __gt__(self, other):
         if type(self) is type(other):
             # Compare largest/smallest energy bin edges in energy filters
@@ -652,7 +865,8 @@ class EnergyFilter(Filter):
                 raise ValueError(msg)
 
     def can_merge(self, other):
-        if type(self) is not type(other): return False
+        if type(self) is not type(other):
+            return False
 
         if self.bins[0] == other.bins[-1]:
             # This low energy edge coincides with other's high energy edge
@@ -703,7 +917,42 @@ class EnergyFilter(Filter):
         # Construct 2-tuple of lower, upper energies for energy(out) filters
         return (self.bins[bin_index], self.bins[bin_index+1])
 
-    def get_pandas_dataframe(self, data_size, distribcell_paths=True):
+    def get_pandas_dataframe(self, data_size, **kwargs):
+        """Builds a Pandas DataFrame for the Filter's bins.
+
+        This method constructs a Pandas DataFrame object for the filter with
+        columns annotated by filter bin information. This is a helper method for
+        :meth:`Tally.get_pandas_dataframe`.
+
+        This capability has been tested for Pandas >=0.13.1. However, it is
+        recommended to use v0.16 or newer versions of Pandas since this method
+        uses Pandas' Multi-index functionality.
+
+        Parameters
+        ----------
+        data_size : Integral
+            The total number of bins in the tally corresponding to this filter
+
+        Returns
+        -------
+        pandas.DataFrame
+            A Pandas DataFrame with one column of the lower energy bound and one
+            column of upper energy bound for each filter bin.  The number of
+            rows in the DataFrame is the same as the total number of bins in the
+            corresponding tally, with the filter bin appropriately tiled to map
+            to the corresponding tally bins.
+
+        Raises
+        ------
+        ImportError
+            When Pandas is not installed
+
+        See also
+        --------
+        Tally.get_pandas_dataframe(), CrossFilter.get_pandas_dataframe()
+
+        """
+
         # Initialize Pandas DataFrame
         import pandas as pd
         df = pd.DataFrame()
@@ -723,11 +972,29 @@ class EnergyFilter(Filter):
         return df
 
 
-class EnergyoutFilter(EnergyFilter): pass
+class EnergyoutFilter(EnergyFilter):
+    """Bins tally events based on outgoing particle energy.
+
+    Parameters
+    ----------
+    bins : Iterable of Real
+        A grid of energy values (in MeV).
+
+    Attributes
+    ----------
+    bins : Iterable of Real
+        A grid of energy values (in MeV).
+    num_bins : Integral
+        The number of filter bins
+    stride : Integral
+        The number of filter, nuclide and score bins within each of this
+        filter's bins.
+
+    """
 
 
 class DistribcellFilter(Filter):
-    """A constraint on transport events that can score a tally
+    """Bins tally event locations on instances of repeated cells.
 
     Parameters
     ----------
@@ -798,12 +1065,63 @@ class DistribcellFilter(Filter):
         # the Cell in the Geometry (consecutive integers starting at 0).
         return filter_bin
 
-    def get_pandas_dataframe(self, data_size, distribcell_paths=True):
+    def get_pandas_dataframe(self, data_size, **kwargs):
+        """Builds a Pandas DataFrame for the Filter's bins.
+
+        This method constructs a Pandas DataFrame object for the filter with
+        columns annotated by filter bin information. This is a helper method for
+        :meth:`Tally.get_pandas_dataframe`.
+
+        This capability has been tested for Pandas >=0.13.1. However, it is
+        recommended to use v0.16 or newer versions of Pandas since this method
+        uses Pandas' Multi-index functionality.
+
+        Parameters
+        ----------
+        data_size : Integral
+            The total number of bins in the tally corresponding to this filter
+
+        Keyword arguments
+        -----------------
+        distribcell_paths : bool
+            If True (default), expand distribcell indices into multi-index
+            columns describing the path to that distribcell through the CSG
+            tree.  NOTE: This option assumes that all distribcell paths are of
+            the same length and do not have the same universes and cells but
+            different lattice cell indices.
+
+        Returns
+        -------
+        pandas.DataFrame
+            A Pandas DataFrame with columns describing distributed cells.  The
+            for will be either:
+
+            1. a single column with the cell instance IDs (without summary info)
+            2. separate columns for the cell IDs, universe IDs, and lattice IDs
+               and x,y,z cell indices corresponding to each (distribcell paths).
+
+            The number of rows in the DataFrame is the same as the total number
+            of bins in the corresponding tally, with the filter bin
+            appropriately tiled to map to the corresponding tally bins.
+
+        Raises
+        ------
+        ImportError
+            When Pandas is not installed
+
+        See also
+        --------
+        Tally.get_pandas_dataframe(), CrossFilter.get_pandas_dataframe()
+
+        """
+
         # Initialize Pandas DataFrame
         import pandas as pd
         df = pd.DataFrame()
 
         level_df = None
+
+        distribcell_paths = kwargs.setdefault('distribcell_paths', True)
 
         # Create Pandas Multi-index columns for each level in CSG tree
         if distribcell_paths:
@@ -950,11 +1268,99 @@ class DistribcellFilter(Filter):
         return df
 
 
-class MuFilter(Filter): pass
+class MuFilter(Filter):
+    """Bins tally events based on particle scattering angle.
+
+    Parameters
+    ----------
+    bins : Iterable of Real or Integral
+        A grid of scattering angles which events will binned into.  Values
+        represent the cosine of the scattering angle.  If an Iterable is given,
+        the values will be used explicitly as grid points.  If a single Integral
+        is given, the range [-1, 1] will be divided up equally into that number
+        of bins.
+
+    Attributes
+    ----------
+    bins : Integral
+        A grid of scattering angles which events will binned into.  Values
+        represent the cosine of the scattering angle.  If an Iterable is given,
+        the values will be used explicitly as grid points.  If a single Integral
+        is given, the range [-1, 1] will be divided up equally into that number
+        of bins.
+    num_bins : Integral
+        The number of filter bins
+    stride : Integral
+        The number of filter, nuclide and score bins within each of this
+        filter's bins.
+
+    """
 
 
 class PolarFilter(Filter):
-    def get_pandas_dataframe(self, data_size, distribcell_paths=True):
+    """Bins tally events based on the incident particle's direction.
+
+    Parameters
+    ----------
+    bins : Iterable of Real or Integral
+        A grid of polar angles which events will binned into.  Values represent
+        an angle in radians relative to the z-axis.  If an Iterable is given,
+        the values will be used explicitly as grid points.  If a single Integral
+        is given, the range [0, pi] will be divided up equally into that number
+        of bins.
+
+    Attributes
+    ----------
+    bins : Iterable of Real or Integral
+        A grid of polar angles which events will binned into.  Values represent
+        an angle in radians relative to the z-axis.  If an Iterable is given,
+        the values will be used explicitly as grid points.  If a single Integral
+        is given, the range [0, pi] will be divided up equally into that number
+        of bins.
+    num_bins : Integral
+        The number of filter bins
+    stride : Integral
+        The number of filter, nuclide and score bins within each of this
+        filter's bins.
+
+    """
+
+    def get_pandas_dataframe(self, data_size, **kwargs):
+        """Builds a Pandas DataFrame for the Filter's bins.
+
+        This method constructs a Pandas DataFrame object for the filter with
+        columns annotated by filter bin information. This is a helper method for
+        :meth:`Tally.get_pandas_dataframe`.
+
+        This capability has been tested for Pandas >=0.13.1. However, it is
+        recommended to use v0.16 or newer versions of Pandas since this method
+        uses Pandas' Multi-index functionality.
+
+        Parameters
+        ----------
+        data_size : Integral
+            The total number of bins in the tally corresponding to this filter
+
+        Returns
+        -------
+        pandas.DataFrame
+            A Pandas DataFrame with a column corresponding to the lower polar
+            angle bound for each of the filter's bins.  The number of rows in
+            the DataFrame is the same as the total number of bins in the
+            corresponding tally, with the filter bin appropriately tiled to map
+            to the corresponding tally bins.
+
+        Raises
+        ------
+        ImportError
+            When Pandas is not installed
+
+        See also
+        --------
+        Tally.get_pandas_dataframe(), CrossFilter.get_pandas_dataframe()
+
+        """
+
         # Initialize Pandas DataFrame
         import pandas as pd
         df = pd.DataFrame()
@@ -974,7 +1380,69 @@ class PolarFilter(Filter):
 
 
 class AzimuthalFilter(Filter):
+    """Bins tally events based on the incident particle's direction.
+
+    Parameters
+    ----------
+    bins : Iterable of Real or Integral
+        A grid of azimuthal angles which events will binned into.  Values
+        represent an angle in radians relative to the x-axis and perpendicular
+        to the z-axis.  If an Iterable is given, the values will be used
+        explicitly as grid points.  If a single Integral is given, the range
+        [-pi, pi) will be divided up equally into that number of bins.
+
+    Attributes
+    ----------
+    bins : Iterable of Real or Integral
+        A grid of azimuthal angles which events will binned into.  Values
+        represent an angle in radians relative to the x-axis and perpendicular
+        to the z-axis.  If an Iterable is given, the values will be used
+        explicitly as grid points.  If a single Integral is given, the range
+        [-pi, pi) will be divided up equally into that number of bins.
+    num_bins : Integral
+        The number of filter bins
+    stride : Integral
+        The number of filter, nuclide and score bins within each of this
+        filter's bins.
+
+    """
+
     def get_pandas_dataframe(self, data_size, distribcell_paths=True):
+        """Builds a Pandas DataFrame for the Filter's bins.
+
+        This method constructs a Pandas DataFrame object for the filter with
+        columns annotated by filter bin information. This is a helper method for
+        :meth:`Tally.get_pandas_dataframe`.
+
+        This capability has been tested for Pandas >=0.13.1. However, it is
+        recommended to use v0.16 or newer versions of Pandas since this method
+        uses Pandas' Multi-index functionality.
+
+        Parameters
+        ----------
+        data_size : Integral
+            The total number of bins in the tally corresponding to this filter
+
+        Returns
+        -------
+        pandas.DataFrame
+            A Pandas DataFrame with a column corresponding to the lower
+            azimuthal angle bound for each of the filter's bins.  The number of
+            rows in the DataFrame is the same as the total number of bins in the
+            corresponding tally, with the filter bin appropriately tiled to map
+            to the corresponding tally bins.
+
+        Raises
+        ------
+        ImportError
+            When Pandas is not installed
+
+        See also
+        --------
+        Tally.get_pandas_dataframe(), CrossFilter.get_pandas_dataframe()
+
+        """
+
         # Initialize Pandas DataFrame
         import pandas as pd
         df = pd.DataFrame()
@@ -993,4 +1461,26 @@ class AzimuthalFilter(Filter):
         return df
 
 
-class DelayedGroupFilter(IntegralFilter): pass
+class DelayedGroupFilter(IntegralFilter):
+    """Bins fission events based on the produced neutron precursor groups.
+
+    Parameters
+    ----------
+    bins : Integral or Iterable of Integral
+        The delayed neutron precursor groups.  For example, ENDF/B-VII.1 uses
+        6 precursor groups so a tally with all groups will have bins =
+        [1, 2, 3, 4, 5, 6].
+
+    Attributes
+    ----------
+    bins : Integral or Iterable of Integral
+        The delayed neutron precursor groups.  For example, ENDF/B-VII.1 uses
+        6 precursor groups so a tally with all groups will have bins =
+        [1, 2, 3, 4, 5, 6].
+    num_bins : Integral
+        The number of filter bins
+    stride : Integral
+        The number of filter, nuclide and score bins within each of this
+        filter's bins.
+
+    """

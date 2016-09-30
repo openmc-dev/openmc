@@ -663,9 +663,7 @@ class Reaction(EqualityMixin):
     mt : int
         The ENDF MT number for this reaction.
     q_value : float
-        The Q-value of this reaction in MeV.
-    threshold : float
-        Threshold of the reaction in MeV
+        The Q-value of this reaction in MeV or eV, depending on the data source.
     xs : dict of str to openmc.data.Function1D
         Microscopic cross section for this reaction as a function of incident
         energy; these cross sections are provided in a dictionary where the key

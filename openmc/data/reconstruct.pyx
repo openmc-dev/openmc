@@ -15,8 +15,8 @@ cdef extern from "complex.h":
     double complex cexp(double complex)
 
 # Physical constants are from CODATA 2014
-cdef double NEUTRON_MASS_ENERGY = 939.5654133e6  # MeV/c^2
-cdef double HBAR_C = 197.3269788e5  # MeV-b^0.5
+cdef double NEUTRON_MASS_ENERGY = 939.5654133e6  # eV/c^2
+cdef double HBAR_C = 197.3269788e5  # eV-b^0.5
 
 
 @cython.cdivision(True)

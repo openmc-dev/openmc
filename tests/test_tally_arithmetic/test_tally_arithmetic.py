@@ -34,8 +34,7 @@ class TallyArithmeticTestHarness(PyAPITestHarness):
         energy_filter = openmc.EnergyFilter((0.0, 0.253e-6, 1.0e-3, 1.0, 20.0))
         material_filter  = openmc.MaterialFilter((1, 3))
         distrib_filter   = openmc.DistribcellFilter(60)
-        mesh_filter      = openmc.MeshFilter(mesh.id)
-        mesh_filter.mesh = mesh
+        mesh_filter      = openmc.MeshFilter(mesh)
 
         # Initialized the tallies
         tally = openmc.Tally(name='tally 1')

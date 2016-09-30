@@ -43,8 +43,7 @@ class TalliesTestHarness(PyAPITestHarness):
         mesh_2x2.lower_left  = [-182.07, -182.07]
         mesh_2x2.upper_right = [182.07,  182.07]
         mesh_2x2.dimension = [2, 2]
-        mesh_filter = MeshFilter(mesh_2x2.id)
-        mesh_filter.mesh = mesh_2x2
+        mesh_filter = MeshFilter(mesh_2x2)
         azimuthal_tally4 = Tally()
         azimuthal_tally4.filters = [azimuthal_filter2, mesh_filter]
         azimuthal_tally4.scores = ['flux']

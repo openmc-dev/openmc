@@ -38,12 +38,9 @@ class FilterMeshTestHarness(HashedPyAPITestHarness):
         mesh_3d.upper_right = [182.07, 182.07, 183.00]
 
         # Initialize the filters
-        mesh_1d_filter      = openmc.MeshFilter(mesh_1d.id)
-        mesh_2d_filter      = openmc.MeshFilter(mesh_2d.id)
-        mesh_3d_filter      = openmc.MeshFilter(mesh_3d.id)
-        mesh_1d_filter.mesh = mesh_1d
-        mesh_2d_filter.mesh = mesh_2d
-        mesh_3d_filter.mesh = mesh_3d
+        mesh_1d_filter      = openmc.MeshFilter(mesh_1d)
+        mesh_2d_filter      = openmc.MeshFilter(mesh_2d)
+        mesh_3d_filter      = openmc.MeshFilter(mesh_3d)
 
         # Initialized the tallies
         tally = openmc.Tally(name='tally 1')

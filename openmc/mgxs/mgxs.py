@@ -271,11 +271,10 @@ class MGXS(object):
 
             # Create a domain Filter object
             filter_type = _DOMAIN_TO_FILTER[self.domain_type]
-            domain_filter = filter_type(self.domain.id)
-
-            # If a mesh domain, give the mesh to the domain filter
             if self.domain_type == 'mesh':
-                domain_filter.mesh = self.domain
+                domain_filter = filter_type(self.domain)
+            else:
+                domain_filter = filter_type(self.domain.id)
 
             # Create each Tally needed to compute the multi group cross section
             tally_metadata = zip(self.scores, self.tally_keys, self.filters)

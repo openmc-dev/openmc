@@ -186,8 +186,7 @@ mesh.upper_right = [0.62992, 0.62992, 1.e50]
 
 # Instantiate some tally Filters
 energy_filter = openmc.EnergyFilter([0., 4.e-6, 20.])
-mesh_filter = openmc.MeshFilter(mesh.id)
-mesh_filter.mesh = mesh
+mesh_filter = openmc.MeshFilter(mesh)
 
 # Instantiate the Tally
 tally = openmc.Tally(tally_id=1, name='tally 1')

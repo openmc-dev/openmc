@@ -13,7 +13,7 @@ module timer_header
   type Timer
     private
     logical :: running      = .false. ! is timer running?
-    integer :: start_counts = 0       ! counts when started
+    integer(8) :: start_counts = 0       ! counts when started
     real(8), public :: elapsed = ZERO ! total time elapsed in seconds
   contains
     procedure :: start     => timer_start
@@ -44,13 +44,14 @@ contains
     class(Timer), intent(in) :: self   ! the timer
     real(8)                 :: elapsed ! total elapsed time
 
-    integer :: end_counts   ! current number of counts
-    integer :: count_rate   ! system-dependent counting rate
+    integer(8) :: end_counts   ! current number of counts
+    integer(8) :: count_rate   ! system-dependent counting rate
     real    :: elapsed_time ! elapsed time since last start
 
     if (self % running) then
       call system_clock(end_counts, count_rate)
-      elapsed_time = real(end_counts - self % start_counts)/real(count_rate)
+      elapsed_time = real(end_counts - self % start_counts, 8) / &
+           real(count_rate, 8)
       elapsed = self % elapsed + elapsed_time
     else
       elapsed = self % elapsed

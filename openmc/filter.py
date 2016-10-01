@@ -354,10 +354,6 @@ class Filter(with_metaclass(FilterMeta, object)):
         columns annotated by filter bin information. This is a helper method for
         :meth:`Tally.get_pandas_dataframe`.
 
-        This capability has been tested for Pandas >=0.13.1. However, it is
-        recommended to use v0.16 or newer versions of Pandas since this method
-        uses Pandas' Multi-index functionality.
-
         Parameters
         ----------
         data_size : Integral
@@ -379,23 +375,6 @@ class Filter(with_metaclass(FilterMeta, object)):
             filter's bins. The number of rows in the DataFrame is the same as
             the total number of bins in the corresponding tally, with the filter
             bin appropriately tiled to map to the corresponding tally bins.
-
-            For 'cell', 'cellborn', 'surface', 'material', and 'universe'
-            filters, the DataFrame includes a single column with the cell,
-            surface, material or universe ID corresponding to each filter bin.
-
-            For 'distribcell' filters, the DataFrame either includes:
-
-            1. a single column with the cell instance IDs (without summary info)
-            2. separate columns for the cell IDs, universe IDs, and lattice IDs
-               and x,y,z cell indices corresponding to each (distribcell paths).
-
-            For 'energy' and 'energyout' filters, the DataFrame includes one
-            column for the lower energy bound and one column for the upper
-            energy bound for each filter bin.
-
-            For 'mesh' filters, the DataFrame includes three columns for the
-            x,y,z mesh cell indices corresponding to each filter bin.
 
         Raises
         ------
@@ -571,10 +550,6 @@ class SurfaceFilter(IntegralFilter):
         columns annotated by filter bin information. This is a helper method for
         :meth:`Tally.get_pandas_dataframe`.
 
-        This capability has been tested for Pandas >=0.13.1. However, it is
-        recommended to use v0.16 or newer versions of Pandas since this method
-        uses Pandas' Multi-index functionality.
-
         Parameters
         ----------
         data_size : Integral
@@ -729,10 +704,6 @@ class MeshFilter(Filter):
         This method constructs a Pandas DataFrame object for the filter with
         columns annotated by filter bin information. This is a helper method for
         :meth:`Tally.get_pandas_dataframe`.
-
-        This capability has been tested for Pandas >=0.13.1. However, it is
-        recommended to use v0.16 or newer versions of Pandas since this method
-        uses Pandas' Multi-index functionality.
 
         Parameters
         ----------
@@ -924,10 +895,6 @@ class EnergyFilter(Filter):
         columns annotated by filter bin information. This is a helper method for
         :meth:`Tally.get_pandas_dataframe`.
 
-        This capability has been tested for Pandas >=0.13.1. However, it is
-        recommended to use v0.16 or newer versions of Pandas since this method
-        uses Pandas' Multi-index functionality.
-
         Parameters
         ----------
         data_size : Integral
@@ -1071,10 +1038,6 @@ class DistribcellFilter(Filter):
         This method constructs a Pandas DataFrame object for the filter with
         columns annotated by filter bin information. This is a helper method for
         :meth:`Tally.get_pandas_dataframe`.
-
-        This capability has been tested for Pandas >=0.13.1. However, it is
-        recommended to use v0.16 or newer versions of Pandas since this method
-        uses Pandas' Multi-index functionality.
 
         Parameters
         ----------
@@ -1332,10 +1295,6 @@ class PolarFilter(Filter):
         columns annotated by filter bin information. This is a helper method for
         :meth:`Tally.get_pandas_dataframe`.
 
-        This capability has been tested for Pandas >=0.13.1. However, it is
-        recommended to use v0.16 or newer versions of Pandas since this method
-        uses Pandas' Multi-index functionality.
-
         Parameters
         ----------
         data_size : Integral
@@ -1413,10 +1372,6 @@ class AzimuthalFilter(Filter):
         This method constructs a Pandas DataFrame object for the filter with
         columns annotated by filter bin information. This is a helper method for
         :meth:`Tally.get_pandas_dataframe`.
-
-        This capability has been tested for Pandas >=0.13.1. However, it is
-        recommended to use v0.16 or newer versions of Pandas since this method
-        uses Pandas' Multi-index functionality.
 
         Parameters
         ----------

@@ -8,3 +8,15 @@
     max-width: 100%;
     overflow: visible;
 }
+
+.wy-plain-list-disc, .rst-content .section ul, .rst-content .toctree-wrapper ul, article ul {
+    margin-bottom: 0px;
+}
+
+.wy-table, .rst-content table.docutils, .rst-content table.field-list {
+    margin-bottom: 0px;
+}
+
+.wy-side-nav-search {
+    background-color: #343131;
+}

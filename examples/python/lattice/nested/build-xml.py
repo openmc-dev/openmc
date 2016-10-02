@@ -15,9 +15,9 @@ particles = 10000
 ###############################################################################
 
 # Instantiate some Nuclides
-h1 = openmc.Nuclide('H-1')
-o16 = openmc.Nuclide('O-16')
-u235 = openmc.Nuclide('U-235')
+h1 = openmc.Nuclide('H1')
+o16 = openmc.Nuclide('O16')
+u235 = openmc.Nuclide('U235')
 
 # Instantiate some Materials and register the appropriate Nuclides
 fuel = openmc.Material(material_id=1, name='fuel')
@@ -28,11 +28,10 @@ moderator = openmc.Material(material_id=2, name='moderator')
 moderator.set_density('g/cc', 1.0)
 moderator.add_nuclide(h1, 2.)
 moderator.add_nuclide(o16, 1.)
-moderator.add_s_alpha_beta('HH2O', '71t')
+moderator.add_s_alpha_beta('c_H_in_H2O')
 
 # Instantiate a Materials collection and export to XML
 materials_file = openmc.Materials((moderator, fuel))
-materials_file.default_xs = '71c'
 materials_file.export_to_xml()
 
 
@@ -98,14 +97,12 @@ univ4.add_cell(cell2)
 
 # Instantiate nested Lattices
 lattice1 = openmc.RectLattice(lattice_id=4, name='4x4 assembly')
-lattice1.dimension = [2, 2]
 lattice1.lower_left = [-1., -1.]
 lattice1.pitch = [1., 1.]
 lattice1.universes = [[univ1, univ2],
                       [univ2, univ3]]
 
 lattice2 = openmc.RectLattice(lattice_id=6, name='4x4 core')
-lattice2.dimension = [2, 2]
 lattice2.lower_left = [-2., -2.]
 lattice2.pitch = [2., 2.]
 lattice2.universes = [[univ4, univ4],
@@ -116,8 +113,7 @@ cell1.fill = lattice2
 cell2.fill = lattice1
 
 # Instantiate a Geometry, register the root Universe, and export to XML
-geometry = openmc.Geometry()
-geometry.root_universe = root
+geometry = openmc.Geometry(root)
 geometry.export_to_xml()
 
 

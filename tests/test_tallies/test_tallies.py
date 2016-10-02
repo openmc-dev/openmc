@@ -113,21 +113,24 @@ class TalliesTestHarness(PyAPITestHarness):
         polar_tally4.estimator = 'tracklength'
 
         universe_tally = Tally()
-        universe_tally.filters = [Filter(type='universe', bins=(1, 2, 3, 4))]
+        universe_tally.filters = [
+             Filter(type='universe', bins=(1, 2, 3, 4, 6, 8))]
         universe_tally.scores = ['total']
 
-        cell_filter = Filter(type='cell', bins=(10, 21, 22, 23))
+        cell_filter = Filter(type='cell', bins=(10, 21, 22, 23, 60))
         score_tallies = [Tally(), Tally(), Tally()]
         for t in score_tallies:
             t.filters = [cell_filter]
             t.scores = ['absorption', 'delayed-nu-fission', 'events', 'fission',
                         'inverse-velocity', 'kappa-fission', '(n,2n)', '(n,n1)',
-                        '(n,gamma)', 'nu-fission', 'scatter', 'elastic', 'total']
+                        '(n,gamma)', 'nu-fission', 'scatter', 'elastic', 
+                        'total', 'prompt-nu-fission', 'fission-q-prompt',
+                        'fission-q-recoverable']
         score_tallies[0].estimator = 'tracklength'
         score_tallies[1].estimator = 'analog'
         score_tallies[2].estimator = 'collision'
 
-        cell_filter2 = Filter(type='cell', bins=(21, 22, 23, 27, 28, 29))
+        cell_filter2 = Filter(type='cell', bins=(21, 22, 23, 27, 28, 29, 60))
         flux_tallies = [Tally() for i in range(4)]
         for t in flux_tallies:
             t.filters = [cell_filter2]
@@ -155,13 +158,10 @@ class TalliesTestHarness(PyAPITestHarness):
         total_tallies[0].scores = ['total']
         for t in total_tallies[1:]:
             t.scores = ['total-y4']
-            t.nuclides = ['U-235', 'total']
+            t.nuclides = ['U235', 'total']
         total_tallies[1].estimator = 'tracklength'
         total_tallies[2].estimator = 'analog'
         total_tallies[3].estimator = 'collision'
-
-        questionable_tally = Tally()
-        questionable_tally.scores = ['transport', 'n1n']
 
         all_nuclide_tallies = [Tally(), Tally()]
         for t in all_nuclide_tallies:
@@ -182,7 +182,6 @@ class TalliesTestHarness(PyAPITestHarness):
         self._input_set.tallies += flux_tallies
         self._input_set.tallies += (scatter_tally1, scatter_tally2)
         self._input_set.tallies += total_tallies
-        self._input_set.tallies.append(questionable_tally)
         self._input_set.tallies += all_nuclide_tallies
 
         self._input_set.export()

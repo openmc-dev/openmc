@@ -24,7 +24,6 @@ class AsymmetricLatticeTestHarness(PyAPITestHarness):
 
         # Construct a 3x3 lattice of fuel assemblies
         core_lat = openmc.RectLattice(name='3x3 Core Lattice', lattice_id=202)
-        core_lat.dimension = (3, 3)
         core_lat.lower_left = (-32.13, -32.13)
         core_lat.pitch = (21.42, 21.42)
         core_lat.universes = [[fuel,  water, water],

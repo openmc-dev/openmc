@@ -1,4 +1,4 @@
-from collections import Iterable
+from collections import Iterable, MutableSequence, Mapping
 from numbers import Real, Integral
 import warnings
 from xml.etree import ElementTree as ET
@@ -6,19 +6,16 @@ import sys
 
 import numpy as np
 
-from openmc.clean_xml import *
-from openmc.checkvalue import (check_type, check_length, check_value,
-                               check_greater_than, check_less_than)
-from openmc import Nuclide
-from openmc.source import Source
+from openmc.clean_xml import clean_xml_indentation
+import openmc.checkvalue as cv
+from openmc import Nuclide, VolumeCalculation, Source
 
 if sys.version_info[0] >= 3:
     basestring = str
 
 
 class Settings(object):
-    """Settings file used for an OpenMC simulation. Corresponds directly to the
-    settings.xml input file.
+    """Settings used for an OpenMC simulation.
 
     Attributes
     ----------
@@ -78,10 +75,8 @@ class Settings(object):
     multipole_library : str
         Indicates the path to a directory containing a windowed multipole
         cross section library. If it is not set, the
-        :envvar:`OPENMC_MULTIPOLE_LIBRARY' environment variable will be used. A
+        :envvar:`OPENMC_MULTIPOLE_LIBRARY` environment variable will be used. A
         multipole library is optional.
-    energy_grid : {'nuclide', 'logarithm', 'material-union'}
-        Set the method used to search energy grids.
     energy_mode : {'continuous-energy', 'multi-group'}
         Set whether the calculation should be continuous-energy or multi-group.
     max_order : int
@@ -105,6 +100,14 @@ class Settings(object):
         Coordinates of the lower-left point of the Shannon entropy mesh
     entropy_upper_right : tuple or list
         Coordinates of the upper-right point of the Shannon entropy mesh
+    temperature : dict
+        Defines a default temperature and method for treating intermediate
+        temperatures at which nuclear data doesn't exist. Accepted keys are
+        'default', 'method', and 'tolerance'. The value for 'default' should be
+        a float representing the default temperature in Kelvin. The value for
+        'method' should be 'nearest' or 'multipole'. If the method is
+        'nearest', 'tolerance' indicates a range of temperature within which
+        cross sections may be used.
     trigger_active : bool
         Indicate whether tally triggers are used
     trigger_max_batches : int
@@ -132,11 +135,10 @@ class Settings(object):
         Coordinates of the lower-left point of the UFS mesh
     ufs_upper_right : tuple or list
         Coordinates of the upper-right point of the UFS mesh
-    use_windowed_multipole : bool
-        Whether or not windowed multipole can be used to evaluate resolved
-        resonance cross sections.
     resonance_scattering : ResonanceScattering or iterable of ResonanceScattering
         The elastic scattering model to use for resonant isotopes
+    volume_calculations : VolumeCalculation or iterable of VolumeCalculation
+        Stochastic volume calculation specifications
 
     """
 
@@ -155,12 +157,11 @@ class Settings(object):
         self._max_order = None
 
         # Source subelement
-        self._source = None
+        self._source = cv.CheckedList(Source, 'source distributions')
 
         self._confidence_intervals = None
         self._cross_sections = None
         self._multipole_library = None
-        self._energy_grid = None
         self._ptables = None
         self._run_cmfd = None
         self._seed = None
@@ -197,6 +198,8 @@ class Settings(object):
         self._trace = None
         self._track = None
 
+        self._temperature = {}
+
         # Cutoff subelement
         self._weight = None
         self._weight_avg = None
@@ -216,10 +219,11 @@ class Settings(object):
 
         self._settings_file = ET.Element("settings")
         self._run_mode_subelement = None
-        self._source_element = None
-        self._multipole_active = None
 
-        self._resonance_scattering = None
+        self._resonance_scattering = cv.CheckedList(
+            ResonanceScattering, 'resonance scattering models')
+        self._volume_calculations = cv.CheckedList(
+            VolumeCalculation, 'volume calculations')
 
     @property
     def run_mode(self):
@@ -270,10 +274,6 @@ class Settings(object):
         return self._multipole_library
 
     @property
-    def energy_grid(self):
-        return self._energy_grid
-
-    @property
     def ptables(self):
         return self._ptables
 
@@ -311,7 +311,7 @@ class Settings(object):
 
     @property
     def trigger_batch_interval(self):
-        return self._batch_interval
+        return self._trigger_batch_interval
 
     @property
     def output(self):
@@ -360,6 +360,10 @@ class Settings(object):
     @property
     def verbosity(self):
         return self._verbosity
+
+    @property
+    def temperature(self):
+        return self._temperature
 
     @property
     def trace(self):
@@ -414,12 +418,12 @@ class Settings(object):
         return self._dd_count_interactions
 
     @property
-    def use_windowed_multipole(self):
-        return self._multipole_active
-
-    @property
     def resonance_scattering(self):
         return self._resonance_scattering
+
+    @property
+    def volume_calculations(self):
+        return self._volume_calculations
 
     @run_mode.setter
     def run_mode(self, run_mode):
@@ -431,26 +435,26 @@ class Settings(object):
 
     @batches.setter
     def batches(self, batches):
-        check_type('batches', batches, Integral)
-        check_greater_than('batches', batches, 0)
+        cv.check_type('batches', batches, Integral)
+        cv.check_greater_than('batches', batches, 0)
         self._batches = batches
 
     @generations_per_batch.setter
     def generations_per_batch(self, generations_per_batch):
-        check_type('generations per patch', generations_per_batch, Integral)
-        check_greater_than('generations per batch', generations_per_batch, 0)
+        cv.check_type('generations per patch', generations_per_batch, Integral)
+        cv.check_greater_than('generations per batch', generations_per_batch, 0)
         self._generations_per_batch = generations_per_batch
 
     @inactive.setter
     def inactive(self, inactive):
-        check_type('inactive batches', inactive, Integral)
-        check_greater_than('inactive batches', inactive, 0, True)
+        cv.check_type('inactive batches', inactive, Integral)
+        cv.check_greater_than('inactive batches', inactive, 0, True)
         self._inactive = inactive
 
     @particles.setter
     def particles(self, particles):
-        check_type('particles', particles, Integral)
-        check_greater_than('particles', particles, 0)
+        cv.check_type('particles', particles, Integral)
+        cv.check_greater_than('particles', particles, 0)
         self._particles = particles
 
     @keff_trigger.setter
@@ -484,23 +488,21 @@ class Settings(object):
 
     @energy_mode.setter
     def energy_mode(self, energy_mode):
-        check_value('energy mode', energy_mode,
+        cv.check_value('energy mode', energy_mode,
                     ['continuous-energy', 'multi-group'])
         self._energy_mode = energy_mode
 
     @max_order.setter
     def max_order(self, max_order):
-        check_type('maximum scattering order', max_order, Integral)
-        check_greater_than('maximum scattering order', max_order, 0, True)
+        cv.check_type('maximum scattering order', max_order, Integral)
+        cv.check_greater_than('maximum scattering order', max_order, 0, True)
         self._max_order = max_order
 
     @source.setter
     def source(self, source):
-        if isinstance(source, Source):
-            self._source = [source,]
-        else:
-            check_type('source distribution', source, Iterable, Source)
-            self._source = source
+        if not isinstance(source, MutableSequence):
+            source = [source]
+        self._source = cv.CheckedList(Source, 'source distributions', source)
 
     @output.setter
     def output(self, output):
@@ -525,197 +527,206 @@ class Settings(object):
 
     @output_path.setter
     def output_path(self, output_path):
-        check_type('output path', output_path, basestring)
+        cv.check_type('output path', output_path, basestring)
         self._output_path = output_path
 
     @verbosity.setter
     def verbosity(self, verbosity):
-        check_type('verbosity', verbosity, Integral)
-        check_greater_than('verbosity', verbosity, 1, True)
-        check_less_than('verbosity', verbosity, 10, True)
+        cv.check_type('verbosity', verbosity, Integral)
+        cv.check_greater_than('verbosity', verbosity, 1, True)
+        cv.check_less_than('verbosity', verbosity, 10, True)
         self._verbosity = verbosity
 
     @statepoint_batches.setter
     def statepoint_batches(self, batches):
-        check_type('statepoint batches', batches, Iterable, Integral)
+        cv.check_type('statepoint batches', batches, Iterable, Integral)
         for batch in batches:
-            check_greater_than('statepoint batch', batch, 0)
+            cv.check_greater_than('statepoint batch', batch, 0)
         self._statepoint_batches = batches
 
     @statepoint_interval.setter
     def statepoint_interval(self, interval):
-        check_type('statepoint interval', interval, Integral)
+        cv.check_type('statepoint interval', interval, Integral)
         self._statepoint_interval = interval
 
     @sourcepoint_batches.setter
     def sourcepoint_batches(self, batches):
-        check_type('sourcepoint batches', batches, Iterable, Integral)
+        cv.check_type('sourcepoint batches', batches, Iterable, Integral)
         for batch in batches:
-            check_greater_than('sourcepoint batch', batch, 0)
+            cv.check_greater_than('sourcepoint batch', batch, 0)
         self._sourcepoint_batches = batches
 
     @sourcepoint_interval.setter
     def sourcepoint_interval(self, interval):
-        check_type('sourcepoint interval', interval, Integral)
+        cv.check_type('sourcepoint interval', interval, Integral)
         self._sourcepoint_interval = interval
 
     @sourcepoint_separate.setter
     def sourcepoint_separate(self, source_separate):
-        check_type('sourcepoint separate', source_separate, bool)
+        cv.check_type('sourcepoint separate', source_separate, bool)
         self._sourcepoint_separate = source_separate
 
     @sourcepoint_write.setter
     def sourcepoint_write(self, source_write):
-        check_type('sourcepoint write', source_write, bool)
+        cv.check_type('sourcepoint write', source_write, bool)
         self._sourcepoint_write = source_write
 
     @sourcepoint_overwrite.setter
     def sourcepoint_overwrite(self, source_overwrite):
-        check_type('sourcepoint overwrite', source_overwrite, bool)
+        cv.check_type('sourcepoint overwrite', source_overwrite, bool)
         self._sourcepoint_overwrite = source_overwrite
 
     @confidence_intervals.setter
     def confidence_intervals(self, confidence_intervals):
-        check_type('confidence interval', confidence_intervals, bool)
+        cv.check_type('confidence interval', confidence_intervals, bool)
         self._confidence_intervals = confidence_intervals
 
     @cross_sections.setter
     def cross_sections(self, cross_sections):
-        check_type('cross sections', cross_sections, basestring)
+        cv.check_type('cross sections', cross_sections, basestring)
         self._cross_sections = cross_sections
 
     @multipole_library.setter
     def multipole_library(self, multipole_library):
-        check_type('cross sections', multipole_library, basestring)
+        cv.check_type('cross sections', multipole_library, basestring)
         self._multipole_library = multipole_library
-
-    @energy_grid.setter
-    def energy_grid(self, energy_grid):
-        check_value('energy grid', energy_grid,
-                    ['nuclide', 'logarithm', 'material-union'])
-        self._energy_grid = energy_grid
 
     @ptables.setter
     def ptables(self, ptables):
-        check_type('probability tables', ptables, bool)
+        cv.check_type('probability tables', ptables, bool)
         self._ptables = ptables
 
     @run_cmfd.setter
     def run_cmfd(self, run_cmfd):
-        check_type('run_cmfd', run_cmfd, bool)
+        cv.check_type('run_cmfd', run_cmfd, bool)
         self._run_cmfd = run_cmfd
 
     @seed.setter
     def seed(self, seed):
-        check_type('random number generator seed', seed, Integral)
-        check_greater_than('random number generator seed', seed, 0)
+        cv.check_type('random number generator seed', seed, Integral)
+        cv.check_greater_than('random number generator seed', seed, 0)
         self._seed = seed
 
     @survival_biasing.setter
     def survival_biasing(self, survival_biasing):
-        check_type('survival biasing', survival_biasing, bool)
+        cv.check_type('survival biasing', survival_biasing, bool)
         self._survival_biasing = survival_biasing
 
     @weight.setter
     def weight(self, weight):
-        check_type('weight cutoff', weight, Real)
-        check_greater_than('weight cutoff', weight, 0.0)
+        cv.check_type('weight cutoff', weight, Real)
+        cv.check_greater_than('weight cutoff', weight, 0.0)
         self._weight = weight
 
     @weight_avg.setter
     def weight_avg(self, weight_avg):
-        check_type('average survival weight', weight_avg, Real)
-        check_greater_than('average survival weight', weight_avg, 0.0)
+        cv.check_type('average survival weight', weight_avg, Real)
+        cv.check_greater_than('average survival weight', weight_avg, 0.0)
         self._weight_avg = weight_avg
 
     @entropy_dimension.setter
     def entropy_dimension(self, dimension):
-        check_type('entropy mesh dimension', dimension, Iterable, Integral)
-        check_length('entropy mesh dimension', dimension, 3)
+        cv.check_type('entropy mesh dimension', dimension, Iterable, Integral)
+        cv.check_length('entropy mesh dimension', dimension, 3)
         self._entropy_dimension = dimension
 
     @entropy_lower_left.setter
     def entropy_lower_left(self, lower_left):
-        check_type('entropy mesh lower left corner', lower_left,
+        cv.check_type('entropy mesh lower left corner', lower_left,
                    Iterable, Real)
-        check_length('entropy mesh lower left corner', lower_left, 3)
+        cv.check_length('entropy mesh lower left corner', lower_left, 3)
         self._entropy_lower_left = lower_left
 
     @entropy_upper_right.setter
     def entropy_upper_right(self, upper_right):
-        check_type('entropy mesh upper right corner', upper_right,
+        cv.check_type('entropy mesh upper right corner', upper_right,
                    Iterable, Real)
-        check_length('entropy mesh upper right corner', upper_right, 3)
+        cv.check_length('entropy mesh upper right corner', upper_right, 3)
         self._entropy_upper_right = upper_right
 
     @trigger_active.setter
     def trigger_active(self, trigger_active):
-        check_type('trigger active', trigger_active, bool)
+        cv.check_type('trigger active', trigger_active, bool)
         self._trigger_active = trigger_active
 
     @trigger_max_batches.setter
     def trigger_max_batches(self, trigger_max_batches):
-        check_type('trigger maximum batches', trigger_max_batches, Integral)
-        check_greater_than('trigger maximum batches', trigger_max_batches, 0)
+        cv.check_type('trigger maximum batches', trigger_max_batches, Integral)
+        cv.check_greater_than('trigger maximum batches', trigger_max_batches, 0)
         self._trigger_max_batches = trigger_max_batches
 
     @trigger_batch_interval.setter
     def trigger_batch_interval(self, trigger_batch_interval):
-        check_type('trigger batch interval', trigger_batch_interval, Integral)
-        check_greater_than('trigger batch interval', trigger_batch_interval, 0)
+        cv.check_type('trigger batch interval', trigger_batch_interval, Integral)
+        cv.check_greater_than('trigger batch interval', trigger_batch_interval, 0)
         self._trigger_batch_interval = trigger_batch_interval
 
     @no_reduce.setter
     def no_reduce(self, no_reduce):
-        check_type('no reduction option', no_reduce, bool)
+        cv.check_type('no reduction option', no_reduce, bool)
         self._no_reduce = no_reduce
+
+    @temperature.setter
+    def temperature(self, temperature):
+        cv.check_type('temperature settings', temperature, Mapping)
+        for key, value in temperature.items():
+            cv.check_value('temperature key', key,
+                           ['default', 'method', 'tolerance'])
+            if key == 'default':
+                cv.check_type('default temperature', value, Real)
+            elif key == 'method':
+                cv.check_value('temperature method', value,
+                               ['nearest', 'interpolation', 'multipole'])
+            elif key == 'tolerance':
+                cv.check_type('temperature tolerance', value, Real)
+        self._temperature = temperature
 
     @threads.setter
     def threads(self, threads):
-        check_type('number of threads', threads, Integral)
-        check_greater_than('number of threads', threads, 0)
+        cv.check_type('number of threads', threads, Integral)
+        cv.check_greater_than('number of threads', threads, 0)
         self._threads = threads
 
     @trace.setter
     def trace(self, trace):
-        check_type('trace', trace, Iterable, Integral)
-        check_length('trace', trace, 3)
-        check_greater_than('trace batch', trace[0], 0)
-        check_greater_than('trace generation', trace[1], 0)
-        check_greater_than('trace particle', trace[2], 0)
+        cv.check_type('trace', trace, Iterable, Integral)
+        cv.check_length('trace', trace, 3)
+        cv.check_greater_than('trace batch', trace[0], 0)
+        cv.check_greater_than('trace generation', trace[1], 0)
+        cv.check_greater_than('trace particle', trace[2], 0)
         self._trace = trace
 
     @track.setter
     def track(self, track):
-        check_type('track', track, Iterable, Integral)
+        cv.check_type('track', track, Iterable, Integral)
         if len(track) % 3 != 0:
             msg = 'Unable to set the track to "{0}" since its length is ' \
                   'not a multiple of 3'.format(track)
             raise ValueError(msg)
         for t in zip(track[::3], track[1::3], track[2::3]):
-            check_greater_than('track batch', t[0], 0)
-            check_greater_than('track generation', t[0], 0)
-            check_greater_than('track particle', t[0], 0)
+            cv.check_greater_than('track batch', t[0], 0)
+            cv.check_greater_than('track generation', t[0], 0)
+            cv.check_greater_than('track particle', t[0], 0)
         self._track = track
 
     @ufs_dimension.setter
     def ufs_dimension(self, dimension):
-        check_type('UFS mesh dimension', dimension, Iterable, Integral)
-        check_length('UFS mesh dimension', dimension, 3)
+        cv.check_type('UFS mesh dimension', dimension, Iterable, Integral)
+        cv.check_length('UFS mesh dimension', dimension, 3)
         for dim in dimension:
-            check_greater_than('UFS mesh dimension', dim, 1, True)
+            cv.check_greater_than('UFS mesh dimension', dim, 1, True)
         self._ufs_dimension = dimension
 
     @ufs_lower_left.setter
     def ufs_lower_left(self, lower_left):
-        check_type('UFS mesh lower left corner', lower_left, Iterable, Real)
-        check_length('UFS mesh lower left corner', lower_left, 3)
+        cv.check_type('UFS mesh lower left corner', lower_left, Iterable, Real)
+        cv.check_length('UFS mesh lower left corner', lower_left, 3)
         self._ufs_lower_left = lower_left
 
     @ufs_upper_right.setter
     def ufs_upper_right(self, upper_right):
-        check_type('UFS mesh upper right corner', upper_right, Iterable, Real)
-        check_length('UFS mesh upper right corner', upper_right, 3)
+        cv.check_type('UFS mesh upper right corner', upper_right, Iterable, Real)
+        cv.check_length('UFS mesh upper right corner', upper_right, 3)
         self._ufs_upper_right = upper_right
 
     @dd_mesh_dimension.setter
@@ -724,8 +735,8 @@ class Settings(object):
         warnings.warn('This feature is not yet implemented in a release '
                       'version of openmc')
 
-        check_type('DD mesh dimension', dimension, Iterable, Integral)
-        check_length('DD mesh dimension', dimension, 3)
+        cv.check_type('DD mesh dimension', dimension, Iterable, Integral)
+        cv.check_length('DD mesh dimension', dimension, 3)
 
         self._dd_mesh_dimension = dimension
 
@@ -735,8 +746,8 @@ class Settings(object):
         warnings.warn('This feature is not yet implemented in a release '
                       'version of openmc')
 
-        check_type('DD mesh lower left corner', lower_left, Iterable, Real)
-        check_length('DD mesh lower left corner', lower_left, 3)
+        cv.check_type('DD mesh lower left corner', lower_left, Iterable, Real)
+        cv.check_length('DD mesh lower left corner', lower_left, 3)
 
         self._dd_mesh_lower_left = lower_left
 
@@ -746,8 +757,8 @@ class Settings(object):
         warnings.warn('This feature is not yet implemented in a release '
                       'version of openmc')
 
-        check_type('DD mesh upper right corner', upper_right, Iterable, Real)
-        check_length('DD mesh upper right corner', upper_right, 3)
+        cv.check_type('DD mesh upper right corner', upper_right, Iterable, Real)
+        cv.check_length('DD mesh upper right corner', upper_right, 3)
 
         self._dd_mesh_upper_right = upper_right
 
@@ -757,7 +768,7 @@ class Settings(object):
         warnings.warn('This feature is not yet implemented in a release '
                       'version of openmc')
 
-        check_type('DD nodemap', nodemap, Iterable)
+        cv.check_type('DD nodemap', nodemap, Iterable)
 
         nodemap = np.array(nodemap).flatten()
 
@@ -782,7 +793,7 @@ class Settings(object):
         warnings.warn('This feature is not yet implemented in a release '
                       'version of openmc')
 
-        check_type('DD allow leakage', allow, bool)
+        cv.check_type('DD allow leakage', allow, bool)
 
         self._dd_allow_leakage = allow
 
@@ -793,24 +804,23 @@ class Settings(object):
         warnings.warn('This feature is not yet implemented in a release '
                       'version of openmc')
 
-        check_type('DD count interactions', interactions, bool)
+        cv.check_type('DD count interactions', interactions, bool)
 
         self._dd_count_interactions = interactions
 
-    @use_windowed_multipole.setter
-    def use_windowed_multipole(self, active):
-        check_type('use_windowed_multipole', active, bool)
-        self._multipole_active = active
-
     @resonance_scattering.setter
     def resonance_scattering(self, res):
-        if isinstance(res, Iterable):
-            check_type('resonance_scattering', res, Iterable,
-                       ResonanceScattering)
-            self._resonance_scattering = res
-        else:
-            check_type('resonance_scattering', res, ResonanceScattering)
-            self._resonance_scattering = [res]
+        if not isinstance(res, MutableSequence):
+            res = [res]
+        self._resonance_scattering = cv.CheckedList(
+            ResonanceScattering, 'resonance scattering models', res)
+
+    @volume_calculations.setter
+    def volume_calculations(self, vol_calcs):
+        if not isinstance(vol_calcs, MutableSequence):
+            vol_calcs = [vol_calcs]
+        self._volume_calculations = cv.CheckedList(
+            VolumeCalculation, 'stochastic volume calculations', vol_calcs)
 
     def _create_run_mode_subelement(self):
 
@@ -869,9 +879,12 @@ class Settings(object):
             element.text = str(self._max_order)
 
     def _create_source_subelement(self):
-        if self.source is not None:
-            for source in self.source:
-                self._settings_file.append(source.to_xml())
+        for source in self.source:
+            self._settings_file.append(source.to_xml_element())
+
+    def _create_volume_calcs_subelement(self):
+        for calc in self.volume_calculations:
+            self._settings_file.append(calc.to_xml_element())
 
     def _create_output_subelement(self):
         if self._output is not None:
@@ -952,11 +965,6 @@ class Settings(object):
             element = ET.SubElement(self._settings_file, "multipole_library")
             element.text = str(self._multipole_library)
 
-    def _create_energy_grid_subelement(self):
-        if self._energy_grid is not None:
-            element = ET.SubElement(self._settings_file, "energy_grid")
-            element.text = str(self._energy_grid)
-
     def _create_ptables_subelement(self):
         if self._ptables is not None:
             element = ET.SubElement(self._settings_file, "ptables")
@@ -1011,7 +1019,7 @@ class Settings(object):
         if self._trigger_active is not None:
             if self._trigger_subelement is None:
                 self._trigger_subelement = ET.SubElement(self._settings_file,
-                                                      "trigger")
+                                                         "trigger")
 
             element = ET.SubElement(self._trigger_subelement, "active")
             element.text = str(self._trigger_active).lower()
@@ -1020,7 +1028,7 @@ class Settings(object):
         if self._trigger_max_batches is not None:
             if self._trigger_subelement is None:
                 self._trigger_subelement = ET.SubElement(self._settings_file,
-                                                      "trigger")
+                                                         "trigger")
 
             element = ET.SubElement(self._trigger_subelement, "max_batches")
             element.text = str(self._trigger_max_batches)
@@ -1029,7 +1037,7 @@ class Settings(object):
         if self._trigger_batch_interval is not None:
             if self._trigger_subelement is None:
                 self._trigger_subelement = ET.SubElement(self._settings_file,
-                                                      "trigger")
+                                                         "trigger")
 
             element = ET.SubElement(self._trigger_subelement, "batch_interval")
             element.text = str(self._trigger_batch_interval)
@@ -1038,6 +1046,13 @@ class Settings(object):
         if self._no_reduce is not None:
             element = ET.SubElement(self._settings_file, "no_reduce")
             element.text = str(self._no_reduce).lower()
+
+    def _create_temperature_subelements(self):
+        if self.temperature:
+            for key, value in self.temperature.items():
+                element = ET.SubElement(self._settings_file,
+                                        "temperature_{}".format(key))
+                element.text = str(value)
 
     def _create_threads_subelement(self):
         if self._threads is not None:
@@ -1096,25 +1111,19 @@ class Settings(object):
             subelement = ET.SubElement(element, "count_interactions")
             subelement.text = str(self._dd_count_interactions).lower()
 
-    def _create_use_multipole_subelement(self):
-        if self._multipole_active is not None:
-            element = ET.SubElement(self._settings_file,
-                                    "use_windowed_multipole")
-            element.text = str(self._multipole_active)
+    def _create_resonance_scattering_subelement(self):
+        if len(self.resonance_scattering) > 0:
+            elem = ET.SubElement(self._settings_file, 'resonance_scattering')
+            for r in self.resonance_scattering:
+                elem.append(r.to_xml_element())
 
-    def _create_resonance_scattering_element(self):
-        if self.resonance_scattering is None: return
+    def export_to_xml(self, path='settings.xml'):
+        """Export simulation settings to an XML file.
 
-        element = ET.SubElement(self._settings_file, "resonance_scattering")
-
-        for r in self.resonance_scattering:
-            if r.nuclide.name != r.nuclide_0K.name:
-                raise ValueError("The nuclide and nuclide_0K attributes of "
-                     "a ResonantScattering object must have identical names.")
-            r.create_xml_subelement(element)
-
-    def export_to_xml(self):
-        """Create a settings.xml file that can be used for a simulation.
+        Parameters
+        ----------
+        path : str
+            Path to file to write. Defaults to 'settings.xml'.
 
         """
 
@@ -1123,7 +1132,6 @@ class Settings(object):
         self._source_subelement = None
         self._trigger_subelement = None
         self._run_mode_subelement = None
-        self._source_element = None
 
         self._create_run_mode_subelement()
         self._create_source_subelement()
@@ -1133,7 +1141,6 @@ class Settings(object):
         self._create_confidence_intervals()
         self._create_cross_sections_subelement()
         self._create_multipole_library_subelement()
-        self._create_energy_grid_subelement()
         self._create_energy_mode_subelement()
         self._create_max_order_subelement()
         self._create_ptables_subelement()
@@ -1146,33 +1153,45 @@ class Settings(object):
         self._create_no_reduce_subelement()
         self._create_threads_subelement()
         self._create_verbosity_subelement()
+        self._create_temperature_subelements()
         self._create_trace_subelement()
         self._create_track_subelement()
         self._create_ufs_subelement()
         self._create_dd_subelement()
-        self._create_use_multipole_subelement()
-        self._create_resonance_scattering_element()
+        self._create_resonance_scattering_subelement()
+        self._create_volume_calcs_subelement()
 
         # Clean the indentation in the file to be user-readable
         clean_xml_indentation(self._settings_file)
 
         # Write the XML Tree to the settings.xml file
         tree = ET.ElementTree(self._settings_file)
-        tree.write("settings.xml", xml_declaration=True,
-                             encoding='utf-8', method="xml")
+        tree.write(path, xml_declaration=True, encoding='utf-8', method="xml")
 
 
 class ResonanceScattering(object):
     """Specification of the elastic scattering model for resonant isotopes
 
+    Parameters
+    ----------
+    nuclide : openmc.Nuclide
+        The nuclide affected by this resonance scattering treatment.
+    method : {'ARES', 'CXS', 'DBRC', 'WCM'}
+        The method used to sample outgoing scattering energies.  Valid options
+        are 'ARES', 'CXS' (constant cross section), 'DBRC' (Doppler broadening
+        rejection correction), and 'WCM' (weight correction method).
+    E_min : float
+        The minimum energy above which the specified method is applied.  By
+        default, CXS will be used below E_min.
+    E_max : float
+        The maximum energy below which the specified method is applied.  By
+        default, the asymptotic target-at-rest model is applied  above E_max.
+
     Attributes
     ----------
     nuclide : openmc.Nuclide
         The nuclide affected by this resonance scattering treatment.
-    nuclide_0K : openmc.Nuclide
-        This should be the same isotope as the nuclide attribute above, but it
-        should have an xs attribute that identifies 0 Kelvin data.
-    method : str
+    method : {'ARES', 'CXS', 'DBRC', 'WCM'}
         The method used to sample outgoing scattering energies.  Valid options
         are 'ARES', 'CXS' (constant cross section), 'DBRC' (Doppler broadening
         rejection correction), and 'WCM' (weight correction method).
@@ -1185,20 +1204,19 @@ class ResonanceScattering(object):
 
     """
 
-    def __init__(self):
-        self._nuclide = None
-        self._nuclide_0K = None
-        self._method = None
+    def __init__(self, nuclide, method='CXS', E_min=None, E_max=None):
         self._E_min = None
         self._E_max = None
+        self.nuclide = nuclide
+        self.method = method
+        if E_min is not None:
+            self.E_min = E_min
+        if E_max is not None:
+            self.E_max = E_max
 
     @property
     def nuclide(self):
         return self._nuclide
-
-    @property
-    def nuclide_0K(self):
-        return self._nuclide_0K
 
     @property
     def method(self):
@@ -1214,50 +1232,45 @@ class ResonanceScattering(object):
 
     @nuclide.setter
     def nuclide(self, nuc):
-        check_type('nuclide', nuc, Nuclide)
-        if nuc.zaid == None: raise ValueError("The nuclide must have an "
-             "explicitly defined zaid attribute.")
+        cv.check_type('nuclide', nuc, Nuclide)
         self._nuclide = nuc
-
-    @nuclide_0K.setter
-    def nuclide_0K(self, nuc):
-        check_type('nuclide_0K', nuc, Nuclide)
-        if nuc.zaid == None: raise ValueError("The nuclide_0K must have an "
-             "explicitly defined zaid attribute.")
-        self._nuclide_0K = nuc
 
     @method.setter
     def method(self, m):
-        check_value('method', m, ('ARES', 'CXS', 'DBRC', 'WCM'))
+        cv.check_value('method', m, ('ARES', 'CXS', 'DBRC', 'WCM'))
         self._method = m
 
     @E_min.setter
     def E_min(self, E):
-        check_type('E_min', E, Real)
-        check_greater_than('E_min', E, 0, True)
+        cv.check_type('E_min', E, Real)
+        cv.check_greater_than('E_min', E, 0, True)
         self._E_min = E
 
     @E_max.setter
     def E_max(self, E):
-        check_type('E_max', E, Real)
-        check_greater_than('E_max', E, 0, True)
+        cv.check_type('E_max', E, Real)
+        cv.check_greater_than('E_max', E, 0, True)
         self._E_max = E
 
-    def create_xml_subelement(self, xml_element):
-        scatterer = ET.SubElement(xml_element, "scatterer")
+    def to_xml_element(self):
+        """Return XML representation of the resonance scattering model
+
+        Returns
+        -------
+        element : xml.etree.ElementTree.Element
+            XML element containing resonance scattering model
+
+        """
+        scatterer = ET.Element("scatterer")
         subelement = ET.SubElement(scatterer, 'nuclide')
         subelement.text = self.nuclide.name
         if self.method is not None:
             subelement = ET.SubElement(scatterer, 'method')
             subelement.text = self.method
-        subelement = ET.SubElement(scatterer, 'xs_label')
-        subelement.text = str(self.nuclide.zaid) + '.' + str(self.nuclide.xs)
-        subelement = ET.SubElement(scatterer, 'xs_label_0K')
-        subelement.text = str(self.nuclide_0K.zaid) + '.' \
-             + str(self.nuclide_0K.xs)
         if self.E_min is not None:
             subelement = ET.SubElement(scatterer, 'E_min')
             subelement.text = str(self.E_min)
         if self.E_max is not None:
             subelement = ET.SubElement(scatterer, 'E_max')
             subelement.text = str(self.E_max)
+        return scatterer

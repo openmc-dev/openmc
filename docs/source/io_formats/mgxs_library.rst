@@ -22,9 +22,11 @@ materials.
 
 .. _XML: http://www.w3.org/XML/
 
---------------------------------------
-MGXS Library Specification -- mgxs.xml
---------------------------------------
+.. _mgxs_lib_spec:
+
+--------------------------
+MGXS Library Specification
+--------------------------
 
 The multi-group library meta-data is contained within the groups_,
 group_structure_, and inverse_velocities_ elements.
@@ -171,9 +173,9 @@ attributes/sub-elements required to describe the meta-data:
     provided via the ``scatt_type`` element above, is represented and thus used
     during the scattering process.  Specifically, the options are to either
     convert the Legendre expansion to a tabular representation or leave it as
-    a set of Legendre coefficients.  Converting to a tabular representation will
-    cost memory but is likely to decrease runtime compared to leaving as a
-    set of Legendre coefficients.  This element has the following
+    a set of Legendre coefficients.  Converting to a tabular representation
+    will cost memory but can allow for a decrease in runtime compared to
+    leaving as a set of Legendre coefficients.  This element has the following
     attributes/sub-elements:
 
     :enable:

@@ -13,6 +13,7 @@ cache:
   - $HOME/mpich_install
   - $HOME/hdf5_install
   - $HOME/phdf5_install
+  - $HOME/nndc_hdf5
 
 before_install:
   # ============== Handle Python third-party packages ==============
@@ -40,11 +41,12 @@ before_install:
 install: true
 
 before_script:
+  - if [[ ! -e $HOME/nndc_hdf5/cross_sections.xml ]]; then
+      wget https://anl.box.com/shared/static/fouwc8lh9he2wc97kzq65u4rp8zt9sgq.xz -O - | tar -C $HOME -xvJ;
+    fi
+  - export OPENMC_CROSS_SECTIONS=$HOME/nndc_hdf5/cross_sections.xml
+
   - cd data
-  - git clone --branch=master git://github.com/bhermanmit/nndc_xs nndc_xs
-  - cat nndc_xs/nndc.tar.gza* | tar xzvf -
-  - rm -rf nndc_xs
-  - export OPENMC_CROSS_SECTIONS=$PWD/nndc/cross_sections.xml
   - git clone --branch=master git://github.com/smharper/windowed_multipole_library.git wmp_lib
   - tar xzvf wmp_lib/multipole_lib.tar.gz
   - export OPENMC_MULTIPOLE_LIBRARY=$PWD/multipole_lib

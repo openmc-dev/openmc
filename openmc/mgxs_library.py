@@ -9,7 +9,7 @@ import openmc
 import openmc.mgxs
 from openmc.checkvalue import check_type, check_value, check_greater_than, \
     check_iterable_type
-from openmc.clean_xml import *
+from openmc.clean_xml import sort_xml_elements, clean_xml_indentation
 
 if sys.version_info[0] >= 3:
     basestring = str
@@ -99,9 +99,6 @@ class XSdata(object):
         Unique identifier for the xsdata object
     alias : str
         Separate unique identifier for the xsdata object
-    zaid : int
-        1000*(atomic number) + mass number. As an example, the zaid of U-235
-        would be 92235.
     awr : float
         Atomic weight ratio of an isotope.  That is, the ratio of the mass
         of the isotope to the mass of a single neutron.
@@ -131,6 +128,8 @@ class XSdata(object):
     num_polar : int
         Number of equal width angular bins that the polar angular domain is
         subdivided into. This only applies when ``representation`` is "angle".
+    use_chi : bool
+        Whether or not a chi vector or nu-fission matrix was used.
     vector_shape : iterable of int
         Dimensionality of vector multi-group cross sections (e.g., the total
         cross section).  The return result depends on the value of
@@ -225,7 +224,6 @@ class XSdata(object):
         self._energy_groups = energy_groups
         self._representation = representation
         self._alias = None
-        self._zaid = None
         self._awr = None
         self._kT = None
         self._fissionable = False
@@ -261,10 +259,6 @@ class XSdata(object):
         return self._alias
 
     @property
-    def zaid(self):
-        return self._zaid
-
-    @property
     def awr(self):
         return self._awr
 
@@ -291,6 +285,10 @@ class XSdata(object):
     @property
     def num_azimuthal(self):
         return self._num_azimuthal
+
+    @property
+    def use_chi(self):
+        return self._use_chi
 
     @property
     def total(self):
@@ -370,7 +368,7 @@ class XSdata(object):
         # Check validity of energy_groups
         check_type('energy_groups', energy_groups, openmc.mgxs.EnergyGroups)
 
-        if energy_group.group_edges is None:
+        if energy_groups.group_edges is None:
             msg = 'Unable to assign an EnergyGroups object ' \
                   'with uninitialized group edges'
             raise ValueError(msg)
@@ -389,13 +387,6 @@ class XSdata(object):
             self._alias = alias
         else:
             self._alias = self._name
-
-    @zaid.setter
-    def zaid(self, zaid):
-        # Check type and value
-        check_type('zaid', zaid, Integral)
-        check_greater_than('zaid', zaid, 0)
-        self._zaid = zaid
 
     @awr.setter
     def awr(self, awr):
@@ -439,7 +430,7 @@ class XSdata(object):
             raise ValueError(msg)
         if 'num_points' in tabular_legendre:
             num_points = tabular_legendre['num_points']
-            check_value('num_points', num_points, Integral)
+            check_type('num_points', num_points, Integral)
             check_greater_than('num_points', num_points, 0)
         else:
             if not enable:
@@ -460,6 +451,11 @@ class XSdata(object):
         check_value('num_azimuthal', num_azimuthal, Integral)
         check_greater_than('num_azimuthal', num_azimuthal, 0)
         self._num_azimuthal = num_azimuthal
+
+    @use_chi.setter
+    def use_chi(self, use_chi):
+        check_type('use_chi', use_chi, bool)
+        self._use_chi = use_chi
 
     @total.setter
     def total(self, total):
@@ -512,9 +508,9 @@ class XSdata(object):
 
     @chi.setter
     def chi(self, chi):
-        if self._use_chi is not None:
-            if not self._use_chi:
-                msg = 'Providing chi when nu_fission already provided as a' \
+        if self.use_chi is not None:
+            if not self.use_chi:
+                msg = 'Providing "chi" when "nu-fission" already provided as a' \
                       'matrix'
                 raise ValueError(msg)
 
@@ -529,8 +525,8 @@ class XSdata(object):
 
         self._chi = npchi
 
-        if self._use_chi is not None:
-            self._use_chi = True
+        if self.use_chi is not None:
+            self.use_chi = True
 
     @scatter.setter
     def scatter(self, scatter):
@@ -574,8 +570,8 @@ class XSdata(object):
         check_iterable_type('nu_fission', npnu_fission, Real,
                             max_depth=len(npnu_fission.shape))
 
-        if self._use_chi is not None:
-            if self._use_chi:
+        if self.use_chi is not None:
+            if self.use_chi:
                 check_value('nu_fission shape', npnu_fission.shape,
                             [self.vector_shape])
             else:
@@ -586,16 +582,14 @@ class XSdata(object):
                         [self.vector_shape, self.matrix_shape])
             # Find out if we have a nu-fission matrix or vector
             # and set a flag to allow other methods to check this later.
-            if npnu_fission.shape == self.vector_shape:
-                self._use_chi = True
-            else:
-                self._use_chi = False
+            self.use_chi = (npnu_fission.shape == self.vector_shape)
 
         self._nu_fission = npnu_fission
         if np.sum(self._nu_fission) > 0.0:
             self._fissionable = True
 
-    def set_total_mgxs(self, total, nuclide='total', xs_type='macro'):
+    def set_total_mgxs(self, total, nuclide='total', xs_type='macro',
+                       subdomain='all'):
         """This method allows for an openmc.mgxs.TotalXS or
         openmc.mgxs.TransportXS to be used to set the total cross section
         for this XSdata object.
@@ -611,6 +605,9 @@ class XSdata(object):
         xs_type: {'macro', 'micro'}
             Provide the macro or micro cross section in units of cm^-1 or
             barns. Defaults to 'macro'.
+        subdomain : iterable of int
+            If the MGXS contains a mesh domain type, the subdomain parameter
+            specifies which mesh cell (i.e., [i, j, k] index) to use.
 
         See also
         --------
@@ -623,16 +620,17 @@ class XSdata(object):
                                     openmc.mgxs.TransportXS))
         check_value('energy_groups', total.energy_groups, [self.energy_groups])
         check_value('domain_type', total.domain_type,
-                    ['universe', 'cell', 'material'])
+                    ['universe', 'cell', 'material', 'mesh'])
 
         if self.representation is 'isotropic':
-            self._total = total.get_xs(nuclides=nuclide, xs_type=xs_type)
+            self._total = total.get_xs(nuclides=nuclide, xs_type=xs_type,
+                                       subdomains=subdomain)
         elif self.representation is 'angle':
             msg = 'Angular-Dependent MGXS have not yet been implemented'
             raise ValueError(msg)
 
     def set_absorption_mgxs(self, absorption, nuclide='total',
-                            xs_type='macro'):
+                            xs_type='macro', subdomain=None):
         """This method allows for an openmc.mgxs.AbsorptionXS
         to be used to set the absorption cross section for this XSdata object.
 
@@ -647,6 +645,9 @@ class XSdata(object):
         xs_type: {'macro', 'micro'}
             Provide the macro or micro cross section in units of cm^-1 or
             barns. Defaults to 'macro'.
+        subdomain : iterable of int
+            If the MGXS contains a mesh domain type, the subdomain parameter
+            specifies which mesh cell (i.e., [i, j, k] index) to use.
 
         See also
         --------
@@ -659,16 +660,18 @@ class XSdata(object):
         check_value('energy_groups', absorption.energy_groups,
                     [self.energy_groups])
         check_value('domain_type', absorption.domain_type,
-                    ['universe', 'cell', 'material'])
+                    ['universe', 'cell', 'material', 'mesh'])
 
         if self.representation is 'isotropic':
             self._absorption = absorption.get_xs(nuclides=nuclide,
-                                                 xs_type=xs_type)
+                                                 xs_type=xs_type,
+                                                 subdomains=subdomain)
         elif self.representation is 'angle':
             msg = 'Angular-Dependent MGXS have not yet been implemented'
             raise ValueError(msg)
 
-    def set_fission_mgxs(self, fission, nuclide='total', xs_type='macro'):
+    def set_fission_mgxs(self, fission, nuclide='total', xs_type='macro',
+                         subdomain=None):
         """This method allows for an openmc.mgxs.FissionXS
         to be used to set the fission cross section for this XSdata object.
 
@@ -683,6 +686,9 @@ class XSdata(object):
         xs_type: {'macro', 'micro'}
             Provide the macro or micro cross section in units of cm^-1 or
             barns. Defaults to 'macro'.
+        subdomain : iterable of int
+            If the MGXS contains a mesh domain type, the subdomain parameter
+            specifies which mesh cell (i.e., [i, j, k] index) to use.
 
         See also
         --------
@@ -695,17 +701,18 @@ class XSdata(object):
         check_value('energy_groups', fission.energy_groups,
                     [self.energy_groups])
         check_value('domain_type', fission.domain_type,
-                    ['universe', 'cell', 'material'])
+                    ['universe', 'cell', 'material', 'mesh'])
 
         if self.representation is 'isotropic':
             self._fission = fission.get_xs(nuclides=nuclide,
-                                           xs_type=xs_type)
+                                           xs_type=xs_type,
+                                           subdomains=subdomain)
         elif self.representation is 'angle':
             msg = 'Angular-Dependent MGXS have not yet been implemented'
             raise ValueError(msg)
 
     def set_nu_fission_mgxs(self, nu_fission, nuclide='total',
-                            xs_type='macro'):
+                            xs_type='macro', subdomain=None):
         """This method allows for an openmc.mgxs.NuFissionXS
         to be used to set the nu-fission cross section for this XSdata object.
 
@@ -720,6 +727,9 @@ class XSdata(object):
         xs_type: {'macro', 'micro'}
             Provide the macro or micro cross section in units of cm^-1 or
             barns. Defaults to 'macro'.
+        subdomain : iterable of int
+            If the MGXS contains a mesh domain type, the subdomain parameter
+            specifies which mesh cell (i.e., [i, j, k] index) to use.
 
         See also
         --------
@@ -728,29 +738,31 @@ class XSdata(object):
 
         """
 
-        # The NuFissionXS class does not have the capability to produce
-        # a fission matrix and therefore if this path is pursued, we know
-        # chi must be used.
-        check_type('nu_fission', nu_fission, openmc.mgxs.NuFissionXS)
+        check_type('nu_fission', nu_fission, (openmc.mgxs.NuFissionXS,
+                                              openmc.mgxs.NuFissionMatrixXS))
         check_value('energy_groups', nu_fission.energy_groups,
                     [self.energy_groups])
         check_value('domain_type', nu_fission.domain_type,
-                    ['universe', 'cell', 'material'])
+                    ['universe', 'cell', 'material', 'mesh'])
 
         if self.representation is 'isotropic':
             self._nu_fission = nu_fission.get_xs(nuclides=nuclide,
-                                                 xs_type=xs_type)
+                                                 xs_type=xs_type,
+                                                 subdomains=subdomain)
         elif self.representation is 'angle':
             msg = 'Angular-Dependent MGXS have not yet been implemented'
             raise ValueError(msg)
 
-        self._use_chi = True
+        if isinstance(nu_fission, openmc.mgxs.NuFissionMatrixXS):
+            self.use_chi = False
+        else:
+            self.use_chi = True
 
         if np.sum(self._nu_fission) > 0.0:
             self._fissionable = True
 
     def set_kappa_fission_mgxs(self, k_fission, nuclide='total',
-                               xs_type='macro'):
+                               xs_type='macro', subdomain=None):
         """This method allows for an openmc.mgxs.KappaFissionXS
         to be used to set the kappa-fission cross section for this XSdata
         object.
@@ -766,6 +778,9 @@ class XSdata(object):
         xs_type: {'macro', 'micro'}
             Provide the macro or micro cross section in units of cm^-1 or
             barns. Defaults to 'macro'.
+        subdomain : iterable of int
+            If the MGXS contains a mesh domain type, the subdomain parameter
+            specifies which mesh cell (i.e., [i, j, k] index) to use.
 
         See also
         --------
@@ -778,16 +793,18 @@ class XSdata(object):
         check_value('energy_groups', k_fission.energy_groups,
                     [self.energy_groups])
         check_value('domain_type', k_fission.domain_type,
-                    ['universe', 'cell', 'material'])
+                    ['universe', 'cell', 'material', 'mesh'])
 
         if self.representation is 'isotropic':
             self._kappa_fission = k_fission.get_xs(nuclides=nuclide,
-                                                   xs_type=xs_type)
+                                                   xs_type=xs_type,
+                                                   subdomains=subdomain)
         elif self.representation is 'angle':
             msg = 'Angular-Dependent MGXS have not yet been implemented'
             raise ValueError(msg)
 
-    def set_chi_mgxs(self, chi, nuclide='total', xs_type='macro'):
+    def set_chi_mgxs(self, chi, nuclide='total', xs_type='macro',
+                     subdomain=None):
         """This method allows for an openmc.mgxs.Chi
         to be used to set chi for this XSdata object.
 
@@ -801,6 +818,9 @@ class XSdata(object):
         xs_type: {'macro', 'micro'}
             Provide the macro or micro cross section in units of cm^-1 or
             barns. Defaults to 'macro'.
+        subdomain : iterable of int
+            If the MGXS contains a mesh domain type, the subdomain parameter
+            specifies which mesh cell (i.e., [i, j, k] index) to use.
 
         See also
         --------
@@ -809,8 +829,8 @@ class XSdata(object):
 
         """
 
-        if self._use_chi is not None:
-            if not self._use_chi:
+        if self.use_chi is not None:
+            if not self.use_chi:
                 msg = 'Providing chi when nu_fission already provided as a ' \
                       'matrix!'
                 raise ValueError(msg)
@@ -818,19 +838,20 @@ class XSdata(object):
         check_type('chi', chi, openmc.mgxs.Chi)
         check_value('energy_groups', chi.energy_groups, [self.energy_groups])
         check_value('domain_type', chi.domain_type,
-                    ['universe', 'cell', 'material'])
+                    ['universe', 'cell', 'material', 'mesh'])
 
         if self.representation is 'isotropic':
             self._chi = chi.get_xs(nuclides=nuclide,
-                                   xs_type=xs_type)
+                                   xs_type=xs_type, subdomains=subdomain)
         elif self.representation is 'angle':
             msg = 'Angular-Dependent MGXS have not yet been implemented'
             raise ValueError(msg)
 
-        if self._use_chi is not None:
-            self._use_chi = True
+        if self.use_chi is not None:
+            self.use_chi = True
 
-    def set_scatter_mgxs(self, scatter, nuclide='total', xs_type='macro'):
+    def set_scatter_mgxs(self, scatter, nuclide='total', xs_type='macro',
+                         subdomain=None):
         """This method allows for an openmc.mgxs.ScatterMatrixXS
         to be used to set the scatter matrix cross section for this XSdata
         object.  If the XSdata.order attribute has not yet been set, then
@@ -847,6 +868,9 @@ class XSdata(object):
         xs_type: {'macro', 'micro'}
             Provide the macro or micro cross section in units of cm^-1 or
             barns. Defaults to 'macro'.
+        subdomain : iterable of int
+            If the MGXS contains a mesh domain type, the subdomain parameter
+            specifies which mesh cell (i.e., [i, j, k] index) to use.
 
         See also
         --------
@@ -859,9 +883,9 @@ class XSdata(object):
         check_value('energy_groups', scatter.energy_groups,
                     [self.energy_groups])
         check_value('domain_type', scatter.domain_type,
-                    ['universe', 'cell', 'material'])
+                    ['universe', 'cell', 'material', 'mesh'])
 
-        if (self.scatt_type != 'legendre'):
+        if self.scatt_type != 'legendre':
             msg = 'Anisotropic scattering representations other than ' \
                   'Legendre expansions have not yet been implemented in ' \
                   'openmc.mgxs.'
@@ -883,17 +907,18 @@ class XSdata(object):
                                       self.energy_groups.num_groups,
                                       self.energy_groups.num_groups))
             for moment in range(self.num_orders):
-                self._scatter[moment, :, :] = scatter.get_xs(nuclides=nuclide,
-                                                             xs_type=xs_type,
-                                                             moment=moment)
+                self._scatter[moment, :, :] = \
+                    scatter.get_xs(nuclides=nuclide, xs_type=xs_type,
+                                   moment=moment, subdomains=subdomain)
 
         elif self.representation is 'angle':
             msg = 'Angular-Dependent MGXS have not yet been implemented'
             raise ValueError(msg)
 
-    def set_multiplicity_mgxs(self, nuscatter, scatter, nuclide='total',
-                              xs_type='macro'):
-        """This method allows for an openmc.mgxs.NuScatterMatrixXS and
+    def set_multiplicity_mgxs(self, nuscatter, scatter=None, nuclide='total',
+                              xs_type='macro', subdomain=None):
+        """This method allows for either the direct use of only an
+        openmc.mgxs.MultiplicityMatrixXS OR an openmc.mgxs.NuScatterMatrixXS and
         openmc.mgxs.ScatterMatrixXS to be used to set the scattering
         multiplicity for this XSdata object. Multiplicity,
         in OpenMC parlance, is a factor used to account for the production
@@ -903,9 +928,10 @@ class XSdata(object):
 
         Parameters
         ----------
-        nuscatter: openmc.mgxs.NuScatterMatrixXS
-            MGXS Object containing the nu-scattering matrix cross section
-            for the domain of interest.
+        nuscatter: {openmc.mgxs.NuScatterMatrixXS,
+                    openmc.mgxs.MultiplicityMatrixXS}
+            MGXS Object containing the matrix cross section for the domain
+            of interest.
         scatter: openmc.mgxs.ScatterMatrixXS
             MGXS Object containing the scattering matrix cross section
             for the domain of interest.
@@ -915,6 +941,9 @@ class XSdata(object):
         xs_type: {'macro', 'micro'}
             Provide the macro or micro cross section in units of cm^-1 or
             barns. Defaults to 'macro'.
+        subdomain : iterable of int
+            If the MGXS contains a mesh domain type, the subdomain parameter
+            specifies which mesh cell (i.e., [i, j, k] index) to use.
 
         See also
         --------
@@ -923,23 +952,35 @@ class XSdata(object):
 
         """
 
-        check_type('nuscatter', nuscatter, openmc.mgxs.NuScatterMatrixXS)
-        check_type('scatter', scatter, openmc.mgxs.ScatterMatrixXS)
+        check_type('nuscatter', nuscatter, (openmc.mgxs.NuScatterMatrixXS,
+                                            openmc.mgxs.MultiplicityMatrixXS))
         check_value('energy_groups', nuscatter.energy_groups,
                     [self.energy_groups])
-        check_value('energy_groups', scatter.energy_groups,
-                    [self.energy_groups])
         check_value('domain_type', nuscatter.domain_type,
-                    ['universe', 'cell', 'material'])
-        check_value('domain_type', scatter.domain_type,
-                    ['universe', 'cell', 'material'])
+                    ['universe', 'cell', 'material', 'mesh'])
+        if scatter is not None:
+            check_type('scatter', scatter, openmc.mgxs.ScatterMatrixXS)
+            if isinstance(nuscatter, openmc.mgxs.MultiplicityMatrixXS):
+                msg = 'Either an MultiplicityMatrixXS object must be passed ' \
+                      'for "nuscatter" or the "scatter" argument must be ' \
+                      'provided.'
+                raise ValueError(msg)
+            check_value('energy_groups', scatter.energy_groups,
+                        [self.energy_groups])
+            check_value('domain_type', scatter.domain_type,
+                        ['universe', 'cell', 'material', 'mesh'])
 
         if self.representation is 'isotropic':
             nuscatt = nuscatter.get_xs(nuclides=nuclide,
-                                       xs_type=xs_type, moment=0)
-            scatt = scatter.get_xs(nuclides=nuclide,
-                                   xs_type=xs_type, moment=0)
-            self._multiplicity = np.divide(nuscatt, scatt)
+                                       xs_type=xs_type, moment=0,
+                                       subdomains=subdomain)
+            if isinstance(nuscatter, openmc.mgxs.MultiplicityMatrixXS):
+                self._multiplicity = nuscatt
+            else:
+                scatt = scatter.get_xs(nuclides=nuclide,
+                                       xs_type=xs_type, moment=0,
+                                       subdomains=subdomain)
+                self._multiplicity = np.divide(nuscatt, scatt)
         elif self.representation is 'angle':
             msg = 'Angular-Dependent MGXS have not yet been implemented'
             raise ValueError(msg)
@@ -957,17 +998,9 @@ class XSdata(object):
             subelement = ET.SubElement(element, 'kT')
             subelement.text = str(self._kT)
 
-        if self._zaid is not None:
-            subelement = ET.SubElement(element, 'zaid')
-            subelement.text = str(self._zaid)
-
         if self._awr is not None:
             subelement = ET.SubElement(element, 'awr')
             subelement.text = str(self._awr)
-
-        if self._kT is not None:
-            subelement = ET.SubElement(element, 'kT')
-            subelement.text = str(self._kT)
 
         if self._fissionable is not None:
             subelement = ET.SubElement(element, 'fissionable')
@@ -1064,11 +1097,15 @@ class MGXSLibrary(object):
     def energy_groups(self):
         return self._energy_groups
 
+    @property
+    def xsdatas(self):
+        return self._xsdatas
+
     @inverse_velocities.setter
     def inverse_velocities(self, inverse_velocities):
-        cv.check_type('inverse_velocities', inverse_velocities, Iterable, Real)
-        cv.check_greater_than('number of inverse_velocities',
-                              len(inverse_velocities), 0.0)
+        check_type('inverse_velocities', inverse_velocities, Iterable, Real)
+        check_greater_than('number of inverse_velocities',
+                           len(inverse_velocities), 0.0)
         self._inverse_velocities = np.array(inverse_velocities)
 
     @energy_groups.setter

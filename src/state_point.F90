@@ -43,7 +43,7 @@ contains
   subroutine write_state_point()
 
     integer :: i, j, k
-    integer :: i_list, i_xs
+    integer :: i_xs
     integer :: n_order      ! loop index for moment orders
     integer :: nm_order     ! loop index for Ynm moment orders
     integer, allocatable :: id_array(:)
@@ -52,7 +52,7 @@ contains
     integer(HID_T) :: cmfd_group, tallies_group, tally_group, meshes_group, &
                       mesh_group, filter_group, derivs_group, deriv_group, &
                       runtime_group
-    character(20), allocatable :: str_array(:)
+    character(MAX_WORD_LEN), allocatable :: str_array(:)
     character(MAX_FILE_LEN)    :: filename
     type(RegularMesh), pointer :: meshp
     type(TallyObject), pointer    :: tally
@@ -214,9 +214,8 @@ contains
               call write_dataset(deriv_group, "independent variable", &
                    "nuclide_density")
               call write_dataset(deriv_group, "material", deriv % diff_material)
-              i_list = nuclides(deriv % diff_nuclide) % listing
               call write_dataset(deriv_group, "nuclide", &
-                   xs_listings(i_list) % alias)
+                   nuclides(deriv % diff_nuclide) % name)
             case (DIFF_TEMPERATURE)
               call write_dataset(deriv_group, "independent variable", &
                    "temperature")
@@ -271,57 +270,13 @@ contains
           end select
           call write_dataset(tally_group, "n_realizations", &
                tally % n_realizations)
-          call write_dataset(tally_group, "n_filters", tally % n_filters)
+          call write_dataset(tally_group, "n_filters", size(tally % filters))
 
           ! Write filter information
-          FILTER_LOOP: do j = 1, tally % n_filters
+          FILTER_LOOP: do j = 1, size(tally % filters)
             filter_group = create_group(tally_group, "filter " // &
                  trim(to_str(j)))
-
-            ! Write name of type
-            select case (tally % filters(j) % type)
-            case(FILTER_UNIVERSE)
-              call write_dataset(filter_group, "type", "universe")
-            case(FILTER_MATERIAL)
-              call write_dataset(filter_group, "type", "material")
-            case(FILTER_CELL)
-              call write_dataset(filter_group, "type", "cell")
-            case(FILTER_CELLBORN)
-              call write_dataset(filter_group, "type", "cellborn")
-            case(FILTER_SURFACE)
-              call write_dataset(filter_group, "type", "surface")
-            case(FILTER_MESH)
-              call write_dataset(filter_group, "type", "mesh")
-            case(FILTER_ENERGYIN)
-              call write_dataset(filter_group, "type", "energy")
-            case(FILTER_ENERGYOUT)
-              call write_dataset(filter_group, "type", "energyout")
-            case(FILTER_MU)
-              call write_dataset(filter_group, "type", "mu")
-            case(FILTER_POLAR)
-              call write_dataset(filter_group, "type", "polar")
-            case(FILTER_AZIMUTHAL)
-              call write_dataset(filter_group, "type", "azimuthal")
-            case(FILTER_DISTRIBCELL)
-              call write_dataset(filter_group, "type", "distribcell")
-            case(FILTER_DELAYEDGROUP)
-              call write_dataset(filter_group, "type", "delayedgroup")
-            end select
-
-            call write_dataset(filter_group, "n_bins", &
-                 tally % filters(j) % n_bins)
-            if (tally % filters(j) % type == FILTER_ENERGYIN .or. &
-                 tally % filters(j) % type == FILTER_ENERGYOUT .or. &
-                 tally % filters(j) % type == FILTER_MU .or. &
-                 tally % filters(j) % type == FILTER_POLAR .or. &
-                 tally % filters(j) % type == FILTER_AZIMUTHAL) then
-              call write_dataset(filter_group, "bins", &
-                   tally % filters(j) % real_bins)
-            else
-              call write_dataset(filter_group, "bins", &
-                   tally % filters(j) % int_bins)
-            end if
-
+            call tally % filters(j) % obj % to_statepoint(filter_group)
             call close_group(filter_group)
           end do FILTER_LOOP
 
@@ -329,20 +284,11 @@ contains
           allocate(str_array(tally % n_nuclide_bins))
           NUCLIDE_LOOP: do j = 1, tally % n_nuclide_bins
             if (tally % nuclide_bins(j) > 0) then
-              ! Get index in cross section listings for this nuclide
-              if (run_CE) then
-                i_list = nuclides(tally % nuclide_bins(j)) % listing
-              else
-                i_list = nuclides_MG(tally % nuclide_bins(j)) % obj % listing
-              end if
-
-              ! Determine position of . in alias string (e.g. "U-235.71c"). If
-              ! no . is found, just use the entire string.
-              i_xs = index(xs_listings(i_list) % alias, '.')
+              i_xs = index(nuclides(tally % nuclide_bins(j)) % name, '.')
               if (i_xs > 0) then
-                str_array(j) = xs_listings(i_list) % alias(1:i_xs - 1)
+                str_array(j) = nuclides(tally % nuclide_bins(j)) % name(1 : i_xs-1)
               else
-                str_array(j) = xs_listings(i_list) % alias
+                str_array(j) = nuclides(tally % nuclide_bins(j)) % name
               end if
             else
               str_array(j) = 'total'

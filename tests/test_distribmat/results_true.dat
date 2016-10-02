@@ -3,7 +3,7 @@ k-combined:
 Cell
 	ID             =	11
 	Name           =	
-	Material       =	[2, 3, void, 2]
+	Fill           =	[2, 3, None, 2]
 	Region         =	-10000
 	Rotation       =	None
 	Translation    =	None

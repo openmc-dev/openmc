@@ -7,14 +7,15 @@ module constants
 
   ! OpenMC major, minor, and release numbers
   integer, parameter :: VERSION_MAJOR   = 0
-  integer, parameter :: VERSION_MINOR   = 7
-  integer, parameter :: VERSION_RELEASE = 1
+  integer, parameter :: VERSION_MINOR   = 8
+  integer, parameter :: VERSION_RELEASE = 0
 
   ! Revision numbers for binary files
-  integer, parameter :: REVISION_STATEPOINT       = 15
-  integer, parameter :: REVISION_PARTICLE_RESTART = 1
-  integer, parameter :: REVISION_TRACK            = 1
-  integer, parameter :: REVISION_SUMMARY          = 3
+  integer,       parameter :: REVISION_STATEPOINT       = 15
+  integer,       parameter :: REVISION_PARTICLE_RESTART = 1
+  integer,       parameter :: REVISION_TRACK            = 1
+  integer,       parameter :: REVISION_SUMMARY          = 4
+  character(10), parameter :: MULTIPOLE_VERSION         = "v0.2"
 
   ! ============================================================================
   ! ADJUSTABLE PARAMETERS
@@ -53,7 +54,8 @@ module constants
 
   ! Maximum number of external source spatial resamples to encounter before an
   ! error is thrown.
-  integer, parameter :: MAX_EXTSRC_RESAMPLES = 10000
+  integer, parameter :: EXTSRC_REJECT_THRESHOLD = 10000
+  real(8), parameter :: EXTSRC_REJECT_FRACTION = 0.05
 
   ! ============================================================================
   ! PHYSICAL CONSTANTS
@@ -185,28 +187,28 @@ module constants
 
   ! Reaction types
   integer, parameter :: &
-       TOTAL_XS = 1,  ELASTIC = 2,  N_LEVEL = 4,   MISC = 5,      N_2ND   = 11, &
-       N_2N    = 16,  N_3N   = 17,  N_FISSION = 18, N_F    = 19,  N_NF    = 20, &
-       N_2NF   = 21,  N_NA   = 22,  N_N3A   = 23,  N_2NA   = 24,  N_3NA   = 25, &
-       N_NP    = 28,  N_N2A  = 29,  N_2N2A  = 30,  N_ND    = 32,  N_NT    = 33, &
-       N_N3HE  = 34,  N_ND2A = 35,  N_NT2A  = 36,  N_4N    = 37,  N_3NF   = 38, &
-       N_2NP   = 41,  N_3NP  = 42,  N_N2P   = 44,  N_NPA   = 45,  N_N1    = 51, &
-       N_N40   = 90,  N_NC   = 91,  N_DISAPPEAR = 101, N_GAMMA = 102, N_P = 103, &
-       N_D     = 104, N_T    = 105, N_3HE   = 106, N_A     = 107, N_2A    = 108, &
-       N_3A    = 109, N_2P   = 111, N_PA    = 112, N_T2A   = 113, N_D2A   = 114, &
-       N_PD    = 115, N_PT   = 116, N_DA    = 117, N_5N    = 152, N_6N    = 153, &
-       N_2NT   = 154, N_TA   = 155, N_4NP   = 156, N_3ND   = 157, N_NDA   = 158, &
-       N_2NPA  = 159, N_7N   = 160, N_8N    = 161, N_5NP   = 162, N_6NP   = 163, &
-       N_7NP   = 164, N_4NA  = 165, N_5NA   = 166, N_6NA   = 167, N_7NA   = 168, &
-       N_4ND   = 169, N_5ND  = 170, N_6ND   = 171, N_3NT   = 172, N_4NT   = 173, &
-       N_5NT   = 174, N_6NT  = 175, N_2N3HE = 176, N_3N3HE = 177, N_4N3HE = 178, &
-       N_3N2P  = 179, N_3N3A = 180, N_3NPA  = 181, N_DT    = 182, N_NPD   = 183, &
-       N_NPT   = 184, N_NDT  = 185, N_NP3HE = 186, N_ND3HE = 187, N_NT3HE = 188, &
-       N_NTA   = 189, N_2N2P = 190, N_P3HE  = 191, N_D3HE  = 192, N_3HEA  = 193, &
-       N_4N2P  = 194, N_4N2A = 195, N_4NPA  = 196, N_3P    = 197, N_N3P   = 198, &
-       N_3N2PA = 199, N_5N2P = 200, N_P0    = 600, N_PC    = 649, N_D0    = 650, &
-       N_DC    = 699, N_T0   = 700, N_TC    = 749, N_3HE0  = 750, N_3HEC  = 799, &
-       N_A0    = 800, N_AC   = 849, N_2N0   = 875, N_2NC   = 891
+       TOTAL_XS = 1,  ELASTIC = 2,   N_NONELASTIC = 3, N_LEVEL = 4, MISC  = 5,   &
+       N_2ND   = 11,  N_2N    = 16,  N_3N   = 17,  N_FISSION = 18, N_F    = 19,  &
+       N_NF    = 20,  N_2NF   = 21,  N_NA   = 22,  N_N3A   = 23,  N_2NA   = 24,  &
+       N_3NA   = 25,  N_NP    = 28,  N_N2A  = 29,  N_2N2A  = 30,  N_ND    = 32,  &
+       N_NT    = 33,  N_N3HE  = 34,  N_ND2A = 35,  N_NT2A  = 36,  N_4N    = 37,  &
+       N_3NF   = 38,  N_2NP   = 41,  N_3NP  = 42,  N_N2P   = 44,  N_NPA   = 45,  &
+       N_N1    = 51,  N_N40   = 90,  N_NC   = 91,  N_DISAPPEAR = 101, N_GAMMA = 102, &
+       N_P     = 103, N_D     = 104, N_T    = 105, N_3HE   = 106, N_A     = 107, &
+       N_2A    = 108, N_3A    = 109, N_2P   = 111, N_PA    = 112, N_T2A   = 113, &
+       N_D2A   = 114, N_PD    = 115, N_PT   = 116, N_DA    = 117, N_5N    = 152, &
+       N_6N    = 153, N_2NT   = 154, N_TA   = 155, N_4NP   = 156, N_3ND   = 157, &
+       N_NDA   = 158, N_2NPA  = 159, N_7N   = 160, N_8N    = 161, N_5NP   = 162, &
+       N_6NP   = 163, N_7NP   = 164, N_4NA  = 165, N_5NA   = 166, N_6NA   = 167, &
+       N_7NA   = 168, N_4ND   = 169, N_5ND  = 170, N_6ND   = 171, N_3NT   = 172, &
+       N_4NT   = 173, N_5NT   = 174, N_6NT  = 175, N_2N3HE = 176, N_3N3HE = 177, &
+       N_4N3HE = 178, N_3N2P  = 179, N_3N3A = 180, N_3NPA  = 181, N_DT    = 182, &
+       N_NPD   = 183, N_NPT   = 184, N_NDT  = 185, N_NP3HE = 186, N_ND3HE = 187, &
+       N_NT3HE = 188, N_NTA   = 189, N_2N2P = 190, N_P3HE  = 191, N_D3HE  = 192, &
+       N_3HEA  = 193, N_4N2P  = 194, N_4N2A = 195, N_4NPA  = 196, N_3P    = 197, &
+       N_N3P   = 198, N_3N2PA = 199, N_5N2P = 200, N_P0    = 600, N_PC    = 649, &
+       N_D0    = 650, N_DC    = 699, N_T0   = 700, N_TC    = 749, N_3HE0  = 750, &
+       N_3HEC  = 799, N_A0    = 800, N_AC   = 849, N_2N0   = 875, N_2NC   = 891
 
   ! ACE table types
   integer, parameter :: &
@@ -236,6 +238,13 @@ module constants
        ASCII  = 1, & ! ASCII cross section file
        BINARY = 2    ! Binary cross section file
 
+  ! Library types
+  integer, parameter :: &
+       LIBRARY_NEUTRON = 1, &
+       LIBRARY_THERMAL = 2, &
+       LIBRARY_PHOTON = 3, &
+       LIBRARY_MULTIGROUP = 4
+
   ! Probability table parameters
   integer, parameter :: &
        URR_CUM_PROB = 1, &
@@ -259,6 +268,12 @@ module constants
        JENDL_33   = 7, &
        JENDL_40   = 8
 
+  ! Temperature treatment method
+  integer, parameter :: &
+       TEMPERATURE_NEAREST = 1, &
+       TEMPERATURE_INTERPOLATION = 2, &
+       TEMPERATURE_MULTIPOLE = 3
+
   ! ============================================================================
   ! TALLY-RELATED CONSTANTS
 
@@ -281,7 +296,7 @@ module constants
        EVENT_ABSORB  =  2
 
   ! Tally score type
-  integer, parameter :: N_SCORE_TYPES = 22
+  integer, parameter :: N_SCORE_TYPES = 24
   integer, parameter :: &
        SCORE_FLUX               = -1,  & ! flux
        SCORE_TOTAL              = -2,  & ! total reaction rate
@@ -291,20 +306,22 @@ module constants
        SCORE_SCATTER_PN         = -6,  & ! system for scoring 0th through nth moment
        SCORE_NU_SCATTER_N       = -7,  & ! arbitrary nu-scattering moment
        SCORE_NU_SCATTER_PN      = -8,  & ! system for scoring 0th through nth nu-scatter moment
-       SCORE_TRANSPORT          = -9,  & ! transport reaction rate
-       SCORE_N_1N               = -10, & ! (n,1n) rate
-       SCORE_ABSORPTION         = -11, & ! absorption rate
-       SCORE_FISSION            = -12, & ! fission rate
-       SCORE_NU_FISSION         = -13, & ! neutron production rate
-       SCORE_KAPPA_FISSION      = -14, & ! fission energy production rate
-       SCORE_CURRENT            = -15, & ! partial current
-       SCORE_FLUX_YN            = -16, & ! angular moment of flux
-       SCORE_TOTAL_YN           = -17, & ! angular moment of total reaction rate
-       SCORE_SCATTER_YN         = -18, & ! angular flux-weighted scattering moment (0:N)
-       SCORE_NU_SCATTER_YN      = -19, & ! angular flux-weighted nu-scattering moment (0:N)
-       SCORE_EVENTS             = -20, & ! number of events
-       SCORE_DELAYED_NU_FISSION = -21, & ! delayed neutron production rate
-       SCORE_INVERSE_VELOCITY   = -22    ! flux-weighted inverse velocity
+       SCORE_ABSORPTION         = -9,  & ! absorption rate
+       SCORE_FISSION            = -10, & ! fission rate
+       SCORE_NU_FISSION         = -11, & ! neutron production rate
+       SCORE_KAPPA_FISSION      = -12, & ! fission energy production rate
+       SCORE_CURRENT            = -13, & ! partial current
+       SCORE_FLUX_YN            = -14, & ! angular moment of flux
+       SCORE_TOTAL_YN           = -15, & ! angular moment of total reaction rate
+       SCORE_SCATTER_YN         = -16, & ! angular flux-weighted scattering moment (0:N)
+       SCORE_NU_SCATTER_YN      = -17, & ! angular flux-weighted nu-scattering moment (0:N)
+       SCORE_EVENTS             = -18, & ! number of events
+       SCORE_DELAYED_NU_FISSION = -19, & ! delayed neutron production rate
+       SCORE_PROMPT_NU_FISSION  = -20, & ! prompt neutron production rate
+       SCORE_INVERSE_VELOCITY   = -21, & ! flux-weighted inverse velocity
+       SCORE_FISS_Q_PROMPT      = -22, & ! prompt fission Q-value
+       SCORE_FISS_Q_RECOV       = -23, & ! recoverable fission Q-value
+       SCORE_DECAY_RATE         = -24    ! delayed neutron precursor decay rate
 
   ! Maximum scattering order supported
   integer, parameter :: MAX_ANG_ORDER = 10
@@ -349,12 +366,18 @@ module constants
 
   ! Tally surface current directions
   integer, parameter :: &
-       IN_RIGHT  = 1,   &
-       OUT_RIGHT = 2,   &
-       IN_FRONT  = 3,   &
-       OUT_FRONT = 4,   &
-       IN_TOP    = 5,   &
-       OUT_TOP   = 6
+       OUT_LEFT   = 1,   &   ! x min
+       IN_LEFT    = 2,   &   ! x min
+       OUT_RIGHT  = 3,   &   ! x max
+       IN_RIGHT   = 4,   &   ! x max
+       OUT_BACK   = 5,   &   ! y min
+       IN_BACK    = 6,   &   ! y min
+       OUT_FRONT  = 7,   &   ! y max
+       IN_FRONT   = 8,   &   ! y max
+       OUT_BOTTOM = 9,   &   ! z min
+       IN_BOTTOM  = 10,  &   ! z min
+       OUT_TOP    = 11,  &   ! z max
+       IN_TOP     = 12       ! z max
 
   ! Tally trigger types and threshold
   integer, parameter :: &
@@ -379,11 +402,12 @@ module constants
   ! ============================================================================
   ! RANDOM NUMBER STREAM CONSTANTS
 
-  integer, parameter :: N_STREAMS = 4
+  integer, parameter :: N_STREAMS = 5
   integer, parameter :: STREAM_TRACKING   = 1
   integer, parameter :: STREAM_TALLIES    = 2
   integer, parameter :: STREAM_SOURCE     = 3
   integer, parameter :: STREAM_URR_PTABLE = 4
+  integer, parameter :: STREAM_VOLUME     = 5
 
   ! ============================================================================
   ! MISCELLANEOUS CONSTANTS
@@ -395,12 +419,6 @@ module constants
   ! input file!
   integer, parameter :: ERROR_INT  = -huge(0)
   real(8), parameter :: ERROR_REAL = -huge(0.0_8) * 0.917826354_8
-
-  ! Energy grid methods
-  integer, parameter :: &
-       GRID_NUCLIDE    = 1, & ! unique energy grid for each nuclide
-       GRID_MAT_UNION  = 2, & ! material union grids with pointers
-       GRID_LOGARITHM  = 3    ! lethargy mapping
 
   ! Running modes
   integer, parameter ::        &

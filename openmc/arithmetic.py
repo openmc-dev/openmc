@@ -1,6 +1,5 @@
 import sys
 import copy
-from numbers import Integral
 from collections import Iterable
 
 import numpy as np
@@ -66,24 +65,6 @@ class CrossScore(object):
 
     def __ne__(self, other):
         return not self == other
-
-    def __deepcopy__(self, memo):
-        existing = memo.get(id(self))
-
-        # If this is the first time we have tried to copy this object, create a copy
-        if existing is None:
-            clone = type(self).__new__(type(self))
-            clone._left_score = self.left_score
-            clone._right_score = self.right_score
-            clone._binary_op = self.binary_op
-
-            memo[id(self)] = clone
-
-            return clone
-
-        # If this object has been copied before, return the first copy made
-        else:
-            return existing
 
     def __repr__(self):
         string = '({0} {1} {2})'.format(self.left_score,
@@ -169,27 +150,8 @@ class CrossNuclide(object):
     def __ne__(self, other):
         return not self == other
 
-    def __deepcopy__(self, memo):
-        existing = memo.get(id(self))
-
-        # If this is the first time we have tried to copy this object, create a copy
-        if existing is None:
-            clone = type(self).__new__(type(self))
-            clone._left_nuclide = self.left_nuclide
-            clone._right_nuclide = self.right_nuclide
-            clone._binary_op = self.binary_op
-
-            memo[id(self)] = clone
-
-            return clone
-
-        # If this object has been copied before, return the first copy made
-        else:
-            return existing
-
     def __repr__(self):
         return self.name
-
 
     @property
     def left_nuclide(self):
@@ -325,27 +287,6 @@ class CrossFilter(object):
         string += '{0: <16}{1}{2}\n'.format('\tBins', '=\t', filter_bins)
         return string
 
-    def __deepcopy__(self, memo):
-        existing = memo.get(id(self))
-
-        # If this is the first time we have tried to copy this object, create a copy
-        if existing is None:
-            clone = type(self).__new__(type(self))
-            clone._left_filter = self.left_filter
-            clone._right_filter = self.right_filter
-            clone._binary_op = self.binary_op
-            clone._type = self.type
-            clone._bins = self._bins
-            clone._stride = self.stride
-
-            memo[id(self)] = clone
-
-            return clone
-
-        # If this object has been copied before, return the first copy made
-        else:
-            return existing
-
     @property
     def left_filter(self):
         return self._left_filter
@@ -379,7 +320,7 @@ class CrossFilter(object):
 
     @type.setter
     def type(self, filter_type):
-        if filter_type not in _FILTER_TYPES.values():
+        if filter_type not in _FILTER_TYPES:
             msg = 'Unable to set CrossFilter type to "{0}" since it ' \
                   'is not one of the supported types'.format(filter_type)
             raise ValueError(msg)
@@ -532,23 +473,6 @@ class AggregateScore(object):
     def __ne__(self, other):
         return not self == other
 
-    def __deepcopy__(self, memo):
-        existing = memo.get(id(self))
-
-        # If this is the first time we have tried to copy this object, create a copy
-        if existing is None:
-            clone = type(self).__new__(type(self))
-            clone._scores = self.scores
-            clone._aggregate_op = self.aggregate_op
-
-            memo[id(self)] = clone
-
-            return clone
-
-        # If this object has been copied before, return the first copy made
-        else:
-            return existing
-
     def __repr__(self):
         string = ', '.join(map(str, self.scores))
         string = '{0}({1})'.format(self.aggregate_op, string)
@@ -622,23 +546,6 @@ class AggregateNuclide(object):
     def __ne__(self, other):
         return not self == other
 
-    def __deepcopy__(self, memo):
-        existing = memo.get(id(self))
-
-        # If this is the first time we have tried to copy this object, create a copy
-        if existing is None:
-            clone = type(self).__new__(type(self))
-            clone._nuclides = self.nuclides
-            clone._aggregate_op = self._aggregate_op
-
-            memo[id(self)] = clone
-
-            return clone
-
-        # If this object has been copied before, return the first copy made
-        else:
-            return existing
-
     def __repr__(self):
 
         # Append each nuclide in the aggregate to the string
@@ -668,7 +575,7 @@ class AggregateNuclide(object):
     @nuclides.setter
     def nuclides(self, nuclides):
         cv.check_iterable_type('nuclides', nuclides,
-            (basestring, Nuclide, CrossNuclide))
+                               (basestring, Nuclide, CrossNuclide))
         self._nuclides = nuclides
 
     @aggregate_op.setter
@@ -757,26 +664,6 @@ class AggregateFilter(object):
         string += '{0: <16}{1}{2}\n'.format('\tBins', '=\t', self.bins)
         return string
 
-    def __deepcopy__(self, memo):
-        existing = memo.get(id(self))
-
-        # If this is the first time we have tried to copy this object, create a copy
-        if existing is None:
-            clone = type(self).__new__(type(self))
-            clone._type = self.type
-            clone._aggregate_filter = self.aggregate_filter
-            clone._aggregate_op = self.aggregate_op
-            clone._bins = self._bins
-            clone._stride = self.stride
-
-            memo[id(self)] = clone
-
-            return clone
-
-        # If this object has been copied before, return the first copy made
-        else:
-            return existing
-
     @property
     def aggregate_filter(self):
         return self._aggregate_filter
@@ -803,7 +690,7 @@ class AggregateFilter(object):
 
     @type.setter
     def type(self, filter_type):
-        if filter_type not in _FILTER_TYPES.values():
+        if filter_type not in _FILTER_TYPES:
             msg = 'Unable to set AggregateFilter type to "{0}" since it ' \
                   'is not one of the supported types'.format(filter_type)
             raise ValueError(msg)

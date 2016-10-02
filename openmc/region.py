@@ -29,6 +29,10 @@ class Region(object):
         return Complement(self)
 
     @abstractmethod
+    def __contains__(self, point):
+        return False
+
+    @abstractmethod
     def __str__(self):
         return ''
 
@@ -199,7 +203,7 @@ class Region(object):
 
 
 class Intersection(Region):
-    """Intersection of two or more regions.
+    r"""Intersection of two or more regions.
 
     Instances of Intersection are generally created via the __and__ operator
     applied to two instances of :class:`openmc.Region`. This is illustrated in
@@ -219,7 +223,7 @@ class Intersection(Region):
 
     Attributes
     ----------
-    nodes : tuple of openmc.Region
+    nodes : list of openmc.Region
         Regions to take the intersection of
     bounding_box : tuple of numpy.array
         Lower-left and upper-right coordinates of an axis-aligned bounding box
@@ -228,6 +232,26 @@ class Intersection(Region):
 
     def __init__(self, *nodes):
         self.nodes = list(nodes)
+
+    def __iter__(self):
+        for n in self.nodes:
+            yield n
+
+    def __contains__(self, point):
+        """Check whether a point is contained in the region.
+
+        Parameters
+        ----------
+        point : 3-tuple of float
+            Cartesian coordinates, :math:`(x',y',z')`, of the point
+
+        Returns
+        -------
+        bool
+            Whether the point is in the region
+
+        """
+        return all(point in n for n in self.nodes)
 
     def __str__(self):
         return '(' + ' '.join(map(str, self.nodes)) + ')'
@@ -253,7 +277,7 @@ class Intersection(Region):
 
 
 class Union(Region):
-    """Union of two or more regions.
+    r"""Union of two or more regions.
 
     Instances of Union are generally created via the __or__ operator applied to
     two instances of :class:`openmc.Region`. This is illustrated in the
@@ -280,6 +304,26 @@ class Union(Region):
 
     def __init__(self, *nodes):
         self.nodes = list(nodes)
+
+    def __iter__(self):
+        for n in self.nodes:
+            yield n
+
+    def __contains__(self, point):
+        """Check whether a point is contained in the region.
+
+        Parameters
+        ----------
+        point : 3-tuple of float
+            Cartesian coordinates, :math:`(x',y',z')`, of the point
+
+        Returns
+        -------
+        bool
+            Whether the point is in the region
+
+        """
+        return any(point in n for n in self.nodes)
 
     def __str__(self):
         return '(' + ' | '.join(map(str, self.nodes)) + ')'
@@ -335,6 +379,22 @@ class Complement(Region):
 
     def __init__(self, node):
         self.node = node
+
+    def __contains__(self, point):
+        """Check whether a point is contained in the region.
+
+        Parameters
+        ----------
+        point : 3-tuple of float
+            Cartesian coordinates, :math:`(x',y',z')`, of the point
+
+        Returns
+        -------
+        bool
+            Whether the point is in the region
+
+        """
+        return point not in self.node
 
     def __str__(self):
         return '~' + str(self.node)

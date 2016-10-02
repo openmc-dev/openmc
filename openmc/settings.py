@@ -105,7 +105,7 @@ class Settings(object):
         temperatures at which nuclear data doesn't exist. Accepted keys are
         'default', 'method', and 'tolerance'. The value for 'default' should be
         a float representing the default temperature in Kelvin. The value for
-        'method' should be 'nearest' or 'multipole'. If the method is
+        'method' should be 'nearest' or 'interpolation'. If the method is
         'nearest', 'tolerance' indicates a range of temperature within which
         cross sections may be used.
     trigger_active : bool
@@ -135,6 +135,9 @@ class Settings(object):
         Coordinates of the lower-left point of the UFS mesh
     ufs_upper_right : tuple or list
         Coordinates of the upper-right point of the UFS mesh
+    use_windowed_multipole : bool
+        Whether or not windowed multipole can be used to evaluate resolved
+        resonance cross sections.
     resonance_scattering : ResonanceScattering or iterable of ResonanceScattering
         The elastic scattering model to use for resonant isotopes
     volume_calculations : VolumeCalculation or iterable of VolumeCalculation
@@ -219,6 +222,7 @@ class Settings(object):
 
         self._settings_file = ET.Element("settings")
         self._run_mode_subelement = None
+        self._multipole_active = None
 
         self._resonance_scattering = cv.CheckedList(
             ResonanceScattering, 'resonance scattering models')
@@ -416,6 +420,10 @@ class Settings(object):
     @property
     def dd_count_interactions(self):
         return self._dd_count_interactions
+
+    @property
+    def use_windowed_multipole(self):
+        return self._multipole_active
 
     @property
     def resonance_scattering(self):
@@ -676,7 +684,7 @@ class Settings(object):
                 cv.check_type('default temperature', value, Real)
             elif key == 'method':
                 cv.check_value('temperature method', value,
-                               ['nearest', 'interpolation', 'multipole'])
+                               ['nearest', 'interpolation'])
             elif key == 'tolerance':
                 cv.check_type('temperature tolerance', value, Real)
         self._temperature = temperature
@@ -807,6 +815,11 @@ class Settings(object):
         cv.check_type('DD count interactions', interactions, bool)
 
         self._dd_count_interactions = interactions
+
+    @use_windowed_multipole.setter
+    def use_windowed_multipole(self, active):
+        cv.check_type('use_windowed_multipole', active, bool)
+        self._multipole_active = active
 
     @resonance_scattering.setter
     def resonance_scattering(self, res):
@@ -1111,6 +1124,12 @@ class Settings(object):
             subelement = ET.SubElement(element, "count_interactions")
             subelement.text = str(self._dd_count_interactions).lower()
 
+    def _create_use_multipole_subelement(self):
+        if self._multipole_active is not None:
+            element = ET.SubElement(self._settings_file,
+                                    "use_windowed_multipole")
+            element.text = str(self._multipole_active)
+
     def _create_resonance_scattering_subelement(self):
         if len(self.resonance_scattering) > 0:
             elem = ET.SubElement(self._settings_file, 'resonance_scattering')
@@ -1158,6 +1177,7 @@ class Settings(object):
         self._create_track_subelement()
         self._create_ufs_subelement()
         self._create_dd_subelement()
+        self._create_use_multipole_subelement()
         self._create_resonance_scattering_subelement()
         self._create_volume_calcs_subelement()
 

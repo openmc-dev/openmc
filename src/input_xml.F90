@@ -1063,6 +1063,20 @@ contains
       end select
     end if
 
+    ! Check to see if windowed multipole functionality is requested
+    if (check_for_node(doc, "use_windowed_multipole")) then
+      call get_node_value(doc, "use_windowed_multipole", temp_str)
+      select case (to_lower(temp_str))
+      case ('true', '1')
+        multipole_active = .true.
+      case ('false', '0')
+        multipole_active = .false.
+      case default
+        call fatal_error("Unrecognized value for <use_windowed_multipole> in &
+             &settings.xml")
+      end select
+    end if
+
     call get_node_list(doc, "volume_calc", node_vol_list)
     n = get_list_size(node_vol_list)
     allocate(volume_calcs(n))
@@ -1082,8 +1096,6 @@ contains
         temperature_method = TEMPERATURE_NEAREST
       case ('interpolation')
         temperature_method = TEMPERATURE_INTERPOLATION
-      case ('multipole')
-        temperature_method = TEMPERATURE_MULTIPOLE
       case default
         call fatal_error("Unknown temperature method: " // trim(temp_str))
       end select
@@ -5786,8 +5798,7 @@ contains
           call already_read % add(name)
 
           ! Read multipole file into the appropriate entry on the nuclides array
-          if (temperature_method == TEMPERATURE_MULTIPOLE) &
-               call read_multipole_data(i_nuclide)
+          if (multipole_active) call read_multipole_data(i_nuclide)
         end if
 
         ! Check if material is fissionable
@@ -5841,7 +5852,7 @@ contains
     end do
 
     ! If the user wants multipole, make sure we found a multipole library.
-    if (temperature_method == TEMPERATURE_MULTIPOLE) then
+    if (multipole_active) then
       mp_found = .false.
       do i = 1, size(nuclides)
         if (nuclides(i) % mp_present) then

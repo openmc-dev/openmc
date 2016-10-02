@@ -99,6 +99,9 @@ module global
   ! What to assume for expanding natural elements
   integer :: default_expand = ENDF_BVII1
 
+  ! Whether or not windowed multipole cross sections should be used.
+  logical :: multipole_active = .false.
+
   ! Default temperature and method for choosing temperatures
   integer :: temperature_method = TEMPERATURE_NEAREST
   real(8) :: temperature_tolerance = 10.0_8

@@ -292,8 +292,8 @@ OpenMC can use it for on-the-fly Doppler-broadening of resolved resonance range
 cross sections. If this element is absent from the settings.xml file, the
 :envvar:`OPENMC_MULTIPOLE_LIBRARY` environment variable will be used.
 
-  .. note:: The :ref:`temperature_method` must also be set to "multipole" for
-            windowed multipole functionality.
+  .. note:: The <use_windowed_multipole> element must also be set to "true"
+    for windowed multipole functionality.
 
 ``<max_order>`` Element
 ---------------------------
@@ -725,16 +725,16 @@ a material default temperature.
 ``<temperature_method>`` Element
 --------------------------------
 
-The ``<temperature_method>`` element has an accepted value of "nearest",
-"interpolation", or "multipole". A value of "nearest" indicates that for each
+The ``<temperature_method>`` element has an accepted value of "nearest" or
+"interpolation". A value of "nearest" indicates that for each
 cell, the nearest temperature at which cross sections are given is to be
 applied, within a given tolerance (see :ref:`temperature_tolerance`). A value of
 "interpolation" indicates that cross sections are to be linear-linear
 interpolated between temperatures at which nuclear data are present (see
-:ref:`temperature_treatment`). A value of "multipole" indicates that the
-windowed multipole method should be used to evaluate temperature-dependent cross
-sections in the resolved resonance range (a :ref:`windowed multipole library
-<multipole_library>` must also be available).
+:ref:`temperature_treatment`). Note that if ``<use_windowed_multipole>`` is set
+true, then for which multipole data is available will use the windowed multipole
+method for cross sections in the resolved resonance range. (a
+:ref:`windowed multipole library <multipole_library>` must also be available).
 
   *Default*: "nearest"
 

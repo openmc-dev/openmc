@@ -181,7 +181,6 @@ module global
 
   ! Tally derivatives
   type(TallyDerivative), allocatable :: tally_derivs(:)
-!$omp threadprivate(tally_derivs)
 
   ! Normalization for statistics
   integer :: n_realizations = 0 ! # of independent realizations

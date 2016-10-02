@@ -2743,24 +2743,27 @@ contains
     integer,           intent(in)    :: score_bin
     real(8),           intent(inout) :: score
 
-    integer :: l                    ! loop index for nuclides in material
+    integer :: l
     logical :: scoring_diff_nuclide
+    real(8) :: flux_deriv
     real(8) :: dsigT, dsigA, dsigF, cum_dsig
 
     if (score == ZERO) return
 
+    flux_deriv = p % flux_derivs(t % deriv)
+
     associate(deriv => tally_derivs(t % deriv))
-      select case (deriv % variable)
+      select case (tally_derivs(t % deriv) % variable)
 
       case (DIFF_DENSITY)
         select case (t % estimator)
 
         case (ESTIMATOR_ANALOG)
           if (materials(p % material) % id == deriv % diff_material) then
-            score = score * (deriv % flux_deriv + ONE &
+            score = score * (flux_deriv + ONE &
                  / materials(p % material) % density_gpcc)
           else
-            score = score * deriv % flux_deriv
+            score = score * flux_deriv
           end if
 
         case (ESTIMATOR_COLLISION)
@@ -2768,52 +2771,52 @@ contains
           select case (score_bin)
 
           case (SCORE_FLUX)
-            score = score * deriv % flux_deriv
+            score = score * flux_deriv
 
           case (SCORE_TOTAL)
             if (materials(p % material) % id == deriv % diff_material &
                  .and. material_xs % total /= ZERO) then
-              score = score * (deriv % flux_deriv + ONE &
+              score = score * (flux_deriv + ONE &
                    / materials(p % material) % density_gpcc)
             else
-              score = score * deriv % flux_deriv
+              score = score * flux_deriv
             end if
 
           case (SCORE_SCATTER)
             if (materials(p % material) % id == deriv % diff_material &
                  .and. material_xs % total - material_xs % absorption /= ZERO) &
                  then
-              score = score * (deriv % flux_deriv + ONE &
+              score = score * (flux_deriv + ONE &
                    / materials(p % material) % density_gpcc)
             else
-              score = score * deriv % flux_deriv
+              score = score * flux_deriv
             end if
 
           case (SCORE_ABSORPTION)
             if (materials(p % material) % id == deriv % diff_material &
                  .and. material_xs % absorption /= ZERO) then
-              score = score * (deriv % flux_deriv + ONE &
+              score = score * (flux_deriv + ONE &
                    / materials(p % material) % density_gpcc)
             else
-              score = score * deriv % flux_deriv
+              score = score * flux_deriv
             end if
 
           case (SCORE_FISSION)
             if (materials(p % material) % id == deriv % diff_material &
                  .and. material_xs % fission /= ZERO) then
-              score = score * (deriv % flux_deriv + ONE &
+              score = score * (flux_deriv + ONE &
                    / materials(p % material) % density_gpcc)
             else
-              score = score * deriv % flux_deriv
+              score = score * flux_deriv
             end if
 
           case (SCORE_NU_FISSION)
             if (materials(p % material) % id == deriv % diff_material &
                  .and. material_xs % nu_fission /= ZERO) then
-              score = score * (deriv % flux_deriv + ONE &
+              score = score * (flux_deriv + ONE &
                    / materials(p % material) % density_gpcc)
             else
-              score = score * deriv % flux_deriv
+              score = score * flux_deriv
             end if
 
           case default
@@ -2836,11 +2839,11 @@ contains
               do l = 1, mat % n_nuclides
                 if (mat % nuclide(l) == deriv % diff_nuclide) exit
               end do
-              score = score * (deriv % flux_deriv &
+              score = score * (flux_deriv &
                    + ONE / mat % atom_density(l))
             end associate
           else
-            score = score * deriv % flux_deriv
+            score = score * flux_deriv
           end if
 
         case (ESTIMATOR_COLLISION)
@@ -2851,78 +2854,78 @@ contains
           select case (score_bin)
 
           case (SCORE_FLUX)
-            score = score * deriv % flux_deriv
+            score = score * flux_deriv
 
           case (SCORE_TOTAL)
             if (i_nuclide == -1 .and. &
                  materials(p % material) % id == deriv % diff_material .and. &
                  material_xs % total /= ZERO) then
-              score = score * (deriv % flux_deriv &
+              score = score * (flux_deriv &
                    + micro_xs(deriv % diff_nuclide) % total &
                    / material_xs % total)
             else if (scoring_diff_nuclide .and. &
                  micro_xs(deriv % diff_nuclide) % total /= ZERO) then
-              score = score * (deriv % flux_deriv + ONE / atom_density)
+              score = score * (flux_deriv + ONE / atom_density)
             else
-              score = score * deriv % flux_deriv
+              score = score * flux_deriv
             end if
 
           case (SCORE_SCATTER)
             if (i_nuclide == -1 .and. &
                  materials(p % material) % id == deriv % diff_material .and. &
                  material_xs % total - material_xs % absorption /= ZERO) then
-              score = score * (deriv % flux_deriv &
+              score = score * (flux_deriv &
                    + (micro_xs(deriv % diff_nuclide) % total &
                    - micro_xs(deriv % diff_nuclide) % absorption) &
                    / (material_xs % total - material_xs % absorption))
             else if (scoring_diff_nuclide .and. &
                  (micro_xs(deriv % diff_nuclide) % total &
                  - micro_xs(deriv % diff_nuclide) % absorption) /= ZERO) then
-              score = score * (deriv % flux_deriv + ONE / atom_density)
+              score = score * (flux_deriv + ONE / atom_density)
             else
-              score = score * deriv % flux_deriv
+              score = score * flux_deriv
             end if
 
           case (SCORE_ABSORPTION)
             if (i_nuclide == -1 .and. &
                  materials(p % material) % id == deriv % diff_material .and. &
                  material_xs % absorption /= ZERO) then
-              score = score * (deriv % flux_deriv &
+              score = score * (flux_deriv &
                    + micro_xs(deriv % diff_nuclide) % absorption &
                    / material_xs % absorption )
             else if (scoring_diff_nuclide .and. &
                  micro_xs(deriv % diff_nuclide) % absorption /= ZERO) then
-              score = score * (deriv % flux_deriv + ONE / atom_density)
+              score = score * (flux_deriv + ONE / atom_density)
             else
-              score = score * deriv % flux_deriv
+              score = score * flux_deriv
             end if
 
           case (SCORE_FISSION)
             if (i_nuclide == -1 .and. &
                  materials(p % material) % id == deriv % diff_material .and. &
                  material_xs % fission /= ZERO) then
-              score = score * (deriv % flux_deriv &
+              score = score * (flux_deriv &
                    + micro_xs(deriv % diff_nuclide) % fission &
                    / material_xs % fission)
             else if (scoring_diff_nuclide .and. &
                  micro_xs(deriv % diff_nuclide) % fission /= ZERO) then
-              score = score * (deriv % flux_deriv + ONE / atom_density)
+              score = score * (flux_deriv + ONE / atom_density)
             else
-              score = score * deriv % flux_deriv
+              score = score * flux_deriv
             end if
 
           case (SCORE_NU_FISSION)
             if (i_nuclide == -1 .and. &
                  materials(p % material) % id == deriv % diff_material .and. &
                  material_xs % nu_fission /= ZERO) then
-              score = score * (deriv % flux_deriv &
+              score = score * (flux_deriv &
                    + micro_xs(deriv % diff_nuclide) % nu_fission &
                    / material_xs % nu_fission)
             else if (scoring_diff_nuclide .and. &
                  micro_xs(deriv % diff_nuclide) % nu_fission /= ZERO) then
-              score = score * (deriv % flux_deriv + ONE / atom_density)
+              score = score * (flux_deriv + ONE / atom_density)
             else
-              score = score * deriv % flux_deriv
+              score = score * flux_deriv
             end if
 
           case default
@@ -2943,7 +2946,7 @@ contains
           select case (score_bin)
 
           case (SCORE_FLUX)
-            score = score * deriv % flux_deriv
+            score = score * flux_deriv
 
           case (SCORE_TOTAL)
             if (materials(p % material) % id == deriv % diff_material .and. &
@@ -2961,11 +2964,11 @@ contains
                          p % sqrtkT, dsigT, dsigA, dsigF)
                   end if
                 end associate
-                score = score * (deriv % flux_deriv &
+                score = score * (flux_deriv &
                      + dsigT * mat % atom_density(l) / material_xs % total)
               end associate
             else
-              score = score * deriv % flux_deriv
+              score = score * flux_deriv
             end if
 
           case (SCORE_SCATTER)
@@ -2986,12 +2989,12 @@ contains
                          p % sqrtkT, dsigT, dsigA, dsigF)
                   end if
                 end associate
-                score = score * (deriv % flux_deriv + (dsigT - dsigA) &
+                score = score * (flux_deriv + (dsigT - dsigA) &
                      * mat % atom_density(l) / &
                      (material_xs % total - material_xs % absorption))
               end associate
             else
-              score = score * deriv % flux_deriv
+              score = score * flux_deriv
             end if
 
           case (SCORE_ABSORPTION)
@@ -3010,11 +3013,11 @@ contains
                          p % sqrtkT, dsigT, dsigA, dsigF)
                   end if
                 end associate
-                score = score * (deriv % flux_deriv &
+                score = score * (flux_deriv &
                      + dsigA * mat % atom_density(l) / material_xs % absorption)
               end associate
             else
-              score = score * deriv % flux_deriv
+              score = score * flux_deriv
             end if
 
           case (SCORE_FISSION)
@@ -3033,11 +3036,11 @@ contains
                          p % sqrtkT, dsigT, dsigA, dsigF)
                   end if
                 end associate
-                score = score * (deriv % flux_deriv &
+                score = score * (flux_deriv &
                      + dsigF * mat % atom_density(l) / material_xs % fission)
               end associate
             else
-              score = score * deriv % flux_deriv
+              score = score * flux_deriv
             end if
 
           case (SCORE_NU_FISSION)
@@ -3056,13 +3059,13 @@ contains
                          p % sqrtkT, dsigT, dsigA, dsigF)
                   end if
                 end associate
-                score = score * (deriv % flux_deriv &
+                score = score * (flux_deriv &
                      + dsigF * mat % atom_density(l) / material_xs % nu_fission&
                      * micro_xs(p % event_nuclide) % nu_fission &
                      / micro_xs(p % event_nuclide) % fission)
               end associate
             else
-              score = score * deriv % flux_deriv
+              score = score * flux_deriv
             end if
 
           case default
@@ -3075,7 +3078,7 @@ contains
           select case (score_bin)
 
           case (SCORE_FLUX)
-            score = score * deriv % flux_deriv
+            score = score * flux_deriv
 
           case (SCORE_TOTAL)
             if (i_nuclide == -1 .and. &
@@ -3096,7 +3099,7 @@ contains
                   end associate
                 end do
               end associate
-              score = score * (deriv % flux_deriv &
+              score = score * (flux_deriv &
                    + cum_dsig / material_xs % total)
             else if (materials(p % material) % id == deriv % diff_material &
                  .and. material_xs % total > ZERO) then
@@ -3109,10 +3112,10 @@ contains
                        p % sqrtkT, dsigT, dsigA, dsigF)
                 end if
               end associate
-              score = score * (deriv % flux_deriv &
+              score = score * (flux_deriv &
                    + dsigT / micro_xs(i_nuclide) % total)
             else
-              score = score * deriv % flux_deriv
+              score = score * flux_deriv
             end if
 
           case (SCORE_SCATTER)
@@ -3136,7 +3139,7 @@ contains
                   end associate
                 end do
               end associate
-              score = score * (deriv % flux_deriv + cum_dsig &
+              score = score * (flux_deriv + cum_dsig &
                    / (material_xs % total - material_xs % absorption))
             else if ( materials(p % material) % id == deriv % diff_material &
                  .and. (material_xs % total - material_xs % absorption) > ZERO)&
@@ -3151,11 +3154,11 @@ contains
                        p % sqrtkT, dsigT, dsigA, dsigF)
                 end if
               end associate
-              score = score * (deriv % flux_deriv + (dsigT - dsigA) &
+              score = score * (flux_deriv + (dsigT - dsigA) &
                    / (micro_xs(i_nuclide) % total &
                    - micro_xs(i_nuclide) % absorption))
             else
-              score = score * deriv % flux_deriv
+              score = score * flux_deriv
             end if
 
           case (SCORE_ABSORPTION)
@@ -3177,7 +3180,7 @@ contains
                   end associate
                 end do
               end associate
-              score = score * (deriv % flux_deriv &
+              score = score * (flux_deriv &
                    + cum_dsig / material_xs % absorption)
             else if (materials(p % material) % id == deriv % diff_material &
                  .and. material_xs % absorption > ZERO) then
@@ -3190,10 +3193,10 @@ contains
                        p % sqrtkT, dsigT, dsigA, dsigF)
                 end if
               end associate
-              score = score * (deriv % flux_deriv &
+              score = score * (flux_deriv &
                    + dsigA / micro_xs(i_nuclide) % absorption)
             else
-              score = score * deriv % flux_deriv
+              score = score * flux_deriv
             end if
 
           case (SCORE_FISSION)
@@ -3215,7 +3218,7 @@ contains
                   end associate
                 end do
               end associate
-              score = score * (deriv % flux_deriv &
+              score = score * (flux_deriv &
                    + cum_dsig / material_xs % fission)
             else if (materials(p % material) % id == deriv % diff_material &
                  .and. material_xs % fission > ZERO) then
@@ -3228,10 +3231,10 @@ contains
                        p % sqrtkT, dsigT, dsigA, dsigF)
                 end if
               end associate
-              score = score * (deriv % flux_deriv &
+              score = score * (flux_deriv &
                    + dsigF / micro_xs(i_nuclide) % fission)
             else
-              score = score * deriv % flux_deriv
+              score = score * flux_deriv
             end if
 
           case (SCORE_NU_FISSION)
@@ -3255,7 +3258,7 @@ contains
                   end associate
                 end do
               end associate
-              score = score * (deriv % flux_deriv &
+              score = score * (flux_deriv &
                    + cum_dsig / material_xs % nu_fission)
             else if (materials(p % material) % id == deriv % diff_material &
                  .and. material_xs % nu_fission > ZERO) then
@@ -3268,10 +3271,10 @@ contains
                        p % sqrtkT, dsigT, dsigA, dsigF)
                 end if
               end associate
-              score = score * (deriv % flux_deriv &
+              score = score * (flux_deriv &
                    + dsigF / micro_xs(i_nuclide) % fission)
             else
-              score = score * deriv % flux_deriv
+              score = score * flux_deriv
             end if
 
           case default
@@ -3293,8 +3296,8 @@ contains
 !===============================================================================
 
   subroutine score_track_derivative(p, distance)
-    type(particle), intent(in) :: p
-    real(8),        intent(in) :: distance ! Neutron flight distance
+    type(particle), intent(inout) :: p
+    real(8),        intent(in)    :: distance ! Neutron flight distance
 
     integer :: i, l
     real(8) :: dsigT, dsigA, dsigF
@@ -3312,7 +3315,7 @@ contains
               ! phi = e^(-Sigma_tot * dist)
               ! (1 / phi) * (d_phi / d_rho) = - (d_Sigma_tot / d_rho) * dist
               ! (1 / phi) * (d_phi / d_rho) = - Sigma_tot / rho * dist
-              deriv % flux_deriv = deriv % flux_deriv &
+              p % flux_derivs(i) = p % flux_derivs(i) &
                    - distance * material_xs % total / mat % density_gpcc
             end if
           end associate
@@ -3323,7 +3326,7 @@ contains
               ! phi = e^(-Sigma_tot * dist)
               ! (1 / phi) * (d_phi / d_N) = - (d_Sigma_tot / d_N) * dist
               ! (1 / phi) * (d_phi / d_N) = - sigma_tot * dist
-              deriv % flux_deriv = deriv % flux_deriv &
+              p % flux_derivs(i) = p % flux_derivs(i) &
                    - distance * micro_xs(deriv % diff_nuclide) % total
             end if
           end associate
@@ -3338,7 +3341,7 @@ contains
                        p % E <= nuc % multipole % end_E/1.0e6_8) then
                     call multipole_deriv_eval(nuc % multipole, p % E, &
                          p % sqrtkT, dsigT, dsigA, dsigF)
-                    deriv % flux_deriv = deriv % flux_deriv &
+                    p % flux_derivs(i) = p % flux_derivs(i) &
                          - distance * dsigT * mat % atom_density(l)
                   end if
                 end associate
@@ -3356,7 +3359,7 @@ contains
 !===============================================================================
 
   subroutine score_collision_derivative(p)
-    type(particle), intent(in) :: p
+    type(particle), intent(inout) :: p
 
     integer :: i, j, l
     real(8) :: dsigT, dsigA, dsigF
@@ -3374,7 +3377,7 @@ contains
               ! phi = Sigma_MT
               ! (1 / phi) * (d_phi / d_rho) = (d_Sigma_MT / d_rho) / Sigma_MT
               ! (1 / phi) * (d_phi / d_rho) = 1 / rho
-              deriv % flux_deriv = deriv % flux_deriv &
+              p % flux_derivs(i) = p % flux_derivs(i) &
                    + ONE / mat % density_gpcc
             end if
           end associate
@@ -3395,7 +3398,7 @@ contains
               ! (1 / phi) * (d_phi / d_N) = (d_Sigma_MT / d_N) / Sigma_MT
               ! (1 / phi) * (d_phi / d_N) = sigma_MT / Sigma_MT
               ! (1 / phi) * (d_phi / d_N) = 1 / N
-              deriv % flux_deriv = deriv % flux_deriv &
+              p % flux_derivs(i) = p % flux_derivs(i) &
                    + ONE / mat % atom_density(j)
             end if
           end associate
@@ -3416,11 +3419,11 @@ contains
                          p % sqrtkT, dsigT, dsigA, dsigF)
                     select case(p % event)
                     case (EVENT_SCATTER)
-                      deriv % flux_deriv = deriv % flux_deriv + (dsigT - dsigA)&
+                      p % flux_derivs(i) = p % flux_derivs(i) + (dsigT - dsigA)&
                            / (micro_xs(mat % nuclide(l)) % total &
                            - micro_xs(mat % nuclide(l)) % absorption)
                     case (EVENT_ABSORB)
-                      deriv % flux_deriv = deriv % flux_deriv &
+                      p % flux_derivs(i) = p % flux_derivs(i) &
                            + dsigA / micro_xs(mat % nuclide(l)) % absorption
                     end select
                   end if
@@ -3432,17 +3435,6 @@ contains
       end associate
     end do
   end subroutine score_collision_derivative
-
-!===============================================================================
-! ZERO_FLUX_DERIVS Set the flux derivatives on differential tallies to zero.
-!===============================================================================
-
-  subroutine zero_flux_derivs()
-    integer :: i
-    do i = 1, size(tally_derivs)
-      tally_derivs(i) % flux_deriv = ZERO
-    end do
-  end subroutine zero_flux_derivs
 
 !===============================================================================
 ! SYNCHRONIZE_TALLIES accumulates the sum of the contributions from each history

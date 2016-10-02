@@ -100,6 +100,9 @@ module particle_header
     integer(8) :: n_secondary = 0
     type(Bank) :: secondary_bank(MAX_SECONDARY)
 
+    ! Flux (weight) derivatives for differential tallies
+    real(8), allocatable :: flux_derivs(:)
+
   contains
     procedure :: initialize => initialize_particle
     procedure :: clear => clear_particle

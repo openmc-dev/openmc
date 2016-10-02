@@ -48,6 +48,9 @@ contains
 
     if (.not. restart_run) call initialize_source()
 
+    ! Allocate flux derivative array for differential tallies
+    allocate(p % flux_derivs(size(tally_derivs)))
+
     ! Display header
     if (master) then
       if (run_mode == MODE_FIXEDSOURCE) then
@@ -84,7 +87,7 @@ contains
 
         ! ====================================================================
         ! LOOP OVER PARTICLES
-!$omp parallel do schedule(static) firstprivate(p) copyin(tally_derivs)
+!$omp parallel do schedule(static) firstprivate(p)
         PARTICLE_LOOP: do i_work = 1, work
           current_work = i_work
 

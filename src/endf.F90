@@ -14,7 +14,7 @@ contains
   pure function reaction_name(MT) result(string)
 
     integer, intent(in) :: MT
-    character(20)       :: string
+    character(MAX_WORD_LEN) :: string
 
     select case (MT)
     ! Special reactions for tallies
@@ -34,18 +34,18 @@ contains
       string = "nu-scatter-n"
     case (SCORE_NU_SCATTER_PN)
       string = "nu-scatter-pn"
-    case (SCORE_TRANSPORT)
-      string = "transport"
-    case (SCORE_N_1N)
-      string = "n1n"
     case (SCORE_ABSORPTION)
       string = "absorption"
     case (SCORE_FISSION)
       string = "fission"
     case (SCORE_NU_FISSION)
       string = "nu-fission"
+    case (SCORE_DECAY_RATE)
+      string = "decay-rate"
     case (SCORE_DELAYED_NU_FISSION)
       string = "delayed-nu-fission"
+    case (SCORE_PROMPT_NU_FISSION)
+      string = "prompt-nu-fission"
     case (SCORE_KAPPA_FISSION)
       string = "kappa-fission"
     case (SCORE_CURRENT)
@@ -62,6 +62,10 @@ contains
       string = "events"
     case (SCORE_INVERSE_VELOCITY)
       string = "inverse-velocity"
+    case (SCORE_FISS_Q_PROMPT)
+      string = "fission-q-prompt"
+    case (SCORE_FISS_Q_RECOV)
+      string = "fission-q-recoverable"
 
     ! Normal ENDF-based reactions
     case (TOTAL_XS)

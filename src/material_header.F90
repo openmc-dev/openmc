@@ -8,7 +8,7 @@ module material_header
 
   type Material
     integer              :: id              ! unique identifier
-    character(len=104) :: name = ""         ! User-defined name
+    character(len=104)   :: name = ""       ! User-defined name
     integer              :: n_nuclides      ! number of nuclides
     integer, allocatable :: nuclide(:)      ! index in nuclides array
     real(8)              :: density         ! total atom density in atom/b-cm
@@ -28,8 +28,8 @@ module material_header
     integer, allocatable :: i_sab_tables(:)   ! index in sab_tables
 
     ! Temporary names read during initialization
-    character(12), allocatable :: names(:)     ! isotope names
-    character(12), allocatable :: sab_names(:) ! name of S(a,b) table
+    character(20), allocatable :: names(:)     ! isotope names
+    character(20), allocatable :: sab_names(:) ! name of S(a,b) table
 
     ! Does this material contain fissionable nuclides?
     logical :: fissionable = .false.

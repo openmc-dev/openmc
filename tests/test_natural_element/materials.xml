@@ -3,14 +3,12 @@
 
   <!-- pu-met-fast-021 case 2 -->
 
-  <default_xs>71c</default_xs>
-
   <!-- Plutonium -->
   <material id="1">
     <density value="18.5345" units="g/cm3" />
-    <nuclide name="Pu-239" ao="4.4422e-02" />
-    <nuclide name="Pu-240" ao="2.1326e-03" />
-    <nuclide name="Pu-241" ao="9.2538e-05" />
+    <nuclide name="Pu239" ao="4.4422e-02" />
+    <nuclide name="Pu240" ao="2.1326e-03" />
+    <nuclide name="Pu241" ao="9.2538e-05" />
     <element name="C"      ao="1.9515e-04" />
     <element name="Fe"     ao="8.1943e-05" />
   </material>
@@ -18,7 +16,7 @@
   <!-- Berylium-oxide Reflector -->
   <material id="2">
     <density value="2.86750" units="g/cm3" />
-    <nuclide name="Be-9" ao="6.9041e-02" />
+    <nuclide name="Be9" ao="6.9041e-02" />
     <element name="O"    ao="6.9041e-02" />
   </material>
 

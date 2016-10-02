@@ -22,11 +22,14 @@ optional arguments:
 from __future__ import print_function
 
 import argparse
+from difflib import get_close_matches
 from itertools import chain
 from random import randint
 from shutil import move
 import xml.etree.ElementTree as ET
 
+import openmc.data
+from openmc.data.thermal import _THERMAL_NAMES
 
 description = "Update OpenMC's input XML files to the latest format."
 epilog = """\
@@ -40,6 +43,11 @@ geometry.xml: Lattices containing 'outside' attributes/tags will be replaced
   with lattices containing 'outer' attributes, and the appropriate
   cells/universes will be added. Any 'surfaces' attributes/elements on a cell
   will be renamed 'region'.
+
+materials.xml: Nuclide names will be changed from ACE aliases (e.g., Am-242m) to
+  HDF5/GND names (e.g., Am242_m1). Thermal scattering table names will be
+  changed from ACE aliases (e.g., HH2O) to HDF5/GND names (e.g., c_H_in_H2O).
+
 """
 
 
@@ -245,6 +253,45 @@ def update_geometry(geometry_root):
 
     return was_updated
 
+def update_materials(root):
+    """Update the given XML materials tree. Return True if changes were made."""
+    was_updated = False
+
+    for material in root.findall('material'):
+        for nuclide in material.findall('nuclide'):
+            if 'name' in nuclide.attrib:
+                nucname = nuclide.attrib['name']
+                nucname = nucname.replace('-', '')
+                nucname = nucname.replace('Nat', '0')
+                if nucname.endswith('m'):
+                    nucname = nucname[:-1] + '_m1'
+                nuclide.set('name', nucname)
+                was_updated = True
+
+            elif nuclide.find('name') is not None:
+                name_elem = nuclide.find('name')
+                nucname = name_elem.text
+                nucname = nucname.replace('-', '')
+                nucname = nucname.replace('Nat', '0')
+                if nucname.endswith('m'):
+                    nucname = nucname[:-1] + '_m1'
+                name_elem.text = nucname
+                was_updated = True
+
+        for sab in material.findall('sab'):
+            if 'name' in sab.attrib:
+                sabname = sab.attrib['name']
+                sab.set('name', openmc.data.get_thermal_name(sabname))
+                was_updated = True
+
+            elif sab.find('name') is not None:
+                name_elem = sab.find('name')
+                sabname = name_elem.text
+                name_elem.text = openmc.data.get_thermal_name(sabname)
+                was_updated = True
+
+    return was_updated
+
 
 if __name__ == '__main__':
     args = parse_args()
@@ -256,6 +303,8 @@ if __name__ == '__main__':
 
         if root.tag == 'geometry':
             was_updated = update_geometry(root)
+        elif root.tag == 'materials':
+            was_updated = update_materials(root)
 
         if was_updated:
             # Move the original geometry file to preserve it.

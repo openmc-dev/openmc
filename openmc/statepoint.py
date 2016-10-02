@@ -2,6 +2,7 @@ import sys
 import re
 import os
 import warnings
+import glob
 
 import numpy as np
 
@@ -22,8 +23,9 @@ class StatePoint(object):
     filename : str
         Path to file to load
     autolink : bool, optional
-        Whether to automatically link in metadata from a summary.h5
-        file. Defaults to True.
+        Whether to automatically link in metadata from a summary.h5 file and
+        stochastic volume calculation results from volume_*.h5 files. Defaults
+        to True.
 
     Attributes
     ----------
@@ -109,6 +111,11 @@ class StatePoint(object):
 
     def __init__(self, filename, autolink=True):
         import h5py
+        if h5py.__version__ == '2.6.0':
+            raise ImportError("h5py 2.6.0 has a known bug which makes it "
+                              "incompatible with OpenMC's HDF5 files. "
+                              "Please switch to a different version.")
+
         self._f = h5py.File(filename, 'r')
 
         # Ensure filetype and revision are correct
@@ -141,6 +148,12 @@ class StatePoint(object):
             if os.path.exists(path_summary):
                 su = openmc.Summary(path_summary)
                 self.link_with_summary(su)
+
+            path_volume = os.path.join(os.path.dirname(filename), 'volume_*.h5')
+            for path_i in glob.glob(path_volume):
+                if re.search(r'volume_\d+\.h5', path_i):
+                    vol = openmc.VolumeCalculation.from_hdf5(path_i)
+                    self.add_volume_information(vol)
 
     def close(self):
         self._f.close()
@@ -543,14 +556,31 @@ class StatePoint(object):
             for tally_id in self.tallies:
                 self.tallies[tally_id].sparse = self.sparse
 
+    def add_volume_information(self, volume_calc):
+        """Add volume information to the geometry within the file
+
+        Parameters
+        ----------
+        volume_calc : openmc.VolumeCalculation
+            Results from a stochastic volume calculation
+
+        """
+        if self.summary is not None:
+            self.summary.add_volume_information(volume_calc)
+
     def get_tally(self, scores=[], filters=[], nuclides=[],
-                  name=None, id=None, estimator=None):
+                  name=None, id=None, estimator=None, exact_filters=False,
+                  exact_nuclides=False, exact_scores=False):
         """Finds and returns a Tally object with certain properties.
 
         This routine searches the list of Tallies and returns the first Tally
         found which satisfies all of the input parameters.
-        NOTE: The input parameters do not need to match the complete Tally
-        specification and may only represent a subset of the Tally's properties.
+
+        NOTE: If any of the "exact" parameters are False (default), the input
+        parameters do not need to match the complete Tally specification and
+        may only represent a subset of the Tally's properties. If an "exact"
+        parameter is True then number of scores, filters, or nuclides in the
+        parameters must precisely match those of any matching Tally.
 
         Parameters
         ----------
@@ -566,6 +596,18 @@ class StatePoint(object):
             The id specified for the Tally (default is None).
         estimator: str, optional
             The type of estimator ('tracklength', 'analog'; default is None).
+        exact_filters : bool
+            If True, the number of filters in the parameters must be identical
+            to those in the matching Tally. If False (default), the filters in
+            the parameters may be a subset of those in the matching Tally.
+        exact_nuclides : bool
+            If True, the number of nuclides in the parameters must be identical
+            to those in the matching Tally. If False (default), the nuclides in
+            the parameters may be a subset of those in the matching Tally.
+        exact_scores : bool
+            If True, the number of scores in the parameters must be identical
+            to those in the matching Tally. If False (default), the scores
+            in the parameters may be a subset of those in the matching Tally.
 
         Returns
         -------
@@ -583,7 +625,7 @@ class StatePoint(object):
         tally = None
 
         # Iterate over all tallies to find the appropriate one
-        for tally_id, test_tally in self.tallies.items():
+        for test_tally in self.tallies.values():
 
             # Determine if Tally has queried name
             if name and name != test_tally.name:
@@ -594,7 +636,15 @@ class StatePoint(object):
                 continue
 
             # Determine if Tally has queried estimator
-            if estimator and not estimator == test_tally.estimator:
+            if estimator and estimator != test_tally.estimator:
+                continue
+
+            # The number of filters, nuclides and scores must exactly match
+            if exact_scores and len(scores) != test_tally.num_scores:
+                continue
+            if exact_nuclides and len(nuclides) != test_tally.num_nuclides:
+                continue
+            if exact_filters and len(filters) != test_tally.num_filters:
                 continue
 
             # Determine if Tally has the queried score(s)
@@ -688,19 +738,10 @@ class StatePoint(object):
             raise ValueError(msg)
 
         for tally_id, tally in self.tallies.items():
-            summary_tally = summary.tallies[tally_id]
-            tally.name = summary_tally.name
+            tally.name = summary.tally_names[tally_id]
             tally.with_summary = True
 
             for tally_filter in tally.filters:
-                summary_filter = summary_tally.find_filter(tally_filter.type)
-
-                if tally_filter.type == 'surface':
-                    surface_ids = []
-                    for bin in tally_filter.bins:
-                        surface_ids.append(summary.surfaces[bin].id)
-                    tally_filter.bins = surface_ids
-
                 if tally_filter.type in ['cell', 'distribcell']:
                     distribcell_ids = []
                     for bin in tally_filter.bins:
@@ -708,8 +749,9 @@ class StatePoint(object):
                     tally_filter.bins = distribcell_ids
 
                 if tally_filter.type == 'distribcell':
-                    tally_filter.distribcell_paths = \
-                        summary_filter.distribcell_paths
+                    cell_id = tally_filter.bins[0]
+                    cell = summary.get_cell_by_id(cell_id)
+                    tally_filter.distribcell_paths = cell.distribcell_paths
 
                 if tally_filter.type == 'universe':
                     universe_ids = []

@@ -1,6 +1,6 @@
 from __future__ import division
 
-from collections import Iterable, MutableSequence, defaultdict
+from collections import Iterable, MutableSequence
 import copy
 from functools import partial
 import os
@@ -13,11 +13,12 @@ from xml.etree import ElementTree as ET
 
 import numpy as np
 
-from openmc import Mesh, Filter, Trigger, Nuclide, TallyDerivative
-from openmc.arithmetic import *
+from openmc import Filter, Trigger, Nuclide, TallyDerivative
+from openmc.arithmetic import CrossScore, CrossNuclide, CrossFilter, \
+    AggregateScore, AggregateNuclide, AggregateFilter
 from openmc.filter import _FILTER_TYPES
 import openmc.checkvalue as cv
-from openmc.clean_xml import *
+from openmc.clean_xml import clean_xml_indentation
 
 if sys.version_info[0] >= 3:
     basestring = str
@@ -39,8 +40,12 @@ _SCORE_CLASSES = (basestring, CrossScore, AggregateScore)
 _NUCLIDE_CLASSES = (basestring, Nuclide, CrossNuclide, AggregateNuclide)
 _FILTER_CLASSES = (Filter, CrossFilter, AggregateFilter)
 
+# Valid types of estimators
+ESTIMATOR_TYPES = ['tracklength', 'collision', 'analog']
+
 
 def reset_auto_tally_id():
+    """Reset counter for auto-generated tally IDs."""
     global AUTO_TALLY_ID
     AUTO_TALLY_ID = 10000
 
@@ -132,52 +137,6 @@ class Tally(object):
         self._sp_filename = None
         self._results_read = False
 
-    def __deepcopy__(self, memo):
-        existing = memo.get(id(self))
-
-        # If this is the first time we have tried to copy this object, create a copy
-        if existing is None:
-            clone = type(self).__new__(type(self))
-            clone.id = self.id
-            clone.name = self.name
-            clone.estimator = self.estimator
-            clone._derivative = self.derivative
-            clone.num_realizations = self.num_realizations
-            clone._sum = copy.deepcopy(self._sum, memo)
-            clone._sum_sq = copy.deepcopy(self._sum_sq, memo)
-            clone._mean = copy.deepcopy(self._mean, memo)
-            clone._std_dev = copy.deepcopy(self._std_dev, memo)
-            clone._with_summary = self.with_summary
-            clone._with_batch_statistics = self.with_batch_statistics
-            clone._derived = self.derived
-            clone._sparse = self.sparse
-            clone._sp_filename = self._sp_filename
-            clone._results_read = self._results_read
-
-            clone._filters = []
-            for self_filter in self.filters:
-                clone.filters.append(copy.deepcopy(self_filter, memo))
-
-            clone._nuclides = []
-            for nuclide in self.nuclides:
-                clone.nuclides.append(copy.deepcopy(nuclide, memo))
-
-            clone._scores = []
-            for score in self.scores:
-                clone.scores.append(score)
-
-            clone._triggers = []
-            for trigger in self.triggers:
-                clone.triggers.append(trigger)
-
-            memo[id(self)] = clone
-
-            return clone
-
-        # If this object has been copied before, return the first copy made
-        else:
-            return existing
-
     def __eq__(self, other):
         if not isinstance(other, Tally):
             return False
@@ -234,7 +193,7 @@ class Tally(object):
 
         for self_filter in self.filters:
             string += '{0: <16}\t\t{1}\t{2}\n'.format('', self_filter.type,
-                                                          self_filter.bins)
+                                                      self_filter.bins)
 
         string += '{0: <16}{1}'.format('\tNuclides', '=\t')
 
@@ -326,6 +285,10 @@ class Tally(object):
 
         if not self._results_read:
             import h5py
+            if h5py.__version__ == '2.6.0':
+                raise ImportError("h5py 2.6.0 has a known bug which makes it "
+                                  "incompatible with OpenMC's HDF5 files. "
+                                  "Please switch to a different version.")
 
             # Open the HDF5 statepoint file
             f = h5py.File(self._sp_filename, 'r')
@@ -442,8 +405,7 @@ class Tally(object):
 
     @estimator.setter
     def estimator(self, estimator):
-        cv.check_value('estimator', estimator,
-                    ['analog', 'tracklength', 'collision'])
+        cv.check_value('estimator', estimator, ESTIMATOR_TYPES)
         self._estimator = estimator
 
     @triggers.setter
@@ -581,7 +543,7 @@ class Tally(object):
             Nuclide to add to the tally. The nuclide should be a Nuclide object
             when a user is adding nuclides to a Tally for input file generation.
             The nuclide is a str when a Tally is created from a StatePoint file
-            (e.g., 'H-1', 'U-235') unless a Summary has been linked with the
+            (e.g., 'H1', 'U235') unless a Summary has been linked with the
             StatePoint. The nuclide may be a CrossNuclide or AggregateNuclide
             for derived tallies created by tally arithmetic.
 
@@ -825,10 +787,7 @@ class Tally(object):
                 no_nuclides_match = False
 
         # Either all nuclides should match, or none should
-        if no_nuclides_match or all_nuclides_match:
-            return True
-        else:
-            return False
+        return no_nuclides_match or all_nuclides_match
 
     def _can_merge_scores(self, other):
         """Determine if another tally's scores can be merged with this one's
@@ -849,9 +808,7 @@ class Tally(object):
 
         # Search for each of this tally's scores in the other tally
         for score in self.scores:
-            if score not in other.scores:
-                all_scores_match = False
-            else:
+            if score in other.scores:
                 no_scores_match = False
 
         # Search for each of the other tally's scores in this tally
@@ -861,16 +818,16 @@ class Tally(object):
             else:
                 no_scores_match = False
 
+            if score == 'current' and score not in self.scores:
+                return False
+
         # Nuclides cannot be specified on 'flux' scores
         if 'flux' in self.scores or 'flux' in other.scores:
             if self.nuclides != other.nuclides:
                 return False
 
         # Either all scores should match, or none should
-        if no_scores_match or all_scores_match:
-            return True
-        else:
-            return False
+        return no_scores_match or all_scores_match
 
     def can_merge(self, other):
         """Determine if another tally can be merged with this one
@@ -966,7 +923,7 @@ class Tally(object):
 
             # Search for mergeable filters
             for i, filter1 in enumerate(self.filters):
-                for j, filter2 in enumerate(other.filters):
+                for filter2 in other.filters:
                     if filter1 != filter2 and filter1.can_merge(filter2):
                         other_copy._swap_filters(other_copy.filters[i], filter2)
                         merged_tally.filters[i] = filter1.merge(filter2)
@@ -1123,7 +1080,7 @@ class Tally(object):
             for score in self.scores:
                 scores += '{0} '.format(score)
 
-            subelement = ET.SubElement(element,    "scores")
+            subelement = ET.SubElement(element, "scores")
             subelement.text = scores.rstrip(' ')
 
         # Tally estimator type
@@ -1240,7 +1197,7 @@ class Tally(object):
         Parameters
         ----------
         nuclide : str
-            The name of the Nuclide (e.g., 'H-1', 'U-238')
+            The name of the Nuclide (e.g., 'H1', 'U238')
 
         Returns
         -------
@@ -1262,7 +1219,7 @@ class Tally(object):
 
             # If the Summary was linked, then values are Nuclide objects
             if isinstance(test_nuclide, Nuclide):
-                if test_nuclide._name == nuclide:
+                if test_nuclide.name == nuclide:
                     nuclide_index = i
                     break
 
@@ -1367,7 +1324,7 @@ class Tally(object):
                     # Create list of 2- or 3-tuples tuples for mesh cell bins
                     if self_filter.type == 'mesh':
                         dimension = self_filter.mesh.dimension
-                        xyz = map(lambda x: np.arange(1, x+1), dimension)
+                        xyz = [range(1, x+1) for x in dimension]
                         bins = list(itertools.product(*xyz))
 
                     # Create list of 2-tuples for energy boundary bins
@@ -1416,7 +1373,7 @@ class Tally(object):
         ----------
         nuclides : list of str
             A list of nuclide name strings
-            (e.g., ['U-235', 'U-238']; default is [])
+            (e.g., ['U235', 'U238']; default is [])
 
         Returns
         -------
@@ -1509,7 +1466,7 @@ class Tally(object):
             the filter_types parameter.
         nuclides : list of str
             A list of nuclide name strings
-            (e.g., ['U-235', 'U-238']; default is [])
+            (e.g., ['U235', 'U238']; default is [])
         value : str
             A string for the type of value to return  - 'mean' (default),
             'std_dev', 'rel_err', 'sum', or 'sum_sq' are accepted
@@ -1630,7 +1587,7 @@ class Tally(object):
             # Append each Filter's DataFrame to the overall DataFrame
             for self_filter in self.filters:
                 filter_df = self_filter.get_pandas_dataframe(
-                        data_size, distribcell_paths)
+                    data_size, distribcell_paths)
                 df = pd.concat([df, filter_df], axis=1)
 
         # Include DataFrame column for nuclides if user requested it
@@ -1754,7 +1711,7 @@ class Tally(object):
         return data
 
     def export_results(self, filename='tally-results', directory='.',
-                      format='hdf5', append=True):
+                       format='hdf5', append=True):
         """Exports tallly results to an HDF5 or Python pickle binary file.
 
         Parameters
@@ -1800,7 +1757,7 @@ class Tally(object):
 
         elif not isinstance(append, bool):
             msg = 'Unable to export the results for Tally ID="{0}" since the ' \
-                  'append parameter is not True/False'.format(self.id, append)
+                  'append parameter is not True/False'.format(self.id)
             raise ValueError(msg)
 
         # Make directory if it does not exist
@@ -1857,7 +1814,7 @@ class Tally(object):
             filename = directory + '/' + filename + '.pkl'
 
             if os.path.exists(filename) and append:
-                tally_results = pickle.load(file(filename, 'rb'))
+                tally_results = pickle.load(open(filename, 'rb'))
             else:
                 tally_results = {}
 
@@ -1896,7 +1853,7 @@ class Tally(object):
             pickle.dump(tally_results, open(filename, 'wb'))
 
     def hybrid_product(self, other, binary_op, filter_product=None,
-                        nuclide_product=None, score_product=None):
+                       nuclide_product=None, score_product=None):
         """Combines filters, scores and nuclides with another tally.
 
         This is a helper method for the tally arithmetic operator overloaded
@@ -2282,8 +2239,8 @@ class Tally(object):
 
         """
 
-        cv.check_type('filter1', filter1, (Filter, CrossFilter, AggregateFilter))
-        cv.check_type('filter2', filter2, (Filter, CrossFilter, AggregateFilter))
+        cv.check_type('filter1', filter1, _FILTER_CLASSES)
+        cv.check_type('filter2', filter2, _FILTER_CLASSES)
 
         # Check that the filters exist in the tally and are not the same
         if filter1 == filter2:
@@ -2365,8 +2322,8 @@ class Tally(object):
                   'since it does not contain any results.'.format(self.id)
             raise ValueError(msg)
 
-        cv.check_type('nuclide1', nuclide1, Nuclide)
-        cv.check_type('nuclide2', nuclide2, Nuclide)
+        cv.check_type('nuclide1', nuclide1, _NUCLIDE_CLASSES)
+        cv.check_type('nuclide2', nuclide2, _NUCLIDE_CLASSES)
 
         # Check that the nuclides exist in the tally and are not the same
         if nuclide1 == nuclide2:
@@ -2532,7 +2489,7 @@ class Tally(object):
             new_tally._std_dev = self.std_dev
             new_tally.estimator = self.estimator
             new_tally.with_summary = self.with_summary
-            new_tally.num_realization = self.num_realizations
+            new_tally.num_realizations = self.num_realizations
 
             new_tally.filters = copy.deepcopy(self.filters)
             new_tally.nuclides = copy.deepcopy(self.nuclides)
@@ -2603,7 +2560,7 @@ class Tally(object):
             new_tally._std_dev = self.std_dev
             new_tally.estimator = self.estimator
             new_tally.with_summary = self.with_summary
-            new_tally.num_realization = self.num_realizations
+            new_tally.num_realizations = self.num_realizations
 
             new_tally.filters = copy.deepcopy(self.filters)
             new_tally.nuclides = copy.deepcopy(self.nuclides)
@@ -2675,7 +2632,7 @@ class Tally(object):
             new_tally._std_dev = self.std_dev * np.abs(other)
             new_tally.estimator = self.estimator
             new_tally.with_summary = self.with_summary
-            new_tally.num_realization = self.num_realizations
+            new_tally.num_realizations = self.num_realizations
 
             new_tally.filters = copy.deepcopy(self.filters)
             new_tally.nuclides = copy.deepcopy(self.nuclides)
@@ -2747,7 +2704,7 @@ class Tally(object):
             new_tally._std_dev = self.std_dev * np.abs(1. / other)
             new_tally.estimator = self.estimator
             new_tally.with_summary = self.with_summary
-            new_tally.num_realization = self.num_realizations
+            new_tally.num_realizations = self.num_realizations
 
             new_tally.filters = copy.deepcopy(self.filters)
             new_tally.nuclides = copy.deepcopy(self.nuclides)
@@ -2823,7 +2780,7 @@ class Tally(object):
             new_tally._std_dev = np.abs(new_tally._mean * power * self_rel_err)
             new_tally.estimator = self.estimator
             new_tally.with_summary = self.with_summary
-            new_tally.num_realization = self.num_realizations
+            new_tally.num_realizations = self.num_realizations
 
             new_tally.filters = copy.deepcopy(self.filters)
             new_tally.nuclides = copy.deepcopy(self.nuclides)
@@ -2915,7 +2872,7 @@ class Tally(object):
 
         return other * self**-1
 
-    def __pos__(self):
+    def __abs__(self):
         """The absolute value of this tally.
 
         Returns
@@ -2972,7 +2929,7 @@ class Tally(object):
             correspond to the filter_types parameter.
         nuclides : list of str
             A list of nuclide name strings
-            (e.g., ['U-235', 'U-238']; default is [])
+            (e.g., ['U235', 'U238']; default is [])
 
         Returns
         -------
@@ -3064,7 +3021,7 @@ class Tally(object):
                         bin_indices.extend([bin_index])
                         bin_indices.extend([bin_index, bin_index+1])
                         num_bins += 1
-                    elif filter_type == 'distribcell':
+                    elif filter_type in ['distribcell', 'mesh']:
                         bin_indices = [0]
                         num_bins = find_filter.num_bins
                     else:
@@ -3110,7 +3067,7 @@ class Tally(object):
             interest.
         nuclides : list of str
             A list of nuclide name strings to sum across
-            (e.g., ['U-235', 'U-238']; default is [])
+            (e.g., ['U235', 'U238']; default is [])
         remove_filter : bool
             If a filter is being summed over, this bool indicates whether to
             remove that filter in the returned tally. Default is False.
@@ -3230,7 +3187,7 @@ class Tally(object):
         return tally_sum
 
     def average(self, scores=[], filter_type=None,
-                  filter_bins=[], nuclides=[], remove_filter=False):
+                filter_bins=[], nuclides=[], remove_filter=False):
         """Vectorized average of tally data across scores, filter bins and/or
         nuclides using tally aggregation.
 
@@ -3258,7 +3215,7 @@ class Tally(object):
             interest.
         nuclides : list of str
             A list of nuclide name strings to average across
-            (e.g., ['U-235', 'U-238']; default is [])
+            (e.g., ['U235', 'U238']; default is [])
         remove_filter : bool
             If a filter is being averaged over, this bool indicates whether to
             remove that filter in the returned tally. Default is False.
@@ -3403,7 +3360,7 @@ class Tally(object):
 
         """
 
-        cv.check_type('new_filter', new_filter, Filter)
+        cv.check_type('new_filter', new_filter, _FILTER_CLASSES)
 
         if new_filter in self.filters:
             msg = 'Unable to diagonalize Tally ID="{0}" which already ' \
@@ -3509,7 +3466,8 @@ class Tallies(cv.CheckedList):
 
         """
         if not isinstance(tally, Tally):
-            msg = 'Unable to add a non-Tally "{0}" to the Tallies instance'.format(tally)
+            msg = 'Unable to add a non-Tally "{0}" to the ' \
+                  'Tallies instance'.format(tally)
             raise TypeError(msg)
 
         if merge:
@@ -3520,13 +3478,13 @@ class Tallies(cv.CheckedList):
 
                 # If a mergeable tally is found
                 if tally2.can_merge(tally):
-                    # Replace tally 2 with the merged tally
+                    # Replace tally2 with the merged tally
                     merged_tally = tally2.merge(tally)
                     self[i] = merged_tally
                     merged = True
                     break
 
-            # If not mergeable tally was found, simply add this tally
+            # If no mergeable tally was found, simply add this tally
             if not merged:
                 super(Tallies, self).append(tally)
 
@@ -3670,4 +3628,4 @@ class Tallies(cv.CheckedList):
         # Write the XML Tree to the tallies.xml file
         tree = ET.ElementTree(self._tallies_file)
         tree.write("tallies.xml", xml_declaration=True,
-                             encoding='utf-8', method="xml")
+                   encoding='utf-8', method="xml")

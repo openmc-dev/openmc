@@ -1,18 +1,34 @@
 .. _io_file_formats:
 
-===============
-IO File Formats
-===============
+==========================
+File Format Specifications
+==========================
+
+----------
+Data Files
+----------
 
 .. toctree::
    :numbered:
-   :maxdepth: 3
+   :maxdepth: 2
 
-   data_wmp
+   nuclear_data
    mgxs_library
+   data_wmp
+   fission_energy
+
+------------
+Output Files
+------------
+
+.. toctree::
+   :numbered:
+   :maxdepth: 2
+
    statepoint
    source
    summary
    particle_restart
    track
    voxel
+   volume

@@ -16,10 +16,10 @@ particles = 10000
 ###############################################################################
 
 # Instantiate some Nuclides
-h1 = openmc.Nuclide('H-1')
-o16 = openmc.Nuclide('O-16')
-u235 = openmc.Nuclide('U-235')
-u238 = openmc.Nuclide('U-238')
+h1 = openmc.Nuclide('H1')
+o16 = openmc.Nuclide('O16')
+u235 = openmc.Nuclide('U235')
+u238 = openmc.Nuclide('U238')
 
 # Instantiate some Materials and register the appropriate Nuclides
 fuel1 = openmc.Material(material_id=1, name='fuel')
@@ -34,11 +34,10 @@ moderator = openmc.Material(material_id=3, name='moderator')
 moderator.set_density('g/cc', 1.0)
 moderator.add_nuclide(h1, 2.)
 moderator.add_nuclide(o16, 1.)
-moderator.add_s_alpha_beta('HH2O', '71t')
+moderator.add_s_alpha_beta('c_H_in_H2O')
 
 # Instantiate a Materials collection and export to XML
 materials_file = openmc.Materials([fuel1, fuel2, moderator])
-materials_file.default_xs = '71c'
 materials_file.export_to_xml()
 
 
@@ -97,8 +96,7 @@ root = openmc.Universe(universe_id=0, name='root universe')
 root.add_cells([inner_box, middle_box, outer_box])
 
 # Instantiate a Geometry, register the root Universe, and export to XML
-geometry = openmc.Geometry()
-geometry.root_universe = root
+geometry = openmc.Geometry(root)
 geometry.export_to_xml()
 
 

@@ -11,8 +11,8 @@ import hashlib
 import argparse
 
 parser = argparse.ArgumentParser()
-parser.add_argument('-b', '--batch', action = 'store_true',
-                    help = 'supresses standard in')
+parser.add_argument('-b', '--batch', action='store_true',
+                    help='supresses standard in')
 args = parser.parse_args()
 
 try:
@@ -25,7 +25,7 @@ sys.path.insert(0, os.path.join(cwd, '..'))
 
 baseUrl = 'https://github.com/smharper/windowed_multipole_library/blob/master/'
 files = ['multipole_lib.tar.gz?raw=true']
-checksums = ['9f0307132fe5beca78b8fc7a01fb401c']
+checksums = ['3985aea96f7162a9419c7ed8352e6abb']
 block_size = 16384
 
 # ==============================================================================
@@ -92,7 +92,7 @@ for f, checksum in zip(files, checksums):
 
 for f in files:
     fname = f[:-9] if f.endswith('?raw=true') else f
-    if not fname in filesComplete:
+    if fname not in filesComplete:
         continue
 
     # Extract files

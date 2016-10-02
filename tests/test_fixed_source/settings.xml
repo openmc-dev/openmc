@@ -6,6 +6,8 @@
     <particles>100</particles>
   </fixed_source>
 
+  <temperature_default>294</temperature_default>
+
   <source>
     <space type="point" parameters="0 0 0" />
   </source>

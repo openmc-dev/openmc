@@ -6,7 +6,6 @@ import sys
 import numpy as np
 
 from openmc import Mesh
-from openmc.summary import Summary
 import openmc.checkvalue as cv
 
 
@@ -17,6 +16,13 @@ if sys.version_info[0] >= 3:
 _FILTER_TYPES = ['universe', 'material', 'cell', 'cellborn', 'surface',
                  'mesh', 'energy', 'energyout', 'mu', 'polar', 'azimuthal',
                  'distribcell', 'delayedgroup']
+
+_CURRENT_NAMES = {1:  'x-min out', 2:  'x-min in',
+                  3:  'x-max out', 4:  'x-max in',
+                  5:  'y-min out', 6:  'y-min in',
+                  7:  'y-max out', 8:  'y-max in',
+                  9:  'z-min out', 10: 'z-min in',
+                  11: 'z-max out', 12: 'z-max in'}
 
 class Filter(object):
     """A filter used to constrain a tally to a specific criterion, e.g. only
@@ -104,27 +110,6 @@ class Filter(object):
     def __hash__(self):
         return hash(repr(self))
 
-    def __deepcopy__(self, memo):
-        existing = memo.get(id(self))
-
-        # If this is the first time we have tried to copy this object, create a copy
-        if existing is None:
-            clone = type(self).__new__(type(self))
-            clone._type = self.type
-            clone._bins = copy.deepcopy(self.bins, memo)
-            clone._num_bins = self.num_bins
-            clone._mesh = copy.deepcopy(self.mesh, memo)
-            clone._stride = self.stride
-            clone._distribcell_paths = copy.deepcopy(self.distribcell_paths)
-
-            memo[id(self)] = clone
-
-            return clone
-
-        # If this object has been copied before, return the first copy made
-        else:
-            return existing
-
     def __repr__(self):
         string = 'Filter\n'
         string += '{0: <16}{1}{2}\n'.format('\tType', '=\t', self.type)
@@ -184,6 +169,11 @@ class Filter(object):
         if not isinstance(bins, Iterable):
             bins = [bins]
 
+        # If the bin is 0D numpy array, promote to 1D
+        elif isinstance(bins, np.ndarray):
+            if bins.shape == ():
+                bins.shape = (1,)
+
         # If the bins are in a collection, convert it to a list
         else:
             bins = list(bins)
@@ -196,7 +186,7 @@ class Filter(object):
 
         elif self.type in ['energy', 'energyout']:
             for edge in bins:
-                if not cv._isinstance(edge, Real):
+                if not isinstance(edge, Real):
                     msg = 'Unable to add bin edge "{0}" to a "{1}" Filter ' \
                           'since it is a non-integer or floating point ' \
                           'value'.format(edge, self.type)
@@ -220,7 +210,7 @@ class Filter(object):
                 msg = 'Unable to add bins "{0}" to a mesh Filter since ' \
                       'only a single mesh can be used per tally'.format(bins)
                 raise ValueError(msg)
-            elif not cv._isinstance(bins[0], Integral):
+            elif not isinstance(bins[0], Integral):
                 msg = 'Unable to add bin "{0}" to mesh Filter since it ' \
                        'is a non-integer'.format(bins[0])
                 raise ValueError(msg)
@@ -393,7 +383,7 @@ class Filter(object):
             cell instance ID for 'distribcell' Filters. The bin is a 2-tuple of
             floats for 'energy' and 'energyout' filters corresponding to the
             energy boundaries of the bin of interest. The bin is an (x,y,z)
-            3-tuple for 'mesh' filters corresponding to the mesh cell
+            3-tuple for 'mesh' filters corresponding to the mesh cell of
             interest.
 
         Returns
@@ -412,7 +402,7 @@ class Filter(object):
             if self.type == 'mesh':
                 # Convert (x,y,z) to a single bin -- this is similar to
                 # subroutine mesh_indices_to_bin in openmc/src/mesh.F90.
-                if (len(self.mesh.dimension) == 3):
+                if len(self.mesh.dimension) == 3:
                     nx, ny, nz = self.mesh.dimension
                     val = (filter_bin[0] - 1) * ny * nz + \
                           (filter_bin[1] - 1) * nz + \
@@ -585,11 +575,11 @@ class Filter(object):
             # Initialize dictionary to build Pandas Multi-index column
             filter_dict = {}
 
-            # Append Mesh ID as outermost index of mult-index
+            # Append Mesh ID as outermost index of multi-index
             mesh_key = 'mesh {0}'.format(self.mesh.id)
 
             # Find mesh dimensions - use 3D indices for simplicity
-            if (len(self.mesh.dimension) == 3):
+            if len(self.mesh.dimension) == 3:
                 nx, ny, nz = self.mesh.dimension
             else:
                 nx, ny = self.mesh.dimension
@@ -793,6 +783,13 @@ class Filter(object):
             # Add the new angle columns to the DataFrame.
             df.loc[:, self.type + ' low'] = lo_bins
             df.loc[:, self.type + ' high'] = hi_bins
+
+        elif self.type == 'surface':
+            filter_bins = np.repeat(self.bins, self.stride)
+            tile_factor = data_size / len(filter_bins)
+            filter_bins = np.tile(filter_bins, tile_factor)
+            filter_bins = [_CURRENT_NAMES[x] for x in filter_bins]
+            df = pd.concat([df, pd.DataFrame({self.type : filter_bins})])
 
         # universe, material, surface, cell, and cellborn filters
         else:

@@ -1,14 +1,18 @@
 module endf_header
 
+  use hdf5, only: HID_T, HSIZE_T
+
+  use algorithm, only: binary_search
   use constants, only: ZERO, HISTOGRAM, LINEAR_LINEAR, LINEAR_LOG, &
        LOG_LINEAR, LOG_LOG
-  use search, only: binary_search
+  use hdf5_interface
 
-implicit none
+  implicit none
 
   type, abstract :: Function1D
   contains
     procedure(function1d_evaluate_), deferred :: evaluate
+    procedure(function1d_from_hdf5_), deferred :: from_hdf5
   end type Function1D
 
   abstract interface
@@ -18,17 +22,13 @@ implicit none
       real(8),           intent(in) :: x
       real(8)                       :: y
     end function function1d_evaluate_
+
+    subroutine function1d_from_hdf5_(this, dset_id)
+      import Function1D, HID_T
+      class(Function1D), intent(inout) :: this
+      integer(HID_T),    intent(in)    :: dset_id
+    end subroutine function1d_from_hdf5_
   end interface
-
-!===============================================================================
-! CONSTANT1D represents a constant one-dimensional function
-!===============================================================================
-
-  type, extends(Function1D) :: Constant1D
-    real(8) :: y
-  contains
-    procedure :: evaluate => constant1d_evaluate
-  end type Constant1D
 
 !===============================================================================
 ! POLYNOMIAL represents a one-dimensional function expressed as a polynomial
@@ -37,6 +37,7 @@ implicit none
   type, extends(Function1D) :: Polynomial
     real(8), allocatable :: coef(:)  ! coefficients
   contains
+    procedure :: from_hdf5 => polynomial_from_hdf5
     procedure :: evaluate => polynomial_evaluate
     procedure :: from_ace => polynomial_from_ace
   end type Polynomial
@@ -54,22 +55,11 @@ implicit none
     real(8), allocatable :: y(:)   ! values of ordinate
   contains
     procedure :: from_ace => tabulated1d_from_ace
+    procedure :: from_hdf5 => tabulated1d_from_hdf5
     procedure :: evaluate => tabulated1d_evaluate
   end type Tabulated1D
 
 contains
-
-!===============================================================================
-! Constant1D implementation
-!===============================================================================
-
-  pure function constant1d_evaluate(this, x) result(y)
-    class(Constant1D), intent(in) :: this
-    real(8),           intent(in) :: x
-    real(8)                       :: y
-
-    y = this % y
-  end function constant1d_evaluate
 
 !===============================================================================
 ! Polynomial implementation
@@ -92,6 +82,17 @@ contains
     allocate(this % coef(nc))
     this % coef(:) = xss(idx + 1 : idx + nc)
   end subroutine polynomial_from_ace
+
+  subroutine polynomial_from_hdf5(this, dset_id)
+    class(Polynomial), intent(inout) :: this
+    integer(HID_T),    intent(in)    :: dset_id
+
+    integer(HSIZE_T) :: dims(1)
+
+    call get_shape(dset_id, dims)
+    allocate(this % coef(dims(1)))
+    call read_dataset(this % coef, dset_id)
+  end subroutine polynomial_from_hdf5
 
   pure function polynomial_evaluate(this, x) result(y)
     class(Polynomial), intent(in) :: this
@@ -127,26 +128,48 @@ contains
 
     ! Determine number of regions
     nr = nint(xss(idx))
-    this%n_regions = nr
+    this % n_regions = nr
 
     ! Read interpolation region data
     if (nr > 0) then
-      allocate(this%nbt(nr))
-      allocate(this%int(nr))
-      this%nbt(:) = nint(xss(idx + 1 : idx + nr))
-      this%int(:) = nint(xss(idx + nr + 1 : idx + 2*nr))
+      allocate(this % nbt(nr))
+      allocate(this % int(nr))
+      this % nbt(:) = nint(xss(idx + 1 : idx + nr))
+      this % int(:) = nint(xss(idx + nr + 1 : idx + 2*nr))
     end if
 
     ! Determine number of pairs
     ne = int(XSS(idx + 2*nr + 1))
-    this%n_pairs = ne
+    this % n_pairs = ne
 
     ! Read (x,y) pairs
-    allocate(this%x(ne))
-    allocate(this%y(ne))
-    this%x(:) = xss(idx + 2*nr + 2 : idx + 2*nr + 1 + ne)
-    this%y(:) = xss(idx + 2*nr + 2 + ne : idx + 2*nr + 1 + 2*ne)
+    allocate(this % x(ne))
+    allocate(this % y(ne))
+    this % x(:) = xss(idx + 2*nr + 2 : idx + 2*nr + 1 + ne)
+    this % y(:) = xss(idx + 2*nr + 2 + ne : idx + 2*nr + 1 + 2*ne)
   end subroutine tabulated1d_from_ace
+
+  subroutine tabulated1d_from_hdf5(this, dset_id)
+    class(Tabulated1D), intent(inout) :: this
+    integer(HID_T), intent(in) :: dset_id
+
+    real(8), allocatable :: xy(:,:)
+    integer(HSIZE_T) :: dims(2)
+
+    call read_attribute(this % nbt, dset_id, 'breakpoints')
+    call read_attribute(this % int, dset_id, 'interpolation')
+    this % n_regions = size(this % nbt)
+
+    call get_shape(dset_id, dims)
+    this % n_pairs = int(dims(1), 4)
+    allocate(this % x(this % n_pairs))
+    allocate(this % y(this % n_pairs))
+
+    allocate(xy(dims(1), dims(2)))
+    call read_dataset(xy, dset_id)
+    this % x(:) = xy(:,1)
+    this % y(:) = xy(:,2)
+  end subroutine tabulated1d_from_hdf5
 
   pure function tabulated1d_evaluate(this, x) result(y)
     class(Tabulated1D), intent(in) :: this

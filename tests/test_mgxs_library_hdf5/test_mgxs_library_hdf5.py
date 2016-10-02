@@ -7,28 +7,35 @@ import hashlib
 import h5py
 sys.path.insert(0, os.pardir)
 from testing_harness import PyAPITestHarness
+from input_set import PinCellInputSet
 import openmc
 import openmc.mgxs
 
 
 class MGXSTestHarness(PyAPITestHarness):
     def _build_inputs(self):
-
-        # The openmc.mgxs module needs a summary.h5 file
-        self._input_set.settings.output = {'summary': True}
+        # Set the input set to use the pincell model
+        self._input_set = PinCellInputSet()
 
         # Generate inputs using parent class routine
         super(MGXSTestHarness, self)._build_inputs()
 
         # Initialize a two-group structure
-        energy_groups = openmc.mgxs.EnergyGroups(group_edges=[0, 0.625e-6, 20.])
+        energy_groups = openmc.mgxs.EnergyGroups(group_edges=[0, 0.625e-6,
+                                                              20.])
+
+        # Initialize a six-delayed-group structure
+        delayed_groups = list(range(1,7))
 
         # Initialize MGXS Library for a few cross section types
         self.mgxs_lib = openmc.mgxs.Library(self._input_set.geometry)
         self.mgxs_lib.by_nuclide = False
-        self.mgxs_lib.mgxs_types = ['transport', 'nu-fission',
-                                    'nu-scatter matrix', 'chi']
+
+        # Test all MGXS types
+        self.mgxs_lib.mgxs_types = openmc.mgxs.MGXS_TYPES + \
+                                   openmc.mgxs.MDGXS_TYPES
         self.mgxs_lib.energy_groups = energy_groups
+        self.mgxs_lib.delayed_groups = delayed_groups
         self.mgxs_lib.legendre_order = 3
         self.mgxs_lib.domain_type = 'material'
         self.mgxs_lib.build_library()
@@ -74,7 +81,6 @@ class MGXSTestHarness(PyAPITestHarness):
             outstr = sha512.hexdigest()
 
         return outstr
-
 
     def _cleanup(self):
         super(MGXSTestHarness, self)._cleanup()

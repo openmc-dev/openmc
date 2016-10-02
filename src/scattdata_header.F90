@@ -1,10 +1,10 @@
 module scattdata_header
 
+  use algorithm,  only: binary_search
   use constants
   use error,      only: fatal_error
   use math
   use random_lcg, only: prn
-  use search,     only: binary_search
 
   implicit none
 
@@ -398,29 +398,18 @@ contains
           end do
 
           ! Re-normalize fmu for numerical integration issues and in case
-          ! the negative fix-up introduced un-normalized data
+          ! the negative fix-up introduced un-normalized data while
+          ! accruing the CDF
           norm = ZERO
           do imu = 2, order
             norm = norm + HALF * this % dmu * &
                  (this % fmu(gin) % data(imu - 1, gout) + &
                   this % fmu(gin) % data(imu, gout))
+            this % dist(gin) % data(imu, gout) = norm
           end do
           if (norm > ZERO) then
             this % fmu(gin) % data(:, gout) = &
                  this % fmu(gin) % data(:, gout) / norm
-          end if
-
-          ! Now create CDF from fmu with trapezoidal rule
-          this % dist(gin) % data(1, gout) = ZERO
-          do imu = 2, order
-            this % dist(gin) % data(imu, gout) = &
-                 this % dist(gin) % data(imu - 1, gout) + &
-                 HALF * this % dmu * (this % fmu(gin) % data(imu - 1, gout) + &
-                                      this % fmu(gin) % data(imu, gout))
-          end do
-          ! Ensure we normalize to 1 still
-          norm = this % dist(gin) % data(order, gout)
-          if (norm > ZERO) then
             this % dist(gin) % data(:, gout) = &
                  this % dist(gin) % data(:, gout) / norm
           end if
@@ -628,11 +617,10 @@ contains
     p1  = this % fmu(gin) % data(k + 1, gout)
     mu1 = this % mu(k + 1)
 
-    frac = (p1 - p0) / (mu1 - mu0)
-
-    if (frac == ZERO) then
+    if (p0 == p1) then
       mu = mu0 + (xi - c_k) / p0
     else
+      frac = (p1 - p0) / (mu1 - mu0)
       mu = mu0 + &
            (sqrt(max(ZERO, p0 * p0 + TWO * frac * (xi - c_k))) - p0) / frac
     end if

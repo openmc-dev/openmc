@@ -12,7 +12,7 @@ import pandas as pd
 
 sys.path.insert(0, os.pardir)
 from testing_harness import PyAPITestHarness
-from openmc import Filter, Mesh, Tally, TalliesFile, Summary, StatePoint, \
+from openmc import Filter, Mesh, Tally, Tallies, Summary, StatePoint, \
                    TallyDerivative
 from openmc.source import Source
 from openmc.stats import Box
@@ -30,7 +30,7 @@ class DiffTallyTestHarness(PyAPITestHarness):
             [-160, -160, -183], [160, 160, 183]))
         self._input_set.settings.output = {'summary': True}
 
-        self._input_set.tallies = TalliesFile()
+        self._input_set.tallies = Tallies()
 
         filt_mats = Filter(type='material', bins=(1, 3))
         filt_eout = Filter(type='energyout', bins=(0.0, 1.0, 20.0))
@@ -50,13 +50,13 @@ class DiffTallyTestHarness(PyAPITestHarness):
         d3 = TallyDerivative(derivative_id=3)
         d3.variable = 'nuclide_density'
         d3.material = 1
-        d3.nuclide = 'O-16'
+        d3.nuclide = 'O16'
 
         # A fissile nuclide, just for good measure.
         d4 = TallyDerivative(derivative_id=4)
         d4.variable = 'nuclide_density'
         d4.material = 1
-        d4.nuclide = 'U-235'
+        d4.nuclide = 'U235'
 
         derivs = [d1, d2, d3, d4]
 
@@ -77,7 +77,7 @@ class DiffTallyTestHarness(PyAPITestHarness):
             t.add_score('nu-fission')
             t.add_filter(filt_mats)
             t.add_nuclide('total')
-            t.add_nuclide('U-235')
+            t.add_nuclide('U235')
             t.derivative = derivs[i]
             self._input_set.tallies.add_tally(t)
 

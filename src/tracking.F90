@@ -89,9 +89,10 @@ contains
 
       ! Calculate microscopic and macroscopic cross sections
       if (run_CE) then
-        ! If the material is the same as the last material and the energy of the
-        ! particle hasn't changed, we don't need to lookup cross sections again.
-        if (p % material /= p % last_material) call calculate_xs(p)
+        ! If the material is the same as the last material and the temperature
+        ! hasn't changed, we don't need to lookup cross sections again.
+        if (p % material /= p % last_material .or. &
+             p % sqrtkT /= p % last_sqrtkT) call calculate_xs(p)
       else
         ! Since the MGXS can be angle dependent, this needs to be done
         ! After every collision for the MGXS mode
@@ -199,7 +200,7 @@ contains
         p % fission = .false.
 
         ! Save coordinates for tallying purposes
-        p % last_xyz = p % coord(1) % xyz
+        p % last_xyz_current = p % coord(1) % xyz
 
         ! Set last material to none since cross sections will need to be
         ! re-evaluated
@@ -221,6 +222,9 @@ contains
         ! Score flux derivative accumulators for differential tallies.
         if (active_tallies % size() > 0) call score_collision_derivative(p)
       end if
+
+      ! Save coordinates for tallying purposes
+      p % last_xyz = p % coord(1) % xyz
 
       ! If particle has too many events, display warning and kill it
       n_event = n_event + 1

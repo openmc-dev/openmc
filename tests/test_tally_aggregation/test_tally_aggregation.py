@@ -16,9 +16,9 @@ class TallyAggregationTestHarness(PyAPITestHarness):
         self._input_set.settings.output = {'summary': True}
 
         # Initialize the nuclides
-        u235 = openmc.Nuclide('U-235')
-        u238 = openmc.Nuclide('U-238')
-        pu239 = openmc.Nuclide('Pu-239')
+        u235 = openmc.Nuclide('U235')
+        u238 = openmc.Nuclide('U238')
+        pu239 = openmc.Nuclide('Pu239')
 
         # Initialize the filters
         energy_filter = openmc.Filter(type='energy', bins=[0.0, 0.253e-6,
@@ -60,7 +60,7 @@ class TallyAggregationTestHarness(PyAPITestHarness):
         outstr += ', '.join(map(str, tally_sum.std_dev))
 
         # Sum across all nuclides
-        tally_sum = tally.summation(nuclides=['U-235', 'U-238', 'Pu-239'])
+        tally_sum = tally.summation(nuclides=['U235', 'U238', 'Pu239'])
         outstr += ', '.join(map(str, tally_sum.mean))
         outstr += ', '.join(map(str, tally_sum.std_dev))
 

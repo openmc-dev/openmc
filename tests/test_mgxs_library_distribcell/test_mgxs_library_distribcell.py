@@ -6,15 +6,15 @@ import glob
 import hashlib
 sys.path.insert(0, os.pardir)
 from testing_harness import PyAPITestHarness
+from input_set import AssemblyInputSet
 import openmc
 import openmc.mgxs
 
 
 class MGXSTestHarness(PyAPITestHarness):
     def _build_inputs(self):
-
-        # The openmc.mgxs module needs a summary.h5 file
-        self._input_set.settings.output = {'summary': True}
+        # Set the input set to use the pincell model
+        self._input_set = AssemblyInputSet()
 
         # Generate inputs using parent class routine
         super(MGXSTestHarness, self)._build_inputs()
@@ -22,17 +22,23 @@ class MGXSTestHarness(PyAPITestHarness):
         # Initialize a one-group structure
         energy_groups = openmc.mgxs.EnergyGroups(group_edges=[0, 20.])
 
+        # Initialize a six-delayed-group structure
+        delayed_groups = list(range(1,7))
+
         # Initialize MGXS Library for a few cross section types
         # for one material-filled cell in the geometry
         self.mgxs_lib = openmc.mgxs.Library(self._input_set.geometry)
         self.mgxs_lib.by_nuclide = False
-        self.mgxs_lib.mgxs_types = ['transport', 'nu-fission',
-                                    'nu-scatter matrix', 'chi']
+
+        # Test all MGXS types
+        self.mgxs_lib.mgxs_types = openmc.mgxs.MGXS_TYPES + \
+                                   openmc.mgxs.MDGXS_TYPES
         self.mgxs_lib.energy_groups = energy_groups
+        self.mgxs_lib.delayed_groups = delayed_groups
         self.mgxs_lib.legendre_order = 3
         self.mgxs_lib.domain_type = 'distribcell'
-        material_cells = self.mgxs_lib.openmc_geometry.get_all_material_cells()
-        self.mgxs_lib.domains = [material_cells[-1]]
+        cells = self.mgxs_lib.openmc_geometry.get_all_material_cells()
+        self.mgxs_lib.domains = [c for c in cells if c.name == 'fuel']
         self.mgxs_lib.build_library()
 
         # Initialize a tallies file
@@ -59,7 +65,7 @@ class MGXSTestHarness(PyAPITestHarness):
             for mgxs_type in avg_lib.mgxs_types:
                 mgxs = avg_lib.get_mgxs(domain, mgxs_type)
                 df = mgxs.get_pandas_dataframe()
-                outstr += df.to_string()
+                outstr += df.to_string() + '\n'
 
         # Hash the results if necessary
         if hash_output:

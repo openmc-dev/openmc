@@ -27,6 +27,9 @@ Example Jupyter Notebooks
     examples/mgxs-part-ii
     examples/mgxs-part-iii
     examples/mgxs-part-iv
+    examples/mdgxs-part-i
+    examples/mdgxs-part-ii
+    examples/nuclear-data
 
 ------------------------------------
 :mod:`openmc` -- Basic Functionality
@@ -34,9 +37,6 @@ Example Jupyter Notebooks
 
 Handling nuclear data
 ---------------------
-
-Classes
-+++++++
 
 .. autosummary::
    :toctree: generated
@@ -46,14 +46,6 @@ Classes
    openmc.XSdata
    openmc.MGXSLibrary
 
-Functions
-+++++++++
-
-.. autosummary::
-   :toctree: generated
-   :nosignatures:
-
-   openmc.ace.ascii_to_binary
 
 Simulation Settings
 -------------------
@@ -224,6 +216,8 @@ Univariate Probability Distributions
    openmc.stats.Maxwell
    openmc.stats.Watt
    openmc.stats.Tabular
+   openmc.stats.Legendre
+   openmc.stats.Mixture
 
 Angular Distributions
 ---------------------
@@ -271,20 +265,40 @@ Multi-group Cross Sections
 .. autosummary::
     :toctree: generated
     :nosignatures:
-    :template: myclass.rst
+    :template: myclassinherit.rst
 
     openmc.mgxs.MGXS
     openmc.mgxs.AbsorptionXS
     openmc.mgxs.CaptureXS
     openmc.mgxs.Chi
+    openmc.mgxs.ChiPrompt
     openmc.mgxs.FissionXS
+    openmc.mgxs.InverseVelocity
+    openmc.mgxs.KappaFissionXS
+    openmc.mgxs.MultiplicityMatrixXS
     openmc.mgxs.NuFissionXS
+    openmc.mgxs.NuFissionMatrixXS
     openmc.mgxs.NuScatterXS
     openmc.mgxs.NuScatterMatrixXS
+    openmc.mgxs.PromptNuFissionXS
     openmc.mgxs.ScatterXS
     openmc.mgxs.ScatterMatrixXS
     openmc.mgxs.TotalXS
     openmc.mgxs.TransportXS
+
+Multi-delayed-group Cross Sections
+----------------------------------
+
+.. autosummary::
+    :toctree: generated
+    :nosignatures:
+    :template: myclassinherit.rst
+
+    openmc.mgxs.MDGXS
+    openmc.mgxs.ChiDelayed
+    openmc.mgxs.DelayedNuFissionXS
+    openmc.mgxs.Beta
+    openmc.mgxs.DecayRate
 
 Multi-group Cross Section Libraries
 -----------------------------------
@@ -295,6 +309,113 @@ Multi-group Cross Section Libraries
     :template: myclass.rst
 
     openmc.mgxs.Library
+
+-------------------------------------
+:mod:`openmc.model` -- Model Building
+-------------------------------------
+
+TRISO Fuel Modeling
+-------------------
+
+Classes
++++++++
+
+.. autosummary::
+   :toctree: generated
+   :nosignatures:
+   :template: myclass.rst
+
+   openmc.model.TRISO
+
+Functions
++++++++++
+
+.. autosummary::
+   :toctree: generated
+   :nosignatures:
+
+   openmc.model.create_triso_lattice
+   openmc.model.pack_trisos
+
+--------------------------------------------
+:mod:`openmc.data` -- Nuclear Data Interface
+--------------------------------------------
+
+Physical Data
+-------------
+
+.. autosummary::
+    :toctree: generated
+    :nosignatures:
+    :template: myfunction.rst
+
+    openmc.data.atomic_mass
+
+Core Classes
+------------
+
+.. autosummary::
+    :toctree: generated
+    :nosignatures:
+    :template: myclass.rst
+
+    openmc.data.IncidentNeutron
+    openmc.data.Reaction
+    openmc.data.Product
+    openmc.data.Tabulated1D
+    openmc.data.ThermalScattering
+    openmc.data.CoherentElastic
+    openmc.data.FissionEnergyRelease
+    openmc.data.DataLibrary
+
+Angle-Energy Distributions
+--------------------------
+
+.. autosummary::
+    :toctree: generated
+    :nosignatures:
+    :template: myclass.rst
+
+    openmc.data.AngleEnergy
+    openmc.data.KalbachMann
+    openmc.data.CorrelatedAngleEnergy
+    openmc.data.UncorrelatedAngleEnergy
+    openmc.data.NBodyPhaseSpace
+    openmc.data.AngleDistribution
+    openmc.data.EnergyDistribution
+    openmc.data.ArbitraryTabulated
+    openmc.data.GeneralEvaporation
+    openmc.data.MaxwellEnergy
+    openmc.data.Evaporation
+    openmc.data.WattEnergy
+    openmc.data.MadlandNix
+    openmc.data.DiscretePhoton
+    openmc.data.LevelInelastic
+    openmc.data.ContinuousTabular
+
+ACE Format
+----------
+
+Classes
++++++++
+
+.. autosummary::
+    :toctree: generated
+    :nosignatures:
+    :template: myclass.rst
+
+    openmc.data.ace.Library
+    openmc.data.ace.Table
+
+Functions
++++++++++
+
+.. autosummary::
+    :toctree: generated
+    :nosignatures:
+
+    openmc.data.ace.ascii_to_binary
+    openmc.data.write_compact_458_library
 
 .. _Jupyter: https://jupyter.org/
 .. _NumPy: http://www.numpy.org/

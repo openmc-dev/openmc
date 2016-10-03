@@ -100,9 +100,9 @@ settings_file.export_to_xml()
 ###############################################################################
 
 # Instantiate some tally Filters
-cell_filter = openmc.Filter(type='cell', bins=100)
-energy_filter = openmc.Filter(type='energy', bins=[0., 20.])
-energyout_filter = openmc.Filter(type='energyout', bins=[0., 20.])
+cell_filter = openmc.CellFilter(100)
+energy_filter = openmc.EnergyFilter([0., 20.])
+energyout_filter = openmc.EnergyoutFilter([0., 20.])
 
 # Instantiate the first Tally
 first_tally = openmc.Tally(tally_id=1, name='first tally')

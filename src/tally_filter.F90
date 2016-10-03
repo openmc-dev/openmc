@@ -418,7 +418,7 @@ contains
 
     call write_dataset(filter_group, "type", "mesh")
     call write_dataset(filter_group, "n_bins", this % n_bins)
-    call write_dataset(filter_group, "bins", this % mesh )
+    call write_dataset(filter_group, "bins", meshes(this % mesh) % id)
   end subroutine to_statepoint_mesh
 
   function text_label_mesh(this, bin) result(label)

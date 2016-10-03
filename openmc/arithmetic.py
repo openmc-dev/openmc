@@ -4,7 +4,7 @@ from collections import Iterable
 
 import numpy as np
 
-from openmc import Filter, Nuclide
+import openmc
 from openmc.filter import _FILTER_TYPES
 import openmc.checkvalue as cv
 
@@ -171,7 +171,7 @@ class CrossNuclide(object):
         string = ''
 
         # If the Summary was linked, the left nuclide is a Nuclide object
-        if isinstance(self.left_nuclide, Nuclide):
+        if isinstance(self.left_nuclide, openmc.Nuclide):
             string += '(' + self.left_nuclide.name
         # If the Summary was not linked, the left nuclide is the ZAID
         else:
@@ -180,7 +180,7 @@ class CrossNuclide(object):
         string += ' ' + self.binary_op + ' '
 
         # If the Summary was linked, the right nuclide is a Nuclide object
-        if isinstance(self.right_nuclide, Nuclide):
+        if isinstance(self.right_nuclide, openmc.Nuclide):
             string += self.right_nuclide.name + ')'
         # If the Summary was not linked, the right nuclide is the ZAID
         else:
@@ -191,13 +191,13 @@ class CrossNuclide(object):
     @left_nuclide.setter
     def left_nuclide(self, left_nuclide):
         cv.check_type('left_nuclide', left_nuclide,
-                      (Nuclide, CrossNuclide, AggregateNuclide))
+                      (openmc.Nuclide, CrossNuclide, AggregateNuclide))
         self._left_nuclide = left_nuclide
 
     @right_nuclide.setter
     def right_nuclide(self, right_nuclide):
         cv.check_type('right_nuclide', right_nuclide,
-                      (Nuclide, CrossNuclide, AggregateNuclide))
+                      (openmc.Nuclide, CrossNuclide, AggregateNuclide))
         self._right_nuclide = right_nuclide
 
     @binary_op.setter
@@ -330,14 +330,14 @@ class CrossFilter(object):
     @left_filter.setter
     def left_filter(self, left_filter):
         cv.check_type('left_filter', left_filter,
-                      (Filter, CrossFilter, AggregateFilter))
+                      (openmc.Filter, CrossFilter, AggregateFilter))
         self._left_filter = left_filter
         self._bins['left'] = left_filter.bins
 
     @right_filter.setter
     def right_filter(self, right_filter):
         cv.check_type('right_filter', right_filter,
-                      (Filter, CrossFilter, AggregateFilter))
+                      (openmc.Filter, CrossFilter, AggregateFilter))
         self._right_filter = right_filter
         self._bins['right'] = right_filter.bins
 
@@ -550,8 +550,8 @@ class AggregateNuclide(object):
 
         # Append each nuclide in the aggregate to the string
         string = '{0}('.format(self.aggregate_op)
-        names = [nuclide.name if isinstance(nuclide, Nuclide) else str(nuclide)
-                 for nuclide in self.nuclides]
+        names = [nuclide.name if isinstance(nuclide, openmc.Nuclide)
+                 else str(nuclide) for nuclide in self.nuclides]
         string += ', '.join(map(str, names)) + ')'
         return string
 
@@ -567,15 +567,15 @@ class AggregateNuclide(object):
     def name(self):
 
         # Append each nuclide in the aggregate to the string
-        names = [nuclide.name if isinstance(nuclide, Nuclide) else str(nuclide)
-                 for nuclide in self.nuclides]
+        names = [nuclide.name if isinstance(nuclide, openmc.Nuclide)
+                 else str(nuclide) for nuclide in self.nuclides]
         string = '(' + ', '.join(map(str, names)) + ')'
         return string
 
     @nuclides.setter
     def nuclides(self, nuclides):
         cv.check_iterable_type('nuclides', nuclides,
-                               (basestring, Nuclide, CrossNuclide))
+                               (basestring, openmc.Nuclide, CrossNuclide))
         self._nuclides = nuclides
 
     @aggregate_op.setter
@@ -620,7 +620,8 @@ class AggregateFilter(object):
 
     def __init__(self, aggregate_filter=None, bins=None, aggregate_op=None):
 
-        self._type = '{0}({1})'.format(aggregate_op, aggregate_filter.type)
+        self._type = '{0}({1})'.format(aggregate_op,
+                                       aggregate_filter.short_name.lower())
         self._bins = None
         self._stride = None
 
@@ -699,7 +700,8 @@ class AggregateFilter(object):
 
     @aggregate_filter.setter
     def aggregate_filter(self, aggregate_filter):
-        cv.check_type('aggregate_filter', aggregate_filter, (Filter, CrossFilter))
+        cv.check_type('aggregate_filter', aggregate_filter,
+                      (openmc.Filter, CrossFilter))
         self._aggregate_filter = aggregate_filter
 
     @bins.setter
@@ -752,7 +754,7 @@ class AggregateFilter(object):
         else:
             return self.bins.index(filter_bin)
 
-    def get_pandas_dataframe(self, data_size, summary=None):
+    def get_pandas_dataframe(self, data_size, summary=None, **kwargs):
         """Builds a Pandas DataFrame for the AggregateFilter's bins.
 
         This method constructs a Pandas DataFrame object for the AggregateFilter

@@ -155,8 +155,7 @@ mesh.lower_left = [-2, -2]
 mesh.width = [1, 1]
 
 # Instantiate tally Filter
-mesh_filter = openmc.Filter()
-mesh_filter.mesh = mesh
+mesh_filter = openmc.MeshFilter(mesh)
 
 # Instantiate tally Trigger
 trigger = openmc.Trigger(trigger_type='rel_err', threshold=1E-2)

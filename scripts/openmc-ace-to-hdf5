@@ -190,7 +190,7 @@ for filename in ace_libraries:
                 thermal.export_to_hdf5(outfile, 'w')
 
                 # Register with library
-                library.register_file(outfile, 'thermal')
+                library.register_file(outfile)
 
                 # Add data to list
                 nuclides[name] = outfile

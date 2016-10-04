@@ -80,7 +80,6 @@ module tally_filter
   contains
     procedure :: get_next_bin => get_next_bin_distribcell
     procedure :: to_statepoint => to_statepoint_distribcell
-    procedure :: to_summary => to_summary_distribcell
     procedure :: text_label => text_label_distribcell
     procedure :: initialize => initialize_distribcell
   end type DistribcellFilter
@@ -419,7 +418,7 @@ contains
 
     call write_dataset(filter_group, "type", "mesh")
     call write_dataset(filter_group, "n_bins", this % n_bins)
-    call write_dataset(filter_group, "bins", this % mesh )
+    call write_dataset(filter_group, "bins", meshes(this % mesh) % id)
   end subroutine to_statepoint_mesh
 
   function text_label_mesh(this, bin) result(label)
@@ -713,36 +712,6 @@ contains
     call write_dataset(filter_group, "n_bins", this % n_bins)
     call write_dataset(filter_group, "bins", this % cell )
   end subroutine to_statepoint_distribcell
-
-  subroutine to_summary_distribcell(this, filter_group)
-    class(DistribcellFilter), intent(in) :: this
-    integer(HID_T),           intent(in) :: filter_group
-
-    integer                              :: offset, k
-    character(MAX_LINE_LEN), allocatable :: paths(:)
-    character(MAX_LINE_LEN)              :: path
-
-    call write_dataset(filter_group, "type", "distribcell")
-    call write_dataset(filter_group, "n_bins", this % n_bins)
-    call write_dataset(filter_group, "bins", this % cell )
-
-    ! Write paths to reach each distribcell instance
-
-    ! Allocate array of strings for each distribcell path
-    allocate(paths(this % n_bins))
-
-    ! Store path for each distribcell instance
-    do k = 1, this % n_bins
-      path = ''
-      offset = 1
-      call find_offset(this % cell, universes(BASE_UNIVERSE), k, offset, path)
-      paths(k) = path
-    end do
-
-    ! Write array of distribcell paths to summary file
-    call write_dataset(filter_group, "paths", paths)
-    deallocate(paths)
-  end subroutine to_summary_distribcell
 
   subroutine initialize_distribcell(this)
     class(DistribcellFilter), intent(inout) :: this

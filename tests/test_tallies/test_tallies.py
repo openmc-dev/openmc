@@ -4,7 +4,8 @@ import os
 import sys
 sys.path.insert(0, os.pardir)
 from testing_harness import PyAPITestHarness
-from openmc import Filter, Mesh, Tally, Tallies
+from openmc.filter import *
+from openmc import Mesh, Tally, Tallies
 from openmc.source import Source
 from openmc.stats import Box
 
@@ -21,7 +22,7 @@ class TalliesTestHarness(PyAPITestHarness):
             [-160, -160, -183], [160, 160, 183]))
 
         azimuthal_bins = (-3.1416, -1.8850, -0.6283, 0.6283, 1.8850, 3.1416)
-        azimuthal_filter1 = Filter(type='azimuthal', bins=azimuthal_bins)
+        azimuthal_filter1 = AzimuthalFilter(azimuthal_bins)
         azimuthal_tally1 = Tally()
         azimuthal_tally1.filters = [azimuthal_filter1]
         azimuthal_tally1.scores = ['flux']
@@ -32,7 +33,7 @@ class TalliesTestHarness(PyAPITestHarness):
         azimuthal_tally2.scores = ['flux']
         azimuthal_tally2.estimator = 'analog'
 
-        azimuthal_filter2 = Filter(type='azimuthal', bins=(5,))
+        azimuthal_filter2 = AzimuthalFilter(5)
         azimuthal_tally3 = Tally()
         azimuthal_tally3.filters = [azimuthal_filter2]
         azimuthal_tally3.scores = ['flux']
@@ -42,28 +43,27 @@ class TalliesTestHarness(PyAPITestHarness):
         mesh_2x2.lower_left  = [-182.07, -182.07]
         mesh_2x2.upper_right = [182.07,  182.07]
         mesh_2x2.dimension = [2, 2]
-        mesh_filter = Filter(type='mesh')
-        mesh_filter.mesh = mesh_2x2
+        mesh_filter = MeshFilter(mesh_2x2)
         azimuthal_tally4 = Tally()
         azimuthal_tally4.filters = [azimuthal_filter2, mesh_filter]
         azimuthal_tally4.scores = ['flux']
         azimuthal_tally4.estimator = 'tracklength'
 
         cellborn_tally = Tally()
-        cellborn_tally.filters = [Filter(type='cellborn', bins=(10, 21, 22, 23))]
+        cellborn_tally.filters = [CellbornFilter((10, 21, 22, 23))]
         cellborn_tally.scores = ['total']
 
         dg_tally = Tally()
-        dg_tally.filters = [Filter(type='delayedgroup', bins=(1, 2, 3, 4, 5, 6))]
+        dg_tally.filters = [DelayedGroupFilter((1, 2, 3, 4, 5, 6))]
         dg_tally.scores = ['delayed-nu-fission']
 
         four_groups = (0.0, 0.253e-6, 1.0e-3, 1.0, 20.0)
-        energy_filter = Filter(type='energy', bins=four_groups)
+        energy_filter = EnergyFilter(four_groups)
         energy_tally = Tally()
         energy_tally.filters = [energy_filter]
         energy_tally.scores = ['total']
 
-        energyout_filter = Filter(type='energyout', bins=four_groups)
+        energyout_filter = EnergyoutFilter(four_groups)
         energyout_tally = Tally()
         energyout_tally.filters = [energyout_filter]
         energyout_tally.scores = ['scatter']
@@ -73,14 +73,14 @@ class TalliesTestHarness(PyAPITestHarness):
         transfer_tally.scores = ['scatter', 'nu-fission']
 
         material_tally = Tally()
-        material_tally.filters = [Filter(type='material', bins=(1, 2, 3, 4))]
+        material_tally.filters = [MaterialFilter((1, 2, 3, 4))]
         material_tally.scores = ['total']
 
         mu_tally1 = Tally()
-        mu_tally1.filters = [Filter(type='mu', bins=(-1.0, -0.5, 0.0, 0.5, 1.0))]
+        mu_tally1.filters = [MuFilter((-1.0, -0.5, 0.0, 0.5, 1.0))]
         mu_tally1.scores = ['scatter', 'nu-scatter']
 
-        mu_filter = Filter(type='mu', bins=(5,))
+        mu_filter = MuFilter(5)
         mu_tally2 = Tally()
         mu_tally2.filters = [mu_filter]
         mu_tally2.scores = ['scatter', 'nu-scatter']
@@ -90,7 +90,7 @@ class TalliesTestHarness(PyAPITestHarness):
         mu_tally3.scores = ['scatter', 'nu-scatter']
 
         polar_bins = (0.0, 0.6283, 1.2566, 1.8850, 2.5132, 3.1416)
-        polar_filter = Filter(type='polar', bins=polar_bins)
+        polar_filter = PolarFilter(polar_bins)
         polar_tally1 = Tally()
         polar_tally1.filters = [polar_filter]
         polar_tally1.scores = ['flux']
@@ -101,7 +101,7 @@ class TalliesTestHarness(PyAPITestHarness):
         polar_tally2.scores = ['flux']
         polar_tally2.estimator = 'analog'
 
-        polar_filter2 = Filter(type='polar', bins=(5,))
+        polar_filter2 = PolarFilter((5,))
         polar_tally3 = Tally()
         polar_tally3.filters = [polar_filter2]
         polar_tally3.scores = ['flux']
@@ -113,11 +113,10 @@ class TalliesTestHarness(PyAPITestHarness):
         polar_tally4.estimator = 'tracklength'
 
         universe_tally = Tally()
-        universe_tally.filters = [
-             Filter(type='universe', bins=(1, 2, 3, 4, 6, 8))]
+        universe_tally.filters = [UniverseFilter((1, 2, 3, 4, 6, 8))]
         universe_tally.scores = ['total']
 
-        cell_filter = Filter(type='cell', bins=(10, 21, 22, 23, 60))
+        cell_filter = CellFilter((10, 21, 22, 23, 60))
         score_tallies = [Tally(), Tally(), Tally()]
         for t in score_tallies:
             t.filters = [cell_filter]
@@ -130,7 +129,7 @@ class TalliesTestHarness(PyAPITestHarness):
         score_tallies[1].estimator = 'analog'
         score_tallies[2].estimator = 'collision'
 
-        cell_filter2 = Filter(type='cell', bins=(21, 22, 23, 27, 28, 29, 60))
+        cell_filter2 = CellFilter((21, 22, 23, 27, 28, 29, 60))
         flux_tallies = [Tally() for i in range(4)]
         for t in flux_tallies:
             t.filters = [cell_filter2]

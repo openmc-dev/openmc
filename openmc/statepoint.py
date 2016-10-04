@@ -405,30 +405,11 @@ class StatePoint(object):
 
                 subbase = '{0}{1}/filter '.format(base, tally_key)
 
-                # Initialize all Filters
+                # Read all filters
                 for j in range(1, n_filters+1):
-
-                    # Read the Filter type
-                    filter_type = \
-                        self._f['{0}{1}/type'.format(subbase, j)].value.decode()
-
-                    n_bins = self._f['{0}{1}/n_bins'.format(subbase, j)].value
-
-                    # Read the bin values
-                    bins = self._f['{0}{1}/bins'.format(subbase, j)].value
-
-                    # Create Filter object
-                    new_filter = openmc.Filter(filter_type, bins)
-                    new_filter.num_bins = n_bins
-
-                    if filter_type == 'mesh':
-                        mesh_ids = self._f['tallies/meshes/ids'].value
-                        mesh_keys = self._f['tallies/meshes/keys'].value
-
-                        key = mesh_keys[mesh_ids == bins][0]
-                        new_filter.mesh = self.meshes[key]
-
-                    # Add Filter to the Tally
+                    subsubbase = '{0}{1}'.format(subbase, j)
+                    new_filter = openmc.Filter.from_hdf5(self._f[subsubbase],
+                                                         meshes=self.meshes)
                     tally.filters.append(new_filter)
 
                 # Read Nuclide bins
@@ -691,36 +672,29 @@ class StatePoint(object):
             raise ValueError(msg)
 
         for tally_id, tally in self.tallies.items():
-            summary_tally = summary.tallies[tally_id]
-            tally.name = summary_tally.name
+            tally.name = summary.tally_names[tally_id]
             tally.with_summary = True
 
             for tally_filter in tally.filters:
-                summary_filter = summary_tally.find_filter(tally_filter.type)
-
-                if tally_filter.type == 'surface':
-                    surface_ids = []
-                    for bin in tally_filter.bins:
-                        surface_ids.append(bin)
-                    tally_filter.bins = surface_ids
-
-                if tally_filter.type in ['cell', 'distribcell']:
+                if isinstance(tally_filter, (openmc.CellFilter,
+                                             openmc.DistribcellFilter)):
                     distribcell_ids = []
                     for bin in tally_filter.bins:
                         distribcell_ids.append(summary.cells[bin].id)
                     tally_filter.bins = distribcell_ids
 
-                if tally_filter.type == 'distribcell':
-                    tally_filter.distribcell_paths = \
-                        summary_filter.distribcell_paths
+                if isinstance(tally_filter, (openmc.DistribcellFilter)):
+                    cell_id = tally_filter.bins[0]
+                    cell = summary.get_cell_by_id(cell_id)
+                    tally_filter.distribcell_paths = cell.distribcell_paths
 
-                if tally_filter.type == 'universe':
+                if isinstance(tally_filter, openmc.UniverseFilter):
                     universe_ids = []
                     for bin in tally_filter.bins:
                         universe_ids.append(summary.universes[bin].id)
                     tally_filter.bins = universe_ids
 
-                if tally_filter.type == 'material':
+                if isinstance(tally_filter, openmc.MaterialFilter):
                     material_ids = []
                     for bin in tally_filter.bins:
                         material_ids.append(summary.materials[bin].id)

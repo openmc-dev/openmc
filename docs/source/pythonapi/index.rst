@@ -133,7 +133,19 @@ Constructing Tallies
    :nosignatures:
    :template: myclass.rst
 
-   openmc.Filter
+   openmc.UniverseFilter
+   openmc.MaterialFilter
+   openmc.CellFilter
+   openmc.CellbornFilter
+   openmc.SurfaceFilter
+   openmc.MeshFilter
+   openmc.EnergyFilter
+   openmc.EnergyoutFilter
+   openmc.MuFilter
+   openmc.PolarFilter
+   openmc.AzimuthalFilter
+   openmc.DistribcellFilter
+   openmc.DelayedGroupFilter
    openmc.Mesh
    openmc.Trigger
    openmc.Tally
@@ -366,6 +378,7 @@ Core Classes
     openmc.data.ThermalScattering
     openmc.data.CoherentElastic
     openmc.data.FissionEnergyRelease
+    openmc.data.DataLibrary
 
 Angle-Energy Distributions
 --------------------------

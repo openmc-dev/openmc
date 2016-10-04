@@ -162,8 +162,7 @@ mesh.lower_left = [-2, -2]
 mesh.width = [1, 1]
 
 # Instantiate tally Filter
-mesh_filter = openmc.Filter()
-mesh_filter.mesh = mesh
+mesh_filter = openmc.MeshFilter(mesh)
 
 # Instantiate the Tally
 tally = openmc.Tally(tally_id=1)

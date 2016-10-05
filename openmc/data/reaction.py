@@ -419,8 +419,37 @@ def _get_fission_products_endf(ev):
                 dist = UncorrelatedAngleEnergy()
                 dist.energy = EnergyDistribution.from_endf(file_obj, params)
 
-                delayed_neutron = products[-6 + i]
-                delayed_neutron.yield_.y *= applicability.y[0]
+                delayed_neutron = products[1 + i]
+                yield_ = delayed_neutron.yield_
+
+                # Here we handle the fact that the delayed neutron yield is the
+                # product of the total delayed neutron yield and the
+                # "applicability" of the energy distribution law in file 5.
+                if isinstance(yield_, Tabulated1D):
+                    if np.all(applicability.y == applicability.y[0]):
+                        yield_.y *= applicability.y[0]
+                    else:
+                        # Get union energy grid and ensure energies are within
+                        # interpolable range of both functions
+                        max_energy = min(yield_.x[-1], applicability.x[-1])
+                        energy = np.union1d(yield_.x, applicability.x)
+                        energy = energy[energy <= max_energy]
+
+                        # Calculate group yield
+                        group_yield = yield_(energy) * applicability(energy)
+                        delayed_neutron.yield_ = Tabulated1D(energy, group_yield)
+                elif isinstance(yield_, Polynomial):
+                    if len(yield_) == 1:
+                        delayed_neutron.yield_ = deepcopy(applicability)
+                        delayed_neutron.yield_.y *= yield_.coef[0]
+                    else:
+                        if np.all(applicability.y == applicability.y[0]):
+                            yield_.coef[0] *= applicability.y[0]
+                        else:
+                            raise NotImplementedError(
+                                'Total delayed neutron yield and delayed group '
+                                'probability are both energy-dependent.')
+
                 delayed_neutron.distribution.append(dist)
 
     return products, derived_products

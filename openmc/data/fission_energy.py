@@ -405,27 +405,35 @@ class FissionEnergyRelease(EqualityMixin):
             # MT=18 (n, fission) might not be available so try MT=19 (n, f) as
             # well.
             if 18 in incident_neutron.reactions:
-                nu_prompt = [p for p in incident_neutron[18].products
-                             if p.particle == 'neutron'
-                             and p.emission_mode == 'prompt']
+                nu = [p.yield_ for p in incident_neutron[18].products
+                      if p.particle == 'neutron'
+                      and p.emission_mode in ('prompt', 'total')]
             elif 19 in incident_neutron.reactions:
-                nu_prompt = [p for p in incident_neutron[19].products
-                             if p.particle == 'neutron'
-                             and p.emission_mode == 'prompt']
+                nu = [p.yield_ for p in incident_neutron[19].products
+                      if p.particle == 'neutron'
+                      and p.emission_mode in ('prompt', 'total')]
             else:
                 raise ValueError('IncidentNeutron data has no fission '
                                  'reaction.')
-            if len(nu_prompt) == 0:
+            if len(nu) == 0:
                 raise ValueError('Nu data is needed to compute fission energy '
                                  'release with the Sher-Beck format.')
-            if len(nu_prompt) > 1:
-                raise ValueError('Ambiguous prompt value.')
-            if not isinstance(nu_prompt[0].yield_, Tabulated1D):
-                raise TypeError('Sher-Beck fission energy release currently '
-                                'only supports Tabulated1D nu data.')
-            ENP = deepcopy(nu_prompt[0].yield_)
-            ENP.y = (energy_release['ENP'] + 1.307 * ENP.x
-                     - 8.07 * (ENP.y - ENP.y[0]))
+            if len(nu) > 1:
+                raise ValueError('Ambiguous prompt/total nu value.')
+
+            nu = nu[0]
+            if isinstance(nu, Tabulated1D):
+                ENP = deepcopy(nu)
+                ENP.y = (energy_release['ENP'] + 1.307 * nu.x
+                         - 8.07 * (nu.y - nu.y[0]))
+            elif isinstance(nu, Polynomial):
+                if len(nu) == 1:
+                    ENP = Polynomial([energy_release['ENP'][0], 1.307])
+                else:
+                    ENP = Polynomial(
+                        [energy_release['ENP'][0], 1.307 - 8.07*nu.coef[1]] +
+                        [-8.07*c for c in nu.coef[2:]])
+
             out.prompt_neutrons = ENP
 
         return out

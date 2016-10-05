@@ -2230,12 +2230,12 @@ class Tally(object):
         # Construct lists of tuples for the bins in each of the two filters
         filters = [type(filter1), type(filter2)]
         if isinstance(filter1, openmc.DistribcellFilter):
-            filter1_bins = [(i,) for i in range(filter1.num_bins)]
+            filter1_bins = [i for i in range(filter1.num_bins)]
         else:
             filter1_bins = [filter1.get_bin(i) for i in range(filter1.num_bins)]
 
         if isinstance(filter2, openmc.DistribcellFilter):
-            filter2_bins = [(i,) for i in range(filter2.num_bins)]
+            filter2_bins = [i for i in range(filter2.num_bins)]
         else:
             filter2_bins = [filter2.get_bin(i) for i in range(filter2.num_bins)]
 

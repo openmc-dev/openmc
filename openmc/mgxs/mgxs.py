@@ -824,7 +824,7 @@ class MGXS(object):
             xs_tally = self.xs_tally.summation(nuclides=query_nuclides)
             xs = xs_tally.get_values(filters=filters,
                                      filter_bins=filter_bins, value=value)
-        else:            
+        else:
             xs = self.xs_tally.get_values(filters=filters, filter_bins=filter_bins,
                                           nuclides=query_nuclides, value=value)
 
@@ -971,7 +971,7 @@ class MGXS(object):
             subdomains = [(subdomain,) for subdomain in subdomains]
             subdomains = [tuple(subdomains)]
         elif self.domain_type == 'distribcell':
-            subdomains = [(i,) for i in range(self.num_subdomains)]
+            subdomains = [i for i in range(self.num_subdomains)]
             subdomain = [tuple(subdomains)]
         else:
             subdomains = None
@@ -1805,12 +1805,7 @@ class MatrixMGXS(MGXS):
             cv.check_iterable_type('groups', in_groups, Integral)
             filters.append(openmc.EnergyFilter)
             energy_bins = []
-#            filters.append('energy')
-#            filter_bins.append([])
             for group in in_groups:
-#                filters.append(openmc.EnergyFilter)
-#                filter_bins[-1].append(
-#                    (self.energy_groups.get_group_bounds(group),))
                 energy_bins.append((self.energy_groups.get_group_bounds(group),))
             filter_bins.append(tuple(energy_bins))                
 

@@ -104,6 +104,9 @@ def get_cont_record(file_obj, skipC=False):
     ----------
     file_obj : file-like object
         ENDF-6 file to read from
+    skipC : bool
+        Determine whether to skip the first two quantities (C1, C2) of the CONT
+        record.
 
     Returns
     -------

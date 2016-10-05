@@ -283,8 +283,8 @@ class Tally(object):
             # Extract Tally data from the file
             data = f['tallies/tally {0}/results'.format(
                 self.id)].value
-            sum = data['sum'].astype(np.float32)
-            sum_sq = data['sum_sq'].astype(np.float32)
+            sum = data['sum']
+            sum_sq = data['sum_sq']
 
             # Reshape the results arrays
             sum = np.reshape(sum, self.shape)
@@ -1308,7 +1308,7 @@ class Tally(object):
 
                     # Create list of cell instance IDs for distribcell Filters
                     elif isinstance(self_filter, openmc.DistribcellFilter):
-                        bins = [(i,) for i in range(self_filter.num_bins)]
+                        bins = [i for i in range(self_filter.num_bins)]
 
                     # Create list of IDs for bins for all other filter types
                     else:
@@ -3350,16 +3350,16 @@ class Tally(object):
 
         # Inject this Tally's data along the diagonal of the diagonalized Tally
         if not self.derived and self.sum is not None:
-            new_tally._sum = np.zeros(new_tally.shape, dtype=np.float32)
+            new_tally._sum = np.zeros(new_tally.shape, dtype=np.float64)
             new_tally._sum[diag_indices, :, :] = self.sum
         if not self.derived and self.sum_sq is not None:
-            new_tally._sum_sq = np.zeros(new_tally.shape, dtype=np.float32)
+            new_tally._sum_sq = np.zeros(new_tally.shape, dtype=np.float64)
             new_tally._sum_sq[diag_indices, :, :] = self.sum_sq
         if self.mean is not None:
-            new_tally._mean = np.zeros(new_tally.shape, dtype=np.float32)
+            new_tally._mean = np.zeros(new_tally.shape, dtype=np.float64)
             new_tally._mean[diag_indices, :, :] = self.mean
         if self.std_dev is not None:
-            new_tally._std_dev = np.zeros(new_tally.shape, dtype=np.float32)
+            new_tally._std_dev = np.zeros(new_tally.shape, dtype=np.float64)
             new_tally._std_dev[diag_indices, :, :] = self.std_dev
 
         # Update the new tally's filter strides

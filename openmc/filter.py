@@ -300,7 +300,43 @@ class Filter(with_metaclass(FilterMeta, object)):
 
         """
 
-        if filter_bin not in self.bins:
+        try:
+            # Filter bins for a mesh are an (x,y,z) tuple
+            if self.type == 'mesh':
+                # Convert (x,y,z) to a single bin -- this is similar to
+                # subroutine mesh_indices_to_bin in openmc/src/mesh.F90.
+                if len(self.mesh.dimension) == 3:
+                    nx, ny, nz = self.mesh.dimension
+                    val = (filter_bin[0] - 1) * ny * nz + \
+                          (filter_bin[1] - 1) * nz + \
+                          (filter_bin[2] - 1)
+                else:
+                    nx, ny = self.mesh.dimension
+                    val = (filter_bin[0] - 1) * ny + \
+                          (filter_bin[1] - 1)
+
+                filter_index = val
+
+            # Use lower energy bound to find index for energy Filters
+            elif self.type in ['energy', 'energyout']:
+                deltas = np.abs(self.bins - filter_bin[1]) / filter_bin[1]
+                min_delta = np.min(deltas)
+                if min_delta < 1E-3:
+                    filter_index = deltas.argmin() - 1
+                else:
+                    raise ValueError
+
+            # Filter bins for distribcells are "IDs" of each unique placement
+            # of the Cell in the Geometry (integers starting at 0)
+            elif self.type == 'distribcell':
+                filter_index = filter_bin[0]
+
+            # Use ID for all other Filters (e.g., material, cell, etc.)
+            else:
+                val = np.where(self.bins == filter_bin)[0][0]
+                filter_index = val
+
+        except ValueError:
             msg = 'Unable to get the bin index for Filter since "{0}" ' \
                   'is not one of the bins'.format(filter_bin)
             raise ValueError(msg)

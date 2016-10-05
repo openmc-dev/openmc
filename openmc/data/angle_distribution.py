@@ -1,6 +1,7 @@
 from collections import Iterable
 from io import StringIO
 from numbers import Real
+from warnings import warn
 
 import numpy as np
 
@@ -224,12 +225,22 @@ class AngleDistribution(EqualityMixin):
 
         # Read HEAD record
         items = get_head_record(file_obj)
+        lvt = items[2]
         ltt = items[3]
 
         # Read CONT record
         items = get_cont_record(file_obj)
         li = items[2]
+        nk = items[4]
         center_of_mass = (items[3] == 2)
+
+        # Check for obsolete energy transformation matrix. If present, just skip
+        # it and keep reading
+        if lvt > 0:
+            warn('Obsolete energy transformation matrix in MF=4 angular '
+                 'distribution.')
+            for _ in range((nk + 5)//6):
+                file_obj.readline()
 
         if ltt == 0 and li == 1:
             # Purely isotropic

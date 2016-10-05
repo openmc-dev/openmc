@@ -302,7 +302,7 @@ class Filter(with_metaclass(FilterMeta, object)):
 
         try:
             # Filter bins for a mesh are an (x,y,z) tuple
-            if self.type == 'mesh':
+            if isinstance(self, MeshFilter):
                 # Convert (x,y,z) to a single bin -- this is similar to
                 # subroutine mesh_indices_to_bin in openmc/src/mesh.F90.
                 if len(self.mesh.dimension) == 3:
@@ -318,7 +318,7 @@ class Filter(with_metaclass(FilterMeta, object)):
                 filter_index = val
 
             # Use lower energy bound to find index for energy Filters
-            elif self.type in ['energy', 'energyout']:
+            elif isinstance(self, (EnergyFilter, EnergyoutFilter)):
                 deltas = np.abs(self.bins - filter_bin[1]) / filter_bin[1]
                 min_delta = np.min(deltas)
                 if min_delta < 1E-3:
@@ -328,7 +328,7 @@ class Filter(with_metaclass(FilterMeta, object)):
 
             # Filter bins for distribcells are "IDs" of each unique placement
             # of the Cell in the Geometry (integers starting at 0)
-            elif self.type == 'distribcell':
+            elif isinstance(self, DistribcellFilter):
                 filter_index = filter_bin[0]
 
             # Use ID for all other Filters (e.g., material, cell, etc.)

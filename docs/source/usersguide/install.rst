@@ -4,6 +4,38 @@
 Installation and Configuration
 ==============================
 
+----------------------------------------
+Installing on Linux/Mac with conda-forge
+----------------------------------------
+
+`Conda <http://conda.pydata.org/docs/>`_ is an open source package management
+system and environment management system for installing multiple versions of
+software packages and their dependencies and switching easily between
+them. `conda-forge <https://conda-forge.github.io/>`_ is a community-led conda
+channel of installable packages. For instructions on installing conda, please
+consult their `documentation
+<http://conda.pydata.org/docs/install/quick.html>`_.
+
+Once you have `conda` installed on your system, add the `conda-forge` channel to
+your configuration with:
+
+.. code-block:: sh
+
+    conda config --add channels conda-forge
+
+Once the `conda-forge` channel has been enabled, OpenMC can then be installed
+with:
+
+.. code-block:: sh
+
+    conda install openmc
+
+It is possible to list all of the versions of OpenMC available on your platform with:
+
+.. code-block:: sh
+
+    conda search openmc --channel conda-forge
+
 -----------------------------
 Installing on Ubuntu with PPA
 -----------------------------

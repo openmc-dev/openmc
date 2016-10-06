@@ -9,6 +9,7 @@ import copy
 import abc
 import itertools
 
+from six import add_metaclass
 import numpy as np
 
 import openmc
@@ -61,6 +62,7 @@ _DOMAINS = (openmc.Cell,
             openmc.Mesh)
 
 
+@add_metaclass(ABCMeta)
 class MGXS(object):
     """An abstract multi-group cross section for some energy group structure
     within some spatial domain.
@@ -145,10 +147,6 @@ class MGXS(object):
         The key used to index multi-group cross sections in an HDF5 data store
 
     """
-
-    # This is an abstract class which cannot be instantiated
-    __metaclass__ = abc.ABCMeta
-
     def __init__(self, domain=None, domain_type=None,
                  energy_groups=None, by_nuclide=False, name=''):
         self._name = ''
@@ -1530,7 +1528,7 @@ class MGXS(object):
 
         # Override energy groups bounds with indices
         all_groups = np.arange(self.num_groups, 0, -1, dtype=np.int)
-        all_groups = np.repeat(all_groups, len(query_nuclides)) 
+        all_groups = np.repeat(all_groups, len(query_nuclides))
         if 'energy low [MeV]' in df and 'energyout low [MeV]' in df:
             df.rename(columns={'energy low [MeV]': 'group in'},
                       inplace=True)
@@ -1616,6 +1614,7 @@ class MGXS(object):
         return 'cm^-1' if xs_type == 'macro' else 'barns'
 
 
+@add_metaclass(ABCMeta)
 class MatrixMGXS(MGXS):
     """An abstract multi-group cross section for some energy group structure
     within some spatial domain. This class is specifically intended for
@@ -1703,10 +1702,6 @@ class MatrixMGXS(MGXS):
         The key used to index multi-group cross sections in an HDF5 data store
 
     """
-
-    # This is an abstract class which cannot be instantiated
-    __metaclass__ = abc.ABCMeta
-
     @property
     def filters(self):
         # Create the non-domain specific Filters for the Tallies

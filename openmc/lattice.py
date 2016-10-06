@@ -7,6 +7,7 @@ from numbers import Real, Integral
 from xml.etree import ElementTree as ET
 import sys
 
+from six import ABCMeta
 import numpy as np
 
 import openmc.checkvalue as cv
@@ -16,6 +17,7 @@ if sys.version_info[0] >= 3:
     basestring = str
 
 
+@add_metaclass(ABCMeta)
 class Lattice(object):
     """A repeating structure wherein each element is a universe.
 
@@ -42,10 +44,6 @@ class Lattice(object):
         of the lattice
 
     """
-
-    # This is an abstract class which cannot be instantiated
-    __metaclass__ = abc.ABCMeta
-
     def __init__(self, lattice_id=None, name=''):
         # Initialize Lattice class attributes
         self.id = lattice_id

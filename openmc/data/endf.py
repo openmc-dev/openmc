@@ -384,10 +384,17 @@ class Evaluation(object):
 
         # File numbers, reaction designations, and number of records
         for i in range(NXC):
-            items = get_cont_record(file_obj, skipC=True)
-            MF, MT, NC, MOD = items[2:6]
-            self.reaction_list.append((MF, MT, NC, MOD))
-
+            line = file_obj.readline()
+            mf = int(line[22:33])
+            mt = int(line[33:44])
+            nc = int(line[44:55])
+            try:
+                mod = int(line[55:66])
+            except ValueError:
+                # In JEFF 3.2, a few isotopes of U have MOD values that are
+                # missing. This prevents failure on these isotopes.
+                mod = 0
+            self.reaction_list.append((mf, mt, nc, mod))
 
 
 class Tabulated2D(object):

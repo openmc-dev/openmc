@@ -10,18 +10,27 @@ import glob
 import hashlib
 import argparse
 
-parser = argparse.ArgumentParser()
+from six.moves import input
+from six.moves.urllib.request import urlopen
+
+
+description = """
+Download and extract windowed multipole data based on ENDF/B-VII.1.
+
+"""
+
+class CustomFormatter(argparse.ArgumentDefaultsHelpFormatter,
+                      argparse.RawDescriptionHelpFormatter):
+    pass
+
+parser = argparse.ArgumentParser(
+    description=description,
+    formatter_class=CustomFormatter
+)
 parser.add_argument('-b', '--batch', action='store_true',
                     help='supresses standard in')
 args = parser.parse_args()
 
-try:
-    from urllib.request import urlopen
-except ImportError:
-    from urllib2 import urlopen
-
-cwd = os.getcwd()
-sys.path.insert(0, os.path.join(cwd, '..'))
 
 baseUrl = 'https://github.com/smharper/windowed_multipole_library/blob/master/'
 files = ['multipole_lib.tar.gz?raw=true']
@@ -54,10 +63,7 @@ for f in files:
             filesComplete.append(fname)
             continue
         else:
-            if sys.version_info[0] < 3:
-                overwrite = raw_input('Overwrite {0}? ([y]/n) '.format(fname))
-            else:
-                overwrite = input('Overwrite {0}? ([y]/n) '.format(fname))
+            overwrite = input('Overwrite {0}? ([y]/n) '.format(fname))
             if overwrite.lower().startswith('n'):
                 continue
 
@@ -110,10 +116,7 @@ os.rmdir('wmp/multipole_lib')
 
 # Ask user to delete
 if not args.batch:
-    if sys.version_info[0] < 3:
-        response = raw_input('Delete *.tar.gz files? ([y]/n) ')
-    else:
-        response = input('Delete *.tar.gz files? ([y]/n) ')
+    response = input('Delete *.tar.gz files? ([y]/n) ')
 else:
     response = 'y'
 

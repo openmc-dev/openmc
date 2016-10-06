@@ -10,15 +10,28 @@ import glob
 import hashlib
 import argparse
 
-parser = argparse.ArgumentParser()
+from six.moves import input
+from six.moves.urllib.request import urlopen
+
+
+description = """
+Download ENDF/B-VII.1 ACE data from NNDC and convert it to an HDF5 library for
+use with OpenMC.
+
+"""
+
+class CustomFormatter(argparse.ArgumentDefaultsHelpFormatter,
+                      argparse.RawDescriptionHelpFormatter):
+    pass
+
+parser = argparse.ArgumentParser(
+    description=description,
+    formatter_class=CustomFormatter
+)
 parser.add_argument('-b', '--batch', action='store_true',
                     help='supresses standard in')
 args = parser.parse_args()
 
-try:
-    from urllib.request import urlopen
-except ImportError:
-    from urllib2 import urlopen
 
 baseUrl = 'http://www.nndc.bnl.gov/endf/b7.1/aceFiles/'
 files = ['ENDF-B-VII.1-neutron-293.6K.tar.gz',
@@ -50,10 +63,7 @@ for f in files:
             filesComplete.append(f)
             continue
         else:
-            if sys.version_info[0] < 3:
-                overwrite = raw_input('Overwrite {0}? ([y]/n) '.format(f))
-            else:
-                overwrite = input('Overwrite {0}? ([y]/n) '.format(f))
+            overwrite = input('Overwrite {0}? ([y]/n) '.format(f))
             if overwrite.lower().startswith('n'):
                 continue
 
@@ -115,10 +125,7 @@ with open(graphite, 'w') as fh:
 
 # Ask user to delete
 if not args.batch:
-    if sys.version_info[0] < 3:
-        response = raw_input('Delete *.tar.gz files? ([y]/n) ')
-    else:
-        response = input('Delete *.tar.gz files? ([y]/n) ')
+    response = input('Delete *.tar.gz files? ([y]/n) ')
 else:
     response = 'y'
 
@@ -134,10 +141,7 @@ if not response or response.lower().startswith('y'):
 
 # Ask user to convert
 if not args.batch:
-    if sys.version_info[0] < 3:
-        response = raw_input('Generate HDF5 library? ([y]/n) ')
-    else:
-        response = input('Generate HDF5 library? ([y]/n) ')
+    response = input('Generate HDF5 library? ([y]/n) ')
 else:
     response = 'y'
 

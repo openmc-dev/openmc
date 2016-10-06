@@ -413,7 +413,11 @@ def _get_fission_products_endf(ev):
             file_obj = StringIO(ev.section[5, 455])
             items = get_head_record(file_obj)
             nk = items[4]
-            assert nk == len(decay_constants)
+            if nk != len(decay_constants):
+                raise ValueError(
+                    'Number of delayed neutron fission spectra ({}) does not '
+                    'match number of delayed neutron precursors ({}).'.format(
+                        nk, len(decay_constants)))
             for i in range(nk):
                 params, applicability = get_tab1_record(file_obj)
                 dist = UncorrelatedAngleEnergy()

@@ -8,6 +8,7 @@ import sys
 import copy
 import abc
 
+from six import ABCMeta
 import numpy as np
 
 import openmc
@@ -28,6 +29,7 @@ MDGXS_TYPES = ['delayed-nu-fission',
 MAX_DELAYED_GROUPS = 8
 
 
+@add_metaclass(ABCMeta)
 class MDGXS(MGXS):
     """An abstract multi-delayed-group cross section for some energy and delayed
     group structures within some spatial domain.
@@ -117,10 +119,6 @@ class MDGXS(MGXS):
         The key used to index multi-group cross sections in an HDF5 data store
 
     """
-
-    # This is an abstract class which cannot be instantiated
-    __metaclass__ = abc.ABCMeta
-
     def __init__(self, domain=None, domain_type=None, energy_groups=None,
                  delayed_groups=None, by_nuclide=False, name=''):
         super(MDGXS, self).__init__(domain, domain_type, energy_groups,

@@ -4,6 +4,7 @@ from numbers import Real
 import sys
 from xml.etree import ElementTree as ET
 
+from six import add_metaclass
 import numpy as np
 
 import openmc.checkvalue as cv
@@ -16,6 +17,7 @@ _INTERPOLATION_SCHEMES = ['histogram', 'linear-linear', 'linear-log',
                           'log-linear', 'log-log']
 
 
+@add_metaclass(ABCMeta)
 class Univariate(EqualityMixin):
     """Probability distribution of a single random variable.
 
@@ -23,9 +25,6 @@ class Univariate(EqualityMixin):
     specific probability distribution.
 
     """
-
-    __metaclass__ = ABCMeta
-
     def __init__(self):
         pass
 

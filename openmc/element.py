@@ -1,13 +1,11 @@
 import re
 import sys
 
+from six import string_types
+
 import openmc
 from openmc.checkvalue import check_type, check_length
 from openmc.data import NATURAL_ABUNDANCE
-
-if sys.version_info[0] >= 3:
-    basestring = str
-
 
 
 class Element(object):
@@ -43,7 +41,7 @@ class Element(object):
                 return False
             else:
                 return True
-        elif isinstance(other, basestring) and other == self.name:
+        elif isinstance(other, string_types) and other == self.name:
             return True
         else:
             return False
@@ -78,7 +76,7 @@ class Element(object):
 
     @name.setter
     def name(self, name):
-        check_type('element name', name, basestring)
+        check_type('element name', name, string_types)
         check_length('element name', name, 1, 2)
         self._name = name
 

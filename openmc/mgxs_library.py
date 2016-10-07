@@ -3,6 +3,7 @@ from numbers import Real, Integral
 from xml.etree import ElementTree as ET
 import sys
 
+from six import string_types
 import numpy as np
 
 import openmc
@@ -11,8 +12,6 @@ from openmc.checkvalue import check_type, check_value, check_greater_than, \
     check_iterable_type
 from openmc.clean_xml import sort_xml_elements, clean_xml_indentation
 
-if sys.version_info[0] >= 3:
-    basestring = str
 
 # Supported incoming particle MGXS angular treatment representations
 _REPRESENTATIONS = ['isotropic', 'angle']
@@ -360,7 +359,7 @@ class XSdata(object):
 
     @name.setter
     def name(self, name):
-        check_type('name for XSdata', name, basestring)
+        check_type('name for XSdata', name, string_types)
         self._name = name
 
     @energy_groups.setter
@@ -383,7 +382,7 @@ class XSdata(object):
     @alias.setter
     def alias(self, alias):
         if alias is not None:
-            check_type('alias', alias, basestring)
+            check_type('alias', alias, string_types)
             self._alias = alias
         else:
             self._alias = self._name

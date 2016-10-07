@@ -10,8 +10,6 @@ import numpy as np
 import openmc.checkvalue as cv
 from openmc.mixin import EqualityMixin
 
-if sys.version_info[0] >= 3:
-    basestring = str
 
 _INTERPOLATION_SCHEMES = ['histogram', 'linear-linear', 'linear-log',
                           'log-linear', 'log-log']

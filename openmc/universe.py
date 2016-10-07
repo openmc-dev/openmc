@@ -3,13 +3,12 @@ from numbers import Integral
 import random
 import sys
 
+from six import string_types
 import numpy as np
 
 import openmc
 import openmc.checkvalue as cv
 
-if sys.version_info[0] >= 3:
-    basestring = str
 
 # A dictionary for storing IDs of cell elements that have already been written,
 # used to optimize the writing process
@@ -118,7 +117,7 @@ class Universe(object):
     @name.setter
     def name(self, name):
         if name is not None:
-            cv.check_type('universe name', name, basestring)
+            cv.check_type('universe name', name, string_types)
             self._name = name
         else:
             self._name = ''

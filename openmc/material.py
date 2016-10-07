@@ -5,13 +5,12 @@ import warnings
 from xml.etree import ElementTree as ET
 import sys
 
+from six import string_types
+
 import openmc
 import openmc.data
 import openmc.checkvalue as cv
 from openmc.clean_xml import sort_xml_elements, clean_xml_indentation
-
-if sys.version_info[0] >= 3:
-    basestring = str
 
 
 # A static variable for auto-generated Material IDs
@@ -207,7 +206,7 @@ class Material(object):
     def name(self, name):
         if name is not None:
             cv.check_type('name for Material ID="{0}"'.format(self._id),
-                          name, basestring)
+                          name, string_types)
             self._name = name
         else:
             self._name = ''
@@ -256,7 +255,7 @@ class Material(object):
         warnings.warn('This feature is not yet implemented in a release '
                       'version of openmc')
 
-        if not isinstance(filename, basestring) and filename is not None:
+        if not isinstance(filename, string_types) and filename is not None:
             msg = 'Unable to add OTF material file to Material ID="{0}" with a ' \
                   'non-string name "{1}"'.format(self._id, filename)
             raise ValueError(msg)
@@ -290,7 +289,7 @@ class Material(object):
                   'macroscopic data-set has already been added'.format(self._id)
             raise ValueError(msg)
 
-        if not isinstance(nuclide, (openmc.Nuclide, basestring)):
+        if not isinstance(nuclide, string_types + (openmc.Nuclide,)):
             msg = 'Unable to add a Nuclide to Material ID="{0}" with a ' \
                   'non-Nuclide value "{1}"'.format(self._id, nuclide)
             raise ValueError(msg)
@@ -355,7 +354,7 @@ class Material(object):
                   'has already been added'.format(self._id, macroscopic)
             raise ValueError(msg)
 
-        if not isinstance(macroscopic, (openmc.Macroscopic, basestring)):
+        if not isinstance(macroscopic, string_types + (openmc.Macroscopic,)):
             msg = 'Unable to add a Macroscopic to Material ID="{0}" with a ' \
                   'non-Macroscopic value "{1}"'.format(self._id, macroscopic)
             raise ValueError(msg)
@@ -425,7 +424,7 @@ class Material(object):
                   'macroscopic data-set has already been added'.format(self._id)
             raise ValueError(msg)
 
-        if not isinstance(element, (openmc.Element, basestring)):
+        if not isinstance(element, string_types + (openmc.Element,)):
             msg = 'Unable to add an Element to Material ID="{0}" with a ' \
                   'non-Element value "{1}"'.format(self._id, element)
             raise ValueError(msg)
@@ -490,7 +489,7 @@ class Material(object):
                   'macroscopic data-set has already been added'.format(self._id)
             raise ValueError(msg)
 
-        if not isinstance(name, basestring):
+        if not isinstance(name, string_types):
             msg = 'Unable to add an S(a,b) table to Material ID="{0}" with a ' \
                         'non-string table name "{1}"'.format(self._id, name)
             raise ValueError(msg)

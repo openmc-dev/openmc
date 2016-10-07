@@ -1054,12 +1054,8 @@ class Settings(object):
     def _create_temperature_subelements(self):
         if self.temperature:
             for key, value in self.temperature.items():
-                if (key == 'multipole'):
-                    element = ET.SubElement(self._settings_file,
-                                            "use_windowed_multipole")
-                else:
-                    element = ET.SubElement(self._settings_file,
-                                            "temperature_{}".format(key))
+                element = ET.SubElement(self._settings_file,
+                                        "temperature_{}".format(key))
                 element.text = str(value)
 
     def _create_threads_subelement(self):

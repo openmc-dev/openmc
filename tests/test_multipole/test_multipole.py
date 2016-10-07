@@ -68,8 +68,7 @@ class MultipoleTestHarness(PyAPITestHarness):
         sets_file.particles = 1000
         sets_file.source = Source(space=Box([-1, -1, -1], [1, 1, 1]))
         sets_file.output = {'summary': True}
-        sets_file.use_windowed_multipole = True
-        sets_file.temperature = {'tolerance': 1000}
+        sets_file.temperature = {'tolerance': 1000, 'multipole': True}
         sets_file.export_to_xml()
 
         ####################

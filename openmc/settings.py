@@ -103,11 +103,13 @@ class Settings(object):
     temperature : dict
         Defines a default temperature and method for treating intermediate
         temperatures at which nuclear data doesn't exist. Accepted keys are
-        'default', 'method', and 'tolerance'. The value for 'default' should be
-        a float representing the default temperature in Kelvin. The value for
-        'method' should be 'nearest' or 'interpolation'. If the method is
-        'nearest', 'tolerance' indicates a range of temperature within which
-        cross sections may be used.
+        'default', 'method', 'tolerance', and 'multipole'. The value for
+        'default' should be a float representing the default temperature in
+        Kelvin. The value for 'method' should be 'nearest' or 'interpolation'.
+        If the method is 'nearest', 'tolerance' indicates a range of temperature
+        within which cross sections may be used. 'multipole' is a boolean
+        indicating whether or not the windowed multipole method should be used
+        to evaluate resolved resonance cross sections.
     trigger_active : bool
         Indicate whether tally triggers are used
     trigger_max_batches : int
@@ -135,9 +137,6 @@ class Settings(object):
         Coordinates of the lower-left point of the UFS mesh
     ufs_upper_right : tuple or list
         Coordinates of the upper-right point of the UFS mesh
-    use_windowed_multipole : bool
-        Whether or not windowed multipole can be used to evaluate resolved
-        resonance cross sections.
     resonance_scattering : ResonanceScattering or iterable of ResonanceScattering
         The elastic scattering model to use for resonant isotopes
     volume_calculations : VolumeCalculation or iterable of VolumeCalculation
@@ -222,7 +221,6 @@ class Settings(object):
 
         self._settings_file = ET.Element("settings")
         self._run_mode_subelement = None
-        self._multipole_active = None
 
         self._resonance_scattering = cv.CheckedList(
             ResonanceScattering, 'resonance scattering models')
@@ -420,10 +418,6 @@ class Settings(object):
     @property
     def dd_count_interactions(self):
         return self._dd_count_interactions
-
-    @property
-    def use_windowed_multipole(self):
-        return self._multipole_active
 
     @property
     def resonance_scattering(self):
@@ -679,7 +673,7 @@ class Settings(object):
         cv.check_type('temperature settings', temperature, Mapping)
         for key, value in temperature.items():
             cv.check_value('temperature key', key,
-                           ['default', 'method', 'tolerance'])
+                           ['default', 'method', 'tolerance', 'multipole'])
             if key == 'default':
                 cv.check_type('default temperature', value, Real)
             elif key == 'method':
@@ -687,6 +681,8 @@ class Settings(object):
                                ['nearest', 'interpolation'])
             elif key == 'tolerance':
                 cv.check_type('temperature tolerance', value, Real)
+            elif key == 'multipole':
+                cv.check_type('temperature multipole', value, bool)
         self._temperature = temperature
 
     @threads.setter
@@ -815,11 +811,6 @@ class Settings(object):
         cv.check_type('DD count interactions', interactions, bool)
 
         self._dd_count_interactions = interactions
-
-    @use_windowed_multipole.setter
-    def use_windowed_multipole(self, active):
-        cv.check_type('use_windowed_multipole', active, bool)
-        self._multipole_active = active
 
     @resonance_scattering.setter
     def resonance_scattering(self, res):
@@ -1063,8 +1054,12 @@ class Settings(object):
     def _create_temperature_subelements(self):
         if self.temperature:
             for key, value in self.temperature.items():
-                element = ET.SubElement(self._settings_file,
-                                        "temperature_{}".format(key))
+                if (key == 'multipole'):
+                    element = ET.SubElement(self._settings_file,
+                                            "use_windowed_multipole")
+                else:
+                    element = ET.SubElement(self._settings_file,
+                                            "temperature_{}".format(key))
                 element.text = str(value)
 
     def _create_threads_subelement(self):
@@ -1124,12 +1119,6 @@ class Settings(object):
             subelement = ET.SubElement(element, "count_interactions")
             subelement.text = str(self._dd_count_interactions).lower()
 
-    def _create_use_multipole_subelement(self):
-        if self._multipole_active is not None:
-            element = ET.SubElement(self._settings_file,
-                                    "use_windowed_multipole")
-            element.text = str(self._multipole_active)
-
     def _create_resonance_scattering_subelement(self):
         if len(self.resonance_scattering) > 0:
             elem = ET.SubElement(self._settings_file, 'resonance_scattering')
@@ -1177,7 +1166,6 @@ class Settings(object):
         self._create_track_subelement()
         self._create_ufs_subelement()
         self._create_dd_subelement()
-        self._create_use_multipole_subelement()
         self._create_resonance_scattering_subelement()
         self._create_volume_calcs_subelement()
 

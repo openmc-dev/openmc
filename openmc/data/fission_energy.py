@@ -16,13 +16,15 @@ if sys.version_info[0] >= 3:
     basestring = str
 
 
-def _extract_458_data(ev):
+def _extract_458_data(ev, units='eV'):
     """Read an ENDF file and extract the MF=1, MT=458 values.
 
     Parameters
     ----------
     ev : openmc.data.Evaluation
         ENDF evaluation
+    units : {'eV', 'MeV'}
+        The units are used in values returned.
 
     Returns
     -------
@@ -86,12 +88,13 @@ def _extract_458_data(ev):
             for coeffs in uncertainty.values(): coeffs[2] *= 1e-6
 
     # Convert eV to MeV.
-    for coeffs in value.values():
-        for i in range(len(coeffs)):
-            coeffs[i] *= 10**(-6 + 6*i)
-    for coeffs in uncertainty.values():
-        for i in range(len(coeffs)):
-            coeffs[i] *= 10**(-6 + 6*i)
+    if units == 'MeV':
+        for coeffs in value.values():
+            for i in range(len(coeffs)):
+                coeffs[i] *= 10**(-6 + 6*i)
+        for coeffs in uncertainty.values():
+            for i in range(len(coeffs)):
+                coeffs[i] *= 10**(-6 + 6*i)
 
     return value, uncertainty
 
@@ -158,7 +161,7 @@ def write_compact_458_library(endf_files, output_name='fission_Q_data.h5',
             continue
 
         # Get the important bits.
-        data = _extract_458_data(ev)
+        data = _extract_458_data(ev, 'MeV')
         if data is None: continue
         value, uncertainty = data
 

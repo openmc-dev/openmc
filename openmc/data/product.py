@@ -2,15 +2,13 @@ from collections import Iterable
 from numbers import Real
 import sys
 
+from six import string_types
 import numpy as np
 
 import openmc.checkvalue as cv
 from openmc.mixin import EqualityMixin
 from .function import Tabulated1D, Polynomial, Function1D
 from .angle_energy import AngleEnergy
-
-if sys.version_info[0] >= 3:
-    basestring = str
 
 
 class Product(EqualityMixin):
@@ -114,7 +112,7 @@ class Product(EqualityMixin):
 
     @particle.setter
     def particle(self, particle):
-        cv.check_type('product particle type', particle, basestring)
+        cv.check_type('product particle type', particle, string_types)
         self._particle = particle
 
     @yield_.setter

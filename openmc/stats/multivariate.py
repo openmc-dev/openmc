@@ -11,9 +11,6 @@ import numpy as np
 import openmc.checkvalue as cv
 from openmc.stats.univariate import Univariate, Uniform
 
-if sys.version_info[0] >= 3:
-    basestring = str
-
 
 @add_metaclass(ABCMeta)
 class UnitSphere(object):

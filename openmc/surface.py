@@ -4,14 +4,12 @@ from xml.etree import ElementTree as ET
 import sys
 from math import sqrt
 
-from six import add_metaclass
+from six import add_metaclass, string_types
 import numpy as np
 
 from openmc.checkvalue import check_type, check_value, check_greater_than
 from openmc.region import Region, Intersection
 
-if sys.version_info[0] >= 3:
-    basestring = str
 
 # A static variable for auto-generated Surface IDs
 AUTO_SURFACE_ID = 10000
@@ -135,14 +133,14 @@ class Surface(object):
     @name.setter
     def name(self, name):
         if name is not None:
-            check_type('surface name', name, basestring)
+            check_type('surface name', name, string_types)
             self._name = name
         else:
             self._name = ''
 
     @boundary_type.setter
     def boundary_type(self, boundary_type):
-        check_type('boundary type', boundary_type, basestring)
+        check_type('boundary type', boundary_type, string_types)
         check_value('boundary type', boundary_type, _BC_TYPES)
         self._boundary_type = boundary_type
 

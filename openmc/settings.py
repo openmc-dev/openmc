@@ -1053,7 +1053,7 @@ class Settings(object):
 
     def _create_temperature_subelements(self):
         if self.temperature:
-            for key, value in self.temperature.items():
+            for key, value in sorted(self.temperature.items()):
                 element = ET.SubElement(self._settings_file,
                                         "temperature_{}".format(key))
                 element.text = str(value)

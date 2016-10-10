@@ -31,7 +31,7 @@ class XSdata(object):
     representation : {'isotropic', 'angle'}, optional
         Method used in generating the MGXS (isotropic or angle-dependent flux
         weighting). Defaults to 'isotropic'
-    temperatures : numpy.ndarray
+    temperatures : Iterable of float
         Temperatures (in units of Kelvin) of the provided datasets.  Defaults
         to a single temperature at 294K.
 
@@ -39,7 +39,7 @@ class XSdata(object):
     ----------
     name : str
         Unique identifier for the xsdata object
-    awr : float
+    aromic_weight_ratio : float
         Atomic weight ratio of an isotope.  That is, the ratio of the mass
         of the isotope to the mass of a single neutron.
     temperatures : numpy.ndarray
@@ -60,24 +60,26 @@ class XSdata(object):
         weighting).
     num_azimuthal : int
         Number of equal width angular bins that the azimuthal angular domain is
-        subdivided into. This only applies when ``representation`` is "angle".
+        subdivided into. This only applies when :attr:`XSdata.representation`
+        is "angle".
     num_polar : int
         Number of equal width angular bins that the polar angular domain is
-        subdivided into. This only applies when ``representation`` is "angle".
+        subdivided into. This only applies when :attr:`XSdata.representation`
+        is "angle".
     use_chi : bool
         Whether or not a chi vector or nu-fission matrix was used.
     vector_shape : iterable of int
         Dimensionality of vector multi-group cross sections (e.g., the total
         cross section).  The return result depends on the value of
-        ``representation``.
+        :attr:`XSdata.representation`.
     matrix_shape : iterable of int
         Dimensionality of matrix multi-group cross sections (e.g., the
         fission matrix cross section).  The return result depends on the
-        value of ``representation``.
+        value of :attr:`XSdata.representation`.
     pn_matrix_shape : iterable of int
         Dimensionality of scattering matrix data (e.g., the
         scattering matrix cross section).  The return result depends on the
-        value of ``representation``.
+        value of :attr:`XSdata.representation`.
     total : dict of numpy.ndarray
         Group-wise total cross section.
     absorption : dict of numpy.ndarray
@@ -101,20 +103,22 @@ class XSdata(object):
         approximation that the fission spectra does not depend on incoming
         energy. If the user does not wish to make this approximation, then
         this should not be provided and this information included in the
-        ``nu_fission`` attribute instead.
+        :attr:`XSdata.nu_fission` attribute instead.
     nu_fission : dict of numpy.ndarray
-        Group-wise fission production cross section vector (i.e., if ``chi`` is
-        provided), or is the group-wise fission production matrix.
+        Group-wise fission production cross section vector (i.e., if
+        :attr:`XSdata.chi` is provided), or is the group-wise fission production
+        matrix.
     inverse_velocities : dict of numpy.ndarray
         Inverse of velocities, in units of sec/cm.
 
     Notes
     -----
     The parameters containing cross section data have dimensionalities which
-    depend upon the value of ``representation`` as well as the number of
-    Legendre or other angular dimensions as described by ``order``. The
-    ``vector_shape``, ``matrix_shape``, and ``pn_matrix_shape`` properties are
-    provided to obtain the dimensionality of the data for each temperature.
+    depend upon the value of :attr:`XSdata.representation` as well as the
+    number of Legendre or other angular dimensions as described by
+    :attr:`XSdata.order`. The :attr:`XSdata.vector_shape`,
+    :attr:`XSdata.matrix_shape`, and :attr:`XSdata.pn_matrix_shape` properties
+    are provided to obtain the dimensionality of the data for each temperature.
 
     The following are cross sections which should use each of these properties:
 
@@ -135,7 +139,7 @@ class XSdata(object):
         self.energy_groups = energy_groups
         self.temperatures = temperatures
         self.representation = representation
-        self._awr = None
+        self._atomic_weight_ratio = None
         self._fissionable = False
         self._scatter_format = 'legendre'
         self._order = None
@@ -165,8 +169,8 @@ class XSdata(object):
         return self._representation
 
     @property
-    def awr(self):
-        return self._awr
+    def atomic_weight_ratio(self):
+        return self._atomic_weight_ratio
 
     @property
     def fissionable(self):
@@ -286,12 +290,12 @@ class XSdata(object):
         check_value('representation', representation, _REPRESENTATIONS)
         self._representation = representation
 
-    @awr.setter
-    def awr(self, awr):
-        # Check validity of type and that the awr value is > 0
-        check_type('awr', awr, Real)
-        check_greater_than('awr', awr, 0.0)
-        self._awr = awr
+    @atomic_weight_ratio.setter
+    def atomic_weight_ratio(self, atomic_weight_ratio):
+        # Check validity of type and that the atomic_weight_ratio value is > 0
+        check_type('atomic_weight_ratio', atomic_weight_ratio, Real)
+        check_greater_than('atomic_weight_ratio', atomic_weight_ratio, 0.0)
+        self._atomic_weight_ratio = atomic_weight_ratio
 
     @fissionable.setter
     def fissionable(self, fissionable):
@@ -300,14 +304,9 @@ class XSdata(object):
 
     @temperatures.setter
     def temperatures(self, temperatures):
-        check_type('temperatures', temperatures, Iterable,
-                   expected_iter_type=Real)
-        # Convert to a numpy array so we can easily get the shape for checking
-        nptemperatures = np.asarray(temperatures)
+        check_iterable_type('temperatures', temperatures, Real)
 
-        check_value('temperatures dimensionality', nptemperatures.ndim, [1])
-
-        self._temperatures = nptemperatures
+        self._temperatures = temperatures
 
     @scatter_format.setter
     def scatter_format(self, scatter_format):
@@ -1113,10 +1112,18 @@ class XSdata(object):
         self._multiplicity_matrix[i] = \
             np.nan_to_num(self._multiplicity_matrix[i])
 
-    def _get_xsdata_group(self, file):
+    def to_hdf5(self, file):
+        """Write XSdata to an HDF5 file
+
+        Parameters
+        ----------
+        file : h5py.File
+            HDF5 File (a root Group) to write to
+
+        """
         grp = file.create_group(self.name)
-        if self.awr is not None:
-            grp.attrs['awr'] = self.awr
+        if self.atomic_weight_ratio is not None:
+            grp.attrs['atomic_weight_ratio'] = self.atomic_weight_ratio
         if self.fissionable is not None:
             grp.attrs['fissionable'] = self.fissionable
         if self.representation is not None:
@@ -1124,11 +1131,11 @@ class XSdata(object):
                                                    dtype='S')
             if self.representation == 'angle':
                 if self.num_azimuthal is not None:
-                    grp.attrs['num-azimuthal'] = self.num_azimuthal
+                    grp.attrs['num_azimuthal'] = self.num_azimuthal
                 if self.num_polar is not None:
-                    grp.attrs['num-polar'] = self.num_polar
+                    grp.attrs['num_polar'] = self.num_polar
         if self.scatter_format is not None:
-            grp.attrs['scatter-format'] = np.array(self.scatter_format,
+            grp.attrs['scatter_format'] = np.array(self.scatter_format,
                                                    dtype='S')
         if self.order is not None:
             grp.attrs['order'] = self.order
@@ -1184,8 +1191,8 @@ class XSdata(object):
                         for l in range(len(matrix[:, g_in, g_out])):
                             flat_scatt.append(matrix[l, g_in, g_out])
                 # And write it.
-                scatt_grp = xs_grp.create_group('scatter data')
-                scatt_grp.create_dataset("scatter matrix",
+                scatt_grp = xs_grp.create_group('scatter_data')
+                scatt_grp.create_dataset("scatter_matrix",
                                          data=np.array(flat_scatt))
                 # Repeat for multiplicity
                 if self._multiplicity_matrix[i] is not None:
@@ -1196,7 +1203,7 @@ class XSdata(object):
                         for g_out in range(g_out_bounds[g_in, 0],
                                            g_out_bounds[g_in, 1] + 1):
                             flat_mult.append(matrix[g_in, g_out])
-                    scatt_grp.create_dataset("multiplicity matrix",
+                    scatt_grp.create_dataset("multiplicity_matrix",
                                              data=np.array(flat_mult))
 
                 # And finally, adjust g_out_bounds for 1-based group counting
@@ -1227,8 +1234,8 @@ class XSdata(object):
                                 for l in range(len(matrix[:, g_in, g_out])):
                                     flat_scatt.append(matrix[l, g_in, g_out])
                 # And write it.
-                scatt_grp = xs_grp.create_group('scatter data')
-                scatt_grp.create_dataset("scatter matrix",
+                scatt_grp = xs_grp.create_group('scatter_data')
+                scatt_grp.create_dataset("scatter_matrix",
                                          data=np.array(flat_scatt))
                 # Repeat for multiplicity
                 if self._multiplicity_matrix[i] is not None:
@@ -1242,7 +1249,7 @@ class XSdata(object):
                                                    g_out_bounds[p, a, g_in, 1] + 1):
                                     flat_mult.append(matrix[g_in, g_out])
                 # And write it.
-                scatt_grp.create_dataset("multiplicity matrix",
+                scatt_grp.create_dataset("multiplicity_matrix",
                                          data=np.array(flat_mult))
 
                 # And finally, adjust g_out_bounds for 1-based group counting
@@ -1253,7 +1260,7 @@ class XSdata(object):
 
             # Add the kinetics data
             if self._inverse_velocities[i] is not None:
-                xs_grp.create_dataset("inverse-velocities",
+                xs_grp.create_dataset("inverse_velocities",
                                       data=self._inverse_velocities[i])
 
 
@@ -1364,6 +1371,6 @@ class MGXSLibrary(object):
         file.attrs['group structure'] = self.energy_groups.group_edges
 
         for xsdata in self._xsdatas:
-            xsdata._get_xsdata_group(file)
+            xsdata.to_hdf5(file)
 
         file.close()

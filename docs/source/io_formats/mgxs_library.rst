@@ -38,8 +38,8 @@ MGXS Library Specification
 The data within <library name> contains the temperature-dependent multi-group
 data for the nuclide or material that it represents.
 
-:Attributes: - **awr** (*double*) -- The atomic weight ratio (optional, i.e. it
-               is not meaningful for material-wise data)
+:Attributes: - **atomic_weight_ratio** (*double*) -- The atomic weight ratio (optional,
+               i.e. it is not meaningful for material-wise data)
              - **fissionable** (*int*) -- Whether the dataset is fissionable
                (1) or not (0).
              - **representation** (*char[]*) -- The method used to generate and
@@ -49,26 +49,27 @@ data for the nuclide or material that it represents.
                data was generated with angular dependent fluxes and thus the
                data is angle-dependent.  Valid values are either "isotropic" or
                "angle".
-             - **num-azimuthal** (*int*) -- Number of equal width angular bins
+             - **num_azimuthal** (*int*) -- Number of equal width angular bins
                that the azimuthal angular domain is subdivided if the
                `representation` attribute is "angle". This parameter is
                ignored otherwise.
-             - **num-polar** (*int*) -- Number of equal width angular bins
+             - **num_polar** (*int*) -- Number of equal width angular bins
                that the polar angular domain is subdivided if the
                `representation` attribute is "angle". This parameter is
                ignored otherwise.
-             - **scatter-format** (*char[]*) -- The representation of the
+             - **scatter_format** (*char[]*) -- The representation of the
                scattering angular distribution.  The options are either
                "legendre", "histogram", or "tabular".  If not provided, the
                default of "legendre" will be assumed.
              - **order** (*int*) -- Either the Legendre order, number of bins,
-               or number of points (depending on the value of `scatter-format`)
+               or number of points (depending on the value of `scatter_format`)
                used to describe the angular distribution associated with each
                group-to-group transfer probability.
 
 **/<library name>/kTs/**
 
-:Datasets: - **<TTT>K** (*double*) -- kT values (in MeV) for each Temperature
+:Datasets: 
+           - **<TTT>K** (*double*) -- kT values (in MeV) for each Temperature
              TTT (in Kelvin), rounded to the nearest integer
 
 **/<library name>/<TTT>K/**
@@ -109,44 +110,44 @@ Temperature-dependent data, provided for temperature <TTT>K.
              the `nu-fission` data must represent the fission neutron energy
              spectra as well and thus will have one additional dimension
              for the outgoing energy group.  In this case, `nu-fission` has the
-             same dimensionality as `multiplicity matrix`.
-           - **inverse velocities** (*double[]*) -- Average inverse velocity
+             same dimensionality as `multiplicity_matrix`.
+           - **inverse_velocities** (*double[]*) -- Average inverse velocity
              for each of the groups in the library. This dataset is optional.
 
-**/<library name>/<TTT>K/scatter data/**
+**/<library name>/<TTT>K/scatter_data/**
 
 Data specific to neutron scattering for the temperature <TTT>K
 
-:Datasets: - **g_min** (*int[]* or *int[][][]) --
+:Datasets: - **g_min** (*int[]* or *int[][][]*) --
              Minimum (most energetic) outgoing groups with non-zero values of
              the scattering matrix. These group numbers use the standard
              ordering where the fastest neutron energy group is group 1 while
              the slowest neutron energy group is group G.
-             The dimensionality of `g_out bounds` is:
-             `g_min[g_in]`, or `g_min[num-polar][num-azimuthal][g_in]`.
+             The dimensionality of `g_min` is:
+             `g_min[g_in]`, or `g_min[num_polar][num_azimuthal][g_in]`.
              The former is used when `representation` is "isotropic", and the
              latter when `representation` is "angle".
-           - **g_max** (*int[]* or *int[][][]) --
+           - **g_max** (*int[]* or *int[][][]*) --
              Maximum (least energetic) outgoing groups with non-zero values of
              the scattering matrix. These group numbers use the standard
              ordering where the fastest neutron energy group is group 1 while
              the slowest neutron energy group is group G.
-             The dimensionality of `g_out bounds` is:
-             `g_max[g_in]`, or `g_max[num-polar][num-azimuthal][g_in]`.
+             The dimensionality of `g_max` is:
+             `g_max[g_in]`, or `g_max[num_polar][num_azimuthal][g_in]`.
              The former is used when `representation` is "isotropic", and the
              latter when `representation` is "angle".
-           - **scatter matrix** (*double[]*) -- Flattened representation of the
+           - **scatter_matrix** (*double[]*) -- Flattened representation of the
              scattering moment matrices. The pre-flattened array is shaped as
              follows (in row-major format):
-             `scatter matrix[order(+1)][g_in][g_out]`, or
-             `scatter matrix[num-polar][num-azimuthal][order(+1)][g_in][g_out]`
+             `scatter_matrix[order(+1)][g_in][g_out]`, or
+             `scatter_matrix[num_polar][num_azimuthal][order(+1)][g_in][g_out]`
              The former is used when `representation` is "isotropic", and the
              latter when `representation` is "angle".  Note that if the value of
-             `scatter-format` is "legendre", the order dimension will be one
+             `scatter_format` is "legendre", the order dimension will be one
              larger than the value of `order`, otherwise it will match `order`.
              Finally, the g_out dimension has a dimensionality of
-             `g_out bounds`[0] to `g_out bounds`[1].
-           - **multiplicity matrix** (*double[]*) -- Flattened representation of
+             `g_min` to `g_max`.
+           - **multiplicity_matrix** (*double[]*) -- Flattened representation of
              the scattering moment matrices. This dataset provides the code with
              a scaling factor to account for neutrons being produced in (n,xn)
              reactions. This is assumed isotropic and therefore is not repeated
@@ -154,9 +155,8 @@ Data specific to neutron scattering for the temperature <TTT>K
              optional, if it is not provided no multiplication (i.e., values of
              1.0) will be assumed.
              The pre-flattened array is shaped as follows (in row-major format):
-             `multiplicity matrix[g_in][g_out]`, or
-             `multiplicity matrix[num-polar][num-azimuthal][g_in][g_out]`
+             `multiplicity_matrix[g_in][g_out]`, or
+             `multiplicity_matrix[num_polar][num_azimuthal][g_in][g_out]`
              The former is used when `representation` is "isotropic", and the
              latter when `representation` is "angle". Finally, the g_out
-             dimension has a dimensionality of `g_out bounds`[0] to
-             `g_out bounds`[1].
+             dimension has a dimensionality of `g_min` to `g_max`.

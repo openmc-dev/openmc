@@ -6,7 +6,7 @@ Multi-Group Cross Section Library Format
 
 OpenMC can be run in continuous-energy mode or multi-group mode, provided the
 nuclear data is available.  In continuous-energy mode, the
-``cross_sections.xml`` file contains necessary meta-data for each data set,
+``cross_sections.xml`` file contains necessary meta-data for each dataset,
 including the name and a file system location where the complete library
 can be found.  In multi-group mode, the multi-group meta-data and the
 nuclear data itself is contained within an ``mgxs.h5``.  This portion of
@@ -89,19 +89,19 @@ Temperature-dependent data, provided for temperature <TTT>K.
              cross section.
              This is a 1-D vector if `representation` is "isotropic", or a 3-D
              vector if `representation` is "angle" with dimensions of
-             [groups, azimuthal, polar].  This is only required if the data set
+             [groups, azimuthal, polar].  This is only required if the dataset
              is fissionable and fission-tallies are expected to be used.
            - **kappa-fission** (*double[]* or *double[][][]*) -- Kappa-Fission
              (energy-release from fission) cross section.
              This is a 1-D vector if `representation` is "isotropic", or a 3-D
              vector if `representation` is "angle" with dimensions of
-             [groups, azimuthal, polar].  This is only required if the data set
+             [groups, azimuthal, polar].  This is only required if the dataset
              is fissionable and fission-tallies are expected to be used.
            - **chi** (*double[]* or *double[][][]*) -- Fission neutron energy
              spectra.
              This is a 1-D vector if `representation` is "isotropic", or a 3-D
              vector if `representation` is "angle" with dimensions of
-             [groups, azimuthal, polar].  This is only required if the data set
+             [groups, azimuthal, polar].  This is only required if the dataset
              is fissionable and fission-tallies are expected to be used.
            - **nu-fission** (*double[]* to *double[][][][]*) -- Nu-Fission
              cross section.

@@ -186,14 +186,14 @@ class Library(object):
 
     @property
     def domains(self):
-        if self._domains == 'all':
-            if self.domain_type == 'material':
+        if self._domains is 'all':
+            if self.domain_type is 'material':
                 return self.openmc_geometry.get_all_materials()
             elif self.domain_type in ['cell', 'distribcell']:
                 return self.openmc_geometry.get_all_material_cells()
-            elif self.domain_type == 'universe':
+            elif self.domain_type is 'universe':
                 return self.openmc_geometry.get_all_universes()
-            elif self.domain_type == 'mesh':
+            elif self.domain_type is 'mesh':
                 raise ValueError('Unable to get domains for Mesh domain type')
             else:
                 raise ValueError('Unable to get domains without a domain type')
@@ -265,7 +265,7 @@ class Library(object):
     @mgxs_types.setter
     def mgxs_types(self, mgxs_types):
         all_mgxs_types = openmc.mgxs.MGXS_TYPES + openmc.mgxs.MDGXS_TYPES
-        if mgxs_types == 'all':
+        if mgxs_types is 'all':
             self._mgxs_types = all_mgxs_types
         else:
             cv.check_iterable_type('mgxs_types', mgxs_types, basestring)
@@ -277,7 +277,7 @@ class Library(object):
     def by_nuclide(self, by_nuclide):
         cv.check_type('by_nuclide', by_nuclide, bool)
 
-        if by_nuclide == True and self.domain_type == 'mesh':
+        if by_nuclide == True and self.domain_type is 'mesh':
             raise ValueError('Unable to create MGXS library by nuclide with '
                              'mesh domain')
 
@@ -287,7 +287,7 @@ class Library(object):
     def domain_type(self, domain_type):
         cv.check_value('domain type', domain_type, openmc.mgxs.DOMAIN_TYPES)
 
-        if self.by_nuclide == True and domain_type == 'mesh':
+        if self.by_nuclide == True and domain_type is 'mesh':
             raise ValueError('Unable to create MGXS library by nuclide with '
                              'mesh domain')
 
@@ -297,21 +297,21 @@ class Library(object):
     def domains(self, domains):
 
         # Use all materials, cells or universes in the geometry as domains
-        if domains == 'all':
+        if domains is 'all':
             self._domains = domains
 
         # User specified a list of material, cell or universe domains
         else:
-            if self.domain_type == 'material':
+            if self.domain_type is 'material':
                 cv.check_iterable_type('domain', domains, openmc.Material)
                 all_domains = self.openmc_geometry.get_all_materials()
             elif self.domain_type in ['cell', 'distribcell']:
                 cv.check_iterable_type('domain', domains, openmc.Cell)
                 all_domains = self.openmc_geometry.get_all_material_cells()
-            elif self.domain_type == 'universe':
+            elif self.domain_type is 'universe':
                 cv.check_iterable_type('domain', domains, openmc.Universe)
                 all_domains = self.openmc_geometry.get_all_universes()
-            elif self.domain_type == 'mesh':
+            elif self.domain_type is 'mesh':
                 cv.check_iterable_type('domain', domains, openmc.Mesh)
 
                 # The mesh and geometry are independent, so set all_domains
@@ -355,7 +355,7 @@ class Library(object):
     def correction(self, correction):
         cv.check_value('correction', correction, ('P0', None))
 
-        if correction == 'P0' and self.legendre_order > 0:
+        if correction is 'P0' and self.legendre_order > 0:
             warn('The P0 correction will be ignored since the scattering '
                  'order "{}" is greater than zero'.format(self.legendre_order))
 
@@ -367,7 +367,7 @@ class Library(object):
         cv.check_greater_than('legendre_order', legendre_order, 0, equality=True)
         cv.check_less_than('legendre_order', legendre_order, 10, equality=True)
 
-        if self.correction == 'P0' and legendre_order > 0:
+        if self.correction is 'P0' and legendre_order > 0:
             msg = 'The P0 correction will be ignored since the scattering ' \
                   'order {} is greater than zero'.format(self.legendre_order)
             warn(msg, RuntimeWarning)
@@ -505,7 +505,7 @@ class Library(object):
         self._openmc_geometry = statepoint.summary.openmc_geometry
         self._nuclides = statepoint.summary.nuclides
 
-        if statepoint.run_mode == 'k-eigenvalue':
+        if statepoint.run_mode is 'k-eigenvalue':
             self._keff = statepoint.k_combined[0]
 
         # Load tallies for each MGXS for each domain and mgxs type
@@ -543,13 +543,13 @@ class Library(object):
 
         """
 
-        if self.domain_type == 'material':
+        if self.domain_type is 'material':
             cv.check_type('domain', domain, (openmc.Material, Integral))
-        elif self.domain_type == 'cell' or self.domain_type == 'distribcell':
+        elif self.domain_type is 'cell' or self.domain_type is 'distribcell':
             cv.check_type('domain', domain, (openmc.Cell, Integral))
-        elif self.domain_type == 'universe':
+        elif self.domain_type is 'universe':
             cv.check_type('domain', domain, (openmc.Universe, Integral))
-        elif self.domain_type == 'mesh':
+        elif self.domain_type is 'mesh':
             cv.check_type('domain', domain, (openmc.Mesh, Integral))
 
         # Check that requested domain is included in library
@@ -662,7 +662,7 @@ class Library(object):
         # Clone this Library to initialize the subdomain-averaged version
         subdomain_avg_library = copy.deepcopy(self)
 
-        if subdomain_avg_library.domain_type == 'distribcell':
+        if subdomain_avg_library.domain_type is 'distribcell':
             subdomain_avg_library.domain_type = 'cell'
         else:
             return subdomain_avg_library
@@ -671,7 +671,7 @@ class Library(object):
         for domain in self.domains:
             for mgxs_type in self.mgxs_types:
                 mgxs = subdomain_avg_library.get_mgxs(domain, mgxs_type)
-                if mgxs.domain_type == 'distribcell':
+                if mgxs.domain_type is 'distribcell':
                     avg_mgxs = mgxs.get_subdomain_avg_xs()
                     subdomain_avg_library.all_mgxs[domain.id][mgxs_type] = avg_mgxs
 
@@ -751,7 +751,7 @@ class Library(object):
             for mgxs_type in self.mgxs_types:
                 mgxs = self.all_mgxs[domain.id][mgxs_type]
 
-                if subdomains == 'avg':
+                if subdomains is 'avg':
                     mgxs = mgxs.get_subdomain_avg_xs()
 
                 mgxs.build_hdf5_store(filename, directory, xs_type=xs_type,
@@ -824,8 +824,9 @@ class Library(object):
     def get_xsdata(self, domain, xsdata_name, nuclide='total', xs_type='macro',
                    order=None, subdomain=None):
         """Generates an openmc.XSdata object describing a multi-group cross section
-        data set for eventual combination in to an openmc.MGXSLibrary object
-        (i.e., the library).  Note that this method does not build an XSdata
+        dataset for writing to an openmc.MGXSLibrary object.
+
+        Note that this method does not build an XSdata
         object with nested temperature tables.  The temperature of each
         XSdata object will be left at the default value of 300K.
 
@@ -856,7 +857,7 @@ class Library(object):
         Returns
         -------
         xsdata : openmc.XSdata
-            Multi-Group Cross Section data set object.
+            Multi-Group Cross Section dataset object.
 
         Raises
         ------
@@ -920,7 +921,7 @@ class Library(object):
             subdomain = [subdomain]
 
         # Now get xs data itself
-        if 'nu-transport' in self.mgxs_types and self.correction == 'P0':
+        if 'nu-transport' in self.mgxs_types and self.correction is 'P0':
             mymgxs = self.get_mgxs(domain, 'nu-transport')
             xsdata.set_total_mgxs(mymgxs, xs_type=xs_type, nuclide=[nuclide],
                                   subdomains=subdomain)
@@ -995,7 +996,7 @@ class Library(object):
                 # scattering multiplication (nu-scatter) must be
                 # accounted for approximately by using an adjusted
                 # absorption cross section.
-                if 'total' in self.mgxs_types:
+                if 'total' in self.mgxs_types or 'transport' in self.mgxs_types:
                     for i in range(len(xsdata.temperatures)):
                         xsdata._absorption[i] = \
                             np.subtract(xsdata._total[i], np.sum(
@@ -1005,9 +1006,11 @@ class Library(object):
 
     def create_mg_library(self, xs_type='macro', xsdata_names=None):
         """Creates an openmc.MGXSLibrary object to contain the MGXS data for the
-        Multi-Group mode of OpenMC. Note that this library will not make use
-        of nested temperature tables. Every dataset in the library will be
-        treated as if it was at the same default temperature.
+        Multi-Group mode of OpenMC.
+
+        Note that this library will not make use of nested temperature tables.
+        Every dataset in the library will be treated as if it was at the same
+        default temperature.
 
         Parameters
         ----------
@@ -1053,7 +1056,7 @@ class Library(object):
         # Initialize file
         mgxs_file = openmc.MGXSLibrary(self.energy_groups)
 
-        if self.domain_type == 'mesh':
+        if self.domain_type is 'mesh':
             # Create the xsdata objects and add to the mgxs_file
             i = 0
             for domain in self.domains:
@@ -1099,14 +1102,15 @@ class Library(object):
     def create_mg_mode(self, xsdata_names=None, bc=['reflective'] * 6):
         """Creates an openmc.MGXSLibrary object to contain the MGXS data for the
         Multi-Group mode of OpenMC as well as the associated openmc.Materials
-        and openmc.Geometry objects. The created Geometry is the same as that
-        used to generate the MGXS data, with the only differences being
-        modifications to point to newly-created Materials which point to the
-        multi-group data. This method only creates a macroscopic
-        MGXS Library even if nuclidic tallies are specified in the Library.
-        Note that this library will not make use of nested temperature tables.
-        Every dataset in the library will be treated as if it was at the same
-        default temperature.
+        and openmc.Geometry objects.
+
+        The created Geometry is the same as that used to generate the MGXS
+        data, with the only differences being modifications to point to
+        newly-created Materials which point to the multi-group data. This
+        method only creates a macroscopic MGXS Library even if nuclidic tallies
+        are specified in the Library. Note that this library will not make
+        use of nested temperature tables. Every dataset in the library will
+        be treated as if it was at the same default temperature.
 
         Parameters
         ----------
@@ -1155,14 +1159,14 @@ class Library(object):
         # the multiple meshes could be overlapping or in disparate regions
         # of the continuous energy model. The next step makes sure there is
         # only one before continuing.
-        if self.domain_type == 'mesh':
+        if self.domain_type is 'mesh':
             cv.check_length("domains", self.domains, 1, 1)
 
         # Get the MGXS File Data
         mgxs_file = self.create_mg_library('macro', xsdata_names)
 
         # Now move on the creating the geometry and assigning materials
-        if self.domain_type == 'mesh':
+        if self.domain_type is 'mesh':
             root = openmc.Universe(name='root', universe_id=0)
 
             # Add cells representative of the mesh with reflective BC
@@ -1208,13 +1212,13 @@ class Library(object):
                 materials.append(material)
 
                 # Differentiate Geometry with new Material
-                if self.domain_type == 'material':
+                if self.domain_type is 'material':
                     # Fill all appropriate Cells with new Material
                     for cell in all_cells:
                         if cell.fill.id == domain.id:
                             cell.fill = material
 
-                elif self.domain_type == 'cell':
+                elif self.domain_type is 'cell':
                     for cell in all_cells:
                         if cell.id == domain.id:
                             cell.fill = material

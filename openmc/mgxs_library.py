@@ -306,7 +306,7 @@ class XSdata(object):
     def temperatures(self, temperatures):
         check_iterable_type('temperatures', temperatures, Real)
 
-        self._temperatures = temperatures
+        self._temperatures = np.array(temperatures)
 
     @scatter_format.setter
     def scatter_format(self, scatter_format):

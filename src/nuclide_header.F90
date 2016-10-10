@@ -194,8 +194,6 @@ module nuclide_header
     integer,          intent(inout) :: method
     real(8),          intent(in)    :: tolerance
     logical,          intent(in)    :: master     ! if this is the master proc
-                                                  !  (can't use global cuz
-                                                  !  circular dependance)
 
     integer :: i
     integer :: storage_type

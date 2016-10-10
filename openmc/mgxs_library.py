@@ -242,28 +242,28 @@ class XSdata(object):
 
     @property
     def vector_shape(self):
-        if self.representation == 'isotropic':
+        if self.representation is 'isotropic':
             return (self.energy_groups.num_groups,)
-        elif self.representation == 'angle':
+        elif self.representation is 'angle':
             return (self.num_polar, self.num_azimuthal,
                     self.energy_groups.num_groups)
 
     @property
     def matrix_shape(self):
-        if self.representation == 'isotropic':
+        if self.representation is 'isotropic':
             return (self.energy_groups.num_groups,
                     self.energy_groups.num_groups)
-        elif self.representation == 'angle':
+        elif self.representation is 'angle':
             return (self.num_polar, self.num_azimuthal,
                     self.energy_groups.num_groups,
                     self.energy_groups.num_groups)
 
     @property
     def pn_matrix_shape(self):
-        if self.representation == 'isotropic':
+        if self.representation is 'isotropic':
             return (self.num_orders, self.energy_groups.num_groups,
                     self.energy_groups.num_groups)
-        elif self.representation == 'angle':
+        elif self.representation is 'angle':
             return (self.num_polar, self.num_azimuthal, self.num_orders,
                     self.energy_groups.num_groups,
                     self.energy_groups.num_groups)
@@ -296,11 +296,6 @@ class XSdata(object):
         check_type('atomic_weight_ratio', atomic_weight_ratio, Real)
         check_greater_than('atomic_weight_ratio', atomic_weight_ratio, 0.0)
         self._atomic_weight_ratio = atomic_weight_ratio
-
-    @fissionable.setter
-    def fissionable(self, fissionable):
-        check_type('fissionable', fissionable, bool)
-        self._fissionable = fissionable
 
     @temperatures.setter
     def temperatures(self, temperatures):
@@ -374,8 +369,8 @@ class XSdata(object):
         total: np.ndarray
             Total Cross Section
         temperature : float
-            Temperature (in units of Kelvin) of the provided dataset. Defaults
-            to 294K
+            Temperature (in Kelvin) of the data. Defaults to room temperature
+            (294K).
 
         See also
         --------
@@ -389,7 +384,7 @@ class XSdata(object):
         check_type('temperature', temperature, Real)
         check_value('temperature', temperature, self.temperatures)
 
-        i = self.temperatures.tolist().index(temperature)
+        i = np.where(self.temperatures == temperature)
         self._total[i] = nptotal
 
     def set_absorption(self, absorption, temperature=294.):
@@ -401,8 +396,8 @@ class XSdata(object):
         absorption: np.ndarray
             Absorption Cross Section
         temperature : float
-            Temperature (in units of Kelvin) of the provided dataset. Defaults
-            to 294K
+            Temperature (in Kelvin) of the data. Defaults to room temperature
+            (294K).
 
         See also
         --------
@@ -417,7 +412,7 @@ class XSdata(object):
         check_type('temperature', temperature, Real)
         check_value('temperature', temperature, self.temperatures)
 
-        i = self.temperatures.tolist().index(temperature)
+        i = np.where(self.temperatures == temperature)
         self._absorption[i] = npabsorption
 
     def set_fission(self, fission, temperature=294.):
@@ -429,8 +424,8 @@ class XSdata(object):
         fission: np.ndarray
             Fission Cross Section
         temperature : float
-            Temperature (in units of Kelvin) of the provided dataset. Defaults
-            to 294K
+            Temperature (in Kelvin) of the data. Defaults to room temperature
+            (294K).
 
         See also
         --------
@@ -444,7 +439,7 @@ class XSdata(object):
         check_type('temperature', temperature, Real)
         check_value('temperature', temperature, self.temperatures)
 
-        i = self.temperatures.tolist().index(temperature)
+        i = np.where(self.temperatures == temperature)
         self._fission[i] = npfission
 
         if np.sum(npfission) > 0.0:
@@ -459,8 +454,8 @@ class XSdata(object):
         kappa_fission: np.ndarray
             Kappa-Fission Cross Section
         temperature : float
-            Temperature (in units of Kelvin) of the provided dataset. Defaults
-            to 294K
+            Temperature (in Kelvin) of the data. Defaults to room temperature
+            (294K).
 
         See also
         --------
@@ -476,7 +471,7 @@ class XSdata(object):
         check_type('temperature', temperature, Real)
         check_value('temperature', temperature, self.temperatures)
 
-        i = self.temperatures.tolist().index(temperature)
+        i = np.where(self.temperatures == temperature)
         self._kappa_fission[i] = npkappa_fission
 
         if np.sum(npkappa_fission) > 0.0:
@@ -491,8 +486,8 @@ class XSdata(object):
         chi: np.ndarray
             Fission Spectrum
         temperature : float
-            Temperature (in units of Kelvin) of the provided dataset. Defaults
-            to 294K
+            Temperature (in Kelvin) of the data. Defaults to room temperature
+            (294K).
 
         See also
         --------
@@ -515,7 +510,7 @@ class XSdata(object):
         check_type('temperature', temperature, Real)
         check_value('temperature', temperature, self.temperatures)
 
-        i = self.temperatures.tolist().index(temperature)
+        i = np.where(self.temperatures == temperature)
         self._chi[i] = npchi
 
         if self.use_chi is not None:
@@ -530,8 +525,8 @@ class XSdata(object):
         scatter: np.ndarray
             Scattering Matrix Cross Section
         temperature : float
-            Temperature (in units of Kelvin) of the provided dataset. Defaults
-            to 294K
+            Temperature (in Kelvin) of the data. Defaults to room temperature
+            (294K).
 
         See also
         --------
@@ -546,7 +541,7 @@ class XSdata(object):
         check_type('temperature', temperature, Real)
         check_value('temperature', temperature, self.temperatures)
 
-        i = self.temperatures.tolist().index(temperature)
+        i = np.where(self.temperatures == temperature)
         self._scatter_matrix[i] = npscatter
 
     def set_multiplicity_matrix(self, multiplicity, temperature=294.):
@@ -558,8 +553,8 @@ class XSdata(object):
         multiplicity: np.ndarray
             Multiplicity Matrix Cross Section
         temperature : float
-            Temperature (in units of Kelvin) of the provided dataset. Defaults
-            to 294K
+            Temperature (in Kelvin) of the data. Defaults to room temperature
+            (294K).
 
         See also
         --------
@@ -575,7 +570,7 @@ class XSdata(object):
         check_type('temperature', temperature, Real)
         check_value('temperature', temperature, self.temperatures)
 
-        i = self.temperatures.tolist().index(temperature)
+        i = np.where(self.temperatures == temperature)
         self._multiplicity_matrix[i] = npmultiplicity
 
     def set_nu_fission(self, nu_fission, temperature=294.):
@@ -587,8 +582,8 @@ class XSdata(object):
         nu_fission: np.ndarray
             Nu-fission Cross Section
         temperature : float
-            Temperature (in units of Kelvin) of the provided dataset. Defaults
-            to 294K
+            Temperature (in Kelvin) of the data. Defaults to room temperature
+            (294K).
 
         See also
         --------
@@ -630,7 +625,7 @@ class XSdata(object):
             else:
                 self.use_chi = False
 
-        i = self.temperatures.tolist().index(temperature)
+        i = np.where(self.temperatures == temperature)
         self._nu_fission[i] = npnu_fission
         if np.sum(npnu_fission) > 0.0:
             self._fissionable = True
@@ -644,8 +639,8 @@ class XSdata(object):
         inv_vel: np.ndarray
             Inverse velocities in units of sec/cm.
         temperature : float
-            Temperature (in units of Kelvin) of the provided dataset. Defaults
-            to 294K
+            Temperature (in Kelvin) of the data. Defaults to room temperature
+            (294K).
 
         """
         check_type('inverse velocities', inv_vel, Iterable,
@@ -657,7 +652,7 @@ class XSdata(object):
         check_type('temperature', temperature, Real)
         check_value('temperature', temperature, self.temperatures)
 
-        i = self.temperatures.tolist().index(temperature)
+        i = np.where(self.temperatures == temperature)
         self._inverse_velocities[i] = npinv_vel
 
     def set_total_mgxs(self, total, temperature=294., nuclide='total',
@@ -672,8 +667,8 @@ class XSdata(object):
             MGXS Object containing the total or transport cross section
             for the domain of interest.
         temperature : float
-            Temperature (in units of Kelvin) of the provided dataset. Defaults
-            to 294K
+            Temperature (in Kelvin) of the data. Defaults to room temperature
+            (294K).
         nuclide : str
             Individual nuclide (or 'total' if obtaining material-wise data)
             to gather data for.  Defaults to 'total'.
@@ -699,7 +694,7 @@ class XSdata(object):
         check_type('temperature', temperature, Real)
         check_value('temperature', temperature, self.temperatures)
 
-        i = self.temperatures.tolist().index(temperature)
+        i = np.where(self.temperatures == temperature)
         if self.representation is 'isotropic':
             self._total[i] = total.get_xs(nuclides=nuclide, xs_type=xs_type,
                                           subdomains=subdomain)
@@ -718,8 +713,8 @@ class XSdata(object):
             MGXS Object containing the absorption cross section
             for the domain of interest.
         temperature : float
-            Temperature (in units of Kelvin) of the provided dataset. Defaults
-            to 294K
+            Temperature (in Kelvin) of the data. Defaults to room temperature
+            (294K).
         nuclide : str
             Individual nuclide (or 'total' if obtaining material-wise data)
             to gather data for.  Defaults to 'total'.
@@ -745,7 +740,7 @@ class XSdata(object):
         check_type('temperature', temperature, Real)
         check_value('temperature', temperature, self.temperatures)
 
-        i = self.temperatures.tolist().index(temperature)
+        i = np.where(self.temperatures == temperature)
         if self.representation is 'isotropic':
             self._absorption[i] = absorption.get_xs(nuclides=nuclide,
                                                     xs_type=xs_type,
@@ -765,8 +760,8 @@ class XSdata(object):
             MGXS Object containing the fission cross section
             for the domain of interest.
         temperature : float
-            Temperature (in units of Kelvin) of the provided dataset. Defaults
-            to 294K
+            Temperature (in Kelvin) of the data. Defaults to room temperature
+            (294K).
         nuclide : str
             Individual nuclide (or 'total' if obtaining material-wise data)
             to gather data for.  Defaults to 'total'.
@@ -792,7 +787,7 @@ class XSdata(object):
         check_type('temperature', temperature, Real)
         check_value('temperature', temperature, self.temperatures)
 
-        i = self.temperatures.tolist().index(temperature)
+        i = np.where(self.temperatures == temperature)
         if self.representation is 'isotropic':
             self._fission[i] = fission.get_xs(nuclides=nuclide,
                                               xs_type=xs_type,
@@ -812,8 +807,8 @@ class XSdata(object):
             MGXS Object containing the nu-fission cross section
             for the domain of interest.
         temperature : float
-            Temperature (in units of Kelvin) of the provided dataset. Defaults
-            to 294K
+            Temperature (in Kelvin) of the data. Defaults to room temperature
+            (294K).
         nuclide : str
             Individual nuclide (or 'total' if obtaining material-wise data)
             to gather data for.  Defaults to 'total'.
@@ -840,7 +835,7 @@ class XSdata(object):
         check_type('temperature', temperature, Real)
         check_value('temperature', temperature, self.temperatures)
 
-        i = self.temperatures.tolist().index(temperature)
+        i = np.where(self.temperatures == temperature)
         if self.representation is 'isotropic':
             self._nu_fission[i] = nu_fission.get_xs(nuclides=nuclide,
                                                     xs_type=xs_type,
@@ -870,8 +865,8 @@ class XSdata(object):
             MGXS Object containing the kappa-fission cross section
             for the domain of interest.
         temperature : float
-            Temperature (in units of Kelvin) of the provided dataset. Defaults
-            to 294K
+            Temperature (in Kelvin) of the data. Defaults to room temperature
+            (294K).
         nuclide : str
             Individual nuclide (or 'total' if obtaining material-wise data)
             to gather data for.  Defaults to 'total'.
@@ -897,7 +892,7 @@ class XSdata(object):
         check_type('temperature', temperature, Real)
         check_value('temperature', temperature, self.temperatures)
 
-        i = self.temperatures.tolist().index(temperature)
+        i = np.where(self.temperatures == temperature)
         if self.representation is 'isotropic':
             self._kappa_fission[i] = k_fission.get_xs(nuclides=nuclide,
                                                       xs_type=xs_type,
@@ -916,8 +911,8 @@ class XSdata(object):
         chi: openmc.mgxs.Chi
             MGXS Object containing chi for the domain of interest.
         temperature : float
-            Temperature (in units of Kelvin) of the provided dataset. Defaults
-            to 294K
+            Temperature (in Kelvin) of the data. Defaults to room temperature
+            (294K).
         nuclide : str
             Individual nuclide (or 'total' if obtaining material-wise data)
             to gather data for.  Defaults to 'total'.
@@ -948,7 +943,7 @@ class XSdata(object):
         check_type('temperature', temperature, Real)
         check_value('temperature', temperature, self.temperatures)
 
-        i = self.temperatures.tolist().index(temperature)
+        i = np.where(self.temperatures == temperature)
         if self.representation is 'isotropic':
             self._chi[i] = chi.get_xs(nuclides=nuclide,
                                       xs_type=xs_type, subdomains=subdomain)
@@ -973,8 +968,8 @@ class XSdata(object):
             MGXS Object containing the scatter matrix cross section
             for the domain of interest.
         temperature : float
-            Temperature (in units of Kelvin) of the provided dataset. Defaults
-            to 294K
+            Temperature (in Kelvin) of the data. Defaults to room temperature
+            (294K).
         nuclide : str
             Individual nuclide (or 'total' if obtaining material-wise data)
             to gather data for.  Defaults to 'total'.
@@ -1000,7 +995,7 @@ class XSdata(object):
         check_type('temperature', temperature, Real)
         check_value('temperature', temperature, self.temperatures)
 
-        if (self.scatter_format != 'legendre'):
+        if self.scatter_format is not 'legendre':
             msg = 'Anisotropic scattering representations other than ' \
                   'Legendre expansions have not yet been implemented in ' \
                   'openmc.mgxs.'
@@ -1016,7 +1011,7 @@ class XSdata(object):
             check_value('legendre_order', scatter.legendre_order,
                         [self.order])
 
-        i = self.temperatures.tolist().index(temperature)
+        i = np.where(self.temperatures == temperature)
         if self.representation is 'isotropic':
             # Get the scattering orders in the outermost dimension
             self._scatter_matrix[i] = np.zeros((self.num_orders,
@@ -1054,8 +1049,8 @@ class XSdata(object):
             MGXS Object containing the scattering matrix cross section
             for the domain of interest.
         temperature : float
-            Temperature (in units of Kelvin) of the provided dataset. Defaults
-            to 294K
+            Temperature (in Kelvin) of the data. Defaults to room temperature
+            (294K).
         nuclide : str
             Individual nuclide (or 'total' if obtaining material-wise data)
             to gather data for.  Defaults to 'total'.
@@ -1094,7 +1089,7 @@ class XSdata(object):
             check_value('domain_type', scatter.domain_type,
                         ['universe', 'cell', 'material', 'mesh'])
 
-        i = self.temperatures.tolist().index(temperature)
+        i = np.where(self.temperatures == temperature)
         if self.representation is 'isotropic':
             nuscatt = nuscatter.get_xs(nuclides=nuclide,
                                        xs_type=xs_type, moment=0,
@@ -1129,7 +1124,7 @@ class XSdata(object):
         if self.representation is not None:
             grp.attrs['representation'] = np.array(self.representation,
                                                    dtype='S')
-            if self.representation == 'angle':
+            if self.representation is 'angle':
                 if self.num_azimuthal is not None:
                     grp.attrs['num_azimuthal'] = self.num_azimuthal
                 if self.num_polar is not None:
@@ -1176,7 +1171,7 @@ class XSdata(object):
 
             # Get the sparse scattering data to print to the library
             G = self.energy_groups.num_groups
-            if self.representation == 'isotropic':
+            if self.representation is 'isotropic':
                 g_out_bounds = np.zeros((G, 2), dtype=np.int)
                 for g_in in range(G):
                     nz = np.nonzero(self._scatter_matrix[i][0, g_in, :])
@@ -1212,7 +1207,7 @@ class XSdata(object):
                 scatt_grp.create_dataset("g_min", data=g_out_bounds[:, 0])
                 scatt_grp.create_dataset("g_max", data=g_out_bounds[:, 1])
 
-            elif self.representation == 'angle':
+            elif self.representation is 'angle':
                 Np = self.num_polar
                 Na = self.num_azimuthal
                 g_out_bounds = np.zeros((Np, Na, G, 2), dtype=np.int)

@@ -4673,7 +4673,7 @@ contains
       libraries(i) % materials(1) = names(i)
     end do
 
-    ! Close MGXS HDF file
+    ! Close MGXS HDF5 file
     call file_close(file_id)
 
   end subroutine read_mg_cross_sections_header

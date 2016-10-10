@@ -302,8 +302,8 @@ class Mesh(object):
             # inconsistency between what numpy uses as the max float and what
             # Fortran expects for a real(8), so this avoids code complication
             # and achieves the same goal.
-            zplanes = [openmc.ZPlane(z0=-1e10., boundary_type='reflective'),
-                       openmc.ZPlane(z0=1e10., boundary_type='reflective')]
+            zplanes = [openmc.ZPlane(z0=-1e10, boundary_type='reflective'),
+                       openmc.ZPlane(z0=1e10, boundary_type='reflective')]
         else:
             zplanes = [openmc.ZPlane(z0=self.lower_left[2],
                                      boundary_type=bc[4]),

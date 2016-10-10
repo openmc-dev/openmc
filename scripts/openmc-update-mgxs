@@ -63,16 +63,14 @@ def parse_args():
 
 
 def get_data(element, entry):
-    try:
-        value = element.find(entry).text
-    except:
+    value = element.find(entry)
+    if value is not None:
+        value = value.text.strip()
+    else:
         if entry in element.attrib:
-            value = element.attrib[entry]
+            value = element.attrib[entry].strip()
         else:
             value = None
-
-    if value is not None:
-        value = value.strip()
 
     return value
 
@@ -140,7 +138,7 @@ if __name__ == '__main__':
         try:
             # It is in our list, so store that entry
             i = names.index(name)
-        except:
+        except ValueError:
             # It is not in our list, so add it
             i = -1
             xsd.append(openmc.XSdata(name, energy_groups,

@@ -55,6 +55,6 @@ before_script:
 
 script:
   - cd tests
-  - export OMP_NUM_THREADS=3
+  - export OMP_NUM_THREADS=2
   - ./travis.sh
   - cd ..

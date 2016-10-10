@@ -302,10 +302,6 @@ module nuclide_header
              trim(to_str(nint(temp_desired))) // " K.")
       end do TEMP_LOOP
 
-    case (TEMPERATURE_MULTIPOLE)
-      ! Add first available temperature
-      call temps_to_read % push_back(nint(temps_available(1)))
-
     end select
 
     ! Sort temperatures to read

@@ -379,13 +379,13 @@ class XSdata(object):
         """
         check_type('total', total, Iterable, expected_iter_type=Real)
         # Convert to a numpy array so we can easily get the shape for checking
-        nptotal = np.asarray(total)
-        check_value('total shape', nptotal.shape, [self.vector_shape])
+        total = np.asarray(total)
+        check_value('total shape', total.shape, [self.vector_shape])
         check_type('temperature', temperature, Real)
         check_value('temperature', temperature, self.temperatures)
 
         i = np.where(self.temperatures == temperature)
-        self._total[i] = nptotal
+        self._total[i] = total
 
     def set_absorption(self, absorption, temperature=294.):
         """This method sets the cross section for this XSdata object at the
@@ -406,14 +406,13 @@ class XSdata(object):
         """
         check_type('absorption', absorption, Iterable, expected_iter_type=Real)
         # Convert to a numpy array so we can easily get the shape for checking
-        npabsorption = np.asarray(absorption)
-        check_value('absorption shape', npabsorption.shape,
-                    [self.vector_shape])
+        absorption = np.asarray(absorption)
+        check_value('absorption shape', absorption.shape, [self.vector_shape])
         check_type('temperature', temperature, Real)
         check_value('temperature', temperature, self.temperatures)
 
         i = np.where(self.temperatures == temperature)
-        self._absorption[i] = npabsorption
+        self._absorption[i] = absorption
 
     def set_fission(self, fission, temperature=294.):
         """This method sets the cross section for this XSdata object at the
@@ -434,15 +433,15 @@ class XSdata(object):
         """
         check_type('fission', fission, Iterable, expected_iter_type=Real)
         # Convert to a numpy array so we can easily get the shape for checking
-        npfission = np.asarray(fission)
-        check_value('fission shape', npfission.shape, [self.vector_shape])
+        fission = np.asarray(fission)
+        check_value('fission shape', fission.shape, [self.vector_shape])
         check_type('temperature', temperature, Real)
         check_value('temperature', temperature, self.temperatures)
 
         i = np.where(self.temperatures == temperature)
-        self._fission[i] = npfission
+        self._fission[i] = fission
 
-        if np.sum(npfission) > 0.0:
+        if np.sum(fission) > 0.0:
             self._fissionable = True
 
     def set_kappa_fission(self, kappa_fission, temperature=294.):
@@ -465,16 +464,16 @@ class XSdata(object):
         check_type('kappa_fission', kappa_fission, Iterable,
                    expected_iter_type=Real)
         # Convert to a numpy array so we can easily get the shape for checking
-        npkappa_fission = np.asarray(kappa_fission)
-        check_value('kappa fission shape', npkappa_fission.shape,
+        kappa_fission = np.asarray(kappa_fission)
+        check_value('kappa fission shape', kappa_fission.shape,
                     [self.vector_shape])
         check_type('temperature', temperature, Real)
         check_value('temperature', temperature, self.temperatures)
 
         i = np.where(self.temperatures == temperature)
-        self._kappa_fission[i] = npkappa_fission
+        self._kappa_fission[i] = kappa_fission
 
-        if np.sum(npkappa_fission) > 0.0:
+        if np.sum(kappa_fission) > 0.0:
             self._fissionable = True
 
     def set_chi(self, chi, temperature=294.):
@@ -502,16 +501,16 @@ class XSdata(object):
 
         check_type('chi', chi, Iterable, expected_iter_type=Real)
         # Convert to a numpy array so we can easily get the shape for checking
-        npchi = np.asarray(chi)
+        chi = np.asarray(chi)
         # Check the shape
-        if npchi.shape != self.vector_shape:
+        if chi.shape != self.vector_shape:
             msg = 'Provided chi iterable does not have the expected shape.'
             raise ValueError(msg)
         check_type('temperature', temperature, Real)
         check_value('temperature', temperature, self.temperatures)
 
         i = np.where(self.temperatures == temperature)
-        self._chi[i] = npchi
+        self._chi[i] = chi
 
         if self.use_chi is not None:
             self.use_chi = True
@@ -534,15 +533,15 @@ class XSdata(object):
 
         """
         # Convert to a numpy array so we can easily get the shape for checking
-        npscatter = np.asarray(scatter)
-        check_iterable_type('scatter', npscatter, Real,
-                            max_depth=len(npscatter.shape))
-        check_value('scatter shape', npscatter.shape, [self.pn_matrix_shape])
+        scatter = np.asarray(scatter)
+        check_iterable_type('scatter', scatter, Real,
+                            max_depth=len(scatter.shape))
+        check_value('scatter shape', scatter.shape, [self.pn_matrix_shape])
         check_type('temperature', temperature, Real)
         check_value('temperature', temperature, self.temperatures)
 
         i = np.where(self.temperatures == temperature)
-        self._scatter_matrix[i] = npscatter
+        self._scatter_matrix[i] = scatter
 
     def set_multiplicity_matrix(self, multiplicity, temperature=294.):
         """This method sets the cross section for this XSdata object at the
@@ -562,16 +561,16 @@ class XSdata(object):
 
         """
         # Convert to a numpy array so we can easily get the shape for checking
-        npmultiplicity = np.asarray(multiplicity)
-        check_iterable_type('multiplicity', npmultiplicity, Real,
-                            max_depth=len(npmultiplicity.shape))
-        check_value('multiplicity shape', npmultiplicity.shape,
+        multiplicity = np.asarray(multiplicity)
+        check_iterable_type('multiplicity', multiplicity, Real,
+                            max_depth=len(multiplicity.shape))
+        check_value('multiplicity shape', multiplicity.shape,
                     [self.matrix_shape])
         check_type('temperature', temperature, Real)
         check_value('temperature', temperature, self.temperatures)
 
         i = np.where(self.temperatures == temperature)
-        self._multiplicity_matrix[i] = npmultiplicity
+        self._multiplicity_matrix[i] = multiplicity
 
     def set_nu_fission(self, nu_fission, temperature=294.):
         """This method sets the cross section for this XSdata object at the
@@ -601,33 +600,33 @@ class XSdata(object):
         # and set the use_chi flag accordingly
 
         # Convert to a numpy array so we can easily get the shape for checking
-        npnu_fission = np.asarray(nu_fission)
+        nu_fission = np.asarray(nu_fission)
 
-        check_iterable_type('nu_fission', npnu_fission, Real,
-                            max_depth=len(npnu_fission.shape))
+        check_iterable_type('nu_fission', nu_fission, Real,
+                            max_depth=len(nu_fission.shape))
         check_type('temperature', temperature, Real)
         check_value('temperature', temperature, self.temperatures)
 
         if self.use_chi is not None:
             if self.use_chi:
-                check_value('nu_fission shape', npnu_fission.shape,
+                check_value('nu_fission shape', nu_fission.shape,
                             [self.vector_shape])
             else:
-                check_value('nu_fission shape', npnu_fission.shape,
+                check_value('nu_fission shape', nu_fission.shape,
                             [self.matrix_shape])
         else:
-            check_value('nu_fission shape', npnu_fission.shape,
+            check_value('nu_fission shape', nu_fission.shape,
                         [self.vector_shape, self.matrix_shape])
             # Find out if we have a nu-fission matrix or vector
             # and set a flag to allow other methods to check this later.
-            if npnu_fission.shape == self.vector_shape:
+            if nu_fission.shape == self.vector_shape:
                 self.use_chi = True
             else:
                 self.use_chi = False
 
         i = np.where(self.temperatures == temperature)
-        self._nu_fission[i] = npnu_fission
-        if np.sum(npnu_fission) > 0.0:
+        self._nu_fission[i] = nu_fission
+        if np.sum(nu_fission) > 0.0:
             self._fissionable = True
 
     def set_inverse_velocities(self, inv_vel, temperature=294.):
@@ -646,14 +645,14 @@ class XSdata(object):
         check_type('inverse velocities', inv_vel, Iterable,
                    expected_iter_type=Real)
         # Convert to a numpy array so we can easily get the shape for checking
-        npinv_vel = np.asarray(inv_vel)
-        check_value('inverse velocities shape', npinv_vel.shape,
+        inv_vel = np.asarray(inv_vel)
+        check_value('inverse velocities shape', inv_vel.shape,
                     [self.vector_shape])
         check_type('temperature', temperature, Real)
         check_value('temperature', temperature, self.temperatures)
 
         i = np.where(self.temperatures == temperature)
-        self._inverse_velocities[i] = npinv_vel
+        self._inverse_velocities[i] = inv_vel
 
     def set_total_mgxs(self, total, temperature=294., nuclide='total',
                        xs_type='macro', subdomain=None):

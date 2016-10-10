@@ -50,8 +50,6 @@ tests/ctestscript.run
 
 # HDF5 files
 *.h5
-!tests/1d_mgxs.h5
-!examples/xml/pincell_multigroup/mgxs.h5
 
 # Build files
 src/CMakeCache.txt
@@ -91,7 +89,3 @@ docs/source/pythonapi/examples/mgxs
 docs/source/pythonapi/examples/tracks
 docs/source/pythonapi/examples/fission-rates
 docs/source/pythonapi/examples/plots
-
-# VSCode workspace directory
-.vscode
-.vscode/*

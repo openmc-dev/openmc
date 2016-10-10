@@ -8,7 +8,8 @@ module secondary_uncorrelated
   use energy_distribution, only: EnergyDistribution, LevelInelastic, &
        ContinuousTabular, MaxwellEnergy, Evaporation, WattEnergy, DiscretePhoton
   use error, only: warning
-  use hdf5_interface, only: read_attribute, open_group, close_group, check_group
+  use hdf5_interface, only: read_attribute, open_group, close_group, &
+       object_exists
   use random_lcg, only: prn
 
 !===============================================================================
@@ -60,14 +61,14 @@ contains
     character(MAX_WORD_LEN) :: type
 
     ! Check if angle group is present & read
-    if (check_group(group_id, 'angle')) then
+    if (object_exists(group_id, 'angle')) then
       angle_group = open_group(group_id, 'angle')
       call this%angle%from_hdf5(angle_group)
       call close_group(angle_group)
     end if
 
     ! Check if energy group is present & read
-    if (check_group(group_id, 'energy')) then
+    if (object_exists(group_id, 'energy')) then
       energy_group = open_group(group_id, 'energy')
       call read_attribute(type, energy_group, 'type')
       select case (type)

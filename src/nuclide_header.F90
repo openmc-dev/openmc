@@ -13,7 +13,7 @@ module nuclide_header
   use error,       only: fatal_error, warning
   use hdf5_interface, only: read_attribute, open_group, close_group, &
        open_dataset, read_dataset, close_dataset, get_shape, get_datasets, &
-       check_group, get_name, get_groups
+       object_exists, get_name, get_groups
   use list_header, only: ListInt
   use math,        only: evaluate_legendre
   use multipole_header, only: MultipoleArray
@@ -350,7 +350,7 @@ module nuclide_header
     call close_group(rxs_group)
 
     ! Read unresolved resonance probability tables if present
-    if (check_group(group_id, 'urr')) then
+    if (object_exists(group_id, 'urr')) then
       this % urr_present = .true.
       allocate(this % urr_data(n_temperature))
 
@@ -391,7 +391,7 @@ module nuclide_header
     end if
 
     ! Check for nu-total
-    if (check_group(group_id, 'total_nu')) then
+    if (object_exists(group_id, 'total_nu')) then
       nu_group = open_group(group_id, 'total_nu')
 
       ! Read total nu data
@@ -410,7 +410,7 @@ module nuclide_header
     end if
 
     ! Read fission energy release data if present
-    if (check_group(group_id, 'fission_energy_release')) then
+    if (object_exists(group_id, 'fission_energy_release')) then
       fer_group = open_group(group_id, 'fission_energy_release')
 
       ! Check to see if this is polynomial or tabulated data

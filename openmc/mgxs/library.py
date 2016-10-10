@@ -912,7 +912,7 @@ class Library(object):
         self.representation = 'isotropic'
 
         if nuclide is not 'total':
-            xsdata.awr = self._nuclides[nuclide][1]
+            xsdata.atomic_weight_ratio = self._nuclides[nuclide][1]
 
         if subdomain is None:
             subdomain = 'all'

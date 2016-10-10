@@ -3,8 +3,9 @@ module mgxs_data
   use constants
   use algorithm,       only: find
   use error,           only: fatal_error
+  use geometry_header, only: get_temperatures
   use global
-  use hdf5
+  use hdf5_interface
   use material_header, only: Material
   use mgxs_header
   use output,          only: write_message
@@ -49,7 +50,8 @@ contains
     call write_message("Loading Cross Section Data...", 5)
 
     ! Get temperatures
-    call get_temperatures(temps)
+    call get_temperatures(cells, materials, material_dict, nuclide_dict, &
+                          n_nuclides_total, temps)
 
     ! Open file for reading
     file_id = file_open(path_cross_sections, 'r', parallel=.true.)
@@ -94,7 +96,7 @@ contains
           call write_message("Loading " // trim(name) // " Data...", 5)
 
           ! Check to make sure cross section set exists in the library
-          if (check_group(file_id, trim(name))) then
+          if (object_exists(file_id, trim(name))) then
             xsdata_group = open_group(file_id, trim(name))
           else
             call fatal_error("Data for '" // trim(name) // "' does not exist in "&
@@ -102,7 +104,7 @@ contains
           end if
 
           ! First find out the data representation
-          if (check_attribute(xsdata_group, "representation")) then
+          if (attribute_exists(xsdata_group, "representation")) then
             call read_attribute(temp_str, xsdata_group, "representation")
             if (trim(temp_str) == 'isotropic') then
               representation = MGXS_ISOTROPIC
@@ -235,52 +237,6 @@ contains
     end do
 
   end subroutine get_mat_kTs
-
-!===============================================================================
-! GET_TEMPERATURES returns a list of temperatures that each MGXS table
-! appears at in the model. Later, this list is used to determine the actual
-! temperatures to read (which may be different if interpolation is used)
-!===============================================================================
-
-  subroutine get_temperatures(temps)
-    type(VectorReal), allocatable, intent(out) :: temps(:)
-
-    integer :: i, j, k
-    integer :: i_nuclide    ! index in nuclides array
-    integer :: i_material
-    real(8) :: temperature  ! temperature in Kelvin
-
-    allocate(temps(n_nuclides_total))
-
-    do i = 1, size(cells)
-      do j = 1, size(cells(i) % material)
-        ! Skip any non-material cells and void materials
-        if (cells(i) % material(j) == NONE .or. &
-             cells(i) % material(j) == MATERIAL_VOID) cycle
-
-        ! Get temperature of cell (rounding to nearest integer)
-        if (size(cells(i) % sqrtkT) > 1) then
-          temperature = cells(i) % sqrtkT(j)**2 / K_BOLTZMANN
-        else
-          temperature = cells(i) % sqrtkT(1)**2 / K_BOLTZMANN
-        end if
-
-        i_material = material_dict % get_key(cells(i) % material(j))
-        associate (mat => materials(i_material))
-          NUC_NAMES_LOOP: do k = 1, size(mat % names)
-            ! Get index in temps array
-            i_nuclide = nuclide_dict % get_key(to_lower(mat % names(k)))
-
-            ! Add temperature if it hasn't already been added
-            if (find(temps(i_nuclide), temperature) == -1) then
-              call temps(i_nuclide) % push_back(temperature)
-            end if
-          end do NUC_NAMES_LOOP
-        end associate
-      end do
-    end do
-
-  end subroutine get_temperatures
 
 
 end module mgxs_data

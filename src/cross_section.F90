@@ -185,8 +185,6 @@ contains
           f = (kT - nuc % kTs(i_temp)) / &
                (nuc % kTs(i_temp + 1) - nuc % kTs(i_temp))
           if (f > prn()) i_temp = i_temp + 1
-        case (TEMPERATURE_MULTIPOLE)
-          i_temp = minloc(abs(nuclides(i_nuclide) % kTs - kT), dim=1)
         end select
 
       end if

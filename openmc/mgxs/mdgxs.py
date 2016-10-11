@@ -12,6 +12,7 @@ import numpy as np
 
 import openmc
 from openmc.mgxs import MGXS
+from openmc.mgxs.mgxs import _DOMAIN_TO_FILTER
 import openmc.checkvalue as cv
 
 if sys.version_info[0] >= 3:
@@ -194,10 +195,10 @@ class MDGXS(MGXS):
 
         # Create the non-domain specific Filters for the Tallies
         group_edges = self.energy_groups.group_edges
-        energy_filter = openmc.Filter('energy', group_edges)
+        energy_filter = openmc.EnergyFilter(group_edges)
 
         if self.delayed_groups != None:
-            delayed_filter = openmc.Filter('delayedgroup', self.delayed_groups)
+            delayed_filter = openmc.DelayedGroupFilter(self.delayed_groups)
             return [[energy_filter], [delayed_filter, energy_filter]]
         else:
             return [[energy_filter], [energy_filter]]
@@ -325,14 +326,14 @@ class MDGXS(MGXS):
             cv.check_iterable_type('subdomains', subdomains, Integral,
                                    max_depth=3)
             for subdomain in subdomains:
-                filters.append(self.domain_type)
+                filters.append(_DOMAIN_TO_FILTER[self.domain_type])
                 filter_bins.append((subdomain,))
 
         # Construct list of energy group bounds tuples for all requested groups
         if not isinstance(groups, basestring):
             cv.check_iterable_type('groups', groups, Integral)
             for group in groups:
-                filters.append('energy')
+                filters.append(openmc.EnergyFilter)
                 filter_bins.append(
                     (self.energy_groups.get_group_bounds(group),))
 
@@ -340,7 +341,7 @@ class MDGXS(MGXS):
         if not isinstance(delayed_groups, basestring):
             cv.check_type('delayed groups', delayed_groups, list, int)
             for delayed_group in delayed_groups:
-                filters.append('delayedgroup')
+                filters.append(openmc.DelayedGroupFilter)
                 filter_bins.append((delayed_group,))
 
         # Construct a collection of the nuclides to retrieve from the xs tally
@@ -447,11 +448,11 @@ class MDGXS(MGXS):
                 group_bounds = self.energy_groups.get_group_bounds(group)
                 energy_bins.append(group_bounds)
             filter_bins.append(tuple(energy_bins))
-            filters.append('energy')
+            filters.append(openmc.EnergyFilter)
 
         if len(delayed_groups) != 0:
             filter_bins.append(tuple(delayed_groups))
-            filters.append('delayedgroup')
+            filters.append(openmc.DelayedGroupFilter)
 
         # Clone this MGXS to initialize the sliced version
         slice_xs = copy.deepcopy(self)
@@ -974,10 +975,10 @@ class ChiDelayed(MDGXS):
     def filters(self):
         # Create the non-domain specific Filters for the Tallies
         group_edges = self.energy_groups.group_edges
-        energyout = openmc.Filter('energyout', group_edges)
-        energyin = openmc.Filter('energy', [group_edges[0], group_edges[-1]])
+        energyout = openmc.EnergyoutFilter(group_edges)
+        energyin = openmc.EnergyFilter([group_edges[0], group_edges[-1]])
         if self.delayed_groups != None:
-            delayed_filter = openmc.Filter('delayedgroup', self.delayed_groups)
+            delayed_filter = openmc.DelayedGroupFilter(self.delayed_groups)
             return [[delayed_filter, energyin], [delayed_filter, energyout]]
         else:
             return [[energyin], [energyout]]
@@ -1004,7 +1005,8 @@ class ChiDelayed(MDGXS):
             delayed_nu_fission_in = self.tallies['delayed-nu-fission-in']
 
             # Remove coarse energy filter to keep it out of tally arithmetic
-            energy_filter = delayed_nu_fission_in.find_filter('energy')
+            energy_filter = delayed_nu_fission_in.find_filter(
+                openmc.EnergyFilter)
             delayed_nu_fission_in.remove_filter(energy_filter)
 
             # Compute chi
@@ -1049,7 +1051,7 @@ class ChiDelayed(MDGXS):
         # Temporarily remove energy filter from delayed-nu-fission-in since its
         # group structure will work in super MGXS.get_slice(...) method
         delayed_nu_fission_in = self.tallies['delayed-nu-fission-in']
-        energy_filter = delayed_nu_fission_in.find_filter('energy')
+        energy_filter = delayed_nu_fission_in.find_filter(openmc.EnergyFilter)
         delayed_nu_fission_in.remove_filter(energy_filter)
 
         # Call super class method and null out derived tallies
@@ -1068,11 +1070,11 @@ class ChiDelayed(MDGXS):
                 group_bounds = self.energy_groups.get_group_bounds(group)
                 energy_bins.append(group_bounds)
             filter_bins.append(tuple(energy_bins))
-            filters.append('energyout')
+            filters.append(openmc.EnergyoutFilter)
 
         if len(delayed_groups) != 0:
             filter_bins.append(tuple(delayed_groups))
-            filters.append('delayedgroup')
+            filters.append(openmc.DelayedGroupFilter)
 
         if filters != []:
 
@@ -1214,14 +1216,14 @@ class ChiDelayed(MDGXS):
             cv.check_iterable_type('subdomains', subdomains, Integral,
                                    max_depth=3)
             for subdomain in subdomains:
-                filters.append(self.domain_type)
+                filters.append(_DOMAIN_TO_FILTER[self.domain_type])
                 filter_bins.append((subdomain,))
 
         # Construct list of energy group bounds tuples for all requested groups
         if not isinstance(groups, basestring):
             cv.check_iterable_type('groups', groups, Integral)
             for group in groups:
-                filters.append('energyout')
+                filters.append(openmc.EnergyoutFilter)
                 filter_bins.append(
                     (self.energy_groups.get_group_bounds(group),))
 
@@ -1229,7 +1231,7 @@ class ChiDelayed(MDGXS):
         if not isinstance(delayed_groups, basestring):
             cv.check_type('delayed groups', delayed_groups, list, int)
             for delayed_group in delayed_groups:
-                filters.append('delayedgroup')
+                filters.append(openmc.DelayedGroupFilter)
                 filter_bins.append((delayed_group,))
 
         # If chi delayed was computed for each nuclide in the domain
@@ -1251,7 +1253,8 @@ class ChiDelayed(MDGXS):
                                          (nuclides=nuclides)
 
                 # Remove coarse energy filter to keep it out of tally arithmetic
-                energy_filter = delayed_nu_fission_in.find_filter('energy')
+                energy_filter = delayed_nu_fission_in.find_filter(
+                    openmc.EnergyFilter)
                 delayed_nu_fission_in.remove_filter(energy_filter)
 
                 # Compute chi and store it as the xs_tally attribute so we can
@@ -1710,10 +1713,10 @@ class DecayRate(MDGXS):
 
         # Create the non-domain specific Filters for the Tallies
         group_edges = self.energy_groups.group_edges
-        energy_filter = openmc.Filter('energy', group_edges)
+        energy_filter = openmc.EnergyFilter(group_edges)
 
         if self.delayed_groups != None:
-            delayed_filter = openmc.Filter('delayedgroup', self.delayed_groups)
+            delayed_filter = openmc.DelayedGroupFilter(self.delayed_groups)
             return [[delayed_filter, energy_filter], [delayed_filter, energy_filter]]
         else:
             return [[energy_filter], [energy_filter]]

@@ -27,21 +27,20 @@ class TallySliceMergeTestHarness(PyAPITestHarness):
 
         # Define filters for energy and spatial domain
 
-        low_energy = openmc.Filter(type='energy', bins=[0., 0.625e-6])
-        high_energy = openmc.Filter(type='energy', bins=[0.625e-6, 20.])
+        low_energy = openmc.EnergyFilter([0., 0.625e-6])
+        high_energy = openmc.EnergyFilter([0.625e-6, 20.])
         merged_energies = low_energy.merge(high_energy)
 
-        cell_21 = openmc.Filter(type='cell', bins=[21])
-        cell_27 = openmc.Filter(type='cell', bins=[27])
-        distribcell_filter = openmc.Filter(type='distribcell', bins=[21])
+        cell_21 = openmc.CellFilter(21)
+        cell_27 = openmc.CellFilter(27)
+        distribcell_filter = openmc.DistribcellFilter(21)
 
         mesh = openmc.Mesh(name='mesh')
         mesh.type = 'regular'
         mesh.dimension = [2, 2]
         mesh.lower_left = [-50., -50.]
         mesh.upper_right = [+50., +50.]
-        mesh_filter = openmc.Filter(type='mesh', bins=[mesh.id])
-        mesh_filter.mesh = mesh
+        mesh_filter = openmc.MeshFilter(mesh)
 
         self.cell_filters = [cell_21, cell_27]
         self.energy_filters = [low_energy, high_energy]
@@ -105,12 +104,12 @@ class TallySliceMergeTestHarness(PyAPITestHarness):
 
         # Slice the tallies by cell filter bins
         cell_filter_prod = itertools.product(tallies, self.cell_filters)
-        tallies = map(lambda tf: tf[0].get_slice(filters=[tf[1].type],
+        tallies = map(lambda tf: tf[0].get_slice(filters=[type(tf[1])],
                       filter_bins=[tf[1].get_bin(0)]), cell_filter_prod)
 
         # Slice the tallies by energy filter bins
         energy_filter_prod = itertools.product(tallies, self.energy_filters)
-        tallies = map(lambda tf: tf[0].get_slice(filters=[tf[1].type],
+        tallies = map(lambda tf: tf[0].get_slice(filters=[type(tf[1])],
                       filter_bins=[(tf[1].get_bin(0),)]), energy_filter_prod)
 
         # Slice the tallies by nuclide
@@ -144,10 +143,10 @@ class TallySliceMergeTestHarness(PyAPITestHarness):
         distribcell_tally = sp.get_tally(name='distribcell tally')
 
         # Sum up a few subdomains from the distribcell tally
-        sum1 = distribcell_tally.summation(filter_type='distribcell',
+        sum1 = distribcell_tally.summation(filter_type=openmc.DistribcellFilter,
                                            filter_bins=[0,100,2000,30000])
         # Sum up a few subdomains from the distribcell tally
-        sum2 = distribcell_tally.summation(filter_type='distribcell',
+        sum2 = distribcell_tally.summation(filter_type=openmc.DistribcellFilter,
                                            filter_bins=[500,5000,50000])
 
         # Merge the distribcell tally slices
@@ -161,10 +160,10 @@ class TallySliceMergeTestHarness(PyAPITestHarness):
         mesh_tally = sp.get_tally(name='mesh tally')
 
         # Sum up a few subdomains from the mesh tally
-        sum1 = mesh_tally.summation(filter_type='mesh',
+        sum1 = mesh_tally.summation(filter_type=openmc.MeshFilter,
                                     filter_bins=[(1,1,1), (1,2,1)])
         # Sum up a few subdomains from the mesh tally
-        sum2 = mesh_tally.summation(filter_type='mesh',
+        sum2 = mesh_tally.summation(filter_type=openmc.MeshFilter,
                                     filter_bins=[(2,1,1), (2,2,1)])
 
         # Merge the mesh tally slices

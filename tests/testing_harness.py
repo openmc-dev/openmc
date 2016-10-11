@@ -24,7 +24,7 @@ class TestHarness(object):
         self.parser = OptionParser()
         self.parser.add_option('--exe', dest='exe', default='openmc')
         self.parser.add_option('--mpi_exec', dest='mpi_exec', default=None)
-        self.parser.add_option('--mpi_np', dest='mpi_np', type=int, default=3)
+        self.parser.add_option('--mpi_np', dest='mpi_np', type=int, default=2)
         self.parser.add_option('--update', dest='update', action='store_true',
                                default=False)
         self._opts = None

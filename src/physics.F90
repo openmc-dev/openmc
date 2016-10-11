@@ -334,7 +334,7 @@ contains
 
       else
         ! Determine temperature
-        if (temperature_method == TEMPERATURE_MULTIPOLE) then
+        if (nuc % mp_present) then
           kT = p % sqrtkT**2
         else
           kT = nuc % kTs(micro_xs(i_nuclide) % index_temp)

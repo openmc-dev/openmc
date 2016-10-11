@@ -132,6 +132,8 @@ element settings {
 
   element temperature_method { xsd:string }? &
 
+  element temperature_multipole { xsd:boolean }? &
+
   element temperature_tolerance { xsd:double }? &
 
   element threads { xsd:positiveInteger }? &
@@ -182,6 +184,4 @@ element settings {
         attribute E_max { xsd:double })?
     }*
   }? &
-
-  element use_windowed_multipole { xsd:boolean }?
 }

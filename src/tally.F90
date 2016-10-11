@@ -149,7 +149,7 @@ contains
           if (survival_biasing) then
             ! We need to account for the fact that some weight was already
             ! absorbed
-            score = p % last_wgt + p % absorb_wgt * flux
+            score = (p % last_wgt + p % absorb_wgt) * flux
           else
             score = p % last_wgt * flux
           end if
@@ -417,6 +417,13 @@ contains
 
 
       case (SCORE_PROMPT_NU_FISSION)
+        ! make sure the correct energy is used
+        if (t % estimator == ESTIMATOR_TRACKLENGTH) then
+          E = p % E
+        else
+          E = p % last_E
+        end if
+
         if (t % estimator == ESTIMATOR_ANALOG) then
           if (survival_biasing .or. p % fission) then
             if (t % find_filter(FILTER_ENERGYOUT) > 0) then
@@ -453,13 +460,6 @@ contains
           end if
 
         else
-          ! make sure the correct energy is used
-          if (t % estimator == ESTIMATOR_TRACKLENGTH) then
-            E = p % E
-          else
-            E = p % last_E
-          end if
-
           if (i_nuclide > 0) then
               score = micro_xs(i_nuclide) % fission * nuclides(i_nuclide) % &
                    nu(E, EMISSION_PROMPT) * atom_density * flux
@@ -675,6 +675,12 @@ contains
 
 
       case (SCORE_DECAY_RATE)
+        ! make sure the correct energy is used
+        if (t % estimator == ESTIMATOR_TRACKLENGTH) then
+          E = p % E
+        else
+          E = p % last_E
+        end if
 
         ! Set the delayedgroup filter index
         dg_filter = t % find_filter(FILTER_DELAYEDGROUP)

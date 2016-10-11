@@ -101,6 +101,7 @@ module global
 
   ! Default temperature and method for choosing temperatures
   integer :: temperature_method = TEMPERATURE_NEAREST
+  logical :: temperature_multipole = .false.
   real(8) :: temperature_tolerance = 10.0_8
   real(8) :: temperature_default = 293.6_8
 

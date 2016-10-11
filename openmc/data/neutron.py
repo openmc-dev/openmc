@@ -377,7 +377,7 @@ class IncidentNeutron(EqualityMixin):
         return mts
 
     def export_to_hdf5(self, path, mode='a'):
-        """Export table to an HDF5 file.
+        """Export incident neutron data to an HDF5 file.
 
         Parameters
         ----------
@@ -388,6 +388,10 @@ class IncidentNeutron(EqualityMixin):
             to the :class:`h5py.File` constructor.
 
         """
+        # If data come from ENDF, don't allow exporting to HDF5
+        if hasattr(self, '_evaluation'):
+            raise NotImplementedError('Cannot export incident neutron data that '
+                                      'originated from an ENDF file.')
 
         f = h5py.File(path, mode, libver='latest')
 

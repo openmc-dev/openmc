@@ -12,10 +12,7 @@ import pandas as pd
 
 sys.path.insert(0, os.pardir)
 from testing_harness import PyAPITestHarness
-from openmc import Filter, Mesh, Tally, Tallies, Summary, StatePoint, \
-                   TallyDerivative
-from openmc.source import Source
-from openmc.stats import Box
+import openmc
 
 class DiffTallyTestHarness(PyAPITestHarness):
     def _build_inputs(self):
@@ -26,34 +23,34 @@ class DiffTallyTestHarness(PyAPITestHarness):
         self._input_set.settings.batches = 5
         self._input_set.settings.inactive = 0
         self._input_set.settings.particles = 400
-        self._input_set.settings.source = Source(space=Box(
+        self._input_set.settings.source = openmc.Source(space=openmc.stats.Box(
             [-160, -160, -183], [160, 160, 183]))
         self._input_set.settings.output = {'summary': True}
 
-        self._input_set.tallies = Tallies()
+        self._input_set.tallies = openmc.Tallies()
 
-        filt_mats = Filter(type='material', bins=(1, 3))
-        filt_eout = Filter(type='energyout', bins=(0.0, 1.0, 20.0))
+        filt_mats = openmc.MaterialFilter((1, 3))
+        filt_eout = openmc.EnergyoutFilter((0.0, 1.0, 20.0))
 
         # We want density derivatives for both water and fuel to get coverage
         # for both fissile and non-fissile materials.
-        d1 = TallyDerivative(derivative_id=1)
+        d1 = openmc.TallyDerivative(derivative_id=1)
         d1.variable = 'density'
         d1.material = 3
-        d2 = TallyDerivative(derivative_id=2)
+        d2 = openmc.TallyDerivative(derivative_id=2)
         d2.variable = 'density'
         d2.material = 1
 
         # O-16 is a good nuclide to test against because it is present in both
         # water and fuel.  Some routines need to recognize that they have the
         # perturbed nuclide but not the perturbed material.
-        d3 = TallyDerivative(derivative_id=3)
+        d3 = openmc.TallyDerivative(derivative_id=3)
         d3.variable = 'nuclide_density'
         d3.material = 1
         d3.nuclide = 'O16'
 
         # A fissile nuclide, just for good measure.
-        d4 = TallyDerivative(derivative_id=4)
+        d4 = openmc.TallyDerivative(derivative_id=4)
         d4.variable = 'nuclide_density'
         d4.material = 1
         d4.nuclide = 'U235'
@@ -62,7 +59,7 @@ class DiffTallyTestHarness(PyAPITestHarness):
 
         # Cover the flux score.
         for i in range(4):
-            t = Tally()
+            t = openmc.Tally()
             t.add_score('flux')
             t.add_filter(filt_mats)
             t.derivative = derivs[i]
@@ -70,7 +67,7 @@ class DiffTallyTestHarness(PyAPITestHarness):
 
         # Cover supported scores with a collision estimator.
         for i in range(4):
-            t = Tally()
+            t = openmc.Tally()
             t.add_score('total')
             t.add_score('absorption')
             t.add_score('fission')
@@ -83,7 +80,7 @@ class DiffTallyTestHarness(PyAPITestHarness):
 
         # Cover an analog estimator.
         for i in range(4):
-            t = Tally()
+            t = openmc.Tally()
             t.add_score('absorption')
             t.add_filter(filt_mats)
             t.estimator = 'analog'
@@ -92,7 +89,7 @@ class DiffTallyTestHarness(PyAPITestHarness):
 
         # And the special fission with energyout filter.
         for i in range(4):
-            t = Tally()
+            t = openmc.Tally()
             t.add_score('nu-fission')
             t.add_filter(filt_mats)
             t.add_filter(filt_eout)
@@ -104,9 +101,7 @@ class DiffTallyTestHarness(PyAPITestHarness):
     def _get_results(self):
         # Read the statepoint and summary files.
         statepoint = glob.glob(os.path.join(os.getcwd(), self._sp_name))[0]
-        sp = StatePoint(statepoint)
-        su = Summary('summary.h5')
-        sp.link_with_summary(su)
+        sp = openmc.StatePoint(statepoint)
 
         # Extract the tally data as a Pandas DataFrame.
         df = pd.DataFrame()

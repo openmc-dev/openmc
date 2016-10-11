@@ -1,3 +1,4 @@
+from openmc.arithmetic import *
 from openmc.cell import *
 from openmc.lattice import *
 from openmc.element import *

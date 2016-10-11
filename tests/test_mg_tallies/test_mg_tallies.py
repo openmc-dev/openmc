@@ -17,14 +17,11 @@ class MGTalliesTestHarness(PyAPITestHarness):
         mesh.upper_right = [21.42, 21.42, 100.0]
 
         # Instantiate some tally filters
-        energy_filter = openmc.Filter(type='energy',
-                                      bins=[0.0, 20.0])
-        energyout_filter = openmc.Filter(type='energyout',
-                                         bins=[0.0, 20.0])
-        mesh_filter = openmc.Filter()
-        mesh_filter.mesh = mesh
+        energy_filter = openmc.EnergyFilter([0.0, 20.0])
+        energyout_filter = openmc.EnergyoutFilter([0.0, 20.0])
+        mesh_filter = openmc.MeshFilter(mesh)
 
-        mat_filter = openmc.Filter(type='material', bins=[1,2,3])
+        mat_filter = openmc.MaterialFilter([1,2,3])
 
         tally1 = openmc.Tally(tally_id=1)
         tally1.filters = [mesh_filter]

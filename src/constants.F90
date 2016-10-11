@@ -271,8 +271,7 @@ module constants
   ! Temperature treatment method
   integer, parameter :: &
        TEMPERATURE_NEAREST = 1, &
-       TEMPERATURE_INTERPOLATION = 2, &
-       TEMPERATURE_MULTIPOLE = 3
+       TEMPERATURE_INTERPOLATION = 2
 
   ! ============================================================================
   ! TALLY-RELATED CONSTANTS

@@ -24,7 +24,7 @@ def _extract_458_data(ev, units='eV'):
     ev : openmc.data.Evaluation
         ENDF evaluation
     units : {'eV', 'MeV'}
-        The units are used in values returned.
+        The units that are used in values returned.
 
     Returns
     -------

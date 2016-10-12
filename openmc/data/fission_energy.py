@@ -40,6 +40,9 @@ def _extract_458_data(ev, units='eV'):
         caution.
 
     """
+    cv.check_type('evaluation', ev, Evaluation)
+    cv.check_value('energy units', units, ('eV', 'MeV'))
+
     if not ev.target['fissionable']:
         # This nuclide isn't fissionable.
         return None
@@ -356,7 +359,7 @@ class FissionEnergyRelease(EqualityMixin):
         self._neutrinos = energy_release
 
     @classmethod
-    def _from_dictionary(cls, energy_release, incident_neutron):
+    def _from_dictionary(cls, energy_release, incident_neutron, units='eV'):
         """Generate fission energy release data from a dictionary.
 
         Parameters
@@ -368,6 +371,8 @@ class FissionEnergyRelease(EqualityMixin):
             data, more for polynomial data.
         incident_neutron : openmc.data.IncidentNeutron
             Corresponding incident neutron dataset
+        units : {'eV', 'MeV'}
+            The energy units used in the returned object.
 
         Returns
         -------
@@ -375,6 +380,8 @@ class FissionEnergyRelease(EqualityMixin):
             Fission energy release data
 
         """
+        cv.check_value('energy units', units, ('eV', 'MeV'))
+
         out = cls()
 
         # How many coefficients are given for each component?  If we only find
@@ -425,24 +432,28 @@ class FissionEnergyRelease(EqualityMixin):
                 raise ValueError('Ambiguous prompt/total nu value.')
 
             nu = nu[0]
+            if units == 'eV':
+                nu_const = 8.07e6
+            else:
+                nu_const = 8.07
             if isinstance(nu, Tabulated1D):
                 ENP = deepcopy(nu)
                 ENP.y = (energy_release['ENP'] + 1.307 * nu.x
-                         - 8.07 * (nu.y - nu.y[0]))
+                         - nu_const * (nu.y - nu.y[0]))
             elif isinstance(nu, Polynomial):
                 if len(nu) == 1:
                     ENP = Polynomial([energy_release['ENP'][0], 1.307])
                 else:
                     ENP = Polynomial(
-                        [energy_release['ENP'][0], 1.307 - 8.07*nu.coef[1]] +
-                        [-8.07*c for c in nu.coef[2:]])
+                        [energy_release['ENP'][0], 1.307 - nu_const*nu.coef[1]]
+                        + [-nu_const*c for c in nu.coef[2:]])
 
             out.prompt_neutrons = ENP
 
         return out
 
     @classmethod
-    def from_endf(cls, ev, incident_neutron):
+    def from_endf(cls, ev, incident_neutron, units='eV'):
         """Generate fission energy release data from an ENDF file.
 
         Parameters
@@ -451,6 +462,8 @@ class FissionEnergyRelease(EqualityMixin):
             ENDF evaluation
         incident_neutron : openmc.data.IncidentNeutron
             Corresponding incident neutron dataset
+        units : {'eV', 'MeV'}
+            The energy units used in the returned object.
 
         Returns
         -------
@@ -458,6 +471,7 @@ class FissionEnergyRelease(EqualityMixin):
             Fission energy release data
 
         """
+        cv.check_type('evaluation', ev, Evaluation)
 
         # Check to make sure this ENDF file matches the expected isomer.
         if ev.target['atomic_number'] != incident_neutron.atomic_number:
@@ -473,10 +487,10 @@ class FissionEnergyRelease(EqualityMixin):
             raise ValueError('The ENDF evaluation is not fissionable.')
 
         # Read the 458 data from the ENDF file.
-        value, uncertainty = _extract_458_data(ev)
+        value, uncertainty = _extract_458_data(ev, units)
 
         # Build the object.
-        return cls._from_dictionary(value, incident_neutron)
+        return cls._from_dictionary(value, incident_neutron, units)
 
     @classmethod
     def from_hdf5(cls, group):

@@ -1025,7 +1025,12 @@ class Reaction(EqualityMixin):
 
         if (6, mt) in ev.section:
             # Product angle-energy distribution
-            rx.products = _get_products(ev, mt)
+            for product in _get_products(ev, mt):
+                if mt in (18, 19, 20, 21, 38) and product.particle == 'neutron':
+                    rx.products[0].applicability = product.applicability
+                    rx.products[0].distribution = product.distribution
+                else:
+                    rx.products.append(product)
 
         elif (4, mt) in ev.section or (5, mt) in ev.section:
             # Uncorrelated angle-energy distribution

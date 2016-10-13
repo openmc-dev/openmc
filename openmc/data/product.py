@@ -1,4 +1,5 @@
 from collections import Iterable
+from io import StringIO
 from numbers import Real
 import sys
 
@@ -7,8 +8,8 @@ import numpy as np
 
 import openmc.checkvalue as cv
 from openmc.mixin import EqualityMixin
-from .function import Tabulated1D, Polynomial, Function1D
 from .angle_energy import AngleEnergy
+from .function import Tabulated1D, Polynomial, Function1D
 
 
 class Product(EqualityMixin):

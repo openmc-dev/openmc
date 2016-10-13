@@ -89,3 +89,8 @@ docs/source/pythonapi/examples/mgxs
 docs/source/pythonapi/examples/tracks
 docs/source/pythonapi/examples/fission-rates
 docs/source/pythonapi/examples/plots
+
+# Cython files
+*.c
+*.html
+*.so

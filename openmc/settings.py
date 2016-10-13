@@ -101,11 +101,13 @@ class Settings(object):
     temperature : dict
         Defines a default temperature and method for treating intermediate
         temperatures at which nuclear data doesn't exist. Accepted keys are
-        'default', 'method', and 'tolerance'. The value for 'default' should be
-        a float representing the default temperature in Kelvin. The value for
-        'method' should be 'nearest' or 'multipole'. If the method is
-        'nearest', 'tolerance' indicates a range of temperature within which
-        cross sections may be used.
+        'default', 'method', 'tolerance', and 'multipole'. The value for
+        'default' should be a float representing the default temperature in
+        Kelvin. The value for 'method' should be 'nearest' or 'interpolation'.
+        If the method is 'nearest', 'tolerance' indicates a range of temperature
+        within which cross sections may be used. 'multipole' is a boolean
+        indicating whether or not the windowed multipole method should be used
+        to evaluate resolved resonance cross sections.
     trigger_active : bool
         Indicate whether tally triggers are used
     trigger_max_batches : int
@@ -669,14 +671,16 @@ class Settings(object):
         cv.check_type('temperature settings', temperature, Mapping)
         for key, value in temperature.items():
             cv.check_value('temperature key', key,
-                           ['default', 'method', 'tolerance'])
+                           ['default', 'method', 'tolerance', 'multipole'])
             if key == 'default':
                 cv.check_type('default temperature', value, Real)
             elif key == 'method':
                 cv.check_value('temperature method', value,
-                               ['nearest', 'interpolation', 'multipole'])
+                               ['nearest', 'interpolation'])
             elif key == 'tolerance':
                 cv.check_type('temperature tolerance', value, Real)
+            elif key == 'multipole':
+                cv.check_type('temperature multipole', value, bool)
         self._temperature = temperature
 
     @threads.setter
@@ -1047,7 +1051,7 @@ class Settings(object):
 
     def _create_temperature_subelements(self):
         if self.temperature:
-            for key, value in self.temperature.items():
+            for key, value in sorted(self.temperature.items()):
                 element = ET.SubElement(self._settings_file,
                                         "temperature_{}".format(key))
                 element.text = str(value)

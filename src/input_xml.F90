@@ -1082,14 +1082,24 @@ contains
         temperature_method = TEMPERATURE_NEAREST
       case ('interpolation')
         temperature_method = TEMPERATURE_INTERPOLATION
-      case ('multipole')
-        temperature_method = TEMPERATURE_MULTIPOLE
       case default
         call fatal_error("Unknown temperature method: " // trim(temp_str))
       end select
     end if
     if (check_for_node(doc, "temperature_tolerance")) then
       call get_node_value(doc, "temperature_tolerance", temperature_tolerance)
+    end if
+    if (check_for_node(doc, "temperature_multipole")) then
+      call get_node_value(doc, "temperature_multipole", temp_str)
+      select case (to_lower(temp_str))
+      case ('true', '1')
+        temperature_multipole = .true.
+      case ('false', '0')
+        temperature_multipole = .false.
+      case default
+        call fatal_error("Unrecognized value for <use_windowed_multipole> in &
+             &settings.xml")
+      end select
     end if
 
     ! Close settings XML file
@@ -5765,7 +5775,7 @@ contains
           file_id = file_open(libraries(i_library) % path, 'r')
           group_id = open_group(file_id, name)
           call nuclides(i_nuclide) % from_hdf5(group_id, nuc_temps(i_nuclide), &
-               temperature_method, temperature_tolerance)
+               temperature_method, temperature_tolerance, master)
           call close_group(group_id)
           call file_close(file_id)
 
@@ -5786,8 +5796,7 @@ contains
           call already_read % add(name)
 
           ! Read multipole file into the appropriate entry on the nuclides array
-          if (temperature_method == TEMPERATURE_MULTIPOLE) &
-               call read_multipole_data(i_nuclide)
+          if (temperature_multipole) call read_multipole_data(i_nuclide)
         end if
 
         ! Check if material is fissionable
@@ -5841,7 +5850,7 @@ contains
     end do
 
     ! If the user wants multipole, make sure we found a multipole library.
-    if (temperature_method == TEMPERATURE_MULTIPOLE) then
+    if (temperature_multipole) then
       mp_found = .false.
       do i = 1, size(nuclides)
         if (nuclides(i) % mp_present) then
@@ -5999,7 +6008,7 @@ contains
         group_id = open_group(file_id, name)
         method = TEMPERATURE_NEAREST
         call resonant_nuc % from_hdf5(group_id, temperature, &
-             method, 1000.0_8)
+             method, 1000.0_8, master)
         call close_group(group_id)
         call file_close(file_id)
 

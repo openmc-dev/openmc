@@ -17,6 +17,7 @@ class MultipoleTestHarness(PyAPITestHarness):
         moderator.set_density('g/cc', 1.0)
         moderator.add_nuclide('H1', 2.0)
         moderator.add_nuclide('O16', 1.0)
+        moderator.add_s_alpha_beta('c_H_in_H2O')
 
         dense_fuel = openmc.Material(material_id=2)
         dense_fuel.set_density('g/cc', 4.5)
@@ -67,7 +68,7 @@ class MultipoleTestHarness(PyAPITestHarness):
         sets_file.particles = 1000
         sets_file.source = Source(space=Box([-1, -1, -1], [1, 1, 1]))
         sets_file.output = {'summary': True}
-        sets_file.temperature = {'method': 'multipole'}
+        sets_file.temperature = {'tolerance': 1000, 'multipole': True}
         sets_file.export_to_xml()
 
         ####################

@@ -50,7 +50,7 @@ if have_setuptools:
 
         # Data files
         'package_data': {
-            'openmc.data': ['mass.mas12']
+            'openmc.data': ['mass.mas12', 'fission_Q_data_endfb71.h5']
         },
     })
 

@@ -3142,7 +3142,7 @@ module mgxs_header
       xs % nu_fission    = this % xs(this % index_temp) % &
            prompt_nu_fission(gin, iazi, ipol) + &
            sum(this % xs(this % index_temp) % &
-           delayed_nu_fission(gin, iazi, ipol, :))
+           delayed_nu_fission(gin, :, iazi, ipol))
 
     end subroutine mgxsang_calculate_xs
 

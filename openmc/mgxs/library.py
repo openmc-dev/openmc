@@ -527,7 +527,7 @@ class Library(object):
         ----------
         domain : Material or Cell or Universe or Integral
             The material, cell, or universe object of interest (or its ID)
-        mgxs_type : {'total', 'transport', 'nu-transport', 'absorption', 'capture', 'fission', 'nu-fission', 'kappa-fission', 'scatter', 'nu-scatter', 'scatter matrix', 'nu-scatter matrix', 'multiplicity matrix', 'nu-fission matrix', chi', 'chi-prompt', 'inverse-velocity', 'prompt-nu-fission', 'delayed-nu-fission', 'chi-delayed', 'beta'}
+        mgxs_type : {'total', 'transport', 'nu-transport', 'absorption', 'capture', 'fission', 'nu-fission', 'kappa-fission', 'scatter', 'nu-scatter', 'scatter matrix', 'nu-scatter matrix', 'multiplicity matrix', 'nu-fission matrix', chi', 'chi-prompt', 'inverse-velocity', 'prompt-nu-fission', 'prompt-nu-fission matrix', 'delayed-nu-fission', 'delayed-nu-fission matrix', 'chi-delayed', 'beta'}
             The type of multi-group cross section object to return
 
         Returns
@@ -987,8 +987,20 @@ class Library(object):
                                               nuclide=[nuclide],
                                               subdomain=subdomain)
 
+        if 'prompt-nu-fission matrix' in self.mgxs_types:
+            mymgxs = self.get_mgxs(domain, 'prompt-nu-fission matrix')
+            xsdata.set_prompt_nu_fission_mgxs(mymgxs, xs_type=xs_type,
+                                              nuclide=[nuclide],
+                                              subdomain=subdomain)
+
         if 'delayed-nu-fission' in self.mgxs_types:
             mymgxs = self.get_mgxs(domain, 'delayed-nu-fission')
+            xsdata.set_delayed_nu_fission_mgxs(mymgxs, xs_type=xs_type,
+                                               nuclide=[nuclide],
+                                               subdomain=subdomain)
+
+        if 'delayed-nu-fission matrix' in self.mgxs_types:
+            mymgxs = self.get_mgxs(domain, 'delayed-nu-fission matrix')
             xsdata.set_delayed_nu_fission_mgxs(mymgxs, xs_type=xs_type,
                                                nuclide=[nuclide],
                                                subdomain=subdomain)

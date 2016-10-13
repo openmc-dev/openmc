@@ -1,4 +1,5 @@
 from abc import ABCMeta, abstractmethod
+from io import StringIO
 
 from six import add_metaclass
 
@@ -40,7 +41,7 @@ class AngleEnergy(EqualityMixin):
 
     @staticmethod
     def from_ace(ace, location_dist, location_start, rx=None):
-        """Generate an AngleEnergy object from ACE data
+        """Generate an angle-energy distribution from ACE data
 
         Parameters
         ----------

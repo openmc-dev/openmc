@@ -924,7 +924,7 @@ class Library(object):
         if 'nu-transport' in self.mgxs_types and self.correction is 'P0':
             mymgxs = self.get_mgxs(domain, 'nu-transport')
             xsdata.set_total_mgxs(mymgxs, xs_type=xs_type, nuclide=[nuclide],
-                                  subdomains=subdomain)
+                                  subdomain=subdomain)
         elif 'total' in self.mgxs_types:
             mymgxs = self.get_mgxs(domain, 'total')
             xsdata.set_total_mgxs(mymgxs, xs_type=xs_type, nuclide=[nuclide],

@@ -92,6 +92,7 @@ docs/source/pythonapi/examples/tracks
 docs/source/pythonapi/examples/fission-rates
 docs/source/pythonapi/examples/plots
 
-# VSCode workspace directory
-.vscode
-.vscode/*
+# Cython files
+*.c
+*.html
+*.so

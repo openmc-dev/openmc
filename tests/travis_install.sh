@@ -8,7 +8,7 @@ if [[ ! -e $HOME/mpich_install/bin/mpiexec ]]; then
     tar -xzvf mpich-3.1.3.tar.gz >/dev/null 2>&1
     cd mpich-3.1.3
     ./configure --prefix=$HOME/mpich_install -q
-    make >/dev/null 2>&1
+    make -j 2 >/dev/null 2>&1
     make install >/dev/null 2>&1
     cd ..
 fi
@@ -22,7 +22,7 @@ if [[ ! -e $HOME/phdf5_install/bin/h5pfc ]]; then
        ./configure \
        --prefix=$HOME/phdf5_install -q --enable-fortran \
        --enable-fortran2003 --enable-parallel
-    make >/dev/null 2>&1
+    make -j 2 >/dev/null 2>&1
     make install >/dev/null 2>&1
     cd ..
 fi
@@ -33,7 +33,7 @@ if [[ ! -e $HOME/hdf5_install/bin/h5fc ]]; then
     cd hdf5-1.8.15
     CC=gcc FC=gfortran ./configure --prefix=$HOME/hdf5_install -q \
                                    --enable-fortran --enable-fortran2003
-    make -j >/dev/null 2>&1
+    make -j 2 >/dev/null 2>&1
     make install >/dev/null 2>&1
     cd ..
 fi

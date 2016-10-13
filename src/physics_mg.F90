@@ -73,7 +73,7 @@ contains
     if (mat % fissionable) then
       if (run_mode == MODE_EIGENVALUE) then
         call create_fission_sites(p, fission_bank, n_bank)
-      elseif (run_mode == MODE_FIXEDSOURCE) then
+      elseif (run_mode == MODE_FIXEDSOURCE .and. create_fission_neutrons) then
         call create_fission_sites(p, p % secondary_bank, p % n_secondary)
       end if
     end if

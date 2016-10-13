@@ -141,6 +141,8 @@ class Settings(object):
         The elastic scattering model to use for resonant isotopes
     volume_calculations : VolumeCalculation or iterable of VolumeCalculation
         Stochastic volume calculation specifications
+    create_fission_neutrons : bool
+        Indicate whether fission neutrons should be created or not.
 
     """
 
@@ -226,6 +228,8 @@ class Settings(object):
             ResonanceScattering, 'resonance scattering models')
         self._volume_calculations = cv.CheckedList(
             VolumeCalculation, 'volume calculations')
+
+        self._create_fission_neutrons = None
 
     @property
     def run_mode(self):
@@ -426,6 +430,10 @@ class Settings(object):
     @property
     def volume_calculations(self):
         return self._volume_calculations
+
+    @property
+    def create_fission_neutrons(self):
+        return self._create_fission_neutrons
 
     @run_mode.setter
     def run_mode(self, run_mode):
@@ -826,6 +834,12 @@ class Settings(object):
         self._volume_calculations = cv.CheckedList(
             VolumeCalculation, 'stochastic volume calculations', vol_calcs)
 
+    @create_fission_neutrons.setter
+    def create_fission_neutrons(self, create_fission_neutrons):
+        cv.check_type('Whether create fission neutrons',
+                      create_fission_neutrons, bool)
+        self._create_fission_neutrons = create_fission_neutrons
+
     def _create_run_mode_subelement(self):
 
         if self.run_mode == 'eigenvalue':
@@ -1121,6 +1135,11 @@ class Settings(object):
             for r in self.resonance_scattering:
                 elem.append(r.to_xml_element())
 
+    def _create_create_fission_neutrons_subelement(self):
+        if self._create_fission_neutrons is not None:
+            elem = ET.SubElement(self._settings_file, "create_fission_neutrons")
+            elem.text = str(self._create_fission_neutrons).lower()
+
     def export_to_xml(self, path='settings.xml'):
         """Export simulation settings to an XML file.
 
@@ -1164,6 +1183,7 @@ class Settings(object):
         self._create_dd_subelement()
         self._create_resonance_scattering_subelement()
         self._create_volume_calcs_subelement()
+        self._create_create_fission_neutrons_subelement()
 
         # Clean the indentation in the file to be user-readable
         clean_xml_indentation(self._settings_file)

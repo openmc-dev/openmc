@@ -384,7 +384,7 @@ class XSdata(object):
         check_type('temperature', temperature, Real)
         check_value('temperature', temperature, self.temperatures)
 
-        i = np.where(self.temperatures == temperature)
+        i = np.where(self.temperatures == temperature)[0][0]
         self._total[i] = total
 
     def set_absorption(self, absorption, temperature=294.):
@@ -411,7 +411,7 @@ class XSdata(object):
         check_type('temperature', temperature, Real)
         check_value('temperature', temperature, self.temperatures)
 
-        i = np.where(self.temperatures == temperature)
+        i = np.where(self.temperatures == temperature)[0][0]
         self._absorption[i] = absorption
 
     def set_fission(self, fission, temperature=294.):
@@ -438,7 +438,7 @@ class XSdata(object):
         check_type('temperature', temperature, Real)
         check_value('temperature', temperature, self.temperatures)
 
-        i = np.where(self.temperatures == temperature)
+        i = np.where(self.temperatures == temperature)[0][0]
         self._fission[i] = fission
 
         if np.sum(fission) > 0.0:
@@ -470,7 +470,7 @@ class XSdata(object):
         check_type('temperature', temperature, Real)
         check_value('temperature', temperature, self.temperatures)
 
-        i = np.where(self.temperatures == temperature)
+        i = np.where(self.temperatures == temperature)[0][0]
         self._kappa_fission[i] = kappa_fission
 
         if np.sum(kappa_fission) > 0.0:
@@ -509,7 +509,7 @@ class XSdata(object):
         check_type('temperature', temperature, Real)
         check_value('temperature', temperature, self.temperatures)
 
-        i = np.where(self.temperatures == temperature)
+        i = np.where(self.temperatures == temperature)[0][0]
         self._chi[i] = chi
 
         if self.use_chi is not None:
@@ -540,7 +540,7 @@ class XSdata(object):
         check_type('temperature', temperature, Real)
         check_value('temperature', temperature, self.temperatures)
 
-        i = np.where(self.temperatures == temperature)
+        i = np.where(self.temperatures == temperature)[0][0]
         self._scatter_matrix[i] = scatter
 
     def set_multiplicity_matrix(self, multiplicity, temperature=294.):
@@ -569,7 +569,7 @@ class XSdata(object):
         check_type('temperature', temperature, Real)
         check_value('temperature', temperature, self.temperatures)
 
-        i = np.where(self.temperatures == temperature)
+        i = np.where(self.temperatures == temperature)[0][0]
         self._multiplicity_matrix[i] = multiplicity
 
     def set_nu_fission(self, nu_fission, temperature=294.):
@@ -624,7 +624,7 @@ class XSdata(object):
             else:
                 self.use_chi = False
 
-        i = np.where(self.temperatures == temperature)
+        i = np.where(self.temperatures == temperature)[0][0]
         self._nu_fission[i] = nu_fission
         if np.sum(nu_fission) > 0.0:
             self._fissionable = True
@@ -651,7 +651,7 @@ class XSdata(object):
         check_type('temperature', temperature, Real)
         check_value('temperature', temperature, self.temperatures)
 
-        i = np.where(self.temperatures == temperature)
+        i = np.where(self.temperatures == temperature)[0][0]
         self._inverse_velocities[i] = inv_vel
 
     def set_total_mgxs(self, total, temperature=294., nuclide='total',
@@ -693,7 +693,7 @@ class XSdata(object):
         check_type('temperature', temperature, Real)
         check_value('temperature', temperature, self.temperatures)
 
-        i = np.where(self.temperatures == temperature)
+        i = np.where(self.temperatures == temperature)[0][0]
         if self.representation is 'isotropic':
             self._total[i] = total.get_xs(nuclides=nuclide, xs_type=xs_type,
                                           subdomains=subdomain)
@@ -739,7 +739,7 @@ class XSdata(object):
         check_type('temperature', temperature, Real)
         check_value('temperature', temperature, self.temperatures)
 
-        i = np.where(self.temperatures == temperature)
+        i = np.where(self.temperatures == temperature)[0][0]
         if self.representation is 'isotropic':
             self._absorption[i] = absorption.get_xs(nuclides=nuclide,
                                                     xs_type=xs_type,
@@ -786,7 +786,7 @@ class XSdata(object):
         check_type('temperature', temperature, Real)
         check_value('temperature', temperature, self.temperatures)
 
-        i = np.where(self.temperatures == temperature)
+        i = np.where(self.temperatures == temperature)[0][0]
         if self.representation is 'isotropic':
             self._fission[i] = fission.get_xs(nuclides=nuclide,
                                               xs_type=xs_type,
@@ -834,7 +834,7 @@ class XSdata(object):
         check_type('temperature', temperature, Real)
         check_value('temperature', temperature, self.temperatures)
 
-        i = np.where(self.temperatures == temperature)
+        i = np.where(self.temperatures == temperature)[0][0]
         if self.representation is 'isotropic':
             self._nu_fission[i] = nu_fission.get_xs(nuclides=nuclide,
                                                     xs_type=xs_type,
@@ -891,7 +891,7 @@ class XSdata(object):
         check_type('temperature', temperature, Real)
         check_value('temperature', temperature, self.temperatures)
 
-        i = np.where(self.temperatures == temperature)
+        i = np.where(self.temperatures == temperature)[0][0]
         if self.representation is 'isotropic':
             self._kappa_fission[i] = k_fission.get_xs(nuclides=nuclide,
                                                       xs_type=xs_type,
@@ -942,7 +942,7 @@ class XSdata(object):
         check_type('temperature', temperature, Real)
         check_value('temperature', temperature, self.temperatures)
 
-        i = np.where(self.temperatures == temperature)
+        i = np.where(self.temperatures == temperature)[0][0]
         if self.representation is 'isotropic':
             self._chi[i] = chi.get_xs(nuclides=nuclide,
                                       xs_type=xs_type, subdomains=subdomain)
@@ -1010,7 +1010,7 @@ class XSdata(object):
             check_value('legendre_order', scatter.legendre_order,
                         [self.order])
 
-        i = np.where(self.temperatures == temperature)
+        i = np.where(self.temperatures == temperature)[0][0]
         if self.representation is 'isotropic':
             # Get the scattering orders in the outermost dimension
             self._scatter_matrix[i] = np.zeros((self.num_orders,
@@ -1088,7 +1088,7 @@ class XSdata(object):
             check_value('domain_type', scatter.domain_type,
                         ['universe', 'cell', 'material', 'mesh'])
 
-        i = np.where(self.temperatures == temperature)
+        i = np.where(self.temperatures == temperature)[0][0]
         if self.representation is 'isotropic':
             nuscatt = nuscatter.get_xs(nuclides=nuclide,
                                        xs_type=xs_type, moment=0,

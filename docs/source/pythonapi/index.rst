@@ -345,6 +345,7 @@ Functions
 .. autosummary::
    :toctree: generated
    :nosignatures:
+   :template: myfunction.rst
 
    openmc.model.create_triso_lattice
    openmc.model.pack_trisos
@@ -352,16 +353,6 @@ Functions
 --------------------------------------------
 :mod:`openmc.data` -- Nuclear Data Interface
 --------------------------------------------
-
-Physical Data
--------------
-
-.. autosummary::
-    :toctree: generated
-    :nosignatures:
-    :template: myfunction.rst
-
-    openmc.data.atomic_mass
 
 Core Classes
 ------------
@@ -375,10 +366,22 @@ Core Classes
     openmc.data.Reaction
     openmc.data.Product
     openmc.data.Tabulated1D
+    openmc.data.FissionEnergyRelease
     openmc.data.ThermalScattering
     openmc.data.CoherentElastic
     openmc.data.FissionEnergyRelease
     openmc.data.DataLibrary
+
+Core Functions
+--------------
+
+.. autosummary::
+    :toctree: generated
+    :nosignatures:
+    :template: myfunction.rst
+
+    openmc.data.atomic_mass
+    openmc.data.write_compact_458_library
 
 Angle-Energy Distributions
 --------------------------
@@ -393,6 +396,7 @@ Angle-Energy Distributions
     openmc.data.CorrelatedAngleEnergy
     openmc.data.UncorrelatedAngleEnergy
     openmc.data.NBodyPhaseSpace
+    openmc.data.LaboratoryAngleEnergy
     openmc.data.AngleDistribution
     openmc.data.EnergyDistribution
     openmc.data.ArbitraryTabulated
@@ -404,6 +408,24 @@ Angle-Energy Distributions
     openmc.data.DiscretePhoton
     openmc.data.LevelInelastic
     openmc.data.ContinuousTabular
+
+Resonance Data
+--------------
+
+.. autosummary::
+    :toctree: generated
+    :nosignatures:
+    :template: myclass.rst
+
+    openmc.data.Resonances
+    openmc.data.ResonanceRange
+    openmc.data.SingleLevelBreitWigner
+    openmc.data.MultiLevelBreitWigner
+    openmc.data.ReichMoore
+    openmc.data.RMatrixLimited
+    openmc.data.ParticlePair
+    openmc.data.SpinGroup
+    openmc.data.Unresolved
 
 ACE Format
 ----------
@@ -425,9 +447,37 @@ Functions
 .. autosummary::
     :toctree: generated
     :nosignatures:
+    :template: myfunction.rst
 
     openmc.data.ace.ascii_to_binary
-    openmc.data.write_compact_458_library
+
+ENDF Format
+-----------
+
+Classes
++++++++
+
+.. autosummary::
+    :toctree: generated
+    :nosignatures:
+    :template: myclass.rst
+
+    openmc.data.endf.Evaluation
+
+Functions
++++++++++
+
+.. autosummary::
+    :toctree: generated
+    :nosignatures:
+    :template: myfunction.rst
+
+    openmc.data.endf.float_endf
+    openmc.data.endf.get_cont_record
+    openmc.data.endf.get_head_record
+    openmc.data.endf.get_tab1_record
+    openmc.data.endf.get_tab2_record
+    openmc.data.endf.get_text_record
 
 .. _Jupyter: https://jupyter.org/
 .. _NumPy: http://www.numpy.org/

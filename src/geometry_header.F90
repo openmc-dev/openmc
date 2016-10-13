@@ -378,7 +378,7 @@ contains
           end do NUC_NAMES_LOOP
 
           if (present(sab_temps) .and. present(sab_dict) .and. &
-              mat % n_sab > 0) then
+               mat % n_sab > 0) then
             SAB_NAMES_LOOP: do k = 1, size(mat % sab_names)
               ! Get index in nuc_temps array
               i_sab = sab_dict % get_key(to_lower(mat % sab_names(k)))

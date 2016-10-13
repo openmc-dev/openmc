@@ -839,9 +839,14 @@ class XSdata(object):
 
        # Get the accepted shapes for this xs
         if self.representation is 'isotropic':
-            shapes = [(self.energy_groups.num_groups,)]
+            shapes = [(self.energy_groups.num_groups,),
+                      (self.energy_groups.num_groups,
+                       self.energy_groups.num_groups)]
         else:
             shapes = [(self.num_polar, self.num_azimuthal,
+                       self.energy_groups.num_groups),
+                      (self.num_polar, self.num_azimuthal,
+                       self.energy_groups.num_groups,
                        self.energy_groups.num_groups)]
 
         # Convert to a numpy array so we can easily get the shape for checking
@@ -877,9 +882,14 @@ class XSdata(object):
 
        # Get the accepted shapes for this xs
         if self.representation is 'isotropic':
-            shapes = [(self.delayed_groups, self.energy_groups.num_groups,)]
+            shapes = [(self.delayed_groups, self.energy_groups.num_groups,),
+                      (self.delayed_groups, self.energy_groups.num_groups,
+                       self.energy_groups.num_groups)]
         else:
             shapes = [(self.delayed_groups, self.num_polar, self.num_azimuthal,
+                       self.energy_groups.num_groups),
+                      (self.delayed_groups, self.num_polar, self.num_azimuthal,
+                       self.energy_groups.num_groups,
                        self.energy_groups.num_groups)]
 
         # Convert to a numpy array so we can easily get the shape for checking
@@ -1124,12 +1134,13 @@ class XSdata(object):
     def set_prompt_nu_fission_mgxs(self, prompt_nu_fission, temperature=294.,
                                    nuclide='total', xs_type='macro',
                                    subdomain=None):
-        """This method allows for an openmc.mgxs.PromptNuFissionXS to be used to
-        set the prompt-nu-fission cross section for this XSdata object.
+        """This method allows for an openmc.mgxs.PromptNuFissionXS or
+        openmc.mgxs.PromptNuFissionMatrixXS to be used to set the
+        prompt-nu-fission cross section for this XSdata object.
 
         Parameters
         ----------
-        prompt_nu_fission: openmc.mgxs.PromptNuFissionXS
+        prompt_nu_fission: openmc.mgxs.PromptNuFissionXS or openmc.mgxs.PromptNuFissionMatrixXS
             MGXS Object containing the prompt-nu-fission cross section
             for the domain of interest.
         temperature : float
@@ -1153,7 +1164,8 @@ class XSdata(object):
         """
 
         check_type('prompt_nu_fission', prompt_nu_fission,
-                   (openmc.mgxs.PromptNuFissionXS,))
+                   (openmc.mgxs.PromptNuFissionXS,
+                    openmc.mgxs.PromptNuFissionMatrixXS))
         check_value('energy_groups', prompt_nu_fission.energy_groups,
                     [self.energy_groups])
         check_value('domain_type', prompt_nu_fission.domain_type,
@@ -1177,12 +1189,13 @@ class XSdata(object):
     def set_delayed_nu_fission_mgxs(self, delayed_nu_fission, temperature=294.,
                                     nuclide='total', xs_type='macro',
                                     subdomain=None):
-        """This method allows for an openmc.mgxs.DelayedNuFissionXS to be used
-        to set the delayed-nu-fission cross section for this XSdata object.
+        """This method allows for an openmc.mgxs.DelayedNuFissionXS or
+        openmc.mgxs.DelayedNuFissionMatrixXS to be used to set the
+        delayed-nu-fission cross section for this XSdata object.
 
         Parameters
         ----------
-        delayed_nu_fission: openmc.mgxs.DelayedNuFissionXS
+        delayed_nu_fission: openmc.mgxs.DelayedNuFissionXS or openmc.mgxs.DelayedNuFissionMatrixXS
             MGXS Object containing the delayed-nu-fission cross section
             for the domain of interest.
         temperature : float
@@ -1206,7 +1219,8 @@ class XSdata(object):
         """
 
         check_type('delayed_nu_fission', delayed_nu_fission,
-                   (openmc.mgxs.DelayedNuFissionXS,))
+                   (openmc.mgxs.DelayedNuFissionXS,
+                    openmc.mgxs.DelayedNuFissionMatrixXS))
         check_value('energy_groups', delayed_nu_fission.energy_groups,
                     [self.energy_groups])
         check_value('delayed_groups', delayed_nu_fission.num_delayed_groups,

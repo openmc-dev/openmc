@@ -5788,7 +5788,7 @@ contains
           file_id = file_open(libraries(i_library) % path, 'r')
           group_id = open_group(file_id, name)
           call nuclides(i_nuclide) % from_hdf5(group_id, nuc_temps(i_nuclide), &
-               temperature_method, temperature_tolerance)
+               temperature_method, temperature_tolerance, master)
           call close_group(group_id)
           call file_close(file_id)
 
@@ -6021,7 +6021,7 @@ contains
         group_id = open_group(file_id, name)
         method = TEMPERATURE_NEAREST
         call resonant_nuc % from_hdf5(group_id, temperature, &
-             method, 1000.0_8)
+             method, 1000.0_8, master)
         call close_group(group_id)
         call file_close(file_id)
 

@@ -1,51 +1,11 @@
-<?xml version="1.0"?>
+<?xml version='1.0' encoding='utf-8'?>
 <materials>
-  <!-- UO2 -->
-  <material id="1">
-    <density units="macro" value="1.0" />
-    <macroscopic name="UO2"/>
-  </material>
-
-  <!-- 4.3% MOX -->
-  <material id="2">
-    <density units="macro" value="1.0" />
-    <macroscopic name="MOX1"/>
-  </material>
-
-  <!-- 7.0 MOX -->
-  <material id="3">
-    <density units="macro" value="1.0" />
-    <macroscopic name="MOX2"/>
-  </material>
-
-  <!-- 8.0% MOX -->
-  <material id="4">
-    <density units="macro" value="1.0" />
-    <macroscopic name="MOX3"/>
-  </material>
-
-  <!-- Fission Chamber -->
-  <material id="5">
-    <density units="macro" value="1.0" />
-    <macroscopic name="FC"/>
-  </material>
-
-  <!-- Guide Tube -->
-  <material id="6">
-    <density units="macro" value="1.0" />
-    <macroscopic name="GT"/>
-  </material>
-
-  <!-- Water -->
-  <material id="7">
-    <density units="macro" value="1.0" />
-    <macroscopic name="LWTR"/>
-  </material>
-
-  <!-- Control Rod -->
-  <material id="8">
-    <density units="macro" value="1.0" />
-    <macroscopic name="CR"/>
-  </material>
-
+    <material id="1" name="UO2 fuel">
+        <density units="macro" value="1.0" />
+        <macroscopic name="UO2" />
+    </material>
+    <material id="2" name="Water">
+        <density units="macro" value="1.0" />
+        <macroscopic name="LWTR" />
+    </material>
 </materials>

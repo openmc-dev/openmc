@@ -19,7 +19,7 @@ groups = openmc.mgxs.EnergyGroups(group_edges=[1E-11, 0.0635E-6, 10.0E-6,
                                                1.0E-4, 1.0E-3, 0.5, 1.0, 20.0])
 
 # Instantiate the 7-group (C5G7) cross section data
-uo2_xsdata = openmc.XSdata('UO2', groups, delayed_groups=8)
+uo2_xsdata = openmc.XSdata('UO2', groups)
 uo2_xsdata.order = 0
 uo2_xsdata.set_total(
     [0.1779492, 0.3298048, 0.4803882, 0.5543674, 0.3118013, 0.3951678,
@@ -42,8 +42,6 @@ uo2_xsdata.set_nu_fission([2.005998E-02, 2.027303E-03, 1.570599E-02,
                            5.257105E-01])
 uo2_xsdata.set_chi([5.8791E-01, 4.1176E-01, 3.3906E-04, 1.1761E-07, 0.0000E+00,
                     0.0000E+00, 0.0000E+00])
-uo2_xsdata.set_beta([2.13333e-4, 1.04514e-3, 6.03969e-4, 1.33963e-3,
-                     2.29386e-3, 7.05174e-4, 6.00381e-4, 2.07736e-4])
 
 h2o_xsdata = openmc.XSdata('LWTR', groups)
 h2o_xsdata.order = 0
@@ -61,7 +59,7 @@ h2o_xsdata.set_scatter_matrix(
       [0.0000000, 0.0000000, 0.0000000, 0.0000000, 0.0022157, 0.6999130, 0.5373200],
       [0.0000000, 0.0000000, 0.0000000, 0.0000000, 0.0000000, 0.1324400, 2.4807000]]])
 
-mg_cross_sections_file = openmc.MGXSLibrary(groups, delayed_groups=8)
+mg_cross_sections_file = openmc.MGXSLibrary(groups)
 mg_cross_sections_file.add_xsdatas([uo2_xsdata, h2o_xsdata])
 mg_cross_sections_file.export_to_hdf5()
 

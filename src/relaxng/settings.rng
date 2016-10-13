@@ -576,6 +576,11 @@
       </element>
     </optional>
     <optional>
+      <element name="temperature_multipole">
+        <data type="boolean"/>
+      </element>
+    </optional>
+    <optional>
       <element name="temperature_tolerance">
         <data type="double"/>
       </element>
@@ -814,11 +819,6 @@
             </interleave>
           </element>
         </zeroOrMore>
-      </element>
-    </optional>
-    <optional>
-      <element name="use_windowed_multipole">
-        <data type="boolean"/>
       </element>
     </optional>
   </interleave>

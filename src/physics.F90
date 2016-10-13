@@ -96,10 +96,11 @@ contains
     ! absorption (including fission)
 
     if (nuc % fissionable) then
-      call sample_fission(i_nuclide, i_reaction)
       if (run_mode == MODE_EIGENVALUE) then
+        call sample_fission(i_nuclide, i_reaction)
         call create_fission_sites(p, i_nuclide, i_reaction, fission_bank, n_bank)
-      elseif (run_mode == MODE_FIXEDSOURCE) then
+      elseif (run_mode == MODE_FIXEDSOURCE .and. create_fission_neutrons) then
+        call sample_fission(i_nuclide, i_reaction)
         call create_fission_sites(p, i_nuclide, i_reaction, &
              p % secondary_bank, p % n_secondary)
       end if
@@ -334,7 +335,7 @@ contains
 
       else
         ! Determine temperature
-        if (temperature_method == TEMPERATURE_MULTIPOLE) then
+        if (nuc % mp_present) then
           kT = p % sqrtkT**2
         else
           kT = nuc % kTs(micro_xs(i_nuclide) % index_temp)

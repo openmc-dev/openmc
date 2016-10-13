@@ -185,12 +185,14 @@ module nuclide_header
 
   end subroutine nuclide_clear
 
-  subroutine nuclide_from_hdf5(this, group_id, temperature, method, tolerance)
-    class(Nuclide),  intent(inout) :: this
-    integer(HID_T),  intent(in)    :: group_id
+  subroutine nuclide_from_hdf5(this, group_id, temperature, method, tolerance, &
+                               master)
+    class(Nuclide),   intent(inout) :: this
+    integer(HID_T),   intent(in)    :: group_id
     type(VectorReal), intent(in)   :: temperature ! list of desired temperatures
-    integer,         intent(inout) :: method
-    real(8),         intent(in)    :: tolerance
+    integer,          intent(inout) :: method
+    real(8),          intent(in)    :: tolerance
+    logical,          intent(in)    :: master     ! if this is the master proc
 
     integer :: i
     integer :: i_closest
@@ -260,15 +262,17 @@ module nuclide_header
             call temps_to_read % push_back(nint(temp_actual))
 
             ! Write warning for resonance scattering data if 0K is not available
-            if (abs(temp_actual - temp_desired) > 0 .and. temp_desired == 0) then
+            if (abs(temp_actual - temp_desired) > 0 .and. temp_desired == 0 &
+                 .and. master) then
               call warning(trim(this % name) // " does not contain 0K data &
                    &needed for resonance scattering options selected. Using &
-                   &data at " // trim(to_str(nint(temp_actual))) // " K instead.")
+                   &data at " // trim(to_str(temp_actual)) &
+                   // " K instead.")
             end if
           end if
         else
-          call fatal_error("Nuclear data library does not contain cross sections &
-               &for " // trim(this % name) // " at or near " // &
+          call fatal_error("Nuclear data library does not contain cross &
+               &sections for " // trim(this % name) // " at or near " // &
                trim(to_str(nint(temp_desired))) // " K.")
         end if
       end do
@@ -296,10 +300,6 @@ module nuclide_header
              &for " // trim(this % name) // " at temperatures that bound " // &
              trim(to_str(nint(temp_desired))) // " K.")
       end do TEMP_LOOP
-
-    case (TEMPERATURE_MULTIPOLE)
-      ! Add first available temperature
-      call temps_to_read % push_back(nint(temps_available(1)))
 
     end select
 

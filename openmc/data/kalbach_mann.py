@@ -8,6 +8,7 @@ import openmc.checkvalue as cv
 from openmc.stats import Tabular, Univariate, Discrete, Mixture
 from .function import Tabulated1D, INTERPOLATION_SCHEME
 from .angle_energy import AngleEnergy
+from .endf import get_list_record, get_tab2_record
 
 
 class KalbachMann(AngleEnergy):
@@ -346,3 +347,54 @@ class KalbachMann(AngleEnergy):
             km_a.append(Tabulated1D(data[0], data[4]))
 
         return cls(breakpoints, interpolation, energy, energy_out, km_r, km_a)
+
+    @classmethod
+    def from_endf(cls, file_obj):
+        """Generate Kalbach-Mann distribution from an ENDF evaluation
+
+        Parameters
+        ----------
+        file_obj : file-like object
+            ENDF file positioned at the start of the Kalbach-Mann distribution
+
+        Returns
+        -------
+        openmc.data.KalbachMann
+            Kalbach-Mann energy-angle distribution
+
+        """
+        params, tab2 = get_tab2_record(file_obj)
+        lep = params[3]
+        ne = params[5]
+        energy = np.zeros(ne)
+        n_discrete_energies = np.zeros(ne, dtype=int)
+        energy_out = []
+        precompound = []
+        slope = []
+        for i in range(ne):
+            items, values = get_list_record(file_obj)
+            energy[i] = items[1]
+            n_discrete_energies[i] = items[2]
+            # TODO: split out discrete energies
+            n_angle = items[3]
+            n_energy_out = items[5]
+            values = np.asarray(values)
+            values.shape = (n_energy_out, n_angle + 2)
+
+            # Outgoing energy distribution at the i-th incoming energy
+            eout_i = values[:,0]
+            eout_p_i = values[:,1]
+            energy_out_i = Tabular(eout_i, eout_p_i, INTERPOLATION_SCHEME[lep])
+            energy_out.append(energy_out_i)
+
+            # Precompound and slope factors for Kalbach-Mann
+            r_i = values[:,2]
+            if n_angle == 2:
+                a_i = values[:,3]
+            else:
+                a_i = np.zeros_like(r_i)
+            precompound.append(Tabulated1D(eout_i, r_i))
+            slope.append(Tabulated1D(eout_i, a_i))
+
+        return cls(tab2.breakpoints, tab2.interpolation, energy,
+                   energy_out, precompound, slope)

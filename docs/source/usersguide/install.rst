@@ -51,7 +51,7 @@ Prerequisites
       installed on your machine. Since a number of Fortran 2003/2008 features
       are used in the code, it is recommended that you use the latest version of
       whatever compiler you choose. For gfortran_, it is necessary to use
-      version 4.6.0 or above.
+      version 4.8.0 or above.
 
       If you are using Debian or a Debian derivative such as Ubuntu, you can
       install the gfortran compiler using the following command::

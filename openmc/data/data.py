@@ -104,8 +104,8 @@ NATURAL_ABUNDANCE = {
     'U234': 5.4e-05, 'U235': 0.007204, 'U238': 0.992742
 }
 
-ATOMIC_SYMBOL = {1: 'H', 2: 'He', 3: 'Li', 4: 'Be', 5: 'B', 6: 'C', 7: 'N',
-                 8: 'O', 9: 'F', 10: 'Ne', 11: 'Na', 12: 'Mg', 13: 'Al',
+ATOMIC_SYMBOL = {0: 'n', 1: 'H', 2: 'He', 3: 'Li', 4: 'Be', 5: 'B', 6: 'C',
+                 7: 'N', 8: 'O', 9: 'F', 10: 'Ne', 11: 'Na', 12: 'Mg', 13: 'Al',
                  14: 'Si', 15: 'P', 16: 'S', 17: 'Cl', 18: 'Ar', 19: 'K',
                  20: 'Ca', 21: 'Sc', 22: 'Ti', 23: 'V', 24: 'Cr', 25: 'Mn',
                  26: 'Fe', 27: 'Co', 28: 'Ni', 29: 'Cu', 30: 'Zn', 31: 'Ga',
@@ -128,60 +128,6 @@ ATOMIC_SYMBOL = {1: 'H', 2: 'He', 3: 'Li', 4: 'Be', 5: 'B', 6: 'C', 7: 'N',
 ATOMIC_NUMBER = {value: key for key, value in ATOMIC_SYMBOL.items()}
 
 _ATOMIC_MASS = {}
-
-REACTION_NAME = {1: '(n,total)', 2: '(n,elastic)', 4: '(n,level)',
-                 5: '(n,misc)', 11: '(n,2nd)', 16: '(n,2n)', 17: '(n,3n)',
-                 18: '(n,fission)', 19: '(n,f)', 20: '(n,nf)', 21: '(n,2nf)',
-                 22: '(n,na)', 23: '(n,n3a)', 24: '(n,2na)', 25: '(n,3na)',
-                 27: '(n,absorption)', 28: '(n,np)', 29: '(n,n2a)',
-                 30: '(n,2n2a)', 32: '(n,nd)', 33: '(n,nt)', 34: '(n,nHe-3)',
-                 35: '(n,nd2a)', 36: '(n,nt2a)', 37: '(n,4n)', 38: '(n,3nf)',
-                 41: '(n,2np)', 42: '(n,3np)', 44: '(n,n2p)', 45: '(n,npa)',
-                 91: '(n,nc)', 101: '(n,disappear)', 102: '(n,gamma)',
-                 103: '(n,p)', 104: '(n,d)', 105: '(n,t)', 106: '(n,3He)',
-                 107: '(n,a)', 108: '(n,2a)', 109: '(n,3a)', 111: '(n,2p)',
-                 112: '(n,pa)', 113: '(n,t2a)', 114: '(n,d2a)', 115: '(n,pd)',
-                 116: '(n,pt)', 117: '(n,da)', 152: '(n,5n)', 153: '(n,6n)',
-                 154: '(n,2nt)', 155: '(n,ta)', 156: '(n,4np)', 157: '(n,3nd)',
-                 158: '(n,nda)', 159: '(n,2npa)', 160: '(n,7n)', 161: '(n,8n)',
-                 162: '(n,5np)', 163: '(n,6np)', 164: '(n,7np)', 165: '(n,4na)',
-                 166: '(n,5na)', 167: '(n,6na)', 168: '(n,7na)', 169: '(n,4nd)',
-                 170: '(n,5nd)', 171: '(n,6nd)', 172: '(n,3nt)', 173: '(n,4nt)',
-                 174: '(n,5nt)', 175: '(n,6nt)', 176: '(n,2n3He)',
-                 177: '(n,3n3He)', 178: '(n,4n3He)', 179: '(n,3n2p)',
-                 180: '(n,3n3a)', 181: '(n,3npa)', 182: '(n,dt)',
-                 183: '(n,npd)', 184: '(n,npt)', 185: '(n,ndt)',
-                 186: '(n,np3He)', 187: '(n,nd3He)', 188: '(n,nt3He)',
-                 189: '(n,nta)', 190: '(n,2n2p)', 191: '(n,p3He)',
-                 192: '(n,d3He)', 193: '(n,3Hea)', 194: '(n,4n2p)',
-                 195: '(n,4n2a)', 196: '(n,4npa)', 197: '(n,3p)',
-                 198: '(n,n3p)', 199: '(n,3n2pa)', 200: '(n,5n2p)', 444: '(n,damage)',
-                 649: '(n,pc)', 699: '(n,dc)', 749: '(n,tc)', 799: '(n,3Hec)',
-                 849: '(n,ac)'}
-REACTION_NAME.update({i: '(n,n{})'.format(i-50) for i in range(50, 91)})
-REACTION_NAME.update({i: '(n,p{})'.format(i-600) for i in range(600, 649)})
-REACTION_NAME.update({i: '(n,d{})'.format(i-650) for i in range(650, 699)})
-REACTION_NAME.update({i: '(n,t{})'.format(i-700) for i in range(700, 749)})
-REACTION_NAME.update({i: '(n,3He{})'.format(i-750) for i in range(750, 799)})
-REACTION_NAME.update({i: '(n,a{})'.format(i-800) for i in range(800, 849)})
-
-SUM_RULES = {1: [2, 3],
-             3: [4, 5, 11, 16, 17, 22, 23, 24, 25, 27, 28, 29, 30, 32, 33, 34, 35,
-                 36, 37, 41, 42, 44, 45, 152, 153, 154, 156, 157, 158, 159, 160,
-                 161, 162, 163, 164, 165, 166, 167, 168, 169, 170, 171, 172,
-                 173, 174, 175, 176, 177, 178, 179, 180, 181, 183, 184, 185,
-                 186, 187, 188, 189, 190, 194, 195, 196, 198, 199, 200],
-             4: list(range(50, 92)),
-             16: list(range(875, 892)),
-             18: [19, 20, 21, 38],
-             27: [18, 101],
-             101: [102, 103, 104, 105, 106, 107, 108, 109, 111, 112, 113, 114,
-                   115, 116, 117, 155, 182, 191, 192, 193, 197],
-             103: list(range(600, 650)),
-             104: list(range(650, 700)),
-             105: list(range(700, 750)),
-             106: list(range(750, 800)),
-             107: list(range(800, 850))}
 
 
 def atomic_mass(isotope):
@@ -207,7 +153,7 @@ def atomic_mass(isotope):
         mass_file = os.path.join(os.path.dirname(__file__), 'mass.mas12')
         with open(mass_file, 'r') as ame:
             # Read lines in file starting at line 40
-            for line in itertools.islice(ame, 40, None):
+            for line in itertools.islice(ame, 39, None):
                 name = '{}{}'.format(line[20:22].strip(), int(line[16:19]))
                 mass = float(line[96:99]) + 1e-6*float(
                     line[100:106] + '.' + line[107:112])

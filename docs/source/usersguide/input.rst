@@ -902,6 +902,19 @@ displayed. This element takes the following attributes:
 
     *Default*: 5
 
+``<create_fission_neutrons>`` Element
+-------------------------------------
+
+The ``<create_fission_neutrons>`` element indicates whether fission neutrons
+should be created or not.  If this element is set to "true", fission neutrons
+will be created; otherwise the fission is treated as capture and no fission
+neutron will be created. Note that this option is only applied to fixed source
+calculation. For eigenvalue calculation, fission will always be treated as real
+fission.
+
+  *Default*: true
+
+
 ``<volume_calc>`` Element
 -------------------------
 

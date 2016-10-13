@@ -1137,6 +1137,19 @@ contains
       end if
     end if
 
+    ! Check whether create fission sites
+    if (run_mode == MODE_FIXEDSOURCE) then
+      if (check_for_node(doc, "create_fission_neutrons")) then
+        call get_node_value(doc, "create_fission_neutrons", temp_str)
+        temp_str = to_lower(temp_str)
+        if (trim(temp_str) == 'true' .or. trim(temp_str) == '1') then
+          create_fission_neutrons = .true.
+        else if (trim(temp_str) == 'false' .or. trim(temp_str) == '0') then
+          create_fission_neutrons = .false.
+        end if
+      end if
+    end if
+
     ! Close settings XML file
     call close_xmldoc(doc)
 

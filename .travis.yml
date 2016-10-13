@@ -47,11 +47,9 @@ before_script:
     fi
   - export OPENMC_CROSS_SECTIONS=$HOME/nndc_hdf5/cross_sections.xml
 
-  - cd data
   - git clone --branch=master git://github.com/smharper/windowed_multipole_library.git wmp_lib
   - tar xzvf wmp_lib/multipole_lib.tar.gz
   - export OPENMC_MULTIPOLE_LIBRARY=$PWD/multipole_lib
-  - cd ..
 
 script:
   - cd tests

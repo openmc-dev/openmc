@@ -426,7 +426,7 @@ module mgxs_header
       integer(HSIZE_T)            :: dims(2)
       real(8), allocatable        :: temp_arr(:), temp_2d(:, :)
       real(8), allocatable        :: temp_beta(:, :)
-      real(8)                     :: dmu, mu, norm
+      real(8)                     :: dmu, mu, norm, chi_sum
       integer                     :: order, order_dim, gin, gout, l, imu, length
       type(VectorInt)             :: temps_to_read
       integer                     :: t, dg
@@ -535,12 +535,12 @@ module mgxs_header
                 end do
 
                 ! Normalize chi_prompt so its CDF goes to 1
-                if (sum(xs % chi_prompt(:, gin)) == ZERO) then
+                chi_sum =sum(xs % chi_prompt(:, gin))
+                if (chi_sum == ZERO) then
                   call fatal_error("Encountered chi for a group that sums to &
                        &zero")
                 else
-                  xs % chi_prompt(:, gin) = xs % chi_prompt(:, gin) / &
-                       sum(xs % chi_prompt(:, gin))
+                  xs % chi_prompt(:, gin) = xs % chi_prompt(:, gin) / chi_sum
                 end if
               end do
 
@@ -625,12 +625,12 @@ module mgxs_header
 
                 ! Normalize chi so its CDF goes to 1
                 do gin = 1, energy_groups
-                  if (sum(xs % chi_prompt(:, gin)) == ZERO) then
+                  chi_sum = sum(xs % chi_prompt(:, gin))
+                  if (chi_sum == ZERO) then
                     call fatal_error("Encountered chi for a group that sums to &
                          &zero")
                   else
-                    xs % chi_prompt(:, gin) = xs % chi_prompt(:, gin) / &
-                         sum(xs % chi_prompt(:, gin))
+                    xs % chi_prompt(:, gin) = xs % chi_prompt(:, gin) / chi_sum
                   end if
                 end do
 
@@ -642,6 +642,11 @@ module mgxs_header
                 call fatal_error("nu-fission must be provided as a 1D or 2D &
                      &array")
               end if
+
+              print *, xs % prompt_nu_fission
+              print *, xs % delayed_nu_fission
+              print *, xs % chi_prompt
+              print *, xs % chi_delayed
             end if
 
             ! If chi_prompt provided, set chi_prompt
@@ -659,12 +664,12 @@ module mgxs_header
                 end do
 
                 ! Normalize chi so its CDF goes to 1
-                if (sum(xs % chi_prompt(:, gin)) == ZERO) then
+                chi_sum = sum(xs % chi_prompt(:, gin))
+                if (chi_sum == ZERO) then
                   call fatal_error("Encountered chi prompt for a group that &
                        &sums to zero")
                 else
-                  xs % chi_prompt(:, gin) = xs % chi_prompt(:, gin) / &
-                       sum(xs % chi_prompt(:, gin))
+                  xs % chi_prompt(:, gin) = xs % chi_prompt(:, gin) / chi_sum
                 end if
               end do
 
@@ -695,13 +700,13 @@ module mgxs_header
                     end do
 
                     ! Normalize chi so its CDF goes to 1
-                    if (sum(xs % chi_delayed(:, gin, dg)) == ZERO) then
+                    chi_sum = sum(xs % chi_delayed(:, gin, dg))
+                    if (chi_sum == ZERO) then
                       call fatal_error("Encountered chi delayed for a group &
                            &that sums to zero")
                     else
                       xs % chi_delayed(:, gin, dg) = &
-                           xs % chi_delayed(:, gin, dg) / &
-                           sum(xs % chi_delayed(:, gin, dg))
+                           xs % chi_delayed(:, gin, dg) / chi_sum
                     end if
                   end do
                 end do
@@ -726,13 +731,13 @@ module mgxs_header
                     end do
 
                     ! Normalize chi so its CDF goes to 1
-                    if (sum(xs % chi_delayed(:, gin, dg)) == ZERO) then
+                    chi_sum = sum(xs % chi_delayed(:, gin, dg))
+                    if (chi_sum == ZERO) then
                       call fatal_error("Encountered chi delayed for a group &
                            &that sums to zero")
                     else
                       xs % chi_delayed(:, gin, dg) = &
-                           xs % chi_delayed(:, gin, dg) / &
-                           sum(xs % chi_delayed(:, gin, dg))
+                           xs % chi_delayed(:, gin, dg) / chi_sum
                     end if
                   end do
                 end do
@@ -1101,7 +1106,7 @@ module mgxs_header
       integer(HID_T)              :: xsdata, xsdata_grp, scatt_grp, ndims
       integer(HSIZE_T)            :: dims(4)
       integer, allocatable        :: int_arr(:)
-      real(8), allocatable        :: temp_1d(:), temp_2d(:, :), temp_3d(:, :, :)
+      real(8), allocatable        :: temp_1d(:), temp_3d(:, :, :)
       real(8), allocatable        :: temp_4d(:, :, :, :), temp_beta(:, :, :, :)
       real(8)                     :: dmu, mu, norm
       integer                     :: order, order_dim, gin, gout, l, imu, dg
@@ -2713,36 +2718,6 @@ module mgxs_header
         xs = this % xs(t) % prompt_nu_fission(gin) + &
              sum(this % xs(t) % delayed_nu_fission(gin, :))
 
-      case('nu')
-        if (this % xs(t) % fission(gin) > ZERO) then
-          xs = (sum(this % xs(t) % delayed_nu_fission(gin, :)) + &
-               this % xs(t) % prompt_nu_fission(gin)) / &
-               this % xs(t) % fission(gin)
-        else
-          xs = ZERO
-        end if
-
-      case('nu_prompt')
-        if (this % xs(t) % fission(gin) > ZERO) then
-          xs = this % xs(t) % prompt_nu_fission(gin) / &
-               this % xs(t) % fission(gin)
-        else
-          xs = ZERO
-        end if
-
-      case('nu_delayed')
-        if (this % xs(t) % fission(gin) > ZERO) then
-          if (present(dg)) then
-            xs = this % xs(t) % delayed_nu_fission(gin, dg) &
-                 / this % xs(t) % fission(gin)
-          else
-            xs = sum(this % xs(t) % delayed_nu_fission(gin, :)) &
-                 / this % xs(t) % fission(gin)
-          end if
-        else
-          xs = ZERO
-        end if
-
       case('chi_prompt')
         if (present(gout)) then
           xs = this % xs(t) % chi_prompt(gout,gin)
@@ -2868,36 +2843,6 @@ module mgxs_header
           xs = this % xs(t) % prompt_nu_fission(gin, iazi, ipol) + &
                sum(this % xs(t) % delayed_nu_fission(gin, :, iazi, ipol))
 
-        case('nu')
-          if (this % xs(t) % fission(gin, iazi, ipol) > ZERO) then
-            xs = (sum(this % xs(t) % delayed_nu_fission(gin, :, iazi, ipol)) + &
-                 this % xs(t) % prompt_nu_fission(gin, iazi, ipol)) / &
-                 this % xs(t) % fission(gin, iazi, ipol)
-          else
-            xs = ZERO
-          end if
-
-        case('nu_prompt')
-          if (this % xs(t) % fission(gin, iazi, ipol) > ZERO) then
-            xs = this % xs(t) % prompt_nu_fission(gin, iazi, ipol) / &
-                 this % xs(t) % fission(gin, iazi, ipol)
-          else
-            xs = ZERO
-          end if
-
-        case('nu_delayed')
-          if (this % xs(t) % fission(gin, iazi, ipol) > ZERO) then
-            if (present(dg)) then
-              xs = this % xs(t) % delayed_nu_fission(gin, dg, iazi, ipol) / &
-                   this % xs(t) % fission(gin, iazi, ipol)
-            else
-              xs = sum(this % xs(t) % delayed_nu_fission(gin, :, iazi, ipol)) &
-                   / this % xs(t) % fission(gin, iazi, ipol)
-            end if
-          else
-            xs = ZERO
-          end if
-
         case('chi_prompt')
           if (present(gout)) then
             xs = this % xs(t) % chi_prompt(gout, gin, iazi, ipol)
@@ -3006,20 +2951,20 @@ module mgxs_header
       integer, intent(out)          :: gout   ! Sampled outgoing group
       real(8) :: xi_pd            ! Our random number for prompt/delayed
       real(8) :: xi_gout          ! Our random number for gout
-      real(8) :: prob_pd          ! Running probability for prompt/delayed
       real(8) :: prob_gout        ! Running probability for gout
 
       ! Get nu and nu_prompt
-      real(8) :: nu, nu_prompt
-      nu = this % get_xs('nu', gin)
-      nu_prompt = this % get_xs('nu_prompt', gin)
+      real(8) :: prob_prompt
+
+      prob_prompt = this % get_xs('prompt_nu_fission', gin) / &
+           this % get_xs('nu_fission', gin)
 
       ! Sample random numbers
       xi_pd = prn()
       xi_gout = prn()
 
       ! Neutron is born prompt
-      if (xi_pd < nu_prompt / nu) then
+      if (xi_pd <= prob_prompt) then
 
         ! set the delayed group for the particle born from fission to 0
         dg = 0
@@ -3038,13 +2983,12 @@ module mgxs_header
 
         ! Get the delayed group
         dg = 0
-        prob_pd = nu_prompt / nu
 
-        do while (xi_pd >= prob_pd)
+        do while (xi_pd >= prob_prompt)
           dg = dg + 1
-          prob_pd = prob_pd + &
-               this % get_xs('nu_delayed', gin, dg=dg) &
-               / nu
+          prob_prompt = prob_prompt + &
+               this % get_xs('delayed_nu_fision', gin, dg=dg) &
+               / this % get_xs('nu_fission', gin)
         end do
 
         ! Adjust dg in case of round off error
@@ -3071,20 +3015,19 @@ module mgxs_header
       integer, intent(out)         :: gout   ! Sampled outgoing group
       real(8) :: xi_pd            ! Our random number for prompt/delayed
       real(8) :: xi_gout          ! Our random number for gout
-      real(8) :: prob_pd          ! Running probability for prompt/delayed
       real(8) :: prob_gout        ! Running probability for gout
-      real(8) :: nu, nu_prompt
+      real(8) :: prob_prompt
 
       ! Get nu and nu_prompt
-      nu = this % get_xs('nu', gin, uvw=uvw)
-      nu_prompt = this % get_xs('nu_prompt', gin, uvw=uvw)
+      prob_prompt = this % get_xs('prompt_nu_fission', gin, uvw=uvw) / &
+           this % get_xs('nu_fission', gin, uvw=uvw)
 
       ! Sample random numbers
       xi_pd = prn()
       xi_gout = prn()
 
       ! Neutron is born prompt
-      if (xi_pd < nu_prompt / nu) then
+      if (xi_pd <= prob_prompt) then
 
         ! set the delayed group for the particle born from fission to 0
         dg = 0
@@ -3103,12 +3046,12 @@ module mgxs_header
 
         ! Get the delayed group
         dg = 0
-        prob_pd = nu_prompt / nu
 
-        do while (xi_pd < prob_pd)
+        do while (xi_pd < prob_prompt)
           dg = dg + 1
-          prob_pd = prob_pd + &
-               this % get_xs('nu_delayed', gin, uvw=uvw, dg=dg) / nu
+          prob_prompt = prob_prompt + &
+               this % get_xs('delayed_nu_fission', gin, uvw=uvw, dg=dg) / &
+               this % get_xs('nu_fission', gin, uvw=uvw)
         end do
 
         ! Adjust dg in case of round off error

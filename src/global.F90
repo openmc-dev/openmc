@@ -352,6 +352,9 @@ module global
   ! Write out initial source
   logical :: write_initial_source = .false.
 
+  ! Whether create fission neutrons or not. Only applied for MODE_FIXEDSOURCE
+  logical :: create_fission_neutrons = .true.
+
   ! ============================================================================
   ! CMFD VARIABLES
 

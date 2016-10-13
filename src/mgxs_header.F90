@@ -642,11 +642,6 @@ module mgxs_header
                 call fatal_error("nu-fission must be provided as a 1D or 2D &
                      &array")
               end if
-
-              print *, xs % prompt_nu_fission
-              print *, xs % delayed_nu_fission
-              print *, xs % chi_prompt
-              print *, xs % chi_delayed
             end if
 
             ! If chi_prompt provided, set chi_prompt

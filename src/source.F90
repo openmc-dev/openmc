@@ -199,10 +199,10 @@ contains
     if (.not. run_CE) then
       if (site % E <= energy_bins(1)) then
         site % E = real(1, 8)
-      else if (site % E > energy_bins(energy_groups + 1)) then
-        site % E = real(energy_groups, 8)
+      else if (site % E > energy_bins(num_energy_groups + 1)) then
+        site % E = real(num_energy_groups, 8)
       else
-        site % E = real(binary_search(energy_bins, energy_groups + 1, &
+        site % E = real(binary_search(energy_bins, num_energy_groups + 1, &
              site % E), 8)
       end if
     end if

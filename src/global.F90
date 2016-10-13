@@ -101,6 +101,7 @@ module global
 
   ! Default temperature and method for choosing temperatures
   integer :: temperature_method = TEMPERATURE_NEAREST
+  logical :: temperature_multipole = .false.
   real(8) :: temperature_tolerance = 10.0_8
   real(8) :: temperature_default = 293.6_8
 
@@ -354,6 +355,9 @@ module global
   ! Write out initial source
   logical :: write_initial_source = .false.
 
+  ! Whether create fission neutrons or not. Only applied for MODE_FIXEDSOURCE
+  logical :: create_fission_neutrons = .true.
+
   ! ============================================================================
   ! CMFD VARIABLES
 
@@ -471,12 +475,7 @@ contains
       do i = 1, size(nuclides)
         call nuclides(i) % clear()
       end do
-
-      ! WARNING: The following statement should work but doesn't under gfortran
-      ! 4.6 because of a bug. Technically, commenting this out leaves a memory
-      ! leak.
-
-      ! deallocate(nuclides)
+      deallocate(nuclides)
     end if
 
     if (allocated(nuclides_0K)) then

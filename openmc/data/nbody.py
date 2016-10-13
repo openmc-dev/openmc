@@ -4,6 +4,7 @@ import numpy as np
 
 import openmc.checkvalue as cv
 from .angle_energy import AngleEnergy
+from .endf import get_cont_record
 
 class NBodyPhaseSpace(AngleEnergy):
     """N-body phase space distribution
@@ -17,7 +18,7 @@ class NBodyPhaseSpace(AngleEnergy):
     atomic_weight_ratio : float
         Atomic weight ratio of target nuclide
     q_value : float
-        Q value for reaction in MeV
+        Q value for reaction in MeV or eV, depending on the data source.
 
     Attributes
     ----------
@@ -28,7 +29,7 @@ class NBodyPhaseSpace(AngleEnergy):
     atomic_weight_ratio : float
         Atomic weight ratio of target nuclide
     q_value : float
-        Q value for reaction in MeV
+        Q value for reaction in MeV or eV, depending on the data source.
 
     """
 
@@ -140,3 +141,25 @@ class NBodyPhaseSpace(AngleEnergy):
         n_particles = int(ace.xss[idx])
         total_mass = ace.xss[idx + 1]
         return cls(total_mass, n_particles, ace.atomic_weight_ratio, q_value)
+
+    @classmethod
+    def from_endf(cls, file_obj):
+        """Generate N-body phase space distribution from an ENDF evaluation
+
+        Parameters
+        ----------
+        file_obj : file-like object
+            ENDF file positions at the start of the N-body phase space
+            distribution
+
+        Returns
+        -------
+        openmc.data.NBodyPhaseSpace
+            N-body phase space distribution
+
+        """
+        items = get_cont_record(file_obj)
+        total_mass = items[0]
+        n_particles = items[5]
+        # TODO: get awr and Q value
+        return cls(total_mass, n_particles, 1.0, 0.0)

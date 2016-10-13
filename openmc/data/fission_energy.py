@@ -1,12 +1,13 @@
 from collections import Callable
 from copy import deepcopy
+from io import StringIO
 import sys
 
 import h5py
 import numpy as np
 
 from .data import ATOMIC_SYMBOL
-from .endf_utils import read_float, read_CONT_line, identify_nuclide
+from .endf import get_cont_record, get_list_record, Evaluation
 from .function import Function1D, Tabulated1D, Polynomial, Sum
 import openmc.checkvalue as cv
 from openmc.mixin import EqualityMixin
@@ -15,13 +16,15 @@ if sys.version_info[0] >= 3:
     basestring = str
 
 
-def _extract_458_data(filename):
+def _extract_458_data(ev, units='eV'):
     """Read an ENDF file and extract the MF=1, MT=458 values.
 
     Parameters
     ----------
-    filename : str
-        Path to and ENDF file
+    ev : openmc.data.Evaluation
+        ENDF evaluation
+    units : {'eV', 'MeV'}
+        The units that are used in values returned.
 
     Returns
     -------
@@ -37,33 +40,25 @@ def _extract_458_data(filename):
         caution.
 
     """
-    ident = identify_nuclide(filename)
+    cv.check_type('evaluation', ev, Evaluation)
+    cv.check_value('energy units', units, ('eV', 'MeV'))
 
-    if not ident['LFI']:
+    if not ev.target['fissionable']:
         # This nuclide isn't fissionable.
         return None
 
-    # Extract the MF=1, MT=458 section.
-    lines = []
-    with open(filename, 'r') as fh:
-        line = fh.readline()
-        while line != '':
-            if line[70:75] == ' 1458':
-                lines.append(line)
-            line = fh.readline()
-
-    if len(lines) == 0:
+    if (1, 458) not in ev.section:
         # No 458 data here.
         return None
 
+    file_obj = StringIO(ev.section[1, 458])
+
     # Read the number of coefficients in this LIST record.
-    NPL = read_CONT_line(lines[1])[4]
+    items = get_cont_record(file_obj)
+    NPL = items[3]
 
     # Parse the ENDF LIST into an array.
-    data = []
-    for i in range(NPL):
-        row, column = divmod(i, 6)
-        data.append(read_float(lines[2 + row][11*column:11*(column+1)]))
+    items, data = get_list_record(file_obj)
 
     # Declare the coefficient names and the order they are given in.  The LIST
     # contains a value followed immediately by an uncertainty for each of these
@@ -96,12 +91,13 @@ def _extract_458_data(filename):
             for coeffs in uncertainty.values(): coeffs[2] *= 1e-6
 
     # Convert eV to MeV.
-    for coeffs in value.values():
-        for i in range(len(coeffs)):
-            coeffs[i] *= 10**(-6 + 6*i)
-    for coeffs in uncertainty.values():
-        for i in range(len(coeffs)):
-            coeffs[i] *= 10**(-6 + 6*i)
+    if units == 'MeV':
+        for coeffs in value.values():
+            for i in range(len(coeffs)):
+                coeffs[i] *= 10**(-6 + 6*i)
+        for coeffs in uncertainty.values():
+            for i in range(len(coeffs)):
+                coeffs[i] *= 10**(-6 + 6*i)
 
     return value, uncertainty
 
@@ -161,20 +157,22 @@ def write_compact_458_library(endf_files, output_name='fission_Q_data.h5',
     for fname in endf_files:
         if verbose: print(fname)
 
-        ident = identify_nuclide(fname)
+        ev = Evaluation(fname)
 
         # Skip non-fissionable nuclides.
-        if not ident['LFI']: continue
+        if not ev.target['fissionable']:
+            continue
 
         # Get the important bits.
-        data = _extract_458_data(fname)
+        data = _extract_458_data(ev, 'MeV')
         if data is None: continue
         value, uncertainty = data
 
         # Make a group for this isomer.
-        name = ATOMIC_SYMBOL[ident['Z']] + str(ident['A'])
-        if ident['LISO'] != 0:
-            name += '_m' + str(ident['LISO'])
+        name = ATOMIC_SYMBOL[ev.target['atomic_number']] + \
+               str(ev.target['mass_number'])
+        if ev.target['isomeric_state'] != 0:
+            name += '_m' + str(ev.target['isomeric_state'])
         nuclide_group = out.create_group(name)
 
         # Write all the coefficients into one array.  The first dimension gives
@@ -361,7 +359,7 @@ class FissionEnergyRelease(EqualityMixin):
         self._neutrinos = energy_release
 
     @classmethod
-    def _from_dictionary(cls, energy_release, incident_neutron):
+    def _from_dictionary(cls, energy_release, incident_neutron, units='eV'):
         """Generate fission energy release data from a dictionary.
 
         Parameters
@@ -371,9 +369,10 @@ class FissionEnergyRelease(EqualityMixin):
             component.  The keys are the 2-3 letter strings used in ENDF-102,
             e.g. 'EFR' and 'ET'.  The list will have a length of 1 for Sher-Beck
             data, more for polynomial data.
-
         incident_neutron : openmc.data.IncidentNeutron
             Corresponding incident neutron dataset
+        units : {'eV', 'MeV'}
+            The energy units used in the returned object.
 
         Returns
         -------
@@ -381,6 +380,8 @@ class FissionEnergyRelease(EqualityMixin):
             Fission energy release data
 
         """
+        cv.check_value('energy units', units, ('eV', 'MeV'))
+
         out = cls()
 
         # How many coefficients are given for each component?  If we only find
@@ -414,42 +415,55 @@ class FissionEnergyRelease(EqualityMixin):
             # MT=18 (n, fission) might not be available so try MT=19 (n, f) as
             # well.
             if 18 in incident_neutron.reactions:
-                nu_prompt = [p for p in incident_neutron[18].products
-                             if p.particle == 'neutron'
-                             and p.emission_mode == 'prompt']
+                nu = [p.yield_ for p in incident_neutron[18].products
+                      if p.particle == 'neutron'
+                      and p.emission_mode in ('prompt', 'total')]
             elif 19 in incident_neutron.reactions:
-                nu_prompt = [p for p in incident_neutron[19].products
-                             if p.particle == 'neutron'
-                             and p.emission_mode == 'prompt']
+                nu = [p.yield_ for p in incident_neutron[19].products
+                      if p.particle == 'neutron'
+                      and p.emission_mode in ('prompt', 'total')]
             else:
                 raise ValueError('IncidentNeutron data has no fission '
                                  'reaction.')
-            if len(nu_prompt) == 0:
+            if len(nu) == 0:
                 raise ValueError('Nu data is needed to compute fission energy '
                                  'release with the Sher-Beck format.')
-            if len(nu_prompt) > 1:
-                raise ValueError('Ambiguous prompt value.')
-            if not isinstance(nu_prompt[0].yield_, Tabulated1D):
-                raise TypeError('Sher-Beck fission energy release currently '
-                                'only supports Tabulated1D nu data.')
-            ENP = deepcopy(nu_prompt[0].yield_)
-            ENP.y = (energy_release['ENP'] + 1.307 * ENP.x
-                     - 8.07 * (ENP.y - ENP.y[0]))
+            if len(nu) > 1:
+                raise ValueError('Ambiguous prompt/total nu value.')
+
+            nu = nu[0]
+            if units == 'eV':
+                nu_const = 8.07e6
+            else:
+                nu_const = 8.07
+            if isinstance(nu, Tabulated1D):
+                ENP = deepcopy(nu)
+                ENP.y = (energy_release['ENP'] + 1.307 * nu.x
+                         - nu_const * (nu.y - nu.y[0]))
+            elif isinstance(nu, Polynomial):
+                if len(nu) == 1:
+                    ENP = Polynomial([energy_release['ENP'][0], 1.307])
+                else:
+                    ENP = Polynomial(
+                        [energy_release['ENP'][0], 1.307 - nu_const*nu.coef[1]]
+                        + [-nu_const*c for c in nu.coef[2:]])
+
             out.prompt_neutrons = ENP
 
         return out
 
     @classmethod
-    def from_endf(cls, filename, incident_neutron):
+    def from_endf(cls, ev, incident_neutron, units='eV'):
         """Generate fission energy release data from an ENDF file.
 
         Parameters
         ----------
-        filename : str
-            Name of the ENDF file containing fission energy release data
-
+        ev : openmc.data.endf.Evaluation
+            ENDF evaluation
         incident_neutron : openmc.data.IncidentNeutron
             Corresponding incident neutron dataset
+        units : {'eV', 'MeV'}
+            The energy units used in the returned object.
 
         Returns
         -------
@@ -457,26 +471,26 @@ class FissionEnergyRelease(EqualityMixin):
             Fission energy release data
 
         """
+        cv.check_type('evaluation', ev, Evaluation)
 
         # Check to make sure this ENDF file matches the expected isomer.
-        ident = identify_nuclide(filename)
-        if ident['Z'] != incident_neutron.atomic_number:
+        if ev.target['atomic_number'] != incident_neutron.atomic_number:
             raise ValueError('The atomic number of the ENDF evaluation does '
                              'not match the given IncidentNeutron.')
-        if ident['A'] != incident_neutron.mass_number:
+        if ev.target['mass_number'] != incident_neutron.mass_number:
             raise ValueError('The atomic mass of the ENDF evaluation does '
                              'not match the given IncidentNeutron.')
-        if ident['LISO'] != incident_neutron.metastable:
+        if ev.target['isomeric_state'] != incident_neutron.metastable:
             raise ValueError('The metastable state of the ENDF evaluation does '
                              'not match the given IncidentNeutron.')
-        if not ident['LFI']:
+        if not ev.target['fissionable']:
             raise ValueError('The ENDF evaluation is not fissionable.')
 
         # Read the 458 data from the ENDF file.
-        value, uncertainty = _extract_458_data(filename)
+        value, uncertainty = _extract_458_data(ev, units)
 
         # Build the object.
-        return cls._from_dictionary(value, incident_neutron)
+        return cls._from_dictionary(value, incident_neutron, units)
 
     @classmethod
     def from_hdf5(cls, group):
@@ -516,7 +530,6 @@ class FissionEnergyRelease(EqualityMixin):
             Path to an HDF5 file containing fission energy release data.  This
             file should have been generated form the
             :func:`openmc.data.write_compact_458_library` function.
-
         incident_neutron : openmc.data.IncidentNeutron
             Corresponding incident neutron dataset
 

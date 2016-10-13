@@ -110,11 +110,13 @@ class Settings(object):
     temperature : dict
         Defines a default temperature and method for treating intermediate
         temperatures at which nuclear data doesn't exist. Accepted keys are
-        'default', 'method', and 'tolerance'. The value for 'default' should be
-        a float representing the default temperature in Kelvin. The value for
-        'method' should be 'nearest' or 'multipole'. If the method is
-        'nearest', 'tolerance' indicates a range of temperature within which
-        cross sections may be used.
+        'default', 'method', 'tolerance', and 'multipole'. The value for
+        'default' should be a float representing the default temperature in
+        Kelvin. The value for 'method' should be 'nearest' or 'interpolation'.
+        If the method is 'nearest', 'tolerance' indicates a range of temperature
+        within which cross sections may be used. 'multipole' is a boolean
+        indicating whether or not the windowed multipole method should be used
+        to evaluate resolved resonance cross sections.
     trigger_active : bool
         Indicate whether tally triggers are used
     trigger_max_batches : int
@@ -146,6 +148,8 @@ class Settings(object):
         The elastic scattering model to use for resonant isotopes
     volume_calculations : VolumeCalculation or iterable of VolumeCalculation
         Stochastic volume calculation specifications
+    create_fission_neutrons : bool
+        Indicate whether fission neutrons should be created or not.
 
     """
 
@@ -233,6 +237,8 @@ class Settings(object):
             ResonanceScattering, 'resonance scattering models')
         self._volume_calculations = cv.CheckedList(
             VolumeCalculation, 'volume calculations')
+
+        self._create_fission_neutrons = None
 
     @property
     def run_mode(self):
@@ -437,6 +443,10 @@ class Settings(object):
     @property
     def volume_calculations(self):
         return self._volume_calculations
+
+    @property
+    def create_fission_neutrons(self):
+        return self._create_fission_neutrons
 
     @run_mode.setter
     def run_mode(self, run_mode):
@@ -697,14 +707,16 @@ class Settings(object):
         cv.check_type('temperature settings', temperature, Mapping)
         for key, value in temperature.items():
             cv.check_value('temperature key', key,
-                           ['default', 'method', 'tolerance'])
+                           ['default', 'method', 'tolerance', 'multipole'])
             if key == 'default':
                 cv.check_type('default temperature', value, Real)
             elif key == 'method':
                 cv.check_value('temperature method', value,
-                               ['nearest', 'interpolation', 'multipole'])
+                               ['nearest', 'interpolation'])
             elif key == 'tolerance':
                 cv.check_type('temperature tolerance', value, Real)
+            elif key == 'multipole':
+                cv.check_type('temperature multipole', value, bool)
         self._temperature = temperature
 
     @threads.setter
@@ -847,6 +859,12 @@ class Settings(object):
             vol_calcs = [vol_calcs]
         self._volume_calculations = cv.CheckedList(
             VolumeCalculation, 'stochastic volume calculations', vol_calcs)
+
+    @create_fission_neutrons.setter
+    def create_fission_neutrons(self, create_fission_neutrons):
+        cv.check_type('Whether create fission neutrons',
+                      create_fission_neutrons, bool)
+        self._create_fission_neutrons = create_fission_neutrons
 
     def _create_run_mode_subelement(self):
 
@@ -1084,7 +1102,7 @@ class Settings(object):
 
     def _create_temperature_subelements(self):
         if self.temperature:
-            for key, value in self.temperature.items():
+            for key, value in sorted(self.temperature.items()):
                 element = ET.SubElement(self._settings_file,
                                         "temperature_{}".format(key))
                 element.text = str(value)
@@ -1152,6 +1170,11 @@ class Settings(object):
             for r in self.resonance_scattering:
                 elem.append(r.to_xml_element())
 
+    def _create_create_fission_neutrons_subelement(self):
+        if self._create_fission_neutrons is not None:
+            elem = ET.SubElement(self._settings_file, "create_fission_neutrons")
+            elem.text = str(self._create_fission_neutrons).lower()
+
     def export_to_xml(self, path='settings.xml'):
         """Export simulation settings to an XML file.
 
@@ -1196,6 +1219,7 @@ class Settings(object):
         self._create_dd_subelement()
         self._create_resonance_scattering_subelement()
         self._create_volume_calcs_subelement()
+        self._create_create_fission_neutrons_subelement()
 
         # Clean the indentation in the file to be user-readable
         clean_xml_indentation(self._settings_file)

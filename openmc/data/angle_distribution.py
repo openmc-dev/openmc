@@ -1,12 +1,16 @@
 from collections import Iterable
+from io import StringIO
 from numbers import Real
+from warnings import warn
 
 import numpy as np
 
 import openmc.checkvalue as cv
 from openmc.mixin import EqualityMixin
-from openmc.stats import Univariate, Tabular, Uniform
+from openmc.stats import Univariate, Tabular, Uniform, Legendre
 from .function import INTERPOLATION_SCHEME
+from .endf import get_head_record, get_cont_record, get_tab1_record, \
+    get_list_record, get_tab2_record
 
 
 class AngleDistribution(EqualityMixin):
@@ -199,3 +203,107 @@ class AngleDistribution(EqualityMixin):
             mu.append(mu_i)
 
         return cls(energy, mu)
+
+    @classmethod
+    def from_endf(cls, ev, mt):
+        """Generate an angular distribution from an ENDF evaluation
+
+        Parameters
+        ----------
+        ev : openmc.data.endf.Evaluation
+            ENDF evaluation
+        mt : int
+            The MT value of the reaction to get angular distributions for
+
+        Returns
+        -------
+        openmc.data.AngleDistribution
+            Angular distribution
+
+        """
+        file_obj = StringIO(ev.section[4, mt])
+
+        # Read HEAD record
+        items = get_head_record(file_obj)
+        lvt = items[2]
+        ltt = items[3]
+
+        # Read CONT record
+        items = get_cont_record(file_obj)
+        li = items[2]
+        nk = items[4]
+        center_of_mass = (items[3] == 2)
+
+        # Check for obsolete energy transformation matrix. If present, just skip
+        # it and keep reading
+        if lvt > 0:
+            warn('Obsolete energy transformation matrix in MF=4 angular '
+                 'distribution.')
+            for _ in range((nk + 5)//6):
+                file_obj.readline()
+
+        if ltt == 0 and li == 1:
+            # Purely isotropic
+            energy = np.array([0., ev.info['energy_max']])
+            mu = [Uniform(-1., 1.), Uniform(-1., 1.)]
+
+        elif ltt == 1 and li == 0:
+            # Legendre polynomial coefficients
+            params, tab2 = get_tab2_record(file_obj)
+            n_energy = params[5]
+
+            energy = np.zeros(n_energy)
+            mu = []
+            for i in range(n_energy):
+                items, al = get_list_record(file_obj)
+                temperature = items[0]
+                energy[i] = items[1]
+                coefficients = np.asarray([1.0] + al)
+                mu.append(Legendre(coefficients))
+
+        elif ltt == 2 and li == 0:
+            # Tabulated probability distribution
+            params, tab2 = get_tab2_record(file_obj)
+            n_energy = params[5]
+
+            energy = np.zeros(n_energy)
+            mu = []
+            for i in range(n_energy):
+                params, f = get_tab1_record(file_obj)
+                temperature = params[0]
+                energy[i] = params[1]
+                if f.n_regions > 1:
+                    raise NotImplementedError('Angular distribution with multiple '
+                                              'interpolation regions not supported.')
+                mu.append(Tabular(f.x, f.y, INTERPOLATION_SCHEME[f.interpolation[0]]))
+
+        elif ltt == 3 and li == 0:
+            # Legendre for low energies / tabulated for high energies
+            params, tab2 = get_tab2_record(file_obj)
+            n_energy_legendre = params[5]
+
+            energy_legendre = np.zeros(n_energy_legendre)
+            mu = []
+            for i in range(n_energy_legendre):
+                items, al = get_list_record(file_obj)
+                temperature = items[0]
+                energy_legendre[i] = items[1]
+                coefficients = np.asarray([1.0] + al)
+                mu.append(Legendre(coefficients))
+
+            params, tab2 = get_tab2_record(file_obj)
+            n_energy_tabulated = params[5]
+
+            energy_tabulated = np.zeros(n_energy_tabulated)
+            for i in range(n_energy_tabulated):
+                params, f = get_tab1_record(file_obj)
+                temperature = params[0]
+                energy_tabulated[i] = params[1]
+                if f.n_regions > 1:
+                    raise NotImplementedError('Angular distribution with multiple '
+                                              'interpolation regions not supported.')
+                mu.append(Tabular(f.x, f.y, INTERPOLATION_SCHEME[f.interpolation[0]]))
+
+            energy = np.concatenate((energy_legendre, energy_tabulated))
+
+        return AngleDistribution(energy, mu)

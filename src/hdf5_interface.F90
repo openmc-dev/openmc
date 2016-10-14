@@ -85,17 +85,16 @@ module hdf5_interface
 
   public :: write_dataset
   public :: read_dataset
-  public :: check_attribute
+  public :: attribute_exists
   public :: write_attribute
   public :: read_attribute
   public :: file_create
   public :: file_open
   public :: file_close
   public :: create_group
-  public :: check_group
+  public :: object_exists
   public :: open_group
   public :: close_group
-  public :: check_dataset
   public :: open_dataset
   public :: close_dataset
   public :: get_shape
@@ -254,7 +253,7 @@ contains
 ! CHECK_ATTRIBUTE Checks to see if an attribute exists in the object
 !===============================================================================
 
-  function check_attribute(object_id, name) result(exists)
+  function attribute_exists(object_id, name) result(exists)
     integer(HID_T), intent(in) :: object_id
     character(*),   intent(in) :: name ! name of group
     logical :: exists
@@ -264,13 +263,13 @@ contains
     ! Check if attribute exists
     call h5aexists_by_name_f(object_id, '.', trim(name), exists, hdf5_err)
 
-  end function check_attribute
+  end function attribute_exists
 
 !===============================================================================
 ! CHECK_GROUP Checks to see if a group exists in the object
 !===============================================================================
 
-  function check_group(object_id, name) result(exists)
+  function object_exists(object_id, name) result(exists)
     integer(HID_T), intent(in) :: object_id
     character(*),   intent(in) :: name ! name of group
     logical :: exists
@@ -280,21 +279,7 @@ contains
     ! Check if group exists
     call h5ltpath_valid_f(object_id, trim(name), .true., exists, hdf5_err)
 
-  end function check_group
-
-!===============================================================================
-! CHECK_DATASET Checks to see if a dataset exists in the object
-!===============================================================================
-
-  function check_dataset(object_id, name) result(exists)
-    integer(HID_T), intent(in) :: object_id
-    character(*),   intent(in) :: name ! name of group
-    logical :: exists
-
-    ! Wrap check_group since the method used there will work here too
-    exists = check_group(object_id, name)
-
-  end function check_dataset
+  end function object_exists
 
 !===============================================================================
 ! GET_DATASETS Gets a list of all the datasets in a given location.
@@ -368,7 +353,7 @@ contains
     integer :: hdf5_err ! HDF5 error code
 
     ! Check if group exists
-    exists = check_group(group_id, name)
+    exists = object_exists(group_id, name)
 
     ! open group if it exists
     if (exists) then
@@ -391,7 +376,7 @@ contains
     logical :: exists   ! does the group exist
 
     ! Check if group exists
-    exists = check_group(group_id, name)
+    exists = object_exists(group_id, name)
 
     ! create group
     if (exists) then
@@ -429,7 +414,7 @@ contains
     integer :: hdf5_err ! HDF5 error code
 
     ! Check if group exists
-    exists = check_group(group_id, name)
+    exists = object_exists(group_id, name)
 
     ! open group if it exists
     if (exists) then

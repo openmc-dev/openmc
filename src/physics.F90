@@ -127,6 +127,13 @@ contains
       if (.not. p % alive) return
     end if
 
+    ! Kill neutron under certain energy
+    if (p % E < energy_cutoff) then
+      p % alive = .false.
+      p % wgt = ZERO
+      p % last_wgt = ZERO
+    end if
+
   end subroutine sample_reaction
 
 !===============================================================================

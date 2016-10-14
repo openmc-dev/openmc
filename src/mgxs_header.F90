@@ -1149,6 +1149,7 @@ module mgxs_header
           xs % chi_delayed        = ZERO
           xs % chi_prompt         = ZERO
           xs % decay_rate         = ZERO
+          xs % inverse_velocity   = ZERO
 
           if (this % fissionable) then
 
@@ -2653,6 +2654,7 @@ module mgxs_header
             deallocate(scatt_coeffs, temp_mult, mult_num, mult_denom)
           end associate ! nuc
         end do NUC_LOOP
+
       end do TEMP_LOOP
 
     end subroutine mgxsang_combine

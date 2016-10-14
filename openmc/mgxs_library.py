@@ -85,7 +85,7 @@ class XSdata(object):
     fission : dict of numpy.ndarray
         Group-wise fission cross section.
     kappa_fission : dict of numpy.ndarray
-        Group-wise kappa-fission cross section.
+        Group-wise kappa_fission cross section.
     chi : dict of numpy.ndarray
         Group-wise fission spectra ordered by increasing group index (i.e.,
         fast to thermal). This attribute should be used if making the common
@@ -1249,7 +1249,7 @@ class XSdata(object):
 
         """
 
-        check_type('k_fission', k_fission, openmc.mgxs.KappaFissionXS)
+        check_type('kappa_fission', k_fission, openmc.mgxs.KappaFissionXS)
         check_value('energy_groups', k_fission.energy_groups,
                     [self.energy_groups])
         check_value('domain_type', k_fission.domain_type,
@@ -1745,7 +1745,7 @@ class XSdata(object):
                     xs_grp.create_dataset("beta", data=self._beta[i])
 
                 if self._decay_rate[i] is not None:
-                    xs_grp.create_dataset("decay-rate", data=self._decay_rate[i])
+                    xs_grp.create_dataset("decay rate", data=self._decay_rate[i])
 
             if self._scatter_matrix[i] is None:
                 raise ValueError('Scatter matrix must be provided when '

@@ -1247,19 +1247,19 @@ contains
           end if
 
           if (i_nuclide > 0) then
-            score = score * nucxs % get_xs('inverse_velocity', p_g, UVW=p_uvw) &
+            score = score * nucxs % get_xs('inverse-velocity', p_g, UVW=p_uvw) &
                  / nucxs % get_xs('total', p_g, UVW=p_uvw) * flux
           else
-            score = score * matxs % get_xs('inverse_velocity', p_g, UVW=p_uvw) &
+            score = score * matxs % get_xs('inverse-velocity', p_g, UVW=p_uvw) &
                  / matxs % get_xs('total', p_g, UVW=p_uvw) * flux
           end if
 
         else
 
           if (i_nuclide > 0) then
-            score = flux * nucxs % get_xs('inverse_velocity', p_g, UVW=p_uvw)
+            score = flux * nucxs % get_xs('inverse-velocity', p_g, UVW=p_uvw)
           else
-            score = flux * matxs % get_xs('inverse_velocity', p_g, UVW=p_uvw)
+            score = flux * matxs % get_xs('inverse-velocity', p_g, UVW=p_uvw)
           end if
         end if
 
@@ -1445,11 +1445,11 @@ contains
             score = p % absorb_wgt * flux
             if (i_nuclide > 0) then
               score = score * atom_density * &
-                   nucxs % get_xs('nu_fission', p_g, UVW=p_uvw) / &
+                   nucxs % get_xs('nu-fission', p_g, UVW=p_uvw) / &
                    matxs % get_xs('absorption', p_g, UVW=p_uvw)
             else
               score = score * &
-                   matxs % get_xs('nu_fission', p_g, UVW=p_uvw) / &
+                   matxs % get_xs('nu-fission', p_g, UVW=p_uvw) / &
                    matxs % get_xs('absorption', p_g, UVW=p_uvw)
             end if
           else
@@ -1470,10 +1470,10 @@ contains
 
         else
           if (i_nuclide > 0) then
-            score = nucxs % get_xs('nu_fission', p_g, UVW=p_uvw) * &
+            score = nucxs % get_xs('nu-fission', p_g, UVW=p_uvw) * &
                  atom_density * flux
           else
-            score = matxs % get_xs('nu_fission', p_g, UVW=p_uvw) * flux
+            score = matxs % get_xs('nu-fission', p_g, UVW=p_uvw) * flux
           end if
         end if
 
@@ -1506,11 +1506,11 @@ contains
             score = p % absorb_wgt * flux
             if (i_nuclide > 0) then
               score = score * atom_density * &
-                   nucxs % get_xs('prompt_nu_fission', p_g, UVW=p_uvw) / &
+                   nucxs % get_xs('prompt-nu-fission', p_g, UVW=p_uvw) / &
                    matxs % get_xs('absorption', p_g, UVW=p_uvw)
             else
               score = score * &
-                   matxs % get_xs('prompt_nu_fission', p_g, UVW=p_uvw) / &
+                   matxs % get_xs('prompt-nu-fission', p_g, UVW=p_uvw) / &
                    matxs % get_xs('absorption', p_g, UVW=p_uvw)
             end if
           else
@@ -1532,10 +1532,10 @@ contains
 
         else
           if (i_nuclide > 0) then
-            score = nucxs % get_xs('prompt_nu_fission', p_g, UVW=p_uvw) * &
+            score = nucxs % get_xs('prompt-nu-fission', p_g, UVW=p_uvw) * &
                  atom_density * flux
           else
-            score = matxs % get_xs('prompt_nu_fission', p_g, UVW=p_uvw) * flux
+            score = matxs % get_xs('prompt-nu-fission', p_g, UVW=p_uvw) * flux
           end if
         end if
 
@@ -1583,11 +1583,11 @@ contains
 
                     score = p % absorb_wgt * flux
                     if (i_nuclide > 0) then
-                      score = score * nucxs % get_xs('delayed_nu_fission', &
+                      score = score * nucxs % get_xs('delayed-nu-fission', &
                            p_g, UVW=p_uvw, dg=d) / &
                            nucxs % get_xs('absorption', p_g, UVW=p_uvw)
                     else
-                      score = score * matxs % get_xs('delayed_nu_fission', &
+                      score = score * matxs % get_xs('delayed-nu-fission', &
                            p_g, UVW=p_uvw, dg=d) / &
                            matxs % get_xs('absorption', p_g, UVW=p_uvw)
                     end if
@@ -1599,10 +1599,10 @@ contains
               else
                 score = p % absorb_wgt * flux
                 if (i_nuclide > 0) then
-                  score = score * nucxs % get_xs('delayed_nu_fission', p_g, &
+                  score = score * nucxs % get_xs('delayed-nu-fission', p_g, &
                        UVW=p_uvw) / nucxs % get_xs('absorption', p_g, UVW=p_uvw)
                 else
-                  score = score * matxs % get_xs('delayed_nu_fission', p_g, &
+                  score = score * matxs % get_xs('delayed-nu-fission', p_g, &
                        UVW=p_uvw) / matxs % get_xs('absorption', p_g, UVW=p_uvw)
                 end if
               end if
@@ -1665,10 +1665,10 @@ contains
                 d = filt % groups(d_bin)
 
                 if (i_nuclide > 0) then
-                  score = nucxs % get_xs('delayed_nu_fission', p_g, &
+                  score = nucxs % get_xs('delayed-nu-fission', p_g, &
                        UVW=p_uvw, dg=d) * atom_density * flux
                 else
-                  score = matxs % get_xs('delayed_nu_fission', p_g, &
+                  score = matxs % get_xs('delayed-nu-fission', p_g, &
                        UVW=p_uvw, dg=d) * flux
                 end if
 
@@ -1678,10 +1678,10 @@ contains
             end select
           else
             if (i_nuclide > 0) then
-              score = nucxs % get_xs('delayed_nu_fission', p_g, UVW=p_uvw) &
+              score = nucxs % get_xs('delayed-nu-fission', p_g, UVW=p_uvw) &
                    * atom_density * flux
             else
-              score = matxs % get_xs('delayed_nu_fission', p_g, UVW=p_uvw) &
+              score = matxs % get_xs('delayed-nu-fission', p_g, UVW=p_uvw) &
                    * flux
             end if
           end if
@@ -1719,15 +1719,15 @@ contains
 
                     score = p % absorb_wgt * flux
                     if (i_nuclide > 0) then
-                      score = score * nucxs % get_xs('decay_rate', p_g, &
+                      score = score * nucxs % get_xs('decay rate', p_g, &
                            UVW=p_uvw, dg=d) * &
-                           nucxs % get_xs('delayed_nu_fission', p_g, &
+                           nucxs % get_xs('delayed-nu-fission', p_g, &
                            UVW=p_uvw, dg=d) / nucxs % get_xs('absorption', &
                            p_g, UVW=p_uvw)
                     else
-                      score = score * matxs % get_xs('decay_rate', p_g, &
+                      score = score * matxs % get_xs('decay rate', p_g, &
                            UVW=p_uvw, dg=d) * &
-                           matxs % get_xs('delayed_nu_fission', p_g, &
+                           matxs % get_xs('delayed-nu-fission', p_g, &
                            UVW=p_uvw, dg=d) / matxs % get_xs('absorption', &
                            p_g, UVW=p_uvw)
                     end if
@@ -1747,13 +1747,13 @@ contains
                 do d = 1, num_delayed_groups
                   if (i_nuclide > 0) then
                     score = score + p % absorb_wgt * &
-                         nucxs % get_xs('decay_rate', p_g, UVW=p_uvw, dg=d) * &
-                         nucxs % get_xs('delayed_nu_fission', p_g, UVW=p_uvw, &
+                         nucxs % get_xs('decay rate', p_g, UVW=p_uvw, dg=d) * &
+                         nucxs % get_xs('delayed-nu-fission', p_g, UVW=p_uvw, &
                          dg=d) / nucxs % get_xs('absorption', p_g, UVW=p_uvw)
                   else
                     score = score + p % absorb_wgt * &
-                         matxs % get_xs('decay_rate', p_g, UVW=p_uvw, dg=d) * &
-                         matxs % get_xs('delayed_nu_fission', p_g, UVW=p_uvw, &
+                         matxs % get_xs('decay rate', p_g, UVW=p_uvw, dg=d) * &
+                         matxs % get_xs('delayed-nu-fission', p_g, UVW=p_uvw, &
                          dg=d) / matxs % get_xs('absorption', p_g, UVW=p_uvw)
                   end if
                 end do
@@ -1783,13 +1783,13 @@ contains
                 if (i_nuclide > 0) then
                   score = score + keff * atom_density * &
                        fission_bank(n_bank - p % n_bank + k) % wgt * &
-                       nucxs % get_xs('decay_rate', p_g, UVW=p_uvw, dg=g) * &
+                       nucxs % get_xs('decay rate', p_g, UVW=p_uvw, dg=g) * &
                        nucxs % get_xs('fission', p_g, UVW=p_uvw) / &
                        matxs % get_xs('fission', p_g, UVW=p_uvw)
                 else
                   score = score + keff * &
                        fission_bank(n_bank - p % n_bank + k) % wgt * &
-                       matxs % get_xs('decay_rate', p_g, UVW=p_uvw, dg=g)
+                       matxs % get_xs('decay rate', p_g, UVW=p_uvw, dg=g)
                 end if
 
                 ! if the delayed group filter is present, tally to corresponding
@@ -1841,12 +1841,12 @@ contains
                 d = filt % groups(d_bin)
 
                 if (i_nuclide > 0) then
-                  score = nucxs % get_xs('decay_rate', p_g, UVW=p_uvw, dg=d) * &
-                       nucxs % get_xs('delayed_nu_fission', p_g, UVW=p_uvw, &
+                  score = nucxs % get_xs('decay rate', p_g, UVW=p_uvw, dg=d) * &
+                       nucxs % get_xs('delayed-nu-fission', p_g, UVW=p_uvw, &
                        dg=d) * atom_density * flux
                 else
-                  score = matxs % get_xs('decay_rate', p_g, UVW=p_uvw, dg=d) * &
-                       matxs % get_xs('delayed_nu_fission', p_g, UVW=p_uvw, &
+                  score = matxs % get_xs('decay rate', p_g, UVW=p_uvw, dg=d) * &
+                       matxs % get_xs('delayed-nu-fission', p_g, UVW=p_uvw, &
                        dg=d) * flux
                 end if
 
@@ -1864,12 +1864,12 @@ contains
             do d = 1, num_delayed_groups
               if (i_nuclide > 0) then
                 score = score + atom_density * flux * &
-                     nucxs % get_xs('decay_rate', p_g, UVW=p_uvw, dg=d) * &
-                     nucxs % get_xs('delayed_nu_fission', p_g, UVW=p_uvw, dg=d)
+                     nucxs % get_xs('decay rate', p_g, UVW=p_uvw, dg=d) * &
+                     nucxs % get_xs('delayed-nu-fission', p_g, UVW=p_uvw, dg=d)
               else
                 score = score + flux * &
-                     matxs % get_xs('decay_rate', p_g, UVW=p_uvw, dg=d) * &
-                     matxs % get_xs('delayed_nu_fission', p_g, UVW=p_uvw, dg=d)
+                     matxs % get_xs('decay rate', p_g, UVW=p_uvw, dg=d) * &
+                     matxs % get_xs('delayed-nu-fission', p_g, UVW=p_uvw, dg=d)
               end if
             end do
           end if
@@ -1901,19 +1901,19 @@ contains
           end if
           if (i_nuclide > 0) then
             score = score * atom_density * &
-                 nucxs % get_xs('kappa_fission', p_g, UVW=p_uvw) / &
+                 nucxs % get_xs('kappa-fission', p_g, UVW=p_uvw) / &
                  matxs % get_xs('absorption', p_g, UVW=p_uvw)
           else
             score = score * &
-                 matxs % get_xs('kappa_fission', p_g, UVW=p_uvw) / &
+                 matxs % get_xs('kappa-fission', p_g, UVW=p_uvw) / &
                  matxs % get_xs('absorption', p_g, UVW=p_uvw)
           end if
         else
           if (i_nuclide > 0) then
-            score = nucxs % get_xs('kappa_fission', p_g, UVW=p_uvw) * &
+            score = nucxs % get_xs('kappa-fission', p_g, UVW=p_uvw) * &
                  atom_density * flux
           else
-            score = matxs % get_xs('kappa_fission', p_g, UVW=p_uvw) * flux
+            score = matxs % get_xs('kappa-fission', p_g, UVW=p_uvw) * flux
 
           end if
         end if

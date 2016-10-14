@@ -659,8 +659,15 @@ contains
     ! Cutoffs
     if (check_for_node(doc, "cutoff")) then
       call get_node_ptr(doc, "cutoff", node_cutoff)
-      call get_node_value(node_cutoff, "weight", weight_cutoff)
-      call get_node_value(node_cutoff, "weight_avg", weight_survive)
+      if (check_for_node(node_cutoff, "weight")) then
+        call get_node_value(node_cutoff, "weight", weight_cutoff)
+      end if
+      if (check_for_node(node_cutoff, "weight_avg")) then
+        call get_node_value(node_cutoff, "weight_avg", weight_survive)
+      end if
+      if (check_for_node(node_cutoff, "energy")) then
+        call get_node_value(node_cutoff, "energy", energy_cutoff)
+      end if
     end if
 
     ! Particle trace

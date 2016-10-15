@@ -121,10 +121,13 @@ multi-group mode.
 ``<cutoff>`` Element
 --------------------
 
-The ``<cutoff>`` element indicates the weight cutoff used below which particles
-undergo Russian roulette. Surviving particles are assigned a user-determined
-weight. Note that weight cutoffs and Russian rouletting are not turned on by
-default. This element has the following attributes/sub-elements:
+The ``<cutoff>`` element indicates two kinds of cutoffs. The first is the weight
+cutoff used below which particles undergo Russian roulette. Surviving particles
+are assigned a user-determined weight. Note that weight cutoffs and Russian
+rouletting are not turned on by default. The second is the energy cutoff which
+is used to kill particles under certain energy. The energy cutoff should not be
+used unless you know particles under the energy are of no importance to results
+you care. This element has the following attributes/sub-elements:
 
   :weight:
     The weight below which particles undergo Russian roulette.
@@ -136,6 +139,11 @@ default. This element has the following attributes/sub-elements:
     roulette.
 
     *Default*: 1.0
+
+  :energy:
+    The energy under which particles will be killed.
+
+    *Default*: 0.0
 
 .. _eigenvalue:
 

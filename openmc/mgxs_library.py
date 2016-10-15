@@ -8,7 +8,7 @@ import h5py
 import openmc
 import openmc.mgxs
 from openmc.checkvalue import check_type, check_value, check_greater_than, \
-    check_less_than, check_iterable_type
+    check_iterable_type
 
 if sys.version_info[0] >= 3:
     basestring = str
@@ -16,6 +16,7 @@ if sys.version_info[0] >= 3:
 # Supported incoming particle MGXS angular treatment representations
 _REPRESENTATIONS = ['isotropic', 'angle']
 _SCATTER_TYPES = ['tabular', 'legendre', 'histogram']
+_SCATTER_SHAPES = ["[Order][G][G']"]
 
 
 class XSdata(object):
@@ -51,6 +52,8 @@ class XSdata(object):
         Whether or not this is a fissionable data set.
     scatter_format : {'legendre', 'histogram', or 'tabular'}
         Angular distribution representation (legendre, histogram, or tabular)
+    scatter_shapes : {"[Order][G][G']"}
+        Dimensionality of the scattering and multiplicity matrices
     order : int
         Either the Legendre order, number of bins, or number of points used to
         describe the angular distribution associated with each group-to-group
@@ -106,8 +109,8 @@ class XSdata(object):
         :attr:`XSdata.nu_fission` attribute instead.
     nu_fission : dict of numpy.ndarray
         Group-wise fission production cross section vector (i.e., if
-        :attr:`XSdata.chi` is provided), or is the group-wise fission production
-        matrix.
+        :attr:`XSdata.chi` is provided), or is the group-wise fission
+        production matrix.
     inverse_velocities : dict of numpy.ndarray
         Inverse of velocities, in units of sec/cm.
 
@@ -142,6 +145,7 @@ class XSdata(object):
         self._atomic_weight_ratio = None
         self._fissionable = False
         self._scatter_format = 'legendre'
+        self._scatter_shape = "[Order][G][G']"
         self._order = None
         self._num_polar = None
         self._num_azimuthal = None
@@ -183,6 +187,10 @@ class XSdata(object):
     @property
     def scatter_format(self):
         return self._scatter_format
+
+    @property
+    def scatter_shape(self):
+        return self._scatter_shape
 
     @property
     def order(self):
@@ -242,28 +250,28 @@ class XSdata(object):
 
     @property
     def vector_shape(self):
-        if self.representation is 'isotropic':
+        if self.representation == 'isotropic':
             return (self.energy_groups.num_groups,)
-        elif self.representation is 'angle':
+        elif self.representation == 'angle':
             return (self.num_polar, self.num_azimuthal,
                     self.energy_groups.num_groups)
 
     @property
     def matrix_shape(self):
-        if self.representation is 'isotropic':
+        if self.representation == 'isotropic':
             return (self.energy_groups.num_groups,
                     self.energy_groups.num_groups)
-        elif self.representation is 'angle':
+        elif self.representation == 'angle':
             return (self.num_polar, self.num_azimuthal,
                     self.energy_groups.num_groups,
                     self.energy_groups.num_groups)
 
     @property
     def pn_matrix_shape(self):
-        if self.representation is 'isotropic':
+        if self.representation == 'isotropic':
             return (self.num_orders, self.energy_groups.num_groups,
                     self.energy_groups.num_groups)
-        elif self.representation is 'angle':
+        elif self.representation == 'angle':
             return (self.num_polar, self.num_azimuthal, self.num_orders,
                     self.energy_groups.num_groups,
                     self.energy_groups.num_groups)
@@ -308,6 +316,12 @@ class XSdata(object):
         # check to see it is of a valid type and value
         check_value('scatter_format', scatter_format, _SCATTER_TYPES)
         self._scatter_format = scatter_format
+
+    @scatter_shape.setter
+    def scatter_shape(self, scatter_shape):
+        # check to see it is of a valid type and value
+        check_value('scatter_shape', scatter_shape, _SCATTER_SHAPES)
+        self._scatter_shape = scatter_shape
 
     @order.setter
     def order(self, order):
@@ -694,10 +708,10 @@ class XSdata(object):
         check_value('temperature', temperature, self.temperatures)
 
         i = np.where(self.temperatures == temperature)[0][0]
-        if self.representation is 'isotropic':
+        if self.representation == 'isotropic':
             self._total[i] = total.get_xs(nuclides=nuclide, xs_type=xs_type,
                                           subdomains=subdomain)
-        elif self.representation is 'angle':
+        elif self.representation == 'angle':
             msg = 'Angular-Dependent MGXS have not yet been implemented'
             raise ValueError(msg)
 
@@ -740,11 +754,11 @@ class XSdata(object):
         check_value('temperature', temperature, self.temperatures)
 
         i = np.where(self.temperatures == temperature)[0][0]
-        if self.representation is 'isotropic':
+        if self.representation == 'isotropic':
             self._absorption[i] = absorption.get_xs(nuclides=nuclide,
                                                     xs_type=xs_type,
                                                     subdomains=subdomain)
-        elif self.representation is 'angle':
+        elif self.representation == 'angle':
             msg = 'Angular-Dependent MGXS have not yet been implemented'
             raise ValueError(msg)
 
@@ -787,11 +801,11 @@ class XSdata(object):
         check_value('temperature', temperature, self.temperatures)
 
         i = np.where(self.temperatures == temperature)[0][0]
-        if self.representation is 'isotropic':
+        if self.representation == 'isotropic':
             self._fission[i] = fission.get_xs(nuclides=nuclide,
                                               xs_type=xs_type,
                                               subdomains=subdomain)
-        elif self.representation is 'angle':
+        elif self.representation == 'angle':
             msg = 'Angular-Dependent MGXS have not yet been implemented'
             raise ValueError(msg)
 
@@ -835,11 +849,11 @@ class XSdata(object):
         check_value('temperature', temperature, self.temperatures)
 
         i = np.where(self.temperatures == temperature)[0][0]
-        if self.representation is 'isotropic':
+        if self.representation == 'isotropic':
             self._nu_fission[i] = nu_fission.get_xs(nuclides=nuclide,
                                                     xs_type=xs_type,
                                                     subdomains=subdomain)
-        elif self.representation is 'angle':
+        elif self.representation == 'angle':
             msg = 'Angular-Dependent MGXS have not yet been implemented'
             raise ValueError(msg)
 
@@ -892,11 +906,11 @@ class XSdata(object):
         check_value('temperature', temperature, self.temperatures)
 
         i = np.where(self.temperatures == temperature)[0][0]
-        if self.representation is 'isotropic':
+        if self.representation == 'isotropic':
             self._kappa_fission[i] = k_fission.get_xs(nuclides=nuclide,
                                                       xs_type=xs_type,
                                                       subdomains=subdomain)
-        elif self.representation is 'angle':
+        elif self.representation == 'angle':
             msg = 'Angular-Dependent MGXS have not yet been implemented'
             raise ValueError(msg)
 
@@ -943,10 +957,10 @@ class XSdata(object):
         check_value('temperature', temperature, self.temperatures)
 
         i = np.where(self.temperatures == temperature)[0][0]
-        if self.representation is 'isotropic':
+        if self.representation == 'isotropic':
             self._chi[i] = chi.get_xs(nuclides=nuclide,
                                       xs_type=xs_type, subdomains=subdomain)
-        elif self.representation is 'angle':
+        elif self.representation == 'angle':
             msg = 'Angular-Dependent MGXS have not yet been implemented'
             raise ValueError(msg)
 
@@ -994,7 +1008,7 @@ class XSdata(object):
         check_type('temperature', temperature, Real)
         check_value('temperature', temperature, self.temperatures)
 
-        if self.scatter_format is not 'legendre':
+        if self.scatter_format != 'legendre':
             msg = 'Anisotropic scattering representations other than ' \
                   'Legendre expansions have not yet been implemented in ' \
                   'openmc.mgxs.'
@@ -1011,7 +1025,7 @@ class XSdata(object):
                         [self.order])
 
         i = np.where(self.temperatures == temperature)[0][0]
-        if self.representation is 'isotropic':
+        if self.representation == 'isotropic':
             # Get the scattering orders in the outermost dimension
             self._scatter_matrix[i] = np.zeros((self.num_orders,
                                                 self.energy_groups.num_groups,
@@ -1021,7 +1035,7 @@ class XSdata(object):
                     scatter.get_xs(nuclides=nuclide, xs_type=xs_type,
                                    moment=moment, subdomains=subdomain)
 
-        elif self.representation is 'angle':
+        elif self.representation == 'angle':
             msg = 'Angular-Dependent MGXS have not yet been implemented'
             raise ValueError(msg)
 
@@ -1089,7 +1103,7 @@ class XSdata(object):
                         ['universe', 'cell', 'material', 'mesh'])
 
         i = np.where(self.temperatures == temperature)[0][0]
-        if self.representation is 'isotropic':
+        if self.representation == 'isotropic':
             nuscatt = nuscatter.get_xs(nuclides=nuclide,
                                        xs_type=xs_type, moment=0,
                                        subdomains=subdomain)
@@ -1100,7 +1114,7 @@ class XSdata(object):
                                        xs_type=xs_type, moment=0,
                                        subdomains=subdomain)
                 self._multiplicity_matrix[i] = np.divide(nuscatt, scatt)
-        elif self.representation is 'angle':
+        elif self.representation == 'angle':
             msg = 'Angular-Dependent MGXS have not yet been implemented'
             raise ValueError(msg)
         self._multiplicity_matrix[i] = \
@@ -1123,7 +1137,7 @@ class XSdata(object):
         if self.representation is not None:
             grp.attrs['representation'] = np.array(self.representation,
                                                    dtype='S')
-            if self.representation is 'angle':
+            if self.representation == 'angle':
                 if self.num_azimuthal is not None:
                     grp.attrs['num_azimuthal'] = self.num_azimuthal
                 if self.num_polar is not None:
@@ -1131,6 +1145,9 @@ class XSdata(object):
         if self.scatter_format is not None:
             grp.attrs['scatter_format'] = np.array(self.scatter_format,
                                                    dtype='S')
+        if self.scatter_shape is not None:
+            grp.attrs['scatter_shape'] = np.array(self.scatter_shape,
+                                                  dtype='S')
         if self.order is not None:
             grp.attrs['order'] = self.order
 
@@ -1170,7 +1187,7 @@ class XSdata(object):
 
             # Get the sparse scattering data to print to the library
             G = self.energy_groups.num_groups
-            if self.representation is 'isotropic':
+            if self.representation == 'isotropic':
                 g_out_bounds = np.zeros((G, 2), dtype=np.int)
                 for g_in in range(G):
                     nz = np.nonzero(self._scatter_matrix[i][0, g_in, :])
@@ -1206,7 +1223,7 @@ class XSdata(object):
                 scatt_grp.create_dataset("g_min", data=g_out_bounds[:, 0])
                 scatt_grp.create_dataset("g_max", data=g_out_bounds[:, 1])
 
-            elif self.representation is 'angle':
+            elif self.representation == 'angle':
                 Np = self.num_polar
                 Na = self.num_azimuthal
                 g_out_bounds = np.zeros((Np, Na, G, 2), dtype=np.int)

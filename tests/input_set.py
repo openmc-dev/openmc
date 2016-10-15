@@ -1,8 +1,9 @@
+import numpy as np
+
 import openmc
 from openmc.source import Source
 from openmc.stats import Box
 
-import numpy as np
 
 class InputSet(object):
     def __init__(self):
@@ -765,9 +766,9 @@ class MGInputSet(InputSet):
         top = openmc.YPlane(y0=10.0, boundary_type='reflective')
         # for each material add a plane
         planes = [openmc.ZPlane(z0=0.0, boundary_type='reflective')]
-        dz = 5. / float(len(mats))
+        dz = round(5. / float(len(mats)), 4)
         for i in range(len(mats) - 1):
-            planes.append(openmc.ZPlane(z0=dz * (i + 1)))
+            planes.append(openmc.ZPlane(z0=dz * float(i + 1)))
         planes.append(openmc.ZPlane(z0=5.0, boundary_type='reflective'))
 
         # Define cells for each material

@@ -1865,7 +1865,7 @@ module mgxs_header
 
       integer :: iazi, ipol, t
 
-      t = this % index_temp
+      t = this % index_temp 
 
       if (present(uvw)) then
         call find_angle(this % polar, this % azimuthal, uvw, iazi, ipol)

@@ -1149,6 +1149,8 @@ contains
     ! Do same for nucxs, point it to the microscopic nuclide data of interest
     if (i_nuclide > 0) then
       nucxs => nuclides_MG(i_nuclide) % obj
+      ! And since we haven't calculated this temperature index yet, do so now
+      call nucxs % find_temperature(p % sqrtkT)
     end if
 
     i = 0

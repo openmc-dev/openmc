@@ -89,10 +89,14 @@ class Settings(object):
         Seed for the linear congruential pseudorandom number generator
     survival_biasing : bool
         Indicate whether survival biasing is to be used
-    weight : float
-        Weight cutoff below which particle undergo Russian roulette
-    weight_avg : float
-        Weight assigned to particles that are not killed after Russian roulette
+    cutoff : dict
+        Dictionary defining weight cutoff and energy cutoff. The dictionary may
+        have three keys, 'weight', 'weight_avg' and 'energy'. Value for 'weight'
+        should be a float indicating weight cutoff below which particle undergo
+        Russian roulette. Value for 'weight_avg' should be a float indicating
+        weight assigned to particles that are not killed after Russian
+        roulette. Value of energy should be a float indicating energy in MeV
+        below which particle will be killed.
     entropy_dimension : tuple or list
         Number of Shannon entropy mesh cells in the x, y, and z directions,
         respectively
@@ -214,8 +218,7 @@ class Settings(object):
         self._temperature = {}
 
         # Cutoff subelement
-        self._weight = None
-        self._weight_avg = None
+        self._cutoff = None
 
         # Uniform fission source subelement
         self._ufs_dimension = 1
@@ -393,12 +396,8 @@ class Settings(object):
         return self._track
 
     @property
-    def weight(self):
-        return self._weight
-
-    @property
-    def weight_avg(self):
-        return self._weight_avg
+    def cutoff(self):
+        return self._cutoff
 
     @property
     def ufs_dimension(self):
@@ -635,17 +634,29 @@ class Settings(object):
         cv.check_type('survival biasing', survival_biasing, bool)
         self._survival_biasing = survival_biasing
 
-    @weight.setter
-    def weight(self, weight):
-        cv.check_type('weight cutoff', weight, Real)
-        cv.check_greater_than('weight cutoff', weight, 0.0)
-        self._weight = weight
+    @cutoff.setter
+    def cutoff(self, cutoff):
+        if not isinstance(cutoff, Mapping):
+            msg = 'Unable to set cutoff from "{0}" which is not a '\
+                  ' Python dictionary'.format(cutoff)
+            raise ValueError(msg)
+        for key in cutoff:
+            if key == 'weight':
+                cv.check_type('weight cutoff', cutoff['weight'], Real)
+                cv.check_greater_than('weight cutoff', cutoff['weight'], 0.0)
+            elif key == 'weight_avg':
+                cv.check_type('average survival weight', cutoff['weight_avg'],
+                              Real)
+                cv.check_greater_than('average survival weight',
+                                      cutoff['weight_avg'], 0.0)
+            elif key == 'energy':
+                cv.check_type('energy cutoff', cutoff['energy'], Real)
+                cv.check_greater_than('energy cutoff', cutoff['energy'], 0.0)
+            else:
+                msg = 'Unable to set cutoff to "{0}" which is unsupported by '\
+                      'OpenMC'.format(key)
 
-    @weight_avg.setter
-    def weight_avg(self, weight_avg):
-        cv.check_type('average survival weight', weight_avg, Real)
-        cv.check_greater_than('average survival weight', weight_avg, 0.0)
-        self._weight_avg = weight_avg
+        self._cutoff = cutoff
 
     @entropy_dimension.setter
     def entropy_dimension(self, dimension):
@@ -1030,14 +1041,19 @@ class Settings(object):
             element.text = str(self._survival_biasing).lower()
 
     def _create_cutoff_subelement(self):
-        if self._weight is not None:
+        if self._cutoff is not None:
             element = ET.SubElement(self._settings_file, "cutoff")
+            if 'weight' in self._cutoff:
+                subelement = ET.SubElement(element, "weight")
+                subelement.text = str(self._cutoff['weight'])
 
-            subelement = ET.SubElement(element, "weight")
-            subelement.text = str(self._weight)
+            if 'weight_avg' in self._cutoff:
+                subelement = ET.SubElement(element, "weight_avg")
+                subelement.text = str(self._cutoff['weight_avg'])
 
-            subelement = ET.SubElement(element, "weight_avg")
-            subelement.text = str(self._weight_avg)
+            if 'energy' in self._cutoff:
+                subelement = ET.SubElement(element, "energy")
+                subelement.text = str(self._cutoff['energy'])
 
     def _create_entropy_subelement(self):
         if self._entropy_lower_left is not None and \

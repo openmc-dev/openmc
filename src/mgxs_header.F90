@@ -1013,7 +1013,7 @@ module mgxs_header
 
             ! Allocate flattened array
             allocate(temp_arr(length))
-            call read_dataset(temp_arr, scatt_grp, "multiplicity_matrix")
+            call read_dataset(temp_arr, scatt_grp, "multiplicity matrix")
 
             ! Convert temp_arr to a jagged array ((gin) % data(gout)) for
             ! passing to ScattData

@@ -437,9 +437,9 @@ module mgxs_header
           ! Get temperature as a string
           temp_str = trim(to_str(temps_to_read % data(t))) // "K"
           xsdata_grp = open_group(xs_id, trim(temp_str))
+          allocate(xs % nu_fission(groups))
+          allocate(xs % chi(groups, groups))
           if (this % fissionable) then
-            allocate(xs % nu_fission(groups))
-            allocate(xs % chi(groups, groups))
             if (object_exists(xsdata_grp, "chi")) then
               ! Chi was provided, that means we need chi and nu-fission vectors
               ! Get chi
@@ -505,6 +505,9 @@ module mgxs_header
                                  &kappa-fission tallies in tallies.xml file!")
               end if
             end if
+          else
+            xs % nu_fission = ZERO
+            xs % chi = ZERO
           end if
 
           if (object_exists(xsdata_grp, "absorption")) then
@@ -735,9 +738,9 @@ module mgxs_header
           ! Get temperature as a string
           temp_str = trim(to_str(temps_to_read % data(t))) // "K"
           xsdata_grp = open_group(xs_id, trim(temp_str))
+          allocate(xs % nu_fission(groups, this % n_azi, this % n_pol))
+          allocate(xs % chi(groups, groups, this % n_azi, this % n_pol))
           if (this % fissionable) then
-            allocate(xs % nu_fission(groups, this % n_azi, this % n_pol))
-            allocate(xs % chi(groups, groups, this % n_azi, this % n_pol))
             if (object_exists(xsdata_grp, "chi")) then
               ! Chi was provided, that means we need chi and nu-fission vectors
               ! Get chi
@@ -848,6 +851,9 @@ module mgxs_header
                                  &kappa-fission tallies in tallies.xml file!")
               end if
             end if
+          else
+            xs % nu_fission = ZERO
+            xs % chi = ZERO
           end if
 
           if (object_exists(xsdata_grp, "absorption")) then
@@ -1865,7 +1871,7 @@ module mgxs_header
 
       integer :: iazi, ipol, t
 
-      t = this % index_temp 
+      t = this % index_temp
 
       if (present(uvw)) then
         call find_angle(this % polar, this % azimuthal, uvw, iazi, ipol)

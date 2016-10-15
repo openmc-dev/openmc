@@ -3301,7 +3301,7 @@ contains
             ! Search through nuclides
             pair_list => nuclide_dict % keys()
             do while (associated(pair_list))
-              if (starts_with(pair_list % key, word)) then
+              if (trim(pair_list % key) == trim(word)) then
                 word = pair_list % key(1:150)
                 exit
               end if

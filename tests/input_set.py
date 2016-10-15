@@ -753,7 +753,7 @@ class MGInputSet(InputSet):
                     mats[-1].set_density('atom/b-cm', 1.)
                     mats[-1].add_nuclide(xs[-1].name, 1.0, 'ao')
 
-        # Define the materials file.
+        # Define the materials file
         self.xs_data = xs
         self.materials += mats
 

@@ -1867,7 +1867,7 @@ contains
 
           if (i_nuclide > 0) then
             atom_density = -ONE
-            ! Check to see if this nuclide was in the material of our collision.          
+            ! Check to see if this nuclide was in the material of our collision
             do m = 1, mat % n_nuclides
               if (mat % nuclide(m) == i_nuclide) then
                 atom_density = mat % atom_density(m)

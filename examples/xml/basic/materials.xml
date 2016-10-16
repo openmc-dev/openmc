@@ -8,8 +8,8 @@
 
   <material id="41">
     <density value="1.0" units="g/cc" />
-    <nuclide name="H1" ao="2.0" />
-    <nuclide name="O16" ao="1.0" />
+    <nuclide name="H1"   wo="2.0" />
+    <nuclide name="O16" wo="1.0" />
     <sab name="c_H_in_H2O"/>
   </material>
 

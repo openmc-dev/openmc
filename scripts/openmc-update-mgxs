@@ -22,6 +22,7 @@ optional arguments:
 """
 
 from __future__ import print_function
+import os
 from shutil import move
 import warnings
 import xml.etree.ElementTree as ET
@@ -50,10 +51,10 @@ def parse_args():
                         help='HDF5 Compression Level')
     args = vars(parser.parse_args())
 
-    if args['output'] == '':
+    if args['output'] is '':
         filename = args['input'].name
-        extension = filename[filename.rfind('.'):]
-        if extension == '.xml':
+        extension = filenameos.path.splitext()
+        if extension is '.xml':
             filename = filename[:filename.rfind('.')] + '.h5'
         args['output'] = filename
 
@@ -62,21 +63,19 @@ def parse_args():
 
 
 def get_data(element, entry):
-    try:
-        value = element.find(entry).text
-    except:
+    value = element.find(entry)
+    if value is not None:
+        value = value.text.strip()
+    else:
         if entry in element.attrib:
-            value = element.attrib[entry]
+            value = element.attrib[entry].strip()
         else:
             value = None
-
-    if value is not None:
-        value = value.strip()
 
     return value
 
 
-if __name__ == '__main__':
+if __name__ is '__main__':
     args = parse_args()
 
     # Parse the XML data.
@@ -118,7 +117,7 @@ if __name__ == '__main__':
         representation = get_data(xsdata_elem, 'representation')
         if representation is None:
             representation = 'isotropic'
-        if representation == 'angle':
+        if representation is 'angle':
             n_azi = int(get_data(xsdata_elem, 'num_azimuthal'))
             n_pol = int(get_data(xsdata_elem, 'num_polar'))
 
@@ -139,22 +138,22 @@ if __name__ == '__main__':
         try:
             # It is in our list, so store that entry
             i = names.index(name)
-        except:
+        except ValueError:
             # It is not in our list, so add it
             i = -1
             xsd.append(openmc.XSdata(name, energy_groups,
                                      temperatures=temperatures,
                                      representation=representation))
             if awr is not None:
-                xsd[-1].awr = awr
-            if representation == 'angle':
+                xsd[-1].atomic_weight_ratio = awr
+            if representation is 'angle':
                 xsd[-1].num_azimuthal = n_azi
                 xsd[-1].num_polar = n_pol
             xsd[-1].scatter_format = scatter_format
             xsd[-1].order = order
             names.append(name)
 
-        if scatter_format == 'legendre':
+        if scatter_format is 'legendre':
             order_dim = order + 1
         else:
             order_dim = order
@@ -164,9 +163,9 @@ if __name__ == '__main__':
 
         temp = get_data(xsdata_elem, 'total')
         if temp is not None:
-            temp = np.array(temp.split())
+            temp = np.array(temp.split(), dtype=float)
             total = temp.astype(np.float)
-            total = np.reshape(total, xsd[i].vector_shape)
+            total.shape = xsd[i].vector_shape
             xsd[i].set_total(total, temperature)
 
         if inverse_velocities is not None:
@@ -175,41 +174,41 @@ if __name__ == '__main__':
         temp = get_data(xsdata_elem, 'absorption')
         temp = np.array(temp.split())
         absorption = temp.astype(np.float)
-        absorption = np.reshape(absorption, xsd[i].vector_shape)
+        absorption.shape = xsd[i].vector_shape
         xsd[i].set_absorption(absorption, temperature)
 
         temp = get_data(xsdata_elem, 'scatter')
         temp = np.array(temp.split())
-        temp = temp.astype(np.float)
-        scatter = np.reshape(temp, xsd[i].pn_matrix_shape)
+        scatter = temp.astype(np.float)
+        scatter.shape = xsd[i].pn_matrix_shape
         xsd[i].set_scatter_matrix(scatter, temperature)
 
         temp = get_data(xsdata_elem, 'multiplicity')
         if temp is not None:
             temp = np.array(temp.split())
-            temp = temp.astype(np.float)
-            multiplicity = np.reshape(temp, xsd[i].matrix_shape)
+            multiplicity = temp.astype(np.float)
+            multiplicity.shape = xsd[i].matrix_shape
             xsd[i].set_multiplicity_matrix(multiplicity, temperature)
 
         temp = get_data(xsdata_elem, 'fission')
         if temp is not None:
             temp = np.array(temp.split())
             fission = temp.astype(np.float)
-            fission = np.reshape(fission, xsd[i].vector_shape)
+            fission.shape = xsd[i].vector_shape
             xsd[i].set_fission(fission, temperature)
 
         temp = get_data(xsdata_elem, 'kappa_fission')
         if temp is not None:
             temp = np.array(temp.split())
             kappa_fission = temp.astype(np.float)
-            kappa_fission = np.reshape(kappa_fission, xsd[i].vector_shape)
+            kappa_fission.shape = xsd[i].vector_shape
             xsd[i].set_kappa_fission(kappa_fission, temperature)
 
         temp = get_data(xsdata_elem, 'chi')
         if temp is not None:
             temp = np.array(temp.split())
             chi = temp.astype(np.float)
-            chi = np.reshape(chi, xsd[i].vector_shape)
+            chi.shape = xsd[i].vector_shape
             xsd[i].set_chi(chi, temperature)
         else:
             chi = None
@@ -217,11 +216,11 @@ if __name__ == '__main__':
         temp = get_data(xsdata_elem, 'nu_fission')
         if temp is not None:
             temp = np.array(temp.split())
-            temp = temp.astype(np.float)
+            nu_fission = temp.astype(np.float)
             if chi is not None:
-                nu_fission = np.reshape(temp, xsd[i].vector_shape)
+                nu_fission.shape = xsd[i].vector_shape
             else:
-                nu_fission = np.reshape(temp, xsd[i].matrix_shape)
+                nu_fission.shape = xsd[i].matrix_shape
             xsd[i].set_nu_fission(nu_fission, temperature)
 
     # Build library as we go, but first we have enough to initialize it

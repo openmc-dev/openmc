@@ -9,7 +9,7 @@ module sab_header
   use error,       only: warning, fatal_error
   use hdf5, only: HID_T, HSIZE_T, SIZE_T
   use hdf5_interface, only: read_attribute, get_shape, open_group, close_group, &
-       open_dataset, read_dataset, close_dataset, get_datasets, check_group, &
+       open_dataset, read_dataset, close_dataset, get_datasets, object_exists, &
        get_name
   use secondary_correlated, only: CorrelatedAngleEnergy
   use stl_vector, only: VectorInt, VectorReal
@@ -205,7 +205,7 @@ contains
       T_group = open_group(group_id, temp_str)
 
       ! Coherent elastic data
-      if (check_group(T_group, 'elastic')) then
+      if (object_exists(T_group, 'elastic')) then
         ! Read cross section data
         elastic_group = open_group(T_group, 'elastic')
         dset_id = open_dataset(elastic_group, 'xs')
@@ -247,7 +247,7 @@ contains
       end if
 
       ! Inelastic data
-      if (check_group(T_group, 'inelastic')) then
+      if (object_exists(T_group, 'inelastic')) then
         ! Read type of inelastic data
         inelastic_group = open_group(T_group, 'inelastic')
 

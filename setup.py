@@ -59,5 +59,9 @@ if have_cython:
     kwargs.update({
         'ext_modules': cythonize('openmc/data/reconstruct.pyx')
     })
+    import numpy as np
+    kwargs.update({
+        'include_dirs': [np.get_include()]
+    })
 
 setup(**kwargs)

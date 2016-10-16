@@ -1,17 +1,15 @@
 module input_xml
 
-  use hdf5
-
-  use algorithm,        only: find
   use cmfd_input,       only: configure_cmfd
   use constants
-  use dict_header,      only: DictIntInt, ElemKeyValueCI
+  use dict_header,      only: DictIntInt, DictCharInt, ElemKeyValueCI
   use distribution_multivariate
   use distribution_univariate
   use endf,             only: reaction_name
   use energy_grid,      only: grid_method, n_log_bins
   use error,            only: fatal_error, warning
-  use geometry_header,  only: Cell, Lattice, RectLattice, HexLattice
+  use geometry_header,  only: Cell, Lattice, RectLattice, HexLattice, &
+                              get_temperatures
   use global
   use hdf5_interface
   use list_header,      only: ListChar, ListInt, ListReal
@@ -60,6 +58,9 @@ contains
       call create_macro_xs()
       call time_read_xs % stop()
     end if
+
+    ! Normalize atom/weight percents
+    if (run_mode /= MODE_PLOTTING) call normalize_ao()
 
   end subroutine read_input_xml
 
@@ -669,8 +670,15 @@ contains
     ! Cutoffs
     if (check_for_node(doc, "cutoff")) then
       call get_node_ptr(doc, "cutoff", node_cutoff)
-      call get_node_value(node_cutoff, "weight", weight_cutoff)
-      call get_node_value(node_cutoff, "weight_avg", weight_survive)
+      if (check_for_node(node_cutoff, "weight")) then
+        call get_node_value(node_cutoff, "weight", weight_cutoff)
+      end if
+      if (check_for_node(node_cutoff, "weight_avg")) then
+        call get_node_value(node_cutoff, "weight_avg", weight_survive)
+      end if
+      if (check_for_node(node_cutoff, "energy")) then
+        call get_node_value(node_cutoff, "energy", energy_cutoff)
+      end if
     end if
 
     ! Particle trace
@@ -2120,7 +2128,9 @@ contains
     call assign_temperatures(material_temps)
 
     ! Determine desired temperatures for each nuclide and S(a,b) table
-    call get_temperatures(nuc_temps, sab_temps)
+    call get_temperatures(cells, materials, material_dict, nuclide_dict, &
+                          n_nuclides_total, nuc_temps, sab_dict, &
+                          n_sab_tables, sab_temps)
 
     ! Read continuous-energy cross sections
     if (run_CE .and. run_mode /= MODE_PLOTTING) then
@@ -2128,9 +2138,6 @@ contains
       call read_ce_cross_sections(libraries, library_dict, nuc_temps, sab_temps)
       call time_read_xs % stop()
     end if
-
-    ! Normalize atom/weight percents
-    if (run_mode /= MODE_PLOTTING) call normalize_ao()
 
     ! Clear dictionary
     call library_dict % clear()
@@ -4646,14 +4653,14 @@ contains
     ! Open file for reading
     file_id = file_open(path_cross_sections, 'r', parallel=.true.)
 
-    if (check_attribute(file_id, "energy_groups")) then
+    if (attribute_exists(file_id, "energy_groups")) then
       ! Get neutron energy group count
       call read_attribute(num_energy_groups, file_id, "energy_groups")
     else
       call fatal_error("'energy_groups' attribute must exist!")
     end if
 
-    if (check_attribute(file_id, "delayed_groups")) then
+    if (attribute_exists(file_id, "delayed_groups")) then
       ! Get neutron delayed group count
       call read_attribute(num_delayed_groups, file_id, "delayed_groups")
     else
@@ -4665,7 +4672,7 @@ contains
     allocate(rev_energy_bins(num_energy_groups + 1))
     allocate(energy_bins(num_energy_groups + 1))
 
-    if (check_attribute(file_id, "group structure")) then
+    if (attribute_exists(file_id, "group structure")) then
       ! Get neutron group structure
       call read_attribute(energy_bins, file_id, "group structure")
     else
@@ -4698,7 +4705,7 @@ contains
       libraries(i) % materials(1) = names(i)
     end do
 
-    ! Close MGXS HDF file
+    ! Close MGXS HDF5 file
     call file_close(file_id)
 
   end subroutine read_mg_cross_sections_header
@@ -5646,7 +5653,7 @@ contains
           if (run_CE) then
             awr = nuclides(mat % nuclide(j)) % awr
           else
-            awr = ONE
+            awr = nuclides_MG(mat % nuclide(j)) % obj % awr
           end if
 
           ! if given weight percent, convert all values so that they are divided
@@ -5671,7 +5678,7 @@ contains
             if (run_CE) then
               awr = nuclides(mat % nuclide(j)) % awr
             else
-              awr = ONE
+              awr = nuclides_MG(mat % nuclide(j)) % obj % awr
             end if
             x = mat % atom_density(j)
             sum_percent = sum_percent + x*awr
@@ -5933,67 +5940,6 @@ contains
       end do
     end do
   end subroutine assign_temperatures
-
-!===============================================================================
-! GET_TEMPERATURES returns a list of temperatures that each nuclide/S(a,b) table
-! appears at in the model. Later, this list is used to determine the actual
-! temperatures to read (which may be different if interpolation is used)
-!===============================================================================
-
-  subroutine get_temperatures(nuc_temps, sab_temps)
-    type(VectorReal), allocatable, intent(out) :: nuc_temps(:)
-    type(VectorReal), allocatable, intent(out) :: sab_temps(:)
-
-    integer :: i, j, k
-    integer :: i_nuclide    ! index in nuclides array
-    integer :: i_sab        ! index in S(a,b) array
-    integer :: i_material
-    real(8) :: temperature  ! temperature in Kelvin
-
-    allocate(nuc_temps(n_nuclides_total))
-    allocate(sab_temps(n_sab_tables))
-
-    do i = 1, size(cells)
-      do j = 1, size(cells(i) % material)
-        ! Skip any non-material cells and void materials
-        if (cells(i) % material(j) == NONE .or. &
-             cells(i) % material(j) == MATERIAL_VOID) cycle
-
-        ! Get temperature of cell (rounding to nearest integer)
-        if (size(cells(i) % sqrtkT) > 1) then
-          temperature = cells(i) % sqrtkT(j)**2 / K_BOLTZMANN
-        else
-          temperature = cells(i) % sqrtkT(1)**2 / K_BOLTZMANN
-        end if
-
-        i_material = material_dict % get_key(cells(i) % material(j))
-        associate (mat => materials(i_material))
-          NUC_NAMES_LOOP: do k = 1, size(mat % names)
-            ! Get index in nuc_temps array
-            i_nuclide = nuclide_dict % get_key(to_lower(mat % names(k)))
-
-            ! Add temperature if it hasn't already been added
-            if (find(nuc_temps(i_nuclide), temperature) == -1) then
-              call nuc_temps(i_nuclide) % push_back(temperature)
-            end if
-          end do NUC_NAMES_LOOP
-
-          if (mat % n_sab > 0) then
-            SAB_NAMES_LOOP: do k = 1, size(mat % sab_names)
-              ! Get index in nuc_temps array
-              i_sab = sab_dict % get_key(to_lower(mat % sab_names(k)))
-
-              ! Add temperature if it hasn't already been added
-              if (find(sab_temps(i_sab), temperature) == -1) then
-                call sab_temps(i_sab) % push_back(temperature)
-              end if
-            end do SAB_NAMES_LOOP
-          end if
-        end associate
-      end do
-    end do
-
-  end subroutine get_temperatures
 
 !===============================================================================
 ! READ_0K_ELASTIC_SCATTERING

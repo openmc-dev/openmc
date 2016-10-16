@@ -28,7 +28,7 @@ module mgxs_header
     class(ScattData), allocatable :: scatter ! scattering info
     real(8), allocatable :: delayed_nu_fission(:,:) ! Delayed fission matrix (Gin x Dg)
     real(8), allocatable :: prompt_nu_fission(:)    ! Prompt fission vector (Gin)
-    real(8), allocatable :: kappa_fission(:)        ! Kappa-fission
+    real(8), allocatable :: kappa_fission(:)        ! Kappa fission
     real(8), allocatable :: fission(:)              ! Neutron production
     real(8), allocatable :: decay_rate(:)           ! Delayed neutron precursor decay rate
     real(8), allocatable :: inverse_velocity(:)     ! Inverse neutron velocity
@@ -44,7 +44,7 @@ module mgxs_header
     type(ScattDataContainer), allocatable :: scatter(:, :) ! scattering info
     real(8), allocatable :: delayed_nu_fission(:, :, :, :) ! Delayed fission matrix (Gout x Gin)
     real(8), allocatable :: prompt_nu_fission(:, :, :)     ! Prompt fission matrix (Gout x Gin)
-    real(8), allocatable :: kappa_fission(:, :, :)         ! Kappa-fission
+    real(8), allocatable :: kappa_fission(:, :, :)         ! Kappa fission
     real(8), allocatable :: fission(:, :, :)               ! Neutron production
     real(8), allocatable :: decay_rate(:, :, :)            ! Delayed neutron precursor decay rate
     real(8), allocatable :: inverse_velocity(:, :, :)      ! Inverse neutron velocity
@@ -242,8 +242,8 @@ module mgxs_header
       ! Get rid of leading '/'
       this % name = trim(this % name(2:))
 
-      if (check_attribute(xs_id, "awr")) then
-        call read_attribute(this % awr, xs_id, "awr")
+      if (attribute_exists(xs_id, "atomic_weight_ratio")) then
+        call read_attribute(this % awr, xs_id, "atomic_weight_ratio")
       else
         this % awr = -ONE
       end if
@@ -336,8 +336,8 @@ module mgxs_header
       end select
 
       ! Load the remaining metadata
-      if (check_attribute(xs_id, "scatter-format")) then
-        call read_attribute(temp_str, xs_id, "scatter-format")
+      if (attribute_exists(xs_id, "scatter_format")) then
+        call read_attribute(temp_str, xs_id, "scatter_format")
         temp_str = trim(temp_str)
         if (to_lower(temp_str) == 'legendre') then
           this % scatter_format = ANGLE_LEGENDRE
@@ -346,19 +346,19 @@ module mgxs_header
         else if (to_lower(temp_str) == 'tabular') then
           this % scatter_format = ANGLE_TABULAR
         else
-          call fatal_error("Invalid scatter-format option!")
+          call fatal_error("Invalid scatter_format option!")
         end if
       else
         this % scatter_format = ANGLE_LEGENDRE
       end if
-      if (check_attribute(xs_id, "fissionable")) then
+      if (attribute_exists(xs_id, "fissionable")) then
         call read_attribute(this % fissionable, xs_id, "fissionable")
       else
         call fatal_error("Fissionable element must be set!")
       end if
 
       ! Get the library's value for the order
-      if (check_attribute(xs_id, "order")) then
+      if (attribute_exists(xs_id, "order")) then
         call read_attribute(order_dim, xs_id, "order")
       else
         call fatal_error("Order must be provided!")
@@ -379,16 +379,16 @@ module mgxs_header
       ! information therein
       select type(this)
       type is (MgxsAngle)
-        if (check_attribute(xs_id, "num-polar")) then
-          call read_attribute(this % n_pol, xs_id, "num-polar")
+        if (attribute_exists(xs_id, "num_polar")) then
+          call read_attribute(this % n_pol, xs_id, "num_polar")
         else
-          call fatal_error("num-polar must be provided!")
+          call fatal_error("num_polar must be provided!")
         end if
 
-        if (check_attribute(xs_id, "num-azimuthal")) then
-          call read_attribute(this % n_azi, xs_id, "num-azimuthal")
+        if (attribute_exists(xs_id, "num_azimuthal")) then
+          call read_attribute(this % n_azi, xs_id, "num_azimuthal")
         else
-          call fatal_error("num-azimuthal must be provided!")
+          call fatal_error("num_azimuthal must be provided!")
         end if
 
         ! Set angle data to use equally-spaced bins
@@ -467,6 +467,7 @@ module mgxs_header
           xs % chi_delayed        = ZERO
           xs % chi_prompt         = ZERO
           xs % decay_rate         = ZERO
+          xs % inverse_velocity   = ZERO
 
           if (this % fissionable) then
 
@@ -474,7 +475,7 @@ module mgxs_header
             allocate(temp_beta(energy_groups, delayed_groups))
 
             ! Set beta
-            if (check_dataset(xsdata_grp, "beta")) then
+            if (object_exists(xsdata_grp, "beta")) then
 
               ! Get the dimensions of the beta dataset
               xsdata = open_dataset(xsdata_grp, "beta")
@@ -520,8 +521,8 @@ module mgxs_header
               temp_beta = ZERO
             end if
 
-            ! If chi provided, set chi_prompt and chi_delayed
-            if (check_dataset(xsdata_grp, "chi")) then
+            ! If chi provided, set chi-prompt and chi-delayed
+            if (object_exists(xsdata_grp, "chi")) then
 
               ! Allocate temporary array for chi
               allocate(temp_arr(energy_groups))
@@ -534,7 +535,7 @@ module mgxs_header
                   xs % chi_prompt(gout, gin) = temp_arr(gout)
                 end do
 
-                ! Normalize chi_prompt so its CDF goes to 1
+                ! Normalize chi-prompt so its CDF goes to 1
                 chi_sum =sum(xs % chi_prompt(:, gin))
                 if (chi_sum == ZERO) then
                   call fatal_error("Encountered chi for a group that sums to &
@@ -544,7 +545,7 @@ module mgxs_header
                 end if
               end do
 
-              ! Set chi_delayed to chi_prompt
+              ! Set chi-delayed to chi-prompt
               do dg = 1, delayed_groups
                 xs % chi_delayed(:, :, dg) = xs % chi_prompt(:, :)
               end do
@@ -553,10 +554,10 @@ module mgxs_header
               deallocate(temp_arr)
             end if
 
-            ! If nu-fission provided, set prompt_nu_fission and
-            ! delayed_nu_fission. If nu-fission is a matrix, set chi_prompt and
-            ! chi_delayed.
-            if (check_dataset(xsdata_grp, "nu-fission")) then
+            ! If nu-fission provided, set prompt-nu_-ission and
+            ! delayed-nu-fission. If nu fission is a matrix, set chi-prompt and
+            ! chi-delayed.
+            if (object_exists(xsdata_grp, "nu-fission")) then
 
               ! Get the dimensions of the nu-fission dataset
               xsdata = open_dataset(xsdata_grp, "nu-fission")
@@ -565,36 +566,36 @@ module mgxs_header
               ! If nu-fission is a vector
               if (ndims == 1) then
 
-                ! Get nu_fission
+                ! Get nu-fission
                 call read_dataset(xs % prompt_nu_fission, xsdata_grp, &
                      "nu-fission")
 
-                ! Set delayed_nu_fission and correct prompt_nu_fission with
+                ! Set delayed-nu-fission and correct prompt-nu-fission with
                 ! beta
                 do gin = 1, energy_groups
                   do dg = 1, delayed_groups
 
-                    ! Set delayed_nu_fission using delayed neutron fraction
+                    ! Set delayed-nu-fission using delayed neutron fraction
                     xs % delayed_nu_fission(gin, dg) = temp_beta(gin, dg) * &
                          xs % prompt_nu_fission(gin)
                   end do
 
-                  ! Correct prompt_nu_fission using delayed neutron fraction
+                  ! Correct prompt-nu-fission using delayed neutron fraction
                   xs % prompt_nu_fission(gin) = (1 - sum(temp_beta(gin, :))) * &
                        xs % prompt_nu_fission(gin)
                 end do
 
-                ! If nu-fission is a matrix, set prompt_nu_fission,
-                ! delayed_nu_fission, chi_prompt, and chi_delayed.
+                ! If nu-fission is a matrix, set prompt-nu-fission,
+                ! delayed-nu-fission, chi-prompt, and chi-delayed.
               else if (ndims == 2) then
 
-                ! chi is embedded in nu_fission -> extract chi
+                ! chi is embedded in nu-fission -> extract chi
                 allocate(temp_arr(energy_groups * energy_groups))
                 call read_dataset(temp_arr, xsdata_grp, "nu-fission")
                 allocate(temp_2d(energy_groups, energy_groups))
                 temp_2d = reshape(temp_arr, (/energy_groups, energy_groups/))
 
-                ! Deallocate temporary 1D array for nu_fission matrix
+                ! Deallocate temporary 1D array for nu-fission matrix
                 deallocate(temp_arr)
 
                 ! Set the vector nu-fission from the matrix nu-fission
@@ -602,17 +603,17 @@ module mgxs_header
                   xs % prompt_nu_fission(gin) = sum(temp_2d(:, gin))
                 end do
 
-                ! Set delayed_nu_fission and correct prompt_nu_fission with
+                ! Set delayed-nu-fission and correct prompt-nu-fission with
                 ! beta
                 do gin = 1, energy_groups
                   do dg = 1, delayed_groups
 
-                    ! Set delayed_nu_fission using delayed neutron fraction
+                    ! Set delayed-nu-fission using delayed neutron fraction
                     xs % delayed_nu_fission(gin, dg) = temp_beta(gin, dg) * &
                          xs % prompt_nu_fission(gin)
                   end do
 
-                  ! Correct prompt_nu_fission using delayed neutron fraction
+                  ! Correct prompt-nu-fission using delayed neutron fraction
                   xs % prompt_nu_fission(gin) = (1 - sum(temp_beta(gin, :))) * &
                        xs % prompt_nu_fission(gin)
                 end do
@@ -620,7 +621,7 @@ module mgxs_header
                 ! Now pull out information needed for chi
                 xs % chi_prompt(:, :) = temp_2d
 
-                ! Deallocate temporary 2D array for nu_fission matrix
+                ! Deallocate temporary 2D array for nu-fission matrix
                 deallocate(temp_2d)
 
                 ! Normalize chi so its CDF goes to 1
@@ -634,7 +635,7 @@ module mgxs_header
                   end if
                 end do
 
-                ! Set chi_delayed to chi_prompt
+                ! Set chi-delayed to chi-prompt
                 do dg = 1, delayed_groups
                   xs % chi_delayed(:, :, dg) = xs % chi_prompt(:, :)
                 end do
@@ -644,13 +645,13 @@ module mgxs_header
               end if
             end if
 
-            ! If chi_prompt provided, set chi_prompt
-            if (check_dataset(xsdata_grp, "chi-prompt")) then
+            ! If chi-prompt provided, set chi-prompt
+            if (object_exists(xsdata_grp, "chi-prompt")) then
 
-              ! Allocate temporary array for chi_prompt
+              ! Allocate temporary array for chi-prompt
               allocate(temp_arr(energy_groups))
 
-              ! Get array with chi_prompt
+              ! Get array with chi-prompt
               call read_dataset(temp_arr, xsdata_grp, "chi-prompt")
 
               do gin = 1, energy_groups
@@ -668,21 +669,21 @@ module mgxs_header
                 end if
               end do
 
-              ! Deallocate temporary array for chi_prompt
+              ! Deallocate temporary array for chi-prompt
               deallocate(temp_arr)
             end if
 
-            ! If chi_delayed provided, set chi_delayed
-            if (check_dataset(xsdata_grp, "chi-delayed")) then
+            ! If chi-delayed provided, set chi-delayed
+            if (object_exists(xsdata_grp, "chi-delayed")) then
 
-              ! Get the dimensions of the nu-fission dataset
+              ! Get the dimensions of the chi-delayed dataset
               xsdata = open_dataset(xsdata_grp, "chi-delayed")
               call get_ndims(xsdata, ndims)
 
               ! If chi-delayed is a vector
               if (ndims == 1) then
 
-                ! Allocate temporary array for chi_delayed
+                ! Allocate temporary array for chi-delayed
                 allocate(temp_arr(energy_groups))
 
                 ! Get chi-delayed
@@ -706,12 +707,12 @@ module mgxs_header
                   end do
                 end do
 
-                ! Deallocate temporary array for chi_delayed
+                ! Deallocate temporary array for chi-delayed
                 deallocate(temp_arr)
 
               else if (ndims == 2) then
 
-                ! Allocate temporary array for chi_delayed
+                ! Allocate temporary array for chi-delayed
                 allocate(temp_arr(delayed_groups * energy_groups))
 
                 ! Get chi-delayed
@@ -737,7 +738,7 @@ module mgxs_header
                   end do
                 end do
 
-                ! Deallocate temporary arrays for chi_delayed
+                ! Deallocate temporary arrays for chi-delayed
                 deallocate(temp_arr)
                 deallocate(temp_2d)
 
@@ -747,8 +748,8 @@ module mgxs_header
               end if
             end if
 
-            ! If prompt-nu-fission present, set prompt_nu_fission
-            if (check_dataset(xsdata_grp, "prompt-nu-fission")) then
+            ! If prompt-nu-fission present, set prompt-nu-fission
+            if (object_exists(xsdata_grp, "prompt-nu-fission")) then
 
               ! Get the dimensions of the prompt-nu-fission dataset
               xsdata = open_dataset(xsdata_grp, "prompt-nu-fission")
@@ -803,9 +804,9 @@ module mgxs_header
               end if
             end if
 
-            ! If delayed-nu-fission provided, set delayed_nu_fission. If
-            ! delayed-nu-fission is a matrix, set chi_delayed.
-            if (check_dataset(xsdata_grp, "delayed-nu-fission")) then
+            ! If delayed-nu-fission provided, set delayed-nu-fission. If
+            ! delayed-nu-fission is a matrix, set chi-delayed.
+            if (object_exists(xsdata_grp, "delayed-nu-fission")) then
 
               ! Get the dimensions of the delayed-nu-fission dataset
               xsdata = open_dataset(xsdata_grp, "delayed-nu-fission")
@@ -820,26 +821,26 @@ module mgxs_header
                        &array if beta not provided")
                 end if
 
-                ! Allocate temporary array for delayed_nu_fission
+                ! Allocate temporary array for delayed-nu-fission
                 allocate(temp_arr(energy_groups))
 
-                ! Get delayed_nu_fission
+                ! Get delayed-nu-fission
                 call read_dataset(temp_arr, xsdata_grp, "delayed-nu-fission")
 
                 do gin = 1, energy_groups
                   do dg = 1, delayed_groups
 
-                    ! Set delayed_nu_fission using delayed neutron fraction
+                    ! Set delayed-nu-fission using delayed neutron fraction
                     xs % delayed_nu_fission(gin, dg) = temp_beta(gin, dg) * &
                          temp_arr(gin)
                   end do
                 end do
 
-                ! Deallocate temporary delayed_nu_fission array
+                ! Deallocate temporary delayed-nu-fission array
                 deallocate(temp_arr)
 
                 ! If delayed-nu-fission is a (delayed_group, energy_group)
-                ! matrix, set delayed_nu_fission separately for each delayed
+                ! matrix, set delayed-nu-fission separately for each delayed
                 ! group.
               else if (ndims == 2) then
 
@@ -870,13 +871,13 @@ module mgxs_header
                        &be set as a group by group matrix.")
                 end if
 
-                ! Get delayed_nu_fission
+                ! Get delayed-nu-fission
                 allocate(temp_arr(delayed_groups * energy_groups))
                 call read_dataset(temp_arr, xsdata_grp, "delayed-nu-fission")
                 xs % delayed_nu_fission = reshape(temp_arr, (/energy_groups, &
                      delayed_groups/))
 
-                ! Deallocate temporary array for delayed_nu_fission matrix
+                ! Deallocate temporary array for delayed-nu-fission matrix
                 deallocate(temp_arr)
 
                 ! If delayed nu-fission is a 3D matrix, set delayed_nu_fission
@@ -931,62 +932,60 @@ module mgxs_header
             ! Deallocate temporary beta array
             deallocate(temp_beta)
 
-            ! chi_prompt, chi_delayed, prompt_nu_fission, and delayed_nu_fission
+            ! chi-prompt, chi-delayed, prompt-nu-fission, and delayed-nu-fission
             ! have been set; Now we will check for the rest of the XS that are
             ! unique to fissionable isotopes
 
             ! Get fission xs
-            if (check_dataset(xsdata_grp, "fission")) then
+            if (object_exists(xsdata_grp, "fission")) then
               call read_dataset(xs % fission, xsdata_grp, "fission")
             end if
 
-            ! Get kappa_fission xs
-            if (check_dataset(xsdata_grp, "kappa_fission")) then
-              call read_dataset(xs % kappa_fission, xsdata_grp, "kappa_fission")
+            ! Get kappa-fission xs
+            if (object_exists(xsdata_grp, "kappa-fission")) then
+              call read_dataset(xs % kappa_fission, xsdata_grp, "kappa-fission")
             end if
 
             ! Get decay rate xs
-            if (check_dataset(xsdata_grp, "decay_rate")) then
-              call read_dataset(xs % decay_rate, xsdata_grp, "decay_rate")
+            if (object_exists(xsdata_grp, "decay rate")) then
+              call read_dataset(xs % decay_rate, xsdata_grp, "decay rate")
             end if
           end if
 
           ! All the XS unique to fissionable isotopes have been set; Now set all
           ! the generation XS
 
-          if (check_dataset(xsdata_grp, "absorption")) then
+          if (object_exists(xsdata_grp, "absorption")) then
             call read_dataset(xs % absorption, xsdata_grp, "absorption")
           else
             call fatal_error("Must provide absorption!")
           end if
 
           ! Get inverse velocity
-          if (check_dataset(xsdata_grp, "inverse_velocity")) then
+          if (object_exists(xsdata_grp, "inverse-velocity")) then
             call read_dataset(xs % inverse_velocity, xsdata_grp, &
-                 "inverse_velocity")
-          else
-            xs % inverse_velocity = ZERO
+                 "inverse-velocity")
           end if
 
           ! Get scattering data
-          if (.not. check_group(xsdata_grp, "scatter data")) &
-               call fatal_error("Must provide 'scatter data'")
+          if (.not. object_exists(xsdata_grp, "scatter_data")) &
+               call fatal_error("Must provide 'scatter_data'")
 
-          scatt_grp = open_group(xsdata_grp, 'scatter data')
+          scatt_grp = open_group(xsdata_grp, 'scatter_data')
 
           ! First get the outgoing group boundary indices
-          if (check_dataset(scatt_grp, "g_min")) then
+          if (object_exists(scatt_grp, "g_min")) then
             allocate(gmin(energy_groups))
             call read_dataset(gmin, scatt_grp, "g_min")
           else
-            call fatal_error("'g_min' for the scatter matrix must be provided")
+            call fatal_error("'g_min' for the scatter_data must be provided")
           end if
 
-          if (check_dataset(scatt_grp, "g_max")) then
+          if (object_exists(scatt_grp, "g_max")) then
             allocate(gmax(energy_groups))
             call read_dataset(gmax, scatt_grp, "g_max")
           else
-            call fatal_error("'g_max' for the scatter matrix must be provided")
+            call fatal_error("'g_max' for the scatter_data must be provided")
           end if
 
           ! Now use this information to find the length of a container array
@@ -1000,9 +999,9 @@ module mgxs_header
           ! Allocate flattened array
           allocate(temp_arr(length))
 
-          if (.not. check_dataset(scatt_grp, 'scatter matrix')) &
-               call fatal_error("'scatter matrix' must be provided")
-          call read_dataset(temp_arr, scatt_grp, "scatter matrix")
+          if (.not. object_exists(scatt_grp, 'scatter_matrix')) &
+               call fatal_error("'scatter_matrix' must be provided")
+          call read_dataset(temp_arr, scatt_grp, "scatter_matrix")
 
           ! Compare the number of orders given with the maximum order of the
           ! problem.  Strip off the supefluous orders if needed.
@@ -1093,7 +1092,7 @@ module mgxs_header
           deallocate(input_scatt)
 
           ! Now get the multiplication matrix
-          if (check_dataset(scatt_grp, 'multiplicity matrix')) then
+          if (object_exists(scatt_grp, 'multiplicity matrix')) then
 
             ! Now use this information to find the length of a container array
             ! to hold the flattened data
@@ -1153,7 +1152,7 @@ module mgxs_header
           end do
 
           ! Get, or infer, total xs data.
-          if (check_dataset(xsdata_grp, "total")) then
+          if (object_exists(xsdata_grp, "total")) then
             call read_dataset(xs % total, xsdata_grp, "total")
           else
             xs % total(:) = xs % absorption(:) + xs % scatter % scattxs(:)
@@ -1171,6 +1170,7 @@ module mgxs_header
           deallocate(scatt_coeffs, temp_mult)
         end associate ! xs
       end do ! Temperatures
+
     end subroutine mgxsiso_from_hdf5
 
     subroutine mgxsang_from_hdf5(this, xs_id, energy_groups, delayed_groups, &
@@ -1241,6 +1241,7 @@ module mgxs_header
           xs % chi_delayed        = ZERO
           xs % chi_prompt         = ZERO
           xs % decay_rate         = ZERO
+          xs % inverse_velocity   = ZERO
 
           if (this % fissionable) then
 
@@ -1249,7 +1250,7 @@ module mgxs_header
                  this % n_pol))
 
             ! Set beta
-            if (check_dataset(xsdata_grp, "beta")) then
+            if (object_exists(xsdata_grp, "beta")) then
 
               ! Get the dimensions of the beta dataset
               xsdata = open_dataset(xsdata_grp, "beta")
@@ -1305,8 +1306,8 @@ module mgxs_header
               temp_beta = ZERO
             end if
 
-            ! If chi provided, set chi_prompt and chi_delayed
-            if (check_dataset(xsdata_grp, "chi")) then
+            ! If chi provided, set chi-prompt and chi-delayed
+            if (object_exists(xsdata_grp, "chi")) then
 
               ! Allocate temporary array for chi
               allocate(temp_1d(energy_groups * this % n_azi * this % n_pol))
@@ -1325,7 +1326,7 @@ module mgxs_header
                            temp_3d(gout, iazi, ipol)
                     end do
 
-                    ! Normalize chi_prompt so its CDF goes to 1
+                    ! Normalize chi-prompt so its CDF goes to 1
                     if (sum(xs % chi_prompt(:, gin, iazi, ipol)) == ZERO) then
                       call fatal_error("Encountered chi for a group that sums&
                            & to zero")
@@ -1338,7 +1339,7 @@ module mgxs_header
                 end do
               end do
 
-              ! Set chi_delayed to chi_prompt
+              ! Set chi-delayed to chi-prompt
               do ipol = 1, this % n_pol
                 do iazi = 1, this % n_azi
                   do dg = 1, delayed_groups
@@ -1353,14 +1354,14 @@ module mgxs_header
               deallocate(temp_3d)
             end if
 
-            ! If chi_prompt provided, set chi_prompt
-            if (check_dataset(xsdata_grp, "chi-prompt")) then
+            ! If chi-prompt provided, set chi-prompt
+            if (object_exists(xsdata_grp, "chi-prompt")) then
 
-              ! Allocate temporary array for chi_prompt
+              ! Allocate temporary array for chi-prompt
               allocate(temp_1d(energy_groups * this % n_azi * this % n_pol))
               allocate(temp_3d(energy_groups, this % n_azi, this % n_pol))
 
-              ! Get array with chi_prompt
+              ! Get array with chi-prompt
               call read_dataset(temp_1d, xsdata_grp, "chi-prompt")
               temp_3d = reshape(temp_1d, (/energy_groups, this % n_azi, &
                    this % n_pol/))
@@ -1386,26 +1387,26 @@ module mgxs_header
                 end do
               end do
 
-              ! Deallocate temporary arrays for chi_prompt
+              ! Deallocate temporary arrays for chi-prompt
               deallocate(temp_1d)
               deallocate(temp_3d)
             end if
 
-            ! If chi_delayed provided, set chi_delayed
-            if (check_dataset(xsdata_grp, "chi-delayed")) then
+            ! If chi-delayed provided, set chi-delayed
+            if (object_exists(xsdata_grp, "chi-delayed")) then
 
-              ! Get the dimensions of the nu-fission dataset
+              ! Get the dimensions of the chi-delayed dataset
               xsdata = open_dataset(xsdata_grp, "chi-delayed")
               call get_ndims(xsdata, ndims)
 
               ! If chi-delayed is a vector
               if (ndims == 1) then
 
-                ! Allocate temporary array for chi_prompt
+                ! Allocate temporary array for chi-prompt
                 allocate(temp_1d(delayed_groups * this % n_azi * this % n_pol))
                 allocate(temp_3d(delayed_groups, this % n_azi, this % n_pol))
 
-                ! Get array with chi_prompt
+                ! Get array with chi-prompt
                 call read_dataset(temp_1d, xsdata_grp, "chi-delayed")
                 temp_3d = reshape(temp_1d, (/delayed_groups, this % n_azi, &
                      this % n_pol/))
@@ -1434,13 +1435,13 @@ module mgxs_header
                   end do
                 end do
 
-                ! Deallocate temporary arrays for chi_delayed
+                ! Deallocate temporary arrays for chi-delayed
                 deallocate(temp_1d)
                 deallocate(temp_3d)
 
               else if (ndims == 2) then
 
-                ! Allocate temporary array for chi_delayed
+                ! Allocate temporary array for chi-delayed
                 allocate(temp_1d(delayed_groups * energy_groups * this % n_azi &
                      * this % n_pol))
                 allocate(temp_4d(energy_groups, delayed_groups, this % n_azi, &
@@ -1475,7 +1476,7 @@ module mgxs_header
                   end do
                 end do
 
-                ! Deallocate temporary arrays for chi_delayed
+                ! Deallocate temporary arrays for chi-delayed
                 deallocate(temp_1d)
                 deallocate(temp_4d)
 
@@ -1485,8 +1486,8 @@ module mgxs_header
               end if
             end if
 
-            ! If prompt-nu-fission present, set prompt_nu_fission
-            if (check_dataset(xsdata_grp, "prompt-nu-fission")) then
+            ! If prompt-nu-fission present, set prompt-nu-fission
+            if (object_exists(xsdata_grp, "prompt-nu-fission")) then
 
               ! Get the dimensions of the prompt-nu-fission dataset
               xsdata = open_dataset(xsdata_grp, "prompt-nu-fission")
@@ -1554,9 +1555,9 @@ module mgxs_header
               end if
             end if
 
-            ! If delayed-nu-fission provided, set delayed_nu_fission. If
-            ! delayed-nu-fission is a matrix, set chi_delayed.
-            if (check_dataset(xsdata_grp, "delayed-nu-fission")) then
+            ! If delayed-nu-fission provided, set delayed-nu-fission. If
+            ! delayed-nu-fission is a matrix, set chi-delayed.
+            if (object_exists(xsdata_grp, "delayed-nu-fission")) then
 
               ! Get the dimensions of the delayed-nu-fission dataset
               xsdata = open_dataset(xsdata_grp, "delayed-nu-fission")
@@ -1571,11 +1572,11 @@ module mgxs_header
                        &array if beta not provided")
                 end if
 
-                ! Allocate temporary arrays for delayed_nu_fission
+                ! Allocate temporary arrays for delayed-nu-fission
                 allocate(temp_1d(energy_groups * this % n_azi * this % n_pol))
                 allocate(temp_3d(energy_groups, this % n_azi, this % n_pol))
 
-                ! Get delayed_nu_fission
+                ! Get delayed-nu-fission
                 call read_dataset(temp_1d, xsdata_grp, "delayed-nu-fission")
                 temp_3d = reshape(temp_1d, (/energy_groups, this % n_azi, &
                      this % n_pol/))
@@ -1585,7 +1586,7 @@ module mgxs_header
                     do gin = 1, energy_groups
                       do dg = 1, delayed_groups
 
-                        ! Set delayed_nu_fission using delayed neutron fraction
+                        ! Set delayed-nu-fission using delayed neutron fraction
                         xs % delayed_nu_fission(gin, dg, iazi, ipol) = &
                              temp_beta(gin, dg, iazi, ipol) * &
                              temp_3d(gin, iazi, ipol)
@@ -1594,12 +1595,12 @@ module mgxs_header
                   end do
                 end do
 
-                ! Deallocate temporary delayed_nu_fission arrays
+                ! Deallocate temporary delayed-nu-fission arrays
                 deallocate(temp_1d)
                 deallocate(temp_3d)
 
                 ! If delayed-nu-fission is a (delayed_group, energy_group)
-                ! matrix, set delayed_nu_fission separately for each delayed
+                ! matrix, set delayed-nu-fission separately for each delayed
                 ! group.
               else if (ndims == 4) then
 
@@ -1631,14 +1632,14 @@ module mgxs_header
                        &matrix.")
                 end if
 
-                ! Get delayed_nu_fission
+                ! Get delayed-nu-fission
                 allocate(temp_1d(delayed_groups * energy_groups * this % n_azi &
                      * this % n_pol))
                 call read_dataset(temp_1d, xsdata_grp, "delayed-nu-fission")
                 xs % delayed_nu_fission = reshape(temp_1d, (/energy_groups, &
                      delayed_groups, this % n_azi, this % n_pol /))
 
-                ! Deallocate temporary array for delayed_nu_fission matrix
+                ! Deallocate temporary array for delayed-nu-fission matrix
                 deallocate(temp_1d)
 
                 ! If delayed nu-fission is a 5D matrix, set delayed_nu_fission
@@ -1705,12 +1706,12 @@ module mgxs_header
             ! Deallocate temporary beta array
             deallocate(temp_beta)
 
-            ! chi_prompt, chi_delayed, prompt_nu_fission, and delayed_nu_fission
+            ! chi-prompt, chi-delayed, prompt-nu-fission, and delayed-nu-fission
             ! have been set; Now we will check for the rest of the XS that are
             ! unique to fissionable isotopes
 
             ! Set fission xs
-            if (check_dataset(xsdata_grp, "fission")) then
+            if (object_exists(xsdata_grp, "fission")) then
 
               ! Allocate temporary array for fission
               allocate(temp_1d(energy_groups * this % n_azi * this % n_pol))
@@ -1724,33 +1725,33 @@ module mgxs_header
               deallocate(temp_1d)
             end if
 
-            ! Set kappa_fission xs
-            if (check_dataset(xsdata_grp, "kappa-fission")) then
+            ! Set kappa-fission xs
+            if (object_exists(xsdata_grp, "kappa-fission")) then
 
-              ! Allocate temporary array for kappa_fission
+              ! Allocate temporary array for kappa-fission
               allocate(temp_1d(energy_groups * this % n_azi * this % n_pol))
 
-              ! Get kappa_fission array
+              ! Get kappa-fission array
               call read_dataset(temp_1d, xsdata_grp, "kappa-fission")
               xs % kappa_fission(:, :, :) = reshape(temp_1d, (/energy_groups, &
                    this % n_azi, this % n_pol/))
 
-              ! Deallocate temporary array for kappa_fission
+              ! Deallocate temporary array for kappa-fission
               deallocate(temp_1d)
             end if
 
             ! Set decay rate
-            if (check_dataset(xsdata_grp, "decay-rate")) then
+            if (object_exists(xsdata_grp, "decay rate")) then
 
-              ! Allocate temporary array for decay_rate
+              ! Allocate temporary array for decay rate
               allocate(temp_1d(this % n_azi * this % n_pol * delayed_groups))
 
-              ! Get decay_rate array
-              call read_dataset(temp_1d, xsdata_grp, "decay-rate")
+              ! Get decay rate array
+              call read_dataset(temp_1d, xsdata_grp, "decay rate")
               xs % decay_rate(:, :, :) = reshape(temp_1d, (/delayed_groups, &
                    this % n_azi, this % n_pol/))
 
-              ! Deallocate temporary array for decay_rate
+              ! Deallocate temporary array for decay rate
               deallocate(temp_1d)
             end if
           end if
@@ -1758,7 +1759,7 @@ module mgxs_header
           ! All the XS unique to fissionable isotopes have been set; Now set all
           ! the generation XS
 
-          if (check_dataset(xsdata_grp, "absorption")) then
+          if (object_exists(xsdata_grp, "absorption")) then
 
             ! Allocate temporary array for absorption xs
             allocate(temp_1d(energy_groups * this % n_azi * this % n_pol))
@@ -1775,16 +1776,14 @@ module mgxs_header
             call fatal_error("Must provide absorption!")
           end if
 
-          if (check_dataset(xsdata_grp, "inverse_velocity")) then
+          if (object_exists(xsdata_grp, "inverse-velocity")) then
 
             ! Allocate temporary array for inverse velocity
             allocate(temp_1d(energy_groups * this % n_azi * this % n_pol))
 
             ! Read in inverse velocity
-            call read_dataset(temp_1d, xsdata_grp, "inverse_velocity")
+            call read_dataset(temp_1d, xsdata_grp, "inverse-velocity")
 
-            allocate(xs % inverse_velocity(energy_groups, this % n_azi, &
-                 this % n_pol))
             xs % inverse_velocity = reshape(temp_1d, (/energy_groups, &
                  this % n_azi, this % n_pol/))
 
@@ -1793,13 +1792,13 @@ module mgxs_header
           end if
 
           ! Get scattering data
-          if (.not. check_group(xsdata_grp, "scatter data")) &
-               call fatal_error("Must provide 'scatter data'")
+          if (.not. object_exists(xsdata_grp, "scatter_data")) &
+               call fatal_error("Must provide 'scatter_data'")
 
-          scatt_grp = open_group(xsdata_grp, 'scatter data')
+          scatt_grp = open_group(xsdata_grp, 'scatter_data')
 
           ! First get the outgoing group boundary indices
-          if (check_dataset(scatt_grp, "g_min")) then
+          if (object_exists(scatt_grp, "g_min")) then
 
             allocate(int_arr(energy_groups * this % n_azi * this % n_pol))
 
@@ -1810,10 +1809,10 @@ module mgxs_header
 
             deallocate(int_arr)
           else
-            call fatal_error("'g_min' for the scatter matrix must be provided")
+            call fatal_error("'g_min' for the scatter_data must be provided")
           end if
 
-          if (check_dataset(scatt_grp, "g_max")) then
+          if (object_exists(scatt_grp, "g_max")) then
 
             allocate(int_arr(energy_groups * this % n_azi * this % n_pol))
 
@@ -1824,7 +1823,7 @@ module mgxs_header
 
             deallocate(int_arr)
           else
-            call fatal_error("'g_max' for the scatter matrix must be provided")
+            call fatal_error("'g_max' for the scatter_data must be provided")
           end if
 
           ! Now use this information to find the length of a container array
@@ -1842,9 +1841,9 @@ module mgxs_header
           ! Allocate flattened array
           allocate(temp_1d(length))
 
-          if (.not. check_dataset(scatt_grp, 'scatter matrix')) &
-               call fatal_error("'scatter matrix' must be provided")
-          call read_dataset(temp_1d, scatt_grp, "scatter matrix")
+          if (.not. object_exists(scatt_grp, 'scatter_matrix')) &
+               call fatal_error("'scatter_matrix' must be provided")
+          call read_dataset(temp_1d, scatt_grp, "scatter_matrix")
 
           ! Compare the number of orders given with the maximum order of the
           ! problem.  Strip off the superfluous orders if needed.
@@ -1950,7 +1949,7 @@ module mgxs_header
           deallocate(input_scatt)
 
           ! Now get the multiplication matrix
-          if (check_dataset(scatt_grp, 'multiplicity matrix')) then
+          if (object_exists(scatt_grp, 'multiplicity matrix')) then
 
             ! Now use this information to find the length of a container array
             ! to hold the flattened data
@@ -2037,12 +2036,12 @@ module mgxs_header
             end do
           end do
 
-          if (check_dataset(xsdata_grp, "total")) then
+          if (object_exists(xsdata_grp, "total")) then
 
             allocate(temp_1d(energy_groups * this % n_azi * this % n_pol))
             call read_dataset(temp_1d, xsdata_grp, "total")
             xs % total = reshape(temp_1d, (/energy_groups, this % n_azi, &
-                                             this % n_pol/))
+                 this % n_pol/))
 
             deallocate(temp_1d)
           else
@@ -2392,7 +2391,7 @@ module mgxs_header
                 ! dense matrix for this storage, with a reduction to the sparse
                 ! format at the end.
 
-                ! Get the multiplicity matrix
+                ! Get the multiplicity_matrix
                 ! To combine from nuclidic data we need to use the final relationship
                 ! mult_{gg'} = sum_i(N_i*nuscatt_{i,g,g'}) /
                 !              sum_i(N_i*(nuscatt_{i,g,g'} / mult_{i,g,g'}))
@@ -2718,6 +2717,7 @@ module mgxs_header
 
                   this % xs(t) % kappa_fission = this % xs(t) % kappa_fission &
                        + atom_density * nuc % xs(nuc_t) % kappa_fission * interp
+
                 end if
 
                 ! We will next gather the multiplicity and scattering matrices.
@@ -2726,7 +2726,7 @@ module mgxs_header
                 ! dense matrix for this storage, with a reduction to the sparse
                 ! format at the end.
 
-                ! Get the multiplicity matrix
+                ! Get the multiplicity_matrix
                 ! To combine from nuclidic data we need to use the final relationship
                 ! mult_{gg'} = sum_i(N_i*nuscatt_{i,g,g'}) /
                 !              sum_i(N_i*(nuscatt_{i,g,g'} / mult_{i,g,g'}))
@@ -2855,6 +2855,7 @@ module mgxs_header
             deallocate(scatt_coeffs, temp_mult, mult_num, mult_denom)
           end associate ! nuc
         end do NUC_LOOP
+
       end do TEMP_LOOP
 
     end subroutine mgxsang_combine
@@ -2887,34 +2888,34 @@ module mgxs_header
       case('fission')
         xs = this % xs(t) % fission(gin)
 
-      case('kappa_fission')
+      case('kappa-fission')
         xs = this % xs(t) % kappa_fission(gin)
 
-      case('inverse_velocity')
+      case('inverse-velocity')
         xs = this % xs(t) % inverse_velocity(gin)
 
-      case('decay_rate')
+      case('decay rate')
         if (present(dg)) then
           xs = this % xs(t) % decay_rate(dg)
         else
           xs = this % xs(t) % decay_rate(1)
         end if
 
-      case('prompt_nu_fission')
+      case('prompt-nu-fission')
         xs = this % xs(t) % prompt_nu_fission(gin)
 
-      case('delayed_nu_fission')
+      case('delayed-nu-fission')
         if (present(dg)) then
           xs = this % xs(t) % delayed_nu_fission(gin, dg)
         else
           xs = sum(this % xs(t) % delayed_nu_fission(gin, :))
         end if
 
-      case('nu_fission')
+      case('nu-fission')
         xs = this % xs(t) % prompt_nu_fission(gin) + &
              sum(this % xs(t) % delayed_nu_fission(gin, :))
 
-      case('chi_prompt')
+      case('chi-prompt')
         if (present(gout)) then
           xs = this % xs(t) % chi_prompt(gout,gin)
         else
@@ -2922,7 +2923,7 @@ module mgxs_header
           xs = sum(this % xs(t) % chi_prompt(:, gin))
         end if
 
-      case('chi_delayed')
+      case('chi-delayed')
         if (present(gout)) then
           if (present(dg)) then
             xs = this % xs(t) % chi_delayed(gout, gin, dg)
@@ -3022,24 +3023,24 @@ module mgxs_header
         case('fission')
           xs = this % xs(t) % fission(gin, iazi, ipol)
 
-        case('kappa_fission')
+        case('kappa-fission')
           xs = this % xs(t) % kappa_fission(gin, iazi, ipol)
 
-        case('prompt_nu_fission')
+        case('prompt-nu-fission')
           xs = this % xs(t) % prompt_nu_fission(gin, iazi, ipol)
 
-        case('delayed_nu_fission')
+        case('delayed-nu-fission')
           if (present(dg)) then
             xs = this % xs(t) % delayed_nu_fission(gin, dg, iazi, ipol)
           else
             xs = sum(this % xs(t) % delayed_nu_fission(gin, :, iazi, ipol))
           end if
 
-        case('nu_fission')
+        case('nu-fission')
           xs = this % xs(t) % prompt_nu_fission(gin, iazi, ipol) + &
                sum(this % xs(t) % delayed_nu_fission(gin, :, iazi, ipol))
 
-        case('chi_prompt')
+        case('chi-prompt')
           if (present(gout)) then
             xs = this % xs(t) % chi_prompt(gout, gin, iazi, ipol)
           else
@@ -3047,7 +3048,7 @@ module mgxs_header
             xs = sum(this % xs(t) % chi_prompt(:, gin, iazi, ipol))
           end if
 
-        case('chi_delayed')
+        case('chi-delayed')
           if (present(gout)) then
             if (present(dg)) then
               xs = this % xs(t) % chi_delayed(gout, gin, dg, iazi, ipol)
@@ -3062,14 +3063,14 @@ module mgxs_header
             end if
           end if
 
-        case('decay_rate')
+        case('decay rate')
           if (present(dg)) then
             xs = this % xs(t) % decay_rate(iazi, ipol, dg)
           else
             xs = this % xs(t) % decay_rate(iazi, ipol, 1)
           end if
 
-        case('inverse_velocity')
+        case('inverse-velocity')
           xs = this % xs(t) % inverse_velocity(gin, iazi, ipol)
 
         case('scatter')
@@ -3152,8 +3153,8 @@ module mgxs_header
       ! Get nu and nu_prompt
       real(8) :: prob_prompt
 
-      prob_prompt = this % get_xs('prompt_nu_fission', gin) / &
-           this % get_xs('nu_fission', gin)
+      prob_prompt = this % get_xs('prompt-nu-fission', gin) / &
+           this % get_xs('nu-fission', gin)
 
       ! Sample random numbers
       xi_pd = prn()
@@ -3184,7 +3185,7 @@ module mgxs_header
           dg = dg + 1
           prob_prompt = prob_prompt + &
                this % get_xs('delayed_nu_fision', gin, dg=dg) &
-               / this % get_xs('nu_fission', gin)
+               / this % get_xs('nu-fission', gin)
         end do
 
         ! Adjust dg in case of round off error
@@ -3215,8 +3216,8 @@ module mgxs_header
       real(8) :: prob_prompt
 
       ! Get nu and nu_prompt
-      prob_prompt = this % get_xs('prompt_nu_fission', gin, uvw=uvw) / &
-           this % get_xs('nu_fission', gin, uvw=uvw)
+      prob_prompt = this % get_xs('prompt-nu-fission', gin, uvw=uvw) / &
+           this % get_xs('nu-fission', gin, uvw=uvw)
 
       ! Sample random numbers
       xi_pd = prn()
@@ -3229,12 +3230,12 @@ module mgxs_header
         dg = 0
 
         gout = 1
-        prob_gout = this % get_xs('chi_prompt', gin, gout, uvw=uvw)
+        prob_gout = this % get_xs('chi-prompt', gin, gout, uvw=uvw)
 
         do while (prob_gout < xi_gout)
           gout = gout + 1
           prob_gout = prob_gout + &
-               this % get_xs('chi_prompt', gin, gout, uvw=uvw)
+               this % get_xs('chi-prompt', gin, gout, uvw=uvw)
         end do
 
         ! Neutron is born delayed
@@ -3246,8 +3247,8 @@ module mgxs_header
         do while (xi_pd < prob_prompt)
           dg = dg + 1
           prob_prompt = prob_prompt + &
-               this % get_xs('delayed_nu_fission', gin, uvw=uvw, dg=dg) / &
-               this % get_xs('nu_fission', gin, uvw=uvw)
+               this % get_xs('delayed-nu-fission', gin, uvw=uvw, dg=dg) / &
+               this % get_xs('nu-fission', gin, uvw=uvw)
         end do
 
         ! Adjust dg in case of round off error
@@ -3255,11 +3256,11 @@ module mgxs_header
 
         ! Get the outgoing group
         gout = 1
-        prob_gout = this % get_xs('chi_delayed', gin, gout, uvw=uvw, dg=dg)
+        prob_gout = this % get_xs('chi-delayed', gin, gout, uvw=uvw, dg=dg)
 
         do while (prob_gout < xi_gout)
           gout = gout + 1
-          prob_gout = this % get_xs('chi_delayed', gin, gout, uvw=uvw, dg=dg)
+          prob_gout = this % get_xs('chi-delayed', gin, gout, uvw=uvw, dg=dg)
         end do
       end if
 

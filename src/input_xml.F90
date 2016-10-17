@@ -4573,10 +4573,9 @@ contains
   end subroutine read_mg_cross_sections_xml
 
 !===============================================================================
-! EXPAND_NATURAL_ELEMENT converts natural elements specified using an <element>
-! tag within a material into individual isotopes based on IUPAC Isotopic
-! Compositions of the Elements 2009 (doi:10.1351/PAC-REP-10-06-02). In some
-! cases, modifications have been made to work with ENDF/B-VII.1 where
+! EXPAND_NATURAL_ELEMENT_NAMES converts natural elements specified using an
+! <element> tag within a material and adds the names to the input names array.
+! In some cases, modifications have been made to work with ENDF/B-VII.1 where
 ! evaluations of particular isotopes don't exist.
 !===============================================================================
 
@@ -5101,21 +5100,28 @@ contains
 
   end subroutine expand_natural_element_names
 
+!===============================================================================
+! EXPAND_NATURAL_ELEMENT_DENSITIES converts natural elements specified using an
+! <element> tag within a material into individual isotopes based on IUPAC
+! Isotopic Compositions of the Elements 2009 (doi:10.1351/PAC-REP-10-06-02). In
+! some cases, modifications have been made to work with ENDF/B-VII.1 where
+! evaluations of particular isotopes don't exist.
+!===============================================================================
 
   subroutine expand_natural_element_densities(name, expand_by, density, &
        enrichment, densities)
-    character(*),   intent(in)   :: name
-    character(*),   intent(in)   :: expand_by
-    real(8),        intent(in)   :: density
-    real(8),        intent(in)   :: enrichment
-    type(VectorReal), intent(inout) :: densities
+    character(*),   intent(in)      :: name       ! element name
+    character(*),   intent(in)      :: expand_by  ! "ao" or "wo"
+    real(8),        intent(in)      :: density    ! value for "ao" or "wo"
+    real(8),        intent(in)      :: enrichment ! enrichment in weight %
+    type(VectorReal), intent(inout) :: densities  ! isotope densities vector
 
-    integer              :: i
-    integer              :: n_isotopes
-    character(2)         :: element_name
-    real(8)              :: element_awr
-    real(8), allocatable :: awr(:)
-    real(8), allocatable :: mf(:)
+    integer              :: i            ! iterator
+    integer              :: n_isotopes   ! number of isotopes in the element
+    character(2)         :: element_name ! element atomic symbol
+    real(8)              :: element_awr  ! element atomic weight ratio
+    real(8), allocatable :: awr(:)       ! isotope atomic weight ratios
+    real(8), allocatable :: mf(:)        ! isotope mole fractions
 
     element_name = name(1:2)
 
@@ -7247,7 +7253,7 @@ contains
         awr(3) = nuclides(nuclide_dict % get_key('u238')) % awr
       end if
 
-      ! Modify mole fractions in enrichment provided
+      ! Modify mole fractions if enrichment provided
       if (enrichment /= -ONE) then
 
         ! Calculate the mass fractions of isotopes

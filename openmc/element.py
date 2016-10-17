@@ -11,8 +11,8 @@ if sys.version_info[0] >= 3:
 
 
 class Element(object):
-    """A natural element used in a material via <element>. Internally, OpenMC will
-    expand the natural element into isotopes based on the known natural
+    """A natural element used in a material via <element>. Internally, OpenMC
+    will expand the natural element into isotopes based on the known natural
     abundances.
 
     Parameters

@@ -1415,9 +1415,9 @@ Each ``material`` element can have the following attributes or sub-elements:
     Specifies that a natural element is present in the material. The natural
     element is split up into individual isotopes based on `IUPAC Isotopic
     Compositions of the Elements 2009`_. This element has
-    attributes/sub-elements called ``name``, and ``ao``. The ``name``
-    attribute is the atomic symbol of the element. Finally, the ``ao``
-    attribute specifies the atom percent of the element within the material,
+    attributes/sub-elements called ``name``, and ``ao`` or ``wo``. The ``name``
+    attribute is the atomic symbol of the element. Finally, the ``ao`` and ``wo``
+    attributes specify the atom or weight percent of the element within the material,
     respectively. One example would be as follows:
 
     .. code-block:: xml
@@ -1446,6 +1446,14 @@ Each ``material`` element can have the following attributes or sub-elements:
 
     .. note:: The ``scattering`` attribute/sub-element is not used in the
               multi-group :ref:`energy_mode`.
+
+    An optional attribute/sub-element for uranium is ``enrichment``. This
+    attribute lets the user set the weight-percent enrichment of U-235 in
+    uranium. The weight-percent of U-234 is computed as 0.008 times the weight
+    percent of U-235 with U-238 comprising the balance. Valid values for
+    enrichment range between 0 and 1/1.008.
+
+    *Default*: None
 
   :sab:
     Associates an S(a,b) table with the material. This element has one

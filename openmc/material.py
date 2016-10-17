@@ -58,9 +58,9 @@ class Material(object):
         'atom/b-cm', 'atom/cm3', 'sum', or 'macro'.  The 'macro' unit only
         applies in the case of a multi-group calculation.
     elements : list of tuple
-        List in which each item is a 3-tuple consisting of an
-        :class:`openmc.Element` instance, the percent density, and the percent
-        type ('ao' or 'wo').
+        List in which each item is a 3-tuple or 4-tuple consisting of an
+        :class:`openmc.Element` instance, the percent density, the percent
+        type ('ao' or 'wo'), and an optional weight-percent enrichment.
     nuclides : list of tuple
         List in which each item is a 3-tuple consisting of an
         :class:`openmc.Nuclide` instance, the percent density, and the percent
@@ -83,7 +83,7 @@ class Material(object):
         # (only one is allowed, hence this is different than _nuclides, etc)
         self._macroscopic = None
 
-        # A list of tuples (element, percent, percent type)
+        # A list of tuples (element, percent, percent type, enrichment (optional))
         self._elements = []
 
         # If specified, a list of table names
@@ -149,9 +149,13 @@ class Material(object):
 
         string += '{0: <16}\n'.format('\tElements')
 
-        for element, percent, percent_type in self._elements:
-            string += '{0: <16}'.format('\t{0.name}'.format(element))
-            string += '=\t{0: <12} [{1}]\n'.format(percent, percent_type)
+        for element in self._elements:
+            string += '{0: <16}'.format('\t{0.name}'.format(element[0]))
+            if len(element) == 3:
+                string += '=\t{0: <12} [{1}]\n'.format(element[1], element[2])
+            else:
+                string += '=\t{0: <12} [{1}] {2:4.2f} % enrichment\n'\
+                          .format(element[1], element[2], element[3]*100.)
 
         return string
 
@@ -402,7 +406,8 @@ class Material(object):
         if macroscopic.name == self._macroscopic.name:
             self._macroscopic = None
 
-    def add_element(self, element, percent, percent_type='ao', expand=False):
+    def add_element(self, element, percent, percent_type='ao', enrichment=None,
+                    expand=False):
         """Add a natural element to the material
 
         Parameters
@@ -414,6 +419,8 @@ class Material(object):
         percent_type : {'ao', 'wo'}, optional
             'ao' for atom percent and 'wo' for weight percent. Defaults to atom
             percent.
+        enrichment : float, optional
+            Optional weight percent enrichment for uranium. Defaults to None.
         expand : bool, optional
             Whether to expand the natural element into its naturally-occurring
             isotopes. Defaults to False.
@@ -440,6 +447,19 @@ class Material(object):
                   'percent type "{1}"'.format(self._id, percent_type)
             raise ValueError(msg)
 
+        if enrichment is not None:
+            if not isinstance(enrichment, Real):
+                msg = 'Unable to add an Element to Material ID="{0}" with a ' \
+                      'non-floating point enrichment value "{1}"'\
+                      .format(self._id, enrichment)
+                raise ValueError(msg)
+
+            elif element != 'U':
+                msg = 'Unable to use enrichment for element {0} which is not ' \
+                      'uranium for Material ID="{1}"'.format(enrichment,
+                                                             self._id)
+                raise ValueError(msg)
+
         # Copy this Element to separate it from same Element in other Materials
         if isinstance(element, openmc.Element):
             element = deepcopy(element)
@@ -450,10 +470,16 @@ class Material(object):
             if percent_type == 'wo':
                 raise NotImplementedError('Expanding natural element based on '
                                           'weight percent is not yet supported.')
+
             for isotope, abundance in element.expand():
                 self._nuclides.append((isotope, percent*abundance, percent_type))
+
         else:
-            self._elements.append((element, percent, percent_type))
+            if enrichment is not None:
+                self._elements.append((element, percent, percent_type,
+                                       enrichment))
+            else:
+                self._elements.append((element, percent, percent_type))
 
     def remove_element(self, element):
         """Remove a natural element from the material
@@ -525,9 +551,9 @@ class Material(object):
         for nuclide, density, density_type in self._nuclides:
             nuclides.append(nuclide.name)
 
-        for element, density, density_type in self._elements:
+        for element in self._elements:
             # Expand natural element into isotopes
-            for isotope, abundance in element.expand():
+            for isotope, abundance in element[0].expand():
                 nuclides.append(isotope.name)
 
         return nuclides
@@ -548,10 +574,10 @@ class Material(object):
         for nuclide, density, density_type in self._nuclides:
             nuclides[nuclide.name] = (nuclide, density)
 
-        for element, density, density_type in self._elements:
+        for element in self._elements:
             # Expand natural element into isotopes
-            for isotope, abundance in element.expand():
-                nuclides[isotope.name] = (isotope, density*abundance)
+            for isotope, abundance in element[0].expand():
+                nuclides[isotope.name] = (isotope, element[1]*abundance)
 
         return nuclides
 
@@ -585,6 +611,9 @@ class Material(object):
                 xml_element.set("ao", str(element[1]))
             else:
                 xml_element.set("wo", str(element[1]))
+
+            if len(element) == 4:
+                xml_element.set("enrichment", str(element[3]))
 
         if not element[0].scattering is None:
             xml_element.set("scattering", element[0].scattering)
@@ -657,12 +686,12 @@ class Material(object):
             comps = []
             allnucs = self._nuclides + self._elements
             dist_per_type = allnucs[0][2]
-            for nuc, per, typ in allnucs:
-                if not typ == dist_per_type:
+            for nuc in allnucs:
+                if not nuc[2] == dist_per_type:
                     msg = 'All nuclides and elements in a distributed ' \
                           'material must have the same type, either ao or wo'
                     raise ValueError(msg)
-                comps.append(per)
+                comps.append(nuc[1])
 
             if self._distrib_otf_file is None:
                 # Create values and units subelements

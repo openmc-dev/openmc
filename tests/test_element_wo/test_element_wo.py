@@ -23,6 +23,18 @@ class ElementWOTestHarness(PyAPITestHarness):
         fuel.add_element("U", 0.88, 'wo')
         fuel.add_element("O", 0.12, 'wo')
 
+        # Add the natural elements that are in the NNDC data to the fuel
+        for element in ['H', 'He', 'Li', 'Be', 'B', 'C', 'N', 'O', 'F', \
+                        'Na', 'Mg', 'Al', 'Si', 'P', 'Cl', 'Ar', 'K', \
+                        'Ca', 'Sc', 'Ti', 'V', 'Cr', 'Mn', 'Fe', 'Co', 'Ni', \
+                        'Cu', 'Zn', 'Ga', 'Ge', 'As', 'Se', 'Br', 'Kr', 'Rb', \
+                        'Sr', 'Y', 'Zr', 'Nb', 'Mo', 'Ru', 'Rh', 'Pd', 'Ag', \
+                        'Cd', 'In', 'Sn', 'Sb', 'Te', 'I', 'Xe', 'Cs', 'Ba', \
+                        'La', 'Ce', 'Pr', 'Nd', 'Sm', 'Eu', 'Gd', 'Tb', 'Dy', \
+                        'Ho', 'Er', 'Tm', 'Lu', 'Hf', 'Ta', 'W', 'Re', \
+                        'Ir', 'Au', 'Hg', 'Tl', 'Pb', 'Bi', 'Th', 'Pa']:
+            fuel.add_element(element, 1.e-8, 'wo')
+
         clad = openmc.Material(name='Cladding')
         clad.set_density('g/cm3', 6.55)
         clad.add_element("Zr", 1.0, 'wo')

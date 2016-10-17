@@ -268,6 +268,14 @@ module constants
        JENDL_33   = 7, &
        JENDL_40   = 8
 
+  ! Number of natural elements and nuclides in the global natural_elements
+  ! and natural_nuclides arrays. Note that some nuclides are repeated in order
+  ! to make it easy to expand natural elements for different cross section
+  ! libraries.
+  integer, parameter :: &
+       NUM_NATURAL_ELEMENTS = 84, &
+       NUM_NATURAL_NUCLIDES = 301
+
   ! Temperature treatment method
   integer, parameter :: &
        TEMPERATURE_NEAREST = 1, &

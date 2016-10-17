@@ -4,7 +4,6 @@ module global
   use cmfd_header
   use constants
   use dict_header,      only: DictCharInt, DictIntInt
-  use stl_vector,       only: VectorChar, VectorReal
   use geometry_header,  only: Cell, Universe, Lattice, LatticeContainer
   use material_header,  only: Material
   use mesh_header,      only: RegularMesh
@@ -19,7 +18,6 @@ module global
   use trigger_header,   only: KTrigger
   use timer_header,     only: Timer
   use volume_header,    only: VolumeCalculation
-  use string,           only: to_str
 
 #ifdef MPIF08
   use mpi_f08

@@ -4594,7 +4594,7 @@ contains
 
     ! Find location of element name in natural_elements
     i = -1
-    do i = 1, num_natural_elements
+    do i = 1, NUM_NATURAL_ELEMENTS
       if (natural_elements(i) == element_name) then
         natural_elements_loc = i
       end if
@@ -4678,7 +4678,7 @@ contains
 
     ! Find location of element name in natural_elements
     i = -1
-    do i = 1, num_natural_elements
+    do i = 1, NUM_NATURAL_ELEMENTS
       if (natural_elements(i) == element_name) then
         natural_elements_loc = i
       end if

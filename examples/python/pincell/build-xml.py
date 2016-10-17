@@ -51,7 +51,7 @@ o = openmc.Element('O')
 # Instantiate some Materials and register the appropriate Nuclides
 uo2 = openmc.Material(material_id=1, name='UO2 fuel at 2.4% wt enrichment')
 uo2.set_density('g/cm3', 10.29769)
-uo2.add_element(u, 1., enrichment=0.05)
+uo2.add_element(u, 1., enrichment=0.024)
 uo2.add_element(o, 2.)
 
 helium = openmc.Material(material_id=2, name='Helium for gap')

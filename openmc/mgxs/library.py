@@ -62,15 +62,23 @@ class Library(object):
         The spatial domain(s) for which MGXS in the Library are computed
     correction : {'P0', None}
         Apply the P0 correction to scattering matrices if set to 'P0'
+    scatter_format : {'legendre', or 'histogram'}
+        Representation of the angular scattering distribution (default is
+        'legendre')
     legendre_order : int
-        The highest legendre moment in the scattering matrices (default is 0)
+        The highest Legendre moment in the scattering matrix; this is used if
+        :attr:`ScatterMatrixXS.scatter_format` is 'legendre'. (default is 0)
+    histogram_bins : int
+        The number of equally-spaced bins for the histogram representation of
+        the angular scattering distribution; this is used if
+        :attr:`ScatterMatrixXS.scatter_format` is 'histogram'. (default is 16)
     energy_groups : openmc.mgxs.EnergyGroups
         Energy group structure for energy condensation
     delayed_groups : list of int
         Delayed groups to filter out the xs
     estimator : str or None
-        The tally estimator used to compute multi-group cross sections. If None,
-        the default for each MGXS type is used.
+        The tally estimator used to compute multi-group cross sections.
+        If None, the default for each MGXS type is used.
     tally_trigger : openmc.Trigger
         An (optional) tally precision trigger given to each tally used to
         compute the cross section
@@ -104,7 +112,9 @@ class Library(object):
         self._energy_groups = None
         self._delayed_groups = None
         self._correction = 'P0'
+        self._scatter_format = 'legendre'
         self._legendre_order = 0
+        self._histogram_bins = 16
         self._tally_trigger = None
         self._all_mgxs = OrderedDict()
         self._sp_filename = None
@@ -133,7 +143,9 @@ class Library(object):
             clone._domain_type = self.domain_type
             clone._domains = copy.deepcopy(self.domains)
             clone._correction = self.correction
+            clone._scatter_format = self.scatter_format
             clone._legendre_order = self.legendre_order
+            clone._histogram_bins = self.histogram_bins
             clone._energy_groups = copy.deepcopy(self.energy_groups, memo)
             clone._delayed_groups = copy.deepcopy(self.delayed_groups, memo)
             clone._tally_trigger = copy.deepcopy(self.tally_trigger, memo)
@@ -213,8 +225,16 @@ class Library(object):
         return self._correction
 
     @property
+    def scatter_format(self):
+        return self._scatter_format
+
+    @property
     def legendre_order(self):
         return self._legendre_order
+
+    @property
+    def histogram_bins(self):
+        return self._histogram_bins
 
     @property
     def tally_trigger(self):
@@ -355,25 +375,56 @@ class Library(object):
     def correction(self, correction):
         cv.check_value('correction', correction, ('P0', None))
 
-        if correction == 'P0' and self.legendre_order > 0:
-            warn('The P0 correction will be ignored since the scattering '
-                 'order "{}" is greater than zero'.format(self.legendre_order))
+        if self.scatter_format == 'legendre':
+            if correction == 'P0' and self.legendre_order > 0:
+                msg = 'The P0 correction will be ignored since the ' \
+                      'scattering order {} is greater than '\
+                      'zero'.format(self.legendre_order)
+                warn(msg)
+        elif self.scatter_format == 'histogram':
+            msg = 'The P0 correction will be ignored since the ' \
+                  'scatter format is set to histogram'
+            warn(msg)
 
         self._correction = correction
+
+    @scatter_format.setter
+    def scatter_format(self, scatter_format):
+        cv.check_value('scatter_format', scatter_format, openmc.mgxs.MU_TREATMENTS)
+        self._scatter_format = scatter_format
 
     @legendre_order.setter
     def legendre_order(self, legendre_order):
         cv.check_type('legendre_order', legendre_order, Integral)
-        cv.check_greater_than('legendre_order', legendre_order, 0, equality=True)
+        cv.check_greater_than('legendre_order', legendre_order, 0,
+                              equality=True)
         cv.check_less_than('legendre_order', legendre_order, 10, equality=True)
 
-        if self.correction == 'P0' and legendre_order > 0:
-            msg = 'The P0 correction will be ignored since the scattering ' \
-                  'order {} is greater than zero'.format(self.legendre_order)
-            warn(msg, RuntimeWarning)
-            self.correction = None
+        if self.scatter_format == 'legendre':
+            if self.correction == 'P0' and legendre_order > 0:
+                msg = 'The P0 correction will be ignored since the ' \
+                      'scattering order {} is greater than '\
+                      'zero'.format(self.legendre_order)
+                warn(msg, RuntimeWarning)
+                self.correction = None
+        elif self.scatter_format == 'histogram':
+            msg = 'The legendre order will be ignored since the ' \
+                  'scatter format is set to histogram'
+            warn(msg)
 
         self._legendre_order = legendre_order
+
+    @histogram_bins.setter
+    def histogram_bins(self, histogram_bins):
+        cv.check_type('histogram_bins', histogram_bins, Integral)
+        cv.check_greater_than('histogram_bins', histogram_bins, 0)
+
+        if self.scatter_format == 'legendre':
+            msg = 'The histogram bins will be ignored since the ' \
+                  'scatter format is set to legendre'
+            warn(msg)
+
+        self._histogram_bins = histogram_bins
 
     @tally_trigger.setter
     def tally_trigger(self, tally_trigger):
@@ -443,7 +494,9 @@ class Library(object):
                 # Specify whether to use a transport ('P0') correction
                 if isinstance(mgxs, openmc.mgxs.ScatterMatrixXS):
                     mgxs.correction = self.correction
+                    mgxs.scatter_format = self.scatter_format
                     mgxs.legendre_order = self.legendre_order
+                    mgxs.histogram_bins = self.histogram_bins
 
                 self.all_mgxs[domain.id][mgxs_type] = mgxs
 
@@ -901,15 +954,14 @@ class Library(object):
         xsdata = openmc.XSdata(name, self.energy_groups)
 
         if order is None:
-            # Set the order to the Library's order (the defualt behavior)
+            # Set the order to the Library's order (the default behavior)
             xsdata.order = self.legendre_order
         else:
             # Set the order of the xsdata object to the minimum of
             # the provided order or the Library's order.
             xsdata.order = min(order, self.legendre_order)
 
-        # Right now only 'legendre' data and isotropic weighting is supported
-        self.scatter_format = 'legendre'
+        # Right now only isotropic weighting is supported
         self.representation = 'isotropic'
 
         if nuclide != 'total':

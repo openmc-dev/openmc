@@ -1008,21 +1008,26 @@ class XSdata(object):
         check_type('temperature', temperature, Real)
         check_value('temperature', temperature, self.temperatures)
 
-        if self.scatter_format != 'legendre':
-            msg = 'Anisotropic scattering representations other than ' \
-                  'Legendre expansions have not yet been implemented in ' \
-                  'openmc.mgxs.'
-            raise ValueError(msg)
+        # Set the value of scatter_format based on the same value within
+        # scatter
+        self.scatter_format = scatter.scatter_format
 
         # If the user has not defined XSdata.order, then we will set
         # the order based on the data within scatter.
-        # Otherwise, we will check to see that XSdata.order to match
+        # Otherwise, we will check to see that XSdata.order matches
         # the order of scatter
-        if self.order is None:
-            self.order = scatter.legendre_order
-        else:
-            check_value('legendre_order', scatter.legendre_order,
-                        [self.order])
+        if self.scatter_format == 'legendre':
+            if self.order is None:
+                self.order = scatter.legendre_order
+            else:
+                check_value('legendre_order', scatter.legendre_order,
+                            [self.order])
+        elif self.scatter_format == 'histogram':
+            if self.order is None:
+                self.order = scatter.histogram_bins
+            else:
+                check_value('histogram_bins', scatter.histogram_bins,
+                            [self.order])
 
         i = np.where(self.temperatures == temperature)[0][0]
         if self.representation == 'isotropic':
@@ -1030,10 +1035,16 @@ class XSdata(object):
             self._scatter_matrix[i] = np.zeros((self.num_orders,
                                                 self.energy_groups.num_groups,
                                                 self.energy_groups.num_groups))
-            for moment in range(self.num_orders):
-                self._scatter_matrix[i][moment, :, :] = \
+            if self.scatter_format == 'legendre':
+                for moment in range(self.num_orders):
+                    self._scatter_matrix[i][moment, :, :] = \
+                        scatter.get_xs(nuclides=nuclide, xs_type=xs_type,
+                                       moment=moment, subdomains=subdomain)
+            else:
+                self._scatter_matrix[i][:, :, :] = \
                     scatter.get_xs(nuclides=nuclide, xs_type=xs_type,
-                                   moment=moment, subdomains=subdomain)
+                                   subdomains=subdomain)
+                import pdb; pdb.set_trace()
 
         elif self.representation == 'angle':
             msg = 'Angular-Dependent MGXS have not yet been implemented'

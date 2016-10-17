@@ -2127,7 +2127,7 @@ contains
     integer :: index_nuclide  ! index in nuclides
     integer :: index_sab      ! index in sab_tables
     logical :: file_exists    ! does materials.xml exist?
-    character(20) :: name     ! name of isotope, e.g. 92235.03c
+    character(20) :: name     ! name of nuclide, e.g. 92235.03c
     character(MAX_LINE_LEN) :: filename ! absolute path to materials.xml
     character(MAX_LINE_LEN) :: temp_str ! temporary string when reading
     type(VectorChar) :: names     ! temporary list of nuclide names
@@ -2314,7 +2314,7 @@ contains
         ! Get current number of nuclides
         n_nuc_ele = names % size()
 
-        ! Expand element into naturally-occurring isotopes
+        ! Expand element into naturally-occurring nuclides
         call expand_natural_element_names(name, names)
 
         ! Compute number of new nuclides from the natural element expansion
@@ -4576,7 +4576,7 @@ contains
 ! EXPAND_NATURAL_ELEMENT_NAMES converts natural elements specified using an
 ! <element> tag within a material and adds the names to the input names array.
 ! In some cases, modifications have been made to work with ENDF/B-VII.1 where
-! evaluations of particular isotopes don't exist.
+! evaluations of particular nuclides don't exist.
 !===============================================================================
 
   subroutine expand_natural_element_names(name, names)
@@ -4650,10 +4650,10 @@ contains
 
 !===============================================================================
 ! EXPAND_NATURAL_ELEMENT_DENSITIES converts natural elements specified using an
-! <element> tag within a material into individual isotopes based on IUPAC
+! <element> tag within a material into individual nuclides based on IUPAC
 ! Isotopic Compositions of the Elements 2009 (doi:10.1351/PAC-REP-10-06-02). In
 ! some cases, modifications have been made to work with ENDF/B-VII.1 where
-! evaluations of particular isotopes don't exist.
+! evaluations of particular nuclides don't exist.
 !===============================================================================
 
   subroutine expand_natural_element_densities(name, expand_by, density, &
@@ -4662,17 +4662,17 @@ contains
     character(*),   intent(in)      :: expand_by  ! "ao" or "wo"
     real(8),        intent(in)      :: density    ! value for "ao" or "wo"
     real(8),        intent(in)      :: enrichment ! enrichment in weight %
-    type(VectorReal), intent(inout) :: densities  ! isotope densities vector
+    type(VectorReal), intent(inout) :: densities  ! nuclide densities vector
 
     integer              :: i             ! iterators
-    integer              :: n_isotopes    ! number of isotopes in the element
+    integer              :: n_nuclides    ! number of nuclides in the element
     integer              :: natural_elements_loc ! location in global array
     integer              :: nuclide_start ! ending nuclide in global array
     integer              :: nuclide_end   ! starting nuclide in global array
     character(2)         :: element_name  ! element atomic symbol
     real(8)              :: element_awr   ! element atomic weight ratio
-    real(8), allocatable :: awr(:)        ! isotope atomic weight ratios
-    real(8), allocatable :: mf(:)         ! isotope mole fractions
+    real(8), allocatable :: awr(:)        ! nuclide atomic weight ratios
+    real(8), allocatable :: mf(:)         ! nuclide mole fractions
 
     element_name = to_lower(name(1:2))
 
@@ -4725,15 +4725,15 @@ contains
 
     end select
 
-    ! Set the number of isotopes in this element
-    n_isotopes = nuclide_end - nuclide_start
+    ! Set the number of nuclides in this element
+    n_nuclides = nuclide_end - nuclide_start
 
     ! Allocate and initialize array for the atomic weight ratios
-    allocate(awr(n_isotopes))
+    allocate(awr(n_nuclides))
     awr = ONE
 
     ! Allocate and initialize array for mole fractions
-    allocate(mf(n_isotopes))
+    allocate(mf(n_nuclides))
 
     ! Add the nuclide names to the names array
     do i = nuclide_start, nuclide_end-1
@@ -4751,19 +4751,19 @@ contains
     ! Modify mole fractions if enrichment provided
     if (enrichment /= -ONE .and. element_name == 'u') then
 
-      ! Calculate the mass fractions of isotopes
+      ! Calculate the mass fractions of nuclides
       mf(1) = 0.008 * enrichment
       mf(2) = enrichment
       mf(3) = 1.0 - 1.008 * enrichment
 
       ! Convert the mass fractions to mole fractions
-      do i = 1, n_isotopes
+      do i = 1, n_nuclides
         mf(i) = mf(i) / awr(i)
       end do
 
       ! Normalize the mole fractions to ONE
       element_awr = sum(mf(:))
-      do i = 1, n_isotopes
+      do i = 1, n_nuclides
         mf(i) = mf(i) / element_awr
       end do
     end if
@@ -4774,18 +4774,18 @@ contains
 
       ! Compute the element awr
       element_awr = ZERO
-      do i = 1, n_isotopes
+      do i = 1, n_nuclides
         element_awr = element_awr + awr(i) * mf(i)
       end do
 
       ! Normalize the awr to the element awr
-      do i = 1, n_isotopes
+      do i = 1, n_nuclides
         awr(i) = awr(i) / element_awr
       end do
     end if
 
     ! Add the densities to the master array
-    do i = 1, n_isotopes
+    do i = 1, n_nuclides
       call densities % push_back(density * mf(i) * awr(i))
     end do
 
@@ -4895,7 +4895,7 @@ contains
     logical                 :: percent_in_atom ! nuclides specified in atom percent?
     logical                 :: density_in_atom ! density specified in atom/b-cm?
     logical                 :: file_exists     ! does materials.xml exist?
-    character(20)           :: name            ! name of isotope, e.g. 92235.03c
+    character(20)           :: name            ! name of nuclide, e.g. 92235.03c
     character(MAX_WORD_LEN) :: units           ! units on density
     character(MAX_LINE_LEN) :: filename        ! materials.xml filename
     real(8)                 :: val             ! value entered for density
@@ -5047,7 +5047,7 @@ contains
 
             ! If enrichment was provided, issue error
             if (check_for_node(node_nuc, "enrichment")) then
-              call fatal_error("Cannot specify an enrichment for an isotope")
+              call fatal_error("Cannot specify an enrichment for a nuclide")
             end if
 
             ! Copy atom/weight percents
@@ -5103,7 +5103,7 @@ contains
           enrichment = -ONE
         end if
 
-        ! Expand element into naturally-occurring isotopes
+        ! Expand element into naturally-occurring nuclides
         if (check_for_node(node_ele, "ao")) then
           call get_node_value(node_ele, "ao", temp_dble)
           call expand_natural_element_densities(name, "ao", temp_dble, &

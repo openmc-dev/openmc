@@ -339,7 +339,6 @@ class PyAPITestHarness(TestHarness):
         output = [os.path.join(os.getcwd(), 'materials.xml')]
         output.append(os.path.join(os.getcwd(), 'geometry.xml'))
         output.append(os.path.join(os.getcwd(), 'settings.xml'))
-        output.append(os.path.join(os.getcwd(), 'tallies.xml'))
         output.append(os.path.join(os.getcwd(), 'inputs_test.dat'))
         output.append(os.path.join(os.getcwd(), 'summary.h5'))
         for f in output:

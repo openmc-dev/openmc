@@ -856,8 +856,13 @@ contains
             write(UNIT=unit_tally, FMT='(1X,2A,1X,A)') repeat(" ", indent), &
                  "Total Material"
           else
-            write(UNIT=unit_tally, FMT='(1X,2A,1X,A)') repeat(" ", indent), &
-                 trim(nuclides(i_nuclide) % name)
+            if (run_CE) then
+              write(UNIT=unit_tally, FMT='(1X,2A,1X,A)') repeat(" ", indent), &
+                   trim(nuclides(i_nuclide) % name)
+            else
+              write(UNIT=unit_tally, FMT='(1X,2A,1X,A)') repeat(" ", indent), &
+                   trim(nuclides_MG(i_nuclide) % obj % name)
+            end if
           end if
 
           indent = indent + 2

@@ -351,6 +351,13 @@ module mgxs_header
       else
         this % scatter_format = ANGLE_LEGENDRE
       end if
+      if (attribute_exists(xs_id, "scatter_shape")) then
+        call read_attribute(temp_str, xs_id, "scatter_shape")
+        temp_str = trim(temp_str)
+        if (to_lower(temp_str) /= "[order][g][g']") then
+          call fatal_error("Invalid scatter_shape option!")
+        end if
+      end if
       if (attribute_exists(xs_id, "fissionable")) then
         call read_attribute(this % fissionable, xs_id, "fissionable")
       else

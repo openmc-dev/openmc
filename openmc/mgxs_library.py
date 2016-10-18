@@ -1031,21 +1031,21 @@ class XSdata(object):
 
         i = np.where(self.temperatures == temperature)[0][0]
         if self.representation == 'isotropic':
-            # Get the scattering orders in the outermost dimension
-            self._scatter_matrix[i] = np.zeros((self.num_orders,
-                                                self.energy_groups.num_groups,
-                                                self.energy_groups.num_groups))
             if self.scatter_format == 'legendre':
+                # Get the scattering orders in the outermost dimension
+                self._scatter_matrix[i] = np.zeros((self.num_orders,
+                                                    self.energy_groups.num_groups,
+                                                    self.energy_groups.num_groups))
                 for moment in range(self.num_orders):
                     self._scatter_matrix[i][moment, :, :] = \
                         scatter.get_xs(nuclides=nuclide, xs_type=xs_type,
                                        moment=moment, subdomains=subdomain)
             else:
-                self._scatter_matrix[i][:, :, :] = \
+                self._scatter_matrix[i] = \
                     scatter.get_xs(nuclides=nuclide, xs_type=xs_type,
                                    subdomains=subdomain)
-                import pdb; pdb.set_trace()
-
+                # self._scatter_matrix[i] = \
+                #     np.swapaxes(self._scatter_matrix[i], 0, 2)
         elif self.representation == 'angle':
             msg = 'Angular-Dependent MGXS have not yet been implemented'
             raise ValueError(msg)
@@ -1124,6 +1124,10 @@ class XSdata(object):
                 scatt = scatter.get_xs(nuclides=nuclide,
                                        xs_type=xs_type, moment=0,
                                        subdomains=subdomain)
+                if scatter.scatter_format == 'histogram':
+                    scatt = np.sum(scatt, axis=4)
+                if nuscatter.scatter_format == 'histogram':
+                    nuscatt = np.sum(nuscatt, axis=4)
                 self._multiplicity_matrix[i] = np.divide(nuscatt, scatt)
         elif self.representation == 'angle':
             msg = 'Angular-Dependent MGXS have not yet been implemented'

@@ -4671,7 +4671,7 @@ contains
     character(2)         :: element_name  ! element atomic symbol
     real(8)              :: element_awr   ! element atomic weight ratio
     real(8), allocatable :: awr(:)        ! nuclide atomic weight ratios
-    real(8), allocatable :: mf(:)         ! nuclide mole fractions
+    real(8), allocatable :: mf(:)         ! nuclide mole or mass fractions
 
     element_name = to_lower(name(1:2))
 
@@ -4727,10 +4727,6 @@ contains
     ! Set the number of nuclides in this element
     n_nuclides = nuclide_end - nuclide_start
 
-    ! Allocate and initialize array for the atomic weight ratios
-    allocate(awr(n_nuclides))
-    awr = ONE
-
     ! Allocate and initialize array for mole fractions
     allocate(mf(n_nuclides))
 
@@ -4739,37 +4735,38 @@ contains
       mf(i - nuclide_start + 1) = natural_nuclides_mf(i)
     end do
 
-    ! Get the atomic weight ratios
-    if (expand_by == "wo") then
-      do i = nuclide_start, nuclide_end-1
-        awr(i - nuclide_start + 1) = nuclides(nuclide_dict % &
-             get_key(to_lower(natural_nuclides(i)))) % awr
-      end do
-    end if
-
     ! Compute the ratio of the nuclide atomic weights to the element atomic
     ! weight
     if (expand_by == "wo") then
 
-      ! Compute the element awr
-      element_awr = ZERO
-      do i = 1, n_nuclides
-        element_awr = element_awr + awr(i) * mf(i)
+      ! Allocate array for the atomic weight ratios
+      allocate(awr(n_nuclides))
+
+      ! Get the atomic weight ratios
+      do i = nuclide_start, nuclide_end-1
+        awr(i - nuclide_start + 1) = nuclides(nuclide_dict % &
+             get_key(to_lower(natural_nuclides(i)))) % awr
       end do
 
-      ! Normalize the awr to the element awr
-      do i = 1, n_nuclides
-        awr(i) = awr(i) / element_awr
-      end do
+      ! Compute the element awr
+      element_awr = sum(awr * mf)
+
+      ! Convert the mole fractions to mass fractions
+      mf = mf * awr / element_awr
+
+      ! Normalize the mass fractions to ONE
+      mf = mf / sum(mf)
+
+      ! Deallocate array for the atomic weight ratios
+      deallocate(awr)
     end if
 
     ! Add the densities to the master array
     do i = 1, n_nuclides
-      call densities % push_back(density * mf(i) * awr(i))
+      call densities % push_back(density * mf(i))
     end do
 
-    ! Deallocate arrays
-    deallocate(awr)
+    ! Deallocate array for mole or mass fractions
     deallocate(mf)
 
   end subroutine expand_natural_element_densities

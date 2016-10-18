@@ -477,9 +477,12 @@ class Material(object):
             # Modify mole fractions if enrichment provided
             if enrichment is not None:
 
-                u234 = [i for i,iso in enumerate(isotopes) if iso.name == 'U234'][0]
-                u235 = [i for i,iso in enumerate(isotopes) if iso.name == 'U235'][0]
-                u238 = [i for i,iso in enumerate(isotopes) if iso.name == 'U238'][0]
+                u234 = [i for i,iso in enumerate(isotopes) \
+                        if iso.name == 'U234'][0]
+                u235 = [i for i,iso in enumerate(isotopes) \
+                        if iso.name == 'U235'][0]
+                u238 = [i for i,iso in enumerate(isotopes) \
+                        if iso.name == 'U238'][0]
 
                 # Calculate the mass fractions of nuclides
                 abundances[u234] = 0.008 * enrichment
@@ -504,10 +507,14 @@ class Material(object):
                 for i in range(n_isotopes):
                     element_am += atomic_masses[i] * abundances[i]
 
-                # Multiply the abundances by the ratio of the isotope atomic
-                # mass to the element atomic mass
+                # Convert the molar fractions to mass fractions
                 for i in range(n_isotopes):
                     abundances[i] *= atomic_masses[i] / element_am
+
+                # Normalize the mass fractions to one
+                sum_abundances = sum(abundances)
+                for i in range(n_isotopes):
+                    abundances[i] /= sum_abundances
 
             for isotope, abundance in zip(isotopes, abundances):
                 self._nuclides.append((isotope, percent*abundance, percent_type))
@@ -613,7 +620,7 @@ class Material(object):
         for nuclide, density, density_type in self._nuclides:
             nuclides[nuclide.name] = (nuclide, density)
 
-        for element in self._elements:
+        for element, density, density_type in self._elements:
             # Expand natural element into isotopes
             for isotope, abundance in element.expand():
                 nuclides[isotope.name] = (isotope, density*abundance)

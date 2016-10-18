@@ -1,6 +1,7 @@
 #!/usr/bin/env python
 
 import glob
+import numpy as np
 try:
     from setuptools import setup
     have_setuptools = True
@@ -57,10 +58,7 @@ if have_setuptools:
 # If Cython is present, add resonance reconstruction capability
 if have_cython:
     kwargs.update({
-        'ext_modules': cythonize('openmc/data/reconstruct.pyx')
-    })
-    import numpy as np
-    kwargs.update({
+        'ext_modules': cythonize('openmc/data/reconstruct.pyx'),
         'include_dirs': [np.get_include()]
     })
 

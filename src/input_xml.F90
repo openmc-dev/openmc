@@ -4657,11 +4657,10 @@ contains
 !===============================================================================
 
   subroutine expand_natural_element_densities(name, expand_by, density, &
-       enrichment, densities)
+       densities)
     character(*),   intent(in)      :: name       ! element name
     character(*),   intent(in)      :: expand_by  ! "ao" or "wo"
     real(8),        intent(in)      :: density    ! value for "ao" or "wo"
-    real(8),        intent(in)      :: enrichment ! enrichment in weight %
     type(VectorReal), intent(inout) :: densities  ! nuclide densities vector
 
     integer              :: i             ! iterators
@@ -4745,26 +4744,6 @@ contains
       do i = nuclide_start, nuclide_end-1
         awr(i - nuclide_start + 1) = nuclides(nuclide_dict % &
              get_key(to_lower(natural_nuclides(i)))) % awr
-      end do
-    end if
-
-    ! Modify mole fractions if enrichment provided
-    if (enrichment /= -ONE .and. element_name == 'u') then
-
-      ! Calculate the mass fractions of nuclides
-      mf(1) = 0.008 * enrichment
-      mf(2) = enrichment
-      mf(3) = 1.0 - 1.008 * enrichment
-
-      ! Convert the mass fractions to mole fractions
-      do i = 1, n_nuclides
-        mf(i) = mf(i) / awr(i)
-      end do
-
-      ! Normalize the mole fractions to ONE
-      element_awr = sum(mf(:))
-      do i = 1, n_nuclides
-        mf(i) = mf(i) / element_awr
       end do
     end if
 
@@ -4900,7 +4879,6 @@ contains
     character(MAX_LINE_LEN) :: filename        ! materials.xml filename
     real(8)                 :: val             ! value entered for density
     real(8)                 :: temp_dble       ! temporary double prec. real
-    real(8)                 :: enrichment      ! enrichment
     logical                 :: sum_density     ! density is sum of nuclide densities
     type(VectorReal)        :: densities       ! temporary list of nuclide densities
     type(Material), pointer :: mat => null()
@@ -5045,11 +5023,6 @@ contains
                    &for a nuclide: " // trim(name))
             end if
 
-            ! If enrichment was provided, issue error
-            if (check_for_node(node_nuc, "enrichment")) then
-              call fatal_error("Cannot specify an enrichment for a nuclide")
-            end if
-
             ! Copy atom/weight percents
             if (check_for_node(node_nuc, "ao")) then
               call get_node_value(node_nuc, "ao", temp_dble)
@@ -5085,33 +5058,15 @@ contains
                &element: " // trim(name))
         end if
 
-        ! If enrichment was provided, issue error
-        if (check_for_node(node_ele, "enrichment")) then
-
-          if (name /= 'U') then
-            call fatal_error("Enrichment is only supported for U")
-          end if
-
-          call get_node_value(node_ele, "enrichment", enrichment)
-
-          ! Check that enrichment is between ZERO and 1 / 1.008
-          if (enrichment < ZERO .or. enrichment > 1 / 1.008) then
-            call fatal_error("U enrichment must be between 0 and 1/1.008")
-          end if
-
-        else
-          enrichment = -ONE
-        end if
-
         ! Expand element into naturally-occurring nuclides
         if (check_for_node(node_ele, "ao")) then
           call get_node_value(node_ele, "ao", temp_dble)
           call expand_natural_element_densities(name, "ao", temp_dble, &
-               enrichment, densities)
+               densities)
         else
           call get_node_value(node_ele, "wo", temp_dble)
           call expand_natural_element_densities(name, "wo", -temp_dble, &
-               enrichment, densities)
+               densities)
         end if
 
       end do NATURAL_ELEMENTS

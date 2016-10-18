@@ -1,6 +1,8 @@
 from numbers import Integral
 import sys
 import warnings
+import itertools
+import openmc
 
 from openmc.checkvalue import check_type
 
@@ -94,3 +96,16 @@ class Nuclide(object):
             raise ValueError(msg)
 
         self._scattering = scattering
+
+    def get_element(self):
+        """Returns the element of a nuclide
+
+        Returns
+        -------
+        element : openmc.Element
+            Element of nuclide
+
+        """
+
+        element_name = "".join(itertools.takewhile(str.isalpha, name))
+        return openmc.Element(element_name)

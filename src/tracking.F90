@@ -92,6 +92,9 @@ contains
         ! Since the MGXS can be angle dependent, this needs to be done
         ! After every collision for the MGXS mode
         if (p % material /= MATERIAL_VOID) then
+          ! Update the temperature index
+          call macro_xs(p % material) % obj % find_temperature(p % sqrtkT)
+          ! Get the data
           call macro_xs(p % material) % obj % calculate_xs(p % g, &
                p % coord(p % n_coord) % uvw, material_xs)
         else

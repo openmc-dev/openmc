@@ -123,11 +123,14 @@ module global
   ! Midpoint of the energy group structure
   real(8), allocatable :: energy_bin_avg(:)
 
-  ! Inverse velocities of the energy groups (provided or estimated)
-  real(8), allocatable :: inverse_velocities(:)
-
   ! Maximum Data Order
   integer :: max_order
+
+  ! Whether or not to convert Legendres to tabulars
+  logical :: legendre_to_tabular = .True.
+
+  ! Number of points to use in the Legendre to tabular conversion
+  integer :: legendre_to_tabular_points = 33
 
   ! ============================================================================
   ! ELEMENT AND NUCLIDE RELATED VARIABLES

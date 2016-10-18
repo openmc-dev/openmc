@@ -1,8 +1,9 @@
+import numpy as np
+
 import openmc
 from openmc.source import Source
 from openmc.stats import Box
 
-import numpy as np
 
 class InputSet(object):
     def __init__(self):
@@ -728,60 +729,59 @@ class AssemblyInputSet(object):
 
 
 class MGInputSet(InputSet):
-    def build_default_materials_and_geometry(self):
+    def build_default_materials_and_geometry(self, reps=None, as_macro=True):
         # Define materials needed for 1D/1G slab problem
-        uo2_data = openmc.Macroscopic('uo2_iso')
-        uo2 = openmc.Material(name='UO2', material_id=1)
-        uo2.set_density('macro', 1.0)
-        uo2.add_macroscopic(uo2_data)
+        mat_names = ['uo2', 'clad', 'lwtr']
+        mgxs_reps = ['ang', 'ang_mu', 'iso', 'iso_mu']
 
-        clad_data = openmc.Macroscopic('clad_ang_mu')
-        clad = openmc.Material(name='Clad', material_id=2)
-        clad.set_density('macro', 1.0)
-        clad.add_macroscopic(clad_data)
+        if reps is None:
+            reps = mgxs_reps
 
-        water_data = openmc.Macroscopic('lwtr_iso_mu')
-        water = openmc.Material(name='LWTR', material_id=3)
-        water.set_density('macro', 1.0)
-        water.add_macroscopic(water_data)
+        xs = []
+        mats = []
+        i = 0
+        for mat in mat_names:
+            for rep in reps:
+                i += 1
+                if as_macro:
+                    xs.append(openmc.Macroscopic(mat + '_' + rep))
+                    mats.append(openmc.Material(name=str(i)))
+                    mats[-1].set_density('macro', 1.)
+                    mats[-1].add_macroscopic(xs[-1])
+                else:
+                    xs.append(openmc.Nuclide(mat + '_' + rep))
+                    mats.append(openmc.Material(name=str(i)))
+                    mats[-1].set_density('atom/b-cm', 1.)
+                    mats[-1].add_nuclide(xs[-1].name, 1.0, 'ao')
 
-        # Define the materials file.
-        self.materials += (uo2, clad, water)
+        # Define the materials file
+        self.xs_data = xs
+        self.materials += mats
 
         # Define surfaces.
-
         # Assembly/Problem Boundary
-        left = openmc.XPlane(x0=0.0, surface_id=200,
-                             boundary_type='reflective')
-        right = openmc.XPlane(x0=10.0, surface_id=201,
-                              boundary_type='reflective')
-        bottom = openmc.YPlane(y0=0.0, surface_id=300,
-                               boundary_type='reflective')
-        top = openmc.YPlane(y0=10.0, surface_id=301,
-                            boundary_type='reflective')
+        left = openmc.XPlane(x0=0.0, boundary_type='reflective')
+        right = openmc.XPlane(x0=10.0, boundary_type='reflective')
+        bottom = openmc.YPlane(y0=0.0, boundary_type='reflective')
+        top = openmc.YPlane(y0=10.0, boundary_type='reflective')
+        # for each material add a plane
+        planes = [openmc.ZPlane(z0=0.0, boundary_type='reflective')]
+        dz = round(5. / float(len(mats)), 4)
+        for i in range(len(mats) - 1):
+            planes.append(openmc.ZPlane(z0=dz * float(i + 1)))
+        planes.append(openmc.ZPlane(z0=5.0, boundary_type='reflective'))
 
-        down = openmc.ZPlane(z0=0.0, surface_id=0,
-                             boundary_type='reflective')
-        fuel_clad_intfc = openmc.ZPlane(z0=2.0, surface_id=1)
-        clad_lwtr_intfc = openmc.ZPlane(z0=2.4, surface_id=2)
-        up = openmc.ZPlane(z0=5.0, surface_id=3,
-                           boundary_type='reflective')
-
-        # Define cells
-        c1 = openmc.Cell(cell_id=1)
-        c1.region = +left & -right & +bottom & -top & +down & -fuel_clad_intfc
-        c1.fill = uo2
-        c2 = openmc.Cell(cell_id=2)
-        c2.region = +left & -right & +bottom & -top & +fuel_clad_intfc & -clad_lwtr_intfc
-        c2.fill = clad
-        c3 = openmc.Cell(cell_id=3)
-        c3.region = +left & -right & +bottom & -top & +clad_lwtr_intfc & -up
-        c3.fill = water
+        # Define cells for each material
+        cells = []
+        xy = +left & -right & +bottom & -top
+        for i, mat in enumerate(mats):
+            cells.append(openmc.Cell())
+            cells[-1].region = xy & +planes[i] & -planes[i + 1]
+            cells[-1].fill = mat
 
         # Define root universe.
         root = openmc.Universe(universe_id=0, name='root universe')
-
-        root.add_cells((c1, c2, c3))
+        root.add_cells(cells)
 
         # Assign root universe to geometry
         self.geometry.root_universe = root
@@ -791,9 +791,9 @@ class MGInputSet(InputSet):
         self.settings.inactive = 5
         self.settings.particles = 100
         self.settings.source = Source(space=Box([0.0, 0.0, 0.0],
-                                                [10.0, 10.0, 2.0]))
+                                                [10.0, 10.0, 5.]))
         self.settings.energy_mode = "multi-group"
-        self.settings.cross_sections = "../1d_mgxs.xml"
+        self.settings.cross_sections = "../1d_mgxs.h5"
 
     def build_defualt_plots(self):
         plot = openmc.Plot()

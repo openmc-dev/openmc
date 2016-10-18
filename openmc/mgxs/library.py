@@ -875,13 +875,13 @@ class Library(object):
         return pickle.load(open(full_filename, 'rb'))
 
     def get_xsdata(self, domain, xsdata_name, nuclide='total', xs_type='macro',
-                   order=None, subdomain=None):
+                   subdomain=None):
         """Generates an openmc.XSdata object describing a multi-group cross section
         dataset for writing to an openmc.MGXSLibrary object.
 
         Note that this method does not build an XSdata
         object with nested temperature tables.  The temperature of each
-        XSdata object will be left at the default value of 300K.
+        XSdata object will be left at the default value of 294K.
 
         Parameters
         ----------
@@ -896,10 +896,6 @@ class Library(object):
             Provide the macro or micro cross section in units of cm^-1 or
             barns. Defaults to 'macro'. If the Library object is not tallied by
             nuclide this will be set to 'macro' regardless.
-        order : int
-            Scattering order for this data entry.  Default is None,
-            which will set the XSdata object to use the order of the
-            Library.
         subdomain : iterable of int
             This parameter is not used unless using a mesh domain. In that
             case, the subdomain is an [i,j,k] index (1-based indexing) of the
@@ -929,10 +925,6 @@ class Library(object):
         cv.check_type('xsdata_name', xsdata_name, basestring)
         cv.check_type('nuclide', nuclide, basestring)
         cv.check_value('xs_type', xs_type, ['macro', 'micro'])
-        cv.check_type('order', order, (type(None), Integral))
-        if order is not None:
-            cv.check_greater_than('order', order, 0, equality=True)
-            cv.check_less_than('order', order, 10, equality=True)
         if subdomain is not None:
             cv.check_iterable_type('subdomain', subdomain, Integral,
                                    max_depth=3)
@@ -952,14 +944,6 @@ class Library(object):
         if nuclide != 'total':
             name += '_' + nuclide
         xsdata = openmc.XSdata(name, self.energy_groups)
-
-        if order is None:
-            # Set the order to the Library's order (the default behavior)
-            xsdata.order = self.legendre_order
-        else:
-            # Set the order of the xsdata object to the minimum of
-            # the provided order or the Library's order.
-            xsdata.order = min(order, self.legendre_order)
 
         # Right now only isotropic weighting is supported
         self.representation = 'isotropic'
@@ -1033,6 +1017,7 @@ class Library(object):
             using_multiplicity = False
 
         if using_multiplicity:
+            # import pdb; pdb.set_trace()
             nuscatt_mgxs = self.get_mgxs(domain, 'nu-scatter matrix')
             xsdata.set_scatter_matrix_mgxs(nuscatt_mgxs, xs_type=xs_type,
                                            nuclide=[nuclide],
@@ -1049,10 +1034,17 @@ class Library(object):
                 # accounted for approximately by using an adjusted
                 # absorption cross section.
                 if 'total' in self.mgxs_types or 'transport' in self.mgxs_types:
-                    for i in range(len(xsdata.temperatures)):
-                        xsdata._absorption[i] = \
-                            np.subtract(xsdata._total[i], np.sum(
-                                xsdata._scatter_matrix[i][0, :, :], axis=1))
+                    if xsdata.scatter_format == 'legendre':
+                        for i in range(len(xsdata.temperatures)):
+                            xsdata._absorption[i] = \
+                                np.subtract(xsdata._total[i], np.sum(
+                                    xsdata._scatter_matrix[i][0, :, :], axis=1))
+                    elif xsdata.scatter_format == 'histogram':
+                        for i in range(len(xsdata.temperatures)):
+                            xsdata._absorption[i] = \
+                                np.subtract(xsdata._total[i], np.sum(np.sum(
+                                    xsdata._scatter_matrix[i][:, :, :], axis=0),
+                                    axis=1))
 
         return xsdata
 

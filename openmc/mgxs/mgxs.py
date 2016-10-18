@@ -3410,7 +3410,8 @@ class ScatterMatrixXS(MatrixMGXS):
             else:
                 filters = [[energy], [energy, energyout]]
         elif self.scatter_format == 'histogram':
-            bins = np.linspace(-1., 1., num=self.histogram_bins, endpoint=True)
+            bins = np.linspace(-1., 1., num=self.histogram_bins + 1,
+                               endpoint=True)
             filters = [[energy], [energy, energyout, openmc.MuFilter(bins)]]
 
         return filters
@@ -3758,9 +3759,19 @@ class ScatterMatrixXS(MatrixMGXS):
         else:
             num_out_groups = len(out_groups)
 
+        if self.scatter_format == 'histogram':
+            num_mu_bins = self.histogram_bins
+        else:
+            num_mu_bins = 1
+
         # Reshape tally data array with separate axes for domain and energy
-        num_subdomains = int(xs.shape[0] / (num_in_groups * num_out_groups))
-        new_shape = (num_subdomains, num_in_groups, num_out_groups)
+        num_subdomains = int(xs.shape[0] /
+                             (num_mu_bins * num_in_groups * num_out_groups))
+        if self.scatter_format == 'histogram':
+            new_shape = (num_subdomains, num_in_groups, num_out_groups,
+                         num_mu_bins)
+        else:
+            new_shape = (num_subdomains, num_in_groups, num_out_groups)
         new_shape += xs.shape[1:]
         xs = np.reshape(xs, new_shape)
 
@@ -3771,7 +3782,7 @@ class ScatterMatrixXS(MatrixMGXS):
         # Reverse data if user requested increasing energy groups since
         # tally data is stored in order of increasing energies
         if order_groups == 'increasing':
-            xs = xs[:, ::-1, ::-1, :]
+            xs = xs[:, ::-1, ::-1, ...]
 
         if squeeze:
             xs = np.squeeze(xs)

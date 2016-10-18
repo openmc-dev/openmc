@@ -868,15 +868,13 @@ class RealFilter(Filter):
             return np.allclose(self.bins, other.bins)
 
     def get_bin_index(self, filter_bin):
-        # Use lower energy bound to find index for RealFilters
-        deltas = np.abs(self.bins - filter_bin[1]) / filter_bin[1]
-        min_delta = np.min(deltas)
-        if min_delta < 1E-3:
-            return deltas.argmin() - 1
-        else:
+        i = np.where(self.bins == filter_bin[1])[0]
+        if len(i) == 0:
             msg = 'Unable to get the bin index for Filter since "{0}" ' \
                   'is not one of the bins'.format(filter_bin)
             raise ValueError(msg)
+        else:
+            return i[0] - 1
 
     def get_bin(self, bin_index):
         cv.check_type('bin_index', bin_index, Integral)
@@ -906,6 +904,17 @@ class EnergyFilter(RealFilter):
         filter's bins.
 
     """
+
+    def get_bin_index(self, filter_bin):
+        # Use lower energy bound to find index for RealFilters
+        deltas = np.abs(self.bins - filter_bin[1]) / filter_bin[1]
+        min_delta = np.min(deltas)
+        if min_delta < 1E-3:
+            return deltas.argmin() - 1
+        else:
+            msg = 'Unable to get the bin index for Filter since "{0}" ' \
+                  'is not one of the bins'.format(filter_bin)
+            raise ValueError(msg)
 
     def check_bins(self, bins):
         for edge in bins:

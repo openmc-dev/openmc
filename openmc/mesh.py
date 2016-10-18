@@ -286,8 +286,8 @@ class Mesh(object):
                    openmc.XPlane(x0=self.upper_right[0],
                                  boundary_type=bc[1])]
         if len(self.dimension) == 1:
-            yplanes = [openmc.YPlane(y0=1000., boundary_type='reflective'),
-                       openmc.YPlane(y0=1000., boundary_type='reflective')]
+            yplanes = [openmc.YPlane(y0=-1e10, boundary_type='reflective'),
+                       openmc.YPlane(y0=1e10, boundary_type='reflective')]
         else:
             yplanes = [openmc.YPlane(y0=self.lower_left[1],
                                      boundary_type=bc[2]),

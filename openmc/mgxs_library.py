@@ -1135,19 +1135,16 @@ class XSdata(object):
         if self.fissionable is not None:
             grp.attrs['fissionable'] = self.fissionable
         if self.representation is not None:
-            grp.attrs['representation'] = np.array(self.representation,
-                                                   dtype='S')
+            grp.attrs['representation'] = np.string_(self.representation)
             if self.representation == 'angle':
                 if self.num_azimuthal is not None:
                     grp.attrs['num_azimuthal'] = self.num_azimuthal
                 if self.num_polar is not None:
                     grp.attrs['num_polar'] = self.num_polar
         if self.scatter_format is not None:
-            grp.attrs['scatter_format'] = np.array(self.scatter_format,
-                                                   dtype='S')
+            grp.attrs['scatter_format'] = np.string_(self.scatter_format)
         if self.scatter_shape is not None:
-            grp.attrs['scatter_shape'] = np.array(self.scatter_shape,
-                                                  dtype='S')
+            grp.attrs['scatter_shape'] = np.string_(self.scatter_shape)
         if self.order is not None:
             grp.attrs['order'] = self.order
 

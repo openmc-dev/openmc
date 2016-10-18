@@ -47,14 +47,12 @@ def parse_args():
                         help='input XML file')
     parser.add_argument('-o', '--output', nargs='?', default='',
                         help='output file, in HDF5 format')
-    parser.add_argument('-c', '--compression', type=int,
-                        help='HDF5 Compression Level')
     args = vars(parser.parse_args())
 
-    if args['output'] is '':
+    if args['output'] == '':
         filename = args['input'].name
         extension = filenameos.path.splitext()
-        if extension is '.xml':
+        if extension == '.xml':
             filename = filename[:filename.rfind('.')] + '.h5'
         args['output'] = filename
 
@@ -75,7 +73,7 @@ def get_data(element, entry):
     return value
 
 
-if __name__ is '__main__':
+if __name__ == '__main__':
     args = parse_args()
 
     # Parse the XML data.
@@ -117,7 +115,7 @@ if __name__ is '__main__':
         representation = get_data(xsdata_elem, 'representation')
         if representation is None:
             representation = 'isotropic'
-        if representation is 'angle':
+        if representation == 'angle':
             n_azi = int(get_data(xsdata_elem, 'num_azimuthal'))
             n_pol = int(get_data(xsdata_elem, 'num_polar'))
 
@@ -146,14 +144,14 @@ if __name__ is '__main__':
                                      representation=representation))
             if awr is not None:
                 xsd[-1].atomic_weight_ratio = awr
-            if representation is 'angle':
+            if representation == 'angle':
                 xsd[-1].num_azimuthal = n_azi
                 xsd[-1].num_polar = n_pol
             xsd[-1].scatter_format = scatter_format
             xsd[-1].order = order
             names.append(name)
 
-        if scatter_format is 'legendre':
+        if scatter_format == 'legendre':
             order_dim = order + 1
         else:
             order_dim = order

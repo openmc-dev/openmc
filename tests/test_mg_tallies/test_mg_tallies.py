@@ -3,38 +3,84 @@
 import os
 import sys
 sys.path.insert(0, os.pardir)
-from testing_harness import TestHarness, PyAPITestHarness
+from testing_harness import HashedPyAPITestHarness
 import openmc
 
 
-class MGTalliesTestHarness(PyAPITestHarness):
+class MGTalliesTestHarness(HashedPyAPITestHarness):
     def _build_inputs(self):
+        """Write input XML files."""
+        self._input_set.build_default_materials_and_geometry(as_macro=False)
+        self._input_set.build_default_settings()
+
         # Instantiate a tally mesh
         mesh = openmc.Mesh(mesh_id=1)
         mesh.type = 'regular'
-        mesh.dimension = [17, 17, 1]
+        mesh.dimension = [1, 1, 10]
         mesh.lower_left = [0.0, 0.0, 0.0]
-        mesh.upper_right = [21.42, 21.42, 100.0]
+        mesh.upper_right = [10, 10, 5]
 
         # Instantiate some tally filters
         energy_filter = openmc.EnergyFilter([0.0, 20.0])
         energyout_filter = openmc.EnergyoutFilter([0.0, 20.0])
         mesh_filter = openmc.MeshFilter(mesh)
 
-        mat_filter = openmc.MaterialFilter([1,2,3])
+        mat_ids = [mat.id for mat in self._input_set.materials]
+        mat_filter = openmc.MaterialFilter(mat_ids)
 
-        tally1 = openmc.Tally(tally_id=1)
-        tally1.filters = [mesh_filter]
-        tally1.scores = ['total', 'absorption', 'flux',
-                         'fission', 'nu-fission']
+        nuclides = [xs.name for xs in self._input_set.xs_data]
 
-        tally2 = openmc.Tally(tally_id=2)
-        tally2.filters = [mat_filter, energy_filter, energyout_filter]
-        tally2.scores = ['scatter', 'nu-scatter']
+        scores= {False: ['total', 'absorption', 'flux', 'fission', 'nu-fission'],
+                 True: ['total', 'absorption', 'fission', 'nu-fission']}
 
-        self._input_set.tallies = openmc.Tallies([tally1, tally2])
+        tallies = []
+        for do_nuclides in [False, True]:
+            tallies.append(openmc.Tally())
+            tallies[-1].filters = [mesh_filter]
+            tallies[-1].estimator = 'analog'
+            tallies[-1].scores = scores[do_nuclides]
+            if do_nuclides:
+                tallies[-1].nuclides = nuclides
 
-        super(MGTalliesTestHarness, self)._build_inputs()
+            tallies.append(openmc.Tally())
+            tallies[-1].filters = [mesh_filter]
+            tallies[-1].estimator = 'tracklength'
+            tallies[-1].scores = scores[do_nuclides]
+            if do_nuclides:
+                tallies[-1].nuclides = nuclides
+
+            tallies.append(openmc.Tally())
+            tallies[-1].filters = [mat_filter, energy_filter]
+            tallies[-1].estimator = 'analog'
+            tallies[-1].scores = scores[do_nuclides] + ['scatter',
+                                                        'nu-scatter']
+            if do_nuclides:
+                tallies[-1].nuclides = nuclides
+
+            tallies.append(openmc.Tally())
+            tallies[-1].filters = [mat_filter, energy_filter]
+            tallies[-1].estimator = 'collision'
+            tallies[-1].scores = scores[do_nuclides]
+            if do_nuclides:
+                tallies[-1].nuclides = nuclides
+
+            tallies.append(openmc.Tally())
+            tallies[-1].filters = [mat_filter, energy_filter]
+            tallies[-1].estimator = 'tracklength'
+            tallies[-1].scores = scores[do_nuclides]
+            if do_nuclides:
+                tallies[-1].nuclides = nuclides
+
+            tallies.append(openmc.Tally())
+            tallies[-1].filters = [mat_filter, energy_filter,
+                                   energyout_filter]
+            tallies[-1].scores = ['scatter', 'nu-scatter', 'nu-fission']
+            if do_nuclides:
+                tallies[-1].nuclides = nuclides
+
+        self._input_set.tallies = openmc.Tallies(tallies)
+
+        self._input_set.export()
 
     def _cleanup(self):
         super(MGTalliesTestHarness, self)._cleanup()

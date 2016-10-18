@@ -502,7 +502,7 @@ class Material(object):
             # atomic mass
             if percent_type == 'wo':
 
-                # Compute the element awr
+                # Compute the element atomic mass
                 element_am = 0.
                 for i in range(n_isotopes):
                     element_am += atomic_masses[i] * abundances[i]

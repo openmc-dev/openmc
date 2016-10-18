@@ -1,6 +1,5 @@
 module secondary_uncorrelated
 
-  use h5lt, only: h5ltpath_valid_f
   use hdf5, only: HID_T
 
   use angle_distribution, only: AngleDistribution
@@ -9,7 +8,8 @@ module secondary_uncorrelated
   use energy_distribution, only: EnergyDistribution, LevelInelastic, &
        ContinuousTabular, MaxwellEnergy, Evaporation, WattEnergy, DiscretePhoton
   use error, only: warning
-  use hdf5_interface, only: read_attribute, open_group, close_group
+  use hdf5_interface, only: read_attribute, open_group, close_group, &
+       object_exists
   use random_lcg, only: prn
 
 !===============================================================================
@@ -56,25 +56,19 @@ contains
     class(UncorrelatedAngleEnergy), intent(inout) :: this
     integer(HID_T),                 intent(in)    :: group_id
 
-    logical :: exists
-    integer :: hdf5_err
     integer(HID_T) :: energy_group
     integer(HID_T) :: angle_group
     character(MAX_WORD_LEN) :: type
 
-    ! Check if energy group is present
-    call h5ltpath_valid_f(group_id, 'angle', .true., exists, hdf5_err)
-
-    if (exists) then
+    ! Check if angle group is present & read
+    if (object_exists(group_id, 'angle')) then
       angle_group = open_group(group_id, 'angle')
       call this%angle%from_hdf5(angle_group)
       call close_group(angle_group)
     end if
 
-    ! Check if energy group is present
-    call h5ltpath_valid_f(group_id, 'energy', .true., exists, hdf5_err)
-
-    if (exists) then
+    ! Check if energy group is present & read
+    if (object_exists(group_id, 'energy')) then
       energy_group = open_group(group_id, 'energy')
       call read_attribute(type, energy_group, 'type')
       select case (type)

@@ -113,12 +113,6 @@ contains
       if (run_CE) then
         ! Construct log energy grid for cross-sections
         call logarithmic_grid()
-      else
-        ! Create material macroscopic data for MGXS
-        call time_read_xs%start()
-        call read_mgxs()
-        call create_macro_xs()
-        call time_read_xs%stop()
       end if
 
       ! Allocate and setup tally stride, matching_bins, and tally maps

@@ -8,9 +8,9 @@ module sab_header
   use distribution_univariate, only: Tabular
   use error,       only: warning, fatal_error
   use hdf5, only: HID_T, HSIZE_T, SIZE_T
-  use h5lt, only: h5ltpath_valid_f, h5iget_name_f
   use hdf5_interface, only: read_attribute, get_shape, open_group, close_group, &
-       open_dataset, read_dataset, close_dataset, get_datasets
+       open_dataset, read_dataset, close_dataset, get_datasets, object_exists, &
+       get_name
   use secondary_correlated, only: CorrelatedAngleEnergy
   use stl_vector, only: VectorInt, VectorReal
   use string, only: to_str, str_to_int
@@ -66,7 +66,7 @@ module sab_header
   end type SabData
 
   type SAlphaBeta
-    character(100) :: name     ! name of table, e.g. lwtr.10t
+    character(150) :: name     ! name of table, e.g. lwtr.10t
     real(8)        :: awr      ! weight of nucleus in neutron masses
     real(8), allocatable :: kTs(:)  ! temperatures in MeV (k*T)
     character(10), allocatable :: nuclides(:) ! List of valid nuclides
@@ -92,8 +92,7 @@ contains
     integer :: n_energy, n_energy_out, n_mu
     integer :: i_closest
     integer :: n_temperature
-    integer :: hdf5_err
-    integer(SIZE_T) :: name_len, name_file_len
+    integer(SIZE_T) :: name_len
     integer(HID_T) :: T_group
     integer(HID_T) :: elastic_group
     integer(HID_T) :: inelastic_group
@@ -103,11 +102,10 @@ contains
     integer(HSIZE_T) :: dims3(3)
     real(8), allocatable :: temp(:,:)
     character(20) :: type
-    logical :: exists
     type(CorrelatedAngleEnergy) :: correlated_dist
 
     character(MAX_WORD_LEN) :: temp_str
-    character(MAX_FILE_LEN), allocatable :: dset_names(:)
+    character(MAX_WORD_LEN), allocatable :: dset_names(:)
     real(8), allocatable :: temps_available(:) ! temperatures available
     real(8) :: temp_desired
     real(8) :: temp_actual
@@ -115,7 +113,7 @@ contains
 
     ! Get name of table from group
     name_len = len(this % name)
-    call h5iget_name_f(group_id, this % name, name_len, name_file_len, hdf5_err)
+    this % name = get_name(group_id, name_len)
 
     ! Get rid of leading '/'
     this % name = trim(this % name(2:))
@@ -207,8 +205,7 @@ contains
       T_group = open_group(group_id, temp_str)
 
       ! Coherent elastic data
-      call h5ltpath_valid_f(T_group, 'elastic', .true., exists, hdf5_err)
-      if (exists) then
+      if (object_exists(T_group, 'elastic')) then
         ! Read cross section data
         elastic_group = open_group(T_group, 'elastic')
         dset_id = open_dataset(elastic_group, 'xs')
@@ -250,8 +247,7 @@ contains
       end if
 
       ! Inelastic data
-      call h5ltpath_valid_f(T_group, 'inelastic', .true., exists, hdf5_err)
-      if (exists) then
+      if (object_exists(T_group, 'inelastic')) then
         ! Read type of inelastic data
         inelastic_group = open_group(T_group, 'inelastic')
 

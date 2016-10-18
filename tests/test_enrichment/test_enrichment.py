@@ -84,6 +84,11 @@ class EnrichmentTestHarness(PyAPITestHarness):
         self._input_set.build_default_settings()
         self._input_set.export()
 
+    def _cleanup(self):
+        super(EnrichmentTestHarness, self)._cleanup()
+        f = os.path.join(os.getcwd(), 'tallies.xml')
+        if os.path.exists(f): os.remove(f)
+
 
 if __name__ == '__main__':
     harness = EnrichmentTestHarness('statepoint.10.*', True)

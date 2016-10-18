@@ -443,6 +443,12 @@ class Material(object):
                   'percent type "{1}"'.format(self._id, percent_type)
             raise ValueError(msg)
 
+        # Copy this Element to separate it from same Element in other Materials
+        if isinstance(element, openmc.Element):
+            element = deepcopy(element)
+        else:
+            element = openmc.Element(element)
+
         if enrichment is not None:
             if not isinstance(enrichment, Real):
                 msg = 'Unable to add an Element to Material ID="{0}" with a ' \
@@ -450,17 +456,20 @@ class Material(object):
                       .format(self._id, enrichment)
                 raise ValueError(msg)
 
-            elif element != 'U':
+            elif element.name != 'U':
                 msg = 'Unable to use enrichment for element {0} which is not ' \
-                      'uranium for Material ID="{1}"'.format(enrichment,
+                      'uranium for Material ID="{1}"'.format(element.name,
                                                              self._id)
                 raise ValueError(msg)
 
-        # Copy this Element to separate it from same Element in other Materials
-        if isinstance(element, openmc.Element):
-            element = deepcopy(element)
-        else:
-            element = openmc.Element(element)
+            if enrichment > 0.06:
+                msg = 'A uranium enrichment of {0} was given for Material ID='\
+                      '"{0}". OpenMC assumes the U234/U235 mass ratio is '\
+                      'constant at 0.008, which is only valid at low ' \
+                      'enrichments. Consider setting the isotopic ' \
+                      'composition manually for enrichments over 6%.'.\
+                      format(self._id)
+                warnings.warn(msg)
 
         if expand or enrichment is not None:
 
@@ -477,14 +486,16 @@ class Material(object):
             # Modify mole fractions if enrichment provided
             if enrichment is not None:
 
-                u234 = [i for i,iso in enumerate(isotopes) \
-                        if iso.name == 'U234'][0]
-                u235 = [i for i,iso in enumerate(isotopes) \
-                        if iso.name == 'U235'][0]
-                u238 = [i for i,iso in enumerate(isotopes) \
-                        if iso.name == 'U238'][0]
+                # Get the indices for the uranium isotopes
+                for i,iso in enumerate(isotopes):
+                    if iso.name == 'U234':
+                        u234 = i
+                    elif iso.name == 'U235':
+                        u235 = i
+                    elif iso.name == 'U238':
+                        u238 = i
 
-                # Calculate the mass fractions of nuclides
+                # Calculate the mass fractions of isotopes
                 abundances[u234] = 0.008 * enrichment
                 abundances[u235] = enrichment
                 abundances[u238] = 1.0 - 1.008 * enrichment

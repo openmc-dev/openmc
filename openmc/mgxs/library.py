@@ -1283,7 +1283,7 @@ class Library(object):
              ('nu-transport' not in self.mgxs_types))):
             error_flag = True
             warn('A "nu-transport" MGXS type is required since a "P0" '
-                 'correction is applied, but a "nu-transport" MGXS == '
+                 'correction is applied, but a "nu-transport" MGXS is '
                  'not provided.')
         elif (((self.correction is None) and
                ('total' not in self.mgxs_types))):

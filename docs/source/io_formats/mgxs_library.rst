@@ -6,21 +6,19 @@ Multi-Group Cross Section Library Format
 
 OpenMC can be run in continuous-energy mode or multi-group mode, provided the
 nuclear data is available.  In continuous-energy mode, the
-``cross_sections.xml`` file contains necessary meta-data for each data set,
+``cross_sections.xml`` file contains necessary meta-data for each dataset,
 including the name and a file system location where the complete library
-can be found.  In multi-group mode, this ``mgxs.xml`` file contains
-this same meta-data describing the nuclide or material, but also contains the
-group-wise nuclear data.  This portion of the manual describes the format of
-the multi-group data library required to be used in the ``mgxs.xml``
-file.
+can be found.  In multi-group mode, the multi-group meta-data and the
+nuclear data itself is contained within an ``mgxs.h5`` file.  This portion of
+the manual describes the format of the multi-group data library required
+to be used in the ``mgxs.h5`` file.
 
-Similar to the other input file types, the multi-group library is provided in
-the XML_ format.  This library must provide some meta-data about the library
-itself (such as the number of groups and the group structure, etc.) as well as
-the actual cross section data itself for each of the necessary nuclides or
-materials.
+The multi-group library is provided in the HDF5_ format.  This library must
+provide some meta-data about the library itself (such as the number of
+groups and the group structure, etc.) as well as the actual cross section
+data itself for each of the necessary nuclides or materials.
 
-.. _XML: http://www.w3.org/XML/
+.. _HDF5: http://www.hdfgroup.org/HDF5/
 
 .. _mgxs_lib_spec:
 
@@ -28,277 +26,139 @@ materials.
 MGXS Library Specification
 --------------------------
 
-The multi-group library meta-data is contained within the groups_,
-group_structure_, and inverse_velocities_ elements.
-The actual multi-group data itself is contained within the xsdata_ element.
+**/**
 
-.. _groups:
+:Attributes: - **groups** (*int*) -- Number of energy groups
+             - **group structure** (*double[]*) -- Monotonically increasing
+               list of group boundaries, in units of MeV.  The length of this
+               array should be the number of groups plus 1.
 
-``<groups>`` Element
---------------------
+**/<library name>/**
 
-The ``<groups>`` element has no attributes and simply provides the number of
-energy groups contained within the library.
+The data within <library name> contains the temperature-dependent multi-group
+data for the nuclide or material that it represents.
 
-  *Default*: None, this must be provided.
+:Attributes: - **atomic_weight_ratio** (*double*) -- The atomic weight ratio
+               (optional, i.e. it is not meaningful for material-wise data).
+             - **fissionable** (*bool*) -- Whether the dataset is fissionable
+               (True) or not (False).
+             - **representation** (*char[]*) -- The method used to generate and
+               represent the multi-group cross sections.  That is, whether they
+               were generated with scalar flux weighting (or reduced to a
+               similar representation) and thus are angle-independent, or if the
+               data was generated with angular dependent fluxes and thus the
+               data is angle-dependent.  Valid values are either "isotropic" or
+               "angle".
+             - **num_azimuthal** (*int*) -- Number of equal width angular bins
+               that the azimuthal angular domain is subdivided if the
+               `representation` attribute is "angle". This parameter is
+               ignored otherwise.
+             - **num_polar** (*int*) -- Number of equal width angular bins
+               that the polar angular domain is subdivided if the
+               `representation` attribute is "angle". This parameter is
+               ignored otherwise.
+             - **scatter_format** (*char[]*) -- The representation of the
+               scattering angular distribution.  The options are either
+               "legendre", "histogram", or "tabular".  If not provided, the
+               default of "legendre" will be assumed.
+             - **order** (*int*) -- Either the Legendre order, number of bins,
+               or number of points (depending on the value of `scatter_format`)
+               used to describe the angular distribution associated with each
+               group-to-group transfer probability.
+             - **scatter_shape** (*char[]*) -- The shape of the provided
+               scatter and multiplicity matrix. The values provided are strings
+               describing the ordering the scattering array is provided in
+               row-major (i.e., C/C++ and Python) indexing. Valid values are
+               "[Order][G][G']" or "[Order][G'][G]" where "G'" denotes the
+               secondary/outgoing energy groups, "G" denotes the incoming
+               energy groups, and "Order" is the angular distribution index.
+               This value is not required; if not the default value of
+               "[Order][G][G']" will be assumed.
 
-.. _group_structure:
+**/<library name>/kTs/**
 
-``<group_structure>`` Element
------------------------------
+:Datasets: 
+           - **<TTT>K** (*double*) -- kT values (in MeV) for each Temperature
+             TTT (in Kelvin), rounded to the nearest integer
 
-The ``<group_structure>`` element has no attributes and should be provided as a
-monotonically increasing list of bounding energies, in MeV, for a number of
-groups. To provide proper energy boundaries, the length of the data within the
-``<group_structure>`` element should be one more than the number of groups in
-the problem.  For example, a two-group problem could be specified as:
+**/<library name>/<TTT>K/**
 
-.. code-block:: xml
+Temperature-dependent data, provided for temperature <TTT>K.
 
-    <group_structure> 0.0 0.625E-6 20.0 </group_structure>
+:Datasets: - **total** (*double[]* or *double[][][]*) -- Total cross section.
+             This is a 1-D vector if `representation` is "isotropic", or a 3-D
+             vector if `representation` is "angle" with dimensions of
+             [groups][azimuthal][polar].
+           - **absorption** (*double[]* or *double[][][]*) -- Absorption
+             cross section.
+             This is a 1-D vector if `representation` is "isotropic", or a 3-D
+             vector if `representation` is "angle" with dimensions of
+             [groups][azimuthal][polar].
+           - **fission** (*double[]* or *double[][][]*) -- Fission
+             cross section.
+             This is a 1-D vector if `representation` is "isotropic", or a 3-D
+             vector if `representation` is "angle" with dimensions of
+             [groups][azimuthal][polar].  This is only required if the dataset
+             is fissionable and fission-tallies are expected to be used.
+           - **kappa-fission** (*double[]* or *double[][][]*) -- Kappa-Fission
+             (energy-release from fission) cross section.
+             This is a 1-D vector if `representation` is "isotropic", or a 3-D
+             vector if `representation` is "angle" with dimensions of
+             [groups][azimuthal][polar].  This is only required if the dataset
+             is fissionable and fission-tallies are expected to be used.
+           - **chi** (*double[]* or *double[][][]*) -- Fission neutron energy
+             spectra.
+             This is a 1-D vector if `representation` is "isotropic", or a 3-D
+             vector if `representation` is "angle" with dimensions of
+             [groups][azimuthal][polar].  This is only required if the dataset
+             is fissionable and fission-tallies are expected to be used.
+           - **nu-fission** (*double[]* to *double[][][][]*) -- Nu-Fission
+             cross section.
+             If **chi** is provided, then `nu-fission` has the same
+             dimensionality as `fission`.  If **chi** is not provided, then
+             the `nu-fission` data must represent the fission neutron energy
+             spectra as well and thus will have one additional dimension
+             for the outgoing energy group.  In this case, `nu-fission` has the
+             same dimensionality as `multiplicity_matrix`.
+           - **inverse_velocities** (*double[]*) -- Average inverse velocity
+             for each of the groups in the library. This dataset is optional.
 
-*Default*: None, this must be provided.
+**/<library name>/<TTT>K/scatter_data/**
 
-.. _inverse_velocities:
+Data specific to neutron scattering for the temperature <TTT>K
 
-``<inverse_velocities>`` Element
---------------------------------
-
-The ``<inverse_velocities>`` element optionally indicates the average
-inverse velocity corresponding to each of the groups in the problem.
-This element should therefore be an array with a length which matches the
-number of groups set in the groups_ element.
-
-*Default*: Should this be needed by the presence of an ``inverse-velocity``
-score in the ``tallies.xml`` file and not provided in this element, OpenMC
-will simply convert the group mid-point energy to an inverse of the velocity
-and use this information for tallying.
-
-.. _xsdata:
-
-``<xsdata>`` Element
---------------------
-
-The ``<xsdata>`` element contains the nuclide or material-specific meta-data as
-well as the actual cross section data. The following are the
-attributes/sub-elements required to describe the meta-data:
-
-  :name:
-    The name of the microscopic or macroscopic data set.  An extension to the
-    name must be provided (e.g., the ``.300K`` in ``UO2.300K``).  The name and
-    extension together must be twelve or less characters in length.  This
-    extension must follow a period and be five characters or less in length.
-    similar to the equivalent in the continuous-energy ``cross_sections.xml``
-    file, is used to denote variants of the particular nuclide or material of
-    interest (i.e. the ``UO2`` data in this example could have been generated
-    at a temperature of 300K).
-
-    *Default*: None, this must be provided.
-
-  :alias:
-    An alternative name to use for the microscopic or macroscopic data set.
-
-    *Default*: If no alias is provided, it will adopt the value of ``name``.
-
-  :kT:
-    The temperature times Boltzmann's constant (in units of MeV) at which the
-    data was generated.
-
-    *Default*: Room temperature, 2.53E-8 MeV
-
-  :fissionable:
-    This element states whether or not the data in question is fissionable.
-    Accepted values are "true" or "false".
-
-    *Default*: None, this element must be provided.
-
-  :representation:
-    This element provides the method used to generate and represent the
-    multi-group cross sections.  That is, whether they were generated with
-    scalar flux weighting (or reduced to an equivalent representation)
-    and thus are angle-independent, or if the data was generated with angular
-    dependent fluxes and thus the data is angle-dependent.  The options are
-    either "isotropic" or "angle".
-
-    *Default*: "isotropic"
-
-  :num_azimuthal:
-    This element provides the number of equal width angular bins that the
-    azimuthal angular domain is subdivided in the case of angle-dependent
-    cross sections (i.e., "angle" is passed to the ``representation`` element).
-    Note that these bins are equal in azimuthal angle widths, not equal in the
-    cosine of the azimuthal angle widths.
-
-    *Default*: If ``representation`` is "angle", this must be provided.  This
-    parameter is not used for other ``representation`` types.
-
-  :num_polar:
-    This element provides the number of equal width angular bins that the
-    polar angular domain is subdivided in the case of angle-dependent
-    cross sections (i.e., "angle" is passed to the ``representation`` element).
-    Note that these bins are equal in polar angle widths, not equal in the
-    cosine of the polar angle widths.
-
-
-    *Default*: If ``representation`` is "angle", this must be provided.  This
-    parameter is not used for other ``representation`` types.
-
-  :scatt_type:
-    This element provides the representation of the angular distribution
-    associated with each group-to-group transfer probability. The options are
-    either "legendre", "histogram", or "tabular".
-    The "legendre" option means the angular distribution has been
-    expanded via Legendre polynomials of the order provided in the "order"
-    element.
-    The "histogram" option means the angular distribution is provided in
-    an equi-width histogram format with a number of bins as provided in the
-    "order" element.  This is useful when the angular distribution was
-    obtained from a Monte Carlo tally and thus is natively in the histogram
-    format.
-    The "tabular" option means the angular distribution is provided in an
-    equi-spaced point-wise representation.
-
-    *Default*: "legendre"
-
-  :order:
-    This element provides either the Legendre order, number of bins, or number
-    of points used to describe the angular distribution associated with each
-    group-to-group transfer probability.  The specific meaning of this bin
-    depends upon the value of ``scatt_type`` as discussed above.
-
-    *Default*: None, this element must be provided.
-
-  :tabular_legendre:
-    This optional element is used to set how the Legendre scattering kernel, if
-    provided via the ``scatt_type`` element above, is represented and thus used
-    during the scattering process.  Specifically, the options are to either
-    convert the Legendre expansion to a tabular representation or leave it as
-    a set of Legendre coefficients.  Converting to a tabular representation
-    will cost memory but can allow for a decrease in runtime compared to
-    leaving as a set of Legendre coefficients.  This element has the following
-    attributes/sub-elements:
-
-    :enable:
-      This attribute/sub-element denotes whether or not the conversion to the
-      tabular format should be performed or not.  A value of "true" means
-      the conversion should be performed, "false" means it should not.
-
-      *Default*: "true"
-
-    :num_points:
-      If the conversion is to take place the number of tabular points is
-      required.  This attribute/sub-element allows the user to set the desired
-      number of points.
-
-      *Default*: 33
-
-  The following attributes/sub-elements are the cross section values to
-  be used during the transport process.
-
-  :total:
-    This element requires the group-wise total cross section ordered by
-    increasing group index (i.e., fast to thermal).  If ``representation`` is
-    "isotropic", then the length of this list should equal the number of
-    groups described in the ``groups`` element.  If ``representation`` is
-    "angle", then the length of this list should equal the number of groups
-    times the number of azimuthal angles times the number of polar angles,
-    with the inner-dimension being groups, intermediate-dimension being
-    azimuthal angles and outer-dimension being the polar angles.
-
-    *Default*: If not provided, it will be determined by summing the
-    absorption and scattering cross sections.
-
-  :absorption:
-    This element requires the group-wise absorption cross section ordered by
-    increasing group index (i.e., fast to thermal).  If ``representation`` is
-    "isotropic", then the length of this list should equal the number of
-    groups described in the ``groups`` element.  If ``representation`` is
-    "angle", then the length of this list should equal the number of groups
-    times the number of azimuthal angles times the number of polar angles,
-    with the inner-dimension being groups, intermediate-dimension being
-    azimuthal angles and outer-dimension being the polar angles.
-
-    *Default*: None, this must be provided.
-
-  :scatter:
-    This element requires the scattering moment matrices presented with the
-    columns representing incoming group and rows representing the outgoing
-    group.  That is, down-scatter will be above the diagonal of the resultant
-    matrix.  This matrix is repeated for every Legendre order (in order of
-    increasing orders) if ``scatt_type`` is "legendre"; otherwise, this
-    matrix is repeated for every bin of the histogram or tabular
-    representation.  Finally, if ``representation`` is "angle", the above
-    is repeated for every azimuthal angle and every polar angle, in that
-    order.
-
-    *Default*: None, this must be provided.
-
-  :multiplicity:
-    This element provides the ratio of neutrons produced in scattering
-    collisions to the neutrons which undergo scattering collisions; that is,
-    the multiplicity provides the code with a scaling factor to account for
-    neutrons being produced in (n,xn) reactions.  This information is assumed
-    isotropic and therefore does not need to be repeated for every Legendre
-    moment or histogram/tabular bin.  This matrix follows the same arrangement
-    as described for the ``scatter`` element, with the exception of the
-    data needed to provide the scattering type information.
-
-    *Default*: Multiplicities of 1.0 are assumed (i.e., (n,xn) reactions are
-    neglected).
-
-  The following fission-specific data are only needed should ``fissionable``
-  be "true".
-
-  :fission:
-    This element requires the group-wise fission cross section ordered by
-    increasing group index (i.e., fast to thermal).  If ``representation`` is
-    "isotropic", then the length of this list should equal the number of
-    groups described in the ``groups`` element.  If ``representation`` is
-    "angle", then the length of this list should equal the number of groups
-    times the number of azimuthal angles times the number of polar angles,
-    with the inner-dimension being groups, intermediate-dimension being
-    azimuthal angles and outer-dimension being the polar angles.
-
-    *Default*: None, this is required only if fission tallies are
-    requested and the material is fissionable.
-
-  :kappa_fission:
-    This element requires the group-wise kappa-fission cross section ordered by
-    increasing group index (i.e., fast to thermal).  If ``representation`` is
-    "isotropic", then the length of this list should equal the number of
-    groups described in the ``groups`` element.  If ``representation`` is
-    "angle", then the length of this list should equal the number of groups
-    times the number of azimuthal angles times the number of polar angles,
-    with the inner-dimension being groups, intermediate-dimension being
-    azimuthal angles and outer-dimension being the polar angles.
-
-    *Default*: None, this is required only if kappa_fission tallies are
-    requested and the material is fissionable.
-
-  :chi:
-    This element requires the group-wise fission spectra ordered by
-    increasing group index (i.e., fast to thermal).  This element should be
-    used if making the common approximation that the fission spectra does
-    not depend on incoming energy.  If the user does not wish to make this
-    approximation, then this should not be provided and this information
-    included in the ``nu_fission`` element instead.  If ``representation`` is
-    "isotropic", then the length of this list should equal the number of
-    groups described in the ``groups`` element.  If ``representation`` is
-    "angle", then the length of this list should equal the number of groups
-    times the number of azimuthal angles times the number of polar angles,
-    with the inner-dimension being groups, intermediate-dimension being
-    azimuthal angles and outer-dimension being the polar angles.
-
-    *Default*: None, either this element is provided or ``nu_fission`` is
-    provided in fission matrix form, or the material is not fissionable.
-
-  :nu_fission:
-    This element provides either the group-wise fission production cross
-    section vector (i.e., if ``chi`` is provided), or is the group-wise fission
-    production matrix.  If providing the vector, it should be ordered the same
-    as the ``fission`` data.  If providing the matrix, it should be ordered
-    the same as the ``multiplicity`` matrix.
-
-    *Default*: None, either this element must be provided if the material
-    is fissionable.
-
+:Datasets: - **g_min** (*int[]* or *int[][][]*) --
+             Minimum (most energetic) groups with non-zero values of
+             the scattering matrix provided.  If `scatter_shape` is
+             "[Order][G][G']" then `g_min` will describe the minimum values
+             of "G'" for each "G"; if `scatter_shape` is "[Order][G'][G]"
+             then `g_min` will describe the minimum values of "G" for each "G'".
+             These group numbers use the standard
+             ordering where the fastest neutron energy group is group 1 while
+             the slowest neutron energy group is group G.
+             The dimensionality of `g_min` is:
+             `g_min[g]`, or `g_min[num_polar][num_azimuthal][g]`.
+             The former is used when `representation` is "isotropic", and the
+             latter when `representation` is "angle".
+           - **g_max** (*int[]* or *int[][][]*) --
+             Similar to `g_min`, except this dataset describes the maximum
+             (least energetic) groups with non-zero values of
+             the scattering matrix.
+           - **scatter_matrix** (*double[]*) -- Flattened representation of the
+             scattering moment matrices. The pre-flattened array corresponds to
+             the shape provied in `scatter_shape`, but if `representation` is
+             "angle" the dimensionality in `scatter_shape` is prepended by
+             "[num_polar][num_azimuthal]" dimensions. The right-most energy
+             group dimension will only include the entries between `g_min` and
+             `g_max`.
+             dimension has a dimensionality of `g_min` to `g_max`.
+           - **multiplicity_matrix** (*double[]*) -- Flattened representation of
+             the scattering moment matrices. This dataset provides the code with
+             a scaling factor to account for neutrons being produced in (n,xn)
+             reactions. This is assumed isotropic and therefore is not repeated
+             for every Legendre moment or histogram/tabular bin. This dataset is
+             optional, if it is not provided no multiplication (i.e., values of
+             1.0) will be assumed.
+             The pre-flattened array is shapes consistent with `scatter_matrix`
+             except the "[Order]" dimension in `scatter_shape` is ignored since
+             this data is assumed isotropic.

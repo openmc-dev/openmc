@@ -117,7 +117,7 @@ def cleanup(path):
     for dirpath, dirnames, filenames in os.walk(path):
         for fname in filenames:
             for ext in ['.h5', '.ppm', '.voxel']:
-                if fname.endswith(ext):
+                if fname.endswith(ext) and fname != '1d_mgxs.h5':
                     os.remove(os.path.join(dirpath, fname))
 
 

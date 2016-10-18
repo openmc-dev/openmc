@@ -5,7 +5,7 @@ module reaction_header
 
   use constants,      only: MAX_WORD_LEN
   use hdf5_interface, only: read_attribute, open_group, close_group, &
-       open_dataset, read_dataset, close_dataset, get_shape
+       open_dataset, read_dataset, close_dataset, get_shape, get_groups
   use product_header, only: ReactionProduct
   use stl_vector,     only: VectorInt
   use string,         only: to_str, starts_with
@@ -42,17 +42,12 @@ contains
     integer :: i
     integer :: cm
     integer :: n_product
-    integer :: storage_type
-    integer :: max_corder
-    integer :: n_links
-    integer :: hdf5_err
     integer(HID_T) :: pgroup
     integer(HID_T) :: xs, temp_group
-    integer(SIZE_T) :: name_len
     integer(HSIZE_T) :: dims(1)
     integer(HSIZE_T) :: j
-    character(MAX_WORD_LEN) :: name
     character(MAX_WORD_LEN) :: temp_str ! temperature dataset name, e.g. '294K'
+    character(MAX_WORD_LEN), allocatable :: grp_names(:)
 
     call read_attribute(this % Q_value, group_id, 'Q_value')
     call read_attribute(this % MT, group_id, 'mt')
@@ -74,12 +69,10 @@ contains
     end do
 
     ! Determine number of products
-    call h5gget_info_f(group_id, storage_type, n_links, max_corder, hdf5_err)
     n_product = 0
-    do j = 0, n_links - 1
-      call h5lget_name_by_idx_f(group_id, ".", H5_INDEX_NAME_F, H5_ITER_INC_F, &
-           j, name, hdf5_err, name_len)
-      if (starts_with(name, "product_")) n_product = n_product + 1
+    call get_groups(group_id, grp_names)
+    do j = 1, size(grp_names)
+      if (starts_with(grp_names(j), "product_")) n_product = n_product + 1
     end do
 
     ! Read products

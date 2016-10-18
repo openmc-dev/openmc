@@ -61,14 +61,14 @@ class MGXSTestHarness(PyAPITestHarness):
             self._input_set.geometry = self.mgxs_lib.create_mg_mode()
 
         # Modify settings so we can run in MG mode
-        self._input_set.settings.cross_sections = './mgxs.xml'
+        self._input_set.settings.cross_sections = './mgxs.h5'
         self._input_set.settings.energy_mode = 'multi-group'
 
         # Write modified input files
         self._input_set.settings.export_to_xml()
         self._input_set.geometry.export_to_xml()
         self._input_set.materials.export_to_xml()
-        self._input_set.mgxs_file.export_to_xml()
+        self._input_set.mgxs_file.export_to_hdf5()
         # Dont need tallies.xml, so remove the file
         if os.path.exists('./tallies.xml'):
             os.remove('./tallies.xml')
@@ -83,9 +83,8 @@ class MGXSTestHarness(PyAPITestHarness):
             returncode = openmc.run(openmc_exec=self._opts.exe)
 
     def _cleanup(self):
-        return
         super(MGXSTestHarness, self)._cleanup()
-        f = os.path.join(os.getcwd(), 'mgxs.xml')
+        f = os.path.join(os.getcwd(), 'mgxs.h5')
         if os.path.exists(f):
             os.remove(f)
 

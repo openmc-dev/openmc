@@ -1164,6 +1164,8 @@ contains
     ! Do same for nucxs, point it to the microscopic nuclide data of interest
     if (i_nuclide > 0) then
       nucxs => nuclides_MG(i_nuclide) % obj
+      ! And since we haven't calculated this temperature index yet, do so now
+      call nucxs % find_temperature(p % sqrtkT)
     end if
 
     i = 0
@@ -2301,17 +2303,24 @@ contains
 
           i_nuclide = t % nuclide_bins(k)
 
-          ! Check to see if this nuclide was in the material of our collision.
-          do m = 1, mat % n_nuclides
-            if (mat % nuclide(m) == i_nuclide) then
-              atom_density = mat % atom_density(m)
-              exit
-            end if
-          end do
+          if (i_nuclide > 0) then
+            atom_density = -ONE
+            ! Check to see if this nuclide was in the material of our collision
+            do m = 1, mat % n_nuclides
+              if (mat % nuclide(m) == i_nuclide) then
+                atom_density = mat % atom_density(m)
+                exit
+              end if
+            end do
+          else
+            atom_density = ZERO
+          end if
 
-          ! Determine score for each bin
-          call score_general(p, t, (k-1)*t % n_score_bins, filter_index, &
-               i_nuclide, atom_density, filter_weight)
+          ! If we found the nuclide, determine the score for each bin
+          if (atom_density >= ZERO) then
+            call score_general(p, t, (k-1)*t % n_score_bins, filter_index, &
+                 i_nuclide, atom_density, filter_weight)
+          end if
 
         end do NUCLIDE_LOOP
 

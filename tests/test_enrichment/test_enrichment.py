@@ -20,7 +20,7 @@ class EnrichmentTestHarness(PyAPITestHarness):
         # Define materials.
         fuel = openmc.Material(name='Fuel')
         fuel.set_density('g/cm3', 10.29769)
-        fuel.add_element("U", 0.88, 'wo', enrichment=0.05)
+        fuel.add_element("U", 0.88, 'wo', enrichment=0.0495)
         fuel.add_element("O", 0.12, 'wo')
 
         clad = openmc.Material(name='Cladding')
@@ -29,8 +29,8 @@ class EnrichmentTestHarness(PyAPITestHarness):
 
         hot_water = openmc.Material(name='Hot borated water')
         hot_water.set_density('g/cm3', 0.740582)
-        hot_water.add_element("H",  2./18., 'wo')
-        hot_water.add_element("O", 16./18., 'wo')
+        hot_water.add_element("H", 0.1111, 'wo')
+        hot_water.add_element("O", 0.8889, 'wo')
         hot_water.add_s_alpha_beta('c_H_in_H2O')
 
         # Define the materials file.

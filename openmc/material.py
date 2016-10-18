@@ -464,11 +464,11 @@ class Material(object):
 
             if enrichment > 0.05:
                 msg = 'A uranium enrichment of {0} was given for Material ID='\
-                      '"{0}". OpenMC assumes the U234/U235 mass ratio is '\
+                      '"{1}". OpenMC assumes the U234/U235 mass ratio is '\
                       'constant at 0.008, which is only valid at low ' \
                       'enrichments. Consider setting the isotopic ' \
                       'composition manually for enrichments over 5%.'.\
-                      format(self._id)
+                      format(enrichment, self._id)
                 warnings.warn(msg)
 
         if expand or enrichment is not None:

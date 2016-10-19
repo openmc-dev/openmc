@@ -25,7 +25,7 @@ class DiffTallyTestHarness(PyAPITestHarness):
         self._input_set.settings.particles = 400
         self._input_set.settings.source = openmc.Source(space=openmc.stats.Box(
             [-160, -160, -183], [160, 160, 183]))
-        self._input_set.settings.output = {'summary': True}
+        self._input_set.settings.temperature['multipole'] = True
 
         self._input_set.tallies = openmc.Tallies()
 
@@ -55,18 +55,23 @@ class DiffTallyTestHarness(PyAPITestHarness):
         d4.material = 1
         d4.nuclide = 'U235'
 
-        derivs = [d1, d2, d3, d4]
+        # Temperature derivatives.
+        d5 = openmc.TallyDerivative(derivative_id=5)
+        d5.variable = 'temperature'
+        d5.material = 1
+
+        derivs = [d1, d2, d3, d4, d5]
 
         # Cover the flux score.
-        for i in range(4):
+        for i in range(5):
             t = openmc.Tally()
             t.add_score('flux')
             t.add_filter(filt_mats)
             t.derivative = derivs[i]
-            self._input_set.tallies.add_tally(t)
+            self._input_set.tallies.append(t)
 
         # Cover supported scores with a collision estimator.
-        for i in range(4):
+        for i in range(5):
             t = openmc.Tally()
             t.add_score('total')
             t.add_score('absorption')
@@ -76,25 +81,37 @@ class DiffTallyTestHarness(PyAPITestHarness):
             t.add_nuclide('total')
             t.add_nuclide('U235')
             t.derivative = derivs[i]
-            self._input_set.tallies.add_tally(t)
+            self._input_set.tallies.append(t)
 
         # Cover an analog estimator.
-        for i in range(4):
+        for i in range(5):
             t = openmc.Tally()
             t.add_score('absorption')
             t.add_filter(filt_mats)
             t.estimator = 'analog'
             t.derivative = derivs[i]
-            self._input_set.tallies.add_tally(t)
+            self._input_set.tallies.append(t)
 
-        # And the special fission with energyout filter.
-        for i in range(4):
+        # Energyout filter and total nuclide for the density derivatives.
+        for i in range(2):
             t = openmc.Tally()
             t.add_score('nu-fission')
             t.add_filter(filt_mats)
             t.add_filter(filt_eout)
+            t.add_nuclide('total')
+            t.add_nuclide('U235')
             t.derivative = derivs[i]
-            self._input_set.tallies.add_tally(t)
+            self._input_set.tallies.append(t)
+
+        # Energyout filter without total nuclide for other derivatives.
+        for i in range(2, 5):
+            t = openmc.Tally()
+            t.add_score('nu-fission')
+            t.add_filter(filt_mats)
+            t.add_filter(filt_eout)
+            t.add_nuclide('U235')
+            t.derivative = derivs[i]
+            self._input_set.tallies.append(t)
 
         self._input_set.export()
 

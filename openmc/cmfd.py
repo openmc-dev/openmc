@@ -15,12 +15,11 @@ from numbers import Real, Integral
 from xml.etree import ElementTree as ET
 import sys
 
+from six import string_types
+
 from openmc.clean_xml import clean_xml_indentation
 from openmc.checkvalue import (check_type, check_length, check_value,
                                check_greater_than, check_less_than)
-
-if sys.version_info[0] >= 3:
-    basestring = str
 
 
 class CMFDMesh(object):
@@ -339,7 +338,7 @@ class CMFD(object):
 
     @display.setter
     def display(self, display):
-        check_type('CMFD display', display, basestring)
+        check_type('CMFD display', display, string_types)
         check_value('CMFD display', display,
                     ['balance', 'dominance', 'entropy', 'source'])
         self._display = display

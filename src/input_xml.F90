@@ -3876,6 +3876,23 @@ contains
                  // trim(to_str(t % id)))
           end if
         end do
+
+        if (tally_derivs(t % deriv) % variable == DIFF_NUCLIDE_DENSITY &
+             .or. tally_derivs(t % deriv) % variable == DIFF_TEMPERATURE) then
+          if (any(t % nuclide_bins == -1)) then
+            if (t % find_filter(FILTER_ENERGYOUT) > 0) then
+              call fatal_error("Error on tally " // trim(to_str(t % id)) &
+                   // ": Cannot use a 'nuclide_density' or 'temperature' &
+                   &derivative on a tally with an outgoing energy filter and &
+                   &'total' nuclide rate. Instead, tally each nuclide in the &
+                   &material individually.")
+              ! Note that diff tallies with these characteristics would work
+              ! correctly if no tally events occur in the perturbed material
+              ! (e.g. pertrubing moderator but only tallying fuel), but this
+              ! case would be hard to check for by only reading inputs.
+            end if
+          end if
+        end if
       end if
 
       ! If settings.xml trigger is turned on, create tally triggers

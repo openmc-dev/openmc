@@ -4665,8 +4665,6 @@ contains
       call read_attribute(num_delayed_groups, file_id, "delayed_groups")
     else
       num_delayed_groups = 0
-      call write_message("WARNING: delayed_groups element not provided so &
-           &number of delayed groups set to 0")
     end if
 
     allocate(rev_energy_bins(num_energy_groups + 1))

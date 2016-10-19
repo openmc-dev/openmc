@@ -1250,10 +1250,10 @@ contains
 
           if (i_nuclide > 0) then
             score = score * nucxs % get_xs('inverse-velocity', p_g, UVW=p_uvw) &
-                 / nucxs % get_xs('total', p_g, UVW=p_uvw) * flux
+                 / matxs % get_xs('absorption', p_g, UVW=p_uvw) * flux
           else
             score = score * matxs % get_xs('inverse-velocity', p_g, UVW=p_uvw) &
-                 / matxs % get_xs('total', p_g, UVW=p_uvw) * flux
+                 / matxs % get_xs('absorption', p_g, UVW=p_uvw) * flux
           end if
 
         else

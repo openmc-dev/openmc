@@ -11,14 +11,12 @@ import sys
 import warnings
 from xml.etree import ElementTree as ET
 
+from six import string_types
 import numpy as np
 
 import openmc
 import openmc.checkvalue as cv
 from openmc.clean_xml import clean_xml_indentation
-
-if sys.version_info[0] >= 3:
-    basestring = str
 
 
 # "Static" variable for auto-generated Tally IDs
@@ -33,9 +31,9 @@ _PRODUCT_TYPES = ['tensor', 'entrywise']
 
 # The following indicate acceptable types when setting Tally.scores,
 # Tally.nuclides, and Tally.filters
-_SCORE_CLASSES = (basestring, openmc.CrossScore, openmc.AggregateScore)
-_NUCLIDE_CLASSES = (basestring, openmc.Nuclide, openmc.CrossNuclide,
-                    openmc.AggregateNuclide)
+_SCORE_CLASSES = string_types + (openmc.CrossScore, openmc.AggregateScore)
+_NUCLIDE_CLASSES = string_types + (openmc.Nuclide, openmc.CrossNuclide,
+                                   openmc.AggregateNuclide)
 _FILTER_CLASSES = (openmc.Filter, openmc.CrossFilter, openmc.AggregateFilter)
 
 # Valid types of estimators
@@ -431,7 +429,7 @@ class Tally(object):
     @name.setter
     def name(self, name):
         if name is not None:
-            cv.check_type('tally name', name, basestring)
+            cv.check_type('tally name', name, string_types)
             self._name = name
         else:
             self._name = ''
@@ -478,7 +476,7 @@ class Tally(object):
                 raise ValueError(msg)
 
             # If score is a string, strip whitespace
-            if isinstance(score, basestring):
+            if isinstance(score, string_types):
                 scores[i] = score.strip()
 
         self._scores = cv.CheckedList(_SCORE_CLASSES, 'tally scores', scores)
@@ -1355,7 +1353,7 @@ class Tally(object):
 
         """
 
-        cv.check_iterable_type('nuclides', nuclides, basestring)
+        cv.check_iterable_type('nuclides', nuclides, string_types)
 
         # Determine the score indices from any of the requested scores
         if nuclides:
@@ -1390,7 +1388,7 @@ class Tally(object):
         """
 
         for score in scores:
-            if not isinstance(score, (basestring, openmc.CrossScore)):
+            if not isinstance(score, string_types + (openmc.CrossScore,)):
                 msg = 'Unable to get score indices for score "{0}" in Tally ' \
                       'ID="{1}" since it is not a string or CrossScore'\
                       .format(score, self.id)
@@ -1585,7 +1583,7 @@ class Tally(object):
             column_name = 'score'
 
             for score in self.scores:
-                if isinstance(score, (basestring, openmc.CrossScore)):
+                if isinstance(score, string_types + (openmc.CrossScore,)):
                     scores.append(str(score))
                 elif isinstance(score, openmc.AggregateScore):
                     scores.append(score.name)
@@ -1700,13 +1698,13 @@ class Tally(object):
             msg = 'The Tally ID="{0}" has no data to export'.format(self.id)
             raise KeyError(msg)
 
-        if not isinstance(filename, basestring):
+        if not isinstance(filename, string_types):
             msg = 'Unable to export the results for Tally ID="{0}" to ' \
                   'filename="{1}" since it is not a ' \
                   'string'.format(self.id, filename)
             raise ValueError(msg)
 
-        elif not isinstance(directory, basestring):
+        elif not isinstance(directory, string_types):
             msg = 'Unable to export the results for Tally ID="{0}" to ' \
                   'directory="{1}" since it is not a ' \
                   'string'.format(self.id, directory)
@@ -2354,11 +2352,11 @@ class Tally(object):
             raise ValueError(msg)
 
         # Check that the scores are valid
-        if not isinstance(score1, (basestring, openmc.CrossScore)):
+        if not isinstance(score1, string_types + (openmc.CrossScore,)):
             msg = 'Unable to swap score1 "{0}" in Tally ID="{1}" since it is ' \
                   'not a string or CrossScore'.format(score1, self.id)
             raise ValueError(msg)
-        elif not isinstance(score2, (basestring, openmc.CrossScore)):
+        elif not isinstance(score2, string_types + (openmc.CrossScore,)):
             msg = 'Unable to swap score2 "{0}" in Tally ID="{1}" since it is ' \
                   'not a string or CrossScore'.format(score2, self.id)
             raise ValueError(msg)

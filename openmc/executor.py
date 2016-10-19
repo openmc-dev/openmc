@@ -3,8 +3,7 @@ import subprocess
 from numbers import Integral
 import sys
 
-if sys.version_info[0] >= 3:
-    basestring = str
+from six import string_types
 
 
 def _run(command, output, cwd):
@@ -89,7 +88,7 @@ def run(particles=None, threads=None, geometry_debug=False,
     if geometry_debug:
         post_args += '-g '
 
-    if isinstance(restart_file, basestring):
+    if isinstance(restart_file, string_types):
         post_args += '-r {0} '.format(restart_file)
 
     if tracks:

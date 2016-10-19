@@ -10,18 +10,17 @@ import glob
 import argparse
 from string import digits
 
+from six.moves import input
+from six.moves.urllib.request import urlopen
+
 import openmc.data
 
-try:
-    from urllib.request import urlopen
-except ImportError:
-    from urllib2 import urlopen
 
-if sys.version_info[0] < 3:
-    askuser = raw_input
-else:
-    askuser = input
+description = """
+Download JEFF 3.2 ACE data from OECD/NEA and convert it to a multi-temperature
+HDF5 library for use with OpenMC.
 
+"""
 
 download_warning = """
 WARNING: This script will download approximately 9 GB of data. Extracting and
@@ -32,14 +31,21 @@ space. Note that if you don't need all 11 temperatures, you can modify the
 Are you sure you want to continue? ([y]/n)
 """
 
-parser = argparse.ArgumentParser()
+class CustomFormatter(argparse.ArgumentDefaultsHelpFormatter,
+                      argparse.RawDescriptionHelpFormatter):
+    pass
+
+parser = argparse.ArgumentParser(
+    description=description,
+    formatter_class=CustomFormatter
+)
 parser.add_argument('-b', '--batch', action='store_true',
                     help='supresses standard in')
 parser.add_argument('-d', '--destination', default='jeff-3.2-hdf5',
                     help='Directory to create new library in')
 args = parser.parse_args()
 
-response = askuser(download_warning) if not args.batch else 'y'
+response = input(download_warning) if not args.batch else 'y'
 if response.lower().startswith('n'):
     sys.exit()
 
@@ -82,7 +88,7 @@ for f in files:
             files_complete.append(f)
             continue
         else:
-            overwrite = askuser('Overwrite {}? ([y]/n) '.format(f))
+            overwrite = input('Overwrite {}? ([y]/n) '.format(f))
             if overwrite.lower().startswith('n'):
                 continue
 

@@ -3,6 +3,7 @@ from collections import Iterable
 from numbers import Integral, Real
 from warnings import warn
 
+from six import add_metaclass
 import numpy as np
 
 from .function import Tabulated1D, INTERPOLATION_SCHEME
@@ -12,11 +13,9 @@ from openmc.mixin import EqualityMixin
 from .endf import get_tab1_record, get_tab2_record
 
 
+@add_metaclass(ABCMeta)
 class EnergyDistribution(EqualityMixin):
     """Abstract superclass for all energy distributions."""
-
-    __metaclass__ = ABCMeta
-
     def __init__(self):
         pass
 

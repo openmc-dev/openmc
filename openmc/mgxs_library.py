@@ -114,7 +114,7 @@ class XSdata(object):
     beta : dict of numpy.ndarray
         Delayed-group-wise delayed neutron fraction cross section vector.
     decay_rate : dict of numpy.ndarray
-        Delayed-group-wise decay rate cross section vector.
+        Delayed-group-wise decay rate vector.
     inverse_velocity : dict of numpy.ndarray
         Inverse of velocity, in units of sec/cm.
     xs_shapes : dict of iterable of int
@@ -148,7 +148,7 @@ class XSdata(object):
 
     [DG][G]: delayed_nu_fission, beta, decay_rate
 
-    [DG][G']: chi_delayed,
+    [DG][G']: chi_delayed
 
     """
 

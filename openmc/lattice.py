@@ -1,21 +1,20 @@
 from __future__ import division
 
-import abc
+from abc import ABCMeta
 from collections import OrderedDict, Iterable
 from math import sqrt, floor
 from numbers import Real, Integral
 from xml.etree import ElementTree as ET
 import sys
 
+from six import add_metaclass, string_types
 import numpy as np
 
 import openmc.checkvalue as cv
 import openmc
 
-if sys.version_info[0] >= 3:
-    basestring = str
 
-
+@add_metaclass(ABCMeta)
 class Lattice(object):
     """A repeating structure wherein each element is a universe.
 
@@ -42,10 +41,6 @@ class Lattice(object):
         of the lattice
 
     """
-
-    # This is an abstract class which cannot be instantiated
-    __metaclass__ = abc.ABCMeta
-
     def __init__(self, lattice_id=None, name=''):
         # Initialize Lattice class attributes
         self.id = lattice_id
@@ -106,7 +101,7 @@ class Lattice(object):
     @name.setter
     def name(self, name):
         if name is not None:
-            cv.check_type('lattice name', name, basestring)
+            cv.check_type('lattice name', name, string_types)
             self._name = name
         else:
             self._name = ''

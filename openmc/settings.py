@@ -4,14 +4,12 @@ import warnings
 from xml.etree import ElementTree as ET
 import sys
 
+from six import string_types
 import numpy as np
 
 from openmc.clean_xml import clean_xml_indentation
 import openmc.checkvalue as cv
 from openmc import Nuclide, VolumeCalculation, Source
-
-if sys.version_info[0] >= 3:
-    basestring = str
 
 
 class Settings(object):
@@ -549,7 +547,7 @@ class Settings(object):
 
     @output_path.setter
     def output_path(self, output_path):
-        cv.check_type('output path', output_path, basestring)
+        cv.check_type('output path', output_path, string_types)
         self._output_path = output_path
 
     @verbosity.setter
@@ -605,12 +603,12 @@ class Settings(object):
 
     @cross_sections.setter
     def cross_sections(self, cross_sections):
-        cv.check_type('cross sections', cross_sections, basestring)
+        cv.check_type('cross sections', cross_sections, string_types)
         self._cross_sections = cross_sections
 
     @multipole_library.setter
     def multipole_library(self, multipole_library):
-        cv.check_type('cross sections', multipole_library, basestring)
+        cv.check_type('cross sections', multipole_library, string_types)
         self._multipole_library = multipole_library
 
     @ptables.setter

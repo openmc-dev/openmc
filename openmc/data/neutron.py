@@ -5,6 +5,7 @@ from itertools import chain
 from numbers import Integral, Real
 from warnings import warn
 
+from six import string_types
 import numpy as np
 import h5py
 
@@ -19,9 +20,6 @@ from .resonance import Resonances, _RESOLVED
 from .urr import ProbabilityTables
 import openmc.checkvalue as cv
 from openmc.mixin import EqualityMixin
-
-if sys.version_info[0] >= 3:
-    basestring = str
 
 
 def _get_metadata(zaid, metastable_scheme='nndc'):
@@ -235,7 +233,7 @@ class IncidentNeutron(EqualityMixin):
 
     @name.setter
     def name(self, name):
-        cv.check_type('name', name, basestring)
+        cv.check_type('name', name, string_types)
         self._name = name
 
     @property
@@ -291,7 +289,7 @@ class IncidentNeutron(EqualityMixin):
     def urr(self, urr):
         cv.check_type('probability table dictionary', urr, MutableMapping)
         for key, value in urr:
-            cv.check_type('probability table temperature', key, basestring)
+            cv.check_type('probability table temperature', key, string_types)
             cv.check_type('probability tables', value, ProbabilityTables)
         self._urr = urr
 

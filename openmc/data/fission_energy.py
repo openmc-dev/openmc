@@ -12,9 +12,6 @@ from .function import Function1D, Tabulated1D, Polynomial, Sum
 import openmc.checkvalue as cv
 from openmc.mixin import EqualityMixin
 
-if sys.version_info[0] >= 3:
-    basestring = str
-
 
 def _extract_458_data(ev, units='eV'):
     """Read an ENDF file and extract the MF=1, MT=458 values.

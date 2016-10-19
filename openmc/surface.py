@@ -4,13 +4,12 @@ from xml.etree import ElementTree as ET
 import sys
 from math import sqrt
 
+from six import add_metaclass, string_types
 import numpy as np
 
 from openmc.checkvalue import check_type, check_value, check_greater_than
 from openmc.region import Region, Intersection
 
-if sys.version_info[0] >= 3:
-    basestring = str
 
 # A static variable for auto-generated Surface IDs
 AUTO_SURFACE_ID = 10000
@@ -134,14 +133,14 @@ class Surface(object):
     @name.setter
     def name(self, name):
         if name is not None:
-            check_type('surface name', name, basestring)
+            check_type('surface name', name, string_types)
             self._name = name
         else:
             self._name = ''
 
     @boundary_type.setter
     def boundary_type(self, boundary_type):
-        check_type('boundary type', boundary_type, basestring)
+        check_type('boundary type', boundary_type, string_types)
         check_value('boundary type', boundary_type, _BC_TYPES)
         self._boundary_type = boundary_type
 
@@ -642,6 +641,7 @@ class ZPlane(Plane):
         return point[2] - self.z0
 
 
+@add_metaclass(ABCMeta)
 class Cylinder(Surface):
     """A cylinder whose length is parallel to the x-, y-, or z-axis.
 
@@ -677,9 +677,6 @@ class Cylinder(Surface):
         Type of the surface
 
     """
-
-    __metaclass__ = ABCMeta
-
     def __init__(self, surface_id=None, boundary_type='transmission',
                  R=1., name=''):
         super(Cylinder, self).__init__(surface_id, boundary_type, name=name)
@@ -1210,7 +1207,7 @@ class Sphere(Surface):
         z = point[2] - self.z0
         return x**2 + y**2 + z**2 - self.r**2
 
-
+@add_metaclass(ABCMeta)
 class Cone(Surface):
     """A conical surface parallel to the x-, y-, or z-axis.
 
@@ -1257,9 +1254,6 @@ class Cone(Surface):
         Type of the surface
 
     """
-
-    __metaclass__ = ABCMeta
-
     def __init__(self, surface_id=None, boundary_type='transmission',
                  x0=0., y0=0., z0=0., R2=1., name=''):
         super(Cone, self).__init__(surface_id, boundary_type, name=name)

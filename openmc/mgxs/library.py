@@ -66,8 +66,8 @@ class Library(object):
         The highest legendre moment in the scattering matrices (default is 0)
     energy_groups : openmc.mgxs.EnergyGroups
         Energy group structure for energy condensation
-    delayed_groups : list of int
-        Delayed groups to filter out the xs
+    num_delayed_groups : int
+        Number of delayed groups
     estimator : str or None
         The tally estimator used to compute multi-group cross sections. If None,
         the default for each MGXS type is used.
@@ -102,7 +102,7 @@ class Library(object):
         self._domain_type = None
         self._domains = 'all'
         self._energy_groups = None
-        self._delayed_groups = None
+        self._num_delayed_groups = 0
         self._correction = 'P0'
         self._legendre_order = 0
         self._tally_trigger = None
@@ -135,7 +135,7 @@ class Library(object):
             clone._correction = self.correction
             clone._legendre_order = self.legendre_order
             clone._energy_groups = copy.deepcopy(self.energy_groups, memo)
-            clone._delayed_groups = copy.deepcopy(self.delayed_groups, memo)
+            clone._num_delayed_groups = self.num_delayed_groups
             clone._tally_trigger = copy.deepcopy(self.tally_trigger, memo)
             clone._all_mgxs = copy.deepcopy(self.all_mgxs)
             clone._sp_filename = self._sp_filename
@@ -205,8 +205,8 @@ class Library(object):
         return self._energy_groups
 
     @property
-    def delayed_groups(self):
-        return self._delayed_groups
+    def num_delayed_groups(self):
+        return self._num_delayed_groups
 
     @property
     def correction(self):
@@ -227,13 +227,6 @@ class Library(object):
     @property
     def num_groups(self):
         return self.energy_groups.num_groups
-
-    @property
-    def num_delayed_groups(self):
-        if self.delayed_groups == None:
-            return 0
-        else:
-            return len(self.delayed_groups)
 
     @property
     def all_mgxs(self):
@@ -334,22 +327,14 @@ class Library(object):
         cv.check_type('energy groups', energy_groups, openmc.mgxs.EnergyGroups)
         self._energy_groups = energy_groups
 
-    @delayed_groups.setter
-    def delayed_groups(self, delayed_groups):
+    @num_delayed_groups.setter
+    def num_delayed_groups(self, num_delayed_groups):
 
-        if delayed_groups != None:
-
-            cv.check_type('delayed groups', delayed_groups, list, int)
-            cv.check_greater_than('num delayed groups', len(delayed_groups), 0)
-
-            # Check that the groups are within [1, MAX_DELAYED_GROUPS]
-            for group in delayed_groups:
-                cv.check_greater_than('delayed group', group, 0)
-                cv.check_less_than('delayed group', group,
-                                   openmc.mgxs.MAX_DELAYED_GROUPS,
-                                   equality=True)
-
-            self._delayed_groups = delayed_groups
+        cv.check_less_than('num delayed groups', num_delayed_groups,
+                           MAX_DELAYED_GROUPS, equality=True)
+        cv.check_greater_than('num delayed groups', num_delayed_groups, 0,
+                              equality=True)
+        self._num_delayed_groups = num_delayed_groups
 
     @correction.setter
     def correction(self, correction):
@@ -434,7 +419,11 @@ class Library(object):
                     mgxs.estimator = self.estimator
 
                 if mgxs_type in openmc.mgxs.MDGXS_TYPES:
-                    mgxs.delayed_groups = self.delayed_groups
+                    if self.num_delayed_groups == 0:
+                        mgxs.delayed_groups = None
+                    else:
+                        delayed_groups = list(range(1,self.num_delayed_groups))
+                        mgxs.delayed_groups = delayed_groups
 
                 # If a tally trigger was specified, add it to the MGXS
                 if self.tally_trigger is not None:
@@ -899,7 +888,7 @@ class Library(object):
         if nuclide != 'total':
             name += '_' + nuclide
         xsdata = openmc.XSdata(name, self.energy_groups)
-        xsdata.delayed_groups = self.num_delayed_groups
+        xsdata.num_delayed_groups = self.num_delayed_groups
 
         if order is None:
             # Set the order to the Library's order (the defualt behavior)
@@ -1096,7 +1085,8 @@ class Library(object):
 
         # Initialize file
         mgxs_file = openmc.MGXSLibrary(self.energy_groups,
-                                       delayed_groups=self.num_delayed_groups)
+                                       num_delayed_groups=\
+                                       self.num_delayed_groups)
 
         if self.domain_type == 'mesh':
             # Create the xsdata objects and add to the mgxs_file

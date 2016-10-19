@@ -188,7 +188,7 @@ class MDGXS(MGXS):
                 cv.check_less_than('delayed group', group, MAX_DELAYED_GROUPS,
                                    equality=True)
 
-            self._delayed_groups = delayed_groups
+        self._delayed_groups = delayed_groups
 
     @property
     def filters(self):

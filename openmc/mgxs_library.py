@@ -8,7 +8,7 @@ import h5py
 import openmc
 import openmc.mgxs
 from openmc.checkvalue import check_type, check_value, check_greater_than, \
-    check_iterable_type
+    check_iterable_type, check_less_than
 
 if sys.version_info[0] >= 3:
     basestring = str
@@ -16,7 +16,8 @@ if sys.version_info[0] >= 3:
 # Supported incoming particle MGXS angular treatment representations
 _REPRESENTATIONS = ['isotropic', 'angle']
 _SCATTER_TYPES = ['tabular', 'legendre', 'histogram']
-_SCATTER_SHAPES = ["[Order][G][G']"]
+_XS_SHAPES = ["[Order][G][G']", "[G]", "[G']", "[G][G']", "[DG]", "[DG][G]",
+              "[DG][G']"]
 
 
 class XSdata(object):
@@ -56,8 +57,6 @@ class XSdata(object):
         Whether or not this is a fissionable data set.
     scatter_format : {'legendre', 'histogram', or 'tabular'}
         Angular distribution representation (legendre, histogram, or tabular)
-    scatter_shapes : {"[Order][G][G']"}
-        Dimensionality of the scattering and multiplicity matrices
     order : int
         Either the Legendre order, number of bins, or number of points used to
         describe the angular distribution associated with each group-to-group
@@ -118,6 +117,38 @@ class XSdata(object):
         Delayed-group-wise decay rate cross section vector.
     inverse_velocity : dict of numpy.ndarray
         Inverse of velocity, in units of sec/cm.
+    xs_shapes : dict of iterable of int
+        Dictionary with keys of _XS_SHAPES and iterable of int values with the
+        corresponding shapes where "Order" corresponds to the pn scattering
+        order, "G" corresponds to incoming energy group, "G'" corresponds to
+        outgoing energy group, and "DG" corresponds to delayed group.
+
+    Notes
+    -----
+    The parameters containing cross section data have dimensionalities which
+    depend upon the value of :attr:`XSdata.representation` as well as the
+    number of Legendre or other angular dimensions as described by
+    :attr:`XSdata.order`. The :attr:`XSdata.xs_shapes` are provided to obtain
+    the dimensionality of the data for each temperature.
+
+    The following are cross sections which should use each of the properties.
+    Note that some cross sections can be input in more than one shape so they
+    are listed multiple times:
+
+    [Order][G][G']: scatter_matrix
+
+    [G]: total, absorption, fission, kappa_fission, nu_fission,
+         prompt_nu_fission, inverse_velocity
+
+    [G']: chi, chi_prompt, chi_delayed
+
+    [G][G']: multiplicity_matrix, nu_fission
+
+    [DG]: beta, decay_rate
+
+    [DG][G]: delayed_nu_fission, beta, decay_rate
+
+    [DG][G']: chi_delayed,
 
     """
 
@@ -133,7 +164,6 @@ class XSdata(object):
         self._atomic_weight_ratio = None
         self._fissionable = False
         self._scatter_format = 'legendre'
-        self._scatter_shape = "[Order][G][G']"
         self._order = None
         self._num_polar = None
         self._num_azimuthal = None
@@ -152,6 +182,7 @@ class XSdata(object):
         self._beta = len(temperatures) * [None]
         self._decay_rate = len(temperatures) * [None]
         self._inverse_velocity = len(temperatures) * [None]
+        self._xs_shapes = None
 
     @property
     def name(self):
@@ -184,10 +215,6 @@ class XSdata(object):
     @property
     def scatter_format(self):
         return self._scatter_format
-
-    @property
-    def scatter_shape(self):
-        return self._scatter_shape
 
     @property
     def order(self):
@@ -257,6 +284,53 @@ class XSdata(object):
             else:
                 return self._order
 
+    @property
+    def xs_shapes(self):
+
+        if self._xs_shapes is None:
+
+            self._xs_shapes = {}
+
+            if self.representation == 'isotropic':
+                self._xs_shapes["[G]"] = (self.energy_groups.num_groups,)
+                self._xs_shapes["[G']"] = (self.energy_groups.num_groups,)
+                self._xs_shapes["[G][G']"] = (self.energy_groups.num_groups,
+                                              self.energy_groups.num_groups)
+                self._xs_shapes["[DG]"] = (self.num_delayed_groups,)
+                self._xs_shapes["[DG][G]"] = (self.num_delayed_groups,
+                                              self.energy_groups.num_groups)
+                self._xs_shapes["[DG][G']"] = (self.num_delayed_groups,
+                                              self.energy_groups.num_groups)
+                self._xs_shapes["[Order][G][G']"] \
+                    = (self.num_orders, self.energy_groups.num_groups,
+                       self.energy_groups.num_groups)
+
+            elif self.representation == 'angle':
+                self._xs_shapes["[G]"] = (self.num_polar, self.num_azimuthal,
+                                        self.energy_groups.num_groups)
+                self._xs_shapes["[G']"] = (self.num_polar, self.num_azimuthal,
+                                           self.energy_groups.num_groups)
+                self._xs_shapes["[G][G']"] = (self.num_polar,
+                                              self.num_azimuthal,
+                                              self.energy_groups.num_groups,
+                                              self.energy_groups.num_groups)
+                self._xs_shapes["[DG]"] = (self.num_polar, self.num_azimuthal,
+                                           self.num_delayed_groups)
+                self._xs_shapes["[DG][G]"] = (self.num_polar,
+                                              self.num_azimuthal,
+                                              self.num_delayed_groups,
+                                              self.energy_groups.num_groups)
+                self._xs_shapes["[DG][G']"] = (self.num_polar,
+                                               self.num_azimuthal,
+                                               self.num_delayed_groups,
+                                               self.energy_groups.num_groups)
+                self._xs_shapes["[Order][G][G']"] \
+                    = (self.num_polar, self.num_azimuthal, self.num_orders,
+                       self.energy_groups.num_groups,
+                       self.energy_groups.num_groups)
+
+        return self._xs_shapes
+
     @name.setter
     def name(self, name):
         check_type('name for XSdata', name, basestring)
@@ -280,9 +354,10 @@ class XSdata(object):
 
         # Check validity of num_delayed_groups
         check_type('num_delayed_groups', num_delayed_groups, int)
-        check_greater_than('delayed_groups', num_delayed_groups, 0,
+        check_less_than('num_delayed_groups', num_delayed_groups,
+                        openmc.mgxs.MAX_DELAYED_GROUPS, equality=True)
+        check_greater_than('num_delayed_groups', num_delayed_groups, 0,
                            equality=True)
-
         self._num_delayed_groups = num_delayed_groups
 
     @representation.setter
@@ -294,6 +369,7 @@ class XSdata(object):
 
     @atomic_weight_ratio.setter
     def atomic_weight_ratio(self, atomic_weight_ratio):
+
         # Check validity of type and that the atomic_weight_ratio value is > 0
         check_type('atomic_weight_ratio', atomic_weight_ratio, Real)
         check_greater_than('atomic_weight_ratio', atomic_weight_ratio, 0.0)
@@ -301,8 +377,8 @@ class XSdata(object):
 
     @temperatures.setter
     def temperatures(self, temperatures):
-        check_iterable_type('temperatures', temperatures, Real)
 
+        check_iterable_type('temperatures', temperatures, Real)
         self._temperatures = np.array(temperatures)
 
     @scatter_format.setter
@@ -311,12 +387,6 @@ class XSdata(object):
         # check to see it is of a valid type and value
         check_value('scatter_format', scatter_format, _SCATTER_TYPES)
         self._scatter_format = scatter_format
-
-    @scatter_shape.setter
-    def scatter_shape(self, scatter_shape):
-        # check to see it is of a valid type and value
-        check_value('scatter_shape', scatter_shape, _SCATTER_SHAPES)
-        self._scatter_shape = scatter_shape
 
     @order.setter
     def order(self, order):
@@ -395,11 +465,7 @@ class XSdata(object):
         check_type('total', total, Iterable, expected_iter_type=Real)
 
         # Get the accepted shapes for this xs
-        if self.representation is 'isotropic':
-            shapes = [(self.energy_groups.num_groups,)]
-        else:
-            shapes = [(self.num_polar, self.num_azimuthal,
-                      self.energy_groups.num_groups)]
+        shapes = [self.xs_shapes["[G]"]]
 
         # Convert to a numpy array so we can easily get the shape for checking
         total = np.asarray(total)
@@ -431,11 +497,7 @@ class XSdata(object):
         check_type('absorption', absorption, Iterable, expected_iter_type=Real)
 
         # Get the accepted shapes for this xs
-        if self.representation is 'isotropic':
-            shapes = [(self.energy_groups.num_groups,)]
-        else:
-            shapes = [(self.num_polar, self.num_azimuthal,
-                      self.energy_groups.num_groups)]
+        shapes = [self.xs_shapes["[G]"]]
 
         # Convert to a numpy array so we can easily get the shape for checking
         absorption = np.asarray(absorption)
@@ -467,11 +529,7 @@ class XSdata(object):
         check_type('fission', fission, Iterable, expected_iter_type=Real)
 
         # Get the accepted shapes for this xs
-        if self.representation is 'isotropic':
-            shapes = [(self.energy_groups.num_groups,)]
-        else:
-            shapes = [(self.num_polar, self.num_azimuthal,
-                      self.energy_groups.num_groups)]
+        shapes = [self.xs_shapes["[G]"]]
 
         # Convert to a numpy array so we can easily get the shape for checking
         fission = np.asarray(fission)
@@ -507,11 +565,7 @@ class XSdata(object):
                    expected_iter_type=Real)
 
         # Get the accepted shapes for this xs
-        if self.representation is 'isotropic':
-            shapes = [(self.energy_groups.num_groups,)]
-        else:
-            shapes = [(self.num_polar, self.num_azimuthal,
-                      self.energy_groups.num_groups)]
+        shapes = [self.xs_shapes["[G]"]]
 
         # Convert to a numpy array so we can easily get the shape for checking
         kappa_fission = np.asarray(kappa_fission)
@@ -544,11 +598,7 @@ class XSdata(object):
         """
 
         # Get the accepted shapes for this xs
-        if self.representation is 'isotropic':
-            shapes = [(self.energy_groups.num_groups,)]
-        else:
-            shapes = [(self.num_polar, self.num_azimuthal,
-                      self.energy_groups.num_groups)]
+        shapes = [self.xs_shapes["[G']"]]
 
         # Convert to a numpy array so we can easily get the shape for checking
         chi = np.asarray(chi)
@@ -578,11 +628,7 @@ class XSdata(object):
         """
 
         # Get the accepted shapes for this xs
-        if self.representation is 'isotropic':
-            shapes = [(self.energy_groups.num_groups,)]
-        else:
-            shapes = [(self.num_polar, self.num_azimuthal,
-                      self.energy_groups.num_groups)]
+        shapes = [self.xs_shapes["[G']"]]
 
         # Convert to a numpy array so we can easily get the shape for checking
         chi_prompt = np.asarray(chi_prompt)
@@ -610,6 +656,9 @@ class XSdata(object):
         openmc.mgxs_library.set_chi_delayed_mgxs()
 
         """
+
+        # Get the accepted shapes for this xs
+        shapes = [self.xs_shapes["[G']"], self.xs_shapes["[DG][G']"]]
 
         # Get the accepted shapes for this xs
         if self.representation is 'isotropic':
@@ -649,14 +698,7 @@ class XSdata(object):
         """
 
         # Get the accepted shapes for this xs
-        if self.representation is 'isotropic':
-            shapes = [(self.num_delayed_groups,),
-                      (self.num_delayed_groups, self.energy_groups.num_groups)]
-        else:
-            shapes = [(self.num_delayed_groups, self.num_polar,
-                       self.num_azimuthal, self.energy_groups.num_groups),
-                      (self.num_delayed_groups, self.num_polar,
-                       self.num_azimuthal)]
+        shapes = [self.xs_shapes["[DG]"], self.xs_shapes["[DG][G]"]]
 
         # Convert to a numpy array so we can easily get the shape for checking
         beta = np.asarray(beta)
@@ -688,14 +730,7 @@ class XSdata(object):
         check_type('decay_rate', decay_rate, Iterable, expected_iter_type=Real)
 
         # Get the accepted shapes for this xs
-        if self.representation is 'isotropic':
-            shapes = [(self.num_delayed_groups,),
-                      (self.num_delayed_groups, self.energy_groups.num_groups)]
-        else:
-            shapes = [(self.num_delayed_groups, self.num_polar,
-                       self.num_azimuthal, self.energy_groups.num_groups),
-                      (self.num_delayed_groups, self.num_polar,
-                       self.num_azimuthal)]
+        shapes = [self.xs_shapes["[DG]"], self.xs_shapes["[DG][G]"]]
 
         # Convert to a numpy array so we can easily get the shape for checking
         decay_rate = np.asarray(decay_rate)
@@ -725,13 +760,7 @@ class XSdata(object):
         """
 
         # Get the accepted shapes for this xs
-        if self.representation is 'isotropic':
-            shapes = [(self.num_orders, self.energy_groups.num_groups,
-                       self.energy_groups.num_groups)]
-        else:
-            shapes = [(self.num_polar, self.num_azimuthal, self.num_orders,
-                       self.energy_groups.num_groups,
-                       self.energy_groups.num_groups)]
+        shapes = [self.xs_shapes["[Order][G][G']"]]
 
         # Convert to a numpy array so we can easily get the shape for checking
         scatter = np.asarray(scatter)
@@ -763,13 +792,7 @@ class XSdata(object):
         """
 
         # Get the accepted shapes for this xs
-        if self.representation is 'isotropic':
-            shapes = [(self.energy_groups.num_groups,
-                       self.energy_groups.num_groups)]
-        else:
-            shapes = [(self.num_polar, self.num_azimuthal,
-                       self.energy_groups.num_groups,
-                       self.energy_groups.num_groups)]
+        shapes = [self.xs_shapes["[G][G']"]]
 
         # Convert to a numpy array so we can easily get the shape for checking
         multiplicity = np.asarray(multiplicity)
@@ -801,16 +824,7 @@ class XSdata(object):
         """
 
         # Get the accepted shapes for this xs
-        if self.representation is 'isotropic':
-            shapes = [(self.energy_groups.num_groups,),
-                      (self.energy_groups.num_groups,
-                       self.energy_groups.num_groups)]
-        else:
-            shapes = [(self.num_polar, self.num_azimuthal,
-                       self.energy_groups.num_groups),
-                      (self.num_polar, self.num_azimuthal,
-                       self.energy_groups.num_groups,
-                      self.energy_groups.num_groups)]
+        shapes = [self.xs_shapes["[G]"], self.xs_shapes["[G][G']"]]
 
         # Convert to a numpy array so we can easily get the shape for checking
         nu_fission = np.asarray(nu_fission)
@@ -843,12 +857,8 @@ class XSdata(object):
 
         """
 
-       # Get the accepted shapes for this xs
-        if self.representation is 'isotropic':
-            shapes = [(self.energy_groups.num_groups,)]
-        else:
-            shapes = [(self.num_polar, self.num_azimuthal,
-                       self.energy_groups.num_groups)]
+        # Get the accepted shapes for this xs
+        shapes = [self.xs_shapes["[G]"]]
 
         # Convert to a numpy array so we can easily get the shape for checking
         prompt_nu_fission = np.asarray(prompt_nu_fission)
@@ -881,7 +891,10 @@ class XSdata(object):
 
         """
 
-       # Get the accepted shapes for this xs
+        # Get the accepted shapes for this xs
+        shapes = [self.xs_shapes["[DG][G]"]]
+
+        # Get the accepted shapes for this xs
         if self.representation is 'isotropic':
             shapes = [(self.num_delayed_groups, self.energy_groups.num_groups,)]
         else:
@@ -920,11 +933,7 @@ class XSdata(object):
                    expected_iter_type=Real)
 
         # Get the accepted shapes for this xs
-        if self.representation is 'isotropic':
-            shapes = [(self.energy_groups.num_groups,)]
-        else:
-            shapes = [(self.num_polar, self.num_azimuthal,
-                      self.energy_groups.num_groups)]
+        shapes = [self.xs_shapes["[G]"]]
 
         # Convert to a numpy array so we can easily get the shape for checking
         inv_vel = np.asarray(inv_vel)
@@ -1687,10 +1696,9 @@ class XSdata(object):
                 if self.num_polar is not None:
                     grp.attrs['num-polar'] = self.num_polar
 
+        grp.attrs['scatter_shape'] = np.string_("[Order][G][G']")
         if self.scatter_format is not None:
             grp.attrs['scatter_format'] = np.string_(self.scatter_format)
-        if self.scatter_shape is not None:
-            grp.attrs['scatter_shape'] = np.string_(self.scatter_shape)
         if self.order is not None:
             grp.attrs['order'] = self.order
 
@@ -1918,8 +1926,10 @@ class MGXSLibrary(object):
     @num_delayed_groups.setter
     def num_delayed_groups(self, num_delayed_groups):
         check_type('num_delayed_groups', num_delayed_groups, int)
-        check_greater_than('delayed_groups', num_delayed_groups, 0,
+        check_greater_than('num_delayed_groups', num_delayed_groups, 0,
                            equality=True)
+        check_less_than('num_delayed_groups', num_delayed_groups,
+                        openmc.mgxs.MAX_DELAYED_GROUPS, equality=True)
         self._num_delayed_groups = num_delayed_groups
 
     def add_xsdata(self, xsdata):

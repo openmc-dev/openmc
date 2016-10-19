@@ -39,7 +39,7 @@ kwargs = {'name': 'openmc',
 if have_setuptools:
     kwargs.update({
         # Required dependencies
-        'install_requires': ['numpy>=1.9', 'h5py', 'matplotlib'],
+        'install_requires': ['six', 'numpy>=1.9', 'h5py', 'matplotlib'],
 
         # Optional dependencies
         'extras_require': {
@@ -51,7 +51,7 @@ if have_setuptools:
 
         # Data files
         'package_data': {
-            'openmc.data': ['mass.mas12']
+            'openmc.data': ['mass.mas12', 'fission_Q_data_endfb71.h5']
         },
     })
 

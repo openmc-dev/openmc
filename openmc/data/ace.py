@@ -20,13 +20,10 @@ from os import SEEK_CUR
 import struct
 import sys
 
+from six import string_types
 import numpy as np
 
 from openmc.mixin import EqualityMixin
-
-
-if sys.version_info[0] >= 3:
-    basestring = str
 
 
 def ascii_to_binary(ascii_file, binary_file):
@@ -156,7 +153,7 @@ class Library(EqualityMixin):
     """
 
     def __init__(self, filename, table_names=None, verbose=False):
-        if isinstance(table_names, basestring):
+        if isinstance(table_names, string_types):
             table_names = [table_names]
         if table_names is not None:
             table_names = set(table_names)

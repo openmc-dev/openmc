@@ -1,11 +1,13 @@
 from abc import ABCMeta, abstractmethod
 from collections import Iterable
 
+from six import add_metaclass
 import numpy as np
 
 from openmc.checkvalue import check_type
 
 
+@add_metaclass(ABCMeta)
 class Region(object):
     """Region of space that can be assigned to a cell.
 
@@ -16,9 +18,6 @@ class Region(object):
     created through operators of the Surface and Region classes.
 
     """
-
-    __metaclass__ = ABCMeta
-
     def __and__(self, other):
         return Intersection(self, other)
 

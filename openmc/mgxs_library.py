@@ -2,6 +2,7 @@ from collections import Iterable
 from numbers import Real, Integral
 import sys
 
+from six import string_types
 import numpy as np
 import h5py
 
@@ -10,8 +11,6 @@ import openmc.mgxs
 from openmc.checkvalue import check_type, check_value, check_greater_than, \
     check_iterable_type, check_less_than
 
-if sys.version_info[0] >= 3:
-    basestring = str
 
 # Supported incoming particle MGXS angular treatment representations
 _REPRESENTATIONS = ['isotropic', 'angle']
@@ -333,7 +332,7 @@ class XSdata(object):
 
     @name.setter
     def name(self, name):
-        check_type('name for XSdata', name, basestring)
+        check_type('name for XSdata', name, string_types)
         self._name = name
 
     @energy_groups.setter
@@ -1995,7 +1994,7 @@ class MGXSLibrary(object):
 
         """
 
-        check_type('filename', filename, basestring)
+        check_type('filename', filename, string_types)
 
         # Create and write to the HDF5 file
         file = h5py.File(filename, "w")

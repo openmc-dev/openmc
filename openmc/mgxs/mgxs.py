@@ -6,18 +6,16 @@ import warnings
 import os
 import sys
 import copy
-import abc
+from abc import ABCMeta
 import itertools
 
+from six import add_metaclass, string_types
 import numpy as np
 
 import openmc
 import openmc.checkvalue as cv
 from openmc.tallies import ESTIMATOR_TYPES
 from openmc.mgxs import EnergyGroups
-
-if sys.version_info[0] >= 3:
-    basestring = str
 
 
 # Supported cross section types
@@ -61,6 +59,7 @@ _DOMAINS = (openmc.Cell,
             openmc.Mesh)
 
 
+@add_metaclass(ABCMeta)
 class MGXS(object):
     """An abstract multi-group cross section for some energy group structure
     within some spatial domain.
@@ -145,10 +144,6 @@ class MGXS(object):
         The key used to index multi-group cross sections in an HDF5 data store
 
     """
-
-    # This is an abstract class which cannot be instantiated
-    __metaclass__ = abc.ABCMeta
-
     def __init__(self, domain=None, domain_type=None,
                  energy_groups=None, by_nuclide=False, name=''):
         self._name = ''
@@ -368,7 +363,7 @@ class MGXS(object):
 
     @name.setter
     def name(self, name):
-        cv.check_type('name', name, basestring)
+        cv.check_type('name', name, string_types)
         self._name = name
 
     @by_nuclide.setter
@@ -378,7 +373,7 @@ class MGXS(object):
 
     @nuclides.setter
     def nuclides(self, nuclides):
-        cv.check_iterable_type('nuclides', nuclides, basestring)
+        cv.check_iterable_type('nuclides', nuclides, string_types)
         self._nuclides = nuclides
 
     @estimator.setter
@@ -562,7 +557,7 @@ class MGXS(object):
 
         """
 
-        cv.check_type('nuclide', nuclide, basestring)
+        cv.check_type('nuclide', nuclide, string_types)
 
         # Get list of all nuclides in the spatial domain
         nuclides = self.domain.get_nuclide_densities()
@@ -788,7 +783,7 @@ class MGXS(object):
         filter_bins = []
 
         # Construct a collection of the domain filter bins
-        if not isinstance(subdomains, basestring):
+        if not isinstance(subdomains, string_types):
             cv.check_iterable_type('subdomains', subdomains, Integral,
                                    max_depth=3)
             for subdomain in subdomains:
@@ -796,7 +791,7 @@ class MGXS(object):
                 filter_bins.append((subdomain,))
 
         # Construct list of energy group bounds tuples for all requested groups
-        if not isinstance(groups, basestring):
+        if not isinstance(groups, string_types):
             cv.check_iterable_type('groups', groups, Integral)
             for group in groups:
                 filters.append(openmc.EnergyFilter)
@@ -958,7 +953,7 @@ class MGXS(object):
         """
 
         # Construct a collection of the subdomain filter bins to average across
-        if not isinstance(subdomains, basestring):
+        if not isinstance(subdomains, string_types):
             cv.check_iterable_type('subdomains', subdomains, Integral)
         elif self.domain_type == 'distribcell':
             subdomains = np.arange(self.num_subdomains)
@@ -1013,7 +1008,7 @@ class MGXS(object):
 
         """
 
-        cv.check_iterable_type('nuclides', nuclides, basestring)
+        cv.check_iterable_type('nuclides', nuclides, string_types)
         cv.check_iterable_type('energy_groups', groups, Integral)
 
         # Build lists of filters and filter bins to slice
@@ -1167,7 +1162,7 @@ class MGXS(object):
         """
 
         # Construct a collection of the subdomains to report
-        if not isinstance(subdomains, basestring):
+        if not isinstance(subdomains, string_types):
             cv.check_iterable_type('subdomains', subdomains, Integral)
         elif self.domain_type == 'distribcell':
             subdomains = np.arange(self.num_subdomains, dtype=np.int)
@@ -1184,7 +1179,7 @@ class MGXS(object):
             elif nuclides == 'sum':
                 nuclides = ['sum']
             else:
-                cv.check_iterable_type('nuclides', nuclides, basestring)
+                cv.check_iterable_type('nuclides', nuclides, string_types)
         else:
             nuclides = ['sum']
 
@@ -1302,7 +1297,7 @@ class MGXS(object):
             xs_results = h5py.File(filename, 'w')
 
         # Construct a collection of the subdomains to report
-        if not isinstance(subdomains, basestring):
+        if not isinstance(subdomains, string_types):
             cv.check_iterable_type('subdomains', subdomains, Integral)
         elif self.domain_type == 'distribcell':
             subdomains = np.arange(self.num_subdomains, dtype=np.int)
@@ -1323,7 +1318,7 @@ class MGXS(object):
             elif nuclides == 'sum':
                 nuclides = ['sum']
             else:
-                cv.check_iterable_type('nuclides', nuclides, basestring)
+                cv.check_iterable_type('nuclides', nuclides, string_types)
         else:
             nuclides = ['sum']
 
@@ -1401,8 +1396,8 @@ class MGXS(object):
 
         """
 
-        cv.check_type('filename', filename, basestring)
-        cv.check_type('directory', directory, basestring)
+        cv.check_type('filename', filename, string_types)
+        cv.check_type('directory', directory, string_types)
         cv.check_value('format', format, ['csv', 'excel', 'pickle', 'latex'])
         cv.check_value('xs_type', xs_type, ['macro', 'micro'])
 
@@ -1488,10 +1483,10 @@ class MGXS(object):
 
         """
 
-        if not isinstance(groups, basestring):
+        if not isinstance(groups, string_types):
             cv.check_iterable_type('groups', groups, Integral)
         if nuclides != 'all' and nuclides != 'sum':
-            cv.check_iterable_type('nuclides', nuclides, basestring)
+            cv.check_iterable_type('nuclides', nuclides, string_types)
         cv.check_value('xs_type', xs_type, ['macro', 'micro'])
 
         # Get a Pandas DataFrame from the derived xs tally
@@ -1530,7 +1525,7 @@ class MGXS(object):
 
         # Override energy groups bounds with indices
         all_groups = np.arange(self.num_groups, 0, -1, dtype=np.int)
-        all_groups = np.repeat(all_groups, len(query_nuclides)) 
+        all_groups = np.repeat(all_groups, len(query_nuclides))
         if 'energy low [MeV]' in df and 'energyout low [MeV]' in df:
             df.rename(columns={'energy low [MeV]': 'group in'},
                       inplace=True)
@@ -1563,7 +1558,7 @@ class MGXS(object):
             columns = ['group in']
 
         # Select out those groups the user requested
-        if not isinstance(groups, basestring):
+        if not isinstance(groups, string_types):
             if 'group in' in df:
                 df = df[df['group in'].isin(groups)]
             if 'group out' in df:
@@ -1616,6 +1611,7 @@ class MGXS(object):
         return 'cm^-1' if xs_type == 'macro' else 'barns'
 
 
+@add_metaclass(ABCMeta)
 class MatrixMGXS(MGXS):
     """An abstract multi-group cross section for some energy group structure
     within some spatial domain. This class is specifically intended for
@@ -1703,10 +1699,6 @@ class MatrixMGXS(MGXS):
         The key used to index multi-group cross sections in an HDF5 data store
 
     """
-
-    # This is an abstract class which cannot be instantiated
-    __metaclass__ = abc.ABCMeta
-
     @property
     def filters(self):
         # Create the non-domain specific Filters for the Tallies
@@ -1786,7 +1778,7 @@ class MatrixMGXS(MGXS):
         filter_bins = []
 
         # Construct a collection of the domain filter bins
-        if not isinstance(subdomains, basestring):
+        if not isinstance(subdomains, string_types):
             cv.check_iterable_type('subdomains', subdomains, Integral,
                                    max_depth=3)
             for subdomain in subdomains:
@@ -1794,7 +1786,7 @@ class MatrixMGXS(MGXS):
                 filter_bins.append((subdomain,))
 
         # Construct list of energy group bounds tuples for all requested groups
-        if not isinstance(in_groups, basestring):
+        if not isinstance(in_groups, string_types):
             cv.check_iterable_type('groups', in_groups, Integral)
             for group in in_groups:
                 filters.append(openmc.EnergyFilter)
@@ -1802,7 +1794,7 @@ class MatrixMGXS(MGXS):
                     self.energy_groups.get_group_bounds(group),))
 
         # Construct list of energy group bounds tuples for all requested groups
-        if not isinstance(out_groups, basestring):
+        if not isinstance(out_groups, string_types):
             cv.check_iterable_type('groups', out_groups, Integral)
             for group in out_groups:
                 filters.append(openmc.EnergyoutFilter)
@@ -1948,7 +1940,7 @@ class MatrixMGXS(MGXS):
         """
 
         # Construct a collection of the subdomains to report
-        if not isinstance(subdomains, basestring):
+        if not isinstance(subdomains, string_types):
             cv.check_iterable_type('subdomains', subdomains, Integral)
         elif self.domain_type == 'distribcell':
             subdomains = np.arange(self.num_subdomains, dtype=np.int)
@@ -1965,7 +1957,7 @@ class MatrixMGXS(MGXS):
             if nuclides == 'sum':
                 nuclides = ['sum']
             else:
-                cv.check_iterable_type('nuclides', nuclides, basestring)
+                cv.check_iterable_type('nuclides', nuclides, string_types)
         else:
             nuclides = ['sum']
 
@@ -3621,21 +3613,21 @@ class ScatterMatrixXS(MatrixMGXS):
         filter_bins = []
 
         # Construct a collection of the domain filter bins
-        if not isinstance(subdomains, basestring):
+        if not isinstance(subdomains, string_types):
             cv.check_iterable_type('subdomains', subdomains, Integral, max_depth=3)
             for subdomain in subdomains:
                 filters.append(_DOMAIN_TO_FILTER[self.domain_type])
                 filter_bins.append((subdomain,))
 
         # Construct list of energy group bounds tuples for all requested groups
-        if not isinstance(in_groups, basestring):
+        if not isinstance(in_groups, string_types):
             cv.check_iterable_type('groups', in_groups, Integral)
             for group in in_groups:
                 filters.append(openmc.EnergyFilter)
                 filter_bins.append((self.energy_groups.get_group_bounds(group),))
 
         # Construct list of energy group bounds tuples for all requested groups
-        if not isinstance(out_groups, basestring):
+        if not isinstance(out_groups, string_types):
             cv.check_iterable_type('groups', out_groups, Integral)
             for group in out_groups:
                 filters.append(openmc.EnergyoutFilter)
@@ -3809,7 +3801,7 @@ class ScatterMatrixXS(MatrixMGXS):
         """
 
         # Construct a collection of the subdomains to report
-        if not isinstance(subdomains, basestring):
+        if not isinstance(subdomains, string_types):
             cv.check_iterable_type('subdomains', subdomains, Integral)
         elif self.domain_type == 'distribcell':
             subdomains = np.arange(self.num_subdomains, dtype=np.int)
@@ -3826,7 +3818,7 @@ class ScatterMatrixXS(MatrixMGXS):
             if nuclides == 'sum':
                 nuclides = ['sum']
             else:
-                cv.check_iterable_type('nuclides', nuclides, basestring)
+                cv.check_iterable_type('nuclides', nuclides, string_types)
         else:
             nuclides = ['sum']
 
@@ -4609,14 +4601,14 @@ class Chi(MGXS):
         filter_bins = []
 
         # Construct a collection of the domain filter bins
-        if not isinstance(subdomains, basestring):
+        if not isinstance(subdomains, string_types):
             cv.check_iterable_type('subdomains', subdomains, Integral, max_depth=3)
             for subdomain in subdomains:
                 filters.append(_DOMAIN_TO_FILTER[self.domain_type])
                 filter_bins.append((subdomain,))
 
         # Construct list of energy group bounds tuples for all requested groups
-        if not isinstance(groups, basestring):
+        if not isinstance(groups, string_types):
             cv.check_iterable_type('groups', groups, Integral)
             for group in groups:
                 filters.append(openmc.EnergyoutFilter)
@@ -4661,7 +4653,7 @@ class Chi(MGXS):
 
             # Get chi for user-specified nuclides in the domain
             else:
-                cv.check_iterable_type('nuclides', nuclides, basestring)
+                cv.check_iterable_type('nuclides', nuclides, string_types)
                 xs = self.xs_tally.get_values(filters=filters,
                                               filter_bins=filter_bins,
                                               nuclides=nuclides, value=value)

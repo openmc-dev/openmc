@@ -1918,7 +1918,8 @@ class MGXSLibrary(object):
     @num_delayed_groups.setter
     def num_delayed_groups(self, num_delayed_groups):
         check_type('num_delayed_groups', num_delayed_groups, int)
-        check_greater_than('delayed_groups', delayed_groups, 0, equality=True)
+        check_greater_than('delayed_groups', num_delayed_groups, 0,
+                           equality=True)
         self._num_delayed_groups = num_delayed_groups
 
     def add_xsdata(self, xsdata):

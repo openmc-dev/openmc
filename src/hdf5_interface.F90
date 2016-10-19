@@ -74,6 +74,7 @@ module hdf5_interface
     module procedure read_attribute_integer_2D
     module procedure read_attribute_string
     module procedure read_attribute_string_1D
+    module procedure read_attribute_logical
   end interface read_attribute
 
   interface write_attribute
@@ -84,12 +85,14 @@ module hdf5_interface
 
   public :: write_dataset
   public :: read_dataset
+  public :: attribute_exists
   public :: write_attribute
   public :: read_attribute
   public :: file_create
   public :: file_open
   public :: file_close
   public :: create_group
+  public :: object_exists
   public :: open_group
   public :: close_group
   public :: open_dataset
@@ -98,6 +101,7 @@ module hdf5_interface
   public :: write_attribute_string
   public :: get_groups
   public :: get_datasets
+  public :: get_name
 
 contains
 
@@ -213,12 +217,11 @@ contains
 
   subroutine get_groups(object_id, names)
     integer(HID_T), intent(in)  :: object_id
-    character(len=255), allocatable, intent(out) :: names(:)
+    character(len=150), allocatable, intent(out) :: names(:)
 
     integer :: n_members, i, group_count, type
     integer :: hdf5_err
-    character(len=255) :: name
-
+    character(len=150) :: name
 
     ! Get number of members in this location
     call h5gn_members_f(object_id, './', n_members, hdf5_err)
@@ -246,16 +249,48 @@ contains
   end subroutine get_groups
 
 !===============================================================================
+! CHECK_ATTRIBUTE Checks to see if an attribute exists in the object
+!===============================================================================
+
+  function attribute_exists(object_id, name) result(exists)
+    integer(HID_T), intent(in) :: object_id
+    character(*),   intent(in) :: name ! name of group
+    logical :: exists
+
+    integer :: hdf5_err ! HDF5 error code
+
+    ! Check if attribute exists
+    call h5aexists_by_name_f(object_id, '.', trim(name), exists, hdf5_err)
+
+  end function attribute_exists
+
+!===============================================================================
+! CHECK_GROUP Checks to see if a group exists in the object
+!===============================================================================
+
+  function object_exists(object_id, name) result(exists)
+    integer(HID_T), intent(in) :: object_id
+    character(*),   intent(in) :: name ! name of group
+    logical :: exists
+
+    integer :: hdf5_err ! HDF5 error code
+
+    ! Check if group exists
+    call h5ltpath_valid_f(object_id, trim(name), .true., exists, hdf5_err)
+
+  end function object_exists
+
+!===============================================================================
 ! GET_DATASETS Gets a list of all the datasets in a given location.
 !===============================================================================
 
   subroutine get_datasets(object_id, names)
     integer(HID_T), intent(in)  :: object_id
-    character(len=255), allocatable, intent(out) :: names(:)
+    character(len=150), allocatable, intent(out) :: names(:)
 
     integer :: n_members, i, dset_count, type
     integer :: hdf5_err
-    character(len=255) :: name
+    character(len=150) :: name
 
 
     ! Get number of members in this location
@@ -284,6 +319,27 @@ contains
   end subroutine get_datasets
 
 !===============================================================================
+! GET_NAME Obtains the name of the current group in group_id
+!===============================================================================
+
+  function get_name(group_id, name_len_) result(name)
+    integer(HID_T),            intent(in) :: group_id
+    integer(SIZE_T), optional, intent(in) :: name_len_
+
+    character(len=150) :: name ! name of group
+    integer(SIZE_T) :: name_len, name_file_len
+    integer :: hdf5_err ! HDF5 error code
+
+    if (present(name_len_)) then
+      name_len = name_len_
+    else
+      name_len = 150
+    end if
+
+    call h5iget_name_f(group_id, name, name_len, name_file_len, hdf5_err)
+  end function get_name
+
+!===============================================================================
 ! OPEN_GROUP opens an existing HDF5 group
 !===============================================================================
 
@@ -296,7 +352,7 @@ contains
     integer :: hdf5_err ! HDF5 error code
 
     ! Check if group exists
-    call h5ltpath_valid_f(group_id, trim(name), .true., exists, hdf5_err)
+    exists = object_exists(group_id, name)
 
     ! open group if it exists
     if (exists) then
@@ -319,7 +375,7 @@ contains
     logical :: exists   ! does the group exist
 
     ! Check if group exists
-    call h5ltpath_valid_f(group_id, trim(name), .true., exists, hdf5_err)
+    exists = object_exists(group_id, name)
 
     ! create group
     if (exists) then
@@ -357,7 +413,7 @@ contains
     integer :: hdf5_err ! HDF5 error code
 
     ! Check if group exists
-    call h5ltpath_valid_f(group_id, trim(name), .true., exists, hdf5_err)
+    exists = object_exists(group_id, name)
 
     ! open group if it exists
     if (exists) then
@@ -2485,6 +2541,29 @@ contains
     call h5tclose_f(filetype, hdf5_err)
     call h5tclose_f(memtype, hdf5_err)
   end subroutine read_attribute_string_1D_explicit
+
+  subroutine read_attribute_logical(buffer, obj_id, name)
+    logical,        intent(inout), target :: buffer
+    integer(HID_T), intent(in)            :: obj_id
+    character(*),   intent(in)            :: name
+
+    integer, target :: int_buffer
+    integer         :: hdf5_err
+    integer(HID_T)  :: attr_id
+    type(c_ptr)     :: f_ptr
+
+    call h5aopen_f(obj_id, trim(name), attr_id, hdf5_err)
+    f_ptr = c_loc(int_buffer)
+    call h5aread_f(attr_id, H5T_NATIVE_INTEGER, f_ptr, hdf5_err)
+    call h5aclose_f(attr_id, hdf5_err)
+
+    ! Convert to Fortran logical
+    if (int_buffer == 0) then
+      buffer = .false.
+    else
+      buffer = .true.
+    end if
+  end subroutine read_attribute_logical
 
   subroutine get_shape(obj_id, dims)
     integer(HID_T),   intent(in)  :: obj_id

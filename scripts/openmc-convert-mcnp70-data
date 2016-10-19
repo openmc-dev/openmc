@@ -1,7 +1,7 @@
 #!/usr/bin/env python
 
 from __future__ import print_function
-from argparse import ArgumentParser
+import argparse
 from collections import defaultdict
 import glob
 import os
@@ -9,8 +9,21 @@ import os
 import openmc.data
 
 
-# Get path to MCNP data
-parser = ArgumentParser()
+description = """
+Convert ENDF/B-VII.0 ACE data from the MCNP5/6 distribution into an HDF5 library
+that can be used by OpenMC. This assumes that you have a directory containing
+files named endf70a, endf70b, ..., endf70k, and endf70sab.
+
+"""
+
+class CustomFormatter(argparse.ArgumentDefaultsHelpFormatter,
+                      argparse.RawDescriptionHelpFormatter):
+    pass
+
+parser = argparse.ArgumentParser(
+    description=description,
+    formatter_class=CustomFormatter
+)
 parser.add_argument('-d', '--destination', default='mcnp_endfb70',
                     help='Directory to create new library in')
 parser.add_argument('mcnpdata', help='Directory containing endf70[a-k] and endf70sab')

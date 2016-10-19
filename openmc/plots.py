@@ -4,14 +4,13 @@ from xml.etree import ElementTree as ET
 import sys
 import warnings
 
+from six import string_types
 import numpy as np
 
 import openmc
 import openmc.checkvalue as cv
 from openmc.clean_xml import clean_xml_indentation
 
-if sys.version_info[0] >= 3:
-    basestring = str
 
 # A static variable for auto-generated Plot IDs
 AUTO_PLOT_ID = 10000
@@ -166,7 +165,7 @@ class Plot(object):
 
     @name.setter
     def name(self, name):
-        cv.check_type('plot name', name, basestring)
+        cv.check_type('plot name', name, string_types)
         self._name = name
 
     @width.setter
@@ -191,24 +190,24 @@ class Plot(object):
 
     @filename.setter
     def filename(self, filename):
-        cv.check_type('filename', filename, basestring)
+        cv.check_type('filename', filename, string_types)
         self._filename = filename
 
     @color.setter
     def color(self, color):
-        cv.check_type('plot color', color, basestring)
+        cv.check_type('plot color', color, string_types)
         cv.check_value('plot color', color, ['cell', 'mat'])
         self._color = color
 
     @type.setter
     def type(self, plottype):
-        cv.check_type('plot type', plottype, basestring)
+        cv.check_type('plot type', plottype, string_types)
         cv.check_value('plot type', plottype, ['slice', 'voxel'])
         self._type = plottype
 
     @basis.setter
     def basis(self, basis):
-        cv.check_type('plot basis', basis, basestring)
+        cv.check_type('plot basis', basis, string_types)
         cv.check_value('plot basis', basis, ['xy', 'xz', 'yz'])
         self._basis = basis
 
@@ -387,7 +386,7 @@ class Plot(object):
         cv.check_less_than('alpha', alpha, 1., equality=True)
 
         # Get a background (R,G,B) tuple to apply in alpha compositing
-        if isinstance(background, basestring):
+        if isinstance(background, string_types):
             if background == 'white':
                 background = (255, 255, 255)
             elif background == 'black':

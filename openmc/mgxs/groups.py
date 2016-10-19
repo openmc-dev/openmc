@@ -8,10 +8,6 @@ import numpy as np
 import openmc.checkvalue as cv
 
 
-if sys.version_info[0] >= 3:
-    basestring = str
-
-
 class EnergyGroups(object):
     """An energy groups structure used for multi-group cross-sections.
 

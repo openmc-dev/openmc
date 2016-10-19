@@ -1,6 +1,12 @@
 module geometry_header
 
-  use constants, only: HALF, TWO, THREE, INFINITY
+  use algorithm,       only: find
+  use constants,       only: HALF, TWO, THREE, INFINITY, K_BOLTZMANN, &
+                             MATERIAL_VOID, NONE
+  use dict_header,     only: DictCharInt, DictIntInt
+  use material_header, only: Material
+  use stl_vector,      only: VectorReal
+  use string,          only: to_lower
 
   implicit none
 
@@ -318,5 +324,75 @@ contains
       local_xyz(3) = xyz(3)
     end if
   end function get_local_hex
+
+!===============================================================================
+! GET_TEMPERATURES returns a list of temperatures that each nuclide/S(a,b) table
+! appears at in the model. Later, this list is used to determine the actual
+! temperatures to read (which may be different if interpolation is used)
+!===============================================================================
+
+  subroutine get_temperatures(cells, materials, material_dict, nuclide_dict, &
+                              n_nucs, nuc_temps, sab_dict, n_sabs, sab_temps)
+    type(Cell),                  allocatable, intent(in)  :: cells(:)
+    type(Material),              allocatable, intent(in)  :: materials(:)
+    type(DictIntInt),                         intent(in)  :: material_dict
+    type(DictCharInt),                        intent(in)  :: nuclide_dict
+    integer,                                  intent(in)  :: n_nucs
+    type(VectorReal),            allocatable, intent(out) :: nuc_temps(:)
+    type(DictCharInt), optional,              intent(in)  :: sab_dict
+    integer,           optional,              intent(in)  :: n_sabs
+    type(VectorReal),  optional, allocatable, intent(out) :: sab_temps(:)
+
+    integer :: i, j, k
+    integer :: i_nuclide    ! index in nuclides array
+    integer :: i_sab        ! index in S(a,b) array
+    integer :: i_material
+    real(8) :: temperature  ! temperature in Kelvin
+
+    allocate(nuc_temps(n_nucs))
+    if (present(n_sabs) .and. present(sab_temps)) allocate(sab_temps(n_sabs))
+
+    do i = 1, size(cells)
+      do j = 1, size(cells(i) % material)
+        ! Skip any non-material cells and void materials
+        if (cells(i) % material(j) == NONE .or. &
+             cells(i) % material(j) == MATERIAL_VOID) cycle
+
+        ! Get temperature of cell (rounding to nearest integer)
+        if (size(cells(i) % sqrtkT) > 1) then
+          temperature = cells(i) % sqrtkT(j)**2 / K_BOLTZMANN
+        else
+          temperature = cells(i) % sqrtkT(1)**2 / K_BOLTZMANN
+        end if
+
+        i_material = material_dict % get_key(cells(i) % material(j))
+        associate (mat => materials(i_material))
+          NUC_NAMES_LOOP: do k = 1, size(mat % names)
+            ! Get index in nuc_temps array
+            i_nuclide = nuclide_dict % get_key(to_lower(mat % names(k)))
+
+            ! Add temperature if it hasn't already been added
+            if (find(nuc_temps(i_nuclide), temperature) == -1) then
+              call nuc_temps(i_nuclide) % push_back(temperature)
+            end if
+          end do NUC_NAMES_LOOP
+
+          if (present(sab_temps) .and. present(sab_dict) .and. &
+               mat % n_sab > 0) then
+            SAB_NAMES_LOOP: do k = 1, size(mat % sab_names)
+              ! Get index in nuc_temps array
+              i_sab = sab_dict % get_key(to_lower(mat % sab_names(k)))
+
+              ! Add temperature if it hasn't already been added
+              if (find(sab_temps(i_sab), temperature) == -1) then
+                call sab_temps(i_sab) % push_back(temperature)
+              end if
+            end do SAB_NAMES_LOOP
+          end if
+        end associate
+      end do
+    end do
+
+  end subroutine get_temperatures
 
 end module geometry_header

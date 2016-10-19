@@ -28,13 +28,12 @@
   </source>
 
   <output>
-    <cross_sections>true</cross_sections>
     <summary>true</summary>
     <tallies>true</tallies>
   </output>
 
   <survival_biasing>false</survival_biasing>
 
-  <cross_sections>./mg_cross_sections.xml</cross_sections>
+  <cross_sections>./mgxs.h5</cross_sections>
 
 </settings>

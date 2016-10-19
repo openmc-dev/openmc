@@ -96,10 +96,11 @@ contains
     ! absorption (including fission)
 
     if (nuc % fissionable) then
-      call sample_fission(i_nuclide, i_reaction)
       if (run_mode == MODE_EIGENVALUE) then
+        call sample_fission(i_nuclide, i_reaction)
         call create_fission_sites(p, i_nuclide, i_reaction, fission_bank, n_bank)
-      elseif (run_mode == MODE_FIXEDSOURCE) then
+      elseif (run_mode == MODE_FIXEDSOURCE .and. create_fission_neutrons) then
+        call sample_fission(i_nuclide, i_reaction)
         call create_fission_sites(p, i_nuclide, i_reaction, &
              p % secondary_bank, p % n_secondary)
       end if
@@ -124,6 +125,13 @@ contains
     if (survival_biasing) then
       call russian_roulette(p)
       if (.not. p % alive) return
+    end if
+
+    ! Kill neutron under certain energy
+    if (p % E < energy_cutoff) then
+      p % alive = .false.
+      p % wgt = ZERO
+      p % last_wgt = ZERO
     end if
 
   end subroutine sample_reaction

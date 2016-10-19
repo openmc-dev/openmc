@@ -87,10 +87,14 @@ class Settings(object):
         Seed for the linear congruential pseudorandom number generator
     survival_biasing : bool
         Indicate whether survival biasing is to be used
-    weight : float
-        Weight cutoff below which particle undergo Russian roulette
-    weight_avg : float
-        Weight assigned to particles that are not killed after Russian roulette
+    cutoff : dict
+        Dictionary defining weight cutoff and energy cutoff. The dictionary may
+        have three keys, 'weight', 'weight_avg' and 'energy'. Value for 'weight'
+        should be a float indicating weight cutoff below which particle undergo
+        Russian roulette. Value for 'weight_avg' should be a float indicating
+        weight assigned to particles that are not killed after Russian
+        roulette. Value of energy should be a float indicating energy in MeV
+        below which particle will be killed.
     entropy_dimension : tuple or list
         Number of Shannon entropy mesh cells in the x, y, and z directions,
         respectively
@@ -98,6 +102,13 @@ class Settings(object):
         Coordinates of the lower-left point of the Shannon entropy mesh
     entropy_upper_right : tuple or list
         Coordinates of the upper-right point of the Shannon entropy mesh
+    tabular_legendre : dict
+        Determines if a multi-group scattering moment kernel expanded via
+        Legendre polynomials is to be converted to a tabular distribution or
+        not. Accepted keys are 'enable' and 'num_points'. The value for
+        'enable' is a bool stating whether the conversion to tabular is
+        performed; the value for 'num_points' sets the number of points to use
+        in the tabular distribution, should 'enable' be True.
     temperature : dict
         Defines a default temperature and method for treating intermediate
         temperatures at which nuclear data doesn't exist. Accepted keys are
@@ -139,6 +150,8 @@ class Settings(object):
         The elastic scattering model to use for resonant isotopes
     volume_calculations : VolumeCalculation or iterable of VolumeCalculation
         Stochastic volume calculation specifications
+    create_fission_neutrons : bool
+        Indicate whether fission neutrons should be created or not.
 
     """
 
@@ -198,11 +211,12 @@ class Settings(object):
         self._trace = None
         self._track = None
 
+        self._tabular_legendre = {}
+
         self._temperature = {}
 
         # Cutoff subelement
-        self._weight = None
-        self._weight_avg = None
+        self._cutoff = None
 
         # Uniform fission source subelement
         self._ufs_dimension = 1
@@ -224,6 +238,8 @@ class Settings(object):
             ResonanceScattering, 'resonance scattering models')
         self._volume_calculations = cv.CheckedList(
             VolumeCalculation, 'volume calculations')
+
+        self._create_fission_neutrons = None
 
     @property
     def run_mode(self):
@@ -362,6 +378,10 @@ class Settings(object):
         return self._verbosity
 
     @property
+    def tabular_legendre(self):
+        return self._tabular_legendre
+
+    @property
     def temperature(self):
         return self._temperature
 
@@ -374,12 +394,8 @@ class Settings(object):
         return self._track
 
     @property
-    def weight(self):
-        return self._weight
-
-    @property
-    def weight_avg(self):
-        return self._weight_avg
+    def cutoff(self):
+        return self._cutoff
 
     @property
     def ufs_dimension(self):
@@ -424,6 +440,10 @@ class Settings(object):
     @property
     def volume_calculations(self):
         return self._volume_calculations
+
+    @property
+    def create_fission_neutrons(self):
+        return self._create_fission_neutrons
 
     @run_mode.setter
     def run_mode(self, run_mode):
@@ -612,17 +632,29 @@ class Settings(object):
         cv.check_type('survival biasing', survival_biasing, bool)
         self._survival_biasing = survival_biasing
 
-    @weight.setter
-    def weight(self, weight):
-        cv.check_type('weight cutoff', weight, Real)
-        cv.check_greater_than('weight cutoff', weight, 0.0)
-        self._weight = weight
+    @cutoff.setter
+    def cutoff(self, cutoff):
+        if not isinstance(cutoff, Mapping):
+            msg = 'Unable to set cutoff from "{0}" which is not a '\
+                  ' Python dictionary'.format(cutoff)
+            raise ValueError(msg)
+        for key in cutoff:
+            if key == 'weight':
+                cv.check_type('weight cutoff', cutoff['weight'], Real)
+                cv.check_greater_than('weight cutoff', cutoff['weight'], 0.0)
+            elif key == 'weight_avg':
+                cv.check_type('average survival weight', cutoff['weight_avg'],
+                              Real)
+                cv.check_greater_than('average survival weight',
+                                      cutoff['weight_avg'], 0.0)
+            elif key == 'energy':
+                cv.check_type('energy cutoff', cutoff['energy'], Real)
+                cv.check_greater_than('energy cutoff', cutoff['energy'], 0.0)
+            else:
+                msg = 'Unable to set cutoff to "{0}" which is unsupported by '\
+                      'OpenMC'.format(key)
 
-    @weight_avg.setter
-    def weight_avg(self, weight_avg):
-        cv.check_type('average survival weight', weight_avg, Real)
-        cv.check_greater_than('average survival weight', weight_avg, 0.0)
-        self._weight_avg = weight_avg
+        self._cutoff = cutoff
 
     @entropy_dimension.setter
     def entropy_dimension(self, dimension):
@@ -665,6 +697,19 @@ class Settings(object):
     def no_reduce(self, no_reduce):
         cv.check_type('no reduction option', no_reduce, bool)
         self._no_reduce = no_reduce
+
+    @tabular_legendre.setter
+    def tabular_legendre(self, tabular_legendre):
+        cv.check_type('tabular_legendre settings', tabular_legendre, Mapping)
+        for key, value in tabular_legendre.items():
+            cv.check_value('tabular_legendre key', key,
+                           ['enable', 'num_points'])
+            if key == 'enable':
+                cv.check_type('enable tabular_legendre', value, bool)
+            elif key == 'num_points':
+                cv.check_type('num_points tabular_legendre', value, Integral)
+                cv.check_greater_than('num_points tabular_legendre', value, 0)
+        self._tabular_legendre = tabular_legendre
 
     @temperature.setter
     def temperature(self, temperature):
@@ -823,6 +868,12 @@ class Settings(object):
             vol_calcs = [vol_calcs]
         self._volume_calculations = cv.CheckedList(
             VolumeCalculation, 'stochastic volume calculations', vol_calcs)
+
+    @create_fission_neutrons.setter
+    def create_fission_neutrons(self, create_fission_neutrons):
+        cv.check_type('Whether create fission neutrons',
+                      create_fission_neutrons, bool)
+        self._create_fission_neutrons = create_fission_neutrons
 
     def _create_run_mode_subelement(self):
 
@@ -988,14 +1039,19 @@ class Settings(object):
             element.text = str(self._survival_biasing).lower()
 
     def _create_cutoff_subelement(self):
-        if self._weight is not None:
+        if self._cutoff is not None:
             element = ET.SubElement(self._settings_file, "cutoff")
+            if 'weight' in self._cutoff:
+                subelement = ET.SubElement(element, "weight")
+                subelement.text = str(self._cutoff['weight'])
 
-            subelement = ET.SubElement(element, "weight")
-            subelement.text = str(self._weight)
+            if 'weight_avg' in self._cutoff:
+                subelement = ET.SubElement(element, "weight_avg")
+                subelement.text = str(self._cutoff['weight_avg'])
 
-            subelement = ET.SubElement(element, "weight_avg")
-            subelement.text = str(self._weight_avg)
+            if 'energy' in self._cutoff:
+                subelement = ET.SubElement(element, "energy")
+                subelement.text = str(self._cutoff['energy'])
 
     def _create_entropy_subelement(self):
         if self._entropy_lower_left is not None and \
@@ -1048,6 +1104,15 @@ class Settings(object):
         if self._no_reduce is not None:
             element = ET.SubElement(self._settings_file, "no_reduce")
             element.text = str(self._no_reduce).lower()
+
+    def _create_tabular_legendre_subelements(self):
+        if self.tabular_legendre:
+            element = ET.SubElement(self._settings_file, "tabular_legendre")
+            subelement = ET.SubElement(element, "enable")
+            subelement.text = str(self._tabular_legendre['enable']).lower()
+            if 'num_points' in self._tabular_legendre:
+                subelement = ET.SubElement(element, "num_points")
+                subelement.text = str(self._tabular_legendre['num_points'])
 
     def _create_temperature_subelements(self):
         if self.temperature:
@@ -1119,6 +1184,11 @@ class Settings(object):
             for r in self.resonance_scattering:
                 elem.append(r.to_xml_element())
 
+    def _create_create_fission_neutrons_subelement(self):
+        if self._create_fission_neutrons is not None:
+            elem = ET.SubElement(self._settings_file, "create_fission_neutrons")
+            elem.text = str(self._create_fission_neutrons).lower()
+
     def export_to_xml(self, path='settings.xml'):
         """Export simulation settings to an XML file.
 
@@ -1155,6 +1225,7 @@ class Settings(object):
         self._create_no_reduce_subelement()
         self._create_threads_subelement()
         self._create_verbosity_subelement()
+        self._create_tabular_legendre_subelements()
         self._create_temperature_subelements()
         self._create_trace_subelement()
         self._create_track_subelement()
@@ -1162,6 +1233,7 @@ class Settings(object):
         self._create_dd_subelement()
         self._create_resonance_scattering_subelement()
         self._create_volume_calcs_subelement()
+        self._create_create_fission_neutrons_subelement()
 
         # Clean the indentation in the file to be user-readable
         clean_xml_indentation(self._settings_file)

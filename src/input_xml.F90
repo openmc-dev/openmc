@@ -1,21 +1,20 @@
 module input_xml
 
-  use hdf5
-
-  use algorithm,        only: find
   use cmfd_input,       only: configure_cmfd
   use constants
-  use dict_header,      only: DictIntInt, ElemKeyValueCI
+  use dict_header,      only: DictIntInt, DictCharInt, ElemKeyValueCI
   use distribution_multivariate
   use distribution_univariate
   use endf,             only: reaction_name
   use energy_grid,      only: grid_method, n_log_bins
   use error,            only: fatal_error, warning
-  use geometry_header,  only: Cell, Lattice, RectLattice, HexLattice
+  use geometry_header,  only: Cell, Lattice, RectLattice, HexLattice, &
+                              get_temperatures
   use global
   use hdf5_interface
   use list_header,      only: ListChar, ListInt, ListReal
   use mesh_header,      only: RegularMesh
+  use mgxs_data,        only: create_macro_xs, read_mgxs
   use multipole,        only: multipole_read
   use output,           only: write_message
   use plot_header
@@ -51,6 +50,17 @@ contains
     call read_materials()
     call read_tallies_xml()
     if (cmfd_run) call configure_cmfd()
+
+    if (.not. run_CE) then
+      ! Create material macroscopic data for MGXS
+      call time_read_xs % start()
+      call read_mgxs()
+      call create_macro_xs()
+      call time_read_xs % stop()
+    end if
+
+    ! Normalize atom/weight percents
+    if (run_mode /= MODE_PLOTTING) call normalize_ao()
 
   end subroutine read_input_xml
 
@@ -91,6 +101,7 @@ contains
     type(Node), pointer :: node_trigger   => null()
     type(Node), pointer :: node_keff_trigger => null()
     type(Node), pointer :: node_vol => null()
+    type(Node), pointer :: node_tab_leg => null()
     type(NodeList), pointer :: node_scat_list => null()
     type(NodeList), pointer :: node_source_list => null()
     type(NodeList), pointer :: node_vol_list => null()
@@ -659,8 +670,15 @@ contains
     ! Cutoffs
     if (check_for_node(doc, "cutoff")) then
       call get_node_ptr(doc, "cutoff", node_cutoff)
-      call get_node_value(node_cutoff, "weight", weight_cutoff)
-      call get_node_value(node_cutoff, "weight_avg", weight_survive)
+      if (check_for_node(node_cutoff, "weight")) then
+        call get_node_value(node_cutoff, "weight", weight_cutoff)
+      end if
+      if (check_for_node(node_cutoff, "weight_avg")) then
+        call get_node_value(node_cutoff, "weight_avg", weight_survive)
+      end if
+      if (check_for_node(node_cutoff, "energy")) then
+        call get_node_value(node_cutoff, "energy", energy_cutoff)
+      end if
     end if
 
     ! Particle trace
@@ -1102,6 +1120,44 @@ contains
       end select
     end if
 
+    ! Check whether create fission sites
+    if (run_mode == MODE_FIXEDSOURCE) then
+      if (check_for_node(doc, "create_fission_neutrons")) then
+        call get_node_value(doc, "create_fission_neutrons", temp_str)
+        temp_str = to_lower(temp_str)
+        if (trim(temp_str) == 'true' .or. trim(temp_str) == '1') then
+          create_fission_neutrons = .true.
+        else if (trim(temp_str) == 'false' .or. trim(temp_str) == '0') then
+          create_fission_neutrons = .false.
+        end if
+      end if
+    end if
+
+    ! Check for tabular_legendre options
+    if (check_for_node(doc, "tabular_legendre")) then
+
+      ! Get pointer to tabular_legendre node
+      call get_node_ptr(doc, "tabular_legendre", node_tab_leg)
+
+      ! Check for enable option
+      if (check_for_node(node_tab_leg, "enable")) then
+        call get_node_value(node_tab_leg, "enable", temp_str)
+        temp_str = to_lower(temp_str)
+        if (trim(temp_str) == 'false' .or. &
+             trim(temp_str) == '0') legendre_to_tabular = .false.
+      end if
+
+      ! Check for the number of points
+      if (check_for_node(node_tab_leg, "num_points")) then
+        call get_node_value(node_tab_leg, "num_points", &
+             legendre_to_tabular_points)
+        if (legendre_to_tabular_points <= 1 .and. (.not. run_CE)) then
+          call fatal_error("The 'num_points' subelement/attribute of the &
+               &'tabular_legendre' element must contain a value greater than 1")
+        end if
+      end if
+    end if
+
     ! Close settings XML file
     call close_xmldoc(doc)
 
@@ -1366,11 +1422,7 @@ contains
       ! Read cell temperatures.  If the temperature is not specified, set it to
       ! ERROR_REAL for now.  During initialization we'll replace ERROR_REAL with
       ! the temperature from the material data.
-      if (.not. run_CE) then
-        ! Cell temperatures are not used for MG mode.
-        allocate(c % sqrtkT(1))
-        c % sqrtkT(1) = ZERO
-      else if (check_for_node(node_cell, "temperature")) then
+      if (check_for_node(node_cell, "temperature")) then
         n = get_arraysize_double(node_cell, "temperature")
         if (n > 0) then
           ! Make sure this is a "normal" cell.
@@ -2048,7 +2100,7 @@ contains
     if (run_CE) then
       call read_ce_cross_sections_xml(libraries)
     else
-      call read_mg_cross_sections_xml(libraries)
+      call read_mg_cross_sections_header(libraries)
     end if
 
     ! Creating dictionary that maps the name of the material to the entry
@@ -2076,17 +2128,16 @@ contains
     call assign_temperatures(material_temps)
 
     ! Determine desired temperatures for each nuclide and S(a,b) table
-    call get_temperatures(nuc_temps, sab_temps)
+    call get_temperatures(cells, materials, material_dict, nuclide_dict, &
+                          n_nuclides_total, nuc_temps, sab_dict, &
+                          n_sab_tables, sab_temps)
 
     ! Read continuous-energy cross sections
     if (run_CE .and. run_mode /= MODE_PLOTTING) then
-      call time_read_xs%start()
+      call time_read_xs % start()
       call read_ce_cross_sections(libraries, library_dict, nuc_temps, sab_temps)
-      call time_read_xs%stop()
+      call time_read_xs % stop()
     end if
-
-    ! Normalize atom/weight percents
-    if (run_mode /= MODE_PLOTTING) call normalize_ao()
 
     ! Clear dictionary
     call library_dict % clear()
@@ -3250,7 +3301,7 @@ contains
             ! Search through nuclides
             pair_list => nuclide_dict % keys()
             do while (associated(pair_list))
-              if (starts_with(pair_list % key, word)) then
+              if (trim(pair_list % key) == trim(word)) then
                 word = pair_list % key(1:150)
                 exit
               end if
@@ -4587,44 +4638,43 @@ contains
 
   end subroutine read_ce_cross_sections_xml
 
-  subroutine read_mg_cross_sections_xml(libraries)
+  subroutine read_mg_cross_sections_header(libraries)
     type(Library), allocatable, intent(out) :: libraries(:)
 
     integer :: i           ! loop index
     integer :: n_libraries
-    logical :: file_exists ! does cross_sections.xml exist?
-    type(Node), pointer :: doc => null()
-    type(Node), pointer :: node_xsdata => null()
-    type(NodeList), pointer :: node_xsdata_list => null()
+    logical :: file_exists ! does mgxs.h5 exist?
+    integer(HID_T) :: file_id
     real(8), allocatable :: rev_energy_bins(:)
+    character(len=MAX_WORD_LEN), allocatable :: names(:)
 
-    ! Check if mgxs.xml exists
+    ! Check if MGXS Library exists
     inquire(FILE=path_cross_sections, EXIST=file_exists)
     if (.not. file_exists) then
-      ! Could not find mgxs.xml file
-      call fatal_error("Cross sections XML file '" &
+      ! Could not find MGXS Library file
+      call fatal_error("Cross sections HDF5 file '" &
            // trim(path_cross_sections) // "' does not exist!")
     end if
 
-    call write_message("Reading cross sections XML file...", 5)
+    call write_message("Reading cross sections HDF5 file...", 5)
 
-    ! Parse mgxs.xml file
-    call open_xmldoc(doc, path_cross_sections)
+    ! Open file for reading
+    file_id = file_open(path_cross_sections, 'r', parallel=.true.)
 
-    if (check_for_node(doc, "groups")) then
+    if (attribute_exists(file_id, "groups")) then
       ! Get neutron group count
-      call get_node_value(doc, "groups", energy_groups)
+      call read_attribute(energy_groups, file_id, "groups")
     else
-      call fatal_error("groups element must exist!")
+      call fatal_error("'groups' attribute must exist!")
     end if
 
     allocate(rev_energy_bins(energy_groups + 1))
     allocate(energy_bins(energy_groups + 1))
-    if (check_for_node(doc, "group_structure")) then
+    if (attribute_exists(file_id, "group structure")) then
       ! Get neutron group structure
-      call get_node_array(doc, "group_structure", energy_bins)
+      call read_attribute(energy_bins, file_id, "group structure")
     else
-      call fatal_error("group_structures element must exist!")
+      call fatal_error("'group structure' attribute must exist!")
     end if
 
     ! First reverse the order of energy_groups
@@ -4635,45 +4685,28 @@ contains
       energy_bin_avg(i) = HALF * (energy_bins(i) + energy_bins(i + 1))
     end do
 
-    allocate(inverse_velocities(energy_groups))
-    if (check_for_node(doc, "inverse_velocities")) then
-      ! Get inverse velocities
-      call get_node_array(doc, "inverse_velocities", inverse_velocities)
-    else
-      ! If not given, estimate them by using average energy in group which is
-      ! assumed to be the midpoint
-      do i = 1, energy_groups
-        inverse_velocities(i) = ONE / &
-             (sqrt(TWO * energy_bin_avg(i) / (MASS_NEUTRON_MEV)) * &
-              C_LIGHT * 100.0_8)
-      end do
-    end if
+    ! Get the datasets present in the library
+    call get_groups(file_id, names)
+    n_libraries = size(names)
 
-    ! Get node list of all <xsdata>
-    call get_node_list(doc, "xsdata", node_xsdata_list)
-    n_libraries = get_list_size(node_xsdata_list)
-
-    ! Allocate xs_listings array
+    ! Allocate libraries array
     if (n_libraries == 0) then
-      call fatal_error("At least one <xsdata> element must be present in &
-                       &mgxs.xml file!")
+      call fatal_error("At least one MGXS data set must be present in &
+                       &mgxs library file!")
     else
       allocate(libraries(n_libraries))
     end if
 
     do i = 1, n_libraries
-      ! Get pointer to xsdata table XML node
-      call get_list_item(node_xsdata_list, i, node_xsdata)
-
       ! Get name of material
       allocate(libraries(i) % materials(1))
-      call get_node_value(node_xsdata, "name", libraries(i) % materials(1))
+      libraries(i) % materials(1) = names(i)
     end do
 
-    ! Close cross sections XML file
-    call close_xmldoc(doc)
+    ! Close MGXS HDF5 file
+    call file_close(file_id)
 
-  end subroutine read_mg_cross_sections_xml
+  end subroutine read_mg_cross_sections_header
 
 !===============================================================================
 ! EXPAND_NATURAL_ELEMENT converts natural elements specified using an <element>
@@ -5618,7 +5651,7 @@ contains
           if (run_CE) then
             awr = nuclides(mat % nuclide(j)) % awr
           else
-            awr = ONE
+            awr = nuclides_MG(mat % nuclide(j)) % obj % awr
           end if
 
           ! if given weight percent, convert all values so that they are divided
@@ -5643,7 +5676,7 @@ contains
             if (run_CE) then
               awr = nuclides(mat % nuclide(j)) % awr
             else
-              awr = ONE
+              awr = nuclides_MG(mat % nuclide(j)) % obj % awr
             end if
             x = mat % atom_density(j)
             sum_percent = sum_percent + x*awr
@@ -5905,67 +5938,6 @@ contains
       end do
     end do
   end subroutine assign_temperatures
-
-!===============================================================================
-! GET_TEMPERATURES returns a list of temperatures that each nuclide/S(a,b) table
-! appears at in the model. Later, this list is used to determine the actual
-! temperatures to read (which may be different if interpolation is used)
-!===============================================================================
-
-  subroutine get_temperatures(nuc_temps, sab_temps)
-    type(VectorReal), allocatable, intent(out) :: nuc_temps(:)
-    type(VectorReal), allocatable, intent(out) :: sab_temps(:)
-
-    integer :: i, j, k
-    integer :: i_nuclide    ! index in nuclides array
-    integer :: i_sab        ! index in S(a,b) array
-    integer :: i_material
-    real(8) :: temperature  ! temperature in Kelvin
-
-    allocate(nuc_temps(n_nuclides_total))
-    allocate(sab_temps(n_sab_tables))
-
-    do i = 1, size(cells)
-      do j = 1, size(cells(i) % material)
-        ! Skip any non-material cells and void materials
-        if (cells(i) % material(j) == NONE .or. &
-             cells(i) % material(j) == MATERIAL_VOID) cycle
-
-        ! Get temperature of cell (rounding to nearest integer)
-        if (size(cells(i) % sqrtkT) > 1) then
-          temperature = cells(i) % sqrtkT(j)**2 / K_BOLTZMANN
-        else
-          temperature = cells(i) % sqrtkT(1)**2 / K_BOLTZMANN
-        end if
-
-        i_material = material_dict % get_key(cells(i) % material(j))
-        associate (mat => materials(i_material))
-          NUC_NAMES_LOOP: do k = 1, size(mat % names)
-            ! Get index in nuc_temps array
-            i_nuclide = nuclide_dict % get_key(to_lower(mat % names(k)))
-
-            ! Add temperature if it hasn't already been added
-            if (find(nuc_temps(i_nuclide), temperature) == -1) then
-              call nuc_temps(i_nuclide) % push_back(temperature)
-            end if
-          end do NUC_NAMES_LOOP
-
-          if (mat % n_sab > 0) then
-            SAB_NAMES_LOOP: do k = 1, size(mat % sab_names)
-              ! Get index in nuc_temps array
-              i_sab = sab_dict % get_key(to_lower(mat % sab_names(k)))
-
-              ! Add temperature if it hasn't already been added
-              if (find(sab_temps(i_sab), temperature) == -1) then
-                call sab_temps(i_sab) % push_back(temperature)
-              end if
-            end do SAB_NAMES_LOOP
-          end if
-        end associate
-      end do
-    end do
-
-  end subroutine get_temperatures
 
 !===============================================================================
 ! READ_0K_ELASTIC_SCATTERING

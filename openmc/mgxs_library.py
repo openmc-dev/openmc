@@ -35,7 +35,7 @@ class XSdata(object):
     temperatures : Iterable of float
         Temperatures (in units of Kelvin) of the provided datasets.  Defaults
         to a single temperature at 294K.
-    delayed_groups : int
+    num_delayed_groups : int
         Number of delayed groups
 
     Attributes
@@ -50,7 +50,7 @@ class XSdata(object):
         to a single temperature at 294K.
     energy_groups : openmc.mgxs.EnergyGroups
         Energy group structure
-    delayed_groups : int
+    num_delayed_groups : int
         Num delayed groups
     fissionable : bool
         Whether or not this is a fissionable data set.
@@ -71,7 +71,8 @@ class XSdata(object):
         is "angle".
     num_polar : int
         Number of equal width angular bins that the polar angular domain is
-        subdivided into. This only applies when ``representation`` is "angle".
+        subdivided into. This only applies when :attr:`XSdata.representation`
+        is "angle".
     total : dict of numpy.ndarray
         Group-wise total cross section.
     absorption : dict of numpy.ndarray
@@ -95,7 +96,7 @@ class XSdata(object):
         approximation that the fission spectra does not depend on incoming
         energy. If the user does not wish to make this approximation, then
         this should not be provided and this information included in the
-        ``nu_fission`` attribute instead.
+        :attr:`XSdata.nu_fission` attribute instead.
     chi_prompt : dict of numpy.ndarray
         Group-wise prompt fission spectra ordered by increasing group index
         (i.e., fast to thermal). This attribute should be used if chi from
@@ -121,12 +122,12 @@ class XSdata(object):
     """
 
     def __init__(self, name, energy_groups, temperatures=[294.],
-                 representation='isotropic', delayed_groups=0):
+                 representation='isotropic', num_delayed_groups=0):
 
         # Initialize class attributes
         self.name = name
         self.energy_groups = energy_groups
-        self.delayed_groups = delayed_groups
+        self.num_delayed_groups = num_delayed_groups
         self.temperatures = temperatures
         self.representation = representation
         self._atomic_weight_ratio = None
@@ -161,8 +162,8 @@ class XSdata(object):
         return self._energy_groups
 
     @property
-    def delayed_groups(self):
-        return self._delayed_groups
+    def num_delayed_groups(self):
+        return self._num_delayed_groups
 
     @property
     def representation(self):
@@ -274,14 +275,15 @@ class XSdata(object):
 
         self._energy_groups = energy_groups
 
-    @delayed_groups.setter
-    def delayed_groups(self, delayed_groups):
+    @num_delayed_groups.setter
+    def num_delayed_groups(self, num_delayed_groups):
 
-        # Check validity of delayed_groups
-        check_type('delayed_groups', delayed_groups, int)
-        check_greater_than('delayed_groups', delayed_groups, 0, equality=True)
+        # Check validity of num_delayed_groups
+        check_type('num_delayed_groups', num_delayed_groups, int)
+        check_greater_than('delayed_groups', num_delayed_groups, 0,
+                           equality=True)
 
-        self._delayed_groups = delayed_groups
+        self._num_delayed_groups = num_delayed_groups
 
     @representation.setter
     def representation(self, representation):
@@ -612,12 +614,12 @@ class XSdata(object):
         # Get the accepted shapes for this xs
         if self.representation is 'isotropic':
             shapes = [(self.energy_groups.num_groups,),
-                      (self.delayed_groups, self.energy_groups.num_groups)]
+                      (self.num_delayed_groups, self.energy_groups.num_groups)]
         else:
             shapes = [(self.num_polar, self.num_azimuthal,
                        self.energy_groups.num_groups),
-                      (self.delayed_groups, self.num_polar, self.num_azimuthal,
-                       self.energy_groups.num_groups)]
+                      (self.num_delayed_groups, self.num_polar,
+                       self.num_azimuthal, self.energy_groups.num_groups)]
 
         # Convert to a numpy array so we can easily get the shape for checking
         chi_delayed = np.asarray(chi_delayed)
@@ -648,12 +650,13 @@ class XSdata(object):
 
         # Get the accepted shapes for this xs
         if self.representation is 'isotropic':
-            shapes = [(self.delayed_groups,),
-                      (self.delayed_groups, self.energy_groups.num_groups)]
+            shapes = [(self.num_delayed_groups,),
+                      (self.num_delayed_groups, self.energy_groups.num_groups)]
         else:
-            shapes = [(self.delayed_groups, self.num_polar, self.num_azimuthal,
-                       self.energy_groups.num_groups),
-                      (self.delayed_groups, self.num_polar, self.num_azimuthal)]
+            shapes = [(self.num_delayed_groups, self.num_polar,
+                       self.num_azimuthal, self.energy_groups.num_groups),
+                      (self.num_delayed_groups, self.num_polar,
+                       self.num_azimuthal)]
 
         # Convert to a numpy array so we can easily get the shape for checking
         beta = np.asarray(beta)
@@ -686,12 +689,13 @@ class XSdata(object):
 
         # Get the accepted shapes for this xs
         if self.representation is 'isotropic':
-            shapes = [(self.delayed_groups,),
-                      (self.delayed_groups, self.energy_groups.num_groups)]
+            shapes = [(self.num_delayed_groups,),
+                      (self.num_delayed_groups, self.energy_groups.num_groups)]
         else:
-            shapes = [(self.delayed_groups, self.num_polar, self.num_azimuthal,
-                       self.energy_groups.num_groups),
-                      (self.delayed_groups, self.num_polar, self.num_azimuthal)]
+            shapes = [(self.num_delayed_groups, self.num_polar,
+                       self.num_azimuthal, self.energy_groups.num_groups),
+                      (self.num_delayed_groups, self.num_polar,
+                       self.num_azimuthal)]
 
         # Convert to a numpy array so we can easily get the shape for checking
         decay_rate = np.asarray(decay_rate)
@@ -879,10 +883,10 @@ class XSdata(object):
 
        # Get the accepted shapes for this xs
         if self.representation is 'isotropic':
-            shapes = [(self.delayed_groups, self.energy_groups.num_groups,)]
+            shapes = [(self.num_delayed_groups, self.energy_groups.num_groups,)]
         else:
-            shapes = [(self.delayed_groups, self.num_polar, self.num_azimuthal,
-                       self.energy_groups.num_groups)]
+            shapes = [(self.num_delayed_groups, self.num_polar,
+                       self.num_azimuthal, self.energy_groups.num_groups)]
 
         # Convert to a numpy array so we can easily get the shape for checking
         delayed_nu_fission = np.asarray(delayed_nu_fission)
@@ -965,8 +969,7 @@ class XSdata(object):
         check_type('total', total, (openmc.mgxs.TotalXS,
                                     openmc.mgxs.TransportXS))
         check_value('energy_groups', total.energy_groups, [self.energy_groups])
-        check_value('domain_type', total.domain_type,
-                    ['universe', 'cell', 'material', 'mesh'])
+        check_value('domain_type', total.domain_type, openmc.mgxs.DOMAIN_TYPES)
         check_type('temperature', temperature, Real)
         check_value('temperature', temperature, self.temperatures)
 
@@ -1012,7 +1015,7 @@ class XSdata(object):
         check_value('energy_groups', absorption.energy_groups,
                     [self.energy_groups])
         check_value('domain_type', absorption.domain_type,
-                    ['universe', 'cell', 'material', 'mesh'])
+                    openmc.mgxs.DOMAIN_TYPES)
         check_type('temperature', temperature, Real)
         check_value('temperature', temperature, self.temperatures)
 
@@ -1059,7 +1062,7 @@ class XSdata(object):
         check_value('energy_groups', fission.energy_groups,
                     [self.energy_groups])
         check_value('domain_type', fission.domain_type,
-                    ['universe', 'cell', 'material', 'mesh'])
+                    openmc.mgxs.DOMAIN_TYPES)
         check_type('temperature', temperature, Real)
         check_value('temperature', temperature, self.temperatures)
 
@@ -1107,7 +1110,7 @@ class XSdata(object):
         check_value('energy_groups', nu_fission.energy_groups,
                     [self.energy_groups])
         check_value('domain_type', nu_fission.domain_type,
-                    ['universe', 'cell', 'material', 'mesh'])
+                    openmc.mgxs.DOMAIN_TYPES)
         check_type('temperature', temperature, Real)
         check_value('temperature', temperature, self.temperatures)
 
@@ -1159,7 +1162,7 @@ class XSdata(object):
         check_value('energy_groups', prompt_nu_fission.energy_groups,
                     [self.energy_groups])
         check_value('domain_type', prompt_nu_fission.domain_type,
-                    ['universe', 'cell', 'material', 'mesh'])
+                    openmc.mgxs.DOMAIN_TYPES)
         check_type('temperature', temperature, Real)
         check_value('temperature', temperature, self.temperatures)
 
@@ -1211,10 +1214,10 @@ class XSdata(object):
                    (openmc.mgxs.DelayedNuFissionXS,))
         check_value('energy_groups', delayed_nu_fission.energy_groups,
                     [self.energy_groups])
-        check_value('delayed_groups', delayed_nu_fission.num_delayed_groups,
-                    [self.delayed_groups])
+        check_value('num_delayed_groups', delayed_nu_fission.num_delayed_groups,
+                    [self.num_delayed_groups])
         check_value('domain_type', delayed_nu_fission.domain_type,
-                    ['universe', 'cell', 'material', 'mesh'])
+                    openmc.mgxs.DOMAIN_TYPES)
         check_type('temperature', temperature, Real)
         check_value('temperature', temperature, self.temperatures)
 
@@ -1267,7 +1270,7 @@ class XSdata(object):
         check_value('energy_groups', k_fission.energy_groups,
                     [self.energy_groups])
         check_value('domain_type', k_fission.domain_type,
-                    ['universe', 'cell', 'material', 'mesh'])
+                    openmc.mgxs.DOMAIN_TYPES)
         check_type('temperature', temperature, Real)
         check_value('temperature', temperature, self.temperatures)
 
@@ -1311,8 +1314,7 @@ class XSdata(object):
 
         check_type('chi', chi, openmc.mgxs.Chi)
         check_value('energy_groups', chi.energy_groups, [self.energy_groups])
-        check_value('domain_type', chi.domain_type,
-                    ['universe', 'cell', 'material', 'mesh'])
+        check_value('domain_type', chi.domain_type, openmc.mgxs.DOMAIN_TYPES)
         check_type('temperature', temperature, Real)
         check_value('temperature', temperature, self.temperatures)
 
@@ -1357,7 +1359,7 @@ class XSdata(object):
         check_value('energy_groups', chi_prompt.energy_groups,
                     [self.energy_groups])
         check_value('domain_type', chi_prompt.domain_type,
-                    ['universe', 'cell', 'material', 'mesh'])
+                    openmc.mgxs.DOMAIN_TYPES)
         check_type('temperature', temperature, Real)
         check_value('temperature', temperature, self.temperatures)
 
@@ -1402,10 +1404,10 @@ class XSdata(object):
         check_type('chi_delayed', chi_delayed, openmc.mgxs.ChiDelayed)
         check_value('energy_groups', chi_delayed.energy_groups,
                     [self.energy_groups])
-        check_value('delayed_groups', chi_delayed.num_delayed_groups,
-                    [self.delayed_groups])
+        check_value('num_delayed_groups', chi_delayed.num_delayed_groups,
+                    [self.num_delayed_groups])
         check_value('domain_type', chi_delayed.domain_type,
-                    ['universe', 'cell', 'material', 'mesh'])
+                    openmc.mgxs.DOMAIN_TYPES)
         check_type('temperature', temperature, Real)
         check_value('temperature', temperature, self.temperatures)
 
@@ -1448,10 +1450,9 @@ class XSdata(object):
         """
 
         check_type('beta', beta, openmc.mgxs.Beta)
-        check_value('delayed_groups', beta.num_delayed_groups,
-                    [self.delayed_groups])
-        check_value('domain_type', beta.domain_type,
-                    ['universe', 'cell', 'material', 'mesh'])
+        check_value('num_delayed_groups', beta.num_delayed_groups,
+                    [self.num_delayed_groups])
+        check_value('domain_type', beta.domain_type, openmc.mgxs.DOMAIN_TYPES)
         check_type('temperature', temperature, Real)
         check_value('temperature', temperature, self.temperatures)
 
@@ -1494,10 +1495,10 @@ class XSdata(object):
         """
 
         check_type('decay_rate', decay_rate, openmc.mgxs.DecayRate)
-        check_value('delayed_groups', decay_rate.num_delayed_groups,
-                    [self.delayed_groups])
+        check_value('num_delayed_groups', decay_rate.num_delayed_groups,
+                    [self.num_delayed_groups])
         check_value('domain_type', decay_rate.domain_type,
-                    ['universe', 'cell', 'material', 'mesh'])
+                    openmc.mgxs.DOMAIN_TYPES)
         check_type('temperature', temperature, Real)
         check_value('temperature', temperature, self.temperatures)
 
@@ -1547,7 +1548,7 @@ class XSdata(object):
         check_value('energy_groups', scatter.energy_groups,
                     [self.energy_groups])
         check_value('domain_type', scatter.domain_type,
-                    ['universe', 'cell', 'material', 'mesh'])
+                    openmc.mgxs.DOMAIN_TYPES)
         check_type('temperature', temperature, Real)
         check_value('temperature', temperature, self.temperatures)
 
@@ -1629,7 +1630,7 @@ class XSdata(object):
         check_value('energy_groups', nuscatter.energy_groups,
                     [self.energy_groups])
         check_value('domain_type', nuscatter.domain_type,
-                    ['universe', 'cell', 'material', 'mesh'])
+                    openmc.mgxs.DOMAIN_TYPES)
         check_type('temperature', temperature, Real)
         check_value('temperature', temperature, self.temperatures)
 
@@ -1643,8 +1644,7 @@ class XSdata(object):
             check_value('energy_groups', scatter.energy_groups,
                         [self.energy_groups])
             check_value('domain_type', scatter.domain_type,
-                        ['universe', 'cell', 'material', 'mesh'])
-
+                        openmc.mgxs.DOMAIN_TYPES)
         i = np.where(self.temperatures == temperature)[0][0]
         if self.representation == 'isotropic':
             nuscatt = nuscatter.get_xs(nuclides=nuclide,
@@ -1876,22 +1876,22 @@ class MGXSLibrary(object):
     ----------
     energy_groups : openmc.mgxs.EnergyGroups
         Energy group structure
-    delayed_groups : int
+    num_delayed_groups : int
         Num delayed groups
 
     Attributes
     ----------
     energy_groups : openmc.mgxs.EnergyGroups
         Energy group structure.
-    delayed_groups : int
+    num_delayed_groups : int
         Num delayed groups
     xsdatas : Iterable of openmc.XSdata
         Iterable of multi-Group cross section data objects
     """
 
-    def __init__(self, energy_groups, delayed_groups=0):
+    def __init__(self, energy_groups, num_delayed_groups=0):
         self.energy_groups = energy_groups
-        self.delayed_groups = delayed_groups
+        self.num_delayed_groups = num_delayed_groups
         self._xsdatas = []
 
     @property
@@ -1899,8 +1899,8 @@ class MGXSLibrary(object):
         return self._energy_groups
 
     @property
-    def delayed_groups(self):
-        return self._delayed_groups
+    def num_delayed_groups(self):
+        return self._num_delayed_groups
 
     @property
     def temperatures(self):
@@ -1915,10 +1915,11 @@ class MGXSLibrary(object):
         check_type('energy groups', energy_groups, openmc.mgxs.EnergyGroups)
         self._energy_groups = energy_groups
 
-    @delayed_groups.setter
-    def delayed_groups(self, delayed_groups):
-        check_type('delayed groups', delayed_groups, int)
-        self._delayed_groups = delayed_groups
+    @num_delayed_groups.setter
+    def num_delayed_groups(self, num_delayed_groups):
+        check_type('num_delayed_groups', num_delayed_groups, int)
+        check_greater_than('delayed_groups', delayed_groups, 0, equality=True)
+        self._num_delayed_groups = num_delayed_groups
 
     def add_xsdata(self, xsdata):
         """Add an XSdata entry to the file.
@@ -1988,7 +1989,7 @@ class MGXSLibrary(object):
         # Create and write to the HDF5 file
         file = h5py.File(filename, "w")
         file.attrs['energy_groups'] = self.energy_groups.num_groups
-        file.attrs['delayed_groups'] = self.delayed_groups
+        file.attrs['delayed_groups'] = self.num_delayed_groups
         file.attrs['group structure'] = self.energy_groups.group_edges
 
         for xsdata in self._xsdatas:

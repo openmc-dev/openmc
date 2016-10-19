@@ -331,7 +331,7 @@ class Library(object):
     def num_delayed_groups(self, num_delayed_groups):
 
         cv.check_less_than('num delayed groups', num_delayed_groups,
-                           MAX_DELAYED_GROUPS, equality=True)
+                           openmc.mgxs.MAX_DELAYED_GROUPS, equality=True)
         cv.check_greater_than('num delayed groups', num_delayed_groups, 0,
                               equality=True)
         self._num_delayed_groups = num_delayed_groups
@@ -422,7 +422,8 @@ class Library(object):
                     if self.num_delayed_groups == 0:
                         mgxs.delayed_groups = None
                     else:
-                        delayed_groups = list(range(1,self.num_delayed_groups))
+                        delayed_groups \
+                            = list(range(1,self.num_delayed_groups+1))
                         mgxs.delayed_groups = delayed_groups
 
                 # If a tally trigger was specified, add it to the MGXS

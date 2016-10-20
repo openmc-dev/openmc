@@ -2139,6 +2139,9 @@ contains
       call time_read_xs % stop()
     end if
 
+    ! Assign and normalize nuclide densities
+    call assign_nuclide_densities()
+
     ! Clear dictionary
     call library_dict % clear()
   end subroutine read_materials
@@ -2159,10 +2162,10 @@ contains
     integer :: index_sab      ! index in sab_tables
     logical :: file_exists    ! does materials.xml exist?
     character(20) :: name     ! name of nuclide, e.g. 92235.03c
-    character(MAX_LINE_LEN) :: filename ! absolute path to materials.xml
-    character(MAX_LINE_LEN) :: temp_str ! temporary string when reading
-    type(VectorChar) :: names     ! temporary list of nuclide names
-    type(VectorInt)  :: list_iso_lab ! temporary list of isotropic lab scatterers
+    character(MAX_LINE_LEN) :: filename     ! absolute path to materials.xml
+    character(MAX_LINE_LEN) :: temp_str     ! temporary string when reading
+    type(VectorChar)        :: names        ! temporary list of nuclide names
+    type(VectorInt)         :: list_iso_lab ! temporary list of isotropic lab scatterers
     type(Material),    pointer :: mat => null()
     type(Node), pointer :: doc => null()
     type(Node), pointer :: node_mat => null()
@@ -4872,17 +4875,12 @@ contains
   end subroutine generate_rpn
 
 !===============================================================================
-! NORMALIZE_AO normalizes the atom or weight percentages for each material
+! ASSIGN_NUCLIDE_DENSITIES Assign and normalize nuclide densities
 !===============================================================================
 
-  subroutine normalize_ao()
+  subroutine assign_nuclide_densities()
     integer                 :: i               ! index in materials array
     integer                 :: j               ! index over nuclides in material
-    real(8)                 :: sum_percent     ! summation
-    real(8)                 :: awr             ! atomic weight ratio
-    real(8)                 :: x               ! atom percent
-    logical                 :: percent_in_atom ! nuclides specified in atom percent?
-    logical                 :: density_in_atom ! density specified in atom/b-cm?
     logical                 :: file_exists     ! does materials.xml exist?
     character(20)           :: name            ! name of nuclide, e.g. 92235.03c
     character(MAX_WORD_LEN) :: units           ! units on density
@@ -5102,6 +5100,21 @@ contains
       ! Clear lists
       call densities % clear()
     end do
+
+  end subroutine assign_nuclide_densities
+
+!===============================================================================
+! NORMALIZE_AO Normalize the nuclide atom percents
+!===============================================================================
+
+  subroutine normalize_ao()
+    integer                 :: i               ! index in materials array
+    integer                 :: j               ! index over nuclides in material
+    real(8)                 :: sum_percent     ! summation
+    real(8)                 :: awr             ! atomic weight ratio
+    real(8)                 :: x               ! atom percent
+    logical                 :: percent_in_atom ! nuclides specified in atom percent?
+    logical                 :: density_in_atom ! density specified in atom/b-cm?
 
     do i = 1, size(materials)
       associate (mat => materials(i))

@@ -475,6 +475,7 @@ class Material(object):
             # Get the isotopes and their natural abundances
             isotopes, abundances = zip(*element.expand())
             abundances = list(abundances)
+            isotopes = list(isotopes)
             n_isotopes = len(isotopes)
 
             # Create a list of atomic masses

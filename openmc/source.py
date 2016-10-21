@@ -2,12 +2,11 @@ from numbers import Real
 import sys
 from xml.etree import ElementTree as ET
 
+from six import string_types
+
 from openmc.stats.univariate import Univariate
 from openmc.stats.multivariate import UnitSphere, Spatial
 import openmc.checkvalue as cv
-
-if sys.version_info[0] >= 3:
-    basestring = str
 
 
 class Source(object):
@@ -79,7 +78,7 @@ class Source(object):
 
     @file.setter
     def file(self, filename):
-        cv.check_type('source file', filename, basestring)
+        cv.check_type('source file', filename, string_types)
         self._file = filename
 
     @space.setter

@@ -8,6 +8,26 @@ This quick install guide outlines the basic steps needed to install OpenMC on
 your computer. For more detailed instructions on configuring and installing
 OpenMC, see :ref:`usersguide_install` in the User's Manual.
 
+----------------------------------------
+Installing on Linux/Mac with conda-forge
+----------------------------------------
+
+`Conda <http://conda.pydata.org/docs/>`_ is an open source package management
+system and environment management system for installing multiple versions of
+software packages and their dependencies and switching easily between them. If
+you have `conda` installed on your system, OpenMC can be installed via the
+`conda-forge` channel. First, add the `conda-forge` channel with:
+
+.. code-block:: sh
+
+    conda config --add channels conda-forge
+
+OpenMC can then be installed with:
+
+.. code-block:: sh
+
+    conda install openmc
+
 --------------------------------
 Installing on Ubuntu through PPA
 --------------------------------

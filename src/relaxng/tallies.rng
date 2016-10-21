@@ -139,6 +139,14 @@
                 </attribute>
               </choice>
             </interleave>
+            <choice>
+              <element name="variable">
+                <value>temperature</value>
+              </element>
+              <attribute name="variable">
+                <value>temperature</value>
+              </attribute>
+            </choice>
           </choice>
         </interleave>
       </element>

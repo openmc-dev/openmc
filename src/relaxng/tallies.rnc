@@ -25,8 +25,10 @@ element tallies {
           | attribute variable { ( "nuclide_density" ) } )
         &
         (element nuclide { xsd:string { maxLength = "12" } }
-          | attribute nuclide { xsd:string { maxLength = "12" } } )
+          | attribute nuclide { xsd:string { maxLength = "12" } } ) |
       )
+      (element variable { ( "temperature") }
+        | attribute variable { ( "temperature" ) } )
     )
   }* &
 

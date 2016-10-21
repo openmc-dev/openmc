@@ -2034,15 +2034,20 @@ the following attributes/sub-elements:
     A unique integer that can be used to identify the derivative.
 
   :variable:
-    The independent variable of the derivative. Accepted options are
-    "density" and "nuclide_density". A "density" derivative will give the
+    The independent variable of the derivative. Accepted options are "density",
+    "nuclide_density", and "temperature". A "density" derivative will give the
     derivative with respect to the density of the material in [g / cm^3]. A
-    "nuclide_density" derivative will give the derivative with respect to
-    the density of a particular nuclide in units of [atom / b / cm].
+    "nuclide_density" derivative will give the derivative with respect to the
+    density of a particular nuclide in units of [atom / b / cm].  A
+    "temperature" derivative is with respect to a material temperature in units
+    of [K].  The temperature derivative requires windowed multipole to be
+    turned on.  Note also that the temperature derivative only acconuts for
+    resolved resonance Doppler broadening.  It does not account for thermal
+    expansion, S(a, b) scattering, resonance scattering, or unresolved Doppler
+    broadening.
 
   :material:
-    The perturbed material. (Necessary for both "density" and
-    "nuclide_density")
+    The perturbed material. (Necessary for all derivative types)
 
   :nuclide:
     The perturbed nuclide. (Necessary only for "nuclide_density")

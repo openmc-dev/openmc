@@ -35,6 +35,7 @@ contains
 
     ! Initialize the particle to be tracked
     call p % initialize()
+    allocate(p % flux_derivs(size(tally_derivs)))
 
     ! Read in the restart information
     call read_particle_restart(p, previous_run_mode)

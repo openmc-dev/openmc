@@ -3,9 +3,7 @@ module nuclide_header
   use, intrinsic :: ISO_FORTRAN_ENV
   use, intrinsic :: ISO_C_BINDING
 
-  use hdf5, only: HID_T, HSIZE_T, SIZE_T, h5iget_name_f, h5gget_info_f, &
-                  h5lget_name_by_idx_f, H5_INDEX_NAME_F, H5_ITER_INC_F
-  use h5lt, only: h5ltpath_valid_f
+  use hdf5, only: HID_T, HSIZE_T, SIZE_T
 
   use algorithm, only: sort, find
   use constants
@@ -14,7 +12,8 @@ module nuclide_header
   use endf_header, only: Function1D, Polynomial, Tabulated1D
   use error,       only: fatal_error, warning
   use hdf5_interface, only: read_attribute, open_group, close_group, &
-       open_dataset, read_dataset, close_dataset, get_shape, get_datasets
+       open_dataset, read_dataset, close_dataset, get_shape, get_datasets, &
+       object_exists, get_name, get_groups
   use list_header, only: ListInt
   use math,        only: evaluate_legendre
   use multipole_header, only: MultipoleArray
@@ -186,18 +185,16 @@ module nuclide_header
 
   end subroutine nuclide_clear
 
-  subroutine nuclide_from_hdf5(this, group_id, temperature, method, tolerance)
-    class(Nuclide),  intent(inout) :: this
-    integer(HID_T),  intent(in)    :: group_id
+  subroutine nuclide_from_hdf5(this, group_id, temperature, method, tolerance, &
+                               master)
+    class(Nuclide),   intent(inout) :: this
+    integer(HID_T),   intent(in)    :: group_id
     type(VectorReal), intent(in)   :: temperature ! list of desired temperatures
-    integer,         intent(inout) :: method
-    real(8),         intent(in)    :: tolerance
+    integer,          intent(inout) :: method
+    real(8),          intent(in)    :: tolerance
+    logical,          intent(in)    :: master     ! if this is the master proc
 
     integer :: i
-    integer :: storage_type
-    integer :: max_corder
-    integer :: n_links
-    integer :: hdf5_err
     integer :: i_closest
     integer :: n_temperature
     integer(HID_T) :: urr_group, nu_group
@@ -208,21 +205,21 @@ module nuclide_header
     integer(HID_T) :: total_nu
     integer(HID_T) :: fer_group                 ! fission_energy_release group
     integer(HID_T) :: fer_dset
-    integer(SIZE_T) :: name_len, name_file_len
+    integer(SIZE_T) :: name_len
     integer(HSIZE_T) :: j
     integer(HSIZE_T) :: dims(1)
     character(MAX_WORD_LEN) :: temp_str
-    character(MAX_FILE_LEN), allocatable :: dset_names(:)
+    character(MAX_WORD_LEN), allocatable :: dset_names(:)
+    character(MAX_WORD_LEN), allocatable :: grp_names(:)
     real(8), allocatable :: temps_available(:) ! temperatures available
     real(8) :: temp_desired
     real(8) :: temp_actual
-    logical :: exists
     type(VectorInt) :: MTs
     type(VectorInt) :: temps_to_read
 
     ! Get name of nuclide from group
     name_len = len(this % name)
-    call h5iget_name_f(group_id, this % name, name_len, name_file_len, hdf5_err)
+    this % name = get_name(group_id, name_len)
 
     ! Get rid of leading '/'
     this % name = trim(this % name(2:))
@@ -265,15 +262,17 @@ module nuclide_header
             call temps_to_read % push_back(nint(temp_actual))
 
             ! Write warning for resonance scattering data if 0K is not available
-            if (abs(temp_actual - temp_desired) > 0 .and. temp_desired == 0) then
+            if (abs(temp_actual - temp_desired) > 0 .and. temp_desired == 0 &
+                 .and. master) then
               call warning(trim(this % name) // " does not contain 0K data &
                    &needed for resonance scattering options selected. Using &
-                   &data at " // trim(to_str(nint(temp_actual))) // " K instead.")
+                   &data at " // trim(to_str(temp_actual)) &
+                   // " K instead.")
             end if
           end if
         else
-          call fatal_error("Nuclear data library does not contain cross sections &
-               &for " // trim(this % name) // " at or near " // &
+          call fatal_error("Nuclear data library does not contain cross &
+               &sections for " // trim(this % name) // " at or near " // &
                trim(to_str(nint(temp_desired))) // " K.")
         end if
       end do
@@ -332,12 +331,10 @@ module nuclide_header
 
     ! Get MT values based on group names
     rxs_group = open_group(group_id, 'reactions')
-    call h5gget_info_f(rxs_group, storage_type, n_links, max_corder, hdf5_err)
-    do j = 0, n_links - 1
-      call h5lget_name_by_idx_f(rxs_group, ".", H5_INDEX_NAME_F, H5_ITER_INC_F, &
-           j, temp_str, hdf5_err, name_len)
-      if (starts_with(temp_str, "reaction_")) then
-        call MTs % push_back(int(str_to_int(temp_str(10:12))))
+    call get_groups(rxs_group, grp_names)
+    do j = 1, size(grp_names)
+      if (starts_with(grp_names(j), "reaction_")) then
+        call MTs % push_back(int(str_to_int(grp_names(j)(10:12))))
       end if
     end do
 
@@ -353,8 +350,7 @@ module nuclide_header
     call close_group(rxs_group)
 
     ! Read unresolved resonance probability tables if present
-    call h5ltpath_valid_f(group_id, 'urr', .true., exists, hdf5_err)
-    if (exists) then
+    if (object_exists(group_id, 'urr')) then
       this % urr_present = .true.
       allocate(this % urr_data(n_temperature))
 
@@ -395,8 +391,7 @@ module nuclide_header
     end if
 
     ! Check for nu-total
-    call h5ltpath_valid_f(group_id, 'total_nu', .true., exists, hdf5_err)
-    if (exists) then
+    if (object_exists(group_id, 'total_nu')) then
       nu_group = open_group(group_id, 'total_nu')
 
       ! Read total nu data
@@ -415,9 +410,7 @@ module nuclide_header
     end if
 
     ! Read fission energy release data if present
-    call h5ltpath_valid_f(group_id, 'fission_energy_release', .true., exists, &
-                          hdf5_err)
-    if (exists) then
+    if (object_exists(group_id, 'fission_energy_release')) then
       fer_group = open_group(group_id, 'fission_energy_release')
 
       ! Check to see if this is polynomial or tabulated data

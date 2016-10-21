@@ -2,14 +2,13 @@ import sys
 import copy
 from collections import Iterable
 
+from six import string_types
 import numpy as np
 
 import openmc
 from openmc.filter import _FILTER_TYPES
 import openmc.checkvalue as cv
 
-if sys.version_info[0] >= 3:
-    basestring = str
 
 # Acceptable tally arithmetic binary operations
 _TALLY_ARITHMETIC_OPS = ['+', '-', '*', '/', '^']
@@ -86,18 +85,18 @@ class CrossScore(object):
     @left_score.setter
     def left_score(self, left_score):
         cv.check_type('left_score', left_score,
-                      (basestring, CrossScore, AggregateScore))
+                      string_types + (CrossScore, AggregateScore))
         self._left_score = left_score
 
     @right_score.setter
     def right_score(self, right_score):
         cv.check_type('right_score', right_score,
-                      (basestring, CrossScore, AggregateScore))
+                      string_types + (CrossScore, AggregateScore))
         self._right_score = right_score
 
     @binary_op.setter
     def binary_op(self, binary_op):
-        cv.check_type('binary_op', binary_op, basestring)
+        cv.check_type('binary_op', binary_op, string_types)
         cv.check_value('binary_op', binary_op, _TALLY_ARITHMETIC_OPS)
         self._binary_op = binary_op
 
@@ -202,7 +201,7 @@ class CrossNuclide(object):
 
     @binary_op.setter
     def binary_op(self, binary_op):
-        cv.check_type('binary_op', binary_op, basestring)
+        cv.check_type('binary_op', binary_op, string_types)
         cv.check_value('binary_op', binary_op, _TALLY_ARITHMETIC_OPS)
         self._binary_op = binary_op
 
@@ -343,7 +342,7 @@ class CrossFilter(object):
 
     @binary_op.setter
     def binary_op(self, binary_op):
-        cv.check_type('binary_op', binary_op, basestring)
+        cv.check_type('binary_op', binary_op, string_types)
         cv.check_value('binary_op', binary_op, _TALLY_ARITHMETIC_OPS)
         self._binary_op = binary_op
 
@@ -495,12 +494,12 @@ class AggregateScore(object):
 
     @scores.setter
     def scores(self, scores):
-        cv.check_iterable_type('scores', scores, basestring)
+        cv.check_iterable_type('scores', scores, string_types)
         self._scores = scores
 
     @aggregate_op.setter
     def aggregate_op(self, aggregate_op):
-        cv.check_type('aggregate_op', aggregate_op, (basestring, CrossScore))
+        cv.check_type('aggregate_op', aggregate_op, string_types +(CrossScore,))
         cv.check_value('aggregate_op', aggregate_op, _TALLY_AGGREGATE_OPS)
         self._aggregate_op = aggregate_op
 
@@ -575,12 +574,12 @@ class AggregateNuclide(object):
     @nuclides.setter
     def nuclides(self, nuclides):
         cv.check_iterable_type('nuclides', nuclides,
-                               (basestring, openmc.Nuclide, CrossNuclide))
+                               string_types + (openmc.Nuclide, CrossNuclide))
         self._nuclides = nuclides
 
     @aggregate_op.setter
     def aggregate_op(self, aggregate_op):
-        cv.check_type('aggregate_op', aggregate_op, basestring)
+        cv.check_type('aggregate_op', aggregate_op, string_types)
         cv.check_value('aggregate_op', aggregate_op, _TALLY_AGGREGATE_OPS)
         self._aggregate_op = aggregate_op
 
@@ -711,7 +710,7 @@ class AggregateFilter(object):
 
     @aggregate_op.setter
     def aggregate_op(self, aggregate_op):
-        cv.check_type('aggregate_op', aggregate_op, basestring)
+        cv.check_type('aggregate_op', aggregate_op, string_types)
         cv.check_value('aggregate_op', aggregate_op, _TALLY_AGGREGATE_OPS)
         self._aggregate_op = aggregate_op
 

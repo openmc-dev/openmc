@@ -6,16 +6,13 @@ from numbers import Integral
 from collections import OrderedDict
 from warnings import warn
 
+from six import string_types
 import numpy as np
 
 import openmc
 import openmc.mgxs
 import openmc.checkvalue as cv
 from openmc.tallies import ESTIMATOR_TYPES
-
-
-if sys.version_info[0] >= 3:
-    basestring = str
 
 
 class Library(object):
@@ -259,7 +256,7 @@ class Library(object):
 
     @name.setter
     def name(self, name):
-        cv.check_type('name', name, basestring)
+        cv.check_type('name', name, string_types)
         self._name = name
 
     @mgxs_types.setter
@@ -268,7 +265,7 @@ class Library(object):
         if mgxs_types == 'all':
             self._mgxs_types = all_mgxs_types
         else:
-            cv.check_iterable_type('mgxs_types', mgxs_types, basestring)
+            cv.check_iterable_type('mgxs_types', mgxs_types, string_types)
             for mgxs_type in mgxs_types:
                 cv.check_value('mgxs_type', mgxs_type, all_mgxs_types)
             self._mgxs_types = mgxs_types
@@ -730,8 +727,8 @@ class Library(object):
                   'since a statepoint has not yet been loaded'
             raise ValueError(msg)
 
-        cv.check_type('filename', filename, basestring)
-        cv.check_type('directory', directory, basestring)
+        cv.check_type('filename', filename, string_types)
+        cv.check_type('directory', directory, string_types)
 
         import h5py
 
@@ -773,8 +770,8 @@ class Library(object):
 
         """
 
-        cv.check_type('filename', filename, basestring)
-        cv.check_type('directory', directory, basestring)
+        cv.check_type('filename', filename, string_types)
+        cv.check_type('directory', directory, string_types)
 
         # Make directory if it does not exist
         if not os.path.exists(directory):
@@ -808,8 +805,8 @@ class Library(object):
 
         """
 
-        cv.check_type('filename', filename, basestring)
-        cv.check_type('directory', directory, basestring)
+        cv.check_type('filename', filename, string_types)
+        cv.check_type('directory', directory, string_types)
 
         # Make directory if it does not exist
         if not os.path.exists(directory):
@@ -822,11 +819,13 @@ class Library(object):
         return pickle.load(open(full_filename, 'rb'))
 
     def get_xsdata(self, domain, xsdata_name, nuclide='total', xs_type='macro',
-                   order=None, tabular_legendre=None, tabular_points=33,
-                   subdomain=None):
+                   order=None, subdomain=None):
         """Generates an openmc.XSdata object describing a multi-group cross section
-        data set for eventual combination in to an openmc.MGXSLibrary object
-        (i.e., the library).
+        dataset for writing to an openmc.MGXSLibrary object.
+
+        Note that this method does not build an XSdata
+        object with nested temperature tables.  The temperature of each
+        XSdata object will be left at the default value of 300K.
 
         Parameters
         ----------
@@ -845,18 +844,6 @@ class Library(object):
             Scattering order for this data entry.  Default is None,
             which will set the XSdata object to use the order of the
             Library.
-        tabular_legendre : None or bool
-            Flag to denote whether or not the Legendre expansion of the
-            scattering angular distribution is to be converted to a tabular
-            representation by OpenMC.  A value of `True` means that it is to be
-            converted while a value of `False` means that it will not be.
-            Defaults to `None` which leaves the default behavior of OpenMC in
-            place (the distribution is converted to a tabular representation).
-        tabular_points : int
-            This parameter is not used unless the ``tabular_legendre``
-            parameter is set to `True`.  In this case, this parameter sets the
-            number of equally-spaced points in the domain of [-1,1] to be used
-            in building the tabular distribution. Default is `33`.
         subdomain : iterable of int
             This parameter is not used unless using a mesh domain. In that
             case, the subdomain is an [i,j,k] index (1-based indexing) of the
@@ -867,7 +854,7 @@ class Library(object):
         Returns
         -------
         xsdata : openmc.XSdata
-            Multi-Group Cross Section data set object.
+            Multi-Group Cross Section dataset object.
 
         Raises
         ------
@@ -883,17 +870,13 @@ class Library(object):
 
         cv.check_type('domain', domain, (openmc.Material, openmc.Cell,
                                          openmc.Universe, openmc.Mesh))
-        cv.check_type('xsdata_name', xsdata_name, basestring)
-        cv.check_type('nuclide', nuclide, basestring)
+        cv.check_type('xsdata_name', xsdata_name, string_types)
+        cv.check_type('nuclide', nuclide, string_types)
         cv.check_value('xs_type', xs_type, ['macro', 'micro'])
         cv.check_type('order', order, (type(None), Integral))
         if order is not None:
             cv.check_greater_than('order', order, 0, equality=True)
             cv.check_less_than('order', order, 10, equality=True)
-        cv.check_type('tabular_legendre', tabular_legendre,
-                      (type(None), bool))
-        if tabular_points is not None:
-            cv.check_greater_than('tabular_points', tabular_points, 1)
         if subdomain is not None:
             cv.check_iterable_type('subdomain', subdomain, Integral,
                                    max_depth=3)
@@ -910,7 +893,7 @@ class Library(object):
 
         # Build & add metadata to XSdata object
         name = xsdata_name
-        if nuclide is not 'total':
+        if nuclide != 'total':
             name += '_' + nuclide
         xsdata = openmc.XSdata(name, self.energy_groups)
 
@@ -922,14 +905,12 @@ class Library(object):
             # the provided order or the Library's order.
             xsdata.order = min(order, self.legendre_order)
 
-        # Set the tabular_legendre option if needed
-        if tabular_legendre is not None:
-            xsdata.tabular_legendre = {'enable': tabular_legendre,
-                                       'num_points': tabular_points}
+        # Right now only 'legendre' data and isotropic weighting is supported
+        self.scatter_format = 'legendre'
+        self.representation = 'isotropic'
 
-        if nuclide is not 'total':
-            xsdata.zaid = self._nuclides[nuclide][0]
-            xsdata.awr = self._nuclides[nuclide][1]
+        if nuclide != 'total':
+            xsdata.atomic_weight_ratio = self._nuclides[nuclide][1]
 
         if subdomain is None:
             subdomain = 'all'
@@ -940,7 +921,7 @@ class Library(object):
         if 'nu-transport' in self.mgxs_types and self.correction == 'P0':
             mymgxs = self.get_mgxs(domain, 'nu-transport')
             xsdata.set_total_mgxs(mymgxs, xs_type=xs_type, nuclide=[nuclide],
-                                  subdomains=subdomain)
+                                  subdomain=subdomain)
         elif 'total' in self.mgxs_types:
             mymgxs = self.get_mgxs(domain, 'total')
             xsdata.set_total_mgxs(mymgxs, xs_type=xs_type, nuclide=[nuclide],
@@ -979,48 +960,54 @@ class Library(object):
         # If multiplicity matrix is available, prefer that
         if 'multiplicity matrix' in self.mgxs_types:
             mymgxs = self.get_mgxs(domain, 'multiplicity matrix')
-            xsdata.set_multiplicity_mgxs(mymgxs, xs_type=xs_type,
-                                         nuclide=[nuclide],
-                                         subdomain=subdomain)
+            xsdata.set_multiplicity_matrix_mgxs(mymgxs, xs_type=xs_type,
+                                                nuclide=[nuclide],
+                                                subdomain=subdomain)
             using_multiplicity = True
         # multiplicity will fall back to using scatter and nu-scatter
         elif ((('scatter matrix' in self.mgxs_types) and
                ('nu-scatter matrix' in self.mgxs_types))):
             scatt_mgxs = self.get_mgxs(domain, 'scatter matrix')
             nuscatt_mgxs = self.get_mgxs(domain, 'nu-scatter matrix')
-            xsdata.set_multiplicity_mgxs(nuscatt_mgxs, scatt_mgxs,
-                                         xs_type=xs_type, nuclide=[nuclide],
-                                         subdomain=subdomain)
+            xsdata.set_multiplicity_matrix_mgxs(nuscatt_mgxs, scatt_mgxs,
+                                                xs_type=xs_type,
+                                                nuclide=[nuclide],
+                                                subdomain=subdomain)
             using_multiplicity = True
         else:
             using_multiplicity = False
 
         if using_multiplicity:
             nuscatt_mgxs = self.get_mgxs(domain, 'nu-scatter matrix')
-            xsdata.set_scatter_mgxs(nuscatt_mgxs, xs_type=xs_type,
-                                    nuclide=[nuclide], subdomain=subdomain)
+            xsdata.set_scatter_matrix_mgxs(nuscatt_mgxs, xs_type=xs_type,
+                                           nuclide=[nuclide],
+                                           subdomain=subdomain)
         else:
             if 'nu-scatter matrix' in self.mgxs_types:
                 nuscatt_mgxs = self.get_mgxs(domain, 'nu-scatter matrix')
-                xsdata.set_scatter_mgxs(nuscatt_mgxs, xs_type=xs_type,
-                                        nuclide=[nuclide],
-                                        subdomain=subdomain)
+                xsdata.set_scatter_matrix_mgxs(nuscatt_mgxs, xs_type=xs_type,
+                                               nuclide=[nuclide],
+                                               subdomain=subdomain)
 
                 # Since we are not using multiplicity, then
                 # scattering multiplication (nu-scatter) must be
                 # accounted for approximately by using an adjusted
                 # absorption cross section.
-                if 'total' in self.mgxs_types:
-                    xsdata.absorption = \
-                        np.subtract(xsdata.total,
-                                    np.sum(xsdata.scatter[0, :, :], axis=1))
+                if 'total' in self.mgxs_types or 'transport' in self.mgxs_types:
+                    for i in range(len(xsdata.temperatures)):
+                        xsdata._absorption[i] = \
+                            np.subtract(xsdata._total[i], np.sum(
+                                xsdata._scatter_matrix[i][0, :, :], axis=1))
 
         return xsdata
 
-    def create_mg_library(self, xs_type='macro', xsdata_names=None,
-                          tabular_legendre=None, tabular_points=33):
+    def create_mg_library(self, xs_type='macro', xsdata_names=None):
         """Creates an openmc.MGXSLibrary object to contain the MGXS data for the
         Multi-Group mode of OpenMC.
+
+        Note that this library will not make use of nested temperature tables.
+        Every dataset in the library will be treated as if it was at the same
+        default temperature.
 
         Parameters
         ----------
@@ -1031,18 +1018,6 @@ class Library(object):
         xsdata_names : Iterable of str
             List of names to apply to the "xsdata" entries in the
             resultant mgxs data file. Defaults to 'set1', 'set2', ...
-        tabular_legendre : None or bool
-            Flag to denote whether or not the Legendre expansion of the
-            scattering angular distribution is to be converted to a tabular
-            representation by OpenMC.  A value of `True` means that it is to be
-            converted while a value of `False` means that it will not be.
-            Defaults to `None` which leaves the default behavior of OpenMC in
-            place (the distribution is converted to a tabular representation).
-        tabular_points : int
-            This parameter is not used unless the ``tabular_legendre``
-            parameter is set to `True`.  In this case, this parameter sets the
-            number of equally-spaced points in the domain of [-1,1] to be used
-            in building the tabular distribution. Default is `33`.
 
         Returns
         -------
@@ -1069,7 +1044,7 @@ class Library(object):
 
         cv.check_value('xs_type', xs_type, ['macro', 'micro'])
         if xsdata_names is not None:
-            cv.check_iterable_type('xsdata_names', xsdata_names, basestring)
+            cv.check_iterable_type('xsdata_names', xsdata_names, string_types)
 
         # If gathering material-specific data, set the xs_type to macro
         if not self.by_nuclide:
@@ -1094,8 +1069,6 @@ class Library(object):
 
                     # Create XSdata and Macroscopic for this domain
                     xsdata = self.get_xsdata(domain, xsdata_name,
-                                             tabular_legendre=tabular_legendre,
-                                             tabular_points=tabular_points,
                                              subdomain=subdomain)
                     mgxs_file.add_xsdata(xsdata)
                     i += 1
@@ -1113,45 +1086,34 @@ class Library(object):
                         xsdata_name = 'set' + str(i + 1)
                     else:
                         xsdata_name = xsdata_names[i]
-                    if nuclide is not 'total':
+                    if nuclide != 'total':
                         xsdata_name += '_' + nuclide
 
                     xsdata = self.get_xsdata(domain, xsdata_name,
-                                             nuclide=nuclide, xs_type=xs_type,
-                                             tabular_legendre=tabular_legendre,
-                                             tabular_points=tabular_points)
+                                             nuclide=nuclide, xs_type=xs_type)
 
                     mgxs_file.add_xsdata(xsdata)
 
         return mgxs_file
 
-    def create_mg_mode(self, xsdata_names=None, tabular_legendre=None,
-                       tabular_points=33, bc=['reflective'] * 6):
+    def create_mg_mode(self, xsdata_names=None, bc=['reflective'] * 6):
         """Creates an openmc.MGXSLibrary object to contain the MGXS data for the
         Multi-Group mode of OpenMC as well as the associated openmc.Materials
-        and openmc.Geometry objects. The created Geometry is the same as that
-        used to generate the MGXS data, with the only differences being
-        modifications to point to newly-created Materials which point to the
-        multi-group data. This method only creates a macroscopic
-        MGXS Library even if nuclidic tallies are specified in the Library.
+        and openmc.Geometry objects.
+
+        The created Geometry is the same as that used to generate the MGXS
+        data, with the only differences being modifications to point to
+        newly-created Materials which point to the multi-group data. This
+        method only creates a macroscopic MGXS Library even if nuclidic tallies
+        are specified in the Library. Note that this library will not make
+        use of nested temperature tables. Every dataset in the library will
+        be treated as if it was at the same default temperature.
 
         Parameters
         ----------
         xsdata_names : Iterable of str
             List of names to apply to the "xsdata" entries in the
             resultant mgxs data file. Defaults to 'set1', 'set2', ...
-        tabular_legendre : None or bool
-            Flag to denote whether or not the Legendre expansion of the
-            scattering angular distribution is to be converted to a tabular
-            representation by OpenMC.  A value of `True` means that it is to be
-            converted while a value of `False` means that it will not be.
-            Defaults to `None` which leaves the default behavior of OpenMC in
-            place (the distribution is converted to a tabular representation).
-        tabular_points : int
-            This parameter is not used unless the ``tabular_legendre``
-            parameter is set to `True`.  In this case, this parameter sets the
-            number of equally-spaced points in the domain of [-1,1] to be used
-            in building the tabular distribution. Default is `33`.
         bc : iterable of {'reflective', 'periodic', 'transmission', or 'vacuum'}
             Boundary conditions for each of the four faces of a rectangle
             (if applying to a 2D mesh) or six faces of a parallelepiped
@@ -1198,8 +1160,7 @@ class Library(object):
             cv.check_length("domains", self.domains, 1, 1)
 
         # Get the MGXS File Data
-        mgxs_file = self.create_mg_library('macro', xsdata_names,
-                                           tabular_legendre, tabular_points)
+        mgxs_file = self.create_mg_library('macro', xsdata_names)
 
         # Now move on the creating the geometry and assigning materials
         if self.domain_type == 'mesh':

@@ -5,9 +5,11 @@ from warnings import warn
 import numpy as np
 
 import openmc.checkvalue as cv
-from openmc.stats import Tabular, Univariate, Discrete, Mixture, Uniform
+from openmc.stats import Tabular, Univariate, Discrete, Mixture, \
+    Uniform, Legendre
 from .function import INTERPOLATION_SCHEME
 from .angle_energy import AngleEnergy
+from .endf import get_list_record, get_tab2_record
 
 
 class CorrelatedAngleEnergy(AngleEnergy):
@@ -405,3 +407,52 @@ class CorrelatedAngleEnergy(AngleEnergy):
             mu.append(mu_i)
 
         return cls(breakpoints, interpolation, energy, energy_out, mu)
+
+    @classmethod
+    def from_endf(cls, file_obj):
+        """Generate correlated angle-energy distribution from an ENDF evaluation
+
+        Parameters
+        ----------
+        file_obj : file-like object
+            ENDF file positioned at the start of a section for a correlated
+            angle-energy distribution
+
+        Returns
+        -------
+        openmc.data.CorrelatedAngleEnergy
+            Correlated angle-energy distribution
+
+        """
+        params, tab2 = get_tab2_record(file_obj)
+        lep = params[3]
+        ne = params[5]
+        energy = np.zeros(ne)
+        n_discrete_energies = np.zeros(ne, dtype=int)
+        energy_out = []
+        mu = []
+        for i in range(ne):
+            items, values = get_list_record(file_obj)
+            energy[i] = items[1]
+            n_discrete_energies[i] = items[2]
+            # TODO: separate out discrete lines
+            n_angle = items[3]
+            n_energy_out = items[5]
+            values = np.asarray(values)
+            values.shape = (n_energy_out, n_angle + 2)
+
+            # Outgoing energy distribution at the i-th incoming energy
+            eout_i = values[:,0]
+            eout_p_i = values[:,1]
+            energy_out_i = Tabular(eout_i, eout_p_i, INTERPOLATION_SCHEME[lep],
+                                   ignore_negative=True)
+            energy_out.append(energy_out_i)
+
+            # Legendre coefficients used for angular distributions
+            mu_i = []
+            for j in range(n_energy_out):
+                mu_i.append(Legendre(values[j,1:]))
+            mu.append(mu_i)
+
+        return cls(tab2.breakpoints, tab2.interpolation, energy,
+                   energy_out, mu)

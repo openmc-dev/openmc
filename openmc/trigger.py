@@ -4,10 +4,9 @@ import sys
 import warnings
 from collections import Iterable
 
-import openmc.checkvalue as cv
+from six import string_types
 
-if sys.version_info[0] >= 3:
-    basestring = str
+import openmc.checkvalue as cv
 
 
 class Trigger(object):
@@ -77,7 +76,7 @@ class Trigger(object):
 
     @scores.setter
     def scores(self, scores):
-        cv.check_type('trigger scores', scores, Iterable, basestring)
+        cv.check_type('trigger scores', scores, Iterable, string_types)
 
         # Set scores making sure not to have duplicates
         self._scores = []

@@ -1,8 +1,9 @@
+import numpy as np
+
 import openmc
 from openmc.source import Source
 from openmc.stats import Box
 
-import numpy as np
 
 class InputSet(object):
     def __init__(self):
@@ -27,37 +28,8 @@ class InputSet(object):
         fuel.set_density('g/cm3', 10.062)
         fuel.add_nuclide("U234", 4.9476e-6)
         fuel.add_nuclide("U235", 4.8218e-4)
-        fuel.add_nuclide("U236", 9.0402e-5)
         fuel.add_nuclide("U238", 2.1504e-2)
-        fuel.add_nuclide("Np237", 7.3733e-6)
-        fuel.add_nuclide("Pu238", 1.5148e-6)
-        fuel.add_nuclide("Pu239", 1.3955e-4)
-        fuel.add_nuclide("Pu240", 3.4405e-5)
-        fuel.add_nuclide("Pu241", 2.1439e-5)
-        fuel.add_nuclide("Pu242", 3.7422e-6)
-        fuel.add_nuclide("Am241", 4.5041e-7)
-        fuel.add_nuclide("Am242_m1", 9.2301e-9)
-        fuel.add_nuclide("Am243", 4.7878e-7)
-        fuel.add_nuclide("Cm242", 1.0485e-7)
-        fuel.add_nuclide("Cm243", 1.4268e-9)
-        fuel.add_nuclide("Cm244", 8.8756e-8)
-        fuel.add_nuclide("Cm245", 3.5285e-9)
-        fuel.add_nuclide("Mo95", 2.6497e-5)
-        fuel.add_nuclide("Tc99", 3.2772e-5)
-        fuel.add_nuclide("Ru101", 3.0742e-5)
-        fuel.add_nuclide("Ru103", 2.3505e-6)
-        fuel.add_nuclide("Ag109", 2.0009e-6)
         fuel.add_nuclide("Xe135", 1.0801e-8)
-        fuel.add_nuclide("Cs133", 3.4612e-5)
-        fuel.add_nuclide("Nd143", 2.6078e-5)
-        fuel.add_nuclide("Nd145", 1.9898e-5)
-        fuel.add_nuclide("Sm147", 1.6128e-6)
-        fuel.add_nuclide("Sm149", 1.1627e-7)
-        fuel.add_nuclide("Sm150", 7.1727e-6)
-        fuel.add_nuclide("Sm151", 5.4947e-7)
-        fuel.add_nuclide("Sm152", 3.0221e-6)
-        fuel.add_nuclide("Eu153", 2.6209e-6)
-        fuel.add_nuclide("Gd155", 1.5369e-9)
         fuel.add_nuclide("O16", 4.5737e-2)
 
         clad = openmc.Material(name='Cladding', material_id=2)
@@ -93,27 +65,10 @@ class InputSet(object):
         rpv_steel.add_nuclide("Fe58", 0.00282159, 'wo')
         rpv_steel.add_nuclide("Ni58", 0.0067198, 'wo')
         rpv_steel.add_nuclide("Ni60", 0.0026776, 'wo')
-        rpv_steel.add_nuclide("Ni61", 0.0001183, 'wo')
-        rpv_steel.add_nuclide("Ni62", 0.0003835, 'wo')
-        rpv_steel.add_nuclide("Ni64", 0.0001008, 'wo')
         rpv_steel.add_nuclide("Mn55", 0.01, 'wo')
-        rpv_steel.add_nuclide("Mo92", 0.000849, 'wo')
-        rpv_steel.add_nuclide("Mo94", 0.0005418, 'wo')
-        rpv_steel.add_nuclide("Mo95", 0.0009438, 'wo')
-        rpv_steel.add_nuclide("Mo96", 0.0010002, 'wo')
-        rpv_steel.add_nuclide("Mo97", 0.0005796, 'wo')
-        rpv_steel.add_nuclide("Mo98", 0.0014814, 'wo')
-        rpv_steel.add_nuclide("Mo100", 0.0006042, 'wo')
-        rpv_steel.add_nuclide("Si28", 0.00367464, 'wo')
-        rpv_steel.add_nuclide("Si29", 0.00019336, 'wo')
-        rpv_steel.add_nuclide("Si30", 0.000132, 'wo')
-        rpv_steel.add_nuclide("Cr50", 0.00010435, 'wo')
         rpv_steel.add_nuclide("Cr52", 0.002092475, 'wo')
-        rpv_steel.add_nuclide("Cr53", 0.00024185, 'wo')
-        rpv_steel.add_nuclide("Cr54", 6.1325e-05, 'wo')
         rpv_steel.add_nuclide("C0", 0.0025, 'wo')
         rpv_steel.add_nuclide("Cu63", 0.0013696, 'wo')
-        rpv_steel.add_nuclide("Cu65", 0.0006304, 'wo')
 
         lower_rad_ref = openmc.Material(name='Lower radial reflector',
                                         material_id=6)
@@ -127,18 +82,8 @@ class InputSet(object):
         lower_rad_ref.add_nuclide("Fe57", 0.01362750048, 'wo')
         lower_rad_ref.add_nuclide("Fe58", 0.001848545204, 'wo')
         lower_rad_ref.add_nuclide("Ni58", 0.055298376566, 'wo')
-        lower_rad_ref.add_nuclide("Ni60", 0.022034425592, 'wo')
-        lower_rad_ref.add_nuclide("Ni61", 0.000973510811, 'wo')
-        lower_rad_ref.add_nuclide("Ni62", 0.003155886695, 'wo')
-        lower_rad_ref.add_nuclide("Ni64", 0.000829500336, 'wo')
         lower_rad_ref.add_nuclide("Mn55", 0.0182870, 'wo')
-        lower_rad_ref.add_nuclide("Si28", 0.00839976771, 'wo')
-        lower_rad_ref.add_nuclide("Si29", 0.00044199679, 'wo')
-        lower_rad_ref.add_nuclide("Si30", 0.0003017355, 'wo')
-        lower_rad_ref.add_nuclide("Cr50", 0.007251360806, 'wo')
         lower_rad_ref.add_nuclide("Cr52", 0.145407678031, 'wo')
-        lower_rad_ref.add_nuclide("Cr53", 0.016806340306, 'wo')
-        lower_rad_ref.add_nuclide("Cr54", 0.004261520857, 'wo')
         lower_rad_ref.add_s_alpha_beta('c_H_in_H2O')
 
         upper_rad_ref = openmc.Material(name='Upper radial reflector /'
@@ -153,18 +98,8 @@ class InputSet(object):
         upper_rad_ref.add_nuclide("Fe57", 0.01375486056, 'wo')
         upper_rad_ref.add_nuclide("Fe58", 0.001865821363, 'wo')
         upper_rad_ref.add_nuclide("Ni58", 0.055815129186, 'wo')
-        upper_rad_ref.add_nuclide("Ni60", 0.022240333032, 'wo')
-        upper_rad_ref.add_nuclide("Ni61", 0.000982608081, 'wo')
-        upper_rad_ref.add_nuclide("Ni62", 0.003185377845, 'wo')
-        upper_rad_ref.add_nuclide("Ni64", 0.000837251856, 'wo')
         upper_rad_ref.add_nuclide("Mn55", 0.0184579, 'wo')
-        upper_rad_ref.add_nuclide("Si28", 0.00847831314, 'wo')
-        upper_rad_ref.add_nuclide("Si29", 0.00044612986, 'wo')
-        upper_rad_ref.add_nuclide("Si30", 0.000304557, 'wo')
-        upper_rad_ref.add_nuclide("Cr50", 0.00731912987, 'wo')
         upper_rad_ref.add_nuclide("Cr52", 0.146766614995, 'wo')
-        upper_rad_ref.add_nuclide("Cr53", 0.01696340737, 'wo')
-        upper_rad_ref.add_nuclide("Cr54", 0.004301347765, 'wo')
         upper_rad_ref.add_s_alpha_beta('c_H_in_H2O')
 
         bot_plate = openmc.Material(name='Bottom plate region', material_id=8)
@@ -178,18 +113,8 @@ class InputSet(object):
         bot_plate.add_nuclide("Fe57", 0.014750478, 'wo')
         bot_plate.add_nuclide("Fe58", 0.002000875025, 'wo')
         bot_plate.add_nuclide("Ni58", 0.059855207342, 'wo')
-        bot_plate.add_nuclide("Ni60", 0.023850159704, 'wo')
-        bot_plate.add_nuclide("Ni61", 0.001053732407, 'wo')
-        bot_plate.add_nuclide("Ni62", 0.003415945715, 'wo')
-        bot_plate.add_nuclide("Ni64", 0.000897854832, 'wo')
         bot_plate.add_nuclide("Mn55", 0.0197940, 'wo')
-        bot_plate.add_nuclide("Si28", 0.00909197802, 'wo')
-        bot_plate.add_nuclide("Si29", 0.00047842098, 'wo')
-        bot_plate.add_nuclide("Si30", 0.000326601, 'wo')
-        bot_plate.add_nuclide("Cr50", 0.007848910646, 'wo')
         bot_plate.add_nuclide("Cr52", 0.157390026871, 'wo')
-        bot_plate.add_nuclide("Cr53", 0.018191270146, 'wo')
-        bot_plate.add_nuclide("Cr54", 0.004612692337, 'wo')
         bot_plate.add_s_alpha_beta('c_H_in_H2O')
 
         bot_nozzle = openmc.Material(name='Bottom nozzle region',
@@ -204,18 +129,8 @@ class InputSet(object):
         bot_nozzle.add_nuclide("Fe57", 0.01163454624, 'wo')
         bot_nozzle.add_nuclide("Fe58", 0.001578204652, 'wo')
         bot_nozzle.add_nuclide("Ni58", 0.047211231662, 'wo')
-        bot_nozzle.add_nuclide("Ni60", 0.018811987544, 'wo')
-        bot_nozzle.add_nuclide("Ni61", 0.000831139127, 'wo')
-        bot_nozzle.add_nuclide("Ni62", 0.002694352115, 'wo')
-        bot_nozzle.add_nuclide("Ni64", 0.000708189552, 'wo')
         bot_nozzle.add_nuclide("Mn55", 0.0156126, 'wo')
-        bot_nozzle.add_nuclide("Si28", 0.007171335558, 'wo')
-        bot_nozzle.add_nuclide("Si29", 0.000377356542, 'wo')
-        bot_nozzle.add_nuclide("Si30", 0.0002576079, 'wo')
-        bot_nozzle.add_nuclide("Cr50", 0.006190885148, 'wo')
         bot_nozzle.add_nuclide("Cr52", 0.124142524198, 'wo')
-        bot_nozzle.add_nuclide("Cr53", 0.014348496148, 'wo')
-        bot_nozzle.add_nuclide("Cr54", 0.003638294506, 'wo')
         bot_nozzle.add_s_alpha_beta('c_H_in_H2O')
 
         top_nozzle = openmc.Material(name='Top nozzle region', material_id=10)
@@ -229,18 +144,8 @@ class InputSet(object):
         top_nozzle.add_nuclide("Fe57", 0.0101152584, 'wo')
         top_nozzle.add_nuclide("Fe58", 0.00137211607, 'wo')
         top_nozzle.add_nuclide("Ni58", 0.04104621835, 'wo')
-        top_nozzle.add_nuclide("Ni60", 0.0163554502, 'wo')
-        top_nozzle.add_nuclide("Ni61", 0.000722605975, 'wo')
-        top_nozzle.add_nuclide("Ni62", 0.002342513875, 'wo')
-        top_nozzle.add_nuclide("Ni64", 0.0006157116, 'wo')
         top_nozzle.add_nuclide("Mn55", 0.0135739, 'wo')
-        top_nozzle.add_nuclide("Si28", 0.006234853554, 'wo')
-        top_nozzle.add_nuclide("Si29", 0.000328078746, 'wo')
-        top_nozzle.add_nuclide("Si30", 0.0002239677, 'wo')
-        top_nozzle.add_nuclide("Cr50", 0.005382452306, 'wo')
         top_nozzle.add_nuclide("Cr52", 0.107931450781, 'wo')
-        top_nozzle.add_nuclide("Cr53", 0.012474806806, 'wo')
-        top_nozzle.add_nuclide("Cr54", 0.003163190107, 'wo')
         top_nozzle.add_s_alpha_beta('c_H_in_H2O')
 
         top_fa = openmc.Material(name='Top of fuel assemblies', material_id=11)
@@ -824,60 +729,59 @@ class AssemblyInputSet(object):
 
 
 class MGInputSet(InputSet):
-    def build_default_materials_and_geometry(self):
+    def build_default_materials_and_geometry(self, reps=None, as_macro=True):
         # Define materials needed for 1D/1G slab problem
-        uo2_data = openmc.Macroscopic('uo2_iso')
-        uo2 = openmc.Material(name='UO2', material_id=1)
-        uo2.set_density('macro', 1.0)
-        uo2.add_macroscopic(uo2_data)
+        mat_names = ['uo2', 'clad', 'lwtr']
+        mgxs_reps = ['ang', 'ang_mu', 'iso', 'iso_mu']
 
-        clad_data = openmc.Macroscopic('clad_ang_mu')
-        clad = openmc.Material(name='Clad', material_id=2)
-        clad.set_density('macro', 1.0)
-        clad.add_macroscopic(clad_data)
+        if reps is None:
+            reps = mgxs_reps
 
-        water_data = openmc.Macroscopic('lwtr_iso_mu')
-        water = openmc.Material(name='LWTR', material_id=3)
-        water.set_density('macro', 1.0)
-        water.add_macroscopic(water_data)
+        xs = []
+        mats = []
+        i = 0
+        for mat in mat_names:
+            for rep in reps:
+                i += 1
+                if as_macro:
+                    xs.append(openmc.Macroscopic(mat + '_' + rep))
+                    mats.append(openmc.Material(name=str(i)))
+                    mats[-1].set_density('macro', 1.)
+                    mats[-1].add_macroscopic(xs[-1])
+                else:
+                    xs.append(openmc.Nuclide(mat + '_' + rep))
+                    mats.append(openmc.Material(name=str(i)))
+                    mats[-1].set_density('atom/b-cm', 1.)
+                    mats[-1].add_nuclide(xs[-1].name, 1.0, 'ao')
 
-        # Define the materials file.
-        self.materials += (uo2, clad, water)
+        # Define the materials file
+        self.xs_data = xs
+        self.materials += mats
 
         # Define surfaces.
-
         # Assembly/Problem Boundary
-        left = openmc.XPlane(x0=0.0, surface_id=200,
-                             boundary_type='reflective')
-        right = openmc.XPlane(x0=10.0, surface_id=201,
-                              boundary_type='reflective')
-        bottom = openmc.YPlane(y0=0.0, surface_id=300,
-                               boundary_type='reflective')
-        top = openmc.YPlane(y0=10.0, surface_id=301,
-                            boundary_type='reflective')
+        left = openmc.XPlane(x0=0.0, boundary_type='reflective')
+        right = openmc.XPlane(x0=10.0, boundary_type='reflective')
+        bottom = openmc.YPlane(y0=0.0, boundary_type='reflective')
+        top = openmc.YPlane(y0=10.0, boundary_type='reflective')
+        # for each material add a plane
+        planes = [openmc.ZPlane(z0=0.0, boundary_type='reflective')]
+        dz = round(5. / float(len(mats)), 4)
+        for i in range(len(mats) - 1):
+            planes.append(openmc.ZPlane(z0=dz * float(i + 1)))
+        planes.append(openmc.ZPlane(z0=5.0, boundary_type='reflective'))
 
-        down = openmc.ZPlane(z0=0.0, surface_id=0,
-                             boundary_type='reflective')
-        fuel_clad_intfc = openmc.ZPlane(z0=2.0, surface_id=1)
-        clad_lwtr_intfc = openmc.ZPlane(z0=2.4, surface_id=2)
-        up = openmc.ZPlane(z0=5.0, surface_id=3,
-                           boundary_type='reflective')
-
-        # Define cells
-        c1 = openmc.Cell(cell_id=1)
-        c1.region = +left & -right & +bottom & -top & +down & -fuel_clad_intfc
-        c1.fill = uo2
-        c2 = openmc.Cell(cell_id=2)
-        c2.region = +left & -right & +bottom & -top & +fuel_clad_intfc & -clad_lwtr_intfc
-        c2.fill = clad
-        c3 = openmc.Cell(cell_id=3)
-        c3.region = +left & -right & +bottom & -top & +clad_lwtr_intfc & -up
-        c3.fill = water
+        # Define cells for each material
+        cells = []
+        xy = +left & -right & +bottom & -top
+        for i, mat in enumerate(mats):
+            cells.append(openmc.Cell())
+            cells[-1].region = xy & +planes[i] & -planes[i + 1]
+            cells[-1].fill = mat
 
         # Define root universe.
         root = openmc.Universe(universe_id=0, name='root universe')
-
-        root.add_cells((c1, c2, c3))
+        root.add_cells(cells)
 
         # Assign root universe to geometry
         self.geometry.root_universe = root
@@ -887,9 +791,9 @@ class MGInputSet(InputSet):
         self.settings.inactive = 5
         self.settings.particles = 100
         self.settings.source = Source(space=Box([0.0, 0.0, 0.0],
-                                                [10.0, 10.0, 2.0]))
+                                                [10.0, 10.0, 5.]))
         self.settings.energy_mode = "multi-group"
-        self.settings.cross_sections = "../1d_mgxs.xml"
+        self.settings.cross_sections = "../1d_mgxs.h5"
 
     def build_defualt_plots(self):
         plot = openmc.Plot()

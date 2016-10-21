@@ -2,8 +2,10 @@ from abc import ABCMeta, abstractmethod
 from collections import Iterable, Callable
 from numbers import Real, Integral
 
+from six import add_metaclass
 import numpy as np
 
+import openmc.data
 import openmc.checkvalue as cv
 from openmc.mixin import EqualityMixin
 
@@ -11,11 +13,9 @@ INTERPOLATION_SCHEME = {1: 'histogram', 2: 'linear-linear', 3: 'linear-log',
                         4: 'log-linear', 5: 'log-log'}
 
 
+@add_metaclass(ABCMeta)
 class Function1D(EqualityMixin):
     """A function of one independent variable with HDF5 support."""
-
-    __metaclass__ = ABCMeta
-
     @abstractmethod
     def __call__(self): pass
 
@@ -423,3 +423,83 @@ class Sum(EqualityMixin):
     def functions(self, functions):
         cv.check_type('functions', functions, Iterable, Callable)
         self._functions = functions
+
+
+class ResonancesWithBackground(EqualityMixin):
+    """Cross section in resolved resonance region.
+
+    Parameters
+    ----------
+    resonances : openmc.data.Resonances
+        Resolved resonance parameter data
+    background : Callable
+        Background cross section as a function of energy
+    mt : int
+        MT value of the reaction
+
+    Attributes
+    ----------
+    resonances : openmc.data.Resonances
+        Resolved resonance parameter data
+    background : Callable
+        Background cross section as a function of energy
+    mt : int
+        MT value of the reaction
+
+    """
+
+
+    def __init__(self, resonances, background, mt):
+        self.resonances = resonances
+        self.background = background
+        self.mt = mt
+
+    def __call__(self, x):
+        # Get background cross section
+        xs = self.background(x)
+
+        for r in self.resonances:
+            if not isinstance(r, openmc.data.resonance._RESOLVED):
+                continue
+
+            if isinstance(x, Iterable):
+                # Determine which energies are within resolved resonance range
+                within = (r.energy_min <= x) & (x <= r.energy_max)
+
+                # Get resonance cross sections and add to background
+                resonant_xs = r.reconstruct(x[within])
+                xs[within] += resonant_xs[self.mt]
+            else:
+                if r.energy_min <= x <= r.energy_max:
+                    resonant_xs = r.reconstruct(x)
+                    xs += resonant_xs[self.mt]
+
+        return xs
+
+    @property
+    def background(self):
+        return self._background
+
+    @property
+    def mt(self):
+        return self._mt
+
+    @property
+    def resonances(self):
+        return self._resonances
+
+    @background.setter
+    def background(self, background):
+        cv.check_type('background cross section', background, Callable)
+        self._background = background
+
+    @mt.setter
+    def mt(self, mt):
+        cv.check_type('MT value', mt, Integral)
+        self._mt = mt
+
+    @resonances.setter
+    def resonances(self, resonances):
+        cv.check_type('resolved resonance parameters', resonances,
+                      openmc.data.Resonances)
+        self._resonances = resonances

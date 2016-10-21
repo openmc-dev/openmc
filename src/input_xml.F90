@@ -2879,6 +2879,10 @@ contains
     call get_node_list(doc, "derivative", node_deriv_list)
     allocate(tally_derivs(get_list_size(node_deriv_list)))
 
+    ! Make sure this is not an MG run.
+    if (.not. run_CE .and. get_list_size(node_deriv_list) > 0) call &
+         fatal_error("Differential tallies not supported in multi-group mode")
+
     ! Read derivative attributes.
     do i = 1, get_list_size(node_deriv_list)
       associate(deriv => tally_derivs(i))

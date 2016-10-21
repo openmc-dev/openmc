@@ -157,37 +157,26 @@ contains
         if (E >= nuc % multipole % start_E/1.0e6_8 .and. &
              E <= nuc % multipole % end_E/1.0e6_8) then
           use_mp = .true.
-        else
-          ! If using multipole data but outside the RRR, pick the nearest
-          ! temperature. Note that there is no tolerance here, so this
-          ! temperature could be very far off!
-          kT = sqrtkT**2
-
-          i_temp = minloc(abs(nuclides(i_nuclide) % kTs - kT), dim=1)
         end if
-      else
-        kT = sqrtkT**2
-
-        select case (temperature_method)
-        case (TEMPERATURE_NEAREST)
-          ! If using nearest temperature, do linear search on temperature
-          do i_temp = 1, size(nuc % kTs)
-            if (abs(nuc % kTs(i_temp) - kT) < K_BOLTZMANN * &
-                 temperature_tolerance) exit
-          end do
-        case (TEMPERATURE_INTERPOLATION)
-          ! Find temperatures that bound the actual temperature
-          do i_temp = 1, size(nuc % kTs) - 1
-            if (nuc % kTs(i_temp) <= kT .and. kT < nuc % kTs(i_temp + 1)) exit
-          end do
-
-          ! Randomly sample between temperature i and i+1
-          f = (kT - nuc % kTs(i_temp)) / &
-               (nuc % kTs(i_temp + 1) - nuc % kTs(i_temp))
-          if (f > prn()) i_temp = i_temp + 1
-        end select
-
       end if
+
+      kT = sqrtkT**2
+
+      select case (temperature_method)
+      case (TEMPERATURE_NEAREST)
+        i_temp = minloc(abs(nuclides(i_nuclide) % kTs - kT), dim=1)
+
+      case (TEMPERATURE_INTERPOLATION)
+        ! Find temperatures that bound the actual temperature
+        do i_temp = 1, size(nuc % kTs) - 1
+          if (nuc % kTs(i_temp) <= kT .and. kT < nuc % kTs(i_temp + 1)) exit
+        end do
+
+        ! Randomly sample between temperature i and i+1
+        f = (kT - nuc % kTs(i_temp)) / &
+             (nuc % kTs(i_temp + 1) - nuc % kTs(i_temp))
+        if (f > prn()) i_temp = i_temp + 1
+      end select
 
       ! Evaluate multipole or interpolate
       if (use_mp) then

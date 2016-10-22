@@ -73,7 +73,6 @@ class EnrichmentTestHarness(PyAPITestHarness):
         # Instantiate a Geometry, register the root Universe, and export to XML
         self._input_set.geometry.root_universe = root
 
-
         mat_filter = openmc.MaterialFilter((fuel.id,))
         flux_tally = openmc.Tally()
         flux_tally.filters = [mat_filter]

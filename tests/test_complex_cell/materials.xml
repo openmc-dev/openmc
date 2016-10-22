@@ -11,11 +11,11 @@
   </material>
   <material id="3">
     <density value="2.0" units="g/cc" />
-    <element name="Zr" ao="1.0" />
+    <nuclide name="Zr90" ao="1.0" />
   </material>
   <material id="4">
     <density value="0.1" units="g/cc" />
-    <element name="N" ao="1.0" />
+    <nuclide name="N14" ao="1.0" />
   </material>
 
 </materials>

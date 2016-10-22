@@ -81,7 +81,6 @@ contains
     real(8), allocatable :: temp_real(:)
     integer :: n_tracks
     logical :: file_exists
-    character(MAX_FILE_LEN) :: env_variable
     character(MAX_WORD_LEN) :: type
     character(MAX_LINE_LEN) :: filename
     type(Node), pointer :: doc            => null()
@@ -138,55 +137,24 @@ contains
       end if
     end if
 
-    ! Find cross_sections.xml file -- the first place to look is the
-    ! settings.xml file. If no file is found there, then we check the
-    ! CROSS_SECTIONS environment variable
-    if (.not. check_for_node(doc, "cross_sections")) then
-      ! No cross_sections.xml file specified in settings.xml, check
-      ! environment variable
-      if (run_CE) then
-        call get_environment_variable("OPENMC_CROSS_SECTIONS", env_variable)
-        if (len_trim(env_variable) == 0) then
-          call get_environment_variable("CROSS_SECTIONS", env_variable)
-          if (len_trim(env_variable) == 0) then
-            call fatal_error("No cross_sections.xml file was specified in &
-                 &settings.xml or in the OPENMC_CROSS_SECTIONS environment &
-                 &variable. OpenMC needs such a file to identify where to &
-                 &find ACE cross section libraries. Please consult the &
-                 &user's guide at http://mit-crpg.github.io/openmc for &
-                 &information on how to set up ACE cross section libraries.")
-          else
-            call warning("The CROSS_SECTIONS environment variable is &
-                 &deprecated. Please update your environment to use &
-                 &OPENMC_CROSS_SECTIONS instead.")
-          end if
-        end if
-        path_cross_sections = trim(env_variable)
-      else
-        call get_environment_variable("OPENMC_MG_CROSS_SECTIONS", env_variable)
-        if (len_trim(env_variable) == 0) then
-          call fatal_error("No mgxs.xml file was specified in &
-               &settings.xml or in the OPENMC_MG_CROSS_SECTIONS environment &
-               &variable. OpenMC needs such a file to identify where to &
-               &find ACE cross section libraries. Please consult the user's &
-               &guide at http://mit-crpg.github.io/openmc for information on &
-               &how to set up ACE cross section libraries.")
-        else
-          path_cross_sections = trim(env_variable)
-        end if
-      end if
-    else
+    ! Look for deprecated cross_sections.xml file in settings.xml
+    if (check_for_node(doc, "cross_sections")) then
+      call warning("Setting cross_sections in settings.xml has been deprecated. &
+           &The cross_sections are now set in materials.xml and the &
+           &cross_sections input to materials.xml and OPENMC_CROSS_SECTIONS &
+           &environment variable will take precendent over setting &
+           &cross_sections in settings.xml.")
       call get_node_value(doc, "cross_sections", path_cross_sections)
     end if
 
-    ! Find the windowed multipole library
+    ! Look for deprecated windowed_multipole file in settings.xml
     if (run_mode /= MODE_PLOTTING) then
-      if (.not. check_for_node(doc, "multipole_library")) then
-        ! No library location specified in settings.xml, check
-        ! environment variable
-        call get_environment_variable("OPENMC_MULTIPOLE_LIBRARY", env_variable)
-        path_multipole = trim(env_variable)
-      else
+      if (check_for_node(doc, "multipole_library")) then
+        call warning("Setting multipole_library in settings.xml has been &
+             &deprecated. The multipole_library is now set in materials.xml and&
+             & the multipole_library input to materials.xml and &
+             &OPENMC_MULTIPOLE_LIBRARY environment variable will take &
+             &precendent over setting multipole_library in settings.xml.")
         call get_node_value(doc, "multipole_library", path_multipole)
       end if
       if (.not. ends_with(path_multipole, "/")) &
@@ -1055,32 +1023,6 @@ contains
       end if
     end if
 
-    ! Natural element expansion option
-    if (check_for_node(doc, "natural_elements")) then
-      call get_node_value(doc, "natural_elements", temp_str)
-      select case (to_lower(temp_str))
-      case ('endf/b-vii.0')
-        default_expand = ENDF_BVII0
-      case ('endf/b-vii.1')
-        default_expand = ENDF_BVII1
-      case ('jeff-3.1.1')
-        default_expand = JEFF_311
-      case ('jeff-3.1.2')
-        default_expand = JEFF_312
-      case ('jeff-3.2')
-        default_expand = JEFF_32
-      case ('jendl-3.2')
-        default_expand = JENDL_32
-      case ('jendl-3.3')
-        default_expand = JENDL_33
-      case ('jendl-4.0')
-        default_expand = JENDL_40
-      case default
-        call fatal_error("Unknown natural element expansion option: " &
-             // trim(temp_str))
-      end select
-    end if
-
     call get_node_list(doc, "volume_calc", node_vol_list)
     n = get_list_size(node_vol_list)
     allocate(volume_calcs(n))
@@ -1091,9 +1033,17 @@ contains
 
     ! Get temperature settings
     if (check_for_node(doc, "temperature_default")) then
+      call warning("Setting temperature_default in settings.xml has been &
+           &deprecated. temperature_default is now set in materials.xml and &
+           &its input to materials.xml will take precendent &
+           &over setting it in settings.xml.")
       call get_node_value(doc, "temperature_default", temperature_default)
     end if
     if (check_for_node(doc, "temperature_method")) then
+      call warning("Setting temperature_method in settings.xml has been &
+           &deprecated. temperature_method is now set in materials.xml and &
+           &its input to materials.xml will take precendent &
+           &over setting it in settings.xml.")
       call get_node_value(doc, "temperature_method", temp_str)
       select case (to_lower(temp_str))
       case ('nearest')
@@ -1105,9 +1055,17 @@ contains
       end select
     end if
     if (check_for_node(doc, "temperature_tolerance")) then
+      call warning("Setting temperature_tolerance in settings.xml has been &
+           &deprecated. temperature_tolerance is now set in materials.xml and &
+           &its input to materials.xml will take precendent &
+           &over setting it in settings.xml.")
       call get_node_value(doc, "temperature_tolerance", temperature_tolerance)
     end if
     if (check_for_node(doc, "temperature_multipole")) then
+      call warning("Setting temperature_multipole in settings.xml has been &
+           &deprecated. temperature_multipole is now set in materials.xml and &
+           &its input to materials.xml will take precendent &
+           &over setting it in settings.xml.")
       call get_node_value(doc, "temperature_multipole", temp_str)
       select case (to_lower(temp_str))
       case ('true', '1')
@@ -2095,7 +2053,115 @@ contains
     type(Library), allocatable :: libraries(:)
     type(VectorReal), allocatable :: nuc_temps(:) ! List of T to read for each nuclide
     type(VectorReal), allocatable :: sab_temps(:) ! List of T to read for each S(a,b)
-    real(8), allocatable :: material_temps(:)
+    character(MAX_LINE_LEN) :: temp_str
+    real(8), allocatable    :: material_temps(:)
+    logical                 :: file_exists
+    character(MAX_FILE_LEN) :: env_variable
+    character(MAX_LINE_LEN) :: filename
+    type(Node), pointer     :: doc => null()
+
+    ! Display output message
+    call write_message("Reading materials XML file...", 5)
+
+    ! Check is materials.xml exists
+    filename = trim(path_input) // "materials.xml"
+    inquire(FILE=filename, EXIST=file_exists)
+    if (.not. file_exists) then
+      call fatal_error("Material XML file '" // trim(filename) // "' does not &
+           &exist!")
+    end if
+
+    ! Parse materials.xml file
+    call open_xmldoc(doc, filename)
+
+    ! Find cross_sections.xml file -- the first place to look is the
+    ! materials.xml file. If no file is found there, then we check the
+    ! CROSS_SECTIONS environment variable
+    if (.not. check_for_node(doc, "cross_sections")) then
+      ! No cross_sections.xml file specified in settings.xml, check
+      ! environment variable
+      if (run_CE) then
+        call get_environment_variable("OPENMC_CROSS_SECTIONS", env_variable)
+        if (len_trim(env_variable) == 0) then
+          call get_environment_variable("CROSS_SECTIONS", env_variable)
+          if (len_trim(env_variable) == 0 .and. path_cross_sections == '') then
+            call fatal_error("No cross_sections.xml file was specified in &
+                 &materials.xml, settings.xml,  or in the OPENMC_CROSS_SECTIONS&
+                 & environment variable. OpenMC needs such a file to identify &
+                 &where to find ACE cross section libraries. Please consult the&
+                 & user's guide at http://mit-crpg.github.io/openmc for &
+                 &information on how to set up ACE cross section libraries.")
+          else
+            call warning("The CROSS_SECTIONS environment variable is &
+                 &deprecated. Please update your environment to use &
+                 &OPENMC_CROSS_SECTIONS instead.")
+          end if
+        end if
+        path_cross_sections = trim(env_variable)
+      else
+        call get_environment_variable("OPENMC_MG_CROSS_SECTIONS", env_variable)
+        if (len_trim(env_variable) == 0 .and. path_cross_sections == '') then
+          call fatal_error("No mgxs.xml file was specified in &
+               &materials.xml or in the OPENMC_MG_CROSS_SECTIONS environment &
+               &variable. OpenMC needs such a file to identify where to &
+               &find ACE cross section libraries. Please consult the user's &
+               &guide at http://mit-crpg.github.io/openmc for information on &
+               &how to set up ACE cross section libraries.")
+        else
+          path_cross_sections = trim(env_variable)
+        end if
+      end if
+    else
+      call get_node_value(doc, "cross_sections", path_cross_sections)
+    end if
+
+    ! Find the windowed multipole library
+    if (run_mode /= MODE_PLOTTING) then
+      if (.not. check_for_node(doc, "multipole_library")) then
+        ! No library location specified in materials.xml, check
+        ! environment variable
+        call get_environment_variable("OPENMC_MULTIPOLE_LIBRARY", env_variable)
+        path_multipole = trim(env_variable)
+      else
+        call get_node_value(doc, "multipole_library", path_multipole)
+      end if
+      if (.not. ends_with(path_multipole, "/")) &
+           path_multipole = trim(path_multipole) // "/"
+    end if
+
+    ! Get temperature settings
+    if (check_for_node(doc, "temperature_default")) then
+      call get_node_value(doc, "temperature_default", temperature_default)
+    end if
+    if (check_for_node(doc, "temperature_method")) then
+      call get_node_value(doc, "temperature_method", temp_str)
+      select case (to_lower(temp_str))
+      case ('nearest')
+        temperature_method = TEMPERATURE_NEAREST
+      case ('interpolation')
+        temperature_method = TEMPERATURE_INTERPOLATION
+      case default
+        call fatal_error("Unknown temperature method: " // trim(temp_str))
+      end select
+    end if
+    if (check_for_node(doc, "temperature_tolerance")) then
+      call get_node_value(doc, "temperature_tolerance", temperature_tolerance)
+    end if
+    if (check_for_node(doc, "temperature_multipole")) then
+      call get_node_value(doc, "temperature_multipole", temp_str)
+      select case (to_lower(temp_str))
+      case ('true', '1')
+        temperature_multipole = .true.
+      case ('false', '0')
+        temperature_multipole = .false.
+      case default
+        call fatal_error("Unrecognized value for <use_windowed_multipole> in &
+             &materials.xml")
+      end select
+    end if
+
+    ! Close materials XML file
+    call close_xmldoc(doc)
 
     if (run_CE) then
       call read_ce_cross_sections_xml(libraries)
@@ -2153,10 +2219,8 @@ contains
 
     integer :: i              ! loop index for materials
     integer :: j              ! loop index for nuclides
-    integer :: k              ! loop index for elements
     integer :: n              ! number of nuclides
     integer :: n_sab          ! number of sab tables for a material
-    integer :: n_nuc_ele      ! number of nuclides in an element
     integer :: i_library      ! index in libraries array
     integer :: index_nuclide  ! index in nuclides
     integer :: index_sab      ! index in sab_tables
@@ -2170,16 +2234,11 @@ contains
     type(Node), pointer :: doc => null()
     type(Node), pointer :: node_mat => null()
     type(Node), pointer :: node_nuc => null()
-    type(Node), pointer :: node_ele => null()
     type(Node), pointer :: node_sab => null()
     type(NodeList), pointer :: node_mat_list => null()
     type(NodeList), pointer :: node_nuc_list => null()
     type(NodeList), pointer :: node_macro_list => null()
-    type(NodeList), pointer :: node_ele_list => null()
     type(NodeList), pointer :: node_sab_list => null()
-
-    ! Display output message
-    call write_message("Reading materials XML file...", 5)
 
     ! Check is materials.xml exists
     filename = trim(path_input) // "materials.xml"
@@ -2240,10 +2299,9 @@ contains
 
       ! Check to ensure material has at least one nuclide
       if (.not. check_for_node(node_mat, "nuclide") .and. &
-           .not. check_for_node(node_mat, "element") .and. &
            .not. check_for_node(node_mat, "macroscopic")) then
-        call fatal_error("No macroscopic data, nuclides or natural elements &
-                         &specified on material " // trim(to_str(mat % id)))
+        call fatal_error("No macroscopic data or nuclides specified on &
+             &material " // trim(to_str(mat % id)))
       end if
 
       ! Create list of macroscopic x/s based on those specified, just treat
@@ -2279,7 +2337,7 @@ contains
         ! Get pointer list of XML <nuclide>
         call get_node_list(node_mat, "nuclide", node_nuc_list)
 
-        ! Create list of nuclides based on those specified plus natural elements
+        ! Create list of nuclides based on those specified
         INDIVIDUAL_NUCLIDES: do j = 1, get_list_size(node_nuc_list)
           ! Combine nuclide identifier and cross section and copy into names
           call get_list_item(node_nuc_list, j, node_nuc)
@@ -2316,66 +2374,6 @@ contains
 
         end do INDIVIDUAL_NUCLIDES
       end if
-
-      ! =======================================================================
-      ! READ AND PARSE <element> TAGS
-
-      ! Get pointer list of XML <element>
-      call get_node_list(node_mat, "element", node_ele_list)
-
-      NATURAL_ELEMENTS: do j = 1, get_list_size(node_ele_list)
-        call get_list_item(node_ele_list, j, node_ele)
-
-        ! Check for empty name on natural element
-        if (.not. check_for_node(node_ele, "name")) then
-          call fatal_error("No name specified on nuclide in material " &
-               // trim(to_str(mat % id)))
-        end if
-        call get_node_value(node_ele, "name", name)
-
-        ! Check if no atom/weight percents were specified or if both atom and
-        ! weight percents were specified
-        if (.not. check_for_node(node_ele, "ao") .and. &
-             .not. check_for_node(node_ele, "wo")) then
-          call fatal_error("No atom or weight percent specified for element " &
-               // trim(name))
-        elseif (check_for_node(node_ele, "ao") .and. &
-                check_for_node(node_ele, "wo")) then
-          call fatal_error("Cannot specify both atom and weight percents for &
-               &element: " // trim(name))
-        end if
-
-        ! Get current number of nuclides
-        n_nuc_ele = names % size()
-
-        ! Expand element into naturally-occurring nuclides
-        call expand_natural_element_names(name, names)
-
-        ! Compute number of new nuclides from the natural element expansion
-        n_nuc_ele = names % size() - n_nuc_ele
-
-        ! Check enforced isotropic lab scattering
-        if (run_CE) then
-          if (check_for_node(node_ele, "scattering")) then
-            call get_node_value(node_ele, "scattering", temp_str)
-          else
-            temp_str = "data"
-          end if
-
-          ! Set ace or iso-in-lab scattering for each nuclide in element
-          do k = 1, n_nuc_ele
-            if (adjustl(to_lower(temp_str)) == "iso-in-lab") then
-              call list_iso_lab % push_back(1)
-            else if (adjustl(to_lower(temp_str)) == "data") then
-              call list_iso_lab % push_back(0)
-            else
-              call fatal_error("Scattering must be isotropic in lab or follow&
-                   & the ACE file data")
-            end if
-          end do
-        end if
-
-      end do NATURAL_ELEMENTS
 
       ! ========================================================================
       ! COPY NUCLIDES TO ARRAYS IN MATERIAL
@@ -4589,205 +4587,6 @@ contains
   end subroutine read_mg_cross_sections_header
 
 !===============================================================================
-! EXPAND_NATURAL_ELEMENT_NAMES converts natural elements specified using an
-! <element> tag within a material and adds the names to the input names array.
-! In some cases, modifications have been made to work with ENDF/B-VII.1 where
-! evaluations of particular nuclides don't exist.
-!===============================================================================
-
-  subroutine expand_natural_element_names(name, names)
-    character(*),   intent(in)      :: name
-    type(VectorChar), intent(inout) :: names
-
-    integer      :: i
-    character(2) :: element_name
-    integer      :: natural_elements_loc
-    integer      :: nuclide_start
-    integer      :: nuclide_end
-
-    ! Convert the element name to lower case
-    element_name = to_lower(name(1:2))
-
-    ! Find location of element name in natural_elements
-    i = -1
-    do i = 1, NUM_NATURAL_ELEMENTS
-      if (natural_elements(i) == element_name) then
-        natural_elements_loc = i
-      end if
-    end do
-
-    ! Issue error if element not found
-    if (i == -1) then
-      call fatal_error("Cannot expand element: " // name)
-    end if
-
-    ! Get start and end locations in natural_nuclides arrays
-    select case (default_expand)
-    case (ENDF_BVII0)
-      nuclide_start = natural_nuclides_ENDF_BVII0_start(natural_elements_loc)
-      nuclide_end = natural_nuclides_ENDF_BVII0_end(natural_elements_loc)
-
-    case (ENDF_BVII1)
-      nuclide_start = natural_nuclides_ENDF_BVII1_start(natural_elements_loc)
-      nuclide_end = natural_nuclides_ENDF_BVII1_end(natural_elements_loc)
-
-    case (JEFF_311)
-      nuclide_start = natural_nuclides_JEFF_311_start(natural_elements_loc)
-      nuclide_end = natural_nuclides_JEFF_311_end(natural_elements_loc)
-
-    case (JEFF_312)
-      nuclide_start = natural_nuclides_JEFF_312_start(natural_elements_loc)
-      nuclide_end = natural_nuclides_JEFF_312_end(natural_elements_loc)
-
-    case (JEFF_32)
-      nuclide_start = natural_nuclides_JEFF_32_start(natural_elements_loc)
-      nuclide_end = natural_nuclides_JEFF_32_end(natural_elements_loc)
-
-    case (JENDL_32)
-      nuclide_start = natural_nuclides_JENDL_32_start(natural_elements_loc)
-      nuclide_end = natural_nuclides_JENDL_32_end(natural_elements_loc)
-
-    case (JENDL_33)
-      nuclide_start = natural_nuclides_JENDL_33_start(natural_elements_loc)
-      nuclide_end = natural_nuclides_JENDL_33_end(natural_elements_loc)
-
-    case (JENDL_40)
-      nuclide_start = natural_nuclides_JENDL_40_start(natural_elements_loc)
-      nuclide_end = natural_nuclides_JENDL_40_end(natural_elements_loc)
-
-    end select
-
-    ! Add the nuclide names to the names array
-    do i = nuclide_start, nuclide_end-1
-      call names % push_back(natural_nuclides(i))
-    end do
-
-  end subroutine expand_natural_element_names
-
-!===============================================================================
-! EXPAND_NATURAL_ELEMENT_DENSITIES converts natural elements specified using an
-! <element> tag within a material into individual nuclides based on IUPAC
-! Isotopic Compositions of the Elements 2009 (doi:10.1351/PAC-REP-10-06-02). In
-! some cases, modifications have been made to work with ENDF/B-VII.1 where
-! evaluations of particular nuclides don't exist.
-!===============================================================================
-
-  subroutine expand_natural_element_densities(name, expand_by, density, &
-       densities)
-    character(*),   intent(in)      :: name       ! element name
-    character(*),   intent(in)      :: expand_by  ! "ao" or "wo"
-    real(8),        intent(in)      :: density    ! value for "ao" or "wo"
-    type(VectorReal), intent(inout) :: densities  ! nuclide densities vector
-
-    integer              :: i             ! iterators
-    integer              :: n_nuclides    ! number of nuclides in the element
-    integer              :: natural_elements_loc ! location in global array
-    integer              :: nuclide_start ! ending nuclide in global array
-    integer              :: nuclide_end   ! starting nuclide in global array
-    character(2)         :: element_name  ! element atomic symbol
-    real(8)              :: element_awr   ! element atomic weight ratio
-    real(8), allocatable :: awr(:)        ! nuclide atomic weight ratios
-    real(8), allocatable :: mf(:)         ! nuclide mole or mass fractions
-
-    element_name = to_lower(name(1:2))
-
-    ! Find location of element name in natural_elements
-    i = -1
-    do i = 1, NUM_NATURAL_ELEMENTS
-      if (natural_elements(i) == element_name) then
-        natural_elements_loc = i
-      end if
-    end do
-
-    ! Issue error if element not found
-    if (i == -1) then
-      call fatal_error("Cannot expand element: " // name)
-    end if
-
-    ! Get start and end locations in natural_nuclides arrays
-    select case (default_expand)
-    case (ENDF_BVII0)
-      nuclide_start = natural_nuclides_ENDF_BVII0_start(natural_elements_loc)
-      nuclide_end = natural_nuclides_ENDF_BVII0_end(natural_elements_loc)
-
-    case (ENDF_BVII1)
-      nuclide_start = natural_nuclides_ENDF_BVII1_start(natural_elements_loc)
-      nuclide_end = natural_nuclides_ENDF_BVII1_end(natural_elements_loc)
-
-    case (JEFF_311)
-      nuclide_start = natural_nuclides_JEFF_311_start(natural_elements_loc)
-      nuclide_end = natural_nuclides_JEFF_311_end(natural_elements_loc)
-
-    case (JEFF_312)
-      nuclide_start = natural_nuclides_JEFF_312_start(natural_elements_loc)
-      nuclide_end = natural_nuclides_JEFF_312_end(natural_elements_loc)
-
-    case (JEFF_32)
-      nuclide_start = natural_nuclides_JEFF_32_start(natural_elements_loc)
-      nuclide_end = natural_nuclides_JEFF_32_end(natural_elements_loc)
-
-    case (JENDL_32)
-      nuclide_start = natural_nuclides_JENDL_32_start(natural_elements_loc)
-      nuclide_end = natural_nuclides_JENDL_32_end(natural_elements_loc)
-
-    case (JENDL_33)
-      nuclide_start = natural_nuclides_JENDL_33_start(natural_elements_loc)
-      nuclide_end = natural_nuclides_JENDL_33_end(natural_elements_loc)
-
-    case (JENDL_40)
-      nuclide_start = natural_nuclides_JENDL_40_start(natural_elements_loc)
-      nuclide_end = natural_nuclides_JENDL_40_end(natural_elements_loc)
-
-    end select
-
-    ! Set the number of nuclides in this element
-    n_nuclides = nuclide_end - nuclide_start
-
-    ! Allocate and initialize array for mole fractions
-    allocate(mf(n_nuclides))
-
-    ! Add the nuclide names to the names array
-    do i = nuclide_start, nuclide_end-1
-      mf(i - nuclide_start + 1) = natural_nuclides_mf(i)
-    end do
-
-    ! Compute the ratio of the nuclide atomic weights to the element atomic
-    ! weight
-    if (expand_by == "wo") then
-
-      ! Allocate array for the atomic weight ratios
-      allocate(awr(n_nuclides))
-
-      ! Get the atomic weight ratios
-      do i = nuclide_start, nuclide_end-1
-        awr(i - nuclide_start + 1) = nuclides(nuclide_dict % &
-             get_key(to_lower(natural_nuclides(i)))) % awr
-      end do
-
-      ! Compute the element awr
-      element_awr = sum(awr * mf)
-
-      ! Convert the mole fractions to mass fractions
-      mf = mf * awr / element_awr
-
-      ! Normalize the mass fractions to ONE
-      mf = mf / sum(mf)
-
-      ! Deallocate array for the atomic weight ratios
-      deallocate(awr)
-    end if
-
-    ! Add the densities to the master array
-    do i = 1, n_nuclides
-      call densities % push_back(density * mf(i))
-    end do
-
-    ! Deallocate array for mole or mass fractions
-    deallocate(mf)
-
-  end subroutine expand_natural_element_densities
-
-!===============================================================================
 ! GENERATE_RPN implements the shunting-yard algorithm to generate a Reverse
 ! Polish notation (RPN) expression for the region specification of a cell given
 ! the infix notation.
@@ -4894,11 +4693,9 @@ contains
     type(Node), pointer     :: node_mat => null()
     type(Node), pointer     :: node_dens => null()
     type(Node), pointer     :: node_nuc => null()
-    type(Node), pointer     :: node_ele => null()
     type(NodeList), pointer :: node_mat_list => null()
     type(NodeList), pointer :: node_nuc_list => null()
     type(NodeList), pointer :: node_macro_list => null()
-    type(NodeList), pointer :: node_ele_list => null()
 
     ! Display output message
     call write_message("Reading material densities from XML file...", 5)
@@ -5006,7 +4803,7 @@ contains
         ! Get pointer list of XML <nuclide>
         call get_node_list(node_mat, "nuclide", node_nuc_list)
 
-        ! Create list of nuclides based on those specified plus natural elements
+        ! Create list of nuclides based on those specified
         INDIVIDUAL_NUCLIDES: do j = 1, get_list_size(node_nuc_list)
 
           ! Combine nuclide identifier and cross section and copy into names
@@ -5042,42 +4839,6 @@ contains
           end if
         end do INDIVIDUAL_NUCLIDES
       end if
-
-      ! =======================================================================
-      ! READ AND PARSE <element> TAGS
-
-      ! Get pointer list of XML <element>
-      call get_node_list(node_mat, "element", node_ele_list)
-
-      NATURAL_ELEMENTS: do j = 1, get_list_size(node_ele_list)
-        call get_list_item(node_ele_list, j, node_ele)
-
-        call get_node_value(node_ele, "name", name)
-
-        ! Check if no atom/weight percents were specified or if both atom and
-        ! weight percents were specified
-        if (.not. check_for_node(node_ele, "ao") .and. &
-             .not. check_for_node(node_ele, "wo")) then
-          call fatal_error("No atom or weight percent specified for element " &
-               // trim(name))
-        elseif (check_for_node(node_ele, "ao") .and. &
-                check_for_node(node_ele, "wo")) then
-          call fatal_error("Cannot specify both atom and weight percents for &
-               &element: " // trim(name))
-        end if
-
-        ! Expand element into naturally-occurring nuclides
-        if (check_for_node(node_ele, "ao")) then
-          call get_node_value(node_ele, "ao", temp_dble)
-          call expand_natural_element_densities(name, "ao", temp_dble, &
-               densities)
-        else
-          call get_node_value(node_ele, "wo", temp_dble)
-          call expand_natural_element_densities(name, "wo", -temp_dble, &
-               densities)
-        end if
-
-      end do NATURAL_ELEMENTS
 
       ! ========================================================================
       ! SET MATERIAL ATOM DENSITIES

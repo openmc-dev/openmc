@@ -9,7 +9,7 @@ nuclear data is available.  In continuous-energy mode, the
 ``cross_sections.xml`` file contains necessary meta-data for each dataset,
 including the name and a file system location where the complete library
 can be found.  In multi-group mode, the multi-group meta-data and the
-nuclear data itself is contained within an ``mgxs.h5``.  This portion of
+nuclear data itself is contained within an ``mgxs.h5`` file.  This portion of
 the manual describes the format of the multi-group data library required
 to be used in the ``mgxs.h5`` file.
 

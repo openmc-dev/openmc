@@ -4,6 +4,38 @@
 Installation and Configuration
 ==============================
 
+----------------------------------------
+Installing on Linux/Mac with conda-forge
+----------------------------------------
+
+`Conda <http://conda.pydata.org/docs/>`_ is an open source package management
+system and environment management system for installing multiple versions of
+software packages and their dependencies and switching easily between
+them. `conda-forge <https://conda-forge.github.io/>`_ is a community-led conda
+channel of installable packages. For instructions on installing conda, please
+consult their `documentation
+<http://conda.pydata.org/docs/install/quick.html>`_.
+
+Once you have `conda` installed on your system, add the `conda-forge` channel to
+your configuration with:
+
+.. code-block:: sh
+
+    conda config --add channels conda-forge
+
+Once the `conda-forge` channel has been enabled, OpenMC can then be installed
+with:
+
+.. code-block:: sh
+
+    conda install openmc
+
+It is possible to list all of the versions of OpenMC available on your platform with:
+
+.. code-block:: sh
+
+    conda search openmc --channel conda-forge
+
 -----------------------------
 Installing on Ubuntu with PPA
 -----------------------------
@@ -407,13 +439,11 @@ extract the ACE data, fix any deficiencies, and create an HDF5 library:
 
 .. code-block:: sh
 
-    cd openmc/data
-    python get_nndc_data.py
+    openmc-get-nndc-data
 
 At this point, you should set the :envvar:`OPENMC_CROSS_SECTIONS` environment
-variable to the absolute path of the file
-``openmc/data/nndc_hdf5/cross_sections.xml``. This cross section set is used by
-the test suite.
+variable to the absolute path of the file ``nndc_hdf5/cross_sections.xml``. This
+cross section set is used by the test suite.
 
 Using JEFF Cross Sections from OECD/NEA
 ---------------------------------------
@@ -424,12 +454,10 @@ and extract the ACE data, fix any deficiencies, and create an HDF5 library.
 
 .. code-block:: sh
 
-    cd openmc/data
-    python get_jeff_data.py
+    openmc-get-jeff-data
 
 At this point, you should set the :envvar:`OPENMC_CROSS_SECTIONS` environment
-variable to the absolute path of the file
-``openmc/data/jeff-3.2-hdf5/cross_sections.xml``.
+variable to the absolute path of the file ``jeff-3.2-hdf5/cross_sections.xml``.
 
 Using Cross Sections from MCNP
 ------------------------------
@@ -441,8 +469,7 @@ format, run the following:
 
 .. code-block:: sh
 
-    cd openmc/data
-    python convert_mcnp_endf70.py /path/to/mcnpdata/
+    openmc-convert-mcnp70-data /path/to/mcnpdata/
 
 where ``/path/to/mcnpdata`` is the directory containing the ``endf70[a-k]``
 files.
@@ -452,8 +479,7 @@ the following script:
 
 .. code-block:: sh
 
-    cd openmc/data
-    python convert_mcnp_endf71.py /path/to/mcnpdata
+    openmc-convert-mcnp71-data /path/to/mcnpdata
 
 where ``/path/to/mcnpdata`` is the directory containing the ``endf71x`` and
 ``ENDF71SaB`` directories.
@@ -470,16 +496,16 @@ that are to be converted:
 
 1. List each ACE library as a positional argument. This is very useful in
    conjunction with the usual shell utilities (ls, find, etc.).
-2. Use the --xml option to specify a pre-v0.9 cross_sections.xml file.
-3. Use the --xsdir option to specify a MCNP xsdir file.
-4. Use the --xsdata option to specify a Serpent xsdata file.
+2. Use the ``--xml`` option to specify a pre-v0.9 cross_sections.xml file.
+3. Use the ``--xsdir` option to specify a MCNP xsdir file.
+4. Use the ``--xsdata`` option to specify a Serpent xsdata file.
 
 The script does not use any extra information from cross_sections.xml/ xsdir/
 xsdata files to determine whether the nuclide is metastable. Instead, the
---metastable argument can be used to specify whether the ZAID naming convention
-follows the NNDC data convention (1000*Z + A + 300 + 100*m), or the MCNP data
-convention (essentially the same as NNDC, except that the first metastable state
-of Am242 is 95242 and the ground state is 95642).
+``--metastable`` argument can be used to specify whether the ZAID naming
+convention follows the NNDC data convention (1000*Z + A + 300 + 100*m), or the
+MCNP data convention (essentially the same as NNDC, except that the first
+metastable state of Am242 is 95242 and the ground state is 95642).
 
 The ``openmc-ace-to-hdf5`` script has the following command-line flags:
 

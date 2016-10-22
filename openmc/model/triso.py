@@ -10,6 +10,7 @@ from heapq import heappush, heappop
 from math import pi, sin, cos, floor, log10, sqrt
 from abc import ABCMeta, abstractproperty, abstractmethod
 
+from six import add_metaclass
 import numpy as np
 try:
     import scipy.spatial
@@ -95,6 +96,7 @@ class TRISO(openmc.Cell):
                 k_min:k_max+1, j_min:j_max+1, i_min:i_max+1]))
 
 
+@add_metaclass(ABCMeta)
 class _Domain(object):
     """Container in which to pack particles.
 
@@ -123,9 +125,6 @@ class _Domain(object):
         Volume of the container.
 
     """
-
-    __metaclass__ = ABCMeta
-
     def __init__(self, particle_radius, center=[0., 0., 0.]):
         self._cell_length = None
         self._limits = None

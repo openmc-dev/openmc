@@ -1,19 +1,15 @@
 from abc import ABCMeta, abstractproperty
 from collections import Iterable, OrderedDict
 import copy
-from six import with_metaclass
 from numbers import Real, Integral
 import sys
 from xml.etree import ElementTree as ET
 
+from six import add_metaclass
 import numpy as np
 
 import openmc
 import openmc.checkvalue as cv
-
-
-if sys.version_info[0] >= 3:
-    basestring = str
 
 
 _FILTER_TYPES = ['universe', 'material', 'cell', 'cellborn', 'surface',
@@ -37,7 +33,8 @@ class FilterMeta(ABCMeta):
                                               **kwargs)
 
 
-class Filter(with_metaclass(FilterMeta, object)):
+@add_metaclass(FilterMeta)
+class Filter(object):
     """Tally modifier that describes phase-space and other characteristics.
 
     Parameters

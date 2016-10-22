@@ -1,6 +1,7 @@
 #!/usr/bin/env python
 
 import glob
+import numpy as np
 try:
     from setuptools import setup
     have_setuptools = True
@@ -38,7 +39,7 @@ kwargs = {'name': 'openmc',
 if have_setuptools:
     kwargs.update({
         # Required dependencies
-        'install_requires': ['numpy>=1.9', 'h5py', 'matplotlib'],
+        'install_requires': ['six', 'numpy>=1.9', 'h5py', 'matplotlib'],
 
         # Optional dependencies
         'extras_require': {
@@ -50,14 +51,15 @@ if have_setuptools:
 
         # Data files
         'package_data': {
-            'openmc.data': ['mass.mas12']
+            'openmc.data': ['mass.mas12', 'fission_Q_data_endfb71.h5']
         },
     })
 
 # If Cython is present, add resonance reconstruction capability
 if have_cython:
     kwargs.update({
-        'ext_modules': cythonize('openmc/data/reconstruct.pyx')
+        'ext_modules': cythonize('openmc/data/reconstruct.pyx'),
+        'include_dirs': [np.get_include()]
     })
 
 setup(**kwargs)

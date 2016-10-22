@@ -2,6 +2,7 @@ from collections import Iterable
 from numbers import Real, Integral
 import sys
 
+from six import string_types
 import numpy as np
 import h5py
 
@@ -10,8 +11,6 @@ import openmc.mgxs
 from openmc.checkvalue import check_type, check_value, check_greater_than, \
     check_iterable_type
 
-if sys.version_info[0] >= 3:
-    basestring = str
 
 # Supported incoming particle MGXS angular treatment representations
 _REPRESENTATIONS = ['isotropic', 'angle']
@@ -278,7 +277,7 @@ class XSdata(object):
 
     @name.setter
     def name(self, name):
-        check_type('name for XSdata', name, basestring)
+        check_type('name for XSdata', name, string_types)
         self._name = name
 
     @energy_groups.setter
@@ -1150,19 +1149,16 @@ class XSdata(object):
         if self.fissionable is not None:
             grp.attrs['fissionable'] = self.fissionable
         if self.representation is not None:
-            grp.attrs['representation'] = np.array(self.representation,
-                                                   dtype='S')
+            grp.attrs['representation'] = np.string_(self.representation)
             if self.representation == 'angle':
                 if self.num_azimuthal is not None:
                     grp.attrs['num_azimuthal'] = self.num_azimuthal
                 if self.num_polar is not None:
                     grp.attrs['num_polar'] = self.num_polar
         if self.scatter_format is not None:
-            grp.attrs['scatter_format'] = np.array(self.scatter_format,
-                                                   dtype='S')
+            grp.attrs['scatter_format'] = np.string_(self.scatter_format)
         if self.scatter_shape is not None:
-            grp.attrs['scatter_shape'] = np.array(self.scatter_shape,
-                                                  dtype='S')
+            grp.attrs['scatter_shape'] = np.string_(self.scatter_shape)
         if self.order is not None:
             grp.attrs['order'] = self.order
 
@@ -1389,7 +1385,7 @@ class MGXSLibrary(object):
 
         """
 
-        check_type('filename', filename, basestring)
+        check_type('filename', filename, string_types)
 
         # Create and write to the HDF5 file
         file = h5py.File(filename, "w")

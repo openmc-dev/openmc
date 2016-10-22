@@ -3,14 +3,12 @@ from numbers import Real, Integral
 from xml.etree import ElementTree as ET
 import sys
 
+from six import string_types
 import numpy as np
 
 import openmc.checkvalue as cv
 import openmc
 
-
-if sys.version_info[0] >= 3:
-    basestring = str
 
 # "Static" variable for auto-generated and Mesh IDs
 AUTO_MESH_ID = 10000
@@ -131,7 +129,7 @@ class Mesh(object):
     def name(self, name):
         if name is not None:
             cv.check_type('name for mesh ID="{0}"'.format(self._id),
-                          name, basestring)
+                          name, string_types)
             self._name = name
         else:
             self._name = ''
@@ -139,7 +137,7 @@ class Mesh(object):
     @type.setter
     def type(self, meshtype):
         cv.check_type('type for mesh ID="{0}"'.format(self._id),
-                      meshtype, basestring)
+                      meshtype, string_types)
         cv.check_value('type for mesh ID="{0}"'.format(self._id),
                        meshtype, ['regular'])
         self._type = meshtype
@@ -286,8 +284,8 @@ class Mesh(object):
                    openmc.XPlane(x0=self.upper_right[0],
                                  boundary_type=bc[1])]
         if len(self.dimension) == 1:
-            yplanes = [openmc.YPlane(y0=1000., boundary_type='reflective'),
-                       openmc.YPlane(y0=1000., boundary_type='reflective')]
+            yplanes = [openmc.YPlane(y0=-1e10, boundary_type='reflective'),
+                       openmc.YPlane(y0=1e10, boundary_type='reflective')]
         else:
             yplanes = [openmc.YPlane(y0=self.lower_left[1],
                                      boundary_type=bc[2]),

@@ -1043,8 +1043,6 @@ class XSdata(object):
                 self._scatter_matrix[i] = \
                     scatter.get_xs(nuclides=nuclide, xs_type=xs_type,
                                    subdomains=subdomain)
-                # self._scatter_matrix[i] = \
-                #     np.swapaxes(self._scatter_matrix[i], 0, 2)
         elif self.representation == 'angle':
             msg = 'Angular-Dependent MGXS have not yet been implemented'
             raise ValueError(msg)
@@ -1124,9 +1122,9 @@ class XSdata(object):
                                        xs_type=xs_type, moment=0,
                                        subdomains=subdomain)
                 if scatter.scatter_format == 'histogram':
-                    scatt = np.sum(scatt, axis=4)
+                    scatt = np.sum(scatt, axis=0)
                 if nuscatter.scatter_format == 'histogram':
-                    nuscatt = np.sum(nuscatt, axis=4)
+                    nuscatt = np.sum(nuscatt, axis=0)
                 self._multiplicity_matrix[i] = np.divide(nuscatt, scatt)
         elif self.representation == 'angle':
             msg = 'Angular-Dependent MGXS have not yet been implemented'

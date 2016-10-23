@@ -659,16 +659,6 @@ class XSdata(object):
         # Get the accepted shapes for this xs
         shapes = [self.xs_shapes["[G']"], self.xs_shapes["[DG][G']"]]
 
-        # Get the accepted shapes for this xs
-        if self.representation is 'isotropic':
-            shapes = [(self.energy_groups.num_groups,),
-                      (self.num_delayed_groups, self.energy_groups.num_groups)]
-        else:
-            shapes = [(self.num_polar, self.num_azimuthal,
-                       self.energy_groups.num_groups),
-                      (self.num_delayed_groups, self.num_polar,
-                       self.num_azimuthal, self.energy_groups.num_groups)]
-
         # Convert to a numpy array so we can easily get the shape for checking
         chi_delayed = np.asarray(chi_delayed)
         check_value('chi delayed shape', chi_delayed.shape, shapes)
@@ -892,13 +882,6 @@ class XSdata(object):
 
         # Get the accepted shapes for this xs
         shapes = [self.xs_shapes["[DG][G]"]]
-
-        # Get the accepted shapes for this xs
-        if self.representation is 'isotropic':
-            shapes = [(self.num_delayed_groups, self.energy_groups.num_groups,)]
-        else:
-            shapes = [(self.num_delayed_groups, self.num_polar,
-                       self.num_azimuthal, self.energy_groups.num_groups)]
 
         # Convert to a numpy array so we can easily get the shape for checking
         delayed_nu_fission = np.asarray(delayed_nu_fission)

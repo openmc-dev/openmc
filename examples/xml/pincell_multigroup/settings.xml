@@ -34,6 +34,4 @@
 
   <survival_biasing>false</survival_biasing>
 
-  <cross_sections>./mgxs.h5</cross_sections>
-
 </settings>

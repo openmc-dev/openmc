@@ -759,16 +759,6 @@ class Materials(cv.CheckedList):
         cross section library. If it is not set, the
         :envvar:`OPENMC_MULTIPOLE_LIBRARY` environment variable will be used. A
         multipole library is optional.
-    temperature : dict
-        Defines a default temperature and method for treating intermediate
-        temperatures at which nuclear data doesn't exist. Accepted keys are
-        'default', 'method', 'tolerance', and 'multipole'. The value for
-        'default' should be a float representing the default temperature in
-        Kelvin. The value for 'method' should be 'nearest' or 'interpolation'.
-        If the method is 'nearest', 'tolerance' indicates a range of temperature
-        within which cross sections may be used. 'multipole' is a boolean
-        indicating whether or not the windowed multipole method should be used
-        to evaluate resolved resonance cross sections.
 
     """
 
@@ -778,7 +768,6 @@ class Materials(cv.CheckedList):
         self._materials_file = ET.Element("materials")
         self._cross_sections = None
         self._multipole_library = None
-        self._temperature = {}
 
         if materials is not None:
             self += materials
@@ -791,10 +780,6 @@ class Materials(cv.CheckedList):
     def multipole_library(self):
         return self._multipole_library
 
-    @property
-    def temperature(self):
-        return self._temperature
-
     @cross_sections.setter
     def cross_sections(self, cross_sections):
         cv.check_type('cross sections', cross_sections, string_types)
@@ -804,23 +789,6 @@ class Materials(cv.CheckedList):
     def multipole_library(self, multipole_library):
         cv.check_type('cross sections', multipole_library, string_types)
         self._multipole_library = multipole_library
-
-    @temperature.setter
-    def temperature(self, temperature):
-        cv.check_type('temperature settings', temperature, Mapping)
-        for key, value in temperature.items():
-            cv.check_value('temperature key', key,
-                           ['default', 'method', 'tolerance', 'multipole'])
-            if key == 'default':
-                cv.check_type('default temperature', value, Real)
-            elif key == 'method':
-                cv.check_value('temperature method', value,
-                               ['nearest', 'interpolation'])
-            elif key == 'tolerance':
-                cv.check_type('temperature tolerance', value, Real)
-            elif key == 'multipole':
-                cv.check_type('temperature multipole', value, bool)
-        self._temperature = temperature
 
     def add_material(self, material):
         """Append material to collection
@@ -917,13 +885,6 @@ class Materials(cv.CheckedList):
             element = ET.SubElement(self._materials_file, "multipole_library")
             element.text = str(self._multipole_library)
 
-    def _create_temperature_subelements(self):
-        if self.temperature:
-            for key, value in sorted(self.temperature.items()):
-                element = ET.SubElement(self._materials_file,
-                                        "temperature_{}".format(key))
-                element.text = str(value)
-
     def export_to_xml(self, path='materials.xml'):
         """Export material collection to an XML file.
 
@@ -940,7 +901,6 @@ class Materials(cv.CheckedList):
         self._create_material_subelements()
         self._create_cross_sections_subelement()
         self._create_multipole_library_subelement()
-        self._create_temperature_subelements()
 
         # Clean the indentation in the file to be user-readable
         sort_xml_elements(self._materials_file)

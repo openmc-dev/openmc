@@ -1,5 +1,8 @@
 <?xml version="1.0"?>
 <materials>
+
+  <cross_sections>./mgxs.h5</cross_sections>
+
   <!-- UO2 -->
   <material id="1">
     <density units="macro" value="1.0" />

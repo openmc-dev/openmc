@@ -139,10 +139,10 @@ contains
 
     ! Look for deprecated cross_sections.xml file in settings.xml
     if (check_for_node(doc, "cross_sections")) then
-      call warning("Setting cross_sections in settings.xml has been deprecated. &
-           &The cross_sections are now set in materials.xml and the &
-           &cross_sections input to materials.xml and OPENMC_CROSS_SECTIONS &
-           &environment variable will take precendent over setting &
+      call warning("Setting cross_sections in settings.xml has been deprecated.&
+           & The cross_sections are now set in materials.xml and the &
+           &cross_sections input to materials.xml and the OPENMC_CROSS_SECTIONS&
+           & environment variable will take precendent over setting &
            &cross_sections in settings.xml.")
       call get_node_value(doc, "cross_sections", path_cross_sections)
     end if
@@ -152,7 +152,7 @@ contains
       if (check_for_node(doc, "multipole_library")) then
         call warning("Setting multipole_library in settings.xml has been &
              &deprecated. The multipole_library is now set in materials.xml and&
-             & the multipole_library input to materials.xml and &
+             & the multipole_library input to materials.xml and the &
              &OPENMC_MULTIPOLE_LIBRARY environment variable will take &
              &precendent over setting multipole_library in settings.xml.")
         call get_node_value(doc, "multipole_library", path_multipole)
@@ -1033,17 +1033,9 @@ contains
 
     ! Get temperature settings
     if (check_for_node(doc, "temperature_default")) then
-      call warning("Setting temperature_default in settings.xml has been &
-           &deprecated. temperature_default is now set in materials.xml and &
-           &its input to materials.xml will take precendent &
-           &over setting it in settings.xml.")
       call get_node_value(doc, "temperature_default", temperature_default)
     end if
     if (check_for_node(doc, "temperature_method")) then
-      call warning("Setting temperature_method in settings.xml has been &
-           &deprecated. temperature_method is now set in materials.xml and &
-           &its input to materials.xml will take precendent &
-           &over setting it in settings.xml.")
       call get_node_value(doc, "temperature_method", temp_str)
       select case (to_lower(temp_str))
       case ('nearest')
@@ -1055,17 +1047,9 @@ contains
       end select
     end if
     if (check_for_node(doc, "temperature_tolerance")) then
-      call warning("Setting temperature_tolerance in settings.xml has been &
-           &deprecated. temperature_tolerance is now set in materials.xml and &
-           &its input to materials.xml will take precendent &
-           &over setting it in settings.xml.")
       call get_node_value(doc, "temperature_tolerance", temperature_tolerance)
     end if
     if (check_for_node(doc, "temperature_multipole")) then
-      call warning("Setting temperature_multipole in settings.xml has been &
-           &deprecated. temperature_multipole is now set in materials.xml and &
-           &its input to materials.xml will take precendent &
-           &over setting it in settings.xml.")
       call get_node_value(doc, "temperature_multipole", temp_str)
       select case (to_lower(temp_str))
       case ('true', '1')
@@ -2076,7 +2060,7 @@ contains
 
     ! Find cross_sections.xml file -- the first place to look is the
     ! materials.xml file. If no file is found there, then we check the
-    ! CROSS_SECTIONS environment variable
+    ! OPENMC_CROSS_SECTIONS environment variable
     if (.not. check_for_node(doc, "cross_sections")) then
       ! No cross_sections.xml file specified in settings.xml, check
       ! environment variable
@@ -2084,6 +2068,8 @@ contains
         call get_environment_variable("OPENMC_CROSS_SECTIONS", env_variable)
         if (len_trim(env_variable) == 0) then
           call get_environment_variable("CROSS_SECTIONS", env_variable)
+          ! FIXME: When deprecated option of setting the cross sections in
+          ! settings.xml is removed, remove ".and. path_cross_sections == ''"
           if (len_trim(env_variable) == 0 .and. path_cross_sections == '') then
             call fatal_error("No cross_sections.xml file was specified in &
                  &materials.xml, settings.xml,  or in the OPENMC_CROSS_SECTIONS&
@@ -2100,13 +2086,15 @@ contains
         path_cross_sections = trim(env_variable)
       else
         call get_environment_variable("OPENMC_MG_CROSS_SECTIONS", env_variable)
+          ! FIXME: When deprecated option of setting the mg cross sections in
+          ! settings.xml is removed, remove ".and. path_cross_sections == ''"
         if (len_trim(env_variable) == 0 .and. path_cross_sections == '') then
-          call fatal_error("No mgxs.xml file was specified in &
+          call fatal_error("No mgxs.h5 file was specified in &
                &materials.xml or in the OPENMC_MG_CROSS_SECTIONS environment &
                &variable. OpenMC needs such a file to identify where to &
-               &find ACE cross section libraries. Please consult the user's &
+               &find MG cross section libraries. Please consult the user's &
                &guide at http://mit-crpg.github.io/openmc for information on &
-               &how to set up ACE cross section libraries.")
+               &how to set up MG cross section libraries.")
         else
           path_cross_sections = trim(env_variable)
         end if
@@ -2129,40 +2117,10 @@ contains
            path_multipole = trim(path_multipole) // "/"
     end if
 
-    ! Get temperature settings
-    if (check_for_node(doc, "temperature_default")) then
-      call get_node_value(doc, "temperature_default", temperature_default)
-    end if
-    if (check_for_node(doc, "temperature_method")) then
-      call get_node_value(doc, "temperature_method", temp_str)
-      select case (to_lower(temp_str))
-      case ('nearest')
-        temperature_method = TEMPERATURE_NEAREST
-      case ('interpolation')
-        temperature_method = TEMPERATURE_INTERPOLATION
-      case default
-        call fatal_error("Unknown temperature method: " // trim(temp_str))
-      end select
-    end if
-    if (check_for_node(doc, "temperature_tolerance")) then
-      call get_node_value(doc, "temperature_tolerance", temperature_tolerance)
-    end if
-    if (check_for_node(doc, "temperature_multipole")) then
-      call get_node_value(doc, "temperature_multipole", temp_str)
-      select case (to_lower(temp_str))
-      case ('true', '1')
-        temperature_multipole = .true.
-      case ('false', '0')
-        temperature_multipole = .false.
-      case default
-        call fatal_error("Unrecognized value for <use_windowed_multipole> in &
-             &materials.xml")
-      end select
-    end if
-
     ! Close materials XML file
     call close_xmldoc(doc)
 
+    ! Now that the cross_sections.xml or mgxs.h5 has been located, read it in
     if (run_CE) then
       call read_ce_cross_sections_xml(libraries)
     else
@@ -2225,12 +2183,12 @@ contains
     integer :: index_nuclide  ! index in nuclides
     integer :: index_sab      ! index in sab_tables
     logical :: file_exists    ! does materials.xml exist?
-    character(20) :: name     ! name of nuclide, e.g. 92235.03c
+    character(20)           :: name         ! name of nuclide, e.g. 92235.03c
     character(MAX_LINE_LEN) :: filename     ! absolute path to materials.xml
     character(MAX_LINE_LEN) :: temp_str     ! temporary string when reading
     type(VectorChar)        :: names        ! temporary list of nuclide names
     type(VectorInt)         :: list_iso_lab ! temporary list of isotropic lab scatterers
-    type(Material),    pointer :: mat => null()
+    type(Material), pointer :: mat => null()
     type(Node), pointer :: doc => null()
     type(Node), pointer :: node_mat => null()
     type(Node), pointer :: node_nuc => null()
@@ -4674,7 +4632,8 @@ contains
   end subroutine generate_rpn
 
 !===============================================================================
-! ASSIGN_NUCLIDE_DENSITIES Assign and normalize nuclide densities
+! ASSIGN_NUCLIDE_DENSITIES Read in the nuclide densities from materials.xml
+! and assign to the corresponding nuclides.
 !===============================================================================
 
   subroutine assign_nuclide_densities()
@@ -4731,16 +4690,13 @@ contains
       ! Copy units
       call get_node_value(node_dens, "units", units)
 
+      ! If the units is 'sum', then the total density of the material is taken
+      ! to be the sum of the atom fractions listed on the nuclides
       if (units == 'sum') then
-        ! If the user gave the units as 'sum', then the total density of the
-        ! material is taken to be the sum of the atom fractions listed on the
-        ! nuclides
-
         sum_density = .true.
 
       else if (units == 'macro') then
         if (check_for_node(node_dens, "value")) then
-          ! Copy value
           call get_node_value(node_dens, "value", val)
         else
           val = ONE
@@ -4752,7 +4708,6 @@ contains
         sum_density = .false.
 
       else
-        ! Copy value
         call get_node_value(node_dens, "value", val)
 
         ! Check for erroneous density
@@ -4761,6 +4716,7 @@ contains
           call fatal_error("Need to specify a positive density on material " &
                // trim(to_str(mat % id)) // ".")
         end if
+
         ! Adjust material density based on specified units
         select case(to_lower(units))
         case ('g/cc', 'g/cm3')

@@ -84,9 +84,9 @@ class Element(object):
     @scattering.setter
     def scattering(self, scattering):
 
-        if not scattering in ['data', 'iso-in-lab']:
-            msg = 'Unable to set scattering for Element to {0} ' \
-                  'which is not "data" or "iso-in-lab"'.format(scattering)
+        if not scattering in ['data', 'iso-in-lab', None]:
+            msg = 'Unable to set scattering for Element to {0} which ' \
+                  'is not "data", "iso-in-lab", or None'.format(scattering)
             raise ValueError(msg)
 
         self._scattering = scattering
@@ -123,11 +123,14 @@ class Element(object):
 
         """
 
+        # Get the length of this elements atomic symbol
+        name_len = len(self.name)
+
         # Get the nuclides present in nature
         natural_nuclides = set()
         for nuclide in sorted(NATURAL_ABUNDANCE.keys()):
             if re.match(r'{}\d+'.format(self.name), nuclide):
-                natural_nuclides.add(int(nuclide[len(self.name):]))
+                natural_nuclides.add(int(nuclide[name_len:]))
 
         # Create lists to store the expanded nuclides and abundances
         nuclides = []
@@ -149,7 +152,7 @@ class Element(object):
                 nuclide = child.attrib['materials']
                 if re.match(r'{}\d+'.format(self.name), nuclide) and \
                    '_m' not in nuclide:
-                    library_nuclides.add(int(nuclide[len(self.name):]))
+                    library_nuclides.add(int(nuclide[name_len:]))
 
             # Get a set of the mutual and absent nuclides
             mutual_nuclides = natural_nuclides.intersection(library_nuclides)
@@ -162,7 +165,9 @@ class Element(object):
             if len(absent_nuclides) == 0:
                 for nuclide, abundance in sorted(NATURAL_ABUNDANCE.items()):
                     if re.match(r'{}\d+'.format(self.name), nuclide):
-                        nuclides.append(openmc.Nuclide(nuclide))
+                        nuc = openmc.Nuclide(nuclide)
+                        nuc.scattering = self.scattering
+                        nuclides.append(nuc)
                         abundances.append(abundance)
 
             # If no natural elements are present in the library, check if the
@@ -170,7 +175,9 @@ class Element(object):
             # nuclide. Else, raise an error.
             elif len(mutual_nuclides) == 0:
                 if 0 in library_nuclides:
-                    nuclides.append(openmc.Nuclide(self.name + '0'))
+                    nuc = openmc.Nuclide(self.name + '0')
+                    nuc.scattering = self.scattering
+                    nuclides.append(nuc)
                     abundances.append(1.0)
                 else:
                     msg = 'Unable to expand element {0} because the cross '\
@@ -188,18 +195,20 @@ class Element(object):
                 nuclides_a = []
                 for nuclide, abundance in sorted(NATURAL_ABUNDANCE.items()):
                     if re.match(r'{}\d+'.format(self.name), nuclide) and \
-                       int(nuclide[len(self.name):]) in mutual_nuclides:
-                        nuclides.append(openmc.Nuclide(nuclide))
-                        nuclides_a.append(int(nuclide[len(self.name):]))
+                       int(nuclide[name_len:]) in mutual_nuclides:
+                        nuc = openmc.Nuclide(nuclide)
+                        nuc.scattering = self.scattering
+                        nuclides.append(nuc)
+                        nuclides_a.append(int(nuclide[name_len:]))
                         abundances.append(abundance)
 
                 # Adjust the abundances for the absent nuclides
                 for nuclide, abundance in sorted(NATURAL_ABUNDANCE.items()):
                     if re.match(r'{}\d+'.format(self.name), nuclide) and \
-                       int(nuclide[len(self.name):]) in absent_nuclides:
+                       int(nuclide[name_len:]) in absent_nuclides:
 
                         # Get index to the nearest nuclide
-                        a = int(nuclide[len(self.name):])
+                        a = int(nuclide[name_len:])
                         i = min(list(range(len(nuclides_a))), key=lambda j: \
                                 abs(nuclides_a[j] - a))
 
@@ -264,9 +273,9 @@ class Element(object):
             for i in range(n_nuclides):
                 abundances[i] /= sum_abundances
 
+        # Create a list of the isotopes in this element
         isotopes = []
         for nuclide, abundance in zip(nuclides, abundances):
-            pct = float('{:2.10f}'.format(percent*abundance))
-            isotopes.append((nuclide, pct, percent_type))
+            isotopes.append((nuclide, percent*abundance, percent_type))
 
         return isotopes

@@ -461,6 +461,10 @@ class Material(object):
                                                              self._id)
                 raise ValueError(msg)
 
+            # Check that the enrichment is in the valid range
+            cv.check_less_than('enrichment', enrichment, 1/1.008, equality=True)
+            cv.check_greater_than('enrichment', enrichment, 0., equality=True)
+
             if enrichment > 0.05:
                 msg = 'A uranium enrichment of {0} was given for Material ID='\
                       '"{1}". OpenMC assumes the U234/U235 mass ratio is '\

@@ -2,6 +2,7 @@ from abc import ABCMeta, abstractmethod
 from collections import Iterable, Callable
 from numbers import Real, Integral
 
+from six import add_metaclass
 import numpy as np
 
 import openmc.data
@@ -12,11 +13,9 @@ INTERPOLATION_SCHEME = {1: 'histogram', 2: 'linear-linear', 3: 'linear-log',
                         4: 'log-linear', 5: 'log-log'}
 
 
+@add_metaclass(ABCMeta)
 class Function1D(EqualityMixin):
     """A function of one independent variable with HDF5 support."""
-
-    __metaclass__ = ABCMeta
-
     @abstractmethod
     def __call__(self): pass
 

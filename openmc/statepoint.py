@@ -9,9 +9,6 @@ import numpy as np
 import openmc
 import openmc.checkvalue as cv
 
-if sys.version > '3':
-    long = int
-
 
 class StatePoint(object):
     """State information on a simulation at a certain point in time (at the end

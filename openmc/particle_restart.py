@@ -24,7 +24,7 @@ class Particle(object):
     weight : float
         Weight of the particle
     energy : float
-        Energy of the particle in MeV
+        Energy of the particle in eV
     xyz : list of float
         Position of the particle
     uvw : list of float

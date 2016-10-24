@@ -9,6 +9,7 @@ from openmc.stats import Tabular, Univariate, Discrete, Mixture, \
     Uniform, Legendre
 from .function import INTERPOLATION_SCHEME
 from .angle_energy import AngleEnergy
+from .data import EV_PER_MEV
 from .endf import get_list_record, get_tab2_record
 
 
@@ -328,7 +329,7 @@ class CorrelatedAngleEnergy(AngleEnergy):
 
         # Incoming energies at which distributions exist
         idx += 2*n_regions + 1
-        energy = ace.xss[idx:idx + n_energy_in]
+        energy = ace.xss[idx:idx + n_energy_in]*EV_PER_MEV
 
         # Location of distributions
         idx += n_energy_in
@@ -353,12 +354,13 @@ class CorrelatedAngleEnergy(AngleEnergy):
 
             # Secondary energy distribution
             n_energy_out = int(ace.xss[idx + 1])
-            data = ace.xss[idx + 2:idx + 2 + 4*n_energy_out]
+            data = ace.xss[idx + 2:idx + 2 + 4*n_energy_out].copy()
             data.shape = (4, n_energy_out)
+            data[0,:] *= EV_PER_MEV
 
             # Create continuous distribution
             eout_continuous = Tabular(data[0][n_discrete_lines:],
-                                      data[1][n_discrete_lines:],
+                                      data[1][n_discrete_lines:]/EV_PER_MEV,
                                       INTERPOLATION_SCHEME[intt],
                                       ignore_negative=True)
             eout_continuous.c = data[2][n_discrete_lines:]

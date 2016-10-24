@@ -67,12 +67,12 @@ module constants
        PI               = 3.1415926535898_8, & ! pi
        SQRT_PI          = 1.7724538509055_8, & ! square root of pi
        MASS_NEUTRON     = 1.008664916_8,     & ! mass of a neutron in amu
-       MASS_NEUTRON_MEV = 939.565379_8,      & ! mass of a neutron in MeV/c^2
+       MASS_NEUTRON_EV  = 939.565379e6_8,    & ! mass of a neutron in eV/c^2
        MASS_PROTON      = 1.007276466812_8,  & ! mass of a proton in amu
        AMU              = 1.660538921e-27_8, & ! 1 amu in kg
        C_LIGHT          = 2.99792458e8_8,    & ! speed of light in m/s
        N_AVOGADRO       = 0.602214129_8,     & ! Avogadro's number in 10^24/mol
-       K_BOLTZMANN      = 8.6173324e-11_8,   & ! Boltzmann constant in MeV/K
+       K_BOLTZMANN      = 8.6173324e-5_8,    & ! Boltzmann constant in eV/K
        INFINITY         = huge(0.0_8),       & ! positive infinity
        ZERO             = 0.0_8,             &
        HALF             = 0.5_8,             &

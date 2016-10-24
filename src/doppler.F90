@@ -41,7 +41,7 @@ contains
     real(8)              :: a, b     ! values of x(k)-y and x(k+1)-y
     real(8)              :: sigma    ! broadened cross section at one point
 
-    ! Determine alpha parameter -- have to convert k to MeV/K
+    ! Determine alpha parameter -- have to convert k to eV/K
     alpha = A_target/(K_BOLTZMANN * T)
 
     ! Allocate memory for x and assign values

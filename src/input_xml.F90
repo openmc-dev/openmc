@@ -612,8 +612,8 @@ contains
           allocate(Watt :: external_source(i)%energy)
           select type(energy => external_source(i)%energy)
           type is (Watt)
-            energy%a = 0.988_8
-            energy%b = 2.249_8
+            energy%a = 0.988e6_8
+            energy%b = 2.249e-6_8
           end select
         end if
       end if
@@ -4994,7 +4994,7 @@ contains
       if (nuclides(i) % grid(1) % energy(size(nuclides(i) % grid(1) % energy)) &
            == energy_max_neutron) then
         call write_message("Maximum neutron transport energy: " // &
-             trim(to_str(energy_max_neutron)) // " MeV for " // &
+             trim(to_str(energy_max_neutron)) // " eV for " // &
              trim(adjustl(nuclides(i) % name)), 6)
         exit
       end if

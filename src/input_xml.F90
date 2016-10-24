@@ -2095,7 +2095,7 @@ contains
                &find MG cross section libraries. Please consult the user's &
                &guide at http://mit-crpg.github.io/openmc for information on &
                &how to set up MG cross section libraries.")
-        else
+        else if (len_trim(env_variable) /= 0) then
           path_cross_sections = trim(env_variable)
         end if
       end if

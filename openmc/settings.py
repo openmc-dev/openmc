@@ -721,10 +721,6 @@ class Settings(object):
     @temperature.setter
     def temperature(self, temperature):
 
-        warnings.warn('Settings.temperature has been deprecated and will '
-                      'be removed in a future version. Materials.temperature '
-                      'should defined instead.', DeprecationWarning)
-
         cv.check_type('temperature settings', temperature, Mapping)
         for key, value in temperature.items():
             cv.check_value('temperature key', key,

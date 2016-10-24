@@ -5,6 +5,7 @@ from numbers import Real, Integral
 from warnings import warn
 from io import StringIO
 
+from six import string_types
 import numpy as np
 
 import openmc.checkvalue as cv
@@ -769,7 +770,7 @@ class Reaction(EqualityMixin):
     def xs(self, xs):
         cv.check_type('reaction cross section dictionary', xs, MutableMapping)
         for key, value in xs.items():
-            cv.check_type('reaction cross section temperature', key, basestring)
+            cv.check_type('reaction cross section temperature', key, string_types)
             cv.check_type('reaction cross section', value, Callable)
         self._xs = xs
 

@@ -8,7 +8,7 @@ import h5py
 
 import openmc.checkvalue as cv
 from openmc.mixin import EqualityMixin
-from .data import K_BOLTZMANN, ATOMIC_SYMBOL
+from .data import K_BOLTZMANN, ATOMIC_SYMBOL, EV_PER_MEV
 from .ace import Table, get_table
 from .angle_energy import AngleEnergy
 from .function import Tabulated1D
@@ -69,14 +69,14 @@ class CoherentElastic(EqualityMixin):
     Parameters
     ----------
     bragg_edges : Iterable of float
-        Bragg edge energies in MeV
+        Bragg edge energies in eV
     factors : Iterable of float
         Partial sum of structure factors, :math:`\sum\limits_{i=1}^{E_i<E} S_i`
 
     Attributes
     ----------
     bragg_edges : Iterable of float
-        Bragg edge energies in MeV
+        Bragg edge energies in eV
     factors : Iterable of float
         Partial sum of structure factors, :math:`\sum\limits_{i=1}^{E_i<E} S_i`
 
@@ -161,7 +161,7 @@ class ThermalScattering(EqualityMixin):
         Atomic mass ratio of the target nuclide.
     kTs : Iterable of float
         List of temperatures of the target nuclide in the data set.
-        The temperatures have units of MeV.
+        The temperatures have units of eV.
 
     Attributes
     ----------
@@ -181,7 +181,7 @@ class ThermalScattering(EqualityMixin):
         rounded to the nearest integer; e.g., '294K'
     kTs : Iterable of float
         List of temperatures of the target nuclide in the data set.
-        The temperatures have units of MeV.
+        The temperatures have units of eV.
     nuclides : Iterable of str
         Nuclide names that the thermal scattering data applies to
 
@@ -426,15 +426,16 @@ class ThermalScattering(EqualityMixin):
                      'Assigning a name of {}.'.format(ace.name, name))
 
         # Assign temperature to the running list
-        kTs = [ace.temperature]
-        temperatures = [str(int(round(ace.temperature / K_BOLTZMANN))) + "K"]
+        kTs = [ace.temperature*EV_PER_MEV]
+        temperatures = [str(int(round(ace.temperature*EV_PER_MEV
+                                      / K_BOLTZMANN))) + "K"]
 
         table = cls(name, ace.atomic_weight_ratio, kTs)
 
         # Incoherent inelastic scattering cross section
         idx = ace.jxs[1]
         n_energy = int(ace.xss[idx])
-        energy = ace.xss[idx+1 : idx+1+n_energy]
+        energy = ace.xss[idx+1 : idx+1+n_energy]*EV_PER_MEV
         xs = ace.xss[idx+1+n_energy : idx+1+2*n_energy]
         table.inelastic_xs[temperatures[0]] = Tabulated1D(energy, xs)
 
@@ -451,7 +452,7 @@ class ThermalScattering(EqualityMixin):
             idx = ace.jxs[3]
             table.inelastic_e_out[temperatures[0]] = \
                 ace.xss[idx:idx + n_energy * n_energy_out * (n_mu + 2):
-                        n_mu + 2]
+                        n_mu + 2]*EV_PER_MEV
             table.inelastic_e_out[temperatures[0]].shape = \
                 (n_energy, n_energy_out)
 
@@ -474,9 +475,9 @@ class ThermalScattering(EqualityMixin):
 
                 # Outgoing energy distribution for incoming energy i
                 e = ace.xss[idx + 1:idx + 1 + n_energy_out[i]*(n_mu + 3):
-                            n_mu + 3]
+                            n_mu + 3]*EV_PER_MEV
                 p = ace.xss[idx + 2:idx + 2 + n_energy_out[i]*(n_mu + 3):
-                            n_mu + 3]
+                            n_mu + 3]/EV_PER_MEV
                 c = ace.xss[idx + 3:idx + 3 + n_energy_out[i]*(n_mu + 3):
                             n_mu + 3]
                 eout_i = Tabular(e, p, 'linear-linear', ignore_negative=True)
@@ -507,11 +508,12 @@ class ThermalScattering(EqualityMixin):
         idx = ace.jxs[4]
         if idx != 0:
             n_energy = int(ace.xss[idx])
-            energy = ace.xss[idx + 1: idx + 1 + n_energy]
+            energy = ace.xss[idx + 1: idx + 1 + n_energy]*EV_PER_MEV
             P = ace.xss[idx + 1 + n_energy: idx + 1 + 2 * n_energy]
 
             if ace.nxs[5] == 4:
-                table.elastic_xs[temperatures[0]] = CoherentElastic(energy, P)
+                table.elastic_xs[temperatures[0]] = CoherentElastic(
+                    energy, P*EV_PER_MEV)
             else:
                 table.elastic_xs[temperatures[0]] = Tabulated1D(energy, P)
 

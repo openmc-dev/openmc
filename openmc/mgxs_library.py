@@ -289,44 +289,24 @@ class XSdata(object):
         if self._xs_shapes is None:
 
             self._xs_shapes = {}
-
-            if self.representation == 'isotropic':
-                self._xs_shapes["[G]"] = (self.energy_groups.num_groups,)
-                self._xs_shapes["[G']"] = (self.energy_groups.num_groups,)
-                self._xs_shapes["[G][G']"] = (self.energy_groups.num_groups,
-                                              self.energy_groups.num_groups)
-                self._xs_shapes["[DG]"] = (self.num_delayed_groups,)
-                self._xs_shapes["[DG][G]"] = (self.num_delayed_groups,
-                                              self.energy_groups.num_groups)
-                self._xs_shapes["[DG][G']"] = (self.num_delayed_groups,
-                                              self.energy_groups.num_groups)
-                self._xs_shapes["[Order][G][G']"] \
-                    = (self.num_orders, self.energy_groups.num_groups,
-                       self.energy_groups.num_groups)
-
-            elif self.representation == 'angle':
-                self._xs_shapes["[G]"] = (self.num_polar, self.num_azimuthal,
-                                        self.energy_groups.num_groups)
-                self._xs_shapes["[G']"] = (self.num_polar, self.num_azimuthal,
+            self._xs_shapes["[G]"] = (self.energy_groups.num_groups,)
+            self._xs_shapes["[G']"] = (self.energy_groups.num_groups,)
+            self._xs_shapes["[G][G']"] = (self.energy_groups.num_groups,
+                                          self.energy_groups.num_groups)
+            self._xs_shapes["[DG]"] = (self.num_delayed_groups,)
+            self._xs_shapes["[DG][G]"] = (self.num_delayed_groups,
+                                          self.energy_groups.num_groups)
+            self._xs_shapes["[DG][G']"] = (self.num_delayed_groups,
                                            self.energy_groups.num_groups)
-                self._xs_shapes["[G][G']"] = (self.num_polar,
-                                              self.num_azimuthal,
-                                              self.energy_groups.num_groups,
-                                              self.energy_groups.num_groups)
-                self._xs_shapes["[DG]"] = (self.num_polar, self.num_azimuthal,
-                                           self.num_delayed_groups)
-                self._xs_shapes["[DG][G]"] = (self.num_polar,
-                                              self.num_azimuthal,
-                                              self.num_delayed_groups,
-                                              self.energy_groups.num_groups)
-                self._xs_shapes["[DG][G']"] = (self.num_polar,
-                                               self.num_azimuthal,
-                                               self.num_delayed_groups,
-                                               self.energy_groups.num_groups)
-                self._xs_shapes["[Order][G][G']"] \
-                    = (self.num_polar, self.num_azimuthal, self.num_orders,
-                       self.energy_groups.num_groups,
-                       self.energy_groups.num_groups)
+            self._xs_shapes["[Order][G][G']"] \
+                = (self.num_orders, self.energy_groups.num_groups,
+                   self.energy_groups.num_groups)
+
+            # If representation is by angle prepend num polar and num azim
+            if self.representation == 'angle':
+                for key,shapes in self._xs_shapes.items():
+                    self._xs_shapes[key] \
+                        = (self.num_polar, self.num_azimuthal) + shapes
 
         return self._xs_shapes
 

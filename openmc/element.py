@@ -276,7 +276,8 @@ class Element(object):
         # Create a list of the isotopes in this element
         isotopes = []
         for nuclide, abundance in zip(nuclides, abundances):
-            pct = float('{:2.8g}'.format(percent*abundance))
+            #pct = float('{:2.8g}'.format())
+            pct = percent*abundance
             isotopes.append((nuclide, pct, percent_type))
 
         return isotopes

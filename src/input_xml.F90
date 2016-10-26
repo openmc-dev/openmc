@@ -2348,8 +2348,7 @@ contains
         ! save name to list
         call names % push_back(name)
 
-        ! Check if no atom/weight percents were specified or if both atom and
-        ! weight percents were specified
+        ! Set density for macroscopic data
         if (units == 'macro') then
           call densities % push_back(ONE)
         else
@@ -2370,31 +2369,6 @@ contains
           if (.not. check_for_node(node_nuc, "name")) then
             call fatal_error("No name specified on nuclide in material " &
                  // trim(to_str(mat % id)))
-          end if
-
-          ! Check if no atom/weight percents were specified or if both atom and
-          ! weight percents were specified
-          if (units == 'macro') then
-            call densities % push_back(ONE)
-          else
-            if (.not. check_for_node(node_nuc, "ao") .and. &
-                 .not. check_for_node(node_nuc, "wo")) then
-              call fatal_error("No atom or weight percent specified for &
-                   &nuclide" // trim(name))
-            elseif (check_for_node(node_nuc, "ao") .and. &
-                    check_for_node(node_nuc, "wo")) then
-              call fatal_error("Cannot specify both atom and weight percents &
-                   &for a nuclide: " // trim(name))
-            end if
-
-            ! Copy atom/weight percents
-            if (check_for_node(node_nuc, "ao")) then
-              call get_node_value(node_nuc, "ao", temp_dble)
-              call densities % push_back(temp_dble)
-            else
-              call get_node_value(node_nuc, "wo", temp_dble)
-              call densities % push_back(-temp_dble)
-            end if
           end if
 
           ! Check enforced isotropic lab scattering
@@ -2421,6 +2395,30 @@ contains
           ! save name to list
           call names % push_back(name)
 
+          ! Check if no atom/weight percents were specified or if both atom and
+          ! weight percents were specified
+          if (units == 'macro') then
+            call densities % push_back(ONE)
+          else
+            if (.not. check_for_node(node_nuc, "ao") .and. &
+                 .not. check_for_node(node_nuc, "wo")) then
+              call fatal_error("No atom or weight percent specified for &
+                   &nuclide" // trim(name))
+            elseif (check_for_node(node_nuc, "ao") .and. &
+                    check_for_node(node_nuc, "wo")) then
+              call fatal_error("Cannot specify both atom and weight percents &
+                   &for a nuclide: " // trim(name))
+            end if
+
+            ! Copy atom/weight percents
+            if (check_for_node(node_nuc, "ao")) then
+              call get_node_value(node_nuc, "ao", temp_dble)
+              call densities % push_back(temp_dble)
+            else
+              call get_node_value(node_nuc, "wo", temp_dble)
+              call densities % push_back(-temp_dble)
+            end if
+          end if
         end do INDIVIDUAL_NUCLIDES
       end if
 

@@ -6,6 +6,7 @@ import sys
 import numpy as np
 
 sys.path.insert(0, os.pardir)
+sys.path.insert(0, os.path.join(os.pardir, os.pardir))
 from openmc import Material
 from openmc.data import NATURAL_ABUNDANCE, atomic_mass
 

@@ -587,9 +587,9 @@ class Material(object):
 
         if not distrib:
             if nuclide[2] == 'ao':
-                xml_element.set("ao", str(nuclide[1]))
+                xml_element.set("ao", '{0:.12f}'.format(nuclide[1]))
             else:
-                xml_element.set("wo", str(nuclide[1]))
+                xml_element.set("wo", '{0:.12f}'.format(nuclide[1]))
 
         if not nuclide[0].scattering is None:
             xml_element.set("scattering", nuclide[0].scattering)

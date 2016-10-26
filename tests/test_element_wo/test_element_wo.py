@@ -1,7 +1,12 @@
 #!/usr/bin/env python
 
+import os
+import sys
+
 import numpy as np
-import openmc
+
+sys.path.insert(0, os.pardir)
+from openmc import Material
 from openmc.data import NATURAL_ABUNDANCE, atomic_mass
 
 
@@ -17,7 +22,7 @@ if __name__ == '__main__':
             * atomic_mass('O16'))
     water_am = 2 * h_am + o_am
 
-    water = openmc.Material()
+    water = Material()
     water.add_element('O', o_am / water_am, 'wo')
     water.add_element('H', 2 * h_am / water_am, 'wo')
     densities = water.get_nuclide_densities()

@@ -1,14 +1,20 @@
 #!/usr/bin/env python
 
+import os
+import sys
+
 import numpy as np
-import openmc
+
+sys.path.insert(0, os.pardir)
+from openmc import Material
+from openmc.data import NATURAL_ABUNDANCE, atomic_mass
 
 
 if __name__ == '__main__':
     # This test doesn't require an OpenMC run.  We just need to make sure the
     # element.expand() method expands Uranium to the proper enrichment.
 
-    uranium = openmc.Material()
+    uranium = Material()
     uranium.add_element('U', 1.0, 'wo', 4.95)
     densities = uranium.get_nuclide_densities()
 

@@ -230,7 +230,7 @@ class Element(object):
             for nuclide in abundances.keys():
                 abundances[nuclide] /= sum_abundances
 
-        # Compute the ratio of the nuclide atomic massess to the element
+        # Compute the ratio of the nuclide atomic masses to the element
         # atomic mass
         if percent_type == 'wo':
 

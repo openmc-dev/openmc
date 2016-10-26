@@ -2163,9 +2163,6 @@ contains
       call time_read_xs % stop()
     end if
 
-    ! Assign and normalize nuclide densities
-    call assign_nuclide_densities()
-
     ! Clear dictionary
     call library_dict % clear()
   end subroutine read_materials
@@ -2184,13 +2181,19 @@ contains
     integer :: index_sab      ! index in sab_tables
     logical :: file_exists    ! does materials.xml exist?
     character(20)           :: name         ! name of nuclide, e.g. 92235.03c
+    character(MAX_WORD_LEN) :: units        ! units on density
     character(MAX_LINE_LEN) :: filename     ! absolute path to materials.xml
     character(MAX_LINE_LEN) :: temp_str     ! temporary string when reading
+    real(8)                 :: val          ! value entered for density
+    real(8)                 :: temp_dble    ! temporary double prec. real
+    logical                 :: sum_density  ! density is sum of nuclide densities
     type(VectorChar)        :: names        ! temporary list of nuclide names
     type(VectorInt)         :: list_iso_lab ! temporary list of isotropic lab scatterers
+    type(VectorReal)        :: densities    ! temporary list of nuclide densities
     type(Material), pointer :: mat => null()
     type(Node), pointer :: doc => null()
     type(Node), pointer :: node_mat => null()
+    type(Node), pointer :: node_dens => null()
     type(Node), pointer :: node_nuc => null()
     type(Node), pointer :: node_sab => null()
     type(NodeList), pointer :: node_mat_list => null()
@@ -2252,6 +2255,60 @@ contains
         material_temps(i) = ERROR_REAL
       end if
 
+      ! Get pointer to density element
+      if (check_for_node(node_mat, "density")) then
+        call get_node_ptr(node_mat, "density", node_dens)
+      else
+        call fatal_error("Must specify density element in material " &
+             // trim(to_str(mat % id)))
+      end if
+
+      ! Copy units
+      call get_node_value(node_dens, "units", units)
+
+      ! If the units is 'sum', then the total density of the material is taken
+      ! to be the sum of the atom fractions listed on the nuclides
+      if (units == 'sum') then
+        sum_density = .true.
+
+      else if (units == 'macro') then
+        if (check_for_node(node_dens, "value")) then
+          call get_node_value(node_dens, "value", val)
+        else
+          val = ONE
+        end if
+
+        ! Set density
+        mat % density = val
+
+        sum_density = .false.
+
+      else
+        call get_node_value(node_dens, "value", val)
+
+        ! Check for erroneous density
+        sum_density = .false.
+        if (val <= ZERO) then
+          call fatal_error("Need to specify a positive density on material " &
+               // trim(to_str(mat % id)) // ".")
+        end if
+
+        ! Adjust material density based on specified units
+        select case(to_lower(units))
+        case ('g/cc', 'g/cm3')
+          mat % density = -val
+        case ('kg/m3')
+          mat % density = -0.001_8 * val
+        case ('atom/b-cm')
+          mat % density = val
+        case ('atom/cm3', 'atom/cc')
+          mat % density = 1.0e-24_8 * val
+        case default
+          call fatal_error("Unkwown units '" // trim(units) &
+               // "' specified on material " // trim(to_str(mat % id)))
+        end select
+      end if
+
       ! =======================================================================
       ! READ AND PARSE <nuclide> TAGS
 
@@ -2290,6 +2347,15 @@ contains
 
         ! save name to list
         call names % push_back(name)
+
+        ! Check if no atom/weight percents were specified or if both atom and
+        ! weight percents were specified
+        if (units == 'macro') then
+          call densities % push_back(ONE)
+        else
+          call fatal_error("Units can only be macro for macroscopic data " &
+               // trim(name))
+        end if
       else
 
         ! Get pointer list of XML <nuclide>
@@ -2304,6 +2370,31 @@ contains
           if (.not. check_for_node(node_nuc, "name")) then
             call fatal_error("No name specified on nuclide in material " &
                  // trim(to_str(mat % id)))
+          end if
+
+          ! Check if no atom/weight percents were specified or if both atom and
+          ! weight percents were specified
+          if (units == 'macro') then
+            call densities % push_back(ONE)
+          else
+            if (.not. check_for_node(node_nuc, "ao") .and. &
+                 .not. check_for_node(node_nuc, "wo")) then
+              call fatal_error("No atom or weight percent specified for &
+                   &nuclide" // trim(name))
+            elseif (check_for_node(node_nuc, "ao") .and. &
+                    check_for_node(node_nuc, "wo")) then
+              call fatal_error("Cannot specify both atom and weight percents &
+                   &for a nuclide: " // trim(name))
+            end if
+
+            ! Copy atom/weight percents
+            if (check_for_node(node_nuc, "ao")) then
+              call get_node_value(node_nuc, "ao", temp_dble)
+              call densities % push_back(temp_dble)
+            else
+              call get_node_value(node_nuc, "wo", temp_dble)
+              call densities % push_back(-temp_dble)
+            end if
           end if
 
           ! Check enforced isotropic lab scattering
@@ -2374,6 +2465,7 @@ contains
 
         ! Copy name and atom/weight percent
         mat % names(j) = name
+        mat % atom_density(j) = densities % data(j)
 
         ! Cast integer isotropic lab scattering flag to boolean
         if (run_CE) then
@@ -2386,8 +2478,20 @@ contains
 
       end do ALL_NUCLIDES
 
+      ! Check to make sure either all atom percents or all weight percents are
+      ! given
+      if (.not. (all(mat % atom_density >= ZERO) .or. &
+           all(mat % atom_density <= ZERO))) then
+        call fatal_error("Cannot mix atom and weight percents in material " &
+             // to_str(mat % id))
+      end if
+
+      ! Determine density if it is a sum value
+      if (sum_density) mat % density = sum(mat % atom_density)
+
       ! Clear lists
       call names % clear()
+      call densities % clear()
       call list_iso_lab % clear()
 
       ! =======================================================================
@@ -4632,206 +4736,17 @@ contains
   end subroutine generate_rpn
 
 !===============================================================================
-! ASSIGN_NUCLIDE_DENSITIES Read in the nuclide densities from materials.xml
-! and assign to the corresponding nuclides.
-!===============================================================================
-
-  subroutine assign_nuclide_densities()
-    integer                 :: i               ! index in materials array
-    integer                 :: j               ! index over nuclides in material
-    logical                 :: file_exists     ! does materials.xml exist?
-    character(20)           :: name            ! name of nuclide, e.g. 92235.03c
-    character(MAX_WORD_LEN) :: units           ! units on density
-    character(MAX_LINE_LEN) :: filename        ! materials.xml filename
-    real(8)                 :: val             ! value entered for density
-    real(8)                 :: temp_dble       ! temporary double prec. real
-    logical                 :: sum_density     ! density is sum of nuclide densities
-    type(VectorReal)        :: densities       ! temporary list of nuclide densities
-    type(Material), pointer :: mat => null()
-    type(Node), pointer     :: doc => null()
-    type(Node), pointer     :: node_mat => null()
-    type(Node), pointer     :: node_dens => null()
-    type(Node), pointer     :: node_nuc => null()
-    type(NodeList), pointer :: node_mat_list => null()
-    type(NodeList), pointer :: node_nuc_list => null()
-    type(NodeList), pointer :: node_macro_list => null()
-
-    ! Display output message
-    call write_message("Reading material densities from XML file...", 5)
-
-    ! Check is materials.xml exists
-    filename = trim(path_input) // "materials.xml"
-    inquire(FILE=filename, EXIST=file_exists)
-    if (.not. file_exists) then
-      call fatal_error("Material XML file '" // trim(filename) // "' does not &
-           &exist!")
-    end if
-
-    ! Parse materials.xml file
-    call open_xmldoc(doc, filename)
-
-    ! Get pointer to list of XML <material>
-    call get_node_list(doc, "material", node_mat_list)
-
-    do i = 1, n_materials
-      mat => materials(i)
-
-      ! Get pointer to i-th material node
-      call get_list_item(node_mat_list, i, node_mat)
-
-      ! Get pointer to density element
-      if (check_for_node(node_mat, "density")) then
-        call get_node_ptr(node_mat, "density", node_dens)
-      else
-        call fatal_error("Must specify density element in material " &
-             // trim(to_str(mat % id)))
-      end if
-
-      ! Copy units
-      call get_node_value(node_dens, "units", units)
-
-      ! If the units is 'sum', then the total density of the material is taken
-      ! to be the sum of the atom fractions listed on the nuclides
-      if (units == 'sum') then
-        sum_density = .true.
-
-      else if (units == 'macro') then
-        if (check_for_node(node_dens, "value")) then
-          call get_node_value(node_dens, "value", val)
-        else
-          val = ONE
-        end if
-
-        ! Set density
-        mat % density = val
-
-        sum_density = .false.
-
-      else
-        call get_node_value(node_dens, "value", val)
-
-        ! Check for erroneous density
-        sum_density = .false.
-        if (val <= ZERO) then
-          call fatal_error("Need to specify a positive density on material " &
-               // trim(to_str(mat % id)) // ".")
-        end if
-
-        ! Adjust material density based on specified units
-        select case(to_lower(units))
-        case ('g/cc', 'g/cm3')
-          mat % density = -val
-        case ('kg/m3')
-          mat % density = -0.001_8 * val
-        case ('atom/b-cm')
-          mat % density = val
-        case ('atom/cm3', 'atom/cc')
-          mat % density = 1.0e-24_8 * val
-        case default
-          call fatal_error("Unkwown units '" // trim(units) &
-               // "' specified on material " // trim(to_str(mat % id)))
-        end select
-      end if
-
-      ! ========================================================================
-      ! READ IN NUCLIDE DENSITIES
-
-      ! Get pointer list of XML <macroscopic>
-      call get_node_list(node_mat, "macroscopic", node_macro_list)
-      if (get_list_size(node_macro_list) == 1) then
-
-        call get_list_item(node_macro_list, 1, node_nuc)
-
-        ! store nuclide name
-        call get_node_value(node_nuc, "name", name)
-        name = trim(name)
-
-        ! Check if no atom/weight percents were specified or if both atom and
-        ! weight percents were specified
-        if (units == 'macro') then
-          call densities % push_back(ONE)
-        else
-          call fatal_error("Units can only be macro for macroscopic data " &
-               // trim(name))
-        end if
-      else
-
-        ! Get pointer list of XML <nuclide>
-        call get_node_list(node_mat, "nuclide", node_nuc_list)
-
-        ! Create list of nuclides based on those specified
-        INDIVIDUAL_NUCLIDES: do j = 1, get_list_size(node_nuc_list)
-
-          ! Combine nuclide identifier and cross section and copy into names
-          call get_list_item(node_nuc_list, j, node_nuc)
-
-          ! store nuclide name
-          call get_node_value(node_nuc, "name", name)
-          name = trim(name)
-
-          ! Check if no atom/weight percents were specified or if both atom and
-          ! weight percents were specified
-          if (units == 'macro') then
-            call densities % push_back(ONE)
-          else
-            if (.not. check_for_node(node_nuc, "ao") .and. &
-                 .not. check_for_node(node_nuc, "wo")) then
-              call fatal_error("No atom or weight percent specified for &
-                   &nuclide" // trim(name))
-            elseif (check_for_node(node_nuc, "ao") .and. &
-                    check_for_node(node_nuc, "wo")) then
-              call fatal_error("Cannot specify both atom and weight percents &
-                   &for a nuclide: " // trim(name))
-            end if
-
-            ! Copy atom/weight percents
-            if (check_for_node(node_nuc, "ao")) then
-              call get_node_value(node_nuc, "ao", temp_dble)
-              call densities % push_back(temp_dble)
-            else
-              call get_node_value(node_nuc, "wo", temp_dble)
-              call densities % push_back(-temp_dble)
-            end if
-          end if
-        end do INDIVIDUAL_NUCLIDES
-      end if
-
-      ! ========================================================================
-      ! SET MATERIAL ATOM DENSITIES
-
-      ALL_NUCLIDES: do j = 1, mat % n_nuclides
-        mat % atom_density(j) = densities % data(j)
-      end do ALL_NUCLIDES
-
-      ! Check to make sure either all atom percents or all weight percents are
-      ! given
-      if (.not. (all(mat % atom_density >= ZERO) .or. &
-           all(mat % atom_density <= ZERO))) then
-        call fatal_error("Cannot mix atom and weight percents in material " &
-             // to_str(mat % id))
-      end if
-
-      ! Determine density if it is a sum value
-      if (sum_density) mat % density = sum(mat % atom_density)
-
-      ! Clear lists
-      call densities % clear()
-    end do
-
-  end subroutine assign_nuclide_densities
-
-!===============================================================================
 ! NORMALIZE_AO Normalize the nuclide atom percents
 !===============================================================================
 
   subroutine normalize_ao()
-    integer                 :: i               ! index in materials array
-    integer                 :: j               ! index over nuclides in material
-    real(8)                 :: sum_percent     ! summation
-    real(8)                 :: awr             ! atomic weight ratio
-    real(8)                 :: x               ! atom percent
-    logical                 :: percent_in_atom ! nuclides specified in atom percent?
-    logical                 :: density_in_atom ! density specified in atom/b-cm?
+    integer :: i               ! index in materials array
+    integer :: j               ! index over nuclides in material
+    real(8) :: sum_percent     ! summation
+    real(8) :: awr             ! atomic weight ratio
+    real(8) :: x               ! atom percent
+    logical :: percent_in_atom ! nuclides specified in atom percent?
+    logical :: density_in_atom ! density specified in atom/b-cm?
 
     do i = 1, size(materials)
       associate (mat => materials(i))

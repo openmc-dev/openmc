@@ -418,7 +418,9 @@ class Material(object):
             'ao' for atom percent and 'wo' for weight percent. Defaults to atom
             percent.
         enrichment : float, optional
-            Optional weight percent enrichment for uranium. Defaults to None.
+            Enrichment for U235 in weight percent. For example, input 4.95 for
+            4.95 weight percent enriched U. Default is None
+            (natural composition).
 
         """
 
@@ -462,10 +464,10 @@ class Material(object):
                 raise ValueError(msg)
 
             # Check that the enrichment is in the valid range
-            cv.check_less_than('enrichment', enrichment, 1/1.008, equality=True)
+            cv.check_less_than('enrichment', enrichment, 100./1.008)
             cv.check_greater_than('enrichment', enrichment, 0., equality=True)
 
-            if enrichment > 0.05:
+            if enrichment > 5.0:
                 msg = 'A uranium enrichment of {0} was given for Material ID='\
                       '"{1}". OpenMC assumes the U234/U235 mass ratio is '\
                       'constant at 0.008, which is only valid at low ' \

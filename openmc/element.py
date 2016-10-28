@@ -253,6 +253,7 @@ class Element(object):
         for nuclide, abundance in abundances.items():
             nuc = openmc.Nuclide(nuclide)
             nuc.scattering = self.scattering
-            isotopes.append((nuc, percent*abundance, percent_type))
+            pct = float('{:.14}'.format(percent*abundance))
+            isotopes.append((nuc, pct, percent_type))
 
         return isotopes

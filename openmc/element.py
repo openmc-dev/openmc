@@ -193,7 +193,7 @@ class Element(object):
                 # Adjust the abundances for the absent nuclides
                 for nuclide in absent_nuclides:
 
-                    if nuclide == 'O18' and 'O16' in mutual_nuclides:
+                    if nuclide in ['O17', 'O18'] and 'O16' in mutual_nuclides:
                         abundances['O16'] += NATURAL_ABUNDANCE[nuclide]
                     elif nuclide == 'Ta180' and 'Ta181' in mutual_nuclides:
                         abundances['Ta181'] += NATURAL_ABUNDANCE[nuclide]
@@ -253,7 +253,7 @@ class Element(object):
         for nuclide, abundance in abundances.items():
             nuc = openmc.Nuclide(nuclide)
             nuc.scattering = self.scattering
-            pct = float('{:.14}'.format(percent*abundance))
+            pct = round(percent*abundance, 12)
             isotopes.append((nuc, pct, percent_type))
 
         return isotopes

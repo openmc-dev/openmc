@@ -19,33 +19,34 @@ class TRISOTestHarness(PyAPITestHarness):
         # Define TRISO matrials
         fuel = openmc.Material()
         fuel.set_density('g/cm3', 10.5)
-        fuel.add_element('U', 0.14154, 'ao', 14.0)
-        fuel.add_element('C', 0.5)
-        fuel.add_element('O', 1.5)
+        fuel.add_nuclide('U235', 0.14154)
+        fuel.add_nuclide('U238', 0.85846)
+        fuel.add_nuclide('C0', 0.5)
+        fuel.add_nuclide('O16', 1.5)
 
         porous_carbon = openmc.Material()
         porous_carbon.set_density('g/cm3', 1.0)
-        porous_carbon.add_element('C', 1.0)
+        porous_carbon.add_nuclide('C0', 1.0)
         porous_carbon.add_s_alpha_beta('c_Graphite')
 
         ipyc = openmc.Material()
         ipyc.set_density('g/cm3', 1.90)
-        ipyc.add_element('C', 1.0)
+        ipyc.add_nuclide('C0', 1.0)
         ipyc.add_s_alpha_beta('c_Graphite')
 
         sic = openmc.Material()
         sic.set_density('g/cm3', 3.20)
         sic.add_element('Si', 1.0)
-        sic.add_element('C', 1.0)
+        sic.add_nuclide('C0', 1.0)
 
         opyc = openmc.Material()
         opyc.set_density('g/cm3', 1.87)
-        opyc.add_element('C', 1.0)
+        opyc.add_nuclide('C0', 1.0)
         opyc.add_s_alpha_beta('c_Graphite')
 
         graphite = openmc.Material()
         graphite.set_density('g/cm3', 1.1995)
-        graphite.add_element('C', 1.0)
+        graphite.add_nuclide('C0', 1.0)
         graphite.add_s_alpha_beta('c_Graphite')
 
         # Create TRISO particles

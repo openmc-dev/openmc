@@ -10,7 +10,7 @@ import openmc
 class EnergyCutoffTestHarness(PyAPITestHarness):
     def _build_inputs(self):
         # Set energy cutoff
-        energy_cutoff = 4e-6
+        energy_cutoff = 4.0
 
         # Material is composed of H-1
         mat = openmc.Material(material_id=1, name='mat')

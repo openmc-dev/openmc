@@ -4,12 +4,18 @@ import os
 import sys
 import glob
 import hashlib
+
+import numpy as np
 import h5py
+
 sys.path.insert(0, os.pardir)
 from testing_harness import PyAPITestHarness
 from input_set import PinCellInputSet
 import openmc
 import openmc.mgxs
+
+
+np.set_printoptions(formatter={'float_kind': '{:.8e}'.format})
 
 
 class MGXSTestHarness(PyAPITestHarness):
@@ -21,8 +27,7 @@ class MGXSTestHarness(PyAPITestHarness):
         super(MGXSTestHarness, self)._build_inputs()
 
         # Initialize a two-group structure
-        energy_groups = openmc.mgxs.EnergyGroups(group_edges=[0, 0.625e-6,
-                                                              20.])
+        energy_groups = openmc.mgxs.EnergyGroups(group_edges=[0, 0.625, 20.e6])
 
         # Initialize a six-delayed-group structure
         delayed_groups = list(range(1,7))
@@ -66,10 +71,9 @@ class MGXSTestHarness(PyAPITestHarness):
         for domain in self.mgxs_lib.domains:
             for mgxs_type in self.mgxs_lib.mgxs_types:
                 outstr += 'domain={0} type={1}\n'.format(domain.id, mgxs_type)
-                key = 'material/{0}/{1}/average'.format(domain.id, mgxs_type)
-                outstr += str(f[key][...]) + '\n'
-                key = 'material/{0}/{1}/std. dev.'.format(domain.id, mgxs_type)
-                outstr += str(f[key][...]) + '\n'
+                avg_key = 'material/{0}/{1}/average'.format(domain.id, mgxs_type)
+                std_key = 'material/{0}/{1}/std. dev.'.format(domain.id, mgxs_type)
+                outstr += '{}\n{}\n'.format(f[avg_key][...], f[std_key][...])
 
         # Close the MGXS HDF5 file
         f.close()

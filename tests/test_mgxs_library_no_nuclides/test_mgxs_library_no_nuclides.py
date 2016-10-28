@@ -20,8 +20,7 @@ class MGXSTestHarness(PyAPITestHarness):
         super(MGXSTestHarness, self)._build_inputs()
 
         # Initialize a two-group structure
-        energy_groups = openmc.mgxs.EnergyGroups(group_edges=[0, 0.625e-6,
-                                                              20.])
+        energy_groups = openmc.mgxs.EnergyGroups(group_edges=[0, 0.625, 20.e6])
 
         # Initialize a six-delayed-group structure
         delayed_groups = list(range(1,7))

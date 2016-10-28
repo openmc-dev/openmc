@@ -42,9 +42,9 @@ class ResonanceScatteringTestHarness(PyAPITestHarness):
         geometry.export_to_xml()
 
         # Settings
-        res_scatt_dbrc = openmc.ResonanceScattering(u238, 'DBRC', 1e-6, 210e-6)
-        res_scatt_wcm = openmc.ResonanceScattering(u235, 'WCM', 1e-6, 210e-6)
-        res_scatt_ares = openmc.ResonanceScattering(pu239, 'ARES', 1e-6, 210e-6)
+        res_scatt_dbrc = openmc.ResonanceScattering(u238, 'DBRC', 1.0, 210.0)
+        res_scatt_wcm = openmc.ResonanceScattering(u235, 'WCM', 1.0, 210.0)
+        res_scatt_ares = openmc.ResonanceScattering(pu239, 'ARES', 1.0, 210.0)
 
         sets_file = openmc.Settings()
         sets_file.batches = 10

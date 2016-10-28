@@ -21,7 +21,7 @@ class TallyAggregationTestHarness(PyAPITestHarness):
         u238 = openmc.Nuclide('U238')
 
         # Initialize the filters
-        energy_filter = openmc.EnergyFilter([0.0, 0.253e-6, 1.0e-3, 1.0, 20.0])
+        energy_filter = openmc.EnergyFilter([0.0, 0.253, 1.0e3, 1.0e6, 20.0e6])
         distrib_filter = openmc.DistribcellFilter(60)
 
         # Initialized the tallies

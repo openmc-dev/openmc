@@ -38,6 +38,8 @@ parser.add_option("-u", "--update", action="store_true", dest="update",
 parser.add_option("-s", "--script", action="store_true", dest="script",
                   help="Activate CTest scripting mode for coverage, valgrind\
                         and dashboard capability.")
+parser.add_option('-v', '--verbose', action='store_true', dest='verbose',
+                  help='Print all test results to stdout.')
 (options, args) = parser.parse_args()
 
 # Default compiler paths
@@ -481,6 +483,12 @@ for key in iter(tests):
         logfilename = os.path.splitext(logfilename)[0]
         logfilename = logfilename + '_{0}.log'.format(test.name)
         shutil.copy(logfile[0], logfilename)
+
+    # Print tests
+    if options.verbose:
+        if len(logfile) > 0:
+            with open(logfilename) as fh:
+                print(fh.read())
 
     # For coverage builds, use lcov to generate HTML output
     if test.coverage:

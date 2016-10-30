@@ -2886,8 +2886,9 @@ contains
 !$omp end parallel
 
     ! Make sure this is not an MG run.
-    if (.not. run_CE .and. get_list_size(node_deriv_list) > 0) call &
-         fatal_error("Differential tallies not supported in multi-group mode")
+    if (.not. run_CE .and. get_list_size(node_deriv_list) > 0) then
+      call fatal_error("Differential tallies not supported in multi-group mode")
+    end if
 
     ! Read derivative attributes.
     do i = 1, get_list_size(node_deriv_list)
@@ -2904,14 +2905,17 @@ contains
         end if
 
         ! Make sure the id is > 0.
-        if (deriv % id <= 0) call fatal_error("<derivative> IDs must be an &
-             &integer greater than zero")
+        if (deriv % id <= 0) then
+          call fatal_error("<derivative> IDs must be an integer greater than &
+               &zero")
+        end if
 
         ! Make sure this id has not already been used.
         do j = 1, i-1
-          if (tally_derivs(j) % id == deriv % id) call fatal_error("Two or more&
-               & <derivative>'s use the same unique ID: " &
-               // trim(to_str(deriv % id)))
+          if (tally_derivs(j) % id == deriv % id) then
+            call fatal_error("Two or more <derivative>'s use the same unique &
+                 &ID: " // trim(to_str(deriv % id)))
+          end if
         end do
 
         ! Read the independent variable name.
@@ -3927,8 +3931,10 @@ contains
             t % deriv = j
             ! Only analog or collision estimators are supported for differential
             ! tallies.
-            if (t % estimator == ESTIMATOR_TRACKLENGTH) &
-                 t % estimator = ESTIMATOR_COLLISION
+            if (t % estimator == ESTIMATOR_TRACKLENGTH) then
+              t % estimator = ESTIMATOR_COLLISION
+            end if
+            ! We found the derivative we were looking for; exit the do loop.
             exit
           end if
           if (j == size(tally_derivs)) then

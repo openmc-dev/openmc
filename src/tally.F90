@@ -2861,9 +2861,11 @@ contains
           if (materials(p % material) % id == deriv % diff_material &
                .and. p % event_nuclide == deriv % diff_nuclide) then
             associate(mat => materials(p % material))
+              ! Search for the index of the perturbed nuclide.
               do l = 1, mat % n_nuclides
                 if (mat % nuclide(l) == deriv % diff_nuclide) exit
               end do
+
               score = score * (flux_deriv &
                    + ONE / mat % atom_density(l))
             end associate
@@ -2977,9 +2979,11 @@ contains
             if (materials(p % material) % id == deriv % diff_material .and. &
                  micro_xs(p % event_nuclide) % total > ZERO) then
               associate(mat => materials(p % material))
+                ! Search for the index of the perturbed nuclide.
                 do l = 1, mat % n_nuclides
                   if (mat % nuclide(l) == p % event_nuclide) exit
                 end do
+
                 dsigT = ZERO
                 associate (nuc => nuclides(p % event_nuclide))
                   if (nuc % mp_present .and. &
@@ -3001,9 +3005,11 @@ contains
                  (micro_xs(p % event_nuclide) % total &
                  - micro_xs(p % event_nuclide) % absorption) > ZERO) then
               associate(mat => materials(p % material))
+                ! Search for the index of the perturbed nuclide.
                 do l = 1, mat % n_nuclides
                   if (mat % nuclide(l) == p % event_nuclide) exit
                 end do
+
                 dsigT = ZERO
                 dsigA = ZERO
                 associate (nuc => nuclides(p % event_nuclide))
@@ -3026,9 +3032,11 @@ contains
             if (materials(p % material) % id == deriv % diff_material .and. &
                  micro_xs(p % event_nuclide) % absorption > ZERO) then
               associate(mat => materials(p % material))
+                ! Search for the index of the perturbed nuclide.
                 do l = 1, mat % n_nuclides
                   if (mat % nuclide(l) == p % event_nuclide) exit
                 end do
+
                 dsigA = ZERO
                 associate (nuc => nuclides(p % event_nuclide))
                   if (nuc % mp_present .and. &
@@ -3049,9 +3057,11 @@ contains
             if (materials(p % material) % id == deriv % diff_material .and. &
                  micro_xs(p % event_nuclide) % fission > ZERO) then
               associate(mat => materials(p % material))
+                ! Search for the index of the perturbed nuclide.
                 do l = 1, mat % n_nuclides
                   if (mat % nuclide(l) == p % event_nuclide) exit
                 end do
+
                 dsigF = ZERO
                 associate (nuc => nuclides(p % event_nuclide))
                   if (nuc % mp_present .and. &
@@ -3072,9 +3082,11 @@ contains
             if (materials(p % material) % id == deriv % diff_material .and. &
                  micro_xs(p % event_nuclide) % nu_fission > ZERO) then
               associate(mat => materials(p % material))
+                ! Search for the index of the perturbed nuclide.
                 do l = 1, mat % n_nuclides
                   if (mat % nuclide(l) == p % event_nuclide) exit
                 end do
+
                 dsigF = ZERO
                 associate (nuc => nuclides(p % event_nuclide))
                   if (nuc % mp_present .and. &

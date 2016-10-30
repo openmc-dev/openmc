@@ -1,3 +1,4 @@
+from collections import OrderedDict
 import re
 import sys
 import os
@@ -133,7 +134,7 @@ class Element(object):
                 natural_nuclides.add(nuclide)
 
         # Create dict to store the expanded nuclides and abundances
-        abundances = {}
+        abundances = OrderedDict()
 
         # If cross_sections is None, get the cross sections from the
         # OPENMC_CROSS_SECTIONS environment variable
@@ -253,7 +254,7 @@ class Element(object):
         for nuclide, abundance in abundances.items():
             nuc = openmc.Nuclide(nuclide)
             nuc.scattering = self.scattering
-            pct = round(percent*abundance, 10)
+            pct = round(percent*abundance, 14)
             isotopes.append((nuc, pct, percent_type))
 
         return isotopes

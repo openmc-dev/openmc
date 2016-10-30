@@ -2691,8 +2691,11 @@ contains
     filename = trim(path_input) // "tallies.xml"
     inquire(FILE=filename, EXIST=file_exists)
     if (.not. file_exists) then
-      ! We need to allocate tally_derivs to avoid segfaults
+      ! We need to allocate tally_derivs to avoid segfaults.  Also needs to be
+      ! done in parallel because tally derivs are threadprivate.
+!$omp parallel
       allocate(tally_derivs(0))
+!$omp end parallel
 
       ! Since a tallies.xml file is optional, no error is issued here
       return
@@ -2876,8 +2879,11 @@ contains
     ! READ DATA FOR DERIVATIVES
 
     ! Get pointer list to XML <derivative> nodes and allocate global array.
+    ! The array is threadprivate so it must be allocated in parallel.
     call get_node_list(doc, "derivative", node_deriv_list)
+!$omp parallel
     allocate(tally_derivs(get_list_size(node_deriv_list)))
+!$omp end parallel
 
     ! Make sure this is not an MG run.
     if (.not. run_CE .and. get_list_size(node_deriv_list) > 0) call &

@@ -16,7 +16,7 @@ module tracking
   use tally,              only: score_analog_tally, score_tracklength_tally, &
                                 score_collision_tally, score_surface_current, &
                                 score_track_derivative, &
-                                score_collision_derivative
+                                score_collision_derivative, zero_flux_derivs
   use track_output,       only: initialize_particle_track, write_particle_track, &
                                 add_particle_track, finalize_particle_track
 
@@ -66,7 +66,7 @@ contains
     endif
 
     ! Every particle starts with no accumulated flux derivative.
-    p % flux_derivs(:) = ZERO
+    if (active_tallies % size() > 0) call zero_flux_derivs()
 
     EVENT_LOOP: do
       ! If the cell hasn't been determined based on the particle's location,

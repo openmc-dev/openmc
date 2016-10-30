@@ -2775,9 +2775,9 @@ contains
 
     if (score == ZERO) return
 
-    flux_deriv = p % flux_derivs(t % deriv)
-
     associate(deriv => tally_derivs(t % deriv))
+      flux_deriv = deriv % flux_deriv
+
       select case (tally_derivs(t % deriv) % variable)
 
       case (DIFF_DENSITY)
@@ -3321,8 +3321,8 @@ contains
 !===============================================================================
 
   subroutine score_track_derivative(p, distance)
-    type(particle), intent(inout) :: p
-    real(8),        intent(in)    :: distance ! Neutron flight distance
+    type(Particle), intent(in) :: p
+    real(8),        intent(in) :: distance ! Neutron flight distance
 
     integer :: i, l
     real(8) :: dsigT, dsigA, dsigF
@@ -3340,7 +3340,7 @@ contains
               ! phi = e^(-Sigma_tot * dist)
               ! (1 / phi) * (d_phi / d_rho) = - (d_Sigma_tot / d_rho) * dist
               ! (1 / phi) * (d_phi / d_rho) = - Sigma_tot / rho * dist
-              p % flux_derivs(i) = p % flux_derivs(i) &
+              deriv % flux_deriv = deriv % flux_deriv &
                    - distance * material_xs % total / mat % density_gpcc
             end if
           end associate
@@ -3351,7 +3351,7 @@ contains
               ! phi = e^(-Sigma_tot * dist)
               ! (1 / phi) * (d_phi / d_N) = - (d_Sigma_tot / d_N) * dist
               ! (1 / phi) * (d_phi / d_N) = - sigma_tot * dist
-              p % flux_derivs(i) = p % flux_derivs(i) &
+              deriv % flux_deriv = deriv % flux_deriv &
                    - distance * micro_xs(deriv % diff_nuclide) % total
             end if
           end associate
@@ -3366,7 +3366,7 @@ contains
                        p % E <= nuc % multipole % end_E/1.0e6_8) then
                     call multipole_deriv_eval(nuc % multipole, p % E, &
                          p % sqrtkT, dsigT, dsigA, dsigF)
-                    p % flux_derivs(i) = p % flux_derivs(i) &
+                    deriv % flux_deriv = deriv % flux_deriv &
                          - distance * dsigT * mat % atom_density(l)
                   end if
                 end associate
@@ -3384,7 +3384,7 @@ contains
 !===============================================================================
 
   subroutine score_collision_derivative(p)
-    type(particle), intent(inout) :: p
+    type(Particle), intent(in) :: p
 
     integer :: i, j, l
     real(8) :: dsigT, dsigA, dsigF
@@ -3402,7 +3402,7 @@ contains
               ! phi = Sigma_MT
               ! (1 / phi) * (d_phi / d_rho) = (d_Sigma_MT / d_rho) / Sigma_MT
               ! (1 / phi) * (d_phi / d_rho) = 1 / rho
-              p % flux_derivs(i) = p % flux_derivs(i) &
+              deriv % flux_deriv = deriv % flux_deriv &
                    + ONE / mat % density_gpcc
             end if
           end associate
@@ -3423,7 +3423,7 @@ contains
               ! (1 / phi) * (d_phi / d_N) = (d_Sigma_MT / d_N) / Sigma_MT
               ! (1 / phi) * (d_phi / d_N) = sigma_MT / Sigma_MT
               ! (1 / phi) * (d_phi / d_N) = 1 / N
-              p % flux_derivs(i) = p % flux_derivs(i) &
+              deriv % flux_deriv = deriv % flux_deriv &
                    + ONE / mat % atom_density(j)
             end if
           end associate
@@ -3444,11 +3444,11 @@ contains
                          p % sqrtkT, dsigT, dsigA, dsigF)
                     select case(p % event)
                     case (EVENT_SCATTER)
-                      p % flux_derivs(i) = p % flux_derivs(i) + (dsigT - dsigA)&
+                      deriv % flux_deriv = deriv % flux_deriv + (dsigT - dsigA)&
                            / (micro_xs(mat % nuclide(l)) % total &
                            - micro_xs(mat % nuclide(l)) % absorption)
                     case (EVENT_ABSORB)
-                      p % flux_derivs(i) = p % flux_derivs(i) &
+                      deriv % flux_deriv = deriv % flux_deriv &
                            + dsigA / micro_xs(mat % nuclide(l)) % absorption
                     end select
                   end if
@@ -3460,6 +3460,17 @@ contains
       end associate
     end do
   end subroutine score_collision_derivative
+
+!===============================================================================
+! ZERO_FLUX_DERIVS Set the flux derivatives on differential tallies to zero.
+!===============================================================================
+
+  subroutine zero_flux_derivs()
+    integer :: i
+    do i = 1, size(tally_derivs)
+      tally_derivs(i) % flux_deriv = ZERO
+    end do
+  end subroutine zero_flux_derivs
 
 !===============================================================================
 ! SYNCHRONIZE_TALLIES accumulates the sum of the contributions from each history

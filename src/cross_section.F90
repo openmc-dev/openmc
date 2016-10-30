@@ -157,36 +157,7 @@ contains
         if (E >= nuc % multipole % start_E/1.0e6_8 .and. &
              E <= nuc % multipole % end_E/1.0e6_8) then
           use_mp = .true.
-        else
-          ! If using multipole data but outside the RRR, pick the nearest
-          ! temperature. Note that there is no tolerance here, so this
-          ! temperature could be very far off!
-          kT = sqrtkT**2
-
-          i_temp = minloc(abs(nuclides(i_nuclide) % kTs - kT), dim=1)
         end if
-      else
-        kT = sqrtkT**2
-
-        select case (temperature_method)
-        case (TEMPERATURE_NEAREST)
-          ! If using nearest temperature, do linear search on temperature
-          do i_temp = 1, size(nuc % kTs)
-            if (abs(nuc % kTs(i_temp) - kT) < K_BOLTZMANN * &
-                 temperature_tolerance) exit
-          end do
-        case (TEMPERATURE_INTERPOLATION)
-          ! Find temperatures that bound the actual temperature
-          do i_temp = 1, size(nuc % kTs) - 1
-            if (nuc % kTs(i_temp) <= kT .and. kT < nuc % kTs(i_temp + 1)) exit
-          end do
-
-          ! Randomly sample between temperature i and i+1
-          f = (kT - nuc % kTs(i_temp)) / &
-               (nuc % kTs(i_temp + 1) - nuc % kTs(i_temp))
-          if (f > prn()) i_temp = i_temp + 1
-        end select
-
       end if
 
       ! Evaluate multipole or interpolate
@@ -213,22 +184,44 @@ contains
         ! 3. tally.F90 - score_general - For tallying on MTxxx reactions.
         ! 4. cross_section.F90 - calculate_urr_xs - For unresolved purposes.
         ! It is worth noting that none of these occur in the resolved
-        ! resonance range, so the value here does not matter.
-        micro_xs(i_nuclide) % index_temp    = i_temp
+        ! resonance range, so the value here does not matter.  index_temp is
+        ! set to -1 to force a segfault in case a developer messes up and tries
+        ! to use it with multipole.
+        micro_xs(i_nuclide) % index_temp    = -1
         micro_xs(i_nuclide) % index_grid    = 0
         micro_xs(i_nuclide) % interp_factor = ZERO
+
       else
+        ! Find the appropriate temperature index.
+        kT = sqrtkT**2
+        select case (temperature_method)
+        case (TEMPERATURE_NEAREST)
+          i_temp = minloc(abs(nuclides(i_nuclide) % kTs - kT), dim=1)
+
+        case (TEMPERATURE_INTERPOLATION)
+          ! Find temperatures that bound the actual temperature
+          do i_temp = 1, size(nuc % kTs) - 1
+            if (nuc % kTs(i_temp) <= kT .and. kT < nuc % kTs(i_temp + 1)) exit
+          end do
+
+          ! Randomly sample between temperature i and i+1
+          f = (kT - nuc % kTs(i_temp)) / &
+               (nuc % kTs(i_temp + 1) - nuc % kTs(i_temp))
+          if (f > prn()) i_temp = i_temp + 1
+        end select
+
         associate (grid => nuc % grid(i_temp), xs => nuc % sum_xs(i_temp))
-          ! Determine the energy grid index using a logarithmic mapping to reduce
-          ! the energy range over which a binary search needs to be performed
+          ! Determine the energy grid index using a logarithmic mapping to
+          ! reduce the energy range over which a binary search needs to be
+          ! performed
 
           if (E < grid % energy(1)) then
             i_grid = 1
           elseif (E > grid % energy(size(grid % energy))) then
             i_grid = size(grid % energy) - 1
           else
-            ! Determine bounding indices based on which equal log-spaced interval
-            ! the energy is in
+            ! Determine bounding indices based on which equal log-spaced
+            ! interval the energy is in
             i_low  = grid % grid_index(i_log_union)
             i_high = grid % grid_index(i_log_union + 1) + 1
 

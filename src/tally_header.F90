@@ -25,6 +25,7 @@ module tally_header
 
   type TallyDerivative
     integer :: id
+    real(8) :: flux_deriv
     integer :: variable
     integer :: diff_material
     integer :: diff_nuclide

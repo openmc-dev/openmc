@@ -2,14 +2,12 @@ from __future__ import division
 
 import sys
 from numbers import Integral
-
 from xml.etree import ElementTree as ET
+
+from six import string_types
 
 import openmc.checkvalue as cv
 
-
-if sys.version_info[0] >= 3:
-    basestring = str
 
 # "Static" variable for auto-generated TallyDerivative IDs
 AUTO_TALLY_DERIV_ID = 10000
@@ -35,7 +33,7 @@ class TallyDerivative(object):
     variable : str
         Accepted values are 'density', 'nuclide_density', and 'temperature'
     material : Integral
-        The perutrubed material
+        The perturubed material
     nuclide : str
         The perturbed nuclide. Only needed for 'nuclide_density' derivatives.
         Ex: 'Xe-135'
@@ -134,23 +132,22 @@ class TallyDerivative(object):
     @variable.setter
     def variable(self, var):
         if var is not None:
-            cv.check_type('derivative variable', var, basestring)
-            if var not in ('density', 'nuclide_density', 'temperature'):
-                raise ValueError("A tally differential variable must be "
-                     "'density', 'nuclide_density', or 'temperature'")
-            self._variable = var
+            cv.check_type('derivative variable', var, string_types)
+            cv.check_value('derivative variable', var, ('density',
+                           'nuclide_density', 'temperature'))
+        self._variable = var
 
     @material.setter
     def material(self, mat):
         if mat is not None:
             cv.check_type('derivative material', mat, Integral)
-            self._material = mat
+        self._material = mat
 
     @nuclide.setter
     def nuclide(self, nuc):
         if nuc is not None:
-            cv.check_type('derivative nuclide', nuc, basestring)
-            self._nuclide = nuc
+            cv.check_type('derivative nuclide', nuc, string_types)
+        self._nuclide = nuc
 
     def get_derivative_xml(self):
         """Return XML representation of the tally derivative

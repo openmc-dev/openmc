@@ -1,7 +1,6 @@
 from numbers import Integral
 import sys
 import warnings
-import itertools
 import openmc
 
 from six import string_types

@@ -2198,6 +2198,7 @@ contains
     type(Node), pointer :: node_sab => null()
     type(NodeList), pointer :: node_mat_list => null()
     type(NodeList), pointer :: node_nuc_list => null()
+    type(NodeList), pointer :: node_ele_list => null()
     type(NodeList), pointer :: node_macro_list => null()
     type(NodeList), pointer :: node_sab_list => null()
 
@@ -2307,6 +2308,17 @@ contains
           call fatal_error("Unkwown units '" // trim(units) &
                // "' specified on material " // trim(to_str(mat % id)))
         end select
+      end if
+
+      ! Issue error if elements are provided
+      call get_node_list(node_mat, "element", node_ele_list)
+
+      if (get_list_size(node_ele_list) > 0) then
+        call fatal_error("Unable to add an element to material " &
+             // trim(to_str(mat % id)) // " since the element option has &
+             &been removed from the xml input. Elements can only be added via &
+             &the Python API, which will expand elements into their natural &
+             &nuclides.")
       end if
 
       ! =======================================================================

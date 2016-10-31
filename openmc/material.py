@@ -687,7 +687,7 @@ class Material(object):
             allnucs = self._nuclides + self._elements
             dist_per_type = allnucs[0][2]
             for nuc in allnucs:
-                if not nuc[2] == dist_per_type:
+                if nuc[2] != dist_per_type:
                     msg = 'All nuclides and elements in a distributed ' \
                           'material must have the same type, either ao or wo'
                     raise ValueError(msg)

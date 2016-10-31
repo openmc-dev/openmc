@@ -96,9 +96,6 @@ module global
   ! Unreoslved resonance probablity tables
   logical :: urr_ptables_on = .true.
 
-  ! What to assume for expanding natural elements
-  integer :: default_expand = ENDF_BVII1
-
   ! Default temperature and method for choosing temperatures
   integer :: temperature_method = TEMPERATURE_NEAREST
   logical :: temperature_multipole = .false.
@@ -320,14 +317,14 @@ module global
   logical :: restart_run = .false.
   integer :: restart_batch
 
-  character(MAX_FILE_LEN) :: path_input            ! Path to input file
-  character(MAX_FILE_LEN) :: path_cross_sections   ! Path to cross_sections.xml
-  character(MAX_FILE_LEN) :: path_multipole        ! Path to wmp library
-  character(MAX_FILE_LEN) :: path_source = ''      ! Path to binary source
-  character(MAX_FILE_LEN) :: path_state_point      ! Path to binary state point
-  character(MAX_FILE_LEN) :: path_source_point     ! Path to binary source point
-  character(MAX_FILE_LEN) :: path_particle_restart ! Path to particle restart
-  character(MAX_FILE_LEN) :: path_output = ''      ! Path to output directory
+  character(MAX_FILE_LEN) :: path_input               ! Path to input file
+  character(MAX_FILE_LEN) :: path_cross_sections = '' ! Path to cross_sections.xml
+  character(MAX_FILE_LEN) :: path_multipole           ! Path to wmp library
+  character(MAX_FILE_LEN) :: path_source = ''         ! Path to binary source
+  character(MAX_FILE_LEN) :: path_state_point         ! Path to binary state point
+  character(MAX_FILE_LEN) :: path_source_point        ! Path to binary source point
+  character(MAX_FILE_LEN) :: path_particle_restart    ! Path to particle restart
+  character(MAX_FILE_LEN) :: path_output = ''         ! Path to output directory
 
   ! The verbosity controls how much information will be printed to the
   ! screen and in logs

@@ -9,6 +9,7 @@ from six import string_types
 import numpy as np
 import h5py
 
+from . import HDF5_VERSION, HDF5_VERSION_MAJOR
 from .ace import Table, get_table
 from .data import ATOMIC_SYMBOL, K_BOLTZMANN, EV_PER_MEV
 from .fission_energy import FissionEnergyRelease
@@ -391,7 +392,9 @@ class IncidentNeutron(EqualityMixin):
             raise NotImplementedError('Cannot export incident neutron data that '
                                       'originated from an ENDF file.')
 
+        # Open file and write version
         f = h5py.File(path, mode, libver='latest')
+        f.attrs['version'] = np.array(HDF5_VERSION)
 
         # Write basic data
         g = f.create_group(self.name)
@@ -454,6 +457,21 @@ class IncidentNeutron(EqualityMixin):
             group = group_or_filename
         else:
             h5file = h5py.File(group_or_filename, 'r')
+
+            # Make sure version matches
+            if 'version' in h5file.attrs:
+                major, minor = h5file.attrs['version']
+                if major != HDF5_VERSION_MAJOR:
+                    raise IOError(
+                        'HDF5 data format uses version {}.{} whereas your '
+                        'installation of the OpenMC Python API expects version '
+                        '{}.x.'.format(major, minor, HDF5_VERSION_MAJOR))
+            else:
+                raise IOError(
+                    'HDF5 data does not indicate a version. Your installation of '
+                    'the OpenMC Python API expects version {}.x data.'
+                    .format(HDF5_VERSION_MAJOR))
+
             group = list(h5file.values())[0]
 
         name = group.name[1:]

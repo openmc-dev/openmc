@@ -8,6 +8,10 @@ Nuclear Data File Format
 Incident Neutron Data
 ---------------------
 
+**/**
+
+:Attributes:
+             - **version** (*int[2]*) -- Major and minor version of the data
 
 **/<nuclide name>/**
 
@@ -112,6 +116,11 @@ temperature-dependent data set.  For example, the data set corresponding to
 -------------------------------
 Thermal Neutron Scattering Data
 -------------------------------
+
+**/**
+
+:Attributes:
+             - **version** (*int[2]*) -- Major and minor version of the data
 
 **/<thermal name>/**
 

@@ -10,6 +10,10 @@ module constants
   integer, parameter :: VERSION_MINOR   = 8
   integer, parameter :: VERSION_RELEASE = 0
 
+  ! HDF5 data format
+  integer, parameter :: HDF5_VERSION_MAJOR = 1
+  integer, parameter :: HDF5_VERSION_MINOR = 0
+
   ! Revision numbers for binary files
   integer,       parameter :: REVISION_STATEPOINT       = 15
   integer,       parameter :: REVISION_PARTICLE_RESTART = 1

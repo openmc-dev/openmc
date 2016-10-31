@@ -291,7 +291,8 @@ class PyAPITestHarness(TestHarness):
             self._write_results(results)
             self._overwrite_results()
         finally:
-            self._cleanup()
+            a = 1
+            #self._cleanup()
 
     def _build_inputs(self):
         """Write input XML files."""

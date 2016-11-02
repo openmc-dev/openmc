@@ -524,30 +524,21 @@ class PinCellInputSet(object):
         # Instantiate ZCylinder surfaces
         fuel_or = openmc.ZCylinder(x0=0, y0=0, R=0.39218, name='Fuel OR')
         clad_or = openmc.ZCylinder(x0=0, y0=0, R=0.45720, name='Clad OR')
-        left = openmc.XPlane(x0=-0.63, name='left')
-        right = openmc.XPlane(x0=0.63, name='right')
-        bottom = openmc.YPlane(y0=-0.63, name='bottom')
-        top = openmc.YPlane(y0=0.63, name='top')
-
-        left.boundary_type = 'reflective'
-        right.boundary_type = 'reflective'
-        top.boundary_type = 'reflective'
-        bottom.boundary_type = 'reflective'
+        left = openmc.XPlane(x0=-0.63, name='left', boundary_type='reflective')
+        right = openmc.XPlane(x0=0.63, name='right', boundary_type='reflective')
+        bottom = openmc.YPlane(y0=-0.63, name='bottom',
+                               boundary_type='reflective')
+        top = openmc.YPlane(y0=0.63, name='top', boundary_type='reflective')
 
         # Instantiate Cells
-        fuel_pin = openmc.Cell(name='cell 1')
-        cladding = openmc.Cell(name='cell 3')
-        water = openmc.Cell(name='cell 2')
+        fuel_pin = openmc.Cell(name='cell 1', fill=fuel)
+        cladding = openmc.Cell(name='cell 3', fill=clad)
+        water = openmc.Cell(name='cell 2', fill=hot_water)
 
         # Use surface half-spaces to define regions
         fuel_pin.region = -fuel_or
         cladding.region = +fuel_or & -clad_or
         water.region = +clad_or & +left & -right & +bottom & -top
-
-        # Register Materials with Cells
-        fuel_pin.fill = fuel
-        cladding.fill = clad
-        water.fill = hot_water
 
         # Instantiate Universe
         root = openmc.Universe(universe_id=0, name='root universe')
@@ -757,6 +748,7 @@ class MGInputSet(InputSet):
         # Define the materials file
         self.xs_data = xs
         self.materials += mats
+        self.materials.cross_sections = "../1d_mgxs.h5"
 
         # Define surfaces.
         # Assembly/Problem Boundary
@@ -793,7 +785,6 @@ class MGInputSet(InputSet):
         self.settings.source = Source(space=Box([0.0, 0.0, 0.0],
                                                 [10.0, 10.0, 5.]))
         self.settings.energy_mode = "multi-group"
-        self.settings.cross_sections = "../1d_mgxs.h5"
 
     def build_defualt_plots(self):
         plot = openmc.Plot()

@@ -83,6 +83,7 @@ water.add_macroscopic(h2o_data)
 
 # Instantiate a Materials collection and export to XML
 materials_file = openmc.Materials([uo2, water])
+materials_file.cross_sections = "./mgxs.h5"
 materials_file.export_to_xml()
 
 
@@ -132,7 +133,6 @@ geometry.export_to_xml()
 # Instantiate a Settings object, set all runtime parameters, and export to XML
 settings_file = openmc.Settings()
 settings_file.energy_mode = "multi-group"
-settings_file.cross_sections = "./mgxs.h5"
 settings_file.batches = batches
 settings_file.inactive = inactive
 settings_file.particles = particles

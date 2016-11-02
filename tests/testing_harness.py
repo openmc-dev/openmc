@@ -129,10 +129,6 @@ class TestHarness(object):
         compare = filecmp.cmp('results_test.dat', 'results_true.dat')
         if not compare:
             os.rename('results_test.dat', 'results_error.dat')
-            with open('results_error.dat') as fh: print(fh.read())
-            from subprocess import Popen
-            p = Popen(('diff', 'results_error.dat', 'results_true.dat'))
-            p.wait()
         assert compare, 'Results do not agree.'
 
     def _cleanup(self):

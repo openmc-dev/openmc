@@ -3416,7 +3416,6 @@ contains
               ! (1 / phi) * (d_phi / d_rho) = 1 / rho
               deriv % flux_deriv = deriv % flux_deriv &
                    + ONE / mat % density_gpcc
-              write(*, *) 'dens', deriv % flux_deriv
             end if
           end associate
 
@@ -3438,7 +3437,6 @@ contains
               ! (1 / phi) * (d_phi / d_N) = 1 / N
               deriv % flux_deriv = deriv % flux_deriv &
                    + ONE / mat % atom_density(j)
-              write(*, *) 'nucd', deriv % flux_deriv
             end if
           end associate
 
@@ -3465,7 +3463,6 @@ contains
                       deriv % flux_deriv = deriv % flux_deriv &
                            + dsigA / micro_xs(mat % nuclide(l)) % absorption
                     end select
-                    write(*, *) 'temp', deriv % flux_deriv
                   end if
                 end associate
               end do

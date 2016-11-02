@@ -588,8 +588,10 @@ module mgxs_header
                   end do
 
                   ! Correct prompt-nu-fission using delayed neutron fraction
-                  xs % prompt_nu_fission(gin) = (1 - sum(temp_beta(:, gin))) * &
-                       xs % prompt_nu_fission(gin)
+                  if (delayed_groups > 0) then
+                    xs % prompt_nu_fission(gin) = (1 - sum(temp_beta(:, gin))) * &
+                         xs % prompt_nu_fission(gin)
+                  end if
                 end do
 
                 ! If nu-fission is a matrix, set prompt-nu-fission,
@@ -621,8 +623,10 @@ module mgxs_header
                   end do
 
                   ! Correct prompt-nu-fission using delayed neutron fraction
-                  xs % prompt_nu_fission(gin) = (1 - sum(temp_beta(:, gin))) * &
-                       xs % prompt_nu_fission(gin)
+                  if (delayed_groups > 0) then
+                    xs % prompt_nu_fission(gin) = (1 - sum(temp_beta(:, gin))) * &
+                         xs % prompt_nu_fission(gin)
+                  end if
                 end do
 
                 ! Now pull out information needed for chi
@@ -1267,6 +1271,127 @@ module mgxs_header
               ! Deallocate temporary chi arrays
               deallocate(temp_1d)
               deallocate(temp_3d)
+            end if
+
+            ! If nu-fission provided, set prompt-nu_-ission and
+            ! delayed-nu-fission. If nu fission is a matrix, set chi-prompt and
+            ! chi-delayed.
+            if (object_exists(xsdata_grp, "nu-fission")) then
+
+              ! Get the dimensions of the nu-fission dataset
+              xsdata = open_dataset(xsdata_grp, "nu-fission")
+              call get_ndims(xsdata, ndims)
+
+              ! If nu-fission is a 3D array
+              if (ndims == 3) then
+
+                ! Get nu-fission
+                call read_dataset(xs % prompt_nu_fission, xsdata_grp, &
+                     "nu-fission")
+
+                ! Set delayed-nu-fission and correct prompt-nu-fission with
+                ! beta
+                do ipol = 1, this % n_pol
+                  do iazi = 1, this % n_azi
+                    do gin = 1, energy_groups
+                      do dg = 1, delayed_groups
+
+                        ! Set delayed-nu-fission using delayed neutron fraction
+                        xs % delayed_nu_fission(dg, gin, iazi, ipol) = &
+                             temp_beta(dg, gin, iazi, ipol) * &
+                             xs % prompt_nu_fission(gin, iazi, ipol)
+                      end do
+
+                      ! Correct prompt-nu-fission using delayed neutron fraction
+                      if (delayed_groups > 0) then
+                        xs % prompt_nu_fission(gin, iazi, ipol) = &
+                             (1 - sum(temp_beta(:, gin, iazi, ipol))) * &
+                             xs % prompt_nu_fission(gin, iazi, ipol)
+                      end if
+                    end do
+                  end do
+                end do
+
+                ! If nu-fission is a matrix, set prompt-nu-fission,
+                ! delayed-nu-fission, chi-prompt, and chi-delayed.
+              else if (ndims == 4) then
+
+                ! chi is embedded in nu-fission -> extract chi
+                allocate(temp_1d(energy_groups * energy_groups * &
+                     this % n_azi * this % n_pol))
+                call read_dataset(temp_1d, xsdata_grp, "nu-fission")
+                allocate(temp_4d(energy_groups, energy_groups, this % n_azi, &
+                     this % n_pol))
+                temp_4d = reshape(temp_1d, (/energy_groups, energy_groups, &
+                     this % n_azi, this % n_pol /))
+
+                ! Deallocate temporary 1D array for nu-fission matrix
+                deallocate(temp_1d)
+
+                ! Set the vector nu-fission from the matrix nu-fission
+                do ipol = 1, this % n_pol
+                  do iazi = 1, this % n_azi
+                    do gin = 1, energy_groups
+                      xs % prompt_nu_fission(gin, iazi, ipol) = &
+                           sum(temp_4d(:, gin, iazi, ipol))
+                    end do
+                  end do
+                end do
+
+                ! Set delayed-nu-fission and correct prompt-nu-fission with
+                ! beta
+                do ipol = 1, this % n_pol
+                  do iazi = 1, this % n_azi
+                    do gin = 1, energy_groups
+                      do dg = 1, delayed_groups
+
+                        ! Set delayed-nu-fission using delayed neutron fraction
+                        xs % delayed_nu_fission(dg, gin, iazi, ipol) = &
+                             temp_beta(dg, gin, iazi, ipol) * &
+                             xs % prompt_nu_fission(gin, iazi, ipol)
+                      end do
+
+                      ! Correct prompt-nu-fission using delayed neutron fraction
+                      if (delayed_groups > 0) then
+                        xs % prompt_nu_fission(gin, iazi, ipol) = &
+                             (1 - sum(temp_beta(:, gin, iazi, ipol))) * &
+                             xs % prompt_nu_fission(gin, iazi, ipol)
+                      end if
+                    end do
+                  end do
+                end do
+
+                ! Now pull out information needed for chi
+                xs % chi_prompt(:, :, :, :) = temp_4d
+
+                ! Deallocate temporary 4D array for nu-fission matrix
+                deallocate(temp_4d)
+
+                ! Normalize chi so its CDF goes to 1
+                do ipol = 1, this % n_pol
+                  do iazi = 1, this % n_azi
+                    do gin = 1, energy_groups
+                      chi_sum = sum(xs % chi_prompt(:, gin, iazi, ipol))
+                      if (chi_sum == ZERO) then
+                        call fatal_error("Encountered chi for a group that &
+                             &sums to zero")
+                      else
+                        xs % chi_prompt(:, gin, iazi, ipol) = &
+                             xs % chi_prompt(:, gin, iazi, ipol) / chi_sum
+                      end if
+                    end do
+
+                    ! Set chi-delayed to chi-prompt
+                    do dg = 1, delayed_groups
+                      xs % chi_delayed(dg, :, :, iazi, ipol) = &
+                           xs % chi_prompt(:, :, iazi, ipol)
+                    end do
+                  end do
+                end do
+              else
+                call fatal_error("nu-fission must be provided as a 3D or &
+                     &4D array")
+              end if
             end if
 
             ! If chi-prompt provided, set chi-prompt

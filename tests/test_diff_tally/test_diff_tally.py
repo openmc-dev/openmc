@@ -22,7 +22,7 @@ class DiffTallyTestHarness(PyAPITestHarness):
         # Set settings explicitly
         self._input_set.settings.batches = 5
         self._input_set.settings.inactive = 0
-        self._input_set.settings.particles = 10
+        self._input_set.settings.particles = 400
         self._input_set.settings.source = openmc.Source(space=openmc.stats.Box(
             [-160, -160, -183], [160, 160, 183]))
         self._input_set.settings.temperature['multipole'] = True

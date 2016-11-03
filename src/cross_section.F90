@@ -712,15 +712,14 @@ contains
 ! temperature.
 !===============================================================================
 
-  subroutine multipole_deriv_eval(multipole, Emev, sqrtkT_, sigT, sigA, sigF)
+  subroutine multipole_deriv_eval(multipole, E, sqrtkT, sigT, sigA, sigF)
     type(MultipoleArray), intent(in) :: multipole ! The windowed multipole
                                                   !  object to process.
-    real(8), intent(in)              :: Emev      ! The energy at which to
+    real(8), intent(in)              :: E         ! The energy at which to
                                                   !  evaluate the cross section
-                                                  !  in MeV
-    real(8), intent(in)              :: sqrtkT_   ! The temperature in the form
-                                                  !  sqrt(kT (in MeV)), at which
-                                                  !  to evaluate the XS.
+    real(8), intent(in)              :: sqrtkT    ! The temperature in the form
+                                                  !  sqrt(kT), at which to
+                                                  !  evaluate the XS.
     real(8), intent(out)             :: sigT      ! Total cross section
     real(8), intent(out)             :: sigA      ! Absorption cross section
     real(8), intent(out)             :: sigF      ! Fission cross section
@@ -730,8 +729,6 @@ contains
     real(8) :: sqrtE       ! sqrt(E), eV
     real(8) :: invE        ! 1/E, eV
     real(8) :: dopp        ! sqrt(atomic weight ratio / kT)
-    real(8) :: E           ! energy, eV
-    real(8) :: sqrtkT      ! sqrt(kT (in eV))
     integer :: i_pole      ! index of pole
     integer :: i_window    ! index of window
     integer :: startw      ! window start pointer (for poles)
@@ -741,15 +738,11 @@ contains
     ! ==========================================================================
     ! Bookkeeping
 
-    ! Convert to eV.
-    E = Emev * 1.0e6_8
-    sqrtkT = sqrtkT_ * 1.0e3_8
-
     ! Define some frequently used variables.
     sqrtE = sqrt(E)
     invE = ONE / E
     dopp = multipole % sqrtAWR / sqrtkT
-    T = sqrtkT_**2 / K_BOLTZMANN
+    T = sqrtkT**2 / K_BOLTZMANN
 
     if (sqrtkT == ZERO) call fatal_error("Windowed multipole temperature &
          &derivatives are not implemented for 0 Kelvin cross sections.")
@@ -795,12 +788,9 @@ contains
           sigF = sigF + real(multipole % data(RM_RF, i_pole) * w_val)
         end if
       end do
-      sigT = -HALF*multipole % sqrtAWR / sqrt(K_BOLTZMANN*1.0e6_8) * T**(-1.5)&
-           * sigT
-      sigA = -HALF*multipole % sqrtAWR / sqrt(K_BOLTZMANN*1.0e6_8) * T**(-1.5)&
-           * sigA
-      sigF = -HALF*multipole % sqrtAWR / sqrt(K_BOLTZMANN*1.0e6_8) * T**(-1.5)&
-           * sigF
+      sigT = -HALF*multipole % sqrtAWR / sqrt(K_BOLTZMANN) * T**(-1.5) * sigT
+      sigA = -HALF*multipole % sqrtAWR / sqrt(K_BOLTZMANN) * T**(-1.5) * sigA
+      sigF = -HALF*multipole % sqrtAWR / sqrt(K_BOLTZMANN) * T**(-1.5) * sigF
     end if
   end subroutine multipole_deriv_eval
 

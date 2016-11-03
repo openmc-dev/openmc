@@ -30,7 +30,7 @@ class DiffTallyTestHarness(PyAPITestHarness):
         self._input_set.tallies = openmc.Tallies()
 
         filt_mats = openmc.MaterialFilter((1, 3))
-        filt_eout = openmc.EnergyoutFilter((0.0, 1.0, 20.0))
+        filt_eout = openmc.EnergyoutFilter((0.0, 1.0e6, 20.0e6))
 
         # We want density derivatives for both water and fuel to get coverage
         # for both fissile and non-fissile materials.

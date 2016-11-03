@@ -2984,8 +2984,8 @@ contains
                 dsigT = ZERO
                 associate (nuc => nuclides(p % event_nuclide))
                   if (nuc % mp_present .and. &
-                       p % last_E >= nuc % multipole % start_E/1.0e6_8 .and. &
-                       p % last_E <= nuc % multipole % end_E/1.0e6_8) then
+                       p % last_E >= nuc % multipole % start_E .and. &
+                       p % last_E <= nuc % multipole % end_E) then
                     call multipole_deriv_eval(nuc % multipole, p % last_E, &
                          p % sqrtkT, dsigT, dsigA, dsigF)
                   end if
@@ -3011,8 +3011,8 @@ contains
                 dsigA = ZERO
                 associate (nuc => nuclides(p % event_nuclide))
                   if (nuc % mp_present .and. &
-                       p % last_E >= nuc % multipole % start_E/1.0e6_8 .and. &
-                       p % last_E <= nuc % multipole % end_E/1.0e6_8) then
+                       p % last_E >= nuc % multipole % start_E .and. &
+                       p % last_E <= nuc % multipole % end_E) then
                     call multipole_deriv_eval(nuc % multipole, p % last_E, &
                          p % sqrtkT, dsigT, dsigA, dsigF)
                   end if
@@ -3037,8 +3037,8 @@ contains
                 dsigA = ZERO
                 associate (nuc => nuclides(p % event_nuclide))
                   if (nuc % mp_present .and. &
-                       p % last_E >= nuc % multipole % start_E/1.0e6_8 .and. &
-                       p % last_E <= nuc % multipole % end_E/1.0e6_8) then
+                       p % last_E >= nuc % multipole % start_E .and. &
+                       p % last_E <= nuc % multipole % end_E) then
                     call multipole_deriv_eval(nuc % multipole, p % last_E, &
                          p % sqrtkT, dsigT, dsigA, dsigF)
                   end if
@@ -3062,8 +3062,8 @@ contains
                 dsigF = ZERO
                 associate (nuc => nuclides(p % event_nuclide))
                   if (nuc % mp_present .and. &
-                       p % last_E >= nuc % multipole % start_E/1.0e6_8 .and. &
-                       p % last_E <= nuc % multipole % end_E/1.0e6_8) then
+                       p % last_E >= nuc % multipole % start_E .and. &
+                       p % last_E <= nuc % multipole % end_E) then
                     call multipole_deriv_eval(nuc % multipole, p % last_E, &
                          p % sqrtkT, dsigT, dsigA, dsigF)
                   end if
@@ -3087,8 +3087,8 @@ contains
                 dsigF = ZERO
                 associate (nuc => nuclides(p % event_nuclide))
                   if (nuc % mp_present .and. &
-                       p % last_E >= nuc % multipole % start_E/1.0e6_8 .and. &
-                       p % last_E <= nuc % multipole % end_E/1.0e6_8) then
+                       p % last_E >= nuc % multipole % start_E .and. &
+                       p % last_E <= nuc % multipole % end_E) then
                     call multipole_deriv_eval(nuc % multipole, p % last_E, &
                          p % sqrtkT, dsigT, dsigA, dsigF)
                   end if
@@ -3123,8 +3123,8 @@ contains
                 do l = 1, mat % n_nuclides
                   associate (nuc => nuclides(mat % nuclide(l)))
                     if (nuc % mp_present .and. &
-                         p % last_E >= nuc % multipole % start_E/1.0e6_8 .and. &
-                         p % last_E <= nuc % multipole % end_E/1.0e6_8 .and. &
+                         p % last_E >= nuc % multipole % start_E .and. &
+                         p % last_E <= nuc % multipole % end_E .and. &
                          micro_xs(mat % nuclide(l)) % total > ZERO) then
                       call multipole_deriv_eval(nuc % multipole, p % last_E, &
                            p % sqrtkT, dsigT, dsigA, dsigF)
@@ -3140,8 +3140,8 @@ contains
               dsigT = ZERO
               associate (nuc => nuclides(i_nuclide))
                 if (nuc % mp_present .and. &
-                     p % last_E >= nuc % multipole % start_E/1.0e6_8 .and. &
-                     p % last_E <= nuc % multipole % end_E/1.0e6_8) then
+                     p % last_E >= nuc % multipole % start_E .and. &
+                     p % last_E <= nuc % multipole % end_E) then
                   call multipole_deriv_eval(nuc % multipole, p % last_E, &
                        p % sqrtkT, dsigT, dsigA, dsigF)
                 end if
@@ -3161,8 +3161,8 @@ contains
                 do l = 1, mat % n_nuclides
                   associate (nuc => nuclides(mat % nuclide(l)))
                     if (nuc % mp_present .and. &
-                         p % last_E >= nuc % multipole % start_E/1.0e6_8 .and. &
-                         p % last_E <= nuc % multipole % end_E/1.0e6_8 .and. &
+                         p % last_E >= nuc % multipole % start_E .and. &
+                         p % last_E <= nuc % multipole % end_E .and. &
                          (micro_xs(mat % nuclide(l)) % total &
                          - micro_xs(mat % nuclide(l)) % absorption) > ZERO) then
                       call multipole_deriv_eval(nuc % multipole, p % last_E, &
@@ -3182,8 +3182,8 @@ contains
               dsigA = ZERO
               associate (nuc => nuclides(i_nuclide))
                 if (nuc % mp_present .and. &
-                     p % last_E >= nuc % multipole % start_E/1.0e6_8 .and. &
-                     p % last_E <= nuc % multipole % end_E/1.0e6_8) then
+                     p % last_E >= nuc % multipole % start_E .and. &
+                     p % last_E <= nuc % multipole % end_E) then
                   call multipole_deriv_eval(nuc % multipole, p % last_E, &
                        p % sqrtkT, dsigT, dsigA, dsigF)
                 end if
@@ -3204,8 +3204,8 @@ contains
                 do l = 1, mat % n_nuclides
                   associate (nuc => nuclides(mat % nuclide(l)))
                     if (nuc % mp_present .and. &
-                         p % last_E >= nuc % multipole % start_E/1.0e6_8 .and. &
-                         p % last_E <= nuc % multipole % end_E/1.0e6_8 .and. &
+                         p % last_E >= nuc % multipole % start_E .and. &
+                         p % last_E <= nuc % multipole % end_E .and. &
                          micro_xs(mat % nuclide(l)) % absorption > ZERO) then
                       call multipole_deriv_eval(nuc % multipole, p % last_E, &
                            p % sqrtkT, dsigT, dsigA, dsigF)
@@ -3221,8 +3221,8 @@ contains
               dsigA = ZERO
               associate (nuc => nuclides(i_nuclide))
                 if (nuc % mp_present .and. &
-                     p % last_E >= nuc % multipole % start_E/1.0e6_8 .and. &
-                     p % last_E <= nuc % multipole % end_E/1.0e6_8) then
+                     p % last_E >= nuc % multipole % start_E .and. &
+                     p % last_E <= nuc % multipole % end_E) then
                   call multipole_deriv_eval(nuc % multipole, p % last_E, &
                        p % sqrtkT, dsigT, dsigA, dsigF)
                 end if
@@ -3242,8 +3242,8 @@ contains
                 do l = 1, mat % n_nuclides
                   associate (nuc => nuclides(mat % nuclide(l)))
                     if (nuc % mp_present .and. &
-                         p % last_E >= nuc % multipole % start_E/1.0e6_8 .and. &
-                         p % last_E <= nuc % multipole % end_E/1.0e6_8 .and. &
+                         p % last_E >= nuc % multipole % start_E .and. &
+                         p % last_E <= nuc % multipole % end_E .and. &
                          micro_xs(mat % nuclide(l)) % fission > ZERO) then
                       call multipole_deriv_eval(nuc % multipole, p % last_E, &
                            p % sqrtkT, dsigT, dsigA, dsigF)
@@ -3259,8 +3259,8 @@ contains
               dsigF = ZERO
               associate (nuc => nuclides(i_nuclide))
                 if (nuc % mp_present .and. &
-                     p % last_E >= nuc % multipole % start_E/1.0e6_8 .and. &
-                     p % last_E <= nuc % multipole % end_E/1.0e6_8) then
+                     p % last_E >= nuc % multipole % start_E .and. &
+                     p % last_E <= nuc % multipole % end_E) then
                   call multipole_deriv_eval(nuc % multipole, p % last_E, &
                        p % sqrtkT, dsigT, dsigA, dsigF)
                 end if
@@ -3280,8 +3280,8 @@ contains
                 do l = 1, mat % n_nuclides
                   associate (nuc => nuclides(mat % nuclide(l)))
                     if (nuc % mp_present .and. &
-                         p % last_E >= nuc % multipole % start_E/1.0e6_8 .and. &
-                         p % last_E <= nuc % multipole % end_E/1.0e6_8 .and. &
+                         p % last_E >= nuc % multipole % start_E .and. &
+                         p % last_E <= nuc % multipole % end_E .and. &
                          micro_xs(mat % nuclide(l)) % nu_fission > ZERO) then
                       call multipole_deriv_eval(nuc % multipole, p % last_E, &
                            p % sqrtkT, dsigT, dsigA, dsigF)
@@ -3299,8 +3299,8 @@ contains
               dsigF = ZERO
               associate (nuc => nuclides(i_nuclide))
                 if (nuc % mp_present .and. &
-                     p % last_E >= nuc % multipole % start_E/1.0e6_8 .and. &
-                     p % last_E <= nuc % multipole % end_E/1.0e6_8) then
+                     p % last_E >= nuc % multipole % start_E .and. &
+                     p % last_E <= nuc % multipole % end_E) then
                   call multipole_deriv_eval(nuc % multipole, p % last_E, &
                        p % sqrtkT, dsigT, dsigA, dsigF)
                 end if
@@ -3371,8 +3371,8 @@ contains
               do l=1, mat % n_nuclides
                 associate (nuc => nuclides(mat % nuclide(l)))
                   if (nuc % mp_present .and. &
-                       p % E >= nuc % multipole % start_E/1.0e6_8 .and. &
-                       p % E <= nuc % multipole % end_E/1.0e6_8) then
+                       p % E >= nuc % multipole % start_E .and. &
+                       p % E <= nuc % multipole % end_E) then
                     call multipole_deriv_eval(nuc % multipole, p % E, &
                          p % sqrtkT, dsigT, dsigA, dsigF)
                     deriv % flux_deriv = deriv % flux_deriv &
@@ -3444,8 +3444,8 @@ contains
                 associate (nuc => nuclides(mat % nuclide(l)))
                   if (mat % nuclide(l) == p % event_nuclide .and. &
                        nuc % mp_present .and. &
-                       p % last_E >= nuc % multipole % start_E/1.0e6_8 .and. &
-                       p % last_E <= nuc % multipole % end_E/1.0e6_8) then
+                       p % last_E >= nuc % multipole % start_E .and. &
+                       p % last_E <= nuc % multipole % end_E) then
                     ! phi = Sigma_MT
                     ! (1 / phi) * (d_phi / d_T) = (d_Sigma_MT / d_T) / Sigma_MT
                     ! (1 / phi) * (d_phi / d_T) = (d_sigma_MT / d_T) / sigma_MT

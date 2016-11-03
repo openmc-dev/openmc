@@ -612,8 +612,8 @@ contains
           allocate(Watt :: external_source(i)%energy)
           select type(energy => external_source(i)%energy)
           type is (Watt)
-            energy%a = 0.988_8
-            energy%b = 2.249_8
+            energy%a = 0.988e6_8
+            energy%b = 2.249e-6_8
           end select
         end if
       end if
@@ -5073,8 +5073,11 @@ contains
           call write_message('Reading ' // trim(name) // ' from ' // &
                trim(libraries(i_library) % path), 6)
 
-          ! Read nuclide data from HDF5
+          ! Open file and make sure version is sufficient
           file_id = file_open(libraries(i_library) % path, 'r')
+          call check_data_version(file_id)
+
+          ! Read nuclide data from HDF5
           group_id = open_group(file_id, name)
           call nuclides(i_nuclide) % from_hdf5(group_id, nuc_temps(i_nuclide), &
                temperature_method, temperature_tolerance, master)
@@ -5123,8 +5126,11 @@ contains
           call write_message('Reading ' // trim(name) // ' from ' // &
                trim(libraries(i_library) % path), 6)
 
-          ! Read S(a,b) data from HDF5
+          ! Open file and make sure version matches
           file_id = file_open(libraries(i_library) % path, 'r')
+          call check_data_version(file_id)
+
+          ! Read S(a,b) data from HDF5
           group_id = open_group(file_id, name)
           call sab_tables(i_sab) % from_hdf5(group_id, sab_temps(i_sab), &
                temperature_method, temperature_tolerance)
@@ -5145,7 +5151,7 @@ contains
       if (nuclides(i) % grid(1) % energy(size(nuclides(i) % grid(1) % energy)) &
            == energy_max_neutron) then
         call write_message("Maximum neutron transport energy: " // &
-             trim(to_str(energy_max_neutron)) // " MeV for " // &
+             trim(to_str(energy_max_neutron)) // " eV for " // &
              trim(adjustl(nuclides(i) % name)), 6)
         exit
       end if
@@ -5244,8 +5250,10 @@ contains
         call write_message('Reading ' // trim(name) // ' 0K data from ' // &
              trim(libraries(i_library) % path), 6)
 
-        ! Read nuclide data from HDF5
+        ! Open file and make sure version matches
         file_id = file_open(libraries(i_library) % path, 'r')
+
+        ! Read nuclide data from HDF5
         group_id = open_group(file_id, name)
         method = TEMPERATURE_NEAREST
         call resonant_nuc % from_hdf5(group_id, temperature, &
@@ -5329,5 +5337,30 @@ contains
     end associate
 
   end subroutine read_multipole_data
+
+!===============================================================================
+! CHECK_DATA_VERSION checks for the right version of nuclear data within HDF5
+! files
+!===============================================================================
+
+  subroutine check_data_version(file_id)
+    integer(HID_T), intent(in) :: file_id
+
+    integer, allocatable :: version(:)
+
+    if (attribute_exists(file_id, 'version')) then
+      call read_attribute(version, file_id, 'version')
+      if (version(1) /= HDF5_VERSION_MAJOR) then
+        call fatal_error("HDF5 data format uses version " // trim(to_str(&
+             version(1))) // "." // trim(to_str(version(2))) // " whereas &
+             &your installation of OpenMC expects version " // trim(to_str(&
+             HDF5_VERSION_MAJOR)) // ".x data.")
+      end if
+    else
+      call fatal_error("HDF5 data does not indicate a version. Your &
+           &installation of OpenMC expects version " // trim(to_str(&
+           HDF5_VERSION_MAJOR)) // ".x data.")
+    end if
+  end subroutine check_data_version
 
 end module input_xml

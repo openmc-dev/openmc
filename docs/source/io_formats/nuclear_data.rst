@@ -8,6 +8,10 @@ Nuclear Data File Format
 Incident Neutron Data
 ---------------------
 
+**/**
+
+:Attributes:
+             - **version** (*int[2]*) -- Major and minor version of the data
 
 **/<nuclide name>/**
 
@@ -27,14 +31,14 @@ temperature-dependent data set.  For example, the data set corresponding to
 300 Kelvin would be located at `300K`.
 
 :Datasets:
-           - **<TTT>K** (*double*) -- kT values (in MeV) for each Temperature
+           - **<TTT>K** (*double*) -- kT values (in eV) for each temperature
              TTT (in Kelvin)
 
 **/<nuclide name>/reactions/reaction_<mt>/**
 
 :Attributes: - **mt** (*int*) -- ENDF MT reaction number
              - **label** (*char[]*) -- Name of the reaction
-             - **Q_value** (*double*) -- Q value in MeV
+             - **Q_value** (*double*) -- Q value in eV
              - **center_of_mass** (*int*) -- Whether the reference frame for
                scattering is center-of-mass (1) or laboratory (0)
              - **n_product** (*int*) -- Number of reaction products
@@ -113,6 +117,11 @@ temperature-dependent data set.  For example, the data set corresponding to
 Thermal Neutron Scattering Data
 -------------------------------
 
+**/**
+
+:Attributes:
+             - **version** (*int[2]*) -- Major and minor version of the data
+
 **/<thermal name>/**
 
 :Attributes: - **atomic_weight_ratio** (*double*) -- Mass in units of neutron masses
@@ -129,7 +138,7 @@ temperature-dependent data set.  For example, the data set corresponding to
 300 Kelvin would be located at `300K`.
 
 :Datasets:
-           - **<TTT>K** (*double*) -- kT values (in MeV) for each Temperature
+           - **<TTT>K** (*double*) -- kT values (in eV) for each temperature
              TTT (in Kelvin)
 
 **/<thermal name>/elastic/<TTT>K/**
@@ -333,7 +342,7 @@ N-Body Phase Space
              - **n_particles** (*int*) -- Number of product particles
              - **atomic_weight_ratio** (*double*) -- Atomic weight ratio of the
                target nuclide in neutron masses
-             - **q_value** (*double*) -- Q value for the reaction in MeV
+             - **q_value** (*double*) -- Q value for the reaction in eV
 
 .. _energy_distribution:
 
@@ -346,7 +355,7 @@ Maxwell
 
 :Object type: Group
 :Attributes: - **type** (*char[]*) -- 'maxwell'
-             - **u** (*double*) -- Restriction energy in MeV
+             - **u** (*double*) -- Restriction energy in eV
 :Datasets:
            - **theta** (:ref:`tabulated <1d_tabulated>`) -- Maxwellian
              temperature as a function of energy
@@ -356,7 +365,7 @@ Evaporation
 
 :Object type: Group
 :Attributes: - **type** (*char[]*) -- 'evaporation'
-             - **u** (*double*) -- Restriction energy in MeV
+             - **u** (*double*) -- Restriction energy in eV
 :Datasets:
            - **theta** (:ref:`tabulated <1d_tabulated>`) -- Evaporation
              temperature as a function of energy
@@ -366,7 +375,7 @@ Watt Fission Spectrum
 
 :Object type: Group
 :Attributes: - **type** (*char[]*) -- 'watt'
-             - **u** (*double*) -- Restriction energy in MeV
+             - **u** (*double*) -- Restriction energy in eV
 :Datasets: - **a** (:ref:`tabulated <1d_tabulated>`) -- Watt parameter :math:`a`
              as a function of incident energy
            - **b** (:ref:`tabulated <1d_tabulated>`) -- Watt parameter :math:`b`
@@ -386,7 +395,7 @@ Discrete Photon
 :Object type: Group
 :Attributes: - **type** (*char[]*) -- 'discrete_photon'
              - **primary_flag** (*int*) -- Whether photon is a primary
-             - **energy** (*double*) -- Photon energy in MeV
+             - **energy** (*double*) -- Photon energy in eV
              - **atomic_weight_ratio** (*double*) -- Atomic weight ratio of
                target nuclide in neutron masses
 
@@ -396,7 +405,7 @@ Level Inelastic
 :Object type: Group
 :Attributes: - **type** (*char[]*) -- 'level'
              - **threshold** (*double*) -- Energy threshold in the laboratory
-               system in MeV
+               system in eV
              - **mass_ratio** (*double*) -- :math:`(A/(A + 1))^2`
 
 Continuous Tabular

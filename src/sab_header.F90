@@ -68,7 +68,7 @@ module sab_header
   type SAlphaBeta
     character(150) :: name     ! name of table, e.g. lwtr.10t
     real(8)        :: awr      ! weight of nucleus in neutron masses
-    real(8), allocatable :: kTs(:)  ! temperatures in MeV (k*T)
+    real(8), allocatable :: kTs(:)  ! temperatures in eV (k*T)
     character(10), allocatable :: nuclides(:) ! List of valid nuclides
     integer :: secondary_mode    ! secondary mode (equal/skewed/continuous)
 

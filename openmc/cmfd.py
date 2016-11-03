@@ -39,8 +39,8 @@ class CMFDMesh(object):
     width : Iterable of float
         The width of mesh cells in each direction.
     energy : Iterable of float
-        Energy bins in MeV, listed in ascending order (e.g. [0.0, 0.625e-7,
-        20.0]) for CMFD tallies and acceleration. If no energy bins are listed,
+        Energy bins in eV, listed in ascending order (e.g. [0.0, 0.625e-1,
+        20.0e6]) for CMFD tallies and acceleration. If no energy bins are listed,
         OpenMC automatically assumes a one energy group calculation over the
         entire energy range.
     albedo : Iterable of float

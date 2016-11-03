@@ -528,7 +528,8 @@ attributes/sub-elements:
     sub-elements/attributes are those of a univariate probability distribution
     (see the description in :ref:`univariate`).
 
-    *Default*: Watt spectrum with :math:`a` = 0.988 MeV and :math:`b` = 2.249 MeV
+    *Default*: Watt spectrum with :math:`a` = 0.988 MeV and :math:`b` =
+    2.249 MeV :sup:`-1`
 
   :write_initial:
     An element specifying whether to write out the initial source bank used at

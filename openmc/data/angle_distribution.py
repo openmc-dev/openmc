@@ -9,6 +9,7 @@ import openmc.checkvalue as cv
 from openmc.mixin import EqualityMixin
 from openmc.stats import Univariate, Tabular, Uniform, Legendre
 from .function import INTERPOLATION_SCHEME
+from .data import EV_PER_MEV
 from .endf import get_head_record, get_cont_record, get_tab1_record, \
     get_list_record, get_tab2_record
 
@@ -19,14 +20,14 @@ class AngleDistribution(EqualityMixin):
     Parameters
     ----------
     energy : Iterable of float
-        Incoming energies at which distributions exist
+        Incoming energies in eV at which distributions exist
     mu : Iterable of openmc.stats.Univariate
         Distribution of scattering cosines corresponding to each incoming energy
 
     Attributes
     ----------
     energy : Iterable of float
-        Incoming energies at which distributions exist
+        Incoming energies in eV at which distributions exist
     mu : Iterable of openmc.stats.Univariate
         Distribution of scattering cosines corresponding to each incoming energy
 
@@ -167,7 +168,7 @@ class AngleDistribution(EqualityMixin):
         idx += 1
 
         # Incoming energy grid
-        energy = ace.xss[idx:idx + n_energies]
+        energy = ace.xss[idx:idx + n_energies]*EV_PER_MEV
         idx += n_energies
 
         # Read locations for angular distributions

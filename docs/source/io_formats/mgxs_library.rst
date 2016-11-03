@@ -32,7 +32,7 @@ MGXS Library Specification
 :Attributes: - **energy_groups** (*int*) -- Number of energy groups
              - **delayed_groups** (*int*) -- Number of delayed groups (optional)
              - **group structure** (*double[]*) -- Monotonically increasing
-               list of group boundaries, in units of MeV.  The length of this
+               list of group boundaries, in units of eV.  The length of this
                array should be the number of groups plus 1.
 
 **/<library name>/**
@@ -80,7 +80,7 @@ data for the nuclide or material that it represents.
 **/<library name>/kTs/**
 
 :Datasets:
-           - **<TTT>K** (*double*) -- kT values (in MeV) for each Temperature
+           - **<TTT>K** (*double*) -- kT values (in eV) for each temperature
              TTT (in Kelvin), rounded to the nearest integer
 
 **/<library name>/<TTT>K/**

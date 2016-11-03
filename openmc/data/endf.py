@@ -23,10 +23,30 @@ from .function import Tabulated1D, INTERPOLATION_SCHEME
 from openmc.stats.univariate import Uniform, Tabular, Legendre
 
 
-LIBRARIES = {0: 'ENDF/B', 1: 'ENDF/A', 2: 'JEFF', 3: 'EFF',
-             4: 'ENDF/B High Energy', 5: 'CENDL', 6: 'JENDL',
-             31: 'INDL/V', 32: 'INDL/A', 33: 'FENDL', 34: 'IRDF',
-             35: 'BROND', 36: 'INGDB-90', 37: 'FENDL/A', 41: 'BROND'}
+_LIBRARY = {0: 'ENDF/B', 1: 'ENDF/A', 2: 'JEFF', 3: 'EFF',
+            4: 'ENDF/B High Energy', 5: 'CENDL', 6: 'JENDL',
+            31: 'INDL/V', 32: 'INDL/A', 33: 'FENDL', 34: 'IRDF',
+            35: 'BROND', 36: 'INGDB-90', 37: 'FENDL/A', 41: 'BROND'}
+
+_SUBLIBRARY = {
+    0: 'Photo-nuclear data',
+    1: 'Photo-induced fission product yields',
+    3: 'Photo-atomic data',
+    4: 'Radioactive decay data',
+    5: 'Spontaneous fission product yields',
+    6: 'Atomic relaxation data',
+    10: 'Incident-neutron data',
+    11: 'Neutron-induced fission product yields',
+    12: 'Thermal neutron scattering data',
+    19: 'Neutron standards',
+    113: 'Electro-atomic data',
+    10010: 'Incident-proton data',
+    10011: 'Proton-induced fission product yields',
+    10020: 'Incident-deuteron data',
+    10030: 'Incident-triton data',
+    20030: 'Incident-helion (3He) data',
+    20040: 'Incident-alpha data'
+}
 
 SUM_RULES = {1: [2, 3],
              3: [4, 5, 11, 16, 17, 22, 23, 24, 25, 27, 28, 29, 30, 32, 33, 34, 35,
@@ -348,6 +368,14 @@ class Evaluation(object):
 
         self._read_header()
 
+    def __repr__(self):
+        if 'zsymam' in self.target:
+            name = self.target['zsymam'].replace(' ', '')
+        else:
+            name = 'Unknown'
+        return '<{} for {} {}>'.format(self.info['sublibrary'], name,
+                                       self.info['library'])
+
     def _read_header(self):
         file_obj = io.StringIO(self.section[1, 451])
 
@@ -360,8 +388,7 @@ class Evaluation(object):
         self._LRP = items[2]
         self.target['fissionable'] = (items[3] == 1)
         try:
-            global LIBRARIES
-            library = LIBRARIES[items[4]]
+            library = _LIBRARY[items[4]]
         except KeyError:
             library = 'Unknown'
         self.info['modification'] = items[5]
@@ -384,7 +411,7 @@ class Evaluation(object):
         self.projectile['mass'] = items[0]
         self.info['energy_max'] = items[1]
         library_release = items[2]
-        self.info['sublibrary'] = items[4]
+        self.info['sublibrary'] = _SUBLIBRARY[items[4]]
         library_version = items[5]
         self.info['library'] = (library, library_version, library_release)
 

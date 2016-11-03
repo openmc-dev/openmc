@@ -19,6 +19,9 @@ Core Classes
     openmc.data.CoherentElastic
     openmc.data.FissionEnergyRelease
     openmc.data.DataLibrary
+    openmc.data.IncidentPhoton
+    openmc.data.PhotonReaction
+    openmc.data.AtomicRelaxation
     openmc.data.Decay
     openmc.data.FissionProductYields
     openmc.data.WindowedMultipole

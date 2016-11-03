@@ -68,6 +68,14 @@ if have_setuptools:
             'validate': ['lxml']
         },
 
+        # Data files
+        'package_data': {
+            'openmc.data': [
+                'mass.mas12',
+                'fission_Q_data_endfb71.h5',
+                'compton_profiles.h5'
+            ]
+        },
     })
 
 # If Cython is present, add resonance reconstruction capability

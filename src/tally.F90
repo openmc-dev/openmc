@@ -186,12 +186,12 @@ contains
           ! Score the flux weighted inverse velocity with velocity in units of
           ! cm/s
           score = score / material_xs % total &
-               / (sqrt(TWO * E / (MASS_NEUTRON_MEV)) * C_LIGHT * 100.0_8) * flux
+               / (sqrt(TWO * E / MASS_NEUTRON_EV) * C_LIGHT * 100.0_8) * flux
 
         else
           ! For inverse velocity, we don't need a cross section. The velocity is
           ! in units of cm/s.
-          score = flux / (sqrt(TWO * E / (MASS_NEUTRON_MEV)) * C_LIGHT * 100.0_8)
+          score = flux / (sqrt(TWO * E / MASS_NEUTRON_EV) * C_LIGHT * 100.0_8)
         end if
 
 
@@ -897,6 +897,8 @@ contains
         end if
 
       case (SCORE_FISS_Q_PROMPT)
+        score = ZERO
+
         if (t % estimator == ESTIMATOR_ANALOG) then
           if (survival_biasing) then
             ! No fission events occur if survival biasing is on -- need to
@@ -938,11 +940,8 @@ contains
             if (allocated(nuclides(i_nuclide) % fission_q_prompt)) then
               score = micro_xs(i_nuclide) % fission * atom_density * flux &
                       * nuclides(i_nuclide) % fission_q_prompt % evaluate(E)
-            else
-              score = ZERO
             end if
           else
-            score = ZERO
             do l = 1, materials(p % material) % n_nuclides
               atom_density_ = materials(p % material) % atom_density(l)
               i_nuc = materials(p % material) % nuclide(l)
@@ -956,6 +955,8 @@ contains
         end if
 
       case (SCORE_FISS_Q_RECOV)
+        score = ZERO
+
         if (t % estimator == ESTIMATOR_ANALOG) then
           if (survival_biasing) then
             ! No fission events occur if survival biasing is on -- need to
@@ -997,11 +998,8 @@ contains
             if (allocated(nuclides(i_nuclide) % fission_q_recov)) then
               score = micro_xs(i_nuclide) % fission * atom_density * flux &
                       * nuclides(i_nuclide) % fission_q_recov % evaluate(E)
-            else
-              score = ZERO
             end if
           else
-            score = ZERO
             do l = 1, materials(p % material) % n_nuclides
               atom_density_ = materials(p % material) % atom_density(l)
               i_nuc = materials(p % material) % nuclide(l)
@@ -1606,7 +1604,6 @@ contains
 !$omp atomic
       t % results(score_index, filter_index) % value = &
            t % results(score_index, filter_index) % value + score
-
 
     end select
 

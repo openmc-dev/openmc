@@ -43,7 +43,7 @@ install: true
 
 before_script:
   - if [[ ! -e $HOME/nndc_hdf5/cross_sections.xml ]]; then
-      wget https://anl.box.com/shared/static/fouwc8lh9he2wc97kzq65u4rp8zt9sgq.xz -O - | tar -C $HOME -xvJ;
+      wget https://anl.box.com/shared/static/1ow880up90hgwynvh91twwfteameuwre.xz -O - | tar -C $HOME -xvJ;
     fi
   - export OPENMC_CROSS_SECTIONS=$HOME/nndc_hdf5/cross_sections.xml
 

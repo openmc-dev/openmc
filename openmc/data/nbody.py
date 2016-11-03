@@ -18,7 +18,7 @@ class NBodyPhaseSpace(AngleEnergy):
     atomic_weight_ratio : float
         Atomic weight ratio of target nuclide
     q_value : float
-        Q value for reaction in MeV or eV, depending on the data source.
+        Q value for reaction in eV
 
     Attributes
     ----------
@@ -29,7 +29,7 @@ class NBodyPhaseSpace(AngleEnergy):
     atomic_weight_ratio : float
         Atomic weight ratio of target nuclide
     q_value : float
-        Q value for reaction in MeV or eV, depending on the data source.
+        Q value for reaction in eV
 
     """
 
@@ -130,7 +130,7 @@ class NBodyPhaseSpace(AngleEnergy):
             Index in XSS array of the start of the energy distribution data
             (LDIS + LOCC - 1)
         q_value : float
-            Q-value for reaction in MeV
+            Q-value for reaction in eV
 
         Returns
         -------

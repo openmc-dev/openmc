@@ -26,7 +26,7 @@ module mgxs_header
     real(8), allocatable :: total(:)         ! total cross section
     real(8), allocatable :: absorption(:)    ! absorption cross section
     class(ScattData), allocatable :: scatter ! scattering info
-    real(8), allocatable :: delayed_nu_fission(:,:) ! Delayed fission matrix (Gin x Dg)
+    real(8), allocatable :: delayed_nu_fission(:,:) ! Delayed fission matrix (Dg x Gin)
     real(8), allocatable :: prompt_nu_fission(:)    ! Prompt fission vector (Gin)
     real(8), allocatable :: kappa_fission(:)        ! Kappa fission
     real(8), allocatable :: fission(:)              ! Neutron production
@@ -589,8 +589,8 @@ module mgxs_header
 
                   ! Correct prompt-nu-fission using delayed neutron fraction
                   if (delayed_groups > 0) then
-                    xs % prompt_nu_fission(gin) = (1 - sum(temp_beta(:, gin))) * &
-                         xs % prompt_nu_fission(gin)
+                    xs % prompt_nu_fission(gin) = (1 - sum(temp_beta(:, gin))) &
+                         * xs % prompt_nu_fission(gin)
                   end if
                 end do
 
@@ -624,8 +624,8 @@ module mgxs_header
 
                   ! Correct prompt-nu-fission using delayed neutron fraction
                   if (delayed_groups > 0) then
-                    xs % prompt_nu_fission(gin) = (1 - sum(temp_beta(:, gin))) * &
-                         xs % prompt_nu_fission(gin)
+                    xs % prompt_nu_fission(gin) = (1 - sum(temp_beta(:, gin))) &
+                         * xs % prompt_nu_fission(gin)
                   end if
                 end do
 
@@ -3116,7 +3116,7 @@ module mgxs_header
         do while (xi_pd >= prob_prompt)
           dg = dg + 1
           prob_prompt = prob_prompt + &
-               this % get_xs('delayed_nu_fision', gin, dg=dg) &
+               this % get_xs('delayed-nu-fission', gin, dg=dg) &
                / this % get_xs('nu-fission', gin)
         end do
 

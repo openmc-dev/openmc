@@ -165,7 +165,10 @@ def atomic_mass(isotope):
 
     return _ATOMIC_MASS.get(isotope.lower())
 
-# The value of the Boltzman constant in units of MeV / K
+# The value of the Boltzman constant in units of eV / K
 # Values here are from the Committee on Data for Science and Technology
 # (CODATA) 2010 recommendation (doi:10.1103/RevModPhys.84.1527).
-K_BOLTZMANN = 8.6173324E-11
+K_BOLTZMANN = 8.6173324e-5
+
+# Used for converting units in ACE data
+EV_PER_MEV = 1.0e6

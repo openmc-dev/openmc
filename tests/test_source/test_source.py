@@ -44,11 +44,11 @@ class SourceTestHarness(PyAPITestHarness):
         angle2 = openmc.stats.Monodirectional(reference_uvw=[0., 1., 0.])
         angle3 = openmc.stats.Isotropic()
 
-        E = np.logspace(-6, 1)
+        E = np.logspace(0, 7)
         p = np.sin(np.linspace(0., pi))
         p /= sum(np.diff(E)*p[:-1])
-        energy1 = openmc.stats.Maxwell(1.2895)
-        energy2 = openmc.stats.Watt(0.988, 2.249)
+        energy1 = openmc.stats.Maxwell(1.2895e6)
+        energy2 = openmc.stats.Watt(0.988e6, 2.249e-6)
         energy3 = openmc.stats.Tabular(E, p, interpolation='histogram')
 
         source1 = openmc.Source(spatial1, angle1, energy1, strength=0.5)

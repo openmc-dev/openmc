@@ -599,7 +599,7 @@ class MDGXS(MGXS):
                     string += template.format('', delayed_group)
                     string += '\n'
 
-                    template = '{0: <12}Group {1} [{2: <10} - {3: <10}MeV]:\t'
+                    template = '{0: <12}Group {1} [{2: <10} - {3: <10}eV]:\t'
 
                     # Loop over energy groups ranges
                     for group in range(1, self.num_groups+1):
@@ -784,36 +784,36 @@ class MDGXS(MGXS):
         # Override energy groups bounds with indices
         all_groups = np.arange(self.num_groups, 0, -1, dtype=np.int)
         all_groups = np.repeat(all_groups, len(query_nuclides))
-        if 'energy low [MeV]' in df and 'energyout low [MeV]' in df:
-            df.rename(columns={'energy low [MeV]': 'group in'},
+        if 'energy low [eV]' in df and 'energyout low [eV]' in df:
+            df.rename(columns={'energy low [eV]': 'group in'},
                       inplace=True)
             in_groups = np.tile(all_groups, int(self.num_subdomains *
                                                 self.num_delayed_groups))
             in_groups = np.repeat(in_groups, int(df.shape[0] / in_groups.size))
             df['group in'] = in_groups
-            del df['energy high [MeV]']
+            del df['energy high [eV]']
 
-            df.rename(columns={'energyout low [MeV]': 'group out'},
+            df.rename(columns={'energyout low [eV]': 'group out'},
                       inplace=True)
             out_groups = np.repeat(all_groups, self.xs_tally.num_scores)
             out_groups = np.tile(out_groups, int(df.shape[0] / out_groups.size))
             df['group out'] = out_groups
-            del df['energyout high [MeV]']
+            del df['energyout high [eV]']
             columns = ['group in', 'group out']
 
-        elif 'energyout low [MeV]' in df:
-            df.rename(columns={'energyout low [MeV]': 'group out'},
+        elif 'energyout low [eV]' in df:
+            df.rename(columns={'energyout low [eV]': 'group out'},
                       inplace=True)
             in_groups = np.tile(all_groups, int(df.shape[0] / all_groups.size))
             df['group out'] = in_groups
-            del df['energyout high [MeV]']
+            del df['energyout high [eV]']
             columns = ['group out']
 
-        elif 'energy low [MeV]' in df:
-            df.rename(columns={'energy low [MeV]': 'group in'}, inplace=True)
+        elif 'energy low [eV]' in df:
+            df.rename(columns={'energy low [eV]': 'group in'}, inplace=True)
             in_groups = np.tile(all_groups, int(df.shape[0] / all_groups.size))
             df['group in'] = in_groups
-            del df['energy high [MeV]']
+            del df['energy high [eV]']
             columns = ['group in']
 
         # Select out those groups the user requested

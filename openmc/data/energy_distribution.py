@@ -10,6 +10,7 @@ from .function import Tabulated1D, INTERPOLATION_SCHEME
 from openmc.stats.univariate import Univariate, Tabular, Discrete, Mixture
 import openmc.checkvalue as cv
 from openmc.mixin import EqualityMixin
+from .data import EV_PER_MEV
 from .endf import get_tab1_record, get_tab2_record
 
 
@@ -318,13 +319,14 @@ class MaxwellEnergy(EnergyDistribution):
             Maxwell distribution
 
         """
-        # Read nuclear temperature
+        # Read nuclear temperature -- since units are MeV, convert to eV
         theta = Tabulated1D.from_ace(ace, idx)
+        theta.y *= EV_PER_MEV
 
         # Restriction energy
         nr = int(ace.xss[idx])
         ne = int(ace.xss[idx + 1 + 2*nr])
-        u = ace.xss[idx + 2 + 2*nr + 2*ne]
+        u = ace.xss[idx + 2 + 2*nr + 2*ne]*EV_PER_MEV
 
         return cls(theta, u)
 
@@ -450,13 +452,14 @@ class Evaporation(EnergyDistribution):
             Evaporation spectrum
 
         """
-        # Read nuclear temperature
+        # Read nuclear temperature -- since units are MeV, convert to eV
         theta = Tabulated1D.from_ace(ace, idx)
+        theta.y *= EV_PER_MEV
 
         # Restriction energy
         nr = int(ace.xss[idx])
         ne = int(ace.xss[idx + 1 + 2*nr])
-        u = ace.xss[idx + 2 + 2*nr + 2*ne]
+        u = ace.xss[idx + 2 + 2*nr + 2*ne]*EV_PER_MEV
 
         return cls(theta, u)
 
@@ -597,16 +600,18 @@ class WattEnergy(EnergyDistribution):
             Watt fission spectrum
 
         """
-        # Energy-dependent a parameter
+        # Energy-dependent a parameter -- units are MeV, convert to eV
         a = Tabulated1D.from_ace(ace, idx)
+        a.y *= EV_PER_MEV
 
         # Advance index
         nr = int(ace.xss[idx])
         ne = int(ace.xss[idx + 1 + 2*nr])
         idx += 2 + 2*nr + 2*ne
 
-        # Energy-dependent b parameter
+        # Energy-dependent b parameter -- units are MeV^-1
         b = Tabulated1D.from_ace(ace, idx)
+        b.y /= EV_PER_MEV
 
         # Advance index
         nr = int(ace.xss[idx])
@@ -614,7 +619,7 @@ class WattEnergy(EnergyDistribution):
         idx += 2 + 2*nr + 2*ne
 
         # Restriction energy
-        u = ace.xss[idx]
+        u = ace.xss[idx]*EV_PER_MEV
 
         return cls(a, b, u)
 
@@ -887,7 +892,7 @@ class DiscretePhoton(EnergyDistribution):
 
         """
         primary_flag = int(ace.xss[idx])
-        energy = ace.xss[idx + 1]
+        energy = ace.xss[idx + 1]*EV_PER_MEV
         return cls(primary_flag, energy, ace.atomic_weight_ratio)
 
 
@@ -983,7 +988,8 @@ class LevelInelastic(EnergyDistribution):
             Level inelastic scattering distribution
 
         """
-        threshold, mass_ratio = ace.xss[idx:idx + 2]
+        threshold = ace.xss[idx]*EV_PER_MEV
+        mass_ratio = ace.xss[idx + 1]
         return cls(threshold, mass_ratio)
 
 
@@ -1221,7 +1227,7 @@ class ContinuousTabular(EnergyDistribution):
 
         # Incoming energies at which distributions exist
         idx += 2*n_regions + 1
-        energy = ace.xss[idx:idx + n_energy_in]
+        energy = ace.xss[idx:idx + n_energy_in]*EV_PER_MEV
 
         # Location of distributions
         idx += n_energy_in
@@ -1244,12 +1250,13 @@ class ContinuousTabular(EnergyDistribution):
                 intt = 2
 
             n_energy_out = int(ace.xss[idx + 1])
-            data = ace.xss[idx + 2:idx + 2 + 3*n_energy_out]
+            data = ace.xss[idx + 2:idx + 2 + 3*n_energy_out].copy()
             data.shape = (3, n_energy_out)
+            data[0,:] *= EV_PER_MEV
 
             # Create continuous distribution
             eout_continuous = Tabular(data[0][n_discrete_lines:],
-                                      data[1][n_discrete_lines:],
+                                      data[1][n_discrete_lines:]/EV_PER_MEV,
                                       INTERPOLATION_SCHEME[intt])
             eout_continuous.c = data[2][n_discrete_lines:]
 

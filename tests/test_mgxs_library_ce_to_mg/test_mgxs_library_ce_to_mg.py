@@ -60,8 +60,8 @@ class MGXSTestHarness(PyAPITestHarness):
         self._input_set.mgxs_file, self._input_set.materials, \
             self._input_set.geometry = self.mgxs_lib.create_mg_mode()
 
-        # Modify settings so we can run in MG mode
-        self._input_set.settings.cross_sections = './mgxs.h5'
+        # Modify materials and settings so we can run in MG mode
+        self._input_set.materials.cross_sections = './mgxs.h5'
         self._input_set.settings.energy_mode = 'multi-group'
 
         # Write modified input files

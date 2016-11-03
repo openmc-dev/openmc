@@ -14,10 +14,6 @@ import openmc
 
 class TallySliceMergeTestHarness(PyAPITestHarness):
     def _build_inputs(self):
-
-        # The summary.h5 file needs to be created to read in the tallies
-        self._input_set.settings.output = {'summary': True}
-
         # Initialize the tallies file
         tallies_file = openmc.Tallies()
 
@@ -27,8 +23,8 @@ class TallySliceMergeTestHarness(PyAPITestHarness):
 
         # Define filters for energy and spatial domain
 
-        low_energy = openmc.EnergyFilter([0., 0.625e-6])
-        high_energy = openmc.EnergyFilter([0.625e-6, 20.])
+        low_energy = openmc.EnergyFilter([0., 0.625])
+        high_energy = openmc.EnergyFilter([0.625, 20.e6])
         merged_energies = low_energy.merge(high_energy)
 
         cell_21 = openmc.CellFilter(21)
@@ -71,8 +67,7 @@ class TallySliceMergeTestHarness(PyAPITestHarness):
         # Initialize a distribcell tally
         distribcell_tally = openmc.Tally(name='distribcell tally')
         distribcell_tally.estimator = 'tracklength'
-        distribcell_tally.add_filter(distribcell_filter)
-        distribcell_tally.add_filter(merged_energies)
+        distribcell_tally.filters = [distribcell_filter, merged_energies]
         for score in self.scores:
             distribcell_tally.add_score(score)
         for nuclide in self.nuclides:

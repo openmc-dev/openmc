@@ -21,8 +21,8 @@ class MGTalliesTestHarness(HashedPyAPITestHarness):
         mesh.upper_right = [10, 10, 5]
 
         # Instantiate some tally filters
-        energy_filter = openmc.EnergyFilter([0.0, 20.0])
-        energyout_filter = openmc.EnergyoutFilter([0.0, 20.0])
+        energy_filter = openmc.EnergyFilter([0.0, 20.0e6])
+        energyout_filter = openmc.EnergyoutFilter([0.0, 20.0e6])
         mesh_filter = openmc.MeshFilter(mesh)
 
         mat_ids = [mat.id for mat in self._input_set.materials]

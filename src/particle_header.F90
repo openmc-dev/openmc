@@ -87,7 +87,7 @@ module particle_header
     integer    :: last_material ! index for last material
 
     ! Temperature of the current cell
-    real(8)    :: sqrtkT        ! sqrt(k_Boltzmann * temperature) in MeV
+    real(8)    :: sqrtkT        ! sqrt(k_Boltzmann * temperature) in eV
     real(8)    :: last_sqrtKT   ! last temperature
 
     ! Statistical data

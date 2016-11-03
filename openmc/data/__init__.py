@@ -1,3 +1,9 @@
+# Version of HDF5 nuclear data format
+HDF5_VERSION_MAJOR = 1
+HDF5_VERSION_MINOR = 0
+HDF5_VERSION = (HDF5_VERSION_MAJOR, HDF5_VERSION_MINOR)
+
+
 from .data import *
 from .neutron import *
 from .reaction import *

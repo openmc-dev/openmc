@@ -15,7 +15,7 @@
 
   <tally id="2">
     <filter type="mesh" bins="1" />
-    <filter type="energy" bins="0. 0.253e-6 20.0" />
+    <filter type="energy" bins="0. 0.253 20.0e6" />
     <scores>current</scores>
   </tally>
 

@@ -8,6 +8,7 @@ import numpy as np
 import openmc.data
 import openmc.checkvalue as cv
 from openmc.mixin import EqualityMixin
+from .data import EV_PER_MEV
 
 INTERPOLATION_SCHEME = {1: 'histogram', 2: 'linear-linear', 3: 'linear-log',
                         4: 'log-linear', 5: 'log-log'}
@@ -315,7 +316,7 @@ class Tabulated1D(Function1D):
         return cls(x, y, breakpoints, interpolation)
 
     @classmethod
-    def from_ace(cls, ace, idx=0):
+    def from_ace(cls, ace, idx=0, convert_units=True):
         """Create a Tabulated1D object from an ACE table.
 
         Parameters
@@ -324,6 +325,9 @@ class Tabulated1D(Function1D):
             An ACE table
         idx : int
             Offset to read from in XSS array (default of zero)
+        convert_units : bool
+            If the abscissa represents energy, indicate whether to convert MeV
+            to eV.
 
         Returns
         -------
@@ -348,8 +352,11 @@ class Tabulated1D(Function1D):
 
         # Get (x,y) pairs
         idx += 2*n_regions + 1
-        x = ace.xss[idx:idx + n_pairs]
-        y = ace.xss[idx + n_pairs:idx + 2*n_pairs]
+        x = ace.xss[idx:idx + n_pairs].copy()
+        y = ace.xss[idx + n_pairs:idx + 2*n_pairs].copy()
+
+        if convert_units:
+            x *= EV_PER_MEV
 
         return Tabulated1D(x, y, breakpoints, interpolation)
 

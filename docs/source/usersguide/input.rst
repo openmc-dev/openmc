@@ -1520,7 +1520,7 @@ The ``<tally>`` element accepts the following sub-elements:
 
           .. code-block:: xml
 
-              <filter type="energy" bins="0.0 1.0 20.0" />
+              <filter type="energy" bins="0.0 1.0e6 20.0e6" />
 
           then two energy bins will be created, one with energies between 0 and
           1 MeV and the other with energies between 1 and 20 MeV.
@@ -1535,7 +1535,7 @@ The ``<tally>`` element accepts the following sub-elements:
 
           .. code-block:: xml
 
-              <filter type="energyout" bins="0.0 1.0 20.0" />
+              <filter type="energyout" bins="0.0 1.0e6 20.0e6" />
 
           then two post-collision energy bins will be created, one with
           energies between 0 and 1 MeV and the other with energies between
@@ -1854,7 +1854,7 @@ The ``<tally>`` element accepts the following sub-elements:
         |                      |particles. The neutrino energy does not contribute |
         |                      |to this response. The prompt and delayed           |
         |                      |:math:`\gamma`-rays are assumed to deposit their   |
-        |                      |energy locally. Units are MeV per source particle. |
+        |                      |energy locally. Units are eV per source particle.  |
         +----------------------+---------------------------------------------------+
         |fission-q-prompt      |The prompt fission energy production rate. This    |
         |                      |energy comes in the form of fission fragment       |
@@ -1863,7 +1863,7 @@ The ``<tally>`` element accepts the following sub-elements:
         |                      |incident energy and it requires that the nuclear   |
         |                      |data library contains the optional fission energy  |
         |                      |release data. Energy is assumed to be deposited    |
-        |                      |locally. Units are MeV per source particle.        |
+        |                      |locally. Units are eV per source particle.         |
         +----------------------+---------------------------------------------------+
         |fission-q-recoverable |The recoverable fission energy production rate.    |
         |                      |This energy comes in the form of fission fragment  |
@@ -1874,7 +1874,7 @@ The ``<tally>`` element accepts the following sub-elements:
         |                      |incident neutron energy and it requires that the   |
         |                      |nuclear data library contains the optional fission |
         |                      |energy release data. Energy is assumed to be       |
-        |                      |deposited locally. Units are MeV per source        |
+        |                      |deposited locally. Units are eV per source         |
         |                      |paticle.                                           |
         +----------------------+---------------------------------------------------+
         |decay-rate            |The delayed-nu-fission-weighted decay rate where   |
@@ -2256,7 +2256,7 @@ attributes/sub-elements:
     The width of mesh cells in each direction.
 
   :energy:
-    Energy bins [in MeV], listed in ascending order (e.g. 0.0 0.625e-7 20.0)
+    Energy bins [in eV], listed in ascending order (e.g. 0.0 0.625 20.0e6)
     for CMFD tallies and acceleration. If no energy bins are listed, OpenMC
     automatically assumes a one energy group calculation over the entire
     energy range.

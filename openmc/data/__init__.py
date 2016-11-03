@@ -9,6 +9,7 @@ WMP_VERSION = 'v0.2'
 
 from .data import *
 from .neutron import *
+from .photon import *
 from .decay import *
 from .reaction import *
 from .ace import *

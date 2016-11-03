@@ -104,20 +104,23 @@ def _get_metadata(zaid, metastable_scheme='nndc'):
 class IncidentNeutron(EqualityMixin):
     """Continuous-energy neutron interaction data.
 
-    Instances of this class are not normally instantiated by the user but rather
-    created using the factory methods :meth:`IncidentNeutron.from_hdf5` and
-    :meth:`IncidentNeutron.from_ace`.
+    This class stores data derived from an ENDF-6 format neutron interaction
+    sublibrary. Instances of this class are not normally instantiated by the
+    user but rather created using the factory methods
+    :meth:`IncidentNeutron.from_hdf5`, :meth:`IncidentNeutron.from_ace`, and
+    :math:`IncidentNeutron.from_endf`.
 
     Parameters
     ----------
     name : str
         Name of the nuclide using the GND naming convention
     atomic_number : int
-        Number of protons in the nucleus
+        Number of protons in the target nucleus
     mass_number : int
-        Number of nucleons in the nucleus
+        Number of nucleons in the target nucleus
     metastable : int
-        Metastable state of the nucleus. A value of zero indicates ground state.
+        Metastable state of the target nucleus. A value of zero indicates ground
+        state.
     atomic_weight_ratio : float
         Atomic mass ratio of the target nuclide.
     kTs : Iterable of float
@@ -127,22 +130,19 @@ class IncidentNeutron(EqualityMixin):
     Attributes
     ----------
     atomic_number : int
-        Number of protons in the nucleus
+        Number of protons in the target nucleus
     atomic_symbol : str
         Atomic symbol of the nuclide, e.g., 'Zr'
     atomic_weight_ratio : float
         Atomic weight ratio of the target nuclide.
-    energy : dict of numpy.ndarray
-        The energy values (eV) at which reaction cross-sections are tabulated.
-        They keys of the dict are the temperature string ('294K') for each
-        set of energies
     fission_energy : None or openmc.data.FissionEnergyRelease
         The energy released by fission, tabulated by component (e.g. prompt
         neutrons or beta particles) and dependent on incident neutron energy
     mass_number : int
-        Number of nucleons in the nucleus
+        Number of nucleons in the target nucleus
     metastable : int
-        Metastable state of the nucleus. A value of zero indicates ground state.
+        Metastable state of the target nucleus. A value of zero indicates ground
+        state.
     name : str
         Name of the nuclide using the GND naming convention
     reactions : collections.OrderedDict

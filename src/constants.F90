@@ -257,17 +257,6 @@ module constants
   ! Maximum number of partial fission reactions
   integer, parameter :: PARTIAL_FISSION_MAX = 4
 
-  ! Major cross section libraries
-  integer, parameter :: &
-       ENDF_BVII0 = 1, &
-       ENDF_BVII1 = 2, &
-       JEFF_311   = 3, &
-       JEFF_312   = 4, &
-       JEFF_32    = 5, &
-       JENDL_32   = 6, &
-       JENDL_33   = 7, &
-       JENDL_40   = 8
-
   ! Temperature treatment method
   integer, parameter :: &
        TEMPERATURE_NEAREST = 1, &

@@ -12,8 +12,8 @@
 0  (0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13,...         1   total  0.037577   0.001487
                                     avg(distribcell)  group in nuclide      mean  std. dev.
 0  (0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13,...         1   total  0.092377   0.003628
-                                    avg(distribcell)  group in nuclide      mean  std. dev.
-0  (0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13,...         1   total  7.276707   0.287579
+                                    avg(distribcell)  group in nuclide          mean     std. dev.
+0  (0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13,...         1   total  7.276707e+06  287579.26286
                                     avg(distribcell)  group in nuclide      mean  std. dev.
 0  (0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13,...         1   total  0.390797   0.008717
                                     avg(distribcell)  group in nuclide      mean  std. dev.

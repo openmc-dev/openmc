@@ -93,7 +93,7 @@ class Settings(object):
         should be a float indicating weight cutoff below which particle undergo
         Russian roulette. Value for 'weight_avg' should be a float indicating
         weight assigned to particles that are not killed after Russian
-        roulette. Value of energy should be a float indicating energy in MeV
+        roulette. Value of energy should be a float indicating energy in eV
         below which particle will be killed.
     entropy_dimension : tuple or list
         Number of Shannon entropy mesh cells in the x, y, and z directions,

@@ -53,7 +53,7 @@ module mgxs_header
   type, abstract :: Mgxs
     character(len=MAX_WORD_LEN) :: name   ! name of dataset, e.g. UO2
     real(8)                     :: awr    ! Atomic Weight Ratio
-    real(8), allocatable        :: kTs(:) ! temperature in MeV (k*T)
+    real(8), allocatable        :: kTs(:) ! temperature in eV (k*T)
 
     ! Fission information
     logical :: fissionable  ! mgxs object is fissionable?
@@ -242,7 +242,7 @@ module mgxs_header
       do i = 1, size(dset_names)
         ! Read temperature value
         call read_dataset(temps_available(i), kT_group, trim(dset_names(i)))
-        ! Convert MeV to Kelvin
+        ! Convert eV to Kelvin
         temps_available(i) = temps_available(i) / K_BOLTZMANN
       end do
       call sort(temps_available)
@@ -1239,7 +1239,7 @@ module mgxs_header
     subroutine mgxsiso_combine(this, temps, mat, nuclides, groups, max_order, &
                                tolerance, method)
       class(MgxsIso), intent(inout)       :: this ! The Mgxs to initialize
-      type(VectorReal), intent(in)        :: temps ! Temperatures to obtain [MeV]
+      type(VectorReal), intent(in)        :: temps ! Temperatures to obtain [eV]
       type(Material), pointer, intent(in) :: mat  ! base material
       type(MgxsContainer), intent(in)     :: nuclides(:) ! List of nuclides to harvest from
       integer, intent(in)                 :: groups     ! Number of E groups
@@ -2079,12 +2079,12 @@ module mgxs_header
 
 !===============================================================================
 ! MGXS_FIND_TEMPERATURE sets the temperature index for the given
-! sqrt(temperature), (with temperature in units of MeV)
+! sqrt(temperature), (with temperature in units of eV)
 !===============================================================================
 
     subroutine mgxs_find_temperature(this, sqrtkT)
       class(Mgxs), intent(inout) :: this
-      real(8), intent(in)        :: sqrtkT    ! Temperature (in units of of MeV)
+      real(8), intent(in)        :: sqrtkT    ! Temperature (in units of eV)
 
       this % index_temp = minloc(abs(this % kTs - (sqrtkT * sqrtkT)), dim=1)
 

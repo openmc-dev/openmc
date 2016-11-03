@@ -147,15 +147,15 @@ contains
     integer :: i_low  ! lower logarithmic mapping index
     integer :: i_high ! upper logarithmic mapping index
     real(8) :: f      ! interp factor on nuclide energy grid
-    real(8) :: kT     ! temperature in MeV
+    real(8) :: kT     ! temperature in eV
     real(8) :: sigT, sigA, sigF ! Intermediate multipole variables
 
     associate (nuc => nuclides(i_nuclide))
       ! Check to see if there is multipole data present at this energy
       use_mp = .false.
       if (nuc % mp_present) then
-        if (E >= nuc % multipole % start_E/1.0e6_8 .and. &
-             E <= nuc % multipole % end_E/1.0e6_8) then
+        if (E >= nuc % multipole % start_E .and. &
+             E <= nuc % multipole % end_E) then
           use_mp = .true.
         end if
       end if
@@ -585,14 +585,13 @@ contains
 ! sections in the resolved resonance regions
 !===============================================================================
 
-  subroutine multipole_eval(multipole, Emev, sqrtkT_, sigT, sigA, sigF)
+  subroutine multipole_eval(multipole, E, sqrtkT, sigT, sigA, sigF)
     type(MultipoleArray), intent(in) :: multipole ! The windowed multipole
                                                   !  object to process.
-    real(8), intent(in)              :: Emev      ! The energy at which to
+    real(8), intent(in)              :: E         ! The energy at which to
                                                   !  evaluate the cross section
-                                                  !  in MeV
-    real(8), intent(in)              :: sqrtkT_   ! The temperature in the form
-                                                  !  sqrt(kT (in MeV)), at which
+    real(8), intent(in)              :: sqrtkT    ! The temperature in the form
+                                                  !  sqrt(kT), at which
                                                   !  to evaluate the XS.
     real(8), intent(out)             :: sigT      ! Total cross section
     real(8), intent(out)             :: sigA      ! Absorption cross section
@@ -608,8 +607,6 @@ contains
     real(8) :: invE        ! 1/E, eV
     real(8) :: dopp        ! sqrt(atomic weight ratio / kT) = 1 / (2 sqrt(xi))
     real(8) :: temp        ! real temporary value
-    real(8) :: E           ! energy, eV
-    real(8) :: sqrtkT      ! sqrt(kT (in eV))
     integer :: i_pole      ! index of pole
     integer :: i_poly      ! index of curvefit
     integer :: i_window    ! index of window
@@ -618,10 +615,6 @@ contains
 
     ! ==========================================================================
     ! Bookkeeping
-
-    ! Convert to eV.
-    E = Emev * 1.0e6_8
-    sqrtkT = sqrtkT_ * 1.0e3_8
 
     ! Define some frequently used variables.
     sqrtE = sqrt(E)

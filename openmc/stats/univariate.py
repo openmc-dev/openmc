@@ -263,7 +263,7 @@ class Watt(Univariate):
 
     """
 
-    def __init__(self, a=0.988, b=2.249):
+    def __init__(self, a=0.988e6, b=2.249e-6):
         super(Watt, self).__init__()
         self.a = a
         self.b = b

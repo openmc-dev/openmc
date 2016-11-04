@@ -53,7 +53,7 @@ module nuclide_header
     integer       :: A       ! mass number
     integer       :: metastable ! metastable state
     real(8)       :: awr     ! Atomic Weight Ratio
-    real(8), allocatable :: kTs(:) ! temperature in MeV (k*T)
+    real(8), allocatable :: kTs(:) ! temperature in eV (k*T)
 
     ! Fission information
     logical :: fissionable = .false.  ! nuclide is fissionable?
@@ -115,8 +115,8 @@ module nuclide_header
   type Nuclide0K
     character(10) :: nuclide             ! name of nuclide, e.g. U238
     character(16) :: scheme = 'ares'     ! target velocity sampling scheme
-    real(8)       :: E_min = 0.01e-6_8   ! lower cutoff energy for res scattering
-    real(8)       :: E_max = 1000.0e-6_8 ! upper cutoff energy for res scattering
+    real(8)       :: E_min = 0.01_8   ! lower cutoff energy for res scattering
+    real(8)       :: E_max = 1000.0_8 ! upper cutoff energy for res scattering
   end type Nuclide0K
 
 !===============================================================================
@@ -146,7 +146,7 @@ module nuclide_header
 
     ! Information for Doppler broadening
     real(8) :: last_sqrtkT = ZERO  ! Last temperature in sqrt(Boltzmann
-                                   ! constant * temperature (MeV))
+                                   ! constant * temperature (eV))
   end type NuclideMicroXS
 
 !===============================================================================

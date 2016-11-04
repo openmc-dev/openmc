@@ -9,7 +9,7 @@
 
   <tally id="1">
     <filter type="mesh" bins="1" />
-    <filter type="energy" bins="0. 4.e-6 20.0" />
+    <filter type="energy" bins="0. 4. 20.0e6" />
     <scores>flux fission nu-fission</scores>
   </tally>
 

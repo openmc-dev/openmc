@@ -14,7 +14,7 @@ from openmc.stats import Uniform, Tabular, Legendre
 from .angle_distribution import AngleDistribution
 from .angle_energy import AngleEnergy
 from .correlated import CorrelatedAngleEnergy
-from .data import ATOMIC_SYMBOL, K_BOLTZMANN
+from .data import ATOMIC_SYMBOL, K_BOLTZMANN, EV_PER_MEV
 from .endf import get_head_record, get_tab1_record, get_list_record, \
     get_tab2_record, get_cont_record
 from .energy_distribution import EnergyDistribution, LevelInelastic, \
@@ -222,7 +222,9 @@ def _get_fission_products_ace(ace):
         if LNU == 1:
             # Polynomial function form of nu
             NC = int(ace.xss[idx+1])
-            coefficients = ace.xss[idx+2 : idx+2+NC]
+            coefficients = ace.xss[idx+2 : idx+2+NC].copy()
+            for i in range(coefficients.size):
+                coefficients[i] *= EV_PER_MEV**(-i)
             neutron.yield_ = Polynomial(coefficients)
         elif LNU == 2:
             # Tabular data form of nu
@@ -241,7 +243,9 @@ def _get_fission_products_ace(ace):
         if LNU == 1:
             # Polynomial function form of nu
             NC = int(ace.xss[idx+1])
-            coefficients = ace.xss[idx+2 : idx+2+NC]
+            coefficients = ace.xss[idx+2 : idx+2+NC].copy()
+            for i in range(coefficients.size):
+                coefficients[i] *= EV_PER_MEV**(-i)
             prompt_neutron.yield_ = Polynomial(coefficients)
         elif LNU == 2:
             # Tabular data form of nu
@@ -257,7 +261,9 @@ def _get_fission_products_ace(ace):
         if LNU == 1:
             # Polynomial function form of nu
             NC = int(ace.xss[idx+1])
-            coefficients = ace.xss[idx+2 : idx+2+NC]
+            coefficients = ace.xss[idx+2 : idx+2+NC].copy()
+            for i in range(coefficients.size):
+                coefficients[i] *= EV_PER_MEV**(-i)
             total_neutron.yield_ = Polynomial(coefficients)
         elif LNU == 2:
             # Tabular data form of nu
@@ -521,7 +527,7 @@ def _get_photon_products_ace(ace, rx):
             threshold_idx = int(ace.xss[idx]) - 1
             n_energy = int(ace.xss[idx + 1])
             energy = ace.xss[ace.jxs[1] + threshold_idx:
-                             ace.jxs[1] + threshold_idx + n_energy]
+                             ace.jxs[1] + threshold_idx + n_energy]*EV_PER_MEV
 
             # Get photon production cross section
             photon_prod_xs = ace.xss[idx + 2:idx + 2 + n_energy]
@@ -697,7 +703,7 @@ class Reaction(EqualityMixin):
     mt : int
         The ENDF MT number for this reaction.
     q_value : float
-        The Q-value of this reaction in MeV or eV, depending on the data source.
+        The Q-value of this reaction in eV.
     xs : dict of str to openmc.data.Function1D
         Microscopic cross section for this reaction as a function of incident
         energy; these cross sections are provided in a dictionary where the key
@@ -861,18 +867,18 @@ class Reaction(EqualityMixin):
     def from_ace(cls, ace, i_reaction):
         # Get nuclide energy grid
         n_grid = ace.nxs[3]
-        grid = ace.xss[ace.jxs[1]:ace.jxs[1] + n_grid]
+        grid = ace.xss[ace.jxs[1]:ace.jxs[1] + n_grid]*EV_PER_MEV
 
         # Convert data temperature to a "300.0K" number for indexing
         # temperature data
-        strT = str(int(round(ace.temperature / K_BOLTZMANN))) + "K"
+        strT = str(int(round(ace.temperature*EV_PER_MEV / K_BOLTZMANN))) + "K"
 
         if i_reaction > 0:
             mt = int(ace.xss[ace.jxs[3] + i_reaction - 1])
             rx = cls(mt)
 
             # Get Q-value of reaction
-            rx.q_value = ace.xss[ace.jxs[4] + i_reaction - 1]
+            rx.q_value = ace.xss[ace.jxs[4] + i_reaction - 1]*EV_PER_MEV
 
             # ==================================================================
             # CROSS SECTION

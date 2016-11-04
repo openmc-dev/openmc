@@ -8,14 +8,14 @@
 
   <tally id="2">
     <filter type="cell" bins="100" />
-    <filter type="energy" bins="0 20.0" />
+    <filter type="energy" bins="0 20.0e6" />
     <scores>total scatter nu-scatter absorption fission nu-fission</scores>
   </tally>
 
   <tally id="3">
     <filter type="cell" bins="100" />
-    <filter type="energy" bins="0 20.0" />
-    <filter type="energyout" bins="0 20.0" />
+    <filter type="energy" bins="0 20.0e6" />
+    <filter type="energyout" bins="0 20.0e6" />
     <scores>scatter nu-scatter nu-fission</scores>
   </tally>
 

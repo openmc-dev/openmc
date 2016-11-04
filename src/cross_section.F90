@@ -147,46 +147,17 @@ contains
     integer :: i_low  ! lower logarithmic mapping index
     integer :: i_high ! upper logarithmic mapping index
     real(8) :: f      ! interp factor on nuclide energy grid
-    real(8) :: kT     ! temperature in MeV
+    real(8) :: kT     ! temperature in eV
     real(8) :: sigT, sigA, sigF ! Intermediate multipole variables
 
     associate (nuc => nuclides(i_nuclide))
       ! Check to see if there is multipole data present at this energy
       use_mp = .false.
       if (nuc % mp_present) then
-        if (E >= nuc % multipole % start_E/1.0e6_8 .and. &
-             E <= nuc % multipole % end_E/1.0e6_8) then
+        if (E >= nuc % multipole % start_E .and. &
+             E <= nuc % multipole % end_E) then
           use_mp = .true.
-        else
-          ! If using multipole data but outside the RRR, pick the nearest
-          ! temperature. Note that there is no tolerance here, so this
-          ! temperature could be very far off!
-          kT = sqrtkT**2
-
-          i_temp = minloc(abs(nuclides(i_nuclide) % kTs - kT), dim=1)
         end if
-      else
-        kT = sqrtkT**2
-
-        select case (temperature_method)
-        case (TEMPERATURE_NEAREST)
-          ! If using nearest temperature, do linear search on temperature
-          do i_temp = 1, size(nuc % kTs)
-            if (abs(nuc % kTs(i_temp) - kT) < K_BOLTZMANN * &
-                 temperature_tolerance) exit
-          end do
-        case (TEMPERATURE_INTERPOLATION)
-          ! Find temperatures that bound the actual temperature
-          do i_temp = 1, size(nuc % kTs) - 1
-            if (nuc % kTs(i_temp) <= kT .and. kT < nuc % kTs(i_temp + 1)) exit
-          end do
-
-          ! Randomly sample between temperature i and i+1
-          f = (kT - nuc % kTs(i_temp)) / &
-               (nuc % kTs(i_temp + 1) - nuc % kTs(i_temp))
-          if (f > prn()) i_temp = i_temp + 1
-        end select
-
       end if
 
       ! Evaluate multipole or interpolate
@@ -213,22 +184,44 @@ contains
         ! 3. tally.F90 - score_general - For tallying on MTxxx reactions.
         ! 4. cross_section.F90 - calculate_urr_xs - For unresolved purposes.
         ! It is worth noting that none of these occur in the resolved
-        ! resonance range, so the value here does not matter.
-        micro_xs(i_nuclide) % index_temp    = i_temp
+        ! resonance range, so the value here does not matter.  index_temp is
+        ! set to -1 to force a segfault in case a developer messes up and tries
+        ! to use it with multipole.
+        micro_xs(i_nuclide) % index_temp    = -1
         micro_xs(i_nuclide) % index_grid    = 0
         micro_xs(i_nuclide) % interp_factor = ZERO
+
       else
+        ! Find the appropriate temperature index.
+        kT = sqrtkT**2
+        select case (temperature_method)
+        case (TEMPERATURE_NEAREST)
+          i_temp = minloc(abs(nuclides(i_nuclide) % kTs - kT), dim=1)
+
+        case (TEMPERATURE_INTERPOLATION)
+          ! Find temperatures that bound the actual temperature
+          do i_temp = 1, size(nuc % kTs) - 1
+            if (nuc % kTs(i_temp) <= kT .and. kT < nuc % kTs(i_temp + 1)) exit
+          end do
+
+          ! Randomly sample between temperature i and i+1
+          f = (kT - nuc % kTs(i_temp)) / &
+               (nuc % kTs(i_temp + 1) - nuc % kTs(i_temp))
+          if (f > prn()) i_temp = i_temp + 1
+        end select
+
         associate (grid => nuc % grid(i_temp), xs => nuc % sum_xs(i_temp))
-          ! Determine the energy grid index using a logarithmic mapping to reduce
-          ! the energy range over which a binary search needs to be performed
+          ! Determine the energy grid index using a logarithmic mapping to
+          ! reduce the energy range over which a binary search needs to be
+          ! performed
 
           if (E < grid % energy(1)) then
             i_grid = 1
           elseif (E > grid % energy(size(grid % energy))) then
             i_grid = size(grid % energy) - 1
           else
-            ! Determine bounding indices based on which equal log-spaced interval
-            ! the energy is in
+            ! Determine bounding indices based on which equal log-spaced
+            ! interval the energy is in
             i_low  = grid % grid_index(i_log_union)
             i_high = grid % grid_index(i_log_union + 1) + 1
 
@@ -592,14 +585,13 @@ contains
 ! sections in the resolved resonance regions
 !===============================================================================
 
-  subroutine multipole_eval(multipole, Emev, sqrtkT_, sigT, sigA, sigF)
+  subroutine multipole_eval(multipole, E, sqrtkT, sigT, sigA, sigF)
     type(MultipoleArray), intent(in) :: multipole ! The windowed multipole
                                                   !  object to process.
-    real(8), intent(in)              :: Emev      ! The energy at which to
+    real(8), intent(in)              :: E         ! The energy at which to
                                                   !  evaluate the cross section
-                                                  !  in MeV
-    real(8), intent(in)              :: sqrtkT_   ! The temperature in the form
-                                                  !  sqrt(kT (in MeV)), at which
+    real(8), intent(in)              :: sqrtkT    ! The temperature in the form
+                                                  !  sqrt(kT), at which
                                                   !  to evaluate the XS.
     real(8), intent(out)             :: sigT      ! Total cross section
     real(8), intent(out)             :: sigA      ! Absorption cross section
@@ -615,8 +607,6 @@ contains
     real(8) :: invE        ! 1/E, eV
     real(8) :: dopp        ! sqrt(atomic weight ratio / kT) = 1 / (2 sqrt(xi))
     real(8) :: temp        ! real temporary value
-    real(8) :: E           ! energy, eV
-    real(8) :: sqrtkT      ! sqrt(kT (in eV))
     integer :: i_pole      ! index of pole
     integer :: i_poly      ! index of curvefit
     integer :: i_window    ! index of window
@@ -625,10 +615,6 @@ contains
 
     ! ==========================================================================
     ! Bookkeeping
-
-    ! Convert to eV.
-    E = Emev * 1.0e6_8
-    sqrtkT = sqrtkT_ * 1.0e3_8
 
     ! Define some frequently used variables.
     sqrtE = sqrt(E)

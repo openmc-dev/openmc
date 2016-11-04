@@ -40,12 +40,12 @@
 1      1  2  1        1   total  0.020546  0.008145
 2      2  1  1        1   total  0.026008  0.003213
 3      2  2  1        1   total  0.021015  0.004911
-  mesh 1       group in nuclide      mean std. dev.
-       x  y  z                                     
-0      1  1  1        1   total  1.596880  0.348354
-1      1  2  1        1   total  1.610266  0.638515
-2      2  1  1        1   total  2.048209  0.257682
-3      2  2  1        1   total  1.660283  0.390011
+  mesh 1       group in nuclide          mean      std. dev.
+       x  y  z                                              
+0      1  1  1        1   total  1.596880e+06  348353.788370
+1      1  2  1        1   total  1.610266e+06  638514.814974
+2      2  1  1        1   total  2.048209e+06  257681.654621
+3      2  2  1        1   total  1.660283e+06  390011.391278
   mesh 1       group in nuclide      mean std. dev.
        x  y  z                                     
 0      1  1  1        1   total  0.633490  0.094536

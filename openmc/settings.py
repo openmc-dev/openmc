@@ -93,7 +93,7 @@ class Settings(object):
         should be a float indicating weight cutoff below which particle undergo
         Russian roulette. Value for 'weight_avg' should be a float indicating
         weight assigned to particles that are not killed after Russian
-        roulette. Value of energy should be a float indicating energy in MeV
+        roulette. Value of energy should be a float indicating energy in eV
         below which particle will be killed.
     entropy_dimension : tuple or list
         Number of Shannon entropy mesh cells in the x, y, and z directions,
@@ -603,12 +603,19 @@ class Settings(object):
 
     @cross_sections.setter
     def cross_sections(self, cross_sections):
+        warnings.warn('Settings.cross_sections has been deprecated and will be '
+                      'removed in a future version. Materials.cross_sections '
+                      'should defined instead.', DeprecationWarning)
         cv.check_type('cross sections', cross_sections, string_types)
         self._cross_sections = cross_sections
 
     @multipole_library.setter
     def multipole_library(self, multipole_library):
-        cv.check_type('cross sections', multipole_library, string_types)
+        warnings.warn('Settings.multipole_library has been deprecated and will '
+                      'be removed in a future version. '
+                      'Materials.multipole_library should defined instead.',
+                      DeprecationWarning)
+        cv.check_type('multipole library', multipole_library, string_types)
         self._multipole_library = multipole_library
 
     @ptables.setter
@@ -713,6 +720,7 @@ class Settings(object):
 
     @temperature.setter
     def temperature(self, temperature):
+
         cv.check_type('temperature settings', temperature, Mapping)
         for key, value in temperature.items():
             cv.check_value('temperature key', key,

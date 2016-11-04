@@ -16,7 +16,7 @@ class MGXSTestHarness(PyAPITestHarness):
         super(MGXSTestHarness, self)._build_inputs()
 
         # Initialize a one-group structure
-        energy_groups = openmc.mgxs.EnergyGroups(group_edges=[0, 20.])
+        energy_groups = openmc.mgxs.EnergyGroups(group_edges=[0, 20.e6])
 
         # Initialize MGXS Library for a few cross section types
         # for one material-filled cell in the geometry

@@ -194,7 +194,7 @@ contains
   end subroutine create_macro_xs
 
 !===============================================================================
-! GET_MAT_kTs returns a list of temperatures (in MeV) that each
+! GET_MAT_kTs returns a list of temperatures (in eV) that each
 ! material appears at in the model.
 !===============================================================================
 
@@ -203,7 +203,7 @@ contains
     type(VectorReal), allocatable, intent(out) :: kTs(:)
     integer :: i, j        ! Cell and material index
     integer :: i_material  ! Index in materials array
-    real(8) :: kT          ! temperature in MeV
+    real(8) :: kT          ! temperature in eV
 
     allocate(kTs(size(materials)))
 

@@ -42,4 +42,8 @@ element materials {
       (element name { xsd:string } | attribute name { xsd:string })
     }*
   }+
+
+  element cross_sections { xsd:string { maxLength = "255" } }? &
+
+  element multipole_library { xsd:string { maxLength = "255" } }? &
 }

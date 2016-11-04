@@ -15,8 +15,8 @@ from openmc.checkvalue import check_type, check_value, check_greater_than, \
 # Supported incoming particle MGXS angular treatment representations
 _REPRESENTATIONS = ['isotropic', 'angle']
 _SCATTER_TYPES = ['tabular', 'legendre', 'histogram']
-_XS_SHAPES = ["[Order][G][G']", "[G]", "[G']", "[G][G']", "[DG]", "[DG][G]",
-              "[DG][G']", "[DG][G][G']"]
+_XS_SHAPES = ["[Order][G][G']", "[G]", "[G']", "[G][G']", "[DG]", "[G][DG]",
+              "[G'][DG]", "[G][G'][DG]"]
 
 
 class XSdata(object):
@@ -145,11 +145,11 @@ class XSdata(object):
 
     [DG]: beta, decay_rate
 
-    [DG][G]: delayed_nu_fission, beta, decay_rate
+    [G][DG]: delayed_nu_fission, beta, decay_rate
 
-    [DG][G']: chi_delayed
+    [G'][DG]: chi_delayed
 
-    [DG][G][G']: delayed_nu_fission
+    [G][G'][DG]: delayed_nu_fission
 
     """
 
@@ -296,13 +296,14 @@ class XSdata(object):
             self._xs_shapes["[G][G']"] = (self.energy_groups.num_groups,
                                           self.energy_groups.num_groups)
             self._xs_shapes["[DG]"] = (self.num_delayed_groups,)
-            self._xs_shapes["[DG][G]"] = (self.num_delayed_groups,
-                                          self.energy_groups.num_groups)
-            self._xs_shapes["[DG][G']"] = (self.num_delayed_groups,
-                                           self.energy_groups.num_groups)
-            self._xs_shapes["[DG][G][G']"] = (self.num_delayed_groups,
+            self._xs_shapes["[G][DG]"] = (self.energy_groups.num_groups,
+                                          self.num_delayed_groups)
+            self._xs_shapes["[G'][DG]"] = (self.energy_groups.num_groups,
+                                           self.num_delayed_groups)
+            self._xs_shapes["[G][G'][DG]"] = (self.energy_groups.num_groups,
                                               self.energy_groups.num_groups,
-                                              self.energy_groups.num_groups)
+                                              self.num_delayed_groups)
+
             self._xs_shapes["[Order][G][G']"] \
                 = (self.num_orders, self.energy_groups.num_groups,
                    self.energy_groups.num_groups)
@@ -446,8 +447,6 @@ class XSdata(object):
 
         """
 
-        check_type('total', total, Iterable, expected_iter_type=Real)
-
         # Get the accepted shapes for this xs
         shapes = [self.xs_shapes["[G]"]]
 
@@ -478,8 +477,6 @@ class XSdata(object):
 
         """
 
-        check_type('absorption', absorption, Iterable, expected_iter_type=Real)
-
         # Get the accepted shapes for this xs
         shapes = [self.xs_shapes["[G]"]]
 
@@ -509,8 +506,6 @@ class XSdata(object):
         openmc.mgxs_library.set_fission_mgxs()
 
         """
-
-        check_type('fission', fission, Iterable, expected_iter_type=Real)
 
         # Get the accepted shapes for this xs
         shapes = [self.xs_shapes["[G]"]]
@@ -544,9 +539,6 @@ class XSdata(object):
         openmc.mgxs_library.set_kappa_fission_mgxs()
 
         """
-
-        check_type('kappa_fission', kappa_fission, Iterable,
-                   expected_iter_type=Real)
 
         # Get the accepted shapes for this xs
         shapes = [self.xs_shapes["[G]"]]
@@ -642,7 +634,7 @@ class XSdata(object):
         """
 
         # Get the accepted shapes for this xs
-        shapes = [self.xs_shapes["[G']"], self.xs_shapes["[DG][G']"]]
+        shapes = [self.xs_shapes["[G']"], self.xs_shapes["[G'][DG]"]]
 
         # Convert to a numpy array so we can easily get the shape for checking
         chi_delayed = np.asarray(chi_delayed)
@@ -672,7 +664,7 @@ class XSdata(object):
         """
 
         # Get the accepted shapes for this xs
-        shapes = [self.xs_shapes["[DG]"], self.xs_shapes["[DG][G]"]]
+        shapes = [self.xs_shapes["[DG]"], self.xs_shapes["[G][DG]"]]
 
         # Convert to a numpy array so we can easily get the shape for checking
         beta = np.asarray(beta)
@@ -701,10 +693,8 @@ class XSdata(object):
 
         """
 
-        check_type('decay_rate', decay_rate, Iterable, expected_iter_type=Real)
-
         # Get the accepted shapes for this xs
-        shapes = [self.xs_shapes["[DG]"], self.xs_shapes["[DG][G]"]]
+        shapes = [self.xs_shapes["[DG]"], self.xs_shapes["[G][DG]"]]
 
         # Convert to a numpy array so we can easily get the shape for checking
         decay_rate = np.asarray(decay_rate)
@@ -866,7 +856,7 @@ class XSdata(object):
         """
 
         # Get the accepted shapes for this xs
-        shapes = [self.xs_shapes["[DG][G]"], self.xs_shapes["[DG][G][G']"]]
+        shapes = [self.xs_shapes["[G][DG]"], self.xs_shapes["[G][G'][DG]"]]
 
         # Convert to a numpy array so we can easily get the shape for checking
         delayed_nu_fission = np.asarray(delayed_nu_fission)
@@ -895,9 +885,6 @@ class XSdata(object):
             (294K).
 
         """
-
-        check_type('inverse_velocity', inv_vel, Iterable,
-                   expected_iter_type=Real)
 
         # Get the accepted shapes for this xs
         shapes = [self.xs_shapes["[G]"]]
@@ -1662,10 +1649,10 @@ class XSdata(object):
             grp.attrs['representation'] = np.string_(self.representation)
             if self.representation == 'angle':
                 if self.num_azimuthal is not None:
-                    grp.attrs['num-azimuthal'] = self.num_azimuthal
+                    grp.attrs['num_azimuthal'] = self.num_azimuthal
 
                 if self.num_polar is not None:
-                    grp.attrs['num-polar'] = self.num_polar
+                    grp.attrs['num_polar'] = self.num_polar
 
         grp.attrs['scatter_shape'] = np.string_("[Order][G][G']")
         if self.scatter_format is not None:
@@ -1830,9 +1817,9 @@ class XSdata(object):
                                                    g_out_bounds[p, a, g_in, 1] + 1):
                                     flat_mult.append(matrix[g_in, g_out])
 
-                # And write it.
-                scatt_grp.create_dataset("multiplicity_matrix",
-                                         data=np.array(flat_mult))
+                    # And write it.
+                    scatt_grp.create_dataset("multiplicity_matrix",
+                                             data=np.array(flat_mult))
 
                 # And finally, adjust g_out_bounds for 1-based group counting
                 # and write it.

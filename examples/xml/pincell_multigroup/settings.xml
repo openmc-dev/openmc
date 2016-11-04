@@ -10,6 +10,5 @@
             <parameters>-0.63 -0.63 -1 0.63 0.63 1</parameters>
         </space>
     </source>
-    <cross_sections>./mgxs.h5</cross_sections>
     <energy_mode>multi-group</energy_mode>
 </settings>

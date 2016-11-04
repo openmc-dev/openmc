@@ -15,8 +15,8 @@ particles = 1000
 ###############################################################################
 
 # Instantiate the energy group data
-groups = openmc.mgxs.EnergyGroups(group_edges=[1E-11, 0.0635E-6, 10.0E-6,
-                                               1.0E-4, 1.0E-3, 0.5, 1.0, 20.0])
+groups = openmc.mgxs.EnergyGroups(group_edges=[
+    1e-5, 0.0635, 10.0, 1.0e2, 1.0e3, 0.5e6, 1.0e6, 20.0e6])
 
 # Instantiate the 7-group (C5G7) cross section data
 uo2_xsdata = openmc.XSdata('UO2', groups)
@@ -83,6 +83,7 @@ water.add_macroscopic(h2o_data)
 
 # Instantiate a Materials collection and export to XML
 materials_file = openmc.Materials([uo2, water])
+materials_file.cross_sections = "./mgxs.h5"
 materials_file.export_to_xml()
 
 
@@ -132,7 +133,6 @@ geometry.export_to_xml()
 # Instantiate a Settings object, set all runtime parameters, and export to XML
 settings_file = openmc.Settings()
 settings_file.energy_mode = "multi-group"
-settings_file.cross_sections = "./mgxs.h5"
 settings_file.batches = batches
 settings_file.inactive = inactive
 settings_file.particles = particles
@@ -156,8 +156,8 @@ mesh.lower_left = [-0.63, -0.63, -1.e50]
 mesh.upper_right = [0.63, 0.63, 1.e50]
 
 # Instantiate some tally Filters
-energy_filter = openmc.EnergyFilter([1E-11, 0.0635E-6, 10.0E-6, 1.0E-4, 1.0E-3,
-                                    0.5, 1.0, 20.0])
+energy_filter = openmc.EnergyFilter([1e-5, 0.0635, 10.0, 1.0e2, 1.0e3, 0.5e6,
+                                     1.0e6, 20.0e6])
 mesh_filter = openmc.MeshFilter(mesh)
 
 # Instantiate the Tally

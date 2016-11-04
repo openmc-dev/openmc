@@ -87,9 +87,9 @@ class Nuclide(object):
 
     @scattering.setter
     def scattering(self, scattering):
-        if not scattering in ['data', 'iso-in-lab']:
-            msg = 'Unable to set scattering for Nuclide to {0} ' \
-                  'which is not "data" or "iso-in-lab"'.format(scattering)
+        if not scattering in ['data', 'iso-in-lab', None]:
+            msg = 'Unable to set scattering for Nuclide to {0} which ' \
+                  'is not "data", "iso-in-lab", or None'.format(scattering)
             raise ValueError(msg)
 
         self._scattering = scattering

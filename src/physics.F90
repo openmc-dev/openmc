@@ -47,7 +47,7 @@ contains
     if (verbosity >= 10 .or. trace) then
       call write_message("    " // trim(reaction_name(p % event_MT)) &
            &// " with " // trim(adjustl(nuclides(p % event_nuclide) % name)) &
-           &// ". Energy = " // trim(to_str(p % E * 1e6_8)) // " eV.")
+           &// ". Energy = " // trim(to_str(p % E)) // " eV.")
     end if
 
     ! check for very low energy
@@ -97,10 +97,10 @@ contains
 
     if (nuc % fissionable) then
       if (run_mode == MODE_EIGENVALUE) then
-        call sample_fission(i_nuclide, i_reaction)
+        call sample_fission(i_nuclide, p % E, i_reaction)
         call create_fission_sites(p, i_nuclide, i_reaction, fission_bank, n_bank)
       elseif (run_mode == MODE_FIXEDSOURCE .and. create_fission_neutrons) then
-        call sample_fission(i_nuclide, i_reaction)
+        call sample_fission(i_nuclide, p % E, i_reaction)
         call create_fission_sites(p, i_nuclide, i_reaction, &
              p % secondary_bank, p % n_secondary)
       end if
@@ -202,8 +202,9 @@ contains
 ! SAMPLE_FISSION
 !===============================================================================
 
-  subroutine sample_fission(i_nuclide, i_reaction)
+  subroutine sample_fission(i_nuclide, E, i_reaction)
     integer, intent(in)  :: i_nuclide  ! index in nuclides array
+    real(8), intent(in)  :: E          ! incident neutron energy
     integer, intent(out) :: i_reaction ! index in nuc % reactions array
 
     integer :: i
@@ -220,11 +221,20 @@ contains
     ! If we're in the URR, by default use the first fission reaction. We also
     ! default to the first reaction if we know that there are no partial fission
     ! reactions
-
     if (micro_xs(i_nuclide) % use_ptable .or. &
          .not. nuc % has_partial_fission) then
       i_reaction = nuc % index_fission(1)
       return
+    end if
+
+    ! Check to see if we are in a windowed multipole range.  WMP only supports
+    ! the first fission reaction.
+    if (nuc % mp_present) then
+      if (E >= nuc % multipole % start_E .and. &
+           E <= nuc % multipole % end_E) then
+        i_reaction = nuc % index_fission(1)
+        return
+      end if
     end if
 
     ! Get grid index and interpolatoin factor and sample fission cdf
@@ -312,7 +322,7 @@ contains
     real(8) :: uvw_new(3) ! outgoing uvw for iso-in-lab scattering
     real(8) :: uvw_old(3) ! incoming uvw for iso-in-lab scattering
     real(8) :: phi        ! azimuthal angle for iso-in-lab scattering
-    real(8) :: kT         ! temperature in MeV
+    real(8) :: kT         ! temperature in eV
     type(Nuclide),  pointer :: nuc
 
     ! copy incoming direction
@@ -426,7 +436,7 @@ contains
   subroutine elastic_scatter(i_nuclide, rxn, kT, E, uvw, mu_lab, wgt)
     integer, intent(in)     :: i_nuclide
     type(Reaction), intent(in) :: rxn
-    real(8), intent(in)     :: kT      ! temperature in MeV
+    real(8), intent(in)     :: kT      ! temperature in eV
     real(8), intent(inout)  :: E
     real(8), intent(inout)  :: uvw(3)
     real(8), intent(out)    :: mu_lab
@@ -775,7 +785,7 @@ contains
     real(8), intent(in)    :: v_neut(3)   ! neutron velocity
     real(8), intent(inout) :: wgt         ! particle weight
     real(8), intent(in)    :: xs_eff      ! effective elastic xs at temperature T
-    real(8), intent(in)    :: kT          ! equilibrium temperature of target in MeV
+    real(8), intent(in)    :: kT          ! equilibrium temperature of target in eV
 
     real(8) :: awr     ! target/neutron mass ratio
     real(8) :: E_rel   ! trial relative energy
@@ -1016,7 +1026,7 @@ contains
     real(8), intent(out)         :: v_target(3)
     real(8), intent(in)          :: E
     real(8), intent(in)          :: uvw(3)
-    real(8), intent(in)          :: kT      ! equilibrium temperature of target in MeV
+    real(8), intent(in)          :: kT      ! equilibrium temperature of target in eV
 
     real(8) :: awr         ! target/neutron mass ratio
     real(8) :: alpha       ! probability of sampling f2 over f1

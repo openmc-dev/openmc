@@ -25,10 +25,6 @@ element settings {
     }
   ) &
 
-  element cross_sections { xsd:string { maxLength = "255" } }? &
-
-  element multipole_library { xsd:string { maxLength = "255" } }? &
-
   element cutoff {
     (element weight { xsd:double } | attribute weight { xsd:double })? &
     (element weight_avg { xsd:double } | attribute weight_avg { xsd:double })?

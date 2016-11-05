@@ -64,6 +64,7 @@ module mgxs_header
     ! Fission information
     logical :: fissionable  ! mgxs object is fissionable?
     integer :: scatter_format ! either legendre, histogram, or tabular.
+    integer :: num_delayed_groups ! Num delayed groups
 
     ! Caching information
     integer :: index_temp ! temperature index for nuclide
@@ -444,6 +445,9 @@ module mgxs_header
       ! Call generic data gathering routine (will populate the metadata)
       call mgxs_from_hdf5(this, xs_id, temperature, method, tolerance, &
                           temps_to_read, order_dim)
+
+      ! Set the number of delayed groups
+      this % num_delayed_groups = delayed_groups
 
       ! Load the more specific data
       do t = 1, temps_to_read % size()
@@ -1126,6 +1130,9 @@ module mgxs_header
       call mgxs_from_hdf5(this, xs_id, temperature, method, tolerance, &
                           temps_to_read, order_dim)
 
+      ! Set the number of delayed groups
+      this % num_delayed_groups = delayed_groups
+
       ! Load the more specific data
       do t = 1, temps_to_read % size()
         associate(xs => this % xs(t))
@@ -1556,7 +1563,7 @@ module mgxs_header
 
                 ! If beta is zeros, raise error
                 if (temp_beta(1,1,1,1) == ZERO) then
-                  call fatal_error("cannot set delayed-nu-fission with a 1D &
+                  call fatal_error("cannot set delayed-nu-fission with a 3D &
                        &array if beta not provided")
                 end if
 
@@ -2030,6 +2037,7 @@ module mgxs_header
         this % name = trim(mat % name)
       end if
 
+      ! Set whether this material is fissionable
       this % fissionable = mat % fissionable
 
       ! The following info we should initialize, but we dont need it nor
@@ -2162,6 +2170,9 @@ module mgxs_header
       ! Set the meta-data
       call mgxs_combine(this, temps, mat, nuclides, max_order, scatter_format, &
                         order_dim)
+
+      ! Set the number of delayed groups
+      this % num_delayed_groups = delayed_groups
 
       ! Create the Xs Data for each temperature
       TEMP_LOOP: do t = 1, temps % size()
@@ -2461,6 +2472,9 @@ module mgxs_header
       ! Set the meta-data
       call mgxs_combine(this, temps, mat, nuclides, max_order, scatter_format, &
            order_dim)
+
+      ! Set the number of delayed groups
+      this % num_delayed_groups = delayed_groups
 
       ! Get the number of each polar and azi angles and make sure all the
       ! NuclideAngle types have the same number of these angles
@@ -3121,7 +3135,7 @@ module mgxs_header
         end do
 
         ! Adjust dg in case of round off error
-        dg = min(dg, num_delayed_groups)
+        dg = min(dg, this % num_delayed_groups)
 
         ! Get the outgoing group
         gout = 1
@@ -3175,7 +3189,7 @@ module mgxs_header
         ! Get the delayed group
         dg = 0
 
-        do while (xi_pd < prob_prompt)
+        do while (xi_pd >= prob_prompt)
           dg = dg + 1
           prob_prompt = prob_prompt + &
                this % get_xs('delayed-nu-fission', gin, uvw=uvw, dg=dg) / &
@@ -3183,7 +3197,7 @@ module mgxs_header
         end do
 
         ! Adjust dg in case of round off error
-        dg = min(dg, num_delayed_groups)
+        dg = min(dg, this % num_delayed_groups)
 
         ! Get the outgoing group
         gout = 1

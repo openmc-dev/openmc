@@ -818,10 +818,10 @@ class RealFilter(Filter):
             return False
 
         if self.bins[0] == other.bins[-1]:
-            # This low energy edge coincides with other's high edge
+            # This low edge coincides with other's high edge
             return True
         elif self.bins[-1] == other.bins[0]:
-            # This high energy edge coincides with other's low edge
+            # This high edge coincides with other's low edge
             return True
         else:
             return False
@@ -888,12 +888,12 @@ class EnergyFilter(RealFilter):
     Parameters
     ----------
     bins : Iterable of Real
-        A grid of energy values (in MeV).
+        A grid of energy values in eV.
 
     Attributes
     ----------
     bins : Iterable of Real
-        A grid of energy values (in MeV).
+        A grid of energy values in eV.
     num_bins : Integral
         The number of filter bins
     stride : Integral
@@ -978,8 +978,8 @@ class EnergyFilter(RealFilter):
         hi_bins = np.tile(hi_bins, tile_factor)
 
         # Add the new energy columns to the DataFrame.
-        df.loc[:, self.short_name.lower() + ' low [MeV]'] = lo_bins
-        df.loc[:, self.short_name.lower() + ' high [MeV]'] = hi_bins
+        df.loc[:, self.short_name.lower() + ' low [eV]'] = lo_bins
+        df.loc[:, self.short_name.lower() + ' high [eV]'] = hi_bins
 
         return df
 
@@ -990,12 +990,12 @@ class EnergyoutFilter(EnergyFilter):
     Parameters
     ----------
     bins : Iterable of Real
-        A grid of energy values (in MeV).
+        A grid of energy values in eV.
 
     Attributes
     ----------
     bins : Iterable of Real
-        A grid of energy values (in MeV).
+        A grid of energy values in eV.
     num_bins : Integral
         The number of filter bins
     stride : Integral

@@ -86,8 +86,8 @@ class AsymmetricLatticeTestHarness(PyAPITestHarness):
 
         # Create a string of all mean, std. dev. values for both tallies
         outstr = ''
-        outstr += ', '.join(map(str, tally.mean.flatten())) + '\n'
-        outstr += ', '.join(map(str, tally.std_dev.flatten())) + '\n'
+        outstr += '\n'.join(map('{:.8e}'.format, tally.mean.flatten())) + '\n'
+        outstr += '\n'.join(map('{:.8e}'.format, tally.std_dev.flatten())) + '\n'
 
         # Extract fuel assembly lattices from the summary
         core = sp.summary.get_cell_by_id(1)

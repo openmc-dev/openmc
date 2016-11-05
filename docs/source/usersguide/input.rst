@@ -105,19 +105,6 @@ standard deviation.
 
   *Default*: false
 
-.. _cross_sections:
-
-``<cross_sections>`` Element
-----------------------------
-
-The ``<cross_sections>`` element has no attributes and simply indicates the path
-to an XML cross section listing file (usually named cross_sections.xml). If this
-element is absent from the settings.xml file, the
-:envvar:`OPENMC_CROSS_SECTIONS` environment variable will be used to find the
-path to the XML cross section listing when in continuous-energy mode, and the
-:envvar:`OPENMC_MG_CROSS_SECTIONS` environment variable will be used in
-multi-group mode.
-
 ``<cutoff>`` Element
 --------------------
 
@@ -289,20 +276,6 @@ based on the recommended value in LA-UR-14-24530_.
 
   .. note:: This element is not used in the multi-group :ref:`energy_mode`.
 
-.. _multipole_library:
-
-``<multipole_library>`` Element
--------------------------------
-
-The ``<multipole_library>`` element indicates the directory containing a
-windowed multipole library. If a windowed multipole library is available,
-OpenMC can use it for on-the-fly Doppler-broadening of resolved resonance range
-cross sections. If this element is absent from the settings.xml file, the
-:envvar:`OPENMC_MULTIPOLE_LIBRARY` environment variable will be used.
-
-  .. note:: The <temperature_multipole> element must also be set to "true" for
-    windowed multipole functionality.
-
 ``<max_order>`` Element
 ---------------------------
 
@@ -315,29 +288,6 @@ then, OpenMC will only use up to the :math:`P_1` data.
 
   .. note:: This element is not used in the continuous-energy
     :ref:`energy_mode`.
-
-.. _natural_elements:
-
-``<natural_elements>`` Element
-------------------------------
-
-The ``<natural_elements>`` element indicates to OpenMC what nuclides are
-available in the cross section library when expanding an ``<element>`` into
-separate isotopes (see :ref:`material`). The accepted values are:
-
-  - ENDF/B-VII.0
-  - ENDF/B-VII.1
-  - JEFF-3.1.1
-  - JEFF-3.1.2
-  - JEFF-3.2
-  - JENDL-3.2
-  - JENDL-3.3
-  - JENDL-4.0
-
-Note that the value is case-insensitive, so "ENDF/B-VII.1" is equivalent to
-"endf/b-vii.1".
-
-  *Default*: ENDF/B-VII.1
 
 ``<no_reduce>`` Element
 -----------------------
@@ -577,6 +527,9 @@ attributes/sub-elements:
     An element specifying the energy distribution of source sites. The necessary
     sub-elements/attributes are those of a univariate probability distribution
     (see the description in :ref:`univariate`).
+
+    *Default*: Watt spectrum with :math:`a` = 0.988 MeV and :math:`b` =
+    2.249 MeV :sup:`-1`
 
   :write_initial:
     An element specifying whether to write out the initial source bank used at
@@ -1368,6 +1321,33 @@ Here is an example of a properly defined 2d hexagonal lattice:
 Materials Specification -- materials.xml
 ----------------------------------------
 
+.. _cross_sections:
+
+``<cross_sections>`` Element
+----------------------------
+
+The ``<cross_sections>`` element has no attributes and simply indicates the path
+to an XML cross section listing file (usually named cross_sections.xml). If this
+element is absent from the settings.xml file, the
+:envvar:`OPENMC_CROSS_SECTIONS` environment variable will be used to find the
+path to the XML cross section listing when in continuous-energy mode, and the
+:envvar:`OPENMC_MG_CROSS_SECTIONS` environment variable will be used in
+multi-group mode.
+
+.. _multipole_library:
+
+``<multipole_library>`` Element
+-------------------------------
+
+The ``<multipole_library>`` element indicates the directory containing a
+windowed multipole library. If a windowed multipole library is available,
+OpenMC can use it for on-the-fly Doppler-broadening of resolved resonance range
+cross sections. If this element is absent from the settings.xml file, the
+:envvar:`OPENMC_MULTIPOLE_LIBRARY` environment variable will be used.
+
+  .. note:: The <temperature_multipole> element must also be set to "true" for
+    windowed multipole functionality.
+
 .. _material:
 
 ``<material>`` Element
@@ -1440,43 +1420,6 @@ Each ``material`` element can have the following attributes or sub-elements:
     .. note:: The ``scattering`` attribute/sub-element is not used in the
               multi-group :ref:`energy_mode`.
 
-  :element:
-
-    Specifies that a natural element is present in the material. The natural
-    element is split up into individual isotopes based on `IUPAC Isotopic
-    Compositions of the Elements 2009`_. This element has
-    attributes/sub-elements called ``name``, and ``ao``. The ``name``
-    attribute is the atomic symbol of the element. Finally, the ``ao``
-    attribute specifies the atom percent of the element within the material,
-    respectively. One example would be as follows:
-
-    .. code-block:: xml
-
-        <element name="Al" ao="8.7115e-03" />
-        <element name="Mg" ao="1.5498e-04" />
-        <element name="Mn" ao="2.7426e-05" />
-        <element name="Cu" ao="1.6993e-04" />
-
-    In some cross section libraries, certain naturally occurring isotopes do not
-    have cross sections. The :ref:`natural_elements` option determines how a
-    natural element is split into isotopes in these cases.
-
-    *Default*: None
-
-    An optional attribute/sub-element for each element is ``scattering``. This
-    attribute may be set to "data" to use the scattering laws specified by the
-    cross section library (default). Alternatively, when set to "iso-in-lab",
-    the scattering laws are used to sample the outgoing energy but an
-    isotropic-in-lab  distribution is used to sample the outgoing angle at each
-    scattering interaction. The ``scattering`` attribute may be most useful
-    when using OpenMC to compute multi-group cross-sections for deterministic
-    transport codes and to quantify the effects of anisotropic scattering.
-
-    *Default*: None
-
-    .. note:: The ``scattering`` attribute/sub-element is not used in the
-              multi-group :ref:`energy_mode`.
-
   :sab:
     Associates an S(a,b) table with the material. This element has one
     attribute/sub-element called ``name``. The ``name`` attribute
@@ -1502,9 +1445,6 @@ Each ``material`` element can have the following attributes or sub-elements:
     .. note:: This element is only used in the multi-group :ref:`energy_mode`.
 
     *Default*: None
-
-.. _IUPAC Isotopic Compositions of the Elements 2009:
-    http://pac.iupac.org/publications/pac/pdf/2011/pdf/8302x0397.pdf
 
 ------------------------------------
 Tallies Specification -- tallies.xml
@@ -1583,7 +1523,7 @@ The ``<tally>`` element accepts the following sub-elements:
 
           .. code-block:: xml
 
-              <filter type="energy" bins="0.0 1.0 20.0" />
+              <filter type="energy" bins="0.0 1.0e6 20.0e6" />
 
           then two energy bins will be created, one with energies between 0 and
           1 MeV and the other with energies between 1 and 20 MeV.
@@ -1598,7 +1538,7 @@ The ``<tally>`` element accepts the following sub-elements:
 
           .. code-block:: xml
 
-              <filter type="energyout" bins="0.0 1.0 20.0" />
+              <filter type="energyout" bins="0.0 1.0e6 20.0e6" />
 
           then two post-collision energy bins will be created, one with
           energies between 0 and 1 MeV and the other with energies between
@@ -1917,7 +1857,7 @@ The ``<tally>`` element accepts the following sub-elements:
         |                      |particles. The neutrino energy does not contribute |
         |                      |to this response. The prompt and delayed           |
         |                      |:math:`\gamma`-rays are assumed to deposit their   |
-        |                      |energy locally. Units are MeV per source particle. |
+        |                      |energy locally. Units are eV per source particle.  |
         +----------------------+---------------------------------------------------+
         |fission-q-prompt      |The prompt fission energy production rate. This    |
         |                      |energy comes in the form of fission fragment       |
@@ -1926,7 +1866,7 @@ The ``<tally>`` element accepts the following sub-elements:
         |                      |incident energy and it requires that the nuclear   |
         |                      |data library contains the optional fission energy  |
         |                      |release data. Energy is assumed to be deposited    |
-        |                      |locally. Units are MeV per source particle.        |
+        |                      |locally. Units are eV per source particle.         |
         +----------------------+---------------------------------------------------+
         |fission-q-recoverable |The recoverable fission energy production rate.    |
         |                      |This energy comes in the form of fission fragment  |
@@ -1937,7 +1877,7 @@ The ``<tally>`` element accepts the following sub-elements:
         |                      |incident neutron energy and it requires that the   |
         |                      |nuclear data library contains the optional fission |
         |                      |energy release data. Energy is assumed to be       |
-        |                      |deposited locally. Units are MeV per source        |
+        |                      |deposited locally. Units are eV per source         |
         |                      |paticle.                                           |
         +----------------------+---------------------------------------------------+
         |decay-rate            |The delayed-nu-fission-weighted decay rate where   |
@@ -2319,7 +2259,7 @@ attributes/sub-elements:
     The width of mesh cells in each direction.
 
   :energy:
-    Energy bins [in MeV], listed in ascending order (e.g. 0.0 0.625e-7 20.0)
+    Energy bins [in eV], listed in ascending order (e.g. 0.0 0.625 20.0e6)
     for CMFD tallies and acceleration. If no energy bins are listed, OpenMC
     automatically assumes a one energy group calculation over the entire
     energy range.

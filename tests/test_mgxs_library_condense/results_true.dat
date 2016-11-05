@@ -12,8 +12,8 @@
 0     10000         1   total  0.036855   0.002622
    material  group in nuclide      mean  std. dev.
 0     10000         1   total  0.090649    0.00641
-   material  group in nuclide      mean  std. dev.
-0     10000         1   total  7.137955   0.507364
+   material  group in nuclide          mean      std. dev.
+0     10000         1   total  7.137955e+06  507363.814553
    material  group in nuclide      mean  std. dev.
 0     10000         1   total  0.388721    0.01783
    material  group in nuclide      mean  std. dev.

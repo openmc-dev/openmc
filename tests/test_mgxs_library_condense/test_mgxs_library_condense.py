@@ -20,8 +20,7 @@ class MGXSTestHarness(PyAPITestHarness):
         super(MGXSTestHarness, self)._build_inputs()
 
         # Initialize a two-group structure
-        energy_groups = openmc.mgxs.EnergyGroups(group_edges=[0, 0.625e-6,
-                                                              20.])
+        energy_groups = openmc.mgxs.EnergyGroups(group_edges=[0, 0.625, 20.e6])
 
         # Initialize a six-delayed-group structure
         delayed_groups = list(range(1,7))
@@ -55,7 +54,7 @@ class MGXSTestHarness(PyAPITestHarness):
         self.mgxs_lib.load_from_statepoint(sp)
 
         # Build a condensed 1-group MGXS Library
-        one_group = openmc.mgxs.EnergyGroups([0., 20.])
+        one_group = openmc.mgxs.EnergyGroups([0., 20.e6])
         condense_lib = self.mgxs_lib.get_condensed_library(one_group)
 
         # Build a string from Pandas Dataframe for each 1-group MGXS

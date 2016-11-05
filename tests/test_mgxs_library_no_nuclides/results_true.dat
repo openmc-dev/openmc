@@ -84,6 +84,11 @@
    material  group in nuclide      mean  std. dev.
 1     10000         1   total  0.019239   0.001310
 0     10000         2   total  0.466719   0.041411
+   material  group in  group out nuclide      mean  std. dev.
+3     10000         1          1   total  0.020142   0.003149
+2     10000         1          2   total  0.000000   0.000000
+1     10000         2          1   total  0.445819   0.028675
+0     10000         2          2   total  0.000000   0.000000
     material  delayedgroup  group in nuclide      mean  std. dev.
 1      10000             1         1   total  0.000023   0.000002
 3      10000             2         1   total  0.000144   0.000011
@@ -136,6 +141,31 @@
 6      10000             4         2   total  0.302780   0.109110
 8      10000             5         2   total  0.000000   0.000000
 10     10000             6         2   total  0.000000   0.000000
+    material  delayedgroup  group in  group out nuclide      mean  std. dev.
+3      10000             1         1          1   total  0.000000   0.000000
+7      10000             2         1          1   total  0.000000   0.000000
+11     10000             3         1          1   total  0.000000   0.000000
+15     10000             4         1          1   total  0.000000   0.000000
+19     10000             5         1          1   total  0.000000   0.000000
+23     10000             6         1          1   total  0.000000   0.000000
+2      10000             1         1          2   total  0.000000   0.000000
+6      10000             2         1          2   total  0.000000   0.000000
+10     10000             3         1          2   total  0.000000   0.000000
+14     10000             4         1          2   total  0.000000   0.000000
+18     10000             5         1          2   total  0.000000   0.000000
+22     10000             6         1          2   total  0.000000   0.000000
+1      10000             1         2          1   total  0.000000   0.000000
+5      10000             2         2          1   total  0.002538   0.001561
+9      10000             3         2          1   total  0.001186   0.001186
+13     10000             4         2          1   total  0.000860   0.000222
+17     10000             5         2          1   total  0.000000   0.000000
+21     10000             6         2          1   total  0.000000   0.000000
+0      10000             1         2          2   total  0.000000   0.000000
+4      10000             2         2          2   total  0.000000   0.000000
+8      10000             3         2          2   total  0.000000   0.000000
+12     10000             4         2          2   total  0.000000   0.000000
+16     10000             5         2          2   total  0.000000   0.000000
+20     10000             6         2          2   total  0.000000   0.000000
    material  group in nuclide      mean  std. dev.
 1     10001         1   total  0.313738   0.015582
 0     10001         2   total  0.300821   0.028052
@@ -222,6 +252,11 @@
    material  group in nuclide  mean  std. dev.
 1     10001         1   total   0.0        0.0
 0     10001         2   total   0.0        0.0
+   material  group in  group out nuclide  mean  std. dev.
+3     10001         1          1   total   0.0        0.0
+2     10001         1          2   total   0.0        0.0
+1     10001         2          1   total   0.0        0.0
+0     10001         2          2   total   0.0        0.0
     material  delayedgroup  group in nuclide  mean  std. dev.
 1      10001             1         1   total   0.0        0.0
 3      10001             2         1   total   0.0        0.0
@@ -274,6 +309,31 @@
 6      10001             4         2   total   0.0        0.0
 8      10001             5         2   total   0.0        0.0
 10     10001             6         2   total   0.0        0.0
+    material  delayedgroup  group in  group out nuclide  mean  std. dev.
+3      10001             1         1          1   total   0.0        0.0
+7      10001             2         1          1   total   0.0        0.0
+11     10001             3         1          1   total   0.0        0.0
+15     10001             4         1          1   total   0.0        0.0
+19     10001             5         1          1   total   0.0        0.0
+23     10001             6         1          1   total   0.0        0.0
+2      10001             1         1          2   total   0.0        0.0
+6      10001             2         1          2   total   0.0        0.0
+10     10001             3         1          2   total   0.0        0.0
+14     10001             4         1          2   total   0.0        0.0
+18     10001             5         1          2   total   0.0        0.0
+22     10001             6         1          2   total   0.0        0.0
+1      10001             1         2          1   total   0.0        0.0
+5      10001             2         2          1   total   0.0        0.0
+9      10001             3         2          1   total   0.0        0.0
+13     10001             4         2          1   total   0.0        0.0
+17     10001             5         2          1   total   0.0        0.0
+21     10001             6         2          1   total   0.0        0.0
+0      10001             1         2          2   total   0.0        0.0
+4      10001             2         2          2   total   0.0        0.0
+8      10001             3         2          2   total   0.0        0.0
+12     10001             4         2          2   total   0.0        0.0
+16     10001             5         2          2   total   0.0        0.0
+20     10001             6         2          2   total   0.0        0.0
    material  group in nuclide      mean  std. dev.
 1     10002         1   total  0.664572   0.031215
 0     10002         2   total  2.052384   0.224343
@@ -360,6 +420,11 @@
    material  group in nuclide  mean  std. dev.
 1     10002         1   total   0.0        0.0
 0     10002         2   total   0.0        0.0
+   material  group in  group out nuclide  mean  std. dev.
+3     10002         1          1   total   0.0        0.0
+2     10002         1          2   total   0.0        0.0
+1     10002         2          1   total   0.0        0.0
+0     10002         2          2   total   0.0        0.0
     material  delayedgroup  group in nuclide  mean  std. dev.
 1      10002             1         1   total   0.0        0.0
 3      10002             2         1   total   0.0        0.0
@@ -412,3 +477,28 @@
 6      10002             4         2   total   0.0        0.0
 8      10002             5         2   total   0.0        0.0
 10     10002             6         2   total   0.0        0.0
+    material  delayedgroup  group in  group out nuclide  mean  std. dev.
+3      10002             1         1          1   total   0.0        0.0
+7      10002             2         1          1   total   0.0        0.0
+11     10002             3         1          1   total   0.0        0.0
+15     10002             4         1          1   total   0.0        0.0
+19     10002             5         1          1   total   0.0        0.0
+23     10002             6         1          1   total   0.0        0.0
+2      10002             1         1          2   total   0.0        0.0
+6      10002             2         1          2   total   0.0        0.0
+10     10002             3         1          2   total   0.0        0.0
+14     10002             4         1          2   total   0.0        0.0
+18     10002             5         1          2   total   0.0        0.0
+22     10002             6         1          2   total   0.0        0.0
+1      10002             1         2          1   total   0.0        0.0
+5      10002             2         2          1   total   0.0        0.0
+9      10002             3         2          1   total   0.0        0.0
+13     10002             4         2          1   total   0.0        0.0
+17     10002             5         2          1   total   0.0        0.0
+21     10002             6         2          1   total   0.0        0.0
+0      10002             1         2          2   total   0.0        0.0
+4      10002             2         2          2   total   0.0        0.0
+8      10002             3         2          2   total   0.0        0.0
+12     10002             4         2          2   total   0.0        0.0
+16     10002             5         2          2   total   0.0        0.0
+20     10002             6         2          2   total   0.0        0.0

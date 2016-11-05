@@ -6,6 +6,9 @@ from xml.etree import ElementTree as ET
 import sys
 
 from six import string_types
+from scipy.interpolate import interp1d
+import numpy as np
+import h5py
 
 import openmc
 import openmc.data
@@ -26,6 +29,13 @@ def reset_auto_material_id():
 # Units for density supported by OpenMC
 DENSITY_UNITS = ['g/cm3', 'g/cc', 'kg/cm3', 'atom/b-cm', 'atom/cm3', 'sum',
                  'macro']
+
+# Supported keywords for material xs plotting 
+_PLOT_TYPES = ['total', 'scatter', 'elastic', 'inelastic', 'fission',
+               'absorption']
+# MTs to sum to generate associated plot_types
+_PLOT_TYPES_MT = {'total': (1,), 'scatter': (2, 4), 'elastic': (2,),
+                  'inelastic': (1,), 'fission': (18,), 'absorption': (102,)}
 
 
 class Material(object):
@@ -580,6 +590,105 @@ class Material(object):
                 nuclides[iso.name] = (iso, iso_pct, iso_pct_type)
 
         return nuclides
+
+    def plot_xs(self, library, types, labels=None):
+        """Creates a figure of macroscopic cross sections for this material
+
+        Parameters
+        ----------
+        library : openmc.data.DataLibrary
+            Library of data to use for plotting.
+        types : int, tuples of int, {'total', 'scatter', 'elastic', 'inelastic', 'fission', 'absorption'} or list thereof
+            The type of cross sections to include in the plot. This can either
+            be an MT number, a tuple of MT numbers (indicating they are to be
+            summed before plotting) or a string describing a common type.
+            These values can be either a single value, or an iterable
+            in the case of multiple sets per plot.
+        labels : str or list of str, optional
+            Labels to use in the plot legend for each type requested.
+            Single string (if there is only one type) or a list of strings
+            with a length matching the length of types.
+
+        Returns
+        -------
+        fig : matplotlib.figure.Figure
+            Matplotlib Figure of the generated macroscopic cross section
+
+        """
+
+        # Check types
+        # ## Need to add error messages in some ELSEs
+        # ## Need to add in label handling
+        if isinstance(types, Integral):
+            cv.check_greater_than('types', types, 0)
+        elif isinstance(types, list):
+            for line in types:
+                if isinstance(line, Integral):
+                    cv.check_greater_than('line in types', line, 0)
+                elif isinstance(line, tuple):
+                    for entry in line:
+                        if isinstance(entry, Integral):
+                            cv.check_greater_than('entry in line in types',
+                                                  entry, 0)
+                elif line in _PLOT_TYPES:
+                    # Replace with the MTs to sum to simplify downstream code
+                    line = _PLOT_TYPES_MT[line]
+
+        # Convert temperature to format for accessing in the library
+        if self.temperature is not None:
+            T = "{}K".format(int(round(self.temperature)))
+        else:
+            T = None
+
+        if isinstance(types, (Integral, str)):
+            types_ = [(types,)]
+        elif isinstance(types, tuple):
+            types_ = types
+
+        # Now we can create the data sets to be plotted
+        xs = []
+        E = []
+        percent = []
+
+        for n, nuclide in enumerate(self.nuclides):
+            nuc, pct, units = nuclide
+            # import pdb; pdb.set_trace()
+            percent.append(pct)
+            lib = library[nuc]
+            if lib is not None:
+                nuc = openmc.data.IncidentNeutron.from_hdf5(lib['path'])
+                # ## Need to check temperatures
+                nucT = T
+                # ##
+                E.append(nuc.energy[nucT])
+                xs.append([])
+                for l, line in enumerate(types_):
+                    # Get the reaction from the nuclide
+                    for mt in line:
+                        funcs = []
+                        if mt in nuc:
+                            funcs.append(nuc[mt].xs[nucT])
+                        # ## What if funcs is empty?
+                    xs[-1].append(openmc.data.Sum(funcs))
+            else:
+                raise ValueError(nuclide + " not in library")
+
+        # Condense the data for every nuclide
+        # First create a union energy grid
+        unionE = E[0]
+        for n in range(1, len(E)):
+            unionE = np.union1d(unionE, E[n])
+
+        # Now we can combine all the nuclidic data
+        data = np.zeros((len(types_), len(self.nuclides)))
+        for l in range(len(types_)):
+            for n in range(len(self.nuclides)):
+                # ##
+                density = percent[n]
+                # ##
+                data[l, n] += density * xs[n][l](unionE)
+
+        return data
 
     def _get_nuclide_xml(self, nuclide, distrib=False):
         xml_element = ET.Element("nuclide")

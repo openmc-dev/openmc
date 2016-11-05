@@ -1920,7 +1920,7 @@ class MatrixMDGXS(MDGXS):
         filter_bins = []
 
         # Construct a collection of the domain filter bins
-        if not isinstance(subdomains, basestring):
+        if not isinstance(subdomains, string_types):
             cv.check_iterable_type('subdomains', subdomains, Integral,
                                    max_depth=3)
             for subdomain in subdomains:
@@ -1928,7 +1928,7 @@ class MatrixMDGXS(MDGXS):
                 filter_bins.append((subdomain,))
 
         # Construct list of energy group bounds tuples for all requested groups
-        if not isinstance(in_groups, basestring):
+        if not isinstance(in_groups, string_types):
             cv.check_iterable_type('groups', in_groups, Integral)
             for group in in_groups:
                 filters.append(openmc.EnergyFilter)
@@ -1936,7 +1936,7 @@ class MatrixMDGXS(MDGXS):
                     self.energy_groups.get_group_bounds(group),))
 
         # Construct list of energy group bounds tuples for all requested groups
-        if not isinstance(out_groups, basestring):
+        if not isinstance(out_groups, string_types):
             cv.check_iterable_type('groups', out_groups, Integral)
             for group in out_groups:
                 filters.append(openmc.EnergyoutFilter)
@@ -1944,7 +1944,7 @@ class MatrixMDGXS(MDGXS):
                     self.energy_groups.get_group_bounds(group),))
 
         # Construct list of delayed group tuples for all requested groups
-        if not isinstance(delayed_groups, basestring):
+        if not isinstance(delayed_groups, string_types):
             cv.check_type('delayed groups', delayed_groups, list, int)
             for delayed_group in delayed_groups:
                 filters.append(openmc.DelayedGroupFilter)
@@ -2101,7 +2101,7 @@ class MatrixMDGXS(MDGXS):
         """
 
         # Construct a collection of the subdomains to report
-        if not isinstance(subdomains, basestring):
+        if not isinstance(subdomains, string_types):
             cv.check_iterable_type('subdomains', subdomains, Integral)
         elif self.domain_type == 'distribcell':
             subdomains = np.arange(self.num_subdomains, dtype=np.int)
@@ -2118,7 +2118,7 @@ class MatrixMDGXS(MDGXS):
             if nuclides == 'sum':
                 nuclides = ['sum']
             else:
-                cv.check_iterable_type('nuclides', nuclides, basestring)
+                cv.check_iterable_type('nuclides', nuclides, string_types)
         else:
             nuclides = ['sum']
 

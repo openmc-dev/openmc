@@ -45,18 +45,14 @@ sn119 = openmc.Nuclide('Sn119')
 sn120 = openmc.Nuclide('Sn120')
 sn122 = openmc.Nuclide('Sn122')
 sn124 = openmc.Nuclide('Sn124')
-u234 = openmc.Nuclide('U234')
-u235 = openmc.Nuclide('U235')
-u238 = openmc.Nuclide('U238')
+u = openmc.Element('U')
+o = openmc.Element('O')
 
 # Instantiate some Materials and register the appropriate Nuclides
 uo2 = openmc.Material(material_id=1, name='UO2 fuel at 2.4% wt enrichment')
 uo2.set_density('g/cm3', 10.29769)
-uo2.add_nuclide(u234, 4.4843e-6)
-uo2.add_nuclide(u235, 5.5815e-4)
-uo2.add_nuclide(u238, 2.2408e-2)
-uo2.add_nuclide(o16, 4.5829e-2)
-uo2.add_nuclide(o17, 1.1164e-4)
+uo2.add_element(u, 1., enrichment=0.024)
+uo2.add_element(o, 2.)
 
 helium = openmc.Material(material_id=2, name='Helium for gap')
 helium.set_density('g/cm3', 0.001598)
@@ -185,7 +181,7 @@ mesh.lower_left = [-0.62992, -0.62992, -1.e50]
 mesh.upper_right = [0.62992, 0.62992, 1.e50]
 
 # Instantiate some tally Filters
-energy_filter = openmc.EnergyFilter([0., 4.e-6, 20.])
+energy_filter = openmc.EnergyFilter([0., 4., 20.e6])
 mesh_filter = openmc.MeshFilter(mesh)
 
 # Instantiate the Tally

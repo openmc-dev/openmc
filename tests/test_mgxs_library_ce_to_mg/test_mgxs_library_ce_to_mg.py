@@ -20,8 +20,7 @@ class MGXSTestHarness(PyAPITestHarness):
         super(MGXSTestHarness, self)._build_inputs()
 
         # Initialize a two-group structure
-        energy_groups = openmc.mgxs.EnergyGroups(group_edges=[0, 0.625e-6,
-                                                              20.])
+        energy_groups = openmc.mgxs.EnergyGroups(group_edges=[0, 0.625, 20.e6])
 
         # Initialize MGXS Library for a few cross section types
         self.mgxs_lib = openmc.mgxs.Library(self._input_set.geometry)
@@ -60,8 +59,8 @@ class MGXSTestHarness(PyAPITestHarness):
         self._input_set.mgxs_file, self._input_set.materials, \
             self._input_set.geometry = self.mgxs_lib.create_mg_mode()
 
-        # Modify settings so we can run in MG mode
-        self._input_set.settings.cross_sections = './mgxs.h5'
+        # Modify materials and settings so we can run in MG mode
+        self._input_set.materials.cross_sections = './mgxs.h5'
         self._input_set.settings.energy_mode = 'multi-group'
 
         # Write modified input files

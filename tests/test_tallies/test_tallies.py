@@ -57,7 +57,7 @@ class TalliesTestHarness(PyAPITestHarness):
         dg_tally.filters = [DelayedGroupFilter((1, 2, 3, 4, 5, 6))]
         dg_tally.scores = ['delayed-nu-fission']
 
-        four_groups = (0.0, 0.253e-6, 1.0e-3, 1.0, 20.0)
+        four_groups = (0.0, 0.253, 1.0e3, 1.0e6, 20.0e6)
         energy_filter = EnergyFilter(four_groups)
         energy_tally = Tally()
         energy_tally.filters = [energy_filter]
@@ -122,7 +122,7 @@ class TalliesTestHarness(PyAPITestHarness):
             t.filters = [cell_filter]
             t.scores = ['absorption', 'delayed-nu-fission', 'events', 'fission',
                         'inverse-velocity', 'kappa-fission', '(n,2n)', '(n,n1)',
-                        '(n,gamma)', 'nu-fission', 'scatter', 'elastic', 
+                        '(n,gamma)', 'nu-fission', 'scatter', 'elastic',
                         'total', 'prompt-nu-fission', 'fission-q-prompt',
                         'fission-q-recoverable']
         score_tallies[0].estimator = 'tracklength'

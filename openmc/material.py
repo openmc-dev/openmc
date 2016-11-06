@@ -608,6 +608,94 @@ class Material(object):
 
         return nuclides
 
+    def get_nuclide_atom_densities(self, library):
+        """Returns all nuclides in the material and their atomic densities in
+        units of atom/b-cm
+
+        Parameters
+        ----------
+        library : openmc.data.DataLibrary
+            Library of data to use for plotting.
+
+        Returns
+        -------
+        nuclides : dict
+            Dictionary whose keys are nuclide names and values are 2-tuples of
+            (nuclide, density in atom/b-cm)
+
+        """
+
+        # Expand elements in to nuclides
+        nuclides = self.get_nuclide_densities()
+
+        sum_density = False
+        if self.density_units == 'sum':
+            sum_density = True
+            density = 0.
+        elif self.density_units == 'macro':
+            density = self.density
+        elif self.density_units == 'g/cc' or self.density_units == 'g/cm3':
+            density = -self.density
+        elif self.density_units == 'kg/m3':
+            density = -0.001 * self.density
+        elif self.density_units == 'atom/b-cm':
+            density = self.density
+        elif self.density_units == 'atom/cm3' or self.density_units == 'atom/cc':
+            density = 1.E-24 * self.density
+
+        # For ease of processing split out nuc, nuc_density,
+        # and nuc_density_type in to separate arrays
+        nucs = []
+        nuc_densities = []
+        nuc_density_types = []
+        for nuclide in nuclides.items():
+            nuc, nuc_data = nuclide
+            nuc, nuc_density, nuc_density_type = nuc_data
+            nucs.append(nuc)
+            nuc_densities.append(nuc_density)
+            nuc_density_types.append(nuc_density_type)
+
+        if sum_density:
+            density = np.sum(nuc_densities)
+        percent_in_atom = np.all(nuc_density_types == 'ao')
+        density_in_atom = density > 0.
+        sum_percent = 0.
+
+        awrs = []
+        n = -1
+        for nuclide in nuclides.items():
+            n += 1
+            lib = library[nuclide[0]]
+            if lib is not None:
+                nuc = openmc.data.IncidentNeutron.from_hdf5(lib['path'])
+                awrs.append(nuc.atomic_weight_ratio)
+                if not percent_in_atom:
+                    nuc_densities[n] = -nuc_densities[n] / awrs[-1]
+            else:
+                raise ValueError(nuclide + " not in library")
+
+        # Now that we have the awr, lets finish calculating densities
+        sum_percent = np.sum(nuc_densities)
+        nuc_densities = nuc_densities / sum_percent
+        if not density_in_atom:
+            sum_percent = 0.
+            for n, nuc in enumerate(nucs):
+                x = nuc_densities[n]
+                sum_percent += x * awrs[n]
+            sum_percent = 1. / sum_percent
+            density = -density * sum_percent * \
+                sc.Avogadro / sc.value('neutron mass in u') * 1.E-24
+        nuc_densities = density * nuc_densities
+
+        result = OrderedDict()
+        n = -1
+        for nuc in nucs:
+            n += 1
+            result[nuc] = (nuc, nuc_densities[n])
+
+        nuclides = result
+        return nuclides
+
     def plot_xs(self, library, types, temperature=294., Erange=(1.E-5, 20.E6)):
         """Creates a figure of macroscopic cross sections for this material
 
@@ -732,7 +820,6 @@ class Material(object):
             strT = "{}K".format(int(round(self.temperature)))
             T = self.temperature
         else:
-            # ## What about default temperature?
             cv.check_type('temperature', temperature, Real)
             strT = "{}K".format(int(round(temperature)))
             T = temperature
@@ -744,41 +831,18 @@ class Material(object):
         else:
             types_ = types
 
-        # Expand elements in to nuclides
-        nuclides = self.get_nuclide_densities()
-
-        sum_density = False
-        if self.density_units == 'sum':
-            sum_density = True
-            density = 0.
-        elif self.density_units == 'macro':
-            density = self.density
-        elif self.density_units == 'g/cc' or self.density_units == 'g/cm3':
-            density = -self.density
-        elif self.density_units == 'kg/m3':
-            density = -0.001 * self.density
-        elif self.density_units == 'atom/b-cm':
-            density = self.density
-        elif self.density_units == 'atom/cm3' or self.density_units == 'atom/cc':
-            density = 1.E-24 * self.density
+        # Expand elements in to nuclides with atomic densities
+        nuclides = self.get_nuclide_atom_densities(library)
 
         # For ease of processing split out nuc, nuc_density,
         # and nuc_density_type in to separate arrays
         nucs = []
         nuc_densities = []
-        nuc_density_types = []
         for nuclide in nuclides.items():
             nuc, nuc_data = nuclide
-            nuc, nuc_density, nuc_density_type = nuc_data
+            nuc, nuc_density = nuc_data
             nucs.append(nuc)
             nuc_densities.append(nuc_density)
-            nuc_density_types.append(nuc_density_type)
-
-        if sum_density:
-            density = np.sum(nuc_densities)
-        percent_in_atom = np.all(nuc_density_types == 'ao')
-        density_in_atom = density > 0.
-        sum_percent = 0.
 
         # Pre-determine the nuclides which need s(a,b) data
         sabs = {}
@@ -794,7 +858,6 @@ class Material(object):
         # Now we can create the data sets to be plotted
         xs = []
         E = []
-        awrs = []
         n = -1
         for nuclide in nuclides.items():
             n += 1
@@ -803,9 +866,6 @@ class Material(object):
             # lib = library[nuc]
             if lib is not None:
                 nuc = openmc.data.IncidentNeutron.from_hdf5(lib['path'])
-                awrs.append(nuc.atomic_weight_ratio)
-                if not percent_in_atom:
-                    nuc_densities[n] = -nuc_densities[n] / awrs[-1]
                 # Obtain the nearest temperature
                 if strT in nuc.temperatures:
                     nucT = strT
@@ -885,19 +945,6 @@ class Material(object):
                     xs[-1].append(openmc.data.Sum(funcs))
             else:
                 raise ValueError(nuclide + " not in library")
-
-        # Now that we have the awr, lets finish calculating densities
-        sum_percent = np.sum(nuc_densities)
-        nuc_densities = nuc_densities / sum_percent
-        if not density_in_atom:
-            sum_percent = 0.
-            for n, nuc in enumerate(nucs):
-                x = nuc_densities[n]
-                sum_percent += x * awrs[n]
-            sum_percent = 1. / sum_percent
-            density = -density * sum_percent * \
-                sc.Avogadro / sc.value('neutron mass in u') * 1.E-24
-        nuc_densities = density * nuc_densities
 
         # Condense the data for every nuclide
         # First create a union energy grid

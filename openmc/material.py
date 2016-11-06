@@ -32,7 +32,8 @@ DENSITY_UNITS = ['g/cm3', 'g/cc', 'kg/cm3', 'atom/b-cm', 'atom/cm3', 'sum',
 
 # Supported keywords for material xs plotting 
 _PLOT_TYPES = ['total', 'scatter', 'elastic', 'inelastic', 'fission',
-               'absorption', 'non-fission capture', 'n-alpha']
+               'absorption', 'capture', 'n-alpha']
+
 # MTs to sum to generate associated plot_types
 _PLOT_TYPES_MT = {'total': (2, 3,),
                   'scatter': (2, 4, 11, 16, 17, 22, 23, 24, 25, 28, 29,
@@ -51,7 +52,7 @@ _PLOT_TYPES_MT = {'total': (2, 3,),
                                 180, 181, 183, 184, 185, 186, 187, 188, 189,
                                 190, 194, 195, 196, 198, 199, 200, 875, 891),
                   'fission': (18,), 'absorption': (27,),
-                  'non-fission capture': (101,),
+                  'capture': (101,),
                   'n-alpha': (107,)}
 
 
@@ -620,10 +621,12 @@ class Material(object):
         Returns
         -------
         nuclides : dict
-            Dictionary whose keys are nuclide names and values are 2-tuples of
+            Dictionary whose keys are nuclide names and values are tuples of
             (nuclide, density in atom/b-cm)
 
         """
+
+        cv.check_type('library', library, openmc.data.DataLibrary)
 
         # Expand elements in to nuclides
         nuclides = self.get_nuclide_densities()
@@ -672,7 +675,7 @@ class Material(object):
                 if not percent_in_atom:
                     nuc_densities[n] = -nuc_densities[n] / awrs[-1]
             else:
-                raise ValueError(nuclide + " not in library")
+                raise ValueError(nuclide[0] + " not in library")
 
         # Now that we have the awr, lets finish calculating densities
         sum_percent = np.sum(nuc_densities)
@@ -687,13 +690,12 @@ class Material(object):
                 sc.Avogadro / sc.value('neutron mass in u') * 1.E-24
         nuc_densities = density * nuc_densities
 
-        result = OrderedDict()
+        nuclides = OrderedDict()
         n = -1
         for nuc in nucs:
             n += 1
-            result[nuc] = (nuc, nuc_densities[n])
+            nuclides[nuc] = (nuc, nuc_densities[n])
 
-        nuclides = result
         return nuclides
 
     def plot_xs(self, library, types, temperature=294., Erange=(1.E-5, 20.E6)):
@@ -703,7 +705,7 @@ class Material(object):
         ----------
         library : openmc.data.DataLibrary
             Library of data to use for plotting.
-        types : int, tuples of int, {'total', 'scatter', 'elastic', 'inelastic', 'fission', 'absorption', 'non-fission capture', 'n-alpha'} or list thereof
+        types : int, tuples of int, {'total', 'scatter', 'elastic', 'inelastic', 'fission', 'absorption', 'capture', 'n-alpha'} or list thereof
             The type of cross sections to include in the plot. This can either
             be an MT number, a tuple of MT numbers (indicating they are to be
             summed before plotting) or a string describing a common type.
@@ -781,6 +783,7 @@ class Material(object):
         """
 
         # Check types
+        cv.check_type('library', library, openmc.data.DataLibrary)
         if isinstance(types, Integral):
             cv.check_greater_than('types', types, 0)
             labels = [openmc.data.REACTION_NAME[types]]
@@ -834,17 +837,16 @@ class Material(object):
         # Expand elements in to nuclides with atomic densities
         nuclides = self.get_nuclide_atom_densities(library)
 
-        # For ease of processing split out nuc, nuc_density,
-        # and nuc_density_type in to separate arrays
+        # For ease of processing split out nuc and nuc_density
         nucs = []
         nuc_densities = []
         for nuclide in nuclides.items():
-            nuc, nuc_data = nuclide
+            nuc_name, nuc_data = nuclide
             nuc, nuc_density = nuc_data
             nucs.append(nuc)
             nuc_densities.append(nuc_density)
 
-        # Pre-determine the nuclides which need s(a,b) data
+        # Identify the nuclides which need S(a,b) data
         sabs = {}
         for nuc in nucs:
             sabs[nuc.name] = None
@@ -862,8 +864,6 @@ class Material(object):
         for nuclide in nuclides.items():
             n += 1
             lib = library[nuclide[0]]
-            # nuc, nuc_data = nuclide
-            # lib = library[nuc]
             if lib is not None:
                 nuc = openmc.data.IncidentNeutron.from_hdf5(lib['path'])
                 # Obtain the nearest temperature
@@ -944,7 +944,7 @@ class Material(object):
                             funcs.append(nuc[mt].xs[nucT])
                     xs[-1].append(openmc.data.Sum(funcs))
             else:
-                raise ValueError(nuclide + " not in library")
+                raise ValueError(nuclide[0] + " not in library")
 
         # Condense the data for every nuclide
         # First create a union energy grid

@@ -3,7 +3,6 @@ from copy import deepcopy
 from numbers import Real, Integral
 import warnings
 from xml.etree import ElementTree as ET
-import sys
 
 from six import string_types
 import numpy as np
@@ -30,30 +29,60 @@ def reset_auto_material_id():
 DENSITY_UNITS = ['g/cm3', 'g/cc', 'kg/cm3', 'atom/b-cm', 'atom/cm3', 'sum',
                  'macro']
 
-# Supported keywords for material xs plotting 
+# Supported keywords for material xs plotting
 _PLOT_TYPES = ['total', 'scatter', 'elastic', 'inelastic', 'fission',
-               'absorption', 'capture', 'n-alpha']
+               'absorption', 'capture', 'nu-fission', 'nu-scatter']
 
-# MTs to sum to generate associated plot_types
-_PLOT_TYPES_MT = {'total': (2, 3,),
-                  'scatter': (2, 4, 11, 16, 17, 22, 23, 24, 25, 28, 29,
-                              30, 32, 33, 34, 35, 36, 37, 41, 42, 44, 45,
-                              152, 153, 154, 156, 157, 158, 159, 160, 161,
-                              162, 163, 164, 165, 166, 167, 168, 169, 170,
-                              171, 172, 173, 174, 175, 176, 177, 178, 179,
-                              180, 181, 183, 184, 185, 186, 187, 188, 189,
-                              190, 194, 195, 196, 198, 199, 200, 875, 891),
-                  'elastic': (2,),
-                  'inelastic': (4, 11, 16, 17, 22, 23, 24, 25, 28, 29,
-                                30, 32, 33, 34, 35, 36, 37, 41, 42, 44, 45,
-                                152, 153, 154, 156, 157, 158, 159, 160, 161,
-                                162, 163, 164, 165, 166, 167, 168, 169, 170,
-                                171, 172, 173, 174, 175, 176, 177, 178, 179,
-                                180, 181, 183, 184, 185, 186, 187, 188, 189,
-                                190, 194, 195, 196, 198, 199, 200, 875, 891),
-                  'fission': (18,), 'absorption': (27,),
-                  'capture': (101,),
-                  'n-alpha': (107,)}
+# MTs to combine to generate associated plot_types
+_PLOT_TYPES_MT = {'total': (1,), 'scatter': (1, 27), 'elastic': (2,),
+                  'inelastic': (1, 27, 2), 'fission': (18,),
+                  'absorption': (27,), 'capture': (101,),
+                  'nu-fission': (18,),
+                  'nu-scatter': (2, 4, 11, 16, 17, 22, 23, 24, 25, 28, 29, 30,
+                                 32, 33, 34, 35, 36, 37, 41, 42, 44, 45, 152,
+                                 153, 154, 156, 157, 158, 159, 160, 161, 162,
+                                 163, 164, 165, 166, 167, 168, 169, 170, 171,
+                                 172, 173, 174, 175, 176, 177, 178, 179, 180,
+                                 181, 183, 184, 190, 194, 196, 198, 199, 200,
+                                 875, 891)}
+# Operations to use when combining MTs the first np.add is used in reference
+# to zero
+_PLOT_TYPES_OP = {'total': (np.add,), 'scatter': (np.add, np.subtract),
+                  'elastic': (np.add,),
+                  'inelastic': (np.add, np.subtract, np.subtract),
+                  'fission': (np.add,), 'absorption': (np.add,),
+                  'capture': (np.add,), 'nu-fission': (np.add,),
+                  'nu-scatter': (np.add, np.add, np.add, np.add, np.add,
+                                 np.add, np.add, np.add, np.add, np.add,
+                                 np.add, np.add, np.add, np.add, np.add,
+                                 np.add, np.add, np.add, np.add, np.add,
+                                 np.add, np.add, np.add, np.add, np.add,
+                                 np.add, np.add, np.add, np.add, np.add,
+                                 np.add, np.add, np.add, np.add, np.add,
+                                 np.add, np.add, np.add, np.add, np.add,
+                                 np.add, np.add, np.add, np.add, np.add,
+                                 np.add, np.add, np.add, np.add, np.add,
+                                 np.add, np.add, np.add, np.add, np.add,
+                                 np.add, np.add, np.add, np.add, np.add,
+                                 np.add)}
+# Whether or not to multiply the reaction by the yield as well
+_PLOT_TYPES_YIELD = {'total': (False,), 'scatter': (False, False),
+                     'elastic': (False,), 'inelastic': (False, False, False),
+                     'fission': (False,), 'absorption': (False,),
+                     'capture': (False,), 'nu-fission': (True,),
+                     'nu-scatter': (True, True, True, True, True,
+                                    True, True, True, True, True,
+                                    True, True, True, True, True,
+                                    True, True, True, True, True,
+                                    True, True, True, True, True,
+                                    True, True, True, True, True,
+                                    True, True, True, True, True,
+                                    True, True, True, True, True,
+                                    True, True, True, True, True,
+                                    True, True, True, True, True,
+                                    True, True, True, True, True,
+                                    True, True, True, True, True,
+                                    True)}
 
 
 class Material(object):
@@ -705,18 +734,16 @@ class Material(object):
         ----------
         library : openmc.data.DataLibrary
             Library of data to use for plotting.
-        types : int, tuples of int, {'total', 'scatter', 'elastic', 'inelastic', 'fission', 'absorption', 'capture', 'n-alpha'} or list thereof
-            The type of cross sections to include in the plot. This can either
-            be an MT number, a tuple of MT numbers (indicating they are to be
-            summed before plotting) or a string describing a common type.
-            These values can be either a single value, or an iterable
-            in the case of multiple sets per plot.
+        types : Iterable of {'total', 'scatter', 'elastic', 'inelastic', 'fission', 'absorption'}
+            The type of cross sections to include in the plot. In addition to
+            the above, a custom string can be used which includes MT numbers
+            and operations to perform such as '2 + 3'
         temperature : float, optional
             Temperature in Kelvin to plot. If not specified, a default
             temperature of 294K will be plotted. Note that the nearest
             temperature in the library for each nuclide will be used as opposed
             to using any interpolation.
-        Erange: tuple of floats
+        Erange : tuple of floats
             Energy range (in eV) to plot the cross section within
 
         Returns
@@ -726,7 +753,7 @@ class Material(object):
 
         """
 
-        E, data, labels = self.calculate_xs(library, types, temperature)
+        E, data = self.calculate_xs(library, types, temperature)
 
         # Generate the plot
         fig = plt.figure()
@@ -736,7 +763,7 @@ class Material(object):
         max_data = np.finfo(np.float64).min
         for i in range(len(data)):
             if np.sum(data[i, :]) > 0.:
-                ax.loglog(E, data[i, :], label=labels[i])
+                ax.loglog(E, data[i, :], label=types[i])
                 min_data = min(min_data, np.min(data[i, :iE_max]))
                 max_data = max(max_data, np.max(data[i, :iE_max]))
 
@@ -758,13 +785,11 @@ class Material(object):
         ----------
         library : openmc.data.DataLibrary
             Library of data to use for plotting.
-        types : int, tuples of int, {'total', 'scatter', 'elastic', 'inelastic', 'fission', 'absorption', 'n-alpha'} or list thereof
-            The type of cross sections to include in the plot. This can either
-            be an MT number, a tuple of MT numbers (indicating they are to be
-            summed before plotting) or a string describing a common type.
-            These values can be either a single value, or an iterable
-            in the case of multiple sets per plot.
-        temperature: float, optional
+        types : Iterable of {'total', 'scatter', 'elastic', 'inelastic', 'fission', 'absorption'}
+            The type of cross sections to include in the plot. In addition to
+            the above, a custom string can be used which includes MT numbers
+            and operations to perform such as '2 + 3'
+        temperature : float, optional
             Temperature in Kelvin to plot. If not specified, a default
             temperature of 294K will be plotted. Note that the nearest
             temperature in the library for each nuclide will be used as opposed
@@ -772,51 +797,30 @@ class Material(object):
 
         Returns
         -------
-        unionE: numpy.array
+        unionE : numpy.array
             Energies at which cross sections are calculated, in units of eV
-        data: numpy.ndarray
+        data : numpy.ndarray
             Macroscopic cross sections calculated at the energy grid described
             by unionE
-        labels: Iterable of string-type
-            Name of cross section type for every type requested
 
         """
 
         # Check types
         cv.check_type('library', library, openmc.data.DataLibrary)
-        if isinstance(types, Integral):
-            cv.check_greater_than('types', types, 0)
-            labels = [openmc.data.REACTION_NAME[types]]
-        elif types in _PLOT_TYPES:
-            labels = [types]
-            # Replace with the MTs to sum to simplify downstream code
-            types = _PLOT_TYPES_MT[types]
-        elif isinstance(types, list):
-            labels = []
-            for t in range(len(types)):
-                if isinstance(types[t], Integral):
-                    cv.check_greater_than('type in types', types[t], 0)
-                    labels.append(openmc.data.REACTION_NAME[types[t]])
-                elif isinstance(types[t], tuple):
-                    labels.append('')
-                    for e, entry in enumerate(types[t]):
-                        if isinstance(entry, Integral):
-                            cv.check_greater_than('entry in type in types',
-                                                  entry, 0)
-                            if e == len(types[t]) - 1:
-                                labels[-1] += openmc.data.REACTION_NAME
-                            else:
-                                labels[-1] += openmc.data.REACTION_NAME + ' + '
-                        else:
-                            raise ValueError("Invalid entry, "
-                                             "{}, in types".format(str(entry)))
-                elif types[t] in _PLOT_TYPES:
-                    labels.append(types[t])
-                    # Replace with the MTs to sum to simplify downstream code
-                    types[t] = _PLOT_TYPES_MT[types[t]]
-                else:
-                    raise ValueError("Invalid type, "
-                                     "{}, in types".format(str(types[t])))
+        cv.check_iterable_type('types', types, str)
+
+        # Parse the types
+        mts = []
+        ops = []
+        yields = []
+        for line in types:
+            if line in _PLOT_TYPES:
+                mts.append(_PLOT_TYPES_MT[line])
+                yields.append(_PLOT_TYPES_YIELD[line])
+                ops.append(_PLOT_TYPES_OP[line])
+            else:
+                # Not a built-in type, we have to parse it ourselves
+                raise NotImplementedError()
 
         # Convert temperature to format needed for access in the library
         if self.temperature is not None:
@@ -826,13 +830,6 @@ class Material(object):
             cv.check_type('temperature', temperature, Real)
             strT = "{}K".format(int(round(temperature)))
             T = temperature
-
-        if isinstance(types, (Integral, str)):
-            types_ = [(types,)]
-        elif isinstance(types, tuple):
-            types_ = [types]
-        else:
-            types_ = types
 
         # Expand elements in to nuclides with atomic densities
         nuclides = self.get_nuclide_atom_densities(library)
@@ -925,10 +922,11 @@ class Material(object):
                 else:
                     E.append(nuc.energy[nucT])
                 xs.append([])
-                for l, line in enumerate(types_):
+                for i, mt_set in enumerate(mts):
                     # Get the reaction xs data from the nuclide
                     funcs = []
-                    for mt in line:
+                    op = ops[i]
+                    for mt, yield_check in zip(mt_set, yields[i]):
                         if mt == 2:
                             if sab_tab:
                                 # Then we need to do a piece-wise function of
@@ -941,8 +939,36 @@ class Material(object):
                             else:
                                 funcs.append(nuc[mt].xs[nucT])
                         elif mt in nuc:
-                            funcs.append(nuc[mt].xs[nucT])
-                    xs[-1].append(openmc.data.Sum(funcs))
+                            if yield_check:
+                                found_it = False
+                                for prod in nuc[mt].products:
+                                    if prod.particle == 'neutron' and \
+                                        prod.emission_mode == 'total':
+                                        func = openmc.data.Combination(
+                                            [nuc[mt].xs[nucT], prod.yield_],
+                                            [np.add, np.multiply])
+                                        funcs.append(func)
+                                        found_it = True
+                                        break
+                                if not found_it:
+                                    for prod in nuc[mt].products:
+                                        if prod.particle == 'neutron' and \
+                                            prod.emission_mode == 'prompt':
+                                            func = openmc.data.Combination(
+                                                [nuc[mt].xs[nucT],
+                                                 prod.yield_],
+                                                [np.add, np.multiply])
+                                            funcs.append(func)
+                                            found_it = True
+                                            break
+                                if not found_it:
+                                    # Assume the yield is 1
+                                    funcs.append(nuc[mt].xs[nucT])
+                            else:
+                                funcs.append(nuc[mt].xs[nucT])
+                        else:
+                            funcs.append(lambda x: 0.)
+                    xs[-1].append(openmc.data.Combination(funcs, op))
             else:
                 raise ValueError(nuclide[0] + " not in library")
 
@@ -953,12 +979,12 @@ class Material(object):
             unionE = np.union1d(unionE, E[n])
 
         # Now we can combine all the nuclidic data
-        data = np.zeros((len(types_), len(unionE)))
-        for l in range(len(types_)):
+        data = np.zeros((len(mts), len(unionE)))
+        for l in range(len(mts)):
             for n in range(len(nuclides)):
                 data[l, :] += nuc_densities[n] * xs[n][l](unionE)
 
-        return unionE, data, labels
+        return unionE, data
 
     def _get_nuclide_xml(self, nuclide, distrib=False):
         xml_element = ET.Element("nuclide")

@@ -397,6 +397,61 @@ class Polynomial(np.polynomial.Polynomial, Function1D):
         return cls(dataset.value)
 
 
+class Combination(EqualityMixin):
+    """Combination of multiple functions with a user-defined operator
+
+    This class allows you to create a callable object which represents the
+    combination of other callable objects by way of a user-defined operator.
+
+    Parameters
+    ----------
+    functions : Iterable of Callable
+        Functions which are to be added together
+    operations : Iterable of numpy.ufunc
+        Operations to perform between functions; note that the standard order
+        of operations (i.e., PEMDAS) will not be followed
+
+
+    Attributes
+    ----------
+    functions : Iterable of Callable
+        Functions which are to be added together
+    operations : Iterable of numpy.ufunc
+        Operations to perform between functions
+
+    """
+
+    def __init__(self, functions, operations):
+        self.functions = functions
+        self.operations = operations
+
+    def __call__(self, x):
+        ans = np.zeros_like(x)
+        for i, operation in enumerate(self.operations):
+            ans = operation(ans, self.functions[i](x))
+        return ans
+
+    @property
+    def functions(self):
+        return self._functions
+
+    @functions.setter
+    def functions(self, functions):
+        cv.check_type('functions', functions, Iterable, Callable)
+        self._functions = functions
+
+    @property
+    def operations(self):
+        return self._operations
+
+    @operations.setter
+    def operations(self, operations):
+        cv.check_type('operations', operations, Iterable, np.ufunc)
+        length = len(self.functions)
+        cv.check_length('operations', operations, length, length_max=length)
+        self._operations = operations
+
+
 class Sum(EqualityMixin):
     """Sum of multiple functions.
 

@@ -184,7 +184,7 @@ class MDGXS(MGXS):
                 cv.check_less_than('delayed group', group, MAX_DELAYED_GROUPS,
                                    equality=True)
 
-            self._delayed_groups = delayed_groups
+        self._delayed_groups = delayed_groups
 
     @property
     def filters(self):
@@ -1463,6 +1463,11 @@ class Beta(MDGXS):
        \sigma_f (r, E') \psi(r, E', \Omega') \\
        \beta_{d,g} &= \frac{\langle \nu^d \sigma_f \phi \rangle}
        {\langle \nu \sigma_f \phi \rangle}
+
+    NOTE: The Beta MGXS is the delayed neutron fraction computed directly from
+    the nuclear data. Often the delayed neutron fraction is
+    "importance-weighted" by the adjoint flux and called "beta-effective". It
+    is important to make clear that this Beta is not importance-weighted.
 
     Parameters
     ----------

@@ -397,6 +397,62 @@ class Polynomial(np.polynomial.Polynomial, Function1D):
         return cls(dataset.value)
 
 
+class Combination(EqualityMixin):
+    """Combination of multiple functions with a user-defined operator
+
+    This class allows you to create a callable object which represents the
+    combination of other callable objects by way of a series of user-defined
+    operators connecting each of the callable objects.
+
+    Parameters
+    ----------
+    functions : Iterable of Callable
+        Functions which are to be added together
+    operations : Iterable of numpy.ufunc
+        Operations to perform between functions; note that the standard order
+        of operations (i.e., PEMDAS) will not be followed.
+
+
+    Attributes
+    ----------
+    functions : Iterable of Callable
+        Functions which are to be added together
+    operations : Iterable of numpy.ufunc
+        Operations to perform between functions
+
+    """
+
+    def __init__(self, functions, operations):
+        self.functions = functions
+        self.operations = operations
+
+    def __call__(self, x):
+        ans = np.zeros_like(x)
+        for i, operation in enumerate(self.operations):
+            ans = operation(ans, self.functions[i](x))
+        return ans
+
+    @property
+    def functions(self):
+        return self._functions
+
+    @functions.setter
+    def functions(self, functions):
+        cv.check_type('functions', functions, Iterable, Callable)
+        self._functions = functions
+
+    @property
+    def operations(self):
+        return self._operations
+
+    @operations.setter
+    def operations(self, operations):
+        cv.check_type('operations', operations, Iterable, np.ufunc)
+        length = len(self.functions)
+        cv.check_length('operations', operations, length, length_max=length)
+        self._operations = operations
+
+
 class Sum(EqualityMixin):
     """Sum of multiple functions.
 
@@ -430,6 +486,63 @@ class Sum(EqualityMixin):
     def functions(self, functions):
         cv.check_type('functions', functions, Iterable, Callable)
         self._functions = functions
+
+
+class Piecewise(EqualityMixin):
+    """Piecewise composition of multiple functions.
+
+    This class allows you to create a callable object which is composed
+    of multiple other callable objects, each applying to a specific interval
+
+    Parameters
+    ----------
+    functions : Iterable of Callable
+        Functions which are to be combined in a piecewise fashion
+    breakpoints : Iterable of float
+        The breakpoints between each function. The functions
+        in the functions attribute must be provided in order of
+        increasing intervals.
+
+    Attributes
+    ----------
+    functions : Iterable of Callable
+        Functions which are to be combined in a piecewise fashion
+    breakpoints : Iterable of float
+        The breakpoints between each function
+
+    """
+
+    def __init__(self, functions, breakpoints):
+        self.functions = functions
+        self.breakpoints = breakpoints
+
+    def __call__(self, x):
+        i = np.searchsorted(self.breakpoints, x)
+        if isinstance(x, Iterable):
+            ans = np.empty_like(x)
+            for j in range(len(i)):
+                ans[j] = self.functions[i[j]](x[j])
+            return ans
+        else:
+            return self.functions[i](x)
+
+    @property
+    def functions(self):
+        return self._functions
+
+    @property
+    def breakpoints(self):
+        return self._breakpoints
+
+    @functions.setter
+    def functions(self, functions):
+        cv.check_type('functions', functions, Iterable, Callable)
+        self._functions = functions
+
+    @breakpoints.setter
+    def breakpoints(self, breakpoints):
+        cv.check_iterable_type('breakpoints', breakpoints, Real)
+        self._breakpoints = breakpoints
 
 
 class ResonancesWithBackground(EqualityMixin):

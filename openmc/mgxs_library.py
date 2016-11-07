@@ -137,7 +137,7 @@ class XSdata(object):
     [Order][G][G']: scatter_matrix
 
     [G]: total, absorption, fission, kappa_fission, nu_fission,
-         prompt_nu_fission, inverse_velocity
+         prompt_nu_fission, delayed_nu_fission, inverse_velocity
 
     [G']: chi, chi_prompt, chi_delayed
 

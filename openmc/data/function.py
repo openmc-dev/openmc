@@ -401,7 +401,8 @@ class Combination(EqualityMixin):
     """Combination of multiple functions with a user-defined operator
 
     This class allows you to create a callable object which represents the
-    combination of other callable objects by way of a user-defined operator.
+    combination of other callable objects by way of a series of user-defined
+    operators connecting each of the callable objects.
 
     Parameters
     ----------
@@ -409,7 +410,7 @@ class Combination(EqualityMixin):
         Functions which are to be added together
     operations : Iterable of numpy.ufunc
         Operations to perform between functions; note that the standard order
-        of operations (i.e., PEMDAS) will not be followed
+        of operations (i.e., PEMDAS) will not be followed.
 
 
     Attributes
@@ -491,7 +492,7 @@ class Piecewise(EqualityMixin):
     """Piecewise composition of multiple functions.
 
     This class allows you to create a callable object which is composed
-    of other callable objects each over a set domain.
+    of multiple other callable objects, each applying to a specific interval
 
     Parameters
     ----------
@@ -500,7 +501,7 @@ class Piecewise(EqualityMixin):
     breakpoints : Iterable of float
         The breakpoints between each function. The functions
         in the functions attribute must be provided in order of
-        increasing domains.
+        increasing intervals.
 
     Attributes
     ----------

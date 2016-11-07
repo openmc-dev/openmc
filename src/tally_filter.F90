@@ -890,7 +890,7 @@ contains
 
         ! Tallies are ordered in increasing groups, group indices
         ! however are the opposite, so switch
-        next_bin = energy_groups - next_bin + 1
+        next_bin = num_energy_groups - next_bin + 1
 
       else
         ! Make sure the correct energy is used.
@@ -959,7 +959,7 @@ contains
 
         ! Tallies are ordered in increasing groups, group indices
         ! however are the opposite, so switch
-        next_bin = energy_groups - next_bin + 1
+        next_bin = num_energy_groups - next_bin + 1
 
       else
         ! Check if energy of the particle is within energy bins.

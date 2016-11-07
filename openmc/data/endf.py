@@ -17,6 +17,7 @@ from collections import OrderedDict, Iterable
 import numpy as np
 from numpy.polynomial.polynomial import Polynomial
 
+from .data import ATOMIC_SYMBOL
 from .function import Tabulated1D, INTERPOLATION_SCHEME
 from openmc.stats.univariate import Uniform, Tabular, Legendre
 
@@ -45,16 +46,6 @@ SUM_RULES = {1: [2, 3],
              107: list(range(800, 850))}
 
 _ENDF_FLOAT_RE = re.compile(r'([\s\-\+]?\d*\.\d+)([\+\-]\d+)')
-
-
-def radiation_type(value):
-    p = {0: 'gamma', 1: 'beta-', 2: 'ec/beta+', 3: 'IT',
-         4: 'alpha', 5: 'neutron', 6: 'sf', 7: 'proton',
-         8: 'e-', 9: 'xray', 10: 'unknown'}
-    if value % 1.0 == 0:
-        return p[int(value)]
-    else:
-        return (p[int(value)], p[int(10*value % 10)])
 
 
 def float_endf(s):
@@ -395,6 +386,16 @@ class Evaluation(object):
                 # missing. This prevents failure on these isotopes.
                 mod = 0
             self.reaction_list.append((mf, mt, nc, mod))
+
+    @property
+    def gnd_name(self):
+        symbol = ATOMIC_SYMBOL[self.target['atomic_number']]
+        A = self.target['mass_number']
+        m = self.target['isomeric_state']
+        if m > 0:
+            return '{}{}_m{}'.format(symbol, A, m)
+        else:
+            return '{}{}'.format(symbol, A)
 
 
 class Tabulated2D(object):

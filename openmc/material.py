@@ -31,7 +31,7 @@ DENSITY_UNITS = ['g/cm3', 'g/cc', 'kg/cm3', 'atom/b-cm', 'atom/cm3', 'sum',
 
 # Supported keywords for material xs plotting
 _PLOT_TYPES = ['total', 'scatter', 'elastic', 'inelastic', 'fission',
-               'absorption', 'capture', 'nu-fission', 'nu-scatter']
+               'absorption', 'capture', 'nu-fission', 'nu-scatter', 'unity']
 
 # MTs to combine to generate associated plot_types
 _PLOT_TYPES_MT = {'total': (1,), 'scatter': (1, 27), 'elastic': (2,),
@@ -44,7 +44,8 @@ _PLOT_TYPES_MT = {'total': (1,), 'scatter': (1, 27), 'elastic': (2,),
                                  163, 164, 165, 166, 167, 168, 169, 170, 171,
                                  172, 173, 174, 175, 176, 177, 178, 179, 180,
                                  181, 183, 184, 190, 194, 196, 198, 199, 200,
-                                 875, 891)}
+                                 875, 891),
+                  'unity': (0,)}
 # Operations to use when combining MTs the first np.add is used in reference
 # to zero
 _PLOT_TYPES_OP = {'total': (np.add,), 'scatter': (np.add, np.subtract),
@@ -64,7 +65,8 @@ _PLOT_TYPES_OP = {'total': (np.add,), 'scatter': (np.add, np.subtract),
                                  np.add, np.add, np.add, np.add, np.add,
                                  np.add, np.add, np.add, np.add, np.add,
                                  np.add, np.add, np.add, np.add, np.add,
-                                 np.add)}
+                                 np.add),
+                  'unity': (np.add,)}
 # Whether or not to multiply the reaction by the yield as well
 _PLOT_TYPES_YIELD = {'total': (False,), 'scatter': (False, False),
                      'elastic': (False,), 'inelastic': (False, False, False),
@@ -82,7 +84,8 @@ _PLOT_TYPES_YIELD = {'total': (False,), 'scatter': (False, False),
                                     True, True, True, True, True,
                                     True, True, True, True, True,
                                     True, True, True, True, True,
-                                    True)}
+                                    True),
+                     'unity': (False,)}
 
 
 class Material(object):
@@ -727,17 +730,20 @@ class Material(object):
 
         return nuclides
 
-    def plot_xs(self, library, types, temperature=294., Erange=(1.E-5, 20.E6)):
+    def plot_xs(self, library, types, divisor_types=None, temperature=294.,
+                Erange=(1.E-5, 20.E6)):
         """Creates a figure of macroscopic cross sections for this material
 
         Parameters
         ----------
         library : openmc.data.DataLibrary
             Library of data to use for plotting.
-        types : Iterable of {'total', 'scatter', 'elastic', 'inelastic', 'fission', 'absorption'}
-            The type of cross sections to include in the plot. In addition to
-            the above, a custom string can be used which includes MT numbers
-            and operations to perform such as '2 + 3'
+        types : Iterable of values of _PLOT_TYPES
+            The type of cross sections to include in the plot.
+        divisor_types : Iterable of values of _PLOT_TYPES, optional
+            Cross section types which will divide those produced by types before
+            plotting. A type of 'unity' can be used to effectively not divide
+            some types.
         temperature : float, optional
             Temperature in Kelvin to plot. If not specified, a default
             temperature of 294K will be plotted. Note that the nearest
@@ -754,6 +760,26 @@ class Material(object):
         """
 
         E, data = self.calculate_xs(library, types, temperature)
+
+        if divisor_types:
+            cv.check_length('divisor types', divisor_types, len(types),
+                            len(types))
+            Ediv, data_div = self.calculate_xs(library, divisor_types,
+                                               temperature)
+
+            # Create a new union grid, interpolate data and data_div on to that
+            # grid, and then do the actual division
+            Enum = E[:]
+            E = np.union1d(Enum, Ediv)
+            data_new = np.zeros((len(types), len(E)))
+            # import pdb; pdb.set_trace()
+            for l in range(len(types)):
+                data_new[l, :] = \
+                    np.divide(np.interp(E, Enum, data[l, :]),
+                              np.interp(E, Ediv, data_div[l, :]))
+                if divisor_types[l] != 'unity':
+                    types[l] = types[l] + ' / ' + divisor_types[l]
+            data = data_new
 
         # Generate the plot
         fig = plt.figure()
@@ -785,10 +811,8 @@ class Material(object):
         ----------
         library : openmc.data.DataLibrary
             Library of data to use for plotting.
-        types : Iterable of {'total', 'scatter', 'elastic', 'inelastic', 'fission', 'absorption'}
-            The type of cross sections to include in the plot. In addition to
-            the above, a custom string can be used which includes MT numbers
-            and operations to perform such as '2 + 3'
+        types : Iterable of values of _PLOT_TYPES
+            The type of cross sections to include in the plot.
         temperature : float, optional
             Temperature in Kelvin to plot. If not specified, a default
             temperature of 294K will be plotted. Note that the nearest
@@ -966,6 +990,8 @@ class Material(object):
                                     funcs.append(nuc[mt].xs[nucT])
                             else:
                                 funcs.append(nuc[mt].xs[nucT])
+                        elif mt == 0:
+                            funcs.append(lambda x: 1.)
                         else:
                             funcs.append(lambda x: 0.)
                     xs[-1].append(openmc.data.Combination(funcs, op))
@@ -981,8 +1007,11 @@ class Material(object):
         # Now we can combine all the nuclidic data
         data = np.zeros((len(mts), len(unionE)))
         for l in range(len(mts)):
-            for n in range(len(nuclides)):
-                data[l, :] += nuc_densities[n] * xs[n][l](unionE)
+            if types[l] == 'unity':
+                data[l, :] = 1.
+            else:
+                for n in range(len(nuclides)):
+                    data[l, :] += nuc_densities[n] * xs[n][l](unionE)
 
         return unionE, data
 

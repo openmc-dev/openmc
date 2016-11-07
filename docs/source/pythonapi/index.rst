@@ -373,6 +373,8 @@ Core Classes
     openmc.data.CoherentElastic
     openmc.data.FissionEnergyRelease
     openmc.data.DataLibrary
+    openmc.data.Decay
+    openmc.data.FissionProductYields
 
 Core Functions
 --------------

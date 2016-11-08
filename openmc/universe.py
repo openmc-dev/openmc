@@ -189,11 +189,9 @@ class Universe(object):
             Hashable object which is used to seed the random number generator
             used to select colors. If None, the generator is seeded from the
             current time.
-
-        Keyword arguments
-        -----------------
-        All keyword arguments are passed to matplotlib.pyplot.imshow.  See the
-        matplotlib documentation for available kwargs.
+        **kwargs
+            All keyword arguments are passed to
+            :func:`matplotlib.pyplot.imshow`.
 
         """
         import matplotlib.pyplot as plt

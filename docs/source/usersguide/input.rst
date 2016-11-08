@@ -528,6 +528,9 @@ attributes/sub-elements:
     sub-elements/attributes are those of a univariate probability distribution
     (see the description in :ref:`univariate`).
 
+    *Default*: Watt spectrum with :math:`a` = 0.988 MeV and :math:`b` =
+    2.249 MeV :sup:`-1`
+
   :write_initial:
     An element specifying whether to write out the initial source bank used at
     the beginning of the first batch. The output file is named
@@ -1626,8 +1629,6 @@ The ``<tally>`` element accepts the following sub-elements:
 
               <filter type="delayedgroup" bins="1 2 3 4 5 6" />
 
-          .. note:: This filter type is not used in the multi-group :ref:`energy_mode`.
-
   :nuclides:
     If specified, the scores listed will be for particular nuclides, not the
     summation of reactions from all nuclides. The format for nuclides should be
@@ -1808,12 +1809,10 @@ The ``<tally>`` element accepts the following sub-elements:
         |Score                 | Description                                       |
         +======================+===================================================+
         |delayed-nu-fission    |Total production of delayed neutrons due to        |
-        |                      |fission. This score type is not used in the        |
-        |                      |multi-group :ref:`energy_mode`.                    |
+        |                      |fission.                                           |
         +----------------------+---------------------------------------------------+
         |prompt-nu-fission     |Total production of prompt neutrons due to         |
-        |                      |fission. This score type is not used in the        |
-        |                      |multi-group :ref:`energy_mode`.                    |
+        |                      |fission.                                           |
         +----------------------+---------------------------------------------------+
         |nu-fission            |Total production of neutrons due to fission.       |
         +----------------------+---------------------------------------------------+
@@ -1842,8 +1841,6 @@ The ``<tally>`` element accepts the following sub-elements:
         +----------------------+---------------------------------------------------+
         |inverse-velocity      |The flux-weighted inverse velocity where the       |
         |                      |velocity is in units of centimeters per second.    |
-        |                      |This score type is not used in the                 |
-        |                      |multi-group :ref:`energy_mode`.                    |
         +----------------------+---------------------------------------------------+
         |kappa-fission         |The recoverable energy production rate due to      |
         |                      |fission. The recoverable energy is defined as the  |
@@ -1879,8 +1876,6 @@ The ``<tally>`` element accepts the following sub-elements:
         +----------------------+---------------------------------------------------+
         |decay-rate            |The delayed-nu-fission-weighted decay rate where   |
         |                      |the decay rate is in units of inverse seconds.     |
-        |                      |This score type is not used in the                 |
-        |                      |multi-group :ref:`energy_mode`.                    |
         +----------------------+---------------------------------------------------+
 
     .. note::

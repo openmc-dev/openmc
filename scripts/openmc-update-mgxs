@@ -85,13 +85,13 @@ if __name__ == '__main__':
     temp = np.array(temp.split())
     group_structure = temp.astype(np.float)
     energy_groups = openmc.mgxs.EnergyGroups(group_structure)
-    temp = tree.find('inverse_velocities')
+    temp = tree.find('inverse-velocity')
     if temp is not None:
         temp = temp.text.strip()
         temp = np.array(temp.split())
-        inverse_velocities = temp.astype(np.float)
+        inverse_velocity = temp.astype(np.float)
     else:
-        inverse_velocities = None
+        inverse_velocity = None
 
     xsd = []
     names = []
@@ -166,8 +166,8 @@ if __name__ == '__main__':
             total.shape = xsd[i].vector_shape
             xsd[i].set_total(total, temperature)
 
-        if inverse_velocities is not None:
-            xsd[i].set_inverse_velocities(inverse_velocities, temperature)
+        if inverse_velocity is not None:
+            xsd[i].set_inverse_velocity(inverse_velocity, temperature)
 
         temp = get_data(xsdata_elem, 'absorption')
         temp = np.array(temp.split())

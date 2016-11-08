@@ -6,8 +6,6 @@ from xml.etree import ElementTree as ET
 
 from six import string_types
 import numpy as np
-import scipy.constants as sc
-from matplotlib import pyplot as plt
 
 import openmc
 import openmc.data
@@ -732,7 +730,8 @@ class Material(object):
 
     def plot_xs(self, library, types, divisor_types=None, temperature=294.,
                 Erange=(1.E-5, 20.E6)):
-        """Creates a figure of macroscopic cross sections for this material
+        """Creates a figure of continuous-energy macroscopic cross sections
+        for this material
 
         Parameters
         ----------
@@ -758,6 +757,8 @@ class Material(object):
             Matplotlib Figure of the generated macroscopic cross section
 
         """
+
+        from matplotlib import pyplot as plt
 
         E, data = self.calculate_xs(library, types, temperature)
 
@@ -805,7 +806,8 @@ class Material(object):
         return fig
 
     def calculate_xs(self, library, types, temperature=294.):
-        """Calculates macroscopic cross sections of a requested type
+        """Calculates continuous-energy macroscopic cross sections of a
+        requested type
 
         Parameters
         ----------
@@ -828,6 +830,8 @@ class Material(object):
             by unionE
 
         """
+
+        import scipy.constants as sc
 
         # Check types
         cv.check_type('library', library, openmc.data.DataLibrary)

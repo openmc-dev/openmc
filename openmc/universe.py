@@ -154,7 +154,7 @@ class Universe(object):
 
     def plot(self, center=(0., 0., 0.), width=(1., 1.), pixels=(200, 200),
              basis='xy', color_by='cell', colors=None, filename=None, seed=None,
-             aspect='auto'):
+             **kwargs):
         """Display a slice plot of the universe.
 
         Parameters
@@ -189,9 +189,11 @@ class Universe(object):
             Hashable object which is used to seed the random number generator
             used to select colors. If None, the generator is seeded from the
             current time.
-        aspect : 'auto' or Real or None
-            This argument is passed directly to matplotlib.pyplot.imshow.
-            'auto' makes the image aspect ratio match the physical units.
+
+        Keyword arguments
+        -----------------
+        All keyword arguments are passed to matplotlib.pyplot.imshow.  See the
+        matplotlib documentation for available kwargs.
 
         """
         import matplotlib.pyplot as plt
@@ -263,7 +265,7 @@ class Universe(object):
                     img[j, i, :] = colors[obj]
 
         # Display image
-        plt.imshow(img, extent=(x_min, x_max, y_min, y_max), aspect=aspect)
+        plt.imshow(img, extent=(x_min, x_max, y_min, y_max), **kwargs)
 
         # Show or save the plot
         if filename is None:

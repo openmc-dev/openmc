@@ -428,8 +428,8 @@ class Combination(EqualityMixin):
 
     def __call__(self, x):
         ans = np.zeros_like(x)
-        for i, operation in enumerate(self.operations):
-            ans = operation(ans, self.functions[i](x))
+        for op, func in zip(self.operations, self.functions):
+            ans = op(ans, func(x))
         return ans
 
     @property
@@ -488,7 +488,7 @@ class Sum(EqualityMixin):
         self._functions = functions
 
 
-class Piecewise(EqualityMixin):
+class Regions1D(EqualityMixin):
     """Piecewise composition of multiple functions.
 
     This class allows you to create a callable object which is composed
@@ -499,9 +499,9 @@ class Piecewise(EqualityMixin):
     functions : Iterable of Callable
         Functions which are to be combined in a piecewise fashion
     breakpoints : Iterable of float
-        The breakpoints between each function. The functions
-        in the functions attribute must be provided in order of
-        increasing intervals.
+        The values of the dependent variable that define the domain of
+        each function. The *i*th and *(i+1)*th values are the limits of the
+        domain of the *i*th function. Values must be monotonically increasing.
 
     Attributes
     ----------

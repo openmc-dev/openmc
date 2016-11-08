@@ -98,6 +98,7 @@ module hdf5_interface
   public :: open_dataset
   public :: close_dataset
   public :: get_shape
+  public :: get_ndims
   public :: write_attribute_string
   public :: get_groups
   public :: get_datasets
@@ -2585,6 +2586,26 @@ contains
       call h5sclose_f(space_id, hdf5_err)
     end if
   end subroutine get_shape
+
+  subroutine get_ndims(obj_id, ndims)
+    integer(HID_T), intent(in)  :: obj_id
+    integer(HID_T), intent(out) :: ndims
+
+    integer          :: hdf5_err
+    integer          :: type
+    integer(HID_T)   :: space_id
+
+    call h5iget_type_f(obj_id, type, hdf5_err)
+    if (type == H5I_DATASET_F) then
+      call h5dget_space_f(obj_id, space_id, hdf5_err)
+      call h5sget_simple_extent_ndims_f(space_id, ndims, hdf5_err)
+      call h5sclose_f(space_id, hdf5_err)
+    elseif (type == H5I_ATTR_F) then
+      call h5aget_space_f(obj_id, space_id, hdf5_err)
+      call h5sget_simple_extent_ndims_f(space_id, ndims, hdf5_err)
+      call h5sclose_f(space_id, hdf5_err)
+    end if
+  end subroutine get_ndims
 
   function using_mpio_device(obj_id) result(mpio)
     integer(HID_T), intent(in) :: obj_id

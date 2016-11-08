@@ -427,9 +427,9 @@ class Combination(EqualityMixin):
         self.operations = operations
 
     def __call__(self, x):
-        ans = np.zeros_like(x)
-        for op, func in zip(self.operations, self.functions):
-            ans = op(ans, func(x))
+        ans = self.functions[0](x)
+        for i, operation in enumerate(self.operations):
+            ans = operation(ans, self.functions[i + 1](x))
         return ans
 
     @property
@@ -448,7 +448,7 @@ class Combination(EqualityMixin):
     @operations.setter
     def operations(self, operations):
         cv.check_type('operations', operations, Iterable, np.ufunc)
-        length = len(self.functions)
+        length = len(self.functions) - 1
         cv.check_length('operations', operations, length, length_max=length)
         self._operations = operations
 

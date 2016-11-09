@@ -46,11 +46,10 @@ _PLOT_TYPES_MT = {'total': (1,), 'scatter': (1, 27), 'elastic': (2,),
                   'unity': (0,)}
 # Operations to use when combining MTs the first np.add is used in reference
 # to zero
-_PLOT_TYPES_OP = {'total': (np.add,), 'scatter': (np.add, np.subtract),
-                  'elastic': (np.add,),
-                  'inelastic': (np.add, np.subtract, np.subtract),
-                  'fission': (np.add,), 'absorption': (np.add,),
-                  'capture': (np.add,), 'nu-fission': (np.add,),
+_PLOT_TYPES_OP = {'total': (), 'scatter': (np.subtract,), 'elastic': (),
+                  'inelastic': (np.subtract, np.subtract),
+                  'fission': (), 'absorption': (),
+                  'capture': (), 'nu-fission': (),
                   'nu-scatter': (np.add, np.add, np.add, np.add, np.add,
                                  np.add, np.add, np.add, np.add, np.add,
                                  np.add, np.add, np.add, np.add, np.add,
@@ -62,9 +61,8 @@ _PLOT_TYPES_OP = {'total': (np.add,), 'scatter': (np.add, np.subtract),
                                  np.add, np.add, np.add, np.add, np.add,
                                  np.add, np.add, np.add, np.add, np.add,
                                  np.add, np.add, np.add, np.add, np.add,
-                                 np.add, np.add, np.add, np.add, np.add,
-                                 np.add),
-                  'unity': (np.add,)}
+                                 np.add, np.add, np.add, np.add, np.add),
+                  'unity': ()}
 # Whether or not to multiply the reaction by the yield as well
 _PLOT_TYPES_YIELD = {'total': (False,), 'scatter': (False, False),
                      'elastic': (False,), 'inelastic': (False, False, False),
@@ -656,6 +654,8 @@ class Material(object):
 
         """
 
+        import scipy.constants as sc
+
         cv.check_type('library', library, openmc.data.DataLibrary)
 
         # Expand elements in to nuclides
@@ -698,7 +698,7 @@ class Material(object):
         n = -1
         for nuclide in nuclides.items():
             n += 1
-            lib = library[nuclide[0]]
+            lib = library.get_by_materials(nuclide[0])
             if lib is not None:
                 nuc = openmc.data.IncidentNeutron.from_hdf5(lib['path'])
                 awrs.append(nuc.atomic_weight_ratio)
@@ -878,9 +878,9 @@ class Material(object):
 
         for sab_name in self._sab:
             sab = openmc.data.ThermalScattering.from_hdf5(
-                library[sab_name]['path'])
+                library.get_by_materials(sab_name)['path'])
             for nuc in sab.nuclides:
-                sabs[nuc] = library[sab_name]['path']
+                sabs[nuc] = library.get_by_materials(sab_name)['path']
 
         # Now we can create the data sets to be plotted
         xs = []
@@ -888,7 +888,7 @@ class Material(object):
         n = -1
         for nuclide in nuclides.items():
             n += 1
-            lib = library[nuclide[0]]
+            lib = library.get_by_materials(nuclide[0])
             if lib is not None:
                 nuc = openmc.data.IncidentNeutron.from_hdf5(lib['path'])
                 # Obtain the nearest temperature
@@ -974,7 +974,7 @@ class Material(object):
                                         prod.emission_mode == 'total':
                                         func = openmc.data.Combination(
                                             [nuc[mt].xs[nucT], prod.yield_],
-                                            [np.add, np.multiply])
+                                            [np.multiply])
                                         funcs.append(func)
                                         found_it = True
                                         break
@@ -984,8 +984,7 @@ class Material(object):
                                             prod.emission_mode == 'prompt':
                                             func = openmc.data.Combination(
                                                 [nuc[mt].xs[nucT],
-                                                 prod.yield_],
-                                                [np.add, np.multiply])
+                                                 prod.yield_], [np.multiply])
                                             funcs.append(func)
                                             found_it = True
                                             break

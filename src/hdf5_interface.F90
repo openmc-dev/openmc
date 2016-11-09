@@ -2589,7 +2589,7 @@ contains
 
   subroutine get_ndims(obj_id, ndims)
     integer(HID_T), intent(in)  :: obj_id
-    integer(HID_T), intent(out) :: ndims
+    integer,        intent(out) :: ndims
 
     integer          :: hdf5_err
     integer          :: type

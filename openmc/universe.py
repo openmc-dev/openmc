@@ -153,7 +153,8 @@ class Universe(object):
         return []
 
     def plot(self, center=(0., 0., 0.), width=(1., 1.), pixels=(200, 200),
-             basis='xy', color_by='cell', colors=None, filename=None, seed=None):
+             basis='xy', color_by='cell', colors=None, filename=None, seed=None,
+             **kwargs):
         """Display a slice plot of the universe.
 
         Parameters
@@ -171,9 +172,9 @@ class Universe(object):
         colors : dict
 
             Assigns colors to specific materials or cells. Keys are instances of
-            :class:`Cell` or :class:`Material` and values are RGB 3-tuples or RGBA
-            4-tuples. Red, green, blue, and alpha should all be floats in the
-            range [0.0, 1.0], for example:
+            :class:`Cell` or :class:`Material` and values are RGB 3-tuples or
+            RGBA 4-tuples. Red, green, blue, and alpha should all be floats in
+            the range [0.0, 1.0], for example:
 
             .. code-block:: python
 
@@ -188,6 +189,9 @@ class Universe(object):
             Hashable object which is used to seed the random number generator
             used to select colors. If None, the generator is seeded from the
             current time.
+        **kwargs
+            All keyword arguments are passed to
+            :func:`matplotlib.pyplot.imshow`.
 
         """
         import matplotlib.pyplot as plt
@@ -211,7 +215,8 @@ class Universe(object):
             y_min = center[1] - 0.5*width[1]
             y_max = center[1] + 0.5*width[1]
         elif basis == 'yz':
-            # The x-axis will correspond to physical y and the y-axis will correspond to physical z
+            # The x-axis will correspond to physical y and the y-axis will
+            # correspond to physical z
             x_min = center[1] - 0.5*width[0]
             x_max = center[1] + 0.5*width[0]
             y_min = center[2] - 0.5*width[1]
@@ -229,8 +234,9 @@ class Universe(object):
         y_coords = np.linspace(y_max, y_min, pixels[1], endpoint=False) - \
                    0.5*(y_max - y_min)/pixels[1]
 
-        # Search for locations and assign colors
-        img = np.zeros(pixels + (4,))  # Use RGBA form
+        # Initialize output image in RGBA format.  Flip the pixels from
+        # traditional (x, y) to (y, x) used in graphics.
+        img = np.zeros((pixels[1], pixels[0], 4))
         for i, x in enumerate(x_coords):
             for j, y in enumerate(y_coords):
                 if basis == 'xy':
@@ -257,7 +263,7 @@ class Universe(object):
                     img[j, i, :] = colors[obj]
 
         # Display image
-        plt.imshow(img, extent=(x_min, x_max, y_min, y_max))
+        plt.imshow(img, extent=(x_min, x_max, y_min, y_max), **kwargs)
 
         # Show or save the plot
         if filename is None:

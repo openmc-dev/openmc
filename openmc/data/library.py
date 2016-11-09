@@ -22,13 +22,12 @@ class DataLibrary(EqualityMixin):
     def __init__(self):
         self.libraries = []
 
-    def get_by_materials(self, value):
-        """Access a library entry by passing a value of the 'materials'
-        attribute of the library entry.
+    def get_by_material(self, value):
+        """Return the library dictionary containing a given material.
 
         Returns
         -------
-        library : dict
+        library : dict or None
             Dictionary summarizing cross section data from a single file;
             the dictionary has keys 'path', 'type', and 'materials'.
 
@@ -107,7 +106,7 @@ class DataLibrary(EqualityMixin):
         Returns
         -------
         data : openmc.data.DataLibrary
-            openmc.data.DataLibrary object initialized from the provided XML
+            Data library object initialized from the provided XML
 
         """
 

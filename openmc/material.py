@@ -3,6 +3,7 @@ from copy import deepcopy
 from numbers import Real, Integral
 import warnings
 from xml.etree import ElementTree as ET
+import os
 
 from six import string_types
 import numpy as np
@@ -11,6 +12,7 @@ import openmc
 import openmc.data
 import openmc.checkvalue as cv
 from openmc.clean_xml import sort_xml_elements, clean_xml_indentation
+from openmc.plot_data import *
 
 
 # A static variable for auto-generated Material IDs
@@ -26,62 +28,6 @@ def reset_auto_material_id():
 # Units for density supported by OpenMC
 DENSITY_UNITS = ['g/cm3', 'g/cc', 'kg/cm3', 'atom/b-cm', 'atom/cm3', 'sum',
                  'macro']
-
-# Supported keywords for material xs plotting
-_PLOT_TYPES = ['total', 'scatter', 'elastic', 'inelastic', 'fission',
-               'absorption', 'capture', 'nu-fission', 'nu-scatter', 'unity']
-
-# MTs to combine to generate associated plot_types
-_PLOT_TYPES_MT = {'total': (1,), 'scatter': (1, 27), 'elastic': (2,),
-                  'inelastic': (1, 27, 2), 'fission': (18,),
-                  'absorption': (27,), 'capture': (101,),
-                  'nu-fission': (18,),
-                  'nu-scatter': (2, 4, 11, 16, 17, 22, 23, 24, 25, 28, 29, 30,
-                                 32, 33, 34, 35, 36, 37, 41, 42, 44, 45, 152,
-                                 153, 154, 156, 157, 158, 159, 160, 161, 162,
-                                 163, 164, 165, 166, 167, 168, 169, 170, 171,
-                                 172, 173, 174, 175, 176, 177, 178, 179, 180,
-                                 181, 183, 184, 190, 194, 196, 198, 199, 200,
-                                 875, 891),
-                  'unity': (0,)}
-# Operations to use when combining MTs the first np.add is used in reference
-# to zero
-_PLOT_TYPES_OP = {'total': (), 'scatter': (np.subtract,), 'elastic': (),
-                  'inelastic': (np.subtract, np.subtract),
-                  'fission': (), 'absorption': (),
-                  'capture': (), 'nu-fission': (),
-                  'nu-scatter': (np.add, np.add, np.add, np.add, np.add,
-                                 np.add, np.add, np.add, np.add, np.add,
-                                 np.add, np.add, np.add, np.add, np.add,
-                                 np.add, np.add, np.add, np.add, np.add,
-                                 np.add, np.add, np.add, np.add, np.add,
-                                 np.add, np.add, np.add, np.add, np.add,
-                                 np.add, np.add, np.add, np.add, np.add,
-                                 np.add, np.add, np.add, np.add, np.add,
-                                 np.add, np.add, np.add, np.add, np.add,
-                                 np.add, np.add, np.add, np.add, np.add,
-                                 np.add, np.add, np.add, np.add, np.add,
-                                 np.add, np.add, np.add, np.add, np.add),
-                  'unity': ()}
-# Whether or not to multiply the reaction by the yield as well
-_PLOT_TYPES_YIELD = {'total': (False,), 'scatter': (False, False),
-                     'elastic': (False,), 'inelastic': (False, False, False),
-                     'fission': (False,), 'absorption': (False,),
-                     'capture': (False,), 'nu-fission': (True,),
-                     'nu-scatter': (True, True, True, True, True,
-                                    True, True, True, True, True,
-                                    True, True, True, True, True,
-                                    True, True, True, True, True,
-                                    True, True, True, True, True,
-                                    True, True, True, True, True,
-                                    True, True, True, True, True,
-                                    True, True, True, True, True,
-                                    True, True, True, True, True,
-                                    True, True, True, True, True,
-                                    True, True, True, True, True,
-                                    True, True, True, True, True,
-                                    True),
-                     'unity': (False,)}
 
 
 class Material(object):
@@ -637,14 +583,14 @@ class Material(object):
 
         return nuclides
 
-    def get_nuclide_atom_densities(self, library):
+    def get_nuclide_atom_densities(self, cross_sections=None):
         """Returns all nuclides in the material and their atomic densities in
         units of atom/b-cm
 
         Parameters
         ----------
-        library : openmc.data.DataLibrary
-            Library of data to use for plotting.
+        cross_sections : str, optional
+            Location of cross_sections.xml file. Default is None.
 
         Returns
         -------
@@ -656,7 +602,20 @@ class Material(object):
 
         import scipy.constants as sc
 
-        cv.check_type('library', library, openmc.data.DataLibrary)
+        cv.check_type('cross_sections', cross_sections, str)
+
+        # If cross_sections is None, get the cross sections from the
+        # OPENMC_CROSS_SECTIONS environment variable
+        if cross_sections is None:
+            cross_sections = os.environ.get('OPENMC_CROSS_SECTIONS')
+
+        # If a cross_sections library is present, check natural nuclides
+        # against the nuclides in the library
+        if cross_sections is not None:
+            library = openmc.data.DataLibrary.from_xml(cross_sections)
+        else:
+            raise ValueError("cross_sections or OPENMC_CROSS_SECTIONS "
+                             "environmental variable must be set")
 
         # Expand elements in to nuclides
         nuclides = self.get_nuclide_densities()
@@ -728,28 +687,28 @@ class Material(object):
 
         return nuclides
 
-    def plot_xs(self, library, types, divisor_types=None, temperature=294.,
-                Erange=(1.E-5, 20.E6)):
+    def plot_xs(self, types, divisor_types=None, temperature=294.,
+                Erange=(1.E-5, 20.E6), cross_sections=None):
         """Creates a figure of continuous-energy macroscopic cross sections
         for this material
 
         Parameters
         ----------
-        library : openmc.data.DataLibrary
-            Library of data to use for plotting.
-        types : Iterable of values of _PLOT_TYPES
+        types : Iterable of values of PLOT_TYPES
             The type of cross sections to include in the plot.
-        divisor_types : Iterable of values of _PLOT_TYPES, optional
-            Cross section types which will divide those produced by types before
-            plotting. A type of 'unity' can be used to effectively not divide
-            some types.
+        divisor_types : Iterable of values of PLOT_TYPES, optional
+            Cross section types which will divide those produced by types
+            before plotting. A type of 'unity' can be used to effectively not
+            divide some types.
         temperature : float, optional
             Temperature in Kelvin to plot. If not specified, a default
             temperature of 294K will be plotted. Note that the nearest
             temperature in the library for each nuclide will be used as opposed
             to using any interpolation.
-        Erange : tuple of floats
+        Erange : tuple of floats, optional
             Energy range (in eV) to plot the cross section within
+        cross_sections : str, optional
+            Location of cross_sections.xml file. Default is None.
 
         Returns
         -------
@@ -760,20 +719,20 @@ class Material(object):
 
         from matplotlib import pyplot as plt
 
-        E, data = self.calculate_xs(library, types, temperature)
+        E, data = self.calculate_xs(types, temperature, cross_sections)
 
         if divisor_types:
             cv.check_length('divisor types', divisor_types, len(types),
                             len(types))
-            Ediv, data_div = self.calculate_xs(library, divisor_types,
-                                               temperature)
+            Ediv, data_div = self.calculate_xs(divisor_types, temperature,
+                                               cross_sections)
 
             # Create a new union grid, interpolate data and data_div on to that
             # grid, and then do the actual division
             Enum = E[:]
             E = np.union1d(Enum, Ediv)
             data_new = np.zeros((len(types), len(E)))
-            # import pdb; pdb.set_trace()
+
             for l in range(len(types)):
                 data_new[l, :] = \
                     np.divide(np.interp(E, Enum, data[l, :]),
@@ -805,21 +764,21 @@ class Material(object):
 
         return fig
 
-    def calculate_xs(self, library, types, temperature=294.):
+    def calculate_xs(self, types, temperature=294., cross_sections=None):
         """Calculates continuous-energy macroscopic cross sections of a
         requested type
 
         Parameters
         ----------
-        library : openmc.data.DataLibrary
-            Library of data to use for plotting.
-        types : Iterable of values of _PLOT_TYPES
-            The type of cross sections to include in the plot.
+        types : Iterable of values of PLOT_TYPES
+            The type of cross sections to calculate
         temperature : float, optional
             Temperature in Kelvin to plot. If not specified, a default
             temperature of 294K will be plotted. Note that the nearest
             temperature in the library for each nuclide will be used as opposed
             to using any interpolation.
+        cross_sections : str, optional
+            Location of cross_sections.xml file. Default is None.
 
         Returns
         -------
@@ -831,10 +790,9 @@ class Material(object):
 
         """
 
-        import scipy.constants as sc
-
         # Check types
-        cv.check_type('library', library, openmc.data.DataLibrary)
+        if cross_sections is not None:
+            cv.check_type('cross_sections', cross_sections, str)
         cv.check_iterable_type('types', types, str)
 
         # Parse the types
@@ -842,25 +800,35 @@ class Material(object):
         ops = []
         yields = []
         for line in types:
-            if line in _PLOT_TYPES:
-                mts.append(_PLOT_TYPES_MT[line])
-                yields.append(_PLOT_TYPES_YIELD[line])
-                ops.append(_PLOT_TYPES_OP[line])
+            if line in PLOT_TYPES:
+                mts.append(PLOT_TYPES_MT[line])
+                yields.append(PLOT_TYPES_YIELD[line])
+                ops.append(PLOT_TYPES_OP[line])
             else:
                 # Not a built-in type, we have to parse it ourselves
                 raise NotImplementedError()
 
-        # Convert temperature to format needed for access in the library
         if self.temperature is not None:
-            strT = "{}K".format(int(round(self.temperature)))
             T = self.temperature
         else:
             cv.check_type('temperature', temperature, Real)
-            strT = "{}K".format(int(round(temperature)))
             T = temperature
 
+        # If cross_sections is None, get the cross sections from the
+        # OPENMC_CROSS_SECTIONS environment variable
+        if cross_sections is None:
+            cross_sections = os.environ.get('OPENMC_CROSS_SECTIONS')
+
+        # If a cross_sections library is present, check natural nuclides
+        # against the nuclides in the library
+        if cross_sections is not None:
+            library = openmc.data.DataLibrary.from_xml(cross_sections)
+        else:
+            raise ValueError("cross_sections or OPENMC_CROSS_SECTIONS "
+                             "environmental variable must be set")
+
         # Expand elements in to nuclides with atomic densities
-        nuclides = self.get_nuclide_atom_densities(library)
+        nuclides = self.get_nuclide_atom_densities(cross_sections)
 
         # For ease of processing split out nuc and nuc_density
         nucs = []
@@ -888,118 +856,13 @@ class Material(object):
         n = -1
         for nuclide in nuclides.items():
             n += 1
-            lib = library.get_by_materials(nuclide[0])
-            if lib is not None:
-                nuc = openmc.data.IncidentNeutron.from_hdf5(lib['path'])
-                # Obtain the nearest temperature
-                if strT in nuc.temperatures:
-                    nucT = strT
-                else:
-                    data_Ts = nuc.temperatures
-                    for t in range(len(data_Ts)):
-                        # Take off the "K" and convert to a float
-                        data_Ts[t] = float(data_Ts[t][:-1])
-                    min_delta = np.finfo(np.float64).max
-                    closest_t = -1
-                    for t in data_Ts:
-                        if abs(data_Ts[t] - T) < min_delta:
-                            closest_t = t
-                    nucT = "{}K".format(int(round(data_Ts[closest_t])))
-
-                # Create an energy grid composed of either the S(a,b) and
-                # nuclide's grid, or just the nuclide's grid, depending on if
-                # the S(a,b) data is available for this nuclide
-                sab_tab = sabs[nucs[n].name]
-                if sab_tab:
-                    sab = openmc.data.ThermalScattering.from_hdf5(sab_tab)
-                    # Obtain the nearest temperature
-                    if strT in sab.temperatures:
-                        sabT = strT
-                    else:
-                        data_Ts = sab.temperatures
-                        for t in range(len(data_Ts)):
-                            # Take off the "K" and convert to a float
-                            data_Ts[t] = float(data_Ts[t][:-1])
-                        min_delta = np.finfo(np.float64).max
-                        closest_t = -1
-                        for t in data_Ts:
-                            if abs(data_Ts[t] - T) < min_delta:
-                                closest_t = t
-                        sabT = "{}K".format(int(round(data_Ts[closest_t])))
-                    grid = nuc.energy[nucT]
-                    sab_Emax = 0.
-                    sab_funcs = []
-                    if sab.elastic_xs:
-                        elastic = sab.elastic_xs[sabT]
-                        if isinstance(elastic, openmc.data.CoherentElastic):
-                            grid = np.union1d(grid, elastic.bragg_edges)
-                            if elastic.bragg_edges[-1] > sab_Emax:
-                                sab_Emax = elastic.bragg_edges[-1]
-                        elif isinstance(elastic, openmc.data.Tabulated1D):
-                            grid = np.union1d(grid, elastic.x)
-                            if elastic.x[-1] > sab_Emax:
-                                sab_Emax = elastic.x[-1]
-                        sab_funcs.append(elastic)
-                    if sab.inelastic_xs:
-                        inelastic = sab.inelastic_xs[sabT]
-                        grid = np.union1d(grid, inelastic.x)
-                        if inelastic.x[-1] > sab_Emax:
-                                sab_Emax = inelastic.x[-1]
-                        sab_funcs.append(inelastic)
-                    E.append(grid)
-                else:
-                    E.append(nuc.energy[nucT])
-                xs.append([])
-                for i, mt_set in enumerate(mts):
-                    # Get the reaction xs data from the nuclide
-                    funcs = []
-                    op = ops[i]
-                    for mt, yield_check in zip(mt_set, yields[i]):
-                        if mt == 2:
-                            if sab_tab:
-                                # Then we need to do a piece-wise function of
-                                # The S(a,b) and non-thermal data
-                                sab_sum = openmc.data.Sum(sab_funcs)
-                                pw_funcs = openmc.data.Piecewise(
-                                    [sab_sum, nuc[mt].xs[nucT]],
-                                    [sab_Emax])
-                                funcs.append(pw_funcs)
-                            else:
-                                funcs.append(nuc[mt].xs[nucT])
-                        elif mt in nuc:
-                            if yield_check:
-                                found_it = False
-                                for prod in nuc[mt].products:
-                                    if prod.particle == 'neutron' and \
-                                        prod.emission_mode == 'total':
-                                        func = openmc.data.Combination(
-                                            [nuc[mt].xs[nucT], prod.yield_],
-                                            [np.multiply])
-                                        funcs.append(func)
-                                        found_it = True
-                                        break
-                                if not found_it:
-                                    for prod in nuc[mt].products:
-                                        if prod.particle == 'neutron' and \
-                                            prod.emission_mode == 'prompt':
-                                            func = openmc.data.Combination(
-                                                [nuc[mt].xs[nucT],
-                                                 prod.yield_], [np.multiply])
-                                            funcs.append(func)
-                                            found_it = True
-                                            break
-                                if not found_it:
-                                    # Assume the yield is 1
-                                    funcs.append(nuc[mt].xs[nucT])
-                            else:
-                                funcs.append(nuc[mt].xs[nucT])
-                        elif mt == 0:
-                            funcs.append(lambda x: 1.)
-                        else:
-                            funcs.append(lambda x: 0.)
-                    xs[-1].append(openmc.data.Combination(funcs, op))
-            else:
-                raise ValueError(nuclide[0] + " not in library")
+            # import pdb; pdb.set_trace()
+            nuc_obj = openmc.Nuclide(nuclide[0].name)
+            sab_tab = sabs[nucs[n].name]
+            temp_E, temp_xs = nuc_obj.calculate_xs(types, T, sab_tab,
+                                                   cross_sections)
+            E.append(temp_E)
+            xs.append(temp_xs)
 
         # Condense the data for every nuclide
         # First create a union energy grid

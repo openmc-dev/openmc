@@ -410,7 +410,9 @@ class Combination(EqualityMixin):
         Functions which are to be added together
     operations : Iterable of numpy.ufunc
         Operations to perform between functions; note that the standard order
-        of operations (i.e., PEMDAS) will not be followed.
+        of operations will not be followed, but can be simulated by
+        combinations of Combination objects. The operations parameter must have
+        a length one less than the number of functions.
 
 
     Attributes

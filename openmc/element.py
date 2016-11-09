@@ -5,10 +5,12 @@ import os
 
 from six import string_types
 from xml.etree import ElementTree as ET
+import numpy as np
 
 import openmc
-from openmc.checkvalue import check_type, check_length
+import openmc.checkvalue as cv
 from openmc.data import NATURAL_ABUNDANCE, atomic_mass
+from openmc.plot_data import *
 
 
 class Element(object):
@@ -80,8 +82,8 @@ class Element(object):
 
     @name.setter
     def name(self, name):
-        check_type('element name', name, string_types)
-        check_length('element name', name, 1, 2)
+        cv.check_type('element name', name, string_types)
+        cv.check_length('element name', name, 1, 2)
         self._name = name
 
     @scattering.setter
@@ -212,7 +214,7 @@ class Element(object):
         # its natural nuclides
         else:
             for nuclide in natural_nuclides:
-                abundances[nuclide] = NATURAL_ABUNDNACE[nuclide]
+                abundances[nuclide] = NATURAL_ABUNDANCE[nuclide]
 
         # Modify mole fractions if enrichment provided
         if enrichment is not None:
@@ -257,3 +259,202 @@ class Element(object):
             isotopes.append((nuc, percent*abundance, percent_type))
 
         return isotopes
+
+    def plot_xs(self, types, divisor_types=None, temperature=294.,
+                Erange=(1.E-5, 20.E6), enrichment=None, cross_sections=None):
+        """Creates a figure of continuous-energy microscopic cross sections
+        for this element
+
+        Parameters
+        ----------
+        types : Iterable of values of PLOT_TYPES
+            The type of cross sections to include in the plot.
+        divisor_types : Iterable of values of PLOT_TYPES, optional
+            Cross section types which will divide those produced by types
+            before plotting. A type of 'unity' can be used to effectively not
+            divide some types.
+        temperature : float, optional
+            Temperature in Kelvin to plot. If not specified, a default
+            temperature of 294K will be plotted. Note that the nearest
+            temperature in the library for each nuclide will be used as opposed
+            to using any interpolation.
+        Erange : tuple of floats
+            Energy range (in eV) to plot the cross section within
+        enrichment : float, optional
+            Enrichment for U235 in weight percent. For example, input 4.95 for
+            4.95 weight percent enriched U. Default is None
+            (natural composition).
+        cross_sections : str, optional
+            Location of cross_sections.xml file. Default is None.
+
+        Returns
+        -------
+        fig : matplotlib.figure.Figure
+            Matplotlib Figure of the generated macroscopic cross section
+
+        """
+
+        from matplotlib import pyplot as plt
+
+        E, data = self.calculate_xs(types, temperature, cross_sections)
+
+        if divisor_types:
+            cv.check_length('divisor types', divisor_types, len(types),
+                            len(types))
+            Ediv, data_div = self.calculate_xs(divisor_types, temperature,
+                                               cross_sections)
+
+            # Create a new union grid, interpolate data and data_div on to that
+            # grid, and then do the actual division
+            Enum = E[:]
+            E = np.union1d(Enum, Ediv)
+            data_new = np.zeros((len(types), len(E)))
+
+            for l in range(len(types)):
+                data_new[l, :] = \
+                    np.divide(np.interp(E, Enum, data[l, :]),
+                              np.interp(E, Ediv, data_div[l, :]))
+                if divisor_types[l] != 'unity':
+                    types[l] = types[l] + ' / ' + divisor_types[l]
+            data = data_new
+
+        # Generate the plot
+        fig = plt.figure()
+        ax = fig.add_subplot(111)
+        iE_max = np.searchsorted(E, Erange[1])
+        min_data = np.finfo(np.float64).max
+        max_data = np.finfo(np.float64).min
+        for i in range(len(data)):
+            if np.sum(data[i, :]) > 0.:
+                ax.loglog(E, data[i, :], label=types[i])
+                min_data = min(min_data, np.min(data[i, :iE_max]))
+                max_data = max(max_data, np.max(data[i, :iE_max]))
+
+        ax.set_xlabel('Energy [eV]')
+        ax.set_ylabel('Elemental Cross Section [1/cm]')
+        ax.legend(loc='best')
+        ax.set_xlim(Erange)
+        ax.set_ylim(min_data, max_data)
+        if self.name is not None:
+            title = 'Cross Section for ' + self.name
+            ax.set_title(title)
+
+        return fig
+
+    def calculate_xs(self, types, temperature=294., enrichment=None,
+                     cross_sections=None):
+        """Calculates continuous-energy macroscopic cross sections of a
+        requested type
+
+        Parameters
+        ----------
+        types : Iterable of values of PLOT_TYPES
+            The type of cross sections to calculate
+        temperature : float, optional
+            Temperature in Kelvin to plot. If not specified, a default
+            temperature of 294K will be plotted. Note that the nearest
+            temperature in the library for each nuclide will be used as opposed
+            to using any interpolation.
+        enrichment : float, optional
+            Enrichment for U235 in weight percent. For example, input 4.95 for
+            4.95 weight percent enriched U. Default is None
+            (natural composition).
+        cross_sections : str, optional
+            Location of cross_sections.xml file. Default is None.
+
+        Returns
+        -------
+        unionE : numpy.array
+            Energies at which cross sections are calculated, in units of eV
+        data : numpy.ndarray
+            Macroscopic cross sections calculated at the energy grid described
+            by unionE
+
+        """
+
+        # Check types
+        if cross_sections is not None:
+            cv.check_type('cross_sections', cross_sections, str)
+        cv.check_iterable_type('types', types, str)
+
+        # Parse the types
+        mts = []
+        ops = []
+        yields = []
+        for line in types:
+            if line in PLOT_TYPES:
+                mts.append(PLOT_TYPES_MT[line])
+                yields.append(PLOT_TYPES_YIELD[line])
+                ops.append(PLOT_TYPES_OP[line])
+            else:
+                # Not a built-in type, we have to parse it ourselves
+                raise NotImplementedError()
+
+        cv.check_type('temperature', temperature, Real)
+
+        # Expand elements in to nuclides with atomic densities
+        nuclides = self.expand(100., 'ao', enrichment=enrichment,
+                               cross_sections=cross_sections)
+
+        # If cross_sections is None, get the cross sections from the
+        # OPENMC_CROSS_SECTIONS environment variable
+        if cross_sections is None:
+            cross_sections = os.environ.get('OPENMC_CROSS_SECTIONS')
+
+        # If a cross_sections library is present, check natural nuclides
+        # against the nuclides in the library
+        if cross_sections is not None:
+            library = openmc.data.DataLibrary.from_xml(cross_sections)
+        else:
+            raise ValueError("cross_sections or OPENMC_CROSS_SECTIONS "
+                             "environmental variable must be set")
+
+        # For ease of processing split out nuc and nuc_density
+        nucs = []
+        nuc_fractions = []
+        for nuclide in nuclides.items():
+            nuc_name, nuc_data = nuclide
+            nuc, nuc_fraction, nuc_fraction_type = nuc_data
+            nucs.append(nuc)
+            nuc_fractions.append(nuc_fraction)
+
+        # Identify the nuclides which need S(a,b) data
+        sabs = {}
+        for nuc in nucs:
+            sabs[nuc.name] = None
+
+        if sab_name:
+            sab = openmc.data.ThermalScattering.from_hdf5(sab_name)
+            for nuc in sab.nuclides:
+                sabs[nuc] = library.get_by_materials(sab_name)['path']
+
+        # Now we can create the data sets to be plotted
+        xs = []
+        E = []
+        n = -1
+        for nuclide in nuclides.items():
+            n += 1
+            # import pdb; pdb.set_trace()
+            nuc_obj = openmc.Nuclide(nuclide[0].name)
+            sab_tab = sabs[nucs[n].name]
+            temp_E, temp_xs = nuc_obj.calculate_xs(types, temperature, sab_tab,
+                                                   cross_sections)
+            E.append(temp_E)
+            xs.append(temp_xs)
+
+        # Condense the data for every nuclide
+        # First create a union energy grid
+        unionE = E[0]
+        for n in range(1, len(E)):
+            unionE = np.union1d(unionE, E[n])
+
+        # Now we can combine all the nuclidic data
+        data = np.zeros((len(mts), len(unionE)))
+        for l in range(len(mts)):
+            if types[l] == 'unity':
+                data[l, :] = 1.
+            else:
+                for n in range(len(nuclides)):
+                    data[l, :] += nuc_fractions[n] * xs[n][l](unionE)
+
+        return unionE, data

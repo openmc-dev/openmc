@@ -407,7 +407,7 @@ class Combination(EqualityMixin):
     Parameters
     ----------
     functions : Iterable of Callable
-        Functions which are to be added together
+        Functions to combine according to operations
     operations : Iterable of numpy.ufunc
         Operations to perform between functions; note that the standard order
         of operations will not be followed, but can be simulated by
@@ -418,9 +418,12 @@ class Combination(EqualityMixin):
     Attributes
     ----------
     functions : Iterable of Callable
-        Functions which are to be added together
+        Functions to combine according to operations
     operations : Iterable of numpy.ufunc
-        Operations to perform between functions
+        Operations to perform between functions; note that the standard order
+        of operations will not be followed, but can be simulated by
+        combinations of Combination objects. The operations parameter must have
+        a length one less than the number of functions.
 
     """
 

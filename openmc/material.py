@@ -4,7 +4,6 @@ from numbers import Real, Integral
 import warnings
 from xml.etree import ElementTree as ET
 import sys
-import re
 
 from six import string_types
 
@@ -607,7 +606,9 @@ class Material(object):
                 moles += vals[1] / openmc.data.atomic_mass(nuc)
                 mass += vals[1]
 
-        return (mass / moles)
+        # Compute and return the molar mass
+        molar_mass = mass / moles
+        return molar_mass
 
     def _get_nuclide_xml(self, nuclide, distrib=False):
         xml_element = ET.Element("nuclide")

@@ -150,7 +150,7 @@ def atomic_mass(isotope):
     """
     if not _ATOMIC_MASS:
 
-        # For the isotope represented by all natural isotopes of the element
+        # For the isotopes representing all natural isotopes of their element
         # (e.g. C0), set atomic mass manually using the values from Atomic
         # weights of the elements 2013 (IUPAC Technical Report)
         # (doi:10.1515/pac-2015-0305). In cases where an atomic mass range is

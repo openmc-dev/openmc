@@ -1,6 +1,5 @@
 import itertools
 import os
-import re
 
 
 # Isotopic abundances from M. Berglund and M. E. Wieser, "Isotopic compositions
@@ -151,26 +150,16 @@ def atomic_mass(isotope):
     """
     if not _ATOMIC_MASS:
 
-        # If the isotope represents all natural isotopes of the element
+        # For the isotope represented by all natural isotopes of the element
         # (e.g. C0), set atomic mass manually using the values from Atomic
         # weights of the elements 2013 (IUPAC Technical Report)
         # (doi:10.1515/pac-2015-0305). In cases where an atomic mass range is
         # given (e.g. C), the average value is used.
-        if int(re.split(r"(\d+)", isotope)[1]) == 0:
-            if re.split(r"(\d+)", isotope)[0] == 'C':
-                _ATOMIC_MASS[isotope.lower()] = 12.0106
-            elif re.split(r"(\d+)", isotope)[0] == 'Zn':
-                _ATOMIC_MASS[isotope.lower()] = 65.38
-            elif re.split(r"(\d+)", isotope)[0] == 'Pt':
-                _ATOMIC_MASS[isotope.lower()] = 195.084
-            elif re.split(r"(\d+)", isotope)[0] == 'Os':
-                _ATOMIC_MASS[isotope.lower()] = 190.23
-            elif re.split(r"(\d+)", isotope)[0] == 'Tl':
-                _ATOMIC_MASS[isotope.lower()] = 204.3835
-            else:
-                msg = 'Could not get the atomic mass for zero isotope'\
-                      ' {0}.'.format(isotope)
-                raise ValueError(msg)
+        _ATOMIC_MASS['c0']  = 12.0106
+        _ATOMIC_MASS['zn0'] = 65.38
+        _ATOMIC_MASS['pt0'] = 195.084
+        _ATOMIC_MASS['os0'] = 190.23
+        _ATOMIC_MASS['tl0'] = 204.3835
 
         # Load data from AME2012 file
         mass_file = os.path.join(os.path.dirname(__file__), 'mass.mas12')

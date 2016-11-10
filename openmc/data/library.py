@@ -22,6 +22,21 @@ class DataLibrary(EqualityMixin):
     def __init__(self):
         self.libraries = []
 
+    def get_by_material(self, value):
+        """Return the library dictionary containing a given material.
+
+        Returns
+        -------
+        library : dict or None
+            Dictionary summarizing cross section data from a single file;
+            the dictionary has keys 'path', 'type', and 'materials'.
+
+        """
+        for library in self.libraries:
+            if value in library['materials']:
+                return library
+        return None
+
     def register_file(self, filename):
         """Register a file with the data library.
 
@@ -78,3 +93,38 @@ class DataLibrary(EqualityMixin):
         tree = ET.ElementTree(root)
         tree.write(path, xml_declaration=True, encoding='utf-8',
                    method='xml')
+
+    @classmethod
+    def from_xml(cls, path):
+        """Read cross section data library from an XML file.
+
+        Parameters
+        ----------
+        path : str
+            Path to XML file to read.
+
+        Returns
+        -------
+        data : openmc.data.DataLibrary
+            Data library object initialized from the provided XML
+
+        """
+
+        data = cls()
+
+        tree = ET.parse(path)
+        root = tree.getroot()
+        if root.find('directory') is not None:
+            directory = root.find('directory').text
+        else:
+            directory = os.path.dirname(path)
+
+        for lib_element in root.findall('library'):
+            filename = os.path.join(directory, lib_element.attrib['path'])
+            filetype = lib_element.attrib['type']
+            materials = lib_element.attrib['materials'].split()
+            library = {'path': filename, 'type': filetype,
+                       'materials': materials}
+            data.libraries.append(library)
+
+        return data

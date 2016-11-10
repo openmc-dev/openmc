@@ -1636,8 +1636,10 @@ contains
 
     ! Check to make sure a boundary condition was applied to at least one
     ! surface
-    if (.not. boundary_exists) then
-      call fatal_error("No boundary conditions were applied to any surfaces!")
+    if (run_mode /= MODE_PLOTTING) then
+      if (.not. boundary_exists) then
+        call fatal_error("No boundary conditions were applied to any surfaces!")
+      end if
     end if
 
     ! Determine opposite side for periodic boundaries

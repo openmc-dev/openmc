@@ -4,6 +4,7 @@ from numbers import Real, Integral
 import warnings
 from xml.etree import ElementTree as ET
 import sys
+import re
 
 from six import string_types
 
@@ -580,6 +581,33 @@ class Material(object):
                 nuclides[iso.name] = (iso, iso_pct, iso_pct_type)
 
         return nuclides
+
+    def get_molar_mass(self):
+        """Returns the molar mass of the material
+
+        Returns
+        -------
+        molar_mass : float
+            The molar mass of the material
+
+        """
+
+        # Get a list of all the nuclides, with elements expanded
+        nuclide_densities = self.get_nuclide_densities()
+
+        # Using the sum of specified atomic or weight amounts as a basis, sum
+        # the mass and moles of the material
+        mass = 0.
+        moles = 0.
+        for nuc,vals in nuclide_densities.items():
+            if vals[2] == 'ao':
+                mass += vals[1] * openmc.data.atomic_mass(nuc)
+                moles += vals[1]
+            else:
+                moles += vals[1] / openmc.data.atomic_mass(nuc)
+                mass += vals[1]
+
+        return (mass / moles)
 
     def _get_nuclide_xml(self, nuclide, distrib=False):
         xml_element = ET.Element("nuclide")

@@ -233,7 +233,7 @@ class Element(object):
 
         # Compute the ratio of the nuclide atomic masses to the element
         # atomic mass
-        if percent_type == 'wo':
+        if percent_type == 'wo' and len(abundances) > 1:
 
             # Compute the element atomic mass
             element_am = 0.

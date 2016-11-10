@@ -1,5 +1,6 @@
 import itertools
 import os
+import re
 
 
 # Isotopic abundances from M. Berglund and M. E. Wieser, "Isotopic compositions
@@ -150,17 +151,6 @@ def atomic_mass(isotope):
     """
     if not _ATOMIC_MASS:
 
-        # For the isotopes representing all natural isotopes of their element
-        # (e.g. C0), set atomic mass manually using the values from Atomic
-        # weights of the elements 2013 (IUPAC Technical Report)
-        # (doi:10.1515/pac-2015-0305). In cases where an atomic mass range is
-        # given (e.g. C), the average value is used.
-        _ATOMIC_MASS['c0']  = 12.0106
-        _ATOMIC_MASS['zn0'] = 65.38
-        _ATOMIC_MASS['pt0'] = 195.084
-        _ATOMIC_MASS['os0'] = 190.23
-        _ATOMIC_MASS['tl0'] = 204.3835
-
         # Load data from AME2012 file
         mass_file = os.path.join(os.path.dirname(__file__), 'mass.mas12')
         with open(mass_file, 'r') as ame:
@@ -170,6 +160,18 @@ def atomic_mass(isotope):
                 mass = float(line[96:99]) + 1e-6*float(
                     line[100:106] + '.' + line[107:112])
                 _ATOMIC_MASS[name.lower()] = mass
+
+        # For isotopes found in some libraries that represent all natural
+        # isotopes of their element (e.g. C0), calculate the atomic mass as
+        # the sum of the atomic mass times the natural abudance of the isotopes
+        # that make up the element.
+        for element in ['C', 'Zn', 'Pt', 'Os', 'Tl']:
+            isotope_zero = element.lower() + '0'
+            _ATOMIC_MASS[isotope_zero] = 0.
+            for iso, abundance in NATURAL_ABUNDANCE.items():
+                if re.match(r'{}\d+'.format(element), iso):
+                    _ATOMIC_MASS[isotope_zero] += abundance * \
+                                                  _ATOMIC_MASS[iso.lower()]
 
     # Get rid of metastable information
     if '_' in isotope:

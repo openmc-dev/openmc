@@ -773,11 +773,20 @@ class Material(object):
         fig = plt.figure(**kwargs)
         ax = fig.add_subplot(111)
         for i in range(len(data)):
+            # Set to loglog or semilogx depending on if we are plotting a data
+            # type which we expect to vary linearly
+            if types[i] in PLOT_TYPES_LINEAR:
+                plot_func = ax.semilogx
+            else:
+                plot_func = ax.loglog
             if np.sum(data[i, :]) > 0.:
-                ax.loglog(E, data[i, :], label=types[i])
+                plot_func(E, data[i, :], label=types[i])
 
         ax.set_xlabel('Energy [eV]')
-        ax.set_ylabel('Macroscopic Cross Section [1/cm]')
+        if divisor_types:
+            ax.set_ylabel('Macroscopic Cross Section')
+        else:
+            ax.set_ylabel('Macroscopic Cross Section [1/cm]')
         ax.legend(loc='best')
         ax.set_xlim(Erange)
         if self.name is not None:
@@ -853,19 +862,12 @@ class Material(object):
         nuclides = self.get_nuclide_atom_densities(cross_sections)
 
         # For ease of processing split out nuc and nuc_density
-        nucs = []
-        nuc_densities = []
-        for nuclide in nuclides.items():
-            nuc_name, nuc_data = nuclide
-            nuc, nuc_density = nuc_data
-            nucs.append(nuc)
-            nuc_densities.append(nuc_density)
+        nuc_densities = [nuclide[1][1] for nuclide in nuclides.items()]
 
-        # Identify the nuclides which need S(a,b) data
+        # Identify the nuclides which have S(a,b) data
         sabs = {}
-        for nuc in nucs:
-            sabs[nuc.name] = None
-
+        for nuclide in nuclides.items():
+            sabs[nuclide[0].name] = None
         for sab_name in self._sab:
             sab = openmc.data.ThermalScattering.from_hdf5(
                 library.get_by_material(sab_name)['path'])
@@ -875,14 +877,10 @@ class Material(object):
         # Now we can create the data sets to be plotted
         xs = []
         E = []
-        n = -1
         for nuclide in nuclides.items():
-            n += 1
-            # import pdb; pdb.set_trace()
-            nuc_obj = openmc.Nuclide(nuclide[0].name)
-            sab_tab = sabs[nucs[n].name]
-            temp_E, temp_xs = nuc_obj.calculate_xs(types, T, sab_tab,
-                                                   cross_sections)
+            sab_tab = sabs[nuclide[0].name]
+            temp_E, temp_xs = nuclide[0].calculate_xs(types, T, sab_tab,
+                                                      cross_sections)
             E.append(temp_E)
             xs.append(temp_xs)
 

@@ -162,11 +162,20 @@ class Nuclide(object):
         ax = fig.add_subplot(111)
         for i in range(len(data)):
             to_plot = data[i](E)
+            # Set to loglog or semilogx depending on if we are plotting a data
+            # type which we expect to vary linearly
+            if types[i] in PLOT_TYPES_LINEAR:
+                plot_func = ax.semilogx
+            else:
+                plot_func = ax.loglog
             if np.sum(to_plot) > 0.:
-                ax.loglog(E, to_plot, label=types[i])
+                plot_func(E, to_plot, label=types[i])
 
         ax.set_xlabel('Energy [eV]')
-        ax.set_ylabel('Microscopic Cross Section [b]')
+        if divisor_types:
+            ax.set_ylabel('Microscopic Cross Section')
+        else:
+            ax.set_ylabel('Microscopic Cross Section [b]')
         ax.legend(loc='best')
         ax.set_xlim(Erange)
         if self.name is not None:

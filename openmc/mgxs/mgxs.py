@@ -1755,7 +1755,7 @@ class MatrixMGXS(MGXS):
 
         Returns
         -------
-        ndarray
+        numpy.ndarray
             A NumPy array of the multi-group cross section indexed in the order
             each group and subdomain is listed in the parameters.
 
@@ -3590,7 +3590,7 @@ class ScatterMatrixXS(MatrixMGXS):
 
         Returns
         -------
-        ndarray
+        numpy.ndarray
             A NumPy array of the multi-group cross section indexed in the order
             each group and subdomain is listed in the parameters.
 

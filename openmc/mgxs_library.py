@@ -1092,7 +1092,9 @@ class XSdata(object):
     def set_prompt_nu_fission_mgxs(self, prompt_nu_fission, temperature=294.,
                                    nuclide='total', xs_type='macro',
                                    subdomain=None):
-        """This method allows for an openmc.mgxs.PromptNuFissionXS or
+        """Sets the prompt-nu-fission cross section.
+
+        This method allows for an openmc.mgxs.PromptNuFissionXS or
         openmc.mgxs.PromptNuFissionMatrixXS to be used to set the
         prompt-nu-fission cross section for this XSdata object.
 

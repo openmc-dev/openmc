@@ -1840,7 +1840,7 @@ class MatrixMDGXS(MDGXS):
         energy = openmc.EnergyFilter(group_edges)
         energyout = openmc.EnergyoutFilter(group_edges)
 
-        if self.delayed_groups != None:
+        if self.delayed_groups is not None:
             delayed = openmc.DelayedGroupFilter(self.delayed_groups)
             return [[energy], [delayed, energy, energyout]]
         else:
@@ -1894,7 +1894,7 @@ class MatrixMDGXS(MDGXS):
 
         Returns
         -------
-        ndarray
+        numpy.ndarray
             A NumPy array of the multi-group cross section indexed in the order
             each group and subdomain is listed in the parameters.
 
@@ -2150,20 +2150,19 @@ class MatrixMDGXS(MDGXS):
         for subdomain in subdomains:
 
             if self.domain_type == 'distribcell':
-                string += \
-                    '{0: <16}=\t{1}\n'.format('\tSubdomain', subdomain)
+                string += '{: <16}=\t{}\n'.format('\tSubdomain', subdomain)
 
             # Loop over all Nuclides
             for nuclide in nuclides:
 
                 # Build header for nuclide type
                 if xs_type != 'sum':
-                    string += '{0: <16}=\t{1}\n'.format('\tNuclide', nuclide)
+                    string += '{: <16}=\t{}\n'.format('\tNuclide', nuclide)
 
                 # Build header for cross section type
-                string += '{0: <16}\n'.format(xs_header)
+                string += '{: <16}\n'.format(xs_header)
 
-                if self.delayed_groups != None:
+                if self.delayed_groups is not None:
 
                     for delayed_group in self.delayed_groups:
 
@@ -2177,22 +2176,20 @@ class MatrixMDGXS(MDGXS):
                         for in_group in range(1, self.num_groups + 1):
                             for out_group in range(1, self.num_groups + 1):
                                 string += template.format('', in_group, out_group)
-                                average = \
-                                          self.get_xs([in_group], [out_group],
+                                average = self.get_xs([in_group], [out_group],
                                                       [subdomain], [nuclide],
                                                       xs_type=xs_type,
                                                       value='mean',
                                                       delayed_groups=[delayed_group])
-                                rel_err = \
-                                          self.get_xs([in_group], [out_group],
+                                rel_err = self.get_xs([in_group], [out_group],
                                                       [subdomain], [nuclide],
                                                       xs_type=xs_type,
                                                       value='rel_err',
                                                       delayed_groups=[delayed_group])
                                 average = average.flatten()[0]
                                 rel_err = rel_err.flatten()[0] * 100.
-                                string += '{:1.2e} +/- {:1.2e}%'.format(average,
-                                                                        rel_err)
+                                string += '{:.2e} +/- {:.2e}%'.format(average,
+                                                                      rel_err)
                                 string += '\n'
                             string += '\n'
                         string += '\n'
@@ -2204,18 +2201,16 @@ class MatrixMDGXS(MDGXS):
                     for in_group in range(1, self.num_groups + 1):
                         for out_group in range(1, self.num_groups + 1):
                             string += template.format('', in_group, out_group)
-                            average = \
-                                      self.get_xs([in_group], [out_group],
+                            average = self.get_xs([in_group], [out_group],
                                                   [subdomain], [nuclide],
                                                   xs_type=xs_type, value='mean')
-                            rel_err = \
-                                      self.get_xs([in_group], [out_group],
+                            rel_err = self.get_xs([in_group], [out_group],
                                                   [subdomain], [nuclide],
                                                   xs_type=xs_type, value='rel_err')
                             average = average.flatten()[0]
                             rel_err = rel_err.flatten()[0] * 100.
-                            string += '{:1.2e} +/- {:1.2e}%'.format(average,
-                                                                    rel_err)
+                            string += '{:.2e} +/- {:.2e}%'.format(average,
+                                                                  rel_err)
                             string += '\n'
                         string += '\n'
                 string += '\n'

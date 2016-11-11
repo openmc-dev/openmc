@@ -64,6 +64,10 @@ class Material(object):
         List in which each item is a 3-tuple consisting of an
         :class:`openmc.Nuclide` instance, the percent density, and the percent
         type ('ao' or 'wo').
+    average_molar_mass : float
+        The average molar mass of nuclides in the material in units of grams per
+        mol.  For example, UO2 with 3 nuclides will have an average molar mass
+        of 270 / 3 = 90 g / mol.
 
     """
 
@@ -193,6 +197,27 @@ class Material(object):
     @property
     def distrib_otf_file(self):
         return self._distrib_otf_file
+
+    @property
+    def average_molar_mass(self):
+
+        # Get a list of all the nuclides, with elements expanded
+        nuclide_densities = self.get_nuclide_densities()
+
+        # Using the sum of specified atomic or weight amounts as a basis, sum
+        # the mass and moles of the material
+        mass = 0.
+        moles = 0.
+        for nuc, vals in nuclide_densities.items():
+            if vals[2] == 'ao':
+                mass += vals[1] * openmc.data.atomic_mass(nuc)
+                moles += vals[1]
+            else:
+                moles += vals[1] / openmc.data.atomic_mass(nuc)
+                mass += vals[1]
+
+        # Compute and return the molar mass
+        return mass / moles
 
     @id.setter
     def id(self, material_id):

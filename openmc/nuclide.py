@@ -200,8 +200,10 @@ class Nuclide(object):
 
         Parameters
         ----------
-        types : Iterable of values of PLOT_TYPES
-            The type of cross sections to calculate
+        types : Iterable of str or Integral
+            The type of cross sections to calculate; values can either be those
+            in openmc.PLOT_TYPES or integers which correspond to reaction
+            channel (MT) numbers.
         temperature : float, optional
             Temperature in Kelvin to plot. If not specified, a default
             temperature of 294K will be plotted. Note that the nearest
@@ -224,7 +226,6 @@ class Nuclide(object):
         # Check types
         if cross_sections is not None:
             cv.check_type('cross_sections', cross_sections, str)
-        cv.check_iterable_type('types', types, str)
         if sab_name:
             cv.check_type('sab_name', sab_name, str)
 
@@ -239,7 +240,11 @@ class Nuclide(object):
                 ops.append(PLOT_TYPES_OP[line])
             else:
                 # Not a built-in type, we have to parse it ourselves
-                raise NotImplementedError()
+                cv.check_type('MT in types', line, Integral)
+                cv.check_greater_than('MT in types', line, 0)
+                mts.append((line,))
+                yields.append((False,))
+                ops.append(())
 
         # If cross_sections is None, get the cross sections from the
         # OPENMC_CROSS_SECTIONS environment variable

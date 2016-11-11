@@ -834,21 +834,6 @@ class Material(object):
         # Check types
         if cross_sections is not None:
             cv.check_type('cross_sections', cross_sections, str)
-        cv.check_iterable_type('types', types, str)
-
-        # Parse the types
-        mts = []
-        ops = []
-        yields = []
-        for line in types:
-            if line in PLOT_TYPES:
-                mts.append(PLOT_TYPES_MT[line])
-                yields.append(PLOT_TYPES_YIELD[line])
-                ops.append(PLOT_TYPES_OP[line])
-            else:
-                # Not a built-in type, we have to parse it ourselves
-                raise NotImplementedError()
-
         if self.temperature is not None:
             T = self.temperature
         else:
@@ -901,8 +886,8 @@ class Material(object):
             unionE = np.union1d(unionE, E[n])
 
         # Now we can combine all the nuclidic data
-        data = np.zeros((len(mts), len(unionE)))
-        for l in range(len(mts)):
+        data = np.zeros((len(types), len(unionE)))
+        for l in range(len(types)):
             if types[l] == 'unity':
                 data[l, :] = 1.
             else:

@@ -97,7 +97,7 @@ class Nuclide(object):
 
         self._scattering = scattering
 
-    def plot_xs(self, types, divisor_types=None, temperature=294.,
+    def plot_xs(self, types, divisor_types=None, temperature=294., axis=None,
                 Erange=(1.E-5, 20.E6), sab_name=None, cross_sections=None,
                 **kwargs):
         """Creates a figure of continuous-energy cross sections for this
@@ -116,6 +116,9 @@ class Nuclide(object):
             temperature of 294K will be plotted. Note that the nearest
             temperature in the library for each nuclide will be used as opposed
             to using any interpolation.
+        axis : matplotlib.axes, optional
+            A previously generated axis to use for plotting. If not specified,
+            a new axis and figure will be generated.
         Erange : tuple of floats
             Energy range (in eV) to plot the cross section within
         sab_name : str, optional
@@ -129,7 +132,10 @@ class Nuclide(object):
         Returns
         -------
         fig : matplotlib.figure.Figure
-            Matplotlib Figure of the generated macroscopic cross section
+            If axis is None, then a Matplotlib Figure of the generated
+            macroscopic cross section will be returned. Otherwise, a value of
+            None will be returned as the figure and axes have already been
+            generated.
 
         """
 
@@ -158,8 +164,12 @@ class Nuclide(object):
             data = data_new
 
         # Generate the plot
-        fig = plt.figure(**kwargs)
-        ax = fig.add_subplot(111)
+        if axis is None:
+            fig = plt.figure(**kwargs)
+            ax = fig.add_subplot(111)
+        else:
+            fig = None
+            ax = axis
         for i in range(len(data)):
             to_plot = data[i](E)
             # Set to loglog or semilogx depending on if we are plotting a data
@@ -173,7 +183,7 @@ class Nuclide(object):
 
         ax.set_xlabel('Energy [eV]')
         if divisor_types:
-            ax.set_ylabel('Microscopic Cross Section')
+            ax.set_ylabel('Microscopic Data')
         else:
             ax.set_ylabel('Microscopic Cross Section [b]')
         ax.legend(loc='best')
@@ -357,8 +367,13 @@ class Nuclide(object):
                                 funcs.append(nuc[mt].xs[nucT])
                         else:
                             funcs.append(nuc[mt].xs[nucT])
-                    elif mt == 0:
+                    elif mt == UNITY_MT:
                         funcs.append(lambda x: 1.)
+                    elif mt == XI_MT:
+                        awr = nuc.atomic_weight_ratio
+                        alpha = ((awr - 1.) / (awr + 1.))**2
+                        xi = 1. + alpha * np.log(alpha) / (1. - alpha)
+                        funcs.append(lambda x: xi)
                     else:
                         funcs.append(lambda x: 0.)
                 xs.append(openmc.data.Combination(funcs, op))

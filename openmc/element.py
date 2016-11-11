@@ -261,7 +261,7 @@ class Element(object):
 
         return isotopes
 
-    def plot_xs(self, types, divisor_types=None, temperature=294.,
+    def plot_xs(self, types, divisor_types=None, temperature=294., axis=None,
                 Erange=(1.E-5, 20.E6), sab_name=None, cross_sections=None,
                 enrichment=None, **kwargs):
         """Creates a figure of continuous-energy microscopic cross sections
@@ -280,6 +280,9 @@ class Element(object):
             temperature of 294K will be plotted. Note that the nearest
             temperature in the library for each nuclide will be used as opposed
             to using any interpolation.
+        axis : matplotlib.axes, optional
+            A previously generated axis to use for plotting. If not specified,
+            a new axis and figure will be generated.
         Erange : tuple of floats
             Energy range (in eV) to plot the cross section within
         sab_name : str, optional
@@ -297,7 +300,10 @@ class Element(object):
         Returns
         -------
         fig : matplotlib.figure.Figure
-            Matplotlib Figure of the generated macroscopic cross section
+            If axis is None, then a Matplotlib Figure of the generated
+            macroscopic cross section will be returned. Otherwise, a value of
+            None will be returned as the figure and axes have already been
+            generated.
 
         """
 
@@ -327,8 +333,12 @@ class Element(object):
             data = data_new
 
         # Generate the plot
-        fig = plt.figure(**kwargs)
-        ax = fig.add_subplot(111)
+        if axis is None:
+            fig = plt.figure(**kwargs)
+            ax = fig.add_subplot(111)
+        else:
+            fig = None
+            ax = axis
         for i in range(len(data)):
             # Set to loglog or semilogx depending on if we are plotting a data
             # type which we expect to vary linearly
@@ -337,11 +347,12 @@ class Element(object):
             else:
                 plot_func = ax.loglog
             if np.sum(data[i, :]) > 0.:
+                print('max = {:.2E}'.format(np.max(data[i, :])))
                 plot_func(E, data[i, :], label=types[i])
 
         ax.set_xlabel('Energy [eV]')
         if divisor_types:
-            ax.set_ylabel('Elemental Cross Section')
+            ax.set_ylabel('Elemental Data')
         else:
             ax.set_ylabel('Elemental Cross Section [b]')
         ax.legend(loc='best')

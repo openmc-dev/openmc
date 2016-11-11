@@ -666,8 +666,7 @@ class Material(object):
         nuc_densities = []
         nuc_density_types = []
         for nuclide in nuclides.items():
-            nuc, nuc_data = nuclide
-            nuc, nuc_density, nuc_density_type = nuc_data
+            nuc, nuc_density, nuc_density_type = nuclide[1]
             nucs.append(nuc)
             nuc_densities.append(nuc_density)
             nuc_density_types.append(nuc_density_type)
@@ -713,7 +712,8 @@ class Material(object):
         return nuclides
 
     def plot_xs(self, types, divisor_types=None, temperature=294.,
-                Erange=(1.E-5, 20.E6), cross_sections=None, **kwargs):
+                axis=None, Erange=(1.E-5, 20.E6), cross_sections=None,
+                **kwargs):
         """Creates a figure of continuous-energy macroscopic cross sections
         for this material
 
@@ -730,6 +730,9 @@ class Material(object):
             temperature of 294K will be plotted. Note that the nearest
             temperature in the library for each nuclide will be used as opposed
             to using any interpolation.
+        axis : matplotlib.axes, optional
+            A previously generated axis to use for plotting. If not specified,
+            a new axis and figure will be generated.
         Erange : tuple of floats, optional
             Energy range (in eV) to plot the cross section within
         cross_sections : str, optional
@@ -740,8 +743,11 @@ class Material(object):
 
         Returns
         -------
-        fig : matplotlib.figure.Figure
-            Matplotlib Figure of the generated macroscopic cross section
+        fig : matplotlib.figure.Figure or None
+            If axis is None, then a Matplotlib Figure of the generated
+            macroscopic cross section will be returned. Otherwise, a value of
+            None will be returned as the figure and axes have already been
+            generated.
 
         """
 
@@ -770,8 +776,12 @@ class Material(object):
             data = data_new
 
         # Generate the plot
-        fig = plt.figure(**kwargs)
-        ax = fig.add_subplot(111)
+        if axis is None:
+            fig = plt.figure(**kwargs)
+            ax = fig.add_subplot(111)
+        else:
+            fig = None
+            ax = axis
         for i in range(len(data)):
             # Set to loglog or semilogx depending on if we are plotting a data
             # type which we expect to vary linearly
@@ -784,7 +794,7 @@ class Material(object):
 
         ax.set_xlabel('Energy [eV]')
         if divisor_types:
-            ax.set_ylabel('Macroscopic Cross Section')
+            ax.set_ylabel('Macroscopic Data')
         else:
             ax.set_ylabel('Macroscopic Cross Section [1/cm]')
         ax.legend(loc='best')

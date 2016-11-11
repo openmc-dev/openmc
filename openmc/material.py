@@ -657,7 +657,7 @@ class Material(object):
         n = -1
         for nuclide in nuclides.items():
             n += 1
-            lib = library.get_by_materials(nuclide[0])
+            lib = library.get_by_material(nuclide[0])
             if lib is not None:
                 nuc = openmc.data.IncidentNeutron.from_hdf5(lib['path'])
                 awrs.append(nuc.atomic_weight_ratio)
@@ -688,7 +688,7 @@ class Material(object):
         return nuclides
 
     def plot_xs(self, types, divisor_types=None, temperature=294.,
-                Erange=(1.E-5, 20.E6), cross_sections=None):
+                Erange=(1.E-5, 20.E6), cross_sections=None, **kwargs):
         """Creates a figure of continuous-energy macroscopic cross sections
         for this material
 
@@ -709,6 +709,9 @@ class Material(object):
             Energy range (in eV) to plot the cross section within
         cross_sections : str, optional
             Location of cross_sections.xml file. Default is None.
+        **kwargs
+            All keyword arguments are passed to
+            :func:`matplotlib.pyplot.figure`.
 
         Returns
         -------
@@ -742,22 +745,16 @@ class Material(object):
             data = data_new
 
         # Generate the plot
-        fig = plt.figure()
+        fig = plt.figure(**kwargs)
         ax = fig.add_subplot(111)
-        iE_max = np.searchsorted(E, Erange[1])
-        min_data = np.finfo(np.float64).max
-        max_data = np.finfo(np.float64).min
         for i in range(len(data)):
             if np.sum(data[i, :]) > 0.:
                 ax.loglog(E, data[i, :], label=types[i])
-                min_data = min(min_data, np.min(data[i, :iE_max]))
-                max_data = max(max_data, np.max(data[i, :iE_max]))
 
         ax.set_xlabel('Energy [eV]')
         ax.set_ylabel('Macroscopic Cross Section [1/cm]')
         ax.legend(loc='best')
         ax.set_xlim(Erange)
-        ax.set_ylim(min_data, max_data)
         if self.name is not None:
             title = 'Macroscopic Cross Section for ' + self.name
             ax.set_title(title)
@@ -846,9 +843,9 @@ class Material(object):
 
         for sab_name in self._sab:
             sab = openmc.data.ThermalScattering.from_hdf5(
-                library.get_by_materials(sab_name)['path'])
+                library.get_by_material(sab_name)['path'])
             for nuc in sab.nuclides:
-                sabs[nuc] = library.get_by_materials(sab_name)['path']
+                sabs[nuc] = library.get_by_material(sab_name)['path']
 
         # Now we can create the data sets to be plotted
         xs = []

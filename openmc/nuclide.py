@@ -98,7 +98,8 @@ class Nuclide(object):
         self._scattering = scattering
 
     def plot_xs(self, types, divisor_types=None, temperature=294.,
-                Erange=(1.E-5, 20.E6), sab_name=None, cross_sections=None):
+                Erange=(1.E-5, 20.E6), sab_name=None, cross_sections=None,
+                **kwargs):
         """Creates a figure of continuous-energy cross sections for this
         nuclide
 
@@ -121,6 +122,9 @@ class Nuclide(object):
             Name of S(a,b) library to apply to MT=2 data when applicable.
         cross_sections : str, optional
             Location of cross_sections.xml file. Default is None.
+        **kwargs
+            All keyword arguments are passed to
+            :func:`matplotlib.pyplot.figure`.
 
         Returns
         -------
@@ -154,23 +158,17 @@ class Nuclide(object):
             data = data_new
 
         # Generate the plot
-        fig = plt.figure()
+        fig = plt.figure(**kwargs)
         ax = fig.add_subplot(111)
-        iE_max = np.searchsorted(E, Erange[1])
-        min_data = np.finfo(np.float64).max
-        max_data = np.finfo(np.float64).min
         for i in range(len(data)):
             to_plot = data[i](E)
             if np.sum(to_plot) > 0.:
                 ax.loglog(E, to_plot, label=types[i])
-                min_data = min(min_data, np.min(to_plot[:iE_max]))
-                max_data = max(max_data, np.max(to_plot[:iE_max]))
 
         ax.set_xlabel('Energy [eV]')
         ax.set_ylabel('Microscopic Cross Section [b]')
         ax.legend(loc='best')
         ax.set_xlim(Erange)
-        ax.set_ylim(min_data, max_data)
         if self.name is not None:
             title = 'Microscopic Cross Section for ' + self.name
             ax.set_title(title)
@@ -245,7 +243,7 @@ class Nuclide(object):
         # Now we can create the data sets to be plotted
         E = []
         xs = []
-        lib = library.get_by_materials(self.name)
+        lib = library.get_by_material(self.name)
         if lib is not None:
             nuc = openmc.data.IncidentNeutron.from_hdf5(lib['path'])
             # Obtain the nearest temperature

@@ -98,10 +98,9 @@ class Nuclide(object):
         self._scattering = scattering
 
     def plot_xs(self, types, divisor_types=None, temperature=294., axis=None,
-                Erange=(1.E-5, 20.E6), sab_name=None, cross_sections=None,
+                energy_range=(1.E-5, 20.E6), sab_name=None, cross_sections=None,
                 **kwargs):
-        """Creates a figure of continuous-energy cross sections for this
-        nuclide
+        """Creates a figure of continuous-energy cross sections for this nuclide
 
         Parameters
         ----------
@@ -119,7 +118,7 @@ class Nuclide(object):
         axis : matplotlib.axes, optional
             A previously generated axis to use for plotting. If not specified,
             a new axis and figure will be generated.
-        Erange : tuple of floats
+        energy_range : tuple of floats
             Energy range (in eV) to plot the cross section within
         sab_name : str, optional
             Name of S(a,b) library to apply to MT=2 data when applicable.
@@ -156,11 +155,12 @@ class Nuclide(object):
             E = np.union1d(Enum, Ediv)
             data_new = []
 
-            for l in range(len(types)):
-                data_new.append(openmc.data.Combination([data[l], data_div[l]],
+            for line in range(len(types)):
+                data_new.append(openmc.data.Combination([data[line],
+                                                         data_div[line]],
                                                         [np.divide]))
-                if divisor_types[l] != 'unity':
-                    types[l] = types[l] + ' / ' + divisor_types[l]
+                if divisor_types[line] != 'unity':
+                    types[line] = types[line] + ' / ' + divisor_types[line]
             data = data_new
 
         # Generate the plot
@@ -170,14 +170,15 @@ class Nuclide(object):
         else:
             fig = None
             ax = axis
+        # Set to loglog or semilogx depending on if we are plotting a data
+        # type which we expect to vary linearly
+        if set(types).issubset(PLOT_TYPES_LINEAR):
+            plot_func = ax.semilogx
+        else:
+            plot_func = ax.loglog
+        # Plot the data
         for i in range(len(data)):
             to_plot = data[i](E)
-            # Set to loglog or semilogx depending on if we are plotting a data
-            # type which we expect to vary linearly
-            if types[i] in PLOT_TYPES_LINEAR:
-                plot_func = ax.semilogx
-            else:
-                plot_func = ax.loglog
             if np.sum(to_plot) > 0.:
                 plot_func(E, to_plot, label=types[i])
 
@@ -187,7 +188,7 @@ class Nuclide(object):
         else:
             ax.set_ylabel('Microscopic Cross Section [b]')
         ax.legend(loc='best')
-        ax.set_xlim(Erange)
+        ax.set_xlim(energy_range)
         if self.name is not None:
             title = 'Microscopic Cross Section for ' + self.name
             ax.set_title(title)
@@ -216,10 +217,11 @@ class Nuclide(object):
 
         Returns
         -------
-        E : numpy.array
+        energy_grid : numpy.array
             Energies at which cross sections are calculated, in units of eV
         data : numpy.ndarray
-            Cross sections calculated at the energy grid described by unionE
+            Cross sections calculated at the energy grid described by
+            energy_grid
 
         """
 
@@ -246,18 +248,8 @@ class Nuclide(object):
                 yields.append((False,))
                 ops.append(())
 
-        # If cross_sections is None, get the cross sections from the
-        # OPENMC_CROSS_SECTIONS environment variable
-        if cross_sections is None:
-            cross_sections = os.environ.get('OPENMC_CROSS_SECTIONS')
-
-        # If a cross_sections library is present, check natural nuclides
-        # against the nuclides in the library
-        if cross_sections is not None:
-            library = openmc.data.DataLibrary.from_xml(cross_sections)
-        else:
-            raise ValueError("cross_sections or OPENMC_CROSS_SECTIONS "
-                             "environmental variable must be set")
+        # Load the library
+        library = openmc.data.DataLibrary.from_xml(cross_sections)
 
         # Convert temperature to format needed for access in the library
         cv.check_type('temperature', temperature, Real)
@@ -265,7 +257,7 @@ class Nuclide(object):
         T = temperature
 
         # Now we can create the data sets to be plotted
-        E = []
+        energy_grid = []
         xs = []
         lib = library.get_by_material(self.name)
         if lib is not None:
@@ -325,9 +317,9 @@ class Nuclide(object):
                     if inelastic.x[-1] > sab_Emax:
                             sab_Emax = inelastic.x[-1]
                     sab_funcs.append(inelastic)
-                E = grid
+                energy_grid = grid
             else:
-                E = nuc.energy[nucT]
+                energy_grid = nuc.energy[nucT]
 
             for i, mt_set in enumerate(mts):
                 # Get the reaction xs data from the nuclide
@@ -385,4 +377,4 @@ class Nuclide(object):
         else:
             raise ValueError(nuclide[0] + " not in library")
 
-        return E, xs
+        return energy_grid, xs

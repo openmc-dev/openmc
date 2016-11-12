@@ -3,7 +3,7 @@ import numpy as np
 # Supported keywords for material xs plotting
 PLOT_TYPES = ['total', 'scatter', 'elastic', 'inelastic', 'fission',
               'absorption', 'capture', 'nu-fission', 'nu-scatter', 'unity',
-              'slowing-down power']
+              'slowing-down power', 'damage']
 
 # Special MT values
 UNITY_MT = -1
@@ -44,7 +44,8 @@ PLOT_TYPES_MT = {'total': (2, 3,),
                                         167, 168, 169, 170, 171, 172, 173, 174,
                                         175, 176, 177, 178, 179, 180, 181, 183,
                                         184, 190, 194, 196, 198, 199, 200, 875,
-                                        891, XI_MT)}
+                                        891, XI_MT),
+                 'damage': (444,)}
 # Operations to use when combining MTs the first np.add is used in reference
 # to zero
 PLOT_TYPES_OP = {'total': (np.add,),
@@ -56,7 +57,8 @@ PLOT_TYPES_OP = {'total': (np.add,),
                  'nu-scatter': (np.add,) * (len(PLOT_TYPES_MT['nu-scatter']) - 1),
                  'unity': (),
                  'slowing-down power': 
-                    (np.add,) * (len(PLOT_TYPES_MT['slowing-down power']) - 2) + (np.multiply,)}
+                    (np.add,) * (len(PLOT_TYPES_MT['slowing-down power']) - 2) + (np.multiply,),
+                 'damage': ()}
 
 # Whether or not to multiply the reaction by the yield as well
 PLOT_TYPES_YIELD = {'total': (False, False),
@@ -68,7 +70,9 @@ PLOT_TYPES_YIELD = {'total': (False, False),
                     'nu-scatter': (True,) * len(PLOT_TYPES_MT['nu-scatter']),
                     'unity': (False,),
                     'slowing-down power':
-                        (True,) * len(PLOT_TYPES_MT['slowing-down power'])}
+                        (True,) * len(PLOT_TYPES_MT['slowing-down power']),
+                    'damage': (False,)}
 
 # Types of plots to plot linearly in y
-PLOT_TYPES_LINEAR = ['nu-fission / fission', 'nu-scatter / scatter']
+PLOT_TYPES_LINEAR = {'nu-fission / fission', 'nu-scatter / scatter',
+                     'nu-fission / absorption', 'fission / absorption'}

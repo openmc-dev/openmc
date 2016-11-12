@@ -3,7 +3,6 @@ from copy import deepcopy
 from numbers import Real, Integral
 import warnings
 from xml.etree import ElementTree as ET
-import os
 
 from six import string_types
 import numpy as np
@@ -12,7 +11,6 @@ import openmc
 import openmc.data
 import openmc.checkvalue as cv
 from openmc.clean_xml import sort_xml_elements, clean_xml_indentation
-from openmc.plot_data import *
 
 
 # A static variable for auto-generated Material IDs
@@ -696,182 +694,6 @@ class Material(object):
             nuclides[nuc] = (nuc, nuc_densities[n])
 
         return nuclides
-
-    def plot_xs(self, types, divisor_types=None, temperature=294.,
-                axis=None, energy_range=(1.E-5, 20.E6), cross_sections=None,
-                **kwargs):
-        """Creates a figure of continuous-energy macroscopic cross sections
-        for this material
-
-        Parameters
-        ----------
-        types : Iterable of values of PLOT_TYPES
-            The type of cross sections to include in the plot.
-        divisor_types : Iterable of values of PLOT_TYPES, optional
-            Cross section types which will divide those produced by types
-            before plotting. A type of 'unity' can be used to effectively not
-            divide some types.
-        temperature : float, optional
-            Temperature in Kelvin to plot. If not specified, a default
-            temperature of 294K will be plotted. Note that the nearest
-            temperature in the library for each nuclide will be used as opposed
-            to using any interpolation.
-        axis : matplotlib.axes, optional
-            A previously generated axis to use for plotting. If not specified,
-            a new axis and figure will be generated.
-        energy_range : tuple of floats, optional
-            Energy range (in eV) to plot the cross section within
-        cross_sections : str, optional
-            Location of cross_sections.xml file. Default is None.
-        **kwargs
-            All keyword arguments are passed to
-            :func:`matplotlib.pyplot.figure`.
-
-        Returns
-        -------
-        fig : matplotlib.figure.Figure or None
-            If axis is None, then a Matplotlib Figure of the generated
-            macroscopic cross section will be returned. Otherwise, a value of
-            None will be returned as the figure and axes have already been
-            generated.
-
-        """
-
-        from matplotlib import pyplot as plt
-
-        E, data = self.calculate_xs(types, temperature, cross_sections)
-
-        if divisor_types:
-            cv.check_length('divisor types', divisor_types, len(types),
-                            len(types))
-            Ediv, data_div = self.calculate_xs(divisor_types, temperature,
-                                               cross_sections)
-
-            # Create a new union grid, interpolate data and data_div on to that
-            # grid, and then do the actual division
-            Enum = E[:]
-            E = np.union1d(Enum, Ediv)
-            data_new = np.zeros((len(types), len(E)))
-
-            for line in range(len(types)):
-                data_new[line, :] = \
-                    np.divide(np.interp(E, Enum, data[line, :]),
-                              np.interp(E, Ediv, data_div[line, :]))
-                if divisor_types[line] != 'unity':
-                    types[line] = types[line] + ' / ' + divisor_types[line]
-            data = data_new
-
-        # Generate the plot
-        if axis is None:
-            fig = plt.figure(**kwargs)
-            ax = fig.add_subplot(111)
-        else:
-            fig = None
-            ax = axis
-        # Set to loglog or semilogx depending on if we are plotting a data
-        # type which we expect to vary linearly
-        if set(types).issubset(PLOT_TYPES_LINEAR):
-            plot_func = ax.semilogx
-        else:
-            plot_func = ax.loglog
-        # Plot the data
-        for i in range(len(data)):
-            if np.sum(data[i, :]) > 0.:
-                plot_func(E, data[i, :], label=types[i])
-
-        ax.set_xlabel('Energy [eV]')
-        if divisor_types:
-            ax.set_ylabel('Macroscopic Data')
-        else:
-            ax.set_ylabel('Macroscopic Cross Section [1/cm]')
-        ax.legend(loc='best')
-        ax.set_xlim(energy_range)
-        if self.name is not None:
-            title = 'Macroscopic Cross Section for ' + self.name
-            ax.set_title(title)
-
-        return fig
-
-    def calculate_xs(self, types, temperature=294., cross_sections=None):
-        """Calculates continuous-energy macroscopic cross sections of a
-        requested type
-
-        Parameters
-        ----------
-        types : Iterable of values of PLOT_TYPES
-            The type of cross sections to calculate
-        temperature : float, optional
-            Temperature in Kelvin to plot. If not specified, a default
-            temperature of 294K will be plotted. Note that the nearest
-            temperature in the library for each nuclide will be used as opposed
-            to using any interpolation.
-        cross_sections : str, optional
-            Location of cross_sections.xml file. Default is None.
-
-        Returns
-        -------
-        energy_grid : numpy.array
-            Energies at which cross sections are calculated, in units of eV
-        data : numpy.ndarray
-            Macroscopic cross sections calculated at the energy grid described
-            by energy_grid
-
-        """
-
-        # Check types
-        if cross_sections is not None:
-            cv.check_type('cross_sections', cross_sections, str)
-        if self.temperature is not None:
-            T = self.temperature
-        else:
-            cv.check_type('temperature', temperature, Real)
-            T = temperature
-
-        # Load the library
-        library = openmc.data.DataLibrary.from_xml(cross_sections)
-
-        # Expand elements in to nuclides with atomic densities
-        nuclides = self.get_nuclide_atom_densities(cross_sections)
-
-        # For ease of processing split out nuc and nuc_density
-        nuc_densities = [nuclide[1][1] for nuclide in nuclides.items()]
-
-        # Identify the nuclides which have S(a,b) data
-        sabs = {}
-        for nuclide in nuclides.items():
-            sabs[nuclide[0].name] = None
-        for sab_name in self._sab:
-            sab = openmc.data.ThermalScattering.from_hdf5(
-                library.get_by_material(sab_name)['path'])
-            for nuc in sab.nuclides:
-                sabs[nuc] = library.get_by_material(sab_name)['path']
-
-        # Now we can create the data sets to be plotted
-        xs = []
-        E = []
-        for nuclide in nuclides.items():
-            sab_tab = sabs[nuclide[0].name]
-            temp_E, temp_xs = nuclide[0].calculate_xs(types, T, sab_tab,
-                                                      cross_sections)
-            E.append(temp_E)
-            xs.append(temp_xs)
-
-        # Condense the data for every nuclide
-        # First create a union energy grid
-        energy_grid = E[0]
-        for n in range(1, len(E)):
-            energy_grid = np.union1d(energy_grid, E[n])
-
-        # Now we can combine all the nuclidic data
-        data = np.zeros((len(types), len(energy_grid)))
-        for line in range(len(types)):
-            if types[line] == 'unity':
-                data[line, :] = 1.
-            else:
-                for n in range(len(nuclides)):
-                    data[line, :] += nuc_densities[n] * xs[n][line](energy_grid)
-
-        return energy_grid, data
 
     def _get_nuclide_xml(self, nuclide, distrib=False):
         xml_element = ET.Element("nuclide")

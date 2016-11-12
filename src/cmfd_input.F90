@@ -107,7 +107,7 @@ contains
       if (.not. run_CE) then
         do i = 1, ng
           found = .false.
-          do g = 1, energy_groups + 1
+          do g = 1, num_energy_groups + 1
             if (cmfd % egrid(i) == energy_bins(g)) then
               found = .true.
               exit

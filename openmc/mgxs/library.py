@@ -71,8 +71,8 @@ class Library(object):
         :attr:`ScatterMatrixXS.scatter_format` is 'histogram'. (default is 16)
     energy_groups : openmc.mgxs.EnergyGroups
         Energy group structure for energy condensation
-    delayed_groups : list of int
-        Delayed groups to filter out the xs
+    num_delayed_groups : int
+        Number of delayed groups
     estimator : str or None
         The tally estimator used to compute multi-group cross sections.
         If None, the default for each MGXS type is used.
@@ -107,7 +107,7 @@ class Library(object):
         self._domain_type = None
         self._domains = 'all'
         self._energy_groups = None
-        self._delayed_groups = None
+        self._num_delayed_groups = 0
         self._correction = 'P0'
         self._scatter_format = 'legendre'
         self._legendre_order = 0
@@ -144,7 +144,7 @@ class Library(object):
             clone._legendre_order = self.legendre_order
             clone._histogram_bins = self.histogram_bins
             clone._energy_groups = copy.deepcopy(self.energy_groups, memo)
-            clone._delayed_groups = copy.deepcopy(self.delayed_groups, memo)
+            clone._num_delayed_groups = self.num_delayed_groups
             clone._tally_trigger = copy.deepcopy(self.tally_trigger, memo)
             clone._all_mgxs = copy.deepcopy(self.all_mgxs)
             clone._sp_filename = self._sp_filename
@@ -214,8 +214,8 @@ class Library(object):
         return self._energy_groups
 
     @property
-    def delayed_groups(self):
-        return self._delayed_groups
+    def num_delayed_groups(self):
+        return self._num_delayed_groups
 
     @property
     def correction(self):
@@ -244,13 +244,6 @@ class Library(object):
     @property
     def num_groups(self):
         return self.energy_groups.num_groups
-
-    @property
-    def num_delayed_groups(self):
-        if self.delayed_groups == None:
-            return 0
-        else:
-            return len(self.delayed_groups)
 
     @property
     def all_mgxs(self):
@@ -351,22 +344,14 @@ class Library(object):
         cv.check_type('energy groups', energy_groups, openmc.mgxs.EnergyGroups)
         self._energy_groups = energy_groups
 
-    @delayed_groups.setter
-    def delayed_groups(self, delayed_groups):
+    @num_delayed_groups.setter
+    def num_delayed_groups(self, num_delayed_groups):
 
-        if delayed_groups != None:
-
-            cv.check_type('delayed groups', delayed_groups, list, int)
-            cv.check_greater_than('num delayed groups', len(delayed_groups), 0)
-
-            # Check that the groups are within [1, MAX_DELAYED_GROUPS]
-            for group in delayed_groups:
-                cv.check_greater_than('delayed group', group, 0)
-                cv.check_less_than('delayed group', group,
-                                   openmc.mgxs.MAX_DELAYED_GROUPS,
-                                   equality=True)
-
-            self._delayed_groups = delayed_groups
+        cv.check_less_than('num delayed groups', num_delayed_groups,
+                           openmc.mgxs.MAX_DELAYED_GROUPS, equality=True)
+        cv.check_greater_than('num delayed groups', num_delayed_groups, 0,
+                              equality=True)
+        self._num_delayed_groups = num_delayed_groups
 
     @correction.setter
     def correction(self, correction):
@@ -482,7 +467,12 @@ class Library(object):
                     mgxs.estimator = self.estimator
 
                 if mgxs_type in openmc.mgxs.MDGXS_TYPES:
-                    mgxs.delayed_groups = self.delayed_groups
+                    if self.num_delayed_groups == 0:
+                        mgxs.delayed_groups = None
+                    else:
+                        delayed_groups \
+                            = list(range(1,self.num_delayed_groups+1))
+                        mgxs.delayed_groups = delayed_groups
 
                 # If a tally trigger was specified, add it to the MGXS
                 if self.tally_trigger is not None:
@@ -958,41 +948,79 @@ class Library(object):
             mymgxs = self.get_mgxs(domain, 'nu-transport')
             xsdata.set_total_mgxs(mymgxs, xs_type=xs_type, nuclide=[nuclide],
                                   subdomain=subdomain)
+
         elif 'total' in self.mgxs_types:
             mymgxs = self.get_mgxs(domain, 'total')
             xsdata.set_total_mgxs(mymgxs, xs_type=xs_type, nuclide=[nuclide],
                                   subdomain=subdomain)
+
         if 'absorption' in self.mgxs_types:
             mymgxs = self.get_mgxs(domain, 'absorption')
             xsdata.set_absorption_mgxs(mymgxs, xs_type=xs_type,
                                        nuclide=[nuclide],
                                        subdomain=subdomain)
+
         if 'fission' in self.mgxs_types:
             mymgxs = self.get_mgxs(domain, 'fission')
             xsdata.set_fission_mgxs(mymgxs, xs_type=xs_type,
                                     nuclide=[nuclide], subdomain=subdomain)
+
         if 'kappa-fission' in self.mgxs_types:
             mymgxs = self.get_mgxs(domain, 'kappa-fission')
             xsdata.set_kappa_fission_mgxs(mymgxs, xs_type=xs_type,
                                           nuclide=[nuclide],
                                           subdomain=subdomain)
-        # For chi and nu-fission we can either have only a nu-fission matrix
-        # provided, or vectors of chi and nu-fission provided
+
+        if 'inverse-velocity' in self.mgxs_types:
+            mymgxs = self.get_mgxs(domain, 'inverse-velocity')
+            xsdata.set_inverse_velocity_mgxs(mymgxs, xs_type=xs_type,
+                                             nuclide=[nuclide],
+                                             subdomain=subdomain)
+
         if 'nu-fission matrix' in self.mgxs_types:
             mymgxs = self.get_mgxs(domain, 'nu-fission matrix')
             xsdata.set_nu_fission_mgxs(mymgxs, xs_type=xs_type,
                                        nuclide=[nuclide],
                                        subdomain=subdomain)
-        else:
-            if 'chi' in self.mgxs_types:
-                mymgxs = self.get_mgxs(domain, 'chi')
-                xsdata.set_chi_mgxs(mymgxs, xs_type=xs_type, nuclide=[nuclide],
-                                    subdomain=subdomain)
-            if 'nu-fission' in self.mgxs_types:
-                mymgxs = self.get_mgxs(domain, 'nu-fission')
-                xsdata.set_nu_fission_mgxs(mymgxs, xs_type=xs_type,
-                                           nuclide=[nuclide],
-                                           subdomain=subdomain)
+
+        if 'chi' in self.mgxs_types:
+            mymgxs = self.get_mgxs(domain, 'chi')
+            xsdata.set_chi_mgxs(mymgxs, xs_type=xs_type, nuclide=[nuclide],
+                                subdomain=subdomain)
+
+        if 'chi-prompt' in self.mgxs_types:
+            mymgxs = self.get_mgxs(domain, 'chi-prompt')
+            xsdata.set_chi_prompt_mgxs(mymgxs, xs_type=xs_type,
+                                       nuclide=[nuclide], subdomain=subdomain)
+
+        if 'chi-delayed' in self.mgxs_types:
+            mymgxs = self.get_mgxs(domain, 'chi-delayed')
+            xsdata.set_chi_delayed_mgxs(mymgxs, xs_type=xs_type,
+                                        nuclide=[nuclide], subdomain=subdomain)
+
+        if 'nu-fission' in self.mgxs_types:
+            mymgxs = self.get_mgxs(domain, 'nu-fission')
+            xsdata.set_nu_fission_mgxs(mymgxs, xs_type=xs_type,
+                                       nuclide=[nuclide],
+                                       subdomain=subdomain)
+
+        if 'prompt-nu-fission' in self.mgxs_types:
+            mymgxs = self.get_mgxs(domain, 'prompt-nu-fission')
+            xsdata.set_prompt_nu_fission_mgxs(mymgxs, xs_type=xs_type,
+                                              nuclide=[nuclide],
+                                              subdomain=subdomain)
+
+        if 'delayed-nu-fission' in self.mgxs_types:
+            mymgxs = self.get_mgxs(domain, 'delayed-nu-fission')
+            xsdata.set_delayed_nu_fission_mgxs(mymgxs, xs_type=xs_type,
+                                               nuclide=[nuclide],
+                                               subdomain=subdomain)
+
+        if 'beta' in self.mgxs_types:
+            mymgxs = self.get_mgxs(domain, 'nu-fission')
+            xsdata.set_beta_mgxs(mymgxs, xs_type=xs_type, nuclide=[nuclide],
+                                 subdomain=subdomain)
+
         # If multiplicity matrix is available, prefer that
         if 'multiplicity matrix' in self.mgxs_types:
             mymgxs = self.get_mgxs(domain, 'multiplicity matrix')
@@ -1000,6 +1028,7 @@ class Library(object):
                                                 nuclide=[nuclide],
                                                 subdomain=subdomain)
             using_multiplicity = True
+
         # multiplicity will fall back to using scatter and nu-scatter
         elif ((('scatter matrix' in self.mgxs_types) and
                ('nu-scatter matrix' in self.mgxs_types))):
@@ -1010,11 +1039,11 @@ class Library(object):
                                                 nuclide=[nuclide],
                                                 subdomain=subdomain)
             using_multiplicity = True
+
         else:
             using_multiplicity = False
 
         if using_multiplicity:
-            # import pdb; pdb.set_trace()
             nuscatt_mgxs = self.get_mgxs(domain, 'nu-scatter matrix')
             xsdata.set_scatter_matrix_mgxs(nuscatt_mgxs, xs_type=xs_type,
                                            nuclide=[nuclide],
@@ -1095,7 +1124,9 @@ class Library(object):
             xs_type = 'macro'
 
         # Initialize file
-        mgxs_file = openmc.MGXSLibrary(self.energy_groups)
+        mgxs_file = openmc.MGXSLibrary(self.energy_groups,
+                                       num_delayed_groups=\
+                                       self.num_delayed_groups)
 
         if self.domain_type == 'mesh':
             # Create the xsdata objects and add to the mgxs_file

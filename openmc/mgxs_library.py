@@ -1738,11 +1738,18 @@ class XSdata(object):
             if self.representation == 'isotropic':
 
                 g_out_bounds = np.zeros((G, 2), dtype=np.int)
-
                 for g_in in range(G):
-                    nz = np.nonzero(self._scatter_matrix[i][0, g_in, :])
-                    g_out_bounds[g_in, 0] = nz[0][0]
-                    g_out_bounds[g_in, 1] = nz[0][-1]
+                    if self.scatter_format == 'legendre':
+                        nz = np.nonzero(self._scatter_matrix[i][0, g_in, :])
+                    elif self.scatter_format == 'histogram':
+                        nz = np.nonzero(np.sum(
+                            self._scatter_matrix[i][:, g_in, :], axis=0))
+                    if len(nz[0]) == 0:
+                        g_out_bounds[g_in, 0] = 0
+                        g_out_bounds[g_in, 1] = 0
+                    else:
+                        g_out_bounds[g_in, 0] = nz[0][0]
+                        g_out_bounds[g_in, 1] = nz[0][-1]
 
                 # Now create the flattened scatter matrix array
                 matrix = self._scatter_matrix[i]

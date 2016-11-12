@@ -1,7 +1,6 @@
 from numbers import Integral, Real
 
 import numpy as np
-from matplotlib import pyplot as plt
 
 import openmc.checkvalue as cv
 import openmc.data
@@ -131,6 +130,8 @@ def plot_xs(this, types, divisor_types=None, temperature=294., axis=None,
         generated.
 
     """
+
+    from matplotlib import pyplot as plt
 
     if isinstance(this, openmc.Nuclide):
         data_type = 'nuclide'

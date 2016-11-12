@@ -141,13 +141,14 @@ def plot_xs(this, types, divisor_types=None, temperature=294., axis=None,
     else:
         raise TypeError("Invalid type for plotting")
 
-    E, data = calculate_xs(this, types, temperature, sab_name, cross_sections)
+    E, data = calculate_xs(this, types, temperature, sab_name, cross_sections,
+                           enrichment)
 
     if divisor_types:
         cv.check_length('divisor types', divisor_types, len(types),
                         len(types))
         Ediv, data_div = calculate_xs(this, divisor_types, temperature,
-                                      sab_name, cross_sections)
+                                      sab_name, cross_sections, enrichment)
 
         # Create a new union grid, interpolate data and data_div on to that
         # grid, and then do the actual division

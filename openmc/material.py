@@ -627,20 +627,8 @@ class Material(object):
 
         import scipy.constants as sc
 
-        cv.check_type('cross_sections', cross_sections, str)
-
-        # If cross_sections is None, get the cross sections from the
-        # OPENMC_CROSS_SECTIONS environment variable
-        if cross_sections is None:
-            cross_sections = os.environ.get('OPENMC_CROSS_SECTIONS')
-
-        # If a cross_sections library is present, check natural nuclides
-        # against the nuclides in the library
-        if cross_sections is not None:
-            library = openmc.data.DataLibrary.from_xml(cross_sections)
-        else:
-            raise ValueError("cross_sections or OPENMC_CROSS_SECTIONS "
-                             "environmental variable must be set")
+        # Load the library
+        library = openmc.data.DataLibrary.from_xml(cross_sections)
 
         # Expand elements in to nuclides
         nuclides = self.get_nuclide_densities()
@@ -704,15 +692,13 @@ class Material(object):
         nuc_densities = density * nuc_densities
 
         nuclides = OrderedDict()
-        n = -1
-        for nuc in nucs:
-            n += 1
+        for n, nuc in enumerate(nucs):
             nuclides[nuc] = (nuc, nuc_densities[n])
 
         return nuclides
 
     def plot_xs(self, types, divisor_types=None, temperature=294.,
-                axis=None, Erange=(1.E-5, 20.E6), cross_sections=None,
+                axis=None, energy_range=(1.E-5, 20.E6), cross_sections=None,
                 **kwargs):
         """Creates a figure of continuous-energy macroscopic cross sections
         for this material
@@ -733,7 +719,7 @@ class Material(object):
         axis : matplotlib.axes, optional
             A previously generated axis to use for plotting. If not specified,
             a new axis and figure will be generated.
-        Erange : tuple of floats, optional
+        energy_range : tuple of floats, optional
             Energy range (in eV) to plot the cross section within
         cross_sections : str, optional
             Location of cross_sections.xml file. Default is None.
@@ -767,12 +753,12 @@ class Material(object):
             E = np.union1d(Enum, Ediv)
             data_new = np.zeros((len(types), len(E)))
 
-            for l in range(len(types)):
-                data_new[l, :] = \
-                    np.divide(np.interp(E, Enum, data[l, :]),
-                              np.interp(E, Ediv, data_div[l, :]))
-                if divisor_types[l] != 'unity':
-                    types[l] = types[l] + ' / ' + divisor_types[l]
+            for line in range(len(types)):
+                data_new[line, :] = \
+                    np.divide(np.interp(E, Enum, data[line, :]),
+                              np.interp(E, Ediv, data_div[line, :]))
+                if divisor_types[line] != 'unity':
+                    types[line] = types[line] + ' / ' + divisor_types[line]
             data = data_new
 
         # Generate the plot
@@ -782,13 +768,14 @@ class Material(object):
         else:
             fig = None
             ax = axis
+        # Set to loglog or semilogx depending on if we are plotting a data
+        # type which we expect to vary linearly
+        if set(types).issubset(PLOT_TYPES_LINEAR):
+            plot_func = ax.semilogx
+        else:
+            plot_func = ax.loglog
+        # Plot the data
         for i in range(len(data)):
-            # Set to loglog or semilogx depending on if we are plotting a data
-            # type which we expect to vary linearly
-            if types[i] in PLOT_TYPES_LINEAR:
-                plot_func = ax.semilogx
-            else:
-                plot_func = ax.loglog
             if np.sum(data[i, :]) > 0.:
                 plot_func(E, data[i, :], label=types[i])
 
@@ -798,7 +785,7 @@ class Material(object):
         else:
             ax.set_ylabel('Macroscopic Cross Section [1/cm]')
         ax.legend(loc='best')
-        ax.set_xlim(Erange)
+        ax.set_xlim(energy_range)
         if self.name is not None:
             title = 'Macroscopic Cross Section for ' + self.name
             ax.set_title(title)
@@ -823,11 +810,11 @@ class Material(object):
 
         Returns
         -------
-        unionE : numpy.array
+        energy_grid : numpy.array
             Energies at which cross sections are calculated, in units of eV
         data : numpy.ndarray
             Macroscopic cross sections calculated at the energy grid described
-            by unionE
+            by energy_grid
 
         """
 
@@ -840,18 +827,8 @@ class Material(object):
             cv.check_type('temperature', temperature, Real)
             T = temperature
 
-        # If cross_sections is None, get the cross sections from the
-        # OPENMC_CROSS_SECTIONS environment variable
-        if cross_sections is None:
-            cross_sections = os.environ.get('OPENMC_CROSS_SECTIONS')
-
-        # If a cross_sections library is present, check natural nuclides
-        # against the nuclides in the library
-        if cross_sections is not None:
-            library = openmc.data.DataLibrary.from_xml(cross_sections)
-        else:
-            raise ValueError("cross_sections or OPENMC_CROSS_SECTIONS "
-                             "environmental variable must be set")
+        # Load the library
+        library = openmc.data.DataLibrary.from_xml(cross_sections)
 
         # Expand elements in to nuclides with atomic densities
         nuclides = self.get_nuclide_atom_densities(cross_sections)
@@ -881,20 +858,20 @@ class Material(object):
 
         # Condense the data for every nuclide
         # First create a union energy grid
-        unionE = E[0]
+        energy_grid = E[0]
         for n in range(1, len(E)):
-            unionE = np.union1d(unionE, E[n])
+            energy_grid = np.union1d(energy_grid, E[n])
 
         # Now we can combine all the nuclidic data
-        data = np.zeros((len(types), len(unionE)))
-        for l in range(len(types)):
-            if types[l] == 'unity':
-                data[l, :] = 1.
+        data = np.zeros((len(types), len(energy_grid)))
+        for line in range(len(types)):
+            if types[line] == 'unity':
+                data[line, :] = 1.
             else:
                 for n in range(len(nuclides)):
-                    data[l, :] += nuc_densities[n] * xs[n][l](unionE)
+                    data[line, :] += nuc_densities[n] * xs[n][line](energy_grid)
 
-        return unionE, data
+        return energy_grid, data
 
     def _get_nuclide_xml(self, nuclide, distrib=False):
         xml_element = ET.Element("nuclide")

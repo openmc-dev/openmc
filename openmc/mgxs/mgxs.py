@@ -3776,10 +3776,10 @@ class ScatterMatrixXS(MatrixMGXS):
         if order_groups == 'increasing':
             xs = xs[:, ::-1, ::-1, ...]
 
-        # Place the histogram bins before the outgoing group index
+        # Place the histogram bins before the incoming groups
         if self.scatter_format == 'histogram':
-            xs = np.swapaxes(xs, 3, 1)
             xs = np.swapaxes(xs, 3, 2)
+            xs = np.swapaxes(xs, 2, 1)
 
         if squeeze:
             xs = np.squeeze(xs)

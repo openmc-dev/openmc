@@ -1735,108 +1735,82 @@ class XSdata(object):
             # Get the sparse scattering data to print to the library
             G = self.energy_groups.num_groups
             if self.representation == 'isotropic':
-                g_out_bounds = np.zeros((G, 2), dtype=np.int)
-                for g_in in range(G):
-                    if self.scatter_format == 'legendre':
-                        nz = np.nonzero(self._scatter_matrix[i][g_in, :, 0])
-                    elif self.scatter_format == 'histogram':
-                        nz = np.nonzero(np.sum(
-                            self._scatter_matrix[i][g_in, :, :], axis=1))
-                    if len(nz[0]) == 0:
-                        g_out_bounds[g_in, 0] = 0
-                        g_out_bounds[g_in, 1] = 0
-                    else:
-                        g_out_bounds[g_in, 0] = nz[0][0]
-                        g_out_bounds[g_in, 1] = nz[0][-1]
-
-                # Now create the flattened scatter matrix array
-                matrix = self._scatter_matrix[i]
-                flat_scatt = []
-                for g_in in range(G):
-                    for g_out in range(g_out_bounds[g_in, 0],
-                                       g_out_bounds[g_in, 1] + 1):
-                        for l in range(len(matrix[g_in, g_out, :])):
-                            flat_scatt.append(matrix[g_in, g_out, l])
-
-                # And write it.
-                scatt_grp = xs_grp.create_group('scatter_data')
-                scatt_grp.create_dataset("scatter_matrix",
-                                         data=np.array(flat_scatt))
-
-                # Repeat for multiplicity
-                if self._multiplicity_matrix[i] is not None:
-                    # Now create the flattened scatter matrix array
-                    matrix = self._multiplicity_matrix[i][:, :]
-                    flat_mult = []
-                    for g_in in range(G):
-                        for g_out in range(g_out_bounds[g_in, 0],
-                                           g_out_bounds[g_in, 1] + 1):
-                            flat_mult.append(matrix[g_in, g_out])
-
-                    scatt_grp.create_dataset("multiplicity matrix",
-                                             data=np.array(flat_mult))
-
-                # And finally, adjust g_out_bounds for 1-based group counting
-                # and write it.
-                g_out_bounds[:, :] += 1
-                scatt_grp.create_dataset("g_min", data=g_out_bounds[:, 0])
-                scatt_grp.create_dataset("g_max", data=g_out_bounds[:, 1])
-
+                Np = 1
+                Na = 1
             elif self.representation == 'angle':
                 Np = self.num_polar
                 Na = self.num_azimuthal
-                g_out_bounds = np.zeros((Np, Na, G, 2), dtype=np.int)
 
-                for p in range(Np):
-                    for a in range(Na):
-                        for g_in in range(G):
-                            if self.scatter_format == 'legendre':
+            g_out_bounds = np.zeros((Np, Na, G, 2), dtype=np.int)
+            for p in range(Np):
+                for a in range(Na):
+                    for g_in in range(G):
+                        if self.scatter_format == 'legendre':
+                            if self.representation == 'isotropic':
+                                matrix = \
+                                    self._scatter_matrix[i][g_in, :, 0]
+                            elif self.representation == 'angle':
                                 matrix = \
                                     self._scatter_matrix[i][p, a, g_in, :, 0]
-                            elif self.scatter_format == 'histogram':
+                        elif self.scatter_format == 'histogram':
+                            if self.representation == 'isotropic':
+                                matrix = \
+                                    np.sum(self._scatter_matrix[i][g_in, :, :],
+                                           axis=1)
+                            elif self.representation == 'angle':
                                 matrix = \
                                     np.sum(self._scatter_matrix[i][p, a, g_in, :, :],
                                            axis=1)
-                            nz = np.nonzero(matrix)
-                            g_out_bounds[p, a, g_in, 0] = nz[0][0]
-                            g_out_bounds[p, a, g_in, 1] = nz[0][-1]
+                        nz = np.nonzero(matrix)
+                        g_out_bounds[p, a, g_in, 0] = nz[0][0]
+                        g_out_bounds[p, a, g_in, 1] = nz[0][-1]
+
+            # Now create the flattened scatter matrix array
+            flat_scatt = []
+            for p in range(Np):
+                for a in range(Na):
+                    if self.representation == 'isotropic':
+                        matrix = self._scatter_matrix[i][:, :, :]
+                    elif self.representation == 'angle':
+                        matrix = self._scatter_matrix[i][p, a, :, :, :]
+                    for g_in in range(G):
+                        for g_out in range(g_out_bounds[p, a, g_in, 0],
+                                           g_out_bounds[p, a, g_in, 1] + 1):
+                            for l in range(len(matrix[g_in, g_out, :])):
+                                flat_scatt.append(matrix[g_in, g_out, l])
+
+            # And write it.
+            scatt_grp = xs_grp.create_group('scatter_data')
+            scatt_grp.create_dataset("scatter_matrix",
+                                     data=np.array(flat_scatt))
+
+            # Repeat for multiplicity
+            if self._multiplicity_matrix[i] is not None:
 
                 # Now create the flattened scatter matrix array
-                flat_scatt = []
+                flat_mult = []
                 for p in range(Np):
                     for a in range(Na):
-                        matrix = self._scatter_matrix[i][p, a, :, :, :]
+                        if self.representation == 'isotropic':
+                            matrix = self._multiplicity_matrix[i][:, :]
+                        elif self.representation == 'angle':
+                            matrix = self._multiplicity_matrix[i][p, a, :, :]
                         for g_in in range(G):
                             for g_out in range(g_out_bounds[p, a, g_in, 0],
                                                g_out_bounds[p, a, g_in, 1] + 1):
-                                for l in range(len(matrix[g_in, g_out, :])):
-                                    flat_scatt.append(matrix[g_in, g_out, l])
+                                flat_mult.append(matrix[g_in, g_out])
 
                 # And write it.
-                scatt_grp = xs_grp.create_group('scatter_data')
-                scatt_grp.create_dataset("scatter_matrix",
-                                         data=np.array(flat_scatt))
+                scatt_grp.create_dataset("multiplicity_matrix",
+                                         data=np.array(flat_mult))
 
-                # Repeat for multiplicity
-                if self._multiplicity_matrix[i] is not None:
-
-                    # Now create the flattened scatter matrix array
-                    flat_mult = []
-                    for p in range(Np):
-                        for a in range(Na):
-                            matrix = self._multiplicity_matrix[i][p, a, :, :]
-                            for g_in in range(G):
-                                for g_out in range(g_out_bounds[p, a, g_in, 0],
-                                                   g_out_bounds[p, a, g_in, 1] + 1):
-                                    flat_mult.append(matrix[g_in, g_out])
-
-                    # And write it.
-                    scatt_grp.create_dataset("multiplicity_matrix",
-                                             data=np.array(flat_mult))
-
-                # And finally, adjust g_out_bounds for 1-based group counting
-                # and write it.
-                g_out_bounds[:, :, :, :] += 1
+            # And finally, adjust g_out_bounds for 1-based group counting
+            # and write it.
+            g_out_bounds[:, :, :, :] += 1
+            if self.representation == 'isotropic':
+                scatt_grp.create_dataset("g_min", data=g_out_bounds[0, 0, :, 0])
+                scatt_grp.create_dataset("g_max", data=g_out_bounds[0, 0, :, 1])
+            elif self.representation == 'angle':
                 scatt_grp.create_dataset("g_min", data=g_out_bounds[:, :, :, 0])
                 scatt_grp.create_dataset("g_max", data=g_out_bounds[:, :, :, 1])
 

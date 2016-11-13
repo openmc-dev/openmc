@@ -287,7 +287,7 @@ class Library(object):
     def by_nuclide(self, by_nuclide):
         cv.check_type('by_nuclide', by_nuclide, bool)
 
-        if by_nuclide == True and self.domain_type == 'mesh':
+        if by_nuclide and self.domain_type == 'mesh':
             raise ValueError('Unable to create MGXS library by nuclide with '
                              'mesh domain')
 
@@ -297,7 +297,7 @@ class Library(object):
     def domain_type(self, domain_type):
         cv.check_value('domain type', domain_type, openmc.mgxs.DOMAIN_TYPES)
 
-        if self.by_nuclide == True and domain_type == 'mesh':
+        if self.by_nuclide and domain_type == 'mesh':
             raise ValueError('Unable to create MGXS library by nuclide with '
                              'mesh domain')
 
@@ -372,7 +372,15 @@ class Library(object):
 
     @scatter_format.setter
     def scatter_format(self, scatter_format):
-        cv.check_value('scatter_format', scatter_format, openmc.mgxs.MU_TREATMENTS)
+        cv.check_value('scatter_format', scatter_format,
+                       openmc.mgxs.MU_TREATMENTS)
+
+        if scatter_format == 'histogram' and self.correction == 'P0':
+            msg = 'The P0 correction will be ignored since the ' \
+                  'scatter format is set to histogram'
+            warn(msg)
+            self.correction = None
+
         self._scatter_format = scatter_format
 
     @legendre_order.setter
@@ -405,6 +413,13 @@ class Library(object):
             msg = 'The histogram bins will be ignored since the ' \
                   'scatter format is set to legendre'
             warn(msg)
+        elif self.scatter_format == 'histogram':
+            if self.correction == 'P0':
+                msg = 'The P0 correction will be ignored since ' \
+                      'a histogram representation of the scattering '\
+                      'kernel is requested'
+                warn(msg, RuntimeWarning)
+                self.correction = None
 
         self._histogram_bins = histogram_bins
 
@@ -471,7 +486,7 @@ class Library(object):
                         mgxs.delayed_groups = None
                     else:
                         delayed_groups \
-                            = list(range(1,self.num_delayed_groups+1))
+                            = list(range(1, self.num_delayed_groups + 1))
                         mgxs.delayed_groups = delayed_groups
 
                 # If a tally trigger was specified, add it to the MGXS
@@ -1351,7 +1366,7 @@ class Library(object):
                          'scattering matrix is not provided.')
         # Total or transport can be present, but if using
         # self.correction=="P0", then we should use transport.
-        if (((self.correction is "P0") and
+        if (((self.correction == "P0") and
              ('nu-transport' not in self.mgxs_types))):
             error_flag = True
             warn('A "nu-transport" MGXS type is required since a "P0" '

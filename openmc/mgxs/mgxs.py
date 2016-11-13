@@ -3775,15 +3775,16 @@ class ScatterMatrixXS(MatrixMGXS):
         # tally data is stored in order of increasing energies
         if order_groups == 'increasing':
             xs = xs[:, ::-1, ::-1, ...]
-
-        # Place the histogram bins before the incoming groups
-        if self.scatter_format == 'histogram':
-            xs = np.swapaxes(xs, 3, 2)
-            xs = np.swapaxes(xs, 2, 1)
-
+        # import pdb; pdb.set_trace()
         if squeeze:
-            xs = np.squeeze(xs)
-            xs = np.atleast_2d(xs)
+            # We want to squeeze out everything but the in_groups, out_groups,
+            # and, if needed, num_mu_bins dimension. These must not be squeezed
+            # so 1-group problems have the correct shape.
+            if self.scatter_format == 'histogram':
+                axes = (5, 4, 0)
+            else:
+                axes = (4, 3, 0)
+            xs = np.squeeze(xs, axis=axes)
 
         return xs
 

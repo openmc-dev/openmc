@@ -3775,7 +3775,7 @@ class ScatterMatrixXS(MatrixMGXS):
         # tally data is stored in order of increasing energies
         if order_groups == 'increasing':
             xs = xs[:, ::-1, ::-1, ...]
-        # import pdb; pdb.set_trace()
+
         if squeeze:
             # We want to squeeze out everything but the in_groups, out_groups,
             # and, if needed, num_mu_bins dimension. These must not be squeezed

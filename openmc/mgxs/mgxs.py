@@ -3784,7 +3784,14 @@ class ScatterMatrixXS(MatrixMGXS):
                 axes = (5, 4, 0)
             else:
                 axes = (4, 3, 0)
-            xs = np.squeeze(xs, axis=axes)
+            # Squeeze will return a ValueError if the axis has a size greater
+            # than 1, so try each axis in axes one at a time, catching the
+            # ValueError as needed.
+            for axis in axes:
+                try:
+                    xs = np.squeeze(xs, axis=axis)
+                except ValueError:
+                    pass
 
         return xs
 

@@ -103,7 +103,7 @@ class Tally(object):
     sparse : bool
         Whether or not the tally uses SciPy's LIL sparse matrix format for
         compressed data storage
-    derivative : openmc.tally_derivative.TallyDerivative
+    derivative : openmc.TallyDerivative
         A material perturbation derivative to apply to all scores in the tally.
 
     """
@@ -453,7 +453,7 @@ class Tally(object):
     def derivative(self, deriv):
         if deriv is not None:
             cv.check_type('tally derivative', deriv, openmc.TallyDerivative)
-            self._derivative = deriv
+        self._derivative = deriv
 
     @filters.setter
     def filters(self, filters):
@@ -3608,7 +3608,7 @@ class Tallies(cv.CheckedList):
 
         # Add the derivatives to the XML tree.
         for d in derivs:
-            self._tallies_file.append(d.get_derivative_xml())
+            self._tallies_file.append(d.to_xml_element())
 
     def export_to_xml(self):
         """Create a tallies.xml file that can be used for a simulation.

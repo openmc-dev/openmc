@@ -7,6 +7,7 @@ from xml.etree import ElementTree as ET
 from six import string_types
 
 import openmc.checkvalue as cv
+from openmc.mixin import EqualityMixin
 
 
 # "Static" variable for auto-generated TallyDerivative IDs
@@ -17,7 +18,7 @@ def reset_auto_tally_deriv_id():
     AUTO_TALLY_DERIV_ID = 10000
 
 
-class TallyDerivative(object):
+class TallyDerivative(EqualityMixin):
     """A material perturbation derivative to apply to a tally.
 
     Parameters
@@ -25,6 +26,13 @@ class TallyDerivative(object):
     derivative_id : Integral, optional
         Unique identifier for the tally derivative. If none is specified, an
         identifier will automatically be assigned
+    variable : str, optional
+        Accepted values are 'density', 'nuclide_density', and 'temperature'
+    material : Integral, optional
+        The perturubed material ID
+    nuclide : str, optional
+        The perturbed nuclide. Only needed for 'nuclide_density' derivatives.
+        Ex: 'Xe135'
 
     Attributes
     ----------
@@ -33,71 +41,36 @@ class TallyDerivative(object):
     variable : str
         Accepted values are 'density', 'nuclide_density', and 'temperature'
     material : Integral
-        The perturubed material
+        The perturubed material ID
     nuclide : str
         The perturbed nuclide. Only needed for 'nuclide_density' derivatives.
-        Ex: 'Xe-135'
+        Ex: 'Xe135'
 
     """
 
-    def __init__(self, derivative_id=None):
+    def __init__(self, derivative_id=None, variable=None, material=None,
+                 nuclide=None):
         # Initialize Tally class attributes
         self.id = derivative_id
-        self._variable = None
-        self._material = None
-        self._nuclide = None
-
-    def __deepcopy__(self, memo):
-        existing = memo.get(id(self))
-
-        # If this is the first time we have tried to copy this object, create a
-        # copy
-        if existing is None:
-            clone = type(self).__new__(type(self))
-            clone.id = self.id
-            clone.variable = self.variable
-            clone.material = self.material
-            clone.nuclide = self.nuclide
-
-            memo[id(self)] = clone
-
-            return clone
-
-        # If this object has been copied before, return the first copy made
-        else:
-            return existing
-
-    def __eq__(self, other):
-        if not isinstance(other, TallyDerivative):
-            return False
-
-        return (self.variable == other.variable and
-                self.material == other.material and
-                self.nuclide == other.nuclide)
-
-    def __ne__(self, other):
-        return not self == other
+        self.variable = variable
+        self.material = material
+        self.nuclide = nuclide
 
     def __hash__(self):
         return hash(repr(self))
 
     def __repr__(self):
         string = 'Tally Derivative\n'
-        string += '{0: <16}{1}{2}\n'.format('\tID', '=\t', self.id)
-        string += '{0: <16}{1}{2}\n'.format('\tVariable', '=\t',
-                                            self.variable)
+        string += '{: <16}=\t{}\n'.format('\tID', self.id)
+        string += '{: <16}=\t{}\n'.format('\tVariable', self.variable)
 
         if self.variable == 'density':
-            string += '{0: <16}{1}{2}\n'.format('\tMaterial', '=\t',
-                                                self.material)
+            string += '{: <16}=\t{}\n'.format('\tMaterial', self.material)
         elif self.variable == 'nuclide_density':
-            string += '{0: <16}{1}{2}\n'.format('\tMaterial', '=\t',
-                                                self.material)
-            string += '{0: <16}{1}{2}\n'.format('\tNuclide', '=\t',
-                                                self.nuclide)
+            string += '{: <16}=\t{}\n'.format('\tMaterial', self.material)
+            string += '{: <16}=\t{}\n'.format('\tNuclide', self.nuclide)
         elif self.variable == 'temperature':
-            string += '{0: <16}{1}{2}\n'.format('\tMaterial', '=\t',
-                                                self.material)
+            string += '{: <16}=\t{}\n'.format('\tMaterial', self.material)
 
         return string
 
@@ -133,8 +106,8 @@ class TallyDerivative(object):
     def variable(self, var):
         if var is not None:
             cv.check_type('derivative variable', var, string_types)
-            cv.check_value('derivative variable', var, ('density',
-                           'nuclide_density', 'temperature'))
+            cv.check_value('derivative variable', var,
+                           ('density', 'nuclide_density', 'temperature'))
         self._variable = var
 
     @material.setter
@@ -149,7 +122,7 @@ class TallyDerivative(object):
             cv.check_type('derivative nuclide', nuc, string_types)
         self._nuclide = nuc
 
-    def get_derivative_xml(self):
+    def to_xml_element(self):
         """Return XML representation of the tally derivative
 
         Returns

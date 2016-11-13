@@ -1973,7 +1973,7 @@ the following attributes/sub-elements:
     density of a particular nuclide in units of [atom / b / cm].  A
     "temperature" derivative is with respect to a material temperature in units
     of [K].  The temperature derivative requires windowed multipole to be
-    turned on.  Note also that the temperature derivative only acconuts for
+    turned on.  Note also that the temperature derivative only accounts for
     resolved resonance Doppler broadening.  It does not account for thermal
     expansion, S(a, b) scattering, resonance scattering, or unresolved Doppler
     broadening.

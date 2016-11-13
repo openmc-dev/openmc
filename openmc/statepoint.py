@@ -479,7 +479,7 @@ class StatePoint(object):
             if 'derivatives' in self._f['tallies']:
                 # Read the derivative ids.
                 base = 'tallies/derivatives'
-                deriv_ids = [int(k.split(' ')[1]) for k in self._f[base].keys()]
+                deriv_ids = [int(k.split(' ')[1]) for k in self._f[base]]
 
                 # Create each derivative object and add it to the dictionary.
                 for d_id in deriv_ids:
@@ -497,7 +497,7 @@ class StatePoint(object):
                         deriv.material = self._f[base + '/material'].value
                     else:
                         raise RuntimeError('Unrecognized tally differential '
-                             'variable')
+                                           'variable')
                     self._derivs[d_id] = deriv
 
             self._derivs_read = True

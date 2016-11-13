@@ -3144,21 +3144,47 @@ contains
 
     if (score == ZERO) return
 
+    ! If our score was previously c then the new score is
+    ! c * (1/f * d_f/d_p + 1/c * d_c/d_p)
+    ! where (1/f * d_f/d_p) is the (logarithmic) flux derivative and p is the
+    ! perturbated variable.
+
     associate(deriv => tally_derivs(t % deriv))
       flux_deriv = deriv % flux_deriv
 
       select case (tally_derivs(t % deriv) % variable)
 
+      !=========================================================================
+      ! Density derivative:
+      ! c = Sigma_MT
+      ! c = sigma_MT * N
+      ! c = sigma_MT * rho * const
+      ! d_c / d_rho = sigma_MT * const
+      ! (1 / c) * (d_c / d_rho) = 1 / rho
+
       case (DIFF_DENSITY)
         select case (t % estimator)
 
         case (ESTIMATOR_ANALOG)
-          if (materials(p % material) % id == deriv % diff_material) then
-            score = score * (flux_deriv + ONE &
-                 / materials(p % material) % density_gpcc)
-          else
+
+          select case (score_bin)
+
+          case (SCORE_FLUX)
             score = score * flux_deriv
-          end if
+
+          case (SCORE_TOTAL, SCORE_SCATTER, SCORE_ABSORPTION, SCORE_FISSION, &
+                SCORE_NU_FISSION)
+            if (materials(p % material) % id == deriv % diff_material) then
+              score = score * (flux_deriv + ONE &
+                   / materials(p % material) % density_gpcc)
+            else
+              score = score * flux_deriv
+            end if
+
+          case default
+            call fatal_error('Tally derivative not defined for a score on &
+                 &tally ' // trim(to_str(t % id)))
+          end select
 
         case (ESTIMATOR_COLLISION)
 
@@ -3167,46 +3193,9 @@ contains
           case (SCORE_FLUX)
             score = score * flux_deriv
 
-          case (SCORE_TOTAL)
-            if (materials(p % material) % id == deriv % diff_material &
-                 .and. material_xs % total /= ZERO) then
-              score = score * (flux_deriv + ONE &
-                   / materials(p % material) % density_gpcc)
-            else
-              score = score * flux_deriv
-            end if
-
-          case (SCORE_SCATTER)
-            if (materials(p % material) % id == deriv % diff_material &
-                 .and. material_xs % total - material_xs % absorption /= ZERO) &
-                 then
-              score = score * (flux_deriv + ONE &
-                   / materials(p % material) % density_gpcc)
-            else
-              score = score * flux_deriv
-            end if
-
-          case (SCORE_ABSORPTION)
-            if (materials(p % material) % id == deriv % diff_material &
-                 .and. material_xs % absorption /= ZERO) then
-              score = score * (flux_deriv + ONE &
-                   / materials(p % material) % density_gpcc)
-            else
-              score = score * flux_deriv
-            end if
-
-          case (SCORE_FISSION)
-            if (materials(p % material) % id == deriv % diff_material &
-                 .and. material_xs % fission /= ZERO) then
-              score = score * (flux_deriv + ONE &
-                   / materials(p % material) % density_gpcc)
-            else
-              score = score * flux_deriv
-            end if
-
-          case (SCORE_NU_FISSION)
-            if (materials(p % material) % id == deriv % diff_material &
-                 .and. material_xs % nu_fission /= ZERO) then
+          case (SCORE_TOTAL, SCORE_SCATTER, SCORE_ABSORPTION, SCORE_FISSION, &
+                SCORE_NU_FISSION)
+            if (materials(p % material) % id == deriv % diff_material) then
               score = score * (flux_deriv + ONE &
                    / materials(p % material) % density_gpcc)
             else
@@ -3223,24 +3212,50 @@ contains
                  &analog and collision estimators.")
         end select
 
+      !=========================================================================
+      ! Nuclide density derivative:
+      ! If we are scoring a reaction rate for a single nuclide then
+      ! c = Sigma_MT_i
+      ! c = sigma_MT_i * N_i
+      ! d_c / d_N_i = sigma_MT_i
+      ! (1 / c) * (d_c / d_N_i) = 1 / N_i
+      ! If the score is for the total material (i_nuclide = -1)
+      ! c = Sum_i(Sigma_MT_i)
+      ! d_c / d_N_i = sigma_MT_i
+      ! (1 / c) * (d_c / d_N) = sigma_MT_i / Sigma_MT
+      ! where i is the perturbed nuclide.
+
       case (DIFF_NUCLIDE_DENSITY)
         select case (t % estimator)
 
         case (ESTIMATOR_ANALOG)
-          if (materials(p % material) % id == deriv % diff_material &
-               .and. p % event_nuclide == deriv % diff_nuclide) then
-            associate(mat => materials(p % material))
-              ! Search for the index of the perturbed nuclide.
-              do l = 1, mat % n_nuclides
-                if (mat % nuclide(l) == deriv % diff_nuclide) exit
-              end do
 
-              score = score * (flux_deriv &
-                   + ONE / mat % atom_density(l))
-            end associate
-          else
+          select case (score_bin)
+
+          case (SCORE_FLUX)
             score = score * flux_deriv
-          end if
+
+          case (SCORE_TOTAL, SCORE_SCATTER, SCORE_ABSORPTION, SCORE_FISSION, &
+                SCORE_NU_FISSION)
+            if (materials(p % material) % id == deriv % diff_material &
+                 .and. p % event_nuclide == deriv % diff_nuclide) then
+              associate(mat => materials(p % material))
+                ! Search for the index of the perturbed nuclide.
+                do l = 1, mat % n_nuclides
+                  if (mat % nuclide(l) == deriv % diff_nuclide) exit
+                end do
+
+                score = score * (flux_deriv &
+                     + ONE / mat % atom_density(l))
+              end associate
+            else
+              score = score * flux_deriv
+            end if
+
+          case default
+            call fatal_error('Tally derivative not defined for a score on &
+                 &tally ' // trim(to_str(t % id)))
+          end select
 
         case (ESTIMATOR_COLLISION)
           scoring_diff_nuclide = &
@@ -3333,6 +3348,19 @@ contains
             call fatal_error("Differential tallies are only implemented for &
                  &analog and collision estimators.")
         end select
+
+      !=========================================================================
+      ! Temperature derivative:
+      ! If we are scoring a reaction rate for a single nuclide then
+      ! c = Sigma_MT_i
+      ! c = sigma_MT_i * N_i
+      ! d_c / d_T = (d_sigma_Mt_i / d_T) * N_i
+      ! (1 / c) * (d_c / d_T) = (d_sigma_MT_i / d_T) / sigma_MT_i
+      ! If the score is for the total material (i_nuclide = -1)
+      ! (1 / c) * (d_c / d_T) = Sum_i((d_sigma_MT_i / d_T) * N_i) / Sigma_MT_i
+      ! where i is the perturbed nuclide.  The d_sigma_MT_i / d_T term is
+      ! computed by multipole_deriv_eval.  It only works for the resolved
+      ! resonance range and requires multipole data.
 
       case (DIFF_TEMPERATURE)
         select case (t % estimator)
@@ -3718,7 +3746,7 @@ contains
         case (DIFF_DENSITY)
           associate (mat => materials(p % material))
             if (mat % id == deriv % diff_material) then
-              ! phi = e^(-Sigma_tot * dist)
+              ! phi is proportional to e^(-Sigma_tot * dist)
               ! (1 / phi) * (d_phi / d_rho) = - (d_Sigma_tot / d_rho) * dist
               ! (1 / phi) * (d_phi / d_rho) = - Sigma_tot / rho * dist
               deriv % flux_deriv = deriv % flux_deriv &
@@ -3729,7 +3757,7 @@ contains
         case (DIFF_NUCLIDE_DENSITY)
           associate (mat => materials(p % material))
             if (mat % id == deriv % diff_material) then
-              ! phi = e^(-Sigma_tot * dist)
+              ! phi is proportional to e^(-Sigma_tot * dist)
               ! (1 / phi) * (d_phi / d_N) = - (d_Sigma_tot / d_N) * dist
               ! (1 / phi) * (d_phi / d_N) = - sigma_tot * dist
               deriv % flux_deriv = deriv % flux_deriv &
@@ -3745,6 +3773,9 @@ contains
                   if (nuc % mp_present .and. &
                        p % E >= nuc % multipole % start_E .and. &
                        p % E <= nuc % multipole % end_E) then
+                    ! phi is proportional to e^(-Sigma_tot * dist)
+                    ! (1 / phi) * (d_phi / d_T) = - (d_Sigma_tot / d_T) * dist
+                    ! (1 / phi) * (d_phi / d_T) = - N (d_sigma_tot / d_T) * dist
                     call multipole_deriv_eval(nuc % multipole, p % E, &
                          p % sqrtkT, dsigT, dsigA, dsigF)
                     deriv % flux_deriv = deriv % flux_deriv &
@@ -3761,7 +3792,18 @@ contains
 
 !===============================================================================
 ! SCORE_COLLISION_DERIVATIVE Adjust flux derivatives on differential tallies to
-! account for a neutron colliding in the perturbed material.
+! account for a neutron scattering in the perturbed material.  Note that this
+! subroutine will be called after absorption events in addition to scattering
+! events, but any flux derivatives scored after an absorption will never be
+! tallied.  This is because the order of operations is
+! 1. Particle is moved.
+! 2. score_track_derivative is called.
+! 3. Collision physics are computed, and the particle is labeled absorbed.
+! 4. Analog- and collision-estimated tallies are scored.
+! 5. This subroutine is called.
+! 6. Particle is killed and no more tallies are scored.
+! Hence, it is safe to assume that only derivative of the scattering cross
+! section need to be computed here.
 !===============================================================================
 
   subroutine score_collision_derivative(p)
@@ -3780,8 +3822,8 @@ contains
         case (DIFF_DENSITY)
           associate (mat => materials(p % material))
             if (mat % id == deriv % diff_material) then
-              ! phi = Sigma_MT
-              ! (1 / phi) * (d_phi / d_rho) = (d_Sigma_MT / d_rho) / Sigma_MT
+              ! phi is proportional to Sigma_s
+              ! (1 / phi) * (d_phi / d_rho) = (d_Sigma_s / d_rho) / Sigma_s
               ! (1 / phi) * (d_phi / d_rho) = 1 / rho
               deriv % flux_deriv = deriv % flux_deriv &
                    + ONE / mat % density_gpcc
@@ -3800,9 +3842,9 @@ contains
               if (mat % nuclide(j) /= deriv % diff_nuclide) then
                 call fatal_error("Couldn't find the right nuclide.")
               end if
-              ! phi = Sigma_MT
-              ! (1 / phi) * (d_phi / d_N) = (d_Sigma_MT / d_N) / Sigma_MT
-              ! (1 / phi) * (d_phi / d_N) = sigma_MT / Sigma_MT
+              ! phi is proportional to Sigma_s
+              ! (1 / phi) * (d_phi / d_N) = (d_Sigma_s / d_N) / Sigma_s
+              ! (1 / phi) * (d_phi / d_N) = sigma_s / Sigma_s
               ! (1 / phi) * (d_phi / d_N) = 1 / N
               deriv % flux_deriv = deriv % flux_deriv &
                    + ONE / mat % atom_density(j)
@@ -3818,20 +3860,21 @@ contains
                        nuc % mp_present .and. &
                        p % last_E >= nuc % multipole % start_E .and. &
                        p % last_E <= nuc % multipole % end_E) then
-                    ! phi = Sigma_MT
-                    ! (1 / phi) * (d_phi / d_T) = (d_Sigma_MT / d_T) / Sigma_MT
-                    ! (1 / phi) * (d_phi / d_T) = (d_sigma_MT / d_T) / sigma_MT
+                    ! phi is proportional to Sigma_s
+                    ! (1 / phi) * (d_phi / d_T) = (d_Sigma_s / d_T) / Sigma_s
+                    ! (1 / phi) * (d_phi / d_T) = (d_sigma_s / d_T) / sigma_s
                     call multipole_deriv_eval(nuc % multipole, p % last_E, &
                          p % sqrtkT, dsigT, dsigA, dsigF)
-                    select case(p % event)
-                    case (EVENT_SCATTER)
-                      deriv % flux_deriv = deriv % flux_deriv + (dsigT - dsigA)&
-                           / (micro_xs(mat % nuclide(l)) % total &
-                           - micro_xs(mat % nuclide(l)) % absorption)
-                    case (EVENT_ABSORB)
-                      deriv % flux_deriv = deriv % flux_deriv &
-                           + dsigA / micro_xs(mat % nuclide(l)) % absorption
-                    end select
+                    deriv % flux_deriv = deriv % flux_deriv + (dsigT - dsigA)&
+                         / (micro_xs(mat % nuclide(l)) % total &
+                         - micro_xs(mat % nuclide(l)) % absorption)
+                    ! Note that this is an approximation!  The real scattering
+                    ! cross section is Sigma_s(E'->E, uvw'->uvw) =
+                    ! Sigma_s(E') * P(E'->E, uvw'->uvw).  We are assuming that
+                    ! d_P(E'->E, uvw'->uvw) / d_T = 0 and only computing
+                    ! d_S(E') / d_T.  Using this approximation in the vicinity
+                    ! of low-energy resonances causes errors (~2-5% for PWR
+                    ! pincell eigenvalue derivatives).
                   end if
                 end associate
               end do

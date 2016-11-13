@@ -2,7 +2,10 @@
 
 import glob
 import os
-from io import StringIO
+try:
+    from StringIO import StringIO
+except:
+    from io import StringIO
 import sys
 
 import pandas as pd

@@ -3,9 +3,9 @@ from copy import deepcopy
 from numbers import Real, Integral
 import warnings
 from xml.etree import ElementTree as ET
-import sys
 
 from six import string_types
+import numpy as np
 
 import openmc
 import openmc.data
@@ -595,7 +595,7 @@ class Material(object):
         nuclides = OrderedDict()
 
         for nuclide, density, density_type in self._nuclides:
-            nuclides[nuclide.name] = (nuclide, density)
+            nuclides[nuclide.name] = (nuclide, density, density_type)
 
         for ele, ele_pct, ele_pct_type, enr in self._elements:
 
@@ -603,6 +603,95 @@ class Material(object):
             isotopes = ele.expand(ele_pct, ele_pct_type, enr)
             for iso, iso_pct, iso_pct_type in isotopes:
                 nuclides[iso.name] = (iso, iso_pct, iso_pct_type)
+
+        return nuclides
+
+    def get_nuclide_atom_densities(self, cross_sections=None):
+        """Returns all nuclides in the material and their atomic densities in
+        units of atom/b-cm
+
+        Parameters
+        ----------
+        cross_sections : str, optional
+            Location of cross_sections.xml file. Default is None.
+
+        Returns
+        -------
+        nuclides : dict
+            Dictionary whose keys are nuclide names and values are tuples of
+            (nuclide, density in atom/b-cm)
+
+        """
+
+        import scipy.constants as sc
+
+        # Load the library
+        library = openmc.data.DataLibrary.from_xml(cross_sections)
+
+        # Expand elements in to nuclides
+        nuclides = self.get_nuclide_densities()
+
+        sum_density = False
+        if self.density_units == 'sum':
+            sum_density = True
+            density = 0.
+        elif self.density_units == 'macro':
+            density = self.density
+        elif self.density_units == 'g/cc' or self.density_units == 'g/cm3':
+            density = -self.density
+        elif self.density_units == 'kg/m3':
+            density = -0.001 * self.density
+        elif self.density_units == 'atom/b-cm':
+            density = self.density
+        elif self.density_units == 'atom/cm3' or self.density_units == 'atom/cc':
+            density = 1.E-24 * self.density
+
+        # For ease of processing split out nuc, nuc_density,
+        # and nuc_density_type in to separate arrays
+        nucs = []
+        nuc_densities = []
+        nuc_density_types = []
+        for nuclide in nuclides.items():
+            nuc, nuc_density, nuc_density_type = nuclide[1]
+            nucs.append(nuc)
+            nuc_densities.append(nuc_density)
+            nuc_density_types.append(nuc_density_type)
+
+        if sum_density:
+            density = np.sum(nuc_densities)
+        percent_in_atom = np.all(nuc_density_types == 'ao')
+        density_in_atom = density > 0.
+        sum_percent = 0.
+
+        awrs = []
+        n = -1
+        for nuclide in nuclides.items():
+            n += 1
+            lib = library.get_by_material(nuclide[0])
+            if lib is not None:
+                nuc = openmc.data.IncidentNeutron.from_hdf5(lib['path'])
+                awrs.append(nuc.atomic_weight_ratio)
+                if not percent_in_atom:
+                    nuc_densities[n] = -nuc_densities[n] / awrs[-1]
+            else:
+                raise ValueError(nuclide[0] + " not in library")
+
+        # Now that we have the awr, lets finish calculating densities
+        sum_percent = np.sum(nuc_densities)
+        nuc_densities = nuc_densities / sum_percent
+        if not density_in_atom:
+            sum_percent = 0.
+            for n, nuc in enumerate(nucs):
+                x = nuc_densities[n]
+                sum_percent += x * awrs[n]
+            sum_percent = 1. / sum_percent
+            density = -density * sum_percent * \
+                sc.Avogadro / sc.value('neutron mass in u') * 1.E-24
+        nuc_densities = density * nuc_densities
+
+        nuclides = OrderedDict()
+        for n, nuc in enumerate(nucs):
+            nuclides[nuc] = (nuc, nuc_densities[n])
 
         return nuclides
 

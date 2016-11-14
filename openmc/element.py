@@ -1,13 +1,12 @@
 from collections import OrderedDict
 import re
-import sys
 import os
 
 from six import string_types
 from xml.etree import ElementTree as ET
 
 import openmc
-from openmc.checkvalue import check_type, check_length
+import openmc.checkvalue as cv
 from openmc.data import NATURAL_ABUNDANCE, atomic_mass
 
 
@@ -80,8 +79,8 @@ class Element(object):
 
     @name.setter
     def name(self, name):
-        check_type('element name', name, string_types)
-        check_length('element name', name, 1, 2)
+        cv.check_type('element name', name, string_types)
+        cv.check_length('element name', name, 1, 2)
         self._name = name
 
     @scattering.setter
@@ -212,7 +211,7 @@ class Element(object):
         # its natural nuclides
         else:
             for nuclide in natural_nuclides:
-                abundances[nuclide] = NATURAL_ABUNDNACE[nuclide]
+                abundances[nuclide] = NATURAL_ABUNDANCE[nuclide]
 
         # Modify mole fractions if enrichment provided
         if enrichment is not None:
@@ -254,6 +253,6 @@ class Element(object):
         for nuclide, abundance in abundances.items():
             nuc = openmc.Nuclide(nuclide)
             nuc.scattering = self.scattering
-            isotopes.append((nuc, percent*abundance, percent_type))
+            isotopes.append((nuc, percent * abundance, percent_type))
 
         return isotopes

@@ -1894,7 +1894,7 @@ class XSdata(object):
             xs_types = ['total', 'absorption', 'fission', 'kappa-fission',
                         'chi', 'chi-prompt', 'chi-delayed', 'nu-fission',
                         'prompt-nu-fission', 'delayed-nu-fission', 'beta',
-                        'decay rate', "inverse-velocity"]
+                        'decay rate', 'inverse-velocity']
 
             temperature_group = group[temp]
 
@@ -1993,6 +1993,27 @@ class MGXSLibrary(object):
         self.num_delayed_groups = num_delayed_groups
         self._xsdatas = []
 
+    def __getitem__(self, name):
+        """Access the XSdata objects by name
+
+        Parameters
+        ----------
+        name : str
+            Name of openmc.XSdata object to obtain
+
+        Returns
+        -------
+        result : openmc.XSdata or None
+            Provides the matching XSdata object or None, if not found
+
+        """
+        check_type("name", name, str)
+        result = None
+        for xsdata in self.xsdatas:
+            if name == xsdata.name:
+                result = xsdata
+        return result
+
     @property
     def energy_groups(self):
         return self._energy_groups
@@ -2008,6 +2029,10 @@ class MGXSLibrary(object):
     @property
     def xsdatas(self):
         return self._xsdatas
+
+    @property
+    def names(self):
+        return [xsdata.name for xsdata in self.xsdatas]
 
     @energy_groups.setter
     def energy_groups(self, energy_groups):
@@ -2045,7 +2070,7 @@ class MGXSLibrary(object):
         self._xsdatas.append(xsdata)
 
     def add_xsdatas(self, xsdatas):
-        """Add multiple xsdatas to the file.
+        """Add multiple XSdatas to the file.
 
         Parameters
         ----------

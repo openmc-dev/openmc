@@ -5,7 +5,7 @@ import numpy as np
 import openmc.checkvalue as cv
 import openmc.data
 
-# Supported keywords for material xs plotting
+# Supported keywords for xs plotting
 PLOT_TYPES = ['total', 'scatter', 'elastic', 'inelastic', 'fission',
               'absorption', 'capture', 'nu-fission', 'nu-scatter', 'unity',
               'slowing-down power', 'damage']

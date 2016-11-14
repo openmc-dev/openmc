@@ -9,7 +9,7 @@ module finalize
   use message_passing
 #endif
 
-  use hdf5_interface, only: hdf5_bank_t, hdf5_tallyresult_t
+  use hdf5_interface, only: hdf5_bank_t
   use hdf5, only: h5tclose_f, h5close_f
 
   implicit none
@@ -53,7 +53,6 @@ contains
     call free_memory()
 
     ! Release compound datatypes
-    call h5tclose_f(hdf5_tallyresult_t, hdf5_err)
     call h5tclose_f(hdf5_bank_t, hdf5_err)
 
     ! Close FORTRAN interface.
@@ -62,7 +61,6 @@ contains
 #ifdef MPI
     ! Free all MPI types
     call MPI_TYPE_FREE(MPI_BANK, mpi_err)
-    call MPI_TYPE_FREE(MPI_TALLYRESULT, mpi_err)
 
     ! If MPI is in use and enabled, terminate it
     call MPI_FINALIZE(mpi_err)

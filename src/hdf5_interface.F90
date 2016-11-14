@@ -16,7 +16,6 @@ module hdf5_interface
   use h5lt
 
   use error, only: fatal_error
-  use tally_header, only: TallyResult
 #ifdef PHDF5
   use message_passing, only: MPI_COMM_WORLD, MPI_INFO_NULL
 #endif
@@ -24,7 +23,6 @@ module hdf5_interface
   implicit none
   private
 
-  integer(HID_T), public :: hdf5_tallyresult_t ! Compound type for TallyResult
   integer(HID_T), public :: hdf5_bank_t        ! Compound type for Bank
   integer(HID_T), public :: hdf5_integer8_t    ! type for integer(8)
 
@@ -42,8 +40,6 @@ module hdf5_interface
     module procedure write_long
     module procedure write_string
     module procedure write_string_1D
-    module procedure write_tally_result_1D
-    module procedure write_tally_result_2D
   end interface write_dataset
 
   interface read_dataset
@@ -60,8 +56,6 @@ module hdf5_interface
     module procedure read_long
     module procedure read_string
     module procedure read_string_1D
-    module procedure read_tally_result_1D
-    module procedure read_tally_result_2D
     module procedure read_complex_2D
   end interface read_dataset
 
@@ -2062,130 +2056,6 @@ contains
 
     call h5ltset_attribute_string_f(group_id, var, attr_type, attr_str, hdf5_err)
   end subroutine write_attribute_string
-
-!===============================================================================
-! WRITE_TALLY_RESULT writes an OpenMC TallyResult type
-!===============================================================================
-
-  subroutine write_tally_result_1D(group_id, name, buffer)
-    integer(HID_T), intent(in)      :: group_id
-    character(*),      intent(in)         :: name      ! name of data
-    type(TallyResult), intent(in), target :: buffer(:) ! data to write
-
-    integer(HSIZE_T) :: dims(1)
-
-    dims(:) = shape(buffer)
-    call write_tally_result_1D_explicit(group_id, dims, name, buffer)
-  end subroutine write_tally_result_1D
-
-  subroutine write_tally_result_1D_explicit(group_id, dims, name, buffer)
-    integer(HID_T), intent(in) :: group_id
-    integer(HSIZE_T), intent(in) :: dims(1)
-    character(*),      intent(in)         :: name      ! name of data
-    type(TallyResult), intent(in), target :: buffer(dims(1))
-
-    integer :: hdf5_err
-    integer(HID_T) :: dset     ! data set handle
-    integer(HID_T) :: dspace   ! data or file space handle
-    type(c_ptr) :: f_ptr
-
-    call h5screate_simple_f(1, dims, dspace, hdf5_err)
-    call h5dcreate_f(group_id, trim(name), hdf5_tallyresult_t, &
-         dspace, dset, hdf5_err)
-    f_ptr = c_loc(buffer)
-    call h5dwrite_f(dset, hdf5_tallyresult_t, f_ptr, hdf5_err)
-    call h5dclose_f(dset, hdf5_err)
-    call h5sclose_f(dspace, hdf5_err)
-  end subroutine write_tally_result_1D_explicit
-
-  subroutine write_tally_result_2D(group_id, name, buffer)
-    integer(HID_T), intent(in)      :: group_id
-    character(*),      intent(in)         :: name      ! name of data
-    type(TallyResult), intent(in), target :: buffer(:,:) ! data to write
-
-    integer(HSIZE_T) :: dims(2)
-
-    dims(:) = shape(buffer)
-    call write_tally_result_2D_explicit(group_id, dims, name, buffer)
-  end subroutine write_tally_result_2D
-
-  subroutine write_tally_result_2D_explicit(group_id, dims, name, buffer)
-    integer(HID_T), intent(in) :: group_id
-    integer(HSIZE_T), intent(in) :: dims(2)
-    character(*),      intent(in)         :: name        ! name of data
-    type(TallyResult), intent(in), target :: buffer(dims(1),dims(2))
-
-    integer :: hdf5_err
-    integer(HID_T) :: dset     ! data set handle
-    integer(HID_T) :: dspace   ! data or file space handle
-    type(c_ptr) :: f_ptr
-
-    call h5screate_simple_f(2, dims, dspace, hdf5_err)
-    call h5dcreate_f(group_id, trim(name), hdf5_tallyresult_t, &
-         dspace, dset, hdf5_err)
-    f_ptr = c_loc(buffer)
-    call h5dwrite_f(dset, hdf5_tallyresult_t, f_ptr, hdf5_err)
-    call h5dclose_f(dset, hdf5_err)
-    call h5sclose_f(dspace, hdf5_err)
-  end subroutine write_tally_result_2D_explicit
-
-!===============================================================================
-! READ_TALLY_RESULT reads OpenMC TallyResult data
-!===============================================================================
-
-  subroutine read_tally_result_1D(group_id, name, buffer)
-    integer(HID_T),    intent(in)            :: group_id
-    character(*),      intent(in)            :: name      ! name of data
-    type(TallyResult), intent(inout), target :: buffer(:) ! read data here
-
-    integer(HSIZE_T) :: dims(1)
-
-    dims(:) = shape(buffer)
-    call read_tally_result_1D_explicit(group_id, dims, name, buffer)
-  end subroutine read_tally_result_1D
-
-  subroutine read_tally_result_1D_explicit(group_id, dims, name, buffer)
-    integer(HID_T), intent(in) :: group_id
-    integer(HSIZE_T), intent(in) :: dims(1)
-    character(*), intent(in) :: name      ! name of data
-    type(TallyResult), intent(inout), target :: buffer(dims(1))
-
-    integer :: hdf5_err
-    integer(HID_T) :: dset ! data set handle
-    type(c_ptr) :: f_ptr
-
-    call h5dopen_f(group_id, trim(name), dset, hdf5_err)
-    f_ptr = c_loc(buffer)
-    call h5dread_f(dset, hdf5_tallyresult_t, f_ptr, hdf5_err)
-    call h5dclose_f(dset, hdf5_err)
-  end subroutine read_tally_result_1D_explicit
-
-  subroutine read_tally_result_2D(group_id, name, buffer)
-    integer(HID_T), intent(in) :: group_id
-    character(*),      intent(in)            :: name      ! name of data
-    type(TallyResult), intent(inout), target :: buffer(:,:)
-
-    integer(HSIZE_T) :: dims(2)
-
-    dims(:) = shape(buffer)
-    call read_tally_result_2D_explicit(group_id, dims, name, buffer)
-  end subroutine read_tally_result_2D
-
-  subroutine read_tally_result_2D_explicit(group_id, dims, name, buffer)
-    integer(HID_T), intent(in) :: group_id
-    integer(HSIZE_T), intent(in) :: dims(2)
-    character(*),      intent(in)            :: name        ! name of data
-    type(TallyResult), intent(inout), target :: buffer(dims(1),dims(2))
-
-    integer :: hdf5_err
-    integer(HID_T) :: dset ! data set handle
-    type(c_ptr) :: f_ptr
-
-    call h5dopen_f(group_id, trim(name), dset, hdf5_err)
-    f_ptr = c_loc(buffer)
-    call h5dread_f(dset, hdf5_tallyresult_t, f_ptr, hdf5_err)
-    call h5dclose_f(dset, hdf5_err)
-  end subroutine read_tally_result_2D_explicit
 
   subroutine read_attribute_double(buffer, obj_id, name)
     real(8),        intent(inout), target :: buffer

@@ -269,6 +269,12 @@ module constants
   ! ============================================================================
   ! TALLY-RELATED CONSTANTS
 
+  ! Tally result entries
+  integer, parameter :: &
+       RESULT_VALUE  = 1, &
+       RESULT_SUM    = 2, &
+       RESULT_SUM_SQ = 3
+
   ! Tally type
   integer, parameter :: &
        TALLY_VOLUME          = 1, &

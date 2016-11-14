@@ -61,7 +61,7 @@ PLOT_TYPES_OP = {'total': (np.add,),
                  'capture': (), 'nu-fission': (),
                  'nu-scatter': (np.add,) * (len(PLOT_TYPES_MT['nu-scatter']) - 1),
                  'unity': (),
-                 'slowing-down power': 
+                 'slowing-down power':
                     (np.add,) * (len(PLOT_TYPES_MT['slowing-down power']) - 2) + (np.multiply,),
                  'damage': ()}
 
@@ -197,9 +197,20 @@ def plot_xs(this, types, divisor_types=None, temperature=294., axis=None,
 
     ax.set_xlabel('Energy [eV]')
     if divisor_types:
-        ax.set_ylabel('Data')
+        if data_type == 'nuclide':
+            ylabel = 'Nuclidic Microscopic Data'
+        elif data_type == 'element':
+            ylabel = 'Elemental Microscopic Data'
+        elif data_type == 'material':
+            ylabel = 'Macroscopic Data'
     else:
-        ax.set_ylabel('Cross Section [b]')
+        if data_type == 'nuclide':
+            ylabel = 'Microscopic Cross Section [b]'
+        elif data_type == 'element':
+            ylabel = 'Elemental Cross Section [b]'
+        elif data_type == 'material':
+            ylabel = 'Macroscopic Cross Section [1/cm]'
+    ax.set_ylabel(ylabel)
     ax.legend(loc='best')
     ax.set_xlim(energy_range)
     if this.name is not None:

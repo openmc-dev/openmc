@@ -224,12 +224,12 @@ if run_mode == 'k-eigenvalue':
     Tallying moment orders for Legendre and spherical harmonic tally expansions
     (*e.g.*, 'P2', 'Y1,2', etc.).
 
-**/tallies/tally <uid>/results** (Compound type)
+**/tallies/tally <uid>/results** (*double[][][2]*)
 
-    Accumulated sum and sum-of-squares for each bin of the i-th tally. This is a
-    two-dimensional array, the first dimension of which represents combinations
-    of filter bins and the second dimensions of which represents scoring
-    bins. Each element of the array has fields 'sum' and 'sum_sq'.
+    Accumulated sum and sum-of-squares for each bin of the i-th tally. The first
+    dimension represents combinations of filter bins, the second dimensions
+    represents scoring bins, and the third dimension has two entries for the sum
+    and the sum-of-squares.
 
 **/source_present** (*int*)
 

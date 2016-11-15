@@ -946,6 +946,7 @@ class Library(object):
         if nuclide != 'total':
             name += '_' + nuclide
         xsdata = openmc.XSdata(name, self.energy_groups)
+        xsdata.num_delayed_groups = self.num_delayed_groups
 
         # Right now only isotropic weighting is supported
         self.representation = 'isotropic'

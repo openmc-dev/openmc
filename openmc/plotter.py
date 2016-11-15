@@ -11,9 +11,8 @@ PLOT_TYPES = ['total', 'scatter', 'elastic', 'inelastic', 'fission',
               'slowing-down power', 'damage']
 # Supported keywoards for multi-group cross section plotting
 PLOT_TYPES_MGXS = ['total', 'absorption', 'fission', 'kappa-fission',
-                   'chi', 'chi-prompt', 'chi-delayed', 'nu-fission',
-                   'prompt-nu-fission', 'delayed-nu-fission', 'beta',
-                   'decay rate', 'inverse-velocity']
+                   'chi', 'chi-prompt', 'nu-fission', 'prompt-nu-fission',
+                   'inverse-velocity', 'unity']
 
 # Special MT values
 UNITY_MT = -1
@@ -95,7 +94,7 @@ def plot_xs(this, types, divisor_types=None, temperature=294., axis=None,
 
     Parameters
     ----------
-    this : openmc.Element, openmc.Nuclide, openmc.Material, or openmc.Macroscopic
+    this : {openmc.Element, openmc.Nuclide, openmc.Material}
         Object to source data from
     types : Iterable of values of PLOT_TYPES
         The type of cross sections to include in the plot.
@@ -144,87 +143,216 @@ def plot_xs(this, types, divisor_types=None, temperature=294., axis=None,
         data_type = 'element'
     elif isinstance(this, openmc.Material):
         data_type = 'material'
+    else:
+        raise TypeError("Invalid type for plotting")
+
+    E, data = calculate_xs(this, types, temperature, sab_name, cross_sections,
+                           enrichment)
+
+    if divisor_types:
+        cv.check_length('divisor types', divisor_types, len(types),
+                        len(types))
+        Ediv, data_div = calculate_xs(this, divisor_types, temperature,
+                                      sab_name, cross_sections, enrichment)
+
+        # Create a new union grid, interpolate data and data_div on to that
+        # grid, and then do the actual division
+        Enum = E[:]
+        E = np.union1d(Enum, Ediv)
+        if data_type == 'nuclide':
+            data_new = []
+        else:
+            data_new = np.zeros((len(types), len(E)))
+
+        for line in range(len(types)):
+            if data_type == 'nuclide':
+                data_new.append(openmc.data.Combination([data[line],
+                                                         data_div[line]],
+                                                        [np.divide]))
+            else:
+                data_new[line, :] = \
+                    np.divide(np.interp(E, Enum, data[line, :]),
+                              np.interp(E, Ediv, data_div[line, :]))
+            if divisor_types[line] != 'unity':
+                types[line] = types[line] + ' / ' + divisor_types[line]
+        data = data_new
+
+    # Generate the plot
+    if axis is None:
+        fig = plt.figure(**kwargs)
+        ax = fig.add_subplot(111)
+    else:
+        fig = None
+        ax = axis
+    # Set to loglog or semilogx depending on if we are plotting a data
+    # type which we expect to vary linearly
+    if set(types).issubset(PLOT_TYPES_LINEAR):
+        plot_func = ax.semilogx
+    else:
+        plot_func = ax.loglog
+    # Plot the data
+    for i in range(len(data)):
+        if data_type == 'nuclide':
+            to_plot = data[i](E)
+        else:
+            to_plot = data[i, :]
+        if np.sum(to_plot) > 0.:
+            plot_func(E, to_plot, label=types[i])
+
+    ax.set_xlabel('Energy [eV]')
+    if divisor_types:
+        if data_type == 'nuclide':
+            ylabel = 'Nuclidic Microscopic Data'
+        elif data_type == 'element':
+            ylabel = 'Elemental Microscopic Data'
+        elif data_type == 'material':
+            ylabel = 'Macroscopic Data'
+    else:
+        if data_type == 'nuclide':
+            ylabel = 'Microscopic Cross Section [b]'
+        elif data_type == 'element':
+            ylabel = 'Elemental Cross Section [b]'
+        elif data_type == 'material':
+            ylabel = 'Macroscopic Cross Section [1/cm]'
+    ax.set_ylabel(ylabel)
+    ax.legend(loc='best')
+    ax.set_xlim(energy_range)
+    if this.name is not None:
+        title = 'Cross Section for ' + this.name
+        ax.set_title(title)
+
+    return fig
+
+
+def plot_mgxs(this, types, divisor_types=None, temperature=294., axis=None,
+              energy_range=(1.E-5, 20.E6), cross_sections=None,
+              ce_cross_sections=None, enrichment=None, **kwargs):
+    """Creates a figure of multi-group cross sections for this item
+
+    Parameters
+    ----------
+    this : {openmc.Element, openmc.Nuclide, openmc.Material, openmc.Macroscopic}
+        Object to source data from
+    types : Iterable of values of PLOT_TYPES
+        The type of cross sections to include in the plot.
+    divisor_types : Iterable of values of PLOT_TYPES, optional
+        Cross section types which will divide those produced by types
+        before plotting. A type of 'unity' can be used to effectively not
+        divide some types.
+    temperature : float, optional
+        Temperature in Kelvin to plot. If not specified, a default
+        temperature of 294K will be plotted. Note that the nearest
+        temperature in the library for each nuclide will be used as opposed
+        to using any interpolation.
+    axis : matplotlib.axes, optional
+        A previously generated axis to use for plotting. If not specified,
+        a new axis and figure will be generated.
+    energy_range : tuple of floats
+        Energy range (in eV) to plot the cross section within
+    cross_sections : str, optional
+        Location of MGXS HDF5 Library file. Default is None.
+    cross_sections : str, optional
+        Location of continuous-energy cross_sections.xml file. Default is None.
+        This is used only for expanding an openmc.Element object passed as this
+    enrichment : float, optional
+        Enrichment for U235 in weight percent. For example, input 4.95 for
+        4.95 weight percent enriched U. Default is None. This is only used for
+        items which are instances of openmc.Element
+    **kwargs
+        All keyword arguments are passed to
+        :func:`matplotlib.pyplot.figure`.
+
+    Returns
+    -------
+    fig : matplotlib.figure.Figure
+        If axis is None, then a Matplotlib Figure of the generated
+        cross section will be returned. Otherwise, a value of
+        None will be returned as the figure and axes have already been
+        generated.
+
+    """
+
+    from matplotlib import pyplot as plt
+
+    if isinstance(this, openmc.Nuclide):
+        data_type = 'nuclide'
+    elif isinstance(this, openmc.Element):
+        data_type = 'element'
+    elif isinstance(this, openmc.Material):
+        data_type = 'material'
     elif isinstance(this, openmc.Macroscopic):
         data_type = 'macroscopic'
     else:
         raise TypeError("Invalid type for plotting")
 
-    # Check the type (CE or MG data) and validity of cross_sections
-    cv.check_type("cross_sections", cross_sections, str)
-    if cross_sections.endswith('.xml'):
-        mgxs = False
-    elif cross_sections.endswith('.h5'):
-        mgxs = True
+    E, data = calculate_mgxs(this, types, temperature, cross_sections,
+                             ce_cross_sections, enrichment)
+
+    if divisor_types:
+        cv.check_length('divisor types', divisor_types, len(types),
+                        len(types))
+        Ediv, data_div = calculate_mgxs(this, divisor_types, temperature,
+                                        cross_sections, ce_cross_sections,
+                                        enrichment)
+
+        # Perform the division
+        for line in range(len(types)):
+            data[line, :] = np.divide(data[line, :], data_div[line, :])
+            if divisor_types[line] != 'unity':
+                types[line] = types[line] + ' / ' + divisor_types[line]
+
+    # Modify the data such that the it plots the group values as distinct
+    # horizontal lines in an efficient manner
+    E_plot = []
+    data_plot = []
+    for line in range(len(types)):
+        for g in range(len(E) - 1):
+            if line == 0:
+                E_plot.append(E[g])
+                E_plot.append(E[g + 1])
+                E_plot.append(None)
+            data_plot.append(data[line, g])
+            data_plot.append(data[line, g])
+            data_plot.append(None)
+
+    # Generate the plot
+    if axis is None:
+        fig = plt.figure(**kwargs)
+        ax = fig.add_subplot(111)
     else:
-        raise ValueError("cross_sections is neither an XML or HDF5 file")
-
-    if not mgxs:
-        E, data = calculate_xs(this, types, temperature, sab_name,
-                               cross_sections, enrichment)
-
-        if divisor_types:
-            cv.check_length('divisor types', divisor_types, len(types),
-                            len(types))
-            Ediv, data_div = calculate_xs(this, divisor_types, temperature,
-                                          sab_name, cross_sections, enrichment)
-
-            # Create a new union grid, interpolate data and data_div on to that
-            # grid, and then do the actual division
-            Enum = E[:]
-            E = np.union1d(Enum, Ediv)
-            if data_type == 'nuclide':
-                data_new = []
-            else:
-                data_new = np.zeros((len(types), len(E)))
-
-            for line in range(len(types)):
-                if data_type == 'nuclide':
-                    data_new.append(openmc.data.Combination([data[line],
-                                                             data_div[line]],
-                                                            [np.divide]))
-                else:
-                    data_new[line, :] = \
-                        np.divide(np.interp(E, Enum, data[line, :]),
-                                  np.interp(E, Ediv, data_div[line, :]))
-                if divisor_types[line] != 'unity':
-                    types[line] = types[line] + ' / ' + divisor_types[line]
-            data = data_new
-
-        # Generate the plot
-        if axis is None:
-            fig = plt.figure(**kwargs)
-            ax = fig.add_subplot(111)
-        else:
-            fig = None
-            ax = axis
-        # Set to loglog or semilogx depending on if we are plotting a data
-        # type which we expect to vary linearly
-        if set(types).issubset(PLOT_TYPES_LINEAR):
-            plot_func = ax.semilogx
-        else:
-            plot_func = ax.loglog
-        # Plot the data
-        for i in range(len(data)):
-            if data_type == 'nuclide':
-                to_plot = data[i](E)
-            else:
-                to_plot = data[i, :]
-            if np.sum(to_plot) > 0.:
-                plot_func(E, to_plot, label=types[i])
-
-        ax.set_xlabel('Energy [eV]')
-        if divisor_types:
-            ax.set_ylabel('Data')
-        else:
-            ax.set_ylabel('Cross Section [b]')
-        ax.legend(loc='best')
-        ax.set_xlim(energy_range)
-        if this.name is not None:
-            title = 'Cross Section for ' + this.name
-            ax.set_title(title)
-
+        fig = None
+        ax = axis
+    # Set to loglog or semilogx depending on if we are plotting a data
+    # type which we expect to vary linearly
+    if set(types).issubset(PLOT_TYPES_LINEAR):
+        plot_func = ax.semilogx
     else:
-        pass
+        plot_func = ax.loglog
+    # Plot the data
+    for i in range(len(data_plot)):
+        plot_func(E_plot, data_plot[i, :], label=types[i])
+
+    ax.set_xlabel('Energy [eV]')
+    if divisor_types:
+        if data_type == 'nuclide':
+            ylabel = 'Nuclidic Microscopic Data'
+        elif data_type == 'element':
+            ylabel = 'Elemental Microscopic Data'
+        elif data_type == 'material':
+            ylabel = 'Macroscopic Data'
+    else:
+        if data_type == 'nuclide':
+            ylabel = 'Microscopic Cross Section [b]'
+        elif data_type == 'element':
+            ylabel = 'Elemental Cross Section [b]'
+        elif data_type == 'material':
+            ylabel = 'Macroscopic Cross Section [1/cm]'
+    ax.set_ylabel(ylabel)
+    ax.legend(loc='best')
+    ax.set_xlim(energy_range)
+    if this.name is not None:
+        title = 'Cross Section for ' + this.name
+        ax.set_title(title)
 
     return fig
 
@@ -626,18 +754,71 @@ def _calculate_xs_material(this, types, temperature=294., cross_sections=None):
     return energy_grid, data
 
 
-def _calculate_mgxs_nuclide(this, types, cross_sections, temperature=294.):
-    """Determines the multi-group cross sections of a requested type
+def calculate_mgxs(this, types, temperature=294., cross_sections=None,
+                   ce_cross_sections=None, enrichment=None):
+    """Calculates continuous-energy cross sections of a requested type
 
     Parameters
     ----------
-    this : openmc.Nuclide
-        Nuclide object to source data from
+    this : openmc.Element, openmc.Nuclide, or openmc.Material
+        Object to source data from
+    types : Iterable of values of PLOT_TYPES
+        The type of cross sections to calculate
+    temperature : float, optional
+        Temperature in Kelvin to plot. If not specified, a default
+        temperature of 294K will be plotted. Note that the nearest
+        temperature in the library for each nuclide will be used as opposed
+        to using any interpolation.
+    cross_sections : str, optional
+        Location of MGXS HDF5 Library file. Default is None.
+    ce_cross_sections : str, optional
+        Location of continuous-energy cross_sections.xml file. Default is None.
+        This is used only for expanding an openmc.Element object passed as this
+    enrichment : float, optional
+        Enrichment for U235 in weight percent. For example, input 4.95 for
+        4.95 weight percent enriched U. Default is None
+        (natural composition).
+
+    Returns
+    -------
+    numpy.array
+        Energy group structure in units of eV
+    data : numpy.ndarray
+        Multi-Group Cross sections
+
+    """
+
+    # Check types
+    cv.check_type('temperature', temperature, Real)
+    if enrichment:
+        cv.check_type('enrichment', enrichment, Real)
+
+    cv.check_type("cross_sections", cross_sections, str)
+    library = openmc.MGXSLibrary.from_hdf5(cross_sections)
+
+    if isinstance(this, (openmc.Nuclide, openmc.Macroscopic)):
+        data = _calculate_mgxs_nuc_macro(this, types, library, temperature)
+    elif isinstance(this, (openmc.Element, openmc.Material)):
+        data = _calculate_mgxs_elem_mat(this, types, library, temperature,
+                                        ce_cross_sections, enrichment)
+    else:
+        raise TypeError("Invalid type")
+
+    return library.energy_groups.group_structure, data
+
+
+def _calculate_mgxs_nuc_macro(this, types, library, temperature=294.):
+    """Determines the multi-group cross sections of a nuclide or macroscopic
+    object
+
+    Parameters
+    ----------
+    this : {openmc.Nuclide, openmc.Macroscopic}
+        Object to source data from
     types : Iterable of str
         The type of cross sections to calculate; values can either be those
-        in openmc.PLOT_TYPES_MGXS or integers which correspond to reaction
-        channel (MT) numbers.
-    cross_sections : openmc.MGXSLibrary
+        in openmc.PLOT_TYPES_MGXS
+    library : openmc.MGXSLibrary
         MGXS Library containing the data of interest
     temperature : float, optional
         Temperature in Kelvin to plot. If not specified, a default
@@ -647,11 +828,8 @@ def _calculate_mgxs_nuclide(this, types, cross_sections, temperature=294.):
 
     Returns
     -------
-    energy_grid : numpy.array
-        Energies at which cross sections are calculated, in units of eV
     data : numpy.ndarray
-        Cross sections calculated at the energy grid described by
-        energy_grid
+        Cross sections values of the requested types
 
     """
 
@@ -660,17 +838,11 @@ def _calculate_mgxs_nuclide(this, types, cross_sections, temperature=294.):
         cv.check_type("line", line, str)
         cv.check_value("line", line, PLOT_TYPES_MGXS)
 
-    cv.check_type("cross_sections", cross_sections, openmc.MGXSLibrary)
-
-    xsdata = cross_sections[this.name]
+    xsdata = library[this.name]
 
     if xsdata is not None:
-        # Get group structure
-        group_structure = cross_sections.energy_groups.group_structure
-        G = cross_sections.energy_groups.num_groups
-
         # Obtain the nearest temperature
-        data_Ts = cross_sections.temperatures
+        data_Ts = library.temperatures
         for t in range(len(data_Ts)):
             # Take off the "K" and convert to a float
             data_Ts[t] = float(data_Ts[t][:-1])
@@ -682,22 +854,90 @@ def _calculate_mgxs_nuclide(this, types, cross_sections, temperature=294.):
         t = closest_t
 
         # Get the data
-        energy_grid = []
-        xs = []
+        data = np.zeros((len(types), library.energy_groups.num_groups))
         for line in types:
-            energy_grid.append([])
-            xs.append([])
-            attr = line.replace(' ', '_').replace('-', '_')
-            values = getattr(xsdata, attr)[t]
-            for g_in in range(G):
-                energy_grid[-1].append(group_structure[g_in])
-                energy_grid[-1].append(group_structure[g_in + 1])
-                energy_grid[-1].append(None)
-                xs[-1].append(values[g_in])
-                xs[-1].append(values[g_in + 1])
-                xs[-1].append(values[None])
+            if line == 'unity':
+                data[line, :] = 1.
+            else:
+                attr = line.replace(' ', '_').replace('-', '_')
+                data[line, :] = getattr(xsdata, attr)[t]
     else:
         raise ValueError("{} not present in provided MGXS "
                          "library".format(this.name))
 
-    return energy_grid, xs
+    return data
+
+
+def _calculate_mgxs_elem_mat(this, types, library, temperature=294.,
+                             ce_cross_sections=None, enrichment=None):
+    """Determines the multi-group cross sections of an element or material
+    object
+
+    Parameters
+    ----------
+    this : {openmc.Element, openmc.Material}
+        Object to source data from
+    types : Iterable of str
+        The type of cross sections to calculate; values can either be those
+        in openmc.PLOT_TYPES_MGXS
+    library : openmc.MGXSLibrary
+        MGXS Library containing the data of interest
+    temperature : float, optional
+        Temperature in Kelvin to plot. If not specified, a default
+        temperature of 294K will be plotted. Note that the nearest
+        temperature in the library for each nuclide will be used as opposed
+        to using any interpolation.
+    ce_cross_sections : str, optional
+        Location of continuous-energy cross_sections.xml file. Default is None.
+        This is used only for expanding the elements
+    enrichment : float, optional
+        Enrichment for U235 in weight percent. For example, input 4.95 for
+        4.95 weight percent enriched U. Default is None
+        (natural composition).
+
+    Returns
+    -------
+    data : numpy.ndarray
+        Cross sections values of the requested types
+
+    """
+
+    # Check the parameters
+    for line in types:
+        cv.check_type("line", line, str)
+        cv.check_value("line", line, PLOT_TYPES_MGXS)
+
+    if isinstance(this, openmc.Material):
+        if this.temperature is not None:
+            T = this.temperature
+        else:
+            T = temperature
+        # Expand elements in to nuclides with atomic densities
+        nuclides = this.get_nuclide_atom_densities(ce_cross_sections)
+
+        # For ease of processing split out nuc and nuc_density
+        nuc_multiplier = [nuclide[1][1] for nuclide in nuclides.items()]
+    else:
+        T = temperature
+        # Expand elements in to nuclides with atomic densities
+        nuclides = this.expand(100., 'ao', enrichment=enrichment,
+                               cross_sections=ce_cross_sections)
+
+        # For ease of processing split out nuc and nuc_fractions
+        nuc_multiplier = [nuclide[1] for nuclide in nuclides]
+
+    nuc_data = []
+    for nuclide in nuclides:
+        nuc_data.append(_calculate_mgxs_nuc_macro(nuclide[0], types, library,
+                                                  T))
+
+    # Combine across the nuclides
+    data = np.zeros((len(types), library.energy_groups.num_groups))
+    for line in range(len(types)):
+        if types[line] == 'unity':
+            data[line, :] = 1.
+        else:
+            for n in range(len(nuclides)):
+                data[line, :] += nuc_multiplier[n] * nuc_data[n][line, :]
+
+    return data

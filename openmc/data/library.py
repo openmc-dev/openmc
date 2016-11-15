@@ -114,7 +114,7 @@ class DataLibrary(EqualityMixin):
 
         data = cls()
 
-        # If cross_sections is None, get the cross sections from the
+        # If path is None, get the cross sections from the
         # OPENMC_CROSS_SECTIONS environment variable
         if path is None:
             path = os.environ.get('OPENMC_CROSS_SECTIONS')

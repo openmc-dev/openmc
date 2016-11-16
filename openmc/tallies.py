@@ -179,31 +179,31 @@ class Tally(object):
 
     def __repr__(self):
         string = 'Tally\n'
-        string += '{0: <16}{1}{2}\n'.format('\tID', '=\t', self.id)
-        string += '{0: <16}{1}{2}\n'.format('\tName', '=\t', self.name)
+        string += '{: <16}=\t{}\n'.format('\tID', self.id)
+        string += '{: <16}=\t{}\n'.format('\tName', self.name)
 
         if self.derivative is not None:
-            string += '{0: <16}id =\t{1}\n'.format('\tDerivative', '=\t',
-                                                   str(self.derivative.id))
+            string += '{: <16}=\t{}\n'.format('\tDerivative ID',
+                                              str(self.derivative.id))
 
-        string += '{0: <16}{1}\n'.format('\tFilters', '=\t')
+        string += '{: <16}=\n'.format('\tFilters')
 
         for self_filter in self.filters:
-            string += '{0: <16}\t\t{1}\t{2}\n'.format('',
+            string += '{: <16}\t\t{}\t{}\n'.format('',
                 type(self_filter).__name__, self_filter.bins)
 
-        string += '{0: <16}{1}'.format('\tNuclides', '=\t')
+        string += '{: <16}=\t'.format('\tNuclides')
 
         for nuclide in self.nuclides:
             if isinstance(nuclide, openmc.Nuclide):
-                string += '{0} '.format(nuclide.name)
+                string += nuclide.name + ' '
             else:
-                string += '{0} '.format(nuclide)
+                string += nuclide + ' '
 
         string += '\n'
 
-        string += '{0: <16}{1}{2}\n'.format('\tScores', '=\t', self.scores)
-        string += '{0: <16}{1}{2}\n'.format('\tEstimator', '=\t', self.estimator)
+        string += '{: <16}=\t{}\n'.format('\tScores', self.scores)
+        string += '{: <16}=\t{}\n'.format('\tEstimator', self.estimator)
 
         return string
 

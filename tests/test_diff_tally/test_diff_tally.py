@@ -2,10 +2,6 @@
 
 import glob
 import os
-try:
-    from StringIO import StringIO
-except:
-    from io import StringIO
 import sys
 
 import pandas as pd
@@ -129,12 +125,9 @@ class DiffTallyTestHarness(PyAPITestHarness):
             df = df.append(t.get_pandas_dataframe(), ignore_index=True)
 
         # Extract the relevant data as a CSV string.
-        out = StringIO()
         cols = ('d_material', 'd_nuclide', 'd_variable', 'score', 'mean',
                 'std. dev.')
-        df.to_csv(out, columns=cols, index=False, float_format='%.7e')
-
-        return out.getvalue()
+        return df.to_csv(None, columns=cols, index=False, float_format='%.7e')
 
     def _cleanup(self):
         super(DiffTallyTestHarness, self)._cleanup()

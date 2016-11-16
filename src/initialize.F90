@@ -211,6 +211,8 @@ contains
     call MPI_TYPE_CREATE_STRUCT(5, bank_blocks, bank_disp, &
          bank_types, MPI_BANK, mpi_err)
     call MPI_TYPE_COMMIT(MPI_BANK, mpi_err)
+
+  end subroutine initialize_mpi
 #endif
 
 !===============================================================================

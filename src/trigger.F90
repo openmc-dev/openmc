@@ -432,17 +432,19 @@ contains
     real(8), intent(inout)     :: rel_err         ! tally relative error
     integer, intent(in)        :: score_index     ! tally results score index
     integer, intent(in)        :: filter_index    ! tally results filter index
-    integer                    :: n               ! number of realizations
-    real(8)                    :: mean            ! tally mean
-    type(TallyResult)          :: tally_result    ! pointer to TallyResult
-    type(TallyObject), pointer :: t               ! tally pointer
+    type(TallyObject), intent(in) :: t            ! tally
+
+    integer :: n               ! number of realizations
+    real(8) :: mean            ! tally mean
+    real(8) :: tally_sum, tally_sum_sq     ! results for a single tally bin
 
     n = t % n_realizations
-    tally_result = t % results(score_index, filter_index)
+    tally_sum = t % results(RESULT_SUM, score_index, filter_index)
+    tally_sum_sq = t % results(RESULT_SUM_SQ, score_index, filter_index)
 
     ! Compute the tally mean and standard deviation
-    mean    = tally_result % sum / n
-    std_dev = sqrt((tally_result % sum_sq / n - mean * mean) / (n - 1))
+    mean    = tally_sum / n
+    std_dev = sqrt((tally_sum_sq / n - mean * mean) / (n - 1))
 
     ! Compute the relative error if the mean is non-zero
     if (mean == ZERO) then

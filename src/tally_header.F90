@@ -1,22 +1,14 @@
 module tally_header
 
+  use, intrinsic :: ISO_C_BINDING
+
+  use hdf5
+
   use constants,           only: NONE, N_FILTER_TYPES
   use tally_filter_header, only: TallyFilterContainer
   use trigger_header,      only: TriggerObject
 
-  use, intrinsic :: ISO_C_BINDING
-
   implicit none
-
-!===============================================================================
-! TALLYRESULT provides accumulation of results in a particular tally bin
-!===============================================================================
-
-  type, bind(C) :: TallyResult
-    real(C_DOUBLE) :: value    = 0.
-    real(C_DOUBLE) :: sum      = 0.
-    real(C_DOUBLE) :: sum_sq   = 0.
-  end type TallyResult
 
 !===============================================================================
 ! TALLYDERIVATIVE describes a first-order derivative that can be applied to
@@ -81,7 +73,7 @@ module tally_header
 
     integer :: total_filter_bins
     integer :: total_score_bins
-    type(TallyResult), allocatable :: results(:,:)
+    real(C_DOUBLE), allocatable :: results(:,:,:)
 
     ! reset property - allows a tally to be reset after every batch
     logical :: reset = .false.
@@ -95,6 +87,79 @@ module tally_header
 
     ! Index for the TallyDerivative for differential tallies.
     integer :: deriv = NONE
+
+  contains
+    procedure :: write_results_hdf5
+    procedure :: read_results_hdf5
   end type TallyObject
+
+contains
+
+  subroutine write_results_hdf5(this, group_id)
+    class(TallyObject), intent(in) :: this
+    integer(HID_T),     intent(in) :: group_id
+
+    integer :: hdf5_err
+    integer(HID_T) :: dset, dspace
+    integer(HID_T) :: memspace
+    integer(HSIZE_T) :: dims(3)
+    integer(HSIZE_T) :: dims_slab(3)
+    integer(HSIZE_T) :: offset(3) = [1,0,0]
+
+    ! Create file dataspace
+    dims_slab(:) = shape(this % results)
+    dims_slab(1) = 2
+    call h5screate_simple_f(3, dims_slab, dspace, hdf5_err)
+
+    ! Create memory dataspace that contains only SUM and SUM_SQ values
+    dims(:) = shape(this % results)
+    call h5screate_simple_f(3, dims, memspace, hdf5_err)
+    call h5sselect_hyperslab_f(memspace, H5S_SELECT_SET_F, offset, dims_slab, &
+         hdf5_err)
+
+    ! Create and write to dataset
+    call h5dcreate_f(group_id, "results", H5T_NATIVE_DOUBLE, dspace, dset, &
+         hdf5_err)
+    call h5dwrite_f(dset, H5T_NATIVE_DOUBLE, this % results, dims_slab, &
+         hdf5_err, mem_space_id=memspace)
+
+    ! Close identifiers
+    call h5dclose_f(dset, hdf5_err)
+    call h5sclose_f(memspace, hdf5_err)
+    call h5sclose_f(dspace, hdf5_err)
+  end subroutine write_results_hdf5
+
+  subroutine read_results_hdf5(this, group_id)
+    class(TallyObject), intent(inout) :: this
+    integer(HID_T),     intent(in) :: group_id
+
+    integer :: hdf5_err
+    integer(HID_T) :: dset, dspace
+    integer(HID_T) :: memspace
+    integer(HSIZE_T) :: dims(3)
+    integer(HSIZE_T) :: dims_slab(3)
+    integer(HSIZE_T) :: offset(3) = [1,0,0]
+
+    ! Create file dataspace
+    dims_slab(:) = shape(this % results)
+    dims_slab(1) = 2
+    call h5screate_simple_f(3, dims_slab, dspace, hdf5_err)
+
+    ! Create memory dataspace that contains only SUM and SUM_SQ values
+    dims(:) = shape(this % results)
+    call h5screate_simple_f(3, dims, memspace, hdf5_err)
+    call h5sselect_hyperslab_f(memspace, H5S_SELECT_SET_F, offset, dims_slab, &
+         hdf5_err)
+
+    ! Create and write to dataset
+    call h5dopen_f(group_id, "results", dset, hdf5_err)
+    call h5dread_f(dset, H5T_NATIVE_DOUBLE, this % results, dims_slab, &
+         hdf5_err, mem_space_id=memspace)
+
+    ! Close identifiers
+    call h5dclose_f(dset, hdf5_err)
+    call h5sclose_f(memspace, hdf5_err)
+    call h5sclose_f(dspace, hdf5_err)
+  end subroutine read_results_hdf5
 
 end module tally_header

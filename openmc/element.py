@@ -212,7 +212,7 @@ class Element(object):
         # its natural nuclides
         else:
             for nuclide in natural_nuclides:
-                abundances[nuclide] = NATURAL_ABUNDNACE[nuclide]
+                abundances[nuclide] = NATURAL_ABUNDANCE[nuclide]
 
         # Modify mole fractions if enrichment provided
         if enrichment is not None:

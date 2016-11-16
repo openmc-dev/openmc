@@ -11,6 +11,19 @@ module tally_header
   implicit none
 
 !===============================================================================
+! TALLYDERIVATIVE describes a first-order derivative that can be applied to
+! tallies.
+!===============================================================================
+
+  type TallyDerivative
+    integer :: id
+    integer :: variable
+    integer :: diff_material
+    integer :: diff_nuclide
+    real(8) :: flux_deriv
+  end type TallyDerivative
+
+!===============================================================================
 ! TALLYOBJECT describes a user-specified tally. The region of phase space to
 ! tally in is given by the TallyFilters and the results are stored in a
 ! TallyResult array.
@@ -71,6 +84,9 @@ module tally_header
     ! Tally precision triggers
     integer                           :: n_triggers = 0  ! # of triggers
     type(TriggerObject),  allocatable :: triggers(:)     ! Array of triggers
+
+    ! Index for the TallyDerivative for differential tallies.
+    integer :: deriv = NONE
 
   contains
     procedure :: write_results_hdf5

@@ -753,6 +753,22 @@ contains
 
   end function faddeeva
 
+  recursive function w_derivative(z, order) result(wv)
+    complex(C_DOUBLE_COMPLEX), intent(in) :: z ! The point to evaluate Z at
+    integer,                   intent(in) :: order
+    complex(8)     :: wv     ! The resulting w(z) value
+
+    select case(order)
+    case (0)
+      wv = faddeeva(z)
+    case (1)
+      wv = -TWO * z * faddeeva(z) + TWO * ONEI / SQRT_PI
+    case default
+      wv = -TWO * z * w_derivative(z, order-1) &
+           - TWO * (order-1) * w_derivative(z, order-2)
+    end select
+  end function w_derivative
+
 !===============================================================================
 ! BROADEN_WMP_POLYNOMIALS Doppler broadens the windowed multipole curvefit.  The
 ! curvefit is a polynomial of the form

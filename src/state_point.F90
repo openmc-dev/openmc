@@ -50,7 +50,8 @@ contains
     integer, allocatable :: key_array(:)
     integer(HID_T) :: file_id
     integer(HID_T) :: cmfd_group, tallies_group, tally_group, meshes_group, &
-                      mesh_group, filter_group, runtime_group
+                      mesh_group, filter_group, derivs_group, deriv_group, &
+                      runtime_group
     character(MAX_WORD_LEN), allocatable :: str_array(:)
     character(MAX_FILE_LEN)    :: filename
     type(RegularMesh), pointer :: meshp
@@ -198,6 +199,38 @@ contains
 
       call close_group(meshes_group)
 
+      ! Write information for derivatives.
+      if (size(tally_derivs) > 0) then
+        derivs_group = create_group(tallies_group, "derivatives")
+        do i = 1, size(tally_derivs)
+          associate(deriv => tally_derivs(i))
+            deriv_group = create_group(derivs_group, "derivative " &
+                 // trim(to_str(deriv % id)))
+            select case (deriv % variable)
+            case (DIFF_DENSITY)
+              call write_dataset(deriv_group, "independent variable", "density")
+              call write_dataset(deriv_group, "material", deriv % diff_material)
+            case (DIFF_NUCLIDE_DENSITY)
+              call write_dataset(deriv_group, "independent variable", &
+                   "nuclide_density")
+              call write_dataset(deriv_group, "material", deriv % diff_material)
+              call write_dataset(deriv_group, "nuclide", &
+                   nuclides(deriv % diff_nuclide) % name)
+            case (DIFF_TEMPERATURE)
+              call write_dataset(deriv_group, "independent variable", &
+                   "temperature")
+              call write_dataset(deriv_group, "material", deriv % diff_material)
+            case default
+              call fatal_error("Independent variable for derivative " &
+                   // trim(to_str(deriv % id)) // " not defined in &
+                   &state_point.F90.")
+            end select
+            call close_group(deriv_group)
+          end associate
+        end do
+        call close_group(derivs_group)
+      end if
+
       ! Write number of tallies
       call write_dataset(tallies_group, "n_tallies", n_tallies)
 
@@ -273,6 +306,13 @@ contains
           call write_dataset(tally_group, "nuclides", str_array)
           deallocate(str_array)
 
+          ! Write derivative information.
+          if (tally % deriv /= NONE) then
+            call write_dataset(tally_group, "derivative", &
+                 tally_derivs(tally % deriv) % id)
+          end if
+
+          ! Write scores.
           call write_dataset(tally_group, "n_score_bins", tally % n_score_bins)
           allocate(str_array(size(tally % score_bins)))
           do j = 1, size(tally % score_bins)

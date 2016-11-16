@@ -14,7 +14,9 @@ module tracking
   use random_lcg,         only: prn
   use string,             only: to_str
   use tally,              only: score_analog_tally, score_tracklength_tally, &
-                                score_collision_tally, score_surface_current
+                                score_collision_tally, score_surface_current, &
+                                score_track_derivative, &
+                                score_collision_derivative, zero_flux_derivs
   use track_output,       only: initialize_particle_track, write_particle_track, &
                                 add_particle_track, finalize_particle_track
 
@@ -62,6 +64,9 @@ contains
     if (p % write_track) then
       call initialize_particle_track()
     endif
+
+    ! Every particle starts with no accumulated flux derivative.
+    if (active_tallies % size() > 0) call zero_flux_derivs()
 
     EVENT_LOOP: do
       ! If the cell hasn't been determined based on the particle's location,
@@ -136,6 +141,9 @@ contains
         global_tally_tracklength = global_tally_tracklength + p % wgt * &
              distance * material_xs % nu_fission
       end if
+
+      ! Score flux derivative accumulators for differential tallies.
+      if (active_tallies % size() > 0) call score_track_derivative(p, distance)
 
       if (d_collision > d_boundary) then
         ! ====================================================================
@@ -213,6 +221,9 @@ contains
             p % coord(j + 1) % uvw = p % coord(j) % uvw
           end if
         end do
+
+        ! Score flux derivative accumulators for differential tallies.
+        if (active_tallies % size() > 0) call score_collision_derivative(p)
       end if
 
       ! Save coordinates for tallying purposes

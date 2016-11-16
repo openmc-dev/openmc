@@ -20,7 +20,8 @@ contains
   subroutine configure_tallies()
 
     ! Allocate global tallies
-    allocate(global_tallies(N_GLOBAL_TALLIES))
+    allocate(global_tallies(3, N_GLOBAL_TALLIES))
+    global_tallies(:,:) = ZERO
 
     call setup_tally_arrays()
 
@@ -62,7 +63,8 @@ contains
       t % total_score_bins = t % n_score_bins * t % n_nuclide_bins
 
       ! Allocate results array
-      allocate(t % results(t % total_score_bins, t % total_filter_bins))
+      allocate(t % results(3, t % total_score_bins, t % total_filter_bins))
+      t % results(:,:,:) = ZERO
 
     end do TALLY_LOOP
 

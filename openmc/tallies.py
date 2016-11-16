@@ -13,6 +13,7 @@ from xml.etree import ElementTree as ET
 
 from six import string_types
 import numpy as np
+import h5py
 
 import openmc
 import openmc.checkvalue as cv
@@ -280,20 +281,14 @@ class Tally(object):
             return None
 
         if not self._results_read:
-            import h5py
-            if h5py.__version__ == '2.6.0':
-                raise ImportError("h5py 2.6.0 has a known bug which makes it "
-                                  "incompatible with OpenMC's HDF5 files. "
-                                  "Please switch to a different version.")
-
             # Open the HDF5 statepoint file
             f = h5py.File(self._sp_filename, 'r')
 
             # Extract Tally data from the file
             data = f['tallies/tally {0}/results'.format(
                 self.id)].value
-            sum = data['sum']
-            sum_sq = data['sum_sq']
+            sum = data[:,:,0]
+            sum_sq = data[:,:,1]
 
             # Reshape the results arrays
             sum = np.reshape(sum, self.shape)
@@ -1763,8 +1758,6 @@ class Tally(object):
 
         # HDF5 binary file
         if format == 'hdf5':
-            import h5py
-
             filename = directory + '/' + filename + '.h5'
 
             if append:

@@ -430,7 +430,8 @@ module mgxs_header
                                                                   ! in that  conversion
 
       character(MAX_LINE_LEN)     :: temp_str
-      integer(HID_T)              :: xsdata, xsdata_grp, scatt_grp, ndims
+      integer(HID_T)              :: xsdata, xsdata_grp, scatt_grp
+      integer                     :: ndims
       integer(HSIZE_T)            :: dims(2)
       real(8), allocatable        :: temp_arr(:), temp_2d(:, :)
       real(8), allocatable        :: temp_beta(:, :)
@@ -1113,7 +1114,8 @@ module mgxs_header
                                                                     ! in that  conversion
 
       character(MAX_LINE_LEN)     :: temp_str
-      integer(HID_T)              :: xsdata, xsdata_grp, scatt_grp, ndims
+      integer(HID_T)              :: xsdata, xsdata_grp, scatt_grp
+      integer                     :: ndims
       integer(HSIZE_T)            :: dims(4)
       integer, allocatable        :: int_arr(:)
       real(8), allocatable        :: temp_1d(:), temp_3d(:, :, :)

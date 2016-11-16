@@ -5,6 +5,7 @@ import warnings
 import glob
 
 import numpy as np
+import h5py
 
 import openmc
 import openmc.checkvalue as cv
@@ -107,12 +108,6 @@ class StatePoint(object):
     """
 
     def __init__(self, filename, autolink=True):
-        import h5py
-        if h5py.__version__ == '2.6.0':
-            raise ImportError("h5py 2.6.0 has a known bug which makes it "
-                              "incompatible with OpenMC's HDF5 files. "
-                              "Please switch to a different version.")
-
         self._f = h5py.File(filename, 'r')
 
         # Ensure filetype and revision are correct
@@ -213,13 +208,13 @@ class StatePoint(object):
     def global_tallies(self):
         if self._global_tallies is None:
             data = self._f['global_tallies'].value
-            gt = np.zeros_like(data, dtype=[
+            gt = np.zeros(data.shape[0], dtype=[
                 ('name', 'a14'), ('sum', 'f8'), ('sum_sq', 'f8'),
                 ('mean', 'f8'), ('std_dev', 'f8')])
             gt['name'] = ['k-collision', 'k-absorption', 'k-tracklength',
                           'leakage']
-            gt['sum'] = data['sum']
-            gt['sum_sq'] = data['sum_sq']
+            gt['sum'] = data[:,1]
+            gt['sum_sq'] = data[:,2]
 
             # Calculate mean and sample standard deviation of mean
             n = self.n_realizations

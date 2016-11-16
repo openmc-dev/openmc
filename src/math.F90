@@ -1,8 +1,9 @@
 module math
 
+  use, intrinsic :: ISO_C_BINDING
+
   use constants
   use random_lcg, only: prn
-  use ISO_C_BINDING
 
   implicit none
 

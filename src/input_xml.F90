@@ -2039,7 +2039,6 @@ contains
     type(Library), allocatable :: libraries(:)
     type(VectorReal), allocatable :: nuc_temps(:) ! List of T to read for each nuclide
     type(VectorReal), allocatable :: sab_temps(:) ! List of T to read for each S(a,b)
-    character(MAX_LINE_LEN) :: temp_str
     real(8), allocatable    :: material_temps(:)
     logical                 :: file_exists
     character(MAX_FILE_LEN) :: env_variable

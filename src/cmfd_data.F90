@@ -164,7 +164,7 @@ contains
                      * t%stride) + 1
 
                 ! Get flux
-                flux = t % results(1,score_index) % sum
+                flux = t % results(RESULT_SUM,1,score_index)
                 cmfd % flux(h,i,j,k) = flux
 
                 ! Detect zero flux, abort if located
@@ -175,10 +175,10 @@ contains
                 end if
 
                 ! Get total rr and convert to total xs
-                cmfd % totalxs(h,i,j,k) = t % results(2,score_index) % sum / flux
+                cmfd % totalxs(h,i,j,k) = t % results(RESULT_SUM,2,score_index) / flux
 
                 ! Get p1 scatter rr and convert to p1 scatter xs
-                cmfd % p1scattxs(h,i,j,k) = t % results(3,score_index) % sum / flux
+                cmfd % p1scattxs(h,i,j,k) = t % results(RESULT_SUM,3,score_index) / flux
 
                 ! Calculate diffusion coefficient
                 cmfd % diffcof(h,i,j,k) = ONE/(3.0_8*(cmfd % totalxs(h,i,j,k) - &
@@ -211,19 +211,18 @@ contains
                        * t%stride) + 1
 
                   ! Get scattering
-                  cmfd % scattxs(h,g,i,j,k) = t % results(1,score_index) % sum /&
+                  cmfd % scattxs(h,g,i,j,k) = t % results(RESULT_SUM,1,score_index) /&
                        cmfd % flux(h,i,j,k)
 
                   ! Get nu-fission
-                  cmfd % nfissxs(h,g,i,j,k) = t % results(2,score_index) % sum /&
+                  cmfd % nfissxs(h,g,i,j,k) = t % results(RESULT_SUM,2,score_index) /&
                        cmfd % flux(h,i,j,k)
 
                   ! Bank source
                   cmfd % openmc_src(g,i,j,k) = cmfd % openmc_src(g,i,j,k) + &
-                       t % results(2,score_index) % sum
+                       t % results(RESULT_SUM,2,score_index)
                   cmfd % keff_bal = cmfd % keff_bal + &
-                       t % results(2,score_index) % sum / &
-                       dble(t % n_realizations)
+                       t % results(RESULT_SUM,2,score_index) / t % n_realizations
 
                 end do INGROUP
 
@@ -243,67 +242,67 @@ contains
                 matching_bins(i_filter_surf) = OUT_LEFT
                 score_index = sum((matching_bins(1:size(t % filters)) - 1) &
                      * t % stride) + 1
-                cmfd % current(1,h,i,j,k) = t % results(1,score_index) % sum
+                cmfd % current(1,h,i,j,k) = t % results(RESULT_SUM,1,score_index)
 
                 matching_bins(i_filter_surf) = IN_LEFT
                 score_index = sum((matching_bins(1:size(t % filters)) - 1) &
                      * t % stride) + 1
-                cmfd % current(2,h,i,j,k) = t % results(1,score_index) % sum
+                cmfd % current(2,h,i,j,k) = t % results(RESULT_SUM,1,score_index)
 
                 ! Right surface
                 matching_bins(i_filter_surf) = IN_RIGHT
                 score_index = sum((matching_bins(1:size(t % filters)) - 1) &
                      * t % stride) + 1
-                cmfd % current(3,h,i,j,k) = t % results(1,score_index) % sum
+                cmfd % current(3,h,i,j,k) = t % results(RESULT_SUM,1,score_index)
 
                 matching_bins(i_filter_surf) = OUT_RIGHT
                 score_index = sum((matching_bins(1:size(t % filters)) - 1) &
                      * t % stride) + 1
-                cmfd % current(4,h,i,j,k) = t % results(1,score_index) % sum
+                cmfd % current(4,h,i,j,k) = t % results(RESULT_SUM,1,score_index)
 
                 ! Back surface
                 matching_bins(i_filter_surf) = OUT_BACK
                 score_index = sum((matching_bins(1:size(t % filters)) - 1) &
                      * t % stride) + 1
-                cmfd % current(5,h,i,j,k) = t % results(1,score_index) % sum
+                cmfd % current(5,h,i,j,k) = t % results(RESULT_SUM,1,score_index)
 
                 matching_bins(i_filter_surf) = IN_BACK
                 score_index = sum((matching_bins(1:size(t % filters)) - 1) &
                      * t % stride) + 1
-                cmfd % current(6,h,i,j,k) = t % results(1,score_index) % sum
+                cmfd % current(6,h,i,j,k) = t % results(RESULT_SUM,1,score_index)
 
                 ! Front surface
                 matching_bins(i_filter_surf) = IN_FRONT
                 score_index = sum((matching_bins(1:size(t % filters)) - 1) &
                      * t % stride) + 1
-                cmfd % current(7,h,i,j,k) = t % results(1,score_index) % sum
+                cmfd % current(7,h,i,j,k) = t % results(RESULT_SUM,1,score_index)
 
                 matching_bins(i_filter_surf) = OUT_FRONT
                 score_index = sum((matching_bins(1:size(t % filters)) - 1) &
                      * t % stride) + 1
-                cmfd % current(8,h,i,j,k) = t % results(1,score_index) % sum
+                cmfd % current(8,h,i,j,k) = t % results(RESULT_SUM,1,score_index)
 
                 ! Bottom surface
                 matching_bins(i_filter_surf) = OUT_BOTTOM
                 score_index = sum((matching_bins(1:size(t % filters)) - 1) &
                      * t % stride) + 1
-                cmfd % current(9,h,i,j,k) = t % results(1,score_index) % sum
+                cmfd % current(9,h,i,j,k) = t % results(RESULT_SUM,1,score_index)
 
                 matching_bins(i_filter_surf) = IN_BOTTOM
                 score_index = sum((matching_bins(1:size(t % filters)) - 1) &
                      * t % stride) + 1
-                cmfd % current(10,h,i,j,k) = t % results(1,score_index) % sum
+                cmfd % current(10,h,i,j,k) = t % results(RESULT_SUM,1,score_index)
 
                 ! Top surface
                 matching_bins(i_filter_surf) = IN_TOP
                 score_index = sum((matching_bins(1:size(t % filters)) - 1) &
                      * t % stride) + 1
-                cmfd % current(11,h,i,j,k) = t % results(1,score_index) % sum
+                cmfd % current(11,h,i,j,k) = t % results(RESULT_SUM,1,score_index)
 
                 matching_bins(i_filter_surf) = OUT_TOP
                 score_index = sum((matching_bins(1:size(t % filters)) - 1) &
                      * t % stride) + 1
-                cmfd % current(12,h,i,j,k) = t % results(1,score_index) % sum
+                cmfd % current(12,h,i,j,k) = t % results(RESULT_SUM,1,score_index)
 
               end if TALLY
 

@@ -353,7 +353,7 @@ contains
           ! Write sum and sum_sq for each bin
           tally_group = open_group(tallies_group, "tally " &
                // to_str(tally % id))
-          call write_dataset(tally_group, "results", tally % results)
+          call tally % write_results_hdf5(tally_group)
           call close_group(tally_group)
         end do TALLY_RESULTS
 
@@ -481,7 +481,7 @@ contains
     integer :: n_bins ! total number of bins
     integer(HID_T) :: tallies_group, tally_group
     real(8), allocatable :: tally_temp(:,:,:) ! contiguous array of results
-    real(8), target :: global_temp(2,N_GLOBAL_TALLIES)
+    real(8), target :: global_temp(3,N_GLOBAL_TALLIES)
 #ifdef MPI
     real(8) :: dummy  ! temporary receive buffer for non-root reduces
 #endif
@@ -489,7 +489,7 @@ contains
     type(ElemKeyValueII), pointer :: current
     type(ElemKeyValueII), pointer :: next
     type(TallyObject), pointer :: tally
-    type(TallyResult), allocatable :: tallyresult_temp(:,:)
+    type(TallyObject) :: dummy_tally
 
     ! ==========================================================================
     ! COLLECT AND WRITE GLOBAL TALLIES
@@ -505,9 +505,8 @@ contains
     end if
 
     ! Copy global tallies into temporary array for reducing
-    n_bins = 2 * N_GLOBAL_TALLIES
-    global_temp(1,:) = global_tallies(:)%sum
-    global_temp(2,:) = global_tallies(:)%sum_sq
+    n_bins = 3 * N_GLOBAL_TALLIES
+    global_temp(:,:) = global_tallies(:,:)
 
     if (master) then
       ! The MPI_IN_PLACE specifier allows the master to copy values into a
@@ -519,20 +518,11 @@ contains
 
       ! Transfer values to value on master
       if (current_batch == n_max_batches .or. satisfy_triggers) then
-        global_tallies(:)%sum    = global_temp(1,:)
-        global_tallies(:)%sum_sq = global_temp(2,:)
+        global_tallies(:,:) = global_temp(:,:)
       end if
 
-      ! Put reduced value in temporary tally result
-      allocate(tallyresult_temp(N_GLOBAL_TALLIES, 1))
-      tallyresult_temp(:,1)%sum    = global_temp(1,:)
-      tallyresult_temp(:,1)%sum_sq = global_temp(2,:)
-
       ! Write out global tallies sum and sum_sq
-      call write_dataset(file_id, "global_tallies", tallyresult_temp)
-
-      ! Deallocate temporary tally result
-      deallocate(tallyresult_temp)
+      call write_dataset(file_id, "global_tallies", global_temp)
     else
       ! Receive buffer not significant at other processors
 #ifdef MPI
@@ -568,15 +558,15 @@ contains
         tally => tallies(i)
 
         ! Determine size of tally results array
-        m = size(tally%results, 1)
-        n = size(tally%results, 2)
+        m = size(tally%results, 2)
+        n = size(tally%results, 3)
         n_bins = m*n*2
 
         ! Allocate array for storing sums and sums of squares, but
         ! contiguously in memory for each
         allocate(tally_temp(2,m,n))
-        tally_temp(1,:,:) = tally%results(:,:)%sum
-        tally_temp(2,:,:) = tally%results(:,:)%sum_sq
+        tally_temp(1,:,:) = tally%results(RESULT_SUM,:,:)
+        tally_temp(2,:,:) = tally%results(RESULT_SUM_SQ,:,:)
 
         if (master) then
           tally_group = open_group(tallies_group, "tally " // &
@@ -592,20 +582,20 @@ contains
           ! At the end of the simulation, store the results back in the
           ! regular TallyResults array
           if (current_batch == n_max_batches .or. satisfy_triggers) then
-            tally%results(:,:)%sum = tally_temp(1,:,:)
-            tally%results(:,:)%sum_sq = tally_temp(2,:,:)
+            tally%results(RESULT_SUM,:,:) = tally_temp(1,:,:)
+            tally%results(RESULT_SUM_SQ,:,:) = tally_temp(2,:,:)
           end if
 
           ! Put in temporary tally result
-          allocate(tallyresult_temp(m,n))
-          tallyresult_temp(:,:)%sum    = tally_temp(1,:,:)
-          tallyresult_temp(:,:)%sum_sq = tally_temp(2,:,:)
+          allocate(dummy_tally % results(3,m,n))
+          dummy_tally % results(RESULT_SUM,:,:) = tally_temp(1,:,:)
+          dummy_tally % results(RESULT_SUM_SQ,:,:) = tally_temp(2,:,:)
 
           ! Write reduced tally results to file
-          call write_dataset(tally_group, "results", tally%results)
+          call dummy_tally % write_results_hdf5(tally_group)
 
           ! Deallocate temporary tally result
-          deallocate(tallyresult_temp)
+          deallocate(dummy_tally % results)
         else
           ! Receive buffer not significant at other processors
 #ifdef MPI
@@ -771,7 +761,7 @@ contains
       call read_dataset(n_realizations, file_id, "n_realizations", indep=.true.)
 
       ! Read global tally data
-      call read_dataset(file_id, "global_tallies", global_tallies)
+      call read_dataset(global_tallies, file_id, "global_tallies")
 
       ! Check if tally results are present
       tallies_group = open_group(file_id, "tallies")
@@ -787,7 +777,7 @@ contains
           ! Read sum, sum_sq, and N for each bin
           tally_group = open_group(tallies_group, "tally " // &
                trim(to_str(tally % id)))
-          call read_dataset(tally_group, "results", tally % results)
+          call tally % read_results_hdf5(tally_group)
           call read_dataset(tally % n_realizations, tally_group, &
                "n_realizations")
           call close_group(tally_group)

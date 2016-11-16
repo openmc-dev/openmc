@@ -306,14 +306,15 @@ def plot_mgxs(this, types, divisor_types=None, temperature=294., axis=None,
     E_plot = []
     data_plot = []
     for line in range(len(types)):
+        data_plot.append([])
         for g in range(len(E) - 1):
             if line == 0:
                 E_plot.append(E[g])
                 E_plot.append(E[g + 1])
                 E_plot.append(None)
-            data_plot.append(data[line, g])
-            data_plot.append(data[line, g])
-            data_plot.append(None)
+            data_plot[-1].append(data[line, g])
+            data_plot[-1].append(data[line, g])
+            data_plot[-1].append(None)
 
     # Generate the plot
     if axis is None:
@@ -330,7 +331,7 @@ def plot_mgxs(this, types, divisor_types=None, temperature=294., axis=None,
         plot_func = ax.loglog
     # Plot the data
     for i in range(len(data_plot)):
-        plot_func(E_plot, data_plot[i, :], label=types[i])
+        plot_func(E_plot, data_plot[i], label=types[i])
 
     ax.set_xlabel('Energy [eV]')
     if divisor_types:
@@ -338,14 +339,14 @@ def plot_mgxs(this, types, divisor_types=None, temperature=294., axis=None,
             ylabel = 'Nuclidic Microscopic Data'
         elif data_type == 'element':
             ylabel = 'Elemental Microscopic Data'
-        elif data_type == 'material':
+        elif data_type == 'material' or data_type == 'macroscopic':
             ylabel = 'Macroscopic Data'
     else:
         if data_type == 'nuclide':
             ylabel = 'Microscopic Cross Section [b]'
         elif data_type == 'element':
             ylabel = 'Elemental Cross Section [b]'
-        elif data_type == 'material':
+        elif data_type == 'material' or data_type == 'macroscopic':
             ylabel = 'Macroscopic Cross Section [1/cm]'
     ax.set_ylabel(ylabel)
     ax.legend(loc='best')
@@ -804,7 +805,7 @@ def calculate_mgxs(this, types, temperature=294., cross_sections=None,
     else:
         raise TypeError("Invalid type")
 
-    return library.energy_groups.group_structure, data
+    return np.flipud(library.energy_groups.group_edges), data
 
 
 def _calculate_mgxs_nuc_macro(this, types, library, temperature=294.):
@@ -842,25 +843,16 @@ def _calculate_mgxs_nuc_macro(this, types, library, temperature=294.):
 
     if xsdata is not None:
         # Obtain the nearest temperature
-        data_Ts = library.temperatures
-        for t in range(len(data_Ts)):
-            # Take off the "K" and convert to a float
-            data_Ts[t] = float(data_Ts[t][:-1])
-        min_delta = np.finfo(np.float64).max
-        closest_t = -1
-        for t in data_Ts:
-            if abs(data_Ts[t] - temperature) < min_delta:
-                closest_t = t
-        t = closest_t
+        t = (np.abs(xsdata.temperatures - temperature)).argmin()
 
         # Get the data
         data = np.zeros((len(types), library.energy_groups.num_groups))
-        for line in types:
+        for i, line in enumerate(types):
             if line == 'unity':
-                data[line, :] = 1.
+                data[i, :] = 1.
             else:
                 attr = line.replace(' ', '_').replace('-', '_')
-                data[line, :] = getattr(xsdata, attr)[t]
+                data[i, :] = getattr(xsdata, attr)[t]
     else:
         raise ValueError("{} not present in provided MGXS "
                          "library".format(this.name))
@@ -912,8 +904,14 @@ def _calculate_mgxs_elem_mat(this, types, library, temperature=294.,
             T = this.temperature
         else:
             T = temperature
-        # Expand elements in to nuclides with atomic densities
-        nuclides = this.get_nuclide_atom_densities(ce_cross_sections)
+
+        # Check to see if we have nuclides/elements or a macrocopic object
+        if this._macroscopic is not None:
+            # We have macroscopics
+            nuclides = {this._macroscopic: (this._macroscopic, this.density)}
+        else:
+            # Expand elements in to nuclides with atomic densities
+            nuclides = this.get_nuclide_atom_densities(ce_cross_sections)
 
         # For ease of processing split out nuc and nuc_density
         nuc_multiplier = [nuclide[1][1] for nuclide in nuclides.items()]
@@ -927,7 +925,7 @@ def _calculate_mgxs_elem_mat(this, types, library, temperature=294.,
         nuc_multiplier = [nuclide[1] for nuclide in nuclides]
 
     nuc_data = []
-    for nuclide in nuclides:
+    for nuclide in nuclides.items():
         nuc_data.append(_calculate_mgxs_nuc_macro(nuclide[0], types, library,
                                                   T))
 

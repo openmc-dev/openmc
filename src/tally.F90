@@ -1,5 +1,7 @@
 module tally
 
+  use, intrinsic :: ISO_C_BINDING
+
 #ifdef MPI
   use message_passing
 #endif
@@ -18,7 +20,6 @@ module tally
   use output,           only: header
   use particle_header,  only: LocalCoord, Particle
   use string,           only: to_str
-  use tally_header,     only: TallyResult
   use tally_filter
 
   implicit none
@@ -1965,8 +1966,8 @@ contains
         score = score * calc_pn(t % moment_order(i), p % mu)
       endif
 !$omp atomic
-      t % results(score_index, filter_index) % value = &
-           t % results(score_index, filter_index) % value + score
+      t % results(RESULT_VALUE, score_index, filter_index) = &
+           t % results(RESULT_VALUE, score_index, filter_index) + score
 
 
     case(SCORE_SCATTER_YN, SCORE_NU_SCATTER_YN)
@@ -1982,10 +1983,9 @@ contains
 
         ! multiply score by the angular flux moments and store
 !$omp critical (score_general_scatt_yn)
-        t % results(score_index: score_index + num_nm - 1, filter_index) &
-             % value = t &
-             % results(score_index: score_index + num_nm - 1, filter_index)&
-             % value &
+        t % results(RESULT_VALUE, score_index: score_index + num_nm - 1, &
+             filter_index) = t % results(RESULT_VALUE, &
+             score_index: score_index + num_nm - 1, filter_index) &
              + score * calc_pn(n, p % mu) * calc_rn(n, p % last_uvw)
 !$omp end critical (score_general_scatt_yn)
       end do
@@ -2011,10 +2011,9 @@ contains
 
         ! multiply score by the angular flux moments and store
 !$omp critical (score_general_flux_tot_yn)
-        t % results(score_index: score_index + num_nm - 1, filter_index) &
-             % value = t &
-             % results(score_index: score_index + num_nm - 1, filter_index)&
-             % value &
+        t % results(RESULT_VALUE, score_index: score_index + num_nm - 1, &
+             filter_index) = t % results(RESULT_VALUE, &
+             score_index: score_index + num_nm - 1, filter_index) &
              + score * calc_rn(n, uvw)
 !$omp end critical (score_general_flux_tot_yn)
       end do
@@ -2031,8 +2030,8 @@ contains
 
         ! get the score and tally it
 !$omp atomic
-        t % results(score_index, filter_index) % value = &
-             t % results(score_index, filter_index) % value &
+        t % results(RESULT_VALUE, score_index, filter_index) = &
+             t % results(RESULT_VALUE, score_index, filter_index) &
              + score * calc_pn(n, p % mu)
       end do
       i = i + t % moment_order(i)
@@ -2040,8 +2039,8 @@ contains
 
     case default
 !$omp atomic
-      t % results(score_index, filter_index) % value = &
-           t % results(score_index, filter_index) % value + score
+      t % results(RESULT_VALUE, score_index, filter_index) = &
+           t % results(RESULT_VALUE, score_index, filter_index) + score
 
     end select
 
@@ -2458,8 +2457,8 @@ contains
 
           ! Add score to tally
 !$omp atomic
-          t % results(i_score, i_filter) % value = &
-               t % results(i_score, i_filter) % value + score * filter_weight
+          t % results(RESULT_VALUE, i_score, i_filter) = &
+               t % results(RESULT_VALUE, i_score, i_filter) + score * filter_weight
 
         ! Case for tallying delayed emissions
         else if (score_bin == SCORE_DELAYED_NU_FISSION .and. g /= 0) then
@@ -2498,8 +2497,8 @@ contains
 
             ! Add score to tally
 !$omp atomic
-            t % results(i_score, i_filter) % value = &
-                 t % results(i_score, i_filter) % value + score * filter_weight
+            t % results(RESULT_VALUE, i_score, i_filter) = &
+                 t % results(RESULT_VALUE, i_score, i_filter) + score * filter_weight
           end if
         end if
       end do
@@ -2536,8 +2535,8 @@ contains
     filter_weight = product(filter_weights(:size(t % filters)))
 
 !$omp atomic
-    t % results(score_index, filter_index) % value = &
-         t % results(score_index, filter_index) % value + score * filter_weight
+    t % results(RESULT_VALUE, score_index, filter_index) = &
+         t % results(RESULT_VALUE, score_index, filter_index) + score * filter_weight
 
     ! reset original delayed group bin
     matching_bins(t % find_filter(FILTER_DELAYEDGROUP)) = bin_original
@@ -2997,8 +2996,8 @@ contains
                 filter_index = sum((matching_bins(1:size(t % filters)) - 1) &
                      * t % stride) + 1
 !$omp atomic
-                t % results(1, filter_index) % value = &
-                     t % results(1, filter_index) % value + p % wgt
+                t % results(RESULT_VALUE, 1, filter_index) = &
+                     t % results(RESULT_VALUE, 1, filter_index) + p % wgt
               end if
 
               ! Inward current on d1 min surface
@@ -3033,8 +3032,8 @@ contains
                 filter_index = sum((matching_bins(1:size(t % filters)) - 1) &
                      * t % stride) + 1
 !$omp atomic
-                t % results(1, filter_index) % value = &
-                     t % results(1, filter_index) % value + p % wgt
+                t % results(RESULT_VALUE, 1, filter_index) = &
+                     t % results(RESULT_VALUE, 1, filter_index) + p % wgt
                 ijk0(d1) = ijk0(d1) - 1
               end if
 
@@ -3053,8 +3052,8 @@ contains
                 filter_index = sum((matching_bins(1:size(t % filters)) - 1) &
                      * t % stride) + 1
 !$omp atomic
-                t % results(1, filter_index) % value = &
-                     t % results(1, filter_index) % value + p % wgt
+                t % results(RESULT_VALUE, 1, filter_index) = &
+                     t % results(RESULT_VALUE, 1, filter_index) + p % wgt
               end if
 
               ! Inward current on d1 max surface
@@ -3089,8 +3088,8 @@ contains
                 filter_index = sum((matching_bins(1:size(t % filters)) - 1) &
                      * t % stride) + 1
 !$omp atomic
-                t % results(1, filter_index) % value = &
-                     t % results(1, filter_index) % value + p % wgt
+                t % results(RESULT_VALUE, 1, filter_index) = &
+                     t % results(RESULT_VALUE, 1, filter_index) + p % wgt
                 ijk0(d1) = ijk0(d1) + 1
               end if
 
@@ -3116,9 +3115,10 @@ contains
   subroutine synchronize_tallies()
 
     integer :: i
-    real(8) :: k_col ! Copy of batch collision estimate of keff
-    real(8) :: k_abs ! Copy of batch absorption estimate of keff
-    real(8) :: k_tra ! Copy of batch tracklength estimate of keff
+    real(C_DOUBLE) :: k_col ! Copy of batch collision estimate of keff
+    real(C_DOUBLE) :: k_abs ! Copy of batch absorption estimate of keff
+    real(C_DOUBLE) :: k_tra ! Copy of batch tracklength estimate of keff
+    real(C_DOUBLE) :: val
 
 #ifdef MPI
     ! Combine tally results onto master process
@@ -3142,9 +3142,9 @@ contains
       if (run_mode == MODE_EIGENVALUE) then
         if (active_batches) then
           ! Accumulate products of different estimators of k
-          k_col = global_tallies(K_COLLISION) % value / total_weight
-          k_abs = global_tallies(K_ABSORPTION) % value / total_weight
-          k_tra = global_tallies(K_TRACKLENGTH) % value / total_weight
+          k_col = global_tallies(RESULT_VALUE, K_COLLISION) / total_weight
+          k_abs = global_tallies(RESULT_VALUE, K_ABSORPTION) / total_weight
+          k_tra = global_tallies(RESULT_VALUE, K_TRACKLENGTH) / total_weight
           k_col_abs = k_col_abs + k_col * k_abs
           k_col_tra = k_col_tra + k_col * k_tra
           k_abs_tra = k_abs_tra + k_abs * k_tra
@@ -3152,7 +3152,14 @@ contains
       end if
 
       ! Accumulate results for global tallies
-      call accumulate_result(global_tallies)
+      do i = 1, size(global_tallies, 2)
+        val = global_tallies(RESULT_VALUE, i)/total_weight
+        global_tallies(RESULT_VALUE, i) = ZERO
+
+        global_tallies(RESULT_SUM, i) = global_tallies(RESULT_SUM, i) + val
+        global_tallies(RESULT_SUM_SQ, i) = &
+             global_tallies(RESULT_SUM_SQ, i) + val*val
+      end do
     end if
 
   end subroutine synchronize_tallies
@@ -3182,7 +3189,7 @@ contains
 
       allocate(tally_temp(m,n))
 
-      tally_temp = t % results(:,:) % value
+      tally_temp = t % results(RESULT_VALUE,:,:)
 
       if (master) then
         ! The MPI_IN_PLACE specifier allows the master to copy values into
@@ -3191,35 +3198,35 @@ contains
              MPI_SUM, 0, MPI_COMM_WORLD, mpi_err)
 
         ! Transfer values to value on master
-        t % results(:,:) % value = tally_temp
+        t % results(RESULT_VALUE,:,:) = tally_temp
       else
         ! Receive buffer not significant at other processors
         call MPI_REDUCE(tally_temp, dummy, n_bins, MPI_REAL8, &
              MPI_SUM, 0, MPI_COMM_WORLD, mpi_err)
 
         ! Reset value on other processors
-        t % results(:,:) % value = 0
+        t % results(RESULT_VALUE,:,:) = ZERO
       end if
 
       deallocate(tally_temp)
     end do
 
     ! Copy global tallies into array to be reduced
-    global_temp = global_tallies(:) % value
+    global_temp = global_tallies(RESULT_VALUE, :)
 
     if (master) then
       call MPI_REDUCE(MPI_IN_PLACE, global_temp, N_GLOBAL_TALLIES, &
            MPI_REAL8, MPI_SUM, 0, MPI_COMM_WORLD, mpi_err)
 
       ! Transfer values back to global_tallies on master
-      global_tallies(:) % value = global_temp
+      global_tallies(RESULT_VALUE, :) = global_temp
     else
       ! Receive buffer not significant at other processors
       call MPI_REDUCE(global_temp, dummy, N_GLOBAL_TALLIES, &
            MPI_REAL8, MPI_SUM, 0, MPI_COMM_WORLD, mpi_err)
 
       ! Reset value on other processors
-      global_tallies(:) % value = ZERO
+      global_tallies(RESULT_VALUE, :) = ZERO
     end if
 
     ! We also need to determine the total starting weight of particles from the
@@ -3244,6 +3251,9 @@ contains
 
     type(TallyObject), intent(inout) :: t
 
+    integer :: i, j
+    real(C_DOUBLE) :: val
+
     ! Increment number of realizations
     if (reduce_tallies) then
       t % n_realizations = t % n_realizations + 1
@@ -3251,92 +3261,59 @@ contains
       t % n_realizations = t % n_realizations + n_procs
     end if
 
-    ! Accumulate each TallyResult
-    call accumulate_result(t % results)
+    ! Accumulate each result
+    do j = 1, size(t % results, 3)
+      do i = 1, size(t % results, 2)
+        val = t % results(RESULT_VALUE, i, j)/total_weight
+        t % results(RESULT_VALUE, i, j) = ZERO
+
+        t % results(RESULT_SUM, i, j) = &
+             t % results(RESULT_SUM, i, j) + val
+        t % results(RESULT_SUM_SQ, i, j) = &
+             t % results(RESULT_SUM_SQ, i, j) + val*val
+      end do
+    end do
 
   end subroutine accumulate_tally
 
 !===============================================================================
 ! TALLY_STATISTICS computes the mean and standard deviation of the mean of each
-! tally and stores them in the val and val_sq attributes of the TallyResults
-! respectively
+! tally and stores them in the RESULT_SUM and RESULT_SUM_SQ positions
 !===============================================================================
 
   subroutine tally_statistics()
-
     integer :: i    ! index in tallies array
-    type(TallyObject), pointer :: t
-
-    ! Calculate statistics for user-defined tallies
-    do i = 1, n_tallies
-      t => tallies(i)
-
-      call statistics_result(t % results, t % n_realizations)
-    end do
-
-    ! Calculate statistics for global tallies
-    call statistics_result(global_tallies, n_realizations)
-
-  end subroutine tally_statistics
-
-!===============================================================================
-! ACCUMULATE_RESULT accumulates results from many histories (or many generations)
-! into a single realization of a random variable.
-!===============================================================================
-
-  elemental subroutine accumulate_result(this)
-
-    type(TallyResult), intent(inout) :: this
-
-    real(8) :: val
-
-    ! Add the sum and square of the sum of contributions from a tally result to
-    ! the variables sum and sum_sq. This will later allow us to calculate a
-    ! variance on the tallies.
-
-    val = this % value/total_weight
-    this % sum    = this % sum    + val
-    this % sum_sq = this % sum_sq + val*val
-
-    ! Reset the single batch estimate
-    this % value = ZERO
-
-  end subroutine accumulate_result
-
-!===============================================================================
-! STATISTICS_RESULT determines the sample mean and the standard deviation of the
-! mean for a TallyResult.
-!===============================================================================
-
-  elemental subroutine statistics_result(this, n)
-
-    type(TallyResult), intent(inout) :: this
-    integer,           intent(in)    :: n
+    integer :: j, k ! score/filter indices
+    integer :: n    ! number of realizations
 
     ! Calculate sample mean and standard deviation of the mean -- note that we
     ! have used Bessel's correction so that the estimator of the variance of the
     ! sample mean is unbiased.
 
-    this % sum    = this % sum/n
-    this % sum_sq = sqrt((this % sum_sq/n - this % sum * &
-         this % sum) / (n - 1))
+    do i = 1, n_tallies
+      n = tallies(i) % n_realizations
 
-  end subroutine statistics_result
+      associate (r => tallies(i) % results)
+        do k = 1, size(r, 3)
+          do j = 1, size(r, 2)
+            r(RESULT_SUM, j, k) = r(RESULT_SUM, j, k) / n
+            r(RESULT_SUM_SQ, j, k) = sqrt((r(RESULT_SUM_SQ, j, k)/n - &
+                 r(RESULT_SUM, j, k) * r(RESULT_SUM, j, k))/(n - 1))
+          end do
+        end do
+      end associate
+    end do
 
-!===============================================================================
-! RESET_RESULT zeroes out the value and accumulated sum and sum-squared for a
-! single TallyResult.
-!===============================================================================
-
-  elemental subroutine reset_result(this)
-
-    type(TallyResult), intent(inout) :: this
-
-    this % value    = ZERO
-    this % sum      = ZERO
-    this % sum_sq   = ZERO
-
-  end subroutine reset_result
+    ! Calculate statistics for global tallies
+    n = n_realizations
+    associate (r => global_tallies)
+      do j = 1, size(r, 2)
+        r(RESULT_SUM, j) = r(RESULT_SUM, j) / n
+        r(RESULT_SUM_SQ, j) = sqrt((r(RESULT_SUM_SQ, j)/n - &
+             r(RESULT_SUM, j) * r(RESULT_SUM, j))/(n - 1))
+      end do
+    end associate
+  end subroutine tally_statistics
 
 !===============================================================================
 ! SETUP_ACTIVE_USERTALLIES

@@ -365,22 +365,18 @@ contains
 
   subroutine cmfd_tally_reset()
 
-    use global,  only: n_cmfd_tallies, cmfd_tallies
+    use global,  only: cmfd_tallies
     use output,  only: write_message
-    use tally,   only: reset_result
 
     integer :: i ! loop counter
 
     ! Print message
     call write_message("CMFD tallies reset", 7)
 
-    ! Begin loop around CMFD tallies
-    do i = 1, n_cmfd_tallies
-
-      ! Reset that tally
+    ! Reset CMFD tallies
+    do i = 1, size(cmfd_tallies)
       cmfd_tallies(i) % n_realizations = 0
-      call reset_result(cmfd_tallies(i) % results)
-
+      cmfd_tallies(i) % results(:,:,:) = ZERO
     end do
 
   end subroutine cmfd_tally_reset

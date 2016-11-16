@@ -374,7 +374,7 @@ contains
   subroutine calculate_generation_keff()
 
     ! Get keff for this generation by subtracting off the starting value
-    keff_generation = global_tallies(K_TRACKLENGTH) % value - keff_generation
+    keff_generation = global_tallies(RESULT_VALUE, K_TRACKLENGTH) - keff_generation
 
 #ifdef MPI
     ! Combine values across all processors
@@ -466,14 +466,14 @@ contains
     k_combined = ZERO
 
     ! Copy estimates of k-effective and its variance (not variance of the mean)
-    kv(1) = global_tallies(K_COLLISION) % sum / n
-    kv(2) = global_tallies(K_ABSORPTION) % sum / n
-    kv(3) = global_tallies(K_TRACKLENGTH) % sum / n
-    cov(1,1) = (global_tallies(K_COLLISION) % sum_sq - &
+    kv(1) = global_tallies(RESULT_SUM, K_COLLISION) / n
+    kv(2) = global_tallies(RESULT_SUM, K_ABSORPTION) / n
+    kv(3) = global_tallies(RESULT_SUM, K_TRACKLENGTH) / n
+    cov(1,1) = (global_tallies(RESULT_SUM_SQ, K_COLLISION) - &
          n * kv(1) * kv(1)) / (n - 1)
-    cov(2,2) = (global_tallies(K_ABSORPTION) % sum_sq - &
+    cov(2,2) = (global_tallies(RESULT_SUM_SQ, K_ABSORPTION) - &
          n * kv(2) * kv(2)) / (n - 1)
-    cov(3,3) = (global_tallies(K_TRACKLENGTH) % sum_sq - &
+    cov(3,3) = (global_tallies(RESULT_SUM_SQ, K_TRACKLENGTH) - &
          n * kv(3) * kv(3)) / (n - 1)
 
     ! Calculate covariances based on sums with Bessel's correction

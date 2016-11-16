@@ -2024,10 +2024,6 @@ class MGXSLibrary(object):
         return self._num_delayed_groups
 
     @property
-    def temperatures(self):
-        return self._temperatures
-
-    @property
     def xsdatas(self):
         return self._xsdatas
 

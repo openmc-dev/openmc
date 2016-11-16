@@ -777,6 +777,28 @@ contains
              // trim(t % name), unit=unit_tally, level=3)
       endif
 
+      ! Write derivative information.
+      if (t % deriv /= NONE) then
+        associate(deriv => tally_derivs(t % deriv))
+          select case (deriv % variable)
+          case (DIFF_DENSITY)
+            write(unit=unit_tally, fmt="(' Density derivative  Material ',A)") &
+                 to_str(deriv % diff_material)
+          case (DIFF_NUCLIDE_DENSITY)
+            write(unit=unit_tally, fmt="(' Nuclide density derivative  &
+                 &Material ',A,'  Nuclide ',A)") &
+                 trim(to_str(deriv % diff_material)), &
+                 trim(nuclides(deriv % diff_nuclide) % name)
+          case (DIFF_TEMPERATURE)
+            write(unit=unit_tally, fmt="(' Temperature derivative  Material ',&
+                 &A)") to_str(deriv % diff_material)
+          case default
+            call fatal_error("Differential tally dependent variable for tally "&
+                 // trim(to_str(t % id)) // " not defined in output.F90.")
+          end select
+        end associate
+      end if
+
       ! Handle surface current tallies separately
       if (t % type == TALLY_SURFACE_CURRENT) then
         call write_surface_current(t, unit_tally)

@@ -623,11 +623,6 @@ class Material(object):
 
         """
 
-        import scipy.constants as sc
-
-        # Load the library
-        library = openmc.data.DataLibrary.from_xml(cross_sections)
-
         # Expand elements in to nuclides
         nuclides = self.get_nuclide_densities()
 

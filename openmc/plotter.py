@@ -165,6 +165,7 @@ def plot_xs(this, types, divisor_types=None, temperature=294., axis=None,
             to_plot = data[i](E)
         else:
             to_plot = data[i, :]
+        to_plot = np.nan_to_num(to_plot)
         if np.sum(to_plot) > 0.:
             plot_func(E, to_plot, label=types[i])
 
@@ -287,7 +288,7 @@ def _calculate_xs_element(this, types, temperature=294., sab_name=None,
     library = openmc.data.DataLibrary.from_xml(cross_sections)
 
     # Expand elements in to nuclides with atomic densities
-    nuclides = this.expand(100., 'ao', enrichment=enrichment,
+    nuclides = this.expand(1., 'ao', enrichment=enrichment,
                            cross_sections=cross_sections)
 
     # For ease of processing split out nuc and nuc_density
@@ -378,7 +379,6 @@ def _calculate_xs_nuclide(this, types, temperature=294., sab_name=None,
             mts.append((line,))
             yields.append((False,))
             ops.append(())
-    print(mts)
 
     # Load the library
     library = openmc.data.DataLibrary.from_xml(cross_sections)

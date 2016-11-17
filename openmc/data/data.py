@@ -186,3 +186,9 @@ K_BOLTZMANN = 8.6173324e-5
 
 # Used for converting units in ACE data
 EV_PER_MEV = 1.0e6
+
+# Avogadro's constant from CODATA 2010
+AVOGADRO = 6.02214129E23
+
+# Neutron mass from CODATA 2010 in units of amu
+NEUTRON_MASS = 1.008664916

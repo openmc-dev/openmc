@@ -478,6 +478,7 @@ Functions
 
     openmc.data.endf.float_endf
     openmc.data.endf.get_cont_record
+    openmc.data.endf.get_evaluations
     openmc.data.endf.get_head_record
     openmc.data.endf.get_tab1_record
     openmc.data.endf.get_tab2_record

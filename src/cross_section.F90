@@ -7,7 +7,7 @@ module cross_section
   use global
   use list_header,      only: ListElemInt
   use material_header,  only: Material
-  use math,             only: faddeeva, broaden_wmp_polynomials
+  use math,             only: faddeeva, w_derivative, broaden_wmp_polynomials
   use multipole_header, only: FORM_RM, FORM_MLBW, MP_EA, RM_RT, RM_RA, RM_RF, &
                               MLBW_RT, MLBW_RX, MLBW_RA, MLBW_RF, FIT_T, FIT_A,&
                               FIT_F, MultipoleArray
@@ -705,6 +705,94 @@ contains
       end if
     end if
   end subroutine multipole_eval
+
+!===============================================================================
+! MULTIPOLE_DERIV_EVAL evaluates the windowed multipole equations for the
+! derivative of cross sections in the resolved resonance regions with respect to
+! temperature.
+!===============================================================================
+
+  subroutine multipole_deriv_eval(multipole, E, sqrtkT, sigT, sigA, sigF)
+    type(MultipoleArray), intent(in) :: multipole ! The windowed multipole
+                                                  !  object to process.
+    real(8), intent(in)              :: E         ! The energy at which to
+                                                  !  evaluate the cross section
+    real(8), intent(in)              :: sqrtkT    ! The temperature in the form
+                                                  !  sqrt(kT), at which to
+                                                  !  evaluate the XS.
+    real(8), intent(out)             :: sigT      ! Total cross section
+    real(8), intent(out)             :: sigA      ! Absorption cross section
+    real(8), intent(out)             :: sigF      ! Fission cross section
+    complex(8) :: w_val    ! The faddeeva function evaluated at Z
+    complex(8) :: Z        ! sqrt(atomic weight ratio / kT) * (sqrt(E) - pole)
+    complex(8) :: sigT_factor(multipole % num_l)
+    real(8) :: sqrtE       ! sqrt(E), eV
+    real(8) :: invE        ! 1/E, eV
+    real(8) :: dopp        ! sqrt(atomic weight ratio / kT)
+    integer :: i_pole      ! index of pole
+    integer :: i_window    ! index of window
+    integer :: startw      ! window start pointer (for poles)
+    integer :: endw        ! window end pointer
+    real(8) :: T
+
+    ! ==========================================================================
+    ! Bookkeeping
+
+    ! Define some frequently used variables.
+    sqrtE = sqrt(E)
+    invE = ONE / E
+    dopp = multipole % sqrtAWR / sqrtkT
+    T = sqrtkT**2 / K_BOLTZMANN
+
+    if (sqrtkT == ZERO) call fatal_error("Windowed multipole temperature &
+         &derivatives are not implemented for 0 Kelvin cross sections.")
+
+    ! Locate us
+    i_window = floor((sqrtE - sqrt(multipole % start_E)) / multipole % spacing &
+         + ONE)
+    startw = multipole % w_start(i_window)
+    endw = multipole % w_end(i_window)
+
+    ! Fill in factors.
+    if (startw <= endw) then
+      call compute_sigT_factor(multipole, sqrtE, sigT_factor)
+    end if
+
+    ! Initialize the ouptut cross sections.
+    sigT = ZERO
+    sigA = ZERO
+    sigF = ZERO
+
+    ! TODO Polynomials: Some of the curvefit polynomials Doppler broaden so
+    ! rigorously we should be computing the derivative of those.  But in
+    ! practice, those derivatives are only large at very low energy and they
+    ! have no effect on reactor calculations.
+
+    ! ==========================================================================
+    ! Add the contribution from the poles in this window.
+
+    if (endw >= startw) then
+      do i_pole = startw, endw
+        Z = (sqrtE - multipole % data(MP_EA, i_pole)) * dopp
+        w_val = -invE * SQRT_PI * HALF * w_derivative(Z, 2)
+        if (multipole % formalism == FORM_MLBW) then
+          sigT = sigT + real((multipole % data(MLBW_RT, i_pole) * &
+                        sigT_factor(multipole%l_value(i_pole)) + &
+                        multipole % data(MLBW_RX, i_pole)) * w_val)
+          sigA = sigA + real(multipole % data(MLBW_RA, i_pole) * w_val)
+          sigF = sigF + real(multipole % data(MLBW_RF, i_pole) * w_val)
+        else if (multipole % formalism == FORM_RM) then
+          sigT = sigT + real(multipole % data(RM_RT, i_pole) * w_val * &
+                             sigT_factor(multipole % l_value(i_pole)))
+          sigA = sigA + real(multipole % data(RM_RA, i_pole) * w_val)
+          sigF = sigF + real(multipole % data(RM_RF, i_pole) * w_val)
+        end if
+      end do
+      sigT = -HALF*multipole % sqrtAWR / sqrt(K_BOLTZMANN) * T**(-1.5) * sigT
+      sigA = -HALF*multipole % sqrtAWR / sqrt(K_BOLTZMANN) * T**(-1.5) * sigA
+      sigF = -HALF*multipole % sqrtAWR / sqrt(K_BOLTZMANN) * T**(-1.5) * sigF
+    end if
+  end subroutine multipole_deriv_eval
 
 !===============================================================================
 ! COMPUTE_SIGT_FACTOR calculates the sigT_factor, a factor inside of the sigT

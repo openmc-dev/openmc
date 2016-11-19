@@ -2,6 +2,7 @@ from collections import Iterable
 import re
 
 import numpy as np
+import h5py
 
 import openmc
 from openmc.region import Region
@@ -23,15 +24,6 @@ class Summary(object):
     """
 
     def __init__(self, filename):
-        # A user may not have h5py, but they can still use the rest of the
-        # Python API so we'll only try to import h5py if the user actually inits
-        # a Summary object.
-        import h5py
-        if h5py.__version__ == '2.6.0':
-            raise ImportError("h5py 2.6.0 has a known bug which makes it "
-                              "incompatible with OpenMC's HDF5 files. "
-                              "Please switch to a different version.")
-
         openmc.reset_auto_ids()
 
         if not filename.endswith(('.h5', '.hdf5')):

@@ -1,5 +1,11 @@
 module global
 
+  use, intrinsic :: ISO_C_BINDING
+
+#ifdef MPIF08
+  use mpi_f08
+#endif
+
   use bank_header,      only: Bank
   use cmfd_header
   use constants
@@ -14,14 +20,10 @@ module global
   use set_header,       only: SetInt
   use surface_header,   only: SurfaceContainer
   use source_header,    only: SourceDistribution
-  use tally_header,     only: TallyObject, TallyResult
+  use tally_header,     only: TallyObject, TallyDerivative
   use trigger_header,   only: KTrigger
   use timer_header,     only: Timer
   use volume_header,    only: VolumeCalculation
-
-#ifdef MPIF08
-  use mpi_f08
-#endif
 
   implicit none
 
@@ -164,7 +166,7 @@ module global
   !   3) track-length estimate of k-eff
   !   4) leakage fraction
 
-  type(TallyResult), allocatable, target :: global_tallies(:)
+  real(C_DOUBLE), allocatable, target :: global_tallies(:,:)
 
   ! It is possible to protect accumulate operations on global tallies by using
   ! an atomic update. However, when multiple threads accumulate to the same
@@ -182,6 +184,10 @@ module global
   integer :: n_user_meshes  = 0 ! # of structured user meshes
   integer :: n_tallies      = 0 ! # of tallies
   integer :: n_user_tallies = 0 ! # of user tallies
+
+  ! Tally derivatives
+  type(TallyDerivative), allocatable :: tally_derivs(:)
+!$omp threadprivate(tally_derivs)
 
   ! Normalization for statistics
   integer :: n_realizations = 0 ! # of independent realizations
@@ -272,10 +278,8 @@ module global
   integer :: mpi_err               ! MPI error code
 #ifdef MPIF08
   type(MPI_Datatype) :: MPI_BANK
-  type(MPI_Datatype) :: MPI_TALLYRESULT
 #else
   integer :: MPI_BANK              ! MPI datatype for fission bank
-  integer :: MPI_TALLYRESULT       ! MPI datatype for TallyResult
 #endif
 
 #ifdef _OPENMP

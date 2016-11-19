@@ -2132,3 +2132,43 @@ class MGXSLibrary(object):
             xsdata.to_hdf5(file)
 
         file.close()
+
+    @classmethod
+    def from_hdf5(cls, filename=None):
+        """Generate an MGXS Library from an HDF5 group or file
+        Parameters
+        ----------
+        filename : str, optional
+            Name of HDF5 file containing MGXS data. Default is None.
+            If not provided, the value of the OPENMC_MG_CROSS_SECTIONS
+            environmental variable will be used
+        Returns
+        -------
+        openmc.MGXSLibrary
+            Multi-group cross section data object.
+        """
+
+        # If filename is None, get the cross sections from the
+        # OPENMC_CROSS_SECTIONS environment variable
+        if filename is None:
+            filename = os.environ.get('OPENMC_MG_CROSS_SECTIONS')
+
+        # Check to make sure there was an environmental variable.
+        if filename is None:
+            raise ValueError("Either path or OPENMC_MG_CROSS_SECTIONS "
+                             "environmental variable must be set")
+
+        check_type('filename', filename, str)
+        file = h5py.File(filename, 'r')
+
+        group_structure = file.attrs['group structure']
+        num_delayed_groups = file.attrs['delayed_groups']
+        energy_groups = openmc.mgxs.EnergyGroups(group_structure)
+        data = cls(energy_groups, num_delayed_groups)
+
+        for group_name, group in file.items():
+            data.add_xsdata(openmc.XSdata.from_hdf5(group, group_name,
+                                                    energy_groups,
+                                                    num_delayed_groups))
+
+        return data

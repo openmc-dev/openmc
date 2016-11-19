@@ -606,14 +606,9 @@ class Material(object):
 
         return nuclides
 
-    def get_nuclide_atom_densities(self, cross_sections=None):
+    def get_nuclide_atom_densities(self):
         """Returns all nuclides in the material and their atomic densities in
         units of atom/b-cm
-
-        Parameters
-        ----------
-        cross_sections : str, optional
-            Location of cross_sections.xml file. Default is None.
 
         Returns
         -------

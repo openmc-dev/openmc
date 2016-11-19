@@ -62,6 +62,9 @@ _DOMAINS = (openmc.Cell,
 # Supported ScatterMatrixXS and NuScatterMatrixXS angular distribution types
 MU_TREATMENTS = ('legendre', 'histogram')
 
+# Maximum Legendre order supported by OpenMC
+MAX_LEGENDRE = 10
+
 
 @add_metaclass(ABCMeta)
 class MGXS(object):
@@ -3465,7 +3468,8 @@ class ScatterMatrixXS(MatrixMGXS):
         cv.check_type('legendre_order', legendre_order, Integral)
         cv.check_greater_than('legendre_order', legendre_order, 0,
                               equality=True)
-        cv.check_less_than('legendre_order', legendre_order, 10, equality=True)
+        cv.check_less_than('legendre_order', legendre_order, MAX_LEGENDRE,
+                           equality=True)
 
         if self.scatter_format == 'legendre':
             if self.correction == 'P0' and legendre_order > 0:

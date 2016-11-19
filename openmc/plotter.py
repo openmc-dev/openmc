@@ -10,10 +10,14 @@ import openmc.data
 PLOT_TYPES = ['total', 'scatter', 'elastic', 'inelastic', 'fission',
               'absorption', 'capture', 'nu-fission', 'nu-scatter', 'unity',
               'slowing-down power', 'damage']
+
 # Supported keywoards for multi-group cross section plotting
-PLOT_TYPES_MGXS = ['total', 'absorption', 'fission', 'kappa-fission',
-                   'chi', 'chi-prompt', 'nu-fission', 'prompt-nu-fission',
-                   'inverse-velocity', 'unity']
+PLOT_TYPES_MGXS = ['total', 'absorption', 'scatter', 'fission',
+                   'kappa-fission', 'chi', 'chi-prompt', 'nu-fission',
+                   'prompt-nu-fission', 'inverse-velocity', 'unity']
+# Add on values for scattering moments
+PLOT_TYPES_MGXS += ['scatter-' + str(i)
+                    for i in range(0, openmc.mgxs.MAX_LEGENDRE + 1)]
 
 # Special MT values
 UNITY_MT = -1
@@ -822,6 +826,21 @@ def _calculate_mgxs_nuc_macro(this, types, library, temperature=294.):
         for i, line in enumerate(types):
             if line == 'unity':
                 data[i, :] = 1.
+            elif line.startswith('scatter'):
+                # We have to remove the outgoing dependence
+                attr = line.replace(' ', '_').replace('-', '_')
+                matrix = xsdata.scatter_matrix[t]
+                # Sum over outgoing groups
+                vector = np.sum(matrix, axis=1)
+                # Now get the actual order of interest
+                if line == 'scatter':
+                    order = 0
+                else:
+                    order = int(line.split('-')[1])
+                if order < xsdata.xs_shapes["[G][G'][Order]"][-1]:
+                    data[i, :] = vector[:, order]
+                else:
+                    data[i, :] = 0.
             else:
                 attr = line.replace(' ', '_').replace('-', '_')
                 data[i, :] = getattr(xsdata, attr)[t]
@@ -883,10 +902,10 @@ def _calculate_mgxs_elem_mat(this, types, library, temperature=294.,
             nuclides = {this._macroscopic: (this._macroscopic, this.density)}
         else:
             # Expand elements in to nuclides with atomic densities
-            nuclides = this.get_nuclide_atom_densities(ce_cross_sections)
+            nuclides = this.get_nuclide_atom_densities()
 
         # For ease of processing split out nuc and nuc_density
-        nuc_multiplier = [nuclide[1][1] for nuclide in nuclides.items()]
+        nuc_fraction = [nuclide[1][1] for nuclide in nuclides.items()]
     else:
         T = temperature
         # Expand elements in to nuclides with atomic densities
@@ -894,7 +913,7 @@ def _calculate_mgxs_elem_mat(this, types, library, temperature=294.,
                                cross_sections=ce_cross_sections)
 
         # For ease of processing split out nuc and nuc_fractions
-        nuc_multiplier = [nuclide[1] for nuclide in nuclides]
+        nuc_fraction = [nuclide[1] for nuclide in nuclides]
 
     nuc_data = []
     for nuclide in nuclides.items():
@@ -908,6 +927,6 @@ def _calculate_mgxs_elem_mat(this, types, library, temperature=294.,
             data[line, :] = 1.
         else:
             for n in range(len(nuclides)):
-                data[line, :] += nuc_multiplier[n] * nuc_data[n][line, :]
+                data[line, :] += nuc_fraction[n] * nuc_data[n][line, :]
 
     return data

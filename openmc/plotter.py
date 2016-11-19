@@ -1,4 +1,5 @@
 from numbers import Integral, Real
+from six import string_types
 
 import numpy as np
 
@@ -15,7 +16,7 @@ UNITY_MT = -1
 XI_MT = -2
 
 # MTs to combine to generate associated plot_types
-_INELASTIC = [mt for mt in openmc.data.SUM_RULES[3] if mt not in [5, 27]]
+_INELASTIC = [mt for mt in openmc.data.SUM_RULES[3] if mt != 27]
 PLOT_TYPES_MT = {'total': openmc.data.SUM_RULES[1],
                  'scatter': [2] + _INELASTIC,
                  'elastic': [2],
@@ -40,19 +41,6 @@ PLOT_TYPES_OP = {'total': (np.add,),
                  'slowing-down power':
                     (np.add,) * (len(PLOT_TYPES_MT['slowing-down power']) - 2) + (np.multiply,),
                  'damage': ()}
-
-# Whether or not to multiply the reaction by the yield as well
-PLOT_TYPES_YIELD = {'total': (False, False),
-                    'scatter': (False,) * len(PLOT_TYPES_MT['scatter']),
-                    'elastic': (False,),
-                    'inelastic': (False,) * len(PLOT_TYPES_MT['inelastic']),
-                    'fission': (False,), 'absorption': (False,),
-                    'capture': (False,), 'nu-fission': (True,),
-                    'nu-scatter': (True,) * len(PLOT_TYPES_MT['nu-scatter']),
-                    'unity': (False,),
-                    'slowing-down power':
-                        (True,) * len(PLOT_TYPES_MT['slowing-down power']),
-                    'damage': (False,)}
 
 # Types of plots to plot linearly in y
 PLOT_TYPES_LINEAR = {'nu-fission / fission', 'nu-scatter / scatter',
@@ -230,7 +218,7 @@ def calculate_xs(this, types, temperature=294., sab_name=None,
     # Check types
     cv.check_type('temperature', temperature, Real)
     if sab_name:
-        cv.check_type('sab_name', sab_name, str)
+        cv.check_type('sab_name', sab_name, string_types)
     if enrichment:
         cv.check_type('enrichment', enrichment, Real)
 
@@ -370,15 +358,18 @@ def _calculate_xs_nuclide(this, types, temperature=294., sab_name=None,
     for line in types:
         if line in PLOT_TYPES:
             mts.append(PLOT_TYPES_MT[line])
-            yields.append(PLOT_TYPES_YIELD[line])
+            if line.startswith('nu'):
+                yields.append(True)
+            else:
+                yields.append(False)
             ops.append(PLOT_TYPES_OP[line])
         else:
             # Not a built-in type, we have to parse it ourselves
             cv.check_type('MT in types', line, Integral)
             cv.check_greater_than('MT in types', line, 0)
             mts.append((line,))
-            yields.append((False,))
             ops.append(())
+            yields.append(False)
 
     # Load the library
     library = openmc.data.DataLibrary.from_xml(cross_sections)
@@ -456,7 +447,7 @@ def _calculate_xs_nuclide(this, types, temperature=294., sab_name=None,
             # Get the reaction xs data from the nuclide
             funcs = []
             op = ops[i]
-            for mt, yield_check in zip(mt_set, yields[i]):
+            for mt in mt_set:
                 if mt == 2:
                     if sab_name:
                         # Then we need to do a piece-wise function of
@@ -468,28 +459,38 @@ def _calculate_xs_nuclide(this, types, temperature=294., sab_name=None,
                         funcs.append(pw_funcs)
                     else:
                         funcs.append(nuc[mt].xs[nucT])
+                elif mt == 5 and mt in nuc:
+                    # Only consider the (n,misc) products if neutrons are
+                    # included in the outgoing channel since (n,misc) is only
+                    # explicitly needed for scatter cross sections.
+                    for prod in nuc[mt].products:
+                        if prod.particle == 'neutron' and \
+                            prod.emission_mode in ('total', 'prompt'):
+                            if yields[i]:
+                                func = openmc.data.Combination(
+                                        [nuc[mt].xs[nucT], prod.yield_],
+                                        [np.multiply])
+                            else:
+                                func = nuc[mt].xs[nucT]
+
+                            funcs.append(func)
+                            break
+                    else:
+                        funcs.append(lambda x: 0.)
+
                 elif mt in nuc:
-                    if yield_check:
+                    if yields[i]:
                         for prod in nuc[mt].products:
                             if prod.particle == 'neutron' and \
-                                prod.emission_mode == 'total':
+                                prod.emission_mode in ('total', 'prompt'):
                                 func = openmc.data.Combination(
                                     [nuc[mt].xs[nucT], prod.yield_],
                                     [np.multiply])
                                 funcs.append(func)
                                 break
                         else:
-                            for prod in nuc[mt].products:
-                                if prod.particle == 'neutron' and \
-                                    prod.emission_mode == 'prompt':
-                                    func = openmc.data.Combination(
-                                        [nuc[mt].xs[nucT],
-                                         prod.yield_], [np.multiply])
-                                    funcs.append(func)
-                                    break
-                            else:
-                                # Assume the yield is 1
-                                funcs.append(nuc[mt].xs[nucT])
+                            # Assume the yield is 1
+                            funcs.append(nuc[mt].xs[nucT])
                     else:
                         funcs.append(nuc[mt].xs[nucT])
                 elif mt == UNITY_MT:
@@ -545,7 +546,7 @@ def _calculate_xs_material(this, types, temperature=294., cross_sections=None):
     library = openmc.data.DataLibrary.from_xml(cross_sections)
 
     # Expand elements in to nuclides with atomic densities
-    nuclides = this.get_nuclide_atom_densities(cross_sections)
+    nuclides = this.get_nuclide_atom_densities()
 
     # For ease of processing split out nuc and nuc_density
     nuc_densities = [nuclide[1][1] for nuclide in nuclides.items()]

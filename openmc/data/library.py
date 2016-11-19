@@ -1,5 +1,6 @@
 import os
 import xml.etree.ElementTree as ET
+from six import string_types
 
 import h5py
 
@@ -114,7 +115,7 @@ class DataLibrary(EqualityMixin):
 
         data = cls()
 
-        # If cross_sections is None, get the cross sections from the
+        # If path is None, get the cross sections from the
         # OPENMC_CROSS_SECTIONS environment variable
         if path is None:
             path = os.environ.get('OPENMC_CROSS_SECTIONS')
@@ -124,7 +125,7 @@ class DataLibrary(EqualityMixin):
             raise ValueError("Either path or OPENMC_CROSS_SECTIONS "
                              "environmental variable must be set")
 
-        check_type('path', path, str)
+        check_type('path', path, string_types)
 
         tree = ET.parse(path)
         root = tree.getroot()

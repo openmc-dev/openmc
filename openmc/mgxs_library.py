@@ -1,3 +1,4 @@
+from collections import Iterable
 from numbers import Real, Integral
 import os
 
@@ -15,7 +16,7 @@ from openmc.checkvalue import check_type, check_value, check_greater_than, \
 _REPRESENTATIONS = ['isotropic', 'angle']
 _SCATTER_TYPES = ['tabular', 'legendre', 'histogram']
 _XS_SHAPES = ["[G][G'][Order]", "[G]", "[G']", "[G][G']", "[DG]", "[G][DG]",
-              "[G'][DG]"]
+              "[G'][DG]", "[G][G'][DG]"]
 
 
 class XSdata(object):
@@ -136,17 +137,19 @@ class XSdata(object):
     [G][G'][Order]: scatter_matrix
 
     [G]: total, absorption, fission, kappa_fission, nu_fission,
-         prompt_nu_fission, inverse_velocity
+         prompt_nu_fission, delayed_nu_fission, inverse_velocity
 
     [G']: chi, chi_prompt, chi_delayed
 
-    [G][G']: multiplicity_matrix, nu_fission
+    [G][G']: multiplicity_matrix, nu_fission, prompt_nu_fission
 
     [DG]: beta, decay_rate
 
     [G][DG]: delayed_nu_fission, beta, decay_rate
 
     [G'][DG]: chi_delayed
+
+    [G][G'][DG]: delayed_nu_fission
 
     """
 
@@ -297,6 +300,10 @@ class XSdata(object):
                                           self.num_delayed_groups)
             self._xs_shapes["[G'][DG]"] = (self.energy_groups.num_groups,
                                            self.num_delayed_groups)
+            self._xs_shapes["[G][G'][DG]"] = (self.energy_groups.num_groups,
+                                              self.energy_groups.num_groups,
+                                              self.num_delayed_groups)
+
             self._xs_shapes["[G][G'][Order]"] \
                 = (self.energy_groups.num_groups,
                    self.energy_groups.num_groups, self.num_orders)
@@ -822,7 +829,7 @@ class XSdata(object):
         """
 
         # Get the accepted shapes for this xs
-        shapes = [self.xs_shapes["[G]"]]
+        shapes = [self.xs_shapes["[G]"], self.xs_shapes["[G][G']"]]
 
         # Convert to a numpy array so we can easily get the shape for checking
         prompt_nu_fission = np.asarray(prompt_nu_fission)
@@ -856,7 +863,7 @@ class XSdata(object):
         """
 
         # Get the accepted shapes for this xs
-        shapes = [self.xs_shapes["[G][DG]"]]
+        shapes = [self.xs_shapes["[G][DG]"], self.xs_shapes["[G][G'][DG]"]]
 
         # Convert to a numpy array so we can easily get the shape for checking
         delayed_nu_fission = np.asarray(delayed_nu_fission)
@@ -1092,12 +1099,15 @@ class XSdata(object):
     def set_prompt_nu_fission_mgxs(self, prompt_nu_fission, temperature=294.,
                                    nuclide='total', xs_type='macro',
                                    subdomain=None):
-        """This method allows for an openmc.mgxs.PromptNuFissionXS to be used to
-        set the prompt-nu-fission cross section for this XSdata object.
+        """Sets the prompt-nu-fission cross section.
+
+        This method allows for an openmc.mgxs.PromptNuFissionXS or
+        openmc.mgxs.PromptNuFissionMatrixXS to be used to set the
+        prompt-nu-fission cross section for this XSdata object.
 
         Parameters
         ----------
-        prompt_nu_fission: openmc.mgxs.PromptNuFissionXS
+        prompt_nu_fission: openmc.mgxs.PromptNuFissionXS or openmc.mgxs.PromptNuFissionMatrixXS
             MGXS Object containing the prompt-nu-fission cross section
             for the domain of interest.
         temperature : float
@@ -1121,7 +1131,8 @@ class XSdata(object):
         """
 
         check_type('prompt_nu_fission', prompt_nu_fission,
-                   (openmc.mgxs.PromptNuFissionXS,))
+                   (openmc.mgxs.PromptNuFissionXS,
+                    openmc.mgxs.PromptNuFissionMatrixXS))
         check_value('energy_groups', prompt_nu_fission.energy_groups,
                     [self.energy_groups])
         check_value('domain_type', prompt_nu_fission.domain_type,
@@ -1145,12 +1156,13 @@ class XSdata(object):
     def set_delayed_nu_fission_mgxs(self, delayed_nu_fission, temperature=294.,
                                     nuclide='total', xs_type='macro',
                                     subdomain=None):
-        """This method allows for an openmc.mgxs.DelayedNuFissionXS to be used
-        to set the delayed-nu-fission cross section for this XSdata object.
+        """This method allows for an openmc.mgxs.DelayedNuFissionXS or
+        openmc.mgxs.DelayedNuFissionMatrixXS to be used to set the
+        delayed-nu-fission cross section for this XSdata object.
 
         Parameters
         ----------
-        delayed_nu_fission: openmc.mgxs.DelayedNuFissionXS
+        delayed_nu_fission: openmc.mgxs.DelayedNuFissionXS or openmc.mgxs.DelayedNuFissionMatrixXS
             MGXS Object containing the delayed-nu-fission cross section
             for the domain of interest.
         temperature : float
@@ -1174,11 +1186,11 @@ class XSdata(object):
         """
 
         check_type('delayed_nu_fission', delayed_nu_fission,
-                   (openmc.mgxs.DelayedNuFissionXS,))
+                   (openmc.mgxs.DelayedNuFissionXS,
+                    openmc.mgxs.DelayedNuFissionMatrixXS))
         check_value('energy_groups', delayed_nu_fission.energy_groups,
                     [self.energy_groups])
-        check_value('num_delayed_groups',
-                    delayed_nu_fission.num_delayed_groups,
+        check_value('num_delayed_groups', delayed_nu_fission.num_delayed_groups,
                     [self.num_delayed_groups])
         check_value('domain_type', delayed_nu_fission.domain_type,
                     openmc.mgxs.DOMAIN_TYPES)
@@ -2120,46 +2132,3 @@ class MGXSLibrary(object):
             xsdata.to_hdf5(file)
 
         file.close()
-
-    @classmethod
-    def from_hdf5(cls, filename=None):
-        """Generate an MGXS Library from an HDF5 group or file
-
-        Parameters
-        ----------
-        filename : str, optional
-            Name of HDF5 file containing MGXS data. Default is None.
-            If not provided, the value of the OPENMC_MG_CROSS_SECTIONS
-            environmental variable will be used
-
-        Returns
-        -------
-        openmc.MGXSLibrary
-            Multi-group cross section data object.
-
-        """
-
-        # If filename is None, get the cross sections from the
-        # OPENMC_CROSS_SECTIONS environment variable
-        if filename is None:
-            filename = os.environ.get('OPENMC_MG_CROSS_SECTIONS')
-
-        # Check to make sure there was an environmental variable.
-        if filename is None:
-            raise ValueError("Either path or OPENMC_MG_CROSS_SECTIONS "
-                             "environmental variable must be set")
-
-        check_type('filename', filename, str)
-        file = h5py.File(filename, 'r')
-
-        group_structure = file.attrs['group structure']
-        num_delayed_groups = file.attrs['delayed_groups']
-        energy_groups = openmc.mgxs.EnergyGroups(group_structure)
-        data = cls(energy_groups, num_delayed_groups)
-
-        for group_name, group in file.items():
-            data.add_xsdata(openmc.XSdata.from_hdf5(group, group_name,
-                                                    energy_groups,
-                                                    num_delayed_groups))
-
-        return data

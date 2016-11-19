@@ -12,7 +12,7 @@ module initialize
                              &BASE_UNIVERSE
   use global
   use hdf5_interface,  only: file_open, read_dataset, file_close, hdf5_bank_t,&
-                             hdf5_tallyresult_t, hdf5_integer8_t
+                             hdf5_integer8_t
   use input_xml,       only: read_input_xml, cells_in_univ_dict, read_plots_xml
   use material_header, only: Material
   use mgxs_data,       only: read_mgxs, create_macro_xs
@@ -22,7 +22,7 @@ module initialize
   use state_point,     only: load_state_point
   use string,          only: to_str, starts_with, ends_with, str_to_int
   use summary,         only: write_summary
-  use tally_header,    only: TallyObject, TallyResult
+  use tally_header,    only: TallyObject
   use tally_initialize,only: configure_tallies
   use tally_filter
   use tally,           only: init_tally_routines
@@ -169,21 +169,11 @@ contains
     integer                   :: bank_blocks(5)   ! Count for each datatype
 #ifdef MPIF08
     type(MPI_Datatype)        :: bank_types(5)
-    type(MPI_Datatype)        :: result_types(1)
-    type(MPI_Datatype)        :: temp_type
 #else
     integer                   :: bank_types(5)    ! Datatypes
-    integer                   :: result_types(1)  ! Datatypes
-    integer                   :: temp_type        ! temporary derived type
 #endif
     integer(MPI_ADDRESS_KIND) :: bank_disp(5)     ! Displacements
-    integer                   :: result_blocks(1) ! Count for each datatype
-    integer(MPI_ADDRESS_KIND) :: result_disp(1)   ! Displacements
-    integer(MPI_ADDRESS_KIND) :: result_base_disp ! Base displacement
-    integer(MPI_ADDRESS_KIND) :: lower_bound      ! Lower bound for TallyResult
-    integer(MPI_ADDRESS_KIND) :: extent           ! Extent for TallyResult
     type(Bank)       :: b
-    type(TallyResult) :: tr
 
     ! Indicate that MPI is turned on
     mpi_enabled = .true.
@@ -222,34 +212,6 @@ contains
          bank_types, MPI_BANK, mpi_err)
     call MPI_TYPE_COMMIT(MPI_BANK, mpi_err)
 
-    ! ==========================================================================
-    ! CREATE MPI_TALLYRESULT TYPE
-
-    ! Determine displacements for MPI_BANK type
-    call MPI_GET_ADDRESS(tr%value, result_base_disp, mpi_err)
-    call MPI_GET_ADDRESS(tr%sum, result_disp(1), mpi_err)
-
-    ! Adjust displacements
-    result_disp = result_disp - result_base_disp
-
-    ! Define temporary type for TallyResult
-    result_blocks = (/ 2 /)
-    result_types = (/ MPI_REAL8 /)
-    call MPI_TYPE_CREATE_STRUCT(1, result_blocks, result_disp, result_types, &
-         temp_type, mpi_err)
-
-    ! Adjust lower-bound and extent of type for tally score
-    lower_bound = 0
-    extent      = result_disp(1) + 16
-    call MPI_TYPE_CREATE_RESIZED(temp_type, lower_bound, extent, &
-         MPI_TALLYRESULT, mpi_err)
-
-    ! Commit derived type for tally scores
-    call MPI_TYPE_COMMIT(MPI_TALLYRESULT, mpi_err)
-
-    ! Free temporary MPI type
-    call MPI_TYPE_FREE(temp_type, mpi_err)
-
   end subroutine initialize_mpi
 #endif
 
@@ -259,7 +221,6 @@ contains
 
   subroutine hdf5_initialize()
 
-    type(TallyResult), target :: tmp(2)          ! temporary TallyResult
     type(Bank),        target :: tmpb(2)         ! temporary Bank
     integer                   :: hdf5_err
     integer(HID_T)            :: coordinates_t   ! HDF5 type for 3 reals
@@ -267,14 +228,6 @@ contains
 
     ! Initialize FORTRAN interface.
     call h5open_f(hdf5_err)
-
-    ! Create the compound datatype for TallyResult
-    call h5tcreate_f(H5T_COMPOUND_F, h5offsetof(c_loc(tmp(1)), &
-         c_loc(tmp(2))), hdf5_tallyresult_t, hdf5_err)
-    call h5tinsert_f(hdf5_tallyresult_t, "sum", h5offsetof(c_loc(tmp(1)), &
-         c_loc(tmp(1)%sum)), H5T_NATIVE_DOUBLE, hdf5_err)
-    call h5tinsert_f(hdf5_tallyresult_t, "sum_sq", h5offsetof(c_loc(tmp(1)), &
-         c_loc(tmp(1)%sum_sq)), H5T_NATIVE_DOUBLE, hdf5_err)
 
     ! Create compound type for xyz and uvw
     call h5tarray_create_f(H5T_NATIVE_DOUBLE, 1, dims, coordinates_t, hdf5_err)

@@ -5,6 +5,7 @@ from warnings import warn
 
 import numpy as np
 import pandas as pd
+import h5py
 
 import openmc
 import openmc.checkvalue as cv
@@ -187,8 +188,6 @@ class VolumeCalculation(object):
             Results of the stochastic volume calculation
 
         """
-        import h5py
-
         with h5py.File(filename, 'r') as f:
             domain_type = f.attrs['domain_type'].decode()
             samples = f.attrs['samples']

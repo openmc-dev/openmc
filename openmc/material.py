@@ -606,14 +606,9 @@ class Material(object):
 
         return nuclides
 
-    def get_nuclide_atom_densities(self, cross_sections=None):
+    def get_nuclide_atom_densities(self):
         """Returns all nuclides in the material and their atomic densities in
         units of atom/b-cm
-
-        Parameters
-        ----------
-        cross_sections : str, optional
-            Location of cross_sections.xml file. Default is None.
 
         Returns
         -------
@@ -622,11 +617,6 @@ class Material(object):
             (nuclide, density in atom/b-cm)
 
         """
-
-        import scipy.constants as sc
-
-        # Load the library
-        library = openmc.data.DataLibrary.from_xml(cross_sections)
 
         # Expand elements in to nuclides
         nuclides = self.get_nuclide_densities()
@@ -664,17 +654,12 @@ class Material(object):
         sum_percent = 0.
 
         awrs = []
-        n = -1
-        for nuclide in nuclides.items():
-            n += 1
-            lib = library.get_by_material(nuclide[0])
-            if lib is not None:
-                nuc = openmc.data.IncidentNeutron.from_hdf5(lib['path'])
-                awrs.append(nuc.atomic_weight_ratio)
-                if not percent_in_atom:
-                    nuc_densities[n] = -nuc_densities[n] / awrs[-1]
+        for n, nuclide in enumerate(nuclides.items()):
+            awr = openmc.data.atomic_mass(nuclide[0])
+            if awr is not None:
+                awrs.append(awr / openmc.data.NEUTRON_MASS)
             else:
-                raise ValueError(nuclide[0] + " not in library")
+                raise ValueError(nuclide[0] + " is invalid")
 
         # Now that we have the awr, lets finish calculating densities
         sum_percent = np.sum(nuc_densities)
@@ -686,7 +671,7 @@ class Material(object):
                 sum_percent += x * awrs[n]
             sum_percent = 1. / sum_percent
             density = -density * sum_percent * \
-                sc.Avogadro / sc.value('neutron mass in u') * 1.E-24
+                openmc.data.AVOGADRO / openmc.data.NEUTRON_MASS * 1.E-24
         nuc_densities = density * nuc_densities
 
         nuclides = OrderedDict()

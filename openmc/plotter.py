@@ -1,4 +1,5 @@
 from numbers import Integral, Real
+from six import string_types
 
 import numpy as np
 
@@ -19,42 +20,18 @@ UNITY_MT = -1
 XI_MT = -2
 
 # MTs to combine to generate associated plot_types
-PLOT_TYPES_MT = {'total': (2, 3,),
-                 'scatter': (2, 4, 11, 16, 17, 22, 23, 24, 25, 28, 29, 30,
-                             32, 33, 34, 35, 36, 37, 41, 42, 44, 45, 152,
-                             153, 154, 156, 157, 158, 159, 160, 161, 162,
-                             163, 164, 165, 166, 167, 168, 169, 170, 171,
-                             172, 173, 174, 175, 176, 177, 178, 179, 180,
-                             181, 183, 184, 190, 194, 196, 198, 199, 200,
-                             875, 891),
-                 'elastic': (2,),
-                 'inelastic': (4, 11, 16, 17, 22, 23, 24, 25, 28, 29, 30,
-                               32, 33, 34, 35, 36, 37, 41, 42, 44, 45, 152,
-                               153, 154, 156, 157, 158, 159, 160, 161, 162,
-                               163, 164, 165, 166, 167, 168, 169, 170, 171,
-                               172, 173, 174, 175, 176, 177, 178, 179, 180,
-                               181, 183, 184, 190, 194, 196, 198, 199, 200,
-                               875, 891),
-                 'fission': (18,),
-                 'absorption': (27,), 'capture': (101,),
-                 'nu-fission': (18,),
-                 'nu-scatter': (2, 4, 11, 16, 17, 22, 23, 24, 25, 28, 29, 30,
-                                32, 33, 34, 35, 36, 37, 41, 42, 44, 45, 152,
-                                153, 154, 156, 157, 158, 159, 160, 161, 162,
-                                163, 164, 165, 166, 167, 168, 169, 170, 171,
-                                172, 173, 174, 175, 176, 177, 178, 179, 180,
-                                181, 183, 184, 190, 194, 196, 198, 199, 200,
-                                875, 891),
-                 'unity': (UNITY_MT,),
-                 'slowing-down power': (2, 4, 11, 16, 17, 22, 23, 24, 25, 28,
-                                        29, 30, 32, 33, 34, 35, 36, 37, 41, 42,
-                                        44, 45, 152, 153, 154, 156, 157, 158,
-                                        159, 160, 161, 162, 163, 164, 165, 166,
-                                        167, 168, 169, 170, 171, 172, 173, 174,
-                                        175, 176, 177, 178, 179, 180, 181, 183,
-                                        184, 190, 194, 196, 198, 199, 200, 875,
-                                        891, XI_MT),
-                 'damage': (444,)}
+_INELASTIC = [mt for mt in openmc.data.SUM_RULES[3] if mt != 27]
+PLOT_TYPES_MT = {'total': openmc.data.SUM_RULES[1],
+                 'scatter': [2] + _INELASTIC,
+                 'elastic': [2],
+                 'inelastic': _INELASTIC,
+                 'fission': [18],
+                 'absorption': [27], 'capture': [101],
+                 'nu-fission': [18],
+                 'nu-scatter': [2] + _INELASTIC,
+                 'unity': [UNITY_MT],
+                 'slowing-down power': [2] + _INELASTIC + [XI_MT],
+                 'damage': [444]}
 # Operations to use when combining MTs the first np.add is used in reference
 # to zero
 PLOT_TYPES_OP = {'total': (np.add,),
@@ -69,27 +46,13 @@ PLOT_TYPES_OP = {'total': (np.add,),
                     (np.add,) * (len(PLOT_TYPES_MT['slowing-down power']) - 2) + (np.multiply,),
                  'damage': ()}
 
-# Whether or not to multiply the reaction by the yield as well
-PLOT_TYPES_YIELD = {'total': (False, False),
-                    'scatter': (False,) * len(PLOT_TYPES_MT['scatter']),
-                    'elastic': (False,),
-                    'inelastic': (False,) * len(PLOT_TYPES_MT['inelastic']),
-                    'fission': (False,), 'absorption': (False,),
-                    'capture': (False,), 'nu-fission': (True,),
-                    'nu-scatter': (True,) * len(PLOT_TYPES_MT['nu-scatter']),
-                    'unity': (False,),
-                    'slowing-down power':
-                        (True,) * len(PLOT_TYPES_MT['slowing-down power']),
-                    'damage': (False,)}
-
 # Types of plots to plot linearly in y
 PLOT_TYPES_LINEAR = {'nu-fission / fission', 'nu-scatter / scatter',
                      'nu-fission / absorption', 'fission / absorption'}
 
 
 def plot_xs(this, types, divisor_types=None, temperature=294., axis=None,
-            energy_range=(1.E-5, 20.E6), sab_name=None, cross_sections=None,
-            enrichment=None, **kwargs):
+            sab_name=None, cross_sections=None, enrichment=None, **kwargs):
     """Creates a figure of continuous-energy cross sections for this item
 
     Parameters
@@ -110,8 +73,6 @@ def plot_xs(this, types, divisor_types=None, temperature=294., axis=None,
     axis : matplotlib.axes, optional
         A previously generated axis to use for plotting. If not specified,
         a new axis and figure will be generated.
-    energy_range : tuple of floats
-        Energy range (in eV) to plot the cross section within
     sab_name : str, optional
         Name of S(a,b) library to apply to MT=2 data when applicable; only used
         for items which are instances of openmc.Element or openmc.Nuclide
@@ -196,6 +157,7 @@ def plot_xs(this, types, divisor_types=None, temperature=294., axis=None,
             to_plot = data[i](E)
         else:
             to_plot = data[i, :]
+        to_plot = np.nan_to_num(to_plot)
         if np.sum(to_plot) > 0.:
             plot_func(E, to_plot, label=types[i])
 
@@ -216,10 +178,10 @@ def plot_xs(this, types, divisor_types=None, temperature=294., axis=None,
             ylabel = 'Macroscopic Cross Section [1/cm]'
     ax.set_ylabel(ylabel)
     ax.legend(loc='best')
-    ax.set_xlim(energy_range)
+    # Set to the most likely expected range
+    ax.set_xlim((1.E-5, 20.E6))
     if this.name is not None:
-        title = 'Cross Section for ' + this.name
-        ax.set_title(title)
+        ax.set_title('Cross Section for ' + this.name)
 
     return fig
 
@@ -384,7 +346,7 @@ def calculate_xs(this, types, temperature=294., sab_name=None,
 
     Returns
     -------
-    energy_grid : numpy.array
+    energy_grid : numpy.ndarray
         Energies at which cross sections are calculated, in units of eV
     data : numpy.ndarray
         Cross sections calculated at the energy grid described by energy_grid
@@ -394,7 +356,7 @@ def calculate_xs(this, types, temperature=294., sab_name=None,
     # Check types
     cv.check_type('temperature', temperature, Real)
     if sab_name:
-        cv.check_type('sab_name', sab_name, str)
+        cv.check_type('sab_name', sab_name, string_types)
     if enrichment:
         cv.check_type('enrichment', enrichment, Real)
 
@@ -440,7 +402,7 @@ def _calculate_xs_element(this, types, temperature=294., sab_name=None,
 
     Returns
     -------
-    energy_grid : numpy.array
+    energy_grid : numpy.ndarray
         Energies at which cross sections are calculated, in units of eV
     data : numpy.ndarray
         Macroscopic cross sections calculated at the energy grid described
@@ -452,7 +414,7 @@ def _calculate_xs_element(this, types, temperature=294., sab_name=None,
     library = openmc.data.DataLibrary.from_xml(cross_sections)
 
     # Expand elements in to nuclides with atomic densities
-    nuclides = this.expand(100., 'ao', enrichment=enrichment,
+    nuclides = this.expand(1., 'ao', enrichment=enrichment,
                            cross_sections=cross_sections)
 
     # For ease of processing split out nuc and nuc_density
@@ -519,7 +481,7 @@ def _calculate_xs_nuclide(this, types, temperature=294., sab_name=None,
 
     Returns
     -------
-    energy_grid : numpy.array
+    energy_grid : numpy.ndarray
         Energies at which cross sections are calculated, in units of eV
     data : numpy.ndarray
         Cross sections calculated at the energy grid described by
@@ -534,15 +496,18 @@ def _calculate_xs_nuclide(this, types, temperature=294., sab_name=None,
     for line in types:
         if line in PLOT_TYPES:
             mts.append(PLOT_TYPES_MT[line])
-            yields.append(PLOT_TYPES_YIELD[line])
+            if line.startswith('nu'):
+                yields.append(True)
+            else:
+                yields.append(False)
             ops.append(PLOT_TYPES_OP[line])
         else:
             # Not a built-in type, we have to parse it ourselves
             cv.check_type('MT in types', line, Integral)
             cv.check_greater_than('MT in types', line, 0)
             mts.append((line,))
-            yields.append((False,))
             ops.append(())
+            yields.append(False)
 
     # Load the library
     library = openmc.data.DataLibrary.from_xml(cross_sections)
@@ -565,7 +530,7 @@ def _calculate_xs_nuclide(this, types, temperature=294., sab_name=None,
             for t in range(len(data_Ts)):
                 # Take off the "K" and convert to a float
                 data_Ts[t] = float(data_Ts[t][:-1])
-            min_delta = np.finfo(np.float64).max
+            min_delta = float('inf')
             closest_t = -1
             for t in data_Ts:
                 if abs(data_Ts[t] - T) < min_delta:
@@ -620,7 +585,7 @@ def _calculate_xs_nuclide(this, types, temperature=294., sab_name=None,
             # Get the reaction xs data from the nuclide
             funcs = []
             op = ops[i]
-            for mt, yield_check in zip(mt_set, yields[i]):
+            for mt in mt_set:
                 if mt == 2:
                     if sab_name:
                         # Then we need to do a piece-wise function of
@@ -632,29 +597,36 @@ def _calculate_xs_nuclide(this, types, temperature=294., sab_name=None,
                         funcs.append(pw_funcs)
                     else:
                         funcs.append(nuc[mt].xs[nucT])
+                elif mt == 5 and mt in nuc:
+                    # Only consider the (n,misc) products if neutrons are
+                    # included in the outgoing channel since (n,misc) is only
+                    # explicitly needed for scatter cross sections.
+                    for prod in nuc[mt].products:
+                        if prod.particle == 'neutron' and \
+                            prod.emission_mode in ('total', 'prompt'):
+                            if yields[i]:
+                                func = openmc.data.Combination(
+                                        [nuc[mt].xs[nucT], prod.yield_],
+                                        [np.multiply])
+                            else:
+                                func = nuc[mt].xs[nucT]
+
+                            funcs.append(func)
+                            break
+                    else:
+                        funcs.append(lambda x: 0.)
+
                 elif mt in nuc:
-                    if yield_check:
-                        found_it = False
+                    if yields[i]:
                         for prod in nuc[mt].products:
                             if prod.particle == 'neutron' and \
-                                prod.emission_mode == 'total':
+                                prod.emission_mode in ('total', 'prompt'):
                                 func = openmc.data.Combination(
                                     [nuc[mt].xs[nucT], prod.yield_],
                                     [np.multiply])
                                 funcs.append(func)
-                                found_it = True
                                 break
-                        if not found_it:
-                            for prod in nuc[mt].products:
-                                if prod.particle == 'neutron' and \
-                                    prod.emission_mode == 'prompt':
-                                    func = openmc.data.Combination(
-                                        [nuc[mt].xs[nucT],
-                                         prod.yield_], [np.multiply])
-                                    funcs.append(func)
-                                    found_it = True
-                                    break
-                        if not found_it:
+                        else:
                             # Assume the yield is 1
                             funcs.append(nuc[mt].xs[nucT])
                     else:
@@ -695,7 +667,7 @@ def _calculate_xs_material(this, types, temperature=294., cross_sections=None):
 
     Returns
     -------
-    energy_grid : numpy.array
+    energy_grid : numpy.ndarray
         Energies at which cross sections are calculated, in units of eV
     data : numpy.ndarray
         Macroscopic cross sections calculated at the energy grid described
@@ -712,7 +684,7 @@ def _calculate_xs_material(this, types, temperature=294., cross_sections=None):
     library = openmc.data.DataLibrary.from_xml(cross_sections)
 
     # Expand elements in to nuclides with atomic densities
-    nuclides = this.get_nuclide_atom_densities(cross_sections)
+    nuclides = this.get_nuclide_atom_densities()
 
     # For ease of processing split out nuc and nuc_density
     nuc_densities = [nuclide[1][1] for nuclide in nuclides.items()]
@@ -740,8 +712,8 @@ def _calculate_xs_material(this, types, temperature=294., cross_sections=None):
     # Condense the data for every nuclide
     # First create a union energy grid
     energy_grid = E[0]
-    for n in range(1, len(E)):
-        energy_grid = np.union1d(energy_grid, E[n])
+    for grid in E[1:]:
+        energy_grid = np.union1d(energy_grid, grid)
 
     # Now we can combine all the nuclidic data
     data = np.zeros((len(types), len(energy_grid)))

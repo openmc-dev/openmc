@@ -119,16 +119,16 @@ contains
 
       ! Score implicit absorption estimate of keff
 !$omp atomic
-      global_tallies(K_ABSORPTION) % value = &
-           global_tallies(K_ABSORPTION) % value + p % absorb_wgt * &
+      global_tallies(RESULT_VALUE, K_ABSORPTION) = &
+           global_tallies(RESULT_VALUE, K_ABSORPTION) + p % absorb_wgt * &
            material_xs % nu_fission / material_xs % absorption
     else
       ! See if disappearance reaction happens
       if (material_xs % absorption > prn() * material_xs % total) then
         ! Score absorption estimate of keff
 !$omp atomic
-        global_tallies(K_ABSORPTION) % value = &
-             global_tallies(K_ABSORPTION) % value + p % wgt * &
+        global_tallies(RESULT_VALUE, K_ABSORPTION) = &
+             global_tallies(RESULT_VALUE, K_ABSORPTION) + p % wgt * &
              material_xs % nu_fission / material_xs % absorption
 
         p % alive = .false.

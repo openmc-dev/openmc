@@ -20,8 +20,7 @@ module simulation
   use source,          only: initialize_source, sample_external_source
   use state_point,     only: write_state_point, write_source_point
   use string,          only: to_str
-  use tally,           only: synchronize_tallies, setup_active_usertallies, &
-                             reset_result
+  use tally,           only: synchronize_tallies, setup_active_usertallies
   use trigger,         only: check_triggers
   use tracking,        only: transport
   use volume_calc,     only: run_volume_calculations
@@ -84,7 +83,7 @@ contains
 
         ! ====================================================================
         ! LOOP OVER PARTICLES
-!$omp parallel do schedule(static) firstprivate(p)
+!$omp parallel do schedule(static) firstprivate(p) copyin(tally_derivs)
         PARTICLE_LOOP: do i_work = 1, work
           current_work = i_work
 
@@ -220,7 +219,7 @@ contains
       if (ufs) call count_source_for_ufs()
 
       ! Store current value of tracklength k
-      keff_generation = global_tallies(K_TRACKLENGTH) % value
+      keff_generation = global_tallies(RESULT_VALUE, K_TRACKLENGTH)
     end if
 
   end subroutine initialize_generation
@@ -237,24 +236,24 @@ contains
 !$omp parallel
 !$omp critical
     if (run_mode == MODE_EIGENVALUE) then
-      global_tallies(K_COLLISION) % value = &
-           global_tallies(K_COLLISION) % value + global_tally_collision
-      global_tallies(K_ABSORPTION) % value = &
-           global_tallies(K_ABSORPTION) % value + global_tally_absorption
-      global_tallies(K_TRACKLENGTH) % value = &
-           global_tallies(K_TRACKLENGTH) % value + global_tally_tracklength
+      global_tallies(RESULT_VALUE, K_COLLISION) = &
+           global_tallies(RESULT_VALUE, K_COLLISION) + global_tally_collision
+      global_tallies(RESULT_VALUE, K_ABSORPTION) = &
+           global_tallies(RESULT_VALUE, K_ABSORPTION) + global_tally_absorption
+      global_tallies(RESULT_VALUE, K_TRACKLENGTH) = &
+           global_tallies(RESULT_VALUE, K_TRACKLENGTH) + global_tally_tracklength
     end if
-    global_tallies(LEAKAGE) % value = &
-         global_tallies(LEAKAGE) % value + global_tally_leakage
+    global_tallies(RESULT_VALUE, LEAKAGE) = &
+         global_tallies(RESULT_VALUE, LEAKAGE) + global_tally_leakage
 !$omp end critical
 
     ! reset private tallies
     if (run_mode == MODE_EIGENVALUE) then
-      global_tally_collision = 0
-      global_tally_absorption = 0
-      global_tally_tracklength = 0
+      global_tally_collision = ZERO
+      global_tally_absorption = ZERO
+      global_tally_tracklength = ZERO
     end if
-    global_tally_leakage = 0
+    global_tally_leakage = ZERO
 !$omp end parallel
 
     if (run_mode == MODE_EIGENVALUE) then
@@ -302,7 +301,7 @@ contains
 
     ! Reset global tally results
     if (.not. active_batches) then
-      call reset_result(global_tallies)
+      global_tallies(:,:) = ZERO
       n_realizations = 0
     end if
 

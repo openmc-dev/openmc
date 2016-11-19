@@ -611,7 +611,7 @@ contains
       t_value = t_percentile(ONE - alpha/TWO, n_realizations - 1)
 
       ! Adjust sum_sq
-      global_tallies(:) % sum_sq = t_value * global_tallies(:) % sum_sq
+      global_tallies(RESULT_SUM_SQ,:) = t_value * global_tallies(RESULT_SUM_SQ,:)
 
       ! Adjust combined estimator
       if (n_realizations > 3) then
@@ -623,26 +623,26 @@ contains
     ! write global tallies
     if (n_realizations > 1) then
       if (run_mode == MODE_EIGENVALUE) then
-        write(ou,102) "k-effective (Collision)", global_tallies(K_COLLISION) &
-             % sum, global_tallies(K_COLLISION) % sum_sq
-        write(ou,102) "k-effective (Track-length)", global_tallies(K_TRACKLENGTH) &
-             % sum, global_tallies(K_TRACKLENGTH) % sum_sq
-        write(ou,102) "k-effective (Absorption)", global_tallies(K_ABSORPTION) &
-             % sum, global_tallies(K_ABSORPTION) % sum_sq
+        write(ou,102) "k-effective (Collision)", global_tallies(RESULT_SUM, &
+             K_COLLISION), global_tallies(RESULT_SUM_SQ, K_COLLISION)
+        write(ou,102) "k-effective (Track-length)", global_tallies(RESULT_SUM, &
+             K_TRACKLENGTH), global_tallies(RESULT_SUM_SQ, K_TRACKLENGTH)
+        write(ou,102) "k-effective (Absorption)", global_tallies(RESULT_SUM, &
+             K_ABSORPTION), global_tallies(RESULT_SUM_SQ, K_ABSORPTION)
         if (n_realizations > 3) write(ou,102) "Combined k-effective", k_combined
       end if
-      write(ou,102) "Leakage Fraction", global_tallies(LEAKAGE) % sum, &
-           global_tallies(LEAKAGE) % sum_sq
+      write(ou,102) "Leakage Fraction", global_tallies(RESULT_SUM, LEAKAGE), &
+           global_tallies(RESULT_SUM_SQ, LEAKAGE)
     else
       if (master) call warning("Could not compute uncertainties -- only one &
            &active batch simulated!")
 
       if (run_mode == MODE_EIGENVALUE) then
-        write(ou,103) "k-effective (Collision)", global_tallies(K_COLLISION) % sum
-        write(ou,103) "k-effective (Track-length)", global_tallies(K_TRACKLENGTH)  % sum
-        write(ou,103) "k-effective (Absorption)", global_tallies(K_ABSORPTION) % sum
+        write(ou,103) "k-effective (Collision)", global_tallies(RESULT_SUM, K_COLLISION)
+        write(ou,103) "k-effective (Track-length)", global_tallies(RESULT_SUM, K_TRACKLENGTH)
+        write(ou,103) "k-effective (Absorption)", global_tallies(RESULT_SUM, K_ABSORPTION)
       end if
-      write(ou,103) "Leakage Fraction", global_tallies(LEAKAGE) % sum
+      write(ou,103) "Leakage Fraction", global_tallies(RESULT_SUM, LEAKAGE)
     end if
     write(ou,*)
 
@@ -765,7 +765,7 @@ contains
         end if
 
         ! Multiply uncertainty by t-value
-        t % results % sum_sq = t_value * t % results % sum_sq
+        t % results(RESULT_SUM_SQ,:,:) = t_value * t % results(RESULT_SUM_SQ,:,:)
       end if
 
       ! Write header block
@@ -776,6 +776,28 @@ contains
         call header("TALLY " // trim(to_str(t % id)) // ": " &
              // trim(t % name), unit=unit_tally, level=3)
       endif
+
+      ! Write derivative information.
+      if (t % deriv /= NONE) then
+        associate(deriv => tally_derivs(t % deriv))
+          select case (deriv % variable)
+          case (DIFF_DENSITY)
+            write(unit=unit_tally, fmt="(' Density derivative  Material ',A)") &
+                 to_str(deriv % diff_material)
+          case (DIFF_NUCLIDE_DENSITY)
+            write(unit=unit_tally, fmt="(' Nuclide density derivative  &
+                 &Material ',A,'  Nuclide ',A)") &
+                 trim(to_str(deriv % diff_material)), &
+                 trim(nuclides(deriv % diff_nuclide) % name)
+          case (DIFF_TEMPERATURE)
+            write(unit=unit_tally, fmt="(' Temperature derivative  Material ',&
+                 &A)") to_str(deriv % diff_material)
+          case default
+            call fatal_error("Differential tally dependent variable for tally "&
+                 // trim(to_str(t % id)) // " not defined in output.F90.")
+          end select
+        end associate
+      end if
 
       ! Handle surface current tallies separately
       if (t % type == TALLY_SURFACE_CURRENT) then
@@ -876,8 +898,8 @@ contains
                    score_names(abs(t % score_bins(k)))
               write(UNIT=unit_tally, FMT='(1X,2A,1X,A,"+/- ",A)') &
                    repeat(" ", indent), score_name, &
-                   to_str(t % results(score_index,filter_index) % sum), &
-                   trim(to_str(t % results(score_index,filter_index) % sum_sq))
+                   to_str(t % results(RESULT_SUM,score_index,filter_index)), &
+                   trim(to_str(t % results(RESULT_SUM_SQ,score_index,filter_index)))
             case (SCORE_SCATTER_PN, SCORE_NU_SCATTER_PN)
               score_index = score_index - 1
               do n_order = 0, t % moment_order(k)
@@ -886,9 +908,8 @@ contains
                      score_names(abs(t % score_bins(k)))
                 write(UNIT=unit_tally, FMT='(1X,2A,1X,A,"+/- ",A)') &
                      repeat(" ", indent), score_name, &
-                     to_str(t % results(score_index,filter_index) % sum), &
-                     trim(to_str(t % results(score_index,filter_index) &
-                     % sum_sq))
+                     to_str(t % results(RESULT_SUM,score_index,filter_index)), &
+                     trim(to_str(t % results(RESULT_SUM_SQ,score_index,filter_index)))
               end do
               k = k + t % moment_order(k)
             case (SCORE_SCATTER_YN, SCORE_NU_SCATTER_YN, SCORE_FLUX_YN, &
@@ -902,9 +923,9 @@ contains
                        // score_names(abs(t % score_bins(k)))
                   write(UNIT=unit_tally, FMT='(1X,2A,1X,A,"+/- ",A)') &
                        repeat(" ", indent), score_name, &
-                       to_str(t % results(score_index,filter_index) % sum), &
-                       trim(to_str(t % results(score_index,filter_index)&
-                       % sum_sq))
+                       to_str(t % results(RESULT_SUM,score_index,filter_index)), &
+                       trim(to_str(t % results(RESULT_SUM_SQ,score_index,&
+                       filter_index)))
                 end do
               end do
               k = k + (t % moment_order(k) + 1)**2 - 1
@@ -916,8 +937,8 @@ contains
               end if
               write(UNIT=unit_tally, FMT='(1X,2A,1X,A,"+/- ",A)') &
                    repeat(" ", indent), score_name, &
-                   to_str(t % results(score_index,filter_index) % sum), &
-                   trim(to_str(t % results(score_index,filter_index) % sum_sq))
+                   to_str(t % results(RESULT_SUM,score_index,filter_index)), &
+                   trim(to_str(t % results(RESULT_SUM_SQ,score_index,filter_index)))
             end select
           end do
           indent = indent - 2
@@ -1020,16 +1041,16 @@ contains
              * t % stride) + 1
         write(UNIT=unit_tally, FMT='(5X,A,T35,A,"+/- ",A)') &
              "Outgoing Current on Left", &
-             to_str(t % results(1,filter_index) % sum), &
-             trim(to_str(t % results(1,filter_index) % sum_sq))
+             to_str(t % results(RESULT_SUM,1,filter_index)), &
+             trim(to_str(t % results(RESULT_SUM_SQ,1,filter_index)))
 
         matching_bins(i_filter_surf) = IN_LEFT
         filter_index = sum((matching_bins(1:size(t % filters)) - 1) &
              * t % stride) + 1
         write(UNIT=unit_tally, FMT='(5X,A,T35,A,"+/- ",A)') &
              "Incoming Current on Left", &
-             to_str(t % results(1,filter_index) % sum), &
-             trim(to_str(t % results(1,filter_index) % sum_sq))
+             to_str(t % results(RESULT_SUM,1,filter_index)), &
+             trim(to_str(t % results(RESULT_SUM_SQ,1,filter_index)))
 
         ! Right Surface
         matching_bins(i_filter_surf) = OUT_RIGHT
@@ -1037,16 +1058,16 @@ contains
              * t % stride) + 1
         write(UNIT=unit_tally, FMT='(5X,A,T35,A,"+/- ",A)') &
              "Outgoing Current on Right", &
-             to_str(t % results(1,filter_index) % sum), &
-             trim(to_str(t % results(1,filter_index) % sum_sq))
+             to_str(t % results(RESULT_SUM,1,filter_index)), &
+             trim(to_str(t % results(RESULT_SUM_SQ,1,filter_index)))
 
         matching_bins(i_filter_surf) = IN_RIGHT
         filter_index = sum((matching_bins(1:size(t % filters)) - 1) &
              * t % stride) + 1
         write(UNIT=unit_tally, FMT='(5X,A,T35,A,"+/- ",A)') &
              "Incoming Current on Right", &
-             to_str(t % results(1,filter_index) % sum), &
-             trim(to_str(t % results(1,filter_index) % sum_sq))
+             to_str(t % results(RESULT_SUM,1,filter_index)), &
+             trim(to_str(t % results(RESULT_SUM_SQ,1,filter_index)))
 
         if (n_dim >= 2) then
 
@@ -1056,16 +1077,16 @@ contains
                * t % stride) + 1
           write(UNIT=unit_tally, FMT='(5X,A,T35,A,"+/- ",A)') &
                "Outgoing Current on Back", &
-               to_str(t % results(1,filter_index) % sum), &
-               trim(to_str(t % results(1,filter_index) % sum_sq))
+               to_str(t % results(RESULT_SUM,1,filter_index)), &
+               trim(to_str(t % results(RESULT_SUM_SQ,1,filter_index)))
 
           matching_bins(i_filter_surf) = IN_BACK
           filter_index = sum((matching_bins(1:size(t % filters)) - 1) &
                * t % stride) + 1
           write(UNIT=unit_tally, FMT='(5X,A,T35,A,"+/- ",A)') &
                "Incoming Current on Back", &
-               to_str(t % results(1,filter_index) % sum), &
-               trim(to_str(t % results(1,filter_index) % sum_sq))
+               to_str(t % results(RESULT_SUM,1,filter_index)), &
+               trim(to_str(t % results(RESULT_SUM_SQ,1,filter_index)))
 
           ! Front Surface
           matching_bins(i_filter_surf) = OUT_FRONT
@@ -1073,16 +1094,16 @@ contains
                * t % stride) + 1
           write(UNIT=unit_tally, FMT='(5X,A,T35,A,"+/- ",A)') &
                "Net Current on Front", &
-               to_str(t % results(1,filter_index) % sum), &
-               trim(to_str(t % results(1,filter_index) % sum_sq))
+               to_str(t % results(RESULT_SUM,1,filter_index)), &
+               trim(to_str(t % results(RESULT_SUM_SQ,1,filter_index)))
 
           matching_bins(i_filter_surf) = IN_FRONT
           filter_index = sum((matching_bins(1:size(t % filters)) - 1) &
                * t % stride) + 1
           write(UNIT=unit_tally, FMT='(5X,A,T35,A,"+/- ",A)') &
                "Net Current on Front", &
-               to_str(t % results(1,filter_index) % sum), &
-               trim(to_str(t % results(1,filter_index) % sum_sq))
+               to_str(t % results(RESULT_SUM,1,filter_index)), &
+               trim(to_str(t % results(RESULT_SUM_SQ,1,filter_index)))
         end if
 
         if (n_dim == 3) then
@@ -1092,16 +1113,16 @@ contains
                * t % stride) + 1
           write(UNIT=unit_tally, FMT='(5X,A,T35,A,"+/- ",A)') &
                "Outgoing Current on Bottom", &
-               to_str(t % results(1,filter_index) % sum), &
-               trim(to_str(t % results(1,filter_index) % sum_sq))
+               to_str(t % results(RESULT_SUM,1,filter_index)), &
+               trim(to_str(t % results(RESULT_SUM_SQ,1,filter_index)))
 
           matching_bins(i_filter_surf) = IN_BOTTOM
           filter_index = sum((matching_bins(1:size(t % filters)) - 1) &
                * t % stride) + 1
           write(UNIT=unit_tally, FMT='(5X,A,T35,A,"+/- ",A)') &
                "Incoming Current on Bottom", &
-               to_str(t % results(1,filter_index) % sum), &
-               trim(to_str(t % results(1,filter_index) % sum_sq))
+               to_str(t % results(RESULT_SUM,1,filter_index)), &
+               trim(to_str(t % results(RESULT_SUM_SQ,1,filter_index)))
 
           ! Top Surface
           matching_bins(i_filter_surf) = OUT_TOP
@@ -1109,16 +1130,16 @@ contains
                * t % stride) + 1
           write(UNIT=unit_tally, FMT='(5X,A,T35,A,"+/- ",A)') &
                "Outgoing Current on Top", &
-               to_str(t % results(1,filter_index) % sum), &
-               trim(to_str(t % results(1,filter_index) % sum_sq))
+               to_str(t % results(RESULT_SUM,1,filter_index)), &
+               trim(to_str(t % results(RESULT_SUM_SQ,1,filter_index)))
 
           matching_bins(i_filter_surf) = IN_TOP
           filter_index = sum((matching_bins(1:size(t % filters)) - 1) &
                * t % stride) + 1
           write(UNIT=unit_tally, FMT='(5X,A,T35,A,"+/- ",A)') &
                "Incoming Current on Top", &
-               to_str(t % results(1,filter_index) % sum), &
-               trim(to_str(t % results(1,filter_index) % sum_sq))
+               to_str(t % results(RESULT_SUM,1,filter_index)), &
+               trim(to_str(t % results(RESULT_SUM_SQ,1,filter_index)))
         end if
       end do
     end do

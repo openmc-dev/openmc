@@ -5,6 +5,7 @@ import warnings
 import glob
 
 import numpy as np
+import h5py
 
 import openmc
 import openmc.checkvalue as cv
@@ -96,6 +97,9 @@ class StatePoint(object):
         Dictionary whose keys are tally IDs and whose values are Tally objects
     tallies_present : bool
         Indicate whether user-defined tallies are present
+    tally_derivatives : dict
+        Dictionary whose keys are tally derivative IDs and whose values are
+        TallyDerivative objects
     version: tuple of Integral
         Version of OpenMC
     summary : None or openmc.Summary
@@ -104,12 +108,6 @@ class StatePoint(object):
     """
 
     def __init__(self, filename, autolink=True):
-        import h5py
-        if h5py.__version__ == '2.6.0':
-            raise ImportError("h5py 2.6.0 has a known bug which makes it "
-                              "incompatible with OpenMC's HDF5 files. "
-                              "Please switch to a different version.")
-
         self._f = h5py.File(filename, 'r')
 
         # Ensure filetype and revision are correct
@@ -134,6 +132,7 @@ class StatePoint(object):
         self._summary = None
         self._global_tallies = None
         self._sparse = False
+        self._derivs_read = False
 
         # Automatically link in a summary file if one exists
         if autolink:
@@ -209,13 +208,13 @@ class StatePoint(object):
     def global_tallies(self):
         if self._global_tallies is None:
             data = self._f['global_tallies'].value
-            gt = np.zeros_like(data, dtype=[
+            gt = np.zeros(data.shape[0], dtype=[
                 ('name', 'a14'), ('sum', 'f8'), ('sum_sq', 'f8'),
                 ('mean', 'f8'), ('std_dev', 'f8')])
             gt['name'] = ['k-collision', 'k-absorption', 'k-tracklength',
                           'leakage']
-            gt['sum'] = data['sum']
-            gt['sum_sq'] = data['sum_sq']
+            gt['sum'] = data[:,1]
+            gt['sum_sq'] = data[:,2]
 
             # Calculate mean and sample standard deviation of mean
             n = self.n_realizations
@@ -396,6 +395,12 @@ class StatePoint(object):
                     base, tally_key)].value.decode()
                 tally.num_realizations = n_realizations
 
+                # Read derivative information.
+                if 'derivative' in self._f['{0}{1}'.format(base, tally_key)]:
+                    deriv_id = self._f['{0}{1}/derivative'.format(
+                                                        base, tally_key)].value
+                    tally.derivative = self.tally_derivatives[deriv_id]
+
                 # Read the number of Filters
                 n_filters = \
                     self._f['{0}{1}/n_filters'.format(base, tally_key)].value
@@ -456,6 +461,43 @@ class StatePoint(object):
     @property
     def tallies_present(self):
         return self._f['tallies/tallies_present'].value
+
+    @property
+    def tally_derivatives(self):
+        if not self._derivs_read:
+            # Initialize dictionaries for the Meshes
+            # Keys   - Derivative IDs
+            # Values - TallyDerivative objects
+            self._derivs = {}
+
+            # Populate the dictionary if any derivatives are present.
+            if 'derivatives' in self._f['tallies']:
+                # Read the derivative ids.
+                base = 'tallies/derivatives'
+                deriv_ids = [int(k.split(' ')[1]) for k in self._f[base]]
+
+                # Create each derivative object and add it to the dictionary.
+                for d_id in deriv_ids:
+                    base = 'tallies/derivatives/derivative {:d}'.format(d_id)
+                    deriv = openmc.TallyDerivative(derivative_id=d_id)
+                    deriv.variable = \
+                         self._f[base + '/independent variable'].value.decode()
+                    if deriv.variable == 'density':
+                        deriv.material = self._f[base + '/material'].value
+                    elif deriv.variable == 'nuclide_density':
+                        deriv.material = self._f[base + '/material'].value
+                        deriv.nuclide = \
+                             self._f[base + '/nuclide'].value.decode()
+                    elif deriv.variable == 'temperature':
+                        deriv.material = self._f[base + '/material'].value
+                    else:
+                        raise RuntimeError('Unrecognized tally differential '
+                                           'variable')
+                    self._derivs[d_id] = deriv
+
+            self._derivs_read = True
+
+        return self._derivs
 
     @property
     def version(self):

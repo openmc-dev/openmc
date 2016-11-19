@@ -2039,7 +2039,6 @@ contains
     type(Library), allocatable :: libraries(:)
     type(VectorReal), allocatable :: nuc_temps(:) ! List of T to read for each nuclide
     type(VectorReal), allocatable :: sab_temps(:) ! List of T to read for each S(a,b)
-    character(MAX_LINE_LEN) :: temp_str
     real(8), allocatable    :: material_temps(:)
     logical                 :: file_exists
     character(MAX_FILE_LEN) :: env_variable
@@ -2629,11 +2628,13 @@ contains
     type(Node), pointer :: node_mesh => null()
     type(Node), pointer :: node_tal => null()
     type(Node), pointer :: node_filt => null()
-    type(Node), pointer :: node_trigger=>null()
+    type(Node), pointer :: node_trigger => null()
+    type(Node), pointer :: node_deriv => null()
     type(NodeList), pointer :: node_mesh_list => null()
     type(NodeList), pointer :: node_tal_list => null()
     type(NodeList), pointer :: node_filt_list => null()
     type(NodeList), pointer :: node_trigger_list => null()
+    type(NodeList), pointer :: node_deriv_list => null()
     type(ElemKeyValueCI), pointer :: scores
     type(ElemKeyValueCI), pointer :: next
 
@@ -2641,6 +2642,12 @@ contains
     filename = trim(path_input) // "tallies.xml"
     inquire(FILE=filename, EXIST=file_exists)
     if (.not. file_exists) then
+      ! We need to allocate tally_derivs to avoid segfaults.  Also needs to be
+      ! done in parallel because tally derivs are threadprivate.
+!$omp parallel
+      allocate(tally_derivs(0))
+!$omp end parallel
+
       ! Since a tallies.xml file is optional, no error is issued here
       return
     end if
@@ -2820,6 +2827,94 @@ contains
     if (run_mode == MODE_PLOTTING) return
 
     ! ==========================================================================
+    ! READ DATA FOR DERIVATIVES
+
+    ! Get pointer list to XML <derivative> nodes and allocate global array.
+    ! The array is threadprivate so it must be allocated in parallel.
+    call get_node_list(doc, "derivative", node_deriv_list)
+!$omp parallel
+    allocate(tally_derivs(get_list_size(node_deriv_list)))
+!$omp end parallel
+
+    ! Make sure this is not an MG run.
+    if (.not. run_CE .and. get_list_size(node_deriv_list) > 0) then
+      call fatal_error("Differential tallies not supported in multi-group mode")
+    end if
+
+    ! Read derivative attributes.
+    do i = 1, get_list_size(node_deriv_list)
+      associate(deriv => tally_derivs(i))
+        ! Get pointer to derivative node.
+        call get_list_item(node_deriv_list, i, node_deriv)
+
+        ! Copy the derivative id.
+        if (check_for_node(node_deriv, "id")) then
+          call get_node_value(node_deriv, "id", deriv % id)
+        else
+          call fatal_error("Must specify an ID for <derivative> elements in the&
+               & tally XML file")
+        end if
+
+        ! Make sure the id is > 0.
+        if (deriv % id <= 0) then
+          call fatal_error("<derivative> IDs must be an integer greater than &
+               &zero")
+        end if
+
+        ! Make sure this id has not already been used.
+        do j = 1, i-1
+          if (tally_derivs(j) % id == deriv % id) then
+            call fatal_error("Two or more <derivative>'s use the same unique &
+                 &ID: " // trim(to_str(deriv % id)))
+          end if
+        end do
+
+        ! Read the independent variable name.
+        temp_str = ""
+        call get_node_value(node_deriv, "variable", temp_str)
+        temp_str = to_lower(temp_str)
+
+        select case(temp_str)
+
+        case("density")
+          deriv % variable = DIFF_DENSITY
+          call get_node_value(node_deriv, "material", deriv % diff_material)
+
+        case("nuclide_density")
+          deriv % variable = DIFF_NUCLIDE_DENSITY
+          call get_node_value(node_deriv, "material", deriv % diff_material)
+
+          call get_node_value(node_deriv, "nuclide", word)
+          word = trim(to_lower(word))
+          pair_list => nuclide_dict % keys()
+          do while (associated(pair_list))
+            if (starts_with(pair_list % key, word)) then
+              word = pair_list % key(1:150)
+              exit
+            end if
+
+            ! Advance to next
+            pair_list => pair_list % next
+          end do
+
+          ! Check if no nuclide was found
+          if (.not. associated(pair_list)) then
+            call fatal_error("Could not find the nuclide " &
+                 // trim(word) // " specified in derivative " &
+                 // trim(to_str(deriv % id)) // " in any material.")
+          end if
+          deallocate(pair_list)
+
+          deriv % diff_nuclide = nuclide_dict % get_key(word)
+
+        case("temperature")
+          deriv % variable = DIFF_TEMPERATURE
+          call get_node_value(node_deriv, "material", deriv % diff_material)
+        end select
+      end associate
+    end do
+
+    ! ==========================================================================
     ! READ TALLY DATA
 
     READ_TALLIES: do i = 1, n_user_tallies
@@ -2840,7 +2935,7 @@ contains
 
       t % estimator = ESTIMATOR_TRACKLENGTH
 
-      ! Copy material id
+      ! Copy tally id
       if (check_for_node(node_tal, "id")) then
         call get_node_value(node_tal, "id", t % id)
       else
@@ -3430,6 +3525,7 @@ contains
               call fatal_error("Cannot tally flux with an outgoing energy &
                    &filter.")
             end if
+
           case ('flux-yn')
             ! Prohibit user from tallying flux for an individual nuclide
             if (.not. (t % n_nuclide_bins == 1 .and. &
@@ -3765,6 +3861,48 @@ contains
       else
         call fatal_error("No <scores> specified on tally " &
              // trim(to_str(t % id)) // ".")
+      end if
+
+      ! Check for a tally derivative.
+      if (check_for_node(node_tal, "derivative")) then
+        ! Temporarily store the derivative id.
+        call get_node_value(node_tal, "derivative", t % deriv)
+
+        ! Find the derivative with the given id, and store it's index.
+        do j = 1, size(tally_derivs)
+          if (tally_derivs(j) % id == t % deriv) then
+            t % deriv = j
+            ! Only analog or collision estimators are supported for differential
+            ! tallies.
+            if (t % estimator == ESTIMATOR_TRACKLENGTH) then
+              t % estimator = ESTIMATOR_COLLISION
+            end if
+            ! We found the derivative we were looking for; exit the do loop.
+            exit
+          end if
+          if (j == size(tally_derivs)) then
+            call fatal_error("Could not find derivative " &
+                 // trim(to_str(t % deriv)) // " specified on tally " &
+                 // trim(to_str(t % id)))
+          end if
+        end do
+
+        if (tally_derivs(t % deriv) % variable == DIFF_NUCLIDE_DENSITY &
+             .or. tally_derivs(t % deriv) % variable == DIFF_TEMPERATURE) then
+          if (any(t % nuclide_bins == -1)) then
+            if (t % find_filter(FILTER_ENERGYOUT) > 0) then
+              call fatal_error("Error on tally " // trim(to_str(t % id)) &
+                   // ": Cannot use a 'nuclide_density' or 'temperature' &
+                   &derivative on a tally with an outgoing energy filter and &
+                   &'total' nuclide rate. Instead, tally each nuclide in the &
+                   &material individually.")
+              ! Note that diff tallies with these characteristics would work
+              ! correctly if no tally events occur in the perturbed material
+              ! (e.g. pertrubing moderator but only tallying fuel), but this
+              ! case would be hard to check for by only reading inputs.
+            end if
+          end if
+        end if
       end if
 
       ! If settings.xml trigger is turned on, create tally triggers
@@ -4788,8 +4926,8 @@ contains
         sum_percent = sum(mat % atom_density)
         mat % atom_density = mat % atom_density / sum_percent
 
-        ! Change density in g/cm^3 to atom/b-cm. Since all values are now in atom
-        ! percent, the sum needs to be re-evaluated as 1/sum(x*awr)
+        ! Change density in g/cm^3 to atom/b-cm. Since all values are now in
+        ! atom percent, the sum needs to be re-evaluated as 1/sum(x*awr)
         if (.not. density_in_atom) then
           sum_percent = ZERO
           do j = 1, mat % n_nuclides
@@ -4808,6 +4946,18 @@ contains
 
         ! Calculate nuclide atom densities
         mat % atom_density = mat % density * mat % atom_density
+
+        ! Calculate density in g/cm^3.
+        mat % density_gpcc = ZERO
+        do j = 1, mat % n_nuclides
+          if (run_CE) then
+            awr = nuclides(mat % nuclide(j)) % awr
+          else
+            awr = ONE
+          end if
+          mat % density_gpcc = mat % density_gpcc &
+               + mat % atom_density(j) * awr * MASS_NEUTRON / N_AVOGADRO
+        end do
       end associate
     end do
 

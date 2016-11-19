@@ -90,6 +90,68 @@
       </element>
     </zeroOrMore>
     <zeroOrMore>
+      <element name="derivative">
+        <interleave>
+          <choice>
+            <element name="id">
+              <data type="int"/>
+            </element>
+            <attribute name="id">
+              <data type="int"/>
+            </attribute>
+          </choice>
+          <choice>
+            <element name="material">
+              <data type="int"/>
+            </element>
+            <attribute name="material">
+              <data type="int"/>
+            </attribute>
+          </choice>
+          <choice>
+            <choice>
+              <element name="variable">
+                <value>density</value>
+              </element>
+              <attribute name="variable">
+                <value>density</value>
+              </attribute>
+            </choice>
+            <interleave>
+              <choice>
+                <element name="variable">
+                  <value>nuclide_density</value>
+                </element>
+                <attribute name="variable">
+                  <value>nuclide_density</value>
+                </attribute>
+              </choice>
+              <choice>
+                <element name="nuclide">
+                  <data type="string">
+                    <param name="maxLength">12</param>
+                  </data>
+                </element>
+                <attribute name="nuclide">
+                  <data type="string">
+                    <param name="maxLength">12</param>
+                  </data>
+                </attribute>
+              </choice>
+            </interleave>
+            <choice>
+              <element name="variable">
+                <value>temperature</value>
+              </element>
+              <attribute name="variable">
+                <value>temperature</value>
+              </attribute>
+            </choice>
+          </choice>
+        </interleave>
+      </element>
+    </zeroOrMore>
+    <zeroOrMore>
       <element name="tally">
         <interleave>
           <choice>
@@ -254,6 +316,16 @@
               </interleave>
             </element>
           </zeroOrMore>
+          <optional>
+            <choice>
+              <element name="derivative">
+                <data type="int"/>
+              </element>
+              <attribute name="derivative">
+                <data type="int"/>
+              </attribute>
+            </choice>
+          </optional>
         </interleave>
       </element>
     </zeroOrMore>

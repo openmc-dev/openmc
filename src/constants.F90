@@ -269,6 +269,12 @@ module constants
   ! ============================================================================
   ! TALLY-RELATED CONSTANTS
 
+  ! Tally result entries
+  integer, parameter :: &
+       RESULT_VALUE  = 1, &
+       RESULT_SUM    = 2, &
+       RESULT_SUM_SQ = 3
+
   ! Tally type
   integer, parameter :: &
        TALLY_VOLUME          = 1, &
@@ -384,6 +390,12 @@ module constants
        K_ABSORPTION  = 2, &
        K_TRACKLENGTH = 3, &
        LEAKAGE       = 4
+
+  ! Differential tally independent variables
+  integer, parameter :: &
+       DIFF_DENSITY = 1, &
+       DIFF_NUCLIDE_DENSITY = 2, &
+       DIFF_TEMPERATURE = 3
 
   ! ============================================================================
   ! RANDOM NUMBER STREAM CONSTANTS

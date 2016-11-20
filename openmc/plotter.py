@@ -267,21 +267,6 @@ def plot_mgxs(this, types, divisor_types=None, temperature=294., axis=None,
             if divisor_types[line] != 'unity':
                 types[line] = types[line] + ' / ' + divisor_types[line]
 
-    # Modify the data such that the it plots the group values as distinct
-    # horizontal lines in an efficient manner
-    E_plot = []
-    data_plot = []
-    for line in range(len(types)):
-        data_plot.append([])
-        for g in range(len(E) - 1):
-            if line == 0:
-                E_plot.append(E[g])
-                E_plot.append(E[g + 1])
-                E_plot.append(None)
-            data_plot[-1].append(data[line, g])
-            data_plot[-1].append(data[line, g])
-            data_plot[-1].append(None)
-
     # Generate the plot
     if axis is None:
         fig = plt.figure(**kwargs)
@@ -296,8 +281,8 @@ def plot_mgxs(this, types, divisor_types=None, temperature=294., axis=None,
     else:
         plot_func = ax.loglog
     # Plot the data
-    for i in range(len(data_plot)):
-        plot_func(E_plot, data_plot[i], label=types[i])
+    for i in range(len(data)):
+        plot_func(E, data[i], label=types[i])
 
     ax.set_xlabel('Energy [eV]')
     if divisor_types:
@@ -758,10 +743,10 @@ def calculate_mgxs(this, types, temperature=294., cross_sections=None,
 
     Returns
     -------
-    numpy.array
-        Energy group structure in units of eV
+    energy_grid : numpy.ndarray
+        Energies at which cross sections are calculated, in units of eV
     data : numpy.ndarray
-        Multi-Group Cross sections
+        Cross sections calculated at the energy grid described by energy_grid
 
     """
 
@@ -774,14 +759,24 @@ def calculate_mgxs(this, types, temperature=294., cross_sections=None,
     library = openmc.MGXSLibrary.from_hdf5(cross_sections)
 
     if isinstance(this, (openmc.Nuclide, openmc.Macroscopic)):
-        data = _calculate_mgxs_nuc_macro(this, types, library, temperature)
+        mgxs = _calculate_mgxs_nuc_macro(this, types, library, temperature)
     elif isinstance(this, (openmc.Element, openmc.Material)):
-        data = _calculate_mgxs_elem_mat(this, types, library, temperature,
+        mgxs = _calculate_mgxs_elem_mat(this, types, library, temperature,
                                         ce_cross_sections, enrichment)
     else:
         raise TypeError("Invalid type")
 
-    return np.flipud(library.energy_groups.group_edges), data
+    # Convert the data to the format needed
+    data = np.zeros((len(types), 2 * library.energy_groups.num_groups))
+    energy_grid = np.zeros(2 * library.energy_groups.num_groups)
+    for line in range(len(types)):
+        i = 0
+        for g in range(library.energy_groups.num_groups):
+            data[line, i: i + 2] = mgxs[line, g]
+            energy_grid[i: i + 2] = library.energy_groups.group_edges[g: g + 2]
+            i += 2
+
+    return np.flipud(energy_grid), data
 
 
 def _calculate_mgxs_nuc_macro(this, types, library, temperature=294.):
@@ -806,7 +801,7 @@ def _calculate_mgxs_nuc_macro(this, types, library, temperature=294.):
     Returns
     -------
     data : numpy.ndarray
-        Cross sections values of the requested types
+        Cross sections calculated at the energy grid described by energy_grid
 
     """
 
@@ -881,7 +876,7 @@ def _calculate_mgxs_elem_mat(this, types, library, temperature=294.,
     Returns
     -------
     data : numpy.ndarray
-        Cross sections values of the requested types
+        Cross sections calculated at the energy grid described by energy_grid
 
     """
 

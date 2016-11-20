@@ -124,20 +124,12 @@ def plot_xs(this, types, divisor_types=None, temperature=294., axis=None,
         # grid, and then do the actual division
         Enum = E[:]
         E = np.union1d(Enum, Ediv)
-        if data_type == 'nuclide':
-            data_new = []
-        else:
-            data_new = np.zeros((len(types), len(E)))
+        data_new = np.zeros((len(types), len(E)))
 
         for line in range(len(types)):
-            if data_type == 'nuclide':
-                data_new.append(openmc.data.Combination([data[line],
-                                                         data_div[line]],
-                                                        [np.divide]))
-            else:
-                data_new[line, :] = \
-                    np.divide(np.interp(E, Enum, data[line, :]),
-                              np.interp(E, Ediv, data_div[line, :]))
+            data_new[line, :] = \
+                np.divide(np.interp(E, Enum, data[line, :]),
+                          np.interp(E, Ediv, data_div[line, :]))
             if divisor_types[line] != 'unity':
                 types[line] = types[line] + ' / ' + divisor_types[line]
         data = data_new

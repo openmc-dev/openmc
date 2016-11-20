@@ -157,13 +157,9 @@ def plot_xs(this, types, divisor_types=None, temperature=294., axis=None,
         plot_func = ax.loglog
     # Plot the data
     for i in range(len(data)):
-        if data_type == 'nuclide':
-            to_plot = data[i](E)
-        else:
-            to_plot = data[i, :]
-        to_plot = np.nan_to_num(to_plot)
-        if np.sum(to_plot) > 0.:
-            plot_func(E, to_plot, label=types[i])
+        data[i, :] = np.nan_to_num(data[i, :])
+        if np.sum(data[i, :]) > 0.:
+            plot_func(E, data[i, :], label=types[i])
 
     ax.set_xlabel('Energy [eV]')
     if divisor_types:
@@ -350,98 +346,23 @@ def calculate_xs(this, types, temperature=294., sab_name=None,
         cv.check_type('enrichment', enrichment, Real)
 
     if isinstance(this, openmc.Nuclide):
-        energy_grid, data = _calculate_xs_nuclide(this, types, temperature,
-                                                  sab_name, cross_sections)
+        energy_grid, xs = _calculate_xs_nuclide(this, types, temperature,
+                                                sab_name, cross_sections)
+        # Convert xs (Iterable of Callable) to a grid of cross section values
+        # calculated on @ the points in energy_grid for consistency with the
+        # element and material functions.
+        data = np.zeros((len(types), len(energy_grid)))
+        for line in range(len(types)):
+            data[line, :] = xs[line](energy_grid)
     elif isinstance(this, openmc.Element):
-        energy_grid, data = _calculate_xs_element(this, types, temperature,
-                                                  sab_name, cross_sections,
-                                                  enrichment)
+        energy_grid, data = _calculate_xs_elem_mat(this, types, temperature,
+                                                   cross_sections, sab_name,
+                                                   enrichment)
     elif isinstance(this, openmc.Material):
-        energy_grid, data = _calculate_xs_material(this, types, temperature,
+        energy_grid, data = _calculate_xs_elem_mat(this, types, temperature,
                                                    cross_sections)
     else:
         raise TypeError("Invalid type")
-
-    return energy_grid, data
-
-
-def _calculate_xs_element(this, types, temperature=294., sab_name=None,
-                          cross_sections=None, enrichment=None):
-    """Calculates continuous-energy cross sections of a requested type
-
-    Parameters
-    ----------
-    this : openmc.Element
-        Element object to source data from
-    types : Iterable of values of PLOT_TYPES
-        The type of cross sections to calculate
-    temperature : float, optional
-        Temperature in Kelvin to plot. If not specified, a default
-        temperature of 294K will be plotted. Note that the nearest
-        temperature in the library for each nuclide will be used as opposed
-        to using any interpolation.
-    sab_name : str, optional
-        Name of S(a,b) library to apply to MT=2 data when applicable.
-    cross_sections : str, optional
-        Location of cross_sections.xml file. Default is None.
-    enrichment : float, optional
-        Enrichment for U235 in weight percent. For example, input 4.95 for
-        4.95 weight percent enriched U. Default is None
-        (natural composition).
-
-    Returns
-    -------
-    energy_grid : numpy.ndarray
-        Energies at which cross sections are calculated, in units of eV
-    data : numpy.ndarray
-        Macroscopic cross sections calculated at the energy grid described
-        by energy_grid
-
-    """
-
-    # Load the library
-    library = openmc.data.DataLibrary.from_xml(cross_sections)
-
-    # Expand elements in to nuclides with atomic densities
-    nuclides = this.expand(1., 'ao', enrichment=enrichment,
-                           cross_sections=cross_sections)
-
-    # For ease of processing split out nuc and nuc_density
-    nuc_fractions = [nuclide[1] for nuclide in nuclides]
-
-    # Identify the nuclides which have S(a,b) data
-    sabs = {}
-    for nuclide in nuclides:
-        sabs[nuclide[0].name] = None
-    if sab_name:
-        sab = openmc.data.ThermalScattering.from_hdf5(sab_name)
-        for nuc in sab.nuclides:
-            sabs[nuc] = library.get_by_material(sab_name)['path']
-
-    # Now we can create the data sets to be plotted
-    xs = []
-    E = []
-    for nuclide in nuclides:
-        sab_tab = sabs[nuclide[0].name]
-        temp_E, temp_xs = calculate_xs(nuclide[0], types, temperature, sab_tab,
-                                       cross_sections)
-        E.append(temp_E)
-        xs.append(temp_xs)
-
-    # Condense the data for every nuclide
-    # First create a union energy grid
-    energy_grid = E[0]
-    for grid in E[1:]:
-        energy_grid = np.union1d(energy_grid, grid)
-
-    # Now we can combine all the nuclidic data
-    data = np.zeros((len(types), len(energy_grid)))
-    for line in range(len(types)):
-        if types[line] == 'unity':
-            data[line, :] = 1.
-        else:
-            for n in range(len(nuclides)):
-                data[line, :] += nuc_fractions[n] * xs[n][line](energy_grid)
 
     return energy_grid, data
 
@@ -472,9 +393,8 @@ def _calculate_xs_nuclide(this, types, temperature=294., sab_name=None,
     -------
     energy_grid : numpy.ndarray
         Energies at which cross sections are calculated, in units of eV
-    data : numpy.ndarray
-        Cross sections calculated at the energy grid described by
-        energy_grid
+    data : Iterable of Callable
+        Requested cross section functions
 
     """
 
@@ -636,14 +556,14 @@ def _calculate_xs_nuclide(this, types, temperature=294., sab_name=None,
     return energy_grid, xs
 
 
-def _calculate_xs_material(this, types, temperature=294., cross_sections=None):
-    """Calculates continuous-energy macroscopic cross sections of a
-    requested type
+def _calculate_xs_elem_mat(this, types, temperature=294., cross_sections=None,
+                           sab_name=None, enrichment=None):
+    """Calculates continuous-energy cross sections of a requested type
 
     Parameters
     ----------
-    this : openmc.Material
-        Material object to source data from
+    this : {openmc.Material, openmc.Element}
+        Object to source data from
     types : Iterable of values of PLOT_TYPES
         The type of cross sections to calculate
     temperature : float, optional
@@ -653,50 +573,84 @@ def _calculate_xs_material(this, types, temperature=294., cross_sections=None):
         to using any interpolation.
     cross_sections : str, optional
         Location of cross_sections.xml file. Default is None.
+    sab_name : str, optional
+        Name of S(a,b) library to apply to MT=2 data when applicable.
+    enrichment : float, optional
+        Enrichment for U235 in weight percent. For example, input 4.95 for
+        4.95 weight percent enriched U. Default is None
+        (natural composition).
 
     Returns
     -------
     energy_grid : numpy.ndarray
         Energies at which cross sections are calculated, in units of eV
     data : numpy.ndarray
-        Macroscopic cross sections calculated at the energy grid described
-        by energy_grid
+        Cross sections calculated at the energy grid described by energy_grid
 
     """
 
-    if this.temperature is not None:
-        T = this.temperature
+    if isinstance(this, openmc.Material):
+        if this.temperature is not None:
+            T = this.temperature
+        else:
+            T = temperature
     else:
         T = temperature
 
     # Load the library
     library = openmc.data.DataLibrary.from_xml(cross_sections)
 
-    # Expand elements in to nuclides with atomic densities
-    nuclides = this.get_nuclide_atom_densities()
-
-    # For ease of processing split out nuc and nuc_density
-    nuc_densities = [nuclide[1][1] for nuclide in nuclides.items()]
+    if isinstance(this, openmc.Material):
+        # Expand elements in to nuclides with atomic densities
+        nuclides = this.get_nuclide_atom_densities()
+        # For ease of processing split out the nuclide and its fraction
+        nuc_fractions = {nuclide[1][0].name: nuclide[1][1]
+                         for nuclide in nuclides.items()}
+        # Create a dict of [nuclide name] = nuclide object to carry forward
+        # with a common nuclides format between openmc.Material and
+        # openmc.Element objects
+        nuclides = {nuclide[1][0].name: nuclide[1][0]
+                    for nuclide in nuclides.items()}
+    else:
+        # Expand elements in to nuclides with atomic densities
+        nuclides = this.expand(1., 'ao', enrichment=enrichment,
+                               cross_sections=cross_sections)
+        # For ease of processing split out the nuclide and its fraction
+        nuc_fractions = {nuclide[0].name: nuclide[1] for nuclide in nuclides}
+        # Create a dict of [nuclide name] = nuclide object to carry forward
+        # with a common nuclides format between openmc.Material and
+        # openmc.Element objects
+        nuclides = {nuclide[0].name: nuclide[0] for nuclide in nuclides}
 
     # Identify the nuclides which have S(a,b) data
     sabs = {}
     for nuclide in nuclides.items():
-        sabs[nuclide[0].name] = None
-    for sab_name in this._sab:
-        sab = openmc.data.ThermalScattering.from_hdf5(
-            library.get_by_material(sab_name)['path'])
-        for nuc in sab.nuclides:
-            sabs[nuc] = library.get_by_material(sab_name)['path']
+        sabs[nuclide[0]] = None
+    if isinstance(this, openmc.Material):
+        for sab_name in this._sab:
+            sab = openmc.data.ThermalScattering.from_hdf5(
+                library.get_by_material(sab_name)['path'])
+            for nuc in sab.nuclides:
+                sabs[nuc] = library.get_by_material(sab_name)['path']
+    else:
+        if sab_name:
+            sab = openmc.data.ThermalScattering.from_hdf5(sab_name)
+            for nuc in sab.nuclides:
+                sabs[nuc] = library.get_by_material(sab_name)['path']
 
     # Now we can create the data sets to be plotted
-    xs = []
+    xs = {}
     E = []
     for nuclide in nuclides.items():
-        sab_tab = sabs[nuclide[0].name]
-        temp_E, temp_xs = calculate_xs(nuclide[0], types, T, sab_tab,
-                                       cross_sections)
+        name = nuclide[0]
+        nuc = nuclide[1]
+        sab_tab = sabs[name]
+        temp_E, temp_xs = calculate_xs(nuc, types, T, sab_tab, cross_sections)
         E.append(temp_E)
-        xs.append(temp_xs)
+        # Since the energy grids are different, store the cross sections as
+        # a tabulated function so they can be calculated on any grid needed.
+        xs[name] = [openmc.data.Tabulated1D(temp_E, temp_xs[line])
+                    for line in range(len(types))]
 
     # Condense the data for every nuclide
     # First create a union energy grid
@@ -710,8 +664,10 @@ def _calculate_xs_material(this, types, temperature=294., cross_sections=None):
         if types[line] == 'unity':
             data[line, :] = 1.
         else:
-            for n in range(len(nuclides)):
-                data[line, :] += nuc_densities[n] * xs[n][line](energy_grid)
+            for nuclide in nuclides.items():
+                name = nuclide[0]
+                data[line, :] += (nuc_fractions[name] *
+                                  xs[name][line](energy_grid))
 
     return energy_grid, data
 

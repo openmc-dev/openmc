@@ -476,21 +476,23 @@ def _calculate_xs_elem_mat(this, types, temperature=294., cross_sections=None,
     if isinstance(this, openmc.Material):
         # Expand elements in to nuclides with atomic densities
         nuclides = this.get_nuclide_atom_densities()
-
         # For ease of processing split out the nuclide and its fraction
         nuc_fractions = {nuclide[1][0].name: nuclide[1][1]
                          for nuclide in nuclides.items()}
         # Create a dict of [nuclide name] = nuclide object to carry forward
+        # with a common nuclides format between openmc.Material and
+        # openmc.Element objects
         nuclides = {nuclide[1][0].name: nuclide[1][0]
                     for nuclide in nuclides.items()}
     else:
         # Expand elements in to nuclides with atomic densities
         nuclides = this.expand(1., 'ao', enrichment=enrichment,
                                cross_sections=cross_sections)
-
         # For ease of processing split out the nuclide and its fraction
         nuc_fractions = {nuclide[0].name: nuclide[1] for nuclide in nuclides}
         # Create a dict of [nuclide name] = nuclide object to carry forward
+        # with a common nuclides format between openmc.Material and
+        # openmc.Element objects
         nuclides = {nuclide[0].name: nuclide[0] for nuclide in nuclides}
 
     # Identify the nuclides which have S(a,b) data
@@ -512,7 +514,6 @@ def _calculate_xs_elem_mat(this, types, temperature=294., cross_sections=None,
     # Now we can create the data sets to be plotted
     xs = {}
     E = []
-    # for nuclide in nuclides:
     for nuclide in nuclides.items():
         name = nuclide[0]
         nuc = nuclide[1]

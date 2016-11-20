@@ -304,8 +304,8 @@ def _calculate_xs_element(this, types, temperature=294., sab_name=None,
     # Condense the data for every nuclide
     # First create a union energy grid
     energy_grid = E[0]
-    for n in range(1, len(E)):
-        energy_grid = np.union1d(energy_grid, E[n])
+    for grid in E[1:]:
+        energy_grid = np.union1d(energy_grid, grid)
 
     # Now we can combine all the nuclidic data
     data = np.zeros((len(types), len(energy_grid)))

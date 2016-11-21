@@ -1,13 +1,9 @@
 module finalize
 
   use global
-  use output, only: print_runtime, print_results,&
-                    print_overlap_check, write_tallies
-  use tally,  only: tally_statistics
-  use xs,     only: isotopes,&
-                    n_isotopes,&
-                    write_avg_urr_xs,&
-                    write_urr_tables
+  use output,       only: print_runtime, print_results,&
+                          print_overlap_check, write_tallies
+  use tally,        only: tally_statistics
 
 #ifdef MPI
   use mpi
@@ -30,7 +26,7 @@ contains
 
     integer :: i ! isotope index
 
-    if (write_avg_urr_xs .or. write_urr_tables) goto 100
+    if (write_avg_urr_xs .or. write_urr_prob_tables) goto 100
 
     ! Start finalization timer
     call time_finalize % start()
@@ -68,11 +64,11 @@ contains
     call free_memory()
 
     ! deallocate URR isotopes
-    do i = 1, n_isotopes
+    do i = 1, n_isotopes_urr
       call isotopes(i) % dealloc_isotope()
     end do
 
-    if (write_avg_urr_xs .or. write_urr_tables) goto 200
+    if (write_avg_urr_xs .or. write_urr_prob_tables) goto 200
 
 #ifdef HDF5
     ! Release compound datatypes

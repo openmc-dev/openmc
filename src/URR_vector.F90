@@ -1,4 +1,4 @@
-module vectors
+module URR_vector
 
   implicit none
   private
@@ -40,4 +40,4 @@ module vectors
 
   end type VecInt
 
-end module vectors
+end module URR_vector

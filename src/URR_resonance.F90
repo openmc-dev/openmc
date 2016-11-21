@@ -1,4 +1,4 @@
-module resonances
+module URR_resonance
 
   implicit none
   private
@@ -230,4 +230,4 @@ contains
 
   end subroutine clear_bwresonance_list
 
-end module resonances
+end module URR_resonance

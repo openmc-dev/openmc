@@ -1,7 +1,6 @@
-module edits
+module URR_edits
 
   use output, only: write_coords
-  use xs,     only: wigner_surmise
 
   implicit none
   private
@@ -34,4 +33,4 @@ contains
 
   end subroutine sampleWignerDist
 
-end module edits
+end module URR_edits

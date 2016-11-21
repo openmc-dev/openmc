@@ -12,13 +12,8 @@ module cross_section
   use random_lcg,      only: prn
   use search,          only: binary_search
   use string,          only: to_str
-  use xs,              only: calculate_prob_band_xs,&
-                             calculate_urr_xs_otf,&
-                             calc_urr_xs_otf,&
-                             Isotope,&
-                             isotopes,&
-                             real_freq
-
+  use URR_isotope,     only: Isotope
+  
   implicit none
   save
 
@@ -450,7 +445,7 @@ contains
           call calculate_prob_band_xs(nuc % i_sotope, i_nuclide, 1.0E6_8 * E, &
                nuc % kT / K_BOLTZMANN)
         else if (tope % otf_urr_xs) then
-          select case(real_freq)
+          select case(realiz_frequency_urr)
           case (EVENT)
             call calculate_urr_xs_otf(nuc % i_sotope, i_nuclide, 1.0E6_8 * E, &
                  nuc % kT / K_BOLTZMANN)

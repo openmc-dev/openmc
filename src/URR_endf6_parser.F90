@@ -1,16 +1,9 @@
-module endf_reader
+module URR_endf6_parser
 
-  use avg_urr_xs_values, only: read_avg_urr_xs
   use constants
   use error,             only: fatal_error, warning
   use global
   use output,            only: write_message
-  use xs,                only: E_spacing,&
-                               Isotope,&
-                               isotopes,&
-                               path_endf,&
-                               represent_urr,&
-                               write_avg_urr_xs
 
   implicit none
   private
@@ -1597,4 +1590,4 @@ contains
 
   end subroutine check_j_sign
 
-end module endf_reader
+end module URR_endf6_parser

@@ -5,7 +5,7 @@ module initialize
   use constants
   use cross_section,    only: write_xs
   use dict_header,      only: DictIntInt, ElemKeyValueII
-  use endf_reader,      only: read_endf6
+  use URR_endf6_parser, only: read_endf6
   use energy_grid,      only: unionized_grid
   use error,            only: fatal_error, warning
   use faddeeva,         only: tabulate_w
@@ -27,20 +27,6 @@ module initialize
   use string,           only: to_str, str_to_int, starts_with, ends_with
   use tally_header,     only: TallyObject, TallyResult
   use tally_initialize, only: configure_tallies
-  use xs,               only: calc_prob_tables,&
-                              endf_files,&
-                              isotopes,&
-                              load_prob_tables,&
-                              load_urr_tables,&
-                              n_isotopes,&
-                              pointwise_urr,&
-                              real_freq,&
-                              represent_params,&
-                              represent_urr,&
-                              resonance_ensemble,&
-                              run_fasturr,&
-                              write_avg_urr_xs,&
-                              write_urr_tables
 
 #ifdef MPI
   use mpi
@@ -131,7 +117,7 @@ contains
       call write_angle()
 
       ! Read ENDF-6 format nuclear data file
-      if (run_fasturr) then
+      if (use_urr) then
         call initialize_endf()
         call tabulate_w()
 
@@ -152,14 +138,14 @@ contains
                 call isotopes(i) % ace_index_list % append(i_nuc)
               end if
             end do
-            if (load_urr_tables) then
+            if (load_urr_prob_tables) then
               call load_prob_tables(i)
             else
               call isotopes(i) % alloc_prob_tables()
               call calc_prob_tables(i)
             end if
           end do
-          if (write_avg_urr_xs .or. write_urr_tables) return
+          if (write_avg_urr_xs .or. write_urr_prob_tables) return
 
         case (ON_THE_FLY)
           select case (real_freq)

@@ -15,40 +15,6 @@ module input_xml
                               starts_with, ends_with
   use tally_header,     only: TallyObject, TallyFilter
   use tally_initialize, only: add_tallies
-  use xs,               only: background,&
-                              competitive,&
-                              endf_files,&
-                              E_spacing,&
-                              E_tabs,&
-                              formalism,&
-                              histories_avg_urr,&
-                              i_real_user,&
-                              INT_T,&
-                              isotopes,&
-                              load_urr_tables,&
-                              l_waves,&
-                              max_batches_avg_urr,&
-                              min_batches_avg_urr,&
-                              min_dE_point_urr,&
-                              n_bands,&
-                              n_energies,&
-                              n_isotopes,&
-                              n_reals,&
-                              n_temperatures,&
-                              path_avg_urr_xs,&
-                              path_endf,&
-                              path_prob_tables,&
-                              real_freq,&
-                              represent_params,&
-                              represent_urr,&
-                              run_fasturr,&
-                              tol_avg_urr,&
-                              tol_point_urr,&
-                              T_tabs,&
-                              w_eval,&
-                              write_avg_urr_xs,&
-                              write_urr_tables
-
   use xml_interface
 
   implicit none
@@ -3222,10 +3188,10 @@ contains
     inquire(FILE=filename, EXIST=file_exists)
     if (.not. file_exists) then
       ! Since a urr.xml file is optional, no error is issued here
-      run_fasturr = .false.
+      use_urr = .false.
       return
     else
-      run_fasturr = .true.
+      use_urr = .true.
       continue
     end if
 
@@ -3377,15 +3343,15 @@ contains
     end if
 
     ! Check for list of nuclides to apply the treatment to
-    n_isotopes = 0
+    n_isotopes_urr = 0
     if (check_for_node(doc, 'nuclide')) then
       call get_node_list(doc, 'nuclide', nuc_list_node)
-      n_isotopes = get_list_size(nuc_list_node)
-      allocate(isotopes(n_isotopes))
-      allocate(endf_files(n_isotopes))
+      n_isotopes_urr = get_list_size(nuc_list_node)
+      allocate(isotopes(n_isotopes_urr))
+      allocate(endf_filenames(n_isotopes_urr))
 
       ! Read in ZAID values and ENDF filenames for the nuclide(s)
-      do i = 1, n_isotopes
+      do i = 1, n_isotopes_urr
         call get_list_item(nuc_list_node, i, nuc_node)
 
         ! Check that a nuclide ZAID is given
@@ -3398,7 +3364,7 @@ contains
 
         ! Check that an ENDF data file is given
         if (check_for_node(nuc_node, 'endf')) then
-          call get_node_value(nuc_node, 'endf', endf_files(i))
+          call get_node_value(nuc_node, 'endf', endf_filenames(i))
         else          
           call fatal_error('No ENDF-6 data file specified for nuclide ' &
                // trim(to_str(i)) // ' in urr.xml file')
@@ -3486,10 +3452,10 @@ contains
       call get_node_value(doc, "competitive", temp_str)
       if (trim(adjustl(to_lower(temp_str))) == 'false' &
            .or. trim(adjustl(temp_str)) == '0') then
-        competitive = .false.
+        competitive_structure = .false.
       else if (trim(adjustl(to_lower(temp_str))) == 'true' &
            .or. trim(adjustl(temp_str)) == '1') then
-        competitive = .true.
+        competitive_structure = .true.
       else
         call fatal_error('Modeling of competitive reaction cross section &
              &resonance structure must be true or false in urr.xml')
@@ -3512,7 +3478,7 @@ contains
         call get_node_value(prob_table_node, 'load_tables', temp_str)
         if (trim(adjustl(to_lower(temp_str))) == 'true'&
              .or. trim(adjustl(temp_str)) == '1') then
-          load_urr_tables = .true.
+          load_urr_prob_tables = .true.
           if (master)&
                call write_message('Loading probability tables from files. Any&
                & probability table generation parameters specified in urr.xml&
@@ -3525,7 +3491,7 @@ contains
           end if
         else if (trim(adjustl(to_lower(temp_str))) == 'false'&
              .or. trim(adjustl(temp_str)) == '0') then
-          load_urr_tables = .false.
+          load_urr_prob_tables = .false.
         else
           call fatal_error('Loading probability tables must be true or false&
                & in urr.xml')
@@ -3566,10 +3532,10 @@ contains
              &urr.xml')
       end if
 
-      if (.not. load_urr_tables) then
+      if (.not. load_urr_prob_tables) then
         ! number of bands
         if (check_for_node(prob_table_node, "n_bands")) then
-          call get_node_value(prob_table_node, "n_bands", n_bands)
+          call get_node_value(prob_table_node, "n_bands", n_bands_urr_prob_tables)
         else
           call fatal_error('No number of probability table cross section bands&
                & given in urr.xml')
@@ -3577,11 +3543,11 @@ contains
 
         ! temperatures
         if (check_for_node(prob_table_node, "temperatures")) then
-          n_temperatures = get_arraysize_double(prob_table_node, "temperatures")
-          allocate(T_tabs(n_temperatures))
+          n_temperatures_urr_prob_tables = get_arraysize_double(prob_table_node, "temperatures")
+          allocate(T_tabs(n_temperatures_urr_prob_tables))
           call get_node_array(prob_table_node, "temperatures", T_tabs)
-          if (n_temperatures > 1) then
-            do i = 2, n_temperatures
+          if (n_temperatures_urr_prob_tables > 1) then
+            do i = 2, n_temperatures_urr_prob_tables
               if (T_tabs(i) <= T_tabs(i-1)) call fatal_error('Cross section &
                    & reconstruction temperatures must be strictly ascending.')
             end do
@@ -3608,8 +3574,8 @@ contains
 
         ! histories per batch
         if (check_for_node(prob_table_node, "histories")) then
-          call get_node_value(prob_table_node, "histories", histories_avg_urr)
-          if (mod(histories_avg_urr, n_bands) /= 0) call fatal_error('Histories &
+          call get_node_value(prob_table_node, "histories", n_histories_urr_prob_tables)
+          if (mod(n_histories_urr_prob_tables, n_bands_urr_prob_tables) /= 0) call fatal_error('Histories &
                &per batch must be evenly divisible by number of probability bands')
         else
           call fatal_error('No number of realization histories for probability&
@@ -3664,9 +3630,9 @@ contains
         if (check_for_node(prob_table_node, "background")) then
           call get_node_value(prob_table_node, "background", temp_str)
           if (trim(adjustl(to_lower(temp_str))) == 'false') then
-            background = FALSE
+            background_xs_treatment = FALSE
           else if (trim(adjustl(to_lower(temp_str))) == 'endf') then
-            background = ENDFFILE
+            background_xs_treatment = ENDFFILE
           else
             call fatal_error('Unrecognized background cross section source&
                  & in probability table calculation given in urr.xml')
@@ -3680,10 +3646,10 @@ contains
           call get_node_value(prob_table_node, "write_tables", temp_str)
           if (trim(adjustl(to_lower(temp_str))) == 'false' &
                .or. trim(adjustl(temp_str)) == '0') then
-            write_urr_tables = .false.
+            write_urr_prob_tables = .false.
           else if (trim(adjustl(to_lower(temp_str))) == 'true' &
                .or. trim(adjustl(temp_str)) == '1') then
-            write_urr_tables = .true.
+            write_urr_prob_tables = .true.
           else
             call fatal_error('write_tables must be true or false in urr.xml')
           end if

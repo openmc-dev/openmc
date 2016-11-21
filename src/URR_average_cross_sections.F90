@@ -1,12 +1,7 @@
-module avg_urr_xs_values
+module URR_average_cross_sections
 
-  use constants,  only: N_AVG_URR_GRID
   use error,      only: fatal_error
   use global
-  use xs,         only: Isotope,&
-                        isotopes,&
-                        path_avg_urr_xs,&
-                        represent_params
 
   implicit none
   private
@@ -106,4 +101,4 @@ contains
 
   end subroutine read_avg_urr_xs
 
-end module avg_urr_xs_values
+end module URR_average_cross_sections

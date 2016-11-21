@@ -114,10 +114,10 @@ class FissionProductYields(EqualityMixin):
                 yields = {}
                 for j in range(n_products):
                     Z, A = divmod(int(values[4*j]), 1000)
-                    excited_state = int(values[4*j + 1])
+                    isomeric_state = int(values[4*j + 1])
                     name = ATOMIC_SYMBOL[Z] + str(A)
-                    if excited_state > 0:
-                        name += '_e{}'.format(excited_state)
+                    if isomeric_state > 0:
+                        name += '_m{}'.format(isomeric_state)
                     yield_j = ufloat(values[4*j + 2], values[4*j + 3])
                     yields[name] = yield_j
 

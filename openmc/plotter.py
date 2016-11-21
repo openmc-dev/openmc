@@ -197,6 +197,10 @@ def plot_xs(this, types, divisor_types=None, temperature=294., axis=None,
             plot_func(E, data[i, :], label=types[i])
 
     ax.set_xlabel('Energy [eV]')
+    if plot_CE:
+        ax.set_xlim(1.E-5, 20.E6)
+    else:
+        ax.set_xlim(E[-1], E[0])
     if divisor_types:
         if data_type == 'nuclide':
             ylabel = 'Nuclidic Microscopic Data'
@@ -214,7 +218,10 @@ def plot_xs(this, types, divisor_types=None, temperature=294., axis=None,
     ax.set_ylabel(ylabel)
     ax.legend(loc='best')
     if this.name is not None:
-        ax.set_title('Cross Section for ' + this.name)
+        if len(types) > 1:
+            ax.set_title('Cross Sections for ' + this.name)
+        else:
+            ax.set_title('Cross Section for ' + this.name)
 
     return fig
 
@@ -649,11 +656,19 @@ def calculate_mgxs(this, types, orders=None, temperature=294.,
     # Convert the data to the format needed
     data = np.zeros((len(types), 2 * library.energy_groups.num_groups))
     energy_grid = np.zeros(2 * library.energy_groups.num_groups)
+    i = 0
+    for g in range(library.energy_groups.num_groups):
+        energy_grid[i: i + 2] = library.energy_groups.group_edges[g: g + 2]
+        i += 2
+    # Ensure the energy will show on a log-axis by replacing 0s with a
+    # sufficiently small number
+    if energy_grid[0] <= 0.:
+        energy_grid[0] = 1.E-5
+
     for line in range(len(types)):
         i = 0
         for g in range(library.energy_groups.num_groups):
             data[line, i: i + 2] = mgxs[line, g]
-            energy_grid[i: i + 2] = library.energy_groups.group_edges[g: g + 2]
             i += 2
 
     return np.flipud(energy_grid), data

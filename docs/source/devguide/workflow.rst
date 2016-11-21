@@ -238,4 +238,4 @@ from your private repository into a public fork.
 .. _paid plan: https://github.com/plans
 .. _Bitbucket: https://bitbucket.org
 .. _ctest: http://www.cmake.org/cmake/help/v2.8.12/ctest.html
-.. _NNDC:  http://http://www.nndc.bnl.gov/endf/b7.1/acefiles.html
+.. _NNDC:  http://www.nndc.bnl.gov/endf/b7.1/acefiles.html

@@ -511,6 +511,9 @@ class IncidentNeutron(EqualityMixin):
                 rxs = [data[mt] for mt in SUM_RULES[mt_sum] if mt in data]
                 if len(rxs) > 0:
                     data.summed_reactions[mt_sum] = rx = Reaction(mt_sum)
+                    if rx.mt == 18 and 'total_nu' in group:
+                        tgroup = group['total_nu']
+                        rx.derived_products.append(Product.from_hdf5(tgroup))
                     for T in data.temperatures:
                         rx.xs[T] = Sum([rx_i.xs[T] for rx_i in rxs])
 

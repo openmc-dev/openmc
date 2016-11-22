@@ -1,5 +1,6 @@
 from numbers import Integral, Real
 from six import string_types
+from itertools import chain
 
 import numpy as np
 
@@ -371,38 +372,41 @@ def _calculate_xs_nuclide(this, types, temperature=294., sab_name=None,
                         funcs.append(pw_funcs)
                     else:
                         funcs.append(nuc[mt].xs[nucT])
-                elif mt == 5 and mt in nuc:
-                    # Only consider the (n,misc) products if neutrons are
-                    # included in the outgoing channel since (n,misc) is only
-                    # explicitly needed for scatter cross sections.
-                    for prod in nuc[mt].products:
-                        if prod.particle == 'neutron' and \
-                            prod.emission_mode in ('total', 'prompt'):
-                            if yields[i]:
-                                func = openmc.data.Combination(
-                                        [nuc[mt].xs[nucT], prod.yield_],
-                                        [np.multiply])
-                            else:
-                                func = nuc[mt].xs[nucT]
-
-                            funcs.append(func)
-                            break
-                    else:
-                        funcs.append(lambda x: 0.)
-
                 elif mt in nuc:
                     if yields[i]:
-                        for prod in nuc[mt].products:
+                        for prod in chain(nuc[mt].products,
+                                          nuc[mt].derived_products):
                             if prod.particle == 'neutron' and \
-                                prod.emission_mode in ('total', 'prompt'):
+                                prod.emission_mode == 'total':
                                 func = openmc.data.Combination(
                                     [nuc[mt].xs[nucT], prod.yield_],
                                     [np.multiply])
                                 funcs.append(func)
                                 break
                         else:
-                            # Assume the yield is 1
-                            funcs.append(nuc[mt].xs[nucT])
+                            # Total doesn't exist so we have to create from
+                            # prompt and delayed
+                            func = None
+                            for prod in chain(nuc[mt].products,
+                                              nuc[mt].derived_products):
+                                if prod.particle == 'neutron' and \
+                                    prod.emission_mode != 'total':
+                                    if func:
+                                        func = openmc.data.Combination(
+                                            [nuc[mt].xs[nucT], prod.yield_,
+                                             func], [np.multiply, np.add])
+                                    else:
+                                        func = openmc.data.Combination(
+                                            [nuc[mt].xs[nucT], prod.yield_],
+                                            [np.multiply])
+                            if func:
+                                funcs.append(func)
+                            else:
+                                # If func is still None, then there were no
+                                # products. In that case, assume the yield is
+                                # one as its not provided for some summed
+                                # reactions like MT=4
+                                funcs.append(nuc[mt].xs[nucT])
                     else:
                         funcs.append(nuc[mt].xs[nucT])
                 elif mt == UNITY_MT:

@@ -1,10 +1,8 @@
-from numbers import Integral
-import sys
 import warnings
 
 from six import string_types
 
-from openmc.checkvalue import check_type
+import openmc.checkvalue as cv
 
 
 class Nuclide(object):
@@ -72,7 +70,7 @@ class Nuclide(object):
 
     @name.setter
     def name(self, name):
-        check_type('name', name, string_types)
+        cv.check_type('name', name, string_types)
         self._name = name
 
         if '-' in name:

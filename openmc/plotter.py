@@ -374,6 +374,8 @@ def _calculate_xs_nuclide(this, types, temperature=294., sab_name=None,
                         funcs.append(nuc[mt].xs[nucT])
                 elif mt in nuc:
                     if yields[i]:
+                        # Get the total yield first if available. This will be
+                        # used primarily for fission.
                         for prod in chain(nuc[mt].products,
                                           nuc[mt].derived_products):
                             if prod.particle == 'neutron' and \
@@ -385,7 +387,8 @@ def _calculate_xs_nuclide(this, types, temperature=294., sab_name=None,
                                 break
                         else:
                             # Total doesn't exist so we have to create from
-                            # prompt and delayed
+                            # prompt and delayed. This is used for scatter
+                            # multiplication.
                             func = None
                             for prod in chain(nuc[mt].products,
                                               nuc[mt].derived_products):
@@ -393,14 +396,12 @@ def _calculate_xs_nuclide(this, types, temperature=294., sab_name=None,
                                     prod.emission_mode != 'total':
                                     if func:
                                         func = openmc.data.Combination(
-                                            [nuc[mt].xs[nucT], prod.yield_,
-                                             func], [np.multiply, np.add])
+                                            [prod.yield_, func], [np.add])
                                     else:
-                                        func = openmc.data.Combination(
-                                            [nuc[mt].xs[nucT], prod.yield_],
-                                            [np.multiply])
+                                        func = prod.yield_
                             if func:
-                                funcs.append(func)
+                                funcs.append(openmc.data.Combination(
+                                    [func, nuc[mt].xs[nucT]], [np.multiply]))
                             else:
                                 # If func is still None, then there were no
                                 # products. In that case, assume the yield is

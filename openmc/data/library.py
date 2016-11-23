@@ -1,10 +1,12 @@
 import os
 import xml.etree.ElementTree as ET
+from six import string_types
 
 import h5py
 
 from openmc.mixin import EqualityMixin
 from openmc.clean_xml import clean_xml_indentation
+from openmc.checkvalue import check_type
 
 
 class DataLibrary(EqualityMixin):
@@ -95,13 +97,14 @@ class DataLibrary(EqualityMixin):
                    method='xml')
 
     @classmethod
-    def from_xml(cls, path):
+    def from_xml(cls, path=None):
         """Read cross section data library from an XML file.
 
         Parameters
         ----------
-        path : str
-            Path to XML file to read.
+        path : str, optional
+            Path to XML file to read. If not provided, the
+            `OPENMC_CROSS_SECTIONS` environment variable will be  used.
 
         Returns
         -------
@@ -111,6 +114,18 @@ class DataLibrary(EqualityMixin):
         """
 
         data = cls()
+
+        # If path is None, get the cross sections from the
+        # OPENMC_CROSS_SECTIONS environment variable
+        if path is None:
+            path = os.environ.get('OPENMC_CROSS_SECTIONS')
+
+        # Check to make sure there was an environmental variable.
+        if path is None:
+            raise ValueError("Either path or OPENMC_CROSS_SECTIONS "
+                             "environmental variable must be set")
+
+        check_type('path', path, string_types)
 
         tree = ET.parse(path)
         root = tree.getroot()

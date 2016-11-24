@@ -177,6 +177,11 @@ Nuclear Data
 - Paul K. Romano and Sterling M. Harper, "Nuclear data processing capabilities
   in OpenMC", *Proc. Nuclear Data*, Sep. 11-16, 2016.
 
+- Jonathan A. Walsh, Benoit Froget, Kord S. Smith, and Forrest B. Brown,
+  "Neutron Cross Section Processing Methods for Improved Integral Benchmarking
+  of Unresolved Resonance Region Evaluations," *Eur. Phys. J. Web Conf.*
+  **111**, 06001 (2016). `<http://dx.doi.org/10.1051/epjconf/201611106001>`_
+
 - Jonathan A. Walsh, Paul K. Romano, Benoit Forget, and Kord S. Smith,
   "Optimizations of the energy grid search algorithm in continuous-energy Monte
   Carlo particle transport codes", *Comput. Phys. Commun.*, **196**, 134-142

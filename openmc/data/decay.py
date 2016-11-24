@@ -80,15 +80,25 @@ class FissionProductYields(EqualityMixin):
     cumulative : list of dict
         Cumulative yields for each tabulated energy. Each item in the list is a
         dictionary whose keys are nuclide names and values are cumulative
-        yields. The i-th dictionary corresponds to the i-th energy.
+        yields. The i-th dictionary corresponds to the i-th incident neutron
+        energy.
     energies : Iterable of float or None
         Energies at which fission product yields are tabulated.
     independent : list of dict
         Independent yields for each tabulated energy. Each item in the list is a
         dictionary whose keys are nuclide names and values are independent
-        yields. The i-th dictionary corresponds to the i-th energy.
+        yields. The i-th dictionary corresponds to the i-th incident neutron
+        energy.
     nuclide : dict
         Properties of the fissioning nuclide.
+
+    Notes
+    -----
+    Neutron fission yields are typically not measured with a monoenergetic
+    source of neutrons. As such, if the fission yields are given at, e.g.,
+    0.0253 eV, one should interpret this as meaning that they are derived from a
+    typical thermal reactor flux spectrum as opposed to a monoenergetic source
+    at 0.0253 eV.
 
     """
     def __init__(self, ev_or_filename):
@@ -97,17 +107,13 @@ class FissionProductYields(EqualityMixin):
         def get_yields(file_obj):
             # Determine number of energies
             n_energy = get_head_record(file_obj)[2]
-            if n_energy > 1:
-                energies = np.zeros(n_energy)
-            else:
-                energies = None
+            energies = np.zeros(n_energy)
 
             data = []
             for i in range(n_energy):
                 # Determine i-th energy and number of products
                 items, values = get_list_record(file_obj)
-                if n_energy > 1:
-                    energies[i] = items[0]
+                energies[i] = items[0]
                 n_products = items[5]
 
                 # Get yields for i-th energy
@@ -314,7 +320,6 @@ class Decay(EqualityMixin):
             ev = ev_or_filename
         else:
             ev = Evaluation(ev_or_filename)
-        #assert ev.info['sublibrary'] == 'Radioactive decay data'
 
         file_obj = StringIO(ev.section[8, 457])
 
@@ -332,7 +337,7 @@ class Decay(EqualityMixin):
         self.nuclide['isomeric_state'] = metastable
         if metastable > 0:
             self.nuclide['name'] = '{}{}_m{}'.format(ATOMIC_SYMBOL[Z], A,
-                                                    metastable)
+                                                     metastable)
         else:
             self.nuclide['name'] = '{}{}'.format(ATOMIC_SYMBOL[Z], A)
         self.nuclide['mass'] = items[1]  # AWR

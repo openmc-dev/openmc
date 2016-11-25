@@ -342,7 +342,7 @@ module constants
   integer, parameter :: NO_BIN_FOUND = -1
 
   ! Tally filter and map types
-  integer, parameter :: N_FILTER_TYPES = 13
+  integer, parameter :: N_FILTER_TYPES = 14
   integer, parameter :: &
        FILTER_UNIVERSE     = 1,  &
        FILTER_MATERIAL     = 2,  &
@@ -356,7 +356,8 @@ module constants
        FILTER_MU           = 10, &
        FILTER_POLAR        = 11, &
        FILTER_AZIMUTHAL    = 12, &
-       FILTER_DELAYEDGROUP = 13
+       FILTER_DELAYEDGROUP = 13, &
+       FILTER_LINLINENERGY = 14
 
   ! Mesh types
   integer, parameter :: &

@@ -1436,3 +1436,79 @@ class DelayedGroupFilter(IntegralFilter):
         filter's bins.
 
     """
+
+
+class LinLinEnergyFilter(Filter):
+    """
+
+    Parameters
+    ----------
+    energy : Iterable of Real
+        A grid of energy values in eV.
+    y : iterable of Real
+        A grid of interpolant values in eV.
+
+    Attributes
+    ----------
+    energy : Iterable of Real
+        A grid of energy values in eV.
+    y : iterable of Real
+        A grid of interpolant values in eV.
+    num_bins : Integral
+        The number of filter bins (always 1 for this filter)
+    stride : Integral
+        The number of filter, nuclide and score bins within each of this
+        filter's bins.
+
+    """
+
+    def __init__(self, energy, y):
+        self.energy = energy
+        self.y = y
+        self._stride = None
+
+    @property
+    def energy(self):
+        return self._energy
+
+    @property
+    def y(self):
+        return self._y
+
+    @energy.setter
+    def energy(self, energy):
+        # Make sure the energy grid is a numpy array.
+        energy = np.array(energy)
+
+        # If the grid is 0D numpy array, promote to 1D.
+        if energy.shape == ():
+            energy.shape = (1,)
+
+        # Make sure the values are Real and positive.
+        cv.check_type('filter energy grid', energy, Iterable, Real)
+        for E in energy:
+            cv.check_greater_than('filter energy grid', E, 0, equality=True)
+
+        self._energy = energy
+
+    @y.setter
+    def y(self, y):
+        # Make sure the values are in a numpy array.
+        y = np.array(y)
+
+        # If the array is 0D, promote to 1D.
+        if y.shape == ():
+            y.shape = (1,)
+
+        # Make sure the values are Real.
+        cv.check_type('filter interpolant values', y, Iterable, Real)
+
+        self._y = y
+
+    def to_xml(self):
+        """Return XML Element representing the Filter."""
+        element = ET.Element('filter')
+        element.set('type', self.short_name.lower())
+        element.set('energy', ' '.join(str(e) for e in self.energy))
+        element.set('y', ' '.join(str(y) for y in self.y))
+        return element

@@ -100,10 +100,13 @@ class Filter(object):
     @classmethod
     def _recursive_subclasses(cls):
         """Return all subclasses and their subclasses, etc."""
-        subs = cls.__subclasses__()
-        subsubs = [grand for s in subs for grand in s.__subclasses__()]
-        subsubsubs = [grand for s in subsubs for grand in s.__subclasses__()]
-        return subs + subsubs + subsubsubs
+        all_subclasses = []
+
+        for subclass in cls.__subclasses__():
+            all_subclasses.append(subclass)
+            all_subclasses.extend(subclass._recursive_subclasses())
+
+        return all_subclasses
 
     @classmethod
     def from_hdf5(cls, group, **kwargs):

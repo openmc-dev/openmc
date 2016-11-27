@@ -3,12 +3,13 @@
 import os
 import sys
 sys.path.insert(0, os.pardir)
-import numpy as np
+
 from testing_harness import PyAPITestHarness
 from openmc.filter import *
 from openmc import Mesh, Tally, Tallies
 from openmc.source import Source
 from openmc.stats import Box
+
 
 class TalliesTestHarness(PyAPITestHarness):
     def _build_inputs(self):

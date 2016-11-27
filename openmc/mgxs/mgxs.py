@@ -1532,9 +1532,19 @@ class MGXS(object):
         else:
             df = df.drop('score', axis=1)
 
+        # Determine if change-in-angle bins are included in the MGXS to
+        # properly tile the group boundaries
+        if 'mu low' in df:
+            # Find the length of the mu filters indirectly from the number
+            # of times the mu bins repeats.
+            num_mu = int(df.shape[0] /
+                         df[df['mu low'] == df['mu low'][0]].shape[0])
+        else:
+            num_mu = 1
+
         # Override energy groups bounds with indices
         all_groups = np.arange(self.num_groups, 0, -1, dtype=np.int)
-        all_groups = np.repeat(all_groups, len(query_nuclides))
+        all_groups = np.repeat(all_groups, len(query_nuclides) * num_mu)
         if 'energy low [eV]' in df and 'energyout low [eV]' in df:
             df.rename(columns={'energy low [eV]': 'group in'},
                       inplace=True)
@@ -3795,10 +3805,8 @@ class ScatterMatrixXS(MatrixMGXS):
             # than 1, so try each axis in axes one at a time, catching the
             # ValueError as needed.
             for axis in axes:
-                try:
+                if xs.shape[axis] == 1:
                     xs = np.squeeze(xs, axis=axis)
-                except ValueError:
-                    pass
 
         return xs
 
@@ -3878,9 +3886,12 @@ class ScatterMatrixXS(MatrixMGXS):
                 df = df[df['moment'] == 'P{}'.format(moment)]
 
         elif self.scatter_format == 'histogram':
-            # Add a change-in-angle (mu) column to dataframe
-            ###TODO NOT SURE I NEED TO DO THIS
-            pass
+            # Replace the mu low and mu high columns with a single mu bin
+            del df['mu high']
+            df.rename(columns={'mu low': 'mu bins'}, inplace=True)
+            bins = [i + 1 for i in range(self.histogram_bins)]
+            bins = np.tile(bins, int(df.shape[0] / len(bins)))
+            df['mu bins'] = bins
 
         return df
 

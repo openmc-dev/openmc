@@ -59,7 +59,7 @@ class Library(object):
         The spatial domain(s) for which MGXS in the Library are computed
     correction : {'P0', None}
         Apply the P0 correction to scattering matrices if set to 'P0'
-    scatter_format : {'legendre', or 'histogram'}
+    scatter_format : {'legendre', 'histogram'}
         Representation of the angular scattering distribution (default is
         'legendre')
     legendre_order : int

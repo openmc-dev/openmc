@@ -1784,8 +1784,14 @@ class XSdata(object):
                                     np.sum(self._scatter_matrix[i][p, a, g_in, :, :],
                                            axis=1)
                         nz = np.nonzero(matrix)
-                        g_out_bounds[p, a, g_in, 0] = nz[0][0]
-                        g_out_bounds[p, a, g_in, 1] = nz[0][-1]
+                        # It is possible that there only zeros in matrix
+                        # and therefore nz will be empty, in that case set
+                        # g_out_bounds to 0s
+                        if len(nz[0]) == 0:
+                            g_out_bounds[p, a, g_in, :] = 0
+                        else:
+                            g_out_bounds[p, a, g_in, 0] = nz[0][0]
+                            g_out_bounds[p, a, g_in, 1] = nz[0][-1]
 
             # Now create the flattened scatter matrix array
             flat_scatt = []
@@ -2006,27 +2012,6 @@ class MGXSLibrary(object):
         self.num_delayed_groups = num_delayed_groups
         self._xsdatas = []
 
-    def __getitem__(self, name):
-        """Access the XSdata objects by name
-
-        Parameters
-        ----------
-        name : str
-            Name of openmc.XSdata object to obtain
-
-        Returns
-        -------
-        result : openmc.XSdata or None
-            Provides the matching XSdata object or None, if not found
-
-        """
-        check_type("name", name, str)
-        result = None
-        for xsdata in self.xsdatas:
-            if name == xsdata.name:
-                result = xsdata
-        return result
-
     @property
     def energy_groups(self):
         return self._energy_groups
@@ -2109,6 +2094,27 @@ class MGXSLibrary(object):
             raise ValueError(msg)
 
         self._xsdatas.remove(xsdata)
+
+    def get_by_name(self, name):
+        """Access the XSdata objects by name
+
+        Parameters
+        ----------
+        name : str
+            Name of openmc.XSdata object to obtain
+
+        Returns
+        -------
+        result : openmc.XSdata or None
+            Provides the matching XSdata object or None, if not found
+
+        """
+        check_type("name", name, str)
+        result = None
+        for xsdata in self.xsdatas:
+            if name == xsdata.name:
+                result = xsdata
+        return result
 
     def export_to_hdf5(self, filename='mgxs.h5'):
         """Create an hdf5 file that can be used for a simulation.

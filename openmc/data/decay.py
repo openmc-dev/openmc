@@ -157,7 +157,7 @@ class FissionProductYields(EqualityMixin):
             assert np.all(energies == self.energies)
 
     @classmethod
-    def from_endf(cls, filename):
+    def from_endf(cls, ev_or_filename):
         """Generate fission product yield data from an ENDF evaluation
 
         Parameters
@@ -172,7 +172,7 @@ class FissionProductYields(EqualityMixin):
             Fission product yield data
 
         """
-        return cls(filename)
+        return cls(ev_or_filename)
 
 
 class DecayMode(EqualityMixin):
@@ -460,4 +460,26 @@ class Decay(EqualityMixin):
 
     @property
     def decay_constant(self):
-        return log(2.)/self.half_life
+        if hasattr(self.half_life, 'n'):
+            return log(2.)/self.half_life
+        else:
+            mu, sigma = self.half_life
+            return ufloat(log(2.)/mu, log(2.)/mu**2*sigma)
+
+    @classmethod
+    def from_endf(cls, ev_or_filename):
+        """Generate radioactive decay data from an ENDF evaluation
+
+        Parameters
+        ----------
+        ev_or_filename : str or openmc.data.endf.Evaluation
+            ENDF radioactive decay data evaluation to read from. If given as a
+            string, it is assumed to be the filename for the ENDF file.
+
+        Returns
+        -------
+        openmc.data.Decay
+            Radioactive decay data
+
+        """
+        return cls(ev_or_filename)

@@ -722,7 +722,7 @@ def _calculate_mgxs_nuc_macro(this, types, library, orders=None,
         if orders[i]:
             cv.check_greater_than("order value", orders[i], 0, equality=True)
 
-    xsdata = library[this.name]
+    xsdata = library.get_by_name(this.name)
 
     if xsdata is not None:
         # Obtain the nearest temperature

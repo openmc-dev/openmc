@@ -1773,8 +1773,14 @@ class XSdata(object):
                                     np.sum(self._scatter_matrix[i][p, a, g_in, :, :],
                                            axis=1)
                         nz = np.nonzero(matrix)
-                        g_out_bounds[p, a, g_in, 0] = nz[0][0]
-                        g_out_bounds[p, a, g_in, 1] = nz[0][-1]
+                        # It is possible that there only zeros in matrix
+                        # and therefore nz will be empty, in that case set
+                        # g_out_bounds to 0s
+                        if len(nz[0]) == 0:
+                            g_out_bounds[p, a, g_in, :] = 0
+                        else:
+                            g_out_bounds[p, a, g_in, 0] = nz[0][0]
+                            g_out_bounds[p, a, g_in, 1] = nz[0][-1]
 
             # Now create the flattened scatter matrix array
             flat_scatt = []

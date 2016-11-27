@@ -36,7 +36,7 @@ scatter_matrix = np.array(
       [0.0000000, 0.0000000, 0.0000000, 0.0001253, 0.2714010, 0.0102550, 0.0000000],
       [0.0000000, 0.0000000, 0.0000000, 0.0000000, 0.0012968, 0.2658020, 0.0168090],
       [0.0000000, 0.0000000, 0.0000000, 0.0000000, 0.0000000, 0.0085458, 0.2730800]]])
-scatter_matrix = np.swapaxes(np.swapaxes(scatter_matrix, 0, 1), 1, 2)
+scatter_matrix = np.rollaxis(scatter_matrix, 0, 3)
 uo2_xsdata.set_scatter_matrix(scatter_matrix)
 uo2_xsdata.set_fission([7.21206E-03, 8.19301E-04, 6.45320E-03,
                         1.85648E-02, 1.78084E-02, 8.30348E-02,
@@ -62,7 +62,7 @@ scatter_matrix = np.array(
       [0.0000000, 0.0000000, 0.0000000, 0.0000714, 0.1391380, 0.5118200, 0.0612290],
       [0.0000000, 0.0000000, 0.0000000, 0.0000000, 0.0022157, 0.6999130, 0.5373200],
       [0.0000000, 0.0000000, 0.0000000, 0.0000000, 0.0000000, 0.1324400, 2.4807000]]])
-scatter_matrix = np.swapaxes(np.swapaxes(scatter_matrix, 0, 1), 1, 2)
+scatter_matrix = np.rollaxis(scatter_matrix, 0, 3)
 h2o_xsdata.set_scatter_matrix(scatter_matrix)
 
 mg_cross_sections_file = openmc.MGXSLibrary(groups)

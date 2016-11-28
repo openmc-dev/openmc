@@ -368,7 +368,7 @@ class CMFD(object):
     @cmfd_mesh.setter
     def cmfd_mesh(self, mesh):
         check_type('CMFD mesh', mesh, CMFDMesh)
-        self._mesh = mesh
+        self._cmfd_mesh = mesh
 
     @norm.setter
     def norm(self, norm):
@@ -446,8 +446,8 @@ class CMFD(object):
             element.text = str(self._ktol)
 
     def _create_mesh_subelement(self):
-        if self._mesh is not None:
-            xml_element = self._mesh._get_xml_element()
+        if self._cmfd_mesh is not None:
+            xml_element = self._cmfd_mesh._get_xml_element()
             self._cmfd_file.append(xml_element)
 
     def _create_norm_subelement(self):

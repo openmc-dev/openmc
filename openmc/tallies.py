@@ -1327,7 +1327,7 @@ class Tally(object):
 
                     # Create list of cell instance IDs for distribcell Filters
                     elif isinstance(self_filter, openmc.DistribcellFilter):
-                        bins = [i for i in range(self_filter.num_bins)]
+                        bins = [b for b in range(self_filter.num_bins)]
 
                     # Create list of IDs for bins for all other filter types
                     else:
@@ -2258,12 +2258,12 @@ class Tally(object):
         # Construct lists of tuples for the bins in each of the two filters
         filters = [type(filter1), type(filter2)]
         if isinstance(filter1, openmc.DistribcellFilter):
-            filter1_bins = [i for i in range(filter1.num_bins)]
+            filter1_bins = [b for b in range(filter1.num_bins)]
         else:
             filter1_bins = [filter1.get_bin(i) for i in range(filter1.num_bins)]
 
         if isinstance(filter2, openmc.DistribcellFilter):
-            filter2_bins = [i for i in range(filter2.num_bins)]
+            filter2_bins = [b for b in range(filter2.num_bins)]
         else:
             filter2_bins = [filter2.get_bin(i) for i in range(filter2.num_bins)]
 
@@ -3108,8 +3108,16 @@ class Tally(object):
             # Sum across the bins in the user-specified filter
             for i, self_filter in enumerate(self.filters):
                 if isinstance(self_filter, filter_type):
+                    shape = mean.shape
                     mean = np.take(mean, indices=bin_indices, axis=i)
                     std_dev = np.take(std_dev, indices=bin_indices, axis=i)
+
+                    # NumPy take introduces a new dimension in output array
+                    # for some special cases that must be removed
+                    if len(mean.shape) > len(shape):
+                        mean = np.squeeze(mean, axis=i)
+                        std_dev = np.squeeze(std_dev, axis=i)
+
                     mean = np.sum(mean, axis=i, keepdims=True)
                     std_dev = np.sum(std_dev**2, axis=i, keepdims=True)
                     std_dev = np.sqrt(std_dev)
@@ -3255,8 +3263,16 @@ class Tally(object):
             # Average across the bins in the user-specified filter
             for i, self_filter in enumerate(self.filters):
                 if isinstance(self_filter, filter_type):
+                    shape = mean.shape
                     mean = np.take(mean, indices=bin_indices, axis=i)
                     std_dev = np.take(std_dev, indices=bin_indices, axis=i)
+
+                    # NumPy take introduces a new dimension in output array
+                    # for some special cases that must be removed
+                    if len(mean.shape) > len(shape):
+                        mean = np.squeeze(mean, axis=i)
+                        std_dev = np.squeeze(std_dev, axis=i)
+
                     mean = np.nanmean(mean, axis=i, keepdims=True)
                     std_dev = np.nanmean(std_dev**2, axis=i, keepdims=True)
                     std_dev /= len(bin_indices)

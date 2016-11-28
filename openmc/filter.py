@@ -1323,11 +1323,14 @@ class PolarFilter(Filter):
         # Extract the lower and upper angle bounds, then repeat and tile
         # them as necessary to account for other filters.
         lo_bins = np.repeat(self.bins[:-1], self.stride)
+        hi_bins = np.repeast(self.bins[1:], self.stride)
         tile_factor = data_size / len(lo_bins)
         lo_bins = np.tile(lo_bins, tile_factor)
+        hi_bins = np.tile(hi_bins, tile_factor)
 
         # Add the new angle columns to the DataFrame.
         df.loc[:, 'polar low'] = lo_bins
+        df.loc[:, 'polar high'] = hi_bins
 
         return df
 
@@ -1399,11 +1402,14 @@ class AzimuthalFilter(Filter):
         # Extract the lower and upper angle bounds, then repeat and tile
         # them as necessary to account for other filters.
         lo_bins = np.repeat(self.bins[:-1], self.stride)
+        hi_bins = np.repeat(self.bins[1:], self.stride)
         tile_factor = data_size / len(lo_bins)
         lo_bins = np.tile(lo_bins, tile_factor)
+        hi_bins = np.tile(hi_bins, tile_factor)
 
         # Add the new angle columns to the DataFrame.
         df.loc[:, 'azimuthal low'] = lo_bins
+        df.loc[:, 'azimuthal high'] = hi_bins
 
         return df
 

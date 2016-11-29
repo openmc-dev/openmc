@@ -23,12 +23,10 @@ optional arguments:
 
 from __future__ import print_function
 import os
-from shutil import move
 import warnings
 import xml.etree.ElementTree as ET
 
 import argparse
-import h5py
 import numpy as np
 
 import openmc.mgxs_library
@@ -51,7 +49,7 @@ def parse_args():
 
     if args['output'] == '':
         filename = args['input'].name
-        extension = filenameos.path.splitext()
+        extension = os.path.splitext(filename)
         if extension == '.xml':
             filename = filename[:filename.rfind('.')] + '.h5'
         args['output'] = filename
@@ -84,6 +82,8 @@ if __name__ == '__main__':
     temp = tree.find('group_structure').text.strip()
     temp = np.array(temp.split())
     group_structure = temp.astype(np.float)
+    # Convert from MeV to eV
+    group_structure *= 1.e6
     energy_groups = openmc.mgxs.EnergyGroups(group_structure)
     temp = tree.find('inverse-velocity')
     if temp is not None:
@@ -103,7 +103,7 @@ if __name__ == '__main__':
         temperature = get_data(xsdata_elem, 'kT')
         if temperature is not None:
             temperature = \
-                float(temperature) / openmc.data.K_BOLTZMANN
+                float(temperature) / openmc.data.K_BOLTZMANN * 1.E6
         else:
             temperature = 294.
         temperatures = [temperature]
@@ -163,7 +163,7 @@ if __name__ == '__main__':
         if temp is not None:
             temp = np.array(temp.split(), dtype=float)
             total = temp.astype(np.float)
-            total.shape = xsd[i].vector_shape
+            total.shape = xsd[i].xs_shapes['[G]']
             xsd[i].set_total(total, temperature)
 
         if inverse_velocity is not None:
@@ -172,41 +172,55 @@ if __name__ == '__main__':
         temp = get_data(xsdata_elem, 'absorption')
         temp = np.array(temp.split())
         absorption = temp.astype(np.float)
-        absorption.shape = xsd[i].vector_shape
+        absorption.shape = xsd[i].xs_shapes['[G]']
         xsd[i].set_absorption(absorption, temperature)
 
         temp = get_data(xsdata_elem, 'scatter')
         temp = np.array(temp.split())
         scatter = temp.astype(np.float)
-        scatter.shape = xsd[i].pn_matrix_shape
+        # This is now a flattened-array of something that started with a
+        # shape of [Order][G][G']; we need to unflatten and then switch the
+        # ordering
+        in_shape = (order_dim, energy_groups.num_groups,
+                    energy_groups.num_groups)
+        if representation == 'angle':
+            in_shape = (n_pol, n_azi) + in_shape
+            scatter.shape = in_shape
+            scatter = np.swapaxes(scatter, 2, 3)
+            scatter = np.swapaxes(scatter, 3, 4)
+        else:
+            scatter.shape = in_shape
+            scatter = np.swapaxes(scatter, 0, 1)
+            scatter = np.swapaxes(scatter, 1, 2)
+
         xsd[i].set_scatter_matrix(scatter, temperature)
 
         temp = get_data(xsdata_elem, 'multiplicity')
         if temp is not None:
             temp = np.array(temp.split())
             multiplicity = temp.astype(np.float)
-            multiplicity.shape = xsd[i].matrix_shape
+            multiplicity.shape = xsd[i].xs_shapes["[G][G']"]
             xsd[i].set_multiplicity_matrix(multiplicity, temperature)
 
         temp = get_data(xsdata_elem, 'fission')
         if temp is not None:
             temp = np.array(temp.split())
             fission = temp.astype(np.float)
-            fission.shape = xsd[i].vector_shape
+            fission.shape = xsd[i].xs_shapes['[G]']
             xsd[i].set_fission(fission, temperature)
 
         temp = get_data(xsdata_elem, 'kappa_fission')
         if temp is not None:
             temp = np.array(temp.split())
             kappa_fission = temp.astype(np.float)
-            kappa_fission.shape = xsd[i].vector_shape
+            kappa_fission.shape = xsd[i].xs_shapes['[G]']
             xsd[i].set_kappa_fission(kappa_fission, temperature)
 
         temp = get_data(xsdata_elem, 'chi')
         if temp is not None:
             temp = np.array(temp.split())
             chi = temp.astype(np.float)
-            chi.shape = xsd[i].vector_shape
+            chi.shape = xsd[i].xs_shapes['[G]']
             xsd[i].set_chi(chi, temperature)
         else:
             chi = None
@@ -216,9 +230,9 @@ if __name__ == '__main__':
             temp = np.array(temp.split())
             nu_fission = temp.astype(np.float)
             if chi is not None:
-                nu_fission.shape = xsd[i].vector_shape
+                nu_fission.shape = xsd[i].xs_shapes['[G]']
             else:
-                nu_fission.shape = xsd[i].matrix_shape
+                nu_fission.shape = xsd[i].xs_shapes["[G][G']"]
             xsd[i].set_nu_fission(nu_fission, temperature)
 
     # Build library as we go, but first we have enough to initialize it

@@ -384,7 +384,7 @@ x - x_0`, :math:`\bar{y} = y - y_0`, and :math:`\bar{z} = z - z_0`. We then have
 Expanding equation :eq:`dist-xcone-1` and rearranging terms, we obtain
 
 .. math::
-    :label: dist-xcylinder-2
+    :label: dist-xcone-2
 
     (v^2 + w^2 - R^2u^2) d^2 + 2 (\bar{y}v + \bar{z}w - R^2\bar{x}u) d +
     (\bar{y}^2 + \bar{z}^2 - R^2\bar{x}^2) = 0
@@ -392,7 +392,7 @@ Expanding equation :eq:`dist-xcone-1` and rearranging terms, we obtain
 Defining the terms
 
 .. math::
-    :label: dist-quadric-terms
+    :label: dist-xcone-terms
 
     a = v^2 + w^2 - R^2u^2
 
@@ -896,4 +896,4 @@ Dxy + Eyz + Fxz + Gx + Hy + Jz + K = 0`. Thus, the gradient to the surface is
 .. _surfaces: http://en.wikipedia.org/wiki/Surface
 .. _MCNP: http://mcnp.lanl.gov
 .. _Serpent: http://montecarlo.vtt.fi
-.. _Monte Carlo Performance benchmark: https://github.com/paulromano/benchmarks/tree/master/mc-performance/openmc
+.. _Monte Carlo Performance benchmark: https://github.com/mit-crpg/benchmarks/tree/master/mc-performance/openmc

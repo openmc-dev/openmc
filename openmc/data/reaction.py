@@ -818,7 +818,7 @@ class Reaction(EqualityMixin):
         Parameters
         ----------
         group : h5py.Group
-            HDF5 group to write to
+            HDF5 group to read from
         energy : dict
             Dictionary whose keys are temperatures (e.g., '300K') and values are
             arrays of energies at which cross sections are tabulated at.

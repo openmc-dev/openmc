@@ -1,8 +1,7 @@
-from abc import ABCMeta, abstractproperty
+from abc import ABCMeta
 from collections import Iterable, OrderedDict
 import copy
 from numbers import Real, Integral
-import sys
 from xml.etree import ElementTree as ET
 
 from six import add_metaclass
@@ -832,7 +831,7 @@ class RealFilter(Filter):
     def merge(self, other):
         if not self.can_merge(other):
             msg = 'Unable to merge "{0}" with "{1}" ' \
-                  'filters'.format(self.type, other.type)
+                  'filters'.format(type(self), type(other))
             raise ValueError(msg)
 
         # Merge unique filter bins
@@ -933,7 +932,7 @@ class EnergyFilter(RealFilter):
             if bins[index] < bins[index-1]:
                 msg = 'Unable to add bin edges "{0}" to a "{1}" Filter ' \
                       'since they are not monotonically ' \
-                      'increasing'.format(bins, self.type)
+                      'increasing'.format(bins, type(self))
                 raise ValueError(msg)
 
     def get_pandas_dataframe(self, data_size, **kwargs):
@@ -1328,7 +1327,7 @@ class MuFilter(RealFilter):
             if bins[index] < bins[index-1]:
                 msg = 'Unable to add bin edges "{0}" to a "{1}" Filter ' \
                       'since they are not monotonically ' \
-                      'increasing'.format(bins, self.type)
+                      'increasing'.format(bins, type(self))
                 raise ValueError(msg)
 
     def get_pandas_dataframe(self, data_size, **kwargs):
@@ -1431,7 +1430,7 @@ class PolarFilter(RealFilter):
             if bins[index] < bins[index-1]:
                 msg = 'Unable to add bin edges "{0}" to a "{1}" Filter ' \
                       'since they are not monotonically ' \
-                      'increasing'.format(bins, self.type)
+                      'increasing'.format(bins, type(self))
                 raise ValueError(msg)
 
     def get_pandas_dataframe(self, data_size, **kwargs):
@@ -1479,7 +1478,8 @@ class PolarFilter(RealFilter):
         hi_bins = np.tile(hi_bins, tile_factor)
 
         # Add the new angle columns to the DataFrame.
-        df.loc[:, self.type + ' low'] = lo_bins
+        df.loc[:, 'polar low'] = lo_bins
+        df.loc[:, 'polar high'] = hi_bins
 
         return df
 
@@ -1533,7 +1533,7 @@ class AzimuthalFilter(RealFilter):
             if bins[index] < bins[index-1]:
                 msg = 'Unable to add bin edges "{0}" to a "{1}" Filter ' \
                       'since they are not monotonically ' \
-                      'increasing'.format(bins, self.type)
+                      'increasing'.format(bins, type(self))
                 raise ValueError(msg)
 
     def get_pandas_dataframe(self, data_size, distribcell_paths=True):
@@ -1581,7 +1581,8 @@ class AzimuthalFilter(RealFilter):
         hi_bins = np.tile(hi_bins, tile_factor)
 
         # Add the new angle columns to the DataFrame.
-        df.loc[:, self.type + ' low'] = lo_bins
+        df.loc[:, 'azimuthal low'] = lo_bins
+        df.loc[:, 'azimuthal high'] = hi_bins
 
         return df
 

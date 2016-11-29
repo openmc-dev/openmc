@@ -1,5 +1,3 @@
-import sys
-
 from six import string_types
 
 from openmc.checkvalue import check_type
@@ -45,7 +43,7 @@ class Macroscopic(object):
         return hash((self._name))
 
     def __repr__(self):
-        string = 'Nuclide    -    {0}\n'.format(self._name)
+        string = 'Macroscopic    -    {0}\n'.format(self._name)
         return string
 
     @property

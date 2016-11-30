@@ -19,9 +19,9 @@ PLOT_TYPES_MGXS = ['total', 'absorption', 'scatter', 'fission',
                    'inverse-velocity', 'beta', 'decay rate', 'unity']
 # Create a dictionary which can be used to convert PLOT_TYPES_MGXS to the
 # openmc.XSdata attribute name needed to access the data
-_PLOT_ATTR = {line: line.replace(' ', '_').replace('-', '_')
+_PLOT_MGXS_ATTR = {line: line.replace(' ', '_').replace('-', '_')
               for line in PLOT_TYPES_MGXS}
-_PLOT_ATTR['scatter'] = 'scatter_matrix'
+_PLOT_MGXS_ATTR['scatter'] = 'scatter_matrix'
 
 # Special MT values
 UNITY_MT = -1
@@ -605,6 +605,10 @@ def calculate_mgxs(this, types, orders=None, temperature=294.,
                    enrichment=None):
     """Calculates continuous-energy cross sections of a requested type
 
+    If the data for the nuclide or macroscopic object in the library is
+    represented as angle-dependent data then this method will return the
+    average cross section over all angles.
+
     Parameters
     ----------
     this : openmc.Element, openmc.Nuclide, or openmc.Material
@@ -684,6 +688,10 @@ def _calculate_mgxs_nuc_macro(this, types, library, orders=None,
     """Determines the multi-group cross sections of a nuclide or macroscopic
     object
 
+    If the data for the nuclide or macroscopic object in the library is
+    represented as angle-dependent data then this method will return the
+    average cross section over all angles.
+
     Parameters
     ----------
     this : {openmc.Nuclide, openmc.Macroscopic}
@@ -736,40 +744,45 @@ def _calculate_mgxs_nuc_macro(this, types, library, orders=None,
             elif line == 'unity':
                 data[i, :] = 1.
             else:
-                attr = _PLOT_ATTR[line]
-                temp_data = getattr(xsdata, attr)[t]
-                if temp_data.shape in (xsdata.xs_shapes["[G']"],
-                                       xsdata.xs_shapes["[G]"]):
+                temp_data = getattr(xsdata, _PLOT_MGXS_ATTR[line])[t]
+                shape = temp_data.shape[:]
+                # If we have angular data, then we will plot the average
+                # over all provided angles.  Since the angles are equi-distant,
+                # un-weighted averaging will suffice
+                if xsdata.representation == 'angle':
+                    temp_data = np.mean(temp_data, axis=(0, 1))
+                if shape in (xsdata.xs_shapes["[G']"],
+                             xsdata.xs_shapes["[G]"]):
                     data[i, :] = temp_data
-                elif temp_data.shape == xsdata.xs_shapes["[G][G']"]:
+                elif shape == xsdata.xs_shapes["[G][G']"]:
                     data[i, :] = np.sum(temp_data, axis=1)
-                elif temp_data.shape == xsdata.xs_shapes["[DG]"]:
+                elif shape == xsdata.xs_shapes["[DG]"]:
                     if orders[i]:
-                        if orders[i] < len(temp_data.shape[0]):
+                        if orders[i] < len(shape[0]):
                             data[i, :] = temp_data[orders[i]]
                     else:
                         data[i, :] = np.sum(temp_data[:])
-                elif temp_data.shape in (xsdata.xs_shapes["[G'][DG]"],
-                                         xsdata.xs_shapes["[G][DG]"]):
+                elif shape in (xsdata.xs_shapes["[G'][DG]"],
+                               xsdata.xs_shapes["[G][DG]"]):
                     if orders[i]:
-                        if orders[i] < len(temp_data.shape[1]):
+                        if orders[i] < len(shape[1]):
                             data[i, :] = temp_data[:, orders[i]]
                     else:
                         data[i, :] = np.sum(temp_data[:, :], axis=1)
-                elif temp_data.shape == xsdata.xs_shapes["[G][G'][DG]"]:
+                elif shape == xsdata.xs_shapes["[G][G'][DG]"]:
                     temp_data = np.sum(temp_data, axis=1)
                     if orders[i]:
-                        if orders[i] < len(temp_data.shape[1]):
+                        if orders[i] < len(shape[1]):
                             data[i, :] = temp_data[:, orders[i]]
                     else:
                         data[i, :] = np.sum(temp_data[:, :], axis=1)
-                elif temp_data.shape == xsdata.xs_shapes["[G][G'][Order]"]:
+                elif shape == xsdata.xs_shapes["[G][G'][Order]"]:
                     temp_data = np.sum(temp_data, axis=1)
                     if orders[i]:
                         order = orders[i]
                     else:
                         order = 0
-                    if order < temp_data.shape[1]:
+                    if order < shape[1]:
                         data[i, :] = temp_data[:, order]
     else:
         raise ValueError("{} not present in provided MGXS "
@@ -783,6 +796,10 @@ def _calculate_mgxs_elem_mat(this, types, library, orders=None,
                              enrichment=None):
     """Determines the multi-group cross sections of an element or material
     object
+
+    If the data for the nuclide or macroscopic object in the library is
+    represented as angle-dependent data then this method will return the
+    average cross section over all angles.
 
     Parameters
     ----------

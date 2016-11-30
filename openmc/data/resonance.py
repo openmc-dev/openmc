@@ -5,6 +5,7 @@ import numpy as np
 from numpy.polynomial import Polynomial
 import pandas as pd
 
+from .data import NEUTRON_MASS
 from .endf import get_head_record, get_cont_record, get_tab1_record, get_list_record
 try:
     from .reconstruct import wave_number, penetration_shift, reconstruct_mlbw, \
@@ -196,7 +197,7 @@ class ResonanceRange(object):
         ap = Polynomial((items[1],))
 
         # Calculate channel radius from ENDF-102 equation D.14
-        a = Polynomial((0.123 * (1.008665*ev.target['mass'])**(1./3.) + 0.08,))
+        a = Polynomial((0.123 * (NEUTRON_MASS*ev.target['mass'])**(1./3.) + 0.08,))
 
         return cls(target_spin, energy_min, energy_max, {0: a}, {0: ap})
 
@@ -346,7 +347,7 @@ class MultiLevelBreitWigner(ResonanceRange):
             competitive = items[3]
 
             # Calculate channel radius from ENDF-102 equation D.14
-            a = Polynomial((0.123 * (1.008665*awri)**(1./3.) + 0.08,))
+            a = Polynomial((0.123 * (NEUTRON_MASS*awri)**(1./3.) + 0.08,))
 
             # Construct scattering and channel radius
             if nro == 0:
@@ -606,7 +607,7 @@ class ReichMoore(ResonanceRange):
             awri = items[0]
 
             # Calculate channel radius from ENDF-102 equation D.14
-            a = Polynomial((0.123 * (1.008665*awri)**(1./3.) + 0.08,))
+            a = Polynomial((0.123 * (NEUTRON_MASS*awri)**(1./3.) + 0.08,))
 
             # Construct scattering and channel radius
             if nro == 0:

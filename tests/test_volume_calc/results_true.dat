@@ -1,4 +1,4 @@
-k-combined: 4.165451e-02 3.582531e-04
+k-combined: 4.165450e-02 3.582533e-04
 Volume calculation 0
 Domain 1: 31.4693 +/- 0.0721 cm^3
 Domain 2: 2.0933 +/- 0.0310 cm^3
@@ -16,7 +16,7 @@ Volume calculation 1
 Domain 1: 4.1419 +/- 0.0426 cm^3
 Domain 2: 31.4693 +/- 0.0721 cm^3
    Material Nuclide         Atoms   Uncertainty
-0         1      H1  2.769690e+23  2.850068e+21
+0         1      H1  2.769690e+23  2.850067e+21
 1         1     O16  1.384845e+23  1.425034e+21
 2         1     B10  1.384845e+19  1.425034e+17
 3         2    U235  3.481769e+23  7.979991e+20
@@ -24,7 +24,7 @@ Domain 2: 31.4693 +/- 0.0721 cm^3
 Volume calculation 2
 Domain 0: 35.6112 +/- 0.0664 cm^3
    Universe Nuclide         Atoms   Uncertainty
-0         0      H1  2.769690e+23  2.850068e+21
+0         0      H1  2.769690e+23  2.850067e+21
 1         0     O16  1.384845e+23  1.425034e+21
 2         0     B10  1.384845e+19  1.425034e+17
 3         0    U235  3.481769e+23  7.979991e+20

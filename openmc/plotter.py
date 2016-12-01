@@ -98,15 +98,15 @@ def plot_xs(this, types, divisor_types=None, temperature=294., axis=None,
         Enrichment for U235 in weight percent. For example, input 4.95 for
         4.95 weight percent enriched U. Default is None. This is only used for
         items which are instances of openmc.Element
-    plot_CE : bool
+    plot_CE : bool, optional
         Denotes whether or not continuous-energy will be plotted. Defaults to
         plotting the continuous-energy data.
-    orders : Iterable of Integral
+    orders : Iterable of Integral, optional
         The scattering order or delayed group index to use for the
         corresponding entry in types. Defaults to the 0th order for scattering
         and the total delayed neutron data. This only applies to plots of
         multi-group data.
-    divisor_orders : Iterable of Integral
+    divisor_orders : Iterable of Integral, optional
         Same as orders, but for divisor_types
     **kwargs
         All keyword arguments are passed to
@@ -619,7 +619,7 @@ def calculate_mgxs(this, types, orders=None, temperature=294.,
         Object to source data from
     types : Iterable of values of PLOT_TYPES
         The type of cross sections to calculate
-    orders : Iterable of Integral
+    orders : Iterable of Integral, optional
         The scattering order or delayed group index to use for the
         corresponding entry in types. Defaults to the 0th order for scattering
         and the total delayed neutron data.
@@ -705,7 +705,7 @@ def _calculate_mgxs_nuc_macro(this, types, library, orders=None,
         in openmc.PLOT_TYPES_MGXS
     library : openmc.MGXSLibrary
         MGXS Library containing the data of interest
-    orders : Iterable of Integral
+    orders : Iterable of Integral, optional
         The scattering order or delayed group index to use for the
         corresponding entry in types. Defaults to the 0th order for scattering
         and the total delayed neutron data.
@@ -814,7 +814,7 @@ def _calculate_mgxs_elem_mat(this, types, library, orders=None,
         in openmc.PLOT_TYPES_MGXS
     library : openmc.MGXSLibrary
         MGXS Library containing the data of interest
-    orders : Iterable of Integral
+    orders : Iterable of Integral, optional
         The scattering order or delayed group index to use for the
         corresponding entry in types. Defaults to the 0th order for scattering
         and the total delayed neutron data.

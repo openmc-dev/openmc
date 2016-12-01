@@ -71,50 +71,50 @@ class XSdata(object):
         Number of equal width angular bins that the polar angular domain is
         subdivided into. This only applies when :attr:`XSdata.representation`
         is "angle".
-    total : dict of numpy.ndarray
+    total : list of numpy.ndarray
         Group-wise total cross section.
-    absorption : dict of numpy.ndarray
+    absorption : list of numpy.ndarray
         Group-wise absorption cross section.
-    scatter_matrix : dict of numpy.ndarray
+    scatter_matrix : list of numpy.ndarray
         Scattering moment matrices presented with the columns representing
         incoming group and rows representing the outgoing group.  That is,
         down-scatter will be above the diagonal of the resultant matrix.
-    multiplicity_matrix : dict of numpy.ndarray
+    multiplicity_matrix : list of numpy.ndarray
         Ratio of neutrons produced in scattering collisions to the neutrons
         which undergo scattering collisions; that is, the multiplicity provides
         the code with a scaling factor to account for neutrons produced in
         (n,xn) reactions.
-    fission : dict of numpy.ndarray
+    fission : list of numpy.ndarray
         Group-wise fission cross section.
-    kappa_fission : dict of numpy.ndarray
+    kappa_fission : list of numpy.ndarray
         Group-wise kappa_fission cross section.
-    chi : dict of numpy.ndarray
+    chi : list of numpy.ndarray
         Group-wise fission spectra ordered by increasing group index (i.e.,
         fast to thermal). This attribute should be used if making the common
         approximation that the fission spectra does not depend on incoming
         energy. If the user does not wish to make this approximation, then
         this should not be provided and this information included in the
         :attr:`XSdata.nu_fission` attribute instead.
-    chi_prompt : dict of numpy.ndarray
+    chi_prompt : list of numpy.ndarray
         Group-wise prompt fission spectra ordered by increasing group index
         (i.e., fast to thermal). This attribute should be used if chi from
         prompt and delayed neutrons is being set separately.
-    chi_delayed : dict of numpy.ndarray
+    chi_delayed : list of numpy.ndarray
         Group-wise delayed fission spectra ordered by increasing group index
         (i.e., fast to thermal). This attribute should be used if chi from
         prompt and delayed neutrons is being set separately.
-    nu_fission : dict of numpy.ndarray
+    nu_fission : list of numpy.ndarray
         Group-wise fission production cross section vector (i.e., if ``chi`` is
         provided), or is the group-wise fission production matrix.
-    prompt_nu_fission : dict of numpy.ndarray
+    prompt_nu_fission : list of numpy.ndarray
         Group-wise prompt fission production cross section vector.
-    delayed_nu_fission : dict of numpy.ndarray
+    delayed_nu_fission : list of numpy.ndarray
         Group-wise delayed fission production cross section vector.
-    beta : dict of numpy.ndarray
+    beta : list of numpy.ndarray
         Delayed-group-wise delayed neutron fraction cross section vector.
-    decay_rate : dict of numpy.ndarray
+    decay_rate : list of numpy.ndarray
         Delayed-group-wise decay rate vector.
-    inverse_velocity : dict of numpy.ndarray
+    inverse_velocity : list of numpy.ndarray
         Inverse of velocity, in units of sec/cm.
     xs_shapes : dict of iterable of int
         Dictionary with keys of _XS_SHAPES and iterable of int values with the

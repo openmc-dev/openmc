@@ -1,6 +1,6 @@
 from collections import Iterable
 from numbers import Real, Integral
-import sys
+import os
 
 from six import string_types
 import numpy as np
@@ -16,7 +16,7 @@ from openmc.checkvalue import check_type, check_value, check_greater_than, \
 _REPRESENTATIONS = ['isotropic', 'angle']
 _SCATTER_TYPES = ['tabular', 'legendre', 'histogram']
 _XS_SHAPES = ["[G][G'][Order]", "[G]", "[G']", "[G][G']", "[DG]", "[G][DG]",
-              "[G'][DG]"]
+              "[G'][DG]", "[G][G'][DG]"]
 
 
 class XSdata(object):
@@ -42,7 +42,7 @@ class XSdata(object):
     ----------
     name : str
         Unique identifier for the xsdata object
-    aromic_weight_ratio : float
+    atomic_weight_ratio : float
         Atomic weight ratio of an isotope.  That is, the ratio of the mass
         of the isotope to the mass of a single neutron.
     temperatures : numpy.ndarray
@@ -71,50 +71,50 @@ class XSdata(object):
         Number of equal width angular bins that the polar angular domain is
         subdivided into. This only applies when :attr:`XSdata.representation`
         is "angle".
-    total : dict of numpy.ndarray
+    total : list of numpy.ndarray
         Group-wise total cross section.
-    absorption : dict of numpy.ndarray
+    absorption : list of numpy.ndarray
         Group-wise absorption cross section.
-    scatter_matrix : dict of numpy.ndarray
+    scatter_matrix : list of numpy.ndarray
         Scattering moment matrices presented with the columns representing
         incoming group and rows representing the outgoing group.  That is,
         down-scatter will be above the diagonal of the resultant matrix.
-    multiplicity_matrix : dict of numpy.ndarray
+    multiplicity_matrix : list of numpy.ndarray
         Ratio of neutrons produced in scattering collisions to the neutrons
         which undergo scattering collisions; that is, the multiplicity provides
         the code with a scaling factor to account for neutrons produced in
         (n,xn) reactions.
-    fission : dict of numpy.ndarray
+    fission : list of numpy.ndarray
         Group-wise fission cross section.
-    kappa_fission : dict of numpy.ndarray
+    kappa_fission : list of numpy.ndarray
         Group-wise kappa_fission cross section.
-    chi : dict of numpy.ndarray
+    chi : list of numpy.ndarray
         Group-wise fission spectra ordered by increasing group index (i.e.,
         fast to thermal). This attribute should be used if making the common
         approximation that the fission spectra does not depend on incoming
         energy. If the user does not wish to make this approximation, then
         this should not be provided and this information included in the
         :attr:`XSdata.nu_fission` attribute instead.
-    chi_prompt : dict of numpy.ndarray
+    chi_prompt : list of numpy.ndarray
         Group-wise prompt fission spectra ordered by increasing group index
         (i.e., fast to thermal). This attribute should be used if chi from
         prompt and delayed neutrons is being set separately.
-    chi_delayed : dict of numpy.ndarray
+    chi_delayed : list of numpy.ndarray
         Group-wise delayed fission spectra ordered by increasing group index
         (i.e., fast to thermal). This attribute should be used if chi from
         prompt and delayed neutrons is being set separately.
-    nu_fission : dict of numpy.ndarray
+    nu_fission : list of numpy.ndarray
         Group-wise fission production cross section vector (i.e., if ``chi`` is
         provided), or is the group-wise fission production matrix.
-    prompt_nu_fission : dict of numpy.ndarray
+    prompt_nu_fission : list of numpy.ndarray
         Group-wise prompt fission production cross section vector.
-    delayed_nu_fission : dict of numpy.ndarray
+    delayed_nu_fission : list of numpy.ndarray
         Group-wise delayed fission production cross section vector.
-    beta : dict of numpy.ndarray
+    beta : list of numpy.ndarray
         Delayed-group-wise delayed neutron fraction cross section vector.
-    decay_rate : dict of numpy.ndarray
+    decay_rate : list of numpy.ndarray
         Delayed-group-wise decay rate vector.
-    inverse_velocity : dict of numpy.ndarray
+    inverse_velocity : list of numpy.ndarray
         Inverse of velocity, in units of sec/cm.
     xs_shapes : dict of iterable of int
         Dictionary with keys of _XS_SHAPES and iterable of int values with the
@@ -303,13 +303,14 @@ class XSdata(object):
             self._xs_shapes["[G][G'][DG]"] = (self.energy_groups.num_groups,
                                               self.energy_groups.num_groups,
                                               self.num_delayed_groups)
+
             self._xs_shapes["[G][G'][Order]"] \
                 = (self.energy_groups.num_groups,
                    self.energy_groups.num_groups, self.num_orders)
 
             # If representation is by angle prepend num polar and num azim
             if self.representation == 'angle':
-                for key,shapes in self._xs_shapes.items():
+                for key, shapes in self._xs_shapes.items():
                     self._xs_shapes[key] \
                         = (self.num_polar, self.num_azimuthal) + shapes
 
@@ -337,7 +338,7 @@ class XSdata(object):
     def num_delayed_groups(self, num_delayed_groups):
 
         # Check validity of num_delayed_groups
-        check_type('num_delayed_groups', num_delayed_groups, int)
+        check_type('num_delayed_groups', num_delayed_groups, Integral)
         check_less_than('num_delayed_groups', num_delayed_groups,
                         openmc.mgxs.MAX_DELAYED_GROUPS, equality=True)
         check_greater_than('num_delayed_groups', num_delayed_groups, 0,
@@ -1652,6 +1653,7 @@ class XSdata(object):
             HDF5 File (a root Group) to write to
 
         """
+
         grp = file.create_group(self.name)
         if self.atomic_weight_ratio is not None:
             grp.attrs['atomic_weight_ratio'] = self.atomic_weight_ratio
@@ -1719,11 +1721,12 @@ class XSdata(object):
                    (self._delayed_nu_fission[i] is None or \
                     self._prompt_nu_fission[i] is None):
                     raise ValueError('nu-fission or prompt-nu-fission and '
-                                     'delayed-nu-fission data must be provided '
-                                     'when writing the HDF5 library')
+                                     'delayed-nu-fission data must be '
+                                     'provided when writing the HDF5 library')
 
                 if self._nu_fission[i] is not None:
-                    xs_grp.create_dataset("nu-fission", data=self._nu_fission[i])
+                    xs_grp.create_dataset("nu-fission",
+                                          data=self._nu_fission[i])
 
                 if self._prompt_nu_fission[i] is not None:
                     xs_grp.create_dataset("prompt-nu-fission",
@@ -1737,7 +1740,8 @@ class XSdata(object):
                     xs_grp.create_dataset("beta", data=self._beta[i])
 
                 if self._decay_rate[i] is not None:
-                    xs_grp.create_dataset("decay rate", data=self._decay_rate[i])
+                    xs_grp.create_dataset("decay rate",
+                                          data=self._decay_rate[i])
 
             if self._scatter_matrix[i] is None:
                 raise ValueError('Scatter matrix must be provided when '
@@ -1836,6 +1840,143 @@ class XSdata(object):
                 xs_grp.create_dataset("inverse-velocity",
                                       data=self._inverse_velocity[i])
 
+    @classmethod
+    def from_hdf5(cls, group, name, energy_groups, num_delayed_groups):
+        """Generate XSdata object from an HDF5 group
+
+        Parameters
+        ----------
+        group : h5py.Group
+            HDF5 group to read from
+        name : str
+            Name of the mgxs data set.
+        energy_groups : openmc.mgxs.EnergyGroups
+            Energy group structure
+        num_delayed_groups : int
+            Number of delayed groups
+
+        Returns
+        -------
+        openmc.XSdata
+            Multi-group cross section data
+
+        """
+
+        # Get a list of all the subgroups which will contain our temperature
+        # strings
+        subgroups = group.keys()
+        temperatures = []
+        for subgroup in subgroups:
+            if subgroup != 'kTs':
+                temperatures.append(subgroup)
+
+        # To ensure the actual floating point temperature used when creating
+        # the new library is consistent with that used when originally creating
+        # the file, get the floating point temperatures straight from the kTs
+        # group.
+        kTs_group = group['kTs']
+        float_temperatures = []
+        for temperature in temperatures:
+            kT = kTs_group[temperature].value
+            float_temperatures.append(kT / openmc.data.K_BOLTZMANN)
+
+        attrs = group.attrs.keys()
+        if 'representation' in attrs:
+            representation = group.attrs['representation'].decode()
+        else:
+            representation = 'isotropic'
+
+        data = cls(name, energy_groups, float_temperatures, representation,
+                   num_delayed_groups)
+
+        if 'scatter_format' in attrs:
+            data.scatter_format = group.attrs['scatter_format'].decode()
+
+        # Get the remaining optional attributes
+        if 'atomic_weight_ratio' in attrs:
+            data.atomic_weight_ratio = group.attrs['atomic_weight_ratio']
+        if 'order' in attrs:
+            data.order = group.attrs['order']
+        if data.representation == 'angle':
+            data.num_azimuthal = group.attrs['num_azimuthal']
+            data.num_polar = group.attrs['num_polar']
+
+        # Read the temperature-dependent datasets
+        for temp, float_temp in zip(temperatures, float_temperatures):
+            xs_types = ['total', 'absorption', 'fission', 'kappa-fission',
+                        'chi', 'chi-prompt', 'chi-delayed', 'nu-fission',
+                        'prompt-nu-fission', 'delayed-nu-fission', 'beta',
+                        'decay rate', 'inverse-velocity']
+
+            temperature_group = group[temp]
+
+            for xs_type in xs_types:
+                set_func = 'set_' + xs_type.replace(' ', '_').replace('-', '_')
+                if xs_type in temperature_group:
+                    getattr(data, set_func)(temperature_group[xs_type].value,
+                                            float_temp)
+
+            scatt_group = temperature_group['scatter_data']
+
+            # Get scatter matrix and 'un-flatten' it
+            g_max = scatt_group['g_max']
+            g_min = scatt_group['g_min']
+            flat_scatter = scatt_group['scatter_matrix'].value
+            scatter_matrix = np.zeros(data.xs_shapes["[G][G'][Order]"])
+            G = data.energy_groups.num_groups
+            if data.representation == 'isotropic':
+                Np = 1
+                Na = 1
+            elif data.representation == 'angle':
+                Np = data.num_polar
+                Na = data.num_azimuthal
+            flat_index = 0
+            for p in range(Np):
+                for a in range(Na):
+                    for g_in in range(G):
+                        if data.representation == 'isotropic':
+                            g_mins = g_min[g_in]
+                            g_maxs = g_max[g_in]
+                        elif data.representation == 'angle':
+                            g_mins = g_min[p, a, g_in]
+                            g_maxs = g_max[p, a, g_in]
+                        for g_out in range(g_mins - 1, g_maxs):
+                            for ang in range(data.num_orders):
+                                if data.representation == 'isotropic':
+                                    scatter_matrix[g_in, g_out, ang] = \
+                                        flat_scatter[flat_index]
+                                elif data.representation == 'angle':
+                                    scatter_matrix[p, a, g_in, g_out, ang] = \
+                                        flat_scatter[flat_index]
+                                flat_index += 1
+            data.set_scatter_matrix(scatter_matrix, float_temp)
+
+            # Repeat for multiplicity
+            if 'multiplicity_matrix' in scatt_group:
+                flat_mult = scatt_group['multiplicity_matrix'].value
+                mult_matrix = np.zeros(data.xs_shapes["[G][G']"])
+                flat_index = 0
+                for p in range(Np):
+                    for a in range(Na):
+                        for g_in in range(G):
+                            if data.representation == 'isotropic':
+                                g_mins = g_min[g_in]
+                                g_maxs = g_max[g_in]
+                            elif data.representation == 'angle':
+                                g_mins = g_min[p, a, g_in]
+                                g_maxs = g_max[p, a, g_in]
+                            for g_out in range(g_mins - 1, g_maxs):
+                                if data.representation == 'isotropic':
+                                    mult_matrix[g_in, g_out] = \
+                                        flat_mult[flat_index]
+                                elif data.representation == 'angle':
+                                    mult_matrix[p, a, g_in, g_out] = \
+                                        flat_mult[flat_index]
+                                flat_index += 1
+                data.set_multiplicity_matrix(mult_matrix, float_temp)
+
+        return data
+
 
 class MGXSLibrary(object):
     """Multi-Group Cross Sections file used for an OpenMC simulation.
@@ -1873,12 +2014,12 @@ class MGXSLibrary(object):
         return self._num_delayed_groups
 
     @property
-    def temperatures(self):
-        return self._temperatures
-
-    @property
     def xsdatas(self):
         return self._xsdatas
+
+    @property
+    def names(self):
+        return [xsdata.name for xsdata in self.xsdatas]
 
     @energy_groups.setter
     def energy_groups(self, energy_groups):
@@ -1887,7 +2028,7 @@ class MGXSLibrary(object):
 
     @num_delayed_groups.setter
     def num_delayed_groups(self, num_delayed_groups):
-        check_type('num_delayed_groups', num_delayed_groups, int)
+        check_type('num_delayed_groups', num_delayed_groups, Integral)
         check_greater_than('num_delayed_groups', num_delayed_groups, 0,
                            equality=True)
         check_less_than('num_delayed_groups', num_delayed_groups,
@@ -1916,7 +2057,7 @@ class MGXSLibrary(object):
         self._xsdatas.append(xsdata)
 
     def add_xsdatas(self, xsdatas):
-        """Add multiple xsdatas to the file.
+        """Add multiple XSdatas to the file.
 
         Parameters
         ----------
@@ -1947,6 +2088,27 @@ class MGXSLibrary(object):
 
         self._xsdatas.remove(xsdata)
 
+    def get_by_name(self, name):
+        """Access the XSdata objects by name
+
+        Parameters
+        ----------
+        name : str
+            Name of openmc.XSdata object to obtain
+
+        Returns
+        -------
+        result : openmc.XSdata or None
+            Provides the matching XSdata object or None, if not found
+
+        """
+        check_type("name", name, str)
+        result = None
+        for xsdata in self.xsdatas:
+            if name == xsdata.name:
+                result = xsdata
+        return result
+
     def export_to_hdf5(self, filename='mgxs.h5'):
         """Create an hdf5 file that can be used for a simulation.
 
@@ -1969,3 +2131,43 @@ class MGXSLibrary(object):
             xsdata.to_hdf5(file)
 
         file.close()
+
+    @classmethod
+    def from_hdf5(cls, filename=None):
+        """Generate an MGXS Library from an HDF5 group or file
+        Parameters
+        ----------
+        filename : str, optional
+            Name of HDF5 file containing MGXS data. Default is None.
+            If not provided, the value of the OPENMC_MG_CROSS_SECTIONS
+            environmental variable will be used
+        Returns
+        -------
+        openmc.MGXSLibrary
+            Multi-group cross section data object.
+        """
+
+        # If filename is None, get the cross sections from the
+        # OPENMC_CROSS_SECTIONS environment variable
+        if filename is None:
+            filename = os.environ.get('OPENMC_MG_CROSS_SECTIONS')
+
+        # Check to make sure there was an environmental variable.
+        if filename is None:
+            raise ValueError("Either path or OPENMC_MG_CROSS_SECTIONS "
+                             "environmental variable must be set")
+
+        check_type('filename', filename, str)
+        file = h5py.File(filename, 'r')
+
+        group_structure = file.attrs['group structure']
+        num_delayed_groups = file.attrs['delayed_groups']
+        energy_groups = openmc.mgxs.EnergyGroups(group_structure)
+        data = cls(energy_groups, num_delayed_groups)
+
+        for group_name, group in file.items():
+            data.add_xsdata(openmc.XSdata.from_hdf5(group, group_name,
+                                                    energy_groups,
+                                                    num_delayed_groups))
+
+        return data

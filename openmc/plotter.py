@@ -58,6 +58,10 @@ PLOT_TYPES_OP = {'total': (np.add,),
 PLOT_TYPES_LINEAR = {'nu-fission / fission', 'nu-scatter / scatter',
                      'nu-fission / absorption', 'fission / absorption'}
 
+# Minimum and maximum energies for plotting (units of eV)
+_MIN_E = 1.E-5
+_MAX_E = 20.E6
+
 
 def plot_xs(this, types, divisor_types=None, temperature=294., axis=None,
             sab_name=None, ce_cross_sections=None, mg_cross_sections=None,
@@ -199,7 +203,7 @@ def plot_xs(this, types, divisor_types=None, temperature=294., axis=None,
 
     ax.set_xlabel('Energy [eV]')
     if plot_CE:
-        ax.set_xlim(1.E-5, 20.E6)
+        ax.set_xlim(_MIN_E, _MAX_E)
     else:
         ax.set_xlim(E[-1], E[0])
     if divisor_types:
@@ -672,7 +676,7 @@ def calculate_mgxs(this, types, orders=None, temperature=294.,
     # Ensure the energy will show on a log-axis by replacing 0s with a
     # sufficiently small number
     if energy_grid[0] <= 0.:
-        energy_grid[0] = 1.E-5
+        energy_grid[0] = _MIN_E
 
     for line in range(len(types)):
         i = 0

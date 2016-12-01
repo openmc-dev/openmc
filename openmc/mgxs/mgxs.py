@@ -63,7 +63,7 @@ _DOMAINS = (openmc.Cell,
 MU_TREATMENTS = ('legendre', 'histogram')
 
 # Maximum Legendre order supported by OpenMC
-MAX_LEGENDRE = 10
+_MAX_LEGENDRE = 10
 
 
 @add_metaclass(ABCMeta)
@@ -3478,7 +3478,7 @@ class ScatterMatrixXS(MatrixMGXS):
         cv.check_type('legendre_order', legendre_order, Integral)
         cv.check_greater_than('legendre_order', legendre_order, 0,
                               equality=True)
-        cv.check_less_than('legendre_order', legendre_order, MAX_LEGENDRE,
+        cv.check_less_than('legendre_order', legendre_order, _MAX_LEGENDRE,
                            equality=True)
 
         if self.scatter_format == 'legendre':

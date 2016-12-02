@@ -67,7 +67,7 @@ def plot_xs(this, types, divisor_types=None, temperature=294., axis=None,
             sab_name=None, ce_cross_sections=None, mg_cross_sections=None,
             enrichment=None, plot_CE=True, orders=None, divisor_orders=None,
             **kwargs):
-    """Creates a figure of continuous-energy cross sections for this item
+    """Creates a figure of continuous-energy cross sections for this item.
 
     Parameters
     ----------
@@ -233,7 +233,7 @@ def plot_xs(this, types, divisor_types=None, temperature=294., axis=None,
 
 def calculate_cexs(this, types, temperature=294., sab_name=None,
                    cross_sections=None, enrichment=None):
-    """Calculates continuous-energy cross sections of a requested type
+    """Calculates continuous-energy cross sections of a requested type.
 
     Parameters
     ----------
@@ -295,7 +295,7 @@ def calculate_cexs(this, types, temperature=294., sab_name=None,
 
 def _calculate_cexs_nuclide(this, types, temperature=294., sab_name=None,
                             cross_sections=None):
-    """Calculates continuous-energy cross sections of a requested type
+    """Calculates continuous-energy cross sections of a requested type.
 
     Parameters
     ----------
@@ -489,7 +489,7 @@ def _calculate_cexs_nuclide(this, types, temperature=294., sab_name=None,
 def _calculate_cexs_elem_mat(this, types, temperature=294.,
                              cross_sections=None, sab_name=None,
                              enrichment=None):
-    """Calculates continuous-energy cross sections of a requested type
+    """Calculates continuous-energy cross sections of a requested type.
 
     Parameters
     ----------
@@ -607,11 +607,11 @@ def _calculate_cexs_elem_mat(this, types, temperature=294.,
 def calculate_mgxs(this, types, orders=None, temperature=294.,
                    cross_sections=None, ce_cross_sections=None,
                    enrichment=None):
-    """Calculates continuous-energy cross sections of a requested type
+    """Calculates continuous-energy cross sections of a requested type.
 
     If the data for the nuclide or macroscopic object in the library is
     represented as angle-dependent data then this method will return the
-    average cross section over all angles.
+    geometric average cross section over all angles.
 
     Parameters
     ----------
@@ -669,20 +669,16 @@ def calculate_mgxs(this, types, orders=None, temperature=294.,
     # Convert the data to the format needed
     data = np.zeros((len(types), 2 * library.energy_groups.num_groups))
     energy_grid = np.zeros(2 * library.energy_groups.num_groups)
-    i = 0
     for g in range(library.energy_groups.num_groups):
-        energy_grid[i: i + 2] = library.energy_groups.group_edges[g: g + 2]
-        i += 2
+        energy_grid[g * 2: g * 2 + 2] = \
+            library.energy_groups.group_edges[g: g + 2]
     # Ensure the energy will show on a log-axis by replacing 0s with a
     # sufficiently small number
-    if energy_grid[0] <= 0.:
-        energy_grid[0] = _MIN_E
+    energy_grid[0] = max(energy_grid[0], _MIN_E)
 
     for line in range(len(types)):
-        i = 0
         for g in range(library.energy_groups.num_groups):
-            data[line, i: i + 2] = mgxs[line, g]
-            i += 2
+            data[g * 2: g * 2 + 2] = mgxs[line, g]
 
     return np.flipud(energy_grid), data
 
@@ -690,11 +686,11 @@ def calculate_mgxs(this, types, orders=None, temperature=294.,
 def _calculate_mgxs_nuc_macro(this, types, library, orders=None,
                               temperature=294.):
     """Determines the multi-group cross sections of a nuclide or macroscopic
-    object
+    object.
 
     If the data for the nuclide or macroscopic object in the library is
     represented as angle-dependent data then this method will return the
-    average cross section over all angles.
+    geometric average cross section over all angles.
 
     Parameters
     ----------
@@ -748,19 +744,34 @@ def _calculate_mgxs_nuc_macro(this, types, library, orders=None,
             elif line == 'unity':
                 data[i, :] = 1.
             else:
+                # Now we have to get the cross section data and properly
+                # treat it depending on the requested type.
+                # First get the data in a generic fashion
                 temp_data = getattr(xsdata, _PLOT_MGXS_ATTR[line])[t]
                 shape = temp_data.shape[:]
-                # If we have angular data, then we will plot the average
-                # over all provided angles.  Since the angles are equi-distant,
-                # un-weighted averaging will suffice
+                # If we have angular data, then want the geometric
+                # average over all provided angles.  Since the angles are
+                # equi-distant, un-weighted averaging will suffice
                 if xsdata.representation == 'angle':
                     temp_data = np.mean(temp_data, axis=(0, 1))
+
+                # Now we can look at the shape of the data to identify how
+                # it should be modified to produce an array of values
+                # with groups.
                 if shape in (xsdata.xs_shapes["[G']"],
                              xsdata.xs_shapes["[G]"]):
+                    # Then the data is already an array vs groups so copy
+                    # and move along
                     data[i, :] = temp_data
                 elif shape == xsdata.xs_shapes["[G][G']"]:
+                    # Sum the data over outgoing groups to create our array vs
+                    # groups
                     data[i, :] = np.sum(temp_data, axis=1)
                 elif shape == xsdata.xs_shapes["[DG]"]:
+                    # Then we have a constant vs groups with a value for each
+                    # delayed group. The user-provided value of orders tells us
+                    # which delayed group we want. If none are provided, then
+                    # we sum all the delayed groups together.
                     if orders[i]:
                         if orders[i] < len(shape[0]):
                             data[i, :] = temp_data[orders[i]]
@@ -768,24 +779,39 @@ def _calculate_mgxs_nuc_macro(this, types, library, orders=None,
                         data[i, :] = np.sum(temp_data[:])
                 elif shape in (xsdata.xs_shapes["[G'][DG]"],
                                xsdata.xs_shapes["[G][DG]"]):
+                    # Then we have an array vs groups with values for each
+                    # delayed group. The user-provided value of orders tells us
+                    # which delayed group we want. If none are provided, then
+                    # we sum all the delayed groups together.
                     if orders[i]:
                         if orders[i] < len(shape[1]):
                             data[i, :] = temp_data[:, orders[i]]
                     else:
                         data[i, :] = np.sum(temp_data[:, :], axis=1)
                 elif shape == xsdata.xs_shapes["[G][G'][DG]"]:
+                    # Then we have a delayed group matrix. We will first
+                    # remove the outgoing group dependency
                     temp_data = np.sum(temp_data, axis=1)
+                    # And then proceed in exactly the same manner as the
+                    # "[G'][DG]" of "[G][DG]" shapes in the previous block.
                     if orders[i]:
                         if orders[i] < len(shape[1]):
                             data[i, :] = temp_data[:, orders[i]]
                     else:
                         data[i, :] = np.sum(temp_data[:, :], axis=1)
                 elif shape == xsdata.xs_shapes["[G][G'][Order]"]:
+                    # This is a scattering matrix with angular data
+                    # First remove the outgoing group dependence
                     temp_data = np.sum(temp_data, axis=1)
+                    # The user either provided a specific order or we resort
+                    # to the default 0th order
                     if orders[i]:
                         order = orders[i]
                     else:
                         order = 0
+                    # If the order is available, store the data for that order
+                    # if it is not available, then the expansion coefficient
+                    # is zero and thus we already have the correct value.
                     if order < shape[1]:
                         data[i, :] = temp_data[:, order]
     else:
@@ -799,11 +825,11 @@ def _calculate_mgxs_elem_mat(this, types, library, orders=None,
                              temperature=294., ce_cross_sections=None,
                              enrichment=None):
     """Determines the multi-group cross sections of an element or material
-    object
+    object.
 
     If the data for the nuclide or macroscopic object in the library is
     represented as angle-dependent data then this method will return the
-    average cross section over all angles.
+    geometric average cross section over all angles.
 
     Parameters
     ----------

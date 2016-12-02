@@ -71,15 +71,15 @@ def _faddeeva(z):
         return -np.conj(wofz(z))
 
 
-def _broaden_wmp_polynomials(En, dopp, n):
+def _broaden_wmp_polynomials(E, dopp, n):
     """Evaluate Doppler-broadened windowed multipole curvefit.
 
     The curvefit is a polynomial of the form
-    a/En + b/sqrt(En) + c + d sqrt(En) ...
+    a/E + b/sqrt(E) + c + d sqrt(E) ...
 
     Parameters
     ----------
-    En : Real
+    E : Real
         Energy to evaluate at.
     dopp : Real
         sqrt(atomic weight ratio / kT) in units of eV.
@@ -92,7 +92,7 @@ def _broaden_wmp_polynomials(En, dopp, n):
         The value of each Doppler-broadened curvefit polynomial term.
 
     """
-    sqrtE = np.sqrt(En)
+    sqrtE = np.sqrt(E)
     beta = sqrtE * dopp
     half_inv_dopp2 = 0.5 / dopp**2
     quarter_inv_dopp4 = half_inv_dopp2**2
@@ -100,10 +100,10 @@ def _broaden_wmp_polynomials(En, dopp, n):
     if beta > 6.0:
         # Save time, ERF(6) is 1 to machine precision.
         # beta/sqrtpi*exp(-beta**2) is also approximately 1 machine epsilon.
-        erfBeta = 1.0
+        erf_beta = 1.0
         exp_m_beta2 = 0.0
     else:
-        erfBeta = np.erf(beta)
+        erf_beta = np.erf(beta)
         exp_m_beta2 = np.exp(-beta**2)
 
     # Assume that, for sure, we'll use a second order (1/E, 1/V, const)
@@ -111,9 +111,9 @@ def _broaden_wmp_polynomials(En, dopp, n):
 
     factors = np.zeros(n)
 
-    factors[0] = erfBeta / En
+    factors[0] = erf_beta / E
     factors[1] = 1.0 / sqrtE
-    factors[2] = (factors[0] * (half_inv_dopp2 + En)
+    factors[2] = (factors[0] * (half_inv_dopp2 + E)
                   + exp_m_beta2 / (beta * np.sqrt(np.pi)))
 
     # Perform recursive broadening of high order components.  range(1, n-4)
@@ -122,11 +122,11 @@ def _broaden_wmp_polynomials(En, dopp, n):
     for i in range(1, n-4):
         if i != 1:
             factors[i+2] = (-factors[i-2] * (i - 1.0) * i * quarter_inv_dopp4
-                + factors[i] * (En + (1.0 + 2.0 * i) * half_inv_dopp2))
+                + factors[i] * (E + (1.0 + 2.0 * i) * half_inv_dopp2))
         else:
             # Although it's mathematically identical, factors[0] will contain
             # nothing, and we don't want to have to worry about memory.
-            factors[i+2] = factors[i]*(En + (1.0 + 2.0 * i) * half_inv_dopp2)
+            factors[i+2] = factors[i]*(E + (1.0 + 2.0 * i) * half_inv_dopp2)
 
     return factors
 

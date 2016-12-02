@@ -1,8 +1,7 @@
-from abc import ABCMeta, abstractproperty
+from abc import ABCMeta
 from collections import Iterable, OrderedDict
 import copy
 from numbers import Real, Integral
-import sys
 from xml.etree import ElementTree as ET
 
 from six import add_metaclass
@@ -100,9 +99,13 @@ class Filter(object):
     @classmethod
     def _recursive_subclasses(cls):
         """Return all subclasses and their subclasses, etc."""
-        subs = cls.__subclasses__()
-        subsubs = [grand for s in subs for grand in s.__subclasses__()]
-        return subs + subsubs
+        all_subclasses = []
+
+        for subclass in cls.__subclasses__():
+            all_subclasses.append(subclass)
+            all_subclasses.extend(subclass._recursive_subclasses())
+
+        return all_subclasses
 
     @classmethod
     def from_hdf5(cls, group, **kwargs):
@@ -774,7 +777,114 @@ class MeshFilter(Filter):
         return df
 
 
-class EnergyFilter(Filter):
+class RealFilter(Filter):
+    """Tally modifier that describes phase-space and other characteristics
+
+    Parameters
+    ----------
+    bins : Iterable of Real
+        A grid of bin values.
+
+    Attributes
+    ----------
+    bins : Iterable of Real
+        A grid of bin values.
+    num_bins : Integral
+        The number of filter bins
+    stride : Integral
+        The number of filter, nuclide and score bins within each of this
+        filter's bins.
+
+    """
+
+    def __gt__(self, other):
+        if type(self) is type(other):
+            # Compare largest/smallest bin edges in filters
+            # This logic is used when merging tallies with real filters
+            return self.bins[0] >= other.bins[-1]
+        else:
+            return super(RealFilter, self).__gt__(other)
+
+    @property
+    def num_bins(self):
+        return len(self.bins) - 1
+
+    @num_bins.setter
+    def num_bins(self, num_bins):
+        cv.check_type('filter num_bins', num_bins, Integral)
+        cv.check_greater_than('filter num_bins', num_bins, 0, equality=True)
+        self._num_bins = num_bins
+
+    def can_merge(self, other):
+        if type(self) is not type(other):
+            return False
+
+        if self.bins[0] == other.bins[-1]:
+            # This low edge coincides with other's high edge
+            return True
+        elif self.bins[-1] == other.bins[0]:
+            # This high edge coincides with other's low edge
+            return True
+        else:
+            return False
+
+    def merge(self, other):
+        if not self.can_merge(other):
+            msg = 'Unable to merge "{0}" with "{1}" ' \
+                  'filters'.format(type(self), type(other))
+            raise ValueError(msg)
+
+        # Merge unique filter bins
+        merged_bins = np.concatenate((self.bins, other.bins))
+        merged_bins = np.unique(merged_bins)
+
+        # Create a new filter with these bins
+        return type(self)(sorted(merged_bins))
+
+    def is_subset(self, other):
+        """Determine if another filter is a subset of this filter.
+
+        If all of the bins in the other filter are included as bins in this
+        filter, then it is a subset of this filter.
+
+        Parameters
+        ----------
+        other : openmc.Filter
+            The filter to query as a subset of this filter
+
+        Returns
+        -------
+        bool
+            Whether or not the other filter is a subset of this filter
+
+        """
+
+        if type(self) is not type(other):
+            return False
+        elif len(self.bins) != len(other.bins):
+            return False
+        else:
+            return np.allclose(self.bins, other.bins)
+
+    def get_bin_index(self, filter_bin):
+        i = np.where(self.bins == filter_bin[1])[0]
+        if len(i) == 0:
+            msg = 'Unable to get the bin index for Filter since "{0}" ' \
+                  'is not one of the bins'.format(filter_bin)
+            raise ValueError(msg)
+        else:
+            return i[0] - 1
+
+    def get_bin(self, bin_index):
+        cv.check_type('bin_index', bin_index, Integral)
+        cv.check_greater_than('bin_index', bin_index, 0, equality=True)
+        cv.check_less_than('bin_index', bin_index, self.num_bins)
+
+        # Construct 2-tuple of lower, upper bins for real-valued filters
+        return (self.bins[bin_index], self.bins[bin_index + 1])
+
+
+class EnergyFilter(RealFilter):
     """Bins tally events based on incident particle energy.
 
     Parameters
@@ -794,23 +904,16 @@ class EnergyFilter(Filter):
 
     """
 
-    def __gt__(self, other):
-        if type(self) is type(other):
-            # Compare largest/smallest energy bin edges in energy filters
-            # This logic is used when merging tallies with energy filters
-            return self.bins[0] >= other.bins[-1]
+    def get_bin_index(self, filter_bin):
+        # Use lower energy bound to find index for RealFilters
+        deltas = np.abs(self.bins - filter_bin[1]) / filter_bin[1]
+        min_delta = np.min(deltas)
+        if min_delta < 1E-3:
+            return deltas.argmin() - 1
         else:
-            return super(EnergyFilter, self).__gt__(other)
-
-    @property
-    def num_bins(self):
-        return len(self.bins) - 1
-
-    @num_bins.setter
-    def num_bins(self, num_bins):
-        cv.check_type('filter num_bins', num_bins, Integral)
-        cv.check_greater_than('filter num_bins', num_bins, 0, equality=True)
-        self._num_bins = num_bins
+            msg = 'Unable to get the bin index for Filter since "{0}" ' \
+                  'is not one of the bins'.format(filter_bin)
+            raise ValueError(msg)
 
     def check_bins(self, bins):
         for edge in bins:
@@ -829,61 +932,8 @@ class EnergyFilter(Filter):
             if bins[index] < bins[index-1]:
                 msg = 'Unable to add bin edges "{0}" to a "{1}" Filter ' \
                       'since they are not monotonically ' \
-                      'increasing'.format(bins, self.type)
+                      'increasing'.format(bins, type(self))
                 raise ValueError(msg)
-
-    def can_merge(self, other):
-        if type(self) is not type(other):
-            return False
-
-        if self.bins[0] == other.bins[-1]:
-            # This low energy edge coincides with other's high energy edge
-            return True
-        elif self.bins[-1] == other.bins[0]:
-            # This high energy edge coincides with other's low energy edge
-            return True
-        else:
-            return False
-
-    def merge(self, other):
-        if not self.can_merge(other):
-            msg = 'Unable to merge "{0}" with "{1}" ' \
-                  'filters'.format(self.type, other.type)
-            raise ValueError(msg)
-
-        # Merge unique filter bins
-        merged_bins = np.concatenate((self.bins, other.bins))
-        merged_bins = np.unique(merged_bins)
-
-        # Create a new filter with these bins
-        return type(self)(sorted(merged_bins))
-
-    def is_subset(self, other):
-        if type(self) is not type(other):
-            return False
-        elif len(self.bins) != len(other.bins):
-            return False
-        else:
-            return np.allclose(self.bins, other.bins)
-
-    def get_bin_index(self, filter_bin):
-        # Use lower energy bound to find index for energy Filters
-        deltas = np.abs(self.bins - filter_bin[1]) / filter_bin[1]
-        min_delta = np.min(deltas)
-        if min_delta < 1E-3:
-            return deltas.argmin() - 1
-        else:
-            msg = 'Unable to get the bin index for Filter since "{0}" ' \
-                  'is not one of the bins'.format(filter_bin)
-            raise ValueError(msg)
-
-    def get_bin(self, bin_index):
-        cv.check_type('bin_index', bin_index, Integral)
-        cv.check_greater_than('bin_index', bin_index, 0, equality=True)
-        cv.check_less_than('bin_index', bin_index, self.num_bins)
-
-        # Construct 2-tuple of lower, upper energies for energy(out) filters
-        return (self.bins[bin_index], self.bins[bin_index+1])
 
     def get_pandas_dataframe(self, data_size, **kwargs):
         """Builds a Pandas DataFrame for the Filter's bins.
@@ -1228,7 +1278,7 @@ class DistribcellFilter(Filter):
         return df
 
 
-class MuFilter(Filter):
+class MuFilter(RealFilter):
     """Bins tally events based on particle scattering angle.
 
     Parameters
@@ -1256,8 +1306,82 @@ class MuFilter(Filter):
 
     """
 
+    def check_bins(self, bins):
+        for edge in bins:
+            if not isinstance(edge, Real):
+                msg = 'Unable to add bin edge "{0}" to a "{1}" ' \
+                      'since it is a non-integer or floating point ' \
+                      'value'.format(edge, type(self))
+                raise ValueError(msg)
+            elif edge < -1.:
+                msg = 'Unable to add bin edge "{0}" to a "{1}" ' \
+                      'since it is less than -1'.format(edge, type(self))
+                raise ValueError(msg)
+            elif edge > 1.:
+                msg = 'Unable to add bin edge "{0}" to a "{1}" ' \
+                      'since it is greater than 1'.format(edge, type(self))
+                raise ValueError(msg)
 
-class PolarFilter(Filter):
+        # Check that bin edges are monotonically increasing
+        for index in range(1, len(bins)):
+            if bins[index] < bins[index-1]:
+                msg = 'Unable to add bin edges "{0}" to a "{1}" Filter ' \
+                      'since they are not monotonically ' \
+                      'increasing'.format(bins, type(self))
+                raise ValueError(msg)
+
+    def get_pandas_dataframe(self, data_size, **kwargs):
+        """Builds a Pandas DataFrame for the Filter's bins.
+
+        This method constructs a Pandas DataFrame object for the filter with
+        columns annotated by filter bin information. This is a helper method
+        for :meth:`Tally.get_pandas_dataframe`.
+
+        Parameters
+        ----------
+        data_size : Integral
+            The total number of bins in the tally corresponding to this filter
+
+        Returns
+        -------
+        pandas.DataFrame
+            A Pandas DataFrame with one column of the lower energy bound and one
+            column of upper energy bound for each filter bin.  The number of
+            rows in the DataFrame is the same as the total number of bins in the
+            corresponding tally, with the filter bin appropriately tiled to map
+            to the corresponding tally bins.
+
+        Raises
+        ------
+        ImportError
+            When Pandas is not installed
+
+        See also
+        --------
+        Tally.get_pandas_dataframe(), CrossFilter.get_pandas_dataframe()
+
+        """
+
+        # Initialize Pandas DataFrame
+        import pandas as pd
+        df = pd.DataFrame()
+
+        # Extract the lower and upper energy bounds, then repeat and tile
+        # them as necessary to account for other filters.
+        lo_bins = np.repeat(self.bins[:-1], self.stride)
+        hi_bins = np.repeat(self.bins[1:], self.stride)
+        tile_factor = data_size / len(lo_bins)
+        lo_bins = np.tile(lo_bins, tile_factor)
+        hi_bins = np.tile(hi_bins, tile_factor)
+
+        # Add the new energy columns to the DataFrame.
+        df.loc[:, self.short_name.lower() + ' low'] = lo_bins
+        df.loc[:, self.short_name.lower() + ' high'] = hi_bins
+
+        return df
+
+
+class PolarFilter(RealFilter):
     """Bins tally events based on the incident particle's direction.
 
     Parameters
@@ -1284,6 +1408,30 @@ class PolarFilter(Filter):
         filter's bins.
 
     """
+
+    def check_bins(self, bins):
+        for edge in bins:
+            if not isinstance(edge, Real):
+                msg = 'Unable to add bin edge "{0}" to a "{1}" ' \
+                      'since it is a non-integer or floating point ' \
+                      'value'.format(edge, type(self))
+                raise ValueError(msg)
+            elif edge < 0.:
+                msg = 'Unable to add bin edge "{0}" to a "{1}" ' \
+                      'since it is less than 0'.format(edge, type(self))
+                raise ValueError(msg)
+            elif edge > np.pi:
+                msg = 'Unable to add bin edge "{0}" to a "{1}" ' \
+                      'since it is greater than pi'.format(edge, type(self))
+                raise ValueError(msg)
+
+        # Check that bin edges are monotonically increasing
+        for index in range(1, len(bins)):
+            if bins[index] < bins[index-1]:
+                msg = 'Unable to add bin edges "{0}" to a "{1}" Filter ' \
+                      'since they are not monotonically ' \
+                      'increasing'.format(bins, type(self))
+                raise ValueError(msg)
 
     def get_pandas_dataframe(self, data_size, **kwargs):
         """Builds a Pandas DataFrame for the Filter's bins.
@@ -1330,12 +1478,13 @@ class PolarFilter(Filter):
         hi_bins = np.tile(hi_bins, tile_factor)
 
         # Add the new angle columns to the DataFrame.
-        df.loc[:, self.type + ' low'] = lo_bins
+        df.loc[:, 'polar low'] = lo_bins
+        df.loc[:, 'polar high'] = hi_bins
 
         return df
 
 
-class AzimuthalFilter(Filter):
+class AzimuthalFilter(RealFilter):
     """Bins tally events based on the incident particle's direction.
 
     Parameters
@@ -1362,6 +1511,30 @@ class AzimuthalFilter(Filter):
         filter's bins.
 
     """
+
+    def check_bins(self, bins):
+        for edge in bins:
+            if not isinstance(edge, Real):
+                msg = 'Unable to add bin edge "{0}" to a "{1}" ' \
+                      'since it is a non-integer or floating point ' \
+                      'value'.format(edge, type(self))
+                raise ValueError(msg)
+            elif edge < -np.pi:
+                msg = 'Unable to add bin edge "{0}" to a "{1}" ' \
+                      'since it is less than -pi'.format(edge, type(self))
+                raise ValueError(msg)
+            elif edge > np.pi:
+                msg = 'Unable to add bin edge "{0}" to a "{1}" ' \
+                      'since it is greater than pi'.format(edge, type(self))
+                raise ValueError(msg)
+
+        # Check that bin edges are monotonically increasing
+        for index in range(1, len(bins)):
+            if bins[index] < bins[index-1]:
+                msg = 'Unable to add bin edges "{0}" to a "{1}" Filter ' \
+                      'since they are not monotonically ' \
+                      'increasing'.format(bins, type(self))
+                raise ValueError(msg)
 
     def get_pandas_dataframe(self, data_size, distribcell_paths=True):
         """Builds a Pandas DataFrame for the Filter's bins.
@@ -1408,7 +1581,8 @@ class AzimuthalFilter(Filter):
         hi_bins = np.tile(hi_bins, tile_factor)
 
         # Add the new angle columns to the DataFrame.
-        df.loc[:, self.type + ' low'] = lo_bins
+        df.loc[:, 'azimuthal low'] = lo_bins
+        df.loc[:, 'azimuthal high'] = hi_bins
 
         return df
 

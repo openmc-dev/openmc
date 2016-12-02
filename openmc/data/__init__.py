@@ -9,6 +9,7 @@ WMP_VERSION = b'v0.2'
 
 from .data import *
 from .neutron import *
+from .decay import *
 from .reaction import *
 from .ace import *
 from .angle_distribution import *

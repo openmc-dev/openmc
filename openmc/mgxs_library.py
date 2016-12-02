@@ -1,6 +1,6 @@
 from collections import Iterable
 from numbers import Real, Integral
-import sys
+import os
 
 from six import string_types
 import numpy as np
@@ -15,7 +15,7 @@ from openmc.checkvalue import check_type, check_value, check_greater_than, \
 # Supported incoming particle MGXS angular treatment representations
 _REPRESENTATIONS = ['isotropic', 'angle']
 _SCATTER_TYPES = ['tabular', 'legendre', 'histogram']
-_XS_SHAPES = ["[Order][G][G']", "[G]", "[G']", "[G][G']", "[DG]", "[G][DG]",
+_XS_SHAPES = ["[G][G'][Order]", "[G]", "[G']", "[G][G']", "[DG]", "[G][DG]",
               "[G'][DG]", "[G][G'][DG]"]
 
 
@@ -42,7 +42,7 @@ class XSdata(object):
     ----------
     name : str
         Unique identifier for the xsdata object
-    aromic_weight_ratio : float
+    atomic_weight_ratio : float
         Atomic weight ratio of an isotope.  That is, the ratio of the mass
         of the isotope to the mass of a single neutron.
     temperatures : numpy.ndarray
@@ -71,50 +71,50 @@ class XSdata(object):
         Number of equal width angular bins that the polar angular domain is
         subdivided into. This only applies when :attr:`XSdata.representation`
         is "angle".
-    total : dict of numpy.ndarray
+    total : list of numpy.ndarray
         Group-wise total cross section.
-    absorption : dict of numpy.ndarray
+    absorption : list of numpy.ndarray
         Group-wise absorption cross section.
-    scatter_matrix : dict of numpy.ndarray
+    scatter_matrix : list of numpy.ndarray
         Scattering moment matrices presented with the columns representing
         incoming group and rows representing the outgoing group.  That is,
         down-scatter will be above the diagonal of the resultant matrix.
-    multiplicity_matrix : dict of numpy.ndarray
+    multiplicity_matrix : list of numpy.ndarray
         Ratio of neutrons produced in scattering collisions to the neutrons
         which undergo scattering collisions; that is, the multiplicity provides
         the code with a scaling factor to account for neutrons produced in
         (n,xn) reactions.
-    fission : dict of numpy.ndarray
+    fission : list of numpy.ndarray
         Group-wise fission cross section.
-    kappa_fission : dict of numpy.ndarray
+    kappa_fission : list of numpy.ndarray
         Group-wise kappa_fission cross section.
-    chi : dict of numpy.ndarray
+    chi : list of numpy.ndarray
         Group-wise fission spectra ordered by increasing group index (i.e.,
         fast to thermal). This attribute should be used if making the common
         approximation that the fission spectra does not depend on incoming
         energy. If the user does not wish to make this approximation, then
         this should not be provided and this information included in the
         :attr:`XSdata.nu_fission` attribute instead.
-    chi_prompt : dict of numpy.ndarray
+    chi_prompt : list of numpy.ndarray
         Group-wise prompt fission spectra ordered by increasing group index
         (i.e., fast to thermal). This attribute should be used if chi from
         prompt and delayed neutrons is being set separately.
-    chi_delayed : dict of numpy.ndarray
+    chi_delayed : list of numpy.ndarray
         Group-wise delayed fission spectra ordered by increasing group index
         (i.e., fast to thermal). This attribute should be used if chi from
         prompt and delayed neutrons is being set separately.
-    nu_fission : dict of numpy.ndarray
+    nu_fission : list of numpy.ndarray
         Group-wise fission production cross section vector (i.e., if ``chi`` is
         provided), or is the group-wise fission production matrix.
-    prompt_nu_fission : dict of numpy.ndarray
+    prompt_nu_fission : list of numpy.ndarray
         Group-wise prompt fission production cross section vector.
-    delayed_nu_fission : dict of numpy.ndarray
+    delayed_nu_fission : list of numpy.ndarray
         Group-wise delayed fission production cross section vector.
-    beta : dict of numpy.ndarray
+    beta : list of numpy.ndarray
         Delayed-group-wise delayed neutron fraction cross section vector.
-    decay_rate : dict of numpy.ndarray
+    decay_rate : list of numpy.ndarray
         Delayed-group-wise decay rate vector.
-    inverse_velocity : dict of numpy.ndarray
+    inverse_velocity : list of numpy.ndarray
         Inverse of velocity, in units of sec/cm.
     xs_shapes : dict of iterable of int
         Dictionary with keys of _XS_SHAPES and iterable of int values with the
@@ -134,7 +134,7 @@ class XSdata(object):
     Note that some cross sections can be input in more than one shape so they
     are listed multiple times:
 
-    [Order][G][G']: scatter_matrix
+    [G][G'][Order]: scatter_matrix
 
     [G]: total, absorption, fission, kappa_fission, nu_fission,
          prompt_nu_fission, delayed_nu_fission, inverse_velocity
@@ -304,13 +304,13 @@ class XSdata(object):
                                               self.energy_groups.num_groups,
                                               self.num_delayed_groups)
 
-            self._xs_shapes["[Order][G][G']"] \
-                = (self.num_orders, self.energy_groups.num_groups,
-                   self.energy_groups.num_groups)
+            self._xs_shapes["[G][G'][Order]"] \
+                = (self.energy_groups.num_groups,
+                   self.energy_groups.num_groups, self.num_orders)
 
             # If representation is by angle prepend num polar and num azim
             if self.representation == 'angle':
-                for key,shapes in self._xs_shapes.items():
+                for key, shapes in self._xs_shapes.items():
                     self._xs_shapes[key] \
                         = (self.num_polar, self.num_azimuthal) + shapes
 
@@ -338,7 +338,7 @@ class XSdata(object):
     def num_delayed_groups(self, num_delayed_groups):
 
         # Check validity of num_delayed_groups
-        check_type('num_delayed_groups', num_delayed_groups, int)
+        check_type('num_delayed_groups', num_delayed_groups, Integral)
         check_less_than('num_delayed_groups', num_delayed_groups,
                         openmc.mgxs.MAX_DELAYED_GROUPS, equality=True)
         check_greater_than('num_delayed_groups', num_delayed_groups, 0,
@@ -724,7 +724,7 @@ class XSdata(object):
         """
 
         # Get the accepted shapes for this xs
-        shapes = [self.xs_shapes["[Order][G][G']"]]
+        shapes = [self.xs_shapes["[G][G'][Order]"]]
 
         # Convert to a numpy array so we can easily get the shape for checking
         scatter = np.asarray(scatter)
@@ -1521,33 +1521,41 @@ class XSdata(object):
         check_type('temperature', temperature, Real)
         check_value('temperature', temperature, self.temperatures)
 
-        if self.scatter_format != 'legendre':
-            msg = 'Anisotropic scattering representations other than ' \
-                  'Legendre expansions have not yet been implemented in ' \
-                  'openmc.mgxs.'
-            raise ValueError(msg)
+        # Set the value of scatter_format based on the same value within
+        # scatter
+        self.scatter_format = scatter.scatter_format
 
         # If the user has not defined XSdata.order, then we will set
         # the order based on the data within scatter.
-        # Otherwise, we will check to see that XSdata.order to match
+        # Otherwise, we will check to see that XSdata.order matches
         # the order of scatter
-        if self.order is None:
-            self.order = scatter.legendre_order
-        else:
-            check_value('legendre_order', scatter.legendre_order,
-                        [self.order])
+        if self.scatter_format == 'legendre':
+            if self.order is None:
+                self.order = scatter.legendre_order
+            else:
+                check_value('legendre_order', scatter.legendre_order,
+                            [self.order])
+        elif self.scatter_format == 'histogram':
+            if self.order is None:
+                self.order = scatter.histogram_bins
+            else:
+                check_value('histogram_bins', scatter.histogram_bins,
+                            [self.order])
 
         i = np.where(self.temperatures == temperature)[0][0]
         if self.representation == 'isotropic':
-            # Get the scattering orders in the outermost dimension
-            self._scatter_matrix[i] = np.zeros((self.num_orders,
-                                                self.energy_groups.num_groups,
-                                                self.energy_groups.num_groups))
-            for moment in range(self.num_orders):
-                self._scatter_matrix[i][moment, :, :] = \
+            if self.scatter_format == 'legendre':
+                # Get the scattering orders in the outermost dimension
+                self._scatter_matrix[i] = \
+                    np.zeros(self.xs_shapes["[G][G'][Order]"])
+                for moment in range(self.num_orders):
+                    self._scatter_matrix[i][:, :, moment] = \
+                        scatter.get_xs(nuclides=nuclide, xs_type=xs_type,
+                                       moment=moment, subdomains=subdomain)
+            else:
+                self._scatter_matrix[i] = \
                     scatter.get_xs(nuclides=nuclide, xs_type=xs_type,
-                                   moment=moment, subdomains=subdomain)
-
+                                   subdomains=subdomain)
         elif self.representation == 'angle':
             msg = 'Angular-Dependent MGXS have not yet been implemented'
             raise ValueError(msg)
@@ -1625,6 +1633,10 @@ class XSdata(object):
                 scatt = scatter.get_xs(nuclides=nuclide,
                                        xs_type=xs_type, moment=0,
                                        subdomains=subdomain)
+                if scatter.scatter_format == 'histogram':
+                    scatt = np.sum(scatt, axis=0)
+                if nuscatter.scatter_format == 'histogram':
+                    nuscatt = np.sum(nuscatt, axis=0)
                 self._multiplicity_matrix[i] = np.divide(nuscatt, scatt)
         elif self.representation == 'angle':
             msg = 'Angular-Dependent MGXS have not yet been implemented'
@@ -1641,6 +1653,7 @@ class XSdata(object):
             HDF5 File (a root Group) to write to
 
         """
+
         grp = file.create_group(self.name)
         if self.atomic_weight_ratio is not None:
             grp.attrs['atomic_weight_ratio'] = self.atomic_weight_ratio
@@ -1656,7 +1669,7 @@ class XSdata(object):
                 if self.num_polar is not None:
                     grp.attrs['num_polar'] = self.num_polar
 
-        grp.attrs['scatter_shape'] = np.string_("[Order][G][G']")
+        grp.attrs['scatter_shape'] = np.string_("[G][G'][Order]")
         if self.scatter_format is not None:
             grp.attrs['scatter_format'] = np.string_(self.scatter_format)
         if self.order is not None:
@@ -1708,11 +1721,12 @@ class XSdata(object):
                    (self._delayed_nu_fission[i] is None or \
                     self._prompt_nu_fission[i] is None):
                     raise ValueError('nu-fission or prompt-nu-fission and '
-                                     'delayed-nu-fission data must be provided '
-                                     'when writing the HDF5 library')
+                                     'delayed-nu-fission data must be '
+                                     'provided when writing the HDF5 library')
 
                 if self._nu_fission[i] is not None:
-                    xs_grp.create_dataset("nu-fission", data=self._nu_fission[i])
+                    xs_grp.create_dataset("nu-fission",
+                                          data=self._nu_fission[i])
 
                 if self._prompt_nu_fission[i] is not None:
                     xs_grp.create_dataset("prompt-nu-fission",
@@ -1726,7 +1740,8 @@ class XSdata(object):
                     xs_grp.create_dataset("beta", data=self._beta[i])
 
                 if self._decay_rate[i] is not None:
-                    xs_grp.create_dataset("decay rate", data=self._decay_rate[i])
+                    xs_grp.create_dataset("decay rate",
+                                          data=self._decay_rate[i])
 
             if self._scatter_matrix[i] is None:
                 raise ValueError('Scatter matrix must be provided when '
@@ -1735,97 +1750,88 @@ class XSdata(object):
             # Get the sparse scattering data to print to the library
             G = self.energy_groups.num_groups
             if self.representation == 'isotropic':
-
-                g_out_bounds = np.zeros((G, 2), dtype=np.int)
-
-                for g_in in range(G):
-                    nz = np.nonzero(self._scatter_matrix[i][0, g_in, :])
-                    g_out_bounds[g_in, 0] = nz[0][0]
-                    g_out_bounds[g_in, 1] = nz[0][-1]
-
-                # Now create the flattened scatter matrix array
-                matrix = self._scatter_matrix[i]
-                flat_scatt = []
-                for g_in in range(G):
-                    for g_out in range(g_out_bounds[g_in, 0],
-                                       g_out_bounds[g_in, 1] + 1):
-                        for l in range(len(matrix[:, g_in, g_out])):
-                            flat_scatt.append(matrix[l, g_in, g_out])
-
-                # And write it.
-                scatt_grp = xs_grp.create_group('scatter_data')
-                scatt_grp.create_dataset("scatter_matrix",
-                                         data=np.array(flat_scatt))
-
-                # Repeat for multiplicity
-                if self._multiplicity_matrix[i] is not None:
-
-                    # Now create the flattened scatter matrix array
-                    matrix = self._multiplicity_matrix[i][:, :]
-                    flat_mult = []
-                    for g_in in range(G):
-                        for g_out in range(g_out_bounds[g_in, 0],
-                                           g_out_bounds[g_in, 1] + 1):
-                            flat_mult.append(matrix[g_in, g_out])
-
-                    scatt_grp.create_dataset("multiplicity matrix",
-                                             data=np.array(flat_mult))
-
-                # And finally, adjust g_out_bounds for 1-based group counting
-                # and write it.
-                g_out_bounds[:, :] += 1
-                scatt_grp.create_dataset("g_min", data=g_out_bounds[:, 0])
-                scatt_grp.create_dataset("g_max", data=g_out_bounds[:, 1])
-
+                Np = 1
+                Na = 1
             elif self.representation == 'angle':
                 Np = self.num_polar
                 Na = self.num_azimuthal
-                g_out_bounds = np.zeros((Np, Na, G, 2), dtype=np.int)
 
-                for p in range(Np):
-                    for a in range(Na):
-                        for g_in in range(G):
-                            matrix = self._scatter_matrix[i][p, a, 0, g_in, :]
-                            nz = np.nonzero(matrix)
+            g_out_bounds = np.zeros((Np, Na, G, 2), dtype=np.int)
+            for p in range(Np):
+                for a in range(Na):
+                    for g_in in range(G):
+                        if self.scatter_format == 'legendre':
+                            if self.representation == 'isotropic':
+                                matrix = \
+                                    self._scatter_matrix[i][g_in, :, 0]
+                            elif self.representation == 'angle':
+                                matrix = \
+                                    self._scatter_matrix[i][p, a, g_in, :, 0]
+                        elif self.scatter_format == 'histogram':
+                            if self.representation == 'isotropic':
+                                matrix = \
+                                    np.sum(self._scatter_matrix[i][g_in, :, :],
+                                           axis=1)
+                            elif self.representation == 'angle':
+                                matrix = \
+                                    np.sum(self._scatter_matrix[i][p, a, g_in, :, :],
+                                           axis=1)
+                        nz = np.nonzero(matrix)
+                        # It is possible that there only zeros in matrix
+                        # and therefore nz will be empty, in that case set
+                        # g_out_bounds to 0s
+                        if len(nz[0]) == 0:
+                            g_out_bounds[p, a, g_in, :] = 0
+                        else:
                             g_out_bounds[p, a, g_in, 0] = nz[0][0]
                             g_out_bounds[p, a, g_in, 1] = nz[0][-1]
 
+            # Now create the flattened scatter matrix array
+            flat_scatt = []
+            for p in range(Np):
+                for a in range(Na):
+                    if self.representation == 'isotropic':
+                        matrix = self._scatter_matrix[i][:, :, :]
+                    elif self.representation == 'angle':
+                        matrix = self._scatter_matrix[i][p, a, :, :, :]
+                    for g_in in range(G):
+                        for g_out in range(g_out_bounds[p, a, g_in, 0],
+                                           g_out_bounds[p, a, g_in, 1] + 1):
+                            for l in range(len(matrix[g_in, g_out, :])):
+                                flat_scatt.append(matrix[g_in, g_out, l])
+
+            # And write it.
+            scatt_grp = xs_grp.create_group('scatter_data')
+            scatt_grp.create_dataset("scatter_matrix",
+                                     data=np.array(flat_scatt))
+
+            # Repeat for multiplicity
+            if self._multiplicity_matrix[i] is not None:
+
                 # Now create the flattened scatter matrix array
-                flat_scatt = []
+                flat_mult = []
                 for p in range(Np):
                     for a in range(Na):
-                        matrix = self._scatter_matrix[i][p, a, :, :, :]
+                        if self.representation == 'isotropic':
+                            matrix = self._multiplicity_matrix[i][:, :]
+                        elif self.representation == 'angle':
+                            matrix = self._multiplicity_matrix[i][p, a, :, :]
                         for g_in in range(G):
                             for g_out in range(g_out_bounds[p, a, g_in, 0],
                                                g_out_bounds[p, a, g_in, 1] + 1):
-                                for l in range(len(matrix[:, g_in, g_out])):
-                                    flat_scatt.append(matrix[l, g_in, g_out])
+                                flat_mult.append(matrix[g_in, g_out])
 
                 # And write it.
-                scatt_grp = xs_grp.create_group('scatter_data')
-                scatt_grp.create_dataset("scatter_matrix",
-                                         data=np.array(flat_scatt))
+                scatt_grp.create_dataset("multiplicity_matrix",
+                                         data=np.array(flat_mult))
 
-                # Repeat for multiplicity
-                if self._multiplicity_matrix[i] is not None:
-
-                    # Now create the flattened scatter matrix array
-                    flat_mult = []
-                    for p in range(Np):
-                        for a in range(Na):
-                            matrix = self._multiplicity_matrix[i][p, a, :, :]
-                            for g_in in range(G):
-                                for g_out in range(g_out_bounds[p, a, g_in, 0],
-                                                   g_out_bounds[p, a, g_in, 1] + 1):
-                                    flat_mult.append(matrix[g_in, g_out])
-
-                    # And write it.
-                    scatt_grp.create_dataset("multiplicity_matrix",
-                                             data=np.array(flat_mult))
-
-                # And finally, adjust g_out_bounds for 1-based group counting
-                # and write it.
-                g_out_bounds[:, :, :, :] += 1
+            # And finally, adjust g_out_bounds for 1-based group counting
+            # and write it.
+            g_out_bounds[:, :, :, :] += 1
+            if self.representation == 'isotropic':
+                scatt_grp.create_dataset("g_min", data=g_out_bounds[0, 0, :, 0])
+                scatt_grp.create_dataset("g_max", data=g_out_bounds[0, 0, :, 1])
+            elif self.representation == 'angle':
                 scatt_grp.create_dataset("g_min", data=g_out_bounds[:, :, :, 0])
                 scatt_grp.create_dataset("g_max", data=g_out_bounds[:, :, :, 1])
 
@@ -1833,6 +1839,143 @@ class XSdata(object):
             if self._inverse_velocity[i] is not None:
                 xs_grp.create_dataset("inverse-velocity",
                                       data=self._inverse_velocity[i])
+
+    @classmethod
+    def from_hdf5(cls, group, name, energy_groups, num_delayed_groups):
+        """Generate XSdata object from an HDF5 group
+
+        Parameters
+        ----------
+        group : h5py.Group
+            HDF5 group to read from
+        name : str
+            Name of the mgxs data set.
+        energy_groups : openmc.mgxs.EnergyGroups
+            Energy group structure
+        num_delayed_groups : int
+            Number of delayed groups
+
+        Returns
+        -------
+        openmc.XSdata
+            Multi-group cross section data
+
+        """
+
+        # Get a list of all the subgroups which will contain our temperature
+        # strings
+        subgroups = group.keys()
+        temperatures = []
+        for subgroup in subgroups:
+            if subgroup != 'kTs':
+                temperatures.append(subgroup)
+
+        # To ensure the actual floating point temperature used when creating
+        # the new library is consistent with that used when originally creating
+        # the file, get the floating point temperatures straight from the kTs
+        # group.
+        kTs_group = group['kTs']
+        float_temperatures = []
+        for temperature in temperatures:
+            kT = kTs_group[temperature].value
+            float_temperatures.append(kT / openmc.data.K_BOLTZMANN)
+
+        attrs = group.attrs.keys()
+        if 'representation' in attrs:
+            representation = group.attrs['representation'].decode()
+        else:
+            representation = 'isotropic'
+
+        data = cls(name, energy_groups, float_temperatures, representation,
+                   num_delayed_groups)
+
+        if 'scatter_format' in attrs:
+            data.scatter_format = group.attrs['scatter_format'].decode()
+
+        # Get the remaining optional attributes
+        if 'atomic_weight_ratio' in attrs:
+            data.atomic_weight_ratio = group.attrs['atomic_weight_ratio']
+        if 'order' in attrs:
+            data.order = group.attrs['order']
+        if data.representation == 'angle':
+            data.num_azimuthal = group.attrs['num_azimuthal']
+            data.num_polar = group.attrs['num_polar']
+
+        # Read the temperature-dependent datasets
+        for temp, float_temp in zip(temperatures, float_temperatures):
+            xs_types = ['total', 'absorption', 'fission', 'kappa-fission',
+                        'chi', 'chi-prompt', 'chi-delayed', 'nu-fission',
+                        'prompt-nu-fission', 'delayed-nu-fission', 'beta',
+                        'decay rate', 'inverse-velocity']
+
+            temperature_group = group[temp]
+
+            for xs_type in xs_types:
+                set_func = 'set_' + xs_type.replace(' ', '_').replace('-', '_')
+                if xs_type in temperature_group:
+                    getattr(data, set_func)(temperature_group[xs_type].value,
+                                            float_temp)
+
+            scatt_group = temperature_group['scatter_data']
+
+            # Get scatter matrix and 'un-flatten' it
+            g_max = scatt_group['g_max']
+            g_min = scatt_group['g_min']
+            flat_scatter = scatt_group['scatter_matrix'].value
+            scatter_matrix = np.zeros(data.xs_shapes["[G][G'][Order]"])
+            G = data.energy_groups.num_groups
+            if data.representation == 'isotropic':
+                Np = 1
+                Na = 1
+            elif data.representation == 'angle':
+                Np = data.num_polar
+                Na = data.num_azimuthal
+            flat_index = 0
+            for p in range(Np):
+                for a in range(Na):
+                    for g_in in range(G):
+                        if data.representation == 'isotropic':
+                            g_mins = g_min[g_in]
+                            g_maxs = g_max[g_in]
+                        elif data.representation == 'angle':
+                            g_mins = g_min[p, a, g_in]
+                            g_maxs = g_max[p, a, g_in]
+                        for g_out in range(g_mins - 1, g_maxs):
+                            for ang in range(data.num_orders):
+                                if data.representation == 'isotropic':
+                                    scatter_matrix[g_in, g_out, ang] = \
+                                        flat_scatter[flat_index]
+                                elif data.representation == 'angle':
+                                    scatter_matrix[p, a, g_in, g_out, ang] = \
+                                        flat_scatter[flat_index]
+                                flat_index += 1
+            data.set_scatter_matrix(scatter_matrix, float_temp)
+
+            # Repeat for multiplicity
+            if 'multiplicity_matrix' in scatt_group:
+                flat_mult = scatt_group['multiplicity_matrix'].value
+                mult_matrix = np.zeros(data.xs_shapes["[G][G']"])
+                flat_index = 0
+                for p in range(Np):
+                    for a in range(Na):
+                        for g_in in range(G):
+                            if data.representation == 'isotropic':
+                                g_mins = g_min[g_in]
+                                g_maxs = g_max[g_in]
+                            elif data.representation == 'angle':
+                                g_mins = g_min[p, a, g_in]
+                                g_maxs = g_max[p, a, g_in]
+                            for g_out in range(g_mins - 1, g_maxs):
+                                if data.representation == 'isotropic':
+                                    mult_matrix[g_in, g_out] = \
+                                        flat_mult[flat_index]
+                                elif data.representation == 'angle':
+                                    mult_matrix[p, a, g_in, g_out] = \
+                                        flat_mult[flat_index]
+                                flat_index += 1
+                data.set_multiplicity_matrix(mult_matrix, float_temp)
+
+        return data
 
 
 class MGXSLibrary(object):
@@ -1871,12 +2014,12 @@ class MGXSLibrary(object):
         return self._num_delayed_groups
 
     @property
-    def temperatures(self):
-        return self._temperatures
-
-    @property
     def xsdatas(self):
         return self._xsdatas
+
+    @property
+    def names(self):
+        return [xsdata.name for xsdata in self.xsdatas]
 
     @energy_groups.setter
     def energy_groups(self, energy_groups):
@@ -1885,7 +2028,7 @@ class MGXSLibrary(object):
 
     @num_delayed_groups.setter
     def num_delayed_groups(self, num_delayed_groups):
-        check_type('num_delayed_groups', num_delayed_groups, int)
+        check_type('num_delayed_groups', num_delayed_groups, Integral)
         check_greater_than('num_delayed_groups', num_delayed_groups, 0,
                            equality=True)
         check_less_than('num_delayed_groups', num_delayed_groups,
@@ -1914,7 +2057,7 @@ class MGXSLibrary(object):
         self._xsdatas.append(xsdata)
 
     def add_xsdatas(self, xsdatas):
-        """Add multiple xsdatas to the file.
+        """Add multiple XSdatas to the file.
 
         Parameters
         ----------
@@ -1945,6 +2088,27 @@ class MGXSLibrary(object):
 
         self._xsdatas.remove(xsdata)
 
+    def get_by_name(self, name):
+        """Access the XSdata objects by name
+
+        Parameters
+        ----------
+        name : str
+            Name of openmc.XSdata object to obtain
+
+        Returns
+        -------
+        result : openmc.XSdata or None
+            Provides the matching XSdata object or None, if not found
+
+        """
+        check_type("name", name, str)
+        result = None
+        for xsdata in self.xsdatas:
+            if name == xsdata.name:
+                result = xsdata
+        return result
+
     def export_to_hdf5(self, filename='mgxs.h5'):
         """Create an hdf5 file that can be used for a simulation.
 
@@ -1967,3 +2131,43 @@ class MGXSLibrary(object):
             xsdata.to_hdf5(file)
 
         file.close()
+
+    @classmethod
+    def from_hdf5(cls, filename=None):
+        """Generate an MGXS Library from an HDF5 group or file
+        Parameters
+        ----------
+        filename : str, optional
+            Name of HDF5 file containing MGXS data. Default is None.
+            If not provided, the value of the OPENMC_MG_CROSS_SECTIONS
+            environmental variable will be used
+        Returns
+        -------
+        openmc.MGXSLibrary
+            Multi-group cross section data object.
+        """
+
+        # If filename is None, get the cross sections from the
+        # OPENMC_CROSS_SECTIONS environment variable
+        if filename is None:
+            filename = os.environ.get('OPENMC_MG_CROSS_SECTIONS')
+
+        # Check to make sure there was an environmental variable.
+        if filename is None:
+            raise ValueError("Either path or OPENMC_MG_CROSS_SECTIONS "
+                             "environmental variable must be set")
+
+        check_type('filename', filename, str)
+        file = h5py.File(filename, 'r')
+
+        group_structure = file.attrs['group structure']
+        num_delayed_groups = file.attrs['delayed_groups']
+        energy_groups = openmc.mgxs.EnergyGroups(group_structure)
+        data = cls(energy_groups, num_delayed_groups)
+
+        for group_name, group in file.items():
+            data.add_xsdata(openmc.XSdata.from_hdf5(group, group_name,
+                                                    energy_groups,
+                                                    num_delayed_groups))
+
+        return data

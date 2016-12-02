@@ -3,11 +3,13 @@
 import os
 import sys
 sys.path.insert(0, os.pardir)
+
 from testing_harness import PyAPITestHarness
 from openmc.filter import *
 from openmc import Mesh, Tally, Tallies
 from openmc.source import Source
 from openmc.stats import Box
+
 
 class TalliesTestHarness(PyAPITestHarness):
     def _build_inputs(self):
@@ -21,33 +23,27 @@ class TalliesTestHarness(PyAPITestHarness):
         self._input_set.settings.source = Source(space=Box(
             [-160, -160, -183], [160, 160, 183]))
 
-        azimuthal_bins = (-3.1416, -1.8850, -0.6283, 0.6283, 1.8850, 3.1416)
-        azimuthal_filter1 = AzimuthalFilter(azimuthal_bins)
+        azimuthal_bins = (-3.14159, -1.8850, -0.6283, 0.6283, 1.8850, 3.14159)
+        azimuthal_filter = AzimuthalFilter(azimuthal_bins)
         azimuthal_tally1 = Tally()
-        azimuthal_tally1.filters = [azimuthal_filter1]
+        azimuthal_tally1.filters = [azimuthal_filter]
         azimuthal_tally1.scores = ['flux']
         azimuthal_tally1.estimator = 'tracklength'
 
         azimuthal_tally2 = Tally()
-        azimuthal_tally2.filters = [azimuthal_filter1]
+        azimuthal_tally2.filters = [azimuthal_filter]
         azimuthal_tally2.scores = ['flux']
         azimuthal_tally2.estimator = 'analog'
-
-        azimuthal_filter2 = AzimuthalFilter(5)
-        azimuthal_tally3 = Tally()
-        azimuthal_tally3.filters = [azimuthal_filter2]
-        azimuthal_tally3.scores = ['flux']
-        azimuthal_tally3.estimator = 'tracklength'
 
         mesh_2x2 = Mesh(mesh_id=1)
         mesh_2x2.lower_left  = [-182.07, -182.07]
         mesh_2x2.upper_right = [182.07,  182.07]
         mesh_2x2.dimension = [2, 2]
         mesh_filter = MeshFilter(mesh_2x2)
-        azimuthal_tally4 = Tally()
-        azimuthal_tally4.filters = [azimuthal_filter2, mesh_filter]
-        azimuthal_tally4.scores = ['flux']
-        azimuthal_tally4.estimator = 'tracklength'
+        azimuthal_tally3 = Tally()
+        azimuthal_tally3.filters = [azimuthal_filter, mesh_filter]
+        azimuthal_tally3.scores = ['flux']
+        azimuthal_tally3.estimator = 'tracklength'
 
         cellborn_tally = Tally()
         cellborn_tally.filters = [CellbornFilter((10, 21, 22, 23))]
@@ -76,20 +72,17 @@ class TalliesTestHarness(PyAPITestHarness):
         material_tally.filters = [MaterialFilter((1, 2, 3, 4))]
         material_tally.scores = ['total']
 
+        mu_bins = (-1.0, -0.5, 0.0, 0.5, 1.0)
+        mu_filter = MuFilter(mu_bins)
         mu_tally1 = Tally()
-        mu_tally1.filters = [MuFilter((-1.0, -0.5, 0.0, 0.5, 1.0))]
+        mu_tally1.filters = [mu_filter]
         mu_tally1.scores = ['scatter', 'nu-scatter']
 
-        mu_filter = MuFilter(5)
         mu_tally2 = Tally()
-        mu_tally2.filters = [mu_filter]
+        mu_tally2.filters = [mu_filter, mesh_filter]
         mu_tally2.scores = ['scatter', 'nu-scatter']
 
-        mu_tally3 = Tally()
-        mu_tally3.filters = [mu_filter, mesh_filter]
-        mu_tally3.scores = ['scatter', 'nu-scatter']
-
-        polar_bins = (0.0, 0.6283, 1.2566, 1.8850, 2.5132, 3.1416)
+        polar_bins = (0.0, 0.6283, 1.2566, 1.8850, 2.5132, 3.14159)
         polar_filter = PolarFilter(polar_bins)
         polar_tally1 = Tally()
         polar_tally1.filters = [polar_filter]
@@ -101,16 +94,10 @@ class TalliesTestHarness(PyAPITestHarness):
         polar_tally2.scores = ['flux']
         polar_tally2.estimator = 'analog'
 
-        polar_filter2 = PolarFilter((5,))
         polar_tally3 = Tally()
-        polar_tally3.filters = [polar_filter2]
+        polar_tally3.filters = [polar_filter, mesh_filter]
         polar_tally3.scores = ['flux']
         polar_tally3.estimator = 'tracklength'
-
-        polar_tally4 = Tally()
-        polar_tally4.filters = [polar_filter2, mesh_filter]
-        polar_tally4.scores = ['flux']
-        polar_tally4.estimator = 'tracklength'
 
         universe_tally = Tally()
         universe_tally.filters = [UniverseFilter((1, 2, 3, 4, 6, 8))]
@@ -173,10 +160,9 @@ class TalliesTestHarness(PyAPITestHarness):
         self._input_set.tallies = Tallies()
         self._input_set.tallies += (
             [azimuthal_tally1, azimuthal_tally2, azimuthal_tally3,
-             azimuthal_tally4, cellborn_tally, dg_tally, energy_tally,
-             energyout_tally, transfer_tally, material_tally, mu_tally1,
-             mu_tally2, mu_tally3, polar_tally1, polar_tally2, polar_tally3,
-             polar_tally4, universe_tally])
+             cellborn_tally, dg_tally, energy_tally, energyout_tally,
+             transfer_tally, material_tally, mu_tally1, mu_tally2,
+             polar_tally1, polar_tally2, polar_tally3, universe_tally])
         self._input_set.tallies += score_tallies
         self._input_set.tallies += flux_tallies
         self._input_set.tallies += (scatter_tally1, scatter_tally2)

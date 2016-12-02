@@ -1320,7 +1320,8 @@ class Tally(object):
 
                     # Create list of 2-tuples for energy boundary bins
                     elif isinstance(self_filter, (openmc.EnergyFilter,
-                        openmc.EnergyoutFilter)):
+                        openmc.EnergyoutFilter, openmc.MuFilter,
+                        openmc.PolarFilter, openmc.AzimuthalFilter)):
                         bins = []
                         for k in range(self_filter.num_bins):
                             bins.append((self_filter.bins[k], self_filter.bins[k+1]))

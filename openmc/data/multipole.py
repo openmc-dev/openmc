@@ -38,7 +38,7 @@ FIT_A = 1       # Absorption
 FIT_F = 2       # Fission
 
 
-def faddeeva(z):
+def _faddeeva(z):
     """Evaluate the complex Faddeeva function.
 
     Technically, the value we want is given by the equation:
@@ -54,6 +54,16 @@ def faddeeva(z):
     For imag(z) > 0, w_int(z) = w_fun(z)
     For imag(z) < 0, w_int(z) = -conjg(w_fun(conjg(z)))
 
+    Parameters
+    ----------
+    z : Complex
+        Argument to the Faddeeva function.
+
+    Returns
+    -------
+    Complex
+        I/Pi * Integrate[Exp[-t^2]/(z-t), {t, -Infinity, Infinity}]
+
     """
     if np.angle(z) > 0:
         return wofz(z)
@@ -61,8 +71,28 @@ def faddeeva(z):
         return -np.conj(wofz(z))
 
 
-def broaden_wmp_polynomials(En, dopp, n):
-    sqrtE = sqrt(En)
+def _broaden_wmp_polynomials(En, dopp, n):
+    """Evaluate Doppler-broadened windowed multipole curvefit.
+
+    The curvefit is a polynomial of the form
+    a/En + b/sqrt(En) + c + d sqrt(En) ...
+
+    Parameters
+    ----------
+    En : Real
+        Energy to evaluate at.
+    dopp : Real
+        sqrt(atomic weight ratio / kT) in units of eV.
+    n : Integral
+        Number of components to the polynomial.
+
+    Returns
+    -------
+    np.ndarray
+        The value of each Doppler-broadened curvefit polynomial term.
+
+    """
+    sqrtE = np.sqrt(En)
     beta = sqrtE * dopp
     half_inv_dopp2 = 0.5 / dopp**2
     quarter_inv_dopp4 = half_inv_dopp2**2
@@ -81,7 +111,7 @@ def broaden_wmp_polynomials(En, dopp, n):
 
     factors = np.zeros(n)
 
-    factors[0] = erfbeta / En
+    factors[0] = erfBeta / En
     factors[1] = 1.0 / sqrtE
     factors[2] = (factors[0] * (half_inv_dopp2 + En)
                   + exp_m_beta2 / (beta * np.sqrt(np.pi)))
@@ -100,6 +130,62 @@ def broaden_wmp_polynomials(En, dopp, n):
 
 
 class WindowedMultipole(EqualityMixin):
+    """Resonant cross sections represented in the windowed multipole format.
+
+    Attributes
+    ----------
+    num_l : Integral
+        Number of possible l quantum states for this nuclide.
+    fit_order : Integral
+        Order of the windowed curvefit.
+    fissionable : bool
+        Whether or not the target nuclide has fission data.
+    formalism : str
+        The R-matrix formalism used to reconstruct resonances.  Either 'MLBW'
+        for multi-level Breit Wigner or 'RM' for Reich-Moore.
+    spacing : Real
+        The width of each window in sqrt(E)-space.  For example, the frst window
+        will end at (sqrt(start_E) + spacing)**2 and the second window at
+        (sqrt(start_E) + 2*spacing)**2.
+    sqrtAWR : Real
+        Square root of the atomic weight ratio of the target nuclide.
+    start_E : Real
+        Lowest energy in eV the library is valid for.
+    end_E : Real
+        Highest energy in eV the library is valid for.
+    data : np.ndarray
+        A 2D array of complex poles and residues.  data[i, 0] gives the energy
+        at which pole i is located.  data[i, 1:] gives the residues associated
+        with the i-th pole.  There are 3 residues for Reich-Moore data, one each
+        for the total, absorption, and fission channels.  Multi-level
+        Breit Wigner data has an additional residue for the competitive channel.
+    pseudo_k0RS : np.ndarray
+        A 1D array of Real values.  There is one value for each valid l
+        quantum number.  The values are equal to
+        sqrt(2 m / hbar) * AWR / (AWR + 1) * r
+        where m is the neutron mass, AWR is the atomic weight ratio, and r
+        is the l-dependent scattering radius.
+    l_value : np.ndarray
+        A 1D array of Integral values equal to the l quantum number for each
+        pole + 1.
+    w_start : np.ndarray
+        A 1D array of Integral values.  w_start[i] - 1 is the index of the first
+        pole in window i.
+    w_end : np.ndarray
+        A 1D array of Integral values.  w_end[i] - 1 is the index of the last
+        pole in window i.
+    broaden_poly : np.ndarray
+        A 1D array of boolean values indicating whether or not the polynomial
+        curvefit in that window should be Doppler broadened.
+    curvefit : np.ndarray
+        A 3D array of Real curvefit polynomial coefficients.  curvefit[i, 0, :]
+        gives coefficients for the total cross section in window i.
+        curvefit[i, 1, :] gives absorption coefficients and curvefit[i, 2, :]
+        gives fission coefficients.  The polynomial terms are increasing powers
+        of sqrt(E) starting with 1/E e.g:
+        a/E + b/sqrt(E) + c + d sqrt(E) + ...
+
+    """
     def __init__(self):
         self.num_l = None
         self.fit_order = None
@@ -382,7 +468,24 @@ class WindowedMultipole(EqualityMixin):
 
         return out
 
-    def evaluate(self, E, T):
+    def _evaluate(self, E, T):
+        """Return total, absorption, and fission XS at a single energy and temp.
+
+        Parameters
+        ----------
+        E : Real
+            Energy of the incident neutron in eV.
+        T : Real
+            Temperature of the target in K.
+
+        Returns
+        -------
+        3-tuple of Real
+            Total, absorption, and fission microscopic cross sections at the
+            given energy and temperature.
+
+        """
+
         # ======================================================================
         # Bookkeeping
 
@@ -427,8 +530,8 @@ class WindowedMultipole(EqualityMixin):
 
         if sqrtkT != 0 and self.broaden_poly[i_window]:
             # Broaden the curvefit.
-            broadened_polynomials = broaden_wmp_polynomials(E, dopp,
-                                                            self.fit_order + 1)
+            broadened_polynomials = _broaden_wmp_polynomials(E, dopp,
+                                                             self.fit_order + 1)
             for i_poly in range(self.fit_order+1):
                 sigT += (self.curvefit[i_window, i_poly, FIT_T]
                          * broadened_polynomials[i_poly])
@@ -471,7 +574,7 @@ class WindowedMultipole(EqualityMixin):
           # At temperature, use Faddeeva function-based form.
           for i_pole in range(startw, endw):
               Z = (sqrtE - self.data[i_pole, MP_EA]) * dopp
-              w_val = faddeeva(Z) * dopp * invE * np.sqrt(np.pi)
+              w_val = _faddeeva(Z) * dopp * invE * np.sqrt(np.pi)
               if self.formalism == 'MLBW':
                   sigT += ((self.data[i_pole, MLBW_RT] *
                             sigT_factor[self.l_value[i_pole]-1] +
@@ -488,3 +591,24 @@ class WindowedMultipole(EqualityMixin):
                                    ' formalism')
 
         return sigT, sigA, sigF
+
+    def __call__(self, E, T):
+        """Return total, absorption, and fission XS at given energy and temp.
+
+        Parameters
+        ----------
+        E : Real or Iterable of Real
+            Energy of the incident neutron in eV.
+        T : Real
+            Temperature of the target in K.
+
+        Returns
+        -------
+        3-tuple of Real or 3-tuple of numpy.ndarray
+            Total, absorption, and fission microscopic cross sections at the
+            given energy and temperature.
+
+        """
+
+        fun = np.vectorize(lambda x: self._evaluate(x, T))
+        return fun(E)

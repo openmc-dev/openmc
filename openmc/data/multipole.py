@@ -1,11 +1,15 @@
 from six import string_types
 
+from numbers import Integral, Real
+
 import h5py
 import numpy as np
 from scipy.special import wofz
+from six import string_types
 
 from . import WMP_VERSION
 from .data import K_BOLTZMANN
+import openmc.checkvalue as cv
 from openmc.mixin import EqualityMixin
 
 
@@ -96,6 +100,217 @@ def broaden_wmp_polynomials(En, dopp, n):
 
 
 class WindowedMultipole(EqualityMixin):
+    def __init__(self):
+        self.num_l = None
+        self.fit_order = None
+        self.fissionable = None
+        self.formalism = None
+        self.spacing = None
+        self.sqrtAWR = None
+        self.start_E = None
+        self.end_E = None
+        self.data = None
+        self.pseudo_k0RS = None
+        self.l_value = None
+        self.w_start = None
+        self.w_end = None
+        self.broaden_poly = None
+        self.curvefit = None
+
+    @property
+    def num_l(self):
+        return self._num_l
+
+    @property
+    def fit_order(self):
+        return self._fit_order
+
+    @property
+    def fissionable(self):
+        return self._fissionable
+
+    @property
+    def formalism(self):
+        return self._formalism
+
+    @property
+    def spacing(self):
+        return self._spacing
+
+    @property
+    def sqrtAWR(self):
+        return self._sqrtAWR
+
+    @property
+    def start_E(self):
+        return self._start_E
+
+    @property
+    def end_E(self):
+        return self._end_E
+
+    @property
+    def data(self):
+        return self._data
+
+    @property
+    def pseudo_k0RS(self):
+        return self._pseudo_k0RS
+
+    @property
+    def l_value(self):
+        return self._l_value
+
+    @property
+    def w_start(self):
+        return self._w_start
+
+    @property
+    def w_end(self):
+        return self._w_end
+
+    @property
+    def broaden_poly(self):
+        return self._broaden_poly
+
+    @property
+    def curvefit(self):
+        return self._curvefit
+
+    @num_l.setter
+    def num_l(self, num_l):
+        if num_l is not None:
+            cv.check_type('num_l', num_l, Integral)
+            cv.check_greater_than('num_l', num_l, 1, equality=True)
+        self._num_l = num_l
+
+    @fit_order.setter
+    def fit_order(self, fit_order):
+        if fit_order is not None:
+            cv.check_type('fit_order', fit_order, Integral)
+            cv.check_greater_than('fit_order', fit_order, 1, equality=True)
+        self._fit_order = fit_order
+
+    @fissionable.setter
+    def fissionable(self, fissionable):
+        if fissionable is not None:
+            cv.check_type('fissionable', fissionable, bool)
+        self._fissionable = fissionable
+
+    @formalism.setter
+    def formalism(self, formalism):
+        if formalism is not None:
+            cv.check_type('formalism', formalism, string_types)
+            cv.check_value('formalism', formalism, ('MLBW', 'RM'))
+        self._formalism = formalism
+
+    @spacing.setter
+    def spacing(self, spacing):
+        if spacing is not None:
+            cv.check_type('spacing', spacing, Real)
+            cv.check_greater_than('spacing', spacing, 0.0, equality=False)
+        self._spacing = spacing
+
+    @sqrtAWR.setter
+    def sqrtAWR(self, sqrtAWR):
+        if sqrtAWR is not None:
+            cv.check_type('sqrtAWR', sqrtAWR, Real)
+            cv.check_greater_than('sqrtAWR', sqrtAWR, 0.0, equality=False)
+        self._sqrtAWR = sqrtAWR
+
+    @start_E.setter
+    def start_E(self, start_E):
+        if start_E is not None:
+            cv.check_type('start_E', start_E, Real)
+            cv.check_greater_than('start_E', start_E, 0.0, equality=True)
+        self._start_E = start_E
+
+    @end_E.setter
+    def end_E(self, end_E):
+        if end_E is not None:
+            cv.check_type('end_E', end_E, Real)
+            cv.check_greater_than('end_E', end_E, 0.0, equality=False)
+        self._end_E = end_E
+
+    @data.setter
+    def data(self, data):
+        if data is not None:
+            cv.check_type('data', data, np.ndarray)
+            if len(data.shape) != 2:
+                raise ValueError('Multipole data arrays must be 2D')
+            if data.shape[1] not in (4, 5):  # 4 for RM, 5 for MLBW
+                raise ValueError('The second dimension of multipole data arrays'
+                                 ' must have a length of either 4 or 5')
+            if not np.issubdtype(data.dtype, np.complex):
+                raise TypeError('Multipole data arrays must be complex dtype')
+        self._data = data
+
+    @pseudo_k0RS.setter
+    def pseudo_k0RS(self, pseudo_k0RS):
+        if pseudo_k0RS is not None:
+            cv.check_type('pseudo_k0RS', pseudo_k0RS, np.ndarray)
+            if len(pseudo_k0RS.shape) != 1:
+                raise ValueError('Multipole pseudo_k0RS arrays must be 1D')
+            if not np.issubdtype(pseudo_k0RS.dtype, np.float):
+                raise TypeError('Multipole data arrays must be float dtype')
+        self._pseudo_k0RS = pseudo_k0RS
+
+    @l_value.setter
+    def l_value(self, l_value):
+        if l_value is not None:
+            cv.check_type('l_value', l_value, np.ndarray)
+            if len(l_value.shape) != 1:
+                raise ValueError('Multipole l_value arrays must be 1D')
+            if not np.issubdtype(l_value.dtype, np.integer):
+                raise TypeError('Multipole l_value arrays must be integer'
+                                ' dtype')
+        self._l_value = l_value
+
+    @w_start.setter
+    def w_start(self, w_start):
+        if w_start is not None:
+            cv.check_type('w_start', w_start, np.ndarray)
+            if len(w_start.shape) != 1:
+                raise ValueError('Multipole w_start arrays must be 1D')
+            if not np.issubdtype(w_start.dtype, np.integer):
+                raise TypeError('Multipole w_start arrays must be integer'
+                                ' dtype')
+        self._w_start = w_start
+
+    @w_end.setter
+    def w_end(self, w_end):
+        if w_end is not None:
+            cv.check_type('w_end', w_end, np.ndarray)
+            if len(w_end.shape) != 1:
+                raise ValueError('Multipole w_end arrays must be 1D')
+            if not np.issubdtype(w_end.dtype, np.integer):
+                raise TypeError('Multipole w_end arrays must be integer dtype')
+        self._w_end = w_end
+
+    @broaden_poly.setter
+    def broaden_poly(self, broaden_poly):
+        if broaden_poly is not None:
+            cv.check_type('broaden_poly', broaden_poly, np.ndarray)
+            if len(broaden_poly.shape) != 1:
+                raise ValueError('Multipole broaden_poly arrays must be 1D')
+            if not np.issubdtype(broaden_poly.dtype, np.bool):
+                raise TypeError('Multipole broaden_poly arrays must be boolean'
+                                ' dtype')
+        self._broaden_poly = broaden_poly
+
+    @curvefit.setter
+    def curvefit(self, curvefit):
+        if curvefit is not None:
+            cv.check_type('curvefit', curvefit, np.ndarray)
+            if len(curvefit.shape) != 3:
+                raise ValueError('Multipole curvefit arrays must be 3D')
+            if curvefit.shape[2] != 3:  # One each for sigT, sigA, sigF
+                raise ValueError('The third dimension of multipole curvefit'
+                                 ' arrays must have a length of 3')
+            if not np.issubdtype(curvefit.dtype, np.float):
+                raise TypeError('Multipole curvefit arrays must be float dtype')
+        self._curvefit = curvefit
+
     @classmethod
     def from_hdf5(cls, group_or_filename):
         if isinstance(group_or_filename, h5py.Group):
@@ -111,27 +326,59 @@ class WindowedMultipole(EqualityMixin):
 
         out = cls()
 
-        # Scalars.
-        out.length = group['length'].value
-        out.windows = group['windows'].value
+        # Read scalar values.  Note that group['max_w'] is ignored.
+
+        length = group['length'].value
+        windows = group['windows'].value
         out.num_l = group['num_l'].value
         out.fit_order = group['fit_order'].value
-        out.max_w = group['max_w'].value
-        out.fissionable = group['fissionable'].value
-        out.formalism = group['formalism'].value
+        out.fissionable = bool(group['fissionable'].value)
+
+        if group['formalism'].value == FORM_MLBW:
+            out.formalism = 'MLBW'
+        elif group['formalism'].value == FORM_RM:
+            out.formalism = 'RM'
+        else:
+            raise ValueError('Unrecognized/Unsupported R-matrix formalism')
+
         out.spacing = group['spacing'].value
         out.sqrtAWR = group['sqrtAWR'].value
         out.start_E = group['start_E'].value
         out.end_E = group['end_E'].value
 
-        # Arrays.
+        # Read arrays.
+
+        err = "WMP '{:}' array shape is not consistent with the '{:}' value"
+
         out.data = group['data'].value
+        if out.data.shape[0] != length:
+            raise ValueError(err.format('data', 'length'))
+
         out.pseudo_k0RS = group['pseudo_K0RS'].value
+        if out.pseudo_k0RS.shape[0] != out.num_l:
+            raise ValueError(err.format('pseudo_k0RS', 'num_l'))
+
         out.l_value = group['l_value'].value
+        if out.l_value.shape[0] != length:
+            raise ValueError(err.format('l_value', 'length'))
+
         out.w_start = group['w_start'].value
+        if out.w_start.shape[0] != windows:
+            raise ValueError(err.format('w_start', 'windows'))
+
         out.w_end = group['w_end'].value
-        out.broaden_poly = group['broaden_poly'].value
+        if out.w_end.shape[0] != windows:
+            raise ValueError(err.format('w_end', 'windows'))
+
+        out.broaden_poly = group['broaden_poly'].value.astype(np.bool)
+        if out.broaden_poly.shape[0] != windows:
+            raise ValueError(err.format('broaden_poly', 'windows'))
+
         out.curvefit = group['curvefit'].value
+        if out.curvefit.shape[0] != windows:
+            raise ValueError(err.format('curvefit', 'windows'))
+        if out.curvefit.shape[1] != out.fit_order + 1:
+            raise ValueError(err.format('curvefit', 'fit_order'))
 
         return out
 
@@ -203,34 +450,41 @@ class WindowedMultipole(EqualityMixin):
         if sqrtkT == 0.0:
           # If at 0K, use asymptotic form.
           for i_pole in range(startw, endw):
-            psi_chi = -1j / (self.data[i_pole, MP_EA] - sqrtE)
-            c_temp = psi_chi / E
-            if self.formalism == FORM_MLBW:
-                sigT += ((self.data[i_pole, MLBW_RT] * c_temp *
-                          sigT_factor[self.l_value[i_pole]-1]).real
-                         + (self.data[i_pole, MLBW_RX] * c_temp).real)
-                sigA += (self.data[i_pole, MLBW_RA] * c_temp).real
-                sigF += (self.data[i_pole, MLBW_RF] * c_temp).real
-            elif self.formalism == FORM_RM:
-                sigT += (self.data[i_pole, RM_RT] * c_temp *
-                         sigT_factor[self.l_value[i_pole]-1]).real
-                sigA += (self.data[i_pole, RM_RA] * c_temp).real
-                sigF += (self.data[i_pole, RM_RF] * c_temp).real
+              psi_chi = -1j / (self.data[i_pole, MP_EA] - sqrtE)
+              c_temp = psi_chi / E
+              if self.formalism == 'MLBW':
+                  sigT += ((self.data[i_pole, MLBW_RT] * c_temp *
+                            sigT_factor[self.l_value[i_pole]-1]).real
+                           + (self.data[i_pole, MLBW_RX] * c_temp).real)
+                  sigA += (self.data[i_pole, MLBW_RA] * c_temp).real
+                  sigF += (self.data[i_pole, MLBW_RF] * c_temp).real
+              elif self.formalism == 'RM':
+                  sigT += (self.data[i_pole, RM_RT] * c_temp *
+                           sigT_factor[self.l_value[i_pole]-1]).real
+                  sigA += (self.data[i_pole, RM_RA] * c_temp).real
+                  sigF += (self.data[i_pole, RM_RF] * c_temp).real
+              else:
+                  raise ValueError('Unrecognized/Unsupported R-matrix'
+                                   ' formalism')
+
         else:
           # At temperature, use Faddeeva function-based form.
           for i_pole in range(startw, endw):
               Z = (sqrtE - self.data[i_pole, MP_EA]) * dopp
               w_val = faddeeva(Z) * dopp * invE * np.sqrt(np.pi)
-              if self.formalism == FORM_MLBW:
+              if self.formalism == 'MLBW':
                   sigT += ((self.data[i_pole, MLBW_RT] *
                             sigT_factor[self.l_value[i_pole]-1] +
                             self.data[i_pole, MLBW_RX]) * w_val).real
                   sigA += (self.data[i_pole, MLBW_RA] * w_val).real
                   sigF += (self.data[i_pole, MLBW_RF] * w_val).real
-              elif self.formalism == FORM_RM:
+              elif self.formalism == 'RM':
                   sigT += (self.data[i_pole, RM_RT] * w_val *
                            sigT_factor[self.l_value[i_pole]-1]).real
                   sigA += (self.data[i_pole, RM_RA] * w_val).real
                   sigF += (self.data[i_pole, RM_RF] * w_val).real
+              else:
+                  raise ValueError('Unrecognized/Unsupported R-matrix'
+                                   ' formalism')
 
         return sigT, sigA, sigF

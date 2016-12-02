@@ -360,13 +360,6 @@ class XSdata(object):
         check_greater_than('atomic_weight_ratio', atomic_weight_ratio, 0.0)
         self._atomic_weight_ratio = atomic_weight_ratio
 
-    @fissionable.setter
-    def fissionable(self, fissionable):
-
-        # Check validity of type
-        check_type('fissionable', fissionable, bool)
-        self._fissionable = fissionable
-
     @temperatures.setter
     def temperatures(self, temperatures):
 

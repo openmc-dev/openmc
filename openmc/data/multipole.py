@@ -116,8 +116,10 @@ def _broaden_wmp_polynomials(En, dopp, n):
     factors[2] = (factors[0] * (half_inv_dopp2 + En)
                   + exp_m_beta2 / (beta * np.sqrt(np.pi)))
 
-    # Perform recursive broadening of high order components.
-    for i in range(1, n-2):
+    # Perform recursive broadening of high order components.  range(1, n-4)
+    # replaces a do i = 1, n=3.  All indices are reduced by one due to the
+    # 1-based vs. 0-based indexing.
+    for i in range(1, n-4):
         if i != 1:
             factors[i+2] = (-factors[i-2] * (i - 1.0) * i * quarter_inv_dopp4
                 + factors[i] * (En + (1.0 + 2.0 * i) * half_inv_dopp2))
@@ -268,13 +270,17 @@ class WindowedMultipole(EqualityMixin):
         if num_l is not None:
             cv.check_type('num_l', num_l, Integral)
             cv.check_greater_than('num_l', num_l, 1, equality=True)
+            cv.check_less_than('num_l', num_l, 4, equality=True)
+            # There is an if block in _evaluate that assumes num_l <= 4.
         self._num_l = num_l
 
     @fit_order.setter
     def fit_order(self, fit_order):
         if fit_order is not None:
             cv.check_type('fit_order', fit_order, Integral)
-            cv.check_greater_than('fit_order', fit_order, 1, equality=True)
+            cv.check_greater_than('fit_order', fit_order, 2, equality=True)
+            # _broaden_wmp_polynomials assumes the curve fit has at least 3
+            # terms.
         self._fit_order = fit_order
 
     @fissionable.setter
@@ -486,6 +492,9 @@ class WindowedMultipole(EqualityMixin):
 
         """
 
+        if E < self.start_E: return (0, 0, 0)
+        if E >= self.end_E: return (0, 0, 0)
+
         # ======================================================================
         # Bookkeeping
 
@@ -495,30 +504,35 @@ class WindowedMultipole(EqualityMixin):
         invE = 1.0 / E
         dopp = self.sqrtAWR / sqrtkT
 
-        # Locate us.
+        # Locate us.  The i_window calc omits a + 1 present in F90 because of
+        # the 1-based vs. 0-based indexing.  Similarly startw needs to be
+        # decreased by 1.  endw does not need to be decreased because
+        # range(startw, endw) does not include endw.
         i_window = int(np.floor((sqrtE - np.sqrt(self.start_E)) / self.spacing))
         startw = self.w_start[i_window] - 1
         endw = self.w_end[i_window]
 
-        # Fill in factors.
+        # Fill in factors.  Because of the unique interference dips in scatering
+        # resonances, the total cross section has a special "factor" that does
+        # not appear in the absorption and fission equations.
         if startw <= endw:
-          twophi = np.zeros(self.num_l, dtype=np.float)
-          sigT_factor = np.zeros(self.num_l, dtype=np.cfloat)
+            twophi = np.zeros(self.num_l, dtype=np.float)
+            sigT_factor = np.zeros(self.num_l, dtype=np.cfloat)
 
-          for iL in range(1, self.num_l+1):
-              twophi[iL-1] = self.pseudo_k0RS[iL-1] * sqrtE
-              if iL == 2:
-                twophi[iL-1] = twophi[iL-1] - np.arctan(twophi[iL-1])
-              elif iL == 3:
-                arg = 3.0 * twophi[iL-1] / (3.0 - twophi[iL-1]**2)
-                twophi[iL-1] = twophi[iL-1] - np.arctan(arg)
-              elif iL == 4:
-                arg = (twophi[iL-1] * (15.0 - twophi[iL-1]**2)
-                       / (15.0 - 6.0 * twophi[iL-1]**2))
-                twophi[iL-1] = twophi[iL-1] - np.arctan(arg)
+            for iL in range(self.num_l):
+                twophi[iL] = self.pseudo_k0RS[iL] * sqrtE
+                if iL == 1:
+                    twophi[iL] = twophi[iL] - np.arctan(twophi[iL])
+                elif iL == 2:
+                    arg = 3.0 * twophi[iL] / (3.0 - twophi[iL]**2)
+                    twophi[iL] = twophi[iL] - np.arctan(arg)
+                elif iL == 3:
+                    arg = (twophi[iL] * (15.0 - twophi[iL]**2)
+                           / (15.0 - 6.0 * twophi[iL]**2))
+                    twophi[iL] = twophi[iL] - np.arctan(arg)
 
-          twophi = 2.0 * twophi
-          sigT_factor = np.cos(twophi) - 1j*np.sin(twophi)
+            twophi = 2.0 * twophi
+            sigT_factor = np.cos(twophi) - 1j*np.sin(twophi)
 
         # Initialize the ouptut cross sections.
         sigT = 0.0
@@ -551,44 +565,44 @@ class WindowedMultipole(EqualityMixin):
         # Add the contribution from the poles in this window.
 
         if sqrtkT == 0.0:
-          # If at 0K, use asymptotic form.
-          for i_pole in range(startw, endw):
-              psi_chi = -1j / (self.data[i_pole, MP_EA] - sqrtE)
-              c_temp = psi_chi / E
-              if self.formalism == 'MLBW':
-                  sigT += ((self.data[i_pole, MLBW_RT] * c_temp *
-                            sigT_factor[self.l_value[i_pole]-1]).real
-                           + (self.data[i_pole, MLBW_RX] * c_temp).real)
-                  sigA += (self.data[i_pole, MLBW_RA] * c_temp).real
-                  sigF += (self.data[i_pole, MLBW_RF] * c_temp).real
-              elif self.formalism == 'RM':
-                  sigT += (self.data[i_pole, RM_RT] * c_temp *
-                           sigT_factor[self.l_value[i_pole]-1]).real
-                  sigA += (self.data[i_pole, RM_RA] * c_temp).real
-                  sigF += (self.data[i_pole, RM_RF] * c_temp).real
-              else:
-                  raise ValueError('Unrecognized/Unsupported R-matrix'
-                                   ' formalism')
+            # If at 0K, use asymptotic form.
+            for i_pole in range(startw, endw):
+                psi_chi = -1j / (self.data[i_pole, MP_EA] - sqrtE)
+                c_temp = psi_chi / E
+                if self.formalism == 'MLBW':
+                    sigT += ((self.data[i_pole, MLBW_RT] * c_temp *
+                              sigT_factor[self.l_value[i_pole]-1]).real
+                             + (self.data[i_pole, MLBW_RX] * c_temp).real)
+                    sigA += (self.data[i_pole, MLBW_RA] * c_temp).real
+                    sigF += (self.data[i_pole, MLBW_RF] * c_temp).real
+                elif self.formalism == 'RM':
+                    sigT += (self.data[i_pole, RM_RT] * c_temp *
+                             sigT_factor[self.l_value[i_pole]-1]).real
+                    sigA += (self.data[i_pole, RM_RA] * c_temp).real
+                    sigF += (self.data[i_pole, RM_RF] * c_temp).real
+                else:
+                    raise ValueError('Unrecognized/Unsupported R-matrix'
+                                     ' formalism')
 
         else:
-          # At temperature, use Faddeeva function-based form.
-          for i_pole in range(startw, endw):
-              Z = (sqrtE - self.data[i_pole, MP_EA]) * dopp
-              w_val = _faddeeva(Z) * dopp * invE * np.sqrt(np.pi)
-              if self.formalism == 'MLBW':
-                  sigT += ((self.data[i_pole, MLBW_RT] *
-                            sigT_factor[self.l_value[i_pole]-1] +
-                            self.data[i_pole, MLBW_RX]) * w_val).real
-                  sigA += (self.data[i_pole, MLBW_RA] * w_val).real
-                  sigF += (self.data[i_pole, MLBW_RF] * w_val).real
-              elif self.formalism == 'RM':
-                  sigT += (self.data[i_pole, RM_RT] * w_val *
-                           sigT_factor[self.l_value[i_pole]-1]).real
-                  sigA += (self.data[i_pole, RM_RA] * w_val).real
-                  sigF += (self.data[i_pole, RM_RF] * w_val).real
-              else:
-                  raise ValueError('Unrecognized/Unsupported R-matrix'
-                                   ' formalism')
+            # At temperature, use Faddeeva function-based form.
+            for i_pole in range(startw, endw):
+                Z = (sqrtE - self.data[i_pole, MP_EA]) * dopp
+                w_val = _faddeeva(Z) * dopp * invE * np.sqrt(np.pi)
+                if self.formalism == 'MLBW':
+                    sigT += ((self.data[i_pole, MLBW_RT] *
+                              sigT_factor[self.l_value[i_pole]-1] +
+                              self.data[i_pole, MLBW_RX]) * w_val).real
+                    sigA += (self.data[i_pole, MLBW_RA] * w_val).real
+                    sigF += (self.data[i_pole, MLBW_RF] * w_val).real
+                elif self.formalism == 'RM':
+                    sigT += (self.data[i_pole, RM_RT] * w_val *
+                             sigT_factor[self.l_value[i_pole]-1]).real
+                    sigA += (self.data[i_pole, RM_RA] * w_val).real
+                    sigF += (self.data[i_pole, RM_RF] * w_val).real
+                else:
+                    raise ValueError('Unrecognized/Unsupported R-matrix'
+                                     ' formalism')
 
         return sigT, sigA, sigF
 

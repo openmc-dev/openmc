@@ -355,7 +355,7 @@ module mgxs_header
       if (attribute_exists(xs_id, "scatter_shape")) then
         call read_attribute(temp_str, xs_id, "scatter_shape")
         temp_str = trim(temp_str)
-        if (to_lower(temp_str) /= "[order][g][g']") then
+        if (to_lower(temp_str) /= "[g][g'][order]") then
           call fatal_error("Invalid scatter_shape option!")
         end if
       end if
@@ -1995,8 +1995,8 @@ module mgxs_header
             order_dim = order + 1
           end if
 
-          ! Convert temp_1d to a jagged array ((gin) % data(l, gout)) for passing
-          ! to ScattData
+          ! Convert temp_1d to a jagged array ((gin) % data(l, gout)) for
+          ! passing to ScattData
           allocate(input_scatt(energy_groups, this % n_azi, this % n_pol))
 
           index = 1

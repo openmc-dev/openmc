@@ -94,7 +94,7 @@ class Filter(object):
 
     def __repr__(self):
         string = type(self).__name__ + '\n'
-        string += '{0: <16}{1}{2}\n'.format('\tBins', '=\t', self.bins)
+        string += '{: <16}=\t{}\n'.format('\tBins', self.bins)
         return string
 
     @classmethod
@@ -1467,6 +1467,63 @@ class LinLinEnergyFilter(Filter):
         self.y = y
         self._stride = None
 
+    def __eq__(self, other):
+        if type(self) is not type(other):
+            return False
+        elif not all(self.energy == other.energy):
+            return False
+        elif not all(self.y == other.y):
+            return False
+        else:
+            return True
+
+    def __gt__(self, other):
+        if type(self) is not type(other):
+            if self.short_name in _FILTER_TYPES and \
+                other.short_name in _FILTER_TYPES:
+                delta = _FILTER_TYPES.index(self.short_name) - \
+                        _FILTER_TYPES.index(other.short_name)
+                return delta > 0
+            else:
+                return False
+        else:
+            return False
+
+    def __lt__(self, other):
+        if type(self) is not type(other):
+            if self.short_name in _FILTER_TYPES and \
+                other.short_name in _FILTER_TYPES:
+                delta = _FILTER_TYPES.index(self.short_name) - \
+                        _FILTER_TYPES.index(other.short_name)
+                return delta < 0
+            else:
+                return False
+        else:
+            return False
+
+    def __hash__(self):
+        # For some reason, it seems the __hash__ method is not inherited when we
+        # overwrite __repr__.
+        return hash(repr(self))
+
+    def __repr__(self):
+        string = type(self).__name__ + '\n'
+        string += '{: <16}=\t{}\n'.format('\tEnergy', self.energy)
+        string += '{: <16}=\t{}\n'.format('\tInterpolant', self.y)
+        return string
+
+    @classmethod
+    def from_hdf5(cls, group, **kwargs):
+        if group['type'].value.decode() != cls.short_name.lower():
+            raise ValueError("Expected HDF5 data for filter type '"
+                             + cls.short_name.lower() + "' but got '"
+                             + group['type'].value.decode() + " instead")
+
+        energy = group['energy'].value
+        y = group['y'].value
+
+        return cls(energy, y)
+
     @property
     def energy(self):
         return self._energy
@@ -1474,6 +1531,14 @@ class LinLinEnergyFilter(Filter):
     @property
     def y(self):
         return self._y
+
+    @property
+    def bins(self):
+        raise RuntimeError('LinLinEnergyFilters have no bins.')
+
+    @property
+    def num_bins(self):
+        return 1
 
     @energy.setter
     def energy(self, energy):
@@ -1505,6 +1570,10 @@ class LinLinEnergyFilter(Filter):
 
         self._y = y
 
+    @bins.setter
+    def bins(self, bins):
+        raise RuntimeError('LinLinEnergyFilters have no bins.')
+
     def to_xml(self):
         """Return XML Element representing the Filter."""
         element = ET.Element('filter')
@@ -1512,3 +1581,61 @@ class LinLinEnergyFilter(Filter):
         element.set('energy', ' '.join(str(e) for e in self.energy))
         element.set('y', ' '.join(str(y) for y in self.y))
         return element
+
+    def can_merge(self, other):
+        return False
+
+    def is_subset(self, other):
+        return self == other
+
+    def get_bin_index(self, filter_bin):
+        # This filter only has one bin.  Always return 0.
+        return 0
+
+    def get_bin(self, bin_index):
+        """This function is invalid for LinLinEnergyFilters."""
+        raise RuntimeError('LinLinEnergyFilters have no get_bin() method')
+
+    def get_pandas_dataframe(self, data_size, **kwargs):
+        """Builds a Pandas DataFrame for the Filter's bins.
+
+        This method constructs a Pandas DataFrame object for the filter with
+        columns annotated by filter bin information. This is a helper method for
+        :meth:`Tally.get_pandas_dataframe`.
+
+        Parameters
+        ----------
+        data_size : Integral
+            The total number of bins in the tally corresponding to this filter
+
+        Returns
+        -------
+        pandas.DataFrame
+            A Pandas DataFrame with a column that is filled with a hash of this
+            filter. LinLinEnergyFilters have only 1 bin so the purpose of this
+            DataFrame column is to differentiate the filter from other
+            LinLinEnergyFilters. The number of rows in the DataFrame is the same
+            as the total number of bins in the corresponding tally.
+
+        Raises
+        ------
+        ImportError
+            When Pandas is not installed
+
+        See also
+        --------
+        Tally.get_pandas_dataframe(), CrossFilter.get_pandas_dataframe()
+
+        """
+
+        # Initialize Pandas DataFrame
+        import pandas as pd
+        df = pd.DataFrame()
+
+        filter_bins = np.repeat(hash(self), self.stride)
+        tile_factor = data_size / len(filter_bins)
+        filter_bins = np.tile(filter_bins, tile_factor)
+        df = pd.concat([df, pd.DataFrame(
+            {self.short_name.lower(): filter_bins})])
+
+        return df

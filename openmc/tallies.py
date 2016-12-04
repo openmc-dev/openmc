@@ -186,11 +186,8 @@ class Tally(object):
             string += '{: <16}=\t{}\n'.format('\tDerivative ID',
                                               str(self.derivative.id))
 
-        string += '{: <16}=\n'.format('\tFilters')
-
-        for self_filter in self.filters:
-            string += '{: <16}\t\t{}\t{}\n'.format('',
-                type(self_filter).__name__, self_filter.bins)
+        filters = ', '.join(type(f).__name__ for f in self.filters)
+        string += '{: <16}=\t{}\n'.format('\tFilters', filters)
 
         string += '{: <16}=\t'.format('\tNuclides')
 
@@ -1329,6 +1326,10 @@ class Tally(object):
                     elif isinstance(self_filter, openmc.DistribcellFilter):
                         bins = np.arange(self_filter.num_bins)
 
+                    # LinLinEnergyFilters don't have bins so just add a None
+                    elif isinstance(self_filter, openmc.LinLinEnergyFilter):
+                        bins = [None]
+
                     # Create list of IDs for bins for all other filter types
                     else:
                         bins = self_filter.bins
@@ -2259,11 +2260,15 @@ class Tally(object):
         filters = [type(filter1), type(filter2)]
         if isinstance(filter1, openmc.DistribcellFilter):
             filter1_bins = np.arange(filter1.num_bins)
+        elif isinstance(filter1, openmc.LinLinEnergyFilter):
+            filter1_bins = [None]
         else:
             filter1_bins = [filter1.get_bin(i) for i in range(filter1.num_bins)]
 
         if isinstance(filter2, openmc.DistribcellFilter):
             filter2_bins = np.arange(filter2.num_bins)
+        elif isinstance(filter2, openmc.LinLinEnergyFilter):
+            filter2_bins = [None]
         else:
             filter2_bins = [filter2.get_bin(i) for i in range(filter2.num_bins)]
 
@@ -3095,6 +3100,8 @@ class Tally(object):
 
                 if isinstance(find_filter, openmc.DistribcellFilter):
                     filter_bins = np.arange(find_filter.num_bins)
+                elif isinstance(find_filter, openmc.LinLinEnergyFilter):
+                    filter_bins = [None]
                 else:
                     num_bins = find_filter.num_bins
                     filter_bins = \
@@ -3242,6 +3249,8 @@ class Tally(object):
 
                 if isinstance(find_filter, openmc.DistribcellFilter):
                     filter_bins = np.arange(find_filter.num_bins)
+                elif isinstance(find_filter, openmc.LinLinEnergyFilter):
+                    filter_bins = [None]
                 else:
                     num_bins = find_filter.num_bins
                     filter_bins = \

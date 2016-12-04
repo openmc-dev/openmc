@@ -192,17 +192,18 @@ module tally_filter
   end type AzimuthalFilter
 
 !===============================================================================
-! LinLinEnergyFilter
+! EnergyFunctionFilter multiplies tally scores by an arbitrary function of
+! incident energy described by a piecewise linear-linear interpolation.
 !===============================================================================
-  type, extends(TallyFilter) :: LinLinEnergyFilter
+  type, extends(TallyFilter) :: EnergyFunctionFilter
     real(8), allocatable :: energy(:)
     real(8), allocatable :: y(:)
 
   contains
-    procedure :: get_next_bin => get_next_bin_linlinenergy
-    procedure :: to_statepoint => to_statepoint_linlinenergy
-    procedure :: text_label => text_label_linlinenergy
-  end type LinLinEnergyFilter
+    procedure :: get_next_bin => get_next_bin_energyfunction
+    procedure :: to_statepoint => to_statepoint_energyfunction
+    procedure :: text_label => text_label_energyfunction
+  end type EnergyFunctionFilter
 
 contains
 
@@ -1223,22 +1224,22 @@ contains
   end function text_label_azimuthal
 
 !===============================================================================
-! LinLinEnergyFilter methods
+! EnergyFunctionFilter methods
 !===============================================================================
-  subroutine get_next_bin_linlinenergy(this, p, estimator, current_bin, &
+  subroutine get_next_bin_energyfunction(this, p, estimator, current_bin, &
        next_bin, weight)
-    class(LinLinEnergyFilter), intent(in)  :: this
-    type(Particle),            intent(in)  :: p
-    integer,                   intent(in)  :: estimator
-    integer, value,            intent(in)  :: current_bin
-    integer,                   intent(out) :: next_bin
-    real(8),                   intent(out) :: weight
+    class(EnergyFunctionFilter), intent(in)  :: this
+    type(Particle),              intent(in)  :: p
+    integer,                     intent(in)  :: estimator
+    integer, value,              intent(in)  :: current_bin
+    integer,                     intent(out) :: next_bin
+    real(8),                     intent(out) :: weight
 
     integer :: n, indx
     real(8) :: E, f
 
     select type(this)
-    type is (LinLinEnergyFilter)
+    type is (EnergyFunctionFilter)
       if (current_bin == NO_BIN_FOUND) then
         n = size(this % energy)
 
@@ -1272,32 +1273,33 @@ contains
         weight = ONE
       end if
     end select
-  end subroutine get_next_bin_linlinenergy
+  end subroutine get_next_bin_energyfunction
 
-  subroutine to_statepoint_linlinenergy(this, filter_group)
-    class(LinLinEnergyFilter), intent(in) :: this
-    integer(HID_T),            intent(in) :: filter_group
+  subroutine to_statepoint_energyfunction(this, filter_group)
+    class(EnergyFunctionFilter), intent(in) :: this
+    integer(HID_T),              intent(in) :: filter_group
 
     select type(this)
-    type is (LinLinEnergyFilter)
-      call write_dataset(filter_group, "type", "linlinenergy")
+    type is (EnergyFunctionFilter)
+      call write_dataset(filter_group, "type", "energyfunction")
       call write_dataset(filter_group, "energy", this % energy)
       call write_dataset(filter_group, "y", this % y)
     end select
-  end subroutine to_statepoint_linlinenergy
+  end subroutine to_statepoint_energyfunction
 
-  function text_label_linlinenergy(this, bin) result(label)
-    class(LinLinEnergyFilter), intent(in) :: this
-    integer,                   intent(in) :: bin
-    character(MAX_LINE_LEN)               :: label
+  function text_label_energyfunction(this, bin) result(label)
+    class(EnergyFunctionFilter), intent(in) :: this
+    integer,                     intent(in) :: bin
+    character(MAX_LINE_LEN)                 :: label
 
     select type(this)
-    type is (LinLinEnergyFilter)
-      label = "Lin-Lin Energy Interpolation [" &
-           // trim(to_str(this % energy(1))) // ", ..., " &
-           // trim(to_str(this % energy(size(this % energy)))) // "]"
+    type is (EnergyFunctionFilter)
+      write(label, FMT="(A, ES8.1, A, ES8.1, A, ES8.1, A, ES8.1, A)") &
+           "Energy Function f([", this % energy(1), ", ..., ", &
+           this % energy(size(this % energy)), "]) = [", this % y(1), &
+           ", ..., ", this % y(size(this % y)), "]"
     end select
-  end function text_label_linlinenergy
+  end function text_label_energyfunction
 
 !===============================================================================
 ! FIND_OFFSET (for distribcell) uses a given map number, a target cell ID, and

@@ -14,7 +14,7 @@ import openmc.checkvalue as cv
 
 _FILTER_TYPES = ['universe', 'material', 'cell', 'cellborn', 'surface',
                  'mesh', 'energy', 'energyout', 'mu', 'polar', 'azimuthal',
-                 'distribcell', 'delayedgroup']
+                 'distribcell', 'delayedgroup', 'energyfunction']
 
 _CURRENT_NAMES = {1:  'x-min out', 2:  'x-min in',
                   3:  'x-max out', 4:  'x-max in',
@@ -1438,8 +1438,11 @@ class DelayedGroupFilter(IntegralFilter):
     """
 
 
-class LinLinEnergyFilter(Filter):
-    """
+class EnergyFunctionFilter(Filter):
+    """Multiplies tally scores by an arbitrary function of incident energy.
+
+    The arbitrary function is described by a piecewise linear-linear
+    interpolation of energy and y values.
 
     Parameters
     ----------
@@ -1534,7 +1537,7 @@ class LinLinEnergyFilter(Filter):
 
     @property
     def bins(self):
-        raise RuntimeError('LinLinEnergyFilters have no bins.')
+        raise RuntimeError('EnergyFunctionFilters have no bins.')
 
     @property
     def num_bins(self):
@@ -1572,7 +1575,7 @@ class LinLinEnergyFilter(Filter):
 
     @bins.setter
     def bins(self, bins):
-        raise RuntimeError('LinLinEnergyFilters have no bins.')
+        raise RuntimeError('EnergyFunctionFilters have no bins.')
 
     def to_xml(self):
         """Return XML Element representing the Filter."""
@@ -1593,8 +1596,8 @@ class LinLinEnergyFilter(Filter):
         return 0
 
     def get_bin(self, bin_index):
-        """This function is invalid for LinLinEnergyFilters."""
-        raise RuntimeError('LinLinEnergyFilters have no get_bin() method')
+        """This function is invalid for EnergyFunctionFilters."""
+        raise RuntimeError('EnergyFunctionFilters have no get_bin() method')
 
     def get_pandas_dataframe(self, data_size, **kwargs):
         """Builds a Pandas DataFrame for the Filter's bins.
@@ -1612,10 +1615,10 @@ class LinLinEnergyFilter(Filter):
         -------
         pandas.DataFrame
             A Pandas DataFrame with a column that is filled with a hash of this
-            filter. LinLinEnergyFilters have only 1 bin so the purpose of this
+            filter. EnergyFunctionFilters have only 1 bin so the purpose of this
             DataFrame column is to differentiate the filter from other
-            LinLinEnergyFilters. The number of rows in the DataFrame is the same
-            as the total number of bins in the corresponding tally.
+            EnergyFunctionFilters. The number of rows in the DataFrame is the
+            same as the total number of bins in the corresponding tally.
 
         Raises
         ------

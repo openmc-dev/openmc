@@ -3285,21 +3285,21 @@ contains
           ! Set the filter index in the tally find_filter array
           t % find_filter(FILTER_AZIMUTHAL) = j
 
-        case ('linlinenergy')
+        case ('energyfunction')
           ! Allocate and declare the filter type.
-          allocate(LinLinEnergyFilter::t % filters(j) % obj)
+          allocate(EnergyFunctionFilter::t % filters(j) % obj)
           select type (filt => t % filters(j) % obj)
-          type is (LinLinEnergyFilter)
+          type is (EnergyFunctionFilter)
             filt % n_bins = 1
             ! Make sure this is continuous-energy mode.
             if (.not. run_CE) then
-              call fatal_error("LinLinEnergy filters are only supported for &
+              call fatal_error("EnergyFunction filters are only supported for &
                    &continuous-energy transport calculations")
             end if
 
             ! Allocate and store energy grid.
             if (.not. check_for_node(node_filt, "energy")) then
-              call fatal_error("Energy grid not specified for LinLinEnergy &
+              call fatal_error("Energy grid not specified for EnergyFunction &
                    &filter on tally " // trim(to_str(t % id)))
             end if
             n_words = get_arraysize_double(node_filt, "energy")
@@ -3308,7 +3308,7 @@ contains
 
             ! Allocate and store interpolant values.
             if (.not. check_for_node(node_filt, "y")) then
-              call fatal_error("y values not specified for LinLinEnergy &
+              call fatal_error("y values not specified for EnergyFunction &
                    &filter on tally " // trim(to_str(t % id)))
             end if
             n_words = get_arraysize_double(node_filt, "y")
@@ -3316,7 +3316,7 @@ contains
             call get_node_array(node_filt, "y", filt % y)
           end select
           ! Set the filter index in the tally find_filter array
-          t % find_filter(FILTER_LINLINENERGY) = j
+          t % find_filter(FILTER_ENERGYFUNCTION) = j
 
         case default
           ! Specified tally filter is invalid, raise error

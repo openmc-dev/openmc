@@ -1326,8 +1326,8 @@ class Tally(object):
                     elif isinstance(self_filter, openmc.DistribcellFilter):
                         bins = np.arange(self_filter.num_bins)
 
-                    # LinLinEnergyFilters don't have bins so just add a None
-                    elif isinstance(self_filter, openmc.LinLinEnergyFilter):
+                    # EnergyFunctionFilters don't have bins so just add a None
+                    elif isinstance(self_filter, openmc.EnergyFunctionFilter):
                         bins = [None]
 
                     # Create list of IDs for bins for all other filter types
@@ -2120,14 +2120,14 @@ class Tally(object):
         filters = [type(filter1), type(filter2)]
         if isinstance(filter1, openmc.DistribcellFilter):
             filter1_bins = np.arange(filter1.num_bins)
-        elif isinstance(filter1, openmc.LinLinEnergyFilter):
+        elif isinstance(filter1, openmc.EnergyFunctionFilter):
             filter1_bins = [None]
         else:
             filter1_bins = [filter1.get_bin(i) for i in range(filter1.num_bins)]
 
         if isinstance(filter2, openmc.DistribcellFilter):
             filter2_bins = np.arange(filter2.num_bins)
-        elif isinstance(filter2, openmc.LinLinEnergyFilter):
+        elif isinstance(filter2, openmc.EnergyFunctionFilter):
             filter2_bins = [None]
         else:
             filter2_bins = [filter2.get_bin(i) for i in range(filter2.num_bins)]
@@ -2960,7 +2960,7 @@ class Tally(object):
 
                 if isinstance(find_filter, openmc.DistribcellFilter):
                     filter_bins = np.arange(find_filter.num_bins)
-                elif isinstance(find_filter, openmc.LinLinEnergyFilter):
+                elif isinstance(find_filter, openmc.EnergyFunctionFilter):
                     filter_bins = [None]
                 else:
                     num_bins = find_filter.num_bins
@@ -3109,7 +3109,7 @@ class Tally(object):
 
                 if isinstance(find_filter, openmc.DistribcellFilter):
                     filter_bins = np.arange(find_filter.num_bins)
-                elif isinstance(find_filter, openmc.LinLinEnergyFilter):
+                elif isinstance(find_filter, openmc.EnergyFunctionFilter):
                     filter_bins = [None]
                 else:
                     num_bins = find_filter.num_bins

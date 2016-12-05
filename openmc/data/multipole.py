@@ -2,7 +2,6 @@ from numbers import Integral, Real
 
 import h5py
 import numpy as np
-from scipy.special import wofz
 from six import string_types
 
 from . import WMP_VERSION
@@ -36,20 +35,31 @@ _FIT_F = 2       # Fission
 
 
 def _faddeeva(z):
-    """Evaluate the complex Faddeeva function.
+    r"""Evaluate the complex Faddeeva function.
 
     Technically, the value we want is given by the equation:
-    w(z) = I/Pi * Integrate[Exp[-t^2]/(z-t), {t, -Infinity, Infinity}]
+
+    .. math::
+        w(z) = \frac{i}{\pi} \int_{-\infty}^{\infty} \frac{1}{z - t}
+        \exp(-t^2) \text{d}t
+
     as shown in Equation 63 from Hwang, R. N. "A rigorous pole
     representation of multilevel cross sections and its practical
     applications." Nuclear Science and Engineering 96.3 (1987): 192-209.
 
-    The scipy.special.wofz function evaluates w(z) = exp(-z^2)erfc(-iz). These
-    two forms of the Faddeeva function are related by a transformation.
+    The :func:`scipy.special.wofz` function evaluates
+    :math:`w(z) = \exp(-z^2) \text{erfc}(-iz)`. These two forms of the Faddeeva
+    function are related by a transformation.
 
-    If we call the integral form w_int, and the function form w_fun:
-    For imag(z) > 0, w_int(z) = w_fun(z)
-    For imag(z) < 0, w_int(z) = -conjg(w_fun(conjg(z)))
+    If we call the integral form :math:`w_\text{int}`, and the function form
+    :math:`w_\text{fun}`:
+
+    .. math::
+        w_\text{int}(z) =
+        \begin{cases}
+            w_\text{fun}(z) & \text{for } \text{Im}(z) > 0\\
+            -w_\text{fun}(z^*)^* & \text{for } \text{Im}(z) < 0
+        \end{cases}
 
     Parameters
     ----------
@@ -59,9 +69,11 @@ def _faddeeva(z):
     Returns
     -------
     complex
-        I/Pi * Integrate[Exp[-t^2]/(z-t), {t, -Infinity, Infinity}]
+        :math:`\frac{i}{\pi} \int_{-\infty}^{\infty} \frac{1}{z - t} \exp(-t^2)
+        \text{d}t`
 
     """
+    from scipy.special import wofz
     if np.angle(z) > 0:
         return wofz(z)
     else:
@@ -69,10 +81,10 @@ def _faddeeva(z):
 
 
 def _broaden_wmp_polynomials(E, dopp, n):
-    """Evaluate Doppler-broadened windowed multipole curvefit.
+    r"""Evaluate Doppler-broadened windowed multipole curvefit.
 
-    The curvefit is a polynomial of the form
-    a/E + b/sqrt(E) + c + d sqrt(E) ...
+    The curvefit is a polynomial of the form :math:`\frac{a}{E}
+    + \frac{b}{\sqrt{E}} + c + d \sqrt{E} + \ldots`
 
     Parameters
     ----------
@@ -422,11 +434,11 @@ class WindowedMultipole(EqualityMixin):
             group = group_or_filename
         else:
             h5file = h5py.File(group_or_filename, 'r')
-            version = h5file['version'].value
+            version = h5file['version'].value[0].decode()
             if version != WMP_VERSION:
                 raise ValueError('The given WMP data uses version '
-                    + str(version) + ' whereas your installation of the OpenMC '
-                    'Python API expects version ' + str(WMP_VERSION))
+                    + version + ' whereas your installation of the OpenMC '
+                    'Python API expects version ' + WMP_VERSION)
             group = h5file['nuclide']
 
         out = cls()
@@ -622,7 +634,7 @@ class WindowedMultipole(EqualityMixin):
         return sigT, sigA, sigF
 
     def __call__(self, E, T):
-        """Return total, absorption, and fission XS at given energy and temp.
+        """Compute total, absorption, and fission cross sections.
 
         Parameters
         ----------

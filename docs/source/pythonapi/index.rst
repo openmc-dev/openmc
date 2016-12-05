@@ -146,6 +146,7 @@ Constructing Tallies
    openmc.AzimuthalFilter
    openmc.DistribcellFilter
    openmc.DelayedGroupFilter
+   openmc.EnergyFunctionFilter
    openmc.Mesh
    openmc.Trigger
    openmc.Tally

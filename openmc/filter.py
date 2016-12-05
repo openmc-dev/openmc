@@ -26,9 +26,37 @@ _CURRENT_NAMES = {1:  'x-min out', 2:  'x-min in',
 
 class FilterMeta(ABCMeta):
     def __new__(cls, name, bases, namespace, **kwargs):
+        # Check the class name.
         if not name.endswith('Filter'):
             raise ValueError("All filter class names must end with 'Filter'")
+
+        # Create a 'short_name' attribute that removes the 'Filter' suffix.
         namespace['short_name'] = name[:-6]
+
+        # Subclass methods can sort of inherit the docstring of parent class
+        # methods.  If a function is defined without a docstring, most (all?)
+        # Python interpreters will search through the parent classes to see if
+        # there is a docstring for a function with the same name, and they will
+        # use that docstring.  However, Sphinx does not have that functionality.
+        # This chunk of code handles this docstring inheritance manually so that
+        # the autodocumentation will pick it up.
+        if name != 'Filter':
+            # Look for newly-defined functions that were also in Filter.
+            for func_name in namespace:
+                if func_name in Filter.__dict__:
+                    # Inherit the docstring from Filter if not defined.
+                    if isinstance(namespace[func_name], classmethod):
+                        new_doc = namespace[func_name].__func__.__doc__
+                        old_doc = Filter.__dict__[func_name].__func__.__doc__
+                        if new_doc is None and old_doc is not None:
+                            namespace[func_name].__func__.__doc__ = old_doc
+                    else:
+                        new_doc = namespace[func_name].__doc__
+                        old_doc = Filter.__dict__[func_name].__doc__
+                        if new_doc is None and old_doc is not None:
+                            namespace[func_name].__doc__ = old_doc
+
+        # Make the class.
         return super(FilterMeta, cls).__new__(cls, name, bases, namespace,
                                               **kwargs)
 

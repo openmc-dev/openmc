@@ -375,6 +375,7 @@ Core Classes
     openmc.data.DataLibrary
     openmc.data.Decay
     openmc.data.FissionProductYields
+    openmc.data.WindowedMultipole
 
 Core Functions
 --------------

@@ -772,11 +772,11 @@ contains
 !===============================================================================
 ! BROADEN_WMP_POLYNOMIALS Doppler broadens the windowed multipole curvefit.  The
 ! curvefit is a polynomial of the form
-! a/En + b/sqrt(En) + c + d sqrt(En) ...
+! a/E + b/sqrt(E) + c + d sqrt(E) ...
 !===============================================================================
 
-  subroutine broaden_wmp_polynomials(En, dopp, n, factors)
-    real(8), intent(in) :: En         ! Energy to evaluate at
+  subroutine broaden_wmp_polynomials(E, dopp, n, factors)
+    real(8), intent(in) :: E          ! Energy to evaluate at
     real(8), intent(in) :: dopp       ! sqrt(atomic weight ratio / kT),
                                       !  kT given in eV.
     integer, intent(in) :: n          ! number of components to polynomial
@@ -788,10 +788,10 @@ contains
     real(8) :: beta                ! sqrt(atomic weight ratio * E / kT)
     real(8) :: half_inv_dopp2      ! 0.5 / dopp**2
     real(8) :: quarter_inv_dopp4   ! 0.25 / dopp**4
-    real(8) :: erfbeta             ! error function of beta
+    real(8) :: erf_beta            ! error function of beta
     real(8) :: exp_m_beta2         ! exp(-beta**2)
 
-    sqrtE = sqrt(En)
+    sqrtE = sqrt(E)
     beta = sqrtE * dopp
     half_inv_dopp2 = HALF / dopp**2
     quarter_inv_dopp4 = half_inv_dopp2**2
@@ -799,30 +799,30 @@ contains
     if (beta > 6.0_8) then
       ! Save time, ERF(6) is 1 to machine precision.
       ! beta/sqrtpi*exp(-beta**2) is also approximately 1 machine epsilon.
-      erfBeta = ONE
+      erf_beta = ONE
       exp_m_beta2 = ZERO
     else
-      erfBeta = erf(beta)
+      erf_beta = erf(beta)
       exp_m_beta2 = exp(-beta**2)
     end if
 
     ! Assume that, for sure, we'll use a second order (1/E, 1/V, const)
     ! fit, and no less.
 
-    factors(1) = erfbeta / En
+    factors(1) = erf_beta / E
     factors(2) = ONE / sqrtE
-    factors(3) = factors(1) * (half_inv_dopp2 + En) &
+    factors(3) = factors(1) * (half_inv_dopp2 + E) &
          + exp_m_beta2 / (beta * SQRT_PI)
 
     ! Perform recursive broadening of high order components
     do i = 1, n-3
       if (i /= 1) then
         factors(i+3) = -factors(i-1) * (i - ONE) * i * quarter_inv_dopp4 &
-             + factors(i+1) * (En + (ONE + TWO * i) * half_inv_dopp2)
+             + factors(i+1) * (E + (ONE + TWO * i) * half_inv_dopp2)
       else
         ! Although it's mathematically identical, factors(0) will contain
         ! nothing, and we don't want to have to worry about memory.
-        factors(i+3) = factors(i+1)*(En + (ONE + TWO * i) * half_inv_dopp2)
+        factors(i+3) = factors(i+1)*(E + (ONE + TWO * i) * half_inv_dopp2)
       end if
     end do
   end subroutine broaden_wmp_polynomials

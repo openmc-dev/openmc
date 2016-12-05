@@ -1631,11 +1631,24 @@ class EnergyFunctionFilter(Filter):
 
         """
 
-        # Initialize Pandas DataFrame
         import pandas as pd
         df = pd.DataFrame()
 
-        filter_bins = np.repeat(hash(self), self.stride)
+        # There is no clean way of sticking all the energy, y data into a
+        # DataFrame so instead we'll just make a column with the filter name
+        # and fill it with a hash of the __repr__.  We want a hash that is
+        # reproducible after restarting the interpreter so we'll use hashlib.md5
+        # rather than the intrinsic hash().
+        from hashlib import md5
+        hash_fun = md5()
+        hash_fun.update(repr(self).encode('utf-8'))
+        out = hash_fun.hexdigest()
+
+        # The full 16 bytes make for a really wide column.  Just 7 bytes of the
+        # digest are probably sufficient.
+        out = out[:14]
+
+        filter_bins = np.repeat(out, self.stride)
         tile_factor = data_size / len(filter_bins)
         filter_bins = np.tile(filter_bins, tile_factor)
         df = pd.concat([df, pd.DataFrame(

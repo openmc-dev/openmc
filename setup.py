@@ -43,6 +43,7 @@ if have_setuptools:
 
         # Optional dependencies
         'extras_require': {
+            'decay': ['uncertainties'],
             'pandas': ['pandas>=0.17.0'],
             'sparse' : ['scipy'],
             'vtk': ['vtk', 'silomesh'],

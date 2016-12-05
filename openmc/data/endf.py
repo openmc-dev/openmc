@@ -14,9 +14,11 @@ import os
 from math import pi
 from collections import OrderedDict, Iterable
 
+from six import string_types
 import numpy as np
 from numpy.polynomial.polynomial import Polynomial
 
+from .data import ATOMIC_SYMBOL
 from .function import Tabulated1D, INTERPOLATION_SCHEME
 from openmc.stats.univariate import Uniform, Tabular, Legendre
 
@@ -45,16 +47,6 @@ SUM_RULES = {1: [2, 3],
              107: list(range(800, 850))}
 
 _ENDF_FLOAT_RE = re.compile(r'([\s\-\+]?\d*\.\d+)([\+\-]\d+)')
-
-
-def radiation_type(value):
-    p = {0: 'gamma', 1: 'beta-', 2: 'ec/beta+', 3: 'IT',
-         4: 'alpha', 5: 'neutron', 6: 'sf', 7: 'proton',
-         8: 'e-', 9: 'xray', 10: 'unknown'}
-    if value % 1.0 == 0:
-        return p[int(value)]
-    else:
-        return (p[int(value)], p[int(10*value % 10)])
 
 
 def float_endf(s):
@@ -258,14 +250,40 @@ def get_tab2_record(file_obj):
 
     return params, Tabulated2D(breakpoints, interpolation)
 
+def get_evaluations(filename):
+    """Return a list of all evaluations within an ENDF file.
+
+    Parameters
+    ----------
+    filename : str
+        Path to ENDF-6 formatted file
+
+    Returns
+    -------
+    list
+        A list of :class:`openmc.data.endf.Evaluation` instances.
+
+    """
+    evaluations = []
+    with open(filename, 'r') as fh:
+        while True:
+            pos = fh.tell()
+            line = fh.readline()
+            if line[66:70] == '  -1':
+                break
+            fh.seek(pos)
+            evaluations.append(Evaluation(fh))
+    return evaluations
+
 
 class Evaluation(object):
     """ENDF material evaluation with multiple files/sections
 
     Parameters
     ----------
-    filename : str
-        Path to ENDF file to read
+    filename_or_obj : str or file-like
+        Path to ENDF file to read or an open file positioned at the start of an
+        ENDF material
 
     Attributes
     ----------
@@ -282,8 +300,11 @@ class Evaluation(object):
         indicator (MOD).
 
     """
-    def __init__(self, filename):
-        fh = open(filename, 'r')
+    def __init__(self, filename_or_obj):
+        if isinstance(filename_or_obj, string_types):
+            fh = open(filename_or_obj, 'r')
+        else:
+            fh = filename_or_obj
         self.section = {}
         self.info = {}
         self.target = {}
@@ -313,6 +334,7 @@ class Evaluation(object):
 
             # If end of material reached, exit loop
             if MAT == 0:
+                fh.readline()
                 break
 
             section_data = ''
@@ -395,6 +417,16 @@ class Evaluation(object):
                 # missing. This prevents failure on these isotopes.
                 mod = 0
             self.reaction_list.append((mf, mt, nc, mod))
+
+    @property
+    def gnd_name(self):
+        symbol = ATOMIC_SYMBOL[self.target['atomic_number']]
+        A = self.target['mass_number']
+        m = self.target['isomeric_state']
+        if m > 0:
+            return '{}{}_m{}'.format(symbol, A, m)
+        else:
+            return '{}{}'.format(symbol, A)
 
 
 class Tabulated2D(object):

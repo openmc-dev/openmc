@@ -82,6 +82,10 @@ Coupling and Multi-physics
 Geometry
 --------
 
+- Derek M. Lax, "Memory efficient indexing algorithm for physical properties in
+  OpenMC," S. M. Thesis, Massachusetts Institute of Technology
+  (2015). `<http://hdl.handle.net/1721.1/97862>`_
+
 - Derek Lax, William Boyd, Nicholas Horelik, Benoit Forget, and Kord Smith, "A
   memory efficient algorithm for classifying unique regions in constructive
   solid geometries," *Proc. PHYSOR*, Kyoto, Japan, Sep. 28--Oct. 3 (2014).
@@ -105,6 +109,10 @@ Miscellaneous
 - Qicang Shen, William Boyd, Benoit Forget, and Kord Smith, "Tally precision
   triggers for the OpenMC Monte Carlo code," *Trans. Am. Nucl. Soc.*, **112**,
   637-640 (2015).
+
+- Kyungkwan Noh and Deokjung Lee, "Whole Core Analysis using OpenMC Monte Carlo
+  Code," *Trans. Kor. Nucl. Soc. Autumn Meeting*, Gyeongju, Korea,
+  Oct. 24-25, 2013.
 
 - Timothy P. Burke, Brian C. Kiedrowski, and William R. Martin, "Flux and
   Reaction Rate Kernel Density Estimators in OpenMC," *Trans. Am. Nucl. Soc.*,
@@ -139,7 +147,7 @@ Doppler Broadening
 
 - Colin Josey, Pablo Ducru, Benoit Forget, and Kord Smith, "Windowed multipole
   for cross section Doppler broadening," *J. Comput. Phys.*, **307**, 715-727
-  (2016). `<http://dx.doi.org/10.1016/jcp.2015.08.013>`_
+  (2016). `<http://dx.doi.org/10.1016/j.jcp.2015.08.013>`_
 
 - Jonathan A. Walsh, Benoit Forget, Kord S. Smith, and Forrest B. Brown,
   "On-the-fly Doppler Broadening of Unresolved Resonance Region Cross Sections
@@ -168,6 +176,11 @@ Nuclear Data
 
 - Paul K. Romano and Sterling M. Harper, "Nuclear data processing capabilities
   in OpenMC", *Proc. Nuclear Data*, Sep. 11-16, 2016.
+
+- Jonathan A. Walsh, Benoit Froget, Kord S. Smith, and Forrest B. Brown,
+  "Neutron Cross Section Processing Methods for Improved Integral Benchmarking
+  of Unresolved Resonance Region Evaluations," *Eur. Phys. J. Web Conf.*
+  **111**, 06001 (2016). `<http://dx.doi.org/10.1051/epjconf/201611106001>`_
 
 - Jonathan A. Walsh, Paul K. Romano, Benoit Forget, and Kord S. Smith,
   "Optimizations of the energy grid search algorithm in continuous-energy Monte
@@ -213,9 +226,18 @@ Parallelism
   memory subsystem on Monte Carlo code performance," *Proc. Joint
   Int. Conf. M&C+SNA+MC*, Nashville, Tennessee, Apr. 19--23 (2015).
 
+- Hajime Fujita, Nan Dun, Aiman Fang, Zachary A. Rubinstein, Ziming Zheng, Kamil
+  Iskra, Jeff Hammonds, Anshu Dubey, Pavan Balaji, and Andrew A. Chien, "Using
+  Global View Resilience (GVR) to add Resilience to Exascale Applications,"
+  *Proc. Supercomputing*, New Orleans, Louisiana, Nov. 16--21, 2014.
+
 - Nicholas Horelik, Benoit Forget, Kord Smith, and Andrew Siegel, "Domain
   decomposition and terabyte tallies with the OpenMC Monte Carlo neutron
   transport code," *Proc. PHYSOR*, Kyoto Japan, Sep. 28--Oct. 3 (2014).
+
+- John R. Tramm, Andrew R. Siegel, Tanzima Islam, and Martin Schulz, "XSBench --
+  the development and verification of a performance abstraction for Monte Carlo
+  reactor analysis," *Proc. PHYSOR*, Kyoto, Japan, Sep 28--Oct. 3, 2014.
 
 - Nicholas Horelik, Andrew Siegel, Benoit Forget, and Kord Smith, "Monte Carlo
   domain decomposition for robust nuclear reactor analysis," *Parallel Comput.*,
@@ -269,6 +291,10 @@ Parallelism
 ---------
 Depletion
 ---------
+
+- Anas Gul, K. S. Chaudri, R. Khan, and M. Azeen, "Development and verification
+  of LOOP: A Linkage of ORIGEN2.2 and OpenMC," *Ann. Nucl. Energy*, **99**,
+  321--327 (2017). `<http://dx.doi.org/10.1016/j.anucene.2016.09.016>`_
 
 - Kai Huang, Hongchun Wu, Yunzhao Li, and Liangzhi Cao, "Generalized depletion
   chain simplification based of significance analysis," *Proc. PHYSOR*, Sun

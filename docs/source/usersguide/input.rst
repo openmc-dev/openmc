@@ -1639,8 +1639,9 @@ The ``<tally>`` element accepts the following sub-elements:
       :energy:
         ``energyfunction`` filters multiply tally scores by an arbitrary
         function. The function is described by a piecewise linear-linear set of
-        (energy, y) values. This entry specifies the energy values. (Only used
-        for ``energyfunction`` filters)
+        (energy, y) values. This entry specifies the energy values. The function
+        will be evaluated as zero outside of the bounds of this energy grid.
+        (Only used for ``energyfunction`` filters)
 
       :y:
         ``energyfunction`` filters multiply tally scores by an arbitrary

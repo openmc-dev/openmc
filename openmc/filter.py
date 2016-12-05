@@ -1,6 +1,7 @@
 from abc import ABCMeta
 from collections import Iterable, OrderedDict
 import copy
+import hashlib
 from numbers import Real, Integral
 from xml.etree import ElementTree as ET
 
@@ -158,8 +159,7 @@ class Filter(object):
         bins = np.array(bins)
 
         # If the bin is 0D numpy array, promote to 1D.
-        if bins.shape == ():
-            bins.shape = (1,)
+        bins = np.atleast_1d(bins)
 
         # Check the bin values.
         self.check_bins(bins)
@@ -194,7 +194,7 @@ class Filter(object):
 
         pass
 
-    def to_xml(self):
+    def to_xml_element(self):
         """Return XML Element representing the Filter."""
         element = ET.Element('filter')
         element.set('type', self.short_name.lower())
@@ -1616,7 +1616,8 @@ class EnergyFunctionFilter(Filter):
     """Multiplies tally scores by an arbitrary function of incident energy.
 
     The arbitrary function is described by a piecewise linear-linear
-    interpolation of energy and y values.
+    interpolation of energy and y values.  Values outside of the given energy
+    range will be evaluated as zero.
 
     Parameters
     ----------
@@ -1723,8 +1724,7 @@ class EnergyFunctionFilter(Filter):
         energy = np.array(energy)
 
         # If the grid is 0D numpy array, promote to 1D.
-        if energy.shape == ():
-            energy.shape = (1,)
+        energy = np.atleast_1d(energy)
 
         # Make sure the values are Real and positive.
         cv.check_type('filter energy grid', energy, Iterable, Real)
@@ -1739,8 +1739,7 @@ class EnergyFunctionFilter(Filter):
         y = np.array(y)
 
         # If the array is 0D, promote to 1D.
-        if y.shape == ():
-            y.shape = (1,)
+        y = np.atleast_1d(y)
 
         # Make sure the values are Real.
         cv.check_type('filter interpolant values', y, Iterable, Real)
@@ -1751,7 +1750,7 @@ class EnergyFunctionFilter(Filter):
     def bins(self, bins):
         raise RuntimeError('EnergyFunctionFilters have no bins.')
 
-    def to_xml(self):
+    def to_xml_element(self):
         """Return XML Element representing the Filter."""
         element = ET.Element('filter')
         element.set('type', self.short_name.lower())
@@ -1813,13 +1812,12 @@ class EnergyFunctionFilter(Filter):
         # and fill it with a hash of the __repr__.  We want a hash that is
         # reproducible after restarting the interpreter so we'll use hashlib.md5
         # rather than the intrinsic hash().
-        from hashlib import md5
-        hash_fun = md5()
+        hash_fun = hashlib.md5()
         hash_fun.update(repr(self).encode('utf-8'))
         out = hash_fun.hexdigest()
 
-        # The full 16 bytes make for a really wide column.  Just 7 bytes of the
-        # digest are probably sufficient.
+        # The full 16 bytes make for a really wide column.  Just 7 bytes (14
+        # hex characters) of the digest are probably sufficient.
         out = out[:14]
 
         filter_bins = np.repeat(out, self.stride)

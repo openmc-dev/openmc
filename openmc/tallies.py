@@ -1317,14 +1317,15 @@ class Tally(object):
 
                     # Create list of 2-tuples for energy boundary bins
                     elif isinstance(self_filter, (openmc.EnergyFilter,
-                        openmc.EnergyoutFilter)):
+                        openmc.EnergyoutFilter, openmc.MuFilter,
+                        openmc.PolarFilter, openmc.AzimuthalFilter)):
                         bins = []
                         for k in range(self_filter.num_bins):
                             bins.append((self_filter.bins[k], self_filter.bins[k+1]))
 
                     # Create list of cell instance IDs for distribcell Filters
                     elif isinstance(self_filter, openmc.DistribcellFilter):
-                        bins = np.arange(self_filter.num_bins)
+                        bins = [b for b in range(self_filter.num_bins)]
 
                     # EnergyFunctionFilters don't have bins so just add a None
                     elif isinstance(self_filter, openmc.EnergyFunctionFilter):
@@ -2119,14 +2120,14 @@ class Tally(object):
         # Construct lists of tuples for the bins in each of the two filters
         filters = [type(filter1), type(filter2)]
         if isinstance(filter1, openmc.DistribcellFilter):
-            filter1_bins = np.arange(filter1.num_bins)
+            filter1_bins = [b for b in range(filter1.num_bins)]
         elif isinstance(filter1, openmc.EnergyFunctionFilter):
             filter1_bins = [None]
         else:
             filter1_bins = [filter1.get_bin(i) for i in range(filter1.num_bins)]
 
         if isinstance(filter2, openmc.DistribcellFilter):
-            filter2_bins = np.arange(filter2.num_bins)
+            filter2_bins = [b for b in range(filter2.num_bins)]
         elif isinstance(filter2, openmc.EnergyFunctionFilter):
             filter2_bins = [None]
         else:
@@ -2975,8 +2976,16 @@ class Tally(object):
             # Sum across the bins in the user-specified filter
             for i, self_filter in enumerate(self.filters):
                 if isinstance(self_filter, filter_type):
+                    shape = mean.shape
                     mean = np.take(mean, indices=bin_indices, axis=i)
                     std_dev = np.take(std_dev, indices=bin_indices, axis=i)
+
+                    # NumPy take introduces a new dimension in output array
+                    # for some special cases that must be removed
+                    if len(mean.shape) > len(shape):
+                        mean = np.squeeze(mean, axis=i)
+                        std_dev = np.squeeze(std_dev, axis=i)
+
                     mean = np.sum(mean, axis=i, keepdims=True)
                     std_dev = np.sum(std_dev**2, axis=i, keepdims=True)
                     std_dev = np.sqrt(std_dev)
@@ -3124,10 +3133,18 @@ class Tally(object):
             # Average across the bins in the user-specified filter
             for i, self_filter in enumerate(self.filters):
                 if isinstance(self_filter, filter_type):
+                    shape = mean.shape
                     mean = np.take(mean, indices=bin_indices, axis=i)
                     std_dev = np.take(std_dev, indices=bin_indices, axis=i)
-                    mean = np.mean(mean, axis=i, keepdims=True)
-                    std_dev = np.mean(std_dev**2, axis=i, keepdims=True)
+
+                    # NumPy take introduces a new dimension in output array
+                    # for some special cases that must be removed
+                    if len(mean.shape) > len(shape):
+                        mean = np.squeeze(mean, axis=i)
+                        std_dev = np.squeeze(std_dev, axis=i)
+
+                    mean = np.nanmean(mean, axis=i, keepdims=True)
+                    std_dev = np.nanmean(std_dev**2, axis=i, keepdims=True)
                     std_dev /= len(bin_indices)
                     std_dev = np.sqrt(std_dev)
 
@@ -3151,8 +3168,8 @@ class Tally(object):
             axis_index = self.num_filters
             mean = np.take(mean, indices=nuclide_bins, axis=axis_index)
             std_dev = np.take(std_dev, indices=nuclide_bins, axis=axis_index)
-            mean = np.mean(mean, axis=axis_index, keepdims=True)
-            std_dev = np.mean(std_dev**2, axis=axis_index, keepdims=True)
+            mean = np.nanmean(mean, axis=axis_index, keepdims=True)
+            std_dev = np.nanmean(std_dev**2, axis=axis_index, keepdims=True)
             std_dev /= len(nuclide_bins)
             std_dev = np.sqrt(std_dev)
 
@@ -3170,8 +3187,8 @@ class Tally(object):
             axis_index = self.num_filters + 1
             mean = np.take(mean, indices=score_bins, axis=axis_index)
             std_dev = np.take(std_dev, indices=score_bins, axis=axis_index)
-            mean = np.sum(mean, axis=axis_index, keepdims=True)
-            std_dev = np.sum(std_dev**2, axis=axis_index, keepdims=True)
+            mean = np.nanmean(mean, axis=axis_index, keepdims=True)
+            std_dev = np.nanmean(std_dev**2, axis=axis_index, keepdims=True)
             std_dev /= len(score_bins)
             std_dev = np.sqrt(std_dev)
 

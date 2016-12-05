@@ -1036,7 +1036,7 @@ class Tally(object):
 
         # Optional Tally filters
         for self_filter in self.filters:
-            element.append(self_filter.to_xml())
+            element.append(self_filter.to_xml_element())
 
         # Optional Nuclides
         if len(self.nuclides) > 0:

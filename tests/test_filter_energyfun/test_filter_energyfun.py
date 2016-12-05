@@ -18,15 +18,16 @@ class FilterEnergyFunHarness(PyAPITestHarness):
         # Add Am241 to the fuel.
         self._input_set.materials[1].add_nuclide('Am241', 1e-7)
 
-        # Make an EnergyFunctionFilter for the Am242m / Am242 branching ratio.
+        # Make an EnergyFunctionFilter for the Am242m / Am242 branching ratio
+        # (from ENDF/B-VII.1 data).
         x = [1e-5, 3.69e-1, 1e3, 1e5, 6e5, 1e6, 2e6, 4e6, 3e7]
         y = [0.1, 0.1, 0.1333, 0.158, 0.18467, 0.25618, 0.4297, 0.48, 0.48]
         filt = openmc.EnergyFunctionFilter(x, y)
 
         # Make tallies.
-        tallies = [openmc.Tally() for i in range(2)]
+        tallies = [openmc.Tally(), openmc.Tally()]
         for t in tallies:
-            t.scores = ['102']
+            t.scores = ['(n,gamma)']
             t.nuclides = ['Am241']
         tallies[1].filters = [filt]
         self._input_set.tallies = openmc.Tallies(tallies)
@@ -52,5 +53,5 @@ class FilterEnergyFunHarness(PyAPITestHarness):
 
 
 if __name__ == '__main__':
-    harness = FilterEnergyFunHarness('statepoint.10.*', True)
+    harness = FilterEnergyFunHarness('statepoint.10.h5', True)
     harness.main()

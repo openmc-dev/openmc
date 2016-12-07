@@ -1730,6 +1730,31 @@ class EnergyFunctionFilter(Filter):
 
         return cls(energy, y)
 
+    @classmethod
+    def from_tabulated1d(cls, tab1d):
+        """Construct a filter from a Tabulated1D object.
+
+        Parameters
+        ----------
+        tab1d : openmc.data.Tabulated1D
+            A linear-linear Tabulated1D object with only a single interpolation
+            region.
+
+        Returns
+        -------
+        EnergyFunctionFilter
+
+        """
+        cv.check_type('EnergyFunctionFilter tab1d', tab1d,
+                      openmc.data.Tabulated1D)
+        if tab1d.n_regions > 1:
+            raise ValueError('Only Tabulated1Ds with a single interpolation '
+                             'region are supported')
+        if tab1d.interpolation[0] != 2:
+            raise ValueError('Only linear-linar Tabulated1Ds are supported')
+
+        return cls(tab1d.x, tab1d.y)
+
     @property
     def energy(self):
         return self._energy

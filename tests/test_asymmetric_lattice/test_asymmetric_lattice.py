@@ -69,7 +69,6 @@ class AsymmetricLatticeTestHarness(PyAPITestHarness):
         source = openmc.Source(space=openmc.stats.Box([-32, -32, 0], [32, 32, 32]))
         source.space.only_fissionable = True
         self._input_set.settings.source = source
-        self._input_set.settings.output = {'summary': True}
 
         # Write input XML files
         self._input_set.export()
@@ -106,11 +105,6 @@ class AsymmetricLatticeTestHarness(PyAPITestHarness):
             outstr = sha512.hexdigest()
 
         return outstr
-
-    def _cleanup(self):
-        super(AsymmetricLatticeTestHarness, self)._cleanup()
-        f = os.path.join(os.getcwd(), 'tallies.xml')
-        if os.path.exists(f): os.remove(f)
 
 
 if __name__ == '__main__':

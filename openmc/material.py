@@ -874,8 +874,6 @@ class Materials(cv.CheckedList):
 
     def __init__(self, materials=None):
         super(Materials, self).__init__(Material, 'materials collection')
-
-        self._materials_file = ET.Element("materials")
         self._cross_sections = None
         self._multipole_library = None
 
@@ -980,19 +978,18 @@ class Materials(cv.CheckedList):
         for material in self:
             material.make_isotropic_in_lab()
 
-    def _create_material_subelements(self):
+    def _create_material_subelements(self, root):
         for material in self:
-            xml_element = material.to_xml_element(self.cross_sections)
-            self._materials_file.append(xml_element)
+            root.append(material.to_xml_element(self.cross_sections))
 
-    def _create_cross_sections_subelement(self):
+    def _create_cross_sections_subelement(self, root):
         if self._cross_sections is not None:
-            element = ET.SubElement(self._materials_file, "cross_sections")
+            element = ET.SubElement(root, "cross_sections")
             element.text = str(self._cross_sections)
 
-    def _create_multipole_library_subelement(self):
+    def _create_multipole_library_subelement(self, root):
         if self._multipole_library is not None:
-            element = ET.SubElement(self._materials_file, "multipole_library")
+            element = ET.SubElement(root, "multipole_library")
             element.text = str(self._multipole_library)
 
     def export_to_xml(self, path='materials.xml'):
@@ -1005,17 +1002,15 @@ class Materials(cv.CheckedList):
 
         """
 
-        # Reset xml element tree
-        self._materials_file.clear()
-
-        self._create_material_subelements()
-        self._create_cross_sections_subelement()
-        self._create_multipole_library_subelement()
+        root = ET.Element("materials")
+        self._create_material_subelements(root)
+        self._create_cross_sections_subelement(root)
+        self._create_multipole_library_subelement(root)
 
         # Clean the indentation in the file to be user-readable
-        sort_xml_elements(self._materials_file)
-        clean_xml_indentation(self._materials_file)
+        sort_xml_elements(root)
+        clean_xml_indentation(root)
 
         # Write the XML Tree to the materials.xml file
-        tree = ET.ElementTree(self._materials_file)
+        tree = ET.ElementTree(root)
         tree.write(path, xml_declaration=True, encoding='utf-8', method="xml")

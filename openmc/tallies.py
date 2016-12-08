@@ -1015,7 +1015,7 @@ class Tally(object):
 
         return merged_tally
 
-    def get_tally_xml(self):
+    def to_xml_element(self):
         """Return XML representation of the tally
 
         Returns
@@ -3307,7 +3307,6 @@ class Tallies(cv.CheckedList):
 
     def __init__(self, tallies=None):
         super(Tallies, self).__init__(Tally, 'tallies collection')
-        self._tallies_file = ET.Element("tallies")
         if tallies is not None:
             self += tallies
 
@@ -3459,25 +3458,23 @@ class Tallies(cv.CheckedList):
                       "removed in a future version. Meshes do not need to be "
                       "managed explicitly.", DeprecationWarning)
 
-    def _create_tally_subelements(self):
+    def _create_tally_subelements(self, root):
         for tally in self:
-            xml_element = tally.get_tally_xml()
-            self._tallies_file.append(xml_element)
+            root.append(tally.to_xml_element())
 
-    def _create_mesh_subelements(self):
+    def _create_mesh_subelements(self, root):
         already_written = set()
         for tally in self:
             for f in tally.filters:
                 if isinstance(f, openmc.MeshFilter):
                     if f.mesh not in already_written:
                         if len(f.mesh.name) > 0:
-                            self._tallies_file.append(ET.Comment(f.mesh.name))
+                            root.append(ET.Comment(f.mesh.name))
 
-                        xml_element = f.mesh.get_mesh_xml()
-                        self._tallies_file.append(xml_element)
+                        root.append(f.mesh.to_xml_element())
                         already_written.add(f.mesh)
 
-    def _create_derivative_subelements(self):
+    def _create_derivative_subelements(self, root):
         # Get a list of all derivatives referenced in a tally.
         derivs = []
         for tally in self:
@@ -3487,24 +3484,22 @@ class Tallies(cv.CheckedList):
 
         # Add the derivatives to the XML tree.
         for d in derivs:
-            self._tallies_file.append(d.to_xml_element())
+            root.append(d.to_xml_element())
 
     def export_to_xml(self):
         """Create a tallies.xml file that can be used for a simulation.
 
         """
 
-        # Reset xml element tree
-        self._tallies_file.clear()
-
-        self._create_mesh_subelements()
-        self._create_tally_subelements()
-        self._create_derivative_subelements()
+        root = ET.Element("tallies")
+        self._create_mesh_subelements(root)
+        self._create_tally_subelements(root)
+        self._create_derivative_subelements(root)
 
         # Clean the indentation in the file to be user-readable
-        clean_xml_indentation(self._tallies_file)
+        clean_xml_indentation(root)
 
         # Write the XML Tree to the tallies.xml file
-        tree = ET.ElementTree(self._tallies_file)
+        tree = ET.ElementTree(root)
         tree.write("tallies.xml", xml_declaration=True,
                    encoding='utf-8', method="xml")

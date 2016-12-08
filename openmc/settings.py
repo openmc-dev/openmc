@@ -186,7 +186,6 @@ class Settings(object):
         self._entropy_upper_right = None
 
         # Trigger subelement
-        self._trigger_subelement = None
         self._trigger_active = None
         self._trigger_max_batches = None
         self._trigger_batch_interval = None
@@ -230,9 +229,6 @@ class Settings(object):
         self._dd_nodemap = None
         self._dd_allow_leakage = False
         self._dd_count_interactions = False
-
-        self._settings_file = ET.Element("settings")
-        self._run_mode_subelement = None
 
         self._resonance_scattering = cv.CheckedList(
             ResonanceScattering, 'resonance scattering models')
@@ -883,172 +879,166 @@ class Settings(object):
                       create_fission_neutrons, bool)
         self._create_fission_neutrons = create_fission_neutrons
 
-    def _create_run_mode_subelement(self):
+    def _create_run_mode_subelement(self, root):
 
         if self.run_mode == 'eigenvalue':
-            self._run_mode_subelement = \
-                ET.SubElement(self._settings_file, "eigenvalue")
-            self._create_particles_subelement()
-            self._create_batches_subelement()
-            self._create_inactive_subelement()
-            self._create_generations_per_batch_subelement()
-            self._create_keff_trigger_subelement()
+            elem = ET.SubElement(root, "eigenvalue")
+            self._create_particles_subelement(elem)
+            self._create_batches_subelement(elem)
+            self._create_inactive_subelement(elem)
+            self._create_generations_per_batch_subelement(elem)
+            self._create_keff_trigger_subelement(elem)
         else:
-            if self._run_mode_subelement is None:
-                self._run_mode_subelement = \
-                    ET.SubElement(self._settings_file, "fixed_source")
-            self._create_particles_subelement()
-            self._create_batches_subelement()
+            elem = ET.SubElement(root, "fixed_source")
+            self._create_particles_subelement(elem)
+            self._create_batches_subelement(elem)
 
-    def _create_batches_subelement(self):
+    def _create_batches_subelement(self, run_mode_element):
         if self._batches is not None:
-            element = ET.SubElement(self._run_mode_subelement, "batches")
+            element = ET.SubElement(run_mode_element, "batches")
             element.text = str(self._batches)
 
-    def _create_generations_per_batch_subelement(self):
+    def _create_generations_per_batch_subelement(self, run_mode_element):
         if self._generations_per_batch is not None:
-            element = ET.SubElement(self._run_mode_subelement,
+            element = ET.SubElement(run_mode_element,
                                     "generations_per_batch")
             element.text = str(self._generations_per_batch)
 
-    def _create_inactive_subelement(self):
+    def _create_inactive_subelement(self, run_mode_element):
         if self._inactive is not None:
-            element = ET.SubElement(self._run_mode_subelement, "inactive")
+            element = ET.SubElement(run_mode_element, "inactive")
             element.text = str(self._inactive)
 
-    def _create_particles_subelement(self):
+    def _create_particles_subelement(self, run_mode_element):
         if self._particles is not None:
-            element = ET.SubElement(self._run_mode_subelement, "particles")
+            element = ET.SubElement(run_mode_element, "particles")
             element.text = str(self._particles)
 
-    def _create_keff_trigger_subelement(self):
+    def _create_keff_trigger_subelement(self, run_mode_element):
         if self._keff_trigger is not None:
-            element = ET.SubElement(self._run_mode_subelement, "keff_trigger")
+            element = ET.SubElement(run_mode_subelement, "keff_trigger")
 
             for key in self._keff_trigger:
                 subelement = ET.SubElement(element, key)
                 subelement.text = str(self._keff_trigger[key]).lower()
 
-    def _create_energy_mode_subelement(self):
+    def _create_energy_mode_subelement(self, root):
         if self._energy_mode is not None:
-            element = ET.SubElement(self._settings_file, "energy_mode")
+            element = ET.SubElement(root, "energy_mode")
             element.text = str(self._energy_mode)
 
-    def _create_max_order_subelement(self):
+    def _create_max_order_subelement(self, root):
         if self._max_order is not None:
-            element = ET.SubElement(self._settings_file, "max_order")
+            element = ET.SubElement(root, "max_order")
             element.text = str(self._max_order)
 
-    def _create_source_subelement(self):
+    def _create_source_subelement(self, root):
         for source in self.source:
-            self._settings_file.append(source.to_xml_element())
+            root.append(source.to_xml_element())
 
-    def _create_volume_calcs_subelement(self):
+    def _create_volume_calcs_subelement(self, root):
         for calc in self.volume_calculations:
-            self._settings_file.append(calc.to_xml_element())
+            root.append(calc.to_xml_element())
 
-    def _create_output_subelement(self):
+    def _create_output_subelement(self, root):
         if self._output is not None:
-            element = ET.SubElement(self._settings_file, "output")
+            element = ET.SubElement(root, "output")
 
             for key in self._output:
                 subelement = ET.SubElement(element, key)
                 subelement.text = str(self._output[key]).lower()
 
-            self._create_output_path_subelement()
+            if self._output_path is not None:
+                element = ET.SubElement(root, "output_path")
+                element.text = self._output_path
 
-    def _create_output_path_subelement(self):
-        if self._output_path is not None:
-            element = ET.SubElement(self._settings_file, "output_path")
-            element.text = self._output_path
-
-    def _create_verbosity_subelement(self):
+    def _create_verbosity_subelement(self, root):
         if self._verbosity is not None:
-            element = ET.SubElement(self._settings_file, "verbosity")
+            element = ET.SubElement(root, "verbosity")
             element.text = str(self._verbosity)
 
-    def _create_statepoint_subelement(self):
+    def _create_statepoint_subelement(self, root):
         # Batches subelement
         if self._statepoint_batches is not None:
-            element = ET.SubElement(self._settings_file, "state_point")
+            element = ET.SubElement(root, "state_point")
             subelement = ET.SubElement(element, "batches")
             subelement.text = ' '.join(map(str, self._statepoint_batches))
 
         # Interval subelement
         elif self._statepoint_interval is not None:
-            element = ET.SubElement(self._settings_file, "state_point")
+            element = ET.SubElement(root, "state_point")
             subelement = ET.SubElement(element, "interval")
             subelement.text = str(self._statepoint_interval)
 
-    def _create_sourcepoint_subelement(self):
+    def _create_sourcepoint_subelement(self, root):
         # Batches subelement
         if self._sourcepoint_batches is not None:
-            element = ET.SubElement(self._settings_file, "source_point")
+            element = ET.SubElement(root, "source_point")
             subelement = ET.SubElement(element, "batches")
             subelement.text = ' '.join(map(str, self._sourcepoint_batches))
 
         # Interval subelement
         elif self._sourcepoint_interval is not None:
-            element = ET.SubElement(self._settings_file, "source_point")
+            element = ET.SubElement(root, "source_point")
             subelement = ET.SubElement(element, "interval")
             subelement.text = str(self._sourcepoint_interval)
 
         # Separate subelement
         if self._sourcepoint_separate is not None:
-            element = ET.SubElement(self._settings_file, "source_point")
+            element = ET.SubElement(root, "source_point")
             subelement = ET.SubElement(element, "separate")
             subelement.text = str(self._sourcepoint_separate).lower()
 
         # Write subelement
         if self._sourcepoint_write is not None:
-            element = ET.SubElement(self._settings_file, "source_point")
+            element = ET.SubElement(root, "source_point")
             subelement = ET.SubElement(element, "write")
             subelement.text = str(self._sourcepoint_write).lower()
 
         # Overwrite latest subelement
         if self._sourcepoint_overwrite is not None:
-            element = ET.SubElement(self._settings_file, "source_point")
+            element = ET.SubElement(root, "source_point")
             subelement = ET.SubElement(element, "overwrite_latest")
             subelement.text = str(self._sourcepoint_overwrite).lower()
 
-    def _create_confidence_intervals(self):
+    def _create_confidence_intervals(self, root):
         if self._confidence_intervals is not None:
-            element = ET.SubElement(self._settings_file, "confidence_intervals")
+            element = ET.SubElement(root, "confidence_intervals")
             element.text = str(self._confidence_intervals).lower()
 
-    def _create_cross_sections_subelement(self):
+    def _create_cross_sections_subelement(self, root):
         if self._cross_sections is not None:
-            element = ET.SubElement(self._settings_file, "cross_sections")
+            element = ET.SubElement(root, "cross_sections")
             element.text = str(self._cross_sections)
 
-    def _create_multipole_library_subelement(self):
+    def _create_multipole_library_subelement(self, root):
         if self._multipole_library is not None:
-            element = ET.SubElement(self._settings_file, "multipole_library")
+            element = ET.SubElement(root, "multipole_library")
             element.text = str(self._multipole_library)
 
-    def _create_ptables_subelement(self):
+    def _create_ptables_subelement(self, root):
         if self._ptables is not None:
-            element = ET.SubElement(self._settings_file, "ptables")
+            element = ET.SubElement(root, "ptables")
             element.text = str(self._ptables).lower()
 
-    def _create_run_cmfd_subelement(self):
+    def _create_run_cmfd_subelement(self, root):
         if self._run_cmfd is not None:
-            element = ET.SubElement(self._settings_file, "run_cmfd")
+            element = ET.SubElement(root, "run_cmfd")
             element.text = str(self._run_cmfd).lower()
 
-    def _create_seed_subelement(self):
+    def _create_seed_subelement(self, root):
         if self._seed is not None:
-            element = ET.SubElement(self._settings_file, "seed")
+            element = ET.SubElement(root, "seed")
             element.text = str(self._seed)
 
-    def _create_survival_biasing_subelement(self):
+    def _create_survival_biasing_subelement(self, root):
         if self._survival_biasing is not None:
-            element = ET.SubElement(self._settings_file, "survival_biasing")
+            element = ET.SubElement(root, "survival_biasing")
             element.text = str(self._survival_biasing).lower()
 
-    def _create_cutoff_subelement(self):
+    def _create_cutoff_subelement(self, root):
         if self._cutoff is not None:
-            element = ET.SubElement(self._settings_file, "cutoff")
+            element = ET.SubElement(root, "cutoff")
             if 'weight' in self._cutoff:
                 subelement = ET.SubElement(element, "weight")
                 subelement.text = str(self._cutoff['weight'])
@@ -1061,11 +1051,11 @@ class Settings(object):
                 subelement = ET.SubElement(element, "energy")
                 subelement.text = str(self._cutoff['energy'])
 
-    def _create_entropy_subelement(self):
+    def _create_entropy_subelement(self, root):
         if self._entropy_lower_left is not None and \
            self._entropy_upper_right is not None:
 
-            element = ET.SubElement(self._settings_file, "entropy")
+            element = ET.SubElement(root, "entropy")
 
             subelement = ET.SubElement(element, "dimension")
             subelement.text = ' '.join(map(str, self._entropy_dimension))
@@ -1076,79 +1066,61 @@ class Settings(object):
             subelement = ET.SubElement(element, "upper_right")
             subelement.text = ' '.join(map(str, self._entropy_upper_right))
 
-    def _create_trigger_subelement(self):
-        self._create_trigger_active_subelement()
-        self._create_trigger_max_batches_subelement()
-        self._create_trigger_batch_interval_subelement()
-
-    def _create_trigger_active_subelement(self):
+    def _create_trigger_subelement(self, root):
         if self._trigger_active is not None:
-            if self._trigger_subelement is None:
-                self._trigger_subelement = ET.SubElement(self._settings_file,
-                                                         "trigger")
-
-            element = ET.SubElement(self._trigger_subelement, "active")
+            trigger_element = ET.SubElement(root, "trigger")
+            element = ET.SubElement(trigger_element, "active")
             element.text = str(self._trigger_active).lower()
 
-    def _create_trigger_max_batches_subelement(self):
-        if self._trigger_max_batches is not None:
-            if self._trigger_subelement is None:
-                self._trigger_subelement = ET.SubElement(self._settings_file,
-                                                         "trigger")
+            if self._trigger_max_batches is not None:
+                element = ET.SubElement(trigger_element, "max_batches")
+                element.text = str(self._trigger_max_batches)
 
-            element = ET.SubElement(self._trigger_subelement, "max_batches")
-            element.text = str(self._trigger_max_batches)
+            if self._trigger_batch_interval is not None:
+                element = ET.SubElement(trigger_element, "batch_interval")
+                element.text = str(self._trigger_batch_interval)
 
-    def _create_trigger_batch_interval_subelement(self):
-        if self._trigger_batch_interval is not None:
-            if self._trigger_subelement is None:
-                self._trigger_subelement = ET.SubElement(self._settings_file,
-                                                         "trigger")
-
-            element = ET.SubElement(self._trigger_subelement, "batch_interval")
-            element.text = str(self._trigger_batch_interval)
-
-    def _create_no_reduce_subelement(self):
+    def _create_no_reduce_subelement(self, root):
         if self._no_reduce is not None:
-            element = ET.SubElement(self._settings_file, "no_reduce")
+            element = ET.SubElement(root, "no_reduce")
             element.text = str(self._no_reduce).lower()
 
-    def _create_tabular_legendre_subelements(self):
+    def _create_tabular_legendre_subelements(self, root):
         if self.tabular_legendre:
-            element = ET.SubElement(self._settings_file, "tabular_legendre")
+            element = ET.SubElement(root, "tabular_legendre")
             subelement = ET.SubElement(element, "enable")
             subelement.text = str(self._tabular_legendre['enable']).lower()
             if 'num_points' in self._tabular_legendre:
                 subelement = ET.SubElement(element, "num_points")
                 subelement.text = str(self._tabular_legendre['num_points'])
 
-    def _create_temperature_subelements(self):
+    def _create_temperature_subelements(self, root):
         if self.temperature:
             for key, value in sorted(self.temperature.items()):
-                element = ET.SubElement(self._settings_file,
+                element = ET.SubElement(root,
                                         "temperature_{}".format(key))
                 element.text = str(value)
 
-    def _create_threads_subelement(self):
+    def _create_threads_subelement(self, root):
         if self._threads is not None:
-            element = ET.SubElement(self._settings_file, "threads")
+            element = ET.SubElement(root, "threads")
             element.text = str(self._threads)
 
-    def _create_trace_subelement(self):
+    def _create_trace_subelement(self, root):
         if self._trace is not None:
-            element = ET.SubElement(self._settings_file, "trace")
+            element = ET.SubElement(root, "trace")
             element.text = ' '.join(map(str, self._trace))
 
-    def _create_track_subelement(self):
+    def _create_track_subelement(self, root):
         if self._track is not None:
-            element = ET.SubElement(self._settings_file, "track")
+            element = ET.SubElement(root, "track")
             element.text = ' '.join(map(str, self._track))
 
-    def _create_ufs_subelement(self):
+    def _create_ufs_subelement(self, root):
         if self._ufs_lower_left is not None and \
            self._ufs_upper_right is not None:
 
-            element = ET.SubElement(self._settings_file, "uniform_fs")
+            element = ET.SubElement(root, "uniform_fs")
 
             subelement = ET.SubElement(element, "dimension")
             subelement.text = ' '.join(map(str, self._ufs_dimension))
@@ -1159,12 +1131,12 @@ class Settings(object):
             subelement = ET.SubElement(element, "upper_right")
             subelement.text = ' '.join(map(str, self._ufs_upper_right))
 
-    def _create_dd_subelement(self):
+    def _create_dd_subelement(self, root):
         if self._dd_mesh_lower_left is not None and \
            self._dd_mesh_upper_right is not None and \
            self._dd_mesh_dimension is not None:
 
-            element = ET.SubElement(self._settings_file, "domain_decomposition")
+            element = ET.SubElement(root, "domain_decomposition")
 
             subelement = ET.SubElement(element, "mesh")
             subsubelement = ET.SubElement(subelement, "dimension")
@@ -1186,15 +1158,15 @@ class Settings(object):
             subelement = ET.SubElement(element, "count_interactions")
             subelement.text = str(self._dd_count_interactions).lower()
 
-    def _create_resonance_scattering_subelement(self):
+    def _create_resonance_scattering_subelement(self, root):
         if len(self.resonance_scattering) > 0:
-            elem = ET.SubElement(self._settings_file, 'resonance_scattering')
+            elem = ET.SubElement(root, 'resonance_scattering')
             for r in self.resonance_scattering:
                 elem.append(r.to_xml_element())
 
-    def _create_create_fission_neutrons_subelement(self):
+    def _create_create_fission_neutrons_subelement(self, root):
         if self._create_fission_neutrons is not None:
-            elem = ET.SubElement(self._settings_file, "create_fission_neutrons")
+            elem = ET.SubElement(root, "create_fission_neutrons")
             elem.text = str(self._create_fission_neutrons).lower()
 
     def export_to_xml(self, path='settings.xml'):
@@ -1208,46 +1180,43 @@ class Settings(object):
         """
 
         # Reset xml element tree
-        self._settings_file.clear()
-        self._source_subelement = None
-        self._trigger_subelement = None
-        self._run_mode_subelement = None
+        root = ET.Element("settings")
 
-        self._create_run_mode_subelement()
-        self._create_source_subelement()
-        self._create_output_subelement()
-        self._create_statepoint_subelement()
-        self._create_sourcepoint_subelement()
-        self._create_confidence_intervals()
-        self._create_cross_sections_subelement()
-        self._create_multipole_library_subelement()
-        self._create_energy_mode_subelement()
-        self._create_max_order_subelement()
-        self._create_ptables_subelement()
-        self._create_run_cmfd_subelement()
-        self._create_seed_subelement()
-        self._create_survival_biasing_subelement()
-        self._create_cutoff_subelement()
-        self._create_entropy_subelement()
-        self._create_trigger_subelement()
-        self._create_no_reduce_subelement()
-        self._create_threads_subelement()
-        self._create_verbosity_subelement()
-        self._create_tabular_legendre_subelements()
-        self._create_temperature_subelements()
-        self._create_trace_subelement()
-        self._create_track_subelement()
-        self._create_ufs_subelement()
-        self._create_dd_subelement()
-        self._create_resonance_scattering_subelement()
-        self._create_volume_calcs_subelement()
-        self._create_create_fission_neutrons_subelement()
+        self._create_run_mode_subelement(root)
+        self._create_source_subelement(root)
+        self._create_output_subelement(root)
+        self._create_statepoint_subelement(root)
+        self._create_sourcepoint_subelement(root)
+        self._create_confidence_intervals(root)
+        self._create_cross_sections_subelement(root)
+        self._create_multipole_library_subelement(root)
+        self._create_energy_mode_subelement(root)
+        self._create_max_order_subelement(root)
+        self._create_ptables_subelement(root)
+        self._create_run_cmfd_subelement(root)
+        self._create_seed_subelement(root)
+        self._create_survival_biasing_subelement(root)
+        self._create_cutoff_subelement(root)
+        self._create_entropy_subelement(root)
+        self._create_trigger_subelement(root)
+        self._create_no_reduce_subelement(root)
+        self._create_threads_subelement(root)
+        self._create_verbosity_subelement(root)
+        self._create_tabular_legendre_subelements(root)
+        self._create_temperature_subelements(root)
+        self._create_trace_subelement(root)
+        self._create_track_subelement(root)
+        self._create_ufs_subelement(root)
+        self._create_dd_subelement(root)
+        self._create_resonance_scattering_subelement(root)
+        self._create_volume_calcs_subelement(root)
+        self._create_create_fission_neutrons_subelement(root)
 
         # Clean the indentation in the file to be user-readable
-        clean_xml_indentation(self._settings_file)
+        clean_xml_indentation(root)
 
         # Write the XML Tree to the settings.xml file
-        tree = ET.ElementTree(self._settings_file)
+        tree = ET.ElementTree(root)
         tree.write(path, xml_declaration=True, encoding='utf-8', method="xml")
 
 

@@ -734,8 +734,13 @@ class Material(object):
 
         return xml_elements
 
-    def get_material_xml(self, cross_sections):
+    def to_xml_element(self, cross_sections=None):
         """Return XML representation of the material
+
+        Parameters
+        ----------
+        cross_sections : str
+            Path to an XML cross sections listing file
 
         Returns
         -------
@@ -757,10 +762,14 @@ class Material(object):
             subelement.text = str(self.temperature)
 
         # Create density XML subelement
-        subelement = ET.SubElement(element, "density")
-        if self._density_units is not 'sum':
-            subelement.set("value", str(self._density))
-        subelement.set("units", self._density_units)
+        if self._density is not None:
+            subelement = ET.SubElement(element, "density")
+            if self._density_units is not 'sum':
+                subelement.set("value", str(self._density))
+            subelement.set("units", self._density_units)
+        else:
+            raise ValueError('Density has not been set for material {}!'
+                             .format(self.id))
 
         if not self._convert_to_distrib_comps:
             if self._macroscopic is None:
@@ -973,7 +982,7 @@ class Materials(cv.CheckedList):
 
     def _create_material_subelements(self):
         for material in self:
-            xml_element = material.get_material_xml(self.cross_sections)
+            xml_element = material.to_xml_element(self.cross_sections)
             self._materials_file.append(xml_element)
 
     def _create_cross_sections_subelement(self):

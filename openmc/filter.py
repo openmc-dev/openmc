@@ -45,7 +45,8 @@ class FilterMeta(ABCMeta):
             for func_name in namespace:
                 if func_name in Filter.__dict__:
                     # Inherit the docstring from Filter if not defined.
-                    if isinstance(namespace[func_name], classmethod):
+                    if isinstance(namespace[func_name],
+                                  (classmethod, staticmethod)):
                         new_doc = namespace[func_name].__func__.__doc__
                         old_doc = Filter.__dict__[func_name].__func__.__doc__
                         if new_doc is None and old_doc is not None:
@@ -183,10 +184,7 @@ class Filter(object):
 
     @bins.setter
     def bins(self, bins):
-        # Make sure the bins are a numpy array.
-        bins = np.array(bins)
-
-        # If the bin is 0D numpy array, promote to 1D.
+        # Format the bins as a 1D numpy array.
         bins = np.atleast_1d(bins)
 
         # Check the bin values.
@@ -223,7 +221,14 @@ class Filter(object):
         pass
 
     def to_xml_element(self):
-        """Return XML Element representing the Filter."""
+        """Return XML Element representing the Filter.
+
+        Returns
+        -------
+        ElementTree.Element
+
+        """
+
         element = ET.Element('filter')
         element.set('type', self.short_name.lower())
         element.set('bins', ' '.join(str(b) for b in self.bins))
@@ -1773,10 +1778,7 @@ class EnergyFunctionFilter(Filter):
 
     @energy.setter
     def energy(self, energy):
-        # Make sure the energy grid is a numpy array.
-        energy = np.array(energy)
-
-        # If the grid is 0D numpy array, promote to 1D.
+        # Format the bins as a 1D numpy array.
         energy = np.atleast_1d(energy)
 
         # Make sure the values are Real and positive.
@@ -1788,10 +1790,7 @@ class EnergyFunctionFilter(Filter):
 
     @y.setter
     def y(self, y):
-        # Make sure the values are in a numpy array.
-        y = np.array(y)
-
-        # If the array is 0D, promote to 1D.
+        # Format the bins as a 1D numpy array.
         y = np.atleast_1d(y)
 
         # Make sure the values are Real.
@@ -1804,7 +1803,6 @@ class EnergyFunctionFilter(Filter):
         raise RuntimeError('EnergyFunctionFilters have no bins.')
 
     def to_xml_element(self):
-        """Return XML Element representing the Filter."""
         element = ET.Element('filter')
         element.set('type', self.short_name.lower())
         element.set('energy', ' '.join(str(e) for e in self.energy))

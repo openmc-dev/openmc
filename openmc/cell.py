@@ -561,10 +561,9 @@ class Cell(object):
             # thus far.
             def create_surface_elements(node, element):
                 if isinstance(node, Halfspace):
-                    path = './surface[@id=\'{0}\']'.format(node.surface.id)
+                    path = "./surface[@id='{}']".format(node.surface.id)
                     if xml_element.find(path) is None:
-                        surface_subelement = node.surface.create_xml_subelement()
-                        xml_element.append(surface_subelement)
+                        xml_element.append(node.surface.create_xml_subelement())
                 elif isinstance(node, Complement):
                     create_surface_elements(node.node, element)
                 else:

@@ -3458,23 +3458,23 @@ class Tallies(cv.CheckedList):
                       "removed in a future version. Meshes do not need to be "
                       "managed explicitly.", DeprecationWarning)
 
-    def _create_tally_subelements(self, root):
+    def _create_tally_subelements(self, root_element):
         for tally in self:
-            root.append(tally.to_xml_element())
+            root_element.append(tally.to_xml_element())
 
-    def _create_mesh_subelements(self, root):
+    def _create_mesh_subelements(self, root_element):
         already_written = set()
         for tally in self:
             for f in tally.filters:
                 if isinstance(f, openmc.MeshFilter):
                     if f.mesh not in already_written:
                         if len(f.mesh.name) > 0:
-                            root.append(ET.Comment(f.mesh.name))
+                            root_element.append(ET.Comment(f.mesh.name))
 
-                        root.append(f.mesh.to_xml_element())
+                        root_element.append(f.mesh.to_xml_element())
                         already_written.add(f.mesh)
 
-    def _create_derivative_subelements(self, root):
+    def _create_derivative_subelements(self, root_element):
         # Get a list of all derivatives referenced in a tally.
         derivs = []
         for tally in self:
@@ -3484,22 +3484,22 @@ class Tallies(cv.CheckedList):
 
         # Add the derivatives to the XML tree.
         for d in derivs:
-            root.append(d.to_xml_element())
+            root_element.append(d.to_xml_element())
 
     def export_to_xml(self):
         """Create a tallies.xml file that can be used for a simulation.
 
         """
 
-        root = ET.Element("tallies")
-        self._create_mesh_subelements(root)
-        self._create_tally_subelements(root)
-        self._create_derivative_subelements(root)
+        root_element = ET.Element("tallies")
+        self._create_mesh_subelements(root_element)
+        self._create_tally_subelements(root_element)
+        self._create_derivative_subelements(root_element)
 
         # Clean the indentation in the file to be user-readable
-        clean_xml_indentation(root)
+        clean_xml_indentation(root_element)
 
         # Write the XML Tree to the tallies.xml file
-        tree = ET.ElementTree(root)
+        tree = ET.ElementTree(root_element)
         tree.write("tallies.xml", xml_declaration=True,
                    encoding='utf-8', method="xml")

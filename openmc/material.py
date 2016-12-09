@@ -978,18 +978,18 @@ class Materials(cv.CheckedList):
         for material in self:
             material.make_isotropic_in_lab()
 
-    def _create_material_subelements(self, root):
+    def _create_material_subelements(self, root_element):
         for material in self:
-            root.append(material.to_xml_element(self.cross_sections))
+            root_element.append(material.to_xml_element(self.cross_sections))
 
-    def _create_cross_sections_subelement(self, root):
+    def _create_cross_sections_subelement(self, root_element):
         if self._cross_sections is not None:
-            element = ET.SubElement(root, "cross_sections")
+            element = ET.SubElement(root_element, "cross_sections")
             element.text = str(self._cross_sections)
 
-    def _create_multipole_library_subelement(self, root):
+    def _create_multipole_library_subelement(self, root_element):
         if self._multipole_library is not None:
-            element = ET.SubElement(root, "multipole_library")
+            element = ET.SubElement(root_element, "multipole_library")
             element.text = str(self._multipole_library)
 
     def export_to_xml(self, path='materials.xml'):
@@ -1002,15 +1002,15 @@ class Materials(cv.CheckedList):
 
         """
 
-        root = ET.Element("materials")
-        self._create_material_subelements(root)
-        self._create_cross_sections_subelement(root)
-        self._create_multipole_library_subelement(root)
+        root_element = ET.Element("materials")
+        self._create_material_subelements(root_element)
+        self._create_cross_sections_subelement(root_element)
+        self._create_multipole_library_subelement(root_element)
 
         # Clean the indentation in the file to be user-readable
-        sort_xml_elements(root)
-        clean_xml_indentation(root)
+        sort_xml_elements(root_element)
+        clean_xml_indentation(root_element)
 
         # Write the XML Tree to the materials.xml file
-        tree = ET.ElementTree(root)
+        tree = ET.ElementTree(root_element)
         tree.write(path, xml_declaration=True, encoding='utf-8', method="xml")

@@ -547,7 +547,11 @@ class Cell(object):
 
         if self.region is not None:
             # Set the region attribute with the region specification
-            element.set("region", str(self.region))
+            region = str(self.region)
+            if region.startswith('('):
+                region = region[1:-1]
+            if len(region) > 0:
+                element.set("region", region)
 
             # Only surfaces that appear in a region are added to the geometry
             # file, so the appropriate check is performed here. First we create

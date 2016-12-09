@@ -232,6 +232,11 @@ class Intersection(Region):
     def __init__(self, *nodes):
         self.nodes = list(nodes)
 
+    def __and__(self, other):
+        new = Intersection(*self.nodes)
+        new.nodes.append(other)
+        return new
+
     def __iter__(self):
         for n in self.nodes:
             yield n
@@ -303,6 +308,11 @@ class Union(Region):
 
     def __init__(self, *nodes):
         self.nodes = list(nodes)
+
+    def __or__(self, other):
+        new = Union(*self.nodes)
+        new.nodes.append(other)
+        return new
 
     def __iter__(self):
         for n in self.nodes:

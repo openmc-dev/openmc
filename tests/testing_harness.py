@@ -299,16 +299,10 @@ class PyAPITestHarness(TestHarness):
 
     def _get_inputs(self):
         """Return a hash digest of the input XML files."""
-        xmls = ['geometry.xml', 'tallies.xml', 'materials.xml', 'settings.xml',
-                'plots.xml']
-        outstr = '\n'.join([open(fname).read() for fname in xmls
-                            if os.path.exists(fname)])
-
-        sha512 = hashlib.sha512()
-        sha512.update(outstr.encode('utf-8'))
-        outstr = sha512.hexdigest()
-
-        return outstr
+        xmls = ['geometry.xml', 'materials.xml', 'settings.xml',
+                'tallies.xml', 'plots.xml']
+        return ''.join([open(fname).read() for fname in xmls
+                        if os.path.exists(fname)])
 
     def _write_inputs(self, input_digest):
         """Write the digest of the input XMLs to an ASCII file."""

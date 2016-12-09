@@ -1,1 +1,48 @@
-13dde9c81e70ffdbb94f2ef47b64a63d5af0557424748cd224104bc0e1ca3c1078c0c8968ff29953d61dd8ddd8f90905ab945470d296faba18a99bd9ad278af2
+<?xml version='1.0' encoding='utf-8'?>
+<geometry>
+    <cell id="1" material="1" region="-10000" universe="0" />
+    <surface boundary="reflective" coeffs="100" id="10000" type="x-plane" />
+</geometry>
+<?xml version='1.0' encoding='utf-8'?>
+<materials>
+    <material id="1">
+        <density units="g/cc" value="1.0" />
+        <nuclide ao="1.0" name="U238" />
+        <nuclide ao="0.02" name="U235" />
+        <nuclide ao="0.02" name="Pu239" />
+        <nuclide ao="20.0" name="H1" />
+    </material>
+</materials>
+<?xml version='1.0' encoding='utf-8'?>
+<settings>
+    <eigenvalue>
+        <particles>1000</particles>
+        <batches>10</batches>
+        <inactive>5</inactive>
+    </eigenvalue>
+    <source strength="1.0">
+        <space type="box">
+            <parameters>-4 -4 -4 4 4 4</parameters>
+        </space>
+    </source>
+    <resonance_scattering>
+        <scatterer>
+            <nuclide>U238</nuclide>
+            <method>DBRC</method>
+            <E_min>1.0</E_min>
+            <E_max>210.0</E_max>
+        </scatterer>
+        <scatterer>
+            <nuclide>U235</nuclide>
+            <method>WCM</method>
+            <E_min>1.0</E_min>
+            <E_max>210.0</E_max>
+        </scatterer>
+        <scatterer>
+            <nuclide>Pu239</nuclide>
+            <method>ARES</method>
+            <E_min>1.0</E_min>
+            <E_max>210.0</E_max>
+        </scatterer>
+    </resonance_scattering>
+</settings>

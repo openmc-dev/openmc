@@ -319,8 +319,8 @@ contains
     real(8) :: cutoff
     type(Nuclide),  pointer, save :: nuc => null()
     type(Reaction), pointer, save :: rxn => null()
-    type(Isotope),  pointer, save :: tope => null()
-    logical :: find_rxn
+
+    real(8) :: competitive_xs_ssf ! competitive xs self-shielding factor in URR
 !$omp threadprivate(nuc, rxn, tope)
 
     ! Get pointer to nuclide and grid index/interpolation factor
@@ -331,8 +331,14 @@ contains
     ! For tallying purposes, this routine might be called directly. In that
     ! case, we need to sample a reaction via the cutoff variable
     prob = ZERO
-    cutoff = prn() * (micro_xs(i_nuclide) % total - &
-         micro_xs(i_nuclide) % absorption)
+    cutoff = prn()&
+         * (micro_xs(i_nuclide) % total - micro_xs(i_nuclide) % absorption)
+
+    competitive_xs_ssf&
+         = (micro_xs(i_nuclide) % total&
+         -  micro_xs(i_nuclide) % elastic&
+         -  micro_xs(i_nuclide) % absorption)&
+         /  micro_xs(i_nuclide) % competitive
 
     prob = prob + micro_xs(i_nuclide) % elastic
     if (prob > cutoff) then
@@ -349,8 +355,8 @@ contains
         rxn => nuc % reactions(1)
 
         ! Perform collision physics for elastic scattering
-        call elastic_scatter(i_nuclide, rxn, &
-             p % E, p % coord0 % uvw, p % mu, p % wgt)
+        call elastic_scatter(&
+             i_nuclide, rxn, p % E, p % coord0 % uvw, p % mu, p % wgt)
       end if
 
       p % event_MT = ELASTIC
@@ -359,66 +365,61 @@ contains
       ! =======================================================================
       ! COMPETITIVE REACTIONS
 
-      tope => null()
-      if (nuc % i_sotope /= 0) tope => isotopes(nuc % i_sotope)
+       ! No URR treatment: default algo
+       ! URR treatment
+       ! ...Not a URR isotope: default algo
+       ! ...URR isotope
+       ! ......Not in URR: default algo
+       ! ......In URR
+       ! .........No competitive xs resonance component: default algo
+       ! .........Competitive xs resonance component:
+       ! .........Apply competitive xs SSF to all competitive rxns
+       ! .........(URR library should take care in generating competitivexs:
+       ! ......... most rigorous is to use infinite-dilute xss unless
+       ! ......... exactly one channel is open. Could also apply same SSF to all
+       ! ......... competitive xss if multiple channels open but not
+       ! ......... rigorous because splitting the single competitive width
+       ! ......... between reactions is ambiguous
 
-      find_rxn = .true.
-      if (associated(tope)) then
-        if (p % E >= tope % EL(tope % i_urr) / 1.0E6_8 &
-          & .and. p % E <= tope % EH(tope % i_urr) / 1.0E6_8 &
-          & .and. p % E <= (ONE + ENDF_PRECISION) * tope % E_ex2) then
-          i_rxn = 1
-          do
-            if (i_rxn > nuc % n_reaction) exit
-            if (nuc % reactions(i_rxn) % MT == 51) then
-              find_rxn = .false.
-              rxn => nuc % reactions(i_rxn)
-              exit
-            end if
-            i_rxn = i_rxn + 1
-          end do
+      ! note that indexing starts from 2 since nuc % reactions(1) is elastic
+      ! scattering
+      i = 1
+      do while (prob < cutoff)
+
+        i = i + 1
+
+        ! Check to make sure inelastic scattering reaction sampled
+        if (i > nuc % n_reaction) then
+          call write_particle_restart(p)
+          call fatal_error("Did not sample any reaction for nuclide " // &
+               trim(nuc % name))
         end if
-      end if
 
-      if (find_rxn) then
-        ! note that indexing starts from 2 since nuc % reactions(1) is elastic
-        ! scattering
-        i = 1
-        do while (prob < cutoff)
+        rxn => nuc % reactions(i)
 
-          i = i + 1
+        ! Skip fission reactions
+        if (rxn % MT == N_FISSION .or. rxn % MT == N_F .or. rxn % MT == N_NF &
+             .or. rxn % MT == N_2NF .or. rxn % MT == N_3NF) cycle
 
-          ! Check to make sure inelastic scattering reaction sampled
-          if (i > nuc % n_reaction) then
-            call write_particle_restart(p)
-            call fatal_error("Did not sample any reaction for nuclide " // &
-              trim(nuc % name))
-          end if
+        ! some materials have gas production cross sections with MT > 200 that
+        ! are duplicates. Also MT=4 is total level inelastic scattering which
+        ! should be skipped
+        if (rxn % MT >= 200 .or. rxn % MT == N_LEVEL) cycle
 
-          rxn => nuc % reactions(i)
+        ! if energy is below threshold for this reaction, skip it
+        if (i_grid < rxn % threshold) cycle
 
-          ! Skip fission reactions
-          if (rxn % MT == N_FISSION .or. rxn % MT == N_F .or. rxn % MT == N_NF &
-            .or. rxn % MT == N_2NF .or. rxn % MT == N_3NF) cycle
+        ! add to cumulative probability
+        prob = prob&
+             + ((ONE - f)*rxn%sigma(i_grid - rxn%threshold + 1)&
+             + f*(rxn%sigma(i_grid - rxn%threshold + 2)))&
+             * competitive_xs_ssf
 
-          ! some materials have gas production cross sections with MT > 200 that
-          ! are duplicates. Also MT=4 is total level inelastic scattering which
-          ! should be skipped
-          if (rxn % MT >= 200 .or. rxn % MT == N_LEVEL) cycle
-
-          ! if energy is below threshold for this reaction, skip it
-          if (i_grid < rxn % threshold) cycle
-
-          ! add to cumulative probability
-          prob = prob + ((ONE - f)*rxn%sigma(i_grid - rxn%threshold + 1) &
-            + f*(rxn%sigma(i_grid - rxn%threshold + 2)))
-
-        end do
-      end if
+      end do
 
       ! Perform collision physics for inelastic scattering
-      call inelastic_scatter(nuc, rxn, p % E, p % coord0 % uvw, &
-        p % mu, p % wgt)
+      call inelastic_scatter(&
+           nuc, rxn, p % E, p % coord0 % uvw, p % mu, p % wgt)
       p % event_MT = rxn % MT
     end if
 
@@ -1364,111 +1365,6 @@ contains
     wgt = rxn % multiplicity * wgt
 
   end subroutine inelastic_scatter
-
-!$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$
-!
-! WRITE_ANGLE writes out the ACE file secondary angular distribution for
-! elastic scattering to a text file
-!
-!$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$
-
-  subroutine write_angle()
-
-    type(Material), pointer :: mat => null() ! material pointer
-    type(Nuclide), pointer  :: nuc => null() ! nuclide pointer
-    type(Reaction), pointer :: rxn => null() ! reaction pointer
-    integer :: i_mat  ! material index
-    integer :: i_nuc  ! nuclide index
-    integer :: i_rxn  ! reaction index
-    integer :: i_MT   ! MT index
-    integer :: i_E    ! energy index
-    integer :: i_mu   ! cosine index
-    integer :: interp ! type of interpolation
-    integer :: type   ! angular distribution type
-    integer :: n      ! number of incoming energy bins
-    integer :: lc     ! location in data array
-    integer :: NP     ! number of points in cos distribution
-
-    ! loop over all materials
-    MAT_LOOP: do i_mat = 1, n_materials
-      mat => materials(i_mat)
-
-      if (mat % nat_elements) then
-        call write_message('angular_dist element(s) in material(s) with &
-             &natural elements will be ignored', 6)
-        cycle
-      end if
-
-      ! loop over all nuclides in material
-      NUC_LOOP: do i_nuc = 1, mat % n_nuclides
-        nuc => nuclides(mat % nuclide(i_nuc))
-
-        ! loop over all requested reaction MT numbers
-        RXN_LOOP: do i_rxn = 1, mat % write_angle(i_nuc) % size()
-
-          ! determine which reaction is requested
-          select case(trim(adjustl(mat % write_angle(i_nuc) % get_item(i_rxn))))
-          case('2')
-            ! get elastic scattering reaction
-            i_MT = 1
-            do
-              rxn => nuc % reactions(i_MT)
-              if (rxn % MT == 2) exit
-              i_MT = i_MT + 1
-            end do
-
-          case default
-            call fatal_error('Writing secondary angular distribution for this&
-                 & reaction is not supported.')
-
-          end select
-
-          ! check if reaction has angular distribution
-          if (.not. rxn % has_angle_dist)&
-               call fatal_error('No sec. angular dist. exists for writing')
-
-          ! determine number of incoming energies
-          n = rxn % adist % n_energy
-
-          open(unit=90, file='sec-ang-dist-MT'//trim(adjustl(to_str(rxn%MT)))&
-               //'-'//trim(adjustl(to_str(nuc%zaid)))//'.dat')
-          
-          ENERGY_LOOP: do i_E = 2, n
-            write(90, '(ES24.16)') rxn % adist % energy(i_E)
-            lc  = rxn % adist % location(i_E)
-            type = rxn % adist % type(i_E)
-            
-            if (type == ANGLE_ISOTROPIC) then
-              call fatal_error('isotropic secondary angular distribution')
-            
-            elseif (type == ANGLE_32_EQUI) then
-              do i_mu = 1, 33
-                write(90, '(ES24.16)') rxn % adist % energy(i_E),&
-                                       rxn % adist % data(lc + i_mu)
-              end do
-
-            elseif (type == ANGLE_TABULAR) then
-              interp = int(rxn % adist % data(lc + 1))
-              NP     = int(rxn % adist % data(lc + 2))
-              lc = lc + 2
-              do i_mu = 1, NP
-                write(90, '(ES24.16,ES24.16,ES24.16,ES24.16)')&
-                     rxn % adist % energy(i_E),&
-                     rxn % adist % data(lc + 0*NP + i_mu),&
-                     rxn % adist % data(lc + 1*NP + i_mu),&
-                     rxn % adist % data(lc + 2*NP + i_mu)
-              
-              end do
-            end if
-          end do ENERGY_LOOP
-
-          close(90)
-        
-        end do RXN_LOOP
-      end do NUC_LOOP
-    end do MAT_LOOP
-
-  end subroutine write_angle
 
 !===============================================================================
 ! SAMPLE_ANGLE samples the cosine of the angle between incident and exiting

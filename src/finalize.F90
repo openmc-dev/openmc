@@ -13,6 +13,12 @@ module finalize
   use hdf5_interface,  only: h5tclose_f, h5close_f, hdf5_err
 #endif
 
+  ! URR API
+  use URR_isotope,  only: URR_isotopes => isotopes
+  use URR_settings, only: URR_num_isotopes => num_isotopes,&
+                          URR_write_avg_xs => write_avg_xs,&
+                          URR_write_prob_tables => write_prob_tables
+
   implicit none
 
 contains
@@ -26,7 +32,7 @@ contains
 
     integer :: i ! isotope index
 
-    if (write_avg_urr_xs .or. write_urr_prob_tables) goto 100
+    if (URR_write_avg_xs .or. URR_write_prob_tables) goto 100
 
     ! Start finalization timer
     call time_finalize % start()
@@ -64,11 +70,11 @@ contains
     call free_memory()
 
     ! deallocate URR isotopes
-    do i = 1, n_isotopes_urr
-      call isotopes(i) % dealloc_isotope()
+    do i = 1, URR_num_isotopes
+      call URR_isotopes(i) % dealloc()
     end do
 
-    if (write_avg_urr_xs .or. write_urr_prob_tables) goto 200
+    if (URR_write_avg_xs .or. URR_write_prob_tables) goto 200
 
 #ifdef HDF5
     ! Release compound datatypes

@@ -1,14 +1,88 @@
 module URR_constants
 
   implicit none
-  private
-  public :: chi2
+!TODO  private
+  public
 
-!$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$
-!
-! Tabulated Chi-Squared Distribution
-!
-!$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$
+  integer, parameter :: FALSE = 0
+  real(8), parameter :: ZERO  = 0.0_8
+  real(8), parameter :: HALF  = 0.5_8
+  real(8), parameter :: ONE   = 1.0_8
+  real(8), parameter :: TWO   = 2.0_8
+  real(8), parameter :: THREE = 3.0_8
+  real(8), parameter :: PI    = 3.1415926535897932_8
+  real(8), parameter :: SQRT_PI = sqrt(PI)
+  real(8), parameter :: FOUR  = 4.0_8
+  real(8), parameter :: INF   = huge(1.0_8) ! largest positive non-infinite dble
+  complex(8), parameter :: ONEI = (ZERO, ONE)
+
+  real(8), parameter :: M_NEUTRON_eV = 939.565379e6_8  ! neutron mass [eV]
+  real(8), parameter :: HBAR_C       = 197.3269718e6_8 ! [eV-fm]
+  real(8), parameter :: K_BOLTZMANN  = 8.6173324e-11_8 ! Boltzmann constant in MeV/K
+  real(8), parameter :: C_1 = sqrt(TWO * M_NEUTRON_eV) / HBAR_C * 1.0e1_8 ! constant appearing in SLBW equations
+
+  ! Number of gridpoints for the average URR cross section grids
+  integer, parameter :: NUM_AVG_XS_GRID = 50
+
+  ! Lower cross section cutoff threshold value [b]
+  real(8), parameter :: XS_CUTOFF = 1.0e-14_8
+
+  ! Relative precision to use for comparing ENDF-6 file values
+  real(8), parameter :: ENDF_PRECISION = 1.0e-7_8
+
+  ! Faddeeva (W) function evaluation methods
+  integer, parameter :: MIT_W   = 1
+  integer, parameter :: QUICK_W = 2
+
+  ! Resonance formalisms
+  integer, parameter :: SLBW         = 1
+  integer, parameter :: MLBW         = 2
+  integer, parameter :: REICH_MOORE  = 3
+  integer, parameter :: ADLER_ADLER  = 4
+  integer, parameter :: R_MATRIX     = 5
+  integer, parameter :: R_FUNCTION   = 6
+  integer, parameter :: R_MATRIX_LIM = 7
+  integer, parameter :: MNBW         = 8
+
+  ! Cross section representation formats
+  integer, parameter :: PROB_BANDS = 1
+  integer, parameter :: POINTWISE  = 2
+  integer, parameter :: ON_THE_FLY = 3
+
+  ! Resonance parameters' energy-dependence representation
+  integer, parameter :: E_NEUTRON   = 1 ! E_n-dependent
+  integer, parameter :: E_RESONANCE = 2 ! E_lambda-dependent
+
+  ! URR realization frequencies
+  integer, parameter :: EVENT      = 1
+  integer, parameter :: HISTORY    = 2
+  integer, parameter :: BATCH      = 3
+  integer, parameter :: SIMULATION = 4
+
+  ! Probability table cross section band spacing and energy schemes
+  integer, parameter :: LINEAR      = 1
+  integer, parameter :: LOGARITHMIC = 2
+  integer, parameter :: USER        = 3
+  integer, parameter :: ENDF6       = 4
+
+  ! Interpolation schemes
+  integer, parameter :: HISTOGRAM     = 1  ! y is constant in x
+  integer, parameter :: LINEAR_LINEAR = 2  ! y is linear in x
+  integer, parameter :: LINEAR_LOG    = 3  ! y is linear in ln(x)
+  integer, parameter :: LOG_LINEAR    = 4  ! ln(y) is linear in x
+  integer, parameter :: LOG_LOG       = 5  ! ln(y) is linear in ln(x)
+  integer, parameter :: SQRT_LINEAR   = 7  ! y is linear in sqrt(x)
+  integer, parameter :: SQRT_LOG      = 8  ! ln(y) is linear in sqrt(x)
+  integer, parameter :: STATISTICAL   = 9  ! linear statistical interpolation
+  integer, parameter :: LOW_NEIGHBOR  = 10 ! use lower bounding value
+
+  ! Source of background cross sections
+  integer, parameter :: ENDFFILE  = 1
+
+  ! Secondary angular distribution representation
+  integer, parameter :: ISOTROPIC            = 1
+  integer, parameter :: EQUIPROBABLE_32_BINS = 2
+  integer, parameter :: TABULAR              = 3
 
   ! tabulated chi-squared distribution for 1-4 degrees of freedom with expected
   ! bin values taken while preserving equiprobable bins

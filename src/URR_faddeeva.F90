@@ -1,28 +1,29 @@
-module faddeeva
+module URR_faddeeva
 
 !$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$
 !
 ! NOTE: This module is a slightly modified and trimmed down version of the
-! math.F90 module taken from Colin Josey's multipole branch of ClosedMC,
-! July 2014 (https://github.com/cjosey/closedmc/tree/multipole).  Elements of
-! that module are taken from codes written at, and obtained from, Argonne
-! National Laboratory.
+! math.F90 module taken from ClosedMC, July 2014
+! (https://github.com/cjosey/closedmc/tree/multipole).  Elements of
+! that module are taken from codes written at, and obtained from, ANL.
 !
 !$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$
 
-  use constants,    only: ZERO, HALF, ONE, ONEI
+  use URR_constants, only: ZERO, HALF, ONE, ONEI
   use ISO_C_BINDING
  
   implicit none
   private
-  public :: quickw, faddeeva_w, tabulate_w
+  public :: quickw,&
+       faddeeva_w,&
+       tabulate_w
 
   ! Tabulated Faddeeva evaluations for use by QUICKW
   complex(8) :: w_tabulated(-1:60,-1:60)
   
 !$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$
 !
-! Faddeeva_w evaluates the scaled complementary error function.  This
+! Evaluate the scaled complementary error function.  This
 ! interfaces with the MIT C library
 !
 !$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$
@@ -54,14 +55,16 @@ contains
     complex(8), intent(in) :: z
     complex(8)             :: w
 
-    real(8) :: p           ! interpolation factor on real axis
-    real(8) :: q           ! interpolation factor on imaginary axis
-    real(8) :: pp, qq, pq  ! products of p and q
-    real(8) :: a_l         ! coefficient for left point
-    real(8) :: a_c         ! coefficient for center point
-    real(8) :: a_b         ! coefficient for bottom point
-    real(8) :: a_r         ! coefficient for right point
-    real(8) :: a_t         ! coefficient for top point
+    real(8) :: p   ! interpolation factor on real axis
+    real(8) :: q   ! interpolation factor on imaginary axis
+    real(8) :: pp  ! p*p
+    real(8) :: qq  ! q*q
+    real(8) :: pq  ! p*q
+    real(8) :: a_l ! coefficient for left point
+    real(8) :: a_c ! coefficient for center point
+    real(8) :: a_b ! coefficient for bottom point
+    real(8) :: a_r ! coefficient for right point
+    real(8) :: a_t ! coefficient for top point
 
     ! Asymptotic expansion parameters
     ! Expanded ahead of time to save in performance.
@@ -74,7 +77,6 @@ contains
     integer :: m           ! interpolation index for imaginary axis
 
     if (abs(z) < 6.) then
-
       ! Use interpolation for |z| < 6. The interpolation scheme uses a bivariate
       ! six-point quadrature described in Abramowitz and Stegun 25.2.67. This
       ! interpolation is accurate to O(h^3) = O(10^-3).
@@ -96,8 +98,6 @@ contains
       m = int(q)
       p = p - l
       q = q - m
-
-      ! Calculate products
       pp = p * p
       qq = q * q
       pq = p * q
@@ -118,7 +118,6 @@ contains
       if (real(z) < 0) w = conjg(w)
 
     else
-
       ! Use three-term asymptotic expansion for |z| > 6
       w = ONEI * z * (a / (z * z - b) + c / (z * z - d))
 
@@ -128,34 +127,30 @@ contains
 
 !$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$
 !
-! TABULATE_W calculates the Faddeeva (W) function on a 62 x 62 grid
-! using MIT W (http://ab-initio.mit.edu/wiki/index.php/Faddeeva_Package). The
-! implementation has accuracy of at least 13 significant digits.
+! Calculate the Faddeeva (W) function on a 62 x 62 grid
 !
 !$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$
 
   subroutine tabulate_w()
 
-    integer                   :: i, j      ! loop indices
+    integer :: i ! real loop index
+    integer :: j ! imaginary loop index
     real(C_DOUBLE), parameter :: w = 0.1_8 ! width on grid
     real(C_DOUBLE)            :: x         ! real part
     real(C_DOUBLE)            :: y         ! imaginary part
     complex(C_DOUBLE_COMPLEX) :: z         ! argument to Faddeeva function
 
-!    output = 'Tabulating Faddeeva function'
-!    call writer(output)
-
-    IM: do j = -1, 60
+    do j = -1, 60
       y = w * j
 
-      RE: do i = -1, 60
+      do i = -1, 60
         x = w * i
         z = cmplx(x, y, 8)
         w_tabulated(i,j) = faddeeva_w(z, ZERO)
 
-      end do RE
-    end do IM
+      end do
+    end do
 
   end subroutine tabulate_w
 
-end module faddeeva
+end module URR_faddeeva

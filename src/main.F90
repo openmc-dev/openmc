@@ -9,11 +9,15 @@ program main
   use particle_restart,  only: run_particle_restart
   use plot,              only: run_plot
 
+  ! URR API
+  use URR_settings, only: URR_write_avg_xs => write_avg_xs,&
+                          URR_write_prob_tables => write_prob_tables
+
   implicit none
 
   ! set up problem
   call initialize_run()
-  if (write_avg_urr_xs .or. write_urr_prob_tables) goto 100
+  if (URR_write_avg_xs .or. URR_write_prob_tables) goto 100
   ! start problem based on mode
   select case (run_mode)
   case (MODE_FIXEDSOURCE)

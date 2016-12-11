@@ -17,6 +17,71 @@ module input_xml
   use tally_initialize, only: add_tallies
   use xml_interface
 
+  ! URR API
+  use URR_constants, only: URR_EVENT => EVENT,&
+       URR_HISTORY => HISTORY,&
+       URR_BATCH => BATCH,&
+       URR_SIMULATION => SIMULATION,&
+       URR_E_NEUTRON => E_NEUTRON,&
+       URR_E_RESONANCE => E_RESONANCE,&
+       URR_SLBW => SLBW,&
+       URR_MLBW => MLBW,&
+       URR_REICH_MOORE => REICH_MOORE,&
+       URR_MNBW => MNBW,&
+       URR_ENDF6 => ENDF6,&
+       URR_USER => USER,&
+       URR_ENDFFILE => ENDFFILE,&
+       URR_FALSE => FALSE,&
+       URR_INF => INF,&
+       URR_LINEAR => LINEAR,&
+       URR_LOGARITHMIC => LOGARITHMIC,&
+       URR_HISTOGRAM => HISTOGRAM,&
+       URR_LINEAR_LINEAR => LINEAR_LINEAR,&
+       URR_LINEAR_LOG => LINEAR_LOG,&
+       URR_LOG_LINEAR => LOG_LINEAR,&
+       URR_LOG_LOG => LOG_LOG,&
+       URR_SQRT_LINEAR => SQRT_LINEAR,&
+       URR_SQRT_LOG => SQRT_LOG,&
+       URR_STATISTICAL => STATISTICAL,&
+       URR_LOW_NEIGHBOR => LOW_NEIGHBOR,&
+       URR_ON_THE_FLY => ON_THE_FLY,&
+       URR_PROB_BANDS => PROB_BANDS,&
+       URR_POINTWISE => POINTWISE,&
+       URR_MIT_W => MIT_W,&
+       URR_QUICK_W => QUICK_W
+  use URR_isotope, only: URR_isotopes => isotopes
+  use URR_settings, only: URR_use_urr => use_urr,&
+       URR_num_isotopes => num_isotopes,&
+       URR_endf_filenames => endf_filenames,&
+       URR_formalism => formalism,&
+       URR_T_grid_prob_tables => T_grid_prob_tables,&
+       URR_E_grid_prob_tables => E_grid_prob_tables,&
+       URR_num_l_waves => num_l_waves,&
+       URR_faddeeva_method => faddeeva_method,&
+       URR_write_avg_xs => write_avg_xs,&
+       URR_write_prob_tables => write_prob_tables,&
+       URR_background_xs_treatment => background_xs_treatment,&
+       URR_competitive_structure => competitive_structure,&
+       URR_E_grid_scheme_prob_tables => E_grid_scheme_prob_tables,&
+       URR_i_realization_user => i_realization_user,&
+       URR_temperature_interp_scheme => temperature_interp_scheme,&
+       URR_pregenerated_prob_tables => pregenerated_prob_tables,&
+       URR_num_energies_prob_tables => num_energies_prob_tables,&
+       URR_num_temperatures_prob_tables => num_temperatures_prob_tables,&
+       URR_num_bands_prob_tables => num_bands_prob_tables,&
+       URR_num_histories_prob_tables => num_histories_prob_tables,&
+       URR_rel_err_tolerance_avg_xs => rel_err_tolerance_avg_xs,&
+       URR_realization_frequency => realization_frequency,&
+       URR_rel_err_tolerance_pointwise => rel_err_tolerance_pointwise,&
+       URR_xs_representation => xs_representation,&
+       URR_min_num_batches_prob_tables => min_num_batches_prob_tables,&
+       URR_max_num_batches_prob_tables => max_num_batches_prob_tables,&
+       URR_min_delta_E_pointwise => min_delta_E_pointwise,&
+       URR_num_urr_realizations => num_urr_realizations,&
+       URR_path_avg_xs => path_avg_xs,&
+       URR_path_prob_tables => path_prob_tables,&
+       URR_path_endf_files => path_endf_files,&
+       URR_parameter_energy_dependence => parameter_energy_dependence
   implicit none
   save
 
@@ -3188,10 +3253,10 @@ contains
     inquire(FILE=filename, EXIST=file_exists)
     if (.not. file_exists) then
       ! Since a urr.xml file is optional, no error is issued here
-      use_urr = .false.
+      URR_use_urr = .false.
       return
     else
-      use_urr = .true.
+      URR_use_urr = .true.
       continue
     end if
 
@@ -3213,7 +3278,7 @@ contains
 
     ! Check that a path to ENDF data is specified
     if (check_for_node(doc, "ENDF-6_filepath")) then
-      call get_node_value(doc, "ENDF-6_filepath", path_endf)
+      call get_node_value(doc, "ENDF-6_filepath", URR_path_endf_files)
     else
       call fatal_error('No path to ENDF-6 data files for URR treatment&
         & given in urr.xml')
@@ -3221,7 +3286,7 @@ contains
 
     ! Check that a path to averaged URR cross section values is specified
     if (check_for_node(doc, "avg_xs_filepath")) then
-      call get_node_value(doc, "avg_xs_filepath", path_avg_urr_xs)
+      call get_node_value(doc, "avg_xs_filepath", URR_path_avg_xs)
     else
       call fatal_error('Specify path to averaged URR cross section data files&
         & via avg_xs_filepath in urr.xml')
@@ -3234,17 +3299,17 @@ contains
       select case (trim(adjustl(to_lower(temp_str))))
       
       case ('slbw')
-        formalism = SLBW
+        URR_formalism = URR_SLBW
       
       case ('mlbw')
-        formalism = MLBW
+        URR_formalism = URR_MLBW
       
       case ('mnbw')
-        formalism = MNBW
+        URR_formalism = URR_MNBW
         call fatal_error('MNBW formalism not yet supported for the URR')
       
       case ('reich-moore')
-        formalism = REICH_MOORE
+        URR_formalism = URR_REICH_MOORE
         call fatal_error('Reich-Moore formalism not yet supported for the URR')
       
       case default
@@ -3260,12 +3325,11 @@ contains
       call get_node_value(doc, "w_function", temp_str)
       
       select case (trim(adjustl(to_lower(temp_str))))
-      
       case ('mit_w')
-        w_eval = MIT_W
+        URR_faddeeva_method = URR_MIT_W
       
       case ('quick_w')
-        w_eval = QUICK_W
+        URR_faddeeva_method = URR_QUICK_W
       
       case default
         call fatal_error('Unrecognized Faddeeva function evaluation method&
@@ -3278,42 +3342,42 @@ contains
 
     ! Assign number of l-wave resonances to be used in xs calculations
     if (check_for_node(doc, 'n_s_wave')) then
-      call get_node_value(doc, 'n_s_wave', l_waves(1))
+      call get_node_value(doc, 'n_s_wave', URR_num_l_waves(1))
     else
       call fatal_error('Must specify number of s-wave resonances in urr.xml')
     end if
     if (check_for_node(doc, 'n_p_wave')) then
-      call get_node_value(doc, 'n_p_wave', l_waves(2))
+      call get_node_value(doc, 'n_p_wave', URR_num_l_waves(2))
     else
       call fatal_error('Must specify number of p-wave resonances in urr.xml')
     end if
     if (check_for_node(doc, 'n_d_wave')) then
-      call get_node_value(doc, 'n_d_wave', l_waves(3))
+      call get_node_value(doc, 'n_d_wave', URR_num_l_waves(3))
     else
       call fatal_error('Must specify number of d-wave resonances in urr.xml')
     end if
     if (check_for_node(doc, 'n_f_wave')) then
-      call get_node_value(doc, 'n_f_wave', l_waves(4))
+      call get_node_value(doc, 'n_f_wave', URR_num_l_waves(4))
     else
       call fatal_error('Must specify number of f-wave resonances in urr.xml')
     end if
 
     ! Check for pointwise cross section calculation
     if (check_for_node(doc, "pointwise")) then
-      if (represent_urr == ON_THE_FLY .or. represent_urr == PROB_BANDS) &
+      if (URR_xs_representation == URR_ON_THE_FLY .or. URR_xs_representation == URR_PROB_BANDS) &
         call fatal_error('Cannot represent URR cross sections as pointwise and&
         & on-the-fly and/or as probability bands')
-      represent_urr = POINTWISE
-      n_reals = 1
+      URR_xs_representation = URR_POINTWISE
+      URR_num_urr_realizations = 1
       call get_node_ptr(doc, "pointwise", point_xs_node)
       if (check_for_node(point_xs_node, 'min_spacing')) then
-        call get_node_value(point_xs_node, 'min_spacing', min_dE_point_urr)
+        call get_node_value(point_xs_node, 'min_spacing', URR_min_delta_E_pointwise)
       else
         call fatal_error('No min energy spacing [eV] for cross section &
              &reconstruction is given in urr.xml')
       end if
       if (check_for_node(point_xs_node, 'tolerance')) then
-        call get_node_value(point_xs_node, 'tolerance', tol_point_urr)
+        call get_node_value(point_xs_node, 'tolerance', URR_rel_err_tolerance_pointwise)
       else
         call fatal_error('No max fractional error tolerance for cross section&
              & reconstruction is given in urr.xml')
@@ -3327,10 +3391,10 @@ contains
       select case (trim(adjustl(to_lower(temp_str))))
       
       case ('neutron')
-        represent_params = E_NEUTRON
+        URR_parameter_energy_dependence = URR_E_NEUTRON
       
       case ('resonance')
-        represent_params = E_RESONANCE
+        URR_parameter_energy_dependence = URR_E_RESONANCE
       
       case default
         call fatal_error('Unrecognized resonance parameter energy dependence&
@@ -3343,20 +3407,20 @@ contains
     end if
 
     ! Check for list of nuclides to apply the treatment to
-    n_isotopes_urr = 0
+    URR_num_isotopes = 0
     if (check_for_node(doc, 'nuclide')) then
       call get_node_list(doc, 'nuclide', nuc_list_node)
-      n_isotopes_urr = get_list_size(nuc_list_node)
-      allocate(isotopes(n_isotopes_urr))
-      allocate(endf_filenames(n_isotopes_urr))
+      URR_num_isotopes = get_list_size(nuc_list_node)
+      allocate(URR_isotopes(URR_num_isotopes))
+      allocate(URR_endf_filenames(URR_num_isotopes))
 
       ! Read in ZAID values and ENDF filenames for the nuclide(s)
-      do i = 1, n_isotopes_urr
+      do i = 1, URR_num_isotopes
         call get_list_item(nuc_list_node, i, nuc_node)
 
         ! Check that a nuclide ZAID is given
         if (check_for_node(nuc_node, 'zaid')) then
-          call get_node_value(nuc_node, 'zaid', isotopes(i) % ZAI)
+          call get_node_value(nuc_node, 'zaid', URR_isotopes(i) % ZAI)
         else
           call fatal_error('No nuclide ZAID specified for nuclide ' &
                // trim(to_str(i)) // ' in urr.xml file')
@@ -3364,7 +3428,7 @@ contains
 
         ! Check that an ENDF data file is given
         if (check_for_node(nuc_node, 'endf')) then
-          call get_node_value(nuc_node, 'endf', endf_filenames(i))
+          call get_node_value(nuc_node, 'endf', URR_endf_filenames(i))
         else          
           call fatal_error('No ENDF-6 data file specified for nuclide ' &
                // trim(to_str(i)) // ' in urr.xml file')
@@ -3372,9 +3436,9 @@ contains
 
         ! Check if a max energy is given
         if (check_for_node(nuc_node, 'max_energy')) then
-          call get_node_value(nuc_node, 'max_energy', isotopes(i) % max_E_urr)
+          call get_node_value(nuc_node, 'max_energy', URR_isotopes(i) % max_E_urr)
         else
-          isotopes(i) % max_E_urr = INF
+          URR_isotopes(i) % max_E_urr = URR_INF
         end if
       end do
 
@@ -3384,10 +3448,10 @@ contains
 
     ! Check if an on-the-fly treatment is specified
     if (check_for_node(doc, "on_the_fly")) then
-      if (represent_urr == POINTWISE .or. represent_urr == PROB_BANDS) &
+      if (URR_xs_representation == URR_POINTWISE .or. URR_xs_representation == URR_PROB_BANDS) &
         call fatal_error('Cannot represent URR cross sections on-the-fly and&
         & as pointwise and/or as probability bands')
-      represent_urr = ON_THE_FLY
+      URR_xs_representation = URR_ON_THE_FLY
       call get_node_ptr(doc, "on_the_fly", otf_xs_node)
 
       ! Check if a xs calculation frequency is specified
@@ -3397,18 +3461,18 @@ contains
         select case (trim(adjustl(to_lower(temp_str))))
         
         case ('event')
-          real_freq = EVENT
+          URR_realization_frequency = URR_EVENT
         
         case ('history')
-          real_freq = HISTORY
+          URR_realization_frequency = URR_HISTORY
           call fatal_error('History-based URR realizations not yet supported')
         
         case ('batch')
-          real_freq = BATCH
+          URR_realization_frequency = URR_BATCH
           call fatal_error('Batch-based URR realizations not yet supported')
         
         case ('simulation')
-          real_freq = SIMULATION
+          URR_realization_frequency = URR_SIMULATION
         
         case default
           call fatal_error('Unrecognized URR realization frequency in urr.xml')
@@ -3417,11 +3481,11 @@ contains
         call fatal_error('No URR realization frequency given in urr.xml')
       end if
 
-      if (real_freq /= EVENT) then
+      if (URR_realization_frequency /= URR_EVENT) then
         ! determine number of independent URR realizations to generate
         if (check_for_node(otf_xs_node, 'realizations')) then
-          call get_node_value(otf_xs_node, 'realizations', n_reals)
-          if (n_reals < 1) &
+          call get_node_value(otf_xs_node, 'realizations', URR_num_urr_realizations)
+          if (URR_num_urr_realizations < 1) &
                call fatal_error('Number of independent URR realizations&
                & must be greater than 0 in urr.xml')
         else
@@ -3431,8 +3495,8 @@ contains
 
         ! determine which realization to use if multiple are generated
         if (check_for_node(otf_xs_node, "realization_index")) then
-          call get_node_value(otf_xs_node, "realization_index", i_real_user)
-          if (i_real_user < 0) &
+          call get_node_value(otf_xs_node, "realization_index", URR_i_realization_user)
+          if (URR_i_realization_user < 0) &
                call fatal_error('realization_index must be non-negative in &
                &urr.xml - 0 for a random realization or a positive integer &
                &equal to the index of a single, desired realization')
@@ -3452,10 +3516,10 @@ contains
       call get_node_value(doc, "competitive", temp_str)
       if (trim(adjustl(to_lower(temp_str))) == 'false' &
            .or. trim(adjustl(temp_str)) == '0') then
-        competitive_structure = .false.
+        URR_competitive_structure = .false.
       else if (trim(adjustl(to_lower(temp_str))) == 'true' &
            .or. trim(adjustl(temp_str)) == '1') then
-        competitive_structure = .true.
+        URR_competitive_structure = .true.
       else
         call fatal_error('Modeling of competitive reaction cross section &
              &resonance structure must be true or false in urr.xml')
@@ -3467,10 +3531,10 @@ contains
 
     ! Check for probability band calculations parameters
     if (check_for_node(doc, "prob_tables")) then
-      if (represent_urr == POINTWISE .or. represent_urr == ON_THE_FLY) &
+      if (URR_xs_representation == URR_POINTWISE .or. URR_xs_representation == URR_ON_THE_FLY) &
         call fatal_error('Cannot represent URR cross sections as probability&
         & bands and as pointwise and/or on-the-fly')
-      represent_urr = PROB_BANDS
+      URR_xs_representation = URR_PROB_BANDS
       call get_node_ptr(doc, "prob_tables", prob_table_node)
 
       ! load previously-generated tables?
@@ -3478,20 +3542,20 @@ contains
         call get_node_value(prob_table_node, 'load_tables', temp_str)
         if (trim(adjustl(to_lower(temp_str))) == 'true'&
              .or. trim(adjustl(temp_str)) == '1') then
-          load_urr_prob_tables = .true.
+          URR_pregenerated_prob_tables = .true.
           if (master)&
                call write_message('Loading probability tables from files. Any&
                & probability table generation parameters specified in urr.xml&
                & are being ignored.')
           if (check_for_node(prob_table_node, 'path')) then
-            call get_node_value(prob_table_node, 'path', path_prob_tables)
+            call get_node_value(prob_table_node, 'path', URR_path_prob_tables)
           else
             call fatal_error('Must specify path to probability table files &
                  &in urr.xml')
           end if
         else if (trim(adjustl(to_lower(temp_str))) == 'false'&
              .or. trim(adjustl(temp_str)) == '0') then
-          load_urr_prob_tables = .false.
+          URR_pregenerated_prob_tables = .false.
         else
           call fatal_error('Loading probability tables must be true or false&
                & in urr.xml')
@@ -3507,23 +3571,23 @@ contains
              temp_str)
         select case(trim(adjustl(to_lower(temp_str))))
         case('histogram')
-          INT_T = HISTOGRAM
+          URR_temperature_interp_scheme = URR_HISTOGRAM
         case('lin-lin')
-          INT_T = LINEAR_LINEAR
+          URR_temperature_interp_scheme = URR_LINEAR_LINEAR
         case('lin-log')
-          INT_T = LINEAR_LOG
+          URR_temperature_interp_scheme = URR_LINEAR_LOG
         case('log-lin')
-          INT_T = LOG_LINEAR
+          URR_temperature_interp_scheme = URR_LOG_LINEAR
         case('log-log')
-          INT_T = LOG_LOG
+          URR_temperature_interp_scheme = URR_LOG_LOG
         case('sqrt-lin')
-          INT_T = SQRT_LINEAR
+          URR_temperature_interp_scheme = URR_SQRT_LINEAR
         case('sqrt-log')
-          INT_T = SQRT_LOG
+          URR_temperature_interp_scheme = URR_SQRT_LOG
         case('statistical')
-          INT_T = STATISTICAL
+          URR_temperature_interp_scheme = URR_STATISTICAL
         case('low-neighbor')
-          INT_T = LOW_NEIGHBOR
+          URR_temperature_interp_scheme = URR_LOW_NEIGHBOR
         case default
           call fatal_error('Unrecognized temperature interpolation scheme')
         end select
@@ -3532,10 +3596,10 @@ contains
              &urr.xml')
       end if
 
-      if (.not. load_urr_prob_tables) then
+      if (.not. URR_pregenerated_prob_tables) then
         ! number of bands
         if (check_for_node(prob_table_node, "n_bands")) then
-          call get_node_value(prob_table_node, "n_bands", n_bands_urr_prob_tables)
+          call get_node_value(prob_table_node, "n_bands", URR_num_bands_prob_tables)
         else
           call fatal_error('No number of probability table cross section bands&
                & given in urr.xml')
@@ -3543,12 +3607,12 @@ contains
 
         ! temperatures
         if (check_for_node(prob_table_node, "temperatures")) then
-          n_temperatures_urr_prob_tables = get_arraysize_double(prob_table_node, "temperatures")
-          allocate(T_tabs(n_temperatures_urr_prob_tables))
-          call get_node_array(prob_table_node, "temperatures", T_tabs)
-          if (n_temperatures_urr_prob_tables > 1) then
-            do i = 2, n_temperatures_urr_prob_tables
-              if (T_tabs(i) <= T_tabs(i-1)) call fatal_error('Cross section &
+          URR_num_temperatures_prob_tables = get_arraysize_double(prob_table_node, "temperatures")
+          allocate(URR_T_grid_prob_tables(URR_num_temperatures_prob_tables))
+          call get_node_array(prob_table_node, "temperatures", URR_T_grid_prob_tables)
+          if (URR_num_temperatures_prob_tables > 1) then
+            do i = 2, URR_num_temperatures_prob_tables
+              if (URR_T_grid_prob_tables(i) <= URR_T_grid_prob_tables(i-1)) call fatal_error('Cross section &
                    & reconstruction temperatures must be strictly ascending.')
             end do
           end if
@@ -3558,7 +3622,7 @@ contains
 
         ! min number of batches
         if (check_for_node(prob_table_node, "min_batches")) then
-          call get_node_value(prob_table_node, "min_batches", min_batches_avg_urr)
+          call get_node_value(prob_table_node, "min_batches", URR_min_num_batches_prob_tables)
         else
           call fatal_error('No minimum batches for probability table&
                & calculation given in urr.xml')
@@ -3566,7 +3630,7 @@ contains
 
         ! max number of batches
         if (check_for_node(prob_table_node, "max_batches")) then
-          call get_node_value(prob_table_node, "max_batches", max_batches_avg_urr)
+          call get_node_value(prob_table_node, "max_batches", URR_max_num_batches_prob_tables)
         else
           call fatal_error('No maximum batches for probability table&
                & calculation given in urr.xml')
@@ -3574,8 +3638,8 @@ contains
 
         ! histories per batch
         if (check_for_node(prob_table_node, "histories")) then
-          call get_node_value(prob_table_node, "histories", n_histories_urr_prob_tables)
-          if (mod(n_histories_urr_prob_tables, n_bands_urr_prob_tables) /= 0) call fatal_error('Histories &
+          call get_node_value(prob_table_node, "histories", URR_num_histories_prob_tables)
+          if (mod(URR_num_histories_prob_tables, URR_num_bands_prob_tables) /= 0) call fatal_error('Histories &
                &per batch must be evenly divisible by number of probability bands')
         else
           call fatal_error('No number of realization histories for probability&
@@ -3584,7 +3648,7 @@ contains
 
         ! relative uncertainty tolerance (1sigma / mean)
         if (check_for_node(prob_table_node, "tolerance")) then
-          call get_node_value(prob_table_node, "tolerance", tol_avg_urr)
+          call get_node_value(prob_table_node, "tolerance", URR_rel_err_tolerance_avg_xs)
         else
           call fatal_error('No relative uncertainty tolerance for probability&
                & table calculation given in urr.xml')
@@ -3594,25 +3658,25 @@ contains
         if (check_for_node(prob_table_node, "energy_spacing")) then
           call get_node_value(prob_table_node, "energy_spacing", temp_str)
           if (trim(adjustl(to_lower(temp_str))) == 'linear') then
-            E_spacing = LINEAR
+            URR_E_grid_scheme_prob_tables = URR_LINEAR
             call fatal_error('Linear probability table energy spacing not yet&
                  & supported in urr.xml')
           else if (trim(adjustl(to_lower(temp_str))) == 'logarithmic') then
-            E_spacing = LOGARITHMIC
+            URR_E_grid_scheme_prob_tables = URR_LOGARITHMIC
             if (check_for_node(prob_table_node, "n_energies")) then
-              call get_node_value(prob_table_node, "n_energies", n_energies)
+              call get_node_value(prob_table_node, "n_energies", URR_num_energies_prob_tables)
             else
               call fatal_error('Must specify number of logarithmic probability&
                    & table energies')
             end if
           else if (trim(adjustl(to_lower(temp_str))) == 'endf') then
-            E_spacing = ENDF6
+            URR_E_grid_scheme_prob_tables = URR_ENDF6
           else if (trim(adjustl(to_lower(temp_str))) == 'user') then
-            E_spacing = USER
+            URR_E_grid_scheme_prob_tables = URR_USER
             if (check_for_node(prob_table_node, "energy_values")) then
-              n_energies = get_arraysize_double(prob_table_node, "energy_values")
-              allocate(E_tabs(n_energies))
-              call get_node_array(prob_table_node, "energy_values", E_tabs)
+              URR_num_energies_prob_tables = get_arraysize_double(prob_table_node, "energy_values")
+              allocate(URR_E_grid_prob_tables(URR_num_energies_prob_tables))
+              call get_node_array(prob_table_node, "energy_values", URR_E_grid_prob_tables)
             else
               call fatal_error('No probability table energy grid values&
                    & given in urr.xml')
@@ -3630,9 +3694,9 @@ contains
         if (check_for_node(prob_table_node, "background")) then
           call get_node_value(prob_table_node, "background", temp_str)
           if (trim(adjustl(to_lower(temp_str))) == 'false') then
-            background_xs_treatment = FALSE
+            URR_background_xs_treatment = URR_FALSE
           else if (trim(adjustl(to_lower(temp_str))) == 'endf') then
-            background_xs_treatment = ENDFFILE
+            URR_background_xs_treatment = URR_ENDFFILE
           else
             call fatal_error('Unrecognized background cross section source&
                  & in probability table calculation given in urr.xml')
@@ -3646,10 +3710,10 @@ contains
           call get_node_value(prob_table_node, "write_tables", temp_str)
           if (trim(adjustl(to_lower(temp_str))) == 'false' &
                .or. trim(adjustl(temp_str)) == '0') then
-            write_urr_prob_tables = .false.
+            URR_write_prob_tables = .false.
           else if (trim(adjustl(to_lower(temp_str))) == 'true' &
                .or. trim(adjustl(temp_str)) == '1') then
-            write_urr_prob_tables = .true.
+            URR_write_prob_tables = .true.
           else
             call fatal_error('write_tables must be true or false in urr.xml')
           end if
@@ -3662,10 +3726,10 @@ contains
           call get_node_value(prob_table_node, "write_avg_xs", temp_str)
           if (trim(adjustl(to_lower(temp_str))) == 'false' &
                .or. trim(adjustl(temp_str)) == '0') then
-            write_avg_urr_xs = .false.
+            URR_write_avg_xs = .false.
           else if (trim(adjustl(to_lower(temp_str))) == 'true' &
                .or. trim(adjustl(temp_str)) == '1') then
-            write_avg_urr_xs = .true.
+            URR_write_avg_xs = .true.
           else
             call fatal_error('write_avg_xs must be true or false in urr.xml')
           end if

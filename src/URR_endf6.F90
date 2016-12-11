@@ -1,9 +1,23 @@
-module URR_endf6_parser
+module URR_endf6
 
-  use constants
-  use error,             only: fatal_error, warning
-  use global
-  use output,            only: write_message
+  use URR_openmc_wrapper, only: master,&
+       fatal_error,&
+       warning,&
+       write_message
+  use URR_constants, only: SLBW,&
+                           MLBW,&
+                           REICH_MOORE,&
+                           ADLER_ADLER,&
+                           R_MATRIX,&
+                           R_FUNCTION,&
+                           R_MATRIX_LIM,&
+                           ZERO,&
+                           ONE,&
+                           LINEAR_LINEAR
+  use URR_io,        only: read_avg_xs
+  use URR_isotope,   only: isotopes
+  use URR_settings,  only: write_avg_xs,&
+                           path_endf_files
 
   implicit none
   private
@@ -12,17 +26,28 @@ module URR_endf6_parser
   integer :: in = 11 ! input unit
   character(80) :: filename ! ENDF-6 filename
 
+!$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$
+!
+! ENDF-6 flags
+!
+!$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$
+
+  type ENDF6Flags
+
+     
+     
+  end type ENDF6Flags
+  
 contains
 
 !$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$
 !
-! READ_ENDF6 reads in an ENDF-6 format file
+! Read in an ENDF-6 format file
 !
 !$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$
 
   subroutine read_endf6(filename_tmp, i)
 
-    type(Isotope), pointer :: tope => null() ! isotope pointer
     character(80) :: filename_tmp ! temporary filename
     character(80) :: rec          ! ENDF file record
     character(7)  :: readable     ! is ENDF-6 file readable?
@@ -37,7 +62,7 @@ contains
 
     filename = filename_tmp
 
-    inquire(file = trim(path_endf)//trim(filename), &
+    inquire(file = trim(path_endf_files)//trim(filename), &
       & exist = file_exists, read = readable)
     if (.not. file_exists) then
       call fatal_error('ENDF-6 file '//trim(filename)//' does not exist.')
@@ -50,9 +75,7 @@ contains
     call write_message("Loading ENDF-6 file: "//trim(filename), 6)
 
     open(unit = in, &
-      file = trim(path_endf)//trim(filename))
-
-    tope => isotopes(i)
+      file = trim(path_endf_files)//trim(filename))
 
     MF1_read = .false.
     MF2_read = .false.
@@ -61,7 +84,7 @@ contains
     do
       read(in, 10) rec
 10    format(A80)
-      read(rec(67:70), '(I4)') tope % MAT
+      read(rec(67:70), '(I4)') isotopes(i) % MAT
       read(rec(71:72), '(I2)') MF
       read(rec(73:75), '(I3)') MT
       read(rec(76:80), '(I5)') NS
@@ -74,7 +97,7 @@ contains
       else if (MF == 3 .and. MT == 1 .and. (.not. MF3_read)) then
         call read_MF3(i, rec)
         MF3_read = .true.
-      else if (tope % MAT == -1) then
+      else if (isotopes(i) % MAT == -1) then
         exit
       end if
     end do
@@ -85,44 +108,40 @@ contains
 
 !$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$
 !
-! READ_MF1 reads in an ENDF-6 format MF 1 file
+! Read in an ENDF-6 format MF 1 file
 !
 !$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$
 
   subroutine read_MF1(i, rec)
 
-    type(Isotope), pointer :: tope => null() ! isotope pointer
     character(80) :: rec ! ENDF-6 file record
     integer :: i ! isotope index
     real(8) :: real_ZAI
 
-    tope => isotopes(i)
-
     read(rec(1:11),  '(E11.0)') real_ZAI
-    tope % ZAI = int(real_ZAI)
-    read(rec(12:22), '(E11.0)') tope % AWR
-    read(rec(23:33), '(I11)')   tope % LRP
+    isotopes(i) % ZAI = int(real_ZAI)
+    read(rec(12:22), '(E11.0)') isotopes(i) % AWR
+    read(rec(23:33), '(I11)')   isotopes(i) % LRP
 
 ! TODO:    ! check ZAID agreement
-    call check_zaid(tope % ZAI, tope % ZAI)
+    call check_zaid(isotopes(i) % ZAI, isotopes(i) % ZAI)
 
 ! TODO:    ! check mass ratios
-    call check_mass(tope % AWR, tope % AWR)
+    call check_mass(isotopes(i) % AWR, isotopes(i) % AWR)
 
     ! check that resonance parameters are given
-    call check_parameters(tope % LRP)
+    call check_parameters(isotopes(i) % LRP)
 
   end subroutine read_MF1
 
 !$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$
 !
-! READ_MF2 reads in an ENDF-6 format MF 2 file
+! Read in an ENDF-6 format MF 2 file
 !
 !$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$
 
   subroutine read_MF2(i, rec)
 
-    type(Isotope), pointer :: tope => null() ! isotope pointer
     character(80) :: rec ! ENDF-6 file record
     integer :: i    ! index in global isotopes array
     integer :: i_ER ! resonance energy range index
@@ -131,17 +150,15 @@ contains
     real(8) :: A
     real(8) :: ABN
 
-    tope => isotopes(i)
-
     read(rec(1:11),  '(E11.0)') ZA
     read(rec(12:22), '(E11.0)') A
     read(rec(45:55), '(I11)')   NIS
 
     ! check ZAID agreement
-    call check_zaid(int(ZA), tope % ZAI)
+    call check_zaid(int(ZA), isotopes(i) % ZAI)
 
     ! check that mass is consistent
-    call check_mass(A, tope % AWR)
+    call check_mass(A, isotopes(i) % AWR)
 
     ! check that this is a single-isotope ENDF-6 file
     call check_single_isotope(NIS)
@@ -151,41 +168,41 @@ contains
 10  format(A80)
     read(rec(1:11),  '(E11.0)') ZA
     read(rec(12:22), '(E11.0)') ABN
-    read(rec(34:44), '(I11)')   tope % LFW
-    read(rec(45:55), '(I11)')   tope % NER
+    read(rec(34:44), '(I11)')   isotopes(i) % LFW
+    read(rec(45:55), '(I11)')   isotopes(i) % NER
 
     ! allocate energy range variables
-    call tope % alloc_energy_range()
+    call isotopes(i) % alloc_energy_range()
 
     ! check ZAID agreement
-    call check_zaid(int(ZA), tope % ZAI)
+    call check_zaid(int(ZA), isotopes(i) % ZAI)
 
     ! check abundance is unity
     call check_abundance(ABN)
 
     ! check URR average fission widths treatment
-    call check_fission_widths(tope % LFW)
+    call check_fission_widths(isotopes(i) % LFW)
 
     ! loop over energy ranges
-    do i_ER = 1, tope % NER
+    do i_ER = 1, isotopes(i) % NER
 
       ! read first record for this energy range
       read(in, 10) rec
-      read(rec(1:11),  '(E11.0)') tope % EL(i_ER)
-      read(rec(12:22), '(E11.0)') tope % EH(i_ER)
-      read(rec(24:33),   '(I10)') tope % LRU(i_ER)
-      read(rec(35:44),   '(I10)') tope % LRF(i_ER)
-      read(rec(45:55),   '(I11)') tope % NRO(i_ER)
-      read(rec(56:66),   '(I11)') tope % NAPS(i_ER)
+      read(rec(1:11),  '(E11.0)') isotopes(i) % EL(i_ER)
+      read(rec(12:22), '(E11.0)') isotopes(i) % EH(i_ER)
+      read(rec(24:33),   '(I10)') isotopes(i) % LRU(i_ER)
+      read(rec(35:44),   '(I10)') isotopes(i) % LRF(i_ER)
+      read(rec(45:55),   '(I11)') isotopes(i) % NRO(i_ER)
+      read(rec(56:66),   '(I11)') isotopes(i) % NAPS(i_ER)
 
       ! check number of resonance energy ranges and their bounding energies
-      call check_energy_ranges(tope % NER, tope % EL(i_ER), tope % EH(i_ER))
+      call check_energy_ranges(isotopes(i) % NER, isotopes(i) % EL(i_ER), isotopes(i) % EH(i_ER))
 
       ! check channel, scattering radius energy dependence flags
-      call check_radius_flags(tope % NRO(i_ER), tope % NAPS(i_ER))
+      call check_radius_flags(isotopes(i) % NRO(i_ER), isotopes(i) % NAPS(i_ER))
 
       ! read energy range and formalism-dependent resonance subsection data
-      call read_resonance_subsection(i, i_ER, tope % LRU(i_ER), tope %LRF(i_ER))
+      call read_resonance_subsection(i, i_ER, isotopes(i) % LRU(i_ER), isotopes(i) %LRF(i_ER))
 
     end do
 
@@ -193,13 +210,12 @@ contains
 
 !$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$
 !
-! READ_MF3 reads in an ENDF-6 format MF 3 file
+! Read in an ENDF-6 format MF 3 file
 !
 !$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$
 
   subroutine read_MF3(i, rec)
 
-    type(Isotope), pointer :: tope => null() ! isotope pointer
     integer :: i      ! index in global isotopes array
     integer :: i_rec  ! record index
     integer :: i_e    ! index in energy grid
@@ -214,8 +230,6 @@ contains
     real(8) :: A  ! mass in neutron masses
     real(8) :: QI ! reaction Q-value
     logical :: read_MT ! read this MT reaction?
-
-    tope => isotopes(i)
 
 10  format(A80)
 
@@ -232,10 +246,10 @@ contains
     read(rec(12:22), '(E11.0)') A
 
     ! check ZAID agreement
-    call check_zaid(int(ZA), tope % ZAI)
+    call check_zaid(int(ZA), isotopes(i) % ZAI)
 
     ! check that mass is consistent
-    call check_mass(A, tope % AWR)
+    call check_mass(A, isotopes(i) % AWR)
 
     ! read MF=3, record=2
     read(in, 10) rec
@@ -248,27 +262,27 @@ contains
     ! read MF=3, record=3
     read(in, 10) rec
     read(rec( 1:11), '(I11)') NBT
-    read(rec(12:22), '(I11)') tope % MF3_INT
+    read(rec(12:22), '(I11)') isotopes(i) % MF3_INT
 
     ! check number of energy-xs pairs in this interpolation region
     call check_n_pairs(NBT, NP)
 
-    allocate(tope % MF3_n_e(NP))
-    allocate(tope % MF3_n(NP))
+    allocate(isotopes(i) % MF3_n_e(NP))
+    allocate(isotopes(i) % MF3_n(NP))
 
     i_e = 1
     do i_rec = 1, int(NP / 3) + int(ceiling(dble(mod(NP, 3)) / 3))
       read(in, 10) rec
-      read(rec( 1:11), '(E11.0)') tope % MF3_n_e(i_e)
-      read(rec(12:22), '(E11.0)') tope % MF3_n(i_e)
+      read(rec( 1:11), '(E11.0)') isotopes(i) % MF3_n_e(i_e)
+      read(rec(12:22), '(E11.0)') isotopes(i) % MF3_n(i_e)
       if (i_e == NP) exit
       i_e = i_e + 1
-      read(rec(23:33), '(E11.0)') tope % MF3_n_e(i_e)
-      read(rec(34:44), '(E11.0)') tope % MF3_n(i_e)
+      read(rec(23:33), '(E11.0)') isotopes(i) % MF3_n_e(i_e)
+      read(rec(34:44), '(E11.0)') isotopes(i) % MF3_n(i_e)
       if (i_e == NP) exit
       i_e = i_e + 1
-      read(rec(45:55), '(E11.0)') tope % MF3_n_e(i_e)
-      read(rec(56:66), '(E11.0)') tope % MF3_n(i_e)
+      read(rec(45:55), '(E11.0)') isotopes(i) % MF3_n_e(i_e)
+      read(rec(56:66), '(E11.0)') isotopes(i) % MF3_n(i_e)
       if (i_e == NP) exit
       i_e = i_e + 1
     end do
@@ -295,10 +309,10 @@ contains
       read(rec(12:22), '(E11.0)') A
 
       ! check ZAID agreement
-      call check_zaid(int(ZA), tope % ZAI)
+      call check_zaid(int(ZA), isotopes(i) % ZAI)
 
       ! check that mass is consistent
-      call check_mass(A, tope % AWR)
+      call check_mass(A, isotopes(i) % AWR)
 
       ! read MF=3, record=2
       read(in, 10) rec
@@ -317,24 +331,24 @@ contains
       call check_n_pairs(NBT, NP)
 
       ! check interpolation scheme is same as isotope interpolation scheme
-      call check_interp_scheme(INTERP, tope % MF3_INT)
+      call check_interp_scheme(INTERP, isotopes(i) % MF3_INT)
 
-      allocate(tope % MF3_f_e(NP))
-      allocate(tope % MF3_f(NP))
+      allocate(isotopes(i) % MF3_f_e(NP))
+      allocate(isotopes(i) % MF3_f(NP))
 
       i_e = 1
       do i_rec = 1, int(NP / 3) + int(ceiling(dble(mod(NP, 3)) / 3))
         read(in, 10) rec
-        read(rec( 1:11), '(E11.0)') tope % MF3_f_e(i_e)
-        read(rec(12:22), '(E11.0)') tope % MF3_f(i_e)
+        read(rec( 1:11), '(E11.0)') isotopes(i) % MF3_f_e(i_e)
+        read(rec(12:22), '(E11.0)') isotopes(i) % MF3_f(i_e)
         if (i_e == NP) exit
         i_e = i_e + 1
-        read(rec(23:33), '(E11.0)') tope % MF3_f_e(i_e)
-        read(rec(34:44), '(E11.0)') tope % MF3_f(i_e)
+        read(rec(23:33), '(E11.0)') isotopes(i) % MF3_f_e(i_e)
+        read(rec(34:44), '(E11.0)') isotopes(i) % MF3_f(i_e)
         if (i_e == NP) exit
         i_e = i_e + 1
-        read(rec(45:55), '(E11.0)') tope % MF3_f_e(i_e)
-        read(rec(56:66), '(E11.0)') tope % MF3_f(i_e)
+        read(rec(45:55), '(E11.0)') isotopes(i) % MF3_f_e(i_e)
+        read(rec(56:66), '(E11.0)') isotopes(i) % MF3_f(i_e)
         if (i_e == NP) exit
         i_e = i_e + 1
       end do
@@ -362,15 +376,15 @@ contains
       read(rec(12:22), '(E11.0)') A
 
       ! check ZAID agreement
-      call check_zaid(int(ZA), tope % ZAI)
+      call check_zaid(int(ZA), isotopes(i) % ZAI)
 
       ! check that mass is consistent
-      call check_mass(A, tope % AWR)
+      call check_mass(A, isotopes(i) % AWR)
 
       ! read MF=3, record=2
       read(in, 10) rec
       read(rec(12:22), '(E11.0)') QI
-      tope % E_ex1 = (A + ONE) / A * (-QI)
+      isotopes(i) % E_ex1 = (A + ONE) / A * (-QI)
       read(rec(45:55), '(I11)') NR
       read(rec(56:66), '(I11)') NP
 
@@ -386,24 +400,24 @@ contains
       call check_n_pairs(NBT, NP)
 
       ! check interpolation scheme is same as isotope interpolation scheme
-      call check_interp_scheme(INTERP, tope % MF3_INT)
+      call check_interp_scheme(INTERP, isotopes(i) % MF3_INT)
 
-      allocate(tope % MF3_x_e(NP))
-      allocate(tope % MF3_x(NP))
+      allocate(isotopes(i) % MF3_x_e(NP))
+      allocate(isotopes(i) % MF3_x(NP))
 
       i_e = 1
       do i_rec = 1, int(NP / 3) + int(ceiling(dble(mod(NP, 3)) / 3))
         read(in, 10) rec
-        read(rec( 1:11), '(E11.0)') tope % MF3_x_e(i_e)
-        read(rec(12:22), '(E11.0)') tope % MF3_x(i_e)
+        read(rec( 1:11), '(E11.0)') isotopes(i) % MF3_x_e(i_e)
+        read(rec(12:22), '(E11.0)') isotopes(i) % MF3_x(i_e)
         if (i_e == NP) exit
         i_e = i_e + 1
-        read(rec(23:33), '(E11.0)') tope % MF3_x_e(i_e)
-        read(rec(34:44), '(E11.0)') tope % MF3_x(i_e)
+        read(rec(23:33), '(E11.0)') isotopes(i) % MF3_x_e(i_e)
+        read(rec(34:44), '(E11.0)') isotopes(i) % MF3_x(i_e)
         if (i_e == NP) exit
         i_e = i_e + 1
-        read(rec(45:55), '(E11.0)') tope % MF3_x_e(i_e)
-        read(rec(56:66), '(E11.0)') tope % MF3_x(i_e)
+        read(rec(45:55), '(E11.0)') isotopes(i) % MF3_x_e(i_e)
+        read(rec(56:66), '(E11.0)') isotopes(i) % MF3_x(i_e)
         if (i_e == NP) exit
         i_e = i_e + 1
       end do
@@ -431,15 +445,15 @@ contains
       read(rec(12:22), '(E11.0)') A
 
       ! check ZAID agreement
-      call check_zaid(int(ZA), tope % ZAI)
+      call check_zaid(int(ZA), isotopes(i) % ZAI)
 
       ! check that mass is consistent
-      call check_mass(A, tope % AWR)
+      call check_mass(A, isotopes(i) % AWR)
 
       ! read MF=3, record=2
       read(in, 10) rec
       read(rec(12:22), '(E11.0)') QI
-      tope % E_ex2 = (A + ONE) / A * (-QI)
+      isotopes(i) % E_ex2 = (A + ONE) / A * (-QI)
     end if
 
     read_MT = .false.
@@ -464,10 +478,10 @@ contains
       read(rec(12:22), '(E11.0)') A
 
       ! check ZAID agreement
-      call check_zaid(int(ZA), tope % ZAI)
+      call check_zaid(int(ZA), isotopes(i) % ZAI)
 
       ! check that mass is consistent
-      call check_mass(A, tope % AWR)
+      call check_mass(A, isotopes(i) % AWR)
 
       ! read MF=3, record=2
       read(in, 10) rec
@@ -486,24 +500,24 @@ contains
       call check_n_pairs(NBT, NP)
 
       ! check interpolation scheme is same as isotope interpolation scheme
-      call check_interp_scheme(INTERP, tope % MF3_INT)
+      call check_interp_scheme(INTERP, isotopes(i) % MF3_INT)
 
-      allocate(tope % MF3_g_e(NP))
-      allocate(tope % MF3_g(NP))
+      allocate(isotopes(i) % MF3_g_e(NP))
+      allocate(isotopes(i) % MF3_g(NP))
 
       i_e = 1
       do i_rec = 1, int(NP / 3) + int(ceiling(dble(mod(NP, 3)) / 3))
         read(in, 10) rec
-        read(rec( 1:11), '(E11.0)') tope % MF3_g_e(i_e)
-        read(rec(12:22), '(E11.0)') tope % MF3_g(i_e)
+        read(rec( 1:11), '(E11.0)') isotopes(i) % MF3_g_e(i_e)
+        read(rec(12:22), '(E11.0)') isotopes(i) % MF3_g(i_e)
         if (i_e == NP) exit
         i_e = i_e + 1
-        read(rec(23:33), '(E11.0)') tope % MF3_g_e(i_e)
-        read(rec(34:44), '(E11.0)') tope % MF3_g(i_e)
+        read(rec(23:33), '(E11.0)') isotopes(i) % MF3_g_e(i_e)
+        read(rec(34:44), '(E11.0)') isotopes(i) % MF3_g(i_e)
         if (i_e == NP) exit
         i_e = i_e + 1
-        read(rec(45:55), '(E11.0)') tope % MF3_g_e(i_e)
-        read(rec(56:66), '(E11.0)') tope % MF3_g(i_e)
+        read(rec(45:55), '(E11.0)') isotopes(i) % MF3_g_e(i_e)
+        read(rec(56:66), '(E11.0)') isotopes(i) % MF3_g(i_e)
         if (i_e == NP) exit
         i_e = i_e + 1
       end do
@@ -513,8 +527,7 @@ contains
 
 !$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$
 !
-! CHECK_INTERP_REGIONS checks that there is an allowable number of interpolation
-! regions
+! Check that there is an allowable number of interpolation regions
 !
 !$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$
 
@@ -531,7 +544,7 @@ contains
 
 !$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$
 !
-! CHECK_N_PAIRS checks that there is an allowable number of energy-xs pairs
+! Check that there is an allowable number of energy-xs pairs
 !
 !$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$
 
@@ -549,7 +562,7 @@ contains
 
 !$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$
 !
-! CHECK_INTERP_SCHEME checks that there is an allowable interpolation scheme
+! Check that there is an allowable interpolation scheme
 !
 !$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$
 
@@ -566,8 +579,7 @@ contains
 
 !$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$
 !
-! READ_RESONANCE_SUBSECTION reads in the energy range and formalism-dependent
-! resonance subsection data
+! Read in the energy range and formalism-dependent resonance subsection data
 !
 !$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$
 
@@ -650,14 +662,12 @@ contains
 
 !$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$
 !
-! READ_SLBW_PARAMETERS reads in Single-level Breit-Wigner resolved resonance
-! region parameters
+! Read in Single-level Breit-Wigner resolved resonance region parameters
 !
 !$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$
 
   subroutine read_slbw_parameters(i, i_ER)
 
-    type(Isotope), pointer :: tope => null() ! isotope pointer
     character(80) :: rec ! ENDF-6 file record
     integer :: i    ! index in global isotopes array
     integer :: i_ER ! energy range index
@@ -669,24 +679,22 @@ contains
     real(8) :: A    ! isotope/neutron mass ratio
     real(8) :: QX   ! Q-value to be added to COM energy
 
-    tope => isotopes(i)
-
     ! read first line of energy range subsection
     read(in, 10) rec
 10  format(A80)
-    read(rec(1:11),  '(E11.0)') tope % SPI(i_ER)
-    read(rec(12:22), '(E11.0)') tope % AP(i_ER)
-    call tope % channel_radius(i_ER)
-    read(rec(45:55), '(I11)')   tope % NLS(i_ER)
-    if (tope % NLS(i_ER) > 3) &
+    read(rec(1:11),  '(E11.0)') isotopes(i) % SPI(i_ER)
+    read(rec(12:22), '(E11.0)') isotopes(i) % AP(i_ER)
+    call isotopes(i) % channel_radius(i_ER)
+    read(rec(45:55), '(I11)')   isotopes(i) % NLS(i_ER)
+    if (isotopes(i) % NLS(i_ER) > 3) &
          call fatal_error('SLBW parameters given for a resonance higher than&
          & d-wave')
 
     ! allocate SLBW resonance vectors for each l
-    allocate(tope % bw_resonances(tope % NLS(i_ER)))
+    allocate(isotopes(i) % bw_resonances(isotopes(i) % NLS(i_ER)))
 
     ! loop over orbital quantum numbers
-    do i_l = 0, tope % NLS(i_ER) - 1
+    do i_l = 0, isotopes(i) % NLS(i_ER) - 1
       read(in, 10) rec
       read(rec(1:11),  '(E11.0)') A
       read(rec(12:22), '(E11.0)') QX
@@ -695,10 +703,10 @@ contains
       read(rec(56:66),   '(I11)') NRS
 
       ! allocate SLBW resonances
-      call tope % bw_resonances(i_l + 1) % alloc(NRS)
+      call isotopes(i) % bw_resonances(i_l + 1) % alloc(NRS)
 
       ! check mass ratios
-      call check_mass(A, tope % AWR)
+      call check_mass(A, isotopes(i) % AWR)
 
       ! check that Q-value is 0.0
       call check_q_value(QX)
@@ -711,54 +719,52 @@ contains
 
         read(in, 10) rec
         read(rec(1:11),  '(E11.0)')&
-             tope % bw_resonances(i_l + 1) % res(i_R) % E_lam
+             isotopes(i) % bw_resonances(i_l + 1) % res(i_R) % E_lam
         read(rec(12:22), '(E11.0)')&
-             tope % bw_resonances(i_l + 1) % res(i_R) % AJ
+             isotopes(i) % bw_resonances(i_l + 1) % res(i_R) % AJ
         read(rec(23:33), '(E11.0)')&
-             tope % bw_resonances(i_l + 1) % res(i_R) % GT
+             isotopes(i) % bw_resonances(i_l + 1) % res(i_R) % GT
         read(rec(34:44), '(E11.0)')&
-             tope % bw_resonances(i_l + 1) % res(i_R) % GN
+             isotopes(i) % bw_resonances(i_l + 1) % res(i_R) % GN
         read(rec(45:55), '(E11.0)')&
-             tope % bw_resonances(i_l + 1) % res(i_R) % GG
+             isotopes(i) % bw_resonances(i_l + 1) % res(i_R) % GG
         read(rec(56:66), '(E11.0)')&
-             tope % bw_resonances(i_l + 1) % res(i_R) % GF
+             isotopes(i) % bw_resonances(i_l + 1) % res(i_R) % GF
 
         if (LRX == 0) then
-          tope % bw_resonances(i_l + 1) % res(i_R) % GX = ZERO
+          isotopes(i) % bw_resonances(i_l + 1) % res(i_R) % GX = ZERO
         else if (LRX == 1) then
-          tope % bw_resonances(i_l + 1) % res(i_R) % GX&
-               = tope % bw_resonances(i_l + 1) % res(i_R) % GT&
-               - tope % bw_resonances(i_l + 1) % res(i_R) % GN&
-               - tope % bw_resonances(i_l + 1) % res(i_R) % GG&
-               - tope % bw_resonances(i_l + 1) % res(i_R) % GF
+          isotopes(i) % bw_resonances(i_l + 1) % res(i_R) % GX&
+               = isotopes(i) % bw_resonances(i_l + 1) % res(i_R) % GT&
+               - isotopes(i) % bw_resonances(i_l + 1) % res(i_R) % GN&
+               - isotopes(i) % bw_resonances(i_l + 1) % res(i_R) % GG&
+               - isotopes(i) % bw_resonances(i_l + 1) % res(i_R) % GF
         else
           call fatal_error('LRX must be 0 or 1 in '//trim(filename))
         end if
 
         ! check sign of total angular momentum, J
-        call check_j_sign(tope % bw_resonances(i_l + 1) % res(i_R) % AJ)
+        call check_j_sign(isotopes(i) % bw_resonances(i_l + 1) % res(i_R) % AJ)
       end do
 
-      if (i_ER < tope % NER - 1) then
-        call tope % bw_resonances(i_l + 1) % clear()
+      if (i_ER < isotopes(i) % NER - 1) then
+        call isotopes(i) % bw_resonances(i_l + 1) % dealloc()
       end if
 
     end do
 
-    if (i_ER < tope % NER - 1) deallocate(tope % bw_resonances)
+    if (i_ER < isotopes(i) % NER - 1) deallocate(isotopes(i) % bw_resonances)
 
   end subroutine read_slbw_parameters
 
 !$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$
 !
-! READ_MLBW_PARAMETERS reads in Multi-level Breit-Wigner resolved resonance
-! region parameters
+! Read in Multi-level Breit-Wigner resolved resonance region parameters
 !
 !$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$
 
   subroutine read_mlbw_parameters(i, i_ER)
 
-    type(Isotope), pointer :: tope => null() ! isotope pointer
     character(80) :: rec ! ENDF-6 file record
     integer :: i    ! index in global isotopes array
     integer :: i_ER ! energy range index
@@ -770,24 +776,22 @@ contains
     real(8) :: A    ! isotope/neutron mass ratio
     real(8) :: QX   ! Q-value to be added to COM energy
 
-    tope => isotopes(i)
-
     ! read first line of energy range subsection
     read(in, 10) rec
 10  format(A80)
-    read(rec(1:11),  '(E11.0)') tope % SPI(i_ER)
-    read(rec(12:22), '(E11.0)') tope % AP(i_ER)
-    call tope % channel_radius(i_ER)
-    read(rec(45:55), '(I11)')   tope % NLS(i_ER)
-    if (tope % NLS(i_ER) > 3) &
+    read(rec(1:11),  '(E11.0)') isotopes(i) % SPI(i_ER)
+    read(rec(12:22), '(E11.0)') isotopes(i) % AP(i_ER)
+    call isotopes(i) % channel_radius(i_ER)
+    read(rec(45:55), '(I11)')   isotopes(i) % NLS(i_ER)
+    if (isotopes(i) % NLS(i_ER) > 3) &
          call fatal_error('MLBW parameters given for a resonance higher than&
          & d-wave')
 
     ! allocate MLBW resonance vectors for each l
-    allocate(tope % bw_resonances(tope % NLS(i_ER)))
+    allocate(isotopes(i) % bw_resonances(isotopes(i) % NLS(i_ER)))
 
     ! loop over orbital quantum numbers
-    do i_l = 0, tope % NLS(i_ER) - 1
+    do i_l = 0, isotopes(i) % NLS(i_ER) - 1
       read(in, 10) rec
       read(rec(1:11),  '(E11.0)') A
       read(rec(12:22), '(E11.0)') QX
@@ -796,10 +800,10 @@ contains
       read(rec(56:66),   '(I11)') NRS
 
       ! allocate MLBW resonances
-      call tope % bw_resonances(i_l + 1) % alloc(NRS)
+      call isotopes(i) % bw_resonances(i_l + 1) % alloc(NRS)
 
       ! check mass ratios
-      call check_mass(A, tope % AWR)
+      call check_mass(A, isotopes(i) % AWR)
 
       ! check that Q-value is 0.0
       call check_q_value(QX)
@@ -812,53 +816,51 @@ contains
 
         read(in, 10) rec
         read(rec(1:11),  '(E11.0)')&
-             tope % bw_resonances(i_l + 1) % res(i_R) % E_lam
+             isotopes(i) % bw_resonances(i_l + 1) % res(i_R) % E_lam
         read(rec(12:22), '(E11.0)')&
-             tope % bw_resonances(i_l + 1) % res(i_R) % AJ
+             isotopes(i) % bw_resonances(i_l + 1) % res(i_R) % AJ
         read(rec(23:33), '(E11.0)')&
-             tope % bw_resonances(i_l + 1) % res(i_R) % GT
+             isotopes(i) % bw_resonances(i_l + 1) % res(i_R) % GT
         read(rec(34:44), '(E11.0)')&
-             tope % bw_resonances(i_l + 1) % res(i_R) % GN
+             isotopes(i) % bw_resonances(i_l + 1) % res(i_R) % GN
         read(rec(45:55), '(E11.0)')&
-             tope % bw_resonances(i_l + 1) % res(i_R) % GG
+             isotopes(i) % bw_resonances(i_l + 1) % res(i_R) % GG
         read(rec(56:66), '(E11.0)')&
-             tope % bw_resonances(i_l + 1) % res(i_R) % GF
+             isotopes(i) % bw_resonances(i_l + 1) % res(i_R) % GF
 
         if (LRX == 0) then
-          tope % bw_resonances(i_l + 1) % res(i_R) % GX = ZERO
+          isotopes(i) % bw_resonances(i_l + 1) % res(i_R) % GX = ZERO
         else if (LRX == 1) then
-          tope % bw_resonances(i_l + 1) % res(i_R) % GX&
-               = tope % bw_resonances(i_l + 1) % res(i_R) % GT&
-               - tope % bw_resonances(i_l + 1) % res(i_R) % GN&
-               - tope % bw_resonances(i_l + 1) % res(i_R) % GG&
-               - tope % bw_resonances(i_l + 1) % res(i_R) % GF
+          isotopes(i) % bw_resonances(i_l + 1) % res(i_R) % GX&
+               = isotopes(i) % bw_resonances(i_l + 1) % res(i_R) % GT&
+               - isotopes(i) % bw_resonances(i_l + 1) % res(i_R) % GN&
+               - isotopes(i) % bw_resonances(i_l + 1) % res(i_R) % GG&
+               - isotopes(i) % bw_resonances(i_l + 1) % res(i_R) % GF
         else
           call fatal_error('LRX must be 0 or 1 in '//trim(filename))
         end if
 
         ! check sign of total angular momentum, J
-        call check_j_sign(tope % bw_resonances(i_l + 1) % res(i_R) % AJ)
+        call check_j_sign(isotopes(i) % bw_resonances(i_l + 1) % res(i_R) % AJ)
       end do
 
-      if (i_ER < tope % NER - 1) then
-        call tope % bw_resonances(i_l + 1) % clear()
+      if (i_ER < isotopes(i) % NER - 1) then
+        call isotopes(i) % bw_resonances(i_l + 1) % dealloc()
       end if
     end do
 
-    if (i_ER < tope % NER - 1) deallocate(tope % bw_resonances)
+    if (i_ER < isotopes(i) % NER - 1) deallocate(isotopes(i) % bw_resonances)
 
   end subroutine read_mlbw_parameters
 
 !$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$
 !
-! READ_RM_PARAMETERS reads in Reich-Moore resolved resonance region
-! parameters
+! Read in Reich-Moore resolved resonance region parameters
 !
 !$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$
 
   subroutine read_rm_parameters(i, i_ER)
 
-    type(Isotope), pointer :: tope => null() ! isotope pointer
     character(80) :: rec ! ENDF-6 file record
     integer :: i    ! index in global isotopes array
     integer :: i_ER ! energy range index
@@ -869,24 +871,22 @@ contains
     real(8) :: A    ! isotope/neutron mass ratio
     real(8) :: APL  ! l-dependent AP value
 
-    tope => isotopes(i)
-
     ! read first line of energy range subsection
     read(in, 10) rec
 10  format(A80)
-    read(rec(1:11),  '(E11.0)') tope % SPI(i_ER)
-    read(rec(12:22), '(E11.0)') tope % AP(i_ER)
-    call tope % channel_radius(i_ER)
-    read(rec(45:55), '(I11)')   tope % NLS(i_ER)
-    if (tope % NLS(i_ER) > 3) &
+    read(rec(1:11),  '(E11.0)') isotopes(i) % SPI(i_ER)
+    read(rec(12:22), '(E11.0)') isotopes(i) % AP(i_ER)
+    call isotopes(i) % channel_radius(i_ER)
+    read(rec(45:55), '(I11)')   isotopes(i) % NLS(i_ER)
+    if (isotopes(i) % NLS(i_ER) > 3) &
          call warning('R-M parameters given for a resonance higher than&
          & d-wave')
 
     ! allocate Reich-Moore resonance vectors for each l
-    allocate(tope % rm_resonances(tope % NLS(i_ER)))
+    allocate(isotopes(i) % rm_resonances(isotopes(i) % NLS(i_ER)))
 
     ! loop over orbital quantum numbers
-    do i_l = 0, tope % NLS(i_ER) - 1
+    do i_l = 0, isotopes(i) % NLS(i_ER) - 1
       read(in, 10) rec
       read(rec(1:11),  '(E11.0)') A
       read(rec(12:22), '(E11.0)') APL
@@ -894,13 +894,13 @@ contains
       read(rec(56:66),   '(I11)') NRS
 
       ! allocate Reich-Moore resonances
-      call tope % rm_resonances(i_l + 1) % alloc(NRS)
+      call isotopes(i) % rm_resonances(i_l + 1) % alloc(NRS)
 
       ! check mass ratios
-      call check_mass(A, tope % AWR)
+      call check_mass(A, isotopes(i) % AWR)
 
       ! check scattering radii
-      call check_scattering_radius(APL, tope % AP(i_ER))
+      call check_scattering_radius(APL, isotopes(i) % AP(i_ER))
 
       ! check orbital quantum number
       call check_l_number(L, i_L)
@@ -910,42 +910,41 @@ contains
 
         read(in, 10) rec
         read(rec(1:11),  '(E11.0)')&
-             tope % rm_resonances(i_l + 1) % res(i_R) % E_lam
+             isotopes(i) % rm_resonances(i_l + 1) % res(i_R) % E_lam
         read(rec(12:22), '(E11.0)')&
-             tope % rm_resonances(i_l + 1) % res(i_R) % AJ
+             isotopes(i) % rm_resonances(i_l + 1) % res(i_R) % AJ
         read(rec(23:33), '(E11.0)')&
-             tope % rm_resonances(i_l + 1) % res(i_R) % GN
+             isotopes(i) % rm_resonances(i_l + 1) % res(i_R) % GN
         read(rec(34:44), '(E11.0)')&
-             tope % rm_resonances(i_l + 1) % res(i_R) % GG
+             isotopes(i) % rm_resonances(i_l + 1) % res(i_R) % GG
         read(rec(45:55), '(E11.0)')&
-             tope % rm_resonances(i_l + 1) % res(i_R) % GFA
+             isotopes(i) % rm_resonances(i_l + 1) % res(i_R) % GFA
         read(rec(56:66), '(E11.0)')&
-             tope % rm_resonances(i_l + 1) % res(i_R) % GFB
+             isotopes(i) % rm_resonances(i_l + 1) % res(i_R) % GFB
 
         ! check sign of total angular momentum, J
-        call check_j_sign(tope % rm_resonances(i_l + 1) % res(i_R) % AJ)
+        call check_j_sign(isotopes(i) % rm_resonances(i_l + 1) % res(i_R) % AJ)
       end do
 
-      if (i_ER < tope % NER - 1) then
-        call tope % rm_resonances(i_l + 1) % clear()
+      if (i_ER < isotopes(i) % NER - 1) then
+        call isotopes(i) % rm_resonances(i_l + 1) % dealloc()
       end if
 
     end do
 
-    if (i_ER < tope % NER - 1) deallocate(tope % rm_resonances)
+    if (i_ER < isotopes(i) % NER - 1) deallocate(isotopes(i) % rm_resonances)
 
   end subroutine read_rm_parameters
 
 !$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$
 !
-! READ_URR_SLBW_PARAMETERS_LRF1 reads in unresolved resonance region parameters
-! for the LRF = 1 option (only fission widths are energy-dependent)
+! Read in unresolved resonance region parameters for the LRF = 1 option
+! (only fission widths are energy-dependent)
 !
 !$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$
 
   subroutine read_urr_slbw_parameters_lrf1(i, i_ER)
 
-    type(Isotope), pointer :: tope => null() ! isotope pointer
     character(80) :: rec ! ENDF-6 file record
     integer :: i    ! index in global isotopes array
     integer :: i_ER ! energy range index
@@ -955,104 +954,102 @@ contains
     integer :: i_ES ! tabulated fission width energy grid index
     real(8) :: A    ! isotope/neutron mass ratio
 
-    tope => isotopes(i)
-
     ! this is forced by the ENDF-6 format when LRF = 1 and LFW = 1
-    tope % INT = LINEAR_LINEAR
+    isotopes(i) % INT = LINEAR_LINEAR
 
 10  format(A80)
-    select case(tope % LFW)
+    select case(isotopes(i) % LFW)
     case(0)
       ! read first line of energy range subsection
       read(in, 10) rec
-      read(rec(1:11),  '(E11.0)') tope % SPI(i_ER)
-      read(rec(12:22), '(E11.0)') tope % AP(i_ER)
+      read(rec(1:11),  '(E11.0)') isotopes(i) % SPI(i_ER)
+      read(rec(12:22), '(E11.0)') isotopes(i) % AP(i_ER)
 ! TODO: don't overwrite the resolved value
-      call tope % channel_radius(i_ER)
-      read(rec(23:33), '(I11)')   tope % LSSF
-      read(rec(45:55), '(I11)')   tope % NLS(i_ER)
-      if (tope % NLS(i_ER) > 3) &
+      call isotopes(i) % channel_radius(i_ER)
+      read(rec(23:33), '(I11)')   isotopes(i) % LSSF
+      read(rec(45:55), '(I11)')   isotopes(i) % NLS(i_ER)
+      if (isotopes(i) % NLS(i_ER) > 3) &
            call fatal_error('URR parameters given for a spin sequence higher than&
            & d-wave')
       
       ! allocate number of total angular momenta values for each l
-      allocate(tope % NJS(tope % NLS(i_ER)))
+      allocate(isotopes(i) % NJS(isotopes(i) % NLS(i_ER)))
 
       ! allocate total angular momenta
-      allocate(tope % AJ(tope % NLS(i_ER)))
+      allocate(isotopes(i) % AJ(isotopes(i) % NLS(i_ER)))
 
       ! allocate degrees of freedom for partial widths
-      allocate(tope % DOFX(tope % NLS(i_ER)))
-      allocate(tope % DOFN(tope % NLS(i_ER)))
-      allocate(tope % DOFG(tope % NLS(i_ER)))
-      allocate(tope % DOFF(tope % NLS(i_ER)))
+      allocate(isotopes(i) % DOFX(isotopes(i) % NLS(i_ER)))
+      allocate(isotopes(i) % DOFN(isotopes(i) % NLS(i_ER)))
+      allocate(isotopes(i) % DOFG(isotopes(i) % NLS(i_ER)))
+      allocate(isotopes(i) % DOFF(isotopes(i) % NLS(i_ER)))
 
       ! allocate partial widths
-      tope % NE = 2
-      allocate(tope % ES(tope % NE))
-      tope % ES(1) = tope % EL(i_ER)
-      tope % ES(2) = tope % EH(i_ER)
-      allocate(tope % D_mean  (tope % NLS(i_ER)))
-      allocate(tope % GN0_mean(tope % NLS(i_ER)))
-      allocate(tope % GG_mean (tope % NLS(i_ER)))
-      allocate(tope % GF_mean (tope % NLS(i_ER)))
-      allocate(tope % GX_mean (tope % NLS(i_ER)))
+      isotopes(i) % NE = 2
+      allocate(isotopes(i) % ES(isotopes(i) % NE))
+      isotopes(i) % ES(1) = isotopes(i) % EL(i_ER)
+      isotopes(i) % ES(2) = isotopes(i) % EH(i_ER)
+      allocate(isotopes(i) % D_mean  (isotopes(i) % NLS(i_ER)))
+      allocate(isotopes(i) % GN0_mean(isotopes(i) % NLS(i_ER)))
+      allocate(isotopes(i) % GG_mean (isotopes(i) % NLS(i_ER)))
+      allocate(isotopes(i) % GF_mean (isotopes(i) % NLS(i_ER)))
+      allocate(isotopes(i) % GX_mean (isotopes(i) % NLS(i_ER)))
 
-      if (tope%LSSF == 1 .and. (.not. write_avg_urr_xs)) call read_avg_urr_xs(i)
+      if (isotopes(i)%LSSF == 1 .and. (.not. write_avg_xs)) call read_avg_xs(i)
 
       ! loop over orbital quantum numbers
-      do i_l = 0, tope % NLS(i_ER) - 1
+      do i_l = 0, isotopes(i) % NLS(i_ER) - 1
         read(in, 10) rec
         read(rec(1:11),  '(E11.0)') A
         read(rec(23:33),   '(I11)') L
-        read(rec(56:66),   '(I11)') tope % NJS(i_l + 1)
+        read(rec(56:66),   '(I11)') isotopes(i) % NJS(i_l + 1)
 
         ! check mass ratios
-        call check_mass(A, tope % AWR)
+        call check_mass(A, isotopes(i) % AWR)
 
         ! check orbital quantum number
         call check_l_number(L, i_L)
 
         ! allocate total angular momenta
-        allocate(tope % AJ(i_l + 1) % dim1(tope % NJS(i_l + 1)))
+        allocate(isotopes(i) % AJ(i_l + 1) % dim1(isotopes(i) % NJS(i_l + 1)))
 
         ! allocate degrees of freedom for partial widths
-        allocate(tope % DOFX(i_l + 1) % dim1(tope % NJS(i_l + 1)))
-        allocate(tope % DOFN(i_l + 1) % dim1(tope % NJS(i_l + 1)))
-        allocate(tope % DOFG(i_l + 1) % dim1(tope % NJS(i_l + 1)))
-        allocate(tope % DOFF(i_l + 1) % dim1(tope % NJS(i_l + 1)))
+        allocate(isotopes(i) % DOFX(i_l + 1) % dim1(isotopes(i) % NJS(i_l + 1)))
+        allocate(isotopes(i) % DOFN(i_l + 1) % dim1(isotopes(i) % NJS(i_l + 1)))
+        allocate(isotopes(i) % DOFG(i_l + 1) % dim1(isotopes(i) % NJS(i_l + 1)))
+        allocate(isotopes(i) % DOFF(i_l + 1) % dim1(isotopes(i) % NJS(i_l + 1)))
 
         ! allocate partial widths
-        allocate(tope % D_mean  (i_l + 1) % dim2(tope % NJS(i_l + 1)))
-        allocate(tope % GN0_mean(i_l + 1) % dim2(tope % NJS(i_l + 1)))
-        allocate(tope % GG_mean (i_l + 1) % dim2(tope % NJS(i_l + 1)))
-        allocate(tope % GF_mean (i_l + 1) % dim2(tope % NJS(i_l + 1)))
-        allocate(tope % GX_mean (i_l + 1) % dim2(tope % NJS(i_l + 1)))
+        allocate(isotopes(i) % D_mean  (i_l + 1) % dim2(isotopes(i) % NJS(i_l + 1)))
+        allocate(isotopes(i) % GN0_mean(i_l + 1) % dim2(isotopes(i) % NJS(i_l + 1)))
+        allocate(isotopes(i) % GG_mean (i_l + 1) % dim2(isotopes(i) % NJS(i_l + 1)))
+        allocate(isotopes(i) % GF_mean (i_l + 1) % dim2(isotopes(i) % NJS(i_l + 1)))
+        allocate(isotopes(i) % GX_mean (i_l + 1) % dim2(isotopes(i) % NJS(i_l + 1)))
 
         ! loop over total angular momenta
-        do i_J = 1, tope % NJS(i_l + 1)
-          allocate(tope % D_mean  (i_l + 1) % dim2(i_J) % dim1(tope % NE))
-          allocate(tope % GN0_mean(i_l + 1) % dim2(i_J) % dim1(tope % NE))
-          allocate(tope % GG_mean (i_l + 1) % dim2(i_J) % dim1(tope % NE))
-          allocate(tope % GF_mean (i_l + 1) % dim2(i_J) % dim1(tope % NE))
-          allocate(tope % GX_mean (i_l + 1) % dim2(i_J) % dim1(2))
+        do i_J = 1, isotopes(i) % NJS(i_l + 1)
+          allocate(isotopes(i) % D_mean  (i_l + 1) % dim2(i_J) % dim1(isotopes(i) % NE))
+          allocate(isotopes(i) % GN0_mean(i_l + 1) % dim2(i_J) % dim1(isotopes(i) % NE))
+          allocate(isotopes(i) % GG_mean (i_l + 1) % dim2(i_J) % dim1(isotopes(i) % NE))
+          allocate(isotopes(i) % GF_mean (i_l + 1) % dim2(i_J) % dim1(isotopes(i) % NE))
+          allocate(isotopes(i) % GX_mean (i_l + 1) % dim2(i_J) % dim1(2))
           read(in, 10) rec
-          read(rec(1:11), '(E11.0)') tope%D_mean(i_l+1)   % dim2(i_J)%dim1(1)
-          read(rec(12:22),'(E11.0)') tope%AJ(i_l + 1)     % dim1(i_J)
-          read(rec(23:33),'(E11.0)') tope%DOFN(i_l + 1)   % dim1(i_J)
-          read(rec(34:44),'(E11.0)') tope%GN0_mean(i_l+1) % dim2(i_J)%dim1(1)
-          read(rec(45:55),'(E11.0)') tope%GG_mean (i_l+1) % dim2(i_J)%dim1(1)
-          tope % DOFX(i_l + 1) % dim1(i_J) = ZERO
-          tope % DOFG(i_l + 1) % dim1(i_J) = ZERO
-          tope % DOFF(i_l + 1) % dim1(i_J) = ZERO
-          tope % D_mean(i_l + 1) % dim2(i_J) % dim1(2)&
-               = tope % D_mean(i_l + 1) % dim2(i_J) % dim1(1)
-          tope % GN0_mean(i_l + 1) % dim2(i_J) % dim1(2)&
-               = tope % GN0_mean(i_l + 1) % dim2(i_J) % dim1(1)
-          tope % GG_mean(i_l + 1) % dim2(i_J) % dim1(2)&
-               = tope % GG_mean(i_l + 1) % dim2(i_J) % dim1(1)
-          tope % GF_mean(i_l + 1) % dim2(i_J) % dim1(:) = ZERO
-          tope % GX_mean(i_l + 1) % dim2(i_J) % dim1(:) = ZERO
+          read(rec(1:11), '(E11.0)') isotopes(i)%D_mean(i_l+1)   % dim2(i_J)%dim1(1)
+          read(rec(12:22),'(E11.0)') isotopes(i)%AJ(i_l + 1)     % dim1(i_J)
+          read(rec(23:33),'(E11.0)') isotopes(i)%DOFN(i_l + 1)   % dim1(i_J)
+          read(rec(34:44),'(E11.0)') isotopes(i)%GN0_mean(i_l+1) % dim2(i_J)%dim1(1)
+          read(rec(45:55),'(E11.0)') isotopes(i)%GG_mean (i_l+1) % dim2(i_J)%dim1(1)
+          isotopes(i) % DOFX(i_l + 1) % dim1(i_J) = ZERO
+          isotopes(i) % DOFG(i_l + 1) % dim1(i_J) = ZERO
+          isotopes(i) % DOFF(i_l + 1) % dim1(i_J) = ZERO
+          isotopes(i) % D_mean(i_l + 1) % dim2(i_J) % dim1(2)&
+               = isotopes(i) % D_mean(i_l + 1) % dim2(i_J) % dim1(1)
+          isotopes(i) % GN0_mean(i_l + 1) % dim2(i_J) % dim1(2)&
+               = isotopes(i) % GN0_mean(i_l + 1) % dim2(i_J) % dim1(1)
+          isotopes(i) % GG_mean(i_l + 1) % dim2(i_J) % dim1(2)&
+               = isotopes(i) % GG_mean(i_l + 1) % dim2(i_J) % dim1(1)
+          isotopes(i) % GF_mean(i_l + 1) % dim2(i_J) % dim1(:) = ZERO
+          isotopes(i) % GX_mean(i_l + 1) % dim2(i_J) % dim1(:) = ZERO
 
         end do
       end do
@@ -1060,139 +1057,139 @@ contains
     case(1)
       ! read first line of energy range subsection
       read(in, 10) rec
-      read(rec(1:11),  '(E11.0)') tope % SPI(i_ER)
-      read(rec(12:22), '(E11.0)') tope % AP(i_ER)
+      read(rec(1:11),  '(E11.0)') isotopes(i) % SPI(i_ER)
+      read(rec(12:22), '(E11.0)') isotopes(i) % AP(i_ER)
 ! TODO: don't overwrite the resolved value
-      call tope % channel_radius(i_ER)
-      read(rec(23:33), '(I11)')   tope % LSSF
-      read(rec(45:55), '(I11)')   tope % NE
-      read(rec(56:66), '(I11)')   tope % NLS(i_ER)
-      if (tope % NLS(i_ER) > 3) &
+      call isotopes(i) % channel_radius(i_ER)
+      read(rec(23:33), '(I11)')   isotopes(i) % LSSF
+      read(rec(45:55), '(I11)')   isotopes(i) % NE
+      read(rec(56:66), '(I11)')   isotopes(i) % NLS(i_ER)
+      if (isotopes(i) % NLS(i_ER) > 3) &
            call fatal_error('URR parameters given for a spin sequence higher than&
            & d-wave')
 
       ! allocate number of total angular momenta values for each l
-      allocate(tope % NJS(tope % NLS(i_ER)))
+      allocate(isotopes(i) % NJS(isotopes(i) % NLS(i_ER)))
 
       ! allocate total angular momenta
-      allocate(tope % AJ(tope % NLS(i_ER)))
+      allocate(isotopes(i) % AJ(isotopes(i) % NLS(i_ER)))
 
       ! allocate degrees of freedom for partial widths
-      allocate(tope % DOFX(tope % NLS(i_ER)))
-      allocate(tope % DOFN(tope % NLS(i_ER)))
-      allocate(tope % DOFG(tope % NLS(i_ER)))
-      allocate(tope % DOFF(tope % NLS(i_ER)))
+      allocate(isotopes(i) % DOFX(isotopes(i) % NLS(i_ER)))
+      allocate(isotopes(i) % DOFN(isotopes(i) % NLS(i_ER)))
+      allocate(isotopes(i) % DOFG(isotopes(i) % NLS(i_ER)))
+      allocate(isotopes(i) % DOFF(isotopes(i) % NLS(i_ER)))
 
       ! allocate fission width energies
-      allocate(tope % ES(tope % NE))
-      allocate(tope % D_mean  (tope % NLS(i_ER)))
-      allocate(tope % GN0_mean(tope % NLS(i_ER)))
-      allocate(tope % GG_mean (tope % NLS(i_ER)))
-      allocate(tope % GF_mean (tope % NLS(i_ER)))
-      allocate(tope % GX_mean (tope % NLS(i_ER)))
+      allocate(isotopes(i) % ES(isotopes(i) % NE))
+      allocate(isotopes(i) % D_mean  (isotopes(i) % NLS(i_ER)))
+      allocate(isotopes(i) % GN0_mean(isotopes(i) % NLS(i_ER)))
+      allocate(isotopes(i) % GG_mean (isotopes(i) % NLS(i_ER)))
+      allocate(isotopes(i) % GF_mean (isotopes(i) % NLS(i_ER)))
+      allocate(isotopes(i) % GX_mean (isotopes(i) % NLS(i_ER)))
       
-      if (tope % LSSF == 1 .and. (.not. write_avg_urr_xs)) call read_avg_urr_xs(i)
+      if (isotopes(i) % LSSF == 1 .and. (.not. write_avg_xs)) call read_avg_xs(i)
 
       i_ES = 1
       do
         read(in, 10) rec
-        read(rec( 1:11), '(E11.0)') tope % ES(i_ES)
-        if (i_ES == tope % NE) exit
+        read(rec( 1:11), '(E11.0)') isotopes(i) % ES(i_ES)
+        if (i_ES == isotopes(i) % NE) exit
         i_ES = i_ES + 1
-        read(rec(12:22), '(E11.0)') tope % ES(i_ES)
-        if (i_ES == tope % NE) exit
+        read(rec(12:22), '(E11.0)') isotopes(i) % ES(i_ES)
+        if (i_ES == isotopes(i) % NE) exit
         i_ES = i_ES + 1
-        read(rec(23:33), '(E11.0)') tope % ES(i_ES)
-        if (i_ES == tope % NE) exit
+        read(rec(23:33), '(E11.0)') isotopes(i) % ES(i_ES)
+        if (i_ES == isotopes(i) % NE) exit
         i_ES = i_ES + 1
-        read(rec(34:44), '(E11.0)') tope % ES(i_ES)
-        if (i_ES == tope % NE) exit
+        read(rec(34:44), '(E11.0)') isotopes(i) % ES(i_ES)
+        if (i_ES == isotopes(i) % NE) exit
         i_ES = i_ES + 1
-        read(rec(45:55), '(E11.0)') tope % ES(i_ES)
-        if (i_ES == tope % NE) exit
+        read(rec(45:55), '(E11.0)') isotopes(i) % ES(i_ES)
+        if (i_ES == isotopes(i) % NE) exit
         i_ES = i_ES + 1
-        read(rec(56:66), '(E11.0)') tope % ES(i_ES)
-        if (i_ES == tope % NE) exit
+        read(rec(56:66), '(E11.0)') isotopes(i) % ES(i_ES)
+        if (i_ES == isotopes(i) % NE) exit
         i_ES = i_ES + 1
       end do
 
       ! loop over orbital quantum numbers
-      do i_l = 0, tope % NLS(i_ER) - 1
+      do i_l = 0, isotopes(i) % NLS(i_ER) - 1
         read(in, 10) rec
         read(rec(1:11),  '(E11.0)') A
         read(rec(23:33),   '(I11)') L
-        read(rec(45:55),   '(I11)') tope % NJS(i_l + 1)
+        read(rec(45:55),   '(I11)') isotopes(i) % NJS(i_l + 1)
 
         ! check mass ratios
-        call check_mass(A, tope % AWR)
+        call check_mass(A, isotopes(i) % AWR)
 
         ! check orbital quantum number
         call check_l_number(L, i_l)
 
         ! allocate total angular momenta
-        allocate(tope % AJ(i_l + 1) % dim1(tope % NJS(i_l + 1)))
+        allocate(isotopes(i) % AJ(i_l + 1) % dim1(isotopes(i) % NJS(i_l + 1)))
         
         ! allocate degress of freedom for partial widths
-        allocate(tope % DOFX(i_l + 1) % dim1(tope % NJS(i_l + 1)))
-        allocate(tope % DOFN(i_l + 1) % dim1(tope % NJS(i_l + 1)))
-        allocate(tope % DOFG(i_l + 1) % dim1(tope % NJS(i_l + 1)))
-        allocate(tope % DOFF(i_l + 1) % dim1(tope % NJS(i_l + 1)))
+        allocate(isotopes(i) % DOFX(i_l + 1) % dim1(isotopes(i) % NJS(i_l + 1)))
+        allocate(isotopes(i) % DOFN(i_l + 1) % dim1(isotopes(i) % NJS(i_l + 1)))
+        allocate(isotopes(i) % DOFG(i_l + 1) % dim1(isotopes(i) % NJS(i_l + 1)))
+        allocate(isotopes(i) % DOFF(i_l + 1) % dim1(isotopes(i) % NJS(i_l + 1)))
 
-        allocate(tope % D_mean  (i_l + 1) % dim2(tope % NJS(i_l + 1)))
-        allocate(tope % GN0_mean(i_l + 1) % dim2(tope % NJS(i_l + 1)))
-        allocate(tope % GG_mean (i_l + 1) % dim2(tope % NJS(i_l + 1)))
-        allocate(tope % GF_mean (i_l + 1) % dim2(tope % NJS(i_l + 1)))
-        allocate(tope % GX_mean (i_l + 1) % dim2(tope % NJS(i_l + 1)))
+        allocate(isotopes(i) % D_mean  (i_l + 1) % dim2(isotopes(i) % NJS(i_l + 1)))
+        allocate(isotopes(i) % GN0_mean(i_l + 1) % dim2(isotopes(i) % NJS(i_l + 1)))
+        allocate(isotopes(i) % GG_mean (i_l + 1) % dim2(isotopes(i) % NJS(i_l + 1)))
+        allocate(isotopes(i) % GF_mean (i_l + 1) % dim2(isotopes(i) % NJS(i_l + 1)))
+        allocate(isotopes(i) % GX_mean (i_l + 1) % dim2(isotopes(i) % NJS(i_l + 1)))
 
         ! loop over total angular momenta
-        do i_J = 1, tope % NJS(i_l + 1)
-          allocate(tope % D_mean  (i_l + 1) % dim2(i_J) % dim1(tope % NE))
-          allocate(tope % GN0_mean(i_l + 1) % dim2(i_J) % dim1(tope % NE))
-          allocate(tope % GG_mean (i_l + 1) % dim2(i_J) % dim1(tope % NE))
-          allocate(tope % GF_mean (i_l + 1) % dim2(i_J) % dim1(tope % NE))
-          allocate(tope % GX_mean (i_l + 1) % dim2(i_J) % dim1(tope % NE))
+        do i_J = 1, isotopes(i) % NJS(i_l + 1)
+          allocate(isotopes(i) % D_mean  (i_l + 1) % dim2(i_J) % dim1(isotopes(i) % NE))
+          allocate(isotopes(i) % GN0_mean(i_l + 1) % dim2(i_J) % dim1(isotopes(i) % NE))
+          allocate(isotopes(i) % GG_mean (i_l + 1) % dim2(i_J) % dim1(isotopes(i) % NE))
+          allocate(isotopes(i) % GF_mean (i_l + 1) % dim2(i_J) % dim1(isotopes(i) % NE))
+          allocate(isotopes(i) % GX_mean (i_l + 1) % dim2(i_J) % dim1(isotopes(i) % NE))
 
           read(in, 10) rec
           read(rec(23:33), '(I11)') L
           call check_l_number(L, i_l)
-          read(rec(34:44), '(E11.0)') tope % DOFF(i_l + 1) % dim1(i_J)
+          read(rec(34:44), '(E11.0)') isotopes(i) % DOFF(i_l + 1) % dim1(i_J)
           read(in, 10) rec
-          read(rec( 1:11), '(E11.0)') tope % D_mean(i_l + 1) % dim2(i_J) % dim1(1)
-          tope % D_mean(i_l + 1) % dim2(i_J) % dim1(:)&
-               = tope % D_mean(i_l + 1) % dim2(i_J) % dim1(1)
-          read(rec(12:22), '(E11.0)') tope % AJ(i_l + 1) % dim1(i_J)
-          read(rec(23:33), '(E11.0)') tope % DOFN(i_l + 1) % dim1(i_J)
-          read(rec(34:44), '(E11.0)') tope % GN0_mean(i_l+1) % dim2(i_J) % dim1(1)
-          tope % GN0_mean(i_l + 1) % dim2(i_J) % dim1(:)&
-               = tope % GN0_mean(i_l + 1) % dim2(i_J) % dim1(1)
-          read(rec(45:55), '(E11.0)') tope % GG_mean (i_l+1) % dim2(i_J) % dim1(1)
-          tope % GG_mean(i_l + 1) % dim2(i_J) % dim1(:)&
-               = tope % GG_mean(i_l + 1) % dim2(i_J) % dim1(1)
-          tope % GX_mean(i_l + 1) % dim2(i_J) % dim1(:) = ZERO
-          tope % DOFG(i_l + 1) % dim1(i_J) = ZERO
-          tope % DOFX(i_l + 1) % dim1(i_J) = ZERO
+          read(rec( 1:11), '(E11.0)') isotopes(i) % D_mean(i_l + 1) % dim2(i_J) % dim1(1)
+          isotopes(i) % D_mean(i_l + 1) % dim2(i_J) % dim1(:)&
+               = isotopes(i) % D_mean(i_l + 1) % dim2(i_J) % dim1(1)
+          read(rec(12:22), '(E11.0)') isotopes(i) % AJ(i_l + 1) % dim1(i_J)
+          read(rec(23:33), '(E11.0)') isotopes(i) % DOFN(i_l + 1) % dim1(i_J)
+          read(rec(34:44), '(E11.0)') isotopes(i) % GN0_mean(i_l+1) % dim2(i_J) % dim1(1)
+          isotopes(i) % GN0_mean(i_l + 1) % dim2(i_J) % dim1(:)&
+               = isotopes(i) % GN0_mean(i_l + 1) % dim2(i_J) % dim1(1)
+          read(rec(45:55), '(E11.0)') isotopes(i) % GG_mean (i_l+1) % dim2(i_J) % dim1(1)
+          isotopes(i) % GG_mean(i_l + 1) % dim2(i_J) % dim1(:)&
+               = isotopes(i) % GG_mean(i_l + 1) % dim2(i_J) % dim1(1)
+          isotopes(i) % GX_mean(i_l + 1) % dim2(i_J) % dim1(:) = ZERO
+          isotopes(i) % DOFG(i_l + 1) % dim1(i_J) = ZERO
+          isotopes(i) % DOFX(i_l + 1) % dim1(i_J) = ZERO
 
           ! loop over energies for which data are tabulated
           i_ES = 1
           do
             read(in, 10) rec
-            read(rec( 1:11), '(E11.0)') tope % GF_mean(i_l+1)%dim2(i_J)%dim1(i_ES)
-            if (i_ES == tope % NE) exit
+            read(rec( 1:11), '(E11.0)') isotopes(i) % GF_mean(i_l+1)%dim2(i_J)%dim1(i_ES)
+            if (i_ES == isotopes(i) % NE) exit
             i_ES = i_ES + 1
-            read(rec(12:22), '(E11.0)') tope % GF_mean(i_l+1)%dim2(i_J)%dim1(i_ES)
-            if (i_ES == tope % NE) exit
+            read(rec(12:22), '(E11.0)') isotopes(i) % GF_mean(i_l+1)%dim2(i_J)%dim1(i_ES)
+            if (i_ES == isotopes(i) % NE) exit
             i_ES = i_ES + 1
-            read(rec(23:33), '(E11.0)') tope % GF_mean(i_l+1)%dim2(i_J)%dim1(i_ES)
-            if (i_ES == tope % NE) exit
+            read(rec(23:33), '(E11.0)') isotopes(i) % GF_mean(i_l+1)%dim2(i_J)%dim1(i_ES)
+            if (i_ES == isotopes(i) % NE) exit
             i_ES = i_ES + 1
-            read(rec(34:44), '(E11.0)') tope % GF_mean(i_l+1)%dim2(i_J)%dim1(i_ES)
-            if (i_ES == tope % NE) exit
+            read(rec(34:44), '(E11.0)') isotopes(i) % GF_mean(i_l+1)%dim2(i_J)%dim1(i_ES)
+            if (i_ES == isotopes(i) % NE) exit
             i_ES = i_ES + 1
-            read(rec(45:55), '(E11.0)') tope % GF_mean(i_l+1)%dim2(i_J)%dim1(i_ES)
-            if (i_ES == tope % NE) exit
+            read(rec(45:55), '(E11.0)') isotopes(i) % GF_mean(i_l+1)%dim2(i_J)%dim1(i_ES)
+            if (i_ES == isotopes(i) % NE) exit
             i_ES = i_ES + 1
-            read(rec(56:66), '(E11.0)') tope % GF_mean(i_l+1)%dim2(i_J)%dim1(i_ES)
-            if (i_ES == tope % NE) exit
+            read(rec(56:66), '(E11.0)') isotopes(i) % GF_mean(i_l+1)%dim2(i_J)%dim1(i_ES)
+            if (i_ES == isotopes(i) % NE) exit
             i_ES = i_ES + 1
           end do
         end do
@@ -1207,14 +1204,13 @@ contains
 
 !$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$
 !
-! READ_URR_SLBW_PARAMETERS_LRF2 reads in unresolved resonance region parameters
-! for the LRF = 2 option (allow energy-dependence for all parameters)
+! Read in unresolved resonance region parameters for the LRF = 2 option
+! (allow energy-dependence for all parameters)
 !
 !$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$
 
   subroutine read_urr_slbw_parameters_lrf2(i, i_ER)
 
-    type(Isotope), pointer :: tope => null() ! isotope pointer
     character(80) :: rec ! ENDF-6 file record
     integer :: i    ! index in global isotopes array
     integer :: i_ER ! energy range index
@@ -1224,105 +1220,103 @@ contains
     integer :: i_E  ! energy region index
     real(8) :: A    ! isotope/neutron mass ratio
 
-    tope => isotopes(i)
-
     ! read first line of energy range subsection
     read(in, 10) rec
 10  format(A80)
-    read(rec(1:11),  '(E11.0)') tope % SPI(i_ER)
-    read(rec(12:22), '(E11.0)') tope % AP(i_ER)
+    read(rec(1:11),  '(E11.0)') isotopes(i) % SPI(i_ER)
+    read(rec(12:22), '(E11.0)') isotopes(i) % AP(i_ER)
 ! TODO: don't overwrite the resolved value
-    call tope % channel_radius(i_ER)
-    read(rec(23:33), '(I11)')   tope % LSSF
-    read(rec(45:55), '(I11)')   tope % NLS(i_ER)
-    if (tope % NLS(i_ER) > 3) &
+    call isotopes(i) % channel_radius(i_ER)
+    read(rec(23:33), '(I11)')   isotopes(i) % LSSF
+    read(rec(45:55), '(I11)')   isotopes(i) % NLS(i_ER)
+    if (isotopes(i) % NLS(i_ER) > 3) &
          call fatal_error('URR parameters given for a spin sequence higher than&
          & d-wave')
 
     ! allocate number of total angular momenta values for each l
-    allocate(tope % NJS(tope % NLS(i_ER)))
+    allocate(isotopes(i) % NJS(isotopes(i) % NLS(i_ER)))
 
     ! allocate total angular momentua
-    allocate(tope % AJ(tope % NLS(i_ER)))
+    allocate(isotopes(i) % AJ(isotopes(i) % NLS(i_ER)))
 
     ! allocate degrees of freedom for partial widths
-    allocate(tope % DOFX(tope % NLS(i_ER)))
-    allocate(tope % DOFN(tope % NLS(i_ER)))
-    allocate(tope % DOFG(tope % NLS(i_ER)))
-    allocate(tope % DOFF(tope % NLS(i_ER)))
+    allocate(isotopes(i) % DOFX(isotopes(i) % NLS(i_ER)))
+    allocate(isotopes(i) % DOFN(isotopes(i) % NLS(i_ER)))
+    allocate(isotopes(i) % DOFG(isotopes(i) % NLS(i_ER)))
+    allocate(isotopes(i) % DOFF(isotopes(i) % NLS(i_ER)))
 
     ! loop over orbital quantum numbers
-    do i_l = 0, tope % NLS(i_ER) - 1
+    do i_l = 0, isotopes(i) % NLS(i_ER) - 1
       read(in, 10) rec
       read(rec(1:11),  '(E11.0)') A
       read(rec(23:33),   '(I11)') L
-      read(rec(45:55),   '(I11)') tope % NJS(i_l + 1)
+      read(rec(45:55),   '(I11)') isotopes(i) % NJS(i_l + 1)
 
       ! check mass ratios
-      call check_mass(A, tope % AWR)
+      call check_mass(A, isotopes(i) % AWR)
 
       ! check orbital quantum number
       call check_l_number(L, i_L)
 
       ! allocate total angular momenta
-      allocate(tope % AJ(i_l + 1) % dim1(tope % NJS(i_l + 1)))
+      allocate(isotopes(i) % AJ(i_l + 1) % dim1(isotopes(i) % NJS(i_l + 1)))
       
       ! allocate degress of freedom for partial widths
-      allocate(tope % DOFX(i_l + 1) % dim1(tope % NJS(i_l + 1)))
-      allocate(tope % DOFN(i_l + 1) % dim1(tope % NJS(i_l + 1)))
-      allocate(tope % DOFG(i_l + 1) % dim1(tope % NJS(i_l + 1)))
-      allocate(tope % DOFF(i_l + 1) % dim1(tope % NJS(i_l + 1)))
+      allocate(isotopes(i) % DOFX(i_l + 1) % dim1(isotopes(i) % NJS(i_l + 1)))
+      allocate(isotopes(i) % DOFN(i_l + 1) % dim1(isotopes(i) % NJS(i_l + 1)))
+      allocate(isotopes(i) % DOFG(i_l + 1) % dim1(isotopes(i) % NJS(i_l + 1)))
+      allocate(isotopes(i) % DOFF(i_l + 1) % dim1(isotopes(i) % NJS(i_l + 1)))
 
       ! loop over total angular momenta
-      do i_J = 1, tope % NJS(i_l + 1)
+      do i_J = 1, isotopes(i) % NJS(i_l + 1)
 
         read(in, 10) rec
-        read(rec(1:11), '(E11.0)') tope % AJ(i_l + 1) % dim1(i_J)
-        read(rec(23:33),  '(I11)') tope % INT
-        read(rec(56:66),  '(I11)') tope % NE
+        read(rec(1:11), '(E11.0)') isotopes(i) % AJ(i_l + 1) % dim1(i_J)
+        read(rec(23:33),  '(I11)') isotopes(i) % INT
+        read(rec(56:66),  '(I11)') isotopes(i) % NE
 
         ! allocate energies, mean level spacings, partial widths, 
         ! and avgeraged URR cross section values
-        if (.not. (allocated(tope % ES))) then
-          allocate(tope % ES(tope % NE))
-          allocate(tope % D_mean  (tope % NLS(i_ER)))
-          allocate(tope % GN0_mean(tope % NLS(i_ER)))
-          allocate(tope % GG_mean (tope % NLS(i_ER)))
-          allocate(tope % GF_mean (tope % NLS(i_ER)))
-          allocate(tope % GX_mean (tope % NLS(i_ER)))
-          if ((tope % LSSF) == 1 .and. (.not. write_avg_urr_xs)) then
-            call read_avg_urr_xs(i)
+        if (.not. (allocated(isotopes(i) % ES))) then
+          allocate(isotopes(i) % ES(isotopes(i) % NE))
+          allocate(isotopes(i) % D_mean  (isotopes(i) % NLS(i_ER)))
+          allocate(isotopes(i) % GN0_mean(isotopes(i) % NLS(i_ER)))
+          allocate(isotopes(i) % GG_mean (isotopes(i) % NLS(i_ER)))
+          allocate(isotopes(i) % GF_mean (isotopes(i) % NLS(i_ER)))
+          allocate(isotopes(i) % GX_mean (isotopes(i) % NLS(i_ER)))
+          if ((isotopes(i) % LSSF) == 1 .and. (.not. write_avg_xs)) then
+            call read_avg_xs(i)
           end if
         end if
-        if (.not. (allocated(tope % D_mean(i_l + 1) % dim2))) then
-          allocate(tope % D_mean  (i_l + 1) % dim2(tope % NJS(i_l + 1)))
-          allocate(tope % GN0_mean(i_l + 1) % dim2(tope % NJS(i_l + 1)))
-          allocate(tope % GG_mean (i_l + 1) % dim2(tope % NJS(i_l + 1)))
-          allocate(tope % GF_mean (i_l + 1) % dim2(tope % NJS(i_l + 1)))
-          allocate(tope % GX_mean (i_l + 1) % dim2(tope % NJS(i_l + 1)))
+        if (.not. (allocated(isotopes(i) % D_mean(i_l + 1) % dim2))) then
+          allocate(isotopes(i) % D_mean  (i_l + 1) % dim2(isotopes(i) % NJS(i_l + 1)))
+          allocate(isotopes(i) % GN0_mean(i_l + 1) % dim2(isotopes(i) % NJS(i_l + 1)))
+          allocate(isotopes(i) % GG_mean (i_l + 1) % dim2(isotopes(i) % NJS(i_l + 1)))
+          allocate(isotopes(i) % GF_mean (i_l + 1) % dim2(isotopes(i) % NJS(i_l + 1)))
+          allocate(isotopes(i) % GX_mean (i_l + 1) % dim2(isotopes(i) % NJS(i_l + 1)))
         end if
-        allocate(tope % D_mean  (i_l + 1) % dim2(i_J) % dim1(tope % NE))
-        allocate(tope % GN0_mean(i_l + 1) % dim2(i_J) % dim1(tope % NE))
-        allocate(tope % GG_mean (i_l + 1) % dim2(i_J) % dim1(tope % NE))
-        allocate(tope % GF_mean (i_l + 1) % dim2(i_J) % dim1(tope % NE))
-        allocate(tope % GX_mean (i_l + 1) % dim2(i_J) % dim1(tope % NE))
+        allocate(isotopes(i) % D_mean  (i_l + 1) % dim2(i_J) % dim1(isotopes(i) % NE))
+        allocate(isotopes(i) % GN0_mean(i_l + 1) % dim2(i_J) % dim1(isotopes(i) % NE))
+        allocate(isotopes(i) % GG_mean (i_l + 1) % dim2(i_J) % dim1(isotopes(i) % NE))
+        allocate(isotopes(i) % GF_mean (i_l + 1) % dim2(i_J) % dim1(isotopes(i) % NE))
+        allocate(isotopes(i) % GX_mean (i_l + 1) % dim2(i_J) % dim1(isotopes(i) % NE))
 
         ! read in degrees of freedom
         read(in, 10) rec
-        read(rec(23:33), '(E11.0)') tope % DOFX(i_l + 1) % dim1(i_J)
-        read(rec(34:44), '(E11.0)') tope % DOFN(i_l + 1) % dim1(i_J)
-        read(rec(45:55), '(E11.0)') tope % DOFG(i_l + 1) % dim1(i_J)
-        read(rec(56:66), '(E11.0)') tope % DOFF(i_l + 1) % dim1(i_J)
+        read(rec(23:33), '(E11.0)') isotopes(i) % DOFX(i_l + 1) % dim1(i_J)
+        read(rec(34:44), '(E11.0)') isotopes(i) % DOFN(i_l + 1) % dim1(i_J)
+        read(rec(45:55), '(E11.0)') isotopes(i) % DOFG(i_l + 1) % dim1(i_J)
+        read(rec(56:66), '(E11.0)') isotopes(i) % DOFF(i_l + 1) % dim1(i_J)
 
         ! loop over energies for which data are tabulated
-        do i_E = 1, tope % NE
+        do i_E = 1, isotopes(i) % NE
           read(in, 10) rec
-          read(rec(1:11), '(E11.0)') tope % ES(i_E)
-          read(rec(12:22),'(E11.0)') tope%D_mean  (i_l+1)% dim2(i_J) % dim1(i_E)
-          read(rec(23:33),'(E11.0)') tope%GX_mean (i_l+1)% dim2(i_J) % dim1(i_E)
-          read(rec(34:44),'(E11.0)') tope%GN0_mean(i_l+1)% dim2(i_J) % dim1(i_E)
-          read(rec(45:55),'(E11.0)') tope%GG_mean (i_l+1)% dim2(i_J) % dim1(i_E)
-          read(rec(56:66),'(E11.0)') tope%GF_mean (i_l+1)% dim2(i_J) % dim1(i_E)
+          read(rec(1:11), '(E11.0)') isotopes(i) % ES(i_E)
+          read(rec(12:22),'(E11.0)') isotopes(i)%D_mean  (i_l+1)% dim2(i_J) % dim1(i_E)
+          read(rec(23:33),'(E11.0)') isotopes(i)%GX_mean (i_l+1)% dim2(i_J) % dim1(i_E)
+          read(rec(34:44),'(E11.0)') isotopes(i)%GN0_mean(i_l+1)% dim2(i_J) % dim1(i_E)
+          read(rec(45:55),'(E11.0)') isotopes(i)%GG_mean (i_l+1)% dim2(i_J) % dim1(i_E)
+          read(rec(56:66),'(E11.0)') isotopes(i)%GF_mean (i_l+1)% dim2(i_J) % dim1(i_E)
         end do
       end do
     end do
@@ -1331,7 +1325,7 @@ contains
 
 !$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$
 !
-! CHECK_ZAID checks that the ZAID given in the ENDF-6 file is the same as that
+! Check that the ZAID given in the ENDF-6 file is the same as that
 ! given in the processed ACE file
 !
 !$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$
@@ -1349,7 +1343,7 @@ contains
 
 !$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$
 !
-! CHECK_MASS checks that the AWR given in the ENDF-6 file is the same value as
+! Check that the AWR given in the ENDF-6 file is the same value as
 ! that given in the processed ACE file
 !
 !$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$
@@ -1367,7 +1361,7 @@ contains
 
 !$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$
 !
-! CHECK_Q_VALUE checks that the Q-value is 0.0
+! Check that the Q-value is 0.0
 !
 !$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$
 
@@ -1382,7 +1376,7 @@ contains
 
 !$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$
 !
-! CHECK_PARAMETERS checks that resonance parameters are given in MF=2
+! Check that resonance parameters are given in MF=2
 !
 !$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$
 
@@ -1409,8 +1403,7 @@ contains
 
 !$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$
 !
-! CHECK_SINGLE_ISOTOPE checks that the given ENDF-6 file contains data for only
-! a single isotope
+! Check that the given ENDF-6 file contains data for only a single isotope
 !
 !$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$
 
@@ -1426,8 +1419,7 @@ contains
 
 !$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$
 !
-! CHECK_ABUNDANCE checks that the abundance of the isotope in the ENDF-6 file is
-! unity
+! Check that the abundance of the isotope in the ENDF-6 file is unity
 !
 !$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$
 
@@ -1443,8 +1435,7 @@ contains
 
 !$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$
 !
-! CHECK_FISSION_WIDTHS checks that the treatment of average fission widths in
-! the URR is supported
+! Check that the treatment of average fission widths in the URR is supported
 !
 !$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$
 
@@ -1467,7 +1458,7 @@ contains
 
 !$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$
 !
-! CHECK_ENERGY_RANGES makes sure the upper energy is greater than the lower and
+! Check that the upper energy is greater than the lower and
 ! that the number of resonance energy ranges is allowable
 !
 !$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$
@@ -1493,7 +1484,7 @@ contains
 
 !$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$
 !
-! CHECK_RADIUS_FLAGS checks the channel and scattering radius flags
+! Check the channel and scattering radius flags
 !
 !$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$
 
@@ -1536,8 +1527,7 @@ contains
 
 !$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$
 !
-! CHECK_SCATTERING_RADIUS checks that the scattering radius does not change
-! within a resonance energy range
+! Check that the scattering radius is constant within a resonance energy range
 !
 !$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$
 
@@ -1590,4 +1580,4 @@ contains
 
   end subroutine check_j_sign
 
-end module URR_endf6_parser
+end module URR_endf6

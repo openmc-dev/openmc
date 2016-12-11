@@ -2,55 +2,6 @@ module constants
 
   implicit none
 
-  integer, parameter :: FALSE = 0
-
-  ! Number of gridpoints for the average URR cross section grids
-  integer, parameter :: N_AVG_URR_GRID = 50
-
-  ! Lower cross section cutoff threshold value [b]
-  real(8), parameter :: XS_CUTOFF = 1.0e-14_8
-
-  ! Relative precision to use for comparing ENDF-6 file values
-  real(8), parameter :: ENDF_PRECISION = 1.0e-7_8
-
-  ! Faddeeva (W) function evaluation methods
-  integer, parameter :: MIT_W   = 1
-  integer, parameter :: QUICK_W = 2
-
-  ! Resonance formalisms
-  integer, parameter :: SLBW         = 1
-  integer, parameter :: MLBW         = 2
-  integer, parameter :: REICH_MOORE  = 3
-  integer, parameter :: ADLER_ADLER  = 4
-  integer, parameter :: R_MATRIX     = 5
-  integer, parameter :: R_FUNCTION   = 6
-  integer, parameter :: R_MATRIX_LIM = 7
-  integer, parameter :: MNBW         = 8
-
-  ! Cross section representation formats
-  integer, parameter :: PROB_BANDS = 1
-  integer, parameter :: POINTWISE  = 2
-  integer, parameter :: ON_THE_FLY = 3
-
-  ! Resonance parameters' energy-dependence representation
-  integer, parameter :: E_NEUTRON   = 1 ! E_n-dependent
-  integer, parameter :: E_RESONANCE = 2 ! E_lambda-dependent
-
-  ! URR realization frequencies
-  integer, parameter :: EVENT      = 1
-  integer, parameter :: HISTORY    = 2
-  integer, parameter :: BATCH      = 3
-  integer, parameter :: SIMULATION = 4
-
-  ! Probability table cross section band spacing and energy schemes
-  integer, parameter :: LINEAR      = 1
-  integer, parameter :: LOGARITHMIC = 2
-  integer, parameter :: USER        = 3
-  integer, parameter :: ENDF6       = 4
-
-  ! Source of background cross sections
-  integer, parameter :: ENDFFILE  = 1
-
   ! ============================================================================
   ! VERSIONING NUMBERS
 
@@ -121,18 +72,12 @@ module constants
        K_BOLTZMANN  = 8.6173324e-11,     & ! Boltzmann constant in MeV/K
        HBAR_C       = 197.3269718E6_8,   & ! [eV-fm]
        INFINITY     = huge(1.0_8),       & ! largest positive non-infinite dble
-       INF          = huge(1.0_8),       & ! largest positive non-infinite dble
        ZERO         = 0.0_8,             &
        HALF         = 0.5_8,             &
        ONE          = 1.0_8,             &
        TWO          = 2.0_8,             &
        THREE        = 3.0_8,             &
        FOUR         = 4.0_8
-
-  ! constant appearing in SLBW equations
-  real(8) :: C_1 = sqrt(TWO * M_NEUTRON_eV) / HBAR_C * 1.0E1_8
-
-  complex(8), parameter :: ONEI = (ZERO, ONE)
 
   ! ============================================================================
   ! GEOMETRY-RELATED CONSTANTS

@@ -3,12 +3,9 @@ module initialize
   use ace,              only: read_xs, same_nuclide_list
   use bank_header,      only: Bank
   use constants
-  use cross_section,    only: write_xs
   use dict_header,      only: DictIntInt, ElemKeyValueII
-  use URR_endf6_parser, only: read_endf6
   use energy_grid,      only: unionized_grid
   use error,            only: fatal_error, warning
-  use faddeeva,         only: tabulate_w
   use finalize,         only: finalize_run
   use geometry,         only: neighbor_lists
   use geometry_header,  only: Cell, Universe, Lattice, BASE_UNIVERSE
@@ -20,13 +17,37 @@ module initialize
                               print_usage, write_xs_summary, print_plot,&
                               write_message
   use output_interface
-  use physics,          only: write_angle
   use random_lcg,       only: initialize_prng
   use source,           only: initialize_source
   use state_point,      only: load_state_point
   use string,           only: to_str, str_to_int, starts_with, ends_with
   use tally_header,     only: TallyObject, TallyResult
   use tally_initialize, only: configure_tallies
+
+  ! URR API
+  use URR_edits,     only: URR_write_angle => write_angle,&
+                           URR_write_xs => write_xs
+  use URR_endf6,     only: URR_read_endf6 => read_endf6
+  use URR_faddeeva,  only: URR_tabulate_w => tabulate_w
+  use URR_io,        only: URR_read_prob_tables => read_prob_tables
+  use URR_isotope,   only: URR_isotopes => isotopes
+  use URR_constants, only: URR_ON_THE_FLY => ON_THE_FLY,&
+                           URR_PROB_BANDS => PROB_BANDS,&
+                           URR_POINTWISE => POINTWISE,&
+                           URR_EVENT => EVENT,&
+                           URR_HISTORY => HISTORY,&
+                           URR_BATCH => BATCH,&
+                           URR_SIMULATION => SIMULATION,&
+                           URR_E_RESONANCE => E_RESONANCE
+  use URR_settings,  only: URR_xs_representation => xs_representation,&
+                           URR_num_isotopes => num_isotopes,&
+                           URR_parameter_energy_dependence => parameter_energy_dependence,&
+                           URR_write_avg_xs => write_avg_xs,&
+                           URR_write_prob_tables => write_prob_tables,&
+                           URR_pregenerated_prob_tables => pregenerated_prob_tables,&
+                           URR_use_urr => use_urr,&
+                           URR_realization_frequency => realization_frequency,&
+                           URR_endf_filenames => endf_filenames
 
 #ifdef MPI
   use mpi
@@ -114,56 +135,57 @@ contains
       call time_read_xs % stop()
 
       ! write out ACE elastic scatter secondary angular distributions
-      call write_angle()
+      call URR_write_angle()
 
       ! Read ENDF-6 format nuclear data file
-      if (use_urr) then
+      if (URR_use_urr) then
         call initialize_endf()
-        call tabulate_w()
+        call URR_tabulate_w()
 
         ! allocate space for a realization of parameters localized about E_n
-        do i = 1, n_isotopes
-          call isotopes(i) % alloc_local_realization()
-          isotopes(i) % EH(isotopes(i) % i_urr)&
-               = min(isotopes(i) % EH(isotopes(i)%i_urr), isotopes(i) % max_E_urr)
+        do i = 1, URR_num_isotopes
+          call URR_isotopes(i) % alloc_local_realization()
+          URR_isotopes(i) % EH(URR_isotopes(i) % i_urr)&
+               = min(URR_isotopes(i) % EH(URR_isotopes(i)%i_urr), URR_isotopes(i) % max_E_urr)
         end do
 
-        select case (represent_urr)
-        case (PROB_BANDS)
-          do i = 1, n_isotopes
+        select case (URR_xs_representation)
+        case (URR_PROB_BANDS)
+          do i = 1, URR_num_isotopes
             do i_nuc = 1, n_nuclides_total
-              if (isotopes(i) % ZAI == nuclides(i_nuc) % zaid) then
-                call isotopes(i) % ace_T_list &
+              if (URR_isotopes(i) % ZAI == nuclides(i_nuc) % zaid) then
+                call URR_isotopes(i) % ace_T_list &
                   % append(nuclides(i_nuc) % kT / K_BOLTZMANN)
-                call isotopes(i) % ace_index_list % append(i_nuc)
+                call URR_isotopes(i) % ace_index_list % append(i_nuc)
               end if
             end do
-            if (load_urr_prob_tables) then
-              call load_prob_tables(i)
+            if (URR_pregenerated_prob_tables) then
+              call URR_read_prob_tables(i)
             else
-              call isotopes(i) % alloc_prob_tables()
-              call calc_prob_tables(i)
+              call URR_isotopes(i) % alloc_prob_tables()
+              call URR_isotopes(i) % generate_prob_tables(i)
             end if
           end do
-          if (write_avg_urr_xs .or. write_urr_prob_tables) return
+          if (URR_write_avg_xs .or. URR_write_prob_tables) return
 
-        case (ON_THE_FLY)
-          select case (real_freq)
-          case (EVENT)
+        case (URR_ON_THE_FLY)
+          select case (URR_realization_frequency)
+          case (URR_EVENT)
             continue
-          case (HISTORY)
+          case (URR_HISTORY)
             continue
             call fatal_error('History-based URR realizations not yet supported')
-          case (BATCH)
+          case (URR_BATCH)
             continue
             call fatal_error('Batch-based URR realizations not yet supported')
-          case (SIMULATION)
-            if (represent_params /= E_RESONANCE) call fatal_error('Generating &
-                 &a resonance ensemble with E_n-dependent parameters')
-            do i = 1, n_isotopes
+          case (URR_SIMULATION)
+            if (URR_parameter_energy_dependence /= URR_E_RESONANCE)&
+                 call fatal_error('Generating a resonance ensemble with parameters&
+                 & dependent on neutron energy')
+            do i = 1, URR_num_isotopes
               do i_nuc = 1, n_nuclides_total
-                if (isotopes(i) % ZAI == nuclides(i_nuc) % zaid) then
-                  call resonance_ensemble(i)
+                if (URR_isotopes(i) % ZAI == nuclides(i_nuc) % zaid) then
+                  call URR_isotopes(i) % resonance_ladder_realization()
                 end if
               end do
             end do
@@ -171,14 +193,14 @@ contains
             call fatal_error('Not a recognized URR realization frequency')
           end select
 
-        case (POINTWISE)
-          if (represent_params /= E_RESONANCE) call fatal_error('Generating &
+        case (URR_POINTWISE)
+          if (URR_parameter_energy_dependence /= URR_E_RESONANCE) call fatal_error('Generating &
                &a resonance ensemble with E_n-dependent parameters')
-          do i = 1, n_isotopes
+          do i = 1, URR_num_isotopes
             do i_nuc = 1, n_nuclides_total
-              if (isotopes(i) % ZAI == nuclides(i_nuc) % zaid) then
-                call resonance_ensemble(i)
-                call pointwise_urr(i, nuclides(i_nuc) % kT / K_BOLTZMANN)
+              if (URR_isotopes(i) % ZAI == nuclides(i_nuc) % zaid) then
+                call URR_isotopes(i) % resonance_ladder_realization()
+                call URR_isotopes(i) % generate_pointwise_xs(nuclides(i_nuc) % kT / K_BOLTZMANN)
               end if
             end do
           end do
@@ -186,7 +208,9 @@ contains
         case default
           call fatal_error('Must specify a URR treatment: probability bands,&
             & on-the-fly, or pointwise')
+
         end select
+
       end if
 
       ! Create linked lists for multiple instances of the same nuclide
@@ -200,7 +224,7 @@ contains
       end if
 
       ! Write user-requested energy-xs coordinate files
-      if (master) call write_xs()
+      if (master) call URR_write_xs()
 
       ! Allocate and setup tally stride, matching_bins, and tally maps
       call configure_tallies()
@@ -264,34 +288,34 @@ contains
     integer :: i     ! isotope index
     integer :: i_nuc ! ACE data index
 
-    do i = 1, n_isotopes
+    do i = 1, URR_num_isotopes
       do i_nuc = 1, n_nuclides_total
-        if (nuclides(i_nuc) % zaid == isotopes(i) % ZAI) then
-          nuclides(i_nuc) % i_sotope = i
+        if (nuclides(i_nuc) % zaid == URR_isotopes(i) % ZAI) then
+          nuclides(i_nuc) % i_isotope = i
           if (nuclides(i_nuc) % fissionable) then
-            isotopes(i) % fissionable = .true.
+            URR_isotopes(i) % fissionable = .true.
           else
-            isotopes(i) % fissionable = .false.
+            URR_isotopes(i) % fissionable = .false.
           end if
 
-          isotopes(i) % prob_bands   = .false.
-          isotopes(i) % otf_urr_xs   = .false.
-          isotopes(i) % point_urr_xs = .false.
-          select case (represent_urr)
-          case (PROB_BANDS)
-            isotopes(i) % prob_bands = .true.
-          case (ON_THE_FLY)
-            isotopes(i) % otf_urr_xs = .true.
-          case (POINTWISE)
-            isotopes(i) % point_urr_xs = .true.
+          URR_isotopes(i) % prob_bands   = .false.
+          URR_isotopes(i) % otf_urr_xs   = .false.
+          URR_isotopes(i) % point_urr_xs = .false.
+          select case (URR_xs_representation)
+          case (URR_PROB_BANDS)
+            URR_isotopes(i) % prob_bands = .true.
+          case (URR_ON_THE_FLY)
+            URR_isotopes(i) % otf_urr_xs = .true.
+          case (URR_POINTWISE)
+            URR_isotopes(i) % point_urr_xs = .true.
           case default
             call fatal_error('Not a recognized URR representation')
           end select
 
           ! read ENDF-6 file unless it's already been read for this isotope
-          if (.not. isotopes(i) % been_read) then
-            call read_endf6(endf_files(i), i)
-            isotopes(i) % been_read = .true.
+          if (.not. URR_isotopes(i) % been_read) then
+            call URR_read_endf6(URR_endf_filenames(i), i)
+            URR_isotopes(i) % been_read = .true.
           end if
         end if
       end do

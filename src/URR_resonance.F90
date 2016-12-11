@@ -1,17 +1,53 @@
 module URR_resonance
 
+  use URR_constants,      only: PI,&
+                                FOUR,&
+                                SLBW,&
+                                MLBW,&
+                                REICH_MOORE,&
+                                MNBW
+  use URR_cross_sections, only: CrossSections
   implicit none
   private
-  public :: BWResonanceListVec, BWResonanceVec, BWResonanceVecVec,&
-            RMResonanceVec
+  public :: BreitWignerResonanceListVector1D,&
+            BreitWignerResonanceVector1D,&
+            BreitWignerResonanceVector2D,&
+            ReichMooreResonanceVector1D,&
+            Resonance,&
+            wigner_level_spacing
 
 !$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$
 !
-! BWRESONANCE is a Breit-Wigner resonance object
+! Object containing information about a resonance that is contributing to the
+! cross section value at an energy grid point in the URR
 !
 !$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$
 
-  type :: BWResonance
+  type Resonance
+
+    ! sampled unresolved resonance parameters
+    real(8) :: E_lam ! sampled resonance energy
+    real(8) :: Gam_t ! sampled total width
+    real(8) :: Gam_n ! sampled neutron width
+    real(8) :: Gam_g ! sampled radiative width
+    real(8) :: Gam_f ! sampled fission width
+    real(8) :: Gam_x ! sampled competitive width
+
+    ! counter for the number of resonances added for a given spin sequence
+    integer :: i_res
+
+    ! partial and total contributions from resonance to xs values at E_n
+    type(CrossSections) :: xs_contribution
+
+  end type Resonance
+
+!$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$
+!
+! Breit-Wigner resonance object
+!
+!$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$
+
+  type :: BreitWignerResonance
 
     real(8) :: E_lam ! resonance energy
     real(8) :: AJ    ! total angular momentum, J
@@ -21,132 +57,121 @@ module URR_resonance
     real(8) :: GX    ! competitive width
     real(8) :: GT    ! total width
 
-  end type BWResonance
+  end type BreitWignerResonance
 
 !$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$
 !
-! RMRESONANCE is a Reich-Moore resonance object
+! Reich-Moore resonance object
 !
 !$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$
 
-  type, extends(BWResonance) :: RMResonance
+  type, extends(BreitWignerResonance) :: ReichMooreResonance
 
     real(8) :: GFA ! fission width A
     real(8) :: GFB ! fission width B
 
-  end type RMResonance
+  end type ReichMooreResonance
 
 !$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$
 !
-! BWRESONANCEVEC is a vector of Breit-Wigner resonances
+! Vector of Breit-Wigner resonances
 !
 !$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$
 
-  type :: BWResonanceVec
+  type :: BreitWignerResonanceVector1D
 
-    type(BWResonance), allocatable :: res(:)
+    type(BreitWignerResonance), allocatable :: res(:)
 
-  ! type-bound procedures
   contains
 
-    ! allocate vector of Breit-Wigner resonances
-    procedure :: alloc => alloc_bwresonance_vec
+    procedure :: alloc   => alloc_bwresonance_vec
+    procedure :: dealloc => dealloc_bwresonance_vec
 
-    ! deallocate vector of Breit-Wigner resonances
-    procedure :: clear => clear_bwresonance_vec
-
-  end type BWResonanceVec
+  end type BreitWignerResonanceVector1D
 
 !$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$
 !
-! RMRESONANCEVEC is a vector of Reich-Moore resonances
+! Vector of Reich-Moore resonances
 !
 !$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$
 
-  type :: RMResonanceVec
+  type :: ReichMooreResonanceVector1D
 
-    type(RMResonance), allocatable :: res(:)
+    type(ReichMooreResonance), allocatable :: res(:)
 
-  ! type-bound procedures
   contains
 
-    ! allocate vector of Reich-Moore resonances
-    procedure :: alloc => alloc_rmresonance_vec
+    procedure :: alloc   => alloc_rmresonance_vec
+    procedure :: dealloc => dealloc_rmresonance_vec
 
-    ! deallocate vector of Reich-Moore resonances
-    procedure :: clear => clear_rmresonance_vec
-
-  end type RMResonanceVec
+  end type ReichMooreResonanceVector1D
 
 !$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$
 !
-! BWRESONANCEVECVEC is a vector of length NJS(l) containing a vector of NRS(l,J)
-! Breit-Wigner resonances for each J(l)
+! Vector of length NJS(l) containing a vector of NRS(l,J) Breit-Wigner
+! resonances for each J(l)
 !
 !$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$
 
-  type :: BWResonanceVecVec
+  type :: BreitWignerResonanceVector2D
 
-    type(BWResonanceVec), allocatable :: J(:)
+    type(BreitWignerResonanceVector1D), allocatable :: J(:)
 
-  end type BWResonanceVecVec
-
-!$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$
-!
-! BWRESONANCEELEM contains one element of a linked list of Breit-Wigner
-! resonances
-!
-!$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$
-
-  type, extends(BWResonance) :: BWResonanceElem
-
-    type(BWResonanceElem), pointer :: next => null() ! next resonance in list
-
-  end type BWResonanceElem
+  end type BreitWignerResonanceVector2D
 
 !$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$
 !
-! BWRESONANCELIST is a linked list object containing Breit-Wigner resonances
+! One element of a linked list of Breit-Wigner resonances
 !
 !$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$
 
-  type BWResonanceList
+  type, extends(BreitWignerResonance) :: BreitWignerResonanceElement
 
-    type(BWResonanceElem) :: first ! first resonance
-    type(BWResonanceElem), pointer :: res => null() ! current resonance
+    type(BreitWignerResonanceElement), pointer :: next => null() ! next resonance in list
 
-  ! type-bound procedures
+  end type BreitWignerResonanceElement
+
+!$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$
+!
+! Linked list object containing Breit-Wigner resonances
+!
+!$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$
+
+  type BreitWignerResonanceList
+
+    type(BreitWignerResonanceElement) :: first ! first resonance
+    type(BreitWignerResonanceElement), pointer :: res => null() ! current resonance
+
   contains
 
-    ! deallocate linked list of Breit-Wigner resonances
-    procedure :: clear => clear_bwresonance_list
+    procedure :: dealloc => dealloc_bwresonance_list
 
-  end type BWResonanceList
+  end type BreitWignerResonanceList
 
 !$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$
 !
-! BWRESONANCELISTVEC is a vector of length NJS(l) containing a linked list of
-! NRS(l,J) Breit-Wigner resonances for each J(l)
+! Vector of length NJS(l) containing a linked list of NRS(l,J) Breit-Wigner
+! resonances for each J(l)
 !
 !$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$
 
-  type BWResonanceListVec
+  type BreitWignerResonanceListVector1D
 
-    type(BWResonanceList), allocatable :: J(:)
+    type(BreitWignerResonanceList), allocatable :: J(:)
 
-  end type BWResonanceListVec
+  end type BreitWignerResonanceListVector1D
 
 contains
 
 !$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$
 !
-! ALLOC_BWRESONANCE_VEC allocates a vector of Breit-Wigner resonances
+! Allocate a vector of Breit-Wigner resonances
 !
 !$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$
 
   subroutine alloc_bwresonance_vec(this, NRS)
 
-    class(BWResonanceVec), intent(inout) :: this ! resonance vector
+    class(BreitWignerResonanceVector1D), intent(inout) :: this ! resonance vector
     integer :: NRS ! number of resonances for this l-wave
 
     allocate(this % res(NRS))
@@ -155,13 +180,13 @@ contains
 
 !$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$
 !
-! ALLOC_RMRESONANCE_VEC allocates a vector of Reich-Moore resonances
+! Allocate a vector of Reich-Moore resonances
 !
 !$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$
 
   subroutine alloc_rmresonance_vec(this, NRS)
 
-    class(RMResonanceVec), intent(inout) :: this ! resonance vector
+    class(ReichMooreResonanceVector1D), intent(inout) :: this ! resonance vector
     integer :: NRS ! number of resonances for this l-wave
 
     allocate(this % res(NRS))
@@ -170,42 +195,42 @@ contains
 
 !$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$
 !
-! CLEAR_BWRESONANCE_VEC deallocates a vector of Breit-Wigner resonances
+! Deallocate a vector of Breit-Wigner resonances
 !
 !$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$
 
-  subroutine clear_bwresonance_vec(this)
+  subroutine dealloc_bwresonance_vec(this)
 
-    class(BWResonanceVec), intent(inout) :: this ! resonance vector
+    class(BreitWignerResonanceVector1D), intent(inout) :: this ! resonance vector
 
     deallocate(this % res)
 
-  end subroutine clear_bwresonance_vec
+  end subroutine dealloc_bwresonance_vec
 
 !$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$
 !
-! CLEAR_RMRESONANCE_VEC deallocates a vector of Reich-Moore resonances
+! Deallocate a vector of Reich-Moore resonances
 !
 !$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$
 
-  subroutine clear_rmresonance_vec(this)
+  subroutine dealloc_rmresonance_vec(this)
 
-    class(RMResonanceVec), intent(inout) :: this ! resonance vector
+    class(ReichMooreResonanceVector1D), intent(inout) :: this ! resonance vector
 
     deallocate(this % res)
 
-  end subroutine clear_rmresonance_vec
+  end subroutine dealloc_rmresonance_vec
 
 !$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$
 !
-! CLEAR_BWRESONANCE_LIST deallocates a linked list of Breit-Wigner resonances
+! Deallocate a linked list of Breit-Wigner resonances
 !
 !$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$
 
-  subroutine clear_bwresonance_list(this)
+  subroutine dealloc_bwresonance_list(this)
 
-    class(BWResonanceList), target, intent(inout) :: this ! resonance element
-    type(BWResonanceElem), pointer :: next => null() ! next resonance element
+    class(BreitWignerResonanceList), target, intent(inout) :: this ! resonance element
+    type(BreitWignerResonanceElement), pointer :: next => null() ! next resonance element
 
     ! start at beginning of list
     this % res => this % first
@@ -228,6 +253,23 @@ contains
     ! finish it off
     nullify(next)
 
-  end subroutine clear_bwresonance_list
+  end subroutine dealloc_bwresonance_list
+
+!$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$
+!
+! Sample the Wigner distribution for level spacings
+!
+!$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$
+
+  function wigner_level_spacing(D_avg, prn) result(D_samp)
+
+    real(8) :: D_avg  ! mean level spacing
+    real(8) :: prn    ! pseudo-random number
+    real(8) :: D_samp ! sampled level spacing
+
+    ! sample a level spacing by directly inverting the Wigner distribution CDF
+    D_samp = D_avg * sqrt(-FOUR * log(prn) / PI)
+
+  end function wigner_level_spacing
 
 end module URR_resonance

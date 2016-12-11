@@ -2,42 +2,44 @@ module URR_vector
 
   implicit none
   private
-  public :: VecReal, VecVecReal, VecInt
+  public :: VectorReal1D,&
+            VectorReal2D,&
+            VectorInt1D
 
 !$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$
 !
-! VECREAL is an object containing a vector of reals
+! Vector of reals
 !
 !$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$
 
-  type :: VecReal
+  type :: VectorReal1D
 
     real(8), allocatable :: dim1(:)
 
-  end type VecReal
+  end type VectorReal1D
 
 !$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$
 !
-! VECVECREAL is an object containing a vector of vectors containing reals
+! Vector of Vectors of reals
 !
 !$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$
 
-  type :: VecVecReal
+  type :: VectorReal2D
 
-    type(VecReal), allocatable :: dim2(:)
+    type(VectorReal1D), allocatable :: dim2(:)
 
-  end type VecVecReal
+  end type VectorReal2D
 
 !$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$
 !
-! VECINT is an object containing a vector of integers
+! Vector of integers
 !
 !$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$
 
-  type :: VecInt
+  type :: VectorInt1D
 
     integer, allocatable :: dim1(:)
 
-  end type VecInt
+  end type VectorInt1D
 
 end module URR_vector

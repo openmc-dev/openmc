@@ -837,7 +837,6 @@ contains
     end do
     write(unit_,*)
 
-
     ! Write score bins
     string   = ""
     j = 0
@@ -2081,33 +2080,6 @@ contains
     end do
 
   end subroutine write_surface_current
-
-!===============================================================================
-! WRITE_COORDS takes vectors of abscissae and ordinates and writes them to a
-! text file
-!===============================================================================
-
-  subroutine write_coords(unit_num, filename, x, y)
-
-    integer :: unit_num ! unit number for output file
-    integer :: i        ! coordinate pair index
-    character(*) :: filename ! name of output file
-    real(8) :: x(:) ! vector of abscissae
-    real(8) :: y(:) ! vector of ordinates
-
-    open(unit = unit_num, file = trim(adjustl(filename)))
-
-    if (size(x) == size(y)) then
-      do i = 1, size(x)
-        write(unit_num, '(ES24.16, ES24.16)') x(i), y(i)
-      end do
-    else
-      call fatal_error('Mismatched vector lengths in write_coords')
-    end if
-
-    close(unit_num)
-
-  end subroutine write_coords
 
 !===============================================================================
 ! GET_LABEL returns a label for a cell/surface/etc given a tally, filter type,

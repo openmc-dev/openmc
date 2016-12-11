@@ -90,7 +90,7 @@ module ace_header
 !===============================================================================
 
   type Nuclide
-    integer :: i_sotope = 0 ! index into URR isotopes
+    integer :: i_isotope = 0 ! index into URR isotopes
 
     character(10) :: name    ! name of nuclide, e.g. 92235.03c
     integer       :: zaid    ! Z and A identifier, e.g. 92235
@@ -269,6 +269,7 @@ module ace_header
     real(8) :: fission         ! microscopic fission xs
     real(8) :: nu_fission      ! microscopic production xs
     real(8) :: kappa_fission   ! microscopic energy-released from fission
+    real(8) :: competitive     ! (total - elastic - absorption)
 
     ! Information for S(a,b) use
     integer :: index_sab          ! index in sab_tables (zero means no table)

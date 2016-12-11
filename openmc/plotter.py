@@ -20,7 +20,7 @@ PLOT_TYPES_MGXS = ['total', 'absorption', 'scatter', 'fission',
 # Create a dictionary which can be used to convert PLOT_TYPES_MGXS to the
 # openmc.XSdata attribute name needed to access the data
 _PLOT_MGXS_ATTR = {line: line.replace(' ', '_').replace('-', '_')
-              for line in PLOT_TYPES_MGXS}
+                   for line in PLOT_TYPES_MGXS}
 _PLOT_MGXS_ATTR['scatter'] = 'scatter_matrix'
 
 # Special MT values
@@ -59,8 +59,8 @@ PLOT_TYPES_LINEAR = {'nu-fission / fission', 'nu-scatter / scatter',
                      'nu-fission / absorption', 'fission / absorption'}
 
 # Minimum and maximum energies for plotting (units of eV)
-_MIN_E = 1.E-5
-_MAX_E = 20.E6
+_MIN_E = 1.e-5
+_MAX_E = 20.e6
 
 
 def plot_xs(this, types, divisor_types=None, temperature=294., axis=None,
@@ -71,7 +71,7 @@ def plot_xs(this, types, divisor_types=None, temperature=294., axis=None,
 
     Parameters
     ----------
-    this : {openmc.Element, openmc.Nuclide, openmc.Material}
+    this : openmc.Element, openmc.Nuclide, or openmc.Material
         Object to source data from
     types : Iterable of values of PLOT_TYPES
         The type of cross sections to include in the plot.
@@ -142,8 +142,7 @@ def plot_xs(this, types, divisor_types=None, temperature=294., axis=None,
         E, data = calculate_cexs(this, types, temperature, sab_name,
                                  ce_cross_sections, enrichment)
         if divisor_types:
-            cv.check_length('divisor types', divisor_types, len(types),
-                            len(types))
+            cv.check_length('divisor types', divisor_types, len(types))
             Ediv, data_div = calculate_cexs(this, divisor_types, temperature,
                                             sab_name, ce_cross_sections,
                                             enrichment)
@@ -168,8 +167,7 @@ def plot_xs(this, types, divisor_types=None, temperature=294., axis=None,
                                  enrichment)
 
         if divisor_types:
-            cv.check_length('divisor types', divisor_types, len(types),
-                            len(types))
+            cv.check_length('divisor types', divisor_types, len(types))
             Ediv, data_div = calculate_mgxs(this, divisor_types,
                                             divisor_orders, temperature,
                                             mg_cross_sections,
@@ -177,9 +175,9 @@ def plot_xs(this, types, divisor_types=None, temperature=294., axis=None,
 
             # Perform the division
             for line in range(len(types)):
-                data[line, :] = np.divide(data[line, :], data_div[line, :])
+                data[line, :] /= data_div[line, :]
                 if divisor_types[line] != 'unity':
-                    types[line] = types[line] + ' / ' + divisor_types[line]
+                    types[line] += ' / ' + divisor_types[line]
 
     # Generate the plot
     if axis is None:
@@ -615,9 +613,9 @@ def calculate_mgxs(this, types, orders=None, temperature=294.,
 
     Parameters
     ----------
-    this : openmc.Element, openmc.Nuclide, or openmc.Material
+    this : openmc.Element, openmc.Nuclide, openmc.Material, or openmc.Macroscopic
         Object to source data from
-    types : Iterable of values of PLOT_TYPES
+    types : Iterable of values of PLOT_TYPES_MGXS
         The type of cross sections to calculate
     orders : Iterable of Integral, optional
         The scattering order or delayed group index to use for the
@@ -680,7 +678,7 @@ def calculate_mgxs(this, types, orders=None, temperature=294.,
         for g in range(library.energy_groups.num_groups):
             data[g * 2: g * 2 + 2] = mgxs[line, g]
 
-    return np.flipud(energy_grid), data
+    return energy_grid[::-1], data
 
 
 def _calculate_mgxs_nuc_macro(this, types, library, orders=None,
@@ -694,7 +692,7 @@ def _calculate_mgxs_nuc_macro(this, types, library, orders=None,
 
     Parameters
     ----------
-    this : {openmc.Nuclide, openmc.Macroscopic}
+    this : openmc.Nuclide or openmc.Macroscopic
         Object to source data from
     types : Iterable of str
         The type of cross sections to calculate; values can either be those
@@ -734,7 +732,7 @@ def _calculate_mgxs_nuc_macro(this, types, library, orders=None,
 
     if xsdata is not None:
         # Obtain the nearest temperature
-        t = (np.abs(xsdata.temperatures - temperature)).argmin()
+        t = np.abs(xsdata.temperatures - temperature).argmin()
 
         # Get the data
         data = np.zeros((len(types), library.energy_groups.num_groups))
@@ -833,7 +831,7 @@ def _calculate_mgxs_elem_mat(this, types, library, orders=None,
 
     Parameters
     ----------
-    this : {openmc.Element, openmc.Material}
+    this : openmc.Element or openmc.Material
         Object to source data from
     types : Iterable of str
         The type of cross sections to calculate; values can either be those

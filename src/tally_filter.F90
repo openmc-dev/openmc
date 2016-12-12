@@ -1,7 +1,7 @@
 module tally_filter
 
   use algorithm,           only: binary_search
-  use constants,           only: ONE, NO_BIN_FOUND, FP_PRECISION
+  use constants,           only: ONE, NO_BIN_FOUND, FP_PRECISION, ERROR_REAL
   use dict_header,         only: DictIntInt
   use geometry_header,     only: BASE_UNIVERSE, RectLattice, HexLattice
   use global
@@ -191,6 +191,20 @@ module tally_filter
     procedure :: text_label => text_label_azimuthal
   end type AzimuthalFilter
 
+!===============================================================================
+! EnergyFunctionFilter multiplies tally scores by an arbitrary function of
+! incident energy described by a piecewise linear-linear interpolation.
+!===============================================================================
+  type, extends(TallyFilter) :: EnergyFunctionFilter
+    real(8), allocatable :: energy(:)
+    real(8), allocatable :: y(:)
+
+  contains
+    procedure :: get_next_bin => get_next_bin_energyfunction
+    procedure :: to_statepoint => to_statepoint_energyfunction
+    procedure :: text_label => text_label_energyfunction
+  end type EnergyFunctionFilter
+
 contains
 
 !===============================================================================
@@ -229,6 +243,8 @@ contains
     logical :: end_in_mesh          ! ending coordinates inside mesh?
     type(RegularMesh), pointer :: m
 
+    weight = ERROR_REAL
+
     ! Get a pointer to the mesh.
     m => meshes(this % mesh)
 
@@ -237,10 +253,10 @@ contains
       ! valid mesh bin.
       if (current_bin == NO_BIN_FOUND) then
         call get_mesh_bin(m, p % coord(1) % xyz, next_bin)
+        weight = ONE
       else
         next_bin = NO_BIN_FOUND
       end if
-      weight = ONE
 
     else
       ! A track can span multiple mesh bins so we need to handle a lot of
@@ -471,13 +487,14 @@ contains
 
     ! Starting one coordinate level deeper, find the next bin.
     next_bin = NO_BIN_FOUND
+    weight = ERROR_REAL
     do i = start, p % n_coord
       if (this % map % has_key(p % coord(i) % universe)) then
         next_bin = this % map % get_key(p % coord(i) % universe)
+        weight = ONE
         exit
       end if
     end do
-    weight = ONE
   end subroutine get_next_bin_universe
 
   subroutine to_statepoint_universe(this, filter_group)
@@ -532,12 +549,13 @@ contains
     real(8),               intent(out) :: weight
 
     next_bin = NO_BIN_FOUND
+    weight = ERROR_REAL
     if (current_bin == NO_BIN_FOUND) then
       if (this % map % has_key(p % material)) then
         next_bin = this % map % get_key(p % material)
+        weight = ONE
       end if
     end if
-    weight = ONE
   end subroutine get_next_bin_material
 
   subroutine to_statepoint_material(this, filter_group)
@@ -607,13 +625,14 @@ contains
 
     ! Starting one coordinate level deeper, find the next bin.
     next_bin = NO_BIN_FOUND
+    weight = ERROR_REAL
     do i = start, p % n_coord
       if (this % map % has_key(p % coord(i) % cell)) then
         next_bin = this % map % get_key(p % coord(i) % cell)
+        weight = ONE
         exit
       end if
     end do
-    weight = ONE
   end subroutine get_next_bin_cell
 
   subroutine to_statepoint_cell(this, filter_group)
@@ -667,10 +686,8 @@ contains
     integer,                  intent(out) :: next_bin
     real(8),                  intent(out) :: weight
 
-    logical :: cell_found
     integer :: distribcell_index, offset, i
 
-    cell_found = .false.
     if (current_bin == NO_BIN_FOUND) then
       distribcell_index = cells(this % cell) % distribcell_index
       offset = 0
@@ -693,15 +710,13 @@ contains
         end if
         if (this % cell == p % coord(i) % cell) then
           next_bin = offset + 1
-          cell_found = .true.
-          exit
+          weight = ONE
+          return
         end if
       end do
-    else
-      next_bin = NO_BIN_FOUND
     end if
-    if (.not. cell_found) next_bin = NO_BIN_FOUND
-    weight = ONE
+    next_bin = NO_BIN_FOUND
+    weight = ERROR_REAL
   end subroutine get_next_bin_distribcell
 
   subroutine to_statepoint_distribcell(this, filter_group)
@@ -756,12 +771,13 @@ contains
     real(8),               intent(out) :: weight
 
     next_bin = NO_BIN_FOUND
+    weight = ERROR_REAL
     if (current_bin == NO_BIN_FOUND) then
       if (this % map % has_key(p % cell_born)) then
         next_bin = this % map % get_key(p % cell_born)
+        weight = ONE
       end if
     end if
-    weight = ONE
   end subroutine get_next_bin_cellborn
 
   subroutine to_statepoint_cellborn(this, filter_group)
@@ -818,15 +834,16 @@ contains
     integer :: i
 
     next_bin = NO_BIN_FOUND
+    weight = ERROR_REAL
     if (current_bin == NO_BIN_FOUND) then
       do i = 1, this % n_bins
         if (p % surface == this % surfaces(i)) then
           next_bin = i
+          weight = ONE
           exit
         end if
       end do
     end if
-    weight = ONE
   end subroutine get_next_bin_surface
 
   subroutine to_statepoint_surface(this, filter_group)
@@ -891,6 +908,7 @@ contains
         ! Tallies are ordered in increasing groups, group indices
         ! however are the opposite, so switch
         next_bin = num_energy_groups - next_bin + 1
+        weight = ONE
 
       else
         ! Make sure the correct energy is used.
@@ -903,16 +921,18 @@ contains
         ! Check if energy of the particle is within energy bins.
         if (E < this % bins(1) .or. E > this % bins(n + 1)) then
           next_bin = NO_BIN_FOUND
+          weight = ERROR_REAL
         else
           ! Search to find incoming energy bin.
           next_bin = binary_search(this % bins, n + 1, E)
+          weight = ONE
         end if
       end if
 
     else
       next_bin = NO_BIN_FOUND
+      weight = ERROR_REAL
     end if
-    weight = ONE
   end subroutine get_next_bin_energy
 
   subroutine to_statepoint_energy(this, filter_group)
@@ -960,21 +980,24 @@ contains
         ! Tallies are ordered in increasing groups, group indices
         ! however are the opposite, so switch
         next_bin = num_energy_groups - next_bin + 1
+        weight = ONE
 
       else
         ! Check if energy of the particle is within energy bins.
         if (p % E < this % bins(1) .or. p % E > this % bins(n + 1)) then
           next_bin = NO_BIN_FOUND
+          weight = ERROR_REAL
         else
           ! Search to find incoming energy bin.
           next_bin = binary_search(this % bins, n + 1, p % E)
+          weight = ONE
         end if
       end if
 
     else
       next_bin = NO_BIN_FOUND
+      weight = ERROR_REAL
     end if
-    weight = ONE
   end subroutine get_next_bin_energyout
 
   subroutine to_statepoint_energyout(this, filter_group)
@@ -1012,10 +1035,11 @@ contains
 
     if (current_bin == NO_BIN_FOUND) then
       next_bin = 1
+      weight = ONE
     else
       next_bin = NO_BIN_FOUND
+      weight = ERROR_REAL
     end if
-    weight = ONE
   end subroutine get_next_bin_dg
 
   subroutine to_statepoint_dg(this, filter_group)
@@ -1054,15 +1078,17 @@ contains
       ! Check if energy of the particle is within energy bins.
       if (p % mu < this % bins(1) .or. p % mu > this % bins(n + 1)) then
         next_bin = NO_BIN_FOUND
+        weight = ERROR_REAL
       else
         ! Search to find incoming energy bin.
         next_bin = binary_search(this % bins, n + 1, p % mu)
+        weight = ONE
       end if
 
     else
       next_bin = NO_BIN_FOUND
+      weight = ERROR_REAL
     end if
-    weight = ONE
   end subroutine get_next_bin_mu
 
   subroutine to_statepoint_mu(this, filter_group)
@@ -1115,15 +1141,17 @@ contains
       ! Check if particle is within polar angle bins.
       if (theta < this % bins(1) .or. theta > this % bins(n + 1)) then
         next_bin = NO_BIN_FOUND
+        weight = ERROR_REAL
       else
         ! Search to find polar angle bin.
         next_bin = binary_search(this % bins, n + 1, theta)
+        weight = ONE
       end if
 
     else
       next_bin = NO_BIN_FOUND
+      weight = ERROR_REAL
     end if
-    weight = ONE
   end subroutine get_next_bin_polar
 
   subroutine to_statepoint_polar(this, filter_group)
@@ -1176,15 +1204,17 @@ contains
       ! Check if particle is within azimuthal angle bins.
       if (phi < this % bins(1) .or. phi > this % bins(n + 1)) then
         next_bin = NO_BIN_FOUND
+        weight = ERROR_REAL
       else
         ! Search to find azimuthal angle bin.
         next_bin = binary_search(this % bins, n + 1, phi)
+        weight = ONE
       end if
 
     else
       next_bin = NO_BIN_FOUND
+      weight = ERROR_REAL
     end if
-    weight = ONE
   end subroutine get_next_bin_azimuthal
 
   subroutine to_statepoint_azimuthal(this, filter_group)
@@ -1208,6 +1238,84 @@ contains
     label = "Azimuthal Angle [" // trim(to_str(E0)) // ", " &
          // trim(to_str(E1)) // ")"
   end function text_label_azimuthal
+
+!===============================================================================
+! EnergyFunctionFilter methods
+!===============================================================================
+  subroutine get_next_bin_energyfunction(this, p, estimator, current_bin, &
+       next_bin, weight)
+    class(EnergyFunctionFilter), intent(in)  :: this
+    type(Particle),              intent(in)  :: p
+    integer,                     intent(in)  :: estimator
+    integer, value,              intent(in)  :: current_bin
+    integer,                     intent(out) :: next_bin
+    real(8),                     intent(out) :: weight
+
+    integer :: n, indx
+    real(8) :: E, f
+
+    select type(this)
+    type is (EnergyFunctionFilter)
+      if (current_bin == NO_BIN_FOUND) then
+        n = size(this % energy)
+
+        ! Make sure the correct energy is used.
+        if (estimator == ESTIMATOR_TRACKLENGTH) then
+          E = p % E
+        else
+          E = p % last_E
+        end if
+
+        ! Check if energy of the particle is within energy bins.
+        if (E < this % energy(1) .or. E > this % energy(n)) then
+          next_bin = NO_BIN_FOUND
+          weight = ERROR_REAL
+
+        else
+          ! Search to find incoming energy bin.
+          indx = binary_search(this % energy, n, E)
+
+          ! Compute an interpolation factor between nearest bins.
+          f = (E - this % energy(indx)) &
+               / (this % energy(indx+1) - this % energy(indx))
+
+          ! Interpolate on the lin-lin grid.
+          next_bin = 1
+          weight = (ONE - f) * this % y(indx) + f * this % y(indx+1)
+        end if
+
+      else
+        next_bin = NO_BIN_FOUND
+        weight = ERROR_REAL
+      end if
+    end select
+  end subroutine get_next_bin_energyfunction
+
+  subroutine to_statepoint_energyfunction(this, filter_group)
+    class(EnergyFunctionFilter), intent(in) :: this
+    integer(HID_T),              intent(in) :: filter_group
+
+    select type(this)
+    type is (EnergyFunctionFilter)
+      call write_dataset(filter_group, "type", "energyfunction")
+      call write_dataset(filter_group, "energy", this % energy)
+      call write_dataset(filter_group, "y", this % y)
+    end select
+  end subroutine to_statepoint_energyfunction
+
+  function text_label_energyfunction(this, bin) result(label)
+    class(EnergyFunctionFilter), intent(in) :: this
+    integer,                     intent(in) :: bin
+    character(MAX_LINE_LEN)                 :: label
+
+    select type(this)
+    type is (EnergyFunctionFilter)
+      write(label, FMT="(A, ES8.1, A, ES8.1, A, ES8.1, A, ES8.1, A)") &
+           "Energy Function f([", this % energy(1), ", ..., ", &
+           this % energy(size(this % energy)), "]) = [", this % y(1), &
+           ", ..., ", this % y(size(this % y)), "]"
+    end select
+  end function text_label_energyfunction
 
 !===============================================================================
 ! FIND_OFFSET (for distribcell) uses a given map number, a target cell ID, and

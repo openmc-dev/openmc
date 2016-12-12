@@ -201,15 +201,28 @@ if run_mode == 'k-eigenvalue':
 **/tallies/tally <uid>/filter <j>/type** (*char[]*)
 
     Type of the j-th filter. Can be 'universe', 'material', 'cell', 'cellborn',
-    'surface', 'mesh', 'energy', 'energyout', or 'distribcell'.
+    'surface', 'mesh', 'energy', 'energyout', 'distribcell', 'mu', 'polar',
+    'azimuthal', 'delayedgroup', or 'energyfunction'.
 
 **/tallies/tally <uid>/filter <j>/n_bins** (*int*)
 
-    Number of bins for the j-th filter.
+    Number of bins for the j-th filter. Not present for 'energyfunction'
+    filters.
 
 **/tallies/tally <uid>/filter <j>/bins** (*int[]* or *double[]*)
 
-    Value for each filter bin of this type.
+    Value for each filter bin of this type. Not present for 'energyfunction'
+    filters.
+
+**/tallies/tally <uid>/filter <j>/energy** (*double[]*)
+
+    Energy grid points for energyfunction interpolation. Only used for
+    'energyfunction' filters.
+
+**/tallies/tally <uid>/filter <j>/y** (*double[]*)
+
+    Interpolant values for energyfunction interpolation. Only used for
+    'energyfunction' filters.
 
 **/tallies/tally <uid>/nuclides** (*char[][]*)
 

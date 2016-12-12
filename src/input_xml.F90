@@ -2973,18 +2973,21 @@ contains
         temp_str = to_lower(temp_str)
 
         ! Determine number of bins
-        if (check_for_node(node_filt, "bins")) then
-          if (temp_str == 'energy' .or. temp_str == 'energyout' .or. &
-               temp_str == 'mu' .or. temp_str == 'polar' .or. &
-               temp_str == 'azimuthal') then
-            n_words = get_arraysize_double(node_filt, "bins")
-          else
-            n_words = get_arraysize_integer(node_filt, "bins")
+        select case(temp_str)
+        case ("energy", "energyout", "mu", "polar", "azimuthal")
+          if (.not. check_for_node(node_filt, "bins")) then
+            call fatal_error("Bins not set in filter on tally " &
+                 // trim(to_str(t % id)))
           end if
-        else
-          call fatal_error("Bins not set in filter on tally " &
-               // trim(to_str(t % id)))
-        end if
+          n_words = get_arraysize_double(node_filt, "bins")
+        case ("mesh", "universe", "material", "cell", "distribcell", &
+              "cellborn", "surface", "delayedgroup")
+          if (.not. check_for_node(node_filt, "bins")) then
+            call fatal_error("Bins not set in filter on tally " &
+                 // trim(to_str(t % id)))
+          end if
+          n_words = get_arraysize_integer(node_filt, "bins")
+        end select
 
         ! Determine type of filter
         select case (temp_str)
@@ -3281,6 +3284,39 @@ contains
           end select
           ! Set the filter index in the tally find_filter array
           t % find_filter(FILTER_AZIMUTHAL) = j
+
+        case ('energyfunction')
+          ! Allocate and declare the filter type.
+          allocate(EnergyFunctionFilter::t % filters(j) % obj)
+          select type (filt => t % filters(j) % obj)
+          type is (EnergyFunctionFilter)
+            filt % n_bins = 1
+            ! Make sure this is continuous-energy mode.
+            if (.not. run_CE) then
+              call fatal_error("EnergyFunction filters are only supported for &
+                   &continuous-energy transport calculations")
+            end if
+
+            ! Allocate and store energy grid.
+            if (.not. check_for_node(node_filt, "energy")) then
+              call fatal_error("Energy grid not specified for EnergyFunction &
+                   &filter on tally " // trim(to_str(t % id)))
+            end if
+            n_words = get_arraysize_double(node_filt, "energy")
+            allocate(filt % energy(n_words))
+            call get_node_array(node_filt, "energy", filt % energy)
+
+            ! Allocate and store interpolant values.
+            if (.not. check_for_node(node_filt, "y")) then
+              call fatal_error("y values not specified for EnergyFunction &
+                   &filter on tally " // trim(to_str(t % id)))
+            end if
+            n_words = get_arraysize_double(node_filt, "y")
+            allocate(filt % y(n_words))
+            call get_node_array(node_filt, "y", filt % y)
+          end select
+          ! Set the filter index in the tally find_filter array
+          t % find_filter(FILTER_ENERGYFUNCTION) = j
 
         case default
           ! Specified tally filter is invalid, raise error

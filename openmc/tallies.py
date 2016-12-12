@@ -186,11 +186,8 @@ class Tally(object):
             string += '{: <16}=\t{}\n'.format('\tDerivative ID',
                                               str(self.derivative.id))
 
-        string += '{: <16}=\n'.format('\tFilters')
-
-        for self_filter in self.filters:
-            string += '{: <16}\t\t{}\t{}\n'.format('',
-                type(self_filter).__name__, self_filter.bins)
+        filters = ', '.join(type(f).__name__ for f in self.filters)
+        string += '{: <16}=\t{}\n'.format('\tFilters', filters)
 
         string += '{: <16}=\t'.format('\tNuclides')
 
@@ -1039,7 +1036,7 @@ class Tally(object):
 
         # Optional Tally filters
         for self_filter in self.filters:
-            element.append(self_filter.to_xml())
+            element.append(self_filter.to_xml_element())
 
         # Optional Nuclides
         if len(self.nuclides) > 0:
@@ -1329,6 +1326,10 @@ class Tally(object):
                     # Create list of cell instance IDs for distribcell Filters
                     elif isinstance(self_filter, openmc.DistribcellFilter):
                         bins = [b for b in range(self_filter.num_bins)]
+
+                    # EnergyFunctionFilters don't have bins so just add a None
+                    elif isinstance(self_filter, openmc.EnergyFunctionFilter):
+                        bins = [None]
 
                     # Create list of IDs for bins for all other filter types
                     else:
@@ -1702,146 +1703,6 @@ class Tally(object):
         # Reshape the data with one dimension for each filter
         data = np.reshape(data, new_shape)
         return data
-
-    def export_results(self, filename='tally-results', directory='.',
-                       format='hdf5', append=True):
-        """Exports tallly results to an HDF5 or Python pickle binary file.
-
-        Parameters
-        ----------
-        filename : str
-            The name of the file for the results (default is 'tally-results')
-        directory : str
-            The name of the directory for the results (default is '.')
-        format : str
-            The format for the exported file - HDF5 ('hdf5', default) and
-            Python pickle ('pkl') files are supported
-        append : bool
-            Whether or not to append the results to the file (default is True)
-
-        Raises
-        ------
-        KeyError
-            When this method is called before the Tally is populated with data.
-
-        """
-
-        # Ensure that the tally has data
-        if self._sum is None or self._sum_sq is None and not self.derived:
-            msg = 'The Tally ID="{0}" has no data to export'.format(self.id)
-            raise KeyError(msg)
-
-        if not isinstance(filename, string_types):
-            msg = 'Unable to export the results for Tally ID="{0}" to ' \
-                  'filename="{1}" since it is not a ' \
-                  'string'.format(self.id, filename)
-            raise ValueError(msg)
-
-        elif not isinstance(directory, string_types):
-            msg = 'Unable to export the results for Tally ID="{0}" to ' \
-                  'directory="{1}" since it is not a ' \
-                  'string'.format(self.id, directory)
-            raise ValueError(msg)
-
-        elif format not in ['hdf5', 'pkl', 'csv']:
-            msg = 'Unable to export the results for Tally ID="{0}" to format ' \
-                  '"{1}" since it is not supported'.format(self.id, format)
-            raise ValueError(msg)
-
-        elif not isinstance(append, bool):
-            msg = 'Unable to export the results for Tally ID="{0}" since the ' \
-                  'append parameter is not True/False'.format(self.id)
-            raise ValueError(msg)
-
-        # Make directory if it does not exist
-        if not os.path.exists(directory):
-            os.makedirs(directory)
-
-        # HDF5 binary file
-        if format == 'hdf5':
-            filename = directory + '/' + filename + '.h5'
-
-            if append:
-                tally_results = h5py.File(filename, 'a')
-            else:
-                tally_results = h5py.File(filename, 'w')
-
-            # Create an HDF5 group within the file for this particular Tally
-            tally_group = tally_results.create_group('Tally-{0}'.format(self.id))
-
-            # Add basic Tally data to the HDF5 group
-            tally_group.create_dataset('id', data=self.id)
-            tally_group.create_dataset('name', data=self.name)
-            tally_group.create_dataset('estimator', data=self.estimator)
-            tally_group.create_dataset('scores', data=np.array(self.scores))
-
-            # Add a string array of the nuclides to the HDF5 group
-            nuclides = []
-
-            for nuclide in self.nuclides:
-                nuclides.append(nuclide.name)
-
-            tally_group.create_dataset('nuclides', data=np.array(nuclides))
-
-            # Create an HDF5 sub-group for the Filters
-            filter_group = tally_group.create_group('filters')
-
-            for self_filter in self.filters:
-                filter_group.create_dataset(self_filter.type,
-                                            filter=self_filter.bins)
-
-            # Add all results to the main HDF5 group for the Tally
-            tally_group.create_dataset('sum', data=self.sum)
-            tally_group.create_dataset('sum_sq', data=self.sum_sq)
-            tally_group.create_dataset('mean', data=self.mean)
-            tally_group.create_dataset('std_dev', data=self.std_dev)
-
-            # Close the Tally results HDF5 file
-            tally_results.close()
-
-        # Python pickle binary file
-        elif format == 'pkl':
-            # Load the dictionary from the Pickle file
-            filename = directory + '/' + filename + '.pkl'
-
-            if os.path.exists(filename) and append:
-                tally_results = pickle.load(open(filename, 'rb'))
-            else:
-                tally_results = {}
-
-            # Create a nested dictionary within the file for this particular Tally
-            tally_results['Tally-{0}'.format(self.id)] = {}
-            tally_group = tally_results['Tally-{0}'.format(self.id)]
-
-            # Add basic Tally data to the nested dictionary
-            tally_group['id'] = self.id
-            tally_group['name'] = self.name
-            tally_group['estimator'] = self.estimator
-            tally_group['scores'] = np.array(self.scores)
-
-            # Add a string array of the nuclides to the HDF5 group
-            nuclides = []
-
-            for nuclide in self.nuclides:
-                nuclides.append(nuclide.name)
-
-            tally_group['nuclides'] = np.array(nuclides)
-
-            # Create a nested dictionary for the Filters
-            tally_group['filters'] = {}
-            filter_group = tally_group['filters']
-
-            for self_filter in self.filters:
-                filter_group[self_filter.type] = self_filter.bins
-
-            # Add all results to the main sub-dictionary for the Tally
-            tally_group['sum'] = self.sum
-            tally_group['sum_sq'] = self.sum_sq
-            tally_group['mean'] = self.mean
-            tally_group['std_dev'] = self.std_dev
-
-            # Pickle the Tally results to a file
-            pickle.dump(tally_results, open(filename, 'wb'))
 
     def hybrid_product(self, other, binary_op, filter_product=None,
                        nuclide_product=None, score_product=None):
@@ -2260,11 +2121,15 @@ class Tally(object):
         filters = [type(filter1), type(filter2)]
         if isinstance(filter1, openmc.DistribcellFilter):
             filter1_bins = [b for b in range(filter1.num_bins)]
+        elif isinstance(filter1, openmc.EnergyFunctionFilter):
+            filter1_bins = [None]
         else:
             filter1_bins = [filter1.get_bin(i) for i in range(filter1.num_bins)]
 
         if isinstance(filter2, openmc.DistribcellFilter):
             filter2_bins = [b for b in range(filter2.num_bins)]
+        elif isinstance(filter2, openmc.EnergyFunctionFilter):
+            filter2_bins = [None]
         else:
             filter2_bins = [filter2.get_bin(i) for i in range(filter2.num_bins)]
 
@@ -3096,6 +2961,8 @@ class Tally(object):
 
                 if isinstance(find_filter, openmc.DistribcellFilter):
                     filter_bins = np.arange(find_filter.num_bins)
+                elif isinstance(find_filter, openmc.EnergyFunctionFilter):
+                    filter_bins = [None]
                 else:
                     num_bins = find_filter.num_bins
                     filter_bins = \
@@ -3251,6 +3118,8 @@ class Tally(object):
 
                 if isinstance(find_filter, openmc.DistribcellFilter):
                     filter_bins = np.arange(find_filter.num_bins)
+                elif isinstance(find_filter, openmc.EnergyFunctionFilter):
+                    filter_bins = [None]
                 else:
                     num_bins = find_filter.num_bins
                     filter_bins = \

@@ -1,6 +1,7 @@
 from abc import ABCMeta
 from collections import Iterable, OrderedDict
 import copy
+import hashlib
 from numbers import Real, Integral
 from xml.etree import ElementTree as ET
 
@@ -13,7 +14,7 @@ import openmc.checkvalue as cv
 
 _FILTER_TYPES = ['universe', 'material', 'cell', 'cellborn', 'surface',
                  'mesh', 'energy', 'energyout', 'mu', 'polar', 'azimuthal',
-                 'distribcell', 'delayedgroup']
+                 'distribcell', 'delayedgroup', 'energyfunction']
 
 _CURRENT_NAMES = {1:  'x-min out', 2:  'x-min in',
                   3:  'x-max out', 4:  'x-max in',
@@ -25,9 +26,38 @@ _CURRENT_NAMES = {1:  'x-min out', 2:  'x-min in',
 
 class FilterMeta(ABCMeta):
     def __new__(cls, name, bases, namespace, **kwargs):
+        # Check the class name.
         if not name.endswith('Filter'):
             raise ValueError("All filter class names must end with 'Filter'")
+
+        # Create a 'short_name' attribute that removes the 'Filter' suffix.
         namespace['short_name'] = name[:-6]
+
+        # Subclass methods can sort of inherit the docstring of parent class
+        # methods.  If a function is defined without a docstring, most (all?)
+        # Python interpreters will search through the parent classes to see if
+        # there is a docstring for a function with the same name, and they will
+        # use that docstring.  However, Sphinx does not have that functionality.
+        # This chunk of code handles this docstring inheritance manually so that
+        # the autodocumentation will pick it up.
+        if name != 'Filter':
+            # Look for newly-defined functions that were also in Filter.
+            for func_name in namespace:
+                if func_name in Filter.__dict__:
+                    # Inherit the docstring from Filter if not defined.
+                    if isinstance(namespace[func_name],
+                                  (classmethod, staticmethod)):
+                        new_doc = namespace[func_name].__func__.__doc__
+                        old_doc = Filter.__dict__[func_name].__func__.__doc__
+                        if new_doc is None and old_doc is not None:
+                            namespace[func_name].__func__.__doc__ = old_doc
+                    else:
+                        new_doc = namespace[func_name].__doc__
+                        old_doc = Filter.__dict__[func_name].__doc__
+                        if new_doc is None and old_doc is not None:
+                            namespace[func_name].__doc__ = old_doc
+
+        # Make the class.
         return super(FilterMeta, cls).__new__(cls, name, bases, namespace,
                                               **kwargs)
 
@@ -93,7 +123,7 @@ class Filter(object):
 
     def __repr__(self):
         string = type(self).__name__ + '\n'
-        string += '{0: <16}{1}{2}\n'.format('\tBins', '=\t', self.bins)
+        string += '{: <16}=\t{}\n'.format('\tBins', self.bins)
         return string
 
     @classmethod
@@ -154,12 +184,8 @@ class Filter(object):
 
     @bins.setter
     def bins(self, bins):
-        # Make sure the bins are a numpy array.
-        bins = np.array(bins)
-
-        # If the bin is 0D numpy array, promote to 1D.
-        if bins.shape == ():
-            bins.shape = (1,)
+        # Format the bins as a 1D numpy array.
+        bins = np.atleast_1d(bins)
 
         # Check the bin values.
         self.check_bins(bins)
@@ -194,8 +220,15 @@ class Filter(object):
 
         pass
 
-    def to_xml(self):
-        """Return XML Element representing the Filter."""
+    def to_xml_element(self):
+        """Return XML Element representing the Filter.
+
+        Returns
+        -------
+        ElementTree.Element
+
+        """
+
         element = ET.Element('filter')
         element.set('type', self.short_name.lower())
         element.set('bins', ' '.join(str(b) for b in self.bins))
@@ -1610,3 +1643,238 @@ class DelayedGroupFilter(IntegralFilter):
         filter's bins.
 
     """
+
+
+class EnergyFunctionFilter(Filter):
+    """Multiplies tally scores by an arbitrary function of incident energy.
+
+    The arbitrary function is described by a piecewise linear-linear
+    interpolation of energy and y values.  Values outside of the given energy
+    range will be evaluated as zero.
+
+    Parameters
+    ----------
+    energy : Iterable of Real
+        A grid of energy values in eV.
+    y : iterable of Real
+        A grid of interpolant values in eV.
+
+    Attributes
+    ----------
+    energy : Iterable of Real
+        A grid of energy values in eV.
+    y : iterable of Real
+        A grid of interpolant values in eV.
+    num_bins : Integral
+        The number of filter bins (always 1 for this filter)
+    stride : Integral
+        The number of filter, nuclide and score bins within each of this
+        filter's bins.
+
+    """
+
+    def __init__(self, energy, y):
+        self.energy = energy
+        self.y = y
+        self._stride = None
+
+    def __eq__(self, other):
+        if type(self) is not type(other):
+            return False
+        elif not all(self.energy == other.energy):
+            return False
+        elif not all(self.y == other.y):
+            return False
+        else:
+            return True
+
+    def __gt__(self, other):
+        if type(self) is not type(other):
+            if self.short_name in _FILTER_TYPES and \
+                other.short_name in _FILTER_TYPES:
+                delta = _FILTER_TYPES.index(self.short_name) - \
+                        _FILTER_TYPES.index(other.short_name)
+                return delta > 0
+            else:
+                return False
+        else:
+            return False
+
+    def __lt__(self, other):
+        if type(self) is not type(other):
+            if self.short_name in _FILTER_TYPES and \
+                other.short_name in _FILTER_TYPES:
+                delta = _FILTER_TYPES.index(self.short_name) - \
+                        _FILTER_TYPES.index(other.short_name)
+                return delta < 0
+            else:
+                return False
+        else:
+            return False
+
+    def __hash__(self):
+        # For some reason, it seems the __hash__ method is not inherited when we
+        # overwrite __repr__.
+        return hash(repr(self))
+
+    def __repr__(self):
+        string = type(self).__name__ + '\n'
+        string += '{: <16}=\t{}\n'.format('\tEnergy', self.energy)
+        string += '{: <16}=\t{}\n'.format('\tInterpolant', self.y)
+        return string
+
+    @classmethod
+    def from_hdf5(cls, group, **kwargs):
+        if group['type'].value.decode() != cls.short_name.lower():
+            raise ValueError("Expected HDF5 data for filter type '"
+                             + cls.short_name.lower() + "' but got '"
+                             + group['type'].value.decode() + " instead")
+
+        energy = group['energy'].value
+        y = group['y'].value
+
+        return cls(energy, y)
+
+    @classmethod
+    def from_tabulated1d(cls, tab1d):
+        """Construct a filter from a Tabulated1D object.
+
+        Parameters
+        ----------
+        tab1d : openmc.data.Tabulated1D
+            A linear-linear Tabulated1D object with only a single interpolation
+            region.
+
+        Returns
+        -------
+        EnergyFunctionFilter
+
+        """
+        cv.check_type('EnergyFunctionFilter tab1d', tab1d,
+                      openmc.data.Tabulated1D)
+        if tab1d.n_regions > 1:
+            raise ValueError('Only Tabulated1Ds with a single interpolation '
+                             'region are supported')
+        if tab1d.interpolation[0] != 2:
+            raise ValueError('Only linear-linar Tabulated1Ds are supported')
+
+        return cls(tab1d.x, tab1d.y)
+
+    @property
+    def energy(self):
+        return self._energy
+
+    @property
+    def y(self):
+        return self._y
+
+    @property
+    def bins(self):
+        raise RuntimeError('EnergyFunctionFilters have no bins.')
+
+    @property
+    def num_bins(self):
+        return 1
+
+    @energy.setter
+    def energy(self, energy):
+        # Format the bins as a 1D numpy array.
+        energy = np.atleast_1d(energy)
+
+        # Make sure the values are Real and positive.
+        cv.check_type('filter energy grid', energy, Iterable, Real)
+        for E in energy:
+            cv.check_greater_than('filter energy grid', E, 0, equality=True)
+
+        self._energy = energy
+
+    @y.setter
+    def y(self, y):
+        # Format the bins as a 1D numpy array.
+        y = np.atleast_1d(y)
+
+        # Make sure the values are Real.
+        cv.check_type('filter interpolant values', y, Iterable, Real)
+
+        self._y = y
+
+    @bins.setter
+    def bins(self, bins):
+        raise RuntimeError('EnergyFunctionFilters have no bins.')
+
+    def to_xml_element(self):
+        element = ET.Element('filter')
+        element.set('type', self.short_name.lower())
+        element.set('energy', ' '.join(str(e) for e in self.energy))
+        element.set('y', ' '.join(str(y) for y in self.y))
+        return element
+
+    def can_merge(self, other):
+        return False
+
+    def is_subset(self, other):
+        return self == other
+
+    def get_bin_index(self, filter_bin):
+        # This filter only has one bin.  Always return 0.
+        return 0
+
+    def get_bin(self, bin_index):
+        """This function is invalid for EnergyFunctionFilters."""
+        raise RuntimeError('EnergyFunctionFilters have no get_bin() method')
+
+    def get_pandas_dataframe(self, data_size, **kwargs):
+        """Builds a Pandas DataFrame for the Filter's bins.
+
+        This method constructs a Pandas DataFrame object for the filter with
+        columns annotated by filter bin information. This is a helper method for
+        :meth:`Tally.get_pandas_dataframe`.
+
+        Parameters
+        ----------
+        data_size : Integral
+            The total number of bins in the tally corresponding to this filter
+
+        Returns
+        -------
+        pandas.DataFrame
+            A Pandas DataFrame with a column that is filled with a hash of this
+            filter. EnergyFunctionFilters have only 1 bin so the purpose of this
+            DataFrame column is to differentiate the filter from other
+            EnergyFunctionFilters. The number of rows in the DataFrame is the
+            same as the total number of bins in the corresponding tally.
+
+        Raises
+        ------
+        ImportError
+            When Pandas is not installed
+
+        See also
+        --------
+        Tally.get_pandas_dataframe(), CrossFilter.get_pandas_dataframe()
+
+        """
+
+        import pandas as pd
+        df = pd.DataFrame()
+
+        # There is no clean way of sticking all the energy, y data into a
+        # DataFrame so instead we'll just make a column with the filter name
+        # and fill it with a hash of the __repr__.  We want a hash that is
+        # reproducible after restarting the interpreter so we'll use hashlib.md5
+        # rather than the intrinsic hash().
+        hash_fun = hashlib.md5()
+        hash_fun.update(repr(self).encode('utf-8'))
+        out = hash_fun.hexdigest()
+
+        # The full 16 bytes make for a really wide column.  Just 7 bytes (14
+        # hex characters) of the digest are probably sufficient.
+        out = out[:14]
+
+        filter_bins = np.repeat(out, self.stride)
+        tile_factor = data_size / len(filter_bins)
+        filter_bins = np.tile(filter_bins, tile_factor)
+        df = pd.concat([df, pd.DataFrame(
+            {self.short_name.lower(): filter_bins})])
+
+        return df

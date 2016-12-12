@@ -25,8 +25,8 @@ element tallies {
           | attribute variable { ( "nuclide_density" ) } )
         &
         (element nuclide { xsd:string { maxLength = "12" } }
-          | attribute nuclide { xsd:string { maxLength = "12" } } ) |
-      )
+          | attribute nuclide { xsd:string { maxLength = "12" } } )
+      ) |
       (element variable { ( "temperature") }
         | attribute variable { ( "temperature" ) } )
     )
@@ -39,14 +39,24 @@ element tallies {
     (element estimator { ( "analog" | "tracklength" | "collision" ) } |
       attribute estimator { ( "analog" | "tracklength" | "collision" ) })? &
     element filter {
-      (element type { ( "cell" | "cellborn" | "material" | "universe" |
-        "surface" | "distribcell" | "mesh" | "energy" | "energyout" | "mu" |
-        "polar" | "azimuthal" | "delayedgroup") } |
-       attribute type { ( "cell" | "cellborn" | "material" | "universe" |
-        "surface" | "distribcell" | "mesh" | "energy" | "energyout" | "mu" |
-        "polar" | "azimuthal" | "delayedgroup") }) &
-      (element bins { list { xsd:double+ } } |
-        attribute bins { list { xsd:double+ } })
+      (
+        (element type { ( "cell" | "cellborn" | "material" | "universe" |
+          "surface" | "distribcell" | "mesh" | "energy" | "energyout" | "mu" |
+          "polar" | "azimuthal" | "delayedgroup" | "energyfunction") } |
+         attribute type { ( "cell" | "cellborn" | "material" | "universe" |
+          "surface" | "distribcell" | "mesh" | "energy" | "energyout" | "mu" |
+          "polar" | "azimuthal" | "delayedgroup" | "energyfunction") }) &
+        (element bins { list { xsd:double+ } } |
+          attribute bins { list { xsd:double+ } })
+      ) |
+      (
+        (element type { ("energyfunction") } |
+         attribute type { ("energyfunction") }) &
+        (element energy { list { xsd:double+ } } |
+          attribute energy { list { xsd:double+ } }) &
+        (element y { list { xsd:double+ } } |
+          attribute y { list { xsd:double+ } })
+      )
     }* &
     element nuclides {
       list { xsd:string { maxLength = "12" }+ }

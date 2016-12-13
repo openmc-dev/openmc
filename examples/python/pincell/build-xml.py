@@ -163,9 +163,11 @@ bounds = [-0.62992, -0.62992, -1, 0.62992, 0.62992, 1]
 uniform_dist = openmc.stats.Box(bounds[:3], bounds[3:], only_fissionable=True)
 settings_file.source = openmc.source.Source(space=uniform_dist)
 
-settings_file.entropy_lower_left = [-0.39218, -0.39218, -1.e50]
-settings_file.entropy_upper_right = [0.39218, 0.39218, 1.e50]
-settings_file.entropy_dimension = [10, 10, 1]
+entropy_mesh = openmc.Mesh()
+entropy_mesh.lower_left = [-0.39218, -0.39218, -1.e50]
+entropy_mesh.upper_right = [0.39218, 0.39218, 1.e50]
+entropy_mesh.dimension = [10, 10, 1]
+settings_file.entropy_mesh = entropy_mesh
 settings_file.export_to_xml()
 
 

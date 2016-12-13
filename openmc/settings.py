@@ -43,21 +43,18 @@ class Settings(object):
         Path to write output to
     verbosity : int
         Verbosity during simulation between 1 and 10
-    statepoint_batches : Iterable of int
-        List of batches at which to write statepoint files
-    statepoint_interval : int
-        Number of batches after which a new statepoint file should be written
-    sourcepoint_batches : Iterable of int
-        List of batches at which to write source files
-    sourcepoint_interval : int
-        Number of batches after which a new source file should be written
-    sourcepoint_separate : bool
-        Indicate whether the souce should be written as part of the statepoint
-        file or on its own
-    sourcepoint_write : bool
-        Indicate whether the source should be written at all
-    sourcepoint_overwrite : bool
-        Indicate whether to
+    statepoint : dict
+        Options for writing state points. Acceptable keys are:
+
+        :batches: list of batches at which to write source
+    sourcepoint : dict
+        Options for writing source points. Acceptable keys are:
+
+        :batches: list of batches at which to write source
+        :overwrite: bool indicating whether to overwrite
+        :separate: bool indicating whether the source should be written as a
+                   separate file
+        :write: bool indicating whether or not to write the source
     confidence_intervals : bool
         If True, uncertainties on tally results will be reported as the
         half-width of the 95% two-sided confidence interval. If False,
@@ -193,14 +190,9 @@ class Settings(object):
         self._output = None
         self._output_path = None
 
-        # Statepoint subelement
-        self._statepoint_batches = None
-        self._statepoint_interval = None
-        self._sourcepoint_batches = None
-        self._sourcepoint_interval = None
-        self._sourcepoint_separate = None
-        self._sourcepoint_write = None
-        self._sourcepoint_overwrite = None
+        # Output options
+        self._statepoint = {}
+        self._sourcepoint = {}
 
         self._threads = None
         self._no_reduce = None
@@ -334,32 +326,12 @@ class Settings(object):
         return self._output_path
 
     @property
-    def statepoint_batches(self):
-        return self._statepoint_batches
+    def sourcepoint(self):
+        return self._sourcepoint
 
     @property
-    def statepoint_interval(self):
-        return self._statepoint_interval
-
-    @property
-    def sourcepoint_batches(self):
-        return self._sourcepoint_interval
-
-    @property
-    def sourcepoint_interval(self):
-        return self._sourcepoint_interval
-
-    @property
-    def sourcepoint_separate(self):
-        return self._sourcepoint_separate
-
-    @property
-    def sourcepoint_write(self):
-        return self._sourcepoint_write
-
-    @property
-    def sourcepoint_overwrite(self):
-        return self._sourcepoint_overwrite
+    def statepoint(self):
+        return self._statepoint
 
     @property
     def threads(self):
@@ -553,44 +525,37 @@ class Settings(object):
         cv.check_less_than('verbosity', verbosity, 10, True)
         self._verbosity = verbosity
 
-    @statepoint_batches.setter
-    def statepoint_batches(self, batches):
-        cv.check_type('statepoint batches', batches, Iterable, Integral)
-        for batch in batches:
-            cv.check_greater_than('statepoint batch', batch, 0)
-        self._statepoint_batches = batches
+    @sourcepoint.setter
+    def sourcepoint(self, sourcepoint):
+        cv.check_type('sourcepoint options', sourcepoint, Mapping)
+        for key, value in sourcepoint.items():
+            if key == 'batches':
+                cv.check_type('sourcepoint batches', value, Iterable, Integral)
+                for batch in value:
+                    cv.check_greater_than('sourcepoint batch', batch, 0)
+            elif key == 'separate':
+                cv.check_type('sourcepoint separate', value, bool)
+            elif key == 'write':
+                cv.check_type('sourcepoint write', value, bool)
+            elif key == 'overwrite':
+                cv.check_type('sourcepoint overwrite', value, bool)
+            else:
+                raise ValueError("Unknown key '{}' encountered when setting "
+                                 "sourcepoint options.".format(key))
+        self._sourcepoint = sourcepoint
 
-    @statepoint_interval.setter
-    def statepoint_interval(self, interval):
-        cv.check_type('statepoint interval', interval, Integral)
-        self._statepoint_interval = interval
-
-    @sourcepoint_batches.setter
-    def sourcepoint_batches(self, batches):
-        cv.check_type('sourcepoint batches', batches, Iterable, Integral)
-        for batch in batches:
-            cv.check_greater_than('sourcepoint batch', batch, 0)
-        self._sourcepoint_batches = batches
-
-    @sourcepoint_interval.setter
-    def sourcepoint_interval(self, interval):
-        cv.check_type('sourcepoint interval', interval, Integral)
-        self._sourcepoint_interval = interval
-
-    @sourcepoint_separate.setter
-    def sourcepoint_separate(self, source_separate):
-        cv.check_type('sourcepoint separate', source_separate, bool)
-        self._sourcepoint_separate = source_separate
-
-    @sourcepoint_write.setter
-    def sourcepoint_write(self, source_write):
-        cv.check_type('sourcepoint write', source_write, bool)
-        self._sourcepoint_write = source_write
-
-    @sourcepoint_overwrite.setter
-    def sourcepoint_overwrite(self, source_overwrite):
-        cv.check_type('sourcepoint overwrite', source_overwrite, bool)
-        self._sourcepoint_overwrite = source_overwrite
+    @statepoint.setter
+    def statepoint(self, statepoint):
+        cv.check_type('statepoint options', statepoint, Mapping)
+        for key, value in statepoint.items():
+            if key == 'batches':
+                cv.check_type('statepoint batches', value, Iterable, Integral)
+                for batch in value:
+                    cv.check_greater_than('statepoint batch', batch, 0)
+            else:
+                raise ValueError("Unknown key '{}' encountered when setting "
+                                 "statepoint options.".format(key))
+        self._statepoint = statepoint
 
     @confidence_intervals.setter
     def confidence_intervals(self, confidence_intervals):
@@ -958,48 +923,34 @@ class Settings(object):
             element.text = str(self._verbosity)
 
     def _create_statepoint_subelement(self, root):
-        # Batches subelement
-        if self._statepoint_batches is not None:
+        if self._statepoint:
             element = ET.SubElement(root, "state_point")
-            subelement = ET.SubElement(element, "batches")
-            subelement.text = ' '.join(map(str, self._statepoint_batches))
-
-        # Interval subelement
-        elif self._statepoint_interval is not None:
-            element = ET.SubElement(root, "state_point")
-            subelement = ET.SubElement(element, "interval")
-            subelement.text = str(self._statepoint_interval)
+            if 'batches' in self._statepoint:
+                subelement = ET.SubElement(element, "batches")
+                subelement.text = ' '.join(
+                    str(x) for x in self._statepoint['batches'])
 
     def _create_sourcepoint_subelement(self, root):
-        # Batches subelement
-        if self._sourcepoint_batches is not None:
+        if self._sourcepoint:
             element = ET.SubElement(root, "source_point")
-            subelement = ET.SubElement(element, "batches")
-            subelement.text = ' '.join(map(str, self._sourcepoint_batches))
 
-        # Interval subelement
-        elif self._sourcepoint_interval is not None:
-            element = ET.SubElement(root, "source_point")
-            subelement = ET.SubElement(element, "interval")
-            subelement.text = str(self._sourcepoint_interval)
+            if 'batches' in self._sourcepoint:
+                subelement = ET.SubElement(element, "batches")
+                subelement.text = ' '.join(
+                    str(x) for x in self._sourcepoint['batches'])
 
-        # Separate subelement
-        if self._sourcepoint_separate is not None:
-            element = ET.SubElement(root, "source_point")
-            subelement = ET.SubElement(element, "separate")
-            subelement.text = str(self._sourcepoint_separate).lower()
+            if 'separate' in self._sourcepoint:
+                subelement = ET.SubElement(element, "separate")
+                subelement.text = str(self._sourcepoint['separate']).lower()
 
-        # Write subelement
-        if self._sourcepoint_write is not None:
-            element = ET.SubElement(root, "source_point")
-            subelement = ET.SubElement(element, "write")
-            subelement.text = str(self._sourcepoint_write).lower()
+            if 'write' in self._sourcepoint:
+                subelement = ET.SubElement(element, "write")
+                subelement.text = str(self._sourcepoint['write']).lower()
 
-        # Overwrite latest subelement
-        if self._sourcepoint_overwrite is not None:
-            element = ET.SubElement(root, "source_point")
-            subelement = ET.SubElement(element, "overwrite_latest")
-            subelement.text = str(self._sourcepoint_overwrite).lower()
+            # Overwrite latest subelement
+            if 'overwrite' in self._sourcepoint:
+                subelement = ET.SubElement(element, "overwrite_latest")
+                subelement.text = str(self._sourcepoint['overwrite']).lower()
 
     def _create_confidence_intervals(self, root):
         if self._confidence_intervals is not None:

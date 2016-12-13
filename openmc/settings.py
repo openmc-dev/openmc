@@ -9,7 +9,7 @@ import numpy as np
 
 from openmc.clean_xml import clean_xml_indentation
 import openmc.checkvalue as cv
-from openmc import Nuclide, VolumeCalculation, Source
+from openmc import Nuclide, VolumeCalculation, Source, Mesh
 
 
 class Settings(object):
@@ -43,13 +43,10 @@ class Settings(object):
         below which particle will be killed.
     energy_mode : {'continuous-energy', 'multi-group'}
         Set whether the calculation should be continuous-energy or multi-group.
-    entropy_dimension : tuple or list
-        Number of Shannon entropy mesh cells in the x, y, and z directions,
-        respectively
-    entropy_lower_left : tuple or list
-        Coordinates of the lower-left point of the Shannon entropy mesh
-    entropy_upper_right : tuple or list
-        Coordinates of the upper-right point of the Shannon entropy mesh
+    entropy_mesh : openmc.Mesh
+        Mesh to be used to calculate Shannon entropy. If the mesh dimensions are
+        not specified. OpenMC assigns a mesh such that 20 source sites per mesh
+        cell are to be expected on average.
     generations_per_batch : int
         Number of generations per batch
     inactive : int
@@ -138,13 +135,9 @@ class Settings(object):
         Maximum number of batches simulated. If this is set, the number of
         batches specified via ``batches`` is interpreted as the minimum number
         of batches
-    ufs_dimension : tuple or list
-        Number of uniform fission site (UFS) mesh cells in the x, y, and z
-        directions, respectively
-    ufs_lower_left : tuple or list
-        Coordinates of the lower-left point of the UFS mesh
-    ufs_upper_right : tuple or list
-        Coordinates of the upper-right point of the UFS mesh
+    ufs_mesh : openmc.Mesh
+        Mesh to be used for redistributing source sites via the uniform fision
+        site (UFS) method.
     verbosity : int
         Verbosity during simulation between 1 and 10
     volume_calculations : VolumeCalculation or iterable of VolumeCalculation
@@ -177,10 +170,8 @@ class Settings(object):
         self._seed = None
         self._survival_biasing = None
 
-        # Entropy subelement
-        self._entropy_dimension = None
-        self._entropy_lower_left = None
-        self._entropy_upper_right = None
+        # Shannon entropy mesh
+        self._entropy_mesh = None
 
         # Trigger subelement
         self._trigger_active = None
@@ -210,9 +201,7 @@ class Settings(object):
         self._cutoff = None
 
         # Uniform fission source subelement
-        self._ufs_dimension = 1
-        self._ufs_lower_left = None
-        self._ufs_upper_right = None
+        self._ufs_mesh = None
 
         # Domain decomposition subelement
         self._dd_mesh_dimension = None
@@ -294,16 +283,8 @@ class Settings(object):
         return self._survival_biasing
 
     @property
-    def entropy_dimension(self):
-        return self._entropy_dimension
-
-    @property
-    def entropy_lower_left(self):
-        return self._entropy_lower_left
-
-    @property
-    def entropy_upper_right(self):
-        return self._entropy_upper_right
+    def entropy_mesh(self):
+        return self._entropy_mesh
 
     @property
     def trigger_active(self):
@@ -366,16 +347,8 @@ class Settings(object):
         return self._cutoff
 
     @property
-    def ufs_dimension(self):
-        return self._ufs_dimension
-
-    @property
-    def ufs_lower_left(self):
-        return self._ufs_lower_left
-
-    @property
-    def ufs_upper_right(self):
-        return self._ufs_upper_right
+    def ufs_mesh(self):
+        return self._ufs_mesh
 
     @property
     def dd_mesh_dimension(self):
@@ -624,25 +597,13 @@ class Settings(object):
 
         self._cutoff = cutoff
 
-    @entropy_dimension.setter
-    def entropy_dimension(self, dimension):
-        cv.check_type('entropy mesh dimension', dimension, Iterable, Integral)
-        cv.check_length('entropy mesh dimension', dimension, 3)
-        self._entropy_dimension = dimension
-
-    @entropy_lower_left.setter
-    def entropy_lower_left(self, lower_left):
-        cv.check_type('entropy mesh lower left corner', lower_left,
-                   Iterable, Real)
-        cv.check_length('entropy mesh lower left corner', lower_left, 3)
-        self._entropy_lower_left = lower_left
-
-    @entropy_upper_right.setter
-    def entropy_upper_right(self, upper_right):
-        cv.check_type('entropy mesh upper right corner', upper_right,
-                   Iterable, Real)
-        cv.check_length('entropy mesh upper right corner', upper_right, 3)
-        self._entropy_upper_right = upper_right
+    @entropy_mesh.setter
+    def entropy_mesh(self, entropy):
+        cv.check_type('entropy mesh', entropy, Mesh)
+        cv.check_length('entropy mesh dimension', entropy.dimension, 3)
+        cv.check_length('entropy mesh lower-left corner', entropy.lower_left, 3)
+        cv.check_length('entropy mesh upper-right corner', entropy.upper_right, 3)
+        self._entropy_mesh = entropy
 
     @trigger_active.setter
     def trigger_active(self, trigger_active):
@@ -725,25 +686,13 @@ class Settings(object):
             cv.check_greater_than('track particle', t[0], 0)
         self._track = track
 
-    @ufs_dimension.setter
-    def ufs_dimension(self, dimension):
-        cv.check_type('UFS mesh dimension', dimension, Iterable, Integral)
-        cv.check_length('UFS mesh dimension', dimension, 3)
-        for dim in dimension:
-            cv.check_greater_than('UFS mesh dimension', dim, 1, True)
-        self._ufs_dimension = dimension
-
-    @ufs_lower_left.setter
-    def ufs_lower_left(self, lower_left):
-        cv.check_type('UFS mesh lower left corner', lower_left, Iterable, Real)
-        cv.check_length('UFS mesh lower left corner', lower_left, 3)
-        self._ufs_lower_left = lower_left
-
-    @ufs_upper_right.setter
-    def ufs_upper_right(self, upper_right):
-        cv.check_type('UFS mesh upper right corner', upper_right, Iterable, Real)
-        cv.check_length('UFS mesh upper right corner', upper_right, 3)
-        self._ufs_upper_right = upper_right
+    @ufs_mesh.setter
+    def ufs_mesh(self, ufs_mesh):
+        cv.check_type('UFS mesh', ufs_mesh, Mesh)
+        cv.check_length('UFS mesh dimension', ufs_mesh.dimension, 3)
+        cv.check_length('UFS mesh lower-left corner', ufs_mesh.lower_left, 3)
+        cv.check_length('UFS mesh upper-right corner', ufs_mesh.upper_right, 3)
+        self._ufs_mesh = ufs_mesh
 
     @dd_mesh_dimension.setter
     def dd_mesh_dimension(self, dimension):
@@ -1003,19 +952,19 @@ class Settings(object):
                 subelement.text = str(self._cutoff['energy'])
 
     def _create_entropy_subelement(self, root):
-        if self._entropy_lower_left is not None and \
-           self._entropy_upper_right is not None:
-
+        if self._entropy_mesh is not None:
             element = ET.SubElement(root, "entropy")
 
-            subelement = ET.SubElement(element, "dimension")
-            subelement.text = ' '.join(map(str, self._entropy_dimension))
-
+            if self._entropy_mesh.dimension is not None:
+                subelement = ET.SubElement(element, "dimension")
+                subelement.text = ' '.join(
+                    str(x) for x in self._entropy_mesh.dimension)
             subelement = ET.SubElement(element, "lower_left")
-            subelement.text = ' '.join(map(str, self._entropy_lower_left))
-
+            subelement.text = ' '.join(
+                str(x) for x in self._entropy_mesh.lower_left)
             subelement = ET.SubElement(element, "upper_right")
-            subelement.text = ' '.join(map(str, self._entropy_upper_right))
+            subelement.text = ' '.join(
+                str(x) for x in self._entropy_mesh.upper_right)
 
     def _create_trigger_subelement(self, root):
         if self._trigger_active is not None:
@@ -1068,19 +1017,17 @@ class Settings(object):
             element.text = ' '.join(map(str, self._track))
 
     def _create_ufs_subelement(self, root):
-        if self._ufs_lower_left is not None and \
-           self._ufs_upper_right is not None:
-
+        if self._ufs_mesh is not None:
             element = ET.SubElement(root, "uniform_fs")
-
             subelement = ET.SubElement(element, "dimension")
-            subelement.text = ' '.join(map(str, self._ufs_dimension))
-
+            subelement.text = ' '.join(str(x) for x in
+                                       self._ufs_mesh.dimension)
             subelement = ET.SubElement(element, "lower_left")
-            subelement.text = ' '.join(map(str, self._ufs_lower_left))
-
+            subelement.text = ' '.join(str(x) for x in
+                                       self._ufs_mesh.lower_left)
             subelement = ET.SubElement(element, "upper_right")
-            subelement.text = ' '.join(map(str, self._ufs_upper_right))
+            subelement.text = ' '.join(str(x) for x in
+                                       self._ufs_mesh.upper_right)
 
     def _create_dd_subelement(self, root):
         if self._dd_mesh_lower_left is not None and \

@@ -1,5 +1,6 @@
 from openmc.arithmetic import *
 from openmc.cell import *
+from openmc.mesh import *
 from openmc.lattice import *
 from openmc.element import *
 from openmc.geometry import *
@@ -13,7 +14,6 @@ from openmc.source import *
 from openmc.settings import *
 from openmc.surface import *
 from openmc.universe import *
-from openmc.mesh import *
 from openmc.filter import *
 from openmc.trigger import *
 from openmc.tally_derivative import *

@@ -17,49 +17,15 @@ class Settings(object):
 
     Attributes
     ----------
-    run_mode : {'eigenvalue' or 'fixed source'}
-        The type of calculation to perform (default is 'eigenvalue')
     batches : int
         Number of batches to simulate
-    generations_per_batch : int
-        Number of generations per batch
-    inactive : int
-        Number of inactive batches
-    particles : int
-        Number of particles per generation
-    keff_trigger : dict
-        Dictionary defining a trigger on eigenvalue. The dictionary must have
-        two keys, 'type' and 'threshold'. Acceptable values corresponding to
-        type are 'variance', 'std_dev', and 'rel_err'. The threshold value
-        should be a float indicating the variance, standard deviation, or
-        relative error used.
-    source : Iterable of openmc.Source
-        Distribution of source sites in space, angle, and energy
-    output : dict
-        Dictionary indicating what files to output. Valid keys are 'summary',
-        'cross_sections', 'tallies', and 'distribmats'. Values corresponding to
-        each key should be given as a boolean value.
-    output_path : str
-        Path to write output to
-    verbosity : int
-        Verbosity during simulation between 1 and 10
-    statepoint : dict
-        Options for writing state points. Acceptable keys are:
-
-        :batches: list of batches at which to write source
-    sourcepoint : dict
-        Options for writing source points. Acceptable keys are:
-
-        :batches: list of batches at which to write source
-        :overwrite: bool indicating whether to overwrite
-        :separate: bool indicating whether the source should be written as a
-                   separate file
-        :write: bool indicating whether or not to write the source
     confidence_intervals : bool
         If True, uncertainties on tally results will be reported as the
         half-width of the 95% two-sided confidence interval. If False,
         uncertainties on tally results will be reported as the sample standard
         deviation.
+    create_fission_neutrons : bool
+        Indicate whether fission neutrons should be created or not.
     cross_sections : str
         Indicates the path to an XML cross section listing file (usually named
         cross_sections.xml). If it is not set, the
@@ -67,23 +33,6 @@ class Settings(object):
         continuous-energy calculations and
         :envvar:`OPENMC_MG_CROSS_SECTIONS` will be used for multi-group
         calculations to find the path to the XML cross section file.
-    multipole_library : str
-        Indicates the path to a directory containing a windowed multipole
-        cross section library. If it is not set, the
-        :envvar:`OPENMC_MULTIPOLE_LIBRARY` environment variable will be used. A
-        multipole library is optional.
-    energy_mode : {'continuous-energy', 'multi-group'}
-        Set whether the calculation should be continuous-energy or multi-group.
-    max_order : int
-        Maximum scattering order to apply globally when in multi-group mode.
-    ptables : bool
-        Determine whether probability tables are used.
-    run_cmfd : bool
-        Indicate if coarse mesh finite difference acceleration is to be used
-    seed : int
-        Seed for the linear congruential pseudorandom number generator
-    survival_biasing : bool
-        Indicate whether survival biasing is to be used
     cutoff : dict
         Dictionary defining weight cutoff and energy cutoff. The dictionary may
         have three keys, 'weight', 'weight_avg' and 'energy'. Value for 'weight'
@@ -92,6 +41,8 @@ class Settings(object):
         weight assigned to particles that are not killed after Russian
         roulette. Value of energy should be a float indicating energy in eV
         below which particle will be killed.
+    energy_mode : {'continuous-energy', 'multi-group'}
+        Set whether the calculation should be continuous-energy or multi-group.
     entropy_dimension : tuple or list
         Number of Shannon entropy mesh cells in the x, y, and z directions,
         respectively
@@ -99,6 +50,60 @@ class Settings(object):
         Coordinates of the lower-left point of the Shannon entropy mesh
     entropy_upper_right : tuple or list
         Coordinates of the upper-right point of the Shannon entropy mesh
+    generations_per_batch : int
+        Number of generations per batch
+    inactive : int
+        Number of inactive batches
+    keff_trigger : dict
+        Dictionary defining a trigger on eigenvalue. The dictionary must have
+        two keys, 'type' and 'threshold'. Acceptable values corresponding to
+        type are 'variance', 'std_dev', and 'rel_err'. The threshold value
+        should be a float indicating the variance, standard deviation, or
+        relative error used.
+    max_order : int
+        Maximum scattering order to apply globally when in multi-group mode.
+    multipole_library : str
+        Indicates the path to a directory containing a windowed multipole
+        cross section library. If it is not set, the
+        :envvar:`OPENMC_MULTIPOLE_LIBRARY` environment variable will be used. A
+        multipole library is optional.
+    no_reduce : bool
+        Indicate that all user-defined and global tallies should not be reduced
+        across processes in a parallel calculation.
+    output : dict
+        Dictionary indicating what files to output. Valid keys are 'summary',
+        'cross_sections', 'tallies', and 'distribmats'. Values corresponding to
+        each key should be given as a boolean value.
+    output_path : str
+        Path to write output to
+    particles : int
+        Number of particles per generation
+    ptables : bool
+        Determine whether probability tables are used.
+    resonance_scattering : ResonanceScattering or iterable of ResonanceScattering
+        The elastic scattering model to use for resonant isotopes
+    run_cmfd : bool
+        Indicate if coarse mesh finite difference acceleration is to be used
+    run_mode : {'eigenvalue' or 'fixed source'}
+        The type of calculation to perform (default is 'eigenvalue')
+    seed : int
+        Seed for the linear congruential pseudorandom number generator
+    source : Iterable of openmc.Source
+        Distribution of source sites in space, angle, and energy
+    sourcepoint : dict
+        Options for writing source points. Acceptable keys are:
+
+        :batches: list of batches at which to write source
+        :overwrite: bool indicating whether to overwrite
+        :separate: bool indicating whether the source should be written as a
+                   separate file
+        :write: bool indicating whether or not to write the source
+    statepoint : dict
+        Options for writing state points. Acceptable keys are:
+
+        :batches: list of batches at which to write source
+    survival_biasing : bool
+        Indicate whether survival biasing is to be used
     tabular_legendre : dict
         Determines if a multi-group scattering moment kernel expanded via
         Legendre polynomials is to be converted to a tabular distribution or
@@ -116,17 +121,6 @@ class Settings(object):
         within which cross sections may be used. 'multipole' is a boolean
         indicating whether or not the windowed multipole method should be used
         to evaluate resolved resonance cross sections.
-    trigger_active : bool
-        Indicate whether tally triggers are used
-    trigger_max_batches : int
-        Maximum number of batches simulated. If this is set, the number of
-        batches specified via ``batches`` is interpreted as the minimum number
-        of batches
-    trigger_batch_interval : int
-        Number of batches in between convergence checks
-    no_reduce : bool
-        Indicate that all user-defined and global tallies should not be reduced
-        across processes in a parallel calculation.
     threads : int
         Number of OpenMP threads
     trace : tuple or list
@@ -136,6 +130,14 @@ class Settings(object):
         Specify particles for which track files should be written. Each particle
         is identified by a triplet with the batch number, generation number, and
         particle number.
+    trigger_active : bool
+        Indicate whether tally triggers are used
+    trigger_batch_interval : int
+        Number of batches in between convergence checks
+    trigger_max_batches : int
+        Maximum number of batches simulated. If this is set, the number of
+        batches specified via ``batches`` is interpreted as the minimum number
+        of batches
     ufs_dimension : tuple or list
         Number of uniform fission site (UFS) mesh cells in the x, y, and z
         directions, respectively
@@ -143,12 +145,10 @@ class Settings(object):
         Coordinates of the lower-left point of the UFS mesh
     ufs_upper_right : tuple or list
         Coordinates of the upper-right point of the UFS mesh
-    resonance_scattering : ResonanceScattering or iterable of ResonanceScattering
-        The elastic scattering model to use for resonant isotopes
+    verbosity : int
+        Verbosity during simulation between 1 and 10
     volume_calculations : VolumeCalculation or iterable of VolumeCalculation
         Stochastic volume calculation specifications
-    create_fission_neutrons : bool
-        Indicate whether fission neutrons should be created or not.
 
     """
 

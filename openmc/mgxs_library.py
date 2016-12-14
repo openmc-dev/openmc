@@ -2135,18 +2135,20 @@ class MGXSLibrary(object):
     @classmethod
     def from_hdf5(cls, filename=None):
         """Generate an MGXS Library from an HDF5 group or file
+
         Parameters
         ----------
         filename : str, optional
             Name of HDF5 file containing MGXS data. Default is None.
             If not provided, the value of the OPENMC_MG_CROSS_SECTIONS
             environmental variable will be used
+
         Returns
         -------
         openmc.MGXSLibrary
             Multi-group cross section data object.
-        """
 
+        """
         # If filename is None, get the cross sections from the
         # OPENMC_CROSS_SECTIONS environment variable
         if filename is None:

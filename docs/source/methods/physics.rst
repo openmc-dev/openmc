@@ -576,12 +576,12 @@ resulting energies would violate laws governing the kinematics, i.e., the
 outgoing energy may be outside the range of available energy in the reaction.
 
 To avoid this situation, the accepted practice is to use a process known as
-scaled interpolation [Doyas]_. First, we find the tabulated incident energies
-which bound the actual incoming energy of the particle, i.e., find :math:`i`
-such that :math:`E_i < E < E_{i+1}` and calculate the interpolation factor
-:math:`f` via :eq:`interpolation-factor`. Then, we interpolate between the
-minimum and maximum energies of the outgoing energy distributions corresponding
-to :math:`E_i` and :math:`E_{i+1}`:
+`scaled interpolation`_. First, we find the tabulated incident energies which
+bound the actual incoming energy of the particle, i.e., find :math:`i` such that
+:math:`E_i < E < E_{i+1}` and calculate the interpolation factor :math:`f` via
+:eq:`interpolation-factor`. Then, we interpolate between the minimum and maximum
+energies of the outgoing energy distributions corresponding to :math:`E_i` and
+:math:`E_{i+1}`:
 
 .. math::
     :label: continuous-minmax
@@ -721,7 +721,7 @@ higher rejection efficiency than the standard technique, i.e. rule C45 in the
 Energy-Dependent Watt Spectrum
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
-The probability distribution for a [Watt]_ fission spectrum can be written in
+The probability distribution for a `Watt fission spectrum`_ can be written in
 the form
 
 .. math::
@@ -1007,7 +1007,7 @@ well as secondary angle and energy distributions. For integrated cross sections,
 it is possible to calculate thermally-averaged cross sections by applying a
 kernel Doppler broadening algorithm to data at 0 K (or some temperature lower
 than the desired temperature). The most ubiquitous algorithm for this purpose is
-the [SIGMA1]_ method developed by Red Cullen and subsequently refined by
+the `SIGMA1 method`_ developed by Red Cullen and subsequently refined by
 others. This method is used in the NJOY_ and PREPRO_ data processing codes.
 
 The effect of thermal motion on secondary angle and energy distributions can be
@@ -1507,7 +1507,7 @@ continuous-energy transport.
 In the unresolved resonance energy range, resonances may be so closely spaced
 that it is not possible for experimental measurements to resolve all
 resonances. To properly account for self-shielding in this energy range, OpenMC
-uses the probability table method [Levitt]_. For most thermal reactors, the use
+uses the `probability table method`_. For most thermal reactors, the use
 of probability tables will not significantly affect problem results. However,
 for some fast reactors and other problems with an appreciable flux spectrum in
 the unresolved resonance range, not using probability tables may lead to
@@ -1633,31 +1633,25 @@ another.
 
    .. rubric:: References
 
-.. [Doyas] Richard J. Doyas and Sterrett T. Perkins, "Interpolation of Tabular
-   Secondary Neutron and Photon Energy Distributions," *Nucl. Sci. Eng.*,
-   **50**, 390-392 (1972).
-
 .. [Gelbard] Ely M. Gelbard, "Epithermal Scattering in VIM," FRA-TM-123, Argonne
    National Laboratory (1979).
 
-.. [Levitt] Leo B. Levitt, "The Probability Table Method for Treating Unresolved
-   Neutron Resonances in Monte Carlo Calculations," *Nucl. Sci. Eng.*, **49**,
-   pp. 450-457 (1972).
-
-.. [SIGMA1] Dermett E. Cullen and Charles R. Weisbin, "Exact Doppler Broadening
-   of Tabulated Cross Sections," *Nucl. Sci. Eng.*, **60**, pp. 199-229 (1976).
-
 .. [Squires] G. L. Squires, *Introduction to the Theory of Thermal Neutron
    Scattering*, Cambridge University Press (1978).
-
-.. [Watt] B. E. Watt, "Energy Spectrum of Neutrons from Thermal Fission of
-   U235," *Phys. Rev.*, **87** (6), 1037-1041 (1952).
 
 .. [Williams] M. M. R. Williams, *The Slowing Down and Thermalization of
    Neutrons*, North-Holland Publishing Co., Amsterdam (1966). **Note:** This
    book can be obtained for free from the OECD_.
 
 .. |sab| replace:: S(:math:`\alpha,\beta,T`)
+
+.. _SIGMA1 method: http://dx.doi.org/10.13182/NSE76-1
+
+.. _scaled interpolation: http://www.ans.org/pubs/journals/nse/a_26575
+
+.. _probability table method: http://dx.doi.org/10.13182/NSE72-3
+
+.. _Watt fission spectrum: http://dx.doi.org/10.1103/PhysRev.87.1037
 
 .. _Foderaro: http://hdl.handle.net/1721.1/1716
 

@@ -149,13 +149,16 @@ class TalliesTestHarness(PyAPITestHarness):
         total_tallies[2].estimator = 'analog'
         total_tallies[3].estimator = 'collision'
 
-        all_nuclide_tallies = [Tally(), Tally()]
+        all_nuclide_tallies = [Tally() for i in range(4)]
         for t in all_nuclide_tallies:
             t.filters = [cell_filter]
+            t.estimator = 'tracklength'
             t.nuclides = ['all']
             t.scores = ['total']
-        all_nuclide_tallies[0].estimator = 'tracklength'
-        all_nuclide_tallies[0].estimator = 'collision'
+        all_nuclide_tallies[1].estimator = 'collision'
+        all_nuclide_tallies[2].filters = [mesh_filter]
+        all_nuclide_tallies[3].filters = [mesh_filter]
+        all_nuclide_tallies[3].nuclides = ['U235']
 
         self._input_set.tallies = Tallies()
         self._input_set.tallies += (

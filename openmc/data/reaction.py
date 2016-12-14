@@ -86,7 +86,7 @@ def _get_products(ev, mt):
     # Read HEAD record
     items = get_head_record(file_obj)
     reference_frame = {1: 'laboratory', 2: 'center-of-mass',
-                       3: 'light-heavy'}[items[3]]
+                       3: 'light-heavy', 4: 'breakup'}[items[3]]
     n_products = items[4]
 
     products = []

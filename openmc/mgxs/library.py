@@ -524,6 +524,15 @@ class Library(object):
         for domain in self.domains:
             for mgxs_type in self.mgxs_types:
                 mgxs = self.get_mgxs(domain, mgxs_type)
+
+                if mgxs_type in openmc.mgxs.MDGXS_TYPES:
+                    if self.num_delayed_groups == 0:
+                        mgxs.delayed_groups = None
+                    else:
+                        delayed_groups \
+                            = list(range(1,self.num_delayed_groups+1))
+                        mgxs.delayed_groups = delayed_groups
+
                 for tally in mgxs.tallies.values():
                     tallies_file.append(tally, merge=merge)
 

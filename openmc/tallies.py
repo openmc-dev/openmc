@@ -705,7 +705,7 @@ class Tally(object):
 
         """
 
-        # Two tallys must have the same number of filters
+        # Two tallies must have the same number of filters
         if len(self.filters) != len(other.filters):
             return False
 
@@ -3486,8 +3486,13 @@ class Tallies(cv.CheckedList):
         for d in derivs:
             root_element.append(d.to_xml_element())
 
-    def export_to_xml(self):
+    def export_to_xml(self, path='tallies.xml'):
         """Create a tallies.xml file that can be used for a simulation.
+
+        Parameters
+        ----------
+        path : str
+            Path to file to write. Defaults to 'tallies.xml'.
 
         """
 
@@ -3501,5 +3506,5 @@ class Tallies(cv.CheckedList):
 
         # Write the XML Tree to the tallies.xml file
         tree = ET.ElementTree(root_element)
-        tree.write("tallies.xml", xml_declaration=True,
+        tree.write(path, xml_declaration=True,
                    encoding='utf-8', method="xml")

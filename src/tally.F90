@@ -679,8 +679,8 @@ contains
           end if
         end if
 
-
       case (SCORE_DECAY_RATE)
+
         ! make sure the correct energy is used
         if (t % estimator == ESTIMATOR_TRACKLENGTH) then
           E = p % E
@@ -691,12 +691,134 @@ contains
         ! Set the delayedgroup filter index
         dg_filter = t % find_filter(FILTER_DELAYEDGROUP)
 
-        if (survival_biasing) then
-          ! No fission events occur if survival biasing is on -- need to
-          ! calculate fraction of absorptions that would have resulted in
-          ! delayed-nu-fission
-          if (micro_xs(p % event_nuclide) % absorption > ZERO .and. &
-               nuclides(p % event_nuclide) % fissionable) then
+        if (t % estimator == ESTIMATOR_ANALOG) then
+          if (survival_biasing) then
+            ! No fission events occur if survival biasing is on -- need to
+            ! calculate fraction of absorptions that would have resulted in
+            ! delayed-nu-fission
+            if (micro_xs(p % event_nuclide) % absorption > ZERO .and. &
+                 nuclides(p % event_nuclide) % fissionable) then
+
+              ! Check if the delayed group filter is present
+              if (dg_filter > 0) then
+                select type(filt => t % filters(dg_filter) % obj)
+                type is (DelayedGroupFilter)
+
+                  ! Loop over all delayed group bins and tally to them
+                  ! individually
+                  do d_bin = 1, filt % n_bins
+
+                    ! Get the delayed group for this bin
+                    d = filt % groups(d_bin)
+
+                    ! Compute the yield for this delayed group
+                    yield = nuclides(p % event_nuclide) &
+                         % nu(E, EMISSION_DELAYED, d)
+
+                    associate (rxn => nuclides(p % event_nuclide) % &
+                         reactions(nuclides(p % event_nuclide) % index_fission(1)))
+
+                      ! Compute the score
+                      score = p % absorb_wgt * yield * &
+                           micro_xs(p % event_nuclide) % fission &
+                           / micro_xs(p % event_nuclide) % absorption &
+                           * rxn % products(1 + d) % decay_rate
+                    end associate
+
+                    ! Tally to bin
+                    call score_fission_delayed_dg(t, d_bin, score, score_index)
+                  end do
+                  cycle SCORE_LOOP
+                end select
+              else
+
+                ! If the delayed group filter is not present, compute the score
+                ! by accumulating the absorbed weight times the decay rate times
+                ! the fraction of the delayed-nu-fission xs to the absorption xs
+                ! for all delayed groups.
+                score = ZERO
+
+                associate (rxn => nuclides(p % event_nuclide) % &
+                     reactions(nuclides(p % event_nuclide) % index_fission(1)))
+
+                  ! We need to be careful not to overshoot the number of delayed
+                  ! groups since this could cause the range of the rxn % products
+                  ! array to be exceeded. Hence, we use the size of this array
+                  ! and not the MAX_DELAYED_GROUPS constant for this loop.
+                  do d = 1, size(rxn % products) - 2
+
+                    score = score + rxn % products(1 + d) % decay_rate * &
+                         p % absorb_wgt * micro_xs(p % event_nuclide) % fission *&
+                         nuclides(p % event_nuclide) % nu(E, EMISSION_DELAYED, d)&
+                         / micro_xs(p % event_nuclide) % absorption
+                  end do
+                end associate
+              end if
+            end if
+          else
+
+            ! Skip any non-fission events
+            if (.not. p % fission) cycle SCORE_LOOP
+            ! If there is no outgoing energy filter, than we only need to
+            ! score to one bin. For the score to be 'analog', we need to
+            ! score the number of particles that were banked in the fission
+            ! bank. Since this was weighted by 1/keff, we multiply by keff
+            ! to get the proper score. Loop over the neutrons produced from
+            ! fission and check which ones are delayed. If a delayed neutron is
+            ! encountered, add its contribution to the fission bank to the
+            ! score.
+
+            score = ZERO
+
+            ! loop over number of particles banked
+            do k = 1, p % n_bank
+
+              ! get the delayed group
+              g = fission_bank(n_bank - p % n_bank + k) % delayed_group
+
+              ! Case for tallying delayed emissions
+              if (g /= 0) then
+
+                ! Accumulate the decay rate times delayed nu fission score
+                associate (rxn => nuclides(p % event_nuclide) % &
+                     reactions(nuclides(p % event_nuclide) % index_fission(1)))
+
+                  ! determine score based on bank site weight and keff.
+                  score = score + keff * fission_bank(n_bank - p % n_bank + k) &
+                       % wgt * rxn % products(1 + g) % decay_rate
+                end associate
+
+                ! if the delayed group filter is present, tally to corresponding
+                ! delayed group bin if it exists
+                if (dg_filter > 0) then
+
+                  ! declare the delayed group filter type
+                  select type(filt => t % filters(dg_filter) % obj)
+                  type is (DelayedGroupFilter)
+
+                    ! loop over delayed group bins until the corresponding bin is
+                    ! found
+                    do d_bin = 1, filt % n_bins
+                      d = filt % groups(d_bin)
+
+                      ! check whether the delayed group of the particle is equal to
+                      ! the delayed group of this bin
+                      if (d == g) then
+                        call score_fission_delayed_dg(t, d_bin, score, score_index)
+                      end if
+                    end do
+                  end select
+
+                  ! Reset the score to zero
+                  score = ZERO
+                end if
+              end if
+            end do
+          end if
+        else
+
+          ! Check if tally is on a single nuclide
+          if (i_nuclide > 0) then
 
             ! Check if the delayed group filter is present
             if (dg_filter > 0) then
@@ -711,17 +833,14 @@ contains
                   d = filt % groups(d_bin)
 
                   ! Compute the yield for this delayed group
-                  yield = nuclides(p % event_nuclide) &
-                       % nu(E, EMISSION_DELAYED, d)
+                  yield = nuclides(i_nuclide) % nu(E, EMISSION_DELAYED, d)
 
-                  associate (rxn => nuclides(p % event_nuclide) % &
-                       reactions(nuclides(p % event_nuclide) % index_fission(1)))
+                  associate (rxn => nuclides(i_nuclide) % &
+                       reactions(nuclides(i_nuclide) % index_fission(1)))
 
-                    ! Compute the score
-                    score = p % absorb_wgt * yield * &
-                         micro_xs(p % event_nuclide) % fission &
-                         / micro_xs(p % event_nuclide) % absorption &
-                         * rxn % products(1 + d) % decay_rate
+                    ! Compute the score and tally to bin
+                    score = micro_xs(i_nuclide) % fission * yield * flux * &
+                         atom_density * rxn % products(1 + d) % decay_rate
                   end associate
 
                   ! Tally to bin
@@ -746,78 +865,90 @@ contains
                 ! and not the MAX_DELAYED_GROUPS constant for this loop.
                 do d = 1, size(rxn % products) - 2
 
-                  score = score + rxn % products(1 + d) % decay_rate * &
-                       p % absorb_wgt * micro_xs(p % event_nuclide) % fission *&
-                       nuclides(p % event_nuclide) % nu(E, EMISSION_DELAYED, d)&
-                       / micro_xs(p % event_nuclide) % absorption
+                  score = score + micro_xs(i_nuclide) % fission * flux * &
+                       nuclides(i_nuclide) % nu(E, EMISSION_DELAYED) * &
+                       atom_density * rxn % products(1 + d) % decay_rate
                 end do
               end associate
             end if
-          end if
-        else
 
-          ! Skip any non-fission events
-          if (.not. p % fission) cycle SCORE_LOOP
-          ! If there is no outgoing energy filter, than we only need to
-          ! score to one bin. For the score to be 'analog', we need to
-          ! score the number of particles that were banked in the fission
-          ! bank. Since this was weighted by 1/keff, we multiply by keff
-          ! to get the proper score. Loop over the neutrons produced from
-          ! fission and check which ones are delayed. If a delayed neutron is
-          ! encountered, add its contribution to the fission bank to the
-          ! score.
+            ! Tally is on total nuclides
+          else
 
-          score = ZERO
+            ! Check if the delayed group filter is present
+            if (dg_filter > 0) then
+              select type(filt => t % filters(dg_filter) % obj)
+              type is (DelayedGroupFilter)
 
-          ! loop over number of particles banked
-          do k = 1, p % n_bank
+                ! Loop over all nuclides in the current material
+                do l = 1, materials(p % material) % n_nuclides
 
-            ! get the delayed group
-            g = fission_bank(n_bank - p % n_bank + k) % delayed_group
+                  ! Get atom density
+                  atom_density_ = materials(p % material) % atom_density(l)
 
-            ! Case for tallying delayed emissions
-            if (g /= 0) then
+                  ! Get index in nuclides array
+                  i_nuc = materials(p % material) % nuclide(l)
 
-              ! Accumulate the decay rate times delayed nu fission score
-              associate (rxn => nuclides(p % event_nuclide) % &
-                   reactions(nuclides(p % event_nuclide) % index_fission(1)))
+                  if (nuclides(i_nuc) % fissionable) then
 
-                ! determine score based on bank site weight and keff.
-                score = score + keff * fission_bank(n_bank - p % n_bank + k) &
-                     % wgt * rxn % products(1 + g) % decay_rate
-              end associate
+                    ! Loop over all delayed group bins and tally to them
+                    ! individually
+                    do d_bin = 1, filt % n_bins
 
-              ! if the delayed group filter is present, tally to corresponding
-              ! delayed group bin if it exists
-              if (dg_filter > 0) then
+                      ! Get the delayed group for this bin
+                      d = filt % groups(d_bin)
 
-                ! declare the delayed group filter type
-                select type(filt => t % filters(dg_filter) % obj)
-                type is (DelayedGroupFilter)
+                      ! Get the yield for the desired nuclide and delayed group
+                      yield = nuclides(i_nuc) % nu(E, EMISSION_DELAYED, d)
 
-                  ! loop over delayed group bins until the corresponding bin is
-                  ! found
-                  do d_bin = 1, filt % n_bins
-                    d = filt % groups(d_bin)
+                      associate (rxn => nuclides(i_nuc) % &
+                           reactions(nuclides(i_nuc) % index_fission(1)))
 
-                    ! check whether the delayed group of the particle is equal to
-                    ! the delayed group of this bin
-                    if (d == g) then
+                        ! Compute the score
+                        score = micro_xs(i_nuc) % fission * yield * flux * &
+                             atom_density_ * rxn % products(1 + d) % decay_rate
+                      end associate
+
+                      ! Tally to bin
                       call score_fission_delayed_dg(t, d_bin, score, score_index)
-                    end if
-                  end do
-                end select
+                    end do
+                  end if
+                end do
+                cycle SCORE_LOOP
+              end select
+            else
 
-                ! Reset the score to zero
-                score = ZERO
-              end if
+              score = ZERO
+
+              ! Loop over all nuclides in the current material
+              do l = 1, materials(p % material) % n_nuclides
+
+                ! Get atom density
+                atom_density_ = materials(p % material) % atom_density(l)
+
+                ! Get index in nuclides array
+                i_nuc = materials(p % material) % nuclide(l)
+
+                if (nuclides(i_nuc) % fissionable) then
+
+                  associate (rxn => nuclides(i_nuc) % &
+                       reactions(nuclides(i_nuc) % index_fission(1)))
+
+                    ! We need to be careful not to overshoot the number of delayed
+                    ! groups since this could cause the range of the rxn % products
+                    ! array to be exceeded. Hence, we use the size of this array
+                    ! and not the MAX_DELAYED_GROUPS constant for this loop.
+                    do d = 1, size(rxn % products) - 2
+
+                      ! Accumulate the contribution from each nuclide
+                      score = score + micro_xs(i_nuc) % fission * nuclides(i_nuc) %&
+                           nu(E, EMISSION_DELAYED) * atom_density_ * flux * &
+                           rxn % products(1 + d) % decay_rate
+                    end do
+                  end associate
+                end if
+              end do
             end if
-          end do
-
-          ! If the delayed group filter is present, cycle because the
-          ! score_fission_delayed_dg(...) has already tallied the score
-          if (dg_filter > 0) then
-            cycle SCORE_LOOP
           end if
         end if
 

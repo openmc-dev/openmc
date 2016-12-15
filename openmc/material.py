@@ -523,6 +523,92 @@ class Material(object):
             if element == elm:
                 self._elements.remove(elm)
 
+    def add_material(self, material, percent, percent_type='ao'):
+        """Add a material to the material
+
+        Parameters
+        ----------
+        material : openmc.Material
+            Material to add
+        percent : float
+            Atom or weight percent
+        percent_type : {'ao', 'wo'}
+            'ao' for atom percent and 'wo' for weight percent
+
+        """
+
+        if self._macroscopic is not None:
+            msg = 'Unable to add a Material to Material ID="{0}" as a ' \
+                  'macroscopic data-set has already been added'.format(self._id)
+            raise ValueError(msg)
+
+        if not isinstance(material, openmc.Material):
+            msg = 'Unable to add a Material to Material ID="{0}" with a ' \
+                  'non-Material value "{1}"'.format(self._id, material)
+            raise ValueError(msg)
+
+        elif not isinstance(percent, Real):
+            msg = 'Unable to add a Material to Material ID="{0}" with a ' \
+                  'non-floating point value "{1}"'.format(self._id, percent)
+            raise ValueError(msg)
+
+        elif self.temperature != material.temperature:
+            msg = 'Unable to add a Material to Material ID="{0}" with a ' \
+                  'different temperature "{1}"'.format(self._id, temperature)
+            raise ValueError(msg)
+
+        elif percent_type not in ['ao', 'wo']:
+            msg = 'Unable to add a Material to Material ID="{0}" with a ' \
+                  'percent type "{1}"'.format(self._id, percent_type)
+            raise ValueError(msg)
+
+        # Get the atom densities in the given material
+        nuclides_densities = material.get_nuclide_atom_densities()
+        nuclides = nuclides_densities.keys()
+        densities = nuclides_densities.values()
+
+        # Compute the sum of the atom densities
+        sum_densities = 0.
+        for nuclide,density in zip(nuclides,densities):
+            density = density[1]
+
+            # Convert to weight percent, if requested
+            if percent_type == 'wo':
+                if isinstance(nuclide, openmc.Nuclide):
+                    awr = openmc.data.atomic_mass(nuclide.name)
+                else:
+                    awr = openmc.data.atomic_mass(nuclide)
+
+                amm = material.average_molar_mass
+                density *= awr / amm
+
+            sum_densities += density
+
+        # Add the nuclides of the given material to this material
+        for nuclide,density in zip(nuclides,densities):
+
+            density = density[1]
+
+            # Convert to weight percent, if requested
+            if percent_type == 'wo':
+                if isinstance(nuclide, openmc.Nuclide):
+                    awr = openmc.data.atomic_mass(nuclide.name)
+                else:
+                    awr = openmc.data.atomic_mass(nuclide)
+
+                amm = material.average_molar_mass
+                density *= awr / amm
+
+            # Normalize the density to sum to 1.0
+            density /= sum_densities
+
+            # Add the nuclide to the material
+            self.add_nuclide(nuclide, density*percent, percent_type)
+
+        # Add the s(a,b) tables
+        for sab in material._sab:
+            self.add_s_alpha_beta(sab)
+
     def add_s_alpha_beta(self, name):
         r"""Add an :math:`S(\alpha,\beta)` table to the material
 

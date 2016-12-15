@@ -996,6 +996,102 @@ class MGXS(object):
         avg_xs.sparse = self.sparse
         return avg_xs
 
+    def _get_homogenized_mgxs(self, other_mgxs, denom_score='flux'):
+        """Construct a homogenized mgxs with other mgxs objects.
+
+        Parameters
+        ----------
+        other_mgxs : openmc.mgxs.MGXS or Iterable of openmc.mgxs.MGXS
+            The MGXS to homogenize with this one.
+        denom_score : str
+            The denominator score in the denominator of computing the MGXS.
+
+        Returns
+        -------
+        openmc.mgxs.MGXS
+            A new homogenized MGXS
+
+        Raises
+        ------
+        ValueError
+            If the other_mgxs are of a different type.
+
+        """
+
+        # Check type of denom score
+        cv.check_type('denom_score', denom_score, str)
+
+        # Construct a collection of the subdomain filter bins to average across
+        if isinstance(other_mgxs, openmc.mgxs.MGXS):
+            other_mgxs = [other_mgxs]
+
+        cv.check_iterable_type('other_mgxs', other_mgxs, openmc.mgxs.MGXS)
+        for mgxs in other_mgxs:
+            if mgxs.rxn_type != self.rxn_type:
+                msg = 'Not able to homogenize two MGXS with different rxn types'
+                raise ValueError(msg)
+
+        # Clone this MGXS to initialize the homogenized version
+        homogenized_mgxs = copy.deepcopy(self)
+        homogenized_mgxs._derived = True
+        name = '{} + '.format(self.domain.name)
+
+        # Get the domain filter
+        filter_type = _DOMAIN_TO_FILTER[self.domain_type]
+        self_filter = self.rxn_rate_tally.find_filter(filter_type)
+
+        # Get the rxn rate and denom tallies
+        rxn_rate_tally = self.rxn_rate_tally
+        denom_tally = self.tallies[denom_score]
+
+        for mgxs in other_mgxs:
+
+            # Swap the domain filter bins for the other mgxs rxn rate tally
+            other_rxn_rate_tally = copy.deepcopy(mgxs.rxn_rate_tally)
+            other_filter = other_rxn_rate_tally.find_filter(filter_type)
+            other_filter._bins = self_filter._bins
+
+            # Swap the domain filter bins for the denom tally
+            other_denom_tally = copy.deepcopy(mgxs.tallies[denom_score])
+            other_filter = other_denom_tally.find_filter(filter_type)
+            other_filter._bins = self_filter._bins
+
+            # Add the rxn rate and denom tallies
+            rxn_rate_tally += other_rxn_rate_tally
+            denom_tally += other_denom_tally
+
+            # Update the name for the homogenzied MGXS
+            name += '{} + '.format(mgxs.domain.name)
+
+        # Set the properties of the homogenized MGXS
+        homogenized_mgxs._rxn_rate_tally = rxn_rate_tally
+        homogenized_mgxs.tallies[denom_score] = denom_tally
+        homogenized_mgxs._domain.name = name[:-3]
+
+        return homogenized_mgxs
+
+    def get_homogenized_mgxs(self, other_mgxs):
+        """Construct a homogenized mgxs with other mgxs objects.
+
+        Parameters
+        ----------
+        other_mgxs : openmc.mgxs.MGXS or Iterable of openmc.mgxs.MGXS
+            The MGXS to homogenize with this one.
+
+        Returns
+        -------
+        openmc.mgxs.MGXS
+            A new homogenized MGXS
+
+        Raises
+        ------
+        ValueError
+            If the other_mgxs are of a different type.
+
+        """
+
+        return self._get_homogenized_mgxs(other_mgxs, 'flux')
+
     def get_slice(self, nuclides=[], groups=[]):
         """Build a sliced MGXS for the specified nuclides and energy groups.
 
@@ -4560,6 +4656,28 @@ class Chi(MGXS):
             nu_fission_in.filters.append(energy_filter)
 
         return self._xs_tally
+
+    def get_homogenized_mgxs(self, other_mgxs):
+        """Construct a homogenized mgxs with other mgxs objects.
+
+        Parameters
+        ----------
+        other_mgxs : openmc.mgxs.MGXS or Iterable of openmc.mgxs.MGXS
+            The MGXS to homogenize with this one.
+
+        Returns
+        -------
+        openmc.mgxs.MGXS
+            A new homogenized MGXS
+
+        Raises
+        ------
+        ValueError
+            If the other_mgxs are of a different type.
+
+        """
+
+        return self._get_homogenized_mgxs(other_mgxs, 'nu-fission-in')
 
     def get_slice(self, nuclides=[], groups=[]):
         """Build a sliced Chi for the specified nuclides and energy groups.

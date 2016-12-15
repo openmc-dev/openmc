@@ -53,11 +53,6 @@ class FilterEnergyFunHarness(PyAPITestHarness):
         # Output the tally in a Pandas DataFrame.
         return br_tally.get_pandas_dataframe().to_string() + '\n'
 
-    def _cleanup(self):
-        super(FilterEnergyFunHarness, self)._cleanup()
-        f = os.path.join(os.getcwd(), 'tallies.xml')
-        if os.path.exists(f): os.remove(f)
-
 
 if __name__ == '__main__':
     harness = FilterEnergyFunHarness('statepoint.10.h5', True)

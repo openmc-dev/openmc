@@ -93,10 +93,6 @@ class TallyArithmeticTestHarness(PyAPITestHarness):
 
         return outstr
 
-    def _cleanup(self):
-        super(TallyArithmeticTestHarness, self)._cleanup()
-        f = os.path.join(os.getcwd(), 'tallies.xml')
-        if os.path.exists(f): os.remove(f)
 
 if __name__ == '__main__':
     harness = TallyArithmeticTestHarness('statepoint.10.h5', True)

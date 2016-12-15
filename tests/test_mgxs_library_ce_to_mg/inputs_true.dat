@@ -1,1 +1,276 @@
-74f306b40647c6d7125af404234bbd6883ae88a446b00f828fcda9adc8bca5167b544b23d083c802e2c0630f7fcec9052e31bced490cc94b3e3193512359cb96
+<?xml version='1.0' encoding='utf-8'?>
+<geometry>
+    <cell id="10000" material="10000" name="cell 1" region="-10000" universe="0" />
+    <cell id="10001" material="10001" name="cell 3" region="10000 -10001" universe="0" />
+    <cell id="10002" material="10002" name="cell 2" region="10001 10002 -10003 10004 -10005" universe="0" />
+    <surface coeffs="0 0 0.39218" id="10000" name="Fuel OR" type="z-cylinder" />
+    <surface coeffs="0 0 0.4572" id="10001" name="Clad OR" type="z-cylinder" />
+    <surface boundary="reflective" coeffs="-0.63" id="10002" name="left" type="x-plane" />
+    <surface boundary="reflective" coeffs="0.63" id="10003" name="right" type="x-plane" />
+    <surface boundary="reflective" coeffs="-0.63" id="10004" name="bottom" type="y-plane" />
+    <surface boundary="reflective" coeffs="0.63" id="10005" name="top" type="y-plane" />
+</geometry>
+<?xml version='1.0' encoding='utf-8'?>
+<materials>
+    <material id="10000" name="Fuel">
+        <density units="g/cm3" value="10.29769" />
+        <nuclide ao="4.4843e-06" name="U234" />
+        <nuclide ao="0.00055815" name="U235" />
+        <nuclide ao="0.022408" name="U238" />
+        <nuclide ao="0.045829" name="O16" />
+    </material>
+    <material id="10001" name="Cladding">
+        <density units="g/cm3" value="6.55" />
+        <nuclide ao="0.021827" name="Zr90" />
+        <nuclide ao="0.00476" name="Zr91" />
+        <nuclide ao="0.0072758" name="Zr92" />
+        <nuclide ao="0.0073734" name="Zr94" />
+        <nuclide ao="0.0011879" name="Zr96" />
+    </material>
+    <material id="10002" name="Hot borated water">
+        <density units="g/cm3" value="0.740582" />
+        <nuclide ao="0.049457" name="H1" />
+        <nuclide ao="0.024672" name="O16" />
+        <nuclide ao="8.0042e-06" name="B10" />
+        <nuclide ao="3.2218e-05" name="B11" />
+        <sab name="c_H_in_H2O" />
+    </material>
+</materials>
+<?xml version='1.0' encoding='utf-8'?>
+<settings>
+    <eigenvalue>
+        <particles>100</particles>
+        <batches>10</batches>
+        <inactive>5</inactive>
+    </eigenvalue>
+    <source strength="1.0">
+        <space type="fission">
+            <parameters>-0.63 -0.63 -1 0.63 0.63 1</parameters>
+        </space>
+    </source>
+</settings>
+<?xml version='1.0' encoding='utf-8'?>
+<tallies>
+    <tally id="10000">
+        <filter bins="10000" type="material" />
+        <filter bins="0.0 0.625 20000000.0" type="energy" />
+        <nuclides>total</nuclides>
+        <scores>flux</scores>
+        <estimator>tracklength</estimator>
+    </tally>
+    <tally id="10001">
+        <filter bins="10000" type="material" />
+        <filter bins="0.0 0.625 20000000.0" type="energy" />
+        <nuclides>total</nuclides>
+        <scores>total</scores>
+        <estimator>tracklength</estimator>
+    </tally>
+    <tally id="10002">
+        <filter bins="10000" type="material" />
+        <filter bins="0.0 0.625 20000000.0" type="energy" />
+        <nuclides>total</nuclides>
+        <scores>flux</scores>
+        <estimator>tracklength</estimator>
+    </tally>
+    <tally id="10003">
+        <filter bins="10000" type="material" />
+        <filter bins="0.0 0.625 20000000.0" type="energy" />
+        <nuclides>total</nuclides>
+        <scores>absorption</scores>
+        <estimator>tracklength</estimator>
+    </tally>
+    <tally id="10004">
+        <filter bins="10000" type="material" />
+        <filter bins="0.0 0.625 20000000.0" type="energy" />
+        <nuclides>total</nuclides>
+        <scores>flux</scores>
+        <estimator>analog</estimator>
+    </tally>
+    <tally id="10005">
+        <filter bins="10000" type="material" />
+        <filter bins="0.0 0.625 20000000.0" type="energy" />
+        <filter bins="0.0 0.625 20000000.0" type="energyout" />
+        <nuclides>total</nuclides>
+        <scores>nu-fission</scores>
+        <estimator>analog</estimator>
+    </tally>
+    <tally id="10006">
+        <filter bins="10000" type="material" />
+        <filter bins="0.0 0.625 20000000.0" type="energy" />
+        <nuclides>total</nuclides>
+        <scores>flux</scores>
+        <estimator>analog</estimator>
+    </tally>
+    <tally id="10007">
+        <filter bins="10000" type="material" />
+        <filter bins="0.0 0.625 20000000.0" type="energy" />
+        <filter bins="0.0 0.625 20000000.0" type="energyout" />
+        <nuclides>total</nuclides>
+        <scores>nu-scatter-P3</scores>
+        <estimator>analog</estimator>
+    </tally>
+    <tally id="10008">
+        <filter bins="10000" type="material" />
+        <filter bins="0.0 0.625 20000000.0" type="energy" />
+        <filter bins="0.0 0.625 20000000.0" type="energyout" />
+        <nuclides>total</nuclides>
+        <scores>nu-scatter</scores>
+        <estimator>analog</estimator>
+    </tally>
+    <tally id="10009">
+        <filter bins="10000" type="material" />
+        <filter bins="0.0 0.625 20000000.0" type="energy" />
+        <filter bins="0.0 0.625 20000000.0" type="energyout" />
+        <nuclides>total</nuclides>
+        <scores>scatter</scores>
+        <estimator>analog</estimator>
+    </tally>
+    <tally id="10010">
+        <filter bins="10001" type="material" />
+        <filter bins="0.0 0.625 20000000.0" type="energy" />
+        <nuclides>total</nuclides>
+        <scores>flux</scores>
+        <estimator>tracklength</estimator>
+    </tally>
+    <tally id="10011">
+        <filter bins="10001" type="material" />
+        <filter bins="0.0 0.625 20000000.0" type="energy" />
+        <nuclides>total</nuclides>
+        <scores>total</scores>
+        <estimator>tracklength</estimator>
+    </tally>
+    <tally id="10012">
+        <filter bins="10001" type="material" />
+        <filter bins="0.0 0.625 20000000.0" type="energy" />
+        <nuclides>total</nuclides>
+        <scores>flux</scores>
+        <estimator>tracklength</estimator>
+    </tally>
+    <tally id="10013">
+        <filter bins="10001" type="material" />
+        <filter bins="0.0 0.625 20000000.0" type="energy" />
+        <nuclides>total</nuclides>
+        <scores>absorption</scores>
+        <estimator>tracklength</estimator>
+    </tally>
+    <tally id="10014">
+        <filter bins="10001" type="material" />
+        <filter bins="0.0 0.625 20000000.0" type="energy" />
+        <nuclides>total</nuclides>
+        <scores>flux</scores>
+        <estimator>analog</estimator>
+    </tally>
+    <tally id="10015">
+        <filter bins="10001" type="material" />
+        <filter bins="0.0 0.625 20000000.0" type="energy" />
+        <filter bins="0.0 0.625 20000000.0" type="energyout" />
+        <nuclides>total</nuclides>
+        <scores>nu-fission</scores>
+        <estimator>analog</estimator>
+    </tally>
+    <tally id="10016">
+        <filter bins="10001" type="material" />
+        <filter bins="0.0 0.625 20000000.0" type="energy" />
+        <nuclides>total</nuclides>
+        <scores>flux</scores>
+        <estimator>analog</estimator>
+    </tally>
+    <tally id="10017">
+        <filter bins="10001" type="material" />
+        <filter bins="0.0 0.625 20000000.0" type="energy" />
+        <filter bins="0.0 0.625 20000000.0" type="energyout" />
+        <nuclides>total</nuclides>
+        <scores>nu-scatter-P3</scores>
+        <estimator>analog</estimator>
+    </tally>
+    <tally id="10018">
+        <filter bins="10001" type="material" />
+        <filter bins="0.0 0.625 20000000.0" type="energy" />
+        <filter bins="0.0 0.625 20000000.0" type="energyout" />
+        <nuclides>total</nuclides>
+        <scores>nu-scatter</scores>
+        <estimator>analog</estimator>
+    </tally>
+    <tally id="10019">
+        <filter bins="10001" type="material" />
+        <filter bins="0.0 0.625 20000000.0" type="energy" />
+        <filter bins="0.0 0.625 20000000.0" type="energyout" />
+        <nuclides>total</nuclides>
+        <scores>scatter</scores>
+        <estimator>analog</estimator>
+    </tally>
+    <tally id="10020">
+        <filter bins="10002" type="material" />
+        <filter bins="0.0 0.625 20000000.0" type="energy" />
+        <nuclides>total</nuclides>
+        <scores>flux</scores>
+        <estimator>tracklength</estimator>
+    </tally>
+    <tally id="10021">
+        <filter bins="10002" type="material" />
+        <filter bins="0.0 0.625 20000000.0" type="energy" />
+        <nuclides>total</nuclides>
+        <scores>total</scores>
+        <estimator>tracklength</estimator>
+    </tally>
+    <tally id="10022">
+        <filter bins="10002" type="material" />
+        <filter bins="0.0 0.625 20000000.0" type="energy" />
+        <nuclides>total</nuclides>
+        <scores>flux</scores>
+        <estimator>tracklength</estimator>
+    </tally>
+    <tally id="10023">
+        <filter bins="10002" type="material" />
+        <filter bins="0.0 0.625 20000000.0" type="energy" />
+        <nuclides>total</nuclides>
+        <scores>absorption</scores>
+        <estimator>tracklength</estimator>
+    </tally>
+    <tally id="10024">
+        <filter bins="10002" type="material" />
+        <filter bins="0.0 0.625 20000000.0" type="energy" />
+        <nuclides>total</nuclides>
+        <scores>flux</scores>
+        <estimator>analog</estimator>
+    </tally>
+    <tally id="10025">
+        <filter bins="10002" type="material" />
+        <filter bins="0.0 0.625 20000000.0" type="energy" />
+        <filter bins="0.0 0.625 20000000.0" type="energyout" />
+        <nuclides>total</nuclides>
+        <scores>nu-fission</scores>
+        <estimator>analog</estimator>
+    </tally>
+    <tally id="10026">
+        <filter bins="10002" type="material" />
+        <filter bins="0.0 0.625 20000000.0" type="energy" />
+        <nuclides>total</nuclides>
+        <scores>flux</scores>
+        <estimator>analog</estimator>
+    </tally>
+    <tally id="10027">
+        <filter bins="10002" type="material" />
+        <filter bins="0.0 0.625 20000000.0" type="energy" />
+        <filter bins="0.0 0.625 20000000.0" type="energyout" />
+        <nuclides>total</nuclides>
+        <scores>nu-scatter-P3</scores>
+        <estimator>analog</estimator>
+    </tally>
+    <tally id="10028">
+        <filter bins="10002" type="material" />
+        <filter bins="0.0 0.625 20000000.0" type="energy" />
+        <filter bins="0.0 0.625 20000000.0" type="energyout" />
+        <nuclides>total</nuclides>
+        <scores>nu-scatter</scores>
+        <estimator>analog</estimator>
+    </tally>
+    <tally id="10029">
+        <filter bins="10002" type="material" />
+        <filter bins="0.0 0.625 20000000.0" type="energy" />
+        <filter bins="0.0 0.625 20000000.0" type="energyout" />
+        <nuclides>total</nuclides>
+        <scores>scatter</scores>
+        <estimator>analog</estimator>
+    </tally>
+</tallies>

@@ -82,12 +82,7 @@ class MGTalliesTestHarness(HashedPyAPITestHarness):
 
         self._input_set.export()
 
-    def _cleanup(self):
-        super(MGTalliesTestHarness, self)._cleanup()
-        f = os.path.join(os.getcwd(), 'tallies.xml')
-        if os.path.exists(f): os.remove(f)
-
 
 if __name__ == '__main__':
-    harness = MGTalliesTestHarness('statepoint.10.*', True, mg=True)
+    harness = MGTalliesTestHarness('statepoint.10.h5', True, mg=True)
     harness.main()

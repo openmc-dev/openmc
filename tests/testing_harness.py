@@ -73,19 +73,19 @@ class TestHarness(object):
 
     def _test_output_created(self):
         """Make sure statepoint.* and tallies.out have been created."""
-        statepoint = glob.glob(os.path.join(os.getcwd(), self._sp_name))
+        statepoint = glob.glob(self._sp_name)
         assert len(statepoint) == 1, 'Either multiple or no statepoint files' \
             ' exist.'
         assert statepoint[0].endswith('h5'), \
             'Statepoint file is not a HDF5 file.'
         if self._tallies:
-            assert os.path.exists(os.path.join(os.getcwd(), 'tallies.out')), \
+            assert os.path.exists('tallies.out'), \
                 'Tally output file does not exist.'
 
     def _get_results(self, hash_output=False):
         """Digest info in the statepoint and return as a string."""
         # Read the statepoint file.
-        statepoint = glob.glob(os.path.join(os.getcwd(), self._sp_name))[0]
+        statepoint = glob.glob(self._sp_name)[0]
         sp = openmc.StatePoint(statepoint)
 
         # Write out k-combined.
@@ -133,11 +133,9 @@ class TestHarness(object):
 
     def _cleanup(self):
         """Delete statepoints, tally, and test files."""
-        output = glob.glob(os.path.join(os.getcwd(), 'statepoint.*.h5'))
-        output.append(os.path.join(os.getcwd(), 'tallies.out'))
-        output.append(os.path.join(os.getcwd(), 'results_test.dat'))
-        output.append(os.path.join(os.getcwd(), 'summary.h5'))
-        output += glob.glob(os.path.join(os.getcwd(), 'volume_*.h5'))
+        output = glob.glob('statepoint.*.h5')
+        output += ['tallies.out', 'results_test.dat', 'summary.h5']
+        output += glob.glob('volume_*.h5')
         for f in output:
             if os.path.exists(f):
                 os.remove(f)
@@ -157,7 +155,7 @@ class CMFDTestHarness(TestHarness):
     def _get_results(self):
         """Digest info in the statepoint and return as a string."""
         # Read the statepoint file.
-        statepoint = glob.glob(os.path.join(os.getcwd(), self._sp_name))[0]
+        statepoint = glob.glob(self._sp_name)[0]
         sp = openmc.StatePoint(statepoint)
 
         # Write out the eigenvalue and tallies.
@@ -206,7 +204,7 @@ class ParticleRestartTestHarness(TestHarness):
 
     def _test_output_created(self):
         """Make sure the restart file has been created."""
-        particle = glob.glob(os.path.join(os.getcwd(), self._sp_name))
+        particle = glob.glob(self._sp_name)
         assert len(particle) == 1, 'Either multiple or no particle restart ' \
             'files exist.'
         assert particle[0].endswith('h5'), \
@@ -215,7 +213,7 @@ class ParticleRestartTestHarness(TestHarness):
     def _get_results(self):
         """Digest info in the statepoint and return as a string."""
         # Read the particle restart file.
-        particle = glob.glob(os.path.join(os.getcwd(), self._sp_name))[0]
+        particle = glob.glob(self._sp_name)[0]
         p = openmc.Particle(particle)
 
         # Write out the properties.
@@ -301,17 +299,10 @@ class PyAPITestHarness(TestHarness):
 
     def _get_inputs(self):
         """Return a hash digest of the input XML files."""
-        xmls = ('geometry.xml', 'tallies.xml', 'materials.xml', 'settings.xml',
-                'plots.xml')
-        xmls = [os.path.join(os.getcwd(), fname) for fname in xmls]
-        outstr = '\n'.join([open(fname).read() for fname in xmls
-                            if os.path.exists(fname)])
-
-        sha512 = hashlib.sha512()
-        sha512.update(outstr.encode('utf-8'))
-        outstr = sha512.hexdigest()
-
-        return outstr
+        xmls = ['geometry.xml', 'materials.xml', 'settings.xml',
+                'tallies.xml', 'plots.xml']
+        return ''.join([open(fname).read() for fname in xmls
+                        if os.path.exists(fname)])
 
     def _write_inputs(self, input_digest):
         """Write the digest of the input XMLs to an ASCII file."""
@@ -336,11 +327,8 @@ class PyAPITestHarness(TestHarness):
     def _cleanup(self):
         """Delete XMLs, statepoints, tally, and test files."""
         super(PyAPITestHarness, self)._cleanup()
-        output = [os.path.join(os.getcwd(), 'materials.xml')]
-        output.append(os.path.join(os.getcwd(), 'geometry.xml'))
-        output.append(os.path.join(os.getcwd(), 'settings.xml'))
-        output.append(os.path.join(os.getcwd(), 'inputs_test.dat'))
-        output.append(os.path.join(os.getcwd(), 'summary.h5'))
+        output = ['materials.xml', 'geometry.xml', 'settings.xml',
+                  'tallies.xml', 'inputs_test.dat']
         for f in output:
             if os.path.exists(f):
                 os.remove(f)

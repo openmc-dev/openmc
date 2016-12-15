@@ -177,12 +177,7 @@ class TalliesTestHarness(PyAPITestHarness):
     def _get_results(self):
         return super(TalliesTestHarness, self)._get_results(hash_output=True)
 
-    def _cleanup(self):
-        super(TalliesTestHarness, self)._cleanup()
-        f = os.path.join(os.getcwd(), 'tallies.xml')
-        if os.path.exists(f): os.remove(f)
-
 
 if __name__ == '__main__':
-    harness = TalliesTestHarness('statepoint.5.*', True)
+    harness = TalliesTestHarness('statepoint.5.h5', True)
     harness.main()

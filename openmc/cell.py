@@ -547,7 +547,11 @@ class Cell(object):
 
         if self.region is not None:
             # Set the region attribute with the region specification
-            element.set("region", str(self.region))
+            region = str(self.region)
+            if region.startswith('('):
+                region = region[1:-1]
+            if len(region) > 0:
+                element.set("region", region)
 
             # Only surfaces that appear in a region are added to the geometry
             # file, so the appropriate check is performed here. First we create
@@ -557,10 +561,9 @@ class Cell(object):
             # thus far.
             def create_surface_elements(node, element):
                 if isinstance(node, Halfspace):
-                    path = './surface[@id=\'{0}\']'.format(node.surface.id)
+                    path = "./surface[@id='{}']".format(node.surface.id)
                     if xml_element.find(path) is None:
-                        surface_subelement = node.surface.create_xml_subelement()
-                        xml_element.append(surface_subelement)
+                        xml_element.append(node.surface.create_xml_subelement())
                 elif isinstance(node, Complement):
                     create_surface_elements(node.node, element)
                 else:

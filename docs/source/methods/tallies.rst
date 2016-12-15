@@ -465,8 +465,7 @@ For degrees of freedom greater than two, it is not possible to obtain an
 analytical formula for the inverse of the cumulative distribution function. We
 must resort to either numerically solving for the inverse or to an
 approximation. Approximations for percentiles of the t-distribution have been
-found with high levels of accuracy. OpenMC uses the approximation from
-[George]_:
+found with high levels of accuracy. OpenMC uses the `following approximation`_:
 
 .. math::
     :label: percentile-n
@@ -485,9 +484,7 @@ improve the estimate of the percentile.
 
    .. rubric:: References
 
-.. [George] E. E. Olusegun George and Meenakshi Sivaram, "A modification of the
-   Fisher-Cornish approximation for the student t percentiles," Communication
-   in Statistics - Simulation and Computation, 16 (4), pp. 1123-1132 (1987).
+.. _following approximation: http://dx.doi.org/10.1080/03610918708812641
 
 .. _Bessel's correction: http://en.wikipedia.org/wiki/Bessel's_correction
 

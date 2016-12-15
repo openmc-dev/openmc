@@ -38,7 +38,7 @@ Typically, :math:`M` is chosen to be a power of two as this enables :math:`x
 \mod M` to be performed using the bitwise AND operator with a bit mask. The
 constants for the linear congruential generator used by default in OpenMC are
 :math:`g = 2806196910506780709`, :math:`c = 1`, and :math:`M = 2^{63}` (see
-[LEcuyer]_).
+`L'Ecuyer`_).
 
 Skip-ahead Capability
 ---------------------
@@ -66,9 +66,7 @@ the idea is to determine the new multiplicative and additive constants in
 
    .. rubric:: References
 
-.. [LEcuyer] P. L’Ecuyer, "Tables of Linear Congruential Generators of
-   Different Sizes and Good Lattice Structures," *Math. Comput.*, **68**, 249
-   (1999).
 
+.. _L'Ecuyer: http://dx.doi.org/10.1090/S0025-5718-99-00996-5
 .. _Brown: https://laws.lanl.gov/vhosts/mcnp.lanl.gov/pdf_files/anl-rn-arb-stride.pdf
 .. _linear congruential generator: http://en.wikipedia.org/wiki/Linear_congruential_generator

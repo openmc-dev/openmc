@@ -814,13 +814,6 @@ contains
           call statepoint_batch % add(temp_int_array(i))
         end do
         deallocate(temp_int_array)
-      elseif (check_for_node(node_sp, "interval")) then
-        ! User gave an interval for writing state points
-        call get_node_value(node_sp, "interval", temp_int)
-        n_state_points = n_batches / temp_int
-        do i = 1, n_state_points
-          call statepoint_batch % add(temp_int * i)
-        end do
       else
         ! If neither were specified, write state point at last batch
         n_state_points = 1
@@ -854,13 +847,6 @@ contains
           call sourcepoint_batch % add(temp_int_array(i))
         end do
         deallocate(temp_int_array)
-      elseif (check_for_node(node_sp, "interval")) then
-        ! User gave an interval for writing source points
-        call get_node_value(node_sp, "interval", temp_int)
-        n_source_points = n_batches / temp_int
-        do i = 1, n_source_points
-          call sourcepoint_batch % add(temp_int * i)
-        end do
       else
         ! If neither were specified, write source points with state points
         n_source_points = n_state_points

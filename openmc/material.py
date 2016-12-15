@@ -734,8 +734,13 @@ class Material(object):
 
         return xml_elements
 
-    def get_material_xml(self, cross_sections):
+    def to_xml_element(self, cross_sections=None):
         """Return XML representation of the material
+
+        Parameters
+        ----------
+        cross_sections : str
+            Path to an XML cross sections listing file
 
         Returns
         -------
@@ -757,10 +762,14 @@ class Material(object):
             subelement.text = str(self.temperature)
 
         # Create density XML subelement
-        subelement = ET.SubElement(element, "density")
-        if self._density_units is not 'sum':
-            subelement.set("value", str(self._density))
-        subelement.set("units", self._density_units)
+        if self._density is not None:
+            subelement = ET.SubElement(element, "density")
+            if self._density_units is not 'sum':
+                subelement.set("value", str(self._density))
+            subelement.set("units", self._density_units)
+        else:
+            raise ValueError('Density has not been set for material {}!'
+                             .format(self.id))
 
         if not self._convert_to_distrib_comps:
             if self._macroscopic is None:
@@ -865,8 +874,6 @@ class Materials(cv.CheckedList):
 
     def __init__(self, materials=None):
         super(Materials, self).__init__(Material, 'materials collection')
-
-        self._materials_file = ET.Element("materials")
         self._cross_sections = None
         self._multipole_library = None
 
@@ -971,19 +978,18 @@ class Materials(cv.CheckedList):
         for material in self:
             material.make_isotropic_in_lab()
 
-    def _create_material_subelements(self):
+    def _create_material_subelements(self, root_element):
         for material in self:
-            xml_element = material.get_material_xml(self.cross_sections)
-            self._materials_file.append(xml_element)
+            root_element.append(material.to_xml_element(self.cross_sections))
 
-    def _create_cross_sections_subelement(self):
+    def _create_cross_sections_subelement(self, root_element):
         if self._cross_sections is not None:
-            element = ET.SubElement(self._materials_file, "cross_sections")
+            element = ET.SubElement(root_element, "cross_sections")
             element.text = str(self._cross_sections)
 
-    def _create_multipole_library_subelement(self):
+    def _create_multipole_library_subelement(self, root_element):
         if self._multipole_library is not None:
-            element = ET.SubElement(self._materials_file, "multipole_library")
+            element = ET.SubElement(root_element, "multipole_library")
             element.text = str(self._multipole_library)
 
     def export_to_xml(self, path='materials.xml'):
@@ -996,17 +1002,15 @@ class Materials(cv.CheckedList):
 
         """
 
-        # Reset xml element tree
-        self._materials_file.clear()
-
-        self._create_material_subelements()
-        self._create_cross_sections_subelement()
-        self._create_multipole_library_subelement()
+        root_element = ET.Element("materials")
+        self._create_material_subelements(root_element)
+        self._create_cross_sections_subelement(root_element)
+        self._create_multipole_library_subelement(root_element)
 
         # Clean the indentation in the file to be user-readable
-        sort_xml_elements(self._materials_file)
-        clean_xml_indentation(self._materials_file)
+        sort_xml_elements(root_element)
+        clean_xml_indentation(root_element)
 
         # Write the XML Tree to the materials.xml file
-        tree = ET.ElementTree(self._materials_file)
+        tree = ET.ElementTree(root_element)
         tree.write(path, xml_declaration=True, encoding='utf-8', method="xml")

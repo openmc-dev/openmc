@@ -73,19 +73,16 @@ class Geometry(object):
             Path to file to write. Defaults to 'geometry.xml'.
 
         """
-        # Clear OpenMC written IDs used to optimize XML generation
-        openmc.universe.WRITTEN_IDS = {}
-
         # Create XML representation
-        geometry_file = ET.Element("geometry")
-        self.root_universe.create_xml_subelement(geometry_file)
+        root_element = ET.Element("geometry")
+        self.root_universe.create_xml_subelement(root_element)
 
         # Clean the indentation in the file to be user-readable
-        sort_xml_elements(geometry_file)
-        clean_xml_indentation(geometry_file)
+        sort_xml_elements(root_element)
+        clean_xml_indentation(root_element)
 
         # Write the XML Tree to the geometry.xml file
-        tree = ET.ElementTree(geometry_file)
+        tree = ET.ElementTree(root_element)
         tree.write(path, xml_declaration=True, encoding='utf-8', method="xml")
 
     def find(self, point):

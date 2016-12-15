@@ -1,1 +1,45 @@
-1f82e622b36562a0a14536fe24c95ee9c901c428f7f082f245afae5c699ccd647aaf31a49790822ceb7ec136bdb75f8e25c3677642f73702ca2e30b058f6b440
+<?xml version='1.0' encoding='utf-8'?>
+<geometry>
+    <cell id="10000" material="10000" region="10000 -10001 10002 -10003 10004 -10005" universe="0" />
+    <cell id="10001" material="10001" region="10000 -10001 10002 -10003 10005 -10006" universe="0" />
+    <cell id="10002" material="10002" region="10000 -10001 10002 -10003 10006 -10007" universe="0" />
+    <surface boundary="reflective" coeffs="0.0" id="10000" type="x-plane" />
+    <surface boundary="reflective" coeffs="10.0" id="10001" type="x-plane" />
+    <surface boundary="reflective" coeffs="0.0" id="10002" type="y-plane" />
+    <surface boundary="reflective" coeffs="10.0" id="10003" type="y-plane" />
+    <surface boundary="reflective" coeffs="0.0" id="10004" type="z-plane" />
+    <surface coeffs="1.6667" id="10005" type="z-plane" />
+    <surface coeffs="3.3334" id="10006" type="z-plane" />
+    <surface boundary="reflective" coeffs="5.0" id="10007" type="z-plane" />
+</geometry>
+<?xml version='1.0' encoding='utf-8'?>
+<materials>
+    <cross_sections>../1d_mgxs.h5</cross_sections>
+    <material id="10000" name="1">
+        <density units="macro" value="1.0" />
+        <macroscopic name="uo2_iso" />
+    </material>
+    <material id="10001" name="2">
+        <density units="macro" value="1.0" />
+        <macroscopic name="clad_iso" />
+    </material>
+    <material id="10002" name="3">
+        <density units="macro" value="1.0" />
+        <macroscopic name="lwtr_iso" />
+    </material>
+</materials>
+<?xml version='1.0' encoding='utf-8'?>
+<settings>
+    <eigenvalue>
+        <particles>100</particles>
+        <batches>10</batches>
+        <inactive>5</inactive>
+    </eigenvalue>
+    <source strength="1.0">
+        <space type="box">
+            <parameters>0.0 0.0 0.0 10.0 10.0 5.0</parameters>
+        </space>
+    </source>
+    <energy_mode>multi-group</energy_mode>
+    <max_order>1</max_order>
+</settings>

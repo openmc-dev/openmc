@@ -129,11 +129,6 @@ class DiffTallyTestHarness(PyAPITestHarness):
                 'std. dev.')
         return df.to_csv(None, columns=cols, index=False, float_format='%.7e')
 
-    def _cleanup(self):
-        super(DiffTallyTestHarness, self)._cleanup()
-        f = os.path.join(os.getcwd(), 'tallies.xml')
-        if os.path.exists(f): os.remove(f)
-
 
 if __name__ == '__main__':
     harness = DiffTallyTestHarness('statepoint.3.h5', True)

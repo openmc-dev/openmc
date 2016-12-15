@@ -215,7 +215,7 @@ class Mesh(object):
                     for z in range(self.dimension[2]):
                         yield [x + 1, y + 1, z + 1]
 
-    def get_mesh_xml(self):
+    def to_xml_element(self):
         """Return XML representation of the mesh
 
         Returns

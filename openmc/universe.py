@@ -10,10 +10,6 @@ import openmc
 import openmc.checkvalue as cv
 
 
-# A dictionary for storing IDs of cell elements that have already been written,
-# used to optimize the writing process
-WRITTEN_IDS = {}
-
 # A static variable for auto-generated Lattice (Universe) IDs
 AUTO_UNIVERSE_ID = 10000
 
@@ -453,17 +449,15 @@ class Universe(object):
         return universes
 
     def create_xml_subelement(self, xml_element):
-
         # Iterate over all Cells
         for cell_id, cell in self._cells.items():
+            path = "./cell[@id='{}']".format(cell_id)
 
             # If the cell was not already written, write it
-            if cell_id not in WRITTEN_IDS:
-                WRITTEN_IDS[cell_id] = None
-
+            if xml_element.find(path) is None:
                 # Create XML subelement for this Cell
-                cell_subelement = cell.create_xml_subelement(xml_element)
+                cell_element = cell.create_xml_subelement(xml_element)
 
                 # Append the Universe ID to the subelement and add to Element
-                cell_subelement.set("universe", str(self._id))
-                xml_element.append(cell_subelement)
+                cell_element.set("universe", str(self._id))
+                xml_element.append(cell_element)

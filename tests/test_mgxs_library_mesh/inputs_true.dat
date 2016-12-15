@@ -660,7 +660,7 @@
         <filter bins="0.0 20000000.0" type="energy" />
         <nuclides>total</nuclides>
         <scores>delayed-nu-fission</scores>
-        <estimator>analog</estimator>
+        <estimator>tracklength</estimator>
     </tally>
     <tally id="10048">
         <filter bins="1" type="mesh" />
@@ -668,7 +668,7 @@
         <filter bins="0.0 20000000.0" type="energy" />
         <nuclides>total</nuclides>
         <scores>decay-rate</scores>
-        <estimator>analog</estimator>
+        <estimator>tracklength</estimator>
     </tally>
     <tally id="10049">
         <filter bins="1" type="mesh" />

@@ -529,9 +529,8 @@ class Library(object):
                     if self.num_delayed_groups == 0:
                         mgxs.delayed_groups = None
                     else:
-                        delayed_groups \
-                            = list(range(1,self.num_delayed_groups+1))
-                        mgxs.delayed_groups = delayed_groups
+                        mgxs.delayed_groups \
+                            = list(range(1, self.num_delayed_groups+1))
 
                 for tally in mgxs.tallies.values():
                     tallies_file.append(tally, merge=merge)

@@ -2504,11 +2504,7 @@ contains
 
           ! Allocate names and indices for nuclides and tables
           allocate(mat % sab_names(n_sab))
-          allocate(mat % i_sab_nuclides(n_sab))
           allocate(mat % i_sab_tables(n_sab))
-
-          ! Initialize i_sab_nuclides
-          mat % i_sab_nuclides = NONE
 
           do j = 1, n_sab
             ! Get pointer to S(a,b) table
@@ -4997,6 +4993,7 @@ contains
     integer :: m            ! position for sorting
     integer :: temp_nuclide ! temporary value for sorting
     integer :: temp_table   ! temporary value for sorting
+    logical :: sab_assigned ! if S(a,b) table matches a nuclide?
 
     do i = 1, size(materials)
       ! Skip materials with no S(a,b) tables
@@ -5008,53 +5005,23 @@ contains
           ! In order to know which nuclide the S(a,b) table applies to, we need
           ! to search through the list of nuclides for one which has a matching
           ! name
+          sab_assigned = .false.
           associate (sab => sab_tables(mat % i_sab_tables(k)))
             FIND_NUCLIDE: do j = 1, size(mat % nuclide)
               if (any(sab % nuclides == nuclides(mat % nuclide(j)) % name)) then
-                mat % i_sab_nuclides(k) = j
-                exit FIND_NUCLIDE
+                call mat % nuc_sab_dict % add_key(j, mat % i_sab_tables(k))
+                sab_assigned = .true.
               end if
             end do FIND_NUCLIDE
           end associate
 
           ! Check to make sure S(a,b) table matched a nuclide
-          if (mat % i_sab_nuclides(k) == NONE) then
+          if (.not. sab_assigned) then
             call fatal_error("S(a,b) table " // trim(mat % &
                  sab_names(k)) // " did not match any nuclide on material " &
                  // trim(to_str(mat % id)))
           end if
         end do ASSIGN_SAB
-
-        ! If there are multiple S(a,b) tables, we need to make sure that the
-        ! entries in i_sab_nuclides are sorted or else they won't be applied
-        ! correctly in the cross_section module. The algorithm here is a simple
-        ! insertion sort -- don't need anything fancy!
-
-        if (size(mat % i_sab_tables) > 1) then
-          SORT_SAB: do k = 2, size(mat % i_sab_tables)
-            ! Save value to move
-            m = k
-            temp_nuclide = mat % i_sab_nuclides(k)
-            temp_table   = mat % i_sab_tables(k)
-
-            MOVE_OVER: do
-              ! Check if insertion value is greater than (m-1)th value
-              if (temp_nuclide >= mat % i_sab_nuclides(m-1)) exit
-
-              ! Move values over until hitting one that's not larger
-              mat % i_sab_nuclides(m) = mat % i_sab_nuclides(m-1)
-              mat % i_sab_tables(m)   = mat % i_sab_tables(m-1)
-              m = m - 1
-
-              ! Exit if we've reached the beginning of the list
-              if (m == 1) exit
-            end do MOVE_OVER
-
-            ! Put the original value into its new position
-            mat % i_sab_nuclides(m) = temp_nuclide
-            mat % i_sab_tables(m)   = temp_table
-          end do SORT_SAB
-        end if
 
         ! Deallocate temporary arrays for names of nuclides and S(a,b) tables
         if (allocated(mat % names)) deallocate(mat % names)

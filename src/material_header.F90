@@ -1,5 +1,7 @@
 module material_header
 
+  use dict_header,         only: DictIntInt
+
   implicit none
 
 !===============================================================================
@@ -24,7 +26,7 @@ module material_header
 
     ! S(a,b) data references
     integer              :: n_sab = 0         ! number of S(a,b) tables
-    integer, allocatable :: i_sab_nuclides(:) ! index of corresponding nuclide
+    type(DictIntInt)     :: nuc_sab_dict      ! map of nuclide index to sab index
     integer, allocatable :: i_sab_tables(:)   ! index in sab_tables
 
     ! Temporary names read during initialization

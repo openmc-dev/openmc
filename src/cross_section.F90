@@ -32,7 +32,6 @@ contains
     integer :: i             ! loop index over nuclides
     integer :: i_nuclide     ! index into nuclides array
     integer :: i_sab         ! index into sab_tables array
-    integer :: j             ! index in mat % i_sab_nuclides
     integer :: i_grid        ! index into logarithmic mapping array or material
                              ! union grid
     real(8) :: atom_density  ! atom density of a nuclide
@@ -55,9 +54,6 @@ contains
       ! Determine if this material has S(a,b) tables
       check_sab = (mat % n_sab > 0)
 
-      ! Initialize position in i_sab_nuclides
-      j = 1
-
       ! Add contribution from each nuclide in material
       do i = 1, mat % n_nuclides
         ! ========================================================================
@@ -65,22 +61,16 @@ contains
 
         i_sab = 0
 
-        ! Check if this nuclide matches one of the S(a,b) tables specified -- this
-        ! relies on i_sab_nuclides being in sorted order
+        ! Check if this nuclide matches one of the S(a,b) tables specified
         if (check_sab) then
-          if (i == mat % i_sab_nuclides(j)) then
+          if (mat % nuc_sab_dict % has_key(i)) then
             ! Get index in sab_tables
-            i_sab = mat % i_sab_tables(j)
+            i_sab = mat % nuc_sab_dict % get_key(i)
 
             ! If particle energy is greater than the highest energy for the S(a,b)
             ! table, don't use the S(a,b) table
             if (p % E > sab_tables(i_sab) % data(1) % threshold_inelastic) i_sab = 0
 
-            ! Increment position in i_sab_nuclides
-            j = j + 1
-
-            ! Don't check for S(a,b) tables if there are no more left
-            if (j > mat % n_sab) check_sab = .false.
           end if
         end if
 

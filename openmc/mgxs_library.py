@@ -296,13 +296,13 @@ class XSdata(object):
             self._xs_shapes["[G][G']"] = (self.energy_groups.num_groups,
                                           self.energy_groups.num_groups)
             self._xs_shapes["[DG]"] = (self.num_delayed_groups,)
-            self._xs_shapes["[DG][G]"] = (self.energy_groups.num_groups,
-                                          self.num_delayed_groups)
-            self._xs_shapes["[DG'][G']"] = (self.energy_groups.num_groups,
-                                           self.num_delayed_groups)
-            self._xs_shapes["[DG][G][G']"] = (self.energy_groups.num_groups,
+            self._xs_shapes["[DG][G]"] = (self.num_delayed_groups,
+                                          self.energy_groups.num_groups)
+            self._xs_shapes["[DG'][G']"] = (self.num_delayed_groups,
+                                            self.energy_groups.num_groups)
+            self._xs_shapes["[DG][G][G']"] = (self.num_delayed_groups,
                                               self.energy_groups.num_groups,
-                                              self.num_delayed_groups)
+                                              self.energy_groups.num_groups)
 
             self._xs_shapes["[G][G'][Order]"] \
                 = (self.energy_groups.num_groups,
@@ -856,7 +856,7 @@ class XSdata(object):
         """
 
         # Get the accepted shapes for this xs
-        shapes = [self.xs_shapes["[G][DG]"], self.xs_shapes["[DG][G][G']"]]
+        shapes = [self.xs_shapes["[DG][G]"], self.xs_shapes["[DG][G][G']"]]
 
         # Convert to a numpy array so we can easily get the shape for checking
         delayed_nu_fission = np.asarray(delayed_nu_fission)

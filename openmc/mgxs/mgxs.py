@@ -997,7 +997,15 @@ class MGXS(object):
         return avg_xs
 
     def _get_homogenized_mgxs(self, other_mgxs, denom_score='flux'):
-        """Construct a homogenized mgxs with other mgxs objects.
+        """Construct a homogenized MGXS with other mgxs objects.
+
+        This method constructs a new MGXS object that is the flux-weighted
+        combination of two MGXS objects. It is equivalent to what one would
+        obtain if the tally spatial domain were designed to encompass the
+        individual domains for both MGXS objects. This is accomplished by
+        summing the rxn rate (numerator) tally and the denominator tally
+        (often a tally of the flux over the spatial domain) that are used to
+        compute a multi-group cross-section.
 
         Parameters
         ----------
@@ -1014,14 +1022,15 @@ class MGXS(object):
         Raises
         ------
         ValueError
-            If the other_mgxs are of a different type.
+            If the other_mgxs is of a different type.
 
         """
 
         # Check type of denom score
         cv.check_type('denom_score', denom_score, str)
 
-        # Construct a collection of the subdomain filter bins to average across
+        # Construct a collection of the subdomain filter bins to homogenize
+        # across
         if isinstance(other_mgxs, openmc.mgxs.MGXS):
             other_mgxs = [other_mgxs]
 
@@ -1034,7 +1043,7 @@ class MGXS(object):
         # Clone this MGXS to initialize the homogenized version
         homogenized_mgxs = copy.deepcopy(self)
         homogenized_mgxs._derived = True
-        name = '{} + '.format(self.domain.name)
+        name = 'hom({}, '.format(self.domain.name)
 
         # Get the domain filter
         filter_type = _DOMAIN_TO_FILTER[self.domain_type]
@@ -1061,12 +1070,12 @@ class MGXS(object):
             denom_tally += other_denom_tally
 
             # Update the name for the homogenzied MGXS
-            name += '{} + '.format(mgxs.domain.name)
+            name += '{}, '.format(mgxs.domain.name)
 
         # Set the properties of the homogenized MGXS
         homogenized_mgxs._rxn_rate_tally = rxn_rate_tally
         homogenized_mgxs.tallies[denom_score] = denom_tally
-        homogenized_mgxs._domain.name = name[:-3]
+        homogenized_mgxs._domain.name = name[:-2] + ')'
 
         return homogenized_mgxs
 
@@ -1086,7 +1095,7 @@ class MGXS(object):
         Raises
         ------
         ValueError
-            If the other_mgxs are of a different type.
+            If the other_mgxs is of a different type.
 
         """
 
@@ -3278,7 +3287,7 @@ class NuScatterXS(MGXS):
     tally_keys : list of str
         The keys into the tallies dictionary for each tally used to compute
         the multi-group cross section
-    estimator : {'tracklength', 'collision', 'analog'}
+    estimator : 'analog'
         The tally estimator used to compute the multi-group cross section
     tallies : collections.OrderedDict
         OpenMC tallies needed to compute the multi-group cross section. The keys
@@ -4673,7 +4682,7 @@ class Chi(MGXS):
         Raises
         ------
         ValueError
-            If the other_mgxs are of a different type.
+            If the other_mgxs is of a different type.
 
         """
 
@@ -5456,7 +5465,7 @@ class PromptNuFissionMatrixXS(MatrixMGXS):
     tally_keys : list of str
         The keys into the tallies dictionary for each tally used to compute
         the multi-group cross section
-    estimator : {'tracklength', 'collision', 'analog'}
+    estimator : 'analog'
         The tally estimator used to compute the multi-group cross section
     tallies : collections.OrderedDict
         OpenMC tallies needed to compute the multi-group cross section. The keys

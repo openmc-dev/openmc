@@ -748,23 +748,17 @@ class Material(object):
         density_in_atom = density > 0.
         sum_percent = 0.
 
-        awrs = []
-        for nuclide in nuclides.items():
-            awr = openmc.data.atomic_mass(nuclide[0])
-            if awr is not None:
-                awrs.append(awr)
-            else:
-                raise ValueError(nuclide[0] + " is invalid")
-
         # Convert the weight amounts to atomic amounts
         if not percent_in_atom:
             for n, nuc in enumerate(nucs):
-                nuc_densities[n] *= self.average_molar_mass / awrs[n]
+                nuc_densities[n] *= self.average_molar_mass / \
+                                    openmc.data.atomic_mass(nuc)
 
-        # Now that we have the awr, lets finish calculating densities
+        # Now that we have the atomic amounts, lets finish calculating densities
         sum_percent = np.sum(nuc_densities)
         nuc_densities = nuc_densities / sum_percent
 
+        # Convert the mass density to an atom density
         if not density_in_atom:
             density = -density / self.average_molar_mass * 1.E-24 \
                       * openmc.data.AVOGADRO

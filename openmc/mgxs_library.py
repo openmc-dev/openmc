@@ -296,13 +296,13 @@ class XSdata(object):
             self._xs_shapes["[G][G']"] = (self.energy_groups.num_groups,
                                           self.energy_groups.num_groups)
             self._xs_shapes["[DG]"] = (self.num_delayed_groups,)
-            self._xs_shapes["[DG][G]"] = (self.energy_groups.num_groups,
-                                          self.num_delayed_groups)
-            self._xs_shapes["[DG'][G']"] = (self.energy_groups.num_groups,
-                                           self.num_delayed_groups)
-            self._xs_shapes["[DG][G][G']"] = (self.energy_groups.num_groups,
+            self._xs_shapes["[DG][G]"] = (self.num_delayed_groups,
+                                          self.energy_groups.num_groups)
+            self._xs_shapes["[DG'][G']"] = (self.num_delayed_groups,
+                                            self.energy_groups.num_groups)
+            self._xs_shapes["[DG][G][G']"] = (self.num_delayed_groups,
                                               self.energy_groups.num_groups,
-                                              self.num_delayed_groups)
+                                              self.energy_groups.num_groups)
 
             self._xs_shapes["[G][G'][Order]"] \
                 = (self.energy_groups.num_groups,
@@ -856,7 +856,7 @@ class XSdata(object):
         """
 
         # Get the accepted shapes for this xs
-        shapes = [self.xs_shapes["[G][DG]"], self.xs_shapes["[DG][G][G']"]]
+        shapes = [self.xs_shapes["[DG][G]"], self.xs_shapes["[DG][G][G']"]]
 
         # Convert to a numpy array so we can easily get the shape for checking
         delayed_nu_fission = np.asarray(delayed_nu_fission)
@@ -925,7 +925,7 @@ class XSdata(object):
         See also
         --------
         openmc.mgxs.Library.create_mg_library()
-        openmc.mgxs.Library.get_xsdata
+        openmc.mgxs.Library.get_xsdata()
 
         """
 
@@ -970,7 +970,7 @@ class XSdata(object):
         See also
         --------
         openmc.mgxs.Library.create_mg_library()
-        openmc.mgxs.Library.get_xsdata
+        openmc.mgxs.Library.get_xsdata()
 
         """
 
@@ -1017,7 +1017,7 @@ class XSdata(object):
         See also
         --------
         openmc.mgxs.Library.create_mg_library()
-        openmc.mgxs.Library.get_xsdata
+        openmc.mgxs.Library.get_xsdata()
 
         """
 
@@ -1064,7 +1064,7 @@ class XSdata(object):
         See also
         --------
         openmc.mgxs.Library.create_mg_library()
-        openmc.mgxs.Library.get_xsdata
+        openmc.mgxs.Library.get_xsdata()
 
         """
 
@@ -1119,7 +1119,7 @@ class XSdata(object):
         See also
         --------
         openmc.mgxs.Library.create_mg_library()
-        openmc.mgxs.Library.get_xsdata
+        openmc.mgxs.Library.get_xsdata()
 
         """
 
@@ -1174,7 +1174,7 @@ class XSdata(object):
         See also
         --------
         openmc.mgxs.Library.create_mg_library()
-        openmc.mgxs.Library.get_xsdata
+        openmc.mgxs.Library.get_xsdata()
 
         """
 
@@ -1231,7 +1231,7 @@ class XSdata(object):
         See also
         --------
         openmc.mgxs.Library.create_mg_library()
-        openmc.mgxs.Library.get_xsdata
+        openmc.mgxs.Library.get_xsdata()
 
         """
 
@@ -1277,7 +1277,7 @@ class XSdata(object):
         See also
         --------
         openmc.mgxs.Library.create_mg_library()
-        openmc.mgxs.Library.get_xsdata
+        openmc.mgxs.Library.get_xsdata()
 
         """
 
@@ -1320,7 +1320,7 @@ class XSdata(object):
         See also
         --------
         openmc.mgxs.Library.create_mg_library()
-        openmc.mgxs.Library.get_xsdata
+        openmc.mgxs.Library.get_xsdata()
 
         """
 
@@ -1366,7 +1366,7 @@ class XSdata(object):
         See also
         --------
         openmc.mgxs.Library.create_mg_library()
-        openmc.mgxs.Library.get_xsdata
+        openmc.mgxs.Library.get_xsdata()
 
         """
 
@@ -1414,7 +1414,7 @@ class XSdata(object):
         See also
         --------
         openmc.mgxs.Library.create_mg_library()
-        openmc.mgxs.Library.get_xsdata
+        openmc.mgxs.Library.get_xsdata()
 
         """
 
@@ -1459,7 +1459,7 @@ class XSdata(object):
         See also
         --------
         openmc.mgxs.Library.create_mg_library()
-        openmc.mgxs.Library.get_xsdata
+        openmc.mgxs.Library.get_xsdata()
 
         """
 
@@ -1509,7 +1509,7 @@ class XSdata(object):
         See also
         --------
         openmc.mgxs.Library.create_mg_library()
-        openmc.mgxs.Library.get_xsdata
+        openmc.mgxs.Library.get_xsdata()
 
         """
 
@@ -1598,7 +1598,7 @@ class XSdata(object):
         See also
         --------
         openmc.mgxs.Library.create_mg_library()
-        openmc.mgxs.Library.get_xsdata
+        openmc.mgxs.Library.get_xsdata()
 
         """
 
@@ -1648,12 +1648,12 @@ class XSdata(object):
                                   nuclide='total', xs_type='macro',
                                   subdomain=None):
         """This method allows for an openmc.mgxs.InverseVelocity
-        to be used to set the absorption cross section for this XSdata object.
+        to be used to set the inverse velocity for this XSdata object.
 
         Parameters
         ----------
         inverse_velocity : openmc.mgxs.InverseVelocity
-            MGXS Object containing the inverse velocity for the domain of
+            MGXS object containing the inverse velocity for the domain of
             interest.
         temperature : float
             Temperature (in Kelvin) of the data. Defaults to room temperature
@@ -1671,7 +1671,7 @@ class XSdata(object):
         See also
         --------
         openmc.mgxs.Library.create_mg_library()
-        openmc.mgxs.Library.get_xsdata
+        openmc.mgxs.Library.get_xsdata()
 
         """
 

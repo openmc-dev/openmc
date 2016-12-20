@@ -844,9 +844,9 @@ class Material(object):
             subelement.text = str(self.temperature)
 
         # Create density XML subelement
-        if self._density is not None:
+        if self._density is not None or self._density_units == 'sum':
             subelement = ET.SubElement(element, "density")
-            if self._density_units is not 'sum':
+            if self._density_units != 'sum':
                 subelement.set("value", str(self._density))
             subelement.set("units", self._density_units)
         else:

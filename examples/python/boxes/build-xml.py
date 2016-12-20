@@ -15,25 +15,19 @@ particles = 10000
 #                 Exporting to OpenMC materials.xml File
 ###############################################################################
 
-# Instantiate some Nuclides
-h1 = openmc.Nuclide('H1')
-o16 = openmc.Nuclide('O16')
-u235 = openmc.Nuclide('U235')
-u238 = openmc.Nuclide('U238')
-
 # Instantiate some Materials and register the appropriate Nuclides
 fuel1 = openmc.Material(material_id=1, name='fuel')
 fuel1.set_density('g/cc', 4.5)
-fuel1.add_nuclide(u235, 1.)
+fuel1.add_nuclide('U235', 1.)
 
 fuel2 = openmc.Material(material_id=2, name='depleted fuel')
 fuel2.set_density('g/cc', 4.5)
-fuel2.add_nuclide(u238, 1.)
+fuel2.add_nuclide('U238', 1.)
 
 moderator = openmc.Material(material_id=3, name='moderator')
 moderator.set_density('g/cc', 1.0)
-moderator.add_nuclide(h1, 2.)
-moderator.add_nuclide(o16, 1.)
+moderator.add_element('H', 2.)
+moderator.add_element('O', 1.)
 moderator.add_s_alpha_beta('c_H_in_H2O')
 
 # Instantiate a Materials collection and export to XML

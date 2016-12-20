@@ -396,7 +396,7 @@
         <filter bins="0.0 0.625 20000000.0" type="energy" />
         <nuclides>total</nuclides>
         <scores>delayed-nu-fission</scores>
-        <estimator>analog</estimator>
+        <estimator>tracklength</estimator>
     </tally>
     <tally id="10048">
         <filter bins="10000" type="material" />
@@ -404,7 +404,7 @@
         <filter bins="0.0 0.625 20000000.0" type="energy" />
         <nuclides>total</nuclides>
         <scores>decay-rate</scores>
-        <estimator>analog</estimator>
+        <estimator>tracklength</estimator>
     </tally>
     <tally id="10049">
         <filter bins="10000" type="material" />
@@ -767,7 +767,7 @@
         <filter bins="0.0 0.625 20000000.0" type="energy" />
         <nuclides>total</nuclides>
         <scores>delayed-nu-fission</scores>
-        <estimator>analog</estimator>
+        <estimator>tracklength</estimator>
     </tally>
     <tally id="10099">
         <filter bins="10001" type="material" />
@@ -775,7 +775,7 @@
         <filter bins="0.0 0.625 20000000.0" type="energy" />
         <nuclides>total</nuclides>
         <scores>decay-rate</scores>
-        <estimator>analog</estimator>
+        <estimator>tracklength</estimator>
     </tally>
     <tally id="10100">
         <filter bins="10001" type="material" />
@@ -1138,7 +1138,7 @@
         <filter bins="0.0 0.625 20000000.0" type="energy" />
         <nuclides>total</nuclides>
         <scores>delayed-nu-fission</scores>
-        <estimator>analog</estimator>
+        <estimator>tracklength</estimator>
     </tally>
     <tally id="10150">
         <filter bins="10002" type="material" />
@@ -1146,7 +1146,7 @@
         <filter bins="0.0 0.625 20000000.0" type="energy" />
         <nuclides>total</nuclides>
         <scores>decay-rate</scores>
-        <estimator>analog</estimator>
+        <estimator>tracklength</estimator>
     </tally>
     <tally id="10151">
         <filter bins="10002" type="material" />

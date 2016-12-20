@@ -830,7 +830,7 @@ class Settings(object):
 
     def _create_keff_trigger_subelement(self, run_mode_element):
         if self._keff_trigger is not None:
-            element = ET.SubElement(run_mode_subelement, "keff_trigger")
+            element = ET.SubElement(run_mode_element, "keff_trigger")
 
             for key in self._keff_trigger:
                 subelement = ET.SubElement(element, key)

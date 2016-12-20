@@ -129,7 +129,7 @@ class Material(object):
         string = 'Material\n'
         string += '{0: <16}{1}{2}\n'.format('\tID', '=\t', self._id)
         string += '{0: <16}{1}{2}\n'.format('\tName', '=\t', self._name)
-        string += '{0: <16}{1}{2}\n'.format('\Temperature', '=\t',
+        string += '{0: <16}{1}{2}\n'.format('\tTemperature', '=\t',
                                             self._temperature)
 
         string += '{0: <16}{1}{2}'.format('\tDensity', '=\t', self._density)
@@ -251,7 +251,7 @@ class Material(object):
 
         Parameters
         ----------
-        units : {'g/cm3', 'g/cc', 'km/cm3', 'atom/b-cm', 'atom/cm3', 'sum', 'macro'}
+        units : {'g/cm3', 'g/cc', 'kg/cm3', 'atom/b-cm', 'atom/cm3', 'sum', 'macro'}
             Physical units of density.
         density : float, optional
             Value of the density. Must be specified unless units is given as
@@ -641,37 +641,39 @@ class Material(object):
         nucs = []
         nuc_densities = []
         nuc_density_types = []
+
         for nuclide in nuclides.items():
             nuc, nuc_density, nuc_density_type = nuclide[1]
             nucs.append(nuc)
             nuc_densities.append(nuc_density)
             nuc_density_types.append(nuc_density_type)
 
+        nucs = np.array(nucs)
+        nuc_densities = np.array(nuc_densities)
+        nuc_density_types = np.array(nuc_density_types)
+
         if sum_density:
             density = np.sum(nuc_densities)
+
         percent_in_atom = np.all(nuc_density_types == 'ao')
         density_in_atom = density > 0.
         sum_percent = 0.
 
-        awrs = []
-        for n, nuclide in enumerate(nuclides.items()):
-            awr = openmc.data.atomic_mass(nuclide[0])
-            if awr is not None:
-                awrs.append(awr / openmc.data.NEUTRON_MASS)
-            else:
-                raise ValueError(nuclide[0] + " is invalid")
+        # Convert the weight amounts to atomic amounts
+        if not percent_in_atom:
+            for n, nuc in enumerate(nucs):
+                nuc_densities[n] *= self.average_molar_mass / \
+                                    openmc.data.atomic_mass(nuc)
 
-        # Now that we have the awr, lets finish calculating densities
+        # Now that we have the atomic amounts, lets finish calculating densities
         sum_percent = np.sum(nuc_densities)
         nuc_densities = nuc_densities / sum_percent
+
+        # Convert the mass density to an atom density
         if not density_in_atom:
-            sum_percent = 0.
-            for n, nuc in enumerate(nucs):
-                x = nuc_densities[n]
-                sum_percent += x * awrs[n]
-            sum_percent = 1. / sum_percent
-            density = -density * sum_percent * \
-                openmc.data.AVOGADRO / openmc.data.NEUTRON_MASS * 1.E-24
+            density = -density / self.average_molar_mass * 1.E-24 \
+                      * openmc.data.AVOGADRO
+
         nuc_densities = density * nuc_densities
 
         nuclides = OrderedDict()

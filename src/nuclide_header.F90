@@ -621,7 +621,8 @@ module nuclide_header
 
     case (EMISSION_DELAYED)
       if (this % n_precursor > 0) then
-        if (present(group)) then
+        if (present(group) .and. group < &
+             size(this % reactions(this % index_fission(1)) % products)) then
           ! If delayed group specified, determine yield immediately
           associate(p => this % reactions(this % index_fission(1)) % products(1 + group))
             nu = p % yield % evaluate(E)

@@ -923,7 +923,7 @@ class ChiDelayed(MDGXS):
     tally_keys : list of str
         The keys into the tallies dictionary for each tally used to compute
         the multi-group cross section
-    estimator : {'tracklength', 'analog'}
+    estimator : 'analog'
         The tally estimator used to compute the multi-group cross section
     tallies : collections.OrderedDict
         OpenMC tallies needed to compute the multi-group cross section. The keys
@@ -966,6 +966,7 @@ class ChiDelayed(MDGXS):
         super(ChiDelayed, self).__init__(domain, domain_type, energy_groups,
                                          delayed_groups, by_nuclide, name)
         self._rxn_type = 'chi-delayed'
+        self._estimator = 'analog'
 
     @property
     def scores(self):
@@ -986,10 +987,6 @@ class ChiDelayed(MDGXS):
     @property
     def tally_keys(self):
         return ['delayed-nu-fission-in', 'delayed-nu-fission-out']
-
-    @property
-    def estimator(self):
-        return 'analog'
 
     @property
     def rxn_rate_tally(self):
@@ -1017,6 +1014,34 @@ class ChiDelayed(MDGXS):
             delayed_nu_fission_in.filters.append(energy_filter)
 
         return self._xs_tally
+
+    def get_homogenized_mgxs(self, other_mgxs):
+        """Construct a homogenized MGXS with other MGXS objects.
+
+        This method constructs a new MGXS object that is the flux-weighted
+        combination of two MGXS objects. It is equivalent to what one would
+        obtain if the tally spatial domain were designed to encompass the
+        individual domains for both MGXS objects.
+
+        Parameters
+        ----------
+        other_mgxs : openmc.mgxs.MGXS or Iterable of openmc.mgxs.MGXS
+            The MGXS to homogenize with this one.
+
+        Returns
+        -------
+        openmc.mgxs.MGXS
+            A new homogenized MGXS
+
+        Raises
+        ------
+        ValueError
+            If the other_mgxs is of a different type.
+
+        """
+
+        return self._get_homogenized_mgxs(other_mgxs, 'delayed-nu-fission-in')
+
 
     def get_slice(self, nuclides=[], groups=[], delayed_groups=[]):
         """Build a sliced ChiDelayed for the specified nuclides and energy
@@ -1586,6 +1611,33 @@ class Beta(MDGXS):
 
         return self._xs_tally
 
+    def get_homogenized_mgxs(self, other_mgxs):
+        """Construct a homogenized MGXS with other MGXS objects.
+
+        This method constructs a new MGXS object that is the flux-weighted
+        combination of two MGXS objects. It is equivalent to what one would
+        obtain if the tally spatial domain were designed to encompass the
+        individual domains for both MGXS objects.
+
+        Parameters
+        ----------
+        other_mgxs : openmc.mgxs.MGXS or Iterable of openmc.mgxs.MGXS
+            The MGXS to homogenize with this one.
+
+        Returns
+        -------
+        openmc.mgxs.MGXS
+            A new homogenized MGXS
+
+        Raises
+        ------
+        ValueError
+            If the other_mgxs is of a different type.
+
+        """
+
+        return self._get_homogenized_mgxs(other_mgxs, 'nu-fission')
+
 
 class DecayRate(MDGXS):
     r"""The decay rate for delayed neutron precursors.
@@ -1703,7 +1755,6 @@ class DecayRate(MDGXS):
         super(DecayRate, self).__init__(domain, domain_type, energy_groups,
                                    delayed_groups, by_nuclide, name)
         self._rxn_type = 'decay-rate'
-        self._estimator = 'analog'
 
     @property
     def scores(self):
@@ -1737,6 +1788,33 @@ class DecayRate(MDGXS):
             super(DecayRate, self)._compute_xs()
 
         return self._xs_tally
+
+    def get_homogenized_mgxs(self, other_mgxs):
+        """Construct a homogenized MGXS with other MGXS objects.
+
+        This method constructs a new MGXS object that is the flux-weighted
+        combination of two MGXS objects. It is equivalent to what one would
+        obtain if the tally spatial domain were designed to encompass the
+        individual domains for both MGXS objects.
+
+        Parameters
+        ----------
+        other_mgxs : openmc.mgxs.MGXS or Iterable of openmc.mgxs.MGXS
+            The MGXS to homogenize with this one.
+
+        Returns
+        -------
+        openmc.mgxs.MGXS
+            A new homogenized MGXS
+
+        Raises
+        ------
+        ValueError
+            If the other_mgxs is of a different type.
+
+        """
+
+        return self._get_homogenized_mgxs(other_mgxs, 'delayed-nu-fission')
 
 
 @add_metaclass(ABCMeta)
@@ -2295,7 +2373,7 @@ class DelayedNuFissionMatrixXS(MatrixMDGXS):
     tally_keys : list of str
         The keys into the tallies dictionary for each tally used to compute
         the multi-group cross section
-    estimator : {'tracklength', 'analog'}
+    estimator : 'analog'
         The tally estimator used to compute the multi-group cross section
     tallies : collections.OrderedDict
         OpenMC tallies needed to compute the multi-group cross section. The keys

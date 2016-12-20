@@ -997,7 +997,7 @@ class MGXS(object):
         return avg_xs
 
     def _get_homogenized_mgxs(self, other_mgxs, denom_score='flux'):
-        """Construct a homogenized MGXS with other mgxs objects.
+        """Construct a homogenized MGXS with other MGXS objects.
 
         This method constructs a new MGXS object that is the flux-weighted
         combination of two MGXS objects. It is equivalent to what one would
@@ -1080,7 +1080,7 @@ class MGXS(object):
         return homogenized_mgxs
 
     def get_homogenized_mgxs(self, other_mgxs):
-        """Construct a homogenized mgxs with other mgxs objects.
+        """Construct a homogenized mgxs with other MGXS objects.
 
         Parameters
         ----------
@@ -4667,7 +4667,7 @@ class Chi(MGXS):
         return self._xs_tally
 
     def get_homogenized_mgxs(self, other_mgxs):
-        """Construct a homogenized mgxs with other mgxs objects.
+        """Construct a homogenized mgxs with other MGXS objects.
 
         Parameters
         ----------

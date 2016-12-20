@@ -570,34 +570,37 @@ class Material(object):
         # Compute the sum of the atom densities
         sum_densities = 0.
         for nuclide,density in zip(nuclides,densities):
+
+            # Make a local variable with the nuclide density
             density = density[1]
 
             # Convert to weight percent, if requested
             if percent_type == 'wo':
                 if isinstance(nuclide, openmc.Nuclide):
-                    awr = openmc.data.atomic_mass(nuclide.name)
+                    atomic_mass = openmc.data.atomic_mass(nuclide.name)
                 else:
-                    awr = openmc.data.atomic_mass(nuclide)
+                    atomic_mass = openmc.data.atomic_mass(nuclide)
 
                 amm = material.average_molar_mass
-                density *= awr / amm
+                density *= atomic_mass / amm
 
             sum_densities += density
 
         # Add the nuclides of the given material to this material
         for nuclide,density in zip(nuclides,densities):
 
+            # Make a local variable with the nuclide density
             density = density[1]
 
             # Convert to weight percent, if requested
             if percent_type == 'wo':
                 if isinstance(nuclide, openmc.Nuclide):
-                    awr = openmc.data.atomic_mass(nuclide.name)
+                    atomic_mass = openmc.data.atomic_mass(nuclide.name)
                 else:
-                    awr = openmc.data.atomic_mass(nuclide)
+                    atomic_mass = openmc.data.atomic_mass(nuclide)
 
                 amm = material.average_molar_mass
-                density *= awr / amm
+                density *= atomic_mass / amm
 
             # Normalize the density to sum to 1.0
             density /= sum_densities

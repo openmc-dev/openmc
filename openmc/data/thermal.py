@@ -43,6 +43,32 @@ _THERMAL_NAMES = {'al': 'c_Al27', 'al27': 'c_Al27',
                   'uuo2': 'c_U_in_UO2', 'u-o2': 'c_U_in_UO2', 'u/o2': 'c_U_in_UO2',
                   'zrzrh': 'c_Zr_in_ZrH', 'zr-h': 'c_Zr_in_ZrH', 'zr/h': 'c_Zr_in_ZrH'}
 
+_THERMAL_NUCLIDES = {'c_Al27': ['Al27'],
+                     'c_Be': ['Be9'],
+                     'c_BeO': ['Be9'],
+                     'c_Be_in_BeO': ['Be9'],
+                     'c_Benzine': ['C12', 'H1'],
+                     'c_Ca_in_CaH2': ['Ca40'],
+                     'c_D_in_D2O': ['H2'],
+                     'c_Fe56': ['Fe56'],
+                     'c_Graphite': ['C12'],
+                     'c_H_in_CaH2': ['H1'],
+                     'c_H_in_CH2': ['H1'],
+                     'c_H_in_H2O': ['H1'],
+                     'c_H_in_ZrH': ['H1'],
+                     'c_liquid_CH4': ['H1'],
+                     'c_Mg24': ['Mg24'],
+                     'c_O_in_BeO': ['O16']
+                     'c_ortho_D': ['H2'],
+                     'c_ortho_H': ['H1'],
+                     'c_O_in_UO2': ['O16'],
+                     'c_SiO2': ['O16'],
+                     'c_para_D': ['H2'],
+                     'c_para_H': ['H1'],
+                     'c_solid_CH4': ['H1']
+                     'c_U_in_UO2': ['U238'],
+                     'c_Zr_in_ZrH': ['Zr90']}
+
 
 def get_thermal_name(name):
     """Get proper S(a,b) table name, e.g. 'HH2O' -> 'c_H_in_H2O'"""
@@ -63,6 +89,10 @@ def get_thermal_name(name):
             # OK, we give up. Just use the ACE name.
             return 'c_' + name
 
+def get_thermal_nuclides(name):
+    """Get the nuclides treated in this S(a,b) table"""
+
+    return _THERMAL_NUCLIDES[get_thermal_name(name)]
 
 class CoherentElastic(EqualityMixin):
     r"""Coherent elastic scattering data from a crystalline material

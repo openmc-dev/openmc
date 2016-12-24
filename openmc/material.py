@@ -346,7 +346,17 @@ class Material(object):
         else:
             nuclide = openmc.Nuclide(nuclide)
 
-        self._nuclides.append((nuclide, percent, percent_type))
+        # If the nuclide already exists, just increment the nuclide density
+        nuclide_found = False
+        for i, nuc in enumerate(self._nuclides):
+            if nuc[0].name == nuclide.name and nuc[2] == percent_type:
+                nuclide_found = True
+                self._nuclides[i] = (nuclide, percent + nuc[1], percent_type)
+                break
+
+        # If nuclide not present, add nuclide to list of nuclides
+        if not nuclide_found:
+            self._nuclides.append((nuclide, percent, percent_type))
 
     def remove_nuclide(self, nuclide):
         """Remove a nuclide from the material
@@ -628,6 +638,19 @@ class Material(object):
             msg = 'OpenMC S(a,b) tables follow the GND naming convention. ' \
                   'Table "{}" is being renamed as "{}".'.format(name, new_name)
             warnings.warn(msg)
+
+        # Check whether nuclides treated by this sab table are already treated
+        # by another sab table
+        new_nucs = openmc.data.get_thermal_nuclides(new_name)
+        for new_nuc in new_nucs:
+            for sab in self._sab:
+                nucs = openmc.data.get_thermal_nuclides(sab)
+                for nuc in nucs:
+                    if nuc == new_nuc:
+                        msg = 'S(a,b) table {} treats nuclide {} which is '\
+                              'already treated by S(a,b) table {}'.format\
+                              (new_name, nuc, sab)
+                        raise ValueError(msg)
 
         self._sab.append(new_name)
 

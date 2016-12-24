@@ -58,14 +58,14 @@ _THERMAL_NUCLIDES = {'c_Al27': ['Al27'],
                      'c_H_in_ZrH': ['H1'],
                      'c_liquid_CH4': ['H1'],
                      'c_Mg24': ['Mg24'],
-                     'c_O_in_BeO': ['O16']
+                     'c_O_in_BeO': ['O16'],
                      'c_ortho_D': ['H2'],
                      'c_ortho_H': ['H1'],
                      'c_O_in_UO2': ['O16'],
                      'c_SiO2': ['O16'],
                      'c_para_D': ['H2'],
                      'c_para_H': ['H1'],
-                     'c_solid_CH4': ['H1']
+                     'c_solid_CH4': ['H1'],
                      'c_U_in_UO2': ['U238'],
                      'c_Zr_in_ZrH': ['Zr90']}
 

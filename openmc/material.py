@@ -639,6 +639,10 @@ class Material(object):
                   'Table "{}" is being renamed as "{}".'.format(name, new_name)
             warnings.warn(msg)
 
+        # Check whether sab has already been added to list of sab tables
+        if new_name in self._sab:
+            return
+
         # Check whether nuclides treated by this sab table are already treated
         # by another sab table
         new_nucs = openmc.data.get_thermal_nuclides(new_name)

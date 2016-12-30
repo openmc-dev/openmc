@@ -1,5 +1,6 @@
 module input_xml
 
+  use algorithm,        only: find
   use cmfd_input,       only: configure_cmfd
   use constants
   use dict_header,      only: DictIntInt, DictCharInt, ElemKeyValueCI
@@ -2502,13 +2503,12 @@ contains
           ! Set number of S(a,b) tables
           mat % n_sab = n_sab
 
-          ! Allocate names and indices for nuclides and tables
+          ! Allocate names and indices for nuclides and tables -- for now we
+          ! allocate these as the number of S(a,b) tables listed. Since a single
+          ! table might apply to multiple nuclides, they are resized later if a
+          ! table is indeed applied to multiple nuclides.
           allocate(mat % sab_names(n_sab))
-          allocate(mat % i_sab_nuclides(n_sab))
           allocate(mat % i_sab_tables(n_sab))
-
-          ! Initialize i_sab_nuclides
-          mat % i_sab_nuclides = NONE
 
           do j = 1, n_sab
             ! Get pointer to S(a,b) table
@@ -4990,6 +4990,8 @@ contains
     integer :: m            ! position for sorting
     integer :: temp_nuclide ! temporary value for sorting
     integer :: temp_table   ! temporary value for sorting
+    type(VectorInt) :: i_sab_tables
+    type(VectorInt) :: i_sab_nuclides
 
     do i = 1, size(materials)
       ! Skip materials with no S(a,b) tables
@@ -5004,19 +5006,31 @@ contains
           associate (sab => sab_tables(mat % i_sab_tables(k)))
             FIND_NUCLIDE: do j = 1, size(mat % nuclide)
               if (any(sab % nuclides == nuclides(mat % nuclide(j)) % name)) then
-                mat % i_sab_nuclides(k) = j
-                exit FIND_NUCLIDE
+                call i_sab_tables % push_back(k)
+                call i_sab_nuclides % push_back(j)
               end if
             end do FIND_NUCLIDE
           end associate
 
           ! Check to make sure S(a,b) table matched a nuclide
-          if (mat % i_sab_nuclides(k) == NONE) then
+          if (find(i_sab_tables, k) == -1) then
             call fatal_error("S(a,b) table " // trim(mat % &
                  sab_names(k)) // " did not match any nuclide on material " &
                  // trim(to_str(mat % id)))
           end if
         end do ASSIGN_SAB
+
+        ! Update i_sab_tables and i_sab_nuclides
+        deallocate(mat % i_sab_tables)
+        m = i_sab_tables % size()
+        allocate(mat % i_sab_tables(m))
+        allocate(mat % i_sab_nuclides(m))
+        mat % i_sab_tables(:) = i_sab_tables % data(1:m)
+        mat % i_sab_nuclides(:) = i_sab_nuclides % data(1:m)
+
+        ! Clear entries in vectors for next material
+        call i_sab_tables % clear()
+        call i_sab_nuclides % clear()
 
         ! If there are multiple S(a,b) tables, we need to make sure that the
         ! entries in i_sab_nuclides are sorted or else they won't be applied

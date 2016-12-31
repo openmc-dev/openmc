@@ -1,6 +1,7 @@
 from collections import Iterable
 from difflib import get_close_matches
 from numbers import Real
+import re
 from warnings import warn
 
 import numpy as np
@@ -9,7 +10,7 @@ import h5py
 import openmc.checkvalue as cv
 from openmc.mixin import EqualityMixin
 from . import HDF5_VERSION, HDF5_VERSION_MAJOR
-from .data import K_BOLTZMANN, ATOMIC_SYMBOL, EV_PER_MEV
+from .data import K_BOLTZMANN, ATOMIC_SYMBOL, EV_PER_MEV, NATURAL_ABUNDANCE
 from .ace import Table, get_table
 from .angle_energy import AngleEnergy
 from .function import Tabulated1D
@@ -562,10 +563,22 @@ class ThermalScattering(EqualityMixin):
                 table.elastic_mu_out[temperatures[0]].shape = \
                     (n_energy, n_mu)
 
-        # Get relevant nuclides
+        # Get relevant nuclides -- NJOY only allows one to specify three
+        # nuclides that the S(a,b) table applies to. Thus, for all elements
+        # other than H and Fe, we automatically add all the naturally-occurring
+        # isotopes.
         for zaid, awr in ace.pairs:
             if zaid > 0:
                 Z, A = divmod(zaid, 1000)
-                table.nuclides.append(ATOMIC_SYMBOL[Z] + str(A))
+                element = ATOMIC_SYMBOL[Z]
+                if element in ['H', 'Fe']:
+                    table.nuclides.append(element + str(A))
+                else:
+                    if element + '0' not in table.nuclides:
+                        table.nuclides.append(element + '0')
+                    for isotope in sorted(NATURAL_ABUNDANCE):
+                        if re.match(r'{}\d+'.format(element), isotope):
+                            if isotope not in table.nuclides:
+                                table.nuclides.append(isotope)
 
         return table

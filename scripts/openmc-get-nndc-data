@@ -125,8 +125,6 @@ def fix_zaid(table, old, new):
         fh.write(text)
 
 print('Fixing ZAIDs for S(a,b) tables')
-fix_zaid('graphite.acer', '6012', '6000')
-fix_zaid('benzine.acer', '6012', '6000')
 fix_zaid('bebeo.acer', '8016', '   0')
 fix_zaid('obeo.acer', '4009', '   0')
 

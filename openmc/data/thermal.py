@@ -537,20 +537,25 @@ class ThermalScattering(EqualityMixin):
 
         # Incoherent/coherent elastic scattering cross section
         idx = ace.jxs[4]
+        n_mu = ace.nxs[6] + 1
         if idx != 0:
             n_energy = int(ace.xss[idx])
             energy = ace.xss[idx + 1: idx + 1 + n_energy]*EV_PER_MEV
             P = ace.xss[idx + 1 + n_energy: idx + 1 + 2 * n_energy]
 
             if ace.nxs[5] == 4:
+                # Coherent elastic
                 table.elastic_xs[temperatures[0]] = CoherentElastic(
                     energy, P*EV_PER_MEV)
+
+                # Coherent elastic shouldn't have angular distributions listed
+                assert n_mu == 0
             else:
+                # Incoherent elastic
                 table.elastic_xs[temperatures[0]] = Tabulated1D(energy, P)
 
-            # Angular distribution
-            n_mu = ace.nxs[6]
-            if n_mu != -1:
+                # Angular distribution
+                assert n_mu > 0
                 idx = ace.jxs[6]
                 table.elastic_mu_out[temperatures[0]] = \
                     ace.xss[idx:idx + n_energy * n_mu]

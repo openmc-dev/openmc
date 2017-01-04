@@ -184,7 +184,8 @@ contains
                  & dependent on neutron energy')
             do i = 1, URR_num_isotopes
               do i_nuc = 1, n_nuclides_total
-                if (URR_isotopes(i) % ZAI == nuclides(i_nuc) % zaid) then
+                if (URR_isotopes(i) % ZAI == nuclides(i_nuc) % zaid .and.&
+                     (.not. allocated(URR_isotopes(i) % urr_resonances))) then
                   call URR_isotopes(i) % resonance_ladder_realization()
                 end if
               end do
@@ -198,7 +199,8 @@ contains
                &a resonance ensemble with E_n-dependent parameters')
           do i = 1, URR_num_isotopes
             do i_nuc = 1, n_nuclides_total
-              if (URR_isotopes(i) % ZAI == nuclides(i_nuc) % zaid) then
+              if (URR_isotopes(i) % ZAI == nuclides(i_nuc) % zaid .and.&
+                   (.not. allocated(URR_isotopes(i) % urr_resonances))) then
                 call URR_isotopes(i) % resonance_ladder_realization()
                 call URR_isotopes(i) % generate_pointwise_xs(nuclides(i_nuc) % kT / K_BOLTZMANN)
               end if

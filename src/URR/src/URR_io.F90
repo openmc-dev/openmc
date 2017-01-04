@@ -54,25 +54,14 @@ contains
          file=trim(path_avg_xs)//trim(adjustl(zaid_str))//'-avg-urr-xs.dat')
     
 10  format(A80)
-    ! SHA1
+    read(in, 10) rec!TODO: read and write meaningful diagnostic data
     read(in, 10) rec
-
-    ! ZAID
     read(in, 10) rec
-    read(rec(1:6), '(I6)') ZAI
-
-    ! parameter energy dependence
     read(in, 10) rec
-    read(rec(1:1), '(I1)') E_depend
-
-    ! tolerance on average partial xs max relative uncertainty (1sigma/mean)
     read(in, 10) rec
-    read(rec(1:13), '(ES13.6)') tol
-    if (ZAI /= isotopes(i) % ZAI)&
-         call fatal_error('ZAID number disagreement')
-    if (master)&
-        write(*, '(A55,ES13.6)') adjustl(trim(adjustl(zaid_str)))//&
-             &'-avg-urr-xs.dat was generated with a tolerance of',tol
+    read(in, 10) rec
+    read(in, 10) rec
+    read(in, 10) rec
 
     ! read column labels
     read(in, 10) rec

@@ -13,7 +13,7 @@ def urr_filenames(endf_6_path):
     EL = []
     EH = []
     for file in os.listdir(endf_6_path):
-        f = open(file, 'r')
+        f = open(endf_6_path+file, 'r')
         cnt = 0
         for l in f:
             fields = l.split()
@@ -37,7 +37,7 @@ def zaids_symbols(urr_files):
     symbols = []
     for f in urr_files:
         if f[len(f)-7:len(f)-5] == 'm1':
-            A = f[len(f)-10:len(f)-5]
+            A = f[len(f)-10:len(f)-6]
             X = f[len(f)-13:len(f)-11]
         else:
             A = f[len(f)-8:len(f)-5]
@@ -54,10 +54,3 @@ def zaids_symbols(urr_files):
         zaids.append(zaid)
         symbols.append(symbol)
     return zaids, symbols
-
-def materials_xml(symbols):
-    """Write materials.xml XML elements for URR isotopes"""
-    matfile = open('materials.xml', 'w')
-    for i in range(len(symbols)):
-        matfile.write('<nuclide name="'+symbols[i]+'" ao="1.0" />'+'\n')
-    matfile.close()

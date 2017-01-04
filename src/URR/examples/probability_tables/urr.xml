@@ -1,0 +1,314 @@
+<urr>
+  <settings>
+    <endf_6_filepath>/Users/walshjon/dev/shutmc/src/URR/data/evaluations/endf-7.1/neutrons/</endf_6_filepath>
+    <avg_xs_filepath>/Users/walshjon/dev/shutmc/src/URR/data/avg_xs/</avg_xs_filepath>
+    <formalism>SLBW</formalism>
+    <w_function_implementation>quick_w</w_function_implementation>
+    <num_s_wave>64</num_s_wave>
+    <num_p_wave>64</num_p_wave>
+    <num_d_wave>64</num_d_wave>
+    <num_f_wave>64</num_f_wave>
+    <parameter_energy_dependence>neutron</parameter_energy_dependence>
+    <competitive_structure>True</competitive_structure>
+  </settings>
+  <isotopes>
+    <isotope zaid="11022" endf_6_file="n-011_Na_022.endf"/>
+    <isotope zaid="18036" endf_6_file="n-018_Ar_036.endf"/>
+    <isotope zaid="18038" endf_6_file="n-018_Ar_038.endf"/>
+    <isotope zaid="25055" endf_6_file="n-025_Mn_055.endf"/>
+    <isotope zaid="27058" endf_6_file="n-027_Co_058.endf"/>
+    <isotope zaid="28062" endf_6_file="n-028_Ni_062.endf"/>
+    <isotope zaid="30064" endf_6_file="n-030_Zn_064.endf"/>
+    <isotope zaid="30065" endf_6_file="n-030_Zn_065.endf"/>
+    <isotope zaid="30066" endf_6_file="n-030_Zn_066.endf"/>
+    <isotope zaid="30067" endf_6_file="n-030_Zn_067.endf"/>
+    <isotope zaid="30068" endf_6_file="n-030_Zn_068.endf"/>
+    <isotope zaid="30070" endf_6_file="n-030_Zn_070.endf"/>
+    <isotope zaid="32070" endf_6_file="n-032_Ge_070.endf"/>
+    <isotope zaid="32072" endf_6_file="n-032_Ge_072.endf"/>
+    <isotope zaid="32073" endf_6_file="n-032_Ge_073.endf"/>
+    <isotope zaid="32074" endf_6_file="n-032_Ge_074.endf"/>
+    <isotope zaid="32076" endf_6_file="n-032_Ge_076.endf"/>
+    <isotope zaid="33074" endf_6_file="n-033_As_074.endf"/>
+    <isotope zaid="33075" endf_6_file="n-033_As_075.endf"/>
+    <isotope zaid="34074" endf_6_file="n-034_Se_074.endf"/>
+    <isotope zaid="34076" endf_6_file="n-034_Se_076.endf"/>
+    <isotope zaid="34077" endf_6_file="n-034_Se_077.endf"/>
+    <isotope zaid="34078" endf_6_file="n-034_Se_078.endf"/>
+    <isotope zaid="34079" endf_6_file="n-034_Se_079.endf"/>
+    <isotope zaid="34080" endf_6_file="n-034_Se_080.endf"/>
+    <isotope zaid="34082" endf_6_file="n-034_Se_082.endf"/>
+    <isotope zaid="35079" endf_6_file="n-035_Br_079.endf"/>
+    <isotope zaid="35081" endf_6_file="n-035_Br_081.endf"/>
+    <isotope zaid="36078" endf_6_file="n-036_Kr_078.endf"/>
+    <isotope zaid="36080" endf_6_file="n-036_Kr_080.endf"/>
+    <isotope zaid="36082" endf_6_file="n-036_Kr_082.endf"/>
+    <isotope zaid="36083" endf_6_file="n-036_Kr_083.endf"/>
+    <isotope zaid="36085" endf_6_file="n-036_Kr_085.endf"/>
+    <isotope zaid="37085" endf_6_file="n-037_Rb_085.endf"/>
+    <isotope zaid="37086" endf_6_file="n-037_Rb_086.endf"/>
+    <isotope zaid="37087" endf_6_file="n-037_Rb_087.endf"/>
+    <isotope zaid="38084" endf_6_file="n-038_Sr_084.endf"/>
+    <isotope zaid="38086" endf_6_file="n-038_Sr_086.endf"/>
+    <isotope zaid="38087" endf_6_file="n-038_Sr_087.endf"/>
+    <isotope zaid="38089" endf_6_file="n-038_Sr_089.endf"/>
+    <isotope zaid="38090" endf_6_file="n-038_Sr_090.endf"/>
+    <isotope zaid="39090" endf_6_file="n-039_Y_090.endf"/>
+    <isotope zaid="39091" endf_6_file="n-039_Y_091.endf"/>
+    <isotope zaid="40090" endf_6_file="n-040_Zr_090.endf"/>
+    <isotope zaid="40091" endf_6_file="n-040_Zr_091.endf"/>
+    <isotope zaid="40092" endf_6_file="n-040_Zr_092.endf"/>
+    <isotope zaid="40093" endf_6_file="n-040_Zr_093.endf"/>
+    <isotope zaid="40094" endf_6_file="n-040_Zr_094.endf"/>
+    <isotope zaid="40095" endf_6_file="n-040_Zr_095.endf"/>
+    <isotope zaid="41094" endf_6_file="n-041_Nb_094.endf"/>
+    <isotope zaid="41095" endf_6_file="n-041_Nb_095.endf"/>
+    <isotope zaid="42092" endf_6_file="n-042_Mo_092.endf"/>
+    <isotope zaid="42094" endf_6_file="n-042_Mo_094.endf"/>
+    <isotope zaid="42095" endf_6_file="n-042_Mo_095.endf"/>
+    <isotope zaid="42096" endf_6_file="n-042_Mo_096.endf"/>
+    <isotope zaid="42097" endf_6_file="n-042_Mo_097.endf"/>
+    <isotope zaid="42098" endf_6_file="n-042_Mo_098.endf"/>
+    <isotope zaid="42099" endf_6_file="n-042_Mo_099.endf"/>
+    <isotope zaid="42100" endf_6_file="n-042_Mo_100.endf"/>
+    <isotope zaid="43099" endf_6_file="n-043_Tc_099.endf"/>
+    <isotope zaid="44096" endf_6_file="n-044_Ru_096.endf"/>
+    <isotope zaid="44098" endf_6_file="n-044_Ru_098.endf"/>
+    <isotope zaid="44099" endf_6_file="n-044_Ru_099.endf"/>
+    <isotope zaid="44100" endf_6_file="n-044_Ru_100.endf"/>
+    <isotope zaid="44101" endf_6_file="n-044_Ru_101.endf"/>
+    <isotope zaid="44102" endf_6_file="n-044_Ru_102.endf"/>
+    <isotope zaid="44103" endf_6_file="n-044_Ru_103.endf"/>
+    <isotope zaid="44104" endf_6_file="n-044_Ru_104.endf"/>
+    <isotope zaid="44106" endf_6_file="n-044_Ru_106.endf"/>
+    <isotope zaid="45103" endf_6_file="n-045_Rh_103.endf"/>
+    <isotope zaid="45105" endf_6_file="n-045_Rh_105.endf"/>
+    <isotope zaid="46105" endf_6_file="n-046_Pd_105.endf"/>
+    <isotope zaid="46107" endf_6_file="n-046_Pd_107.endf"/>
+    <isotope zaid="47107" endf_6_file="n-047_Ag_107.endf"/>
+    <isotope zaid="47109" endf_6_file="n-047_Ag_109.endf"/>
+    <isotope zaid="47110m" endf_6_file="n-047_Ag_110m1.endf"/>
+    <isotope zaid="47111" endf_6_file="n-047_Ag_111.endf"/>
+    <isotope zaid="48106" endf_6_file="n-048_Cd_106.endf"/>
+    <isotope zaid="48108" endf_6_file="n-048_Cd_108.endf"/>
+    <isotope zaid="48110" endf_6_file="n-048_Cd_110.endf"/>
+    <isotope zaid="48111" endf_6_file="n-048_Cd_111.endf"/>
+    <isotope zaid="48112" endf_6_file="n-048_Cd_112.endf"/>
+    <isotope zaid="48113" endf_6_file="n-048_Cd_113.endf"/>
+    <isotope zaid="48114" endf_6_file="n-048_Cd_114.endf"/>
+    <isotope zaid="48115m" endf_6_file="n-048_Cd_115m1.endf"/>
+    <isotope zaid="48116" endf_6_file="n-048_Cd_116.endf"/>
+    <isotope zaid="49113" endf_6_file="n-049_In_113.endf"/>
+    <isotope zaid="49115" endf_6_file="n-049_In_115.endf"/>
+    <isotope zaid="50112" endf_6_file="n-050_Sn_112.endf"/>
+    <isotope zaid="50113" endf_6_file="n-050_Sn_113.endf"/>
+    <isotope zaid="50114" endf_6_file="n-050_Sn_114.endf"/>
+    <isotope zaid="50115" endf_6_file="n-050_Sn_115.endf"/>
+    <isotope zaid="50116" endf_6_file="n-050_Sn_116.endf"/>
+    <isotope zaid="50117" endf_6_file="n-050_Sn_117.endf"/>
+    <isotope zaid="50118" endf_6_file="n-050_Sn_118.endf"/>
+    <isotope zaid="50119" endf_6_file="n-050_Sn_119.endf"/>
+    <isotope zaid="50120" endf_6_file="n-050_Sn_120.endf"/>
+    <isotope zaid="50123" endf_6_file="n-050_Sn_123.endf"/>
+    <isotope zaid="50125" endf_6_file="n-050_Sn_125.endf"/>
+    <isotope zaid="50126" endf_6_file="n-050_Sn_126.endf"/>
+    <isotope zaid="51121" endf_6_file="n-051_Sb_121.endf"/>
+    <isotope zaid="51123" endf_6_file="n-051_Sb_123.endf"/>
+    <isotope zaid="51124" endf_6_file="n-051_Sb_124.endf"/>
+    <isotope zaid="51125" endf_6_file="n-051_Sb_125.endf"/>
+    <isotope zaid="51126" endf_6_file="n-051_Sb_126.endf"/>
+    <isotope zaid="52120" endf_6_file="n-052_Te_120.endf"/>
+    <isotope zaid="52122" endf_6_file="n-052_Te_122.endf"/>
+    <isotope zaid="52123" endf_6_file="n-052_Te_123.endf"/>
+    <isotope zaid="52124" endf_6_file="n-052_Te_124.endf"/>
+    <isotope zaid="52125" endf_6_file="n-052_Te_125.endf"/>
+    <isotope zaid="52126" endf_6_file="n-052_Te_126.endf"/>
+    <isotope zaid="52127m" endf_6_file="n-052_Te_127m1.endf"/>
+    <isotope zaid="52128" endf_6_file="n-052_Te_128.endf"/>
+    <isotope zaid="52129m" endf_6_file="n-052_Te_129m1.endf"/>
+    <isotope zaid="52130" endf_6_file="n-052_Te_130.endf"/>
+    <isotope zaid="52132" endf_6_file="n-052_Te_132.endf"/>
+    <isotope zaid="53129" endf_6_file="n-053_I_129.endf"/>
+    <isotope zaid="53130" endf_6_file="n-053_I_130.endf"/>
+    <isotope zaid="53131" endf_6_file="n-053_I_131.endf"/>
+    <isotope zaid="54124" endf_6_file="n-054_Xe_124.endf"/>
+    <isotope zaid="54126" endf_6_file="n-054_Xe_126.endf"/>
+    <isotope zaid="54128" endf_6_file="n-054_Xe_128.endf"/>
+    <isotope zaid="54129" endf_6_file="n-054_Xe_129.endf"/>
+    <isotope zaid="54131" endf_6_file="n-054_Xe_131.endf"/>
+    <isotope zaid="54132" endf_6_file="n-054_Xe_132.endf"/>
+    <isotope zaid="54133" endf_6_file="n-054_Xe_133.endf"/>
+    <isotope zaid="54134" endf_6_file="n-054_Xe_134.endf"/>
+    <isotope zaid="54135" endf_6_file="n-054_Xe_135.endf"/>
+    <isotope zaid="55133" endf_6_file="n-055_Cs_133.endf"/>
+    <isotope zaid="55134" endf_6_file="n-055_Cs_134.endf"/>
+    <isotope zaid="55135" endf_6_file="n-055_Cs_135.endf"/>
+    <isotope zaid="55136" endf_6_file="n-055_Cs_136.endf"/>
+    <isotope zaid="55137" endf_6_file="n-055_Cs_137.endf"/>
+    <isotope zaid="56130" endf_6_file="n-056_Ba_130.endf"/>
+    <isotope zaid="56132" endf_6_file="n-056_Ba_132.endf"/>
+    <isotope zaid="56133" endf_6_file="n-056_Ba_133.endf"/>
+    <isotope zaid="56134" endf_6_file="n-056_Ba_134.endf"/>
+    <isotope zaid="56135" endf_6_file="n-056_Ba_135.endf"/>
+    <isotope zaid="56136" endf_6_file="n-056_Ba_136.endf"/>
+    <isotope zaid="56137" endf_6_file="n-056_Ba_137.endf"/>
+    <isotope zaid="56140" endf_6_file="n-056_Ba_140.endf"/>
+    <isotope zaid="57138" endf_6_file="n-057_La_138.endf"/>
+    <isotope zaid="57139" endf_6_file="n-057_La_139.endf"/>
+    <isotope zaid="57140" endf_6_file="n-057_La_140.endf"/>
+    <isotope zaid="58136" endf_6_file="n-058_Ce_136.endf"/>
+    <isotope zaid="58138" endf_6_file="n-058_Ce_138.endf"/>
+    <isotope zaid="58139" endf_6_file="n-058_Ce_139.endf"/>
+    <isotope zaid="58141" endf_6_file="n-058_Ce_141.endf"/>
+    <isotope zaid="58142" endf_6_file="n-058_Ce_142.endf"/>
+    <isotope zaid="58143" endf_6_file="n-058_Ce_143.endf"/>
+    <isotope zaid="58144" endf_6_file="n-058_Ce_144.endf"/>
+    <isotope zaid="59141" endf_6_file="n-059_Pr_141.endf"/>
+    <isotope zaid="59142" endf_6_file="n-059_Pr_142.endf"/>
+    <isotope zaid="59143" endf_6_file="n-059_Pr_143.endf"/>
+    <isotope zaid="60142" endf_6_file="n-060_Nd_142.endf"/>
+    <isotope zaid="60143" endf_6_file="n-060_Nd_143.endf"/>
+    <isotope zaid="60144" endf_6_file="n-060_Nd_144.endf"/>
+    <isotope zaid="60145" endf_6_file="n-060_Nd_145.endf"/>
+    <isotope zaid="60146" endf_6_file="n-060_Nd_146.endf"/>
+    <isotope zaid="60147" endf_6_file="n-060_Nd_147.endf"/>
+    <isotope zaid="60148" endf_6_file="n-060_Nd_148.endf"/>
+    <isotope zaid="60150" endf_6_file="n-060_Nd_150.endf"/>
+    <isotope zaid="61147" endf_6_file="n-061_Pm_147.endf"/>
+    <isotope zaid="61148" endf_6_file="n-061_Pm_148.endf"/>
+    <isotope zaid="61149" endf_6_file="n-061_Pm_149.endf"/>
+    <isotope zaid="61151" endf_6_file="n-061_Pm_151.endf"/>
+    <isotope zaid="62144" endf_6_file="n-062_Sm_144.endf"/>
+    <isotope zaid="62147" endf_6_file="n-062_Sm_147.endf"/>
+    <isotope zaid="62148" endf_6_file="n-062_Sm_148.endf"/>
+    <isotope zaid="62149" endf_6_file="n-062_Sm_149.endf"/>
+    <isotope zaid="62150" endf_6_file="n-062_Sm_150.endf"/>
+    <isotope zaid="62151" endf_6_file="n-062_Sm_151.endf"/>
+    <isotope zaid="62152" endf_6_file="n-062_Sm_152.endf"/>
+    <isotope zaid="62153" endf_6_file="n-062_Sm_153.endf"/>
+    <isotope zaid="62154" endf_6_file="n-062_Sm_154.endf"/>
+    <isotope zaid="63151" endf_6_file="n-063_Eu_151.endf"/>
+    <isotope zaid="63152" endf_6_file="n-063_Eu_152.endf"/>
+    <isotope zaid="63153" endf_6_file="n-063_Eu_153.endf"/>
+    <isotope zaid="63154" endf_6_file="n-063_Eu_154.endf"/>
+    <isotope zaid="63155" endf_6_file="n-063_Eu_155.endf"/>
+    <isotope zaid="63156" endf_6_file="n-063_Eu_156.endf"/>
+    <isotope zaid="63157" endf_6_file="n-063_Eu_157.endf"/>
+    <isotope zaid="64152" endf_6_file="n-064_Gd_152.endf"/>
+    <isotope zaid="64153" endf_6_file="n-064_Gd_153.endf"/>
+    <isotope zaid="64154" endf_6_file="n-064_Gd_154.endf"/>
+    <isotope zaid="64155" endf_6_file="n-064_Gd_155.endf"/>
+    <isotope zaid="64156" endf_6_file="n-064_Gd_156.endf"/>
+    <isotope zaid="64157" endf_6_file="n-064_Gd_157.endf"/>
+    <isotope zaid="64158" endf_6_file="n-064_Gd_158.endf"/>
+    <isotope zaid="64160" endf_6_file="n-064_Gd_160.endf"/>
+    <isotope zaid="65159" endf_6_file="n-065_Tb_159.endf"/>
+    <isotope zaid="65160" endf_6_file="n-065_Tb_160.endf"/>
+    <isotope zaid="66156" endf_6_file="n-066_Dy_156.endf"/>
+    <isotope zaid="66158" endf_6_file="n-066_Dy_158.endf"/>
+    <isotope zaid="66160" endf_6_file="n-066_Dy_160.endf"/>
+    <isotope zaid="66161" endf_6_file="n-066_Dy_161.endf"/>
+    <isotope zaid="66162" endf_6_file="n-066_Dy_162.endf"/>
+    <isotope zaid="66163" endf_6_file="n-066_Dy_163.endf"/>
+    <isotope zaid="66164" endf_6_file="n-066_Dy_164.endf"/>
+    <isotope zaid="67166m" endf_6_file="n-067_Ho_166m1.endf"/>
+    <isotope zaid="68167" endf_6_file="n-068_Er_167.endf"/>
+    <isotope zaid="68170" endf_6_file="n-068_Er_170.endf"/>
+    <isotope zaid="69169" endf_6_file="n-069_Tm_169.endf"/>
+    <isotope zaid="69170" endf_6_file="n-069_Tm_170.endf"/>
+    <isotope zaid="71175" endf_6_file="n-071_Lu_175.endf"/>
+    <isotope zaid="71176" endf_6_file="n-071_Lu_176.endf"/>
+    <isotope zaid="72174" endf_6_file="n-072_Hf_174.endf"/>
+    <isotope zaid="72176" endf_6_file="n-072_Hf_176.endf"/>
+    <isotope zaid="72177" endf_6_file="n-072_Hf_177.endf"/>
+    <isotope zaid="72178" endf_6_file="n-072_Hf_178.endf"/>
+    <isotope zaid="72179" endf_6_file="n-072_Hf_179.endf"/>
+    <isotope zaid="72180" endf_6_file="n-072_Hf_180.endf"/>
+    <isotope zaid="73181" endf_6_file="n-073_Ta_181.endf"/>
+    <isotope zaid="73182" endf_6_file="n-073_Ta_182.endf"/>
+    <isotope zaid="74182" endf_6_file="n-074_W_182.endf"/>
+    <isotope zaid="74183" endf_6_file="n-074_W_183.endf"/>
+    <isotope zaid="74184" endf_6_file="n-074_W_184.endf"/>
+    <isotope zaid="74186" endf_6_file="n-074_W_186.endf"/>
+    <isotope zaid="75185" endf_6_file="n-075_Re_185.endf"/>
+    <isotope zaid="75187" endf_6_file="n-075_Re_187.endf"/>
+    <isotope zaid="77193" endf_6_file="n-077_Ir_193.endf"/>
+    <isotope zaid="81203" endf_6_file="n-081_Tl_203.endf"/>
+    <isotope zaid="81205" endf_6_file="n-081_Tl_205.endf"/>
+    <isotope zaid="90228" endf_6_file="n-090_Th_228.endf"/>
+    <isotope zaid="90229" endf_6_file="n-090_Th_229.endf"/>
+    <isotope zaid="90230" endf_6_file="n-090_Th_230.endf"/>
+    <isotope zaid="90232" endf_6_file="n-090_Th_232.endf"/>
+    <isotope zaid="91231" endf_6_file="n-091_Pa_231.endf"/>
+    <isotope zaid="91232" endf_6_file="n-091_Pa_232.endf"/>
+    <isotope zaid="91233" endf_6_file="n-091_Pa_233.endf"/>
+    <isotope zaid="92232" endf_6_file="n-092_U_232.endf"/>
+    <isotope zaid="92233" endf_6_file="n-092_U_233.endf"/>
+    <isotope zaid="92234" endf_6_file="n-092_U_234.endf"/>
+    <isotope zaid="92235" endf_6_file="n-092_U_235.endf"/>
+    <isotope zaid="92236" endf_6_file="n-092_U_236.endf"/>
+    <isotope zaid="92237" endf_6_file="n-092_U_237.endf"/>
+    <isotope zaid="92238" endf_6_file="n-092_U_238.endf"/>
+    <isotope zaid="92239" endf_6_file="n-092_U_239.endf"/>
+    <isotope zaid="92240" endf_6_file="n-092_U_240.endf"/>
+    <isotope zaid="92241" endf_6_file="n-092_U_241.endf"/>
+    <isotope zaid="93236" endf_6_file="n-093_Np_236.endf"/>
+    <isotope zaid="93237" endf_6_file="n-093_Np_237.endf"/>
+    <isotope zaid="93238" endf_6_file="n-093_Np_238.endf"/>
+    <isotope zaid="94236" endf_6_file="n-094_Pu_236.endf"/>
+    <isotope zaid="94238" endf_6_file="n-094_Pu_238.endf"/>
+    <isotope zaid="94239" endf_6_file="n-094_Pu_239.endf"/>
+    <isotope zaid="94240" endf_6_file="n-094_Pu_240.endf"/>
+    <isotope zaid="94241" endf_6_file="n-094_Pu_241.endf"/>
+    <isotope zaid="94242" endf_6_file="n-094_Pu_242.endf"/>
+    <isotope zaid="94243" endf_6_file="n-094_Pu_243.endf"/>
+    <isotope zaid="94244" endf_6_file="n-094_Pu_244.endf"/>
+    <isotope zaid="95241" endf_6_file="n-095_Am_241.endf"/>
+    <isotope zaid="95242" endf_6_file="n-095_Am_242.endf"/>
+    <isotope zaid="95242m" endf_6_file="n-095_Am_242m1.endf"/>
+    <isotope zaid="95243" endf_6_file="n-095_Am_243.endf"/>
+    <isotope zaid="96242" endf_6_file="n-096_Cm_242.endf"/>
+    <isotope zaid="96243" endf_6_file="n-096_Cm_243.endf"/>
+    <isotope zaid="96244" endf_6_file="n-096_Cm_244.endf"/>
+    <isotope zaid="96245" endf_6_file="n-096_Cm_245.endf"/>
+    <isotope zaid="96246" endf_6_file="n-096_Cm_246.endf"/>
+    <isotope zaid="96247" endf_6_file="n-096_Cm_247.endf"/>
+    <isotope zaid="96248" endf_6_file="n-096_Cm_248.endf"/>
+    <isotope zaid="96250" endf_6_file="n-096_Cm_250.endf"/>
+    <isotope zaid="97249" endf_6_file="n-097_Bk_249.endf"/>
+    <isotope zaid="98249" endf_6_file="n-098_Cf_249.endf"/>
+    <isotope zaid="98250" endf_6_file="n-098_Cf_250.endf"/>
+    <isotope zaid="98251" endf_6_file="n-098_Cf_251.endf"/>
+    <isotope zaid="98252" endf_6_file="n-098_Cf_252.endf"/>
+  </isotopes>
+  <probability_tables>
+    <read_tables>False</read_tables>
+    <filepath>/Users/walshjon/dev/shutmc/src/URR/data/probability_tables/</filepath>
+    <temperature_interpolation_method>log-log</temperature_interpolation_method>
+    <num_bands>16</num_bands>
+    <temperature_grid>
+      0.0
+      293.6
+      600.0
+      900.0
+      1200.0
+      2500.0
+      11604.5
+      116045.2
+      1160452.2
+      11604522.1
+      116045221.1
+      348135663.3
+      1160452211.1
+      11604522110.5
+    </temperature_grid>
+    <min_num_batches>64</min_num_batches>
+    <max_num_batches>1024</max_num_batches>
+    <num_histories>64</num_histories>
+    <tolerance>0.001</tolerance>
+    <energy_spacing>logarithmic</energy_spacing>
+    <num_energies>16</num_energies>
+    <writetables>True</writetables>
+    <writeavg_xs>True</writeavg_xs>
+  </probability_tables>
+</urr>

@@ -348,23 +348,35 @@ contains
           ! set current total angular momentum quantum number
           this % J = this % AJ(i_l) % dim1(i_J)
 
-          ! set current partial width degrees of freedom
+          ! set current partial width degrees of freedom, mean level spacing
           this % AMUX = int(this % DOFX(i_l) % dim1(i_J))
           this % AMUN = int(this % DOFN(i_l) % dim1(i_J))
           this % AMUG = int(this % DOFG(i_l) % dim1(i_J))
           this % AMUF = int(this % DOFF(i_l) % dim1(i_J))
+          this % D = this % D_mean(i_l) % dim2(i_J) % dim1(1)
 
           ! set energy of the lowest-lying contributing URR resonance
-          this % D = this % D_mean(i_l) % dim2(i_J) % dim1(1)
-          if (i_l > this % NLS(this % i_urr - 1)) then
-            ! the URR has more l-states than the RRR; place resonance energy
+          if (this % i_urr == 1) then
+
+            ! the URR is the first resonance energy region so place
+            ! resonance energy randomly about lower URR energy bound
+            E_res = this % EL(this % i_urr)&
+                 + (ONE - TWO * prn()) * wigner_level_spacing(this % D, prn())
+
+          else if (i_l > this % NLS(this % i_urr - 1)) then
+
+            ! the URR has more l-states than the RRR so place resonance energy
             ! randomly about lower URR energy bound
             E_res = this % EL(this % i_urr)&
                  + (ONE - TWO * prn()) * wigner_level_spacing(this % D, prn())
+
           else
+
             ! offset first URR resonance energy from the highest-energy RRR
-            ! resonance with the same (l,J) spin sequence
-            E_res = this % last_resolved_resonance_energy(this % L, this % J)+wigner_level_spacing(this % D, prn())
+            ! resonance with the same (l,J) spin sequence 
+            E_res = this % last_resolved_resonance_energy(this % L, this % J)&
+                 + wigner_level_spacing(this % D, prn())
+
           end if
 
           ! point to first resonance for this l-wave, realization, J
@@ -378,17 +390,20 @@ contains
 
             i_res = i_res + 1
 
-            ! compute interpolation factor
+            ! compute interpolation factor for mean parameters and
+            ! don't extrapolate paramters outside of URR because
+            ! non-physical quantities can result
             if (E_res < this % ES(1)) then
               i_E = 1
+              m = 0
             else if (E_res > this % ES(this % NE)) then
               i_E = this % NE - 1
+              m = 1
             else
               i_E = binary_search(this % ES, this % NE, E_res)
+              m = interp_factor(&
+                   E_res, this % ES(i_E), this % ES(i_E + 1), this % INT)
             end if
-
-            m = interp_factor(E_res, this % ES(i_E), this % ES(i_E + 1),&
-                 this % INT)
 
             ! set current mean unresolved resonance parameters
             this % D = interpolate(m, &
@@ -423,14 +438,14 @@ contains
             this % E = E_res
             this % k_n   = wavenumber(this % AWR, abs(this % E))
             this % k_lam = wavenumber(this % AWR, abs(this % E))
-            this % P_l_n = penetration(this % L,&
-                 this % k_n * this % ac(this % i_urr))
-            this % P_l_lam = penetration(this % L,&
-                 this % k_lam * this % ac(this % i_urr))
-            this % S_l_n = energy_shift(this % L,&
-                 this % k_n * this % ac(this % i_urr))
-            this % phi_l_n = phase_shift(this % L,&
-                 this % k_n * this % AP(this % i_urr))
+            this % P_l_n =&
+                 penetration(this % L, this % k_n * this % ac(this % i_urr))
+            this % P_l_lam =&
+                 penetration(this % L, this % k_lam * this % ac(this % i_urr))
+            this % S_l_n =&
+                 energy_shift(this % L, this % k_n * this % ac(this % i_urr))
+            this % phi_l_n =&
+                 phase_shift(this % L, this % k_n * this % AP(this % i_urr))
             call this % channel_widths(res, i_l, i_J)
             call this % set_parameters(res, i_ens, i_l, i_J)
 
@@ -634,35 +649,41 @@ contains
         ! set current total angular momentum quantum number
         this % J = this % AJ(i_l) % dim1(i_J)
 
+        ! add resonances to this ladder
         res % i_res = 0
-        ! loop over the addition of resonances to this ladder
+
+        ! if we're near the lower end of the URR, need to incorporate
+        ! resolved resonance region resonances in order to fix-up
+        ! (i.e. smooth out) cross sections at the RRR-URR crossover
+        ! energy
         if (i_low - n_res/2 + 1 < 1) then
-          ! if we're near the lower end of the URR, need to incorporate
-          ! resolved resonance region resonances in order to fix-up
-          ! (i.e. smooth out) cross sections at the RRR-URR crossover
-          ! energy
 
-          ! if the RRR has resonances with this l-state
-          if (i_l <= this % NLS(this % i_urr - 1)) then
+          ! if there is an RRR to get resonances from
+          if (this % i_urr > 1) then
 
-            ! how many RRR resonances are contributing
-            n_rrr_res = abs(i_low - n_res/2)
+            ! if the RRR has resonances with this l-state
+            if (i_l <= this % NLS(this % i_urr - 1)) then
 
-            ! loop over contributing resolved resonance region resonances
-            LOC_RRR_RESONANCES_LOOP_1: do i_res = n_rrr_res, 1, -1
-              i_rrr_res = this % resolved_resonance_index(this % L, this % J, i_res)
+              ! how many RRR resonances are contributing
+              n_rrr_res = abs(i_low - n_res/2)
 
-              ! fewer RRR resonances w/ this J value then needed;
-              ! just generate URR resonances instead
+              ! loop over contributing resolved resonance region resonances
+              LOC_RRR_RESONANCES_LOOP_1: do i_res = n_rrr_res, 1, -1
+
+                i_rrr_res = this % resolved_resonance_index(this % L, this % J, i_res)
+
+                ! fewer RRR resonances w/ this J value then needed;
+                ! just grab the URR 'edge' resonances that were generated in the RRR
 !TODO: take however many RRR resonances there actually are, even if too few
-              if (i_rrr_res == 0) exit
+                if (i_rrr_res == 0) exit
 
-              ! add this resolved resonance
-              res % i_res = res % i_res + 1
-              call this % get_parameters(res, i_rrr_res, i_l, i_J,&
-                   this % i_urr - 1)
+                ! add this resolved resonance
+                res % i_res = res % i_res + 1
+                call this % get_parameters(&
+                     res, i_rrr_res, i_l, i_J, this % i_urr - 1)
 
-            end do LOC_RRR_RESONANCES_LOOP_1
+              end do LOC_RRR_RESONANCES_LOOP_1
+            end if
           end if
 
           ! loop over contributing unresolved resonance region resonances
@@ -933,35 +954,45 @@ contains
             ! set current total angular momentum quantum number
             this % J = this % AJ(i_l) % dim1(i_J)
 
+
+
+            ! add resonances to this ladder
             res % i_res = 0
-            ! loop over the addition of resonances to this ladder
+
+            ! if we're near the lower end of the URR, need to incorporate
+            ! resolved resonance region resonances in order to fix-up
+            ! (i.e. smooth out) cross sections at the RRR-URR crossover
+            ! energy
             if (i_low - n_res/2 + 1 < 1) then
-              ! if we're near the lower end of the URR, need to incorporate
-              ! resolved resonance region resonances in order to fix-up
-              ! (i.e. smooth out) cross sections at the RRR-URR crossover
-              ! energy
 
-              ! if the RRR has resonances with this l-state
-              if (i_l <= this % NLS(this % i_urr - 1)) then
+              ! if there is an RRR to get resonances from
+              if (this % i_urr > 1) then
 
-                ! how many RRR resonances are contributing
-                n_rrr_res = abs(i_low - n_res/2)
+                ! if the RRR has resonances with this l-state
+                if (i_l <= this % NLS(this % i_urr - 1)) then
 
-                ! loop over contributing resolved resonance region resonances
-                LOC_RRR_RESONANCES_LOOP_4: do i_res = n_rrr_res, 1, -1
-                  i_rrr_res = this % resolved_resonance_index(this % L, this % J, i_res)
+                  ! how many RRR resonances are contributing
+                  n_rrr_res = abs(i_low - n_res/2)
 
-                  ! fewer RRR resonances w/ this J value then needed;
-                  ! just generate URR resonances instead
-    !TODO: take however many RRR resonances there actually are, even if too few
-                  if (i_rrr_res == 0) exit
+                  ! loop over contributing resolved resonance region resonances
+                  LOC_RRR_RESONANCES_LOOP_4: do i_res = n_rrr_res, 1, -1
 
-                  ! add this resolved resonance
-                  res % i_res = res % i_res + 1
-                  call this % get_parameters(res, i_rrr_res, i_l, i_J,&
-                       this % i_urr - 1)
+                    i_rrr_res = this % resolved_resonance_index(&
+                         this % L, this % J, i_res)
 
-                end do LOC_RRR_RESONANCES_LOOP_4
+                    ! fewer RRR resonances w/ this J value then needed;
+                    ! just grab the URR 'edge' resonances that were generated
+                    ! in the RRR
+!TODO: take however many RRR resonances there actually are, even if too few
+                    if (i_rrr_res == 0) exit
+
+                    ! add this resolved resonance
+                    res % i_res = res % i_res + 1
+                    call this % get_parameters(&
+                         res, i_rrr_res, i_l, i_J, this % i_urr - 1)
+
+                  end do LOC_RRR_RESONANCES_LOOP_4
+                end if
               end if
 
               ! loop over contributing unresolved resonance region resonances
@@ -1140,9 +1171,6 @@ contains
         ! set current total angular momentum quantum number
         this % J = this % AJ(i_l) % dim1(i_J)
 
-        ! zero the resonance counter
-        res % i_res = 0
-
         ! find the nearest lower resonance
         if (this % E&
              < this % urr_resonances(i_l,i_realization) % J(i_J) % res(1) % E_lam) then
@@ -1153,34 +1181,41 @@ contains
                this % n_lam(i_l, i_realization) % dim1(i_J), this % E)
         end if
 
-        ! loop over the addition of resonances to this ladder
+        ! add resonances to this ladder
+        res % i_res = 0
+
+        ! if we're near the lower end of the URR, need to incorporate
+        ! resolved resonance region resonances in order to fix-up
+        ! (i.e. smooth out) cross sections at the RRR-URR crossover
+        ! energy
         if (i_low - n_res/2 + 1 < 1) then
-          ! if we're near the lower end of the URR, need to incorporate
-          ! resolved resonance region resonances in order to fix-up
-          ! (i.e. smooth out) cross sections at the RRR-URR crossover
-          ! energy
 
-          ! if the RRR has resonances with this l-state
-          if (i_l <= this % NLS(this % i_urr - 1)) then
+          ! if there is an RRR to get resonances from
+          if (this % i_urr > 1) then
 
-            ! how many RRR resonances are contributing
-            n_rrr_res = abs(i_low - n_res/2)
+            ! if the RRR has resonances with this l-state
+            if (i_l <= this % NLS(this % i_urr - 1)) then
 
-            ! loop over contributing resolved resonance region resonances
-            LOC_RRR_RESONANCES_LOOP: do i_res = n_rrr_res, 1, -1
-              i_rrr_res = this % resolved_resonance_index(this % L, this % J, i_res)
-                  
-              ! fewer RRR resonances w/ this J value then needed;
-              ! just generate URR resonances instead
+              ! how many RRR resonances are contributing
+              n_rrr_res = abs(i_low - n_res/2)
+
+              ! loop over contributing resolved resonance region resonances
+              LOC_RRR_RESONANCES_LOOP: do i_res = n_rrr_res, 1, -1
+
+                i_rrr_res = this % resolved_resonance_index(this % L, this % J, i_res)
+
+                ! fewer RRR resonances w/ this J value then needed;
+                ! just grab the URR 'edge' resonances that were generated in the RRR
 !TODO: take however many RRR resonances there actually are, even if too few
-              if (i_rrr_res == 0) exit
-                  
-              ! add this resolved resonance
-              res % i_res = res % i_res + 1
-              call this % get_parameters(res, i_rrr_res, i_l, i_J,&
-                   this % i_urr - 1)
+                if (i_rrr_res == 0) exit
 
-            end do LOC_RRR_RESONANCES_LOOP
+                ! add this resolved resonance
+                res % i_res = res % i_res + 1
+                call this % get_parameters(&
+                     res, i_rrr_res, i_l, i_J, this % i_urr - 1)
+
+              end do LOC_RRR_RESONANCES_LOOP
+            end if
           end if
 
           ! loop over contributing unresolved resonance region resonances
@@ -1190,12 +1225,14 @@ contains
           end do LOC_URR_RESONANCES_LOOP
 
         else
-          ! we're well into the URR and can ignore anything going on in
+
+          ! we're firmly in the URR and can ignore anything going on in
           ! the upper resolved resonance region energies
           LOC_URR_LOOP: do i_res = i_low - n_res/2 + 1, i_low + n_res/2
             res % i_res = res % i_res + 1
             call this % get_parameters(res, i_res, i_l, i_J, this % i_urr)
           end do LOC_URR_LOOP
+
         end if
       end do LOC_TOTAL_ANG_MOM_LOOP
     end do LOC_ORBITAL_ANG_MOM_LOOP
@@ -3469,6 +3506,7 @@ end subroutine alloc_local_realization
       end do
     
     case default
+      print*,'a'
       call fatal_error('Unrecognized/unsupported RRR formalism')
     
     end select
@@ -3519,6 +3557,7 @@ end subroutine alloc_local_realization
       end do
     
     case default
+       print*,'b'
       call fatal_error('Unrecognized/unsupported RRR formalism')
     
     end select

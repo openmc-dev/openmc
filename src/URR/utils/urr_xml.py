@@ -50,25 +50,25 @@ class SettingsElement(object):
     def __init__(self):
         self.xml_element_ = et.Element('settings')
 
-    def endf_6_filepath(self, endf_6_filepath_string):
+    def endf_6_filepath(self, endf_6_filepath_str):
         self.endf_6_filepath_ = et.SubElement(
             self.xml_element_, 'endf_6_filepath')
-        self.endf_6_filepath_.text = endf_6_filepath_string
+        self.endf_6_filepath_.text = endf_6_filepath_str
 
-    def avg_xs_filepath(self, avg_xs_filepath_string):
+    def avg_xs_filepath(self, avg_xs_filepath_str):
         self.avg_xs_filepath_ = et.SubElement(
             self.xml_element_, 'avg_xs_filepath')
-        self.avg_xs_filepath_.text = avg_xs_filepath_string
+        self.avg_xs_filepath_.text = avg_xs_filepath_str
 
-    def formalism(self, formalism_string):
+    def formalism(self, formalism_str):
         self.formalism_ = et.SubElement(
             self.xml_element_, 'formalism')
-        self.formalism_.text = formalism_string
+        self.formalism_.text = formalism_str
 
-    def w_function_implementation(self, w_function_implementation_string):
+    def w_function_implementation(self, w_function_implementation_str):
         self.w_function_implementation_ = et.SubElement(
             self.xml_element_, 'w_function_implementation')
-        self.w_function_implementation_.text = w_function_implementation_string
+        self.w_function_implementation_.text = w_function_implementation_str
 
     def num_s_wave(self, num_s_wave_int):
         self.num_s_wave_ = et.SubElement(
@@ -90,11 +90,11 @@ class SettingsElement(object):
             self.xml_element_, 'num_f_wave')
         self.num_f_wave_.text = str(num_f_wave_int)
 
-    def parameter_energy_dependence(self, parameter_energy_dependence_string):
+    def parameter_energy_dependence(self, parameter_energy_dependence_str):
         self.parameter_energy_dependence_ = et.SubElement(
             self.xml_element_, 'parameter_energy_dependence')
         self.parameter_energy_dependence_.text \
-            = parameter_energy_dependence_string
+            = parameter_energy_dependence_str
 
     def competitive_structure(self, competitive_structure_bool):
         self.competitive_structure_ = et.SubElement(
@@ -127,8 +127,8 @@ class IsotopeElement(object):
     def zaid(self, zaid_int):
         self.xml_element_.set('zaid', str(zaid_int))
 
-    def endf_6_file(self, endf_6_file_string):
-        self.xml_element_.set('endf_6_file', endf_6_file_string)
+    def endf_6_file(self, endf_6_file_str):
+        self.xml_element_.set('endf_6_file', endf_6_file_str)
 
     def max_energy(self, max_energy_float):
         self.xml_element_.set('max_energy', str(max_energy_float))
@@ -142,10 +142,10 @@ class OnTheFlyElement(object):
     def __init__(self):
         self.xml_element_ = et.Element('on_the_fly')
 
-    def frequency(self, frequency_string):
+    def frequency(self, frequency_str):
         self.frequency_ = et.SubElement(
             self.xml_element_, 'frequency')
-        self.frequency_.text = frequency_string
+        self.frequency_.text = frequency_str
 
     def num_realizations(self, num_realizations_int):
         self.num_realizations_ = et.SubElement(
@@ -166,22 +166,22 @@ class ProbabilityTablesElement(object):
     def __init__(self):
         self.xml_element_ = et.Element('probability_tables')
 
-    def load_tables(self, load_tables_bool):
-        self.load_tables_ = et.SubElement(
-            self.xml_element_, 'load_tables')
-        self.load_tables_.text = str(load_tables_bool)
+    def read_tables(self, read_tables_bool):
+        self.read_tables_ = et.SubElement(
+            self.xml_element_, 'read_tables')
+        self.read_tables_.text = str(read_tables_bool)
 
-    def filepath(self, filepath_string):
+    def filepath(self, filepath_str):
         self.filepath_ = et.SubElement(
             self.xml_element_, 'filepath')
-        self.filepath_.text = filepath_string
+        self.filepath_.text = filepath_str
 
     def temperature_interpolation_method(
-            self, temperature_interpolation_method_string):
+            self, temperature_interpolation_method_str):
         self.temperature_interpolation_method_ = et.SubElement(
             self.xml_element_, 'temperature_interpolation_method')
         self.temperature_interpolation_method_.text \
-            = temperature_interpolation_method_string
+            = temperature_interpolation_method_str
 
     def num_bands(self, num_bands_int):
         self.num_bands_ = et.SubElement(
@@ -189,10 +189,13 @@ class ProbabilityTablesElement(object):
         self.num_bands_.text = str(num_bands_int)
 
     def temperature_grid(self, temperature_grid_list):
-        temperature_grid = ''
-        for i in range(len(temperature_grid_list)-1):
-            temperature_grid += str(temperature_grid_list[i]) + '\n'
-        temperature_grid += str(temperature_grid_list[i+1])
+        temperature_grid = '\n      '
+        if len(temperature_grid_list) == 1:
+            temperature_grid = str(temperature_grid_list[0]) + '\n    '
+        else:
+            for i in range(len(temperature_grid_list)-1):
+                temperature_grid += str(temperature_grid_list[i]) + '\n      '
+            temperature_grid += str(temperature_grid_list[i+1]) + '\n    '
         self.temperature_grid_ = et.SubElement(
             self.xml_element_, 'temperature_grid')
         self.temperature_grid_.text = temperature_grid
@@ -217,10 +220,10 @@ class ProbabilityTablesElement(object):
             self.xml_element_, 'tolerance')
         self.tolerance_.text = str(tolerance_float)
 
-    def energy_spacing(self, energy_spacing_string):
+    def energy_spacing(self, energy_spacing_str):
         self.energy_spacing_ = et.SubElement(
             self.xml_element_, 'energy_spacing')
-        self.energy_spacing_.text = energy_spacing_string
+        self.energy_spacing_.text = energy_spacing_str
 
     def num_energies(self, num_energies_int):
         self.num_energies_ = et.SubElement(
@@ -228,28 +231,31 @@ class ProbabilityTablesElement(object):
         self.num_energies_.text = str(num_energies_int)
 
     def energy_grid(self, energy_grid_list):
-        energy_grid = ''
-        for i in range(len(energy_grid_list)-1):
-            energy_grid += str(energy_grid_list[i]) + '\n'
-        energy_grid += str(energy_grid_list[i+1])
+        energy_grid = '\n      '
+        if len(energy_grid_list) == 1:
+            energy_grid = str(energy_grid_list[0]) + '\n    '
+        else:
+            for i in range(len(energy_grid_list)-1):
+                energy_grid += str(energy_grid_list[i]) + '\n      '
+            energy_grid += str(energy_grid_list[i+1]) + '\n    '
         self.energy_grid_ = et.SubElement(
             self.xml_element_, 'energy_grid')
         self.energy_grid_.text = energy_grid
 
-    def background_xs(self, background_xs_string):
+    def background_xs(self, background_xs_str):
         self.background_xs_ = et.SubElement(
             self.xml_element_, 'backgound_xs')
-        self.background_xs_.text = background_xs_string
+        self.background_xs_.text = background_xs_str
 
-    def generate_tables(self, generate_tables_bool):
-        self.generate_tables_ = et.SubElement(
-            self.xml_element_, 'generate_tables')
-        self.generate_tables_.text = str(generate_tables_bool)
+    def write_tables(self, writetables_bool):
+        self.writetables_ = et.SubElement(
+            self.xml_element_, 'writetables')
+        self.writetables_.text = str(writetables_bool)
 
-    def generate_avg_xs(self, generate_avg_xs_bool):
-        self.generate_avg_xs_ = et.SubElement(
-            self.xml_element_, 'generate_avg_xs')
-        self.generate_avg_xs_.text = str(generate_avg_xs_bool)
+    def write_avg_xs(self, writeavg_xs_bool):
+        self.writeavg_xs_ = et.SubElement(
+            self.xml_element_, 'writeavg_xs')
+        self.writeavg_xs_.text = str(writeavg_xs_bool)
 
 
 class PointwiseElement(object):
@@ -269,3 +275,10 @@ class PointwiseElement(object):
         self.tolerance_ = et.SubElement(
             self.xml_element_, 'tolerance')
         self.tolerance_.text = str(tolerance_float)
+
+def urr_materials_xml(symbols):
+    """Write materials.xml XML elements for URR isotopes"""
+    matfile = open('urr_materials.xml', 'w')
+    for i in range(len(symbols)):
+        matfile.write('<nuclide name="'+symbols[i]+'" ao="1.0" />'+'\n')
+    matfile.close()

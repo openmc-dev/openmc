@@ -1,0 +1,24 @@
+<?xml version="1.0"?>
+<settings>
+
+  <seed>100000000</seed>
+  <ptables>true</ptables>
+  <cross_sections>/Users/walshjon/dev/shutmc/src/URR/data/cross_sections_endf71x.xml</cross_sections>
+
+  <eigenvalue>
+    <batches>60</batches>
+    <inactive>10</inactive>
+    <particles>10</particles>
+  </eigenvalue>
+
+  <source>
+    <space>
+      <type>fission</type>
+      <parameters>
+	-1. -1. -1.
+	 1.  1.  1.
+      </parameters>
+    </space>
+  </source>
+
+</settings>

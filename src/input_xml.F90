@@ -3235,9 +3235,11 @@ contains
 
   subroutine read_urr_xml()
 
-    integer :: i ! re-usable index
     character(MAX_LINE_LEN) :: temp_str
     character(MAX_LINE_LEN) :: filename
+    integer :: i ! re-usable index
+    character(len=:), allocatable :: zaid_str
+    integer :: zaid_str_len ! number of characters in zaid_str
     logical :: file_exists ! does urr.xml file exist?
     type(Node), pointer :: doc => null()
     type(Node), pointer :: settings_node => null()
@@ -3369,8 +3371,8 @@ contains
       end if
 
       ! Include resonance structure of competitive URR cross sections?
-      if (check_for_node(doc, "competitive_structure")) then
-        call get_node_value(doc, "competitive_structure", temp_str)
+      if (check_for_node(settings_node, "competitive_structure")) then
+        call get_node_value(settings_node, "competitive_structure", temp_str)
         if (trim(adjustl(to_lower(temp_str))) == 'false' &
              .or. trim(adjustl(temp_str)) == '0') then
           URR_competitive_structure = .false.
@@ -3407,10 +3409,22 @@ contains
 
           ! Check that a nuclide ZAID is given
           if (check_for_node(isotope_node, 'zaid')) then
-            call get_node_value(isotope_node, 'zaid', URR_isotopes(i) % ZAI)
+            call get_node_value(isotope_node, 'zaid', temp_str)
+
+            ! handle metastable identifier, 'm', which trails ZA #
+            zaid_str = trim(adjustl(temp_str))
+            zaid_str_len = len(zaid_str)
+            if (zaid_str(zaid_str_len:zaid_str_len) == 'm') then
+              read(zaid_str(1:zaid_str_len-1), '(I6)') URR_isotopes(i) % ZAI
+            else
+              read(zaid_str, '(I6)') URR_isotopes(i) % ZAI
+            end if
+            deallocate(zaid_str)
+
           else
             call fatal_error('No ZAID specified for isotope ' &
                  // trim(to_str(i)) // ' in urr.xml file')
+
           end if
 
           ! Check that an ENDF data file is given
@@ -3544,8 +3558,8 @@ contains
       call get_node_ptr(doc, "probability_tables", prob_table_node)
 
       ! load previously-generated tables?
-      if (check_for_node(prob_table_node, 'load_tables')) then
-        call get_node_value(prob_table_node, 'load_tables', temp_str)
+      if (check_for_node(prob_table_node, 'read_tables')) then
+        call get_node_value(prob_table_node, 'read_tables', temp_str)
         if (trim(adjustl(to_lower(temp_str))) == 'true'&
              .or. trim(adjustl(temp_str)) == '1') then
           URR_pregenerated_prob_tables = .true.
@@ -3613,7 +3627,7 @@ contains
 
         ! temperatures
         if (check_for_node(prob_table_node, "temperature_grid")) then
-          URR_num_temperatures_prob_tables = get_arraysize_double(prob_table_node, "temperatures")
+          URR_num_temperatures_prob_tables = get_arraysize_double(prob_table_node, "temperature_grid")
           allocate(URR_T_grid_prob_tables(URR_num_temperatures_prob_tables))
           call get_node_array(prob_table_node, "temperature_grid", URR_T_grid_prob_tables)
           if (URR_num_temperatures_prob_tables > 1) then
@@ -3702,17 +3716,16 @@ contains
           call get_node_value(prob_table_node, "background_xs", temp_str)
           if (trim(adjustl(to_lower(temp_str))) == 'endf_6') then
             URR_background_xs_treatment = URR_ENDFFILE
+          else if (trim(adjustl(to_lower(temp_str))) == 'false') then
+            URR_background_xs_treatment = URR_FALSE
           else
             call fatal_error('Unrecognized background cross section source&
                  & in probability table calculation given in urr.xml')
           end if
-        else
-          call fatal_error('No background cross section source for probability&
-               & table calculation given in urr.xml')
         end if
 
-        if (check_for_node(prob_table_node, "generate_tables")) then
-          call get_node_value(prob_table_node, "generate_tables", temp_str)
+        if (check_for_node(prob_table_node, "write_tables")) then
+          call get_node_value(prob_table_node, "write_tables", temp_str)
           if (trim(adjustl(to_lower(temp_str))) == 'false' &
                .or. trim(adjustl(temp_str)) == '0') then
             URR_write_prob_tables = .false.
@@ -3727,8 +3740,8 @@ contains
                & tables to a file via write_tables in urr.xml')
         end if
 
-        if (check_for_node(prob_table_node, "generate_avg_xs")) then
-          call get_node_value(prob_table_node, "generate_avg_xs", temp_str)
+        if (check_for_node(prob_table_node, "write_avg_xs")) then
+          call get_node_value(prob_table_node, "write_avg_xs", temp_str)
           if (trim(adjustl(to_lower(temp_str))) == 'false' &
                .or. trim(adjustl(temp_str)) == '0') then
             URR_write_avg_xs = .false.

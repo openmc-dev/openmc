@@ -24,7 +24,7 @@ module URR_endf6
   public :: read_endf6
 
   integer :: in = 11 ! input unit
-  character(80) :: filename ! ENDF-6 filename
+  character(len=:), allocatable :: filename ! ENDF-6 filename
 
 !$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$
 !
@@ -60,22 +60,21 @@ contains
     integer :: MT ! MT type number
     integer :: NS ! record number
 
-    filename = filename_tmp
-
-    inquire(file = trim(path_endf_files)//trim(filename), &
+    filename = trim(adjustl(filename_tmp))
+    inquire(file = trim(path_endf_files)//filename, &
       & exist = file_exists, read = readable)
     if (.not. file_exists) then
-      call fatal_error('ENDF-6 file '//trim(filename)//' does not exist.')
+      call fatal_error(&
+           'ENDF-6 file '//trim(path_endf_files)//filename//' does not exist.')
     else if (readable(1:3) == 'NO') then
-      call fatal_error('ENDF-6 file '//trim(filename)// &
-        & ' is not readable.  Change file permissions with chmod command.')
+      call fatal_error('ENDF-6 file '//trim(path_endf_files)//filename//&
+           &' is not readable.  Change file permissions with chmod command.')
     end if
 
     ! display message
-    call write_message("Loading ENDF-6 file: "//trim(filename), 6)
+    call write_message("Loading ENDF-6 file: "//filename, 6)
 
-    open(unit = in, &
-      file = trim(path_endf_files)//trim(filename))
+    open(unit = in, file = trim(path_endf_files)//filename)
 
     MF1_read = .false.
     MF2_read = .false.
@@ -103,6 +102,7 @@ contains
     end do
 
     close(in)
+    deallocate(filename)
 
   end subroutine read_endf6
 
@@ -352,6 +352,10 @@ contains
         if (i_e == NP) exit
         i_e = i_e + 1
       end do
+    else
+      isotopes(i) % MF3_f_e = [isotopes(i) % EL(isotopes(i) % i_urr),&
+                               isotopes(i) % EH(isotopes(i) % i_urr)]
+      isotopes(i) % MF3_f = [ZERO, ZERO]
     end if
 
     read_MT = .false.
@@ -421,6 +425,10 @@ contains
         if (i_e == NP) exit
         i_e = i_e + 1
       end do
+    else
+      isotopes(i) % MF3_x_e = [isotopes(i) % EL(isotopes(i) % i_urr),&
+                               isotopes(i) % EH(isotopes(i) % i_urr)]
+      isotopes(i) % MF3_x = [ZERO, ZERO]
     end if
 
     read_MT = .false.
@@ -1463,15 +1471,15 @@ contains
 !
 !$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$
 
-  subroutine check_energy_ranges(n_ranges, e_low, e_high)
+  subroutine check_energy_ranges(num_ranges, e_low, e_high)
 
-    integer :: n_ranges
+    integer :: num_ranges
     real(8) :: e_low
     real(8) :: e_high
 
-    if (n_ranges /= 2) then
+    if (num_ranges > 2) then
       if (master)&
-           call warning('> 2 resonance energy ranges (i.e. NER > 2); see '&
+           call warning('> 2 resonance energy ranges (i.e., NER > 2); see '&
            //trim(filename))
     end if
 

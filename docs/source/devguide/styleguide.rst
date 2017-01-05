@@ -153,6 +153,9 @@ Avoid extraneous whitespace in the following situations:
     Yes: if (variable == 2) then
     No:  if ( variable==2 ) then
 
+The structure component designator ``%`` should be surrounded by one space on
+each side.
+
 Do not leave trailing whitespace at the end of a line.
 
 ------

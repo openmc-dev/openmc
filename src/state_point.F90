@@ -990,7 +990,9 @@ contains
     integer(HID_T) :: dset     ! data set handle
     integer(HID_T) :: dspace   ! data space handle
     integer(HID_T) :: memspace ! memory space handle
-    integer(HSIZE_T) :: dims(1)
+    integer(HSIZE_T) :: dims(1)     ! dimensions on one processor
+    integer(HSIZE_T) :: dims_all(1) ! overall dimensions
+    integer(HSIZE_T) :: maxdims(1)  ! maximum dimensions
     integer(HSIZE_T) :: offset(1) ! offset of data
     type(c_ptr) :: f_ptr
 #ifdef PHDF5
@@ -1004,8 +1006,15 @@ contains
     dims(1) = work
     call h5screate_simple_f(1, dims, memspace, hdf5_err)
 
-    ! Select hyperslab for each process
+    ! Make sure source bank is big enough
     call h5dget_space_f(dset, dspace, hdf5_err)
+    call h5sget_simple_extent_dims_f(dspace, dims_all, maxdims, hdf5_err)
+    if (size(source_bank, KIND=HSIZE_T) > dims_all(1)) then
+      call fatal_error("Number of source sites in source file is less than &
+           &number of source particles per generation.")
+    end if
+
+    ! Select hyperslab for each process
     offset(1) = work_index(rank)
     call h5sselect_hyperslab_f(dspace, H5S_SELECT_SET_F, offset, dims, hdf5_err)
 

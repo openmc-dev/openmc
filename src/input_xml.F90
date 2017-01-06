@@ -411,8 +411,8 @@ contains
         ! Check if source file exists
         inquire(FILE=path_source, EXIST=file_exists)
         if (.not. file_exists) then
-          call fatal_error("Binary source file '" // trim(path_source) &
-               &// "' does not exist!")
+          call fatal_error("Source file '" // trim(path_source) &
+               // "' does not exist!")
         end if
 
       else

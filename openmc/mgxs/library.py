@@ -71,6 +71,10 @@ class Library(object):
         :attr:`ScatterMatrixXS.scatter_format` is 'histogram'. (default is 16)
     energy_groups : openmc.mgxs.EnergyGroups
         Energy group structure for energy condensation
+    num_polar : None or Integral
+        Number of equi-width polar angles for angle discretization
+    num_azimuthal : None or Integral
+        Number of equi-width azimuthal angles for angle discretization
     num_delayed_groups : int
         Number of delayed groups
     estimator : str or None
@@ -107,6 +111,8 @@ class Library(object):
         self._domain_type = None
         self._domains = 'all'
         self._energy_groups = None
+        self._num_polar = None
+        self._num_azimuthal = None
         self._num_delayed_groups = 0
         self._correction = 'P0'
         self._scatter_format = 'legendre'
@@ -144,6 +150,8 @@ class Library(object):
             clone._legendre_order = self.legendre_order
             clone._histogram_bins = self.histogram_bins
             clone._energy_groups = copy.deepcopy(self.energy_groups, memo)
+            clone._num_polar = self.num_polar
+            clone._num_azimuthal = self.num_azimuthal
             clone._num_delayed_groups = self.num_delayed_groups
             clone._tally_trigger = copy.deepcopy(self.tally_trigger, memo)
             clone._all_mgxs = copy.deepcopy(self.all_mgxs)
@@ -212,6 +220,14 @@ class Library(object):
     @property
     def energy_groups(self):
         return self._energy_groups
+
+    @property
+    def num_polar(self):
+        return self._num_polar
+
+    @property
+    def num_azimuthal(self):
+        return self._num_azimuthal
 
     @property
     def num_delayed_groups(self):
@@ -344,6 +360,18 @@ class Library(object):
         cv.check_type('energy groups', energy_groups, openmc.mgxs.EnergyGroups)
         self._energy_groups = energy_groups
 
+    @num_polar.setter
+    def num_polar(self, num_polar):
+        if num_polar:
+            cv.check_type('num_polar', num_polar, Integral)
+        self._num_polar = num_polar
+
+    @num_azimuthal.setter
+    def num_azimuthal(self, num_azimuthal):
+        if num_azimuthal:
+            cv.check_type('num_azimuthal', num_azimuthal, Integral)
+        self._num_azimuthal = num_azimuthal
+
     @num_delayed_groups.setter
     def num_delayed_groups(self, num_delayed_groups):
 
@@ -472,7 +500,9 @@ class Library(object):
                 if mgxs_type in openmc.mgxs.MDGXS_TYPES:
                     mgxs = openmc.mgxs.MDGXS.get_mgxs(mgxs_type, name=self.name)
                 else:
-                    mgxs = openmc.mgxs.MGXS.get_mgxs(mgxs_type, name=self.name)
+                    mgxs = openmc.mgxs.MGXS.get_mgxs(
+                        mgxs_type, name=self.name, num_polar=self.num_polar,
+                        num_azimuthal=self.num_azimuthal)
 
                 mgxs.domain = domain
                 mgxs.domain_type = self.domain_type
@@ -953,11 +983,13 @@ class Library(object):
         name = xsdata_name
         if nuclide != 'total':
             name += '_' + nuclide
-        xsdata = openmc.XSdata(name, self.energy_groups)
+        if self.num_polar or self.num_azimuthal:
+            representation = 'angle'
+        else:
+            representation = 'isotropic'
+        xsdata = openmc.XSdata(name, self.energy_groups,
+                               representation=representation)
         xsdata.num_delayed_groups = self.num_delayed_groups
-
-        # Right now only isotropic weighting is supported
-        self.representation = 'isotropic'
 
         if nuclide != 'total':
             xsdata.atomic_weight_ratio = self._nuclides[nuclide][1]

@@ -511,7 +511,8 @@ class MGXS(object):
 
     @staticmethod
     def get_mgxs(mgxs_type, domain=None, domain_type=None,
-                 energy_groups=None, by_nuclide=False, name=''):
+                 energy_groups=None, by_nuclide=False, name='', num_polar=None,
+                 num_azimuthal=None):
         """Return a MGXS subclass object for some energy group structure within
         some spatial domain for some reaction type.
 
@@ -534,6 +535,12 @@ class MGXS(object):
         name : str, optional
             Name of the multi-group cross section. Used as a label to identify
             tallies in OpenMC 'tallies.xml' file. Defaults to the empty string.
+        num_polar : Integral, optional
+            Number of equi-width polar angles for angle discretization;
+            defaults to no discretization
+        num_azimuthal : Integral, optional
+            Number of equi-width azimuthal angles for angle discretization;
+            defaults to no discretization
 
         Returns
         -------
@@ -546,43 +553,62 @@ class MGXS(object):
         cv.check_value('mgxs_type', mgxs_type, MGXS_TYPES)
 
         if mgxs_type == 'total':
-            mgxs = TotalXS(domain, domain_type, energy_groups)
+            mgxs = TotalXS(domain, domain_type, energy_groups, num_polar,
+                           num_azimuthal)
         elif mgxs_type == 'transport':
-            mgxs = TransportXS(domain, domain_type, energy_groups)
+            mgxs = TransportXS(domain, domain_type, energy_groups, num_polar,
+                               num_azimuthal)
         elif mgxs_type == 'nu-transport':
-            mgxs = NuTransportXS(domain, domain_type, energy_groups)
+            mgxs = NuTransportXS(domain, domain_type, energy_groups, num_polar,
+                                 num_azimuthal)
         elif mgxs_type == 'absorption':
-            mgxs = AbsorptionXS(domain, domain_type, energy_groups)
+            mgxs = AbsorptionXS(domain, domain_type, energy_groups, num_polar,
+                                num_azimuthal)
         elif mgxs_type == 'capture':
-            mgxs = CaptureXS(domain, domain_type, energy_groups)
+            mgxs = CaptureXS(domain, domain_type, energy_groups, num_polar,
+                             num_azimuthal)
         elif mgxs_type == 'fission':
-            mgxs = FissionXS(domain, domain_type, energy_groups)
+            mgxs = FissionXS(domain, domain_type, energy_groups, num_polar,
+                             num_azimuthal)
         elif mgxs_type == 'nu-fission':
-            mgxs = NuFissionXS(domain, domain_type, energy_groups)
+            mgxs = NuFissionXS(domain, domain_type, energy_groups, num_polar,
+                               num_azimuthal)
         elif mgxs_type == 'kappa-fission':
-            mgxs = KappaFissionXS(domain, domain_type, energy_groups)
+            mgxs = KappaFissionXS(domain, domain_type, energy_groups,
+                                  num_polar, num_azimuthal)
         elif mgxs_type == 'scatter':
-            mgxs = ScatterXS(domain, domain_type, energy_groups)
+            mgxs = ScatterXS(domain, domain_type, energy_groups, num_polar,
+                             num_azimuthal)
         elif mgxs_type == 'nu-scatter':
-            mgxs = NuScatterXS(domain, domain_type, energy_groups)
+            mgxs = NuScatterXS(domain, domain_type, energy_groups, num_polar,
+                               num_azimuthal)
         elif mgxs_type == 'scatter matrix':
-            mgxs = ScatterMatrixXS(domain, domain_type, energy_groups)
+            mgxs = ScatterMatrixXS(domain, domain_type, energy_groups,
+                                   num_polar, num_azimuthal)
         elif mgxs_type == 'nu-scatter matrix':
-            mgxs = NuScatterMatrixXS(domain, domain_type, energy_groups)
+            mgxs = NuScatterMatrixXS(domain, domain_type, energy_groups,
+                                     num_polar, num_azimuthal)
         elif mgxs_type == 'multiplicity matrix':
-            mgxs = MultiplicityMatrixXS(domain, domain_type, energy_groups)
+            mgxs = MultiplicityMatrixXS(domain, domain_type, energy_groups,
+                                        num_polar, num_azimuthal)
         elif mgxs_type == 'nu-fission matrix':
-            mgxs = NuFissionMatrixXS(domain, domain_type, energy_groups)
+            mgxs = NuFissionMatrixXS(domain, domain_type, energy_groups,
+                                     num_polar, num_azimuthal)
         elif mgxs_type == 'chi':
-            mgxs = Chi(domain, domain_type, energy_groups)
+            mgxs = Chi(domain, domain_type, energy_groups, num_polar,
+                       num_azimuthal)
         elif mgxs_type == 'chi-prompt':
-            mgxs = ChiPrompt(domain, domain_type, energy_groups)
+            mgxs = ChiPrompt(domain, domain_type, energy_groups, num_polar,
+                             num_azimuthal)
         elif mgxs_type == 'inverse-velocity':
-            mgxs = InverseVelocity(domain, domain_type, energy_groups)
+            mgxs = InverseVelocity(domain, domain_type, energy_groups,
+                                   num_polar, num_azimuthal)
         elif mgxs_type == 'prompt-nu-fission':
-            mgxs = PromptNuFissionXS(domain, domain_type, energy_groups)
+            mgxs = PromptNuFissionXS(domain, domain_type, energy_groups,
+                                     num_polar, num_azimuthal)
         elif mgxs_type == 'prompt-nu-fission matrix':
-            mgxs = PromptNuFissionMatrixXS(domain, domain_type, energy_groups)
+            mgxs = PromptNuFissionMatrixXS(domain, domain_type, energy_groups,
+                                           num_polar, num_azimuthal)
 
         mgxs.by_nuclide = by_nuclide
         mgxs.name = name

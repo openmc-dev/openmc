@@ -55,6 +55,12 @@ class MDGXS(MGXS):
         tallies in OpenMC 'tallies.xml' file.
     delayed_groups : list of int
         Delayed groups to filter out the xs
+    num_polar : Integral, optional
+        Number of equi-width polar angles for angle discretization; defaults to
+        no discretization
+    num_azimuthal : Integral, optional
+        Number of equi-width azimuthal angles for angle discretization;
+        defaults to no discretization
 
     Attributes
     ----------
@@ -72,6 +78,10 @@ class MDGXS(MGXS):
         Energy group structure for energy condensation
     delayed_groups : list of int
         Delayed groups to filter out the xs
+    num_polar : None or Integral
+        Number of equi-width polar angles for angle discretization
+    num_azimuthal : None or Integral
+        Number of equi-width azimuthal angles for angle discretization
     tally_trigger : openmc.Trigger
         An (optional) tally precision trigger given to each tally used to
         compute the cross section
@@ -119,9 +129,10 @@ class MDGXS(MGXS):
 
     """
     def __init__(self, domain=None, domain_type=None, energy_groups=None,
-                 delayed_groups=None, by_nuclide=False, name=''):
+                 delayed_groups=None, by_nuclide=False, name='',
+                 num_polar=None, num_azimuthal=None):
         super(MDGXS, self).__init__(domain, domain_type, energy_groups,
-                                    by_nuclide, name)
+                                    by_nuclide, name, num_polar, num_azimuthal)
 
         self._delayed_groups = None
 
@@ -142,6 +153,8 @@ class MDGXS(MGXS):
             clone._domain_type = self.domain_type
             clone._energy_groups = copy.deepcopy(self.energy_groups, memo)
             clone._delayed_groups = copy.deepcopy(self.delayed_groups, memo)
+            clone._num_polar = self.num_polar
+            clone._num_azimuthal = self.num_azimuthal
             clone._tally_trigger = copy.deepcopy(self.tally_trigger, memo)
             clone._rxn_rate_tally = copy.deepcopy(self._rxn_rate_tally, memo)
             clone._xs_tally = copy.deepcopy(self._xs_tally, memo)
@@ -196,14 +209,15 @@ class MDGXS(MGXS):
 
         if self.delayed_groups != None:
             delayed_filter = openmc.DelayedGroupFilter(self.delayed_groups)
-            return [[energy_filter], [delayed_filter, energy_filter]]
+            filters = [[energy_filter], [delayed_filter, energy_filter]]
         else:
-            return [[energy_filter], [energy_filter]]
+            filters = [[energy_filter], [energy_filter]]
+        return super(MDGXS, self)._add_angle_filters(filters)
 
     @staticmethod
-    def get_mgxs(mdgxs_type, domain=None, domain_type=None,
-                 energy_groups=None, delayed_groups=None,
-                 by_nuclide=False, name=''):
+    def get_mgxs(mdgxs_type, domain=None, domain_type=None, energy_groups=None,
+                 delayed_groups=None, by_nuclide=False, name='',
+                 num_polar=None, num_azimuthal=None):
         """Return a MDGXS subclass object for some energy group structure within
         some spatial domain for some reaction type.
 
@@ -229,6 +243,12 @@ class MDGXS(MGXS):
             tallies in OpenMC 'tallies.xml' file. Defaults to the empty string.
         delayed_groups : list of int
             Delayed groups to filter out the xs
+        num_polar : Integral, optional
+            Number of equi-width polar angles for angle discretization;
+            defaults to no discretization
+        num_azimuthal : Integral, optional
+            Number of equi-width azimuthal angles for angle discretization;
+            defaults to no discretization
 
         Returns
         -------
@@ -256,6 +276,8 @@ class MDGXS(MGXS):
 
         mdgxs.by_nuclide = by_nuclide
         mdgxs.name = name
+        mdgxs.num_polar = num_polar
+        mdgxs.num_azimuthal = num_azimuthal
         return mdgxs
 
     def get_xs(self, groups='all', subdomains='all', nuclides='all',
@@ -388,19 +410,53 @@ class MDGXS(MGXS):
 
         # Reshape tally data array with separate axes for domain, energy groups,
         # delayed groups, and nuclides
-        num_subdomains = int(xs.shape[0] / (num_groups * num_delayed_groups))
-        new_shape = (num_subdomains, num_delayed_groups, num_groups)
-        new_shape += xs.shape[1:]
-        xs = np.reshape(xs, new_shape)
+        # Accomodate the polar and azimuthal bins if needed
+        if self.num_polar or self.num_azimuthal:
+            if self.num_polar:
+                num_pol = self.num_polar
+            else:
+                num_pol = 1
+            if self.num_azimuthal:
+                num_azi = self.num_azimuthal
+            else:
+                num_azi = 1
+            num_subdomains = int(xs.shape[0] /
+                                 (num_groups * num_delayed_groups *
+                                  num_pol * num_azi))
+            new_shape = (num_pol, num_azi, num_subdomains, num_delayed_groups,
+                         num_groups) + xs.shape[1:]
+            xs = np.reshape(xs, new_shape)
 
-        # Reverse data if user requested increasing energy groups since
-        # tally data is stored in order of increasing energies
-        if order_groups == 'increasing':
-            xs = xs[:, :, ::-1, :]
+            # Reverse data if user requested increasing energy groups since
+            # tally data is stored in order of increasing energies
+            if order_groups == 'increasing':
+                xs = xs[:, :, :, :, ::-1, :]
 
-        if squeeze:
-            xs = np.squeeze(xs)
-            xs = np.atleast_1d(xs)
+            if squeeze:
+                # We want to squeeze out everything but the polar, azimuthal,
+                # delayed group, and energy group data.
+                dont_squeeze = (0, 1, 3, 4)
+                # Squeeze will return a ValueError if the axis has a size
+                # greater than 1, so try each axis in axes one at a time,
+                # and do our own check to preclude the ValueError
+                initial_shape = len(xs.shape)
+                for axis in range(initial_shape - 1, -1, -1):
+                    if axis not in dont_squeeze and xs.shape[axis] == 1:
+                        xs = np.squeeze(xs, axis=axis)
+        else:
+            num_subdomains = int(xs.shape[0] / (num_groups * num_delayed_groups))
+            new_shape = (num_subdomains, num_delayed_groups, num_groups)
+            new_shape += xs.shape[1:]
+            xs = np.reshape(xs, new_shape)
+
+            # Reverse data if user requested increasing energy groups since
+            # tally data is stored in order of increasing energies
+            if order_groups == 'increasing':
+                xs = xs[:, :, ::-1, :]
+
+            if squeeze:
+                xs = np.squeeze(xs)
+                xs = np.atleast_1d(xs)
 
         return xs
 
@@ -581,6 +637,22 @@ class MDGXS(MGXS):
             print(string)
             return
 
+        # Set polar/azimuthal bins
+        if self.num_polar or self.num_azimuthal:
+            if self.num_polar:
+                pol_bins = np.linspace(0., np.pi,
+                                       num=self.num_polar + 1,
+                                       endpoint=True)
+            else:
+                pol_bins = np.linspace(0., np.pi, num=2, endpoint=True)
+            if self.num_azimuthal:
+                azi_bins = np.linspace(-np.pi, np.pi,
+                                       num=self.num_azimuthal + 1,
+                                       endpoint=True)
+            else:
+                azi_bins = np.linspace(-np.pi, np.pi, num=2,
+                                       endpoint=True)
+
         # Loop over all subdomains
         for subdomain in subdomains:
 
@@ -605,20 +677,45 @@ class MDGXS(MGXS):
 
                     template = '{0: <12}Group {1} [{2: <10} - {3: <10}eV]:\t'
 
-                    # Loop over energy groups ranges
-                    for group in range(1, self.num_groups+1):
-                        bounds = self.energy_groups.get_group_bounds(group)
-                        string += template.format('', group, bounds[0], bounds[1])
-                        average = self.get_xs([group], [subdomain], [nuclide],
-                                              xs_type=xs_type, value='mean',
-                                              delayed_groups=[delayed_group])
-                        rel_err = self.get_xs([group], [subdomain], [nuclide],
-                                              xs_type=xs_type, value='rel_err',
-                                              delayed_groups=[delayed_group])
-                        average = average.flatten()[0]
-                        rel_err = rel_err.flatten()[0] * 100.
-                        string += '{:.2e} +/- {:1.2e}%'.format(average, rel_err)
-                        string += '\n'
+                    average_xs = self.get_xs(nuclide=[nuclide],
+                                             subdomain=[subdomain],
+                                             xs_type=xs_type, value='mean',
+                                             delayed_groups=[delayed_group])
+                    rel_err_xs = self.get_xs(nuclide=[nuclide],
+                                             subdomain=[subdomain],
+                                             xs_type=xs_type, value='rel_err',
+                                             delayed_groups=[delayed_group])
+                    rel_err_xs = rel_err_xs * 100.
+
+                    if self.num_polar or self.num_azimuthal:
+                        # Loop over polar, azimuthal, and energy group ranges
+                        for pol in range(len(pol_bins) - 1):
+                            pol_low, pol_high = pol_bins[pol: pol + 2]
+                            for azi in range(len(azi_bins) - 1):
+                                azi_low, azi_high = azi_bins[azi: azi + 2]
+                                string += '\t\tPolar Angle: [{0:5f} - {1:5f}]'.format(
+                                    pol_low, pol_high) + \
+                                    '\tAzimuthal Angle: [{0:5f} - {1:5f}]'.format(
+                                    azi_low, azi_high) + '\n'
+                                for group in range(1, self.num_groups + 1):
+                                    bounds = \
+                                        self.energy_groups.get_group_bounds(group)
+                                    string += '\t' + template.format('', group,
+                                                                     bounds[0],
+                                                                     bounds[1])
+                                    string += '{1:.2e} +/- {:1.2e}%'.format(
+                                        average_xs[pol, azi, group - 1],
+                                        rel_err_xs[pol, azi, group - 1])
+                                    string += '\n'
+                                string += '\n'
+                    else:
+                        # Loop over energy groups ranges
+                        for group in range(1, self.num_groups+1):
+                            bounds = self.energy_groups.get_group_bounds(group)
+                            string += template.format('', group, bounds[0], bounds[1])
+                            string += '{1:.2e} +/- {:1.2e}%'.format(
+                                average_xs[group - 1], rel_err_xs[group - 1])
+                            string += '\n'
                     string += '\n'
                 string += '\n'
 
@@ -785,40 +882,53 @@ class MDGXS(MGXS):
         else:
             df = df.drop('score', axis=1)
 
+        # Override polar and azimuthal bounds with indices
+        if self.num_polar or self.num_azimuthal:
+            # First for polar
+            del df['polar high']
+            df.rename(columns={'polar low': 'polar bin'}, inplace=True)
+            df_bins = df['polar bin']
+            if self.num_polar:
+                pol_bins = np.linspace(0., np.pi,
+                                       num=self.num_polar + 1,
+                                       endpoint=True)
+            else:
+                pol_bins = np.linspace(0., np.pi, num=2, endpoint=True)
+            df['polar bin'] = np.searchsorted(pol_bins, df_bins) + 1
+
+            # Second for azimuthal
+            del df['azimuthal high']
+            df.rename(columns={'azimuthal low': 'azimuthal bin'},
+                      inplace=True)
+            df_bins = df['azimuthal bin']
+            if self.num_azimuthal:
+                azi_bins = np.linspace(-np.pi, np.pi,
+                                       num=self.num_azimuthal + 1,
+                                       endpoint=True)
+            else:
+                azi_bins = np.linspace(-np.pi, np.pi, num=2,
+                                       endpoint=True)
+            df['azimuthal bin'] = np.searchsorted(azi_bins, df_bins) + 1
+            columns = ['polar bin', 'azimuthal bin']
+        else:
+            columns = []
+
         # Override energy groups bounds with indices
-        all_groups = np.arange(self.num_groups, 0, -1, dtype=np.int)
-        all_groups = np.repeat(all_groups, len(query_nuclides))
-        if 'energy low [eV]' in df and 'energyout low [eV]' in df:
-            df.rename(columns={'energy low [eV]': 'group in'},
-                      inplace=True)
-            in_groups = np.tile(all_groups, int(self.num_subdomains *
-                                                self.num_delayed_groups))
-            in_groups = np.repeat(in_groups, int(df.shape[0] / in_groups.size))
-            df['group in'] = in_groups
-            del df['energy high [eV]']
-
-            df.rename(columns={'energyout low [eV]': 'group out'},
-                      inplace=True)
-            out_groups = np.repeat(all_groups, self.xs_tally.num_scores)
-            out_groups = np.tile(out_groups, int(df.shape[0] / out_groups.size))
-            df['group out'] = out_groups
-            del df['energyout high [eV]']
-            columns = ['group in', 'group out']
-
-        elif 'energyout low [eV]' in df:
-            df.rename(columns={'energyout low [eV]': 'group out'},
-                      inplace=True)
-            in_groups = np.tile(all_groups, int(df.shape[0] / all_groups.size))
-            df['group out'] = in_groups
-            del df['energyout high [eV]']
-            columns = ['group out']
-
-        elif 'energy low [eV]' in df:
+        if 'energy low [eV]' in df:
             df.rename(columns={'energy low [eV]': 'group in'}, inplace=True)
-            in_groups = np.tile(all_groups, int(df.shape[0] / all_groups.size))
-            df['group in'] = in_groups
+            df_bins = df['group in']
+            df['group in'] = self.energy_groups.num_groups - \
+                np.searchsorted(self.energy_groups.group_edges, df_bins)
             del df['energy high [eV]']
-            columns = ['group in']
+            columns += ['group in']
+        if 'energyout low [eV]' in df:
+            df.rename(columns={'energyout low [eV]': 'group out'},
+                      inplace=True)
+            df_bins = df['group out']
+            df['group out'] = self.energy_groups.num_groups - \
+                np.searchsorted(self.energy_groups.group_edges, df_bins)
+            del df['energyout high [eV]']
+            columns += ['group out']
 
         # Select out those groups the user requested
         if not isinstance(groups, string_types):
@@ -896,6 +1006,12 @@ class ChiDelayed(MDGXS):
         tallies in OpenMC 'tallies.xml' file.
     delayed_groups : list of int
         Delayed groups to filter out the xs
+    num_polar : Integral, optional
+        Number of equi-width polar angles for angle discretization; defaults to
+        no discretization
+    num_azimuthal : Integral, optional
+        Number of equi-width azimuthal angles for angle discretization;
+        defaults to no discretization
 
     Attributes
     ----------
@@ -913,6 +1029,10 @@ class ChiDelayed(MDGXS):
         Energy group structure for energy condensation
     delayed_groups : list of int
         Delayed groups to filter out the xs
+    num_polar : None or Integral
+        Number of equi-width polar angles for angle discretization
+    num_azimuthal : None or Integral
+        Number of equi-width azimuthal angles for angle discretization
     tally_trigger : openmc.Trigger
         An (optional) tally precision trigger given to each tally used to
         compute the cross section
@@ -962,9 +1082,11 @@ class ChiDelayed(MDGXS):
     """
 
     def __init__(self, domain=None, domain_type=None, energy_groups=None,
-                 delayed_groups=None, by_nuclide=False, name=''):
+                 delayed_groups=None, by_nuclide=False, name='',
+                 num_polar=None, num_azimuthal=None):
         super(ChiDelayed, self).__init__(domain, domain_type, energy_groups,
-                                         delayed_groups, by_nuclide, name)
+                                         delayed_groups, by_nuclide, name,
+                                         num_polar, num_azimuthal)
         self._rxn_type = 'chi-delayed'
         self._estimator = 'analog'
 
@@ -978,11 +1100,13 @@ class ChiDelayed(MDGXS):
         group_edges = self.energy_groups.group_edges
         energyout = openmc.EnergyoutFilter(group_edges)
         energyin = openmc.EnergyFilter([group_edges[0], group_edges[-1]])
-        if self.delayed_groups != None:
+        if self.delayed_groups is not None:
             delayed_filter = openmc.DelayedGroupFilter(self.delayed_groups)
-            return [[delayed_filter, energyin], [delayed_filter, energyout]]
+            filters = [[delayed_filter, energyin], [delayed_filter, energyout]]
         else:
-            return [[energyin], [energyout]]
+            filters = [[energyin], [energyout]]
+
+        return self._add_angle_filters(filters)
 
     @property
     def tally_keys(self):
@@ -1327,20 +1451,55 @@ class ChiDelayed(MDGXS):
             num_delayed_groups = len(delayed_groups)
 
         # Reshape tally data array with separate axes for domain, energy groups,
-        # delayed groups, and nuclides
-        num_subdomains = int(xs.shape[0] / (num_groups * num_delayed_groups))
-        new_shape = (num_subdomains, num_delayed_groups, num_groups)
-        new_shape += xs.shape[1:]
-        xs = np.reshape(xs, new_shape)
+        # Accomodate the polar and azimuthal bins if needed
+        if self.num_polar or self.num_azimuthal:
+            if self.num_polar:
+                num_pol = self.num_polar
+            else:
+                num_pol = 1
+            if self.num_azimuthal:
+                num_azi = self.num_azimuthal
+            else:
+                num_azi = 1
+            num_subdomains = int(xs.shape[0] / (num_delayed_groups *
+                                                num_groups * num_pol *
+                                                num_azi))
+            new_shape = (num_pol, num_azi, num_subdomains, num_delayed_groups,
+                         num_groups) + xs.shape[1:]
+            xs = np.reshape(xs, new_shape)
 
-        # Reverse data if user requested increasing energy groups since
-        # tally data is stored in order of increasing energies
-        if order_groups == 'increasing':
-            xs = xs[:, :, ::-1, :]
+            # Reverse data if user requested increasing energy groups since
+            # tally data is stored in order of increasing energies
+            if order_groups == 'increasing':
+                xs = xs[:, :, :, :, ::-1, :]
 
-        if squeeze:
-            xs = np.squeeze(xs)
-            xs = np.atleast_1d(xs)
+            if squeeze:
+                # We want to squeeze out everything but the polar, azimuthal,
+                # and energy group data.
+                dont_squeeze = (0, 1, 3, 4)
+                # Squeeze will return a ValueError if the axis has a size
+                # greater than 1, so try each axis in axes one at a time,
+                # and do our own check to preclude the ValueError
+                initial_shape = len(xs.shape)
+                for axis in range(initial_shape - 1, -1, -1):
+                    if axis not in dont_squeeze and xs.shape[axis] == 1:
+                        xs = np.squeeze(xs, axis=axis)
+        else:
+            # delayed groups, and nuclides
+            num_subdomains = int(xs.shape[0] / (num_groups *
+                                                num_delayed_groups))
+            new_shape = (num_subdomains, num_delayed_groups, num_groups)
+            new_shape += xs.shape[1:]
+            xs = np.reshape(xs, new_shape)
+
+            # Reverse data if user requested increasing energy groups since
+            # tally data is stored in order of increasing energies
+            if order_groups == 'increasing':
+                xs = xs[:, :, ::-1, :]
+
+            if squeeze:
+                xs = np.squeeze(xs)
+                xs = np.atleast_1d(xs)
 
         return xs
 
@@ -1389,6 +1548,12 @@ class DelayedNuFissionXS(MDGXS):
         tallies in OpenMC 'tallies.xml' file.
     delayed_groups : list of int
         Delayed groups to filter out the xs
+    num_polar : Integral, optional
+        Number of equi-width polar angles for angle discretization; defaults to
+        no discretization
+    num_azimuthal : Integral, optional
+        Number of equi-width azimuthal angles for angle discretization;
+        defaults to no discretization
 
     Attributes
     ----------
@@ -1406,6 +1571,10 @@ class DelayedNuFissionXS(MDGXS):
         Energy group structure for energy condensation
     delayed_groups : list of int
         Delayed groups to filter out the xs
+    num_polar : None or Integral
+        Number of equi-width polar angles for angle discretization
+    num_azimuthal : None or Integral
+        Number of equi-width azimuthal angles for angle discretization
     tally_trigger : openmc.Trigger
         An (optional) tally precision trigger given to each tally used to
         compute the cross section
@@ -1455,10 +1624,12 @@ class DelayedNuFissionXS(MDGXS):
     """
 
     def __init__(self, domain=None, domain_type=None, energy_groups=None,
-                 delayed_groups=None, by_nuclide=False, name=''):
+                 delayed_groups=None, by_nuclide=False, name='',
+                 num_polar=None, num_azimuthal=None):
         super(DelayedNuFissionXS, self).__init__(domain, domain_type,
                                                  energy_groups, delayed_groups,
-                                                 by_nuclide, name)
+                                                 by_nuclide, name, num_polar,
+                                                 num_azimuthal)
         self._rxn_type = 'delayed-nu-fission'
 
 
@@ -1513,6 +1684,12 @@ class Beta(MDGXS):
         tallies in OpenMC 'tallies.xml' file.
     delayed_groups : list of int
         Delayed groups to filter out the xs
+    num_polar : Integral, optional
+        Number of equi-width polar angles for angle discretization; defaults to
+        no discretization
+    num_azimuthal : Integral, optional
+        Number of equi-width azimuthal angles for angle discretization;
+        defaults to no discretization
 
     Attributes
     ----------
@@ -1530,6 +1707,10 @@ class Beta(MDGXS):
         Energy group structure for energy condensation
     delayed_groups : list of int
         Delayed groups to filter out the xs
+    num_polar : None or Integral
+        Number of equi-width polar angles for angle discretization
+    num_azimuthal : None or Integral
+        Number of equi-width azimuthal angles for angle discretization
     tally_trigger : openmc.Trigger
         An (optional) tally precision trigger given to each tally used to
         compute the cross section
@@ -1579,9 +1760,11 @@ class Beta(MDGXS):
     """
 
     def __init__(self, domain=None, domain_type=None, energy_groups=None,
-                 delayed_groups=None, by_nuclide=False, name=''):
+                 delayed_groups=None, by_nuclide=False, name='',
+                 num_polar=None, num_azimuthal=None):
         super(Beta, self).__init__(domain, domain_type, energy_groups,
-                                   delayed_groups, by_nuclide, name)
+                                   delayed_groups, by_nuclide, name, num_polar,
+                                   num_azimuthal)
         self._rxn_type = 'beta'
 
     @property
@@ -1685,6 +1868,12 @@ class DecayRate(MDGXS):
         tallies in OpenMC 'tallies.xml' file.
     delayed_groups : list of int
         Delayed groups to filter out the xs
+    num_polar : Integral, optional
+        Number of equi-width polar angles for angle discretization; defaults to
+        no discretization
+    num_azimuthal : Integral, optional
+        Number of equi-width azimuthal angles for angle discretization;
+        defaults to no discretization
 
     Attributes
     ----------
@@ -1702,6 +1891,10 @@ class DecayRate(MDGXS):
         Energy group structure for energy condensation
     delayed_groups : list of int
         Delayed groups to filter out the xs
+    num_polar : None or Integral
+        Number of equi-width polar angles for angle discretization
+    num_azimuthal : None or Integral
+        Number of equi-width azimuthal angles for angle discretization
     tally_trigger : openmc.Trigger
         An (optional) tally precision trigger given to each tally used to
         compute the cross section
@@ -1751,9 +1944,11 @@ class DecayRate(MDGXS):
     """
 
     def __init__(self, domain=None, domain_type=None, energy_groups=None,
-                 delayed_groups=None, by_nuclide=False, name=''):
+                 delayed_groups=None, by_nuclide=False, name='',
+                 num_polar=None, num_azimuthal=None):
         super(DecayRate, self).__init__(domain, domain_type, energy_groups,
-                                   delayed_groups, by_nuclide, name)
+                                        delayed_groups, by_nuclide, name,
+                                        num_polar, num_azimuthal)
         self._rxn_type = 'decay-rate'
 
     @property
@@ -1771,11 +1966,14 @@ class DecayRate(MDGXS):
         group_edges = self.energy_groups.group_edges
         energy_filter = openmc.EnergyFilter(group_edges)
 
-        if self.delayed_groups != None:
+        if self.delayed_groups is not None:
             delayed_filter = openmc.DelayedGroupFilter(self.delayed_groups)
-            return [[delayed_filter, energy_filter], [delayed_filter, energy_filter]]
+            filters = [[delayed_filter, energy_filter], [delayed_filter,
+                                                         energy_filter]]
         else:
-            return [[energy_filter], [energy_filter]]
+            filters = [[energy_filter], [energy_filter]]
+
+        return self._add_angle_filters(filters)
 
     @property
     def xs_tally(self):
@@ -1847,6 +2045,12 @@ class MatrixMDGXS(MDGXS):
         tallies in OpenMC 'tallies.xml' file.
     delayed_groups : list of int
         Delayed groups to filter out the xs
+    num_polar : Integral, optional
+        Number of equi-width polar angles for angle discretization; defaults to
+        no discretization
+    num_azimuthal : Integral, optional
+        Number of equi-width azimuthal angles for angle discretization;
+        defaults to no discretization
 
     Attributes
     ----------
@@ -1864,6 +2068,10 @@ class MatrixMDGXS(MDGXS):
         Energy group structure for energy condensation
     delayed_groups : list of int
         Delayed groups to filter out the xs
+    num_polar : None or Integral
+        Number of equi-width polar angles for angle discretization
+    num_azimuthal : None or Integral
+        Number of equi-width azimuthal angles for angle discretization
     tally_trigger : openmc.Trigger
         An (optional) tally precision trigger given to each tally used to
         compute the cross section
@@ -1920,9 +2128,11 @@ class MatrixMDGXS(MDGXS):
 
         if self.delayed_groups is not None:
             delayed = openmc.DelayedGroupFilter(self.delayed_groups)
-            return [[energy], [delayed, energy, energyout]]
+            filters = [[energy], [delayed, energy, energyout]]
         else:
-            return [[energy], [energy, energyout]]
+            filters = [[energy], [energy, energyout]]
+
+        return self._add_angle_filters(filters)
 
     def get_xs(self, in_groups='all', out_groups='all',
                subdomains='all', nuclides='all',
@@ -2076,25 +2286,64 @@ class MatrixMDGXS(MDGXS):
             num_delayed_groups = len(delayed_groups)
 
         # Reshape tally data array with separate axes for domain and energy
-        num_subdomains = int(xs.shape[0] / (num_in_groups * num_out_groups *
-                                            num_delayed_groups))
-        new_shape = (num_subdomains, num_delayed_groups, num_in_groups,
-                     num_out_groups)
-        new_shape += xs.shape[1:]
-        xs = np.reshape(xs, new_shape)
+        # Accomodate the polar and azimuthal bins if needed
+        if self.num_polar or self.num_azimuthal:
+            if self.num_polar:
+                num_pol = self.num_polar
+            else:
+                num_pol = 1
+            if self.num_azimuthal:
+                num_azi = self.num_azimuthal
+            else:
+                num_azi = 1
+            num_subdomains = int(xs.shape[0] / (num_delayed_groups *
+                                                num_in_groups *
+                                                num_out_groups * num_pol *
+                                                num_azi))
+            new_shape = (num_pol, num_azi, num_subdomains, num_delayed_groups,
+                         num_in_groups, num_out_groups) + xs.shape[1:]
+            xs = np.reshape(xs, new_shape)
 
-        # Transpose the matrix if requested by user
-        if row_column == 'outin':
-            xs = np.swapaxes(xs, 2, 3)
+            # Transpose the matrix if requested by user
+            if row_column == 'outin':
+                xs = np.swapaxes(xs, 4, 5)
 
-        # Reverse data if user requested increasing energy groups since
-        # tally data is stored in order of increasing energies
-        if order_groups == 'increasing':
-            xs = xs[:, :, ::-1, ::-1, :]
+            # Reverse data if user requested increasing energy groups since
+            # tally data is stored in order of increasing energies
+            if order_groups == 'increasing':
+                xs = xs[:, :, :, :, ::-1, ::-1, ...]
 
-        if squeeze:
-            xs = np.squeeze(xs)
-            xs = np.atleast_2d(xs)
+            if squeeze:
+                # We want to squeeze out everything but the polar, azimuthal,
+                # and in/out energy group data.
+                dont_squeeze = (0, 1, 3, 4, 5)
+                # Squeeze will return a ValueError if the axis has a size
+                # greater than 1, so try each axis in axes one at a time,
+                # and do our own check to preclude the ValueError
+                initial_shape = len(xs.shape)
+                for axis in range(initial_shape - 1, -1, -1):
+                    if axis not in dont_squeeze and xs.shape[axis] == 1:
+                        xs = np.squeeze(xs, axis=axis)
+        else:
+            num_subdomains = int(xs.shape[0] / (num_in_groups * num_out_groups *
+                                                num_delayed_groups))
+            new_shape = (num_subdomains, num_delayed_groups, num_in_groups,
+                         num_out_groups)
+            new_shape += xs.shape[1:]
+            xs = np.reshape(xs, new_shape)
+
+            # Transpose the matrix if requested by user
+            if row_column == 'outin':
+                xs = np.swapaxes(xs, 2, 3)
+
+            # Reverse data if user requested increasing energy groups since
+            # tally data is stored in order of increasing energies
+            if order_groups == 'increasing':
+                xs = xs[:, :, ::-1, ::-1, :]
+
+            if squeeze:
+                xs = np.squeeze(xs)
+                xs = np.atleast_2d(xs)
 
         return xs
 
@@ -2217,12 +2466,28 @@ class MatrixMDGXS(MDGXS):
             return
 
         string += '{0: <16}\n'.format('\tEnergy Groups:')
-        template = '{0: <12}Group {1} [{2: <10} - {3: <10}MeV]\n'
+        template = '{0: <12}Group {1} [{2: <10} - {3: <10}eV]\n'
 
         # Loop over energy groups ranges
         for group in range(1, self.num_groups + 1):
             bounds = self.energy_groups.get_group_bounds(group)
             string += template.format('', group, bounds[0], bounds[1])
+
+        # Set polar and azimuthal bins if necessary
+        if self.num_polar or self.num_azimuthal:
+            if self.num_polar:
+                pol_bins = np.linspace(0., np.pi,
+                                       num=self.num_polar + 1,
+                                       endpoint=True)
+            else:
+                pol_bins = np.linspace(0., np.pi, num=2, endpoint=True)
+            if self.num_azimuthal:
+                azi_bins = np.linspace(-np.pi, np.pi,
+                                       num=self.num_azimuthal + 1,
+                                       endpoint=True)
+            else:
+                azi_bins = np.linspace(-np.pi, np.pi, num=2,
+                                       endpoint=True)
 
         # Loop over all subdomains
         for subdomain in subdomains:
@@ -2250,47 +2515,97 @@ class MatrixMDGXS(MDGXS):
 
                         template = '{0: <12}Group {1} -> Group {2}:\t\t'
 
-                        # Loop over incoming/outgoing energy groups ranges
-                        for in_group in range(1, self.num_groups + 1):
-                            for out_group in range(1, self.num_groups + 1):
-                                string += template.format('', in_group, out_group)
-                                average = self.get_xs([in_group], [out_group],
-                                                      [subdomain], [nuclide],
-                                                      xs_type=xs_type,
-                                                      value='mean',
-                                                      delayed_groups=[delayed_group])
-                                rel_err = self.get_xs([in_group], [out_group],
-                                                      [subdomain], [nuclide],
-                                                      xs_type=xs_type,
-                                                      value='rel_err',
-                                                      delayed_groups=[delayed_group])
-                                average = average.flatten()[0]
-                                rel_err = rel_err.flatten()[0] * 100.
-                                string += '{:.2e} +/- {:.2e}%'.format(average,
-                                                                      rel_err)
+                        average_xs = self.get_xs(nuclide=[nuclide],
+                                                 subdomain=[subdomain],
+                                                 xs_type=xs_type, value='mean',
+                                                 delayed_groups=[delayed_group])
+                        rel_err_xs = self.get_xs(nuclide=[nuclide],
+                                                 subdomain=[subdomain],
+                                                 xs_type=xs_type,
+                                                 value='rel_err',
+                                                 delayed_groups=[delayed_group])
+                        rel_err_xs = rel_err_xs * 100.
+
+                        if self.num_polar or self.num_azimuthal:
+                            # Loop over polar, azi, and in/out group ranges
+                            for pol in range(len(pol_bins) - 1):
+                                pol_low, pol_high = pol_bins[pol: pol + 2]
+                                for azi in range(len(azi_bins) - 1):
+                                    azi_low, azi_high = azi_bins[azi: azi + 2]
+                                    string += '\t\tPolar Angle: [{0:5f} - {1:5f}]'.format(
+                                        pol_low, pol_high) + \
+                                        '\tAzimuthal Angle: [{0:5f} - {1:5f}]'.format(
+                                        azi_low, azi_high) + '\n'
+                                    for in_group in range(1, self.num_groups + 1):
+                                        for out_group in range(1, self.num_groups + 1):
+                                            string += '\t' + template.format(
+                                                '', in_group, out_group)
+                                            string += '{1:.2e} +/- {:1.2e}%'.format(
+                                                average_xs[pol, azi, in_group - 1,
+                                                           out_group - 1],
+                                                rel_err_xs[pol, azi, in_group - 1,
+                                                           out_group - 1])
+                                            string += '\n'
+                                        string += '\n'
+                                    string += '\n'
+                        else:
+                            # Loop over incoming/outgoing energy groups ranges
+                            for in_group in range(1, self.num_groups + 1):
+                                for out_group in range(1, self.num_groups + 1):
+                                    string += template.format(
+                                        '', in_group, out_group)
+                                    string += '{:.2e} +/- {:.2e}%'.format(
+                                        average_xs[in_group-1, out_group-1],
+                                        rel_err_xs[in_group-1, out_group-1])
+                                    string += '\n'
                                 string += '\n'
-                            string += '\n'
                         string += '\n'
                 else:
 
                     template = '{0: <12}Group {1} -> Group {2}:\t\t'
 
-                    # Loop over incoming/outgoing energy groups ranges
-                    for in_group in range(1, self.num_groups + 1):
-                        for out_group in range(1, self.num_groups + 1):
-                            string += template.format('', in_group, out_group)
-                            average = self.get_xs([in_group], [out_group],
-                                                  [subdomain], [nuclide],
-                                                  xs_type=xs_type, value='mean')
-                            rel_err = self.get_xs([in_group], [out_group],
-                                                  [subdomain], [nuclide],
-                                                  xs_type=xs_type, value='rel_err')
-                            average = average.flatten()[0]
-                            rel_err = rel_err.flatten()[0] * 100.
-                            string += '{:.2e} +/- {:.2e}%'.format(average,
-                                                                  rel_err)
+                    average_xs = self.get_xs(nuclide=[nuclide],
+                                             subdomain=[subdomain],
+                                             xs_type=xs_type, value='mean')
+                    rel_err_xs = self.get_xs(nuclide=[nuclide],
+                                             subdomain=[subdomain],
+                                             xs_type=xs_type, value='rel_err')
+                    rel_err_xs = rel_err_xs * 100.
+
+                    if self.num_polar or self.num_azimuthal:
+                        # Loop over polar, azi, and in/out energy group ranges
+                        for pol in range(len(pol_bins) - 1):
+                            pol_low, pol_high = pol_bins[pol: pol + 2]
+                            for azi in range(len(azi_bins) - 1):
+                                azi_low, azi_high = azi_bins[azi: azi + 2]
+                                string += '\t\tPolar Angle: [{0:5f} - {1:5f}]'.format(
+                                    pol_low, pol_high) + \
+                                    '\tAzimuthal Angle: [{0:5f} - {1:5f}]'.format(
+                                    azi_low, azi_high) + '\n'
+                                for in_group in range(1, self.num_groups + 1):
+                                    for out_group in range(1, self.num_groups + 1):
+                                        string += '\t' + template.format(
+                                            '', in_group, out_group)
+                                        string += '{1:.2e} +/- {:1.2e}%'.format(
+                                            average_xs[pol, azi, in_group - 1,
+                                                       out_group - 1],
+                                            rel_err_xs[pol, azi, in_group - 1,
+                                                       out_group - 1])
+                                        string += '\n'
+                                    string += '\n'
+                                string += '\n'
+                    else:
+                        # Loop over incoming/outgoing energy groups ranges
+                        for in_group in range(1, self.num_groups + 1):
+                            for out_group in range(1, self.num_groups + 1):
+                                string += template.format('', in_group,
+                                                          out_group)
+                                string += '{:1.2e} +/- {:1.2e}%'.format(
+                                    average_xs[in_group - 1, out_group - 1],
+                                    rel_err_xs[in_group - 1, out_group - 1])
+                                string += '\n'
                             string += '\n'
-                        string += '\n'
+                    string += '\n'
                 string += '\n'
             string += '\n'
 
@@ -2346,6 +2661,12 @@ class DelayedNuFissionMatrixXS(MatrixMDGXS):
         tallies in OpenMC 'tallies.xml' file.
     delayed_groups : list of int
         Delayed groups to filter out the xs
+    num_polar : Integral, optional
+        Number of equi-width polar angles for angle discretization; defaults to
+        no discretization
+    num_azimuthal : Integral, optional
+        Number of equi-width azimuthal angles for angle discretization;
+        defaults to no discretization
 
     Attributes
     ----------
@@ -2363,6 +2684,10 @@ class DelayedNuFissionMatrixXS(MatrixMDGXS):
         Energy group structure for energy condensation
     delayed_groups : list of int
         Delayed groups to filter out the xs
+    num_polar : None or Integral
+        Number of equi-width polar angles for angle discretization
+    num_azimuthal : None or Integral
+        Number of equi-width azimuthal angles for angle discretization
     tally_trigger : openmc.Trigger
         An (optional) tally precision trigger given to each tally used to
         compute the cross section
@@ -2412,11 +2737,14 @@ class DelayedNuFissionMatrixXS(MatrixMDGXS):
     """
 
     def __init__(self, domain=None, domain_type=None, energy_groups=None,
-                 delayed_groups=None, by_nuclide=False, name=''):
+                 delayed_groups=None, by_nuclide=False, name='',
+                 num_polar=None, num_azimuthal=None):
         super(DelayedNuFissionMatrixXS, self).__init__(domain, domain_type,
                                                        energy_groups,
                                                        delayed_groups,
-                                                       by_nuclide, name)
+                                                       by_nuclide, name,
+                                                       num_polar,
+                                                       num_azimuthal)
         self._rxn_type = 'delayed-nu-fission'
         self._hdf5_key = 'delayed-nu-fission matrix'
         self._estimator = 'analog'

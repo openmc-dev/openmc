@@ -937,12 +937,8 @@ class XSdata(object):
         check_value('temperature', temperature, self.temperatures)
 
         i = np.where(self.temperatures == temperature)[0][0]
-        if self.representation == 'isotropic':
-            self._total[i] = total.get_xs(nuclides=nuclide, xs_type=xs_type,
-                                          subdomains=subdomain)
-        elif self.representation == 'angle':
-            msg = 'Angular-Dependent MGXS have not yet been implemented'
-            raise ValueError(msg)
+        self._total[i] = total.get_xs(nuclides=nuclide, xs_type=xs_type,
+                                      subdomains=subdomain)
 
     def set_absorption_mgxs(self, absorption, temperature=294.,
                             nuclide='total', xs_type='macro', subdomain=None):
@@ -983,13 +979,9 @@ class XSdata(object):
         check_value('temperature', temperature, self.temperatures)
 
         i = np.where(self.temperatures == temperature)[0][0]
-        if self.representation == 'isotropic':
-            self._absorption[i] = absorption.get_xs(nuclides=nuclide,
-                                                    xs_type=xs_type,
-                                                    subdomains=subdomain)
-        elif self.representation == 'angle':
-            msg = 'Angular-Dependent MGXS have not yet been implemented'
-            raise ValueError(msg)
+        self._absorption[i] = absorption.get_xs(nuclides=nuclide,
+                                                xs_type=xs_type,
+                                                subdomains=subdomain)
 
     def set_fission_mgxs(self, fission, temperature=294., nuclide='total',
                          xs_type='macro', subdomain=None):
@@ -1030,13 +1022,9 @@ class XSdata(object):
         check_value('temperature', temperature, self.temperatures)
 
         i = np.where(self.temperatures == temperature)[0][0]
-        if self.representation == 'isotropic':
-            self._fission[i] = fission.get_xs(nuclides=nuclide,
-                                              xs_type=xs_type,
-                                              subdomains=subdomain)
-        elif self.representation == 'angle':
-            msg = 'Angular-Dependent MGXS have not yet been implemented'
-            raise ValueError(msg)
+        self._fission[i] = fission.get_xs(nuclides=nuclide,
+                                          xs_type=xs_type,
+                                          subdomains=subdomain)
 
     def set_nu_fission_mgxs(self, nu_fission, temperature=294.,
                             nuclide='total', xs_type='macro', subdomain=None):
@@ -1078,13 +1066,9 @@ class XSdata(object):
         check_value('temperature', temperature, self.temperatures)
 
         i = np.where(self.temperatures == temperature)[0][0]
-        if self.representation == 'isotropic':
-            self._nu_fission[i] = nu_fission.get_xs(nuclides=nuclide,
-                                                    xs_type=xs_type,
-                                                    subdomains=subdomain)
-        elif self.representation == 'angle':
-            msg = 'Angular-Dependent MGXS have not yet been implemented'
-            raise ValueError(msg)
+        self._nu_fission[i] = nu_fission.get_xs(nuclides=nuclide,
+                                                xs_type=xs_type,
+                                                subdomains=subdomain)
 
         if np.sum(self._nu_fission) > 0.0:
             self._fissionable = True
@@ -1134,14 +1118,8 @@ class XSdata(object):
         check_value('temperature', temperature, self.temperatures)
 
         i = np.where(self.temperatures == temperature)[0][0]
-        if self.representation is 'isotropic':
-            self._prompt_nu_fission[i] = prompt_nu_fission.get_xs\
-                                         (nuclides=nuclide,
-                                          xs_type=xs_type,
-                                          subdomains=subdomain)
-        elif self.representation is 'angle':
-            msg = 'Angular-Dependent MGXS have not yet been implemented'
-            raise ValueError(msg)
+        self._prompt_nu_fission[i] = prompt_nu_fission.get_xs(
+            nuclides=nuclide, xs_type=xs_type, subdomains=subdomain)
 
         if np.sum(self._prompt_nu_fission) > 0.0:
             self._fissionable = True
@@ -1191,14 +1169,8 @@ class XSdata(object):
         check_value('temperature', temperature, self.temperatures)
 
         i = np.where(self.temperatures == temperature)[0][0]
-        if self.representation is 'isotropic':
-            self._delayed_nu_fission[i] = delayed_nu_fission.get_xs\
-                                         (nuclides=nuclide,
-                                          xs_type=xs_type,
-                                          subdomains=subdomain)
-        elif self.representation is 'angle':
-            msg = 'Angular-Dependent MGXS have not yet been implemented'
-            raise ValueError(msg)
+        self._delayed_nu_fission[i] = delayed_nu_fission.get_xs(
+            nuclides=nuclide, xs_type=xs_type, subdomains=subdomain)
 
         if np.sum(self._delayed_nu_fission) > 0.0:
             self._fissionable = True
@@ -1244,13 +1216,9 @@ class XSdata(object):
         check_value('temperature', temperature, self.temperatures)
 
         i = np.where(self.temperatures == temperature)[0][0]
-        if self.representation == 'isotropic':
-            self._kappa_fission[i] = k_fission.get_xs(nuclides=nuclide,
-                                                      xs_type=xs_type,
-                                                      subdomains=subdomain)
-        elif self.representation == 'angle':
-            msg = 'Angular-Dependent MGXS have not yet been implemented'
-            raise ValueError(msg)
+        self._kappa_fission[i] = k_fission.get_xs(nuclides=nuclide,
+                                                  xs_type=xs_type,
+                                                  subdomains=subdomain)
 
     def set_chi_mgxs(self, chi, temperature=294., nuclide='total',
                      xs_type='macro', subdomain=None):
@@ -1288,15 +1256,11 @@ class XSdata(object):
         check_value('temperature', temperature, self.temperatures)
 
         i = np.where(self.temperatures == temperature)[0][0]
-        if self.representation == 'isotropic':
-            self._chi[i] = chi.get_xs(nuclides=nuclide,
-                                      xs_type=xs_type, subdomains=subdomain)
-        elif self.representation == 'angle':
-            msg = 'Angular-Dependent MGXS have not yet been implemented'
-            raise ValueError(msg)
+        self._chi[i] = chi.get_xs(nuclides=nuclide, xs_type=xs_type,
+                                  subdomains=subdomain)
 
-    def set_chi_prompt_mgxs(self, chi_prompt, temperature=294., nuclide='total',
-                            xs_type='macro', subdomain=None):
+    def set_chi_prompt_mgxs(self, chi_prompt, temperature=294.,
+                            nuclide='total', xs_type='macro', subdomain=None):
         """This method allows for an openmc.mgxs.ChiPrompt
         to be used to set chi-prompt for this XSdata object.
 
@@ -1333,13 +1297,9 @@ class XSdata(object):
         check_value('temperature', temperature, self.temperatures)
 
         i = np.where(self.temperatures == temperature)[0][0]
-        if self.representation is 'isotropic':
-            self._chi_prompt[i] = chi_prompt.get_xs(nuclides=nuclide,
-                                                    xs_type=xs_type,
-                                                    subdomains=subdomain)
-        elif self.representation is 'angle':
-            msg = 'Angular-Dependent MGXS have not yet been implemented'
-            raise ValueError(msg)
+        self._chi_prompt[i] = chi_prompt.get_xs(nuclides=nuclide,
+                                                xs_type=xs_type,
+                                                subdomains=subdomain)
 
     def set_chi_delayed_mgxs(self, chi_delayed, temperature=294.,
                              nuclide='total', xs_type='macro', subdomain=None):
@@ -1381,13 +1341,9 @@ class XSdata(object):
         check_value('temperature', temperature, self.temperatures)
 
         i = np.where(self.temperatures == temperature)[0][0]
-        if self.representation is 'isotropic':
-            self._chi_delayed[i] = chi_delayed.get_xs(nuclides=nuclide,
-                                                      xs_type=xs_type,
-                                                      subdomains=subdomain)
-        elif self.representation is 'angle':
-            msg = 'Angular-Dependent MGXS have not yet been implemented'
-            raise ValueError(msg)
+        self._chi_delayed[i] = chi_delayed.get_xs(nuclides=nuclide,
+                                                  xs_type=xs_type,
+                                                  subdomains=subdomain)
 
     def set_beta_mgxs(self, beta, temperature=294.,
                       nuclide='total', xs_type='macro', subdomain=None):
@@ -1426,13 +1382,9 @@ class XSdata(object):
         check_value('temperature', temperature, self.temperatures)
 
         i = np.where(self.temperatures == temperature)[0][0]
-        if self.representation is 'isotropic':
-            self._beta[i] = beta.get_xs(nuclides=nuclide,
-                                        xs_type=xs_type,
-                                        subdomains=subdomain)
-        elif self.representation is 'angle':
-            msg = 'Angular-Dependent MGXS have not yet been implemented'
-            raise ValueError(msg)
+        self._beta[i] = beta.get_xs(nuclides=nuclide,
+                                    xs_type=xs_type,
+                                    subdomains=subdomain)
 
     def set_decay_rate_mgxs(self, decay_rate, temperature=294.,
                             nuclide='total', xs_type='macro', subdomain=None):
@@ -1472,13 +1424,9 @@ class XSdata(object):
         check_value('temperature', temperature, self.temperatures)
 
         i = np.where(self.temperatures == temperature)[0][0]
-        if self.representation is 'isotropic':
-            self._decay_rate[i] = decay_rate.get_xs(nuclides=nuclide,
-                                                    xs_type=xs_type,
-                                                    subdomains=subdomain)
-        elif self.representation is 'angle':
-            msg = 'Angular-Dependent MGXS have not yet been implemented'
-            raise ValueError(msg)
+        self._decay_rate[i] = decay_rate.get_xs(nuclides=nuclide,
+                                                xs_type=xs_type,
+                                                subdomains=subdomain)
 
     def set_scatter_matrix_mgxs(self, scatter, temperature=294.,
                                 nuclide='total', xs_type='macro',
@@ -1543,22 +1491,24 @@ class XSdata(object):
                             [self.order])
 
         i = np.where(self.temperatures == temperature)[0][0]
-        if self.representation == 'isotropic':
-            if self.scatter_format == 'legendre':
-                # Get the scattering orders in the outermost dimension
-                self._scatter_matrix[i] = \
-                    np.zeros(self.xs_shapes["[G][G'][Order]"])
+        if self.scatter_format == 'legendre':
+            self._scatter_matrix[i] = \
+                np.zeros(self.xs_shapes["[G][G'][Order]"])
+            # Get the scattering orders in the outermost dimension
+            if self.representation == 'isotropic':
                 for moment in range(self.num_orders):
                     self._scatter_matrix[i][:, :, moment] = \
                         scatter.get_xs(nuclides=nuclide, xs_type=xs_type,
                                        moment=moment, subdomains=subdomain)
-            else:
-                self._scatter_matrix[i] = \
-                    scatter.get_xs(nuclides=nuclide, xs_type=xs_type,
-                                   subdomains=subdomain)
-        elif self.representation == 'angle':
-            msg = 'Angular-Dependent MGXS have not yet been implemented'
-            raise ValueError(msg)
+            elif self.representation == 'angle':
+                for moment in range(self.num_orders):
+                    self._scatter_matrix[i][:, :, :, :, moment] = \
+                        scatter.get_xs(nuclides=nuclide, xs_type=xs_type,
+                                       moment=moment, subdomains=subdomain)
+        else:
+            self._scatter_matrix[i] = \
+                scatter.get_xs(nuclides=nuclide, xs_type=xs_type,
+                               subdomains=subdomain)
 
     def set_multiplicity_matrix_mgxs(self, nuscatter, scatter=None,
                                      temperature=294., nuclide='total',
@@ -1623,24 +1573,21 @@ class XSdata(object):
             check_value('domain_type', scatter.domain_type,
                         openmc.mgxs.DOMAIN_TYPES)
         i = np.where(self.temperatures == temperature)[0][0]
-        if self.representation == 'isotropic':
-            nuscatt = nuscatter.get_xs(nuclides=nuclide,
-                                       xs_type=xs_type, moment=0,
-                                       subdomains=subdomain)
-            if isinstance(nuscatter, openmc.mgxs.MultiplicityMatrixXS):
-                self._multiplicity_matrix[i] = nuscatt
-            else:
-                scatt = scatter.get_xs(nuclides=nuclide,
-                                       xs_type=xs_type, moment=0,
-                                       subdomains=subdomain)
-                if scatter.scatter_format == 'histogram':
-                    scatt = np.sum(scatt, axis=0)
-                if nuscatter.scatter_format == 'histogram':
-                    nuscatt = np.sum(nuscatt, axis=0)
-                self._multiplicity_matrix[i] = np.divide(nuscatt, scatt)
-        elif self.representation == 'angle':
-            msg = 'Angular-Dependent MGXS have not yet been implemented'
-            raise ValueError(msg)
+        nuscatt = nuscatter.get_xs(nuclides=nuclide,
+                                   xs_type=xs_type, moment=0,
+                                   subdomains=subdomain)
+        if isinstance(nuscatter, openmc.mgxs.MultiplicityMatrixXS):
+            self._multiplicity_matrix[i] = nuscatt
+        else:
+            scatt = scatter.get_xs(nuclides=nuclide,
+                                   xs_type=xs_type, moment=0,
+                                   subdomains=subdomain)
+            if scatter.scatter_format == 'histogram':
+                scatt = np.sum(scatt, axis=0)
+            if nuscatter.scatter_format == 'histogram':
+                nuscatt = np.sum(nuscatt, axis=0)
+            self._multiplicity_matrix[i] = np.divide(nuscatt, scatt)
+
         self._multiplicity_matrix[i] = \
             np.nan_to_num(self._multiplicity_matrix[i])
 
@@ -1684,13 +1631,8 @@ class XSdata(object):
         check_value('temperature', temperature, self.temperatures)
 
         i = np.where(self.temperatures == temperature)[0][0]
-        if self.representation == 'isotropic':
-            self._inverse_velocity[i] = inverse_velocity.get_xs\
-                                        (nuclides=nuclide, xs_type=xs_type,
-                                         subdomains=subdomain)
-        elif self.representation == 'angle':
-            msg = 'Angular-Dependent MGXS have not yet been implemented'
-            raise ValueError(msg)
+        self._inverse_velocity[i] = inverse_velocity.get_xs(
+            nuclides=nuclide, xs_type=xs_type, subdomains=subdomain)
 
     def to_hdf5(self, file):
         """Write XSdata to an HDF5 file

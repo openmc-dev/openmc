@@ -593,6 +593,8 @@ class MGXS(object):
 
         mgxs.by_nuclide = by_nuclide
         mgxs.name = name
+        mgxs.num_polar = num_polar
+        mgxs.num_azimuthal = num_azimuthal
         return mgxs
 
     def get_nuclides(self):
@@ -1479,7 +1481,7 @@ class MGXS(object):
                                 string += '\t' + template.format('', group,
                                                                  bounds[0],
                                                                  bounds[1])
-                                string += '{:.2e} +/- {:1.2e}%'.format(
+                                string += '{1:.2e} +/- {:1.2e}%'.format(
                                     average_xs[pol, azi, group - 1],
                                     rel_err_xs[pol, azi, group - 1])
                                 string += '\n'
@@ -1490,7 +1492,7 @@ class MGXS(object):
                         bounds = self.energy_groups.get_group_bounds(group)
                         string += template.format('', group, bounds[0],
                                                   bounds[1])
-                        string += '{:.2e} +/- {:1.2e}%'.format(
+                        string += '{1:.2e} +/- {:1.2e}%'.format(
                             average_xs[group - 1], rel_err_xs[group - 1])
                         string += '\n'
                 string += '\n'
@@ -2383,16 +2385,6 @@ class MatrixMGXS(MGXS):
                     for in_group in range(1, self.num_groups + 1):
                         for out_group in range(1, self.num_groups + 1):
                             string += template.format('', in_group, out_group)
-                            average = \
-                                self.get_xs([in_group], [out_group],
-                                            [subdomain], [nuclide],
-                                            xs_type=xs_type, value='mean')
-                            rel_err = \
-                                self.get_xs([in_group], [out_group],
-                                            [subdomain], [nuclide],
-                                            xs_type=xs_type, value='rel_err')
-                            average = average.flatten()[0]
-                            rel_err = rel_err.flatten()[0] * 100.
                             string += '{:1.2e} +/- {:1.2e}%'.format(
                                 average_xs[in_group - 1, out_group - 1],
                                 rel_err_xs[in_group - 1, out_group - 1])
@@ -4580,16 +4572,6 @@ class ScatterMatrixXS(MatrixMGXS):
                     for in_group in range(1, self.num_groups + 1):
                         for out_group in range(1, self.num_groups + 1):
                             string += template.format('', in_group, out_group)
-                            average = \
-                                self.get_xs([in_group], [out_group],
-                                            [subdomain], [nuclide],
-                                            xs_type=xs_type, value='mean')
-                            rel_err = \
-                                self.get_xs([in_group], [out_group],
-                                            [subdomain], [nuclide],
-                                            xs_type=xs_type, value='rel_err')
-                            average = average.flatten()[0]
-                            rel_err = rel_err.flatten()[0] * 100.
                             string += '{:.2e} +/- {:1.2e}%'.format(
                                 average_xs[in_group - 1, out_group - 1],
                                 rel_err_xs[in_group - 1, out_group - 1])

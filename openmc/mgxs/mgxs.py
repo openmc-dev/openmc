@@ -4332,13 +4332,13 @@ class ScatterMatrixXS(MatrixMGXS):
                     dont_squeeze = (1, 2, 3)
                 else:
                     dont_squeeze = (1, 2)
-            # Squeeze will return a ValueError if the axis has a size
-            # greater than 1, so try each axis in axes one at a time,
-            # and do our own check to preclude the ValueError
-            initial_shape = len(xs.shape)
-            for axis in range(initial_shape - 1, -1, -1):
-                if axis not in dont_squeeze and xs.shape[axis] == 1:
-                    xs = np.squeeze(xs, axis=axis)
+        # Squeeze will return a ValueError if the axis has a size
+        # greater than 1, so try each axis in axes one at a time,
+        # and do our own check to preclude the ValueError
+        initial_shape = len(xs.shape)
+        for axis in range(initial_shape - 1, -1, -1):
+            if axis not in dont_squeeze and xs.shape[axis] == 1:
+                xs = np.squeeze(xs, axis=axis)
         return xs
 
     def get_pandas_dataframe(self, groups='all', nuclides='all', moment='all',

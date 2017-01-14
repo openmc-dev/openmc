@@ -995,6 +995,15 @@ class Library(object):
         xsdata = openmc.XSdata(name, self.energy_groups,
                                representation=representation)
         xsdata.num_delayed_groups = self.num_delayed_groups
+        if self.num_polar or self.num_azimuthal:
+            if self.num_polar:
+                xsdata.num_polar = self.num_polar
+            else:
+                xsdata.num_polar = 1
+            if self.num_azimuthal:
+                xsdata.num_azimuthal = self.num_azimuthal
+            else:
+                xsdata.num_azimuthal = 1
 
         if nuclide != 'total':
             xsdata.atomic_weight_ratio = self._nuclides[nuclide][1]

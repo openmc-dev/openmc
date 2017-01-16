@@ -122,8 +122,9 @@ Temperature-dependent data, provided for temperature <TTT>K.
              spectra as well and thus will have one additional dimension
              for the outgoing energy group.  In this case, `nu-fission` has the
              same dimensionality as `multiplicity matrix`.
-           - **inverse-velocity** (*double[]*) -- Average inverse velocity
-             for each of the groups in the library. This dataset is optional.
+           - **inverse-velocity** (*double[]* or *double[][][]*) --
+             Average inverse velocity for each of the groups in the library.
+             This dataset is optional.
 
 **/<library name>/<TTT>K/scatter_data/**
 

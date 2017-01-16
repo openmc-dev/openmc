@@ -1108,7 +1108,7 @@ module mgxs_header
           deallocate(input_scatt)
 
           ! Now get the multiplication matrix
-          if (object_exists(scatt_grp, 'multiplicity matrix')) then
+          if (object_exists(scatt_grp, 'multiplicity_matrix')) then
 
             ! Now use this information to find the length of a container array
             ! to hold the flattened data
@@ -1120,7 +1120,7 @@ module mgxs_header
 
             ! Allocate flattened array
             allocate(temp_arr(length))
-            call read_dataset(temp_arr, scatt_grp, "multiplicity matrix")
+            call read_dataset(temp_arr, scatt_grp, "multiplicity_matrix")
 
             ! Convert temp_arr to a jagged array ((gin) % data(gout)) for
             ! passing to ScattData
@@ -2092,7 +2092,7 @@ module mgxs_header
           deallocate(input_scatt)
 
           ! Now get the multiplication matrix
-          if (object_exists(scatt_grp, 'multiplicity matrix')) then
+          if (object_exists(scatt_grp, 'multiplicity_matrix')) then
 
             ! Now use this information to find the length of a container array
             ! to hold the flattened data
@@ -2108,7 +2108,7 @@ module mgxs_header
 
             ! Allocate flattened array
             allocate(temp_1d(length))
-            call read_dataset(temp_1d, scatt_grp, "multiplicity matrix")
+            call read_dataset(temp_1d, scatt_grp, "multiplicity_matrix")
 
             ! Convert temp_1d to a jagged array ((gin) % data(gout)) for passing
             ! to ScattData
@@ -2959,9 +2959,9 @@ module mgxs_header
 
                 ! Now create our jagged data from the dense data
                 call jagged_from_dense_2D(scatt_coeffs(:, :, :, iazi, ipol), &
-                                          jagged_scatt)
+                                          jagged_scatt, gmin, gmax)
                 call jagged_from_dense_1D(temp_mult(:, :, iazi, ipol), &
-                                          jagged_mult, gmin, gmax)
+                                          jagged_mult)
 
                 ! Initialize the ScattData Object
                 call this % xs(t) % scatter(iazi, ipol) % obj % init(gmin, &

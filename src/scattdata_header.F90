@@ -266,12 +266,12 @@ contains
       allocate(matrix(groups))
       do gin = 1, groups
         allocate(matrix(gin) % data(order, gmin(gin):gmax(gin)))
-        matrix(gin) % data = coeffs(gin) % data
+        matrix(gin) % data(:, :) = coeffs(gin) % data(:, :)
       end do
 
       ! Get scattxs value
       allocate(this % scattxs(groups))
-      ! Get this by summing the un-normalized P0 coefficient in matrix
+      ! Get this by summing the un-normalized angular distribution in matrix
       ! over all outgoing groups
       do gin = 1, groups
         this % scattxs(gin) = sum(matrix(gin) % data(:, :))
@@ -317,7 +317,7 @@ contains
                  this % dist(gin) % data(imu - 1, gout)
           end do
 
-          ! Now make sure integral norms to zero
+          ! Normalize the integral to unity
           norm = this % dist(gin) % data(order, gout)
           if (norm > ZERO) then
             this % fmu(gin) % data(:, gout) = &
@@ -578,7 +578,7 @@ contains
       imu = 1
     else
       imu = binary_search(this % dist(gin) % data(:, gout), &
-                          size(this % dist(gin) % data(:, gout)), xi)
+                          size(this % dist(gin) % data(:, gout)), xi) + 1
     end if
 
     ! Randomly select a mu in this bin.

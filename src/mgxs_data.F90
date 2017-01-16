@@ -183,7 +183,7 @@ contains
       end select
 
       ! Do not read materials which we do not actually use in the problem to
-      ! save space
+      ! reduce storage
       if (allocated(kTs(i_mat) % data)) then
         call macro_xs(i_mat) % obj % combine(kTs(i_mat), mat, nuclides_MG, &
              num_energy_groups, num_delayed_groups, max_order, &

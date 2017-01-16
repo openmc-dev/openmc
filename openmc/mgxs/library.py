@@ -502,12 +502,9 @@ class Library(object):
                         mgxs_type, name=self.name, num_polar=self.num_polar,
                         num_azimuthal=self.num_azimuthal)
                 else:
-                    mgxs = openmc.mgxs.MGXS.get_mgxs(mgxs_type, name=self.name)
-                    # The inverse velocity does not use angular-dependent data,
-                    # so do not initialize it with such bins
-                    if mgxs_type != 'inverse-velocity':
-                        mgxs.num_polar = self.num_polar
-                        mgxs.num_azimuthal = self.num_azimuthal
+                    mgxs = openmc.mgxs.MGXS.get_mgxs(
+                        mgxs_type, name=self.name, num_polar=self.num_polar,
+                        num_azimuthal=self.num_azimuthal)
 
                 mgxs.domain = domain
                 mgxs.domain_type = self.domain_type

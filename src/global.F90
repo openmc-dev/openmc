@@ -267,21 +267,6 @@ module global
   ! ============================================================================
   ! PARALLEL PROCESSING VARIABLES
 
-  ! The defaults set here for the number of processors, rank, and master and
-  ! mpi_enabled flag are for when MPI is not being used at all, i.e. a serial
-  ! run. In this case, these variables are still used at times.
-
-  integer :: n_procs     = 1       ! number of processes
-  integer :: rank        = 0       ! rank of process
-  logical :: master      = .true.  ! master process?
-  logical :: mpi_enabled = .false. ! is MPI in use and initialized?
-  integer :: mpi_err               ! MPI error code
-#ifdef MPIF08
-  type(MPI_Datatype) :: MPI_BANK
-#else
-  integer :: MPI_BANK              ! MPI datatype for fission bank
-#endif
-
 #ifdef _OPENMP
   integer :: n_threads = NONE      ! number of OpenMP threads
   integer :: thread_id             ! ID of a given thread

@@ -10,6 +10,7 @@ module trigger
   use output,         only: warning, write_message
   use mesh,           only: bin_to_mesh_indices
   use mesh_header,    only: RegularMesh
+  use message_passing, only: master
   use trigger_header, only: TriggerObject
   use tally,          only: TallyObject
   use tally_filter,   only: MeshFilter

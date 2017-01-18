@@ -1,16 +1,13 @@
 module finalize
 
+  use hdf5, only: h5tclose_f, h5close_f
+
   use global
+  use hdf5_interface, only: hdf5_bank_t
+  use message_passing
   use output,         only: print_runtime, print_results, &
                             print_overlap_check, write_tallies
   use tally,          only: tally_statistics
-
-#ifdef MPI
-  use message_passing
-#endif
-
-  use hdf5_interface, only: hdf5_bank_t
-  use hdf5, only: h5tclose_f, h5close_f
 
   implicit none
 
@@ -21,7 +18,7 @@ contains
 ! statistics and writing out tallies
 !===============================================================================
 
-  subroutine finalize_run()
+  subroutine openmc_finalize()
 
     integer :: hdf5_err
 
@@ -66,7 +63,7 @@ contains
     call MPI_FINALIZE(mpi_err)
 #endif
 
-  end subroutine finalize_run
+  end subroutine openmc_finalize
 
 !===============================================================================
 ! REDUCE_OVERLAP_COUNT accumulates cell overlap check counts to master
@@ -77,10 +74,10 @@ contains
 #ifdef MPI
       if (master) then
         call MPI_REDUCE(MPI_IN_PLACE, overlap_check_cnt, n_cells, &
-             MPI_INTEGER8, MPI_SUM, 0, MPI_COMM_WORLD, mpi_err)
+             MPI_INTEGER8, MPI_SUM, 0, mpi_intracomm, mpi_err)
       else
         call MPI_REDUCE(overlap_check_cnt, overlap_check_cnt, n_cells, &
-             MPI_INTEGER8, MPI_SUM, 0, MPI_COMM_WORLD, mpi_err)
+             MPI_INTEGER8, MPI_SUM, 0, mpi_intracomm, mpi_err)
       end if
 #endif
 

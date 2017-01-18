@@ -272,11 +272,11 @@ contains
       if (master) then
 #ifdef MPI
         do j = 1, n_procs - 1
-          call MPI_RECV(n, 1, MPI_INTEGER, j, 0, MPI_COMM_WORLD, &
+          call MPI_RECV(n, 1, MPI_INTEGER, j, 0, mpi_intracomm, &
                MPI_STATUS_IGNORE, mpi_err)
 
           allocate(data(2*n))
-          call MPI_RECV(data, 2*n, MPI_INTEGER, j, 1, MPI_COMM_WORLD, &
+          call MPI_RECV(data, 2*n, MPI_INTEGER, j, 1, mpi_intracomm, &
                MPI_STATUS_IGNORE, mpi_err)
           do k = 0, n - 1
             do m = 1, master_indices(i_domain) % size()
@@ -340,8 +340,8 @@ contains
           data(2*k + 2) = master_hits(i_domain) % data(k + 1)
         end do
 
-        call MPI_SEND(n, 1, MPI_INTEGER, 0, 0, MPI_COMM_WORLD, mpi_err)
-        call MPI_SEND(data, 2*n, MPI_INTEGER, 0, 1, MPI_COMM_WORLD, mpi_err)
+        call MPI_SEND(n, 1, MPI_INTEGER, 0, 0, mpi_intracomm, mpi_err)
+        call MPI_SEND(data, 2*n, MPI_INTEGER, 0, 1, mpi_intracomm, mpi_err)
         deallocate(data)
 #endif
       end if

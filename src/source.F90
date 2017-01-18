@@ -15,6 +15,7 @@ module source
   use geometry_header,  only: BASE_UNIVERSE
   use global
   use hdf5_interface,   only: file_create, file_open, file_close, read_dataset
+  use message_passing,  only: rank
   use output,           only: write_message
   use particle_header,  only: Particle
   use random_lcg,       only: prn, set_particle_seed, prn_set_stream

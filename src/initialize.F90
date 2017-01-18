@@ -1,5 +1,12 @@
 module initialize
 
+  use, intrinsic :: ISO_C_BINDING, only: c_loc
+
+  use hdf5
+#ifdef _OPENMP
+  use omp_lib
+#endif
+
   use bank_header,     only: Bank
   use constants
   use dict_header,     only: DictIntInt, ElemKeyValueII
@@ -15,6 +22,7 @@ module initialize
                              hdf5_integer8_t
   use input_xml,       only: read_input_xml, cells_in_univ_dict, read_plots_xml
   use material_header, only: Material
+  use message_passing
   use mgxs_data,       only: read_mgxs, create_macro_xs
   use output,          only: title, header, print_version, write_message,     &
                              print_usage, print_plot
@@ -27,30 +35,23 @@ module initialize
   use tally_filter
   use tally,           only: init_tally_routines
 
-#ifdef MPI
-  use message_passing
-#endif
-
-#ifdef _OPENMP
-  use omp_lib
-#endif
-
-  use hdf5
-
-  use, intrinsic :: ISO_C_BINDING, only: c_loc
-
   implicit none
 
 contains
 
 !===============================================================================
-! INITIALIZE_RUN takes care of all initialization tasks, i.e. reading
+! OPENMC_INIT takes care of all initialization tasks, i.e. reading
 ! from command line, reading xml input files, initializing random
 ! number seeds, reading cross sections, initializing starting source,
 ! setting up timers, etc.
 !===============================================================================
 
-  subroutine initialize_run()
+  subroutine openmc_init(intracomm)
+#ifdef MPIF08
+    type(MPI_Comm), intent(in) :: intracomm
+#else
+    integer, intent(in), optional :: intracomm
+#endif
 
     ! Start total and initialization timer
     call time_total%start()
@@ -58,7 +59,7 @@ contains
 
 #ifdef MPI
     ! Setup MPI
-    call initialize_mpi()
+    call initialize_mpi(intracomm)
 #endif
 
     ! Initialize HDF5 interface
@@ -155,7 +156,7 @@ contains
     ! Stop initialization timer
     call time_initialize%stop()
 
-  end subroutine initialize_run
+  end subroutine openmc_init
 
 #ifdef MPI
 !===============================================================================
@@ -164,7 +165,12 @@ contains
 ! each processor.
 !===============================================================================
 
-  subroutine initialize_mpi()
+  subroutine initialize_mpi(intracomm)
+#ifdef MPIF08
+    type(MPI_Comm), intent(in) :: intracomm
+#else
+    integer, intent(in) :: intracomm
+#endif
 
     integer                   :: bank_blocks(5)   ! Count for each datatype
 #ifdef MPIF08
@@ -182,8 +188,9 @@ contains
     call MPI_INIT(mpi_err)
 
     ! Determine number of processors and rank of each processor
-    call MPI_COMM_SIZE(MPI_COMM_WORLD, n_procs, mpi_err)
-    call MPI_COMM_RANK(MPI_COMM_WORLD, rank, mpi_err)
+    mpi_intracomm = intracomm
+    call MPI_COMM_SIZE(mpi_intracomm, n_procs, mpi_err)
+    call MPI_COMM_RANK(mpi_intracomm, rank, mpi_err)
 
     ! Determine master
     if (rank == 0) then

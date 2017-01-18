@@ -11,26 +11,22 @@ module state_point
 ! intervals, using the <state_point ... /> tag.
 !===============================================================================
 
+  use, intrinsic :: ISO_C_BINDING, only: c_loc, c_ptr
+
+  use hdf5
 
   use constants
+  use dict_header,        only: ElemKeyValueII, ElemKeyValueCI
   use endf,               only: reaction_name
   use error,              only: fatal_error, warning
   use global
   use hdf5_interface
+  use mesh_header,        only: RegularMesh
+  use message_passing
   use output,             only: write_message, time_stamp
+  use random_lcg,         only: seed
   use string,             only: to_str, count_digits, zero_padded
   use tally_header,       only: TallyObject
-  use mesh_header,        only: RegularMesh
-  use dict_header,        only: ElemKeyValueII, ElemKeyValueCI
-  use random_lcg,         only: seed
-
-#ifdef MPI
-  use message_passing
-#endif
-
-  use hdf5
-
-  use, intrinsic :: ISO_C_BINDING, only: c_loc, c_ptr
 
   implicit none
 
@@ -553,7 +549,7 @@ contains
       ! receive buffer without having a temporary variable
 #ifdef MPI
       call MPI_REDUCE(MPI_IN_PLACE, global_temp, n_bins, MPI_REAL8, MPI_SUM, &
-           0, MPI_COMM_WORLD, mpi_err)
+           0, mpi_intracomm, mpi_err)
 #endif
 
       ! Transfer values to value on master
@@ -567,7 +563,7 @@ contains
       ! Receive buffer not significant at other processors
 #ifdef MPI
       call MPI_REDUCE(global_temp, dummy, n_bins, MPI_REAL8, MPI_SUM, &
-           0, MPI_COMM_WORLD, mpi_err)
+           0, mpi_intracomm, mpi_err)
 #endif
     end if
 
@@ -616,7 +612,7 @@ contains
           ! a receive buffer without having a temporary variable
 #ifdef MPI
           call MPI_REDUCE(MPI_IN_PLACE, tally_temp, n_bins, MPI_REAL8, &
-               MPI_SUM, 0, MPI_COMM_WORLD, mpi_err)
+               MPI_SUM, 0, mpi_intracomm, mpi_err)
 #endif
 
           ! At the end of the simulation, store the results back in the
@@ -640,7 +636,7 @@ contains
           ! Receive buffer not significant at other processors
 #ifdef MPI
           call MPI_REDUCE(tally_temp, dummy, n_bins, MPI_REAL8, MPI_SUM, &
-               0, MPI_COMM_WORLD, mpi_err)
+               0, mpi_intracomm, mpi_err)
 #endif
         end if
 
@@ -940,7 +936,7 @@ contains
         ! Receive source sites from other processes
         if (i > 0) then
           call MPI_RECV(source_bank, int(dims(1)), MPI_BANK, i, i, &
-               MPI_COMM_WORLD, MPI_STATUS_IGNORE, mpi_err)
+               mpi_intracomm, MPI_STATUS_IGNORE, mpi_err)
         end if
 #endif
 
@@ -969,7 +965,7 @@ contains
     else
 #ifdef MPI
       call MPI_SEND(source_bank, int(work), MPI_BANK, 0, rank, &
-           MPI_COMM_WORLD, mpi_err)
+           mpi_intracomm, mpi_err)
 #endif
     end if
 

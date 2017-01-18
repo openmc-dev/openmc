@@ -29,7 +29,7 @@ from shutil import move
 import xml.etree.ElementTree as ET
 
 import openmc.data
-from openmc.data.thermal import _THERMAL_NAMES
+
 
 description = "Update OpenMC's input XML files to the latest format."
 epilog = """\

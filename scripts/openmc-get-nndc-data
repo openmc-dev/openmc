@@ -114,15 +114,19 @@ for filename in glob.glob('nndc/293.6K/ENDF-B-VII.1-neutron-293.6K/*'):
     shutil.move(filename, 'nndc/293.6K/')
 
 # ==============================================================================
-# EDIT GRAPHITE ZAID (6012 to 6000)
+# FIX ZAID ASSIGNMENTS FOR VARIOUS S(A,B) TABLES
 
-print('Changing graphite ZAID from 6012 to 6000')
-graphite = os.path.join('nndc', 'tsl', 'graphite.acer')
-with open(graphite) as fh:
-    text = fh.read()
-text = text.replace('6012', '6000', 1)
-with open(graphite, 'w') as fh:
-    fh.write(text)
+def fix_zaid(table, old, new):
+    filename = os.path.join('nndc', 'tsl', table)
+    with open(filename, 'r') as fh:
+        text = fh.read()
+    text = text.replace(old, new, 1)
+    with open(filename, 'w') as fh:
+        fh.write(text)
+
+print('Fixing ZAIDs for S(a,b) tables')
+fix_zaid('bebeo.acer', '8016', '   0')
+fix_zaid('obeo.acer', '4009', '   0')
 
 # ==============================================================================
 # PROMPT USER TO DELETE .TAR.GZ FILES

@@ -80,7 +80,7 @@ contains
             j = j + 1
 
             ! Don't check for S(a,b) tables if there are no more left
-            if (j > mat % n_sab) check_sab = .false.
+            if (j > size(mat % i_sab_tables)) check_sab = .false.
           end if
         end if
 

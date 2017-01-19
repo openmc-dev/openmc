@@ -408,9 +408,9 @@ class MDGXS(MGXS):
         else:
             num_delayed_groups = len(delayed_groups)
 
-        # Reshape tally data array with separate axes for domain, energy groups,
-        # delayed groups, and nuclides
-        # Accomodate the polar and azimuthal bins if needed
+        # Reshape tally data array with separate axes for domain,
+        # energy groups, delayed groups, and nuclides
+        # Accommodate the polar and azimuthal bins if needed
         if self.num_polar or self.num_azimuthal:
             if self.num_polar:
                 num_pol = self.num_polar
@@ -852,7 +852,6 @@ class MDGXS(MGXS):
         if self.by_nuclide and nuclides == 'sum':
 
             # Use tally summation to sum across all nuclides
-            query_nuclides = [nuclides]
             xs_tally = self.xs_tally.summation(nuclides=self.get_nuclides())
             df = xs_tally.get_pandas_dataframe(
                 distribcell_paths=distribcell_paths)
@@ -865,14 +864,12 @@ class MDGXS(MGXS):
 
         # If the user requested a specific set of nuclides
         elif self.by_nuclide and nuclides != 'all':
-            query_nuclides = nuclides
             xs_tally = self.xs_tally.get_slice(nuclides=nuclides)
             df = xs_tally.get_pandas_dataframe(
                 distribcell_paths=distribcell_paths)
 
         # If the user requested all nuclides, keep nuclide column in dataframe
         else:
-            query_nuclides = self.nuclides
             df = self.xs_tally.get_pandas_dataframe(
                 distribcell_paths=distribcell_paths)
 

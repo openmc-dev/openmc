@@ -546,6 +546,7 @@ contains
     real(8) :: c_j, c_j1      ! cumulative probability
     real(8) :: frac           ! interpolation factor on outgoing energy
     real(8) :: r1             ! RNG for outgoing energy
+    real(8) :: mu_left, mu_right ! adjacent mu values
 
     i_temp = micro_xs(i_nuclide) % index_temp_sab
 
@@ -737,23 +738,36 @@ contains
             E = E_1 + (E - E_i1_1) * (E_J - E_1) / (E_i1_J - E_i1_1)
           end if
 
-          ! Find angular distribution for closest outgoing energy bin
-          if (r1 - c_j < c_j1 - r1) then
-            j = j
-          else
-            j = j + 1
-          end if
-
           ! Sample outgoing cosine bin
           k = 1 + int(prn() * sab % n_inelastic_mu)
 
-          ! Will use mu from the randomly chosen incoming and closest outgoing
-          ! energy bins
-          mu = sab % inelastic_data(l) % mu(k, j)
+          ! Rather than use the sampled discrete mu directly, it is smeared over
+          ! a bin of width min(mu[k] - mu[k-1], mu[k+1] - mu[k]) centered on the
+          ! discrete mu value itself.
+          associate (mu_l => sab % inelastic_data(l) % mu)
+            f = (r1 - c_j)/(c_j1 - c_j)
 
-        else
-          call fatal_error("Invalid secondary energy mode on S(a,b) table " &
-               // trim(sab_tables(i_sab) % name))
+            ! Determine (k-1)th mu value
+            if (k == 1) then
+              mu_left = -ONE
+            else
+              mu_left = mu_l(k-1, j) + f*(mu_l(k-1, j+1) - mu_l(k-1,j))
+            end if
+
+            ! Determine kth mu value
+            mu = mu_l(k, j) + f*(mu_l(k, j+1) - mu_l(k, j))
+
+            ! Determine (k+1)th mu value
+            if (k == sab % n_inelastic_mu) then
+              mu_right = ONE - mu
+            else
+              mu_right = mu_l(k+1, j) + f*(mu_l(k+1, j+1) - mu_l(k+1,j)) - mu
+            end if
+          end associate
+
+          ! Smear angle
+          mu = mu + min(mu - mu_left, mu_right - mu)*(prn() - HALF)
+
         end if  ! (inelastic secondary energy treatment)
       end if  ! (elastic or inelastic)
     end associate

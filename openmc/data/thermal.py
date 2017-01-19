@@ -1,6 +1,7 @@
 from collections import Iterable
 from difflib import get_close_matches
 from numbers import Real
+import re
 from warnings import warn
 
 import numpy as np
@@ -9,7 +10,7 @@ import h5py
 import openmc.checkvalue as cv
 from openmc.mixin import EqualityMixin
 from . import HDF5_VERSION, HDF5_VERSION_MAJOR
-from .data import K_BOLTZMANN, ATOMIC_SYMBOL, EV_PER_MEV
+from .data import K_BOLTZMANN, ATOMIC_SYMBOL, EV_PER_MEV, NATURAL_ABUNDANCE
 from .ace import Table, get_table
 from .angle_energy import AngleEnergy
 from .function import Tabulated1D
@@ -17,51 +18,80 @@ from .correlated import CorrelatedAngleEnergy
 from openmc.stats import Discrete, Tabular
 
 
-_THERMAL_NAMES = {'al': 'c_Al27', 'al27': 'c_Al27',
-                  'be': 'c_Be',
-                  'beo': 'c_BeO',
-                  'bebeo': 'c_Be_in_BeO', 'be-o': 'c_Be_in_BeO', 'be/o': 'c_Be_in_BeO',
-                  'benz': 'c_Benzine',
-                  'cah': 'c_Ca_in_CaH2',
-                  'dd2o': 'c_D_in_D2O', 'hwtr': 'c_D_in_D2O', 'hw': 'c_D_in_D2O',
-                  'fe': 'c_Fe56', 'fe56': 'c_Fe56',
-                  'graph': 'c_Graphite', 'grph': 'c_Graphite', 'gr': 'c_Graphite',
-                  'hca': 'c_H_in_CaH2',
-                  'hch2': 'c_H_in_CH2', 'poly': 'c_H_in_CH2', 'pol': 'c_H_in_CH2',
-                  'hh2o': 'c_H_in_H2O', 'lwtr': 'c_H_in_H2O', 'lw': 'c_H_in_H2O',
-                  'hzrh': 'c_H_in_ZrH', 'h-zr': 'c_H_in_ZrH', 'h/zr': 'c_H_in_ZrH', 'hzr': 'c_H_in_ZrH',
-                  'lch4': 'c_liquid_CH4', 'lmeth': 'c_liquid_CH4',
-                  'mg': 'c_Mg24',
-                  'obeo': 'c_O_in_BeO', 'o-be': 'c_O_in_BeO', 'o/be': 'c_O_in_BeO',
-                  'orthod': 'c_ortho_D', 'dortho': 'c_ortho_D',
-                  'orthoh': 'c_ortho_H', 'hortho': 'c_ortho_H',
-                  'ouo2': 'c_O_in_UO2', 'o2-u': 'c_O_in_UO2', 'o2/u': 'c_O_in_UO2',
-                  'sio2': 'c_SiO2',
-                  'parad': 'c_para_D', 'dpara': 'c_para_D',
-                  'parah': 'c_para_H', 'hpara': 'c_para_H',
-                  'sch4': 'c_solid_CH4', 'smeth': 'c_solid_CH4',
-                  'uuo2': 'c_U_in_UO2', 'u-o2': 'c_U_in_UO2', 'u/o2': 'c_U_in_UO2',
-                  'zrzrh': 'c_Zr_in_ZrH', 'zr-h': 'c_Zr_in_ZrH', 'zr/h': 'c_Zr_in_ZrH'}
+_THERMAL_NAMES = {
+    'c_Al27': ('al', 'al27'),
+    'c_Be': ('be', 'be-metal'),
+    'c_BeO': ('beo',),
+    'c_Be_in_BeO': ('bebeo', 'be-o', 'be/o'),
+    'c_C6H6': ('benz', 'c6h6'),
+    'c_C_in_SiC': ('csic',),
+    'c_Ca_in_CaH2': ('cah',),
+    'c_D_in_D2O': ('dd2o', 'hwtr', 'hw'),
+    'c_Fe56': ('fe', 'fe56'),
+    'c_Graphite': ('graph', 'grph', 'gr'),
+    'c_H_in_CaH2': ('hcah2',),
+    'c_H_in_CH2': ('hch2', 'poly', 'pol'),
+    'c_H_in_CH4_liquid': ('lch4', 'lmeth'),
+    'c_H_in_CH4_solid': ('sch4', 'smeth'),
+    'c_H_in_H2O': ('hh2o', 'lwtr', 'lw'),
+    'c_H_in_H2O_solid': ('hice',),
+    'c_H_in_C5O2H8': ('lucite', 'c5o2h8'),
+    'c_H_in_YH2': ('hyh2',),
+    'c_H_in_ZrH': ('hzrh', 'h-zr', 'h/zr', 'hzr'),
+    'c_Mg24': ('mg', 'mg24'),
+    'c_O_in_BeO': ('obeo', 'o-be', 'o/be'),
+    'c_O_in_D2O': ('od2o',),
+    'c_O_in_H2O_ice': ('oice',),
+    'c_O_in_UO2': ('ouo2', 'o2-u', 'o2/u'),
+    'c_ortho_D': ('orthod', 'dortho'),
+    'c_ortho_H': ('orthoh', 'hortho'),
+    'c_Si_in_SiC': ('sisic',),
+    'c_SiO2_alpha': ('sio2', 'sio2a'),
+    'c_SiO2_beta': ('sio2b'),
+    'c_para_D': ('parad', 'dpara'),
+    'c_para_H': ('parah', 'hpara'),
+    'c_U_in_UO2': ('uuo2', 'u-o2', 'u/o2'),
+    'c_Y_in_YH2': ('yyh2',),
+    'c_Zr_in_ZrH': ('zrzrh', 'zr-h', 'zr/h')
+}
 
 
 def get_thermal_name(name):
-    """Get proper S(a,b) table name, e.g. 'HH2O' -> 'c_H_in_H2O'"""
+    """Get proper S(a,b) table name, e.g. 'HH2O' -> 'c_H_in_H2O'
 
-    if name in _THERMAL_NAMES.values():
+    Parameters
+    ----------
+    name : str
+        Name of an ACE thermal scattering table
+
+    Returns
+    -------
+    str
+        GND-format thermal scattering name
+
+    """
+    if name in _THERMAL_NAMES:
         return name
-    elif name.lower() in _THERMAL_NAMES:
-        return _THERMAL_NAMES[name.lower()]
     else:
-        # Make an educated guess?? This actually works well for
-        # JEFF-3.2 which stupidly uses names like lw00.32t,
-        # lw01.32t, etc. for different temperatures
-        matches = get_close_matches(
-            name.lower(), _THERMAL_NAMES.keys(), cutoff=0.5)
-        if len(matches) > 0:
-            return _THERMAL_NAMES[matches[0]]
+        for proper_name, names in _THERMAL_NAMES.items():
+            if name.lower() in names:
+                return proper_name
         else:
-            # OK, we give up. Just use the ACE name.
-            return 'c_' + name
+            # Make an educated guess?? This actually works well for
+            # JEFF-3.2 which stupidly uses names like lw00.32t,
+            # lw01.32t, etc. for different temperatures
+            for proper_name, names in _THERMAL_NAMES.items():
+                matches = get_close_matches(
+                    name.lower(), names, cutoff=0.5)
+                if len(matches) > 0:
+                    warn('Thermal scattering material "{}" is not recognized. '
+                         'Assigning a name of {}.'.format(name, proper_name))
+                    return proper_name
+            else:
+                # OK, we give up. Just use the ACE name.
+                warn('Thermal scattering material "{0}" is not recognized. '
+                     'Assigning a name of c_{0}.'.format(name))
+                return 'c_' + name
 
 
 class CoherentElastic(EqualityMixin):
@@ -425,22 +455,7 @@ class ThermalScattering(EqualityMixin):
 
         # Get new name that is GND-consistent
         ace_name, xs = ace.name.split('.')
-        if name is None:
-            if ace_name.lower() in _THERMAL_NAMES:
-                name = _THERMAL_NAMES[ace_name.lower()]
-            else:
-                # Make an educated guess?? This actually works well for JEFF-3.2
-                # which stupidly uses names like lw00.32t, lw01.32t, etc. for
-                # different temperatures
-                matches = get_close_matches(
-                    ace_name.lower(), _THERMAL_NAMES.keys(), cutoff=0.5)
-                if len(matches) > 0:
-                    name = _THERMAL_NAMES[matches[0]]
-                else:
-                    # OK, we give up. Just use the ACE name.
-                    name = 'c_' + ace.name
-                warn('Thermal scattering material "{}" is not recognized. '
-                     'Assigning a name of {}.'.format(ace.name, name))
+        name = get_thermal_name(ace_name)
 
         # Assign temperature to the running list
         kTs = [ace.temperature*EV_PER_MEV]
@@ -523,30 +538,47 @@ class ThermalScattering(EqualityMixin):
 
         # Incoherent/coherent elastic scattering cross section
         idx = ace.jxs[4]
+        n_mu = ace.nxs[6] + 1
         if idx != 0:
             n_energy = int(ace.xss[idx])
             energy = ace.xss[idx + 1: idx + 1 + n_energy]*EV_PER_MEV
             P = ace.xss[idx + 1 + n_energy: idx + 1 + 2 * n_energy]
 
             if ace.nxs[5] == 4:
+                # Coherent elastic
                 table.elastic_xs[temperatures[0]] = CoherentElastic(
                     energy, P*EV_PER_MEV)
+
+                # Coherent elastic shouldn't have angular distributions listed
+                assert n_mu == 0
             else:
+                # Incoherent elastic
                 table.elastic_xs[temperatures[0]] = Tabulated1D(energy, P)
 
-            # Angular distribution
-            n_mu = ace.nxs[6]
-            if n_mu != -1:
+                # Angular distribution
+                assert n_mu > 0
                 idx = ace.jxs[6]
                 table.elastic_mu_out[temperatures[0]] = \
                     ace.xss[idx:idx + n_energy * n_mu]
                 table.elastic_mu_out[temperatures[0]].shape = \
                     (n_energy, n_mu)
 
-        # Get relevant nuclides
+        # Get relevant nuclides -- NJOY only allows one to specify three
+        # nuclides that the S(a,b) table applies to. Thus, for all elements
+        # other than H and Fe, we automatically add all the naturally-occurring
+        # isotopes.
         for zaid, awr in ace.pairs:
             if zaid > 0:
                 Z, A = divmod(zaid, 1000)
-                table.nuclides.append(ATOMIC_SYMBOL[Z] + str(A))
+                element = ATOMIC_SYMBOL[Z]
+                if element in ['H', 'Fe']:
+                    table.nuclides.append(element + str(A))
+                else:
+                    if element + '0' not in table.nuclides:
+                        table.nuclides.append(element + '0')
+                    for isotope in sorted(NATURAL_ABUNDANCE):
+                        if re.match(r'{}\d+'.format(element), isotope):
+                            if isotope not in table.nuclides:
+                                table.nuclides.append(isotope)
 
         return table

@@ -71,12 +71,12 @@ class Library(object):
         :attr:`ScatterMatrixXS.scatter_format` is 'histogram'. (default is 16)
     energy_groups : openmc.mgxs.EnergyGroups
         Energy group structure for energy condensation
-    num_polar : None or Integral
-        Number of equi-width polar angles for angle discretization
-    num_azimuthal : None or Integral
-        Number of equi-width azimuthal angles for angle discretization
     num_delayed_groups : int
         Number of delayed groups
+    num_polar : Integral
+        Number of equi-width polar angle bins for angle discretization
+    num_azimuthal : Integral
+        Number of equi-width azimuthal angle bins for angle discretization
     estimator : str or None
         The tally estimator used to compute multi-group cross sections.
         If None, the default for each MGXS type is used.
@@ -111,8 +111,8 @@ class Library(object):
         self._domain_type = None
         self._domains = 'all'
         self._energy_groups = None
-        self._num_polar = None
-        self._num_azimuthal = None
+        self._num_polar = 1
+        self._num_azimuthal = 1
         self._num_delayed_groups = 0
         self._correction = 'P0'
         self._scatter_format = 'legendre'
@@ -222,16 +222,16 @@ class Library(object):
         return self._energy_groups
 
     @property
+    def num_delayed_groups(self):
+        return self._num_delayed_groups
+
+    @property
     def num_polar(self):
         return self._num_polar
 
     @property
     def num_azimuthal(self):
         return self._num_azimuthal
-
-    @property
-    def num_delayed_groups(self):
-        return self._num_delayed_groups
 
     @property
     def correction(self):
@@ -360,18 +360,6 @@ class Library(object):
         cv.check_type('energy groups', energy_groups, openmc.mgxs.EnergyGroups)
         self._energy_groups = energy_groups
 
-    @num_polar.setter
-    def num_polar(self, num_polar):
-        if num_polar:
-            cv.check_type('num_polar', num_polar, Integral)
-        self._num_polar = num_polar
-
-    @num_azimuthal.setter
-    def num_azimuthal(self, num_azimuthal):
-        if num_azimuthal:
-            cv.check_type('num_azimuthal', num_azimuthal, Integral)
-        self._num_azimuthal = num_azimuthal
-
     @num_delayed_groups.setter
     def num_delayed_groups(self, num_delayed_groups):
 
@@ -380,6 +368,18 @@ class Library(object):
         cv.check_greater_than('num delayed groups', num_delayed_groups, 0,
                               equality=True)
         self._num_delayed_groups = num_delayed_groups
+
+    @num_polar.setter
+    def num_polar(self, num_polar):
+        cv.check_type('num_polar', num_polar, Integral)
+        cv.check_greater_than('num_polar', num_polar, 0)
+        self._num_polar = num_polar
+
+    @num_azimuthal.setter
+    def num_azimuthal(self, num_azimuthal):
+        cv.check_type('num_azimuthal', num_azimuthal, Integral)
+        cv.check_greater_than('num_azimuthal', num_azimuthal, 0)
+        self._num_azimuthal = num_azimuthal
 
     @correction.setter
     def correction(self, correction):
@@ -562,7 +562,7 @@ class Library(object):
                         mgxs.delayed_groups = None
                     else:
                         mgxs.delayed_groups \
-                            = list(range(1, self.num_delayed_groups+1))
+                            = list(range(1, self.num_delayed_groups + 1))
 
                 for tally in mgxs.tallies.values():
                     tallies_file.append(tally, merge=merge)
@@ -985,22 +985,16 @@ class Library(object):
         name = xsdata_name
         if nuclide != 'total':
             name += '_' + nuclide
-        if self.num_polar or self.num_azimuthal:
+        if self.num_polar > 1 or self.num_azimuthal > 1:
             representation = 'angle'
         else:
             representation = 'isotropic'
         xsdata = openmc.XSdata(name, self.energy_groups,
                                representation=representation)
         xsdata.num_delayed_groups = self.num_delayed_groups
-        if self.num_polar or self.num_azimuthal:
-            if self.num_polar:
-                xsdata.num_polar = self.num_polar
-            else:
-                xsdata.num_polar = 1
-            if self.num_azimuthal:
-                xsdata.num_azimuthal = self.num_azimuthal
-            else:
-                xsdata.num_azimuthal = 1
+        if self.num_polar > 1 or self.num_azimuthal > 1:
+            xsdata.num_polar = self.num_polar
+            xsdata.num_azimuthal = self.num_azimuthal
 
         if nuclide != 'total':
             xsdata.atomic_weight_ratio = self._nuclides[nuclide][1]
@@ -1141,15 +1135,30 @@ class Library(object):
                 if 'total' in self.mgxs_types or 'transport' in self.mgxs_types:
                     if xsdata.scatter_format == 'legendre':
                         for i in range(len(xsdata.temperatures)):
-                            xsdata._absorption[i] = \
-                                np.subtract(xsdata._total[i], np.sum(
-                                    xsdata._scatter_matrix[i][0, :, :], axis=1))
+                            if representation == 'isotropic':
+                                xsdata._absorption[i] = \
+                                    np.subtract(xsdata._total[i], np.sum(
+                                        xsdata._scatter_matrix[i][:, :, 0],
+                                        axis=1))
+                            elif representation == 'angle':
+                                xsdata._absorption[i] = \
+                                    np.subtract(xsdata._total[i], np.sum(
+                                        xsdata._scatter_matrix[i][:, :, :, :, 0],
+                                        axis=3))
                     elif xsdata.scatter_format == 'histogram':
                         for i in range(len(xsdata.temperatures)):
-                            xsdata._absorption[i] = \
-                                np.subtract(xsdata._total[i], np.sum(np.sum(
-                                    xsdata._scatter_matrix[i][:, :, :], axis=0),
-                                    axis=1))
+                            if representation == 'isotropic':
+                                xsdata._absorption[i] = \
+                                    np.subtract(xsdata._total[i], np.sum(np.sum(
+                                        xsdata._scatter_matrix[i][:, :, :],
+                                        axis=2),
+                                        axis=1))
+                            elif representation == 'angle':
+                                xsdata._absorption[i] = \
+                                    np.subtract(xsdata._total[i], np.sum(np.sum(
+                                        xsdata._scatter_matrix[i][:, :, :, :, :],
+                                        axis=4),
+                                        axis=3))
 
         return xsdata
 

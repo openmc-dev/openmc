@@ -1760,7 +1760,6 @@ class MGXS(object):
         if self.by_nuclide and nuclides == 'sum':
 
             # Use tally summation to sum across all nuclides
-            query_nuclides = [nuclides]
             xs_tally = self.xs_tally.summation(nuclides=self.get_nuclides())
             df = xs_tally.get_pandas_dataframe(
                 distribcell_paths=distribcell_paths)
@@ -4332,6 +4331,7 @@ class ScatterMatrixXS(MatrixMGXS):
                     dont_squeeze = (1, 2, 3)
                 else:
                     dont_squeeze = (1, 2)
+
         # Squeeze will return a ValueError if the axis has a size
         # greater than 1, so try each axis in axes one at a time,
         # and do our own check to preclude the ValueError

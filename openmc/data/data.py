@@ -200,7 +200,7 @@ def atomic_weight(element):
     """
     weight = 0.
     for nuclide, abundance in NATURAL_ABUNDANCE.items():
-        if re.match(element, nuclide):
+        if re.match(r'{}\d+'.format(element), nuclide):
             weight += atomic_mass(nuclide) * abundance
     return None if weight == 0. else weight
 

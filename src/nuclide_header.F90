@@ -242,7 +242,7 @@ module nuclide_header
 
     ! If only one temperature is available, revert to nearest temperature
     if (size(temps_available) == 1 .and. &
-         method == TEMPERATURE_INTERPOLATION) then
+         method == TEMPERATURE_INTERPOLATION .and. master) then
       call warning("Cross sections for " // trim(this % name) // " are only &
            &available at one temperature. Reverting to nearest temperature &
            &method.")
@@ -364,7 +364,7 @@ module nuclide_header
         call close_group(urr_group)
 
         ! Check for negative values
-        if (any(this % urr_data(i) % prob < ZERO)) then
+        if (any(this % urr_data(i) % prob < ZERO) .and. master) then
           call warning("Negative value(s) found on probability table &
                &for nuclide " // this % name // " at " // trim(temp_str))
         end if

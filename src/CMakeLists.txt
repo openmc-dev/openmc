@@ -242,6 +242,7 @@ add_subdirectory(xml/fox)
 #===============================================================================
 
 set(program "shutmc")
+# static PURXS lib: file(GLOB source *.F90 xml/openmc_fox.F90)
 file(GLOB source *.F90 xml/openmc_fox.F90 URR/src/URR_*)
 
 # build static Faddeeva library
@@ -249,8 +250,13 @@ option(BUILD_SHARED_LIBS "Build shared libraries" OFF)
 ADD_LIBRARY (faddeeva STATIC URR/src/Faddeeva.c)
 SET_TARGET_PROPERTIES(faddeeva PROPERTIES COMPILE_FLAGS "${cflags}")
 
+# build static PURXS library
+#file(GLOB PURXS_src URR/src/URR_*)
+#ADD_LIBRARY (PURXS STATIC ${PURXS_src})
+#SET_TARGET_PROPERTIES(PURXS PROPERTIES COMPILE_FLAGS "${f90flags}")
+
 add_executable(${program} ${source})
-target_link_libraries(${program} ${libraries} fox_dom faddeeva)
+target_link_libraries(${program} ${libraries} fox_dom faddeeva) # PURXS)
 set_target_properties(${program} PROPERTIES
   COMPILE_FLAGS "${f90flags}"
   LINK_FLAGS "${ldflags}")

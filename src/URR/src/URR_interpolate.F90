@@ -21,12 +21,8 @@ module URR_interpolate
 
 contains
 
-!$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$
-!
-! Compute an interpolation factor
-!
-!$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$
 
+!> Computes an interpolation factor
   function interp_factor(val, val_low, val_up, scheme) result(factor)
 
     integer :: scheme ! interpolation scheme
@@ -78,12 +74,8 @@ contains
 
   end function interp_factor
 
-!$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$
-!
-! Compute an interpolation (or extrapolation)
-!
-!$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$
 
+!> Computes an interpolated (or extrapolated) value
   function interpolate(factor, val_low, val_up, scheme) result(val)
 
     integer :: scheme ! interpolation scheme
@@ -127,4 +119,5 @@ contains
 
   end function interpolate
   
+
 end module URR_interpolate

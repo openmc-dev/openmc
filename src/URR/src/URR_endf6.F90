@@ -26,12 +26,8 @@ module URR_endf6
   integer :: in = 11 ! input unit
   character(len=:), allocatable :: filename ! ENDF-6 filename
 
-!$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$
-!
-! ENDF-6 flags
-!
-!$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$
 
+!> ENDF-6 flags
   type ENDF6Flags
 
      
@@ -40,12 +36,8 @@ module URR_endf6
   
 contains
 
-!$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$
-!
-! Read in an ENDF-6 format file
-!
-!$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$
 
+!> Read in an ENDF-6 format file
   subroutine read_endf6(filename_tmp, i)
 
     character(80) :: filename_tmp ! temporary filename
@@ -106,12 +98,8 @@ contains
 
   end subroutine read_endf6
 
-!$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$
-!
-! Read in an ENDF-6 format MF 1 file
-!
-!$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$
 
+!> Read in an ENDF-6 format MF 1 file
   subroutine read_MF1(i, rec)
 
     character(80) :: rec ! ENDF-6 file record
@@ -134,12 +122,8 @@ contains
 
   end subroutine read_MF1
 
-!$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$
-!
-! Read in an ENDF-6 format MF 2 file
-!
-!$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$
 
+!> Read in an ENDF-6 format MF 2 file
   subroutine read_MF2(i, rec)
 
     character(80) :: rec ! ENDF-6 file record
@@ -208,12 +192,8 @@ contains
 
   end subroutine read_MF2
 
-!$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$
-!
-! Read in an ENDF-6 format MF 3 file
-!
-!$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$
 
+!> Read in an ENDF-6 format MF 3 file
   subroutine read_MF3(i, rec)
 
     integer :: i      ! index in global isotopes array
@@ -533,12 +513,8 @@ contains
 
   end subroutine read_MF3
 
-!$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$
-!
-! Check that there is an allowable number of interpolation regions
-!
-!$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$
 
+!> Check that there is an allowable number of interpolation regions
   subroutine check_interp_regions(NR)
 
     integer :: NR ! number of interpolation regions
@@ -550,12 +526,8 @@ contains
 
   end subroutine check_interp_regions
 
-!$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$
-!
-! Check that there is an allowable number of energy-xs pairs
-!
-!$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$
 
+!> Check that there is an allowable number of energy-xs pairs
   subroutine check_n_pairs(NBT, NP)
 
     integer :: NBT ! number of pairs between this and the next interp. region
@@ -568,12 +540,8 @@ contains
 
   end subroutine check_n_pairs
 
-!$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$
-!
-! Check that there is an allowable interpolation scheme
-!
-!$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$
 
+!> Check that there is an allowable interpolation scheme
   subroutine check_interp_scheme(INTERP, MF3_INT)
 
     integer :: INTERP     ! interpolation scheme for current region
@@ -585,12 +553,8 @@ contains
 
   end subroutine check_interp_scheme
 
-!$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$
-!
-! Read in the energy range and formalism-dependent resonance subsection data
-!
-!$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$
 
+!> Read in the energy range and formalism-dependent resonance subsection data
   subroutine read_resonance_subsection(i, i_ER, LRU, LRF)
 
     integer :: i    ! index in global isotopes array
@@ -668,12 +632,8 @@ contains
 
   end subroutine read_resonance_subsection
 
-!$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$
-!
-! Read in Single-level Breit-Wigner resolved resonance region parameters
-!
-!$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$
 
+!> Read in Single-level Breit-Wigner resolved resonance region parameters
   subroutine read_slbw_parameters(i, i_ER)
 
     character(80) :: rec ! ENDF-6 file record
@@ -765,12 +725,8 @@ contains
 
   end subroutine read_slbw_parameters
 
-!$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$
-!
-! Read in Multi-level Breit-Wigner resolved resonance region parameters
-!
-!$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$
 
+!> Read in Multi-level Breit-Wigner resolved resonance region parameters
   subroutine read_mlbw_parameters(i, i_ER)
 
     character(80) :: rec ! ENDF-6 file record
@@ -861,12 +817,8 @@ contains
 
   end subroutine read_mlbw_parameters
 
-!$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$
-!
-! Read in Reich-Moore resolved resonance region parameters
-!
-!$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$
 
+!> Read in Reich-Moore resolved resonance region parameters
   subroutine read_rm_parameters(i, i_ER)
 
     character(80) :: rec ! ENDF-6 file record
@@ -944,13 +896,9 @@ contains
 
   end subroutine read_rm_parameters
 
-!$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$
-!
-! Read in unresolved resonance region parameters for the LRF = 1 option
-! (only fission widths are energy-dependent)
-!
-!$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$
 
+!> Read in unresolved resonance region parameters for the LRF = 1 option
+!! (only fission widths are energy-dependent)
   subroutine read_urr_slbw_parameters_lrf1(i, i_ER)
 
     character(80) :: rec ! ENDF-6 file record
@@ -1210,13 +1158,9 @@ contains
 
   end subroutine read_urr_slbw_parameters_lrf1
 
-!$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$
-!
-! Read in unresolved resonance region parameters for the LRF = 2 option
-! (allow energy-dependence for all parameters)
-!
-!$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$
 
+!> Read in unresolved resonance region parameters for the LRF = 2 option
+!! (allow energy-dependence for all parameters)
   subroutine read_urr_slbw_parameters_lrf2(i, i_ER)
 
     character(80) :: rec ! ENDF-6 file record
@@ -1331,13 +1275,9 @@ contains
 
   end subroutine read_urr_slbw_parameters_lrf2
 
-!$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$
-!
-! Check that the ZAID given in the ENDF-6 file is the same as that
-! given in the processed ACE file
-!
-!$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$
 
+!> Check that the ZAID given in the ENDF-6 file is the same as that
+!! given in the processed ACE file
   subroutine check_zaid(zaid_val, zaid_ref)
 
     integer :: zaid_val
@@ -1349,13 +1289,9 @@ contains
 
   end subroutine check_zaid
 
-!$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$
-!
-! Check that the AWR given in the ENDF-6 file is the same value as
-! that given in the processed ACE file
-!
-!$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$
 
+!> Check that the AWR given in the ENDF-6 file is the same value as
+!! that given in the processed ACE file
   subroutine check_mass(awr_val, awr_ref)
 
     real(8) :: awr_val
@@ -1367,12 +1303,8 @@ contains
 
   end subroutine check_mass
 
-!$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$
-!
-! Check that the Q-value is 0.0
-!
-!$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$
 
+!> Check that the Q-value is 0.0
   subroutine check_q_value(QX)
 
     real(8) :: QX
@@ -1382,12 +1314,8 @@ contains
 
  end subroutine check_q_value
 
-!$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$
-!
-! Check that resonance parameters are given in MF=2
-!
-!$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$
 
+!> Check that resonance parameters are given in MF=2
   subroutine check_parameters(lrp_val)
 
     integer :: lrp_val
@@ -1409,12 +1337,8 @@ contains
 
   end subroutine check_parameters
 
-!$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$
-!
-! Check that the given ENDF-6 file contains data for only a single isotope
-!
-!$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$
 
+!> Check that the given ENDF-6 file contains data for only a single isotope
   subroutine check_single_isotope(nis_val)
 
     integer :: nis_val
@@ -1425,12 +1349,8 @@ contains
 
   end subroutine check_single_isotope
 
-!$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$
-!
-! Check that the abundance of the isotope in the ENDF-6 file is unity
-!
-!$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$
 
+!> Check that the abundance of the isotope in the ENDF-6 file is unity
   subroutine check_abundance(abn_val)
 
     real(8) :: abn_val
@@ -1441,12 +1361,8 @@ contains
 
   end subroutine check_abundance
 
-!$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$
-!
-! Check that the treatment of average fission widths in the URR is supported
-!
-!$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$
 
+!> Check that the treatment of average fission widths in the URR is supported
   subroutine check_fission_widths(LFW)
 
     integer :: LFW
@@ -1464,13 +1380,9 @@ contains
 
   end subroutine check_fission_widths
 
-!$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$
-!
-! Check that the upper energy is greater than the lower and
-! that the number of resonance energy ranges is allowable
-!
-!$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$
 
+!> Check that the upper energy is greater than the lower and
+!! that the number of resonance energy ranges is allowable
   subroutine check_energy_ranges(num_ranges, e_low, e_high)
 
     integer :: num_ranges
@@ -1490,12 +1402,8 @@ contains
 
   end subroutine check_energy_ranges
 
-!$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$
-!
-! Check the channel and scattering radius flags
-!
-!$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$
 
+!> Check the channel and scattering radius flags
   subroutine check_radius_flags(nro_val, naps_val)
 
     integer :: nro_val
@@ -1533,12 +1441,8 @@ contains
 
   end subroutine check_radius_flags
 
-!$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$
-!
-! Check that the scattering radius is constant within a resonance energy range
-!
-!$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$
 
+!> Checks that the scattering radius is constant within a resonance energy range
   subroutine check_scattering_radius(ap_val, ap_ref)
 
     real(8) :: ap_val
@@ -1552,12 +1456,8 @@ contains
 
   end subroutine check_scattering_radius
 
-!$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$
-!
-! CHECK_L_NUMBER checks for the expected ordering of orbital quantum numbers
-!
-!$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$
 
+!> Checks for the expected ordering of orbital quantum numbers
   subroutine check_l_number(l_val, l_ref)
 
     integer :: l_val
@@ -1570,13 +1470,8 @@ contains
 
   end subroutine check_l_number
 
-!$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$
-!
-! CHECK_J_SIGN checks that the signs of the total angular momenta are all
-! positive
-!
-!$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$
 
+!> Checks that the signs of the total angular momenta are all positive
   subroutine check_j_sign(j_val)
 
     real(8) :: j_val
@@ -1587,5 +1482,6 @@ contains
     end if
 
   end subroutine check_j_sign
+
 
 end module URR_endf6

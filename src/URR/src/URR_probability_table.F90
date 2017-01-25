@@ -6,13 +6,9 @@ module URR_probability_table
   private
   public :: ProbabilityTable
 
-!$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$
-!
-! PROBABILITYTABLE is an object containing data for a single table
-! (i.e., one isotope, one temperature, one energy, multiple xs magnitudes)
-!
-!$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$
 
+!> Type containing data for a single probability table
+!! (i.e., one isotope, one temperature, one energy, multiple xs magnitudes)
   type ProbabilityTable
 
     type(Tally), allocatable :: t(:) ! total xs object
@@ -27,5 +23,6 @@ module URR_probability_table
     type(Tally) :: avg_t   ! infinite-dilute total xs object
 
   end type ProbabilityTable
+
 
 end module URR_probability_table

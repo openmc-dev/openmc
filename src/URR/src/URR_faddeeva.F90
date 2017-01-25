@@ -1,13 +1,10 @@
-module URR_faddeeva
+!>@brief Interfaces with C functions to evaluate the Faddeeva function
 
-!$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$
-!
-! NOTE: This module is a slightly modified and trimmed down version of the
-! math.F90 module taken from ClosedMC, July 2014
-! (https://github.com/cjosey/closedmc/tree/multipole).  Elements of
-! that module are taken from codes written at, and obtained from, ANL.
-!
-!$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$
+!> This is a slightly modified and trimmed down version of the
+!! math.F90 module taken from ClosedMC, July 2014
+!! (https://github.com/cjosey/closedmc/tree/multipole).  Elements of
+!! that module are taken from codes written at, and obtained from, ANL.
+module URR_faddeeva
 
   use URR_constants, only: ZERO, HALF, ONE, ONEI
   use ISO_C_BINDING
@@ -21,13 +18,9 @@ module URR_faddeeva
   ! Tabulated Faddeeva evaluations for use by QUICKW
   complex(8) :: w_tabulated(-1:60,-1:60)
   
-!$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$
-!
-! Evaluate the scaled complementary error function.  This
-! interfaces with the MIT C library
-!
-!$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$
-  
+
+!> Evaluates the scaled complementary error function.  This
+!! interfaces with the MIT C library.
   interface
     COMPLEX (C_DOUBLE_COMPLEX) FUNCTION faddeeva_w &
             (Z, RELERR) BIND(C, NAME='Faddeeva_w')
@@ -40,16 +33,12 @@ module URR_faddeeva
 
 contains
 
-!$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$
-!
-! QUICKW calculates the Faddeeva function, also known as the complex
-! probability integral, for complex arguments. For |z| < 6, it uses a six-point
-! interpolation scheme based on pre-tabulated data that is accurate to
-! O(10^-3). For |z| > 6, it uses a three-term asymptotic approximation that is
-! accurate to O(10^-6).
-!
-!$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$
 
+!> Calculates the Faddeeva function, also known as the complex probability
+!! integral, for complex arguments. For |z| < 6, it uses a six-point
+!! interpolation scheme based on pre-tabulated data that is accurate to
+!! O(10^-3). For |z| > 6, it uses a three-term asymptotic approximation that is
+!! accurate to O(10^-6).
   function quickw(z) result(w)
 
     complex(8), intent(in) :: z
@@ -125,12 +114,8 @@ contains
 
   end function quickw
 
-!$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$
-!
-! Calculate the Faddeeva (W) function on a 62 x 62 grid
-!
-!$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$
 
+!> Calculates the Faddeeva (W) function on a 62 x 62 grid
   subroutine tabulate_w()
 
     integer :: i ! real loop index
@@ -152,5 +137,6 @@ contains
     end do
 
   end subroutine tabulate_w
+
 
 end module URR_faddeeva

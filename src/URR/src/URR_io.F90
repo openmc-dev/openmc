@@ -14,12 +14,8 @@ module URR_io
 
 contains
 
-!$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$
-!
-! Read in pre-computed average URR cross sections needed for LSSF = 1 treatment
-!
-!$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$
 
+!> Reads in pre-computed average URR cross sections needed for LSSF=1 treatment
   subroutine read_avg_xs(i)
 
     logical :: file_exists ! does avg URR xs file exist?
@@ -87,12 +83,8 @@ contains
 
   end subroutine read_avg_xs
 
-!$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$
-!
-! Read in pre-generated URR probability tables
-!
-!$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$
 
+!> Reads in pre-generated URR probability tables
   subroutine read_prob_tables(i)
 
     logical :: file_exists ! does probability table file exist?
@@ -210,4 +202,5 @@ contains
 
   end subroutine read_prob_tables
   
+
 end module URR_io

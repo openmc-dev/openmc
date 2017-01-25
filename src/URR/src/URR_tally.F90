@@ -6,13 +6,8 @@ module URR_tally
   private
   public :: Tally
 
-!$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$
-!
-! Object containing data for a partial (or total) cross section magnitude value
-! in a probability table
-!
-!$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$
 
+!> Data for a probability table cross section tally
   type Tally
 
     real(8) :: xs          ! cross section value accumulator
@@ -37,12 +32,8 @@ module URR_tally
 
 contains
 
-!$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$
-!
-! Zero out the batch statistics and accumulators
-!
-!$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$
 
+!> Zeros out the batch statistics and accumulators
   subroutine flush_xs_stats(this)
 
     class(Tally), intent(inout) :: this ! cross section tally object
@@ -62,5 +53,6 @@ contains
     this % rel_unc     = ZERO
 
   end subroutine flush_xs_stats
+
 
 end module URR_tally

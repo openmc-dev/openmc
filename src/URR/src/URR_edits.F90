@@ -25,12 +25,8 @@ module URR_edits
 
 contains
 
-!$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$
-!
-! write abscissa-ordinate pairs to a text file
-!
-!$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$
 
+!> Write abscissa-ordinate pairs to a text file
   subroutine write_coords(unit_num, filename, x, y)
 
     integer :: unit_num ! unit number for output file
@@ -53,12 +49,8 @@ contains
 
   end subroutine write_coords
 
-!$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$
-!
-! write out user-requested pointwise, continuous-energy cross sections
-!
-!$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$
 
+!> Write out user-requested pointwise, continuous-energy cross sections
   subroutine write_xs()
 
     integer :: i      ! material index
@@ -259,13 +251,8 @@ contains
 
   end subroutine write_xs
 
-!$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$
-!
-! WRITE_ANGLE writes out the ACE file secondary angular distribution for
-! elastic scattering to a text file
-!
-!$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$
 
+!> Write out ACE format elastic secondary angular distribution data
   subroutine write_angle()
 
     type(Material), pointer :: mat => null() ! material pointer
@@ -364,13 +351,9 @@ contains
 
   end subroutine write_angle
   
-!$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$
-!
-! Generate realizations of level spacings by sampling the Wigner's Surmise
-! distribution
-!
-!$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$
 
+!> Generate realizations of level spacings by sampling the Wigner's Surmise
+!! distribution
   subroutine wigner_dist_samples(n)
 
     integer :: n ! number of samples
@@ -388,5 +371,6 @@ contains
          dble([(i, i = 1, n)]), D_vals(:) / D_mean)
 
   end subroutine wigner_dist_samples
+
 
 end module URR_edits

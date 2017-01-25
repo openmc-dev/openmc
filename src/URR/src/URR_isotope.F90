@@ -25,12 +25,7 @@ module URR_isotope
   public :: Isotope,&
             isotopes
 
-!$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$
-!
-! Object containing data for a single isotope with a URR that is to be processed
-!
-!$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$
-
+!> Type containing data and procedures for processing the URR of an isotope
   type Isotope
 
     real(8) :: AWR ! weight of nucleus in neutron masses
@@ -297,13 +292,9 @@ module URR_isotope
 
 contains
 
-!$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$
-!
-! Generate resonance parameters for independent realizations of a complete set
-! (ladder) of URR resonances
-!
-!$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$
 
+!> Generate resonance parameters for independent realizations of a complete set
+!! (ladder) of URR resonances
   subroutine resonance_ladder_realization(this)
 
     class(Isotope), intent(inout), target :: this ! isotope object
@@ -524,12 +515,8 @@ contains
 
   end subroutine resonance_ladder_realization
 
-!$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$
-!
-! Generate pointwise, continuous-energy cross section data in the URR
-!
-!$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$
 
+!> Generate pointwise, continuous-energy cross section data in the URR
   subroutine generate_pointwise_xs(this, T)
 
     class(Isotope), intent(inout) :: this ! isotope object
@@ -1106,13 +1093,9 @@ contains
 
   end subroutine generate_pointwise_xs
 
-!$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$
-!
-! Calculate unresolved resonance region cross sections, at a single energy,
-! on-the-fly from resonance parameters for a single realization
-!
-!$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$
 
+!> Calculate unresolved resonance region cross sections, at a single energy,
+!! on-the-fly from resonance parameters for a single realization
   subroutine fixed_realization_otf_xs(this, E, T, xs_in, xs_out)
 
     class(Isotope), intent(inout) :: this ! isotope object
@@ -1355,12 +1338,8 @@ contains
 
   end subroutine fixed_realization_otf_xs
 
-!$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$
-!
-! Generate probability tables for the URR
-!
-!$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$
 
+!> Generate URR probability tables
   subroutine generate_prob_tables(this, i_isotope)
 
     class(Isotope), intent(inout), target :: this ! isotope object
@@ -1878,12 +1857,8 @@ contains
 
   end subroutine generate_prob_tables
 
-!$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$
-!
-! Allocate variables for the resonance energy ranges
-!
-!$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$
 
+!> Allocate variables for the resonance energy ranges
   subroutine alloc_energy_range(this)
 
     class(Isotope), intent(inout) :: this ! isotope object
@@ -1901,12 +1876,8 @@ contains
 
   end subroutine alloc_energy_range
 
-!$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$
-!
-! Deallocate variables for the resonance energy ranges
-!
-!$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$
 
+!> Deallocate variables for the resonance energy ranges
   subroutine dealloc_energy_ranges(this)
 
     class(Isotope), intent(inout) :: this ! isotope object
@@ -1924,12 +1895,8 @@ contains
 
   end subroutine dealloc_energy_ranges
 
-!$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$
-!
-! Allocate URR resonance ensemble realizations
-!
-!$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$
 
+!> Allocate URR resonance ensemble realizations
   subroutine alloc_ensemble(this)
 
     class(Isotope), intent(inout) :: this ! isotope object
@@ -1962,12 +1929,8 @@ contains
 
   end subroutine alloc_ensemble
 
-!$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$
-!
-! Deallocate a URR resonance ensemble realization
-!
-!$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$
 
+!> Deallocate a URR resonance ensemble realization
   subroutine dealloc_ensemble(this)
 
     class(Isotope), intent(inout) :: this ! isotope object
@@ -2000,12 +1963,8 @@ contains
 
   end subroutine dealloc_ensemble
 
-!$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$
-!
-! Allocate probability tables for this isotope
-!
-!$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$
 
+!> Allocate probability tables for this isotope
   subroutine alloc_prob_tables(this)
 
     class(Isotope), intent(inout) :: this ! isotope object
@@ -2048,12 +2007,8 @@ contains
 
   end subroutine alloc_prob_tables
 
-!$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$
-!
-! Deallocate probability tables for this isotope
-!
-!$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$
 
+!> Deallocate probability tables for this isotope
   subroutine dealloc_prob_tables(this)
 
     class(Isotope), intent(inout) :: this ! isotope object
@@ -2076,12 +2031,8 @@ contains
 
   end subroutine dealloc_prob_tables
 
-!$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$
-!
-! Zero out statistics accumulators for an isotope's probability tables
-!
-!$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$
 
+!> Zero out statistics accumulators for an isotope's probability tables
   subroutine flush_prob_table_stats(this, i_E)
 
     class(Isotope), intent(inout) :: this ! isotope object
@@ -2107,12 +2058,8 @@ contains
 
   end subroutine flush_prob_table_stats
 
-!$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$
-!
-! Compute or set the channel radius depending on ENDF flags
-!
-!$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$
 
+!> Compute or set the channel radius depending on ENDF flags
   subroutine channel_radius(this, i_ER)
 
     class(Isotope), intent(inout) :: this ! isotope object
@@ -2178,13 +2125,8 @@ contains
   end subroutine channel_radius
 
 
-!$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$
-!
-! Allocate an NLS-length vector of NJS(l)-length vectors of NRS(l,J)-length
-! vectors of spin group resonances
-!
-!$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$
-
+!> Allocate an NLS-length vector of NJS(l)-length vectors of NRS(l,J)-length
+!! vectors of spin group resonances
   subroutine alloc_local_realization(this)
   
     class(Isotope), intent(inout) :: this ! isotope object
@@ -2212,13 +2154,9 @@ contains
 
 end subroutine alloc_local_realization
 
-!$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$
-!
-! Deallocate an NLS-length vector of NJS(l)-length vectors of NRS(l,J)-length
-! vectors of spin group resonances
-!
-!$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$
 
+!> Deallocate an NLS-length vector of NJS(l)-length vectors of NRS(l,J)-length
+!! vectors of spin group resonances
   subroutine dealloc_local_realization(this)
 
     class(Isotope), intent(inout) :: this ! isotope object
@@ -2247,12 +2185,8 @@ end subroutine alloc_local_realization
 
   end subroutine dealloc_local_realization
 
-!$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$
-!
-! Deallocate isotope object
-!
-!$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$
 
+!> Deallocate isotope object
   subroutine dealloc_isotope(this)
 
     class(Isotope), intent(inout) :: this ! isotope object
@@ -2336,18 +2270,13 @@ end subroutine alloc_local_realization
 
   end subroutine dealloc_isotope
   
-!$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$
-!
-! Calculate URR cross section values on-the-fly, generating a new realization
-! about each new E_n OR from pre-computed pointwise values reconstructed at
-! simulation initialization
-!
-!$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$
 
-! TODO: fix-up the RRR-URR energy crossover as in xs_otf; probably need
-! to utilize mlbw_resonances, slbw_resonances, in place of rm_resonances, where
-! appropriate
-
+!> Calculate URR cross section values on-the-fly, generating a new realization
+!! about each new E_n OR from pre-computed pointwise values reconstructed at
+!! simulation initialization
+!! @tTODO: fix-up the RRR-URR energy crossover as in xs_otf; probably need
+!! to utilize mlbw_resonances, slbw_resonances, in place of rm_resonances, where
+!! appropriate
   subroutine new_realization_otf_xs(this, E, T, xs_in, xs_out)
 
     class(Isotope), intent(inout) :: this ! isotope object
@@ -2587,12 +2516,8 @@ end subroutine alloc_local_realization
 
   end subroutine new_realization_otf_xs
 
-!$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$
-!
-! Calculate a URR cross section from pre-computed probability tables
-!
-!$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$
 
+!> Calculate a URR cross section from pre-computed probability tables
   subroutine prob_band_xs(this, E, T, xs_in, xs_out, r)
 
     class(Isotope), intent(inout) :: this ! isotope object
@@ -2774,13 +2699,9 @@ end subroutine alloc_local_realization
 
   end subroutine prob_band_xs
 
-!$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$
-!
-! Calculate a value for the G-function appearing in the NJOY-2012 form
-! of the MLBW resonance formalae
-!
-!$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$
 
+!> Calculate a value for the G-function appearing in the NJOY-2012 form
+!! of the MLBW resonance formalae
   function G_func(this, E_res, G_n, G_t, i_res) result(G_val)
 
     class(Isotope), intent(inout) :: this ! isotope pointer
@@ -2877,13 +2798,9 @@ end subroutine alloc_local_realization
 
   end function G_func
 
-!$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$
-!
-! Calculate a value for the H-function appearing in the NJOY-2012 form
-! of the MLBW resonance formalae
-!
-!$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$
 
+!> Calculate a value for the H-function appearing in the NJOY-2012 form
+!! of the MLBW resonance formalae
   function H_func(this, E_res, G_n, G_t, i_res) result(H_val)
 
     class(Isotope), intent(inout) :: this ! isotope pointer
@@ -2980,12 +2897,8 @@ end subroutine alloc_local_realization
 
   end function H_func
 
-!$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$
-!
-! Calculate hard sphere penetrability factors
-!
-!$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$
 
+!> Calculate hard sphere penetrability factors
   function penetration(L, rho) result(P)
 
     integer, intent(in) :: L ! current orbital quantum number
@@ -3024,12 +2937,8 @@ end subroutine alloc_local_realization
 
   end function penetration
 
-!$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$
-!
-! Calculate hard sphere phase shifts
-!
-!$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$
 
+!> Calculate hard sphere phase shifts
   function phase_shift(L, rho) result(phi)
 
     integer :: L    ! current orbital quantum number
@@ -3070,12 +2979,8 @@ end subroutine alloc_local_realization
 
   end function phase_shift
 
-!$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$
-!
-! Calculate resonance energy shift factors
-!
-!$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$
 
+!> Calculate resonance energy shift factors
   function energy_shift(L, rho) result(S)
 
     integer :: L    ! current orbital quantum number
@@ -3114,12 +3019,8 @@ end subroutine alloc_local_realization
 
   end function energy_shift
 
-!$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$
-!
-! Compute Doppler integral function, psi
-!
-!$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$
 
+!> Compute Doppler integral function, psi
   function psi(T, theta, x) result(psi_val)
 
     real(8)    :: T       ! temperature [K]
@@ -3155,12 +3056,8 @@ end subroutine alloc_local_realization
 
   end function psi
 
-!$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$
-!
-! Compute Doppler integral function, chi
-!
-!$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$
 
+!> Compute Doppler integral function, chi
   function chi(T, theta, x) result(chi_val)
 
     real(8)    :: T       ! temperature [K]
@@ -3198,12 +3095,8 @@ end subroutine alloc_local_realization
 
   end function chi
 
-!$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$
-!
-! Compute wavenumber in the center-of-mass reference frame
-!
-!$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$
 
+!> Compute wavenumber in the center-of-mass reference frame
   function wavenumber(A, E) result(k_val)
 
     real(8) :: A     ! atomic weight ratio
@@ -3215,13 +3108,9 @@ end subroutine alloc_local_realization
 
   end function wavenumber
 
-!$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$
-!
-! Add the contribution of potential scattering to the elastic and total cross
-! sections
-!
-!$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$
 
+!> Add the contribution of potential scattering to the elastic and total cross
+!! sections
   subroutine potential_xs(this, xs)
 
     class(Isotope), intent(in) :: this ! isotope object
@@ -3243,12 +3132,8 @@ end subroutine alloc_local_realization
 
   end subroutine potential_xs
 
-!$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$
-!
-! Add the single-history xs realization to the single-batch accumulator
-!
-!$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$
 
+!> Add the single-history xs realization to the single-batch accumulator
   subroutine accum_history(this, i_E, i_T)
 
     class(Isotope), intent(inout) :: this ! cross section object
@@ -3274,12 +3159,8 @@ end subroutine alloc_local_realization
 
   end subroutine accum_history
 
-!$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$
-!
-! Flushe the single-history probability table cross section values
-!
-!$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$
 
+!> Flush the single-history probability table cross section values
   subroutine flush_histories(this)
 
     class(Isotope), intent(inout) :: this ! isotope object
@@ -3298,12 +3179,8 @@ end subroutine alloc_local_realization
 
   end subroutine flush_histories
 
-!$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$
-!
-! Add the single-batch results to the overall accumulators
-!
-!$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$
 
+!> Add the single-batch results to the overall accumulators
   subroutine accum_batch(this, i_E)
 
     class(Isotope), intent(inout) :: this ! cross section object
@@ -3370,12 +3247,8 @@ end subroutine alloc_local_realization
 
   end subroutine accum_batch
 
-!$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$
-!
-! Compute batch-based means and standard errors of those means
-!
-!$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$
 
+!> Compute batch-based means and standard errors of those means
   subroutine statistics(this, i_bat_int)
 
     class(Isotope), intent(inout), target :: this ! cross section object
@@ -3457,13 +3330,9 @@ end subroutine alloc_local_realization
 
   end subroutine statistics
 
-!$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$
-!
-! Determine the energy of the highest-energy resolved resonance
-! region resonance for a given (l,J) spin sequence
-!
-!$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$
 
+!> Determine the energy of the highest-energy resolved resonance
+!! region resonance for a given (l,J) spin sequence
   function last_resolved_resonance_energy(this, l_val, J_val) result(E_val)
 
     class(Isotope), intent(in) :: this ! isotope object
@@ -3513,13 +3382,9 @@ end subroutine alloc_local_realization
 
   end function last_resolved_resonance_energy
 
-!$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$
-!
-! Find the index of the RRR resonance which we need to add the
-! contribution of to a URR xs
-!
-!$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$
 
+!> Find the index of the RRR resonance which we need to add the
+!! contribution of to a URR xs
   function resolved_resonance_index(this, l_val, J_val, n_rrr_res) result(i_res)
 
     class(Isotope), intent(in) :: this ! isotope object
@@ -3567,12 +3432,8 @@ end subroutine alloc_local_realization
 
   end function resolved_resonance_index
 
-!$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$
-!
-! Add the contribution from an additional resonance
-!
-!$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$
 
+!> Add the contribution from an additional resonance
   subroutine resonance_contribution(this, res, i_E, i_T)
 
     class(Isotope),  intent(inout) :: this ! isotope object
@@ -3593,12 +3454,8 @@ end subroutine alloc_local_realization
 
   end subroutine resonance_contribution
 
-!$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$
-!
-! Zero out probability table batch accumulators
-!
-!$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$
 
+!> Zero out probability table batch accumulators
   subroutine flush_batches(this)
 
     class(Isotope), intent(inout) :: this ! isotope object
@@ -3636,12 +3493,8 @@ end subroutine alloc_local_realization
 
   end subroutine flush_batches
 
-!$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$
-!
-! Add the URR resonance parameters for a single URR resonance to the realization
-!
-!$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$
 
+!> Add URR resonance parameters for a single URR resonance to the realization
   subroutine set_parameters(this, res, i_ens, i_l, i_J)
 
     class(Isotope),  intent(inout) :: this ! isotope object
@@ -3665,12 +3518,8 @@ end subroutine alloc_local_realization
 
   end subroutine set_parameters
 
-!$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$
-!
-! Get the URR resonance parameters for a single resonance
-!
-!$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$
 
+!> Get the URR resonance parameters for a single resonance
   subroutine get_parameters(this, res, i_res, i_l, i_J, i_ER)
 
     class(Isotope),  intent(inout) :: this ! isotope object
@@ -3769,12 +3618,8 @@ end subroutine alloc_local_realization
 
   end subroutine get_parameters
 
-!$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$
-!
-! Get the mean resonance parameters at an energy
-!
-!$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$
 
+!> Get the mean resonance parameters at an energy
   subroutine get_mean_parameters(this, E_res, i_l, i_J)
 
     class(Isotope), intent(inout) :: this ! isotope object
@@ -3825,14 +3670,10 @@ end subroutine alloc_local_realization
 
   end subroutine get_mean_parameters
 
-!$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$
-!
-! Interpolate the averaged, infinite-dilute URR cross sections computed via
-! Monte Carlo from mean resonance parameters (i.e., not the evaluator-supplied
-! File 3 background cross sections)
-!
-!$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$
 
+!> Interpolate the averaged, infinite-dilute URR cross sections computed via
+!! Monte Carlo from mean resonance parameters (i.e., not the evaluator-supplied
+!! File 3 background cross sections)
   subroutine interpolate_avg_xs(this, f, i_avg, avg_xs)
 
     class(Isotope), intent(in) :: this ! isotope object
@@ -3884,15 +3725,11 @@ end subroutine alloc_local_realization
 
   end subroutine interpolate_avg_xs
 
-!$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$
-!
-! Interpolate the evaluator-supplied ENDF-6 File 3 background and either add a
-! resonance component (LSSF = 0) or interpolate the computed average URR xs
-! value and then multiply the File 3 xs by a resonance component divided by
-! the average, which is a self-shielding factor (LSSF = 1)
-!
-!$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$
 
+!> Interpolate the evaluator-supplied ENDF-6 File 3 background and either add a
+!! resonance component (LSSF = 0) or interpolate the computed average URR xs
+!! value and then multiply the File 3 xs by a resonance component divided by
+!! the average, which is a self-shielding factor (LSSF = 1)
   subroutine self_shielding(this, xs)
 
     class(Isotope), intent(inout) :: this ! isotope object
@@ -4042,12 +3879,8 @@ end subroutine alloc_local_realization
 
   end subroutine self_shielding
 
-!$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$
-!
-! Add the resonance xs component to the evaluator-supplied background xs in MF3
-!
-!$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$
 
+!> Add the resonance xs component to the evaluator-supplied background xs in MF3
   subroutine add_mf3(this, xs)
 
     class(Isotope), intent(in) :: this ! isotope object
@@ -4172,12 +4005,8 @@ end subroutine alloc_local_realization
 
   end subroutine add_mf3
 
-!$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$
-!
-! Deallocate ENDF-6 File 3 evaluator-supplied background cross sections
-!
-!$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$
 
+!> Deallocate ENDF-6 File 3 evaluator-supplied background cross sections
   subroutine dealloc_mf3(this)
 
     class(Isotope), intent(inout) :: this ! isotope object
@@ -4193,12 +4022,8 @@ end subroutine alloc_local_realization
 
   end subroutine dealloc_mf3
 
-!$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$
-!
-! Sample the energy spacing between adjacent resonances
-!
-!$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$
 
+!> Sample the energy spacing between adjacent resonances
   subroutine level_spacing(this, res, i_l, i_J)
 
     class(Isotope), intent(inout) :: this ! isotope object
@@ -4240,14 +4065,10 @@ end subroutine alloc_local_realization
 
   end subroutine level_spacing
 
-!$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$
-!
-! Sample the channel partial widths at E_lambda when generating
-! a full resonance ensemble or at E_n when generating localized parameters for
-! an on-the-fly cross section calculation
-!
-!$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$
 
+!> Sample the channel partial widths at E_lambda when generating
+!! a full resonance ensemble or at E_n when generating localized parameters for
+!! an on-the-fly cross section calculation
   subroutine channel_widths(this, res, i_l, i_J)
 
     class(Isotope), intent(inout) :: this ! isotope object
@@ -4342,12 +4163,8 @@ end subroutine alloc_local_realization
 
   end subroutine channel_widths
 
-!$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$
-!
-! Sample resonance parameters for the next resonance added to the ladder
-!
-!$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$
 
+!> Sample resonance parameters for the next resonance added to the ladder
   subroutine resonance_parameters(this, res, i_l, i_J)
 
     class(Isotope), intent(inout) :: this ! isotope object
@@ -4361,13 +4178,9 @@ end subroutine alloc_local_realization
 
   end subroutine resonance_parameters
 
-!$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$
-!
-! Determine the number of resonances to include from the lth wave that
-! contribute to a URR cross section value
-!
-!$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$
 
+!> Determine the number of resonances to include from the lth wave that
+!! contribute to a URR cross section value
   function num_contributing_resonances(L) result(num_resonances)
 
     integer :: L              ! orbital quantum number
@@ -4391,12 +4204,8 @@ end subroutine alloc_local_realization
 
   end function num_contributing_resonances
 
-!$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$
-!
-! Calculate single-level Breit-Wigner cross sections at E_n
-!
-!$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$
 
+!> Calculate single-level Breit-Wigner cross sections
   subroutine slbw_xs(this, res)
 
     class(Isotope), intent(inout) :: this ! isotope object
@@ -4496,13 +4305,9 @@ end subroutine alloc_local_realization
 
   end subroutine slbw_xs
 
-!$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$
-!
-! Calculate a multi-level Breit-Wigner elastic scattering cross section and
-! single-level Breit-Wigner cross sections for other reactions at E_n
-!
-!$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$
 
+!> Calculate a multi-level Breit-Wigner elastic scattering cross section and
+!! single-level Breit-Wigner cross sections for other reactions at E_n
   subroutine mlbw_xs(this, res)
 
     class(Isotope), intent(inout) :: this ! isotope object
@@ -4611,12 +4416,8 @@ end subroutine alloc_local_realization
 
   end subroutine mlbw_xs
 
-!$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$
-!
-! Wrapper for the calculation of partial cross sections
-!
-!$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$
 
+!> Wrapper for the calculation of partial cross sections
   subroutine calc_xs(this, res)
 
     class(Isotope), intent(inout) :: this ! isotope object
@@ -4643,5 +4444,6 @@ end subroutine alloc_local_realization
     end select
 
   end subroutine calc_xs
+
 
 end module URR_isotope

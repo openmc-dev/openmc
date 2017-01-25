@@ -6,13 +6,8 @@ module URR_cross_sections
   public :: CrossSections,&
             xs_samples_tmp
 
-!$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$
-!
-! Elastic, capture, fission, competitive, and total cross sections at a single
-! energy
-!
-!$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$
-
+!> Elastic, capture, fission, competitive, and total cross sections at a single
+!! energy
   type CrossSections
 
     real(8) :: n
@@ -32,12 +27,8 @@ module URR_cross_sections
 
 contains
 
-!$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$
-!
-! Accumulate contribution from an additional resonance to all partials
-!
-!$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$
 
+!> Accumulate contribution from an additional resonance to all partials
   subroutine accum_resonance(this, xs_contribution)
 
     class(CrossSections), intent(inout) :: this ! all partial xs values
@@ -51,12 +42,8 @@ contains
 
   end subroutine accum_resonance
 
-!$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$
-!
-! Zero out partial xs values
-!
-!$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$
 
+!> Zero out partial xs values
   subroutine flush_cross_sections(this)
 
     class(CrossSections), intent(inout) :: this ! all partial xs values
@@ -68,5 +55,6 @@ contains
     this % t = ZERO
 
   end subroutine flush_cross_sections
+
 
 end module URR_cross_sections

@@ -16,13 +16,8 @@ module URR_resonance
             Resonance,&
             wigner_level_spacing
 
-!$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$
-!
-! Object containing information about a resonance that is contributing to the
-! cross section value at an energy grid point in the URR
-!
-!$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$
 
+!> Data for a resonance contributing to URR cross sections
   type Resonance
 
     ! sampled unresolved resonance parameters
@@ -41,12 +36,8 @@ module URR_resonance
 
   end type Resonance
 
-!$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$
-!
-! Breit-Wigner resonance object
-!
-!$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$
 
+!> Breit-Wigner resonance parameters
   type :: BreitWignerResonance
 
     real(8) :: E_lam ! resonance energy
@@ -59,12 +50,8 @@ module URR_resonance
 
   end type BreitWignerResonance
 
-!$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$
-!
-! Reich-Moore resonance object
-!
-!$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$
 
+!> Reich-Moore resonance parameters
   type, extends(BreitWignerResonance) :: ReichMooreResonance
 
     real(8) :: GFA ! fission width A
@@ -72,12 +59,8 @@ module URR_resonance
 
   end type ReichMooreResonance
 
-!$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$
-!
-! Vector of Breit-Wigner resonances
-!
-!$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$
 
+!> Vector of Breit-Wigner resonances
   type :: BreitWignerResonanceVector1D
 
     type(BreitWignerResonance), allocatable :: res(:)
@@ -89,12 +72,8 @@ module URR_resonance
 
   end type BreitWignerResonanceVector1D
 
-!$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$
-!
-! Vector of Reich-Moore resonances
-!
-!$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$
 
+!> Vector of Reich-Moore resonances
   type :: ReichMooreResonanceVector1D
 
     type(ReichMooreResonance), allocatable :: res(:)
@@ -106,37 +85,25 @@ module URR_resonance
 
   end type ReichMooreResonanceVector1D
 
-!$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$
-!
-! Vector of length NJS(l) containing a vector of NRS(l,J) Breit-Wigner
-! resonances for each J(l)
-!
-!$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$
 
+!> Vector of length NJS(l) containing a vector of NRS(l,J) Breit-Wigner
+!! resonances for each J(l)
   type :: BreitWignerResonanceVector2D
 
     type(BreitWignerResonanceVector1D), allocatable :: J(:)
 
   end type BreitWignerResonanceVector2D
 
-!$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$
-!
-! One element of a linked list of Breit-Wigner resonances
-!
-!$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$
 
+!> One element of a linked list of Breit-Wigner resonances
   type, extends(BreitWignerResonance) :: BreitWignerResonanceElement
 
     type(BreitWignerResonanceElement), pointer :: next => null() ! next resonance in list
 
   end type BreitWignerResonanceElement
 
-!$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$
-!
-! Linked list object containing Breit-Wigner resonances
-!
-!$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$
 
+!> Linked list object containing Breit-Wigner resonances
   type BreitWignerResonanceList
 
     type(BreitWignerResonanceElement) :: first ! first resonance
@@ -148,13 +115,9 @@ module URR_resonance
 
   end type BreitWignerResonanceList
 
-!$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$
-!
-! Vector of length NJS(l) containing a linked list of NRS(l,J) Breit-Wigner
-! resonances for each J(l)
-!
-!$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$
 
+!> Vector of length NJS(l) containing a linked list of NRS(l,J) Breit-Wigner
+!! resonances for each J(l)
   type BreitWignerResonanceListVector1D
 
     type(BreitWignerResonanceList), allocatable :: J(:)
@@ -163,12 +126,8 @@ module URR_resonance
 
 contains
 
-!$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$
-!
-! Allocate a vector of Breit-Wigner resonances
-!
-!$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$
 
+!> Allocates a vector of Breit-Wigner resonances
   subroutine alloc_bwresonance_vec(this, NRS)
 
     class(BreitWignerResonanceVector1D), intent(inout) :: this ! resonance vector
@@ -178,12 +137,8 @@ contains
 
   end subroutine alloc_bwresonance_vec
 
-!$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$
-!
-! Allocate a vector of Reich-Moore resonances
-!
-!$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$
 
+!> Allocates a vector of Reich-Moore resonances
   subroutine alloc_rmresonance_vec(this, NRS)
 
     class(ReichMooreResonanceVector1D), intent(inout) :: this ! resonance vector
@@ -193,12 +148,8 @@ contains
 
   end subroutine alloc_rmresonance_vec
 
-!$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$
-!
-! Deallocate a vector of Breit-Wigner resonances
-!
-!$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$
 
+!> Deallocates a vector of Breit-Wigner resonances
   subroutine dealloc_bwresonance_vec(this)
 
     class(BreitWignerResonanceVector1D), intent(inout) :: this ! resonance vector
@@ -207,12 +158,8 @@ contains
 
   end subroutine dealloc_bwresonance_vec
 
-!$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$
-!
-! Deallocate a vector of Reich-Moore resonances
-!
-!$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$
 
+!> Deallocates a vector of Reich-Moore resonances
   subroutine dealloc_rmresonance_vec(this)
 
     class(ReichMooreResonanceVector1D), intent(inout) :: this ! resonance vector
@@ -221,12 +168,8 @@ contains
 
   end subroutine dealloc_rmresonance_vec
 
-!$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$
-!
-! Deallocate a linked list of Breit-Wigner resonances
-!
-!$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$
 
+!> Deallocates a linked list of Breit-Wigner resonances
   subroutine dealloc_bwresonance_list(this)
 
     class(BreitWignerResonanceList), target, intent(inout) :: this ! resonance element
@@ -255,12 +198,8 @@ contains
 
   end subroutine dealloc_bwresonance_list
 
-!$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$
-!
-! Sample the Wigner distribution for level spacings
-!
-!$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$
 
+!> Samples the Wigner distribution for level spacings
   function wigner_level_spacing(D_avg, prn) result(D_samp)
 
     real(8) :: D_avg  ! mean level spacing
@@ -271,5 +210,6 @@ contains
     D_samp = D_avg * sqrt(-FOUR * log(prn) / PI)
 
   end function wigner_level_spacing
+
 
 end module URR_resonance

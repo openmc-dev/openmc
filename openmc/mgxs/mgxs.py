@@ -4476,7 +4476,7 @@ class ScatterMatrixXS(MatrixMGXS):
                                     string += '\t' + template.format('',
                                                                      in_group,
                                                                      out_group)
-                                    string += '{:.2e} +/- {1:.2e}%'.format(
+                                    string += '{1:.2e} +/- {1:.2e}%'.format(
                                         average_xs[pol, azi, in_group - 1,
                                                    out_group - 1],
                                         rel_err_xs[pol, azi, in_group - 1,
@@ -4489,7 +4489,7 @@ class ScatterMatrixXS(MatrixMGXS):
                     for in_group in range(1, self.num_groups + 1):
                         for out_group in range(1, self.num_groups + 1):
                             string += template.format('', in_group, out_group)
-                            string += '{:.2e} +/- {1:.2e}%'.format(
+                            string += '{1:.2e} +/- {1:.2e}%'.format(
                                 average_xs[in_group - 1, out_group - 1],
                                 rel_err_xs[in_group - 1, out_group - 1])
                             string += '\n'

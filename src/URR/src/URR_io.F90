@@ -1,6 +1,5 @@
 module URR_io
 
-  use URR_constants, only: NUM_AVG_XS_GRID
   use URR_error,     only: exit_status,&
                            log_message,&
                            EXIT_FAILURE,&
@@ -50,27 +49,52 @@ contains
     open(unit=in,&
          file=trim(path_avg_xs)//trim(adjustl(zaid_str))//'-avg-urr-xs.dat')
 
-10  format(A80)
-    read(in, 10) rec!TODO: read and write meaningful diagnostic data
+10  format(A255)
+    ! ENDF-6 filepath
     read(in, 10) rec
-    read(in, 10) rec
-    read(in, 10) rec
-    read(in, 10) rec
-    read(in, 10) rec
-    read(in, 10) rec
+    
+    ! resonance formalism
     read(in, 10) rec
 
-    ! read column labels
+    ! number of contributing s-wave resonances
+    read(in, 10) rec
+
+    ! number of contributing p-wave resonances
+    read(in, 10) rec
+
+    ! number of contributing d-wave resonances
+    read(in, 10) rec
+
+    ! number of contributing f-wave resonances
+    read(in, 10) rec
+
+    ! model competitive resonance structure
+    read(in, 10) rec
+
+    ! parameter energy dependence
+    read(in, 10) rec
+
+    ! Faddeeva function evaluation
+    read(in, 10) rec
+
+    ! target tolerance (1sigma/mean) for averaged partial cross sections
+    read(in, 10) rec
+
+    ! number of energies
+    read(in, 10) rec
+    read(rec(10:80), '(i71)') isotopes(i) % nE_tabs
+    isotopes(i) % num_avg_xs_grid = isotopes(i) % nE_tabs
+
+    ! column labels
     read(in, 10) rec
 
     ! allocate average xs grids
-    isotopes(i) % num_avg_xs_grid = NUM_AVG_XS_GRID
-    allocate(isotopes(i) % E_avg_xs(NUM_AVG_XS_GRID))
-    allocate(isotopes(i) % avg_xs(NUM_AVG_XS_GRID))
+    allocate(isotopes(i) % E_avg_xs(isotopes(i) % num_avg_xs_grid))
+    allocate(isotopes(i) % avg_xs(isotopes(i) % num_avg_xs_grid))
 
-20  format(6ES13.6)
+20  format(6ES24.16)
     ! read in average xs values
-    do ir = 1, NUM_AVG_XS_GRID
+    do ir = 1, isotopes(i) % num_avg_xs_grid
       read(in, 20)&
            isotopes(i) % E_avg_xs(ir),&
            isotopes(i) % avg_xs(ir) % t,&
@@ -79,6 +103,9 @@ contains
            isotopes(i) % avg_xs(ir) % f,&
            isotopes(i) % avg_xs(ir) % x
     end do
+
+    ! read max 1sigma/mean values
+    read(in, *) rec
 
     close(in)
 
@@ -94,9 +121,9 @@ contains
     integer :: i_T           ! temperature index
     integer :: i_b           ! probability band index
     integer :: tab_unit = 99 ! tables output file unit
-    character(7)   :: readable ! is probability table file readable?
-    character(6)   :: zaid_str ! ZAID number as a string
-    character(120) :: rec      ! file record
+    character(7) :: readable ! is probability table file readable?
+    character(6) :: zaid_str ! ZAID number as a string
+    character(:), allocatable :: rec ! file record
 
     write(zaid_str, '(i6)') isotopes(i) % ZAI
 
@@ -117,17 +144,26 @@ contains
     open(unit = tab_unit, file =&
          trim(path_prob_tables)//trim(adjustl(zaid_str))//'-urr-tables.dat')
 
-10  format(A120)
+10  format(A255)
     ! ENDF-6 filepath
     read(tab_unit, 10) rec
     
     ! resonance formalism
     read(tab_unit, 10) rec
-     
-    ! number of s, p, d, f wave resonances
+
+    ! number of contributing s-wave resonances
     read(tab_unit, 10) rec
 
-    ! structured competitive cross section?
+    ! number of contributing p-wave resonances
+    read(tab_unit, 10) rec
+
+    ! number of contributing d-wave resonances
+    read(tab_unit, 10) rec
+
+    ! number of contributing f-wave resonances
+    read(tab_unit, 10) rec
+
+    ! model competitive resonance structure
     read(tab_unit, 10) rec
 
     ! parameter energy dependence
@@ -136,7 +172,7 @@ contains
     ! Faddeeva function evaluation
     read(tab_unit, 10) rec
 
-    ! averaged partial cross section 1sigma SEM tolerance
+    ! target tolerance (1sigma/mean) for averaged partial cross sections
     read(tab_unit, 10) rec
 
     ! number of energies
@@ -170,11 +206,11 @@ contains
       do i_T = 1, isotopes(i) % nT_tabs
         ! read energy        
         read(tab_unit, 10) rec
-        read(rec(14:26), '(es13.6)') isotopes(i) % E_tabs(i_E)
+        read(rec(25:48), '(es24.16)') isotopes(i) % E_tabs(i_E)
 
         ! read temperature
         read(tab_unit, 10) rec
-        read(rec(14:26), '(es13.6)') isotopes(i) % T_tabs(i_T)
+        read(rec(25:48), '(es24.16)') isotopes(i) % T_tabs(i_T)
 
         ! read column labels
         read(tab_unit, 10) rec
@@ -182,7 +218,7 @@ contains
         ! read cross sections
         do i_b = 1, isotopes(i) % n_bands
           read(tab_unit, 10) rec
-          read(rec(27:104), '(6es13.6)')&
+          read(rec(49:192), '(6es24.16)')&
                isotopes(i) % prob_tables(i_E, i_T) % t(i_b) % cnt_mean,&
                isotopes(i) % prob_tables(i_E, i_T) % t(i_b) % xs_mean,&
                isotopes(i) % prob_tables(i_E, i_T) % n(i_b) % xs_mean,&
@@ -191,10 +227,16 @@ contains
                isotopes(i) % prob_tables(i_E, i_T) % x(i_b) % xs_mean
         end do
 
-        ! read average cross sections
+        ! read number of batches
         read(tab_unit, 10) rec
 
-        ! read 1sigma SEM values
+        ! read mean cross sections
+        read(tab_unit, 10) rec
+
+        ! read 1sigma values
+        read(tab_unit, 10) rec
+
+        ! read 1sigma/mean values
         read(tab_unit, 10) rec
 
       end do

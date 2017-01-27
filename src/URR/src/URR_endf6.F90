@@ -54,6 +54,7 @@ contains
     integer :: NS ! record number
 
     filename = trim(adjustl(filename_tmp))
+
     inquire(file = trim(path_endf_files)//filename, &
       & exist = file_exists, read = readable)
     if (.not. file_exists) then

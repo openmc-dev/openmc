@@ -3276,7 +3276,8 @@ contains
 
       ! Check that a path to ENDF data is specified
       if (check_for_node(settings_node, "endf_6_filepath")) then
-        call get_node_value(settings_node, "endf_6_filepath", URR_path_endf_files)
+        call get_node_value(settings_node, "endf_6_filepath", temp_str)
+        URR_path_endf_files = trim(adjustl(temp_str))
       else
         call fatal_error('Specify path to ENDF-6 data files for URR treatment&
              & via endf_6_filepath in urr.xml')
@@ -3284,7 +3285,8 @@ contains
 
       ! Check that a path to averaged URR cross section values is specified
       if (check_for_node(settings_node, "avg_xs_filepath")) then
-        call get_node_value(settings_node, "avg_xs_filepath", URR_path_avg_xs)
+        call get_node_value(settings_node, "avg_xs_filepath", temp_str)
+        URR_path_avg_xs = trim(adjustl(temp_str))
       else
         call fatal_error('Specify path to averaged URR cross section data files&
              & via avg_xs_filepath in urr.xml')
@@ -3429,7 +3431,8 @@ contains
 
           ! Check that an ENDF data file is given
           if (check_for_node(isotope_node, 'endf_6_file')) then
-            call get_node_value(isotope_node, 'endf_6_file', URR_endf_filenames(i))
+            call get_node_value(isotope_node, 'endf_6_file', temp_str)
+            URR_endf_filenames(i) = trim(adjustl(temp_str))
           else          
             call fatal_error('No ENDF-6 data file specified for isotope ' &
                // trim(to_str(i)) // ' in urr.xml file')
@@ -3568,7 +3571,8 @@ contains
                & probability table generation parameters specified in urr.xml&
                & are being ignored.')
           if (check_for_node(prob_table_node, 'filepath')) then
-            call get_node_value(prob_table_node, 'filepath', URR_path_prob_tables)
+            call get_node_value(prob_table_node, 'filepath', temp_str)
+            URR_path_prob_tables = trim(adjustl(temp_str))
           else
             call fatal_error('Must specify path to probability table files &
                  &in urr.xml')

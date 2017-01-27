@@ -21,9 +21,6 @@ module URR_constants
   real(8), parameter :: K_BOLTZMANN  = 8.6173324e-11_8 ! Boltzmann constant in MeV/K
   real(8), parameter :: C_1 = sqrt(TWO * M_NEUTRON_eV) / HBAR_C * 1.0e1_8 ! constant appearing in SLBW equations
 
-  ! Number of gridpoints for the average URR cross section grids
-  integer, parameter :: NUM_AVG_XS_GRID = 16
-
   ! Lower cross section cutoff threshold value [b]
   real(8), parameter :: XS_CUTOFF = 1.0e-14_8
 

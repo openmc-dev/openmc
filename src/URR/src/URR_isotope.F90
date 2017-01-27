@@ -1853,20 +1853,28 @@ contains
                    ptable % x(i_band) % xs_mean
             end if
           end do
-          write(tab_unit,'(2A24,6ES24.16)')&
-               'Batches', 'Mean [b]', ONE,&
+          write(tab_unit,'(A24,I24)') 'Batches', i_b
+          write(tab_unit,'(24X,A24,24X,5ES24.16)')&
+               'Mean [b]',&
                ptable % avg_t % xs_mean,&
                ptable % avg_n % xs_mean,&
                ptable % avg_g % xs_mean,&
                ptable % avg_f % xs_mean,&
                ptable % avg_x % xs_mean
-          write(tab_unit,'(I24,A24,6ES24.16)')&
-               i_b, '1sigma', ZERO,&
+          write(tab_unit,'(24X,A24,24X,5ES24.16)')&
+               '1sigma [b]',&
                ptable % avg_t % xs_sem,&
                ptable % avg_n % xs_sem,&
                ptable % avg_g % xs_sem,&
                ptable % avg_f % xs_sem,&
                ptable % avg_x % xs_sem
+          write(tab_unit,'(24X,A24,24X,5ES24.16)')&
+               '1sigma/Mean',&
+               ptable % avg_t % rel_unc,&
+               ptable % avg_n % rel_unc,&
+               ptable % avg_g % rel_unc,&
+               ptable % avg_f % rel_unc,&
+               ptable % avg_x % rel_unc
         end do
       end if
 
@@ -1883,6 +1891,17 @@ contains
       end if
 
     end do ENERGY_LOOP
+
+    ! write max 1sigma/mean values
+    if (write_avg_xs) then
+      write(avg_unit, '(A24,5ES24.16)')&
+           'Max 1sigma/Mean',&
+           maxval(this % prob_tables(:, 1) % avg_t % rel_unc),&
+           maxval(this % prob_tables(:, 1) % avg_n % rel_unc),&
+           maxval(this % prob_tables(:, 1) % avg_g % rel_unc),&
+           maxval(this % prob_tables(:, 1) % avg_f % rel_unc),&
+           maxval(this % prob_tables(:, 1) % avg_x % rel_unc)
+    end if
 
     if (write_prob_tables) close(tab_unit)
     if (write_avg_xs) close(avg_unit)

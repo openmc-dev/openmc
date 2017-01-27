@@ -2,8 +2,12 @@ module error
 
   use, intrinsic :: ISO_FORTRAN_ENV
   use constants
-
   use global
+
+  ! PURXS API
+  use URR_error, only: URR_EXIT_SUCCESS => EXIT_SUCCESS,&
+                       URR_EXIT_FAILURE => EXIT_FAILURE,&
+                       URR_EXIT_WARNING => EXIT_WARNING
 
 #ifdef MPI
   use mpi
@@ -162,5 +166,22 @@ contains
 #endif
 
   end subroutine fatal_error
+
+  subroutine URR_error_handler(err_code)
+
+    integer, intent(in) :: err_code
+
+    select case(err_code)
+    case(URR_EXIT_SUCCESS)
+      return
+    case(URR_EXIT_FAILURE)
+      call fatal_error('PURXS FATAL ERROR')
+    case(URR_EXIT_WARNING)
+      call warning('PURXS WARNING')
+    case default
+      continue
+    end select
+
+  end subroutine URR_error_handler
 
 end module error

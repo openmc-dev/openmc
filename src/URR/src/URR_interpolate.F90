@@ -1,7 +1,6 @@
 module URR_interpolate
 
-  use URR_openmc_wrapper, only: prn,&
-       fatal_error
+  use URR_openmc_wrapper, only: prn
   use URR_constants, only: ZERO,&
                            ONE,&
                            HISTOGRAM,&
@@ -13,6 +12,8 @@ module URR_interpolate
                            SQRT_LOG,&
                            STATISTICAL,&
                            LOW_NEIGHBOR
+  use URR_error, only: exit_status,&
+                       EXIT_FAILURE
 
   implicit none
   private
@@ -68,7 +69,7 @@ contains
       factor = ZERO
 
     case default
-      call fatal_error('Interpolation scheme not recognized')
+      call exit_status(EXIT_FAILURE, 'Interpolation scheme not recognized')
 
     end select
 
@@ -113,7 +114,7 @@ contains
       val = val_low
 
     case default
-      call fatal_error('Interpolation scheme not recognized')
+      call exit_status(EXIT_FAILURE, 'Interpolation scheme not recognized')
 
     end select
 

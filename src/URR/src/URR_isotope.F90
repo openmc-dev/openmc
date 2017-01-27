@@ -1,13 +1,18 @@
 module URR_isotope
 
-  use URR_openmc_wrapper
   use URR_constants!TODO
   use URR_cross_sections,    only: CrossSections,&
                                    xs_samples_tmp
+  use URR_error,             only: EXIT_SUCCESS,&
+                                   EXIT_FAILURE,&
+                                   ERROR,&
+                                   exit_status,&
+                                   log_message
   use URR_faddeeva,          only: faddeeva_w,&
                                    quickw
   use URR_interpolate,       only: interp_factor,&
                                    interpolate
+  use URR_openmc_wrapper,    only: ListInt, ListReal, master, prn, binary_search
   use URR_probability_table, only: ProbabilityTable
   use URR_resonance,         only: BreitWignerResonanceListVector1D,&
                                    BreitWignerResonanceVector1D,&
@@ -582,9 +587,10 @@ contains
       if (i_list == this % E_tmp % size()) exit
       E_0 = this % E_tmp % get_item(i_list)
       E_1 = this % E_tmp % get_item(i_list+1)
-      if (E_0 > E_1)&
-           call fatal_error('Pointwise URR energy grid not monotonically&
-             & increasing')
+      if (E_0 > E_1) then
+        call exit_status(EXIT_FAILURE, 'Pointwise URR energy grid not monotonically increasing')
+        return
+      end if
       if ((E_0 == E_1)&
            .or. (E_0 > E_last)&
            .or. (E_0 < this % EL(this % i_urr))) then
@@ -1127,9 +1133,14 @@ contains
     if (i_realization_user == 0) then
       ! random realization
       i_realization = 1 + floor(prn() * num_urr_realizations)
-      if (i_realization < 1) call fatal_error('i_realization is sampled to be < 1')
-      if (i_realization > num_urr_realizations)&
-           call fatal_error('i_realization is sampled to be > num_urr_realizations')
+      if (i_realization < 1) then
+        call exit_status(EXIT_FAILURE, 'i_realization is sampled to be < 1')
+        return
+      end if
+      if (i_realization > num_urr_realizations) then
+        call exit_status(EXIT_FAILURE, 'i_realization is sampled to be > num_urr_realizations')
+        return
+      end if
 
     else
       ! user-specified realization
@@ -1332,7 +1343,8 @@ contains
       xs_out % t = xs_out % n + xs_out % g + xs_out % f + xs_out % x
 
     else
-      call fatal_error('ENDF-6 LSSF not allowed - must be 0 or 1')
+      call exit_status(EXIT_FAILURE, 'ENDF-6 LSSF not allowed - must be 0 or 1')
+      return
 
     end if
 
@@ -1348,7 +1360,7 @@ contains
     type(ProbabilityTable), pointer :: ptable ! prob. table pointer
     type(Resonance) :: res ! resonance object
     type(CrossSections) :: xs_potential ! potential cross sections object
-    character(6)  :: zaid_str ! ZAID number as a string
+    character(6) :: zaid_str ! ZAID number as a string
     integer :: i_b    ! batch index
     integer :: i_band ! probability band index
     integer :: i_E    ! energy grid index
@@ -1373,41 +1385,63 @@ contains
 
     write(zaid_str, '(I6)') this % ZAI
     if (master)&
-      write(*,*) 'Generating probability tables for ZAID = '//&
+      write(*,*) 'Generating probability tables for ZA '//&
       trim(adjustl(zaid_str))
 
     if (write_prob_tables) then
-      open(unit = tab_unit, file = trim(adjustl(zaid_str))//'-urr-tables.dat')
-      write(tab_unit, '("ENDF-6 Path:")', advance='no')
+      open(unit = tab_unit, file = trim(adjustl(zaid_str))//'-prob-tables.dat')
+      write(tab_unit, '("ENDF-6 File:")', advance='no')
       write(tab_unit, *) trim(adjustl(path_endf_files))//trim(adjustl(endf_filenames(i_isotope)))
-      write(tab_unit, '("Resonance Formalism:",i2)') formalism
-      write(tab_unit, '("s, p, d, f Resonances:",1x,4i3)')&
-           num_l_waves(1), num_l_waves(2), num_l_waves(3), num_l_waves(4)
-      write(tab_unit, '("Competitive Reaction Structure:",L2)') competitive_structure
-      write(tab_unit, '("Parameter Energy Dependence &
-           &(1-neutron, 2-resonance):",i2)') parameter_energy_dependence
-      write(tab_unit, '("Faddeeva Evaluation:",i2)') faddeeva_method
-      write(tab_unit, '("Target Relative Tolerance on All Avg. Partial xs:",es13.6)') rel_err_tolerance_avg_xs
-      write(tab_unit, '("Energies:",i7)') this % nE_tabs
-      write(tab_unit, '("Temperatures:",i3)') this % nT_tabs
-      write(tab_unit, '("Bands:",i10)') this % n_bands
+      write(tab_unit, '("Resonance Formalism:")', advance='no')
+      write(tab_unit, *) get_formalism_name(formalism)
+      write(tab_unit, '("Contributing s-wave Resonances:")', advance='no')
+      write(tab_unit, *) num_l_waves(1)
+      write(tab_unit, '("Contributing p-wave Resonances:")', advance='no')
+      write(tab_unit, *) num_l_waves(2)
+      write(tab_unit, '("Contributing d-wave Resonances:")', advance='no')
+      write(tab_unit, *) num_l_waves(3)
+      write(tab_unit, '("Contributing f-wave Resonances:")', advance='no')
+      write(tab_unit, *) num_l_waves(4)
+      write(tab_unit, '("Model Competitive Reaction Resonance Structure:",L2)') competitive_structure
+      write(tab_unit, '("Parameter Energy Dependence):")', advance='no')
+      write(tab_unit, *) get_energy_dependence(parameter_energy_dependence)
+      write(tab_unit, '("Faddeeva Evaluation:")', advance='no')
+      write(tab_unit, *) get_faddeeva_method(faddeeva_method)
+      write(tab_unit, '("Target Relative Tolerance on Average Partial Cross Sections:")', advance='no')
+      write(tab_unit, *) rel_err_tolerance_avg_xs
+      write(tab_unit, '("Energies:")', advance='no')
+      write(tab_unit, *) this % nE_tabs
+      write(tab_unit, '("Temperatures:")', advance='no')
+      write(tab_unit, *) this % nT_tabs
+      write(tab_unit, '("Bands:")', advance='no')
+      write(tab_unit, *) this % n_bands
     end if
 
     if (write_avg_xs) then
       open(unit = avg_unit, file = trim(adjustl(zaid_str))//'-avg-urr-xs.dat')
-      write(avg_unit, '("ENDF-6 Path:")', advance='no')
+      write(avg_unit, '("ENDF-6 File:")', advance='no')
       write(avg_unit, *) trim(adjustl(path_endf_files))//trim(adjustl(endf_filenames(i_isotope)))
-      write(avg_unit, '("Resonance Formalism:",i2)') formalism
-      write(avg_unit, '("s, p, d, f Resonances:",1x,4i3)')&
-           num_l_waves(1), num_l_waves(2), num_l_waves(3), num_l_waves(4)
-      write(avg_unit, '("Competitive Reaction Structure:",L2)') competitive_structure
-      write(avg_unit, '("Parameter Energy Dependence &
-           &(1-neutron, 2-resonance):",i2)') parameter_energy_dependence
-      write(avg_unit, '("Faddeeva Evaluation:",i2)') faddeeva_method
-      write(avg_unit, '("Target Relative Tolerance on All Avg. Partial xs:",ES13.6)') rel_err_tolerance_avg_xs
-      write(avg_unit, '("Energies:",i3)') this % nE_tabs
-      write(avg_unit, '(A13,A13,A13,A13,A13,A13)') &
-           'energy [eV]', 'total', 'elastic', 'capture', 'fission','competitive'
+      write(avg_unit, '("Resonance Formalism:")', advance='no')
+      write(avg_unit, *) get_formalism_name(formalism)
+      write(avg_unit, '("Contributing s-wave Resonances:")', advance='no')
+      write(avg_unit, *) num_l_waves(1)
+      write(avg_unit, '("Contributing p-wave Resonances:")', advance='no')
+      write(avg_unit, *) num_l_waves(2)
+      write(avg_unit, '("Contributing d-wave Resonances:")', advance='no')
+      write(avg_unit, *) num_l_waves(3)
+      write(avg_unit, '("Contributing f-wave Resonances:")', advance='no')
+      write(avg_unit, *) num_l_waves(4)
+      write(avg_unit, '("Model Competitive Reaction Resonance Structure:",L2)') competitive_structure
+      write(avg_unit, '("Parameter Energy Dependence):")', advance='no')
+      write(avg_unit, *) get_energy_dependence(parameter_energy_dependence)
+      write(avg_unit, '("Faddeeva Evaluation:")', advance='no')
+      write(avg_unit, *) get_faddeeva_method(faddeeva_method)
+      write(avg_unit, '("Target Relative Tolerance on Average Partial Cross Sections:")', advance='no')
+      write(avg_unit, *) rel_err_tolerance_avg_xs
+      write(avg_unit, '("Energies:")', advance='no')
+      write(avg_unit, *) this % nE_tabs
+      write(avg_unit, '(6A24)')&
+           'Energy [eV]', 'Total [b]', 'Elastic [b]', 'Capture [b]', 'Fission [b]','Competitive [b]'
     end if
 
     ! loop over energy mesh
@@ -1624,9 +1658,10 @@ contains
                 end if
               end if
             end if
-            if (this % prob_tables(i_E, i_T) % avg_f % xs < ZERO)&
-                 call fatal_error('Negative fission xs encountered')
-
+            if (this % prob_tables(i_E, i_T) % avg_f % xs < ZERO) then
+              call exit_status(EXIT_FAILURE, 'Negative fission xs encountered')
+              return
+            end if
             ! use MF3 competitive cross section if requested
             if (background_xs_treatment == FALSE) then
               continue
@@ -1653,10 +1688,9 @@ contains
                 end if
               end if
             end if
-    
+
             ! set negative competitive xs to zero
             if (this % prob_tables(i_E, i_T) % avg_x % xs < ZERO) then
-              call fatal_error('Negative competitive xs encountered')
               this % prob_tables(i_E, i_T) % avg_t % xs &
                    = this % prob_tables(i_E, i_T) % avg_t % xs &
                    + abs(this % prob_tables(i_E, i_T) % avg_x % xs)
@@ -1784,14 +1818,14 @@ contains
                this % E_tabs(i_E), ' eV'
         do i_T = 1, this % nT_tabs
           this % T = this % T_tabs(i_T)
-          write(tab_unit, '(A13,ES13.6)') 'E [eV]', this % E_tabs(i_E)
-          write(tab_unit, '(A13,ES13.6)') 'T [K]', this % T
-          write(tab_unit, '(8A13)') 'lower [b]', 'upper [b]',&
-               'prob', 'total', 'elastic', 'capture', 'fission', 'competitive'
+          write(tab_unit, '(A24,ES24.16)') 'E [eV]', this % E_tabs(i_E)
+          write(tab_unit, '(A24,ES24.16)') 'T [K]', this % T
+          write(tab_unit, '(8A24)') 'Min Total [b]', 'Max Total [b]',&
+               'Probability', 'Total [b]', 'Elastic [b]', 'Capture [b]', 'Fission [b]', 'Competitive [b]'
           ptable => this % prob_tables(i_E, i_T)
           do i_band = 1, this % n_bands
             if (i_band == 1) then
-              write(tab_unit, '(ES13.6,A13,6ES13.6)')&
+              write(tab_unit, '(ES24.16,A24,6ES24.16)')&
                    xs_t_min, '',&
                    ptable % t(i_band) % cnt_mean,&
                    ptable % t(i_band) % xs_mean,&
@@ -1800,7 +1834,7 @@ contains
                    ptable % f(i_band) % xs_mean,&
                    ptable % x(i_band) % xs_mean
             else if (i_band == this % n_bands) then
-              write(tab_unit, '(A13,7ES13.6)')&
+              write(tab_unit, '(A24,7ES24.16)')&
                    '', xs_t_max,&
                    ptable % t(i_band) % cnt_mean,&
                    ptable % t(i_band) % xs_mean,&
@@ -1809,7 +1843,7 @@ contains
                    ptable % f(i_band) % xs_mean,&
                    ptable % x(i_band) % xs_mean
             else
-              write(tab_unit, '(2A13,6ES13.6)')&
+              write(tab_unit, '(2A24,6ES24.16)')&
                    '', '',&
                    ptable % t(i_band) % cnt_mean,&
                    ptable % t(i_band) % xs_mean,&
@@ -1819,14 +1853,14 @@ contains
                    ptable % x(i_band) % xs_mean
             end if
           end do
-          write(tab_unit,'(2A13,6ES13.6)')&
-               'batch', 'averaged xs', ONE,&
+          write(tab_unit,'(2A24,6ES24.16)')&
+               'Batches', 'Mean [b]', ONE,&
                ptable % avg_t % xs_mean,&
                ptable % avg_n % xs_mean,&
                ptable % avg_g % xs_mean,&
                ptable % avg_f % xs_mean,&
                ptable % avg_x % xs_mean
-          write(tab_unit,'(I13,A13,6ES13.6)')&
+          write(tab_unit,'(I24,A24,6ES24.16)')&
                i_b, '1sigma', ZERO,&
                ptable % avg_t % xs_sem,&
                ptable % avg_n % xs_sem,&
@@ -1839,7 +1873,7 @@ contains
       ! write averaged URR cross sections out to a file
       if (write_avg_xs) then
         ptable => this % prob_tables(i_E, 1)
-        write(avg_unit, '(6ES13.6)')&
+        write(avg_unit, '(6ES24.16)')&
              this % E_tabs(i_E),&
              ptable % avg_t % xs_mean,&
              ptable % avg_n % xs_mean,&
@@ -2084,8 +2118,9 @@ contains
 
       ! invalid scattering radius treatment flag
       case default
-        call fatal_error('ENDF-6 NAPS flag must be 0 or 1 when NRO is 0')
-      
+        call exit_status(EXIT_FAILURE, 'ENDF-6 NAPS flag must be 0 or 1 when NRO is 0')
+        return
+
       end select
 
     ! scattering radius is energy dependent
@@ -2112,14 +2147,15 @@ contains
 
       ! invalid scattering radius treatment flag
       case default
-        call fatal_error('ENDF-6 NAPS flag must be 0, 1, or 2 when NRO is 1')
+        call exit_status(EXIT_FAILURE, 'ENDF-6 NAPS flag must be 0, 1, or 2 when NRO is 1')
+        return
       
       end select
 
     ! invalid energy dependence of scattering radius flag
     case default
-      call fatal_error('ENDF-6 NRO flag must be 0 or 1')
-    
+      call exit_status(EXIT_FAILURE, 'ENDF-6 NRO flag must be 0 or 1')
+      return
     end select
 
   end subroutine channel_radius
@@ -2508,7 +2544,8 @@ end subroutine alloc_local_realization
       xs_out % t = xs_out % n + xs_out % g + xs_out % f + xs_out % x
 
     else
-      call fatal_error('ENDF-6 LSSF not allowed - must be 0 or 1')
+      call exit_status(EXIT_FAILURE, 'ENDF-6 LSSF not allowed - must be 0 or 1')
+      return
 
     end if
 
@@ -2562,11 +2599,13 @@ end subroutine alloc_local_realization
 
     else
       if (T < this % T_tabs(1)) then
-        call fatal_error('Encountered temperature below probability tables.')
+        call log_message(ERROR, 'Encountered temperature below probability tables.\&
+             &  Extrapolating off temperature grid.')
         i_Tlow = 1
 
       else if (T > this % T_tabs(this % nT_tabs)) then
-        call fatal_error('Encountered temperature above probability tables.')
+        call log_message(ERROR, 'Encountered temperature above probability tables.\&
+             &  Extrapolating off temperature grid.')
         i_Tlow = this % nT_tabs - 1
 
       else
@@ -2931,7 +2970,8 @@ end subroutine alloc_local_realization
            * (135.0_8 + rho2 * (10.0_8 + rho2))))
 
     case default
-      call fatal_error('Orbital quantum number not allowed')
+      call exit_status(EXIT_FAILURE, 'Orbital quantum number not allowed.')
+      return
 
     end select
 
@@ -2973,7 +3013,8 @@ end subroutine alloc_local_realization
            / (105.0_8 - 45.0_8 * rho2 + rho4))
 
     case default
-      call fatal_error('Orbital quantum number not allowed')
+      call exit_status(EXIT_FAILURE, 'Orbital quantum number not allowed.')
+      return
 
     end select
 
@@ -3013,7 +3054,8 @@ end subroutine alloc_local_realization
            + rho2 * (10.0_8 + rho2))))
 
     case default
-      call fatal_error('Orbital quantum number not allowed')
+      call exit_status(EXIT_FAILURE, 'Orbital quantum number not allowed')
+      return
 
     end select
 
@@ -3045,7 +3087,8 @@ end subroutine alloc_local_realization
              * real(real(quickw(cmplx(theta * x * HALF, theta * HALF, 8)),8),8)
 
       case default
-        call fatal_error('Unrecognized W function evaluation method')
+        call exit_status(EXIT_FAILURE, 'Unrecognized W function evaluation method')
+        return
 
       end select
 
@@ -3084,7 +3127,8 @@ end subroutine alloc_local_realization
              * real(aimag(quickw(cmplx(theta * x * HALF, theta * HALF, 8))), 8)
 
       case default
-        call fatal_error('Unrecognized W function evaluation method')
+        call exit_status(EXIT_FAILURE, 'Unrecognized W function evaluation method')
+        return
 
       end select
 
@@ -3375,9 +3419,9 @@ end subroutine alloc_local_realization
       end do
     
     case default
-      print*,'a'
-      call fatal_error('Unrecognized/unsupported RRR formalism')
-    
+      call exit_status(EXIT_FAILURE, 'Unrecognized/unsupported RRR formalism')
+      return
+
     end select
 
   end function last_resolved_resonance_energy
@@ -3422,9 +3466,9 @@ end subroutine alloc_local_realization
       end do
     
     case default
-       print*,'b'
-      call fatal_error('Unrecognized/unsupported RRR formalism')
-    
+      call exit_status(EXIT_FAILURE, 'Unrecognized/unsupported RRR formalism')
+      return
+
     end select
 
     ! if there aren't enough contributing RRR resonances
@@ -3584,7 +3628,8 @@ end subroutine alloc_local_realization
         res % Gam_t = res % Gam_n + res % Gam_g + res % Gam_f + res % Gam_x
 
       case default
-        call fatal_error('Unrecognized resolved resonance region formalism')
+        call exit_status(EXIT_FAILURE, 'Unrecognized resolved resonance region formalism')
+        return
 
       end select
 
@@ -3604,7 +3649,8 @@ end subroutine alloc_local_realization
            = this % urr_resonances(i_l, i_realization) % J(i_J) % res(i_res) % GT
 
     case default
-      call fatal_error('Only 1 and 2 are supported ENDF-6 LRU values')
+      call exit_status(EXIT_FAILURE, 'Only 1 and 2 are supported ENDF-6 LRU values')
+      return
 
     end select
 
@@ -3747,9 +3793,11 @@ end subroutine alloc_local_realization
 
     ! elastic xs
     if (this % E < this % MF3_n_e(1)) then
-      call fatal_error('Energy is below File 3 elastic energy grid')
+      call exit_status(EXIT_FAILURE, 'Energy is below File 3 elastic energy grid')
+      return
     else if (this % E > this % MF3_n_e(size(this % MF3_n_e))) then
-      call fatal_error('Energy is above File 3 elastic energy grid')
+      call exit_status(EXIT_FAILURE, 'Energy is above File 3 elastic energy grid')
+      return
     else
       i_mf3 = binary_search(this % MF3_n_e, size(this % MF3_n_e), this % E)
       if (this % INT == LINEAR_LINEAR&
@@ -3769,7 +3817,8 @@ end subroutine alloc_local_realization
     if (this % E < this % MF3_x_e(1)) then
       mf3_x = ZERO
     else if (this % E > this % MF3_x_e(size(this % MF3_x_e))) then
-      call fatal_error('Energy is above File 3 competitive energy grid')
+      call exit_status(EXIT_FAILURE, 'Energy is above File 3 competitive energy grid')
+      return
     else
       i_mf3 = binary_search(this % MF3_x_e, size(this % MF3_x_e), this % E)
       if (this % INT == LINEAR_LINEAR&
@@ -3787,9 +3836,11 @@ end subroutine alloc_local_realization
 
     ! capture xs
     if (this % E < this % MF3_g_e(1)) then
-      call fatal_error('Energy is below File 3 capture energy grid')
+      call exit_status(EXIT_FAILURE, 'Energy is below File 3 capture energy grid')
+      return
     else if (this % E > this % MF3_g_e(size(this % MF3_g_e))) then
-      call fatal_error('Energy is above File 3 capture energy grid')
+      call exit_status(EXIT_FAILURE, 'Energy is above File 3 capture energy grid')
+      return
     else
       i_mf3 = binary_search(this % MF3_g_e, size(this % MF3_g_e), this % E)
       if (this % INT == LINEAR_LINEAR&
@@ -3812,7 +3863,8 @@ end subroutine alloc_local_realization
       if (this % E < this % MF3_f_e(1)) then
         mf3_f = ZERO
       else if (this % E > this % MF3_f_e(size(this % MF3_f_e))) then
-        call fatal_error('Energy is above File 3 fission energy grid')
+        call exit_status(EXIT_FAILURE, 'Energy is above File 3 fission energy grid')
+        return
       else
         i_mf3 = binary_search(this % MF3_f_e, size(this % MF3_f_e), this % E)
         if (this % INT == LINEAR_LINEAR&
@@ -3871,7 +3923,8 @@ end subroutine alloc_local_realization
       if (avg_xs % f > ZERO) xs % f = mf3_f * xs % f / avg_xs % f
 
     else
-      call fatal_error('ENDF-6 LSSF not allowed - must be 0 or 1.')
+      call exit_status(EXIT_FAILURE, 'ENDF-6 LSSF not allowed - must be 0 or 1.')
+      return
 
     end if
 
@@ -3895,10 +3948,12 @@ end subroutine alloc_local_realization
 
     ! elastic xs
     if (this % E < this % MF3_n_e(1)) then
-      call fatal_error('Energy is below File 3 elastic energy grid')
+      call exit_status(EXIT_FAILURE, 'Energy is below File 3 elastic energy grid')
+      return
 
     else if (this % E > this % MF3_n_e(size(this % MF3_n_e))) then
-      call fatal_error('Energy is above File 3 elastic energy grid')
+      call exit_status(EXIT_FAILURE, 'Energy is above File 3 elastic energy grid')
+      return
 
     else
       i_grid = binary_search(this % MF3_n_e, size(this % MF3_n_e),this % E)
@@ -3924,7 +3979,8 @@ end subroutine alloc_local_realization
       xs % x = ZERO
 
     else if (this % E > this % MF3_x_e(size(this % MF3_x_e))) then
-      call fatal_error('Energy is above File 3 inelastic energy grid')
+      call exit_status(EXIT_FAILURE, 'Energy is above File 3 inelastic energy grid')
+      return
 
     else
       i_grid = binary_search(this % MF3_x_e, size(this % MF3_x_e), this % E)
@@ -3950,10 +4006,12 @@ end subroutine alloc_local_realization
 
     ! capture xs
     if (this % E < this % MF3_g_e(1)) then
-      call fatal_error('Energy is below File 3 capture energy grid')
+      call exit_status(EXIT_FAILURE, 'Energy is below File 3 capture energy grid')
+      return
 
     else if (this % E > this % MF3_g_e(size(this % MF3_g_e))) then
-      call fatal_error('Energy is above File 3 capture energy grid')
+      call exit_status(EXIT_FAILURE, 'Energy is above File 3 capture energy grid')
+      return
 
     else
       i_grid = binary_search(this % MF3_g_e, size(this % MF3_g_e), this % E)
@@ -3981,7 +4039,8 @@ end subroutine alloc_local_realization
         xs % f = xs % f
 
       else if (this % E > this % MF3_f_e(size(this % MF3_f_e))) then
-        call fatal_error('Energy is above File 3 fission energy grid')
+        call exit_status(EXIT_FAILURE, 'Energy is above File 3 fission energy grid')
+        return
 
       else
         i_grid = binary_search(this % MF3_f_e, size(this % MF3_f_e), this%E)
@@ -4122,7 +4181,8 @@ end subroutine alloc_local_realization
                * chi2(i_tabn, this % AMUN)
         end if
       else
-        call fatal_error('Non-positive neutron width sampled')
+        call exit_status(EXIT_FAILURE, 'Non-positive neutron width sampled')
+        return
       end if
 
       ! fission width
@@ -4194,12 +4254,14 @@ end subroutine alloc_local_realization
     case(2)
       num_resonances = num_l_waves(3)
     case(3)
-      call fatal_error('Only s, p, and d wave resonances are supported &
-        & in ENDF-6')
+      call exit_status(EXIT_FAILURE, 'Only s, p, and d wave resonances are supported &
+           & in ENDF-6')
+      return
       num_resonances = num_l_waves(4)
     case default
-      call fatal_error('Only s, p, and d wave resonances are supported &
-        & in ENDF-6')
+      call exit_status(EXIT_FAILURE, 'Only s, p, and d wave resonances are supported &
+           & in ENDF-6')
+      return
     end select
 
   end function num_contributing_resonances
@@ -4326,9 +4388,10 @@ end subroutine alloc_local_realization
     real(8) :: S_l_lam ! resonance energy shift factor at E_lam
 
     if (this % J == this % SPI(this % i_urr)) then
-      call fatal_error('Computing MLBW elastic scattering cross section&
+      call exit_status(EXIT_FAILURE, 'Computing MLBW elastic scattering cross section&
            & for resonance with total orbital angular momentum quantum&
            & number, J, equal to the nuclear spin, I')
+      return
     end if
 
     ! if URR parameters have resonance energy dependence
@@ -4428,19 +4491,22 @@ end subroutine alloc_local_realization
     
     case (SLBW)
       call this % slbw_xs(res)
-    
+
     case (MLBW)
       call this % mlbw_xs(res)
-    
+
     case (REICH_MOORE)
-      call fatal_error('Reich-Moore formalism not yet supported for the URR')
-    
+      call exit_status(EXIT_FAILURE, 'Reich-Moore formalism not yet supported for the URR')
+      return
+
     case (MNBW)
-      call fatal_error('MNBW formalism not yet supported for the URR')
-    
+      call exit_status(EXIT_FAILURE, 'MNBW formalism not yet supported for the URR')
+      return
+
     case default
-      call fatal_error('Unrecognized URR resonance formalism')
-    
+      call exit_status(EXIT_FAILURE, 'Unrecognized URR resonance formalism')
+      return
+
     end select
 
   end subroutine calc_xs

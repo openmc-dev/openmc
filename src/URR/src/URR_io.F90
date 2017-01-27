@@ -1,11 +1,13 @@
 module URR_io
 
   use URR_constants, only: NUM_AVG_XS_GRID
-  use URR_isotope, only: isotopes
-  use URR_openmc_wrapper, only: master,&
-                                fatal_error
-  use URR_settings, only: path_avg_xs,&
-                          path_prob_tables
+  use URR_error,     only: exit_status,&
+                           log_message,&
+                           EXIT_FAILURE,&
+                           INFO
+  use URR_isotope,   only: isotopes
+  use URR_settings,  only: path_avg_xs,&
+                           path_prob_tables
 
   implicit none
   private
@@ -19,9 +21,9 @@ contains
   subroutine read_avg_xs(i)
 
     logical :: file_exists ! does avg URR xs file exist?
-    character(7)  :: readable ! is avg URR xs file readable?
-    character(6)  :: zaid_str ! ZAID number as a string
-    character(80) :: rec      ! file record
+    character(7) :: readable ! is avg URR xs file readable?
+    character(6) :: zaid_str ! ZAID number as a string
+    character(:), allocatable :: rec      ! file record
     integer :: E_depend ! parameter energy dependence flag
     integer :: i        ! isotope index
     integer :: in = 12  ! input unit
@@ -35,20 +37,19 @@ contains
     inquire(file = trim(path_avg_xs)//trim(adjustl(zaid_str))//&
          &'-avg-urr-xs.dat', exist = file_exists, read = readable)
     if (.not. file_exists) then
-      call fatal_error('Averaged URR cross sections file '&
+      call exit_status(EXIT_FAILURE, 'Averaged URR cross sections file '&
            //trim(adjustl(zaid_str))//'-avg-urr-xs.dat does not exist.')
     else if (readable(1:3) == 'NO') then
-      call fatal_error('Averaged URR cross sections file '&
+      call exit_status(EXIT_FAILURE, 'Averaged URR cross sections file '&
            //trim(adjustl(zaid_str))//'-avg-urr-xs.dat&
            & is not readable.  Change file permissions with chmod command.')
     end if
 
     ! open file with average xs values
-    if (master)&
-         write(*,*) 'Loading averaged URR cross sections for ZAID ='//zaid_str
+    call log_message(INFO, 'Loading average URR cross sections for ZAI '//zaid_str)
     open(unit=in,&
          file=trim(path_avg_xs)//trim(adjustl(zaid_str))//'-avg-urr-xs.dat')
-    
+
 10  format(A80)
     read(in, 10) rec!TODO: read and write meaningful diagnostic data
     read(in, 10) rec
@@ -103,17 +104,16 @@ contains
     inquire(file = trim(path_prob_tables)//trim(adjustl(zaid_str))//&
          &'-urr-tables.dat', exist = file_exists, read = readable)
     if (.not. file_exists) then
-      call fatal_error('Probability table file '//trim(adjustl(zaid_str))//&
+      call exit_status(EXIT_FAILURE, 'Probability table file '//trim(adjustl(zaid_str))//&
            &'-urr-tables.dat does not exist.')
     else if (readable(1:3) == 'NO') then
-      call fatal_error('Probability table file '//trim(adjustl(zaid_str))//&
+      call exit_status(EXIT_FAILURE, 'Probability table file '//trim(adjustl(zaid_str))//&
            &'-urr-tables.dat is not readable.  Change file permissions with &
            &chmod command.')
     end if
 
     ! open probability table file
-    if (master)&
-         write(*,*) 'Loading probability tables for ZAID ='//zaid_str
+    call log_message(INFO, 'Loading probability tables for ZAID ='//zaid_str)
     open(unit = tab_unit, file =&
          trim(path_prob_tables)//trim(adjustl(zaid_str))//'-urr-tables.dat')
 

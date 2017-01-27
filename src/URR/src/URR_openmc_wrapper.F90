@@ -1,9 +1,8 @@
 module URR_openmc_wrapper
 
   use ace_header,      only: Nuclide,&
-       Reaction
-  use error,           only: fatal_error,&
-       warning
+                             Reaction
+  use error,           only: fatal_error
   use global,          only: master,&
        nuclides,&
        n_materials,&
@@ -16,12 +15,12 @@ module URR_openmc_wrapper
   use random_lcg,      only: prn
   use search,          only: binary_search
   use string,          only: to_str
+  use URR_error,       only: INFO
 
   implicit none
   private
-  public :: Nuclide,&
-       fatal_error,&
-       warning,&
+  public :: fatal_error,&
+       Nuclide,&
        Reaction,&
        master,&
        nuclides,&

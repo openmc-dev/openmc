@@ -488,4 +488,80 @@ module URR_constants
        1.2382461545773161e+01_8,&
        1.5538540717378252e+01_8/),(/100,4/))
 
+contains
+
+
+!< Returns the name of the resonance formalism being used
+  function get_formalism_name(i) result(formalism_str)
+
+    integer :: i ! formalism integer parameter
+    character(:), allocatable :: formalism_str
+
+    select case(i)
+    case(1)
+      formalism_str = 'SLBW'
+    case(2)
+      formalism_str = 'MLBW (elastic channel only)'
+    case(3)
+      formalism_str = 'Reich-Moore'
+    case(4)
+      formalism_str = 'Adler-Adler'
+    case(5)
+      formalism_str = 'R-Matrix'
+    case(6)
+      formalism_str = 'R-Function'
+    case(7)
+      formalism_str = 'R-Matrix Limited'
+    case(8)
+      formalism_str = 'MNBW'
+    case default
+      continue
+    end select
+
+    return
+
+  end function get_formalism_name
+
+
+!< Returns whether the energy of the neutron or resonance determines
+!! energy dependence of parameters
+  function get_energy_dependence(i) result(dependence_str)
+
+    integer :: i ! energy dependence integer parameter
+    character(:), allocatable :: dependence_str
+
+    select case(i)
+    case(1)
+      dependence_str = 'Neutron'
+    case(2)
+      dependence_str = 'Resonance'
+    case default
+      continue
+    end select
+
+    return
+
+  end function get_energy_dependence
+
+
+!< Returns the Faddeeva function evaluation method
+  function get_faddeeva_method(i) result(faddeeva_str)
+
+    integer :: i ! faddeeva method integer parameter
+    character(:), allocatable :: faddeeva_str
+
+    select case(i)
+    case(1)
+      faddeeva_str = 'MIT'
+    case(2)
+      faddeeva_str = 'QUICKW'
+    case default
+      continue
+    end select
+
+    return
+
+  end function get_faddeeva_method
+
+
 end module URR_constants

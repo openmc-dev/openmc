@@ -1,9 +1,5 @@
 module URR_endf6
 
-  use URR_openmc_wrapper, only: master,&
-       fatal_error,&
-       warning,&
-       write_message
   use URR_constants, only: SLBW,&
                            MLBW,&
                            REICH_MOORE,&
@@ -14,6 +10,11 @@ module URR_endf6
                            ZERO,&
                            ONE,&
                            LINEAR_LINEAR
+  use URR_error,     only: exit_status,&
+                           log_message,&
+                           EXIT_FAILURE,&
+                           INFO,&
+                           WARNING
   use URR_io,        only: read_avg_xs
   use URR_isotope,   only: isotopes
   use URR_settings,  only: write_avg_xs,&
@@ -56,15 +57,15 @@ contains
     inquire(file = trim(path_endf_files)//filename, &
       & exist = file_exists, read = readable)
     if (.not. file_exists) then
-      call fatal_error(&
+      call exit_status(EXIT_FAILURE,&
            'ENDF-6 file '//trim(path_endf_files)//filename//' does not exist.')
+      return
     else if (readable(1:3) == 'NO') then
-      call fatal_error('ENDF-6 file '//trim(path_endf_files)//filename//&
+      call exit_status(EXIT_FAILURE,&
+           'ENDF-6 file '//trim(path_endf_files)//filename//&
            &' is not readable.  Change file permissions with chmod command.')
+      return
     end if
-
-    ! display message
-    call write_message("Loading ENDF-6 file: "//filename, 6)
 
     open(unit = in, file = trim(path_endf_files)//filename)
 
@@ -218,8 +219,11 @@ contains
       read(rec(71:72), '(I2)') MF
       read(rec(73:75), '(I3)') MT
       if (MF == 3 .and. MT == 2) exit
-      if (MT > 2) call fatal_error('Reached end of MF3 w/o reading an&
-        & elastic cross section in '//trim(filename))
+      if (MT > 2) then
+        call exit_status(EXIT_FAILURE, 'Reached end of MF3 w/o reading an&
+             & elastic cross section in '//trim(filename))
+        return
+      end if
     end do
 
     read(rec(1:11),  '(E11.0)') ZA
@@ -278,8 +282,8 @@ contains
       end if
       if (MT > 18) then
         backspace(in)
-        call warning('Reached end of MF3 w/o reading a&
-          & fission cross section in '//trim(filename))
+        call log_message(INFO,&
+             'Reached end of MF3 w/o reading a fission cross section in '//trim(filename))
         exit
       end if
     end do
@@ -349,8 +353,8 @@ contains
       end if
       if (MT > 51) then
         backspace(in)
-        call warning('Reached end of MF3 w/o reading an&
-          & (n,n1) cross section in '//trim(filename))
+        call log_message(INFO,&
+             'Reached end of MF3 w/o reading an (n,n1) cross section in '//trim(filename))
         exit
       end if
     end do
@@ -422,8 +426,8 @@ contains
       end if
       if (MT > 52) then
         backspace(in)
-        call warning('Reached end of MF3 w/o reading an&
-          & (n,n2) Q-value in '//trim(filename))
+        call log_message(INFO,&
+             'Reached end of MF3 w/o reading an (n,n2) Q-value in '//trim(filename))
         exit
       end if
     end do
@@ -455,8 +459,8 @@ contains
       end if
       if (MT > 102 .or. MF == 4) then
         backspace(in)
-        call warning('Reached end of MF3 w/o reading a&
-          & capture cross section in '//trim(filename))
+        call log_message(INFO,&
+             'Reached end of MF3 w/o reading a capture cross section in '//trim(filename))
         exit
       end if
     end do
@@ -520,8 +524,8 @@ contains
     integer :: NR ! number of interpolation regions
 
     if (NR /= 1) then
-      if (master) call warning('More than 1 File 3 interpolation region&
-        & in '//trim(filename))
+      call log_message(INFO,&
+           'More than 1 File 3 interpolation region in '//trim(filename))
     end if
 
   end subroutine check_interp_regions
@@ -534,8 +538,8 @@ contains
     integer :: NP  ! number of energy-xs pairs
 
     if (NBT /= NP) then
-      if (master) call warning('Different NBT and NP values in File 3 for '&
-        &//trim(filename))
+      call log_message(WARNING,&
+           'Different NBT and NP values in File 3 for '//trim(filename))
     end if
 
   end subroutine check_n_pairs
@@ -547,9 +551,9 @@ contains
     integer :: INTERP     ! interpolation scheme for current region
     integer :: MF3_INT ! overall isotope interpolation scheme
 
-    if (INTERP /= MF3_INT) call warning('Different interpolation schemes for &
-      &different File 3 regions in '//trim(filename)//'.  Using region &
-      &one interpolation scheme for all regions.')
+    if (INTERP /= MF3_INT) call log_message(WARNING,&
+         'Different interpolation schemes for different File 3 regions in '&
+         //trim(filename)//'.  Using region 1 scheme for all regions.')
 
   end subroutine check_interp_scheme
 
@@ -568,38 +572,50 @@ contains
     ! only the scattering radius is given (LRF=0; NLS=0; LFW=0)
     case(0)
 
-      call fatal_error('Scattering radius only (LRU = 0) not supported in &
-        &'//trim(filename))
+      call exit_status(EXIT_FAILURE,&
+           'Scattering radius only (LRU = 0) not supported in '//trim(filename))
+      return
 
     ! resolved parameters
     case(1)
 
       ! select formalism
       select case(LRF)
-
       case(SLBW)
         call read_slbw_parameters(i, i_ER)
+
       case(MLBW)
         call read_mlbw_parameters(i, i_ER)
+
       case(REICH_MOORE)
         call read_rm_parameters(i, i_ER)
+
       case(ADLER_ADLER)
-        call fatal_error('Adler-Adler (LRF=4) formalism not supported in '&
-          & //trim(filename))
+        call exit_status(EXIT_FAILURE,&
+             'Adler-Adler (LRF=4) formalism not supported in '//trim(filename))
+        return
+
       case(R_MATRIX)
-        call fatal_error('General R-Matrix (LRF=5) formalism not allowed in '&
-          & //trim(filename))
+        call exit_status(EXIT_FAILURE,&
+             'General R-Matrix (LRF=5) formalism not allowed in '//trim(filename))
+        return
+
       case(R_FUNCTION)
-        call fatal_error('Hybrid R-Function (LRF=6) formalism not allowed in '&
-          & //trim(filename))
+        call exit_status(EXIT_FAILURE,&
+             'Hybrid R-Function (LRF=6) formalism not allowed in '//trim(filename))
+        return
+
       case(R_MATRIX_LIM)
-        call fatal_error('R-Matrix Limited (LRF=7) formalism not supported in '&
-          & //trim(filename))
+        call exit_status(EXIT_FAILURE,&
+             'R-Matrix Limited (LRF=7) formalism not supported in '//trim(filename))
+        return
 
       ! default case
       case default
-        call fatal_error('LRF must be an integer between 1 and 7, inclusive in '&
-          & //trim(filename))
+        call exit_status(EXIT_FAILURE,&
+             'LRF must be an integer between 1 and 7, inclusive in '//trim(filename))
+        return
+
       end select
 
     ! unresolved parameters
@@ -618,16 +634,19 @@ contains
       case(2)
         call read_urr_slbw_parameters_lrf2(i, i_ER)
 
-      ! default case
       case default
-        call fatal_error('LRF values other than 2 are not supported in '&
-          & //trim(filename))
-      end select
+         call exit_status(EXIT_FAILURE,&
+              'LRF values other than 2 are not supported in '//trim(filename))
+         return
+
+       end select
 
     ! default case
     case default
-      call fatal_error('LRU values other than 0, 1 or 2 are not allowed in '&
-        & //trim(filename))
+      call exit_status(EXIT_FAILURE,&
+           'LRU values other than 0, 1 or 2 are not allowed in '//trim(filename))
+      return
+
     end select
 
   end subroutine read_resonance_subsection
@@ -654,9 +673,11 @@ contains
     read(rec(12:22), '(E11.0)') isotopes(i) % AP(i_ER)
     call isotopes(i) % channel_radius(i_ER)
     read(rec(45:55), '(I11)')   isotopes(i) % NLS(i_ER)
-    if (isotopes(i) % NLS(i_ER) > 3) &
-         call fatal_error('SLBW parameters given for a resonance higher than&
-         & d-wave')
+    if (isotopes(i) % NLS(i_ER) > 3) then
+      call exit_status(EXIT_FAILURE,&
+           'SLBW parameters given for a resonance higher than d-wave')
+      return
+    end if
 
     ! allocate SLBW resonance vectors for each l
     allocate(isotopes(i) % bw_resonances(isotopes(i) % NLS(i_ER)))
@@ -708,7 +729,8 @@ contains
                - isotopes(i) % bw_resonances(i_l + 1) % res(i_R) % GG&
                - isotopes(i) % bw_resonances(i_l + 1) % res(i_R) % GF
         else
-          call fatal_error('LRX must be 0 or 1 in '//trim(filename))
+          call exit_status(EXIT_FAILURE, 'LRX must be 0 or 1 in '//trim(filename))
+          return
         end if
 
         ! check sign of total angular momentum, J
@@ -747,9 +769,11 @@ contains
     read(rec(12:22), '(E11.0)') isotopes(i) % AP(i_ER)
     call isotopes(i) % channel_radius(i_ER)
     read(rec(45:55), '(I11)')   isotopes(i) % NLS(i_ER)
-    if (isotopes(i) % NLS(i_ER) > 3) &
-         call fatal_error('MLBW parameters given for a resonance higher than&
-         & d-wave')
+    if (isotopes(i) % NLS(i_ER) > 3) then
+      call exit_status(EXIT_FAILURE,&
+           'MLBW parameters given for a resonance higher than d-wave')
+      return
+    end if
 
     ! allocate MLBW resonance vectors for each l
     allocate(isotopes(i) % bw_resonances(isotopes(i) % NLS(i_ER)))
@@ -801,7 +825,8 @@ contains
                - isotopes(i) % bw_resonances(i_l + 1) % res(i_R) % GG&
                - isotopes(i) % bw_resonances(i_l + 1) % res(i_R) % GF
         else
-          call fatal_error('LRX must be 0 or 1 in '//trim(filename))
+          call exit_status(EXIT_FAILURE, 'LRX must be 0 or 1 in '//trim(filename))
+          return
         end if
 
         ! check sign of total angular momentum, J
@@ -839,8 +864,8 @@ contains
     call isotopes(i) % channel_radius(i_ER)
     read(rec(45:55), '(I11)')   isotopes(i) % NLS(i_ER)
     if (isotopes(i) % NLS(i_ER) > 3) &
-         call warning('R-M parameters given for a resonance higher than&
-         & d-wave')
+         call log_message(WARNING,&
+         'R-M parameters given for a resonance higher than d-wave')
 
     ! allocate Reich-Moore resonance vectors for each l
     allocate(isotopes(i) % rm_resonances(isotopes(i) % NLS(i_ER)))
@@ -924,9 +949,11 @@ contains
       call isotopes(i) % channel_radius(i_ER)
       read(rec(23:33), '(I11)')   isotopes(i) % LSSF
       read(rec(45:55), '(I11)')   isotopes(i) % NLS(i_ER)
-      if (isotopes(i) % NLS(i_ER) > 3) &
-           call fatal_error('URR parameters given for a spin sequence higher than&
-           & d-wave')
+      if (isotopes(i) % NLS(i_ER) > 3) then
+        call exit_status(EXIT_FAILURE,&
+             'URR parameters given for a spin sequence higher than d-wave')
+        return
+      end if
       
       ! allocate number of total angular momenta values for each l
       allocate(isotopes(i) % NJS(isotopes(i) % NLS(i_ER)))
@@ -1020,9 +1047,11 @@ contains
       read(rec(23:33), '(I11)')   isotopes(i) % LSSF
       read(rec(45:55), '(I11)')   isotopes(i) % NE
       read(rec(56:66), '(I11)')   isotopes(i) % NLS(i_ER)
-      if (isotopes(i) % NLS(i_ER) > 3) &
-           call fatal_error('URR parameters given for a spin sequence higher than&
-           & d-wave')
+      if (isotopes(i) % NLS(i_ER) > 3) then
+        call exit_status(EXIT_FAILURE,&
+             'URR parameters given for a spin sequence higher than d-wave')
+        return
+      end if
 
       ! allocate number of total angular momenta values for each l
       allocate(isotopes(i) % NJS(isotopes(i) % NLS(i_ER)))
@@ -1152,7 +1181,8 @@ contains
       end do
 
     case default
-      call fatal_error('LFW must be 0 or 1.')
+      call exit_status(EXIT_FAILURE, 'LFW must be 0 or 1.')
+      return
 
     end select
 
@@ -1181,9 +1211,11 @@ contains
     call isotopes(i) % channel_radius(i_ER)
     read(rec(23:33), '(I11)')   isotopes(i) % LSSF
     read(rec(45:55), '(I11)')   isotopes(i) % NLS(i_ER)
-    if (isotopes(i) % NLS(i_ER) > 3) &
-         call fatal_error('URR parameters given for a spin sequence higher than&
-         & d-wave')
+    if (isotopes(i) % NLS(i_ER) > 3) then
+      call exit_status(EXIT_FAILURE,&
+           'URR parameters given for a spin sequence higher than d-wave')
+      return
+    end if
 
     ! allocate number of total angular momenta values for each l
     allocate(isotopes(i) % NJS(isotopes(i) % NLS(i_ER)))
@@ -1283,9 +1315,11 @@ contains
     integer :: zaid_val
     integer :: zaid_ref
 
-    if (zaid_val /= zaid_ref .and. master)&
-         call fatal_error(trim(adjustl(filename))//&
-         ' and the corresponding ACE file give conflicting ZAID values')
+    if (zaid_val /= zaid_ref) then
+      call exit_status(EXIT_FAILURE, trim(adjustl(filename))//&
+           ' and the corresponding ACE file give conflicting ZAID values')
+      return
+    end if
 
   end subroutine check_zaid
 
@@ -1297,9 +1331,10 @@ contains
     real(8) :: awr_val
     real(8) :: awr_ref
 
-    if (awr_val /= awr_ref .and. master)&
-         call write_message(trim(adjustl(filename))//&
-         ' and the corresponding ACE file give conflicting AWR values', 6)
+    if (awr_val /= awr_ref) then
+      call log_message(WARNING,&
+           trim(adjustl(filename))//' and the corresponding ACE file give conflicting AWR values')
+    end if
 
   end subroutine check_mass
 
@@ -1309,8 +1344,11 @@ contains
 
     real(8) :: QX
 
-    if (QX /= ZERO .and. master)&
-         call fatal_error('Q-value is not equal to 0.0 in '//trim(filename))
+    if (QX /= ZERO) then
+      call exit_status(EXIT_FAILURE,&
+           'Q-value is not equal to 0.0 in '//trim(filename))
+      return
+    end if
 
  end subroutine check_q_value
 
@@ -1320,20 +1358,22 @@ contains
 
     integer :: lrp_val
 
-    if (master) then
-      select case(lrp_val)
-      case(-1)
-        call fatal_error('LRP of -1 not supported in '//trim(filename))
-      case(0)
-       call fatal_error('LRP of 0 not supported in '//trim(filename))
-      case(1)
-        continue
-      case(2)
-        call fatal_error('LRP of 2 not supported in '//trim(filename))
-      case default
-        call fatal_error('LRP must be -1, 0, 1, or 2 in '//trim(filename))
-      end select
-    end if
+    select case(lrp_val)
+    case(-1)
+      call exit_status(EXIT_FAILURE, 'LRP of -1 not supported in '//trim(filename))
+      return
+    case(0)
+      call exit_status(EXIT_FAILURE, 'LRP of 0 not supported in '//trim(filename))
+      return
+    case(1)
+      continue
+    case(2)
+      call exit_status(EXIT_FAILURE, 'LRP of 2 not supported in '//trim(filename))
+      return
+    case default
+      call exit_status(EXIT_FAILURE, 'LRP must be -1, 0, 1, or 2 in '//trim(filename))
+      return
+    end select
 
   end subroutine check_parameters
 
@@ -1343,9 +1383,11 @@ contains
 
     integer :: nis_val
 
-    if (nis_val /= 1 .and. master)&
-         call fatal_error(trim(filename)//&
-         ' contains data for more than 1 isotope')
+    if (nis_val /= 1) then
+      call exit_status(EXIT_FAILURE,&
+           trim(filename)//' contains data for more than 1 isotope')
+      return
+    end if
 
   end subroutine check_single_isotope
 
@@ -1355,9 +1397,11 @@ contains
 
     real(8) :: abn_val
 
-    if (abn_val /= ONE .and. master)&
-         call fatal_error('Abundance of isotope given in '//&
-         trim(filename)//' is not unity')
+    if (abn_val /= ONE) then
+      call exit_status(EXIT_FAILURE,&
+           'Abundance of isotope given in '//trim(filename)//' is not unity')
+      return
+    end if
 
   end subroutine check_abundance
 
@@ -1375,7 +1419,8 @@ contains
     case(1)
       continue
     case default
-      if (master) call fatal_error('LFW must be 0 or 1 in '//trim(filename))
+      call exit_status(EXIT_FAILURE, 'LFW must be 0 or 1 in '//trim(filename))
+      return
     end select
 
   end subroutine check_fission_widths
@@ -1390,14 +1435,14 @@ contains
     real(8) :: e_high
 
     if (num_ranges > 2) then
-      if (master)&
-           call warning('> 2 resonance energy ranges (i.e., NER > 2); see '&
-           //trim(filename))
+      call log_message(WARNING,&
+           'NER > 2: more than 2 resonance energy regions in '//trim(filename))
     end if
 
     if (e_high <= e_low) then
-      if (master) call fatal_error('Upper resonance energy range bound is not &
-           &greater than the lower in '//trim(filename))
+      call exit_status(EXIT_FAILURE,&
+           'Upper resonance energy range bound is not greater than the lower in '//trim(filename))
+      return
     end if
 
   end subroutine check_energy_ranges
@@ -1417,12 +1462,15 @@ contains
       case(1)
         continue
       case default
-        if (master) call fatal_error('ENDF-6 NAPS flag must be 0 or 1 when NRO&
-             & is 0 in '//trim(filename))
+        call exit_status(EXIT_FAILURE,&
+             'ENDF-6 NAPS flag must be 0 or 1 when NRO is 0 in '//trim(filename))
+        return
       end select
     case(1)
-      if (master) call fatal_error('Energy-dependent scattering radius in '&
-           //trim(filename)//' not yet supported')
+      call exit_status(EXIT_FAILURE,&
+           'Energy-dependent scattering radius in '//trim(filename)//' not yet supported')
+      return
+
       select case(naps_val)
       case(0)
         continue
@@ -1431,12 +1479,14 @@ contains
       case(2)
         continue
       case default
-        if (master) call fatal_error('ENDF-6 NAPS flag must be 0, 1, or 2 when&
-             & NRO is 1 in '//trim(filename))
+        call exit_status(EXIT_FAILURE,&
+             'ENDF-6 NAPS flag must be 0, 1, or 2 when NRO is 1 in '//trim(filename))
+        return
       end select
     case default
-      if (master) call fatal_error('ENDF-6 NRO flag must be 0 or 1 in '&
-           //trim(filename))
+      call exit_status(EXIT_FAILURE,&
+           'ENDF-6 NRO flag must be 0 or 1 in '//trim(filename))
+      return
     end select
 
   end subroutine check_radius_flags
@@ -1449,9 +1499,8 @@ contains
     real(8) :: ap_ref
 
     if (ap_val /= ap_ref) then
-      if (master)&
-           call warning('AP value changes within a resonance energy range in '&
-           //trim(filename))
+      call log_message(WARNING,&
+           'AP value changes within a resonance energy range in '//trim(filename))
     end if
 
   end subroutine check_scattering_radius
@@ -1464,8 +1513,9 @@ contains
     integer :: l_ref
 
     if (l_val /= l_ref) then
-      if (master) call fatal_error('Unexpected ordering of orbital quantum &
-           &numbers in '//trim(filename))
+      call exit_status(EXIT_FAILURE,&
+           'Unexpected ordering of orbital quantum numbers in '//trim(filename))
+      return
     end if
 
   end subroutine check_l_number
@@ -1477,8 +1527,9 @@ contains
     real(8) :: j_val
 
     if (j_val < ZERO) then
-      if (master) call warning('Negative total angular momentum &
-           &in '//trim(filename))
+      call exit_status(EXIT_FAILURE,&
+           'Negative total angular momentum in '//trim(filename))
+      return
     end if
 
   end subroutine check_j_sign

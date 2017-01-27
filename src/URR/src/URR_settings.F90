@@ -74,9 +74,9 @@ module URR_settings
   real(8) :: rel_err_tolerance_pointwise ! max rel err for pointwise xs reconstruction
 
   ! files
-  character(255) :: path_avg_xs      ! path to averaged URR xs files
-  character(255) :: path_prob_tables ! path to probability table files
-  character(255) :: path_endf_files  ! path to ENDF-6 files
+  character(:), allocatable :: path_avg_xs      ! path to averaged URR xs files
+  character(:), allocatable :: path_prob_tables ! path to probability table files
+  character(:), allocatable :: path_endf_files  ! path to ENDF-6 files
   character(255), allocatable :: endf_filenames(:) ! list of ENDF-6 filenames
 
 end module URR_settings

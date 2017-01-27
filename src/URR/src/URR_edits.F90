@@ -3,6 +3,9 @@ module URR_edits
   use URR_constants,      only: ISOTROPIC,&
        EQUIPROBABLE_32_BINS,&
        TABULAR
+  use URR_error, only: exit_status,&
+                       log_message,&
+                       INFO
   use URR_openmc_wrapper, only: Material,&
        materials,&
        e_grid,&
@@ -12,8 +15,7 @@ module URR_edits
        n_materials,&
        Reaction,&
        prn,&
-       fatal_error,&
-       write_message
+       fatal_error
   use URR_isotope,        only: Isotope,&
                                 isotopes
   use URR_resonance,      only: wigner_level_spacing
@@ -72,8 +74,8 @@ contains
       mat => materials(i)
 
       if (mat % nat_elements) then
-        call write_message('cross_sections element(s) in material(s) with &
-             &natural elements will be ignored', 6)
+        call log_message(INFO, 'cross_sections element(s) in material(s) with &
+             &natural elements will be ignored')
         cycle
       end if
 
@@ -275,8 +277,8 @@ contains
       mat => materials(i_mat)
 
       if (mat % nat_elements) then
-        call write_message('angular_dist element(s) in material(s) with &
-             &natural elements will be ignored', 6)
+        call log_message(INFO, 'angular_dist element(s) in material(s) with &
+             &natural elements will be ignored')
         cycle
       end if
 

@@ -1736,29 +1736,33 @@ class XSdata(object):
         xsdata.representation = target_representation
         # We have different actions depending on the representation conversion
         if target_representation == 'isotropic':
-            xsdata.num_polar = None
-            xsdata.num_azimuthal = None
-            for i, temp in enumerate(xsdata.temperatures):
-                for xs in types:
-                    # Get the original data
-                    orig_data = getattr(self, '_' + xs)[i]
-                    # Since we are going from angle to isotropic, the current
-                    # data should be just averaged over the angle bins
-                    new_data = orig_data.mean(axis=(0, 1))
-                    setter = getattr(xsdata, 'set_' + xs)
-                    setter(new_data, temp)
-
+            # This is not needed for the correct functionality, but these
+            # values are changed back to None for clarity
+            xsdata._num_polar = None
+            xsdata._num_azimuthal = None
         elif target_representation == 'angle':
             xsdata.num_polar = num_polar
             xsdata.num_azimuthal = num_azimuthal
-            for i, temp in enumerate(xsdata.temperatures):
-                for xs in types:
-                    # Get the original data
-                    orig_data = getattr(self, '_' + xs)[i]
-                    # Since we are going from isotropic to angle, the current
-                    # data should be just copied for every polar/azimuthal bin
-                    new_shape = (num_polar, num_azimuthal) + orig_data.shape
-                    new_data = np.resize(orig_data, new_shape)
+
+        # Reset XSdata.xs_shapes to accomodate the new shape
+        # import pdb; pdb.set_trace()
+        xsdata._xs_shapes = None
+        xsdata.xs_shapes
+
+        for i, temp in enumerate(xsdata.temperatures):
+            for xs in types:
+                # Get the original data
+                orig_data = getattr(self, '_' + xs)[i]
+                if orig_data is not None:
+                    if target_representation == 'isotropic':
+                        # Since we are going from angle to isotropic, the
+                        # current data is just averaged over the angle bins
+                        new_data = orig_data.mean(axis=(0, 1))
+                    elif target_representation == 'angle':
+                        # Since we are going from isotropic to angle, the
+                        # current data is just copied for every angle bin
+                        new_shape = (num_polar, num_azimuthal) + orig_data.shape
+                        new_data = np.resize(orig_data, new_shape)
                     setter = getattr(xsdata, 'set_' + xs)
                     setter(new_data, temp)
 
@@ -2287,6 +2291,45 @@ class MGXSLibrary(object):
             library.xsdatas[i] = \
                 xsdata.convert_representation(target_representation,
                                               num_polar, num_azimuthal)
+        return library
+
+    def convert_scatter_format(self, target_format, target_order):
+        """Produce a new MGXSLibrary object with the same data, but converted
+        to the new scatter format and order
+
+        Parameters
+        ----------
+        target_format : {'isotropic', 'angle'}
+            Representation of the MGXS (isotropic or angle-dependent flux
+            weighting).
+        target_order : int
+            Either the Legendre target_order, number of bins, or number of
+            points used to describe the angular distribution associated with
+            each group-to-group transfer probability.
+
+        Returns
+        -------
+        openmc.MGXSLibrary
+            Multi-group Library with the same data as self, but with the
+            scatter format represented as specified in :param:`target_format`
+            and :param:`target_order`.
+
+        """
+
+        check_value('target_format', target_format, _SCATTER_TYPES)
+        check_type('target_order', target_order, Integral)
+        if target_format == 'legendre':
+            check_greater_than('target_order', target_order, Integral, 0,
+                               equality=True)
+        else:
+            check_greater_than('target_order', target_order, Integral, 0,
+                               equality=True)
+
+        library = copy.deepcopy(self)
+        for i, xsdata in enumerate(self.xsdatas):
+            library.xsdatas[i] = \
+                xsdata.convert_scatter_format(target_format, target_order)
+
         return library
 
     def export_to_hdf5(self, filename='mgxs.h5'):

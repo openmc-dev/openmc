@@ -179,6 +179,32 @@ def atomic_mass(isotope):
 
     return _ATOMIC_MASS.get(isotope.lower())
 
+
+def atomic_weight(element):
+    """Return atomic weight of an element in atomic mass units.
+
+    Computes an average of the atomic mass of each of element's naturally
+    occurring isotopes weighted by their relative abundance.
+
+    Parameters
+    ----------
+    element : str
+        Name of element, e.g. 'H', 'U'
+
+    Returns
+    -------
+    float or None
+        Atomic weight of element in atomic mass units. If the element listed does
+        not exist, None is returned.
+
+    """
+    weight = 0.
+    for nuclide, abundance in NATURAL_ABUNDANCE.items():
+        if re.match(r'{}\d+'.format(element), nuclide):
+            weight += atomic_mass(nuclide) * abundance
+    return None if weight == 0. else weight
+
+
 # The value of the Boltzman constant in units of eV / K
 # Values here are from the Committee on Data for Science and Technology
 # (CODATA) 2010 recommendation (doi:10.1103/RevModPhys.84.1527).

@@ -1,4 +1,4 @@
-from collections import Iterable
+import copy
 from numbers import Real, Integral
 import os
 
@@ -185,6 +185,52 @@ class XSdata(object):
         self._inverse_velocity = len(temperatures) * [None]
         self._xs_shapes = None
 
+    def __deepcopy__(self, memo):
+        existing = memo.get(id(self))
+
+        # If this is the first time we have tried to copy this object, copy it
+        if existing is None:
+            clone = type(self).__new__(type(self))
+            clone._name = self.name
+            clone._energy_groups = copy.deepcopy(self.energy_groups, memo)
+            clone._num_delayed_groups = self.num_delayed_groups
+            clone._temperatures = copy.deepcopy(self.temperatures, memo)
+            clone._drepresentation = self.representation
+            clone._atomic_weight_ratio = self._atomic_weight_ratio
+            clone._fissionable = self._fissionable
+            clone._scatter_format = self._scatter_format
+            clone._order = self._order
+            clone._num_polar = self._num_polar
+            clone._num_azimuthal = self._num_azimuthal
+            clone._total = copy.deepcopy(self._total, memo)
+            clone._absorption = copy.deepcopy(self._absorption, memo)
+            clone._scatter_matrix = copy.deepcopy(self._scatter_matrix, memo)
+            clone._multiplicity_matrix = \
+                copy.deepcopy(self._multiplicity_matrix, memo)
+            clone._fission = copy.deepcopy(self._fission, memo)
+            clone._nu_fission = copy.deepcopy(self._nu_fission, memo)
+            clone._prompt_nu_fission = \
+                copy.deepcopy(self._prompt_nu_fission, memo)
+            clone._delayed_nu_fission = \
+                copy.deepcopy(self._delayed_nu_fission, memo)
+            clone._kappa_fission = copy.deepcopy(self._kappa_fission, memo)
+            clone._chi = copy.deepcopy(self._chi, memo)
+            clone._chi_prompt = copy.deepcopy(self._chi_prompt, memo)
+            clone._chi_delayed = copy.deepcopy(self._chi_delayed, memo)
+            clone._beta = copy.deepcopy(self._beta, memo)
+            clone._decay_rate = copy.deepcopy(self._decay_rate, memo)
+            clone._inverse_velocity = \
+                copy.deepcopy(self._inverse_velocity, memo)
+            clone._xs_shapes = copy.deepcopy(self._xs_shapes, memo)
+
+            memo[id(self)] = clone
+
+            return clone
+
+        # If this object has been copied before, return the first copy made
+        else:
+            return existing
+
     @property
     def name(self):
         return self._name
@@ -348,7 +394,7 @@ class XSdata(object):
     @representation.setter
     def representation(self, representation):
 
-        # Check it is of valid type.
+        # Check it is of valid value.
         check_value('representation', representation, _REPRESENTATIONS)
         self._representation = representation
 
@@ -1622,7 +1668,8 @@ class XSdata(object):
 
         """
 
-        check_type('inverse_velocity', inverse_velocity, openmc.mgxs.InverseVelocity)
+        check_type('inverse_velocity', inverse_velocity,
+                   openmc.mgxs.InverseVelocity)
         check_value('energy_groups', inverse_velocity.energy_groups,
                     [self.energy_groups])
         check_value('domain_type', inverse_velocity.domain_type,
@@ -1633,6 +1680,89 @@ class XSdata(object):
         i = np.where(self.temperatures == temperature)[0][0]
         self._inverse_velocity[i] = inverse_velocity.get_xs(
             nuclides=nuclide, xs_type=xs_type, subdomains=subdomain)
+
+    def convert_representation(self, target_representation, num_polar=None,
+                               num_azimuthal=None):
+        """Produce a new XSdata object with the same data, but converted to the
+        new representation
+
+        Parameters
+        ----------
+        target_representation : {'isotropic', 'angle'}
+            Representation of the MGXS (isotropic or angle-dependent flux
+            weighting).
+        num_polar : int, optional
+            Number of equal width angular bins that the polar angular
+            domain is subdivided into. This is required when
+            :param:`target_representation` is "angle".
+        num_azimuthal : int, optional
+            Number of equal width angular bins that the azimuthal angular
+            domain is subdivided into. This is required when
+            :param:`target_representation` is "angle".
+
+        Returns
+        -------
+        openmc.XSdata
+            Multi-group cross section data with the same data as self, but
+            represented as specified in :param:`target_representation`.
+
+        """
+
+        check_value('target_representation', target_representation,
+                    _REPRESENTATIONS)
+        if target_representation == 'angle':
+            check_type('num_polar', num_polar, Integral)
+            check_type('num_azimuthal', num_azimuthal, Integral)
+            check_greater_than('num_polar', num_polar, 0)
+            check_greater_than('num_azimuthal', num_azimuthal, 0)
+
+        xsdata = copy.deepcopy(self)
+        if target_representation == self.representation:
+            # Check to make sure the num_polar and num_azimuthal values match
+            if target_representation == 'angle':
+                if num_polar != self.num_polar or num_azimuthal != self.num_azimuthal:
+                    raise NotImplementedError("XSdata.convert_representation "
+                                              "cannot translate between "
+                                              "`angle` representations with "
+                                              "different angle bin structures")
+            # Nothing to do
+            return xsdata
+
+        types = ['total', 'absorption', 'fission', 'nu_fission',
+                 'scatter_matrix', 'multiplicity_matrix', 'prompt_nu_fission',
+                 'delayed_nu_fission', 'kappa_fission', 'chi', 'chi_prompt',
+                 'chi_delayed', 'beta', 'decay_rate', 'inverse_velocity']
+
+        xsdata.representation = target_representation
+        # We have different actions depending on the representation conversion
+        if target_representation == 'isotropic':
+            xsdata.num_polar = None
+            xsdata.num_azimuthal = None
+            for i, temp in enumerate(xsdata.temperatures):
+                for xs in types:
+                    # Get the original data
+                    orig_data = getattr(self, '_' + xs)[i]
+                    # Since we are going from angle to isotropic, the current
+                    # data should be just averaged over the angle bins
+                    new_data = orig_data.mean(axis=(0, 1))
+                    setter = getattr(xsdata, 'set_' + xs)
+                    setter(new_data, temp)
+
+        elif target_representation == 'angle':
+            xsdata.num_polar = num_polar
+            xsdata.num_azimuthal = num_azimuthal
+            for i, temp in enumerate(xsdata.temperatures):
+                for xs in types:
+                    # Get the original data
+                    orig_data = getattr(self, '_' + xs)[i]
+                    # Since we are going from isotropic to angle, the current
+                    # data should be just copied for every polar/azimuthal bin
+                    new_shape = (num_polar, num_azimuthal) + orig_data.shape
+                    new_data = np.resize(orig_data, new_shape)
+                    setter = getattr(xsdata, 'set_' + xs)
+                    setter(new_data, temp)
+
+        return xsdata
 
     def to_hdf5(self, file):
         """Write XSdata to an HDF5 file
@@ -1995,6 +2125,24 @@ class MGXSLibrary(object):
         self.num_delayed_groups = num_delayed_groups
         self._xsdatas = []
 
+    def __deepcopy__(self, memo):
+        existing = memo.get(id(self))
+
+        # If this is the first time we have tried to copy this object, copy it
+        if existing is None:
+            clone = type(self).__new__(type(self))
+            clone._energy_groups = copy.deepcopy(self.energy_groups, memo)
+            clone._num_delayed_groups = self.num_delayed_groups
+            clone._xsdatas = copy.deepcopy(self.xsdatas, memo)
+
+            memo[id(self)] = clone
+
+            return clone
+
+        # If this object has been copied before, return the first copy made
+        else:
+            return existing
+
     @property
     def energy_groups(self):
         return self._energy_groups
@@ -2098,6 +2246,48 @@ class MGXSLibrary(object):
             if name == xsdata.name:
                 result = xsdata
         return result
+
+    def convert_representation(self, target_representation, num_polar=None,
+                               num_azimuthal=None):
+        """Produce a new MGXSLibrary object with the same data, but converted
+        to the new representation
+
+        Parameters
+        ----------
+        target_representation : {'isotropic', 'angle'}
+            Representation of the MGXS (isotropic or angle-dependent flux
+            weighting).
+        num_polar : int, optional
+            Number of equal width angular bins that the polar angular
+            domain is subdivided into. This is required when
+            :param:`target_representation` is "angle".
+        num_azimuthal : int, optional
+            Number of equal width angular bins that the azimuthal angular
+            domain is subdivided into. This is required when
+            :param:`target_representation` is "angle".
+
+        Returns
+        -------
+        openmc.MGXSLibrary
+            Multi-group Library with the same data as self, but represented as
+            specified in :param:`target_representation`.
+
+        """
+
+        check_value('target_representation', target_representation,
+                    _REPRESENTATIONS)
+        if target_representation == 'angle':
+            check_type('num_polar', num_polar, Integral)
+            check_type('num_azimuthal', num_azimuthal, Integral)
+            check_greater_than('num_polar', num_polar, 0)
+            check_greater_than('num_azimuthal', num_azimuthal, 0)
+
+        library = copy.deepcopy(self)
+        for i, xsdata in enumerate(self.xsdatas):
+            library.xsdatas[i] = \
+                xsdata.convert_representation(target_representation,
+                                              num_polar, num_azimuthal)
+        return library
 
     def export_to_hdf5(self, filename='mgxs.h5'):
         """Create an hdf5 file that can be used for a simulation.

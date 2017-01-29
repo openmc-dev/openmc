@@ -15,9 +15,7 @@ module finalize
 
   ! URR API
   use URR_isotope,  only: URR_isotopes => isotopes
-  use URR_settings, only: URR_num_isotopes => num_isotopes,&
-                          URR_write_avg_xs => write_avg_xs,&
-                          URR_write_prob_tables => write_prob_tables
+  use URR_settings, only: URR_num_isotopes => num_isotopes
 
   implicit none
 

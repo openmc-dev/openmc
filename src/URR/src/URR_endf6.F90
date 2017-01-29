@@ -1325,8 +1325,7 @@ contains
   end subroutine check_zaid
 
 
-!> Check that the AWR given in the ENDF-6 file is the same value as
-!! that given in the processed ACE file
+!> Check that the AWR values are consistent within an ENDF-6 file
   subroutine check_mass(awr_val, awr_ref)
 
     real(8) :: awr_val
@@ -1334,7 +1333,7 @@ contains
 
     if (awr_val /= awr_ref) then
       call log_message(WARNING,&
-           trim(adjustl(filename))//' and the corresponding ACE file give conflicting AWR values')
+           trim(adjustl(filename))//' contains inconsistent AWR values')
     end if
 
   end subroutine check_mass

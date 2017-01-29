@@ -42,8 +42,6 @@ module initialize
   use URR_settings,  only: URR_xs_representation => xs_representation,&
                            URR_num_isotopes => num_isotopes,&
                            URR_parameter_energy_dependence => parameter_energy_dependence,&
-                           URR_write_avg_xs => write_avg_xs,&
-                           URR_write_prob_tables => write_prob_tables,&
                            URR_pregenerated_prob_tables => pregenerated_prob_tables,&
                            URR_use_urr => use_urr,&
                            URR_realization_frequency => realization_frequency,&
@@ -303,33 +301,29 @@ contains
       do i_nuc = 1, n_nuclides_total
         if (nuclides(i_nuc) % zaid == URR_isotopes(i) % ZAI) then
           nuclides(i_nuc) % i_isotope = i
-          if (nuclides(i_nuc) % fissionable) then
-            URR_isotopes(i) % fissionable = .true.
-          else
-            URR_isotopes(i) % fissionable = .false.
-          end if
-
-          URR_isotopes(i) % prob_bands   = .false.
-          URR_isotopes(i) % otf_urr_xs   = .false.
-          URR_isotopes(i) % point_urr_xs = .false.
-          select case (URR_xs_representation)
-          case (URR_PROB_BANDS)
-            URR_isotopes(i) % prob_bands = .true.
-          case (URR_ON_THE_FLY)
-            URR_isotopes(i) % otf_urr_xs = .true.
-          case (URR_POINTWISE)
-            URR_isotopes(i) % point_urr_xs = .true.
-          case default
-            call fatal_error('Not a recognized URR representation')
-          end select
-
-          ! read ENDF-6 file unless it's already been read for this isotope
-          if (.not. URR_isotopes(i) % been_read) then
-            call URR_read_endf6(URR_endf_filenames(i), i)
-            URR_isotopes(i) % been_read = .true.
-          end if
         end if
       end do
+      
+      URR_isotopes(i) % prob_bands   = .false.
+      URR_isotopes(i) % otf_urr_xs   = .false.
+      URR_isotopes(i) % point_urr_xs = .false.
+      select case (URR_xs_representation)
+      case (URR_PROB_BANDS)
+        URR_isotopes(i) % prob_bands = .true.
+      case (URR_ON_THE_FLY)
+        URR_isotopes(i) % otf_urr_xs = .true.
+      case (URR_POINTWISE)
+        URR_isotopes(i) % point_urr_xs = .true.
+      case default
+        call fatal_error('Not a recognized URR representation')
+      end select
+
+      ! read ENDF-6 file unless it's already been read for this isotope
+      if (.not. URR_isotopes(i) % been_read) then
+        call URR_read_endf6(URR_endf_filenames(i), i)
+        URR_isotopes(i) % been_read = .true.
+      end if
+
     end do
 
   end subroutine initialize_endf
@@ -498,6 +492,10 @@ contains
       ! Check for flags
       if (starts_with(argv(i), "-")) then
         select case (argv(i))
+        case ('-purxs', '--purxs')
+          run_mode = MODE_PURXS
+          exit
+
         case ('-p', '-plot', '--plot')
           run_mode = MODE_PLOTTING
           check_overlaps = .true.

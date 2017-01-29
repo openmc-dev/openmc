@@ -9,14 +9,7 @@ program main
   use particle_restart,  only: run_particle_restart
   use plot,              only: run_plot
 
-  ! URR API
-  use URR_settings, only: URR_write_avg_xs => write_avg_xs,&
-                          URR_write_prob_tables => write_prob_tables
-
   implicit none
-
-!TODO: make it more explicit to user when run_mode == MODE_PURXS
-  if (URR_write_avg_xs .or. URR_write_prob_tables) run_mode = MODE_PURXS
 
   ! set up problem
   call initialize_run()

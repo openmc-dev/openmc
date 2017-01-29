@@ -37,7 +37,6 @@ module URR_isotope
     real(8) :: T   ! current isotope temperature [K]
     type(ListReal) :: ace_T_list ! list of temperatures isotope has ACE data at
     type(ListInt) :: ace_index_list ! list of indices for different temperatures
-    logical :: fissionable ! is isotope fissionable?
 
     ! Current quantum mechanical variables
     real(8) :: k_n       ! wavenumber for neutron energy
@@ -1403,12 +1402,12 @@ contains
       write(tab_unit, '("Contributing f-wave Resonances:")', advance='no')
       write(tab_unit, *) num_l_waves(4)
       write(tab_unit, '("Model Competitive Reaction Resonance Structure:",L2)') competitive_structure
-      write(tab_unit, '("Parameter Energy Dependence):")', advance='no')
+      write(tab_unit, '("Parameter Energy Dependence:")', advance='no')
       write(tab_unit, *) get_energy_dependence(parameter_energy_dependence)
       write(tab_unit, '("Faddeeva Evaluation:")', advance='no')
       write(tab_unit, *) get_faddeeva_method(faddeeva_method)
       write(tab_unit, '("Target Relative Tolerance on Average Partial Cross Sections:")', advance='no')
-      write(tab_unit, *) rel_err_tolerance_avg_xs
+      write(tab_unit, '(ES24.16)') rel_err_tolerance_avg_xs
       write(tab_unit, '("Energies:")', advance='no')
       write(tab_unit, *) this % nE_tabs
       write(tab_unit, '("Temperatures:")', advance='no')
@@ -1432,12 +1431,12 @@ contains
       write(avg_unit, '("Contributing f-wave Resonances:")', advance='no')
       write(avg_unit, *) num_l_waves(4)
       write(avg_unit, '("Model Competitive Reaction Resonance Structure:",L2)') competitive_structure
-      write(avg_unit, '("Parameter Energy Dependence):")', advance='no')
+      write(avg_unit, '("Parameter Energy Dependence:")', advance='no')
       write(avg_unit, *) get_energy_dependence(parameter_energy_dependence)
       write(avg_unit, '("Faddeeva Evaluation:")', advance='no')
       write(avg_unit, *) get_faddeeva_method(faddeeva_method)
       write(avg_unit, '("Target Relative Tolerance on Average Partial Cross Sections:")', advance='no')
-      write(avg_unit, *) rel_err_tolerance_avg_xs
+      write(avg_unit, '(ES24.16)') rel_err_tolerance_avg_xs
       write(avg_unit, '("Energies:")', advance='no')
       write(avg_unit, *) this % nE_tabs
       write(avg_unit, '(6A24)')&
@@ -2191,7 +2190,7 @@ contains
 
     ! allocate NLS-length vec of NJS(l)-length vec of NRS(l,J)-length vec
     allocate(this % local_realization(this % NLS(this % i_urr)))
-    
+
     ! loop over orbital quantum numbers
     do i_l = 1, this % NLS(this % i_urr)
 
@@ -2207,7 +2206,7 @@ contains
       end do
     end do
 
-end subroutine alloc_local_realization
+  end subroutine alloc_local_realization
 
 
 !> Deallocate an NLS-length vector of NJS(l)-length vectors of NRS(l,J)-length

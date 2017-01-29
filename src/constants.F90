@@ -385,6 +385,7 @@ module constants
        MODE_EIGENVALUE  = 2, & ! K eigenvalue mode
        MODE_PLOTTING    = 3, & ! Plotting mode
        MODE_PARTICLE    = 4    ! Particle restart mode
+  integer, parameter :: MODE_PURXS = 5
 
   ! Unit numbers
   integer, parameter :: UNIT_SUMMARY  = 11 ! unit # for writing summary file

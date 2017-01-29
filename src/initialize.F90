@@ -114,28 +114,33 @@ contains
     ! XML files because we need the PRNG to be initialized first
     if (run_mode == MODE_PLOTTING) call read_plots_xml()
 
-    ! Set up universe structures
-    call prepare_universes()
+    if (run_mode /= MODE_PURXS) then
+      ! Set up universe structures
+      call prepare_universes()
 
-    ! Use dictionaries to redefine index pointers
-    call adjust_indices()
+      ! Use dictionaries to redefine index pointers
+      call adjust_indices()
 
-    ! After reading input and basic geometry setup is complete, build lists of
-    ! neighboring cells for efficient tracking
-    call neighbor_lists()
+      ! After reading input and basic geometry setup is complete, build lists of
+      ! neighboring cells for efficient tracking
+      call neighbor_lists()
+    end if
 
     if (run_mode /= MODE_PLOTTING) then
-      ! With the AWRs from the xs_listings, change all material specifications
-      ! so that they contain atom percents summing to 1
-      call normalize_ao()
 
-      ! Read ACE-format cross sections
-      call time_read_xs % start()
-      call read_xs()
-      call time_read_xs % stop()
+      if (run_mode /= MODE_PURXS) then
+        ! With the AWRs from the xs_listings, change all material specifications
+        ! so that they contain atom percents summing to 1
+        call normalize_ao()
 
-      ! write out ACE elastic scatter secondary angular distributions
-      call URR_write_angle()
+        ! Read ACE-format cross sections
+        call time_read_xs % start()
+        call read_xs()
+        call time_read_xs % stop()
+
+        ! write out ACE elastic scatter secondary angular distributions
+        call URR_write_angle()
+      end if
 
       ! Read ENDF-6 format nuclear data file
       if (URR_use_urr) then
@@ -152,13 +157,17 @@ contains
         select case (URR_xs_representation)
         case (URR_PROB_BANDS)
           do i = 1, URR_num_isotopes
-            do i_nuc = 1, n_nuclides_total
-              if (URR_isotopes(i) % ZAI == nuclides(i_nuc) % zaid) then
-                call URR_isotopes(i) % ace_T_list &
-                  % append(nuclides(i_nuc) % kT / K_BOLTZMANN)
-                call URR_isotopes(i) % ace_index_list % append(i_nuc)
-              end if
-            end do
+
+            if (run_mode /= MODE_PURXS) then
+              do i_nuc = 1, n_nuclides_total
+                if (URR_isotopes(i) % ZAI == nuclides(i_nuc) % zaid) then
+                  call URR_isotopes(i) % ace_T_list &
+                    % append(nuclides(i_nuc) % kT / K_BOLTZMANN)
+                  call URR_isotopes(i) % ace_index_list % append(i_nuc)
+                end if
+              end do
+            end if
+
             if (URR_pregenerated_prob_tables) then
               call URR_read_prob_tables(i)
             else
@@ -166,7 +175,7 @@ contains
               call URR_isotopes(i) % generate_prob_tables(i)
             end if
           end do
-          if (URR_write_avg_xs .or. URR_write_prob_tables) return
+          if (run_mode == MODE_PURXS) return
 
         case (URR_ON_THE_FLY)
           select case (URR_realization_frequency)

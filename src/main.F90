@@ -15,9 +15,12 @@ program main
 
   implicit none
 
+!TODO: make it more explicit to user when run_mode == MODE_PURXS
+  if (URR_write_avg_xs .or. URR_write_prob_tables) run_mode = MODE_PURXS
+
   ! set up problem
   call initialize_run()
-  if (URR_write_avg_xs .or. URR_write_prob_tables) goto 100
+
   ! start problem based on mode
   select case (run_mode)
   case (MODE_FIXEDSOURCE)
@@ -28,8 +31,10 @@ program main
     call run_plot()
   case (MODE_PARTICLE)
     if (master) call run_particle_restart()
+  case (MODE_PURXS)
+    continue
   end select
-100 continue
+
   ! finalize run
   call finalize_run()
 

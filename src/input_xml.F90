@@ -97,14 +97,17 @@ contains
 
   subroutine read_input_xml()
 
-    call read_settings_xml()
-    if (run_mode /= MODE_PLOTTING) call read_cross_sections_xml()
-    call read_geometry_xml()
-    call read_materials_xml()
-    if (run_mode /= MODE_PLOTTING) call read_tallies_xml()
-    call read_urr_xml()
-    if (cmfd_run) call configure_cmfd()
-    
+    if (run_mode == MODE_PURXS) then
+      call read_urr_xml()
+    else
+      call read_settings_xml()
+      if (run_mode /= MODE_PLOTTING) call read_cross_sections_xml()
+      call read_geometry_xml()
+      call read_materials_xml()
+      if (run_mode /= MODE_PLOTTING) call read_tallies_xml()
+      call read_urr_xml()
+      if (cmfd_run) call configure_cmfd()
+    end if
 
   end subroutine read_input_xml
 

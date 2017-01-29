@@ -14,9 +14,13 @@ from openmc.checkvalue import check_type, check_value, check_greater_than, \
 
 # Supported incoming particle MGXS angular treatment representations
 _REPRESENTATIONS = ['isotropic', 'angle']
+# Supported scattering angular distribution representations
 _SCATTER_TYPES = ['tabular', 'legendre', 'histogram']
+# List of MGXS dimension types
 _XS_SHAPES = ["[G][G'][Order]", "[G]", "[G']", "[G][G']", "[DG]", "[DG][G]",
               "[DG][G']", "[DG][G][G']"]
+# Number of mu points for conversion between scattering formats
+_NMU = 257
 
 
 class XSdata(object):
@@ -195,7 +199,7 @@ class XSdata(object):
             clone._energy_groups = copy.deepcopy(self.energy_groups, memo)
             clone._num_delayed_groups = self.num_delayed_groups
             clone._temperatures = copy.deepcopy(self.temperatures, memo)
-            clone._drepresentation = self.representation
+            clone._representation = self.representation
             clone._atomic_weight_ratio = self._atomic_weight_ratio
             clone._fissionable = self._fissionable
             clone._scatter_format = self._scatter_format
@@ -1745,9 +1749,7 @@ class XSdata(object):
             xsdata.num_azimuthal = num_azimuthal
 
         # Reset XSdata.xs_shapes to accomodate the new shape
-        # import pdb; pdb.set_trace()
         xsdata._xs_shapes = None
-        xsdata.xs_shapes
 
         for i, temp in enumerate(xsdata.temperatures):
             for xs in types:
@@ -1761,10 +1763,191 @@ class XSdata(object):
                     elif target_representation == 'angle':
                         # Since we are going from isotropic to angle, the
                         # current data is just copied for every angle bin
-                        new_shape = (num_polar, num_azimuthal) + orig_data.shape
+                        new_shape = (num_polar, num_azimuthal) + \
+                            orig_data.shape
                         new_data = np.resize(orig_data, new_shape)
                     setter = getattr(xsdata, 'set_' + xs)
                     setter(new_data, temp)
+
+        return xsdata
+
+    def convert_scatter_format(self, target_format, target_order=None):
+        """Produce a new MGXSLibrary object with the same data, but converted
+        to the new scatter format and order
+
+        Parameters
+        ----------
+        target_format : {'tabular', 'legendre', 'histogram'}
+            Representation of the scattering angle distribution
+        target_order : int
+            Either the Legendre target_order, number of bins, or number of
+            points used to describe the angular distribution associated with
+            each group-to-group transfer probability
+
+        Returns
+        -------
+        openmc.XSdata
+            Multi-group cross section data with the same data as self, but
+            represented as specified in :param:`target_format`.
+
+        """
+
+        from scipy.interpolate import interp1d
+        from scipy.integrate import quad, simps
+        from scipy.special import eval_legendre
+
+        check_value('target_format', target_format, _SCATTER_TYPES)
+        check_type('target_order', target_order, Integral)
+        if target_format == 'legendre':
+            check_greater_than('target_order', target_order, 0, equality=True)
+        else:
+            check_greater_than('target_order', target_order, 0)
+
+        xsdata = copy.deepcopy(self)
+        xsdata.scatter_format = target_format
+        xsdata.order = target_order
+        # Reset XSdata.xs_shapes to accomodate the new shape
+        xsdata._xs_shapes = None
+        xsdata.xs_shapes
+
+        # We have to accomodate the following possibilities:
+        # histogram -> tabular w/ same or diff order
+        # histogram -> legendre
+        # histogram -> histogram w/ same or diff order
+
+        for i, temp in enumerate(xsdata.temperatures):
+            orig_data = self._scatter_matrix[i]
+            new_shape = orig_data.shape[:-1] + (xsdata.num_orders,)
+            new_data = np.zeros(new_shape)
+            if self.scatter_format == 'legendre':
+                if target_format == 'legendre':
+                    # Then we are changing orders and only need to change
+                    # dimensionality of the mu data and pad/truncate as needed
+                    order = min(xsdata.num_orders, self.num_orders)
+                    new_data[..., :order] = orig_data[..., :order]
+                elif target_format == 'tabular':
+                    mu = np.linspace(-1, 1, xsdata.num_orders)
+                    # Create the Legendre series and either do a point-wise
+                    # evaluation (tabular) or bin-wise integral (histogram)
+                    new_data[..., :] = \
+                        np.sum((l + 0.5) * eval_legendre(l, mu) * orig_data
+                               for l in range(self.num_orders))
+                elif target_format == 'histogram':
+                    mu = np.linspace(-1, 1, xsdata.num_orders + 1)
+                    # This code will be written to utilize the vectorized
+                    # integration capabilities instead of having an isotropic
+                    # and angle representation path.
+                    for h_bin in range(xsdata.num_orders):
+                        mu_fine = np.linspace(mu[i], mu[i + 1], _NMU)
+                        new_data[..., h_bin] = \
+                            simps(np.sum((l + 0.5) *
+                                         eval_legendre(l, mu_fine) *
+                                         orig_data
+                                         for l in range(self.num_orders)),
+                                  mu_fine)
+
+                    # Remove the very small results from numerical precision
+                    # issues (allowing conversions to be reproduced exactly)
+                    new_data[..., np.abs(new_data) < 1.E-10] = 0.
+
+            elif self.scatter_format == 'tabular':
+                mu_self = np.linspace(-1, 1, self.num_orders)
+                if target_format == 'legendre':
+                    # find the legendre coefficients via integration. To best
+                    # use the vectorized integration capabilities of scipy,
+                    # this will be done with fixed sample integration routines.
+                    mu_fine = np.linspace(-1, 1, _NMU)
+                    y = [interp1d(mu_self, orig_data)(mu_fine) *
+                         eval_legendre(l, mu_fine)
+                         for l in range(xsdata.num_orders)]
+                    for l in range(xsdata.num_orders):
+                        new_data[..., l] = (l + 0.5) * simps(y[l], mu_fine)
+
+                    # Remove the very small results from numerical precision
+                    # issues (allowing conversions to be reproduced exactly)
+                    new_data[..., np.abs(new_data) < 1.E-10] = 0.
+                elif target_format == 'tabular':
+                    # Simply use an interpolating function to get the new data
+                    mu = np.linspace(-1, 1, xsdata.num_orders)
+                    new_data[..., :] = interp1d(mu_self, orig_data)(mu)
+                elif target_format == 'histogram':
+                    # Use an interpolating function to do the bin-wise
+                    # integrals
+                    mu = np.linspace(-1, 1, xsdata.num_orders + 1)
+
+                    # Like the tabular -> legendre path above, this code will
+                    # be written to utilize the vectorized integration
+                    # capabilities instead of having an isotropic and
+                    # angle representation path.
+                    interp = interp1d(mu_self, orig_data)
+                    for h_bin in range(xsdata.num_orders):
+                        mu_fine = np.linspace(mu[h_bin], mu[h_bin + 1], _NMU)
+                        new_data[..., h_bin] = simps(interp(mu_fine), mu_fine)
+
+                    # Remove the very small results from numerical precision
+                    # issues (allowing conversions to be reproduced exactly)
+                    new_data[..., np.abs(new_data) < 1.E-10] = 0.
+            elif self.scatter_format == 'histogram':
+                # The histogram format does not have enough information to
+                # convert to the other forms without inducing an error.
+                # We will make the assumption that the left-edge of the bin
+                # has the value of the bin. The mu=1 value will be extrapolated
+                # from the previous two points.
+                mu_self = np.linspace(-1, 1, self.num_orders + 1)
+                tab_data = np.zeros(orig_data.shape[:-1] +
+                                    (orig_data.shape[-1] + 1,))
+                tab_data[..., :-1] = orig_data
+                tab_data[..., -1] = (orig_data[..., -2] -
+                                     orig_data[..., -3]) + orig_data[..., -2]
+                # Now get the distribution normalization factor.such
+                # This factor will be such that its average value is the
+                # group -> group cross section (which is the sum of the
+                # original data)
+                norm = np.sum(orig_data, axis=-1) / np.mean(tab_data, axis=-1)
+                norm = np.nan_to_num(norm)
+                for i in range(tab_data.shape[-1]):
+                    tab_data[..., i] *= norm[...]
+
+                # We now have a tabular distribution in tab_data on mu_self
+                # with a normalization in norm. We now proceed just like the
+                # tabular branch above.
+                if target_format == 'legendre':
+                    # find the legendre coefficients via integration. To best
+                    # use the vectorized integration capabilities of scipy,
+                    # this will be done with fixed sample integration routines.
+                    mu_fine = np.linspace(-1, 1, _NMU)
+                    y = [interp1d(mu_self, tab_data)(mu_fine) *
+                         eval_legendre(l, mu_fine)
+                         for l in range(xsdata.num_orders)]
+                    for l in range(xsdata.num_orders):
+                        new_data[..., l] = (l + 0.5) * simps(y[l], mu_fine)
+
+                    # Remove the very small results from numerical precision
+                    # issues (allowing conversions to be reproduced exactly)
+                    new_data[..., np.abs(new_data) < 1.E-10] = 0.
+                elif target_format == 'tabular':
+                    # Simply use an interpolating function to get the new data
+                    mu = np.linspace(-1, 1, xsdata.num_orders)
+                    new_data[..., :] = interp1d(mu_self, tab_data)(mu)
+                elif target_format == 'histogram':
+                    # Use an interpolating function to do the bin-wise
+                    # integrals
+                    mu = np.linspace(-1, 1, xsdata.num_orders + 1)
+
+                    # Like the tabular -> legendre path above, this code will
+                    # be written to utilize the vectorized integration
+                    # capabilities instead of having an isotropic and
+                    # angle representation path.
+                    interp = interp1d(mu_self, tab_data)
+                    for h_bin in range(xsdata.num_orders):
+                        mu_fine = np.linspace(mu[h_bin], mu[h_bin + 1], _NMU)
+                        new_data[..., h_bin] = simps(interp(mu_fine), mu_fine)
+
+                    # Remove the very small results from numerical precision
+                    # issues (allowing conversions to be reproduced exactly)
+                    new_data[..., np.abs(new_data) < 1.E-10] = 0.
+
+            xsdata.set_scatter_matrix(new_data, temp)
 
         return xsdata
 
@@ -1891,7 +2074,7 @@ class XSdata(object):
                             elif self.representation == 'angle':
                                 matrix = \
                                     self._scatter_matrix[i][p, a, g_in, :, 0]
-                        elif self.scatter_format == 'histogram':
+                        else:
                             if self.representation == 'isotropic':
                                 matrix = \
                                     np.sum(self._scatter_matrix[i][g_in, :, :],
@@ -2299,13 +2482,12 @@ class MGXSLibrary(object):
 
         Parameters
         ----------
-        target_format : {'isotropic', 'angle'}
-            Representation of the MGXS (isotropic or angle-dependent flux
-            weighting).
+        target_format : {'tabular', 'legendre', 'histogram'}
+            Representation of the scattering angle distribution
         target_order : int
             Either the Legendre target_order, number of bins, or number of
             points used to describe the angular distribution associated with
-            each group-to-group transfer probability.
+            each group-to-group transfer probability
 
         Returns
         -------
@@ -2319,11 +2501,9 @@ class MGXSLibrary(object):
         check_value('target_format', target_format, _SCATTER_TYPES)
         check_type('target_order', target_order, Integral)
         if target_format == 'legendre':
-            check_greater_than('target_order', target_order, Integral, 0,
-                               equality=True)
+            check_greater_than('target_order', target_order, 0, equality=True)
         else:
-            check_greater_than('target_order', target_order, Integral, 0,
-                               equality=True)
+            check_greater_than('target_order', target_order, 0)
 
         library = copy.deepcopy(self)
         for i, xsdata in enumerate(self.xsdatas):

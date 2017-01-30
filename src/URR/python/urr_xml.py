@@ -12,6 +12,7 @@ OnTheFlyElement          -- object containing optional sub-element of <urr>
 PointwiseElement         -- object containing optional sub-element of <urr>
 """
 
+import argparse
 import lxml.etree as et
 import copy as cp
 import logging as log
@@ -282,3 +283,12 @@ def urr_materials_xml(symbols):
     for i in range(len(symbols)):
         matfile.write('<nuclide name="'+symbols[i]+'" ao="1.0" />'+'\n')
     matfile.close()
+
+def urr_get_args():
+    """Return list of isotopes for URR processing"""
+    parser = argparse.ArgumentParser()
+    parser.add_argument('isotopes', nargs='+',
+        help='space-separated list of isotopes for URR processing (e.g., U-235 U-238 Pu-239 Pu-240)')
+    args = parser.parse_args()
+
+    return args.isotopes

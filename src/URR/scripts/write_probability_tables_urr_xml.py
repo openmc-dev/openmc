@@ -1,62 +1,67 @@
-#/usr/bin/env python
+#!/usr/bin/env python
 
 """
-Script for generating urr.xml input file
+Script for generating probability table URR cross sections urr.xml input file
 """
 
 import os
-import lxml.etree as et
 import urr_xml as xml
 import parse_endf_6 as endf6
 
-urr_files = endf6.urr_filenames('/g/g19/walsh23/data/evaluations/endf-7.1/neutrons/')
+urr_isotopes = xml.urr_get_args()
+
+# URR settings
+settings = xml.SettingsElement()
+endf_6_filepath = os.environ.get('ENDF_6_FILEPATH')
+if endf_6_filepath:
+    if endf_6_filepath[-1] != '/': endf_6_filepath += '/'
+    settings.endf_6_filepath(endf_6_filepath)
+else:
+    raise ValueError('Set ENDF_6_FILEPATH environment variable')
+avg_xs_filepath = os.environ.get('AVG_XS_FILEPATH')
+if avg_xs_filepath:
+    if avg_xs_filepath[-1] != '/': avg_xs_filepath += '/'
+    settings.avg_xs_filepath(avg_xs_filepath)
+else:
+    raise ValueError('Set AVG_XS_FILEPATH environment variable')
+settings.formalism('SLBW')
+settings.w_function_implementation('quick_w')
+settings.num_s_wave(64)
+settings.num_p_wave(64)
+settings.num_d_wave(64)
+settings.num_f_wave(64)
+settings.parameter_energy_dependence('neutron')
+settings.competitive_structure(True)
+
+# URR probability tables input
+probability_tables = xml.ProbabilityTablesElement()
+prob_tables_filepath = os.environ.get('PROB_TABLES_FILEPATH')
+if prob_tables_filepath:
+    if prob_tables_filepath[-1] != '/': prob_tables_filepath += '/'
+    probability_tables.filepath(prob_tables_filepath)
+else:
+    raise ValueError('Set PROB_TABLES_FILEPATH environment variable')
+probability_tables.read_tables(True)
+probability_tables.temperature_interpolation_method('log-log')
+
+# URR isotopes input
+isotopes = xml.IsotopesListElement()
+urr_files = endf6.urr_filenames(endf_6_filepath)
+urr_files.sort()
 zaids, symbols = endf6.zaids_symbols(urr_files)
 for i in range(len(urr_files)):
-    urr = xml.URRElement()
-    settings = xml.SettingsElement()
-    isotopes = xml.IsotopesListElement()
-    probability_tables = xml.ProbabilityTablesElement()
+    include_isotope = False
+    if ('all' in urr_isotopes) or (symbols[i] in urr_isotopes):
+        include_isotope = True
+    if include_isotope:
+        isotope = xml.IsotopeElement()
+        isotope.zaid(zaids[i])
+        isotope.endf_6_file(urr_files[i])
+        isotopes.add_isotope(isotope)
 
-    # URR settings
-    settings.endf_6_filepath(
-        '/g/g19/walsh23/data/evaluations/endf-7.1/neutrons/')
-    settings.avg_xs_filepath(
-        '/g/g19/walsh23/dev/shutmc/src/URR/data/processed/PURXS/avg_xs/')
-    settings.formalism('SLBW')
-    settings.w_function_implementation('quick_w')
-    settings.num_s_wave(64)
-    settings.num_p_wave(64)
-    settings.num_d_wave(64)
-    settings.num_f_wave(64)
-    settings.parameter_energy_dependence('neutron')
-    settings.competitive_structure(True)
-
-    # URR isotopes
-    isotope = xml.IsotopeElement()
-    isotope.zaid(zaids[i])
-    isotope.endf_6_file(urr_files[i])
-    isotopes.add_isotope(isotope)
-
-    # URR probability tables input
-    probability_tables.read_tables(False)
-    probability_tables.filepath('/g/g19/walsh23/dev/shutmc/src/URR/data/processed/PURXS/prob_tables/')
-    probability_tables.temperature_interpolation_method('log-log')
-    probability_tables.num_bands(16)
-    probability_tables.temperature_grid([0.0])
-    probability_tables.min_num_batches(64)
-    probability_tables.max_num_batches(1024)
-    probability_tables.num_histories(128)
-    probability_tables.tolerance(5.0e-3)
-    probability_tables.energy_spacing('logarithmic')
-    probability_tables.num_energies(16)
-    probability_tables.write_tables(True)
-    probability_tables.write_avg_xs(True)
-
-    # Construct urr.xml and materials.xml
-    os.makedirs(settings.avg_xs_filepath_.text+symbols[i])
-    os.chdir(settings.avg_xs_filepath_.text+symbols[i])
-    urr.add_element(settings)
-    urr.add_element(isotopes)
-    urr.add_element(probability_tables)
-    urr.write_xml()
-    xml.urr_materials_xml(symbols[i])
+# Generate urr.xml
+urr = xml.URRElement()
+urr.add_element(settings)
+urr.add_element(isotopes)
+urr.add_element(probability_tables)
+urr.write_xml()

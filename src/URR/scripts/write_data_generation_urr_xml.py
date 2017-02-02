@@ -50,14 +50,14 @@ probability_tables.max_num_batches(1000)
 probability_tables.num_histories(128)
 probability_tables.tolerance(5.0e-3)
 probability_tables.energy_spacing('logarithmic')
-probability_tables.num_energies(16)
+probability_tables.num_energies(64)
 probability_tables.write_tables(True)
 probability_tables.write_avg_xs(True)
 
 # URR isotopes input
 urr_files = endf6.urr_filenames(endf_6_filepath)
 urr_files.sort()
-zaids, symbols = endf6.zaids_symbols(urr_files)
+zaids, symbols = endf6.zaids_symbols(urr_files, 'JENDL')
 for i in range(len(urr_files)):
     include_isotope = False
     if ('all' in urr_isotopes) or (symbols[i] in urr_isotopes):

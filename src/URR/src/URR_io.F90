@@ -22,12 +22,12 @@ contains
     logical :: file_exists ! does avg URR xs file exist?
     character(7) :: readable ! is avg URR xs file readable?
     character(6) :: zaid_str ! ZAID number as a string
-    character(:), allocatable :: rec      ! file record
-    integer :: E_depend ! parameter energy dependence flag
-    integer :: i        ! isotope index
-    integer :: in = 12  ! input unit
-    integer :: ir       ! record index
-    integer :: ZAI      ! isotope ZAID number
+    character(255) :: rec    ! file record
+    integer :: E_depend    ! parameter energy dependence flag
+    integer :: i           ! isotope index
+    integer :: i_unit = 12 ! input unit
+    integer :: ir          ! record index
+    integer :: ZAI         ! isotope ZAID number
     real(8) :: tol ! tolerance used in generating avg xs values
 
     write(zaid_str, '(I6)') isotopes(i) % ZAI
@@ -46,47 +46,47 @@ contains
 
     ! open file with average xs values
     call log_message(INFO, 'Loading average URR cross sections for ZAI '//zaid_str)
-    open(unit=in,&
+    open(unit=i_unit,&
          file=trim(path_avg_xs)//trim(adjustl(zaid_str))//'-avg-urr-xs.dat')
 
 10  format(A255)
     ! ENDF-6 filepath
-    read(in, 10) rec
+    read(i_unit, 10) rec
     
     ! resonance formalism
-    read(in, 10) rec
+    read(i_unit, 10) rec
 
     ! number of contributing s-wave resonances
-    read(in, 10) rec
+    read(i_unit, 10) rec
 
     ! number of contributing p-wave resonances
-    read(in, 10) rec
+    read(i_unit, 10) rec
 
     ! number of contributing d-wave resonances
-    read(in, 10) rec
+    read(i_unit, 10) rec
 
     ! number of contributing f-wave resonances
-    read(in, 10) rec
+    read(i_unit, 10) rec
 
     ! model competitive resonance structure
-    read(in, 10) rec
+    read(i_unit, 10) rec
 
     ! parameter energy dependence
-    read(in, 10) rec
+    read(i_unit, 10) rec
 
     ! Faddeeva function evaluation
-    read(in, 10) rec
+    read(i_unit, 10) rec
 
     ! target tolerance (1sigma/mean) for averaged partial cross sections
-    read(in, 10) rec
+    read(i_unit, 10) rec
 
     ! number of energies
-    read(in, 10) rec
-    read(rec(10:80), '(i71)') isotopes(i) % nE_tabs
+    read(i_unit, 10) rec
+    read(rec(10:255), '(i246)') isotopes(i) % nE_tabs
     isotopes(i) % num_avg_xs_grid = isotopes(i) % nE_tabs
 
     ! column labels
-    read(in, 10) rec
+    read(i_unit, 10) rec
 
     ! allocate average xs grids
     allocate(isotopes(i) % E_avg_xs(isotopes(i) % num_avg_xs_grid))
@@ -95,7 +95,7 @@ contains
 20  format(6ES24.16)
     ! read in average xs values
     do ir = 1, isotopes(i) % num_avg_xs_grid
-      read(in, 20)&
+      read(i_unit, 20)&
            isotopes(i) % E_avg_xs(ir),&
            isotopes(i) % avg_xs(ir) % t,&
            isotopes(i) % avg_xs(ir) % n,&
@@ -105,9 +105,9 @@ contains
     end do
 
     ! read max 1sigma/mean values
-    read(in, *) rec
+    read(i_unit, *) rec
 
-    close(in)
+    close(i_unit)
 
   end subroutine read_avg_xs
 

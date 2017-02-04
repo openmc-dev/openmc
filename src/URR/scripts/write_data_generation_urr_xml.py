@@ -44,7 +44,7 @@ else:
 probability_tables.read_tables(False)
 probability_tables.temperature_interpolation_method('log-log')
 probability_tables.num_bands(1)
-probability_tables.temperature_grid(['0.0'])
+probability_tables.temperature_grid(['293.6'])
 probability_tables.min_num_batches(50)
 probability_tables.max_num_batches(1000)
 probability_tables.num_histories(128)

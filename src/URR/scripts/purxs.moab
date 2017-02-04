@@ -1,0 +1,10 @@
+#!/bin/bash
+
+#MSUB -l walltime=12:00:00
+#MSUB -l nodes=1:ppn=1
+#MSUB -j oe
+#MSUB -V
+
+export EXE=$HOME/dev/shutmc/src/build/bin/shutmc
+
+mpirun -np 1 $EXE $PWD --purxs

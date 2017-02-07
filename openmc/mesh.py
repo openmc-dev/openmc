@@ -67,11 +67,11 @@ class Mesh(object):
             return False
 
         # Check dimension
-        elif self._dimension != mesh2.dimension:
+        elif (self._dimension != mesh2.dimension).all():
             return False
 
         # Check width
-        elif self._width != mesh2.width:
+        elif (self._width != mesh2.width).all():
             return False
 
         # Check lower left / upper right

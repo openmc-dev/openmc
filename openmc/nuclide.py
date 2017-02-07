@@ -1,11 +1,8 @@
-from numbers import Integral
-import sys
 import warnings
 
-from openmc.checkvalue import check_type
+from six import string_types
 
-if sys.version_info[0] >= 3:
-    basestring = str
+import openmc.checkvalue as cv
 
 
 class Nuclide(object):
@@ -39,7 +36,7 @@ class Nuclide(object):
                 return False
             else:
                 return True
-        elif isinstance(other, basestring) and other == self.name:
+        elif isinstance(other, string_types) and other == self.name:
             return True
         else:
             return False
@@ -73,7 +70,7 @@ class Nuclide(object):
 
     @name.setter
     def name(self, name):
-        check_type('name', name, basestring)
+        cv.check_type('name', name, string_types)
         self._name = name
 
         if '-' in name:
@@ -88,9 +85,9 @@ class Nuclide(object):
 
     @scattering.setter
     def scattering(self, scattering):
-        if not scattering in ['data', 'iso-in-lab']:
-            msg = 'Unable to set scattering for Nuclide to {0} ' \
-                  'which is not "data" or "iso-in-lab"'.format(scattering)
+        if not scattering in ['data', 'iso-in-lab', None]:
+            msg = 'Unable to set scattering for Nuclide to {0} which ' \
+                  'is not "data", "iso-in-lab", or None'.format(scattering)
             raise ValueError(msg)
 
         self._scattering = scattering

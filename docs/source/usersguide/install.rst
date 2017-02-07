@@ -4,6 +4,38 @@
 Installation and Configuration
 ==============================
 
+----------------------------------------
+Installing on Linux/Mac with conda-forge
+----------------------------------------
+
+`Conda <http://conda.pydata.org/docs/>`_ is an open source package management
+system and environment management system for installing multiple versions of
+software packages and their dependencies and switching easily between
+them. `conda-forge <https://conda-forge.github.io/>`_ is a community-led conda
+channel of installable packages. For instructions on installing conda, please
+consult their `documentation
+<http://conda.pydata.org/docs/install/quick.html>`_.
+
+Once you have `conda` installed on your system, add the `conda-forge` channel to
+your configuration with:
+
+.. code-block:: sh
+
+    conda config --add channels conda-forge
+
+Once the `conda-forge` channel has been enabled, OpenMC can then be installed
+with:
+
+.. code-block:: sh
+
+    conda install openmc
+
+It is possible to list all of the versions of OpenMC available on your platform with:
+
+.. code-block:: sh
+
+    conda search openmc --channel conda-forge
+
 -----------------------------
 Installing on Ubuntu with PPA
 -----------------------------
@@ -243,6 +275,8 @@ can typically be set for a single command, i.e.
 
     HDF5_ROOT=/opt/hdf5/1.8.15 cmake /path/to/openmc
 
+.. _compile_linux:
+
 Compiling on Linux and Mac OS X
 -------------------------------
 
@@ -267,80 +301,28 @@ OpenMC locally by specifying an install prefix when running cmake:
 The ``CMAKE_INSTALL_PREFIX`` variable can be changed to any path for which you
 have write-access.
 
-Compiling on Windows
---------------------
+Compiling on Windows 10
+-----------------------
 
-Using Cygwin
-++++++++++++
-
-One option for compiling OpenMC on a Windows operating system is to use Cygwin_,
-a Linux-like environment for Windows. You will need to first `install
-Cygwin`_. When you are asked to select packages, make sure the following are
-selected:
-
-* Devel: gcc-core
-* Devel: gcc-fortran
-* Devel: make
-* Devel: cmake
-
-If you plan on obtaining the source code directly using git, select the
-following packages:
-
-* Devel: git
-* Devel: git-completion (Optional)
-* Devel: gitk (Optional)
-
-In order to use the Python scripts provided with OpenMC, you will also need to
-install Python. This can be done within Cygwin or directly in Windows. To
-install within Cygwin, select the following packages:
-
-* Python: python (Version > 2.7 recommended)
-
-Once you have obtained the source code, run the following commands from within
-the source code root directory:
-
-.. code-block:: sh
-
-    mkdir build && cd build
-    cmake ..
-    make
-
-This will build an executable named ``openmc``.
-
-.. _Cygwin: http://cygwin.com/
-.. _install Cygwin: http://cygwin.com/setup.exe
-
-Using MinGW
-+++++++++++
-
-An alternate option for installing OpenMC on Windows is using MinGW_, which
-stands for Minimalist GNU for Windows. An executable for installing the MinGW
-distribution is available on SourceForge_. When installing MinGW, make sure the
-following components are selected:
-
-* MinGW Compiler Suite: Fortran Compiler
-* MSYS Basic System
-
-Once MinGW is installed, copy the OpenMC source distribution to your MinGW home
-directory (usually C:\\MinGW\\msys\\1.0\\home\\YourUsername). Once you have
-the source code in place, run the following commands from within the MinGW shell
-in the root directory of the OpenMC distribution:
-
-.. code-block:: sh
-
-    make
-
-This will build an executable named ``openmc``.
-
-.. _MinGW: http://www.mingw.org
-.. _SourceForge: http://sourceforge.net/projects/mingw
+Recent versions of Windows 10 include a subsystem for Linux that allows one to
+run Bash within Ubuntu running in Windows. First, follow the installation guide
+`here <https://msdn.microsoft.com/en-us/commandline/wsl/install_guide>`_ to get
+Bash on Ubuntu on Windows setup. Once you are within bash, obtain the necessary
+:ref:`prerequisites <prerequisites>` via ``apt-get``. Finally, follow the
+:ref:`instructions for compiling on linux <compile_linux>`.
 
 Compiling for the Intel Xeon Phi
 --------------------------------
 
-In order to build OpenMC for the Intel Xeon Phi using the Intel Fortran
-compiler, it is necessary to specify that all objects be compiled with the
-``-mmic`` flag as follows:
+For the second generation Knights Landing architecture, nothing special is
+required to compile OpenMC. You may wish to experiment with compiler flags that
+control generation of vector instructions to see what configuration gives
+optimal performance for your target problem.
+
+For the first generation Knights Corner architecture, it is necessary to
+cross-compile OpenMC. If you are using the Intel Fortran compiler, it is
+necessary to specify that all objects be compiled with the ``-mmic`` flag as
+follows:
 
 .. code-block:: sh
 
@@ -348,9 +330,10 @@ compiler, it is necessary to specify that all objects be compiled with the
     FC=ifort CC=icc FFLAGS=-mmic cmake -Dopenmp=on ..
     make
 
-Note that unless an HDF5 build for the Intel Xeon Phi is already on your target
-machine, you will need to cross-compile HDF5 for the Xeon Phi. An `example
-script`_ to build zlib and HDF5 provides several necessary workarounds.
+Note that unless an HDF5 build for the Intel Xeon Phi (Knights Corner) is
+already on your target machine, you will need to cross-compile HDF5 for the Xeon
+Phi. An `example script`_ to build zlib and HDF5 provides several necessary
+workarounds.
 
 .. _example script: https://github.com/paulromano/install-scripts/blob/master/install-hdf5-mic
 
@@ -407,13 +390,11 @@ extract the ACE data, fix any deficiencies, and create an HDF5 library:
 
 .. code-block:: sh
 
-    cd openmc/data
-    python get_nndc_data.py
+    openmc-get-nndc-data
 
 At this point, you should set the :envvar:`OPENMC_CROSS_SECTIONS` environment
-variable to the absolute path of the file
-``openmc/data/nndc_hdf5/cross_sections.xml``. This cross section set is used by
-the test suite.
+variable to the absolute path of the file ``nndc_hdf5/cross_sections.xml``. This
+cross section set is used by the test suite.
 
 Using JEFF Cross Sections from OECD/NEA
 ---------------------------------------
@@ -424,12 +405,10 @@ and extract the ACE data, fix any deficiencies, and create an HDF5 library.
 
 .. code-block:: sh
 
-    cd openmc/data
-    python get_jeff_data.py
+    openmc-get-jeff-data
 
 At this point, you should set the :envvar:`OPENMC_CROSS_SECTIONS` environment
-variable to the absolute path of the file
-``openmc/data/jeff-3.2-hdf5/cross_sections.xml``.
+variable to the absolute path of the file ``jeff-3.2-hdf5/cross_sections.xml``.
 
 Using Cross Sections from MCNP
 ------------------------------
@@ -441,8 +420,7 @@ format, run the following:
 
 .. code-block:: sh
 
-    cd openmc/data
-    python convert_mcnp_endf70.py /path/to/mcnpdata/
+    openmc-convert-mcnp70-data /path/to/mcnpdata/
 
 where ``/path/to/mcnpdata`` is the directory containing the ``endf70[a-k]``
 files.
@@ -452,8 +430,7 @@ the following script:
 
 .. code-block:: sh
 
-    cd openmc/data
-    python convert_mcnp_endf71.py /path/to/mcnpdata
+    openmc-convert-mcnp71-data /path/to/mcnpdata
 
 where ``/path/to/mcnpdata`` is the directory containing the ``endf71x`` and
 ``ENDF71SaB`` directories.
@@ -470,16 +447,16 @@ that are to be converted:
 
 1. List each ACE library as a positional argument. This is very useful in
    conjunction with the usual shell utilities (ls, find, etc.).
-2. Use the --xml option to specify a pre-v0.9 cross_sections.xml file.
-3. Use the --xsdir option to specify a MCNP xsdir file.
-4. Use the --xsdata option to specify a Serpent xsdata file.
+2. Use the ``--xml`` option to specify a pre-v0.9 cross_sections.xml file.
+3. Use the ``--xsdir`` option to specify a MCNP xsdir file.
+4. Use the ``--xsdata`` option to specify a Serpent xsdata file.
 
 The script does not use any extra information from cross_sections.xml/ xsdir/
 xsdata files to determine whether the nuclide is metastable. Instead, the
---metastable argument can be used to specify whether the ZAID naming convention
-follows the NNDC data convention (1000*Z + A + 300 + 100*m), or the MCNP data
-convention (essentially the same as NNDC, except that the first metastable state
-of Am242 is 95242 and the ground state is 95642).
+``--metastable`` argument can be used to specify whether the ZAID naming
+convention follows the NNDC data convention (1000*Z + A + 300 + 100*m), or the
+MCNP data convention (essentially the same as NNDC, except that the first
+metastable state of Am242 is 95242 and the ground state is 95642).
 
 The ``openmc-ace-to-hdf5`` script has the following command-line flags:
 

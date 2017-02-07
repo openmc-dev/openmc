@@ -16,10 +16,7 @@ class MGXSTestHarness(PyAPITestHarness):
         super(MGXSTestHarness, self)._build_inputs()
 
         # Initialize a one-group structure
-        energy_groups = openmc.mgxs.EnergyGroups(group_edges=[0, 20.])
-
-        # Initialize a six-delayed-group structure
-        delayed_groups = list(range(1,7))
+        energy_groups = openmc.mgxs.EnergyGroups(group_edges=[0, 20.e6])
 
         # Initialize MGXS Library for a few cross section types
         # for one material-filled cell in the geometry
@@ -30,7 +27,7 @@ class MGXSTestHarness(PyAPITestHarness):
         self.mgxs_lib.mgxs_types = openmc.mgxs.MGXS_TYPES + \
                                    openmc.mgxs.MDGXS_TYPES
         self.mgxs_lib.energy_groups = energy_groups
-        self.mgxs_lib.delayed_groups = delayed_groups
+        self.mgxs_lib.num_delayed_groups = 6
         self.mgxs_lib.legendre_order = 3
         self.mgxs_lib.domain_type = 'mesh'
 
@@ -75,12 +72,7 @@ class MGXSTestHarness(PyAPITestHarness):
 
         return outstr
 
-    def _cleanup(self):
-        super(MGXSTestHarness, self)._cleanup()
-        f = os.path.join(os.getcwd(), 'tallies.xml')
-        if os.path.exists(f): os.remove(f)
-
 
 if __name__ == '__main__':
-    harness = MGXSTestHarness('statepoint.10.*', True)
+    harness = MGXSTestHarness('statepoint.10.h5', True)
     harness.main()

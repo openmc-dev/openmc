@@ -22,26 +22,25 @@ contains
 !===============================================================================
 
   subroutine read_mgxs()
-    integer :: i            ! index in materials array
-    integer :: j            ! index over nuclides in material
-    integer :: i_xsdata     ! index in xsdata_dict
-    integer :: i_nuclide    ! index in nuclides array
-    character(20)  :: name  ! name of library to load
-    integer :: representation ! Data representation
+    integer                 :: i              ! index in materials array
+    integer                 :: j              ! index over nuclides in material
+    integer                 :: i_xsdata       ! index in <xsdata> list
+    integer                 :: i_nuclide      ! index in nuclides array
+    character(20)           :: name           ! name of library to load
+    integer                 :: representation ! Data representation
     character(MAX_LINE_LEN) :: temp_str
     type(Material), pointer :: mat
-    type(SetChar) :: already_read
-    integer(HID_T) :: file_id
-    integer(HID_T) :: xsdata_group
-    logical :: file_exists
-    logical :: get_kfiss, get_fiss
-    integer :: l
-    type(DictCharInt) :: xsdata_dict
+    type(SetChar)           :: already_read
+    integer(HID_T)          :: file_id
+    integer(HID_T)          :: xsdata_group
+    logical                 :: file_exists
+    type(DictCharInt)       :: xsdata_dict
     type(VectorReal), allocatable :: temps(:)
 
     ! Check if MGXS Library exists
     inquire(FILE=path_cross_sections, EXIST=file_exists)
     if (.not. file_exists) then
+
       ! Could not find MGXS Library file
       call fatal_error("Cross sections HDF5 file '" &
            &// trim(path_cross_sections) // "' does not exist!")
@@ -61,23 +60,6 @@ contains
 !$omp parallel
     allocate(micro_xs(n_nuclides_total))
 !$omp end parallel
-
-    ! Find out if we need fission & kappa fission
-    ! (i.e., are there any SCORE_FISSION or SCORE_KAPPA_FISSION tallies?)
-    get_kfiss = .false.
-    get_fiss  = .false.
-    do i = 1, n_tallies
-      do l = 1, tallies(i) % n_score_bins
-        if (tallies(i) % score_bins(l) == SCORE_KAPPA_FISSION) then
-          get_kfiss = .true.
-        end if
-        if (tallies(i) % score_bins(l) == SCORE_FISSION .or. &
-             tallies(i) % score_bins(l) == SCORE_NU_FISSION) then
-          get_fiss = .true.
-        end if
-      end do
-      if (get_kfiss .and. get_fiss) exit
-    end do
 
     ! ==========================================================================
     ! READ ALL MGXS CROSS SECTION TABLES
@@ -105,7 +87,9 @@ contains
 
           ! First find out the data representation
           if (attribute_exists(xsdata_group, "representation")) then
+
             call read_attribute(temp_str, xsdata_group, "representation")
+
             if (trim(temp_str) == 'isotropic') then
               representation = MGXS_ISOTROPIC
             else if (trim(temp_str) == 'angle') then
@@ -120,20 +104,24 @@ contains
 
           ! Now allocate accordingly
           select case(representation)
+
           case(MGXS_ISOTROPIC)
             allocate(MgxsIso :: nuclides_MG(i_nuclide) % obj)
+
           case(MGXS_ANGLE)
             allocate(MgxsAngle :: nuclides_MG(i_nuclide) % obj)
+
           end select
 
           ! Now read in the data specific to the type we just declared
           call nuclides_MG(i_nuclide) % obj % from_hdf5(xsdata_group, &
-               energy_groups, temps(i_nuclide), temperature_method, &
-               temperature_tolerance, get_kfiss, get_fiss, max_order, &
+               num_energy_groups, num_delayed_groups, temps(i_nuclide), &
+               temperature_method, temperature_tolerance, max_order, &
                legendre_to_tabular, legendre_to_tabular_points)
 
           ! Add name to dictionary
           call already_read % add(name)
+
         end if
       end do NUCLIDE_LOOP
     end do MATERIAL_LOOP
@@ -149,6 +137,7 @@ contains
 
       ! Loop around nuclides in material
       NUCLIDE_LOOP2: do j = 1, mat % n_nuclides
+
         ! Is this fissionable?
         if (nuclides_MG(mat % nuclide(j)) % obj % fissionable) then
           mat % fissionable = .true.
@@ -163,12 +152,12 @@ contains
   end subroutine read_mgxs
 
 !===============================================================================
-! CREATE_MACRO_XS generates the macroscopic x/s from the microscopic input data
+! CREATE_MACRO_XS generates the macroscopic xs from the microscopic input data
 !===============================================================================
 
   subroutine create_macro_xs()
-    integer :: i_mat ! index in materials array
-    type(Material), pointer :: mat ! current material
+    integer                       :: i_mat ! index in materials array
+    type(Material), pointer       :: mat   ! current material
     type(VectorReal), allocatable :: kTs(:)
 
     allocate(macro_xs(n_materials))
@@ -176,45 +165,51 @@ contains
     ! Get temperatures to read for each material
     call get_mat_kTs(kTs)
 
+    ! Force all nuclides in a material to be the same representation.
+    ! Therefore type(nuclides(mat % nuclide(1)) % obj) dictates type(macroxs).
+    ! At the same time, we will find the scattering type, as that will dictate
+    ! how we allocate the scatter object within macroxs.allocate(macro_xs(n_materials))
     do i_mat = 1, n_materials
+
+      ! Get the material
       mat => materials(i_mat)
 
-      ! Check to see how our nuclides are represented
-      ! Force all to be the same type
-      ! Therefore type(nuclides(mat % nuclide(1)) % obj) dictates type(macroxs)
+      ! Get the scattering type for the first nuclide
       select type(nuc => nuclides_MG(mat % nuclide(1)) % obj)
       type is (MgxsIso)
         allocate(MgxsIso :: macro_xs(i_mat) % obj)
       type is (MgxsAngle)
         allocate(MgxsAngle :: macro_xs(i_mat) % obj)
       end select
+
       ! Do not read materials which we do not actually use in the problem to
       ! save space
       if (allocated(kTs(i_mat) % data)) then
         call macro_xs(i_mat) % obj % combine(kTs(i_mat), mat, nuclides_MG, &
-                                             energy_groups, max_order, &
-                                             temperature_tolerance, &
-                                             temperature_method)
+             num_energy_groups, num_delayed_groups, max_order, &
+             temperature_tolerance, temperature_method)
       end if
     end do
+
   end subroutine create_macro_xs
 
 !===============================================================================
-! GET_MAT_kTs returns a list of temperatures (in MeV) that each
+! GET_MAT_kTs returns a list of temperatures (in eV) that each
 ! material appears at in the model.
 !===============================================================================
 
   subroutine get_mat_kTs(kTs)
-    type(VectorReal), allocatable, intent(out) :: kTs(:)
 
-    integer :: i, j
+    type(VectorReal), allocatable, intent(out) :: kTs(:)
+    integer :: i, j        ! Cell and material index
     integer :: i_material  ! Index in materials array
-    real(8) :: kT ! temperature in MeV
+    real(8) :: kT          ! temperature in eV
 
     allocate(kTs(size(materials)))
 
     do i = 1, size(cells)
       do j = 1, size(cells(i) % material)
+
         ! Skip any non-material cells and void materials
         if (cells(i) % material(j) == NONE .or. &
              cells(i) % material(j) == MATERIAL_VOID) cycle
@@ -237,6 +232,5 @@ contains
     end do
 
   end subroutine get_mat_kTs
-
 
 end module mgxs_data

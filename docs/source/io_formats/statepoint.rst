@@ -162,6 +162,18 @@ if run_mode == 'k-eigenvalue':
 
     Width of each mesh cell in each dimension.
 
+**/tallies/derivatives/derivative <id>/independent variable** (*char[]*)
+
+    Independent variable of tally derivative
+
+**/tallies/derivatives/derivative <id>/material** (*int*)
+
+    ID of the perturbed material
+
+**/tallies/derivatives/derivative <id>/nuclide** (*char[]*)
+
+    Alias of the perturbed nuclide
+
 **/tallies/n_tallies** (*int*)
 
     Number of user-defined tallies.
@@ -189,20 +201,37 @@ if run_mode == 'k-eigenvalue':
 **/tallies/tally <uid>/filter <j>/type** (*char[]*)
 
     Type of the j-th filter. Can be 'universe', 'material', 'cell', 'cellborn',
-    'surface', 'mesh', 'energy', 'energyout', or 'distribcell'.
+    'surface', 'mesh', 'energy', 'energyout', 'distribcell', 'mu', 'polar',
+    'azimuthal', 'delayedgroup', or 'energyfunction'.
 
 **/tallies/tally <uid>/filter <j>/n_bins** (*int*)
 
-    Number of bins for the j-th filter.
+    Number of bins for the j-th filter. Not present for 'energyfunction'
+    filters.
 
 **/tallies/tally <uid>/filter <j>/bins** (*int[]* or *double[]*)
 
-    Value for each filter bin of this type.
+    Value for each filter bin of this type. Not present for 'energyfunction'
+    filters.
+
+**/tallies/tally <uid>/filter <j>/energy** (*double[]*)
+
+    Energy grid points for energyfunction interpolation. Only used for
+    'energyfunction' filters.
+
+**/tallies/tally <uid>/filter <j>/y** (*double[]*)
+
+    Interpolant values for energyfunction interpolation. Only used for
+    'energyfunction' filters.
 
 **/tallies/tally <uid>/nuclides** (*char[][]*)
 
     Array of nuclides to tally. Note that if no nuclide is specified in the user
     input, a single 'total' nuclide appears here.
+
+**/tallies/tally <uid>/derivative** (*int*)
+
+    ID of the derivative applied to the tally.
 
 **/tallies/tally <uid>/n_score_bins** (*int*)
 
@@ -224,12 +253,12 @@ if run_mode == 'k-eigenvalue':
     Tallying moment orders for Legendre and spherical harmonic tally expansions
     (*e.g.*, 'P2', 'Y1,2', etc.).
 
-**/tallies/tally <uid>/results** (Compound type)
+**/tallies/tally <uid>/results** (*double[][][2]*)
 
-    Accumulated sum and sum-of-squares for each bin of the i-th tally. This is a
-    two-dimensional array, the first dimension of which represents combinations
-    of filter bins and the second dimensions of which represents scoring
-    bins. Each element of the array has fields 'sum' and 'sum_sq'.
+    Accumulated sum and sum-of-squares for each bin of the i-th tally. The first
+    dimension represents combinations of filter bins, the second dimensions
+    represents scoring bins, and the third dimension has two entries for the sum
+    and the sum-of-squares.
 
 **/source_present** (*int*)
 

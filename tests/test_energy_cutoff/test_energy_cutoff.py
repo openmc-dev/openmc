@@ -10,7 +10,7 @@ import openmc
 class EnergyCutoffTestHarness(PyAPITestHarness):
     def _build_inputs(self):
         # Set energy cutoff
-        energy_cutoff = 4e-6
+        energy_cutoff = 4.0
 
         # Material is composed of H-1
         mat = openmc.Material(material_id=1, name='mat')
@@ -66,17 +66,11 @@ class EnergyCutoffTestHarness(PyAPITestHarness):
         # Write out tally data.
         outstr = ''
         t = sp.get_tally()
-        outstr += 'tally {0}:\n'.format(t.id)
-        outstr += 'sum = {0:12.6E}\n'.format(t.sum[0, 0, 0])
-        outstr += 'sum_sq = {0:12.6E}\n'.format(t.sum_sq[0, 0, 0])
+        outstr += 'tally {}:\n'.format(t.id)
+        outstr += 'sum = {:12.6E}\n'.format(t.sum[0, 0, 0])
+        outstr += 'sum_sq = {:12.6E}\n'.format(t.sum_sq[0, 0, 0])
 
         return outstr
-
-    def _cleanup(self):
-        super(EnergyCutoffTestHarness, self)._cleanup()
-        f = os.path.join(os.getcwd(), 'tallies.xml')
-        if os.path.exists(f):
-            os.remove(f)
 
 
 if __name__ == '__main__':

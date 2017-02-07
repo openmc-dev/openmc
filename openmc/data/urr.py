@@ -5,6 +5,7 @@ import numpy as np
 
 import openmc.checkvalue as cv
 from openmc.mixin import EqualityMixin
+from .data import EV_PER_MEV
 
 
 class ProbabilityTables(EqualityMixin):
@@ -13,7 +14,7 @@ class ProbabilityTables(EqualityMixin):
     Parameters
     ----------
     energy : Iterable of float
-        Energies in MeV at which probability tables exist
+        Energies in eV at which probability tables exist
     table : numpy.ndarray
         Probability tables for each energy. This array is of shape (N, 6, M)
         where N is the number of energies and M is the number of bands. The
@@ -40,7 +41,7 @@ class ProbabilityTables(EqualityMixin):
     Attributes
     ----------
     energy : Iterable of float
-        Energies in MeV at which probability tables exist
+        Energies in eV at which probability tables exist
     table : numpy.ndarray
         Probability tables for each energy. This array is of shape (N, 6, M)
         where N is the number of energies and M is the number of bands. The
@@ -200,12 +201,15 @@ class ProbabilityTables(EqualityMixin):
         idx += 6
 
         # Get energies at which tables exist
-        energy = ace.xss[idx : idx+N]
+        energy = ace.xss[idx : idx+N]*EV_PER_MEV
         idx += N
 
         # Get probability tables
-        table = ace.xss[idx : idx+N*6*M]
+        table = ace.xss[idx : idx+N*6*M].copy()
         table.shape = (N, 6, M)
+
+        # Convert units on heating numbers
+        table[:,5,:] *= EV_PER_MEV
 
         return cls(energy, table, interpolation, inelastic_flag,
                    absorption_flag, multiply_smooth)

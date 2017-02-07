@@ -5,6 +5,7 @@ from numbers import Real, Integral
 from warnings import warn
 from io import StringIO
 
+from six import string_types
 import numpy as np
 
 import openmc.checkvalue as cv
@@ -13,7 +14,7 @@ from openmc.stats import Uniform, Tabular, Legendre
 from .angle_distribution import AngleDistribution
 from .angle_energy import AngleEnergy
 from .correlated import CorrelatedAngleEnergy
-from .data import ATOMIC_SYMBOL, K_BOLTZMANN
+from .data import ATOMIC_SYMBOL, K_BOLTZMANN, EV_PER_MEV
 from .endf import get_head_record, get_tab1_record, get_list_record, \
     get_tab2_record, get_cont_record
 from .energy_distribution import EnergyDistribution, LevelInelastic, \
@@ -54,13 +55,14 @@ REACTION_NAME = {1: '(n,total)', 2: '(n,elastic)', 4: '(n,level)',
                  195: '(n,4n2a)', 196: '(n,4npa)', 197: '(n,3p)',
                  198: '(n,n3p)', 199: '(n,3n2pa)', 200: '(n,5n2p)', 444: '(n,damage)',
                  649: '(n,pc)', 699: '(n,dc)', 749: '(n,tc)', 799: '(n,3Hec)',
-                 849: '(n,ac)'}
-REACTION_NAME.update({i: '(n,n{})'.format(i-50) for i in range(50, 91)})
-REACTION_NAME.update({i: '(n,p{})'.format(i-600) for i in range(600, 649)})
-REACTION_NAME.update({i: '(n,d{})'.format(i-650) for i in range(650, 699)})
-REACTION_NAME.update({i: '(n,t{})'.format(i-700) for i in range(700, 749)})
-REACTION_NAME.update({i: '(n,3He{})'.format(i-750) for i in range(750, 799)})
-REACTION_NAME.update({i: '(n,a{})'.format(i-800) for i in range(800, 849)})
+                 849: '(n,ac)', 891: '(n,2nc)'}
+REACTION_NAME.update({i: '(n,n{})'.format(i - 50) for i in range(50, 91)})
+REACTION_NAME.update({i: '(n,p{})'.format(i - 600) for i in range(600, 649)})
+REACTION_NAME.update({i: '(n,d{})'.format(i - 650) for i in range(650, 699)})
+REACTION_NAME.update({i: '(n,t{})'.format(i - 700) for i in range(700, 749)})
+REACTION_NAME.update({i: '(n,3He{})'.format(i - 750) for i in range(750, 799)})
+REACTION_NAME.update({i: '(n,a{})'.format(i - 800) for i in range(800, 849)})
+REACTION_NAME.update({i: '(n,2n{})'.format(i - 875) for i in range(875, 891)})
 
 
 def _get_products(ev, mt):
@@ -84,7 +86,7 @@ def _get_products(ev, mt):
     # Read HEAD record
     items = get_head_record(file_obj)
     reference_frame = {1: 'laboratory', 2: 'center-of-mass',
-                       3: 'light-heavy'}[items[3]]
+                       3: 'light-heavy', 4: 'breakup'}[items[3]]
     n_products = items[4]
 
     products = []
@@ -221,7 +223,9 @@ def _get_fission_products_ace(ace):
         if LNU == 1:
             # Polynomial function form of nu
             NC = int(ace.xss[idx+1])
-            coefficients = ace.xss[idx+2 : idx+2+NC]
+            coefficients = ace.xss[idx+2 : idx+2+NC].copy()
+            for i in range(coefficients.size):
+                coefficients[i] *= EV_PER_MEV**(-i)
             neutron.yield_ = Polynomial(coefficients)
         elif LNU == 2:
             # Tabular data form of nu
@@ -240,7 +244,9 @@ def _get_fission_products_ace(ace):
         if LNU == 1:
             # Polynomial function form of nu
             NC = int(ace.xss[idx+1])
-            coefficients = ace.xss[idx+2 : idx+2+NC]
+            coefficients = ace.xss[idx+2 : idx+2+NC].copy()
+            for i in range(coefficients.size):
+                coefficients[i] *= EV_PER_MEV**(-i)
             prompt_neutron.yield_ = Polynomial(coefficients)
         elif LNU == 2:
             # Tabular data form of nu
@@ -256,7 +262,9 @@ def _get_fission_products_ace(ace):
         if LNU == 1:
             # Polynomial function form of nu
             NC = int(ace.xss[idx+1])
-            coefficients = ace.xss[idx+2 : idx+2+NC]
+            coefficients = ace.xss[idx+2 : idx+2+NC].copy()
+            for i in range(coefficients.size):
+                coefficients[i] *= EV_PER_MEV**(-i)
             total_neutron.yield_ = Polynomial(coefficients)
         elif LNU == 2:
             # Tabular data form of nu
@@ -520,7 +528,7 @@ def _get_photon_products_ace(ace, rx):
             threshold_idx = int(ace.xss[idx]) - 1
             n_energy = int(ace.xss[idx + 1])
             energy = ace.xss[ace.jxs[1] + threshold_idx:
-                             ace.jxs[1] + threshold_idx + n_energy]
+                             ace.jxs[1] + threshold_idx + n_energy]*EV_PER_MEV
 
             # Get photon production cross section
             photon_prod_xs = ace.xss[idx + 2:idx + 2 + n_energy]
@@ -696,7 +704,7 @@ class Reaction(EqualityMixin):
     mt : int
         The ENDF MT number for this reaction.
     q_value : float
-        The Q-value of this reaction in MeV or eV, depending on the data source.
+        The Q-value of this reaction in eV.
     xs : dict of str to openmc.data.Function1D
         Microscopic cross section for this reaction as a function of incident
         energy; these cross sections are provided in a dictionary where the key
@@ -769,7 +777,7 @@ class Reaction(EqualityMixin):
     def xs(self, xs):
         cv.check_type('reaction cross section dictionary', xs, MutableMapping)
         for key, value in xs.items():
-            cv.check_type('reaction cross section temperature', key, basestring)
+            cv.check_type('reaction cross section temperature', key, string_types)
             cv.check_type('reaction cross section', value, Callable)
         self._xs = xs
 
@@ -810,7 +818,7 @@ class Reaction(EqualityMixin):
         Parameters
         ----------
         group : h5py.Group
-            HDF5 group to write to
+            HDF5 group to read from
         energy : dict
             Dictionary whose keys are temperatures (e.g., '300K') and values are
             arrays of energies at which cross sections are tabulated at.
@@ -860,18 +868,18 @@ class Reaction(EqualityMixin):
     def from_ace(cls, ace, i_reaction):
         # Get nuclide energy grid
         n_grid = ace.nxs[3]
-        grid = ace.xss[ace.jxs[1]:ace.jxs[1] + n_grid]
+        grid = ace.xss[ace.jxs[1]:ace.jxs[1] + n_grid]*EV_PER_MEV
 
         # Convert data temperature to a "300.0K" number for indexing
         # temperature data
-        strT = str(int(round(ace.temperature / K_BOLTZMANN))) + "K"
+        strT = str(int(round(ace.temperature*EV_PER_MEV / K_BOLTZMANN))) + "K"
 
         if i_reaction > 0:
             mt = int(ace.xss[ace.jxs[3] + i_reaction - 1])
             rx = cls(mt)
 
             # Get Q-value of reaction
-            rx.q_value = ace.xss[ace.jxs[4] + i_reaction - 1]
+            rx.q_value = ace.xss[ace.jxs[4] + i_reaction - 1]*EV_PER_MEV
 
             # ==================================================================
             # CROSS SECTION

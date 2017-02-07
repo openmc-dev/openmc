@@ -69,7 +69,6 @@ class AsymmetricLatticeTestHarness(PyAPITestHarness):
         source = openmc.Source(space=openmc.stats.Box([-32, -32, 0], [32, 32, 32]))
         source.space.only_fissionable = True
         self._input_set.settings.source = source
-        self._input_set.settings.output = {'summary': True}
 
         # Write input XML files
         self._input_set.export()
@@ -86,8 +85,8 @@ class AsymmetricLatticeTestHarness(PyAPITestHarness):
 
         # Create a string of all mean, std. dev. values for both tallies
         outstr = ''
-        outstr += ', '.join(map(str, tally.mean.flatten())) + '\n'
-        outstr += ', '.join(map(str, tally.std_dev.flatten())) + '\n'
+        outstr += '\n'.join(map('{:.8e}'.format, tally.mean.flatten())) + '\n'
+        outstr += '\n'.join(map('{:.8e}'.format, tally.std_dev.flatten())) + '\n'
 
         # Extract fuel assembly lattices from the summary
         core = sp.summary.get_cell_by_id(1)
@@ -106,11 +105,6 @@ class AsymmetricLatticeTestHarness(PyAPITestHarness):
             outstr = sha512.hexdigest()
 
         return outstr
-
-    def _cleanup(self):
-        super(AsymmetricLatticeTestHarness, self)._cleanup()
-        f = os.path.join(os.getcwd(), 'tallies.xml')
-        if os.path.exists(f): os.remove(f)
 
 
 if __name__ == '__main__':

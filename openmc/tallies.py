@@ -11,14 +11,13 @@ import sys
 import warnings
 from xml.etree import ElementTree as ET
 
+from six import string_types
 import numpy as np
+import h5py
 
 import openmc
 import openmc.checkvalue as cv
 from openmc.clean_xml import clean_xml_indentation
-
-if sys.version_info[0] >= 3:
-    basestring = str
 
 
 # "Static" variable for auto-generated Tally IDs
@@ -33,9 +32,9 @@ _PRODUCT_TYPES = ['tensor', 'entrywise']
 
 # The following indicate acceptable types when setting Tally.scores,
 # Tally.nuclides, and Tally.filters
-_SCORE_CLASSES = (basestring, openmc.CrossScore, openmc.AggregateScore)
-_NUCLIDE_CLASSES = (basestring, openmc.Nuclide, openmc.CrossNuclide,
-                    openmc.AggregateNuclide)
+_SCORE_CLASSES = string_types + (openmc.CrossScore, openmc.AggregateScore)
+_NUCLIDE_CLASSES = string_types + (openmc.Nuclide, openmc.CrossNuclide,
+                                   openmc.AggregateNuclide)
 _FILTER_CLASSES = (openmc.Filter, openmc.CrossFilter, openmc.AggregateFilter)
 
 # Valid types of estimators
@@ -105,6 +104,8 @@ class Tally(object):
     sparse : bool
         Whether or not the tally uses SciPy's LIL sparse matrix format for
         compressed data storage
+    derivative : openmc.TallyDerivative
+        A material perturbation derivative to apply to all scores in the tally.
 
     """
 
@@ -117,6 +118,7 @@ class Tally(object):
         self._scores = cv.CheckedList(_SCORE_CLASSES, 'tally scores')
         self._estimator = None
         self._triggers = cv.CheckedList(openmc.Trigger, 'tally triggers')
+        self._derivative = None
 
         self._num_realizations = 0
         self._with_summary = False
@@ -152,6 +154,10 @@ class Tally(object):
             if nuclide not in other.nuclides:
                 return False
 
+        # Check derivatives
+        if self.derivative != other.derivative:
+            return False
+
         # Check all scores
         if len(self.scores) != len(other.scores):
             return False
@@ -173,27 +179,28 @@ class Tally(object):
 
     def __repr__(self):
         string = 'Tally\n'
-        string += '{0: <16}{1}{2}\n'.format('\tID', '=\t', self.id)
-        string += '{0: <16}{1}{2}\n'.format('\tName', '=\t', self.name)
+        string += '{: <16}=\t{}\n'.format('\tID', self.id)
+        string += '{: <16}=\t{}\n'.format('\tName', self.name)
 
-        string += '{0: <16}{1}\n'.format('\tFilters', '=\t')
+        if self.derivative is not None:
+            string += '{: <16}=\t{}\n'.format('\tDerivative ID',
+                                              str(self.derivative.id))
 
-        for self_filter in self.filters:
-            string += '{0: <16}\t\t{1}\t{2}\n'.format('',
-                type(self_filter).__name__, self_filter.bins)
+        filters = ', '.join(type(f).__name__ for f in self.filters)
+        string += '{: <16}=\t{}\n'.format('\tFilters', filters)
 
-        string += '{0: <16}{1}'.format('\tNuclides', '=\t')
+        string += '{: <16}=\t'.format('\tNuclides')
 
         for nuclide in self.nuclides:
             if isinstance(nuclide, openmc.Nuclide):
-                string += '{0} '.format(nuclide.name)
+                string += nuclide.name + ' '
             else:
-                string += '{0} '.format(nuclide)
+                string += nuclide + ' '
 
         string += '\n'
 
-        string += '{0: <16}{1}{2}\n'.format('\tScores', '=\t', self.scores)
-        string += '{0: <16}{1}{2}\n'.format('\tEstimator', '=\t', self.estimator)
+        string += '{: <16}=\t{}\n'.format('\tScores', self.scores)
+        string += '{: <16}=\t{}\n'.format('\tEstimator', self.estimator)
 
         return string
 
@@ -271,20 +278,14 @@ class Tally(object):
             return None
 
         if not self._results_read:
-            import h5py
-            if h5py.__version__ == '2.6.0':
-                raise ImportError("h5py 2.6.0 has a known bug which makes it "
-                                  "incompatible with OpenMC's HDF5 files. "
-                                  "Please switch to a different version.")
-
             # Open the HDF5 statepoint file
             f = h5py.File(self._sp_filename, 'r')
 
             # Extract Tally data from the file
             data = f['tallies/tally {0}/results'.format(
                 self.id)].value
-            sum = data['sum']
-            sum_sq = data['sum_sq']
+            sum = data[:,:,0]
+            sum_sq = data[:,:,1]
 
             # Reshape the results arrays
             sum = np.reshape(sum, self.shape)
@@ -383,6 +384,10 @@ class Tally(object):
         return self._derived
 
     @property
+    def derivative(self):
+        return self._derivative
+
+    @property
     def sparse(self):
         return self._sparse
 
@@ -431,10 +436,16 @@ class Tally(object):
     @name.setter
     def name(self, name):
         if name is not None:
-            cv.check_type('tally name', name, basestring)
+            cv.check_type('tally name', name, string_types)
             self._name = name
         else:
             self._name = ''
+
+    @derivative.setter
+    def derivative(self, deriv):
+        if deriv is not None:
+            cv.check_type('tally derivative', deriv, openmc.TallyDerivative)
+        self._derivative = deriv
 
     @filters.setter
     def filters(self, filters):
@@ -478,7 +489,7 @@ class Tally(object):
                 raise ValueError(msg)
 
             # If score is a string, strip whitespace
-            if isinstance(score, basestring):
+            if isinstance(score, string_types):
                 scores[i] = score.strip()
 
         self._scores = cv.CheckedList(_SCORE_CLASSES, 'tally scores', scores)
@@ -694,7 +705,7 @@ class Tally(object):
 
         """
 
-        # Two tallys must have the same number of filters
+        # Two tallies must have the same number of filters
         if len(self.filters) != len(other.filters):
             return False
 
@@ -1004,7 +1015,7 @@ class Tally(object):
 
         return merged_tally
 
-    def get_tally_xml(self):
+    def to_xml_element(self):
         """Return XML representation of the tally
 
         Returns
@@ -1025,7 +1036,7 @@ class Tally(object):
 
         # Optional Tally filters
         for self_filter in self.filters:
-            element.append(self_filter.to_xml())
+            element.append(self_filter.to_xml_element())
 
         # Optional Nuclides
         if len(self.nuclides) > 0:
@@ -1061,6 +1072,11 @@ class Tally(object):
         # Optional Triggers
         for trigger in self.triggers:
             trigger.get_trigger_xml(element)
+
+        # Optional derivatives
+        if self.derivative is not None:
+            subelement = ET.SubElement(element, "derivative")
+            subelement.text = str(self.derivative.id)
 
         return element
 
@@ -1301,14 +1317,19 @@ class Tally(object):
 
                     # Create list of 2-tuples for energy boundary bins
                     elif isinstance(self_filter, (openmc.EnergyFilter,
-                        openmc.EnergyoutFilter)):
+                        openmc.EnergyoutFilter, openmc.MuFilter,
+                        openmc.PolarFilter, openmc.AzimuthalFilter)):
                         bins = []
                         for k in range(self_filter.num_bins):
                             bins.append((self_filter.bins[k], self_filter.bins[k+1]))
 
                     # Create list of cell instance IDs for distribcell Filters
                     elif isinstance(self_filter, openmc.DistribcellFilter):
-                        bins = np.arange(self_filter.num_bins)
+                        bins = [b for b in range(self_filter.num_bins)]
+
+                    # EnergyFunctionFilters don't have bins so just add a None
+                    elif isinstance(self_filter, openmc.EnergyFunctionFilter):
+                        bins = [None]
 
                     # Create list of IDs for bins for all other filter types
                     else:
@@ -1355,7 +1376,7 @@ class Tally(object):
 
         """
 
-        cv.check_iterable_type('nuclides', nuclides, basestring)
+        cv.check_iterable_type('nuclides', nuclides, string_types)
 
         # Determine the score indices from any of the requested scores
         if nuclides:
@@ -1390,7 +1411,7 @@ class Tally(object):
         """
 
         for score in scores:
-            if not isinstance(score, (basestring, openmc.CrossScore)):
+            if not isinstance(score, string_types + (openmc.CrossScore,)):
                 msg = 'Unable to get score indices for score "{0}" in Tally ' \
                       'ID="{1}" since it is not a string or CrossScore'\
                       .format(score, self.id)
@@ -1496,7 +1517,8 @@ class Tally(object):
         return data
 
     def get_pandas_dataframe(self, filters=True, nuclides=True, scores=True,
-                             distribcell_paths=True, float_format='{:.2e}'):
+                             derivative=True, distribcell_paths=True,
+                             float_format='{:.2e}'):
         """Build a Pandas DataFrame for the Tally data.
 
         This method constructs a Pandas DataFrame object for the Tally data
@@ -1514,6 +1536,8 @@ class Tally(object):
             Include columns with nuclide bin information (default is True).
         scores : bool
             Include columns with score bin information (default is True).
+        derivative : bool
+            Include columns with differential tally info (default is True).
         distribcell_paths : bool, optional
             Construct columns for distribcell tally filters (default is True).
             The geometric information in the Summary object is embedded into a
@@ -1585,7 +1609,7 @@ class Tally(object):
             column_name = 'score'
 
             for score in self.scores:
-                if isinstance(score, (basestring, openmc.CrossScore)):
+                if isinstance(score, string_types + (openmc.CrossScore,)):
                     scores.append(str(score))
                 elif isinstance(score, openmc.AggregateScore):
                     scores.append(score.name)
@@ -1593,6 +1617,14 @@ class Tally(object):
 
             tile_factor = data_size / len(self.scores)
             df[column_name] = np.tile(scores, int(tile_factor))
+
+        # Include columns for derivatives if user requested it
+        if derivative and (self.derivative is not None):
+            df['d_variable'] = self.derivative.variable
+            if self.derivative.material is not None:
+                df['d_material'] = self.derivative.material
+            if self.derivative.nuclide is not None:
+                df['d_nuclide'] = self.derivative.nuclide
 
         # Append columns with mean, std. dev. for each tally bin
         df['mean'] = self.mean.ravel()
@@ -1671,148 +1703,6 @@ class Tally(object):
         # Reshape the data with one dimension for each filter
         data = np.reshape(data, new_shape)
         return data
-
-    def export_results(self, filename='tally-results', directory='.',
-                       format='hdf5', append=True):
-        """Exports tallly results to an HDF5 or Python pickle binary file.
-
-        Parameters
-        ----------
-        filename : str
-            The name of the file for the results (default is 'tally-results')
-        directory : str
-            The name of the directory for the results (default is '.')
-        format : str
-            The format for the exported file - HDF5 ('hdf5', default) and
-            Python pickle ('pkl') files are supported
-        append : bool
-            Whether or not to append the results to the file (default is True)
-
-        Raises
-        ------
-        KeyError
-            When this method is called before the Tally is populated with data.
-
-        """
-
-        # Ensure that the tally has data
-        if self._sum is None or self._sum_sq is None and not self.derived:
-            msg = 'The Tally ID="{0}" has no data to export'.format(self.id)
-            raise KeyError(msg)
-
-        if not isinstance(filename, basestring):
-            msg = 'Unable to export the results for Tally ID="{0}" to ' \
-                  'filename="{1}" since it is not a ' \
-                  'string'.format(self.id, filename)
-            raise ValueError(msg)
-
-        elif not isinstance(directory, basestring):
-            msg = 'Unable to export the results for Tally ID="{0}" to ' \
-                  'directory="{1}" since it is not a ' \
-                  'string'.format(self.id, directory)
-            raise ValueError(msg)
-
-        elif format not in ['hdf5', 'pkl', 'csv']:
-            msg = 'Unable to export the results for Tally ID="{0}" to format ' \
-                  '"{1}" since it is not supported'.format(self.id, format)
-            raise ValueError(msg)
-
-        elif not isinstance(append, bool):
-            msg = 'Unable to export the results for Tally ID="{0}" since the ' \
-                  'append parameter is not True/False'.format(self.id)
-            raise ValueError(msg)
-
-        # Make directory if it does not exist
-        if not os.path.exists(directory):
-            os.makedirs(directory)
-
-        # HDF5 binary file
-        if format == 'hdf5':
-            import h5py
-
-            filename = directory + '/' + filename + '.h5'
-
-            if append:
-                tally_results = h5py.File(filename, 'a')
-            else:
-                tally_results = h5py.File(filename, 'w')
-
-            # Create an HDF5 group within the file for this particular Tally
-            tally_group = tally_results.create_group('Tally-{0}'.format(self.id))
-
-            # Add basic Tally data to the HDF5 group
-            tally_group.create_dataset('id', data=self.id)
-            tally_group.create_dataset('name', data=self.name)
-            tally_group.create_dataset('estimator', data=self.estimator)
-            tally_group.create_dataset('scores', data=np.array(self.scores))
-
-            # Add a string array of the nuclides to the HDF5 group
-            nuclides = []
-
-            for nuclide in self.nuclides:
-                nuclides.append(nuclide.name)
-
-            tally_group.create_dataset('nuclides', data=np.array(nuclides))
-
-            # Create an HDF5 sub-group for the Filters
-            filter_group = tally_group.create_group('filters')
-
-            for self_filter in self.filters:
-                filter_group.create_dataset(self_filter.type,
-                                            filter=self_filter.bins)
-
-            # Add all results to the main HDF5 group for the Tally
-            tally_group.create_dataset('sum', data=self.sum)
-            tally_group.create_dataset('sum_sq', data=self.sum_sq)
-            tally_group.create_dataset('mean', data=self.mean)
-            tally_group.create_dataset('std_dev', data=self.std_dev)
-
-            # Close the Tally results HDF5 file
-            tally_results.close()
-
-        # Python pickle binary file
-        elif format == 'pkl':
-            # Load the dictionary from the Pickle file
-            filename = directory + '/' + filename + '.pkl'
-
-            if os.path.exists(filename) and append:
-                tally_results = pickle.load(open(filename, 'rb'))
-            else:
-                tally_results = {}
-
-            # Create a nested dictionary within the file for this particular Tally
-            tally_results['Tally-{0}'.format(self.id)] = {}
-            tally_group = tally_results['Tally-{0}'.format(self.id)]
-
-            # Add basic Tally data to the nested dictionary
-            tally_group['id'] = self.id
-            tally_group['name'] = self.name
-            tally_group['estimator'] = self.estimator
-            tally_group['scores'] = np.array(self.scores)
-
-            # Add a string array of the nuclides to the HDF5 group
-            nuclides = []
-
-            for nuclide in self.nuclides:
-                nuclides.append(nuclide.name)
-
-            tally_group['nuclides'] = np.array(nuclides)
-
-            # Create a nested dictionary for the Filters
-            tally_group['filters'] = {}
-            filter_group = tally_group['filters']
-
-            for self_filter in self.filters:
-                filter_group[self_filter.type] = self_filter.bins
-
-            # Add all results to the main sub-dictionary for the Tally
-            tally_group['sum'] = self.sum
-            tally_group['sum_sq'] = self.sum_sq
-            tally_group['mean'] = self.mean
-            tally_group['std_dev'] = self.std_dev
-
-            # Pickle the Tally results to a file
-            pickle.dump(tally_results, open(filename, 'wb'))
 
     def hybrid_product(self, other, binary_op, filter_product=None,
                        nuclide_product=None, score_product=None):
@@ -2230,12 +2120,16 @@ class Tally(object):
         # Construct lists of tuples for the bins in each of the two filters
         filters = [type(filter1), type(filter2)]
         if isinstance(filter1, openmc.DistribcellFilter):
-            filter1_bins = np.arange(filter1.num_bins)
+            filter1_bins = [b for b in range(filter1.num_bins)]
+        elif isinstance(filter1, openmc.EnergyFunctionFilter):
+            filter1_bins = [None]
         else:
             filter1_bins = [filter1.get_bin(i) for i in range(filter1.num_bins)]
 
         if isinstance(filter2, openmc.DistribcellFilter):
-            filter2_bins = np.arange(filter2.num_bins)
+            filter2_bins = [b for b in range(filter2.num_bins)]
+        elif isinstance(filter2, openmc.EnergyFunctionFilter):
+            filter2_bins = [None]
         else:
             filter2_bins = [filter2.get_bin(i) for i in range(filter2.num_bins)]
 
@@ -2354,11 +2248,11 @@ class Tally(object):
             raise ValueError(msg)
 
         # Check that the scores are valid
-        if not isinstance(score1, (basestring, openmc.CrossScore)):
+        if not isinstance(score1, string_types + (openmc.CrossScore,)):
             msg = 'Unable to swap score1 "{0}" in Tally ID="{1}" since it is ' \
                   'not a string or CrossScore'.format(score1, self.id)
             raise ValueError(msg)
-        elif not isinstance(score2, (basestring, openmc.CrossScore)):
+        elif not isinstance(score2, string_types + (openmc.CrossScore,)):
             msg = 'Unable to swap score2 "{0}" in Tally ID="{1}" since it is ' \
                   'not a string or CrossScore'.format(score2, self.id)
             raise ValueError(msg)
@@ -3067,6 +2961,8 @@ class Tally(object):
 
                 if isinstance(find_filter, openmc.DistribcellFilter):
                     filter_bins = np.arange(find_filter.num_bins)
+                elif isinstance(find_filter, openmc.EnergyFunctionFilter):
+                    filter_bins = [None]
                 else:
                     num_bins = find_filter.num_bins
                     filter_bins = \
@@ -3080,8 +2976,16 @@ class Tally(object):
             # Sum across the bins in the user-specified filter
             for i, self_filter in enumerate(self.filters):
                 if isinstance(self_filter, filter_type):
+                    shape = mean.shape
                     mean = np.take(mean, indices=bin_indices, axis=i)
                     std_dev = np.take(std_dev, indices=bin_indices, axis=i)
+
+                    # NumPy take introduces a new dimension in output array
+                    # for some special cases that must be removed
+                    if len(mean.shape) > len(shape):
+                        mean = np.squeeze(mean, axis=i)
+                        std_dev = np.squeeze(std_dev, axis=i)
+
                     mean = np.sum(mean, axis=i, keepdims=True)
                     std_dev = np.sum(std_dev**2, axis=i, keepdims=True)
                     std_dev = np.sqrt(std_dev)
@@ -3214,6 +3118,8 @@ class Tally(object):
 
                 if isinstance(find_filter, openmc.DistribcellFilter):
                     filter_bins = np.arange(find_filter.num_bins)
+                elif isinstance(find_filter, openmc.EnergyFunctionFilter):
+                    filter_bins = [None]
                 else:
                     num_bins = find_filter.num_bins
                     filter_bins = \
@@ -3227,10 +3133,18 @@ class Tally(object):
             # Average across the bins in the user-specified filter
             for i, self_filter in enumerate(self.filters):
                 if isinstance(self_filter, filter_type):
+                    shape = mean.shape
                     mean = np.take(mean, indices=bin_indices, axis=i)
                     std_dev = np.take(std_dev, indices=bin_indices, axis=i)
-                    mean = np.mean(mean, axis=i, keepdims=True)
-                    std_dev = np.mean(std_dev**2, axis=i, keepdims=True)
+
+                    # NumPy take introduces a new dimension in output array
+                    # for some special cases that must be removed
+                    if len(mean.shape) > len(shape):
+                        mean = np.squeeze(mean, axis=i)
+                        std_dev = np.squeeze(std_dev, axis=i)
+
+                    mean = np.nanmean(mean, axis=i, keepdims=True)
+                    std_dev = np.nanmean(std_dev**2, axis=i, keepdims=True)
                     std_dev /= len(bin_indices)
                     std_dev = np.sqrt(std_dev)
 
@@ -3254,8 +3168,8 @@ class Tally(object):
             axis_index = self.num_filters
             mean = np.take(mean, indices=nuclide_bins, axis=axis_index)
             std_dev = np.take(std_dev, indices=nuclide_bins, axis=axis_index)
-            mean = np.mean(mean, axis=axis_index, keepdims=True)
-            std_dev = np.mean(std_dev**2, axis=axis_index, keepdims=True)
+            mean = np.nanmean(mean, axis=axis_index, keepdims=True)
+            std_dev = np.nanmean(std_dev**2, axis=axis_index, keepdims=True)
             std_dev /= len(nuclide_bins)
             std_dev = np.sqrt(std_dev)
 
@@ -3273,8 +3187,8 @@ class Tally(object):
             axis_index = self.num_filters + 1
             mean = np.take(mean, indices=score_bins, axis=axis_index)
             std_dev = np.take(std_dev, indices=score_bins, axis=axis_index)
-            mean = np.sum(mean, axis=axis_index, keepdims=True)
-            std_dev = np.sum(std_dev**2, axis=axis_index, keepdims=True)
+            mean = np.nanmean(mean, axis=axis_index, keepdims=True)
+            std_dev = np.nanmean(std_dev**2, axis=axis_index, keepdims=True)
             std_dev /= len(score_bins)
             std_dev = np.sqrt(std_dev)
 
@@ -3393,7 +3307,6 @@ class Tallies(cv.CheckedList):
 
     def __init__(self, tallies=None):
         super(Tallies, self).__init__(Tally, 'tallies collection')
-        self._tallies_file = ET.Element("tallies")
         if tallies is not None:
             self += tallies
 
@@ -3545,39 +3458,53 @@ class Tallies(cv.CheckedList):
                       "removed in a future version. Meshes do not need to be "
                       "managed explicitly.", DeprecationWarning)
 
-    def _create_tally_subelements(self):
+    def _create_tally_subelements(self, root_element):
         for tally in self:
-            xml_element = tally.get_tally_xml()
-            self._tallies_file.append(xml_element)
+            root_element.append(tally.to_xml_element())
 
-    def _create_mesh_subelements(self):
+    def _create_mesh_subelements(self, root_element):
         already_written = set()
         for tally in self:
             for f in tally.filters:
                 if isinstance(f, openmc.MeshFilter):
                     if f.mesh not in already_written:
                         if len(f.mesh.name) > 0:
-                            self._tallies_file.append(ET.Comment(f.mesh.name))
+                            root_element.append(ET.Comment(f.mesh.name))
 
-                        xml_element = f.mesh.get_mesh_xml()
-                        self._tallies_file.append(xml_element)
+                        root_element.append(f.mesh.to_xml_element())
                         already_written.add(f.mesh)
 
-    def export_to_xml(self):
+    def _create_derivative_subelements(self, root_element):
+        # Get a list of all derivatives referenced in a tally.
+        derivs = []
+        for tally in self:
+            deriv = tally.derivative
+            if deriv is not None and deriv not in derivs:
+                derivs.append(deriv)
+
+        # Add the derivatives to the XML tree.
+        for d in derivs:
+            root_element.append(d.to_xml_element())
+
+    def export_to_xml(self, path='tallies.xml'):
         """Create a tallies.xml file that can be used for a simulation.
+
+        Parameters
+        ----------
+        path : str
+            Path to file to write. Defaults to 'tallies.xml'.
 
         """
 
-        # Reset xml element tree
-        self._tallies_file.clear()
-
-        self._create_mesh_subelements()
-        self._create_tally_subelements()
+        root_element = ET.Element("tallies")
+        self._create_mesh_subelements(root_element)
+        self._create_tally_subelements(root_element)
+        self._create_derivative_subelements(root_element)
 
         # Clean the indentation in the file to be user-readable
-        clean_xml_indentation(self._tallies_file)
+        clean_xml_indentation(root_element)
 
         # Write the XML Tree to the tallies.xml file
-        tree = ET.ElementTree(self._tallies_file)
-        tree.write("tallies.xml", xml_declaration=True,
+        tree = ET.ElementTree(root_element)
+        tree.write(path, xml_declaration=True,
                    encoding='utf-8', method="xml")

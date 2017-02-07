@@ -21,8 +21,8 @@ class MGTalliesTestHarness(HashedPyAPITestHarness):
         mesh.upper_right = [10, 10, 5]
 
         # Instantiate some tally filters
-        energy_filter = openmc.EnergyFilter([0.0, 20.0])
-        energyout_filter = openmc.EnergyoutFilter([0.0, 20.0])
+        energy_filter = openmc.EnergyFilter([0.0, 20.0e6])
+        energyout_filter = openmc.EnergyoutFilter([0.0, 20.0e6])
         mesh_filter = openmc.MeshFilter(mesh)
 
         mat_ids = [mat.id for mat in self._input_set.materials]
@@ -82,12 +82,7 @@ class MGTalliesTestHarness(HashedPyAPITestHarness):
 
         self._input_set.export()
 
-    def _cleanup(self):
-        super(MGTalliesTestHarness, self)._cleanup()
-        f = os.path.join(os.getcwd(), 'tallies.xml')
-        if os.path.exists(f): os.remove(f)
-
 
 if __name__ == '__main__':
-    harness = MGTalliesTestHarness('statepoint.10.*', True, mg=True)
+    harness = MGTalliesTestHarness('statepoint.10.h5', True, mg=True)
     harness.main()

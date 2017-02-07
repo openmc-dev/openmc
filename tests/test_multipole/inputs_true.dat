@@ -1,1 +1,65 @@
-2be927608035759f52a2ac88b2c84e28c06e0f7905187bfd4695fecd80f417e727d8879c52fe03253938f7aa0301061f72dce9b5ae46b8675049b5bc4d9525a0
+<?xml version='1.0' encoding='utf-8'?>
+<geometry>
+    <cell id="1" material="1" universe="1" />
+    <cell fill="101" id="101" region="10001 -10002 10003 -10004" universe="0" />
+    <cell id="11" material="2" region="-10000" temperature="500 0 700 800" universe="11" />
+    <cell id="12" material="1" region="10000" universe="11" />
+    <lattice id="101">
+        <pitch>2.0 2.0</pitch>
+        <outer>1</outer>
+        <dimension>2 2</dimension>
+        <lower_left>-2.0 -2.0</lower_left>
+        <universes>
+11 11 
+11 11 </universes>
+    </lattice>
+    <surface coeffs="0.0 0.0 0.3" id="10000" type="z-cylinder" />
+    <surface boundary="reflective" coeffs="-3.0" id="10001" type="x-plane" />
+    <surface boundary="reflective" coeffs="3.0" id="10002" type="x-plane" />
+    <surface boundary="reflective" coeffs="-3.0" id="10003" type="y-plane" />
+    <surface boundary="reflective" coeffs="3.0" id="10004" type="y-plane" />
+</geometry>
+<?xml version='1.0' encoding='utf-8'?>
+<materials>
+    <material id="1">
+        <density units="g/cc" value="1.0" />
+        <nuclide ao="2.0" name="H1" />
+        <nuclide ao="1.0" name="O16" />
+        <sab name="c_H_in_H2O" />
+    </material>
+    <material id="2">
+        <density units="g/cc" value="4.5" />
+        <nuclide ao="1.0" name="U235" />
+    </material>
+</materials>
+<?xml version='1.0' encoding='utf-8'?>
+<settings>
+    <eigenvalue>
+        <particles>1000</particles>
+        <batches>5</batches>
+        <inactive>0</inactive>
+    </eigenvalue>
+    <source strength="1.0">
+        <space type="box">
+            <parameters>-1 -1 -1 1 1 1</parameters>
+        </space>
+    </source>
+    <output>
+        <summary>true</summary>
+    </output>
+    <temperature_multipole>True</temperature_multipole>
+    <temperature_tolerance>1000</temperature_tolerance>
+</settings>
+<?xml version='1.0' encoding='utf-8'?>
+<plots>
+    <plot basis="xy" color="cell" filename="cellplot" id="1" type="slice">
+        <origin>0 0 0</origin>
+        <width>7 7</width>
+        <pixels>400 400</pixels>
+    </plot>
+    <plot basis="xy" color="mat" filename="matplot" id="2" type="slice">
+        <origin>0 0 0</origin>
+        <width>7 7</width>
+        <pixels>400 400</pixels>
+    </plot>
+</plots>

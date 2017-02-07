@@ -15,12 +15,11 @@ from numbers import Real, Integral
 from xml.etree import ElementTree as ET
 import sys
 
+from six import string_types
+
 from openmc.clean_xml import clean_xml_indentation
 from openmc.checkvalue import (check_type, check_length, check_value,
                                check_greater_than, check_less_than)
-
-if sys.version_info[0] >= 3:
-    basestring = str
 
 
 class CMFDMesh(object):
@@ -40,8 +39,8 @@ class CMFDMesh(object):
     width : Iterable of float
         The width of mesh cells in each direction.
     energy : Iterable of float
-        Energy bins in MeV, listed in ascending order (e.g. [0.0, 0.625e-7,
-        20.0]) for CMFD tallies and acceleration. If no energy bins are listed,
+        Energy bins in eV, listed in ascending order (e.g. [0.0, 0.625e-1,
+        20.0e6]) for CMFD tallies and acceleration. If no energy bins are listed,
         OpenMC automatically assumes a one energy group calculation over the
         entire energy range.
     albedo : Iterable of float
@@ -339,7 +338,7 @@ class CMFD(object):
 
     @display.setter
     def display(self, display):
-        check_type('CMFD display', display, basestring)
+        check_type('CMFD display', display, string_types)
         check_value('CMFD display', display,
                     ['balance', 'dominance', 'entropy', 'source'])
         self._display = display
@@ -369,7 +368,7 @@ class CMFD(object):
     @cmfd_mesh.setter
     def cmfd_mesh(self, mesh):
         check_type('CMFD mesh', mesh, CMFDMesh)
-        self._mesh = mesh
+        self._cmfd_mesh = mesh
 
     @norm.setter
     def norm(self, norm):
@@ -447,8 +446,8 @@ class CMFD(object):
             element.text = str(self._ktol)
 
     def _create_mesh_subelement(self):
-        if self._mesh is not None:
-            xml_element = self._mesh._get_xml_element()
+        if self._cmfd_mesh is not None:
+            xml_element = self._cmfd_mesh._get_xml_element()
             self._cmfd_file.append(xml_element)
 
     def _create_norm_subelement(self):

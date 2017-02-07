@@ -1,3 +1,5 @@
+import h5py
+
 class Particle(object):
     """Information used to restart a specific particle that caused a simulation to
     fail.
@@ -24,7 +26,7 @@ class Particle(object):
     weight : float
         Weight of the particle
     energy : float
-        Energy of the particle in MeV
+        Energy of the particle in eV
     xyz : list of float
         Position of the particle
     uvw : list of float
@@ -33,12 +35,6 @@ class Particle(object):
     """
 
     def __init__(self, filename):
-        import h5py
-        if h5py.__version__ == '2.6.0':
-            raise ImportError("h5py 2.6.0 has a known bug which makes it "
-                              "incompatible with OpenMC's HDF5 files. "
-                              "Please switch to a different version.")
-
         self._f = h5py.File(filename, 'r')
 
         # Ensure filetype and revision are correct

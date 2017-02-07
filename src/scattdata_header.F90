@@ -274,7 +274,7 @@ contains
       ! Get this by summing the un-normalized P0 coefficient in matrix
       ! over all outgoing groups
       do gin = 1, groups
-        this % scattxs(gin) = sum(matrix(gin) % data(1, :), dim=1)
+        this % scattxs(gin) = sum(matrix(gin) % data(:, :))
       end do
 
       allocate(energy(groups))
@@ -282,7 +282,7 @@ contains
       ! while also normalizing matrix itself (making CDF of f(mu=1)=1)
       do gin = 1, groups
         allocate(energy(gin) % data(gmin(gin):gmax(gin)))
-        do gout = 1, groups
+        do gout = gmin(gin), gmax(gin)
           norm = sum(matrix(gin) % data(:, gout))
           energy(gin) % data(gout) = norm
           if (norm /= ZERO) then

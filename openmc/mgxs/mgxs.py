@@ -6,18 +6,16 @@ import warnings
 import os
 import sys
 import copy
-import abc
+from abc import ABCMeta
 import itertools
 
+from six import add_metaclass, string_types
 import numpy as np
 
 import openmc
 import openmc.checkvalue as cv
 from openmc.tallies import ESTIMATOR_TYPES
 from openmc.mgxs import EnergyGroups
-
-if sys.version_info[0] >= 3:
-    basestring = str
 
 
 # Supported cross section types
@@ -38,7 +36,8 @@ MGXS_TYPES = ['total',
               'chi',
               'chi-prompt',
               'inverse-velocity',
-              'prompt-nu-fission']
+              'prompt-nu-fission',
+              'prompt-nu-fission matrix']
 
 # Supported domain types
 DOMAIN_TYPES = ['cell',
@@ -60,7 +59,14 @@ _DOMAINS = (openmc.Cell,
             openmc.Material,
             openmc.Mesh)
 
+# Supported ScatterMatrixXS and NuScatterMatrixXS angular distribution types
+MU_TREATMENTS = ('legendre', 'histogram')
 
+# Maximum Legendre order supported by OpenMC
+_MAX_LEGENDRE = 10
+
+
+@add_metaclass(ABCMeta)
 class MGXS(object):
     """An abstract multi-group cross section for some energy group structure
     within some spatial domain.
@@ -145,10 +151,6 @@ class MGXS(object):
         The key used to index multi-group cross sections in an HDF5 data store
 
     """
-
-    # This is an abstract class which cannot be instantiated
-    __metaclass__ = abc.ABCMeta
-
     def __init__(self, domain=None, domain_type=None,
                  energy_groups=None, by_nuclide=False, name=''):
         self._name = ''
@@ -196,7 +198,9 @@ class MGXS(object):
             clone._rxn_rate_tally = copy.deepcopy(self._rxn_rate_tally, memo)
             clone._xs_tally = copy.deepcopy(self._xs_tally, memo)
             clone._sparse = self.sparse
+            clone._loaded_sp = self._loaded_sp
             clone._derived = self.derived
+            clone._hdf5_key = self._hdf5_key
 
             clone._tallies = OrderedDict()
             for tally_type, tally in self.tallies.items():
@@ -329,7 +333,7 @@ class MGXS(object):
 
     @property
     def num_subdomains(self):
-        if self.domain_type.startswith('avg('):
+        if self.domain_type.startswith('sum('):
             domain_type = self.domain_type[4:-1]
         else:
             domain_type = self.domain_type
@@ -368,7 +372,7 @@ class MGXS(object):
 
     @name.setter
     def name(self, name):
-        cv.check_type('name', name, basestring)
+        cv.check_type('name', name, string_types)
         self._name = name
 
     @by_nuclide.setter
@@ -378,7 +382,7 @@ class MGXS(object):
 
     @nuclides.setter
     def nuclides(self, nuclides):
-        cv.check_iterable_type('nuclides', nuclides, basestring)
+        cv.check_iterable_type('nuclides', nuclides, string_types)
         self._nuclides = nuclides
 
     @estimator.setter
@@ -453,7 +457,7 @@ class MGXS(object):
 
         Parameters
         ----------
-        mgxs_type : {'total', 'transport', 'nu-transport', 'absorption', 'capture', 'fission', 'nu-fission', 'kappa-fission', 'scatter', 'nu-scatter', 'scatter matrix', 'nu-scatter matrix', 'multiplicity matrix', 'nu-fission matrix', 'chi', 'chi-prompt', 'inverse-velocity', 'prompt-nu-fission'}
+        mgxs_type : {'total', 'transport', 'nu-transport', 'absorption', 'capture', 'fission', 'nu-fission', 'kappa-fission', 'scatter', 'nu-scatter', 'scatter matrix', 'nu-scatter matrix', 'multiplicity matrix', 'nu-fission matrix', 'chi', 'chi-prompt', 'inverse-velocity', 'prompt-nu-fission', 'prompt-nu-fission matrix'}
             The type of multi-group cross section object to return
         domain : openmc.Material or openmc.Cell or openmc.Universe or openmc.Mesh
             The domain for spatial homogenization
@@ -514,6 +518,8 @@ class MGXS(object):
             mgxs = InverseVelocity(domain, domain_type, energy_groups)
         elif mgxs_type == 'prompt-nu-fission':
             mgxs = PromptNuFissionXS(domain, domain_type, energy_groups)
+        elif mgxs_type == 'prompt-nu-fission matrix':
+            mgxs = PromptNuFissionMatrixXS(domain, domain_type, energy_groups)
 
         mgxs.by_nuclide = by_nuclide
         mgxs.name = name
@@ -562,7 +568,7 @@ class MGXS(object):
 
         """
 
-        cv.check_type('nuclide', nuclide, basestring)
+        cv.check_type('nuclide', nuclide, string_types)
 
         # Get list of all nuclides in the spatial domain
         nuclides = self.domain.get_nuclide_densities()
@@ -788,19 +794,25 @@ class MGXS(object):
         filter_bins = []
 
         # Construct a collection of the domain filter bins
-        if not isinstance(subdomains, basestring):
+        if not isinstance(subdomains, string_types):
             cv.check_iterable_type('subdomains', subdomains, Integral,
                                    max_depth=3)
+
+            filters.append(_DOMAIN_TO_FILTER[self.domain_type])
+            subdomain_bins = []
             for subdomain in subdomains:
-                filters.append(_DOMAIN_TO_FILTER[self.domain_type])
-                filter_bins.append((subdomain,))
+                subdomain_bins.append(subdomain)
+            filter_bins.append(tuple(subdomain_bins))
 
         # Construct list of energy group bounds tuples for all requested groups
-        if not isinstance(groups, basestring):
+        if not isinstance(groups, string_types):
             cv.check_iterable_type('groups', groups, Integral)
+            filters.append(openmc.EnergyFilter)
+            energy_bins = []
             for group in groups:
-                filters.append(openmc.EnergyFilter)
-                filter_bins.append((self.energy_groups.get_group_bounds(group),))
+                energy_bins.append(
+                    (self.energy_groups.get_group_bounds(group),))
+            filter_bins.append(tuple(energy_bins))
 
         # Construct a collection of the nuclides to retrieve from the xs tally
         if self.by_nuclide:
@@ -958,34 +970,136 @@ class MGXS(object):
         """
 
         # Construct a collection of the subdomain filter bins to average across
-        if not isinstance(subdomains, basestring):
+        if not isinstance(subdomains, string_types):
             cv.check_iterable_type('subdomains', subdomains, Integral)
+            subdomains = [(subdomain,) for subdomain in subdomains]
+            subdomains = [tuple(subdomains)]
         elif self.domain_type == 'distribcell':
-            subdomains = np.arange(self.num_subdomains)
+            subdomains = [i for i in range(self.num_subdomains)]
+            subdomains = [tuple(subdomains)]
         else:
             subdomains = None
 
         # Clone this MGXS to initialize the subdomain-averaged version
         avg_xs = copy.deepcopy(self)
+        avg_xs._rxn_rate_tally = None
+        avg_xs._xs_tally = None
 
-        if self.derived:
-            avg_xs._rxn_rate_tally = avg_xs.rxn_rate_tally.average(
-                filter_type=_DOMAIN_TO_FILTER[self.domain_type],
-                filter_bins=subdomains)
-        else:
-            avg_xs._rxn_rate_tally = None
-            avg_xs._xs_tally = None
+        # Average each of the tallies across subdomains
+        for tally_type, tally in avg_xs.tallies.items():
+            filt_type = _DOMAIN_TO_FILTER[self.domain_type]
+            tally_avg = tally.summation(filter_type=filt_type,
+                                        filter_bins=subdomains)
+            avg_xs.tallies[tally_type] = tally_avg
 
-            # Average each of the tallies across subdomains
-            for tally_type, tally in avg_xs.tallies.items():
-                filt_type = _DOMAIN_TO_FILTER[self.domain_type]
-                tally_avg = tally.average(filter_type=filt_type,
-                                          filter_bins=subdomains)
-                avg_xs.tallies[tally_type] = tally_avg
-
-        avg_xs._domain_type = 'avg({0})'.format(self.domain_type)
+        avg_xs._domain_type = 'sum({0})'.format(self.domain_type)
         avg_xs.sparse = self.sparse
         return avg_xs
+
+    def _get_homogenized_mgxs(self, other_mgxs, denom_score='flux'):
+        """Construct a homogenized MGXS with other MGXS objects.
+
+        This method constructs a new MGXS object that is the flux-weighted
+        combination of two MGXS objects. It is equivalent to what one would
+        obtain if the tally spatial domain were designed to encompass the
+        individual domains for both MGXS objects. This is accomplished by
+        summing the rxn rate (numerator) tally and the denominator tally
+        (often a tally of the flux over the spatial domain) that are used to
+        compute a multi-group cross-section.
+
+        Parameters
+        ----------
+        other_mgxs : openmc.mgxs.MGXS or Iterable of openmc.mgxs.MGXS
+            The MGXS to homogenize with this one.
+        denom_score : str
+            The denominator score in the denominator of computing the MGXS.
+
+        Returns
+        -------
+        openmc.mgxs.MGXS
+            A new homogenized MGXS
+
+        Raises
+        ------
+        ValueError
+            If the other_mgxs is of a different type.
+
+        """
+
+        # Check type of denom score
+        cv.check_type('denom_score', denom_score, str)
+
+        # Construct a collection of the subdomain filter bins to homogenize
+        # across
+        if isinstance(other_mgxs, openmc.mgxs.MGXS):
+            other_mgxs = [other_mgxs]
+
+        cv.check_iterable_type('other_mgxs', other_mgxs, openmc.mgxs.MGXS)
+        for mgxs in other_mgxs:
+            if mgxs.rxn_type != self.rxn_type:
+                msg = 'Not able to homogenize two MGXS with different rxn types'
+                raise ValueError(msg)
+
+        # Clone this MGXS to initialize the homogenized version
+        homogenized_mgxs = copy.deepcopy(self)
+        homogenized_mgxs._derived = True
+        name = 'hom({}, '.format(self.domain.name)
+
+        # Get the domain filter
+        filter_type = _DOMAIN_TO_FILTER[self.domain_type]
+        self_filter = self.rxn_rate_tally.find_filter(filter_type)
+
+        # Get the rxn rate and denom tallies
+        rxn_rate_tally = self.rxn_rate_tally
+        denom_tally = self.tallies[denom_score]
+
+        for mgxs in other_mgxs:
+
+            # Swap the domain filter bins for the other mgxs rxn rate tally
+            other_rxn_rate_tally = copy.deepcopy(mgxs.rxn_rate_tally)
+            other_filter = other_rxn_rate_tally.find_filter(filter_type)
+            other_filter._bins = self_filter._bins
+
+            # Swap the domain filter bins for the denom tally
+            other_denom_tally = copy.deepcopy(mgxs.tallies[denom_score])
+            other_filter = other_denom_tally.find_filter(filter_type)
+            other_filter._bins = self_filter._bins
+
+            # Add the rxn rate and denom tallies
+            rxn_rate_tally += other_rxn_rate_tally
+            denom_tally += other_denom_tally
+
+            # Update the name for the homogenzied MGXS
+            name += '{}, '.format(mgxs.domain.name)
+
+        # Set the properties of the homogenized MGXS
+        homogenized_mgxs._rxn_rate_tally = rxn_rate_tally
+        homogenized_mgxs.tallies[denom_score] = denom_tally
+        homogenized_mgxs._domain.name = name[:-2] + ')'
+
+        return homogenized_mgxs
+
+    def get_homogenized_mgxs(self, other_mgxs):
+        """Construct a homogenized mgxs with other MGXS objects.
+
+        Parameters
+        ----------
+        other_mgxs : openmc.mgxs.MGXS or Iterable of openmc.mgxs.MGXS
+            The MGXS to homogenize with this one.
+
+        Returns
+        -------
+        openmc.mgxs.MGXS
+            A new homogenized MGXS
+
+        Raises
+        ------
+        ValueError
+            If the other_mgxs is of a different type.
+
+        """
+
+        return self._get_homogenized_mgxs(other_mgxs, 'flux')
 
     def get_slice(self, nuclides=[], groups=[]):
         """Build a sliced MGXS for the specified nuclides and energy groups.
@@ -1013,7 +1127,7 @@ class MGXS(object):
 
         """
 
-        cv.check_iterable_type('nuclides', nuclides, basestring)
+        cv.check_iterable_type('nuclides', nuclides, string_types)
         cv.check_iterable_type('energy_groups', groups, Integral)
 
         # Build lists of filters and filter bins to slice
@@ -1167,7 +1281,7 @@ class MGXS(object):
         """
 
         # Construct a collection of the subdomains to report
-        if not isinstance(subdomains, basestring):
+        if not isinstance(subdomains, string_types):
             cv.check_iterable_type('subdomains', subdomains, Integral)
         elif self.domain_type == 'distribcell':
             subdomains = np.arange(self.num_subdomains, dtype=np.int)
@@ -1184,7 +1298,7 @@ class MGXS(object):
             elif nuclides == 'sum':
                 nuclides = ['sum']
             else:
-                cv.check_iterable_type('nuclides', nuclides, basestring)
+                cv.check_iterable_type('nuclides', nuclides, string_types)
         else:
             nuclides = ['sum']
 
@@ -1219,7 +1333,7 @@ class MGXS(object):
 
                 # Build header for cross section type
                 string += '{0: <16}\n'.format(xs_header)
-                template = '{0: <12}Group {1} [{2: <10} - {3: <10}MeV]:\t'
+                template = '{0: <12}Group {1} [{2: <10} - {3: <10}eV]:\t'
 
                 # Loop over energy groups ranges
                 for group in range(1, self.num_groups+1):
@@ -1302,12 +1416,12 @@ class MGXS(object):
             xs_results = h5py.File(filename, 'w')
 
         # Construct a collection of the subdomains to report
-        if not isinstance(subdomains, basestring):
+        if not isinstance(subdomains, string_types):
             cv.check_iterable_type('subdomains', subdomains, Integral)
         elif self.domain_type == 'distribcell':
             subdomains = np.arange(self.num_subdomains, dtype=np.int)
-        elif self.domain_type == 'avg(distribcell)':
-            domain_filter = self.xs_tally.find_filter('avg(distribcell)')
+        elif self.domain_type == 'sum(distribcell)':
+            domain_filter = self.xs_tally.find_filter('sum(distribcell)')
             subdomains = domain_filter.bins
         elif self.domain_type == 'mesh':
             xyz = [range(1, x+1) for x in self.domain.dimension]
@@ -1323,7 +1437,7 @@ class MGXS(object):
             elif nuclides == 'sum':
                 nuclides = ['sum']
             else:
-                cv.check_iterable_type('nuclides', nuclides, basestring)
+                cv.check_iterable_type('nuclides', nuclides, string_types)
         else:
             nuclides = ['sum']
 
@@ -1401,8 +1515,8 @@ class MGXS(object):
 
         """
 
-        cv.check_type('filename', filename, basestring)
-        cv.check_type('directory', directory, basestring)
+        cv.check_type('filename', filename, string_types)
+        cv.check_type('directory', directory, string_types)
         cv.check_value('format', format, ['csv', 'excel', 'pickle', 'latex'])
         cv.check_value('xs_type', xs_type, ['macro', 'micro'])
 
@@ -1488,10 +1602,10 @@ class MGXS(object):
 
         """
 
-        if not isinstance(groups, basestring):
+        if not isinstance(groups, string_types):
             cv.check_iterable_type('groups', groups, Integral)
         if nuclides != 'all' and nuclides != 'sum':
-            cv.check_iterable_type('nuclides', nuclides, basestring)
+            cv.check_iterable_type('nuclides', nuclides, string_types)
         cv.check_value('xs_type', xs_type, ['macro', 'micro'])
 
         # Get a Pandas DataFrame from the derived xs tally
@@ -1528,42 +1642,52 @@ class MGXS(object):
         else:
             df = df.drop('score', axis=1)
 
+        # Determine if change-in-angle bins are included in the MGXS to
+        # properly tile the group boundaries
+        if 'mu low' in df:
+            # Find the length of the mu filters indirectly from the number
+            # of times the mu bins repeats.
+            num_mu = int(df.shape[0] /
+                         df[df['mu low'] == df['mu low'][0]].shape[0])
+        else:
+            num_mu = 1
+
         # Override energy groups bounds with indices
         all_groups = np.arange(self.num_groups, 0, -1, dtype=np.int)
-        all_groups = np.repeat(all_groups, len(query_nuclides)) 
-        if 'energy low [MeV]' in df and 'energyout low [MeV]' in df:
-            df.rename(columns={'energy low [MeV]': 'group in'},
+        all_groups = np.repeat(all_groups, len(query_nuclides) * num_mu)
+        if 'energy low [eV]' in df and 'energyout low [eV]' in df:
+            df.rename(columns={'energy low [eV]': 'group in'},
                       inplace=True)
             in_groups = np.tile(all_groups, int(self.num_subdomains))
             in_groups = np.repeat(in_groups, int(df.shape[0] / in_groups.size))
             df['group in'] = in_groups
-            del df['energy high [MeV]']
+            del df['energy high [eV]']
 
-            df.rename(columns={'energyout low [MeV]': 'group out'},
+            df.rename(columns={'energyout low [eV]': 'group out'},
                       inplace=True)
             out_groups = np.repeat(all_groups, self.xs_tally.num_scores)
             out_groups = np.tile(out_groups, int(df.shape[0] / out_groups.size))
             df['group out'] = out_groups
-            del df['energyout high [MeV]']
+            del df['energyout high [eV]']
             columns = ['group in', 'group out']
 
-        elif 'energyout low [MeV]' in df:
-            df.rename(columns={'energyout low [MeV]': 'group out'},
+        elif 'energyout low [eV]' in df:
+            df.rename(columns={'energyout low [eV]': 'group out'},
                       inplace=True)
             in_groups = np.tile(all_groups, int(df.shape[0] / all_groups.size))
             df['group out'] = in_groups
-            del df['energyout high [MeV]']
+            del df['energyout high [eV]']
             columns = ['group out']
 
-        elif 'energy low [MeV]' in df:
-            df.rename(columns={'energy low [MeV]': 'group in'}, inplace=True)
+        elif 'energy low [eV]' in df:
+            df.rename(columns={'energy low [eV]': 'group in'}, inplace=True)
             in_groups = np.tile(all_groups, int(df.shape[0] / all_groups.size))
             df['group in'] = in_groups
-            del df['energy high [MeV]']
+            del df['energy high [eV]']
             columns = ['group in']
 
         # Select out those groups the user requested
-        if not isinstance(groups, basestring):
+        if not isinstance(groups, string_types):
             if 'group in' in df:
                 df = df[df['group in'].isin(groups)]
             if 'group out' in df:
@@ -1616,6 +1740,7 @@ class MGXS(object):
         return 'cm^-1' if xs_type == 'macro' else 'barns'
 
 
+@add_metaclass(ABCMeta)
 class MatrixMGXS(MGXS):
     """An abstract multi-group cross section for some energy group structure
     within some spatial domain. This class is specifically intended for
@@ -1703,10 +1828,6 @@ class MatrixMGXS(MGXS):
         The key used to index multi-group cross sections in an HDF5 data store
 
     """
-
-    # This is an abstract class which cannot be instantiated
-    __metaclass__ = abc.ABCMeta
-
     @property
     def filters(self):
         # Create the non-domain specific Filters for the Tallies
@@ -1760,7 +1881,7 @@ class MatrixMGXS(MGXS):
 
         Returns
         -------
-        ndarray
+        numpy.ndarray
             A NumPy array of the multi-group cross section indexed in the order
             each group and subdomain is listed in the parameters.
 
@@ -1786,23 +1907,25 @@ class MatrixMGXS(MGXS):
         filter_bins = []
 
         # Construct a collection of the domain filter bins
-        if not isinstance(subdomains, basestring):
+        if not isinstance(subdomains, string_types):
             cv.check_iterable_type('subdomains', subdomains, Integral,
                                    max_depth=3)
+            filters.append(_DOMAIN_TO_FILTER[self.domain_type])
+            subdomain_bins = []
             for subdomain in subdomains:
-                filters.append(_DOMAIN_TO_FILTER[self.domain_type])
-                filter_bins.append((subdomain,))
+                subdomain_bins.append(subdomain)
+            filter_bins.append(tuple(subdomain_bins))
 
         # Construct list of energy group bounds tuples for all requested groups
-        if not isinstance(in_groups, basestring):
+        if not isinstance(in_groups, string_types):
             cv.check_iterable_type('groups', in_groups, Integral)
+            filters.append(openmc.EnergyFilter)
             for group in in_groups:
-                filters.append(openmc.EnergyFilter)
-                filter_bins.append((
-                    self.energy_groups.get_group_bounds(group),))
+                energy_bins.append((self.energy_groups.get_group_bounds(group),))
+            filter_bins.append(tuple(energy_bins))
 
         # Construct list of energy group bounds tuples for all requested groups
-        if not isinstance(out_groups, basestring):
+        if not isinstance(out_groups, string_types):
             cv.check_iterable_type('groups', out_groups, Integral)
             for group in out_groups:
                 filters.append(openmc.EnergyoutFilter)
@@ -1948,7 +2071,7 @@ class MatrixMGXS(MGXS):
         """
 
         # Construct a collection of the subdomains to report
-        if not isinstance(subdomains, basestring):
+        if not isinstance(subdomains, string_types):
             cv.check_iterable_type('subdomains', subdomains, Integral)
         elif self.domain_type == 'distribcell':
             subdomains = np.arange(self.num_subdomains, dtype=np.int)
@@ -1965,7 +2088,7 @@ class MatrixMGXS(MGXS):
             if nuclides == 'sum':
                 nuclides = ['sum']
             else:
-                cv.check_iterable_type('nuclides', nuclides, basestring)
+                cv.check_iterable_type('nuclides', nuclides, string_types)
         else:
             nuclides = ['sum']
 
@@ -1986,7 +2109,7 @@ class MatrixMGXS(MGXS):
             return
 
         string += '{0: <16}\n'.format('\tEnergy Groups:')
-        template = '{0: <12}Group {1} [{2: <10} - {3: <10}MeV]\n'
+        template = '{0: <12}Group {1} [{2: <10} - {3: <10}eV]\n'
 
         # Loop over energy groups ranges
         for group in range(1, self.num_groups + 1):
@@ -3164,7 +3287,7 @@ class NuScatterXS(MGXS):
     tally_keys : list of str
         The keys into the tallies dictionary for each tally used to compute
         the multi-group cross section
-    estimator : {'tracklength', 'collision', 'analog'}
+    estimator : 'analog'
         The tally estimator used to compute the multi-group cross section
     tallies : collections.OrderedDict
         OpenMC tallies needed to compute the multi-group cross section. The keys
@@ -3212,8 +3335,8 @@ class NuScatterXS(MGXS):
 
 
 class ScatterMatrixXS(MatrixMGXS):
-    r"""A scattering matrix multi-group cross section for one or more Legendre
-    moments.
+    r"""A scattering matrix multi-group cross section with the cosine of the
+    change-in-angle represented as one or more Legendre moments or a histogram.
 
     This class can be used for both OpenMC input generation and tally data
     post-processing to compute spatially-homogenized and energy-integrated
@@ -3231,7 +3354,7 @@ class ScatterMatrixXS(MatrixMGXS):
 
     For a spatial domain :math:`V`, incoming energy group
     :math:`[E_{g'},E_{g'-1}]`, and outgoing energy group :math:`[E_g,E_{g-1}]`,
-    the scattering moments are calculated as:
+    the Legendre scattering moments are calculated as:
 
     .. math::
 
@@ -3271,9 +3394,18 @@ class ScatterMatrixXS(MatrixMGXS):
     Attributes
     ----------
     correction : 'P0' or None
-        Apply the P0 correction to scattering matrices if set to 'P0'
+        Apply the P0 correction to scattering matrices if set to 'P0'; this is
+        used only if :attr:`ScatterMatrixXS.scatter_format` is 'legendre'
+    scatter_format : {'legendre', or 'histogram'}
+        Representation of the angular scattering distribution (default is
+        'legendre')
     legendre_order : int
-        The highest Legendre moment in the scattering matrix (default is 0)
+        The highest Legendre moment in the scattering matrix; this is used if
+        :attr:`ScatterMatrixXS.scatter_format` is 'legendre'. (default is 0)
+    histogram_bins : int
+        The number of equally-spaced bins for the histogram representation of
+        the angular scattering distribution; this is used if
+        :attr:`ScatterMatrixXS.scatter_format` is 'histogram'. (default is 16)
     name : str, optional
         Name of the multi-group cross section
     rxn_type : str
@@ -3340,7 +3472,9 @@ class ScatterMatrixXS(MatrixMGXS):
                                               groups, by_nuclide, name)
         self._rxn_type = 'scatter'
         self._correction = 'P0'
+        self._scatter_format = 'legendre'
         self._legendre_order = 0
+        self._histogram_bins = 16
         self._hdf5_key = 'scatter matrix'
         self._estimator = 'analog'
         self._valid_estimators = ['analog']
@@ -3348,7 +3482,9 @@ class ScatterMatrixXS(MatrixMGXS):
     def __deepcopy__(self, memo):
         clone = super(ScatterMatrixXS, self).__deepcopy__(memo)
         clone._correction = self.correction
+        clone._scatter_format = self.scatter_format
         clone._legendre_order = self.legendre_order
+        clone._histogram_bins = self.histogram_bins
         return clone
 
     @property
@@ -3356,18 +3492,29 @@ class ScatterMatrixXS(MatrixMGXS):
         return self._correction
 
     @property
+    def scatter_format(self):
+        return self._scatter_format
+
+    @property
     def legendre_order(self):
         return self._legendre_order
+
+    @property
+    def histogram_bins(self):
+        return self._histogram_bins
 
     @property
     def scores(self):
         scores = ['flux']
 
-        if self.correction == 'P0' and self.legendre_order == 0:
-            scores += ['{}-0'.format(self.rxn_type),
-                       '{}-1'.format(self.rxn_type)]
-        else:
-            scores += ['{}-P{}'.format(self.rxn_type, self.legendre_order)]
+        if self.scatter_format == 'legendre':
+            if self.correction == 'P0' and self.legendre_order == 0:
+                scores += ['{}-0'.format(self.rxn_type),
+                           '{}-1'.format(self.rxn_type)]
+            else:
+                scores += ['{}-P{}'.format(self.rxn_type, self.legendre_order)]
+        elif self.scatter_format == 'histogram':
+            scores += [self.rxn_type]
 
         return scores
 
@@ -3377,10 +3524,15 @@ class ScatterMatrixXS(MatrixMGXS):
         energy = openmc.EnergyFilter(group_edges)
         energyout = openmc.EnergyoutFilter(group_edges)
 
-        if self.correction == 'P0' and self.legendre_order == 0:
-            filters = [[energy], [energy, energyout], [energyout]]
-        else:
-            filters = [[energy], [energy, energyout]]
+        if self.scatter_format == 'legendre':
+            if self.correction == 'P0' and self.legendre_order == 0:
+                filters = [[energy], [energy, energyout], [energyout]]
+            else:
+                filters = [[energy], [energy, energyout]]
+        elif self.scatter_format == 'histogram':
+            bins = np.linspace(-1., 1., num=self.histogram_bins + 1,
+                               endpoint=True)
+            filters = [[energy], [energy, energyout, openmc.MuFilter(bins)]]
 
         return filters
 
@@ -3388,20 +3540,24 @@ class ScatterMatrixXS(MatrixMGXS):
     def rxn_rate_tally(self):
 
         if self._rxn_rate_tally is None:
+            if self.scatter_format == 'legendre':
+                # If using P0 correction subtract scatter-1 from the diagonal
+                if self.correction == 'P0' and self.legendre_order == 0:
+                    scatter_p0 = self.tallies['{}-0'.format(self.rxn_type)]
+                    scatter_p1 = self.tallies['{}-1'.format(self.rxn_type)]
+                    energy_filter = scatter_p0.find_filter(openmc.EnergyFilter)
+                    energy_filter = copy.deepcopy(energy_filter)
+                    scatter_p1 = scatter_p1.diagonalize_filter(energy_filter)
+                    self._rxn_rate_tally = scatter_p0 - scatter_p1
 
-            # If using P0 correction subtract scatter-1 from the diagonal
-            if self.correction == 'P0' and self.legendre_order == 0:
-                scatter_p0 = self.tallies['{}-0'.format(self.rxn_type)]
-                scatter_p1 = self.tallies['{}-1'.format(self.rxn_type)]
-                energy_filter = scatter_p0.find_filter(openmc.EnergyFilter)
-                energy_filter = copy.deepcopy(energy_filter)
-                scatter_p1 = scatter_p1.diagonalize_filter(energy_filter)
-                self._rxn_rate_tally = scatter_p0 - scatter_p1
-
-            # Extract scattering moment reaction rate Tally
-            else:
-                tally_key = '{}-P{}'.format(self.rxn_type, self.legendre_order)
-                self._rxn_rate_tally = self.tallies[tally_key]
+                # Extract scattering moment reaction rate Tally
+                else:
+                    tally_key = '{}-P{}'.format(self.rxn_type,
+                                                self.legendre_order)
+                    self._rxn_rate_tally = self.tallies[tally_key]
+            elif self.scatter_format == 'histogram':
+                # Extract scattering rate distribution tally
+                self._rxn_rate_tally = self.tallies[self.rxn_type]
 
             self._rxn_rate_tally.sparse = self.sparse
 
@@ -3411,26 +3567,52 @@ class ScatterMatrixXS(MatrixMGXS):
     def correction(self, correction):
         cv.check_value('correction', correction, ('P0', None))
 
-        if correction == 'P0' and self.legendre_order > 0:
-            msg = 'The P0 correction will be ignored since the scattering ' \
-                  'order {} is greater than zero'.format(self.legendre_order)
+        if self.scatter_format == 'legendre':
+            if correction == 'P0' and self.legendre_order > 0:
+                msg = 'The P0 correction will be ignored since the ' \
+                      'scattering order {} is greater than '\
+                      'zero'.format(self.legendre_order)
+                warnings.warn(msg)
+        elif self.scatter_format == 'histogram':
+            msg = 'The P0 correction will be ignored since the ' \
+                  'scatter format is set to histogram'
             warnings.warn(msg)
 
         self._correction = correction
 
+    @scatter_format.setter
+    def scatter_format(self, scatter_format):
+        cv.check_value('scatter_format', scatter_format, MU_TREATMENTS)
+        self._scatter_format = scatter_format
+
     @legendre_order.setter
     def legendre_order(self, legendre_order):
         cv.check_type('legendre_order', legendre_order, Integral)
-        cv.check_greater_than('legendre_order', legendre_order, 0, equality=True)
-        cv.check_less_than('legendre_order', legendre_order, 10, equality=True)
+        cv.check_greater_than('legendre_order', legendre_order, 0,
+                              equality=True)
+        cv.check_less_than('legendre_order', legendre_order, _MAX_LEGENDRE,
+                           equality=True)
 
-        if self.correction == 'P0' and legendre_order > 0:
-            msg = 'The P0 correction will be ignored since the scattering ' \
-                  'order {} is greater than zero'.format(self.legendre_order)
-            warnings.warn(msg, RuntimeWarning)
-            self.correction = None
+        if self.scatter_format == 'legendre':
+            if self.correction == 'P0' and legendre_order > 0:
+                msg = 'The P0 correction will be ignored since the ' \
+                      'scattering order {} is greater than '\
+                      'zero'.format(self.legendre_order)
+                warnings.warn(msg, RuntimeWarning)
+                self.correction = None
+        elif self.scatter_format == 'histogram':
+            msg = 'The legendre order will be ignored since the ' \
+                  'scatter format is set to histogram'
+            warnings.warn(msg)
 
         self._legendre_order = legendre_order
+
+    @histogram_bins.setter
+    def histogram_bins(self, histogram_bins):
+        cv.check_type('histogram_bins', histogram_bins, Integral)
+        cv.check_greater_than('histogram_bins', histogram_bins, 0)
+
+        self._histogram_bins = histogram_bins
 
     def load_from_statepoint(self, statepoint):
         """Extracts tallies in an OpenMC StatePoint with the data needed to
@@ -3461,12 +3643,16 @@ class ScatterMatrixXS(MatrixMGXS):
             self._rxn_rate_tally = None
             self._loaded_sp = False
 
-        # Expand scores to match the format in the statepoint
-        # e.g., "scatter-P2" -> "scatter-0", "scatter-1", "scatter-2"
-        if self.correction != 'P0' or self.legendre_order != 0:
-            tally_key = '{}-P{}'.format(self.rxn_type, self.legendre_order)
-            self.tallies[tally_key].scores = \
-                [self.rxn_type + '-{}'.format(i) for i in range(self.legendre_order+1)]
+        if self.scatter_format == 'legendre':
+            # Expand scores to match the format in the statepoint
+            # e.g., "scatter-P2" -> "scatter-0", "scatter-1", "scatter-2"
+            if self.correction != 'P0' or self.legendre_order != 0:
+                tally_key = '{}-P{}'.format(self.rxn_type, self.legendre_order)
+                self.tallies[tally_key].scores = \
+                    [self.rxn_type + '-{}'.format(i)
+                     for i in range(self.legendre_order + 1)]
+        elif self.scatter_format == 'histogram':
+            self.tallies[self.rxn_type].scores = [self.rxn_type]
 
         super(ScatterMatrixXS, self).load_from_statepoint(statepoint)
 
@@ -3513,7 +3699,7 @@ class ScatterMatrixXS(MatrixMGXS):
         slice_xs._xs_tally = None
 
         # Slice the Legendre order if needed
-        if legendre_order != 'same':
+        if legendre_order != 'same' and self.scatter_format == 'legendre':
             cv.check_type('legendre_order', legendre_order, Integral)
             cv.check_less_than('legendre_order', legendre_order,
                                self.legendre_order, equality=True)
@@ -3522,7 +3708,8 @@ class ScatterMatrixXS(MatrixMGXS):
             # Slice the scattering tally
             tally_key = '{}-P{}'.format(self.rxn_type, self.legendre_order)
             expand_scores = \
-                [self.rxn_type + '-{}'.format(i) for i in range(self.legendre_order+1)]
+                [self.rxn_type + '-{}'.format(i)
+                 for i in range(self.legendre_order + 1)]
             slice_xs.tallies[tally_key] = \
                 slice_xs.tallies[tally_key].get_slice(scores=expand_scores)
 
@@ -3553,7 +3740,8 @@ class ScatterMatrixXS(MatrixMGXS):
         This method constructs a 5D NumPy array for the requested
         multi-group cross section data for one or more subdomains
         (1st dimension), energy groups in (2nd dimension), energy groups out
-        (3rd dimension), nuclides (4th dimension), and moments (5th dimension).
+        (3rd dimension), nuclides (4th dimension), and moments/histograms
+        (5th dimension).
 
         NOTE: The scattering moments are not multiplied by the :math:`(2l+1)/2`
         prefactor in the expansion of the scattering source into Legendre
@@ -3595,7 +3783,7 @@ class ScatterMatrixXS(MatrixMGXS):
 
         Returns
         -------
-        ndarray
+        numpy.ndarray
             A NumPy array of the multi-group cross section indexed in the order
             each group and subdomain is listed in the parameters.
 
@@ -3621,28 +3809,33 @@ class ScatterMatrixXS(MatrixMGXS):
         filter_bins = []
 
         # Construct a collection of the domain filter bins
-        if not isinstance(subdomains, basestring):
+        if not isinstance(subdomains, string_types):
             cv.check_iterable_type('subdomains', subdomains, Integral, max_depth=3)
+            filters.append(_DOMAIN_TO_FILTER[self.domain_type])
+            subdomain_bins = []
             for subdomain in subdomains:
-                filters.append(_DOMAIN_TO_FILTER[self.domain_type])
-                filter_bins.append((subdomain,))
+                subdomain_bins.append(subdomain)
+            filter_bins.append(tuple(subdomain_bins))
 
         # Construct list of energy group bounds tuples for all requested groups
-        if not isinstance(in_groups, basestring):
+        if not isinstance(in_groups, string_types):
             cv.check_iterable_type('groups', in_groups, Integral)
+            filters.append(openmc.EnergyFilter)
+            energy_bins = []
             for group in in_groups:
-                filters.append(openmc.EnergyFilter)
-                filter_bins.append((self.energy_groups.get_group_bounds(group),))
+                energy_bins.append(
+                    (self.energy_groups.get_group_bounds(group),))
+            filter_bins.append(tuple(energy_bins))
 
         # Construct list of energy group bounds tuples for all requested groups
-        if not isinstance(out_groups, basestring):
+        if not isinstance(out_groups, string_types):
             cv.check_iterable_type('groups', out_groups, Integral)
             for group in out_groups:
                 filters.append(openmc.EnergyoutFilter)
                 filter_bins.append((self.energy_groups.get_group_bounds(group),))
 
         # Construct CrossScore for requested scattering moment
-        if moment != 'all':
+        if moment != 'all' and self.scatter_format == 'legendre':
             cv.check_type('moment', moment, Integral)
             cv.check_greater_than('moment', moment, 0, equality=True)
             cv.check_less_than(
@@ -3692,9 +3885,19 @@ class ScatterMatrixXS(MatrixMGXS):
         else:
             num_out_groups = len(out_groups)
 
+        if self.scatter_format == 'histogram':
+            num_mu_bins = self.histogram_bins
+        else:
+            num_mu_bins = 1
+
         # Reshape tally data array with separate axes for domain and energy
-        num_subdomains = int(xs.shape[0] / (num_in_groups * num_out_groups))
-        new_shape = (num_subdomains, num_in_groups, num_out_groups)
+        num_subdomains = int(xs.shape[0] /
+                             (num_mu_bins * num_in_groups * num_out_groups))
+        if self.scatter_format == 'histogram':
+            new_shape = (num_subdomains, num_in_groups, num_out_groups,
+                         num_mu_bins)
+        else:
+            new_shape = (num_subdomains, num_in_groups, num_out_groups)
         new_shape += xs.shape[1:]
         xs = np.reshape(xs, new_shape)
 
@@ -3705,11 +3908,22 @@ class ScatterMatrixXS(MatrixMGXS):
         # Reverse data if user requested increasing energy groups since
         # tally data is stored in order of increasing energies
         if order_groups == 'increasing':
-            xs = xs[:, ::-1, ::-1, :]
+            xs = xs[:, ::-1, ::-1, ...]
 
         if squeeze:
-            xs = np.squeeze(xs)
-            xs = np.atleast_2d(xs)
+            # We want to squeeze out everything but the in_groups, out_groups,
+            # and, if needed, num_mu_bins dimension. These must not be squeezed
+            # so 1-group problems have the correct shape.
+            if self.scatter_format == 'histogram':
+                axes = (5, 4, 0)
+            else:
+                axes = (4, 3, 0)
+            # Squeeze will return a ValueError if the axis has a size greater
+            # than 1, so try each axis in axes one at a time, catching the
+            # ValueError as needed.
+            for axis in axes:
+                if xs.shape[axis] == 1:
+                    xs = np.squeeze(xs, axis=axis)
 
         return xs
 
@@ -3760,28 +3974,41 @@ class ScatterMatrixXS(MatrixMGXS):
         df = super(ScatterMatrixXS, self).get_pandas_dataframe(
             groups, nuclides, xs_type, distribcell_paths)
 
-        # Add a moment column to dataframe
-        if self.legendre_order > 0:
-            # Insert a column corresponding to the Legendre moments
-            moments = ['P{}'.format(i) for i in range(self.legendre_order+1)]
-            moments = np.tile(moments, int(df.shape[0] / len(moments)))
-            df['moment'] = moments
+        if self.scatter_format == 'legendre':
+            # Add a moment column to dataframe
+            if self.legendre_order > 0:
+                # Insert a column corresponding to the Legendre moments
+                moments = ['P{}'.format(i)
+                           for i in range(self.legendre_order + 1)]
+                moments = np.tile(moments, int(df.shape[0] / len(moments)))
+                df['moment'] = moments
 
-            # Place the moment column before the mean column
-            columns = df.columns.tolist()
-            mean_index = [i for i, s in enumerate(columns) if 'mean' in s][0]
-            if self.domain_type == 'mesh':
-                df = df[columns[:mean_index] + [('moment', '')] + columns[mean_index:-1]]
-            else:
-                df = df[columns[:mean_index] + ['moment'] + columns[mean_index:-1]]
+                # Place the moment column before the mean column
+                columns = df.columns.tolist()
+                mean_index \
+                    = [i for i, s in enumerate(columns) if 'mean' in s][0]
+                if self.domain_type == 'mesh':
+                    df = df[columns[:mean_index] + [('moment', '')] +
+                            columns[mean_index:-1]]
+                else:
+                    df = df[columns[:mean_index] + ['moment'] +
+                            columns[mean_index:-1]]
 
-        # Select rows corresponding to requested scattering moment
-        if moment != 'all':
-            cv.check_type('moment', moment, Integral)
-            cv.check_greater_than('moment', moment, 0, equality=True)
-            cv.check_less_than(
-                'moment', moment, self.legendre_order, equality=True)
-            df = df[df['moment'] == 'P{}'.format(moment)]
+            # Select rows corresponding to requested scattering moment
+            if moment != 'all':
+                cv.check_type('moment', moment, Integral)
+                cv.check_greater_than('moment', moment, 0, equality=True)
+                cv.check_less_than(
+                    'moment', moment, self.legendre_order, equality=True)
+                df = df[df['moment'] == 'P{}'.format(moment)]
+
+        elif self.scatter_format == 'histogram':
+            # Replace the mu low and mu high columns with a single mu bin
+            del df['mu high']
+            df.rename(columns={'mu low': 'mu bins'}, inplace=True)
+            bins = [i + 1 for i in range(self.histogram_bins)]
+            bins = np.tile(bins, int(df.shape[0] / len(bins)))
+            df['mu bins'] = bins
 
         return df
 
@@ -3809,7 +4036,7 @@ class ScatterMatrixXS(MatrixMGXS):
         """
 
         # Construct a collection of the subdomains to report
-        if not isinstance(subdomains, basestring):
+        if not isinstance(subdomains, string_types):
             cv.check_iterable_type('subdomains', subdomains, Integral)
         elif self.domain_type == 'distribcell':
             subdomains = np.arange(self.num_subdomains, dtype=np.int)
@@ -3826,13 +4053,13 @@ class ScatterMatrixXS(MatrixMGXS):
             if nuclides == 'sum':
                 nuclides = ['sum']
             else:
-                cv.check_iterable_type('nuclides', nuclides, basestring)
+                cv.check_iterable_type('nuclides', nuclides, string_types)
         else:
             nuclides = ['sum']
 
         cv.check_value('xs_type', xs_type, ['macro', 'micro'])
 
-        if self.correction != 'P0':
+        if self.correction != 'P0' and self.scatter_format == 'legendre':
             rxn_type = '{0} (P{1})'.format(self.rxn_type, moment)
         else:
             rxn_type = self.rxn_type
@@ -3852,7 +4079,7 @@ class ScatterMatrixXS(MatrixMGXS):
             return
 
         string += '{0: <16}\n'.format('\tEnergy Groups:')
-        template = '{0: <12}Group {1} [{2: <10} - {3: <10}MeV]\n'
+        template = '{0: <12}Group {1} [{2: <10} - {3: <10}eV]\n'
 
         # Loop over energy groups ranges
         for group in range(1, self.num_groups + 1):
@@ -4439,6 +4666,28 @@ class Chi(MGXS):
 
         return self._xs_tally
 
+    def get_homogenized_mgxs(self, other_mgxs):
+        """Construct a homogenized mgxs with other MGXS objects.
+
+        Parameters
+        ----------
+        other_mgxs : openmc.mgxs.MGXS or Iterable of openmc.mgxs.MGXS
+            The MGXS to homogenize with this one.
+
+        Returns
+        -------
+        openmc.mgxs.MGXS
+            A new homogenized MGXS
+
+        Raises
+        ------
+        ValueError
+            If the other_mgxs is of a different type.
+
+        """
+
+        return self._get_homogenized_mgxs(other_mgxs, 'nu-fission-in')
+
     def get_slice(self, nuclides=[], groups=[]):
         """Build a sliced Chi for the specified nuclides and energy groups.
 
@@ -4609,18 +4858,23 @@ class Chi(MGXS):
         filter_bins = []
 
         # Construct a collection of the domain filter bins
-        if not isinstance(subdomains, basestring):
+        if not isinstance(subdomains, string_types):
             cv.check_iterable_type('subdomains', subdomains, Integral, max_depth=3)
+            filters.append(_DOMAIN_TO_FILTER[self.domain_type])
+            subdomain_bins = []
             for subdomain in subdomains:
-                filters.append(_DOMAIN_TO_FILTER[self.domain_type])
-                filter_bins.append((subdomain,))
+                subdomain_bins.append(subdomain)
+            filter_bins.append(tuple(subdomain_bins))
 
         # Construct list of energy group bounds tuples for all requested groups
-        if not isinstance(groups, basestring):
+        if not isinstance(groups, string_types):
             cv.check_iterable_type('groups', groups, Integral)
+            filters.append(openmc.EnergyoutFilter)
+            energy_bins = []
             for group in groups:
-                filters.append(openmc.EnergyoutFilter)
-                filter_bins.append((self.energy_groups.get_group_bounds(group),))
+                energy_bins.append(
+                    (self.energy_groups.get_group_bounds(group),))
+            filter_bins.append(tuple(energy_bins))
 
         # If chi was computed for each nuclide in the domain
         if self.by_nuclide:
@@ -4661,7 +4915,7 @@ class Chi(MGXS):
 
             # Get chi for user-specified nuclides in the domain
             else:
-                cv.check_iterable_type('nuclides', nuclides, basestring)
+                cv.check_iterable_type('nuclides', nuclides, string_types)
                 xs = self.xs_tally.get_values(filters=filters,
                                               filter_bins=filter_bins,
                                               nuclides=nuclides, value=value)
@@ -5140,3 +5394,120 @@ class PromptNuFissionXS(MGXS):
         super(PromptNuFissionXS, self).__init__(domain, domain_type, groups,
                                                 by_nuclide, name)
         self._rxn_type = 'prompt-nu-fission'
+
+
+class PromptNuFissionMatrixXS(MatrixMGXS):
+    r"""A prompt fission neutron production matrix multi-group cross section.
+
+    This class can be used for both OpenMC input generation and tally data
+    post-processing to compute spatially-homogenized and energy-integrated
+    multi-group cross sections for multi-group neutronics calculations. At a
+    minimum, one needs to set the :attr:`PromptNuFissionMatrixXS.energy_groups`
+    and :attr:`PromptNuFissionMatrixXS.domain` properties. Tallies for the flux
+    and appropriate reaction rates over the specified domain are generated
+    automatically via the :attr:`PromptNuFissionMatrixXS.tallies` property,
+    which can then be appended to a :class:`openmc.Tallies` instance.
+
+    For post-processing, the :meth:`MGXS.load_from_statepoint` will pull in the
+    necessary data to compute multi-group cross sections from a
+    :class:`openmc.StatePoint` instance. The derived multi-group cross section
+    can then be obtained from the :attr:`PromptNuFissionMatrixXS.xs_tally`
+    property.
+
+    For a spatial domain :math:`V` and energy group :math:`[E_g,E_{g-1}]`, the
+    fission spectrum is calculated as:
+
+    .. math::
+
+       \langle \nu\sigma_{f,g'\rightarrow g} \phi \rangle &= \int_{r \in V} dr
+       \int_{4\pi} d\Omega' \int_{E_{g'}}^{E_{g'-1}} dE' \int_{E_g}^{E_{g-1}} dE
+       \; \chi(E) \nu\sigma_f^p (r, E') \psi(r, E', \Omega')\\
+       \langle \phi \rangle &= \int_{r \in V} dr \int_{4\pi} d\Omega
+       \int_{E_g}^{E_{g-1}} dE \; \psi (r, E, \Omega) \\
+       \nu\sigma_{f,g'\rightarrow g} &= \frac{\langle \nu\sigma_{f,g'\rightarrow
+       g}^p \phi \rangle}{\langle \phi \rangle}
+
+    Parameters
+    ----------
+    domain : openmc.Material or openmc.Cell or openmc.Universe or openmc.Mesh
+        The domain for spatial homogenization
+    domain_type : {'material', 'cell', 'distribcell', 'universe', 'mesh'}
+        The domain type for spatial homogenization
+    groups : openmc.mgxs.EnergyGroups
+        The energy group structure for energy condensation
+    by_nuclide : bool
+        If true, computes cross sections for each nuclide in domain
+    name : str, optional
+        Name of the multi-group cross section. Used as a label to identify
+        tallies in OpenMC 'tallies.xml' file.
+
+    Attributes
+    ----------
+    name : str, optional
+        Name of the multi-group cross section
+    rxn_type : str
+        Reaction type (e.g., 'total', 'nu-fission', etc.)
+    by_nuclide : bool
+        If true, computes cross sections for each nuclide in domain
+    domain : Material or Cell or Universe or Mesh
+        Domain for spatial homogenization
+    domain_type : {'material', 'cell', 'distribcell', 'universe', 'mesh'}
+        Domain type for spatial homogenization
+    energy_groups : openmc.mgxs.EnergyGroups
+        Energy group structure for energy condensation
+    tally_trigger : openmc.Trigger
+        An (optional) tally precision trigger given to each tally used to
+        compute the cross section
+    scores : list of str
+        The scores in each tally used to compute the multi-group cross section
+    filters : list of openmc.Filter
+        The filters in each tally used to compute the multi-group cross section
+    tally_keys : list of str
+        The keys into the tallies dictionary for each tally used to compute
+        the multi-group cross section
+    estimator : 'analog'
+        The tally estimator used to compute the multi-group cross section
+    tallies : collections.OrderedDict
+        OpenMC tallies needed to compute the multi-group cross section. The keys
+        are strings listed in the :attr:`PromptNuFissionXS.tally_keys` property
+        and values are instances of :class:`openmc.Tally`.
+    rxn_rate_tally : openmc.Tally
+        Derived tally for the reaction rate tally used in the numerator to
+        compute the multi-group cross section. This attribute is None
+        unless the multi-group cross section has been computed.
+    xs_tally : openmc.Tally
+        Derived tally for the multi-group cross section. This attribute
+        is None unless the multi-group cross section has been computed.
+    num_subdomains : int
+        The number of subdomains is unity for 'material', 'cell' and 'universe'
+        domain types. This is equal to the number of cell instances
+        for 'distribcell' domain types (it is equal to unity prior to loading
+        tally data from a statepoint file).
+    num_nuclides : int
+        The number of nuclides for which the multi-group cross section is
+        being tracked. This is unity if the by_nuclide attribute is False.
+    nuclides : Iterable of str or 'sum'
+        The optional user-specified nuclides for which to compute cross
+        sections (e.g., 'U-238', 'O-16'). If by_nuclide is True but nuclides
+        are not specified by the user, all nuclides in the spatial domain
+        are included. This attribute is 'sum' if by_nuclide is false.
+    sparse : bool
+        Whether or not the MGXS' tallies use SciPy's LIL sparse matrix format
+        for compressed data storage
+    loaded_sp : bool
+        Whether or not a statepoint file has been loaded with tally data
+    derived : bool
+        Whether or not the MGXS is merged from one or more other MGXS
+    hdf5_key : str
+        The key used to index multi-group cross sections in an HDF5 data store
+
+    """
+
+    def __init__(self, domain=None, domain_type=None,
+                 groups=None, by_nuclide=False, name=''):
+        super(PromptNuFissionMatrixXS, self).__init__(domain, domain_type,
+                                                      groups, by_nuclide, name)
+        self._rxn_type = 'prompt-nu-fission'
+        self._hdf5_key = 'prompt-nu-fission matrix'
+        self._estimator = 'analog'
+        self._valid_estimators = ['analog']

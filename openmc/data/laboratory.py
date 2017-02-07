@@ -137,3 +137,6 @@ class LaboratoryAngleEnergy(AngleEnergy):
             energy_out.append(energy_out_i)
 
         return cls(tab2.breakpoints, tab2.interpolation, energy, mu, energy_out)
+
+    def to_hdf5(self, group):
+        raise NotImplementedError

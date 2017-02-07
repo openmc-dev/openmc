@@ -4,12 +4,18 @@ import os
 import sys
 import glob
 import hashlib
+
+import numpy as np
 import h5py
+
 sys.path.insert(0, os.pardir)
 from testing_harness import PyAPITestHarness
 from input_set import PinCellInputSet
 import openmc
 import openmc.mgxs
+
+
+np.set_printoptions(formatter={'float_kind': '{:.8e}'.format})
 
 
 class MGXSTestHarness(PyAPITestHarness):
@@ -21,11 +27,7 @@ class MGXSTestHarness(PyAPITestHarness):
         super(MGXSTestHarness, self)._build_inputs()
 
         # Initialize a two-group structure
-        energy_groups = openmc.mgxs.EnergyGroups(group_edges=[0, 0.625e-6,
-                                                              20.])
-
-        # Initialize a six-delayed-group structure
-        delayed_groups = list(range(1,7))
+        energy_groups = openmc.mgxs.EnergyGroups(group_edges=[0, 0.625, 20.e6])
 
         # Initialize MGXS Library for a few cross section types
         self.mgxs_lib = openmc.mgxs.Library(self._input_set.geometry)
@@ -35,7 +37,7 @@ class MGXSTestHarness(PyAPITestHarness):
         self.mgxs_lib.mgxs_types = openmc.mgxs.MGXS_TYPES + \
                                    openmc.mgxs.MDGXS_TYPES
         self.mgxs_lib.energy_groups = energy_groups
-        self.mgxs_lib.delayed_groups = delayed_groups
+        self.mgxs_lib.num_delayed_groups = 6
         self.mgxs_lib.legendre_order = 3
         self.mgxs_lib.domain_type = 'material'
         self.mgxs_lib.build_library()
@@ -66,10 +68,9 @@ class MGXSTestHarness(PyAPITestHarness):
         for domain in self.mgxs_lib.domains:
             for mgxs_type in self.mgxs_lib.mgxs_types:
                 outstr += 'domain={0} type={1}\n'.format(domain.id, mgxs_type)
-                key = 'material/{0}/{1}/average'.format(domain.id, mgxs_type)
-                outstr += str(f[key][...]) + '\n'
-                key = 'material/{0}/{1}/std. dev.'.format(domain.id, mgxs_type)
-                outstr += str(f[key][...]) + '\n'
+                avg_key = 'material/{0}/{1}/average'.format(domain.id, mgxs_type)
+                std_key = 'material/{0}/{1}/std. dev.'.format(domain.id, mgxs_type)
+                outstr += '{}\n{}\n'.format(f[avg_key][...], f[std_key][...])
 
         # Close the MGXS HDF5 file
         f.close()

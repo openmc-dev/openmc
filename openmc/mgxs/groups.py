@@ -8,22 +8,18 @@ import numpy as np
 import openmc.checkvalue as cv
 
 
-if sys.version_info[0] >= 3:
-    basestring = str
-
-
 class EnergyGroups(object):
     """An energy groups structure used for multi-group cross-sections.
 
     Parameters
     ----------
     group_edges : Iterable of Real
-        The energy group boundaries [MeV]
+        The energy group boundaries [eV]
 
     Attributes
     ----------
     group_edges : Iterable of Real
-        The energy group boundaries [MeV]
+        The energy group boundaries [eV]
     num_groups : int
         The number of energy groups
 
@@ -87,7 +83,7 @@ class EnergyGroups(object):
         Parameters
         ----------
         energy : float
-            The energy of interest in MeV
+            The energy of interest in eV
 
         Returns
         -------
@@ -102,7 +98,7 @@ class EnergyGroups(object):
         """
 
         if self.group_edges is None:
-            msg = 'Unable to get energy group for energy "{0}" MeV since ' \
+            msg = 'Unable to get energy group for energy "{0}" eV since ' \
                   'the group edges have not yet been set'.format(energy)
             raise ValueError(msg)
 
@@ -121,7 +117,7 @@ class EnergyGroups(object):
         Returns
         -------
         2-tuple
-            The low and high energy bounds for the group in MeV
+            The low and high energy bounds for the group in eV
 
         Raises
         ------

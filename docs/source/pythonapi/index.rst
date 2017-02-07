@@ -146,6 +146,7 @@ Constructing Tallies
    openmc.AzimuthalFilter
    openmc.DistribcellFilter
    openmc.DelayedGroupFilter
+   openmc.EnergyFunctionFilter
    openmc.Mesh
    openmc.Trigger
    openmc.Tally
@@ -293,6 +294,7 @@ Multi-group Cross Sections
     openmc.mgxs.NuScatterXS
     openmc.mgxs.NuScatterMatrixXS
     openmc.mgxs.PromptNuFissionXS
+    openmc.mgxs.PromptNuFissionMatrixXS
     openmc.mgxs.ScatterXS
     openmc.mgxs.ScatterMatrixXS
     openmc.mgxs.TotalXS
@@ -309,6 +311,7 @@ Multi-delayed-group Cross Sections
     openmc.mgxs.MDGXS
     openmc.mgxs.ChiDelayed
     openmc.mgxs.DelayedNuFissionXS
+    openmc.mgxs.DelayedNuFissionMatrixXS
     openmc.mgxs.Beta
     openmc.mgxs.DecayRate
 
@@ -371,6 +374,9 @@ Core Classes
     openmc.data.CoherentElastic
     openmc.data.FissionEnergyRelease
     openmc.data.DataLibrary
+    openmc.data.Decay
+    openmc.data.FissionProductYields
+    openmc.data.WindowedMultipole
 
 Core Functions
 --------------
@@ -474,6 +480,7 @@ Functions
 
     openmc.data.endf.float_endf
     openmc.data.endf.get_cont_record
+    openmc.data.endf.get_evaluations
     openmc.data.endf.get_head_record
     openmc.data.endf.get_tab1_record
     openmc.data.endf.get_tab2_record

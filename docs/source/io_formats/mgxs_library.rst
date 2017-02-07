@@ -15,8 +15,9 @@ to be used in the ``mgxs.h5`` file.
 
 The multi-group library is provided in the HDF5_ format.  This library must
 provide some meta-data about the library itself (such as the number of
-groups and the group structure, etc.) as well as the actual cross section
-data itself for each of the necessary nuclides or materials.
+energy groups, delayed groups, and the energy group structure, etc.) as
+well as the actual cross section data itself for each of the necessary
+nuclides or materials.
 
 .. _HDF5: http://www.hdfgroup.org/HDF5/
 
@@ -28,9 +29,10 @@ MGXS Library Specification
 
 **/**
 
-:Attributes: - **groups** (*int*) -- Number of energy groups
+:Attributes: - **energy_groups** (*int*) -- Number of energy groups
+             - **delayed_groups** (*int*) -- Number of delayed groups (optional)
              - **group structure** (*double[]*) -- Monotonically increasing
-               list of group boundaries, in units of MeV.  The length of this
+               list of group boundaries, in units of eV.  The length of this
                array should be the number of groups plus 1.
 
 **/<library name>/**
@@ -77,8 +79,8 @@ data for the nuclide or material that it represents.
 
 **/<library name>/kTs/**
 
-:Datasets: 
-           - **<TTT>K** (*double*) -- kT values (in MeV) for each Temperature
+:Datasets:
+           - **<TTT>K** (*double*) -- kT values (in eV) for each temperature
              TTT (in Kelvin), rounded to the nearest integer
 
 **/<library name>/<TTT>K/**
@@ -119,8 +121,8 @@ Temperature-dependent data, provided for temperature <TTT>K.
              the `nu-fission` data must represent the fission neutron energy
              spectra as well and thus will have one additional dimension
              for the outgoing energy group.  In this case, `nu-fission` has the
-             same dimensionality as `multiplicity_matrix`.
-           - **inverse_velocities** (*double[]*) -- Average inverse velocity
+             same dimensionality as `multiplicity matrix`.
+           - **inverse-velocity** (*double[]*) -- Average inverse velocity
              for each of the groups in the library. This dataset is optional.
 
 **/<library name>/<TTT>K/scatter_data/**

@@ -25,7 +25,7 @@ except ImportError:
 
 
 MOCK_MODULES = ['numpy', 'numpy.polynomial', 'numpy.polynomial.polynomial',
-                'h5py', 'pandas', 'opencg']
+                'h5py', 'pandas', 'uncertainties', 'opencg']
 sys.modules.update((mod_name, MagicMock()) for mod_name in MOCK_MODULES)
 
 import numpy as np
@@ -66,7 +66,7 @@ master_doc = 'index'
 
 # General information about the project.
 project = u'OpenMC'
-copyright = u'2011-2016, Massachusetts Institute of Technology'
+copyright = u'2011-2017, Massachusetts Institute of Technology'
 
 # The version info for the project you're documenting, acts as replacement for
 # |version| and |release|, also used in various other places throughout the
@@ -249,5 +249,6 @@ napoleon_use_ivar = True
 intersphinx_mapping = {
     'python': ('https://docs.python.org/3', None),
     'numpy': ('http://docs.scipy.org/doc/numpy/', None),
-    'pandas': ('http://pandas.pydata.org/pandas-docs/stable/', None)
+    'pandas': ('http://pandas.pydata.org/pandas-docs/stable/', None),
+    'matplotlib': ('http://matplotlib.org/', None)
 }

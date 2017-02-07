@@ -1,5 +1,11 @@
 module global
 
+  use, intrinsic :: ISO_C_BINDING
+
+#ifdef MPIF08
+  use mpi_f08
+#endif
+
   use bank_header,      only: Bank
   use cmfd_header
   use constants
@@ -14,14 +20,10 @@ module global
   use set_header,       only: SetInt
   use surface_header,   only: SurfaceContainer
   use source_header,    only: SourceDistribution
-  use tally_header,     only: TallyObject, TallyResult
+  use tally_header,     only: TallyObject, TallyDerivative
   use trigger_header,   only: KTrigger
   use timer_header,     only: Timer
   use volume_header,    only: VolumeCalculation
-
-#ifdef MPIF08
-  use mpi_f08
-#endif
 
   implicit none
 
@@ -96,9 +98,6 @@ module global
   ! Unreoslved resonance probablity tables
   logical :: urr_ptables_on = .true.
 
-  ! What to assume for expanding natural elements
-  integer :: default_expand = ENDF_BVII1
-
   ! Default temperature and method for choosing temperatures
   integer :: temperature_method = TEMPERATURE_NEAREST
   logical :: temperature_multipole = .false.
@@ -115,7 +114,10 @@ module global
   type(MgxsContainer), target, allocatable :: macro_xs(:)
 
   ! Number of energy groups
-  integer :: energy_groups
+  integer :: num_energy_groups
+
+  ! Number of delayed groups
+  integer :: num_delayed_groups
 
   ! Energy group structure
   real(8), allocatable :: energy_bins(:)
@@ -164,7 +166,7 @@ module global
   !   3) track-length estimate of k-eff
   !   4) leakage fraction
 
-  type(TallyResult), allocatable, target :: global_tallies(:)
+  real(C_DOUBLE), allocatable, target :: global_tallies(:,:)
 
   ! It is possible to protect accumulate operations on global tallies by using
   ! an atomic update. However, when multiple threads accumulate to the same
@@ -182,6 +184,10 @@ module global
   integer :: n_user_meshes  = 0 ! # of structured user meshes
   integer :: n_tallies      = 0 ! # of tallies
   integer :: n_user_tallies = 0 ! # of user tallies
+
+  ! Tally derivatives
+  type(TallyDerivative), allocatable :: tally_derivs(:)
+!$omp threadprivate(tally_derivs)
 
   ! Normalization for statistics
   integer :: n_realizations = 0 ! # of independent realizations
@@ -272,10 +278,8 @@ module global
   integer :: mpi_err               ! MPI error code
 #ifdef MPIF08
   type(MPI_Datatype) :: MPI_BANK
-  type(MPI_Datatype) :: MPI_TALLYRESULT
 #else
   integer :: MPI_BANK              ! MPI datatype for fission bank
-  integer :: MPI_TALLYRESULT       ! MPI datatype for TallyResult
 #endif
 
 #ifdef _OPENMP
@@ -320,14 +324,14 @@ module global
   logical :: restart_run = .false.
   integer :: restart_batch
 
-  character(MAX_FILE_LEN) :: path_input            ! Path to input file
-  character(MAX_FILE_LEN) :: path_cross_sections   ! Path to cross_sections.xml
-  character(MAX_FILE_LEN) :: path_multipole        ! Path to wmp library
-  character(MAX_FILE_LEN) :: path_source = ''      ! Path to binary source
-  character(MAX_FILE_LEN) :: path_state_point      ! Path to binary state point
-  character(MAX_FILE_LEN) :: path_source_point     ! Path to binary source point
-  character(MAX_FILE_LEN) :: path_particle_restart ! Path to particle restart
-  character(MAX_FILE_LEN) :: path_output = ''      ! Path to output directory
+  character(MAX_FILE_LEN) :: path_input               ! Path to input file
+  character(MAX_FILE_LEN) :: path_cross_sections = '' ! Path to cross_sections.xml
+  character(MAX_FILE_LEN) :: path_multipole           ! Path to wmp library
+  character(MAX_FILE_LEN) :: path_source = ''         ! Path to binary source
+  character(MAX_FILE_LEN) :: path_state_point         ! Path to binary state point
+  character(MAX_FILE_LEN) :: path_source_point        ! Path to binary source point
+  character(MAX_FILE_LEN) :: path_particle_restart    ! Path to particle restart
+  character(MAX_FILE_LEN) :: path_output = ''         ! Path to output directory
 
   ! The verbosity controls how much information will be printed to the
   ! screen and in logs

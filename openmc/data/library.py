@@ -1,10 +1,12 @@
 import os
 import xml.etree.ElementTree as ET
+from six import string_types
 
 import h5py
 
 from openmc.mixin import EqualityMixin
 from openmc.clean_xml import clean_xml_indentation
+from openmc.checkvalue import check_type
 
 
 class DataLibrary(EqualityMixin):
@@ -21,6 +23,21 @@ class DataLibrary(EqualityMixin):
 
     def __init__(self):
         self.libraries = []
+
+    def get_by_material(self, value):
+        """Return the library dictionary containing a given material.
+
+        Returns
+        -------
+        library : dict or None
+            Dictionary summarizing cross section data from a single file;
+            the dictionary has keys 'path', 'type', and 'materials'.
+
+        """
+        for library in self.libraries:
+            if value in library['materials']:
+                return library
+        return None
 
     def register_file(self, filename):
         """Register a file with the data library.
@@ -78,3 +95,51 @@ class DataLibrary(EqualityMixin):
         tree = ET.ElementTree(root)
         tree.write(path, xml_declaration=True, encoding='utf-8',
                    method='xml')
+
+    @classmethod
+    def from_xml(cls, path=None):
+        """Read cross section data library from an XML file.
+
+        Parameters
+        ----------
+        path : str, optional
+            Path to XML file to read. If not provided, the
+            `OPENMC_CROSS_SECTIONS` environment variable will be  used.
+
+        Returns
+        -------
+        data : openmc.data.DataLibrary
+            Data library object initialized from the provided XML
+
+        """
+
+        data = cls()
+
+        # If path is None, get the cross sections from the
+        # OPENMC_CROSS_SECTIONS environment variable
+        if path is None:
+            path = os.environ.get('OPENMC_CROSS_SECTIONS')
+
+        # Check to make sure there was an environmental variable.
+        if path is None:
+            raise ValueError("Either path or OPENMC_CROSS_SECTIONS "
+                             "environmental variable must be set")
+
+        check_type('path', path, string_types)
+
+        tree = ET.parse(path)
+        root = tree.getroot()
+        if root.find('directory') is not None:
+            directory = root.find('directory').text
+        else:
+            directory = os.path.dirname(path)
+
+        for lib_element in root.findall('library'):
+            filename = os.path.join(directory, lib_element.attrib['path'])
+            filetype = lib_element.attrib['type']
+            materials = lib_element.attrib['materials'].split()
+            library = {'path': filename, 'type': filetype,
+                       'materials': materials}
+            data.libraries.append(library)
+
+        return data

@@ -5,15 +5,14 @@ from numbers import Real
 import sys
 from xml.etree import ElementTree as ET
 
+from six import add_metaclass
 import numpy as np
 
 import openmc.checkvalue as cv
 from openmc.stats.univariate import Univariate, Uniform
 
-if sys.version_info[0] >= 3:
-    basestring = str
 
-
+@add_metaclass(ABCMeta)
 class UnitSphere(object):
     """Distribution of points on the unit sphere.
 
@@ -31,9 +30,6 @@ class UnitSphere(object):
         Direction from which polar angle is measured
 
     """
-
-    __metaclass__ = ABCMeta
-
     def __init__(self, reference_uvw=None):
         self._reference_uvw = None
         if reference_uvw is not None:
@@ -184,6 +180,7 @@ class Monodirectional(UnitSphere):
         return element
 
 
+@add_metaclass(ABCMeta)
 class Spatial(object):
     """Distribution of locations in three-dimensional Euclidean space.
 
@@ -191,9 +188,6 @@ class Spatial(object):
     distributions of source sites.
 
     """
-
-    __metaclass__ = ABCMeta
-
     def __init__(self):
         pass
 

@@ -107,7 +107,7 @@ contains
       if (.not. run_CE) then
         do i = 1, ng
           found = .false.
-          do g = 1, energy_groups + 1
+          do g = 1, num_energy_groups + 1
             if (cmfd % egrid(i) == energy_bins(g)) then
               found = .true.
               exit
@@ -121,7 +121,7 @@ contains
       end if
     else
       if(.not.allocated(cmfd % egrid)) allocate(cmfd % egrid(2))
-      cmfd % egrid = [ ZERO, 20.0_8 ]
+      cmfd % egrid = [ ZERO, energy_max_neutron ]
       cmfd % indices(4) = 1 ! one energy group
     end if
 

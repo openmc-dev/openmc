@@ -20,11 +20,7 @@ class MGXSTestHarness(PyAPITestHarness):
         super(MGXSTestHarness, self)._build_inputs()
 
         # Initialize a two-group structure
-        energy_groups = openmc.mgxs.EnergyGroups(group_edges=[0, 0.625e-6,
-                                                              20.])
-
-        # Initialize a six-delayed-group structure
-        delayed_groups = list(range(1,7))
+        energy_groups = openmc.mgxs.EnergyGroups(group_edges=[0, 0.625, 20.e6])
 
         # Initialize MGXS Library for a few cross section types
         self.mgxs_lib = openmc.mgxs.Library(self._input_set.geometry)
@@ -34,7 +30,7 @@ class MGXSTestHarness(PyAPITestHarness):
         self.mgxs_lib.mgxs_types = openmc.mgxs.MGXS_TYPES + \
                                    openmc.mgxs.MDGXS_TYPES
         self.mgxs_lib.energy_groups = energy_groups
-        self.mgxs_lib.delayed_groups = delayed_groups
+        self.mgxs_lib.num_delayed_groups = 6
         self.mgxs_lib.legendre_order = 3
         self.mgxs_lib.domain_type = 'material'
         self.mgxs_lib.build_library()
@@ -55,7 +51,7 @@ class MGXSTestHarness(PyAPITestHarness):
         self.mgxs_lib.load_from_statepoint(sp)
 
         # Build a condensed 1-group MGXS Library
-        one_group = openmc.mgxs.EnergyGroups([0., 20.])
+        one_group = openmc.mgxs.EnergyGroups([0., 20.e6])
         condense_lib = self.mgxs_lib.get_condensed_library(one_group)
 
         # Build a string from Pandas Dataframe for each 1-group MGXS
@@ -73,12 +69,6 @@ class MGXSTestHarness(PyAPITestHarness):
             outstr = sha512.hexdigest()
 
         return outstr
-
-
-    def _cleanup(self):
-        super(MGXSTestHarness, self)._cleanup()
-        f = os.path.join(os.getcwd(), 'tallies.xml')
-        if os.path.exists(f): os.remove(f)
 
 
 if __name__ == '__main__':

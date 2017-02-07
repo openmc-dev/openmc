@@ -53,7 +53,7 @@ module nuclide_header
     integer       :: A       ! mass number
     integer       :: metastable ! metastable state
     real(8)       :: awr     ! Atomic Weight Ratio
-    real(8), allocatable :: kTs(:) ! temperature in MeV (k*T)
+    real(8), allocatable :: kTs(:) ! temperature in eV (k*T)
 
     ! Fission information
     logical :: fissionable = .false.  ! nuclide is fissionable?
@@ -115,8 +115,8 @@ module nuclide_header
   type Nuclide0K
     character(10) :: nuclide             ! name of nuclide, e.g. U238
     character(16) :: scheme = 'ares'     ! target velocity sampling scheme
-    real(8)       :: E_min = 0.01e-6_8   ! lower cutoff energy for res scattering
-    real(8)       :: E_max = 1000.0e-6_8 ! upper cutoff energy for res scattering
+    real(8)       :: E_min = 0.01_8   ! lower cutoff energy for res scattering
+    real(8)       :: E_max = 1000.0_8 ! upper cutoff energy for res scattering
   end type Nuclide0K
 
 !===============================================================================
@@ -146,7 +146,7 @@ module nuclide_header
 
     ! Information for Doppler broadening
     real(8) :: last_sqrtkT = ZERO  ! Last temperature in sqrt(Boltzmann
-                                   ! constant * temperature (MeV))
+                                   ! constant * temperature (eV))
   end type NuclideMicroXS
 
 !===============================================================================
@@ -242,7 +242,7 @@ module nuclide_header
 
     ! If only one temperature is available, revert to nearest temperature
     if (size(temps_available) == 1 .and. &
-         method == TEMPERATURE_INTERPOLATION) then
+         method == TEMPERATURE_INTERPOLATION .and. master) then
       call warning("Cross sections for " // trim(this % name) // " are only &
            &available at one temperature. Reverting to nearest temperature &
            &method.")
@@ -364,7 +364,7 @@ module nuclide_header
         call close_group(urr_group)
 
         ! Check for negative values
-        if (any(this % urr_data(i) % prob < ZERO)) then
+        if (any(this % urr_data(i) % prob < ZERO) .and. master) then
           call warning("Negative value(s) found on probability table &
                &for nuclide " // this % name // " at " // trim(temp_str))
         end if
@@ -621,7 +621,8 @@ module nuclide_header
 
     case (EMISSION_DELAYED)
       if (this % n_precursor > 0) then
-        if (present(group)) then
+        if (present(group) .and. group < &
+             size(this % reactions(this % index_fission(1)) % products)) then
           ! If delayed group specified, determine yield immediately
           associate(p => this % reactions(this % index_fission(1)) % products(1 + group))
             nu = p % yield % evaluate(E)

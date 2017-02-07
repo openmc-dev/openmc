@@ -5,15 +5,13 @@ from xml.etree import ElementTree as ET
 import sys
 import warnings
 
+from six import string_types
 import numpy as np
 
 import openmc
 import openmc.checkvalue as cv
 from openmc.surface import Halfspace
 from openmc.region import Region, Intersection, Complement
-
-if sys.version_info[0] >= 3:
-    basestring = str
 
 
 # A static variable for auto-generated Cell IDs
@@ -243,7 +241,7 @@ class Cell(object):
     @name.setter
     def name(self, name):
         if name is not None:
-            cv.check_type('cell name', name, basestring)
+            cv.check_type('cell name', name, string_types)
             self._name = name
         else:
             self._name = ''
@@ -251,7 +249,7 @@ class Cell(object):
     @fill.setter
     def fill(self, fill):
         if fill is not None:
-            if isinstance(fill, basestring):
+            if isinstance(fill, string_types):
                 if fill.strip().lower() != 'void':
                     msg = 'Unable to set Cell ID="{0}" to use a non-Material ' \
                           'or Universe fill "{1}"'.format(self._id, fill)
@@ -336,7 +334,7 @@ class Cell(object):
     @distribcell_paths.setter
     def distribcell_paths(self, distribcell_paths):
         cv.check_iterable_type('distribcell_paths', distribcell_paths,
-                               basestring)
+                               string_types)
         self._distribcell_paths = distribcell_paths
 
     def add_surface(self, surface, halfspace):
@@ -549,7 +547,11 @@ class Cell(object):
 
         if self.region is not None:
             # Set the region attribute with the region specification
-            element.set("region", str(self.region))
+            region = str(self.region)
+            if region.startswith('('):
+                region = region[1:-1]
+            if len(region) > 0:
+                element.set("region", region)
 
             # Only surfaces that appear in a region are added to the geometry
             # file, so the appropriate check is performed here. First we create
@@ -559,10 +561,9 @@ class Cell(object):
             # thus far.
             def create_surface_elements(node, element):
                 if isinstance(node, Halfspace):
-                    path = './surface[@id=\'{0}\']'.format(node.surface.id)
+                    path = "./surface[@id='{}']".format(node.surface.id)
                     if xml_element.find(path) is None:
-                        surface_subelement = node.surface.create_xml_subelement()
-                        xml_element.append(surface_subelement)
+                        xml_element.append(node.surface.create_xml_subelement())
                 elif isinstance(node, Complement):
                     create_surface_elements(node.node, element)
                 else:

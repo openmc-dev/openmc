@@ -5,11 +5,13 @@ from itertools import chain
 from numbers import Integral, Real
 from warnings import warn
 
+from six import string_types
 import numpy as np
 import h5py
 
+from . import HDF5_VERSION, HDF5_VERSION_MAJOR
 from .ace import Table, get_table
-from .data import ATOMIC_SYMBOL, K_BOLTZMANN
+from .data import ATOMIC_SYMBOL, K_BOLTZMANN, EV_PER_MEV
 from .fission_energy import FissionEnergyRelease
 from .function import Tabulated1D, Sum, ResonancesWithBackground
 from .endf import Evaluation, SUM_RULES
@@ -19,9 +21,6 @@ from .resonance import Resonances, _RESOLVED
 from .urr import ProbabilityTables
 import openmc.checkvalue as cv
 from openmc.mixin import EqualityMixin
-
-if sys.version_info[0] >= 3:
-    basestring = str
 
 
 def _get_metadata(zaid, metastable_scheme='nndc'):
@@ -112,7 +111,7 @@ class IncidentNeutron(EqualityMixin):
         Atomic mass ratio of the target nuclide.
     kTs : Iterable of float
         List of temperatures of the target nuclide in the data set.
-        The temperatures have units of MeV.
+        The temperatures have units of eV.
 
     Attributes
     ----------
@@ -123,7 +122,7 @@ class IncidentNeutron(EqualityMixin):
     atomic_weight_ratio : float
         Atomic weight ratio of the target nuclide.
     energy : dict of numpy.ndarray
-        The energy values (MeV) at which reaction cross-sections are tabulated.
+        The energy values (eV) at which reaction cross-sections are tabulated.
         They keys of the dict are the temperature string ('294K') for each
         set of energies
     fission_energy : None or openmc.data.FissionEnergyRelease
@@ -150,7 +149,7 @@ class IncidentNeutron(EqualityMixin):
         rounded to the nearest integer; e.g., '294K'
     kTs : Iterable of float
         List of temperatures of the target nuclide in the data set.
-        The temperatures have units of MeV.
+        The temperatures have units of eV.
     urr : dict
         Dictionary whose keys are temperatures (e.g., '294K') and values are
         unresolved resonance region probability tables.
@@ -235,7 +234,7 @@ class IncidentNeutron(EqualityMixin):
 
     @name.setter
     def name(self, name):
-        cv.check_type('name', name, basestring)
+        cv.check_type('name', name, string_types)
         self._name = name
 
     @property
@@ -291,7 +290,7 @@ class IncidentNeutron(EqualityMixin):
     def urr(self, urr):
         cv.check_type('probability table dictionary', urr, MutableMapping)
         for key, value in urr:
-            cv.check_type('probability table temperature', key, basestring)
+            cv.check_type('probability table temperature', key, string_types)
             cv.check_type('probability tables', value, ProbabilityTables)
         self._urr = urr
 
@@ -393,7 +392,9 @@ class IncidentNeutron(EqualityMixin):
             raise NotImplementedError('Cannot export incident neutron data that '
                                       'originated from an ENDF file.')
 
+        # Open file and write version
         f = h5py.File(path, mode, libver='latest')
+        f.attrs['version'] = np.array(HDF5_VERSION)
 
         # Write basic data
         g = f.create_group(self.name)
@@ -456,6 +457,21 @@ class IncidentNeutron(EqualityMixin):
             group = group_or_filename
         else:
             h5file = h5py.File(group_or_filename, 'r')
+
+            # Make sure version matches
+            if 'version' in h5file.attrs:
+                major, minor = h5file.attrs['version']
+                if major != HDF5_VERSION_MAJOR:
+                    raise IOError(
+                        'HDF5 data format uses version {}.{} whereas your '
+                        'installation of the OpenMC Python API expects version '
+                        '{}.x.'.format(major, minor, HDF5_VERSION_MAJOR))
+            else:
+                raise IOError(
+                    'HDF5 data does not indicate a version. Your installation of '
+                    'the OpenMC Python API expects version {}.x data.'
+                    .format(HDF5_VERSION_MAJOR))
+
             group = list(h5file.values())[0]
 
         name = group.name[1:]
@@ -495,6 +511,9 @@ class IncidentNeutron(EqualityMixin):
                 rxs = [data[mt] for mt in SUM_RULES[mt_sum] if mt in data]
                 if len(rxs) > 0:
                     data.summed_reactions[mt_sum] = rx = Reaction(mt_sum)
+                    if rx.mt == 18 and 'total_nu' in group:
+                        tgroup = group['total_nu']
+                        rx.derived_products.append(Product.from_hdf5(tgroup))
                     for T in data.temperatures:
                         rx.xs[T] = Sum([rx_i.xs[T] for rx_i in rxs])
 
@@ -548,7 +567,7 @@ class IncidentNeutron(EqualityMixin):
             _get_metadata(int(zaid), metastable_scheme)
 
         # Assign temperature to the running list
-        kTs = [ace.temperature]
+        kTs = [ace.temperature*EV_PER_MEV]
 
         data = cls(name, Z, mass_number, metastable,
                    ace.atomic_weight_ratio, kTs)
@@ -558,7 +577,7 @@ class IncidentNeutron(EqualityMixin):
 
         # Read energy grid
         n_energy = ace.nxs[3]
-        energy = ace.xss[ace.jxs[1]:ace.jxs[1] + n_energy]
+        energy = ace.xss[ace.jxs[1]:ace.jxs[1] + n_energy]*EV_PER_MEV
         data.energy[strT] = energy
         total_xs = ace.xss[ace.jxs[1] + n_energy:ace.jxs[1] + 2 * n_energy]
         absorption_xs = ace.xss[ace.jxs[1] + 2 * n_energy:ace.jxs[1] +

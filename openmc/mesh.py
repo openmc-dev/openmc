@@ -75,8 +75,8 @@ class Mesh(object):
             return False
 
         # Check lower left / upper right
-        elif self._lower_left != mesh2.lower_left and \
-             self._upper_right != mesh2.upper_right:
+        elif (self._lower_left != mesh2.lower_left).all() and \
+                (self._upper_right != mesh2.upper_right).all():
             return False
 
         else:

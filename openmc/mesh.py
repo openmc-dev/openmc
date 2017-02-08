@@ -62,27 +62,6 @@ class Mesh(EqualityMixin):
         self._upper_right = None
         self._width = None
 
-    def __eq__(self, mesh2):
-        # Check type
-        if self._type != mesh2.type:
-            return False
-
-        # Check dimension
-        elif self._dimension != mesh2.dimension:
-            return False
-
-        # Check width
-        elif self._width != mesh2.width:
-            return False
-
-        # Check lower left / upper right
-        elif self._lower_left != mesh2.lower_left and \
-             self._upper_right != mesh2.upper_right:
-            return False
-
-        else:
-            return True
-
     @property
     def id(self):
         return self._id

@@ -8,6 +8,7 @@ import numpy as np
 
 import openmc.checkvalue as cv
 import openmc
+from openmc.mixin import EqualityMixin
 
 
 # "Static" variable for auto-generated and Mesh IDs
@@ -20,7 +21,7 @@ def reset_auto_mesh_id():
     AUTO_MESH_ID = 10000
 
 
-class Mesh(object):
+class Mesh(EqualityMixin):
     """A structured Cartesian mesh in one, two, or three dimensions
 
     Parameters

@@ -5,7 +5,6 @@ from collections import OrderedDict, Iterable
 from math import sqrt, floor
 from numbers import Real, Integral
 from xml.etree import ElementTree as ET
-import sys
 
 from six import add_metaclass, string_types
 import numpy as np

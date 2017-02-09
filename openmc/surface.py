@@ -1806,12 +1806,12 @@ def get_rectangular_prism(width, height, axis='z', origin=(0., 0.)):
         or x axes for prisms parallel to the x, y, or z axis, respectively.
     height: float
         Prism height in units of cm. The height is aligned with the z, z,
-        or z axes for prisms parallel to the x, y, or z axis, respectively.
+        or y axes for prisms parallel to the x, y, or z axis, respectively.
     axis : {'x', 'y', 'z'}
         Axis with which the infinite length of the prism should be aligned.
         Defaults to 'z'.
     origin: Iterable of two floats
-        Origin of the prism. The two floats correspond to (x,y), (x,z) or
+        Origin of the prism. The two floats correspond to (y,z), (x,z) or
         (x,y) for prisms parallel to the x, y or z axis, respectively.
         Defaults to (0., 0.).
 

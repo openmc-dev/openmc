@@ -637,7 +637,7 @@ contains
 
       case default
          call exit_status(EXIT_FAILURE,&
-              'LRF values other than 2 are not supported in '//trim(filename))
+              'LRF values other than 1 and 2 are not supported in '//trim(filename))
          return
 
        end select

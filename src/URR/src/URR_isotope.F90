@@ -37,6 +37,7 @@ module URR_isotope
     real(8) :: T   ! current isotope temperature [K]
     type(ListReal) :: ace_T_list ! list of temperatures isotope has ACE data at
     type(ListInt) :: ace_index_list ! list of indices for different temperatures
+    logical :: metastable ! is isotope metastable?
 
     ! Current quantum mechanical variables
     real(8) :: k_n       ! wavenumber for neutron energy

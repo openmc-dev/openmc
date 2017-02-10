@@ -9,7 +9,8 @@ module URR_resonance
   use URR_cross_sections, only: CrossSections
   implicit none
   private
-  public :: BreitWignerResonanceListVector1D,&
+  public :: BreitWignerResonance,&
+            BreitWignerResonanceListVector1D,&
             BreitWignerResonanceVector1D,&
             BreitWignerResonanceVector2D,&
             ReichMooreResonanceVector1D,&

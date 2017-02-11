@@ -1008,7 +1008,7 @@ class EnergyFilter(RealFilter):
         # them as necessary to account for other filters.
         lo_bins = np.repeat(self.bins[:-1], self.stride)
         hi_bins = np.repeat(self.bins[1:], self.stride)
-        tile_factor = data_size / len(lo_bins)
+        tile_factor = int(data_size / len(lo_bins))
         lo_bins = np.tile(lo_bins, tile_factor)
         hi_bins = np.tile(hi_bins, tile_factor)
 

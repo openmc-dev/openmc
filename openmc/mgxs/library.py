@@ -1151,14 +1151,12 @@ class Library(object):
                                 xsdata._absorption[i] = \
                                     np.subtract(xsdata._total[i], np.sum(np.sum(
                                         xsdata._scatter_matrix[i][:, :, :],
-                                        axis=2),
-                                        axis=1))
+                                        axis=2), axis=1))
                             elif representation == 'angle':
                                 xsdata._absorption[i] = \
                                     np.subtract(xsdata._total[i], np.sum(np.sum(
                                         xsdata._scatter_matrix[i][:, :, :, :, :],
-                                        axis=4),
-                                        axis=3))
+                                        axis=4), axis=3))
 
         return xsdata
 

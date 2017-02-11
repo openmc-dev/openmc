@@ -65,6 +65,39 @@ MU_TREATMENTS = ('legendre', 'histogram')
 _MAX_LEGENDRE = 10
 
 
+def _df_column_convert_to_bin(df, current_name, new_name, values_to_bin,
+                              reverse_order=False):
+    """Convert a Pandas DataFrame column from the bin edges to an index for
+    each bin. This method operates on the DataFrame, df, in-place.
+    """
+
+    # Get the current values
+    df_bins = np.asarray(df[current_name])
+    new_vals = np.zeros_like(df_bins, dtype=int)
+    # Replace the values with the index of the closest entry in values_to_bin
+    # The closest is used because it is expected that the values in df could
+    # have lost precision along the way
+    for i, df_val in enumerate(df_bins):
+        idx = np.searchsorted(values_to_bin, df_val)
+        # Check to make sure if the value is just above the search result
+        if idx > 0 and np.isclose(values_to_bin[idx - 1], df_val):
+            idx -= 1
+        # If it is just below the search result then we are done
+        new_vals[i] = idx
+    # Switch to a one-based indexing
+    new_vals += 1
+
+    # Reverse the ordering if requested (this is for energy group ordering)
+    if reverse_order:
+        new_vals = (len(values_to_bin) - 1) - new_vals + 1
+
+    # Assign the values
+    df[current_name] = new_vals[:]
+
+    # And rename the column
+    df.rename(columns={current_name: new_name}, inplace=True)
+
+
 @add_metaclass(ABCMeta)
 class MGXS(object):
     """An abstract multi-group cross section for some energy group structure
@@ -232,7 +265,10 @@ class MGXS(object):
             return existing
 
     def _add_angle_filters(self, filters):
-        # Add the azimuthal and polar bins if needed.
+        """Add the azimuthal and polar bins to the MGXS filters if needed.
+        Filters will be provided as a ragged 2D list of openmc.Filter objects.
+        """
+
         if self.num_polar > 1 or self.num_azimuthal > 1:
             # Then the user has requested angular data, so create the bins
             pol_bins = np.linspace(0., np.pi, num=self.num_polar + 1,
@@ -245,6 +281,75 @@ class MGXS(object):
                 filt.insert(1, openmc.AzimuthalFilter(azi_bins))
 
         return filters
+
+    def _squeeze_xs(self, xs):
+        """Remove dimensions which are not needed from a cross section array
+        due to user options. This is used by the openmc.Mgxs.get_xs(...) method
+        """
+
+        # numpy.squeeze will return a ValueError if the axis has a size
+        # greater than 1, to avoid this we will try each axis one at a
+        # time to preclude the ValueError.
+        initial_shape = len(xs.shape)
+        for axis in range(initial_shape - 1, -1, -1):
+            if axis not in self._dont_squeeze and xs.shape[axis] == 1:
+                xs = np.squeeze(xs, axis=axis)
+        return xs
+
+    def _df_convert_columns_to_bins(self, df):
+        """This method converts all relevant and present DataFrame columns from
+        their bin boundaries to the index for each bin. This method operates on
+        the DataFrame, df, in place. The method returns a list of the columns
+        in which it has operated on.
+        """
+        # Override polar and azimuthal bounds with indices
+        if self.num_polar > 1 or self.num_azimuthal > 1:
+            # First for polar
+            bins = np.linspace(0., np.pi, self.num_polar + 1, True)
+            _df_column_convert_to_bin(df, 'polar low', 'polar bin', bins)
+            del df['polar high']
+
+            # Second for azimuthal
+            bins = np.linspace(-np.pi, np.pi, self.num_azimuthal + 1, True)
+            _df_column_convert_to_bin(df, 'azimuthal low', 'azimuthal bin',
+                                      bins)
+            del df['azimuthal high']
+            columns = ['polar bin', 'azimuthal bin']
+        else:
+            columns = []
+
+        # Override energy groups bounds with indices
+        if 'energy low [eV]' in df:
+            _df_column_convert_to_bin(df, 'energy low [eV]', 'group in',
+                                      self.energy_groups.group_edges,
+                                      reverse_order=True)
+            del df['energy high [eV]']
+            columns += ['group in']
+        if 'energyout low [eV]' in df:
+            _df_column_convert_to_bin(df, 'energyout low [eV]', 'group out',
+                                      self.energy_groups.group_edges,
+                                      reverse_order=True)
+            del df['energyout high [eV]']
+            columns += ['group out']
+
+        if 'mu low' in df and hasattr(self, 'histogram_bins'):
+            # Only the ScatterMatrix class has the histogram_bins attribute
+            bins = np.linspace(-1., 1., self.histogram_bins + 1, True)
+            _df_column_convert_to_bin(df, 'mu low', 'mu bin', bins)
+            del df['mu high']
+            columns += ['mu bin']
+
+        return columns
+
+    @property
+    def _dont_squeeze(self):
+        """Create a tuple of axes which should not be removed during the get_xs
+        process
+        """
+        if self.num_polar > 1 or self.num_azimuthal > 1:
+            return (0, 1, 3)
+        else:
+            return (1, )
 
     @property
     def name(self):
@@ -936,17 +1041,7 @@ class MGXS(object):
         if squeeze:
             # We want to squeeze out everything but the polar, azimuthal,
             # and energy group data.
-            if self.num_polar > 1 or self.num_azimuthal > 1:
-                dont_squeeze = (0, 1, 3)
-            else:
-                dont_squeeze = (1, )
-            # Squeeze will return a ValueError if the axis has a size
-            # greater than 1, so try each axis in axes one at a time,
-            # and do our own check to preclude the ValueError
-            initial_shape = len(xs.shape)
-            for axis in range(initial_shape - 1, -1, -1):
-                if axis not in dont_squeeze and xs.shape[axis] == 1:
-                    xs = np.squeeze(xs, axis=axis)
+            xs = self._squeeze_xs(xs)
 
         return xs
 
@@ -1452,7 +1547,7 @@ class MGXS(object):
                                                                  bounds[0],
                                                                  bounds[1])
 
-                                string += '{1:.2e} +/- {1:.2e}%'.format(
+                                string += '{0:.2e} +/- {1:.2e}'.format(
                                     average_xs[pol, azi, group - 1],
                                     rel_err_xs[pol, azi, group - 1])
                                 string += '\n'
@@ -1463,7 +1558,7 @@ class MGXS(object):
                         bounds = self.energy_groups.get_group_bounds(group)
                         string += template.format('', group, bounds[0],
                                                   bounds[1])
-                        string += '{1:.2e} +/- {1:.2e}%'.format(
+                        string += '{0:.2e} +/- {1:.2e}'.format(
                             average_xs[group - 1], rel_err_xs[group - 1])
                         string += '\n'
                 string += '\n'
@@ -1758,44 +1853,9 @@ class MGXS(object):
         else:
             df = df.drop('score', axis=1)
 
-        # Override polar and azimuthal bounds with indices
-        if self.num_polar > 1 or self.num_azimuthal > 1:
-            # First for polar
-            del df['polar high']
-            df.rename(columns={'polar low': 'polar bin'}, inplace=True)
-            df_bins = df['polar bin']
-            pol_bins = np.linspace(0., np.pi, num=self.num_polar + 1,
-                                   endpoint=True)
-            df['polar bin'] = np.searchsorted(pol_bins, df_bins) + 1
-
-            # Second for azimuthal
-            del df['azimuthal high']
-            df.rename(columns={'azimuthal low': 'azimuthal bin'},
-                      inplace=True)
-            df_bins = df['azimuthal bin']
-            azi_bins = np.linspace(-np.pi, np.pi, num=self.num_azimuthal + 1,
-                                   endpoint=True)
-            df['azimuthal bin'] = np.searchsorted(azi_bins, df_bins) + 1
-            columns = ['polar bin', 'azimuthal bin']
-        else:
-            columns = []
-
-        # Override energy groups bounds with indices
-        if 'energy low [eV]' in df:
-            df.rename(columns={'energy low [eV]': 'group in'}, inplace=True)
-            df_bins = df['group in']
-            df['group in'] = self.energy_groups.num_groups - \
-                np.searchsorted(self.energy_groups.group_edges, df_bins)
-            del df['energy high [eV]']
-            columns += ['group in']
-        if 'energyout low [eV]' in df:
-            df.rename(columns={'energyout low [eV]': 'group out'},
-                      inplace=True)
-            df_bins = df['group out']
-            df['group out'] = self.energy_groups.num_groups - \
-                np.searchsorted(self.energy_groups.group_edges, df_bins)
-            del df['energyout high [eV]']
-            columns += ['group out']
+        # Convert azimuthal, polar, energy in and energy out bin values in to
+        # bin indices
+        columns = self._df_convert_columns_to_bins(df)
 
         # Select out those groups the user requested
         if not isinstance(groups, string_types):
@@ -1811,7 +1871,7 @@ class MGXS(object):
             else:
                 densities = self.get_nuclide_densities('sum')
             densities = np.repeat(densities, len(self.rxn_rate_tally.scores))
-            tile_factor = df.shape[0] / len(densities)
+            tile_factor = int(df.shape[0] / len(densities))
             df['mean'] /= np.tile(densities, tile_factor)
             df['std. dev.'] /= np.tile(densities, tile_factor)
 
@@ -1949,6 +2009,16 @@ class MatrixMGXS(MGXS):
         The key used to index multi-group cross sections in an HDF5 data store
 
     """
+    @property
+    def _dont_squeeze(self):
+        """Create a tuple of axes which should not be removed during the get_xs
+        process
+        """
+        if self.num_polar > 1 or self.num_azimuthal > 1:
+            return (0, 1, 3, 4)
+        else:
+            return (1, 2)
+
     @property
     def filters(self):
         # Create the non-domain specific Filters for the Tallies
@@ -2127,17 +2197,7 @@ class MatrixMGXS(MGXS):
         if squeeze:
             # We want to squeeze out everything but the polar, azimuthal,
             # and in/out energy group data.
-            if self.num_polar > 1 or self.num_azimuthal > 1:
-                dont_squeeze = (0, 1, 3, 4)
-            else:
-                dont_squeeze = (1, 2)
-            # Squeeze will return a ValueError if the axis has a size
-            # greater than 1, so try each axis in axes one at a time,
-            # and do our own check to preclude the ValueError
-            initial_shape = len(xs.shape)
-            for axis in range(initial_shape - 1, -1, -1):
-                if axis not in dont_squeeze and xs.shape[axis] == 1:
-                    xs = np.squeeze(xs, axis=axis)
+            xs = self._squeeze_xs(xs)
 
         return xs
 
@@ -2309,7 +2369,7 @@ class MatrixMGXS(MGXS):
                                     string += '\t' + template.format('',
                                                                      in_group,
                                                                      out_group)
-                                    string += '{1:.2e} +/- {1:.2e}%'.format(
+                                    string += '{0:.2e} +/- {1:.2e}'.format(
                                         average_xs[pol, azi, in_group - 1,
                                                    out_group - 1],
                                         rel_err_xs[pol, azi, in_group - 1,
@@ -2322,7 +2382,7 @@ class MatrixMGXS(MGXS):
                     for in_group in range(1, self.num_groups + 1):
                         for out_group in range(1, self.num_groups + 1):
                             string += template.format('', in_group, out_group)
-                            string += '{1:.2e} +/- {1:.2e}%'.format(
+                            string += '{0:.2e} +/- {1:.2e}'.format(
                                 average_xs[in_group - 1, out_group - 1],
                                 rel_err_xs[in_group - 1, out_group - 1])
                             string += '\n'
@@ -3798,6 +3858,22 @@ class ScatterMatrixXS(MatrixMGXS):
         return clone
 
     @property
+    def _dont_squeeze(self):
+        """Create a tuple of axes which should not be removed during the get_xs
+        process
+        """
+        if self.num_polar > 1 or self.num_azimuthal > 1:
+            if self.scatter_format == 'histogram':
+                return (0, 1, 3, 4, 5)
+            else:
+                return (0, 1, 3, 4)
+        else:
+            if self.scatter_format == 'histogram':
+                return (1, 2, 3)
+            else:
+                return (1, 2)
+
+    @property
     def correction(self):
         return self._correction
 
@@ -4247,24 +4323,7 @@ class ScatterMatrixXS(MatrixMGXS):
             # out_groups, and, if needed, num_mu_bins dimension. These must
             # not be squeezed so 1-group, 1-angle problems have the correct
             # shape.
-            if self.num_polar > 1 or self.num_azimuthal > 1:
-                if self.scatter_format == 'histogram':
-                    dont_squeeze = (0, 1, 3, 4, 5)
-                else:
-                    dont_squeeze = (0, 1, 3, 4)
-            else:
-                if self.scatter_format == 'histogram':
-                    dont_squeeze = (1, 2, 3)
-                else:
-                    dont_squeeze = (1, 2)
-
-        # Squeeze will return a ValueError if the axis has a size
-        # greater than 1, so try each axis in axes one at a time,
-        # and do our own check to preclude the ValueError
-        initial_shape = len(xs.shape)
-        for axis in range(initial_shape - 1, -1, -1):
-            if axis not in dont_squeeze and xs.shape[axis] == 1:
-                xs = np.squeeze(xs, axis=axis)
+            xs = self._squeeze_xs(xs)
         return xs
 
     def get_pandas_dataframe(self, groups='all', nuclides='all', moment='all',
@@ -4341,15 +4400,6 @@ class ScatterMatrixXS(MatrixMGXS):
                 cv.check_less_than(
                     'moment', moment, self.legendre_order, equality=True)
                 df = df[df['moment'] == 'P{}'.format(moment)]
-
-        elif self.scatter_format == 'histogram':
-            # Replace the mu low and mu high columns with a single mu bin
-            df.rename(columns={'mu low': 'mu bins'}, inplace=True)
-            df_bins = df['mu bins']
-            mu_bins = np.linspace(-1., 1., num=self.histogram_bins + 1,
-                                  endpoint=True)
-            df['mu bins'] = np.searchsorted(mu_bins, df_bins) + 1
-            del df['mu high']
 
         return df
 
@@ -4476,7 +4526,7 @@ class ScatterMatrixXS(MatrixMGXS):
                                     string += '\t' + template.format('',
                                                                      in_group,
                                                                      out_group)
-                                    string += '{1:.2e} +/- {1:.2e}%'.format(
+                                    string += '{0:.2e} +/- {1:.2e}'.format(
                                         average_xs[pol, azi, in_group - 1,
                                                    out_group - 1],
                                         rel_err_xs[pol, azi, in_group - 1,
@@ -4489,7 +4539,7 @@ class ScatterMatrixXS(MatrixMGXS):
                     for in_group in range(1, self.num_groups + 1):
                         for out_group in range(1, self.num_groups + 1):
                             string += template.format('', in_group, out_group)
-                            string += '{1:.2e} +/- {1:.2e}%'.format(
+                            string += '{0:.2e} +/- {1:.2e}'.format(
                                 average_xs[in_group - 1, out_group - 1],
                                 rel_err_xs[in_group - 1, out_group - 1])
                             string += '\n'
@@ -5048,6 +5098,16 @@ class Chi(MGXS):
         self._valid_estimators = ['analog']
 
     @property
+    def _dont_squeeze(self):
+        """Create a tuple of axes which should not be removed during the get_xs
+        process
+        """
+        if self.num_polar > 1 or self.num_azimuthal > 1:
+            return (0, 1, 3)
+        else:
+            return (1,)
+
+    @property
     def scores(self):
         return ['nu-fission', 'nu-fission']
 
@@ -5378,17 +5438,7 @@ class Chi(MGXS):
         if squeeze:
             # We want to squeeze out everything but the polar, azimuthal,
             # and energy group data.
-            if self.num_polar > 1 or self.num_azimuthal > 1:
-                dont_squeeze = (0, 1, 3)
-            else:
-                dont_squeeze = (1,)
-            # Squeeze will return a ValueError if the axis has a size
-            # greater than 1, so try each axis in axes one at a time,
-            # and do our own check to preclude the ValueError
-            initial_shape = len(xs.shape)
-            for axis in range(initial_shape - 1, -1, -1):
-                if axis not in dont_squeeze and xs.shape[axis] == 1:
-                    xs = np.squeeze(xs, axis=axis)
+            xs = self._squeeze_xs(xs)
 
         return xs
 
@@ -5443,7 +5493,7 @@ class Chi(MGXS):
                 densities = self.get_nuclide_densities(nuclides)
             else:
                 densities = self.get_nuclide_densities('sum')
-            tile_factor = df.shape[0] / len(densities)
+            tile_factor = int(df.shape[0] / len(densities))
             df['mean'] *= np.tile(densities, tile_factor)
             df['std. dev.'] *= np.tile(densities, tile_factor)
 

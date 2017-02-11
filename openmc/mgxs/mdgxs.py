@@ -176,12 +176,22 @@ class MDGXS(MGXS):
             return existing
 
     @property
+    def _dont_squeeze(self):
+        """Create a tuple of axes which should not be removed during the get_xs
+        process
+        """
+        if self.num_polar > 1 or self.num_azimuthal > 1:
+            return (0, 1, 3, 4)
+        else:
+            return (1, 2)
+
+    @property
     def delayed_groups(self):
         return self._delayed_groups
 
     @property
     def num_delayed_groups(self):
-        if self.delayed_groups == None:
+        if self.delayed_groups is None:
             return 1
         else:
             return len(self.delayed_groups)
@@ -189,7 +199,7 @@ class MDGXS(MGXS):
     @delayed_groups.setter
     def delayed_groups(self, delayed_groups):
 
-        if delayed_groups != None:
+        if delayed_groups is not None:
 
             cv.check_type('delayed groups', delayed_groups, list, int)
             cv.check_greater_than('num delayed groups', len(delayed_groups), 0)
@@ -431,18 +441,7 @@ class MDGXS(MGXS):
         if squeeze:
             # We want to squeeze out everything but the polar, azimuthal,
             # delayed group, and energy group data.
-            if self.num_polar > 1 or self.num_azimuthal > 1:
-                dont_squeeze = (0, 1, 3, 4)
-            else:
-                dont_squeeze = (1, 2)
-
-            # Squeeze will return a ValueError if the axis has a size
-            # greater than 1, so try each axis in axes one at a time,
-            # and do our own check to preclude the ValueError
-            initial_shape = len(xs.shape)
-            for axis in range(initial_shape - 1, -1, -1):
-                if axis not in dont_squeeze and xs.shape[axis] == 1:
-                    xs = np.squeeze(xs, axis=axis)
+            xs = self._squeeze_xs(xs)
 
         return xs
 
@@ -681,7 +680,7 @@ class MDGXS(MGXS):
                                     string += '\t' + template.format('', group,
                                                                      bounds[0],
                                                                      bounds[1])
-                                    string += '{1:.2e} +/- {1:.2e}%'.format(
+                                    string += '{0:.2e} +/- {1:.2e}'.format(
                                         average_xs[pol, azi, group - 1],
                                         rel_err_xs[pol, azi, group - 1])
                                     string += '\n'
@@ -691,7 +690,7 @@ class MDGXS(MGXS):
                         for group in range(1, self.num_groups+1):
                             bounds = self.energy_groups.get_group_bounds(group)
                             string += template.format('', group, bounds[0], bounds[1])
-                            string += '{1:.2e} +/- {1:.2e}%'.format(
+                            string += '{0:.2e} +/- {1:.2e}'.format(
                                 average_xs[group - 1], rel_err_xs[group - 1])
                             string += '\n'
                     string += '\n'
@@ -830,7 +829,6 @@ class MDGXS(MGXS):
         if self.by_nuclide and nuclides == 'sum':
 
             # Use tally summation to sum across all nuclides
-            query_nuclides = [nuclides]
             xs_tally = self.xs_tally.summation(nuclides=self.get_nuclides())
             df = xs_tally.get_pandas_dataframe(
                 distribcell_paths=distribcell_paths)
@@ -858,45 +856,9 @@ class MDGXS(MGXS):
         else:
             df = df.drop('score', axis=1)
 
-        # Override polar and azimuthal bounds with indices
-        if self.num_polar > 1 or self.num_azimuthal > 1:
-            # First for polar
-            del df['polar high']
-            df.rename(columns={'polar low': 'polar bin'}, inplace=True)
-            df_bins = df['polar bin']
-            polar_bins = np.linspace(0., np.pi, num=self.num_polar + 1,
-                                     endpoint=True)
-            df['polar bin'] = np.searchsorted(polar_bins, df_bins) + 1
-
-            # Second for azimuthal
-            del df['azimuthal high']
-            df.rename(columns={'azimuthal low': 'azimuthal bin'},
-                      inplace=True)
-            df_bins = df['azimuthal bin']
-            azimuthal_bins = np.linspace(-np.pi, np.pi,
-                                         num=self.num_azimuthal + 1,
-                                         endpoint=True)
-            df['azimuthal bin'] = np.searchsorted(azimuthal_bins, df_bins) + 1
-            columns = ['polar bin', 'azimuthal bin']
-        else:
-            columns = []
-
-        # Override energy groups bounds with indices
-        if 'energy low [eV]' in df:
-            df.rename(columns={'energy low [eV]': 'group in'}, inplace=True)
-            df_bins = df['group in']
-            df['group in'] = self.energy_groups.num_groups - \
-                np.searchsorted(self.energy_groups.group_edges, df_bins)
-            del df['energy high [eV]']
-            columns += ['group in']
-        if 'energyout low [eV]' in df:
-            df.rename(columns={'energyout low [eV]': 'group out'},
-                      inplace=True)
-            df_bins = df['group out']
-            df['group out'] = self.energy_groups.num_groups - \
-                np.searchsorted(self.energy_groups.group_edges, df_bins)
-            del df['energyout high [eV]']
-            columns += ['group out']
+        # Convert azimuthal, polar, energy in and energy out bin values in to
+        # bin indices
+        columns = self._df_convert_columns_to_bins(df)
 
         # Select out those groups the user requested
         if not isinstance(groups, string_types):
@@ -912,7 +874,7 @@ class MDGXS(MGXS):
             else:
                 densities = self.get_nuclide_densities('sum')
             densities = np.repeat(densities, len(self.rxn_rate_tally.scores))
-            tile_factor = df.shape[0] / len(densities)
+            tile_factor = int(df.shape[0] / len(densities))
             df['mean'] /= np.tile(densities, tile_factor)
             df['std. dev.'] /= np.tile(densities, tile_factor)
 
@@ -1439,17 +1401,7 @@ class ChiDelayed(MDGXS):
         if squeeze:
             # We want to squeeze out everything but the polar, azimuthal,
             # and energy group data.
-            if self.num_polar > 1 or self.num_azimuthal > 1:
-                dont_squeeze = (0, 1, 3, 4)
-            else:
-                dont_squeeze = (1, 2)
-            # Squeeze will return a ValueError if the axis has a size
-            # greater than 1, so try each axis in axes one at a time,
-            # and do our own check to preclude the ValueError
-            initial_shape = len(xs.shape)
-            for axis in range(initial_shape - 1, -1, -1):
-                if axis not in dont_squeeze and xs.shape[axis] == 1:
-                    xs = np.squeeze(xs, axis=axis)
+            xs = self._squeeze_xs(xs)
 
         return xs
 
@@ -2070,6 +2022,16 @@ class MatrixMDGXS(MDGXS):
     """
 
     @property
+    def _dont_squeeze(self):
+        """Create a tuple of axes which should not be removed during the get_xs
+        process
+        """
+        if self.num_polar > 1 or self.num_azimuthal > 1:
+            return (0, 1, 3, 4, 5)
+        else:
+            return (1, 2, 3)
+
+    @property
     def filters(self):
         # Create the non-domain specific Filters for the Tallies
         group_edges = self.energy_groups.group_edges
@@ -2268,17 +2230,7 @@ class MatrixMDGXS(MDGXS):
         if squeeze:
             # We want to squeeze out everything but the polar, azimuthal,
             # and in/out energy group data.
-            if self.num_polar > 1 or self.num_azimuthal > 1:
-                dont_squeeze = (0, 1, 3, 4, 5)
-            else:
-                dont_squeeze = (1, 2, 3)
-            # Squeeze will return a ValueError if the axis has a size
-            # greater than 1, so try each axis in axes one at a time,
-            # and do our own check to preclude the ValueError
-            initial_shape = len(xs.shape)
-            for axis in range(initial_shape - 1, -1, -1):
-                if axis not in dont_squeeze and xs.shape[axis] == 1:
-                    xs = np.squeeze(xs, axis=axis)
+            xs = self._squeeze_xs(xs)
 
         return xs
 
@@ -2466,7 +2418,7 @@ class MatrixMDGXS(MDGXS):
                                         for out_group in range(1, self.num_groups + 1):
                                             string += '\t' + template.format(
                                                 '', in_group, out_group)
-                                            string += '{1:.2e} +/- {1:.2e}%'.format(
+                                            string += '{0:.2e} +/- {1:.2e}'.format(
                                                 average_xs[pol, azi, in_group - 1,
                                                            out_group - 1],
                                                 rel_err_xs[pol, azi, in_group - 1,
@@ -2480,7 +2432,7 @@ class MatrixMDGXS(MDGXS):
                                 for out_group in range(1, self.num_groups + 1):
                                     string += template.format(
                                         '', in_group, out_group)
-                                    string += '{:.2e} +/- {:.2e}%'.format(
+                                    string += '{:.2e} +/- {:.2e}'.format(
                                         average_xs[in_group-1, out_group-1],
                                         rel_err_xs[in_group-1, out_group-1])
                                     string += '\n'
@@ -2512,7 +2464,7 @@ class MatrixMDGXS(MDGXS):
                                     for out_group in range(1, self.num_groups + 1):
                                         string += '\t' + template.format(
                                             '', in_group, out_group)
-                                        string += '{1:.2e} +/- {1:.2e}%'.format(
+                                        string += '{0:.2e} +/- {1:.2e}'.format(
                                             average_xs[pol, azi, in_group - 1,
                                                        out_group - 1],
                                             rel_err_xs[pol, azi, in_group - 1,
@@ -2526,7 +2478,7 @@ class MatrixMDGXS(MDGXS):
                             for out_group in range(1, self.num_groups + 1):
                                 string += template.format('', in_group,
                                                           out_group)
-                                string += '{1:.2e} +/- {1:.2e}%'.format(
+                                string += '{0:.2e} +/- {1:.2e}'.format(
                                     average_xs[in_group - 1, out_group - 1],
                                     rel_err_xs[in_group - 1, out_group - 1])
                                 string += '\n'

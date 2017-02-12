@@ -1849,12 +1849,6 @@ class XSdata(object):
                                        orig_data[..., l]
                                        for l in range(self.num_orders))
                         new_data[..., h_bin] = simps(table_fine, mu_fine)
-                        # new_data[..., h_bin] = \
-                        #     simps(np.sum((l + 0.5) *
-                        #                  eval_legendre(l, mu_fine) *
-                        #                  orig_data[..., l]
-                        #                  for l in range(self.num_orders)),
-                        #           mu_fine)
 
                     # Remove the very small results from numerical precision
                     # issues (allowing conversions to be reproduced exactly)

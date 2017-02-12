@@ -680,7 +680,7 @@ class MDGXS(MGXS):
                                     string += '\t' + template.format('', group,
                                                                      bounds[0],
                                                                      bounds[1])
-                                    string += '{0:.2e} +/- {1:.2e}'.format(
+                                    string += '{0:.2e} +/- {1:.2e}%'.format(
                                         average_xs[pol, azi, group - 1],
                                         rel_err_xs[pol, azi, group - 1])
                                     string += '\n'
@@ -690,7 +690,7 @@ class MDGXS(MGXS):
                         for group in range(1, self.num_groups+1):
                             bounds = self.energy_groups.get_group_bounds(group)
                             string += template.format('', group, bounds[0], bounds[1])
-                            string += '{0:.2e} +/- {1:.2e}'.format(
+                            string += '{0:.2e} +/- {1:.2e}%'.format(
                                 average_xs[group - 1], rel_err_xs[group - 1])
                             string += '\n'
                     string += '\n'
@@ -2418,7 +2418,7 @@ class MatrixMDGXS(MDGXS):
                                         for out_group in range(1, self.num_groups + 1):
                                             string += '\t' + template.format(
                                                 '', in_group, out_group)
-                                            string += '{0:.2e} +/- {1:.2e}'.format(
+                                            string += '{0:.2e} +/- {1:.2e}%'.format(
                                                 average_xs[pol, azi, in_group - 1,
                                                            out_group - 1],
                                                 rel_err_xs[pol, azi, in_group - 1,
@@ -2432,7 +2432,7 @@ class MatrixMDGXS(MDGXS):
                                 for out_group in range(1, self.num_groups + 1):
                                     string += template.format(
                                         '', in_group, out_group)
-                                    string += '{:.2e} +/- {:.2e}'.format(
+                                    string += '{:.2e} +/- {:.2e}%'.format(
                                         average_xs[in_group-1, out_group-1],
                                         rel_err_xs[in_group-1, out_group-1])
                                     string += '\n'
@@ -2464,7 +2464,7 @@ class MatrixMDGXS(MDGXS):
                                     for out_group in range(1, self.num_groups + 1):
                                         string += '\t' + template.format(
                                             '', in_group, out_group)
-                                        string += '{0:.2e} +/- {1:.2e}'.format(
+                                        string += '{0:.2e} +/- {1:.2e}%'.format(
                                             average_xs[pol, azi, in_group - 1,
                                                        out_group - 1],
                                             rel_err_xs[pol, azi, in_group - 1,
@@ -2478,7 +2478,7 @@ class MatrixMDGXS(MDGXS):
                             for out_group in range(1, self.num_groups + 1):
                                 string += template.format('', in_group,
                                                           out_group)
-                                string += '{0:.2e} +/- {1:.2e}'.format(
+                                string += '{0:.2e} +/- {1:.2e}%'.format(
                                     average_xs[in_group - 1, out_group - 1],
                                     rel_err_xs[in_group - 1, out_group - 1])
                                 string += '\n'

@@ -1865,7 +1865,7 @@ class XSdata(object):
                          eval_legendre(l, mu_fine)
                          for l in range(xsdata.num_orders)]
                     for l in range(xsdata.num_orders):
-                        new_data[..., l] = (l + 0.5) * simps(y[l], mu_fine)
+                        new_data[..., l] = simps(y[l], mu_fine)
 
                     # Remove the very small results from numerical precision
                     # issues (allowing conversions to be reproduced exactly)
@@ -1893,38 +1893,30 @@ class XSdata(object):
                     new_data[..., np.abs(new_data) < 1.E-10] = 0.
             elif self.scatter_format == 'histogram':
                 # The histogram format does not have enough information to
-                # convert to the other forms without inducing an error.
-                # We will make the assumption that the left-edge of the bin
-                # has the value of the bin. The mu=1 value will be extrapolated
-                # from the previous two points.
-                mu_self = np.linspace(-1, 1, self.num_orders + 1)
-                tab_data = np.zeros(orig_data.shape[:-1] +
-                                    (orig_data.shape[-1] + 1,))
-                tab_data[..., :-1] = orig_data
-                tab_data[..., -1] = (orig_data[..., -2] -
-                                     orig_data[..., -3]) + orig_data[..., -2]
-                # Now get the distribution normalization factor.
-                # This factor will be such that its average value is the
-                # group -> group cross section (which is the sum of the
-                # original data)
-                norm = np.sum(orig_data, axis=-1) / np.mean(tab_data, axis=-1)
-                norm = np.nan_to_num(norm)
-                for i in range(tab_data.shape[-1]):
-                    tab_data[..., i] *= norm[...]
+                # convert to the other forms without inducing some amount of
+                # error. We will make the assumption that the center of the bin
+                # has the value of the bin. The mu=-1 and 1 points will be
+                # extrapolated from the shape.
+                mu_midpoint = np.linspace(-1, 1, self.num_orders,
+                                          endpoint=False)
+                mu_midpoint += (mu_midpoint[1] - mu_midpoint[0]) * 0.5
+                interp = interp1d(mu_midpoint, orig_data,
+                                  fill_value='extrapolate')
+                # Now get the distribution normalization factor to take from
+                # an integral quantity to a point-wise quantity
+                norm = float(self.num_orders) / 2.0
 
-                # We now have a tabular distribution in tab_data on mu_self
-                # with a normalization in norm. We now proceed just like the
-                # tabular branch above.
+                # We now have a tabular distribution in tab_data on mu_self.
+                # We now proceed just like the tabular branch above.
                 if target_format == 'legendre':
                     # find the legendre coefficients via integration. To best
                     # use the vectorized integration capabilities of scipy,
                     # this will be done with fixed sample integration routines.
                     mu_fine = np.linspace(-1, 1, _NMU)
-                    y = [interp1d(mu_self, tab_data)(mu_fine) *
-                         eval_legendre(l, mu_fine)
+                    y = [interp(mu_fine) * norm * eval_legendre(l, mu_fine)
                          for l in range(xsdata.num_orders)]
                     for l in range(xsdata.num_orders):
-                        new_data[..., l] = (l + 0.5) * simps(y[l], mu_fine)
+                        new_data[..., l] = simps(y[l], mu_fine)
 
                     # Remove the very small results from numerical precision
                     # issues (allowing conversions to be reproduced exactly)
@@ -1932,7 +1924,7 @@ class XSdata(object):
                 elif target_format == 'tabular':
                     # Simply use an interpolating function to get the new data
                     mu = np.linspace(-1, 1, xsdata.num_orders)
-                    new_data[..., :] = interp1d(mu_self, tab_data)(mu)
+                    new_data[..., :] = interp(mu) * norm
                 elif target_format == 'histogram':
                     # Use an interpolating function to do the bin-wise
                     # integrals
@@ -1942,15 +1934,14 @@ class XSdata(object):
                     # be written to utilize the vectorized integration
                     # capabilities instead of having an isotropic and
                     # angle representation path.
-                    interp = interp1d(mu_self, tab_data)
                     for h_bin in range(xsdata.num_orders):
                         mu_fine = np.linspace(mu[h_bin], mu[h_bin + 1], _NMU)
-                        new_data[..., h_bin] = simps(interp(mu_fine), mu_fine)
+                        new_data[..., h_bin] = \
+                            norm * simps(interp(mu_fine), mu_fine)
 
                     # Remove the very small results from numerical precision
                     # issues (allowing conversions to be reproduced exactly)
                     new_data[..., np.abs(new_data) < 1.E-10] = 0.
-
             xsdata.set_scatter_matrix(new_data, temp)
 
         return xsdata
@@ -2107,10 +2098,18 @@ class XSdata(object):
         # lines within each of the outgoing groups
         scatt_eouts = []
         for g in range(self.energy_groups.num_groups):
+            nz = np.nonzero(energy[g, :])
+            lo = nz[0][0]
+            hi = nz[0][-1] + 1
+            # scatt_eouts.append(
+            #     openmc.stats.Discrete(energy_midpoints[lo: hi],
+            #                           energy[g, lo:hi]))
             scatt_eouts.append(
-                openmc.stats.Discrete(energy_midpoints, energy[g, :]))
+                openmc.stats.Tabular(self.energy_groups.group_edges[:-1],
+                                     energy[g, :],
+                                     interpolation='histogram'))
             # Ensure the distribution CDF starts with 0
-            scatt_eouts[-1].c = np.cumsum(energy[g, :]) - energy[g, 0]
+            scatt_eouts[-1].c = np.cumsum(energy[g, lo:hi]) - energy[g, lo]
         scatt_eouts.append(scatt_eouts[-1])
 
         # Build the angular distributions associated with each outgoing energy
@@ -2120,11 +2119,13 @@ class XSdata(object):
         for gin in range(self.energy_groups.num_groups):
             scatt_angles.append([])
             for gout in range(self.energy_groups.num_groups):
-                scatt_angles[gin].append(
-                    openmc.stats.Tabular(mu, distrib[gin, gout, :]))
-                # Ensure the distribution CDF starts with 0
-                scatt_angles[gin][-1].c = \
-                    np.cumsum(distrib[gin, gout, :]) - distrib[gin, gout, 0]
+                if energy[gin, gout] > 0.:
+                    scatt_angles[gin].append(
+                        openmc.stats.Tabular(mu, distrib[gin, gout, :]))
+                    # Ensure the distribution CDF starts with 0
+                    scatt_angles[gin][-1].c = \
+                        np.cumsum(distrib[gin, gout, :]) - \
+                        distrib[gin, gout, 0]
         scatt_angles.append(scatt_angles[-1])
 
         # Combine the energy and angle distributions in to a correlated

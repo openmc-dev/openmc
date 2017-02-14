@@ -208,16 +208,17 @@ def atomic_weight(element):
     return None if weight == 0. else weight
 
 
-# The value of the Boltzman constant in units of eV / K
 # Values here are from the Committee on Data for Science and Technology
-# (CODATA) 2010 recommendation (doi:10.1103/RevModPhys.84.1527).
-K_BOLTZMANN = 8.6173324e-5
+# (CODATA) 2014 recommendation (doi:10.1103/RevModPhys.88.035009).
+
+# The value of the Boltzman constant in units of eV / K
+K_BOLTZMANN = 8.6173303e-5
 
 # Used for converting units in ACE data
 EV_PER_MEV = 1.0e6
 
-# Avogadro's constant from CODATA 2010
-AVOGADRO = 6.02214129E23
+# Avogadro's constant
+AVOGADRO = 6.022140857e23
 
-# Neutron mass from CODATA 2010 in units of amu
-NEUTRON_MASS = 1.008664916
+# Neutron mass in units of amu
+NEUTRON_MASS = 1.00866491588

@@ -663,7 +663,7 @@ class Material(object):
         if not percent_in_atom:
             for n, nuc in enumerate(nucs):
                 nuc_densities[n] *= self.average_molar_mass / \
-                                    openmc.data.atomic_mass(nuc)
+                                    openmc.data.atomic_mass(nuc.name)
 
         # Now that we have the atomic amounts, lets finish calculating densities
         sum_percent = np.sum(nuc_densities)

@@ -413,9 +413,9 @@
     <material id="10003">
         <density units="g/cm3" value="3.2" />
         <nuclide ao="1.0" name="C0" />
-        <nuclide ao="0.92223" name="Si28" />
-        <nuclide ao="0.04685" name="Si29" />
-        <nuclide ao="0.03092" name="Si30" />
+        <nuclide ao="0.9222968" name="Si28" />
+        <nuclide ao="0.0468316" name="Si29" />
+        <nuclide ao="0.0308716" name="Si30" />
     </material>
     <material id="10004">
         <density units="g/cm3" value="1.87" />

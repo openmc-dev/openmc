@@ -69,6 +69,21 @@ def _df_column_convert_to_bin(df, current_name, new_name, values_to_bin,
                               reverse_order=False):
     """Convert a Pandas DataFrame column from the bin edges to an index for
     each bin. This method operates on the DataFrame, df, in-place.
+
+    Parameters
+    ----------
+    df : pandas.DataFrame
+        A Pandas DataFrame containing the cross section data.
+    current_name : str
+        Name of the column to replace with bins
+    new_name : str
+        New name for column after the data is replaced with bins
+    values_to_bin : Iterable of Real
+        Values of the bin edges to be used for identifying the bins
+    reverse_order : bool
+        Whether or not the bin indices should be reversed like for energy group
+        ordering.
+
     """
 
     # Get the current values
@@ -267,6 +282,19 @@ class MGXS(object):
     def _add_angle_filters(self, filters):
         """Add the azimuthal and polar bins to the MGXS filters if needed.
         Filters will be provided as a ragged 2D list of openmc.Filter objects.
+
+        Parameters
+        ----------
+        filters : Iterable of Iterable of openmc.Filter
+            Ragged 2D list of openmc.Filter objects for which the angle filters
+            will be added
+
+        Returns
+        -------
+        Iterable of Iterable of openmc.Filter
+            Ragged 2D list of openmc.Filter objects for which the angle filters
+            have been added
+
         """
 
         if self.num_polar > 1 or self.num_azimuthal > 1:
@@ -285,6 +313,17 @@ class MGXS(object):
     def _squeeze_xs(self, xs):
         """Remove dimensions which are not needed from a cross section array
         due to user options. This is used by the openmc.Mgxs.get_xs(...) method
+
+        Parameters
+        ----------
+        xs : np.ndarray
+            Cross sections array with dimensions to be squeezed
+
+        Returns
+        -------
+        np.ndarray
+            Squeezed array of cross sections
+
         """
 
         # numpy.squeeze will return a ValueError if the axis has a size
@@ -301,6 +340,17 @@ class MGXS(object):
         their bin boundaries to the index for each bin. This method operates on
         the DataFrame, df, in place. The method returns a list of the columns
         in which it has operated on.
+
+        Parameters
+        ----------
+        df : pandas.DataFrame
+            A Pandas DataFrame containing the cross section data.
+
+        Returns
+        -------
+        columns : Iterable of str
+            Names of the re-named and re-valued columns
+
         """
         # Override polar and azimuthal bounds with indices
         if self.num_polar > 1 or self.num_azimuthal > 1:

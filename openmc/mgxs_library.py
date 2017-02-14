@@ -2098,18 +2098,12 @@ class XSdata(object):
         # lines within each of the outgoing groups
         scatt_eouts = []
         for g in range(self.energy_groups.num_groups):
-            nz = np.nonzero(energy[g, :])
-            lo = nz[0][0]
-            hi = nz[0][-1] + 1
-            # scatt_eouts.append(
-            #     openmc.stats.Discrete(energy_midpoints[lo: hi],
-            #                           energy[g, lo:hi]))
             scatt_eouts.append(
                 openmc.stats.Tabular(self.energy_groups.group_edges[:-1],
                                      energy[g, :],
                                      interpolation='histogram'))
             # Ensure the distribution CDF starts with 0
-            scatt_eouts[-1].c = np.cumsum(energy[g, lo:hi]) - energy[g, lo]
+            scatt_eouts[-1].c = np.cumsum(energy[g, :]) - energy[g, 0]
         scatt_eouts.append(scatt_eouts[-1])
 
         # Build the angular distributions associated with each outgoing energy

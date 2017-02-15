@@ -81,8 +81,7 @@ def _df_column_convert_to_bin(df, current_name, new_name, values_to_bin,
     values_to_bin : Iterable of Real
         Values of the bin edges to be used for identifying the bins
     reverse_order : bool
-        Whether or not the bin indices should be reversed like for energy group
-        ordering.
+        Whether the bin indices should be reversed
 
     """
 
@@ -286,14 +285,14 @@ class MGXS(object):
         Parameters
         ----------
         filters : Iterable of Iterable of openmc.Filter
-            Ragged 2D list of openmc.Filter objects for which the angle filters
-            will be added
+            Ragged 2D list of openmc.Filter objects for the energy and spatial
+            domains. The angle filters will be added to the list.
 
         Returns
         -------
         Iterable of Iterable of openmc.Filter
-            Ragged 2D list of openmc.Filter objects for which the angle filters
-            have been added
+            Ragged 2D list of openmc.Filter objects for the energy and spatial
+            domains with the angle filters added to the list.
 
         """
 

@@ -4,7 +4,6 @@ from collections import OrderedDict
 from numbers import Integral
 import warnings
 import os
-import sys
 import copy
 from abc import ABCMeta
 import itertools
@@ -66,6 +65,53 @@ MU_TREATMENTS = ('legendre', 'histogram')
 _MAX_LEGENDRE = 10
 
 
+def _df_column_convert_to_bin(df, current_name, new_name, values_to_bin,
+                              reverse_order=False):
+    """Convert a Pandas DataFrame column from the bin edges to an index for
+    each bin. This method operates on the DataFrame, df, in-place.
+
+    Parameters
+    ----------
+    df : pandas.DataFrame
+        A Pandas DataFrame containing the cross section data.
+    current_name : str
+        Name of the column to replace with bins
+    new_name : str
+        New name for column after the data is replaced with bins
+    values_to_bin : Iterable of Real
+        Values of the bin edges to be used for identifying the bins
+    reverse_order : bool
+        Whether the bin indices should be reversed
+
+    """
+
+    # Get the current values
+    df_bins = np.asarray(df[current_name])
+    new_vals = np.zeros_like(df_bins, dtype=int)
+    # Replace the values with the index of the closest entry in values_to_bin
+    # The closest is used because it is expected that the values in df could
+    # have lost precision along the way
+    for i, df_val in enumerate(df_bins):
+        idx = np.searchsorted(values_to_bin, df_val)
+        # Check to make sure if the value is just above the search result
+        if idx > 0 and np.isclose(values_to_bin[idx - 1], df_val):
+            idx -= 1
+        # If it is just below the search result then we are done
+        new_vals[i] = idx
+    # Switch to a one-based indexing
+    new_vals += 1
+
+    # Reverse the ordering if requested (this is for energy group ordering)
+    if reverse_order:
+        new_vals = (len(values_to_bin) - 1) - new_vals + 1
+
+    # Assign the values
+    df[current_name] = new_vals[:]
+
+    # And rename the column
+    df.rename(columns={current_name: new_name}, inplace=True)
+
+
 @add_metaclass(ABCMeta)
 class MGXS(object):
     """An abstract multi-group cross section for some energy group structure
@@ -90,6 +136,12 @@ class MGXS(object):
     name : str, optional
         Name of the multi-group cross section. Used as a label to identify
         tallies in OpenMC 'tallies.xml' file.
+    num_polar : Integral, optional
+        Number of equi-width polar angle bins for angle discretization;
+        defaults to one bin
+    num_azimuthal : Integral, optional
+        Number of equi-width azimuthal angle bins for angle discretization;
+        defaults to one bin
 
     Attributes
     ----------
@@ -105,6 +157,10 @@ class MGXS(object):
         Domain type for spatial homogenization
     energy_groups : openmc.mgxs.EnergyGroups
         Energy group structure for energy condensation
+    num_polar : Integral
+        Number of equi-width polar angle bins for angle discretization
+    num_azimuthal : Integral
+        Number of equi-width azimuthal angle bins for angle discretization
     tally_trigger : openmc.Trigger
         An (optional) tally precision trigger given to each tally used to
         compute the cross section
@@ -151,8 +207,10 @@ class MGXS(object):
         The key used to index multi-group cross sections in an HDF5 data store
 
     """
+
     def __init__(self, domain=None, domain_type=None,
-                 energy_groups=None, by_nuclide=False, name=''):
+                 energy_groups=None, by_nuclide=False, name='', num_polar=1,
+                 num_azimuthal=1):
         self._name = ''
         self._rxn_type = None
         self._by_nuclide = None
@@ -161,6 +219,8 @@ class MGXS(object):
         self._domain = None
         self._domain_type = None
         self._energy_groups = None
+        self._num_polar = 1
+        self._num_azimuthal = 1
         self._tally_trigger = None
         self._tallies = None
         self._rxn_rate_tally = None
@@ -180,6 +240,8 @@ class MGXS(object):
             self.domain = domain
         if energy_groups is not None:
             self.energy_groups = energy_groups
+        self.num_polar = num_polar
+        self.num_azimuthal = num_azimuthal
 
     def __deepcopy__(self, memo):
         existing = memo.get(id(self))
@@ -194,6 +256,8 @@ class MGXS(object):
             clone._domain = self.domain
             clone._domain_type = self.domain_type
             clone._energy_groups = copy.deepcopy(self.energy_groups, memo)
+            clone._num_polar = self._num_polar
+            clone._num_azimuthal = self._num_azimuthal
             clone._tally_trigger = copy.deepcopy(self.tally_trigger, memo)
             clone._rxn_rate_tally = copy.deepcopy(self._rxn_rate_tally, memo)
             clone._xs_tally = copy.deepcopy(self._xs_tally, memo)
@@ -213,6 +277,128 @@ class MGXS(object):
         # If this object has been copied before, return the first copy made
         else:
             return existing
+
+    def _add_angle_filters(self, filters):
+        """Add the azimuthal and polar bins to the MGXS filters if needed.
+        Filters will be provided as a ragged 2D list of openmc.Filter objects.
+
+        Parameters
+        ----------
+        filters : Iterable of Iterable of openmc.Filter
+            Ragged 2D list of openmc.Filter objects for the energy and spatial
+            domains. The angle filters will be added to the list.
+
+        Returns
+        -------
+        Iterable of Iterable of openmc.Filter
+            Ragged 2D list of openmc.Filter objects for the energy and spatial
+            domains with the angle filters added to the list.
+
+        """
+
+        if self.num_polar > 1 or self.num_azimuthal > 1:
+            # Then the user has requested angular data, so create the bins
+            pol_bins = np.linspace(0., np.pi, num=self.num_polar + 1,
+                                   endpoint=True)
+            azi_bins = np.linspace(-np.pi, np.pi, num=self.num_azimuthal + 1,
+                                   endpoint=True)
+
+            for filt in filters:
+                filt.insert(0, openmc.PolarFilter(pol_bins))
+                filt.insert(1, openmc.AzimuthalFilter(azi_bins))
+
+        return filters
+
+    def _squeeze_xs(self, xs):
+        """Remove dimensions which are not needed from a cross section array
+        due to user options. This is used by the openmc.Mgxs.get_xs(...) method
+
+        Parameters
+        ----------
+        xs : np.ndarray
+            Cross sections array with dimensions to be squeezed
+
+        Returns
+        -------
+        np.ndarray
+            Squeezed array of cross sections
+
+        """
+
+        # numpy.squeeze will return a ValueError if the axis has a size
+        # greater than 1, to avoid this we will try each axis one at a
+        # time to preclude the ValueError.
+        initial_shape = len(xs.shape)
+        for axis in range(initial_shape - 1, -1, -1):
+            if axis not in self._dont_squeeze and xs.shape[axis] == 1:
+                xs = np.squeeze(xs, axis=axis)
+        return xs
+
+    def _df_convert_columns_to_bins(self, df):
+        """This method converts all relevant and present DataFrame columns from
+        their bin boundaries to the index for each bin. This method operates on
+        the DataFrame, df, in place. The method returns a list of the columns
+        in which it has operated on.
+
+        Parameters
+        ----------
+        df : pandas.DataFrame
+            A Pandas DataFrame containing the cross section data.
+
+        Returns
+        -------
+        columns : Iterable of str
+            Names of the re-named and re-valued columns
+
+        """
+        # Override polar and azimuthal bounds with indices
+        if self.num_polar > 1 or self.num_azimuthal > 1:
+            # First for polar
+            bins = np.linspace(0., np.pi, self.num_polar + 1, True)
+            _df_column_convert_to_bin(df, 'polar low', 'polar bin', bins)
+            del df['polar high']
+
+            # Second for azimuthal
+            bins = np.linspace(-np.pi, np.pi, self.num_azimuthal + 1, True)
+            _df_column_convert_to_bin(df, 'azimuthal low', 'azimuthal bin',
+                                      bins)
+            del df['azimuthal high']
+            columns = ['polar bin', 'azimuthal bin']
+        else:
+            columns = []
+
+        # Override energy groups bounds with indices
+        if 'energy low [eV]' in df:
+            _df_column_convert_to_bin(df, 'energy low [eV]', 'group in',
+                                      self.energy_groups.group_edges,
+                                      reverse_order=True)
+            del df['energy high [eV]']
+            columns += ['group in']
+        if 'energyout low [eV]' in df:
+            _df_column_convert_to_bin(df, 'energyout low [eV]', 'group out',
+                                      self.energy_groups.group_edges,
+                                      reverse_order=True)
+            del df['energyout high [eV]']
+            columns += ['group out']
+
+        if 'mu low' in df and hasattr(self, 'histogram_bins'):
+            # Only the ScatterMatrix class has the histogram_bins attribute
+            bins = np.linspace(-1., 1., self.histogram_bins + 1, True)
+            _df_column_convert_to_bin(df, 'mu low', 'mu bin', bins)
+            del df['mu high']
+            columns += ['mu bin']
+
+        return columns
+
+    @property
+    def _dont_squeeze(self):
+        """Create a tuple of axes which should not be removed during the get_xs
+        process
+        """
+        if self.num_polar > 1 or self.num_azimuthal > 1:
+            return (0, 1, 3)
+        else:
+            return (1, )
 
     @property
     def name(self):
@@ -239,6 +425,14 @@ class MGXS(object):
         return self._energy_groups
 
     @property
+    def num_polar(self):
+        return self._num_polar
+
+    @property
+    def num_azimuthal(self):
+        return self._num_azimuthal
+
+    @property
     def tally_trigger(self):
         return self._tally_trigger
 
@@ -254,7 +448,11 @@ class MGXS(object):
     def filters(self):
         group_edges = self.energy_groups.group_edges
         energy_filter = openmc.EnergyFilter(group_edges)
-        return [[energy_filter]] * len(self.scores)
+        filters = []
+        for i in range(len(self.scores)):
+            filters.append([energy_filter])
+
+        return self._add_angle_filters(filters)
 
     @property
     def tally_keys(self):
@@ -416,6 +614,18 @@ class MGXS(object):
         cv.check_type('energy groups', energy_groups, openmc.mgxs.EnergyGroups)
         self._energy_groups = energy_groups
 
+    @num_polar.setter
+    def num_polar(self, num_polar):
+        cv.check_type('num_polar', num_polar, Integral)
+        cv.check_greater_than('num_polar', num_polar, 0)
+        self._num_polar = num_polar
+
+    @num_azimuthal.setter
+    def num_azimuthal(self, num_azimuthal):
+        cv.check_type('num_azimuthal', num_azimuthal, Integral)
+        cv.check_greater_than('num_azimuthal', num_azimuthal, 0)
+        self._num_azimuthal = num_azimuthal
+
     @tally_trigger.setter
     def tally_trigger(self, tally_trigger):
         cv.check_type('tally trigger', tally_trigger, openmc.Trigger)
@@ -448,7 +658,8 @@ class MGXS(object):
 
     @staticmethod
     def get_mgxs(mgxs_type, domain=None, domain_type=None,
-                 energy_groups=None, by_nuclide=False, name=''):
+                 energy_groups=None, by_nuclide=False, name='', num_polar=1,
+                 num_azimuthal=1):
         """Return a MGXS subclass object for some energy group structure within
         some spatial domain for some reaction type.
 
@@ -471,6 +682,12 @@ class MGXS(object):
         name : str, optional
             Name of the multi-group cross section. Used as a label to identify
             tallies in OpenMC 'tallies.xml' file. Defaults to the empty string.
+        num_polar : Integral, optional
+            Number of equi-width polar angles for angle discretization;
+            defaults to no discretization
+        num_azimuthal : Integral, optional
+            Number of equi-width azimuthal angles for angle discretization;
+            defaults to no discretization
 
         Returns
         -------
@@ -523,6 +740,8 @@ class MGXS(object):
 
         mgxs.by_nuclide = by_nuclide
         mgxs.name = name
+        mgxs.num_polar = num_polar
+        mgxs.num_azimuthal = num_azimuthal
         return mgxs
 
     def get_nuclides(self):
@@ -702,7 +921,7 @@ class MGXS(object):
         # NOTE: This is important if tally merging was used
         if self.domain_type == 'mesh':
             filters = [_DOMAIN_TO_FILTER[self.domain_type]]
-            xyz = [range(1, x+1) for x in self.domain.dimension]
+            xyz = [range(1, x + 1) for x in self.domain.dimension]
             filter_bins = [tuple(itertools.product(*xyz))]
         elif self.domain_type != 'distribcell':
             filters = [_DOMAIN_TO_FILTER[self.domain_type]]
@@ -829,7 +1048,8 @@ class MGXS(object):
             xs = xs_tally.get_values(filters=filters,
                                      filter_bins=filter_bins, value=value)
         else:
-            xs = self.xs_tally.get_values(filters=filters, filter_bins=filter_bins,
+            xs = self.xs_tally.get_values(filters=filters,
+                                          filter_bins=filter_bins,
                                           nuclides=query_nuclides, value=value)
 
         # Divide by atom number densities for microscopic cross sections
@@ -851,18 +1071,26 @@ class MGXS(object):
             num_groups = len(groups)
 
         # Reshape tally data array with separate axes for domain and energy
-        num_subdomains = int(xs.shape[0] / num_groups)
-        new_shape = (num_subdomains, num_groups) + xs.shape[1:]
+        # Accomodate the polar and azimuthal bins if needed
+        num_subdomains = int(xs.shape[0] / (num_groups * self.num_polar *
+                                            self.num_azimuthal))
+        if self.num_polar > 1 or self.num_azimuthal > 1:
+            new_shape = (self.num_polar, self.num_azimuthal, num_subdomains,
+                         num_groups)
+        else:
+            new_shape = (num_subdomains, num_groups)
+        new_shape += xs.shape[1:]
         xs = np.reshape(xs, new_shape)
 
         # Reverse data if user requested increasing energy groups since
         # tally data is stored in order of increasing energies
         if order_groups == 'increasing':
-            xs = xs[:, ::-1, :]
+            xs = xs[..., ::-1, :]
 
         if squeeze:
-            xs = np.squeeze(xs)
-            xs = np.atleast_1d(xs)
+            # We want to squeeze out everything but the polar, azimuthal,
+            # and energy group data.
+            xs = self._squeeze_xs(xs)
 
         return xs
 
@@ -929,7 +1157,8 @@ class MGXS(object):
                 else:
                     tally_filter.bins = coarse_groups.group_edges
                     mean = np.add.reduceat(mean, energy_indices, axis=i)
-                    std_dev = np.add.reduceat(std_dev**2, energy_indices, axis=i)
+                    std_dev = np.add.reduceat(std_dev**2, energy_indices,
+                                              axis=i)
                     std_dev = np.sqrt(std_dev)
 
             # Reshape condensed data arrays with one dimension for all filters
@@ -1286,7 +1515,7 @@ class MGXS(object):
         elif self.domain_type == 'distribcell':
             subdomains = np.arange(self.num_subdomains, dtype=np.int)
         elif self.domain_type == 'mesh':
-            xyz = [range(1, x+1) for x in self.domain.dimension]
+            xyz = [range(1, x + 1) for x in self.domain.dimension]
             subdomains = list(itertools.product(*xyz))
         else:
             subdomains = [self.domain.id]
@@ -1318,6 +1547,13 @@ class MGXS(object):
             print(string)
             return
 
+        # Set polar/azimuthal bins
+        if self.num_polar > 1 or self.num_azimuthal > 1:
+            pol_bins = np.linspace(0., np.pi, num=self.num_polar + 1,
+                                   endpoint=True)
+            azi_bins = np.linspace(-np.pi, np.pi, num=self.num_azimuthal + 1,
+                                   endpoint=True)
+
         # Loop over all subdomains
         for subdomain in subdomains:
 
@@ -1335,18 +1571,45 @@ class MGXS(object):
                 string += '{0: <16}\n'.format(xs_header)
                 template = '{0: <12}Group {1} [{2: <10} - {3: <10}eV]:\t'
 
-                # Loop over energy groups ranges
-                for group in range(1, self.num_groups+1):
-                    bounds = self.energy_groups.get_group_bounds(group)
-                    string += template.format('', group, bounds[0], bounds[1])
-                    average = self.get_xs([group], [subdomain], [nuclide],
-                                          xs_type=xs_type, value='mean')
-                    rel_err = self.get_xs([group], [subdomain], [nuclide],
-                                          xs_type=xs_type, value='rel_err')
-                    average = average.flatten()[0]
-                    rel_err = rel_err.flatten()[0] * 100.
-                    string += '{:.2e} +/- {:1.2e}%'.format(average, rel_err)
-                    string += '\n'
+                average_xs = self.get_xs(nuclides=[nuclide],
+                                         subdomains=[subdomain],
+                                         xs_type=xs_type, value='mean')
+                rel_err_xs = self.get_xs(nuclides=[nuclide],
+                                         subdomains=[subdomain],
+                                         xs_type=xs_type, value='rel_err')
+                rel_err_xs = rel_err_xs * 100.
+
+                if self.num_polar > 1 or self.num_azimuthal > 1:
+                    # Loop over polar, azimuthal, and energy group ranges
+                    for pol in range(len(pol_bins) - 1):
+                        pol_low, pol_high = pol_bins[pol: pol + 2]
+                        for azi in range(len(azi_bins) - 1):
+                            azi_low, azi_high = azi_bins[azi: azi + 2]
+                            string += '\t\tPolar Angle: [{0:5f} - {1:5f}]'.format(
+                                pol_low, pol_high) + \
+                                '\tAzimuthal Angle: [{0:5f} - {1:5f}]'.format(
+                                azi_low, azi_high) + '\n'
+                            for group in range(1, self.num_groups + 1):
+                                bounds = \
+                                    self.energy_groups.get_group_bounds(group)
+                                string += '\t' + template.format('', group,
+                                                                 bounds[0],
+                                                                 bounds[1])
+
+                                string += '{0:.2e} +/- {1:.2e}%'.format(
+                                    average_xs[pol, azi, group - 1],
+                                    rel_err_xs[pol, azi, group - 1])
+                                string += '\n'
+                            string += '\n'
+                else:
+                    # Loop over energy groups
+                    for group in range(1, self.num_groups + 1):
+                        bounds = self.energy_groups.get_group_bounds(group)
+                        string += template.format('', group, bounds[0],
+                                                  bounds[1])
+                        string += '{0:.2e} +/- {1:.2e}%'.format(
+                            average_xs[group - 1], rel_err_xs[group - 1])
+                        string += '\n'
                 string += '\n'
             string += '\n'
 
@@ -1612,7 +1875,6 @@ class MGXS(object):
         if self.by_nuclide and nuclides == 'sum':
 
             # Use tally summation to sum across all nuclides
-            query_nuclides = [nuclides]
             xs_tally = self.xs_tally.summation(nuclides=self.get_nuclides())
             df = xs_tally.get_pandas_dataframe(
                 distribcell_paths=distribcell_paths)
@@ -1625,14 +1887,12 @@ class MGXS(object):
 
         # If the user requested a specific set of nuclides
         elif self.by_nuclide and nuclides != 'all':
-            query_nuclides = nuclides
             xs_tally = self.xs_tally.get_slice(nuclides=nuclides)
             df = xs_tally.get_pandas_dataframe(
                 distribcell_paths=distribcell_paths)
 
         # If the user requested all nuclides, keep nuclide column in dataframe
         else:
-            query_nuclides = self.nuclides
             df = self.xs_tally.get_pandas_dataframe(
                 distribcell_paths=distribcell_paths)
 
@@ -1642,49 +1902,9 @@ class MGXS(object):
         else:
             df = df.drop('score', axis=1)
 
-        # Determine if change-in-angle bins are included in the MGXS to
-        # properly tile the group boundaries
-        if 'mu low' in df:
-            # Find the length of the mu filters indirectly from the number
-            # of times the mu bins repeats.
-            num_mu = int(df.shape[0] /
-                         df[df['mu low'] == df['mu low'][0]].shape[0])
-        else:
-            num_mu = 1
-
-        # Override energy groups bounds with indices
-        all_groups = np.arange(self.num_groups, 0, -1, dtype=np.int)
-        all_groups = np.repeat(all_groups, len(query_nuclides) * num_mu)
-        if 'energy low [eV]' in df and 'energyout low [eV]' in df:
-            df.rename(columns={'energy low [eV]': 'group in'},
-                      inplace=True)
-            in_groups = np.tile(all_groups, int(self.num_subdomains))
-            in_groups = np.repeat(in_groups, int(df.shape[0] / in_groups.size))
-            df['group in'] = in_groups
-            del df['energy high [eV]']
-
-            df.rename(columns={'energyout low [eV]': 'group out'},
-                      inplace=True)
-            out_groups = np.repeat(all_groups, self.xs_tally.num_scores)
-            out_groups = np.tile(out_groups, int(df.shape[0] / out_groups.size))
-            df['group out'] = out_groups
-            del df['energyout high [eV]']
-            columns = ['group in', 'group out']
-
-        elif 'energyout low [eV]' in df:
-            df.rename(columns={'energyout low [eV]': 'group out'},
-                      inplace=True)
-            in_groups = np.tile(all_groups, int(df.shape[0] / all_groups.size))
-            df['group out'] = in_groups
-            del df['energyout high [eV]']
-            columns = ['group out']
-
-        elif 'energy low [eV]' in df:
-            df.rename(columns={'energy low [eV]': 'group in'}, inplace=True)
-            in_groups = np.tile(all_groups, int(df.shape[0] / all_groups.size))
-            df['group in'] = in_groups
-            del df['energy high [eV]']
-            columns = ['group in']
+        # Convert azimuthal, polar, energy in and energy out bin values in to
+        # bin indices
+        columns = self._df_convert_columns_to_bins(df)
 
         # Select out those groups the user requested
         if not isinstance(groups, string_types):
@@ -1700,7 +1920,7 @@ class MGXS(object):
             else:
                 densities = self.get_nuclide_densities('sum')
             densities = np.repeat(densities, len(self.rxn_rate_tally.scores))
-            tile_factor = df.shape[0] / len(densities)
+            tile_factor = int(df.shape[0] / len(densities))
             df['mean'] /= np.tile(densities, tile_factor)
             df['std. dev.'] /= np.tile(densities, tile_factor)
 
@@ -1712,7 +1932,7 @@ class MGXS(object):
         # energy groups such that data is from fast to thermal
         if self.domain_type == 'mesh':
             mesh_str = 'mesh {0}'.format(self.domain.id)
-            df.sort_values(by=[(mesh_str, 'x'), (mesh_str, 'y'), \
+            df.sort_values(by=[(mesh_str, 'x'), (mesh_str, 'y'),
                                (mesh_str, 'z')] + columns, inplace=True)
         else:
             df.sort_values(by=[self.domain_type] + columns, inplace=True)
@@ -1767,6 +1987,12 @@ class MatrixMGXS(MGXS):
     name : str, optional
         Name of the multi-group cross section. Used as a label to identify
         tallies in OpenMC 'tallies.xml' file.
+    num_polar : Integral, optional
+        Number of equi-width polar angle bins for angle discretization;
+        defaults to one bin
+    num_azimuthal : Integral, optional
+        Number of equi-width azimuthal angle bins for angle discretization;
+        defaults to one bin
 
     Attributes
     ----------
@@ -1782,6 +2008,10 @@ class MatrixMGXS(MGXS):
         Domain type for spatial homogenization
     energy_groups : openmc.mgxs.EnergyGroups
         Energy group structure for energy condensation
+    num_polar : Integral
+        Number of equi-width polar angle bins for angle discretization
+    num_azimuthal : Integral
+        Number of equi-width azimuthal angle bins for angle discretization
     tally_trigger : openmc.Trigger
         An (optional) tally precision trigger given to each tally used to
         compute the cross section
@@ -1829,13 +2059,24 @@ class MatrixMGXS(MGXS):
 
     """
     @property
+    def _dont_squeeze(self):
+        """Create a tuple of axes which should not be removed during the get_xs
+        process
+        """
+        if self.num_polar > 1 or self.num_azimuthal > 1:
+            return (0, 1, 3, 4)
+        else:
+            return (1, 2)
+
+    @property
     def filters(self):
         # Create the non-domain specific Filters for the Tallies
         group_edges = self.energy_groups.group_edges
         energy = openmc.EnergyFilter(group_edges)
         energyout = openmc.EnergyoutFilter(group_edges)
+        filters = [[energy], [energy, energyout]]
 
-        return [[energy], [energy, energyout]]
+        return self._add_angle_filters(filters)
 
     def get_xs(self, in_groups='all', out_groups='all',
                subdomains='all', nuclides='all',
@@ -1975,23 +2216,37 @@ class MatrixMGXS(MGXS):
             num_out_groups = len(out_groups)
 
         # Reshape tally data array with separate axes for domain and energy
-        num_subdomains = int(xs.shape[0] / (num_in_groups * num_out_groups))
-        new_shape = (num_subdomains, num_in_groups, num_out_groups)
-        new_shape += xs.shape[1:]
-        xs = np.reshape(xs, new_shape)
+        # Accomodate the polar and azimuthal bins if needed
+        num_subdomains = int(xs.shape[0] / (num_in_groups * num_out_groups *
+                                            self.num_polar *
+                                            self.num_azimuthal))
+        if self.num_polar > 1 or self.num_azimuthal > 1:
+            new_shape = (self.num_polar, self.num_azimuthal, num_subdomains,
+                         num_in_groups, num_out_groups)
+            new_shape += xs.shape[1:]
+            xs = np.reshape(xs, new_shape)
 
-        # Transpose the matrix if requested by user
-        if row_column == 'outin':
-            xs = np.swapaxes(xs, 1, 2)
+            # Transpose the matrix if requested by user
+            if row_column == 'outin':
+                xs = np.swapaxes(xs, 3, 4)
+        else:
+            new_shape = (num_subdomains, num_in_groups, num_out_groups)
+            new_shape += xs.shape[1:]
+            xs = np.reshape(xs, new_shape)
+
+            # Transpose the matrix if requested by user
+            if row_column == 'outin':
+                xs = np.swapaxes(xs, 1, 2)
 
         # Reverse data if user requested increasing energy groups since
         # tally data is stored in order of increasing energies
         if order_groups == 'increasing':
-            xs = xs[:, ::-1, ::-1, :]
+            xs = xs[..., ::-1, ::-1, :]
 
         if squeeze:
-            xs = np.squeeze(xs)
-            xs = np.atleast_2d(xs)
+            # We want to squeeze out everything but the polar, azimuthal,
+            # and in/out energy group data.
+            xs = self._squeeze_xs(xs)
 
         return xs
 
@@ -2076,7 +2331,7 @@ class MatrixMGXS(MGXS):
         elif self.domain_type == 'distribcell':
             subdomains = np.arange(self.num_subdomains, dtype=np.int)
         elif self.domain_type == 'mesh':
-            xyz = [range(1, x+1) for x in self.domain.dimension]
+            xyz = [range(1, x + 1) for x in self.domain.dimension]
             subdomains = list(itertools.product(*xyz))
         else:
             subdomains = [self.domain.id]
@@ -2116,12 +2371,18 @@ class MatrixMGXS(MGXS):
             bounds = self.energy_groups.get_group_bounds(group)
             string += template.format('', group, bounds[0], bounds[1])
 
+        # Set polar and azimuthal bins if necessary
+        if self.num_polar > 1 or self.num_azimuthal > 1:
+            pol_bins = np.linspace(0., np.pi, num=self.num_polar + 1,
+                                   endpoint=True)
+            azi_bins = np.linspace(-np.pi, np.pi, num=self.num_azimuthal + 1,
+                                   endpoint=True)
+
         # Loop over all subdomains
         for subdomain in subdomains:
 
-            if self.domain_type == 'distribcell':
-                string += \
-                    '{0: <16}=\t{1}\n'.format('\tSubdomain', subdomain)
+            if self.domain_type == 'distribcell' or self.domain_type == 'mesh':
+                string += '{0: <16}=\t{1}\n'.format('\tSubdomain', subdomain)
 
             # Loop over all Nuclides
             for nuclide in nuclides:
@@ -2134,24 +2395,47 @@ class MatrixMGXS(MGXS):
                 string += '{0: <16}\n'.format(xs_header)
                 template = '{0: <12}Group {1} -> Group {2}:\t\t'
 
-                # Loop over incoming/outgoing energy groups ranges
-                for in_group in range(1, self.num_groups + 1):
-                    for out_group in range(1, self.num_groups + 1):
-                        string += template.format('', in_group, out_group)
-                        average = \
-                            self.get_xs([in_group], [out_group],
-                                        [subdomain], [nuclide],
-                                        xs_type=xs_type, value='mean')
-                        rel_err = \
-                            self.get_xs([in_group], [out_group],
-                                        [subdomain], [nuclide],
-                                        xs_type=xs_type, value='rel_err')
-                        average = average.flatten()[0]
-                        rel_err = rel_err.flatten()[0] * 100.
-                        string += '{:1.2e} +/- {:1.2e}%'.format(average,
-                                                                rel_err)
+                average_xs = self.get_xs(nuclides=[nuclide],
+                                         subdomains=[subdomain],
+                                         xs_type=xs_type, value='mean')
+                rel_err_xs = self.get_xs(nuclides=[nuclide],
+                                         subdomains=[subdomain],
+                                         xs_type=xs_type, value='rel_err')
+                rel_err_xs = rel_err_xs * 100.
+
+                if self.num_polar > 1 or self.num_azimuthal > 1:
+                    # Loop over polar, azi, and in/out energy group ranges
+                    for pol in range(len(pol_bins) - 1):
+                        pol_low, pol_high = pol_bins[pol: pol + 2]
+                        for azi in range(len(azi_bins) - 1):
+                            azi_low, azi_high = azi_bins[azi: azi + 2]
+                            string += '\t\tPolar Angle: [{0:5f} - {1:5f}]'.format(
+                                pol_low, pol_high) + \
+                                '\tAzimuthal Angle: [{0:5f} - {1:5f}]'.format(
+                                azi_low, azi_high) + '\n'
+                            for in_group in range(1, self.num_groups + 1):
+                                for out_group in range(1, self.num_groups + 1):
+                                    string += '\t' + template.format('',
+                                                                     in_group,
+                                                                     out_group)
+                                    string += '{0:.2e} +/- {1:.2e}%'.format(
+                                        average_xs[pol, azi, in_group - 1,
+                                                   out_group - 1],
+                                        rel_err_xs[pol, azi, in_group - 1,
+                                                   out_group - 1])
+                                    string += '\n'
+                                string += '\n'
+                            string += '\n'
+                else:
+                    # Loop over incoming/outgoing energy groups ranges
+                    for in_group in range(1, self.num_groups + 1):
+                        for out_group in range(1, self.num_groups + 1):
+                            string += template.format('', in_group, out_group)
+                            string += '{0:.2e} +/- {1:.2e}%'.format(
+                                average_xs[in_group - 1, out_group - 1],
+                                rel_err_xs[in_group - 1, out_group - 1])
+                            string += '\n'
                         string += '\n'
-                    string += '\n'
                 string += '\n'
             string += '\n'
 
@@ -2197,6 +2481,12 @@ class TotalXS(MGXS):
     name : str, optional
         Name of the multi-group cross section. Used as a label to identify
         tallies in OpenMC 'tallies.xml' file.
+    num_polar : Integral, optional
+        Number of equi-width polar angle bins for angle discretization;
+        defaults to one bin
+    num_azimuthal : Integral, optional
+        Number of equi-width azimuthal angle bins for angle discretization;
+        defaults to one bin
 
     Attributes
     ----------
@@ -2212,6 +2502,10 @@ class TotalXS(MGXS):
         Domain type for spatial homogenization
     energy_groups : openmc.mgxs.EnergyGroups
         Energy group structure for energy condensation
+    num_polar : Integral
+        Number of equi-width polar angle bins for angle discretization
+    num_azimuthal : Integral
+        Number of equi-width azimuthal angle bins for angle discretization
     tally_trigger : openmc.Trigger
         An (optional) tally precision trigger given to each tally used to
         compute the cross section
@@ -2261,9 +2555,11 @@ class TotalXS(MGXS):
     """
 
     def __init__(self, domain=None, domain_type=None,
-                 groups=None, by_nuclide=False, name=''):
+                 groups=None, by_nuclide=False, name='', num_polar=1,
+                 num_azimuthal=1):
         super(TotalXS, self).__init__(domain, domain_type,
-                                      groups, by_nuclide, name)
+                                      groups, by_nuclide, name, num_polar,
+                                      num_azimuthal)
         self._rxn_type = 'total'
 
 
@@ -2315,6 +2611,12 @@ class TransportXS(MGXS):
     name : str, optional
         Name of the multi-group cross section. Used as a label to identify
         tallies in OpenMC 'tallies.xml' file.
+    num_polar : Integral, optional
+        Number of equi-width polar angle bins for angle discretization;
+        defaults to one bin
+    num_azimuthal : Integral, optional
+        Number of equi-width azimuthal angle bins for angle discretization;
+        defaults to one bin
 
     Attributes
     ----------
@@ -2330,6 +2632,10 @@ class TransportXS(MGXS):
         Domain type for spatial homogenization
     energy_groups : openmc.mgxs.EnergyGroups
         Energy group structure for energy condensation
+    num_polar : Integral
+        Number of equi-width polar angle bins for angle discretization
+    num_azimuthal : Integral
+        Number of equi-width azimuthal angle bins for angle discretization
     tally_trigger : openmc.Trigger
         An (optional) tally precision trigger given to each tally used to
         compute the cross section
@@ -2379,9 +2685,11 @@ class TransportXS(MGXS):
     """
 
     def __init__(self, domain=None, domain_type=None,
-                 groups=None, by_nuclide=False, name=''):
+                 groups=None, by_nuclide=False, name='', num_polar=1,
+                 num_azimuthal=1):
         super(TransportXS, self).__init__(domain, domain_type,
-                                          groups, by_nuclide, name)
+                                          groups, by_nuclide, name, num_polar,
+                                          num_azimuthal)
         self._rxn_type = 'transport'
         self._estimator = 'analog'
         self._valid_estimators = ['analog']
@@ -2395,7 +2703,9 @@ class TransportXS(MGXS):
         group_edges = self.energy_groups.group_edges
         energy_filter = openmc.EnergyFilter(group_edges)
         energyout_filter = openmc.EnergyoutFilter(group_edges)
-        return [[energy_filter], [energy_filter], [energyout_filter]]
+        filters = [[energy_filter], [energy_filter], [energyout_filter]]
+
+        return self._add_angle_filters(filters)
 
     @property
     def rxn_rate_tally(self):
@@ -2448,6 +2758,12 @@ class NuTransportXS(TransportXS):
     name : str, optional
         Name of the multi-group cross section. Used as a label to identify
         tallies in OpenMC 'tallies.xml' file.
+    num_polar : Integral, optional
+        Number of equi-width polar angle bins for angle discretization;
+        defaults to one bin
+    num_azimuthal : Integral, optional
+        Number of equi-width azimuthal angle bins for angle discretization;
+        defaults to one bin
 
     Attributes
     ----------
@@ -2463,6 +2779,10 @@ class NuTransportXS(TransportXS):
         Domain type for spatial homogenization
     energy_groups : openmc.mgxs.EnergyGroups
         Energy group structure for energy condensation
+    num_polar : Integral
+        Number of equi-width polar angle bins for angle discretization
+    num_azimuthal : Integral
+        Number of equi-width azimuthal angle bins for angle discretization
     tally_trigger : openmc.Trigger
         An (optional) tally precision trigger given to each tally used to
         compute the cross section
@@ -2512,9 +2832,11 @@ class NuTransportXS(TransportXS):
     """
 
     def __init__(self, domain=None, domain_type=None,
-                 groups=None, by_nuclide=False, name=''):
+                 groups=None, by_nuclide=False, name='', num_polar=1,
+                 num_azimuthal=1):
         super(NuTransportXS, self).__init__(domain, domain_type,
-                                            groups, by_nuclide, name)
+                                            groups, by_nuclide, name,
+                                            num_polar, num_azimuthal)
         self._rxn_type = 'nu-transport'
 
     @property
@@ -2569,6 +2891,12 @@ class AbsorptionXS(MGXS):
     name : str, optional
         Name of the multi-group cross section. Used as a label to identify
         tallies in OpenMC 'tallies.xml' file.
+    num_polar : Integral, optional
+        Number of equi-width polar angle bins for angle discretization;
+        defaults to one bin
+    num_azimuthal : Integral, optional
+        Number of equi-width azimuthal angle bins for angle discretization;
+        defaults to one bin
 
     Attributes
     ----------
@@ -2584,6 +2912,10 @@ class AbsorptionXS(MGXS):
         Domain type for spatial homogenization
     energy_groups : openmc.mgxs.EnergyGroups
         Energy group structure for energy condensation
+    num_polar : Integral
+        Number of equi-width polar angle bins for angle discretization
+    num_azimuthal : Integral
+        Number of equi-width azimuthal angle bins for angle discretization
     tally_trigger : openmc.Trigger
         An (optional) tally precision trigger given to each tally used to
         compute the cross section
@@ -2634,9 +2966,11 @@ class AbsorptionXS(MGXS):
     """
 
     def __init__(self, domain=None, domain_type=None,
-                 groups=None, by_nuclide=False, name=''):
+                 groups=None, by_nuclide=False, name='', num_polar=1,
+                 num_azimuthal=1):
         super(AbsorptionXS, self).__init__(domain, domain_type,
-                                           groups, by_nuclide, name)
+                                           groups, by_nuclide, name, num_polar,
+                                           num_azimuthal)
         self._rxn_type = 'absorption'
 
 
@@ -2686,6 +3020,12 @@ class CaptureXS(MGXS):
     name : str, optional
         Name of the multi-group cross section. Used as a label to identify
         tallies in OpenMC 'tallies.xml' file.
+    num_polar : Integral, optional
+        Number of equi-width polar angle bins for angle discretization;
+        defaults to one bin
+    num_azimuthal : Integral, optional
+        Number of equi-width azimuthal angle bins for angle discretization;
+        defaults to one bin
 
     Attributes
     ----------
@@ -2701,6 +3041,10 @@ class CaptureXS(MGXS):
         Domain type for spatial homogenization
     energy_groups : openmc.mgxs.EnergyGroups
         Energy group structure for energy condensation
+    num_polar : Integral
+        Number of equi-width polar angle bins for angle discretization
+    num_azimuthal : Integral
+        Number of equi-width azimuthal angle bins for angle discretization
     tally_trigger : openmc.Trigger
         An (optional) tally precision trigger given to each tally used to
         compute the cross section
@@ -2750,9 +3094,11 @@ class CaptureXS(MGXS):
     """
 
     def __init__(self, domain=None, domain_type=None,
-                 groups=None, by_nuclide=False, name=''):
+                 groups=None, by_nuclide=False, name='', num_polar=1,
+                 num_azimuthal=1):
         super(CaptureXS, self).__init__(domain, domain_type,
-                                        groups, by_nuclide, name)
+                                        groups, by_nuclide, name, num_polar,
+                                        num_azimuthal)
         self._rxn_type = 'capture'
 
     @property
@@ -2808,6 +3154,12 @@ class FissionXS(MGXS):
     name : str, optional
         Name of the multi-group cross section. Used as a label to identify
         tallies in OpenMC 'tallies.xml' file.
+    num_polar : Integral, optional
+        Number of equi-width polar angle bins for angle discretization;
+        defaults to one bin
+    num_azimuthal : Integral, optional
+        Number of equi-width azimuthal angle bins for angle discretization;
+        defaults to one bin
 
     Attributes
     ----------
@@ -2823,6 +3175,10 @@ class FissionXS(MGXS):
         Domain type for spatial homogenization
     energy_groups : openmc.mgxs.EnergyGroups
         Energy group structure for energy condensation
+    num_polar : Integral
+        Number of equi-width polar angle bins for angle discretization
+    num_azimuthal : Integral
+        Number of equi-width azimuthal angle bins for angle discretization
     tally_trigger : openmc.Trigger
         An (optional) tally precision trigger given to each tally used to
         compute the cross section
@@ -2872,9 +3228,11 @@ class FissionXS(MGXS):
     """
 
     def __init__(self, domain=None, domain_type=None,
-                 groups=None, by_nuclide=False, name=''):
+                 groups=None, by_nuclide=False, name='', num_polar=1,
+                 num_azimuthal=1):
         super(FissionXS, self).__init__(domain, domain_type,
-                                        groups, by_nuclide, name)
+                                        groups, by_nuclide, name, num_polar,
+                                        num_azimuthal)
         self._rxn_type = 'fission'
 
 
@@ -2919,6 +3277,12 @@ class NuFissionXS(MGXS):
     name : str, optional
         Name of the multi-group cross section. Used as a label to identify
         tallies in OpenMC 'tallies.xml' file.
+    num_polar : Integral, optional
+        Number of equi-width polar angle bins for angle discretization;
+        defaults to one bin
+    num_azimuthal : Integral, optional
+        Number of equi-width azimuthal angle bins for angle discretization;
+        defaults to one bin
 
     Attributes
     ----------
@@ -2934,6 +3298,10 @@ class NuFissionXS(MGXS):
         Domain type for spatial homogenization
     energy_groups : openmc.mgxs.EnergyGroups
         Energy group structure for energy condensation
+    num_polar : Integral
+        Number of equi-width polar angle bins for angle discretization
+    num_azimuthal : Integral
+        Number of equi-width azimuthal angle bins for angle discretization
     tally_trigger : openmc.Trigger
         An (optional) tally precision trigger given to each tally used to
         compute the cross section
@@ -2983,10 +3351,13 @@ class NuFissionXS(MGXS):
     """
 
     def __init__(self, domain=None, domain_type=None,
-                 groups=None, by_nuclide=False, name=''):
+                 groups=None, by_nuclide=False, name='', num_polar=1,
+                 num_azimuthal=1):
         super(NuFissionXS, self).__init__(domain, domain_type,
-                                          groups, by_nuclide, name)
+                                          groups, by_nuclide, name, num_polar,
+                                          num_azimuthal)
         self._rxn_type = 'nu-fission'
+
 
 class KappaFissionXS(MGXS):
     r"""A recoverable fission energy production rate multi-group cross section.
@@ -3034,6 +3405,12 @@ class KappaFissionXS(MGXS):
     name : str, optional
         Name of the multi-group cross section. Used as a label to identify
         tallies in OpenMC 'tallies.xml' file.
+    num_polar : Integral, optional
+        Number of equi-width polar angle bins for angle discretization;
+        defaults to one bin
+    num_azimuthal : Integral, optional
+        Number of equi-width azimuthal angle bins for angle discretization;
+        defaults to one bin
 
     Attributes
     ----------
@@ -3049,6 +3426,10 @@ class KappaFissionXS(MGXS):
         Domain type for spatial homogenization
     energy_groups : openmc.mgxs.EnergyGroups
         Energy group structure for energy condensation
+    num_polar : Integral
+        Number of equi-width polar angle bins for angle discretization
+    num_azimuthal : Integral
+        Number of equi-width azimuthal angle bins for angle discretization
     tally_trigger : openmc.Trigger
         An (optional) tally precision trigger given to each tally used to
         compute the cross section
@@ -3098,9 +3479,11 @@ class KappaFissionXS(MGXS):
     """
 
     def __init__(self, domain=None, domain_type=None,
-                 groups=None, by_nuclide=False, name=''):
+                 groups=None, by_nuclide=False, name='', num_polar=1,
+                 num_azimuthal=1):
         super(KappaFissionXS, self).__init__(domain, domain_type,
-                                             groups, by_nuclide, name)
+                                             groups, by_nuclide, name,
+                                             num_polar, num_azimuthal)
         self._rxn_type = 'kappa-fission'
 
 
@@ -3147,6 +3530,12 @@ class ScatterXS(MGXS):
     name : str, optional
         Name of the multi-group cross section. Used as a label to identify
         tallies in OpenMC 'tallies.xml' file.
+    num_polar : Integral, optional
+        Number of equi-width polar angle bins for angle discretization;
+        defaults to one bin
+    num_azimuthal : Integral, optional
+        Number of equi-width azimuthal angle bins for angle discretization;
+        defaults to one bin
 
     Attributes
     ----------
@@ -3162,6 +3551,10 @@ class ScatterXS(MGXS):
         Domain type for spatial homogenization
     energy_groups : openmc.mgxs.EnergyGroups
         Energy group structure for energy condensation
+    num_polar : Integral
+        Number of equi-width polar angle bins for angle discretization
+    num_azimuthal : Integral
+        Number of equi-width azimuthal angle bins for angle discretization
     tally_trigger : openmc.Trigger
         An (optional) tally precision trigger given to each tally used to
         compute the cross section
@@ -3211,9 +3604,11 @@ class ScatterXS(MGXS):
     """
 
     def __init__(self, domain=None, domain_type=None,
-                 groups=None, by_nuclide=False, name=''):
+                 groups=None, by_nuclide=False, name='', num_polar=1,
+                 num_azimuthal=1):
         super(ScatterXS, self).__init__(domain, domain_type,
-                                        groups, by_nuclide, name)
+                                        groups, by_nuclide, name, num_polar,
+                                        num_azimuthal)
         self._rxn_type = 'scatter'
 
 
@@ -3262,6 +3657,12 @@ class NuScatterXS(MGXS):
     name : str, optional
         Name of the multi-group cross section. Used as a label to identify
         tallies in OpenMC 'tallies.xml' file.
+    num_polar : Integral, optional
+        Number of equi-width polar angle bins for angle discretization;
+        defaults to one bin
+    num_azimuthal : Integral, optional
+        Number of equi-width azimuthal angle bins for angle discretization;
+        defaults to one bin
 
     Attributes
     ----------
@@ -3277,6 +3678,10 @@ class NuScatterXS(MGXS):
         Domain type for spatial homogenization
     energy_groups : openmc.mgxs.EnergyGroups
         Energy group structure for energy condensation
+    num_polar : Integral
+        Number of equi-width polar angle bins for angle discretization
+    num_azimuthal : Integral
+        Number of equi-width azimuthal angle bins for angle discretization
     tally_trigger : openmc.Trigger
         An (optional) tally precision trigger given to each tally used to
         compute the cross section
@@ -3326,9 +3731,11 @@ class NuScatterXS(MGXS):
     """
 
     def __init__(self, domain=None, domain_type=None,
-                 groups=None, by_nuclide=False, name=''):
+                 groups=None, by_nuclide=False, name='', num_polar=1,
+                 num_azimuthal=1):
         super(NuScatterXS, self).__init__(domain, domain_type,
-                                          groups, by_nuclide, name)
+                                          groups, by_nuclide, name, num_polar,
+                                          num_azimuthal)
         self._rxn_type = 'nu-scatter'
         self._estimator = 'analog'
         self._valid_estimators = ['analog']
@@ -3390,6 +3797,12 @@ class ScatterMatrixXS(MatrixMGXS):
     name : str, optional
         Name of the multi-group cross section. Used as a label to identify
         tallies in OpenMC 'tallies.xml' file.
+    num_polar : Integral, optional
+        Number of equi-width polar angle bins for angle discretization;
+        defaults to one bin
+    num_azimuthal : Integral, optional
+        Number of equi-width azimuthal angle bins for angle discretization;
+        defaults to one bin
 
     Attributes
     ----------
@@ -3418,6 +3831,10 @@ class ScatterMatrixXS(MatrixMGXS):
         Domain type for spatial homogenization
     energy_groups : openmc.mgxs.EnergyGroups
         Energy group structure for energy condensation
+    num_polar : Integral
+        Number of equi-width polar angle bins for angle discretization
+    num_azimuthal : Integral
+        Number of equi-width azimuthal angle bins for angle discretization
     tally_trigger : openmc.Trigger
         An (optional) tally precision trigger given to each tally used to
         compute the cross section
@@ -3467,9 +3884,11 @@ class ScatterMatrixXS(MatrixMGXS):
     """
 
     def __init__(self, domain=None, domain_type=None,
-                 groups=None, by_nuclide=False, name=''):
+                 groups=None, by_nuclide=False, name='', num_polar=1,
+                 num_azimuthal=1):
         super(ScatterMatrixXS, self).__init__(domain, domain_type,
-                                              groups, by_nuclide, name)
+                                              groups, by_nuclide, name,
+                                              num_azimuthal)
         self._rxn_type = 'scatter'
         self._correction = 'P0'
         self._scatter_format = 'legendre'
@@ -3486,6 +3905,22 @@ class ScatterMatrixXS(MatrixMGXS):
         clone._legendre_order = self.legendre_order
         clone._histogram_bins = self.histogram_bins
         return clone
+
+    @property
+    def _dont_squeeze(self):
+        """Create a tuple of axes which should not be removed during the get_xs
+        process
+        """
+        if self.num_polar > 1 or self.num_azimuthal > 1:
+            if self.scatter_format == 'histogram':
+                return (0, 1, 3, 4, 5)
+            else:
+                return (0, 1, 3, 4)
+        else:
+            if self.scatter_format == 'histogram':
+                return (1, 2, 3)
+            else:
+                return (1, 2)
 
     @property
     def correction(self):
@@ -3534,7 +3969,7 @@ class ScatterMatrixXS(MatrixMGXS):
                                endpoint=True)
             filters = [[energy], [energy, energyout, openmc.MuFilter(bins)]]
 
-        return filters
+        return self._add_angle_filters(filters)
 
     @property
     def rxn_rate_tally(self):
@@ -3891,40 +4326,53 @@ class ScatterMatrixXS(MatrixMGXS):
             num_mu_bins = 1
 
         # Reshape tally data array with separate axes for domain and energy
-        num_subdomains = int(xs.shape[0] /
-                             (num_mu_bins * num_in_groups * num_out_groups))
-        if self.scatter_format == 'histogram':
-            new_shape = (num_subdomains, num_in_groups, num_out_groups,
-                         num_mu_bins)
+        # Accomodate the polar and azimuthal bins if needed
+        num_subdomains = int(xs.shape[0] / (num_mu_bins * num_in_groups *
+                                            num_out_groups * self.num_polar *
+                                            self.num_azimuthal))
+        if self.num_polar > 1 or self.num_azimuthal > 1:
+            if self.scatter_format == 'histogram':
+                new_shape = (self.num_polar, self.num_azimuthal,
+                             num_subdomains, num_in_groups, num_out_groups,
+                             num_mu_bins)
+            else:
+                new_shape = (self.num_polar, self.num_azimuthal,
+                             num_subdomains, num_in_groups, num_out_groups)
+            new_shape += xs.shape[1:]
+            xs = np.reshape(xs, new_shape)
+
+            # Transpose the scattering matrix if requested by user
+            if row_column == 'outin':
+                xs = np.swapaxes(xs, 3, 4)
+
+            # Reverse data if user requested increasing energy groups since
+            # tally data is stored in order of increasing energies
+            if order_groups == 'increasing':
+                xs = xs[:, :, :, ::-1, ::-1, ...]
         else:
-            new_shape = (num_subdomains, num_in_groups, num_out_groups)
-        new_shape += xs.shape[1:]
-        xs = np.reshape(xs, new_shape)
+            if self.scatter_format == 'histogram':
+                new_shape = (num_subdomains, num_in_groups, num_out_groups,
+                             num_mu_bins)
+            else:
+                new_shape = (num_subdomains, num_in_groups, num_out_groups)
+            new_shape += xs.shape[1:]
+            xs = np.reshape(xs, new_shape)
 
-        # Transpose the scattering matrix if requested by user
-        if row_column == 'outin':
-            xs = np.swapaxes(xs, 1, 2)
+            # Transpose the scattering matrix if requested by user
+            if row_column == 'outin':
+                xs = np.swapaxes(xs, 1, 2)
 
-        # Reverse data if user requested increasing energy groups since
-        # tally data is stored in order of increasing energies
-        if order_groups == 'increasing':
-            xs = xs[:, ::-1, ::-1, ...]
+            # Reverse data if user requested increasing energy groups since
+            # tally data is stored in order of increasing energies
+            if order_groups == 'increasing':
+                xs = xs[:, ::-1, ::-1, ...]
 
         if squeeze:
-            # We want to squeeze out everything but the in_groups, out_groups,
-            # and, if needed, num_mu_bins dimension. These must not be squeezed
-            # so 1-group problems have the correct shape.
-            if self.scatter_format == 'histogram':
-                axes = (5, 4, 0)
-            else:
-                axes = (4, 3, 0)
-            # Squeeze will return a ValueError if the axis has a size greater
-            # than 1, so try each axis in axes one at a time, catching the
-            # ValueError as needed.
-            for axis in axes:
-                if xs.shape[axis] == 1:
-                    xs = np.squeeze(xs, axis=axis)
-
+            # We want to squeeze out everything but the angles, in_groups,
+            # out_groups, and, if needed, num_mu_bins dimension. These must
+            # not be squeezed so 1-group, 1-angle problems have the correct
+            # shape.
+            xs = self._squeeze_xs(xs)
         return xs
 
     def get_pandas_dataframe(self, groups='all', nuclides='all', moment='all',
@@ -4002,14 +4450,6 @@ class ScatterMatrixXS(MatrixMGXS):
                     'moment', moment, self.legendre_order, equality=True)
                 df = df[df['moment'] == 'P{}'.format(moment)]
 
-        elif self.scatter_format == 'histogram':
-            # Replace the mu low and mu high columns with a single mu bin
-            del df['mu high']
-            df.rename(columns={'mu low': 'mu bins'}, inplace=True)
-            bins = [i + 1 for i in range(self.histogram_bins)]
-            bins = np.tile(bins, int(df.shape[0] / len(bins)))
-            df['mu bins'] = bins
-
         return df
 
     def print_xs(self, subdomains='all', nuclides='all',
@@ -4041,7 +4481,7 @@ class ScatterMatrixXS(MatrixMGXS):
         elif self.domain_type == 'distribcell':
             subdomains = np.arange(self.num_subdomains, dtype=np.int)
         elif self.domain_type == 'mesh':
-            xyz = [range(1, x+1) for x in self.domain.dimension]
+            xyz = [range(1, x + 1) for x in self.domain.dimension]
             subdomains = list(itertools.product(*xyz))
         else:
             subdomains = [self.domain.id]
@@ -4086,12 +4526,18 @@ class ScatterMatrixXS(MatrixMGXS):
             bounds = self.energy_groups.get_group_bounds(group)
             string += template.format('', group, bounds[0], bounds[1])
 
+        # Set polar and azimuthal bins if necessary
+        if self.num_polar > 1 or self.num_azimuthal > 1:
+            pol_bins = np.linspace(0., np.pi, num=self.num_polar + 1,
+                                   endpoint=True)
+            azi_bins = np.linspace(-np.pi, np.pi, num=self.num_azimuthal + 1,
+                                   endpoint=True)
+
         # Loop over all subdomains
         for subdomain in subdomains:
 
-            if self.domain_type == 'distribcell':
-                string += \
-                    '{0: <16}=\t{1}\n'.format('\tSubdomain', subdomain)
+            if self.domain_type == 'distribcell' or self.domain_type == 'mesh':
+                string += '{0: <16}=\t{1}\n'.format('\tSubdomain', subdomain)
 
             # Loop over all Nuclides
             for nuclide in nuclides:
@@ -4104,22 +4550,48 @@ class ScatterMatrixXS(MatrixMGXS):
                 string += '{0: <16}\n'.format(xs_header)
                 template = '{0: <12}Group {1} -> Group {2}:\t\t'
 
-                # Loop over incoming/outgoing energy groups ranges
-                for in_group in range(1, self.num_groups + 1):
-                    for out_group in range(1, self.num_groups + 1):
-                        string += template.format('', in_group, out_group)
-                        average = \
-                            self.get_xs([in_group], [out_group],
-                                        [subdomain], [nuclide], moment=moment,
-                                        xs_type=xs_type, value='mean')
-                        rel_err = \
-                            self.get_xs([in_group], [out_group],
-                                        [subdomain], [nuclide], moment=moment,
-                                        xs_type=xs_type, value='rel_err')
-                        average = average.flatten()[0]
-                        rel_err = rel_err.flatten()[0] * 100.
-                        string += '{:1.2e} +/- {:1.2e}%'.format(average,
-                                                                rel_err)
+                average_xs = self.get_xs(nuclides=[nuclide],
+                                         subdomains=[subdomain],
+                                         xs_type=xs_type, value='mean',
+                                         moment=moment)
+                rel_err_xs = self.get_xs(nuclides=[nuclide],
+                                         subdomains=[subdomain],
+                                         xs_type=xs_type, value='rel_err',
+                                         moment=moment)
+                rel_err_xs = rel_err_xs * 100.
+
+                if self.num_polar > 1 or self.num_azimuthal > 1:
+                    # Loop over polar, azi, and in/out energy group ranges
+                    for pol in range(len(pol_bins) - 1):
+                        pol_low, pol_high = pol_bins[pol: pol + 2]
+                        for azi in range(len(azi_bins) - 1):
+                            azi_low, azi_high = azi_bins[azi: azi + 2]
+                            string += '\t\tPolar Angle: [{0:5f} - {1:5f}]'.format(
+                                pol_low, pol_high) + \
+                                '\tAzimuthal Angle: [{0:5f} - {1:5f}]'.format(
+                                azi_low, azi_high) + '\n'
+                            for in_group in range(1, self.num_groups + 1):
+                                for out_group in range(1, self.num_groups + 1):
+                                    string += '\t' + template.format('',
+                                                                     in_group,
+                                                                     out_group)
+                                    string += '{0:.2e} +/- {1:.2e}%'.format(
+                                        average_xs[pol, azi, in_group - 1,
+                                                   out_group - 1],
+                                        rel_err_xs[pol, azi, in_group - 1,
+                                                   out_group - 1])
+                                    string += '\n'
+                                string += '\n'
+                            string += '\n'
+                else:
+                    # Loop over incoming/outgoing energy groups ranges
+                    for in_group in range(1, self.num_groups + 1):
+                        for out_group in range(1, self.num_groups + 1):
+                            string += template.format('', in_group, out_group)
+                            string += '{0:.2e} +/- {1:.2e}%'.format(
+                                average_xs[in_group - 1, out_group - 1],
+                                rel_err_xs[in_group - 1, out_group - 1])
+                            string += '\n'
                         string += '\n'
                     string += '\n'
                 string += '\n'
@@ -4163,6 +4635,12 @@ class NuScatterMatrixXS(ScatterMatrixXS):
     name : str, optional
         Name of the multi-group cross section. Used as a label to identify
         tallies in OpenMC 'tallies.xml' file.
+    num_polar : Integral, optional
+        Number of equi-width polar angle bins for angle discretization;
+        defaults to one bin
+    num_azimuthal : Integral, optional
+        Number of equi-width azimuthal angle bins for angle discretization;
+        defaults to one bin
 
     Attributes
     ----------
@@ -4182,6 +4660,10 @@ class NuScatterMatrixXS(ScatterMatrixXS):
         Domain type for spatial homogenization
     energy_groups : openmc.mgxs.EnergyGroups
         Energy group structure for energy condensation
+    num_polar : Integral
+        Number of equi-width polar angle bins for angle discretization
+    num_azimuthal : Integral
+        Number of equi-width azimuthal angle bins for angle discretization
     tally_trigger : openmc.Trigger
         An (optional) tally precision trigger given to each tally used to
         compute the cross section
@@ -4231,9 +4713,11 @@ class NuScatterMatrixXS(ScatterMatrixXS):
     """
 
     def __init__(self, domain=None, domain_type=None,
-                 groups=None, by_nuclide=False, name=''):
+                 groups=None, by_nuclide=False, name='', num_polar=1,
+                 num_azimuthal=1):
         super(NuScatterMatrixXS, self).__init__(domain, domain_type,
-                                                groups, by_nuclide, name)
+                                                groups, by_nuclide, name,
+                                                num_polar, num_azimuthal)
         self._rxn_type = 'nu-scatter'
         self._hdf5_key = 'nu-scatter matrix'
 
@@ -4289,6 +4773,12 @@ class MultiplicityMatrixXS(MatrixMGXS):
     name : str, optional
         Name of the multi-group cross section. Used as a label to identify
         tallies in OpenMC 'tallies.xml' file.
+    num_polar : Integral, optional
+        Number of equi-width polar angle bins for angle discretization;
+        defaults to one bin
+    num_azimuthal : Integral, optional
+        Number of equi-width azimuthal angle bins for angle discretization;
+        defaults to one bin
 
     Attributes
     ----------
@@ -4304,6 +4794,10 @@ class MultiplicityMatrixXS(MatrixMGXS):
         Domain type for spatial homogenization
     energy_groups : openmc.mgxs.EnergyGroups
         Energy group structure for energy condensation
+    num_polar : Integral
+        Number of equi-width polar angle bins for angle discretization
+    num_azimuthal : Integral
+        Number of equi-width azimuthal angle bins for angle discretization
     tally_trigger : openmc.Trigger
         An (optional) tally precision trigger given to each tally used to
         compute the cross section
@@ -4353,9 +4847,11 @@ class MultiplicityMatrixXS(MatrixMGXS):
     """
 
     def __init__(self, domain=None, domain_type=None,
-                 groups=None, by_nuclide=False, name=''):
+                 groups=None, by_nuclide=False, name='', num_polar=1,
+                 num_azimuthal=1):
         super(MultiplicityMatrixXS, self).__init__(domain, domain_type, groups,
-                                                   by_nuclide, name)
+                                                   by_nuclide, name, num_polar,
+                                                   num_azimuthal)
         self._rxn_type = 'multiplicity matrix'
         self._estimator = 'analog'
         self._valid_estimators = ['analog']
@@ -4371,8 +4867,9 @@ class MultiplicityMatrixXS(MatrixMGXS):
         group_edges = self.energy_groups.group_edges
         energy = openmc.EnergyFilter(group_edges)
         energyout = openmc.EnergyoutFilter(group_edges)
+        filters = [[energy, energyout], [energy, energyout]]
 
-        return [[energy, energyout], [energy, energyout]]
+        return self._add_angle_filters(filters)
 
     @property
     def rxn_rate_tally(self):
@@ -4438,6 +4935,12 @@ class NuFissionMatrixXS(MatrixMGXS):
     name : str, optional
         Name of the multi-group cross section. Used as a label to identify
         tallies in OpenMC 'tallies.xml' file.
+    num_polar : Integral, optional
+        Number of equi-width polar angle bins for angle discretization;
+        defaults to one bin
+    num_azimuthal : Integral, optional
+        Number of equi-width azimuthal angle bins for angle discretization;
+        defaults to one bin
 
     Attributes
     ----------
@@ -4453,6 +4956,10 @@ class NuFissionMatrixXS(MatrixMGXS):
         Domain type for spatial homogenization
     energy_groups : openmc.mgxs.EnergyGroups
         Energy group structure for energy condensation
+    num_polar : Integral
+        Number of equi-width polar angle bins for angle discretization
+    num_azimuthal : Integral
+        Number of equi-width azimuthal angle bins for angle discretization
     tally_trigger : openmc.Trigger
         An (optional) tally precision trigger given to each tally used to
         compute the cross section
@@ -4502,9 +5009,11 @@ class NuFissionMatrixXS(MatrixMGXS):
     """
 
     def __init__(self, domain=None, domain_type=None,
-                 groups=None, by_nuclide=False, name=''):
+                 groups=None, by_nuclide=False, name='', num_polar=1,
+                 num_azimuthal=1):
         super(NuFissionMatrixXS, self).__init__(domain, domain_type,
-                                                groups, by_nuclide, name)
+                                                groups, by_nuclide, name,
+                                                num_polar, num_azimuthal)
         self._rxn_type = 'nu-fission'
         self._hdf5_key = 'nu-fission matrix'
         self._estimator = 'analog'
@@ -4555,6 +5064,12 @@ class Chi(MGXS):
     name : str, optional
         Name of the multi-group cross section. Used as a label to identify
         tallies in OpenMC 'tallies.xml' file.
+    num_polar : Integral, optional
+        Number of equi-width polar angle bins for angle discretization;
+        defaults to one bin
+    num_azimuthal : Integral, optional
+        Number of equi-width azimuthal angle bins for angle discretization;
+        defaults to one bin
 
     Attributes
     ----------
@@ -4570,6 +5085,10 @@ class Chi(MGXS):
         Domain type for spatial homogenization
     energy_groups : openmc.mgxs.EnergyGroups
         Energy group structure for energy condensation
+    num_polar : Integral
+        Number of equi-width polar angle bins for angle discretization
+    num_azimuthal : Integral
+        Number of equi-width azimuthal angle bins for angle discretization
     tally_trigger : openmc.Trigger
         An (optional) tally precision trigger given to each tally used to
         compute the cross section
@@ -4619,11 +5138,23 @@ class Chi(MGXS):
     """
 
     def __init__(self, domain=None, domain_type=None,
-                 groups=None, by_nuclide=False, name=''):
-        super(Chi, self).__init__(domain, domain_type, groups, by_nuclide, name)
+                 groups=None, by_nuclide=False, name='', num_polar=1,
+                 num_azimuthal=1):
+        super(Chi, self).__init__(domain, domain_type, groups, by_nuclide,
+                                  name, num_polar, num_azimuthal)
         self._rxn_type = 'chi'
         self._estimator = 'analog'
         self._valid_estimators = ['analog']
+
+    @property
+    def _dont_squeeze(self):
+        """Create a tuple of axes which should not be removed during the get_xs
+        process
+        """
+        if self.num_polar > 1 or self.num_azimuthal > 1:
+            return (0, 1, 3)
+        else:
+            return (1,)
 
     @property
     def scores(self):
@@ -4635,7 +5166,9 @@ class Chi(MGXS):
         group_edges = self.energy_groups.group_edges
         energyout = openmc.EnergyoutFilter(group_edges)
         energyin = openmc.EnergyFilter([group_edges[0], group_edges[-1]])
-        return [[energyin], [energyout]]
+        filters = [[energyin], [energyout]]
+
+        return self._add_angle_filters(filters)
 
     @property
     def tally_keys(self):
@@ -4859,7 +5392,8 @@ class Chi(MGXS):
 
         # Construct a collection of the domain filter bins
         if not isinstance(subdomains, string_types):
-            cv.check_iterable_type('subdomains', subdomains, Integral, max_depth=3)
+            cv.check_iterable_type('subdomains', subdomains, Integral,
+                                   max_depth=3)
             filters.append(_DOMAIN_TO_FILTER[self.domain_type])
             subdomain_bins = []
             for subdomain in subdomains:
@@ -4929,24 +5463,31 @@ class Chi(MGXS):
         xs = np.squeeze(xs, axis=len(xs.shape) - 1)
         xs = np.nan_to_num(xs)
 
-        # Reshape tally data array with separate axes for domain and energy
         if groups == 'all':
             num_groups = self.num_groups
         else:
             num_groups = len(groups)
 
-        num_subdomains = int(xs.shape[0] / num_groups)
-        new_shape = (num_subdomains, num_groups) + xs.shape[1:]
+        # Reshape tally data array with separate axes for domain and energy
+        # Accomodate the polar and azimuthal bins if needed
+        num_subdomains = int(xs.shape[0] / (num_groups * self.num_polar *
+                                            self.num_azimuthal))
+        if self.num_polar > 1 or self.num_azimuthal > 1:
+            new_shape = (self.num_polar, self.num_azimuthal, num_subdomains,
+                         num_groups) + xs.shape[1:]
+        else:
+            new_shape = (num_subdomains, num_groups) + xs.shape[1:]
         xs = np.reshape(xs, new_shape)
 
         # Reverse data if user requested increasing energy groups since
         # tally data is stored in order of increasing energies
         if order_groups == 'increasing':
-            xs = xs[:, ::-1, :]
+            xs = xs[..., ::-1, :]
 
         if squeeze:
-            xs = np.squeeze(xs)
-            xs = np.atleast_1d(xs)
+            # We want to squeeze out everything but the polar, azimuthal,
+            # and energy group data.
+            xs = self._squeeze_xs(xs)
 
         return xs
 
@@ -5001,7 +5542,7 @@ class Chi(MGXS):
                 densities = self.get_nuclide_densities(nuclides)
             else:
                 densities = self.get_nuclide_densities('sum')
-            tile_factor = df.shape[0] / len(densities)
+            tile_factor = int(df.shape[0] / len(densities))
             df['mean'] *= np.tile(densities, tile_factor)
             df['std. dev.'] *= np.tile(densities, tile_factor)
 
@@ -5076,6 +5617,12 @@ class ChiPrompt(Chi):
     name : str, optional
         Name of the multi-group cross section. Used as a label to identify
         tallies in OpenMC 'tallies.xml' file.
+    num_polar : Integral, optional
+        Number of equi-width polar angle bins for angle discretization;
+        defaults to one bin
+    num_azimuthal : Integral, optional
+        Number of equi-width azimuthal angle bins for angle discretization;
+        defaults to one bin
 
     Attributes
     ----------
@@ -5091,6 +5638,10 @@ class ChiPrompt(Chi):
         Domain type for spatial homogenization
     energy_groups : openmc.mgxs.EnergyGroups
         Energy group structure for energy condensation
+    num_polar : Integral
+        Number of equi-width polar angle bins for angle discretization
+    num_azimuthal : Integral
+        Number of equi-width azimuthal angle bins for angle discretization
     tally_trigger : openmc.Trigger
         An (optional) tally precision trigger given to each tally used to
         compute the cross section
@@ -5140,8 +5691,11 @@ class ChiPrompt(Chi):
     """
 
     def __init__(self, domain=None, domain_type=None,
-                 groups=None, by_nuclide=False, name=''):
-        super(ChiPrompt, self).__init__(domain, domain_type, groups, by_nuclide, name)
+                 groups=None, by_nuclide=False, name='', num_polar=1,
+                 num_azimuthal=1):
+        super(ChiPrompt, self).__init__(domain, domain_type, groups,
+                                        by_nuclide, name, num_polar,
+                                        num_azimuthal)
         self._rxn_type = 'chi-prompt'
 
     @property
@@ -5191,6 +5745,12 @@ class InverseVelocity(MGXS):
     name : str, optional
         Name of the multi-group cross section. Used as a label to identify
         tallies in OpenMC 'tallies.xml' file.
+    num_polar : Integral, optional
+        Number of equi-width polar angle bins for angle discretization;
+        defaults to one bin
+    num_azimuthal : Integral, optional
+        Number of equi-width azimuthal angle bins for angle discretization;
+        defaults to one bin
 
     Attributes
     ----------
@@ -5206,6 +5766,10 @@ class InverseVelocity(MGXS):
         Domain type for spatial homogenization
     energy_groups : openmc.mgxs.EnergyGroups
         Energy group structure for energy condensation
+    num_polar : Integral
+        Number of equi-width polar angle bins for angle discretization
+    num_azimuthal : Integral
+        Number of equi-width azimuthal angle bins for angle discretization
     tally_trigger : openmc.Trigger
         An (optional) tally precision trigger given to each tally used to
         compute the cross section
@@ -5256,9 +5820,11 @@ class InverseVelocity(MGXS):
     """
 
     def __init__(self, domain=None, domain_type=None,
-                 groups=None, by_nuclide=False, name=''):
+                 groups=None, by_nuclide=False, name='', num_polar=1,
+                 num_azimuthal=1):
         super(InverseVelocity, self).__init__(domain, domain_type,
-                                              groups, by_nuclide, name)
+                                              groups, by_nuclide, name,
+                                              num_polar, num_azimuthal)
         self._rxn_type = 'inverse-velocity'
 
     def get_units(self, xs_type='macro'):
@@ -5326,6 +5892,12 @@ class PromptNuFissionXS(MGXS):
     name : str, optional
         Name of the multi-group cross section. Used as a label to identify
         tallies in OpenMC 'tallies.xml' file.
+    num_polar : Integral, optional
+        Number of equi-width polar angle bins for angle discretization;
+        defaults to one bin
+    num_azimuthal : Integral, optional
+        Number of equi-width azimuthal angle bins for angle discretization;
+        defaults to one bin
 
     Attributes
     ----------
@@ -5341,6 +5913,10 @@ class PromptNuFissionXS(MGXS):
         Domain type for spatial homogenization
     energy_groups : openmc.mgxs.EnergyGroups
         Energy group structure for energy condensation
+    num_polar : Integral
+        Number of equi-width polar angle bins for angle discretization
+    num_azimuthal : Integral
+        Number of equi-width azimuthal angle bins for angle discretization
     tally_trigger : openmc.Trigger
         An (optional) tally precision trigger given to each tally used to
         compute the cross section
@@ -5390,9 +5966,11 @@ class PromptNuFissionXS(MGXS):
     """
 
     def __init__(self, domain=None, domain_type=None,
-                 groups=None, by_nuclide=False, name=''):
+                 groups=None, by_nuclide=False, name='', num_polar=1,
+                 num_azimuthal=1):
         super(PromptNuFissionXS, self).__init__(domain, domain_type, groups,
-                                                by_nuclide, name)
+                                                by_nuclide, name, num_polar,
+                                                num_azimuthal)
         self._rxn_type = 'prompt-nu-fission'
 
 
@@ -5440,6 +6018,12 @@ class PromptNuFissionMatrixXS(MatrixMGXS):
     name : str, optional
         Name of the multi-group cross section. Used as a label to identify
         tallies in OpenMC 'tallies.xml' file.
+    num_polar : Integral, optional
+        Number of equi-width polar angle bins for angle discretization;
+        defaults to one bin
+    num_azimuthal : Integral, optional
+        Number of equi-width azimuthal angle bins for angle discretization;
+        defaults to one bin
 
     Attributes
     ----------
@@ -5455,6 +6039,10 @@ class PromptNuFissionMatrixXS(MatrixMGXS):
         Domain type for spatial homogenization
     energy_groups : openmc.mgxs.EnergyGroups
         Energy group structure for energy condensation
+    num_polar : Integral
+        Number of equi-width polar angle bins for angle discretization
+    num_azimuthal : Integral
+        Number of equi-width azimuthal angle bins for angle discretization
     tally_trigger : openmc.Trigger
         An (optional) tally precision trigger given to each tally used to
         compute the cross section
@@ -5504,9 +6092,11 @@ class PromptNuFissionMatrixXS(MatrixMGXS):
     """
 
     def __init__(self, domain=None, domain_type=None,
-                 groups=None, by_nuclide=False, name=''):
+                 groups=None, by_nuclide=False, name='', num_polar=1,
+                 num_azimuthal=1):
         super(PromptNuFissionMatrixXS, self).__init__(domain, domain_type,
-                                                      groups, by_nuclide, name)
+                                                      groups, by_nuclide, name,
+                                                      num_polar, num_azimuthal)
         self._rxn_type = 'prompt-nu-fission'
         self._hdf5_key = 'prompt-nu-fission matrix'
         self._estimator = 'analog'

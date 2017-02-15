@@ -90,7 +90,7 @@ Temperature-dependent data, provided for temperature <TTT>K.
 :Datasets: - **total** (*double[]* or *double[][][]*) -- Total cross section.
              This is a 1-D vector if `representation` is "isotropic", or a 3-D
              vector if `representation` is "angle" with dimensions of
-             [groups][azimuthal][polar].
+             [polar][azimuthal][groups].
            - **absorption** (*double[]* or *double[][][]*) -- Absorption
              cross section.
              This is a 1-D vector if `representation` is "isotropic", or a 3-D
@@ -100,19 +100,19 @@ Temperature-dependent data, provided for temperature <TTT>K.
              cross section.
              This is a 1-D vector if `representation` is "isotropic", or a 3-D
              vector if `representation` is "angle" with dimensions of
-             [groups][azimuthal][polar].  This is only required if the dataset
+             [polar][azimuthal][groups].  This is only required if the dataset
              is fissionable and fission-tallies are expected to be used.
            - **kappa-fission** (*double[]* or *double[][][]*) -- Kappa-Fission
              (energy-release from fission) cross section.
              This is a 1-D vector if `representation` is "isotropic", or a 3-D
              vector if `representation` is "angle" with dimensions of
-             [groups][azimuthal][polar].  This is only required if the dataset
+             [polar][azimuthal][groups].  This is only required if the dataset
              is fissionable and fission-tallies are expected to be used.
            - **chi** (*double[]* or *double[][][]*) -- Fission neutron energy
              spectra.
              This is a 1-D vector if `representation` is "isotropic", or a 3-D
              vector if `representation` is "angle" with dimensions of
-             [groups][azimuthal][polar].  This is only required if the dataset
+             [polar][azimuthal][groups].  This is only required if the dataset
              is fissionable and fission-tallies are expected to be used.
            - **nu-fission** (*double[]* to *double[][][][]*) -- Nu-Fission
              cross section.
@@ -122,8 +122,11 @@ Temperature-dependent data, provided for temperature <TTT>K.
              spectra as well and thus will have one additional dimension
              for the outgoing energy group.  In this case, `nu-fission` has the
              same dimensionality as `multiplicity matrix`.
-           - **inverse-velocity** (*double[]*) -- Average inverse velocity
-             for each of the groups in the library. This dataset is optional.
+           - **inverse-velocity** (*double[]* or *double[][][]*) --
+             Average inverse velocity for each of the groups in the library.
+             This dataset is optional. This is a 1-D vector if `representation`
+             is "isotropic", or a 3-D vector if `representation` is "angle"
+             with dimensions of [polar][azimuthal][groups].
 
 **/<library name>/<TTT>K/scatter_data/**
 

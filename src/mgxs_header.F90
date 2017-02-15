@@ -438,14 +438,14 @@ module mgxs_header
       real(8)                     :: dmu, mu, norm, chi_sum
       integer                     :: order, order_dim, gin, gout, l, imu, length
       type(VectorInt)             :: temps_to_read
-      integer                     :: t, dg
+      integer                     :: t, dg, order_data
       type(Jagged2D), allocatable :: input_scatt(:), scatt_coeffs(:)
       type(Jagged1D), allocatable :: temp_mult(:)
       integer, allocatable        :: gmin(:), gmax(:)
 
       ! Call generic data gathering routine (will populate the metadata)
       call mgxs_from_hdf5(this, xs_id, temperature, method, tolerance, &
-                          temps_to_read, order_dim)
+                          temps_to_read, order_data)
 
       ! Set the number of delayed groups
       this % num_delayed_groups = delayed_groups
@@ -1009,7 +1009,7 @@ module mgxs_header
           length = 0
 
           do gin = 1, energy_groups
-            length = length + order_dim * (gmax(gin) - gmin(gin) + 1)
+            length = length + order_data * (gmax(gin) - gmin(gin) + 1)
           end do
 
           ! Allocate flattened array
@@ -1022,8 +1022,10 @@ module mgxs_header
           ! Compare the number of orders given with the maximum order of the
           ! problem.  Strip off the supefluous orders if needed.
           if (this % scatter_format == ANGLE_LEGENDRE) then
-            order = min(order_dim - 1, max_order)
+            order = min(order_data - 1, max_order)
             order_dim = order + 1
+          else
+            order_dim = order_data
           end if
 
           ! Convert temp_arr to a jagged array ((gin) % data(l, gout)) for
@@ -1038,6 +1040,8 @@ module mgxs_header
                 input_scatt(gin) % data(l, gout) = temp_arr(index)
                 index = index + 1
               end do
+              ! Adjust index for the orders we didnt take
+              index = index + (order_data - order_dim)
             end do
           end do
 
@@ -1108,7 +1112,7 @@ module mgxs_header
           deallocate(input_scatt)
 
           ! Now get the multiplication matrix
-          if (object_exists(scatt_grp, 'multiplicity matrix')) then
+          if (object_exists(scatt_grp, 'multiplicity_matrix')) then
 
             ! Now use this information to find the length of a container array
             ! to hold the flattened data
@@ -1120,7 +1124,7 @@ module mgxs_header
 
             ! Allocate flattened array
             allocate(temp_arr(length))
-            call read_dataset(temp_arr, scatt_grp, "multiplicity matrix")
+            call read_dataset(temp_arr, scatt_grp, "multiplicity_matrix")
 
             ! Convert temp_arr to a jagged array ((gin) % data(gout)) for
             ! passing to ScattData
@@ -1215,14 +1219,14 @@ module mgxs_header
       real(8)                     :: dmu, mu, norm, chi_sum
       integer                     :: order, order_dim, gin, gout, l, imu, dg
       type(VectorInt)             :: temps_to_read
-      integer                     :: t, length, ipol, iazi
+      integer                     :: t, length, ipol, iazi, order_data
       type(Jagged2D), allocatable :: input_scatt(:, :, :), scatt_coeffs(:, :, :)
       type(Jagged1D), allocatable :: temp_mult(:, :, :)
       integer, allocatable        :: gmin(:, :, :), gmax(:, :, :)
 
       ! Call generic data gathering routine (will populate the metadata)
       call mgxs_from_hdf5(this, xs_id, temperature, method, tolerance, &
-                          temps_to_read, order_dim)
+                          temps_to_read, order_data)
 
       ! Set the number of delayed groups
       this % num_delayed_groups = delayed_groups
@@ -1975,7 +1979,7 @@ module mgxs_header
           do ipol = 1, this % n_pol
             do iazi = 1, this % n_azi
               do gin = 1, energy_groups
-                length = length + order_dim * (gmax(gin, iazi, ipol) - &
+                length = length + order_data * (gmax(gin, iazi, ipol) - &
                      gmin(gin, iazi, ipol) + 1)
               end do
             end do
@@ -1991,8 +1995,10 @@ module mgxs_header
           ! Compare the number of orders given with the maximum order of the
           ! problem.  Strip off the superfluous orders if needed.
           if (this % scatter_format == ANGLE_LEGENDRE) then
-            order = min(order_dim - 1, max_order)
+            order = min(order_data - 1, max_order)
             order_dim = order + 1
+          else
+            order_dim = order_data
           end if
 
           ! Convert temp_1d to a jagged array ((gin) % data(l, gout)) for
@@ -2011,6 +2017,8 @@ module mgxs_header
                          temp_1d(index)
                     index = index + 1
                   end do ! gout
+                  ! Adjust index for the orders we didnt take
+                  index = index + (order_data - order_dim)
                 end do ! order
               end do ! gin
             end do ! iazi
@@ -2092,7 +2100,7 @@ module mgxs_header
           deallocate(input_scatt)
 
           ! Now get the multiplication matrix
-          if (object_exists(scatt_grp, 'multiplicity matrix')) then
+          if (object_exists(scatt_grp, 'multiplicity_matrix')) then
 
             ! Now use this information to find the length of a container array
             ! to hold the flattened data
@@ -2108,7 +2116,7 @@ module mgxs_header
 
             ! Allocate flattened array
             allocate(temp_1d(length))
-            call read_dataset(temp_1d, scatt_grp, "multiplicity matrix")
+            call read_dataset(temp_1d, scatt_grp, "multiplicity_matrix")
 
             ! Convert temp_1d to a jagged array ((gin) % data(gout)) for passing
             ! to ScattData
@@ -2959,9 +2967,9 @@ module mgxs_header
 
                 ! Now create our jagged data from the dense data
                 call jagged_from_dense_2D(scatt_coeffs(:, :, :, iazi, ipol), &
-                                          jagged_scatt)
+                                          jagged_scatt, gmin, gmax)
                 call jagged_from_dense_1D(temp_mult(:, :, iazi, ipol), &
-                                          jagged_mult, gmin, gmax)
+                                          jagged_mult)
 
                 ! Initialize the ScattData Object
                 call this % xs(t) % scatter(iazi, ipol) % obj % init(gmin, &

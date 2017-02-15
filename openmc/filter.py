@@ -1008,7 +1008,7 @@ class EnergyFilter(RealFilter):
         # them as necessary to account for other filters.
         lo_bins = np.repeat(self.bins[:-1], self.stride)
         hi_bins = np.repeat(self.bins[1:], self.stride)
-        tile_factor = data_size / len(lo_bins)
+        tile_factor = int(data_size / len(lo_bins))
         lo_bins = np.tile(lo_bins, tile_factor)
         hi_bins = np.tile(hi_bins, tile_factor)
 
@@ -1453,7 +1453,7 @@ class PolarFilter(RealFilter):
                 msg = 'Unable to add bin edge "{0}" to a "{1}" ' \
                       'since it is less than 0'.format(edge, type(self))
                 raise ValueError(msg)
-            elif edge > np.pi:
+            elif not np.isclose(edge, np.pi) and edge > np.pi:
                 msg = 'Unable to add bin edge "{0}" to a "{1}" ' \
                       'since it is greater than pi'.format(edge, type(self))
                 raise ValueError(msg)
@@ -1552,11 +1552,11 @@ class AzimuthalFilter(RealFilter):
                       'since it is a non-integer or floating point ' \
                       'value'.format(edge, type(self))
                 raise ValueError(msg)
-            elif edge < -np.pi:
+            elif not np.isclose(edge, -np.pi) and edge < -np.pi:
                 msg = 'Unable to add bin edge "{0}" to a "{1}" ' \
                       'since it is less than -pi'.format(edge, type(self))
                 raise ValueError(msg)
-            elif edge > np.pi:
+            elif not np.isclose(edge, np.pi) and edge > np.pi:
                 msg = 'Unable to add bin edge "{0}" to a "{1}" ' \
                       'since it is greater than pi'.format(edge, type(self))
                 raise ValueError(msg)

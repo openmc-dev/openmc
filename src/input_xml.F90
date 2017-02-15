@@ -3228,7 +3228,7 @@ contains
                 end do
                 filt % bins(Nangle + 1) = PI
               else
-                call fatal_error("Number of bins for mu filter must be&
+                call fatal_error("Number of bins for polar filter must be&
                      & greater than 1 on tally " &
                      // trim(to_str(t % id)) // ".")
               end if
@@ -3262,7 +3262,7 @@ contains
                 end do
                 filt % bins(Nangle + 1) = PI
               else
-                call fatal_error("Number of bins for mu filter must be&
+                call fatal_error("Number of bins for azimuthal filter must be&
                      & greater than 1 on tally " &
                      // trim(to_str(t % id)) // ".")
               end if

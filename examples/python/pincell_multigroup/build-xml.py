@@ -13,7 +13,7 @@ inactive = 10
 particles = 1000
 
 ###############################################################################
-#                 Exporting to OpenMC mgxs.xml file
+#                 Exporting to OpenMC mgxs.h5 file
 ###############################################################################
 
 # Instantiate the energy group data

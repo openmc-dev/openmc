@@ -39,9 +39,6 @@ contains
     type(Particle) :: p
     integer(8)     :: i_work
 
-    ! Volume calculations
-    if (size(volume_calcs) > 0) call run_volume_calculations()
-
     if (.not. restart_run) call initialize_source()
 
     ! Display header

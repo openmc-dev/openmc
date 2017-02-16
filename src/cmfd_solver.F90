@@ -301,9 +301,11 @@ contains
 
   subroutine convergence(iter, innerits, iconv)
 
-    use constants,  only: ONE, ZERO
-    use global,     only: cmfd_power_monitor, master
     use, intrinsic :: ISO_FORTRAN_ENV
+
+    use constants,  only: ONE, ZERO
+    use global,     only: cmfd_power_monitor
+    use message_passing, only: master
 
     integer, intent(in) :: iter     ! outer iteration number
     integer, intent(in) :: innerits ! inner iteration nubmer

@@ -9,6 +9,7 @@ module physics
   use material_header,        only: Material
   use math
   use mesh,                   only: get_mesh_indices
+  use message_passing
   use nuclide_header
   use output,                 only: write_message
   use particle_header,        only: Particle

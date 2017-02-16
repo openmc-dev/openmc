@@ -16,7 +16,8 @@ module URR_io
   implicit none
   private
   public :: read_avg_xs,&
-       read_prob_tables
+            read_prob_tables,&
+            write_MF2
 
 contains
 
@@ -27,9 +28,9 @@ contains
     integer, intent(in) :: i_iso ! isotope index
 
     logical :: file_exists ! does avg URR xs file exist?
-    character(7) :: readable ! is avg URR xs file readable?
-    character(7) :: zaid_str ! ZA number as a string
-    character(:), allocatable :: rec ! file record
+    character(7)   :: readable ! is avg URR xs file readable?
+    character(7)   :: zaid_str ! ZA number as a string
+    character(255) :: rec      ! file record
     integer :: E_depend      ! parameter energy dependence flag
     integer :: avg_unit = 12 ! input unit
     integer :: ir            ! record index
@@ -37,10 +38,10 @@ contains
     real(8) :: tol ! tolerance used in generating avg xs values
 
     if (isotopes(i_iso) % metastable) then
-      write(zaid_str, '(A7)') isotopes(i_iso) % ZAI
-      write(zaid_str, '(A7)') trim(adjustl(zaid_str)) // 'm'
+      write(zaid_str, '(I7)') isotopes(i_iso) % ZAI
+      zaid_str = trim(adjustl(zaid_str)) // 'm'
     else
-      write(zaid_str, '(A7)') isotopes(i_iso) % ZAI
+      write(zaid_str, '(I7)') isotopes(i_iso) % ZAI
     end if
 
     ! check that file exists and is readable
@@ -57,13 +58,13 @@ contains
 
     ! open file with average xs values
     call log_message(INFO, 'Loading average URR cross sections for ZA '//zaid_str)
-    open(unit=i_iso,&
+    open(unit=avg_unit,&
          file=trim(path_avg_xs)//trim(adjustl(zaid_str))//'-avg-urr-xs.dat')
 
 10  format(A255)
     ! ENDF-6 filepath
     read(avg_unit, 10) rec
-    
+
     ! resonance formalism
     read(avg_unit, 10) rec
 
@@ -93,7 +94,9 @@ contains
 
     ! number of energies
     read(avg_unit, 10) rec
+
     read(rec(10:80), '(i71)') isotopes(i_iso) % nE_tabs
+
     isotopes(i_iso) % num_avg_xs_grid = isotopes(i_iso) % nE_tabs
 
     ! column labels
@@ -136,13 +139,13 @@ contains
     integer :: tab_unit = 99 ! tables output file unit
     character(7) :: readable ! is probability table file readable?
     character(7) :: zaid_str ! ZA number as a string
-    character(:), allocatable :: rec ! file record
+    character(len=:), allocatable :: rec ! file record
 
     if (isotopes(i_iso) % metastable) then
-      write(zaid_str, '(A7)') isotopes(i_iso) % ZAI
-      write(zaid_str, '(A7)') trim(adjustl(zaid_str)) // 'm'
+      write(zaid_str, '(I7)') isotopes(i_iso) % ZAI
+      zaid_str = trim(adjustl(zaid_str)) // 'm'
     else
-      write(zaid_str, '(A7)') isotopes(i_iso) % ZAI
+      write(zaid_str, '(I7)') isotopes(i_iso) % ZAI
     end if
 
     ! check that file exists and is readable
@@ -283,10 +286,10 @@ contains
     character(80) :: rec     ! ENDF-6 file record
 
     if (isotopes(i_iso) % metastable) then
-      write(zaid_str, '(A7)') isotopes(i_iso) % ZAI
-      write(zaid_str, '(A7)') trim(adjustl(zaid_str)) // 'm'
+      write(zaid_str, '(I7)') isotopes(i_iso) % ZAI
+      zaid_str = trim(adjustl(zaid_str)) // 'm'
     else
-      write(zaid_str, '(A7)') isotopes(i_iso) % ZAI
+      write(zaid_str, '(I7)') isotopes(i_iso) % ZAI
     end if
 
     open(unit = res_unit, file = trim(adjustl(zaid_str))//'-urr-realization.dat')
@@ -297,8 +300,8 @@ contains
 
     ! HEAD
     write(rec, 10) ''
-    write(rec(1:11),  '(E11.0)') isotopes(i_iso) % ZAI
-    write(rec(12:22), '(E11.0)') isotopes(i_iso) % AWR
+    write(rec(1:11),  '(I11)') isotopes(i_iso) % ZAI
+    write(rec(12:22), '(es11.5e1)') isotopes(i_iso) % AWR
     write(rec(23:33), '(I11)') 0
     write(rec(34:44), '(I11)') 0
     write(rec(45:55), '(I11)') 1 ! NIS = 1 --> 1 isotope present in this ENDF-6 file
@@ -307,8 +310,8 @@ contains
 
     ! CONT
     write(rec, 10) ''
-    write(rec(1:11),  '(E11.0)') isotopes(i_iso) % ZAI
-    write(rec(12:22), '(E11.0)') ONE
+    write(rec(1:11),  '(i11)') isotopes(i_iso) % ZAI
+    write(rec(12:22), '(es11.5e1)') ONE
     write(rec(23:33), '(I11)')   0
     write(rec(34:44), '(I11)')   0 ! LFW = 0 since URR is being replaced with a realization
     write(rec(45:55), '(I11)')   isotopes(i_iso) % NER ! same NER, URR is just being replaced by a realization
@@ -317,8 +320,8 @@ contains
 
     ! CONT
     write(rec, 10) ''
-    write(rec(1:11),  '(E11.0)') isotopes(i_iso) % EL(isotopes(i_iso) % i_urr)
-    write(rec(12:22), '(E11.0)') isotopes(i_iso) % EH(isotopes(i_iso) % i_urr)
+    write(rec(1:11),  '(es11.5e1)') isotopes(i_iso) % EL(isotopes(i_iso) % i_urr)
+    write(rec(12:22), '(es11.5e1)') isotopes(i_iso) % EH(isotopes(i_iso) % i_urr)
     write(rec(24:33),   '(I10)') 1 ! isotopes(i_iso) % LRU(isotopes(i_iso) % i_urr): 2 --> 1 because the URR parameters are converted to a resolved realization
     write(rec(35:44),   '(I10)') 1 ! isotopes(i_iso) % LRF(isotopes(i_iso) % i_urr): new meaning of LRF in the RRR --> 1 indicates SLBW parameters
     write(rec(45:55),   '(I11)') isotopes(i_iso) % NRO(isotopes(i_iso) % i_urr)
@@ -327,8 +330,8 @@ contains
 
     ! CONT (handles SLBW, LRF = 1 and MLBW, LRF = 2)
     write(rec, 10) ''
-    write(rec(1:11),  '(E11.0)') isotopes(i_iso) % SPI(isotopes(i_iso) % i_urr)
-    write(rec(12:22), '(E11.0)') isotopes(i_iso) % AP(isotopes(i_iso) % i_urr)
+    write(rec(1:11),  '(es11.5e1)') isotopes(i_iso) % SPI(isotopes(i_iso) % i_urr)
+    write(rec(12:22), '(es11.5e1)') isotopes(i_iso) % AP(isotopes(i_iso) % i_urr)
     write(rec(23:33), '(I11)')   0
     write(rec(34:44), '(I11)')   0
     write(rec(45:55), '(I11)')   isotopes(i_iso) % NLS(isotopes(i_iso) % i_urr)
@@ -338,8 +341,8 @@ contains
     ! LIST
     do i_l = 1, isotopes(i_iso) % NLS(isotopes(i_iso) % i_urr)
       write(rec, 10) ''
-      write(rec(1:11),  '(E11.0)') isotopes(i_iso) % AWR
-      write(rec(12:22), '(E11.0)') ZERO ! QX = 0.0 because no competitive width is given
+      write(rec(1:11),  '(es11.5e1)') isotopes(i_iso) % AWR
+      write(rec(12:22), '(es11.5e1)') ZERO ! QX = 0.0 because no competitive width is given
       write(rec(23:33),   '(I11)') i_l - 1
       write(rec(34:44),   '(I11)') 0 ! LRX = 0 --> no competitive width given
       NRS = 0
@@ -373,7 +376,7 @@ contains
       end do
       do i_res_l = 1, NRS
         write(rec, 10) ''
-        write(rec(1:66), '(6E11.0)')&
+        write(rec(1:66), '(6es11.5e1)')&
              l_wave_bw_resonances(i_res_l) % E_lam,&
              l_wave_bw_resonances(i_res_l) % AJ,&
              l_wave_bw_resonances(i_res_l) % GT,&
@@ -387,8 +390,8 @@ contains
 
     ! SEND
     write(rec, 10) ''
-    write(rec(1:11),  '(E11.0)') ZERO
-    write(rec(12:22), '(E11.0)') ZERO
+    write(rec(1:11),  '(es11.5e1)') ZERO
+    write(rec(12:22), '(es11.5e1)') ZERO
     write(rec(23:33), '(I11)')   0
     write(rec(34:44), '(I11)')   0
     write(rec(45:55), '(I11)')   0

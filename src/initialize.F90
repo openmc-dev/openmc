@@ -29,7 +29,8 @@ module initialize
                            URR_write_xs => write_xs
   use URR_endf6,     only: URR_read_endf6 => read_endf6
   use URR_faddeeva,  only: URR_tabulate_w => tabulate_w
-  use URR_io,        only: URR_read_prob_tables => read_prob_tables
+  use URR_io,        only: URR_read_prob_tables => read_prob_tables,&
+                           URR_write_MF2 => write_MF2
   use URR_isotope,   only: URR_isotopes => isotopes
   use URR_constants, only: URR_ON_THE_FLY => ON_THE_FLY,&
                            URR_PROB_BANDS => PROB_BANDS,&
@@ -194,6 +195,7 @@ contains
                 if (URR_isotopes(i) % ZAI == nuclides(i_nuc) % zaid .and.&
                      (.not. allocated(URR_isotopes(i) % urr_resonances))) then
                   call URR_isotopes(i) % resonance_ladder_realization()
+                  call URR_write_MF2(i)
                 end if
               end do
             end do
@@ -209,6 +211,7 @@ contains
               if (URR_isotopes(i) % ZAI == nuclides(i_nuc) % zaid .and.&
                    (.not. allocated(URR_isotopes(i) % urr_resonances))) then
                 call URR_isotopes(i) % resonance_ladder_realization()
+                call URR_write_MF2(i)
                 call URR_isotopes(i) % generate_pointwise_xs(nuclides(i_nuc) % kT / K_BOLTZMANN)
               end if
             end do

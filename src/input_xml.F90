@@ -264,16 +264,18 @@ contains
       end if
     end if
 
-    ! Read run parameters
-    call get_run_parameters(node_mode)
+    if (run_mode == MODE_EIGENVALUE .or. run_mode == MODE_FIXEDSOURCE) then
+      ! Read run parameters
+      call get_run_parameters(node_mode)
 
-    ! Check number of active batches, inactive batches, and particles
-    if (n_active <= 0) then
-      call fatal_error("Number of active batches must be greater than zero.")
-    elseif (n_inactive < 0) then
-      call fatal_error("Number of inactive batches must be non-negative.")
-    elseif (n_particles <= 0) then
-      call fatal_error("Number of particles must be greater than zero.")
+      ! Check number of active batches, inactive batches, and particles
+      if (n_active <= 0) then
+        call fatal_error("Number of active batches must be greater than zero.")
+      elseif (n_inactive < 0) then
+        call fatal_error("Number of inactive batches must be non-negative.")
+      elseif (n_particles <= 0) then
+        call fatal_error("Number of particles must be greater than zero.")
+      end if
     end if
 
     ! Copy random number seed if specified
@@ -317,7 +319,10 @@ contains
     ! Get point to list of <source> elements and make sure there is at least one
     call get_node_list(doc, "source", node_source_list)
     n = get_list_size(node_source_list)
-    if (n == 0) call fatal_error("No source specified in settings XML file.")
+
+    if (run_mode == MODE_EIGENVALUE .or. run_mode == MODE_FIXEDSOURCE) then
+      if (n == 0) call fatal_error("No source specified in settings XML file.")
+    end if
 
     ! Allocate array for sources
     allocate(external_source(n))

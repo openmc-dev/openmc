@@ -1,7 +1,7 @@
 from abc import ABCMeta
+from collections import Iterable
 from numbers import Real, Integral
 from xml.etree import ElementTree as ET
-import sys
 from math import sqrt
 
 from six import add_metaclass, string_types
@@ -1796,7 +1796,60 @@ class Halfspace(Region):
             else str(self.surface.id)
 
 
-def make_hexagon_region(edge_length=1., orientation='y'):
+def get_rectangular_prism(width, height, axis='z', origin=(0., 0.)):
+    """Get an infinite rectangular prism from four planar surfaces.
+
+    Parameters
+    ----------
+    width: float
+        Prism width in units of cm. The width is aligned with the y, x,
+        or x axes for prisms parallel to the x, y, or z axis, respectively.
+    height: float
+        Prism height in units of cm. The height is aligned with the z, z,
+        or y axes for prisms parallel to the x, y, or z axis, respectively.
+    axis : {'x', 'y', 'z'}
+        Axis with which the infinite length of the prism should be aligned.
+        Defaults to 'z'.
+    origin: Iterable of two floats
+        Origin of the prism. The two floats correspond to (y,z), (x,z) or
+        (x,y) for prisms parallel to the x, y or z axis, respectively.
+        Defaults to (0., 0.).
+
+    Returns
+    -------
+    openmc.Region
+        The inside of a rectangular prism
+
+    """
+
+    check_type('width', width, Real)
+    check_type('height', height, Real)
+    check_value('axis', axis, ['x','y','z'])
+    check_type('origin', origin, Iterable, Real)
+
+    if axis == 'x':
+        min_y = YPlane(name='minimum y', y0=-width/2.+origin[0])
+        max_y = YPlane(name='maximum y', y0=+width/2.+origin[0])
+        min_z = ZPlane(name='minimum z', z0=-height/2.+origin[1])
+        max_z = ZPlane(name='maximum z', z0=+height/2.+origin[1])
+        prism = +min_y & -max_y & +min_z & -max_z
+    elif axis == 'y':
+        min_x = XPlane(name='minimum x', x0=-width/2.+origin[0])
+        max_x = XPlane(name='maximum x', x0=+width/2.+origin[0])
+        min_z = ZPlane(name='minimum z', z0=-height/2.+origin[1])
+        max_z = ZPlane(name='maximum z', z0=+height/2.+origin[1])
+        prism = +min_x & -max_x & +min_z & -max_z
+    else:
+        min_x = XPlane(name='minimum x', x0=-width/2.+origin[0])
+        max_x = XPlane(name='maximum x', x0=+width/2.+origin[0])
+        min_y = YPlane(name='minimum y', y0=-height/2.+origin[1])
+        max_y = YPlane(name='maximum y', y0=+height/2.+origin[1])
+        prism = +min_x & -max_x & +min_y & -max_y
+
+    return prism
+
+
+def get_hexagonal_prism(edge_length=1., orientation='y'):
     """Create a hexagon region from six surface planes.
 
     Parameters

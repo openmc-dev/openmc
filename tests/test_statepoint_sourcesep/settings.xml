@@ -4,11 +4,10 @@
   <state_point batches="10" />
   <source_point separate="true" />
 
-  <eigenvalue>
-    <batches>10</batches>
-    <inactive>5</inactive>
-    <particles>1000</particles>
-  </eigenvalue>
+  <run_mode>eigenvalue</run_mode>
+  <batches>10</batches>
+  <inactive>5</inactive>
+  <particles>1000</particles>
 
   <source>
     <space type="box">

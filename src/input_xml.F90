@@ -100,7 +100,6 @@ contains
     type(Node), pointer :: node_res_scat  => null()
     type(Node), pointer :: node_scatterer => null()
     type(Node), pointer :: node_trigger   => null()
-    type(Node), pointer :: node_keff_trigger => null()
     type(Node), pointer :: node_vol => null()
     type(Node), pointer :: node_tab_leg => null()
     type(NodeList), pointer :: node_scat_list => null()
@@ -224,111 +223,49 @@ contains
       end if
     end if
 
-    ! Make sure that either eigenvalue or fixed source was specified
-    if (.not. check_for_node(doc, "eigenvalue") .and. &
-         .not. check_for_node(doc, "fixed_source")) then
-      call fatal_error("<eigenvalue> or <fixed_source> not specified.")
-    end if
+    if (check_for_node(doc, "run_mode")) then
+      call get_node_value(doc, "run_mode", temp_str)
+      select case (to_lower(temp_str))
+      case ("eigenvalue")
+        run_mode = MODE_EIGENVALUE
+      case ("fixed source")
+        run_mode = MODE_FIXEDSOURCE
+      case ("plot")
+        run_mode = MODE_PLOTTING
+      case ("particle restart")
+        run_mode = MODE_PARTICLE
+      case ("volume")
+        run_mode = MODE_VOLUME
+      end select
 
-    ! Eigenvalue information
-    if (check_for_node(doc, "eigenvalue")) then
-      ! Set run mode
-      if (run_mode == NONE) run_mode = MODE_EIGENVALUE
+      ! Assume XML specifics <particles>, <batches>, etc. directly
+      node_mode => doc
+    else
+      call warning("<run_mode> should be specified.")
 
-      ! Get pointer to eigenvalue XML block
-      call get_node_ptr(doc, "eigenvalue", node_mode)
-
-      ! Check number of particles
-      if (.not. check_for_node(node_mode, "particles")) then
-        call fatal_error("Need to specify number of particles per generation.")
+      ! Make sure that either eigenvalue or fixed source was specified
+      if (.not. check_for_node(doc, "eigenvalue") .and. &
+           .not. check_for_node(doc, "fixed_source")) then
+        call fatal_error("<eigenvalue> or <fixed_source> not specified.")
       end if
 
-      ! Get number of particles
-      call get_node_value(node_mode, "particles", temp_long)
+      if (check_for_node(doc, "eigenvalue")) then
+        ! Set run mode
+        if (run_mode == NONE) run_mode = MODE_EIGENVALUE
 
-      ! If the number of particles was specified as a command-line argument, we
-      ! don't set it here
-      if (n_particles == 0) n_particles = temp_long
+        ! Get pointer to eigenvalue XML block
+        call get_node_ptr(doc, "eigenvalue", node_mode)
+      elseif (check_for_node(doc, "fixed_source")) then
+        ! Set run mode
+        if (run_mode == NONE) run_mode = MODE_FIXEDSOURCE
 
-      ! Get number of basic batches
-      call get_node_value(node_mode, "batches", n_batches)
-      if (.not. trigger_on) then
-        n_max_batches = n_batches
-      end if
-
-      ! Get number of inactive batches
-      call get_node_value(node_mode, "inactive", n_inactive)
-      n_active = n_batches - n_inactive
-      if (check_for_node(node_mode, "generations_per_batch")) then
-        call get_node_value(node_mode, "generations_per_batch", gen_per_batch)
-      end if
-
-      ! Allocate array for batch keff and entropy
-      allocate(k_generation(n_max_batches*gen_per_batch))
-      allocate(entropy(n_max_batches*gen_per_batch))
-      entropy = ZERO
-
-      ! Get the trigger information for keff
-      if (check_for_node(node_mode, "keff_trigger")) then
-        call get_node_ptr(node_mode, "keff_trigger", node_keff_trigger)
-
-        if (check_for_node(node_keff_trigger, "type")) then
-          call get_node_value(node_keff_trigger, "type", temp_str)
-          temp_str = trim(to_lower(temp_str))
-
-          select case (temp_str)
-          case ('std_dev')
-            keff_trigger % trigger_type = STANDARD_DEVIATION
-          case ('variance')
-            keff_trigger % trigger_type = VARIANCE
-          case ('rel_err')
-            keff_trigger % trigger_type = RELATIVE_ERROR
-          case default
-            call fatal_error("Unrecognized keff trigger type " // temp_str)
-          end select
-
-        else
-          call fatal_error("Specify keff trigger type in settings XML")
-        end if
-
-        if (check_for_node(node_keff_trigger, "threshold")) then
-          call get_node_value(node_keff_trigger, "threshold", &
-               keff_trigger % threshold)
-        else
-          call fatal_error("Specify keff trigger threshold in settings XML")
-        end if
+        ! Get pointer to fixed_source XML block
+        call get_node_ptr(doc, "fixed_source", node_mode)
       end if
     end if
 
-    ! Fixed source calculation information
-    if (check_for_node(doc, "fixed_source")) then
-      ! Set run mode
-      if (run_mode == NONE) run_mode = MODE_FIXEDSOURCE
-
-      ! Get pointer to fixed_source XML block
-      call get_node_ptr(doc, "fixed_source", node_mode)
-
-      ! Check number of particles
-      if (.not. check_for_node(node_mode, "particles")) then
-        call fatal_error("Need to specify number of particles per batch.")
-      end if
-
-      ! Get number of particles
-      call get_node_value(node_mode, "particles", temp_long)
-
-      ! If the number of particles was specified as a command-line argument, we
-      ! don't set it here
-      if (n_particles == 0) n_particles = temp_long
-
-      ! Copy batch information
-      call get_node_value(node_mode, "batches", n_batches)
-      if (.not. trigger_on) then
-        n_max_batches = n_batches
-      end if
-      n_active = n_batches
-      n_inactive    = 0
-      gen_per_batch = 1
-    end if
+    ! Read run parameters
+    call get_run_parameters(node_mode)
 
     ! Check number of active batches, inactive batches, and particles
     if (n_active <= 0) then
@@ -1092,6 +1029,86 @@ contains
     call close_xmldoc(doc)
 
   end subroutine read_settings_xml
+
+!===============================================================================
+! GET_RUN_PARAMETERS
+!===============================================================================
+
+  subroutine get_run_parameters(node_base)
+    type(Node), pointer :: node_base
+
+    integer(8) :: temp_long
+    character(MAX_LINE_LEN) :: temp_str
+    type(Node), pointer :: node_keff_trigger => null()
+
+    ! Check number of particles
+    if (.not. check_for_node(node_base, "particles")) then
+      call fatal_error("Need to specify number of particles.")
+    end if
+
+    ! Get number of particles
+    call get_node_value(node_base, "particles", temp_long)
+
+    ! If the number of particles was specified as a command-line argument, we
+    ! don't set it here
+    if (n_particles == 0) n_particles = temp_long
+
+    ! Get number of basic batches
+    call get_node_value(node_base, "batches", n_batches)
+    if (.not. trigger_on) then
+      n_max_batches = n_batches
+    end if
+    n_inactive = 0
+    gen_per_batch = 1
+
+    ! Get number of inactive batches
+    if (run_mode == MODE_EIGENVALUE) then
+      call get_node_value(node_base, "inactive", n_inactive)
+      if (check_for_node(node_base, "generations_per_batch")) then
+        call get_node_value(node_base, "generations_per_batch", gen_per_batch)
+      end if
+
+      ! Allocate array for batch keff and entropy
+      allocate(k_generation(n_max_batches*gen_per_batch))
+      allocate(entropy(n_max_batches*gen_per_batch))
+      entropy = ZERO
+
+      ! Get the trigger information for keff
+      if (check_for_node(node_base, "keff_trigger")) then
+        call get_node_ptr(node_base, "keff_trigger", node_keff_trigger)
+
+        if (check_for_node(node_keff_trigger, "type")) then
+          call get_node_value(node_keff_trigger, "type", temp_str)
+          temp_str = trim(to_lower(temp_str))
+
+          select case (temp_str)
+          case ('std_dev')
+            keff_trigger % trigger_type = STANDARD_DEVIATION
+          case ('variance')
+            keff_trigger % trigger_type = VARIANCE
+          case ('rel_err')
+            keff_trigger % trigger_type = RELATIVE_ERROR
+          case default
+            call fatal_error("Unrecognized keff trigger type " // temp_str)
+          end select
+
+        else
+          call fatal_error("Specify keff trigger type in settings XML")
+        end if
+
+        if (check_for_node(node_keff_trigger, "threshold")) then
+          call get_node_value(node_keff_trigger, "threshold", &
+               keff_trigger % threshold)
+        else
+          call fatal_error("Specify keff trigger threshold in settings XML")
+        end if
+      end if
+    end if
+
+    ! Determine number of active batches
+    n_active = n_batches - n_inactive
+
+  end subroutine get_run_parameters
 
 !===============================================================================
 ! READ_GEOMETRY_XML reads data from a geometry.xml file and parses it, checking

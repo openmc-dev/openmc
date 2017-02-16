@@ -8,6 +8,7 @@ import numpy as np
 
 import openmc.checkvalue as cv
 import openmc
+from openmc.mixin import EqualityMixin
 
 
 # "Static" variable for auto-generated and Mesh IDs
@@ -20,7 +21,7 @@ def reset_auto_mesh_id():
     AUTO_MESH_ID = 10000
 
 
-class Mesh(object):
+class Mesh(EqualityMixin):
     """A structured Cartesian mesh in one, two, or three dimensions
 
     Parameters
@@ -60,27 +61,6 @@ class Mesh(object):
         self._lower_left = None
         self._upper_right = None
         self._width = None
-
-    def __eq__(self, mesh2):
-        # Check type
-        if self._type != mesh2.type:
-            return False
-
-        # Check dimension
-        elif self._dimension != mesh2.dimension:
-            return False
-
-        # Check width
-        elif self._width != mesh2.width:
-            return False
-
-        # Check lower left / upper right
-        elif self._lower_left != mesh2.lower_left and \
-             self._upper_right != mesh2.upper_right:
-            return False
-
-        else:
-            return True
 
     @property
     def id(self):

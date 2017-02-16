@@ -48,9 +48,9 @@ contains
 
   subroutine openmc_init(intracomm)
 #ifdef MPIF08
-    type(MPI_Comm), intent(in) :: intracomm
+    type(MPI_Comm), intent(in) :: intracomm     ! MPI intracommunicator
 #else
-    integer, intent(in), optional :: intracomm
+    integer, intent(in), optional :: intracomm  ! MPI intracommunicator
 #endif
 
     ! Start total and initialization timer
@@ -167,9 +167,9 @@ contains
 
   subroutine initialize_mpi(intracomm)
 #ifdef MPIF08
-    type(MPI_Comm), intent(in) :: intracomm
+    type(MPI_Comm), intent(in) :: intracomm  ! MPI intracommunicator
 #else
-    integer, intent(in) :: intracomm
+    integer, intent(in) :: intracomm         ! MPI intracommunicator
 #endif
 
     integer                   :: bank_blocks(5)   ! Count for each datatype

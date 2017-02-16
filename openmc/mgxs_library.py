@@ -1721,21 +1721,18 @@ class XSdata(object):
             check_greater_than('num_azimuthal', num_azimuthal, 0)
 
         xsdata = copy.deepcopy(self)
+
+        # First handle the case where the current and requested
+        # representations are the same
         if target_representation == self.representation:
             # Check to make sure the num_polar and num_azimuthal values match
             if target_representation == 'angle':
                 if num_polar != self.num_polar or num_azimuthal != self.num_azimuthal:
-                    raise NotImplementedError("XSdata.convert_representation "
-                                              "cannot translate between "
+                    raise NotImplementedError("XCannot translate between "
                                               "`angle` representations with "
                                               "different angle bin structures")
-            # Nothing to do
+            # Nothing to do as the same structure was requested
             return xsdata
-
-        types = ['total', 'absorption', 'fission', 'nu_fission',
-                 'scatter_matrix', 'multiplicity_matrix', 'prompt_nu_fission',
-                 'delayed_nu_fission', 'kappa_fission', 'chi', 'chi_prompt',
-                 'chi_delayed', 'beta', 'decay_rate', 'inverse_velocity']
 
         xsdata.representation = target_representation
         # We have different actions depending on the representation conversion
@@ -1748,17 +1745,21 @@ class XSdata(object):
             xsdata.num_polar = num_polar
             xsdata.num_azimuthal = num_azimuthal
 
-        # Reset XSdata.xs_shapes to accomodate the new shape
+        # Reset xs_shapes so it is recalculated the next time it is needed
         xsdata._xs_shapes = None
 
         for i, temp in enumerate(xsdata.temperatures):
-            for xs in types:
+            for xs in ['total', 'absorption', 'fission', 'nu_fission',
+                       'scatter_matrix', 'multiplicity_matrix',
+                       'prompt_nu_fission', 'delayed_nu_fission',
+                       'kappa_fission', 'chi', 'chi_prompt', 'chi_delayed',
+                       'beta', 'decay_rate', 'inverse_velocity']:
                 # Get the original data
                 orig_data = getattr(self, '_' + xs)[i]
                 if orig_data is not None:
                     if target_representation == 'isotropic':
                         # Since we are going from angle to isotropic, the
-                        # current data is just averaged over the angle bins
+                        # current data is just the average over the angle bins
                         new_data = orig_data.mean(axis=(0, 1))
                     elif target_representation == 'angle':
                         # Since we are going from isotropic to angle, the
@@ -1787,7 +1788,7 @@ class XSdata(object):
         Returns
         -------
         openmc.XSdata
-            Multi-group cross section data with the same data as self, but
+            Multi-group cross section data with the same data as in self, but
             represented as specified in :param:`target_format`.
 
         """
@@ -1806,14 +1807,10 @@ class XSdata(object):
         xsdata = copy.deepcopy(self)
         xsdata.scatter_format = target_format
         xsdata.order = target_order
-        # Reset XSdata.xs_shapes to accomodate the new shape
+
+        # Reset and re-generate XSdata.xs_shapes with the new scattering format
         xsdata._xs_shapes = None
         xsdata.xs_shapes
-
-        # We have to accomodate the following possibilities:
-        # histogram -> tabular w/ same or diff order
-        # histogram -> legendre
-        # histogram -> histogram w/ same or diff order
 
         for i, temp in enumerate(xsdata.temperatures):
             orig_data = self._scatter_matrix[i]
@@ -1827,21 +1824,23 @@ class XSdata(object):
                     new_data[..., :order] = orig_data[..., :order]
                 elif target_format == 'tabular':
                     mu = np.linspace(-1, 1, xsdata.num_orders)
-                    # Evaluate the legendre on the tabular grid within mu
+                    # Evaluate the legendre on the mu grid
                     for imu in range(len(mu)):
                         new_data[..., imu] = \
                             np.sum((l + 0.5) * eval_legendre(l, mu[imu]) *
                                    orig_data[..., l]
                                    for l in range(self.num_orders))
                 elif target_format == 'histogram':
+                    # This code uses the vectorized integration capabilities
+                    # instead of having an isotropic and angle representation
+                    # path.
+                    # Set the histogram mu grid
                     mu = np.linspace(-1, 1, xsdata.num_orders + 1)
-                    # This code will be written to utilize the vectorized
-                    # integration capabilities instead of having an isotropic
-                    # and angle representation path.
+                    # For every bin perform simpson integration of a finely
+                    # sampled orig_data
                     for h_bin in range(xsdata.num_orders):
                         mu_fine = np.linspace(mu[h_bin], mu[h_bin + 1], _NMU)
-                        table_shape = new_data.shape[:-1] + (_NMU,)
-                        table_fine = np.zeros(table_shape)
+                        table_fine = np.zeros(new_data.shape[:-1] + (_NMU,))
                         for imu in range(len(mu_fine)):
                             table_fine[..., imu] = \
                                 np.sum((l + 0.5) *
@@ -1850,16 +1849,17 @@ class XSdata(object):
                                        for l in range(self.num_orders))
                         new_data[..., h_bin] = simps(table_fine, mu_fine)
 
-                    # Remove the very small results from numerical precision
-                    # issues (allowing conversions to be reproduced exactly)
+                    # Remove the very small values resulting from numerical
+                    # precision issues
                     new_data[..., np.abs(new_data) < 1.E-10] = 0.
 
             elif self.scatter_format == 'tabular':
+                # Calculate the mu points of the current data
                 mu_self = np.linspace(-1, 1, self.num_orders)
                 if target_format == 'legendre':
-                    # find the legendre coefficients via integration. To best
+                    # Find the Legendre coefficients via integration. To best
                     # use the vectorized integration capabilities of scipy,
-                    # this will be done with fixed sample integration routines.
+                    # this is done with fixed sample integration routines.
                     mu_fine = np.linspace(-1, 1, _NMU)
                     y = [interp1d(mu_self, orig_data)(mu_fine) *
                          eval_legendre(l, mu_fine)
@@ -1867,8 +1867,8 @@ class XSdata(object):
                     for l in range(xsdata.num_orders):
                         new_data[..., l] = simps(y[l], mu_fine)
 
-                    # Remove the very small results from numerical precision
-                    # issues (allowing conversions to be reproduced exactly)
+                    # Remove the very small values resulting from numerical
+                    # precision issues
                     new_data[..., np.abs(new_data) < 1.E-10] = 0.
                 elif target_format == 'tabular':
                     # Simply use an interpolating function to get the new data
@@ -1888,8 +1888,8 @@ class XSdata(object):
                         mu_fine = np.linspace(mu[h_bin], mu[h_bin + 1], _NMU)
                         new_data[..., h_bin] = simps(interp(mu_fine), mu_fine)
 
-                    # Remove the very small results from numerical precision
-                    # issues (allowing conversions to be reproduced exactly)
+                    # Remove the very small values resulting from numerical
+                    # precision issues
                     new_data[..., np.abs(new_data) < 1.E-10] = 0.
             elif self.scatter_format == 'histogram':
                 # The histogram format does not have enough information to
@@ -1918,8 +1918,8 @@ class XSdata(object):
                     for l in range(xsdata.num_orders):
                         new_data[..., l] = simps(y[l], mu_fine)
 
-                    # Remove the very small results from numerical precision
-                    # issues (allowing conversions to be reproduced exactly)
+                    # Remove the very small values resulting from numerical
+                    # precision issues
                     new_data[..., np.abs(new_data) < 1.E-10] = 0.
                 elif target_format == 'tabular':
                     # Simply use an interpolating function to get the new data
@@ -1939,208 +1939,12 @@ class XSdata(object):
                         new_data[..., h_bin] = \
                             norm * simps(interp(mu_fine), mu_fine)
 
-                    # Remove the very small results from numerical precision
-                    # issues (allowing conversions to be reproduced exactly)
+                    # Remove the very small values resulting from numerical
+                    # precision issues
                     new_data[..., np.abs(new_data) < 1.E-10] = 0.
             xsdata.set_scatter_matrix(new_data, temp)
 
         return xsdata
-
-    def convert_to_continuous_energy(self, temperature=294.):
-        """Converts the XSdata object to an equivalent
-        openmc.data.IncidentNeutron object.
-
-        Parameters
-        ----------
-        temperature : float
-            Temperature of dataset to print; defaults to 294K
-
-        Returns
-        -------
-        openmc.data.IncidentNeutron
-            The continuous-energy IncidentNeutron data library equivalent
-            to the MGXS data in self
-        """
-
-        # Check if this can be performed successfully
-        if self.representation == 'angle':
-            raise ValueError("Cannot convert angle-dependent MGXS; convert to "
-                             "an isotropic representation first")
-        required_types = ['absorption', 'scatter_matrix']
-        for type_check in required_types:
-            if getattr(self, '_' + type_check)[0] is None:
-                raise ValueError(type_check + ' data is required')
-        if temperature not in self.temperatures:
-            raise ValueError("Invalid temperature")
-
-        def convert_xs(group_edges, values):
-            cexs = openmc.data.Tabulated1D(group_edges,
-                                           np.append(values[::-1],
-                                                     [values[0]]),
-                                           breakpoints=[len(group_edges)],
-                                           interpolation=[1])
-            return cexs
-
-        # Build required metadata
-        kTs = self.temperatures[:] * openmc.data.K_BOLTZMANN
-        if self.atomic_weight_ratio:
-            awr = self.atomic_weight_ratio
-        else:
-            awr = 1.
-
-        # Get the temperature index
-        iT = np.where(self.temperatures == temperature)[0][0]
-        data = openmc.data.IncidentNeutron(self.name, 1, 1, 0, awr, kTs)
-        strT = "{}K".format(int(round(self.temperatures[iT])))
-        data.energy = {strT: self.energy_groups.group_edges}
-        energy_midpoints = (self.energy_groups.group_edges[1:] +
-                            self.energy_groups.group_edges[:-1]) / 2.
-
-        # Elastic MGXS: must explicitly be 0 barns to avoid incorrect
-        # elastic_scatter calculation with data available to us in MG library.
-        el_rxn = openmc.data.Reaction(2)
-        el_rxn.xs[strT] = \
-            convert_xs(self.energy_groups.group_edges,
-                       np.zeros(self.energy_groups.num_groups))
-        data.reactions[2] = el_rxn
-
-        # Absorption MGXS
-        abs_rxn = openmc.data.Reaction(102)
-        abs_rxn.xs[strT] = convert_xs(self.energy_groups.group_edges,
-                                      np.subtract(self._absorption[iT],
-                                                  self._fission[iT]))
-        data.reactions[102] = abs_rxn
-
-        if self._nu_fission[iT] is not None and self._fission[iT] is not None:
-            fiss_rxn = openmc.data.Reaction(18)
-            fiss_rxn.xs[strT] = convert_xs(self.energy_groups.group_edges,
-                                           self._fission[iT])
-
-            # Get nu_fission and chi from the presence of both, or the
-            # nu_fission matrix
-            if self._nu_fission[iT].shape == self.xs_shapes["[G][G']"]:
-                nu_fiss = np.sum(self._nu_fission[iT], axis=1)[::-1]
-                chi = self._nu_fission[iT][::-1] / nu_fiss
-            else:
-                nu_fiss = self._nu_fission[iT][::-1]
-                chi = np.reshape(np.tile(self._chi[iT][::-1],
-                                         self.energy_groups.num_groups),
-                                 (self.energy_groups.num_groups,
-                                  self.energy_groups.num_groups))
-            nu = np.divide(nu_fiss, self._fission[iT][::-1])
-
-            # Build a histogram distribution to represent the yield for the
-            # incoming groups
-            prod = openmc.data.Product()
-            prod.yield_ = \
-                openmc.data.Tabulated1D(self.energy_groups.group_edges[:-1],
-                                        nu, breakpoints=[len(nu)],
-                                        interpolation=[1])
-
-            # Now build the outgoing energy distribution using discrete energy
-            # lines within each of the outgoing groups
-            chi_eouts = []
-            for g in range(self.energy_groups.num_groups):
-                chi_eouts.append(openmc.stats.Discrete(energy_midpoints,
-                                                       chi[g, :]))
-                # Ensure the distribution CDF starts with 0
-                chi_eouts[-1].c = np.cumsum(chi[g, :]) - chi[g, 0]
-
-            # Create the continuous distribution for the fission
-            # The angular distribution will remain None (thus isotropic)
-            chi_distrib = openmc.data.ContinuousTabular(
-                [len(chi)], [1], self.energy_groups.group_edges[:-1],
-                chi_eouts)
-            prod.distribution = \
-                [openmc.data.UncorrelatedAngleEnergy(energy=chi_distrib)]
-            fiss_rxn.products = [prod]
-            fiss_rxn.center_of_mass = False
-            data.reactions[18] = fiss_rxn
-
-        # Scattering Data
-        # First convert the data to a tabular representation
-        if self.scatter_format == 'tabular':
-            tabular = self
-        else:
-            tabular = self.convert_scatter_format('tabular', 33)
-
-        # Calculate the isotropic scattering matrix and use that to find the
-        # total scattering x/s and outgoing energy distributions
-        isotropic_matrix = np.mean(tabular._scatter_matrix[iT], axis=-1)[::-1,
-                                                                         ::-1]
-        scatt_xs = np.sum(isotropic_matrix, axis=1)
-        energy = np.zeros((self.energy_groups.num_groups,
-                           self.energy_groups.num_groups))
-        for gin in range(self.energy_groups.num_groups):
-            energy[gin, :] = isotropic_matrix[gin, :] / scatt_xs[gin]
-
-        # Get the anisotropic but normalized angular distribution
-        distrib = np.zeros((self.energy_groups.num_groups,
-                            self.energy_groups.num_groups,
-                            tabular.num_orders))
-        for gin in range(self.energy_groups.num_groups):
-            for gout in range(self.energy_groups.num_groups):
-                distrib[gin, gout, :] = \
-                    np.divide(tabular._scatter_matrix[iT][gin, gout, :],
-                              isotropic_matrix[gin, gout])
-        distrib = np.nan_to_num(distrib)
-
-        # Incorporate the scattering multiplication, if required
-        scatt_prod = openmc.data.Product()
-        if self._multiplicity_matrix[iT]:
-            yield_ = self._multiplicity_matrix[iT][::-1, ::-1]
-            scatt_prod.yield_ = \
-                openmc.data.Tabulated1D(self.energy_groups.group_edges[:-1],
-                                        yield_, breakpoints=[len(yield_)],
-                                        interpolation=[1])
-
-        # Now build the outgoing energy distribution using discrete energy
-        # lines within each of the outgoing groups
-        scatt_eouts = []
-        for g in range(self.energy_groups.num_groups):
-            scatt_eouts.append(
-                openmc.stats.Tabular(self.energy_groups.group_edges[:-1],
-                                     energy[g, :],
-                                     interpolation='histogram'))
-            # Ensure the distribution CDF starts with 0
-            scatt_eouts[-1].c = np.cumsum(energy[g, :]) - energy[g, 0]
-        scatt_eouts.append(scatt_eouts[-1])
-
-        # Build the angular distributions associated with each outgoing energy
-        # group
-        mu = np.linspace(-1., 1., tabular.num_orders)
-        scatt_angles = []
-        for gin in range(self.energy_groups.num_groups):
-            scatt_angles.append([])
-            for gout in range(self.energy_groups.num_groups):
-                if energy[gin, gout] > 0.:
-                    scatt_angles[gin].append(
-                        openmc.stats.Tabular(mu, distrib[gin, gout, :]))
-                    # Ensure the distribution CDF starts with 0
-                    scatt_angles[gin][-1].c = \
-                        np.cumsum(distrib[gin, gout, :]) - \
-                        distrib[gin, gout, 0]
-        scatt_angles.append(scatt_angles[-1])
-
-        # Combine the energy and angle distributions in to a correlated
-        # angle/energy object
-        scatt_prod.distribution = \
-            [openmc.data.CorrelatedAngleEnergy(
-                breakpoints=[len(scatt_eouts)], interpolation=[1],
-                energy=self.energy_groups.group_edges[:-1],
-                energy_out=scatt_eouts, mu=scatt_angles)]
-
-        # Finally build the reaction with the just-calculated information
-        # This will be set to the (n,2n) reaction, though any scattering
-        # reaction would suffice
-        scatt_rxn = openmc.data.Reaction(16)
-        scatt_rxn.xs[strT] = \
-            convert_xs(self.energy_groups.group_edges, scatt_xs[::-1])
-        scatt_rxn.products = [scatt_prod]
-        scatt_rxn.center_of_mass = False
-        data.reactions[16] = scatt_rxn
-
-        return data
 
     def to_hdf5(self, file):
         """Write XSdata to an HDF5 file

@@ -8,7 +8,8 @@ module purxs_api
   use URR_faddeeva,  only:&
        URR_tabulate_w => tabulate_w
   use URR_io,        only:&
-       URR_read_prob_tables => read_prob_tables
+       URR_read_prob_tables => read_prob_tables,&
+       URR_write_MF2 => write_MF2
   use URR_isotope,   only:&
        URR_Type_Isotope => Isotope,&
        URR_isotopes => isotopes

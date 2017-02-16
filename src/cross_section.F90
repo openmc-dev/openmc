@@ -231,6 +231,7 @@ contains
     micro_xs(i_nuclide) % absorption = (ONE - f) * nuc % absorption( &
          i_grid) + f * nuc % absorption(i_grid+1)
 
+    ! Infinite-dilute competitive xs (resonance component not added)
     micro_xs(i_nuclide) % competitive&
          = micro_xs(i_nuclide) % total&
          - micro_xs(i_nuclide) % elastic&

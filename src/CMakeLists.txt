@@ -26,6 +26,7 @@ option(debug    "Compile with debug flags"                       OFF)
 option(optimize "Turn on all compiler optimization flags"        OFF)
 option(verbose  "Create verbose Makefiles"                       OFF)
 option(coverage "Compile with flags"                             OFF)
+option(purxs    "Compile with PURXS"                             ON)
 
 if (verbose)
   set(CMAKE_VERBOSE_MAKEFILE on)
@@ -242,6 +243,9 @@ add_subdirectory(xml/fox)
 #===============================================================================
 
 set(program "shutmc")
+if(purxs)
+  add_definitions(-DPURXS)
+endif()
 # static PURXS lib: file(GLOB source *.F90 xml/openmc_fox.F90)
 file(GLOB source *.F90 xml/openmc_fox.F90 URR/src/URR_*)
 

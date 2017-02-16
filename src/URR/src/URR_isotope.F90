@@ -2361,7 +2361,7 @@ contains
            m, this % point_xs(i_E) % f, this % point_xs(i_E + 1) % f, LINEAR_LINEAR)
       xs_out % g = interpolate(&
            m, this % point_xs(i_E) % g, this % point_xs(i_E + 1) % g, LINEAR_LINEAR)
-      if (E >= this % E_ex1) then
+      if (this % point_xs(i_E) % x > ZERO) then
         xs_out % x = interpolate(&
              m, this % point_xs(i_E) % x, this % point_xs(i_E + 1) % x, LINEAR_LINEAR)
       else

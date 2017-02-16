@@ -17,71 +17,74 @@ module input_xml
   use tally_initialize, only: add_tallies
   use xml_interface
 
-  ! URR API
-  use URR_constants, only: URR_EVENT => EVENT,&
-       URR_HISTORY => HISTORY,&
-       URR_BATCH => BATCH,&
-       URR_SIMULATION => SIMULATION,&
-       URR_E_NEUTRON => E_NEUTRON,&
-       URR_E_RESONANCE => E_RESONANCE,&
-       URR_SLBW => SLBW,&
-       URR_MLBW => MLBW,&
-       URR_REICH_MOORE => REICH_MOORE,&
-       URR_MNBW => MNBW,&
-       URR_ENDF6 => ENDF6,&
-       URR_USER => USER,&
-       URR_ENDFFILE => ENDFFILE,&
-       URR_FALSE => FALSE,&
-       URR_INF => INF,&
-       URR_LINEAR => LINEAR,&
-       URR_LOGARITHMIC => LOGARITHMIC,&
-       URR_HISTOGRAM => HISTOGRAM,&
-       URR_LINEAR_LINEAR => LINEAR_LINEAR,&
-       URR_LINEAR_LOG => LINEAR_LOG,&
-       URR_LOG_LINEAR => LOG_LINEAR,&
-       URR_LOG_LOG => LOG_LOG,&
-       URR_SQRT_LINEAR => SQRT_LINEAR,&
-       URR_SQRT_LOG => SQRT_LOG,&
-       URR_STATISTICAL => STATISTICAL,&
-       URR_LOW_NEIGHBOR => LOW_NEIGHBOR,&
-       URR_ON_THE_FLY => ON_THE_FLY,&
-       URR_PROB_BANDS => PROB_BANDS,&
-       URR_POINTWISE => POINTWISE,&
-       URR_MIT_W => MIT_W,&
-       URR_QUICK_W => QUICK_W
-  use URR_isotope, only: URR_isotopes => isotopes
-  use URR_settings, only: URR_use_urr => use_urr,&
-       URR_num_isotopes => num_isotopes,&
-       URR_endf_filenames => endf_filenames,&
-       URR_formalism => formalism,&
-       URR_T_grid_prob_tables => T_grid_prob_tables,&
-       URR_E_grid_prob_tables => E_grid_prob_tables,&
-       URR_num_l_waves => num_l_waves,&
-       URR_faddeeva_method => faddeeva_method,&
-       URR_write_avg_xs => write_avg_xs,&
-       URR_write_prob_tables => write_prob_tables,&
-       URR_background_xs_treatment => background_xs_treatment,&
-       URR_competitive_structure => competitive_structure,&
-       URR_E_grid_scheme_prob_tables => E_grid_scheme_prob_tables,&
-       URR_i_realization_user => i_realization_user,&
-       URR_temperature_interp_scheme => temperature_interp_scheme,&
-       URR_pregenerated_prob_tables => pregenerated_prob_tables,&
-       URR_num_energies_prob_tables => num_energies_prob_tables,&
-       URR_num_temperatures_prob_tables => num_temperatures_prob_tables,&
-       URR_num_bands_prob_tables => num_bands_prob_tables,&
-       URR_num_histories_prob_tables => num_histories_prob_tables,&
-       URR_rel_err_tolerance_avg_xs => rel_err_tolerance_avg_xs,&
-       URR_realization_frequency => realization_frequency,&
-       URR_rel_err_tolerance_pointwise => rel_err_tolerance_pointwise,&
-       URR_xs_representation => xs_representation,&
-       URR_min_num_batches_prob_tables => min_num_batches_prob_tables,&
-       URR_max_num_batches_prob_tables => max_num_batches_prob_tables,&
-       URR_min_delta_E_pointwise => min_delta_E_pointwise,&
-       URR_num_urr_realizations => num_urr_realizations,&
-       URR_path_avg_xs => path_avg_xs,&
-       URR_path_prob_tables => path_prob_tables,&
-       URR_path_endf_files => path_endf_files,&
-       URR_parameter_energy_dependence => parameter_energy_dependence
+#ifdef PURXS
+  use purxs_api, only:&
+       URR_EVENT,&
+       URR_HISTORY,&
+       URR_BATCH,&
+       URR_SIMULATION,&
+       URR_E_NEUTRON,&
+       URR_E_RESONANCE,&
+       URR_SLBW,&
+       URR_MLBW,&
+       URR_REICH_MOORE,&
+       URR_MNBW,&
+       URR_ENDF6,&
+       URR_USER,&
+       URR_ENDFFILE,&
+       URR_FALSE,&
+       URR_INF,&
+       URR_LINEAR,&
+       URR_LOGARITHMIC,&
+       URR_HISTOGRAM,&
+       URR_LINEAR_LINEAR,&
+       URR_LINEAR_LOG,&
+       URR_LOG_LINEAR,&
+       URR_LOG_LOG,&
+       URR_SQRT_LINEAR,&
+       URR_SQRT_LOG,&
+       URR_STATISTICAL,&
+       URR_LOW_NEIGHBOR,&
+       URR_ON_THE_FLY,&
+       URR_PROB_BANDS,&
+       URR_POINTWISE,&
+       URR_MIT_W,&
+       URR_QUICK_W,&
+       URR_isotopes,&
+       URR_use_urr,&
+       URR_num_isotopes,&
+       URR_endf_filenames,&
+       URR_formalism,&
+       URR_T_grid_prob_tables,&
+       URR_E_grid_prob_tables,&
+       URR_num_l_waves,&
+       URR_faddeeva_method,&
+       URR_write_avg_xs,&
+       URR_write_prob_tables,&
+       URR_background_xs_treatment,&
+       URR_competitive_structure,&
+       URR_E_grid_scheme_prob_tables,&
+       URR_i_realization_user,&
+       URR_temperature_interp_scheme,&
+       URR_pregenerated_prob_tables,&
+       URR_num_energies_prob_tables,&
+       URR_num_temperatures_prob_tables,&
+       URR_num_bands_prob_tables,&
+       URR_num_histories_prob_tables,&
+       URR_rel_err_tolerance_avg_xs,&
+       URR_realization_frequency,&
+       URR_rel_err_tolerance_pointwise,&
+       URR_xs_representation,&
+       URR_min_num_batches_prob_tables,&
+       URR_max_num_batches_prob_tables,&
+       URR_min_delta_E_pointwise,&
+       URR_num_urr_realizations,&
+       URR_path_avg_xs,&
+       URR_path_prob_tables,&
+       URR_path_endf_files,&
+       URR_parameter_energy_dependence
+#endif
+
   implicit none
   save
 

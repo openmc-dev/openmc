@@ -11,6 +11,7 @@ module output
   use math,            only: t_percentile
   use mesh_header,     only: RegularMesh
   use mesh,            only: mesh_indices_to_bin, bin_to_mesh_indices
+  use message_passing, only: master, n_procs
   use nuclide_header
   use particle_header, only: LocalCoord, Particle
   use plot_header

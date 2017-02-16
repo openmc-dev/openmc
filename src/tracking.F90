@@ -8,6 +8,7 @@ module tracking
   use geometry_header,    only: Universe, BASE_UNIVERSE
   use global
   use output,             only: write_message
+  use message_passing
   use particle_header,    only: LocalCoord, Particle
   use physics,            only: collision
   use physics_mg,         only: collision_mg

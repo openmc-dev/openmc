@@ -22,6 +22,7 @@ contains
     use cmfd_data,              only: set_up_cmfd
     use cmfd_solver,            only: cmfd_solver_execute
     use error,                  only: warning, fatal_error
+    use message_passing,        only: master
 
     ! CMFD single processor on master
     if (master) then
@@ -90,13 +91,9 @@ contains
   subroutine calc_fission_source()
 
     use constants, only: CMFD_NOACCEL, ZERO, TWO
-    use global,    only: cmfd, cmfd_coremap, master, entropy_on, current_batch
-    use string,    only: to_str
-
-#ifdef MPI
-    use global,     only: mpi_err
+    use global,    only: cmfd, cmfd_coremap, entropy_on, current_batch
     use message_passing
-#endif
+    use string,    only: to_str
 
     integer :: nx      ! maximum number of cells in x direction
     integer :: ny      ! maximum number of cells in y direction
@@ -202,7 +199,7 @@ contains
 
 #ifdef MPI
     ! Broadcast full source to all procs
-    call MPI_BCAST(cmfd % cmfd_src, n, MPI_REAL8, 0, MPI_COMM_WORLD, mpi_err)
+    call MPI_BCAST(cmfd % cmfd_src, n, MPI_REAL8, 0, mpi_intracomm, mpi_err)
 #endif
 
   end subroutine calc_fission_source
@@ -216,16 +213,11 @@ contains
     use algorithm,   only: binary_search
     use constants,   only: ZERO, ONE
     use error,       only: warning, fatal_error
-    use global,      only: meshes, source_bank, work, n_user_meshes, cmfd, &
-                           master
+    use global,      only: meshes, source_bank, work, n_user_meshes, cmfd
     use mesh_header, only: RegularMesh
     use mesh,        only: count_bank_sites, get_mesh_indices
-    use string,      only: to_str
-
-#ifdef MPI
-    use global,      only: mpi_err
     use message_passing
-#endif
+    use string,      only: to_str
 
     logical, intent(in) :: new_weights ! calcualte new weights
 
@@ -289,7 +281,7 @@ contains
       ! Broadcast weight factors to all procs
 #ifdef MPI
       call MPI_BCAST(cmfd % weightfactors, ng*nx*ny*nz, MPI_REAL8, 0, &
-           MPI_COMM_WORLD, mpi_err)
+           mpi_intracomm, mpi_err)
 #endif
     end if
 

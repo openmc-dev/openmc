@@ -13,9 +13,11 @@ module finalize
   use hdf5_interface,  only: h5tclose_f, h5close_f, hdf5_err
 #endif
 
-  ! URR API
-  use URR_isotope,  only: URR_isotopes => isotopes
-  use URR_settings, only: URR_num_isotopes => num_isotopes
+#ifdef PURXS
+  use purxs_api, only:&
+       URR_isotopes,&
+       URR_num_isotopes
+#endif
 
   implicit none
 

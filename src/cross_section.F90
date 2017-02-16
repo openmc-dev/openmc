@@ -12,15 +12,18 @@ module cross_section
   use search,             only: binary_search
   use string,             only: to_str
 
-  ! URR API
-  use URR_constants,      only: URR_EVENT => EVENT,&
-                                URR_HISTORY => HISTORY,&
-                                URR_BATCH => BATCH,&
-                                URR_SIMULATION => SIMULATION
-  use URR_cross_Sections, only: URR_Type_CrossSections => CrossSections
-  use URR_isotope,        only: URR_Type_Isotope => Isotope,&
-                                URR_isotopes => isotopes
-  use URR_settings,       only: URR_realization_frequency => realization_frequency
+#ifdef PURXS
+  use purxs_api, only:&
+       URR_EVENT,&
+       URR_HISTORY,&
+       URR_BATCH,&
+       URR_SIMULATION,&
+       URR_Type_CrossSections,&
+       URR_Type_Isotope,&
+       URR_isotopes,&
+       URR_realization_frequency
+#endif
+
 
   implicit none
   save

@@ -24,28 +24,30 @@ module initialize
   use tally_header,     only: TallyObject, TallyResult
   use tally_initialize, only: configure_tallies
 
-  ! URR API
-  use URR_edits,     only: URR_write_angle => write_angle,&
-                           URR_write_xs => write_xs
-  use URR_endf6,     only: URR_read_endf6 => read_endf6
-  use URR_faddeeva,  only: URR_tabulate_w => tabulate_w
-  use URR_io,        only: URR_read_prob_tables => read_prob_tables
-  use URR_isotope,   only: URR_isotopes => isotopes
-  use URR_constants, only: URR_ON_THE_FLY => ON_THE_FLY,&
-                           URR_PROB_BANDS => PROB_BANDS,&
-                           URR_POINTWISE => POINTWISE,&
-                           URR_EVENT => EVENT,&
-                           URR_HISTORY => HISTORY,&
-                           URR_BATCH => BATCH,&
-                           URR_SIMULATION => SIMULATION,&
-                           URR_E_RESONANCE => E_RESONANCE
-  use URR_settings,  only: URR_xs_representation => xs_representation,&
-                           URR_num_isotopes => num_isotopes,&
-                           URR_parameter_energy_dependence => parameter_energy_dependence,&
-                           URR_pregenerated_prob_tables => pregenerated_prob_tables,&
-                           URR_use_urr => use_urr,&
-                           URR_realization_frequency => realization_frequency,&
-                           URR_endf_filenames => endf_filenames
+#ifdef PURXS
+  use purxs_api, only:&
+       URR_write_angle,&
+       URR_write_xs,&
+       URR_read_endf6,&
+       URR_tabulate_w,&
+       URR_read_prob_tables,&
+       URR_isotopes,&
+       URR_ON_THE_FLY,&
+       URR_PROB_BANDS,&
+       URR_POINTWISE,&
+       URR_EVENT,&
+       URR_HISTORY,&
+       URR_BATCH,&
+       URR_SIMULATION,&
+       URR_E_RESONANCE,&
+       URR_xs_representation,&
+       URR_num_isotopes,&
+       URR_parameter_energy_dependence,&
+       URR_pregenerated_prob_tables,&
+       URR_use_urr,&
+       URR_realization_frequency,&
+       URR_endf_filenames
+#endif
 
 #ifdef MPI
   use mpi

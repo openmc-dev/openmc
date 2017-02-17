@@ -5,7 +5,10 @@ import numpy as np
 import h5py
 
 import openmc
+import openmc.checkvalue as cv
 from openmc.region import Region
+
+_VERSION_SUMMARY = 5
 
 
 class Summary(object):
@@ -31,6 +34,8 @@ class Summary(object):
             raise ValueError(msg)
 
         self._f = h5py.File(filename, 'r')
+        cv.check_filetype_version(self._f, 'summary', _VERSION_SUMMARY)
+
         self._openmc_geometry = None
         self._opencg_geometry = None
 
@@ -53,22 +58,9 @@ class Summary(object):
 
     def _read_metadata(self):
         # Read OpenMC version
-        self.version = [self._f['version_major'].value,
-                        self._f['version_minor'].value,
-                        self._f['version_release'].value]
+        self.version = self._f.attrs['openmc_version']
         # Read date and time
-        self.date_and_time = self._f['date_and_time'][...]
-
-        # Read if continuous-energy or multi-group
-        self.run_CE = (self._f['run_CE'].value == 1)
-
-        self.n_batches = self._f['n_batches'].value
-        self.n_particles = self._f['n_particles'].value
-        if 'n_inactive' in self._f:
-            self.n_active = self._f['n_active'].value
-            self.n_inactive = self._f['n_inactive'].value
-            self.gen_per_batch = self._f['gen_per_batch'].value
-        self.n_procs = self._f['n_procs'].value
+        self.date_and_time = self._f.attrs['date_and_time']
 
     def _read_nuclides(self):
         self.nuclides = {}

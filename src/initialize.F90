@@ -18,8 +18,8 @@ module initialize
   use geometry_header, only: Cell, Universe, Lattice, RectLattice, HexLattice,&
                              &BASE_UNIVERSE
   use global
-  use hdf5_interface,  only: file_open, read_dataset, file_close, hdf5_bank_t,&
-                             hdf5_integer8_t
+  use hdf5_interface,  only: file_open, read_attribute, file_close,           &
+                             hdf5_bank_t, hdf5_integer8_t
   use input_xml,       only: read_input_xml, cells_in_univ_dict, read_plots_xml
   use material_header, only: Material
   use message_passing
@@ -307,11 +307,11 @@ contains
 
           ! Check what type of file this is
           file_id = file_open(argv(i), 'r', parallel=.true.)
-          call read_dataset(filetype, file_id, 'filetype')
+          call read_attribute(filetype, file_id, 'filetype')
           call file_close(file_id)
 
           ! Set path and flag for type of run
-          select case (filetype)
+          select case (trim(filetype))
           case ('statepoint')
             path_state_point = argv(i)
             restart_run = .true.
@@ -319,7 +319,7 @@ contains
             path_particle_restart = argv(i)
             particle_restart_run = .true.
           case default
-            call fatal_error("Unrecognized file after restart flag.")
+            call fatal_error("Unrecognized file after restart flag: " // filetype // ".")
           end select
 
           ! If its a restart run check for additional source file
@@ -333,7 +333,7 @@ contains
 
               ! Check file type is a source file
               file_id = file_open(argv(i), 'r', parallel=.true.)
-              call read_dataset(filetype, file_id, 'filetype')
+              call read_attribute(filetype, file_id, 'filetype')
               call file_close(file_id)
               if (filetype /= 'source') then
                 call fatal_error("Second file after restart flag must be a &

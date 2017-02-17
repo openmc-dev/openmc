@@ -1,5 +1,7 @@
 module summary
 
+  use hdf5
+
   use constants
   use endf,            only: reaction_name
   use geometry_header, only: BASE_UNIVERSE, Cell, Universe, Lattice, &
@@ -15,8 +17,6 @@ module summary
   use string,          only: to_str
   use tally_header,    only: TallyObject
   use tally_filter,    only: find_offset
-
-  use hdf5
 
   implicit none
   private
@@ -39,36 +39,6 @@ contains
     ! Write header information
     call write_header(file_id)
 
-    if (run_CE) then
-      call write_dataset(file_id, "run_CE", 1)
-    else
-      call write_dataset(file_id, "run_CE", 0)
-    end if
-
-    ! Write number of particles
-    call write_dataset(file_id, "n_particles", n_particles)
-    call write_dataset(file_id, "n_batches", n_batches)
-    call write_attribute_string(file_id, "n_particles", &
-         "description", "Number of particles per generation")
-    call write_attribute_string(file_id, "n_batches", &
-         "description", "Total number of batches")
-
-    ! Write eigenvalue information
-    if (run_mode == MODE_EIGENVALUE) then
-      ! write number of inactive/active batches and generations/batch
-      call write_dataset(file_id, "n_inactive", n_inactive)
-      call write_dataset(file_id, "n_active", n_active)
-      call write_dataset(file_id, "gen_per_batch", gen_per_batch)
-
-      ! Add description of each variable
-      call write_attribute_string(file_id, "n_inactive", &
-           "description", "Number of inactive batches")
-      call write_attribute_string(file_id, "n_active", &
-           "description", "Number of active batches")
-      call write_attribute_string(file_id, "gen_per_batch", &
-           "description", "Number of generations per batch")
-    end if
-
     call write_nuclides(file_id)
     call write_geometry(file_id)
     call write_materials(file_id)
@@ -88,25 +58,16 @@ contains
   subroutine write_header(file_id)
     integer(HID_T), intent(in) :: file_id
 
-    ! Write filetype and revision
-    call write_dataset(file_id, "filetype", "summary")
-    call write_dataset(file_id, "revision", REVISION_SUMMARY)
-
-    ! Write version information
-    call write_dataset(file_id, "version_major", VERSION_MAJOR)
-    call write_dataset(file_id, "version_minor", VERSION_MINOR)
-    call write_dataset(file_id, "version_release", VERSION_RELEASE)
+    ! Write filetype and version info
+    call write_attribute(file_id, "filetype", "summary")
+    call write_attribute(file_id, "version", VERSION_SUMMARY)
+    call write_attribute(file_id, "openmc_version", VERSION)
 #ifdef GIT_SHA1
-    call write_dataset(file_id, "git_sha1", GIT_SHA1)
+    call write_attribute(file_id, "git_sha1", GIT_SHA1)
 #endif
 
     ! Write current date and time
-    call write_dataset(file_id, "date_and_time", time_stamp())
-
-    ! Write MPI information
-    call write_dataset(file_id, "n_procs", n_procs)
-    call write_attribute_string(file_id, "n_procs", "description", &
-         "Number of MPI processes")
+    call write_attribute(file_id, "date_and_time", time_stamp())
 
   end subroutine write_header
 
@@ -553,8 +514,6 @@ contains
 
       ! Write atom density with units
       call write_dataset(material_group, "atom_density", m % density)
-      call write_attribute_string(material_group, "atom_density", "units", &
-           "atom/b-cm")
 
       ! Copy ZAID for each nuclide to temporary array
       allocate(nucnames(m%n_nuclides))

@@ -27,6 +27,10 @@ The current revision of the statepoint file format is 15.
 
     Release version number for OpenMC
 
+**/git_sha1** (*char[40]*)
+
+    Git commit SHA-1 hash
+
 **/date_and_time** (*char[]*)
 
     Date and time the state point was written.

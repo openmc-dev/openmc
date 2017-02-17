@@ -27,6 +27,10 @@ The current revision of the summary file format is 4.
 
     Release version number for OpenMC
 
+**/git_sha1** (*char[40]*)
+
+    Git commit SHA-1 hash
+
 **/date_and_time** (*char[]*)
 
     Date and time the summary was written.

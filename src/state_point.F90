@@ -77,6 +77,9 @@ contains
       call write_dataset(file_id, "version_major", VERSION_MAJOR)
       call write_dataset(file_id, "version_minor", VERSION_MINOR)
       call write_dataset(file_id, "version_release", VERSION_RELEASE)
+#ifdef GIT_SHA1
+      call write_dataset(file_id, "git_sha1", GIT_SHA1)
+#endif
 
       ! Write current date and time
       call write_dataset(file_id, "date_and_time", time_stamp())

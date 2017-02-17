@@ -904,12 +904,16 @@ class MGXS(object):
         # Override the domain object that loaded from an OpenMC summary file
         # NOTE: This is necessary for micro cross-sections which require
         # the isotopic number densities as computed by OpenMC
+        su = statepoint.summary
         if self.domain_type == 'cell' or self.domain_type == 'distribcell':
-            self.domain = statepoint.summary.get_cell_by_id(self.domain.id)
+            cells = {c.id: c for c in su.geometry.get_all_cells()}
+            self.domain = cells[self.domain.id]
         elif self.domain_type == 'universe':
-            self.domain = statepoint.summary.get_universe_by_id(self.domain.id)
+            universes = {u.id: u for u in su.geometry.get_all_universes()}
+            self.domain = universes[self.domain.id]
         elif self.domain_type == 'material':
-            self.domain = statepoint.summary.get_material_by_id(self.domain.id)
+            mats = {m.id: m for m in su.materials}
+            self.domain = mats[self.domain.id]
         elif self.domain_type == 'mesh':
             self.domain = statepoint.meshes[self.domain.id]
         else:

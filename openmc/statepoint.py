@@ -136,9 +136,6 @@ class StatePoint(object):
                     vol = openmc.VolumeCalculation.from_hdf5(path_i)
                     self.add_volume_information(vol)
 
-    def close(self):
-        self._f.close()
-
     @property
     def cmfd_on(self):
         return self._f['cmfd_on'].value > 0
@@ -490,7 +487,7 @@ class StatePoint(object):
 
     @property
     def version(self):
-        return self._f.attrs['version']
+        return tuple(self._f.attrs['version'])
 
     @property
     def summary(self):
@@ -692,38 +689,21 @@ class StatePoint(object):
                           RuntimeWarning)
             return
 
-        if not isinstance(summary, openmc.summary.Summary):
+        if not isinstance(summary, openmc.Summary):
             msg = 'Unable to link statepoint with "{0}" which ' \
                   'is not a Summary object'.format(summary)
             raise ValueError(msg)
+
+        cell_dict = {c.id: c for c in summary.geometry.get_all_cells()}
 
         for tally_id, tally in self.tallies.items():
             tally.name = summary.tally_names[tally_id]
             tally.with_summary = True
 
             for tally_filter in tally.filters:
-                if isinstance(tally_filter, (openmc.CellFilter,
-                                             openmc.DistribcellFilter)):
-                    distribcell_ids = []
-                    for bin in tally_filter.bins:
-                        distribcell_ids.append(summary.cells[bin].id)
-                    tally_filter.bins = distribcell_ids
-
                 if isinstance(tally_filter, (openmc.DistribcellFilter)):
                     cell_id = tally_filter.bins[0]
-                    cell = summary.get_cell_by_id(cell_id)
+                    cell = cell_dict[cell_id]
                     tally_filter.distribcell_paths = cell.distribcell_paths
-
-                if isinstance(tally_filter, openmc.UniverseFilter):
-                    universe_ids = []
-                    for bin in tally_filter.bins:
-                        universe_ids.append(summary.universes[bin].id)
-                    tally_filter.bins = universe_ids
-
-                if isinstance(tally_filter, openmc.MaterialFilter):
-                    material_ids = []
-                    for bin in tally_filter.bins:
-                        material_ids.append(summary.materials[bin].id)
-                    tally_filter.bins = material_ids
 
         self._summary = summary

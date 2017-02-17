@@ -255,7 +255,7 @@ class Material(object):
 
     @depletable.setter
     def depletable(self, depletable):
-        cv.check_type('Depletable flag for Material ID="{}"'.format(self._id),
+        cv.check_type('Depletable flag for Material ID="{}"'.format(self.id),
                       depletable, bool)
         self._depletable = depletable
 
@@ -770,6 +770,9 @@ class Material(object):
 
         if len(self._name) > 0:
             element.set("name", str(self._name))
+
+        if self._depletable:
+            element.set("depletable", "true")
 
         # Create temperature XML subelement
         if self.temperature is not None:

@@ -2251,6 +2251,13 @@ contains
         call fatal_error("Must specify id of material in materials XML file")
       end if
 
+      ! Check if material is depletable
+      if (check_for_node(node_mat, "depletable")) then
+        call get_node_value(node_mat, "depletable", temp_str)
+        if (to_lower(temp_str) == "true" .or. temp_str == "1") &
+             mat % depletable = .true.
+      end if
+
       ! Check to make sure 'id' hasn't been used
       if (material_dict % has_key(mat % id)) then
         call fatal_error("Two or more materials use the same unique ID: " &

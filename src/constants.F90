@@ -144,7 +144,7 @@ module constants
        SURF_CONE_Z = 11    ! Cone parallel to z-axis
 
   ! Flag to say that the outside of a lattice is not defined
-  integer, parameter :: NO_OUTER_UNIVERSE = -22
+  integer, parameter :: NO_OUTER_UNIVERSE = -1
 
   ! Maximum number of lost particles
   integer, parameter :: MAX_LOST_PARTICLES = 10

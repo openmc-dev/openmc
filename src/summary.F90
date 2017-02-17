@@ -116,9 +116,10 @@ contains
   subroutine write_geometry(file_id)
     integer(HID_T), intent(in) :: file_id
 
-    integer          :: i, j, k, m, offset
+    integer :: i, j, k, m, offset
     integer, allocatable :: lattice_universes(:,:,:)
     integer, allocatable :: cell_materials(:)
+    integer, allocatable :: cell_ids(:)
     real(8), allocatable :: cell_temperatures(:)
     integer(HID_T) :: geom_group
     integer(HID_T) :: cells_group, cell_group
@@ -151,9 +152,6 @@ contains
     CELL_LOOP: do i = 1, n_cells
       c => cells(i)
       cell_group = create_group(cells_group, "cell " // trim(to_str(c%id)))
-
-      ! Write internal OpenMC index for this cell
-      call write_dataset(cell_group, "index", i)
 
       ! Write name for this cell
       call write_dataset(cell_group, "name", c%name)
@@ -267,9 +265,6 @@ contains
       surface_group = create_group(surfaces_group, "surface " // &
            trim(to_str(s%id)))
 
-      ! Write internal OpenMC index for this surface
-      call write_dataset(surface_group, "index", i)
-
       ! Write name for this surface
       call write_dataset(surface_group, "name", s%name)
 
@@ -368,11 +363,15 @@ contains
       univ_group = create_group(universes_group, "universe " // &
            trim(to_str(u%id)))
 
-      ! Write internal OpenMC index for this universe
-      call write_dataset(univ_group, "index", i)
-
       ! Write list of cells in this universe
-      if (u%n_cells > 0) call write_dataset(univ_group, "cells", u%cells)
+      if (u % n_cells > 0) then
+        allocate(cell_ids(u % n_cells))
+        do j = 1, u % n_cells
+          cell_ids(j) = cells(u % cells(j)) % id
+        end do
+        call write_dataset(univ_group, "cells", cell_ids)
+        deallocate(cell_ids)
+      end if
 
       call close_group(univ_group)
     end do UNIVERSE_LOOP
@@ -390,13 +389,14 @@ contains
       lat => lattices(i)%obj
       lattice_group = create_group(lattices_group, "lattice " // trim(to_str(lat%id)))
 
-      ! Write internal OpenMC index for this lattice
-      call write_dataset(lattice_group, "index", i)
-
       ! Write name, pitch, and outer universe
       call write_dataset(lattice_group, "name", lat%name)
       call write_dataset(lattice_group, "pitch", lat%pitch)
-      call write_dataset(lattice_group, "outer", lat%outer)
+      if (lat % outer > 0) then
+        call write_dataset(lattice_group, "outer", universes(lat % outer) % id)
+      else
+        call write_dataset(lattice_group, "outer", lat % outer)
+      end if
 
       ! Write distribcell offsets if present
       if (allocated(lat%offset)) then
@@ -505,9 +505,6 @@ contains
       else
         call write_attribute(material_group, "depletable", 0)
       end if
-
-      ! Write internal OpenMC index for this material
-      call write_dataset(material_group, "index", i)
 
       ! Write name for this material
       call write_dataset(material_group, "name", m % name)

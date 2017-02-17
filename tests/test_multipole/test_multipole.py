@@ -107,7 +107,8 @@ class MultipoleTestHarness(PyAPITestHarness):
     def _get_results(self):
         outstr = super(MultipoleTestHarness, self)._get_results()
         su = openmc.Summary('summary.h5')
-        outstr += str(su.get_cell_by_id(11))
+        cells = {c.id: c for c in su.geometry.get_all_cells()}
+        outstr += str(cells[11])
         return outstr
 
     def _cleanup(self):

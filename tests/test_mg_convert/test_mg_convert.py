@@ -11,7 +11,7 @@ from testing_harness import PyAPITestHarness
 import openmc
 
 # OpenMC simulation parameters
-batches = 2000
+batches = 1000
 inactive = 100
 particles = 1000
 
@@ -123,7 +123,7 @@ class MGXSTestHarness(PyAPITestHarness):
 
     def _run_openmc(self):
         # Run multiple conversions to compare results
-        cases = [None, ['legendre', 2], ['legendre', 0],
+        cases = [['legendre', 2], ['legendre', 0],
                  ['tabular', 33], ['histogram', 32],
                  [['tabular', 33], ['legendre', 1]],
                  [['tabular', 33], ['tabular', 3]],
@@ -131,7 +131,6 @@ class MGXSTestHarness(PyAPITestHarness):
                  [['histogram', 32], ['legendre', 1]],
                  [['histogram', 32], ['tabular', 3]],
                  [['histogram', 32], ['histogram', 16]],
-                 [['histogram', 32], ['histogram', 128]],
                  ['angle', 2], [['angle', 2], ['isotropic', None]]]
 
         outstr = ''

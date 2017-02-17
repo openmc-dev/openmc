@@ -14,11 +14,14 @@ from openmc.checkvalue import check_type, check_value, check_greater_than, \
 
 # Supported incoming particle MGXS angular treatment representations
 _REPRESENTATIONS = ['isotropic', 'angle']
+
 # Supported scattering angular distribution representations
 _SCATTER_TYPES = ['tabular', 'legendre', 'histogram']
-# List of MGXS dimension types
+
+# List of MGXS indexing schemes
 _XS_SHAPES = ["[G][G'][Order]", "[G]", "[G']", "[G][G']", "[DG]", "[DG][G]",
               "[DG][G']", "[DG][G][G']"]
+
 # Number of mu points for conversion between scattering formats
 _NMU = 257
 
@@ -368,15 +371,14 @@ class XSdata(object):
 
     @name.setter
     def name(self, name):
+
         check_type('name for XSdata', name, string_types)
         self._name = name
 
     @energy_groups.setter
     def energy_groups(self, energy_groups):
 
-        # Check validity of energy_groups
         check_type('energy_groups', energy_groups, openmc.mgxs.EnergyGroups)
-
         if energy_groups.group_edges is None:
             msg = 'Unable to assign an EnergyGroups object ' \
                   'with uninitialized group edges'
@@ -387,7 +389,6 @@ class XSdata(object):
     @num_delayed_groups.setter
     def num_delayed_groups(self, num_delayed_groups):
 
-        # Check validity of num_delayed_groups
         check_type('num_delayed_groups', num_delayed_groups, Integral)
         check_less_than('num_delayed_groups', num_delayed_groups,
                         openmc.mgxs.MAX_DELAYED_GROUPS, equality=True)
@@ -398,14 +399,12 @@ class XSdata(object):
     @representation.setter
     def representation(self, representation):
 
-        # Check it is of valid value.
         check_value('representation', representation, _REPRESENTATIONS)
         self._representation = representation
 
     @atomic_weight_ratio.setter
     def atomic_weight_ratio(self, atomic_weight_ratio):
 
-        # Check validity of type and that the atomic_weight_ratio value is > 0
         check_type('atomic_weight_ratio', atomic_weight_ratio, Real)
         check_greater_than('atomic_weight_ratio', atomic_weight_ratio, 0.0)
         self._atomic_weight_ratio = atomic_weight_ratio
@@ -419,14 +418,12 @@ class XSdata(object):
     @scatter_format.setter
     def scatter_format(self, scatter_format):
 
-        # check to see it is of a valid type and value
         check_value('scatter_format', scatter_format, _SCATTER_TYPES)
         self._scatter_format = scatter_format
 
     @order.setter
     def order(self, order):
 
-        # Check type and value
         check_type('order', order, Integral)
         check_greater_than('order', order, 0, equality=True)
         self._order = order
@@ -434,7 +431,6 @@ class XSdata(object):
     @num_polar.setter
     def num_polar(self, num_polar):
 
-        # Make sure we have positive ints
         check_type('num_polar', num_polar, Integral)
         check_greater_than('num_polar', num_polar, 0)
         self._num_polar = num_polar
@@ -1688,7 +1684,14 @@ class XSdata(object):
     def convert_representation(self, target_representation, num_polar=None,
                                num_azimuthal=None):
         """Produce a new XSdata object with the same data, but converted to the
-        new representation
+        new representation (isotropic or angle-dependent).
+
+        This method cannot be used to change the number of polar or
+        azimuthal bins of an XSdata object that already uses an angular
+        representation. Finally, this method simply uses an arithmetic mean to
+        convert from an angular to isotropic representation; no flux-weighting
+        is applied and therefore the correctness of the solution is not
+        guaranteed.
 
         Parameters
         ----------
@@ -1728,9 +1731,9 @@ class XSdata(object):
             # Check to make sure the num_polar and num_azimuthal values match
             if target_representation == 'angle':
                 if num_polar != self.num_polar or num_azimuthal != self.num_azimuthal:
-                    raise NotImplementedError("XCannot translate between "
-                                              "`angle` representations with "
-                                              "different angle bin structures")
+                    raise ValueError("Cannot translate between `angle`"
+                                     " representations with different angle"
+                                     " bin structures")
             # Nothing to do as the same structure was requested
             return xsdata
 
@@ -1741,6 +1744,7 @@ class XSdata(object):
             # values are changed back to None for clarity
             xsdata._num_polar = None
             xsdata._num_azimuthal = None
+
         elif target_representation == 'angle':
             xsdata.num_polar = num_polar
             xsdata.num_azimuthal = num_azimuthal
@@ -1757,16 +1761,19 @@ class XSdata(object):
                 # Get the original data
                 orig_data = getattr(self, '_' + xs)[i]
                 if orig_data is not None:
+
                     if target_representation == 'isotropic':
                         # Since we are going from angle to isotropic, the
                         # current data is just the average over the angle bins
                         new_data = orig_data.mean(axis=(0, 1))
+
                     elif target_representation == 'angle':
                         # Since we are going from isotropic to angle, the
                         # current data is just copied for every angle bin
                         new_shape = (num_polar, num_azimuthal) + \
                             orig_data.shape
                         new_data = np.resize(orig_data, new_shape)
+
                     setter = getattr(xsdata, 'set_' + xs)
                     setter(new_data, temp)
 
@@ -1810,18 +1817,19 @@ class XSdata(object):
 
         # Reset and re-generate XSdata.xs_shapes with the new scattering format
         xsdata._xs_shapes = None
-        xsdata.xs_shapes
 
         for i, temp in enumerate(xsdata.temperatures):
             orig_data = self._scatter_matrix[i]
             new_shape = orig_data.shape[:-1] + (xsdata.num_orders,)
             new_data = np.zeros(new_shape)
+
             if self.scatter_format == 'legendre':
                 if target_format == 'legendre':
                     # Then we are changing orders and only need to change
                     # dimensionality of the mu data and pad/truncate as needed
                     order = min(xsdata.num_orders, self.num_orders)
                     new_data[..., :order] = orig_data[..., :order]
+
                 elif target_format == 'tabular':
                     mu = np.linspace(-1, 1, xsdata.num_orders)
                     # Evaluate the legendre on the mu grid
@@ -1856,6 +1864,7 @@ class XSdata(object):
             elif self.scatter_format == 'tabular':
                 # Calculate the mu points of the current data
                 mu_self = np.linspace(-1, 1, self.num_orders)
+
                 if target_format == 'legendre':
                     # Find the Legendre coefficients via integration. To best
                     # use the vectorized integration capabilities of scipy,
@@ -1870,10 +1879,12 @@ class XSdata(object):
                     # Remove the very small values resulting from numerical
                     # precision issues
                     new_data[..., np.abs(new_data) < 1.E-10] = 0.
+
                 elif target_format == 'tabular':
                     # Simply use an interpolating function to get the new data
                     mu = np.linspace(-1, 1, xsdata.num_orders)
                     new_data[..., :] = interp1d(mu_self, orig_data)(mu)
+
                 elif target_format == 'histogram':
                     # Use an interpolating function to do the bin-wise
                     # integrals
@@ -1891,6 +1902,7 @@ class XSdata(object):
                     # Remove the very small values resulting from numerical
                     # precision issues
                     new_data[..., np.abs(new_data) < 1.E-10] = 0.
+
             elif self.scatter_format == 'histogram':
                 # The histogram format does not have enough information to
                 # convert to the other forms without inducing some amount of
@@ -1921,10 +1933,12 @@ class XSdata(object):
                     # Remove the very small values resulting from numerical
                     # precision issues
                     new_data[..., np.abs(new_data) < 1.E-10] = 0.
+
                 elif target_format == 'tabular':
                     # Simply use an interpolating function to get the new data
                     mu = np.linspace(-1, 1, xsdata.num_orders)
                     new_data[..., :] = interp(mu) * norm
+
                 elif target_format == 'histogram':
                     # Use an interpolating function to do the bin-wise
                     # integrals
@@ -1942,6 +1956,7 @@ class XSdata(object):
                     # Remove the very small values resulting from numerical
                     # precision issues
                     new_data[..., np.abs(new_data) < 1.E-10] = 0.
+
             xsdata.set_scatter_matrix(new_data, temp)
 
         return xsdata
@@ -2431,8 +2446,15 @@ class MGXSLibrary(object):
 
     def convert_representation(self, target_representation, num_polar=None,
                                num_azimuthal=None):
-        """Produce a new MGXSLibrary object with the same data, but converted
-        to the new representation
+        """Produce a new XSdata object with the same data, but converted to the
+        new representation (isotropic or angle-dependent).
+
+        This method cannot be used to change the number of polar or
+        azimuthal bins of an XSdata object that already uses an angular
+        representation. Finally, this method simply uses an arithmetic mean to
+        convert from an angular to isotropic representation; no flux-weighting
+        is applied and therefore the correctness of the solution is not
+        guaranteed.
 
         Parameters
         ----------
@@ -2455,14 +2477,6 @@ class MGXSLibrary(object):
             specified in :param:`target_representation`.
 
         """
-
-        check_value('target_representation', target_representation,
-                    _REPRESENTATIONS)
-        if target_representation == 'angle':
-            check_type('num_polar', num_polar, Integral)
-            check_type('num_azimuthal', num_azimuthal, Integral)
-            check_greater_than('num_polar', num_polar, 0)
-            check_greater_than('num_azimuthal', num_azimuthal, 0)
 
         library = copy.deepcopy(self)
         for i, xsdata in enumerate(self.xsdatas):
@@ -2493,42 +2507,12 @@ class MGXSLibrary(object):
 
         """
 
-        check_value('target_format', target_format, _SCATTER_TYPES)
-        check_type('target_order', target_order, Integral)
-        if target_format == 'legendre':
-            check_greater_than('target_order', target_order, 0, equality=True)
-        else:
-            check_greater_than('target_order', target_order, 0)
-
         library = copy.deepcopy(self)
         for i, xsdata in enumerate(self.xsdatas):
             library.xsdatas[i] = \
                 xsdata.convert_scatter_format(target_format, target_order)
 
         return library
-
-    def convert_to_continuous_energy(self, h5_filename='ce_mgxs.h5',
-                                     library_filename='ce_mgxs.xml'):
-        """Converts the MGXSLibrary object to an equivalent
-        library of openmc.data.IncidentNeutron objects
-
-        Parameters
-        ----------
-        h5_filename : str
-            HDF5 file to write with all the files
-        library_filename : str
-            cross_sections.xml file describing the HDF5 file
-
-        """
-
-        library = openmc.data.DataLibrary()
-        data = []
-        for i, xsdata in enumerate(self.xsdatas):
-            data.append(xsdata.convert_to_continuous_energy())
-            data[-1].export_to_hdf5(h5_filename)
-
-        library.register_file(h5_filename)
-        library.export_to_xml(library_filename)
 
     def export_to_hdf5(self, filename='mgxs.h5'):
         """Create an hdf5 file that can be used for a simulation.

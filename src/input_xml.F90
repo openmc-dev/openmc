@@ -79,7 +79,6 @@ contains
     integer :: temp_int
     integer :: temp_int_array3(3)
     integer, allocatable :: temp_int_array(:)
-    integer(8) :: temp_long
     real(8), allocatable :: temp_real(:)
     integer :: n_tracks
     logical :: file_exists
@@ -223,44 +222,47 @@ contains
       end if
     end if
 
-    if (check_for_node(doc, "run_mode")) then
-      call get_node_value(doc, "run_mode", temp_str)
-      select case (to_lower(temp_str))
-      case ("eigenvalue")
-        run_mode = MODE_EIGENVALUE
-      case ("fixed source")
-        run_mode = MODE_FIXEDSOURCE
-      case ("plot")
-        run_mode = MODE_PLOTTING
-      case ("particle restart")
-        run_mode = MODE_PARTICLE
-      case ("volume")
-        run_mode = MODE_VOLUME
-      end select
+    ! Check run mode if it hasn't been set from the command line
+    if (run_mode == NONE) then
+      if (check_for_node(doc, "run_mode")) then
+        call get_node_value(doc, "run_mode", temp_str)
+        select case (to_lower(temp_str))
+        case ("eigenvalue")
+          run_mode = MODE_EIGENVALUE
+        case ("fixed source")
+          run_mode = MODE_FIXEDSOURCE
+        case ("plot")
+          run_mode = MODE_PLOTTING
+        case ("particle restart")
+          run_mode = MODE_PARTICLE
+        case ("volume")
+          run_mode = MODE_VOLUME
+        end select
 
-      ! Assume XML specifics <particles>, <batches>, etc. directly
-      node_mode => doc
-    else
-      call warning("<run_mode> should be specified.")
+        ! Assume XML specifics <particles>, <batches>, etc. directly
+        node_mode => doc
+      else
+        call warning("<run_mode> should be specified.")
 
-      ! Make sure that either eigenvalue or fixed source was specified
-      if (.not. check_for_node(doc, "eigenvalue") .and. &
-           .not. check_for_node(doc, "fixed_source")) then
-        call fatal_error("<eigenvalue> or <fixed_source> not specified.")
-      end if
+        ! Make sure that either eigenvalue or fixed source was specified
+        if (.not. check_for_node(doc, "eigenvalue") .and. &
+             .not. check_for_node(doc, "fixed_source")) then
+          call fatal_error("<eigenvalue> or <fixed_source> not specified.")
+        end if
 
-      if (check_for_node(doc, "eigenvalue")) then
-        ! Set run mode
-        if (run_mode == NONE) run_mode = MODE_EIGENVALUE
+        if (check_for_node(doc, "eigenvalue")) then
+          ! Set run mode
+          if (run_mode == NONE) run_mode = MODE_EIGENVALUE
 
-        ! Get pointer to eigenvalue XML block
-        call get_node_ptr(doc, "eigenvalue", node_mode)
-      elseif (check_for_node(doc, "fixed_source")) then
-        ! Set run mode
-        if (run_mode == NONE) run_mode = MODE_FIXEDSOURCE
+          ! Get pointer to eigenvalue XML block
+          call get_node_ptr(doc, "eigenvalue", node_mode)
+        elseif (check_for_node(doc, "fixed_source")) then
+          ! Set run mode
+          if (run_mode == NONE) run_mode = MODE_FIXEDSOURCE
 
-        ! Get pointer to fixed_source XML block
-        call get_node_ptr(doc, "fixed_source", node_mode)
+          ! Get pointer to fixed_source XML block
+          call get_node_ptr(doc, "fixed_source", node_mode)
+        end if
       end if
     end if
 

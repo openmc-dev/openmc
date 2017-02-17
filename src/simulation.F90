@@ -11,13 +11,15 @@ module simulation
   use global
   use message_passing
   use output,          only: write_message, header, print_columns, &
-                             print_batch_keff, print_generation
+                             print_batch_keff, print_generation, print_runtime, &
+                             print_results, print_overlap_check, write_tallies
   use particle_header, only: Particle
   use random_lcg,      only: set_particle_seed
   use source,          only: initialize_source, sample_external_source
   use state_point,     only: write_state_point, write_source_point
   use string,          only: to_str
-  use tally,           only: synchronize_tallies, setup_active_usertallies
+  use tally,           only: synchronize_tallies, setup_active_usertallies, &
+                             tally_statistics
   use trigger,         only: check_triggers
   use tracking,        only: transport
   use volume_calc,     only: run_volume_calculations
@@ -109,6 +111,8 @@ contains
     ! END OF RUN WRAPUP
 
     if (master) call header("SIMULATION FINISHED", level=1)
+
+    call finalize_simulation()
 
     ! Clear particle
     call p % clear()
@@ -375,5 +379,53 @@ contains
     end if
 
   end subroutine replay_batch_history
+
+!===============================================================================
+! FINALIZE_SIMULATION calculates tally statistics, writes tallies, and displays
+! execution time and results
+!===============================================================================
+
+  subroutine finalize_simulation
+
+    ! Start finalization timer
+    call time_finalize%start()
+
+    ! Calculate statistics for tallies and write to tallies.out
+    if (master) then
+      if (n_realizations > 1) call tally_statistics()
+    end if
+    if (output_tallies) then
+      if (master) call write_tallies()
+    end if
+    if (check_overlaps) call reduce_overlap_count()
+
+    ! Stop timers and show timing statistics
+    call time_finalize%stop()
+    call time_total%stop()
+    if (master) then
+      call print_runtime()
+      call print_results()
+      if (check_overlaps) call print_overlap_check()
+    end if
+
+  end subroutine finalize_simulation
+
+!===============================================================================
+! REDUCE_OVERLAP_COUNT accumulates cell overlap check counts to master
+!===============================================================================
+
+  subroutine reduce_overlap_count()
+
+#ifdef MPI
+      if (master) then
+        call MPI_REDUCE(MPI_IN_PLACE, overlap_check_cnt, n_cells, &
+             MPI_INTEGER8, MPI_SUM, 0, mpi_intracomm, mpi_err)
+      else
+        call MPI_REDUCE(overlap_check_cnt, overlap_check_cnt, n_cells, &
+             MPI_INTEGER8, MPI_SUM, 0, mpi_intracomm, mpi_err)
+      end if
+#endif
+
+  end subroutine reduce_overlap_count
 
 end module simulation

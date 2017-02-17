@@ -18,7 +18,7 @@
 <settings>
     <eigenvalue>
         <particles>1000</particles>
-        <batches>2000</batches>
+        <batches>1000</batches>
         <inactive>100</inactive>
     </eigenvalue>
     <source strength="1.0">

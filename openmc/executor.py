@@ -44,8 +44,8 @@ def plot_geometry(output=True, openmc_exec='openmc', cwd='.'):
 
 
 def run(particles=None, threads=None, geometry_debug=False,
-        restart_file=None, tracks=False, mpi_procs=1, output=True,
-        openmc_exec='openmc', mpi_exec='mpiexec', cwd='.'):
+        restart_file=None, tracks=False, output=True, cwd='.',
+        openmc_exec='openmc', mpi_args=None):
     """Run an OpenMC simulation.
 
     Parameters
@@ -56,23 +56,23 @@ def run(particles=None, threads=None, geometry_debug=False,
         Number of OpenMP threads. If OpenMC is compiled with OpenMP threading
         enabled, the default is implementation-dependent but is usually equal to
         the number of hardware threads available (or a value set by the
-        OMP_NUM_THREADS environment variable).
+        :envvar:`OMP_NUM_THREADS` environment variable).
     geometry_debug : bool, optional
         Turn on geometry debugging during simulation. Defaults to False.
     restart_file : str, optional
         Path to restart file to use
     tracks : bool, optional
         Write tracks for all particles. Defaults to False.
-    mpi_procs : int, optional
-        Number of MPI processes.
     output : bool, optional
         Capture OpenMC output from standard out. Defaults to True.
+    cwd : str, optional
+        Path to working directory to run in. Defaults to the current working
+        directory.
     openmc_exec : str, optional
         Path to OpenMC executable. Defaults to 'openmc'.
-    mpi_exec : str, optional
-        MPI execute command. Defaults to 'mpiexec'.
-    cwd : str, optional
-        Path to working directory to run in. Defaults to the current working directory.
+    mpi_args : list of str, optional
+        MPI execute command and any additional MPI arguments to pass,
+        e.g. ['mpiexec', '-n', '8'].
 
     """
 
@@ -94,8 +94,8 @@ def run(particles=None, threads=None, geometry_debug=False,
     if tracks:
         post_args += '-t'
 
-    if isinstance(mpi_procs, Integral) and mpi_procs > 1:
-        pre_args += '{} -n {} '.format(mpi_exec, mpi_procs)
+    if mpi_args is not None:
+        pre_args = ' '.join(mpi_args) + ' '
 
     command = pre_args + openmc_exec + ' ' + post_args
 

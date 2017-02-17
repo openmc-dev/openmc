@@ -68,39 +68,37 @@ contains
       file_id = file_create(filename)
 
       ! Write file type
-      call write_dataset(file_id, "filetype", 'statepoint')
+      call write_attribute(file_id, "filetype", "statepoint")
 
       ! Write revision number for state point file
-      call write_dataset(file_id, "revision", REVISION_STATEPOINT)
+      call write_attribute(file_id, "version", VERSION_STATEPOINT)
 
       ! Write OpenMC version
-      call write_dataset(file_id, "version_major", VERSION_MAJOR)
-      call write_dataset(file_id, "version_minor", VERSION_MINOR)
-      call write_dataset(file_id, "version_release", VERSION_RELEASE)
+      call write_attribute(file_id, "openmc_version", VERSION)
 #ifdef GIT_SHA1
-      call write_dataset(file_id, "git_sha1", GIT_SHA1)
+      call write_attribute(file_id, "git_sha1", GIT_SHA1)
 #endif
 
       ! Write current date and time
-      call write_dataset(file_id, "date_and_time", time_stamp())
+      call write_attribute(file_id, "date_and_time", time_stamp())
 
       ! Write path to input
-      call write_dataset(file_id, "path", path_input)
+      call write_attribute(file_id, "path", path_input)
 
       ! Write out random number seed
       call write_dataset(file_id, "seed", seed)
 
       ! Write run information
       if (run_CE) then
-        call write_dataset(file_id, "run_CE", 1)
+        call write_dataset(file_id, "energy_mode", "continuous-energy")
       else
-        call write_dataset(file_id, "run_CE", 0)
+        call write_dataset(file_id, "energy_mode", "multi-group")
       end if
       select case(run_mode)
       case (MODE_FIXEDSOURCE)
         call write_dataset(file_id, "run_mode", "fixed source")
       case (MODE_EIGENVALUE)
-        call write_dataset(file_id, "run_mode", "k-eigenvalue")
+        call write_dataset(file_id, "run_mode", "eigenvalue")
       end select
       call write_dataset(file_id, "n_particles", n_particles)
       call write_dataset(file_id, "n_batches", n_batches)
@@ -670,13 +668,13 @@ contains
 
     integer :: i
     integer :: int_array(3)
+    integer, allocatable :: array(:)
     integer(HID_T) :: file_id
     integer(HID_T) :: cmfd_group
     integer(HID_T) :: tallies_group
     integer(HID_T) :: tally_group
     real(8) :: real_array(3)
     logical :: source_present
-    integer :: sp_run_CE
     character(MAX_WORD_LEN) :: word
     type(TallyObject), pointer :: tally
 
@@ -688,15 +686,15 @@ contains
     file_id = file_open(path_state_point, 'r', parallel=.true.)
 
     ! Read filetype
-    call read_dataset(word, file_id, "filetype")
+    call read_attribute(word, file_id, "filetype")
     if (word /= 'statepoint') then
       call fatal_error("OpenMC tried to restart from a non-statepoint file.")
     end if
 
     ! Read revision number for state point file and make sure it matches with
     ! current version
-    call read_dataset(int_array(1), file_id, "revision")
-    if (int_array(1) /= REVISION_STATEPOINT) then
+    call read_attribute(array, file_id, "version")
+    if (any(array /= VERSION_STATEPOINT)) then
       call fatal_error("State point version does not match current version &
            &in OpenMC.")
     end if
@@ -706,11 +704,11 @@ contains
 
     ! It is not impossible for a state point to be generated from a CE run but
     ! to be loaded in to an MG run (or vice versa), check to prevent that.
-    call read_dataset(sp_run_CE, file_id, "run_CE")
-    if (sp_run_CE == 0 .and. run_CE) then
+    call read_dataset(word, file_id, "energy_mode")
+    if (word == "multi-group" .and. run_CE) then
       call fatal_error("State point file is from multi-group run but &
                        & current run is continous-energy!")
-    else if (sp_run_CE == 1 .and. .not. run_CE) then
+    else if (word == "continuous-energy" .and. .not. run_CE) then
       call fatal_error("State point file is from continuous-energy run but &
                        & current run is multi-group!")
     end if
@@ -720,7 +718,7 @@ contains
     select case(word)
     case ('fixed source')
       run_mode = MODE_FIXEDSOURCE
-    case ('k-eigenvalue')
+    case ('eigenvalue')
       run_mode = MODE_EIGENVALUE
     end select
     call read_dataset(n_particles, file_id, "n_particles")

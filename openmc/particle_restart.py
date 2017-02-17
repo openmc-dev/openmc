@@ -1,5 +1,9 @@
 import h5py
 
+import openmc.checkvalue as cv
+
+_VERSION_PARTICLE_RESTART = 2
+
 class Particle(object):
     """Information used to restart a specific particle that caused a simulation to
     fail.
@@ -37,15 +41,9 @@ class Particle(object):
     def __init__(self, filename):
         self._f = h5py.File(filename, 'r')
 
-        # Ensure filetype and revision are correct
-        if 'filetype' not in self._f or self._f[
-                'filetype'].value.decode() != 'particle restart':
-            raise IOError('{} is not a particle restart file.'.format(filename))
-        if self._f['revision'].value != 1:
-            raise IOError('Particle restart file has a file revision of {} '
-                          'which is not consistent with the revision this '
-                          'version of OpenMC expects ({}).'.format(
-                              self._f['revision'].value, 1))
+        # Ensure filetype and version are correct
+        cv.check_filetype_version(self._f, 'particle restart',
+                                  _VERSION_PARTICLE_RESTART)
 
     @property
     def current_batch(self):

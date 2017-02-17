@@ -10,6 +10,8 @@ import h5py
 import openmc
 import openmc.checkvalue as cv
 
+_VERSION_STATEPOINT = 16
+
 
 class StatePoint(object):
     """State information on a simulation at a certain point in time (at the end
@@ -78,7 +80,7 @@ class StatePoint(object):
     path : str
         Working directory for simulation
     run_mode : str
-        Simulation run mode, e.g. 'k-eigenvalue'
+        Simulation run mode, e.g. 'eigenvalue'
     runtime : dict
         Dictionary whose keys are strings describing various runtime metrics
         and whose values are time values in seconds.
@@ -110,21 +112,8 @@ class StatePoint(object):
     def __init__(self, filename, autolink=True):
         self._f = h5py.File(filename, 'r')
 
-        # Ensure filetype and revision are correct
-        try:
-            if 'filetype' not in self._f or self._f[
-                    'filetype'].value.decode() != 'statepoint':
-                raise IOError('{} is not a statepoint file.'.format(filename))
-        except AttributeError:
-            raise IOError('Could not read statepoint file. This most likely '
-                          'means the statepoint file was produced by a '
-                          'different version of OpenMC than the one you are '
-                          'using.')
-        if self._f['revision'].value != 15:
-            raise IOError('Statepoint file has a file revision of {} '
-                          'which is not consistent with the revision this '
-                          'version of OpenMC expects ({}).'.format(
-                              self._f['revision'].value, 15))
+        # Check filetype and version
+        cv.check_filetype_version(self._f, 'statepoint', _VERSION_STATEPOINT)
 
         # Set flags for what data has been read
         self._meshes_read = False
@@ -188,18 +177,18 @@ class StatePoint(object):
 
     @property
     def date_and_time(self):
-        return self._f['date_and_time'].value.decode()
+        return self._f.attrs['date_and_time'].decode()
 
     @property
     def entropy(self):
-        if self.run_mode == 'k-eigenvalue':
+        if self.run_mode == 'eigenvalue':
             return self._f['entropy'].value
         else:
             return None
 
     @property
     def gen_per_batch(self):
-        if self.run_mode == 'k-eigenvalue':
+        if self.run_mode == 'eigenvalue':
             return self._f['gen_per_batch'].value
         else:
             return None
@@ -234,35 +223,35 @@ class StatePoint(object):
 
     @property
     def k_generation(self):
-        if self.run_mode == 'k-eigenvalue':
+        if self.run_mode == 'eigenvalue':
             return self._f['k_generation'].value
         else:
             return None
 
     @property
     def k_combined(self):
-        if self.run_mode == 'k-eigenvalue':
+        if self.run_mode == 'eigenvalue':
             return self._f['k_combined'].value
         else:
             return None
 
     @property
     def k_col_abs(self):
-        if self.run_mode == 'k-eigenvalue':
+        if self.run_mode == 'eigenvalue':
             return self._f['k_col_abs'].value
         else:
             return None
 
     @property
     def k_col_tra(self):
-        if self.run_mode == 'k-eigenvalue':
+        if self.run_mode == 'eigenvalue':
             return self._f['k_col_tra'].value
         else:
             return None
 
     @property
     def k_abs_tra(self):
-        if self.run_mode == 'k-eigenvalue':
+        if self.run_mode == 'eigenvalue':
             return self._f['k_abs_tra'].value
         else:
             return None
@@ -321,7 +310,7 @@ class StatePoint(object):
 
     @property
     def n_inactive(self):
-        if self.run_mode == 'k-eigenvalue':
+        if self.run_mode == 'eigenvalue':
             return self._f['n_inactive'].value
         else:
             return None
@@ -336,7 +325,7 @@ class StatePoint(object):
 
     @property
     def path(self):
-        return self._f['path'].value.decode()
+        return self._f.attrs['path'].decode()
 
     @property
     def run_mode(self):
@@ -501,9 +490,7 @@ class StatePoint(object):
 
     @property
     def version(self):
-        return (self._f['version_major'].value,
-                self._f['version_minor'].value,
-                self._f['version_release'].value)
+        return self._f.attrs['version']
 
     @property
     def summary(self):

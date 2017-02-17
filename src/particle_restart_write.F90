@@ -39,9 +39,15 @@ contains
     ! Get information about source particle
     src => source_bank(current_work)
 
+    ! Write filetype and version info
+    call write_attribute(file_id, 'filetype', 'particle restart')
+    call write_attribute(file_id, 'version', VERSION_PARTICLE_RESTART)
+    call write_attribute(file_id, "openmc_version", VERSION)
+#ifdef GIT_SHA1
+    call write_attribute(file_id, "git_sha1", GIT_SHA1)
+#endif
+
     ! Write data to file
-    call write_dataset(file_id, 'filetype', 'particle restart')
-    call write_dataset(file_id, 'revision', REVISION_PARTICLE_RESTART)
     call write_dataset(file_id, 'current_batch', current_batch)
     call write_dataset(file_id, 'gen_per_batch', gen_per_batch)
     call write_dataset(file_id, 'current_gen', current_gen)
@@ -50,7 +56,7 @@ contains
     case (MODE_FIXEDSOURCE)
       call write_dataset(file_id, 'run_mode', 'fixed source')
     case (MODE_EIGENVALUE)
-      call write_dataset(file_id, 'run_mode', 'k-eigenvalue')
+      call write_dataset(file_id, 'run_mode', 'eigenvalue')
     case (MODE_PARTICLE)
       call write_dataset(file_id, 'run_mode', 'particle restart')
     end select

@@ -5412,16 +5412,16 @@ contains
 
     if (attribute_exists(file_id, 'version')) then
       call read_attribute(version, file_id, 'version')
-      if (version(1) /= HDF5_VERSION_MAJOR) then
+      if (version(1) /= HDF5_VERSION(1)) then
         call fatal_error("HDF5 data format uses version " // trim(to_str(&
              version(1))) // "." // trim(to_str(version(2))) // " whereas &
              &your installation of OpenMC expects version " // trim(to_str(&
-             HDF5_VERSION_MAJOR)) // ".x data.")
+             HDF5_VERSION(1))) // ".x data.")
       end if
     else
       call fatal_error("HDF5 data does not indicate a version. Your &
            &installation of OpenMC expects version " // trim(to_str(&
-           HDF5_VERSION_MAJOR)) // ".x data.")
+           HDF5_VERSION(1))) // ".x data.")
     end if
   end subroutine check_data_version
 

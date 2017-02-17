@@ -75,6 +75,8 @@ module hdf5_interface
     module procedure write_attribute_double
     module procedure write_attribute_double_1D
     module procedure write_attribute_integer
+    module procedure write_attribute_integer_1D
+    module procedure write_attribute_string
   end interface write_attribute
 
   public :: write_dataset
@@ -93,7 +95,6 @@ module hdf5_interface
   public :: close_dataset
   public :: get_shape
   public :: get_ndims
-  public :: write_attribute_string
   public :: get_groups
   public :: get_datasets
   public :: get_name
@@ -2046,15 +2047,46 @@ contains
 ! WRITE_ATTRIBUTE_STRING
 !===============================================================================
 
-  subroutine write_attribute_string(group_id, var, attr_type, attr_str)
-    integer(HID_T), intent(in) :: group_id
-    character(*), intent(in)   :: var       ! variable name for attr
-    character(*), intent(in)   :: attr_type ! attr identifier type
-    character(*), intent(in)   :: attr_str  ! string for attr id type
+  subroutine write_attribute_string(obj_id, name, buffer)
+    integer(HID_T), intent(in)       :: obj_id    ! object to write attribute to
+    character(*), intent(in)         :: name      ! name of attribute
+    character(*), intent(in), target :: buffer    ! string to write
 
-    integer :: hdf5_err
+    integer        :: hdf5_err
+    integer(HID_T) :: dspace_id
+    integer(HID_T) :: attr_id
+    integer(HID_T) :: filetype
+    integer(SIZE_T) :: i
+    integer(SIZE_T) :: n
+    character(kind=C_CHAR), allocatable, target :: temp_buffer(:)
+    type(c_ptr) :: f_ptr
 
-    call h5ltset_attribute_string_f(group_id, var, attr_type, attr_str, hdf5_err)
+    ! Create datatype for HDF5 file based on C char
+    n = len_trim(buffer)
+    if (n > 0) then
+      call h5tcopy_f(H5T_C_S1, filetype, hdf5_err)
+      call h5tset_size_f(filetype, n, hdf5_err)
+
+      ! Crate memory space and attribute
+      call h5screate_f(H5S_SCALAR_F, dspace_id, hdf5_err)
+      call h5acreate_f(obj_id, trim(name), filetype, dspace_id, &
+           attr_id, hdf5_err)
+
+      ! Copy string to temporary buffer
+      allocate(temp_buffer(n))
+      do i = 1, n
+        temp_buffer(i) = buffer(i:i)
+      end do
+
+      ! Write attribute
+      f_ptr = c_loc(buffer(1:1))
+      call h5awrite_f(attr_id, filetype, f_ptr, hdf5_err)
+
+      ! Close attribute
+      call h5aclose_f(attr_id, hdf5_err)
+      call h5sclose_f(dspace_id, hdf5_err)
+      call h5tclose_f(filetype, hdf5_err)
+    end if
   end subroutine write_attribute_string
 
   subroutine read_attribute_double(buffer, obj_id, name)
@@ -2269,6 +2301,37 @@ contains
     f_ptr = c_loc(buffer)
     call h5aread_f(attr_id, H5T_NATIVE_INTEGER, f_ptr, hdf5_err)
   end subroutine read_attribute_integer_1D_explicit
+
+  subroutine write_attribute_integer_1D(obj_id, name, buffer)
+    integer(HID_T),  intent(in) :: obj_id
+    character(*),    intent(in) :: name
+    integer, target, intent(in) :: buffer(:)
+
+    integer(HSIZE_T) :: dims(1)
+
+    dims(:) = shape(buffer)
+    call write_attribute_integer_1D_explicit(obj_id, dims, name, buffer)
+  end subroutine write_attribute_integer_1D
+
+  subroutine write_attribute_integer_1D_explicit(obj_id, dims, name, buffer)
+    integer(HID_T),   intent(in) :: obj_id
+    integer(HSIZE_T), intent(in) :: dims(1)
+    character(*),     intent(in) :: name
+    integer, target,  intent(in) :: buffer(dims(1))
+
+    integer        :: hdf5_err
+    integer(HID_T) :: dspace_id
+    integer(HID_T) :: attr_id
+    type(C_PTR)    :: f_ptr
+
+    call h5screate_simple_f(1, dims, dspace_id, hdf5_err)
+    call h5acreate_f(obj_id, trim(name), H5T_NATIVE_INTEGER, dspace_id, &
+         attr_id, hdf5_err)
+    f_ptr = c_loc(buffer)
+    call h5awrite_f(attr_id, H5T_NATIVE_INTEGER, f_ptr, hdf5_err)
+    call h5aclose_f(attr_id, hdf5_err)
+    call h5sclose_f(dspace_id, hdf5_err)
+  end subroutine write_attribute_integer_1D_explicit
 
   subroutine read_attribute_integer_2D(buffer, obj_id, name)
     integer, target, allocatable, intent(inout) :: buffer(:,:)

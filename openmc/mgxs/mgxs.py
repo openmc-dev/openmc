@@ -5238,15 +5238,9 @@ class ConvolvedMGXS(MGXS):
             name, num_polar, num_azimuthal)
 
     def __deepcopy__(self, memo):
-        existing = memo.get(id(self))
-
-        # If this is the first time we have tried to copy this object, copy it
-        if existing is None:
-            clone = super(ConvolvedMGXS, self).__deepcopy__(self)
-            clone._mgxs = copy.deepcopy(self.mgxs)
-            return clone
-        else:
-            return existing
+        clone = super(ConvolvedMGXS, self).__deepcopy__(memo)
+        clone._mgxs = copy.deepcopy(self.mgxs)
+        return clone
 
     @property
     def mgxs(self):
@@ -5574,6 +5568,26 @@ class ConsistentScatterMatrixXS(ConvolvedMGXS, ScatterMatrixXS):
 
     def load_from_statepoint(self, statepoint):
         super(ConsistentScatterMatrixXS, self).load_from_statepoint(statepoint)
+
+    def get_condensed_xs(self, coarse_groups):
+        condense_xs = \
+            super(ConsistentScatterMatrixXS, self).get_condensed_xs(coarse_groups)
+        condense_xs._tallies = None
+
+        for i, mgxs in enumerate(condense_xs._mgxs):
+            condense_xs._mgxs[i] = mgxs.get_condensed_xs(coarse_groups)
+
+        return condense_xs
+
+    def get_subdomain_avg_xs(self, subdomains='all'):
+        avg_xs = \
+            super(ConsistentScatterMatrixXS, self).get_subdomain_avg_xs(subdomains)
+        avg_xs._tallies = None
+
+        for i, mgxs in enumerate(avg_xs._mgxs):
+            self._mgxs[i] = mgxs.get_subdomain_avg_xs(subdomains)
+
+        return avg_xs
 
 
 class ConsistentNuScatterMatrixXS(ConsistentScatterMatrixXS):

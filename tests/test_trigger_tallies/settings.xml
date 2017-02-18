@@ -1,14 +1,13 @@
 <?xml version="1.0"?>
 <settings>
-   <eigenvalue>
-    <batches>10</batches>
-    <inactive>5</inactive>
-    <particles>1000</particles>
-    <keff_trigger>
-      <type>std_dev</type>
-      <threshold>0.001</threshold>
-    </keff_trigger>
-  </eigenvalue>
+  <run_mode>eigenvalue</run_mode>
+  <batches>10</batches>
+  <inactive>5</inactive>
+  <particles>1000</particles>
+  <keff_trigger>
+    <type>std_dev</type>
+    <threshold>0.001</threshold>
+  </keff_trigger>
 
   <trigger>
     <active>true</active>

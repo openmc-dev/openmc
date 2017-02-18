@@ -536,6 +536,12 @@ contains
       material_group = create_group(materials_group, "material " // &
            trim(to_str(m%id)))
 
+      if (m % depletable) then
+        call write_attribute(material_group, "depletable", 1)
+      else
+        call write_attribute(material_group, "depletable", 0)
+      end if
+
       ! Write internal OpenMC index for this material
       call write_dataset(material_group, "index", i)
 

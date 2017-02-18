@@ -72,6 +72,9 @@ class MGXSTestHarness(PyAPITestHarness):
         if os.path.exists('./tallies.xml'):
             os.remove('./tallies.xml')
 
+        # Close the statepoint to allow writing
+        sp.close()
+
         # Re-run MG mode.
         if self._opts.mpi_exec is not None:
             returncode = openmc.run(mpi_procs=self._opts.mpi_np,

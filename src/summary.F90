@@ -8,6 +8,7 @@ module summary
   use hdf5_interface
   use material_header, only: Material
   use mesh_header,     only: RegularMesh
+  use message_passing
   use nuclide_header
   use output,          only: time_stamp
   use surface_header

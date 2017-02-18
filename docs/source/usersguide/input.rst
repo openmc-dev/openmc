@@ -214,14 +214,15 @@ The ``<inactive>`` element indicates the number of inactive batches used in a
 k-eigenvalue calculation. In general, the starting fission source iterations in
 an eigenvalue calculation can not be used to contribute to tallies since the
 fission source distribution and eigenvalue are generally not converged
-immediately.
+immediately. This element is ignored for all run modes other than "eigenvalue".
 
   *Default*: 0
 
 ``<keff_trigger>`` Element
 --------------------------
 
-The ``<keff_trigger>`` element specifies a precision trigger on the combined
+The ``<keff_trigger>`` element (ignored for all run modes other than
+"eigenvalue".) specifies a precision trigger on the combined
 :math:`k_{eff}`. The trigger is a convergence criterion on the uncertainty of
 the estimated eigenvalue. It has the following attributes/sub-elements:
 

@@ -115,7 +115,7 @@ Many of the above classes are derived from several abstract classes:
    openmc.Region
    openmc.Lattice
 
-Two helpers function are also available to create rectangular and hexagonal
+Two helper function are also available to create rectangular and hexagonal
 prisms defined by the intersection of four and six surface half-spaces,
 respectively.
 

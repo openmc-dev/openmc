@@ -488,19 +488,19 @@ contains
 
     ! First we will identify if there are any matching estimators
     if ((abs(kv(1) - kv(2)) / kv(1) < FP_REL_PRECISION) .and. &
-        (abs(cov(1, 1) - cov(2, 2)) / cov(1, 1) < FP_REL_PRECISION)) then
+         (abs(cov(1, 1) - cov(2, 2)) / cov(1, 1) < FP_REL_PRECISION)) then
       ! 1 and 2 match, so only use 1 and 3 in our comparisons
       i = 1
       j = 3
 
     else if ((abs(kv(1) - kv(3)) / kv(1) < FP_REL_PRECISION) .and. &
-        (abs(cov(1, 1) - cov(3, 3)) / cov(1, 1) < FP_REL_PRECISION)) then
+         (abs(cov(1, 1) - cov(3, 3)) / cov(1, 1) < FP_REL_PRECISION)) then
       ! 1 and 3 match, so only use 1 and 2 in our comparisons
       i = 1
       j = 2
 
     else if ((abs(kv(2) - kv(3)) / kv(2) < FP_REL_PRECISION) .and. &
-        (abs(cov(2, 2) - cov(3, 3)) / cov(2, 2) < FP_REL_PRECISION)) then
+         (abs(cov(2, 2) - cov(3, 3)) / cov(2, 2) < FP_REL_PRECISION)) then
       ! 2 and 3 match, so only use 1 and 2 in our comparisons
       i = 1
       j = 2

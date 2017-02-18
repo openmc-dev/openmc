@@ -34,6 +34,8 @@ MGXS_TYPES = ['total',
               'nu-fission matrix',
               'scatter probability matrix',
               'nu-scatter probability matrix',
+              'consistent scatter matrix',
+              'consistent nu-scatter matrix',
               'chi',
               'chi-prompt',
               'inverse-velocity',
@@ -731,6 +733,10 @@ class MGXS(object):
             mgxs = ScatterProbabilityMatrix(domain, domain_type, energy_groups)
         elif mgxs_type == 'nu-scatter probability matrix':
             mgxs = NuScatterProbabilityMatrix(domain, domain_type, energy_groups)
+        elif mgxs_type == 'consistent scatter matrix':
+            mgxs = ConsistentScatterMatrixXS(domain, domain_type, energy_groups)
+        elif mgxs_type == 'consistent nu-scatter matrix':
+            mgxs = ConsistentNuScatterMatrixXS(domain, domain_type, energy_groups)
         elif mgxs_type == 'nu-fission matrix':
             mgxs = NuFissionMatrixXS(domain, domain_type, energy_groups)
         elif mgxs_type == 'chi':
@@ -5061,9 +5067,13 @@ class ScatterProbabilityMatrix(MatrixMGXS):
     def xs_tally(self):
 
         if self._xs_tally is None:
-            energyout = self.filters[1]
+#            energyout = self.filters[0][1]
+            energyout_bins = \
+                [self.energy_groups.get_group_bounds(i) for i in range(self.num_groups, 0, -1)]
             norm = self.rxn_rate_tally.summation(
-                filters=openmc.EnergyOutFilter, filter_bins=energyout.bins)
+                filter_type=openmc.EnergyoutFilter, filter_bins=energyout_bins)
+            # Remove the AggregateFilter summed across energyout bins
+            norm._filters = norm._filters[:2]
 
             # Compute the group-to-group probailities
             self._xs_tally = self.tallies['scatter'] / norm
@@ -5222,11 +5232,10 @@ class ConvolvedMGXS(MGXS):
     def __init__(self, domain=None, domain_type=None, groups=None,
                  by_nuclide=False, name='', num_polar=1, num_azimuthal=1):
 
+        self._mgxs = []
         super(ConvolvedMGXS, self).__init__(
             domain, domain_type, groups, by_nuclide,
             name, num_polar, num_azimuthal)
-
-        self._mgxs = []
 
     def __deepcopy__(self, memo):
         existing = memo.get(id(self))
@@ -5262,11 +5271,12 @@ class ConvolvedMGXS(MGXS):
             # Add tallies created for each MGXS
             for mgxs in self.mgxs:
                 for key in mgxs.tallies:
-                    self._tallies[key] = mgxs.tallies[key]
+                    new_key = '{} : {}'.format(mgxs.hdf5_key, key)
+                    self._tallies[new_key] = mgxs.tallies[key]
 
         return self._tallies
 
-    @name.setter
+    @MGXS.name.setter
     def name(self, name):
         cv.check_type('name', name, string_types)
 
@@ -5274,7 +5284,7 @@ class ConvolvedMGXS(MGXS):
         for mgxs in self.mgxs:
             mgxs.name = name
 
-    @by_nuclide.setter
+    @MGXS.by_nuclide.setter
     def by_nuclide(self, by_nuclide):
         cv.check_type('by_nuclide', by_nuclide, bool)
 
@@ -5282,7 +5292,7 @@ class ConvolvedMGXS(MGXS):
         for mgxs in self.mgxs:
             mgxs.by_nuclide = by_nuclide
 
-    @nuclides.setter
+    @MGXS.nuclides.setter
     def nuclides(self, nuclides):
         cv.check_iterable_type('nuclides', nuclides, string_types)
 
@@ -5290,11 +5300,11 @@ class ConvolvedMGXS(MGXS):
         for mgxs in self.mgxs:
             mgxs.nuclides = nuclides
 
-    @estimator.setter
+    @MGXS.estimator.setter
     def estimator(self, estimator):
         raise ValueError('Unable to assign a tally estimator a ConvolvedMGXS')
 
-    @domain.setter
+    @MGXS.domain.setter
     def domain(self, domain):
         cv.check_type('domain', domain, _DOMAINS)
 
@@ -5313,7 +5323,7 @@ class ConvolvedMGXS(MGXS):
             elif isinstance(domain, openmc.Mesh):
                 self._domain_type = 'mesh'
 
-    @domain_type.setter
+    @MGXS.domain_type.setter
     def domain_type(self, domain_type):
         cv.check_value('domain type', domain_type, DOMAIN_TYPES)
 
@@ -5321,7 +5331,7 @@ class ConvolvedMGXS(MGXS):
         for mgxs in self.mgxs:
             mgxs.domain_type = domain_type
 
-    @energy_groups.setter
+    @MGXS.energy_groups.setter
     def energy_groups(self, energy_groups):
         cv.check_type('energy groups', energy_groups, openmc.mgxs.EnergyGroups)
 
@@ -5329,7 +5339,7 @@ class ConvolvedMGXS(MGXS):
         for mgxs in self.mgxs:
             mgxs.energy_groups = energy_groups
 
-    @num_polar.setter
+    @MGXS.num_polar.setter
     def num_polar(self, num_polar):
         cv.check_type('num_polar', num_polar, Integral)
         cv.check_greater_than('num_polar', num_polar, 0)
@@ -5338,7 +5348,7 @@ class ConvolvedMGXS(MGXS):
         for mgxs in self.mgxs:
             mgxs.num_polar = num_polar
 
-    @num_azimuthal.setter
+    @MGXS.num_azimuthal.setter
     def num_azimuthal(self, num_azimuthal):
         cv.check_type('num_azimuthal', num_azimuthal, Integral)
         cv.check_greater_than('num_azimuthal', num_azimuthal, 0)
@@ -5347,7 +5357,7 @@ class ConvolvedMGXS(MGXS):
         for mgxs in self.mgxs:
             mgxs.num_azimuthal = num_azimuthal
 
-    @tally_trigger.setter
+    @MGXS.tally_trigger.setter
     def tally_trigger(self, tally_trigger):
         cv.check_type('tally trigger', tally_trigger, openmc.Trigger)
 
@@ -5355,7 +5365,7 @@ class ConvolvedMGXS(MGXS):
         for mgxs in self.mgxs:
             mgxs.tally_trigger = tally_trigger
 
-    @sparse.setter
+    @MGXS.sparse.setter
     def sparse(self, sparse):
         """Convert tally data from NumPy arrays to SciPy list of lists (LIL)
         sparse matrices, and vice versa.
@@ -5382,10 +5392,68 @@ class ConvolvedMGXS(MGXS):
         for mgxs in self.mgxs:
             mgxs.sparse = sparse
 
+    def load_from_statepoint(self, statepoint):
+        """Extracts tallies in an OpenMC StatePoint with the data needed to
+        compute multi-group cross sections.
+
+        This method is needed to compute cross section data from tallies
+        in an OpenMC StatePoint object.
+
+        NOTE: The statepoint must first be linked with an OpenMC Summary object.
+
+        Parameters
+        ----------
+        statepoint : openmc.StatePoint
+            An OpenMC StatePoint object with tally data
+
+        Raises
+        ------
+        ValueError
+            When this method is called with a statepoint that has not been
+            linked with a summary object.
+
+        """
+
+        cv.check_type('statepoint', statepoint, openmc.statepoint.StatePoint)
+
+        if statepoint.summary is None:
+            msg = 'Unable to load data from a statepoint which has not been ' \
+                  'linked with a summary file'
+            raise ValueError(msg)
+
+        # Override the domain object that loaded from an OpenMC summary file
+        # NOTE: This is necessary for micro cross-sections which require
+        # the isotopic number densities as computed by OpenMC
+        if self.domain_type == 'cell' or self.domain_type == 'distribcell':
+            self.domain = statepoint.summary.get_cell_by_id(self.domain.id)
+        elif self.domain_type == 'universe':
+            self.domain = statepoint.summary.get_universe_by_id(self.domain.id)
+        elif self.domain_type == 'material':
+            self.domain = statepoint.summary.get_material_by_id(self.domain.id)
+        elif self.domain_type == 'mesh':
+            self.domain = statepoint.meshes[self.domain.id]
+        else:
+            msg = 'Unable to load data from a statepoint for domain type {0} ' \
+                  'which is not yet supported'.format(self.domain_type)
+            raise ValueError(msg)
+
+        # Clear any tallies previously loaded from a statepoint
+        if self.loaded_sp:
+            self._tallies = None
+            self._xs_tally = None
+            self._rxn_rate_tally = None
+            self._loaded_sp = False
+
+        for mgxs in self.mgxs:
+            mgxs.load_from_statepoint(statepoint)
+
+        self._loaded_sp = True
+
 
 # FIXME: Kord's scattering matrix idea
+# FIXME: Note that this does not yet support transport correction
 
-class ConsistentScatterMatrixXS(ScatterMatrixXS, ConvolvedMGXS):
+class ConsistentScatterMatrixXS(ConvolvedMGXS, ScatterMatrixXS):
 
     # FIXME: Add docstring
 
@@ -5399,6 +5467,12 @@ class ConsistentScatterMatrixXS(ScatterMatrixXS, ConvolvedMGXS):
 
         # Initialize each MGXS used by the convolution
         self._mgxs = [ScatterXS(), ScatterProbabilityMatrix()]
+        '''
+        self._mgxs[1].correction = self.correction
+        self._mgxs[1].scatter_format = self.scatter_format
+        self._mgxs[1].legendre_order = self.legendre_order
+        self._mgxs[1].histogram_bins = self.
+        '''
 
         # Assign parameters to each MGXS in the convlution
         for mgxs in self.mgxs:
@@ -5443,6 +5517,63 @@ class ConsistentScatterMatrixXS(ScatterMatrixXS, ConvolvedMGXS):
             self._compute_xs()
 
         return self._xs_tally
+
+    # FIXME: Add not implemented yet errors to these property getters/setters
+    '''
+    @ScatterMatrixXS.correction.setter
+    def correction(self, correction):
+        cv.check_value('correction', correction, ('P0', None))
+
+        if self.scatter_format == 'legendre':
+            if correction == 'P0' and self.legendre_order > 0:
+                msg = 'The P0 correction will be ignored since the ' \
+                      'scattering order {} is greater than '\
+                      'zero'.format(self.legendre_order)
+                warnings.warn(msg)
+        elif self.scatter_format == 'histogram':
+            msg = 'The P0 correction will be ignored since the ' \
+                  'scatter format is set to histogram'
+            warnings.warn(msg)
+
+        self._correction = correction
+
+    @ScatterMatrixXS.scatter_format.setter
+    def scatter_format(self, scatter_format):
+        cv.check_value('scatter_format', scatter_format, MU_TREATMENTS)
+        self._scatter_format = scatter_format
+
+    @ScatterMatrixXS.legendre_order.setter
+    def legendre_order(self, legendre_order):
+        cv.check_type('legendre_order', legendre_order, Integral)
+        cv.check_greater_than('legendre_order', legendre_order, 0,
+                              equality=True)
+        cv.check_less_than('legendre_order', legendre_order, _MAX_LEGENDRE,
+                           equality=True)
+
+        if self.scatter_format == 'legendre':
+            if self.correction == 'P0' and legendre_order > 0:
+                msg = 'The P0 correction will be ignored since the ' \
+                      'scattering order {} is greater than ' \
+                      'zero'.format(self.legendre_order)
+                warnings.warn(msg, RuntimeWarning)
+                self.correction = None
+        elif self.scatter_format == 'histogram':
+            msg = 'The legendre order will be ignored since the ' \
+                  'scatter format is set to histogram'
+            warnings.warn(msg)
+
+        self._legendre_order = legendre_order
+
+    @ScatterMatrixXS.histogram_bins.setter
+    def histogram_bins(self, histogram_bins):
+        cv.check_type('histogram_bins', histogram_bins, Integral)
+        cv.check_greater_than('histogram_bins', histogram_bins, 0)
+
+        self._histogram_bins = histogram_bins
+    '''
+
+    def load_from_statepoint(self, statepoint):
+        super(ConsistentScatterMatrixXS, self).load_from_statepoint(statepoint)
 
 
 class ConsistentNuScatterMatrixXS(ConsistentScatterMatrixXS):

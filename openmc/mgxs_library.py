@@ -1690,8 +1690,7 @@ class XSdata(object):
         azimuthal bins of an XSdata object that already uses an angular
         representation. Finally, this method simply uses an arithmetic mean to
         convert from an angular to isotropic representation; no flux-weighting
-        is applied and therefore the correctness of the solution is not
-        guaranteed.
+        is applied and therefore reaction rates will not be preserved.
 
         Parameters
         ----------
@@ -2453,8 +2452,7 @@ class MGXSLibrary(object):
         azimuthal bins of an XSdata object that already uses an angular
         representation. Finally, this method simply uses an arithmetic mean to
         convert from an angular to isotropic representation; no flux-weighting
-        is applied and therefore the correctness of the solution is not
-        guaranteed.
+        is applied and therefore the reaction rates will not be preserved.
 
         Parameters
         ----------

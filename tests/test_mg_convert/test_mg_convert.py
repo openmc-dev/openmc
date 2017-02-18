@@ -11,9 +11,9 @@ from testing_harness import PyAPITestHarness
 import openmc
 
 # OpenMC simulation parameters
-batches = 1000
-inactive = 100
-particles = 1000
+batches = 10
+inactive = 5
+particles = 100
 
 
 def build_mgxs_library(convert):

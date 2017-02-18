@@ -32,6 +32,8 @@ MGXS_TYPES = ['total',
               'nu-scatter matrix',
               'multiplicity matrix',
               'nu-fission matrix',
+              'scatter probability matrix',
+              'nu-scatter probability matrix',
               'chi',
               'chi-prompt',
               'inverse-velocity',
@@ -725,6 +727,10 @@ class MGXS(object):
             mgxs = NuScatterMatrixXS(domain, domain_type, energy_groups)
         elif mgxs_type == 'multiplicity matrix':
             mgxs = MultiplicityMatrixXS(domain, domain_type, energy_groups)
+        elif mgxs_type == 'scatter probability matrix':
+            mgxs = ScatterProbabilityMatrix(domain, domain_type, energy_groups)
+        elif mgxs_type == 'nu-scatter probability matrix':
+            mgxs = NuScatterProbabilityMatrix(domain, domain_type, energy_groups)
         elif mgxs_type == 'nu-fission matrix':
             mgxs = NuFissionMatrixXS(domain, domain_type, energy_groups)
         elif mgxs_type == 'chi':
@@ -4722,241 +4728,6 @@ class NuScatterMatrixXS(ScatterMatrixXS):
         self._hdf5_key = 'nu-scatter matrix'
 
 
-
-# FIXME: Kord's scattering matrix idea
-
-class ConvolvedScatterMatrixXS(ScatterMatrixXS):
-    """A scattering production matrix multi-group cross section for one or
-    more Legendre moments.
-
-    This class can be used for both OpenMC input generation and tally data
-    post-processing to compute spatially-homogenized and energy-integrated
-    multi-group cross sections for multi-group neutronics calculations. At a
-    minimum, one needs to set the :attr:`NuScatterMatrixXS.energy_groups` and
-    :attr:`NuScatterMatrixXS.domain` properties. Tallies for the flux and
-    appropriate reaction rates over the specified domain are generated
-    automatically via the :attr:`NuScatterMatrixXS.tallies` property, which can
-    then be appended to a :class:`openmc.Tallies` instance.
-
-    For post-processing, the :meth:`MGXS.load_from_statepoint` will pull in the
-    necessary data to compute multi-group cross sections from a
-    :class:`openmc.StatePoint` instance. The derived multi-group cross section
-    can then be obtained from the :attr:`NuScatterMatrixXS.xs_tally` property.
-
-    The calculation of the scattering-production matrix is the same as that for
-    :class:`ScatterMatrixXS` except that the scattering multiplicity is
-    accounted for.
-
-    Parameters
-    ----------
-    domain : openmc.Material or openmc.Cell or openmc.Universe or openmc.Mesh
-        The domain for spatial homogenization
-    domain_type : {'material', 'cell', 'distribcell', 'universe', 'mesh'}
-        The domain type for spatial homogenization
-    groups : openmc.mgxs.EnergyGroups
-        The energy group structure for energy condensation
-    by_nuclide : bool
-        If true, computes cross sections for each nuclide in domain
-    name : str, optional
-        Name of the multi-group cross section. Used as a label to identify
-        tallies in OpenMC 'tallies.xml' file.
-    num_polar : Integral, optional
-        Number of equi-width polar angle bins for angle discretization;
-        defaults to one bin
-    num_azimuthal : Integral, optional
-        Number of equi-width azimuthal angle bins for angle discretization;
-        defaults to one bin
-
-    Attributes
-    ----------
-    correction : 'P0' or None
-        Apply the P0 correction to scattering matrices if set to 'P0'
-    legendre_order : int
-        The highest legendre moment in the scattering matrix (default is 0)
-    name : str, optional
-        Name of the multi-group cross section
-    rxn_type : str
-        Reaction type (e.g., 'total', 'nu-fission', etc.)
-    by_nuclide : bool
-        If true, computes cross sections for each nuclide in domain
-    domain : Material or Cell or Universe or Mesh
-        Domain for spatial homogenization
-    domain_type : {'material', 'cell', 'distribcell', 'universe', 'mesh'}
-        Domain type for spatial homogenization
-    energy_groups : openmc.mgxs.EnergyGroups
-        Energy group structure for energy condensation
-    num_polar : Integral
-        Number of equi-width polar angle bins for angle discretization
-    num_azimuthal : Integral
-        Number of equi-width azimuthal angle bins for angle discretization
-    tally_trigger : openmc.Trigger
-        An (optional) tally precision trigger given to each tally used to
-        compute the cross section
-    scores : list of str
-        The scores in each tally used to compute the multi-group cross section
-    filters : list of openmc.Filter
-        The filters in each tally used to compute the multi-group cross section
-    tally_keys : list of str
-        The keys into the tallies dictionary for each tally used to compute
-        the multi-group cross section
-    estimator : 'analog'
-        The tally estimator used to compute the multi-group cross section
-    tallies : collections.OrderedDict
-        OpenMC tallies needed to compute the multi-group cross section. The keys
-        are strings listed in the :attr:`NuScatterMatrixXS.tally_keys` property
-        and values are instances of :class:`openmc.Tally`.
-    rxn_rate_tally : openmc.Tally
-        Derived tally for the reaction rate tally used in the numerator to
-        compute the multi-group cross section. This attribute is None
-        unless the multi-group cross section has been computed.
-    xs_tally : openmc.Tally
-        Derived tally for the multi-group cross section. This attribute
-        is None unless the multi-group cross section has been computed.
-    num_subdomains : int
-        The number of subdomains is unity for 'material', 'cell' and 'universe'
-        domain types. This is equal to the number of cell instances
-        for 'distribcell' domain types (it is equal to unity prior to loading
-        tally data from a statepoint file).
-    num_nuclides : int
-        The number of nuclides for which the multi-group cross section is
-        being tracked. This is unity if the by_nuclide attribute is False.
-    nuclides : Iterable of str or 'sum'
-        The optional user-specified nuclides for which to compute cross
-        sections (e.g., 'U238', 'O16'). If by_nuclide is True but nuclides
-        are not specified by the user, all nuclides in the spatial domain
-        are included. This attribute is 'sum' if by_nuclide is false.
-    sparse : bool
-        Whether or not the MGXS' tallies use SciPy's LIL sparse matrix format
-        for compressed data storage
-    loaded_sp : bool
-        Whether or not a statepoint file has been loaded with tally data
-    derived : bool
-        Whether or not the MGXS is merged from one or more other MGXS
-    hdf5_key : str
-        The key used to index multi-group cross sections in an HDF5 data store
-
-    """
-
-    def __init__(self, domain=None, domain_type=None,
-                 groups=None, by_nuclide=False, name='', num_polar=1,
-                 num_azimuthal=1):
-        super(ScatterMatrixXS, self).__init__(domain, domain_type,
-                                              groups, by_nuclide, name,
-                                              num_polar, num_azimuthal)
-        self._rxn_type = 'scatter'
-        self._hdf5_key = 'convolved scatter matrix'
-        self._estimator = 'track-length'
-        self._valid_estimators = ['analog']
-
-
-    def __deepcopy__(self, memo):
-        clone = super(ScatterMatrixXS, self).__deepcopy__(memo)
-        clone._correction = self.correction
-        clone._scatter_format = self.scatter_format
-        clone._legendre_order = self.legendre_order
-        clone._histogram_bins = self.histogram_bins
-        return clone
-
-
-    @property
-    def _dont_squeeze(self):
-        """Create a tuple of axes which should not be removed during the get_xs
-        process
-        """
-        if self.num_polar > 1 or self.num_azimuthal > 1:
-            if self.scatter_format == 'histogram':
-                return (0, 1, 3, 4, 5)
-            else:
-                return (0, 1, 3, 4)
-        else:
-            if self.scatter_format == 'histogram':
-                return (1, 2, 3)
-            else:
-                return (1, 2)
-
-
-    @property
-    def correction(self):
-        return self._correction
-
-
-    @property
-    def scatter_format(self):
-        return self._scatter_format
-
-
-    @property
-    def legendre_order(self):
-        return self._legendre_order
-
-
-    @property
-    def histogram_bins(self):
-        return self._histogram_bins
-
-
-    @property
-    def scores(self):
-        scores = ['flux']
-
-        if self.scatter_format == 'legendre':
-            if self.correction == 'P0' and self.legendre_order == 0:
-                scores += ['{}-0'.format(self.rxn_type),
-                           '{}-1'.format(self.rxn_type)]
-            else:
-                scores += ['{}-P{}'.format(self.rxn_type, self.legendre_order)]
-        elif self.scatter_format == 'histogram':
-            scores += [self.rxn_type]
-
-        return scores
-
-
-    @property
-    def filters(self):
-        group_edges = self.energy_groups.group_edges
-        energy = openmc.EnergyFilter(group_edges)
-        energyout = openmc.EnergyoutFilter(group_edges)
-
-        if self.scatter_format == 'legendre':
-            if self.correction == 'P0' and self.legendre_order == 0:
-                filters = [[energy], [energy, energyout], [energyout]]
-            else:
-                filters = [[energy], [energy, energyout]]
-        elif self.scatter_format == 'histogram':
-            bins = np.linspace(-1., 1., num=self.histogram_bins + 1,
-                               endpoint=True)
-            filters = [[energy], [energy, energyout, openmc.MuFilter(bins)]]
-
-        return self._add_angle_filters(filters)
-
-
-    @property
-    def rxn_rate_tally(self):
-        if self._rxn_rate_tally is None:
-            if self.scatter_format == 'legendre':
-                # If using P0 correction subtract scatter-1 from the diagonal
-                if self.correction == 'P0' and self.legendre_order == 0:
-                    scatter_p0 = self.tallies['{}-0'.format(self.rxn_type)]
-                    scatter_p1 = self.tallies['{}-1'.format(self.rxn_type)]
-                    energy_filter = scatter_p0.find_filter(openmc.EnergyFilter)
-                    energy_filter = copy.deepcopy(energy_filter)
-                    scatter_p1 = scatter_p1.diagonalize_filter(energy_filter)
-                    self._rxn_rate_tally = scatter_p0 - scatter_p1
-
-                # Extract scattering moment reaction rate Tally
-                else:
-                    tally_key = '{}-P{}'.format(self.rxn_type,
-                                                self.legendre_order)
-                    self._rxn_rate_tally = self.tallies[tally_key]
-            elif self.scatter_format == 'histogram':
-                # Extract scattering rate distribution tally
-                self._rxn_rate_tally = self.tallies[self.rxn_type]
-
-            self._rxn_rate_tally.sparse = self.sparse
-
-        return self._rxn_rate_tally
-
-
 class MultiplicityMatrixXS(MatrixMGXS):
     r"""The scattering multiplicity matrix.
 
@@ -5126,7 +4897,7 @@ class MultiplicityMatrixXS(MatrixMGXS):
         return self._xs_tally
 
 
-# FIXME
+# FIXME: Kord's scattering matrix idea
 
 class ScatterProbabilityMatrix(MatrixMGXS):
     r"""The group-to-group scattering matrix.
@@ -5301,7 +5072,7 @@ class ScatterProbabilityMatrix(MatrixMGXS):
         return self._xs_tally
 
 
-# FIXME
+# FIXME: Kord's scattering matrix idea
 
 class NuScatterProbabilityMatrix(ScatterProbabilityMatrix):
     r"""The group-to-group nu-scattering matrix.
@@ -5430,7 +5201,6 @@ class NuScatterProbabilityMatrix(ScatterProbabilityMatrix):
     def __init__(self, domain=None, domain_type=None,
                  groups=None, by_nuclide=False, name='', num_polar=1,
                  num_azimuthal=1):
-
         super(NuScatterProbabilityMatrix, self).__init__(
             domain, domain_type, groups,by_nuclide,
             name, num_polar, num_azimuthal)
@@ -5439,6 +5209,255 @@ class NuScatterProbabilityMatrix(ScatterProbabilityMatrix):
         self._estimator = 'analog'
         self._valid_estimators = ['analog']
         self._hdf5_key = 'nu-scatter probability matrix'
+
+
+
+# FIXME: Kord's scattering matrix idea
+
+@add_metaclass(ABCMeta)
+class ConvolvedMGXS(MGXS):
+
+    # FIXME: Add docstring
+
+    def __init__(self, domain=None, domain_type=None, groups=None,
+                 by_nuclide=False, name='', num_polar=1, num_azimuthal=1):
+
+        super(ConvolvedMGXS, self).__init__(
+            domain, domain_type, groups, by_nuclide,
+            name, num_polar, num_azimuthal)
+
+        self._mgxs = []
+
+    def __deepcopy__(self, memo):
+        existing = memo.get(id(self))
+
+        # If this is the first time we have tried to copy this object, copy it
+        if existing is None:
+            clone = super(ConvolvedMGXS, self).__deepcopy__(self)
+            clone._mgxs = copy.deepcopy(self.mgxs)
+            return clone
+        else:
+            return existing
+
+    @property
+    def mgxs(self):
+        return self._mgxs
+
+    @property
+    def filters(self):
+        filters = []
+        for mgxs in self.mgxs:
+            filters.extend(mgxs.filters)
+        return filters
+
+    @property
+    def tallies(self):
+
+        # Instantiate tallies if they do not exist
+        if self._tallies is None:
+
+            # Initialize a collection of Tallies
+            self._tallies = OrderedDict()
+
+            # Add tallies created for each MGXS
+            for mgxs in self.mgxs:
+                for key in mgxs.tallies:
+                    self._tallies[key] = mgxs.tallies[key]
+
+        return self._tallies
+
+    @name.setter
+    def name(self, name):
+        cv.check_type('name', name, string_types)
+
+        self._name = name
+        for mgxs in self.mgxs:
+            mgxs.name = name
+
+    @by_nuclide.setter
+    def by_nuclide(self, by_nuclide):
+        cv.check_type('by_nuclide', by_nuclide, bool)
+
+        self._by_nuclide = by_nuclide
+        for mgxs in self.mgxs:
+            mgxs.by_nuclide = by_nuclide
+
+    @nuclides.setter
+    def nuclides(self, nuclides):
+        cv.check_iterable_type('nuclides', nuclides, string_types)
+
+        self._nuclides = nuclides
+        for mgxs in self.mgxs:
+            mgxs.nuclides = nuclides
+
+    @estimator.setter
+    def estimator(self, estimator):
+        raise ValueError('Unable to assign a tally estimator a ConvolvedMGXS')
+
+    @domain.setter
+    def domain(self, domain):
+        cv.check_type('domain', domain, _DOMAINS)
+
+        self._domain = domain
+        for mgxs in self.mgxs:
+            mgxs.domain = domain
+
+        # Assign a domain type
+        if self.domain_type is None:
+            if isinstance(domain, openmc.Material):
+                self._domain_type = 'material'
+            elif isinstance(domain, openmc.Cell):
+                self._domain_type = 'cell'
+            elif isinstance(domain, openmc.Universe):
+                self._domain_type = 'universe'
+            elif isinstance(domain, openmc.Mesh):
+                self._domain_type = 'mesh'
+
+    @domain_type.setter
+    def domain_type(self, domain_type):
+        cv.check_value('domain type', domain_type, DOMAIN_TYPES)
+
+        self._domain_type = domain_type
+        for mgxs in self.mgxs:
+            mgxs.domain_type = domain_type
+
+    @energy_groups.setter
+    def energy_groups(self, energy_groups):
+        cv.check_type('energy groups', energy_groups, openmc.mgxs.EnergyGroups)
+
+        self._energy_groups = energy_groups
+        for mgxs in self.mgxs:
+            mgxs.energy_groups = energy_groups
+
+    @num_polar.setter
+    def num_polar(self, num_polar):
+        cv.check_type('num_polar', num_polar, Integral)
+        cv.check_greater_than('num_polar', num_polar, 0)
+
+        self._num_polar = num_polar
+        for mgxs in self.mgxs:
+            mgxs.num_polar = num_polar
+
+    @num_azimuthal.setter
+    def num_azimuthal(self, num_azimuthal):
+        cv.check_type('num_azimuthal', num_azimuthal, Integral)
+        cv.check_greater_than('num_azimuthal', num_azimuthal, 0)
+
+        self._num_azimuthal = num_azimuthal
+        for mgxs in self.mgxs:
+            mgxs.num_azimuthal = num_azimuthal
+
+    @tally_trigger.setter
+    def tally_trigger(self, tally_trigger):
+        cv.check_type('tally trigger', tally_trigger, openmc.Trigger)
+
+        self._tally_trigger = tally_trigger
+        for mgxs in self.mgxs:
+            mgxs.tally_trigger = tally_trigger
+
+    @sparse.setter
+    def sparse(self, sparse):
+        """Convert tally data from NumPy arrays to SciPy list of lists (LIL)
+        sparse matrices, and vice versa.
+
+        This property may be used to reduce the amount of data in memory during
+        tally data processing. The tally data will be stored as SciPy LIL
+        matrices internally within the Tally object. All tally data access
+        properties and methods will return data as a dense NumPy array.
+
+        """
+
+        cv.check_type('sparse', sparse, bool)
+
+        # Sparsify or densify the derived MGXS tallies and the base tallies
+        if self._xs_tally:
+            self.xs_tally.sparse = sparse
+        if self._rxn_rate_tally:
+            self.rxn_rate_tally.sparse = sparse
+
+        for tally_name in self.tallies:
+            self.tallies[tally_name].sparse = sparse
+
+        self._sparse = sparse
+        for mgxs in self.mgxs:
+            mgxs.sparse = sparse
+
+
+# FIXME: Kord's scattering matrix idea
+
+class ConsistentScatterMatrixXS(ScatterMatrixXS, ConvolvedMGXS):
+
+    # FIXME: Add docstring
+
+    def __init__(self, domain=None, domain_type=None, groups=None,
+                 by_nuclide=False, name='', num_polar=1, num_azimuthal=1):
+        super(ConsistentScatterMatrixXS, self).__init__(
+            domain, domain_type, groups, by_nuclide,
+            name, num_polar, num_azimuthal)
+
+        self._hdf5_key = 'consistent scatter matrix'
+
+        # Initialize each MGXS used by the convolution
+        self._mgxs = [ScatterXS(), ScatterProbabilityMatrix()]
+
+        # Assign parameters to each MGXS in the convlution
+        for mgxs in self.mgxs:
+            mgxs.name = name
+            mgxs.by_nuclide = by_nuclide
+
+            if domain_type is not None:
+                mgxs.domain_type = domain_type
+            if domain is not None:
+                mgxs.domain = domain
+            if groups is not None:
+                mgxs.energy_groups = groups
+            mgxs.num_polar = num_polar
+            mgxs.num_azimuthal = num_azimuthal
+
+    @property
+    def scatter_xs(self):
+        return self.mgxs[0]
+
+    @property
+    def probability_matrix(self):
+        return self.mgxs[1]
+
+    @property
+    def rxn_rate_tally(self):
+        if self._rxn_rate_tally is None:
+            self._rxn_rate_tally = self.mgxs[0].rxn_rate_tally
+            self._rxn_rate_tally.sparse = self.sparse
+
+        return self._rxn_rate_tally
+
+    @property
+    def xs_tally(self):
+        if self._xs_tally is None:
+            if self.tallies is None:
+                msg = 'Unable to get xs_tally since tallies have ' \
+                      'not been loaded from a statepoint'
+                raise ValueError(msg)
+
+            self._xs_tally = \
+                self.scatter_xs.xs_tally * self.probability_matrix.xs_tally
+            self._compute_xs()
+
+        return self._xs_tally
+
+
+class ConsistentNuScatterMatrixXS(ConsistentScatterMatrixXS):
+
+    # FIXME: Add docstring
+
+    def __init__(self, domain=None, domain_type=None, groups=None,
+                 by_nuclide=False, name='', num_polar=1, num_azimuthal=1):
+        super(ConsistentNuScatterMatrixXS, self).__init__(
+            domain, domain_type, groups, by_nuclide,
+            name, num_polar, num_azimuthal)
+
+
+        self._rxn_type = 'nu-scatter'
+        self._hdf5_key = 'consistent nu-scatter matrix'
 
 
 class NuFissionMatrixXS(MatrixMGXS):

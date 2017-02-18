@@ -1,9 +1,5 @@
 module simulation
 
-#ifdef MPI
-  use message_passing
-#endif
-
   use cmfd_execute,    only: cmfd_init_batch, execute_cmfd
   use constants,       only: ZERO
   use eigenvalue,      only: count_source_for_ufs, calculate_average_keff, &
@@ -13,6 +9,7 @@ module simulation
   use eigenvalue,      only: join_bank_from_threads
 #endif
   use global
+  use message_passing
   use output,          only: write_message, header, print_columns, &
                              print_batch_keff, print_generation
   use particle_header, only: Particle
@@ -322,7 +319,7 @@ contains
     if (master) call check_triggers()
 #ifdef MPI
     call MPI_BCAST(satisfy_triggers, 1, MPI_LOGICAL, 0, &
-         MPI_COMM_WORLD, mpi_err)
+         mpi_intracomm, mpi_err)
 #endif
     if (satisfy_triggers .or. &
          (trigger_on .and. current_batch == n_max_batches)) then

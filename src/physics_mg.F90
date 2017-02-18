@@ -9,6 +9,7 @@ module physics_mg
   use math,                   only: rotate_angle
   use mgxs_header,            only: Mgxs, MgxsContainer
   use mesh,                   only: get_mesh_indices
+  use message_passing
   use output,                 only: write_message
   use particle_header,        only: Particle
   use particle_restart_write, only: write_particle_restart

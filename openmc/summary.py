@@ -97,23 +97,25 @@ class Summary(object):
         # Values   - Material objects
         self.materials = {}
 
-        for key in self._f['materials'].keys():
+        for key, group in self._f['materials'].items():
             if key == 'n_materials':
                 continue
 
             material_id = int(key.lstrip('material '))
-            index = self._f['materials'][key]['index'].value
-            name = self._f['materials'][key]['name'].value.decode()
-            density = self._f['materials'][key]['atom_density'].value
-            nuc_densities = self._f['materials'][key]['nuclide_densities'][...]
-            nuclides = self._f['materials'][key]['nuclides'].value
+
+            index = group['index'].value
+            name = group['name'].value.decode()
+            density = group['atom_density'].value
+            nuc_densities = group['nuclide_densities'][...]
+            nuclides = group['nuclides'].value
 
             # Create the Material
             material = openmc.Material(material_id=material_id, name=name)
+            material.depletable = bool(group.attrs['depletable'])
 
             # Read the names of the S(a,b) tables for this Material and add them
-            if 'sab_names' in self._f['materials'][key]:
-                sab_tables = self._f['materials'][key]['sab_names'].value
+            if 'sab_names' in group:
+                sab_tables = group['sab_names'].value
                 for sab_table in sab_tables:
                     name = sab_table.decode()
                     material.add_s_alpha_beta(name)

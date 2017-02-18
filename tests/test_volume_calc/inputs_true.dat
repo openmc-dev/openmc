@@ -26,16 +26,7 @@
 </materials>
 <?xml version='1.0' encoding='utf-8'?>
 <settings>
-    <eigenvalue>
-        <particles>1000</particles>
-        <batches>4</batches>
-        <inactive>0</inactive>
-    </eigenvalue>
-    <source strength="1.0">
-        <space type="box">
-            <parameters>-1.0 -1.0 -5.0 1.0 1.0 5.0</parameters>
-        </space>
-    </source>
+    <run_mode>volume</run_mode>
     <volume_calc>
         <domain_type>cell</domain_type>
         <domain_ids>1 2 3</domain_ids>

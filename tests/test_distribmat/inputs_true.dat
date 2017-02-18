@@ -37,11 +37,10 @@
 </materials>
 <?xml version='1.0' encoding='utf-8'?>
 <settings>
-    <eigenvalue>
-        <particles>1000</particles>
-        <batches>5</batches>
-        <inactive>0</inactive>
-    </eigenvalue>
+    <run_mode>eigenvalue</run_mode>
+    <particles>1000</particles>
+    <batches>5</batches>
+    <inactive>0</inactive>
     <source strength="1.0">
         <space type="box">
             <parameters>-1 -1 -1 1 1 1</parameters>

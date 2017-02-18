@@ -17,9 +17,9 @@
 <?xml version='1.0' encoding='utf-8'?>
 <settings>
     <eigenvalue>
-        <particles>1000</particles>
-        <batches>1000</batches>
-        <inactive>100</inactive>
+        <particles>100</particles>
+        <batches>10</batches>
+        <inactive>5</inactive>
     </eigenvalue>
     <source strength="1.0">
         <space type="box">

@@ -3911,7 +3911,9 @@ class ScatterMatrixXS(MatrixMGXS):
         self._valid_estimators = ['analog']
 
     def __deepcopy__(self, memo):
+        print('HERE2')
         clone = super(ScatterMatrixXS, self).__deepcopy__(memo)
+        print('HERE3', clone)
         clone._correction = self.correction
         clone._scatter_format = self.scatter_format
         clone._legendre_order = self.legendre_order
@@ -5238,8 +5240,11 @@ class ConvolvedMGXS(MGXS):
             name, num_polar, num_azimuthal)
 
     def __deepcopy__(self, memo):
+        print('HERE1')
         clone = super(ConvolvedMGXS, self).__deepcopy__(memo)
+        print('WTF')
         clone._mgxs = copy.deepcopy(self.mgxs)
+        print('HERE4')
         return clone
 
     @property
@@ -5247,11 +5252,26 @@ class ConvolvedMGXS(MGXS):
         return self._mgxs
 
     @property
+    def scores(self):
+        scores = []
+        for mgxs in self.mgxs:
+            scores += mgxs.scores
+        return scores
+
+    @property
     def filters(self):
         filters = []
         for mgxs in self.mgxs:
             filters.extend(mgxs.filters)
         return filters
+
+    @property
+    def tally_keys(self):
+        keys = []
+        for mgxs in self.mgxs:
+            for tally_key in mgxs.tallies:
+                keys += ['{} : {}'.format(mgxs.hdf5_key, tally_key)]
+        return keys
 
     @property
     def tallies(self):
@@ -5264,9 +5284,9 @@ class ConvolvedMGXS(MGXS):
 
             # Add tallies created for each MGXS
             for mgxs in self.mgxs:
-                for key in mgxs.tallies:
-                    new_key = '{} : {}'.format(mgxs.hdf5_key, key)
-                    self._tallies[new_key] = mgxs.tallies[key]
+                for tally_key in mgxs.tallies:
+                    new_key = '{} : {}'.format(mgxs.hdf5_key, tally_key)
+                    self._tallies[new_key] = mgxs.tallies[tally_key]
 
         return self._tallies
 
@@ -5431,6 +5451,44 @@ class ConvolvedMGXS(MGXS):
                   'which is not yet supported'.format(self.domain_type)
             raise ValueError(msg)
 
+        # Use tally "slicing" to ensure that tallies correspond to our domain
+        # NOTE: This is important if tally merging was used
+        if self.domain_type == 'mesh':
+            filters = [_DOMAIN_TO_FILTER[self.domain_type]]
+            xyz = [range(1, x + 1) for x in self.domain.dimension]
+            filter_bins = [tuple(itertools.product(*xyz))]
+        elif self.domain_type != 'distribcell':
+            filters = [_DOMAIN_TO_FILTER[self.domain_type]]
+            filter_bins = [(self.domain.id,)]
+        # Distribcell filters only accept single cell - neglect it when slicing
+        else:
+            filters = []
+            filter_bins = []
+
+        # Clear any tallies previously loaded from a statepoint
+        if self.loaded_sp:
+            self._tallies = None
+            self._xs_tally = None
+            self._rxn_rate_tally = None
+            self._loaded_sp = False
+
+        # Find, slice and store Tallies from StatePoint
+        # The tally slicing is needed if tally merging was used
+        for tally_type, tally in self.tallies.items():
+            sp_tally = statepoint.get_tally(
+                tally.scores, tally.filters, tally.nuclides,
+                estimator=tally.estimator, exact_filters=True)
+            sp_tally = sp_tally.get_slice(
+                tally.scores, filters, filter_bins, tally.nuclides)
+            sp_tally.sparse = self.sparse
+            self._tallies[tally_type] = sp_tally
+
+        for mgxs in self.mgxs:
+            mgxs.load_from_statepoint(statepoint)
+
+        self._loaded_sp = True
+
+        '''
         # Clear any tallies previously loaded from a statepoint
         if self.loaded_sp:
             self._tallies = None
@@ -5442,6 +5500,7 @@ class ConvolvedMGXS(MGXS):
             mgxs.load_from_statepoint(statepoint)
 
         self._loaded_sp = True
+        '''
 
 
 # FIXME: Kord's scattering matrix idea
@@ -5477,6 +5536,78 @@ class ConsistentScatterMatrixXS(ConvolvedMGXS, ScatterMatrixXS):
             mgxs.num_azimuthal = num_azimuthal
 
     @property
+    def scores(self):
+        scores = super(ConsistentScatterMatrixXS, self).scores
+
+        # FIXME: Add scores for transport correction
+        if self.correction == 'P0' and self.legendre_order == 0:
+            scores += ['{}-1'.format(self.rxn_type)]
+
+        return scores
+
+    @property
+    def filters(self):
+        filters = super(ConsistentScatterMatrixXS, self).filters
+
+        # FIXME: Add filters for transport correction
+        if self.correction == 'P0' and self.legendre_order == 0:
+            group_edges = self.energy_groups.group_edges
+            energyout = openmc.EnergyoutFilter(group_edges)
+            filters += self._add_angle_filters([[energyout]])
+
+        return filters
+
+    @property
+    def tally_keys(self):
+        tally_keys = super(ConsistentScatterMatrixXS, self).tally_keys
+
+        # FIXME: Add key for transport correction tally
+        if self.correction == 'P0' and self.legendre_order == 0:
+            tally_keys += ['scatter-1']
+
+        return tally_keys
+
+    # FIXME: Make this work for transport correction
+    @property
+    def tallies(self):
+
+        if self._tallies is None:
+
+            self._tallies = super(ConsistentScatterMatrixXS, self).tallies
+
+            # FIXME: Add in the transport correction tally
+            if self.correction == 'P0' and self.legendre_order == 0:
+
+                tally_key = 'scatter-1'
+
+                # Create a domain Filter object
+                filter_type = _DOMAIN_TO_FILTER[self.domain_type]
+                if self.domain_type == 'mesh':
+                    domain_filter = filter_type(self.domain)
+                else:
+                    domain_filter = filter_type(self.domain.id)
+
+                # Create each Tally needed to compute the multi group cross section
+                self._tallies['scatter-1'] = openmc.Tally(name=self.name)
+                self._tallies['scatter-1'].estimator = 'analog'
+                self._tallies['scatter-1'].scores = [self.scores[-1]]
+                self._tallies['scatter-1'].filters = [domain_filter, *self.filters[-1]]
+
+                # If a tally trigger was specified, add it to each tally
+                if self.tally_trigger:
+                    trigger_clone = copy.deepcopy(self.tally_trigger)
+                    trigger_clone.scores = [self.scores[-1]]
+                    self._tallies[tally_key].triggers.append(trigger_clone)
+
+                # If this is a by-nuclide cross-section, add nuclides to Tally
+                if self.by_nuclide:
+                    self._tallies['scatter-1'].nuclides += self.get_nuclides()
+                else:
+                    self._tallies['scatter-1'].nuclides.append('total')
+
+        return self._tallies
+
+    @property
     def scatter_xs(self):
         return self.mgxs[0]
 
@@ -5486,11 +5617,23 @@ class ConsistentScatterMatrixXS(ConvolvedMGXS, ScatterMatrixXS):
 
     @property
     def rxn_rate_tally(self):
+        raise NotImplementedError('The rxn rate tally is not well defined ')
+        '''
         if self._rxn_rate_tally is None:
+
+            # FIXME: Add transport correction option
+            # If using P0 correction subtract scatter-1 from the diagonal
+            if self.correction == 'P0' and self.legendre_order == 0:
+                scatter_p0 = self.tallies['{}-0'.format(self.rxn_type)]
+                scatter_p1 = self.tallies['{}-1'.format(self.rxn_type)]
+
             self._rxn_rate_tally = self.mgxs[0].rxn_rate_tally
             self._rxn_rate_tally.sparse = self.sparse
 
         return self._rxn_rate_tally
+        '''
+
+    # FIXME: Apply transport correction
 
     @property
     def xs_tally(self):
@@ -5500,8 +5643,24 @@ class ConsistentScatterMatrixXS(ConvolvedMGXS, ScatterMatrixXS):
                       'not been loaded from a statepoint'
                 raise ValueError(msg)
 
+
+            # FIXME: If using P0 correction subtract scatter-1 from the diagonal
+            if self.correction == 'P0' and self.legendre_order == 0:
+                # FIXME: The flux tally must also use an analog estimator
+                flux = self.tallies['{} : flux'.format(self.rxn_type)]
+                scatter_p0 = self.tallies['{0} : {0}'.format(self.rxn_type)]
+                scatter_p1 = self.tallies['scatter-1']
+
+                energy_filter = scatter_p0.find_filter(openmc.EnergyFilter)
+                energy_filter = copy.deepcopy(energy_filter)
+                scatter_p1 = scatter_p1.diagonalize_filter(energy_filter)
+                correction = scatter_p1 / flux
+            else:
+                correction = 0.
+
             self._xs_tally = \
                 self.scatter_xs.xs_tally * self.probability_matrix.xs_tally
+            self._xs_tally - correction
             self._compute_xs()
 
         return self._xs_tally
@@ -5560,8 +5719,8 @@ class ConsistentScatterMatrixXS(ConvolvedMGXS, ScatterMatrixXS):
         self._histogram_bins = histogram_bins
     '''
 
-    def load_from_statepoint(self, statepoint):
-        super(ConsistentScatterMatrixXS, self).load_from_statepoint(statepoint)
+#    def load_from_statepoint(self, statepoint):
+#        super(ConsistentScatterMatrixXS, self).load_from_statepoint(statepoint)
 
     def get_condensed_xs(self, coarse_groups):
         condense_xs = \

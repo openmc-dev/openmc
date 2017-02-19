@@ -5600,9 +5600,23 @@ class ConsistentNuScatterMatrixXS(ConsistentScatterMatrixXS):
             domain, domain_type, groups, by_nuclide,
             name, num_polar, num_azimuthal)
 
-
         self._rxn_type = 'nu-scatter'
         self._hdf5_key = 'consistent nu-scatter matrix'
+        self._mgxs = [NuScatterXS(), ScatterProbabilityMatrix()]
+
+        # Assign parameters to each MGXS in the convlution
+        for mgxs in self.mgxs:
+            mgxs.name = name
+            mgxs.by_nuclide = by_nuclide
+
+            if domain_type is not None:
+                mgxs.domain_type = domain_type
+            if domain is not None:
+                mgxs.domain = domain
+            if groups is not None:
+                mgxs.energy_groups = groups
+            mgxs.num_polar = num_polar
+            mgxs.num_azimuthal = num_azimuthal
 
 
 class NuFissionMatrixXS(MatrixMGXS):

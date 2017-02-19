@@ -1837,6 +1837,7 @@ class XSdata(object):
                             np.sum((l + 0.5) * eval_legendre(l, mu[imu]) *
                                    orig_data[..., l]
                                    for l in range(self.num_orders))
+
                 elif target_format == 'histogram':
                     # This code uses the vectorized integration capabilities
                     # instead of having an isotropic and angle representation
@@ -1856,10 +1857,6 @@ class XSdata(object):
                                        for l in range(self.num_orders))
                         new_data[..., h_bin] = simps(table_fine, mu_fine)
 
-                    # Remove the very small values resulting from numerical
-                    # precision issues
-                    new_data[..., np.abs(new_data) < 1.E-10] = 0.
-
             elif self.scatter_format == 'tabular':
                 # Calculate the mu points of the current data
                 mu_self = np.linspace(-1, 1, self.num_orders)
@@ -1874,10 +1871,6 @@ class XSdata(object):
                          for l in range(xsdata.num_orders)]
                     for l in range(xsdata.num_orders):
                         new_data[..., l] = simps(y[l], mu_fine)
-
-                    # Remove the very small values resulting from numerical
-                    # precision issues
-                    new_data[..., np.abs(new_data) < 1.E-10] = 0.
 
                 elif target_format == 'tabular':
                     # Simply use an interpolating function to get the new data
@@ -1897,10 +1890,6 @@ class XSdata(object):
                     for h_bin in range(xsdata.num_orders):
                         mu_fine = np.linspace(mu[h_bin], mu[h_bin + 1], _NMU)
                         new_data[..., h_bin] = simps(interp(mu_fine), mu_fine)
-
-                    # Remove the very small values resulting from numerical
-                    # precision issues
-                    new_data[..., np.abs(new_data) < 1.E-10] = 0.
 
             elif self.scatter_format == 'histogram':
                 # The histogram format does not have enough information to
@@ -1929,10 +1918,6 @@ class XSdata(object):
                     for l in range(xsdata.num_orders):
                         new_data[..., l] = simps(y[l], mu_fine)
 
-                    # Remove the very small values resulting from numerical
-                    # precision issues
-                    new_data[..., np.abs(new_data) < 1.E-10] = 0.
-
                 elif target_format == 'tabular':
                     # Simply use an interpolating function to get the new data
                     mu = np.linspace(-1, 1, xsdata.num_orders)
@@ -1952,9 +1937,8 @@ class XSdata(object):
                         new_data[..., h_bin] = \
                             norm * simps(interp(mu_fine), mu_fine)
 
-                    # Remove the very small values resulting from numerical
-                    # precision issues
-                    new_data[..., np.abs(new_data) < 1.E-10] = 0.
+            # Remove small values resulting from numerical precision issues
+            new_data[..., np.abs(new_data) < 1.E-10] = 0.
 
             xsdata.set_scatter_matrix(new_data, temp)
 

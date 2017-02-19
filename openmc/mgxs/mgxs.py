@@ -4904,12 +4904,12 @@ class MultiplicityMatrixXS(MatrixMGXS):
 
 
 class ScatterProbabilityMatrix(MatrixMGXS):
-    r"""The group-to-group scattering matrix.
+    r"""The group-to-group scattering probability matrix.
 
     This class can be used for both OpenMC input generation and tally data
     post-processing to compute spatially-homogenized and energy-integrated
     multi-group cross sections for multi-group neutronics calculations. At a
-    minimum, one needs to set the :attr:`NuScatterProbabilityMatrix.energy_groups`
+    minimum, one needs to set the :attr:`ScatterProbabilityMatrix.energy_groups`
     and :attr:`ScatterProbabilityMatrix.domain` properties. Tallies for the
     appropriate reaction rates over the specified domain are generated
     automatically via the :attr:`ScatterProbabilityMatrix.tallies` property,
@@ -4923,23 +4923,22 @@ class ScatterProbabilityMatrix(MatrixMGXS):
 
     For a spatial domain :math:`V`, incoming energy group
     :math:`[E_{g'},E_{g'-1}]`, and outgoing energy group :math:`[E_g,E_{g-1}]`,
-    the multiplicity is calculated as:
+    the group-to-group scatterin probabilities are calculated as:
 
     .. math::
 
-       \langle \upsilon \sigma_{s,g'\rightarrow g} \phi \rangle &= \int_{r \in
-       D} dr \int_{4\pi} d\Omega' \int_{E_{g'}}^{E_{g'-1}} dE' \int_{4\pi}
-       d\Omega \int_{E_g}^{E_{g-1}} dE \; \sum_i \upsilon_i \sigma_i (r, E' \rightarrow
-       E, \Omega' \cdot \Omega) \psi(r, E', \Omega') \\
-       \langle \sigma_{s,g'\rightarrow g} \phi \rangle &= \int_{r \in
-       D} dr \int_{4\pi} d\Omega' \int_{E_{g'}}^{E_{g'-1}} dE' \int_{4\pi}
-       d\Omega \int_{E_g}^{E_{g-1}} dE \; \sum_i \upsilon_i \sigma_i (r, E' \rightarrow
-       E, \Omega' \cdot \Omega) \psi(r, E', \Omega') \\
-       \upsilon_{g'\rightarrow g} &= \frac{\langle \upsilon
-       \sigma_{s,g'\rightarrow g} \rangle}{\langle \sigma_{s,g'\rightarrow g}
-       \rangle}
+       \langle \sigma_{s,g'\rightarrow g} \phi \rangle &= \int_{r \in V} dr
+       \int_{4\pi} d\Omega' \int_{E_{g'}}^{E_{g'-1}} dE' \int_{4\pi} d\Omega
+       \int_{E_g}^{E_{g-1}} dE \; \sigma_s (r, E'
+       \rightarrow E, \Omega' \cdot \Omega) \psi(r, E', \Omega')\\
+       \langle \sigma_{s,g'} \phi \rangle &= \int_{r \in V} dr
+       \int_{4\pi} d\Omega' \int_{E_{g'}}^{E_{g'-1}} dE' \int_{4\pi} d\Omega
+       \int_{0}^{\infty} dE \; \sigma_s (r, E'
+       \rightarrow E, \Omega' \cdot \Omega) \psi(r, E', \Omega')\\
+       P_{s,g'\rightarrow g} &= \frac{\langle
+       \sigma_{s,g'\rightarrow g} \phi \rangle}{\langle
+       \sigma_{s,g'} \phi \rangle}
 
-    where :math:`\upsilon_i` is the multiplicity for the :math:`i`-th reaction.
 
     Parameters
     ----------
@@ -5080,12 +5079,12 @@ class ScatterProbabilityMatrix(MatrixMGXS):
 
 
 class NuScatterProbabilityMatrix(ScatterProbabilityMatrix):
-    r"""The group-to-group nu-scattering matrix.
+    r"""The group-to-group scattering-production probability matrix.
 
     This class can be used for both OpenMC input generation and tally data
     post-processing to compute spatially-homogenized and energy-integrated
     multi-group cross sections for multi-group neutronics calculations. At a
-    minimum, one needs to set the :attr:`ScatterProbabilityMatrix.energy_groups`
+    minimum, one needs to set the :attr:`NuScatterProbabilityMatrix.energy_groups`
     and :attr:`NuScatterProbabilityMatrix.domain` properties. Tallies for the
     appropriate reaction rates over the specified domain are generated
     automatically via the :attr:`NuScatterProbabilityMatrix.tallies` property,
@@ -5094,28 +5093,12 @@ class NuScatterProbabilityMatrix(ScatterProbabilityMatrix):
     For post-processing, the :meth:`MGXS.load_from_statepoint` will pull in the
     necessary data to compute multi-group cross sections from a
     :class:`openmc.StatePoint` instance. The derived multi-group cross section
-    can then be obtained from the :attr:`NuScatterProbabilityMatrix.xs_tally`
+    can then be obtained from the :attr:`ScatterProbabilityMatrix.xs_tally`
     property.
 
-    For a spatial domain :math:`V`, incoming energy group
-    :math:`[E_{g'},E_{g'-1}]`, and outgoing energy group :math:`[E_g,E_{g-1}]`,
-    the multiplicity is calculated as:
-
-    .. math::
-
-       \langle \upsilon \sigma_{s,g'\rightarrow g} \phi \rangle &= \int_{r \in
-       D} dr \int_{4\pi} d\Omega' \int_{E_{g'}}^{E_{g'-1}} dE' \int_{4\pi}
-       d\Omega \int_{E_g}^{E_{g-1}} dE \; \sum_i \upsilon_i \sigma_i (r, E' \rightarrow
-       E, \Omega' \cdot \Omega) \psi(r, E', \Omega') \\
-       \langle \sigma_{s,g'\rightarrow g} \phi \rangle &= \int_{r \in
-       D} dr \int_{4\pi} d\Omega' \int_{E_{g'}}^{E_{g'-1}} dE' \int_{4\pi}
-       d\Omega \int_{E_g}^{E_{g-1}} dE \; \sum_i \upsilon_i \sigma_i (r, E' \rightarrow
-       E, \Omega' \cdot \Omega) \psi(r, E', \Omega') \\
-       \upsilon_{g'\rightarrow g} &= \frac{\langle \upsilon
-       \sigma_{s,g'\rightarrow g} \rangle}{\langle \sigma_{s,g'\rightarrow g}
-       \rangle}
-
-    where :math:`\upsilon_i` is the multiplicity for the :math:`i`-th reaction.
+    The calculation of the scattering-production matrix is the same as that for
+    :class:`ScatterProbabilityMatrix` except that the scattering multiplicity is
+    accounted for.
 
     Parameters
     ----------

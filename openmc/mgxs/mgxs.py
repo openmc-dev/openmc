@@ -5461,12 +5461,6 @@ class ConsistentScatterMatrixXS(ConvolvedMGXS, ScatterMatrixXS):
 
         # Initialize each MGXS used by the convolution
         self._mgxs = [ScatterXS(), ScatterProbabilityMatrix()]
-        '''
-        self._mgxs[1].correction = self.correction
-        self._mgxs[1].scatter_format = self.scatter_format
-        self._mgxs[1].legendre_order = self.legendre_order
-        self._mgxs[1].histogram_bins = self.
-        '''
 
         # Assign parameters to each MGXS in the convlution
         for mgxs in self.mgxs:

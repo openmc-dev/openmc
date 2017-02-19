@@ -5615,18 +5615,6 @@ class ConsistentScatterMatrixXS(ConvolvedMGXS, ScatterMatrixXS):
 
         return self._xs_tally
 
-    @ScatterMatrixXS.scatter_format.setter
-    def scatter_format(self, scatter_format):
-        raise NotImplementedError('Not yet supported')
-
-    @ScatterMatrixXS.legendre_order.setter
-    def legendre_order(self, legendre_order):
-        raise NotImplementedError('Not yet supported')
-
-    @ScatterMatrixXS.histogram_bins.setter
-    def histogram_bins(self, histogram_bins):
-        raise NotImplementedError('Not yet supported')
-
     def get_condensed_xs(self, coarse_groups):
         condense_xs = \
             super(ConsistentScatterMatrixXS, self).get_condensed_xs(coarse_groups)

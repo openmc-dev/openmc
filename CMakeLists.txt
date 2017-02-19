@@ -266,15 +266,105 @@ add_library(faddeeva STATIC src/Faddeeva.c)
 #===============================================================================
 
 set(program "openmc")
-file(GLOB source src/*.F90 src/xml/openmc_fox.F90)
-add_executable(${program} ${source})
+set(LIBOPENMC_FORTRAN_SRC
+  src/algorithm.F90
+  src/angle_distribution.F90
+  src/angleenergy_header.F90
+  src/bank_header.F90
+  src/cmfd_data.F90
+  src/cmfd_execute.F90
+  src/cmfd_header.F90
+  src/cmfd_input.F90
+  src/cmfd_loss_operator.F90
+  src/cmfd_prod_operator.F90
+  src/cmfd_solver.F90
+  src/constants.F90
+  src/cross_section.F90
+  src/dict_header.F90
+  src/distribution_multivariate.F90
+  src/distribution_univariate.F90
+  src/doppler.F90
+  src/eigenvalue.F90
+  src/endf.F90
+  src/endf_header.F90
+  src/energy_distribution.F90
+  src/energy_grid.F90
+  src/error.F90
+  src/finalize.F90
+  src/geometry.F90
+  src/geometry_header.F90
+  src/global.F90
+  src/hdf5_interface.F90
+  src/initialize.F90
+  src/input_xml.F90
+  src/list_header.F90
+  src/material_header.F90
+  src/math.F90
+  src/matrix_header.F90
+  src/mesh.F90
+  src/mesh_header.F90
+  src/message_passing.F90
+  src/mgxs_data.F90
+  src/mgxs_header.F90
+  src/multipole.F90
+  src/multipole_header.F90
+  src/nuclide_header.F90
+  src/output.F90
+  src/particle_header.F90
+  src/particle_restart.F90
+  src/particle_restart_write.F90
+  src/physics_common.F90
+  src/physics.F90
+  src/physics_mg.F90
+  src/plot.F90
+  src/plot_header.F90
+  src/ppmlib.F90
+  src/product_header.F90
+  src/progress_header.F90
+  src/random_lcg.F90
+  src/reaction_header.F90
+  src/relaxng
+  src/sab_header.F90
+  src/scattdata_header.F90
+  src/secondary_correlated.F90
+  src/secondary_kalbach.F90
+  src/secondary_nbody.F90
+  src/secondary_uncorrelated.F90
+  src/set_header.F90
+  src/simulation.F90
+  src/source.F90
+  src/source_header.F90
+  src/state_point.F90
+  src/stl_vector.F90
+  src/string.F90
+  src/summary.F90
+  src/surface_header.F90
+  src/tally.F90
+  src/tally_filter.F90
+  src/tally_filter_header.F90
+  src/tally_header.F90
+  src/tally_initialize.F90
+  src/timer_header.F90
+  src/tracking.F90
+  src/track_output.F90
+  src/trigger.F90
+  src/trigger_header.F90
+  src/urr_header.F90
+  src/vector_header.F90
+  src/volume_calc.F90
+  src/volume_header.F90
+  src/xml_interface.F90
+  src/xml/openmc_fox.F90)
+add_library(libopenmc STATIC ${LIBOPENMC_FORTRAN_SRC})
+set_target_properties(libopenmc PROPERTIES OUTPUT_NAME openmc)
+add_executable(${program} src/main.F90)
 
 # target_include_directories was added in CMake 2.8.11 and is the recommended
 # way to set include directories. For lesser versions, we revert to set_property
 if(CMAKE_VERSION VERSION_LESS 2.8.11)
   include_directories(${HDF5_INCLUDE_DIRS})
 else()
-  target_include_directories(${program} PUBLIC ${HDF5_INCLUDE_DIRS})
+  target_include_directories(libopenmc PUBLIC ${HDF5_INCLUDE_DIRS})
 endif()
 
 # target_compile_options was added in CMake 2.8.12 and is the recommended way to
@@ -288,6 +378,7 @@ if (CMAKE_VERSION VERSION_LESS 2.8.12)
   set_property(TARGET faddeeva PROPERTY COMPILE_FLAGS "${cflags}")
 else()
   target_compile_options(${program} PUBLIC ${f90flags})
+  target_compile_options(libopenmc PUBLIC ${f90flags})
   target_compile_options(faddeeva PRIVATE ${cflags})
 endif()
 
@@ -298,7 +389,8 @@ endforeach()
 
 # target_link_libraries treats any arguments starting with - but not -l as
 # linker flags. Thus, we can pass both linker flags and libraries together.
-target_link_libraries(${program} ${ldflags} ${HDF5_LIBRARIES} fox_dom faddeeva)
+target_link_libraries(libopenmc ${ldflags} ${HDF5_LIBRARIES} fox_dom faddeeva)
+target_link_libraries(${program} ${ldflags} libopenmc)
 
 #===============================================================================
 # Install executable, scripts, manpage, license

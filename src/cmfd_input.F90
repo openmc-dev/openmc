@@ -15,6 +15,7 @@ contains
   subroutine configure_cmfd()
 
     use cmfd_header,  only: allocate_cmfd
+    use message_passing, only: master
 
     integer :: color    ! color group of processor
 

@@ -17,7 +17,7 @@ module hdf5_interface
 
   use error, only: fatal_error
 #ifdef PHDF5
-  use message_passing, only: MPI_COMM_WORLD, MPI_INFO_NULL
+  use message_passing, only: mpi_intracomm, MPI_INFO_NULL
 #endif
 
   implicit none
@@ -124,10 +124,10 @@ contains
       call h5pcreate_f(H5P_FILE_ACCESS_F, plist, hdf5_err)
 #ifdef PHDF5
 #ifdef MPIF08
-      call h5pset_fapl_mpio_f(plist, MPI_COMM_WORLD%MPI_VAL, &
+      call h5pset_fapl_mpio_f(plist, mpi_intracomm%MPI_VAL, &
            MPI_INFO_NULL%MPI_VAL, hdf5_err)
 #else
-      call h5pset_fapl_mpio_f(plist, MPI_COMM_WORLD, MPI_INFO_NULL, hdf5_err)
+      call h5pset_fapl_mpio_f(plist, mpi_intracomm, MPI_INFO_NULL, hdf5_err)
 #endif
 #endif
 
@@ -174,10 +174,10 @@ contains
       call h5pcreate_f(H5P_FILE_ACCESS_F, plist, hdf5_err)
 #ifdef PHDF5
 #ifdef MPIF08
-      call h5pset_fapl_mpio_f(plist, MPI_COMM_WORLD%MPI_VAL, &
+      call h5pset_fapl_mpio_f(plist, mpi_intracomm%MPI_VAL, &
            MPI_INFO_NULL%MPI_VAL, hdf5_err)
 #else
-      call h5pset_fapl_mpio_f(plist, MPI_COMM_WORLD, MPI_INFO_NULL, hdf5_err)
+      call h5pset_fapl_mpio_f(plist, mpi_intracomm, MPI_INFO_NULL, hdf5_err)
 #endif
 #endif
 

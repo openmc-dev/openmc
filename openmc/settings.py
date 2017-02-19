@@ -11,6 +11,9 @@ from openmc.clean_xml import clean_xml_indentation
 import openmc.checkvalue as cv
 from openmc import Nuclide, VolumeCalculation, Source, Mesh
 
+_RUN_MODES = ['eigenvalue', 'fixed source', 'plot', 'volume',
+              'particle restart']
+
 
 class Settings(object):
     """Settings used for an OpenMC simulation.
@@ -81,7 +84,7 @@ class Settings(object):
         The elastic scattering model to use for resonant isotopes
     run_cmfd : bool
         Indicate if coarse mesh finite difference acceleration is to be used
-    run_mode : {'eigenvalue' or 'fixed source'}
+    run_mode : {'eigenvalue', 'fixed source', 'plot', 'volume', 'particle restart'}
         The type of calculation to perform (default is 'eigenvalue')
     seed : int
         Seed for the linear congruential pseudorandom number generator
@@ -388,10 +391,7 @@ class Settings(object):
 
     @run_mode.setter
     def run_mode(self, run_mode):
-        if run_mode not in ['eigenvalue', 'fixed source']:
-            msg = 'Unable to set run mode to "{0}". Only "eigenvalue" ' \
-                  'and "fixed source" are supported."'.format(run_mode)
-            raise ValueError(msg)
+        cv.check_value('run mode', run_mode, _RUN_MODES)
         self._run_mode = run_mode
 
     @batches.setter
@@ -794,18 +794,8 @@ class Settings(object):
         self._create_fission_neutrons = create_fission_neutrons
 
     def _create_run_mode_subelement(self, root):
-
-        if self.run_mode == 'eigenvalue':
-            elem = ET.SubElement(root, "eigenvalue")
-            self._create_particles_subelement(elem)
-            self._create_batches_subelement(elem)
-            self._create_inactive_subelement(elem)
-            self._create_generations_per_batch_subelement(elem)
-            self._create_keff_trigger_subelement(elem)
-        else:
-            elem = ET.SubElement(root, "fixed_source")
-            self._create_particles_subelement(elem)
-            self._create_batches_subelement(elem)
+        elem = ET.SubElement(root, "run_mode")
+        elem.text = self._run_mode
 
     def _create_batches_subelement(self, run_mode_element):
         if self._batches is not None:
@@ -814,8 +804,7 @@ class Settings(object):
 
     def _create_generations_per_batch_subelement(self, run_mode_element):
         if self._generations_per_batch is not None:
-            element = ET.SubElement(run_mode_element,
-                                    "generations_per_batch")
+            element = ET.SubElement(run_mode_element, "generations_per_batch")
             element.text = str(self._generations_per_batch)
 
     def _create_inactive_subelement(self, run_mode_element):
@@ -1081,6 +1070,11 @@ class Settings(object):
         root_element = ET.Element("settings")
 
         self._create_run_mode_subelement(root_element)
+        self._create_particles_subelement(root_element)
+        self._create_batches_subelement(root_element)
+        self._create_inactive_subelement(root_element)
+        self._create_generations_per_batch_subelement(root_element)
+        self._create_keff_trigger_subelement(root_element)
         self._create_source_subelement(root_element)
         self._create_output_subelement(root_element)
         self._create_statepoint_subelement(root_element)

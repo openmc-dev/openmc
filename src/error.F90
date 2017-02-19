@@ -3,9 +3,7 @@ module error
   use, intrinsic :: ISO_FORTRAN_ENV
   use constants
 
-#ifdef MPI
   use message_passing
-#endif
 
   implicit none
 
@@ -139,7 +137,7 @@ contains
 
 #ifdef MPI
     ! Abort MPI
-    call MPI_ABORT(MPI_COMM_WORLD, code, mpi_err)
+    call MPI_ABORT(mpi_intracomm, code, mpi_err)
 #endif
 
     ! Abort program

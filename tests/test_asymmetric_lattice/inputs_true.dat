@@ -205,11 +205,10 @@
 </materials>
 <?xml version='1.0' encoding='utf-8'?>
 <settings>
-    <eigenvalue>
-        <particles>100</particles>
-        <batches>10</batches>
-        <inactive>5</inactive>
-    </eigenvalue>
+    <run_mode>eigenvalue</run_mode>
+    <particles>100</particles>
+    <batches>10</batches>
+    <inactive>5</inactive>
     <source strength="1.0">
         <space type="fission">
             <parameters>-32 -32 0 32 32 32</parameters>

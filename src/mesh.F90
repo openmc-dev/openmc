@@ -1,13 +1,10 @@
 module mesh
 
-#ifdef MPI
-  use message_passing
-#endif
-
   use algorithm,  only: binary_search
   use constants
   use global
   use mesh_header
+  use message_passing
 
   implicit none
 
@@ -207,17 +204,17 @@ contains
     ! collect values from all processors
     if (master) then
       call MPI_REDUCE(MPI_IN_PLACE, cnt, n, MPI_REAL8, MPI_SUM, 0, &
-           MPI_COMM_WORLD, mpi_err)
+           mpi_intracomm, mpi_err)
     else
       ! Receive buffer not significant at other processors
       call MPI_REDUCE(cnt, dummy, n, MPI_REAL8, MPI_SUM, 0, &
-           MPI_COMM_WORLD, mpi_err)
+           mpi_intracomm, mpi_err)
     end if
 
     ! Check if there were sites outside the mesh for any processor
     if (present(sites_outside)) then
       call MPI_REDUCE(outside, sites_outside, 1, MPI_LOGICAL, MPI_LOR, 0, &
-           MPI_COMM_WORLD, mpi_err)
+           mpi_intracomm, mpi_err)
     end if
 
 #else

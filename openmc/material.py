@@ -56,6 +56,9 @@ class Material(object):
         Units used for `density`. Can be one of 'g/cm3', 'g/cc', 'kg/cm3',
         'atom/b-cm', 'atom/cm3', 'sum', or 'macro'.  The 'macro' unit only
         applies in the case of a multi-group calculation.
+    depletable : bool
+        Indicate whether the material is depletable. This attribute can be used
+        by downstream depletion applications.
     elements : list of tuple
         List in which each item is a 4-tuple consisting of an
         :class:`openmc.Element` instance, the percent density, the percent
@@ -78,6 +81,7 @@ class Material(object):
         self.temperature = temperature
         self._density = None
         self._density_units = ''
+        self._depletable = False
 
         # A list of tuples (nuclide, percent, percent type)
         self._nuclides = []
@@ -127,37 +131,36 @@ class Material(object):
 
     def __repr__(self):
         string = 'Material\n'
-        string += '{0: <16}{1}{2}\n'.format('\tID', '=\t', self._id)
-        string += '{0: <16}{1}{2}\n'.format('\tName', '=\t', self._name)
-        string += '{0: <16}{1}{2}\n'.format('\tTemperature', '=\t',
-                                            self._temperature)
+        string += '{: <16}=\t{}\n'.format('\tID', self._id)
+        string += '{: <16}=\t{}\n'.format('\tName', self._name)
+        string += '{: <16}=\t{}\n'.format('\tTemperature', self._temperature)
 
-        string += '{0: <16}{1}{2}'.format('\tDensity', '=\t', self._density)
-        string += ' [{0}]\n'.format(self._density_units)
+        string += '{: <16}=\t{}'.format('\tDensity', self._density)
+        string += ' [{}]\n'.format(self._density_units)
 
-        string += '{0: <16}\n'.format('\tS(a,b) Tables')
+        string += '{: <16}\n'.format('\tS(a,b) Tables')
 
         for sab in self._sab:
-            string += '{0: <16}{1}{2}\n'.format('\tS(a,b)', '=\t', sab)
+            string += '{: <16}=\t{}\n'.format('\tS(a,b)', sab)
 
-        string += '{0: <16}\n'.format('\tNuclides')
+        string += '{: <16}\n'.format('\tNuclides')
 
         for nuclide, percent, percent_type in self._nuclides:
             string += '{0: <16}'.format('\t{0.name}'.format(nuclide))
-            string += '=\t{0: <12} [{1}]\n'.format(percent, percent_type)
+            string += '=\t{: <12} [{}]\n'.format(percent, percent_type)
 
         if self._macroscopic is not None:
-            string += '{0: <16}\n'.format('\tMacroscopic Data')
-            string += '{0: <16}'.format('\t{0}'.format(self._macroscopic))
+            string += '{: <16}\n'.format('\tMacroscopic Data')
+            string += '{: <16}'.format('\t{}'.format(self._macroscopic))
 
-        string += '{0: <16}\n'.format('\tElements')
+        string += '{: <16}\n'.format('\tElements')
 
         for element, percent, percent_type, enr in self._elements:
             string += '{0: <16}'.format('\t{0.name}'.format(element))
             if enr is None:
-                string += '=\t{0: <12} [{1}]\n'.format(percent, percent_type)
+                string += '=\t{: <12} [{}]\n'.format(percent, percent_type)
             else:
-                string += '=\t{0: <12} [{1}] @ {2} w/o enrichment\n'\
+                string += '=\t{: <12} [{}] @ {} w/o enrichment\n'\
                           .format(percent, percent_type, enr)
 
         return string
@@ -181,6 +184,10 @@ class Material(object):
     @property
     def density_units(self):
         return self._density_units
+
+    @property
+    def depletable(self):
+        return self._depletable
 
     @property
     def elements(self):
@@ -234,7 +241,7 @@ class Material(object):
     @name.setter
     def name(self, name):
         if name is not None:
-            cv.check_type('name for Material ID="{0}"'.format(self._id),
+            cv.check_type('name for Material ID="{}"'.format(self._id),
                           name, string_types)
             self._name = name
         else:
@@ -242,9 +249,15 @@ class Material(object):
 
     @temperature.setter
     def temperature(self, temperature):
-        cv.check_type('Temperature for Material ID="{0}"'.format(self._id),
+        cv.check_type('Temperature for Material ID="{}"'.format(self._id),
                       temperature, (Real, type(None)))
         self._temperature = temperature
+
+    @depletable.setter
+    def depletable(self, depletable):
+        cv.check_type('Depletable flag for Material ID="{}"'.format(self.id),
+                      depletable, bool)
+        self._depletable = depletable
 
     def set_density(self, units, density=None):
         """Set the density of the material
@@ -264,17 +277,17 @@ class Material(object):
 
         if units is 'sum':
             if density is not None:
-                msg = 'Density "{0}" for Material ID="{1}" is ignored ' \
+                msg = 'Density "{}" for Material ID="{}" is ignored ' \
                       'because the unit is "sum"'.format(density, self.id)
                 warnings.warn(msg)
         else:
             if density is None:
-                msg = 'Unable to set the density for Material ID="{0}" ' \
+                msg = 'Unable to set the density for Material ID="{}" ' \
                       'because a density value must be given when not using ' \
                       '"sum" unit'.format(self.id)
                 raise ValueError(msg)
 
-            cv.check_type('the density for Material ID="{0}"'.format(self.id),
+            cv.check_type('the density for Material ID="{}"'.format(self.id),
                           density, Real)
             self._density = density
 
@@ -285,8 +298,8 @@ class Material(object):
                       'version of openmc')
 
         if not isinstance(filename, string_types) and filename is not None:
-            msg = 'Unable to add OTF material file to Material ID="{0}" with a ' \
-                  'non-string name "{1}"'.format(self._id, filename)
+            msg = 'Unable to add OTF material file to Material ID="{}" with a ' \
+                  'non-string name "{}"'.format(self._id, filename)
             raise ValueError(msg)
 
         self._distrib_otf_file = filename
@@ -314,23 +327,23 @@ class Material(object):
         """
 
         if self._macroscopic is not None:
-            msg = 'Unable to add a Nuclide to Material ID="{0}" as a ' \
+            msg = 'Unable to add a Nuclide to Material ID="{}" as a ' \
                   'macroscopic data-set has already been added'.format(self._id)
             raise ValueError(msg)
 
         if not isinstance(nuclide, string_types + (openmc.Nuclide,)):
-            msg = 'Unable to add a Nuclide to Material ID="{0}" with a ' \
-                  'non-Nuclide value "{1}"'.format(self._id, nuclide)
+            msg = 'Unable to add a Nuclide to Material ID="{}" with a ' \
+                  'non-Nuclide value "{}"'.format(self._id, nuclide)
             raise ValueError(msg)
 
         elif not isinstance(percent, Real):
-            msg = 'Unable to add a Nuclide to Material ID="{0}" with a ' \
-                  'non-floating point value "{1}"'.format(self._id, percent)
+            msg = 'Unable to add a Nuclide to Material ID="{}" with a ' \
+                  'non-floating point value "{}"'.format(self._id, percent)
             raise ValueError(msg)
 
         elif percent_type not in ['ao', 'wo', 'at/g-cm']:
-            msg = 'Unable to add a Nuclide to Material ID="{0}" with a ' \
-                  'percent type "{1}"'.format(self._id, percent_type)
+            msg = 'Unable to add a Nuclide to Material ID="{}" with a ' \
+                  'percent type "{}"'.format(self._id, percent_type)
             raise ValueError(msg)
 
         if isinstance(nuclide, openmc.Nuclide):
@@ -353,7 +366,7 @@ class Material(object):
         """
 
         if not isinstance(nuclide, openmc.Nuclide):
-            msg = 'Unable to remove a Nuclide "{0}" in Material ID="{1}" ' \
+            msg = 'Unable to remove a Nuclide "{}" in Material ID="{}" ' \
                   'since it is not a Nuclide'.format(self._id, nuclide)
             raise ValueError(msg)
 
@@ -377,15 +390,15 @@ class Material(object):
         # Ensure no nuclides, elements, or sab are added since these would be
         # incompatible with macroscopics
         if self._nuclides or self._elements or self._sab:
-            msg = 'Unable to add a Macroscopic data set to Material ID="{0}" ' \
-                  'with a macroscopic value "{1}" as an incompatible data ' \
+            msg = 'Unable to add a Macroscopic data set to Material ID="{}" ' \
+                  'with a macroscopic value "{}" as an incompatible data ' \
                   'member (i.e., nuclide, element, or S(a,b) table) ' \
                   'has already been added'.format(self._id, macroscopic)
             raise ValueError(msg)
 
         if not isinstance(macroscopic, string_types + (openmc.Macroscopic,)):
-            msg = 'Unable to add a Macroscopic to Material ID="{0}" with a ' \
-                  'non-Macroscopic value "{1}"'.format(self._id, macroscopic)
+            msg = 'Unable to add a Macroscopic to Material ID="{}" with a ' \
+                  'non-Macroscopic value "{}"'.format(self._id, macroscopic)
             raise ValueError(msg)
 
         if isinstance(macroscopic, openmc.Macroscopic):
@@ -398,7 +411,7 @@ class Material(object):
         if self._macroscopic is None:
             self._macroscopic = macroscopic
         else:
-            msg = 'Unable to add a Macroscopic to Material ID="{0}". ' \
+            msg = 'Unable to add a Macroscopic to Material ID="{}". ' \
                   'Only one Macroscopic allowed per ' \
                   'Material.'.format(self._id)
             raise ValueError(msg)
@@ -422,7 +435,7 @@ class Material(object):
         """
 
         if not isinstance(macroscopic, openmc.Macroscopic):
-            msg = 'Unable to remove a Macroscopic "{0}" in Material ID="{1}" ' \
+            msg = 'Unable to remove a Macroscopic "{}" in Material ID="{}" ' \
                   'since it is not a Macroscopic'.format(self._id, macroscopic)
             raise ValueError(msg)
 
@@ -450,23 +463,23 @@ class Material(object):
         """
 
         if self._macroscopic is not None:
-            msg = 'Unable to add an Element to Material ID="{0}" as a ' \
+            msg = 'Unable to add an Element to Material ID="{}" as a ' \
                   'macroscopic data-set has already been added'.format(self._id)
             raise ValueError(msg)
 
         if not isinstance(element, string_types + (openmc.Element,)):
-            msg = 'Unable to add an Element to Material ID="{0}" with a ' \
-                  'non-Element value "{1}"'.format(self._id, element)
+            msg = 'Unable to add an Element to Material ID="{}" with a ' \
+                  'non-Element value "{}"'.format(self._id, element)
             raise ValueError(msg)
 
         if not isinstance(percent, Real):
-            msg = 'Unable to add an Element to Material ID="{0}" with a ' \
-                  'non-floating point value "{1}"'.format(self._id, percent)
+            msg = 'Unable to add an Element to Material ID="{}" with a ' \
+                  'non-floating point value "{}"'.format(self._id, percent)
             raise ValueError(msg)
 
         if percent_type not in ['ao', 'wo']:
-            msg = 'Unable to add an Element to Material ID="{0}" with a ' \
-                  'percent type "{1}"'.format(self._id, percent_type)
+            msg = 'Unable to add an Element to Material ID="{}" with a ' \
+                  'percent type "{}"'.format(self._id, percent_type)
             raise ValueError(msg)
 
         # Copy this Element to separate it from same Element in other Materials
@@ -477,14 +490,14 @@ class Material(object):
 
         if enrichment is not None:
             if not isinstance(enrichment, Real):
-                msg = 'Unable to add an Element to Material ID="{0}" with a ' \
-                      'non-floating point enrichment value "{1}"'\
+                msg = 'Unable to add an Element to Material ID="{}" with a ' \
+                      'non-floating point enrichment value "{}"'\
                       .format(self._id, enrichment)
                 raise ValueError(msg)
 
             elif element.name != 'U':
-                msg = 'Unable to use enrichment for element {0} which is not ' \
-                      'uranium for Material ID="{1}"'.format(element.name,
+                msg = 'Unable to use enrichment for element {} which is not ' \
+                      'uranium for Material ID="{}"'.format(element.name,
                                                              self._id)
                 raise ValueError(msg)
 
@@ -493,8 +506,8 @@ class Material(object):
             cv.check_greater_than('enrichment', enrichment, 0., equality=True)
 
             if enrichment > 5.0:
-                msg = 'A uranium enrichment of {0} was given for Material ID='\
-                      '"{1}". OpenMC assumes the U234/U235 mass ratio is '\
+                msg = 'A uranium enrichment of {} was given for Material ID='\
+                      '"{}". OpenMC assumes the U234/U235 mass ratio is '\
                       'constant at 0.008, which is only valid at low ' \
                       'enrichments. Consider setting the isotopic ' \
                       'composition manually for enrichments over 5%.'.\
@@ -514,7 +527,7 @@ class Material(object):
         """
 
         if not isinstance(element, openmc.Element):
-            msg = 'Unable to remove "{0}" in Material ID="{1}" ' \
+            msg = 'Unable to remove "{}" in Material ID="{}" ' \
                   'since it is not an Element'.format(self.id, element)
             raise ValueError(msg)
 
@@ -534,13 +547,13 @@ class Material(object):
         """
 
         if self._macroscopic is not None:
-            msg = 'Unable to add an S(a,b) table to Material ID="{0}" as a ' \
+            msg = 'Unable to add an S(a,b) table to Material ID="{}" as a ' \
                   'macroscopic data-set has already been added'.format(self._id)
             raise ValueError(msg)
 
         if not isinstance(name, string_types):
-            msg = 'Unable to add an S(a,b) table to Material ID="{0}" with a ' \
-                        'non-string table name "{1}"'.format(self._id, name)
+            msg = 'Unable to add an S(a,b) table to Material ID="{}" with a ' \
+                        'non-string table name "{}"'.format(self._id, name)
             raise ValueError(msg)
 
         new_name = openmc.data.get_thermal_name(name)
@@ -757,6 +770,9 @@ class Material(object):
 
         if len(self._name) > 0:
             element.set("name", str(self._name))
+
+        if self._depletable:
+            element.set("depletable", "true")
 
         # Create temperature XML subelement
         if self.temperature is not None:

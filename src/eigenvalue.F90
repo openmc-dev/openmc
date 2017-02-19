@@ -1,8 +1,5 @@
 module eigenvalue
 
-#ifdef MPI
-  use message_passing
-#endif
 
   use algorithm,   only: binary_search
   use constants,   only: ZERO
@@ -11,6 +8,7 @@ module eigenvalue
   use math,        only: t_percentile
   use mesh,        only: count_bank_sites
   use mesh_header, only: RegularMesh
+  use message_passing
   use random_lcg,  only: prn, set_particle_seed, advance_prn_seed
   use string,      only: to_str
 
@@ -66,7 +64,7 @@ contains
 #ifdef MPI
     start = 0_8
     call MPI_EXSCAN(n_bank, start, 1, MPI_INTEGER8, MPI_SUM, &
-         MPI_COMM_WORLD, mpi_err)
+         mpi_intracomm, mpi_err)
 
     ! While we would expect the value of start on rank 0 to be 0, the MPI
     ! standard says that the receive buffer on rank 0 is undefined and not
@@ -76,7 +74,7 @@ contains
     finish = start + n_bank
     total = finish
     call MPI_BCAST(total, 1, MPI_INTEGER8, n_procs - 1, &
-         MPI_COMM_WORLD, mpi_err)
+         mpi_intracomm, mpi_err)
 
 #else
     start  = 0_8
@@ -150,13 +148,13 @@ contains
     ! First do an exclusive scan to get the starting indices for
     start = 0_8
     call MPI_EXSCAN(index_temp, start, 1, MPI_INTEGER8, MPI_SUM, &
-         MPI_COMM_WORLD, mpi_err)
+         mpi_intracomm, mpi_err)
     finish = start + index_temp
 
     ! Allocate space for bank_position if this hasn't been done yet
     if (.not. allocated(bank_position)) allocate(bank_position(n_procs))
     call MPI_ALLGATHER(start, 1, MPI_INTEGER8, bank_position, 1, &
-         MPI_INTEGER8, MPI_COMM_WORLD, mpi_err)
+         MPI_INTEGER8, mpi_intracomm, mpi_err)
 #else
     start  = 0_8
     finish = index_temp
@@ -210,7 +208,7 @@ contains
         if (neighbor /= rank) then
           n_request = n_request + 1
           call MPI_ISEND(temp_sites(index_local), int(n), MPI_BANK, neighbor, &
-               rank, MPI_COMM_WORLD, request(n_request), mpi_err)
+               rank, mpi_intracomm, request(n_request), mpi_err)
         end if
 
         ! Increment all indices
@@ -254,7 +252,7 @@ contains
 
         n_request = n_request + 1
         call MPI_IRECV(source_bank(index_local), int(n), MPI_BANK, &
-             neighbor, neighbor, MPI_COMM_WORLD, request(n_request), mpi_err)
+             neighbor, neighbor, mpi_intracomm, request(n_request), mpi_err)
 
       else
         ! If the source sites are on this procesor, we can simply copy them
@@ -379,7 +377,7 @@ contains
 #ifdef MPI
     ! Combine values across all processors
     call MPI_ALLREDUCE(keff_generation, k_generation(overall_gen), 1, &
-         MPI_REAL8, MPI_SUM, MPI_COMM_WORLD, mpi_err)
+         MPI_REAL8, MPI_SUM, mpi_intracomm, mpi_err)
 #else
     k_generation(overall_gen) = keff_generation
 #endif
@@ -565,7 +563,7 @@ contains
 #ifdef MPI
       ! Send source fraction to all processors
       n = product(ufs_mesh % dimension)
-      call MPI_BCAST(source_frac, n, MPI_REAL8, 0, MPI_COMM_WORLD, mpi_err)
+      call MPI_BCAST(source_frac, n, MPI_REAL8, 0, mpi_intracomm, mpi_err)
 #endif
 
       ! Normalize to total weight to get fraction of source in each cell

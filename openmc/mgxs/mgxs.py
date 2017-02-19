@@ -4903,8 +4903,6 @@ class MultiplicityMatrixXS(MatrixMGXS):
         return self._xs_tally
 
 
-# FIXME: Kord's scattering matrix idea
-
 class ScatterProbabilityMatrix(MatrixMGXS):
     r"""The group-to-group scattering matrix.
 
@@ -5053,7 +5051,6 @@ class ScatterProbabilityMatrix(MatrixMGXS):
         energy = openmc.EnergyFilter(group_edges)
         energyout = openmc.EnergyoutFilter(group_edges)
         filters = [[energy, energyout]]
-
         return self._add_angle_filters(filters)
 
     @property
@@ -5067,11 +5064,11 @@ class ScatterProbabilityMatrix(MatrixMGXS):
     def xs_tally(self):
 
         if self._xs_tally is None:
-#            energyout = self.filters[0][1]
             energyout_bins = \
                 [self.energy_groups.get_group_bounds(i) for i in range(self.num_groups, 0, -1)]
             norm = self.rxn_rate_tally.summation(
                 filter_type=openmc.EnergyoutFilter, filter_bins=energyout_bins)
+
             # Remove the AggregateFilter summed across energyout bins
             norm._filters = norm._filters[:2]
 
@@ -5081,8 +5078,6 @@ class ScatterProbabilityMatrix(MatrixMGXS):
 
         return self._xs_tally
 
-
-# FIXME: Kord's scattering matrix idea
 
 class NuScatterProbabilityMatrix(ScatterProbabilityMatrix):
     r"""The group-to-group nu-scattering matrix.
@@ -5220,9 +5215,6 @@ class NuScatterProbabilityMatrix(ScatterProbabilityMatrix):
         self._valid_estimators = ['analog']
         self._hdf5_key = 'nu-scatter probability matrix'
 
-
-
-# FIXME: Kord's scattering matrix idea
 
 @add_metaclass(ABCMeta)
 class ConvolvedMGXS(MGXS):
@@ -5478,28 +5470,12 @@ class ConvolvedMGXS(MGXS):
             sp_tally.sparse = self.sparse
             self._tallies[tally_type] = sp_tally
 
+        # Load data for the tallies in each MGXS in the convolution
         for mgxs in self.mgxs:
             mgxs.load_from_statepoint(statepoint)
 
         self._loaded_sp = True
 
-        '''
-        # Clear any tallies previously loaded from a statepoint
-        if self.loaded_sp:
-            self._tallies = None
-            self._xs_tally = None
-            self._rxn_rate_tally = None
-            self._loaded_sp = False
-
-        for mgxs in self.mgxs:
-            mgxs.load_from_statepoint(statepoint)
-
-        self._loaded_sp = True
-        '''
-
-
-# FIXME: Kord's scattering matrix idea
-# FIXME: Note that this does not yet support transport correction
 
 class ConsistentScatterMatrixXS(ConvolvedMGXS, ScatterMatrixXS):
 
@@ -5534,7 +5510,7 @@ class ConsistentScatterMatrixXS(ConvolvedMGXS, ScatterMatrixXS):
     def scores(self):
         scores = super(ConsistentScatterMatrixXS, self).scores
 
-        # FIXME: Add scores for transport correction
+        # Add scores for transport correction
         if self.correction == 'P0' and self.legendre_order == 0:
             scores += ['{}-1'.format(self.rxn_type)]
 
@@ -5544,7 +5520,7 @@ class ConsistentScatterMatrixXS(ConvolvedMGXS, ScatterMatrixXS):
     def filters(self):
         filters = super(ConsistentScatterMatrixXS, self).filters
 
-        # FIXME: Add filters for transport correction
+        # Add filters for transport correction
         if self.correction == 'P0' and self.legendre_order == 0:
             group_edges = self.energy_groups.group_edges
             energyout = openmc.EnergyoutFilter(group_edges)
@@ -5556,23 +5532,20 @@ class ConsistentScatterMatrixXS(ConvolvedMGXS, ScatterMatrixXS):
     def tally_keys(self):
         tally_keys = super(ConsistentScatterMatrixXS, self).tally_keys
 
-        # FIXME: Add key for transport correction tally
+        # Add key for transport correction tally
         if self.correction == 'P0' and self.legendre_order == 0:
             tally_keys += ['scatter-1']
 
         return tally_keys
 
-    # FIXME: Make this work for transport correction
     @property
     def tallies(self):
 
         if self._tallies is None:
-
             self._tallies = super(ConsistentScatterMatrixXS, self).tallies
 
-            # FIXME: Add in the transport correction tally
+            # Add in the transport correction tally
             if self.correction == 'P0' and self.legendre_order == 0:
-
                 tally_key = 'scatter-1'
 
                 # Create a domain Filter object
@@ -5613,22 +5586,6 @@ class ConsistentScatterMatrixXS(ConvolvedMGXS, ScatterMatrixXS):
     @property
     def rxn_rate_tally(self):
         raise NotImplementedError('The rxn rate tally is not well defined ')
-        '''
-        if self._rxn_rate_tally is None:
-
-            # FIXME: Add transport correction option
-            # If using P0 correction subtract scatter-1 from the diagonal
-            if self.correction == 'P0' and self.legendre_order == 0:
-                scatter_p0 = self.tallies['{}-0'.format(self.rxn_type)]
-                scatter_p1 = self.tallies['{}-1'.format(self.rxn_type)]
-
-            self._rxn_rate_tally = self.mgxs[0].rxn_rate_tally
-            self._rxn_rate_tally.sparse = self.sparse
-
-        return self._rxn_rate_tally
-        '''
-
-    # FIXME: Apply transport correction
 
     @property
     def xs_tally(self):
@@ -5638,10 +5595,8 @@ class ConsistentScatterMatrixXS(ConvolvedMGXS, ScatterMatrixXS):
                       'not been loaded from a statepoint'
                 raise ValueError(msg)
 
-
-            # FIXME: If using P0 correction subtract scatter-1 from the diagonal
+            # If using P0 correction subtract scatter-1 from the diagonal
             if self.correction == 'P0' and self.legendre_order == 0:
-                # FIXME: The flux tally must also use an analog estimator
                 flux = self.tallies['{} : flux'.format(self.rxn_type)]
                 scatter_p0 = self.tallies['{0} : {0}'.format(self.rxn_type)]
                 scatter_p1 = self.tallies['scatter-1']
@@ -5660,62 +5615,17 @@ class ConsistentScatterMatrixXS(ConvolvedMGXS, ScatterMatrixXS):
 
         return self._xs_tally
 
-    # FIXME: Add not implemented yet errors to these property getters/setters
-    '''
-    @ScatterMatrixXS.correction.setter
-    def correction(self, correction):
-        cv.check_value('correction', correction, ('P0', None))
-
-        if self.scatter_format == 'legendre':
-            if correction == 'P0' and self.legendre_order > 0:
-                msg = 'The P0 correction will be ignored since the ' \
-                      'scattering order {} is greater than '\
-                      'zero'.format(self.legendre_order)
-                warnings.warn(msg)
-        elif self.scatter_format == 'histogram':
-            msg = 'The P0 correction will be ignored since the ' \
-                  'scatter format is set to histogram'
-            warnings.warn(msg)
-
-        self._correction = correction
-
     @ScatterMatrixXS.scatter_format.setter
     def scatter_format(self, scatter_format):
-        cv.check_value('scatter_format', scatter_format, MU_TREATMENTS)
-        self._scatter_format = scatter_format
+        raise NotImplementedError('Not yet supported')
 
     @ScatterMatrixXS.legendre_order.setter
     def legendre_order(self, legendre_order):
-        cv.check_type('legendre_order', legendre_order, Integral)
-        cv.check_greater_than('legendre_order', legendre_order, 0,
-                              equality=True)
-        cv.check_less_than('legendre_order', legendre_order, _MAX_LEGENDRE,
-                           equality=True)
-
-        if self.scatter_format == 'legendre':
-            if self.correction == 'P0' and legendre_order > 0:
-                msg = 'The P0 correction will be ignored since the ' \
-                      'scattering order {} is greater than ' \
-                      'zero'.format(self.legendre_order)
-                warnings.warn(msg, RuntimeWarning)
-                self.correction = None
-        elif self.scatter_format == 'histogram':
-            msg = 'The legendre order will be ignored since the ' \
-                  'scatter format is set to histogram'
-            warnings.warn(msg)
-
-        self._legendre_order = legendre_order
+        raise NotImplementedError('Not yet supported')
 
     @ScatterMatrixXS.histogram_bins.setter
     def histogram_bins(self, histogram_bins):
-        cv.check_type('histogram_bins', histogram_bins, Integral)
-        cv.check_greater_than('histogram_bins', histogram_bins, 0)
-
-        self._histogram_bins = histogram_bins
-    '''
-
-#    def load_from_statepoint(self, statepoint):
-#        super(ConsistentScatterMatrixXS, self).load_from_statepoint(statepoint)
+        raise NotImplementedError('Not yet supported')
 
     def get_condensed_xs(self, coarse_groups):
         condense_xs = \

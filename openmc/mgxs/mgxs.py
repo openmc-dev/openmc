@@ -3911,9 +3911,7 @@ class ScatterMatrixXS(MatrixMGXS):
         self._valid_estimators = ['analog']
 
     def __deepcopy__(self, memo):
-        print('HERE2')
         clone = super(ScatterMatrixXS, self).__deepcopy__(memo)
-        print('HERE3', clone)
         clone._correction = self.correction
         clone._scatter_format = self.scatter_format
         clone._legendre_order = self.legendre_order
@@ -5240,11 +5238,8 @@ class ConvolvedMGXS(MGXS):
             name, num_polar, num_azimuthal)
 
     def __deepcopy__(self, memo):
-        print('HERE1')
         clone = super(ConvolvedMGXS, self).__deepcopy__(memo)
-        print('WTF')
         clone._mgxs = copy.deepcopy(self.mgxs)
-        print('HERE4')
         return clone
 
     @property
@@ -5660,7 +5655,7 @@ class ConsistentScatterMatrixXS(ConvolvedMGXS, ScatterMatrixXS):
 
             self._xs_tally = \
                 self.scatter_xs.xs_tally * self.probability_matrix.xs_tally
-            self._xs_tally - correction
+            self._xs_tally -= correction
             self._compute_xs()
 
         return self._xs_tally

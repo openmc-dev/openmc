@@ -252,7 +252,7 @@ class MGXS(object):
             clone._name = self.name
             clone._rxn_type = self.rxn_type
             clone._by_nuclide = self.by_nuclide
-            clone._nuclides = copy.deepcopy(self._nuclides)
+            clone._nuclides = copy.deepcopy(self._nuclides, memo)
             clone._domain = self.domain
             clone._domain_type = self.domain_type
             clone._energy_groups = copy.deepcopy(self.energy_groups, memo)

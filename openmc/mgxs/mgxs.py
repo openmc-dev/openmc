@@ -5720,7 +5720,6 @@ class ConsistentScatterMatrixXS(ConvolvedMGXS, ScatterMatrixXS):
     def get_condensed_xs(self, coarse_groups):
         condense_xs = \
             super(ConsistentScatterMatrixXS, self).get_condensed_xs(coarse_groups)
-        condense_xs._tallies = None
 
         for i, mgxs in enumerate(condense_xs._mgxs):
             condense_xs._mgxs[i] = mgxs.get_condensed_xs(coarse_groups)

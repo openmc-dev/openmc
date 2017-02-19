@@ -115,16 +115,6 @@ Many of the above classes are derived from several abstract classes:
    openmc.Region
    openmc.Lattice
 
-One function is also available to create a hexagonal region defined by the
-intersection of six surface half-spaces.
-
-.. autosummary::
-   :toctree: generated
-   :nosignatures:
-   :template: myfunction.rst
-
-   openmc.make_hexagon_region
-
 Constructing Tallies
 --------------------
 

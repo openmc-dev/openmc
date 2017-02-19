@@ -42,11 +42,11 @@ contains
 
   function timer_get_value(self) result(elapsed)
     class(Timer), intent(in) :: self   ! the timer
-    real(8)                 :: elapsed ! total elapsed time
+    real(8)                  :: elapsed ! total elapsed time
 
     integer(8) :: end_counts   ! current number of counts
     integer(8) :: count_rate   ! system-dependent counting rate
-    real    :: elapsed_time ! elapsed time since last start
+    real(8)    :: elapsed_time ! elapsed time since last start
 
     if (self % running) then
       call system_clock(end_counts, count_rate)

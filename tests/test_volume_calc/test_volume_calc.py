@@ -52,22 +52,12 @@ class VolumeTest(PyAPITestHarness):
 
         # Define settings
         settings = openmc.Settings()
-        settings.particles = 1000
-        settings.batches = 4
-        settings.inactive = 0
-        settings.source = openmc.Source(space=openmc.stats.Box(
-            [-1., -1., -5.], [1., 1., 5.]))
+        settings.run_mode = 'volume'
         settings.volume_calculations = vol_calcs
         settings.export_to_xml()
 
     def _get_results(self):
-        # Read the statepoint file.
-        statepoint = os.path.join(os.getcwd(), self._sp_name)
-        sp = openmc.StatePoint(statepoint)
-
-        # Write out k-combined.
-        outstr = 'k-combined: {:12.6e} {:12.6e}\n'.format(*sp.k_combined)
-
+        outstr = ''
         for i, filename in enumerate(sorted(glob.glob(os.path.join(
                 os.getcwd(), 'volume_*.h5')))):
             outstr += 'Volume calculation {}\n'.format(i)
@@ -83,6 +73,9 @@ class VolumeTest(PyAPITestHarness):
 
         return outstr
 
+    def _test_output_created(self):
+        pass
+
 if __name__ == '__main__':
-    harness = VolumeTest('statepoint.4.h5')
+    harness = VolumeTest('')
     harness.main()

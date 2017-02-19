@@ -8,6 +8,7 @@ program main
   use particle_restart,  only: run_particle_restart
   use plot,              only: run_plot
   use simulation,        only: run_simulation
+  use volume_calc,       only: run_volume_calculations
 
   implicit none
 
@@ -26,6 +27,8 @@ program main
     call run_plot()
   case (MODE_PARTICLE)
     if (master) call run_particle_restart()
+  case (MODE_VOLUME)
+    call run_volume_calculations()
   end select
 
   ! finalize run

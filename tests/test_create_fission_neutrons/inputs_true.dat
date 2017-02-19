@@ -18,10 +18,9 @@
 </materials>
 <?xml version='1.0' encoding='utf-8'?>
 <settings>
-    <fixed_source>
-        <particles>100</particles>
-        <batches>10</batches>
-    </fixed_source>
+    <run_mode>fixed source</run_mode>
+    <particles>100</particles>
+    <batches>10</batches>
     <source strength="1.0">
         <space type="box">
             <parameters>-1 -1 -1 1 1 1</parameters>

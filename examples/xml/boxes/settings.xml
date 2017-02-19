@@ -2,11 +2,10 @@
 <settings>
 
   <!-- Parameters for k-eigenvalue calculation -->
-  <eigenvalue>
-    <batches>15</batches>
-    <inactive>5</inactive>
-    <particles>10000</particles>
-  </eigenvalue>
+  <run_mode>eigenvalue</run_mode>
+  <batches>15</batches>
+  <inactive>5</inactive>
+  <particles>10000</particles>
 
   <!-- Starting source -->
   <source>

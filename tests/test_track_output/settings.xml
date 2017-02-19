@@ -1,19 +1,11 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <settings>
 
-<!--  <cross_sections> -->
-<!--   cross_sections.xml-->
-<!--  </cross_sections>-->
-
   <!-- Parameters for criticality calculation -->
-  <eigenvalue>
-    <batches>2</batches>
-    <inactive>0</inactive>
-    <particles>100</particles>
-  </eigenvalue>
-
-  <!-- How verbose output should be -->
-  <verbosity value="7" />
+  <run_mode>eigenvalue</run_mode>
+  <batches>2</batches>
+  <inactive>0</inactive>
+  <particles>100</particles>
 
   <!-- Starting source -->
   <source>
@@ -26,5 +18,5 @@
     1 1 1
     1 1 2
   </track>
-  
+
 </settings>

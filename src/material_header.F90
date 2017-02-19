@@ -31,8 +31,9 @@ module material_header
     character(20), allocatable :: names(:)     ! isotope names
     character(20), allocatable :: sab_names(:) ! name of S(a,b) table
 
-    ! Does this material contain fissionable nuclides?
+    ! Does this material contain fissionable nuclides? Is it depletable?
     logical :: fissionable = .false.
+    logical :: depletable = .false.
 
     ! enforce isotropic scattering in lab
     logical, allocatable :: p0(:)

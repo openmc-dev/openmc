@@ -5,9 +5,6 @@ module finalize
   use global
   use hdf5_interface, only: hdf5_bank_t
   use message_passing
-  use output,         only: print_runtime, print_results, &
-                            print_overlap_check, write_tallies
-  use tally,          only: tally_statistics
 
   implicit none
 
@@ -21,30 +18,6 @@ contains
   subroutine openmc_finalize()
 
     integer :: hdf5_err
-
-    ! Start finalization timer
-    call time_finalize%start()
-
-    if (run_mode /= MODE_PLOTTING .and. run_mode /= MODE_PARTICLE) then
-      ! Calculate statistics for tallies and write to tallies.out
-      if (master) then
-        if (n_realizations > 1) call tally_statistics()
-      end if
-      if (output_tallies) then
-        if (master) call write_tallies()
-      end if
-      if (check_overlaps) call reduce_overlap_count()
-    end if
-
-    ! Stop timers and show timing statistics
-    call time_finalize%stop()
-    call time_total%stop()
-    if (master .and. (run_mode /= MODE_PLOTTING .and. &
-         run_mode /= MODE_PARTICLE)) then
-      call print_runtime()
-      call print_results()
-      if (check_overlaps) call print_overlap_check()
-    end if
 
     ! Deallocate arrays
     call free_memory()
@@ -64,23 +37,5 @@ contains
 #endif
 
   end subroutine openmc_finalize
-
-!===============================================================================
-! REDUCE_OVERLAP_COUNT accumulates cell overlap check counts to master
-!===============================================================================
-
-  subroutine reduce_overlap_count()
-
-#ifdef MPI
-      if (master) then
-        call MPI_REDUCE(MPI_IN_PLACE, overlap_check_cnt, n_cells, &
-             MPI_INTEGER8, MPI_SUM, 0, mpi_intracomm, mpi_err)
-      else
-        call MPI_REDUCE(overlap_check_cnt, overlap_check_cnt, n_cells, &
-             MPI_INTEGER8, MPI_SUM, 0, mpi_intracomm, mpi_err)
-      end if
-#endif
-
-  end subroutine reduce_overlap_count
 
 end module finalize

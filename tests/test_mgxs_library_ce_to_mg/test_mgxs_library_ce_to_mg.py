@@ -41,10 +41,9 @@ class MGXSTestHarness(PyAPITestHarness):
     def _run_openmc(self):
         # Initial run
         if self._opts.mpi_exec is not None:
-            returncode = openmc.run(mpi_procs=self._opts.mpi_np,
-                                    openmc_exec=self._opts.exe,
-                                    mpi_exec=self._opts.mpi_exec)
-
+            mpi_args = [self._opts.mpi_exec, '-n', self._opts.mpi_np]
+            returncode = openmc.run(openmc_exec=self._opts.exe,
+                                    mpi_args=mpi_args)
         else:
             returncode = openmc.run(openmc_exec=self._opts.exe)
 
@@ -72,12 +71,14 @@ class MGXSTestHarness(PyAPITestHarness):
         if os.path.exists('./tallies.xml'):
             os.remove('./tallies.xml')
 
+        # Close the statepoint to allow writing
+        sp.close()
+
         # Re-run MG mode.
         if self._opts.mpi_exec is not None:
-            returncode = openmc.run(mpi_procs=self._opts.mpi_np,
-                                    openmc_exec=self._opts.exe,
-                                    mpi_exec=self._opts.mpi_exec)
-
+            mpi_args = [self._opts.mpi_exec, '-n', self._opts.mpi_np]
+            returncode = openmc.run(openmc_exec=self._opts.exe,
+                                    mpi_args=mpi_args)
         else:
             returncode = openmc.run(openmc_exec=self._opts.exe)
 

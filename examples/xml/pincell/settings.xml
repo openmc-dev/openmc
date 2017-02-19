@@ -2,11 +2,10 @@
 <settings>
 
   <!-- Define how many particles to run and for how many batches -->
-  <eigenvalue>
-    <batches>100</batches>
-    <inactive>10</inactive>
-    <particles>1000</particles>
-  </eigenvalue>
+  <run_mode>eigenvalue</run_mode>
+  <batches>100</batches>
+  <inactive>10</inactive>
+  <particles>1000</particles>
 
   <!-- The starting source is a uniform distribution over the entire pin
        cell. Note that since this is effectively a 2D model, the z coordinates

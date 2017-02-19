@@ -8,6 +8,7 @@ module summary
   use hdf5_interface
   use material_header, only: Material
   use mesh_header,     only: RegularMesh
+  use message_passing
   use nuclide_header
   use output,          only: time_stamp
   use surface_header
@@ -534,6 +535,12 @@ contains
       m => materials(i)
       material_group = create_group(materials_group, "material " // &
            trim(to_str(m%id)))
+
+      if (m % depletable) then
+        call write_attribute(material_group, "depletable", 1)
+      else
+        call write_attribute(material_group, "depletable", 0)
+      end if
 
       ! Write internal OpenMC index for this material
       call write_dataset(material_group, "index", i)

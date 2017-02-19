@@ -1,10 +1,9 @@
 <?xml version="1.0"?>
 <settings>
 
-  <fixed_source>
-    <batches>10</batches>
-    <particles>100</particles>
-  </fixed_source>
+  <run_mode>fixed source</run_mode>
+  <batches>10</batches>
+  <particles>100</particles>
 
   <temperature_default>294</temperature_default>
 

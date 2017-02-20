@@ -38,8 +38,7 @@ class VolumeTest(PyAPITestHarness):
         bottom_hemisphere = openmc.Cell(3, fill=water, region=-bottom_sphere & -top_plane)
         root = openmc.Universe(0, cells=(inside_cyl, top_hemisphere, bottom_hemisphere))
 
-        geometry = openmc.Geometry()
-        geometry.root_universe = root
+        geometry = openmc.Geometry(root)
         geometry.export_to_xml()
 
         # Set up stochastic volume calculation

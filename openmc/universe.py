@@ -42,6 +42,10 @@ class Universe(object):
     cells : collections.OrderedDict
         Dictionary whose keys are cell IDs and values are :class:`Cell`
         instances
+    volume_information : dict
+        Estimate of the volume and total number of atoms of each nuclide from a
+        stochastic volume calculation. This information is set with the
+        :meth:`Universe.add_volume_information` method.
 
     """
 
@@ -49,6 +53,7 @@ class Universe(object):
         # Initialize Cell class attributes
         self.id = universe_id
         self.name = name
+        self._volume_information = None
 
         # Keys     - Cell IDs
         # Values - Cells
@@ -99,6 +104,10 @@ class Universe(object):
     def cells(self):
         return self._cells
 
+    @property
+    def volume_information(self):
+        return self._volume_information
+
     @id.setter
     def id(self, universe_id):
         if universe_id is None:
@@ -146,6 +155,25 @@ class Universe(object):
             universe.add_cell(cells[cell_id])
 
         return universe
+
+    def add_volume_information(self, volume_calc):
+        """Add volume information to a universe.
+
+        Parameters
+        ----------
+        volume_calc : openmc.VolumeCalculation
+            Results from a stochastic volume calculation
+
+        """
+        if volume_calc.domain_type == 'cell':
+            for univ_id in volume_calc.results:
+                if univ_id == self.id:
+                    self._volume_information = volume_calc.results[univ_id]
+                    break
+            else:
+                raise ValueError('No volume information found for this universe.')
+        else:
+            raise ValueError('No volume information found for this universe.')
 
     def find(self, point):
         """Find cells/universes/lattices which contain a given point

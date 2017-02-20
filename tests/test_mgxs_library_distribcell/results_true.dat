@@ -32,6 +32,14 @@
 0  ((0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13...         1          1   total  1.000834   0.037242
                                     sum(distribcell)  group in  group out nuclide      mean  std. dev.
 0  ((0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13...         1          1   total  0.094516     0.0059
+                                    sum(distribcell)  group in  group out nuclide  mean  std. dev.
+0  ((0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13...         1          1   total   1.0   0.037213
+                                    sum(distribcell)  group in  group out nuclide  mean  std. dev.
+0  ((0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13...         1          1   total   1.0   0.037213
+                                    sum(distribcell)  group in  group out nuclide      mean  std. dev.
+0  ((0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13...         1          1   total  0.342636   0.017656
+                                    sum(distribcell)  group in  group out nuclide      mean  std. dev.
+0  ((0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13...         1          1   total  0.342954   0.022894
                                     sum(distribcell)  group out nuclide  mean  std. dev.
 0  ((0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13...          1   total   1.0   0.080455
                                     sum(distribcell)  group out nuclide  mean  std. dev.

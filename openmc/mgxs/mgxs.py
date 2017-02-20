@@ -3623,7 +3623,6 @@ class ScatterXS(MGXS):
                                         num_azimuthal)
         self._rxn_type = 'scatter'
 
-
 class NuScatterXS(MGXS):
     r"""A scattering neutron production multi-group cross section.
 
@@ -5845,10 +5844,9 @@ class ConsistentScatterMatrixXS(ConvolvedMGXS, ScatterMatrixXS):
     def get_subdomain_avg_xs(self, subdomains='all'):
         avg_xs = \
             super(ConsistentScatterMatrixXS, self).get_subdomain_avg_xs(subdomains)
-        avg_xs._tallies = None
 
         for i, mgxs in enumerate(avg_xs._mgxs):
-            self._mgxs[i] = mgxs.get_subdomain_avg_xs(subdomains)
+            avg_xs._mgxs[i] = mgxs.get_subdomain_avg_xs(subdomains)
 
         return avg_xs
 
@@ -5860,11 +5858,12 @@ class ConsistentNuScatterMatrixXS(ConsistentScatterMatrixXS):
 
     This class is a variation of the :class:`NuScatterMatrixXS` which computes
     the scattering-production matrix as the convolution product of
-    :class:`NuScatterXS` and :class:`NuScatterProbabilityMatrix`. Unlike the
-    :class:`NuScatterMatrixXS`, this scattering-production matrix is computed
-    from the scattering-production cross section which uses a tracklength
-    estimator. This ensures that reaction rate balance is exactly preserved
-    with a :class:`TotalXS` computed using a tracklength estimator.
+    :class:`ScatterXS`, :class:`NuScatterProbabilityMatrix` and
+    :class:`MultiplicityMatrixXS`. Unlike the :class:`NuScatterMatrixXS`, this
+    scattering-production matrix is computed from the scattering cross section
+    which uses a tracklength estimator. This ensures that reaction rate balance
+    is exactly preserved with a :class:`TotalXS` computed using a tracklength
+    estimator.
 
     This class can be used for both OpenMC input generation and tally data
     post-processing to compute spatially-homogenized and energy-integrated

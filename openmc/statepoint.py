@@ -111,6 +111,8 @@ class StatePoint(object):
 
     def __init__(self, filename, autolink=True):
         self._f = h5py.File(filename, 'r')
+        self._meshes = {}
+        self._tallies = {}
 
         # Check filetype and version
         cv.check_filetype_version(self._f, 'statepoint', _VERSION_STATEPOINT)
@@ -256,27 +258,14 @@ class StatePoint(object):
     @property
     def meshes(self):
         if not self._meshes_read:
-            # Initialize dictionaries for the Meshes
-            # Keys     - Mesh IDs
-            # Values - Mesh objects
-            self._meshes = {}
-
-            # Read the number of Meshes
-            n_meshes = self._f['tallies/meshes'].attrs['n_meshes']
-
-            # Read a list of the IDs for each Mesh
-            if n_meshes > 0:
-                # User-defined Mesh IDs
-                mesh_keys = self._f['tallies/meshes/keys'].value
-            else:
-                mesh_keys = []
+            mesh_group = self._f['tallies/meshes']
 
             # Iterate over all Meshes
-            for mesh_key in mesh_keys:
-                group = self._f['tallies/meshes/mesh {}'.format(mesh_key)]
+            for key, group in mesh_group.items():
+                mesh_id = int(key.lstrip('mesh '))
 
                 # Read and assign mesh properties
-                mesh = openmc.Mesh(mesh_key)
+                mesh = openmc.Mesh(mesh_id)
                 mesh.type = group['type'].value.decode()
                 mesh.dimension = group['dimension'].value
                 mesh.lower_left = group['lower_left'].value
@@ -284,7 +273,7 @@ class StatePoint(object):
                 mesh.width = group['width'].value
 
                 # Add mesh to the global dictionary of all Meshes
-                self._meshes[mesh_key] = mesh
+                self._meshes[mesh_id] = mesh
 
             self._meshes_read = True
 
@@ -340,30 +329,27 @@ class StatePoint(object):
 
     @property
     def tallies(self):
-        if not self._tallies_read:
-            # Initialize dictionary for tallies
-            self._tallies = {}
-
+        if self.tallies_present and not self._tallies_read:
             # Read the number of tallies
-            n_tallies = self._f['tallies'].attrs['n_tallies']
+            tallies_group = self._f['tallies']
+            n_tallies = tallies_group.attrs['n_tallies']
 
             # Read a list of the IDs for each Tally
             if n_tallies > 0:
-                # OpenMC Tally IDs (redefined internally from user definitions)
-                tally_keys = self._f['tallies/keys'].value
+                # Tally used-defined IDs
+                tally_ids = tallies_group.attrs['ids']
             else:
-                tally_keys = []
+                tally_ids = []
 
-            # Iterate over all Tallies
-            for tally_key in tally_keys:
-                group = self._f['tallies/tally {}'.format(tally_key)]
+            # Iterate over all tallies
+            for tally_id in tally_ids:
+                group = tallies_group['tally {}'.format(tally_id)]
 
-
-                # Read the Tally size specifications
+                # Read the number of realizations
                 n_realizations = group['n_realizations'].value
 
                 # Create Tally object and assign basic properties
-                tally = openmc.Tally(tally_id=tally_key)
+                tally = openmc.Tally(tally_id)
                 tally._sp_filename = self._f.filename
                 tally.name = group['name'].value.decode()
                 tally.estimator = group['estimator'].value.decode()
@@ -416,7 +402,7 @@ class StatePoint(object):
 
                 # Add Tally to the global dictionary of all Tallies
                 tally.sparse = self.sparse
-                self._tallies[tally_key] = tally
+                self._tallies[tally_id] = tally
 
             self._tallies_read = True
 

@@ -120,7 +120,7 @@ The current version of the summary file format is 5.0.
              material, e.g., 'U235'.
            - **nuclide_densities** (*double[]*) -- Atom density of each nuclide.
            - **sab_names** (*char[][]*) -- Names of
-             S(:math:`\alpha`,:math:`\beta`) tables assigned to the material.
+             S(:math:`\alpha,\beta`) tables assigned to the material.
 
 **/nuclides/**
 

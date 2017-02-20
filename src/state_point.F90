@@ -108,9 +108,9 @@ contains
 
       ! Indicate whether source bank is stored in statepoint
       if (source_separate) then
-        call write_dataset(file_id, "source_present", 0)
+        call write_attribute(file_id, "source_present", 0)
       else
-        call write_dataset(file_id, "source_present", 1)
+        call write_attribute(file_id, "source_present", 1)
       end if
 
       ! Write out information for eigenvalue run
@@ -126,7 +126,7 @@ contains
 
         ! Write out CMFD info
         if (cmfd_on) then
-          call write_dataset(file_id, "cmfd_on", 1)
+          call write_attribute(file_id, "cmfd_on", 1)
 
           cmfd_group = create_group(file_id, "cmfd")
           call write_dataset(cmfd_group, "indices", cmfd % indices)
@@ -138,7 +138,7 @@ contains
           call write_dataset(cmfd_group, "cmfd_srccmp", cmfd % src_cmp)
           call close_group(cmfd_group)
         else
-          call write_dataset(file_id, "cmfd_on", 0)
+          call write_attribute(file_id, "cmfd_on", 0)
         end if
       end if
 
@@ -146,7 +146,7 @@ contains
 
       ! Write number of meshes
       meshes_group = create_group(tallies_group, "meshes")
-      call write_dataset(meshes_group, "n_meshes", n_meshes)
+      call write_attribute(meshes_group, "n_meshes", n_meshes)
 
       if (n_meshes > 0) then
 
@@ -229,7 +229,7 @@ contains
       end if
 
       ! Write number of tallies
-      call write_dataset(tallies_group, "n_tallies", n_tallies)
+      call write_attribute(tallies_group, "n_tallies", n_tallies)
 
       if (n_tallies > 0) then
 
@@ -256,6 +256,9 @@ contains
           tally => tallies(i)
           tally_group = create_group(tallies_group, "tally " // &
                trim(to_str(tally % id)))
+
+          ! Write the name for this tally
+          call write_dataset(tally_group, "name", tally % name)
 
           select case(tally % estimator)
           case (ESTIMATOR_ANALOG)
@@ -373,14 +376,14 @@ contains
       call write_dataset(file_id, "n_realizations", n_realizations)
 
       ! Write global tallies
-      call write_dataset(file_id, "n_global_tallies", N_GLOBAL_TALLIES)
       call write_dataset(file_id, "global_tallies", global_tallies)
 
       ! Write tallies
-      tallies_group = open_group(file_id, "tallies")
       if (tallies_on) then
         ! Indicate that tallies are on
-        call write_dataset(tallies_group, "tallies_present", 1)
+        call write_attribute(file_id, "tallies_present", 1)
+
+        tallies_group = open_group(file_id, "tallies")
 
         ! Write all tally results
         TALLY_RESULTS: do i = 1, n_tallies
@@ -394,12 +397,12 @@ contains
           call close_group(tally_group)
         end do TALLY_RESULTS
 
+        call close_group(tallies_group)
       else
         ! Indicate tallies are off
-        call write_dataset(tallies_group, "tallies_present", 0)
+        call write_attribute(file_id, "tallies_present", 0)
       end if
 
-      call close_group(tallies_group)
 
       ! Write out the runtime metrics.
       runtime_group = create_group(file_id, "runtime")
@@ -571,7 +574,7 @@ contains
     if (tallies_on) then
       ! Indicate that tallies are on
       if (master) then
-        call write_dataset(tallies_group, "tallies_present", 1)
+        call write_attribute(file_id, "tallies_present", 1)
 
         ! Build list of tally IDs
         current => tally_dict%keys()
@@ -649,14 +652,12 @@ contains
 
       deallocate(id_array)
 
+      if (master) call close_group(tallies_group)
     else
-      if (master) then
-        ! Indicate that tallies are off
-        call write_dataset(tallies_group, "tallies_present", 0)
-      end if
+      ! Indicate that tallies are off
+      if (master) call write_dataset(file_id, "tallies_present", 0)
     end if
 
-    if (master) call close_group(tallies_group)
 
   end subroutine write_tally_results_nr
 
@@ -731,7 +732,7 @@ contains
     call read_dataset(restart_batch, file_id, "current_batch")
 
     ! Check for source in statepoint if needed
-    call read_dataset(int_array(1), file_id, "source_present")
+    call read_attribute(int_array(1), file_id, "source_present")
     if (int_array(1) == 1) then
       source_present = .true.
     else
@@ -760,7 +761,7 @@ contains
       n_inactive = max(n_inactive, int_array(1))
 
       ! Read in to see if CMFD was on
-      call read_dataset(int_array(1), file_id, "cmfd_on")
+      call read_attribute(int_array(1), file_id, "cmfd_on")
 
       ! Read in CMFD info
       if (int_array(1) == 1) then
@@ -801,12 +802,12 @@ contains
       call read_dataset(global_tallies, file_id, "global_tallies")
 
       ! Check if tally results are present
-      tallies_group = open_group(file_id, "tallies")
-      call read_dataset(int_array(1), tallies_group, "tallies_present", &
-                        indep=.true.)
+      call read_attribute(int_array(1), file_id, "tallies_present")
 
       ! Read in sum and sum squared
       if (int_array(1) == 1) then
+        tallies_group = open_group(file_id, "tallies")
+
         TALLY_RESULTS: do i = 1, n_tallies
           ! Set pointer to tally
           tally => tallies(i)
@@ -819,11 +820,10 @@ contains
                "n_realizations")
           call close_group(tally_group)
         end do TALLY_RESULTS
+
+        call close_group(tallies_group)
       end if
-
-      call close_group(tallies_group)
     end if
-
 
     ! Read source if in eigenvalue mode
     if (run_mode == MODE_EIGENVALUE) then

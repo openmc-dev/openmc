@@ -112,7 +112,7 @@ contains
       ! Write out information for eigenvalue run
       if (run_mode == MODE_EIGENVALUE) then
         call write_dataset(file_id, "n_inactive", n_inactive)
-        call write_dataset(file_id, "gen_per_batch", gen_per_batch)
+        call write_dataset(file_id, "generations_per_batch", gen_per_batch)
         call write_dataset(file_id, "k_generation", k_generation)
         call write_dataset(file_id, "entropy", entropy)
         call write_dataset(file_id, "k_col_abs", k_col_abs)
@@ -694,7 +694,7 @@ contains
     ! Read information specific to eigenvalue run
     if (run_mode == MODE_EIGENVALUE) then
       call read_dataset(int_array(1), file_id, "n_inactive")
-      call read_dataset(gen_per_batch, file_id, "gen_per_batch")
+      call read_dataset(gen_per_batch, file_id, "generations_per_batch")
       call read_dataset(k_generation(1:restart_batch*gen_per_batch), &
            file_id, "k_generation")
       call read_dataset(entropy(1:restart_batch*gen_per_batch), &

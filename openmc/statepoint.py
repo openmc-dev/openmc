@@ -52,7 +52,7 @@ class StatePoint(object):
         Date and time when simulation began
     entropy : numpy.ndarray
         Shannon entropy of fission source at each batch
-    gen_per_batch : Integral
+    generations_per_batch : int
         Number of fission generations per batch
     global_tallies : numpy.ndarray of compound datatype
         Global tallies for k-effective estimates and leakage. The compound
@@ -186,9 +186,9 @@ class StatePoint(object):
             return None
 
     @property
-    def gen_per_batch(self):
+    def generations_per_batch(self):
         if self.run_mode == 'eigenvalue':
-            return self._f['gen_per_batch'].value
+            return self._f['generations_per_batch'].value
         else:
             return None
 

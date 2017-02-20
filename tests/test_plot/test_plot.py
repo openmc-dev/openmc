@@ -50,10 +50,10 @@ class PlotTestHarness(TestHarness):
         voxel_files = glob.glob(os.path.join(os.getcwd(), '*.voxel'))
         for fname in sorted(voxel_files):
             with h5py.File(fname, 'r') as fh:
-                outstr += fh['filetype'].value
-                outstr += fh['num_voxels'].value.tostring()
-                outstr += fh['lower_left'].value.tostring()
-                outstr += fh['voxel_width'].value.tostring()
+                outstr += fh.attrs['filetype']
+                outstr += fh.attrs['num_voxels'].tostring()
+                outstr += fh.attrs['lower_left'].tostring()
+                outstr += fh.attrs['voxel_width'].tostring()
                 outstr += fh['data'].value.tostring()
 
         # Hash the information and return.

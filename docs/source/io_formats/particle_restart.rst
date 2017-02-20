@@ -9,8 +9,8 @@ The current version of the particle restart file format is 2.0.
 **/**
 
 :Attributes: - **filetype** (*char[]*) -- String indicating the type of file.
-             - **version** (*int[2]*) -- Major and minor version of the summary
-               file format.
+             - **version** (*int[2]*) -- Major and minor version of the particle
+               restart file format.
              - **openmc_version** (*int[3]*) -- Major, minor, and release
                version number for OpenMC.
              - **git_sha1** (*char[40]*) -- Git commit SHA-1 hash.

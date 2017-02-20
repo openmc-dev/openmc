@@ -4261,14 +4261,14 @@ contains
       end select
 
       ! Set output file path
-      filename = trim(to_str(pl % id)) // "_plot"
+      filename = "plot_" // trim(to_str(pl % id))
       if (check_for_node(node_plot, "filename")) &
            call get_node_value(node_plot, "filename", filename)
       select case (pl % type)
       case (PLOT_TYPE_SLICE)
         pl % path_plot = trim(path_input) // trim(filename) // ".ppm"
       case (PLOT_TYPE_VOXEL)
-        pl % path_plot = trim(path_input) // trim(filename) // ".voxel"
+        pl % path_plot = trim(path_input) // trim(filename) // ".h5"
       end select
 
       ! Copy plot pixel size

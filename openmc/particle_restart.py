@@ -17,9 +17,9 @@ class Particle(object):
     ----------
     current_batch : int
         The batch containing the particle
-    gen_per_batch : int
+    generations_per_batch : int
         Number of generations per batch
-    current_gen : int
+    current_generation : int
         The generation containing the particle
     n_particles : int
         Number of particles per generation
@@ -50,16 +50,16 @@ class Particle(object):
         return self._f['current_batch'].value
 
     @property
-    def current_gen(self):
-        return self._f['current_gen'].value
+    def current_generation(self):
+        return self._f['current_generation'].value
 
     @property
     def energy(self):
         return self._f['energy'].value
 
     @property
-    def gen_per_batch(self):
-        return self._f['gen_per_batch'].value
+    def generations_per_batch(self):
+        return self._f['generations_per_batch'].value
 
     @property
     def id(self):

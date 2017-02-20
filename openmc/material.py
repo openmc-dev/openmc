@@ -71,6 +71,10 @@ class Material(object):
         The average molar mass of nuclides in the material in units of grams per
         mol.  For example, UO2 with 3 nuclides will have an average molar mass
         of 270 / 3 = 90 g / mol.
+    volume_information : dict
+        Estimate of the volume and total number of atoms of each nuclide from a
+        stochastic volume calculation. This information is set with the
+        :meth:`Material.add_volume_information` method.
 
     """
 
@@ -82,6 +86,7 @@ class Material(object):
         self._density = None
         self._density_units = ''
         self._depletable = False
+        self._volume_information = None
 
         # A list of tuples (nuclide, percent, percent type)
         self._nuclides = []
@@ -226,6 +231,10 @@ class Material(object):
         # Compute and return the molar mass
         return mass / moles
 
+    @property
+    def volume_information(self):
+        return self._volume_information
+
     @id.setter
     def id(self, material_id):
 
@@ -301,6 +310,25 @@ class Material(object):
             material.add_nuclide(name, percent=density, percent_type='ao')
 
         return material
+
+    def add_volume_information(self, volume_calc):
+        """Add volume information to a material.
+
+        Parameters
+        ----------
+        volume_calc : openmc.VolumeCalculation
+            Results from a stochastic volume calculation
+
+        """
+        if volume_calc.domain_type == 'material':
+            for mat_id in volume_calc.results:
+                if mat_id == self.id:
+                    self._volume_information = volume_calc.results[mat_id]
+                    break
+            else:
+                raise ValueError('No volume information found for this material.')
+        else:
+            raise ValueError('No volume information found for this material.')
 
     def set_density(self, units, density=None):
         """Set the density of the material

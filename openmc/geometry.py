@@ -63,6 +63,14 @@ class Geometry(object):
             for cell in self.get_all_cells():
                 if cell.id in volume_calc.results:
                     cell.add_volume_information(volume_calc)
+        elif volume_calc.domain_type == 'material':
+            for material in self.get_all_materials():
+                if material.id in volume_calc.results:
+                    material.add_volume_information(volume_calc)
+        elif volume_calc.domain_type == 'universe':
+            for universe in self.get_all_universes():
+                if universe.id in volume_calc.results:
+                    universe.add_volume_information(volume_calc)
 
     def export_to_xml(self, path='geometry.xml'):
         """Export geometry to an XML file.

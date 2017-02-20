@@ -78,7 +78,7 @@ class Summary(object):
         self._read_materials()
         surfaces = self._read_surfaces()
         cells, cell_fills = self._read_cells(surfaces)
-        universes = self._read_universes(cells, cell_fills)
+        universes = self._read_universes(cells)
         lattices = self._read_lattices(universes)
         self._finalize_geometry(cells, cell_fills, universes, lattices)
 
@@ -121,78 +121,8 @@ class Summary(object):
 
     def _read_surfaces(self):
         surfaces = {}
-
-        for key, group in self._f['geometry/surfaces'].items():
-            surface_id = int(key.lstrip('surface '))
-            name = group['name'].value.decode()
-            surf_type = group['type'].value.decode()
-            bc = group['boundary_condition'].value.decode()
-            coeffs = group['coefficients'][...]
-
-            # Create the Surface based on its type
-            if surf_type == 'x-plane':
-                x0 = coeffs[0]
-                surface = openmc.XPlane(surface_id, bc, x0, name)
-
-            elif surf_type == 'y-plane':
-                y0 = coeffs[0]
-                surface = openmc.YPlane(surface_id, bc, y0, name)
-
-            elif surf_type == 'z-plane':
-                z0 = coeffs[0]
-                surface = openmc.ZPlane(surface_id, bc, z0, name)
-
-            elif surf_type == 'plane':
-                A = coeffs[0]
-                B = coeffs[1]
-                C = coeffs[2]
-                D = coeffs[3]
-                surface = openmc.Plane(surface_id, bc, A, B, C, D, name)
-
-            elif surf_type == 'x-cylinder':
-                y0 = coeffs[0]
-                z0 = coeffs[1]
-                R = coeffs[2]
-                surface = openmc.XCylinder(surface_id, bc, y0, z0, R, name)
-
-            elif surf_type == 'y-cylinder':
-                x0 = coeffs[0]
-                z0 = coeffs[1]
-                R = coeffs[2]
-                surface = openmc.YCylinder(surface_id, bc, x0, z0, R, name)
-
-            elif surf_type == 'z-cylinder':
-                x0 = coeffs[0]
-                y0 = coeffs[1]
-                R = coeffs[2]
-                surface = openmc.ZCylinder(surface_id, bc, x0, y0, R, name)
-
-            elif surf_type == 'sphere':
-                x0 = coeffs[0]
-                y0 = coeffs[1]
-                z0 = coeffs[2]
-                R = coeffs[3]
-                surface = openmc.Sphere(surface_id, bc, x0, y0, z0, R, name)
-
-            elif surf_type in ['x-cone', 'y-cone', 'z-cone']:
-                x0 = coeffs[0]
-                y0 = coeffs[1]
-                z0 = coeffs[2]
-                R2 = coeffs[3]
-
-                if surf_type == 'x-cone':
-                    surface = openmc.XCone(surface_id, bc, x0, y0, z0, R2, name)
-                if surf_type == 'y-cone':
-                    surface = openmc.YCone(surface_id, bc, x0, y0, z0, R2, name)
-                if surf_type == 'z-cone':
-                    surface = openmc.ZCone(surface_id, bc, x0, y0, z0, R2, name)
-
-            elif surf_type == 'quadric':
-                a, b, c, d, e, f, g, h, j, k = coeffs
-                surface = openmc.Quadric(surface_id, bc, a, b, c, d, e, f,
-                                         g, h, j, k, name)
-
-            # Add Surface to global dictionary of all Surfaces
+        for group in self._f['geometry/surfaces'].values():
+            surface = openmc.Surface.from_hdf5(group)
             surfaces[surface.id] = surface
 
         return surfaces
@@ -261,10 +191,7 @@ class Summary(object):
 
         return cells, cell_fills
 
-    def _read_universes(self, cells, cell_fills):
-        # Initialize dictionary for each Universe
-        # Keys     - Universe keys
-        # Values   - Universe objects
+    def _read_universes(self, cells):
         universes = {}
 
         for key in self._f['geometry/universes'].keys():
@@ -284,9 +211,6 @@ class Summary(object):
         return universes
 
     def _read_lattices(self, universes):
-        # Initialize lattices for each Lattice
-        # Keys     - Lattice keys
-        # Values   - Lattice objects
         lattices = {}
 
         for key, group in self._f['geometry/lattices'].items():

@@ -261,19 +261,9 @@ class StatePoint(object):
             mesh_group = self._f['tallies/meshes']
 
             # Iterate over all Meshes
-            for key, group in mesh_group.items():
-                mesh_id = int(key.lstrip('mesh '))
-
-                # Read and assign mesh properties
-                mesh = openmc.Mesh(mesh_id)
-                mesh.type = group['type'].value.decode()
-                mesh.dimension = group['dimension'].value
-                mesh.lower_left = group['lower_left'].value
-                mesh.upper_right = group['upper_right'].value
-                mesh.width = group['width'].value
-
-                # Add mesh to the global dictionary of all Meshes
-                self._meshes[mesh_id] = mesh
+            for group in mesh_group.values():
+                mesh = openmc.Mesh.from_hdf5(group)
+                self._meshes[mesh.id] = mesh
 
             self._meshes_read = True
 

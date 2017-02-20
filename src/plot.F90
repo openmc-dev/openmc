@@ -8,7 +8,7 @@ module plot
   use hdf5_interface
   use mesh,            only: get_mesh_indices
   use mesh_header,     only: RegularMesh
-  use output,          only: write_message
+  use output,          only: write_message, time_stamp
   use particle_header, only: LocalCoord, Particle
   use plot_header
   use ppmlib,          only: Image, init_image, allocate_image, &
@@ -381,11 +381,20 @@ contains
     ! Open binary plot file for writing
     file_id = file_create(pl%path_plot)
 
-    ! write plot header info
-    call write_dataset(file_id, "filetype", 'voxel')
-    call write_dataset(file_id, "num_voxels", pl%pixels)
-    call write_dataset(file_id, "voxel_width", vox)
-    call write_dataset(file_id, "lower_left", ll)
+    ! write header info
+    call write_attribute(file_id, "filetype", 'voxel')
+    call write_attribute(file_id, "version", VERSION_VOXEL)
+    call write_attribute(file_id, "openmc_version", VERSION)
+#ifdef GIT_SHA1
+    call write_attribute(file_id, "git_sha1", GIT_SHA1)
+#endif
+
+    ! Write current date and time
+    call write_attribute(file_id, "date_and_time", time_stamp())
+
+    call write_attribute(file_id, "num_voxels", pl%pixels)
+    call write_attribute(file_id, "voxel_width", vox)
+    call write_attribute(file_id, "lower_left", ll)
 
     ! Create dataset for voxel data -- note that the dimensions are reversed
     ! since we want the order in the file to be z, y, x

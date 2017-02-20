@@ -74,16 +74,12 @@ The current revision of the statepoint file format is 16.0.
 **/tallies/**
 
 :Attributes: - **n_tallies** (*int*) -- Number of user-defined tallies.
-
-:Datasets: - **ids** (*int[]*) -- Internal unique ID of each tally.
-           - **keys** (*int[]*) -- User-defined unique ID of each tally.
+             - **ids** (*int[]*) -- User-defined unique ID of each tally.
 
 **/tallies/meshes/**
 
 :Attributes: - **n_meshes** (*int*) -- Number of meshes in the problem.
-
-:Datasets: - **ids** (*int[]*) -- Internal unique ID of each mesh.
-           - **keys** (*int[]*) -- User-identified unique ID of each mesh.
+             - **ids** (*int[]*) -- User-identified unique ID of each mesh.
 
 **/tallies/meshes/mesh <uid>/**
 

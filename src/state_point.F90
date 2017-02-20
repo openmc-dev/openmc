@@ -16,7 +16,6 @@ module state_point
   use hdf5
 
   use constants
-  use dict_header,        only: ElemKeyValueII, ElemKeyValueCI
   use endf,               only: reaction_name
   use error,              only: fatal_error, warning
   use global
@@ -50,10 +49,7 @@ contains
                       runtime_group
     character(MAX_WORD_LEN), allocatable :: str_array(:)
     character(MAX_FILE_LEN)    :: filename
-    type(RegularMesh), pointer :: meshp
     type(TallyObject), pointer    :: tally
-    type(ElemKeyValueII), pointer :: current
-    type(ElemKeyValueII), pointer :: next
 
     ! Set filename for state point
     filename = trim(path_output) // 'statepoint.' // &
@@ -149,49 +145,32 @@ contains
       call write_attribute(meshes_group, "n_meshes", n_meshes)
 
       if (n_meshes > 0) then
-
-        ! Print list of mesh IDs
-        current => mesh_dict % keys()
-
+        ! Write IDs of meshes
         allocate(id_array(n_meshes))
-        allocate(key_array(n_meshes))
-        i = 1
-
-        do while (associated(current))
-          key_array(i) = current % key
-          id_array(i) = current % value
-
-          ! Move to next mesh
-          next => current % next
-          deallocate(current)
-          current => next
-          i = i + 1
+        do i = 1, n_meshes
+          id_array(i) = meshes(i) % id
         end do
-
-        call write_dataset(meshes_group, "ids", id_array)
-        call write_dataset(meshes_group, "keys", key_array)
-
-        deallocate(key_array)
+        call write_attribute(meshes_group, "ids", id_array)
+        deallocate(id_array)
 
         ! Write information for meshes
         MESH_LOOP: do i = 1, n_meshes
-          meshp => meshes(id_array(i))
-          mesh_group = create_group(meshes_group, "mesh " &
-               // trim(to_str(meshp % id)))
+          associate (m => meshes(i))
+            mesh_group = create_group(meshes_group, "mesh " &
+                 // trim(to_str(m % id)))
 
-          select case (meshp % type)
-          case (MESH_REGULAR)
-            call write_dataset(mesh_group, "type", "regular")
-          end select
-          call write_dataset(mesh_group, "dimension", meshp % dimension)
-          call write_dataset(mesh_group, "lower_left", meshp % lower_left)
-          call write_dataset(mesh_group, "upper_right", meshp % upper_right)
-          call write_dataset(mesh_group, "width", meshp % width)
+            select case (m % type)
+            case (MESH_REGULAR)
+              call write_dataset(mesh_group, "type", "regular")
+            end select
+            call write_dataset(mesh_group, "dimension", m % dimension)
+            call write_dataset(mesh_group, "lower_left", m % lower_left)
+            call write_dataset(mesh_group, "upper_right", m % upper_right)
+            call write_dataset(mesh_group, "width", m % width)
 
-          call close_group(mesh_group)
+            call close_group(mesh_group)
+          end associate
         end do MESH_LOOP
-
-        deallocate(id_array)
       end if
 
       call close_group(meshes_group)
@@ -232,22 +211,13 @@ contains
       call write_attribute(tallies_group, "n_tallies", n_tallies)
 
       if (n_tallies > 0) then
-
-        ! Print list of tally IDs
+        ! Write array of tally IDs
         allocate(id_array(n_tallies))
-        allocate(key_array(n_tallies))
-
-        ! Write all tally information except results
         do i = 1, n_tallies
-          tally => tallies(i)
-          key_array(i) = tally % id
-          id_array(i) = i
+          id_array(i) = tallies(i) % id
         end do
-
-        call write_dataset(tallies_group, "ids", id_array)
-        call write_dataset(tallies_group, "keys", key_array)
-
-        deallocate(key_array)
+        call write_attribute(tallies_group, "ids", id_array)
+        deallocate(id_array)
 
         ! Write all tally information except results
         TALLY_METADATA: do i = 1, n_tallies
@@ -525,10 +495,6 @@ contains
 #ifdef MPI
     real(8) :: dummy  ! temporary receive buffer for non-root reduces
 #endif
-    integer, allocatable       :: id_array(:)
-    type(ElemKeyValueII), pointer :: current
-    type(ElemKeyValueII), pointer :: next
-    type(TallyObject), pointer :: tally
     type(TallyObject) :: dummy_tally
 
     ! ==========================================================================
@@ -575,82 +541,64 @@ contains
       ! Indicate that tallies are on
       if (master) then
         call write_attribute(file_id, "tallies_present", 1)
-
-        ! Build list of tally IDs
-        current => tally_dict%keys()
-        allocate(id_array(n_tallies))
-        i = 1
-
-        do while (associated(current))
-          id_array(i) = current%value
-          ! Move to next tally
-          next => current%next
-          deallocate(current)
-          current => next
-          i = i + 1
-        end do
-
       end if
 
       ! Write all tally results
       TALLY_RESULTS: do i = 1, n_tallies
+        associate (t => tallies(i))
+          ! Determine size of tally results array
+          m = size(t % results, 2)
+          n = size(t % results, 3)
+          n_bins = m*n*2
 
-        tally => tallies(i)
+          ! Allocate array for storing sums and sums of squares, but
+          ! contiguously in memory for each
+          allocate(tally_temp(2,m,n))
+          tally_temp(1,:,:) = t % results(RESULT_SUM,:,:)
+          tally_temp(2,:,:) = t % results(RESULT_SUM_SQ,:,:)
 
-        ! Determine size of tally results array
-        m = size(tally%results, 2)
-        n = size(tally%results, 3)
-        n_bins = m*n*2
+          if (master) then
+            tally_group = open_group(tallies_group, "tally " // &
+                 trim(to_str(t % id)))
 
-        ! Allocate array for storing sums and sums of squares, but
-        ! contiguously in memory for each
-        allocate(tally_temp(2,m,n))
-        tally_temp(1,:,:) = tally%results(RESULT_SUM,:,:)
-        tally_temp(2,:,:) = tally%results(RESULT_SUM_SQ,:,:)
-
-        if (master) then
-          tally_group = open_group(tallies_group, "tally " // &
-               trim(to_str(tally%id)))
-
-          ! The MPI_IN_PLACE specifier allows the master to copy values into
-          ! a receive buffer without having a temporary variable
+            ! The MPI_IN_PLACE specifier allows the master to copy values into
+            ! a receive buffer without having a temporary variable
 #ifdef MPI
-          call MPI_REDUCE(MPI_IN_PLACE, tally_temp, n_bins, MPI_REAL8, &
-               MPI_SUM, 0, mpi_intracomm, mpi_err)
+            call MPI_REDUCE(MPI_IN_PLACE, tally_temp, n_bins, MPI_REAL8, &
+                 MPI_SUM, 0, mpi_intracomm, mpi_err)
 #endif
 
-          ! At the end of the simulation, store the results back in the
-          ! regular TallyResults array
-          if (current_batch == n_max_batches .or. satisfy_triggers) then
-            tally%results(RESULT_SUM,:,:) = tally_temp(1,:,:)
-            tally%results(RESULT_SUM_SQ,:,:) = tally_temp(2,:,:)
+            ! At the end of the simulation, store the results back in the
+            ! regular TallyResults array
+            if (current_batch == n_max_batches .or. satisfy_triggers) then
+              t % results(RESULT_SUM,:,:) = tally_temp(1,:,:)
+              t % results(RESULT_SUM_SQ,:,:) = tally_temp(2,:,:)
+            end if
+
+            ! Put in temporary tally result
+            allocate(dummy_tally % results(3,m,n))
+            dummy_tally % results(RESULT_SUM,:,:) = tally_temp(1,:,:)
+            dummy_tally % results(RESULT_SUM_SQ,:,:) = tally_temp(2,:,:)
+
+            ! Write reduced tally results to file
+            call dummy_tally % write_results_hdf5(tally_group)
+
+            ! Deallocate temporary tally result
+            deallocate(dummy_tally % results)
+          else
+            ! Receive buffer not significant at other processors
+#ifdef MPI
+            call MPI_REDUCE(tally_temp, dummy, n_bins, MPI_REAL8, MPI_SUM, &
+                 0, mpi_intracomm, mpi_err)
+#endif
           end if
 
-          ! Put in temporary tally result
-          allocate(dummy_tally % results(3,m,n))
-          dummy_tally % results(RESULT_SUM,:,:) = tally_temp(1,:,:)
-          dummy_tally % results(RESULT_SUM_SQ,:,:) = tally_temp(2,:,:)
+          ! Deallocate temporary copy of tally results
+          deallocate(tally_temp)
 
-          ! Write reduced tally results to file
-          call dummy_tally % write_results_hdf5(tally_group)
-
-          ! Deallocate temporary tally result
-          deallocate(dummy_tally % results)
-        else
-          ! Receive buffer not significant at other processors
-#ifdef MPI
-          call MPI_REDUCE(tally_temp, dummy, n_bins, MPI_REAL8, MPI_SUM, &
-               0, mpi_intracomm, mpi_err)
-#endif
-        end if
-
-        ! Deallocate temporary copy of tally results
-        deallocate(tally_temp)
-
-        if (master) call close_group(tally_group)
+          if (master) call close_group(tally_group)
+        end associate
       end do TALLY_RESULTS
-
-      deallocate(id_array)
 
       if (master) call close_group(tallies_group)
     else
@@ -677,7 +625,6 @@ contains
     real(8) :: real_array(3)
     logical :: source_present
     character(MAX_WORD_LEN) :: word
-    type(TallyObject), pointer :: tally
 
     ! Write message
     call write_message("Loading state point " // trim(path_state_point) &
@@ -809,16 +756,15 @@ contains
         tallies_group = open_group(file_id, "tallies")
 
         TALLY_RESULTS: do i = 1, n_tallies
-          ! Set pointer to tally
-          tally => tallies(i)
-
-          ! Read sum, sum_sq, and N for each bin
-          tally_group = open_group(tallies_group, "tally " // &
-               trim(to_str(tally % id)))
-          call tally % read_results_hdf5(tally_group)
-          call read_dataset(tally % n_realizations, tally_group, &
-               "n_realizations")
-          call close_group(tally_group)
+          associate (t => tallies(i))
+            ! Read sum, sum_sq, and N for each bin
+            tally_group = open_group(tallies_group, "tally " // &
+                 trim(to_str(t % id)))
+            call t % read_results_hdf5(tally_group)
+            call read_dataset(t % n_realizations, tally_group, &
+                 "n_realizations")
+            call close_group(tally_group)
+          end associate
         end do TALLY_RESULTS
 
         call close_group(tallies_group)

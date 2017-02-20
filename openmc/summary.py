@@ -25,8 +25,6 @@ class Summary(object):
     nuclides : dict
         Dictionary whose keys are nuclide names and values are atomic weight
         ratios.
-    tally_names : dict
-        Dictionary whose keys are tally IDs and values are tally names.
     version: tuple of int
         Version of OpenMC
 
@@ -44,10 +42,10 @@ class Summary(object):
 
         self._geometry = openmc.Geometry()
         self._materials = openmc.Materials()
+        self._nuclides = {}
 
         self._read_nuclides()
         self._read_geometry()
-        self._read_tallies()
 
     @property
     def date_and_time(self):
@@ -62,17 +60,18 @@ class Summary(object):
         return self._materials
 
     @property
+    def nuclides(self):
+        return self._nuclides
+
+    @property
     def version(self):
         return tuple(self._f.attrs['openmc_version'])
 
     def _read_nuclides(self):
-        self.nuclides = {}
-        n_nuclides = self._f['nuclides/n_nuclides_total'].value
         names = self._f['nuclides/names'].value
         awrs = self._f['nuclides/awrs'].value
-        for n in range(n_nuclides):
-            name = names[n].decode()
-            self.nuclides[name] = awrs[n]
+        for name, awr in zip(names, awrs):
+            self._nuclides[name.decode()] = awr
 
     def _read_geometry(self):
         # Read in and initialize the Materials and Geometry
@@ -84,12 +83,7 @@ class Summary(object):
         self._finalize_geometry(cells, cell_fills, universes, lattices)
 
     def _read_materials(self):
-        self.n_materials = self._f['n_materials'].value
-
         for key, group in self._f['materials'].items():
-            if key == 'n_materials':
-                continue
-
             material_id = int(key.lstrip('material '))
 
             name = group['name'].value.decode()
@@ -129,9 +123,6 @@ class Summary(object):
         surfaces = {}
 
         for key, group in self._f['geometry/surfaces'].items():
-            if key == 'n_surfaces':
-                continue
-
             surface_id = int(key.lstrip('surface '))
             name = group['name'].value.decode()
             surf_type = group['type'].value.decode()
@@ -213,9 +204,6 @@ class Summary(object):
         cell_fills = {}
 
         for key, group in self._f['geometry/cells'].items():
-            if key == 'n_cells':
-                continue
-
             cell_id = int(key.lstrip('cell '))
             name = group['name'].value.decode()
             fill_type = group['fill_type'].value.decode()
@@ -280,9 +268,6 @@ class Summary(object):
         universes = {}
 
         for key in self._f['geometry/universes'].keys():
-            if key == 'n_universes':
-                continue
-
             universe_id = int(key.lstrip('universe '))
             cell_ids = self._f['geometry/universes'][key]['cells'][...]
 
@@ -305,9 +290,6 @@ class Summary(object):
         lattices = {}
 
         for key, group in self._f['geometry/lattices'].items():
-            if key == 'n_lattices':
-                continue
-
             lattice_id = int(key.lstrip('lattice '))
             name = group['name'].value.decode()
             lattice_type = group['type'].value.decode()
@@ -470,31 +452,6 @@ class Summary(object):
 
         # Set the root universe for the Geometry
         self.geometry.root_universe = universes[0]
-
-    def _read_tallies(self):
-        # Initialize a dictionary for the tally names
-        # Keys     - Tally IDs
-        # Values   - Tally names
-        self.tally_names = {}
-
-        # Read the number of tallies
-        if 'tallies' not in self._f:
-            return
-
-        # OpenMC Tally keys
-        all_keys = self._f['tallies/'].keys()
-        tally_keys = [key for key in all_keys if 'tally' in key]
-
-        base = 'tallies/tally '
-
-        # Iterate over all Tallies
-        for tally_key in tally_keys:
-            tally_id = int(tally_key.strip('tally '))
-            subbase = '{0}{1}'.format(base, tally_id)
-
-            # Read Tally name metadata
-            tally_name = self._f['{0}/name'.format(subbase)].value.decode()
-            self.tally_names[tally_id] = tally_name
 
     def add_volume_information(self, volume_calc):
         """Add volume information to the geometry within the summary file

@@ -36,15 +36,10 @@ contains
     ! Create a new file using default properties.
     file_id = file_create("summary.h5")
 
-    ! Write header information
     call write_header(file_id)
-
     call write_nuclides(file_id)
     call write_geometry(file_id)
     call write_materials(file_id)
-    if (n_tallies > 0) then
-      call write_tallies(file_id)
-    end if
 
     ! Terminate access to the file.
     call file_close(file_id)
@@ -84,7 +79,7 @@ contains
 
     ! Write useful data from nuclide objects
     nuclide_group = create_group(file_id, "nuclides")
-    call write_dataset(nuclide_group, "n_nuclides_total", n_nuclides_total)
+    call write_attribute(nuclide_group, "n_nuclides", n_nuclides_total)
 
     ! Build array of nuclide names and awrs
     allocate(nucnames(n_nuclides_total))
@@ -137,10 +132,10 @@ contains
 
     ! Use H5LT interface to write number of geometry objects
     geom_group = create_group(file_id, "geometry")
-    call write_dataset(geom_group, "n_cells", n_cells)
-    call write_dataset(geom_group, "n_surfaces", n_surfaces)
-    call write_dataset(geom_group, "n_universes", n_universes)
-    call write_dataset(geom_group, "n_lattices", n_lattices)
+    call write_attribute(geom_group, "n_cells", n_cells)
+    call write_attribute(geom_group, "n_surfaces", n_surfaces)
+    call write_attribute(geom_group, "n_universes", n_universes)
+    call write_attribute(geom_group, "n_lattices", n_lattices)
 
     ! ==========================================================================
     ! WRITE INFORMATION ON CELLS
@@ -541,35 +536,5 @@ contains
     call close_group(materials_group)
 
   end subroutine write_materials
-
-!===============================================================================
-! WRITE_TALLIES
-!===============================================================================
-
-  subroutine write_tallies(file_id)
-    integer(HID_T), intent(in) :: file_id
-
-    integer :: i
-    integer(HID_T) :: tallies_group
-    integer(HID_T) :: tally_group
-    type(TallyObject), pointer :: t
-
-    tallies_group = create_group(file_id, "tallies")
-
-    TALLY_METADATA: do i = 1, n_tallies
-      ! Get pointer to tally
-      t => tallies(i)
-      tally_group = create_group(tallies_group, "tally " &
-           // trim(to_str(t % id)))
-
-      ! Write the name for this tally
-      call write_dataset(tally_group, "name", t % name)
-
-      call close_group(tally_group)
-    end do TALLY_METADATA
-
-    call close_group(tallies_group)
-
-  end subroutine write_tallies
 
 end module summary

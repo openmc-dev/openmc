@@ -138,7 +138,7 @@ class StatePoint(object):
 
     @property
     def cmfd_on(self):
-        return self._f['cmfd_on'].value > 0
+        return self._f.attrs['cmfd_on'] > 0
 
     @property
     def cmfd_balance(self):
@@ -262,7 +262,7 @@ class StatePoint(object):
             self._meshes = {}
 
             # Read the number of Meshes
-            n_meshes = self._f['tallies/meshes/n_meshes'].value
+            n_meshes = self._f['tallies/meshes'].attrs['n_meshes']
 
             # Read a list of the IDs for each Mesh
             if n_meshes > 0:
@@ -271,28 +271,17 @@ class StatePoint(object):
             else:
                 mesh_keys = []
 
-            # Build dictionary of Meshes
-            base = 'tallies/meshes/mesh '
-
             # Iterate over all Meshes
             for mesh_key in mesh_keys:
-                # Read the mesh type
-                mesh_type = self._f['{0}{1}/type'.format(base, mesh_key)].value.decode()
+                group = self._f['tallies/meshes/mesh {}'.format(mesh_key)]
 
-                # Read the mesh dimensions, lower-left coordinates,
-                # upper-right coordinates, and width of each mesh cell
-                dimension = self._f['{0}{1}/dimension'.format(base, mesh_key)].value
-                lower_left = self._f['{0}{1}/lower_left'.format(base, mesh_key)].value
-                upper_right = self._f['{0}{1}/upper_right'.format(base, mesh_key)].value
-                width = self._f['{0}{1}/width'.format(base, mesh_key)].value
-
-                # Create the Mesh and assign properties to it
+                # Read and assign mesh properties
                 mesh = openmc.Mesh(mesh_key)
-                mesh.dimension = dimension
-                mesh.width = width
-                mesh.lower_left = lower_left
-                mesh.upper_right = upper_right
-                mesh.type = mesh_type
+                mesh.type = group['type'].value.decode()
+                mesh.dimension = group['dimension'].value
+                mesh.lower_left = group['lower_left'].value
+                mesh.upper_right = group['upper_right'].value
+                mesh.width = group['width'].value
 
                 # Add mesh to the global dictionary of all Meshes
                 self._meshes[mesh_key] = mesh
@@ -343,7 +332,7 @@ class StatePoint(object):
 
     @property
     def source_present(self):
-        return self._f['source_present'].value > 0
+        return self._f.attrs['source_present'] > 0
 
     @property
     def sparse(self):
@@ -356,7 +345,7 @@ class StatePoint(object):
             self._tallies = {}
 
             # Read the number of tallies
-            n_tallies = self._f['tallies/n_tallies'].value
+            n_tallies = self._f['tallies'].attrs['n_tallies']
 
             # Read a list of the IDs for each Tally
             if n_tallies > 0:
@@ -365,54 +354,44 @@ class StatePoint(object):
             else:
                 tally_keys = []
 
-            base = 'tallies/tally '
-
             # Iterate over all Tallies
             for tally_key in tally_keys:
+                group = self._f['tallies/tally {}'.format(tally_key)]
+
 
                 # Read the Tally size specifications
-                n_realizations = \
-                    self._f['{0}{1}/n_realizations'.format(base, tally_key)].value
+                n_realizations = group['n_realizations'].value
 
                 # Create Tally object and assign basic properties
                 tally = openmc.Tally(tally_id=tally_key)
                 tally._sp_filename = self._f.filename
-                tally.estimator = self._f['{0}{1}/estimator'.format(
-                    base, tally_key)].value.decode()
+                tally.name = group['name'].value.decode()
+                tally.estimator = group['estimator'].value.decode()
                 tally.num_realizations = n_realizations
 
                 # Read derivative information.
-                if 'derivative' in self._f['{0}{1}'.format(base, tally_key)]:
-                    deriv_id = self._f['{0}{1}/derivative'.format(
-                                                        base, tally_key)].value
+                if 'derivative' in group:
+                    deriv_id = group['derivative'].value
                     tally.derivative = self.tally_derivatives[deriv_id]
 
-                # Read the number of Filters
-                n_filters = \
-                    self._f['{0}{1}/n_filters'.format(base, tally_key)].value
-
-                subbase = '{0}{1}/filter '.format(base, tally_key)
-
                 # Read all filters
-                for j in range(1, n_filters+1):
-                    subsubbase = '{0}{1}'.format(subbase, j)
-                    new_filter = openmc.Filter.from_hdf5(self._f[subsubbase],
+                n_filters = group['n_filters'].value
+                for j in range(1, n_filters + 1):
+                    filter_group = group['filter {}'.format(j)]
+                    new_filter = openmc.Filter.from_hdf5(filter_group,
                                                          meshes=self.meshes)
                     tally.filters.append(new_filter)
 
-                # Read Nuclide bins
-                nuclide_names = \
-                    self._f['{0}{1}/nuclides'.format(base, tally_key)].value
+                # Read nuclide bins
+                nuclide_names = group['nuclides'].value
 
-                # Add all Nuclides to the Tally
+                # Add all nuclides to the Tally
                 for name in nuclide_names:
                     nuclide = openmc.Nuclide(name.decode().strip())
                     tally.nuclides.append(nuclide)
 
-                scores = self._f['{0}{1}/score_bins'.format(
-                    base, tally_key)].value
-                n_score_bins = self._f['{0}{1}/n_score_bins'
-                                       .format(base, tally_key)].value
+                scores = group['score_bins'].value
+                n_score_bins = group['n_score_bins'].value
 
                 # Compute and set the filter strides
                 for i in range(n_filters):
@@ -423,8 +402,7 @@ class StatePoint(object):
                         tally_filter.stride *= tally.filters[j].num_bins
 
                 # Read scattering moment order strings (e.g., P3, Y1,2, etc.)
-                moments = self._f['{0}{1}/moment_orders'.format(
-                    base, tally_key)].value
+                moments = group['moment_orders'].value
 
                 # Add the scores to the Tally
                 for j, score in enumerate(scores):
@@ -446,7 +424,7 @@ class StatePoint(object):
 
     @property
     def tallies_present(self):
-        return self._f['tallies/tallies_present'].value
+        return self._f.attrs['tallies_present'] > 0
 
     @property
     def tally_derivatives(self):
@@ -464,21 +442,20 @@ class StatePoint(object):
 
                 # Create each derivative object and add it to the dictionary.
                 for d_id in deriv_ids:
-                    base = 'tallies/derivatives/derivative {:d}'.format(d_id)
+                    group = self._f['tallies/derivatives/derivative {}'
+                                    .format(d_id)]
                     deriv = openmc.TallyDerivative(derivative_id=d_id)
-                    deriv.variable = \
-                         self._f[base + '/independent variable'].value.decode()
+                    deriv.variable = group['independent variable'].value.decode()
                     if deriv.variable == 'density':
-                        deriv.material = self._f[base + '/material'].value
+                        deriv.material = group['material'].value
                     elif deriv.variable == 'nuclide_density':
-                        deriv.material = self._f[base + '/material'].value
-                        deriv.nuclide = \
-                             self._f[base + '/nuclide'].value.decode()
+                        deriv.material = group['material'].value
+                        deriv.nuclide = group['nuclide'].value.decode()
                     elif deriv.variable == 'temperature':
-                        deriv.material = self._f[base + '/material'].value
+                        deriv.material = group['material'].value
                     else:
-                        raise RuntimeError('Unrecognized tally differential '
-                                           'variable')
+                        raise ValueError('Unrecognized tally differential '
+                                         'variable')
                     self._derivs[d_id] = deriv
 
             self._derivs_read = True
@@ -697,7 +674,6 @@ class StatePoint(object):
         cell_dict = {c.id: c for c in summary.geometry.get_all_cells()}
 
         for tally_id, tally in self.tallies.items():
-            tally.name = summary.tally_names[tally_id]
             tally.with_summary = True
 
             for tally_filter in tally.filters:

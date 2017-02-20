@@ -186,6 +186,76 @@ class Surface(object):
 
         return element
 
+    @staticmethod
+    def from_hdf5(group):
+        """Create surface from HDF5 group
+
+        Parameters
+        ----------
+        group : h5py.Group
+            Group in HDF5 file
+
+        Returns
+        -------
+        openmc.Surface
+            Instance of surface subclass
+
+        """
+        surface_id = int(group.name.split('/')[-1].lstrip('surface '))
+        name = group['name'].value.decode()
+        surf_type = group['type'].value.decode()
+        bc = group['boundary_condition'].value.decode()
+        coeffs = group['coefficients'][...]
+
+        # Create the Surface based on its type
+        if surf_type == 'x-plane':
+            x0 = coeffs[0]
+            surface = XPlane(surface_id, bc, x0, name)
+
+        elif surf_type == 'y-plane':
+            y0 = coeffs[0]
+            surface = YPlane(surface_id, bc, y0, name)
+
+        elif surf_type == 'z-plane':
+            z0 = coeffs[0]
+            surface = ZPlane(surface_id, bc, z0, name)
+
+        elif surf_type == 'plane':
+            A, B, C, D = coeffs
+            surface = Plane(surface_id, bc, A, B, C, D, name)
+
+        elif surf_type == 'x-cylinder':
+            y0, z0, R = coeffs
+            surface = XCylinder(surface_id, bc, y0, z0, R, name)
+
+        elif surf_type == 'y-cylinder':
+            x0, z0, R = coeffs
+            surface = YCylinder(surface_id, bc, x0, z0, R, name)
+
+        elif surf_type == 'z-cylinder':
+            x0, y0, R = coeffs
+            surface = ZCylinder(surface_id, bc, x0, y0, R, name)
+
+        elif surf_type == 'sphere':
+            x0, y0, z0, R = coeffs
+            surface = Sphere(surface_id, bc, x0, y0, z0, R, name)
+
+        elif surf_type in ['x-cone', 'y-cone', 'z-cone']:
+            x0, y0, z0, R2 = coeffs
+            if surf_type == 'x-cone':
+                surface = XCone(surface_id, bc, x0, y0, z0, R2, name)
+            elif surf_type == 'y-cone':
+                surface = YCone(surface_id, bc, x0, y0, z0, R2, name)
+            elif surf_type == 'z-cone':
+                surface = ZCone(surface_id, bc, x0, y0, z0, R2, name)
+
+        elif surf_type == 'quadric':
+            a, b, c, d, e, f, g, h, j, k = coeffs
+            surface = Quadric(surface_id, bc, a, b, c, d, e, f, g,
+                              h, j, k, name)
+
+        return surface
+
 
 class Plane(Surface):
     """An arbitrary plane of the form :math:`Ax + By + Cz = D`.

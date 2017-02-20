@@ -81,8 +81,8 @@ contains
 
     ! Read data from file
     call read_dataset(current_batch, file_id, 'current_batch')
-    call read_dataset(gen_per_batch, file_id, 'gen_per_batch')
-    call read_dataset(current_gen, file_id, 'current_gen')
+    call read_dataset(gen_per_batch, file_id, 'generations_per_batch')
+    call read_dataset(current_gen, file_id, 'current_generation')
     call read_dataset(n_particles, file_id, 'n_particles')
     call read_dataset(tempstr, file_id, 'run_mode')
     select case (tempstr)

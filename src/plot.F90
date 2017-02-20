@@ -29,22 +29,21 @@ contains
   subroutine run_plot()
 
     integer :: i ! loop index for plots
-    type(ObjectPlot), pointer :: pl => null()
 
     do i = 1, n_plots
-      pl => plots(i)
+      associate (pl => plots(i))
+        ! Display output message
+        call write_message("Processing plot " // trim(to_str(pl % id)) &
+             // ": " // trim(pl % path_plot) // " ...", 5)
 
-      ! Display output message
-      call write_message("Processing plot " // trim(to_str(pl % id)) &
-           &// ": " // trim(pl % path_plot) // " ...", 5)
-
-      if (pl % type == PLOT_TYPE_SLICE) then
-        ! create 2d image
-        call create_ppm(pl)
-      else if (pl % type == PLOT_TYPE_VOXEL) then
-        ! create dump for 3D silomesh utility script
-        call create_3d_dump(pl)
-      end if
+        if (pl % type == PLOT_TYPE_SLICE) then
+          ! create 2d image
+          call create_ppm(pl)
+        else if (pl % type == PLOT_TYPE_VOXEL) then
+          ! create dump for 3D silomesh utility script
+          call create_3d_dump(pl)
+        end if
+      end associate
     end do
 
   end subroutine run_plot
@@ -55,15 +54,13 @@ contains
 !===============================================================================
 
   subroutine position_rgb(p, pl, rgb, id)
-
-    type(Particle), intent(inout)   :: p
-    type(ObjectPlot), pointer, intent(in) :: pl
-    integer, intent(out)                  :: rgb(3)
-    integer, intent(out)                  :: id
+    type(Particle), intent(inout) :: p
+    type(ObjectPlot), intent(in)  :: pl
+    integer, intent(out)          :: rgb(3)
+    integer, intent(out)          :: id
 
     integer :: j
     logical :: found_cell
-    type(Cell), pointer :: c
 
     p % n_coord = 1
 
@@ -81,19 +78,20 @@ contains
     else
       if (pl % color_by == PLOT_COLOR_MATS) then
         ! Assign color based on material
-        c => cells(p % coord(j) % cell)
-        if (c % type == CELL_FILL) then
-          ! If we stopped on a middle universe level, treat as if not found
-          rgb = pl % not_found % rgb
-          id = -1
-        else if (p % material == MATERIAL_VOID) then
-          ! By default, color void cells white
-          rgb = 255
-          id = -1
-        else
-          rgb = pl % colors(p % material) % rgb
-          id = materials(p % material) % id
-        end if
+        associate (c => cells(p % coord(j) % cell))
+          if (c % type == CELL_FILL) then
+            ! If we stopped on a middle universe level, treat as if not found
+            rgb = pl % not_found % rgb
+            id = -1
+          else if (p % material == MATERIAL_VOID) then
+            ! By default, color void cells white
+            rgb = 255
+            id = -1
+          else
+            rgb = pl % colors(p % material) % rgb
+            id = materials(p % material) % id
+          end if
+        end associate
       else if (pl % color_by == PLOT_COLOR_CELLS) then
         ! Assign color based on cell
         rgb = pl % colors(p % coord(j) % cell) % rgb
@@ -112,8 +110,7 @@ contains
 !===============================================================================
 
   subroutine create_ppm(pl)
-
-    type(ObjectPlot), pointer :: pl
+    type(ObjectPlot), intent(in) :: pl
 
     integer :: in_i
     integer :: out_i
@@ -183,7 +180,7 @@ contains
     if (associated(pl % meshlines_mesh)) call draw_mesh_lines(pl, img)
 
     ! Write out the ppm to a file
-    call output_ppm(pl,img)
+    call output_ppm(pl, img)
 
     ! Free up space
     call deallocate_image(img)
@@ -196,10 +193,10 @@ contains
 !===============================================================================
 ! DRAW_MESH_LINES draws mesh line boundaries on an image
 !===============================================================================
-  subroutine draw_mesh_lines(pl, img)
 
-    type(ObjectPlot), pointer, intent(in)    :: pl
-    type(Image),               intent(inout) :: img
+  subroutine draw_mesh_lines(pl, img)
+    type(ObjectPlot), intent(in)    :: pl
+    type(Image),      intent(inout) :: img
 
     logical :: in_mesh
     integer :: out_, in_  ! pixel location
@@ -216,9 +213,6 @@ contains
     real(8) :: xyz_ur_plot(3)  ! upper right xyz of plot image
     real(8) :: xyz_ll(3)  ! lower left xyz
     real(8) :: xyz_ur(3)  ! upper right xyz
-    type(RegularMesh), pointer :: m
-
-    m => pl % meshlines_mesh
 
     r = pl % meshlines_color % rgb(1)
     g = pl % meshlines_color % rgb(2)
@@ -246,55 +240,57 @@ contains
 
     width = xyz_ur_plot - xyz_ll_plot
 
-    call get_mesh_indices(m, xyz_ll_plot, ijk_ll(:m % n_dimension), in_mesh)
-    call get_mesh_indices(m, xyz_ur_plot, ijk_ur(:m % n_dimension), in_mesh)
+    associate (m => pl % meshlines_mesh)
+      call get_mesh_indices(m, xyz_ll_plot, ijk_ll(:m % n_dimension), in_mesh)
+      call get_mesh_indices(m, xyz_ur_plot, ijk_ur(:m % n_dimension), in_mesh)
 
-    ! sweep through all meshbins on this plane and draw borders
-    do i = ijk_ll(outer), ijk_ur(outer)
-      do j = ijk_ll(inner), ijk_ur(inner)
-        ! check if we're in the mesh for this ijk
-        if (i > 0 .and. i <= m % dimension(outer) .and. &
-             j > 0 .and. j <= m % dimension(inner)) then
+      ! sweep through all meshbins on this plane and draw borders
+      do i = ijk_ll(outer), ijk_ur(outer)
+        do j = ijk_ll(inner), ijk_ur(inner)
+          ! check if we're in the mesh for this ijk
+          if (i > 0 .and. i <= m % dimension(outer) .and. &
+               j > 0 .and. j <= m % dimension(inner)) then
 
-          ! get xyz's of lower left and upper right of this mesh cell
-          xyz_ll(outer) = m % lower_left(outer) + m % width(outer) * (i - 1)
-          xyz_ll(inner) = m % lower_left(inner) + m % width(inner) * (j - 1)
-          xyz_ur(outer) = m % lower_left(outer) + m % width(outer) * i
-          xyz_ur(inner) = m % lower_left(inner) + m % width(inner) * j
+            ! get xyz's of lower left and upper right of this mesh cell
+            xyz_ll(outer) = m % lower_left(outer) + m % width(outer) * (i - 1)
+            xyz_ll(inner) = m % lower_left(inner) + m % width(inner) * (j - 1)
+            xyz_ur(outer) = m % lower_left(outer) + m % width(outer) * i
+            xyz_ur(inner) = m % lower_left(inner) + m % width(inner) * j
 
-          ! map the xyz ranges to pixel ranges
+            ! map the xyz ranges to pixel ranges
 
-          frac = (xyz_ll(outer) - xyz_ll_plot(outer)) / width(outer)
-          outrange(1) = int(frac * real(img % width, 8))
-          frac = (xyz_ur(outer) - xyz_ll_plot(outer)) / width(outer)
-          outrange(2) = int(frac * real(img % width, 8))
+            frac = (xyz_ll(outer) - xyz_ll_plot(outer)) / width(outer)
+            outrange(1) = int(frac * real(img % width, 8))
+            frac = (xyz_ur(outer) - xyz_ll_plot(outer)) / width(outer)
+            outrange(2) = int(frac * real(img % width, 8))
 
-          frac = (xyz_ur(inner) - xyz_ll_plot(inner)) / width(inner)
-          inrange(1) = int((ONE - frac) * real(img % height, 8))
-          frac = (xyz_ll(inner) - xyz_ll_plot(inner)) / width(inner)
-          inrange(2) = int((ONE - frac) * real(img % height, 8))
+            frac = (xyz_ur(inner) - xyz_ll_plot(inner)) / width(inner)
+            inrange(1) = int((ONE - frac) * real(img % height, 8))
+            frac = (xyz_ll(inner) - xyz_ll_plot(inner)) / width(inner)
+            inrange(2) = int((ONE - frac) * real(img % height, 8))
 
-          ! draw lines
-          do out_ = outrange(1), outrange(2)
-            do plus = 0, pl % meshlines_width
-              call set_pixel(img, out_, inrange(1) + plus, r, g, b)
-              call set_pixel(img, out_, inrange(2) + plus, r, g, b)
-              call set_pixel(img, out_, inrange(1) - plus, r, g, b)
-              call set_pixel(img, out_, inrange(2) - plus, r, g, b)
+            ! draw lines
+            do out_ = outrange(1), outrange(2)
+              do plus = 0, pl % meshlines_width
+                call set_pixel(img, out_, inrange(1) + plus, r, g, b)
+                call set_pixel(img, out_, inrange(2) + plus, r, g, b)
+                call set_pixel(img, out_, inrange(1) - plus, r, g, b)
+                call set_pixel(img, out_, inrange(2) - plus, r, g, b)
+              end do
             end do
-          end do
-          do in_ = inrange(1), inrange(2)
-            do plus = 0, pl % meshlines_width
-              call set_pixel(img, outrange(1) + plus, in_, r, g, b)
-              call set_pixel(img, outrange(2) + plus, in_, r, g, b)
-              call set_pixel(img, outrange(1) - plus, in_, r, g, b)
-              call set_pixel(img, outrange(2) - plus, in_, r, g, b)
+            do in_ = inrange(1), inrange(2)
+              do plus = 0, pl % meshlines_width
+                call set_pixel(img, outrange(1) + plus, in_, r, g, b)
+                call set_pixel(img, outrange(2) + plus, in_, r, g, b)
+                call set_pixel(img, outrange(1) - plus, in_, r, g, b)
+                call set_pixel(img, outrange(2) - plus, in_, r, g, b)
+              end do
             end do
-          end do
 
-        end if
+          end if
+        end do
       end do
-    end do
+    end associate
 
   end subroutine draw_mesh_lines
 
@@ -303,9 +299,8 @@ contains
 !===============================================================================
 
   subroutine output_ppm(pl, img)
-
-    type(ObjectPlot), pointer :: pl
-    type(Image), intent(in)  :: img
+    type(ObjectPlot), intent(in) :: pl
+    type(Image),      intent(in) :: img
 
     integer :: i ! loop index for height
     integer :: j ! loop index for width
@@ -316,20 +311,19 @@ contains
 
     ! Write header
     write(unit_plot, '(A2)') 'P6'
-    write(unit_plot, '(I0,'' '',I0)') img%width, img%height
+    write(unit_plot, '(I0,'' '',I0)') img % width, img % height
     write(unit_plot, '(A)') '255'
 
     ! Write color for each pixel
     do j = 1, img % height
       do i = 1, img % width
-        write(unit_plot, '(3A1)', advance='no') achar(img%red(i,j)), &
-             achar(img%green(i,j)), achar(img%blue(i,j))
+        write(unit_plot, '(3A1)', advance='no') achar(img % red(i,j)), &
+             achar(img % green(i,j)), achar(img % blue(i,j))
       end do
     end do
 
     ! Close plot file
     close(UNIT=unit_plot)
-
   end subroutine output_ppm
 
 !===============================================================================
@@ -345,8 +339,7 @@ contains
 !===============================================================================
 
   subroutine create_3d_dump(pl)
-
-    type(ObjectPlot), pointer :: pl
+    type(ObjectPlot), intent(in) :: pl
 
     integer :: x, y, z      ! voxel location indices
     integer :: rgb(3)       ! colors (red, green, blue) from 0-255

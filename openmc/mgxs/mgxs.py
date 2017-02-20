@@ -5803,7 +5803,7 @@ class ConsistentScatterMatrixXS(ConvolvedMGXS, ScatterMatrixXS):
 
     @property
     def rxn_rate_tally(self):
-        raise NotImplementedError('The rxn rate tally is not well defined ')
+        raise NotImplementedError('The reaction rate tally is not well defined ')
 
     @property
     def xs_tally(self):
@@ -5815,8 +5815,8 @@ class ConsistentScatterMatrixXS(ConvolvedMGXS, ScatterMatrixXS):
 
             # If using P0 correction subtract scatter-1 from the diagonal
             if self.correction == 'P0' and self.legendre_order == 0:
-                flux = self.tallies['{} : flux'.format(self.rxn_type)]
-                scatter_p0 = self.tallies['{0} : {0}'.format(self.rxn_type)]
+                flux = self.tallies['scatter : flux']
+                scatter_p0 = self.tallies['scatter : scatter']
                 scatter_p1 = self.tallies['scatter-1']
 
                 energy_filter = scatter_p0.find_filter(openmc.EnergyFilter)
@@ -5997,7 +5997,7 @@ class ConsistentNuScatterMatrixXS(ConsistentScatterMatrixXS):
 
         self._rxn_type = 'nu-scatter'
         self._hdf5_key = 'consistent nu-scatter matrix'
-        self._mgxs = [NuScatterXS(), NuScatterProbabilityMatrix()]
+        self._mgxs = [ScatterXS(), NuScatterProbabilityMatrix(), MultiplicityMatrixXS()]
 
         # Assign parameters to each MGXS in the convlution
         for mgxs in self.mgxs:
@@ -6012,6 +6012,39 @@ class ConsistentNuScatterMatrixXS(ConsistentScatterMatrixXS):
                 mgxs.energy_groups = groups
             mgxs.num_polar = num_polar
             mgxs.num_azimuthal = num_azimuthal
+
+    @property
+    def multiplicity_matrix(self):
+        return self.mgxs[2]
+
+    @property
+    def xs_tally(self):
+        if self._xs_tally is None:
+            if self.tallies is None:
+                msg = 'Unable to get xs_tally since tallies have ' \
+                      'not been loaded from a statepoint'
+                raise ValueError(msg)
+
+            # If using P0 correction subtract scatter-1 from the diagonal
+            if self.correction == 'P0' and self.legendre_order == 0:
+                flux = self.tallies['scatter : flux']
+                scatter_p0 = self.tallies['scatter : scatter']
+                scatter_p1 = self.tallies['scatter-1']
+
+                energy_filter = scatter_p0.find_filter(openmc.EnergyFilter)
+                energy_filter = copy.deepcopy(energy_filter)
+                scatter_p1 = scatter_p1.diagonalize_filter(energy_filter)
+                correction = scatter_p1 / flux
+            else:
+                correction = 0.
+
+            self._xs_tally = \
+                self.scatter_xs.xs_tally * self.probability_matrix.xs_tally
+            self._xs_tally *= self.multiplicity_matrix.xs_tally
+            self._xs_tally -= correction
+            self._compute_xs()
+
+        return self._xs_tally
 
 
 class NuFissionMatrixXS(MatrixMGXS):

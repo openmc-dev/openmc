@@ -34,8 +34,8 @@ The current revision of the statepoint file format is 16.0.
            - **current_batch** (*int*) -- The number of batches already simulated.
            - **n_inactive** (*int*) -- Number of inactive batches. Only present
              when `run_mode` is 'eigenvalue'.
-           - **gen_per_batch** (*int*) -- Number of generations per batch. Only
-             present when `run_mode` is 'eigenvalue'.
+           - **generations_per_batch** (*int*) -- Number of generations per
+             batch. Only present when `run_mode` is 'eigenvalue'.
            - **k_generation** (*double[]*) -- k-effective for each generation
              simulated.
            - **entropy** (*double[]*) -- Shannon entropy for each generation

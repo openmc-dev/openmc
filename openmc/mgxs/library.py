@@ -528,11 +528,9 @@ class Library(object):
                 # Specify whether to use a transport ('P0') correction
                 if isinstance(mgxs, openmc.mgxs.ScatterMatrixXS):
                     mgxs.correction = self.correction
-
-                    if not isinstance(mgxs, openmc.mgxs.ConsistentScatterMatrixXS):
-                        mgxs.scatter_format = self.scatter_format
-                        mgxs.legendre_order = self.legendre_order
-                        mgxs.histogram_bins = self.histogram_bins
+                    mgxs.scatter_format = self.scatter_format
+                    mgxs.legendre_order = self.legendre_order
+                    mgxs.histogram_bins = self.histogram_bins
 
                 self.all_mgxs[domain.id][mgxs_type] = mgxs
 

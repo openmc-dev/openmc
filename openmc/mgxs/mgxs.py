@@ -125,7 +125,7 @@ class MGXS(object):
     post-processing to compute spatially-homogenized and energy-integrated
     multi-group cross sections for multi-group neutronics calculations.
 
-    NOTE: Users should instantiate the subclasses of this abstract class.
+    .. note:: Users should instantiate the subclasses of this abstract class.
 
     Parameters
     ----------
@@ -891,7 +891,7 @@ class MGXS(object):
         This method is needed to compute cross section data from tallies
         in an OpenMC StatePoint object.
 
-        NOTE: The statepoint must first be linked with an OpenMC Summary object.
+        .. note:: The statepoint must be linked with an OpenMC Summary object.
 
         Parameters
         ----------
@@ -1638,7 +1638,7 @@ class MGXS(object):
         nuclides and cross section type. Two datasets for the mean and standard
         deviation are stored for each subdomain entry in the HDF5 file.
 
-        NOTE: This requires the h5py Python package.
+        .. note:: This requires the h5py Python package.
 
         Parameters
         ----------
@@ -1984,7 +1984,7 @@ class MatrixMGXS(MGXS):
     post-processing to compute spatially-homogenized and energy-integrated
     multi-group cross sections for multi-group neutronics calculations.
 
-    NOTE: Users should instantiate the subclasses of this abstract class.
+    .. note:: Users should instantiate the subclasses of this abstract class.
 
     Parameters
     ----------
@@ -3623,6 +3623,7 @@ class ScatterXS(MGXS):
                                         num_azimuthal)
         self._rxn_type = 'scatter'
 
+
 class NuScatterXS(MGXS):
     r"""A scattering neutron production multi-group cross section.
 
@@ -3955,12 +3956,12 @@ class ScatterMatrixXS(MatrixMGXS):
 
         if self.scatter_format == 'legendre':
             if self.correction == 'P0' and self.legendre_order == 0:
-                scores += ['{}-0'.format(self.rxn_type),
-                           '{}-1'.format(self.rxn_type)]
+                scores.extend(['{}-0'.format(self.rxn_type),
+                               '{}-1'.format(self.rxn_type)])
             else:
-                scores += ['{}-P{}'.format(self.rxn_type, self.legendre_order)]
+                scores.append('{}-P{}'.format(self.rxn_type, self.legendre_order))
         elif self.scatter_format == 'histogram':
-            scores += [self.rxn_type]
+            scores.append(self.rxn_type)
 
         return scores
 
@@ -4067,7 +4068,7 @@ class ScatterMatrixXS(MatrixMGXS):
         This method is needed to compute cross section data from tallies
         in an OpenMC StatePoint object.
 
-        NOTE: The statepoint must first be linked with an OpenMC Summary object.
+        .. note:: The statepoint must be linked with an OpenMC Summary object.
 
         Parameters
         ----------
@@ -4189,9 +4190,9 @@ class ScatterMatrixXS(MatrixMGXS):
         (3rd dimension), nuclides (4th dimension), and moments/histograms
         (5th dimension).
 
-        NOTE: The scattering moments are not multiplied by the :math:`(2l+1)/2`
-        prefactor in the expansion of the scattering source into Legendre
-        moments in the neutron transport equation.
+        .. note:: The scattering moments are not multiplied by the
+        :math:`(2l+1)/2` prefactor in the expansion of the scattering source
+        into Legendre moments in the neutron transport equation.
 
         Parameters
         ----------
@@ -4922,7 +4923,7 @@ class ScatterProbabilityMatrix(MatrixMGXS):
 
     For a spatial domain :math:`V`, incoming energy group
     :math:`[E_{g'},E_{g'-1}]`, and outgoing energy group :math:`[E_g,E_{g-1}]`,
-    the group-to-group scatterin probabilities are calculated as:
+    the group-to-group scattering probabilities are calculated as:
 
     .. math::
 
@@ -4991,7 +4992,7 @@ class ScatterProbabilityMatrix(MatrixMGXS):
         The tally estimator used to compute the multi-group cross section
     tallies : collections.OrderedDict
         OpenMC tallies needed to compute the multi-group cross section. The keys
-        are strings listed in the :attr:`MultiplicityMatrixXS.tally_keys`
+        are strings listed in the :attr:`ScatterProbabilityMatrix.tally_keys`
         property and values are instances of :class:`openmc.Tally`.
     rxn_rate_tally : openmc.Tally
         Derived tally for the reaction rate tally used in the numerator to
@@ -5062,8 +5063,8 @@ class ScatterProbabilityMatrix(MatrixMGXS):
     def xs_tally(self):
 
         if self._xs_tally is None:
-            energyout_bins = \
-                [self.energy_groups.get_group_bounds(i) for i in range(self.num_groups, 0, -1)]
+            energyout_bins = [self.energy_groups.get_group_bounds(i)
+                              for i in range(self.num_groups, 0, -1)]
             norm = self.rxn_rate_tally.summation(
                 filter_type=openmc.EnergyoutFilter, filter_bins=energyout_bins)
 
@@ -5092,7 +5093,7 @@ class NuScatterProbabilityMatrix(ScatterProbabilityMatrix):
     For post-processing, the :meth:`MGXS.load_from_statepoint` will pull in the
     necessary data to compute multi-group cross sections from a
     :class:`openmc.StatePoint` instance. The derived multi-group cross section
-    can then be obtained from the :attr:`ScatterProbabilityMatrix.xs_tally`
+    can then be obtained from the :attr:`NuScatterProbabilityMatrix.xs_tally`
     property.
 
     The calculation of the scattering-production matrix is the same as that for
@@ -5151,7 +5152,7 @@ class NuScatterProbabilityMatrix(ScatterProbabilityMatrix):
         The tally estimator used to compute the multi-group cross section
     tallies : collections.OrderedDict
         OpenMC tallies needed to compute the multi-group cross section. The keys
-        are strings listed in the :attr:`MultiplicityMatrixXS.tally_keys`
+        are strings listed in the :attr:`NuScatterProbabilityMatrix.tally_keys`
         property and values are instances of :class:`openmc.Tally`.
     rxn_rate_tally : openmc.Tally
         Derived tally for the reaction rate tally used in the numerator to
@@ -5207,7 +5208,7 @@ class ConvolvedMGXS(MGXS):
     post-processing to compute spatially-homogenized and energy-integrated
     multi-group cross sections for multi-group neutronics calculations.
 
-    NOTE: Users should instantiate the subclasses of this abstract class.
+    .. note:: Users should instantiate the subclasses of this abstract class.
 
     Parameters
     ----------
@@ -5332,7 +5333,7 @@ class ConvolvedMGXS(MGXS):
         keys = []
         for mgxs in self.mgxs:
             for tally_key in mgxs.tallies:
-                keys += ['{} : {}'.format(mgxs.hdf5_key, tally_key)]
+                keys.append('{} : {}'.format(mgxs.hdf5_key, tally_key))
         return keys
 
     @property
@@ -5378,7 +5379,7 @@ class ConvolvedMGXS(MGXS):
 
     @MGXS.estimator.setter
     def estimator(self, estimator):
-        raise ValueError('Unable to assign a tally estimator a ConvolvedMGXS')
+        raise ValueError('Cannot assign a tally estimator to a ConvolvedMGXS')
 
     @MGXS.domain.setter
     def domain(self, domain):
@@ -5475,7 +5476,7 @@ class ConvolvedMGXS(MGXS):
         This method is needed to compute cross section data from tallies
         in an OpenMC StatePoint object.
 
-        NOTE: The statepoint must first be linked with an OpenMC Summary object.
+        .. note:: The statepoint must be linked with an OpenMC Summary object.
 
         Parameters
         ----------
@@ -5593,7 +5594,7 @@ class ConsistentScatterMatrixXS(ConvolvedMGXS, ScatterMatrixXS):
        \langle \phi \rangle &= \int_{r \in V} dr \int_{4\pi} d\Omega
        \int_{E_g}^{E_{g-1}} dE \; \psi (r, E, \Omega) \\
        \sigma_{s,g'\rightarrow g} &= \frac{\langle
-       \sigma_{s,,g'\rightarrow g} \phi \rangle}{\langle \phi \rangle}
+       \sigma_{s,g'\rightarrow g} \phi \rangle}{\langle \phi \rangle}
 
     Parameters
     ----------
@@ -5729,7 +5730,7 @@ class ConsistentScatterMatrixXS(ConvolvedMGXS, ScatterMatrixXS):
 
         # Add scores for transport correction
         if self.correction == 'P0' and self.legendre_order == 0:
-            scores += ['{}-1'.format(self.rxn_type)]
+            scores.append('{}-1'.format(self.rxn_type))
 
         return scores
 
@@ -5751,7 +5752,7 @@ class ConsistentScatterMatrixXS(ConvolvedMGXS, ScatterMatrixXS):
 
         # Add key for transport correction tally
         if self.correction == 'P0' and self.legendre_order == 0:
-            tally_keys += ['scatter-1']
+            tally_keys.append('scatter-1')
 
         return tally_keys
 
@@ -5776,7 +5777,8 @@ class ConsistentScatterMatrixXS(ConvolvedMGXS, ScatterMatrixXS):
                 self._tallies['scatter-1'] = openmc.Tally(name=self.name)
                 self._tallies['scatter-1'].estimator = 'analog'
                 self._tallies['scatter-1'].scores = [self.scores[-1]]
-                self._tallies['scatter-1'].filters = [domain_filter, *self.filters[-1]]
+                self._tallies['scatter-1'].filters = [domain_filter]
+                self._tallies['scatter-1'].filters.extend(self.filters[-1])
 
                 # If a tally trigger was specified, add it to each tally
                 if self.tally_trigger:
@@ -5953,7 +5955,7 @@ class ConsistentNuScatterMatrixXS(ConsistentScatterMatrixXS):
         The tally estimator used to compute the multi-group cross section
     tallies : collections.OrderedDict
         OpenMC tallies needed to compute the multi-group cross section. The keys
-        are strings listed in the :attr:`ConsistentScatterNuMatrixXS.tally_keys`
+        are strings listed in the :attr:`ConsistentNuScatterNuMatrixXS.tally_keys`
         property
         and values are instances of :class:`openmc.Tally`.
     rxn_rate_tally : openmc.Tally
@@ -7214,8 +7216,8 @@ class PromptNuFissionMatrixXS(MatrixMGXS):
         The tally estimator used to compute the multi-group cross section
     tallies : collections.OrderedDict
         OpenMC tallies needed to compute the multi-group cross section. The keys
-        are strings listed in the :attr:`PromptNuFissionXS.tally_keys` property
-        and values are instances of :class:`openmc.Tally`.
+        are strings listed in the :attr:`PromptNuFissionMatrixXS.tally_keys`
+        property and values are instances of :class:`openmc.Tally`.
     rxn_rate_tally : openmc.Tally
         Derived tally for the reaction rate tally used in the numerator to
         compute the multi-group cross section. This attribute is None

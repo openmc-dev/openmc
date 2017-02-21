@@ -127,7 +127,6 @@ respectively.
    openmc.get_hexagonal_prism
    openmc.get_rectangular_prism
 
->>>>>>> upstream/develop
 Constructing Tallies
 --------------------
 

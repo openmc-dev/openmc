@@ -120,16 +120,16 @@
 3      2  2  1        1         1   total  1.0  0.141824
   mesh 1       group in group out nuclide      mean std. dev.
        x  y  z                                               
-0      1  1  1        1         1   total  0.385281  0.140163
-1      1  2  1        1         1   total  0.381031  0.407858
-2      2  1  1        1         1   total  0.429729  0.130705
-3      2  2  1        1         1   total  0.373069  0.127649
+0      1  1  1        1         1   total  0.633490  0.135514
+1      1  2  1        1         1   total  0.618705  0.392783
+2      2  1  1        1         1   total  0.686150  0.126578
+3      2  2  1        1         1   total  0.619269  0.124057
   mesh 1       group in group out nuclide      mean std. dev.
        x  y  z                                               
-0      1  1  1        1         1   total  0.385281  0.170507
-1      1  2  1        1         1   total  0.381031  0.495567
-2      2  1  1        1         1   total  0.429729  0.164992
-3      2  2  1        1         1   total  0.373069  0.154944
+0      1  1  1        1         1   total  0.633490  0.166706
+1      1  2  1        1         1   total  0.618705  0.483237
+2      2  1  1        1         1   total  0.686150  0.161742
+3      2  2  1        1         1   total  0.619269  0.152000
   mesh 1       group out nuclide mean std. dev.
        x  y  z                                 
 0      1  1  1         1   total  1.0  0.135958

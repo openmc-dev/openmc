@@ -571,16 +571,17 @@ contains
       ! Urbatsch, but are simpler than for the three estimators case since the
       ! block matrices of the three estimator equations reduces to scalars here
 
-      ! Store commonly used terms
-      f = cov(i, i) - cov(i, j)
-      g = (cov(i, i) + cov(j, j) - TWO * cov(i, j))
+      ! Store the commonly used term
+      f = kv(i) - kv(j)
+      g = cov(i, i) + cov(j, j) - TWO * cov(i, j)
 
       ! Calculate combined estimate of k-effective
-      k_combined(1) = kv(i) - f / g * (kv(i) - kv(j))
+      k_combined(1) = kv(i) - (cov(i, i) - cov(i, j)) / g * f
 
       ! Calculate standard deviation of combined estimate
-      k_combined(2) = sqrt(cov(i, i) * (ONE - f * f / g) * &
-           (ONE / n + (kv(i) - kv(j)) * (kv(i) - kv(j)) / ((n - ONE) * g)))
+      k_combined(2) = (cov(i, i) * cov(j, j) - cov(i, j) * cov(i, j)) * &
+           (g + n * f * f) / (n * (n - TWO) * g * g)
+      k_combined(2) = sqrt(k_combined(2))
 
     end if
 

@@ -541,7 +541,7 @@
         <filter bins="0.0 20000000.0" type="energy" />
         <filter bins="0.0 20000000.0" type="energyout" />
         <nuclides>total</nuclides>
-        <scores>scatter</scores>
+        <scores>scatter-0</scores>
         <estimator>analog</estimator>
     </tally>
     <tally id="10032">
@@ -549,7 +549,7 @@
         <filter bins="0.0 20000000.0" type="energy" />
         <filter bins="0.0 20000000.0" type="energyout" />
         <nuclides>total</nuclides>
-        <scores>scatter</scores>
+        <scores>nu-scatter-0</scores>
         <estimator>analog</estimator>
     </tally>
     <tally id="10033">
@@ -571,7 +571,7 @@
         <filter bins="0.0 20000000.0" type="energy" />
         <filter bins="0.0 20000000.0" type="energyout" />
         <nuclides>total</nuclides>
-        <scores>scatter</scores>
+        <scores>scatter-P3</scores>
         <estimator>analog</estimator>
     </tally>
     <tally id="10036">
@@ -593,7 +593,7 @@
         <filter bins="0.0 20000000.0" type="energy" />
         <filter bins="0.0 20000000.0" type="energyout" />
         <nuclides>total</nuclides>
-        <scores>scatter</scores>
+        <scores>nu-scatter-P3</scores>
         <estimator>analog</estimator>
     </tally>
     <tally id="10039">

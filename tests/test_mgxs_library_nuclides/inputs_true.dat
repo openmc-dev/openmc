@@ -277,7 +277,7 @@
         <filter bins="0.0 0.625 20000000.0" type="energy" />
         <filter bins="0.0 0.625 20000000.0" type="energyout" />
         <nuclides>U234 U235 U238 O16</nuclides>
-        <scores>scatter</scores>
+        <scores>scatter-0</scores>
         <estimator>analog</estimator>
     </tally>
     <tally id="10032">
@@ -285,7 +285,7 @@
         <filter bins="0.0 0.625 20000000.0" type="energy" />
         <filter bins="0.0 0.625 20000000.0" type="energyout" />
         <nuclides>U234 U235 U238 O16</nuclides>
-        <scores>scatter</scores>
+        <scores>nu-scatter-0</scores>
         <estimator>analog</estimator>
     </tally>
     <tally id="10033">
@@ -307,7 +307,7 @@
         <filter bins="0.0 0.625 20000000.0" type="energy" />
         <filter bins="0.0 0.625 20000000.0" type="energyout" />
         <nuclides>U234 U235 U238 O16</nuclides>
-        <scores>scatter</scores>
+        <scores>scatter-P3</scores>
         <estimator>analog</estimator>
     </tally>
     <tally id="10036">
@@ -329,7 +329,7 @@
         <filter bins="0.0 0.625 20000000.0" type="energy" />
         <filter bins="0.0 0.625 20000000.0" type="energyout" />
         <nuclides>U234 U235 U238 O16</nuclides>
-        <scores>scatter</scores>
+        <scores>nu-scatter-P3</scores>
         <estimator>analog</estimator>
     </tally>
     <tally id="10039">
@@ -646,7 +646,7 @@
         <filter bins="0.0 0.625 20000000.0" type="energy" />
         <filter bins="0.0 0.625 20000000.0" type="energyout" />
         <nuclides>Zr90 Zr91 Zr92 Zr94 Zr96</nuclides>
-        <scores>scatter</scores>
+        <scores>scatter-0</scores>
         <estimator>analog</estimator>
     </tally>
     <tally id="10083">
@@ -654,7 +654,7 @@
         <filter bins="0.0 0.625 20000000.0" type="energy" />
         <filter bins="0.0 0.625 20000000.0" type="energyout" />
         <nuclides>Zr90 Zr91 Zr92 Zr94 Zr96</nuclides>
-        <scores>scatter</scores>
+        <scores>nu-scatter-0</scores>
         <estimator>analog</estimator>
     </tally>
     <tally id="10084">
@@ -676,7 +676,7 @@
         <filter bins="0.0 0.625 20000000.0" type="energy" />
         <filter bins="0.0 0.625 20000000.0" type="energyout" />
         <nuclides>Zr90 Zr91 Zr92 Zr94 Zr96</nuclides>
-        <scores>scatter</scores>
+        <scores>scatter-P3</scores>
         <estimator>analog</estimator>
     </tally>
     <tally id="10087">
@@ -698,7 +698,7 @@
         <filter bins="0.0 0.625 20000000.0" type="energy" />
         <filter bins="0.0 0.625 20000000.0" type="energyout" />
         <nuclides>Zr90 Zr91 Zr92 Zr94 Zr96</nuclides>
-        <scores>scatter</scores>
+        <scores>nu-scatter-P3</scores>
         <estimator>analog</estimator>
     </tally>
     <tally id="10090">
@@ -1015,7 +1015,7 @@
         <filter bins="0.0 0.625 20000000.0" type="energy" />
         <filter bins="0.0 0.625 20000000.0" type="energyout" />
         <nuclides>H1 O16 B10 B11</nuclides>
-        <scores>scatter</scores>
+        <scores>scatter-0</scores>
         <estimator>analog</estimator>
     </tally>
     <tally id="10134">
@@ -1023,7 +1023,7 @@
         <filter bins="0.0 0.625 20000000.0" type="energy" />
         <filter bins="0.0 0.625 20000000.0" type="energyout" />
         <nuclides>H1 O16 B10 B11</nuclides>
-        <scores>scatter</scores>
+        <scores>nu-scatter-0</scores>
         <estimator>analog</estimator>
     </tally>
     <tally id="10135">
@@ -1045,7 +1045,7 @@
         <filter bins="0.0 0.625 20000000.0" type="energy" />
         <filter bins="0.0 0.625 20000000.0" type="energyout" />
         <nuclides>H1 O16 B10 B11</nuclides>
-        <scores>scatter</scores>
+        <scores>scatter-P3</scores>
         <estimator>analog</estimator>
     </tally>
     <tally id="10138">
@@ -1067,7 +1067,7 @@
         <filter bins="0.0 0.625 20000000.0" type="energy" />
         <filter bins="0.0 0.625 20000000.0" type="energyout" />
         <nuclides>H1 O16 B10 B11</nuclides>
-        <scores>scatter</scores>
+        <scores>nu-scatter-P3</scores>
         <estimator>analog</estimator>
     </tally>
     <tally id="10141">

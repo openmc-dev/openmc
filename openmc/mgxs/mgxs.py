@@ -5154,7 +5154,7 @@ class ScatterProbabilityMatrix(MatrixMGXS):
             # Select out the zeroth Legendre moment
             norm = norm.get_slice(scores=['{}-0'.format(self.rxn_type)])
 
-            # Compute the group-to-group probailities
+            # Compute the group-to-group probabilities
             self._xs_tally = self.rxn_rate_tally / norm
             super(ScatterProbabilityMatrix, self)._compute_xs()
 

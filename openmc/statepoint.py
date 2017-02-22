@@ -113,6 +113,7 @@ class StatePoint(object):
         self._f = h5py.File(filename, 'r')
         self._meshes = {}
         self._tallies = {}
+        self._derivs = {}
 
         # Check filetype and version
         cv.check_filetype_version(self._f, 'statepoint', _VERSION_STATEPOINT)
@@ -326,7 +327,7 @@ class StatePoint(object):
 
             # Read a list of the IDs for each Tally
             if n_tallies > 0:
-                # Tally used-defined IDs
+                # Tally user-defined IDs
                 tally_ids = tallies_group.attrs['ids']
             else:
                 tally_ids = []
@@ -405,11 +406,6 @@ class StatePoint(object):
     @property
     def tally_derivatives(self):
         if not self._derivs_read:
-            # Initialize dictionaries for the Meshes
-            # Keys   - Derivative IDs
-            # Values - TallyDerivative objects
-            self._derivs = {}
-
             # Populate the dictionary if any derivatives are present.
             if 'derivatives' in self._f['tallies']:
                 # Read the derivative ids.
@@ -429,9 +425,6 @@ class StatePoint(object):
                         deriv.nuclide = group['nuclide'].value.decode()
                     elif deriv.variable == 'temperature':
                         deriv.material = group['material'].value
-                    else:
-                        raise ValueError('Unrecognized tally differential '
-                                         'variable')
                     self._derivs[d_id] = deriv
 
             self._derivs_read = True

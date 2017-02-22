@@ -19,10 +19,10 @@ The current version of the statepoint file format is 16.0.
              - **path** (*char[]*) -- Path to directory containing input files.
              - **cmfd_on** (*int*) -- Flag indicating whether CMFD is on (1) or
                off (0).
-             - **tallies_present** (*int*) -- Flag indicating if tallies are
-               present in the file.
-             - **source_present** (*int*) -- Flag indicating if source bank is
-               present in the file.
+             - **tallies_present** (*int*) -- Flag indicating whether tallies
+               are present (1) or not (0).
+             - **source_present** (*int*) -- Flag indicating whether the source
+               bank is present (1) or not (0).
 
 :Datasets: - **seed** (*int8_t*) -- Pseudo-random number generator seed.
            - **energy_mode** (*char[]*) -- Energy mode of the run, either
@@ -79,7 +79,7 @@ The current version of the statepoint file format is 16.0.
 **/tallies/meshes/**
 
 :Attributes: - **n_meshes** (*int*) -- Number of meshes in the problem.
-             - **ids** (*int[]*) -- User-identified unique ID of each mesh.
+             - **ids** (*int[]*) -- User-defined unique ID of each mesh.
 
 **/tallies/meshes/mesh <uid>/**
 
@@ -143,37 +143,32 @@ The current version of the statepoint file format is 16.0.
 
 **/runtime/**
 
-:Datasets: - **total initialization** (*double*) -- Time (in seconds on the
-             master process) spent reading inputs, allocating arrays, etc.
-           - **reading cross sections** (*double*) -- Time (in seconds on the
-             master process) spent loading cross section libraries (this is a
-             subset of initialization).
-           - **simulation** (*double*) -- Time (in seconds on the master
-             process) spent between initialization and finalization.
-           - **transport** (*double*) -- Time (in seconds on the master process)
-             spent transporting particles.
-           - **inactive batches** (*double*) -- Time (in seconds on the master
-             process) spent in the inactive batches (including non-transport
-             activities like communcating sites).
-           - **active batches** (*double*) -- Time (in seconds on the master
-             process) spent in the active batches (including non-transport
-             activities like communicating sites).
-           - **synchronizing fission bank** (*double*) -- Time (in seconds on
-             the master process) spent sampling source particles from fission
-             sites and communicating them to other processes for load balancing.
-           - **sampling source sites** (*double*) -- Time (in seconds on the
-             master process) spent sampling source particles from fission sites.
-           - **SEND-RECV source sites** (*double*) -- Time (in seconds on the
-             master process) spent communicating source sites between processes
-             for load balancing.
-           - **accumulating tallies** (*double*) -- Time (in seconds on the
-             master process) spent communicating tally results and evaluating
-             their statistics.
-           - **CMFD** (*double*) -- Time (in seconds on the master process)
-             spent evaluating CMFD.
-           - **CMFD building matrices** (*double*) -- Time (in seconds on the
-             master process) spent buliding CMFD matrices.
-           - **CMFD solving matrices** (*double*) -- Time (in seconds on the
-             master process) spent solving CMFD matrices.
-           - **total** (*double*) -- Total time spent (in seconds on the master
-             process) in the program.
+All values are given in seconds and are measured on the master process.
+
+:Datasets: - **total initialization** (*double*) -- Time spent reading inputs,
+           allocating arrays, etc.
+           - **reading cross sections** (*double*) -- Time spent loading cross
+             section libraries (this is a subset of initialization).
+           - **simulation** (*double*) -- Time spent between initialization and
+             finalization.
+           - **transport** (*double*) -- Time spent transporting particles.
+           - **inactive batches** (*double*) -- Time spent in the inactive
+             batches (including non-transport activities like communcating
+             sites).
+           - **active batches** (*double*) -- Time spent in the active batches
+             (including non-transport activities like communicating sites).
+           - **synchronizing fission bank** (*double*) -- Time spent sampling
+             source particles from fission sites and communicating them to other
+             processes for load balancing.
+           - **sampling source sites** (*double*) -- Time spent sampling source
+             particles from fission sites.
+           - **SEND-RECV source sites** (*double*) -- Time spent communicating
+             source sites between processes for load balancing.
+           - **accumulating tallies** (*double*) -- Time spent communicating
+             tally results and evaluating their statistics.
+           - **CMFD** (*double*) -- Time spent evaluating CMFD.
+           - **CMFD building matrices** (*double*) -- Time spent buliding CMFD
+             matrices.
+           - **CMFD solving matrices** (*double*) -- Time spent solving CMFD
+             matrices.
+           - **total** (*double*) -- Total time spent in the program.

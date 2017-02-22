@@ -14,7 +14,7 @@ from openmc.region import Region, Intersection, Union
 # A static variable for auto-generated Surface IDs
 AUTO_SURFACE_ID = 10000
 
-_BC_TYPES = ['transmission', 'vacuum', 'reflective', 'periodic']
+_BOUNDARY_TYPES = ['transmission', 'vacuum', 'reflective', 'periodic']
 
 
 def reset_auto_surface_id():
@@ -141,7 +141,7 @@ class Surface(object):
     @boundary_type.setter
     def boundary_type(self, boundary_type):
         check_type('boundary type', boundary_type, string_types)
-        check_value('boundary type', boundary_type, _BC_TYPES)
+        check_value('boundary type', boundary_type, _BOUNDARY_TYPES)
         self._boundary_type = boundary_type
 
     def bounding_box(self, side):
@@ -204,7 +204,7 @@ class Surface(object):
         surface_id = int(group.name.split('/')[-1].lstrip('surface '))
         name = group['name'].value.decode()
         surf_type = group['type'].value.decode()
-        bc = group['boundary_condition'].value.decode()
+        bc = group['boundary_type'].value.decode()
         coeffs = group['coefficients'][...]
 
         # Create the Surface based on its type

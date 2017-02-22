@@ -263,9 +263,10 @@ def check_filetype_version(obj, expected_type, expected_version):
 
         # Check version
         if this_version[0] != expected_version:
-            raise IOError('Statepoint file has a version of {} which is not '
+            raise IOError('{} file has a version of {} which is not '
                           'consistent with the version expected by OpenMC, {}'
-                          .format('.'.join(this_version), expected_version))
+                          .format(this_filetype, '.'.join(this_version),
+                                  expected_version))
     except AttributeError:
         raise IOError('Could not read {} file. This most likely means the {} '
                       'file was produced by a different version of OpenMC than '

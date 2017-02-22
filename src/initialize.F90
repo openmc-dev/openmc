@@ -13,18 +13,18 @@ module initialize
   use set_header,      only: SetInt
   use energy_grid,     only: logarithmic_grid, grid_method
   use error,           only: fatal_error, warning
-  use geometry,        only: neighbor_lists, count_instance, calc_offsets,    &
+  use geometry,        only: neighbor_lists, count_instance, calc_offsets, &
                              maximum_levels
   use geometry_header, only: Cell, Universe, Lattice, RectLattice, HexLattice,&
                              &BASE_UNIVERSE
   use global
-  use hdf5_interface,  only: file_open, read_attribute, file_close,           &
+  use hdf5_interface,  only: file_open, read_attribute, file_close, &
                              hdf5_bank_t, hdf5_integer8_t
   use input_xml,       only: read_input_xml, cells_in_univ_dict, read_plots_xml
   use material_header, only: Material
   use message_passing
   use mgxs_data,       only: read_mgxs, create_macro_xs
-  use output,          only: title, header, print_version, write_message,     &
+  use output,          only: title, header, print_version, write_message, &
                              print_usage, print_plot
   use random_lcg,      only: initialize_prng
   use state_point,     only: load_state_point

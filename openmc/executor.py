@@ -39,8 +39,24 @@ def plot_geometry(output=True, openmc_exec='openmc', cwd='.'):
         Path to working directory to run in. Defaults to the current working directory.
 
     """
-
     return _run(openmc_exec + ' -p', output, cwd)
+
+
+def run_volume_calculation(output=True, openmc_exec='openmc', cwd='.'):
+    """Run stochastic volume calculations in OpenMC
+
+    Parameters
+    ----------
+    output : bool
+        Capture OpenMC output from standard out
+    openmc_exec : str
+        Path to OpenMC executable
+    cwd : str, optional
+        Path to working directory to run in. Defaults to the current working directory.
+
+    """
+    return _run(openmc_exec + ' --volume', output, cwd)
+
 
 
 def run(particles=None, threads=None, geometry_debug=False,

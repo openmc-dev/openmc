@@ -83,40 +83,10 @@ class Summary(object):
         self._finalize_geometry(cells, cell_fills, universes, lattices)
 
     def _read_materials(self):
-        for key, group in self._f['materials'].items():
-            material_id = int(key.lstrip('material '))
+        for group in self._f['materials'].values():
+            material = openmc.Material.from_hdf5(group)
 
-            name = group['name'].value.decode()
-            density = group['atom_density'].value
-            nuc_densities = group['nuclide_densities'][...]
-            nuclides = group['nuclides'].value
-
-            # Create the Material
-            material = openmc.Material(material_id=material_id, name=name)
-            material.depletable = bool(group.attrs['depletable'])
-
-            # Read the names of the S(a,b) tables for this Material and add them
-            if 'sab_names' in group:
-                sab_tables = group['sab_names'].value
-                for sab_table in sab_tables:
-                    name = sab_table.decode()
-                    material.add_s_alpha_beta(name)
-
-            # Set the Material's density to atom/b-cm as used by OpenMC
-            material.set_density(density=density, units='atom/b-cm')
-
-            # Add all nuclides to the Material
-            for fullname, density in zip(nuclides, nuc_densities):
-                name = fullname.decode().strip()
-
-                if 'nat' in name:
-                    material.add_element(openmc.Element(name=name),
-                                         percent=density, percent_type='ao')
-                else:
-                    material.add_nuclide(openmc.Nuclide(name=name),
-                                         percent=density, percent_type='ao')
-
-            # Add the Material to the global dictionary of all Materials
+            # Add the material to the Materials collection
             self.materials.append(material)
 
     def _read_surfaces(self):
@@ -193,179 +163,30 @@ class Summary(object):
 
     def _read_universes(self, cells):
         universes = {}
-
-        for key in self._f['geometry/universes'].keys():
-            universe_id = int(key.lstrip('universe '))
-            cell_ids = self._f['geometry/universes'][key]['cells'][...]
-
-            # Create this Universe
-            universe = openmc.Universe(universe_id=universe_id)
-
-            # Add each Cell to the Universe
-            for cell_id in cell_ids:
-                universe.add_cell(cells[cell_id])
-
-            # Add the Universe to the global list of Universes
+        for group in self._f['geometry/universes'].values():
+            universe = openmc.Universe.from_hdf5(group, cells)
             universes[universe.id] = universe
-
         return universes
 
     def _read_lattices(self, universes):
         lattices = {}
-
-        for key, group in self._f['geometry/lattices'].items():
-            lattice_id = int(key.lstrip('lattice '))
-            name = group['name'].value.decode()
-            lattice_type = group['type'].value.decode()
-
-            if 'offsets' in group:
-                offsets = group['offsets'][...]
-            else:
-                offsets = None
-
-            if lattice_type == 'rectangular':
-                dimension = group['dimension'][...]
-                lower_left = group['lower_left'][...]
-                pitch = group['pitch'][...]
-                outer = group['outer'].value
-                universe_ids = group['universes'][...]
-
-                # Create the Lattice
-                lattice = openmc.RectLattice(lattice_id=lattice_id, name=name)
-                lattice.lower_left = lower_left
-                lattice.pitch = pitch
-
-                # If the Universe specified outer the Lattice is not void
-                if outer >= 0:
-                    lattice.outer = universes[outer]
-
-                # Build array of Universe pointers for the Lattice
-                uarray = np.empty(universe_ids.shape, dtype=openmc.Universe)
-
-                for z in range(universe_ids.shape[0]):
-                    for y in range(universe_ids.shape[1]):
-                        for x in range(universe_ids.shape[2]):
-                            uarray[z, y, x] = universes[universe_ids[z, y, x]]
-
-                # Use 2D NumPy array to store lattice universes for 2D lattices
-                if len(dimension) == 2:
-                    uarray = np.squeeze(uarray)
-                    uarray = np.atleast_2d(uarray)
-
-                # Set the universes for the lattice
-                lattice.universes = uarray
-
-                # Set the distribcell offsets for the lattice
-                if offsets is not None:
-                    lattice.offsets = offsets
-
-                # Add the Lattice to the global dictionary of all Lattices
-                lattices[lattice.id] = lattice
-
-            elif lattice_type == 'hexagonal':
-                n_rings = group['n_rings'].value
-                n_axial = group['n_axial'].value
-                center = group['center'][...]
-                pitch = group['pitch'][...]
-                outer = group['outer'].value
-
-                universe_ids = group['universes'][...]
-
-                # Create the Lattice
-                lattice = openmc.HexLattice(lattice_id=lattice_id, name=name)
-                lattice.center = center
-                lattice.pitch = pitch
-
-                # If the Universe specified outer the Lattice is not void
-                if outer >= 0:
-                    lattice.outer = universes[outer]
-
-                # Build array of Universe pointers for the Lattice.  Note that
-                # we need to convert between the HDF5's square array of
-                # (x, alpha, z) to the Python API's format of a ragged nested
-                # list of (z, ring, theta).
-                uarray = []
-                for z in range(n_axial):
-                    # Add a list for this axial level.
-                    uarray.append([])
-                    x = n_rings - 1
-                    a = 2*n_rings - 2
-                    for r in range(n_rings - 1, 0, -1):
-                        # Add a list for this ring.
-                        uarray[-1].append([])
-
-                        # Climb down the top-right.
-                        for i in range(r):
-                            uarray[-1][-1].append(universe_ids[z, a, x])
-                            x += 1
-                            a -= 1
-
-                        # Climb down the right.
-                        for i in range(r):
-                            uarray[-1][-1].append(universe_ids[z, a, x])
-                            a -= 1
-
-                        # Climb down the bottom-right.
-                        for i in range(r):
-                            uarray[-1][-1].append(universe_ids[z, a, x])
-                            x -= 1
-
-                        # Climb up the bottom-left.
-                        for i in range(r):
-                            uarray[-1][-1].append(universe_ids[z, a, x])
-                            x -= 1
-                            a += 1
-
-                        # Climb up the left.
-                        for i in range(r):
-                            uarray[-1][-1].append(universe_ids[z, a, x])
-                            a += 1
-
-                        # Climb up the top-left.
-                        for i in range(r):
-                            uarray[-1][-1].append(universe_ids[z, a, x])
-                            x += 1
-
-                        # Move down to the next ring.
-                        a -= 1
-
-                        # Convert the ids into Universe objects.
-                        uarray[-1][-1] = [universes[u_id]
-                                          for u_id in uarray[-1][-1]]
-
-                    # Handle the degenerate center ring separately.
-                    u_id = universe_ids[z, a, x]
-                    uarray[-1].append([universes[u_id]])
-
-                # Add the universes to the lattice.
-                if len(pitch) == 2:
-                    # Lattice is 3D
-                    lattice.universes = uarray
-                else:
-                    # Lattice is 2D; extract the only axial level
-                    lattice.universes = uarray[0]
-
-                if offsets is not None:
-                    lattice.offsets = offsets
-
-                # Add the Lattice to the global dictionary of all Lattices
-                lattices[lattice.id] = lattice
-
+        for group in self._f['geometry/lattices'].values():
+            lattice = openmc.Lattice.from_hdf5(group, universes)
+            lattices[lattice.id] = lattice
         return lattices
 
     def _finalize_geometry(self, cells, cell_fills, universes, lattices):
+        materials = {m.id: m for m in self.materials}
+
         # Iterate over all Cells and add fill Materials, Universes and Lattices
         for cell_id, (fill_type, fill_id) in cell_fills.items():
             # Retrieve the object corresponding to the fill type and ID
             if fill_type == 'normal':
                 if isinstance(fill_id, Iterable):
-                    fill = [self.get_material_by_id(mat) if mat > 0 else None
+                    fill = [materials[mat] if mat > 0 else None
                             for mat in fill_id]
                 else:
-                    if fill_id > 0:
-                        fill = self.get_material_by_id(fill_id)
-                    else:
-                        fill = None
+                    fill = materials[fill_id] if fill_id > 0 else None
             elif fill_type == 'universe':
                 fill = universes[fill_id]
             else:
@@ -387,24 +208,3 @@ class Summary(object):
 
         """
         self.geometry.add_volume_information(volume_calc)
-
-    def get_material_by_id(self, material_id):
-        """Return a Material object given the material id
-
-        Parameters
-        ----------
-        id : int
-            Unique identifier for the material
-
-        Returns
-        -------
-        material : openmc.Material
-            Material with given id
-
-        """
-
-        for material in self.materials:
-            if material.id == material_id:
-                return material
-
-        return None

@@ -118,6 +118,35 @@ class Universe(object):
         else:
             self._name = ''
 
+    @classmethod
+    def from_hdf5(cls, group, cells):
+        """Create universe from HDF5 group
+
+        Parameters
+        ----------
+        group : h5py.Group
+            Group in HDF5 file
+        cells : dict
+            Dictionary mapping cell IDs to instances of :class:`openmc.Cell`.
+
+        Returns
+        -------
+        openmc.Universe
+            Universe instance
+
+        """
+        universe_id = int(group.name.split('/')[-1].lstrip('universe '))
+        cell_ids = group['cells'].value
+
+        # Create this Universe
+        universe = cls(universe_id)
+
+        # Add each Cell to the Universe
+        for cell_id in cell_ids:
+            universe.add_cell(cells[cell_id])
+
+        return universe
+
     def find(self, point):
         """Find cells/universes/lattices which contain a given point
 

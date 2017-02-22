@@ -171,7 +171,15 @@ class Surface(object):
         return (np.array([-np.inf, -np.inf, -np.inf]),
                 np.array([np.inf, np.inf, np.inf]))
 
-    def create_xml_subelement(self):
+    def to_xml_element(self):
+        """Return XML representation of the surface
+
+        Returns
+        -------
+        element : xml.etree.ElementTree.Element
+            XML element containing source data
+
+        """
         element = ET.Element("surface")
         element.set("id", str(self._id))
 
@@ -384,8 +392,16 @@ class Plane(Surface):
         x, y, z = point
         return self.a*x + self.b*y + self.c*z - self.d
 
-    def create_xml_subelement(self):
-        element = super(Plane, self).create_xml_subelement()
+    def to_xml_element(self):
+        """Return XML representation of the surface
+
+        Returns
+        -------
+        element : xml.etree.ElementTree.Element
+            XML element containing source data
+
+        """
+        element = super(Plane, self).to_xml_element()
 
         # Add periodic surface pair information
         if self.boundary_type == 'periodic':

@@ -259,6 +259,49 @@ class Material(object):
                       depletable, bool)
         self._depletable = depletable
 
+    @classmethod
+    def from_hdf5(cls, group):
+        """Create material from HDF5 group
+
+        Parameters
+        ----------
+        group : h5py.Group
+            Group in HDF5 file
+
+        Returns
+        -------
+        openmc.Material
+            Material instance
+
+        """
+        mat_id = int(group.name.split('/')[-1].lstrip('material '))
+
+        name = group['name'].value.decode()
+        density = group['atom_density'].value
+        nuc_densities = group['nuclide_densities'][...]
+        nuclides = group['nuclides'].value
+
+        # Create the Material
+        material = cls(mat_id, name)
+        material.depletable = bool(group.attrs['depletable'])
+
+        # Read the names of the S(a,b) tables for this Material and add them
+        if 'sab_names' in group:
+            sab_tables = group['sab_names'].value
+            for sab_table in sab_tables:
+                name = sab_table.decode()
+                material.add_s_alpha_beta(name)
+
+        # Set the Material's density to atom/b-cm as used by OpenMC
+        material.set_density(density=density, units='atom/b-cm')
+
+        # Add all nuclides to the Material
+        for fullname, density in zip(nuclides, nuc_densities):
+            name = fullname.decode().strip()
+            material.add_nuclide(name, percent=density, percent_type='ao')
+
+        return material
+
     def set_density(self, units, density=None):
         """Set the density of the material
 

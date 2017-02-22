@@ -560,11 +560,11 @@ contains
       if (c % material(1) == NONE) then
         id = c % fill
         if (universe_dict % has_key(id)) then
-          c % type = CELL_FILL
+          c % type = FILL_UNIVERSE
           c % fill = universe_dict % get_key(id)
         elseif (lattice_dict % has_key(id)) then
           lid = lattice_dict % get_key(id)
-          c % type = CELL_LATTICE
+          c % type = FILL_LATTICE
           c % fill = lid
         else
           call fatal_error("Specified fill " // trim(to_str(id)) // " on cell "&
@@ -575,9 +575,9 @@ contains
         do j = 1, size(c % material)
           id = c % material(j)
           if (id == MATERIAL_VOID) then
-            c % type = CELL_NORMAL
+            c % type = FILL_MATERIAL
           else if (material_dict % has_key(id)) then
-            c % type = CELL_NORMAL
+            c % type = FILL_MATERIAL
             c % material(j) = material_dict % get_key(id)
           else
             call fatal_error("Could not find material " // trim(to_str(id)) &
@@ -934,7 +934,7 @@ contains
 
     ! Allocate offset table for fill cells
     do i = 1, n_cells
-      if (cells(i) % type /= CELL_NORMAL) then
+      if (cells(i) % type /= FILL_MATERIAL) then
         allocate(cells(i) % offset(n_maps))
       end if
     end do

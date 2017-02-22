@@ -31,7 +31,7 @@ The current version of the summary file format is 5.0.
            - **universe** (*int*) -- Universe assigned to the cell. If none is
              specified, the default universe (0) is assigned.
            - **fill_type** (*char[]*) -- Type of fill for the cell. Can be
-             'normal', 'universe', or 'lattice'.
+             'material', 'universe', or 'lattice'.
            - **material** (*int* or *int[]*) -- Unique ID of the material(s)
              assigned to the cell. This dataset is present only if fill_type is
              set to 'normal'.  The value '-1' signifies void material.  The data

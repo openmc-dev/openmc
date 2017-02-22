@@ -716,10 +716,10 @@ contains
       distribcell_index = cells(this % cell) % distribcell_index
       offset = 0
       do i = 1, p % n_coord
-        if (cells(p % coord(i) % cell) % type == CELL_FILL) then
+        if (cells(p % coord(i) % cell) % type == FILL_UNIVERSE) then
           offset = offset + cells(p % coord(i) % cell) % &
                offset(distribcell_index)
-        elseif (cells(p % coord(i) % cell) % type == CELL_LATTICE) then
+        elseif (cells(p % coord(i) % cell) % type == FILL_LATTICE) then
           if (lattices(p % coord(i + 1) % lattice) % obj &
                % are_valid_indices([&
                p % coord(i + 1) % lattice_x, &
@@ -1421,7 +1421,7 @@ contains
           c => cells(cell_index)
 
           ! Skip normal cells which do not have offsets
-          if (c % type == CELL_NORMAL) then
+          if (c % type == FILL_MATERIAL) then
             cycle
           end if
 
@@ -1430,13 +1430,13 @@ contains
         end do
 
         ! Ensure we didn't just end the loop by iteration
-        if (c % type /= CELL_NORMAL) then
+        if (c % type /= FILL_MATERIAL) then
 
           ! There are more cells in this universe that it could be in
           later_cell = .true.
 
           ! Two cases, lattice or fill cell
-          if (c % type == CELL_FILL) then
+          if (c % type == FILL_UNIVERSE) then
             temp_offset = c % offset(map)
 
           ! Get the offset of the first lattice location
@@ -1453,7 +1453,7 @@ contains
         end if
       end if
 
-      if (n == 1 .and. c % type /= CELL_NORMAL) then
+      if (n == 1 .and. c % type /= FILL_MATERIAL) then
         this_cell = .true.
       end if
 
@@ -1471,7 +1471,7 @@ contains
 
         ! ====================================================================
         ! CELL CONTAINS LOWER UNIVERSE, RECURSIVELY FIND CELL
-        if (c % type == CELL_FILL) then
+        if (c % type == FILL_UNIVERSE) then
 
           ! Enter this cell to update the current offset
           offset = c % offset(map) + offset
@@ -1482,7 +1482,7 @@ contains
 
         ! ====================================================================
         ! CELL CONTAINS LATTICE, RECURSIVELY FIND CELL
-        elseif (c % type == CELL_LATTICE) then
+        elseif (c % type == FILL_LATTICE) then
 
           ! Set current lattice
           lat => lattices(c % fill) % obj

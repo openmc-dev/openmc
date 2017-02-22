@@ -108,7 +108,7 @@ class Summary(object):
             name = group['name'].value.decode()
             fill_type = group['fill_type'].value.decode()
 
-            if fill_type == 'normal':
+            if fill_type == 'material':
                 fill = group['material'].value
             elif fill_type == 'universe':
                 fill = group['fill'].value
@@ -138,7 +138,7 @@ class Summary(object):
                     rotation = np.asarray(rotation, dtype=np.int)
                     cell._rotation = rotation
 
-            elif fill_type == 'normal':
+            elif fill_type == 'material':
                 cell.temperature = group['temperature'][...]
 
             # Store Cell fill information for after Universe/Lattice creation
@@ -181,7 +181,7 @@ class Summary(object):
         # Iterate over all Cells and add fill Materials, Universes and Lattices
         for cell_id, (fill_type, fill_id) in cell_fills.items():
             # Retrieve the object corresponding to the fill type and ID
-            if fill_type == 'normal':
+            if fill_type == 'material':
                 if isinstance(fill_id, Iterable):
                     fill = [materials[mat] if mat > 0 else None
                             for mat in fill_id]

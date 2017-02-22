@@ -107,11 +107,11 @@ module constants
        OP_INTERSECTION = huge(0) - 3, & ! Intersection operator
        OP_UNION        = huge(0) - 4    ! Union operator (^)
 
-  ! Cell types
+  ! Cell fill types
   integer, parameter ::  &
-       CELL_NORMAL  = 1, & ! Cell with a specified material
-       CELL_FILL    = 2, & ! Cell filled by a separate universe
-       CELL_LATTICE = 3    ! Cell filled with a lattice
+       FILL_MATERIAL = 1, & ! Cell with a specified material
+       FILL_UNIVERSE = 2, & ! Cell filled by a separate universe
+       FILL_LATTICE  = 3    ! Cell filled with a lattice
 
   ! Void material
   integer, parameter :: MATERIAL_VOID = -1

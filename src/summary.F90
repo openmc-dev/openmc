@@ -156,8 +156,8 @@ contains
 
       ! Write information on what fills this cell
       select case (c%type)
-      case (CELL_NORMAL)
-        call write_dataset(cell_group, "fill_type", "normal")
+      case (FILL_MATERIAL)
+        call write_dataset(cell_group, "fill_type", "material")
 
         if (size(c % material) == 1) then
           if (c % material(1) == MATERIAL_VOID) then
@@ -185,7 +185,7 @@ contains
         call write_dataset(cell_group, "temperature", cell_temperatures)
         deallocate(cell_temperatures)
 
-      case (CELL_FILL)
+      case (FILL_UNIVERSE)
         call write_dataset(cell_group, "fill_type", "universe")
         call write_dataset(cell_group, "fill", universes(c%fill)%id)
         if (allocated(c%offset)) then
@@ -201,7 +201,7 @@ contains
           call write_dataset(cell_group, "rotation", c%rotation)
         end if
 
-      case (CELL_LATTICE)
+      case (FILL_LATTICE)
         call write_dataset(cell_group, "fill_type", "lattice")
         call write_dataset(cell_group, "lattice", lattices(c%fill)%obj%id)
       end select

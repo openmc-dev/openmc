@@ -1,5 +1,5 @@
 from collections import OrderedDict, Iterable
-from numbers import Integral
+from numbers import Integral, Real
 import random
 import sys
 
@@ -42,9 +42,9 @@ class Universe(object):
     cells : collections.OrderedDict
         Dictionary whose keys are cell IDs and values are :class:`Cell`
         instances
-    volume_information : dict
-        Estimate of the volume and total number of atoms of each nuclide from a
-        stochastic volume calculation. This information is set with the
+    volume : float
+        Volume of the universe in cm^3. This can either be set manually or
+        calculated in a stochastic volume calculation and added via the
         :meth:`Universe.add_volume_information` method.
 
     """
@@ -53,7 +53,8 @@ class Universe(object):
         # Initialize Cell class attributes
         self.id = universe_id
         self.name = name
-        self._volume_information = None
+        self._volume = None
+        self._atoms = {}
 
         # Keys     - Cell IDs
         # Values - Cells
@@ -105,8 +106,8 @@ class Universe(object):
         return self._cells
 
     @property
-    def volume_information(self):
-        return self._volume_information
+    def volume(self):
+        return self._volume
 
     @id.setter
     def id(self, universe_id):
@@ -126,6 +127,12 @@ class Universe(object):
             self._name = name
         else:
             self._name = ''
+
+    @volume.setter
+    def volume(self, volume):
+        if volume is not None:
+            cv.check_type('universe volume', volume, Real)
+        self._volume = volume
 
     @classmethod
     def from_hdf5(cls, group, cells):
@@ -166,10 +173,9 @@ class Universe(object):
 
         """
         if volume_calc.domain_type == 'cell':
-            for univ_id in volume_calc.results:
-                if univ_id == self.id:
-                    self._volume_information = volume_calc.results[univ_id]
-                    break
+            if self.id in volume_calc.volumes:
+                self._volume = volume_calc.volumes[self.id]
+                self._atoms = volume_calc.atoms[self.id]
             else:
                 raise ValueError('No volume information found for this universe.')
         else:

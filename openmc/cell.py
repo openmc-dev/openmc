@@ -86,9 +86,9 @@ class Cell(object):
     distribcell_paths : list of str
         The paths traversed through the CSG tree to reach each distribcell
         instance
-    volume_information : dict
-        Estimate of the volume and total number of atoms of each nuclide from a
-        stochastic volume calculation. This information is set with the
+    volume : float
+        Volume of the cell in cm^3. This can either be set manually or
+        calculated in a stochastic volume calculation and added via the
         :meth:`Cell.add_volume_information` method.
 
     """
@@ -106,7 +106,8 @@ class Cell(object):
         self._offsets = None
         self._distribcell_index = None
         self._distribcell_paths = None
-        self._volume_information = None
+        self._volume = None
+        self._atoms = None
 
     def __contains__(self, point):
         if self.region is None:
@@ -224,8 +225,8 @@ class Cell(object):
         return self._distribcell_paths
 
     @property
-    def volume_information(self):
-        return self._volume_information
+    def volume(self):
+        return self._volume
 
     @id.setter
     def id(self, cell_id):
@@ -326,6 +327,12 @@ class Cell(object):
             cv.check_type('cell region', region, Region)
         self._region = region
 
+    @volume.setter
+    def volume(self, volume):
+        if volume is not None:
+            cv.check_type('cell volume', volume, Real)
+        self._volume = volume
+
     @distribcell_index.setter
     def distribcell_index(self, ind):
         cv.check_type('distribcell index', ind, Integral)
@@ -391,10 +398,9 @@ class Cell(object):
 
         """
         if volume_calc.domain_type == 'cell':
-            for cell_id in volume_calc.results:
-                if cell_id == self.id:
-                    self._volume_information = volume_calc.results[cell_id]
-                    break
+            if self.id in volume_calc.volumes:
+                self._volume = volume_calc.volumes[self.id][0]
+                self._atoms = volume_calc.atoms[self.id]
             else:
                 raise ValueError('No volume information found for this cell.')
         else:
@@ -446,9 +452,9 @@ class Cell(object):
         elif self.fill_type == 'void':
             pass
         else:
-            if self.volume_information is not None:
-                volume = self.volume_information['volume'][0]
-                for name, atoms in self.volume_information['atoms']:
+            if self._atoms is not None:
+                volume = self.volume
+                for name, atoms in self._atoms.items():
                     nuclide = openmc.Nuclide(name)
                     density = 1.0e-24 * atoms[0]/volume  # density in atoms/b-cm
                     nuclides[name] = (nuclide, density)

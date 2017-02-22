@@ -185,6 +185,7 @@ Running OpenMC
    :template: myfunction.rst
 
    openmc.run
+   openmc.run_volume_calculation
    openmc.plot_geometry
 
 Post-processing

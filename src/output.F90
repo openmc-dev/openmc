@@ -194,7 +194,8 @@ contains
       write(OUTPUT_UNIT,*) 'Usage: openmc [options] [directory]'
       write(OUTPUT_UNIT,*)
       write(OUTPUT_UNIT,*) 'Options:'
-      write(OUTPUT_UNIT,*) '  -g, --geometry-debug   Run in geometry debugging mode'
+      write(OUTPUT_UNIT,*) '  -c, --volume           Run in stochastic volume calculation mode'
+      write(OUTPUT_UNIT,*) '  -g, --geometry-debug   Run with geometry debugging on'
       write(OUTPUT_UNIT,*) '  -n, --particles        Number of particles per generation'
       write(OUTPUT_UNIT,*) '  -p, --plot             Run in plotting mode'
       write(OUTPUT_UNIT,*) '  -r, --restart          Restart a previous run from a state point'

@@ -2067,7 +2067,7 @@ contains
       call h5tcopy_f(H5T_C_S1, filetype, hdf5_err)
       call h5tset_size_f(filetype, n, hdf5_err)
 
-      ! Crate memory space and attribute
+      ! Create memory space and attribute
       call h5screate_f(H5S_SCALAR_F, dspace_id, hdf5_err)
       call h5acreate_f(obj_id, trim(name), filetype, dspace_id, &
            attr_id, hdf5_err)

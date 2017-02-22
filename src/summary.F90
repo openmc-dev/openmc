@@ -329,16 +329,16 @@ contains
       call write_dataset(surface_group, "coefficients", coeffs)
       deallocate(coeffs)
 
-      ! Write boundary condition
+      ! Write boundary type
       select case (s%bc)
       case (BC_TRANSMIT)
-        call write_dataset(surface_group, "boundary_condition", "transmission")
+        call write_dataset(surface_group, "boundary_type", "transmission")
       case (BC_VACUUM)
-        call write_dataset(surface_group, "boundary_condition", "vacuum")
+        call write_dataset(surface_group, "boundary_type", "vacuum")
       case (BC_REFLECT)
-        call write_dataset(surface_group, "boundary_condition", "reflective")
+        call write_dataset(surface_group, "boundary_type", "reflective")
       case (BC_PERIODIC)
-        call write_dataset(surface_group, "boundary_condition", "periodic")
+        call write_dataset(surface_group, "boundary_type", "periodic")
       end select
 
       call close_group(surface_group)

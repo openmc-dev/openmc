@@ -27,7 +27,7 @@ The current version of the summary file format is 5.0.
 
 **/geometry/cells/cell <uid>/**
 
-:Datasets: - **name** (*char[]*) -- Name of the cell.
+:Datasets: - **name** (*char[]*) -- User-defined name of the cell.
            - **universe** (*int*) -- Universe assigned to the cell. If none is
              specified, the default universe (0) is assigned.
            - **fill_type** (*char[]*) -- Type of fill for the cell. Can be

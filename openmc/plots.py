@@ -351,11 +351,11 @@ class Plot(object):
 
         # Generate random colors for each feature
         self.col_spec = {}
-        for domain in domains:
+        for domain_id in domains:
             r = np.random.randint(0, 256)
             g = np.random.randint(0, 256)
             b = np.random.randint(0, 256)
-            self.col_spec[domain] = (r, g, b)
+            self.col_spec[domain_id] = (r, g, b)
 
     def highlight_domains(self, geometry, domains, seed=1,
                           alpha=0.5, background='gray'):

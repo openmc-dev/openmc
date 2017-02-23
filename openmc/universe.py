@@ -440,7 +440,7 @@ class Universe(object):
 
         Returns
         -------
-        materials : Collections.OrderedDict
+        materials : collections.OrderedDict
             Dictionary whose keys are material IDs and values are
             :class:`Material` instances
 
@@ -465,14 +465,9 @@ class Universe(object):
             :class:`Universe` instances
 
         """
-
-        # Get all Cells in this Universe
-        cells = self.get_all_cells()
-
+        # Append all Universes within each Cell to the dictionary
         universes = OrderedDict()
-
-        # Append all Universes containing each Cell to the dictionary
-        for cell in cells.values():
+        for cell in self.get_all_cells().values():
             universes.update(cell.get_all_universes())
 
         return universes

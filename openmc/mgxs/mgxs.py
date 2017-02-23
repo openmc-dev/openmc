@@ -894,7 +894,7 @@ class MGXS(object):
 
         """
 
-        cv.check_type('statepoint', statepoint, openmc.statepoint.StatePoint)
+        cv.check_type('statepoint', statepoint, openmc.StatePoint)
 
         if statepoint.summary is None:
             msg = 'Unable to load data from a statepoint which has not been ' \
@@ -904,16 +904,13 @@ class MGXS(object):
         # Override the domain object that loaded from an OpenMC summary file
         # NOTE: This is necessary for micro cross-sections which require
         # the isotopic number densities as computed by OpenMC
-        su = statepoint.summary
-        if self.domain_type == 'cell' or self.domain_type == 'distribcell':
-            cells = {c.id: c for c in su.geometry.get_all_cells()}
-            self.domain = cells[self.domain.id]
+        geom = statepoint.summary.geometry
+        if self.domain_type in ('cell', 'distribcell'):
+            self.domain = geom.get_all_cells()[self.domain.id]
         elif self.domain_type == 'universe':
-            universes = {u.id: u for u in su.geometry.get_all_universes()}
-            self.domain = universes[self.domain.id]
+            self.domain = geom.get_all_universes()[self.domain.id]
         elif self.domain_type == 'material':
-            mats = {m.id: m for m in su.materials}
-            self.domain = mats[self.domain.id]
+            self.domain = geom.get_all_materials()[self.domain.id]
         elif self.domain_type == 'mesh':
             self.domain = statepoint.meshes[self.domain.id]
         else:

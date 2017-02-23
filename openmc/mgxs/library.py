@@ -192,11 +192,11 @@ class Library(object):
     def domains(self):
         if self._domains == 'all':
             if self.domain_type == 'material':
-                return self.geometry.get_all_materials()
+                return list(self.geometry.get_all_materials().values())
             elif self.domain_type in ['cell', 'distribcell']:
-                return self.geometry.get_all_material_cells()
+                return list(self.geometry.get_all_material_cells().values())
             elif self.domain_type == 'universe':
-                return self.geometry.get_all_universes()
+                return list(self.geometry.get_all_universes().values())
             elif self.domain_type == 'mesh':
                 raise ValueError('Unable to get domains for Mesh domain type')
             else:
@@ -316,13 +316,13 @@ class Library(object):
         else:
             if self.domain_type == 'material':
                 cv.check_iterable_type('domain', domains, openmc.Material)
-                all_domains = self.geometry.get_all_materials()
+                all_domains = self.geometry.get_all_materials().values()
             elif self.domain_type in ['cell', 'distribcell']:
                 cv.check_iterable_type('domain', domains, openmc.Cell)
-                all_domains = self.geometry.get_all_material_cells()
+                all_domains = self.geometry.get_all_material_cells().values()
             elif self.domain_type == 'universe':
                 cv.check_iterable_type('domain', domains, openmc.Universe)
-                all_domains = self.geometry.get_all_universes()
+                all_domains = self.geometry.get_all_universes().values()
             elif self.domain_type == 'mesh':
                 cv.check_iterable_type('domain', domains, openmc.Mesh)
 
@@ -1342,7 +1342,7 @@ class Library(object):
             materials = openmc.Materials()
 
             # Get all Cells from the Geometry for differentiation
-            all_cells = geometry.get_all_material_cells()
+            all_cells = geometry.get_all_material_cells().values()
 
             # Create the xsdata object and add it to the mgxs_file
             for i, domain in enumerate(self.domains):

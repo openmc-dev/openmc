@@ -318,7 +318,6 @@ set(LIBOPENMC_FORTRAN_SRC
   src/physics_mg.F90
   src/plot.F90
   src/plot_header.F90
-  src/ppmlib.F90
   src/product_header.F90
   src/progress_header.F90
   src/random_lcg.F90

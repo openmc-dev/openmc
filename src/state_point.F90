@@ -16,7 +16,6 @@ module state_point
   use hdf5
 
   use constants
-  use dict_header,        only: ElemKeyValueII, ElemKeyValueCI
   use endf,               only: reaction_name
   use error,              only: fatal_error, warning
   use global
@@ -43,17 +42,13 @@ contains
     integer :: n_order      ! loop index for moment orders
     integer :: nm_order     ! loop index for Ynm moment orders
     integer, allocatable :: id_array(:)
-    integer, allocatable :: key_array(:)
     integer(HID_T) :: file_id
     integer(HID_T) :: cmfd_group, tallies_group, tally_group, meshes_group, &
                       mesh_group, filter_group, derivs_group, deriv_group, &
                       runtime_group
     character(MAX_WORD_LEN), allocatable :: str_array(:)
     character(MAX_FILE_LEN)    :: filename
-    type(RegularMesh), pointer :: meshp
     type(TallyObject), pointer    :: tally
-    type(ElemKeyValueII), pointer :: current
-    type(ElemKeyValueII), pointer :: next
 
     ! Set filename for state point
     filename = trim(path_output) // 'statepoint.' // &
@@ -68,36 +63,37 @@ contains
       file_id = file_create(filename)
 
       ! Write file type
-      call write_dataset(file_id, "filetype", 'statepoint')
+      call write_attribute(file_id, "filetype", "statepoint")
 
       ! Write revision number for state point file
-      call write_dataset(file_id, "revision", REVISION_STATEPOINT)
+      call write_attribute(file_id, "version", VERSION_STATEPOINT)
 
       ! Write OpenMC version
-      call write_dataset(file_id, "version_major", VERSION_MAJOR)
-      call write_dataset(file_id, "version_minor", VERSION_MINOR)
-      call write_dataset(file_id, "version_release", VERSION_RELEASE)
+      call write_attribute(file_id, "openmc_version", VERSION)
+#ifdef GIT_SHA1
+      call write_attribute(file_id, "git_sha1", GIT_SHA1)
+#endif
 
       ! Write current date and time
-      call write_dataset(file_id, "date_and_time", time_stamp())
+      call write_attribute(file_id, "date_and_time", time_stamp())
 
       ! Write path to input
-      call write_dataset(file_id, "path", path_input)
+      call write_attribute(file_id, "path", path_input)
 
       ! Write out random number seed
       call write_dataset(file_id, "seed", seed)
 
       ! Write run information
       if (run_CE) then
-        call write_dataset(file_id, "run_CE", 1)
+        call write_dataset(file_id, "energy_mode", "continuous-energy")
       else
-        call write_dataset(file_id, "run_CE", 0)
+        call write_dataset(file_id, "energy_mode", "multi-group")
       end if
       select case(run_mode)
       case (MODE_FIXEDSOURCE)
         call write_dataset(file_id, "run_mode", "fixed source")
       case (MODE_EIGENVALUE)
-        call write_dataset(file_id, "run_mode", "k-eigenvalue")
+        call write_dataset(file_id, "run_mode", "eigenvalue")
       end select
       call write_dataset(file_id, "n_particles", n_particles)
       call write_dataset(file_id, "n_batches", n_batches)
@@ -107,15 +103,15 @@ contains
 
       ! Indicate whether source bank is stored in statepoint
       if (source_separate) then
-        call write_dataset(file_id, "source_present", 0)
+        call write_attribute(file_id, "source_present", 0)
       else
-        call write_dataset(file_id, "source_present", 1)
+        call write_attribute(file_id, "source_present", 1)
       end if
 
       ! Write out information for eigenvalue run
       if (run_mode == MODE_EIGENVALUE) then
         call write_dataset(file_id, "n_inactive", n_inactive)
-        call write_dataset(file_id, "gen_per_batch", gen_per_batch)
+        call write_dataset(file_id, "generations_per_batch", gen_per_batch)
         call write_dataset(file_id, "k_generation", k_generation)
         call write_dataset(file_id, "entropy", entropy)
         call write_dataset(file_id, "k_col_abs", k_col_abs)
@@ -125,7 +121,7 @@ contains
 
         ! Write out CMFD info
         if (cmfd_on) then
-          call write_dataset(file_id, "cmfd_on", 1)
+          call write_attribute(file_id, "cmfd_on", 1)
 
           cmfd_group = create_group(file_id, "cmfd")
           call write_dataset(cmfd_group, "indices", cmfd % indices)
@@ -137,7 +133,7 @@ contains
           call write_dataset(cmfd_group, "cmfd_srccmp", cmfd % src_cmp)
           call close_group(cmfd_group)
         else
-          call write_dataset(file_id, "cmfd_on", 0)
+          call write_attribute(file_id, "cmfd_on", 0)
         end if
       end if
 
@@ -145,52 +141,35 @@ contains
 
       ! Write number of meshes
       meshes_group = create_group(tallies_group, "meshes")
-      call write_dataset(meshes_group, "n_meshes", n_meshes)
+      call write_attribute(meshes_group, "n_meshes", n_meshes)
 
       if (n_meshes > 0) then
-
-        ! Print list of mesh IDs
-        current => mesh_dict % keys()
-
+        ! Write IDs of meshes
         allocate(id_array(n_meshes))
-        allocate(key_array(n_meshes))
-        i = 1
-
-        do while (associated(current))
-          key_array(i) = current % key
-          id_array(i) = current % value
-
-          ! Move to next mesh
-          next => current % next
-          deallocate(current)
-          current => next
-          i = i + 1
+        do i = 1, n_meshes
+          id_array(i) = meshes(i) % id
         end do
-
-        call write_dataset(meshes_group, "ids", id_array)
-        call write_dataset(meshes_group, "keys", key_array)
-
-        deallocate(key_array)
+        call write_attribute(meshes_group, "ids", id_array)
+        deallocate(id_array)
 
         ! Write information for meshes
         MESH_LOOP: do i = 1, n_meshes
-          meshp => meshes(id_array(i))
-          mesh_group = create_group(meshes_group, "mesh " &
-               // trim(to_str(meshp % id)))
+          associate (m => meshes(i))
+            mesh_group = create_group(meshes_group, "mesh " &
+                 // trim(to_str(m % id)))
 
-          select case (meshp % type)
-          case (MESH_REGULAR)
-            call write_dataset(mesh_group, "type", "regular")
-          end select
-          call write_dataset(mesh_group, "dimension", meshp % dimension)
-          call write_dataset(mesh_group, "lower_left", meshp % lower_left)
-          call write_dataset(mesh_group, "upper_right", meshp % upper_right)
-          call write_dataset(mesh_group, "width", meshp % width)
+            select case (m % type)
+            case (MESH_REGULAR)
+              call write_dataset(mesh_group, "type", "regular")
+            end select
+            call write_dataset(mesh_group, "dimension", m % dimension)
+            call write_dataset(mesh_group, "lower_left", m % lower_left)
+            call write_dataset(mesh_group, "upper_right", m % upper_right)
+            call write_dataset(mesh_group, "width", m % width)
 
-          call close_group(mesh_group)
+            call close_group(mesh_group)
+          end associate
         end do MESH_LOOP
-
-        deallocate(id_array)
       end if
 
       call close_group(meshes_group)
@@ -228,25 +207,16 @@ contains
       end if
 
       ! Write number of tallies
-      call write_dataset(tallies_group, "n_tallies", n_tallies)
+      call write_attribute(tallies_group, "n_tallies", n_tallies)
 
       if (n_tallies > 0) then
-
-        ! Print list of tally IDs
+        ! Write array of tally IDs
         allocate(id_array(n_tallies))
-        allocate(key_array(n_tallies))
-
-        ! Write all tally information except results
         do i = 1, n_tallies
-          tally => tallies(i)
-          key_array(i) = tally % id
-          id_array(i) = i
+          id_array(i) = tallies(i) % id
         end do
-
-        call write_dataset(tallies_group, "ids", id_array)
-        call write_dataset(tallies_group, "keys", key_array)
-
-        deallocate(key_array)
+        call write_attribute(tallies_group, "ids", id_array)
+        deallocate(id_array)
 
         ! Write all tally information except results
         TALLY_METADATA: do i = 1, n_tallies
@@ -255,6 +225,9 @@ contains
           tally => tallies(i)
           tally_group = create_group(tallies_group, "tally " // &
                trim(to_str(tally % id)))
+
+          ! Write the name for this tally
+          call write_dataset(tally_group, "name", tally % name)
 
           select case(tally % estimator)
           case (ESTIMATOR_ANALOG)
@@ -372,14 +345,14 @@ contains
       call write_dataset(file_id, "n_realizations", n_realizations)
 
       ! Write global tallies
-      call write_dataset(file_id, "n_global_tallies", N_GLOBAL_TALLIES)
       call write_dataset(file_id, "global_tallies", global_tallies)
 
       ! Write tallies
-      tallies_group = open_group(file_id, "tallies")
       if (tallies_on) then
         ! Indicate that tallies are on
-        call write_dataset(tallies_group, "tallies_present", 1)
+        call write_attribute(file_id, "tallies_present", 1)
+
+        tallies_group = open_group(file_id, "tallies")
 
         ! Write all tally results
         TALLY_RESULTS: do i = 1, n_tallies
@@ -393,12 +366,12 @@ contains
           call close_group(tally_group)
         end do TALLY_RESULTS
 
+        call close_group(tallies_group)
       else
         ! Indicate tallies are off
-        call write_dataset(tallies_group, "tallies_present", 0)
+        call write_attribute(file_id, "tallies_present", 0)
       end if
 
-      call close_group(tallies_group)
 
       ! Write out the runtime metrics.
       runtime_group = create_group(file_id, "runtime")
@@ -521,10 +494,6 @@ contains
 #ifdef MPI
     real(8) :: dummy  ! temporary receive buffer for non-root reduces
 #endif
-    integer, allocatable       :: id_array(:)
-    type(ElemKeyValueII), pointer :: current
-    type(ElemKeyValueII), pointer :: next
-    type(TallyObject), pointer :: tally
     type(TallyObject) :: dummy_tally
 
     ! ==========================================================================
@@ -570,92 +539,72 @@ contains
     if (tallies_on) then
       ! Indicate that tallies are on
       if (master) then
-        call write_dataset(tallies_group, "tallies_present", 1)
-
-        ! Build list of tally IDs
-        current => tally_dict%keys()
-        allocate(id_array(n_tallies))
-        i = 1
-
-        do while (associated(current))
-          id_array(i) = current%value
-          ! Move to next tally
-          next => current%next
-          deallocate(current)
-          current => next
-          i = i + 1
-        end do
-
+        call write_attribute(file_id, "tallies_present", 1)
       end if
 
       ! Write all tally results
       TALLY_RESULTS: do i = 1, n_tallies
+        associate (t => tallies(i))
+          ! Determine size of tally results array
+          m = size(t % results, 2)
+          n = size(t % results, 3)
+          n_bins = m*n*2
 
-        tally => tallies(i)
+          ! Allocate array for storing sums and sums of squares, but
+          ! contiguously in memory for each
+          allocate(tally_temp(2,m,n))
+          tally_temp(1,:,:) = t % results(RESULT_SUM,:,:)
+          tally_temp(2,:,:) = t % results(RESULT_SUM_SQ,:,:)
 
-        ! Determine size of tally results array
-        m = size(tally%results, 2)
-        n = size(tally%results, 3)
-        n_bins = m*n*2
+          if (master) then
+            tally_group = open_group(tallies_group, "tally " // &
+                 trim(to_str(t % id)))
 
-        ! Allocate array for storing sums and sums of squares, but
-        ! contiguously in memory for each
-        allocate(tally_temp(2,m,n))
-        tally_temp(1,:,:) = tally%results(RESULT_SUM,:,:)
-        tally_temp(2,:,:) = tally%results(RESULT_SUM_SQ,:,:)
-
-        if (master) then
-          tally_group = open_group(tallies_group, "tally " // &
-               trim(to_str(tally%id)))
-
-          ! The MPI_IN_PLACE specifier allows the master to copy values into
-          ! a receive buffer without having a temporary variable
+            ! The MPI_IN_PLACE specifier allows the master to copy values into
+            ! a receive buffer without having a temporary variable
 #ifdef MPI
-          call MPI_REDUCE(MPI_IN_PLACE, tally_temp, n_bins, MPI_REAL8, &
-               MPI_SUM, 0, mpi_intracomm, mpi_err)
+            call MPI_REDUCE(MPI_IN_PLACE, tally_temp, n_bins, MPI_REAL8, &
+                 MPI_SUM, 0, mpi_intracomm, mpi_err)
 #endif
 
-          ! At the end of the simulation, store the results back in the
-          ! regular TallyResults array
-          if (current_batch == n_max_batches .or. satisfy_triggers) then
-            tally%results(RESULT_SUM,:,:) = tally_temp(1,:,:)
-            tally%results(RESULT_SUM_SQ,:,:) = tally_temp(2,:,:)
+            ! At the end of the simulation, store the results back in the
+            ! regular TallyResults array
+            if (current_batch == n_max_batches .or. satisfy_triggers) then
+              t % results(RESULT_SUM,:,:) = tally_temp(1,:,:)
+              t % results(RESULT_SUM_SQ,:,:) = tally_temp(2,:,:)
+            end if
+
+            ! Put in temporary tally result
+            allocate(dummy_tally % results(3,m,n))
+            dummy_tally % results(RESULT_SUM,:,:) = tally_temp(1,:,:)
+            dummy_tally % results(RESULT_SUM_SQ,:,:) = tally_temp(2,:,:)
+
+            ! Write reduced tally results to file
+            call dummy_tally % write_results_hdf5(tally_group)
+
+            ! Deallocate temporary tally result
+            deallocate(dummy_tally % results)
+          else
+            ! Receive buffer not significant at other processors
+#ifdef MPI
+            call MPI_REDUCE(tally_temp, dummy, n_bins, MPI_REAL8, MPI_SUM, &
+                 0, mpi_intracomm, mpi_err)
+#endif
           end if
 
-          ! Put in temporary tally result
-          allocate(dummy_tally % results(3,m,n))
-          dummy_tally % results(RESULT_SUM,:,:) = tally_temp(1,:,:)
-          dummy_tally % results(RESULT_SUM_SQ,:,:) = tally_temp(2,:,:)
+          ! Deallocate temporary copy of tally results
+          deallocate(tally_temp)
 
-          ! Write reduced tally results to file
-          call dummy_tally % write_results_hdf5(tally_group)
-
-          ! Deallocate temporary tally result
-          deallocate(dummy_tally % results)
-        else
-          ! Receive buffer not significant at other processors
-#ifdef MPI
-          call MPI_REDUCE(tally_temp, dummy, n_bins, MPI_REAL8, MPI_SUM, &
-               0, mpi_intracomm, mpi_err)
-#endif
-        end if
-
-        ! Deallocate temporary copy of tally results
-        deallocate(tally_temp)
-
-        if (master) call close_group(tally_group)
+          if (master) call close_group(tally_group)
+        end associate
       end do TALLY_RESULTS
 
-      deallocate(id_array)
-
+      if (master) call close_group(tallies_group)
     else
-      if (master) then
-        ! Indicate that tallies are off
-        call write_dataset(tallies_group, "tallies_present", 0)
-      end if
+      ! Indicate that tallies are off
+      if (master) call write_dataset(file_id, "tallies_present", 0)
     end if
 
-    if (master) call close_group(tallies_group)
 
   end subroutine write_tally_results_nr
 
@@ -667,15 +616,14 @@ contains
 
     integer :: i
     integer :: int_array(3)
+    integer, allocatable :: array(:)
     integer(HID_T) :: file_id
     integer(HID_T) :: cmfd_group
     integer(HID_T) :: tallies_group
     integer(HID_T) :: tally_group
     real(8) :: real_array(3)
     logical :: source_present
-    integer :: sp_run_CE
     character(MAX_WORD_LEN) :: word
-    type(TallyObject), pointer :: tally
 
     ! Write message
     call write_message("Loading state point " // trim(path_state_point) &
@@ -685,15 +633,15 @@ contains
     file_id = file_open(path_state_point, 'r', parallel=.true.)
 
     ! Read filetype
-    call read_dataset(word, file_id, "filetype")
+    call read_attribute(word, file_id, "filetype")
     if (word /= 'statepoint') then
       call fatal_error("OpenMC tried to restart from a non-statepoint file.")
     end if
 
     ! Read revision number for state point file and make sure it matches with
     ! current version
-    call read_dataset(int_array(1), file_id, "revision")
-    if (int_array(1) /= REVISION_STATEPOINT) then
+    call read_attribute(array, file_id, "version")
+    if (any(array /= VERSION_STATEPOINT)) then
       call fatal_error("State point version does not match current version &
            &in OpenMC.")
     end if
@@ -703,11 +651,11 @@ contains
 
     ! It is not impossible for a state point to be generated from a CE run but
     ! to be loaded in to an MG run (or vice versa), check to prevent that.
-    call read_dataset(sp_run_CE, file_id, "run_CE")
-    if (sp_run_CE == 0 .and. run_CE) then
+    call read_dataset(word, file_id, "energy_mode")
+    if (word == "multi-group" .and. run_CE) then
       call fatal_error("State point file is from multi-group run but &
                        & current run is continous-energy!")
-    else if (sp_run_CE == 1 .and. .not. run_CE) then
+    else if (word == "continuous-energy" .and. .not. run_CE) then
       call fatal_error("State point file is from continuous-energy run but &
                        & current run is multi-group!")
     end if
@@ -717,7 +665,7 @@ contains
     select case(word)
     case ('fixed source')
       run_mode = MODE_FIXEDSOURCE
-    case ('k-eigenvalue')
+    case ('eigenvalue')
       run_mode = MODE_EIGENVALUE
     end select
     call read_dataset(n_particles, file_id, "n_particles")
@@ -730,7 +678,7 @@ contains
     call read_dataset(restart_batch, file_id, "current_batch")
 
     ! Check for source in statepoint if needed
-    call read_dataset(int_array(1), file_id, "source_present")
+    call read_attribute(int_array(1), file_id, "source_present")
     if (int_array(1) == 1) then
       source_present = .true.
     else
@@ -745,7 +693,7 @@ contains
     ! Read information specific to eigenvalue run
     if (run_mode == MODE_EIGENVALUE) then
       call read_dataset(int_array(1), file_id, "n_inactive")
-      call read_dataset(gen_per_batch, file_id, "gen_per_batch")
+      call read_dataset(gen_per_batch, file_id, "generations_per_batch")
       call read_dataset(k_generation(1:restart_batch*gen_per_batch), &
            file_id, "k_generation")
       call read_dataset(entropy(1:restart_batch*gen_per_batch), &
@@ -759,7 +707,7 @@ contains
       n_inactive = max(n_inactive, int_array(1))
 
       ! Read in to see if CMFD was on
-      call read_dataset(int_array(1), file_id, "cmfd_on")
+      call read_attribute(int_array(1), file_id, "cmfd_on")
 
       ! Read in CMFD info
       if (int_array(1) == 1) then
@@ -800,29 +748,27 @@ contains
       call read_dataset(global_tallies, file_id, "global_tallies")
 
       ! Check if tally results are present
-      tallies_group = open_group(file_id, "tallies")
-      call read_dataset(int_array(1), tallies_group, "tallies_present", &
-                        indep=.true.)
+      call read_attribute(int_array(1), file_id, "tallies_present")
 
       ! Read in sum and sum squared
       if (int_array(1) == 1) then
+        tallies_group = open_group(file_id, "tallies")
+
         TALLY_RESULTS: do i = 1, n_tallies
-          ! Set pointer to tally
-          tally => tallies(i)
-
-          ! Read sum, sum_sq, and N for each bin
-          tally_group = open_group(tallies_group, "tally " // &
-               trim(to_str(tally % id)))
-          call tally % read_results_hdf5(tally_group)
-          call read_dataset(tally % n_realizations, tally_group, &
-               "n_realizations")
-          call close_group(tally_group)
+          associate (t => tallies(i))
+            ! Read sum, sum_sq, and N for each bin
+            tally_group = open_group(tallies_group, "tally " // &
+                 trim(to_str(t % id)))
+            call t % read_results_hdf5(tally_group)
+            call read_dataset(t % n_realizations, tally_group, &
+                 "n_realizations")
+            call close_group(tally_group)
+          end associate
         end do TALLY_RESULTS
+
+        call close_group(tallies_group)
       end if
-
-      call close_group(tallies_group)
     end if
-
 
     ! Read source if in eigenvalue mode
     if (run_mode == MODE_EIGENVALUE) then

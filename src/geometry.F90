@@ -244,7 +244,7 @@ contains
         call write_message("    Entering cell " // trim(to_str(c % id)))
       end if
 
-      CELL_TYPE: if (c % type == CELL_NORMAL) then
+      CELL_TYPE: if (c % type == FILL_MATERIAL) then
         ! ======================================================================
         ! AT LOWEST UNIVERSE, TERMINATE SEARCH
 
@@ -260,10 +260,10 @@ contains
           distribcell_index = c % distribcell_index
           offset = 0
           do k = 1, p % n_coord
-            if (cells(p % coord(k) % cell) % type == CELL_FILL) then
+            if (cells(p % coord(k) % cell) % type == FILL_UNIVERSE) then
               offset = offset + cells(p % coord(k) % cell) % &
                    offset(distribcell_index)
-            elseif (cells(p % coord(k) % cell) % type == CELL_LATTICE) then
+            elseif (cells(p % coord(k) % cell) % type == FILL_LATTICE) then
               if (lattices(p % coord(k + 1) % lattice) % obj &
                    % are_valid_indices([&
                    p % coord(k + 1) % lattice_x, &
@@ -293,7 +293,7 @@ contains
           p % sqrtkT = c % sqrtkT(1)
         end if
 
-      elseif (c % type == CELL_FILL) then CELL_TYPE
+      elseif (c % type == FILL_UNIVERSE) then CELL_TYPE
         ! ======================================================================
         ! CELL CONTAINS LOWER UNIVERSE, RECURSIVELY FIND CELL
 
@@ -322,7 +322,7 @@ contains
         j = p % n_coord
         if (.not. found) exit
 
-      elseif (c % type == CELL_LATTICE) then CELL_TYPE
+      elseif (c % type == FILL_LATTICE) then CELL_TYPE
         ! ======================================================================
         ! CELL CONTAINS LATTICE, RECURSIVELY FIND CELL
 
@@ -1116,11 +1116,11 @@ contains
 
       ! ====================================================================
       ! AT LOWEST UNIVERSE, TERMINATE SEARCH
-      if (c % type == CELL_NORMAL) then
+      if (c % type == FILL_MATERIAL) then
 
       ! ====================================================================
       ! CELL CONTAINS LOWER UNIVERSE, RECURSIVELY FIND CELL
-      elseif (c % type == CELL_FILL) then
+      elseif (c % type == FILL_UNIVERSE) then
         ! Set offset for the cell on this level
         c % offset(map) = offset
 
@@ -1134,7 +1134,7 @@ contains
 
       ! ====================================================================
       ! CELL CONTAINS LATTICE, RECURSIVELY FIND CELL
-      elseif (c % type == CELL_LATTICE) then
+      elseif (c % type == FILL_LATTICE) then
 
         ! Set current lattice
         lat => lattices(c % fill) % obj
@@ -1232,11 +1232,11 @@ contains
 
       ! ====================================================================
       ! AT LOWEST UNIVERSE, TERMINATE SEARCH
-      if (c % type == CELL_NORMAL) then
+      if (c % type == FILL_MATERIAL) then
 
       ! ====================================================================
       ! CELL CONTAINS LOWER UNIVERSE, RECURSIVELY FIND CELL
-      elseif (c % type == CELL_FILL) then
+      elseif (c % type == FILL_UNIVERSE) then
 
         next_univ => universes(c % fill)
 
@@ -1251,7 +1251,7 @@ contains
 
       ! ====================================================================
       ! CELL CONTAINS LATTICE, RECURSIVELY FIND CELL
-      elseif (c % type == CELL_LATTICE) then
+      elseif (c % type == FILL_LATTICE) then
 
         ! Set current lattice
         lat => lattices(c % fill) % obj
@@ -1346,11 +1346,11 @@ contains
 
       ! ====================================================================
       ! AT LOWEST UNIVERSE, TERMINATE SEARCH
-      if (c % type == CELL_NORMAL) then
+      if (c % type == FILL_MATERIAL) then
 
       ! ====================================================================
       ! CELL CONTAINS LOWER UNIVERSE, RECURSIVELY FIND CELL
-      elseif (c % type == CELL_FILL) then
+      elseif (c % type == FILL_UNIVERSE) then
 
         next_univ => universes(c % fill)
 
@@ -1359,7 +1359,7 @@ contains
 
       ! ====================================================================
       ! CELL CONTAINS LATTICE, RECURSIVELY FIND CELL
-      elseif (c % type == CELL_LATTICE) then
+      elseif (c % type == FILL_LATTICE) then
 
         ! Set current lattice
         lat => lattices(c % fill) % obj
@@ -1428,14 +1428,14 @@ contains
 
       ! ====================================================================
       ! CELL CONTAINS LOWER UNIVERSE, RECURSIVELY FIND CELL
-      if (c % type == CELL_FILL) then
+      if (c % type == FILL_UNIVERSE) then
 
         next_univ => universes(c % fill)
         levels_below = max(levels_below, maximum_levels(next_univ))
 
       ! ====================================================================
       ! CELL CONTAINS LATTICE, RECURSIVELY FIND CELL
-      elseif (c % type == CELL_LATTICE) then
+      elseif (c % type == FILL_LATTICE) then
 
         ! Set current lattice
         lat => lattices(c % fill) % obj

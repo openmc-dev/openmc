@@ -14,7 +14,7 @@ from openmc.region import Region, Intersection, Union
 # A static variable for auto-generated Surface IDs
 AUTO_SURFACE_ID = 10000
 
-_BC_TYPES = ['transmission', 'vacuum', 'reflective', 'periodic']
+_BOUNDARY_TYPES = ['transmission', 'vacuum', 'reflective', 'periodic']
 
 
 def reset_auto_surface_id():
@@ -141,7 +141,7 @@ class Surface(object):
     @boundary_type.setter
     def boundary_type(self, boundary_type):
         check_type('boundary type', boundary_type, string_types)
-        check_value('boundary type', boundary_type, _BC_TYPES)
+        check_value('boundary type', boundary_type, _BOUNDARY_TYPES)
         self._boundary_type = boundary_type
 
     def bounding_box(self, side):
@@ -171,7 +171,15 @@ class Surface(object):
         return (np.array([-np.inf, -np.inf, -np.inf]),
                 np.array([np.inf, np.inf, np.inf]))
 
-    def create_xml_subelement(self):
+    def to_xml_element(self):
+        """Return XML representation of the surface
+
+        Returns
+        -------
+        element : xml.etree.ElementTree.Element
+            XML element containing source data
+
+        """
         element = ET.Element("surface")
         element.set("id", str(self._id))
 
@@ -185,6 +193,76 @@ class Surface(object):
                                         for key in self._coeff_keys]))
 
         return element
+
+    @staticmethod
+    def from_hdf5(group):
+        """Create surface from HDF5 group
+
+        Parameters
+        ----------
+        group : h5py.Group
+            Group in HDF5 file
+
+        Returns
+        -------
+        openmc.Surface
+            Instance of surface subclass
+
+        """
+        surface_id = int(group.name.split('/')[-1].lstrip('surface '))
+        name = group['name'].value.decode()
+        surf_type = group['type'].value.decode()
+        bc = group['boundary_type'].value.decode()
+        coeffs = group['coefficients'][...]
+
+        # Create the Surface based on its type
+        if surf_type == 'x-plane':
+            x0 = coeffs[0]
+            surface = XPlane(surface_id, bc, x0, name)
+
+        elif surf_type == 'y-plane':
+            y0 = coeffs[0]
+            surface = YPlane(surface_id, bc, y0, name)
+
+        elif surf_type == 'z-plane':
+            z0 = coeffs[0]
+            surface = ZPlane(surface_id, bc, z0, name)
+
+        elif surf_type == 'plane':
+            A, B, C, D = coeffs
+            surface = Plane(surface_id, bc, A, B, C, D, name)
+
+        elif surf_type == 'x-cylinder':
+            y0, z0, R = coeffs
+            surface = XCylinder(surface_id, bc, y0, z0, R, name)
+
+        elif surf_type == 'y-cylinder':
+            x0, z0, R = coeffs
+            surface = YCylinder(surface_id, bc, x0, z0, R, name)
+
+        elif surf_type == 'z-cylinder':
+            x0, y0, R = coeffs
+            surface = ZCylinder(surface_id, bc, x0, y0, R, name)
+
+        elif surf_type == 'sphere':
+            x0, y0, z0, R = coeffs
+            surface = Sphere(surface_id, bc, x0, y0, z0, R, name)
+
+        elif surf_type in ['x-cone', 'y-cone', 'z-cone']:
+            x0, y0, z0, R2 = coeffs
+            if surf_type == 'x-cone':
+                surface = XCone(surface_id, bc, x0, y0, z0, R2, name)
+            elif surf_type == 'y-cone':
+                surface = YCone(surface_id, bc, x0, y0, z0, R2, name)
+            elif surf_type == 'z-cone':
+                surface = ZCone(surface_id, bc, x0, y0, z0, R2, name)
+
+        elif surf_type == 'quadric':
+            a, b, c, d, e, f, g, h, j, k = coeffs
+            surface = Quadric(surface_id, bc, a, b, c, d, e, f, g,
+                              h, j, k, name)
+
+        return surface
 
 
 class Plane(Surface):
@@ -314,8 +392,16 @@ class Plane(Surface):
         x, y, z = point
         return self.a*x + self.b*y + self.c*z - self.d
 
-    def create_xml_subelement(self):
-        element = super(Plane, self).create_xml_subelement()
+    def to_xml_element(self):
+        """Return XML representation of the surface
+
+        Returns
+        -------
+        element : xml.etree.ElementTree.Element
+            XML element containing source data
+
+        """
+        element = super(Plane, self).to_xml_element()
 
         # Add periodic surface pair information
         if self.boundary_type == 'periodic':

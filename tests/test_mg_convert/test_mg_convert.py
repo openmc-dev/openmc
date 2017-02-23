@@ -153,7 +153,6 @@ class MGXSTestHarness(PyAPITestHarness):
             outstr += 'k-combined:\n'
             form = '{0:12.6E} {1:12.6E}\n'
             outstr += form.format(sp.k_combined[0], sp.k_combined[1])
-            sp.close()
 
         return outstr
 

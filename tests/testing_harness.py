@@ -219,8 +219,8 @@ class ParticleRestartTestHarness(TestHarness):
         outstr = ''
         outstr += 'current batch:\n'
         outstr += "{0:12.6E}\n".format(p.current_batch)
-        outstr += 'current gen:\n'
-        outstr += "{0:12.6E}\n".format(p.current_gen)
+        outstr += 'current generation:\n'
+        outstr += "{0:12.6E}\n".format(p.current_generation)
         outstr += 'particle id:\n'
         outstr += "{0:12.6E}\n".format(p.id)
         outstr += 'run mode:\n'

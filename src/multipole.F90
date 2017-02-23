@@ -1,8 +1,9 @@
 module multipole
 
+  use hdf5
+
   use constants
   use global
-  use hdf5
   use hdf5_interface
   use multipole_header, only: MultipoleArray, FIT_T, FIT_A, FIT_F, &
                               MP_FISS, FORM_MLBW, FORM_RM
@@ -39,9 +40,9 @@ contains
 
       ! Check the file version number.
       call read_dataset(version, file_id, "version")
-      if (version /= MULTIPOLE_VERSION) call fatal_error("The current multipole&
-           & format version is " // trim(MULTIPOLE_VERSION) // " but the file "&
-           // trim(filename) // " uses version " // trim(version))
+      if (version /= VERSION_MULTIPOLE) call fatal_error("The current multipole&
+           & format version is " // trim(VERSION_MULTIPOLE) // " but the file "&
+           // trim(filename) // " uses version " // trim(version) // ".")
 
       ! Load in all the array size scalars
       call read_dataset(multipole % length, group_id, "length")

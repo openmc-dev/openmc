@@ -33,28 +33,25 @@ class PlotTestHarness(TestHarness):
         for fname in self._plot_names:
             path = os.path.join(os.getcwd(), fname)
             if os.path.exists(path):
-                #os.remove(path)
-                pass
+                os.remove(path)
 
     def _get_results(self):
         """Return a string hash of the plot files."""
         outstr = bytes()
 
-        # Add PPM output to results
-        ppm_files = glob.glob(os.path.join(os.getcwd(), '*.ppm'))
-        for fname in sorted(ppm_files):
-            with open(fname, 'rb') as fh:
-                outstr += fh.read()
-
-        # Add voxel data to results
-        voxel_files = glob.glob(os.path.join(os.getcwd(), '*.voxel'))
-        for fname in sorted(voxel_files):
-            with h5py.File(fname, 'r') as fh:
-                outstr += fh['filetype'].value
-                outstr += fh['num_voxels'].value.tostring()
-                outstr += fh['lower_left'].value.tostring()
-                outstr += fh['voxel_width'].value.tostring()
-                outstr += fh['data'].value.tostring()
+        for fname in self._plot_names:
+            if fname.endswith('.ppm'):
+                # Add PPM output to results
+                with open(fname, 'rb') as fh:
+                    outstr += fh.read()
+            elif fname.endswith('.h5'):
+                # Add voxel data to results
+                with h5py.File(fname, 'r') as fh:
+                    outstr += fh.attrs['filetype']
+                    outstr += fh.attrs['num_voxels'].tostring()
+                    outstr += fh.attrs['lower_left'].tostring()
+                    outstr += fh.attrs['voxel_width'].tostring()
+                    outstr += fh['data'].value.tostring()
 
         # Hash the information and return.
         sha512 = hashlib.sha512()
@@ -65,6 +62,6 @@ class PlotTestHarness(TestHarness):
 
 
 if __name__ == '__main__':
-    harness = PlotTestHarness(('1_plot.ppm', '2_plot.ppm', '3_plot.ppm',
-                               '4_plot.voxel'))
+    harness = PlotTestHarness(('plot_1.ppm', 'plot_2.ppm', 'plot_3.ppm',
+                               'plot_4.h5'))
     harness.main()

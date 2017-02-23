@@ -13,18 +13,18 @@ module initialize
   use set_header,      only: SetInt
   use energy_grid,     only: logarithmic_grid, grid_method
   use error,           only: fatal_error, warning
-  use geometry,        only: neighbor_lists, count_instance, calc_offsets,    &
+  use geometry,        only: neighbor_lists, count_instance, calc_offsets, &
                              maximum_levels
   use geometry_header, only: Cell, Universe, Lattice, RectLattice, HexLattice,&
                              &BASE_UNIVERSE
   use global
-  use hdf5_interface,  only: file_open, read_dataset, file_close, hdf5_bank_t,&
-                             hdf5_integer8_t
+  use hdf5_interface,  only: file_open, read_attribute, file_close, &
+                             hdf5_bank_t, hdf5_integer8_t
   use input_xml,       only: read_input_xml, cells_in_univ_dict, read_plots_xml
   use material_header, only: Material
   use message_passing
   use mgxs_data,       only: read_mgxs, create_macro_xs
-  use output,          only: title, header, print_version, write_message,     &
+  use output,          only: title, header, print_version, write_message, &
                              print_usage, print_plot
   use random_lcg,      only: initialize_prng
   use state_point,     only: load_state_point
@@ -307,11 +307,11 @@ contains
 
           ! Check what type of file this is
           file_id = file_open(argv(i), 'r', parallel=.true.)
-          call read_dataset(filetype, file_id, 'filetype')
+          call read_attribute(filetype, file_id, 'filetype')
           call file_close(file_id)
 
           ! Set path and flag for type of run
-          select case (filetype)
+          select case (trim(filetype))
           case ('statepoint')
             path_state_point = argv(i)
             restart_run = .true.
@@ -319,7 +319,7 @@ contains
             path_particle_restart = argv(i)
             particle_restart_run = .true.
           case default
-            call fatal_error("Unrecognized file after restart flag.")
+            call fatal_error("Unrecognized file after restart flag: " // filetype // ".")
           end select
 
           ! If its a restart run check for additional source file
@@ -333,7 +333,7 @@ contains
 
               ! Check file type is a source file
               file_id = file_open(argv(i), 'r', parallel=.true.)
-              call read_dataset(filetype, file_id, 'filetype')
+              call read_attribute(filetype, file_id, 'filetype')
               call file_close(file_id)
               if (filetype /= 'source') then
                 call fatal_error("Second file after restart flag must be a &
@@ -560,11 +560,11 @@ contains
       if (c % material(1) == NONE) then
         id = c % fill
         if (universe_dict % has_key(id)) then
-          c % type = CELL_FILL
+          c % type = FILL_UNIVERSE
           c % fill = universe_dict % get_key(id)
         elseif (lattice_dict % has_key(id)) then
           lid = lattice_dict % get_key(id)
-          c % type = CELL_LATTICE
+          c % type = FILL_LATTICE
           c % fill = lid
         else
           call fatal_error("Specified fill " // trim(to_str(id)) // " on cell "&
@@ -575,9 +575,9 @@ contains
         do j = 1, size(c % material)
           id = c % material(j)
           if (id == MATERIAL_VOID) then
-            c % type = CELL_NORMAL
+            c % type = FILL_MATERIAL
           else if (material_dict % has_key(id)) then
-            c % type = CELL_NORMAL
+            c % type = FILL_MATERIAL
             c % material(j) = material_dict % get_key(id)
           else
             call fatal_error("Could not find material " // trim(to_str(id)) &
@@ -934,7 +934,7 @@ contains
 
     ! Allocate offset table for fill cells
     do i = 1, n_cells
-      if (cells(i) % type /= CELL_NORMAL) then
+      if (cells(i) % type /= FILL_MATERIAL) then
         allocate(cells(i) % offset(n_maps))
       end if
     end do

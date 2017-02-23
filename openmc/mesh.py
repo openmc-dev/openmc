@@ -160,6 +160,33 @@ class Mesh(EqualityMixin):
         string += '{0: <16}{1}{2}\n'.format('\tPixels', '=\t', self._width)
         return string
 
+    @classmethod
+    def from_hdf5(cls, group):
+        """Create mesh from HDF5 group
+
+        Parameters
+        ----------
+        group : h5py.Group
+            Group in HDF5 file
+
+        Returns
+        -------
+        openmc.Mesh
+            Mesh instance
+
+        """
+        mesh_id = int(group.name.split('/')[-1].lstrip('mesh '))
+
+        # Read and assign mesh properties
+        mesh = cls(mesh_id)
+        mesh.type = group['type'].value.decode()
+        mesh.dimension = group['dimension'].value
+        mesh.lower_left = group['lower_left'].value
+        mesh.upper_right = group['upper_right'].value
+        mesh.width = group['width'].value
+
+        return mesh
+
     def cell_generator(self):
         """Generator function to traverse through every [i,j,k] index
         of the mesh.

@@ -34,7 +34,7 @@ class MGXSTestHarness(PyAPITestHarness):
         self.mgxs_lib.num_delayed_groups = 6
         self.mgxs_lib.legendre_order = 3
         self.mgxs_lib.domain_type = 'distribcell'
-        cells = self.mgxs_lib.openmc_geometry.get_all_material_cells()
+        cells = self.mgxs_lib.geometry.get_all_material_cells().values()
         self.mgxs_lib.domains = [c for c in cells if c.name == 'fuel']
         self.mgxs_lib.build_library()
 

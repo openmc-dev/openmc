@@ -208,13 +208,16 @@ class Geometry(object):
         return material_cells
 
     def get_all_material_universes(self):
-        """Return all universes having at least one non-fill cell
+        """Return all universes having at least one material-filled cell.
+
+        This method can be used to find universes that have at least one cell
+        that is filled with a material or is void.
 
         Returns
         -------
         collections.OrderedDict
             Dictionary mapping universe IDs to :class:`openmc.Universe`
-            instances with non-fill cells
+            instances with at least one material-filled cell
 
         """
         material_universes = OrderedDict()

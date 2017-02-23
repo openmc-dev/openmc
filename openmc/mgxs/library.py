@@ -3,7 +3,7 @@ import os
 import copy
 import pickle
 from numbers import Integral
-from collections import OrderedDict
+from collections import OrderedDict, Iterable
 from warnings import warn
 
 from six import string_types
@@ -315,16 +315,16 @@ class Library(object):
         # User specified a list of material, cell or universe domains
         else:
             if self.domain_type == 'material':
-                cv.check_iterable_type('domain', domains, openmc.Material)
+                cv.check_type('domain', domains, Iterable, openmc.Material)
                 all_domains = self.geometry.get_all_materials().values()
             elif self.domain_type in ['cell', 'distribcell']:
-                cv.check_iterable_type('domain', domains, openmc.Cell)
+                cv.check_type('domain', domains, Iterable, openmc.Cell)
                 all_domains = self.geometry.get_all_material_cells().values()
             elif self.domain_type == 'universe':
-                cv.check_iterable_type('domain', domains, openmc.Universe)
+                cv.check_type('domain', domains, Iterable, openmc.Universe)
                 all_domains = self.geometry.get_all_universes().values()
             elif self.domain_type == 'mesh':
-                cv.check_iterable_type('domain', domains, openmc.Mesh)
+                cv.check_type('domain', domains, Iterable, openmc.Mesh)
 
                 # The mesh and geometry are independent, so set all_domains
                 # to the input domains
@@ -339,7 +339,7 @@ class Library(object):
                     raise ValueError('Domain "{}" could not be found in the '
                                      'geometry.'.format(domain))
 
-            self._domains = domains
+            self._domains = list(domains)
 
     @energy_groups.setter
     def energy_groups(self, energy_groups):

@@ -640,7 +640,7 @@ class StatePoint(object):
                   'is not a Summary object'.format(summary)
             raise ValueError(msg)
 
-        cell_dict = {c.id: c for c in summary.geometry.get_all_cells()}
+        cells = summary.geometry.get_all_cells()
 
         for tally_id, tally in self.tallies.items():
             tally.with_summary = True
@@ -648,7 +648,7 @@ class StatePoint(object):
             for tally_filter in tally.filters:
                 if isinstance(tally_filter, (openmc.DistribcellFilter)):
                     cell_id = tally_filter.bins[0]
-                    cell = cell_dict[cell_id]
+                    cell = cells[cell_id]
                     tally_filter.distribcell_paths = cell.distribcell_paths
 
         self._summary = summary

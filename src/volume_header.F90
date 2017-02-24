@@ -20,7 +20,7 @@ contains
 
   subroutine volume_from_xml(this, node_vol)
     class(VolumeCalculation), intent(out) :: this
-    type(Node), pointer :: node_vol
+    type(XMLNode), intent(in) :: node_vol
 
     integer :: num_domains
     character(10) :: temp_str
@@ -41,7 +41,7 @@ contains
 
     ! Read cell IDs
     if (check_for_node(node_vol, "domain_ids")) then
-      num_domains = get_arraysize_integer(node_vol, "domain_ids")
+      num_domains = node_word_count(node_vol, "domain_ids")
     else
       call fatal_error("Must specify at least one cell for a volume calculation")
     end if

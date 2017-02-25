@@ -2027,7 +2027,7 @@ contains
 
     end do SCORE_LOOP
 
-    nullify(matxs,nucxs)
+    nullify(matxs, nucxs)
   end subroutine score_general_mg
 
 !===============================================================================

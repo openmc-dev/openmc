@@ -1074,12 +1074,12 @@ class XSdata(object):
 
     def set_nu_fission_mgxs(self, nu_fission, temperature=294.,
                             nuclide='total', xs_type='macro', subdomain=None):
-        """This method allows for an openmc.mgxs.NuFissionXS
+        """This method allows for an openmc.mgxs.FissionXS
         to be used to set the nu-fission cross section for this XSdata object.
 
         Parameters
         ----------
-        nu_fission: openmc.mgxs.NuFissionXS
+        nu_fission: openmc.mgxs.FissionXS
             MGXS Object containing the nu-fission cross section
             for the domain of interest.
         temperature : float
@@ -1102,8 +1102,9 @@ class XSdata(object):
 
         """
 
-        check_type('nu_fission', nu_fission, (openmc.mgxs.NuFissionXS,
+        check_type('nu_fission', nu_fission, (openmc.mgxs.FissionXS,
                                               openmc.mgxs.NuFissionMatrixXS))
+        check_value('nu', nu_fission.nu, [True])
         check_value('energy_groups', nu_fission.energy_groups,
                     [self.energy_groups])
         check_value('domain_type', nu_fission.domain_type,
@@ -1598,8 +1599,9 @@ class XSdata(object):
 
         """
 
-        check_type('nuscatter', nuscatter, (openmc.mgxs.NuScatterMatrixXS,
+        check_type('nuscatter', nuscatter, (openmc.mgxs.ScatterMatrixXS,
                                             openmc.mgxs.MultiplicityMatrixXS))
+        check_value('nu', nuscatter.nu, [True])
         check_value('energy_groups', nuscatter.energy_groups,
                     [self.energy_groups])
         check_value('domain_type', nuscatter.domain_type,

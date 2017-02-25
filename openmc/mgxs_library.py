@@ -351,8 +351,8 @@ class XSdata(object):
             self._xs_shapes["[DG]"] = (self.num_delayed_groups,)
             self._xs_shapes["[DG][G]"] = (self.num_delayed_groups,
                                           self.energy_groups.num_groups)
-            self._xs_shapes["[DG'][G']"] = (self.num_delayed_groups,
-                                            self.energy_groups.num_groups)
+            self._xs_shapes["[DG][G']"] = (self.num_delayed_groups,
+                                           self.energy_groups.num_groups)
             self._xs_shapes["[DG][G][G']"] = (self.num_delayed_groups,
                                               self.energy_groups.num_groups,
                                               self.energy_groups.num_groups)

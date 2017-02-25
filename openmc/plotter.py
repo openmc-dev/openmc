@@ -676,7 +676,7 @@ def calculate_mgxs(this, types, orders=None, temperature=294.,
 
     for line in range(len(types)):
         for g in range(library.energy_groups.num_groups):
-            data[g * 2: g * 2 + 2] = mgxs[line, g]
+            data[line, g * 2: g * 2 + 2] = mgxs[line, g]
 
     return energy_grid[::-1], data
 
@@ -775,28 +775,28 @@ def _calculate_mgxs_nuc_macro(this, types, library, orders=None,
                             data[i, :] = temp_data[orders[i]]
                     else:
                         data[i, :] = np.sum(temp_data[:])
-                elif shape in (xsdata.xs_shapes["[G'][DG]"],
-                               xsdata.xs_shapes["[G][DG]"]):
+                elif shape in (xsdata.xs_shapes["[DG][G']"],
+                               xsdata.xs_shapes["[DG][G]"]):
                     # Then we have an array vs groups with values for each
                     # delayed group. The user-provided value of orders tells us
                     # which delayed group we want. If none are provided, then
                     # we sum all the delayed groups together.
                     if orders[i]:
-                        if orders[i] < len(shape[1]):
-                            data[i, :] = temp_data[:, orders[i]]
+                        if orders[i] < len(shape[0]):
+                            data[i, :] = temp_data[orders[i], :]
                     else:
-                        data[i, :] = np.sum(temp_data[:, :], axis=1)
-                elif shape == xsdata.xs_shapes["[G][G'][DG]"]:
+                        data[i, :] = np.sum(temp_data[:, :], axis=0)
+                elif shape == xsdata.xs_shapes["[DG][G][G']"]:
                     # Then we have a delayed group matrix. We will first
                     # remove the outgoing group dependency
-                    temp_data = np.sum(temp_data, axis=1)
+                    temp_data = np.sum(temp_data, axis=-1)
                     # And then proceed in exactly the same manner as the
-                    # "[G'][DG]" of "[G][DG]" shapes in the previous block.
+                    # "[DG][G']" or "[DG][G]" shapes in the previous block.
                     if orders[i]:
-                        if orders[i] < len(shape[1]):
-                            data[i, :] = temp_data[:, orders[i]]
+                        if orders[i] < len(shape[0]):
+                            data[i, :] = temp_data[orders[i], :]
                     else:
-                        data[i, :] = np.sum(temp_data[:, :], axis=1)
+                        data[i, :] = np.sum(temp_data[:, :], axis=0)
                 elif shape == xsdata.xs_shapes["[G][G'][Order]"]:
                     # This is a scattering matrix with angular data
                     # First remove the outgoing group dependence

@@ -151,6 +151,8 @@ class MGXS(object):
         Reaction type (e.g., 'total', 'nu-fission', etc.)
     nu : bool
         If True, the cross section data will include neutron multiplication
+    prompt : bool
+        If true, computes cross sections which only includes prompt neutrons
     by_nuclide : bool
         If true, computes cross sections for each nuclide in domain
     domain : Material or Cell or Universe or Mesh
@@ -233,6 +235,7 @@ class MGXS(object):
         self._hdf5_key = None
         self._valid_estimators = ESTIMATOR_TYPES
         self._nu = False
+        self._prompt = False
 
         self.name = name
         self.by_nuclide = by_nuclide
@@ -416,6 +419,10 @@ class MGXS(object):
         return self._nu
 
     @property
+    def prompt(self):
+        return self._prompt
+
+    @property
     def by_nuclide(self):
         return self._by_nuclide
 
@@ -585,6 +592,11 @@ class MGXS(object):
         cv.check_type('nu', nu, bool)
         self._nu = nu
 
+    @prompt.setter
+    def prompt(self, prompt):
+        cv.check_type('prompt', prompt, bool)
+        self._prompt = prompt
+
     @by_nuclide.setter
     def by_nuclide(self, by_nuclide):
         cv.check_type('by_nuclide', by_nuclide, bool)
@@ -742,13 +754,14 @@ class MGXS(object):
         elif mgxs_type == 'chi':
             mgxs = Chi(domain, domain_type, energy_groups)
         elif mgxs_type == 'chi-prompt':
-            mgxs = ChiPrompt(domain, domain_type, energy_groups)
+            mgxs = Chi(domain, domain_type, energy_groups, prompt=True)
         elif mgxs_type == 'inverse-velocity':
             mgxs = InverseVelocity(domain, domain_type, energy_groups)
         elif mgxs_type == 'prompt-nu-fission':
-            mgxs = PromptNuFissionXS(domain, domain_type, energy_groups)
+            mgxs = FissionXS(domain, domain_type, energy_groups, prompt=True)
         elif mgxs_type == 'prompt-nu-fission matrix':
-            mgxs = PromptNuFissionMatrixXS(domain, domain_type, energy_groups)
+            mgxs = NuFissionMatrixXS(domain, domain_type, energy_groups,
+                                     prompt=True)
 
         mgxs.by_nuclide = by_nuclide
         mgxs.name = name
@@ -2612,6 +2625,9 @@ class TransportXS(MGXS):
        \sigma_{tr} &= \frac{\langle \sigma_t \phi \rangle - \langle \sigma_{s1}
        \phi \rangle}{\langle \phi \rangle}
 
+    To incorporate the effect of scattering multiplication in the above
+    relation, the `nu` parameter can be set to `True`.
+
     Parameters
     ----------
     domain : openmc.Material or openmc.Cell or openmc.Universe or openmc.Mesh
@@ -3046,6 +3062,16 @@ class FissionXS(MGXS):
        \sigma_f (r, E) \psi (r, E, \Omega)}{\int_{r \in V} dr \int_{4\pi}
        d\Omega \int_{E_g}^{E_{g-1}} dE \; \psi (r, E, \Omega)}.
 
+    To incorporate the effect of neutron multiplication in the above
+    relation, the `nu` parameter can be set to `True`.
+
+    This class can also be used to gather a prompt-nu-fission cross section
+    (which only includes the contributions from prompt neutrons). This is
+    accomplished by setting the :attr:`FissionXS.prompt` attribute to `True`.
+    Since the prompt-nu-fission cross section requires neutron multiplication,
+    the `nu` parameter will automatically be set to `True` if `prompt` is also
+    `True`.
+
     Parameters
     ----------
     domain : openmc.Material or openmc.Cell or openmc.Universe or openmc.Mesh
@@ -3057,6 +3083,10 @@ class FissionXS(MGXS):
     nu : bool
         If True, the cross section data will include neutron multiplication;
         defaults to False
+    prompt : bool
+        If true, computes cross sections which only includes prompt neutrons;
+        defaults to False which includes prompt and delayed in total. Setting
+        this to True will also set nu to True
     by_nuclide : bool
         If true, computes cross sections for each nuclide in domain
     name : str, optional
@@ -3077,6 +3107,8 @@ class FissionXS(MGXS):
         Reaction type (e.g., 'total', 'nu-fission', etc.)
     nu : bool
         If True, the cross section data will include neutron multiplication
+    prompt : bool
+        If true, computes cross sections which only includes prompt neutrons
     by_nuclide : bool
         If true, computes cross sections for each nuclide in domain
     domain : Material or Cell or Universe or Mesh
@@ -3138,15 +3170,20 @@ class FissionXS(MGXS):
     """
 
     def __init__(self, domain=None, domain_type=None, groups=None, nu=False,
-                 by_nuclide=False, name='', num_polar=1, num_azimuthal=1):
+                 prompt=False, by_nuclide=False, name='', num_polar=1,
+                 num_azimuthal=1):
         super(FissionXS, self).__init__(domain, domain_type,
                                         groups, by_nuclide, name, num_polar,
                                         num_azimuthal)
-        if not nu:
-            self._rxn_type = 'fission'
+        if not prompt:
+            if not nu:
+                self._rxn_type = 'fission'
+            else:
+                self._rxn_type = 'nu-fission'
+            self.nu = nu
         else:
-            self._rxn_type = 'nu-fission'
-
+            self._rxn_type = 'prompt-nu-fission'
+            self.nu = True
 
 class KappaFissionXS(MGXS):
     r"""A recoverable fission energy production rate multi-group cross section.
@@ -3305,6 +3342,9 @@ class ScatterXS(MGXS):
        \Omega) \right ]}{\int_{r \in V} dr \int_{4\pi} d\Omega
        \int_{E_g}^{E_{g-1}} dE \; \psi (r, E, \Omega)}.
 
+    To incorporate the effect of scattering multiplication from (n,xn)
+    reactions in the above relation, the `nu` parameter can be set to `True`.
+
     Parameters
     ----------
     domain : openmc.Material or openmc.Cell or openmc.Universe or openmc.Mesh
@@ -3455,6 +3495,8 @@ class ScatterMatrixXS(MatrixMGXS):
        \phi \rangle - \delta_{gg'} \sum_{g''} \langle \sigma_{s,1,g''\rightarrow
        g} \phi \rangle}{\langle \phi \rangle}
 
+    To incorporate the effect of neutron multiplication from (n,xn) reactions
+    in the above relation, the `nu` parameter can be set to `True`.
 
     Parameters
     ----------
@@ -4481,6 +4523,11 @@ class NuFissionMatrixXS(MatrixMGXS):
        \nu\sigma_{f,g'\rightarrow g} &= \frac{\langle \nu\sigma_{f,g'\rightarrow
        g} \phi \rangle}{\langle \phi \rangle}
 
+    This class can also be used to gather a prompt-nu-fission cross section
+    (which only includes the contributions from prompt neutrons). This is
+    accomplished by setting the :attr:`NuFissionMatrixXS.prompt` attribute to
+    `True`.
+
     Parameters
     ----------
     domain : openmc.Material or openmc.Cell or openmc.Universe or openmc.Mesh
@@ -4489,6 +4536,9 @@ class NuFissionMatrixXS(MatrixMGXS):
         The domain type for spatial homogenization
     groups : openmc.mgxs.EnergyGroups
         The energy group structure for energy condensation
+    prompt : bool
+        If true, computes cross sections which only includes prompt neutrons;
+        defaults to False which includes prompt and delayed in total
     by_nuclide : bool
         If true, computes cross sections for each nuclide in domain
     name : str, optional
@@ -4507,6 +4557,8 @@ class NuFissionMatrixXS(MatrixMGXS):
         Name of the multi-group cross section
     rxn_type : str
         Reaction type (e.g., 'total', 'nu-fission', etc.)
+    prompt : bool
+        If true, computes cross sections which only includes prompt neutrons
     by_nuclide : bool
         If true, computes cross sections for each nuclide in domain
     domain : Material or Cell or Universe or Mesh
@@ -4568,12 +4620,17 @@ class NuFissionMatrixXS(MatrixMGXS):
     """
 
     def __init__(self, domain=None, domain_type=None, groups=None,
-                 by_nuclide=False, name='', num_polar=1, num_azimuthal=1):
+                 prompt=False, by_nuclide=False, name='', num_polar=1,
+                 num_azimuthal=1):
         super(NuFissionMatrixXS, self).__init__(domain, domain_type,
                                                 groups, by_nuclide, name,
                                                 num_polar, num_azimuthal)
-        self._rxn_type = 'nu-fission'
-        self._hdf5_key = 'nu-fission matrix'
+        if not prompt:
+            self._rxn_type = 'nu-fission'
+            self._hdf5_key = 'nu-fission matrix'
+        else:
+            self._rxn_type = 'prompt-nu-fission'
+            self._hdf5_key = 'prompt-nu-fission matrix'
         self._estimator = 'analog'
         self._valid_estimators = ['analog']
         self.nu = True
@@ -4610,6 +4667,10 @@ class Chi(MGXS):
        \chi_g &= \frac{\langle \nu\sigma_{f,g' \rightarrow g} \phi \rangle}
        {\langle \nu\sigma_f \phi \rangle}
 
+    This class can also be used to gather a prompt-chi (which only includes the
+    outgoing energy spectrum of prompt neutrons). This is accomplished by
+    setting the :attr:`Chi.prompt` attribute to `True`.
+
     Parameters
     ----------
     domain : openmc.Material or openmc.Cell or openmc.Universe or openmc.Mesh
@@ -4618,6 +4679,9 @@ class Chi(MGXS):
         The domain type for spatial homogenization
     groups : openmc.mgxs.EnergyGroups
         The energy group structure for energy condensation
+    prompt : bool
+        If true, computes cross sections which only includes prompt neutrons;
+        defaults to False which includes prompt and delayed in total
     by_nuclide : bool
         If true, computes cross sections for each nuclide in domain
     name : str, optional
@@ -4636,6 +4700,8 @@ class Chi(MGXS):
         Name of the multi-group cross section
     rxn_type : str
         Reaction type (e.g., 'total', 'nu-fission', etc.)
+    prompt : bool
+        If true, computes cross sections which only includes prompt neutrons
     by_nuclide : bool
         If true, computes cross sections for each nuclide in domain
     domain : Material or Cell or Universe or Mesh
@@ -4697,13 +4763,18 @@ class Chi(MGXS):
     """
 
     def __init__(self, domain=None, domain_type=None, groups=None,
-                 by_nuclide=False, name='', num_polar=1, num_azimuthal=1):
+                 prompt=False, by_nuclide=False, name='', num_polar=1,
+                 num_azimuthal=1):
         super(Chi, self).__init__(domain, domain_type, groups, by_nuclide,
                                   name, num_polar, num_azimuthal)
-        self._rxn_type = 'chi'
+        if not prompt:
+            self._rxn_type = 'chi'
+        else:
+            self._rxn_type = 'chi-prompt'
         self._estimator = 'analog'
         self._valid_estimators = ['analog']
         self.nu = True
+        self.prompt = prompt
 
     @property
     def _dont_squeeze(self):
@@ -4717,7 +4788,10 @@ class Chi(MGXS):
 
     @property
     def scores(self):
-        return ['nu-fission', 'nu-fission']
+        if not self.prompt:
+            return ['nu-fission', 'nu-fission']
+        else:
+            return ['prompt-nu-fission', 'prompt-nu-fission']
 
     @property
     def filters(self):
@@ -5132,135 +5206,6 @@ class Chi(MGXS):
         return '%'
 
 
-class ChiPrompt(Chi):
-    r"""The prompt fission spectrum.
-
-    This class can be used for both OpenMC input generation and tally data
-    post-processing to compute spatially-homogenized and energy-integrated
-    multi-group cross sections for multi-group neutronics calculations. At a
-    minimum, one needs to set the :attr:`ChiPrompt.energy_groups` and
-    :attr:`ChiPrompt.domain` properties. Tallies for the flux and appropriate
-    reaction rates over the specified domain are generated automatically via the
-    :attr:`ChiPrompt.tallies` property, which can then be appended to a
-    :class:`openmc.Tallies` instance.
-
-    For post-processing, the :meth:`MGXS.load_from_statepoint` will pull in the
-    necessary data to compute multi-group cross sections from a
-    :class:`openmc.StatePoint` instance. The derived multi-group cross section
-    can then be obtained from the :attr:`ChiPrompt.xs_tally` property.
-
-    For a spatial domain :math:`V` and energy group :math:`[E_g,E_{g-1}]`, the
-    fission spectrum is calculated as:
-
-    .. math::
-
-       \langle \nu^p \sigma_{f,g' \rightarrow g} \phi \rangle &= \int_{r \in V}
-       dr \int_{4\pi} d\Omega' \int_0^\infty dE' \int_{E_g}^{E_{g-1}} dE \;
-       \chi(E)^p \nu^p \sigma_f (r, E') \psi(r, E', \Omega')\\
-       \langle \nu^p \sigma_f \phi \rangle &= \int_{r \in V} dr \int_{4\pi}
-       d\Omega' \int_0^\infty dE' \int_0^\infty dE \; \chi(E) \nu^p \sigma_f (r,
-       E') \psi(r, E', \Omega') \\
-       \chi_g^p &= \frac{\langle \nu^p \sigma_{f,g' \rightarrow g} \phi \rangle}
-       {\langle \nu^p \sigma_f \phi \rangle}
-
-    Parameters
-    ----------
-    domain : openmc.Material or openmc.Cell or openmc.Universe or openmc.Mesh
-        The domain for spatial homogenization
-    domain_type : {'material', 'cell', 'distribcell', 'universe', 'mesh'}
-        The domain type for spatial homogenization
-    groups : openmc.mgxs.EnergyGroups
-        The energy group structure for energy condensation
-    by_nuclide : bool
-        If true, computes cross sections for each nuclide in domain
-    name : str, optional
-        Name of the multi-group cross section. Used as a label to identify
-        tallies in OpenMC 'tallies.xml' file.
-    num_polar : Integral, optional
-        Number of equi-width polar angle bins for angle discretization;
-        defaults to one bin
-    num_azimuthal : Integral, optional
-        Number of equi-width azimuthal angle bins for angle discretization;
-        defaults to one bin
-
-    Attributes
-    ----------
-    name : str, optional
-        Name of the multi-group cross section
-    rxn_type : str
-        Reaction type (e.g., 'total', 'nu-fission', etc.)
-    by_nuclide : bool
-        If true, computes cross sections for each nuclide in domain
-    domain : Material or Cell or Universe or Mesh
-        Domain for spatial homogenization
-    domain_type : {'material', 'cell', 'distribcell', 'universe', 'mesh'}
-        Domain type for spatial homogenization
-    energy_groups : openmc.mgxs.EnergyGroups
-        Energy group structure for energy condensation
-    num_polar : Integral
-        Number of equi-width polar angle bins for angle discretization
-    num_azimuthal : Integral
-        Number of equi-width azimuthal angle bins for angle discretization
-    tally_trigger : openmc.Trigger
-        An (optional) tally precision trigger given to each tally used to
-        compute the cross section
-    scores : list of str
-        The scores in each tally used to compute the multi-group cross section
-    filters : list of openmc.Filter
-        The filters in each tally used to compute the multi-group cross section
-    tally_keys : list of str
-        The keys into the tallies dictionary for each tally used to compute
-        the multi-group cross section
-    estimator : 'analog'
-        The tally estimator used to compute the multi-group cross section
-    tallies : collections.OrderedDict
-        OpenMC tallies needed to compute the multi-group cross section. The keys
-        are strings listed in the :attr:`ChiPrompt.tally_keys` property and
-        values are instances of :class:`openmc.Tally`.
-    rxn_rate_tally : openmc.Tally
-        Derived tally for the reaction rate tally used in the numerator to
-        compute the multi-group cross section. This attribute is None
-        unless the multi-group cross section has been computed.
-    xs_tally : openmc.Tally
-        Derived tally for the multi-group cross section. This attribute
-        is None unless the multi-group cross section has been computed.
-    num_subdomains : int
-        The number of subdomains is unity for 'material', 'cell' and 'universe'
-        domain types. This is equal to the number of cell instances
-        for 'distribcell' domain types (it is equal to unity prior to loading
-        tally data from a statepoint file).
-    num_nuclides : int
-        The number of nuclides for which the multi-group cross section is
-        being tracked. This is unity if the by_nuclide attribute is False.
-    nuclides : Iterable of str or 'sum'
-        The optional user-specified nuclides for which to compute cross
-        sections (e.g., 'U-238', 'O-16'). If by_nuclide is True but nuclides
-        are not specified by the user, all nuclides in the spatial domain
-        are included. This attribute is 'sum' if by_nuclide is false.
-    sparse : bool
-        Whether or not the MGXS' tallies use SciPy's LIL sparse matrix format
-        for compressed data storage
-    loaded_sp : bool
-        Whether or not a statepoint file has been loaded with tally data
-    derived : bool
-        Whether or not the MGXS is merged from one or more other MGXS
-    hdf5_key : str
-        The key used to index multi-group cross sections in an HDF5 data store
-
-    """
-
-    def __init__(self, domain=None, domain_type=None, groups=None,
-                 by_nuclide=False, name='', num_polar=1, num_azimuthal=1):
-        super(ChiPrompt, self).__init__(domain, domain_type, groups,
-                                        by_nuclide, name, num_polar,
-                                        num_azimuthal)
-        self._rxn_type = 'chi-prompt'
-
-    @property
-    def scores(self):
-        return ['prompt-nu-fission', 'prompt-nu-fission']
-
-
 class InverseVelocity(MGXS):
     r"""An inverse velocity multi-group cross section.
 
@@ -5408,253 +5353,3 @@ class InverseVelocity(MGXS):
         else:
             raise ValueError('Unable to return the units of InverseVelocity'
                              ' for xs_type other than "macro"')
-
-
-class PromptNuFissionXS(MGXS):
-    r"""A prompt fission neutron production multi-group cross section.
-
-    This class can be used for both OpenMC input generation and tally data
-    post-processing to compute spatially-homogenized and energy-integrated
-    multi-group cross sections for multi-group neutronics calculations. At a
-    minimum, one needs to set the :attr:`PromptNuFissionXS.energy_groups` and
-    :attr:`PromptNuFissionXS.domain` properties. Tallies for the flux and
-    appropriate reaction rates over the specified domain are generated
-    automatically via the :attr:`PromptNuFissionXS.tallies` property, which can
-    then be appended to a :class:`openmc.Tallies` instance.
-
-    For post-processing, the :meth:`MGXS.load_from_statepoint` will pull in the
-    necessary data to compute multi-group cross sections from a
-    :class:`openmc.StatePoint` instance. The derived multi-group cross section
-    can then be obtained from the :attr:`PromptNuFissionXS.xs_tally` property.
-
-    For a spatial domain :math:`V` and energy group :math:`[E_g,E_{g-1}]`, the
-    fission spectrum is calculated as:
-
-    .. math::
-
-       \frac{\int_{r \in V} dr \int_{4\pi} d\Omega \int_{E_g}^{E_{g-1}} dE \;
-       \nu\sigma_f^p (r, E) \psi (r, E, \Omega)}{\int_{r \in V} dr \int_{4\pi}
-       d\Omega \int_{E_g}^{E_{g-1}} dE \; \psi (r, E, \Omega)}.
-
-    Parameters
-    ----------
-    domain : openmc.Material or openmc.Cell or openmc.Universe or openmc.Mesh
-        The domain for spatial homogenization
-    domain_type : {'material', 'cell', 'distribcell', 'universe', 'mesh'}
-        The domain type for spatial homogenization
-    groups : openmc.mgxs.EnergyGroups
-        The energy group structure for energy condensation
-    by_nuclide : bool
-        If true, computes cross sections for each nuclide in domain
-    name : str, optional
-        Name of the multi-group cross section. Used as a label to identify
-        tallies in OpenMC 'tallies.xml' file.
-    num_polar : Integral, optional
-        Number of equi-width polar angle bins for angle discretization;
-        defaults to one bin
-    num_azimuthal : Integral, optional
-        Number of equi-width azimuthal angle bins for angle discretization;
-        defaults to one bin
-
-    Attributes
-    ----------
-    name : str, optional
-        Name of the multi-group cross section
-    rxn_type : str
-        Reaction type (e.g., 'total', 'nu-fission', etc.)
-    by_nuclide : bool
-        If true, computes cross sections for each nuclide in domain
-    domain : Material or Cell or Universe or Mesh
-        Domain for spatial homogenization
-    domain_type : {'material', 'cell', 'distribcell', 'universe', 'mesh'}
-        Domain type for spatial homogenization
-    energy_groups : openmc.mgxs.EnergyGroups
-        Energy group structure for energy condensation
-    num_polar : Integral
-        Number of equi-width polar angle bins for angle discretization
-    num_azimuthal : Integral
-        Number of equi-width azimuthal angle bins for angle discretization
-    tally_trigger : openmc.Trigger
-        An (optional) tally precision trigger given to each tally used to
-        compute the cross section
-    scores : list of str
-        The scores in each tally used to compute the multi-group cross section
-    filters : list of openmc.Filter
-        The filters in each tally used to compute the multi-group cross section
-    tally_keys : list of str
-        The keys into the tallies dictionary for each tally used to compute
-        the multi-group cross section
-    estimator : {'tracklength', 'collision', 'analog'}
-        The tally estimator used to compute the multi-group cross section
-    tallies : collections.OrderedDict
-        OpenMC tallies needed to compute the multi-group cross section. The keys
-        are strings listed in the :attr:`PromptNuFissionXS.tally_keys` property
-        and values are instances of :class:`openmc.Tally`.
-    rxn_rate_tally : openmc.Tally
-        Derived tally for the reaction rate tally used in the numerator to
-        compute the multi-group cross section. This attribute is None
-        unless the multi-group cross section has been computed.
-    xs_tally : openmc.Tally
-        Derived tally for the multi-group cross section. This attribute
-        is None unless the multi-group cross section has been computed.
-    num_subdomains : int
-        The number of subdomains is unity for 'material', 'cell' and 'universe'
-        domain types. This is equal to the number of cell instances
-        for 'distribcell' domain types (it is equal to unity prior to loading
-        tally data from a statepoint file).
-    num_nuclides : int
-        The number of nuclides for which the multi-group cross section is
-        being tracked. This is unity if the by_nuclide attribute is False.
-    nuclides : Iterable of str or 'sum'
-        The optional user-specified nuclides for which to compute cross
-        sections (e.g., 'U-238', 'O-16'). If by_nuclide is True but nuclides
-        are not specified by the user, all nuclides in the spatial domain
-        are included. This attribute is 'sum' if by_nuclide is false.
-    sparse : bool
-        Whether or not the MGXS' tallies use SciPy's LIL sparse matrix format
-        for compressed data storage
-    loaded_sp : bool
-        Whether or not a statepoint file has been loaded with tally data
-    derived : bool
-        Whether or not the MGXS is merged from one or more other MGXS
-    hdf5_key : str
-        The key used to index multi-group cross sections in an HDF5 data store
-
-    """
-
-    def __init__(self, domain=None, domain_type=None, groups=None,
-                 by_nuclide=False, name='', num_polar=1, num_azimuthal=1):
-        super(PromptNuFissionXS, self).__init__(domain, domain_type, groups,
-                                                by_nuclide, name, num_polar,
-                                                num_azimuthal)
-        self._rxn_type = 'prompt-nu-fission'
-        self.nu = True
-
-
-class PromptNuFissionMatrixXS(MatrixMGXS):
-    r"""A prompt fission neutron production matrix multi-group cross section.
-
-    This class can be used for both OpenMC input generation and tally data
-    post-processing to compute spatially-homogenized and energy-integrated
-    multi-group cross sections for multi-group neutronics calculations. At a
-    minimum, one needs to set the :attr:`PromptNuFissionMatrixXS.energy_groups`
-    and :attr:`PromptNuFissionMatrixXS.domain` properties. Tallies for the flux
-    and appropriate reaction rates over the specified domain are generated
-    automatically via the :attr:`PromptNuFissionMatrixXS.tallies` property,
-    which can then be appended to a :class:`openmc.Tallies` instance.
-
-    For post-processing, the :meth:`MGXS.load_from_statepoint` will pull in the
-    necessary data to compute multi-group cross sections from a
-    :class:`openmc.StatePoint` instance. The derived multi-group cross section
-    can then be obtained from the :attr:`PromptNuFissionMatrixXS.xs_tally`
-    property.
-
-    For a spatial domain :math:`V` and energy group :math:`[E_g,E_{g-1}]`, the
-    fission spectrum is calculated as:
-
-    .. math::
-
-       \langle \nu\sigma_{f,g'\rightarrow g} \phi \rangle &= \int_{r \in V} dr
-       \int_{4\pi} d\Omega' \int_{E_{g'}}^{E_{g'-1}} dE' \int_{E_g}^{E_{g-1}} dE
-       \; \chi(E) \nu\sigma_f^p (r, E') \psi(r, E', \Omega')\\
-       \langle \phi \rangle &= \int_{r \in V} dr \int_{4\pi} d\Omega
-       \int_{E_g}^{E_{g-1}} dE \; \psi (r, E, \Omega) \\
-       \nu\sigma_{f,g'\rightarrow g} &= \frac{\langle \nu\sigma_{f,g'\rightarrow
-       g}^p \phi \rangle}{\langle \phi \rangle}
-
-    Parameters
-    ----------
-    domain : openmc.Material or openmc.Cell or openmc.Universe or openmc.Mesh
-        The domain for spatial homogenization
-    domain_type : {'material', 'cell', 'distribcell', 'universe', 'mesh'}
-        The domain type for spatial homogenization
-    groups : openmc.mgxs.EnergyGroups
-        The energy group structure for energy condensation
-    by_nuclide : bool
-        If true, computes cross sections for each nuclide in domain
-    name : str, optional
-        Name of the multi-group cross section. Used as a label to identify
-        tallies in OpenMC 'tallies.xml' file.
-    num_polar : Integral, optional
-        Number of equi-width polar angle bins for angle discretization;
-        defaults to one bin
-    num_azimuthal : Integral, optional
-        Number of equi-width azimuthal angle bins for angle discretization;
-        defaults to one bin
-
-    Attributes
-    ----------
-    name : str, optional
-        Name of the multi-group cross section
-    rxn_type : str
-        Reaction type (e.g., 'total', 'nu-fission', etc.)
-    by_nuclide : bool
-        If true, computes cross sections for each nuclide in domain
-    domain : Material or Cell or Universe or Mesh
-        Domain for spatial homogenization
-    domain_type : {'material', 'cell', 'distribcell', 'universe', 'mesh'}
-        Domain type for spatial homogenization
-    energy_groups : openmc.mgxs.EnergyGroups
-        Energy group structure for energy condensation
-    num_polar : Integral
-        Number of equi-width polar angle bins for angle discretization
-    num_azimuthal : Integral
-        Number of equi-width azimuthal angle bins for angle discretization
-    tally_trigger : openmc.Trigger
-        An (optional) tally precision trigger given to each tally used to
-        compute the cross section
-    scores : list of str
-        The scores in each tally used to compute the multi-group cross section
-    filters : list of openmc.Filter
-        The filters in each tally used to compute the multi-group cross section
-    tally_keys : list of str
-        The keys into the tallies dictionary for each tally used to compute
-        the multi-group cross section
-    estimator : 'analog'
-        The tally estimator used to compute the multi-group cross section
-    tallies : collections.OrderedDict
-        OpenMC tallies needed to compute the multi-group cross section. The keys
-        are strings listed in the :attr:`PromptNuFissionXS.tally_keys` property
-        and values are instances of :class:`openmc.Tally`.
-    rxn_rate_tally : openmc.Tally
-        Derived tally for the reaction rate tally used in the numerator to
-        compute the multi-group cross section. This attribute is None
-        unless the multi-group cross section has been computed.
-    xs_tally : openmc.Tally
-        Derived tally for the multi-group cross section. This attribute
-        is None unless the multi-group cross section has been computed.
-    num_subdomains : int
-        The number of subdomains is unity for 'material', 'cell' and 'universe'
-        domain types. This is equal to the number of cell instances
-        for 'distribcell' domain types (it is equal to unity prior to loading
-        tally data from a statepoint file).
-    num_nuclides : int
-        The number of nuclides for which the multi-group cross section is
-        being tracked. This is unity if the by_nuclide attribute is False.
-    nuclides : Iterable of str or 'sum'
-        The optional user-specified nuclides for which to compute cross
-        sections (e.g., 'U-238', 'O-16'). If by_nuclide is True but nuclides
-        are not specified by the user, all nuclides in the spatial domain
-        are included. This attribute is 'sum' if by_nuclide is false.
-    sparse : bool
-        Whether or not the MGXS' tallies use SciPy's LIL sparse matrix format
-        for compressed data storage
-    loaded_sp : bool
-        Whether or not a statepoint file has been loaded with tally data
-    derived : bool
-        Whether or not the MGXS is merged from one or more other MGXS
-    hdf5_key : str
-        The key used to index multi-group cross sections in an HDF5 data store
-
-    """
-
-    def __init__(self, domain=None, domain_type=None, groups=None,
-                 by_nuclide=False, name='', num_polar=1, num_azimuthal=1):
-        super(PromptNuFissionMatrixXS, self).__init__(domain, domain_type,
-                                                      groups, by_nuclide, name,
-                                                      num_polar, num_azimuthal)
-        self._rxn_type = 'prompt-nu-fission'
-        self._hdf5_key = 'prompt-nu-fission matrix'
-        self._estimator = 'analog'
-        self._valid_estimators = ['analog']
-        self.nu = True

@@ -1104,7 +1104,8 @@ class XSdata(object):
 
         check_type('nu_fission', nu_fission, (openmc.mgxs.FissionXS,
                                               openmc.mgxs.NuFissionMatrixXS))
-        check_value('nu', nu_fission.nu, [True])
+        if isinstance(nu_fission, openmc.mgxs.FissionXS):
+            check_value('nu', nu_fission.nu, [True])
         check_value('energy_groups', nu_fission.energy_groups,
                     [self.energy_groups])
         check_value('domain_type', nu_fission.domain_type,
@@ -1602,7 +1603,6 @@ class XSdata(object):
 
         check_type('nuscatter', nuscatter, (openmc.mgxs.ScatterMatrixXS,
                                             openmc.mgxs.MultiplicityMatrixXS))
-        check_value('nu', nuscatter.nu, [True])
         check_value('energy_groups', nuscatter.energy_groups,
                     [self.energy_groups])
         check_value('domain_type', nuscatter.domain_type,

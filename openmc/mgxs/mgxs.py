@@ -4669,6 +4669,16 @@ class NuFissionMatrixXS(MatrixMGXS):
             self._hdf5_key = 'prompt-nu-fission matrix'
         self._estimator = 'analog'
         self._valid_estimators = ['analog']
+        self.prompt = prompt
+
+    @property
+    def prompt(self):
+        return self._prompt
+
+    @prompt.setter
+    def prompt(self, prompt):
+        cv.check_type('prompt', prompt, bool)
+        self._prompt = prompt
 
     def __deepcopy__(self, memo):
         clone = super(NuFissionMatrixXS, self).__deepcopy__(memo)

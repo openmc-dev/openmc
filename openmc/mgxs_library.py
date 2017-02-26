@@ -1125,13 +1125,13 @@ class XSdata(object):
                                    subdomain=None):
         """Sets the prompt-nu-fission cross section.
 
-        This method allows for an openmc.mgxs.PromptNuFissionXS or
-        openmc.mgxs.PromptNuFissionMatrixXS to be used to set the
-        prompt-nu-fission cross section for this XSdata object.
+        This method allows for an openmc.mgxs.FissionXS or
+        openmc.mgxs.NuFissionMatrixXS to be used to set the prompt-nu-fission
+        cross section for this XSdata object.
 
         Parameters
         ----------
-        prompt_nu_fission: openmc.mgxs.PromptNuFissionXS or openmc.mgxs.PromptNuFissionMatrixXS
+        prompt_nu_fission: openmc.mgxs.FissionXS or openmc.mgxs.NuFissionMatrixXS
             MGXS Object containing the prompt-nu-fission cross section
             for the domain of interest.
         temperature : float
@@ -1155,8 +1155,8 @@ class XSdata(object):
         """
 
         check_type('prompt_nu_fission', prompt_nu_fission,
-                   (openmc.mgxs.PromptNuFissionXS,
-                    openmc.mgxs.PromptNuFissionMatrixXS))
+                   (openmc.mgxs.FissionXS, openmc.mgxs.NuFissionMatrixXS))
+        check_value('prompt', prompt_nu_fission.prompt, [True])
         check_value('energy_groups', prompt_nu_fission.energy_groups,
                     [self.energy_groups])
         check_value('domain_type', prompt_nu_fission.domain_type,
@@ -1308,12 +1308,12 @@ class XSdata(object):
 
     def set_chi_prompt_mgxs(self, chi_prompt, temperature=294.,
                             nuclide='total', xs_type='macro', subdomain=None):
-        """This method allows for an openmc.mgxs.ChiPrompt
-        to be used to set chi-prompt for this XSdata object.
+        """This method allows for an openmc.mgxs.Chi to be used to set
+        chi-prompt for this XSdata object.
 
         Parameters
         ----------
-        chi_prompt: openmc.mgxs.ChiPrompt
+        chi_prompt: openmc.mgxs.Chi
             MGXS Object containing chi-prompt for the domain of interest.
         temperature : float
             Temperature (in units of Kelvin) of the provided dataset. Defaults
@@ -1335,7 +1335,8 @@ class XSdata(object):
 
         """
 
-        check_type('chi_prompt', chi_prompt, openmc.mgxs.ChiPrompt)
+        check_type('chi_prompt', chi_prompt, openmc.mgxs.Chi)
+        check_value('prompt', chi_prompt.prompt, [True])
         check_value('energy_groups', chi_prompt.energy_groups,
                     [self.energy_groups])
         check_value('domain_type', chi_prompt.domain_type,

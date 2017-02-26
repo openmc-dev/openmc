@@ -39,7 +39,7 @@ class MDGXS(MGXS):
     multi-group and multi-delayed-group cross sections for downstream
     neutronics calculations.
 
-    NOTE: Users should instantiate the subclasses of this abstract class.
+    .. note:: Users should instantiate the subclasses of this abstract class.
 
     Parameters
     ----------
@@ -1566,8 +1566,8 @@ class Beta(MDGXS):
        \beta_{d,g} &= \frac{\langle \nu^d \sigma_f \phi \rangle}
        {\langle \nu \sigma_f \phi \rangle}
 
-    NOTE: The Beta MGXS is the delayed neutron fraction computed directly from
-    the nuclear data. Often the delayed neutron fraction is
+    .. note:: The Beta MGXS is the delayed neutron fraction computed directly
+    from the nuclear data. Often the delayed neutron fraction is
     "importance-weighted" by the adjoint flux and called "beta-effective". It
     is important to make clear that this Beta is not importance-weighted.
 
@@ -1930,7 +1930,7 @@ class MatrixMDGXS(MDGXS):
     multi-group and multi-delayed-group cross sections for downstream neutronics
     calculations.
 
-    NOTE: Users should instantiate the subclasses of this abstract class.
+    .. note:: Users should instantiate the subclasses of this abstract class.
 
     Parameters
     ----------

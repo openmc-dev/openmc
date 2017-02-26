@@ -287,6 +287,9 @@ Multi-group Cross Sections
     openmc.mgxs.CaptureXS
     openmc.mgxs.Chi
     openmc.mgxs.ChiPrompt
+    openmc.mgxs.ConsistentNuScatterMatrixXS
+    openmc.mgxs.ConsistentScatterMatrixXS
+    openmc.mgxs.ConvolvedMGXS
     openmc.mgxs.FissionXS
     openmc.mgxs.InverseVelocity
     openmc.mgxs.KappaFissionXS
@@ -295,10 +298,12 @@ Multi-group Cross Sections
     openmc.mgxs.NuFissionMatrixXS
     openmc.mgxs.NuScatterXS
     openmc.mgxs.NuScatterMatrixXS
+    openmc.mgxs.NuScatterProbabilityMatrix
     openmc.mgxs.PromptNuFissionXS
     openmc.mgxs.PromptNuFissionMatrixXS
     openmc.mgxs.ScatterXS
     openmc.mgxs.ScatterMatrixXS
+    openmc.mgxs.ScatterProbabilityMatrix
     openmc.mgxs.TotalXS
     openmc.mgxs.TransportXS
 

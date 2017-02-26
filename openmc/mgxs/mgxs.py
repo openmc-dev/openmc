@@ -149,10 +149,6 @@ class MGXS(object):
         Name of the multi-group cross section
     rxn_type : str
         Reaction type (e.g., 'total', 'nu-fission', etc.)
-    nu : bool
-        If True, the cross section data will include neutron multiplication
-    prompt : bool
-        If true, computes cross sections which only includes prompt neutrons
     by_nuclide : bool
         If true, computes cross sections for each nuclide in domain
     domain : Material or Cell or Universe or Mesh
@@ -234,8 +230,6 @@ class MGXS(object):
         self._derived = False
         self._hdf5_key = None
         self._valid_estimators = ESTIMATOR_TYPES
-        self._nu = False
-        self._prompt = False
 
         self.name = name
         self.by_nuclide = by_nuclide
@@ -415,14 +409,6 @@ class MGXS(object):
         return self._rxn_type
 
     @property
-    def nu(self):
-        return self._nu
-
-    @property
-    def prompt(self):
-        return self._prompt
-
-    @property
     def by_nuclide(self):
         return self._by_nuclide
 
@@ -586,16 +572,6 @@ class MGXS(object):
     def name(self, name):
         cv.check_type('name', name, string_types)
         self._name = name
-
-    @nu.setter
-    def nu(self, nu):
-        cv.check_type('nu', nu, bool)
-        self._nu = nu
-
-    @prompt.setter
-    def prompt(self, prompt):
-        cv.check_type('prompt', prompt, bool)
-        self._prompt = prompt
 
     @by_nuclide.setter
     def by_nuclide(self, by_nuclide):
@@ -2026,8 +2002,6 @@ class MatrixMGXS(MGXS):
         Name of the multi-group cross section
     rxn_type : str
         Reaction type (e.g., 'total', 'nu-fission', etc.)
-    nu : bool
-        If True, the cross section data will include neutron multiplication
     by_nuclide : bool
         If true, computes cross sections for each nuclide in domain
     domain : Material or Cell or Universe or Mesh
@@ -2732,6 +2706,11 @@ class TransportXS(MGXS):
         self._valid_estimators = ['analog']
         self.nu = nu
 
+    def __deepcopy__(self, memo):
+        clone = super(TransportXS, self).__deepcopy__(memo)
+        clone._nu = self.nu
+        return clone
+
     @property
     def scores(self):
         if not self.nu:
@@ -2769,6 +2748,15 @@ class TransportXS(MGXS):
             self._rxn_rate_tally.sparse = self.sparse
 
         return self._rxn_rate_tally
+
+    @property
+    def nu(self):
+        return self._nu
+
+    @nu.setter
+    def nu(self, nu):
+        cv.check_type('nu', nu, bool)
+        self._nu = nu
 
 
 class AbsorptionXS(MGXS):
@@ -3184,6 +3172,32 @@ class FissionXS(MGXS):
         else:
             self._rxn_type = 'prompt-nu-fission'
             self.nu = True
+        self.prompt = prompt
+
+    def __deepcopy__(self, memo):
+        clone = super(FissionXS, self).__deepcopy__(memo)
+        clone._nu = self.nu
+        clone._prompt = self.prompt
+        return clone
+
+    @property
+    def nu(self):
+        return self._nu
+
+    @property
+    def prompt(self):
+        return self._prompt
+
+    @nu.setter
+    def nu(self, nu):
+        cv.check_type('nu', nu, bool)
+        self._nu = nu
+
+    @prompt.setter
+    def prompt(self, prompt):
+        cv.check_type('prompt', prompt, bool)
+        self._prompt = prompt
+
 
 class KappaFissionXS(MGXS):
     r"""A recoverable fission energy production rate multi-group cross section.
@@ -3449,8 +3463,21 @@ class ScatterXS(MGXS):
             # to reflect this
             self._estimator = 'analog'
             self._valid_estimators = ['analog']
-
         self.nu = nu
+
+    def __deepcopy__(self, memo):
+        clone = super(ScatterXS, self).__deepcopy__(memo)
+        clone._nu = self.nu
+        return clone
+
+    @property
+    def nu(self):
+        return self._nu
+
+    @nu.setter
+    def nu(self, nu):
+        cv.check_type('nu', nu, bool)
+        self._nu = nu
 
 
 class ScatterMatrixXS(MatrixMGXS):
@@ -3627,6 +3654,7 @@ class ScatterMatrixXS(MatrixMGXS):
         clone._scatter_format = self.scatter_format
         clone._legendre_order = self.legendre_order
         clone._histogram_bins = self.histogram_bins
+        clone._nu = self.nu
         return clone
 
     @property
@@ -3644,6 +3672,10 @@ class ScatterMatrixXS(MatrixMGXS):
                 return (1, 2, 3)
             else:
                 return (1, 2)
+
+    @property
+    def nu(self):
+        return self._nu
 
     @property
     def correction(self):
@@ -3720,6 +3752,11 @@ class ScatterMatrixXS(MatrixMGXS):
             self._rxn_rate_tally.sparse = self.sparse
 
         return self._rxn_rate_tally
+
+    @nu.setter
+    def nu(self, nu):
+        cv.check_type('nu', nu, bool)
+        self._nu = nu
 
     @correction.setter
     def correction(self, correction):
@@ -4455,7 +4492,6 @@ class MultiplicityMatrixXS(MatrixMGXS):
         self._rxn_type = 'multiplicity matrix'
         self._estimator = 'analog'
         self._valid_estimators = ['analog']
-        self.nu = True
 
     @property
     def scores(self):
@@ -4633,7 +4669,11 @@ class NuFissionMatrixXS(MatrixMGXS):
             self._hdf5_key = 'prompt-nu-fission matrix'
         self._estimator = 'analog'
         self._valid_estimators = ['analog']
-        self.nu = True
+
+    def __deepcopy__(self, memo):
+        clone = super(NuFissionMatrixXS, self).__deepcopy__(memo)
+        clone._prompt = self.prompt
+        return clone
 
 
 class Chi(MGXS):
@@ -4773,8 +4813,16 @@ class Chi(MGXS):
             self._rxn_type = 'chi-prompt'
         self._estimator = 'analog'
         self._valid_estimators = ['analog']
-        self.nu = True
         self.prompt = prompt
+
+    def __deepcopy__(self, memo):
+        clone = super(Chi, self).__deepcopy__(memo)
+        clone._prompt = self.prompt
+        return clone
+
+    @property
+    def prompt(self):
+        return self._prompt
 
     @property
     def _dont_squeeze(self):
@@ -4831,6 +4879,11 @@ class Chi(MGXS):
             nu_fission_in.filters.append(energy_filter)
 
         return self._xs_tally
+
+    @prompt.setter
+    def prompt(self, prompt):
+        cv.check_type('prompt', prompt, bool)
+        self._prompt = prompt
 
     def get_homogenized_mgxs(self, other_mgxs):
         """Construct a homogenized mgxs with other MGXS objects.

@@ -5,7 +5,7 @@ import sys
 
 from six import string_types
 
-summary_indicator = "TIMING STATISTICS"
+_summary_indicator = "TIMING STATISTICS"
 
 
 def _run(command, output, cwd):
@@ -25,7 +25,7 @@ def _run(command, output, cwd):
         if output == 'full':
             # If user requested output, print to screen
             print(line, end='')
-        elif output == 'summary' and summary_indicator in line:
+        elif output == 'summary' and _summary_indicator in line:
             # If they requested a summary, look for the start of the summary
             storage_flag = True
 
@@ -56,7 +56,7 @@ def plot_geometry(output=True, openmc_exec='openmc', cwd='.'):
 
 
 def run(particles=None, threads=None, geometry_debug=False,
-        restart_file=None, tracks=False, output="full", cwd='.',
+        restart_file=None, tracks=False, output='full', cwd='.',
         openmc_exec='openmc', mpi_args=None):
     """Run an OpenMC simulation.
 

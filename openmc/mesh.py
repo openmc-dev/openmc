@@ -188,8 +188,8 @@ class Mesh(EqualityMixin):
         return mesh
 
     def cell_generator(self):
-        """Generator function to traverse through every [i,j,k] index
-        of the mesh in the same order that would be done by the Fortran
+        """Generator function to traverse through every [i,j,k] index of the
+        mesh
 
         For example the following code:
 
@@ -202,8 +202,8 @@ class Mesh(EqualityMixin):
 
             [1, 1, 1]
             [2, 1, 1]
-            [1, 1, 2]
             [1, 2, 1]
+            [2, 2, 1]
             ...
 
 

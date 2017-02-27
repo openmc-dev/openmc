@@ -15,6 +15,7 @@ module input_xml
   use hdf5_interface
   use list_header,      only: ListChar, ListInt, ListReal
   use mesh_header,      only: RegularMesh
+  use message_passing
   use mgxs_data,        only: create_macro_xs, read_mgxs
   use multipole,        only: multipole_read
   use output,           only: write_message
@@ -78,7 +79,6 @@ contains
     integer :: temp_int
     integer :: temp_int_array3(3)
     integer, allocatable :: temp_int_array(:)
-    integer(8) :: temp_long
     real(8), allocatable :: temp_real(:)
     integer :: n_tracks
     logical :: file_exists
@@ -99,7 +99,6 @@ contains
     type(Node), pointer :: node_res_scat  => null()
     type(Node), pointer :: node_scatterer => null()
     type(Node), pointer :: node_trigger   => null()
-    type(Node), pointer :: node_keff_trigger => null()
     type(Node), pointer :: node_vol => null()
     type(Node), pointer :: node_tab_leg => null()
     type(NodeList), pointer :: node_scat_list => null()
@@ -223,119 +222,62 @@ contains
       end if
     end if
 
-    ! Make sure that either eigenvalue or fixed source was specified
-    if (.not. check_for_node(doc, "eigenvalue") .and. &
-         .not. check_for_node(doc, "fixed_source")) then
-      call fatal_error("<eigenvalue> or <fixed_source> not specified.")
-    end if
+    ! Check run mode if it hasn't been set from the command line
+    if (run_mode == NONE) then
+      if (check_for_node(doc, "run_mode")) then
+        call get_node_value(doc, "run_mode", temp_str)
+        select case (to_lower(temp_str))
+        case ("eigenvalue")
+          run_mode = MODE_EIGENVALUE
+        case ("fixed source")
+          run_mode = MODE_FIXEDSOURCE
+        case ("plot")
+          run_mode = MODE_PLOTTING
+        case ("particle restart")
+          run_mode = MODE_PARTICLE
+        case ("volume")
+          run_mode = MODE_VOLUME
+        end select
 
-    ! Eigenvalue information
-    if (check_for_node(doc, "eigenvalue")) then
-      ! Set run mode
-      if (run_mode == NONE) run_mode = MODE_EIGENVALUE
+        ! Assume XML specifics <particles>, <batches>, etc. directly
+        node_mode => doc
+      else
+        call warning("<run_mode> should be specified.")
 
-      ! Get pointer to eigenvalue XML block
-      call get_node_ptr(doc, "eigenvalue", node_mode)
-
-      ! Check number of particles
-      if (.not. check_for_node(node_mode, "particles")) then
-        call fatal_error("Need to specify number of particles per generation.")
-      end if
-
-      ! Get number of particles
-      call get_node_value(node_mode, "particles", temp_long)
-
-      ! If the number of particles was specified as a command-line argument, we
-      ! don't set it here
-      if (n_particles == 0) n_particles = temp_long
-
-      ! Get number of basic batches
-      call get_node_value(node_mode, "batches", n_batches)
-      if (.not. trigger_on) then
-        n_max_batches = n_batches
-      end if
-
-      ! Get number of inactive batches
-      call get_node_value(node_mode, "inactive", n_inactive)
-      n_active = n_batches - n_inactive
-      if (check_for_node(node_mode, "generations_per_batch")) then
-        call get_node_value(node_mode, "generations_per_batch", gen_per_batch)
-      end if
-
-      ! Allocate array for batch keff and entropy
-      allocate(k_generation(n_max_batches*gen_per_batch))
-      allocate(entropy(n_max_batches*gen_per_batch))
-      entropy = ZERO
-
-      ! Get the trigger information for keff
-      if (check_for_node(node_mode, "keff_trigger")) then
-        call get_node_ptr(node_mode, "keff_trigger", node_keff_trigger)
-
-        if (check_for_node(node_keff_trigger, "type")) then
-          call get_node_value(node_keff_trigger, "type", temp_str)
-          temp_str = trim(to_lower(temp_str))
-
-          select case (temp_str)
-          case ('std_dev')
-            keff_trigger % trigger_type = STANDARD_DEVIATION
-          case ('variance')
-            keff_trigger % trigger_type = VARIANCE
-          case ('rel_err')
-            keff_trigger % trigger_type = RELATIVE_ERROR
-          case default
-            call fatal_error("Unrecognized keff trigger type " // temp_str)
-          end select
-
-        else
-          call fatal_error("Specify keff trigger type in settings XML")
+        ! Make sure that either eigenvalue or fixed source was specified
+        if (.not. check_for_node(doc, "eigenvalue") .and. &
+             .not. check_for_node(doc, "fixed_source")) then
+          call fatal_error("<eigenvalue> or <fixed_source> not specified.")
         end if
 
-        if (check_for_node(node_keff_trigger, "threshold")) then
-          call get_node_value(node_keff_trigger, "threshold", &
-               keff_trigger % threshold)
-        else
-          call fatal_error("Specify keff trigger threshold in settings XML")
+        if (check_for_node(doc, "eigenvalue")) then
+          ! Set run mode
+          if (run_mode == NONE) run_mode = MODE_EIGENVALUE
+
+          ! Get pointer to eigenvalue XML block
+          call get_node_ptr(doc, "eigenvalue", node_mode)
+        elseif (check_for_node(doc, "fixed_source")) then
+          ! Set run mode
+          if (run_mode == NONE) run_mode = MODE_FIXEDSOURCE
+
+          ! Get pointer to fixed_source XML block
+          call get_node_ptr(doc, "fixed_source", node_mode)
         end if
       end if
     end if
 
-    ! Fixed source calculation information
-    if (check_for_node(doc, "fixed_source")) then
-      ! Set run mode
-      if (run_mode == NONE) run_mode = MODE_FIXEDSOURCE
+    if (run_mode == MODE_EIGENVALUE .or. run_mode == MODE_FIXEDSOURCE) then
+      ! Read run parameters
+      call get_run_parameters(node_mode)
 
-      ! Get pointer to fixed_source XML block
-      call get_node_ptr(doc, "fixed_source", node_mode)
-
-      ! Check number of particles
-      if (.not. check_for_node(node_mode, "particles")) then
-        call fatal_error("Need to specify number of particles per batch.")
+      ! Check number of active batches, inactive batches, and particles
+      if (n_active <= 0) then
+        call fatal_error("Number of active batches must be greater than zero.")
+      elseif (n_inactive < 0) then
+        call fatal_error("Number of inactive batches must be non-negative.")
+      elseif (n_particles <= 0) then
+        call fatal_error("Number of particles must be greater than zero.")
       end if
-
-      ! Get number of particles
-      call get_node_value(node_mode, "particles", temp_long)
-
-      ! If the number of particles was specified as a command-line argument, we
-      ! don't set it here
-      if (n_particles == 0) n_particles = temp_long
-
-      ! Copy batch information
-      call get_node_value(node_mode, "batches", n_batches)
-      if (.not. trigger_on) then
-        n_max_batches = n_batches
-      end if
-      n_active = n_batches
-      n_inactive    = 0
-      gen_per_batch = 1
-    end if
-
-    ! Check number of active batches, inactive batches, and particles
-    if (n_active <= 0) then
-      call fatal_error("Number of active batches must be greater than zero.")
-    elseif (n_inactive < 0) then
-      call fatal_error("Number of inactive batches must be non-negative.")
-    elseif (n_particles <= 0) then
-      call fatal_error("Number of particles must be greater than zero.")
     end if
 
     ! Copy random number seed if specified
@@ -379,7 +321,10 @@ contains
     ! Get point to list of <source> elements and make sure there is at least one
     call get_node_list(doc, "source", node_source_list)
     n = get_list_size(node_source_list)
-    if (n == 0) call fatal_error("No source specified in settings XML file.")
+
+    if (run_mode == MODE_EIGENVALUE .or. run_mode == MODE_FIXEDSOURCE) then
+      if (n == 0) call fatal_error("No source specified in settings XML file.")
+    end if
 
     ! Allocate array for sources
     allocate(external_source(n))
@@ -1091,6 +1036,86 @@ contains
     call close_xmldoc(doc)
 
   end subroutine read_settings_xml
+
+!===============================================================================
+! GET_RUN_PARAMETERS
+!===============================================================================
+
+  subroutine get_run_parameters(node_base)
+    type(Node), pointer :: node_base
+
+    integer(8) :: temp_long
+    character(MAX_LINE_LEN) :: temp_str
+    type(Node), pointer :: node_keff_trigger => null()
+
+    ! Check number of particles
+    if (.not. check_for_node(node_base, "particles")) then
+      call fatal_error("Need to specify number of particles.")
+    end if
+
+    ! Get number of particles
+    call get_node_value(node_base, "particles", temp_long)
+
+    ! If the number of particles was specified as a command-line argument, we
+    ! don't set it here
+    if (n_particles == 0) n_particles = temp_long
+
+    ! Get number of basic batches
+    call get_node_value(node_base, "batches", n_batches)
+    if (.not. trigger_on) then
+      n_max_batches = n_batches
+    end if
+    n_inactive = 0
+    gen_per_batch = 1
+
+    ! Get number of inactive batches
+    if (run_mode == MODE_EIGENVALUE) then
+      call get_node_value(node_base, "inactive", n_inactive)
+      if (check_for_node(node_base, "generations_per_batch")) then
+        call get_node_value(node_base, "generations_per_batch", gen_per_batch)
+      end if
+
+      ! Allocate array for batch keff and entropy
+      allocate(k_generation(n_max_batches*gen_per_batch))
+      allocate(entropy(n_max_batches*gen_per_batch))
+      entropy = ZERO
+
+      ! Get the trigger information for keff
+      if (check_for_node(node_base, "keff_trigger")) then
+        call get_node_ptr(node_base, "keff_trigger", node_keff_trigger)
+
+        if (check_for_node(node_keff_trigger, "type")) then
+          call get_node_value(node_keff_trigger, "type", temp_str)
+          temp_str = trim(to_lower(temp_str))
+
+          select case (temp_str)
+          case ('std_dev')
+            keff_trigger % trigger_type = STANDARD_DEVIATION
+          case ('variance')
+            keff_trigger % trigger_type = VARIANCE
+          case ('rel_err')
+            keff_trigger % trigger_type = RELATIVE_ERROR
+          case default
+            call fatal_error("Unrecognized keff trigger type " // temp_str)
+          end select
+
+        else
+          call fatal_error("Specify keff trigger type in settings XML")
+        end if
+
+        if (check_for_node(node_keff_trigger, "threshold")) then
+          call get_node_value(node_keff_trigger, "threshold", &
+               keff_trigger % threshold)
+        else
+          call fatal_error("Specify keff trigger threshold in settings XML")
+        end if
+      end if
+    end if
+
+    ! Determine number of active batches
+    n_active = n_batches - n_inactive
+
+  end subroutine get_run_parameters
 
 !===============================================================================
 ! READ_GEOMETRY_XML reads data from a geometry.xml file and parses it, checking
@@ -2224,6 +2249,13 @@ contains
         call get_node_value(node_mat, "id", mat % id)
       else
         call fatal_error("Must specify id of material in materials XML file")
+      end if
+
+      ! Check if material is depletable
+      if (check_for_node(node_mat, "depletable")) then
+        call get_node_value(node_mat, "depletable", temp_str)
+        if (to_lower(temp_str) == "true" .or. temp_str == "1") &
+             mat % depletable = .true.
       end if
 
       ! Check to make sure 'id' hasn't been used
@@ -4229,14 +4261,14 @@ contains
       end select
 
       ! Set output file path
-      filename = trim(to_str(pl % id)) // "_plot"
+      filename = "plot_" // trim(to_str(pl % id))
       if (check_for_node(node_plot, "filename")) &
            call get_node_value(node_plot, "filename", filename)
       select case (pl % type)
       case (PLOT_TYPE_SLICE)
         pl % path_plot = trim(path_input) // trim(filename) // ".ppm"
       case (PLOT_TYPE_VOXEL)
-        pl % path_plot = trim(path_input) // trim(filename) // ".voxel"
+        pl % path_plot = trim(path_input) // trim(filename) // ".h5"
       end select
 
       ! Copy plot pixel size
@@ -5380,16 +5412,16 @@ contains
 
     if (attribute_exists(file_id, 'version')) then
       call read_attribute(version, file_id, 'version')
-      if (version(1) /= HDF5_VERSION_MAJOR) then
+      if (version(1) /= HDF5_VERSION(1)) then
         call fatal_error("HDF5 data format uses version " // trim(to_str(&
              version(1))) // "." // trim(to_str(version(2))) // " whereas &
              &your installation of OpenMC expects version " // trim(to_str(&
-             HDF5_VERSION_MAJOR)) // ".x data.")
+             HDF5_VERSION(1))) // ".x data.")
       end if
     else
       call fatal_error("HDF5 data does not indicate a version. Your &
            &installation of OpenMC expects version " // trim(to_str(&
-           HDF5_VERSION_MAJOR)) // ".x data.")
+           HDF5_VERSION(1))) // ".x data.")
     end if
   end subroutine check_data_version
 

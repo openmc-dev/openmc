@@ -1,22 +1,30 @@
 module initialize
 
+  use, intrinsic :: ISO_C_BINDING, only: c_loc
+
+  use hdf5
+#ifdef _OPENMP
+  use omp_lib
+#endif
+
   use bank_header,     only: Bank
   use constants
   use dict_header,     only: DictIntInt, ElemKeyValueII
   use set_header,      only: SetInt
   use energy_grid,     only: logarithmic_grid, grid_method
   use error,           only: fatal_error, warning
-  use geometry,        only: neighbor_lists, count_instance, calc_offsets,    &
+  use geometry,        only: neighbor_lists, count_instance, calc_offsets, &
                              maximum_levels
   use geometry_header, only: Cell, Universe, Lattice, RectLattice, HexLattice,&
                              &BASE_UNIVERSE
   use global
-  use hdf5_interface,  only: file_open, read_dataset, file_close, hdf5_bank_t,&
-                             hdf5_integer8_t
+  use hdf5_interface,  only: file_open, read_attribute, file_close, &
+                             hdf5_bank_t, hdf5_integer8_t
   use input_xml,       only: read_input_xml, cells_in_univ_dict, read_plots_xml
   use material_header, only: Material
+  use message_passing
   use mgxs_data,       only: read_mgxs, create_macro_xs
-  use output,          only: title, header, print_version, write_message,     &
+  use output,          only: title, header, print_version, write_message, &
                              print_usage, print_plot
   use random_lcg,      only: initialize_prng
   use state_point,     only: load_state_point
@@ -27,30 +35,23 @@ module initialize
   use tally_filter
   use tally,           only: init_tally_routines
 
-#ifdef MPI
-  use message_passing
-#endif
-
-#ifdef _OPENMP
-  use omp_lib
-#endif
-
-  use hdf5
-
-  use, intrinsic :: ISO_C_BINDING, only: c_loc
-
   implicit none
 
 contains
 
 !===============================================================================
-! INITIALIZE_RUN takes care of all initialization tasks, i.e. reading
+! OPENMC_INIT takes care of all initialization tasks, i.e. reading
 ! from command line, reading xml input files, initializing random
 ! number seeds, reading cross sections, initializing starting source,
 ! setting up timers, etc.
 !===============================================================================
 
-  subroutine initialize_run()
+  subroutine openmc_init(intracomm)
+#ifdef MPIF08
+    type(MPI_Comm), intent(in) :: intracomm     ! MPI intracommunicator
+#else
+    integer, intent(in), optional :: intracomm  ! MPI intracommunicator
+#endif
 
     ! Start total and initialization timer
     call time_total%start()
@@ -58,7 +59,7 @@ contains
 
 #ifdef MPI
     ! Setup MPI
-    call initialize_mpi()
+    call initialize_mpi(intracomm)
 #endif
 
     ! Initialize HDF5 interface
@@ -155,7 +156,7 @@ contains
     ! Stop initialization timer
     call time_initialize%stop()
 
-  end subroutine initialize_run
+  end subroutine openmc_init
 
 #ifdef MPI
 !===============================================================================
@@ -164,7 +165,12 @@ contains
 ! each processor.
 !===============================================================================
 
-  subroutine initialize_mpi()
+  subroutine initialize_mpi(intracomm)
+#ifdef MPIF08
+    type(MPI_Comm), intent(in) :: intracomm  ! MPI intracommunicator
+#else
+    integer, intent(in) :: intracomm         ! MPI intracommunicator
+#endif
 
     integer                   :: bank_blocks(5)   ! Count for each datatype
 #ifdef MPIF08
@@ -182,8 +188,9 @@ contains
     call MPI_INIT(mpi_err)
 
     ! Determine number of processors and rank of each processor
-    call MPI_COMM_SIZE(MPI_COMM_WORLD, n_procs, mpi_err)
-    call MPI_COMM_RANK(MPI_COMM_WORLD, rank, mpi_err)
+    mpi_intracomm = intracomm
+    call MPI_COMM_SIZE(mpi_intracomm, n_procs, mpi_err)
+    call MPI_COMM_RANK(mpi_intracomm, rank, mpi_err)
 
     ! Determine master
     if (rank == 0) then
@@ -300,11 +307,11 @@ contains
 
           ! Check what type of file this is
           file_id = file_open(argv(i), 'r', parallel=.true.)
-          call read_dataset(filetype, file_id, 'filetype')
+          call read_attribute(filetype, file_id, 'filetype')
           call file_close(file_id)
 
           ! Set path and flag for type of run
-          select case (filetype)
+          select case (trim(filetype))
           case ('statepoint')
             path_state_point = argv(i)
             restart_run = .true.
@@ -312,7 +319,7 @@ contains
             path_particle_restart = argv(i)
             particle_restart_run = .true.
           case default
-            call fatal_error("Unrecognized file after restart flag.")
+            call fatal_error("Unrecognized file after restart flag: " // filetype // ".")
           end select
 
           ! If its a restart run check for additional source file
@@ -326,7 +333,7 @@ contains
 
               ! Check file type is a source file
               file_id = file_open(argv(i), 'r', parallel=.true.)
-              call read_dataset(filetype, file_id, 'filetype')
+              call read_attribute(filetype, file_id, 'filetype')
               call file_close(file_id)
               if (filetype /= 'source') then
                 call fatal_error("Second file after restart flag must be a &
@@ -553,11 +560,11 @@ contains
       if (c % material(1) == NONE) then
         id = c % fill
         if (universe_dict % has_key(id)) then
-          c % type = CELL_FILL
+          c % type = FILL_UNIVERSE
           c % fill = universe_dict % get_key(id)
         elseif (lattice_dict % has_key(id)) then
           lid = lattice_dict % get_key(id)
-          c % type = CELL_LATTICE
+          c % type = FILL_LATTICE
           c % fill = lid
         else
           call fatal_error("Specified fill " // trim(to_str(id)) // " on cell "&
@@ -568,9 +575,9 @@ contains
         do j = 1, size(c % material)
           id = c % material(j)
           if (id == MATERIAL_VOID) then
-            c % type = CELL_NORMAL
+            c % type = FILL_MATERIAL
           else if (material_dict % has_key(id)) then
-            c % type = CELL_NORMAL
+            c % type = FILL_MATERIAL
             c % material(j) = material_dict % get_key(id)
           else
             call fatal_error("Could not find material " // trim(to_str(id)) &
@@ -927,7 +934,7 @@ contains
 
     ! Allocate offset table for fill cells
     do i = 1, n_cells
-      if (cells(i) % type /= CELL_NORMAL) then
+      if (cells(i) % type /= FILL_MATERIAL) then
         allocate(cells(i) % offset(n_maps))
       end if
     end do

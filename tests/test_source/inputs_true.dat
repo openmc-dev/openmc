@@ -13,11 +13,10 @@
 </materials>
 <?xml version='1.0' encoding='utf-8'?>
 <settings>
-    <eigenvalue>
-        <particles>1000</particles>
-        <batches>10</batches>
-        <inactive>5</inactive>
-    </eigenvalue>
+    <run_mode>eigenvalue</run_mode>
+    <particles>1000</particles>
+    <batches>10</batches>
+    <inactive>5</inactive>
     <source strength="0.5">
         <space type="cartesian">
             <x parameters="-3.0 3.0" type="uniform" />

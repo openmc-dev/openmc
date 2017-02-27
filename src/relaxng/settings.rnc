@@ -1,29 +1,7 @@
 element settings {
-  element confidence_intervals { xsd:boolean }? &
+  element batches { xsd:positiveInteger }? &
 
-  (
-    element eigenvalue {
-      (element batches { xsd:positiveInteger } |
-        attribute batches { xsd:positiveInteger }) &
-      (element inactive { xsd:nonNegativeInteger } |
-        attribute inactive { xsd:nonNegativeInteger }) &
-      (element particles { xsd:positiveInteger } |
-        attribute particles { xsd:positiveInteger }) &
-      (element generations_per_batch { xsd:positiveInteger } |
-        attribute generations_per_batch { xsd:positiveInteger })? &
-      (element keff_trigger {
-        (element type { xsd:string } | attribute type { xsd:string }) &
-        (element threshold { xsd:double} | attribute threshold { xsd:double })
-        }
-      )?
-    } |
-    element fixed_source {
-      (element batches { xsd:positiveInteger } |
-        attribute batches { xsd:positiveInteger }) &
-      (element particles { xsd:positiveInteger } |
-        attribute particles { xsd:positiveInteger })
-    }
-  ) &
+  element confidence_intervals { xsd:boolean }? &
 
   element cutoff {
     (element weight { xsd:double } | attribute weight { xsd:double })? &
@@ -43,11 +21,18 @@ element settings {
       attribute upper_right { list { xsd:double+ } })
   }? &
 
+  element generations_per_batch { xsd:positiveInteger }? &
+
+  element inactive { xsd:nonNegativeInteger }? &
+
+  element keff_trigger {
+    (element type { xsd:string } | attribute type { xsd:string }) &
+    (element threshold { xsd:double} | attribute threshold { xsd:double })
+  }? &
+
   element log_grid_bins { xsd:positiveInteger }? &
 
   element max_order { xsd:nonNegativeInteger }? &
-
-  element natural_elements { xsd:string { maxLength = "20" } }? &
 
   element no_reduce { xsd:boolean }? &
 
@@ -60,9 +45,13 @@ element settings {
 
   element output_path { xsd:string { maxLength = "255" } }? &
 
+  element particles { xsd:positiveInteger }? &
+
   element ptables { xsd:boolean }? &
 
   element run_cmfd { xsd:boolean }? &
+
+  element run_mode { xsd:string }? &
 
   element seed { xsd:positiveInteger }? &
 
@@ -179,5 +168,5 @@ element settings {
       (element E_max { xsd:double } |
         attribute E_max { xsd:double })?
     }*
-  }? &
+  }?
 }

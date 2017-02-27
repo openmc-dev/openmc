@@ -23,7 +23,6 @@ contains
 
     integer(HID_T) :: file_id
     character(MAX_FILE_LEN) :: filename
-    type(Bank), pointer :: src
 
     ! Dont write another restart file if in particle restart mode
     if (run_mode == MODE_PARTICLE) return
@@ -36,29 +35,34 @@ contains
     ! Create file
     file_id = file_create(filename)
 
-    ! Get information about source particle
-    src => source_bank(current_work)
+    associate (src => source_bank(current_work))
+      ! Write filetype and version info
+      call write_attribute(file_id, 'filetype', 'particle restart')
+      call write_attribute(file_id, 'version', VERSION_PARTICLE_RESTART)
+      call write_attribute(file_id, "openmc_version", VERSION)
+#ifdef GIT_SHA1
+      call write_attribute(file_id, "git_sha1", GIT_SHA1)
+#endif
 
-    ! Write data to file
-    call write_dataset(file_id, 'filetype', 'particle restart')
-    call write_dataset(file_id, 'revision', REVISION_PARTICLE_RESTART)
-    call write_dataset(file_id, 'current_batch', current_batch)
-    call write_dataset(file_id, 'gen_per_batch', gen_per_batch)
-    call write_dataset(file_id, 'current_gen', current_gen)
-    call write_dataset(file_id, 'n_particles', n_particles)
-    select case(run_mode)
-    case (MODE_FIXEDSOURCE)
-      call write_dataset(file_id, 'run_mode', 'fixed source')
-    case (MODE_EIGENVALUE)
-      call write_dataset(file_id, 'run_mode', 'k-eigenvalue')
-    case (MODE_PARTICLE)
-      call write_dataset(file_id, 'run_mode', 'particle restart')
-    end select
-    call write_dataset(file_id, 'id', p%id)
-    call write_dataset(file_id, 'weight', src%wgt)
-    call write_dataset(file_id, 'energy', src%E)
-    call write_dataset(file_id, 'xyz', src%xyz)
-    call write_dataset(file_id, 'uvw', src%uvw)
+      ! Write data to file
+      call write_dataset(file_id, 'current_batch', current_batch)
+      call write_dataset(file_id, 'generations_per_batch', gen_per_batch)
+      call write_dataset(file_id, 'current_generation', current_gen)
+      call write_dataset(file_id, 'n_particles', n_particles)
+      select case(run_mode)
+      case (MODE_FIXEDSOURCE)
+        call write_dataset(file_id, 'run_mode', 'fixed source')
+      case (MODE_EIGENVALUE)
+        call write_dataset(file_id, 'run_mode', 'eigenvalue')
+      case (MODE_PARTICLE)
+        call write_dataset(file_id, 'run_mode', 'particle restart')
+      end select
+      call write_dataset(file_id, 'id', p%id)
+      call write_dataset(file_id, 'weight', src%wgt)
+      call write_dataset(file_id, 'energy', src%E)
+      call write_dataset(file_id, 'xyz', src%xyz)
+      call write_dataset(file_id, 'uvw', src%uvw)
+    end associate
 
     ! Close file
     call file_close(file_id)

@@ -51,6 +51,8 @@ element settings {
 
   element run_cmfd { xsd:boolean }? &
 
+  element run_mode { xsd:string }? &
+
   element seed { xsd:positiveInteger }? &
 
   element source {

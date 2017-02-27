@@ -1011,7 +1011,7 @@ contains
     type(VectorInt), allocatable :: neighbor_neg(:)
 
     call write_message("Building neighboring cells lists for each surface...", &
-         4)
+         6)
 
     allocate(neighbor_pos(n_surfaces))
     allocate(neighbor_neg(n_surfaces))

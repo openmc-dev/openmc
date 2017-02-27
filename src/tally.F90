@@ -443,7 +443,7 @@ contains
             if (micro_xs(p % event_nuclide) % absorption > ZERO) then
                 score = p % absorb_wgt * micro_xs(p % event_nuclide) % fission &
                      * nuclides(p % event_nuclide) % nu(E, EMISSION_PROMPT) &
-                     / micro_xs(p % event_nuclide) % absorption
+                     / micro_xs(p % event_nuclide) % absorption * flux
             else
               score = ZERO
             end if
@@ -456,7 +456,7 @@ contains
             ! bank as prompt neutrons. Since this was weighted by 1/keff, we
             ! multiply by keff to get the proper score.
             score = keff * p % wgt_bank * (ONE - sum(p % n_delayed_bank) &
-                 / real(p % n_bank, 8))
+                 / real(p % n_bank, 8)) * flux
           end if
 
         else
@@ -534,7 +534,7 @@ contains
                     ! Compute the score and tally to bin
                     score = p % absorb_wgt * yield &
                          * micro_xs(p % event_nuclide) % fission &
-                         / micro_xs(p % event_nuclide) % absorption
+                         / micro_xs(p % event_nuclide) % absorption * flux
                     call score_fission_delayed_dg(t, d_bin, score, score_index)
                   end do
                   cycle SCORE_LOOP
@@ -545,7 +545,7 @@ contains
                 ! delayed-nu-fission xs to the absorption xs
                 score = p % absorb_wgt * micro_xs(p % event_nuclide) % fission &
                      * nuclides(p % event_nuclide) % nu(E, EMISSION_DELAYED) &
-                     / micro_xs(p % event_nuclide) % absorption
+                     / micro_xs(p % event_nuclide) % absorption * flux
               end if
             end if
           else
@@ -574,7 +574,7 @@ contains
 
                   ! Compute the score and tally to bin
                   score = keff * p % wgt_bank / p % n_bank * &
-                       p % n_delayed_bank(d)
+                       p % n_delayed_bank(d) * flux
 
                   call score_fission_delayed_dg(t, d_bin, score, score_index)
                 end do
@@ -583,7 +583,8 @@ contains
             else
 
               ! Add the contribution from all delayed groups
-              score = keff * p % wgt_bank / p % n_bank * sum(p % n_delayed_bank)
+              score = keff * p % wgt_bank / p % n_bank * &
+                   sum(p % n_delayed_bank) * flux
             end if
           end if
         else
@@ -719,7 +720,7 @@ contains
                       score = p % absorb_wgt * yield * &
                            micro_xs(p % event_nuclide) % fission &
                            / micro_xs(p % event_nuclide) % absorption &
-                           * rxn % products(1 + d) % decay_rate
+                           * rxn % products(1 + d) % decay_rate * flux
                     end associate
 
                     ! Tally to bin
@@ -747,7 +748,7 @@ contains
                     score = score + rxn % products(1 + d) % decay_rate * &
                          p % absorb_wgt * micro_xs(p % event_nuclide) % fission *&
                          nuclides(p % event_nuclide) % nu(E, EMISSION_DELAYED, d)&
-                         / micro_xs(p % event_nuclide) % absorption
+                         / micro_xs(p % event_nuclide) % absorption * flux
                   end do
                 end associate
               end if
@@ -782,7 +783,7 @@ contains
 
                   ! determine score based on bank site weight and keff.
                   score = score + keff * fission_bank(n_bank - p % n_bank + k) &
-                       % wgt * rxn % products(1 + g) % decay_rate
+                       % wgt * rxn % products(1 + g) % decay_rate * flux
                 end associate
 
                 ! if the delayed group filter is present, tally to corresponding
@@ -2554,12 +2555,11 @@ contains
           ! determine scoring index and weight for this filter combination
           i_filter = sum((matching_bins(1:size(t%filters)) - 1) * t % stride) &
                + 1
-          filter_weight = product(filter_weights(:size(t % filters)))
 
           ! Add score to tally
 !$omp atomic
           t % results(RESULT_VALUE, i_score, i_filter) = &
-               t % results(RESULT_VALUE, i_score, i_filter) + score * filter_weight
+               t % results(RESULT_VALUE, i_score, i_filter) + score
 
         ! Case for tallying delayed emissions
         else if (score_bin == SCORE_DELAYED_NU_FISSION .and. g /= 0) then
@@ -2583,7 +2583,15 @@ contains
                 ! check whether the delayed group of the particle is equal to
                 ! the delayed group of this bin
                 if (d == g) then
-                  call score_fission_delayed_dg(t, d_bin, score, i_score)
+
+                  ! determine scoring index and weight for this filter
+                  ! combination
+                  i_filter = sum((matching_bins(1:size(t%filters)) - 1) * &
+                       t % stride) + 1
+                  filter_weight = product(filter_weights(:size(t % filters)))
+
+                  call score_fission_delayed_dg(t, d_bin, &
+                       score * filter_weight, i_score)
                 end if
               end do
             end select
@@ -2591,10 +2599,10 @@ contains
           ! if the delayed group filter is not present, add score to tally
           else
 
-            ! determine scoring index and weight for this filter combination
-            i_filter = sum((matching_bins(1:size(t%filters)) - 1) * t % stride)&
-                 + 1
-            filter_weight = product(filter_weights(:size(t % filters)))
+          ! determine scoring index and weight for this filter combination
+          i_filter = sum((matching_bins(1:size(t%filters)) - 1) * t % stride)&
+               + 1
+          filter_weight = product(filter_weights(:size(t % filters)))
 
             ! Add score to tally
 !$omp atomic
@@ -2624,7 +2632,6 @@ contains
 
     integer :: bin_original  ! original bin index
     integer :: filter_index  ! index for matching filter bin combination
-    real(8) :: filter_weight ! combined weight of all filters
 
     ! save original delayed group bin
     bin_original = matching_bins(t % find_filter(FILTER_DELAYEDGROUP))
@@ -2633,11 +2640,10 @@ contains
     ! determine scoring index and weight on the modified matching_bins
     filter_index = sum((matching_bins(1:size(t % filters)) - 1) * t % stride) &
          + 1
-    filter_weight = product(filter_weights(:size(t % filters)))
 
 !$omp atomic
     t % results(RESULT_VALUE, score_index, filter_index) = &
-         t % results(RESULT_VALUE, score_index, filter_index) + score * filter_weight
+         t % results(RESULT_VALUE, score_index, filter_index) + score
 
     ! reset original delayed group bin
     matching_bins(t % find_filter(FILTER_DELAYEDGROUP)) = bin_original

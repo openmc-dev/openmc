@@ -844,12 +844,10 @@ problem. It has the following attributes/sub-elements:
 
 The ``<verbosity>`` element tells the code how much information to display to
 the standard output. A higher verbosity corresponds to more information being
-displayed. This element takes the following attributes:
+displayed. The text of this element should be an integer between between 1
+and 10.
 
-  :value:
-    The specified verbosity between 1 and 10.
-
-    *Default*: 5
+  *Default*: 7
 
 ``<create_fission_neutrons>`` Element
 -------------------------------------

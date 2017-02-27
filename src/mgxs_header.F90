@@ -2340,7 +2340,7 @@ module mgxs_header
 
         ! Now need to compare this material maximum scattering order with
         ! the problem wide max scatt order and use whichever is lower
-        order = min(mat_max_order, max_order)
+        order = min(mat_max_order, max_order + 1)
 
         ! Ok, got our order, store the dimensionality
         order_dim = order
@@ -3467,9 +3467,7 @@ module mgxs_header
       type(MaterialMacroXS), intent(inout) :: xs     ! Resultant Mgxs Data
 
       xs % total         = this % xs(this % index_temp) % total(gin)
-      xs % elastic       = this % xs(this % index_temp) % scatter % scattxs(gin)
       xs % absorption    = this % xs(this % index_temp) % absorption(gin)
-      xs % fission       = this % xs(this % index_temp) % fission(gin)
       xs % nu_fission    = &
            this % xs(this % index_temp) % prompt_nu_fission(gin) + &
            sum(this % xs(this % index_temp) % delayed_nu_fission(:, gin))
@@ -3487,12 +3485,8 @@ module mgxs_header
       call find_angle(this % polar, this % azimuthal, uvw, iazi, ipol)
       xs % total         = this % xs(this % index_temp) % &
            total(gin, iazi, ipol)
-      xs % elastic       = this % xs(this % index_temp) % &
-           scatter(iazi, ipol) % obj % scattxs(gin)
       xs % absorption    = this % xs(this % index_temp) % &
            absorption(gin, iazi, ipol)
-      xs % fission       = this % xs(this % index_temp) % &
-           fission(gin, iazi, ipol)
       xs % nu_fission    = this % xs(this % index_temp) % &
            prompt_nu_fission(gin, iazi, ipol) + &
            sum(this % xs(this % index_temp) % &

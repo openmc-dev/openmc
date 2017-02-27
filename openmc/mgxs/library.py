@@ -1317,6 +1317,7 @@ class Library(object):
             root_cell, cells = \
                 self.domains[0].build_cells(bc)
             root.add_cell(root_cell)
+
             geometry = openmc.Geometry()
             geometry.root_universe = root
             materials = openmc.Materials()

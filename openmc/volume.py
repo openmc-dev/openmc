@@ -10,6 +10,8 @@ import h5py
 import openmc
 import openmc.checkvalue as cv
 
+_VERSION_VOLUME = 1
+
 
 class VolumeCalculation(object):
     """Stochastic volume calculation specifications and results.
@@ -189,6 +191,8 @@ class VolumeCalculation(object):
 
         """
         with h5py.File(filename, 'r') as f:
+            cv.check_filetype_version(f, "volume", _VERSION_VOLUME)
+
             domain_type = f.attrs['domain_type'].decode()
             samples = f.attrs['samples']
             lower_left = f.attrs['lower_left']

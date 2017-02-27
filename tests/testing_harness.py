@@ -24,7 +24,7 @@ class TestHarness(object):
         self.parser = OptionParser()
         self.parser.add_option('--exe', dest='exe', default='openmc')
         self.parser.add_option('--mpi_exec', dest='mpi_exec', default=None)
-        self.parser.add_option('--mpi_np', dest='mpi_np', type=int, default=2)
+        self.parser.add_option('--mpi_np', dest='mpi_np', default='2')
         self.parser.add_option('--update', dest='update', action='store_true',
                                default=False)
         self._opts = None
@@ -62,9 +62,9 @@ class TestHarness(object):
 
     def _run_openmc(self):
         if self._opts.mpi_exec is not None:
-            returncode = openmc.run(mpi_procs=self._opts.mpi_np,
-                                    openmc_exec=self._opts.exe,
-                                    mpi_exec=self._opts.mpi_exec)
+            returncode = openmc.run(
+                openmc_exec=self._opts.exe,
+                mpi_args=[self._opts.mpi_exec, '-n', self._opts.mpi_np])
 
         else:
             returncode = openmc.run(openmc_exec=self._opts.exe)
@@ -190,8 +190,7 @@ class ParticleRestartTestHarness(TestHarness):
         # Set arguments
         args = {'openmc_exec': self._opts.exe}
         if self._opts.mpi_exec is not None:
-            args.update({'mpi_procs': self._opts.mpi_np,
-                         'mpi_exec': self._opts.mpi_exec})
+            args['mpi_args'] = [self._opts.mpi_exec, '-n', self._opts.mpi_np]
 
         # Initial run
         returncode = openmc.run(**args)
@@ -220,8 +219,8 @@ class ParticleRestartTestHarness(TestHarness):
         outstr = ''
         outstr += 'current batch:\n'
         outstr += "{0:12.6E}\n".format(p.current_batch)
-        outstr += 'current gen:\n'
-        outstr += "{0:12.6E}\n".format(p.current_gen)
+        outstr += 'current generation:\n'
+        outstr += "{0:12.6E}\n".format(p.current_generation)
         outstr += 'particle id:\n'
         outstr += "{0:12.6E}\n".format(p.id)
         outstr += 'run mode:\n'

@@ -1,17 +1,7 @@
 <?xml version="1.0"?>
 <settings>
 
-  <eigenvalue>
-    <batches>10</batches>
-    <inactive>5</inactive>
-    <particles>1000</particles>
-  </eigenvalue>
-
-  <source>
-    <space type="box">
-      <parameters>-4 -4 -4  4  4  4</parameters>
-    </space>
-  </source>
+  <run_mode>plot</run_mode>
 
   <entropy>
     <dimension>5 4 3</dimension>

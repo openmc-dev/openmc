@@ -522,7 +522,7 @@ contains
     gout = this % gmin(gin)
     prob = this % energy(gin) % data(gout)
 
-    do while (prob < xi)
+    do while ((prob < xi) .and. (gout < this % gmax(gin)))
       gout = gout + 1
       prob = prob + this % energy(gin) % data(gout)
     end do
@@ -568,7 +568,7 @@ contains
     gout = this % gmin(gin)
     prob = this % energy(gin) % data(gout)
 
-    do while (prob < xi)
+    do while ((prob < xi) .and. (gout < this % gmax(gin)))
       gout = gout + 1
       prob = prob + this % energy(gin) % data(gout)
     end do
@@ -605,7 +605,7 @@ contains
     gout = this % gmin(gin)
     prob = this % energy(gin) % data(gout)
 
-    do while (prob < xi)
+    do while ((prob < xi) .and. (gout < this % gmax(gin)))
       gout = gout + 1
       prob = prob + this % energy(gin) % data(gout)
     end do

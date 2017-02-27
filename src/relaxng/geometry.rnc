@@ -6,8 +6,8 @@ element geometry {
     (element universe { xsd:int } | attribute universe { xsd:int })? &
     (
       (element fill { xsd:int } | attribute fill { xsd:int }) |
-      (element material { ( xsd:int | "void" )+ } |
-        attribute material { ( xsd:int | "void" )+ })
+      (element material { list { ( xsd:int | "void" )+ } } |
+        attribute material { list { ( xsd:int | "void" )+ } })
     ) &
     (element temperature { list { xsd:double+ } } |
       attribute temperature { list { xsd:double+ } } )? &

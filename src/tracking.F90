@@ -8,6 +8,7 @@ module tracking
   use geometry_header,    only: Universe, BASE_UNIVERSE
   use global
   use output,             only: write_message
+  use message_passing
   use particle_header,    only: LocalCoord, Particle
   use physics,            only: collision
   use physics_mg,         only: collision_mg
@@ -104,9 +105,7 @@ contains
                p % coord(p % n_coord) % uvw, material_xs)
         else
           material_xs % total      = ZERO
-          material_xs % elastic    = ZERO
           material_xs % absorption = ZERO
-          material_xs % fission    = ZERO
           material_xs % nu_fission = ZERO
         end if
       end if

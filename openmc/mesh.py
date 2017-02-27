@@ -160,23 +160,50 @@ class Mesh(EqualityMixin):
         string += '{0: <16}{1}{2}\n'.format('\tPixels', '=\t', self._width)
         return string
 
+    @classmethod
+    def from_hdf5(cls, group):
+        """Create mesh from HDF5 group
+
+        Parameters
+        ----------
+        group : h5py.Group
+            Group in HDF5 file
+
+        Returns
+        -------
+        openmc.Mesh
+            Mesh instance
+
+        """
+        mesh_id = int(group.name.split('/')[-1].lstrip('mesh '))
+
+        # Read and assign mesh properties
+        mesh = cls(mesh_id)
+        mesh.type = group['type'].value.decode()
+        mesh.dimension = group['dimension'].value
+        mesh.lower_left = group['lower_left'].value
+        mesh.upper_right = group['upper_right'].value
+        mesh.width = group['width'].value
+
+        return mesh
+
     def cell_generator(self):
-        """Generator function to traverse through every [i,j,k] index
-        of the mesh.
+        """Generator function to traverse through every [i,j,k] index of the
+        mesh
 
         For example the following code:
 
         .. code-block:: python
 
             for mesh_index in mymesh.cell_generator():
-                print mesh_index
+                print(mesh_index)
 
         will produce the following output for a 3-D 2x2x2 mesh in mymesh::
 
             [1, 1, 1]
-            [1, 1, 2]
+            [2, 1, 1]
             [1, 2, 1]
-            [1, 2, 2]
+            [2, 2, 1]
             ...
 
 
@@ -186,13 +213,13 @@ class Mesh(EqualityMixin):
             for x in range(self.dimension[0]):
                     yield [x + 1, 1, 1]
         elif len(self.dimension) == 2:
-            for x in range(self.dimension[0]):
-                for y in range(self.dimension[1]):
+            for y in range(self.dimension[1]):
+                for x in range(self.dimension[0]):
                     yield [x + 1, y + 1, 1]
         else:
-            for x in range(self.dimension[0]):
+            for z in range(self.dimension[2]):
                 for y in range(self.dimension[1]):
-                    for z in range(self.dimension[2]):
+                    for x in range(self.dimension[0]):
                         yield [x + 1, y + 1, z + 1]
 
     def to_xml_element(self):
@@ -294,25 +321,17 @@ class Mesh(EqualityMixin):
 
         # Build the universes which will be used for each of the [i,j,k]
         # locations within the mesh.
-        # We will also have to build cells to assign to these universes
-        universes = np.ndarray(self.dimension[::-1], dtype=np.object)
+        # We will concurrently build cells to assign to these universes
         cells = []
+        universes = []
         for [i, j, k] in self.cell_generator():
-            if len(self.dimension) == 1:
-                universes[i - 1] = openmc.Universe()
-                cells.append(openmc.Cell())
-                universes[i - 1].add_cells([cells[-1]])
-            elif len(self.dimension) == 2:
-                universes[j - 1, i - 1] = openmc.Universe()
-                cells.append(openmc.Cell())
-                universes[j - 1, i - 1].add_cells([cells[-1]])
-            else:
-                universes[k - 1, j - 1, i - 1] = openmc.Universe()
-                cells.append(openmc.Cell())
-                universes[k - 1, j - 1, i - 1].add_cells([cells[-1]])
+            cells.append(openmc.Cell())
+            universes.append(openmc.Universe())
+            universes[-1].add_cell(cells[-1])
 
         lattice = openmc.RectLattice()
         lattice.lower_left = self.lower_left
+        lattice.universes = np.reshape(universes, self.dimension)
 
         if self.width is not None:
             lattice.pitch = self.width
@@ -332,7 +351,6 @@ class Mesh(EqualityMixin):
                 dz = ((self.upper_right[2] - self.lower_left[2]) /
                       self.dimension[2])
                 lattice.pitch = [dx, dy, dz]
-        lattice.universes = universes
 
         # Fill Cell with the Lattice
         root_cell.fill = lattice

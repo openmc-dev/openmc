@@ -10,11 +10,10 @@
   ===============================================================
   -->
 
-  <eigenvalue>
-    <batches>10</batches>
-    <inactive>5</inactive>
-    <particles>100</particles>
-  </eigenvalue>
+  <run_mode>eigenvalue</run_mode>
+  <batches>10</batches>
+  <inactive>5</inactive>
+  <particles>100</particles>
 
   <source>
     <space type="box">

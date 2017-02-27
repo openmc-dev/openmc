@@ -151,102 +151,83 @@ class Geometry(object):
         return offset
 
     def get_all_cells(self):
-        """Return all cells defined
+        """Return all cells in the geometry.
 
         Returns
         -------
-        list of openmc.Cell
-            Cells in the geometry
+        collections.OrderedDict
+            Dictionary mapping cell IDs to :class:`openmc.Cell` instances
 
         """
-
-        all_cells = self.root_universe.get_all_cells()
-        cells = list(set(all_cells.values()))
-        cells.sort(key=lambda x: x.id)
-        return cells
+        return self.root_universe.get_all_cells()
 
     def get_all_universes(self):
-        """Return all universes defined
+        """Return all universes in the geometry.
 
         Returns
         -------
-        list of openmc.Universe
-            Universes in the geometry
+        collections.OrderedDict
+            Dictionary mapping universe IDs to :class:`openmc.Universe`
+            instances
 
         """
-
-        all_universes = self._root_universe.get_all_universes()
-        universes = list(set(all_universes.values()))
-        universes.sort(key=lambda x: x.id)
+        universes = OrderedDict()
+        universes[self.root_universe.id] = self.root_universe
+        universes.update(self.root_universe.get_all_universes())
         return universes
 
     def get_all_materials(self):
-        """Return all materials assigned to a cell
+        """Return all materials within the geometry.
 
         Returns
         -------
-        list of openmc.Material
-            Materials in the geometry
+        collections.OrderedDict
+            Dictionary mapping material IDs to :class:`openmc.Material`
+            instances
 
         """
-
-        material_cells = self.get_all_material_cells()
-        materials = []
-
-        for cell in material_cells:
-            if cell.fill_type == 'distribmat':
-                for m in cell.fill:
-                    if m is not None and m not in materials:
-                        materials.append(m)
-            elif cell.fill_type == 'material':
-                if cell.fill not in materials:
-                    materials.append(cell.fill)
-
-        materials.sort(key=lambda x: x.id)
-        return materials
+        return self.root_universe.get_all_materials()
 
     def get_all_material_cells(self):
         """Return all cells filled by a material
 
         Returns
         -------
-        list of openmc.Cell
-            Cells filled by Materials in the geometry
+        collections.OrderedDict
+            Dictionary mapping cell IDs to :class:`openmc.Cell` instances that
+            are filled with materials or distributed materials.
 
         """
+        material_cells = OrderedDict()
 
-        all_cells = self.get_all_cells()
-        material_cells = []
-
-        for cell in all_cells:
+        for cell in self.get_all_cells().values():
             if cell.fill_type in ('material', 'distribmat'):
                 if cell not in material_cells:
-                    material_cells.append(cell)
+                    material_cells[cell.id] = cell
 
-        material_cells.sort(key=lambda x: x.id)
         return material_cells
 
     def get_all_material_universes(self):
-        """Return all universes composed of at least one non-fill cell
+        """Return all universes having at least one material-filled cell.
+
+        This method can be used to find universes that have at least one cell
+        that is filled with a material or is void.
 
         Returns
         -------
-        list of openmc.Universe
-            Universes with non-fill cells
+        collections.OrderedDict
+            Dictionary mapping universe IDs to :class:`openmc.Universe`
+            instances with at least one material-filled cell
 
         """
+        material_universes = OrderedDict()
 
-        all_universes = self.get_all_universes()
-        material_universes = []
-
-        for universe in all_universes:
-            cells = universe.cells
-            for cell in cells:
+        for universe in self.get_all_universes():
+            for cell in universe.cells:
                 if cell.fill_type in ('material', 'distribmat', 'void'):
                     if universe not in material_universes:
-                        material_universes.append(universe)
+                        material_universes[universe.id] = universe
 
-        material_universes.sort(key=lambda x: x.id)
         return material_universes
 
     def get_all_lattices(self):
@@ -254,20 +235,17 @@ class Geometry(object):
 
         Returns
         -------
-        list of openmc.Lattice
-            Lattices in the geometry
+        collections.OrderedDict
+            Dictionary mapping lattice IDs to :class:`openmc.Lattice` instances
 
         """
+        lattices = OrderedDict()
 
-        cells = self.get_all_cells()
-        lattices = []
-
-        for cell in cells:
+        for cell in self.get_all_cells():
             if cell.fill_type == 'lattice':
                 if cell.fill not in lattices:
-                    lattices.append(cell.fill)
+                    lattices[cell.fill.id] = cell.fill
 
-        lattices.sort(key=lambda x: x.id)
         return lattices
 
     def get_materials_by_name(self, name, case_sensitive=False, matching=False):
@@ -293,7 +271,7 @@ class Geometry(object):
         if not case_sensitive:
             name = name.lower()
 
-        all_materials = self.get_all_materials()
+        all_materials = self.get_all_materials().values()
         materials = set()
 
         for material in all_materials:
@@ -333,7 +311,7 @@ class Geometry(object):
         if not case_sensitive:
             name = name.lower()
 
-        all_cells = self.get_all_cells()
+        all_cells = self.get_all_cells().values()
         cells = set()
 
         for cell in all_cells:
@@ -373,7 +351,7 @@ class Geometry(object):
         if not case_sensitive:
             name = name.lower()
 
-        all_cells = self.get_all_cells()
+        all_cells = self.get_all_cells().values()
         cells = set()
 
         for cell in all_cells:
@@ -413,7 +391,7 @@ class Geometry(object):
         if not case_sensitive:
             name = name.lower()
 
-        all_universes = self.get_all_universes()
+        all_universes = self.get_all_universes().values()
         universes = set()
 
         for universe in all_universes:
@@ -453,7 +431,7 @@ class Geometry(object):
         if not case_sensitive:
             name = name.lower()
 
-        all_lattices = self.get_all_lattices()
+        all_lattices = self.get_all_lattices().values()
         lattices = set()
 
         for lattice in all_lattices:

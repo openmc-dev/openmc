@@ -586,7 +586,7 @@ class Library(object):
         self._geometry = statepoint.summary.geometry
         self._nuclides = statepoint.summary.nuclides
 
-        if statepoint.run_mode == 'k-eigenvalue':
+        if statepoint.run_mode == 'eigenvalue':
             self._keff = statepoint.k_combined[0]
 
         # Load tallies for each MGXS for each domain and mgxs type

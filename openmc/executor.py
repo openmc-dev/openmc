@@ -5,21 +5,33 @@ import sys
 
 from six import string_types
 
+_summary_indicator = "TIMING STATISTICS"
+
 
 def _run(command, output, cwd):
     # Launch a subprocess
     p = subprocess.Popen(command, shell=True, cwd=cwd, stdout=subprocess.PIPE,
                          stderr=subprocess.STDOUT, universal_newlines=True)
 
+    storage_flag = False
+
     # Capture and re-print OpenMC output in real-time
     while True:
         # If OpenMC is finished, break loop
         line = p.stdout.readline()
-        if not line and p.poll() != None:
+        if not line and p.poll() is not None:
             break
 
-        # If user requested output, print to screen
-        if output:
+        if output == 'full':
+            # If user requested output, print to screen
+            print(line, end='')
+        elif output == 'summary' and _summary_indicator in line:
+            # If they requested a summary, look for the start of the summary
+            storage_flag = True
+
+        if storage_flag:
+            # If a summary is requested, and we have reached the summary,
+            # then print it
             print(line, end='')
 
     # Return the returncode (integer, zero if no problems encountered)
@@ -60,7 +72,7 @@ def run_volume_calculation(output=True, openmc_exec='openmc', cwd='.'):
 
 
 def run(particles=None, threads=None, geometry_debug=False,
-        restart_file=None, tracks=False, output=True, cwd='.',
+        restart_file=None, tracks=False, output='full', cwd='.',
         openmc_exec='openmc', mpi_args=None):
     """Run an OpenMC simulation.
 
@@ -79,8 +91,10 @@ def run(particles=None, threads=None, geometry_debug=False,
         Path to restart file to use
     tracks : bool, optional
         Write tracks for all particles. Defaults to False.
-    output : bool, optional
-        Capture OpenMC output from standard out. Defaults to True.
+    output : {"full", "summary", "none", False}, optional
+        Degree of OpenMC output captured from standard out. "full" prints all
+        output; "summary" prints only the results summary, and "none" or False
+        does not show the output. Defaults to "full".
     cwd : str, optional
         Path to working directory to run in. Defaults to the current working
         directory.

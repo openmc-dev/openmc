@@ -9,8 +9,8 @@ module volume_calc
   use geometry,     only: find_cell
   use global
   use hdf5_interface, only: file_create, file_close, write_attribute, &
-       create_group, close_group, write_dataset, write_attribute_string
-  use output,       only: write_message, header
+       create_group, close_group, write_dataset
+  use output,       only: write_message, header, time_stamp
   use message_passing
   use particle_header, only: Particle
   use random_lcg,   only: prn, prn_set_stream, set_particle_seed
@@ -426,14 +426,25 @@ contains
     ! Create HDF5 file
     file_id = file_create(filename)
 
+    ! Write header info
+    call write_attribute(file_id, "filetype", "volume")
+    call write_attribute(file_id, "version", VERSION_VOLUME)
+    call write_attribute(file_id, "openmc_version", VERSION)
+#ifdef GIT_SHA1
+    call write_attribute(file_id, "git_sha1", GIT_SHA1)
+#endif
+
+    ! Write current date and time
+    call write_attribute(file_id, "date_and_time", time_stamp())
+
     ! Write basic metadata
     select case (this % domain_type)
     case (FILTER_CELL)
-      call write_attribute_string(file_id, ".", "domain_type", "cell")
+      call write_attribute(file_id, "domain_type", "cell")
     case (FILTER_MATERIAL)
-      call write_attribute_string(file_id, ".", "domain_type", "material")
+      call write_attribute(file_id, "domain_type", "material")
     case (FILTER_UNIVERSE)
-      call write_attribute_string(file_id, ".", "domain_type", "universe")
+      call write_attribute(file_id, "domain_type", "universe")
     end select
     call write_attribute(file_id, "samples", this % samples)
     call write_attribute(file_id, "lower_left", this % lower_left)

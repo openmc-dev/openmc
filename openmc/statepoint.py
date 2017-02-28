@@ -10,6 +10,8 @@ import h5py
 import openmc
 import openmc.checkvalue as cv
 
+_VERSION_STATEPOINT = 16
+
 
 class StatePoint(object):
     """State information on a simulation at a certain point in time (at the end
@@ -50,7 +52,7 @@ class StatePoint(object):
         Date and time when simulation began
     entropy : numpy.ndarray
         Shannon entropy of fission source at each batch
-    gen_per_batch : Integral
+    generations_per_batch : int
         Number of fission generations per batch
     global_tallies : numpy.ndarray of compound datatype
         Global tallies for k-effective estimates and leakage. The compound
@@ -78,7 +80,7 @@ class StatePoint(object):
     path : str
         Working directory for simulation
     run_mode : str
-        Simulation run mode, e.g. 'k-eigenvalue'
+        Simulation run mode, e.g. 'eigenvalue'
     runtime : dict
         Dictionary whose keys are strings describing various runtime metrics
         and whose values are time values in seconds.
@@ -109,22 +111,12 @@ class StatePoint(object):
 
     def __init__(self, filename, autolink=True):
         self._f = h5py.File(filename, 'r')
+        self._meshes = {}
+        self._tallies = {}
+        self._derivs = {}
 
-        # Ensure filetype and revision are correct
-        try:
-            if 'filetype' not in self._f or self._f[
-                    'filetype'].value.decode() != 'statepoint':
-                raise IOError('{} is not a statepoint file.'.format(filename))
-        except AttributeError:
-            raise IOError('Could not read statepoint file. This most likely '
-                          'means the statepoint file was produced by a '
-                          'different version of OpenMC than the one you are '
-                          'using.')
-        if self._f['revision'].value != 15:
-            raise IOError('Statepoint file has a file revision of {} '
-                          'which is not consistent with the revision this '
-                          'version of OpenMC expects ({}).'.format(
-                              self._f['revision'].value, 15))
+        # Check filetype and version
+        cv.check_filetype_version(self._f, 'statepoint', _VERSION_STATEPOINT)
 
         # Set flags for what data has been read
         self._meshes_read = False
@@ -147,12 +139,9 @@ class StatePoint(object):
                     vol = openmc.VolumeCalculation.from_hdf5(path_i)
                     self.add_volume_information(vol)
 
-    def close(self):
-        self._f.close()
-
     @property
     def cmfd_on(self):
-        return self._f['cmfd_on'].value > 0
+        return self._f.attrs['cmfd_on'] > 0
 
     @property
     def cmfd_balance(self):
@@ -188,19 +177,19 @@ class StatePoint(object):
 
     @property
     def date_and_time(self):
-        return self._f['date_and_time'].value.decode()
+        return self._f.attrs['date_and_time'].decode()
 
     @property
     def entropy(self):
-        if self.run_mode == 'k-eigenvalue':
+        if self.run_mode == 'eigenvalue':
             return self._f['entropy'].value
         else:
             return None
 
     @property
-    def gen_per_batch(self):
-        if self.run_mode == 'k-eigenvalue':
-            return self._f['gen_per_batch'].value
+    def generations_per_batch(self):
+        if self.run_mode == 'eigenvalue':
+            return self._f['generations_per_batch'].value
         else:
             return None
 
@@ -234,35 +223,35 @@ class StatePoint(object):
 
     @property
     def k_generation(self):
-        if self.run_mode == 'k-eigenvalue':
+        if self.run_mode == 'eigenvalue':
             return self._f['k_generation'].value
         else:
             return None
 
     @property
     def k_combined(self):
-        if self.run_mode == 'k-eigenvalue':
+        if self.run_mode == 'eigenvalue':
             return self._f['k_combined'].value
         else:
             return None
 
     @property
     def k_col_abs(self):
-        if self.run_mode == 'k-eigenvalue':
+        if self.run_mode == 'eigenvalue':
             return self._f['k_col_abs'].value
         else:
             return None
 
     @property
     def k_col_tra(self):
-        if self.run_mode == 'k-eigenvalue':
+        if self.run_mode == 'eigenvalue':
             return self._f['k_col_tra'].value
         else:
             return None
 
     @property
     def k_abs_tra(self):
-        if self.run_mode == 'k-eigenvalue':
+        if self.run_mode == 'eigenvalue':
             return self._f['k_abs_tra'].value
         else:
             return None
@@ -270,46 +259,12 @@ class StatePoint(object):
     @property
     def meshes(self):
         if not self._meshes_read:
-            # Initialize dictionaries for the Meshes
-            # Keys     - Mesh IDs
-            # Values - Mesh objects
-            self._meshes = {}
-
-            # Read the number of Meshes
-            n_meshes = self._f['tallies/meshes/n_meshes'].value
-
-            # Read a list of the IDs for each Mesh
-            if n_meshes > 0:
-                # User-defined Mesh IDs
-                mesh_keys = self._f['tallies/meshes/keys'].value
-            else:
-                mesh_keys = []
-
-            # Build dictionary of Meshes
-            base = 'tallies/meshes/mesh '
+            mesh_group = self._f['tallies/meshes']
 
             # Iterate over all Meshes
-            for mesh_key in mesh_keys:
-                # Read the mesh type
-                mesh_type = self._f['{0}{1}/type'.format(base, mesh_key)].value.decode()
-
-                # Read the mesh dimensions, lower-left coordinates,
-                # upper-right coordinates, and width of each mesh cell
-                dimension = self._f['{0}{1}/dimension'.format(base, mesh_key)].value
-                lower_left = self._f['{0}{1}/lower_left'.format(base, mesh_key)].value
-                upper_right = self._f['{0}{1}/upper_right'.format(base, mesh_key)].value
-                width = self._f['{0}{1}/width'.format(base, mesh_key)].value
-
-                # Create the Mesh and assign properties to it
-                mesh = openmc.Mesh(mesh_key)
-                mesh.dimension = dimension
-                mesh.width = width
-                mesh.lower_left = lower_left
-                mesh.upper_right = upper_right
-                mesh.type = mesh_type
-
-                # Add mesh to the global dictionary of all Meshes
-                self._meshes[mesh_key] = mesh
+            for group in mesh_group.values():
+                mesh = openmc.Mesh.from_hdf5(group)
+                self._meshes[mesh.id] = mesh
 
             self._meshes_read = True
 
@@ -321,7 +276,7 @@ class StatePoint(object):
 
     @property
     def n_inactive(self):
-        if self.run_mode == 'k-eigenvalue':
+        if self.run_mode == 'eigenvalue':
             return self._f['n_inactive'].value
         else:
             return None
@@ -336,7 +291,7 @@ class StatePoint(object):
 
     @property
     def path(self):
-        return self._f['path'].value.decode()
+        return self._f.attrs['path'].decode()
 
     @property
     def run_mode(self):
@@ -357,7 +312,7 @@ class StatePoint(object):
 
     @property
     def source_present(self):
-        return self._f['source_present'].value > 0
+        return self._f.attrs['source_present'] > 0
 
     @property
     def sparse(self):
@@ -365,68 +320,55 @@ class StatePoint(object):
 
     @property
     def tallies(self):
-        if not self._tallies_read:
-            # Initialize dictionary for tallies
-            self._tallies = {}
-
+        if self.tallies_present and not self._tallies_read:
             # Read the number of tallies
-            n_tallies = self._f['tallies/n_tallies'].value
+            tallies_group = self._f['tallies']
+            n_tallies = tallies_group.attrs['n_tallies']
 
             # Read a list of the IDs for each Tally
             if n_tallies > 0:
-                # OpenMC Tally IDs (redefined internally from user definitions)
-                tally_keys = self._f['tallies/keys'].value
+                # Tally user-defined IDs
+                tally_ids = tallies_group.attrs['ids']
             else:
-                tally_keys = []
+                tally_ids = []
 
-            base = 'tallies/tally '
+            # Iterate over all tallies
+            for tally_id in tally_ids:
+                group = tallies_group['tally {}'.format(tally_id)]
 
-            # Iterate over all Tallies
-            for tally_key in tally_keys:
-
-                # Read the Tally size specifications
-                n_realizations = \
-                    self._f['{0}{1}/n_realizations'.format(base, tally_key)].value
+                # Read the number of realizations
+                n_realizations = group['n_realizations'].value
 
                 # Create Tally object and assign basic properties
-                tally = openmc.Tally(tally_id=tally_key)
+                tally = openmc.Tally(tally_id)
                 tally._sp_filename = self._f.filename
-                tally.estimator = self._f['{0}{1}/estimator'.format(
-                    base, tally_key)].value.decode()
+                tally.name = group['name'].value.decode()
+                tally.estimator = group['estimator'].value.decode()
                 tally.num_realizations = n_realizations
 
                 # Read derivative information.
-                if 'derivative' in self._f['{0}{1}'.format(base, tally_key)]:
-                    deriv_id = self._f['{0}{1}/derivative'.format(
-                                                        base, tally_key)].value
+                if 'derivative' in group:
+                    deriv_id = group['derivative'].value
                     tally.derivative = self.tally_derivatives[deriv_id]
 
-                # Read the number of Filters
-                n_filters = \
-                    self._f['{0}{1}/n_filters'.format(base, tally_key)].value
-
-                subbase = '{0}{1}/filter '.format(base, tally_key)
-
                 # Read all filters
-                for j in range(1, n_filters+1):
-                    subsubbase = '{0}{1}'.format(subbase, j)
-                    new_filter = openmc.Filter.from_hdf5(self._f[subsubbase],
+                n_filters = group['n_filters'].value
+                for j in range(1, n_filters + 1):
+                    filter_group = group['filter {}'.format(j)]
+                    new_filter = openmc.Filter.from_hdf5(filter_group,
                                                          meshes=self.meshes)
                     tally.filters.append(new_filter)
 
-                # Read Nuclide bins
-                nuclide_names = \
-                    self._f['{0}{1}/nuclides'.format(base, tally_key)].value
+                # Read nuclide bins
+                nuclide_names = group['nuclides'].value
 
-                # Add all Nuclides to the Tally
+                # Add all nuclides to the Tally
                 for name in nuclide_names:
                     nuclide = openmc.Nuclide(name.decode().strip())
                     tally.nuclides.append(nuclide)
 
-                scores = self._f['{0}{1}/score_bins'.format(
-                    base, tally_key)].value
-                n_score_bins = self._f['{0}{1}/n_score_bins'
-                                       .format(base, tally_key)].value
+                scores = group['score_bins'].value
+                n_score_bins = group['n_score_bins'].value
 
                 # Compute and set the filter strides
                 for i in range(n_filters):
@@ -437,8 +379,7 @@ class StatePoint(object):
                         tally_filter.stride *= tally.filters[j].num_bins
 
                 # Read scattering moment order strings (e.g., P3, Y1,2, etc.)
-                moments = self._f['{0}{1}/moment_orders'.format(
-                    base, tally_key)].value
+                moments = group['moment_orders'].value
 
                 # Add the scores to the Tally
                 for j, score in enumerate(scores):
@@ -452,7 +393,7 @@ class StatePoint(object):
 
                 # Add Tally to the global dictionary of all Tallies
                 tally.sparse = self.sparse
-                self._tallies[tally_key] = tally
+                self._tallies[tally_id] = tally
 
             self._tallies_read = True
 
@@ -460,16 +401,11 @@ class StatePoint(object):
 
     @property
     def tallies_present(self):
-        return self._f['tallies/tallies_present'].value
+        return self._f.attrs['tallies_present'] > 0
 
     @property
     def tally_derivatives(self):
         if not self._derivs_read:
-            # Initialize dictionaries for the Meshes
-            # Keys   - Derivative IDs
-            # Values - TallyDerivative objects
-            self._derivs = {}
-
             # Populate the dictionary if any derivatives are present.
             if 'derivatives' in self._f['tallies']:
                 # Read the derivative ids.
@@ -478,21 +414,17 @@ class StatePoint(object):
 
                 # Create each derivative object and add it to the dictionary.
                 for d_id in deriv_ids:
-                    base = 'tallies/derivatives/derivative {:d}'.format(d_id)
+                    group = self._f['tallies/derivatives/derivative {}'
+                                    .format(d_id)]
                     deriv = openmc.TallyDerivative(derivative_id=d_id)
-                    deriv.variable = \
-                         self._f[base + '/independent variable'].value.decode()
+                    deriv.variable = group['independent variable'].value.decode()
                     if deriv.variable == 'density':
-                        deriv.material = self._f[base + '/material'].value
+                        deriv.material = group['material'].value
                     elif deriv.variable == 'nuclide_density':
-                        deriv.material = self._f[base + '/material'].value
-                        deriv.nuclide = \
-                             self._f[base + '/nuclide'].value.decode()
+                        deriv.material = group['material'].value
+                        deriv.nuclide = group['nuclide'].value.decode()
                     elif deriv.variable == 'temperature':
-                        deriv.material = self._f[base + '/material'].value
-                    else:
-                        raise RuntimeError('Unrecognized tally differential '
-                                           'variable')
+                        deriv.material = group['material'].value
                     self._derivs[d_id] = deriv
 
             self._derivs_read = True
@@ -501,9 +433,7 @@ class StatePoint(object):
 
     @property
     def version(self):
-        return (self._f['version_major'].value,
-                self._f['version_minor'].value,
-                self._f['version_release'].value)
+        return tuple(self._f.attrs['version'])
 
     @property
     def summary(self):
@@ -705,38 +635,20 @@ class StatePoint(object):
                           RuntimeWarning)
             return
 
-        if not isinstance(summary, openmc.summary.Summary):
+        if not isinstance(summary, openmc.Summary):
             msg = 'Unable to link statepoint with "{0}" which ' \
                   'is not a Summary object'.format(summary)
             raise ValueError(msg)
 
+        cells = summary.geometry.get_all_cells()
+
         for tally_id, tally in self.tallies.items():
-            tally.name = summary.tally_names[tally_id]
             tally.with_summary = True
 
             for tally_filter in tally.filters:
-                if isinstance(tally_filter, (openmc.CellFilter,
-                                             openmc.DistribcellFilter)):
-                    distribcell_ids = []
-                    for bin in tally_filter.bins:
-                        distribcell_ids.append(summary.cells[bin].id)
-                    tally_filter.bins = distribcell_ids
-
                 if isinstance(tally_filter, (openmc.DistribcellFilter)):
                     cell_id = tally_filter.bins[0]
-                    cell = summary.get_cell_by_id(cell_id)
+                    cell = cells[cell_id]
                     tally_filter.distribcell_paths = cell.distribcell_paths
-
-                if isinstance(tally_filter, openmc.UniverseFilter):
-                    universe_ids = []
-                    for bin in tally_filter.bins:
-                        universe_ids.append(summary.universes[bin].id)
-                    tally_filter.bins = universe_ids
-
-                if isinstance(tally_filter, openmc.MaterialFilter):
-                    material_ids = []
-                    for bin in tally_filter.bins:
-                        material_ids.append(summary.materials[bin].id)
-                    tally_filter.bins = material_ids
 
         self._summary = summary

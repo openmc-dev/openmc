@@ -4,255 +4,131 @@
 Summary File Format
 ===================
 
-The current revision of the summary file format is 4.
+The current version of the summary file format is 5.0.
+
+**/**
+
+:Attributes: - **filetype** (*char[]*) -- String indicating the type of file.
+             - **version** (*int[2]*) -- Major and minor version of the summary
+               file format.
+             - **openmc_version** (*int[3]*) -- Major, minor, and release
+               version number for OpenMC.
+             - **git_sha1** (*char[40]*) -- Git commit SHA-1 hash.
+             - **date_and_time** (*char[]*) -- Date and time the summary was
+               written.
+
+**/geometry/**
+
+:Attributes: - **n_cells** (*int*) -- Number of cells in the problem.
+             - **n_surfaces** (*int*) -- Number of surfaces in the problem.
+             - **n_universes** (*int*) -- Number of unique universes in the
+               problem.
+             - **n_lattices** (*int*) -- Number of lattices in the problem.
+
+**/geometry/cells/cell <uid>/**
+
+:Datasets: - **name** (*char[]*) -- User-defined name of the cell.
+           - **universe** (*int*) -- Universe assigned to the cell. If none is
+             specified, the default universe (0) is assigned.
+           - **fill_type** (*char[]*) -- Type of fill for the cell. Can be
+             'material', 'universe', or 'lattice'.
+           - **material** (*int* or *int[]*) -- Unique ID of the material(s)
+             assigned to the cell. This dataset is present only if fill_type is
+             set to 'normal'.  The value '-1' signifies void material.  The data
+             is an array if the cell uses distributed materials, otherwise it is
+             a scalar.
+           - **temperature** (*double[]*) -- Temperature of the cell in Kelvin.
+           - **offset** (*int[]*) -- Offsets used for distribcell tally
+             filter. This dataset is present only if fill_type is set to
+             'universe'.
+           - **translation** (*double[3]*) -- Translation applied to the fill
+             universe. This dataset is present only if fill_type is set to
+             'universe'.
+           - **rotation** (*double[3]*) -- Angles in degrees about the x-, y-,
+             and z-axes for which the fill universe should be rotated. This
+             dataset is present only if fill_type is set to 'universe'.
+           - **lattice** (*int*) -- Unique ID of the lattice which fills the
+             cell. Only present if fill_type is set to 'lattice'.
+           - **region** (*char[]*) -- Region specification for the cell.
+           - **distribcell_index** (*int*) -- Index of this cell in distribcell
+             arrays. Only present if this cell is listed in a distribcell filter
+             or if it uses distributed materials.
+           - **paths** (*char[][]*) -- The paths traversed through the CSG tree
+             to reach each distribcell instance. This consists of the integer
+             IDs for each universe, cell and lattice delimited by '->'. Each
+             lattice cell is specified by its (x,y) or (x,y,z) indices. Only
+             present if this cell is listed in a distribcell filter or if it
+             uses distributed materials.
+
+**/geometry/surfaces/surface <uid>/**
+
+:Datasets: - **name** (*char[]*) -- Name of the surface.
+           - **type** (*char[]*) -- Type of the surface. Can be 'x-plane',
+             'y-plane', 'z-plane', 'plane', 'x-cylinder', 'y-cylinder',
+             'z-cylinder', 'sphere', 'x-cone', 'y-cone', 'z-cone', or 'quadric'.
+           - **coefficients** (*double[]*) -- Array of coefficients that define
+             the surface. See :ref:`surface_element` for what coefficients are
+             defined for each surface type.
+           - **boundary_condition** (*char[]*) -- Boundary condition applied to
+             the surface. Can be 'transmission', 'vacuum', 'reflective', or
+             'periodic'.
+
+**/geometry/universes/universe <uid>/**
+
+:Datasets:
+           - **cells** (*int[]*) -- Array of unique IDs of cells that appear in
+             the universe.
+
+**/geometry/lattices/lattice <uid>/**
+
+:Datasets: - **name** (*char[]*) -- Name of the lattice.
+           - **type** (*char[]*) -- Type of the lattice, either 'rectangular' or
+             'hexagonal'.
+           - **pitch** (*double[]*) -- Pitch of the lattice in centimeters.
+           - **outer** (*int*) -- Outer universe assigned to lattice cells
+             outside the defined range.
+           - **offsets** (*int[]*) -- Offsets used for distribcell tally filter.
+           - **universes** (*int[][][]*) -- Three-dimensional array of universes
+             assigned to each cell of the lattice.
+           - **dimension** (*int[]*) -- The number of lattice cells in each
+             direction. This dataset is present only when the 'type' dataset is
+             set to 'rectangular'.
+           - **lower_left** (*double[]*) -- The coordinates of the lower-left
+             corner of the lattice. This dataset is present only when the 'type'
+             dataset is set to 'rectangular'.
+           - **n_rings** (*int*) -- Number of radial ring positions in the
+             xy-plane. This dataset is present only when the 'type' dataset is
+             set to 'hexagonal'.
+           - **n_axial** (*int*) -- Number of lattice positions along the
+             z-axis. This dataset is present only when the 'type' dataset is set
+             to 'hexagonal'.
+           - **center** (*double[]*) -- Coordinates of the center of the
+             lattice. This dataset is present only when the 'type' dataset is
+             set to 'hexagonal'.
 
-**/filetype** (*char[]*)
+**/materials/**
 
-    String indicating the type of file.
+:Attributes: - **n_materials** (*int*) -- Number of materials in the problem.
 
-**/revision** (*int*)
 
-    Revision of the summary file format. Any time a change is made in the
-    format, this integer is incremented.
+**/materials/material <uid>/**
 
-**/version_major** (*int*)
+:Datasets: - **name** (*char[]*) -- Name of the material.
+           - **atom_density** (*double[]*) -- Total atom density of the material
+             in atom/b-cm.
+           - **nuclides** (*char[][]*) -- Array of nuclides present in the
+             material, e.g., 'U235'.
+           - **nuclide_densities** (*double[]*) -- Atom density of each nuclide.
+           - **sab_names** (*char[][]*) -- Names of
+             S(:math:`\alpha,\beta`) tables assigned to the material.
 
-    Major version number for OpenMC
+**/nuclides/**
 
-**/version_minor** (*int*)
+:Attributes: - **n_nuclides** (*int*) -- Number of nuclides in the problem.
 
-    Minor version number for OpenMC
+:Datasets: - **names** (*char[][]*) -- Names of nuclides.
+           - **awrs** (*float[]*) -- Atomic weight ratio of each nuclide.
 
-**/version_release** (*int*)
+**/tallies/tally <uid>/**
 
-    Release version number for OpenMC
-
-**/date_and_time** (*char[]*)
-
-    Date and time the summary was written.
-
-**/n_procs** (*int*)
-
-    Number of MPI processes used.
-
-**/n_particles** (*int8_t*)
-
-    Number of particles used per generation.
-
-**/n_batches** (*int*)
-
-    Number of batches to simulate.
-
-**/n_inactive** (*int*)
-
-    Number of inactive batches. Only present if /run_mode is set to
-    'k-eigenvalue'.
-
-**/n_active** (*int*)
-
-    Number of active batches. Only present if /run_mode is set to
-    'k-eigenvalue'.
-
-**/gen_per_batch** (*int*)
-
-    Number of generations per batch. Only present if /run_mode is set to
-    'k-eigenvalue'.
-
-**/geometry/n_cells** (*int*)
-
-    Number of cells in the problem.
-
-**/geometry/n_surfaces** (*int*)
-
-    Number of surfaces in the problem.
-
-**/geometry/n_universes** (*int*)
-
-    Number of unique universes in the problem.
-
-**/geometry/n_lattices** (*int*)
-
-    Number of lattices in the problem.
-
-**/geometry/cells/cell <uid>/index** (*int*)
-
-    Index in cells array used internally in OpenMC.
-
-**/geometry/cells/cell <uid>/name** (*char[]*)
-
-    Name of the cell.
-
-**/geometry/cells/cell <uid>/universe** (*int*)
-
-    Universe assigned to the cell. If none is specified, the default
-    universe (0) is assigned.
-
-**/geometry/cells/cell <uid>/fill_type** (*char[]*)
-
-    Type of fill for the cell. Can be 'normal', 'universe', or 'lattice'.
-
-**/geometry/cells/cell <uid>/material** (*int* or *int[]*)
-
-    Unique ID of the material(s) assigned to the cell. This dataset is present
-    only if fill_type is set to 'normal'.  The value '-1' signifies void
-    material.  The data is an array if the cell uses distributed materials,
-    otherwise it is a scalar.
-
-**/geometry/cells/cell <uid>/temperature** (*double[]*)
-
-    Temperature of the cell in Kelvin.
-
-**/geometry/cells/cell <uid>/offset** (*int[]*)
-
-    Offsets used for distribcell tally filter. This dataset is present only if
-    fill_type is set to 'universe'.
-
-**/geometry/cells/cell <uid>/translation** (*double[3]*)
-
-    Translation applied to the fill universe. This dataset is present only if
-    fill_type is set to 'universe'.
-
-**/geometry/cells/cell <uid>/rotation** (*double[3]*)
-
-    Angles in degrees about the x-, y-, and z-axes for which the fill universe
-    should be rotated. This dataset is present only if fill_type is set to
-    'universe'.
-
-**/geometry/cells/cell <uid>/lattice** (*int*)
-
-    Unique ID of the lattice which fills the cell. Only present if fill_type is
-    set to 'lattice'.
-
-**/geometry/cells/cell <uid>/region** (*char[]*)
-
-    Region specification for the cell.
-
-**/geometry/cells/cell <uid>/distribcell_index** (*int*)
-
-    Index of this cell in distribcell arrays. Only present if this cell is
-    listed in a distribcell filter or if it uses distributed materials.
-
-**/geometry/cells/cell <uid>/paths** (*char[][]*)
-
-    The paths traversed through the CSG tree to reach each distribcell
-    instance. This consists of the integer IDs for each universe, cell and
-    lattice delimited by '->'. Each lattice cell is specified by its (x,y) or
-    (x,y,z) indices. Only present if this cell is listed in a distribcell filter
-    or if it uses distributed materials.
-
-**/geometry/surfaces/surface <uid>/index** (*int*)
-
-    Index in surfaces array used internally in OpenMC.
-
-**/geometry/surfaces/surface <uid>/name** (*char[]*)
-
-    Name of the surface.
-
-**/geometry/surfaces/surface <uid>/type** (*char[]*)
-
-    Type of the surface. Can be 'x-plane', 'y-plane', 'z-plane', 'plane',
-    'x-cylinder', 'y-cylinder', 'sphere', 'x-cone', 'y-cone', 'z-cone', or
-    'quadric'.
-
-**/geometry/surfaces/surface <uid>/coefficients** (*double[]*)
-
-    Array of coefficients that define the surface. See :ref:`surface_element`
-    for what coefficients are defined for each surface type.
-
-**/geometry/surfaces/surface <uid>/boundary_condition** (*char[]*)
-
-    Boundary condition applied to the surface. Can be 'transmission', 'vacuum',
-    'reflective', or 'periodic'.
-
-**/geometry/universes/universe <uid>/index** (*int*)
-
-    Index in the universes array used internally in OpenMC.
-
-**/geometry/universes/universe <uid>/cells** (*int[]*)
-
-    Array of unique IDs of cells that appear in the universe.
-
-**/geometry/lattices/lattice <uid>/index** (*int*)
-
-    Index in the lattices array used internally in OpenMC.
-
-**/geometry/lattices/lattice <uid>/name** (*char[]*)
-
-    Name of the lattice.
-
-**/geometry/lattices/lattice <uid>/type** (*char[]*)
-
-    Type of the lattice, either 'rectangular' or 'hexagonal'.
-
-**/geometry/lattices/lattice <uid>/pitch** (*double[]*)
-
-    Pitch of the lattice.
-
-**/geometry/lattices/lattice <uid>/outer** (*int*)
-
-    Outer universe assigned to lattice cells outside the defined range.
-
-**/geometry/lattices/lattice <uid>/offsets** (*int[]*)
-
-    Offsets used for distribcell tally filter.
-
-**/geometry/lattices/lattice <uid>/universes** (*int[]*)
-
-    Three-dimensional array of universes assigned to each cell of the lattice.
-
-**/geometry/lattices/lattice <uid>/dimension** (*int[]*)
-
-    The number of lattice cells in each direction. This dataset is present only
-    when the 'type' dataset is set to 'rectangular'.
-
-**/geometry/lattices/lattice <uid>/lower_left** (*double[]*)
-
-    The coordinates of the lower-left corner of the lattice. This dataset is
-    present only when the 'type' dataset is set to 'rectangular'.
-
-**/geometry/lattices/lattice <uid>/n_rings** (*int*)
-
-    Number of radial ring positions in the xy-plane. This dataset is present
-    only when the 'type' dataset is set to 'hexagonal'.
-
-**/geometry/lattices/lattice <uid>/n_axial** (*int*)
-
-    Number of lattice positions along the z-axis. This dataset is present only
-    when the 'type' dataset is set to 'hexagonal'.
-
-**/geometry/lattices/lattice <uid>/center** (*double[]*)
-
-    Coordinates of the center of the lattice. This dataset is present only when
-    the 'type' dataset is set to 'hexagonal'.
-
-**/n_materials** (*int*)
-
-    Number of materials in the problem.
-
-**/materials/material <uid>/index** (*int*)
-
-    Index in materials array used internally in OpenMC.
-
-**/materials/material <uid>/name** (*char[]*)
-
-    Name of the material.
-
-**/materials/material <uid>/atom_density** (*double[]*)
-
-    Total atom density of the material in atom/b-cm.
-
-**/materials/material <uid>/nuclides** (*char[][]*)
-
-    Array of nuclides present in the material, e.g., 'U-235.71c'.
-
-**/materials/material <uid>/nuclide_densities** (*double[]*)
-
-    Atom density of each nuclide.
-
-**/materials/material <uid>/sab_names** (*char[][]*)
-
-    Names of S(:math:`\alpha`,:math:`\beta`) tables assigned to the material.
-
-**/tallies/tally <uid>/name** (*char[]*)
-
-    Name of the tally.
+:Datasets: - **name** (*char[]*) -- Name of the tally.

@@ -400,6 +400,8 @@ def get_openmc_cell(openmoc_cell):
 
     regions = []
     for surf_id, surf_halfspace in openmoc_cell.getSurfaces().values():
+        halfspace = surf_halfspace._halfspace
+        surface = get_openmc_surface(surf_halfspace._surface)
         regions.append(-surface if halfspace == -1 else +surface)
     openmc_cell.region = openmc.Intersection(*regions)
 

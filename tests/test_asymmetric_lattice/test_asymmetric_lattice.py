@@ -89,8 +89,9 @@ class AsymmetricLatticeTestHarness(PyAPITestHarness):
         outstr += '\n'.join(map('{:.8e}'.format, tally.std_dev.flatten())) + '\n'
 
         # Extract fuel assembly lattices from the summary
-        core = sp.summary.get_cell_by_id(1)
-        fuel = sp.summary.get_cell_by_id(80)
+        cells = sp.summary.geometry.get_all_cells()
+        core = cells[1]
+        fuel = cells[80]
         fuel = fuel.fill
         core = core.fill
 

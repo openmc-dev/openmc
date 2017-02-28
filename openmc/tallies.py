@@ -195,7 +195,7 @@ class Tally(object):
             if isinstance(nuclide, openmc.Nuclide):
                 string += nuclide.name + ' '
             else:
-                string += nuclide + ' '
+                string += str(nuclide) + ' '
 
         string += '\n'
 

@@ -501,9 +501,17 @@ contains
     class(UniverseFilter), intent(in) :: this
     integer(HID_T),        intent(in) :: filter_group
 
+    integer :: i
+    integer, allocatable :: universe_ids(:)
+
     call write_dataset(filter_group, "type", "universe")
     call write_dataset(filter_group, "n_bins", this % n_bins)
-    call write_dataset(filter_group, "bins", this % universes )
+
+    allocate(universe_ids(size(this % universes)))
+    do i = 1, size(this % universes)
+      universe_ids(i) = universes(this % universes(i)) % id
+    end do
+    call write_dataset(filter_group, "bins", universe_ids)
   end subroutine to_statepoint_universe
 
   subroutine initialize_universe(this)
@@ -562,9 +570,17 @@ contains
     class(MaterialFilter), intent(in) :: this
     integer(HID_T),        intent(in) :: filter_group
 
+    integer :: i
+    integer, allocatable :: material_ids(:)
+
     call write_dataset(filter_group, "type", "material")
     call write_dataset(filter_group, "n_bins", this % n_bins)
-    call write_dataset(filter_group, "bins", this % materials )
+
+    allocate(material_ids(size(this % materials)))
+    do i = 1, size(this % materials)
+      material_ids(i) = materials(this % materials(i)) % id
+    end do
+    call write_dataset(filter_group, "bins", material_ids)
   end subroutine to_statepoint_material
 
   subroutine initialize_material(this)
@@ -639,9 +655,17 @@ contains
     class(CellFilter), intent(in) :: this
     integer(HID_T),    intent(in) :: filter_group
 
+    integer :: i
+    integer, allocatable :: cell_ids(:)
+
     call write_dataset(filter_group, "type", "cell")
     call write_dataset(filter_group, "n_bins", this % n_bins)
-    call write_dataset(filter_group, "bins", this % cells )
+
+    allocate(cell_ids(size(this % cells)))
+    do i = 1, size(this % cells)
+      cell_ids(i) = cells(this % cells(i)) % id
+    end do
+    call write_dataset(filter_group, "bins", cell_ids)
   end subroutine to_statepoint_cell
 
   subroutine initialize_cell(this)
@@ -692,10 +716,10 @@ contains
       distribcell_index = cells(this % cell) % distribcell_index
       offset = 0
       do i = 1, p % n_coord
-        if (cells(p % coord(i) % cell) % type == CELL_FILL) then
+        if (cells(p % coord(i) % cell) % type == FILL_UNIVERSE) then
           offset = offset + cells(p % coord(i) % cell) % &
                offset(distribcell_index)
-        elseif (cells(p % coord(i) % cell) % type == CELL_LATTICE) then
+        elseif (cells(p % coord(i) % cell) % type == FILL_LATTICE) then
           if (lattices(p % coord(i + 1) % lattice) % obj &
                % are_valid_indices([&
                p % coord(i + 1) % lattice_x, &
@@ -725,7 +749,7 @@ contains
 
     call write_dataset(filter_group, "type", "distribcell")
     call write_dataset(filter_group, "n_bins", this % n_bins)
-    call write_dataset(filter_group, "bins", this % cell )
+    call write_dataset(filter_group, "bins", cells(this % cell) % id)
   end subroutine to_statepoint_distribcell
 
   subroutine initialize_distribcell(this)
@@ -784,9 +808,16 @@ contains
     class(CellbornFilter), intent(in) :: this
     integer(HID_T),        intent(in) :: filter_group
 
+    integer :: i
+    integer, allocatable :: cell_ids(:)
+
     call write_dataset(filter_group, "type", "cellborn")
     call write_dataset(filter_group, "n_bins", this % n_bins)
-    call write_dataset(filter_group, "bins", this % cells )
+    allocate(cell_ids(size(this % cells)))
+    do i = 1, size(this % cells)
+      cell_ids(i) = cells(this % cells(i)) % id
+    end do
+    call write_dataset(filter_group, "bins", cell_ids)
   end subroutine to_statepoint_cellborn
 
   subroutine initialize_cellborn(this)
@@ -852,7 +883,7 @@ contains
 
     call write_dataset(filter_group, "type", "surface")
     call write_dataset(filter_group, "n_bins", this % n_bins)
-    call write_dataset(filter_group, "bins", this % surfaces )
+    call write_dataset(filter_group, "bins", this % surfaces)
   end subroutine to_statepoint_surface
 
   subroutine initialize_surface(this)
@@ -941,7 +972,7 @@ contains
 
     call write_dataset(filter_group, "type", "energy")
     call write_dataset(filter_group, "n_bins", this % n_bins)
-    call write_dataset(filter_group, "bins", this % bins )
+    call write_dataset(filter_group, "bins", this % bins)
   end subroutine to_statepoint_energy
 
   function text_label_energy(this, bin) result(label)
@@ -1006,7 +1037,7 @@ contains
 
     call write_dataset(filter_group, "type", "energyout")
     call write_dataset(filter_group, "n_bins", this % n_bins)
-    call write_dataset(filter_group, "bins", this % bins )
+    call write_dataset(filter_group, "bins", this % bins)
   end subroutine to_statepoint_energyout
 
   function text_label_energyout(this, bin) result(label)
@@ -1048,7 +1079,7 @@ contains
 
     call write_dataset(filter_group, "type", "delayedgroup")
     call write_dataset(filter_group, "n_bins", this % n_bins)
-    call write_dataset(filter_group, "bins", this % groups )
+    call write_dataset(filter_group, "bins", this % groups)
   end subroutine to_statepoint_dg
 
   function text_label_dg(this, bin) result(label)
@@ -1097,7 +1128,7 @@ contains
 
     call write_dataset(filter_group, "type", "mu")
     call write_dataset(filter_group, "n_bins", this % n_bins)
-    call write_dataset(filter_group, "bins", this % bins )
+    call write_dataset(filter_group, "bins", this % bins)
   end subroutine to_statepoint_mu
 
   function text_label_mu(this, bin) result(label)
@@ -1160,7 +1191,7 @@ contains
 
     call write_dataset(filter_group, "type", "polar")
     call write_dataset(filter_group, "n_bins", this % n_bins)
-    call write_dataset(filter_group, "bins", this % bins )
+    call write_dataset(filter_group, "bins", this % bins)
   end subroutine to_statepoint_polar
 
   function text_label_polar(this, bin) result(label)
@@ -1223,7 +1254,7 @@ contains
 
     call write_dataset(filter_group, "type", "azimuthal")
     call write_dataset(filter_group, "n_bins", this % n_bins)
-    call write_dataset(filter_group, "bins", this % bins )
+    call write_dataset(filter_group, "bins", this % bins)
   end subroutine to_statepoint_azimuthal
 
   function text_label_azimuthal(this, bin) result(label)
@@ -1390,7 +1421,7 @@ contains
           c => cells(cell_index)
 
           ! Skip normal cells which do not have offsets
-          if (c % type == CELL_NORMAL) then
+          if (c % type == FILL_MATERIAL) then
             cycle
           end if
 
@@ -1399,13 +1430,13 @@ contains
         end do
 
         ! Ensure we didn't just end the loop by iteration
-        if (c % type /= CELL_NORMAL) then
+        if (c % type /= FILL_MATERIAL) then
 
           ! There are more cells in this universe that it could be in
           later_cell = .true.
 
           ! Two cases, lattice or fill cell
-          if (c % type == CELL_FILL) then
+          if (c % type == FILL_UNIVERSE) then
             temp_offset = c % offset(map)
 
           ! Get the offset of the first lattice location
@@ -1422,7 +1453,7 @@ contains
         end if
       end if
 
-      if (n == 1 .and. c % type /= CELL_NORMAL) then
+      if (n == 1 .and. c % type /= FILL_MATERIAL) then
         this_cell = .true.
       end if
 
@@ -1440,7 +1471,7 @@ contains
 
         ! ====================================================================
         ! CELL CONTAINS LOWER UNIVERSE, RECURSIVELY FIND CELL
-        if (c % type == CELL_FILL) then
+        if (c % type == FILL_UNIVERSE) then
 
           ! Enter this cell to update the current offset
           offset = c % offset(map) + offset
@@ -1451,7 +1482,7 @@ contains
 
         ! ====================================================================
         ! CELL CONTAINS LATTICE, RECURSIVELY FIND CELL
-        elseif (c % type == CELL_LATTICE) then
+        elseif (c % type == FILL_LATTICE) then
 
           ! Set current lattice
           lat => lattices(c % fill) % obj

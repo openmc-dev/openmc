@@ -239,6 +239,40 @@ def check_greater_than(name, value, minimum, equality=False):
             raise ValueError(msg)
 
 
+def check_filetype_version(obj, expected_type, expected_version):
+    """Check filetype and version of an HDF5 file.
+
+    Parameters
+    ----------
+    obj : h5py.File
+        HDF5 file to check
+    expected_type
+        Expected file type, e.g. 'statepoint'
+    expected_version
+        Expected major version number.
+
+    """
+    try:
+        this_filetype = obj.attrs['filetype'].decode()
+        this_version = obj.attrs['version']
+
+        # Check filetype
+        if this_filetype != expected_type:
+            raise IOError('{} is not a {} file.'.format(
+                obj.filename, expected_type))
+
+        # Check version
+        if this_version[0] != expected_version:
+            raise IOError('{} file has a version of {} which is not '
+                          'consistent with the version expected by OpenMC, {}'
+                          .format(this_filetype, '.'.join(this_version),
+                                  expected_version))
+    except AttributeError:
+        raise IOError('Could not read {} file. This most likely means the {} '
+                      'file was produced by a different version of OpenMC than '
+                      'the one you are using.'.format(expected_type))
+
+
 class CheckedList(list):
     """A list for which each element is type-checked as it's added
 

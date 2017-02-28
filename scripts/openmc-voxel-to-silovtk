@@ -27,9 +27,9 @@ def parse_options():
 def main(filename, o):
     # Read data from voxel file
     fh = h5py.File(filename, 'r')
-    dimension = fh['num_voxels'].value
-    width = fh['voxel_width'].value
-    lower_left = fh['lower_left'].value
+    dimension = fh.attrs['num_voxels']
+    width = fh.attrs['voxel_width']
+    lower_left = fh.attrs['lower_left']
     voxel_data = fh['data'].value
 
     nx, ny, nz = dimension
@@ -40,7 +40,7 @@ def main(filename, o):
             import vtk
         except:
             print('The vtk python bindings do not appear to be installed '
-                  'properly.\nOn Ubuntu: sudo apt-get install python-vtk\n'
+                  'properly.\nOn Ubuntu: sudo apt install python-vtk\n'
                   'See: http://www.vtk.org/')
             return
 

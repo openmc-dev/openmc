@@ -1,0 +1,98 @@
+<?xml version='1.0' encoding='utf-8'?>
+<geometry>
+    <cell id="10000" material="10000" region="10000 -10001 10002 -10003 10004 -10005" universe="0" />
+    <cell id="10001" material="10001" region="10000 -10001 10002 -10003 10005 -10006" universe="0" />
+    <cell id="10002" material="10002" region="10000 -10001 10002 -10003 10006 -10007" universe="0" />
+    <cell id="10003" material="10003" region="10000 -10001 10002 -10003 10007 -10008" universe="0" />
+    <cell id="10004" material="10004" region="10000 -10001 10002 -10003 10008 -10009" universe="0" />
+    <cell id="10005" material="10005" region="10000 -10001 10002 -10003 10009 -10010" universe="0" />
+    <cell id="10006" material="10006" region="10000 -10001 10002 -10003 10010 -10011" universe="0" />
+    <cell id="10007" material="10007" region="10000 -10001 10002 -10003 10011 -10012" universe="0" />
+    <cell id="10008" material="10008" region="10000 -10001 10002 -10003 10012 -10013" universe="0" />
+    <cell id="10009" material="10009" region="10000 -10001 10002 -10003 10013 -10014" universe="0" />
+    <cell id="10010" material="10010" region="10000 -10001 10002 -10003 10014 -10015" universe="0" />
+    <cell id="10011" material="10011" region="10000 -10001 10002 -10003 10015 -10016" universe="0" />
+    <surface boundary="reflective" coeffs="0.0" id="10000" type="x-plane" />
+    <surface boundary="reflective" coeffs="10.0" id="10001" type="x-plane" />
+    <surface boundary="reflective" coeffs="0.0" id="10002" type="y-plane" />
+    <surface boundary="reflective" coeffs="10.0" id="10003" type="y-plane" />
+    <surface boundary="reflective" coeffs="0.0" id="10004" type="z-plane" />
+    <surface coeffs="0.4167" id="10005" type="z-plane" />
+    <surface coeffs="0.8334" id="10006" type="z-plane" />
+    <surface coeffs="1.2501" id="10007" type="z-plane" />
+    <surface coeffs="1.6668" id="10008" type="z-plane" />
+    <surface coeffs="2.0835" id="10009" type="z-plane" />
+    <surface coeffs="2.5002" id="10010" type="z-plane" />
+    <surface coeffs="2.9169" id="10011" type="z-plane" />
+    <surface coeffs="3.3336" id="10012" type="z-plane" />
+    <surface coeffs="3.7503" id="10013" type="z-plane" />
+    <surface coeffs="4.167" id="10014" type="z-plane" />
+    <surface coeffs="4.5837" id="10015" type="z-plane" />
+    <surface boundary="reflective" coeffs="5.0" id="10016" type="z-plane" />
+</geometry>
+<?xml version='1.0' encoding='utf-8'?>
+<materials>
+    <cross_sections>../1d_mgxs.h5</cross_sections>
+    <material id="10000" name="1">
+        <density units="macro" value="1.0" />
+        <macroscopic name="uo2_ang" />
+    </material>
+    <material id="10001" name="2">
+        <density units="macro" value="1.0" />
+        <macroscopic name="uo2_ang_mu" />
+    </material>
+    <material id="10002" name="3">
+        <density units="macro" value="1.0" />
+        <macroscopic name="uo2_iso" />
+    </material>
+    <material id="10003" name="4">
+        <density units="macro" value="1.0" />
+        <macroscopic name="uo2_iso_mu" />
+    </material>
+    <material id="10004" name="5">
+        <density units="macro" value="1.0" />
+        <macroscopic name="clad_ang" />
+    </material>
+    <material id="10005" name="6">
+        <density units="macro" value="1.0" />
+        <macroscopic name="clad_ang_mu" />
+    </material>
+    <material id="10006" name="7">
+        <density units="macro" value="1.0" />
+        <macroscopic name="clad_iso" />
+    </material>
+    <material id="10007" name="8">
+        <density units="macro" value="1.0" />
+        <macroscopic name="clad_iso_mu" />
+    </material>
+    <material id="10008" name="9">
+        <density units="macro" value="1.0" />
+        <macroscopic name="lwtr_ang" />
+    </material>
+    <material id="10009" name="10">
+        <density units="macro" value="1.0" />
+        <macroscopic name="lwtr_ang_mu" />
+    </material>
+    <material id="10010" name="11">
+        <density units="macro" value="1.0" />
+        <macroscopic name="lwtr_iso" />
+    </material>
+    <material id="10011" name="12">
+        <density units="macro" value="1.0" />
+        <macroscopic name="lwtr_iso_mu" />
+    </material>
+</materials>
+<?xml version='1.0' encoding='utf-8'?>
+<settings>
+    <run_mode>eigenvalue</run_mode>
+    <particles>100</particles>
+    <batches>10</batches>
+    <inactive>5</inactive>
+    <source strength="1.0">
+        <space type="box">
+            <parameters>0.0 0.0 0.0 10.0 10.0 5.0</parameters>
+        </space>
+    </source>
+    <energy_mode>multi-group</energy_mode>
+    <survival_biasing>true</survival_biasing>
+</settings>

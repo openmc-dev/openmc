@@ -433,7 +433,7 @@ class Cell(object):
 
         Returns
         -------
-        nuclides : dict
+        nuclides : collections.OrderedDict
             Dictionary whose keys are nuclide names and values are 2-tuples of
             (nuclide, density)
 
@@ -467,7 +467,7 @@ class Cell(object):
 
         Returns
         -------
-        cells : dict
+        cells : collections.orderedDict
             Dictionary whose keys are cell IDs and values are :class:`Cell`
             instances
 
@@ -485,20 +485,23 @@ class Cell(object):
 
         Returns
         -------
-        materials : dict
+        materials : collections.OrderedDict
             Dictionary whose keys are material IDs and values are
             :class:`Material` instances
 
         """
-
         materials = OrderedDict()
         if self.fill_type == 'material':
             materials[self.fill.id] = self.fill
-
-        # Append all Cells in each Cell in the Universe to the dictionary
-        cells = self.get_all_cells()
-        for cell in cells.values():
-            materials.update(cell.get_all_materials())
+        elif self.fill_type == 'distribmat':
+            for m in self.fill:
+                if m is not None:
+                    materials[m.id] = m
+        else:
+            # Append all Cells in each Cell in the Universe to the dictionary
+            cells = self.get_all_cells()
+            for cell in cells.values():
+                materials.update(cell.get_all_materials())
 
         return materials
 
@@ -508,7 +511,7 @@ class Cell(object):
 
         Returns
         -------
-        universes : dict
+        universes : collections.OrderedDict
             Dictionary whose keys are universe IDs and values are
             :class:`Universe` instances
 
@@ -563,7 +566,7 @@ class Cell(object):
                 if isinstance(node, Halfspace):
                     path = "./surface[@id='{}']".format(node.surface.id)
                     if xml_element.find(path) is None:
-                        xml_element.append(node.surface.create_xml_subelement())
+                        xml_element.append(node.surface.to_xml_element())
                 elif isinstance(node, Complement):
                     create_surface_elements(node.node, element)
                 else:

@@ -8,17 +8,22 @@ module plot
   use hdf5_interface
   use mesh,            only: get_mesh_indices
   use mesh_header,     only: RegularMesh
-  use output,          only: write_message
+  use output,          only: write_message, time_stamp
   use particle_header, only: LocalCoord, Particle
   use plot_header
-  use ppmlib,          only: Image, init_image, allocate_image, &
-                             deallocate_image, set_pixel
   use progress_header, only: ProgressBar
   use string,          only: to_str
 
   use hdf5
 
   implicit none
+  private
+
+  public :: run_plot
+
+  integer, parameter :: RED = 1
+  integer, parameter :: GREEN = 2
+  integer, parameter :: BLUE = 3
 
 contains
 
@@ -29,22 +34,21 @@ contains
   subroutine run_plot()
 
     integer :: i ! loop index for plots
-    type(ObjectPlot), pointer :: pl => null()
 
     do i = 1, n_plots
-      pl => plots(i)
+      associate (pl => plots(i))
+        ! Display output message
+        call write_message("Processing plot " // trim(to_str(pl % id)) &
+             // ": " // trim(pl % path_plot) // " ...", 5)
 
-      ! Display output message
-      call write_message("Processing plot " // trim(to_str(pl % id)) &
-           &// ": " // trim(pl % path_plot) // " ...", 5)
-
-      if (pl % type == PLOT_TYPE_SLICE) then
-        ! create 2d image
-        call create_ppm(pl)
-      else if (pl % type == PLOT_TYPE_VOXEL) then
-        ! create dump for 3D silomesh utility script
-        call create_3d_dump(pl)
-      end if
+        if (pl % type == PLOT_TYPE_SLICE) then
+          ! create 2d image
+          call create_ppm(pl)
+        else if (pl % type == PLOT_TYPE_VOXEL) then
+          ! create dump for 3D silomesh utility script
+          call create_voxel(pl)
+        end if
+      end associate
     end do
 
   end subroutine run_plot
@@ -55,15 +59,13 @@ contains
 !===============================================================================
 
   subroutine position_rgb(p, pl, rgb, id)
-
-    type(Particle), intent(inout)   :: p
-    type(ObjectPlot), pointer, intent(in) :: pl
-    integer, intent(out)                  :: rgb(3)
-    integer, intent(out)                  :: id
+    type(Particle), intent(inout) :: p
+    type(ObjectPlot), intent(in)  :: pl
+    integer, intent(out)          :: rgb(3)
+    integer, intent(out)          :: id
 
     integer :: j
     logical :: found_cell
-    type(Cell), pointer :: c
 
     p % n_coord = 1
 
@@ -81,19 +83,20 @@ contains
     else
       if (pl % color_by == PLOT_COLOR_MATS) then
         ! Assign color based on material
-        c => cells(p % coord(j) % cell)
-        if (c % type == CELL_FILL) then
-          ! If we stopped on a middle universe level, treat as if not found
-          rgb = pl % not_found % rgb
-          id = -1
-        else if (p % material == MATERIAL_VOID) then
-          ! By default, color void cells white
-          rgb = 255
-          id = -1
-        else
-          rgb = pl % colors(p % material) % rgb
-          id = materials(p % material) % id
-        end if
+        associate (c => cells(p % coord(j) % cell))
+          if (c % type == FILL_UNIVERSE) then
+            ! If we stopped on a middle universe level, treat as if not found
+            rgb = pl % not_found % rgb
+            id = -1
+          else if (p % material == MATERIAL_VOID) then
+            ! By default, color void cells white
+            rgb = 255
+            id = -1
+          else
+            rgb = pl % colors(p % material) % rgb
+            id = materials(p % material) % id
+          end if
+        end associate
       else if (pl % color_by == PLOT_COLOR_CELLS) then
         ! Assign color based on cell
         rgb = pl % colors(p % coord(j) % cell) % rgb
@@ -112,27 +115,29 @@ contains
 !===============================================================================
 
   subroutine create_ppm(pl)
-
-    type(ObjectPlot), pointer :: pl
+    type(ObjectPlot), intent(in) :: pl
 
     integer :: in_i
     integer :: out_i
     integer :: x, y      ! pixel location
     integer :: rgb(3)    ! colors (red, green, blue) from 0-255
     integer :: id
+    integer :: height, width
     real(8) :: in_pixel
     real(8) :: out_pixel
     real(8) :: xyz(3)
-    type(Image)       :: img
+    integer, allocatable :: data(:,:,:)
     type(Particle)    :: p
-    type(ProgressBar) :: progress
 
-    ! Initialize and allocate space for image
-    call init_image(img)
-    call allocate_image(img, pl % pixels(1), pl % pixels(2))
+    width = pl % pixels(1)
+    height = pl % pixels(2)
 
-    in_pixel  = pl % width(1)/dble(pl % pixels(1))
-    out_pixel = pl % width(2)/dble(pl % pixels(2))
+    in_pixel  = pl % width(1)/dble(width)
+    out_pixel = pl % width(2)/dble(height)
+
+    ! Allocate and initialize results array
+    allocate(data(3, width, height))
+    data(:,:,:) = 0
 
     if (pl % basis == PLOT_BASIS_XY) then
       in_i  = 1
@@ -160,50 +165,42 @@ contains
     p % coord(1) % uvw = [ HALF, HALF, HALF ]
     p % coord(1) % universe = BASE_UNIVERSE
 
-    do y = 1, img % height
-      call progress % set_value(dble(y)/dble(img % height)*100)
-      do x = 1, img % width
+!$omp parallel do firstprivate(p) private(x, rgb, id) reduction(+ : data)
+    do y = 1, height
+      ! Set y coordinate
+      p % coord(1) % xyz(out_i) = xyz(out_i) - out_pixel*(y - 1)
+      do x = 1, width
+        ! Set x coordinate
+        p % coord(1) % xyz(in_i) = xyz(in_i) + in_pixel*(x - 1)
 
         ! get pixel color
         call position_rgb(p, pl, rgb, id)
 
         ! Create a pixel at (x,y) with color (r,g,b)
-        call set_pixel(img, x-1, y-1, rgb(1), rgb(2), rgb(3))
-
-        ! Advance pixel in first direction
-        p % coord(1) % xyz(in_i) = p % coord(1) % xyz(in_i) + in_pixel
+        data(:, x, y) = rgb
       end do
-
-      ! Advance pixel in second direction
-      p % coord(1) % xyz(in_i)  = xyz(in_i)
-      p % coord(1) % xyz(out_i) = p % coord(1) % xyz(out_i) - out_pixel
     end do
+!$omp end parallel do
 
     ! Draw tally mesh boundaries on the image if requested
-    if (associated(pl % meshlines_mesh)) call draw_mesh_lines(pl, img)
+    if (associated(pl % meshlines_mesh)) call draw_mesh_lines(pl, data)
 
     ! Write out the ppm to a file
-    call output_ppm(pl,img)
-
-    ! Free up space
-    call deallocate_image(img)
-
-    ! Clear particle
-    call p % clear()
+    call output_ppm(pl, data)
 
   end subroutine create_ppm
 
 !===============================================================================
 ! DRAW_MESH_LINES draws mesh line boundaries on an image
 !===============================================================================
-  subroutine draw_mesh_lines(pl, img)
 
-    type(ObjectPlot), pointer, intent(in)    :: pl
-    type(Image),               intent(inout) :: img
+  subroutine draw_mesh_lines(pl, data)
+    type(ObjectPlot), intent(in)    :: pl
+    integer,          intent(inout) :: data(:,:,:)
 
     logical :: in_mesh
     integer :: out_, in_  ! pixel location
-    integer :: r, g, b    ! RGB color for meshlines pixels
+    integer :: rgb(3)     ! RGB color for meshlines pixels
     integer :: outrange(2), inrange(2) ! range of pixel locations
     integer :: i, j       ! loop indices
     integer :: plus
@@ -216,13 +213,8 @@ contains
     real(8) :: xyz_ur_plot(3)  ! upper right xyz of plot image
     real(8) :: xyz_ll(3)  ! lower left xyz
     real(8) :: xyz_ur(3)  ! upper right xyz
-    type(RegularMesh), pointer :: m
 
-    m => pl % meshlines_mesh
-
-    r = pl % meshlines_color % rgb(1)
-    g = pl % meshlines_color % rgb(2)
-    b = pl % meshlines_color % rgb(3)
+    rgb(:) = pl % meshlines_color % rgb
 
     select case (pl % basis)
       case(PLOT_BASIS_XY)
@@ -246,55 +238,57 @@ contains
 
     width = xyz_ur_plot - xyz_ll_plot
 
-    call get_mesh_indices(m, xyz_ll_plot, ijk_ll(:m % n_dimension), in_mesh)
-    call get_mesh_indices(m, xyz_ur_plot, ijk_ur(:m % n_dimension), in_mesh)
+    associate (m => pl % meshlines_mesh)
+      call get_mesh_indices(m, xyz_ll_plot, ijk_ll(:m % n_dimension), in_mesh)
+      call get_mesh_indices(m, xyz_ur_plot, ijk_ur(:m % n_dimension), in_mesh)
 
-    ! sweep through all meshbins on this plane and draw borders
-    do i = ijk_ll(outer), ijk_ur(outer)
-      do j = ijk_ll(inner), ijk_ur(inner)
-        ! check if we're in the mesh for this ijk
-        if (i > 0 .and. i <= m % dimension(outer) .and. &
-             j > 0 .and. j <= m % dimension(inner)) then
+      ! sweep through all meshbins on this plane and draw borders
+      do i = ijk_ll(outer), ijk_ur(outer)
+        do j = ijk_ll(inner), ijk_ur(inner)
+          ! check if we're in the mesh for this ijk
+          if (i > 0 .and. i <= m % dimension(outer) .and. &
+               j > 0 .and. j <= m % dimension(inner)) then
 
-          ! get xyz's of lower left and upper right of this mesh cell
-          xyz_ll(outer) = m % lower_left(outer) + m % width(outer) * (i - 1)
-          xyz_ll(inner) = m % lower_left(inner) + m % width(inner) * (j - 1)
-          xyz_ur(outer) = m % lower_left(outer) + m % width(outer) * i
-          xyz_ur(inner) = m % lower_left(inner) + m % width(inner) * j
+            ! get xyz's of lower left and upper right of this mesh cell
+            xyz_ll(outer) = m % lower_left(outer) + m % width(outer) * (i - 1)
+            xyz_ll(inner) = m % lower_left(inner) + m % width(inner) * (j - 1)
+            xyz_ur(outer) = m % lower_left(outer) + m % width(outer) * i
+            xyz_ur(inner) = m % lower_left(inner) + m % width(inner) * j
 
-          ! map the xyz ranges to pixel ranges
+            ! map the xyz ranges to pixel ranges
 
-          frac = (xyz_ll(outer) - xyz_ll_plot(outer)) / width(outer)
-          outrange(1) = int(frac * real(img % width, 8))
-          frac = (xyz_ur(outer) - xyz_ll_plot(outer)) / width(outer)
-          outrange(2) = int(frac * real(img % width, 8))
+            frac = (xyz_ll(outer) - xyz_ll_plot(outer)) / width(outer)
+            outrange(1) = int(frac * real(pl % pixels(1), 8))
+            frac = (xyz_ur(outer) - xyz_ll_plot(outer)) / width(outer)
+            outrange(2) = int(frac * real(pl % pixels(1), 8))
 
-          frac = (xyz_ur(inner) - xyz_ll_plot(inner)) / width(inner)
-          inrange(1) = int((ONE - frac) * real(img % height, 8))
-          frac = (xyz_ll(inner) - xyz_ll_plot(inner)) / width(inner)
-          inrange(2) = int((ONE - frac) * real(img % height, 8))
+            frac = (xyz_ur(inner) - xyz_ll_plot(inner)) / width(inner)
+            inrange(1) = int((ONE - frac) * real(pl % pixels(2), 8))
+            frac = (xyz_ll(inner) - xyz_ll_plot(inner)) / width(inner)
+            inrange(2) = int((ONE - frac) * real(pl % pixels(2), 8))
 
-          ! draw lines
-          do out_ = outrange(1), outrange(2)
-            do plus = 0, pl % meshlines_width
-              call set_pixel(img, out_, inrange(1) + plus, r, g, b)
-              call set_pixel(img, out_, inrange(2) + plus, r, g, b)
-              call set_pixel(img, out_, inrange(1) - plus, r, g, b)
-              call set_pixel(img, out_, inrange(2) - plus, r, g, b)
+            ! draw lines
+            do out_ = outrange(1), outrange(2)
+              do plus = 0, pl % meshlines_width
+                data(:, out_ + 1, inrange(1) + plus + 1) = rgb
+                data(:, out_ + 1, inrange(2) + plus + 1) = rgb
+                data(:, out_ + 1, inrange(1) - plus + 1) = rgb
+                data(:, out_ + 1, inrange(2) - plus + 1) = rgb
+              end do
             end do
-          end do
-          do in_ = inrange(1), inrange(2)
-            do plus = 0, pl % meshlines_width
-              call set_pixel(img, outrange(1) + plus, in_, r, g, b)
-              call set_pixel(img, outrange(2) + plus, in_, r, g, b)
-              call set_pixel(img, outrange(1) - plus, in_, r, g, b)
-              call set_pixel(img, outrange(2) - plus, in_, r, g, b)
+            do in_ = inrange(1), inrange(2)
+              do plus = 0, pl % meshlines_width
+                data(:, outrange(1) + plus + 1, in_ + 1) = rgb
+                data(:, outrange(2) + plus + 1, in_ + 1) = rgb
+                data(:, outrange(1) - plus + 1, in_ + 1) = rgb
+                data(:, outrange(2) - plus + 1, in_ + 1) = rgb
+              end do
             end do
-          end do
 
-        end if
+          end if
+        end do
       end do
-    end do
+    end associate
 
   end subroutine draw_mesh_lines
 
@@ -302,13 +296,12 @@ contains
 ! OUTPUT_PPM writes out a previously generated image to a PPM file
 !===============================================================================
 
-  subroutine output_ppm(pl, img)
+  subroutine output_ppm(pl, data)
+    type(ObjectPlot), intent(in) :: pl
+    integer,          intent(in) :: data(:,:,:)
 
-    type(ObjectPlot), pointer :: pl
-    type(Image), intent(in)  :: img
-
-    integer :: i ! loop index for height
-    integer :: j ! loop index for width
+    integer :: y ! loop index for height
+    integer :: x ! loop index for width
     integer :: unit_plot
 
     ! Open PPM file for writing
@@ -316,24 +309,23 @@ contains
 
     ! Write header
     write(unit_plot, '(A2)') 'P6'
-    write(unit_plot, '(I0,'' '',I0)') img%width, img%height
+    write(unit_plot, '(I0,'' '',I0)') pl % pixels(1), pl % pixels(2)
     write(unit_plot, '(A)') '255'
 
     ! Write color for each pixel
-    do j = 1, img % height
-      do i = 1, img % width
-        write(unit_plot, '(3A1)', advance='no') achar(img%red(i,j)), &
-             achar(img%green(i,j)), achar(img%blue(i,j))
+    do y = 1, pl % pixels(2)
+      do x = 1, pl % pixels(1)
+        write(unit_plot, '(3A1)', advance='no') achar(data(RED, x, y)), &
+             achar(data(GREEN, x, y)), achar(data(BLUE, x, y))
       end do
     end do
 
     ! Close plot file
     close(UNIT=unit_plot)
-
   end subroutine output_ppm
 
 !===============================================================================
-! CREATE_3D_DUMP outputs a binary file that can be input into silomesh for 3D
+! CREATE_VOXEL outputs a binary file that can be input into silomesh for 3D
 ! geometry visualization.  It works the same way as create_ppm by dragging a
 ! particle across the geometry for the specified number of voxels. The first
 ! 3 int(4)'s in the binary are the number of x, y, and z voxels.  The next 3
@@ -344,9 +336,8 @@ contains
 ! id.  For 1 million voxels this produces a file of approximately 15MB.
 !===============================================================================
 
-  subroutine create_3d_dump(pl)
-
-    type(ObjectPlot), pointer :: pl
+  subroutine create_voxel(pl)
+    type(ObjectPlot), intent(in) :: pl
 
     integer :: x, y, z      ! voxel location indices
     integer :: rgb(3)       ! colors (red, green, blue) from 0-255
@@ -355,7 +346,7 @@ contains
     integer, target :: data(pl%pixels(3),pl%pixels(2))
     integer(HID_T) :: file_id
     integer(HID_T) :: dspace
-    integeR(HID_T) :: memspace
+    integer(HID_T) :: memspace
     integer(HID_T) :: dset
     integer(HSIZE_T) :: dims(3)
     integer(HSIZE_T) :: dims_slab(3)
@@ -381,11 +372,20 @@ contains
     ! Open binary plot file for writing
     file_id = file_create(pl%path_plot)
 
-    ! write plot header info
-    call write_dataset(file_id, "filetype", 'voxel')
-    call write_dataset(file_id, "num_voxels", pl%pixels)
-    call write_dataset(file_id, "voxel_width", vox)
-    call write_dataset(file_id, "lower_left", ll)
+    ! write header info
+    call write_attribute(file_id, "filetype", 'voxel')
+    call write_attribute(file_id, "version", VERSION_VOXEL)
+    call write_attribute(file_id, "openmc_version", VERSION)
+#ifdef GIT_SHA1
+    call write_attribute(file_id, "git_sha1", GIT_SHA1)
+#endif
+
+    ! Write current date and time
+    call write_attribute(file_id, "date_and_time", time_stamp())
+
+    call write_attribute(file_id, "num_voxels", pl%pixels)
+    call write_attribute(file_id, "voxel_width", vox)
+    call write_attribute(file_id, "lower_left", ll)
 
     ! Create dataset for voxel data -- note that the dimensions are reversed
     ! since we want the order in the file to be z, y, x
@@ -443,6 +443,6 @@ contains
     call h5sclose_f(memspace, hdf5_err)
     call file_close(file_id)
 
-  end subroutine create_3d_dump
+  end subroutine create_voxel
 
 end module plot

@@ -727,7 +727,7 @@ def get_openmc_geometry(openmoc_geometry):
     OPENMC_LATTICES.clear()
     OPENMOC_LATTICES.clear()
 
-    openmoc_root_universe =
+    openmoc_root_universe = \
         openmoc_geometry.getRootUniverse(openmoc_root_universe)
 
     openmc_geometry = openmc.Geometry()

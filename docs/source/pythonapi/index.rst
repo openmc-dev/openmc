@@ -127,7 +127,6 @@ respectively.
    openmc.get_hexagonal_prism
    openmc.get_rectangular_prism
 
->>>>>>> upstream/develop
 Constructing Tallies
 --------------------
 
@@ -288,20 +287,13 @@ Multi-group Cross Sections
     openmc.mgxs.CaptureXS
     openmc.mgxs.Chi
     openmc.mgxs.ChiPrompt
-    openmc.mgxs.ConsistentNuScatterMatrixXS
     openmc.mgxs.ConsistentScatterMatrixXS
     openmc.mgxs.ConvolvedMGXS
     openmc.mgxs.FissionXS
     openmc.mgxs.InverseVelocity
     openmc.mgxs.KappaFissionXS
     openmc.mgxs.MultiplicityMatrixXS
-    openmc.mgxs.NuFissionXS
     openmc.mgxs.NuFissionMatrixXS
-    openmc.mgxs.NuScatterXS
-    openmc.mgxs.NuScatterMatrixXS
-    openmc.mgxs.NuScatterProbabilityMatrix
-    openmc.mgxs.PromptNuFissionXS
-    openmc.mgxs.PromptNuFissionMatrixXS
     openmc.mgxs.ScatterXS
     openmc.mgxs.ScatterMatrixXS
     openmc.mgxs.ScatterProbabilityMatrix

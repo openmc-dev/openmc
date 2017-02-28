@@ -125,7 +125,7 @@ class MGXS(object):
     post-processing to compute spatially-homogenized and energy-integrated
     multi-group cross sections for multi-group neutronics calculations.
 
-    NOTE: Users should instantiate the subclasses of this abstract class.
+    .. note:: Users should instantiate the subclasses of this abstract class.
 
     Parameters
     ----------
@@ -894,7 +894,7 @@ class MGXS(object):
         This method is needed to compute cross section data from tallies
         in an OpenMC StatePoint object.
 
-        NOTE: The statepoint must first be linked with an OpenMC Summary object.
+        .. note:: The statepoint must be linked with an OpenMC Summary object.
 
         Parameters
         ----------
@@ -1642,7 +1642,7 @@ class MGXS(object):
         nuclides and cross section type. Two datasets for the mean and standard
         deviation are stored for each subdomain entry in the HDF5 file.
 
-        NOTE: This requires the h5py Python package.
+        .. note:: This requires the h5py Python package.
 
         Parameters
         ----------
@@ -1988,7 +1988,7 @@ class MatrixMGXS(MGXS):
     post-processing to compute spatially-homogenized and energy-integrated
     multi-group cross sections for multi-group neutronics calculations.
 
-    NOTE: Users should instantiate the subclasses of this abstract class.
+    .. note:: Users should instantiate the subclasses of this abstract class.
 
     Parameters
     ----------
@@ -3389,9 +3389,6 @@ class ScatterXS(MGXS):
         The domain type for spatial homogenization
     groups : openmc.mgxs.EnergyGroups
         The energy group structure for energy condensation
-    nu : bool
-        If True, the cross section data will include neutron multiplication;
-        defaults to False
     by_nuclide : bool
         If true, computes cross sections for each nuclide in domain
     name : str, optional
@@ -3403,6 +3400,9 @@ class ScatterXS(MGXS):
     num_azimuthal : Integral, optional
         Number of equi-width azimuthal angle bins for angle discretization;
         defaults to one bin
+    nu : bool
+        If True, the cross section data will include neutron multiplication;
+        defaults to False
 
     Attributes
     ----------
@@ -3553,9 +3553,6 @@ class ScatterMatrixXS(MatrixMGXS):
         The domain type for spatial homogenization
     groups : openmc.mgxs.EnergyGroups
         The energy group structure for energy condensation
-    nu : bool
-        If True, the cross section data will include neutron multiplication;
-        defaults to False
     by_nuclide : bool
         If true, computes cross sections for each nuclide in domain
     name : str, optional
@@ -3567,6 +3564,9 @@ class ScatterMatrixXS(MatrixMGXS):
     num_azimuthal : Integral, optional
         Number of equi-width azimuthal angle bins for angle discretization;
         defaults to one bin
+    nu : bool
+        If True, the cross section data will include neutron multiplication;
+        defaults to False
 
     Attributes
     ----------
@@ -3837,7 +3837,7 @@ class ScatterMatrixXS(MatrixMGXS):
         This method is needed to compute cross section data from tallies
         in an OpenMC StatePoint object.
 
-        NOTE: The statepoint must first be linked with an OpenMC Summary object.
+        .. note:: The statepoint must be linked with an OpenMC Summary object.
 
         Parameters
         ----------
@@ -3959,9 +3959,9 @@ class ScatterMatrixXS(MatrixMGXS):
         (3rd dimension), nuclides (4th dimension), and moments/histograms
         (5th dimension).
 
-        NOTE: The scattering moments are not multiplied by the :math:`(2l+1)/2`
-        prefactor in the expansion of the scattering source into Legendre
-        moments in the neutron transport equation.
+        .. note:: The scattering moments are not multiplied by the
+        :math:`(2l+1)/2` prefactor in the expansion of the scattering source
+        into Legendre moments in the neutron transport equation.
 
         Parameters
         ----------
@@ -4599,9 +4599,6 @@ class ScatterProbabilityMatrix(MatrixMGXS):
         The domain type for spatial homogenization
     groups : openmc.mgxs.EnergyGroups
         The energy group structure for energy condensation
-    nu : bool
-        If True, the cross section data will include neutron multiplication;
-        defaults to False
     by_nuclide : bool
         If true, computes cross sections for each nuclide in domain
     name : str, optional
@@ -4613,6 +4610,9 @@ class ScatterProbabilityMatrix(MatrixMGXS):
     num_azimuthal : Integral, optional
         Number of equi-width azimuthal angle bins for angle discretization;
         defaults to one bin
+    nu : bool
+        If True, the cross section data will include neutron multiplication;
+        defaults to False
 
     Attributes
     ----------
@@ -4693,7 +4693,10 @@ class ScatterProbabilityMatrix(MatrixMGXS):
         self._valid_estimators = ['analog']
         self.nu = nu
 
-    # FIXME: Add __deepcopy__
+    def __deepcopy__(self, memo):
+        clone = super(ScatterProbabilityMatrixXS, self).__deepcopy__(memo)
+        clone._nu = self.nu
+        return clone
 
     @property
     def nu(self):
@@ -4761,7 +4764,7 @@ class ConvolvedMGXS(MGXS):
     post-processing to compute spatially-homogenized and energy-integrated
     multi-group cross sections for multi-group neutronics calculations.
 
-    NOTE: Users should instantiate the subclasses of this abstract class.
+    .. note:: Users should instantiate the subclasses of this abstract class.
 
     Parameters
     ----------
@@ -5029,7 +5032,7 @@ class ConvolvedMGXS(MGXS):
         This method is needed to compute cross section data from tallies
         in an OpenMC StatePoint object.
 
-        NOTE: The statepoint must first be linked with an OpenMC Summary object.
+        .. note:: The statepoint must be linked with an OpenMC Summary object.
 
         Parameters
         ----------
@@ -5171,6 +5174,9 @@ class ConsistentScatterMatrixXS(ConvolvedMGXS, ScatterMatrixXS):
     num_azimuthal : Integral, optional
         Number of equi-width azimuthal angle bins for angle discretization;
         defaults to one bin
+    nu : bool
+        If True, the cross section data will include neutron multiplication;
+        defaults to False
 
     Attributes
     ----------
@@ -5194,6 +5200,8 @@ class ConsistentScatterMatrixXS(ConvolvedMGXS, ScatterMatrixXS):
         Name of the multi-group cross section
     rxn_type : str
         Reaction type (e.g., 'total', 'nu-fission', etc.)
+    nu : bool
+        If True, the cross section data will include neutron multiplication
     by_nuclide : bool
         If true, computes cross sections for each nuclide in domain
     domain : Material or Cell or Universe or Mesh
@@ -5262,8 +5270,6 @@ class ConsistentScatterMatrixXS(ConvolvedMGXS, ScatterMatrixXS):
             domain, domain_type, groups, by_nuclide=by_nuclide,
             name=name, num_polar=num_polar, num_azimuthal=num_azimuthal)
 
-        self._rxn_type = 'h'
-        self._rxn_type
         self.nu = nu
 
         # Initialize each MGXS used by the convolution
@@ -5284,7 +5290,7 @@ class ConsistentScatterMatrixXS(ConvolvedMGXS, ScatterMatrixXS):
                 mgxs.energy_groups = groups
             mgxs.num_polar = num_polar
             mgxs.num_azimuthal = num_azimuthal
-        
+
     @property
     def scores(self):
         scores = super(ConsistentScatterMatrixXS, self).scores
@@ -5486,6 +5492,9 @@ class NuFissionMatrixXS(MatrixMGXS):
     num_azimuthal : Integral, optional
         Number of equi-width azimuthal angle bins for angle discretization;
         defaults to one bin
+    prompt : bool
+        If true, computes cross sections which only includes prompt neutrons;
+        defaults to False which includes prompt and delayed in total
 
     Attributes
     ----------
@@ -5493,6 +5502,8 @@ class NuFissionMatrixXS(MatrixMGXS):
         Name of the multi-group cross section
     rxn_type : str
         Reaction type (e.g., 'total', 'nu-fission', etc.)
+    prompt : bool
+        If true, computes cross sections which only includes prompt neutrons
     by_nuclide : bool
         If true, computes cross sections for each nuclide in domain
     domain : Material or Cell or Universe or Mesh
@@ -5553,9 +5564,9 @@ class NuFissionMatrixXS(MatrixMGXS):
 
     """
 
-    def __init__(self, domain=None, domain_type=None,
-                 groups=None, by_nuclide=False, name='', num_polar=1,
-                 num_azimuthal=1):
+    def __init__(self, domain=None, domain_type=None, groups=None,
+                 by_nuclide=False, name='', num_polar=1,
+                 num_azimuthal=1, prompt=False):
         super(NuFissionMatrixXS, self).__init__(domain, domain_type,
                                                 groups, by_nuclide, name,
                                                 num_polar, num_azimuthal)
@@ -5792,6 +5803,12 @@ class Chi(MGXS):
     def prompt(self, prompt):
         cv.check_type('prompt', prompt, bool)
         self._prompt = prompt
+        if not self.prompt:
+            self._rxn_type = 'nu-fission'
+            self._hdf5_key = 'nu-fission matrix'
+        else:
+            self._rxn_type = 'prompt-nu-fission'
+            self._hdf5_key = 'prompt-nu-fission matrix'
 
     def get_homogenized_mgxs(self, other_mgxs):
         """Construct a homogenized mgxs with other MGXS objects.

@@ -512,8 +512,7 @@ class Library(object):
                     mgxs.tally_trigger = self.tally_trigger
 
                 # Specify whether to use a transport ('P0') correction
-                if isinstance(mgxs, openmc.mgxs.ScatterMatrixXS) and not \
-                    isinstance(mgxs, openmc.mgxs.ConsistentScatterMatrixXS):
+                if isinstance(mgxs, openmc.mgxs.ScatterMatrixXS):
                     mgxs.correction = self.correction
                     mgxs.scatter_format = self.scatter_format
                     mgxs.legendre_order = self.legendre_order

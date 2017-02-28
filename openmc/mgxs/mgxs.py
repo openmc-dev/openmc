@@ -733,12 +733,12 @@ class MGXS(object):
             mgxs = ScatterProbabilityMatrix(domain, domain_type, energy_groups)
         elif mgxs_type == 'nu-scatter probability matrix':
             mgxs = ScatterProbabilityMatrix(
-                domain, domain_type, energy_groups, nu=False)
+                domain, domain_type, energy_groups, nu=True)
         elif mgxs_type == 'consistent scatter matrix':
             mgxs = ConsistentScatterMatrixXS(domain, domain_type, energy_groups)
         elif mgxs_type == 'consistent nu-scatter matrix':
             mgxs = ConsistentScatterMatrixXS(
-                domain, domain_type, energy_groups, nu=False)
+                domain, domain_type, energy_groups, nu=True)
         elif mgxs_type == 'nu-fission matrix':
             mgxs = NuFissionMatrixXS(domain, domain_type, energy_groups)
         elif mgxs_type == 'chi':
@@ -4694,7 +4694,7 @@ class ScatterProbabilityMatrix(MatrixMGXS):
         self.nu = nu
 
     def __deepcopy__(self, memo):
-        clone = super(ScatterProbabilityMatrixXS, self).__deepcopy__(memo)
+        clone = super(ScatterProbabilityMatrix, self).__deepcopy__(memo)
         clone._nu = self.nu
         return clone
 
@@ -5057,15 +5057,13 @@ class ConvolvedMGXS(MGXS):
         # Override the domain object that loaded from an OpenMC summary file
         # NOTE: This is necessary for micro cross-sections which require
         # the isotopic number densities as computed by OpenMC
-        if self.domain_type == 'cell' or self.domain_type == 'distribcell':
-            all_cells = statepoint.summary.geometry.get_all_cells()
-            self.domain = all_cells[self.domain.id]
+        geom = statepoint.summary.geometry
+        if self.domain_type in ('cell', 'distribcell'):
+            self.domain = geom.get_all_cells()[self.domain.id]
         elif self.domain_type == 'universe':
-            all_univs = statepoint.summary.get_all_universes()
-            self.domain = all_univs[self.domain.id]
+            self.domain = geom.get_all_universes()[self.domain.id]
         elif self.domain_type == 'material':
-            all_mats = statepoint.summary.get_all_materials()
-            self.domain = all_mats[self.domain.id]
+            self.domain = geom.get_all_materials()[self.domain.id]
         elif self.domain_type == 'mesh':
             self.domain = statepoint.meshes[self.domain.id]
         else:
@@ -5407,6 +5405,26 @@ class ConsistentScatterMatrixXS(ConvolvedMGXS, ScatterMatrixXS):
             self._compute_xs()
 
         return self._xs_tally
+
+    @ScatterMatrixXS.correction.setter
+    def correction(self, correction):
+        ScatterMatrixXS.correction = correction
+        self.mgxs[2].correction = correction
+
+    @ScatterMatrixXS.scatter_format.setter
+    def scatter_format(self, scatter_format):
+        ScatterMatrixXS.scatter_format = scatter_format
+        self.mgxs[1].scatter_format = scatter_format
+
+    @ScatterMatrixXS.legendre_order.setter
+    def legendre_order(self, legendre_order):
+        ScatterMatrixXS.legendre_order = legendre_order
+        self.mgxs[1].legendre_order = legendre_order
+
+    @ScatterMatrixXS.histogram_bins.setter
+    def histogram_bins(self, histogram_bins):
+        ScatterMatrixXS.histogram_bins = histogram_bins
+        self.mgxs[1].histogram_bins = histogram_bins
 
     @ScatterMatrixXS.nu.setter
     def nu(self, nu):
@@ -5805,10 +5823,10 @@ class Chi(MGXS):
         self._prompt = prompt
         if not self.prompt:
             self._rxn_type = 'nu-fission'
-            self._hdf5_key = 'nu-fission matrix'
+            self._hdf5_key = 'chi'
         else:
             self._rxn_type = 'prompt-nu-fission'
-            self._hdf5_key = 'prompt-nu-fission matrix'
+            self._hdf5_key = 'chi-prompt'
 
     def get_homogenized_mgxs(self, other_mgxs):
         """Construct a homogenized mgxs with other MGXS objects.

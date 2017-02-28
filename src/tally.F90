@@ -1639,7 +1639,7 @@ contains
             ! bank. Since this was weighted by 1/keff, we multiply by keff
             ! to get the proper score.
             score = keff * p % wgt_bank * (ONE - sum(p % n_delayed_bank) &
-                 / real(p % n_bank, 8))
+                 / real(p % n_bank, 8)) * flux
             if (i_nuclide > 0) then
               score = score * atom_density * &
                    nucxs % get_xs('fission', p_g, UVW=p_uvw) / &
@@ -1739,7 +1739,7 @@ contains
                   d = filt % groups(d_bin)
 
                   score = keff * p % wgt_bank / p % n_bank * &
-                       p % n_delayed_bank(d)
+                       p % n_delayed_bank(d) * flux
 
                   if (i_nuclide > 0) then
                     score = score * atom_density * &
@@ -1752,7 +1752,7 @@ contains
                 cycle SCORE_LOOP
               end select
             else
-              score = keff * p % wgt_bank / p % n_bank * sum(p % n_delayed_bank)
+              score = keff * p % wgt_bank / p % n_bank * sum(p % n_delayed_bank) * flux
               if (i_nuclide > 0) then
                 score = score * atom_density * &
                      nucxs % get_xs('fission', p_g, UVW=p_uvw) / &
@@ -1852,12 +1852,12 @@ contains
                     score = score + p % absorb_wgt * &
                          nucxs % get_xs('decay rate', p_g, UVW=p_uvw, dg=d) * &
                          nucxs % get_xs('delayed-nu-fission', p_g, UVW=p_uvw, &
-                         dg=d) / matxs % get_xs('absorption', p_g, UVW=p_uvw)
+                         dg=d) / matxs % get_xs('absorption', p_g, UVW=p_uvw) * flux
                   else
                     score = score + p % absorb_wgt * &
                          matxs % get_xs('decay rate', p_g, UVW=p_uvw, dg=d) * &
                          matxs % get_xs('delayed-nu-fission', p_g, UVW=p_uvw, &
-                         dg=d) / matxs % get_xs('absorption', p_g, UVW=p_uvw)
+                         dg=d) / matxs % get_xs('absorption', p_g, UVW=p_uvw) * flux
                   end if
                 end do
               end if
@@ -1888,11 +1888,11 @@ contains
                        fission_bank(n_bank - p % n_bank + k) % wgt * &
                        nucxs % get_xs('decay rate', p_g, UVW=p_uvw, dg=g) * &
                        nucxs % get_xs('fission', p_g, UVW=p_uvw) / &
-                       matxs % get_xs('fission', p_g, UVW=p_uvw)
+                       matxs % get_xs('fission', p_g, UVW=p_uvw) * flux
                 else
                   score = score + keff * &
                        fission_bank(n_bank - p % n_bank + k) % wgt * &
-                       matxs % get_xs('decay rate', p_g, UVW=p_uvw, dg=g)
+                       matxs % get_xs('decay rate', p_g, UVW=p_uvw, dg=g) * flux
                 end if
 
                 ! if the delayed group filter is present, tally to corresponding

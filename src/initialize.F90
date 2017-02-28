@@ -179,13 +179,15 @@ contains
     integer                   :: bank_types(5)    ! Datatypes
 #endif
     integer(MPI_ADDRESS_KIND) :: bank_disp(5)     ! Displacements
-    type(Bank)       :: b
+    logical    :: init_called
+    type(Bank) :: b
 
     ! Indicate that MPI is turned on
     mpi_enabled = .true.
 
     ! Initialize MPI
-    call MPI_INIT(mpi_err)
+    call MPI_INITIALIZED(init_called, mpi_err)
+    if (.not. init_called) call MPI_INIT(mpi_err)
 
     ! Determine number of processors and rank of each processor
     mpi_intracomm = intracomm

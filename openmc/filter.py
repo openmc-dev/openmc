@@ -1301,8 +1301,7 @@ class DistribcellFilter(Filter):
         filter_bins = np.tile(filter_bins, tile_factor)
         df = pd.DataFrame({self.short_name.lower() : filter_bins})
 
-        # If OpenCG level info DataFrame was created, concatenate
-        # with DataFrame of distribcell instance IDs
+        # Concatenate with DataFrame of distribcell instance IDs
         if level_df is not None:
             level_df = level_df.dropna(axis=1, how='all')
             level_df = level_df.astype(np.int)

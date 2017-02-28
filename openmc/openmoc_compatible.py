@@ -3,12 +3,7 @@ import operator
 
 import numpy as np
 
-try:
-    import openmoc
-except ImportError:
-    raise ImportError('Unable to import openmoc which is needed by '
-                      'openmc.openmoc_compatible')
-
+import openmoc
 import openmc
 import openmc.checkvalue as cv
 
@@ -69,7 +64,7 @@ def get_openmoc_material(openmc_material):
 
     Parameters
     ----------
-    openmc_material : openmc.material.Material
+    openmc_material : openmc.Material
         OpenMC material
 
     Returns
@@ -110,7 +105,7 @@ def get_openmc_material(openmoc_material):
 
     Returns
     -------
-    openmc_material : openmc.material.Material
+    openmc_material : openmc.Material
         Equivalent OpenMC material
 
     """
@@ -141,7 +136,7 @@ def get_openmoc_surface(openmc_surface):
 
     Parameters
     ----------
-    openmc_surface : openmc.surface.Surface
+    openmc_surface : openmc.Surface
         OpenMC surface
 
     Returns
@@ -199,7 +194,7 @@ def get_openmoc_surface(openmc_surface):
 
     else:
         msg = 'Unable to create an OpenMOC Surface from an OpenMC ' \
-              'Surface of type "{0}" since it is not a compatible ' \
+              'Surface of type "{}" since it is not a compatible ' \
               'Surface type in OpenMOC'.format(type(openmc_surface))
         raise ValueError(msg)
 
@@ -225,7 +220,7 @@ def get_openmc_surface(openmoc_surface):
 
     Returns
     -------
-    openmc_surface : openmc.surface.Surface
+    openmc_surface : openmc.Surface
         Equivalent OpenMC surface
 
     """
@@ -238,12 +233,12 @@ def get_openmc_surface(openmoc_surface):
     if surface_id in OPENMC_SURFACES:
         return OPENMC_SURFACES[surface_id]
 
-    # Create an OpenMC Surface to represent this OpenCG Surface
+    # Create an OpenMC Surface to represent this OpenMOC Surface
     name = openmoc_surface.name
 
     # Correct for OpenMC's syntax for Surfaces dividing Cells
     boundary = openmoc_surface.getBoundaryType()
-    if boundary == openmoc.VACCUM:
+    if boundary == openmoc.VACUUM:
         boundary = 'vacuum'
     elif boundary == openmoc.REFLECTIVE:
         boundary = 'reflective'
@@ -263,11 +258,11 @@ def get_openmc_surface(openmoc_surface):
         x0 = openmoc_surface.getX()
         openmc_surface = openmc.XPlane(surface_id, boundary, x0, name)
 
-    elif openmoc_surface.type == openmoc.YPLANE:
+    elif openmoc_surface.getSurfaceType() == openmoc.YPLANE:
         y0 = openmoc_surface.getY()
         openmc_surface = openmc.YPlane(surface_id, boundary, y0, name)
 
-    elif openmoc_surface.type == openmoc.ZPLANE:
+    elif openmoc_surface.getSurfaceType() == openmoc.ZPLANE:
         z0 = openmoc_surface.getZ()
         openmc_surface = openmc.ZPlane(surface_id, boundary, z0, name)
 
@@ -291,7 +286,7 @@ def get_openmoc_cell(openmc_cell):
 
     Parameters
     ----------
-    openmc_cell : openmc.universe.Cell
+    openmc_cell : openmc.Cell
         OpenMC cell
 
     Returns
@@ -365,11 +360,11 @@ def get_openmc_cell(openmoc_cell):
     Parameters
     ----------
     openmoc_cell : openmoc.Cell
-        OpenCG cell
+        OpenMOC cell
 
     Returns
     -------
-    openmc_cell : openmc.universe.Cell
+    openmc_cell : openmc.Cell
         Equivalent OpenMC cell
 
     """
@@ -403,16 +398,10 @@ def get_openmc_cell(openmoc_cell):
         translation = openmoc_cell.getTranslation(3)
         openmc_cell.translation = translation
 
-
-    surfaces = []
-    operators = []
+    regions = []
     for surf_id, surf_halfspace in openmoc_cell.getSurfaces().values():
-        halfspace = surf_halfspace._halfspace
-        surface = surf_halfspace._surface
-        surfaces.append(get_openmc_surface(surface))
-        operators.append(operator.neg if halfspace == -1 else operator.pos)
-    openmc_cell.region = openmc.Intersection(
-        *[op(s) for op, s in zip(operators, surfaces)])
+        regions.append(-surface if halfspace == -1 else +surface)
+    openmc_cell.region = openmc.Intersection(*regions)
 
     # Add the OpenMC Cell to the global collection of all OpenMC Cells
     OPENMC_CELLS[cell_id] = openmc_cell
@@ -428,7 +417,7 @@ def get_openmoc_universe(openmc_universe):
 
     Parameters
     ----------
-    openmc_universe : openmc.universe.Universe
+    openmc_universe : openmc.Universe
         OpenMC universe
 
     Returns
@@ -450,7 +439,7 @@ def get_openmoc_universe(openmc_universe):
     name = openmc_universe.name
     openmoc_universe = openmoc.Universe(universe_id, name)
 
-    # Convert all OpenMC Cells in this Universe to OpenCG Cells
+    # Convert all OpenMC Cells in this Universe to OpenMOC Cells
     openmc_cells = openmc_universe.cells
 
     for openmc_cell in openmc_cells.values():
@@ -476,7 +465,7 @@ def get_openmc_universe(openmoc_universe):
 
     Returns
     -------
-    openmc_universe : openmc.universe.Universe
+    openmc_universe : openmc.Universe
         Equivalent OpenMC universe
 
     """
@@ -512,7 +501,7 @@ def get_openmoc_lattice(openmc_lattice):
 
     Parameters
     ----------
-    openmc_lattice : openmc.universe.Lattice
+    openmc_lattice : openmc.RectLattice
         OpenMC lattice
 
     Returns
@@ -522,7 +511,7 @@ def get_openmoc_lattice(openmc_lattice):
 
     """
 
-    cv.check_type('openmc_lattice', openmc_lattice, openmc.Lattice)
+    cv.check_type('openmc_lattice', openmc_lattice, openmc.RectLattice)
 
     lattice_id = openmc_lattice.id
 
@@ -539,7 +528,7 @@ def get_openmoc_lattice(openmc_lattice):
 
     # Convert 2D dimension to 3D for OpenMOC
     if len(dimension) == 2:
-        new_dimension = np.ones(3, dtype=np.int)
+        new_dimension = np.ones(3, dtype=int)
         new_dimension[:2] = dimension
         dimension = new_dimension
 
@@ -549,13 +538,13 @@ def get_openmoc_lattice(openmc_lattice):
         new_pitch[:2] = pitch
         pitch = new_pitch
 
-    # Convert 2D lower left to 3D for OpenCG
+    # Convert 2D lower left to 3D for OpenMOC
     if len(lower_left) == 2:
         new_lower_left = np.ones(3, dtype=np.float64) * np.finfo(np.float64).min
         new_lower_left[:2] = lower_left
         lower_left = new_lower_left
 
-        # Convert 2D universes array to 3D for OpenCG
+        # Convert 2D universes array to 3D for OpenMOC
         if len(universes.shape) == 2:
             new_universes = universes.copy()
             new_universes.shape = (1,) + universes.shape
@@ -605,7 +594,7 @@ def get_openmc_lattice(openmoc_lattice):
 
     Returns
     -------
-    openmc_lattice : openmc.universe.Lattice
+    openmc_lattice : openmc.RectLattice
         Equivalent OpenMC lattice
 
     """
@@ -627,7 +616,7 @@ def get_openmc_lattice(openmoc_lattice):
                    np.array(dimension, dtype=np.float64))) / -2.0
 
     # Initialize an empty array for the OpenMOC nested Universes in this Lattice
-    universe_array = np.ndarray(tuple(np.array(dimension)[::-1]), \
+    universe_array = np.ndarray(tuple(np.array(dimension)[::-1]),
                                 dtype=openmoc.Universe)
 
     # Create OpenMOC Universes for each unique nested Universe in this Lattice
@@ -663,7 +652,7 @@ def get_openmoc_geometry(openmc_geometry):
 
     Parameters
     ----------
-    openmc_geometry : openmc.universe.Geometry
+    openmc_geometry : openmc.Geometry
         OpenMC geometry
 
     Returns
@@ -721,7 +710,7 @@ def get_openmc_geometry(openmoc_geometry):
 
     Returns
     -------
-    openmc_geometry : openmc.universe.Geometry
+    openmc_geometry : openmc.Geometry
         Equivalent OpenMC geometry
 
     """
@@ -738,8 +727,8 @@ def get_openmc_geometry(openmoc_geometry):
     OPENMC_LATTICES.clear()
     OPENMOC_LATTICES.clear()
 
-    openmoc_root_universe = openmoc_geometry.getRootUniverse()
-    openmc_root_universe = get_openmc_universe(openmoc_root_universe)
+    openmoc_root_universe =
+        openmoc_geometry.getRootUniverse(openmoc_root_universe)
 
     openmc_geometry = openmc.Geometry()
     openmc_geometry.root_universe = openmc_root_universe

@@ -71,6 +71,10 @@ class Material(object):
         The average molar mass of nuclides in the material in units of grams per
         mol.  For example, UO2 with 3 nuclides will have an average molar mass
         of 270 / 3 = 90 g / mol.
+    num_instances : int
+        The number of instances of this cell throughout the geometry. This
+        property is initialized by calling the
+        :meth:`Geometry.count_cell_instances()` method.
 
     """
 
@@ -82,6 +86,7 @@ class Material(object):
         self._density = None
         self._density_units = ''
         self._depletable = False
+        self._num_instances = None
 
         # A list of tuples (nuclide, percent, percent type)
         self._nuclides = []
@@ -190,6 +195,10 @@ class Material(object):
         return self._depletable
 
     @property
+    def num_instances(self):
+        return self._num_instances
+
+    @property
     def elements(self):
         return self._elements
 
@@ -258,6 +267,11 @@ class Material(object):
         cv.check_type('Depletable flag for Material ID="{}"'.format(self.id),
                       depletable, bool)
         self._depletable = depletable
+
+    @num_instances.setter
+    def num_instances(self, num_instances):
+        cv.check_type('num_instances', num_instances, Integral)
+        self._num_instances = num_instances
 
     @classmethod
     def from_hdf5(cls, group):

@@ -28,6 +28,6 @@ from openmc.mixin import *
 from openmc.plotter import *
 
 try:
-    from openmc.opencg_compatible import *
+    from openmc.openmoc_compatible import *
 except ImportError:
     pass

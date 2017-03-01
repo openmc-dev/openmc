@@ -103,21 +103,17 @@ if(CMAKE_Fortran_COMPILER_ID STREQUAL GNU)
   # Make sure version is sufficient
   execute_process(COMMAND ${CMAKE_Fortran_COMPILER} -dumpversion
     OUTPUT_VARIABLE GCC_VERSION)
-  if(GCC_VERSION VERSION_LESS 4.6)
-    message(FATAL_ERROR "gfortran version must be 4.6 or higher")
+  if(GCC_VERSION VERSION_LESS 4.8)
+    message(FATAL_ERROR "gfortran version must be 4.8 or higher")
   endif()
 
   # GCC compiler options
   list(APPEND f90flags -cpp -std=f2008 -fbacktrace)
   list(APPEND cflags -cpp -std=c99)
   if(debug)
-    if(NOT (GCC_VERSION VERSION_LESS 4.7))
-      list(APPEND f90flags -Wall)
-      list(APPEND cflags -Wall)
-    endif()
-    list(APPEND f90flags -g -pedantic -fbounds-check
+    list(APPEND f90flags -g -Wall -pedantic -fbounds-check
       -ffpe-trap=invalid,overflow,underflow)
-    list(APPEND cflags -g -pedantic -fbounds-check)
+    list(APPEND cflags -g -Wall -pedantic -fbounds-check)
     list(APPEND ldflags -g)
   endif()
   if(profile)

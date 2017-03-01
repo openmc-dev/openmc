@@ -1074,7 +1074,7 @@ contains
     character(MAX_LINE_LEN) :: filename
     character(MAX_WORD_LEN) :: word
     character(MAX_WORD_LEN), allocatable :: sarray(:)
-    character(REGION_SPEC_LEN) :: region_spec
+    character(:), allocatable :: region_spec
     type(Cell),     pointer :: c
     class(Surface), pointer :: s
     class(Lattice), pointer :: lat
@@ -1216,15 +1216,17 @@ contains
       end if
 
       ! Check for region specification (also under deprecated name surfaces)
-      region_spec = ''
       if (check_for_node(node_cell, "surfaces")) then
         call warning("The use of 'surfaces' is deprecated and will be &
              &disallowed in a future release.  Use 'region' instead. The &
              &openmc-update-inputs utility can be used to automatically &
              &update geometry.xml files.")
+        region_spec = node_value_string(node_cell, "surfaces")
         call get_node_value(node_cell, "surfaces", region_spec)
       elseif (check_for_node(node_cell, "region")) then
-        call get_node_value(node_cell, "region", region_spec)
+        region_spec = node_value_string(node_cell, "region")
+      else
+        region_spec = ''
       end if
 
       if (len_trim(region_spec) > 0) then

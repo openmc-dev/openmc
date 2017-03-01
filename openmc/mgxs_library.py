@@ -1699,19 +1699,21 @@ class XSdata(object):
             Representation of the MGXS (isotropic or angle-dependent flux
             weighting).
         num_polar : int, optional
-            Number of equal width angular bins that the polar angular
-            domain is subdivided into. This is required when
-            :param:`target_representation` is "angle".
+            Number of equal width angular bins that the polar angular domain is
+            subdivided into. This is required when `target_representation` is
+            "angle".
+
         num_azimuthal : int, optional
-            Number of equal width angular bins that the azimuthal angular
-            domain is subdivided into. This is required when
-            :param:`target_representation` is "angle".
+            Number of equal width angular bins that the azimuthal angular domain
+            is subdivided into. This is required when `target_representation` is
+            "angle".
 
         Returns
         -------
         openmc.XSdata
+
             Multi-group cross section data with the same data as self, but
-            represented as specified in :param:`target_representation`.
+            represented as specified in `target_representation`.
 
         """
 
@@ -1796,7 +1798,7 @@ class XSdata(object):
         -------
         openmc.XSdata
             Multi-group cross section data with the same data as in self, but
-            represented as specified in :param:`target_format`.
+            represented as specified in `target_format`.
 
         """
 
@@ -2445,19 +2447,19 @@ class MGXSLibrary(object):
             Representation of the MGXS (isotropic or angle-dependent flux
             weighting).
         num_polar : int, optional
-            Number of equal width angular bins that the polar angular
-            domain is subdivided into. This is required when
-            :param:`target_representation` is "angle".
+            Number of equal width angular bins that the polar angular domain is
+            subdivided into. This is required when `target_representation` is
+            "angle".
         num_azimuthal : int, optional
-            Number of equal width angular bins that the azimuthal angular
-            domain is subdivided into. This is required when
-            :param:`target_representation` is "angle".
+            Number of equal width angular bins that the azimuthal angular domain
+            is subdivided into. This is required when `target_representation` is
+            "angle".
 
         Returns
         -------
         openmc.MGXSLibrary
             Multi-group Library with the same data as self, but represented as
-            specified in :param:`target_representation`.
+            specified in `target_representation`.
 
         """
 
@@ -2484,9 +2486,9 @@ class MGXSLibrary(object):
         Returns
         -------
         openmc.MGXSLibrary
-            Multi-group Library with the same data as self, but with the
-            scatter format represented as specified in :param:`target_format`
-            and :param:`target_order`.
+            Multi-group Library with the same data as self, but with the scatter
+            format represented as specified in `target_format` and
+            `target_order`.
 
         """
 

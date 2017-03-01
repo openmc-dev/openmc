@@ -610,7 +610,7 @@ class Material(object):
     def make_isotropic_in_lab(self):
         for nuclide, percent, percent_type in self._nuclides:
             nuclide.scattering = 'iso-in-lab'
-        for element, percent, percent_type in self._elements:
+        for element, percent, percent_type, enrichment in self._elements:
             element.scattering = 'iso-in-lab'
 
     def get_nuclides(self):

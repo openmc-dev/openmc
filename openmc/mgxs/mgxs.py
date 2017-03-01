@@ -3960,8 +3960,9 @@ class ScatterMatrixXS(MatrixMGXS):
         (5th dimension).
 
         .. note:: The scattering moments are not multiplied by the
-        :math:`(2l+1)/2` prefactor in the expansion of the scattering source
-        into Legendre moments in the neutron transport equation.
+                  :math:`(2\ell+1)/2` prefactor in the expansion of the
+                  scattering source into Legendre moments in the neutron
+                  transport equation.
 
         Parameters
         ----------
@@ -4569,7 +4570,7 @@ class ScatterProbabilityMatrix(MatrixMGXS):
 
     For a spatial domain :math:`V`, incoming energy group
     :math:`[E_{g'},E_{g'-1}]`, and outgoing energy group :math:`[E_g,E_{g-1}]`,
-    the group-to-group scatterin probabilities are calculated as:
+    the group-to-group scattering probabilities are calculated as:
 
     .. math::
 
@@ -4648,7 +4649,7 @@ class ScatterProbabilityMatrix(MatrixMGXS):
         The tally estimator used to compute the multi-group cross section
     tallies : collections.OrderedDict
         OpenMC tallies needed to compute the multi-group cross section. The keys
-        are strings listed in the :attr:`MultiplicityMatrixXS.tally_keys`
+        are strings listed in the :attr:`ScatterProbabilityMatrix.tally_keys`
         property and values are instances of :class:`openmc.Tally`.
     rxn_rate_tally : openmc.Tally
         Derived tally for the reaction rate tally used in the numerator to
@@ -4682,9 +4683,9 @@ class ScatterProbabilityMatrix(MatrixMGXS):
 
     """
 
-    def __init__(self, domain=None, domain_type=None, groups=None, nu=False,
-                 prompt=False, by_nuclide=False, name='', num_polar=1,
-                 num_azimuthal=1):
+    def __init__(self, domain=None, domain_type=None, groups=None,
+                 by_nuclide=False, name='', num_polar=1,
+                 num_azimuthal=1, nu=False):
         super(ScatterProbabilityMatrix, self).__init__(
             domain, domain_type, groups, by_nuclide,
             name, num_polar, num_azimuthal)

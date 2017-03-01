@@ -13,6 +13,7 @@ module xml_interface
   public :: get_node_list
   public :: get_node_value
   public :: get_node_array
+  public :: node_value_string
   public :: node_word_count
 
   interface get_node_value

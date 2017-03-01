@@ -2599,10 +2599,10 @@ contains
           ! if the delayed group filter is not present, add score to tally
           else
 
-          ! determine scoring index and weight for this filter combination
-          i_filter = sum((matching_bins(1:size(t%filters)) - 1) * t % stride)&
-               + 1
-          filter_weight = product(filter_weights(:size(t % filters)))
+            ! determine scoring index and weight for this filter combination
+            i_filter = sum((matching_bins(1:size(t%filters)) - 1) * t % stride)&
+                 + 1
+            filter_weight = product(filter_weights(:size(t % filters)))
 
             ! Add score to tally
 !$omp atomic

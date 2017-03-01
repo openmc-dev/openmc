@@ -5343,7 +5343,8 @@ class ConsistentScatterMatrixXS(ConvolvedMGXS, ScatterMatrixXS):
                 self._tallies[tally_key] = openmc.Tally(name=self.name)
                 self._tallies[tally_key].estimator = 'analog'
                 self._tallies[tally_key].scores = [self.scores[-1]]
-                self._tallies[tally_key].filters = [domain_filter, *self.filters[-1]]
+                self._tallies[tally_key].filters = [domain_filter]
+                self._tallies[tally_key].filters.extend(self.filters[-1])
 
                 # If a tally trigger was specified, add it to each tally
                 if self.tally_trigger:

@@ -129,7 +129,7 @@ class Lattice(object):
 
         """
         lattice_id = int(group.name.split('/')[-1].lstrip('lattice '))
-        name = group['name'].value.decode()
+        name = group['name'].value.decode() if 'name' in group else ''
         lattice_type = group['type'].value.decode()
 
         if 'offsets' in group:

@@ -25,7 +25,7 @@ except ImportError:
 
 
 MOCK_MODULES = ['numpy', 'numpy.polynomial', 'numpy.polynomial.polynomial',
-                'h5py', 'pandas', 'uncertainties', 'opencg']
+                'h5py', 'pandas', 'uncertainties', 'openmoc']
 sys.modules.update((mod_name, MagicMock()) for mod_name in MOCK_MODULES)
 
 import numpy as np

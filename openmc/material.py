@@ -75,6 +75,10 @@ class Material(object):
         Volume of the material in cm^3. This can either be set manually or
         calculated in a stochastic volume calculation and added via the
         :meth:`Material.add_volume_information` method.
+    num_instances : int
+        The number of instances of this cell throughout the geometry. This
+        property is initialized by calling the
+        :meth:`Geometry.count_cell_instances()` method.
 
     """
 
@@ -88,6 +92,7 @@ class Material(object):
         self._depletable = False
         self._volume = None
         self._atoms = {}
+        self._num_instances = None
 
         # A list of tuples (nuclide, percent, percent type)
         self._nuclides = []
@@ -196,6 +201,10 @@ class Material(object):
         return self._depletable
 
     @property
+    def num_instances(self):
+        return self._num_instances
+
+    @property
     def elements(self):
         return self._elements
 
@@ -274,6 +283,11 @@ class Material(object):
         if volume is not None:
             cv.check_type('material volume', volume, Real)
         self._volume = volume
+
+    @num_instances.setter
+    def num_instances(self, num_instances):
+        cv.check_type('num_instances', num_instances, Integral)
+        self._num_instances = num_instances
 
     @classmethod
     def from_hdf5(cls, group):

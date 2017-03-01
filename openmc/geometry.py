@@ -497,6 +497,7 @@ class Geometry(object):
                                 univ = latt.universes[k][m]
                                 self.count_cell_instances(univ)
 
+                # FIXME: Figure out how to iterate over lattices
                 elif isinstance(latt, openmc.HexLattice):
 
                     # 3D Lattices
@@ -523,3 +524,74 @@ class Geometry(object):
                                 else:
                                     univ = latt.universes[j][k]
                                     self.count_cell_instances(univ)
+
+
+    # FIXME:
+    def count_material_instances(self, universe=None):
+        if universe is None:
+            universe = self.root_universe
+
+        if universe is None:
+            raise RuntimeError(
+                'Unable to count material instances without a root universe')
+
+        # (Re-)initialize all material instances to 0
+        for material in self.get_all_materials().values():
+            material.num_instances = 0
+
+        for cell in universe.cells.values():
+
+            # If material-filled, we are finished with all levels
+            if cell.fill_type == 'material':
+                cell.fill.num_instances += 1
+
+            # If universe-filled, recursively count materials in filling universe
+            elif cell.fill_type == 'universe':
+                self.count_material_instances(cell.fill)
+
+            # If lattice-filled, recursively call for all universes in lattice
+            elif cell.fill_type == 'lattice':
+                latt = cell.fill
+
+                if isinstance(latt, openmc.RectLattice):
+                    # 3D Lattices
+                    if latt.ndim == 3:
+                        for j in range(latt.shape[2]):
+                            for k in range(latt.shape[1]):
+                                for m in range(latt.shape[0]):
+                                    univ = latt.universes[j][k][m]
+                                    self.count_material_instances(univ)
+                    # 2D Lattices
+                    else:
+                        for k in range(latt.shape[1]):
+                            for m in range(latt.shape[0]):
+                                univ = latt.universes[k][m]
+                                self.count_material_instances(univ)
+
+                # FIXME: Figure out how to iterate over hexagonal lattices
+                elif isinstance(latt, openmc.HexLattice):
+
+                    # 3D Lattices
+                    if latt.ndim == 3:
+                        for m in range(latt.num_axial):
+                            for k in range(2 * latt.num_rings - 1):
+                                for j in range(2 * latt.num_rings - 1):
+                                    if j + k < latt.num_rings + 1:
+                                        continue
+                                    elif j + k > 3 * latt.num_rings - 1:
+                                        continue
+                                    else:
+                                        univ = latt.universes[j][k][m]
+                                        self.count_material_instances(univ)
+
+                    # 2D Lattices
+                    else:
+                        for k in range(2 * latt.num_rings - 1):
+                            for j in range(2 * latt.num_rings - 1):
+                                if j + k < latt.num_rings + 1:
+                                    continue
+                                elif j + k > 3 * latt.num_rings - 1:
+                                    continue
+                                else:
+                                    univ = latt.universes[j][k]
+                                    self.count_material_instances(univ)

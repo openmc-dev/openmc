@@ -90,6 +90,10 @@ class Cell(object):
         Volume of the cell in cm^3. This can either be set manually or
         calculated in a stochastic volume calculation and added via the
         :meth:`Cell.add_volume_information` method.
+    num_instances : int
+        The number of instances of this cell throughout the geometry. This
+        property is initialized by calling the
+        :meth:`Geometry.count_cell_instances()` method.
 
     """
 
@@ -108,6 +112,7 @@ class Cell(object):
         self._distribcell_paths = None
         self._volume = None
         self._atoms = None
+        self._num_instances = None
 
     def __contains__(self, point):
         if self.region is None:
@@ -228,6 +233,10 @@ class Cell(object):
     def volume(self):
         return self._volume
 
+    @property
+    def num_instances(self):
+        return self._num_instances
+
     @id.setter
     def id(self, cell_id):
         if cell_id is None:
@@ -343,6 +352,11 @@ class Cell(object):
         cv.check_iterable_type('distribcell_paths', distribcell_paths,
                                string_types)
         self._distribcell_paths = distribcell_paths
+
+    @num_instances.setter
+    def num_instances(self, num_instances):
+        cv.check_type('num_instances', num_instances, Integral)
+        self._num_instances = num_instances
 
     def add_surface(self, surface, halfspace):
         """Add a half-space to the list of half-spaces whose intersection defines the

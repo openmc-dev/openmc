@@ -399,7 +399,6 @@ class CrossFilter(object):
             distribcell tally filters (default is None). The geometric
             information in the Summary object is embedded into a Multi-index
             column with a geometric "path" to each distribcell instance.
-            NOTE: This option requires the OpenCG Python package.
 
         Returns
         -------

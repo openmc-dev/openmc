@@ -365,6 +365,9 @@ contains
         case ('-g', '-geometry-debug', '--geometry-debug')
           check_overlaps = .true.
 
+        case ('-c', '--volume')
+          run_mode = MODE_VOLUME
+
         case ('-s', '--threads')
           ! Read number of threads
           i = i + 1

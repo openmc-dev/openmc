@@ -1,4 +1,4 @@
-from collections import Iterable, Mapping
+from collections import Iterable, Mapping, OrderedDict
 from numbers import Real, Integral
 from xml.etree import ElementTree as ET
 from warnings import warn
@@ -43,21 +43,21 @@ class VolumeCalculation(object):
         Lower-left coordinates of bounding box used to sample points
     upper_right : Iterable of float
         Upper-right coordinates of bounding box used to sample points
-    results : dict
-        Dictionary whose keys are unique IDs of domains and values are
-        dictionaries with calculated volumes and total number of atoms for each
-        nuclide present in the domain.
-    volumes : dict
-        Dictionary whose keys are unique IDs of domains and values are the
-        estimated volumes
+    atoms : dict
+        Dictionary mapping unique IDs of domains to a mapping of nuclides to
+        total number of atoms for each nuclide present in the domain. For
+        example, {10: {'U235': 1.0e22, 'U238': 5.0e22, ...}}.
     atoms_dataframe : pandas.DataFrame
         DataFrame showing the estimated number of atoms for each nuclide present
         in each domain specified.
+    volumes : dict
+        Dictionary mapping unique IDs of domains to estimated volumes in cm^3.
 
     """
     def __init__(self, domains, samples, lower_left=None,
                  upper_right=None):
-        self._results = None
+        self._atoms = {}
+        self._volumes = {}
 
         cv.check_type('domains', domains, Iterable,
                       (openmc.Cell, openmc.Material, openmc.Universe))
@@ -123,24 +123,24 @@ class VolumeCalculation(object):
         return self._upper_right
 
     @property
-    def results(self):
-        return self._results
-
-    @property
     def domain_type(self):
         return self._domain_type
 
     @property
+    def atoms(self):
+        return self._atoms
+
+    @property
     def volumes(self):
-        return {uid: results['volume'] for uid, results in self.results.items()}
+        return self._volumes
 
     @property
     def atoms_dataframe(self):
         items = []
         columns = [self.domain_type.capitalize(), 'Nuclide', 'Atoms',
                    'Uncertainty']
-        for uid, results in self.results.items():
-            for name, atoms in results['atoms']:
+        for uid, atoms_dict in self.atoms.items():
+            for name, atoms in atoms_dict.items():
                 items.append((uid, name, atoms[0], atoms[1]))
 
         return pd.DataFrame.from_records(items, columns=columns)
@@ -170,10 +170,15 @@ class VolumeCalculation(object):
         cv.check_length(name, upper_right, 3)
         self._upper_right = upper_right
 
-    @results.setter
-    def results(self, results):
-        cv.check_type('results', results, Mapping)
-        self._results = results
+    @volumes.setter
+    def volumes(self, volumes):
+        cv.check_type('volumes', volumes, Mapping)
+        self._volumes = volumes
+
+    @atoms.setter
+    def atoms(self, atoms):
+        cv.check_type('atoms', atoms, Mapping)
+        self._atoms = atoms
 
     @classmethod
     def from_hdf5(cls, filename):
@@ -198,7 +203,8 @@ class VolumeCalculation(object):
             lower_left = f.attrs['lower_left']
             upper_right = f.attrs['upper_right']
 
-            results = {}
+            volumes = {}
+            atoms = {}
             ids = []
             for obj_name in f:
                 if obj_name.startswith('domain_'):
@@ -207,12 +213,13 @@ class VolumeCalculation(object):
                     group = f[obj_name]
                     volume = tuple(group['volume'].value)
                     nucnames = group['nuclides'].value
-                    atoms = group['atoms'].value
+                    atoms_ = group['atoms'].value
 
-                    atom_list = []
-                    for name_i, atoms_i in zip(nucnames, atoms):
-                        atom_list.append((name_i.decode(), tuple(atoms_i)))
-                    results[domain_id] = {'volume': volume, 'atoms': atom_list}
+                    atom_dict = OrderedDict()
+                    for name_i, atoms_i in zip(nucnames, atoms_):
+                        atom_dict[name_i.decode()] = tuple(atoms_i)
+                    volumes[domain_id] = volume
+                    atoms[domain_id] = atom_dict
 
         # Instantiate some throw-away domains that are used by the constructor
         # to assign IDs
@@ -225,8 +232,29 @@ class VolumeCalculation(object):
 
         # Instantiate the class and assign results
         vol = cls(domains, samples, lower_left, upper_right)
-        vol.results = results
+        vol.volumes = volumes
+        vol.atoms = atoms
         return vol
+
+    def load_results(self, filename):
+        """Load stochastic volume calculation results from an HDF5 file.
+
+        Parameters
+        ----------
+        filename : str
+            Path to volume.h5 file
+
+        """
+        results = type(self).from_hdf5(filename)
+
+        # Make sure properties match
+        assert self.domains == results.domains
+        assert self.lower_left == results.lower_left
+        assert self.upper_right == results.upper_right
+
+        # Copy results
+        self.volumes = results.volumes
+        self.atoms = results.atoms
 
     def to_xml_element(self):
         """Return XML representation of the volume calculation

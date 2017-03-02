@@ -27,23 +27,12 @@ element materials {
         attribute name { xsd:string })
     }*  &
 
-    element element {
-      (element name { xsd:string { maxLength = "2" } } |
-        attribute name { xsd:string { maxLength = "2" } }) &
-      (element scattering { ( "data" | "iso-in-lab" ) } |
-        attribute scattering { ( "data" | "iso-in-lab" ) })? &
-      (
-        (element ao { xsd:double } | attribute ao { xsd:double }) |
-        (element wo { xsd:double } | attribute wo { xsd:double })
-      )
-    }*  &
-
     element sab {
       (element name { xsd:string } | attribute name { xsd:string })
     }*
-  }+
+  }+ &
 
   element cross_sections { xsd:string { maxLength = "255" } }? &
 
-  element multipole_library { xsd:string { maxLength = "255" } }? &
+  element multipole_library { xsd:string { maxLength = "255" } }?
 }

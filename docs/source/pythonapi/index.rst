@@ -57,6 +57,7 @@ Simulation Settings
 
    openmc.Source
    openmc.ResonanceScattering
+   openmc.VolumeCalculation
    openmc.Settings
 
 Material Specification
@@ -185,7 +186,7 @@ Running OpenMC
    :template: myfunction.rst
 
    openmc.run
-   openmc.run_volume_calculation
+   openmc.calculate_volumes
    openmc.plot_geometry
 
 Post-processing

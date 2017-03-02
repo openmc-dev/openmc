@@ -4579,24 +4579,13 @@ class ScatterProbabilityMatrix(MatrixMGXS):
        \int_{E_g}^{E_{g-1}} dE \; P_\ell (\Omega \cdot \Omega')
        \sigma_{s} (r, E' \rightarrow E, \Omega' \cdot \Omega) \psi(r, E',
        \Omega')\\
-       \langle \sigma_{s,g'} \phi \rangle &= \int_{r \in V} dr
+       \langle \sigma_{s,0,g'} \phi \rangle &= \int_{r \in V} dr
        \int_{4\pi} d\Omega' \int_{E_{g'}}^{E_{g'-1}} dE' \int_{4\pi} d\Omega
        \int_{0}^{\infty} dE \; \sigma_s (r, E'
        \rightarrow E, \Omega' \cdot \Omega) \psi(r, E', \Omega')\\
-       P_{s,g'\rightarrow g} &= \frac{\langle
-       \sigma_{s,g'\rightarrow g} \phi \rangle}{\langle
-       \sigma_{s,g'} \phi \rangle}
-
-    .. math::
-
-       \langle \sigma_{s,\ell,g'\rightarrow g} \phi \rangle &= \int_{r \in V} dr
-       \int_{4\pi} d\Omega' \int_{E_{g'}}^{E_{g'-1}} dE' \int_{4\pi} d\Omega
-       \int_{E_g}^{E_{g-1}} dE \; P_\ell (\Omega \cdot \Omega') \sigma_s (r, E'
-       \rightarrow E, \Omega' \cdot \Omega) \psi(r, E', \Omega')\\
-       \langle \phi \rangle &= \int_{r \in V} dr \int_{4\pi} d\Omega
-       \int_{E_g}^{E_{g-1}} dE \; \psi (r, E, \Omega) \\
-       \sigma_{s,\ell,g'\rightarrow g} &= \frac{\langle
-       \sigma_{s,\ell,g'\rightarrow g} \phi \rangle}{\langle \phi \rangle}
+       P_{s,\ell,g'\rightarrow g} &= \frac{\langle
+       \sigma_{s,\ell,g'\rightarrow g} \phi \rangle}{\langle
+       \sigma_{s,0,g'} \phi \rangle}
 
     To incorporate the effect of neutron multiplication from (n,xn) reactions
     in the above probaility matrix, the `nu` parameter can be set to `True`.
@@ -5750,17 +5739,17 @@ class ConvolvedMGXS(MGXS):
 
 
 class ConsistentScatterMatrixXS(ConvolvedMGXS, ScatterMatrixXS):
-#class ConsistentScatterMatrixXS(ScatterMatrixXS, ConvolvedMGXS):
     r"""A scattering matrix multi-group cross section computed as the product
     of the scatter cross section and group-to-group scattering probabilities.
 
     This class is a variation of the :class:`ScatterMatrixXS` which computes
     the scattering matrix as the convolution product of :class:`ScatterXS` and
-    :class:`ScatterProbabilityMatrix`. Unlike the :class:`ScatterMatrixXS`,
-    this scattering matrix is computed from the scattering cross section which
-    uses a tracklength estimator. This ensures that reaction rate balance is
-    exactly preserved with a :class:`TotalXS` computed using a tracklength
-    estimator.
+    :class:`ScatterProbabilityMatrix`, and :class:`MultiplicityMatrix` if
+    multiplication from scattering multiplication is considered (optional).
+    Unlike the :class:`ScatterMatrixXS`, this scattering matrix is computed
+    from the scattering cross section which uses a tracklength estimator.
+    This ensures that reaction rate balance is exactly preserved with a
+    :class:`TotalXS` computed using a tracklength estimator.
 
     This class can be used for both OpenMC input generation and tally data
     post-processing to compute spatially-homogenized and energy-integrated
@@ -5778,20 +5767,24 @@ class ConsistentScatterMatrixXS(ConvolvedMGXS, ScatterMatrixXS):
     can then be obtained from the :attr:`ConsistentScatterMatrixXS.xs_tally`
     property.
 
-    For a spatial domain :math:`V`, incoming energy group
-    :math:`[E_{g'},E_{g'-1}]`, and outgoing energy group :math:`[E_g,E_{g-1}]`,
+    For a scattering probability matrix :math:`P_{s,\ell,g'\rightarrow g}` and
+    scattering cross section :math:`\sigma_s (r, E)` for incoming energy group
+    :math:`[E_{g'},E_{g'-1}]` and outgoing energy group :math:`[E_g,E_{g-1}]`,
     the Legendre scattering moments are calculated as:
 
     .. math::
 
-       \langle \sigma_{s,g'\rightarrow g} \phi \rangle &= \int_{r \in V} dr
-       \int_{4\pi} d\Omega' \int_{E_{g'}}^{E_{g'-1}} dE' \int_{4\pi} d\Omega
-       \int_{E_g}^{E_{g-1}} dE \; \sigma_s (r, E'
-       \rightarrow E, \Omega' \cdot \Omega) \psi(r, E', \Omega')\\
-       \langle \phi \rangle &= \int_{r \in V} dr \int_{4\pi} d\Omega
-       \int_{E_g}^{E_{g-1}} dE \; \psi (r, E, \Omega) \\
-       \sigma_{s,g'\rightarrow g} &= \frac{\langle
-       \sigma_{s,,g'\rightarrow g} \phi \rangle}{\langle \phi \rangle}
+       \sigma_{s,\ell,g'\rightarrow g} = \sigma_s (r, E) \times
+       P_{s,\ell,g'\rightarrow g}
+
+    To incorporate the effect of neutron multiplication from (n,xn) reactions
+    in the above scattering matrix, the `nu` parameter can be set to `True`
+    such that the Legendre scattering moments are calculated as:
+
+    .. math::
+
+       \sigma_{s,\ell,g'\rightarrow g} = \upsilon_{g'\rightarrow g} \times 
+       \sigma_s (r, E) \times P_{s,\ell,g'\rightarrow g}
 
     Parameters
     ----------

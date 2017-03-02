@@ -287,6 +287,7 @@ Multi-group Cross Sections
     openmc.mgxs.MGXS
     openmc.mgxs.AbsorptionXS
     openmc.mgxs.CaptureXS
+    openmc.mgxs.ConsistentScatterMatrixXS
     openmc.mgxs.Chi
     openmc.mgxs.FissionXS
     openmc.mgxs.InverseVelocity

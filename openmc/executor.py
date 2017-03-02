@@ -1,9 +1,10 @@
 from __future__ import print_function
 import subprocess
 from numbers import Integral
-import sys
 
 from six import string_types
+
+from openmc import VolumeCalculation
 
 _summary_indicator = "TIMING STATISTICS"
 
@@ -56,9 +57,20 @@ def plot_geometry(output=True, openmc_exec='openmc', cwd='.'):
     return _run([openmc_exec, '-p'], output, cwd)
 
 
-def run_volume_calculation(threads=None, output=True, cwd='.',
-                           openmc_exec='openmc', mpi_args=None):
-    """Run stochastic volume calculations in OpenMC
+def calculate_volumes(threads=None, output=True, cwd='.',
+                      openmc_exec='openmc', mpi_args=None):
+    """Run stochastic volume calculations in OpenMC.
+
+    This function runs OpenMC in stochastic volume calculation mode. To specify
+    the parameters of a volume calculation, one must first create a
+    :class:`openmc.VolumeCalculation` instance and assign it to
+    :attr:`openmc.Settings.volume_calculations`. For example:
+
+    >>> vol = openmc.VolumeCalculation(domains=[cell1, cell2], samples=100000)
+    >>> settings = openmc.Settings()
+    >>> settings.volume_calculations = [vol]
+    >>> settings.export_to_xml()
+    >>> openmc.calculate_volumes()
 
     Parameters
     ----------
@@ -77,6 +89,10 @@ def run_volume_calculation(threads=None, output=True, cwd='.',
     cwd : str, optional
         Path to working directory to run in. Defaults to the current working
         directory.
+
+    See Also
+    --------
+    openmc.VolumeCalculation
 
     """
     args = [openmc_exec, '--volume']

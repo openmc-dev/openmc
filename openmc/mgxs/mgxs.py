@@ -482,12 +482,18 @@ class MGXS(object):
             else:
                 domain_filter = filter_type(self.domain.id)
 
+            if isinstance(self.estimator, str):
+                estimators = [self.estimator] * len(self.scores)
+            else:
+                estimators = self.estimator
+
             # Create each Tally needed to compute the multi group cross section
-            tally_metadata = zip(self.scores, self.tally_keys, self.filters)
-            for score, key, filters in tally_metadata:
+            tally_metadata = \
+                zip(self.scores, self.tally_keys, self.filters, estimators)
+            for score, key, filters, estimator in tally_metadata:
                 self._tallies[key] = openmc.Tally(name=self.name)
                 self._tallies[key].scores = [score]
-                self._tallies[key].estimator = self.estimator
+                self._tallies[key].estimator = estimator
                 self._tallies[key].filters = [domain_filter]
 
                 # If a tally trigger was specified, add it to each tally
@@ -735,10 +741,11 @@ class MGXS(object):
             mgxs = ScatterProbabilityMatrix(
                 domain, domain_type, energy_groups, nu=True)
         elif mgxs_type == 'consistent scatter matrix':
-            mgxs = ConsistentScatterMatrixXS(domain, domain_type, energy_groups)
+            mgxs = ScatterMatrixXS(domain, domain_type, energy_groups)
+            mgxs.formulation = 'consistent'
         elif mgxs_type == 'consistent nu-scatter matrix':
-            mgxs = ConsistentScatterMatrixXS(
-                domain, domain_type, energy_groups, nu=True)
+            mgxs = ScatterMatrixXS(domain, domain_type, energy_groups, nu=True)
+            mgxs.formulation = 'consistent'
         elif mgxs_type == 'nu-fission matrix':
             mgxs = NuFissionMatrixXS(domain, domain_type, energy_groups)
         elif mgxs_type == 'chi':
@@ -3545,6 +3552,8 @@ class ScatterMatrixXS(MatrixMGXS):
     To incorporate the effect of neutron multiplication from (n,xn) reactions
     in the above relation, the `nu` parameter can be set to `True`.
 
+    # FIXME: Add equations to reflect alternative formulation
+
     Parameters
     ----------
     domain : openmc.Material or openmc.Cell or openmc.Universe or openmc.Mesh
@@ -3570,6 +3579,16 @@ class ScatterMatrixXS(MatrixMGXS):
 
     Attributes
     ----------
+    formulation : 'simple' or 'consistent'
+        The calculation approach to use ('simple' by default). The 'simple'
+        formulation simply divides the group-to-group scattering rates by
+        the groupwise flux, each computed from analog tally estimators. The
+        'consistent' formulation multiplies the groupwise scattering rates
+        by the group-to-group scatter probability matrix, the former computed
+        from tracklength tallies and the latter computed from analog tallies.
+        The 'consistent' formulation is designed to better conserve reaction
+        rate balance with the total and absorption cross sections computed
+        using tracklength tally estimators.
     correction : 'P0' or None
         Apply the P0 correction to scattering matrices if set to 'P0'; this is
         used only if :attr:`ScatterMatrixXS.scatter_format` is 'legendre'
@@ -3655,6 +3674,7 @@ class ScatterMatrixXS(MatrixMGXS):
         super(ScatterMatrixXS, self).__init__(domain, domain_type,
                                               groups, by_nuclide, name,
                                               num_polar, num_azimuthal)
+        self._formulation = 'simple'
         self._correction = 'P0'
         self._scatter_format = 'legendre'
         self._legendre_order = 0
@@ -3665,6 +3685,7 @@ class ScatterMatrixXS(MatrixMGXS):
 
     def __deepcopy__(self, memo):
         clone = super(ScatterMatrixXS, self).__deepcopy__(memo)
+        clone._formulation = self.formulation
         clone._correction = self.correction
         clone._scatter_format = self.scatter_format
         clone._legendre_order = self.legendre_order
@@ -3689,8 +3710,8 @@ class ScatterMatrixXS(MatrixMGXS):
                 return (1, 2)
 
     @property
-    def nu(self):
-        return self._nu
+    def formulation(self):
+        return self._formulation
 
     @property
     def correction(self):
@@ -3709,35 +3730,122 @@ class ScatterMatrixXS(MatrixMGXS):
         return self._histogram_bins
 
     @property
-    def scores(self):
-        scores = ['flux']
+    def nu(self):
+        return self._nu
 
-        if self.scatter_format == 'legendre':
-            if self.correction == 'P0' and self.legendre_order == 0:
-                scores += ['{}-0'.format(self.rxn_type),
-                           '{}-1'.format(self.rxn_type)]
+    @property
+    def scores(self):
+
+        if self.formulation == 'simple':
+            scores = ['flux']
+
+            if self.scatter_format == 'legendre':
+                if self.legendre_order == 0:
+                    scores.append('{}-0'.format(self.rxn_type))
+                    if self.correction:
+                        scores.append('{}-1'.format(self.rxn_type))
+                else:
+                    scores.append('{}-P{}'.format(self.rxn_type, self.legendre_order))
+            elif self.scatter_format == 'histogram':
+                scores += [self.rxn_type]
+
+        else:
+            # Add scores for groupwise scattering cross section
+            scores = ['flux', 'scatter']
+
+            # Add scores for group-to-group scattering probability matrix
+            if self.legendre_order == 0:
+                scores.append('scatter-0')
             else:
-                scores += ['{}-P{}'.format(self.rxn_type, self.legendre_order)]
-        elif self.scatter_format == 'histogram':
-            scores += [self.rxn_type]
+                scores.append('scatter-P{}'.format(self.legendre_order))
+
+            # Add scores for multiplicity matrix
+            if self.nu:
+                scores.extend(['nu-scatter-0', 'scatter-0'])
+
+            # Add scores for transport correction
+            if self.correction == 'P0' and self.legendre_order == 0:
+                scores.extend(['{}-1'.format(self.rxn_type), 'flux'])
 
         return scores
 
     @property
-    def filters(self):
-        group_edges = self.energy_groups.group_edges
-        energy = openmc.EnergyFilter(group_edges)
-        energyout = openmc.EnergyoutFilter(group_edges)
+    def tally_keys(self):
+        if self.formulation == 'simple':
+            return super(ScatterMatrixXS, self).tally_keys
+        else:
+            # Add keys for groupwise scattering cross section
+            tally_keys = ['flux (tracklength)', 'scatter']
 
-        if self.scatter_format == 'legendre':
+            # Add keys for group-to-group scattering probability matrix
+            tally_keys.append('scatter-P{}'.format(self.legendre_order))
+
+            # Add keys for multiplicity matrix
+            if self.nu:
+                tally_keys.extend(['nu-scatter-0', 'scatter-0'])
+
+            # Add keys for transport correction
             if self.correction == 'P0' and self.legendre_order == 0:
-                filters = [[energy], [energy, energyout], [energyout]]
-            else:
-                filters = [[energy], [energy, energyout]]
-        elif self.scatter_format == 'histogram':
-            bins = np.linspace(-1., 1., num=self.histogram_bins + 1,
-                               endpoint=True)
-            filters = [[energy], [energy, energyout, openmc.MuFilter(bins)]]
+                tally_keys.extend(['{}-1'.format(self.rxn_type), 'flux (analog)'])
+
+            return tally_keys
+
+    @property
+    def estimator(self):
+        if self.formulation == 'simple':
+            return self._estimator
+        else:
+            # Add estimators for groupwise scattering cross section
+            estimators = ['tracklength', 'tracklength']
+
+            # Add estimators for group-to-group scattering probabilities
+            estimators.append('analog')
+
+            # Add estimators for multiplicity matrix
+            if self.nu:
+                estimators.extend(['analog', 'analog'])
+
+            # Add estimators for transport correction
+            if self.correction == 'P0' and self.legendre_order == 0:
+                estimators.extend(['analog', 'analog'])
+
+            return estimators
+
+    @property
+    def filters(self):
+        if self.formulation == 'simple':
+            group_edges = self.energy_groups.group_edges
+            energy = openmc.EnergyFilter(group_edges)
+            energyout = openmc.EnergyoutFilter(group_edges)
+
+            if self.scatter_format == 'legendre':
+                if self.correction == 'P0' and self.legendre_order == 0:
+                    filters = [[energy], [energy, energyout], [energyout]]
+                else:
+                    filters = [[energy], [energy, energyout]]
+            elif self.scatter_format == 'histogram':
+                bins = np.linspace(-1., 1., num=self.histogram_bins + 1,
+                                   endpoint=True)
+                filters = [[energy], [energy, energyout, openmc.MuFilter(bins)]]
+
+        else:
+            group_edges = self.energy_groups.group_edges
+            energy = openmc.EnergyFilter(group_edges)
+            energyout = openmc.EnergyoutFilter(group_edges)
+
+            # Groupwise scattering cross section
+            filters = [[energy], [energy]]
+
+            # Group-to-group scattering probability matrix
+            filters.extend([[energy, energyout], [energy, energyout]])
+
+            # Multiplicity matrix
+            if self.nu:
+                filters.append([energy, energyout])
+
+            # Add filters for transport correction
+            if self.correction == 'P0' and self.legendre_order == 0:
+                filters.append([[energyout]])
 
         return self._add_angle_filters(filters)
 
@@ -3745,39 +3853,128 @@ class ScatterMatrixXS(MatrixMGXS):
     def rxn_rate_tally(self):
 
         if self._rxn_rate_tally is None:
-            if self.scatter_format == 'legendre':
-                # If using P0 correction subtract scatter-1 from the diagonal
-                if self.correction == 'P0' and self.legendre_order == 0:
-                    scatter_p0 = self.tallies['{}-0'.format(self.rxn_type)]
-                    scatter_p1 = self.tallies['{}-1'.format(self.rxn_type)]
-                    energy_filter = scatter_p0.find_filter(openmc.EnergyFilter)
-                    energy_filter = copy.deepcopy(energy_filter)
-                    scatter_p1 = scatter_p1.diagonalize_filter(energy_filter)
-                    self._rxn_rate_tally = scatter_p0 - scatter_p1
 
-                # Extract scattering moment reaction rate Tally
-                else:
-                    tally_key = '{}-P{}'.format(self.rxn_type,
-                                                self.legendre_order)
-                    self._rxn_rate_tally = self.tallies[tally_key]
-            elif self.scatter_format == 'histogram':
-                # Extract scattering rate distribution tally
-                self._rxn_rate_tally = self.tallies[self.rxn_type]
+            if self.formulation == 'simple':
+                if self.scatter_format == 'legendre':
+                    # If using P0 correction subtract scatter-1 from the diagonal
+                    if self.correction == 'P0' and self.legendre_order == 0:
+                        scatter_p0 = self.tallies['{}-0'.format(self.rxn_type)]
+                        scatter_p1 = self.tallies['{}-1'.format(self.rxn_type)]
+                        energy_filter = scatter_p0.find_filter(openmc.EnergyFilter)
+                        energy_filter = copy.deepcopy(energy_filter)
+                        scatter_p1 = scatter_p1.diagonalize_filter(energy_filter)
+                        self._rxn_rate_tally = scatter_p0 - scatter_p1
 
-            self._rxn_rate_tally.sparse = self.sparse
+                    # Extract scattering moment reaction rate Tally
+                    elif self.legendre_order == 0:
+                        tally_key = '{}-{}'.format(self.rxn_type,
+                                                   self.legendre_order)
+                        self._rxn_rate_tally = self.tallies[tally_key]
+                    else:
+                        tally_key = '{}-P{}'.format(self.rxn_type,
+                                                    self.legendre_order)
+                        self._rxn_rate_tally = self.tallies[tally_key]
+                elif self.scatter_format == 'histogram':
+                    # Extract scattering rate distribution tally
+                    self._rxn_rate_tally = self.tallies[self.rxn_type]
+
+                self._rxn_rate_tally.sparse = self.sparse
+
+            else:
+                msg = 'The reaction rate tally is poorly defined' \
+                      ' for the consistent formulation'
+                raise NotImplementedError(msg)
 
         return self._rxn_rate_tally
+
+    @property
+    def xs_tally(self):
+        if self._xs_tally is None:
+            if self.tallies is None:
+                msg = 'Unable to get xs_tally since tallies have ' \
+                      'not been loaded from a statepoint'
+                raise ValueError(msg)
+
+            # Use super class method
+            if self.formulation == 'simple':
+                self._xs_tally = MGXS.xs_tally.fget(self)
+
+            else:
+                # Compute groupwise scattering cross section
+                self._xs_tally = self.tallies['scatter'] / \
+                                 self.tallies['flux (tracklength)']
+
+                # Compute scattering probability matrix
+                energyout_bins = [self.energy_groups.get_group_bounds(i)
+                                  for i in range(self.num_groups, 0, -1)]
+                tally_key = 'scatter-P{}'.format(self.legendre_order)
+                norm = self.tallies[tally_key].get_slice(scores=['scatter-0'])
+                norm = norm.summation(
+                    filter_type=openmc.EnergyoutFilter, filter_bins=energyout_bins)
+
+                # Remove the AggregateFilter summed across energyout bins
+                norm._filters = norm._filters[:2]
+
+                # Multiply by the group-to-group probability matrix
+                self._xs_tally *= (self.tallies[tally_key] / norm)
+
+                # Multiply by the multiplicity matrix
+                if self.nu:
+                    numer = self.tallies['nu-scatter-0']
+                    denom = self.tallies['scatter-0']
+                    self._xs_tally *= (numer / denom)
+
+                # If using P0 correction subtract scatter-1 from the diagonal
+                if self.correction == 'P0' and self.legendre_order == 0:
+                    flux = self.tallies['flux (analog)']
+                    scatter_p1 = self.tallies['{}-1'.format(self.rxn_type)]
+
+                    energy_filter = flux.find_filter(openmc.EnergyFilter)
+                    energy_filter = copy.deepcopy(energy_filter)
+                    scatter_p1 = scatter_p1.diagonalize_filter(energy_filter)
+                    self._xs_tally -= (scatter_p1 / flux)
+
+                self._compute_xs()
+
+        return self._xs_tally
 
     @nu.setter
     def nu(self, nu):
         cv.check_type('nu', nu, bool)
         self._nu = nu
-        if not nu:
-            self._rxn_type = 'scatter'
-            self._hdf5_key = 'scatter matrix'
+
+        if self.formulation == 'simple':
+            if not nu:
+                self._rxn_type = 'scatter'
+                self._hdf5_key = 'scatter matrix'
+            else:
+                self._rxn_type = 'nu-scatter'
+                self._hdf5_key = 'nu-scatter matrix'
         else:
-            self._rxn_type = 'nu-scatter'
-            self._hdf5_key = 'nu-scatter matrix'
+            if not nu:
+                self._rxn_type = 'scatter'
+                self._hdf5_key = 'consistent scatter matrix'
+            else:
+                self._rxn_type = 'nu-scatter'
+                self._hdf5_key = 'consistent nu-scatter matrix'
+
+    @formulation.setter
+    def formulation(self, formulation):
+        cv.check_value('formulation', formulation, ('simple', 'consistent'))
+        self._formulation = formulation
+
+        if self.formulation == 'simple':
+            self._valid_estimators = ['analog']
+            if not self.nu:
+                self._hdf5_key = 'scatter matrix'
+            else:
+                self._hdf5_key = 'nu-scatter matrix'
+        else:
+            self._valid_estimators = ['tracklength']
+            if not self.nu:
+                self._hdf5_key = 'consistent scatter matrix'
+            else:
+                self._hdf5_key = 'consistent nu-scatter matrix'
 
     @correction.setter
     def correction(self, correction):
@@ -3862,11 +4059,12 @@ class ScatterMatrixXS(MatrixMGXS):
         if self.scatter_format == 'legendre':
             # Expand scores to match the format in the statepoint
             # e.g., "scatter-P2" -> "scatter-0", "scatter-1", "scatter-2"
-            if self.correction != 'P0' or self.legendre_order != 0:
-                tally_key = '{}-P{}'.format(self.rxn_type, self.legendre_order)
-                self.tallies[tally_key].scores = \
-                    [self.rxn_type + '-{}'.format(i)
-                     for i in range(self.legendre_order + 1)]
+            for tally_key, tally in self.tallies.items():
+                if 'scatter-P' in tally.scores[0]:
+                    score_prefix = tally.scores[0].split('P')[0]
+                    self.tallies[tally_key].scores = \
+                        [score_prefix + '{}'.format(i)
+                         for i in range(self.legendre_order + 1)]
         elif self.scatter_format == 'histogram':
             self.tallies[self.rxn_type].scores = [self.rxn_type]
 
@@ -4792,7 +4990,7 @@ class ScatterProbabilityMatrix(MatrixMGXS):
             # Remove the AggregateFilter summed across energyout bins
             norm._filters = norm._filters[:2]
 
-            # Compute the group-to-group probailities
+            # Compute the group-to-group probabilities
             tally_key = '{}-P{}'.format(self.rxn_type, self.legendre_order)
             self._xs_tally = self.tallies[tally_key] / norm
             super(ScatterProbabilityMatrix, self)._compute_xs()

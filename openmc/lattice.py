@@ -922,6 +922,13 @@ class HexLattice(Lattice):
                     for r in range(self.num_rings)
                     for i in range(max(6*(self.num_rings - 1 - r), 1))]
 
+    @property
+    def ndim(self):
+        if isinstance(self.universes[0][0], openmc.Universe):
+            return 2
+        else:
+            return 3
+
     @center.setter
     def center(self, center):
         cv.check_type('lattice center', center, Iterable, Real)
@@ -950,11 +957,9 @@ class HexLattice(Lattice):
 
         # Check to see if the given universes look like a 2D or a 3D array.
         if isinstance(self._universes[0][0], openmc.Universe):
-            n_dims = 2
-
+            pass
         elif isinstance(self._universes[0][0][0], openmc.Universe):
-            n_dims = 3
-
+            pass
         else:
             msg = 'HexLattice ID={0:d} does not appear to be either 2D or ' \
                   '3D.  Make sure set_universes was given a two-deep or ' \
@@ -962,14 +967,14 @@ class HexLattice(Lattice):
             raise RuntimeError(msg)
 
         # Set the number of axial positions.
-        if n_dims == 3:
+        if self.ndim == 3:
             self._num_axial = len(self._universes)
         else:
             self._num_axial = None
 
         # Set the number of rings and make sure this number is consistent for
         # all axial positions.
-        if n_dims == 3:
+        if self.ndim == 3:
             self._num_rings = len(self._universes[0])
             for rings in self._universes:
                 if len(rings) != self._num_rings:
@@ -981,7 +986,7 @@ class HexLattice(Lattice):
             self._num_rings = len(self._universes)
 
         # Make sure there are the correct number of elements in each ring.
-        if n_dims == 3:
+        if self.ndim == 3:
             for axial_slice in self._universes:
                 # Check the center ring.
                 if len(axial_slice[-1]) != 1:

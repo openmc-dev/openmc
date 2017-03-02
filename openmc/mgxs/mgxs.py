@@ -62,7 +62,7 @@ _DOMAINS = (openmc.Cell,
             openmc.Material,
             openmc.Mesh)
 
-# Supported ScatterMatrixXS and NuScatterMatrixXS angular distribution types
+# Supported ScatterMatrixXS angular distribution types
 MU_TREATMENTS = ('legendre', 'histogram')
 
 # Maximum Legendre order supported by OpenMC

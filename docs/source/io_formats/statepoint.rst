@@ -146,7 +146,7 @@ The current version of the statepoint file format is 16.0.
 All values are given in seconds and are measured on the master process.
 
 :Datasets: - **total initialization** (*double*) -- Time spent reading inputs,
-           allocating arrays, etc.
+             allocating arrays, etc.
            - **reading cross sections** (*double*) -- Time spent loading cross
              section libraries (this is a subset of initialization).
            - **simulation** (*double*) -- Time spent between initialization and

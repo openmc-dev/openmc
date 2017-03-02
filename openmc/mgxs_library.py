@@ -1563,19 +1563,17 @@ class XSdata(object):
                                      temperature=294., nuclide='total',
                                      xs_type='macro', subdomain=None):
         """This method allows for either the direct use of only an
-        openmc.mgxs.MultiplicityMatrixXS OR
-        an openmc.mgxs.NuScatterMatrixXS and
+        openmc.mgxs.MultiplicityMatrixXS or an openmc.mgxs.ScatterMatrixXS and
         openmc.mgxs.ScatterMatrixXS to be used to set the scattering
-        multiplicity for this XSdata object. Multiplicity,
-        in OpenMC parlance, is a factor used to account for the production
-        of neutrons introduced by scattering multiplication reactions, i.e.,
-        (n,xn) events. In this sense, the multiplication matrix is simply
-        defined as the ratio of the nu-scatter and scatter matrices.
+        multiplicity for this XSdata object. Multiplicity, in OpenMC parlance,
+        is a factor used to account for the production of neutrons introduced by
+        scattering multiplication reactions, i.e., (n,xn) events. In this sense,
+        the multiplication matrix is simply defined as the ratio of the
+        nu-scatter and scatter matrices.
 
         Parameters
         ----------
-        nuscatter: {openmc.mgxs.NuScatterMatrixXS,
-                    openmc.mgxs.MultiplicityMatrixXS}
+        nuscatter: openmc.mgxs.ScatterMatrixXS or openmc.mgxs.MultiplicityMatrixXS
             MGXS Object containing the matrix cross section for the domain
             of interest.
         scatter: openmc.mgxs.ScatterMatrixXS
@@ -1701,19 +1699,21 @@ class XSdata(object):
             Representation of the MGXS (isotropic or angle-dependent flux
             weighting).
         num_polar : int, optional
-            Number of equal width angular bins that the polar angular
-            domain is subdivided into. This is required when
-            :param:`target_representation` is "angle".
+            Number of equal width angular bins that the polar angular domain is
+            subdivided into. This is required when `target_representation` is
+            "angle".
+
         num_azimuthal : int, optional
-            Number of equal width angular bins that the azimuthal angular
-            domain is subdivided into. This is required when
-            :param:`target_representation` is "angle".
+            Number of equal width angular bins that the azimuthal angular domain
+            is subdivided into. This is required when `target_representation` is
+            "angle".
 
         Returns
         -------
         openmc.XSdata
+
             Multi-group cross section data with the same data as self, but
-            represented as specified in :param:`target_representation`.
+            represented as specified in `target_representation`.
 
         """
 
@@ -1798,7 +1798,7 @@ class XSdata(object):
         -------
         openmc.XSdata
             Multi-group cross section data with the same data as in self, but
-            represented as specified in :param:`target_format`.
+            represented as specified in `target_format`.
 
         """
 
@@ -2447,19 +2447,19 @@ class MGXSLibrary(object):
             Representation of the MGXS (isotropic or angle-dependent flux
             weighting).
         num_polar : int, optional
-            Number of equal width angular bins that the polar angular
-            domain is subdivided into. This is required when
-            :param:`target_representation` is "angle".
+            Number of equal width angular bins that the polar angular domain is
+            subdivided into. This is required when `target_representation` is
+            "angle".
         num_azimuthal : int, optional
-            Number of equal width angular bins that the azimuthal angular
-            domain is subdivided into. This is required when
-            :param:`target_representation` is "angle".
+            Number of equal width angular bins that the azimuthal angular domain
+            is subdivided into. This is required when `target_representation` is
+            "angle".
 
         Returns
         -------
         openmc.MGXSLibrary
             Multi-group Library with the same data as self, but represented as
-            specified in :param:`target_representation`.
+            specified in `target_representation`.
 
         """
 
@@ -2486,9 +2486,9 @@ class MGXSLibrary(object):
         Returns
         -------
         openmc.MGXSLibrary
-            Multi-group Library with the same data as self, but with the
-            scatter format represented as specified in :param:`target_format`
-            and :param:`target_order`.
+            Multi-group Library with the same data as self, but with the scatter
+            format represented as specified in `target_format` and
+            `target_order`.
 
         """
 

@@ -4574,10 +4574,11 @@ class ScatterProbabilityMatrix(MatrixMGXS):
 
     .. math::
 
-       \langle \sigma_{s,g'\rightarrow g} \phi \rangle &= \int_{r \in V} dr
+       \langle \sigma_{s,\ell,g'\rightarrow g} \phi \rangle &= \int_{r \in V} dr
        \int_{4\pi} d\Omega' \int_{E_{g'}}^{E_{g'-1}} dE' \int_{4\pi} d\Omega
-       \int_{E_g}^{E_{g-1}} dE \; \sigma_s (r, E'
-       \rightarrow E, \Omega' \cdot \Omega) \psi(r, E', \Omega')\\
+       \int_{E_g}^{E_{g-1}} dE \; P_\ell (\Omega \cdot \Omega')
+       \sigma_{s} (r, E' \rightarrow E, \Omega' \cdot \Omega) \psi(r, E',
+       \Omega')\\
        \langle \sigma_{s,g'} \phi \rangle &= \int_{r \in V} dr
        \int_{4\pi} d\Omega' \int_{E_{g'}}^{E_{g'-1}} dE' \int_{4\pi} d\Omega
        \int_{0}^{\infty} dE \; \sigma_s (r, E'
@@ -4586,11 +4587,19 @@ class ScatterProbabilityMatrix(MatrixMGXS):
        \sigma_{s,g'\rightarrow g} \phi \rangle}{\langle
        \sigma_{s,g'} \phi \rangle}
 
+    .. math::
 
-    This class can also be used to gather a prompt-nu-fission cross section
-    (which only includes the contributions from prompt neutrons). This is
-    accomplished by setting the :attr:`NuFissionMatrixXS.prompt` attribute to
-    `True`.
+       \langle \sigma_{s,\ell,g'\rightarrow g} \phi \rangle &= \int_{r \in V} dr
+       \int_{4\pi} d\Omega' \int_{E_{g'}}^{E_{g'-1}} dE' \int_{4\pi} d\Omega
+       \int_{E_g}^{E_{g-1}} dE \; P_\ell (\Omega \cdot \Omega') \sigma_s (r, E'
+       \rightarrow E, \Omega' \cdot \Omega) \psi(r, E', \Omega')\\
+       \langle \phi \rangle &= \int_{r \in V} dr \int_{4\pi} d\Omega
+       \int_{E_g}^{E_{g-1}} dE \; \psi (r, E, \Omega) \\
+       \sigma_{s,\ell,g'\rightarrow g} &= \frac{\langle
+       \sigma_{s,\ell,g'\rightarrow g} \phi \rangle}{\langle \phi \rangle}
+
+    To incorporate the effect of neutron multiplication from (n,xn) reactions
+    in the above probaility matrix, the `nu` parameter can be set to `True`.
 
     Parameters
     ----------

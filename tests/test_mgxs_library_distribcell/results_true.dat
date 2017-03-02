@@ -36,10 +36,16 @@
 0  ((0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13...         1          1   total   1.0   0.037213
                                     sum(distribcell)  group in  group out nuclide  mean  std. dev.
 0  ((0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13...         1          1   total   1.0   0.037208
-                                    sum(distribcell)  group in  group out nuclide      mean  std. dev.
-0  ((0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13...         1          1   total  0.342636   0.017656
-                                    sum(distribcell)  group in  group out nuclide      mean  std. dev.
-0  ((0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13...         1          1   total  0.340468   0.025369
+                                    sum(distribcell)  group in  group out nuclide moment      mean  std. dev.
+0  ((0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13...         1          1   total     P0  0.390797   0.016955
+1  ((0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13...         1          1   total     P1  0.047641   0.005091
+2  ((0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13...         1          1   total     P2  0.015866   0.003708
+3  ((0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13...         1          1   total     P3  0.005430   0.003170
+                                    sum(distribcell)  group in  group out nuclide moment      mean  std. dev.
+0  ((0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13...         1          1   total     P0  0.387654   0.024885
+1  ((0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13...         1          1   total     P1  0.047226   0.005527
+2  ((0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13...         1          1   total     P2  0.015740   0.003750
+3  ((0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13...         1          1   total     P3  0.005392   0.003157
                                     sum(distribcell)  group out nuclide  mean  std. dev.
 0  ((0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13...          1   total   1.0   0.080455
                                     sum(distribcell)  group out nuclide  mean  std. dev.

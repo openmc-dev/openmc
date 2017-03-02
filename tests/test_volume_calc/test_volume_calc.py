@@ -38,8 +38,7 @@ class VolumeTest(PyAPITestHarness):
         bottom_hemisphere = openmc.Cell(3, fill=water, region=-bottom_sphere & -top_plane)
         root = openmc.Universe(0, cells=(inside_cyl, top_hemisphere, bottom_hemisphere))
 
-        geometry = openmc.Geometry()
-        geometry.root_universe = root
+        geometry = openmc.Geometry(root)
         geometry.export_to_xml()
 
         # Set up stochastic volume calculation
@@ -63,13 +62,13 @@ class VolumeTest(PyAPITestHarness):
             outstr += 'Volume calculation {}\n'.format(i)
 
             # Read volume calculation results
-            vol = openmc.VolumeCalculation.from_hdf5(filename)
+            volume_calc = openmc.VolumeCalculation.from_hdf5(filename)
 
             # Write cell volumes and total # of atoms for each nuclide
-            for uid, results in sorted(vol.results.items()):
+            for uid, volume in sorted(volume_calc.volumes.items()):
                 outstr += 'Domain {0}: {1[0]:.4f} +/- {1[1]:.4f} cm^3\n'.format(
-                    uid, results['volume'])
-            outstr += str(vol.atoms_dataframe) + '\n'
+                    uid, volume)
+            outstr += str(volume_calc.atoms_dataframe) + '\n'
 
         return outstr
 

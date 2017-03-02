@@ -57,6 +57,7 @@ Simulation Settings
 
    openmc.Source
    openmc.ResonanceScattering
+   openmc.VolumeCalculation
    openmc.Settings
 
 Material Specification
@@ -185,6 +186,7 @@ Running OpenMC
    :template: myfunction.rst
 
    openmc.run
+   openmc.calculate_volumes
    openmc.plot_geometry
 
 Post-processing
@@ -286,9 +288,6 @@ Multi-group Cross Sections
     openmc.mgxs.AbsorptionXS
     openmc.mgxs.CaptureXS
     openmc.mgxs.Chi
-    openmc.mgxs.ChiPrompt
-    openmc.mgxs.ConsistentScatterMatrixXS
-    openmc.mgxs.ConvolvedMGXS
     openmc.mgxs.FissionXS
     openmc.mgxs.InverseVelocity
     openmc.mgxs.KappaFissionXS

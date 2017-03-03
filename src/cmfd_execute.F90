@@ -363,7 +363,7 @@ contains
     integer :: i ! loop counter
 
     ! Print message
-    call write_message("CMFD tallies reset", 7)
+    call write_message("CMFD tallies reset", 6)
 
     ! Reset CMFD tallies
     do i = 1, size(cmfd_tallies)

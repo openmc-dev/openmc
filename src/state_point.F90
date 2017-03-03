@@ -56,7 +56,7 @@ contains
     filename = trim(filename) // '.h5'
 
     ! Write message
-    call write_message("Creating state point " // trim(filename) // "...", 1)
+    call write_message("Creating state point " // trim(filename) // "...", 5)
 
     if (master) then
       ! Create statepoint file
@@ -440,7 +440,7 @@ contains
              & zero_padded(current_batch, count_digits(n_max_batches))
         filename = trim(filename) // '.h5'
         call write_message("Creating source file " // trim(filename) &
-             // "...", 1)
+             // "...", 5)
 
         ! Create separate source file
         if (master .or. parallel) then
@@ -464,7 +464,7 @@ contains
     ! Also check to write source separately in overwritten file
     if (source_latest) then
       filename = trim(path_output) // 'source' // '.h5'
-      call write_message("Creating source file " // trim(filename) // "...", 1)
+      call write_message("Creating source file " // trim(filename) // "...", 5)
       if (master .or. parallel) then
         file_id = file_create(filename, parallel=.true.)
         call write_dataset(file_id, "filetype", 'source')
@@ -627,7 +627,7 @@ contains
 
     ! Write message
     call write_message("Loading state point " // trim(path_state_point) &
-         // "...", 1)
+         // "...", 5)
 
     ! Open file for reading
     file_id = file_open(path_state_point, 'r', parallel=.true.)
@@ -781,7 +781,7 @@ contains
 
         ! Write message
         call write_message("Loading source file " // trim(path_source_point) &
-             // "...", 1)
+             // "...", 5)
 
         ! Open source file
         file_id = file_open(path_source_point, 'r', parallel=.true.)

@@ -839,17 +839,27 @@ problem. It has the following attributes/sub-elements:
 
     *Default*: None
 
+.. _verbosity:
+
 ``<verbosity>`` Element
 -----------------------
 
 The ``<verbosity>`` element tells the code how much information to display to
 the standard output. A higher verbosity corresponds to more information being
-displayed. This element takes the following attributes:
+displayed. The text of this element should be an integer between between 1
+and 10. The verbosity levels are defined as follows:
 
-  :value:
-    The specified verbosity between 1 and 10.
+  :1: don't display any output
+  :2: only show OpenMC logo
+  :3: all of the above + headers
+  :4: all of the above + results
+  :5: all of the above + file I/O
+  :6: all of the above + timing statistics and initialization messages
+  :7: all of the above + :math:`k` by generation
+  :9: all of the above + indicate when each particle starts
+  :10: all of the above + event information
 
-    *Default*: 5
+  *Default*: 7
 
 ``<create_fission_neutrons>`` Element
 -------------------------------------

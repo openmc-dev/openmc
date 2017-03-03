@@ -450,104 +450,24 @@ class Geometry(object):
         lattices.sort(key=lambda x: x.id)
         return lattices
 
-    def count_cell_instances(self, universe=None):
+    def count_cell_instances(self):
         """Count the number of instances for each cell in the Geometry, and
-        record the count in the :attr:`Cell.num_instances` properties.
+        record the count in the :attr:`Cell.num_instances` properties."""
 
-        Parameters
-        ----------
-        universe : openmc.Universe or None
-            The Universe to use at each recursive call of this method.
-            This parameter defaults to None and should not be set
-            by the user.
+        # (Re-)initialize all cell instances to 0
+        for cell in self.get_all_cells().values():
+            cell._num_instances = 0
 
-        """
+        # Recursively traverse the CSG tree to count all cell instances
+        self.root_universe._count_cell_instances()
 
-        if universe is None:
-            universe = self.root_universe
-
-            # (Re-)initialize all cell instances to 0
-            for cell in self.get_all_cells().values():
-                cell.num_instances = 0
-
-        if universe is None:
-            raise RuntimeError(
-                'Unable to count cell instances without a root universe')
-
-        for cell in universe.cells.values():
-            # Increment the number of cell instances
-            cell.num_instances += 1
-
-            # If material-filled, we are finished with all levels
-            if cell.fill_type == 'material':
-                continue
-
-            # If universe-filled, recursively count cells in filling universe
-            elif cell.fill_type == 'universe':
-                self.count_cell_instances(cell.fill)
-
-            # If lattice-filled, recursively call for all universes in lattice
-            elif cell.fill_type == 'lattice':
-                latt = cell.fill
-
-                # Extract a list of tuples of the valid indices
-                # into this Lattice's universes array
-                valid_indices = latt.indices
-
-                # Count instances in each Universe in the Lattice
-                for index in valid_indices:
-                    if latt.ndim == 3:
-                        univ = latt.universes[index[0]][index[1]][index[2]]
-                    else:
-                        univ = latt.universes[index[0]][index[1]]
-                    self.count_cell_instances(univ)
-
-    def count_material_instances(self, universe=None):
+    def count_material_instances(self):
         """Count the number of instances for each material in the Geometry, and
-        record the count in the :attr:`Material.num_instances` properties.
+        record the count in the :attr:`Material.num_instances` properties."""
 
-        Parameters
-        ----------
-        universe : openmc.Universe or None
-            The Universe to use at each recursive call of this method.
-            This parameter defaults to None and should not be set
-            by the user.
+        # (Re-)initialize all material instances to 0
+        for material in self.get_all_materials().values():
+            material._num_instances = 0
 
-        """
-
-        if universe is None:
-            universe = self.root_universe
-
-            # (Re-)initialize all material instances to 0
-            for material in self.get_all_materials().values():
-                material.num_instances = 0
-
-        if universe is None:
-            raise RuntimeError(
-                'Unable to count material instances without a root universe')
-
-        for cell in universe.cells.values():
-
-            # If material-filled, we are finished with all levels
-            if cell.fill_type == 'material':
-                cell.fill.num_instances += 1
-
-            # If universe-filled, recursively count materials in filling universe
-            elif cell.fill_type == 'universe':
-                self.count_material_instances(cell.fill)
-
-            # If lattice-filled, recursively call for all universes in lattice
-            elif cell.fill_type == 'lattice':
-                latt = cell.fill
-
-                # Extract a list of tuples of the valid indices
-                # into this Lattice's universes array
-                valid_indices = latt.indices
-
-                # Count instances in each Universe in the Lattice
-                for index in valid_indices:
-                    if latt.ndim == 3:
-                        univ = latt.universes[index[0]][index[1]][index[2]]
-                    else:
-                        univ = latt.universes[index[0]][index[1]]
-                    self.count_material_instances(univ)
+        # Recursively traverse the CSG tree to count all cell instances
+        self.root_universe._count_material_instances()

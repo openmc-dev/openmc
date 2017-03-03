@@ -24,8 +24,8 @@ module initialize
   use material_header, only: Material
   use message_passing
   use mgxs_data,       only: read_mgxs, create_macro_xs
-  use output,          only: title, header, print_version, write_message, &
-                             print_usage, print_plot
+  use output,          only: print_version, write_message, print_usage, &
+                             print_plot
   use random_lcg,      only: initialize_prng
   use state_point,     only: load_state_point
   use string,          only: to_str, starts_with, ends_with, str_to_int
@@ -67,12 +67,6 @@ contains
 
     ! Read command line arguments
     call read_command_line()
-
-    if (master) then
-      ! Display title and initialization header
-      call title()
-      call header("INITIALIZATION", level=1)
-    end if
 
     ! Read XML input files
     call read_input_xml()
@@ -137,7 +131,7 @@ contains
     if (master) then
       if (run_mode == MODE_PLOTTING) then
         ! Display plotting information
-        call print_plot()
+        if (verbosity >= 5) call print_plot()
       else
         ! Write summary information
         if (output_summary) call write_summary()
@@ -148,9 +142,8 @@ contains
     if (particle_restart_run) run_mode = MODE_PARTICLE
 
     ! Warn if overlap checking is on
-    if (master .and. check_overlaps) then
-      call write_message("")
-      call warning("Cell overlap checking is ON")
+    if (master .and. check_overlaps .and. run_mode /= MODE_PLOTTING) then
+      call warning("Cell overlap checking is ON.")
     end if
 
     ! Stop initialization timer
@@ -179,13 +172,15 @@ contains
     integer                   :: bank_types(5)    ! Datatypes
 #endif
     integer(MPI_ADDRESS_KIND) :: bank_disp(5)     ! Displacements
-    type(Bank)       :: b
+    logical    :: init_called
+    type(Bank) :: b
 
     ! Indicate that MPI is turned on
     mpi_enabled = .true.
 
     ! Initialize MPI
-    call MPI_INIT(mpi_err)
+    call MPI_INITIALIZED(init_called, mpi_err)
+    if (.not. init_called) call MPI_INIT(mpi_err)
 
     ! Determine number of processors and rank of each processor
     mpi_intracomm = intracomm
@@ -362,6 +357,9 @@ contains
 
         case ('-g', '-geometry-debug', '--geometry-debug')
           check_overlaps = .true.
+
+        case ('-c', '--volume')
+          run_mode = MODE_VOLUME
 
         case ('-s', '--threads')
           ! Read number of threads

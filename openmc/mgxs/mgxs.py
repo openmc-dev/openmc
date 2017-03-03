@@ -4901,6 +4901,7 @@ class ScatterProbabilityMatrix(MatrixMGXS):
             name, num_polar, num_azimuthal)
 
         self._rxn_type = 'scatter'
+        self._hdf5_key = 'scatter probability matrix'
         self._estimator = 'analog'
         self._valid_estimators = ['analog']
 

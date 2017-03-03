@@ -33,7 +33,6 @@ MGXS_TYPES = ['total',
               'multiplicity matrix',
               'nu-fission matrix',
               'scatter probability matrix',
-              'nu-scatter probability matrix',
               'consistent scatter matrix',
               'consistent nu-scatter matrix',
               'chi',
@@ -737,9 +736,6 @@ class MGXS(object):
             mgxs = MultiplicityMatrixXS(domain, domain_type, energy_groups)
         elif mgxs_type == 'scatter probability matrix':
             mgxs = ScatterProbabilityMatrix(domain, domain_type, energy_groups)
-        elif mgxs_type == 'nu-scatter probability matrix':
-            mgxs = ScatterProbabilityMatrix(
-                domain, domain_type, energy_groups, nu=True)
         elif mgxs_type == 'consistent scatter matrix':
             mgxs = ScatterMatrixXS(domain, domain_type, energy_groups)
             mgxs.formulation = 'consistent'
@@ -3559,7 +3555,7 @@ class ScatterMatrixXS(MatrixMGXS):
     group-to-group scattering probabilities.
 
     Unlike the default 'simple' formulation, the 'consistent' formulation
-    is computed from the groupwise cattering cross section which uses a
+    is computed from the groupwise scattering cross section which uses a
     tracklength estimator. This ensures that reaction rate balance is exactly
     preserved with a :class:`TotalXS` computed using a tracklength estimator.
 
@@ -4800,21 +4796,17 @@ class ScatterProbabilityMatrix(MatrixMGXS):
 
     .. math::
 
-       \langle \sigma_{s,\ell,g'\rightarrow g} \phi \rangle &= \int_{r \in V} dr
+       \langle \sigma_{s,g'\rightarrow g} \phi \rangle &= \int_{r \in V} dr
        \int_{4\pi} d\Omega' \int_{E_{g'}}^{E_{g'-1}} dE' \int_{4\pi} d\Omega
-       \int_{E_g}^{E_{g-1}} dE \; P_\ell (\Omega \cdot \Omega')
-       \sigma_{s} (r, E' \rightarrow E, \Omega' \cdot \Omega) \psi(r, E',
-       \Omega')\\
+       \int_{E_g}^{E_{g-1}} dE \; \sigma_{s} (r, E' \rightarrow E, \Omega'
+       \cdot \Omega) \psi(r, E', \Omega')\\
        \langle \sigma_{s,0,g'} \phi \rangle &= \int_{r \in V} dr
        \int_{4\pi} d\Omega' \int_{E_{g'}}^{E_{g'-1}} dE' \int_{4\pi} d\Omega
        \int_{0}^{\infty} dE \; \sigma_s (r, E'
        \rightarrow E, \Omega' \cdot \Omega) \psi(r, E', \Omega')\\
-       P_{s,\ell,g'\rightarrow g} &= \frac{\langle
-       \sigma_{s,\ell,g'\rightarrow g} \phi \rangle}{\langle
-       \sigma_{s,0,g'} \phi \rangle}
-
-    To incorporate the effect of neutron multiplication from (n,xn) reactions
-    in the above probability matrix, the `nu` parameter can be set to `True`.
+       P_{s,g'\rightarrow g} &= \frac{\langle
+       \sigma_{s,g'\rightarrow g} \phi \rangle}{\langle
+       \sigma_{s,g'} \phi \rangle}
 
     Parameters
     ----------
@@ -4835,30 +4827,13 @@ class ScatterProbabilityMatrix(MatrixMGXS):
     num_azimuthal : Integral, optional
         Number of equi-width azimuthal angle bins for angle discretization;
         defaults to one bin
-    nu : bool
-        If True, the cross section data will include neutron multiplication;
-        defaults to False
 
     Attributes
     ----------
-    scatter_format : {'legendre', or 'histogram'}
-        Representation of the angular scattering distribution (default is
-        'legendre')
-    legendre_order : int
-        The highest Legendre moment in the scattering matrix; this is used if
-        :attr:`ScatterProbabilityMatrix.scatter_format` is 'legendre'.
-        (default is 0)
-    histogram_bins : int
-        The number of equally-spaced bins for the histogram representation of
-        the angular scattering distribution; this is used if
-        :attr:`ScatterProbabilityMatrix.scatter_format` is 'histogram'.
-        (default is 16)
     name : str, optional
         Name of the multi-group cross section
     rxn_type : str
         Reaction type (e.g., 'total', 'nu-fission', etc.)
-    nu : bool
-        If True, the cross section data will include neutron multiplication
     by_nuclide : bool
         If true, computes cross sections for each nuclide in domain
     domain : Material or Cell or Universe or Mesh
@@ -4920,65 +4895,18 @@ class ScatterProbabilityMatrix(MatrixMGXS):
     """
 
     def __init__(self, domain=None, domain_type=None, groups=None,
-                 by_nuclide=False, name='', num_polar=1,
-                 num_azimuthal=1, nu=False):
+                 by_nuclide=False, name='', num_polar=1, num_azimuthal=1):
         super(ScatterProbabilityMatrix, self).__init__(
             domain, domain_type, groups, by_nuclide,
             name, num_polar, num_azimuthal)
 
-        self._scatter_format = 'legendre'
-        self._legendre_order = 0
-        self._histogram_bins = 16
+        self._rxn_type = 'scatter'
         self._estimator = 'analog'
         self._valid_estimators = ['analog']
-        self.nu = nu
-
-    def __deepcopy__(self, memo):
-        clone = super(ScatterProbabilityMatrix, self).__deepcopy__(memo)
-        clone._scatter_format = self.scatter_format
-        clone._legendre_order = self.legendre_order
-        clone._histogram_bins = self.histogram_bins
-        clone._nu = self.nu
-        return clone
-
-    @property
-    def _dont_squeeze(self):
-        """Create a tuple of axes which should not be removed during the get_xs
-        process
-        """
-        if self.num_polar > 1 or self.num_azimuthal > 1:
-            if self.scatter_format == 'histogram':
-                return (0, 1, 3, 4, 5)
-            else:
-                return (0, 1, 3, 4)
-        else:
-            if self.scatter_format == 'histogram':
-                return (1, 2, 3)
-            else:
-                return (1, 2)
-
-    @property
-    def scatter_format(self):
-        return self._scatter_format
-
-    @property
-    def legendre_order(self):
-        return self._legendre_order
-
-    @property
-    def histogram_bins(self):
-        return self._histogram_bins
-    
-    @property
-    def nu(self):
-        return self._nu
 
     @property
     def scores(self):
-        if self.scatter_format == 'legendre':
-            return ['{}-P{}'.format(self.rxn_type, self.legendre_order)]
-        elif self.scatter_format == 'histogram':
-            return [self.rxn_type]
+        return [self.rxn_type]
        
     @property
     def filters(self):
@@ -4991,17 +4919,9 @@ class ScatterProbabilityMatrix(MatrixMGXS):
 
     @property
     def rxn_rate_tally(self):
-
         if self._rxn_rate_tally is None:
-            if self.scatter_format == 'legendre':
-                    tally_key = '{}-P{}'.format(self.rxn_type,
-                                                self.legendre_order)
-                    self._rxn_rate_tally = self.tallies[tally_key]
-            elif self.scatter_format == 'histogram':
-                self._rxn_rate_tally = self.tallies[self.rxn_type]
-
+            self._rxn_rate_tally = self.tallies[self.rxn_type]
             self._rxn_rate_tally.sparse = self.sparse
-
         return self._rxn_rate_tally
 
     @property
@@ -5010,8 +4930,7 @@ class ScatterProbabilityMatrix(MatrixMGXS):
         if self._xs_tally is None:
             energyout_bins = [self.energy_groups.get_group_bounds(i)
                               for i in range(self.num_groups, 0, -1)]
-            norm = self.rxn_rate_tally.get_slice(
-                scores=['{}-0'.format(self.rxn_type)])
+            norm = self.rxn_rate_tally.get_slice(scores=[self.rxn_type])
             norm = norm.summation(
                 filter_type=openmc.EnergyoutFilter, filter_bins=energyout_bins)
 
@@ -5019,594 +4938,10 @@ class ScatterProbabilityMatrix(MatrixMGXS):
             norm._filters = norm._filters[:2]
 
             # Compute the group-to-group probabilities
-            tally_key = '{}-P{}'.format(self.rxn_type, self.legendre_order)
-            self._xs_tally = self.tallies[tally_key] / norm
+            self._xs_tally = self.tallies[self.rxn_type] / norm
             super(ScatterProbabilityMatrix, self)._compute_xs()
 
         return self._xs_tally
-
-    @scatter_format.setter
-    def scatter_format(self, scatter_format):
-        cv.check_value('scatter_format', scatter_format, MU_TREATMENTS)
-        self._scatter_format = scatter_format
-
-    @legendre_order.setter
-    def legendre_order(self, legendre_order):
-        cv.check_type('legendre_order', legendre_order, Integral)
-        cv.check_greater_than('legendre_order', legendre_order, 0,
-                              equality=True)
-        cv.check_less_than('legendre_order', legendre_order, _MAX_LEGENDRE,
-                           equality=True)
-
-        if self.scatter_format == 'histogram':
-            msg = 'The legendre order will be ignored since the ' \
-                  'scatter format is set to histogram'
-            warnings.warn(msg)
-
-        self._legendre_order = legendre_order
-
-    @histogram_bins.setter
-    def histogram_bins(self, histogram_bins):
-        cv.check_type('histogram_bins', histogram_bins, Integral)
-        cv.check_greater_than('histogram_bins', histogram_bins, 0)
-        self._histogram_bins = histogram_bins
-
-    @nu.setter
-    def nu(self, nu):
-        cv.check_type('nu', nu, bool)
-        self._nu = nu
-        if not nu:
-            self._rxn_type = 'scatter'
-            self._hdf5_key = 'scatter probability matrix'
-        else:
-            self._rxn_type = 'nu-scatter'
-            self._hdf5_key = 'nu-scatter probability matrix'
-
-    def load_from_statepoint(self, statepoint):
-        """Extracts tallies in an OpenMC StatePoint with the data needed to
-        compute multi-group cross sections.
-
-        This method is needed to compute cross section data from tallies
-        in an OpenMC StatePoint object.
-
-        .. note:: The statepoint must be linked with an OpenMC Summary object.
-
-        Parameters
-        ----------
-        statepoint : openmc.StatePoint
-            An OpenMC StatePoint object with tally data
-
-        Raises
-        ------
-        ValueError
-            When this method is called with a statepoint that has not been
-            linked with a summary object.
-
-        """
-
-        # Clear any tallies previously loaded from a statepoint
-        if self.loaded_sp:
-            self._tallies = None
-            self._xs_tally = None
-            self._rxn_rate_tally = None
-            self._loaded_sp = False
-
-        if self.scatter_format == 'legendre':
-            # Expand scores to match the format in the statepoint
-            # e.g., "scatter-P2" -> "scatter-0", "scatter-1", "scatter-2"
-            tally_key = '{}-P{}'.format(self.rxn_type, self.legendre_order)
-            self.tallies[tally_key].scores = \
-                [self.rxn_type + '-{}'.format(i)
-                 for i in range(self.legendre_order + 1)]
-        elif self.scatter_format == 'histogram':
-            self.tallies[self.rxn_type].scores = [self.rxn_type]
-
-        super(ScatterProbabilityMatrix, self).load_from_statepoint(statepoint)
-
-    def get_slice(self, nuclides=[], in_groups=[], out_groups=[],
-                  legendre_order='same'):
-        """Build a sliced ScatterProbabilityMatrix for the specified nuclides
-        and energy groups.
-
-        This method constructs a new MGXS to encapsulate a subset of the data
-        represented by this MGXS. The subset of data to include in the tally
-        slice is determined by the nuclides and energy groups specified in
-        the input parameters.
-
-        Parameters
-        ----------
-        nuclides : list of str
-            A list of nuclide name strings
-            (e.g., ['U235', 'U238']; default is [])
-        in_groups : list of int
-            A list of incoming energy group indices starting at 1 for the high
-            energies (e.g., [1, 2, 3]; default is [])
-        out_groups : list of int
-            A list of outgoing energy group indices starting at 1 for the high
-            energies (e.g., [1, 2, 3]; default is [])
-        legendre_order : int or 'same'
-            The highest Legendre moment in the sliced MGXS. If order is 'same'
-            then the sliced MGXS will have the same Legendre moments as the
-            original MGXS (default). If order is an integer less than the
-            original MGXS' order, then only those Legendre moments up to that
-            order will be included in the sliced MGXS.
-
-        Returns
-        -------
-        openmc.mgxs.MatrixMGXS
-            A new MatrixMGXS which encapsulates the subset of data requested
-            for the nuclide(s) and/or energy group(s) requested in the
-            parameters.
-
-        """
-
-        # Call super class method and null out derived tallies
-        slice_xs = \
-            super(ScatterProbabilityMatrix, self).get_slice(nuclides, in_groups)
-        slice_xs._rxn_rate_tally = None
-        slice_xs._xs_tally = None
-
-        # Slice the Legendre order if needed
-        if legendre_order != 'same' and self.scatter_format == 'legendre':
-            cv.check_type('legendre_order', legendre_order, Integral)
-            cv.check_less_than('legendre_order', legendre_order,
-                               self.legendre_order, equality=True)
-            slice_xs.legendre_order = legendre_order
-
-            # Slice the scattering tally
-            tally_key = '{}-P{}'.format(self.rxn_type, self.legendre_order)
-            expand_scores = \
-                [self.rxn_type + '-{}'.format(i)
-                 for i in range(self.legendre_order + 1)]
-            slice_xs.tallies[tally_key] = \
-                slice_xs.tallies[tally_key].get_slice(scores=expand_scores)
-
-        # Slice outgoing energy groups if needed
-        if len(out_groups) != 0:
-            filter_bins = []
-            for group in out_groups:
-                group_bounds = self.energy_groups.get_group_bounds(group)
-                filter_bins.append(group_bounds)
-            filter_bins = [tuple(filter_bins)]
-
-            # Slice each of the tallies across energyout groups
-            for tally_type, tally in slice_xs.tallies.items():
-                if tally.contains_filter(openmc.EnergyoutFilter):
-                    tally_slice = tally.get_slice(
-                        filters=[openmc.EnergyoutFilter], filter_bins=filter_bins)
-                    slice_xs.tallies[tally_type] = tally_slice
-
-        slice_xs.sparse = self.sparse
-        return slice_xs
-
-    def get_xs(self, in_groups='all', out_groups='all',
-               subdomains='all', nuclides='all', moment='all',
-               xs_type='macro', order_groups='increasing',
-               row_column='inout', value='mean', squeeze=True):
-        r"""Returns an array of multi-group cross sections.
-
-        This method constructs a 5D NumPy array for the requested
-        multi-group cross section data for one or more subdomains
-        (1st dimension), energy groups in (2nd dimension), energy groups out
-        (3rd dimension), nuclides (4th dimension), and moments/histograms
-        (5th dimension).
-
-        Parameters
-        ----------
-        in_groups : Iterable of Integral or 'all'
-            Incoming energy groups of interest. Defaults to 'all'.
-        out_groups : Iterable of Integral or 'all'
-            Outgoing energy groups of interest. Defaults to 'all'.
-        subdomains : Iterable of Integral or 'all'
-            Subdomain IDs of interest. Defaults to 'all'.
-        nuclides : Iterable of str or 'all' or 'sum'
-            A list of nuclide name strings (e.g., ['U235', 'U238']). The
-            special string 'all' will return the cross sections for all nuclides
-            in the spatial domain. The special string 'sum' will return the
-            cross section summed over all nuclides. Defaults to 'all'.
-        moment : int or 'all'
-            The scattering matrix moment to return. All moments will be
-             returned if the moment is 'all' (default); otherwise, a specific
-             moment will be returned.
-        xs_type: {'macro', 'micro'}
-            Return the macro or micro cross section in units of cm^-1 or barns.
-            Defaults to 'macro'.
-        order_groups: {'increasing', 'decreasing'}
-            Return the cross section indexed according to increasing or
-            decreasing energy groups (decreasing or increasing energies).
-            Defaults to 'increasing'.
-        row_column: {'inout', 'outin'}
-            Return the cross section indexed first by incoming group and
-            second by outgoing group ('inout'), or vice versa ('outin').
-            Defaults to 'inout'.
-        value : {'mean', 'std_dev', 'rel_err'}
-            A string for the type of value to return. Defaults to 'mean'.
-        squeeze : bool
-            A boolean representing whether to eliminate the extra dimensions
-            of the multi-dimensional array to be returned. Defaults to True.
-
-        Returns
-        -------
-        numpy.ndarray
-            A NumPy array of the multi-group cross section indexed in the order
-            each group and subdomain is listed in the parameters.
-
-        Raises
-        ------
-        ValueError
-            When this method is called before the multi-group cross section is
-            computed from tally data.
-
-        """
-
-        cv.check_value('value', value, ['mean', 'std_dev', 'rel_err'])
-        cv.check_value('xs_type', xs_type, ['macro', 'micro'])
-
-        # FIXME: Unable to get microscopic xs for mesh domain because the mesh
-        # cells do not know the nuclide densities in each mesh cell.
-        if self.domain_type == 'mesh' and xs_type == 'micro':
-            msg = 'Unable to get micro xs for mesh domain since the mesh ' \
-                  'cells do not know the nuclide densities in each mesh cell.'
-            raise ValueError(msg)
-
-        filters = []
-        filter_bins = []
-
-        # Construct a collection of the domain filter bins
-        if not isinstance(subdomains, string_types):
-            cv.check_iterable_type('subdomains', subdomains, Integral, max_depth=3)
-            filters.append(_DOMAIN_TO_FILTER[self.domain_type])
-            subdomain_bins = []
-            for subdomain in subdomains:
-                subdomain_bins.append(subdomain)
-            filter_bins.append(tuple(subdomain_bins))
-
-        # Construct list of energy group bounds tuples for all requested groups
-        if not isinstance(in_groups, string_types):
-            cv.check_iterable_type('groups', in_groups, Integral)
-            filters.append(openmc.EnergyFilter)
-            energy_bins = []
-            for group in in_groups:
-                energy_bins.append(
-                    (self.energy_groups.get_group_bounds(group),))
-            filter_bins.append(tuple(energy_bins))
-
-        # Construct list of energy group bounds tuples for all requested groups
-        if not isinstance(out_groups, string_types):
-            cv.check_iterable_type('groups', out_groups, Integral)
-            for group in out_groups:
-                filters.append(openmc.EnergyoutFilter)
-                filter_bins.append((self.energy_groups.get_group_bounds(group),))
-
-        # Construct CrossScore for requested scattering moment
-        if moment != 'all' and self.scatter_format == 'legendre':
-            cv.check_type('moment', moment, Integral)
-            cv.check_greater_than('moment', moment, 0, equality=True)
-            cv.check_less_than(
-                'moment', moment, self.legendre_order, equality=True)
-            scores = [self.xs_tally.scores[moment]]
-        else:
-            scores = []
-
-        # Construct a collection of the nuclides to retrieve from the xs tally
-        if self.by_nuclide:
-            if nuclides == 'all' or nuclides == 'sum' or nuclides == ['sum']:
-                query_nuclides = self.get_nuclides()
-            else:
-                query_nuclides = nuclides
-        else:
-            query_nuclides = ['total']
-
-        # Use tally summation if user requested the sum for all nuclides
-        if nuclides == 'sum' or nuclides == ['sum']:
-            xs_tally = self.xs_tally.summation(nuclides=query_nuclides)
-            xs = xs_tally.get_values(scores=scores, filters=filters,
-                                     filter_bins=filter_bins, value=value)
-        else:
-            xs = self.xs_tally.get_values(scores=scores, filters=filters,
-                                          filter_bins=filter_bins,
-                                          nuclides=query_nuclides, value=value)
-
-        # Divide by atom number densities for microscopic cross sections
-        if xs_type == 'micro':
-            if self.by_nuclide:
-                densities = self.get_nuclide_densities(nuclides)
-            else:
-                densities = self.get_nuclide_densities('sum')
-            if value == 'mean' or value == 'std_dev':
-                xs /= densities[np.newaxis, :, np.newaxis]
-
-        # Convert and nans to zero
-        xs = np.nan_to_num(xs)
-
-        if in_groups == 'all':
-            num_in_groups = self.num_groups
-        else:
-            num_in_groups = len(in_groups)
-
-        if out_groups == 'all':
-            num_out_groups = self.num_groups
-        else:
-            num_out_groups = len(out_groups)
-
-        if self.scatter_format == 'histogram':
-            num_mu_bins = self.histogram_bins
-        else:
-            num_mu_bins = 1
-
-        # Reshape tally data array with separate axes for domain and energy
-        # Accomodate the polar and azimuthal bins if needed
-        num_subdomains = int(xs.shape[0] / (num_mu_bins * num_in_groups *
-                                            num_out_groups * self.num_polar *
-                                            self.num_azimuthal))
-        if self.num_polar > 1 or self.num_azimuthal > 1:
-            if self.scatter_format == 'histogram':
-                new_shape = (self.num_polar, self.num_azimuthal,
-                             num_subdomains, num_in_groups, num_out_groups,
-                             num_mu_bins)
-            else:
-                new_shape = (self.num_polar, self.num_azimuthal,
-                             num_subdomains, num_in_groups, num_out_groups)
-            new_shape += xs.shape[1:]
-            xs = np.reshape(xs, new_shape)
-
-            # Transpose the scattering matrix if requested by user
-            if row_column == 'outin':
-                xs = np.swapaxes(xs, 3, 4)
-
-            # Reverse data if user requested increasing energy groups since
-            # tally data is stored in order of increasing energies
-            if order_groups == 'increasing':
-                xs = xs[:, :, :, ::-1, ::-1, ...]
-        else:
-            if self.scatter_format == 'histogram':
-                new_shape = (num_subdomains, num_in_groups, num_out_groups,
-                             num_mu_bins)
-            else:
-                new_shape = (num_subdomains, num_in_groups, num_out_groups)
-            new_shape += xs.shape[1:]
-            xs = np.reshape(xs, new_shape)
-
-            # Transpose the scattering matrix if requested by user
-            if row_column == 'outin':
-                xs = np.swapaxes(xs, 1, 2)
-
-            # Reverse data if user requested increasing energy groups since
-            # tally data is stored in order of increasing energies
-            if order_groups == 'increasing':
-                xs = xs[:, ::-1, ::-1, ...]
-
-        if squeeze:
-            # We want to squeeze out everything but the angles, in_groups,
-            # out_groups, and, if needed, num_mu_bins dimension. These must
-            # not be squeezed so 1-group, 1-angle problems have the correct
-            # shape.
-            xs = self._squeeze_xs(xs)
-        return xs
-
-    def get_pandas_dataframe(self, groups='all', nuclides='all', moment='all',
-                             xs_type='macro', distribcell_paths=True):
-        """Build a Pandas DataFrame for the MGXS data.
-
-        This method leverages :meth:`openmc.Tally.get_pandas_dataframe`, but
-        renames the columns with terminology appropriate for cross section data.
-
-        Parameters
-        ----------
-        groups : Iterable of Integral or 'all'
-            Energy groups of interest. Defaults to 'all'.
-        nuclides : Iterable of str or 'all' or 'sum'
-            The nuclides of the cross-sections to include in the dataframe. This
-            may be a list of nuclide name strings (e.g., ['U235', 'U238']).
-            The special string 'all' will include the cross sections for all
-            nuclides in the spatial domain. The special string 'sum' will
-            include the cross sections summed over all nuclides. Defaults
-            to 'all'.
-        moment : int or 'all'
-            The scattering matrix moment to return. All moments will be
-             returned if the moment is 'all' (default); otherwise, a specific
-             moment will be returned.
-        xs_type: {'macro', 'micro'}
-            Return macro or micro cross section in units of cm^-1 or barns.
-            Defaults to 'macro'.
-        distribcell_paths : bool, optional
-            Construct columns for distribcell tally filters (default is True).
-            The geometric information in the Summary object is embedded into a
-            Multi-index column with a geometric "path" to each distribcell
-            instance.
-
-        Returns
-        -------
-        pandas.DataFrame
-            A Pandas DataFrame for the cross section data.
-
-        Raises
-        ------
-        ValueError
-            When this method is called before the multi-group cross section is
-            computed from tally data.
-
-        """
-
-        df = super(ScatterProbabilityMatrix, self).get_pandas_dataframe(
-            groups, nuclides, xs_type, distribcell_paths)
-
-        if self.scatter_format == 'legendre':
-            # Add a moment column to dataframe
-            if self.legendre_order > 0:
-                # Insert a column corresponding to the Legendre moments
-                moments = ['P{}'.format(i)
-                           for i in range(self.legendre_order + 1)]
-                moments = np.tile(moments, int(df.shape[0] / len(moments)))
-                df['moment'] = moments
-
-                # Place the moment column before the mean column
-                columns = df.columns.tolist()
-                mean_index \
-                    = [i for i, s in enumerate(columns) if 'mean' in s][0]
-                if self.domain_type == 'mesh':
-                    df = df[columns[:mean_index] + [('moment', '')] +
-                            columns[mean_index:-1]]
-                else:
-                    df = df[columns[:mean_index] + ['moment'] +
-                            columns[mean_index:-1]]
-
-            # Select rows corresponding to requested scattering moment
-            if moment != 'all':
-                cv.check_type('moment', moment, Integral)
-                cv.check_greater_than('moment', moment, 0, equality=True)
-                cv.check_less_than(
-                    'moment', moment, self.legendre_order, equality=True)
-                df = df[df['moment'] == 'P{}'.format(moment)]
-
-        return df
-
-    def print_xs(self, subdomains='all', nuclides='all',
-                 xs_type='macro', moment=0):
-        """Prints a string representation for the multi-group cross section.
-
-        Parameters
-        ----------
-        subdomains : Iterable of Integral or 'all'
-            The subdomain IDs of the cross sections to include in the report.
-            Defaults to 'all'.
-        nuclides : Iterable of str or 'all' or 'sum'
-            The nuclides of the cross-sections to include in the report. This
-            may be a list of nuclide name strings (e.g., ['U235', 'U238']).
-            The special string 'all' will report the cross sections for all
-            nuclides in the spatial domain. The special string 'sum' will report
-            the cross sections summed over all nuclides. Defaults to 'all'.
-        xs_type: {'macro', 'micro'}
-            Return the macro or micro cross section in units of cm^-1 or barns.
-            Defaults to 'macro'.
-        moment : int
-            The scattering moment to print (default is 0)
-
-        """
-
-        # Construct a collection of the subdomains to report
-        if not isinstance(subdomains, string_types):
-            cv.check_iterable_type('subdomains', subdomains, Integral)
-        elif self.domain_type == 'distribcell':
-            subdomains = np.arange(self.num_subdomains, dtype=np.int)
-        elif self.domain_type == 'mesh':
-            xyz = [range(1, x + 1) for x in self.domain.dimension]
-            subdomains = list(itertools.product(*xyz))
-        else:
-            subdomains = [self.domain.id]
-
-        # Construct a collection of the nuclides to report
-        if self.by_nuclide:
-            if nuclides == 'all':
-                nuclides = self.get_nuclides()
-            if nuclides == 'sum':
-                nuclides = ['sum']
-            else:
-                cv.check_iterable_type('nuclides', nuclides, string_types)
-        else:
-            nuclides = ['sum']
-
-        cv.check_value('xs_type', xs_type, ['macro', 'micro'])
-
-        if self.scatter_format == 'legendre':
-            rxn_type = '{0} (P{1})'.format(self.rxn_type, moment)
-        else:
-            rxn_type = self.rxn_type
-
-        # Build header for string with type and domain info
-        string = 'Multi-Group XS\n'
-        string += '{0: <16}=\t{1}\n'.format('\tReaction Type', rxn_type)
-        string += '{0: <16}=\t{1}\n'.format('\tDomain Type', self.domain_type)
-        string += '{0: <16}=\t{1}\n'.format('\tDomain ID', self.domain.id)
-
-        # Generate the header for an individual XS
-        xs_header = '\tCross Sections [{0}]:'.format(self.get_units(xs_type))
-
-        # If cross section data has not been computed, only print string header
-        if self.tallies is None:
-            print(string)
-            return
-
-        string += '{0: <16}\n'.format('\tEnergy Groups:')
-        template = '{0: <12}Group {1} [{2: <10} - {3: <10}eV]\n'
-
-        # Loop over energy groups ranges
-        for group in range(1, self.num_groups + 1):
-            bounds = self.energy_groups.get_group_bounds(group)
-            string += template.format('', group, bounds[0], bounds[1])
-
-        # Set polar and azimuthal bins if necessary
-        if self.num_polar > 1 or self.num_azimuthal > 1:
-            pol_bins = np.linspace(0., np.pi, num=self.num_polar + 1,
-                                   endpoint=True)
-            azi_bins = np.linspace(-np.pi, np.pi, num=self.num_azimuthal + 1,
-                                   endpoint=True)
-
-        # Loop over all subdomains
-        for subdomain in subdomains:
-
-            if self.domain_type == 'distribcell' or self.domain_type == 'mesh':
-                string += '{0: <16}=\t{1}\n'.format('\tSubdomain', subdomain)
-
-            # Loop over all Nuclides
-            for nuclide in nuclides:
-
-                # Build header for nuclide type
-                if xs_type != 'sum':
-                    string += '{0: <16}=\t{1}\n'.format('\tNuclide', nuclide)
-
-                # Build header for cross section type
-                string += '{0: <16}\n'.format(xs_header)
-                template = '{0: <12}Group {1} -> Group {2}:\t\t'
-
-                average_xs = self.get_xs(nuclides=[nuclide],
-                                         subdomains=[subdomain],
-                                         xs_type=xs_type, value='mean',
-                                         moment=moment)
-                rel_err_xs = self.get_xs(nuclides=[nuclide],
-                                         subdomains=[subdomain],
-                                         xs_type=xs_type, value='rel_err',
-                                         moment=moment)
-                rel_err_xs = rel_err_xs * 100.
-
-                if self.num_polar > 1 or self.num_azimuthal > 1:
-                    # Loop over polar, azi, and in/out energy group ranges
-                    for pol in range(len(pol_bins) - 1):
-                        pol_low, pol_high = pol_bins[pol: pol + 2]
-                        for azi in range(len(azi_bins) - 1):
-                            azi_low, azi_high = azi_bins[azi: azi + 2]
-                            string += '\t\tPolar Angle: [{0:5f} - {1:5f}]'.format(
-                                pol_low, pol_high) + \
-                                '\tAzimuthal Angle: [{0:5f} - {1:5f}]'.format(
-                                azi_low, azi_high) + '\n'
-                            for in_group in range(1, self.num_groups + 1):
-                                for out_group in range(1, self.num_groups + 1):
-                                    string += '\t' + template.format('',
-                                                                     in_group,
-                                                                     out_group)
-                                    string += '{0:.2e} +/- {1:.2e}%'.format(
-                                        average_xs[pol, azi, in_group - 1,
-                                                   out_group - 1],
-                                        rel_err_xs[pol, azi, in_group - 1,
-                                                   out_group - 1])
-                                    string += '\n'
-                                string += '\n'
-                            string += '\n'
-                else:
-                    # Loop over incoming/outgoing energy groups ranges
-                    for in_group in range(1, self.num_groups + 1):
-                        for out_group in range(1, self.num_groups + 1):
-                            string += template.format('', in_group, out_group)
-                            string += '{0:.2e} +/- {1:.2e}%'.format(
-                                average_xs[in_group - 1, out_group - 1],
-                                rel_err_xs[in_group - 1, out_group - 1])
-                            string += '\n'
-                        string += '\n'
-                    string += '\n'
-                string += '\n'
-            string += '\n'
-
-        print(string)
 
 
 class NuFissionMatrixXS(MatrixMGXS):

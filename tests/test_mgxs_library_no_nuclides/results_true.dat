@@ -77,11 +77,6 @@
 2     10000         1          2   total  0.002567   0.001256
 1     10000         2          1   total  0.002242   0.002243
 0     10000         2          2   total  0.997758   0.041053
-   material  group in  group out nuclide      mean  std. dev.
-3     10000         1          1   total  0.997433   0.078224
-2     10000         1          2   total  0.002567   0.001256
-1     10000         2          1   total  0.002242   0.002243
-0     10000         2          2   total  0.997758   0.041053
     material  group in  group out nuclide moment      mean  std. dev.
 12     10000         1          1   total     P0  0.386423   0.036629
 13     10000         1          1   total     P1  0.052170   0.007767
@@ -289,11 +284,6 @@
 2     10001         1          2   total   0.0   0.000000
 1     10001         2          1   total   0.0   0.000000
 0     10001         2          2   total   1.0   0.142427
-   material  group in  group out nuclide  mean  std. dev.
-3     10001         1          1   total   1.0   0.108779
-2     10001         1          2   total   0.0   0.000000
-1     10001         2          1   total   0.0   0.000000
-0     10001         2          2   total   1.0   0.142427
     material  group in  group out nuclide moment      mean  std. dev.
 12     10001         1          1   total     P0  0.312163   0.037253
 13     10001         1          1   total     P1  0.038481   0.008743
@@ -496,11 +486,6 @@
 2     10002         1          2   total   0.0        0.0
 1     10002         2          1   total   0.0        0.0
 0     10002         2          2   total   0.0        0.0
-   material  group in  group out nuclide      mean  std. dev.
-3     10002         1          1   total  0.953271   0.036018
-2     10002         1          2   total  0.046729   0.002547
-1     10002         2          1   total  0.000218   0.000219
-0     10002         2          2   total  0.999782   0.135885
    material  group in  group out nuclide      mean  std. dev.
 3     10002         1          1   total  0.953271   0.036018
 2     10002         1          2   total  0.046729   0.002547

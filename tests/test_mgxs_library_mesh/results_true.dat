@@ -112,12 +112,6 @@
 1      1  2  1        1         1   total  1.0  0.454973
 2      2  1  1        1         1   total  1.0  0.146747
 3      2  2  1        1         1   total  1.0  0.141824
-  mesh 1       group in group out nuclide mean std. dev.
-       x  y  z                                          
-0      1  1  1        1         1   total  1.0  0.153265
-1      1  2  1        1         1   total  1.0  0.454973
-2      2  1  1        1         1   total  1.0  0.146747
-3      2  2  1        1         1   total  1.0  0.141824
    mesh 1       group in group out nuclide moment      mean std. dev.
         x  y  z                                                      
 0       1  1  1        1         1   total     P0  0.633490  0.135514

@@ -76,9 +76,9 @@ class Material(object):
         calculated in a stochastic volume calculation and added via the
         :meth:`Material.add_volume_information` method.
     num_instances : int
-        The number of instances of this cell throughout the geometry. This
+        The number of instances of this material throughout the geometry. This
         property is initialized by calling the
-        :meth:`Geometry.count_cell_instances()` method.
+        :meth:`Geometry.count_material_instances` method.
 
     """
 
@@ -202,7 +202,11 @@ class Material(object):
 
     @property
     def num_instances(self):
-        return self._num_instances
+        if self._num_instances is None:
+            raise ValueError('The number of cell instances is unknown. Call '
+                             'the Geometry.count_cell_instances() method.')
+        else:
+            return self._num_instances
 
     @property
     def elements(self):

@@ -6,7 +6,7 @@ module output
   use endf,            only: reaction_name
   use error,           only: fatal_error, warning
   use geometry_header, only: Cell, Universe, Lattice, RectLattice, &
-                             HexLattice, BASE_UNIVERSE
+                             HexLattice
   use global
   use math,            only: t_percentile
   use mesh_header,     only: RegularMesh

@@ -4,7 +4,7 @@ module summary
 
   use constants
   use endf,            only: reaction_name
-  use geometry_header, only: BASE_UNIVERSE, Cell, Universe, Lattice, &
+  use geometry_header, only: root_universe, Cell, Universe, Lattice, &
                              RectLattice, HexLattice
   use global
   use hdf5_interface
@@ -127,7 +127,6 @@ contains
     character(MAX_LINE_LEN)              :: path
     type(Cell),     pointer :: c
     class(Surface), pointer :: s
-    type(Universe), pointer :: u
     class(Lattice), pointer :: lat
 
     ! Use H5LT interface to write number of geometry objects
@@ -236,7 +235,7 @@ contains
         do k = 1, c % instances
           path = ''
           offset = 1
-          call find_offset(i, universes(BASE_UNIVERSE), k, offset, path)
+          call find_offset(i, universes(root_universe), k, offset, path)
           paths(k) = path
         end do
         call write_dataset(cell_group, "paths", paths)
@@ -354,21 +353,22 @@ contains
 
     ! Write information on each universe
     UNIVERSE_LOOP: do i = 1, n_universes
-      u => universes(i)
-      univ_group = create_group(universes_group, "universe " // &
-           trim(to_str(u%id)))
+      associate (u => universes(i))
+        univ_group = create_group(universes_group, "universe " // &
+             trim(to_str(u%id)))
 
-      ! Write list of cells in this universe
-      if (u % n_cells > 0) then
-        allocate(cell_ids(u % n_cells))
-        do j = 1, u % n_cells
-          cell_ids(j) = cells(u % cells(j)) % id
-        end do
-        call write_dataset(univ_group, "cells", cell_ids)
-        deallocate(cell_ids)
-      end if
+        ! Write list of cells in this universe
+        if (size(u % cells) > 0) then
+          allocate(cell_ids(size(u % cells)))
+          do j = 1, size(u % cells)
+            cell_ids(j) = cells(u % cells(j)) % id
+          end do
+          call write_dataset(univ_group, "cells", cell_ids)
+          deallocate(cell_ids)
+        end if
 
-      call close_group(univ_group)
+        call close_group(univ_group)
+      end associate
     end do UNIVERSE_LOOP
 
     call close_group(universes_group)

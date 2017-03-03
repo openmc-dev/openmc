@@ -924,10 +924,7 @@ class HexLattice(Lattice):
 
     @property
     def ndim(self):
-        if isinstance(self.universes[0][0], openmc.Universe):
-            return 2
-        else:
-            return 3
+        return 2 if isinstance(self.universes[0][0], openmc.Universe) else 3
 
     @center.setter
     def center(self, center):
@@ -954,17 +951,6 @@ class HexLattice(Lattice):
         # The sub-lists are ordered from outermost ring to innermost ring.
         # The Universes within each sub-list are ordered from the "top" in a
         # clockwise fashion.
-
-        # Check to see if the given universes look like a 2D or a 3D array.
-        if isinstance(self._universes[0][0], openmc.Universe):
-            pass
-        elif isinstance(self._universes[0][0][0], openmc.Universe):
-            pass
-        else:
-            msg = 'HexLattice ID={0:d} does not appear to be either 2D or ' \
-                  '3D.  Make sure set_universes was given a two-deep or ' \
-                  'three-deep iterable of universes.'.format(self._id)
-            raise RuntimeError(msg)
 
         # Set the number of axial positions.
         if self.ndim == 3:

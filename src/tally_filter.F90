@@ -3,7 +3,7 @@ module tally_filter
   use algorithm,           only: binary_search
   use constants,           only: ONE, NO_BIN_FOUND, FP_PRECISION, ERROR_REAL
   use dict_header,         only: DictIntInt
-  use geometry_header,     only: BASE_UNIVERSE, RectLattice, HexLattice
+  use geometry_header,     only: root_universe, RectLattice, HexLattice
   use global
   use hdf5_interface
   use mesh_header,         only: RegularMesh
@@ -791,7 +791,7 @@ contains
     integer                 :: offset
     type(Universe), pointer :: univ
 
-    univ => universes(BASE_UNIVERSE)
+    univ => universes(root_universe)
     offset = 0
     label = ''
     call find_offset(this % cell, univ, bin-1, offset, label)
@@ -1387,6 +1387,7 @@ contains
     integer :: cell_index           ! Index in cells array
     integer :: lat_offset           ! Offset from lattice
     integer :: temp_offset          ! Looped sum of offsets
+    integer :: i_univ               ! index in universes array
     logical :: this_cell = .false.  ! Advance in this cell?
     logical :: later_cell = .false. ! Fill cells after this one?
     type(Cell), pointer :: c           ! Pointer to current cell
@@ -1396,10 +1397,11 @@ contains
     ! Get the distribcell index for this cell
     map = cells(goal) % distribcell_index
 
-    n = univ % n_cells
+    n = size(univ % cells)
 
     ! Write to the geometry stack
-    if (univ%id == 0) then
+    i_univ = universe_dict % get_key(univ % id)
+    if (i_univ == root_universe) then
       path = trim(path) // to_str(univ%id)
     else
       path = trim(path) // "->" // to_str(univ%id)

@@ -12,7 +12,6 @@ module source
   use distribution_multivariate, only: SpatialBox
   use error,            only: fatal_error
   use geometry,         only: find_cell
-  use geometry_header,  only: BASE_UNIVERSE
   use global
   use hdf5_interface,   only: file_create, file_open, file_close, read_dataset
   use message_passing,  only: rank

@@ -10,7 +10,7 @@ module input_xml
   use energy_grid,      only: grid_method, n_log_bins
   use error,            only: fatal_error, warning
   use geometry_header,  only: Cell, Lattice, RectLattice, HexLattice, &
-                              get_temperatures
+                              get_temperatures, root_universe
   use global
   use hdf5_interface
   use list_header,      only: ListChar, ListInt, ListReal
@@ -34,9 +34,6 @@ module input_xml
 
   implicit none
   save
-
-  type(DictIntInt) :: cells_in_univ_dict ! Used to count how many cells each
-                                         ! universe contains
 
 contains
 
@@ -1061,7 +1058,7 @@ contains
 
     integer :: i, j, k, m, i_x, i_a, input_index
     integer :: n, n_mats, n_x, n_y, n_z, n_rings, n_rlats, n_hlats
-    integer :: universe_num
+    integer :: univ_id
     integer :: n_cells_in_univ
     integer :: coeffs_reqd
     integer :: i_xmin, i_xmax, i_ymin, i_ymax, i_zmin, i_zmax
@@ -1089,6 +1086,11 @@ contains
     type(XMLNode), allocatable :: node_hlat_list(:)
     type(VectorInt) :: tokens
     type(VectorInt) :: rpn
+    type(VectorInt) :: fill_univ_ids ! List of fill universe IDs
+    type(VectorInt) :: univ_ids      ! List of all universe IDs
+    type(DictIntInt) :: cells_in_univ_dict ! Used to count how many cells each
+                                           ! universe contains
+
 
     ! Display output message
     call write_message("Reading geometry XML file...", 5)
@@ -1153,10 +1155,12 @@ contains
       if (check_for_node(node_cell, "universe")) then
         call get_node_value(node_cell, "universe", c % universe)
       else
-        c % universe = NONE
+        c % universe = 0
       end if
       if (check_for_node(node_cell, "fill")) then
         call get_node_value(node_cell, "fill", c % fill)
+        if (find(fill_univ_ids, c % fill) == -1) &
+             call fill_univ_ids % push_back(c % fill)
       else
         c % fill = NONE
       end if
@@ -1352,15 +1356,16 @@ contains
       ! For cells, we also need to check if there's a new universe --
       ! also for every cell add 1 to the count of cells for the
       ! specified universe
-      universe_num = c % universe
-      if (.not. cells_in_univ_dict % has_key(universe_num)) then
+      univ_id = c % universe
+      if (.not. cells_in_univ_dict % has_key(univ_id)) then
         n_universes = n_universes + 1
         n_cells_in_univ = 1
-        call universe_dict % add_key(universe_num, n_universes)
+        call universe_dict % add_key(univ_id, n_universes)
+        call univ_ids % push_back(univ_id)
       else
-        n_cells_in_univ = 1 + cells_in_univ_dict % get_key(universe_num)
+        n_cells_in_univ = 1 + cells_in_univ_dict % get_key(univ_id)
       end if
-      call cells_in_univ_dict % add_key(universe_num, n_cells_in_univ)
+      call cells_in_univ_dict % add_key(univ_id, n_cells_in_univ)
 
     end do
 
@@ -1769,7 +1774,9 @@ contains
         do k = 0, n_y - 1
           do j = 1, n_x
             lat % universes(j, n_y - k, m) = &
-                 &temp_int_array(j + n_x*k + n_x*n_y*(m-1))
+                 temp_int_array(j + n_x*k + n_x*n_y*(m-1))
+            if (find(fill_univ_ids, lat % universes(j, n_y - k, m)) == -1) &
+                 call fill_univ_ids % push_back(lat % universes(j, n_y - k, m))
           end do
         end do
       end do
@@ -1779,6 +1786,8 @@ contains
       lat % outer = NO_OUTER_UNIVERSE
       if (check_for_node(node_lat, "outer")) then
         call get_node_value(node_lat, "outer", lat % outer)
+        if (find(fill_univ_ids, lat % outer) == -1) &
+             call fill_univ_ids % push_back(lat % outer)
       end if
 
       ! Check for 'outside' nodes which are no longer supported.
@@ -1895,7 +1904,9 @@ contains
           do j = 1, k
             ! Place universe in array.
             lat % universes(i_x + n_rings, i_a + n_rings, m) = &
-                 &temp_int_array(input_index)
+                 temp_int_array(input_index)
+            if (find(fill_univ_ids, temp_int_array(input_index)) == -1) &
+                 call fill_univ_ids % push_back(temp_int_array(input_index))
             ! Walk index to closest non-adjacent right neighbor.
             i_x = i_x + 2
             i_a = i_a - 1
@@ -1920,7 +1931,9 @@ contains
           do j = 1, n_rings - mod(k-1, 2)
             ! Place universe in array.
             lat % universes(i_x + n_rings, i_a + n_rings, m) = &
-                 &temp_int_array(input_index)
+                 temp_int_array(input_index)
+            if (find(fill_univ_ids, temp_int_array(input_index)) == -1) &
+                 call fill_univ_ids % push_back(temp_int_array(input_index))
             ! Walk index to closest non-adjacent right neighbor.
             i_x = i_x + 2
             i_a = i_a - 1
@@ -1940,7 +1953,9 @@ contains
           do j = 1, n_rings - k
             ! Place universe in array.
             lat % universes(i_x + n_rings, i_a + n_rings, m) = &
-                 &temp_int_array(input_index)
+                 temp_int_array(input_index)
+            if (find(fill_univ_ids, temp_int_array(input_index)) == -1) &
+                 call fill_univ_ids % push_back(temp_int_array(input_index))
             ! Walk index to closest non-adjacent right neighbor.
             i_x = i_x + 2
             i_a = i_a - 1
@@ -1958,6 +1973,8 @@ contains
       lat % outer = NO_OUTER_UNIVERSE
       if (check_for_node(node_lat, "outer")) then
         call get_node_value(node_lat, "outer", lat % outer)
+        if (find(fill_univ_ids, lat % outer) == -1) &
+             call fill_univ_ids % push_back(lat % outer)
       end if
 
       ! Check for 'outside' nodes which are no longer supported.
@@ -1973,6 +1990,47 @@ contains
 
       end select
     end do HEX_LATTICES
+
+    ! ==========================================================================
+    ! SETUP UNIVERSES
+
+    ! Allocate universes, universe cell arrays, and assign base universe
+    allocate(universes(n_universes))
+    do i = 1, n_universes
+      associate (u => universes(i))
+        u % id = univ_ids % data(i)
+
+        ! Allocate cell list
+        n_cells_in_univ = cells_in_univ_dict % get_key(u % id)
+        allocate(u % cells(n_cells_in_univ))
+        u % cells(:) = 0
+
+        ! Check whether universe is a fill universe
+        if (find(fill_univ_ids, u % id) == -1) then
+          if (root_universe > 0) then
+            call fatal_error("Two or more universes are not used as fill &
+                 &universes, so it is not possible to distinguish which one &
+                 &is the root universe.")
+          else
+            root_universe = i
+          end if
+        end if
+      end associate
+    end do
+
+    do i = 1, n_cells
+      ! Get index in universes array
+      j = universe_dict%get_key(cells(i) % universe)
+
+      ! Set the first zero entry in the universe cells array to the index in the
+      ! global cells array
+      associate (u => universes(j))
+        u % cells(find(u % cells, 0)) = i
+      end associate
+    end do
+
+    ! Clear dictionary
+    call cells_in_univ_dict%clear()
 
     ! Close geometry XML file
     call doc % clear()

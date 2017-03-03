@@ -156,7 +156,7 @@ contains
     do j = 1, n_coord
       p % n_coord = j
       univ => universes(p % coord(j) % universe)
-      n = univ % n_cells
+      n = size(univ % cells)
 
       ! loop through each cell on this level
       do i = 1, n
@@ -216,7 +216,7 @@ contains
     else
       use_search_cells = .false.
       univ => universes(p % coord(j) % universe)
-      n = univ % n_cells
+      n = size(univ % cells)
     end if
 
     CELL_LOOP: do i = 1, n
@@ -1104,7 +1104,7 @@ contains
     type(Universe), pointer :: next_univ  ! next universe to cycle through
     class(Lattice), pointer :: lat        ! pointer to current lattice
 
-    n = univ % n_cells
+    n = size(univ % cells)
     offset = 0
 
     do i = 1, n
@@ -1221,7 +1221,7 @@ contains
     end if
 
     count = 0
-    n = univ % n_cells
+    n = size(univ % cells)
 
     do i = 1, n
 
@@ -1334,7 +1334,7 @@ contains
     type(Universe), pointer :: next_univ  ! next universe to loop through
     class(Lattice), pointer :: lat        ! pointer to current lattice
 
-    n = univ % n_cells
+    n = size(univ % cells)
 
     do i = 1, n
 
@@ -1423,7 +1423,7 @@ contains
     class(Lattice), pointer :: lat        ! pointer to current lattice
 
     levels_below = 0
-    do i = 1, univ % n_cells
+    do i = 1, size(univ % cells)
       c => cells(univ % cells(i))
 
       ! ====================================================================

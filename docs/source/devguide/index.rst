@@ -15,5 +15,5 @@ as debugging.
     structures
     styleguide
     workflow
-    xml-parsing
+    user-input
     docbuild

@@ -4,7 +4,8 @@
 Development Team
 ================
 
-Active development of the OpenMC Monte Carlo code is currently led by:
+The following people have contributed to development of the OpenMC Monte Carlo
+code:
 
 * `Paul Romano <https://github.com/paulromano>`_
 * `Bryan Herman <https://github.com/bhermanmit>`_
@@ -14,6 +15,9 @@ Active development of the OpenMC Monte Carlo code is currently led by:
 * `Sterling Harper <https://github.com/smharper>`_
 * `Will Boyd <https://github.com/wbinventor>`_
 * `Samuel Shaner <https://github.com/samuelshaner>`_
+* `Jingang Liang <https://github.com/liangjg>`_
+* `Colin Josey <https://github.com/cjosey>`_
+* `Amanda Lund <https://github.com/amandalund>`_
 * `Benoit Forget <http://web.mit.edu/nse/people/faculty/forget.html>`_
 * `Kord Smith <http://web.mit.edu/nse/people/faculty/smith.html>`_
 * `Andrew Siegel <http://www.mcs.anl.gov/person/andrew-siegel>`_

@@ -18,7 +18,7 @@ module input_xml
   use message_passing
   use mgxs_data,        only: create_macro_xs, read_mgxs
   use multipole,        only: multipole_read
-  use output,           only: write_message
+  use output,           only: write_message, title, header
   use plot_header
   use random_lcg,       only: prn, seed
   use surface_header
@@ -119,12 +119,22 @@ contains
         ! The settings.xml file is optional if we just want to make a plot.
         return
       end if
-    else
-      call write_message("Reading settings XML file...", 5)
     end if
 
     ! Parse settings.xml file
     call open_xmldoc(doc, filename)
+
+    ! Verbosity
+    if (check_for_node(doc, "verbosity")) then
+      call get_node_value(doc, "verbosity", verbosity)
+    end if
+
+    ! To this point, we haven't displayed any output since we didn't know what
+    ! the verbosity is. Now that we checked for it, show the title if necessary
+    if (master) then
+      if (verbosity >= 2) call title()
+    end if
+    call write_message("Reading settings XML file...", 5)
 
     ! Find if a multi-group or continuous-energy simulation is desired
     if (check_for_node(doc, "energy_mode")) then
@@ -292,12 +302,6 @@ contains
       end if
     else
       n_log_bins = 8000
-    end if
-
-    ! Verbosity
-    if (check_for_node(doc, "verbosity")) then
-      call get_node_ptr(doc, "verbosity", node_verb)
-      call get_node_value(node_verb, "value", verbosity)
     end if
 
     ! Number of OpenMP threads
@@ -5214,7 +5218,7 @@ contains
            == energy_max_neutron) then
         call write_message("Maximum neutron transport energy: " // &
              trim(to_str(energy_max_neutron)) // " eV for " // &
-             trim(adjustl(nuclides(i) % name)), 6)
+             trim(adjustl(nuclides(i) % name)), 7)
         exit
       end if
     end do

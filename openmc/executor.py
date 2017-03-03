@@ -6,15 +6,11 @@ from six import string_types
 
 from openmc import VolumeCalculation
 
-_summary_indicator = "TIMING STATISTICS"
-
 
 def _run(args, output, cwd):
     # Launch a subprocess
     p = subprocess.Popen(args, cwd=cwd, stdout=subprocess.PIPE,
                          stderr=subprocess.STDOUT, universal_newlines=True)
-
-    storage_flag = False
 
     # Capture and re-print OpenMC output in real-time
     while True:
@@ -23,16 +19,8 @@ def _run(args, output, cwd):
         if not line and p.poll() is not None:
             break
 
-        if output == 'full':
+        if output:
             # If user requested output, print to screen
-            print(line, end='')
-        elif output == 'summary' and _summary_indicator in line:
-            # If they requested a summary, look for the start of the summary
-            storage_flag = True
-
-        if storage_flag:
-            # If a summary is requested, and we have reached the summary,
-            # then print it
             print(line, end='')
 
     # Return the returncode (integer, zero if no problems encountered)
@@ -52,8 +40,6 @@ def plot_geometry(output=True, openmc_exec='openmc', cwd='.'):
         Path to working directory to run in. Defaults to the current working directory.
 
     """
-    if output:
-        output = 'full'
     return _run([openmc_exec, '-p'], output, cwd)
 
 
@@ -102,13 +88,11 @@ def calculate_volumes(threads=None, output=True, cwd='.',
     if mpi_args is not None:
         args = mpi_args + args
 
-    if output:
-        output = 'full'
     return _run(args, output, cwd)
 
 
 def run(particles=None, threads=None, geometry_debug=False,
-        restart_file=None, tracks=False, output='full', cwd='.',
+        restart_file=None, tracks=False, output=True, cwd='.',
         openmc_exec='openmc', mpi_args=None):
     """Run an OpenMC simulation.
 
@@ -127,10 +111,8 @@ def run(particles=None, threads=None, geometry_debug=False,
         Path to restart file to use
     tracks : bool, optional
         Write tracks for all particles. Defaults to False.
-    output : {"full", "summary", "none", False}, optional
-        Degree of OpenMC output captured from standard out. "full" prints all
-        output; "summary" prints only the results summary, and "none" or False
-        does not show the output. Defaults to "full".
+    output : bool
+        Capture OpenMC output from standard out
     cwd : str, optional
         Path to working directory to run in. Defaults to the current working
         directory.

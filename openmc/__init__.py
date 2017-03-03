@@ -1,3 +1,5 @@
+import warnings
+
 from openmc.arithmetic import *
 from openmc.cell import *
 from openmc.mesh import *
@@ -28,6 +30,9 @@ from openmc.mixin import *
 from openmc.plotter import *
 
 try:
-    from openmc.openmoc_compatible import *
+    # Ignore matplotlib warning caused by OpenMOC calling matplotlib.use()
+    with warnings.catch_warnings():
+        warnings.simplefilter("ignore")
+        from openmc.openmoc_compatible import *
 except ImportError:
     pass

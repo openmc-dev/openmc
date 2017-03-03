@@ -142,7 +142,8 @@ class Settings(object):
         Mesh to be used for redistributing source sites via the uniform fision
         site (UFS) method.
     verbosity : int
-        Verbosity during simulation between 1 and 10
+        Verbosity during simulation between 1 and 10. Verbosity levels are
+        described in :ref:`verbosity`.
     volume_calculations : VolumeCalculation or iterable of VolumeCalculation
         Stochastic volume calculation specifications
 

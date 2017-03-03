@@ -71,6 +71,10 @@ class Material(object):
         The average molar mass of nuclides in the material in units of grams per
         mol.  For example, UO2 with 3 nuclides will have an average molar mass
         of 270 / 3 = 90 g / mol.
+    volume : float
+        Volume of the material in cm^3. This can either be set manually or
+        calculated in a stochastic volume calculation and added via the
+        :meth:`Material.add_volume_information` method.
 
     """
 
@@ -82,6 +86,8 @@ class Material(object):
         self._density = None
         self._density_units = ''
         self._depletable = False
+        self._volume = None
+        self._atoms = {}
 
         # A list of tuples (nuclide, percent, percent type)
         self._nuclides = []
@@ -226,6 +232,10 @@ class Material(object):
         # Compute and return the molar mass
         return mass / moles
 
+    @property
+    def volume(self):
+        return self._volume
+
     @id.setter
     def id(self, material_id):
 
@@ -258,6 +268,12 @@ class Material(object):
         cv.check_type('Depletable flag for Material ID="{}"'.format(self.id),
                       depletable, bool)
         self._depletable = depletable
+
+    @volume.setter
+    def volume(self, volume):
+        if volume is not None:
+            cv.check_type('material volume', volume, Real)
+        self._volume = volume
 
     @classmethod
     def from_hdf5(cls, group):
@@ -301,6 +317,24 @@ class Material(object):
             material.add_nuclide(name, percent=density, percent_type='ao')
 
         return material
+
+    def add_volume_information(self, volume_calc):
+        """Add volume information to a material.
+
+        Parameters
+        ----------
+        volume_calc : openmc.VolumeCalculation
+            Results from a stochastic volume calculation
+
+        """
+        if volume_calc.domain_type == 'material':
+            if self.id in volume_calc.volumes:
+                self._volume = volume_calc.volumes[self.id]
+                self._atoms = volume_calc.atoms[self.id]
+            else:
+                raise ValueError('No volume information found for this material.')
+        else:
+            raise ValueError('No volume information found for this material.')
 
     def set_density(self, units, density=None):
         """Set the density of the material

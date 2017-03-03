@@ -782,7 +782,7 @@ contains
 
     ! write that dhats are zero
     if (dhat_reset) then
-      call write_message('Dhats reset to zero.', 1)
+      call write_message('Dhats reset to zero.', 8)
     end if
 
   end subroutine compute_dhat

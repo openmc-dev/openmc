@@ -74,7 +74,7 @@ contains
 
     ! Write meessage
     call write_message("Loading particle restart file " &
-         &// trim(path_particle_restart) // "...", 1)
+         // trim(path_particle_restart) // "...", 5)
 
     ! Open file
     file_id = file_open(path_particle_restart, 'r')

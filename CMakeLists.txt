@@ -242,7 +242,7 @@ set(CMAKE_INSTALL_RPATH_USE_LINK_PATH TRUE)
 # Build faddeeva library
 #===============================================================================
 
-add_library(faddeeva STATIC src/Faddeeva.c)
+add_library(faddeeva STATIC src/faddeeva/Faddeeva.c)
 
 #===============================================================================
 # Build OpenMC executable

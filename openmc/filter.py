@@ -1,3 +1,4 @@
+from __future__ import division
 from abc import ABCMeta
 from collections import Iterable, OrderedDict
 import copy
@@ -425,7 +426,7 @@ class Filter(object):
         df = pd.DataFrame()
 
         filter_bins = np.repeat(self.bins, self.stride)
-        tile_factor = data_size / len(filter_bins)
+        tile_factor = data_size // len(filter_bins)
         filter_bins = np.tile(filter_bins, tile_factor)
         df = pd.concat([df, pd.DataFrame(
             {self.short_name.lower(): filter_bins})])
@@ -613,7 +614,7 @@ class SurfaceFilter(IntegralFilter):
         df = pd.DataFrame()
 
         filter_bins = np.repeat(self.bins, self.stride)
-        tile_factor = data_size / len(filter_bins)
+        tile_factor = data_size // len(filter_bins)
         filter_bins = np.tile(filter_bins, tile_factor)
         filter_bins = [_CURRENT_NAMES[x] for x in filter_bins]
         df = pd.concat([df, pd.DataFrame(
@@ -781,26 +782,26 @@ class MeshFilter(Filter):
             nz = 1
 
         # Generate multi-index sub-column for x-axis
-        filter_bins = np.arange(1, nx+1)
+        filter_bins = np.arange(1, nx + 1)
         repeat_factor = ny * nz * self.stride
         filter_bins = np.repeat(filter_bins, repeat_factor)
-        tile_factor = data_size / len(filter_bins)
+        tile_factor = data_size // len(filter_bins)
         filter_bins = np.tile(filter_bins, tile_factor)
         filter_dict[(mesh_key, 'x')] = filter_bins
 
         # Generate multi-index sub-column for y-axis
-        filter_bins = np.arange(1, ny+1)
+        filter_bins = np.arange(1, ny + 1)
         repeat_factor = nz * self.stride
         filter_bins = np.repeat(filter_bins, repeat_factor)
-        tile_factor = data_size / len(filter_bins)
+        tile_factor = data_size // len(filter_bins)
         filter_bins = np.tile(filter_bins, tile_factor)
         filter_dict[(mesh_key, 'y')] = filter_bins
 
         # Generate multi-index sub-column for z-axis
-        filter_bins = np.arange(1, nz+1)
+        filter_bins = np.arange(1, nz + 1)
         repeat_factor = self.stride
         filter_bins = np.repeat(filter_bins, repeat_factor)
-        tile_factor = data_size / len(filter_bins)
+        tile_factor = data_size // len(filter_bins)
         filter_bins = np.tile(filter_bins, tile_factor)
         filter_dict[(mesh_key, 'z')] = filter_bins
 
@@ -1008,7 +1009,7 @@ class EnergyFilter(RealFilter):
         # them as necessary to account for other filters.
         lo_bins = np.repeat(self.bins[:-1], self.stride)
         hi_bins = np.repeat(self.bins[1:], self.stride)
-        tile_factor = int(data_size / len(lo_bins))
+        tile_factor = data_size // len(lo_bins)
         lo_bins = np.tile(lo_bins, tile_factor)
         hi_bins = np.tile(hi_bins, tile_factor)
 
@@ -1281,7 +1282,7 @@ class DistribcellFilter(Filter):
                 # Tile the Multi-index columns
                 for level_key, level_bins in level_dict.items():
                     level_bins = np.repeat(level_bins, self.stride)
-                    tile_factor = data_size / len(level_bins)
+                    tile_factor = data_size // len(level_bins)
                     level_bins = np.tile(level_bins, tile_factor)
                     level_dict[level_key] = level_bins
 
@@ -1297,7 +1298,7 @@ class DistribcellFilter(Filter):
         # requests Summary geometric information
         filter_bins = np.arange(self.num_bins)
         filter_bins = np.repeat(filter_bins, self.stride)
-        tile_factor = data_size / len(filter_bins)
+        tile_factor = data_size // len(filter_bins)
         filter_bins = np.tile(filter_bins, tile_factor)
         df = pd.DataFrame({self.short_name.lower() : filter_bins})
 
@@ -1402,7 +1403,7 @@ class MuFilter(RealFilter):
         # them as necessary to account for other filters.
         lo_bins = np.repeat(self.bins[:-1], self.stride)
         hi_bins = np.repeat(self.bins[1:], self.stride)
-        tile_factor = data_size / len(lo_bins)
+        tile_factor = data_size // len(lo_bins)
         lo_bins = np.tile(lo_bins, tile_factor)
         hi_bins = np.tile(hi_bins, tile_factor)
 
@@ -1505,7 +1506,7 @@ class PolarFilter(RealFilter):
         # them as necessary to account for other filters.
         lo_bins = np.repeat(self.bins[:-1], self.stride)
         hi_bins = np.repeat(self.bins[1:], self.stride)
-        tile_factor = data_size / len(lo_bins)
+        tile_factor = data_size // len(lo_bins)
         lo_bins = np.tile(lo_bins, tile_factor)
         hi_bins = np.tile(hi_bins, tile_factor)
 
@@ -1608,7 +1609,7 @@ class AzimuthalFilter(RealFilter):
         # them as necessary to account for other filters.
         lo_bins = np.repeat(self.bins[:-1], self.stride)
         hi_bins = np.repeat(self.bins[1:], self.stride)
-        tile_factor = data_size / len(lo_bins)
+        tile_factor = data_size // len(lo_bins)
         lo_bins = np.tile(lo_bins, tile_factor)
         hi_bins = np.tile(hi_bins, tile_factor)
 
@@ -1871,7 +1872,7 @@ class EnergyFunctionFilter(Filter):
         out = out[:14]
 
         filter_bins = np.repeat(out, self.stride)
-        tile_factor = data_size / len(filter_bins)
+        tile_factor = data_size // len(filter_bins)
         filter_bins = np.tile(filter_bins, tile_factor)
         df = pd.concat([df, pd.DataFrame(
             {self.short_name.lower(): filter_bins})])

@@ -331,7 +331,10 @@ class Mesh(EqualityMixin):
 
         lattice = openmc.RectLattice()
         lattice.lower_left = self.lower_left
-        lattice.universes = np.reshape(universes, self.dimension)
+
+        # Assign the universe and rotate to match the indexing expected for
+        # the lattice
+        lattice.universes = np.rot90(np.reshape(universes, self.dimension))
 
         if self.width is not None:
             lattice.pitch = self.width

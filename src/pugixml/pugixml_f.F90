@@ -224,7 +224,7 @@ contains
     integer(C_SIZE_T) :: i
     type(C_PTR) :: name_ptr
 
-    name_ptr = xml_node_name(this%ptr)
+    name_ptr = xml_node_name(this % ptr)
     size_string = strlen(name_ptr)
     call c_f_pointer(name_ptr, string, [size_string])
     allocate(character(len=size_string, kind=C_CHAR) :: name)
@@ -248,9 +248,9 @@ contains
         string(i:i) = name(i:i)
       end do
       string(n+1:n+1) = C_NULL_CHAR
-      child%ptr = xml_node_child(this%ptr, c_loc(string))
+      child % ptr = xml_node_child(this % ptr, c_loc(string))
     else
-      child%ptr = xml_node_child(this%ptr, C_NULL_PTR)
+      child % ptr = xml_node_child(this % ptr, C_NULL_PTR)
     end if
   end function xmlnode_child
 
@@ -269,9 +269,9 @@ contains
         string(i:i) = name(i:i)
       end do
       string(n+1:n+1) = C_NULL_CHAR
-      next%ptr = xml_node_next_sibling(this%ptr, c_loc(string))
+      next % ptr = xml_node_next_sibling(this % ptr, c_loc(string))
     else
-      next%ptr = xml_node_next_sibling(this%ptr, C_NULL_PTR)
+      next % ptr = xml_node_next_sibling(this % ptr, C_NULL_PTR)
     end if
   end function xmlnode_next_sibling
 
@@ -288,7 +288,7 @@ contains
       string(i) = name(i:i)
     end do
     string(n+1) = C_NULL_CHAR
-    attribute%ptr = xml_node_attribute(this%ptr, c_loc(string))
+    attribute % ptr = xml_node_attribute(this % ptr, c_loc(string))
   end function xmlnode_attribute
 
   function xmlnode_child_value(this) result(val)
@@ -300,7 +300,7 @@ contains
     integer(C_SIZE_T) :: i
     type(C_PTR) :: text
 
-    text = xml_node_child_value(this%ptr)
+    text = xml_node_child_value(this % ptr)
     size_string = strlen(text)
     call c_f_pointer(text, string, [size_string])
     allocate(character(len=size_string, kind=C_CHAR) :: val)
@@ -313,13 +313,13 @@ contains
     class(XMLNode), intent(in) :: this
     type(XMLText) :: text
 
-    text%ptr = xml_node_text(this%ptr)
+    text % ptr = xml_node_text(this % ptr)
   end function xmlnode_text
 
   logical function xmlnode_associated(this)
     class(XMLNode), intent(in) :: this
 
-    xmlnode_associated = c_associated(this%ptr)
+    xmlnode_associated = c_associated(this % ptr)
   end function xmlnode_associated
 
   !=============================================================================
@@ -334,7 +334,7 @@ contains
     integer(C_SIZE_T) :: i
     type(C_PTR) :: name_ptr
 
-    name_ptr = xml_attribute_name(this%ptr)
+    name_ptr = xml_attribute_name(this % ptr)
     size_string = strlen(name_ptr)
     call c_f_pointer(name_ptr, string, [size_string])
     allocate(character(len=size_string, kind=C_CHAR) :: name)
@@ -352,7 +352,7 @@ contains
     integer(C_SIZE_T) :: i
     type(C_PTR) :: val_ptr
 
-    val_ptr = xml_attribute_value(this%ptr)
+    val_ptr = xml_attribute_value(this % ptr)
     size_string = strlen(val_ptr)
     call c_f_pointer(val_ptr, string, [size_string])
     allocate(character(len=size_string, kind=C_CHAR) :: val)
@@ -365,33 +365,33 @@ contains
     class(XMLAttribute), intent(in) :: this
     type(XMLAttribute) :: next
 
-    next%ptr = xml_attribute_next_attribute(this%ptr)
+    next % ptr = xml_attribute_next_attribute(this % ptr)
   end function xmlattribute_next_attribute
 
   logical(C_BOOL) function xmlattribute_as_bool(this)
     class(XMLAttribute), intent(in) :: this
-    xmlattribute_as_bool = xml_attribute_as_bool(this%ptr)
+    xmlattribute_as_bool = xml_attribute_as_bool(this % ptr)
   end function xmlattribute_as_bool
 
   integer(C_INT) function xmlattribute_as_int(this)
     class(XMLAttribute), intent(in) :: this
-    xmlattribute_as_int = xml_attribute_as_int(this%ptr)
+    xmlattribute_as_int = xml_attribute_as_int(this % ptr)
   end function xmlattribute_as_int
 
   integer(C_LONG_LONG) function xmlattribute_as_llong(this)
     class(XMLAttribute), intent(in) :: this
-    xmlattribute_as_llong = xml_attribute_as_llong(this%ptr)
+    xmlattribute_as_llong = xml_attribute_as_llong(this % ptr)
   end function xmlattribute_as_llong
 
   real(C_DOUBLE) function xmlattribute_as_double(this)
     class(XMLAttribute), intent(in) :: this
-    xmlattribute_as_double = xml_attribute_as_double(this%ptr)
+    xmlattribute_as_double = xml_attribute_as_double(this % ptr)
   end function xmlattribute_as_double
 
   logical function xmlattribute_associated(this)
     class(XMLAttribute), intent(in) :: this
 
-    xmlattribute_associated = c_associated(this%ptr)
+    xmlattribute_associated = c_associated(this % ptr)
   end function xmlattribute_associated
 
   !=============================================================================
@@ -399,22 +399,22 @@ contains
 
   logical(C_BOOL) function xmltext_as_bool(this)
     class(XMLText), intent(in) :: this
-    xmltext_as_bool = xml_text_as_bool(this%ptr)
+    xmltext_as_bool = xml_text_as_bool(this % ptr)
   end function xmltext_as_bool
 
   integer(C_INT) function xmltext_as_int(this)
     class(XMLText), intent(in) :: this
-    xmltext_as_int = xml_text_as_int(this%ptr)
+    xmltext_as_int = xml_text_as_int(this % ptr)
   end function xmltext_as_int
 
   integer(C_LONG_LONG) function xmltext_as_llong(this)
     class(XMLText), intent(in) :: this
-    xmltext_as_llong = xml_text_as_llong(this%ptr)
+    xmltext_as_llong = xml_text_as_llong(this % ptr)
   end function xmltext_as_llong
 
   real(C_DOUBLE) function xmltext_as_double(this)
     class(XMLText), intent(in) :: this
-    xmltext_as_double = xml_text_as_double(this%ptr)
+    xmltext_as_double = xml_text_as_double(this % ptr)
   end function xmltext_as_double
 
   !=============================================================================
@@ -432,20 +432,20 @@ contains
       string(i) = filename(i:i)
     end do
     string(n+1) = C_NULL_CHAR
-    this%ptr = xml_document_load_file(c_loc(string))
+    this % ptr = xml_document_load_file(c_loc(string))
   end subroutine xmldocument_load_file
 
   function xmldocument_document_element(this) result(node)
     class(XMLDocument), intent(in) :: this
     type(XMLNode) :: node
 
-    node%ptr = xml_document_document_element(this%ptr)
+    node % ptr = xml_document_document_element(this % ptr)
   end function xmldocument_document_element
 
   subroutine xmldocument_clear(this)
     class(XMLDocument), intent(inout) :: this
 
-    call xml_document_clear(this%ptr)
+    call xml_document_clear(this % ptr)
   end subroutine xmldocument_clear
 
 end module pugixml

@@ -43,6 +43,7 @@ class Geometry(object):
     def root_universe(self, root_universe):
         check_type('root universe', root_universe, openmc.Universe)
         self._root_universe = root_universe
+        self.determine_paths()
 
     def add_volume_information(self, volume_calc):
         """Add volume information from a stochastic volume calculation.

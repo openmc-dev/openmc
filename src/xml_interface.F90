@@ -47,12 +47,12 @@ contains
     type(XMLNode) :: child
 
     ! Check if an attribute or  exists
-    attr = node%attribute(name)
-    if (attr%associated()) then
+    attr = node % attribute(name)
+    if (attr % associated()) then
       found = .true.
     else
-      child = node%child(name)
-      if (child%associated()) then
+      child = node % child(name)
+      if (child % associated()) then
         found = .true.
       else
         found = .false.
@@ -200,7 +200,7 @@ contains
   end subroutine get_node_value_double
 
 !===============================================================================
-! GET_NODE_VALUE_STRING returns a single string from attr. or node
+! NODE_VALUE_STRING returns a single string from attr. or node
 !===============================================================================
 
   function node_value_string(node, name) result(val)
@@ -223,6 +223,10 @@ contains
       end if
     end if
   end function node_value_string
+
+!===============================================================================
+! GET_NODE_VALUE_STRING returns a single string from attr. or node
+!===============================================================================
 
   subroutine get_node_value_string(node, name, val)
     type(XMLNode), intent(in) :: node

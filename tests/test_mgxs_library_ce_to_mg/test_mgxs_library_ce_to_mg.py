@@ -71,6 +71,11 @@ class MGXSTestHarness(PyAPITestHarness):
         if os.path.exists('./tallies.xml'):
             os.remove('./tallies.xml')
 
+        # Enforce closing statepoint and summary files so HDF5
+        # does not throw an error during the next OpenMC execution
+        sp._f.close()
+        sp._summary._f.close()
+
         # Re-run MG mode.
         if self._opts.mpi_exec is not None:
             mpi_args = [self._opts.mpi_exec, '-n', self._opts.mpi_np]

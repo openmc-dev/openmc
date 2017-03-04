@@ -2524,8 +2524,12 @@ contains
 
         if (.not. run_CE .and. eo_filt % matches_transport_groups) then
 
-          ! determine outgoing energy from fission bank
+          ! determine outgoing energy group from fission bank
           g_out = int(fission_bank(n_bank - p % n_bank + k) % E)
+
+          ! modify the value so that g_out = 1 corresponds to the highest
+          ! energy bin
+          g_out = size(eo_filt % bins) - g_out
 
           ! change outgoing energy bin
           matching_bins(i) = g_out

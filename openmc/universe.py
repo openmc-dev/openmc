@@ -520,17 +520,18 @@ class Universe(object):
                 cell_element.set("universe", str(self._id))
                 xml_element.append(cell_element)
 
-    def _count_cell_instances(self):
+    def _determine_paths(self, path=''):
         """Count the number of instances for each cell in the universe, and
         record the count in the :attr:`Cell.num_instances` properties."""
 
+        univ_path = path + 'u{}'.format(self.id)
+
         for cell in self.cells.values():
-            # Increment the number of cell instances
-            cell._num_instances += 1
+            cell_path = '{}->c{}'.format(univ_path, cell.id)
 
             # If universe-filled, recursively count cells in filling universe
             if cell.fill_type == 'universe':
-                cell.fill._count_cell_instances()
+                cell.fill._determine_paths(cell_path + '->')
 
             # If lattice-filled, recursively call for all universes in lattice
             elif cell.fill_type == 'lattice':
@@ -538,34 +539,22 @@ class Universe(object):
 
                 # Count instances in each universe in the lattice
                 for index in latt.indices:
+                    latt_path = '{}->l{}{}->'.format(cell_path, latt.id, index)
                     if latt.ndim == 3:
                         univ = latt.universes[index[0]][index[1]][index[2]]
                     else:
                         univ = latt.universes[index[0]][index[1]]
-                    univ._count_cell_instances()
+                    univ._determine_paths(latt_path)
 
-    def _count_material_instances(self):
-        """Count the number of instances for each material in the Universe, and
-        record the count in the :attr:`Material.num_instances` properties."""
+            else:
+                if cell.fill_type == 'material':
+                    mat = cell.fill
+                elif cell.fill_type == 'distribmat':
+                    mat = cell.fill[len(cell._paths)]
+                else:
+                    mat = None
 
-        for cell in self.cells.values():
+                if mat is not None:
+                    mat._paths.append(cell_path)
 
-            # If material-filled, we are finished with all levels
-            if cell.fill_type == 'material':
-                cell.fill._num_instances += 1
-
-            # If universe-filled, recursively count materials in filling universe
-            elif cell.fill_type == 'universe':
-                cell.fill._count_material_instances()
-
-            # If lattice-filled, recursively call for all universes in lattice
-            elif cell.fill_type == 'lattice':
-                latt = cell.fill
-
-                # Count instances in each universe in the lattice
-                for index in latt.indices:
-                    if latt.ndim == 3:
-                        univ = latt.universes[index[0]][index[1]][index[2]]
-                    else:
-                        univ = latt.universes[index[0]][index[1]]
-                    univ._count_material_instances()
+                cell._paths.append(univ_path)

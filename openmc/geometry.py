@@ -450,24 +450,15 @@ class Geometry(object):
         lattices.sort(key=lambda x: x.id)
         return lattices
 
-    def count_cell_instances(self):
+    def determine_paths(self):
         """Count the number of instances for each cell in the Geometry, and
         record the count in the :attr:`Cell.num_instances` properties."""
 
         # (Re-)initialize all cell instances to 0
         for cell in self.get_all_cells().values():
-            cell._num_instances = 0
-
-        # Recursively traverse the CSG tree to count all cell instances
-        self.root_universe._count_cell_instances()
-
-    def count_material_instances(self):
-        """Count the number of instances for each material in the Geometry, and
-        record the count in the :attr:`Material.num_instances` properties."""
-
-        # (Re-)initialize all material instances to 0
+            cell._paths = []
         for material in self.get_all_materials().values():
-            material._num_instances = 0
+            material._paths = []
 
         # Recursively traverse the CSG tree to count all cell instances
-        self.root_universe._count_material_instances()
+        self.root_universe._determine_paths()

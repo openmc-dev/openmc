@@ -110,9 +110,9 @@ class Cell(object):
         self._offsets = None
         self._distribcell_index = None
         self._distribcell_paths = None
+        self._paths = []
         self._volume = None
         self._atoms = None
-        self._num_instances = None
 
     def __contains__(self, point):
         if self.region is None:
@@ -234,12 +234,15 @@ class Cell(object):
         return self._volume
 
     @property
+    def paths(self):
+        if not self._paths:
+            raise ValueError('Cell instance paths have not been determined. '
+                             'Call the Geometry.determine_paths() method.')
+        return self._paths
+
+    @property
     def num_instances(self):
-        if self._num_instances is None:
-            raise ValueError('The number of cell instances is unknown. Call '
-                             'the Geometry.count_cell_instances() method.')
-        else:
-            return self._num_instances
+        return len(self.paths)
 
     @id.setter
     def id(self, cell_id):

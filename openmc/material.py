@@ -90,9 +90,9 @@ class Material(object):
         self._density = None
         self._density_units = ''
         self._depletable = False
+        self._paths = []
         self._volume = None
         self._atoms = {}
-        self._num_instances = None
 
         # A list of tuples (nuclide, percent, percent type)
         self._nuclides = []
@@ -201,12 +201,15 @@ class Material(object):
         return self._depletable
 
     @property
+    def paths(self):
+        if not self._paths:
+            raise ValueError('Material instance paths have not been determined. '
+                             'Call the Geometry.determine_paths() method.')
+        return self._paths
+
+    @property
     def num_instances(self):
-        if self._num_instances is None:
-            raise ValueError('The number of cell instances is unknown. Call '
-                             'the Geometry.count_cell_instances() method.')
-        else:
-            return self._num_instances
+        return len(self.paths)
 
     @property
     def elements(self):

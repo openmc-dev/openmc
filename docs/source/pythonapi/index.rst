@@ -13,24 +13,6 @@ online. We recommend going through the modules from Codecademy_ and/or the
 `Scipy lectures`_. The full API documentation serves to provide more information
 on a given module or class.
 
--------------------------
-Example Jupyter Notebooks
--------------------------
-
-.. toctree::
-    :maxdepth: 1
-
-    examples/post-processing
-    examples/pandas-dataframes
-    examples/tally-arithmetic
-    examples/mgxs-part-i
-    examples/mgxs-part-ii
-    examples/mgxs-part-iii
-    examples/mgxs-part-iv
-    examples/mdgxs-part-i
-    examples/mdgxs-part-ii
-    examples/nuclear-data
-
 ------------------------------------
 :mod:`openmc` -- Basic Functionality
 ------------------------------------

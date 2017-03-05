@@ -18,7 +18,9 @@ features via the `Python API`_.
     mgxs-part-i
     mgxs-part-ii
     mgxs-part-iii
-    mgxs-part-iv
+    mg-mode-part-i
+    mg-mode-part-ii
+    mg-mode-part-iii
     mdgxs-part-i
     mdgxs-part-ii
     nuclear-data

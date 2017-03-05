@@ -5,6 +5,7 @@ module distribution_univariate
   use error,      only: fatal_error
   use random_lcg, only: prn
   use math,       only: maxwell_spectrum, watt_spectrum
+  use pugixml
   use string,     only: to_lower
   use xml_interface
 
@@ -265,7 +266,7 @@ contains
 
   subroutine distribution_from_xml(dist, node_dist)
     class(Distribution), allocatable, intent(inout) :: dist
-    type(Node), pointer :: node_dist
+    type(XMLNode), intent(in) :: node_dist
 
     character(MAX_WORD_LEN) :: type
     character(MAX_LINE_LEN) :: temp_str
@@ -279,7 +280,7 @@ contains
 
       ! Determine number of parameters specified
       if (check_for_node(node_dist, "parameters")) then
-        n = get_arraysize_double(node_dist, "parameters")
+        n = node_word_count(node_dist, "parameters")
       else
         n = 0
       end if

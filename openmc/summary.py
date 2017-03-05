@@ -105,7 +105,7 @@ class Summary(object):
 
         for key, group in self._f['geometry/cells'].items():
             cell_id = int(key.lstrip('cell '))
-            name = group['name'].value.decode()
+            name = group['name'].value.decode() if 'name' in group else ''
             fill_type = group['fill_type'].value.decode()
 
             if fill_type == 'material':
@@ -115,10 +115,7 @@ class Summary(object):
             else:
                 fill = group['lattice'].value
 
-            if 'region' in group.keys():
-                region = group['region'].value.decode()
-            else:
-                region = []
+            region = group['region'].value.decode() if 'region' in group else ''
 
             # Create this Cell
             cell = openmc.Cell(cell_id=cell_id, name=name)

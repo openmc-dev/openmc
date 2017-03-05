@@ -58,7 +58,7 @@ Now OpenMC should be recognized within the repository and can be installed:
 
 .. code-block:: sh
 
-    sudo apt-get install openmc
+    sudo apt install openmc
 
 Binary packages from this PPA may exist for earlier versions of Ubuntu, but they
 are no longer supported.
@@ -88,7 +88,16 @@ Prerequisites
       If you are using Debian or a Debian derivative such as Ubuntu, you can
       install the gfortran compiler using the following command::
 
-          sudo apt-get install gfortran
+          sudo apt install gfortran
+
+    * A C/C++ compiler such as gcc_
+
+      OpenMC includes two libraries written in C and C++, respectively. These
+      libraries have been tested to work with a wide variety of compilers. If
+      you are using a Debian-based distribution, you can install the g++
+      compiler using the following command::
+
+          sudo apt install g++
 
     * CMake_ cross-platform build system
 
@@ -97,7 +106,7 @@ Prerequisites
       derivative such as Ubuntu, you can install CMake using the following
       command::
 
-          sudo apt-get install cmake
+          sudo apt install cmake
 
     * HDF5_ Library for portable binary output format
 
@@ -125,7 +134,7 @@ Prerequisites
 
       .. code-block:: sh
 
-          sudo apt-get install libhdf5-8 libhdf5-dev hdf5-helpers
+          sudo apt install libhdf5-dev hdf5-helpers
 
       Note that the exact package names may vary depending on your particular
       distribution and version.
@@ -140,12 +149,13 @@ Prerequisites
       with the latest versions of both OpenMPI_ and MPICH_. OpenMPI and/or MPICH
       can be installed on Debian derivatives with::
 
-          sudo apt-get install mpich libmpich-dev
-          sudo apt-get install openmpi-bin libopenmpi1.6 libopenmpi-dev
+          sudo apt install mpich libmpich-dev
+          sudo apt install openmpi-bin libopenmpi-dev
 
     * git_ version control software for obtaining source code
 
 .. _gfortran: http://gcc.gnu.org/wiki/GFortran
+.. _gcc: https://gcc.gnu.org/
 .. _CMake: http://www.cmake.org
 .. _OpenMPI: http://www.open-mpi.org
 .. _MPICH: http://www.mpich.org

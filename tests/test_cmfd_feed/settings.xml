@@ -23,6 +23,6 @@
   </entropy>
 
  <!-- Run CMFD -->
- <run_cmfd> true </run_cmfd>
+ <run_cmfd>true</run_cmfd>
 
 </settings>

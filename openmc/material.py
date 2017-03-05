@@ -292,7 +292,7 @@ class Material(object):
         """
         mat_id = int(group.name.split('/')[-1].lstrip('material '))
 
-        name = group['name'].value.decode()
+        name = group['name'].value.decode() if 'name' in group else ''
         density = group['atom_density'].value
         nuc_densities = group['nuclide_densities'][...]
         nuclides = group['nuclides'].value

@@ -3861,7 +3861,7 @@ class ScatterMatrixXS(MatrixMGXS):
             filters = [[energy], [energy]]
 
             # Group-to-group scattering probability matrix
-            filters.extend([[energy, energyout], [energy, energyout]])
+            filters.extend([[energy, energyout]]) #, [energy, energyout]])
 
             # Multiplicity matrix
             if self.nu:

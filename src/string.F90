@@ -1,5 +1,7 @@
 module string
 
+  use, intrinsic :: ISO_C_BINDING
+
   use constants, only: MAX_WORDS, MAX_LINE_LEN, ERROR_INT, ERROR_REAL, &
        OP_LEFT_PAREN, OP_RIGHT_PAREN, OP_COMPLEMENT, OP_INTERSECTION, OP_UNION
   use error,     only: fatal_error, warning
@@ -481,5 +483,35 @@ contains
     string = adjustl(string)
 
   end function real_to_str
+
+!===============================================================================
+! WORD_COUNT determines the number of words in a string
+!===============================================================================
+
+  function word_count(str) result(n)
+    character(*), intent(in) :: str
+    integer :: n
+
+    integer :: i
+    character(kind=C_CHAR) :: chr
+    logical :: inword
+
+    ! Count number of words
+    inword = .false.
+    n = 0
+    do i = 1, len_trim(str)
+      chr = str(i:i)
+      select case (chr)
+      case (' ', C_HORIZONTAL_TAB, C_NEW_LINE, C_CARRIAGE_RETURN)
+        if (inword) then
+          inword = .false.
+          n = n + 1
+        end if
+      case default
+        inword = .true.
+      end select
+    end do
+    if (inword) n = n + 1
+  end function word_count
 
 end module string

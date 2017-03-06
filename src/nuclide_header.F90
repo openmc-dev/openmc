@@ -23,7 +23,6 @@ module nuclide_header
   use stl_vector,  only: VectorInt, VectorReal
   use string
   use urr_header, only: UrrData
-  use xml_interface
 
   implicit none
 

@@ -210,7 +210,7 @@ class Surface(object):
 
         """
         surface_id = int(group.name.split('/')[-1].lstrip('surface '))
-        name = group['name'].value.decode()
+        name = group['name'].value.decode() if 'name' in group else ''
         surf_type = group['type'].value.decode()
         bc = group['boundary_type'].value.decode()
         coeffs = group['coefficients'][...]

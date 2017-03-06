@@ -154,6 +154,11 @@ class MGXSTestHarness(PyAPITestHarness):
             form = '{0:12.6E} {1:12.6E}\n'
             outstr += form.format(sp.k_combined[0], sp.k_combined[1])
 
+            # Enforce closing statepoint and summary files so HDF5
+            # does not throw an error during the next OpenMC execution
+            sp._f.close()
+            sp._summary._f.close()
+
         return outstr
 
     def _get_results(self, outstr, hash_output=False):

@@ -42,7 +42,7 @@ contains
     type(VectorReal), allocatable :: uncertainty_vec(:) ! uncertainty of total # of atoms
 
     if (master) then
-      call header("STOCHASTIC VOLUME CALCULATION", level=1)
+      call header("STOCHASTIC VOLUME CALCULATION", 3)
       call time_volume % start()
     end if
 
@@ -54,7 +54,7 @@ contains
 
       if (master) then
         call write_message("Running volume calculation " // trim(to_str(i)) &
-             // "...")
+             // "...", 4)
       end if
 
       call get_volume(volume_calcs(i), volume, nuclide_vec, atoms_vec, &
@@ -74,9 +74,10 @@ contains
         do j = 1, size(volume_calcs(i) % domain_id)
           call write_message(trim(domain_type) // " " // trim(to_str(&
                volume_calcs(i) % domain_id(j))) // ": " // trim(to_str(&
-               volume(1,j))) // " +/- " // trim(to_str(volume(2,j))) // " cm^3")
+               volume(1,j))) // " +/- " // trim(to_str(volume(2,j))) // &
+               " cm^3", 4)
         end do
-        call write_message("")
+        call write_message("", 4)
 
         filename = trim(path_output) // 'volume_' // trim(to_str(i)) // '.h5'
         call write_volume(volume_calcs(i), filename, volume, nuclide_vec, &
@@ -90,7 +91,7 @@ contains
     if (master) then
       call time_volume % stop()
       call write_message("Elapsed time: " // trim(to_str(time_volume % &
-           get_value())) // " s")
+           get_value())) // " s", 6)
     end if
   end subroutine run_volume_calculations
 

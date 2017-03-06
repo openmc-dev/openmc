@@ -46,16 +46,16 @@ contains
     ! When trigger threshold is reached, write information
     if (satisfy_triggers) then
       call write_message("Triggers satisfied for batch " // &
-           trim(to_str(current_batch)))
+           trim(to_str(current_batch)), 7)
 
     ! When trigger is not reached write convergence info for user
     elseif (name == "eigenvalue") then
       call write_message("Triggers unsatisfied, max unc./thresh. is " // &
-           trim(to_str(max_ratio)) //  " for " // trim(name))
+           trim(to_str(max_ratio)) //  " for " // trim(name), 7)
     else
       call write_message("Triggers unsatisfied, max unc./thresh. is " // &
            trim(to_str(max_ratio)) // " for " // trim(name) // &
-           " in tally " // trim(to_str(tally_id)))
+           " in tally " // trim(to_str(tally_id)), 7)
     end if
 
     ! If batch_interval is not set, estimate batches till triggers are satisfied
@@ -75,7 +75,7 @@ contains
              " --  greater than max batches. ")
       else
         call write_message("The estimated number of batches is " // &
-             trim(to_str(n_pred_batches)))
+             trim(to_str(n_pred_batches)), 7)
       end if
     end if
   end subroutine check_triggers

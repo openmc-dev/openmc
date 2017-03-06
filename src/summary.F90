@@ -122,7 +122,7 @@ contains
     integer(HID_T) :: universes_group, univ_group
     integer(HID_T) :: lattices_group, lattice_group
     real(8), allocatable :: coeffs(:)
-    character(REGION_SPEC_LEN) :: region_spec
+    character(:), allocatable :: region_spec
     character(MAX_LINE_LEN), allocatable :: paths(:)
     character(MAX_LINE_LEN)              :: path
     type(Cell),     pointer :: c

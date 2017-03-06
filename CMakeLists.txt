@@ -1,5 +1,5 @@
 cmake_minimum_required(VERSION 2.8 FATAL_ERROR)
-project(openmc Fortran C)
+project(openmc Fortran C CXX)
 
 # Setup output directories
 set(CMAKE_ARCHIVE_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}/lib)
@@ -103,21 +103,17 @@ if(CMAKE_Fortran_COMPILER_ID STREQUAL GNU)
   # Make sure version is sufficient
   execute_process(COMMAND ${CMAKE_Fortran_COMPILER} -dumpversion
     OUTPUT_VARIABLE GCC_VERSION)
-  if(GCC_VERSION VERSION_LESS 4.6)
-    message(FATAL_ERROR "gfortran version must be 4.6 or higher")
+  if(GCC_VERSION VERSION_LESS 4.8)
+    message(FATAL_ERROR "gfortran version must be 4.8 or higher")
   endif()
 
   # GCC compiler options
   list(APPEND f90flags -cpp -std=f2008 -fbacktrace)
   list(APPEND cflags -cpp -std=c99)
   if(debug)
-    if(NOT (GCC_VERSION VERSION_LESS 4.7))
-      list(APPEND f90flags -Wall)
-      list(APPEND cflags -Wall)
-    endif()
-    list(APPEND f90flags -g -pedantic -fbounds-check
+    list(APPEND f90flags -g -Wall -pedantic -fbounds-check
       -ffpe-trap=invalid,overflow,underflow)
-    list(APPEND cflags -g -pedantic -fbounds-check)
+    list(APPEND cflags -g -Wall -pedantic -fbounds-check)
     list(APPEND ldflags -g)
   endif()
   if(profile)
@@ -225,27 +221,14 @@ if(GIT_SHA1_SUCCESS EQUAL 0)
 endif()
 
 #===============================================================================
-# FoX Fortran XML Library
+# pugixml library
 #===============================================================================
 
-# Only initialize git submodules if it is not there. User is responsible
-# for future updates of fox xml submodule.
-if(NOT EXISTS ${CMAKE_CURRENT_SOURCE_DIR}/src/xml/fox/.git)
-  if(NOT EXISTS ${CMAKE_CURRENT_SOURCE_DIR}/.git)
-    message("-- Cloning FoX XML git repository...")
-    execute_process(COMMAND git clone https://github.com/mit-crpg/fox.git src/xml/fox
-      WORKING_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR})
-    execute_process(COMMAND git checkout bdc852f4f43d969fb1b179cba79295c1e095a455
-      WORKING_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}/src/xml/fox)
-  else()
-    message("-- Initializing/Updating FoX XML submodule...")
-    execute_process(COMMAND git submodule init
-      WORKING_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR})
-    execute_process(COMMAND git submodule update
-      WORKING_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR})
-  endif()
-endif()
-add_subdirectory(src/xml/fox)
+add_library(pugixml src/pugixml/pugixml_c.cpp src/pugixml/pugixml.cpp)
+set_property(TARGET pugixml PROPERTY CXX_STANDARD 11)
+
+add_library(pugixml_fortran src/pugixml/pugixml_f.F90)
+target_link_libraries(pugixml_fortran pugixml)
 
 #===============================================================================
 # RPATH information
@@ -259,7 +242,7 @@ set(CMAKE_INSTALL_RPATH_USE_LINK_PATH TRUE)
 # Build faddeeva library
 #===============================================================================
 
-add_library(faddeeva STATIC src/Faddeeva.c)
+add_library(faddeeva STATIC src/faddeeva/Faddeeva.c)
 
 #===============================================================================
 # Build OpenMC executable
@@ -352,11 +335,12 @@ set(LIBOPENMC_FORTRAN_SRC
   src/vector_header.F90
   src/volume_calc.F90
   src/volume_header.F90
-  src/xml_interface.F90
-  src/xml/openmc_fox.F90)
+  src/xml_interface.F90)
 add_library(libopenmc STATIC ${LIBOPENMC_FORTRAN_SRC})
 set_target_properties(libopenmc PROPERTIES OUTPUT_NAME openmc)
 add_executable(${program} src/main.F90)
+set_property(TARGET ${program} libopenmc pugixml_fortran
+  PROPERTY LINKER_LANGUAGE Fortran)
 
 # target_include_directories was added in CMake 2.8.11 and is the recommended
 # way to set include directories. For lesser versions, we revert to set_property
@@ -388,7 +372,7 @@ endforeach()
 
 # target_link_libraries treats any arguments starting with - but not -l as
 # linker flags. Thus, we can pass both linker flags and libraries together.
-target_link_libraries(libopenmc ${ldflags} ${HDF5_LIBRARIES} fox_dom faddeeva)
+target_link_libraries(libopenmc ${ldflags} ${HDF5_LIBRARIES} pugixml_fortran faddeeva)
 target_link_libraries(${program} ${ldflags} libopenmc)
 
 #===============================================================================

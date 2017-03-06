@@ -46,10 +46,10 @@ contains
     ! Display header
     if (master) then
       if (run_mode == MODE_FIXEDSOURCE) then
-        call header("FIXED SOURCE TRANSPORT SIMULATION", level=1)
+        call header("FIXED SOURCE TRANSPORT SIMULATION", 3)
       elseif (run_mode == MODE_EIGENVALUE) then
-        call header("K EIGENVALUE SIMULATION", level=1)
-        call print_columns()
+        call header("K EIGENVALUE SIMULATION", 3)
+        if (verbosity >= 7) call print_columns()
       end if
     end if
 
@@ -109,8 +109,6 @@ contains
 
     ! ==========================================================================
     ! END OF RUN WRAPUP
-
-    if (master) call header("SIMULATION FINISHED", level=1)
 
     call finalize_simulation()
 
@@ -172,7 +170,7 @@ contains
 
     if (run_mode == MODE_FIXEDSOURCE) then
       call write_message("Simulating batch " // trim(to_str(current_batch)) &
-           // "...", 1)
+           // "...", 6)
     end if
 
     ! Reset total starting particle weight used for normalizing tallies
@@ -273,7 +271,8 @@ contains
       call calculate_average_keff()
 
       ! Write generation output
-      if (master .and. current_gen /= gen_per_batch) call print_generation()
+      if (master .and. current_gen /= gen_per_batch .and. verbosity >= 7) &
+           call print_generation()
     elseif (run_mode == MODE_FIXEDSOURCE) then
       ! For fixed-source mode, we need to sample the external source
       if (path_source == '') then
@@ -310,7 +309,7 @@ contains
       if (cmfd_on) call execute_cmfd()
 
       ! Display output
-      if (master) call print_batch_keff()
+      if (master .and. verbosity >= 7) call print_batch_keff()
 
       ! Calculate combined estimate of k-effective
       if (master) call calculate_combined_keff()
@@ -356,7 +355,7 @@ contains
 
     ! Write message at beginning
     if (current_batch == 1) then
-      call write_message("Replaying history from state point...", 1)
+      call write_message("Replaying history from state point...", 6)
     end if
 
     if (run_mode == MODE_EIGENVALUE) then
@@ -365,17 +364,19 @@ contains
         call calculate_average_keff()
 
         ! print out batch keff
-        if (current_gen < gen_per_batch) then
-          if (master) call print_generation()
-        else
-          if (master) call print_batch_keff()
+        if (verbosity >= 7) then
+          if (current_gen < gen_per_batch) then
+            if (master) call print_generation()
+          else
+            if (master) call print_batch_keff()
+          end if
         end if
       end do
     end if
 
     ! Write message at end
     if (current_batch == restart_batch) then
-      call write_message("Resuming simulation...", 1)
+      call write_message("Resuming simulation...", 6)
     end if
 
   end subroutine replay_batch_history
@@ -403,8 +404,8 @@ contains
     call time_finalize%stop()
     call time_total%stop()
     if (master) then
-      call print_runtime()
-      call print_results()
+      if (verbosity >= 6) call print_runtime()
+      if (verbosity >= 4) call print_results()
       if (check_overlaps) call print_overlap_check()
     end if
 

@@ -121,10 +121,6 @@ class Summary(object):
             cell = openmc.Cell(cell_id=cell_id, name=name)
 
             if fill_type == 'universe':
-                if 'offset' in group:
-                    offset = group['offset'][...]
-                    cell.offsets = offset
-
                 if 'translation' in group:
                     translation = group['translation'][...]
                     translation = np.asarray(translation, dtype=np.float64)
@@ -144,14 +140,6 @@ class Summary(object):
             # Generate Region object given infix expression
             if region:
                 cell.region = Region.from_expression(region, surfaces)
-
-            # Get the distribcell data
-            if 'distribcell_index' in group:
-                ind = group['distribcell_index'].value
-                cell.distribcell_index = ind
-                paths = group['paths'][...]
-                paths = [str(path.decode()) for path in paths]
-                cell.distribcell_paths = paths
 
             # Add the Cell to the global dictionary of all Cells
             cells[cell.id] = cell

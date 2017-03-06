@@ -1828,7 +1828,7 @@ class MGXS(object):
                 modified.write('\n\\end{document}')
 
     def get_pandas_dataframe(self, groups='all', nuclides='all',
-                             xs_type='macro', distribcell_paths=True):
+                             xs_type='macro', paths=True):
         """Build a Pandas DataFrame for the MGXS data.
 
         This method leverages :meth:`openmc.Tally.get_pandas_dataframe`, but
@@ -1848,7 +1848,7 @@ class MGXS(object):
         xs_type: {'macro', 'micro'}
             Return macro or micro cross section in units of cm^-1 or barns.
             Defaults to 'macro'.
-        distribcell_paths : bool, optional
+        paths : bool, optional
             Construct columns for distribcell tally filters (default is True).
             The geometric information in the Summary object is embedded into
             a Multi-index column with a geometric "path" to each distribcell
@@ -1878,8 +1878,7 @@ class MGXS(object):
 
             # Use tally summation to sum across all nuclides
             xs_tally = self.xs_tally.summation(nuclides=self.get_nuclides())
-            df = xs_tally.get_pandas_dataframe(
-                distribcell_paths=distribcell_paths)
+            df = xs_tally.get_pandas_dataframe(paths=paths)
 
             # Remove nuclide column since it is homogeneous and redundant
             if self.domain_type == 'mesh':
@@ -1890,13 +1889,11 @@ class MGXS(object):
         # If the user requested a specific set of nuclides
         elif self.by_nuclide and nuclides != 'all':
             xs_tally = self.xs_tally.get_slice(nuclides=nuclides)
-            df = xs_tally.get_pandas_dataframe(
-                distribcell_paths=distribcell_paths)
+            df = xs_tally.get_pandas_dataframe(paths=paths)
 
         # If the user requested all nuclides, keep nuclide column in dataframe
         else:
-            df = self.xs_tally.get_pandas_dataframe(
-                distribcell_paths=distribcell_paths)
+            df = self.xs_tally.get_pandas_dataframe(paths=paths)
 
         # Remove the score column since it is homogeneous and redundant
         if self.domain_type == 'mesh':
@@ -4136,7 +4133,7 @@ class ScatterMatrixXS(MatrixMGXS):
         return xs
 
     def get_pandas_dataframe(self, groups='all', nuclides='all', moment='all',
-                             xs_type='macro', distribcell_paths=True):
+                             xs_type='macro', paths=True):
         """Build a Pandas DataFrame for the MGXS data.
 
         This method leverages :meth:`openmc.Tally.get_pandas_dataframe`, but
@@ -4160,7 +4157,7 @@ class ScatterMatrixXS(MatrixMGXS):
         xs_type: {'macro', 'micro'}
             Return macro or micro cross section in units of cm^-1 or barns.
             Defaults to 'macro'.
-        distribcell_paths : bool, optional
+        paths : bool, optional
             Construct columns for distribcell tally filters (default is True).
             The geometric information in the Summary object is embedded into a
             Multi-index column with a geometric "path" to each distribcell
@@ -4180,7 +4177,7 @@ class ScatterMatrixXS(MatrixMGXS):
         """
 
         df = super(ScatterMatrixXS, self).get_pandas_dataframe(
-            groups, nuclides, xs_type, distribcell_paths)
+            groups, nuclides, xs_type, paths)
 
         if self.scatter_format == 'legendre':
             # Add a moment column to dataframe
@@ -5188,7 +5185,7 @@ class Chi(MGXS):
         return xs
 
     def get_pandas_dataframe(self, groups='all', nuclides='all',
-                             xs_type='macro', distribcell_paths=False):
+                             xs_type='macro', paths=False):
         """Build a Pandas DataFrame for the MGXS data.
 
         This method leverages :meth:`openmc.Tally.get_pandas_dataframe`, but
@@ -5208,7 +5205,7 @@ class Chi(MGXS):
         xs_type: {'macro', 'micro'}
             Return macro or micro cross section in units of cm^-1 or barns.
             Defaults to 'macro'.
-        distribcell_paths : bool, optional
+        paths : bool, optional
             Construct columns for distribcell tally filters (default is True).
             The geometric information in the Summary object is embedded into
             a Multi-index column with a geometric "path" to each distribcell
@@ -5229,7 +5226,7 @@ class Chi(MGXS):
 
         # Build the dataframe using the parent class method
         df = super(Chi, self).get_pandas_dataframe(
-            groups, nuclides, xs_type, distribcell_paths=distribcell_paths)
+            groups, nuclides, xs_type, paths=paths)
 
         # If user requested micro cross sections, multiply by the atom
         # densities to cancel out division made by the parent class method

@@ -132,11 +132,6 @@ class Lattice(object):
         name = group['name'].value.decode() if 'name' in group else ''
         lattice_type = group['type'].value.decode()
 
-        if 'offsets' in group:
-            offsets = group['offsets'][...]
-        else:
-            offsets = None
-
         if lattice_type == 'rectangular':
             dimension = group['dimension'][...]
             lower_left = group['lower_left'][...]
@@ -168,10 +163,6 @@ class Lattice(object):
 
             # Set the universes for the lattice
             lattice.universes = uarray
-
-            # Set the distribcell offsets for the lattice
-            if offsets is not None:
-                lattice.offsets = offsets
 
         elif lattice_type == 'hexagonal':
             n_rings = group['n_rings'].value
@@ -255,9 +246,6 @@ class Lattice(object):
             else:
                 # Lattice is 2D; extract the only axial level
                 lattice.universes = uarray[0]
-
-            if offsets is not None:
-                lattice.offsets = offsets
 
         return lattice
 
@@ -488,7 +476,6 @@ class RectLattice(Lattice):
 
         # Initialize Lattice class attributes
         self._lower_left = None
-        self._offsets = None
 
     def __eq__(self, other):
         if not isinstance(other, RectLattice):
@@ -537,19 +524,6 @@ class RectLattice(Lattice):
 
         string = string.rstrip('\n')
 
-        if self._offsets is not None:
-            string += '{0: <16}\n'.format('\tOffsets')
-
-            # Lattice cell offsets
-            for i, offset in enumerate(np.ravel(self._offsets)):
-                string += '{0} '.format(offset)
-
-                # Add a newline character when we reach end of row of cells
-                if (i+1) % self.shape[0] == 0:
-                    string += '\n'
-
-            string = string.rstrip('\n')
-
         return string
 
     @property
@@ -579,10 +553,6 @@ class RectLattice(Lattice):
         return len(self.pitch)
 
     @property
-    def offsets(self):
-        return self._offsets
-
-    @property
     def shape(self):
         return self._universes.shape[::-1]
 
@@ -591,11 +561,6 @@ class RectLattice(Lattice):
         cv.check_type('lattice lower left corner', lower_left, Iterable, Real)
         cv.check_length('lattice lower left corner', lower_left, 2, 3)
         self._lower_left = lower_left
-
-    @offsets.setter
-    def offsets(self, offsets):
-        cv.check_type('lattice offsets', offsets, Iterable)
-        self._offsets = offsets
 
     @Lattice.pitch.setter
     def pitch(self, pitch):

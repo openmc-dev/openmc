@@ -123,8 +123,6 @@ contains
     integer(HID_T) :: lattices_group, lattice_group
     real(8), allocatable :: coeffs(:)
     character(:), allocatable :: region_spec
-    character(MAX_LINE_LEN), allocatable :: paths(:)
-    character(MAX_LINE_LEN)              :: path
     type(Cell),     pointer :: c
     class(Surface), pointer :: s
     class(Lattice), pointer :: lat
@@ -225,22 +223,6 @@ contains
         end select
       end do
       call write_dataset(cell_group, "region", adjustl(region_spec))
-
-      ! Write distribcell data
-      if (c % distribcell_index /= NONE) then
-        call write_dataset(cell_group, "distribcell_index", &
-                           c % distribcell_index)
-
-        allocate(paths(c % instances))
-        do k = 1, c % instances
-          path = ''
-          offset = 1
-          call find_offset(i, universes(root_universe), k, offset, path)
-          paths(k) = path
-        end do
-        call write_dataset(cell_group, "paths", paths)
-        deallocate(paths)
-      end if
 
       call close_group(cell_group)
     end do CELL_LOOP
@@ -391,13 +373,6 @@ contains
         call write_dataset(lattice_group, "outer", universes(lat % outer) % id)
       else
         call write_dataset(lattice_group, "outer", lat % outer)
-      end if
-
-      ! Write distribcell offsets if present
-      if (allocated(lat%offset)) then
-        if (size(lat%offset) > 0) then
-          call write_dataset(lattice_group, "offsets", lat%offset)
-        end if
       end if
 
       select type (lat)

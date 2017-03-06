@@ -60,10 +60,6 @@ class Universe(object):
         # Values - Cells
         self._cells = OrderedDict()
 
-        # Keys     - Cell IDs
-        # Values - Offsets
-        self._cell_offsets = OrderedDict()
-
         if cells is not None:
             self.add_cells(cells)
 

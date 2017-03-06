@@ -395,7 +395,7 @@ class Filter(object):
 
         Keyword arguments
         -----------------
-        distribcell_paths : bool
+        paths : bool
             Only used for DistirbcellFilter.  If True (default), expand
             distribcell indices into multi-index columns describing the path
             to that distribcell through the CSG tree.  NOTE: This option assumes
@@ -1095,14 +1095,14 @@ class DistribcellFilter(Filter):
     stride : Integral
         The number of filter, nuclide and score bins within each of this
         filter's bins.
-    distribcell_paths : list of str
+    paths : list of str
         The paths traversed through the CSG tree to reach each distribcell
         instance (for 'distribcell' filters only)
 
     """
 
     def __init__(self, bins):
-        self._distribcell_paths = None
+        self._paths = None
         super(DistribcellFilter, self).__init__(bins)
 
     @classmethod
@@ -1115,20 +1115,16 @@ class DistribcellFilter(Filter):
         out = cls(group['bins'].value)
         out.num_bins = group['n_bins'].value
 
-        if 'paths' in group:
-            out.distribcell_paths = [str(path.decode()) for path in
-                                     group['paths'].value]
-
         return out
 
     @property
-    def distribcell_paths(self):
-        return self._distribcell_paths
+    def paths(self):
+        return self._paths
 
-    @distribcell_paths.setter
-    def distribcell_paths(self, distribcell_paths):
-        cv.check_iterable_type('distribcell_paths', distribcell_paths, str)
-        self._distribcell_paths = distribcell_paths
+    @paths.setter
+    def paths(self, paths):
+        cv.check_iterable_type('paths', paths, str)
+        self._paths = paths
 
     def check_bins(self, bins):
         if not len(bins) == 1:
@@ -1163,7 +1159,7 @@ class DistribcellFilter(Filter):
 
         Keyword arguments
         -----------------
-        distribcell_paths : bool
+        paths : bool
             If True (default), expand distribcell indices into multi-index
             columns describing the path to that distribcell through the CSG
             tree.  NOTE: This option assumes that all distribcell paths are of
@@ -1201,21 +1197,21 @@ class DistribcellFilter(Filter):
 
         level_df = None
 
-        distribcell_paths = kwargs.setdefault('distribcell_paths', True)
+        paths = kwargs.setdefault('paths', True)
 
         # Create Pandas Multi-index columns for each level in CSG tree
-        if distribcell_paths:
+        if paths:
 
             # Distribcell paths require linked metadata from the Summary
-            if self.distribcell_paths is None:
+            if self.paths is None:
                 msg = 'Unable to construct distribcell paths since ' \
                       'the Summary is not linked to the StatePoint'
                 raise ValueError(msg)
 
             # Make copy of array of distribcell paths to use in
             # Pandas Multi-index column construction
-            num_offsets = len(self.distribcell_paths)
-            paths = [_path_to_levels(p) for p in self.distribcell_paths]
+            num_offsets = len(self.paths)
+            paths = [_path_to_levels(p) for p in self.paths]
 
             # Loop over CSG levels in the distribcell paths
             num_levels = len(paths[0])
@@ -1561,7 +1557,7 @@ class AzimuthalFilter(RealFilter):
                       'increasing'.format(bins, type(self))
                 raise ValueError(msg)
 
-    def get_pandas_dataframe(self, data_size, distribcell_paths=True):
+    def get_pandas_dataframe(self, data_size, paths=True):
         """Builds a Pandas DataFrame for the Filter's bins.
 
         This method constructs a Pandas DataFrame object for the filter with

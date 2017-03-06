@@ -359,7 +359,7 @@ def _calculate_cexs_nuclide(this, types, temperature=294., sab_name=None,
         if strT in nuc.temperatures:
             nucT = strT
         else:
-            delta_T = np.array(nuc.kTs) - T*openmc.data.K_BOLTZMANN
+            delta_T = np.array(nuc.kTs) - T * openmc.data.K_BOLTZMANN
             closest_index = np.argmin(np.abs(delta_T))
             nucT = nuc.temperatures[closest_index]
 
@@ -370,19 +370,11 @@ def _calculate_cexs_nuclide(this, types, temperature=294., sab_name=None,
             if strT in sab.temperatures:
                 sabT = strT
             else:
-                data_Ts = sab.temperatures
-                for t in range(len(data_Ts)):
-                    # Take off the "K" and convert to a float
-                    data_Ts[t] = float(data_Ts[t][:-1])
-                min_delta = np.finfo(np.float64).max
-                closest_t = -1
-                for t in data_Ts:
-                    if abs(data_Ts[t] - T) < min_delta:
-                        closest_t = t
-                sabT = "{}K".format(int(round(data_Ts[closest_t])))
+                delta_T = np.array(sab.kTs) - T * openmc.data.K_BOLTZMANN
+                closest_index = np.argmin(np.abs(delta_T))
+                sabT = sab.temperatures[closest_index]
 
-            # Create an energy grid composed the S(a,b) and
-            # the nuclide's grid
+            # Create an energy grid composed the S(a,b) and the nuclide's grid
             grid = nuc.energy[nucT]
             sab_Emax = 0.
             sab_funcs = []

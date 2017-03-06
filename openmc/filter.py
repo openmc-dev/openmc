@@ -1041,7 +1041,7 @@ class EnergyoutFilter(EnergyFilter):
     """
 
 
-def _path_to_levels(path, distribcell_id):
+def _path_to_levels(path):
     """Convert distribcell path to list of levels
 
     Parameters
@@ -1055,18 +1055,17 @@ def _path_to_levels(path, distribcell_id):
         List of levels in path
 
     """
-    # Paths normally omit the cell at the lowest level since it is implicit
-    complete_path = "{}->c{}".format(path, distribcell_id)
-    path_items = complete_path.split('->')
+    # Split path into universes/cells/lattices
+    path_items = path.split('->')
 
-    # Pair together universe and cell information
+    # Pair together universe and cell information from the same level
     idx = [i for i, item in enumerate(path_items) if item.startswith('u')]
     for i in reversed(idx):
         univ_id = int(path_items.pop(i)[1:])
         cell_id = int(path_items.pop(i)[1:])
         path_items.insert(i, ('universe', univ_id, cell_id))
 
-    # Reformat lattice
+    # Reformat lattice into tuple
     idx = [i for i, item in enumerate(path_items) if isinstance(item, str)]
     for i in idx:
         item = path_items.pop(i)[1:-1]
@@ -1216,11 +1215,10 @@ class DistribcellFilter(Filter):
             # Make copy of array of distribcell paths to use in
             # Pandas Multi-index column construction
             num_offsets = len(self.distribcell_paths)
-            distribcell_paths = [_path_to_levels(p, self.bins[0])
-                                 for p in self.distribcell_paths]
+            paths = [_path_to_levels(p) for p in self.distribcell_paths]
 
             # Loop over CSG levels in the distribcell paths
-            num_levels = len(distribcell_paths[0])
+            num_levels = len(paths[0])
             for i_level in range(num_levels):
                 # Use level key as first index in Pandas Multi-index column
                 level_key = 'level {}'.format(i_level + 1)
@@ -1230,7 +1228,7 @@ class DistribcellFilter(Filter):
 
                 # Use the first distribcell path to determine if level
                 # is a universe/cell or lattice level
-                path = distribcell_paths[0]
+                path = paths[0]
                 if path[i_level][0] == 'lattice':
                     # Initialize prefix Multi-index keys
                     lat_id_key = (level_key, 'lat', 'id')
@@ -1257,7 +1255,7 @@ class DistribcellFilter(Filter):
                     level_dict[cell_key] = np.empty(num_offsets)
 
                 # Populate Multi-index arrays with all distribcell paths
-                for i, path in enumerate(distribcell_paths):
+                for i, path in enumerate(paths):
 
                     level = path[i_level]
                     if level[0] == 'lattice':

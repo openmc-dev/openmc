@@ -556,4 +556,4 @@ class Universe(object):
                     mat._paths.append(cell_path)
 
             # Append current path
-            cell._paths.append(univ_path)
+            cell._paths.append(cell_path)

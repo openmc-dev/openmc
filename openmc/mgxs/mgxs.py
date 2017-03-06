@@ -3778,10 +3778,13 @@ class ScatterMatrixXS(MatrixMGXS):
             scores = ['flux', 'scatter']
 
             # Add scores for group-to-group scattering probability matrix
-            if self.legendre_order == 0:
+            if self.scatter_format == 'legendre':
+                if self.legendre_order == 0:
+                    scores.append('scatter-0')
+                else:
+                    scores.append('scatter-P{}'.format(self.legendre_order))
+            elif self.scatter_format == 'histogram':
                 scores.append('scatter-0')
-            else:
-                scores.append('scatter-P{}'.format(self.legendre_order))
 
             # Add scores for multiplicity matrix
             if self.nu:
@@ -3861,7 +3864,12 @@ class ScatterMatrixXS(MatrixMGXS):
             filters = [[energy], [energy]]
 
             # Group-to-group scattering probability matrix
-            filters.append([energy, energyout]) #, [energy, energyout]])
+            if self.scatter_format == 'legendre':
+                filters.append([energy, energyout])
+            elif self.scatter_format == 'histogram':
+                bins = np.linspace(-1., 1., num=self.histogram_bins + 1,
+                                   endpoint=True)
+                filters.append([energy, energyout, openmc.MuFilter(bins)])
 
             # Multiplicity matrix
             if self.nu:

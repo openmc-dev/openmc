@@ -378,6 +378,51 @@ class Lattice(object):
 
         return all_universes
 
+    def get_universe(self, idx):
+        """Return universe corresponding to a lattice element index
+
+        Parameters
+        ----------
+        idx : Iterable of int
+            Lattice element indices in the :math:`(x,y,z)` coordinate system
+
+        Returns
+        -------
+        openmc.Universe
+            Universe with given indices
+
+        """
+        idx_u = self.get_universe_index(idx)
+        if self.ndim == 2:
+            return self.universes[idx_u[0]][idx_u[1]]
+        else:
+            return self.universes[idx_u[0]][idx_u[1]][idx_u[2]]
+
+    def find(self, point):
+        """Find cells/universes/lattices which contain a given point
+
+        Parameters
+        ----------
+        point : 3-tuple of float
+            Cartesian coordinatesof the point
+
+        Returns
+        -------
+        list
+            Sequence of universes, cells, and lattices which are traversed to
+            find the given point
+
+        """
+        idx, p = self.find_element(point)
+        if self.is_valid_index(idx):
+            u = self.get_universe(idx)
+        else:
+            if self.outer is not None:
+                u = self.outer
+            else:
+                return []
+        return [(self, idx)] + u.find(p)
+
 
 class RectLattice(Lattice):
     """A lattice consisting of rectangular prisms.
@@ -515,6 +560,15 @@ class RectLattice(Lattice):
         else:
             return list(np.broadcast(*np.ogrid[
                 :self.shape[2], :self.shape[1], :self.shape[0]]))
+
+    @property
+    def _natural_indices(self):
+        if self.ndim == 2:
+            nx, ny = self.shape
+            return np.broadcast(*np.ogrid[:nx, :ny])
+        else:
+            nx, ny, nz = self.shape
+            return np.broadcast(*np.ogrid[:nx, :ny, :nz])
 
     @property
     def lower_left(self):
@@ -680,32 +734,6 @@ class RectLattice(Lattice):
             return (0 <= idx[0] < self.shape[0] and
                     0 <= idx[1] < self.shape[1] and
                     0 <= idx[2] < self.shape[2])
-
-    def find(self, point):
-        """Find cells/universes/lattices which contain a given point
-
-        Parameters
-        ----------
-        point : 3-tuple of float
-            Cartesian coordinatesof the point
-
-        Returns
-        -------
-        list
-            Sequence of universes, cells, and lattices which are traversed to
-            find the given point
-
-        """
-        idx, p = self.find_element(point)
-        if self.is_valid_index(idx):
-            idx_u = self.get_universe_index(idx)
-            u = self.universes[idx_u]
-        else:
-            if self.outer is not None:
-                u = self.outer
-            else:
-                return []
-        return [(self, idx)] + u.find(p)
 
     def create_xml_subelement(self, xml_element):
 
@@ -921,6 +949,23 @@ class HexLattice(Lattice):
             return [(z, r, i) for z in range(self.num_axial)
                     for r in range(self.num_rings)
                     for i in range(max(6*(self.num_rings - 1 - r), 1))]
+
+    @property
+    def _natural_indices(self):
+        r = self.num_rings
+        if self.num_axial is None:
+            for a in range(-r + 1, r):
+                for x in range(-r + 1, r):
+                    idx = (x, a)
+                    if self.is_valid_index(idx):
+                        yield idx
+        else:
+            for z in range(self.num_axial):
+                for a in range(-r + 1, r):
+                    for x in range(-r + 1, r):
+                        idx = (x, a, z)
+                        if self.is_valid_index(idx):
+                            yield idx
 
     @property
     def ndim(self):
@@ -1143,36 +1188,6 @@ class HexLattice(Lattice):
             return g < self.num_rings
         else:
             return g < self.num_rings and 0 <= idx[2] < self.num_axial
-
-    def find(self, point):
-        """Find cells/universes/lattices which contain a given point
-
-        Parameters
-        ----------
-        point : 3-tuple of float
-            Cartesian coordinatesof the point
-
-        Returns
-        -------
-        list
-            Sequence of universes, cells, and lattices which are traversed to
-            find the given point
-
-        """
-        idx, p = self.find_element(point)
-        if self.is_valid_index(idx):
-            idx_u = self.get_universe_index(idx)
-            if self.num_axial is None:
-                u = self.universes[idx_u[0]][idx_u[1]]
-            else:
-                u = self.universes[idx_u[0]][idx_u[1]][idx_u[2]]
-        else:
-            if self.outer is not None:
-                u = self.outer
-            else:
-                return []
-
-        return [(self, idx)] + u.find(p)
 
     def create_xml_subelement(self, xml_element):
         # Determine if XML element already contains subelement for this Lattice

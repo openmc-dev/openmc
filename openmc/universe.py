@@ -538,12 +538,10 @@ class Universe(object):
                 latt = cell.fill
 
                 # Count instances in each universe in the lattice
-                for index in latt.indices:
-                    latt_path = '{}->l{}{}->'.format(cell_path, latt.id, index)
-                    if latt.ndim == 3:
-                        univ = latt.universes[index[0]][index[1]][index[2]]
-                    else:
-                        univ = latt.universes[index[0]][index[1]]
+                for index in latt._natural_indices:
+                    latt_path = '{}->l{}({})->'.format(
+                        cell_path, latt.id, ",".join(str(x) for x in index))
+                    univ = latt.get_universe(index)
                     univ._determine_paths(latt_path)
 
             else:

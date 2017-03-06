@@ -1041,6 +1041,43 @@ class EnergyoutFilter(EnergyFilter):
     """
 
 
+def _path_to_levels(path, distribcell_id):
+    """Convert distribcell path to list of levels
+
+    Parameters
+    ----------
+    path : str
+        Distribcell path
+
+    Returns
+    -------
+    list
+        List of levels in path
+
+    """
+    # Paths normally omit the cell at the lowest level since it is implicit
+    complete_path = "{}->c{}".format(path, distribcell_id)
+    path_items = complete_path.split('->')
+
+    # Pair together universe and cell information
+    idx = [i for i, item in enumerate(path_items) if item.startswith('u')]
+    for i in reversed(idx):
+        univ_id = int(path_items.pop(i)[1:])
+        cell_id = int(path_items.pop(i)[1:])
+        path_items.insert(i, ('universe', univ_id, cell_id))
+
+    # Reformat lattice
+    idx = [i for i, item in enumerate(path_items) if isinstance(item, str)]
+    for i in idx:
+        item = path_items.pop(i)[1:-1]
+        lat_id, lat_xyz = item.split('(')
+        lat_id = int(lat_id)
+        lat_xyz = tuple(int(x) for x in lat_xyz.split(','))
+        path_items.insert(i, ('lattice', lat_id, lat_xyz))
+
+    return path_items
+
+
 class DistribcellFilter(Filter):
     """Bins tally event locations on instances of repeated cells.
 
@@ -1178,34 +1215,23 @@ class DistribcellFilter(Filter):
 
             # Make copy of array of distribcell paths to use in
             # Pandas Multi-index column construction
-            distribcell_paths = copy.deepcopy(self.distribcell_paths)
-            num_offsets = len(distribcell_paths)
+            num_offsets = len(self.distribcell_paths)
+            distribcell_paths = [_path_to_levels(p, self.bins[0])
+                                 for p in self.distribcell_paths]
 
             # Loop over CSG levels in the distribcell paths
-            level_counter = 0
-            levels_remain = True
-            while levels_remain:
-
+            num_levels = len(distribcell_paths[0])
+            for i_level in range(num_levels):
                 # Use level key as first index in Pandas Multi-index column
-                level_counter += 1
-                level_key = 'level {}'.format(level_counter)
-
-                # Use the first distribcell path to determine if level
-                # is a universe/cell or lattice level
-                first_path = distribcell_paths[0]
-                next_index = first_path.index('-')
-                level = first_path[:next_index]
-
-                # Trim universe/lattice info from path
-                first_path = first_path[next_index+2:]
+                level_key = 'level {}'.format(i_level + 1)
 
                 # Create a dictionary for this level for Pandas Multi-index
                 level_dict = OrderedDict()
 
-                # This level is a lattice (e.g., ID(x,y,z))
-                if '(' in level:
-                    level_type = 'lattice'
-
+                # Use the first distribcell path to determine if level
+                # is a universe/cell or lattice level
+                path = distribcell_paths[0]
+                if path[i_level][0] == 'lattice':
                     # Initialize prefix Multi-index keys
                     lat_id_key = (level_key, 'lat', 'id')
                     lat_x_key = (level_key, 'lat', 'x')
@@ -1217,12 +1243,10 @@ class DistribcellFilter(Filter):
                     level_dict[lat_id_key] = np.empty(num_offsets)
                     level_dict[lat_x_key] = np.empty(num_offsets)
                     level_dict[lat_y_key] = np.empty(num_offsets)
-                    level_dict[lat_z_key] = np.empty(num_offsets)
+                    if len(path[i_level][2]) == 3:
+                        level_dict[lat_z_key] = np.empty(num_offsets)
 
-                # This level is a universe / cell (e.g., ID->ID)
                 else:
-                    level_type = 'universe'
-
                     # Initialize prefix Multi-index keys
                     univ_key = (level_key, 'univ', 'id')
                     cell_key = (level_key, 'cell', 'id')
@@ -1232,52 +1256,22 @@ class DistribcellFilter(Filter):
                     level_dict[univ_key] = np.empty(num_offsets)
                     level_dict[cell_key] = np.empty(num_offsets)
 
-                    # Determine any levels remain in path
-                    if '-' not in first_path:
-                        levels_remain = False
-
                 # Populate Multi-index arrays with all distribcell paths
                 for i, path in enumerate(distribcell_paths):
 
-                    if level_type == 'lattice':
-                        # Extract lattice ID, indices from path
-                        next_index = path.index('-')
-                        lat_id_indices = path[:next_index]
-
-                        # Trim lattice info from distribcell path
-                        distribcell_paths[i] = path[next_index+2:]
-
-                        # Extract the lattice cell indices from the path
-                        i1 = lat_id_indices.index('(')
-                        i2 = lat_id_indices.index(')')
-                        i3 = lat_id_indices[i1+1:i2]
-
+                    level = path[i_level]
+                    if level[0] == 'lattice':
                         # Assign entry to Lattice Multi-index column
-                        level_dict[lat_id_key][i] = path[:i1]
-                        level_dict[lat_x_key][i] = int(i3.split(',')[0]) - 1
-                        level_dict[lat_y_key][i] = int(i3.split(',')[1]) - 1
-                        level_dict[lat_z_key][i] = int(i3.split(',')[2]) - 1
+                        level_dict[lat_id_key][i] = level[1]
+                        level_dict[lat_x_key][i] = level[2][0]
+                        level_dict[lat_y_key][i] = level[2][1]
+                        if len(level[2]) == 3:
+                            level_dict[lat_z_key][i] = level[2][2]
 
                     else:
-                        # Extract universe ID from path
-                        next_index = path.index('-')
-                        universe_id = int(path[:next_index])
-
-                        # Trim universe info from distribcell path
-                        path = path[next_index+2:]
-
-                        # Extract cell ID from path
-                        if '-' in path:
-                            next_index = path.index('-')
-                            cell_id = int(path[:next_index])
-                            distribcell_paths[i] = path[next_index+2:]
-                        else:
-                            cell_id = int(path)
-                            distribcell_paths[i] = ''
-
                         # Assign entry to Universe, Cell Multi-index columns
-                        level_dict[univ_key][i] = universe_id
-                        level_dict[cell_key][i] = cell_id
+                        level_dict[univ_key][i] = level[1]
+                        level_dict[cell_key][i] = level[2]
 
                 # Tile the Multi-index columns
                 for level_key, level_bins in level_dict.items():

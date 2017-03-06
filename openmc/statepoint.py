@@ -649,6 +649,6 @@ class StatePoint(object):
                 if isinstance(tally_filter, (openmc.DistribcellFilter)):
                     cell_id = tally_filter.bins[0]
                     cell = cells[cell_id]
-                    tally_filter.distribcell_paths = cell.distribcell_paths
+                    tally_filter.distribcell_paths = cell.paths
 
         self._summary = summary

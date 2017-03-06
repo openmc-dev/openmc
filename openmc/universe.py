@@ -555,4 +555,5 @@ class Universe(object):
                 if mat is not None:
                     mat._paths.append(cell_path)
 
-                cell._paths.append(univ_path)
+            # Append current path
+            cell._paths.append(univ_path)

@@ -1411,7 +1411,11 @@ contains
     do i = 1, n
       ! If the cell matches the goal and the offset matches final, write to the
       ! geometry stack
-      if (univ % cells(i) == i_cell .and. offset == target_offset) return
+      if (univ % cells(i) == i_cell .and. offset == target_offset) then
+        c => cells(univ % cells(i))
+        path = trim(path) // "->c" // to_str(c % id)
+        return
+      end if
     end do
 
     ! Find the fill cell or lattice cell that we need to enter

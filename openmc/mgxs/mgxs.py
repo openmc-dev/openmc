@@ -3861,15 +3861,15 @@ class ScatterMatrixXS(MatrixMGXS):
             filters = [[energy], [energy]]
 
             # Group-to-group scattering probability matrix
-            filters.extend([[energy, energyout]]) #, [energy, energyout]])
+            filters.append([energy, energyout]) #, [energy, energyout]])
 
             # Multiplicity matrix
             if self.nu:
-                filters.append([energy, energyout])
+                filters.extend([[energy, energyout], [energy, energyout]])
 
             # Add filters for transport correction
             if self.correction == 'P0' and self.legendre_order == 0:
-                filters.append([energyout])
+                filters.extend([[energyout], [energy]])
 
         return self._add_angle_filters(filters)
 

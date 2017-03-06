@@ -3869,7 +3869,7 @@ class ScatterMatrixXS(MatrixMGXS):
 
             # Add filters for transport correction
             if self.correction == 'P0' and self.legendre_order == 0:
-                filters.append([[energyout]])
+                filters.append([energyout])
 
         return self._add_angle_filters(filters)
 

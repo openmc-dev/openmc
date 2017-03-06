@@ -1087,9 +1087,9 @@ contains
 ! routine is called once upon initialization.
 !===============================================================================
 
-  subroutine calc_offsets(goal, map, univ, counts, found)
+  subroutine calc_offsets(univ_id, map, univ, counts, found)
 
-    integer, intent(in)        :: goal         ! target universe ID
+    integer, intent(in)        :: univ_id         ! target universe ID
     integer, intent(in)        :: map          ! map index in vector of maps
     type(Universe), intent(in) :: univ         ! universe searching in
     integer, intent(inout)     :: counts(:,:)  ! target count
@@ -1126,7 +1126,7 @@ contains
 
         ! Count contents of this cell
         next_univ => universes(c % fill)
-        offset = offset + count_target(next_univ, counts, found, goal, map)
+        offset = offset + count_target(next_univ, counts, found, univ_id, map)
 
         ! Move into the next universe
         next_univ => universes(c % fill)
@@ -1150,7 +1150,7 @@ contains
                 lat % offset(map, j, k, m) = offset
                 next_univ => universes(lat % universes(j, k, m))
                 offset = offset + &
-                     count_target(next_univ, counts, found, goal, map)
+                     count_target(next_univ, counts, found, univ_id, map)
               end do
             end do
           end do
@@ -1171,7 +1171,7 @@ contains
                   lat % offset(map, j, k, m) = offset
                   next_univ => universes(lat % universes(j, k, m))
                   offset = offset + &
-                       count_target(next_univ, counts, found, goal, map)
+                       count_target(next_univ, counts, found, univ_id, map)
                 end if
               end do
             end do
@@ -1188,12 +1188,12 @@ contains
 ! universe ID beginning with the universe given.
 !===============================================================================
 
-  recursive function count_target(univ, counts, found, goal, map) result(count)
+  recursive function count_target(univ, counts, found, univ_id, map) result(count)
 
     type(Universe), intent(in) :: univ         ! universe to search through
     integer, intent(inout)     :: counts(:,:)  ! target count
     logical, intent(inout)     :: found(:,:)   ! target found
-    integer, intent(in)        :: goal         ! target universe ID
+    integer, intent(in)        :: univ_id         ! target universe ID
     integer, intent(in)        :: map          ! current map
 
     integer :: i                           ! index over cells
@@ -1213,7 +1213,7 @@ contains
 
     ! If this is the target, it can't contain itself.
     ! Count = 1, then quit
-    if (univ % id == goal) then
+    if (univ % id == univ_id) then
       count = 1
       counts(universe_dict % get_key(univ % id), map) = 1
       found(universe_dict % get_key(univ % id), map) = .true.
@@ -1241,12 +1241,12 @@ contains
         next_univ => universes(c % fill)
 
         ! Found target - stop since target cannot contain itself
-        if (next_univ % id == goal) then
+        if (next_univ % id == univ_id) then
           count = count + 1
           return
         end if
 
-        count = count + count_target(next_univ, counts, found, goal, map)
+        count = count + count_target(next_univ, counts, found, univ_id, map)
         c => cells(cell_index)
 
       ! ====================================================================
@@ -1267,13 +1267,13 @@ contains
                 next_univ => universes(lat % universes(j, k, m))
 
                 ! Found target - stop since target cannot contain itself
-                if (next_univ % id == goal) then
+                if (next_univ % id == univ_id) then
                   count = count + 1
                   cycle
                 end if
 
                 count = count + &
-                     count_target(next_univ, counts, found, goal, map)
+                     count_target(next_univ, counts, found, univ_id, map)
 
               end do
             end do
@@ -1295,13 +1295,13 @@ contains
                     next_univ => universes(lat % universes(j, k, m))
 
                     ! Found target - stop since target cannot contain itself
-                    if (next_univ % id == goal) then
+                    if (next_univ % id == univ_id) then
                       count = count + 1
                       cycle
                     end if
 
                     count = count + &
-                         count_target(next_univ, counts, found, goal, map)
+                         count_target(next_univ, counts, found, univ_id, map)
                   end if
                 end do
               end do
@@ -1326,81 +1326,66 @@ contains
 
     type(Universe), intent(in) :: univ  ! universe to search through
 
-    integer :: i                          ! index over cells
-    integer :: j, k, m                    ! indices in lattice
-    integer :: n                          ! number of cells to search
-    integer :: cell_index                 ! index in cells array
-    type(Cell),     pointer :: c          ! pointer to current cell
-    type(Universe), pointer :: next_univ  ! next universe to loop through
-    class(Lattice), pointer :: lat        ! pointer to current lattice
+    integer :: i        ! index over cells
+    integer :: j, k, m  ! indices in lattice
+    integer :: n        ! number of cells to search
 
     n = size(univ % cells)
 
     do i = 1, n
 
-      cell_index = univ % cells(i)
-
       ! get pointer to cell
-      c => cells(cell_index)
-      c % instances = c % instances + 1
+      associate (c => cells(univ % cells(i)))
+        c % instances = c % instances + 1
 
-      ! ====================================================================
-      ! AT LOWEST UNIVERSE, TERMINATE SEARCH
-      if (c % type == FILL_MATERIAL) then
+        ! ====================================================================
+        ! CELL CONTAINS LOWER UNIVERSE, RECURSIVELY FIND CELL
+        if (c % type == FILL_UNIVERSE) then
 
-      ! ====================================================================
-      ! CELL CONTAINS LOWER UNIVERSE, RECURSIVELY FIND CELL
-      elseif (c % type == FILL_UNIVERSE) then
+          call count_instance(universes(c % fill))
 
-        next_univ => universes(c % fill)
+        ! ====================================================================
+        ! CELL CONTAINS LATTICE, RECURSIVELY FIND CELL
+        elseif (c % type == FILL_LATTICE) then
 
-        call count_instance(next_univ)
-        c => cells(cell_index)
+          ! Set current lattice
+          associate (lat => lattices(c % fill) % obj)
 
-      ! ====================================================================
-      ! CELL CONTAINS LATTICE, RECURSIVELY FIND CELL
-      elseif (c % type == FILL_LATTICE) then
+            select type (lat)
+            type is (RectLattice)
 
-        ! Set current lattice
-        lat => lattices(c % fill) % obj
-
-        select type (lat)
-
-        type is (RectLattice)
-
-          ! Loop over lattice coordinates
-          do j = 1, lat % n_cells(1)
-            do k = 1, lat % n_cells(2)
-              do m = 1, lat % n_cells(3)
-                next_univ => universes(lat % universes(j, k, m))
-                call count_instance(next_univ)
+              ! Loop over lattice coordinates
+              do j = 1, lat % n_cells(1)
+                do k = 1, lat % n_cells(2)
+                  do m = 1, lat % n_cells(3)
+                    call count_instance(universes(lat % universes(j, k, m)))
+                  end do
+                end do
               end do
-            end do
-          end do
 
-        type is (HexLattice)
+            type is (HexLattice)
 
-          ! Loop over lattice coordinates
-          do m = 1, lat % n_axial
-            do k = 1, 2*lat % n_rings - 1
-              do j = 1, 2*lat % n_rings - 1
-                ! This array location is never used
-                if (j + k < lat % n_rings + 1) then
-                  cycle
-                ! This array location is never used
-                else if (j + k > 3*lat % n_rings - 1) then
-                  cycle
-                else
-                  next_univ => universes(lat % universes(j, k, m))
-                  call count_instance(next_univ)
-                end if
+              ! Loop over lattice coordinates
+              do m = 1, lat % n_axial
+                do k = 1, 2*lat % n_rings - 1
+                  do j = 1, 2*lat % n_rings - 1
+                    ! This array location is never used
+                    if (j + k < lat % n_rings + 1) then
+                      cycle
+                      ! This array location is never used
+                    else if (j + k > 3*lat % n_rings - 1) then
+                      cycle
+                    else
+                      call count_instance(universes(lat % universes(j, k, m)))
+                    end if
+                  end do
+                end do
               end do
-            end do
-          end do
 
-        end select
-
-      end if
+            end select
+          end associate
+        end if
+      end associate
     end do
 
   end subroutine count_instance

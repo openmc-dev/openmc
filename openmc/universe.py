@@ -392,27 +392,6 @@ class Universe(object):
 
         self._cells.clear()
 
-    def get_cell_instance(self, path, distribcell_index):
-
-        # Pop off the root Universe ID from the path
-        next_index = path.index('-')
-        path = path[next_index+2:]
-
-        # Extract the Cell ID from the path
-        if '-' in path:
-            next_index = path.index('-')
-            cell_id = int(path[:next_index])
-            path = path[next_index+2:]
-        else:
-            cell_id = int(path)
-            path = ''
-
-        # Make a recursive call to the Cell within this Universe
-        offset = self.cells[cell_id].get_cell_instance(path, distribcell_index)
-
-        # Return the offset computed at all nested Universe levels
-        return offset
-
     def get_nuclides(self):
         """Returns all nuclides in the universe
 
@@ -553,7 +532,7 @@ class Universe(object):
                     mat = None
 
                 if mat is not None:
-                    mat._paths.append(cell_path)
+                    mat._paths.append('{}->m{}'.format(cell_path, mat.id))
 
             # Append current path
             cell._paths.append(cell_path)

@@ -611,34 +611,6 @@ class RectLattice(Lattice):
                                min_depth=2, max_depth=3)
         self._universes = np.asarray(universes)
 
-    def get_cell_instance(self, path, distribcell_index):
-        # Extract the lattice element from the path
-        next_index = path.index('-')
-        lat_id_indices = path[:next_index]
-        path = path[next_index+2:]
-
-        # Extract the lattice cell indices from the path
-        i1 = lat_id_indices.index('(')
-        i2 = lat_id_indices.index(')')
-        i = lat_id_indices[i1+1:i2]
-        lat_x = int(i.split(',')[0]) - 1
-        lat_y = int(i.split(',')[1]) - 1
-        lat_z = int(i.split(',')[2]) - 1
-
-        # For 2D Lattices
-        if self.ndim == 2:
-            offset = self._offsets[lat_z, lat_y, lat_x, distribcell_index-1]
-            offset += self._universes[lat_x][lat_y].get_cell_instance(
-                path, distribcell_index)
-
-        # For 3D Lattices
-        else:
-            offset = self._offsets[lat_z, lat_y, lat_x, distribcell_index-1]
-            offset += self._universes[lat_z][lat_y][lat_x].get_cell_instance(
-                path, distribcell_index)
-
-        return offset
-
     def find_element(self, point):
         """Determine index of lattice element and local coordinates for a point
 

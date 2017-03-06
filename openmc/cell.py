@@ -422,23 +422,6 @@ class Cell(object):
         else:
             raise ValueError('No volume information found for this cell.')
 
-    def get_cell_instance(self, path, distribcell_index):
-
-        # If the Cell is filled by a Material
-        if self.fill_type in ('material', 'distribmat', 'void'):
-            offset = 0
-
-        # If the Cell is filled by a Universe
-        elif self.fill_type == 'universe':
-            offset = self.offsets[distribcell_index-1]
-            offset += self.fill.get_cell_instance(path, distribcell_index)
-
-        # If the Cell is filled by a Lattice
-        else:
-            offset = self.fill.get_cell_instance(path, distribcell_index)
-
-        return offset
-
     def get_nuclides(self):
         """Returns all nuclides in the cell
 

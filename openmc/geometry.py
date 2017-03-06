@@ -105,53 +105,43 @@ class Geometry(object):
         """
         return self.root_universe.find(point)
 
-    def get_cell_instance(self, path):
-        """Return the instance number for the final cell in a geometry path.
+    def get_instance(self, path):
+        """Return the instance number for a cell/material in a geometry path.
 
-        The instance is an index into tally distribcell filter arrays.
+        The instance number is used as an index into distributed
+        material/temperature arrays and tally distribcell filter arrays.
 
         Parameters
         ----------
-        path : list
-            A list of IDs that form the path to the target. It should begin with
-            0 for the base universe, and should cover every universe, cell, and
-            lattice passed through. For the case of the lattice, a tuple should
-            be provided to indicate which coordinates in the lattice should be
-            entered. This should be in the form: (lat_id, i_x, i_y, i_z)
+        path : str
+
+            The path traversed through the CSG tree to reach a cell or material
+            instance. For example, 'u0->c10->l20(2,2,1)->u5->c5' would indicate
+            the cell instance whose first level is universe 0 and cell 10,
+            second level is lattice 20 position (2,2,1), and third level is
+            universe 5 and cell 5.
 
         Returns
         -------
-        instance : int
-            Index in tally results array for distribcell filters
+        int
+            Instance number for the given path
 
         """
 
         # Extract the cell id from the path
         last_index = path.rfind('>')
-        cell_id = int(path[last_index+1:])
+        last_path = path[last_index+1:]
+        uid = int(last_path[1:])
 
-        # Find the distribcell index of the cell.
-        cells = self.get_all_cells()
-        for cell in cells:
-            if cell.id == cell_id:
-                distribcell_index = cell.distribcell_index
-                break
-        else:
-            raise RuntimeError('Could not find cell {} specified in a \
-                                distribcell filter'.format(cell_id))
+        if last_path[0] == 'c':
+            obj = self.get_all_cells()[uid]
+        elif last_path[0] == 'm':
+            obj = self.get_all_materials()[uid]
 
-        # Return memoize'd offset if possible
-        if (path, distribcell_index) in self._offsets:
-            offset = self._offsets[(path, distribcell_index)]
-
-        # Begin recursive call to compute offset starting with the base Universe
-        else:
-            offset = self._root_universe.get_cell_instance(path,
-                                                           distribcell_index)
-            self._offsets[(path, distribcell_index)] = offset
-
-        # Return the final offset
-        return offset
+        try:
+            return obj.paths.index(path)
+        except ValueError:
+            return None
 
     def get_all_cells(self):
         """Return all cells in the geometry.

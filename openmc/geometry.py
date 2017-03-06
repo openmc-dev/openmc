@@ -230,8 +230,8 @@ class Geometry(object):
         """
         material_universes = OrderedDict()
 
-        for universe in self.get_all_universes():
-            for cell in universe.cells:
+        for universe in self.get_all_universes().values():
+            for cell in universe.cells.values():
                 if cell.fill_type in ('material', 'distribmat', 'void'):
                     if universe not in material_universes:
                         material_universes[universe.id] = universe
@@ -249,7 +249,7 @@ class Geometry(object):
         """
         lattices = OrderedDict()
 
-        for cell in self.get_all_cells():
+        for cell in self.get_all_cells().values():
             if cell.fill_type == 'lattice':
                 if cell.fill not in lattices:
                     lattices[cell.fill.id] = cell.fill

@@ -341,7 +341,7 @@ class StatePoint(object):
                 # Create Tally object and assign basic properties
                 tally = openmc.Tally(tally_id)
                 tally._sp_filename = self._f.filename
-                tally.name = group['name'].value.decode()
+                tally.name = group['name'].value.decode() if 'name' in group else ''
                 tally.estimator = group['estimator'].value.decode()
                 tally.num_realizations = n_realizations
 

@@ -61,10 +61,10 @@ contains
     logical :: file_exists ! does cmfd.xml exist?
     logical :: found
     character(MAX_LINE_LEN) :: filename
-    character(MAX_LINE_LEN) :: temp_str
     real(8) :: gs_tol(2)
-    type(Node), pointer :: doc => null()
-    type(Node), pointer :: node_mesh => null()
+    type(XMLDocument) :: doc
+    type(XMLNode) :: root
+    type(XMLNode) :: node_mesh
 
     ! Read cmfd input file
     filename = trim(path_input) // "cmfd.xml"
@@ -84,13 +84,14 @@ contains
     end if
 
     ! Parse cmfd.xml file
-    call open_xmldoc(doc, filename)
+    call doc % load_file(filename)
+    root = doc % document_element()
 
     ! Get pointer to mesh XML node
-    call get_node_ptr(doc, "mesh", node_mesh, found = found)
+    node_mesh = root % child("mesh")
 
     ! Check if mesh is there
-    if (.not.found) then
+    if (.not. node_mesh % associated()) then
       call fatal_error("No CMFD mesh specified in CMFD XML file.")
     end if
 
@@ -99,8 +100,8 @@ contains
 
     ! Get number of energy groups
     if (check_for_node(node_mesh, "energy")) then
-      ng = get_arraysize_double(node_mesh, "energy")
-      if(.not.allocated(cmfd%egrid)) allocate(cmfd%egrid(ng))
+      ng = node_word_count(node_mesh, "energy")
+      if(.not. allocated(cmfd%egrid)) allocate(cmfd%egrid(ng))
       call get_node_array(node_mesh, "energy", cmfd%egrid)
       cmfd % indices(4) = ng - 1 ! sets energy group dimension
       ! If using MG mode, check to see if these egrid points at least match
@@ -137,11 +138,11 @@ contains
     if (check_for_node(node_mesh, "map")) then
       allocate(cmfd % coremap(cmfd % indices(1), cmfd % indices(2), &
            cmfd % indices(3)))
-      if (get_arraysize_integer(node_mesh, "map") /= &
+      if (node_word_count(node_mesh, "map") /= &
            product(cmfd % indices(1:3))) then
         call fatal_error('CMFD coremap not to correct dimensions')
       end if
-      allocate(iarray(get_arraysize_integer(node_mesh, "map")))
+      allocate(iarray(node_word_count(node_mesh, "map")))
       call get_node_array(node_mesh, "map", iarray)
       cmfd % coremap = reshape(iarray,(cmfd % indices(1:3)))
       cmfd_coremap = .true.
@@ -149,71 +150,53 @@ contains
     end if
 
     ! Check for normalization constant
-    if (check_for_node(doc, "norm")) then
-      call get_node_value(doc, "norm", cmfd % norm)
+    if (check_for_node(root, "norm")) then
+      call get_node_value(root, "norm", cmfd % norm)
     end if
 
     ! Set feedback logical
-    if (check_for_node(doc, "feedback")) then
-      call get_node_value(doc, "feedback", temp_str)
-      temp_str = to_lower(temp_str)
-      if (trim(temp_str) == 'true' .or. trim(temp_str) == '1') &
-           cmfd_feedback = .true.
+    if (check_for_node(root, "feedback")) then
+      call get_node_value(root, "feedback", cmfd_feedback)
     end if
 
     ! Set downscatter logical
-    if (check_for_node(doc, "downscatter")) then
-      call get_node_value(doc, "downscatter", temp_str)
-      temp_str = to_lower(temp_str)
-      if (trim(temp_str) == 'true' .or. trim(temp_str) == '1') &
-           cmfd_downscatter = .true.
+    if (check_for_node(root, "downscatter")) then
+      call get_node_value(root, "downscatter", cmfd_downscatter)
     end if
 
     ! Reset dhat parameters
-    if (check_for_node(doc, "dhat_reset")) then
-      call get_node_value(doc, "dhat_reset", temp_str)
-      temp_str = to_lower(temp_str)
-      if (trim(temp_str) == 'true' .or. trim(temp_str) == '1') &
-           dhat_reset = .true.
+    if (check_for_node(root, "dhat_reset")) then
+      call get_node_value(root, "dhat_reset", dhat_reset)
     end if
 
     ! Set monitoring
-    if (check_for_node(doc, "power_monitor")) then
-      call get_node_value(doc, "power_monitor", temp_str)
-      temp_str = to_lower(temp_str)
-      if (trim(temp_str) == 'true' .or. trim(temp_str) == '1') &
-           cmfd_power_monitor = .true.
+    if (check_for_node(root, "power_monitor")) then
+      call get_node_value(root, "power_monitor", cmfd_power_monitor)
     end if
 
     ! Output logicals
-    if (check_for_node(doc, "write_matrices")) then
-      call get_node_value(doc, "write_matrices", temp_str)
-      temp_str = to_lower(temp_str)
-      if (trim(temp_str) == 'true' .or. trim(temp_str) == '1') &
-           cmfd_write_matrices = .true.
+    if (check_for_node(root, "write_matrices")) then
+      call get_node_value(root, "write_matrices", cmfd_write_matrices)
     end if
 
     ! Run an adjoint calc
-    if (check_for_node(doc, "run_adjoint")) then
-      call get_node_value(doc, "run_adjoint", temp_str)
-      temp_str = to_lower(temp_str)
-      if (trim(temp_str) == 'true' .or. trim(temp_str) == '1') &
-           cmfd_run_adjoint = .true.
+    if (check_for_node(root, "run_adjoint")) then
+      call get_node_value(root, "run_adjoint", cmfd_run_adjoint)
     end if
 
     ! Batch to begin cmfd
-    if (check_for_node(doc, "begin")) &
-         call get_node_value(doc, "begin", cmfd_begin)
+    if (check_for_node(root, "begin")) &
+         call get_node_value(root, "begin", cmfd_begin)
 
     ! Check for cmfd tally resets
-    if (check_for_node(doc, "tally_reset")) then
-      n_cmfd_resets = get_arraysize_integer(doc, "tally_reset")
+    if (check_for_node(root, "tally_reset")) then
+      n_cmfd_resets = node_word_count(root, "tally_reset")
     else
       n_cmfd_resets = 0
     end if
     if (n_cmfd_resets > 0) then
       allocate(int_array(n_cmfd_resets))
-      call get_node_array(doc, "tally_reset", int_array)
+      call get_node_array(root, "tally_reset", int_array)
       do i = 1, n_cmfd_resets
         call cmfd_reset % add(int_array(i))
       end do
@@ -221,34 +204,34 @@ contains
     end if
 
     ! Get display
-    if (check_for_node(doc, "display")) &
-         call get_node_value(doc, "display", cmfd_display)
+    if (check_for_node(root, "display")) &
+         call get_node_value(root, "display", cmfd_display)
 
     ! Read in spectral radius estimate and tolerances
-    if (check_for_node(doc, "spectral")) &
-         call get_node_value(doc, "spectral", cmfd_spectral)
-    if (check_for_node(doc, "shift")) &
-         call get_node_value(doc, "shift", cmfd_shift)
-    if (check_for_node(doc, "ktol")) &
-         call get_node_value(doc, "ktol", cmfd_ktol)
-    if (check_for_node(doc, "stol")) &
-         call get_node_value(doc, "stol", cmfd_stol)
-    if (check_for_node(doc, "gauss_seidel_tolerance")) then
-      n_params = get_arraysize_double(doc, "gauss_seidel_tolerance")
+    if (check_for_node(root, "spectral")) &
+         call get_node_value(root, "spectral", cmfd_spectral)
+    if (check_for_node(root, "shift")) &
+         call get_node_value(root, "shift", cmfd_shift)
+    if (check_for_node(root, "ktol")) &
+         call get_node_value(root, "ktol", cmfd_ktol)
+    if (check_for_node(root, "stol")) &
+         call get_node_value(root, "stol", cmfd_stol)
+    if (check_for_node(root, "gauss_seidel_tolerance")) then
+      n_params = node_word_count(root, "gauss_seidel_tolerance")
       if (n_params /= 2) then
         call fatal_error('Gauss Seidel tolerance is not 2 parameters &
                    &(absolute, relative).')
       end if
-      call get_node_array(doc, "gauss_seidel_tolerance", gs_tol)
+      call get_node_array(root, "gauss_seidel_tolerance", gs_tol)
       cmfd_atoli = gs_tol(1)
       cmfd_rtoli = gs_tol(2)
     end if
 
     ! Create tally objects
-    call create_cmfd_tally(doc)
+    call create_cmfd_tally(root)
 
     ! Close CMFD XML file
-    call close_xmldoc(doc)
+    call doc % clear()
 
   end subroutine read_cmfd_xml
 
@@ -261,7 +244,7 @@ contains
 !   3: Surface current
 !===============================================================================
 
-  subroutine create_cmfd_tally(doc)
+  subroutine create_cmfd_tally(root)
 
     use constants,        only: MAX_LINE_LEN
     use error,            only: fatal_error, warning
@@ -274,9 +257,8 @@ contains
     use tally_initialize, only: add_tallies
     use xml_interface
 
-    type(Node), pointer :: doc ! pointer to XML doc info
+    type(XMLNode), intent(in) :: root ! XML root element
 
-    character(MAX_LINE_LEN) :: temp_str ! temp string
     integer :: i, j        ! loop counter
     integer :: n           ! size of arrays in mesh specification
     integer :: ng          ! number of energy groups (default 1)
@@ -287,7 +269,7 @@ contains
     type(TallyObject),    pointer :: t
     type(RegularMesh), pointer :: m
     type(TallyFilterContainer) :: filters(N_FILTER_TYPES) ! temporary filters
-    type(Node), pointer :: node_mesh
+    type(XMLNode) :: node_mesh
 
     ! Set global variables if they are 0 (this can happen if there is no tally
     ! file)
@@ -304,10 +286,10 @@ contains
     m % type = LATTICE_RECT
 
     ! Get pointer to mesh XML node
-    call get_node_ptr(doc, "mesh", node_mesh)
+    node_mesh = root % child("mesh")
 
     ! Determine number of dimensions for mesh
-    n = get_arraysize_integer(node_mesh, "dimension")
+    n = node_word_count(node_mesh, "dimension")
     if (n /= 2 .and. n /= 3) then
       call fatal_error("Mesh must be two or three dimensions.")
     end if
@@ -330,7 +312,7 @@ contains
     m % dimension = iarray3(1:n)
 
     ! Read mesh lower-left corner location
-    if (m % n_dimension /= get_arraysize_double(node_mesh, "lower_left")) then
+    if (m % n_dimension /= node_word_count(node_mesh, "lower_left")) then
       call fatal_error("Number of entries on <lower_left> must be the same as &
            &the number of entries on <dimension>.")
     end if
@@ -352,8 +334,8 @@ contains
 
     if (check_for_node(node_mesh, "width")) then
       ! Check to ensure width has same dimensions
-      if (get_arraysize_double(node_mesh, "width") /= &
-           get_arraysize_double(node_mesh, "lower_left")) then
+      if (node_word_count(node_mesh, "width") /= &
+           node_word_count(node_mesh, "lower_left")) then
         call fatal_error("Number of entries on <width> must be the same as the &
              &number of entries on <lower_left>.")
       end if
@@ -370,8 +352,8 @@ contains
 
     elseif (check_for_node(node_mesh, "upper_right")) then
       ! Check to ensure width has same dimensions
-      if (get_arraysize_double(node_mesh, "upper_right") /= &
-           get_arraysize_double(node_mesh, "lower_left")) then
+      if (node_word_count(node_mesh, "upper_right") /= &
+           node_word_count(node_mesh, "lower_left")) then
         call fatal_error("Number of entries on <upper_right> must be the same &
              &as the number of entries on <lower_left>.")
       end if
@@ -404,11 +386,8 @@ contains
       t => cmfd_tallies(i)
 
       ! Set reset property
-      if (check_for_node(doc, "reset")) then
-        call get_node_value(doc, "reset", temp_str)
-        temp_str = to_lower(temp_str)
-        if (trim(temp_str) == 'true' .or. trim(temp_str) == '1') &
-             t % reset = .true.
+      if (check_for_node(root, "reset")) then
+        call get_node_value(root, "reset", t % reset)
       end if
 
       ! Set up mesh filter
@@ -427,7 +406,7 @@ contains
         allocate(EnergyFilter :: filters(n_filters) % obj)
         select type (filt => filters(n_filters) % obj)
         type is (EnergyFilter)
-          ng = get_arraysize_double(node_mesh, "energy")
+          ng = node_word_count(node_mesh, "energy")
           filt % n_bins = ng - 1
           allocate(filt % bins(ng))
           call get_node_array(node_mesh, "energy", filt % bins)
@@ -492,7 +471,7 @@ contains
           allocate(EnergyoutFilter :: filters(n_filters) % obj)
           select type (filt => filters(n_filters) % obj)
           type is (EnergyoutFilter)
-            ng = get_arraysize_double(node_mesh, "energy")
+            ng = node_word_count(node_mesh, "energy")
             filt % n_bins = ng - 1
             allocate(filt % bins(ng))
             call get_node_array(node_mesh, "energy", filt % bins)

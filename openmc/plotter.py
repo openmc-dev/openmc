@@ -220,7 +220,7 @@ def plot_xs(this, types, divisor_types=None, temperature=294., axis=None,
             ylabel = 'Macroscopic Cross Section [1/cm]'
     ax.set_ylabel(ylabel)
     ax.legend(loc='best')
-    if this.name is not None:
+    if this.name is not None and this.name != '':
         if len(types) > 1:
             ax.set_title('Cross Sections for ' + this.name)
         else:
@@ -359,16 +359,9 @@ def _calculate_cexs_nuclide(this, types, temperature=294., sab_name=None,
         if strT in nuc.temperatures:
             nucT = strT
         else:
-            data_Ts = nuc.temperatures
-            for t in range(len(data_Ts)):
-                # Take off the "K" and convert to a float
-                data_Ts[t] = float(data_Ts[t][:-1])
-            min_delta = float('inf')
-            closest_t = -1
-            for t in data_Ts:
-                if abs(data_Ts[t] - T) < min_delta:
-                    closest_t = t
-            nucT = "{}K".format(int(round(data_Ts[closest_t])))
+            delta_T = np.array(nuc.kTs) - T*openmc.data.K_BOLTZMANN
+            closest_index = np.argmin(np.abs(delta_T))
+            nucT = nuc.temperatures[closest_index]
 
         # Prep S(a,b) data if needed
         if sab_name:

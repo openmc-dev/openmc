@@ -75,10 +75,12 @@ class Material(object):
         Volume of the material in cm^3. This can either be set manually or
         calculated in a stochastic volume calculation and added via the
         :meth:`Material.add_volume_information` method.
+    paths : list of str
+        The paths traversed through the CSG tree to reach each material
+        instance. This property is initialized by calling the
+        :meth:`Geometry.determine_paths` method.
     num_instances : int
-        The number of instances of this material throughout the geometry. This
-        property is initialized by calling the
-        :meth:`Geometry.count_material_instances` method.
+        The number of instances of this material throughout the geometry.
 
     """
 

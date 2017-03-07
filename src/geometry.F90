@@ -1333,8 +1333,6 @@ contains
     n = size(univ % cells)
 
     do i = 1, n
-
-      ! get pointer to cell
       associate (c => cells(univ % cells(i)))
         c % instances = c % instances + 1
 

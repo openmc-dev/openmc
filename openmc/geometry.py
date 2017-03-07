@@ -1,5 +1,7 @@
-from collections import OrderedDict
+from collections import OrderedDict, Iterable
 from xml.etree import ElementTree as ET
+
+from six import string_types
 
 import openmc
 from openmc.clean_xml import sort_xml_elements, clean_xml_indentation
@@ -43,7 +45,6 @@ class Geometry(object):
     def root_universe(self, root_universe):
         check_type('root universe', root_universe, openmc.Universe)
         self._root_universe = root_universe
-        self._determine_paths()
 
     def add_volume_information(self, volume_calc):
         """Add volume information from a stochastic volume calculation.
@@ -105,15 +106,15 @@ class Geometry(object):
         """
         return self.root_universe.find(point)
 
-    def get_instance(self, path):
-        """Return the instance number for a cell/material in a geometry path.
+    def get_instances(self, paths):
+        """Return the instance number(s) for a cell/material in a geometry path.
 
-        The instance number is used as an index into distributed
+        The instance numbers are used as indices into distributed
         material/temperature arrays and tally distribcell filter arrays.
 
         Parameters
         ----------
-        path : str
+        paths : str or iterable of str
             The path traversed through the CSG tree to reach a cell or material
             instance. For example, 'u0->c10->l20(2,2,1)->u5->c5' would indicate
             the cell instance whose first level is universe 0 and cell 10,
@@ -122,25 +123,35 @@ class Geometry(object):
 
         Returns
         -------
-        int
-            Instance number for the given path
+        int or list of int
+            Instance number(s) for the given path(s)
 
         """
+        # Make sure we are working with an iterable
+        return_list = (isinstance(paths, Iterable) and
+                       not isinstance(paths, string_types))
+        path_list = paths if return_list else [paths]
 
-        # Extract the cell id from the path
-        last_index = path.rfind('>')
-        last_path = path[last_index+1:]
-        uid = int(last_path[1:])
+        indices = []
+        for p in path_list:
+            # Extract the cell id from the path
+            last_index = p.rfind('>')
+            last_path = p[last_index+1:]
+            uid = int(last_path[1:])
 
-        if last_path[0] == 'c':
-            obj = self.get_all_cells()[uid]
-        elif last_path[0] == 'm':
-            obj = self.get_all_materials()[uid]
+            # Get corresponding cell/material
+            if last_path[0] == 'c':
+                obj = self.get_all_cells()[uid]
+            elif last_path[0] == 'm':
+                obj = self.get_all_materials()[uid]
 
-        try:
-            return obj.paths.index(path)
-        except ValueError:
-            return None
+            # Determine index in paths array
+            try:
+                indices.append(obj.paths.index(p))
+            except ValueError:
+                indices.append(None)
+
+        return indices if return_list else indices[0]
 
     def get_all_cells(self):
         """Return all cells in the geometry.
@@ -440,7 +451,7 @@ class Geometry(object):
         lattices.sort(key=lambda x: x.id)
         return lattices
 
-    def _determine_paths(self):
+    def determine_paths(self):
         """Determine paths through CSG tree for cells and materials.
 
         This method recursively traverses the CSG tree to determine each unique

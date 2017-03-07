@@ -80,11 +80,11 @@ class Cell(object):
         If the cell is filled with a universe, this array specifies a vector
         that is used to translate (shift) the universe.
     paths : list of str
-        The paths traversed through the CSG tree to reach each cell instance
+        The paths traversed through the CSG tree to reach each cell
+        instance. This property is initialized by calling the
+        :meth:`Geometry.determine_paths` method.
     num_instances : int
-        The number of instances of this cell throughout the geometry. This
-        property is initialized by calling the
-        :meth:`Geometry.count_cell_instances` method.
+        The number of instances of this cell throughout the geometry.
     volume : float
         Volume of the cell in cm^3. This can either be set manually or
         calculated in a stochastic volume calculation and added via the

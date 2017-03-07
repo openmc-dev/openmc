@@ -372,7 +372,10 @@ class Lattice(object):
         Parameters
         ----------
         idx : Iterable of int
-            Lattice element indices in the :math:`(x,y,z)` coordinate system
+            Lattice element indices. For a rectangular lattice, the indices are
+            given in the :math:`(x,y)` or :math:`(x,y,z)` coordinate system. For
+            hexagonal lattices, they are given in the :math:`x,\alpha` or
+            :math:`x,\alpha,z` coordinate systems.
 
         Returns
         -------
@@ -392,7 +395,7 @@ class Lattice(object):
         Parameters
         ----------
         point : 3-tuple of float
-            Cartesian coordinatesof the point
+            Cartesian coordinates of the point
 
         Returns
         -------
@@ -537,6 +540,13 @@ class RectLattice(Lattice):
 
     @property
     def _natural_indices(self):
+        """Iterate over all possible (x,y) or (x,y,z) lattice element indices.
+
+        This property is used when constructing distributed cell and material
+        paths. Most importantly, the iteration order matches that used on the
+        Fortran side.
+
+        """
         if self.ndim == 2:
             nx, ny = self.shape
             return np.broadcast(*np.ogrid[:nx, :ny])
@@ -889,6 +899,14 @@ class HexLattice(Lattice):
 
     @property
     def _natural_indices(self):
+        """Iterate over all possible (x,alpha) or (x,alpha,z) lattice element
+        indices.
+
+        This property is used when constructing distributed cell and material
+        paths. Most importantly, the iteration order matches that used on the
+        Fortran side.
+
+        """
         r = self.num_rings
         if self.num_axial is None:
             for a in range(-r + 1, r):

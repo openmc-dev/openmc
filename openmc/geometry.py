@@ -43,7 +43,7 @@ class Geometry(object):
     def root_universe(self, root_universe):
         check_type('root universe', root_universe, openmc.Universe)
         self._root_universe = root_universe
-        self.determine_paths()
+        self._determine_paths()
 
     def add_volume_information(self, volume_calc):
         """Add volume information from a stochastic volume calculation.
@@ -114,7 +114,6 @@ class Geometry(object):
         Parameters
         ----------
         path : str
-
             The path traversed through the CSG tree to reach a cell or material
             instance. For example, 'u0->c10->l20(2,2,1)->u5->c5' would indicate
             the cell instance whose first level is universe 0 and cell 10,
@@ -441,10 +440,14 @@ class Geometry(object):
         lattices.sort(key=lambda x: x.id)
         return lattices
 
-    def determine_paths(self):
-        """Count the number of instances for each cell in the Geometry, and
-        record the count in the :attr:`Cell.num_instances` properties."""
+    def _determine_paths(self):
+        """Determine paths through CSG tree for cells and materials.
 
+        This method recursively traverses the CSG tree to determine each unique
+        path that reaches every cell and material. The paths are stored in the
+        :attr:`Cell.paths` and :attr:`Material.paths` attributes.
+
+        """
         # (Re-)initialize all cell instances to 0
         for cell in self.get_all_cells().values():
             cell._paths = []

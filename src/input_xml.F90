@@ -2020,7 +2020,7 @@ contains
 
     do i = 1, n_cells
       ! Get index in universes array
-      j = universe_dict%get_key(cells(i) % universe)
+      j = universe_dict % get_key(cells(i) % universe)
 
       ! Set the first zero entry in the universe cells array to the index in the
       ! global cells array

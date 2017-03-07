@@ -225,7 +225,11 @@ endif()
 #===============================================================================
 
 add_library(pugixml src/pugixml/pugixml_c.cpp src/pugixml/pugixml.cpp)
-set_property(TARGET pugixml PROPERTY CXX_STANDARD 11)
+if(CMAKE_VERSION VERSION_LESS 3.1)
+  target_compile_options(pugixml PRIVATE -std=c++11)
+else()
+  set_property(TARGET pugixml PROPERTY CXX_STANDARD 11)
+endif()
 
 add_library(pugixml_fortran src/pugixml/pugixml_f.F90)
 target_link_libraries(pugixml_fortran pugixml)

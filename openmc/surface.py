@@ -1903,7 +1903,7 @@ def get_rectangular_prism(width, height, axis='z', origin=(0., 0.),
         Defaults to (0., 0.).
     boundary_type : {'transmission, 'vacuum', 'reflective', 'periodic'}
         Boundary condition that defines the behavior for particles hitting the
-        surfaces comprising the rectangular prism.
+        surfaces comprising the rectangular prism (default is 'transmission').
 
     Returns
     -------
@@ -1965,7 +1965,7 @@ def get_hexagonal_prism(edge_length=1., orientation='y',
         parallel to the y-axis.
     boundary_type : {'transmission, 'vacuum', 'reflective', 'periodic'}
         Boundary condition that defines the behavior for particles hitting the
-        surfaces comprising the hexagonal prism.
+        surfaces comprising the hexagonal prism (default is 'transmission').
 
     Returns
     -------

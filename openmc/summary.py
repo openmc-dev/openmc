@@ -163,6 +163,11 @@ class Summary(object):
     def _finalize_geometry(self, cells, cell_fills, universes, lattices):
         materials = {m.id: m for m in self.materials}
 
+        # Keep track of universes that are used as fills. That way, we can
+        # determine which universe is NOT used as a fill (and hence is the root
+        # universe)
+        fill_univ_ids = set()
+
         # Iterate over all Cells and add fill Materials, Universes and Lattices
         for cell_id, (fill_type, fill_id) in cell_fills.items():
             # Retrieve the object corresponding to the fill type and ID
@@ -174,14 +179,20 @@ class Summary(object):
                     fill = materials[fill_id] if fill_id > 0 else None
             elif fill_type == 'universe':
                 fill = universes[fill_id]
+                fill_univ_ids.add(fill_id)
             else:
                 fill = lattices[fill_id]
+                for idx in fill._natural_indices:
+                    univ = fill.get_universe(idx)
+                    fill_univ_ids.add(univ.id)
 
             # Set the fill for the Cell
             cells[cell_id].fill = fill
 
-        # Set the root universe for the Geometry
-        self.geometry.root_universe = universes[0]
+        # Determine root universe for geometry
+        non_fill = set(universes.keys()) - fill_univ_ids
+
+        self.geometry.root_universe = universes[non_fill.pop()]
 
     def add_volume_information(self, volume_calc):
         """Add volume information to the geometry within the summary file

@@ -90,14 +90,10 @@ class AsymmetricLatticeTestHarness(PyAPITestHarness):
 
         # Extract fuel assembly lattices from the summary
         cells = sp.summary.geometry.get_all_cells()
-        core = cells[1]
-        fuel = cells[80]
-        fuel = fuel.fill
-        core = core.fill
+        fuel_cell = cells[27]
 
         # Append a string of lattice distribcell offsets to the string
-        outstr += ', '.join(map(str, fuel.offsets.flatten())) + '\n'
-        outstr += ', '.join(map(str, core.offsets.flatten())) + '\n'
+        outstr += '\n'.join(fuel_cell.paths) + '\n'
 
         # Hash the results if necessary
         if hash_output:

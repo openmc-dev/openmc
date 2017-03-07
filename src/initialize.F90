@@ -16,11 +16,11 @@ module initialize
   use geometry,        only: neighbor_lists, count_instance, calc_offsets, &
                              maximum_levels
   use geometry_header, only: Cell, Universe, Lattice, RectLattice, HexLattice,&
-                             &BASE_UNIVERSE
+                             root_universe
   use global
   use hdf5_interface,  only: file_open, read_attribute, file_close, &
                              hdf5_bank_t, hdf5_integer8_t
-  use input_xml,       only: read_input_xml, cells_in_univ_dict, read_plots_xml
+  use input_xml,       only: read_input_xml, read_plots_xml
   use material_header, only: Material
   use message_passing
   use mgxs_data,       only: read_mgxs, create_macro_xs
@@ -81,9 +81,6 @@ contains
     ! XML files because we need the PRNG to be initialized first
     if (run_mode == MODE_PLOTTING) call read_plots_xml()
 
-    ! Set up universe structures
-    call prepare_universes()
-
     ! Use dictionaries to redefine index pointers
     call adjust_indices()
 
@@ -97,7 +94,7 @@ contains
     ! Check to make sure there are not too many nested coordinate levels in the
     ! geometry since the coordinate list is statically allocated for performance
     ! reasons
-    if (maximum_levels(universes(BASE_UNIVERSE)) > MAX_COORD) then
+    if (maximum_levels(universes(root_universe)) > MAX_COORD) then
       call fatal_error("Too many nested coordinate levels in the geometry. &
            &Try increasing the maximum number of coordinate levels by &
            &providing the CMake -Dmaxcoord= option.")
@@ -417,79 +414,6 @@ contains
   end subroutine read_command_line
 
 !===============================================================================
-! PREPARE_UNIVERSES allocates the universes array and determines the cells array
-! for each universe.
-!===============================================================================
-
-  subroutine prepare_universes()
-
-    integer              :: i                     ! index in cells array
-    integer              :: i_univ                ! index in universes array
-    integer              :: n_cells_in_univ       ! number of cells in a universe
-    integer, allocatable :: index_cell_in_univ(:) ! the index in the univ%cells
-                                                  ! array for each universe
-    type(ElemKeyValueII), pointer :: pair_list => null()
-    type(ElemKeyValueII), pointer :: current => null()
-    type(ElemKeyValueII), pointer :: next => null()
-    type(Universe),       pointer :: univ => null()
-    type(Cell),           pointer :: c => null()
-
-    allocate(universes(n_universes))
-
-    ! We also need to allocate the cell count lists for each universe. The logic
-    ! for this is a little more convoluted. In universe_dict, the (key,value)
-    ! pairs are the id of the universe and the index in the array. In
-    ! cells_in_univ_dict, it's the id of the universe and the number of cells.
-
-    pair_list => universe_dict%keys()
-    current => pair_list
-    do while (associated(current))
-      ! Find index of universe in universes array
-      i_univ = current%value
-      univ => universes(i_univ)
-      univ%id = current%key
-
-      ! Check for lowest level universe
-      if (univ%id == 0) BASE_UNIVERSE = i_univ
-
-      ! Find cell count for this universe
-      n_cells_in_univ = cells_in_univ_dict%get_key(univ%id)
-
-      ! Allocate cell list for universe
-      allocate(univ%cells(n_cells_in_univ))
-      univ%n_cells = n_cells_in_univ
-
-      ! Move to next universe
-      next => current%next
-      deallocate(current)
-      current => next
-    end do
-
-    ! Also allocate a list for keeping track of where cells have been assigned
-    ! in each universe
-
-    allocate(index_cell_in_univ(n_universes))
-    index_cell_in_univ = 0
-
-    do i = 1, n_cells
-      c => cells(i)
-
-      ! Get pointer to corresponding universe
-      i_univ = universe_dict%get_key(c%universe)
-      univ => universes(i_univ)
-
-      ! Increment the index for the cells array within the Universe object and
-      ! then store the index of the Cell object in that array
-      index_cell_in_univ(i_univ) = index_cell_in_univ(i_univ) + 1
-      univ%cells(index_cell_in_univ(i_univ)) = i
-    end do
-
-    ! Clear dictionary
-    call cells_in_univ_dict%clear()
-
-  end subroutine prepare_universes
-
-!===============================================================================
 ! ADJUST_INDICES changes the values for 'surfaces' for each cell and the
 ! material index assigned to each to the indices in the surfaces and material
 ! array rather than the unique IDs assigned to each surface and material. Also
@@ -794,7 +718,7 @@ contains
     if (.not. distribcell_active) return
 
     ! Count the number of instances of each cell.
-    call count_instance(universes(BASE_UNIVERSE))
+    call count_instance(universes(root_universe))
 
     ! Set the number of bins in all distribcell filters.
     do i = 1, n_tallies
@@ -881,7 +805,7 @@ contains
     ! Compute the number of unique universes containing these distribcells
     ! to determine the number of offset tables to allocate
     do i = 1, n_universes
-      do j = 1, universes(i) % n_cells
+      do j = 1, size(universes(i) % cells)
         if (cell_list % contains(universes(i) % cells(j))) then
           n_maps = n_maps + 1
         end if
@@ -904,7 +828,7 @@ contains
     ! unique distribcell array index.
     k = 1
     do i = 1, n_universes
-      do j = 1, universes(i) % n_cells
+      do j = 1, size(universes(i) % cells)
         if (cell_list % contains(universes(i) % cells(j))) then
           cells(universes(i) % cells(j)) % distribcell_index = k
           univ_list(k) = universes(i) % id

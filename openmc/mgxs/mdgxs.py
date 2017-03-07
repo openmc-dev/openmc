@@ -774,7 +774,7 @@ class MDGXS(MGXS):
                 modified.write('\n\\end{document}')
 
     def get_pandas_dataframe(self, groups='all', nuclides='all',
-                             xs_type='macro', distribcell_paths=True,
+                             xs_type='macro', paths=True,
                              delayed_groups='all'):
         """Build a Pandas DataFrame for the MDGXS data.
 
@@ -795,7 +795,7 @@ class MDGXS(MGXS):
         xs_type: {'macro', 'micro'}
             Return macro or micro cross section in units of cm^-1 or barns.
             Defaults to 'macro'.
-        distribcell_paths : bool, optional
+        paths : bool, optional
             Construct columns for distribcell tally filters (default is True).
             The geometric information in the Summary object is embedded into
             a Multi-index column with a geometric "path" to each distribcell
@@ -830,8 +830,7 @@ class MDGXS(MGXS):
 
             # Use tally summation to sum across all nuclides
             xs_tally = self.xs_tally.summation(nuclides=self.get_nuclides())
-            df = xs_tally.get_pandas_dataframe(
-                distribcell_paths=distribcell_paths)
+            df = xs_tally.get_pandas_dataframe(paths=paths)
 
             # Remove nuclide column since it is homogeneous and redundant
             if self.domain_type == 'mesh':
@@ -842,13 +841,11 @@ class MDGXS(MGXS):
         # If the user requested a specific set of nuclides
         elif self.by_nuclide and nuclides != 'all':
             xs_tally = self.xs_tally.get_slice(nuclides=nuclides)
-            df = xs_tally.get_pandas_dataframe(
-                distribcell_paths=distribcell_paths)
+            df = xs_tally.get_pandas_dataframe(paths=paths)
 
         # If the user requested all nuclides, keep nuclide column in dataframe
         else:
-            df = self.xs_tally.get_pandas_dataframe(
-                distribcell_paths=distribcell_paths)
+            df = self.xs_tally.get_pandas_dataframe(paths=paths)
 
         # Remove the score column since it is homogeneous and redundant
         if self.domain_type == 'mesh':

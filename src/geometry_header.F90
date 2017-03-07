@@ -17,7 +17,6 @@ module geometry_header
   type Universe
     integer :: id                     ! Unique ID
     integer :: type                   ! Type
-    integer :: n_cells                ! # of cells within
     integer, allocatable :: cells(:)  ! List of cells within
     real(8) :: x0                     ! Translation in x-coordinate
     real(8) :: y0                     ! Translation in y-coordinate
@@ -153,8 +152,8 @@ module geometry_header
     real(8), allocatable :: rotation_matrix(:,:)
   end type Cell
 
-  ! array index of universe 0
-  integer :: BASE_UNIVERSE
+  ! array index of the root universe
+  integer :: root_universe = -1
 
 contains
 

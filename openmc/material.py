@@ -75,6 +75,12 @@ class Material(object):
         Volume of the material in cm^3. This can either be set manually or
         calculated in a stochastic volume calculation and added via the
         :meth:`Material.add_volume_information` method.
+    paths : list of str
+        The paths traversed through the CSG tree to reach each material
+        instance. This property is initialized by calling the
+        :meth:`Geometry.determine_paths` method.
+    num_instances : int
+        The number of instances of this material throughout the geometry.
 
     """
 
@@ -86,6 +92,7 @@ class Material(object):
         self._density = None
         self._density_units = ''
         self._depletable = False
+        self._paths = []
         self._volume = None
         self._atoms = {}
 
@@ -196,6 +203,17 @@ class Material(object):
         return self._depletable
 
     @property
+    def paths(self):
+        if not self._paths:
+            raise ValueError('Material instance paths have not been determined. '
+                             'Call the Geometry.determine_paths() method.')
+        return self._paths
+
+    @property
+    def num_instances(self):
+        return len(self.paths)
+
+    @property
     def elements(self):
         return self._elements
 
@@ -274,6 +292,11 @@ class Material(object):
         if volume is not None:
             cv.check_type('material volume', volume, Real)
         self._volume = volume
+
+    @num_instances.setter
+    def num_instances(self, num_instances):
+        cv.check_type('num_instances', num_instances, Integral)
+        self._num_instances = num_instances
 
     @classmethod
     def from_hdf5(cls, group):

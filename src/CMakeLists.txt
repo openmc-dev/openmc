@@ -251,7 +251,6 @@ if(NOT EXISTS ${CMAKE_CURRENT_SOURCE_DIR}/../purxs/.git)
   execute_process(COMMAND git submodule update
                   WORKING_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}/..)
 endif()
-add_subdirectory(../purxs)
 
 #===============================================================================
 # Build OpenMC executable

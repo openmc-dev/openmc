@@ -1,5 +1,7 @@
-from collections import OrderedDict
+from collections import OrderedDict, Iterable
 from xml.etree import ElementTree as ET
+
+from six import string_types
 
 import openmc
 from openmc.clean_xml import sort_xml_elements, clean_xml_indentation
@@ -42,12 +44,6 @@ class Geometry(object):
     @root_universe.setter
     def root_universe(self, root_universe):
         check_type('root universe', root_universe, openmc.Universe)
-        if root_universe.id != 0:
-            msg = 'Unable to add root Universe "{0}" to Geometry since ' \
-                  'it has ID="{1}" instead of ' \
-                  'ID=0'.format(root_universe, root_universe.id)
-            raise ValueError(msg)
-
         self._root_universe = root_universe
 
     def add_volume_information(self, volume_calc):
@@ -110,53 +106,52 @@ class Geometry(object):
         """
         return self.root_universe.find(point)
 
-    def get_cell_instance(self, path):
-        """Return the instance number for the final cell in a geometry path.
+    def get_instances(self, paths):
+        """Return the instance number(s) for a cell/material in a geometry path.
 
-        The instance is an index into tally distribcell filter arrays.
+        The instance numbers are used as indices into distributed
+        material/temperature arrays and tally distribcell filter arrays.
 
         Parameters
         ----------
-        path : list
-            A list of IDs that form the path to the target. It should begin with
-            0 for the base universe, and should cover every universe, cell, and
-            lattice passed through. For the case of the lattice, a tuple should
-            be provided to indicate which coordinates in the lattice should be
-            entered. This should be in the form: (lat_id, i_x, i_y, i_z)
+        paths : str or iterable of str
+            The path traversed through the CSG tree to reach a cell or material
+            instance. For example, 'u0->c10->l20(2,2,1)->u5->c5' would indicate
+            the cell instance whose first level is universe 0 and cell 10,
+            second level is lattice 20 position (2,2,1), and third level is
+            universe 5 and cell 5.
 
         Returns
         -------
-        instance : int
-            Index in tally results array for distribcell filters
+        int or list of int
+            Instance number(s) for the given path(s)
 
         """
+        # Make sure we are working with an iterable
+        return_list = (isinstance(paths, Iterable) and
+                       not isinstance(paths, string_types))
+        path_list = paths if return_list else [paths]
 
-        # Extract the cell id from the path
-        last_index = path.rfind('>')
-        cell_id = int(path[last_index+1:])
+        indices = []
+        for p in path_list:
+            # Extract the cell id from the path
+            last_index = p.rfind('>')
+            last_path = p[last_index+1:]
+            uid = int(last_path[1:])
 
-        # Find the distribcell index of the cell.
-        cells = self.get_all_cells()
-        for cell in cells:
-            if cell.id == cell_id:
-                distribcell_index = cell.distribcell_index
-                break
-        else:
-            raise RuntimeError('Could not find cell {} specified in a \
-                                distribcell filter'.format(cell_id))
+            # Get corresponding cell/material
+            if last_path[0] == 'c':
+                obj = self.get_all_cells()[uid]
+            elif last_path[0] == 'm':
+                obj = self.get_all_materials()[uid]
 
-        # Return memoize'd offset if possible
-        if (path, distribcell_index) in self._offsets:
-            offset = self._offsets[(path, distribcell_index)]
+            # Determine index in paths array
+            try:
+                indices.append(obj.paths.index(p))
+            except ValueError:
+                indices.append(None)
 
-        # Begin recursive call to compute offset starting with the base Universe
-        else:
-            offset = self._root_universe.get_cell_instance(path,
-                                                           distribcell_index)
-            self._offsets[(path, distribcell_index)] = offset
-
-        # Return the final offset
-        return offset
+        return indices if return_list else indices[0]
 
     def get_all_cells(self):
         """Return all cells in the geometry.
@@ -455,3 +450,20 @@ class Geometry(object):
         lattices = list(lattices)
         lattices.sort(key=lambda x: x.id)
         return lattices
+
+    def determine_paths(self):
+        """Determine paths through CSG tree for cells and materials.
+
+        This method recursively traverses the CSG tree to determine each unique
+        path that reaches every cell and material. The paths are stored in the
+        :attr:`Cell.paths` and :attr:`Material.paths` attributes.
+
+        """
+        # (Re-)initialize all cell instances to 0
+        for cell in self.get_all_cells().values():
+            cell._paths = []
+        for material in self.get_all_materials().values():
+            material._paths = []
+
+        # Recursively traverse the CSG tree to count all cell instances
+        self.root_universe._determine_paths()

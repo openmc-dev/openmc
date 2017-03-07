@@ -3,7 +3,7 @@ module plot
   use constants
   use error,           only: fatal_error
   use geometry,        only: find_cell, check_cell_overlap
-  use geometry_header, only: Cell, BASE_UNIVERSE
+  use geometry_header, only: Cell, root_universe
   use global
   use hdf5_interface
   use mesh,            only: get_mesh_indices
@@ -163,7 +163,7 @@ contains
     call p % initialize()
     p % coord(1) % xyz = xyz
     p % coord(1) % uvw = [ HALF, HALF, HALF ]
-    p % coord(1) % universe = BASE_UNIVERSE
+    p % coord(1) % universe = root_universe
 
 !$omp parallel do firstprivate(p) private(x, rgb, id) reduction(+ : data)
     do y = 1, height
@@ -367,7 +367,7 @@ contains
     call p % initialize()
     p % coord(1) % xyz = ll
     p % coord(1) % uvw = [ HALF, HALF, HALF ]
-    p % coord(1) % universe = BASE_UNIVERSE
+    p % coord(1) % universe = root_universe
 
     ! Open binary plot file for writing
     file_id = file_create(pl%path_plot)

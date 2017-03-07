@@ -3963,6 +3963,8 @@ class ScatterMatrixXS(MatrixMGXS):
 
                 # Remove the AggregateFilter summed across energyout bins
                 norm._filters = norm._filters[:2]
+                if self.scatter_format == 'histogram':
+                    norm._filters.append(norm._filters[-1])
 
                 # Multiply by the group-to-group probability matrix
                 self._xs_tally *= (self.tallies[tally_key] / norm)

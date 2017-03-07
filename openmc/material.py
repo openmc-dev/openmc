@@ -71,6 +71,10 @@ class Material(object):
         The average molar mass of nuclides in the material in units of grams per
         mol.  For example, UO2 with 3 nuclides will have an average molar mass
         of 270 / 3 = 90 g / mol.
+    num_instances : int
+        The number of instances of this material throughout the geometry. This
+        property is initialized by calling the
+        :meth:`Geometry.count_material_instances` method.
     volume : float
         Volume of the material in cm^3. This can either be set manually or
         calculated in a stochastic volume calculation and added via the
@@ -86,6 +90,7 @@ class Material(object):
         self._density = None
         self._density_units = ''
         self._depletable = False
+        self._num_instances = None
         self._volume = None
         self._atoms = {}
 
@@ -194,6 +199,14 @@ class Material(object):
     @property
     def depletable(self):
         return self._depletable
+
+    @property
+    def num_instances(self):
+        if self._num_instances is None:
+            raise ValueError('The number of cell instances is unknown. Call '
+                             'the Geometry.count_cell_instances() method.')
+        else:
+            return self._num_instances
 
     @property
     def elements(self):

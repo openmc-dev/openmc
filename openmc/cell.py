@@ -86,6 +86,10 @@ class Cell(object):
     distribcell_paths : list of str
         The paths traversed through the CSG tree to reach each distribcell
         instance
+    num_instances : int
+        The number of instances of this cell throughout the geometry. This
+        property is initialized by calling the
+        :meth:`Geometry.count_cell_instances` method.
     volume : float
         Volume of the cell in cm^3. This can either be set manually or
         calculated in a stochastic volume calculation and added via the
@@ -106,6 +110,7 @@ class Cell(object):
         self._offsets = None
         self._distribcell_index = None
         self._distribcell_paths = None
+        self._num_instances = None
         self._volume = None
         self._atoms = None
 
@@ -227,6 +232,14 @@ class Cell(object):
     @property
     def volume(self):
         return self._volume
+
+    @property
+    def num_instances(self):
+        if self._num_instances is None:
+            raise ValueError('The number of cell instances is unknown. Call '
+                             'the Geometry.count_cell_instances() method.')
+        else:
+            return self._num_instances
 
     @id.setter
     def id(self, cell_id):

@@ -1,0 +1,43 @@
+# Compiled objects and modules
+*.a
+*.o
+*.mod
+*.log
+*.out
+
+# Compiler python objects
+*.pyc
+
+# OpenMC executable
+src/openmc
+
+# emacs backups
+*~
+
+# OpenMC statepoints
+*.binary
+
+# Documentation builds
+docs/build
+docs/source/_images/*.pdf
+
+# Source build
+src/build
+
+# build from src/utils/setup.py
+src/utils/build
+
+# xml-fortran reader
+src/xml-fortran/xmlreader
+
+# Modules built from XML templates
+src/templates/*.f90
+
+# Test results error file
+results_error.dat
+
+# HDF5 files
+*.h5
+
+# Data downloaded from NNDC
+data/nndc

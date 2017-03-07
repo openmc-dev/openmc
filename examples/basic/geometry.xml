@@ -1,0 +1,15 @@
+<?xml version="1.0"?>
+<geometry>
+
+  <!-- Definition of Cells -->
+  <cell id="1" universe="0" fill="37" surfaces="-2" />
+  <cell id="100" universe="37" material="40" surfaces="-1" />
+  <cell id="101" universe="37" material="41" surfaces="1" />
+  <cell id="2" universe="0" material="41" surfaces = "2 -3" />
+
+  <!-- Defition of Surfaces -->
+  <surface id="1" type="z-cylinder" coeffs="0 0 7" />
+  <surface id="2" type="z-cylinder" coeffs="0 0 9" />
+  <surface id="3" type="z-cylinder" coeffs="0 0 11" boundary="vacuum" />
+    
+</geometry>

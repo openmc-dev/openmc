@@ -1,0 +1,18 @@
+<?xml version="1.0"?>
+<materials>
+
+  <default_xs>71c</default_xs>
+
+  <material id="40">
+    <density value="4.5" units="g/cc" />
+    <nuclide name="U-235" ao="1.0" />
+  </material>
+
+  <material id="41">
+    <density value="1.0" units="g/cc" />
+    <nuclide name="H-1" ao="2.0" />
+    <nuclide name="O-16" ao="1.0" />
+    <sab name="HH2O" xs="71t" />
+  </material>
+
+</materials>

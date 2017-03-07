@@ -1,0 +1,14 @@
+<?xml version="1.0"?>
+<tallies>
+
+  <tally id="1">
+    <filter type="cell" bins="21" />
+    <scores>nu-scatter-0</scores>
+  </tally>
+
+  <tally id="2">
+    <filter type="cell" bins="21" />
+    <scores>nu-scatter-y3</scores>
+  </tally>
+
+</tallies>

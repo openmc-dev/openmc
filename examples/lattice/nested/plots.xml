@@ -1,0 +1,10 @@
+<?xml version="1.0"?>
+<plots>
+
+  <plot id="1" color="mat">
+    <origin>0. 0. 0.</origin>
+    <width>4.0 4.0</width>
+    <pixels>400 400</pixels>
+  </plot>
+
+</plots>

@@ -1,0 +1,70 @@
+<?xml version="1.0"?>
+<materials>
+
+  <!-- By default, use 300K cross sections -->
+  <default_xs>71c</default_xs>
+
+  <!--
+      Since O-18 is not present in ENDF/B-VII, it was necessary to combine the
+      atom densities for O-17 and O-18 in any materials containing Oxygen.
+  -->
+
+  <!-- UO2 fuel at 2.4 wt% enrichment -->
+  <material id="1">
+    <density value="10.29769" units="g/cm3" />
+    <nuclide name="U-234"  ao="4.4843e-06" />
+    <nuclide name="U-235"  ao="5.5815e-04" />
+    <nuclide name="U-238"  ao="2.2408e-02" />
+    <nuclide name="O-16"   ao="4.5829e-02" />
+    <nuclide name="O-17"   ao="1.1164e-04" />
+  </material>
+
+  <!-- Helium for gap -->
+  <material id="2">
+    <density value="0.001598" units="g/cm3" />
+    <nuclide name="He-4"   ao="2.4044e-04" />
+  </material>
+
+  <!-- Zircaloy 4 -->
+  <material id="3">
+    <density value="6.55" units="g/cm3" />
+    <nuclide name="O-16"   ao="3.0743e-04" />
+    <nuclide name="O-17"   ao="7.4887e-07" />
+    <nuclide name="Cr-50"  ao="3.2962e-06" />
+    <nuclide name="Cr-52"  ao="6.3564e-05" />
+    <nuclide name="Cr-53"  ao="7.2076e-06" />
+    <nuclide name="Cr-54"  ao="1.7941e-06" />
+    <nuclide name="Fe-54"  ao="8.6699e-06" />
+    <nuclide name="Fe-56"  ao="1.3610e-04" />
+    <nuclide name="Fe-57"  ao="3.1431e-06" />
+    <nuclide name="Fe-58"  ao="4.1829e-07" />
+    <nuclide name="Zr-90"  ao="2.1827e-02" />
+    <nuclide name="Zr-91"  ao="4.7600e-03" />
+    <nuclide name="Zr-92"  ao="7.2758e-03" />
+    <nuclide name="Zr-94"  ao="7.3734e-03" />
+    <nuclide name="Zr-96"  ao="1.1879e-03" />
+    <nuclide name="Sn-112" ao="4.6735e-06" />
+    <nuclide name="Sn-114" ao="3.1799e-06" />
+    <nuclide name="Sn-115" ao="1.6381e-06" />
+    <nuclide name="Sn-116" ao="7.0055e-05" />
+    <nuclide name="Sn-117" ao="3.7003e-05" />
+    <nuclide name="Sn-118" ao="1.1669e-04" />
+    <nuclide name="Sn-119" ao="4.1387e-05" />
+    <nuclide name="Sn-120" ao="1.5697e-04" />
+    <nuclide name="Sn-122" ao="2.2308e-05" />
+    <nuclide name="Sn-124" ao="2.7897e-05" />
+  </material>
+    
+  <!-- Borated water at 975 ppm -->
+  <material id="4">
+    <density value="0.740582" units="g/cm3" />
+    <nuclide name="B-10"  ao="8.0042e-06" />
+    <nuclide name="B-11"  ao="3.2218e-05" />
+    <nuclide name="H-1"   ao="4.9457e-02" />
+    <nuclide name="H-2"   ao="7.4196e-06" />
+    <nuclide name="O-16"  ao="2.4672e-02" />
+    <nuclide name="O-17"  ao="6.0099e-05" />
+    <sab name="HH2O" xs="71t" />
+  </material>
+
+</materials>

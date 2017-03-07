@@ -20,3 +20,10 @@
 .wy-side-nav-search {
     background-color: #343131;
 }
+
+/* Make embedded Jupyter notebooks look better */
+div#notebook-container.container {
+    padding: 0px;
+    width: auto;
+    box-shadow: none;
+}

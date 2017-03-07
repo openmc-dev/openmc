@@ -1494,145 +1494,13 @@ The ``<tally>`` element accepts the following sub-elements:
 
       :type:
         The type of the filter. Accepted options are "cell", "cellborn",
-        "material", "universe", "energy", "energyout", "mesh", "distribcell",
-        "delayedgroup", and "energyfunction".
+        "material", "universe", "energy", "energyout", "mu", "polar",
+        "azimuthal", "mesh", "distribcell", "delayedgroup", and
+        "energyfunction".
 
       :bins:
-        For each filter type, the corresponding ``bins`` entry is given as
-        follows:
-
-        :cell:
-          A list of cells in which the tally should be accumulated.
-
-        :cellborn:
-          This filter allows the tally to be scored to only when particles were
-          originally born in a specified cell.
-
-        :surface:
-          A list of surfaces for which the tally should be accumulated.
-
-        :material:
-          A list of materials for which the tally should be accumulated.
-
-        :universe:
-          A list of universes for which the tally should be accumulated.
-
-        :energy:
-          In continuous-energy mode, this filter should be provided as a
-          monotonically increasing list of bounding **pre-collision** energies
-          for a number of groups. For example, if this filter is specified as
-
-          .. code-block:: xml
-
-              <filter type="energy" bins="0.0 1.0e6 20.0e6" />
-
-          then two energy bins will be created, one with energies between 0 and
-          1 MeV and the other with energies between 1 and 20 MeV.
-
-          In multi-group mode the bins provided must match group edges
-          defined in the multi-group library.
-
-        :energyout:
-          In continuous-energy mode, this filter should be provided as a
-          monotonically increasing list of bounding **post-collision** energies
-          for a number of groups. For example, if this filter is specified as
-
-          .. code-block:: xml
-
-              <filter type="energyout" bins="0.0 1.0e6 20.0e6" />
-
-          then two post-collision energy bins will be created, one with
-          energies between 0 and 1 MeV and the other with energies between
-          1 and 20 MeV.
-
-          In multi-group mode the bins provided must match group edges
-          defined in the multi-group library.
-
-        :mu:
-          A monotonically increasing list of bounding **post-collision** cosines
-          of the change in a particle's angle (i.e., :math:`\mu = \hat{\Omega}
-          \cdot \hat{\Omega}'`), which represents a portion of the possible
-          values of :math:`[-1,1]`.  For example, spanning all of :math:`[-1,1]`
-          with five equi-width bins can be specified as:
-
-          .. code-block:: xml
-
-              <filter type="mu" bins="-1.0 -0.6 -0.2 0.2 0.6 1.0" />
-
-          Alternatively, if only one value is provided as a bin, OpenMC will
-          interpret this to mean the complete range of :math:`[-1,1]` should
-          be automatically subdivided in to the provided value for the bin.
-          That is, the above example of five equi-width bins spanning
-          :math:`[-1,1]` can be instead written as:
-
-          .. code-block:: xml
-
-              <filter type="mu" bins="5" />
-
-        :polar:
-          A monotonically increasing list of bounding particle polar angles
-          which represents a portion of the possible values of :math:`[0,\pi]`.
-          For example, spanning all of :math:`[0,\pi]` with five equi-width
-          bins can be specified as:
-
-          .. code-block:: xml
-
-              <filter type="polar" bins="0.0 0.6283 1.2566 1.8850 2.5132 3.1416"/>
-
-          Alternatively, if only one value is provided as a bin, OpenMC will
-          interpret this to mean the complete range of :math:`[0,\pi]` should
-          be automatically subdivided in to the provided value for the bin.
-          That is, the above example of five equi-width bins spanning
-          :math:`[0,\pi]` can be instead written as:
-
-          .. code-block:: xml
-
-              <filter type="polar" bins="5" />
-
-        :azimuthal:
-          A monotonically increasing list of bounding particle azimuthal angles
-          which represents a portion of the possible values of :math:`[-\pi,\pi)`.
-          For example, spanning all of :math:`[-\pi,\pi)` with two equi-width
-          bins can be specified as:
-
-          .. code-block:: xml
-
-              <filter type="azimuthal" bins="0.0 3.1416 6.2832" />
-
-          Alternatively, if only one value is provided as a bin, OpenMC will
-          interpret this to mean the complete range of :math:`[-\pi,\pi)` should
-          be automatically subdivided in to the provided value for the bin.
-          That is, the above example of five equi-width bins spanning
-          :math:`[-\pi,\pi)` can be instead written as:
-
-          .. code-block:: xml
-
-              <filter type="azimuthal" bins="2" />
-
-        :mesh:
-          The ``id`` of a structured mesh to be tallied over.
-
-        :distribcell:
-          The single cell which should be tallied uniquely for all instances.
-
-          .. note::
-              The distribcell filter will take a single cell ID and will tally
-              each unique occurrence of that cell separately. This filter will
-              not accept more than one cell ID. It is not recommended to combine
-              this filter with a cell or mesh filter.
-
-        :delayedgroup:
-          A list of delayed neutron precursor groups for which the tally should
-          be accumulated. For instance, to tally to all 6 delayed groups in the
-          ENDF/B-VII.1 library the filter is specified as:
-
-          .. code-block:: xml
-
-              <filter type="delayedgroup" bins="1 2 3 4 5 6" />
-
-        :energyfunction:
-          ``energyfunction`` filters do not use the ``bins`` entry.  Instead
-          they use ``energy`` and ``y``.
+         A description of the bins for each type of filter can be found in
+         :ref:`filter_types`.
 
       :energy:
         ``energyfunction`` filters multiply tally scores by an arbitrary
@@ -1940,6 +1808,144 @@ The ``<tally>`` element accepts the following sub-elements:
     for collision and analog estimators.
 
      *Default*: None
+
+.. _filter_types:
+
+Filter Types
+++++++++++++
+
+For each filter type, the following table describes what the ``bins`` attribute
+should be set to:
+
+:cell:
+  A list of unique IDs for cells in which the tally should be accumulated.
+
+:cellborn:
+  This filter allows the tally to be scored to only when particles were
+  originally born in a specified cell. A list of cell IDs should be given.
+
+:material:
+  A list of unique IDs for matreials in which the tally should be accumulated.
+
+:universe:
+  A list of unique IDs for universes in which the tally should be accumulated.
+
+:energy:
+  In continuous-energy mode, this filter should be provided as a
+  monotonically increasing list of bounding **pre-collision** energies
+  for a number of groups. For example, if this filter is specified as
+
+  .. code-block:: xml
+
+      <filter type="energy" bins="0.0 1.0e6 20.0e6" />
+
+  then two energy bins will be created, one with energies between 0 and
+  1 MeV and the other with energies between 1 and 20 MeV.
+
+  In multi-group mode the bins provided must match group edges
+  defined in the multi-group library.
+
+:energyout:
+  In continuous-energy mode, this filter should be provided as a
+  monotonically increasing list of bounding **post-collision** energies
+  for a number of groups. For example, if this filter is specified as
+
+  .. code-block:: xml
+
+      <filter type="energyout" bins="0.0 1.0e6 20.0e6" />
+
+  then two post-collision energy bins will be created, one with
+  energies between 0 and 1 MeV and the other with energies between
+  1 and 20 MeV.
+
+  In multi-group mode the bins provided must match group edges
+  defined in the multi-group library.
+
+:mu:
+  A monotonically increasing list of bounding **post-collision** cosines
+  of the change in a particle's angle (i.e., :math:`\mu = \hat{\Omega}
+  \cdot \hat{\Omega}'`), which represents a portion of the possible
+  values of :math:`[-1,1]`.  For example, spanning all of :math:`[-1,1]`
+  with five equi-width bins can be specified as:
+
+  .. code-block:: xml
+
+      <filter type="mu" bins="-1.0 -0.6 -0.2 0.2 0.6 1.0" />
+
+  Alternatively, if only one value is provided as a bin, OpenMC will
+  interpret this to mean the complete range of :math:`[-1,1]` should
+  be automatically subdivided in to the provided value for the bin.
+  That is, the above example of five equi-width bins spanning
+  :math:`[-1,1]` can be instead written as:
+
+  .. code-block:: xml
+
+      <filter type="mu" bins="5" />
+
+:polar:
+  A monotonically increasing list of bounding particle polar angles
+  which represents a portion of the possible values of :math:`[0,\pi]`.
+  For example, spanning all of :math:`[0,\pi]` with five equi-width
+  bins can be specified as:
+
+  .. code-block:: xml
+
+      <filter type="polar" bins="0.0 0.6283 1.2566 1.8850 2.5132 3.1416"/>
+
+  Alternatively, if only one value is provided as a bin, OpenMC will
+  interpret this to mean the complete range of :math:`[0,\pi]` should
+  be automatically subdivided in to the provided value for the bin.
+  That is, the above example of five equi-width bins spanning
+  :math:`[0,\pi]` can be instead written as:
+
+  .. code-block:: xml
+
+      <filter type="polar" bins="5" />
+
+:azimuthal:
+  A monotonically increasing list of bounding particle azimuthal angles
+  which represents a portion of the possible values of :math:`[-\pi,\pi)`.
+  For example, spanning all of :math:`[-\pi,\pi)` with two equi-width
+  bins can be specified as:
+
+  .. code-block:: xml
+
+      <filter type="azimuthal" bins="0.0 3.1416 6.2832" />
+
+  Alternatively, if only one value is provided as a bin, OpenMC will
+  interpret this to mean the complete range of :math:`[-\pi,\pi)` should
+  be automatically subdivided in to the provided value for the bin.
+  That is, the above example of five equi-width bins spanning
+  :math:`[-\pi,\pi)` can be instead written as:
+
+  .. code-block:: xml
+
+      <filter type="azimuthal" bins="2" />
+
+:mesh:
+  The unique ID of a structured mesh to be tallied over.
+
+:distribcell:
+  The single cell which should be tallied uniquely for all instances.
+
+  .. note:: The distribcell filter will take a single cell ID and will tally
+            each unique occurrence of that cell separately. This filter will not
+            accept more than one cell ID. It is not recommended to combine this
+            filter with a cell or mesh filter.
+
+:delayedgroup:
+  A list of delayed neutron precursor groups for which the tally should
+  be accumulated. For instance, to tally to all 6 delayed groups in the
+  ENDF/B-VII.1 library the filter is specified as:
+
+  .. code-block:: xml
+
+      <filter type="delayedgroup" bins="1 2 3 4 5 6" />
+
+:energyfunction:
+  ``energyfunction`` filters do not use the ``bins`` entry.  Instead
+  they use ``energy`` and ``y``.
+
 
 ``<mesh>`` Element
 ------------------

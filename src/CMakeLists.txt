@@ -239,6 +239,21 @@ endif()
 add_subdirectory(xml/fox)
 
 #===============================================================================
+# PURXS Library
+#===============================================================================
+
+# Only initialize git submodules if it is not there. User is responsible
+# for future updates of purxs submodule.
+if(NOT EXISTS ${CMAKE_CURRENT_SOURCE_DIR}/../purxs/.git)
+  message("-- Initializing/Updating PURXS submodule...")
+  execute_process(COMMAND git submodule init
+                  WORKING_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}/..)
+  execute_process(COMMAND git submodule update
+                  WORKING_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}/..)
+endif()
+add_subdirectory(../purxs)
+
+#===============================================================================
 # Build OpenMC executable
 #===============================================================================
 
@@ -247,15 +262,15 @@ if(purxs)
   add_definitions(-DPURXS)
 endif()
 # static PURXS lib: file(GLOB source *.F90 xml/openmc_fox.F90)
-file(GLOB source *.F90 xml/openmc_fox.F90 URR/src/URR_*)
+file(GLOB source *.F90 xml/openmc_fox.F90 ../purxs/src/URR_*)
 
 # build static Faddeeva library
 option(BUILD_SHARED_LIBS "Build shared libraries" OFF)
-ADD_LIBRARY (faddeeva STATIC URR/src/Faddeeva.c)
+ADD_LIBRARY (faddeeva STATIC ../purxs/src/Faddeeva.c)
 SET_TARGET_PROPERTIES(faddeeva PROPERTIES COMPILE_FLAGS "${cflags}")
 
 # build static PURXS library
-#file(GLOB PURXS_src URR/src/URR_*)
+#file(GLOB PURXS_src ../purxs/src/URR_*)
 #ADD_LIBRARY (PURXS STATIC ${PURXS_src})
 #SET_TARGET_PROPERTIES(PURXS PROPERTIES COMPILE_FLAGS "${f90flags}")
 

@@ -246,9 +246,8 @@ add_subdirectory(xml/fox)
 # for future updates of purxs submodule.
 if(NOT EXISTS ${CMAKE_CURRENT_SOURCE_DIR}/../purxs/.git)
   message("-- Initializing/Updating PURXS submodule...")
-  execute_process(COMMAND git submodule init
-                  WORKING_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}/..)
-  execute_process(COMMAND git submodule update
+  execute_process(COMMAND git submodule add -b develop https://github.com/walshjon/purxs ${CMAKE_CURRENT_SOURCE_DIR}/../purxs)
+  execute_process(COMMAND git submodule update --init --recursive
                   WORKING_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}/..)
 endif()
 

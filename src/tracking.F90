@@ -16,6 +16,8 @@ module tracking
   use track_output,    only: initialize_particle_track, write_particle_track, &
                              finalize_particle_track
 
+  implicit none
+
 contains
 
 !===============================================================================

@@ -90,6 +90,9 @@ module ace_header
 !===============================================================================
 
   type Nuclide
+
+    integer :: i_isotope = 0 ! index into URR isotopes
+
     character(10) :: name    ! name of nuclide, e.g. 92235.03c
     integer       :: zaid    ! Z and A identifier, e.g. 92235
     integer       :: listing ! index in xs_listings
@@ -144,9 +147,9 @@ module ace_header
     real(8), allocatable :: nu_d_precursor_data(:)
     type(DistEnergy), pointer :: nu_d_edist(:) => null()
 
-    ! Unresolved resonance data
-    logical                :: urr_present
-    integer                :: urr_inelastic
+    ! URR treatment parameters and indices
+    logical :: urr_present  = .false.
+    integer :: urr_inelastic_index
     type(UrrData), pointer :: urr_data => null()
 
     ! Reactions
@@ -155,7 +158,10 @@ module ace_header
 
     ! Type-Bound procedures
     contains
-      procedure :: clear => nuclide_clear ! Deallocates Nuclide
+
+      ! deallocates nuclide
+      procedure :: clear => nuclide_clear
+
   end type Nuclide
 
 !===============================================================================
@@ -264,6 +270,7 @@ module ace_header
     real(8) :: fission         ! microscopic fission xs
     real(8) :: nu_fission      ! microscopic production xs
     real(8) :: kappa_fission   ! microscopic energy-released from fission
+    real(8) :: competitive     ! (total - elastic - absorption)
 
     ! Information for S(a,b) use
     integer :: index_sab          ! index in sab_tables (zero means no table)
@@ -271,7 +278,7 @@ module ace_header
     real(8) :: elastic_sab        ! microscopic elastic scattering on S(a,b) table
 
     ! Information for URR probability table use
-    logical :: use_ptable  ! in URR range with probability tables?
+    logical :: in_urr  ! in the URR?
     real(8) :: last_prn
   end type NuclideMicroXS
 
@@ -289,75 +296,75 @@ module ace_header
     real(8) :: kappa_fission ! macroscopic energy-released from fission
   end type MaterialMacroXS
 
-  contains
+contains
 
 !===============================================================================
 ! DISTANGLE_CLEAR resets and deallocates data in Reaction.
 !===============================================================================
 
-    subroutine distangle_clear(this)
+  subroutine distangle_clear(this)
 
-      class(DistAngle), intent(inout) :: this ! The DistAngle object to clear
+    class(DistAngle), intent(inout) :: this ! The DistAngle object to clear
 
-      if (allocated(this % energy)) &
-           deallocate(this % energy, this % type, this % location, this % data)
+    if (allocated(this % energy)) &
+      deallocate(this % energy, this % type, this % location, this % data)
 
-    end subroutine distangle_clear
+  end subroutine distangle_clear
 
 !===============================================================================
 ! DISTENERGY_CLEAR resets and deallocates data in DistEnergy.
 !===============================================================================
 
-    recursive subroutine distenergy_clear(this)
+  recursive subroutine distenergy_clear(this)
 
-      class(DistEnergy), intent(inout) :: this ! The DistEnergy object to clear
+    class(DistEnergy), intent(inout) :: this ! The DistEnergy object to clear
 
-      ! Clear p_valid
-      call this % p_valid % clear()
+    ! Clear p_valid
+    call this % p_valid % clear()
 
-      if (allocated(this % data)) &
-           deallocate(this % data)
+    if (allocated(this % data)) &
+      deallocate(this % data)
 
-      if (associated(this % next)) then
-        ! recursively clear this item
-        call this % next % clear()
-        deallocate(this % next)
-      end if
+    if (associated(this % next)) then
+      ! recursively clear this item
+      call this % next % clear()
+      deallocate(this % next)
+    end if
 
-    end subroutine distenergy_clear
+  end subroutine distenergy_clear
 
 !===============================================================================
 ! REACTION_CLEAR resets and deallocates data in Reaction.
 !===============================================================================
 
-    subroutine reaction_clear(this)
+  subroutine reaction_clear(this)
 
-      class(Reaction), intent(inout) :: this ! The Reaction object to clear
+    class(Reaction), intent(inout) :: this ! The Reaction object to clear
 
-      if (allocated(this % sigma)) &
-           deallocate(this % sigma)
+    if (allocated(this % sigma)) &
+         deallocate(this % sigma)
 
-      if (associated(this % edist)) then
-        call this % edist % clear()
-        deallocate(this % edist)
-      end if
+    if (associated(this % edist)) then
+      call this % edist % clear()
+      deallocate(this % edist)
+    end if
 
-      call this % adist % clear()
+    call this % adist % clear()
 
-    end subroutine reaction_clear
+  end subroutine reaction_clear
 
 !===============================================================================
 ! URRDATA_CLEAR resets and deallocates data in Reaction.
 !===============================================================================
 
-    subroutine urrdata_clear(this)
+  subroutine urrdata_clear(this)
 
-      class(UrrData), intent(inout) :: this ! The UrrData object to clear
+    class(UrrData), intent(inout) :: this ! The UrrData object to clear
 
-      if (allocated(this % energy)) &
-           deallocate(this % energy, this % prob)
+    if (allocated(this % energy)) &
+         deallocate(this % energy, this % prob)
 
-    end subroutine urrdata_clear
+  end subroutine urrdata_clear
 
 !===============================================================================
 ! NUCLIDE_CLEAR resets and deallocates data in Nuclide.

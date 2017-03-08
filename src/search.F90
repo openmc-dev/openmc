@@ -2,6 +2,9 @@ module search
 
   use error,     only: fatal_error
   use global,    only: message
+  use constants
+
+  implicit none
 
   integer, parameter :: MAX_ITERATION = 64
 

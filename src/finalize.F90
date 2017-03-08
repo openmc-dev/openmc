@@ -1,9 +1,9 @@
 module finalize
 
   use global
-  use output,         only: print_runtime, print_results, &
-                            print_overlap_check, write_tallies
-  use tally,          only: tally_statistics
+  use output,       only: print_runtime, print_results,&
+                          print_overlap_check, write_tallies
+  use tally,        only: tally_statistics
 
 #ifdef MPI
   use mpi
@@ -11,6 +11,12 @@ module finalize
 
 #ifdef HDF5
   use hdf5_interface,  only: h5tclose_f, h5close_f, hdf5_err
+#endif
+
+#ifdef PURXS
+  use purxs_api, only:&
+       URR_isotopes,&
+       URR_num_isotopes
 #endif
 
   implicit none
@@ -24,58 +30,70 @@ contains
 
   subroutine finalize_run()
 
-    ! Start finalization timer
-    call time_finalize % start()
+    integer :: i ! isotope index
 
-    if (run_mode /= MODE_PLOTTING .and. run_mode /= MODE_PARTICLE) then
-      ! Calculate statistics for tallies and write to tallies.out
-      if (master) then
-        if (n_realizations > 1) call tally_statistics()
+    if (run_mode /= MODE_PURXS) then
+      ! Start finalization timer
+      call time_finalize % start()
+
+      if (run_mode /= MODE_PLOTTING .and. run_mode /= MODE_PARTICLE) then
+        ! Calculate statistics for tallies and write to tallies.out
+        if (master) then
+          if (n_realizations > 1) call tally_statistics()
+        end if
+        if (output_tallies) then
+          if (master) call write_tallies()
+        end if
+        if (check_overlaps) call reduce_overlap_count()
       end if
-      if (output_tallies) then
-        if (master) call write_tallies()
-      end if
-      if (check_overlaps) call reduce_overlap_count()
-    end if
 
 #ifdef PETSC
-    ! Finalize PETSc
-    if (cmfd_run) then
-      call PetscFinalize(mpi_err)
-      call MPI_COMM_FREE(cmfd_comm, mpi_err)
-    end if
+      ! Finalize PETSc
+      if (cmfd_run) then
+        call PetscFinalize(mpi_err)
+        call MPI_COMM_FREE(cmfd_comm, mpi_err)
+      end if
 #endif
 
-    ! Stop timers and show timing statistics
-    call time_finalize % stop()
-    call time_total % stop()
-    if (master .and. (run_mode /= MODE_PLOTTING .and. &
-         run_mode /= MODE_PARTICLE)) then
-      call print_runtime()
-      call print_results()
-      if (check_overlaps) call print_overlap_check()
+      ! Stop timers and show timing statistics
+      call time_finalize % stop()
+      call time_total % stop()
+      if (master .and. (run_mode /= MODE_PLOTTING .and. &
+           run_mode /= MODE_PARTICLE)) then
+        call print_runtime()
+        call print_results()
+        if (check_overlaps) call print_overlap_check()
+      end if
     end if
 
     ! Deallocate arrays
     call free_memory()
 
-#ifdef HDF5
-    ! Release compound datatypes
-    call h5tclose_f(hdf5_tallyresult_t, hdf5_err)
-    call h5tclose_f(hdf5_bank_t, hdf5_err)
+    ! deallocate URR isotopes
+    do i = 1, URR_num_isotopes
+      call URR_isotopes(i) % dealloc()
+    end do
 
-    ! Close FORTRAN interface.
-    call h5close_f(hdf5_err)
+    if (run_mode /= MODE_PURXS) then
+
+#ifdef HDF5
+      ! Release compound datatypes
+      call h5tclose_f(hdf5_tallyresult_t, hdf5_err)
+      call h5tclose_f(hdf5_bank_t, hdf5_err)
+
+      ! Close FORTRAN interface.
+      call h5close_f(hdf5_err)
 #endif
 
 #ifdef MPI
-    ! Free all MPI types
-    call MPI_TYPE_FREE(MPI_BANK, mpi_err)
-    call MPI_TYPE_FREE(MPI_TALLYRESULT, mpi_err)
+      ! Free all MPI types
+      call MPI_TYPE_FREE(MPI_BANK, mpi_err)
+      call MPI_TYPE_FREE(MPI_TALLYRESULT, mpi_err)
 
-    ! If MPI is in use and enabled, terminate it
-    call MPI_FINALIZE(mpi_err)
+      ! If MPI is in use and enabled, terminate it
+      call MPI_FINALIZE(mpi_err)
 #endif
+    end if
 
   end subroutine finalize_run
 

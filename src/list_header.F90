@@ -556,6 +556,7 @@ contains
       allocate(new_elem)
       new_elem % data = data
       new_elem % next => this % head
+      new_elem % next % prev => new_elem
       this % head => new_elem
       this % count = this % count + 1
 
@@ -565,7 +566,7 @@ contains
         i = this % last_index
         elem => this % last_elem
       else
-        i = 0
+        i = 1
         elem => this % head
       end if
       do while (associated(elem))

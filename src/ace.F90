@@ -15,13 +15,13 @@ module ace
 
   implicit none
 
-  integer :: NXS(16)             ! Descriptors for ACE XSS tables
-  integer :: JXS(32)             ! Pointers into ACE XSS tables
-  real(8), allocatable :: XSS(:) ! Cross section data
-  integer :: XSS_index           ! current index in XSS data
+  integer                   :: JXS(32)   ! Pointers into ACE XSS tables
+  integer                   :: NXS(16)   ! Descriptors for ACE XSS tables
+  real(8), allocatable      :: XSS(:)    ! Cross section data
+  integer                   :: XSS_index ! Current index in XSS data
 
-  private :: NXS
   private :: JXS
+  private :: NXS
   private :: XSS
 
 contains
@@ -460,8 +460,8 @@ contains
 
         ! build xs cdf
         xs_cdf_sum = xs_cdf_sum + (sqrt(nuc % energy_0K(i)) * nuc % elastic_0K(i) &
-          & + sqrt(nuc % energy_0K(i+1)) * nuc % elastic_0K(i+1)) / TWO &
-          & * (nuc % energy_0K(i+1) - nuc % energy_0K(i))
+             + sqrt(nuc % energy_0K(i+1)) * nuc % elastic_0K(i+1)) * HALF &
+             * (nuc % energy_0K(i+1) - nuc % energy_0K(i))
         nuc % xs_cdf(i) = xs_cdf_sum
       end do
 
@@ -1305,19 +1305,18 @@ contains
     ! if the inelastic competition flag indicates that the inelastic cross
     ! section should be determined from a normal reaction cross section, we need
     ! to set up a pointer to that reaction
-    nuc % urr_inelastic = NONE
+    nuc % urr_inelastic_index = NONE
     if (nuc % urr_data % inelastic_flag > 0) then
       do i = 1, nuc % n_reaction
         if (nuc % reactions(i) % MT == nuc % urr_data % inelastic_flag) then
-          nuc % urr_inelastic = i
+          nuc % urr_inelastic_index = i
         end if
       end do
 
       ! Abort if no corresponding inelastic reaction was found
-      if (nuc % urr_inelastic == NONE) then
-        message = "Could not find inelastic reaction specified on " &
-             // "unresolved resonance probability table."
-        call fatal_error()
+      if (nuc % urr_inelastic_index == NONE) then
+        call fatal_error("Could not find inelastic reaction specified on &
+             &unresolved resonance probability table.")
       end if
     end if
 

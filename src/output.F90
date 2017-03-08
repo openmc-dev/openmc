@@ -5,7 +5,7 @@ module output
   use ace_header,      only: Nuclide, Reaction, UrrData
   use constants
   use endf,            only: reaction_name
-  use error,           only: warning
+  use error,           only: fatal_error, warning
   use geometry_header, only: Cell, Universe, Surface, BASE_UNIVERSE
   use global
   use math,            only: t_percentile
@@ -814,7 +814,6 @@ contains
            write(unit_,'(/18X)',advance='no')
     end do
     write(unit_,*)
-
 
     ! Write score bins
     string   = ""

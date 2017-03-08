@@ -5,6 +5,7 @@ module cmfd_data
 ! parameters for CMFD calculation.
 !==============================================================================
 
+  use constants
 
   implicit none
   private

@@ -23,6 +23,8 @@ module eigenvalue
                           reset_result
   use tracking,     only: transport
 
+
+  implicit none
   private
   public :: run_eigenvalue
 
@@ -536,11 +538,11 @@ contains
         m % n_dimension = 3
         allocate(m % dimension(3))
         m % dimension = n
+        
+        ! determine width
+        m % width = (m % upper_right - m % lower_left) / m % dimension
+        
       end if
-
-      ! allocate and determine width
-      allocate(m % width(3))
-      m % width = (m % upper_right - m % lower_left) / m % dimension
 
       ! allocate p
       allocate(entropy_p(1, m % dimension(1), m % dimension(2), &

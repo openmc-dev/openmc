@@ -1,6 +1,5 @@
 cmake_minimum_required(VERSION 2.8 FATAL_ERROR)
-
-project(openmc Fortran C)
+project(shutmc Fortran C)
 
 # Setup output directories
 set(CMAKE_ARCHIVE_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}/lib)
@@ -24,10 +23,9 @@ option(openmp   "Enable shared-memory parallelism with OpenMP"   OFF)
 option(profile  "Compile with profiling flags"                   OFF)
 option(petsc    "Enable PETSC for use in CMFD acceleration"      OFF)
 option(debug    "Compile with debug flags"                       OFF)
-option(optimize "Turn on all compiler optimization flags"        OFF)
+option(optimize "Turn on all compiler optimization flags"        ON)
 option(verbose  "Create verbose Makefiles"                       OFF)
 option(coverage "Compile with flags"                             OFF)
-option(purxs    "Compile with PURXS"                             OFF)
 
 if (verbose)
   set(CMAKE_VERBOSE_MAKEFILE on)
@@ -39,15 +37,15 @@ endif()
 
 set(MPI_ENABLED FALSE)
 set(HDF5_ENABLED FALSE)
-if($ENV{FC} MATCHES "mpi.*")
-  message("-- Detected MPI wrapper: $ENV{FC}")
-  add_definitions(-DMPI)
-  set(MPI_ENABLED TRUE)
-elseif($ENV{FC} MATCHES "h5fc$")
+#if($ENV{FC} MATCHES "mpi.*")
+#  message("-- Detected MPI wrapper: $ENV{FC}")
+#  add_definitions(-DMPI)
+#  set(MPI_ENABLED TRUE)
+if($ENV{FC} MATCHES "h5fc")
   message("-- Detected HDF5 wrapper: $ENV{FC}")
   add_definitions(-DHDF5)
   set(HDF5_ENABLED TRUE)
-elseif($ENV{FC} MATCHES "h5pfc$")
+elseif($ENV{FC} MATCHES "h5pfc")
   message("-- Detected parallel HDF5 wrapper: $ENV{FC}")
   add_definitions(-DMPI -DHDF5)
   set(MPI_ENABLED TRUE)
@@ -240,44 +238,19 @@ endif()
 add_subdirectory(xml/fox)
 
 #===============================================================================
-# PURXS Library
-#===============================================================================
-
-# Only initialize git submodules if it is not there. User is responsible
-# for future updates of purxs submodule.
-if(NOT EXISTS ${CMAKE_CURRENT_SOURCE_DIR}/../purxs/.git)
-  message("-- Initializing/Updating PURXS submodule...")
-  execute_process(COMMAND git submodule add -b develop
-                  https://github.com/walshjon/purxs
-                  ${CMAKE_CURRENT_SOURCE_DIR}/../purxs)
-  execute_process(COMMAND git submodule update --init --recursive
-                  WORKING_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}/..)
-endif()
-
-#===============================================================================
 # Build OpenMC executable
 #===============================================================================
 
-set(program "openmc")
-if(purxs)
-  add_definitions(-DPURXS)
-endif()
-# static PURXS lib: file(GLOB source *.F90 xml/openmc_fox.F90)
-file(GLOB source *.F90 xml/openmc_fox.F90 ../purxs/src/URR_*)
+set(program "shutmc")
+file(GLOB source *.F90 xml/openmc_fox.F90 URR/src/URR_*)
 
 # build static Faddeeva library
 option(BUILD_SHARED_LIBS "Build shared libraries" OFF)
-ADD_LIBRARY (faddeeva STATIC ../purxs/src/Faddeeva.c)
+ADD_LIBRARY (faddeeva STATIC URR/src/Faddeeva.c)
 SET_TARGET_PROPERTIES(faddeeva PROPERTIES COMPILE_FLAGS "${cflags}")
 
-# build static PURXS library
-#file(GLOB PURXS_src ../purxs/src/URR_*)
-#ADD_LIBRARY (PURXS STATIC ${PURXS_src})
-#SET_TARGET_PROPERTIES(PURXS PROPERTIES COMPILE_FLAGS "${f90flags}")
-
 add_executable(${program} ${source})
-target_link_libraries(${program} ${libraries} fox_dom faddeeva) # PURXS)
->>>>>>> shutmc/lib-refactor
+target_link_libraries(${program} ${libraries} fox_dom faddeeva)
 set_target_properties(${program} PROPERTIES
   COMPILE_FLAGS "${f90flags}"
   LINK_FLAGS "${ldflags}")
@@ -353,7 +326,7 @@ foreach(test ${TESTS})
       # Preform a parallel test
       add_test(NAME ${TEST_NAME}
         WORKING_DIRECTORY ${TEST_PATH}
-        COMMAND ${PYTHON_EXECUTABLE} ${TEST_NAME} --exe $<TARGET_FILE:openmc>
+        COMMAND ${PYTHON_EXECUTABLE} ${TEST_NAME} --exe $<TARGET_FILE:shutmc>
         --mpi_exec $ENV{MPI_DIR}/bin/mpiexec)
 
     else(${MPI_ENABLED})
@@ -361,7 +334,7 @@ foreach(test ${TESTS})
       # Perform a serial test
       add_test(NAME ${TEST_NAME}
         WORKING_DIRECTORY ${TEST_PATH}
-        COMMAND ${PYTHON_EXECUTABLE} ${TEST_NAME} --exe $<TARGET_FILE:openmc>)
+        COMMAND ${PYTHON_EXECUTABLE} ${TEST_NAME} --exe $<TARGET_FILE:shutmc>)
 
     endif(${MPI_ENABLED})
 
@@ -374,7 +347,7 @@ foreach(test ${TESTS})
       # Perform serial valgrind and coverage test with plot flag
       add_test(NAME ${TEST_NAME}
         WORKING_DIRECTORY ${TEST_PATH}
-        COMMAND $<TARGET_FILE:openmc> -p ${TEST_PATH})
+        COMMAND $<TARGET_FILE:shutmc> -p ${TEST_PATH})
 
     # If a restart test is encounted, need to run with -r and restart file(s)
     elseif(${test} MATCHES "restart")
@@ -415,12 +388,12 @@ foreach(test ${TESTS})
       # Perform serial valgrind and coverage test
       add_test(NAME ${TEST_NAME}
         WORKING_DIRECTORY ${TEST_PATH}
-        COMMAND $<TARGET_FILE:openmc> ${TEST_PATH})
+        COMMAND $<TARGET_FILE:shutmc> ${TEST_PATH})
 
       # Perform serial valgrind and coverage restart test
       add_test(NAME ${TEST_NAME}_restart
         WORKING_DIRECTORY ${TEST_PATH}
-        COMMAND $<TARGET_FILE:openmc> -r ${RESTART_FILE} ${TEST_PATH})
+        COMMAND $<TARGET_FILE:shutmc> -r ${RESTART_FILE} ${TEST_PATH})
 
       # Set test dependency
       set_tests_properties(${TEST_NAME}_restart PROPERTIES DEPENDS ${TEST_NAME})
@@ -432,7 +405,7 @@ foreach(test ${TESTS})
       # Perform serial valgrind and coverage test
       add_test(NAME ${TEST_NAME}
         WORKING_DIRECTORY ${TEST_PATH}
-        COMMAND $<TARGET_FILE:openmc> ${TEST_PATH})
+        COMMAND $<TARGET_FILE:shutmc> ${TEST_PATH})
 
     endif(${test} MATCHES "test_plot")
 

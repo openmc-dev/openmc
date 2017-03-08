@@ -209,7 +209,7 @@ contains
     ! default to the first reaction if we know that there are no partial fission
     ! reactions
 
-    if (micro_xs(i_nuclide) % use_ptable .or. &
+    if (micro_xs(i_nuclide) % in_urr .or. &
          .not. nuc % has_partial_fission) then
       i_reaction = nuc % index_fission(1)
       return
@@ -234,7 +234,7 @@ contains
       prob = prob + ((ONE - f)*rxn%sigma(i_grid - rxn%threshold + 1) &
            + f*(rxn%sigma(i_grid - rxn%threshold + 2)))
 
-      ! Create fission bank sites if fission occus
+      ! Create fission bank sites if fission occurs
       if (prob > cutoff) exit FISSION_REACTION_LOOP
     end do FISSION_REACTION_LOOP
 
@@ -316,12 +316,14 @@ contains
 
     integer :: i
     integer :: i_grid
+    integer :: i_rxn
     real(8) :: f
     real(8) :: prob
     real(8) :: cutoff
     type(Nuclide),  pointer, save :: nuc => null()
     type(Reaction), pointer, save :: rxn => null()
-!$omp threadprivate(nuc, rxn)
+    real(8) :: competitive_xs_ssf ! competitive xs self-shielding factor in URR
+!$omp threadprivate(nuc, rxn, tope)
 
     ! Get pointer to nuclide and grid index/interpolation factor
     nuc    => nuclides(i_nuclide)
@@ -331,8 +333,14 @@ contains
     ! For tallying purposes, this routine might be called directly. In that
     ! case, we need to sample a reaction via the cutoff variable
     prob = ZERO
-    cutoff = prn() * (micro_xs(i_nuclide) % total - &
-         micro_xs(i_nuclide) % absorption)
+    cutoff = prn()&
+         * (micro_xs(i_nuclide) % total - micro_xs(i_nuclide) % absorption)
+
+    competitive_xs_ssf&
+         = (micro_xs(i_nuclide) % total&
+         -  micro_xs(i_nuclide) % elastic&
+         -  micro_xs(i_nuclide) % absorption)&
+         /  micro_xs(i_nuclide) % competitive
 
     prob = prob + micro_xs(i_nuclide) % elastic
     if (prob > cutoff) then
@@ -349,15 +357,29 @@ contains
         rxn => nuc % reactions(1)
 
         ! Perform collision physics for elastic scattering
-        call elastic_scatter(i_nuclide, rxn, &
-             p % E, p % coord0 % uvw, p % mu, p % wgt)
+        call elastic_scatter(&
+             i_nuclide, rxn, p % E, p % coord0 % uvw, p % mu, p % wgt)
       end if
 
       p % event_MT = ELASTIC
 
     else
       ! =======================================================================
-      ! INELASTIC SCATTERING
+      ! COMPETITIVE REACTIONS
+
+      ! No URR treatment --> default algo
+      ! URR treatment:
+      ! -- Not a URR isotope --> default algo
+      ! -- URR isotope:
+      ! -- -- Not in URR --> default algo
+      ! -- -- In URR:
+      ! -- -- -- No competitive xs resonance component --> default algo
+      ! -- -- -- Competitive xs resonance component:
+      ! -- -- -- -- Apply competitive xs SSF to all competitive rxns
+      ! -- -- -- -- (this is good enough, and probably best soln, but
+      ! -- -- -- -- not rigorous unless exactly one channel is open because
+      ! -- -- -- -- splitting the single competitive width between reactions
+      ! -- -- -- -- is ambiguous)
 
       ! note that indexing starts from 2 since nuc % reactions(1) is elastic
       ! scattering
@@ -388,13 +410,16 @@ contains
         if (i_grid < rxn % threshold) cycle
 
         ! add to cumulative probability
-        prob = prob + ((ONE - f)*rxn%sigma(i_grid - rxn%threshold + 1) &
-             + f*(rxn%sigma(i_grid - rxn%threshold + 2)))
+        prob = prob&
+             + ((ONE - f)*rxn%sigma(i_grid - rxn%threshold + 1)&
+             + f*(rxn%sigma(i_grid - rxn%threshold + 2)))&
+             * competitive_xs_ssf
+
       end do
 
-      ! Perform collision physics for inelastics scattering
-      call inelastic_scatter(nuc, rxn, p % E, p % coord0 % uvw, &
-           p % mu, p % wgt)
+      ! Perform collision physics for inelastic scattering
+      call inelastic_scatter(&
+           nuc, rxn, p % E, p % coord0 % uvw, p % mu, p % wgt)
       p % event_MT = rxn % MT
 
     end if
@@ -405,8 +430,7 @@ contains
   end subroutine scatter
 
 !===============================================================================
-! ELASTIC_SCATTER treats the elastic scattering of a neutron with a
-! target.
+! ELASTIC_SCATTER treats the elastic scattering of a neutron with a target.
 !===============================================================================
 
   subroutine elastic_scatter(i_nuclide, rxn, E, uvw, mu_lab, wgt)
@@ -438,9 +462,9 @@ contains
     v_n = vel * uvw
 
     ! Sample velocity of target nucleus
-    if (.not. micro_xs(i_nuclide) % use_ptable) then
-      call sample_target_velocity(nuc, v_t, E, uvw, v_n, wgt, &
-        & micro_xs(i_nuclide) % elastic)
+    if (.not. micro_xs(i_nuclide) % in_urr) then
+      call sample_target_velocity(nuc, v_t, E, uvw, v_n, wgt,&
+           micro_xs(i_nuclide) % elastic)
     else
       v_t = ZERO
     end if
@@ -475,7 +499,7 @@ contains
     ! neutron's pre- and post-collision angle
     mu_lab = dot_product(uvw, v_n) / vel
 
-    ! Set energy and direction of particle in LAB frame
+    ! Set direction of particle in LAB frame
     uvw = v_n / vel
 
   end subroutine elastic_scatter
@@ -721,8 +745,10 @@ contains
         mu = sab % inelastic_data(l) % mu(k, j)
 
       else
+
         message = "Invalid secondary energy mode on S(a,b) table " // &
              trim(sab % name)
+
       end if  ! (inelastic secondary energy treatment)
     end if  ! (elastic or inelastic)
 
@@ -976,6 +1002,7 @@ contains
     case default
       message = "Not a recognized resonance scattering treatment!"
       call fatal_error()
+
     end select
     
   end subroutine sample_target_velocity

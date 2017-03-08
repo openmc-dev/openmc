@@ -2,6 +2,7 @@ module cmfd_solver
 
 ! This module contains routines to execute the power iteration solver
 
+  use constants,          only: MAX_LINE_LEN
   use cmfd_loss_operator, only: init_loss_matrix, build_loss_matrix
   use cmfd_prod_operator, only: init_prod_matrix, build_prod_matrix
   use matrix_header,      only: Matrix
@@ -11,25 +12,25 @@ module cmfd_solver
   private
   public :: cmfd_solver_execute
 
-  real(8) :: k_n                  ! new k-eigenvalue
-  real(8) :: k_o                  ! old k-eigenvalue
-  real(8) :: k_s                  ! shift of eigenvalue
-  real(8) :: k_ln                 ! new shifted eigenvalue
-  real(8) :: k_lo                 ! old shifted eigenvalue
-  real(8) :: norm_n               ! current norm of source vector
-  real(8) :: norm_o               ! old norm of source vector
-  real(8) :: kerr                 ! error in keff
-  real(8) :: serr                 ! error in source
-  real(8) :: ktol                 ! tolerance on keff
-  real(8) :: stol                 ! tolerance on source
-  logical :: adjoint_calc         ! run an adjoint calculation
-  type(Matrix) :: loss            ! cmfd loss matrix
-  type(Matrix) :: prod            ! cmfd prod matrix
-  type(Vector) :: phi_n           ! new flux vector
-  type(Vector) :: phi_o           ! old flux vector
-  type(Vector) :: s_n             ! new source vector
-  type(Vector) :: s_o             ! old flux vector
-  type(Vector) :: serr_v          ! error in source
+  real(8) :: k_n          ! New k-eigenvalue
+  real(8) :: k_o          ! Old k-eigenvalue
+  real(8) :: k_s          ! Shift of eigenvalue
+  real(8) :: k_ln         ! New shifted eigenvalue
+  real(8) :: k_lo         ! Old shifted eigenvalue
+  real(8) :: norm_n       ! Current norm of source vector
+  real(8) :: norm_o       ! Old norm of source vector
+  real(8) :: kerr         ! Error in keff
+  real(8) :: serr         ! Error in source
+  real(8) :: ktol         ! Tolerance on keff
+  real(8) :: stol         ! Tolerance on source
+  logical :: adjoint_calc ! Run an adjoint calculation
+  type(Matrix) :: loss    ! Cmfd loss matrix
+  type(Matrix) :: prod    ! Cmfd prod matrix
+  type(Vector) :: phi_n   ! New flux vector
+  type(Vector) :: phi_o   ! Old flux vector
+  type(Vector) :: s_n     ! New source vector
+  type(Vector) :: s_o     ! Old flux vector
+  type(Vector) :: serr_v  ! Error in source
 
   ! CMFD linear solver interface
   procedure(linsolve), pointer :: cmfd_linsolver => null()

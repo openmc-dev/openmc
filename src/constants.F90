@@ -63,15 +63,21 @@ module constants
 
   real(8), parameter ::            &
        PI           = 3.1415926535898_8, & ! pi
+       SQRT_PI      = sqrt(PI),          & ! sqrt of pi
        MASS_NEUTRON = 1.008664916,       & ! mass of a neutron in amu
+       M_NEUTRON_eV = 939.565379E6_8,    & ! neutron mass [eV]
        MASS_PROTON  = 1.007276466812,    & ! mass of a proton in amu
        AMU          = 1.660538921e-27,   & ! 1 amu in kg
        N_AVOGADRO   = 0.602214129,       & ! Avogadro's number in 10^24/mol
        K_BOLTZMANN  = 8.6173324e-11,     & ! Boltzmann constant in MeV/K
-       INFINITY     = huge(0.0_8),       & ! positive infinity
+       HBAR_C       = 197.3269718E6_8,   & ! [eV-fm]
+       INFINITY     = huge(1.0_8),       & ! largest positive non-infinite dble
        ZERO         = 0.0_8,             &
+       HALF         = 0.5_8,             &
        ONE          = 1.0_8,             &
-       TWO          = 2.0_8
+       TWO          = 2.0_8,             &
+       THREE        = 3.0_8,             &
+       FOUR         = 4.0_8
 
   ! ============================================================================
   ! GEOMETRY-RELATED CONSTANTS
@@ -139,7 +145,12 @@ module constants
        LINEAR_LINEAR = 2, & ! y is linear in x
        LINEAR_LOG    = 3, & ! y is linear in ln(x)
        LOG_LINEAR    = 4, & ! ln(y) is linear in x
-       LOG_LOG       = 5    ! ln(y) is linear in ln(x)
+       LOG_LOG       = 5, & ! ln(y) is linear in ln(x)
+       SQRT_LINEAR   = 7, & ! y is linear in sqrt(x)
+       SQRT_LOG      = 8, & ! ln(y) is linear in sqrt(x)
+       STATISTICAL   = 9, & ! linear statistical interpolation
+       LOW_NEIGHBOR  = 10   ! use lower bounding value
+>>>>>>> shutmc/lib-refactor
 
   ! Particle type
   integer, parameter :: &
@@ -374,7 +385,8 @@ module constants
        MODE_FIXEDSOURCE = 1, & ! Fixed source mode
        MODE_EIGENVALUE  = 2, & ! K eigenvalue mode
        MODE_PLOTTING    = 3, & ! Plotting mode
-       MODE_PARTICLE    = 4    ! Particle restart mode
+       MODE_PARTICLE    = 4, & ! Particle restart mode
+       MODE_PURXS = 5
 
   ! Unit numbers
   integer, parameter :: UNIT_SUMMARY  = 11 ! unit # for writing summary file

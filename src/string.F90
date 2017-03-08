@@ -2,7 +2,7 @@ module string
 
   use constants, only: MAX_WORDS, MAX_LINE_LEN, ERROR_INT, ERROR_REAL
   use error,     only: fatal_error, warning
-  use global,    only: message
+  use global,    only: master, message
 
   implicit none
 

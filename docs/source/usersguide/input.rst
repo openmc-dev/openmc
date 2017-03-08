@@ -1092,7 +1092,7 @@ The ``<tally>`` element accepts the following sub-elements:
       all of the harmonic moments of order 0 to N.  N must be between 0 and 10.
 
     :total-YN:
-      The total reaction rate expanded via spherical harmonics about the 
+      The total reaction rate expanded via spherical harmonics about the
       direction of motion of the neutron, :math:`\Omega`.
       This score will tally all of the harmonic moments of order 0 to N.  N must
       be between 0 and 10.
@@ -1229,7 +1229,7 @@ sub-elements:
 attribute or sub-element:
 
   :pixels:
-    Specifies the number of pixes or voxels to be used along each of the basis
+    Specifies the number of pixels or voxels to be used along each of the basis
     directions for "slice" and "voxel" plots, respectively. Should be two or
     three integers separated by spaces.
 
@@ -1261,7 +1261,7 @@ attributes or sub-elements.  These are not used in "voxel" plots:
     Specifies the RGB color of the regions where no OpenMC cell can be found.
     Should be three integers separated by spaces.
 
-    *Default*: 0 0 0 (white)
+    *Default*: 0 0 0 (black)
 
   :col_spec:
     Any number of this optional tag may be included in each ``<plot>`` element,
@@ -1298,6 +1298,35 @@ attributes or sub-elements.  These are not used in "voxel" plots:
       Color to apply to all cells or materials not in the ``components`` list of
       cells or materials to plot. This overrides any ``col_spec`` color
       specifications.
+
+    *Default*: None
+
+  :meshlines:
+    The ``meshlines`` sub-element allows for plotting the boundaries of
+    a tally mesh on top of a plot. Only one ``meshlines`` element is allowed per
+    ``plot`` element, and it must contain as attributes or sub-elements a mesh
+    type and a linewidth.  Optionally, a color may be specified for the overlay:
+
+    :meshtype:
+      The type of the mesh to be plotted. Valid options are "tally", "entropy",
+      "ufs", and "cmfd".  If plotting "tally" meshes, the id of the mesh to plot
+      must be specified with the ``id`` sub-element.
+
+    :id:
+      A single integer id number for the mesh specified on ``tallies.xml`` that
+      should be plotted. This element is only required for ``meshtype="tally"``.
+
+    :linewidth:
+      A single integer number of pixels of linewidth to specify for the mesh
+      boundaries. Specifying this as 0 indicates that lines will be 1 pixel
+      thick, specifying 1 indicates 3 pixels thick, specifying 2 indicates
+      5 pixels thick, etc.
+
+    :color:
+      Specifies the custom color for the meshlines boundaries. Should be 3
+      integers separated by whitespace.  This element is optional.
+
+      *Default*: 0 0 0 (black)
 
     *Default*: None
 

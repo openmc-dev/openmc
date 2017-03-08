@@ -307,7 +307,7 @@ contains
         ! Set filename
         filename = trim(path_output) // 'source.' // &
             & zero_padded(current_batch, count_digits(n_batches))
- 
+
 #ifdef HDF5
         filename = trim(filename) // '.h5'
 #else

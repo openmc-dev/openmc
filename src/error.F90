@@ -1,8 +1,13 @@
 module error
 
   use, intrinsic :: ISO_FORTRAN_ENV
-
+  use constants
   use global
+
+  ! PURXS API
+  use URR_error, only: URR_EXIT_SUCCESS => EXIT_SUCCESS,&
+                       URR_EXIT_FAILURE => EXIT_FAILURE,&
+                       URR_EXIT_WARNING => EXIT_WARNING
 
 #ifdef MPI
   use mpi
@@ -88,7 +93,6 @@ contains
     integer :: line_wrap ! length of line
     integer :: length    ! length of message
     integer :: indent    ! length of indentation
-
 
     ! set default error code
     if (present(error_code)) then

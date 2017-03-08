@@ -1,15 +1,28 @@
 module cross_section
 
-  use ace_header,      only: Nuclide, SAlphaBeta, Reaction, UrrData
+  use ace_header,         only: Nuclide, SAlphaBeta, Reaction, UrrData
   use constants
-  use error,           only: fatal_error
-  use fission,         only: nu_total
+  use error,              only: fatal_error
+  use fission,            only: nu_total
   use global
-  use list_header,     only: ListElemInt
-  use material_header, only: Material
-  use particle_header, only: Particle
-  use random_lcg,      only: prn
-  use search,          only: binary_search
+  use list_header,        only: ListElemInt
+  use material_header,    only: Material
+  use particle_header,    only: Particle
+  use random_lcg,         only: prn
+  use search,             only: binary_search
+  use string,             only: to_str
+
+#ifdef PURXS
+  use purxs_api, only:&
+       URR_EVENT,&
+       URR_HISTORY,&
+       URR_BATCH,&
+       URR_SIMULATION,&
+       URR_Type_CrossSections,&
+       URR_Type_Isotope,&
+       URR_isotopes,&
+       URR_realization_frequency
+#endif
 
   implicit none
   save
@@ -145,10 +158,23 @@ contains
     integer :: i_grid ! index on nuclide energy grid
     real(8) :: f      ! interp factor on nuclide energy grid
     type(Nuclide), pointer, save :: nuc => null()
-!$omp threadprivate(nuc)
 
-    ! Set pointer to nuclide
+    type(URR_Type_Isotope), pointer :: tope => null()
+    type(URR_Type_CrossSections) :: xs ! partial cross sections object
+    type(URR_Type_CrossSections) :: URR_xs ! URR partial cross sections object
+    logical :: same_nuc   ! encountered this nuclide at this E?
+    integer :: i_nuc      ! nuclide loop index
+    integer :: i_same_nuc ! index in list of nuclide temperatures
+    real(8) :: r          ! random number to use in prob table xs calculation
+
+!$omp threadprivate(nuc, tope)
+
     nuc => nuclides(i_nuclide)
+    if (nuc % i_isotope /= 0) then
+      tope => URR_isotopes(nuc % i_isotope)
+    else
+      tope => null()
+    end if
 
     ! Determine index on nuclide energy grid
     select case (grid_method)
@@ -186,25 +212,32 @@ contains
     micro_xs(i_nuclide) % index_sab   = NONE
     micro_xs(i_nuclide) % elastic_sab = ZERO
 
-    ! Initialize URR probability table treatment to false
-    micro_xs(i_nuclide) % use_ptable  = .false.
+    ! Initialize to not being in the URR
+    micro_xs(i_nuclide) % in_urr  = .false.
 
     ! Initialize nuclide cross-sections to zero
     micro_xs(i_nuclide) % fission    = ZERO
     micro_xs(i_nuclide) % nu_fission = ZERO
     micro_xs(i_nuclide) % kappa_fission  = ZERO
+    micro_xs(i_nuclide) % competitive = ZERO
 
     ! Calculate microscopic nuclide total cross section
     micro_xs(i_nuclide) % total = (ONE - f) * nuc % total(i_grid) &
          + f * nuc % total(i_grid+1)
 
-    ! Calculate microscopic nuclide total cross section
+    ! Calculate microscopic nuclide elastic cross section
     micro_xs(i_nuclide) % elastic = (ONE - f) * nuc % elastic(i_grid) &
          + f * nuc % elastic(i_grid+1)
 
     ! Calculate microscopic nuclide absorption cross section
     micro_xs(i_nuclide) % absorption = (ONE - f) * nuc % absorption( &
          i_grid) + f * nuc % absorption(i_grid+1)
+
+    ! Infinite-dilute competitive xs (resonance component not added)
+    micro_xs(i_nuclide) % competitive&
+         = micro_xs(i_nuclide) % total&
+         - micro_xs(i_nuclide) % elastic&
+         - micro_xs(i_nuclide) % absorption
 
     if (nuc % fissionable) then
       ! Calculate microscopic nuclide total cross section
@@ -230,14 +263,90 @@ contains
 
     if (i_sab > 0) call calculate_sab_xs(i_nuclide, i_sab, E)
 
-    ! if the particle is in the unresolved resonance range and there are
-    ! probability tables, we need to determine cross sections from the table
+    if (associated(tope)) then
 
-    if (urr_ptables_on .and. nuc % urr_present) then
-      if (E > nuc % urr_data % energy(1) .and. &
-           E < nuc % urr_data % energy(nuc % urr_data % n_energy)) then
-        call calculate_urr_xs(i_nuclide, E)
+      if (E * 1.0E6_8 >= tope % EL(tope % i_urr)&
+           .and. E * 1.0E6_8 <= tope % EH(tope % i_urr)) then
+
+        micro_xs(i_nuclide) % in_urr = .true.
+
+        xs % t = micro_xs(i_nuclide) % total
+        xs % n = micro_xs(i_nuclide) % elastic
+        xs % f = micro_xs(i_nuclide) % fission
+        xs % g = micro_xs(i_nuclide) % absorption - xs % f
+        xs % x = xs % t - xs % n - xs % f - xs % g
+
+        if (tope % prob_bands) then
+          ! if we're dealing with a nuclide that we've previously encountered at
+          ! this energy but a different temperature, use the original random number
+          ! to preserve correlation of temperature in probability tables
+          same_nuc = .false.
+
+          do i_nuc = 1, nuc % nuc_list % size()
+            if (E /= ZERO .and. E == micro_xs(nuc % nuc_list % get_item(i_nuc)) % last_E) then
+              same_nuc = .true.
+              i_same_nuc = i_nuc
+              exit
+            end if
+          end do
+
+          if (same_nuc) then
+             r = micro_xs(nuc % nuc_list % get_item(i_same_nuc)) % last_prn
+          else
+             r = prn()
+             micro_xs(i_nuc) % last_prn = r
+          end if
+
+          call tope % prob_band_xs(1.0E6_8 * E, nuc % kT / K_BOLTZMANN, xs, URR_xs, r)
+
+        else if (tope % otf_urr_xs) then
+
+          select case(URR_realization_frequency)
+          case (URR_EVENT)
+            call tope % new_realization_otf_xs(1.0E6_8 * E, &
+                 nuc % kT / K_BOLTZMANN, xs, URR_xs)
+
+          case (URR_HISTORY)
+            call fatal_error('History-based URR realizations not yet supported')
+
+          case (URR_BATCH)
+            call fatal_error('Batch-based URR realizations not yet supported')
+
+          case (URR_SIMULATION)
+            call tope % fixed_realization_otf_xs(1.0E6_8 * E,&
+                 nuc % kT / K_BOLTZMANN, xs, URR_xs)
+
+          case default
+            call fatal_error('Unrecognized URR realization frequency')
+
+          end select
+
+        else if (tope % point_urr_xs) then !TODO break out a new pointwise_xs subroutine
+          call tope % new_realization_otf_xs(1.0E6_8 * E,&
+               nuc % kT / K_BOLTZMANN, xs, URR_xs)
+
+        else
+          call fatal_error('No allowed URR treatment for URR_isotope object')
+
+        end if
+
+        micro_xs(i_nuclide) % elastic    = URR_xs % n
+        micro_xs(i_nuclide) % fission    = URR_xs % f
+        micro_xs(i_nuclide) % absorption = URR_xs % f + URR_xs % g
+        micro_xs(i_nuclide) % total      = URR_xs % t
+        if (nuc % fissionable) micro_xs(i_nuclide) % nu_fission&
+             = nu_total(nuc, E) * micro_xs(i_nuclide) % fission
+
       end if
+
+    else if (urr_ptables_on .and. nuc % urr_present) then
+
+      if (E > nuc % urr_data % energy(1)&
+           .and. E < nuc % urr_data % energy(nuc % urr_data % n_energy)) then
+        micro_xs(i_nuclide) % in_urr = .true.
+        call calculate_urr_xs_ptable(i_nuclide, E)
+      end if
+
     end if
 
     micro_xs(i_nuclide) % last_E = E
@@ -333,11 +442,11 @@ contains
   end subroutine calculate_sab_xs
 
 !===============================================================================
-! CALCULATE_URR_XS determines cross sections in the unresolved resonance range
-! from probability tables
+! CALCULATE_URR_XS_PTABLE determines cross sections in the unresolved resonance
+! range from probability tables
 !===============================================================================
 
-  subroutine calculate_urr_xs(i_nuclide, E)
+  subroutine calculate_urr_xs_ptable(i_nuclide, E)
 
     integer, intent(in) :: i_nuclide ! index into nuclides array
     real(8), intent(in) :: E         ! energy
@@ -357,9 +466,8 @@ contains
     type(UrrData),  pointer, save :: urr      => null()
     type(Nuclide),  pointer, save :: nuc      => null()
     type(Reaction), pointer, save :: rxn      => null()
-!$omp threadprivate(urr, nuc, rxn)
 
-    micro_xs(i_nuclide) % use_ptable = .true.
+!$omp threadprivate(urr, nuc, rxn)
 
     ! get pointer to probability table
     nuc => nuclides(i_nuclide)
@@ -371,12 +479,6 @@ contains
       if (E < urr % energy(i_energy + 1)) exit
       i_energy = i_energy + 1
     end do
-
-    ! determine interpolation factor on table
-    f = (E - urr % energy(i_energy)) / &
-         (urr % energy(i_energy + 1) - urr % energy(i_energy))
-
-    ! sample probability table using the cumulative distribution
 
     ! if we're dealing with a nuclide that we've previously encountered at
     ! this energy but a different temperature, use the original random number to
@@ -411,6 +513,8 @@ contains
     ! determine elastic, fission, and capture cross sections from probability
     ! table
     if (urr % interp == LINEAR_LINEAR) then
+      f = (E - urr % energy(i_energy)) / &
+        (urr % energy(i_energy + 1) - urr % energy(i_energy))
       elastic = (ONE - f) * urr % prob(i_energy, URR_ELASTIC, i_low) + &
            f * urr % prob(i_energy + 1, URR_ELASTIC, i_up)
       fission = (ONE - f) * urr % prob(i_energy, URR_FISSION, i_low) + &
@@ -454,7 +558,7 @@ contains
     inelastic = ZERO
     if (urr % inelastic_flag > 0) then
       ! Get pointer to inelastic scattering reaction
-      rxn => nuc % reactions(nuc % urr_inelastic)
+      rxn => nuc % reactions(nuc % urr_inelastic_index)
 
       ! Get index on energy grid and interpolation factor
       i_energy = micro_xs(i_nuclide) % index_grid
@@ -470,8 +574,8 @@ contains
     ! Multiply by smooth cross-section if needed
     if (urr % multiply_smooth) then
       elastic = elastic * micro_xs(i_nuclide) % elastic
-      capture = capture * (micro_xs(i_nuclide) % absorption - &
-           micro_xs(i_nuclide) % fission)
+      capture = capture * (micro_xs(i_nuclide) % absorption &
+           - micro_xs(i_nuclide) % fission)
       fission = fission * micro_xs(i_nuclide) % fission
     end if
 
@@ -494,7 +598,7 @@ contains
            micro_xs(i_nuclide) % fission
     end if
 
-  end subroutine calculate_urr_xs
+  end subroutine calculate_urr_xs_ptable
 
 !===============================================================================
 ! FIND_ENERGY_INDEX determines the index on the union energy grid at a certain

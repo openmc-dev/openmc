@@ -11,7 +11,7 @@ module geometry
   use tally,                  only: score_surface_current
 
   implicit none
-     
+
 contains
 
 !===============================================================================

@@ -24,6 +24,8 @@ program main
     call run_plot()
   case (MODE_PARTICLE)
     if (master) call run_particle_restart()
+  case (MODE_PURXS)
+    continue
   end select
 
   ! finalize run

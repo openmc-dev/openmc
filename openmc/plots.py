@@ -23,12 +23,16 @@ def reset_auto_plot_id():
     AUTO_PLOT_ID = 10000
 
 
-BASES = ['xy', 'xz', 'yz']
+_BASES = ['xy', 'xz', 'yz']
 
 
 class Plot(object):
-    """Definition of a finite region of space to be plotted, either as a slice plot
-    in two dimensions or as a voxel plot in three dimensions.
+    """Definition of a finite region of space to be plotted.
+
+    OpenMC is capable of generating two-dimensional slice plots and
+    three-dimensional voxel plots. Colors that are used in plots can be given as
+    RGB tuples, e.g. (255, 255, 255) would be white, or by a string indicating a
+    valid `SVG color <https://www.w3.org/TR/SVG/types.html#ColorKeywords>`_.
 
     Parameters
     ----------
@@ -58,15 +62,14 @@ class Plot(object):
     basis : {'xy', 'xz', 'yz'}
         The basis directions for the plot
     background : Iterable of int or str
-        Color of the background defined by RGB
+        Color of the background
     mask_components : Iterable of openmc.Cell or openmc.Material
         The cells or materials to plot
-    mask_background : Iterable of int
+    mask_background : Iterable of int or str
         Color to apply to all cells/materials not listed in mask_components
-        defined by RGB
     colors : dict
         Dictionary indicating that certain cells/materials (keys) should be
-        colored with a specific RGB (values)
+        displayed with a particular color.
     level : int
         Universe depth to plot at
     meshlines : dict
@@ -80,7 +83,7 @@ class Plot(object):
         self.id = plot_id
         self.name = name
         self._width = [4.0, 4.0]
-        self._pixels = [1000, 1000]
+        self._pixels = [400, 400]
         self._origin = [0., 0., 0.]
         self._filename = None
         self._color_by = 'cell'
@@ -206,7 +209,7 @@ class Plot(object):
 
     @basis.setter
     def basis(self, basis):
-        cv.check_value('plot basis', basis, ['xy', 'xz', 'yz'])
+        cv.check_value('plot basis', basis, _BASES)
         self._basis = basis
 
     @background.setter
@@ -242,18 +245,21 @@ class Plot(object):
 
     @mask_components.setter
     def mask_components(self, mask_components):
-        cv.check_type('plot mask components', mask_components, Iterable, Integral)
-        for component in mask_components:
-            cv.check_greater_than('plot mask components', component, 0, True)
+        cv.check_type('plot mask components', mask_components, Iterable,
+                      (openmc.Cell, openmc.Material))
         self._mask_components = mask_components
 
     @mask_background.setter
     def mask_background(self, mask_background):
-        cv.check_type('plot mask background', mask_background, Iterable, Integral)
-        cv.check_length('plot mask background', mask_background, 3)
-        for rgb in mask_background:
-            cv.check_greater_than('plot mask background', rgb, 0, True)
-            cv.check_less_than('plot mask background', rgb, 256)
+        cv.check_type('plot mask background', mask_background, Iterable)
+        if isinstance(mask_background, string_types):
+            if not is_color_like(mask_background):
+                raise ValueError("'{}' is not a valid color.".format(mask_background))
+        else:
+            cv.check_length('plot mask_background', mask_background, 3)
+            for rgb in mask_background:
+                cv.check_greater_than('plot mask background', rgb, 0, True)
+                cv.check_less_than('plot mask background', rgb, 256)
         self._mask_background = mask_background
 
     @level.setter
@@ -315,6 +321,51 @@ class Plot(object):
         string += '{: <16}=\t{}\n'.format('\tLevel', self._level)
         string += '{: <16}=\t{}\n'.format('\tMeshlines', self._meshlines)
         return string
+
+    @classmethod
+    def from_geometry(cls, geometry, basis='xy', slice_coord=0.):
+        """Return plot that encompasses a geometry.
+
+        Parameters
+        ----------
+        geometry : openmc.Geometry
+            The geometry the base the plot off of
+        basis : {'xy', 'xz', 'yz'}
+            The basis directions for the plot
+        slice_coord : float
+            The level at which the slice plot should be plotted. For example, if
+            the basis is 'xy', this would indicate at what z value is used in
+            the origin.
+
+        """
+        cv.check_type('geometry', geometry, openmc.Geometry)
+        cv.check_value('basis', basis, _BASES)
+
+        # Decide which axes to keep
+        if basis == 'xy':
+            pick_index = (0, 1)
+            slice_index = 2
+        elif basis == 'yz':
+            pick_index = (1, 2)
+            slice_index = 0
+        elif basis == 'xz':
+            pick_index = (0, 2)
+            slice_index = 1
+
+        # Get lower-left and upper-right coordinates for desired axes
+        lower_left, upper_right = geometry.bounding_box
+        lower_left = lower_left[np.array(pick_index)]
+        upper_right = upper_right[np.array(pick_index)]
+
+        if np.any(np.isinf((lower_left, upper_right))):
+            raise ValueError('The geometry does not appear to be bounded '
+                             'in the {} plane.'.format(basis))
+
+        plot = cls()
+        plot.origin = np.insert((lower_left + upper_right)/2,
+                                slice_index, slice_coord)
+        plot.width = upper_right - lower_left
+        return plot
 
     def colorize(self, geometry, seed=1):
         """Generate a color scheme for each domain in the plot.
@@ -446,10 +497,14 @@ class Plot(object):
 
         if self._mask_components is not None:
             subelement = ET.SubElement(element, "mask")
-            subelement.set("components", ' '.join(map(
-                str, self._mask_components)))
-            subelement.set("background", ' '.join(map(
-                str, self._mask_background)))
+            subelement.set("components", ' '.join(
+                str(d.id) for d in self._mask_components))
+            color = self._mask_background
+            if color is not None:
+                if isinstance(color, string_types):
+                    color = [int(255*x) for x in to_rgb(color)]
+                subelement.set("background", ' '.join(
+                    str(x) for x in color))
 
         if self._level is not None:
             subelement = ET.SubElement(element, "level")

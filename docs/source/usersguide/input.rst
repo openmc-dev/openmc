@@ -2178,7 +2178,7 @@ attributes or sub-elements.  These are not used in "voxel" plots:
       cells or materials to plot. This overrides any ``color`` color
       specifications.
 
-    *Default*: None
+    *Default*: 255 255 255 (white)
 
   :meshlines:
     The ``meshlines`` sub-element allows for plotting the boundaries of a

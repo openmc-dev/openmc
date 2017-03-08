@@ -4634,13 +4634,12 @@ contains
             end do
 
             ! Alter colors based on mask information
-            do j=1,size(pl % colors)
-              if (.not. any(j .eq. iarray)) then
+            do j = 1, size(pl % colors)
+              if (.not. any(j == iarray)) then
                 if (check_for_node(node_mask, "background")) then
                   call get_node_array(node_mask, "background", pl % colors(j) % rgb)
                 else
-                  call fatal_error("Missing <background> in mask of plot " &
-                       // trim(to_str(pl % id)))
+                  pl % colors(j) % rgb(:) = [255, 255, 255]
                 end if
               end if
             end do

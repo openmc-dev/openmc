@@ -46,6 +46,9 @@ class Universe(object):
         Volume of the universe in cm^3. This can either be set manually or
         calculated in a stochastic volume calculation and added via the
         :meth:`Universe.add_volume_information` method.
+    bounding_box : 2-tuple of numpy.array
+        Lower-left and upper-right coordinates of an axis-aligned bounding box
+        of the universe.
 
     """
 
@@ -104,6 +107,11 @@ class Universe(object):
     @property
     def volume(self):
         return self._volume
+
+    @property
+    def bounding_box(self):
+        regions = [c.region for c in self.cells.values()]
+        return openmc.Union(*regions).bounding_box
 
     @id.setter
     def id(self, universe_id):

@@ -2712,7 +2712,10 @@ class TransportXS(MGXS):
         super(TransportXS, self).__init__(domain, domain_type,
                                           groups, by_nuclide, name, num_polar,
                                           num_azimuthal)
-        self._estimator = 'analog'
+
+        # Use tracklength estimators for the total MGXS term, and
+        # analog estimators for the transport correction term
+        self._estimator = ['tracklength', 'tracklength', 'analog', 'analog']
         self._valid_estimators = ['analog']
         self.nu = nu
 
@@ -2724,40 +2727,54 @@ class TransportXS(MGXS):
     @property
     def scores(self):
         if not self.nu:
-            return ['flux', 'total', 'scatter-1']
+            return ['flux', 'total', 'flux', 'scatter-1']
         else:
-            return ['flux', 'total', 'nu-scatter-1']
+            return ['flux', 'total', 'flux', 'nu-scatter-1']
 
     @property
     def tally_keys(self):
-        if not self.nu:
-            return super(TransportXS, self).tally_keys
-        else:
-            return ['flux', 'total', 'scatter-1']
+        return ['flux (tracklength)', 'total', 'flux (analog)', 'scatter-1']
 
     @property
     def filters(self):
         group_edges = self.energy_groups.group_edges
         energy_filter = openmc.EnergyFilter(group_edges)
         energyout_filter = openmc.EnergyoutFilter(group_edges)
-        filters = [[energy_filter], [energy_filter], [energyout_filter]]
+        filters = [[energy_filter], [energy_filter],
+                   [energy_filter], [energyout_filter]]
 
         return self._add_angle_filters(filters)
 
     @property
     def rxn_rate_tally(self):
-        if self._rxn_rate_tally is None:
+        raise NotImplementedError('The reaction rate tally is poorly defined' \
+                                  ' for the transport cross section')
+
+    @property
+    def xs_tally(self):
+        if self._xs_tally is None:
+            if self.tallies is None:
+                msg = 'Unable to get xs_tally since tallies have ' \
+                      'not been loaded from a statepoint'
+                raise ValueError(msg)
+
             # Switch EnergyoutFilter to EnergyFilter.
             old_filt = self.tallies['scatter-1'].filters[-1]
             new_filt = openmc.EnergyFilter(old_filt.bins)
             new_filt.stride = old_filt.stride
             self.tallies['scatter-1'].filters[-1] = new_filt
 
-            self._rxn_rate_tally = \
-                self.tallies['total'] - self.tallies['scatter-1']
-            self._rxn_rate_tally.sparse = self.sparse
+            # Compute total cross section
+            total_xs = self.tallies['total'] / self.tallies['flux (tracklength)']
 
-        return self._rxn_rate_tally
+            # Compute transport correction term
+            trans_corr = self.tallies['scatter-1'] / self.tallies['flux (analog)']
+
+            # Compute the transport-corrected total cross section
+            self._xs_tally = total_xs - trans_corr
+            self._compute_xs()
+
+        return self._xs_tally
 
     @property
     def nu(self):
@@ -3943,6 +3960,8 @@ class ScatterMatrixXS(MatrixMGXS):
 
                 # Remove the AggregateFilter summed across energyout bins
                 norm._filters = norm._filters[:2]
+                if self.scatter_format == 'histogram':
+                    norm._filters.append(norm._filters[-1])
 
                 # Multiply by the group-to-group probability matrix
                 self._xs_tally *= (self.tallies[tally_key] / norm)

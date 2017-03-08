@@ -2050,13 +2050,13 @@ sub-elements:
 
     *Default*: "plot"
 
-  :color:
-    Keyword for plot coloring.  This can only be either ``cell`` or ``mat``,
+  :color_by:
+    Keyword for plot coloring.  This can only be either "cell" or "material",
     which colors regions by cells and materials, respectively. For voxel plots,
     this determines which id (cell or material) is associated with each
     position.
 
-    *Default*: ``cell``
+    *Default*: "cell"
 
   :level:
     Universe depth to plot at (optional).  This parameter controls how many
@@ -2142,10 +2142,10 @@ attributes or sub-elements.  These are not used in "voxel" plots:
 
     *Default*: 0 0 0 (black)
 
-  :col_spec:
+  :color:
     Any number of this optional tag may be included in each ``<plot>`` element,
     which can override the default random colors for cells or materials. Each
-    ``col_spec`` element must contain ``id`` and ``rgb`` sub-elements.
+    ``color`` element must contain ``id`` and ``rgb`` sub-elements.
 
     :id:
       Specifies the cell or material unique id for the color specification.
@@ -2155,11 +2155,11 @@ attributes or sub-elements.  These are not used in "voxel" plots:
       separated by spaces.
 
     As an example, if your plot is colored by material and you want material 23
-    to be blue, the corresponding ``col_spec`` element would look like:
+    to be blue, the corresponding ``color`` element would look like:
 
     .. code-block:: xml
 
-        <col_spec id="23" rgb="0 0 255" />
+        <color id="23" rgb="0 0 255" />
 
     *Default*: None
 
@@ -2175,7 +2175,7 @@ attributes or sub-elements.  These are not used in "voxel" plots:
 
     :background:
       Color to apply to all cells or materials not in the ``components`` list of
-      cells or materials to plot. This overrides any ``col_spec`` color
+      cells or materials to plot. This overrides any ``color`` color
       specifications.
 
     *Default*: None

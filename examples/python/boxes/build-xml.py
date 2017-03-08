@@ -118,7 +118,7 @@ plot = openmc.Plot(plot_id=1)
 plot.origin = [0, 0, 0]
 plot.width = [20, 20]
 plot.pixels = [200, 200]
-plot.color = 'cell'
+plot.color_by = 'cell'
 
 # Instantiate a Plots collection and export to XML
 plot_file = openmc.Plots([plot])

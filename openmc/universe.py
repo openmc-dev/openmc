@@ -1,3 +1,4 @@
+from copy import copy
 from collections import OrderedDict, Iterable
 from numbers import Integral, Real
 import random
@@ -5,6 +6,8 @@ import sys
 
 from six import string_types
 import numpy as np
+import matplotlib.pyplot as plt
+from matplotlib.colors import to_rgba
 
 import openmc
 import openmc.checkvalue as cv
@@ -234,9 +237,9 @@ class Universe(object):
             Indicate whether the plot should be colored by cell or by material
         colors : dict
             Assigns colors to specific materials or cells. Keys are instances of
-            :class:`Cell` or :class:`Material` and values are RGB 3-tuples or
-            RGBA 4-tuples. Red, green, blue, and alpha should all be floats in
-            the range [0.0, 1.0], for example:
+            :class:`Cell` or :class:`Material` and values are RGB 3-tuples, RGBA
+            4-tuples, or strings indicating SVG color names. Red, green, blue,
+            and alpha should all be floats in the range [0.0, 1.0], for example:
 
             .. code-block:: python
 
@@ -256,8 +259,6 @@ class Universe(object):
             :func:`matplotlib.pyplot.imshow`.
 
         """
-        import matplotlib.pyplot as plt
-
         # Seed the random number generator
         if seed is not None:
             random.seed(seed)
@@ -267,9 +268,9 @@ class Universe(object):
             colors = {}
         else:
             # Convert to RGBA if necessary
-            for obj, rgb in colors.items():
-                if len(rgb) == 3:
-                    colors[obj] = rgb + (1.0,)
+            colors = copy(colors)
+            for obj, color in colors.items():
+                colors[obj] = to_rgba(color)
 
         if basis == 'xy':
             x_min = center[0] - 0.5*width[0]
@@ -325,7 +326,8 @@ class Universe(object):
                     img[j, i, :] = colors[obj]
 
         # Display image
-        plt.imshow(img, extent=(x_min, x_max, y_min, y_max), **kwargs)
+        plt.imshow(img, extent=(x_min, x_max, y_min, y_max),
+                   interpolation='nearest', **kwargs)
 
         # Show or save the plot
         if filename is None:

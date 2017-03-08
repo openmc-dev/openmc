@@ -1,8 +1,5 @@
 module purxs_api
 
-  use URR_edits,     only:&
-       URR_write_angle => write_angle,&
-       URR_write_xs => write_xs
   use URR_endf6,     only:&
        URR_read_endf6 => read_endf6
   use URR_faddeeva,  only:&

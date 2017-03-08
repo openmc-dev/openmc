@@ -27,7 +27,7 @@ option(debug    "Compile with debug flags"                       OFF)
 option(optimize "Turn on all compiler optimization flags"        OFF)
 option(verbose  "Create verbose Makefiles"                       OFF)
 option(coverage "Compile with flags"                             OFF)
-option(purxs    "Compile with PURXS"                             OFF)
+option(purxs    "Compile with PURXS"                             ON)
 
 if (verbose)
   set(CMAKE_VERBOSE_MAKEFILE on)
@@ -277,7 +277,6 @@ SET_TARGET_PROPERTIES(faddeeva PROPERTIES COMPILE_FLAGS "${cflags}")
 
 add_executable(${program} ${source})
 target_link_libraries(${program} ${libraries} fox_dom faddeeva) # PURXS)
->>>>>>> shutmc/lib-refactor
 set_target_properties(${program} PROPERTIES
   COMPILE_FLAGS "${f90flags}"
   LINK_FLAGS "${ldflags}")

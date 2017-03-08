@@ -307,17 +307,20 @@ contains
                  nuc % kT / K_BOLTZMANN, xs, URR_xs)
 
           case (URR_HISTORY)
-            call fatal_error('History-based URR realizations not yet supported')
+            message = 'History-based URR realizations not yet supported'
+            call fatal_error()
 
           case (URR_BATCH)
-            call fatal_error('Batch-based URR realizations not yet supported')
+            message = 'Batch-based URR realizations not yet supported'
+            call fatal_error()
 
           case (URR_SIMULATION)
             call tope % fixed_realization_otf_xs(1.0E6_8 * E,&
                  nuc % kT / K_BOLTZMANN, xs, URR_xs)
 
           case default
-            call fatal_error('Unrecognized URR realization frequency')
+            message = 'Unrecognized URR realization frequency'
+            call fatal_error()
 
           end select
 
@@ -326,7 +329,8 @@ contains
                nuc % kT / K_BOLTZMANN, xs, URR_xs)
 
         else
-          call fatal_error('No allowed URR treatment for URR_isotope object')
+          message = 'No allowed URR treatment for URR_isotope object'
+          call fatal_error()
 
         end if
 

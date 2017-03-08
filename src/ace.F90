@@ -1315,8 +1315,9 @@ contains
 
       ! Abort if no corresponding inelastic reaction was found
       if (nuc % urr_inelastic_index == NONE) then
-        call fatal_error("Could not find inelastic reaction specified on &
-             &unresolved resonance probability table.")
+        message = "Could not find inelastic reaction specified on &
+             &unresolved resonance probability table."
+        call fatal_error()
       end if
     end if
 

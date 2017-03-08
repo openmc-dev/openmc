@@ -25,8 +25,6 @@ module initialize
 
 #ifdef PURXS
   use purxs_api, only:&
-       URR_write_angle,&
-       URR_write_xs,&
        URR_read_endf6,&
        URR_tabulate_w,&
        URR_read_prob_tables,&
@@ -137,9 +135,6 @@ contains
         call time_read_xs % start()
         call read_xs()
         call time_read_xs % stop()
-
-        ! write out ACE elastic scatter secondary angular distributions
-        call URR_write_angle()
       end if
 
       ! Read ENDF-6 format nuclear data file
@@ -183,14 +178,18 @@ contains
             continue
           case (URR_HISTORY)
             continue
-            call fatal_error('History-based URR realizations not yet supported')
+            message = 'History-based URR realizations not yet supported'
+            call fatal_error()
           case (URR_BATCH)
             continue
-            call fatal_error('Batch-based URR realizations not yet supported')
+            message = 'Batch-based URR realizations not yet supported'
+            call fatal_error()
           case (URR_SIMULATION)
-            if (URR_parameter_energy_dependence /= URR_E_RESONANCE)&
-                 call fatal_error('Generating a resonance ensemble with parameters&
-                 & dependent on neutron energy')
+            if (URR_parameter_energy_dependence /= URR_E_RESONANCE) then
+              message = 'Generating a resonance ensemble with parameters&
+                   & dependent on neutron energy'
+              call fatal_error()
+            end if
             do i = 1, URR_num_isotopes
               do i_nuc = 1, n_nuclides_total
                 if (URR_isotopes(i) % ZAI == nuclides(i_nuc) % zaid .and.&
@@ -201,12 +200,16 @@ contains
               end do
             end do
           case default
-            call fatal_error('Not a recognized URR realization frequency')
+            message = 'Not a recognized URR realization frequency'
+            call fatal_error()
           end select
 
         case (URR_POINTWISE)
-          if (URR_parameter_energy_dependence /= URR_E_RESONANCE) call fatal_error('Generating &
-               &a resonance ensemble with E_n-dependent parameters')
+          if (URR_parameter_energy_dependence /= URR_E_RESONANCE) then
+            message = 'Generating &
+                 &a resonance ensemble with E_n-dependent parameters'
+            call fatal_error()
+          end if
           do i = 1, URR_num_isotopes
             do i_nuc = 1, n_nuclides_total
               if (URR_isotopes(i) % ZAI == nuclides(i_nuc) % zaid .and.&
@@ -219,8 +222,9 @@ contains
           end do
 
         case default
-          call fatal_error('Must specify a URR treatment: probability bands,&
-            & on-the-fly, or pointwise')
+          message = 'Must specify a URR treatment: probability bands,&
+               & on-the-fly, or pointwise'
+          call fatal_error()
 
         end select
 
@@ -316,7 +320,8 @@ contains
           case (URR_POINTWISE)
             URR_isotopes(i) % point_urr_xs = .true.
           case default
-            call fatal_error('Not a recognized URR representation')
+            message = 'Not a recognized URR representation'
+            call fatal_error()
           end select
 
           ! read ENDF-6 file unless it's already been read for this isotope
@@ -338,7 +343,8 @@ contains
       case (URR_POINTWISE)
         URR_isotopes(i) % point_urr_xs = .true.
       case default
-        call fatal_error('Not a recognized URR representation')
+        message = 'Not a recognized URR representation'
+        call fatal_error()
       end select
 
       ! read ENDF-6 file unless it's already been read for this isotope

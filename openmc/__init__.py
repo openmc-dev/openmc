@@ -28,11 +28,3 @@ from openmc.summary import *
 from openmc.particle_restart import *
 from openmc.mixin import *
 from openmc.plotter import *
-
-try:
-    # Ignore matplotlib warning caused by OpenMOC calling matplotlib.use()
-    with warnings.catch_warnings():
-        warnings.simplefilter("ignore")
-        from openmc.openmoc_compatible import *
-except ImportError:
-    pass

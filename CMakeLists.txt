@@ -31,7 +31,7 @@ option(debug    "Compile with debug flags"                       OFF)
 option(optimize "Turn on all compiler optimization flags"        OFF)
 option(coverage "Compile with coverage analysis flags"           OFF)
 option(mpif08   "Use Fortran 2008 MPI interface"                 OFF)
-
+option(purxs    "Compile with PURXS"                             OFF)
 
 # Maximum number of nested coordinates levels
 set(maxcoord 10 CACHE STRING "Maximum number of nested coordinate levels")
@@ -249,6 +249,38 @@ set(CMAKE_INSTALL_RPATH_USE_LINK_PATH TRUE)
 add_library(faddeeva STATIC src/faddeeva/Faddeeva.c)
 
 #===============================================================================
+# PURXS Package
+#===============================================================================
+
+# Only initialize git submodules if it is not there. User is responsible
+# for future updates of purxs submodule.
+if(NOT EXISTS ${CMAKE_CURRENT_SOURCE_DIR}/../purxs/.git)
+  message("-- Initializing/Updating PURXS submodule...")
+  execute_process(COMMAND git submodule add -b develop
+                  https://github.com/walshjon/purxs
+                  ${CMAKE_CURRENT_SOURCE_DIR}/../purxs)
+  execute_process(COMMAND git submodule update --init --recursive
+                  WORKING_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}/..)
+endif()
+
+if(purxs)
+  add_definitions(-DPURXS)
+endif()
+
+# static PURXS lib: file(GLOB source *.F90 xml/openmc_fox.F90)
+file(GLOB source src/*.F90 purxs/src/URR_*)
+
+# build static Faddeeva library
+option(BUILD_SHARED_LIBS "Build shared libraries" OFF)
+ADD_LIBRARY (faddeeva STATIC purxs/src/Faddeeva.c)
+SET_TARGET_PROPERTIES(faddeeva PROPERTIES COMPILE_FLAGS "${cflags}")
+
+# build static PURXS library
+#file(GLOB PURXS_src ../purxs/src/URR_*)
+#ADD_LIBRARY (PURXS STATIC ${PURXS_src})
+#SET_TARGET_PROPERTIES(PURXS PROPERTIES COMPILE_FLAGS "${f90flags}")
+
+#===============================================================================
 # Build OpenMC executable
 #===============================================================================
 
@@ -340,7 +372,7 @@ set(LIBOPENMC_FORTRAN_SRC
   src/volume_calc.F90
   src/volume_header.F90
   src/xml_interface.F90)
-add_library(libopenmc STATIC ${LIBOPENMC_FORTRAN_SRC})
+add_library(libopenmc STATIC ${LIBOPENMC_FORTRAN_SRC} ${source})
 set_target_properties(libopenmc PROPERTIES OUTPUT_NAME openmc)
 add_executable(${program} src/main.F90)
 set_property(TARGET ${program} libopenmc pugixml_fortran
@@ -377,7 +409,7 @@ endforeach()
 # target_link_libraries treats any arguments starting with - but not -l as
 # linker flags. Thus, we can pass both linker flags and libraries together.
 target_link_libraries(libopenmc ${ldflags} ${HDF5_LIBRARIES} pugixml_fortran faddeeva)
-target_link_libraries(${program} ${ldflags} libopenmc)
+target_link_libraries(${program} ${ldflags} libopenmc faddeeva)
 
 #===============================================================================
 # Install executable, scripts, manpage, license

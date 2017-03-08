@@ -225,7 +225,6 @@ class Universe(object):
         color_by : {'cell', 'material'}
             Indicate whether the plot should be colored by cell or by material
         colors : dict
-
             Assigns colors to specific materials or cells. Keys are instances of
             :class:`Cell` or :class:`Material` and values are RGB 3-tuples or
             RGBA 4-tuples. Red, green, blue, and alpha should all be floats in

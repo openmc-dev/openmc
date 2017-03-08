@@ -188,6 +188,7 @@ Running OpenMC
    openmc.run
    openmc.calculate_volumes
    openmc.plot_geometry
+   openmc.plot_inline
 
 Post-processing
 ---------------

@@ -1017,77 +1017,40 @@ class Tally(object):
         return merged_tally
 
     def _consolidate_moment_scores(self):
-        """Remove redundant scattering moment scores from a merged Tally."""
+        """Remove redundant scattering and flux moment scores from a Tally."""
 
-        # FIXME: This should also work for flux moments
+        # Define regex for scatter, nu-scatter and flux moment scores
+        regex = [(r'^((?!nu-)scatter-\d)', r'^((?!nu-)scatter-(P|p)\d)'),
+                 (r'nu-scatter-\d', r'nu-scatter-(P|p)\d'),
+                 (r'flux-\d', r'flux-(P|p)\d')]
 
-        # Use regex to find (nu-)scatter-(P)n scores
-        scatt_n = [x for x in self.scores if
-                   re.search(r'^((?!nu-)scatter-\d)', x)]
-        scatt_pn = [x for x in self.scores if
-                    re.search(r'^((?!nu-)scatter-(P|p)\d)', x)]
-        nuscatt_n = [x for x in self.scores if
-                     re.search(r'nu-scatter-\d', x)]
-        nuscatt_pn = [x for x in self.scores if
-                      re.search(r'nu-scatter-(P|p)\d', x)]
-
-        flux_n = [x for x in self.scores if
-                   re.search(r'flux-\d', x)]
-        flux_pn = [x for x in self.scores if
-                    re.search(r'flux-(P|p)\d', x)]
-
-        # Find all other non-scattering moment scores
-        # FIXME: this should also find non-flux moment scores
+        # Find all non-scattering and non-flux moment scores
         scores = [x for x in self.scores if
                   re.search(r'^((?!scatter-).)*$', x)]
+        scores = [x for x in scores if
+                  re.search(r'^((?!flux-).)*$', x)]
 
-        # Consolidate scatter moment scores
-        if len(scatt_pn) > 0:
+        for regex_n, regex_pn in regex:
 
-            # Only keep the highest scatter-PN score
-            high_pn = sorted([x.lower() for x in scatt_pn])[-1]
-            pn = int(high_pn.split('-')[1].replace('p', ''))
+            # Use regex to find score-(P)n scores
+            score_n = [x for x in self.scores if re.search(regex_n, x)]
+            score_pn = [x for x in self.scores if re.search(regex_pn, x)]
 
-            # Only keep the scatter-N scores with N > PN
-            scatt_n = sorted([x.lower() for x in scatt_n])
-            scatt_n = [x for x in scatt_n if (int(x.split('-')[1]) > pn)]
+            # Consolidate moment scores
+            if len(score_pn) > 0:
 
-            # Append highest scatter-PN and any higher scatter-N scores
-            scores.extend([high_pn] + scatt_n)
-        else:
-            scores.extend(scatt_n)
+                # Only keep the highest score-PN score
+                high_pn = sorted([x.lower() for x in score_pn])[-1]
+                pn = int(high_pn.split('-')[-1].replace('p', ''))
 
-        # Consolidate nu-scatter moment scores
-        if len(nuscatt_pn) > 0:
+                # Only keep the score-N scores with N > PN
+                score_n = sorted([x.lower() for x in score_n])
+                score_n = [x for x in score_n if (int(x.split('-')[1]) > pn)]
 
-            # Only keep the highest nu-scatter-PN score
-            high_nupn = sorted([x.lower() for x in nuscatt_pn])[-1]
-            pn = int(high_nupn.split('-')[1].replace('p', ''))
-
-            # Only keep the nu-scatter-N scores with N > PN
-            nuscatt_n = sorted([x.lower() for x in nuscatt_n])
-            nuscatt_n = [x for x in nuscatt_n if (int(x.split('-')[1]) > pn)]
-
-            # Append highest nu-scatter-PN and any higher nu-scatter-N scores
-            scores.extend([high_pn] + nuscatt_n)
-        else:
-            scores.extend(nuscatt_n)
-
-        # Consolidate flux moment scores
-        if len(flux_pn) > 0:
-
-            # Only keep the highest flux-PN score
-            high_pn = sorted([x.lower() for x in flux_pn])[-1]
-            pn = int(high_pn.split('-')[1].replace('p', ''))
-
-            # Only keep the flux-N scores with N > PN
-            flux_n = sorted([x.lower() for x in flux_n])
-            flux_n = [x for x in flux_n if (int(x.split('-')[1]) > pn)]
-
-            # Append highest flux_n-PN and any higher flux_n-N scores
-            scores.extend([high_pn] + flux_n)
-        else:
-            scores.extend(flux_n)
+                # Append highest score-PN and any higher score-N scores
+                scores.extend([high_pn] + score_n)
+            else:
+                scores.extend(score_n)
 
         # Override Tally's scores with consolidated list of scores
         self.scores = scores

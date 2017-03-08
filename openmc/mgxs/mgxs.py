@@ -2747,8 +2747,18 @@ class TransportXS(MGXS):
 
     @property
     def rxn_rate_tally(self):
-        raise NotImplementedError('The reaction rate tally is poorly defined' \
-                                  ' for the transport cross section')
+        if self._rxn_rate_tally is None:
+            # Switch EnergyoutFilter to EnergyFilter.
+            old_filt = self.tallies['scatter-1'].filters[-1]
+            new_filt = openmc.EnergyFilter(old_filt.bins)
+            new_filt.stride = old_filt.stride
+            self.tallies['scatter-1'].filters[-1] = new_filt
+
+            self._rxn_rate_tally = \
+                self.tallies['total'] - self.tallies['scatter-1']
+            self._rxn_rate_tally.sparse = self.sparse
+
+        return self._rxn_rate_tally
 
     @property
     def xs_tally(self):

@@ -225,6 +225,14 @@ class Cell(object):
         return self._paths
 
     @property
+    def bounding_box(self):
+        if self.region is not None:
+            return self.region.bounding_box
+        else:
+            return (np.array([-np.inf, -np.inf, -np.inf]),
+                    np.array([np.inf, np.inf, np.inf]))
+
+    @property
     def num_instances(self):
         return len(self.paths)
 

@@ -3,7 +3,6 @@ from six import string_types
 from itertools import chain
 
 import numpy as np
-import matplotlib.pyplot as plt
 
 import openmc.checkvalue as cv
 import openmc.data
@@ -122,6 +121,9 @@ def plot_xs(this, types, divisor_types=None, temperature=294., axis=None,
         generated.
 
     """
+
+    from matplotlib import pyplot as plt
+
     cv.check_type("plot_CE", plot_CE, bool)
 
     if isinstance(this, openmc.Nuclide):

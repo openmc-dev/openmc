@@ -1,3 +1,4 @@
+from __future__ import division
 from copy import copy
 from collections import OrderedDict, Iterable
 from numbers import Integral, Real
@@ -6,11 +7,10 @@ import sys
 
 from six import string_types
 import numpy as np
-import matplotlib.pyplot as plt
-from matplotlib.colors import to_rgba
 
 import openmc
 import openmc.checkvalue as cv
+from openmc.plots import _SVG_COLORS
 
 
 # A static variable for auto-generated Lattice (Universe) IDs
@@ -259,6 +259,8 @@ class Universe(object):
             :func:`matplotlib.pyplot.imshow`.
 
         """
+        import matplotlib.pyplot as plt
+
         # Seed the random number generator
         if seed is not None:
             random.seed(seed)
@@ -270,7 +272,14 @@ class Universe(object):
             # Convert to RGBA if necessary
             colors = copy(colors)
             for obj, color in colors.items():
-                colors[obj] = to_rgba(color)
+                if isinstance(color, string_types):
+                    if color.lower() not in _SVG_COLORS:
+                        raise ValueError("'{}' is not a valid color."
+                                         .format(color))
+                    colors[obj] = [x/255 for x in
+                                   _SVG_COLORS[color.lower()]] + [1.0]
+                elif len(color) == 3:
+                    colors[obj] = list(color) + [1.0]
 
         if basis == 'xy':
             x_min = center[0] - 0.5*width[0]

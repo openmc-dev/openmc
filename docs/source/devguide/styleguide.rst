@@ -8,7 +8,10 @@ In order to keep the OpenMC code base consistent in style, this guide specifies
 a number of rules which should be adhered to when modified existing code or
 adding new code in OpenMC.
 
--------------
+-------
+Fortran
+-------
+
 General Rules
 -------------
 
@@ -35,7 +38,6 @@ Don't use ``print *`` or ``write(*,*)``. If writing to a file, use a specific
 unit. Writing to standard output or standard error should be handled by the
 ``write_message`` subroutine or functionality in the error module.
 
-----------
 Procedures
 ----------
 
@@ -47,7 +49,6 @@ intent(in), intent(out), or intent(inout).
 
 Include a comment describing what each argument to a procedure is.
 
----------
 Variables
 ---------
 
@@ -91,7 +92,7 @@ allocation instead. Use allocatable variables instead of pointer variables when
 possible.
 
 Shared/Module Variables
------------------------
++++++++++++++++++++++++
 
 Always put shared variables in modules. Access module variables through a
 ``use`` statement. Always use the ``only`` specifier on the ``use`` statement
@@ -99,14 +100,12 @@ except for variables from the global, constants, and various header modules.
 
 Never use ``equivalence`` statements, ``common`` blocks, or ``data`` statements.
 
--------------------------
 Derived Types and Classes
 -------------------------
 
 Derived types and classes should have CamelCase names with words not separated
 by underscores or hyphens.
 
------------
 Indentation
 -----------
 
@@ -126,14 +125,21 @@ program, subroutine, function, if, associate, etc. Emacs users should set the
 variables f90-if-indent, f90-do-indent, f90-continuation-indent,
 f90-type-indent, f90-associate-indent, and f90-program indent to 2.
 
-Continuation lines should be indented by an extra 5 spaces. This is the default
-value of f90-continuation-indent in Emacs.
+Continuation lines should be indented by at least 5 spaces. They may be indented
+more in order to make the content match the context.  For example, either of
+these are valid continuation indentations:
 
--------------------------
+.. code-block:: fortran
+
+    local_xyz(1) = xyz(1) - (this % lower_left(1) + &
+         (i_xyz(1) - HALF)*this % pitch(1))
+    call which_data(scatt_type, get_scatt, get_nuscatt, get_chi_t, get_chi_p, &
+                    get_chi_d, scatt_order)
+
 Whitespace in Expressions
 -------------------------
 
-Use a single space between arguments to procedures. 
+Use a single space between arguments to procedures.
 
 Avoid extraneous whitespace in the following situations:
 
@@ -146,3 +152,28 @@ Avoid extraneous whitespace in the following situations:
 
     Yes: if (variable == 2) then
     No:  if ( variable==2 ) then
+
+The structure component designator ``%`` should be surrounded by one space on
+each side.
+
+Do not leave trailing whitespace at the end of a line.
+
+------
+Python
+------
+
+Style for Python code should follow PEP8_.
+
+Docstrings for functions and methods should follow numpydoc_ style.
+
+Python code should work with both Python 2.7+ and Python 3.0+.
+
+Use of third-party Python packages should be limited to numpy_, scipy_, and
+h5py_. Use of other third-party packages must be implemented as optional
+dependencies rather than required dependencies.
+
+.. _PEP8: https://www.python.org/dev/peps/pep-0008/
+.. _numpydoc: https://github.com/numpy/numpy/blob/master/doc/HOWTO_DOCUMENT.rst.txt
+.. _numpy: http://www.numpy.org/
+.. _scipy: http://www.scipy.org/
+.. _h5py: http://www.h5py.org/

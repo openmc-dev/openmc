@@ -1,13 +1,12 @@
 <?xml version="1.0"?>
 <settings>
 
-  <state_point batches="7" />
+  <state_point batches="7 10" />
 
-  <eigenvalue>
-    <batches>10</batches>
-    <inactive>5</inactive>
-    <particles>1000</particles>
-  </eigenvalue>
+  <run_mode>eigenvalue</run_mode>
+  <batches>10</batches>
+  <inactive>5</inactive>
+  <particles>1000</particles>
 
   <source>
     <space type="box">

@@ -1,7 +1,10 @@
 module particle_header
 
-  use constants,       only: NEUTRON, ONE, NONE, ZERO
-  use geometry_header, only: BASE_UNIVERSE
+  use bank_header,     only: Bank
+  use constants,       only: NEUTRON, ONE, NONE, ZERO, MAX_SECONDARY, &
+                             MAX_DELAYED_GROUPS, ERROR_REAL
+  use error,           only: fatal_error
+  use geometry_header, only: root_universe
 
   implicit none
 
@@ -26,9 +29,8 @@ module particle_header
 
     ! Is this level rotated?
     logical :: rotated = .false.
-
-    ! Pointer to next (more local) set of coordinates
-    type(LocalCoord), pointer :: next => null()
+  contains
+    procedure :: reset => reset_coord
   end type LocalCoord
 
 !===============================================================================
@@ -42,31 +44,41 @@ module particle_header
     integer    :: type          ! Particle type (n, p, e, etc)
 
     ! Particle coordinates
-    type(LocalCoord), pointer :: coord0 => null() ! coordinates on universe 0
-    type(LocalCoord), pointer :: coord  => null() ! coordinates on lowest universe
+    integer          :: n_coord          ! number of current coordinates
+    type(LocalCoord) :: coord(MAX_COORD) ! coordinates for all levels
+
+    ! Energy Data
+    real(8)    :: E      ! post-collision energy
+    real(8)    :: last_E ! pre-collision energy
+    integer    :: g      ! post-collision energy group (MG only)
+    integer    :: last_g ! pre-collision energy group (MG only)
 
     ! Other physical data
     real(8)    :: wgt           ! particle weight
-    real(8)    :: E             ! energy
     real(8)    :: mu            ! angle of scatter
     logical    :: alive         ! is particle alive?
 
     ! Pre-collision physical data
-    real(8)    :: last_xyz(3)   ! previous coordinates
-    real(8)    :: last_uvw(3)   ! previous direction coordinates
-    real(8)    :: last_wgt      ! pre-collision particle weight
-    real(8)    :: last_E        ! pre-collision energy
-    real(8)    :: absorb_wgt    ! weight absorbed for survival biasing
+    real(8)    :: last_xyz_current(3) ! coordinates of the last collision or
+                                      !  reflective/periodic surface crossing
+                                      !  for current tallies
+    real(8)    :: last_xyz(3)         ! previous coordinates
+    real(8)    :: last_uvw(3)         ! previous direction coordinates
+    real(8)    :: last_wgt            ! pre-collision particle weight
+    real(8)    :: absorb_wgt          ! weight absorbed for survival biasing
 
     ! What event last took place
     logical    :: fission       ! did the particle cause implicit fission
     integer    :: event         ! scatter, absorption
     integer    :: event_nuclide ! index in nuclides array
     integer    :: event_MT      ! reaction MT
+    integer    :: delayed_group ! delayed group
 
     ! Post-collision physical data
     integer    :: n_bank        ! number of fission sites banked
     real(8)    :: wgt_bank      ! weight of fission sites banked
+    integer    :: n_delayed_bank(MAX_DELAYED_GROUPS) ! number of delayed fission
+                                                     ! sites banked
 
     ! Indices for various arrays
     integer    :: surface       ! index for surface particle is on
@@ -74,38 +86,28 @@ module particle_header
     integer    :: material      ! index for current material
     integer    :: last_material ! index for last material
 
+    ! Temperature of the current cell
+    real(8)    :: sqrtkT        ! sqrt(k_Boltzmann * temperature) in eV
+    real(8)    :: last_sqrtKT   ! last temperature
+
     ! Statistical data
     integer    :: n_collision   ! # of collisions
 
     ! Track output
     logical    :: write_track = .false.
 
+    ! Secondary particles created
+    integer(8) :: n_secondary = 0
+    type(Bank) :: secondary_bank(MAX_SECONDARY)
+
   contains
     procedure :: initialize => initialize_particle
     procedure :: clear => clear_particle
+    procedure :: initialize_from_source
+    procedure :: create_secondary
   end type Particle
 
 contains
-
-!===============================================================================
-! DEALLOCATE_COORD removes all levels of coordinates below a given level. This
-! is used in distance_to_boundary when the particle moves from a lower universe
-! to a higher universe since the data for the lower one is not needed anymore.
-!===============================================================================
-
-  recursive subroutine deallocate_coord(coord)
-
-    type(LocalCoord), pointer :: coord
-
-    if (associated(coord)) then
-      ! recursively deallocate lower coordinates
-      if (associated(coord % next)) call deallocate_coord(coord%next)
-
-      ! deallocate original coordinate
-      deallocate(coord)
-    end if
-
-  end subroutine deallocate_coord
 
 !===============================================================================
 ! INITIALIZE_PARTICLE sets default attributes for a particle from the source
@@ -124,39 +126,125 @@ contains
     this % alive = .true.
 
     ! clear attributes
-    this % surface       = NONE
-    this % cell_born     = NONE
-    this % material      = NONE
-    this % last_material = NONE
-    this % wgt           = ONE
-    this % last_wgt      = ONE
-    this % absorb_wgt    = ZERO
-    this % n_bank        = 0
-    this % wgt_bank      = ZERO
-    this % n_collision   = 0
-    this % fission       = .false.
+    this % surface           = NONE
+    this % cell_born         = NONE
+    this % material          = NONE
+    this % last_material     = NONE
+    this % last_sqrtkT       = NONE
+    this % wgt               = ONE
+    this % last_wgt          = ONE
+    this % absorb_wgt        = ZERO
+    this % n_bank            = 0
+    this % wgt_bank          = ZERO
+    this % sqrtkT            = ERROR_REAL
+    this % n_collision       = 0
+    this % fission           = .false.
+    this % delayed_group     = 0
+    this % n_delayed_bank(:) = 0
+    this % g = 1
 
     ! Set up base level coordinates
-    allocate(this % coord0)
-    this % coord0 % universe = BASE_UNIVERSE
-    this % coord             => this % coord0
+    this % coord(1) % universe = root_universe
+    this % n_coord = 1
 
   end subroutine initialize_particle
 
 !===============================================================================
-! CLEAR_PARTICLE
+! CLEAR_PARTICLE resets all coordinate levels for the particle
 !===============================================================================
 
   subroutine clear_particle(this)
 
     class(Particle) :: this
+    integer :: i
 
     ! remove any coordinate levels
-    call deallocate_coord(this % coord0)
-
-    ! Make sure coord pointer is nullified
-    nullify(this % coord)
+    do i = 1, MAX_COORD
+      call this % coord(i) % reset()
+    end do
 
   end subroutine clear_particle
+
+!===============================================================================
+! RESET_COORD clears data from a single coordinate level
+!===============================================================================
+
+  elemental subroutine reset_coord(this)
+    class(LocalCoord), intent(inout) :: this
+
+    this % cell = NONE
+    this % universe = NONE
+    this % lattice = NONE
+    this % lattice_x = NONE
+    this % lattice_y = NONE
+    this % lattice_z = NONE
+    this % rotated = .false.
+
+  end subroutine reset_coord
+
+!===============================================================================
+! INITIALIZE_FROM_SOURCE initializes a particle from data stored in a source
+! site. The source site may have been produced from an external source, from
+! fission, or simply as a secondary particle.
+!===============================================================================
+
+  subroutine initialize_from_source(this, src, run_CE, energy_bin_avg)
+    class(Particle), intent(inout)   :: this
+    type(Bank),      intent(in)      :: src
+    logical,         intent(in)      :: run_CE
+    real(8), allocatable, intent(in) :: energy_bin_avg(:)
+
+    ! set defaults
+    call this % initialize()
+
+    ! copy attributes from source bank site
+    this % wgt              = src % wgt
+    this % last_wgt         = src % wgt
+    this % coord(1) % xyz   = src % xyz
+    this % coord(1) % uvw   = src % uvw
+    this % last_xyz_current = src % xyz
+    this % last_xyz         = src % xyz
+    this % last_uvw         = src % uvw
+    if (run_CE) then
+      this % E              = src % E
+    else
+      this % g              = int(src % E)
+      this % last_g         = int(src % E)
+      this % E              = energy_bin_avg(this % g)
+    end if
+    this % last_E           = this % E
+
+  end subroutine initialize_from_source
+
+!===============================================================================
+! CREATE_SECONDARY stores the current phase space attributes of the particle in
+! the secondary bank and increments the number of sites in the secondary bank.
+!===============================================================================
+
+  subroutine create_secondary(this, uvw, type, run_CE)
+    class(Particle), intent(inout) :: this
+    real(8),         intent(in)    :: uvw(3)
+    integer,         intent(in)    :: type
+    logical,         intent(in)    :: run_CE
+
+    integer(8) :: n
+
+    ! Check to make sure that the hard-limit on secondary particles is not
+    ! exceeded.
+    if (this % n_secondary == MAX_SECONDARY) then
+      call fatal_error("Too many secondary particles created.")
+    end if
+
+    n = this % n_secondary + 1
+    this % secondary_bank(n) % wgt    = this % wgt
+    this % secondary_bank(n) % xyz(:) = this % coord(1) % xyz
+    this % secondary_bank(n) % uvw(:) = uvw
+    this % n_secondary = n
+    this % secondary_bank(this % n_secondary) % E = this % E
+    if (.not. run_CE) then
+      this % secondary_bank(this % n_secondary) % E = real(this % g, 8)
+    end if
+
+  end subroutine create_secondary
 
 end module particle_header

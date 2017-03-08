@@ -1,4 +1,4 @@
-module cmfd_header 
+module cmfd_header
 
   use constants,  only: CMFD_NOACCEL, ZERO, ONE
 
@@ -17,7 +17,7 @@ module cmfd_header
     ! Core overlay map
     integer, allocatable :: coremap(:,:,:)
     integer, allocatable :: indexmap(:,:)
-    integer :: mat_dim = CMFD_NOACCEL 
+    integer :: mat_dim = CMFD_NOACCEL
 
     ! Energy grid
     real(8), allocatable :: egrid(:)
@@ -51,7 +51,7 @@ module cmfd_header
     ! Source sites in each mesh box
     real(8), allocatable :: sourcecounts(:,:,:,:)
 
-    ! Weight adjustment factors 
+    ! Weight adjustment factors
     real(8), allocatable :: weightfactors(:,:,:,:)
 
     ! Eigenvector/eigenvalue from cmfd run
@@ -118,7 +118,7 @@ contains
     if (.not. allocated(this % nfissxs))    allocate(this % nfissxs(ng,ng,nx,ny,nz))
     if (.not. allocated(this % diffcof))    allocate(this % diffcof(ng,nx,ny,nz))
 
-    ! Allocate dtilde and dhat 
+    ! Allocate dtilde and dhat
     if (.not. allocated(this % dtilde))     allocate(this % dtilde(6,ng,nx,ny,nz))
     if (.not. allocated(this % dhat))       allocate(this % dhat(6,ng,nx,ny,nz))
 
@@ -167,7 +167,7 @@ contains
   end subroutine allocate_cmfd
 
 !===============================================================================
-! DEALLOCATE_CMFD frees all memory of cmfd type 
+! DEALLOCATE_CMFD frees all memory of cmfd type
 !===============================================================================
 
   subroutine deallocate_cmfd(this)

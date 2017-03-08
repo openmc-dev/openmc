@@ -1,0 +1,39 @@
+<?xml version="1.0"?>
+<geometry>
+
+  <!--
+      This example consists of three nested boxes, and is meant to show how to
+      use Boolean operators to construct complex cell regions.
+  -->
+
+  <surface id="1" type="x-plane" coeffs="-10" boundary="vacuum" />
+  <surface id="2" type="x-plane" coeffs="-7" />
+  <surface id="3" type="x-plane" coeffs="-4" />
+  <surface id="4" type="x-plane" coeffs="4" />
+  <surface id="5" type="x-plane" coeffs="7" />
+  <surface id="6" type="x-plane" coeffs="10" boundary="vacuum" />
+
+  <surface id="11" type="y-plane" coeffs="-10" boundary="vacuum" />
+  <surface id="12" type="y-plane" coeffs="-7" />
+  <surface id="13" type="y-plane" coeffs="-4" />
+  <surface id="14" type="y-plane" coeffs="4" />
+  <surface id="15" type="y-plane" coeffs="7" />
+  <surface id="16" type="y-plane" coeffs="10" boundary="vacuum" />
+
+  <surface id="21" type="z-plane" coeffs="-10" boundary="vacuum" />
+  <surface id="22" type="z-plane" coeffs="-7" />
+  <surface id="23" type="z-plane" coeffs="-4" />
+  <surface id="24" type="z-plane" coeffs="4" />
+  <surface id="25" type="z-plane" coeffs="7" />
+  <surface id="26" type="z-plane" coeffs="10" boundary="vacuum" />
+
+  <!-- Innermost cube -->
+  <cell id="1" material="1" region="3 -4 13 -14 23 -24" />
+
+  <!-- Middle cubic shell -->
+  <cell id="2" material="2" region="2 -5 12 -15 22 -25 (-3 | 4 | -13 | 14 | -23 | 24)" />
+
+  <!-- Outermost cubic shell -->
+  <cell id="3" material="3" region="1 -6 11 -16 21 -26 ~(2 -5 12 -15 22 -25)" />
+
+</geometry>

@@ -1,0 +1,14 @@
+<?xml version="1.0"?>
+<geometry>
+
+  <surface id="1" type="sphere" coeffs="0. 0. 5. 5." boundary="reflective" />
+  <surface id="2" type="quadric" coeffs="1. 1. 1. 0. 0. 0. 0. 0. 0. -81." boundary="reflective" />
+  <surface id="3" type="z-plane" coeffs="5." />
+  <surface id="4" type="z-cylinder" coeffs="0. 0. 5." boundary="reflective" />
+  <surface id="5" type="z-cone" coeffs="0. 0. -10. 1." boundary="reflective" />
+  <surface id="6" type="plane" coeffs="0.2 0.2 1.0 -8." boundary="reflective" />
+
+  <cell id="1" material="1" region="-1 -2 3" />
+  <cell id="2" material="1" region="-3 -4 -5 6" />
+
+</geometry>

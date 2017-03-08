@@ -4,20 +4,18 @@ module particle_restart
 
   use bank_header,      only: Bank
   use constants
-  use geometry_header,  only: BASE_UNIVERSE
   use global
+  use hdf5_interface,   only: file_open, file_close, read_dataset
   use output,           only: write_message, print_particle
-  use output_interface, only: BinaryOutput
   use particle_header,  only: Particle
   use random_lcg,       only: set_particle_seed
   use tracking,         only: transport
 
+  use hdf5, only: HID_T
+
   implicit none
   private
   public ::  run_particle_restart
-
-  ! Binary file
-  type(BinaryOutput) :: pr
 
 contains
 
@@ -67,41 +65,53 @@ contains
 !===============================================================================
 
   subroutine read_particle_restart(p, previous_run_mode)
-
-    integer :: int_scalar
-    integer, intent(inout) :: previous_run_mode
     type(Particle), intent(inout) :: p
+    integer, intent(inout) :: previous_run_mode
+
+    integer(HID_T) :: file_id
+    character(MAX_WORD_LEN) :: tempstr
 
     ! Write meessage
-    message = "Loading particle restart file " // trim(path_particle_restart) &
-              // "..."
-    call write_message(1)
+    call write_message("Loading particle restart file " &
+         // trim(path_particle_restart) // "...", 5)
 
     ! Open file
-    call pr % file_open(path_particle_restart, 'r')
+    file_id = file_open(path_particle_restart, 'r')
 
     ! Read data from file
-    call pr % read_data(int_scalar, 'filetype')
-    call pr % read_data(int_scalar, 'revision')
-    call pr % read_data(current_batch, 'current_batch')
-    call pr % read_data(gen_per_batch, 'gen_per_batch')
-    call pr % read_data(current_gen, 'current_gen')
-    call pr % read_data(n_particles, 'n_particles')
-    call pr % read_data(previous_run_mode, 'run_mode')
-    call pr % read_data(p % id, 'id')
-    call pr % read_data(p % wgt, 'weight')
-    call pr % read_data(p % E, 'energy')
-    call pr % read_data(p % coord % xyz, 'xyz', length=3)
-    call pr % read_data(p % coord % uvw, 'uvw', length=3)
+    call read_dataset(current_batch, file_id, 'current_batch')
+    call read_dataset(gen_per_batch, file_id, 'generations_per_batch')
+    call read_dataset(current_gen, file_id, 'current_generation')
+    call read_dataset(n_particles, file_id, 'n_particles')
+    call read_dataset(tempstr, file_id, 'run_mode')
+    select case (tempstr)
+    case ('eigenvalue')
+      previous_run_mode = MODE_EIGENVALUE
+    case ('fixed source')
+      previous_run_mode = MODE_FIXEDSOURCE
+    end select
+    call read_dataset(p % id, file_id, 'id')
+    call read_dataset(p % wgt, file_id, 'weight')
+    call read_dataset(p % E, file_id, 'energy')
+    call read_dataset(p % coord(1) % xyz, file_id, 'xyz')
+    call read_dataset(p % coord(1) % uvw, file_id, 'uvw')
+
+    ! Set energy group and average energy in multi-group mode
+    if (.not. run_CE) then
+      p % g = int(p % E)
+      p % E = energy_bin_avg(p % g)
+    end if
 
     ! Set particle last attributes
-    p % last_wgt = p % wgt
-    p % last_xyz = p % coord % xyz
-    p % last_uvw = p % coord % uvw
-    p % last_E   = p % E
+    p % last_wgt         = p % wgt
+    p % last_xyz_current = p % coord(1)%xyz
+    p % last_xyz         = p % coord(1)%xyz
+    p % last_uvw         = p % coord(1)%uvw
+    p % last_E           = p % E
+    p % last_g           = p % g
 
     ! Close hdf5 file
-    call pr % file_close()
+    call file_close(file_id)
 
   end subroutine read_particle_restart
 

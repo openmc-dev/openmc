@@ -4,13 +4,45 @@
 Installation and Configuration
 ==============================
 
+----------------------------------------
+Installing on Linux/Mac with conda-forge
+----------------------------------------
+
+`Conda <http://conda.pydata.org/docs/>`_ is an open source package management
+system and environment management system for installing multiple versions of
+software packages and their dependencies and switching easily between
+them. `conda-forge <https://conda-forge.github.io/>`_ is a community-led conda
+channel of installable packages. For instructions on installing conda, please
+consult their `documentation
+<http://conda.pydata.org/docs/install/quick.html>`_.
+
+Once you have `conda` installed on your system, add the `conda-forge` channel to
+your configuration with:
+
+.. code-block:: sh
+
+    conda config --add channels conda-forge
+
+Once the `conda-forge` channel has been enabled, OpenMC can then be installed
+with:
+
+.. code-block:: sh
+
+    conda install openmc
+
+It is possible to list all of the versions of OpenMC available on your platform with:
+
+.. code-block:: sh
+
+    conda search openmc --channel conda-forge
+
 -----------------------------
 Installing on Ubuntu with PPA
 -----------------------------
 
-For users with Ubuntu 11.10 or later, a binary package for OpenMC is available
-through a Personal Package Archive (PPA) and can be installed through the APT
-package manager. First, add the following PPA to the repository sources:
+For users with Ubuntu 15.04 or later, a binary package for OpenMC is available
+through a `Personal Package Archive`_ (PPA) and can be installed through the
+`APT package manager`_. First, add the following PPA to the repository sources:
 
 .. code-block:: sh
 
@@ -26,11 +58,19 @@ Now OpenMC should be recognized within the repository and can be installed:
 
 .. code-block:: sh
 
-    sudo apt-get install openmc
+    sudo apt install openmc
+
+Binary packages from this PPA may exist for earlier versions of Ubuntu, but they
+are no longer supported.
+
+.. _Personal Package Archive: https://launchpad.net/~paulromano/+archive/staging
+.. _APT package manager: https://help.ubuntu.com/community/AptGet/Howto
 
 --------------------
 Building from Source
 --------------------
+
+.. _prerequisites:
 
 Prerequisites
 -------------
@@ -43,12 +83,21 @@ Prerequisites
       installed on your machine. Since a number of Fortran 2003/2008 features
       are used in the code, it is recommended that you use the latest version of
       whatever compiler you choose. For gfortran_, it is necessary to use
-      version 4.6.0 or above.
+      version 4.8.0 or above.
 
       If you are using Debian or a Debian derivative such as Ubuntu, you can
       install the gfortran compiler using the following command::
 
-          sudo apt-get install gfortran
+          sudo apt install gfortran
+
+    * A C/C++ compiler such as gcc_
+
+      OpenMC includes two libraries written in C and C++, respectively. These
+      libraries have been tested to work with a wide variety of compilers. If
+      you are using a Debian-based distribution, you can install the g++
+      compiler using the following command::
+
+          sudo apt install g++
 
     * CMake_ cross-platform build system
 
@@ -57,7 +106,38 @@ Prerequisites
       derivative such as Ubuntu, you can install CMake using the following
       command::
 
-          sudo apt-get install cmake
+          sudo apt install cmake
+
+    * HDF5_ Library for portable binary output format
+
+      OpenMC uses HDF5 for binary output files. As such, you will need to have
+      HDF5 installed on your computer. The installed version will need to have
+      been compiled with the same compiler you intend to compile OpenMC with. If
+      you are using HDF5 in conjunction with MPI, we recommend that your HDF5
+      installation be built with parallel I/O features. An example of
+      configuring HDF5_ is listed below::
+
+           FC=/opt/mpich/3.1/bin/mpif90 CC=/opt/mpich/3.1/bin/mpicc \
+           ./configure --prefix=/opt/hdf5/1.8.12 --enable-fortran \
+                       --enable-fortran2003 --enable-parallel
+
+      You may omit ``--enable-parallel`` if you want to compile HDF5_ in serial.
+
+      .. important::
+
+          OpenMC uses various parts of the HDF5 Fortran 2003 API; as such you
+          must include ``--enable-fortran2003`` or else OpenMC will not be able
+          to compile.
+
+      On Debian derivatives, HDF5 and/or parallel HDF5 can be installed through
+      the APT package manager:
+
+      .. code-block:: sh
+
+          sudo apt install libhdf5-dev hdf5-helpers
+
+      Note that the exact package names may vary depending on your particular
+      distribution and version.
 
 .. admonition:: Optional
 
@@ -66,52 +146,20 @@ Prerequisites
       To compile with support for parallel runs on a distributed-memory
       architecture, you will need to have a valid implementation of MPI
       installed on your machine. The code has been tested and is known to work
-      with the latest versions of both OpenMPI_ and MPICH_. Note that if using
-      OpenMPI, make sure that --with-mpi-f90-size is not set to medium or large
-      since this may prevent MPI calls from completing successfully in
-      OpenMC. OpenMPI and/or MPICH can be installed on Debian derivatives
-      with::
+      with the latest versions of both OpenMPI_ and MPICH_. OpenMPI and/or MPICH
+      can be installed on Debian derivatives with::
 
-          sudo apt-get install mpich2 libmpich2-dev
-          sudo apt-get install openmpi1.6-bin libopenmpi1.6-dev
-
-    * HDF5_ Library for portable binary output format
-
-      To compile with support for HDF5_ output (highly recommended), you will
-      need to have HDF5 installed on your computer. The installed version will
-      need to have been compiled with the same compiler you intend to compile
-      OpenMC with. HDF5_ must be built with parallel I/O features if you intend
-      to use HDF5_ with MPI. An example of configuring HDF5_ is listed below::
-
-           FC=/opt/mpich/3.1/bin/mpif90 CC=/opt/mpich/3.1/bin/mpicc \
-           ./configure --prefix=/opt/hdf5/1.8.12 --enable-fortran \
-                       --enable-fortran2003 --enable-parallel
-
-      You may omit ``--enable-parallel`` if you want to compile HDF5_ in serial.
-
-    * PETSc_ for CMFD acceleration
-
-      To enable CMFD acceleration, you will need to have PETSc_ (3.4.2 or higher)
-      installed on your computer. The installed version will need to have been
-      compiled with the same compiler you intend to compile OpenMC with. OpenMC
-      requires PETSc_ to be configured with Fortran datatypes. An example of
-      configuring PETSc_ is listed below::
-
-           ./configure --prefix=/opt/petsc/3.4.4 --download-f-blas-lapack \
-                       --with-mpi-dir=/opt/mpich/3.1 --with-shared-libraries \
-                       --with-fortran-datatypes
-
-      The BLAS/LAPACK library is not required to be downloaded and can be linked
-      explicitly (e.g., Intel MKL library).
+          sudo apt install mpich libmpich-dev
+          sudo apt install openmpi-bin libopenmpi-dev
 
     * git_ version control software for obtaining source code
 
 .. _gfortran: http://gcc.gnu.org/wiki/GFortran
+.. _gcc: https://gcc.gnu.org/
 .. _CMake: http://www.cmake.org
 .. _OpenMPI: http://www.open-mpi.org
 .. _MPICH: http://www.mpich.org
 .. _HDF5: http://www.hdfgroup.org/HDF5/
-.. _PETSc: http://www.mcs.anl.gov/petsc/
 
 Obtaining the Source
 --------------------
@@ -126,12 +174,12 @@ with GitHub since this involves setting up ssh_ keys. With git installed and
 setup, the following command will download the full source code from the GitHub
 repository::
 
-    git clone git://github.com/mit-crpg/openmc.git
+    git clone https://github.com/mit-crpg/openmc.git
 
 By default, the cloned repository will be set to the development branch. To
 switch to the source of the latest stable release, run the following commands::
 
-    cd openmc/src
+    cd openmc
     git checkout master
 
 .. _GitHub: https://github.com/mit-crpg/openmc
@@ -142,23 +190,22 @@ Build Configuration
 -------------------
 
 Compiling OpenMC with CMake is carried out in two steps. First, ``cmake`` is run
-to determine the compiler, whether optional packages (MPI, HDF5, PETSc) are
-available, to generate a list of dependencies between source files so that they
-may be compiled in the correct order, and to generate a normal Makefile. The
-Makefile is then used by ``make`` to actually carry out the compile and linking
+to determine the compiler, whether optional packages (MPI, HDF5) are available,
+to generate a list of dependencies between source files so that they may be
+compiled in the correct order, and to generate a normal Makefile. The Makefile
+is then used by ``make`` to actually carry out the compile and linking
 commands. A typical out-of-source build would thus look something like the
 following
 
 .. code-block:: sh
 
-    mkdir src/build
-    cd src/build
+    mkdir build && cd build
     cmake ..
     make
 
 Note that first a build directory is created as a subdirectory of the source
-directory. The Makefile in ``src/`` will automatically perform an out-of-source
-build with default options.
+directory. The Makefile in the top-level directory will automatically perform an
+out-of-source build with default options.
 
 CMakeLists.txt Options
 ++++++++++++++++++++++
@@ -180,56 +227,65 @@ openmp
   Enables shared-memory parallelism using the OpenMP API. The Fortran compiler
   being used must support OpenMP.
 
-petsc
-  Enables PETSc for use in CMFD acceleration. The PETSC_DIR variable should be
-  set to the base directory of the PETSc installation.
+coverage
+  Compile and link code instrumented for coverage analysis. This is typically
+  used in conjunction with gcov_.
+
+maxcoord
+  Maximum number of nested coordinate levels in geometry. Defaults to 10.
 
 To set any of these options (e.g. turning on debug mode), the following form
 should be used:
 
 .. code-block:: sh
 
-    cmake -Ddebug=on /path/to/src
+    cmake -Ddebug=on /path/to/openmc
+
+.. _gcov: https://gcc.gnu.org/onlinedocs/gcc/Gcov.html
 
 Compiling with MPI
 ++++++++++++++++++
 
-To compile with MPI, set the :envvar:`FC` environment variable to the path to
-the MPI Fortran wrapper. For example, in a bash shell:
+To compile with MPI, set the :envvar:`FC` and :envvar:`CC` environment variables
+to the path to the MPI Fortran and C wrappers, respectively. For example, in a
+bash shell:
 
 .. code-block:: sh
 
     export FC=mpif90
-    cmake /path/to/src
+    export CC=mpicc
+    cmake /path/to/openmc
 
-Note that in many shells, an environment variable can be set for a single
-command, i.e.
-
-.. code-block:: sh
-
-    FC=mpif90 cmake /path/to/src
-
-Compiling with HDF5
-+++++++++++++++++++
-
-To compile with MPI, set the :envvar:`FC` environment variable to the path to
-the HDF5 Fortran wrapper. For example, in a bash shell:
+Note that in many shells, environment variables can be set for a single command,
+i.e.
 
 .. code-block:: sh
 
-    export FC=h5fc
-    cmake /path/to/src
+    FC=mpif90 CC=mpicc cmake /path/to/openmc
 
-As noted above, an environment variable can typically be set for a single
-command, i.e.
+Selecting HDF5 Installation
++++++++++++++++++++++++++++
+
+CMakeLists.txt searches for the ``h5fc`` or ``h5pfc`` HDF5 Fortran wrapper on
+your PATH environment variable and subsequently uses it to determine library
+locations and compile flags. If you have multiple installations of HDF5 or one
+that does not appear on your PATH, you can set the HDF5_ROOT environment
+variable to the root directory of the HDF5 installation, e.g.
 
 .. code-block:: sh
 
-    FC=h5fc cmake /path/to/src
+    export HDF5_ROOT=/opt/hdf5/1.8.15
+    cmake /path/to/openmc
 
-To compile with support for both MPI and HDF5, use the parallel HDF5 wrapper
-``h5pfc`` instead. Note that this requires that your HDF5 installation be
-compiled with ``--enable-parallel``.
+This will cause CMake to search first in /opt/hdf5/1.8.15/bin for ``h5fc`` /
+``h5pfc`` before it searches elsewhere. As noted above, an environment variable
+can typically be set for a single command, i.e.
+
+.. code-block:: sh
+
+    HDF5_ROOT=/opt/hdf5/1.8.15 cmake /path/to/openmc
+
+.. _compile_linux:
 
 Compiling on Linux and Mac OS X
 -------------------------------
@@ -239,8 +295,7 @@ the root directory of the source code:
 
 .. code-block:: sh
 
-    mkdir src/build
-    cd src/build
+    mkdir build && cd build
     cmake ..
     make
     make install
@@ -256,86 +311,53 @@ OpenMC locally by specifying an install prefix when running cmake:
 The ``CMAKE_INSTALL_PREFIX`` variable can be changed to any path for which you
 have write-access.
 
-Compiling on Windows
---------------------
+Compiling on Windows 10
+-----------------------
 
-Using Cygwin
-++++++++++++
+Recent versions of Windows 10 include a subsystem for Linux that allows one to
+run Bash within Ubuntu running in Windows. First, follow the installation guide
+`here <https://msdn.microsoft.com/en-us/commandline/wsl/install_guide>`_ to get
+Bash on Ubuntu on Windows setup. Once you are within bash, obtain the necessary
+:ref:`prerequisites <prerequisites>` via ``apt-get``. Finally, follow the
+:ref:`instructions for compiling on linux <compile_linux>`.
 
-One option for compiling OpenMC on a Windows operating system is to use Cygwin_,
-a Linux-like environment for Windows. You will need to first `install
-Cygwin`_. When you are asked to select packages, make sure the following are
-selected:
+Compiling for the Intel Xeon Phi
+--------------------------------
 
-* Devel: gcc-core
-* Devel: gcc-fortran
-* Devel: make
-* Devel: cmake
+For the second generation Knights Landing architecture, nothing special is
+required to compile OpenMC. You may wish to experiment with compiler flags that
+control generation of vector instructions to see what configuration gives
+optimal performance for your target problem.
 
-If you plan on obtaining the source code directly using git, select the
-following packages:
-
-* Devel: git
-* Devel: git-completion (Optional)
-* Devel: gitk (Optional)
-
-In order to use the Python scripts provided with OpenMC, you will also need to
-install Python. This can be done within Cygwin or directly in Windows. To
-install within Cygwin, select the following packages:
-
-* Python: python (Version > 2.7 recommended)
-
-Once you have obtained the source code, run the following commands from within
-the source code root directory:
+For the first generation Knights Corner architecture, it is necessary to
+cross-compile OpenMC. If you are using the Intel Fortran compiler, it is
+necessary to specify that all objects be compiled with the ``-mmic`` flag as
+follows:
 
 .. code-block:: sh
 
-    cd src
+    mkdir build && cd build
+    FC=ifort CC=icc FFLAGS=-mmic cmake -Dopenmp=on ..
     make
 
-This will build an executable named ``openmc``.
+Note that unless an HDF5 build for the Intel Xeon Phi (Knights Corner) is
+already on your target machine, you will need to cross-compile HDF5 for the Xeon
+Phi. An `example script`_ to build zlib and HDF5 provides several necessary
+workarounds.
 
-.. _Cygwin: http://cygwin.com/
-.. _install Cygwin: http://cygwin.com/setup.exe
-
-Using MinGW
-+++++++++++
-
-An alternate option for installing OpenMC on Windows is using MinGW_, which
-stands for Minimalist GNU for Windows. An executable for installing the MinGW
-distribution is available on SourceForge_. When installing MinGW, make sure the
-following components are selected:
-
-* MinGW Compiler Suite: Fortran Compiler
-* MSYS Basic System
-
-Once MinGW is installed, copy the OpenMC source distribution to your MinGW home
-directory (usually C:\\MinGW\\msys\\1.0\\home\\YourUsername). Once you have
-the source code in place, run the following commands from within the MinGW shell
-in the root directory of the OpenMC distribution:
-
-.. code-block:: sh
-
-    cd src
-    make
-
-This will build an executable named ``openmc``.
-
-.. _MinGW: http://www.mingw.org
-.. _SourceForge: http://sourceforge.net/projects/mingw
+.. _example script: https://github.com/paulromano/install-scripts/blob/master/install-hdf5-mic
 
 Testing Build
 -------------
 
 If you have ENDF/B-VII.1 cross sections from NNDC_ you can test your build.
-Make sure the **CROSS_SECTIONS** environmental variable is set to the
+Make sure the **OPENMC_CROSS_SECTIONS** environmental variable is set to the
 *cross_sections.xml* file in the *data/nndc* directory.
 There are two ways to run tests. The first is to use the Makefile present in
 the source directory and run the following:
 
 .. code-block:: sh
 
-    cd src
     make test
 
 If you want more options for testing you can use ctest_ command. For example,
@@ -343,7 +365,7 @@ if we wanted to run only the plot tests with 4 processors, we run:
 
 .. code-block:: sh
 
-    cd src/build
+    cd build
     ctest -j 4 -R plot
 
 If you want to run the full test suite with different build options please
@@ -354,83 +376,140 @@ Cross Section Configuration
 ---------------------------
 
 In order to run a simulation with OpenMC, you will need cross section data for
-each nuclide in your problem. Since OpenMC uses ACE format cross sections, you
-can use nuclear data that was processed with NJOY_, such as that distributed
-with MCNP_ or Serpent_. Several sources provide free processed ACE data as
-described below. The TALYS-based evaluated nuclear data library, TENDL_, is also
-openly available in ACE format.
+each nuclide or material in your problem. OpenMC can be run in continuous-energy
+or multi-group mode.
+
+In continuous-energy mode, OpenMC uses a native HDF5 format to store all nuclear
+data. If you have ACE format data that was produced with NJOY_, such as that
+distributed with MCNP_ or Serpent_, it can be converted to the HDF5 format using
+the :ref:`openmc-ace-to-hdf5 <other_cross_sections>` script distributed with
+OpenMC.  Several sources provide openly available ACE data as described
+below. The TALYS-based evaluated nuclear data library, TENDL_, is also available
+in ACE format.
+
+In multi-group mode, OpenMC utilizes an XML-based library format which can be
+used to describe nuclide- or material-specific quantities.
 
 Using ENDF/B-VII.1 Cross Sections from NNDC
 -------------------------------------------
 
 The NNDC_ provides ACE data from the ENDF/B-VII.1 neutron and thermal scattering
 sublibraries at four temperatures processed using NJOY_. To use this data with
-OpenMC, a script is provided with OpenMC that will automatically download,
-extract, and set up a confiuration file:
+OpenMC, a script is provided with OpenMC that will automatically download and
+extract the ACE data, fix any deficiencies, and create an HDF5 library:
 
 .. code-block:: sh
 
-    cd openmc/data
-    python get_nndc_data.py
+    openmc-get-nndc-data
 
-At this point, you should set the :envvar:`CROSS_SECTIONS` environment variable
-to the absolute path of the file ``openmc/data/nndc/cross_sections.xml``. This
+At this point, you should set the :envvar:`OPENMC_CROSS_SECTIONS` environment
+variable to the absolute path of the file ``nndc_hdf5/cross_sections.xml``. This
 cross section set is used by the test suite.
 
 Using JEFF Cross Sections from OECD/NEA
 ---------------------------------------
 
-The NEA_ provides processed ACE data from the JEFF_ nuclear library upon
-request. A DVD of the data can be requested here_. To use this data with OpenMC,
-the following steps must be taken:
+The NEA_ provides processed ACE data from the JEFF_ library. To use this data
+with OpenMC, a script is provided with OpenMC that will automatically download
+and extract the ACE data, fix any deficiencies, and create an HDF5 library.
 
-1. Copy and unzip the data on the DVD to a directory on your computer.
-2. In the root directory, a file named ``xsdir``, or some variant thereof,
-   should be present. This file contains a listing of all the cross sections and
-   is used by MCNP. This file should be converted to a ``cross_sections.xml``
-   file for use with OpenMC. A Python script is provided in the OpenMC
-   distribution for this purpose:
+.. code-block:: sh
 
-   .. code-block:: sh
+    openmc-get-jeff-data
 
-       openmc/src/utils/convert_xsdir.py xsdir31 cross_sections.xml
-
-3. In the converted ``cross_sections.xml`` file, change the contents of the
-   <directory> element to the absolute path of the directory containing the
-   actual ACE files.
-4. Additionally, you may need to change any occurrences of upper-case "ACE"
-   within the ``cross_sections.xml`` file to lower-case.
-5. Either set the :ref:`cross_sections` in a settings.xml file or the
-   :envvar:`CROSS_SECTIONS` environment variable to the absolute path of the
-   ``cross_sections.xml`` file.
+At this point, you should set the :envvar:`OPENMC_CROSS_SECTIONS` environment
+variable to the absolute path of the file ``jeff-3.2-hdf5/cross_sections.xml``.
 
 Using Cross Sections from MCNP
 ------------------------------
 
-To use cross sections distributed with MCNP, change the <directory> element in
-the ``cross_sections.xml`` file in the root directory of the OpenMC distribution
-to the location of the MCNP cross sections. Then, either set the
-:ref:`cross_sections` in a settings.xml file or the :envvar:`CROSS_SECTIONS`
-environment variable to the absolute path of the ``cross_sections.xml`` file.
+OpenMC is provided with a script that will automatically convert ENDF/B-VII.0
+and ENDF/B-VII.1 ACE data that is provided with MCNP5 or MCNP6. To convert the
+ENDF/B-VII.0 ACE files (``endf70[a-k]`` and ``endf70sab``) into the native HDF5
+format, run the following:
 
-Using Cross Sections from Serpent
----------------------------------
+.. code-block:: sh
 
-To use cross sections distributed with Serpent, change the <directory> element
-in the ``cross_sections_serpent.xml`` file in the root directory of the OpenMC
-distribution to the location of the Serpent cross sections. Then, either set the
-:ref:`cross_sections` in a settings.xml file or the :envvar:`CROSS_SECTIONS`
-environment variable to the absolute path of the ``cross_sections_serpent.xml``
-file.
+    openmc-convert-mcnp70-data /path/to/mcnpdata/
 
-.. _NJOY: http://t2.lanl.gov/nis/codes.shtml
+where ``/path/to/mcnpdata`` is the directory containing the ``endf70[a-k]``
+files.
+
+To convert the ENDF/B-VII.1 ACE files (the endf71x and ENDF71SaB libraries), use
+the following script:
+
+.. code-block:: sh
+
+    openmc-convert-mcnp71-data /path/to/mcnpdata
+
+where ``/path/to/mcnpdata`` is the directory containing the ``endf71x`` and
+``ENDF71SaB`` directories.
+
+.. _other_cross_sections:
+
+Using Other Cross Sections
+--------------------------
+
+If you have a library of ACE format cross sections other than those listed above
+that you need to convert to OpenMC's HDF5 format, the ``openmc-ace-to-hdf5``
+script can be used. There are four different ways you can specify ACE libraries
+that are to be converted:
+
+1. List each ACE library as a positional argument. This is very useful in
+   conjunction with the usual shell utilities (ls, find, etc.).
+2. Use the ``--xml`` option to specify a pre-v0.9 cross_sections.xml file.
+3. Use the ``--xsdir`` option to specify a MCNP xsdir file.
+4. Use the ``--xsdata`` option to specify a Serpent xsdata file.
+
+The script does not use any extra information from cross_sections.xml/ xsdir/
+xsdata files to determine whether the nuclide is metastable. Instead, the
+``--metastable`` argument can be used to specify whether the ZAID naming
+convention follows the NNDC data convention (1000*Z + A + 300 + 100*m), or the
+MCNP data convention (essentially the same as NNDC, except that the first
+metastable state of Am242 is 95242 and the ground state is 95642).
+
+The ``openmc-ace-to-hdf5`` script has the following command-line flags:
+
+-h, --help            show this help message and exit
+
+-d DESTINATION, --destination DESTINATION
+                      Directory to create new library in (default: .)
+
+-m META, --metastable META
+                      How to interpret ZAIDs for metastable nuclides. META
+                      can be either 'nndc' or 'mcnp'. (default: nndc)
+
+--xml XML             Old-style cross_sections.xml that lists ACE libraries
+                      (default: None)
+
+--xsdir XSDIR         MCNP xsdir file that lists ACE libraries (default:
+                      None)
+
+--xsdata XSDATA       Serpent xsdata file that lists ACE libraries (default:
+                      None)
+
+--fission_energy_release FISSION_ENERGY_RELEASE
+                      HDF5 file containing fission energy release data
+                      (default: None)
+
+
+Using Multi-Group Cross Sections
+--------------------------------
+
+Multi-group cross section libraries are generally tailored to the specific
+calculation to be performed.  Therefore, at this point in time, OpenMC is not
+distributed with any pre-existing multi-group cross section libraries.
+However, if the user has obtained or generated their own library, the user
+should set the :envvar:`OPENMC_MG_CROSS_SECTIONS` environment variable
+to the absolute path of the file library expected to used most frequently.
+
+.. _NJOY: http://t2.lanl.gov/nis/codes/NJOY12/
 .. _NNDC: http://www.nndc.bnl.gov/endf/b7.1/acefiles.html
 .. _NEA: http://www.oecd-nea.org
-.. _JEFF: http://www.oecd-nea.org/dbdata/jeff/
-.. _here: http://www.oecd-nea.org/dbdata/pubs/jeff312-cd.html
+.. _JEFF: https://www.oecd-nea.org/dbforms/data/eva/evatapes/jeff_32/
 .. _MCNP: http://mcnp.lanl.gov
 .. _Serpent: http://montecarlo.vtt.fi
-.. _TENDL: ftp://ftp.nrg.eu/pub/www/talys/tendl2012/tendl2012.html
+.. _TENDL: https://tendl.web.psi.ch/tendl_2015/tendl2015.html
 
 --------------
 Running OpenMC
@@ -439,9 +518,8 @@ Running OpenMC
 Once you have a model built (see :ref:`usersguide_input`), you can either run
 the openmc executable directly from the directory containing your XML input
 files, or you can specify as a command-line argument the directory containing
-the XML input files. For example, if the path of your OpenMC executable is
-``/home/username/openmc/src/openmc`` and your XML input files are in the
-directory ``/home/username/somemodel/``, one way to run the simulation would be:
+the XML input files. For example, if your XML input files are in the directory
+``/home/username/somemodel/``, one way to run the simulation would be:
 
 .. code-block:: sh
 

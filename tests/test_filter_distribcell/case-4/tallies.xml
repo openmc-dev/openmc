@@ -1,0 +1,7 @@
+<?xml version='1.0' encoding='utf-8'?>
+<tallies>
+    <tally id="1">
+        <filter bins="101" type="distribcell" />
+    <scores>total</scores>
+    </tally>
+</tallies>

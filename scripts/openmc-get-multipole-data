@@ -1,0 +1,128 @@
+#!/usr/bin/env python
+
+from __future__ import print_function
+import os
+import shutil
+import subprocess
+import sys
+import tarfile
+import glob
+import hashlib
+import argparse
+
+from six.moves import input
+from six.moves.urllib.request import urlopen
+
+
+description = """
+Download and extract windowed multipole data based on ENDF/B-VII.1.
+
+"""
+
+class CustomFormatter(argparse.ArgumentDefaultsHelpFormatter,
+                      argparse.RawDescriptionHelpFormatter):
+    pass
+
+parser = argparse.ArgumentParser(
+    description=description,
+    formatter_class=CustomFormatter
+)
+parser.add_argument('-b', '--batch', action='store_true',
+                    help='supresses standard in')
+args = parser.parse_args()
+
+
+baseUrl = 'https://github.com/smharper/windowed_multipole_library/blob/master/'
+files = ['multipole_lib.tar.gz?raw=true']
+checksums = ['3985aea96f7162a9419c7ed8352e6abb']
+block_size = 16384
+
+# ==============================================================================
+# DOWNLOAD FILES FROM GITHUB REPO
+
+filesComplete = []
+for f in files:
+    # Establish connection to URL
+    url = baseUrl + f
+    req = urlopen(url)
+
+    # Get file size from header
+    if sys.version_info[0] < 3:
+        file_size = int(req.info().getheaders('Content-Length')[0])
+    else:
+        file_size = req.length
+    downloaded = 0
+
+    # Remove GitHub junk from the file name.
+    fname = f[:-9] if f.endswith('?raw=true') else f
+
+    # Check if file already downloaded
+    if os.path.exists(fname):
+        if os.path.getsize(fname) == file_size:
+            print('Skipping ' + fname)
+            filesComplete.append(fname)
+            continue
+        else:
+            overwrite = input('Overwrite {0}? ([y]/n) '.format(fname))
+            if overwrite.lower().startswith('n'):
+                continue
+
+    # Copy file to disk
+    print('Downloading {0}... '.format(f), end='')
+    with open(fname, 'wb') as fh:
+        while True:
+            chunk = req.read(block_size)
+            if not chunk: break
+            fh.write(chunk)
+            downloaded += len(chunk)
+            status = '{0:10}  [{1:3.2f}%]'.format(downloaded, downloaded * 100. / file_size)
+            print(status + chr(8)*len(status), end='')
+        print('')
+        filesComplete.append(fname)
+
+# ==============================================================================
+# VERIFY MD5 CHECKSUMS
+
+print('Verifying MD5 checksums...')
+for f, checksum in zip(files, checksums):
+    fname = f[:-9] if f.endswith('?raw=true') else f
+    downloadsum = hashlib.md5(open(fname, 'rb').read()).hexdigest()
+    if downloadsum != checksum:
+        raise IOError("MD5 checksum for {} does not match. If this is your first "
+                      "time receiving this message, please re-run the script. "
+                      "Otherwise, please contact OpenMC developers by emailing "
+                      "openmc-users@googlegroups.com.".format(f))
+
+# ==============================================================================
+# EXTRACT FILES FROM TGZ
+
+for f in files:
+    fname = f[:-9] if f.endswith('?raw=true') else f
+    if fname not in filesComplete:
+        continue
+
+    # Extract files
+    with tarfile.open(fname, 'r') as tgz:
+        print('Extracting {0}...'.format(fname))
+        tgz.extractall(path='wmp/')
+
+# Move data files down one level
+for filename in glob.glob('wmp/multipole_lib/*'):
+    shutil.move(filename, 'wmp/')
+os.rmdir('wmp/multipole_lib')
+
+# ==============================================================================
+# PROMPT USER TO DELETE .TAR.GZ FILES
+
+# Ask user to delete
+if not args.batch:
+    response = input('Delete *.tar.gz files? ([y]/n) ')
+else:
+    response = 'y'
+
+# Delete files if requested
+if not response or response.lower().startswith('y'):
+    for f in files:
+        if os.path.exists(f):
+            print('Removing {0}...'.format(f))
+            os.remove(f)

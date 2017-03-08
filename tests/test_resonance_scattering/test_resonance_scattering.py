@@ -1,59 +1,62 @@
 #!/usr/bin/env python
 
 import os
-from subprocess import Popen, STDOUT, PIPE, call
-import filecmp
-import glob
-from optparse import OptionParser
+import sys
+sys.path.insert(0, os.pardir)
+from testing_harness import PyAPITestHarness
+import openmc
 
-parser = OptionParser()
-parser.add_option('--mpi_exec', dest='mpi_exec', default='')
-parser.add_option('--mpi_np', dest='mpi_np', default='3')
-parser.add_option('--exe', dest='exe')
-(opts, args) = parser.parse_args()
-cwd = os.getcwd()
 
-def test_run():
-    if opts.mpi_exec != '':
-        proc = Popen([opts.mpi_exec, '-np', opts.mpi_np, opts.exe, cwd],
-               stderr=STDOUT, stdout=PIPE)
-    else:
-        proc = Popen([opts.exe, cwd], stderr=STDOUT, stdout=PIPE)
-    print(proc.communicate()[0])
-    returncode = proc.returncode
-    assert returncode == 0, 'OpenMC did not exit successfully.'
+class ResonanceScatteringTestHarness(PyAPITestHarness):
+    def _build_inputs(self):
+        # Nuclides
+        u238 = openmc.Nuclide('U238')
+        u235 = openmc.Nuclide('U235')
+        pu239 = openmc.Nuclide('Pu239')
+        h1 = openmc.Nuclide('H1')
 
-def test_created_statepoint():
-    statepoint = glob.glob(os.path.join(cwd, 'statepoint.10.*'))
-    assert len(statepoint) == 1, 'Either multiple or no statepoint files exist.'
-    assert statepoint[0].endswith('binary') or statepoint[0].endswith('h5'),\
-        'Statepoint file is not a binary or hdf5 file.'
+        # Materials
+        mat = openmc.Material(material_id=1)
+        mat.set_density('g/cc', 1.0)
+        mat.add_nuclide(u238, 1.0)
+        mat.add_nuclide(u235, 0.02)
+        mat.add_nuclide(pu239, 0.02)
+        mat.add_nuclide(h1, 20.0)
 
-def test_results():
-    statepoint = glob.glob(os.path.join(cwd, 'statepoint.10.*'))
-    call(['python', 'results.py', statepoint[0]])
-    compare = filecmp.cmp('results_test.dat', 'results_true.dat')
-    if not compare:
-      os.rename('results_test.dat', 'results_error.dat')
-    assert compare, 'Results do not agree.'
+        mats_file = openmc.Materials([mat])
+        mats_file.export_to_xml()
 
-def teardown():
-    output = glob.glob(os.path.join(cwd, 'statepoint.10.*'))
-    output.append(os.path.join(cwd, 'results_test.dat'))
-    for f in output:
-        if os.path.exists(f):
-            os.remove(f)
+        # Geometry
+        dumb_surface = openmc.XPlane(x0=100)
+        dumb_surface.boundary_type = 'reflective'
+
+        c1 = openmc.Cell(cell_id=1)
+        c1.fill = mat
+        c1.region = -dumb_surface
+
+        root_univ = openmc.Universe(universe_id=0)
+        root_univ.add_cell(c1)
+
+        geometry = openmc.Geometry()
+        geometry.root_universe = root_univ
+        geometry.export_to_xml()
+
+        # Settings
+        res_scatt_dbrc = openmc.ResonanceScattering(u238, 'DBRC', 1.0, 210.0)
+        res_scatt_wcm = openmc.ResonanceScattering(u235, 'WCM', 1.0, 210.0)
+        res_scatt_ares = openmc.ResonanceScattering(pu239, 'ARES', 1.0, 210.0)
+
+        sets_file = openmc.Settings()
+        sets_file.batches = 10
+        sets_file.inactive = 5
+        sets_file.particles = 1000
+        sets_file.source = openmc.source.Source(
+             space=openmc.stats.Box([-4, -4, -4], [4, 4, 4]))
+        sets_file.resonance_scattering = [res_scatt_dbrc, res_scatt_wcm,
+             res_scatt_ares]
+        sets_file.export_to_xml()
+
 
 if __name__ == '__main__':
-
-    # test for openmc executable
-    if opts.exe is None:
-        raise Exception('Must specify OpenMC executable from command line with --exe.')
-
-    # run tests
-    try:
-        test_run()
-        test_created_statepoint()
-        test_results()
-    finally:
-        teardown()
+    harness = ResonanceScatteringTestHarness('statepoint.10.*')
+    harness.main()

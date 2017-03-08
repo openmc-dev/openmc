@@ -1,0 +1,10 @@
+k-combined:
+1.363786E+00 1.103929E-02
+Cell
+	ID             =	11
+	Name           =	
+	Fill           =	Material 2
+	Region         =	-10000
+	Rotation       =	None
+	Temperature    =	[ 500.    0.  700.  800.]
+	Translation    =	None

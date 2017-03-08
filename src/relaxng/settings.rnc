@@ -1,44 +1,38 @@
 element settings {
+  element batches { xsd:positiveInteger }? &
+
   element confidence_intervals { xsd:boolean }? &
-
-  (
-    element eigenvalue {
-      (element batches { xsd:positiveInteger } | 
-        attribute batches { xsd:positiveInteger }) &
-      (element inactive { xsd:nonNegativeInteger } | 
-        attribute inactive { xsd:nonNegativeInteger }) &
-      (element particles { xsd:positiveInteger } | 
-        attribute particles { xsd:positiveInteger }) &
-      (element generations_per_batch { xsd:positiveInteger } | 
-        attribute generations_per_batch { xsd:positiveInteger })?
-    } |
-    element fixed_source {
-      (element batches { xsd:positiveInteger } | 
-        attribute batches { xsd:positiveInteger }) &
-      (element particles { xsd:positiveInteger } | 
-        attribute particles { xsd:positiveInteger })
-    }
-  ) &
-
-  element cross_sections { xsd:string { maxLength = "255" } }? &
 
   element cutoff {
     (element weight { xsd:double } | attribute weight { xsd:double })? &
     (element weight_avg { xsd:double } | attribute weight_avg { xsd:double })?
   }? &
 
-  element energy_grid { ( "nuclide" | "union" | "lethargy" ) }? &
+  element energy_grid { ( "nuclide" | "log" | "logarithm" | "logarithmic" | "material-union" | "union" ) }? &
+
+  element energy_mode { ( "continuous-energy" | "ce" | "CE" | "multi-group" | "mg" | "MG" ) }? &
 
   element entropy {
-    (element dimension { list { xsd:int+ } } | 
+    (element dimension { list { xsd:int+ } } |
       attribute dimension { list { xsd:int+ } })? &
-    (element lower_left { list { xsd:double+ } } | 
+    (element lower_left { list { xsd:double+ } } |
       attribute lower_left { list { xsd:double+ } }) &
-    (element upper_right { list { xsd:double+ } } | 
+    (element upper_right { list { xsd:double+ } } |
       attribute upper_right { list { xsd:double+ } })
   }? &
 
-  element natural_elements { xsd:string { maxLength = "20" } }? &
+  element generations_per_batch { xsd:positiveInteger }? &
+
+  element inactive { xsd:nonNegativeInteger }? &
+
+  element keff_trigger {
+    (element type { xsd:string } | attribute type { xsd:string }) &
+    (element threshold { xsd:double} | attribute threshold { xsd:double })
+  }? &
+
+  element log_grid_bins { xsd:positiveInteger }? &
+
+  element max_order { xsd:nonNegativeInteger }? &
 
   element no_reduce { xsd:boolean }? &
 
@@ -51,49 +45,53 @@ element settings {
 
   element output_path { xsd:string { maxLength = "255" } }? &
 
+  element particles { xsd:positiveInteger }? &
+
   element ptables { xsd:boolean }? &
 
   element run_cmfd { xsd:boolean }? &
 
+  element run_mode { xsd:string }? &
+
   element seed { xsd:positiveInteger }? &
 
   element source {
-    element file { xsd:string { maxLength = "255" } }? &
-    element space {
-      (element type { xsd:string { maxLength = "16" } } |
-        attribute type { xsd:string { maxLength = "16" } }) &
-      (element length { xsd:int } | attribute length { xsd:int })? &
-      (element interpolation { xsd:string { maxLength = "10" } } |
-        attribute interplation { xsd:string { maxLength = "10" } })? &
-      (element parameters { list { xsd:double+ } } |
-        attribute parameters { list { xsd:double+ } })?
-    }? &
-    element angle {
-      (element type { xsd:string { maxLength = "16" } } |
-        attribute type { xsd:string { maxLength = "16" } }) &
-      (element length { xsd:int } | attribute length { xsd:int })? &
-      (element interpolation { xsd:string { maxLength = "10" } } |
-        attribute interplation { xsd:string { maxLength = "10" } })? &
-      (element parameters { list { xsd:double+ } } |
-        attribute parameters { list { xsd:double+ } })?
-    }? &
-    element energy {
-      (element type { xsd:string { maxLength = "16" } } |
-        attribute type { xsd:string { maxLength = "16" } }) &
-      (element length { xsd:int } | attribute length { xsd:int })? &
-      (element interpolation { xsd:string { maxLength = "10" } } |
-        attribute interplation { xsd:string { maxLength = "10" } })? &
-      (element parameters { list { xsd:double+ } } |
-        attribute parameters { list { xsd:double+ } })?
-    }? &
-    (element write_initial { xsd:boolean } | attribute write_initial { xsd:boolean })?
-  }? &
+    grammar {
+      start =
+        (element strength { xsd:double } | attribute strength { xsd:double })? &
+        (element file { xsd:string } | attribute file { xsd:string })? &
+        element space {
+          (element type { xsd:string } | attribute type { xsd:string }) &
+          (element parameters { list { xsd:double+ } } |
+            attribute parameters { list { xsd:double+ } })? &
+          element x { distribution }? &
+          element y { distribution }? &
+          element z { distribution }?
+        }? &
+        element angle {
+          (element type { xsd:string } | attribute type { xsd:string }) &
+          (element reference_uvw { list { xsd:double, xsd:double, xsd:double } } |
+            attribute reference_uvw { list { xsd:double, xsd:double, xsd:double } })? &
+          element mu { distribution }? &
+          element phi { distribution }?
+        }? &
+        element energy { distribution }? &
+        (element write_initial { xsd:boolean } | attribute write_initial { xsd:boolean })?
+      distribution =
+        (element type { xsd:string { maxLength = "16" } } |
+          attribute type { xsd:string { maxLength = "16" } }) &
+        (element interpolation { xsd:string } |
+          attribute interpolation { xsd:string })? &
+        (element parameters { list { xsd:double+ } } |
+          attribute parameters { list { xsd:double+ } })?
+    }
+  }* &
 
   element state_point {
     (
       (element batches { list { xsd:positiveInteger+ } } |
         attribute batches { list { xsd:positiveInteger+ } }) |
-      (element interval { xsd:positiveInteger } | 
+      (element interval { xsd:positiveInteger } |
         attribute interval { xsd:positiveInteger })
     )
   }? &
@@ -102,12 +100,12 @@ element settings {
     (
       (element batches { list { xsd:positiveInteger+ } } |
         attribute batches { list { xsd:positiveInteger+ } }) |
-      (element interval { xsd:positiveInteger } | 
+      (element interval { xsd:positiveInteger } |
         attribute interval { xsd:positiveInteger })
     )? &
-    (element separate { xsd:boolean } | 
+    (element separate { xsd:boolean } |
       attribute separate { xsd:boolean })? &
-    (element write { xsd:boolean } | 
+    (element write { xsd:boolean } |
       attribute write { xsd:boolean })? &
     (element overwrite_latest { xsd:boolean} |
       attribute overwrite_latest {xsd:boolean})?
@@ -115,20 +113,47 @@ element settings {
 
   element survival_biasing { xsd:boolean }? &
 
+  element temperature_default { xsd:double }? &
+
+  element temperature_method { xsd:string }? &
+
+  element temperature_multipole { xsd:boolean }? &
+
+  element temperature_tolerance { xsd:double }? &
+
   element threads { xsd:positiveInteger }? &
 
   element trace { list { xsd:positiveInteger+ } }? &
 
   element track { list { xsd:positiveInteger+ } }? &
 
+  element trigger {
+    (element active { xsd:boolean } | attribute active { xsd:boolean }) &
+    (element max_batches { xsd:positiveInteger } | attribute max_batches { xsd:positiveInteger }) &
+    (element batch_interval { xsd:positiveInteger } | attribute batch_interval { xsd:positiveInteger })?
+  }? &
+
   element verbosity { xsd:positiveInteger }? &
 
-  element uniform_fs{
-    (element dimension { list { xsd:positiveInteger+ } } | 
-      attribute dimension { list { xsd:positiveInteger+ } }) &
-    (element lower_left { list { xsd:double+ } } | 
+  element volume_calc {
+    (element domain_type { xsd:string } |
+      attribute domain_type { xsd:string }) &
+    (element domain_ids { list { xsd:integer+ } } |
+      attribute domain_ids { list { xsd:integer+ } }) &
+    (element samples { xsd:positiveInteger } |
+      attribute samples { xsd:positiveInteger }) &
+    (element lower_left { list { xsd:double+ } } |
       attribute lower_left { list { xsd:double+ } }) &
-    (element upper_right { list { xsd:double+ } } | 
+    (element upper_right { list { xsd:double+ } } |
+      attribute upper_right { list { xsd:double+ } })
+  }* &
+
+  element uniform_fs{
+    (element dimension { list { xsd:positiveInteger+ } } |
+      attribute dimension { list { xsd:positiveInteger+ } }) &
+    (element lower_left { list { xsd:double+ } } |
+      attribute lower_left { list { xsd:double+ } }) &
+    (element upper_right { list { xsd:double+ } } |
       attribute upper_right { list { xsd:double+ } })
   }? &
 
@@ -138,10 +163,6 @@ element settings {
         attribute nuclide { xsd:string { maxLength = "12" }  }) &
       (element method { xsd:string { maxLength = "16" } } |
         attribute method { xsd:string { maxLength = "16" }  }) &
-      (element xs_label { xsd:string { maxLength = "12" } } |
-        attribute xs_label { xsd:string { maxLength = "12" } }) &
-      (element xs_label_0K { xsd:string { maxLength = "12" } } |
-        attribute xs_label_0K { xsd:string { maxLength = "12" } }) &
       (element E_min { xsd:double } |
         attribute E_min { xsd:double }) &
       (element E_max { xsd:double } |

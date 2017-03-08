@@ -1,0 +1,23 @@
+<?xml version='1.0' encoding='utf-8'?>
+<geometry>
+    <cell fill="5" id="1" name="Cell 1" region="1 -2 3 -4" universe="0" />
+<cell id="101" material="1" name="cell 2" region="-5" universe="1" />
+<cell id="102" material="2" name="cell 3" region="5" universe="1" />
+<cell id="500" material="2" name="cell 4" region="" universe="3" />
+<hex_lattice id="5" n_rings="2">
+        <pitch>1.0</pitch>
+    <outer>3</outer>
+    <center>0.0 0.0</center>
+    <universes>
+ 1
+1 1
+ 1
+1 1
+ 1</universes>
+    </hex_lattice>
+<surface boundary="vacuum" coeffs="-3" id="1" name="left" type="x-plane" />
+<surface boundary="vacuum" coeffs="3" id="2" name="right" type="x-plane" />
+<surface boundary="vacuum" coeffs="-4" id="3" name="bottom" type="y-plane" />
+<surface boundary="vacuum" coeffs="4" id="4" name="top" type="y-plane" />
+<surface boundary="transmission" coeffs="0 0 0.4" id="5" type="z-cylinder" />
+</geometry>

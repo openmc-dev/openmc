@@ -5,7 +5,7 @@
   <surface id="2" type="z-plane" coeffs="-100" />
   <surface id="3" type="z-plane" coeffs="100" />
 
-  <cell id="1" fill="2" rotation="45 45 45" surfaces="-1" />
-  <cell id="2" universe="2" material="1" surfaces="2 -3" />
+  <cell id="1" fill="2" rotation="45 45 45" region="-1" />
+  <cell id="2" universe="2" material="1" region="2 -3" />
 
 </geometry>

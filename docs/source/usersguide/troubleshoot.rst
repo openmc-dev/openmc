@@ -31,21 +31,6 @@ f951: error: unrecognized command line option "-fbacktrace"
 You are probably using a version of the gfortran compiler that is too
 old. Download and install the latest version of gfortran_.
 
-
-make[1]: ifort: Command not found
-*********************************
-
-You tried compiling with the Intel Fortran compiler and it was not found on your
-:envvar:`PATH`. If you have the Intel compiler installed, make sure the shell
-can locate it (this can be tested with :program:`which ifort`).
-
-make[1]: pgf90: Command not found
-*********************************
-
-You tried compiling with the PGI Fortran compiler and it was not found on your
-:envvar:`PATH`. If you have the PGI compiler installed, make sure the shell can
-locate it (this can be tested with :program:`which pgf90`).
-
 -------------------------
 Problems with Simulations
 -------------------------
@@ -56,13 +41,13 @@ Segmentation Fault
 A segmentation fault occurs when the program tries to access a variable in
 memory that was outside the memory allocated for the program. The best way to
 debug a segmentation fault is to re-compile OpenMC with debug options turned
-on. First go to your ``openmc/src`` directory where OpenMC was compiled and type
-the following commands:
+on. Create a new build directory and type the following commands:
 
 .. code-block:: sh
 
-    make distclean
-    make DEBUG=yes
+    mkdir build-debug && cd build-debug
+    cmake -Ddebug=on /path/to/openmc
+    make
 
 Now when you re-run your problem, it should report exactly where the program
 failed. If after reading the debug output, you are still unsure why the program

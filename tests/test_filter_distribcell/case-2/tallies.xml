@@ -1,0 +1,13 @@
+<?xml version="1.0"?>
+<tallies>
+
+  <tally id="1">
+   <filter type="cell">
+     <bins>
+      201 203 205 207
+      </bins>
+   </filter>	  
+   <scores>total</scores>
+  </tally>
+
+</tallies>

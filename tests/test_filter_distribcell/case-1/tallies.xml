@@ -1,0 +1,22 @@
+<?xml version="1.0"?>
+<tallies>     
+
+  <tally id="1">
+   <filter type="distribcell">
+     <bins>
+      201
+      </bins>
+   </filter>	  
+   <scores>total</scores>
+  </tally>
+
+  <tally id="2">
+   <filter type="cell">
+     <bins>
+      201
+      </bins>
+   </filter>	  
+   <scores>total</scores>
+  </tally>
+
+</tallies>

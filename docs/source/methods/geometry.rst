@@ -10,7 +10,7 @@ Constructive Solid Geometry
 
 OpenMC uses a technique known as `constructive solid geometry`_ (CSG) to build
 arbitrarily complex three-dimensional models in Euclidean space. In a CSG model,
-every unique object is described as the union, intersection, or difference of
+every unique object is described as the union and/or intersection of
 *half-spaces* created by bounding `surfaces`_. Every surface divides all of
 space into exactly two half-spaces. We can mathematically define a surface as a
 collection of points that satisfy an equation of the form :math:`f(x,y,z) = 0`
@@ -42,8 +42,10 @@ One can confirm that any point inside this sphere will correspond to
 In OpenMC, every surface defined by the user is assigned an integer to uniquely
 identify it. We can then refer to either of the two half-spaces created by a
 surface by a combination of the unique ID of the surface and a positive/negative
-sign. The following illustration shows an example of an ellipse with unique ID 1
+sign.  Figure :num:`fig-halfspace` shows an example of an ellipse with unique ID 1
 dividing space into two half-spaces.
+
+.. _fig-halfspace:
 
 .. figure:: ../_images/halfspace.*
    :align: center
@@ -52,14 +54,15 @@ dividing space into two half-spaces.
    Example of an ellipse and its associated half-spaces.
 
 References to half-spaces created by surfaces are used to define regions of
-space of uniform composition, known as *cells*. While some codes allow regions
-to be defined by intersections, unions, and differences or half-spaces, OpenMC
-is currently limited to cells defined only as intersections of
-half-spaces. Thus, the specification of the cell must include a list of
-half-space references whose intersection defines the region. The region is then
-assigned a material defined elsewhere. The following illustration shows an
-example of a cell defined as the intersection of an ellipse and two planes.
-   
+space of uniform composition, which are then assigned to *cells*. OpenMC allows
+regions to be defined using union, intersection, and complement operators. As in
+MCNP_, the intersection operator is implicit as doesn't need to be written in a
+region specification. A defined region is then associated with a material
+composition in a cell. Figure :num:`fig-union` shows an example of a cell region
+defined as the intersection of an ellipse and two planes.
+
+.. _fig-union:
+
 .. figure:: ../_images/union.*
    :align: center
    :figclass: align-center
@@ -81,10 +84,10 @@ to fully define the surface.
     | Plane perpendicular  | x-plane    | :math:`x - x_0 = 0`          | :math:`x_0`             |
     | to :math:`x`-axis    |            |                              |                         |
     +----------------------+------------+------------------------------+-------------------------+
-    | Plane perpendicular  | y-plane    | :math:`x - x_0 = 0`          | :math:`y_0`             |
+    | Plane perpendicular  | y-plane    | :math:`y - y_0 = 0`          | :math:`y_0`             |
     | to :math:`y`-axis    |            |                              |                         |
     +----------------------+------------+------------------------------+-------------------------+
-    | Plane perpendicular  | z-plane    | :math:`x - x_0 = 0`          | :math:`z_0`             |
+    | Plane perpendicular  | z-plane    | :math:`z - z_0 = 0`          | :math:`z_0`             |
     | to :math:`z`-axis    |            |                              |                         |
     +----------------------+------------+------------------------------+-------------------------+
     | Arbitrary plane      | plane      | :math:`Ax + By + Cz = D`     | :math:`A\;B\;C\;D`      |
@@ -112,6 +115,10 @@ to fully define the surface.
     +----------------------+------------+------------------------------+-------------------------+
     | Cone parallel to the | z-cone     | :math:`(x-x_0)^2 + (y-y_0)^2 | :math:`x_0 \; y_0 \;    |
     | :math:`z`-axis       |            | = R^2(z-z_0)^2`              | z_0 \; R^2`             |
+    +----------------------+------------+------------------------------+-------------------------+
+    | General quadric      | quadric    | :math:`Ax^2 + By^2 + Cz^2 +  | :math:`A \; B \; C \; D |
+    | surface              |            | Dxy + Eyz + Fxz + Gx + Hy +  | \; E \; F \; G \; H \;  |
+    |                      |            | Jz + K`                      | J \; K`                 |
     +----------------------+------------+------------------------------+-------------------------+
 
 .. _universes:
@@ -198,7 +205,7 @@ traveling in its current direction, it will not hit the surface. The complete
 derivation for different types of surfaces used in OpenMC will be presented in
 the following sections.
 
-Since :math:f(x,y,z)` in general is quadratic in :math:`x`, :math:`y`, and
+Since :math:`f(x,y,z)` in general is quadratic in :math:`x`, :math:`y`, and
 :math:`z`, this implies that :math:`f(x_0 + du_0, y + dv_0, z + dw_0)` is
 quadratic in :math:`d`. Thus we expect at most two real solutions to
 :eq:`dist-to-boundary-1`. If no solutions to :eq:`dist-to-boundary-1` exist or
@@ -257,6 +264,8 @@ to this equation for the distance is
 Again, we need to check whether the denominator is zero. If so, this means that
 the particle's direction of flight is parallel to the plane and it will
 therefore never hit the plane.
+
+.. _cylinder_distance:
 
 Cylinder Parallel to an Axis
 ----------------------------
@@ -359,7 +368,74 @@ will then be either both positive or both negative. If they are both positive,
 the smaller (closer) one will be the solution with a negative sign on the square
 root of the discriminant.
 
-.. TODO: Need to add derivation for x-cone, y-cone, and z-cone.
+Cone Parallel to an Axis
+------------------------
+
+The equation for a cone parallel to, for example, the x-axis is :math:`(y -
+y_0)^2 + (z - z_0)^2 = R^2(x - x_0)^2`. Thus, we need to solve :math:`(y + dv -
+y_0)^2 + (z + dw - z_0)^2 = R^2(x + du - x_0)^2`. Let us define :math:`\bar{x} =
+x - x_0`, :math:`\bar{y} = y - y_0`, and :math:`\bar{z} = z - z_0`. We then have
+
+.. math::
+    :label: dist-xcone-1
+
+    (\bar{y} + dv)^2 + (\bar{z} + dw)^2 = R^2(\bar{x} + du)^2
+
+Expanding equation :eq:`dist-xcone-1` and rearranging terms, we obtain
+
+.. math::
+    :label: dist-xcone-2
+
+    (v^2 + w^2 - R^2u^2) d^2 + 2 (\bar{y}v + \bar{z}w - R^2\bar{x}u) d +
+    (\bar{y}^2 + \bar{z}^2 - R^2\bar{x}^2) = 0
+
+Defining the terms
+
+.. math::
+    :label: dist-xcone-terms
+
+    a = v^2 + w^2 - R^2u^2
+
+    k = \bar{y}v + \bar{z}w - R^2\bar{x}u
+
+    c = \bar{y}^2 + \bar{z}^2 - R^2\bar{x}^2
+
+we then have the simple quadratic equation :math:`ad^2 + 2kd + c = 0` which can
+be solved as described in :ref:`cylinder_distance`.
+
+General Quadric
+---------------
+
+The equation for a general quadric surface is :math:`Ax^2 + By^2 + Cz^2 + Dxy +
+Eyz + Fxz + Gx + Hy + Jz + K = 0`. Thus, we need to solve the equation
+
+.. math::
+    :label: dist-quadric-1
+
+    A(x+du)^2 + B(y+dv)^2 + C(z+dw)^2 + D(x+du)(y+dv) + E(y+dv)(z+dw) + \\
+    F(x+du)(z+dw) + G(x+du) + H(y+dv) + J(z+dw) + K = 0
+
+Expanding equation :eq:`dist-quadric-1` and rearranging terms, we obtain
+
+.. math::
+    :label: dist-quadric-2
+
+    d^2(uv + vw + uw) + 2d(Aux + Bvy + Cwx + (D(uv + vx) + E(vz + wy) + \\
+    F(wx + uz))/2) + (x(Ax + Dy) + y(By + Ez) + z(Cz + Fx)) = 0
+
+Defining the terms
+
+.. math::
+    :label: dist-quadric-terms
+
+    a = uv + vw + uw
+
+    k = Aux + Bvy + Cwx + (D(uv + vx) + E(vz + wy) + F(wx + uz))/2
+
+    c = x(Ax + Dy) + y(By + Ez) + z(Cz + Fx)
+
+we then have the simple quadratic equation :math:`ad^2 + 2kd + c = 0` which can
+be solved as described in :ref:`cylinder_distance`.
 
 .. _find-cell:
 
@@ -384,6 +460,108 @@ recursively searched. The search ends once a cell containing a normal material
 is found that contains the specified point.
 
 .. _cell-contains:
+
+----------------------
+Finding a Lattice Tile
+----------------------
+
+If a particle is inside a lattice, its position inside the lattice must be
+determined before assigning it to a cell.  Throughout this section, the
+volumetric units of the lattice will be referred to as "tiles".  Tiles are
+identified by thier indices, and the process of discovering which tile contains
+the particle is referred to as "indexing".
+
+Rectilinear Lattice Indexing
+----------------------------
+
+Indices are assigned to tiles in a rectilinear lattice based on the tile's
+position along the :math:`x`, :math:`y`, and :math:`z` axes.  Figure
+:num:`fig-rect-lat` maps the indices for a 2D lattice.  The indices, (1, 1),
+map to the lower-left tile.  (5, 1) and (5, 5) map to the lower-right and
+upper-right tiles, respectively.
+
+.. _fig-rect-lat:
+
+.. figure:: ../_images/rect_lat.*
+   :align: center
+   :figclass: align-center
+   :width: 400px
+
+   Rectilinear lattice tile indices.
+
+In general, a lattice tile is specified by the three indices,
+:math:`(i_x, i_y, i_z)`.  If a particle's current coordinates are
+:math:`(x, y, z)` then the indices can be determined from these formulas:
+
+.. math::
+    :label: rect_indexing
+
+    i_x = \left \lceil \frac{x - x_0}{p_0} \right \rceil
+
+    i_y = \left \lceil \frac{y - y_0}{p_1} \right \rceil
+
+    i_z = \left \lceil \frac{z - z_0}{p_2} \right \rceil
+
+where :math:`(x_0, y_0, z_0)` are the coordinates to the lower-left-bottom
+corner of the lattice, and :math:`p_0, p_1, p_2` are the pitches along the
+:math:`x`, :math:`y`, and :math:`z` axes, respectively.
+
+.. _hexagonal_indexing:
+
+Hexagonal Lattice Indexing
+--------------------------
+
+A skewed coordinate system is used for indexing hexagonal lattice tiles.
+Rather than a :math:`y`-axis, another axis is used that is rotated 30 degrees
+counter-clockwise from the :math:`y`-axis.  This axis is referred to as the
+:math:`\alpha`-axis.  Figure :num:`fig-hex-lat` shows how 2D hexagonal tiles
+are mapped with the :math:`(x, \alpha)` basis.  In this system, (0, 0) maps to
+the center tile, (0, 2) to the top tile, and (2, -1) to the middle tile on the
+right side.
+
+.. _fig-hex-lat:
+
+.. figure:: ../_images/hex_lat.*
+   :align: center
+   :figclass: align-center
+   :width: 400px
+
+   Hexagonal lattice tile indices.
+
+Unfortunately, the indices cannot be determined with one simple formula as
+before.  Indexing requires a two-step process, a coarse step which determines a
+set of four tiles that contains the particle and a fine step that determines
+which of those four tiles actually contains the particle.
+
+In the first step, indices are found using these formulas:
+
+.. math::
+    :label: hex_indexing
+
+    \alpha = -\frac{x}{\sqrt{3}} + y
+
+    i_x^* = \left \lfloor \frac{x}{p_0 \sqrt{3} / 2} \right \rfloor
+
+    i_\alpha^* = \left \lfloor \frac{\alpha}{p_0} \right \rfloor
+
+where :math:`p_0` is the lattice pitch (in the :math:`x`-:math:`y` plane).  The
+true index of the particle could be :math:`(i_x^*, i_\alpha^*)`,
+:math:`(i_x^* + 1, i_\alpha^*)`, :math:`(i_x^*, i_\alpha^* + 1)`, or
+:math:`(i_x^* + 1, i_\alpha^* + 1)`.
+
+The second step selects the correct tile from that neighborhood of 4.  OpenMC
+does this by calculating the distance between the particle and the centers of
+each of the 4 tiles, and then picking the closest tile.  This works because
+regular hexagonal tiles form a Voronoi tessellation which means that all of the
+points within a tile are closest to the center of that same tile.
+
+Indexing along the :math:`z`-axis uses the same method from rectilinear
+lattices, i.e.
+
+.. math::
+    :label: hex_indexing_z
+
+    i_z = \left \lceil \frac{z - z_0}{p_2} \right \rceil
 
 ----------------------------------------
 Determining if a Coordinate is in a Cell
@@ -421,7 +599,7 @@ satisfy the following equations
 
     x^2 + y^2 + z^2 - 10^2 < 0 \\
     x - (-3) > 0 \\
-    x - 2 < 0
+    y - 2 < 0
 
 In order to determine if a point is inside the cell, we would substitute its
 coordinates into equation :eq:`cell-contains-example`. If the inequalities are
@@ -701,9 +879,21 @@ form of the solution:
 
     w' = w + \frac{2 (\bar{x}u + \bar{y}v - R^2\bar{z}w)}{R^2 (1 + R^2) \bar{z}}
 
+General Quadric
+---------------
+
+A general quadric surface has the form :math:`f(x,y,z) = Ax^2 + By^2 + Cz^2 +
+Dxy + Eyz + Fxz + Gx + Hy + Jz + K = 0`. Thus, the gradient to the surface is
+
+.. math::
+    :label: reflection-quadric-grad
+
+    \nabla f = \left ( \begin{array}{c} 2Ax + Dy + Fz + G \\ 2By + Dx + Ez + H
+    \\ 2Cz + Ey + Fx + J \end{array} \right ).
+
 
 .. _constructive solid geometry: http://en.wikipedia.org/wiki/Constructive_solid_geometry
 .. _surfaces: http://en.wikipedia.org/wiki/Surface
 .. _MCNP: http://mcnp.lanl.gov
 .. _Serpent: http://montecarlo.vtt.fi
-.. _Monte Carlo Performance benchmark: https://github.com/paulromano/benchmarks/tree/master/mc-performance/openmc
+.. _Monte Carlo Performance benchmark: https://github.com/mit-crpg/benchmarks/tree/master/mc-performance/openmc

@@ -1,0 +1,90 @@
+#!/usr/bin/env python
+
+from __future__ import print_function
+import argparse
+from collections import defaultdict
+import glob
+import os
+
+import openmc.data
+
+
+description = """
+Convert ENDF/B-VII.1 ACE data from the MCNP6 distribution into an HDF5 library
+that can be used by OpenMC. This assumes that you have a directory containing
+subdirectories 'endf71x' and 'ENDF71SaB'.
+
+"""
+
+class CustomFormatter(argparse.ArgumentDefaultsHelpFormatter,
+                      argparse.RawDescriptionHelpFormatter):
+    pass
+
+parser = argparse.ArgumentParser(
+    description=description,
+    formatter_class=CustomFormatter
+)
+parser.add_argument('-d', '--destination', default='mcnp_endfb71',
+                    help='Directory to create new library in')
+parser.add_argument('-f', '--fission_energy_release',
+                    help='HDF5 file containing fission energy release data')
+parser.add_argument('mcnpdata', help='Directory containing endf71x and ENDF71SaB')
+args = parser.parse_args()
+assert os.path.isdir(args.mcnpdata)
+
+# Get a list of all ACE files
+endf71x = glob.glob(os.path.join(args.mcnpdata, 'endf71x', '*', '*.71?nc'))
+endf71sab = glob.glob(os.path.join(args.mcnpdata, 'ENDF71SaB' , '*.2?t'))
+
+# There's a bug in H-Zr at 1200 K
+endf71sab.remove(os.path.join(args.mcnpdata, 'ENDF71SaB' , 'h-zr.27t'))
+
+# Group together tables for the same nuclide
+suffixes = defaultdict(list)
+for filename in sorted(endf71x + endf71sab):
+    dirname, basename = os.path.split(filename)
+    zaid, xs = basename.split('.')
+    suffixes[os.path.join(dirname, zaid)].append(xs)
+
+# Create output directory if it doesn't exist
+if not os.path.isdir(args.destination):
+    os.mkdir(args.destination)
+
+library = openmc.data.DataLibrary()
+
+for basename, xs_list in sorted(suffixes.items()):
+    # Convert first temperature for the table
+    filename = '.'.join((basename, xs_list[0]))
+    print('Converting: ' + filename)
+    if filename.endswith('t'):
+        data = openmc.data.ThermalScattering.from_ace(filename)
+    else:
+        data = openmc.data.IncidentNeutron.from_ace(filename, 'mcnp')
+
+        # Add fission energy release data, if available
+        if args.fission_energy_release is not None:
+            fer = openmc.data.FissionEnergyRelease.from_compact_hdf5(
+                args.fission_energy_release, data)
+            if fer is not None:
+                data.fission_energy = fer
+
+    # For each higher temperature, add cross sections to the existing table
+    for xs in xs_list[1:]:
+        filename = '.'.join((basename, xs))
+        print('Adding: ' + filename)
+        if filename.endswith('t'):
+            data.add_temperature_from_ace(filename)
+        else:
+            data.add_temperature_from_ace(filename, 'mcnp')
+
+    # Export HDF5 file
+    h5_file = os.path.join(args.destination, data.name + '.h5')
+    print('Writing {}...'.format(h5_file))
+    data.export_to_hdf5(h5_file, 'w')
+
+    # Register with library
+    library.register_file(h5_file)
+
+# Write cross_sections.xml
+libpath = os.path.join(args.destination, 'cross_sections.xml')
+library.export_to_xml(libpath)

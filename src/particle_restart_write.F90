@@ -1,17 +1,16 @@
 module particle_restart_write
 
-  use bank_header,      only: Bank
+  use bank_header,     only: Bank
   use global
-  use output_interface, only: BinaryOutput
-  use particle_header,  only: Particle
-  use string,           only: to_str
+  use hdf5_interface
+  use particle_header, only: Particle
+  use string,          only: to_str
+
+  use hdf5
 
   implicit none
   private
   public ::  write_particle_restart
-
-  ! Binary output file
-  type(BinaryOutput) :: pr
 
 contains
 
@@ -20,53 +19,54 @@ contains
 !===============================================================================
 
   subroutine write_particle_restart(p)
-
     type(Particle), intent(in) :: p
 
+    integer(HID_T) :: file_id
     character(MAX_FILE_LEN) :: filename
-    type(Bank), pointer     :: src => null()
 
     ! Dont write another restart file if in particle restart mode
     if (run_mode == MODE_PARTICLE) return
 
     ! Set up file name
     filename = trim(path_output) // 'particle_' // trim(to_str(current_batch)) &
-         // '_' // trim(to_str(p % id))
-#ifdef HDF5
-    filename = trim(filename) // '.h5'
-#else
-    filename = trim(filename) // '.binary'
+         // '_' // trim(to_str(p%id)) // '.h5'
+
+!$omp critical (WriteParticleRestart)
+    ! Create file
+    file_id = file_create(filename)
+
+    associate (src => source_bank(current_work))
+      ! Write filetype and version info
+      call write_attribute(file_id, 'filetype', 'particle restart')
+      call write_attribute(file_id, 'version', VERSION_PARTICLE_RESTART)
+      call write_attribute(file_id, "openmc_version", VERSION)
+#ifdef GIT_SHA1
+      call write_attribute(file_id, "git_sha1", GIT_SHA1)
 #endif
 
-!$omp critical
-    ! Create file
-    call pr % file_create(filename)
-
-    ! Get information about source particle
-    select case (run_mode)
-    case (MODE_EIGENVALUE)
-      src => source_bank(current_work)
-    case (MODE_FIXEDSOURCE)
-      src => source_site
-    end select
-
-    ! Write data to file
-    call pr % write_data(FILETYPE_PARTICLE_RESTART, 'filetype')
-    call pr % write_data(REVISION_PARTICLE_RESTART, 'revision')
-    call pr % write_data(current_batch, 'current_batch')
-    call pr % write_data(gen_per_batch, 'gen_per_batch')
-    call pr % write_data(current_gen, 'current_gen')
-    call pr % write_data(n_particles, 'n_particles')
-    call pr % write_data(run_mode, 'run_mode')
-    call pr % write_data(p % id, 'id')
-    call pr % write_data(src % wgt, 'weight')
-    call pr % write_data(src % E, 'energy')
-    call pr % write_data(src % xyz, 'xyz', length = 3)
-    call pr % write_data(src % uvw, 'uvw', length = 3)
+      ! Write data to file
+      call write_dataset(file_id, 'current_batch', current_batch)
+      call write_dataset(file_id, 'generations_per_batch', gen_per_batch)
+      call write_dataset(file_id, 'current_generation', current_gen)
+      call write_dataset(file_id, 'n_particles', n_particles)
+      select case(run_mode)
+      case (MODE_FIXEDSOURCE)
+        call write_dataset(file_id, 'run_mode', 'fixed source')
+      case (MODE_EIGENVALUE)
+        call write_dataset(file_id, 'run_mode', 'eigenvalue')
+      case (MODE_PARTICLE)
+        call write_dataset(file_id, 'run_mode', 'particle restart')
+      end select
+      call write_dataset(file_id, 'id', p%id)
+      call write_dataset(file_id, 'weight', src%wgt)
+      call write_dataset(file_id, 'energy', src%E)
+      call write_dataset(file_id, 'xyz', src%xyz)
+      call write_dataset(file_id, 'uvw', src%uvw)
+    end associate
 
     ! Close file
-    call pr % file_close()
-!$omp end critical
+    call file_close(file_id)
+!$omp end critical (WriteParticleRestart)
 
   end subroutine write_particle_restart
 

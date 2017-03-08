@@ -1,11 +1,11 @@
 <?xml version="1.0"?>
 <settings>
 
-  <eigenvalue>
-    <batches>12</batches>
-    <inactive>5</inactive>
-    <particles>1000</particles>
-  </eigenvalue>
+  <verbosity>1</verbosity>
+  <run_mode>eigenvalue</run_mode>
+  <batches>12</batches>
+  <inactive>5</inactive>
+  <particles>1200</particles>
 
   <source>
     <space type="box">

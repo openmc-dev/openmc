@@ -1,9 +1,0 @@
-<?xml version="1.0"?>
-<tallies>
-
-  <tally id="1">
-    <filter type="universe" bins="1 2 3 4" />
-    <scores>total</scores>
-  </tally>
-
-</tallies>

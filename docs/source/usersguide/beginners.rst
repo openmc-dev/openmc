@@ -12,7 +12,7 @@ In a nutshell, OpenMC simulates neutrons moving around randomly in a `nuclear
 reactor`_ (or other fissile system). This is what's known as `Monte Carlo`_
 simulation. Neutrons are important in nuclear reactors because they are the
 particles that induce `fission`_ in uranium and other nuclides. Knowing the
-behavior of neutrons allows you to figure out how often and where fission
+behavior of neutrons allows you to determine how often and where fission
 occurs. The amount of energy released is then directly proportional to the
 fission reaction rate since most heat is produced by fission. By simulating many
 neutrons (millions or billions), it is possible to determine the average
@@ -65,7 +65,7 @@ Now let's look at the pros and cons of Monte Carlo methods:
 
 - **Pro**: Running simulations in parallel is conceptually very simple.
 
-- **Con**: Because they related on repeated random sampling, they are
+- **Con**: Because they rely on repeated random sampling, they are
   computationally very expensive.
 
 - **Con**: A simulation doesn't automatically give you the global solution
@@ -146,13 +146,12 @@ and `Volume II`_. You may also find it helpful to review the following terms:
 .. _constructive solid geometry: http://en.wikipedia.org/wiki/Constructive_solid_geometry
 .. _git: http://git-scm.com/
 .. _git tutorials: http://git-scm.com/documentation
-.. _Reactor Concepts Manual: http://web.mit.edu/romano7/www/reactor_concepts.pdf
-.. _Volume I: http://www.hss.doe.gov/nuclearsafety/techstds/docs/handbook/h1019v1.pdf
-.. _Volume II: http://www.hss.doe.gov/nuclearsafety/techstds/docs/handbook/h1019v2.pdf
+.. _Reactor Concepts Manual: http://www.tayloredge.com/periodic/trivia/ReactorConcepts.pdf
+.. _Volume I: http://energy.gov/sites/prod/files/2013/06/f2/h1019v1.pdf
+.. _Volume II: http://energy.gov/sites/prod/files/2013/06/f2/h1019v2.pdf
 .. _OpenMC source code: https://github.com/mit-crpg/openmc
 .. _GitHub: https://github.com/
 .. _bug reports: https://github.com/mit-crpg/openmc/issues
 .. _Neutron cross section: http://en.wikipedia.org/wiki/Neutron_cross_section
 .. _Effective multiplication factor: http://en.wikipedia.org/wiki/Effective_multiplication_factor
 .. _Flux: http://en.wikipedia.org/wiki/Neutron_flux
-

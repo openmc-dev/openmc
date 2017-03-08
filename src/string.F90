@@ -1,13 +1,16 @@
 module string
 
-  use constants, only: MAX_WORDS, MAX_LINE_LEN, ERROR_INT, ERROR_REAL
+  use, intrinsic :: ISO_C_BINDING
+
+  use constants, only: MAX_WORDS, MAX_LINE_LEN, ERROR_INT, ERROR_REAL, &
+       OP_LEFT_PAREN, OP_RIGHT_PAREN, OP_COMPLEMENT, OP_INTERSECTION, OP_UNION
   use error,     only: fatal_error, warning
-  use global,    only: master, message
+  use stl_vector, only: VectorInt
 
   implicit none
 
   interface to_str
-     module procedure int4_to_str, int8_to_str, real_to_str
+    module procedure int4_to_str, int8_to_str, real_to_str
   end interface
 
 contains
@@ -23,7 +26,6 @@ contains
 !===============================================================================
 
   subroutine split_string(string, words, n)
-
     character(*), intent(in)  :: string
     character(*), intent(out) :: words(MAX_WORDS)
     integer,      intent(out) :: n
@@ -49,9 +51,8 @@ contains
         if (i_end > 0) then
           n = n + 1
           if (i_end - i_start + 1 > len(words(n))) then
-            message = "The word '" // string(i_start:i_end) // &
-                 "' is longer than the space allocated for it."
-            call warning()
+            call warning("The word '" // string(i_start:i_end) &
+                 // "' is longer than the space allocated for it.")
           end if
           words(n) = string(i_start:i_end)
           ! reset indices
@@ -64,63 +65,96 @@ contains
   end subroutine split_string
 
 !===============================================================================
-! SPLIT_STRING_WL takes a string that includes logical expressions for a list of
-! bounding surfaces in a cell and splits it into separate words. The characters
-! (, ), :, and # count as separate words since they represent operators.
-!
-! Arguments:
-!   string  = input line
-!   words   = array of words
-!   n       = number of words
+! TOKENIZE takes a string that includes logical expressions for a list of
+! bounding surfaces in a cell and splits it into separate tokens. The characters
+! (, ), |, and ~ count as separate tokens since they represent operators.
 !===============================================================================
 
-  subroutine split_string_wl(string, words, n)
+  subroutine tokenize(string, tokens)
+    character(*), intent(in) :: string
+    type(VectorInt), intent(inout) :: tokens
 
-    character(*), intent(in)  :: string
-    character(*), intent(out) :: words(MAX_WORDS)
-    integer,      intent(out) :: n
+    integer :: i       ! current index
+    integer :: i_start ! starting index of word
+    integer :: token
+    character(len=len_trim(string)) :: string_
 
-    character(1)  :: chr     ! current character
-    integer       :: i       ! current index
-    integer       :: i_start ! starting index of word
-    integer       :: i_end   ! ending index of word
+    ! Remove leading blanks
+    string_ = adjustl(string)
 
     i_start = 0
-    i_end = 0
-    n = 0
-    do i = 1, len_trim(string)
-      chr = string(i:i)
-
+    i = 1
+    do while (i <= len_trim(string_))
       ! Check for special characters
-      if (index('():#', chr) > 0) then
+      if (index('()|~ ', string_(i:i)) > 0) then
+        ! If the special character appears immediately after a non-operator,
+        ! create a token with the surface half-space
         if (i_start > 0) then
-          i_end = i - 1
-          n = n + 1
-          words(n) = string(i_start:i_end)
+          call tokens%push_back(int(str_to_int(&
+               string_(i_start:i - 1)), 4))
         end if
-        n = n + 1
-        words(n) = chr
+
+        select case (string_(i:i))
+        case ('(')
+          call tokens%push_back(OP_LEFT_PAREN)
+        case (')')
+          if (tokens%size() > 0) then
+            token = tokens%data(tokens%size())
+            if (token >= OP_UNION .and. token < OP_RIGHT_PAREN) then
+              call fatal_error("Right parentheses cannot follow an operator in &
+                   &region specification: " // trim(string))
+            end if
+          end if
+          call tokens%push_back(OP_RIGHT_PAREN)
+        case ('|')
+          if (tokens%size() > 0) then
+            token = tokens%data(tokens%size())
+            if (.not. (token < OP_UNION .or. token == OP_RIGHT_PAREN)) then
+              call fatal_error("Union cannot follow an operator in region &
+                   &specification: " // trim(string))
+            end if
+          end if
+          call tokens%push_back(OP_UNION)
+        case ('~')
+          call tokens%push_back(OP_COMPLEMENT)
+        case (' ')
+          ! Find next non-space character
+          do while (string_(i+1:i+1) == ' ')
+            i = i + 1
+          end do
+
+          ! If previous token is a halfspace or right parenthesis and next token
+          ! is not a left parenthese or union operator, that implies that the
+          ! whitespace is to be interpreted as an intersection operator
+          if (i_start > 0 .or. tokens%data(tokens%size()) == OP_RIGHT_PAREN) then
+            if (index(')|', string_(i+1:i+1)) == 0) then
+              call tokens%push_back(OP_INTERSECTION)
+            end if
+          end if
+        end select
+
         i_start = 0
-        i_end = 0
-        cycle
+      else
+        ! Check for invalid characters
+        if (index('-+0123456789', string_(i:i)) == 0) then
+          call fatal_error("Invalid character '" // string_(i:i) // "' in &
+               &region specification.")
+        end if
+
+        ! If we haven't yet reached the start of a word, start a new word
+        if (i_start == 0) i_start = i
       end if
 
-      if ((i_start == 0) .and. (chr /= ' ')) then
-        i_start = i
-      end if
-      if (i_start > 0) then
-        if (chr == ' ')           i_end = i - 1
-        if (i == len_trim(string)) i_end = i
-        if (i_end > 0) then
-          n = n + 1
-          words(n) = string(i_start:i_end)
-          ! reset indices
-          i_start = 0
-          i_end = 0
-        end if
-      end if
+      i = i + 1
     end do
-  end subroutine split_string_wl
+
+    ! If we've reached the end and we're still in a word, create a token from it
+    ! and add it to the list
+    if (i_start > 0) then
+      call tokens%push_back(int(str_to_int(&
+           string_(i_start:len_trim(string_))), 4))
+    end if
+  end subroutine tokenize
 
 !===============================================================================
 ! CONCATENATE takes an array of words and concatenates them together in one
@@ -132,7 +166,7 @@ contains
 !   string  = concatenated string
 !===============================================================================
 
-  function concatenate(words, n_words) result(string)
+  pure function concatenate(words, n_words) result(string)
 
     integer,        intent(in)  :: n_words
     character(*),   intent(in)  :: words(n_words)
@@ -149,11 +183,10 @@ contains
   end function concatenate
 
 !===============================================================================
-! LOWER_CASE converts a string to all lower case characters
+! TO_LOWER converts a string to all lower case characters
 !===============================================================================
 
-  elemental function to_lower(word) result(word_lower)
-
+  pure function to_lower(word) result(word_lower)
     character(*), intent(in) :: word
     character(len=len(word)) :: word_lower
 
@@ -172,11 +205,10 @@ contains
   end function to_lower
 
 !===============================================================================
-! UPPER_CASE converts a string to all upper case characters
+! TO_UPPER converts a string to all upper case characters
 !===============================================================================
 
-  elemental function to_upper(word) result(word_upper)
-
+  pure function to_upper(word) result(word_upper)
     character(*), intent(in) :: word
     character(len=len(word)) :: word_upper
 
@@ -200,39 +232,38 @@ contains
 ! integers.
 !===============================================================================
 
-function zero_padded(num, n_digits) result(str)
-  integer, intent(in) :: num
-  integer, intent(in) :: n_digits
-  character(11)       :: str
+  function zero_padded(num, n_digits) result(str)
+    integer, intent(in) :: num
+    integer, intent(in) :: n_digits
+    character(11)       :: str
 
-  character(8)        :: zp_form
+    character(8)        :: zp_form
 
-  ! Make sure n_digits is reasonable. 10 digits is the maximum needed for the
-  ! largest integer(4).
-  if (n_digits > 10) then
-    message = 'zero_padded called with an unreasonably large n_digits (>10)'
-    call fatal_error()
-  end if
+    ! Make sure n_digits is reasonable. 10 digits is the maximum needed for the
+    ! largest integer(4).
+    if (n_digits > 10) then
+      call fatal_error('zero_padded called with an unreasonably large &
+           &n_digits (>10)')
+    end if
 
-  ! Write a format string of the form '(In.m)' where n is the max width and
-  ! m is the min width.  If a sign is present, then n must be one greater
-  ! than m.
-  if (num < 0) then
-    write(zp_form, '("(I", I0, ".", I0, ")")') n_digits+1, n_digits
-  else
-    write(zp_form, '("(I", I0, ".", I0, ")")') n_digits, n_digits
-  end if
+    ! Write a format string of the form '(In.m)' where n is the max width and
+    ! m is the min width.  If a sign is present, then n must be one greater
+    ! than m.
+    if (num < 0) then
+      write(zp_form, '("(I", I0, ".", I0, ")")') n_digits+1, n_digits
+    else
+      write(zp_form, '("(I", I0, ".", I0, ")")') n_digits, n_digits
+    end if
 
-  ! Format the number.
-  write(str, zp_form) num
-end function zero_padded
+    ! Format the number.
+    write(str, zp_form) num
+  end function zero_padded
 
 !===============================================================================
 ! IS_NUMBER determines whether a string of characters is all 0-9 characters
 !===============================================================================
 
-  function is_number(word) result(number)
-
+  pure function is_number(word) result(number)
     character(*), intent(in) :: word
     logical                  :: number
 
@@ -252,10 +283,9 @@ end function zero_padded
 ! sequence of characters
 !===============================================================================
 
-  logical function starts_with(str, seq)
-
-    character(*) :: str ! string to check
-    character(*) :: seq ! sequence of characters
+  pure logical function starts_with(str, seq)
+    character(*), intent(in) :: str ! string to check
+    character(*), intent(in) :: seq ! sequence of characters
 
     integer :: i
     integer :: i_start
@@ -287,10 +317,9 @@ end function zero_padded
 ! of characters
 !===============================================================================
 
-  logical function ends_with(str, seq)
-
-    character(*) :: str ! string to check
-    character(*) :: seq ! sequence of characters
+  pure logical function ends_with(str, seq)
+    character(*), intent(in) :: str ! string to check
+    character(*), intent(in) :: seq ! sequence of characters
 
     integer :: i_start
     integer :: str_len
@@ -316,7 +345,7 @@ end function zero_padded
 ! integer.
 !===============================================================================
 
-  function count_digits(num) result(n_digits)
+  pure function count_digits(num) result(n_digits)
     integer, intent(in) :: num
     integer             :: n_digits
 
@@ -334,7 +363,7 @@ end function zero_padded
 ! INT4_TO_STR converts an integer(4) to a string.
 !===============================================================================
 
-  function int4_to_str(num) result(str)
+  pure function int4_to_str(num) result(str)
 
     integer, intent(in) :: num
     character(11) :: str
@@ -348,7 +377,7 @@ end function zero_padded
 ! INT8_TO_STR converts an integer(8) to a string.
 !===============================================================================
 
-  function int8_to_str(num) result(str)
+  pure function int8_to_str(num) result(str)
 
     integer(8), intent(in) :: num
     character(21) :: str
@@ -362,7 +391,7 @@ end function zero_padded
 ! STR_TO_INT converts a string to an integer.
 !===============================================================================
 
-  function str_to_int(str) result(num)
+  pure function str_to_int(str) result(num)
 
     character(*), intent(in) :: str
     integer(8) :: num
@@ -387,7 +416,7 @@ end function zero_padded
 ! STR_TO_REAL converts an arbitrary string to a real(8)
 !===============================================================================
 
-  function str_to_real(string) result(num)
+  pure function str_to_real(string) result(num)
 
     character(*), intent(in) :: string
     real(8)                  :: num
@@ -406,7 +435,7 @@ end function zero_padded
 ! are used.
 !===============================================================================
 
-  function real_to_str(num, sig_digits) result(string)
+  pure function real_to_str(num, sig_digits) result(string)
 
     real(8),           intent(in) :: num        ! number to convert
     integer, optional, intent(in) :: sig_digits ! # of significant digits
@@ -454,5 +483,35 @@ end function zero_padded
     string = adjustl(string)
 
   end function real_to_str
+
+!===============================================================================
+! WORD_COUNT determines the number of words in a string
+!===============================================================================
+
+  function word_count(str) result(n)
+    character(*), intent(in) :: str
+    integer :: n
+
+    integer :: i
+    character(kind=C_CHAR) :: chr
+    logical :: inword
+
+    ! Count number of words
+    inword = .false.
+    n = 0
+    do i = 1, len_trim(str)
+      chr = str(i:i)
+      select case (chr)
+      case (' ', C_HORIZONTAL_TAB, C_NEW_LINE, C_CARRIAGE_RETURN)
+        if (inword) then
+          inword = .false.
+          n = n + 1
+        end if
+      case default
+        inword = .true.
+      end select
+    end do
+    if (inword) n = n + 1
+  end function word_count
 
 end module string

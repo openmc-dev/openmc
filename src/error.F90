@@ -2,16 +2,12 @@ module error
 
   use, intrinsic :: ISO_FORTRAN_ENV
   use constants
-  use global
+  use message_passing
 
   ! PURXS API
   use URR_error, only: URR_EXIT_SUCCESS => EXIT_SUCCESS,&
                        URR_EXIT_FAILURE => EXIT_FAILURE,&
                        URR_EXIT_WARNING => EXIT_WARNING
-
-#ifdef MPI
-  use mpi
-#endif
 
   implicit none
 
@@ -93,6 +89,9 @@ contains
     integer :: line_wrap ! length of line
     integer :: length    ! length of message
     integer :: indent    ! length of indentation
+#ifdef MPI
+    integer :: mpi_err
+#endif
 
     ! set default error code
     if (present(error_code)) then
@@ -141,26 +140,16 @@ contains
       end if
     end do
 
-    ! Write information on current batch, generation, and particle
-    if (current_batch > 0) then
-      write(ERROR_UNIT,'(1X,A,I12) ') 'Batch:     ', current_batch
-      write(ERROR_UNIT,'(1X,A,I12) ') 'Generation:', current_gen
-      write(ERROR_UNIT,*)
-    end if
-
-    ! Release memory from all allocatable arrays
-    call free_memory()
-
 #ifdef MPI
     ! Abort MPI
-    call MPI_ABORT(MPI_COMM_WORLD, code, mpi_err)
+    call MPI_ABORT(mpi_intracomm, code, mpi_err)
 #endif
 
     ! Abort program
 #ifdef NO_F2008
     stop
 #else
-    error stop 
+    error stop
 #endif
 
   end subroutine fatal_error

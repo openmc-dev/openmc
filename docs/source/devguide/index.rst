@@ -15,6 +15,5 @@ as debugging.
     structures
     styleguide
     workflow
-    xml-parsing
-    statepoint
-    voxel
+    user-input
+    docbuild

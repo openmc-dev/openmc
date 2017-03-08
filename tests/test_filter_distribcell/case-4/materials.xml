@@ -1,0 +1,19 @@
+<?xml version='1.0' encoding='utf-8'?>
+<materials>
+    <material id="1" name="fuel">
+      <density units="g/cc" value="4.5" />
+      <nuclide ao="1.0" name="U235" />
+    </material>
+
+    <material id="2" name="moderator">
+      <density units="g/cc" value="1.0" />
+      <nuclide ao="1.0" name="O16" />
+      <nuclide ao="2.0" name="H1" />
+      <sab name="c_H_in_H2O" />
+    </material>
+
+    <material id="3" name="iron">
+      <density units="g/cc" value="7.9" />
+      <nuclide ao="1.0" name="Fe56" />
+    </material>
+</materials>

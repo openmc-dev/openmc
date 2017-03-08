@@ -6,7 +6,8 @@ element plots {
     (element type { "slice" } | attribute type { "slice" })? &
     (element color { ( "cell" | "mat" | "material" ) } |
       attribute color { ( "cell" | "mat" | "material" ) })? &
-    (element origin { list { xsd:double+ } } | 
+    (element level { xsd:int } | attribute level { xsd:int })? &
+    (element origin { list { xsd:double+ } } |
       attribute origin { list { xsd:double+ } })? &
     (element width { list { xsd:double+ } } | 
       attribute width { list { xsd:double+ } })? &

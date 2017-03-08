@@ -1,65 +1,27 @@
 module tally_header
 
-  use constants, only: NONE, N_FILTER_TYPES
+  use, intrinsic :: ISO_C_BINDING
+
+  use hdf5
+
+  use constants,           only: NONE, N_FILTER_TYPES
+  use tally_filter_header, only: TallyFilterContainer
+  use trigger_header,      only: TriggerObject
 
   implicit none
 
 !===============================================================================
-! TALLYMAPELEMENT gives an index to a tally which is to be scored and the
-! corresponding bin for the filter variable
+! TALLYDERIVATIVE describes a first-order derivative that can be applied to
+! tallies.
 !===============================================================================
 
-  type TallyMapElement
-    integer :: index_tally
-    integer :: index_bin
-  end type TallyMapElement
-
-!===============================================================================
-! TALLYMAPITEM contains a list of tally/bin combinations for each mappable
-! filter bin specified.
-!===============================================================================
-
-  type TallyMapItem
-    type(TallyMapElement), allocatable :: elements(:)
-  end type TallyMapItem
-
-!===============================================================================
-! TALLYMAP contains a list of pairs of indices to tallies and the corresponding
-! bin for a given filter. There is one TallyMap for each mappable filter
-! type. The items array is as long as the corresponding array for that filter,
-! e.g. for tally_maps(FILTER_CELL), items is n_cells long.
-!===============================================================================
-
-  type TallyMap
-    type(TallyMapItem), allocatable :: items(:)
-  end type TallyMap
-
-!===============================================================================
-! TALLYRESULT provides accumulation of results in a particular tally bin
-!===============================================================================
-
-  type TallyResult
-    real(8) :: value    = 0.
-    real(8) :: sum      = 0.
-    real(8) :: sum_sq   = 0.
-  end type TallyResult
-
-!===============================================================================
-! TALLYFILTER describes a filter that limits what events score to a tally. For
-! example, a cell filter indicates that only particles in a specified cell
-! should score to the tally.
-!===============================================================================
-
-  type TallyFilter
-    integer :: type = NONE
-    integer :: n_bins = 0
-    integer, allocatable :: int_bins(:)
-    real(8), allocatable :: real_bins(:) ! Only used for energy filters
-
-    ! Type-Bound procedures
-    contains
-      procedure :: clear => tallyfilter_clear ! Deallocates TallyFilter
-  end type TallyFilter
+  type TallyDerivative
+    integer :: id
+    integer :: variable
+    integer :: diff_material
+    integer :: diff_nuclide
+    real(8) :: flux_deriv
+  end type TallyDerivative
 
 !===============================================================================
 ! TALLYOBJECT describes a user-specified tally. The region of phase space to
@@ -71,15 +33,11 @@ module tally_header
     ! Basic data
 
     integer :: id                   ! user-defined identifier
-    character(len=52) :: label = "" ! user-defined label
+    character(len=104) :: name = "" ! user-defined name
     integer :: type                 ! volume, surface current
     integer :: estimator            ! collision, track-length
     real(8) :: volume               ! volume of region
-
-    ! Information about what filters should be used
-
-    integer                        :: n_filters    ! Number of filters
-    type(TallyFilter), allocatable :: filters(:)   ! Filter data (type/bins)
+    type(TallyFilterContainer), allocatable :: filters(:)
 
     ! The stride attribute is used for determining the index in the results
     ! array for a matching_bin combination. Since multiple dimensions are
@@ -115,7 +73,7 @@ module tally_header
 
     integer :: total_filter_bins
     integer :: total_score_bins
-    type(TallyResult), allocatable :: results(:,:)
+    real(C_DOUBLE), allocatable :: results(:,:,:)
 
     ! reset property - allows a tally to be reset after every batch
     logical :: reset = .false.
@@ -123,75 +81,85 @@ module tally_header
     ! Number of realizations of tally random variables
     integer :: n_realizations = 0
 
-    ! Type-Bound procedures
-    contains
-      procedure :: clear => tallyobject_clear ! Deallocates TallyObject
-  end type TallyObject
+    ! Tally precision triggers
+    integer                           :: n_triggers = 0  ! # of triggers
+    type(TriggerObject),  allocatable :: triggers(:)     ! Array of triggers
+
+    ! Index for the TallyDerivative for differential tallies.
+    integer :: deriv = NONE
 
   contains
+    procedure :: write_results_hdf5
+    procedure :: read_results_hdf5
+  end type TallyObject
 
-!===============================================================================
-! TALLYFILTER_CLEAR deallocates a TallyFilter element and sets it to its as
-! initialized state.
-!===============================================================================
+contains
 
-    subroutine tallyfilter_clear(this)
-      class(TallyFilter), intent(inout) :: this ! The TallyFilter to be cleared
+  subroutine write_results_hdf5(this, group_id)
+    class(TallyObject), intent(in) :: this
+    integer(HID_T),     intent(in) :: group_id
 
-      this % type = NONE
-      this % n_bins = 0
-      if (allocated(this % int_bins)) &
-           deallocate(this % int_bins)
-      if (allocated(this % real_bins)) &
-           deallocate(this % real_bins)
+    integer :: hdf5_err
+    integer(HID_T) :: dset, dspace
+    integer(HID_T) :: memspace
+    integer(HSIZE_T) :: dims(3)
+    integer(HSIZE_T) :: dims_slab(3)
+    integer(HSIZE_T) :: offset(3) = [1,0,0]
 
-    end subroutine tallyfilter_clear
+    ! Create file dataspace
+    dims_slab(:) = shape(this % results)
+    dims_slab(1) = 2
+    call h5screate_simple_f(3, dims_slab, dspace, hdf5_err)
 
-!===============================================================================
-! TALLYOBJECT_CLEAR deallocates a TallyObject element and sets it to its as
-! initialized state.
-!===============================================================================
+    ! Create memory dataspace that contains only SUM and SUM_SQ values
+    dims(:) = shape(this % results)
+    call h5screate_simple_f(3, dims, memspace, hdf5_err)
+    call h5sselect_hyperslab_f(memspace, H5S_SELECT_SET_F, offset, dims_slab, &
+         hdf5_err)
 
-    subroutine tallyobject_clear(this)
-      class(TallyObject), intent(inout) :: this ! The TallyObject to be cleared
+    ! Create and write to dataset
+    call h5dcreate_f(group_id, "results", H5T_NATIVE_DOUBLE, dspace, dset, &
+         hdf5_err)
+    call h5dwrite_f(dset, H5T_NATIVE_DOUBLE, this % results, dims_slab, &
+         hdf5_err, mem_space_id=memspace)
 
-      integer :: i  ! Loop Index
+    ! Close identifiers
+    call h5dclose_f(dset, hdf5_err)
+    call h5sclose_f(memspace, hdf5_err)
+    call h5sclose_f(dspace, hdf5_err)
+  end subroutine write_results_hdf5
 
-      ! This routine will go through each item in TallyObject and set the value
-      ! to its default, as-initialized values, including deallocations.
-      this % label = ""
+  subroutine read_results_hdf5(this, group_id)
+    class(TallyObject), intent(inout) :: this
+    integer(HID_T),     intent(in) :: group_id
 
-      if (allocated(this % filters)) then
-        do i = 1, size(this % filters)
-          call this % filters(i) % clear()
-        end do
-        deallocate(this % filters)
-      end if
+    integer :: hdf5_err
+    integer(HID_T) :: dset, dspace
+    integer(HID_T) :: memspace
+    integer(HSIZE_T) :: dims(3)
+    integer(HSIZE_T) :: dims_slab(3)
+    integer(HSIZE_T) :: offset(3) = [1,0,0]
 
-      if (allocated(this % stride)) &
-           deallocate(this % stride)
+    ! Create file dataspace
+    dims_slab(:) = shape(this % results)
+    dims_slab(1) = 2
+    call h5screate_simple_f(3, dims_slab, dspace, hdf5_err)
 
-      this % find_filter = 0
+    ! Create memory dataspace that contains only SUM and SUM_SQ values
+    dims(:) = shape(this % results)
+    call h5screate_simple_f(3, dims, memspace, hdf5_err)
+    call h5sselect_hyperslab_f(memspace, H5S_SELECT_SET_F, offset, dims_slab, &
+         hdf5_err)
 
-      this % n_nuclide_bins = 0
-      if (allocated(this % nuclide_bins)) &
-           deallocate(this % nuclide_bins)
-      this % all_nuclides = .false.
+    ! Create and write to dataset
+    call h5dopen_f(group_id, "results", dset, hdf5_err)
+    call h5dread_f(dset, H5T_NATIVE_DOUBLE, this % results, dims_slab, &
+         hdf5_err, mem_space_id=memspace)
 
-      this % n_score_bins = 0
-      if (allocated(this % score_bins)) &
-           deallocate(this % score_bins)
-      if (allocated(this % moment_order)) &
-           deallocate(this % moment_order)
-      this % n_user_score_bins = 0
-
-      if (allocated(this % results)) &
-           deallocate(this % results)
-
-      this % reset = .false.
-
-      this % n_realizations = 0
-
-    end subroutine tallyobject_clear
+    ! Close identifiers
+    call h5dclose_f(dset, hdf5_err)
+    call h5sclose_f(memspace, hdf5_err)
+    call h5sclose_f(dspace, hdf5_err)
+  end subroutine read_results_hdf5
 
 end module tally_header

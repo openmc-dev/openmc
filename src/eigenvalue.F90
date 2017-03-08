@@ -1,242 +1,24 @@
 module eigenvalue
 
-#ifdef MPI
-  use mpi
-#endif
 
-  use cmfd_execute, only: cmfd_init_batch, execute_cmfd
-  use constants,    only: ZERO
-  use error,        only: fatal_error, warning
+  use algorithm,   only: binary_search
+  use constants,   only: ZERO
+  use error,       only: fatal_error, warning
   use global
-  use math,         only: t_percentile
-  use mesh,         only: count_bank_sites
-  use mesh_header,  only: StructuredMesh
-  use output,       only: write_message, header, print_columns,              &
-                          print_batch_keff, print_generation
-  use particle_header, only: Particle
-  use random_lcg,   only: prn, set_particle_seed, prn_skip
-  use search,       only: binary_search
-  use source,       only: get_source_particle
-  use state_point,  only: write_state_point, write_source_point
-  use string,       only: to_str
-  use tally,        only: synchronize_tallies, setup_active_usertallies, &
-                          reset_result
-  use tracking,     only: transport
+  use math,        only: t_percentile
+  use mesh,        only: count_bank_sites
+  use mesh_header, only: RegularMesh
+  use message_passing
+  use random_lcg,  only: prn, set_particle_seed, advance_prn_seed
+  use string,      only: to_str
 
 
   implicit none
-  private
-  public :: run_eigenvalue
 
   real(8) :: keff_generation ! Single-generation k on each processor
-  real(8) :: k_sum(2) = ZERO ! used to reduce sum and sum_sq
+  real(8) :: k_sum(2) = ZERO ! Used to reduce sum and sum_sq
 
 contains
-
-!===============================================================================
-! RUN_EIGENVALUE encompasses all the main logic where iterations are performed
-! over the batches, generations, and histories in a k-eigenvalue calculation.
-!===============================================================================
-
-  subroutine run_eigenvalue()
-
-    type(Particle) :: p
-    integer(8)     :: i_work
-
-    if (master) call header("K EIGENVALUE SIMULATION", level=1)
-
-    ! Display column titles
-    if(master) call print_columns()
-
-    ! Turn on inactive timer
-    call time_inactive % start()
-
-    ! ==========================================================================
-    ! LOOP OVER BATCHES
-    BATCH_LOOP: do current_batch = 1, n_batches
-
-      call initialize_batch()
-
-      ! Handle restart runs
-      if (restart_run .and. current_batch <= restart_batch) then
-        call replay_batch_history()
-        cycle BATCH_LOOP
-      end if
-
-      ! =======================================================================
-      ! LOOP OVER GENERATIONS
-      GENERATION_LOOP: do current_gen = 1, gen_per_batch
-
-        call initialize_generation()
-
-        ! Start timer for transport
-        call time_transport % start()
-
-        ! ====================================================================
-        ! LOOP OVER PARTICLES
-!$omp parallel do schedule(static) firstprivate(p)
-        PARTICLE_LOOP: do i_work = 1, work
-          current_work = i_work
-
-          ! grab source particle from bank
-          call get_source_particle(p, current_work)
-
-          ! transport particle
-          call transport(p)
-
-        end do PARTICLE_LOOP
-!$omp end parallel do
-
-        ! Accumulate time for transport
-        call time_transport % stop()
-
-        call finalize_generation()
-
-      end do GENERATION_LOOP
-
-      call finalize_batch()
-
-    end do BATCH_LOOP
-
-    call time_active % stop()
-
-    ! ==========================================================================
-    ! END OF RUN WRAPUP
-
-    if (master) call header("SIMULATION FINISHED", level=1)
-    
-    ! Clear particle
-    call p % clear()
-
-  end subroutine run_eigenvalue
-
-!===============================================================================
-! INITIALIZE_BATCH
-!===============================================================================
-
-  subroutine initialize_batch()
-
-    message = "Simulating batch " // trim(to_str(current_batch)) // "..."
-    call write_message(8)
-
-    ! Reset total starting particle weight used for normalizing tallies
-    total_weight = ZERO
-
-    if (current_batch == n_inactive + 1) then
-      ! Switch from inactive batch timer to active batch timer
-      call time_inactive % stop()
-      call time_active % start()
-
-      ! Enable active batches (and tallies_on if it hasn't been enabled)
-      active_batches = .true.
-      tallies_on = .true.
-
-      ! Add user tallies to active tallies list
-!$omp parallel
-      call setup_active_usertallies()
-!$omp end parallel
-    end if
-
-    ! check CMFD initialize batch
-    if (cmfd_run) call cmfd_init_batch()
-
-  end subroutine initialize_batch
-
-!===============================================================================
-! INITIALIZE_GENERATION
-!===============================================================================
-
-  subroutine initialize_generation()
-
-    ! set overall generation number
-    overall_gen = gen_per_batch*(current_batch - 1) + current_gen
-
-    ! Reset number of fission bank sites
-    n_bank = 0
-
-    ! Count source sites if using uniform fission source weighting
-    if (ufs) call count_source_for_ufs()
-
-    ! Store current value of tracklength k
-    keff_generation = global_tallies(K_TRACKLENGTH) % value
-
-  end subroutine initialize_generation
-
-!===============================================================================
-! FINALIZE_GENERATION
-!===============================================================================
-
-  subroutine finalize_generation()
-
-#ifdef _OPENMP
-    ! Join the fission bank from each thread into one global fission bank
-    call join_bank_from_threads()
-#endif
-
-    ! Distribute fission bank across processors evenly
-    call time_bank % start()
-    call synchronize_bank()
-    call time_bank % stop()
-
-    ! Calculate shannon entropy
-    if (entropy_on) call shannon_entropy()
-
-    ! Collect results and statistics
-    call calculate_generation_keff()
-    call calculate_average_keff()
-
-    ! Write generation output
-    if (master .and. current_gen /= gen_per_batch) call print_generation()
-
-  end subroutine finalize_generation
-
-!===============================================================================
-! FINALIZE_BATCH handles synchronization and accumulation of tallies,
-! calculation of Shannon entropy, getting single-batch estimate of keff, and
-! turning on tallies when appropriate
-!===============================================================================
-
-  subroutine finalize_batch()
-
-    ! Collect tallies
-    call time_tallies % start()
-    call synchronize_tallies()
-    call time_tallies % stop()
-
-    ! Reset global tally results
-    if (.not. active_batches) then
-      call reset_result(global_tallies)
-      n_realizations = 0
-    end if
-
-    ! Perform CMFD calculation if on
-    if (cmfd_on) call execute_cmfd()
-
-    ! Display output
-    if (master) call print_batch_keff()
-
-    ! Write out state point if it's been specified for this batch
-    if (statepoint_batch % contains(current_batch)) then
-      ! Calculate combined estimate of k-effective
-      if (master) call calculate_combined_keff()
-
-      ! Create state point file
-      call write_state_point()
-    end if
-
-    ! Write out source point if it's been specified for this batch
-    if ((sourcepoint_batch % contains(current_batch) .or. source_latest) .and. &
-        source_write) then
-      call write_source_point()
-    end if
-
-    if (master .and. current_batch == n_batches) then
-      ! Make sure combined estimate of k-effective is calculated at the last
-      ! batch in case no state point is written
-      call calculate_combined_keff()
-    end if
-
-  end subroutine finalize_batch
 
 !===============================================================================
 ! SYNCHRONIZE_BANK samples source sites from the fission sites that were
@@ -260,7 +42,11 @@ contains
 #ifdef MPI
     integer(8) :: n            ! number of sites to send/recv
     integer    :: neighbor     ! processor to send/recv data from
+#ifdef MPIF08
+    type(MPI_Request) :: request(20)
+#else
     integer    :: request(20)  ! communication request for send/recving sites
+#endif
     integer    :: n_request    ! number of communication requests
     integer(8) :: index_local  ! index in local source bank
     integer(8), save, allocatable :: &
@@ -278,8 +64,8 @@ contains
 
 #ifdef MPI
     start = 0_8
-    call MPI_EXSCAN(n_bank, start, 1, MPI_INTEGER8, MPI_SUM, & 
-         MPI_COMM_WORLD, mpi_err)
+    call MPI_EXSCAN(n_bank, start, 1, MPI_INTEGER8, MPI_SUM, &
+         mpi_intracomm, mpi_err)
 
     ! While we would expect the value of start on rank 0 to be 0, the MPI
     ! standard says that the receive buffer on rank 0 is undefined and not
@@ -288,8 +74,8 @@ contains
 
     finish = start + n_bank
     total = finish
-    call MPI_BCAST(total, 1, MPI_INTEGER8, n_procs - 1, & 
-         MPI_COMM_WORLD, mpi_err)
+    call MPI_BCAST(total, 1, MPI_INTEGER8, n_procs - 1, &
+         mpi_intracomm, mpi_err)
 
 #else
     start  = 0_8
@@ -313,7 +99,7 @@ contains
 
     call set_particle_seed(int((current_batch - 1)*gen_per_batch + &
          current_gen,8))
-    call prn_skip(start)
+    call advance_prn_seed(start)
 
     ! Determine how many fission sites we need to sample from the source bank
     ! and the probability for selecting a site.
@@ -361,16 +147,16 @@ contains
     ! indices for all processors
 
 #ifdef MPI
-    ! First do an exclusive scan to get the starting indices for 
+    ! First do an exclusive scan to get the starting indices for
     start = 0_8
-    call MPI_EXSCAN(index_temp, start, 1, MPI_INTEGER8, MPI_SUM, & 
-         MPI_COMM_WORLD, mpi_err)
+    call MPI_EXSCAN(index_temp, start, 1, MPI_INTEGER8, MPI_SUM, &
+         mpi_intracomm, mpi_err)
     finish = start + index_temp
 
     ! Allocate space for bank_position if this hasn't been done yet
     if (.not. allocated(bank_position)) allocate(bank_position(n_procs))
     call MPI_ALLGATHER(start, 1, MPI_INTEGER8, bank_position, 1, &
-         MPI_INTEGER8, MPI_COMM_WORLD, mpi_err)
+         MPI_INTEGER8, mpi_intracomm, mpi_err)
 #else
     start  = 0_8
     finish = index_temp
@@ -423,8 +209,8 @@ contains
         ! process
         if (neighbor /= rank) then
           n_request = n_request + 1
-          call MPI_ISEND(temp_sites(index_local), n, MPI_BANK, neighbor, &
-               rank, MPI_COMM_WORLD, request(n_request), mpi_err)
+          call MPI_ISEND(temp_sites(index_local), int(n), MPI_BANK, neighbor, &
+               rank, mpi_intracomm, request(n_request), mpi_err)
         end if
 
         ! Increment all indices
@@ -467,8 +253,8 @@ contains
         ! asynchronous receive for the source sites
 
         n_request = n_request + 1
-        call MPI_IRECV(source_bank(index_local), n, MPI_BANK, &
-             neighbor, neighbor, MPI_COMM_WORLD, request(n_request), mpi_err)
+        call MPI_IRECV(source_bank(index_local), int(n), MPI_BANK, &
+             neighbor, neighbor, mpi_intracomm, request(n_request), mpi_err)
 
       else
         ! If the source sites are on this procesor, we can simply copy them
@@ -492,7 +278,7 @@ contains
     call MPI_WAITALL(n_request, request, MPI_STATUSES_IGNORE, mpi_err)
 
     ! Deallocate space for bank_position on the very last generation
-    if (current_batch == n_batches .and. current_gen == gen_per_batch) &
+    if (current_batch == n_max_batches .and. current_gen == gen_per_batch) &
          deallocate(bank_position)
 #else
     source_bank = temp_sites(1:n_particles)
@@ -501,7 +287,7 @@ contains
     call time_bank_sendrecv % stop()
 
     ! Deallocate space for the temporary source bank on the last generation
-    if (current_batch == n_batches .and. current_gen == gen_per_batch) &
+    if (current_batch == n_max_batches .and. current_gen == gen_per_batch) &
          deallocate(temp_sites)
 
   end subroutine synchronize_bank
@@ -517,7 +303,7 @@ contains
     integer :: i, j, k        ! index for bank sites
     integer :: n              ! # of boxes in each dimension
     logical :: sites_outside  ! were there sites outside entropy box?
-    type(StructuredMesh), pointer :: m => null()
+    type(RegularMesh), pointer :: m
 
     ! Get pointer to entropy mesh
     m => entropy_mesh
@@ -532,16 +318,16 @@ contains
         ! If the user did not specify how many mesh cells are to be used in
         ! each direction, we automatically determine an appropriate number of
         ! cells
-        n = ceiling((n_particles/20)**(1.0/3.0))
+        n = ceiling((n_particles/20)**(ONE/THREE))
 
         ! copy dimensions
         m % n_dimension = 3
         allocate(m % dimension(3))
         m % dimension = n
-        
+
         ! determine width
         m % width = (m % upper_right - m % lower_left) / m % dimension
-        
+
       end if
 
       ! allocate p
@@ -589,12 +375,12 @@ contains
   subroutine calculate_generation_keff()
 
     ! Get keff for this generation by subtracting off the starting value
-    keff_generation = global_tallies(K_TRACKLENGTH) % value - keff_generation
+    keff_generation = global_tallies(RESULT_VALUE, K_TRACKLENGTH) - keff_generation
 
 #ifdef MPI
     ! Combine values across all processors
     call MPI_ALLREDUCE(keff_generation, k_generation(overall_gen), 1, &
-         MPI_REAL8, MPI_SUM, MPI_COMM_WORLD, mpi_err)
+         MPI_REAL8, MPI_SUM, mpi_intracomm, mpi_err)
 #else
     k_generation(overall_gen) = keff_generation
 #endif
@@ -663,7 +449,7 @@ contains
 
     integer :: l        ! loop index
     integer :: i, j, k  ! indices referring to collision, absorption, or track
-    integer :: n        ! number of realizations
+    real(8) :: n        ! number of realizations
     real(8) :: kv(3)    ! vector of k-effective estimates
     real(8) :: cov(3,3) ! sample covariance matrix
     real(8) :: f        ! weighting factor
@@ -675,73 +461,132 @@ contains
     if (n_realizations <= 3) return
 
     ! Initialize variables
-    n = n_realizations
-    g = ZERO
-    S = ZERO
-    k_combined = ZERO
+    n = real(n_realizations, 8)
 
     ! Copy estimates of k-effective and its variance (not variance of the mean)
-    kv(1) = global_tallies(K_COLLISION) % sum / n
-    kv(2) = global_tallies(K_ABSORPTION) % sum / n
-    kv(3) = global_tallies(K_TRACKLENGTH) % sum / n
-    cov(1,1) = (global_tallies(K_COLLISION) % sum_sq - &
-         n * kv(1) * kv(1)) / (n - 1)
-    cov(2,2) = (global_tallies(K_ABSORPTION) % sum_sq - &
-         n * kv(2) * kv(2)) / (n - 1)
-    cov(3,3) = (global_tallies(K_TRACKLENGTH) % sum_sq - &
-         n * kv(3) * kv(3)) / (n - 1)
+    kv(1) = global_tallies(RESULT_SUM, K_COLLISION) / n
+    kv(2) = global_tallies(RESULT_SUM, K_ABSORPTION) / n
+    kv(3) = global_tallies(RESULT_SUM, K_TRACKLENGTH) / n
+    cov(1, 1) = (global_tallies(RESULT_SUM_SQ, K_COLLISION) - &
+         n * kv(1) * kv(1)) / (n - ONE)
+    cov(2, 2) = (global_tallies(RESULT_SUM_SQ, K_ABSORPTION) - &
+         n * kv(2) * kv(2)) / (n - ONE)
+    cov(3, 3) = (global_tallies(RESULT_SUM_SQ, K_TRACKLENGTH) - &
+         n * kv(3) * kv(3)) / (n - ONE)
 
     ! Calculate covariances based on sums with Bessel's correction
-    cov(1,2) = (k_col_abs - n * kv(1) * kv(2))/(n - 1)
-    cov(1,3) = (k_col_tra - n * kv(1) * kv(3))/(n - 1)
-    cov(2,3) = (k_abs_tra - n * kv(2) * kv(3))/(n - 1)
-    cov(2,1) = cov(1,2)
-    cov(3,1) = cov(1,3)
-    cov(3,2) = cov(2,3)
+    cov(1, 2) = (k_col_abs - n * kv(1) * kv(2)) / (n - ONE)
+    cov(1, 3) = (k_col_tra - n * kv(1) * kv(3)) / (n - ONE)
+    cov(2, 3) = (k_abs_tra - n * kv(2) * kv(3)) / (n - ONE)
+    cov(2, 1) = cov(1, 2)
+    cov(3, 1) = cov(1, 3)
+    cov(3, 2) = cov(2, 3)
 
-    do l = 1, 3
-      ! Permutations of estimates
-      if (l == 1) then
-        ! i = collision, j = absorption, k = tracklength
-        i = 1
-        j = 2
-        k = 3
-      elseif (l == 2) then
-        ! i = absortion, j = tracklength, k = collision
-        i = 2
-        j = 3
-        k = 1
-      elseif (l == 3) then
-        ! i = tracklength, j = collision, k = absorption
-        i = 3
-        j = 1
-        k = 2
-      end if
+    ! Check to see if two estimators are the same; this is guaranteed to happen
+    ! in MG-mode with survival biasing when the collision and absorption
+    ! estimators are the same, but can theoretically happen at anytime.
+    ! If it does, the standard estimators will produce floating-point
+    ! exceptions and an expression specifically derived for the combination of
+    ! two estimators (vice three) should be used instead.
 
-      ! Calculate weighting
-      f = cov(j,j)*(cov(k,k) - cov(i,k)) - cov(k,k)*cov(i,j) + &
-           cov(j,k)*(cov(i,j) + cov(i,k) - cov(j,k))
+    ! First we will identify if there are any matching estimators
+    if ((abs(kv(1) - kv(2)) / kv(1) < FP_REL_PRECISION) .and. &
+         (abs(cov(1, 1) - cov(2, 2)) / cov(1, 1) < FP_REL_PRECISION)) then
+      ! 1 and 2 match, so only use 1 and 3 in our comparisons
+      i = 1
+      j = 3
 
-      ! Add to S sums for variance of combined estimate
-      S(1) = S(1) + f * cov(1,l)
-      S(2) = S(2) + (cov(j,j) + cov(k,k) - TWO*cov(j,k))*kv(l)*kv(l)
-      S(3) = S(3) + (cov(k,k) + cov(i,j) - cov(j,k) - cov(i,k))*kv(l)*kv(j)
+    else if ((abs(kv(1) - kv(3)) / kv(1) < FP_REL_PRECISION) .and. &
+         (abs(cov(1, 1) - cov(3, 3)) / cov(1, 1) < FP_REL_PRECISION)) then
+      ! 1 and 3 match, so only use 1 and 2 in our comparisons
+      i = 1
+      j = 2
 
-      ! Add to sum for combined k-effective
-      k_combined(1) = k_combined(1) + f * kv(l)
-      g = g + f
-    end do
+    else if ((abs(kv(2) - kv(3)) / kv(2) < FP_REL_PRECISION) .and. &
+         (abs(cov(2, 2) - cov(3, 3)) / cov(2, 2) < FP_REL_PRECISION)) then
+      ! 2 and 3 match, so only use 1 and 2 in our comparisons
+      i = 1
+      j = 2
 
-    ! Complete calculations of S sums
-    S = (n - 1)*S
-    S(1) = (n - 1)**2 * S(1)
+    else
+      ! No two estimators match, so set i to 0 and this will be the indicator
+      ! to use all three estimators.
+      i = 0
+    end if
 
-    ! Calculate combined estimate of k-effective
-    k_combined(1) = k_combined(1) / g
+    if (i == 0) then
+      ! Use three estimators as derived in the paper by Urbatsch
 
-    ! Calculate standard deviation of combined estimate
-    g = (n - 1)**2 * g
-    k_combined(2) = sqrt(S(1)/(g*n*(n-3)) * (ONE + n*((S(2) - TWO*S(3))/g)))
+      ! Initialize variables
+      g = ZERO
+      S = ZERO
+      k_combined = ZERO
+
+      do l = 1, 3
+        ! Permutations of estimates
+        if (l == 1) then
+          ! i = collision, j = absorption, k = tracklength
+          i = 1
+          j = 2
+          k = 3
+        elseif (l == 2) then
+          ! i = absortion, j = tracklength, k = collision
+          i = 2
+          j = 3
+          k = 1
+        elseif (l == 3) then
+          ! i = tracklength, j = collision, k = absorption
+          i = 3
+          j = 1
+          k = 2
+        end if
+
+        ! Calculate weighting
+        f = cov(j, j) * (cov(k, k) - cov(i, k)) - cov(k, k) * cov(i, j) + &
+             cov(j, k) * (cov(i, j) + cov(i, k) - cov(j, k))
+
+        ! Add to S sums for variance of combined estimate
+        S(1) = S(1) + f * cov(1, l)
+        S(2) = S(2) + (cov(j, j) + cov(k, k) - TWO * cov(j, k)) * kv(l) * kv(l)
+        S(3) = S(3) + (cov(k, k) + cov(i, j) - cov(j, k) - &
+             cov(i, k)) * kv(l) * kv(j)
+
+        ! Add to sum for combined k-effective
+        k_combined(1) = k_combined(1) + f * kv(l)
+        g = g + f
+      end do
+
+      ! Complete calculations of S sums
+      S = (n - ONE) * S
+      S(1) = (n - ONE)**2 * S(1)
+
+      ! Calculate combined estimate of k-effective
+      k_combined(1) = k_combined(1) / g
+
+      ! Calculate standard deviation of combined estimate
+      g = (n - ONE)**2 * g
+      k_combined(2) = sqrt(S(1) / &
+           (g * n * (n - THREE)) * (ONE + n * ((S(2) - TWO * S(3)) / g)))
+
+    else
+      ! Use only two estimators
+      ! These equations are derived analogously to that done in the paper by
+      ! Urbatsch, but are simpler than for the three estimators case since the
+      ! block matrices of the three estimator equations reduces to scalars here
+
+      ! Store the commonly used term
+      f = kv(i) - kv(j)
+      g = cov(i, i) + cov(j, j) - TWO * cov(i, j)
+
+      ! Calculate combined estimate of k-effective
+      k_combined(1) = kv(i) - (cov(i, i) - cov(i, j)) / g * f
+
+      ! Calculate standard deviation of combined estimate
+      k_combined(2) = (cov(i, i) * cov(j, j) - cov(i, j) * cov(i, j)) * &
+           (g + n * f * f) / (n * (n - TWO) * g * g)
+      k_combined(2) = sqrt(k_combined(2))
+
+    end if
 
   end subroutine calculate_combined_keff
 
@@ -781,7 +626,7 @@ contains
 #ifdef MPI
       ! Send source fraction to all processors
       n = product(ufs_mesh % dimension)
-      call MPI_BCAST(source_frac, n, MPI_REAL8, 0, MPI_COMM_WORLD, mpi_err)
+      call MPI_BCAST(source_frac, n, MPI_REAL8, 0, mpi_intracomm, mpi_err)
 #endif
 
       ! Normalize to total weight to get fraction of source in each cell
@@ -796,42 +641,11 @@ contains
 
   end subroutine count_source_for_ufs
 
-!===============================================================================
-! REPLAY_BATCH_HISTORY displays keff and entropy for each generation within a
-! batch using data read from a state point file
-!===============================================================================
-
-  subroutine replay_batch_history
-
-    ! Write message at beginning
-    if (current_batch == 1) then
-      message = "Replaying history from state point..."
-      call write_message(1)
-    end if
-
-    do current_gen = 1, gen_per_batch
-      overall_gen = overall_gen + 1
-      call calculate_average_keff()
-
-      ! print out batch keff
-      if (current_gen < gen_per_batch) then
-        if (master) call print_generation()
-      else
-        if (master) call print_batch_keff()
-      end if
-    end do
-
-    ! Write message at end
-    if (current_batch == restart_batch) then
-      message = "Resuming simulation..."
-      call write_message(1)
-    end if
-
-  end subroutine replay_batch_history
-
 #ifdef _OPENMP
 !===============================================================================
-! JOIN_BANK_FROM_THREADS
+! JOIN_BANK_FROM_THREADS joins threadprivate fission banks into a single fission
+! bank that can be sampled. Note that this operation is necessarily sequential
+! to preserve the order of the bank when using varying numbers of threads.
 !===============================================================================
 
   subroutine join_bank_from_threads()
@@ -848,8 +662,8 @@ contains
 !$omp do ordered schedule(static)
     do i = 1, n_threads
 !$omp ordered
-       master_fission_bank(total+1:total+n_bank) = fission_bank(1:n_bank)
-       total = total + n_bank
+      master_fission_bank(total+1:total+n_bank) = fission_bank(1:n_bank)
+      total = total + n_bank
 !$omp end ordered
     end do
 !$omp end do
@@ -859,10 +673,10 @@ contains
 
     ! Now copy the shared fission bank sites back to the master thread's copy.
     if (thread_id == 0) then
-       n_bank = total
-       fission_bank(1:n_bank) = master_fission_bank(1:n_bank)
+      n_bank = total
+      fission_bank(1:n_bank) = master_fission_bank(1:n_bank)
     else
-       n_bank = 0
+      n_bank = 0
     end if
 
 !$omp end parallel

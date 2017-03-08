@@ -1,34 +1,39 @@
 program main
 
   use constants
-  use eigenvalue,        only: run_eigenvalue
-  use finalize,          only: finalize_run
-  use fixed_source,      only: run_fixedsource
+  use finalize,          only: openmc_finalize
   use global
-  use initialize,        only: initialize_run
+  use initialize,        only: openmc_init
+  use message_passing
   use particle_restart,  only: run_particle_restart
   use plot,              only: run_plot
+  use simulation,        only: run_simulation
+  use volume_calc,       only: run_volume_calculations
 
   implicit none
 
-  ! set up problem
-  call initialize_run()
+  ! Initialize run -- when run with MPI, pass communicator
+#ifdef MPI
+  call openmc_init(MPI_COMM_WORLD)
+#else
+  call openmc_init()
+#endif
 
   ! start problem based on mode
   select case (run_mode)
-  case (MODE_FIXEDSOURCE)
-    call run_fixedsource()
-  case (MODE_EIGENVALUE)
-    call run_eigenvalue()
+  case (MODE_FIXEDSOURCE, MODE_EIGENVALUE)
+    call run_simulation()
   case (MODE_PLOTTING)
     call run_plot()
   case (MODE_PARTICLE)
     if (master) call run_particle_restart()
   case (MODE_PURXS)
     continue
+  case (MODE_VOLUME)
+    call run_volume_calculations()
   end select
 
   ! finalize run
-  call finalize_run()
+  call openmc_finalize()
 
 end program main

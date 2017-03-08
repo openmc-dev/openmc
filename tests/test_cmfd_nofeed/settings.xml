@@ -2,14 +2,10 @@
 <settings>
 
   <!-- Parameters for criticality calculation -->
-  <eigenvalue>
-    <batches>20</batches>
-    <inactive>10</inactive>
-    <particles>1000</particles>
-  </eigenvalue>
-
-  <!-- How verbose output should be -->
-  <verbosity value="7" />
+  <run_mode>eigenvalue</run_mode>
+  <batches>20</batches>
+  <inactive>10</inactive>
+  <particles>1000</particles>
 
   <!-- Starting source -->
   <source>
@@ -19,7 +15,7 @@
     </space>
   </source>
 
-  <!-- Shannon Entropy --> 
+  <!-- Shannon Entropy -->
   <entropy>
     <dimension> 10 1 1 </dimension>
     <lower_left> -10.0 -1.0 -1.0 </lower_left>
@@ -27,6 +23,6 @@
   </entropy>
 
  <!-- Run CMFD -->
- <run_cmfd> true </run_cmfd>
+ <run_cmfd>true</run_cmfd>
 
 </settings>

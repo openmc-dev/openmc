@@ -1,0 +1,123 @@
+<?xml version="1.0"?>
+<materials>
+
+  <!-- Fuel composition -->
+  <material id="1">
+    <density value="10.062" units="g/cm3" />
+    <nuclide name="U235"   ao="4.8218e-4" />
+    <nuclide name="U238"   ao="2.1504e-2" />
+    <nuclide name="O16"    ao="4.5737e-2" />
+  </material>
+
+  <!-- Cladding composition -->
+  <material id="2">
+    <density value="5.77" units="g/cm3" />
+    <nuclide name="Zr90" ao="0.5145" />
+    <nuclide name="Zr91" ao="0.1122" />
+    <nuclide name="Zr92" ao="0.1715" />
+    <nuclide name="Zr94" ao="0.1738" />
+    <nuclide name="Zr96" ao="0.0280" />
+  </material>
+
+  <!-- Cold borated water -->
+  <material id="3">
+    <density value="0.07416" units="atom/b-cm" />
+    <nuclide name="H1" ao="2.0" />
+    <nuclide name="O16" ao="1.0" />
+    <nuclide name="B10" ao="6.490e-4" />
+    <nuclide name="B11" ao="2.689e-3" />
+  </material>
+
+  <!-- Hot borated water -->
+  <material id="4">
+    <density value="0.06614" units="atom/b-cm" />
+    <nuclide name="H1"  ao="2.0" />
+    <nuclide name="O16" ao="1.0" />
+    <nuclide name="B10" ao="6.490e-4" />
+    <nuclide name="B11" ao="2.689e-3" />
+  </material>
+
+  <!-- RPV Composition -->
+  <material id="5">
+    <density value="7.9" units="g/cm3" />
+    <nuclide name="Zr90" ao="0.5145" />
+    <nuclide name="Zr91" ao="0.1122" />
+    <nuclide name="Zr92" ao="0.1715" />
+    <nuclide name="Zr94" ao="0.1738" />
+    <nuclide name="Zr96" ao="0.0280" />
+  </material>
+
+  <!-- Lower radial reflector -->
+  <material id="6">
+    <density value="4.32" units="g/cm3" />
+    <nuclide name="H1"   wo="0.0095661" />
+    <nuclide name="O16"  wo="0.0759107" />
+    <nuclide name="B10"  wo="3.08409e-5" />
+    <nuclide name="B11"  wo="1.40499e-4" />
+  </material>
+
+  <!-- Upper radial reflector / Top plate region -->
+  <material id="7">
+    <density value="4.28" units="g/cm3" />
+    <nuclide name="H1"   wo="0.0086117" />
+    <nuclide name="O16"  wo="0.0683369" />
+    <nuclide name="B10"  wo="2.77638e-5" />
+    <nuclide name="B11"  wo="1.26481e-4" />
+  </material>
+
+  <!-- Bottom plate region -->
+  <material id="8">
+    <density value="7.184" units="g/cm3" />
+    <nuclide name="H1"   wo="0.0011505" />
+    <nuclide name="O16"  wo="0.0091296" />
+    <nuclide name="B10"  wo="3.70915e-6" />
+    <nuclide name="B11"  wo="1.68974e-5" />
+  </material>
+
+  <!-- Bottom nozzle region -->
+  <material id="9">
+    <density value="2.53" units="g/cm3" />
+    <nuclide name="H1"   wo="0.0245014" />
+    <nuclide name="O16"  wo="0.1944274" />
+    <nuclide name="B10"  wo="7.89917e-5" />
+    <nuclide name="B11"  wo="3.59854e-4" />
+  </material>
+
+  <!-- Top nozzle region -->
+  <material id="10">
+    <density value="1.746" units="g/cm3" />
+    <nuclide name="H1"   wo="0.0358870" />
+    <nuclide name="O16"  wo="0.2847761" />
+    <nuclide name="B10"  wo="1.15699e-4" />
+    <nuclide name="B11"  wo="5.27075e-4" />
+  </material>
+
+  <!-- Top of Fuel Assemblies -->
+  <material id="11">
+    <density value="3.044" units="g/cm3" />
+    <nuclide name="H1"   wo="0.0162913" />
+    <nuclide name="O16"  wo="0.1292776" />
+    <nuclide name="B10"  wo="5.25228e-5" />
+    <nuclide name="B11"  wo="2.39272e-4" />
+    <nuclide name="Zr90" wo="0.43313403903" />
+    <nuclide name="Zr91" wo="0.09549277374" />
+    <nuclide name="Zr92" wo="0.14759527104" />
+    <nuclide name="Zr94" wo="0.15280552077" />
+    <nuclide name="Zr96" wo="0.02511169542" />
+  </material>
+
+  <!-- Bottom of Fuel Assemblies -->
+  <material id="12">
+    <density value="1.762" units="g/cm3" />
+    <nuclide name="H1"   wo="0.0292856" />
+    <nuclide name="O16"  wo="0.2323919" />
+    <nuclide name="B10"  wo="9.44159e-5" />
+    <nuclide name="B11"  wo="4.30120e-4" />
+    <nuclide name="Zr90" wo="0.3741373658" />
+    <nuclide name="Zr91" wo="0.0824858164" />
+    <nuclide name="Zr92" wo="0.1274914944" />
+    <nuclide name="Zr94" wo="0.1319920622" />
+    <nuclide name="Zr96" wo="0.0216912612" />
+  </material>
+
+</materials>

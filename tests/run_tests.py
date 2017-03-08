@@ -8,7 +8,7 @@ import shutil
 import re
 import glob
 import socket
-from subprocess import call
+from subprocess import call, check_output
 from collections import OrderedDict
 from optparse import OptionParser
 
@@ -42,10 +42,10 @@ parser.add_option("-s", "--script", action="store_true", dest="script",
 
 # Default compiler paths
 FC='gfortran'
-MPI_DIR='/opt/mpich/3.1-gnu'
-HDF5_DIR='/opt/hdf5/1.8.12-gnu'
-PHDF5_DIR='/opt/phdf5/1.8.12-gnu'
-PETSC_DIR='/opt/petsc/3.4.4-gnu'
+CC='gcc'
+MPI_DIR='/opt/mpich/3.2-gnu'
+HDF5_DIR='/opt/hdf5/1.8.16-gnu'
+PHDF5_DIR='/opt/phdf5/1.8.16-gnu'
 
 # Script mode for extra capability
 script_mode = False
@@ -53,14 +53,14 @@ script_mode = False
 # Override default compiler paths if environmental vars are found
 if 'FC' in os.environ:
     FC = os.environ['FC']
+if 'CC' in os.environ:
+    CC = os.environ['CC']
 if 'MPI_DIR' in os.environ:
     MPI_DIR = os.environ['MPI_DIR']
 if 'HDF5_DIR' in os.environ:
     HDF5_DIR = os.environ['HDF5_DIR']
 if 'PHDF5_DIR' in os.environ:
     PHDF5_DIR = os.environ['PHDF5_DIR']
-if 'PETSC_DIR' in os.environ:
-    PETSC_DIR = os.environ['PETSC_DIR']
 
 # CTest script template
 ctest_str = """set (CTEST_SOURCE_DIRECTORY "{source_dir}")
@@ -76,60 +76,95 @@ set(CTEST_UPDATE_COMMAND "git")
 set(CTEST_CONFIGURE_COMMAND "${{CMAKE_COMMAND}} -H${{CTEST_SOURCE_DIRECTORY}} -B${{CTEST_BINARY_DIRECTORY}} ${{CTEST_BUILD_OPTIONS}}")
 set(CTEST_MEMORYCHECK_COMMAND "{valgrind_cmd}")
 set(CTEST_MEMORYCHECK_COMMAND_OPTIONS "--tool=memcheck --leak-check=yes --show-reachable=yes --num-callers=20 --track-fds=yes")
-set(CTEST_MEMORYCHECK_SUPPRESSIONS_FILE ${{CTEST_SOURCE_DIRECTORY}}/../tests/valgrind.supp)
+#set(CTEST_MEMORYCHECK_SUPPRESSIONS_FILE ${{CTEST_SOURCE_DIRECTORY}}/../tests/valgrind.supp)
 set(MEM_CHECK {mem_check})
+if(MEM_CHECK)
 set(ENV{{MEM_CHECK}} ${{MEM_CHECK}})
+endif()
 
-set(CTEST_COVERAGE_COMMAND "{gcov_cmd}")
+set(CTEST_COVERAGE_COMMAND "gcov")
 set(COVERAGE {coverage})
 set(ENV{{COVERAGE}} ${{COVERAGE}})
 
 {subproject}
 
 ctest_start("{dashboard}")
-ctest_configure()
+ctest_configure(RETURN_VALUE res)
 {update}
-ctest_build()
-ctest_test({tests} PARALLEL_LEVEL {n_procs})
+ctest_build(RETURN_VALUE res)
+if(NOT MEM_CHECK)
+ctest_test({tests} PARALLEL_LEVEL {n_procs}, RETURN_VALUE res)
+endif()
 if(MEM_CHECK)
-ctest_memcheck({tests})
+ctest_memcheck({tests} RETURN_VALUE res)
 endif(MEM_CHECK)
 if(COVERAGE)
-ctest_coverage()
+ctest_coverage(RETURN_VALUE res)
 endif(COVERAGE)
-{submit}"""
+{submit}
+
+if (res EQUAL 0)
+else()
+message(FATAL_ERROR "")
+endif()
+"""
 
 # Define test data structure
 tests = OrderedDict()
 
+def cleanup(path):
+    """Remove generated output files."""
+    for dirpath, dirnames, filenames in os.walk(path):
+        for fname in filenames:
+            for ext in ['.h5', '.ppm', '.voxel']:
+                if fname.endswith(ext) and fname != '1d_mgxs.h5':
+                    os.remove(os.path.join(dirpath, fname))
+
+
+def which(program):
+    def is_exe(fpath):
+        return os.path.isfile(fpath) and os.access(fpath, os.X_OK)
+
+    fpath, fname = os.path.split(program)
+    if fpath:
+        if is_exe(program):
+            return program
+    else:
+        for path in os.environ["PATH"].split(os.pathsep):
+            path = path.strip('"')
+            exe_file = os.path.join(path, program)
+            if is_exe(exe_file):
+                return exe_file
+    return None
+
+
 class Test(object):
     def __init__(self, name, debug=False, optimize=False, mpi=False, openmp=False,
-                 hdf5=False, petsc=False, valgrind=False, coverage=False):
+                 phdf5=False, valgrind=False, coverage=False):
         self.name = name
         self.debug = debug
         self.optimize = optimize
         self.mpi = mpi
         self.openmp = openmp
-        self.hdf5 = hdf5
-        self.petsc = petsc
+        self.phdf5 = phdf5
         self.valgrind = valgrind
         self.coverage = coverage
         self.success = True
         self.msg = None
         self.skipped = False
-        self.valgrind_cmd = ""
-        self.gcov_cmd = ""
-        self.cmake = ['cmake', '-H../src', '-Bbuild']
+        self.cmake = ['cmake', '-H..', '-Bbuild',
+                      '-DPYTHON_EXECUTABLE=' + sys.executable]
 
-        # Check for MPI/HDF5
-        if self.mpi and not self.hdf5:
-            self.fc = MPI_DIR+'/bin/mpif90'
-        elif not self.mpi and self.hdf5:
-            self.fc = HDF5_DIR+'/bin/h5fc'
-        elif self.mpi and self.hdf5:
-            self.fc = PHDF5_DIR+'/bin/h5pfc'
+        # Check for MPI
+        if self.mpi:
+            if os.path.exists(os.path.join(MPI_DIR, 'bin', 'mpifort')):
+                self.fc = os.path.join(MPI_DIR, 'bin', 'mpifort')
+            else:
+                self.fc = os.path.join(MPI_DIR, 'bin', 'mpif90')
+            self.cc = os.path.join(MPI_DIR, 'bin', 'mpicc')
         else:
             self.fc = FC
+            self.cc = CC
 
     # Sets the build name that will show up on the CDash
     def get_build_name(self):
@@ -146,8 +181,6 @@ class Test(object):
             build_str += "-Doptimize=ON "
         if self.openmp:
             build_str += "-Dopenmp=ON "
-        if self.petsc:
-            build_str += "-Dpetsc=ON "
         if self.coverage:
             build_str += "-Dcoverage=ON "
         self.build_opts = build_str
@@ -161,10 +194,13 @@ class Test(object):
     # Runs the ctest script which performs all the cmake/ctest/cdash
     def run_ctest_script(self):
         os.environ['FC'] = self.fc
-        if self.petsc:
-            os.environ['PETSC_DIR'] = PETSC_DIR
+        os.environ['CC'] = self.cc
         if self.mpi:
             os.environ['MPI_DIR'] = MPI_DIR
+        if self.phdf5:
+            os.environ['HDF5_ROOT'] = PHDF5_DIR
+        else:
+            os.environ['HDF5_ROOT'] = HDF5_DIR
         rc = call(['ctest', '-S', 'ctestscript.run','-V'])
         if rc != 0:
             self.success = False
@@ -173,6 +209,13 @@ class Test(object):
     # Runs cmake when in non-script mode
     def run_cmake(self):
         os.environ['FC'] = self.fc
+        os.environ['CC'] = self.cc
+        if self.mpi:
+            os.environ['MPI_DIR'] = MPI_DIR
+        if self.phdf5:
+            os.environ['HDF5_ROOT'] = PHDF5_DIR
+        else:
+            os.environ['HDF5_ROOT'] = HDF5_DIR
         build_opts = self.build_opts.split()
         self.cmake += build_opts
         rc = call(self.cmake)
@@ -223,91 +266,32 @@ class Test(object):
             self.success = False
             self.msg = 'Failed on testing.'
 
-    # Checks to see if file exists in PWD or PATH
-    def check_compiler(self):
-        result = False
-        if os.path.isfile(self.fc):
-            result = True
-        for path in os.environ["PATH"].split(":"):
-            if os.path.isfile(os.path.join(path, self.fc)):
-                result = True
-        if not result:
-            self.msg = 'Compiler not found: {0}'.\
-                       format((os.path.join(path, self.fc)))
-            self.success = False
-
-    # Get valgrind command from user's environment
-    def find_valgrind(self):
-        result = False
-        for path in os.environ["PATH"].split(":"):
-            if os.path.isfile(os.path.join(path, 'valgrind')):
-                self.valgrind_cmd = os.path.join(path, 'valgrind')
-                result = True
-                break
-        if not result:
-            self.msg = 'valgrind not found.'
-            self.success = False
-
-    # Get coverage command from user's environment
-    def find_coverage(self):
-        result = False
-        for path in os.environ["PATH"].split(":"):
-            if os.path.isfile(os.path.join(path, 'gcov')):
-                self.gcov_cmd = os.path.join(path, 'gcov')
-                result = True
-                break
-        if not result:
-            self.msg = 'gcov not found.'
-            self.success = False
 
 # Simple function to add a test to the global tests dictionary
 def add_test(name, debug=False, optimize=False, mpi=False, openmp=False,\
-             hdf5=False, petsc=False, valgrind=False, coverage=False):
-    tests.update({name:Test(name, debug, optimize, mpi, openmp, hdf5, petsc,
-    valgrind, coverage)})
+             phdf5=False, valgrind=False, coverage=False):
+    tests.update({name: Test(name, debug, optimize, mpi, openmp, phdf5,
+                             valgrind, coverage)})
 
 # List of all tests that may be run. User can add -C to command line to specify
 # a subset of these configurations
-add_test('basic-normal')
-add_test('basic-debug', debug=True)
-add_test('basic-optimize', optimize=True)
-add_test('omp-normal', openmp=True)
-add_test('omp-debug', openmp=True, debug=True)
-add_test('omp-optimize', openmp=True, optimize=True)
-add_test('hdf5-normal', hdf5=True)
-add_test('hdf5-debug', hdf5=True, debug=True)
-add_test('hdf5-optimize', hdf5=True, optimize=True)
-add_test('omp-hdf5-normal', openmp=True, hdf5=True)
-add_test('omp-hdf5-debug', openmp=True, hdf5=True, debug=True)
-add_test('omp-hdf5-optimize', openmp=True, hdf5=True, optimize=True)
-add_test('mpi-normal', mpi=True)
-add_test('mpi-debug', mpi=True, debug=True)
-add_test('mpi-optimize', mpi=True, optimize=True)
-add_test('mpi-omp-normal', mpi=True, openmp=True)
-add_test('mpi-omp-debug', mpi=True, openmp=True, debug=True)
-add_test('mpi-omp-optimize', mpi=True, openmp=True, optimize=True)
-add_test('phdf5-normal', mpi=True, hdf5=True)
-add_test('phdf5-debug', mpi=True, hdf5=True, debug=True)
-add_test('phdf5-optimize', mpi=True, hdf5=True, optimize=True)
-add_test('phdf5-omp-normal', mpi=True, hdf5=True, openmp=True)
-add_test('phdf5-omp-debug', mpi=True, hdf5=True, openmp=True, debug=True)
-add_test('phdf5-omp-optimize', mpi=True, hdf5=True, openmp=True, optimize=True)
-add_test('petsc-normal', petsc=True, mpi=True)
-add_test('petsc-debug', petsc=True, mpi=True, debug=True)
-add_test('petsc-optimize', petsc=True, mpi=True, optimize=True)
-add_test('phdf5-petsc-normal', mpi=True, hdf5=True, petsc=True)
-add_test('phdf5-petsc-debug', mpi=True, hdf5=True, petsc=True, debug=True)
-add_test('phdf5-petsc-optimize', mpi=True, hdf5=True, petsc=True, optimize=True)
-add_test('omp-phdf5-petsc-normal', openmp=True, mpi=True, hdf5=True, petsc=True)
-add_test('omp-phdf5-petsc-debug', openmp=True, mpi=True, hdf5=True, petsc=True, debug=True)
-add_test('omp-phdf5-petsc-optimize', openmp=True, mpi=True, hdf5=True, petsc=True, optimize=True)
-add_test('basic-debug_valgrind', debug=True, valgrind=True)
-add_test('hdf5-debug_valgrind', hdf5=True, debug=True, valgrind=True)
-add_test('petsc-debug_valgrind', petsc=True, mpi=True, debug=True, valgrind=True)
-add_test('basic-debug_coverage', debug=True, coverage=True)
-add_test('hdf5-debug_coverage', debug=True, hdf5=True, coverage=True)
-add_test('mpi-debug_coverage', debug=True, mpi=True, coverage=True)
-add_test('petsc-debug_coverage', debug=True, petsc=True, mpi=True, coverage=True)
+add_test('hdf5-normal')
+add_test('hdf5-debug', debug=True)
+add_test('hdf5-optimize', optimize=True)
+add_test('omp-hdf5-normal', openmp=True)
+add_test('omp-hdf5-debug', openmp=True, debug=True)
+add_test('omp-hdf5-optimize', openmp=True, optimize=True)
+add_test('mpi-hdf5-normal', mpi=True)
+add_test('mpi-hdf5-debug', mpi=True, debug=True)
+add_test('mpi-hdf5-optimize', mpi=True, optimize=True)
+add_test('phdf5-normal', mpi=True, phdf5=True)
+add_test('phdf5-debug', mpi=True, phdf5=True, debug=True)
+add_test('phdf5-optimize', mpi=True, phdf5=True, optimize=True)
+add_test('phdf5-omp-normal', mpi=True, phdf5=True, openmp=True)
+add_test('phdf5-omp-debug', mpi=True, phdf5=True, openmp=True, debug=True)
+add_test('phdf5-omp-optimize', mpi=True, phdf5=True, openmp=True, optimize=True)
+add_test('hdf5-debug_valgrind', debug=True, valgrind=True)
+add_test('hdf5-debug_coverage', debug=True, coverage=True)
 
 # Check to see if we should just print build configuration information to user
 if options.list_build_configs:
@@ -315,19 +299,20 @@ if options.list_build_configs:
         print('Configuration Name: {0}'.format(key))
         print('  Debug Flags:..........{0}'.format(tests[key].debug))
         print('  Optimization Flags:...{0}'.format(tests[key].optimize))
-        print('  HDF5 Active:..........{0}'.format(tests[key].hdf5))
         print('  MPI Active:...........{0}'.format(tests[key].mpi))
         print('  OpenMP Active:........{0}'.format(tests[key].openmp))
-        print('  PETSc Active:.........{0}'.format(tests[key].petsc))
         print('  Valgrind Test:........{0}'.format(tests[key].valgrind))
         print('  Coverage Test:........{0}\n'.format(tests[key].coverage))
     exit()
 
 # Delete items of dictionary that don't match regular expression
 if options.build_config is not None:
+    to_delete = []
     for key in tests:
         if not re.search(options.build_config, key):
-            del tests[key]
+            to_delete.append(key)
+    for key in to_delete:
+        del tests[key]
 
 # Check for dashboard and determine whether to push results to server
 # Note that there are only 3 basic dashboards:
@@ -357,15 +342,15 @@ else:
     script_mode = False
 
 # Setup CTest script vars. Not used in non-script mode
-pwd = os.environ['PWD']
+pwd = os.getcwd()
 ctest_vars = {
-'source_dir' : pwd + '/../src',
-'build_dir' :  pwd + '/build',
-'host_name' : socket.gethostname(),
-'dashboard' : dash,
-'submit'    : submit,
-'update'    : update,
-'n_procs'   : options.n_procs
+    'source_dir': os.path.join(pwd, os.pardir),
+    'build_dir': os.path.join(pwd, 'build'),
+    'host_name': socket.gethostname(),
+    'dashboard': dash,
+    'submit': submit,
+    'update': update,
+    'n_procs': options.n_procs
 }
 
 # Check project name
@@ -380,18 +365,22 @@ else:
 # Set up default valgrind tests (subset of all tests)
 # Currently takes too long to run all the tests with valgrind
 # Only used in script mode
-valgrind_default_tests = "basic|cmfd_feed|confidence_intervals|\
-density_atombcm|eigenvalue_genperbatch|energy_grid|entropy|\
-filter_cell|lattice_multiple|output|plot_background|reflective_plane|\
-rotation|salphabeta_multiple|score_absorption|seed|source_energy_mono|\
+valgrind_default_tests = "cmfd_feed|confidence_intervals|\
+density|eigenvalue_genperbatch|energy_grid|entropy|\
+lattice_multiple|output|plotreflective_plane|\
+rotation|salphabetascore_absorption|seed|source_energy_mono|\
 sourcepoint_batch|statepoint_interval|survival_biasing|\
 tally_assumesep|translation|uniform_fs|universe|void"
 
 # Delete items of dictionary if valgrind or coverage and not in script mode
+to_delete = []
 if not script_mode:
     for key in tests:
         if re.search('valgrind|coverage', key):
-            del tests[key]
+            to_delete.append(key)
+
+for key in to_delete:
+    del tests[key]
 
 # Check if tests empty
 if len(list(tests.keys())) == 0:
@@ -400,7 +389,7 @@ if len(list(tests.keys())) == 0:
 
 # Begin testing
 shutil.rmtree('build', ignore_errors=True)
-call(['./cleanup']) # removes all binary and hdf5 output files from tests
+cleanup('.')
 for key in iter(tests):
     test = tests[key]
 
@@ -412,29 +401,34 @@ for key in iter(tests):
         sys.stdout.flush()
 
     # Verify fortran compiler exists
-    test.check_compiler()
-    if not test.success:
+    if which(test.fc) is None:
+        self.msg = 'Compiler not found: {0}'.format(test.fc)
+        self.success = False
         continue
 
-    # Get valgrind command
+    # Verify valgrind command exists
     if test.valgrind:
-        test.find_valgrind()
-    if not test.success:
-        continue
+        valgrind_cmd = which('valgrind')
+        if valgrind_cmd is None:
+            self.msg = 'No valgrind executable found.'
+            self.success = False
+            continue
+    else:
+        valgrind_cmd = ''
 
-    # Get coverage command
+    # Verify gcov/lcov exist
     if test.coverage:
-        test.find_coverage()
-    if not test.success:
-        continue
+        if which('gcov') is None:
+            self.msg = 'No {} executable found.'.format(exe)
+            self.success = False
+            continue
 
     # Set test specific CTest script vars. Not used in non-script mode
-    ctest_vars.update({'build_name' : test.get_build_name()})
-    ctest_vars.update({'build_opts' : test.get_build_opts()})
-    ctest_vars.update({'mem_check'  : test.valgrind})
-    ctest_vars.update({'coverage'  : test.coverage})
-    ctest_vars.update({'valgrind_cmd'  : test.valgrind_cmd})
-    ctest_vars.update({'gcov_cmd'  : test.gcov_cmd})
+    ctest_vars.update({'build_name': test.get_build_name()})
+    ctest_vars.update({'build_opts': test.get_build_opts()})
+    ctest_vars.update({'mem_check': test.valgrind})
+    ctest_vars.update({'coverage': test.coverage})
+    ctest_vars.update({'valgrind_cmd': valgrind_cmd})
 
     # Check for user custom tests
     # INCLUDE is a CTest command that allows for a subset
@@ -475,7 +469,7 @@ for key in iter(tests):
         test.run_ctests()
 
         # Leave build directory
-        os.chdir('..')
+        os.chdir(os.pardir)
 
     # Copy over log file
     if script_mode:
@@ -488,11 +482,37 @@ for key in iter(tests):
         logfilename = logfilename + '_{0}.log'.format(test.name)
         shutil.copy(logfile[0], logfilename)
 
+    # For coverage builds, use lcov to generate HTML output
+    if test.coverage:
+        if which('lcov') is None or which('genhtml') is None:
+            print('No lcov/genhtml command found. '
+                  'Could not generate coverage report.')
+        else:
+            shutil.rmtree('coverage', ignore_errors=True)
+            call(['lcov', '--directory', '.', '--capture',
+                  '--output-file', 'coverage.info'])
+            call(['genhtml', '--output-directory', 'coverage', 'coverage.info'])
+            os.remove('coverage.info')
+
+    if test.valgrind:
+        # Copy memcheck output to memcheck directory
+        shutil.rmtree('memcheck', ignore_errors=True)
+        os.mkdir('memcheck')
+        memcheck_out = glob.glob('build/Testing/Temporary/MemoryChecker.*.log')
+        for fname in memcheck_out:
+            shutil.copy(fname, 'memcheck/')
+
+        # Remove generated XML files
+        xml_files = check_output(['git', 'ls-files', '.',  '--exclude-standard',
+                                  '--others']).split()
+        for f in xml_files:
+            os.remove(f)
+
     # Clear build directory and remove binary and hdf5 files
     shutil.rmtree('build', ignore_errors=True)
     if script_mode:
         os.remove('ctestscript.run')
-    call(['./cleanup'])
+    cleanup('.')
 
 # Print out summary of results
 print('\n' + '='*54)
@@ -509,6 +529,8 @@ else:
     ENDC = ''
     BOLD = ''
 
+return_code = 0
+
 for test in tests:
     print(test + '.'*(50 - len(test)), end='')
     if tests[test].success:
@@ -516,3 +538,6 @@ for test in tests:
     else:
         print(BOLD + FAIL + '[FAILED]' + ENDC)
         print(' '*len(test)+tests[test].msg)
+        return_code = 1
+
+sys.exit(return_code)

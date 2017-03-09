@@ -113,8 +113,13 @@ class Universe(object):
 
     @property
     def bounding_box(self):
-        regions = [c.region for c in self.cells.values()]
-        return openmc.Union(*regions).bounding_box
+        regions = [c.region for c in self.cells.values()
+                   if c.region is not None]
+        if regions:
+            return openmc.Union(*regions).bounding_box
+        else:
+            # Infinite bounding box
+            return openmc.Intersection().bounding_box
 
     @id.setter
     def id(self, universe_id):

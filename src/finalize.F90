@@ -23,6 +23,7 @@ contains
   subroutine openmc_finalize()
 
     integer :: hdf5_err
+    integer :: i
 
     ! Deallocate arrays
     call free_memory()

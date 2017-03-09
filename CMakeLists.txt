@@ -31,7 +31,7 @@ option(debug    "Compile with debug flags"                       OFF)
 option(optimize "Turn on all compiler optimization flags"        OFF)
 option(coverage "Compile with coverage analysis flags"           OFF)
 option(mpif08   "Use Fortran 2008 MPI interface"                 OFF)
-option(purxs    "Compile with PURXS"                             OFF)
+option(purxs    "Compile with PURXS"                             ON)
 
 # Maximum number of nested coordinates levels
 set(maxcoord 10 CACHE STRING "Maximum number of nested coordinate levels")
@@ -247,44 +247,14 @@ set(CMAKE_INSTALL_RPATH_USE_LINK_PATH TRUE)
 #===============================================================================
 
 add_library(faddeeva STATIC src/faddeeva/Faddeeva.c)
-
-#===============================================================================
-# PURXS Package
-#===============================================================================
-
-# Only initialize git submodules if it is not there. User is responsible
-# for future updates of purxs submodule.
-if(NOT EXISTS ${CMAKE_CURRENT_SOURCE_DIR}/purxs/.git)
-  message("-- Initializing/Updating PURXS submodule...")
-  execute_process(COMMAND git submodule add -b develop
-                  https://github.com/walshjon/purxs
-                  ${CMAKE_CURRENT_SOURCE_DIR}/purxs)
-  execute_process(COMMAND git submodule update --init --recursive
-                  WORKING_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR})
-endif()
-
-if(purxs)
-  add_definitions(-DPURXS)
-endif()
-
-# static PURXS lib: file(GLOB source *.F90 xml/openmc_fox.F90)
-#file(GLOB source src/*.F90 purxs/src/URR_*)
-
-# build static Faddeeva library
-#option(BUILD_SHARED_LIBS "Build shared libraries" OFF)
-#ADD_LIBRARY (faddeeva STATIC purxs/src/Faddeeva.c)
-#SET_TARGET_PROPERTIES(faddeeva PROPERTIES COMPILE_FLAGS "${cflags}")
-
-# build static PURXS library
-#file(GLOB PURXS_src ../purxs/src/URR_*)
-#ADD_LIBRARY (PURXS STATIC ${PURXS_src})
-#SET_TARGET_PROPERTIES(PURXS PROPERTIES COMPILE_FLAGS "${f90flags}")
+add_library(URR_faddeeva STATIC purxs/src/Faddeeva.c)
 
 #===============================================================================
 # Build OpenMC executable
 #===============================================================================
 
 set(program "openmc")
+if (0)
 set(LIBOPENMC_FORTRAN_SRC
   src/algorithm.F90
   src/angle_distribution.F90
@@ -339,6 +309,7 @@ set(LIBOPENMC_FORTRAN_SRC
   src/plot_header.F90
   src/product_header.F90
   src/progress_header.F90
+  src/purxs_api.F90
   src/random_lcg.F90
   src/reaction_header.F90
   src/relaxng
@@ -372,7 +343,57 @@ set(LIBOPENMC_FORTRAN_SRC
   src/volume_calc.F90
   src/volume_header.F90
   src/xml_interface.F90)
-add_library(libopenmc STATIC ${LIBOPENMC_FORTRAN_SRC} ${source})
+#  purxs/src/Faddeeva.c
+#  purxs/src/Faddeeva.cc
+#  purxs/src/Faddeeva.h
+#  purxs/src/URR_constants.F90
+#  purxs/src/URR_cross_sections.F90
+#  purxs/src/URR_edits.F90
+#  purxs/src/URR_endf6.F90
+#  purxs/src/URR_error.F90
+#  purxs/src/URR_faddeeva.F90
+#  purxs/src/URR_interpolate.F90
+#  purxs/src/URR_io.F90
+#  purxs/src/URR_isotope.F90
+#  purxs/src/URR_openmc_wrapper.F90
+#  purxs/src/URR_probability_table.F90
+#  purxs/src/URR_resonance.F90
+#  purxs/src/URR_settings.F90
+#  purxs/src/URR_tally.F90
+#  purxs/src/URR_vector.F90)
+endif()
+#===============================================================================
+# PURXS Package
+#===============================================================================
+
+# Only initialize git submodules if it is not there. User is responsible
+# for future updates of purxs submodule.
+if(NOT EXISTS ${CMAKE_CURRENT_SOURCE_DIR}/purxs/.git)
+  message("-- Initializing/Updating PURXS submodule...")
+  execute_process(COMMAND git submodule add -b develop
+                  https://github.com/walshjon/purxs
+                  ${CMAKE_CURRENT_SOURCE_DIR}/purxs)
+  execute_process(COMMAND git submodule update --init --recursive
+                  WORKING_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR})
+endif()
+
+if(purxs)
+  add_definitions(-DPURXS)
+#  file(GLOB source src/*.F90 purxs/src/URR_*)
+  file(GLOB LIBOPENMC_FORTRAN_SRC src/*.F90 purxs/src/URR_*)
+
+  # build static Faddeeva library
+#  option(BUILD_SHARED_LIBS "Build shared libraries" OFF)
+#  ADD_LIBRARY (URR_faddeeva STATIC purxs/src/Faddeeva.c purxs/src/Faddeeva.cc purxs/src/Faddeeva.h)
+#  SET_TARGET_PROPERTIES(URR_faddeeva PROPERTIES COMPILE_FLAGS "${cflags}")
+
+  # build static PURXS library
+#  file(GLOB URR_LIBOPENMC_FORTRAN_SRC ${LIBOPENMC_FORTRAN_SRC} purxs/src/URR_*)
+#  ADD_LIBRARY (PURXS STATIC ${PURXS_src})
+#  SET_TARGET_PROPERTIES(PURXS PROPERTIES COMPILE_FLAGS "${f90flags}")
+endif()
+
+add_library(libopenmc STATIC ${LIBOPENMC_FORTRAN_SRC})
 set_target_properties(libopenmc PROPERTIES OUTPUT_NAME openmc)
 add_executable(${program} src/main.F90)
 set_property(TARGET ${program} libopenmc pugixml_fortran
@@ -395,10 +416,12 @@ if (CMAKE_VERSION VERSION_LESS 2.8.12)
   string(REPLACE ";" " " cflags "${cflags}")
   set_property(TARGET ${program} PROPERTY COMPILE_FLAGS "${f90flags}")
   set_property(TARGET faddeeva PROPERTY COMPILE_FLAGS "${cflags}")
+  set_property(TARGET URR_faddeeva PROPERTY COMPILE_FLAGS "${cflags}")
 else()
   target_compile_options(${program} PUBLIC ${f90flags})
   target_compile_options(libopenmc PUBLIC ${f90flags})
   target_compile_options(faddeeva PRIVATE ${cflags})
+  target_compile_options(URR_faddeeva PRIVATE ${cflags})
 endif()
 
 # Add HDF5 library directories to link line with -L
@@ -408,8 +431,8 @@ endforeach()
 
 # target_link_libraries treats any arguments starting with - but not -l as
 # linker flags. Thus, we can pass both linker flags and libraries together.
-target_link_libraries(libopenmc ${ldflags} ${HDF5_LIBRARIES} pugixml_fortran faddeeva)
-target_link_libraries(${program} ${ldflags} libopenmc faddeeva)
+target_link_libraries(libopenmc ${ldflags} ${HDF5_LIBRARIES} pugixml_fortran faddeeva URR_faddeeva)
+target_link_libraries(${program} ${ldflags} libopenmc faddeeva URR_faddeeva)
 
 #===============================================================================
 # Install executable, scripts, manpage, license

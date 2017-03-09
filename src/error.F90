@@ -4,13 +4,6 @@ module error
   use constants
   use message_passing
 
-#ifdef PURXS
-  use purxs_api, only:&
-       URR_EXIT_SUCCESS,&
-       URR_EXIT_FAILURE,&
-       URR_EXIT_WARNING
-#endif
-
   implicit none
 
 contains

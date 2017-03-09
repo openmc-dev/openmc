@@ -4750,20 +4750,18 @@ contains
     character(len=:), allocatable :: zaid_str
     integer :: zaid_str_len ! number of characters in zaid_str
     logical :: file_exists ! does urr.xml file exist?
-    type(Node), pointer :: doc => null()
-    type(Node), pointer :: settings_node => null()
-    type(Node), pointer :: otf_xs_node => null()
-    type(Node), pointer :: prob_table_node => null()
-    type(Node), pointer :: point_xs_node => null()
-    type(Node), pointer :: isotope_node => null()
-    type(Node), pointer :: isotopes_node => null()
-    type(NodeList), pointer :: isotope_list_node => null()
+    type(XMLDocument) :: doc
+    type(XMLNode) :: root
+    type(XMLNode) :: settings_node
+    type(XMLNode) :: otf_xs_node
+    type(XMLNode) :: prob_table_node
+    type(XMLNode) :: point_xs_node
+    type(XMLNode) :: isotope_node
+    type(XMLNode) :: isotopes_node
+    type(XMLNode), allocatable :: isotope_node_list(:)
 
     ! Check if urr.xml exists
     filename = trim(path_input) // "urr.xml"
-    if (len(trim(path_input)//'urr.xml') > len(filename)) then
-      call fatal_error('urr.xml filepath exceeds maximum length')
-    end if
     inquire(FILE=filename, EXIST=file_exists)
     if (.not. file_exists) then
       ! Since a urr.xml file is optional, no error is issued here
@@ -4777,11 +4775,12 @@ contains
     call write_message("Reading URR XML file...")
 
     ! Parse urr.xml file
-    call open_xmldoc(doc, filename)
+    call doc % load_file(filename)
+    root = doc % document_element()
 
     ! Check that required settings element is present
-    if (check_for_node(doc, "settings")) then
-      call get_node_ptr(doc, "settings", settings_node)
+    if (check_for_node(root, "settings")) then
+      settings_node = root % child("settings")
 
       ! Check that a path to ENDF data is specified
       if (check_for_node(settings_node, "endf_6_filepath")) then
@@ -4903,19 +4902,19 @@ contains
     end if
 
     ! Check for required node containing list of isotopes to apply the treatment to
-    if (check_for_node(doc, 'isotopes')) then
-      call get_node_ptr(doc, 'isotopes', isotopes_node)
+    if (check_for_node(root, 'isotopes')) then
+      isotopes_node = root % child('isotopes')
 
       URR_num_isotopes = 0
       if (check_for_node(isotopes_node, 'isotope')) then
-        call get_node_list(isotopes_node, 'isotope', isotope_list_node)
-        URR_num_isotopes = get_list_size(isotope_list_node)
+        call get_node_list(isotopes_node, 'isotope', isotope_node_list)
+        URR_num_isotopes = size(isotope_node_list)
         allocate(URR_isotopes(URR_num_isotopes))
         allocate(URR_endf_filenames(URR_num_isotopes))
 
         ! Read in ZAID values and ENDF filenames for the isotopes(s)
         do i = 1, URR_num_isotopes
-          call get_list_item(isotope_list_node, i, isotope_node)
+          isotope_node = isotope_node_list(i)
 
           ! Check that a nuclide ZAID is given
           if (check_for_node(isotope_node, 'zaid')) then
@@ -4963,9 +4962,9 @@ contains
     end if
 
     ! Check that an on-the-fly URR treatment and/or average xs calc is specified
-    if (check_for_node(doc, "on_the_fly")&
-         .or. check_for_node(doc, "probability_tables")&
-         .or. check_for_node(doc, "pointwise")) then
+    if (check_for_node(root, "on_the_fly")&
+         .or. check_for_node(root, "probability_tables")&
+         .or. check_for_node(root, "pointwise")) then
       continue
     else
       call fatal_error('No on-the-fly, pointwise, or probability table &
@@ -4973,14 +4972,14 @@ contains
     end if
 
     ! Check for pointwise cross section calculation
-    if (check_for_node(doc, "pointwise")) then
+    if (check_for_node(root, "pointwise")) then
       if (URR_xs_representation == URR_ON_THE_FLY .or. URR_xs_representation == URR_PROB_BANDS) then
         call fatal_error('Cannot represent URR cross sections as pointwise and&
              & on-the-fly and/or as probability bands')
       end if
       URR_xs_representation = URR_POINTWISE
       URR_num_urr_realizations = 1
-      call get_node_ptr(doc, "pointwise", point_xs_node)
+      point_xs_node = root % child("pointwise")
       if (check_for_node(point_xs_node, 'min_energy_spacing')) then
         call get_node_value(&
              point_xs_node, 'min_energy_spacing', URR_min_delta_E_pointwise)
@@ -4997,13 +4996,13 @@ contains
     end if
 
     ! Check if an on-the-fly treatment is specified
-    if (check_for_node(doc, "on_the_fly")) then
+    if (check_for_node(root, "on_the_fly")) then
       if (URR_xs_representation == URR_POINTWISE .or. URR_xs_representation == URR_PROB_BANDS) then
         call fatal_error('Cannot represent URR cross sections on-the-fly and&
              & as pointwise and/or as probability bands')
       end if
       URR_xs_representation = URR_ON_THE_FLY
-      call get_node_ptr(doc, "on_the_fly", otf_xs_node)
+      otf_xs_node = root % child("on_the_fly")
 
       ! Check if a xs calculation frequency is specified
       if (check_for_node(otf_xs_node, 'frequency')) then
@@ -5066,13 +5065,13 @@ contains
     end if
 
     ! Check for probability band calculations parameters
-    if (check_for_node(doc, "probability_tables")) then
+    if (check_for_node(root, "probability_tables")) then
       if (URR_xs_representation == URR_POINTWISE .or. URR_xs_representation == URR_ON_THE_FLY) then
         call fatal_error('Cannot represent URR cross sections as probability&
              & bands and as pointwise and/or on-the-fly')
       end if
       URR_xs_representation = URR_PROB_BANDS
-      call get_node_ptr(doc, "probability_tables", prob_table_node)
+      prob_table_node = root % child("probability_tables")
 
       ! load previously-generated tables?
       if (check_for_node(prob_table_node, 'read_tables')) then
@@ -5146,9 +5145,9 @@ contains
 
         ! temperatures
         if (check_for_node(prob_table_node, "temperature_grid")) then
-          URR_num_temperatures_prob_tables = get_arraysize_double(prob_table_node, "temperature_grid")
-          allocate(URR_T_grid_prob_tables(URR_num_temperatures_prob_tables))
           call get_node_array(prob_table_node, "temperature_grid", URR_T_grid_prob_tables)
+          URR_num_temperatures_prob_tables = size(URR_T_grid_prob_tables)
+          allocate(URR_T_grid_prob_tables(URR_num_temperatures_prob_tables))
           if (URR_num_temperatures_prob_tables > 1) then
             do i = 2, URR_num_temperatures_prob_tables
               if (URR_T_grid_prob_tables(i) <= URR_T_grid_prob_tables(i-1)) then
@@ -5217,9 +5216,8 @@ contains
           else if (trim(adjustl(to_lower(temp_str))) == 'user') then
             URR_E_grid_scheme_prob_tables = URR_USER
             if (check_for_node(prob_table_node, "energy_grid")) then
-              URR_num_energies_prob_tables = get_arraysize_double(prob_table_node, "energy_grid")
-              allocate(URR_E_grid_prob_tables(URR_num_energies_prob_tables))
               call get_node_array(prob_table_node, "energy_grid", URR_E_grid_prob_tables)
+              URR_num_energies_prob_tables = size(URR_E_grid_prob_tables)
             else
               call fatal_error('No probability table energy grid values&
                    & given in urr.xml')
@@ -5282,7 +5280,7 @@ contains
     end if
 
     ! Close URR XML file
-    call close_xmldoc(doc)
+    call doc % clear()
 #endif
   end subroutine read_urr_xml
 

@@ -99,6 +99,10 @@ module nuclide_header
     class(Function1D), allocatable :: fission_q_prompt ! prompt neutrons, gammas
     class(Function1D), allocatable :: fission_q_recov  ! neutrons, gammas, betas
 
+#ifdef PURXS
+    integer :: i_isotope = 0 ! index in isotopes array
+#endif
+
   contains
     procedure :: clear => nuclide_clear
     procedure :: from_hdf5 => nuclide_from_hdf5
@@ -144,6 +148,7 @@ module nuclide_header
     ! Information for URR probability table use
     logical :: use_ptable  ! in URR range with probability tables?
     logical :: in_urr
+    real(8) :: last_prn
 
     ! Information for Doppler broadening
     real(8) :: last_sqrtkT = ZERO  ! Last temperature in sqrt(Boltzmann

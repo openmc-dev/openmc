@@ -78,6 +78,8 @@ contains
 
     integer :: i_nuc
     integer :: i
+    integer :: i_temperature
+    character(len=:), allocatable :: ZA
 
     ! Start total and initialization timer
     call time_total%start()
@@ -148,10 +150,19 @@ contains
 
             if (run_mode /= MODE_PURXS) then
               do i_nuc = 1, n_nuclides_total
-                if (URR_isotopes(i) % ZAI == nuclides(i_nuc) % zaid) then
-                  call URR_isotopes(i) % ace_T_list &
-                    % append(nuclides(i_nuc) % kT / K_BOLTZMANN)
-                  call URR_isotopes(i) % ace_index_list % append(i_nuc)
+                ZA = '000'
+                ZA(4-len(trim(adjustl(to_str(nuclides(i_nuc) % A)))):3)&
+                     = trim(adjustl(to_str(nuclides(i_nuc) % A)))
+                ZA = trim(adjustl(to_str(nuclides(i_nuc) % Z))) // ZA
+                if (ZA == trim(adjustl(to_str(URR_isotopes(i) % ZAI)))) then
+                  do i_temperature = 1, size(nuclides(i_nuc) % kTs)
+                    if (i_temperature /= 1)&
+                         call fatal_error('Trying to generate list of indices&
+                         & to old ACE-style nuclide data: not yet implemented.')
+                    call URR_isotopes(i) % ace_T_list &
+                         % append(nuclides(i_nuc) % kTs(i_temperature) / K_BOLTZMANN)
+                    call URR_isotopes(i) % ace_index_list % append(i_nuc)
+                  end do
                 end if
               end do
             end if
@@ -182,7 +193,11 @@ contains
             end if
             do i = 1, URR_num_isotopes
               do i_nuc = 1, n_nuclides_total
-                if (URR_isotopes(i) % ZAI == nuclides(i_nuc) % zaid .and.&
+                ZA = '000'
+                ZA(4-len(trim(adjustl(to_str(nuclides(i_nuc) % A)))):3)&
+                     = trim(adjustl(to_str(nuclides(i_nuc) % A)))
+                ZA = trim(adjustl(to_str(nuclides(i_nuc) % Z))) // ZA
+                if ((ZA == trim(adjustl(to_str(URR_isotopes(i) % ZAI)))) .and.&
                      (.not. allocated(URR_isotopes(i) % urr_resonances))) then
                   call URR_isotopes(i) % resonance_ladder_realization()
                   call URR_write_MF2(i)
@@ -200,11 +215,21 @@ contains
           end if
           do i = 1, URR_num_isotopes
             do i_nuc = 1, n_nuclides_total
-              if (URR_isotopes(i) % ZAI == nuclides(i_nuc) % zaid .and.&
+              ZA = '000'
+              ZA(4-len(trim(adjustl(to_str(nuclides(i_nuc) % A)))):3)&
+                   = trim(adjustl(to_str(nuclides(i_nuc) % A)))
+              ZA = trim(adjustl(to_str(nuclides(i_nuc) % Z))) // ZA
+              if ((ZA == trim(adjustl(to_str(URR_isotopes(i) % ZAI)))) .and.&
                    (.not. allocated(URR_isotopes(i) % urr_resonances))) then
                 call URR_isotopes(i) % resonance_ladder_realization()
                 call URR_write_MF2(i)
-                call URR_isotopes(i) % generate_pointwise_xs(nuclides(i_nuc) % kT / K_BOLTZMANN)
+                do i_temperature = 1, size(nuclides(i_nuc) % kTs)
+                  if (i_temperature /= 1)&
+                       call fatal_error('Trying to generate pointwise PURXS cross sections&
+                       & at multiple temperatures for the same isotope: currently not&
+                       & implemented.')
+                  call URR_isotopes(i) % generate_pointwise_xs(nuclides(i_nuc) % kTs(i_temperature) / K_BOLTZMANN)
+                end do
               end if
             end do
           end do
@@ -216,9 +241,6 @@ contains
         end select
 
       end if
-
-      ! Create linked lists for multiple instances of the same nuclide
-      call same_nuclide_list()
 #endif
       ! Construct information needed for nuclear data
       if (run_CE) then
@@ -278,11 +300,17 @@ contains
 #ifdef PURXS
     integer :: i     ! isotope index
     integer :: i_nuc ! ACE data index
+    character(len=:), allocatable :: ZA
 
     do i = 1, URR_num_isotopes
       do i_nuc = 1, n_nuclides_total
-        if (nuclides(i_nuc) % zaid == URR_isotopes(i) % ZAI) then
-!TODO: handle metastable
+        ZA = '000'
+        ZA(4-len(trim(adjustl(to_str(nuclides(i_nuc) % A)))):3)&
+             = trim(adjustl(to_str(nuclides(i_nuc) % A)))
+        ZA = trim(adjustl(to_str(nuclides(i_nuc) % Z))) // ZA
+        if (ZA == trim(adjustl(to_str(URR_isotopes(i) % ZAI)))) then
+          !TODO: handle metastable
+          print*, ZA, URR_isotopes(i) % ZAI
           nuclides(i_nuc) % i_isotope = i
           URR_isotopes(i) % prob_bands   = .false.
           URR_isotopes(i) % otf_urr_xs   = .false.

@@ -325,8 +325,8 @@ contains
 #ifdef PURXS
       if (associated(tope)) then
 
-        if (E * 1.0E6_8 >= tope % EL(tope % i_urr)&
-             .and. E * 1.0E6_8 <= tope % EH(tope % i_urr)) then
+        if (E >= tope % EL(tope % i_urr)&
+             .and. E <= tope % EH(tope % i_urr)) then
 
           micro_xs(i_nuclide) % in_urr = .true.
 
@@ -342,29 +342,23 @@ contains
             ! to preserve correlation of temperature in probability tables
             same_nuc = .false.
 
-            do i_nuc = 1, nuc % nuc_list % size()
-              if (E /= ZERO .and. E == micro_xs(nuc % nuc_list % get_item(i_nuc)) % last_E) then
-                same_nuc = .true.
-                i_same_nuc = i_nuc
-                exit
-              end if
-            end do
+            if (E /= ZERO .and. E == micro_xs(i_nuclide) % last_E) same_nuc = .true.
 
             if (same_nuc) then
-              r = micro_xs(nuc % nuc_list % get_item(i_same_nuc)) % last_prn
+              r = micro_xs(i_nuclide) % last_prn
             else
               r = prn()
-              micro_xs(i_nuc) % last_prn = r
+              micro_xs(i_nuclide) % last_prn = r
             end if
 
-            call tope % prob_band_xs(1.0E6_8 * E, nuc % kT / K_BOLTZMANN, xs, URR_xs, r)
+            call tope % prob_band_xs(E, nuc % kTs(i_temp) / K_BOLTZMANN, xs, URR_xs, r)
 
           else if (tope % otf_urr_xs) then
 
             select case(URR_realization_frequency)
             case (URR_EVENT)
-              call tope % new_realization_otf_xs(1.0E6_8 * E, &
-                   nuc % kT / K_BOLTZMANN, xs, URR_xs)
+              call tope % new_realization_otf_xs( E, &
+                   nuc % kTs(i_temp) / K_BOLTZMANN, xs, URR_xs)
 
             case (URR_HISTORY)
               call fatal_error('History-based URR realizations not yet supported')
@@ -373,8 +367,8 @@ contains
               call fatal_error('Batch-based URR realizations not yet supported')
 
             case (URR_SIMULATION)
-              call tope % fixed_realization_otf_xs(1.0E6_8 * E,&
-                   nuc % kT / K_BOLTZMANN, xs, URR_xs)
+              call tope % fixed_realization_otf_xs(E,&
+                   nuc % kTs(i_temp) / K_BOLTZMANN, xs, URR_xs)
 
             case default
               call fatal_error('Unrecognized URR realization frequency')
@@ -382,8 +376,8 @@ contains
             end select
 
           else if (tope % point_urr_xs) then !TODO break out a new pointwise_xs subroutine
-            call tope % new_realization_otf_xs(1.0E6_8 * E,&
-                 nuc % kT / K_BOLTZMANN, xs, URR_xs)
+            call tope % new_realization_otf_xs(E,&
+                 nuc % kTs(i_temp) / K_BOLTZMANN, xs, URR_xs)
 
           else
             call fatal_error('No allowed URR treatment for URR_isotope object')
@@ -394,9 +388,6 @@ contains
           micro_xs(i_nuclide) % fission    = URR_xs % f
           micro_xs(i_nuclide) % absorption = URR_xs % f + URR_xs % g
           micro_xs(i_nuclide) % total      = URR_xs % t
-          if (nuc % fissionable) micro_xs(i_nuclide) % nu_fission&
-               = nu_total(nuc, E) * micro_xs(i_nuclide) % fission
-
         end if
 
       else if (urr_ptables_on .and. nuc % urr_present) then

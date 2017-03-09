@@ -1,5 +1,5 @@
 module purxs_api
-
+#ifdef PURXS
   use URR_endf6,     only:&
        URR_read_endf6 => read_endf6
   use URR_error, only:&
@@ -84,5 +84,5 @@ module purxs_api
        URR_parameter_energy_dependence => parameter_energy_dependence
   use URR_cross_Sections, only:&
        URR_Type_CrossSections => CrossSections
-
+#endif
 end module purxs_api

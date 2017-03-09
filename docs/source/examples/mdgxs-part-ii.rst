@@ -1,8 +1,8 @@
 .. _notebook_mdgxs_part_ii:
 
-================================
-MDGXS Part II: Advanced Features
-================================
+=========================================================================
+Multi-Group (Delayed) Cross Section Generation Part II: Advanced Features
+=========================================================================
 
 .. only:: html
 

@@ -1,4 +1,4 @@
-gmodule cmfd_data
+module cmfd_data
 
 !==============================================================================
 ! CMFD_DATA -- This module processes the cmfd tally object to generate

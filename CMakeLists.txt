@@ -31,7 +31,7 @@ option(debug    "Compile with debug flags"                       OFF)
 option(optimize "Turn on all compiler optimization flags"        OFF)
 option(coverage "Compile with coverage analysis flags"           OFF)
 option(mpif08   "Use Fortran 2008 MPI interface"                 OFF)
-option(purxs    "Compile with PURXS"                             ON)
+option(purxs    "Compile with PURXS"                             OFF)
 
 # Maximum number of nested coordinates levels
 set(maxcoord 10 CACHE STRING "Maximum number of nested coordinate levels")
@@ -247,121 +247,16 @@ set(CMAKE_INSTALL_RPATH_USE_LINK_PATH TRUE)
 #===============================================================================
 
 add_library(faddeeva STATIC src/faddeeva/Faddeeva.c)
-add_library(URR_faddeeva STATIC purxs/src/Faddeeva.c)
+if(purxs)
+  add_library(URR_faddeeva STATIC purxs/src/Faddeeva.c)
+endif()
 
 #===============================================================================
 # Build OpenMC executable
 #===============================================================================
 
 set(program "openmc")
-if (0)
-set(LIBOPENMC_FORTRAN_SRC
-  src/algorithm.F90
-  src/angle_distribution.F90
-  src/angleenergy_header.F90
-  src/bank_header.F90
-  src/cmfd_data.F90
-  src/cmfd_execute.F90
-  src/cmfd_header.F90
-  src/cmfd_input.F90
-  src/cmfd_loss_operator.F90
-  src/cmfd_prod_operator.F90
-  src/cmfd_solver.F90
-  src/constants.F90
-  src/cross_section.F90
-  src/dict_header.F90
-  src/distribution_multivariate.F90
-  src/distribution_univariate.F90
-  src/doppler.F90
-  src/eigenvalue.F90
-  src/endf.F90
-  src/endf_header.F90
-  src/energy_distribution.F90
-  src/energy_grid.F90
-  src/error.F90
-  src/finalize.F90
-  src/geometry.F90
-  src/geometry_header.F90
-  src/global.F90
-  src/hdf5_interface.F90
-  src/initialize.F90
-  src/input_xml.F90
-  src/list_header.F90
-  src/material_header.F90
-  src/math.F90
-  src/matrix_header.F90
-  src/mesh.F90
-  src/mesh_header.F90
-  src/message_passing.F90
-  src/mgxs_data.F90
-  src/mgxs_header.F90
-  src/multipole.F90
-  src/multipole_header.F90
-  src/nuclide_header.F90
-  src/output.F90
-  src/particle_header.F90
-  src/particle_restart.F90
-  src/particle_restart_write.F90
-  src/physics_common.F90
-  src/physics.F90
-  src/physics_mg.F90
-  src/plot.F90
-  src/plot_header.F90
-  src/product_header.F90
-  src/progress_header.F90
-  src/purxs_api.F90
-  src/random_lcg.F90
-  src/reaction_header.F90
-  src/relaxng
-  src/sab_header.F90
-  src/scattdata_header.F90
-  src/secondary_correlated.F90
-  src/secondary_kalbach.F90
-  src/secondary_nbody.F90
-  src/secondary_uncorrelated.F90
-  src/set_header.F90
-  src/simulation.F90
-  src/source.F90
-  src/source_header.F90
-  src/state_point.F90
-  src/stl_vector.F90
-  src/string.F90
-  src/summary.F90
-  src/surface_header.F90
-  src/tally.F90
-  src/tally_filter.F90
-  src/tally_filter_header.F90
-  src/tally_header.F90
-  src/tally_initialize.F90
-  src/timer_header.F90
-  src/tracking.F90
-  src/track_output.F90
-  src/trigger.F90
-  src/trigger_header.F90
-  src/urr_header.F90
-  src/vector_header.F90
-  src/volume_calc.F90
-  src/volume_header.F90
-  src/xml_interface.F90)
-#  purxs/src/Faddeeva.c
-#  purxs/src/Faddeeva.cc
-#  purxs/src/Faddeeva.h
-#  purxs/src/URR_constants.F90
-#  purxs/src/URR_cross_sections.F90
-#  purxs/src/URR_edits.F90
-#  purxs/src/URR_endf6.F90
-#  purxs/src/URR_error.F90
-#  purxs/src/URR_faddeeva.F90
-#  purxs/src/URR_interpolate.F90
-#  purxs/src/URR_io.F90
-#  purxs/src/URR_isotope.F90
-#  purxs/src/URR_openmc_wrapper.F90
-#  purxs/src/URR_probability_table.F90
-#  purxs/src/URR_resonance.F90
-#  purxs/src/URR_settings.F90
-#  purxs/src/URR_tally.F90
-#  purxs/src/URR_vector.F90)
-endif()
+
 #===============================================================================
 # PURXS Package
 #===============================================================================
@@ -379,18 +274,9 @@ endif()
 
 if(purxs)
   add_definitions(-DPURXS)
-#  file(GLOB source src/*.F90 purxs/src/URR_*)
   file(GLOB LIBOPENMC_FORTRAN_SRC src/*.F90 purxs/src/URR_*)
-
-  # build static Faddeeva library
-#  option(BUILD_SHARED_LIBS "Build shared libraries" OFF)
-#  ADD_LIBRARY (URR_faddeeva STATIC purxs/src/Faddeeva.c purxs/src/Faddeeva.cc purxs/src/Faddeeva.h)
-#  SET_TARGET_PROPERTIES(URR_faddeeva PROPERTIES COMPILE_FLAGS "${cflags}")
-
-  # build static PURXS library
-#  file(GLOB URR_LIBOPENMC_FORTRAN_SRC ${LIBOPENMC_FORTRAN_SRC} purxs/src/URR_*)
-#  ADD_LIBRARY (PURXS STATIC ${PURXS_src})
-#  SET_TARGET_PROPERTIES(PURXS PROPERTIES COMPILE_FLAGS "${f90flags}")
+else()
+  file(GLOB LIBOPENMC_FORTRAN_SRC src/*.F90)
 endif()
 
 add_library(libopenmc STATIC ${LIBOPENMC_FORTRAN_SRC})
@@ -416,12 +302,16 @@ if (CMAKE_VERSION VERSION_LESS 2.8.12)
   string(REPLACE ";" " " cflags "${cflags}")
   set_property(TARGET ${program} PROPERTY COMPILE_FLAGS "${f90flags}")
   set_property(TARGET faddeeva PROPERTY COMPILE_FLAGS "${cflags}")
+if(purxs)
   set_property(TARGET URR_faddeeva PROPERTY COMPILE_FLAGS "${cflags}")
+endif()
 else()
   target_compile_options(${program} PUBLIC ${f90flags})
   target_compile_options(libopenmc PUBLIC ${f90flags})
   target_compile_options(faddeeva PRIVATE ${cflags})
+if(purxs)
   target_compile_options(URR_faddeeva PRIVATE ${cflags})
+endif()
 endif()
 
 # Add HDF5 library directories to link line with -L
@@ -431,9 +321,13 @@ endforeach()
 
 # target_link_libraries treats any arguments starting with - but not -l as
 # linker flags. Thus, we can pass both linker flags and libraries together.
+if(purxs)
 target_link_libraries(libopenmc ${ldflags} ${HDF5_LIBRARIES} pugixml_fortran faddeeva URR_faddeeva)
 target_link_libraries(${program} ${ldflags} libopenmc faddeeva URR_faddeeva)
-
+else()
+target_link_libraries(libopenmc ${ldflags} ${HDF5_LIBRARIES} pugixml_fortran faddeeva)
+target_link_libraries(${program} ${ldflags} libopenmc faddeeva)
+endif()
 #===============================================================================
 # Install executable, scripts, manpage, license
 #===============================================================================

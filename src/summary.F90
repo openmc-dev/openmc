@@ -4,7 +4,7 @@ module summary
 
   use constants
   use endf,            only: reaction_name
-  use geometry_header, only: BASE_UNIVERSE, Cell, Universe, Lattice, &
+  use geometry_header, only: root_universe, Cell, Universe, Lattice, &
                              RectLattice, HexLattice
   use global
   use hdf5_interface
@@ -123,11 +123,8 @@ contains
     integer(HID_T) :: lattices_group, lattice_group
     real(8), allocatable :: coeffs(:)
     character(:), allocatable :: region_spec
-    character(MAX_LINE_LEN), allocatable :: paths(:)
-    character(MAX_LINE_LEN)              :: path
     type(Cell),     pointer :: c
     class(Surface), pointer :: s
-    type(Universe), pointer :: u
     class(Lattice), pointer :: lat
 
     ! Use H5LT interface to write number of geometry objects
@@ -226,22 +223,6 @@ contains
         end select
       end do
       call write_dataset(cell_group, "region", adjustl(region_spec))
-
-      ! Write distribcell data
-      if (c % distribcell_index /= NONE) then
-        call write_dataset(cell_group, "distribcell_index", &
-                           c % distribcell_index)
-
-        allocate(paths(c % instances))
-        do k = 1, c % instances
-          path = ''
-          offset = 1
-          call find_offset(i, universes(BASE_UNIVERSE), k, offset, path)
-          paths(k) = path
-        end do
-        call write_dataset(cell_group, "paths", paths)
-        deallocate(paths)
-      end if
 
       call close_group(cell_group)
     end do CELL_LOOP
@@ -354,21 +335,22 @@ contains
 
     ! Write information on each universe
     UNIVERSE_LOOP: do i = 1, n_universes
-      u => universes(i)
-      univ_group = create_group(universes_group, "universe " // &
-           trim(to_str(u%id)))
+      associate (u => universes(i))
+        univ_group = create_group(universes_group, "universe " // &
+             trim(to_str(u%id)))
 
-      ! Write list of cells in this universe
-      if (u % n_cells > 0) then
-        allocate(cell_ids(u % n_cells))
-        do j = 1, u % n_cells
-          cell_ids(j) = cells(u % cells(j)) % id
-        end do
-        call write_dataset(univ_group, "cells", cell_ids)
-        deallocate(cell_ids)
-      end if
+        ! Write list of cells in this universe
+        if (size(u % cells) > 0) then
+          allocate(cell_ids(size(u % cells)))
+          do j = 1, size(u % cells)
+            cell_ids(j) = cells(u % cells(j)) % id
+          end do
+          call write_dataset(univ_group, "cells", cell_ids)
+          deallocate(cell_ids)
+        end if
 
-      call close_group(univ_group)
+        call close_group(univ_group)
+      end associate
     end do UNIVERSE_LOOP
 
     call close_group(universes_group)
@@ -391,13 +373,6 @@ contains
         call write_dataset(lattice_group, "outer", universes(lat % outer) % id)
       else
         call write_dataset(lattice_group, "outer", lat % outer)
-      end if
-
-      ! Write distribcell offsets if present
-      if (allocated(lat%offset)) then
-        if (size(lat%offset) > 0) then
-          call write_dataset(lattice_group, "offsets", lat%offset)
-        end if
       end if
 
       select type (lat)

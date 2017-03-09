@@ -38,9 +38,6 @@ The current version of the summary file format is 5.0.
              is an array if the cell uses distributed materials, otherwise it is
              a scalar.
            - **temperature** (*double[]*) -- Temperature of the cell in Kelvin.
-           - **offset** (*int[]*) -- Offsets used for distribcell tally
-             filter. This dataset is present only if fill_type is set to
-             'universe'.
            - **translation** (*double[3]*) -- Translation applied to the fill
              universe. This dataset is present only if fill_type is set to
              'universe'.
@@ -50,15 +47,6 @@ The current version of the summary file format is 5.0.
            - **lattice** (*int*) -- Unique ID of the lattice which fills the
              cell. Only present if fill_type is set to 'lattice'.
            - **region** (*char[]*) -- Region specification for the cell.
-           - **distribcell_index** (*int*) -- Index of this cell in distribcell
-             arrays. Only present if this cell is listed in a distribcell filter
-             or if it uses distributed materials.
-           - **paths** (*char[][]*) -- The paths traversed through the CSG tree
-             to reach each distribcell instance. This consists of the integer
-             IDs for each universe, cell and lattice delimited by '->'. Each
-             lattice cell is specified by its (x,y) or (x,y,z) indices. Only
-             present if this cell is listed in a distribcell filter or if it
-             uses distributed materials.
 
 **/geometry/surfaces/surface <uid>/**
 
@@ -87,7 +75,6 @@ The current version of the summary file format is 5.0.
            - **pitch** (*double[]*) -- Pitch of the lattice in centimeters.
            - **outer** (*int*) -- Outer universe assigned to lattice cells
              outside the defined range.
-           - **offsets** (*int[]*) -- Offsets used for distribcell tally filter.
            - **universes** (*int[][][]*) -- Three-dimensional array of universes
              assigned to each cell of the lattice.
            - **dimension** (*int[]*) -- The number of lattice cells in each

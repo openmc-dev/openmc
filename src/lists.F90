@@ -57,11 +57,11 @@ contains
 
       ! stash the next element
       next => this % head % next
-      
+
       ! if the current element is the first, don't need to deallocated
       if (.not. associated(this % head, target=this % first))&
            deallocate(this % head)
-      
+
       ! point to the next element
       this % head => next
 

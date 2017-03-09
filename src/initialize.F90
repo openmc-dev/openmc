@@ -333,7 +333,7 @@ contains
           end if
         end if
       end do
-      
+
       URR_isotopes(i) % prob_bands   = .false.
       URR_isotopes(i) % otf_urr_xs   = .false.
       URR_isotopes(i) % point_urr_xs = .false.

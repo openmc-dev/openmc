@@ -12,7 +12,6 @@ module eigenvalue
   use random_lcg,  only: prn, set_particle_seed, advance_prn_seed
   use string,      only: to_str
 
-
   implicit none
 
   real(8) :: keff_generation ! Single-generation k on each processor
@@ -340,7 +339,7 @@ contains
 
     ! display warning message if there were sites outside entropy box
     if (sites_outside) then
-      call warning("Fission source site(s) outside of entropy box.")
+      if (master) call warning("Fission source site(s) outside of entropy box.")
     end if
 
     ! sum values to obtain shannon entropy

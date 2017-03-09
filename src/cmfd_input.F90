@@ -79,7 +79,7 @@ contains
     else
 
       ! Tell user
-      call write_message("Reading CMFD XML file...")
+      call write_message("Reading CMFD XML file...", 5)
 
     end if
 

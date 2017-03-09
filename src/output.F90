@@ -625,7 +625,8 @@ contains
       write(ou,102) "Leakage Fraction", global_tallies(RESULT_SUM, LEAKAGE), &
            global_tallies(RESULT_SUM_SQ, LEAKAGE)
     else
-      call warning("Could not compute uncertainties -- only one active batch simulated!")
+      if (master) call warning("Could not compute uncertainties -- only one &
+           &active batch simulated!")
 
       if (run_mode == MODE_EIGENVALUE) then
         write(ou,103) "k-effective (Collision)", global_tallies(RESULT_SUM, K_COLLISION)

@@ -295,10 +295,10 @@ contains
       n_groups = size(cmfd % egrid) - 1
       if (source_bank(i) % E < cmfd % egrid(1)) then
         e_bin = 1
-        call warning('Source pt below energy grid')
+        if (master) call warning('Source pt below energy grid')
       elseif (source_bank(i) % E > cmfd % egrid(n_groups + 1)) then
         e_bin = n_groups
-        call warning('Source pt above energy grid')
+        if (master) call warning('Source pt above energy grid')
       else
         e_bin = binary_search(cmfd % egrid, n_groups + 1, source_bank(i) % E)
       end if

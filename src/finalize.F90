@@ -47,7 +47,6 @@ contains
 #ifdef MPI
       ! Free all MPI types
       call MPI_TYPE_FREE(MPI_BANK, mpi_err)
-      call MPI_TYPE_FREE(MPI_TALLYRESULT, mpi_err)
 
       ! If MPI is in use and enabled, terminate it
       call MPI_FINALIZE(mpi_err)

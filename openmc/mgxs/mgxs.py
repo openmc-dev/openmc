@@ -4125,8 +4125,9 @@ class ScatterMatrixXS(MatrixMGXS):
                     self.tallies[tally_key].scores = \
                         [score_prefix + '{}'.format(i)
                          for i in range(self.legendre_order + 1)]
-        elif self.scatter_format == 'histogram':
-            self.tallies[self.rxn_type].scores = [self.rxn_type]
+#        elif self.scatter_format == 'histogram':
+#            print(self.tallies.keys(), self.tally_keys)
+#            self.tallies[self.rxn_type].scores = [self.rxn_type]
 
         super(ScatterMatrixXS, self).load_from_statepoint(statepoint)
 

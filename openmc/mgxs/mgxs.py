@@ -3964,16 +3964,31 @@ class ScatterMatrixXS(MatrixMGXS):
                 energyout_bins = [self.energy_groups.get_group_bounds(i)
                                   for i in range(self.num_groups, 0, -1)]
                 tally_key = 'scatter-P{}'.format(self.legendre_order)
+
+                # Compute normalization factor summed across outgoing energies
                 norm = self.tallies[tally_key].get_slice(scores=['scatter-0'])
                 norm = norm.summation(
                     filter_type=openmc.EnergyoutFilter, filter_bins=energyout_bins)
 
                 # Remove the AggregateFilter summed across energyout bins
                 norm._filters = norm._filters[:2]
+
+                # Compute normalization factor summed across outgoing mu bins
                 if self.scatter_format == 'histogram':
-                    bins = np.linspace(
+
+                    # (Re-)append the MuFilter which was removed above
+                    mu_bins = np.linspace(
                         -1., 1., num=self.histogram_bins + 1, endpoint=True)
-                    norm._filters.append(openmc.MuFilter(bins))
+                    norm._filters.append(openmc.MuFilter(mu_bins))
+
+                    # Sum across all mu bins
+                    mu_bins = [(mu_bins[i], mu_bins[i+1]) for
+                               i in range(self.histogram_bins)]
+                    norm = norm.summation(
+                        filter_type=openmc.MuFilter, filter_bins=mu_bins)
+
+                    # Remove the AggregateFilter summed across mu bins
+                    norm._filters = norm._filters[:2]
 
                 # Multiply by the group-to-group probability matrix
                 self._xs_tally *= (self.tallies[tally_key] / norm)

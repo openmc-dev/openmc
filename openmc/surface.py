@@ -1882,7 +1882,8 @@ class Halfspace(Region):
             else str(self.surface.id)
 
 
-def get_rectangular_prism(width, height, axis='z', origin=(0., 0.)):
+def get_rectangular_prism(width, height, axis='z', origin=(0., 0.),
+                          boundary_type='transmission'):
     """Get an infinite rectangular prism from four planar surfaces.
 
     Parameters
@@ -1900,6 +1901,9 @@ def get_rectangular_prism(width, height, axis='z', origin=(0., 0.)):
         Origin of the prism. The two floats correspond to (y,z), (x,z) or
         (x,y) for prisms parallel to the x, y or z axis, respectively.
         Defaults to (0., 0.).
+    boundary_type : {'transmission, 'vacuum', 'reflective', 'periodic'}
+        Boundary condition that defines the behavior for particles hitting the
+        surfaces comprising the rectangular prism (default is 'transmission').
 
     Returns
     -------
@@ -1914,28 +1918,41 @@ def get_rectangular_prism(width, height, axis='z', origin=(0., 0.)):
     check_type('origin', origin, Iterable, Real)
 
     if axis == 'x':
-        min_y = YPlane(name='minimum y', y0=-width/2.+origin[0])
-        max_y = YPlane(name='maximum y', y0=+width/2.+origin[0])
-        min_z = ZPlane(name='minimum z', z0=-height/2.+origin[1])
-        max_z = ZPlane(name='maximum z', z0=+height/2.+origin[1])
+        min_y = YPlane(name='minimum y', y0=-width/2.+origin[0],
+                       boundary_type=boundary_type)
+        max_y = YPlane(name='maximum y', y0=+width/2.+origin[0],
+                       boundary_type=boundary_type)
+        min_z = ZPlane(name='minimum z', z0=-height/2.+origin[1],
+                       boundary_type=boundary_type)
+        max_z = ZPlane(name='maximum z', z0=+height/2.+origin[1],
+                       boundary_type=boundary_type)
         prism = +min_y & -max_y & +min_z & -max_z
     elif axis == 'y':
-        min_x = XPlane(name='minimum x', x0=-width/2.+origin[0])
-        max_x = XPlane(name='maximum x', x0=+width/2.+origin[0])
-        min_z = ZPlane(name='minimum z', z0=-height/2.+origin[1])
-        max_z = ZPlane(name='maximum z', z0=+height/2.+origin[1])
+        min_x = XPlane(name='minimum x', x0=-width/2.+origin[0],
+                       boundary_type=boundary_type)
+        max_x = XPlane(name='maximum x', x0=+width/2.+origin[0],
+                       boundary_type=boundary_type)
+        min_z = ZPlane(name='minimum z', z0=-height/2.+origin[1],
+                       boundary_type=boundary_type)
+        max_z = ZPlane(name='maximum z', z0=+height/2.+origin[1],
+                       boundary_type=boundary_type)
         prism = +min_x & -max_x & +min_z & -max_z
     else:
-        min_x = XPlane(name='minimum x', x0=-width/2.+origin[0])
-        max_x = XPlane(name='maximum x', x0=+width/2.+origin[0])
-        min_y = YPlane(name='minimum y', y0=-height/2.+origin[1])
-        max_y = YPlane(name='maximum y', y0=+height/2.+origin[1])
+        min_x = XPlane(name='minimum x', x0=-width/2.+origin[0],
+                       boundary_type=boundary_type)
+        max_x = XPlane(name='maximum x', x0=+width/2.+origin[0],
+                       boundary_type=boundary_type)
+        min_y = YPlane(name='minimum y', y0=-height/2.+origin[1],
+                       boundary_type=boundary_type)
+        max_y = YPlane(name='maximum y', y0=+height/2.+origin[1],
+                       boundary_type=boundary_type)
         prism = +min_x & -max_x & +min_y & -max_y
 
     return prism
 
 
-def get_hexagonal_prism(edge_length=1., orientation='y'):
+def get_hexagonal_prism(edge_length=1., orientation='y',
+                        boundary_type='transmission'):
     """Create a hexagon region from six surface planes.
 
     Parameters
@@ -1946,6 +1963,9 @@ def get_hexagonal_prism(edge_length=1., orientation='y'):
         An 'x' orientation means that two sides of the hexagon are parallel to
         the x-axis and a 'y' orientation means that two sides of the hexagon are
         parallel to the y-axis.
+    boundary_type : {'transmission, 'vacuum', 'reflective', 'periodic'}
+        Boundary condition that defines the behavior for particles hitting the
+        surfaces comprising the hexagonal prism (default is 'transmission').
 
     Returns
     -------
@@ -1960,10 +1980,18 @@ def get_hexagonal_prism(edge_length=1., orientation='y'):
         right = XPlane(x0=sqrt(3.)/2.*l)
         left = XPlane(x0=-sqrt(3.)/2.*l)
         c = sqrt(3.)/3.
-        upper_right = Plane(A=c, B=1., D=l)  # y = -x/sqrt(3) + a
-        upper_left = Plane(A=-c, B=1., D=l)  # y = x/sqrt(3) + a
-        lower_right = Plane(A=-c, B=1., D=-l) # y = x/sqrt(3) - a
-        lower_left = Plane(A=c, B=1., D=-l)  # y = -x/sqrt(3) - a
+
+        # y = -x/sqrt(3) + a
+        upper_right = Plane(A=c, B=1., D=l, boundary_type=boundary_type)
+
+        # y = x/sqrt(3) + a
+        upper_left = Plane(A=-c, B=1., D=l, boundary_type=boundary_type)
+
+        # y = x/sqrt(3) - a
+        lower_right = Plane(A=-c, B=1., D=-l, boundary_type=boundary_type)
+
+        # y = -x/sqrt(3) - a
+        lower_left = Plane(A=c, B=1., D=-l, boundary_type=boundary_type)
         return Intersection(-right, +left, -upper_right, -upper_left,
                             +lower_right, +lower_left)
 
@@ -1971,9 +1999,17 @@ def get_hexagonal_prism(edge_length=1., orientation='y'):
         top = YPlane(y0=sqrt(3.)/2.*l)
         bottom = YPlane(y0=-sqrt(3.)/2.*l)
         c = sqrt(3.)
-        upper_right = Plane(A=c, B=1., D=c*l)  # y = -sqrt(3)*(x - a)
-        lower_right = Plane(A=-c, B=1., D=-c*l)  # y = sqrt(3)*(x + a)
-        lower_left = Plane(A=c, B=1., D=-c*l) # y = -sqrt(3)*(x + a)
-        upper_left = Plane(A=-c, B=1., D=c*l)  # y = sqrt(3)*(x + a)
+
+        # y = -sqrt(3)*(x - a)
+        upper_right = Plane(A=c, B=1., D=c*l, boundary_type=boundary_type)
+
+        # y = sqrt(3)*(x + a)
+        lower_right = Plane(A=-c, B=1., D=-c*l, boundary_type=boundary_type)
+
+        # y = -sqrt(3)*(x + a)
+        lower_left = Plane(A=c, B=1., D=-c*l, boundary_type=boundary_type)
+
+        # y = sqrt(3)*(x + a)
+        upper_left = Plane(A=-c, B=1., D=c*l, boundary_type=boundary_type)
         return Intersection(-top, +bottom, -upper_right, +lower_right,
                             +lower_left, -upper_left)

@@ -4,7 +4,6 @@ module particle_restart
 
   use bank_header,      only: Bank
   use constants
-  use geometry_header,  only: BASE_UNIVERSE
   use global
   use hdf5_interface,   only: file_open, file_close, read_dataset
   use output,           only: write_message, print_particle

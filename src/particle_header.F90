@@ -4,7 +4,7 @@ module particle_header
   use constants,       only: NEUTRON, ONE, NONE, ZERO, MAX_SECONDARY, &
                              MAX_DELAYED_GROUPS, ERROR_REAL
   use error,           only: fatal_error
-  use geometry_header, only: BASE_UNIVERSE
+  use geometry_header, only: root_universe
 
   implicit none
 
@@ -144,7 +144,7 @@ contains
     this % g = 1
 
     ! Set up base level coordinates
-    this % coord(1) % universe = BASE_UNIVERSE
+    this % coord(1) % universe = root_universe
     this % n_coord = 1
 
   end subroutine initialize_particle

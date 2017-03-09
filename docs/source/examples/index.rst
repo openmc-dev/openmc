@@ -1,13 +1,13 @@
 .. _examples:
 
-=========================
-Example Jupyter Notebooks
-=========================
+=================
+Example Notebooks
+=================
 
-The following series of Jupyter Notebooks provide examples for usage of OpenMC
-features via the `Python API`_.
+The following series of Jupyter_ Notebooks provide examples for usage of OpenMC
+features via the :ref:`pythonapi`.
 
-.. _Python API: ../pythonapi/index.html
+.. _Jupyter: https://jupyter.org/
 
 .. toctree::
     :maxdepth: 1

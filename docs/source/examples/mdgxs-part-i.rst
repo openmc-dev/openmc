@@ -1,8 +1,8 @@
 .. _notebook_mdgxs_part_i:
 
-==========================
-MDGXS Part I: Introduction
-==========================
+===================================================================
+Multi-Group (Delayed) Cross Section Generation Part I: Introduction
+===================================================================
 
 .. only:: html
 

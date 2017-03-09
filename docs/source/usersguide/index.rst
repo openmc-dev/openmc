@@ -9,7 +9,7 @@ essential aspects of using OpenMC to perform simulations.
 
 .. toctree::
     :numbered:
-    :maxdepth: 3
+    :maxdepth: 2
 
     beginners
     install

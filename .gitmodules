@@ -5,7 +5,3 @@
 	path = purxs
 	url = git@github.com:walshjon/purxs
 	branch = develop
-[submodule "/Users/walshjon/dev/openmc-0.6.1/purxs"]
-	path = /Users/walshjon/dev/openmc-0.6.1/purxs
-	url = https://github.com/walshjon/purxs
-	branch = develop

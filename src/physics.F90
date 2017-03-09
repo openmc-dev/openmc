@@ -54,8 +54,7 @@ contains
     ! check for very low energy
     if (p % E < 1.0e-100_8) then
       p % alive = .false.
-      message = "Killing neutron with extremely low energy"
-      call warning()
+      call warning("Killing neutron with extremely low energy")
     end if
 
     ! Advance URR seed stream 'N' times after energy changes
@@ -176,8 +175,7 @@ contains
       ! Check to make sure that a nuclide was sampled
       if (i_nuc_mat > mat % n_nuclides) then
         call write_particle_restart(p)
-        message = "Did not sample any nuclide during collision."
-        call fatal_error()
+        call fatal_error("Did not sample any nuclide during collision.")
       end if
 
       ! Find atom density
@@ -406,9 +404,8 @@ contains
         ! Check to make sure inelastic scattering reaction sampled
         if (i > size(nuc % reactions)) then
           call write_particle_restart(p)
-          message = "Did not sample any reaction for nuclide " // &
-               trim(nuc % name)
-          call fatal_error()
+          call fatal_error("Did not sample any reaction for nuclide " // &
+               trim(nuc % name))
         end if
 
         rxn => nuc % reactions(i)
@@ -1053,8 +1050,7 @@ contains
       end do
 
     case default
-      message = "Not a recognized resonance scattering treatment!"
-      call fatal_error()
+      call fatal_error("Not a recognized resonance scattering treatment!")
 
     end select
 
@@ -1168,8 +1164,7 @@ contains
       call get_mesh_indices(ufs_mesh, p % coord(1) % xyz, ijk, in_mesh)
       if (.not. in_mesh) then
         call write_particle_restart(p)
-        message = "Source site outside UFS mesh!"
-        call fatal_error()
+        call fatal_error("Source site outside UFS mesh!")
       end if
 
       if (source_frac(1,ijk(1),ijk(2),ijk(3)) /= ZERO) then

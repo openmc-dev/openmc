@@ -2,6 +2,10 @@ module purxs_api
 
   use URR_endf6,     only:&
        URR_read_endf6 => read_endf6
+  use URR_error, only:&
+       URR_EXIT_SUCCESS => EXIT_SUCCESS,&
+       URR_EXIT_FAILURE => EXIT_FAILURE,&
+       URR_EXIT_WARNING => EXIT_WARNING
   use URR_faddeeva,  only:&
        URR_tabulate_w => tabulate_w
   use URR_io,        only:&

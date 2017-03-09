@@ -129,7 +129,7 @@ contains
     end if
 
     if (run_mode /= MODE_PLOTTING) then
-
+#ifdef PURXS
       ! Read ENDF-6 format nuclear data file
       if (URR_use_urr) then
         call initialize_endf()
@@ -171,17 +171,14 @@ contains
             continue
           case (URR_HISTORY)
             continue
-            message = 'History-based URR realizations not yet supported'
-            call fatal_error()
+            call fatal_error('History-based URR realizations not yet supported')
           case (URR_BATCH)
             continue
-            message = 'Batch-based URR realizations not yet supported'
-            call fatal_error()
+            call fatal_error('Batch-based URR realizations not yet supported')
           case (URR_SIMULATION)
             if (URR_parameter_energy_dependence /= URR_E_RESONANCE) then
-              message = 'Generating a resonance ensemble with parameters&
-                   & dependent on neutron energy'
-              call fatal_error()
+              call fatal_error('Generating a resonance ensemble with parameters&
+                   & dependent on neutron energy')
             end if
             do i = 1, URR_num_isotopes
               do i_nuc = 1, n_nuclides_total
@@ -193,15 +190,13 @@ contains
               end do
             end do
           case default
-            message = 'Not a recognized URR realization frequency'
-            call fatal_error()
+            call fatal_error('Not a recognized URR realization frequency')
           end select
 
         case (URR_POINTWISE)
           if (URR_parameter_energy_dependence /= URR_E_RESONANCE) then
-            message = 'Generating &
-                 &a resonance ensemble with E_n-dependent parameters'
-            call fatal_error()
+            call fatal_error('Generating &
+                 &a resonance ensemble with E_n-dependent parameters')
           end if
           do i = 1, URR_num_isotopes
             do i_nuc = 1, n_nuclides_total
@@ -215,9 +210,8 @@ contains
           end do
 
         case default
-          message = 'Must specify a URR treatment: probability bands,&
-               & on-the-fly, or pointwise'
-          call fatal_error()
+          call fatal_error('Must specify a URR treatment: probability bands,&
+               & on-the-fly, or pointwise')
 
         end select
 
@@ -225,7 +219,7 @@ contains
 
       ! Create linked lists for multiple instances of the same nuclide
       call same_nuclide_list()
-
+#endif
       ! Construct information needed for nuclear data
       if (run_CE) then
         ! Construct log energy grid for cross-sections
@@ -281,7 +275,7 @@ contains
 !$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$
 
   subroutine initialize_endf()
-
+#ifdef PURXS
     integer :: i     ! isotope index
     integer :: i_nuc ! ACE data index
 
@@ -301,8 +295,7 @@ contains
           case (URR_POINTWISE)
             URR_isotopes(i) % point_urr_xs = .true.
           case default
-            message = 'Not a recognized URR representation'
-            call fatal_error()
+            call fatal_error('Not a recognized URR representation')
           end select
 
           ! read ENDF-6 file unless it's already been read for this isotope
@@ -324,8 +317,7 @@ contains
       case (URR_POINTWISE)
         URR_isotopes(i) % point_urr_xs = .true.
       case default
-        message = 'Not a recognized URR representation'
-        call fatal_error()
+        call fatal_error('Not a recognized URR representation')
       end select
 
       ! read ENDF-6 file unless it's already been read for this isotope
@@ -335,7 +327,7 @@ contains
       end if
 
     end do
-
+#endif
   end subroutine initialize_endf
 
 #ifdef MPI
@@ -484,9 +476,8 @@ contains
 
           ! Check that number specified was valid
           if (n_particles == ERROR_INT) then
-            message = "Must specify integer after " // trim(argv(i-1)) // &
-                 " command-line flag."
-            call fatal_error()
+            call fatal_error("Must specify integer after " // trim(argv(i-1)) // &
+                 " command-line flag.")
           end if
         case ('-r', '-restart', '--restart')
           ! Read path for state point/particle restart
@@ -561,13 +552,11 @@ contains
           ! Read and set number of OpenMP threads
           n_threads = int(str_to_int(argv(i)), 4)
           if (n_threads < 1) then
-            message = "Invalid number of threads specified on command line."
-            call fatal_error()
+            call fatal_error("Invalid number of threads specified on command line.")
           end if
           call omp_set_num_threads(n_threads)
 #else
-          message = "Ignoring number of threads specified on command line."
-          call warning()
+          call warning("Ignoring number of threads specified on command line.")
 #endif
 
         case ('-?', '-h', '-help', '--help')
@@ -579,8 +568,7 @@ contains
         case ('-t', '-track', '--track')
           write_all_tracks = .true.
         case default
-          message = "Unknown command line option: " // argv(i)
-          call fatal_error()
+          call fatal_error("Unknown command line option: " // argv(i))
         end select
 
         last_flag = i
@@ -839,8 +827,7 @@ contains
 
     ! Check for allocation errors
     if (alloc_err /= 0) then
-      message = "Failed to allocate source bank."
-      call fatal_error()
+      call fatal_error("Failed to allocate source bank.")
     end if
 
     if (run_mode == MODE_EIGENVALUE) then

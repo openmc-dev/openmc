@@ -217,8 +217,7 @@ contains
 
       ! Check if reached iteration 10000
       if (i == 10000) then
-        message = 'Reached maximum iterations in CMFD power iteration solver.'
-        call fatal_error()
+        call fatal_error('Reached maximum iterations in CMFD power iteration solver.')
       end if
 
       ! Compute source vector
@@ -346,7 +345,7 @@ contains
 
     use constants,  only: ONE, ZERO
     use error,      only: fatal_error
-    use global,     only: cmfd, cmfd_spectral, message
+    use global,     only: cmfd, cmfd_spectral
 
     type(Matrix), intent(inout) :: A ! coefficient matrix
     type(Vector), intent(inout) :: b ! right hand side vector
@@ -390,8 +389,7 @@ contains
 
       ! Check for max iterations met
       if (igs == 10000) then
-        message = 'Maximum Gauss-Seidel iterations encountered.'
-        call fatal_error()
+        call fatal_error('Maximum Gauss-Seidel iterations encountered.')
       endif
 
       ! Copy over x vector
@@ -453,7 +451,7 @@ contains
 
     use constants,  only: ONE, ZERO
     use error,      only: fatal_error
-    use global,     only: cmfd, cmfd_spectral, message
+    use global,     only: cmfd, cmfd_spectral
 
     type(Matrix), intent(inout) :: A ! coefficient matrix
     type(Vector), intent(inout) :: b ! right hand side vector
@@ -509,8 +507,7 @@ contains
 
       ! Check for max iterations met
       if (igs == 10000) then
-        message = 'Maximum Gauss-Seidel iterations encountered.'
-        call fatal_error()
+        call fatal_error('Maximum Gauss-Seidel iterations encountered.')
       endif
 
       ! Copy over x vector
@@ -599,7 +596,7 @@ contains
 
     use constants,  only: ONE, ZERO
     use error,      only: fatal_error
-    use global,     only: cmfd, cmfd_spectral, message
+    use global,     only: cmfd, cmfd_spectral
 
     type(Matrix), intent(inout) :: A ! coefficient matrix
     type(Vector), intent(inout) :: b ! right hand side vector
@@ -642,8 +639,7 @@ contains
 
       ! Check for max iterations met
       if (igs == 10000) then
-        message = 'Maximum Gauss-Seidel iterations encountered.'
-        call fatal_error()
+        call fatal_error('Maximum Gauss-Seidel iterations encountered.')
       endif
 
       ! Copy over x vector

@@ -45,8 +45,7 @@ contains
       ! Read the source from a binary file instead of sampling from some
       ! assumed source distribution
 
-      message = 'Reading source file from ' // trim(path_source) // '...'
-      call write_message(6)
+      call write_message('Reading source file from ' // trim(path_source) // '...')
 
       ! Open the binary file
       file_id = file_open(path_source, 'r', parallel=.true.)

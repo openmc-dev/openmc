@@ -4,10 +4,12 @@ module error
   use constants
   use message_passing
 
-  ! PURXS API
-  use URR_error, only: URR_EXIT_SUCCESS => EXIT_SUCCESS,&
-                       URR_EXIT_FAILURE => EXIT_FAILURE,&
-                       URR_EXIT_WARNING => EXIT_WARNING
+#ifdef PURXS
+  use purxs_api, only:&
+       URR_EXIT_SUCCESS,&
+       URR_EXIT_FAILURE,&
+       URR_EXIT_WARNING
+#endif
 
   implicit none
 
@@ -18,18 +20,15 @@ contains
 ! stream.
 !===============================================================================
 
-  subroutine warning(force)
+  subroutine warning(message)
 
-    logical, optional :: force ! force write from proc other than master
+    character(*) :: message
 
     integer :: i_start   ! starting position
     integer :: i_end     ! ending position
     integer :: line_wrap ! length of line
     integer :: length    ! length of message
     integer :: indent    ! length of indentation
-
-    ! Only allow master to print to screen
-    if (.not. master .and. .not. present(force)) return
 
     ! Write warning at beginning
     write(ERROR_UNIT, fmt='(1X,A)', advance='no') 'WARNING: '
@@ -79,8 +78,9 @@ contains
 ! the program is aborted.
 !===============================================================================
 
-  subroutine fatal_error(error_code)
+  subroutine fatal_error(message, error_code)
 
+    character(*) :: message
     integer, optional :: error_code ! error code
 
     integer :: code      ! error code

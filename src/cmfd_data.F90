@@ -169,10 +169,9 @@ contains
 
                 ! Detect zero flux, abort if located
                 if ((flux - ZERO) < TINY_BIT) then
-                  message = 'Detected zero flux without coremap overlay at: (' &
+                  call fatal_error('Detected zero flux without coremap overlay at: (' &
                           // to_str(i) // ',' // to_str(j) // ',' // to_str(k) &
-                          // ') in group ' // to_str(h)
-                  call fatal_error()
+                          // ') in group ' // to_str(h))
                 end if
 
                 ! Get total rr and convert to total xs

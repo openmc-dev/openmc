@@ -265,8 +265,7 @@ contains
 
       ! Check for sites outside of the mesh
       if (master .and. outside) then
-        message = "Source sites outside of the CMFD mesh!"
-        call fatal_error()
+        call fatal_error("Source sites outside of the CMFD mesh!")
       end if
 
       ! Have master compute weight factors (watch for 0s)
@@ -296,12 +295,10 @@ contains
       n_groups = size(cmfd % egrid) - 1
       if (source_bank(i) % E < cmfd % egrid(1)) then
         e_bin = 1
-        message = 'Source pt below energy grid'
-        call warning()
+        call warning('Source pt below energy grid')
       elseif (source_bank(i) % E > cmfd % egrid(n_groups + 1)) then
         e_bin = n_groups
-        message = 'Source pt above energy grid'
-        call warning()
+        call warning('Source pt above energy grid')
       else
         e_bin = binary_search(cmfd % egrid, n_groups + 1, source_bank(i) % E)
       end if
@@ -311,8 +308,7 @@ contains
 
       ! Check for outside of mesh
       if (.not. in_mesh) then
-        message = 'Source site found outside of CMFD mesh'
-        call fatal_error()
+        call fatal_error('Source site found outside of CMFD mesh')
       end if
 
       ! Reweight particle

@@ -89,8 +89,7 @@ contains
     ! runs enough particles to avoid this in the first place.
 
     if (n_bank == 0) then
-      message = "No fission sites banked on processor " // to_str(rank)
-      call fatal_error()
+      call fatal_error("No fission sites banked on processor " // to_str(rank))
     end if
 
     ! Make sure all processors start at the same point for random sampling. Then
@@ -341,8 +340,7 @@ contains
 
     ! display warning message if there were sites outside entropy box
     if (sites_outside) then
-      message = "Fission source site(s) outside of entropy box."
-      call warning()
+      call warning("Fission source site(s) outside of entropy box.")
     end if
 
     ! sum values to obtain shannon entropy
@@ -619,8 +617,7 @@ contains
 
       ! Check for sites outside of the mesh
       if (master .and. sites_outside) then
-        message = "Source sites outside of the UFS mesh!"
-        call fatal_error()
+        call fatal_error("Source sites outside of the UFS mesh!")
       end if
 
 #ifdef MPI

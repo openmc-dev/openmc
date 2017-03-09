@@ -117,7 +117,7 @@ contains
     else
       call read_settings_xml()
       call read_geometry_xml()
-      call read_materials_xml()
+      call read_materials()
       call read_tallies_xml()
       call read_urr_xml()
       if (cmfd_run) call configure_cmfd()
@@ -367,14 +367,12 @@ contains
       if (n_threads == NONE) then
         call get_node_value(root, "threads", n_threads)
         if (n_threads < 1) then
-          message = "Invalid number of threads: " // to_str(n_threads)
-          call fatal_error()
+          call fatal_error("Invalid number of threads: " // to_str(n_threads))
         end if
         call omp_set_num_threads(n_threads)
       end if
 #else
-      message = "Ignoring number of threads."
-      call warning()
+      call warning("Ignoring number of threads.")
 #endif
     end if
 
@@ -662,9 +660,8 @@ contains
       ! Make sure that there are three values per particle
       n_tracks = node_word_count(root, "track")
       if (mod(n_tracks, 3) /= 0) then
-        message = "Number of integers specified in 'track' is not divisible &
-             &by 3.  Please provide 3 integers per particle to be tracked."
-        call fatal_error()
+        call fatal_error("Number of integers specified in 'track' is not divisible &
+             &by 3.  Please provide 3 integers per particle to be tracked.")
       end if
 
       ! Allocate space and get list of tracks
@@ -705,9 +702,8 @@ contains
 
       ! Check on values provided
       if (.not. all(entropy_mesh % upper_right > entropy_mesh % lower_left)) then
-        message = "Upper-right coordinate must be greater than lower-left &
-             &coordinate for Shannon entropy mesh."
-        call fatal_error()
+        call fatal_error("Upper-right coordinate must be greater than lower-left &
+             &coordinate for Shannon entropy mesh.")
       end if
 
       ! Check if dimensions were specified -- if not, they will be calculated
@@ -773,9 +769,8 @@ contains
 
       ! Check on values provided
       if (.not. all(ufs_mesh % upper_right > ufs_mesh % lower_left)) then
-        message = "Upper-right coordinate must be greater than lower-left &
-             &coordinate for UFS mesh."
-        call fatal_error()
+        call fatal_error("Upper-right coordinate must be greater than lower-left &
+             &coordinate for UFS mesh.")
       end if
 
       ! Calculate width
@@ -958,8 +953,7 @@ contains
 
           ! check that E_min is non-negative
           if (nuclides_0K(i) % E_min < ZERO) then
-            message = "Lower resonance scattering energy bound is negative"
-            call fatal_error()
+            call fatal_error("Lower resonance scattering energy bound is negative")
           end if
 
           if (check_for_node(node_scatterer, "E_max")) then
@@ -969,17 +963,15 @@ contains
 
           ! check that E_max is not less than E_min
           if (nuclides_0K(i) % E_max < nuclides_0K(i) % E_min) then
-            message = "Lower resonance scattering energy bound exceeds upper"
-            call fatal_error()
+            call fatal_error("Lower resonance scattering energy bound exceeds upper")
           end if
 
           nuclides_0K(i) % nuclide = trim(nuclides_0K(i) % nuclide)
           nuclides_0K(i) % scheme  = to_lower(trim(nuclides_0K(i) % scheme))
         end do
       else
-        message = "No resonant scatterers are specified within the " // "" &
-          // "resonance_scattering element in settings.xml"
-        call fatal_error()
+        call fatal_error("No resonant scatterers are specified within the " // "" &
+          // "resonance_scattering element in settings.xml")
       end if
     end if
 
@@ -1167,10 +1159,7 @@ contains
     type(DictIntInt) :: cells_in_univ_dict ! Used to count how many cells each
                                            ! universe contains
 
-
-    ! Display output message
-    message = "Reading geometry XML file..."
-    call write_message(5)
+    call write_message("Reading geometry XML file...")
 
     ! ==========================================================================
     ! READ CELLS FROM GEOMETRY.XML
@@ -1179,8 +1168,7 @@ contains
     filename = trim(path_input) // "geometry.xml"
     inquire(FILE=filename, EXIST=file_exists)
     if (.not. file_exists) then
-      message = "Geometry XML file '" // trim(filename) // "' does not exist!"
-      call fatal_error()
+      call fatal_error("Geometry XML file '" // trim(filename) // "' does not exist!")
     end if
 
     ! Parse geometry.xml file
@@ -1195,8 +1183,7 @@ contains
 
     ! Check for no cells
     if (n_cells == 0) then
-      message = "No cells found in geometry.xml!"
-      call fatal_error()
+      call fatal_error("No cells found in geometry.xml!")
     end if
 
     ! Allocate cells array
@@ -1222,8 +1209,7 @@ contains
       if (check_for_node(node_cell, "id")) then
         call get_node_value(node_cell, "id", c % id)
       else
-        message = "Must specify id of cell in geometry XML file."
-        call fatal_error()
+        call fatal_error("Must specify id of cell in geometry XML file.")
       end if
 
       ! Copy cell name
@@ -1343,9 +1329,8 @@ contains
         ! Rotations can only be applied to cells that are being filled with
         ! another universe
         if (c % fill == NONE) then
-          message = "Cannot apply a rotation to cell " // trim(to_str(&
-               c % id)) // " because it is not filled with another universe"
-          call fatal_error()
+          call fatal_error("Cannot apply a rotation to cell " // trim(to_str(&
+               c % id)) // " because it is not filled with another universe")
         end if
 
         ! Read number of rotation parameters
@@ -1387,9 +1372,8 @@ contains
         ! Read number of translation parameters
         n = node_word_count(node_cell, "translation")
         if (n /= 3) then
-          message = "Incorrect number of translation parameters on cell " &
-               // to_str(c % id)
-          call fatal_error()
+          call fatal_error("Incorrect number of translation parameters on cell " &
+               // to_str(c % id))
         end if
 
         ! Copy translation vector
@@ -1465,8 +1449,7 @@ contains
 
     ! Check for no surfaces
     if (n_surfaces == 0) then
-      message = "No surfaces found in geometry.xml!"
-      call fatal_error()
+      call fatal_error("No surfaces found in geometry.xml!")
     end if
 
     xmin = INFINITY
@@ -1525,8 +1508,7 @@ contains
         coeffs_reqd  = 10
         allocate(SurfaceQuadric :: surfaces(i)%obj)
       case default
-        message = "Invalid surface type: " // trim(word)
-        call fatal_error()
+        call fatal_error("Invalid surface type: " // trim(word))
       end select
 
       s => surfaces(i)%obj
@@ -1768,8 +1750,7 @@ contains
       if (check_for_node(node_lat, "id")) then
         call get_node_value(node_lat, "id", lat % id)
       else
-        message = "Must specify id of lattice in geometry XML file."
-        call fatal_error()
+        call fatal_error("Must specify id of lattice in geometry XML file.")
       end if
 
       ! Check to make sure 'id' hasn't been used
@@ -1846,9 +1827,8 @@ contains
       ! Check that number of universes matches size
       n = node_word_count(node_lat, "universes")
       if (n /= n_x*n_y*n_z) then
-        message = "Number of universes on <universes> does not match size of &
-             &lattice " // trim(to_str(lat % id)) // "."
-        call fatal_error()
+        call fatal_error("Number of universes on <universes> does not match size of &
+             &lattice " // trim(to_str(lat % id)) // ".")
       end if
 
       allocate(temp_int_array(n))
@@ -2122,11 +2102,6 @@ contains
 
   end subroutine read_geometry_xml
 
-!===============================================================================
-! READ_MATERIAL_XML reads data from a materials.xml file and parses it, checking
-! for errors and placing properly-formatted data in the right data structures
-!===============================================================================
-
   subroutine read_materials()
     integer :: i, j
     type(DictCharInt) :: library_dict
@@ -2140,16 +2115,13 @@ contains
     type(XMLDocument)       :: doc
     type(XMLNode)           :: root
 
-    ! Display output message
-    message = "Reading materials XML file..."
-    call write_message(5)
+    call write_message("Reading materials XML file...")
 
     ! Check is materials.xml exists
     filename = trim(path_input) // "materials.xml"
     inquire(FILE=filename, EXIST=file_exists)
     if (.not. file_exists) then
-      message = "Material XML file '" // trim(filename) // "' does not exist!"
-      call fatal_error()
+      call fatal_error("Material XML file '" // trim(filename) // "' does not exist!")
     end if
 
     ! Parse materials.xml file
@@ -2265,6 +2237,11 @@ contains
     call library_dict % clear()
   end subroutine read_materials
 
+!===============================================================================
+! READ_MATERIAL_XML reads data from a materials.xml file and parses it, checking
+! for errors and placing properly-formatted data in the right data structures
+!===============================================================================
+
   subroutine read_materials_xml(libraries, library_dict, material_temps)
     type(Library), intent(in) :: libraries(:)
     type(DictCharInt), intent(inout) :: library_dict
@@ -2335,8 +2312,7 @@ contains
       if (check_for_node(node_mat, "id")) then
         call get_node_value(node_mat, "id", mat % id)
       else
-        message = "Must specify id of material in materials XML file"
-        call fatal_error()
+        call fatal_error("Must specify id of material in materials XML file")
       end if
 
       ! Check if material is depletable
@@ -2759,9 +2735,7 @@ contains
       return
     end if
 
-    ! Display output message
-    message = "Reading tallies XML file..."
-    call write_message(5)
+    call write_message("Reading tallies XML file...")
 
     ! Parse tallies.xml file
     call doc % load_file(filename)
@@ -2790,8 +2764,7 @@ contains
     ! Check for user tallies
     n_user_tallies = size(node_tal_list)
     if (n_user_tallies == 0) then
-      message = "No tallies present in tallies.xml file!"
-      call warning()
+      call warning("No tallies present in tallies.xml file!")
     end if
 
     ! Allocate tally array
@@ -2817,8 +2790,7 @@ contains
       if (check_for_node(node_mesh, "id")) then
         call get_node_value(node_mesh, "id", m % id)
       else
-        message = "Must specify id for mesh in tally XML file."
-        call fatal_error()
+        call fatal_error("Must specify id for mesh in tally XML file.")
       end if
 
       ! Check to make sure 'id' hasn't been used
@@ -2839,8 +2811,7 @@ contains
       case ('regular')
         m % type = MESH_REGULAR
       case default
-        message = "Invalid mesh type: " // trim(temp_str)
-        call fatal_error()
+        call fatal_error("Invalid mesh type: " // trim(temp_str))
       end select
 
       ! Determine number of dimensions for mesh
@@ -2859,9 +2830,8 @@ contains
       ! Check that dimensions are all greater than zero
       call get_node_array(node_mesh, "dimension", iarray3(1:n))
       if (any(iarray3(1:n) <= 0)) then
-        message = "All entries on the <dimension> element for a tally mesh &
-             &must be positive."
-        call fatal_error()
+        call fatal_error("All entries on the <dimension> element for a tally mesh &
+             &must be positive.")
       end if
 
       ! Read dimensions in each direction
@@ -2899,8 +2869,7 @@ contains
         ! Check for negative widths
         call get_node_array(node_mesh, "width", rarray3(1:n))
         if (any(rarray3(1:n) < ZERO)) then
-          message = "Cannot have a negative <width> on a tally mesh."
-          call fatal_error()
+          call fatal_error("Cannot have a negative <width> on a tally mesh.")
         end if
 
         ! Set width and upper right coordinate
@@ -2918,9 +2887,8 @@ contains
         ! Check that upper-right is above lower-left
         call get_node_array(node_mesh, "upper_right", rarray3(1:n))
         if (any(rarray3(1:n) < m % lower_left)) then
-          message = "The <upper_right> coordinates must be greater than the &
-               &<lower_left> coordinates on a tally mesh."
-          call fatal_error()
+          call fatal_error("The <upper_right> coordinates must be greater than the &
+               &<lower_left> coordinates on a tally mesh.")
         end if
 
         ! Set width and upper right coordinate
@@ -3051,8 +3019,7 @@ contains
       if (check_for_node(node_tal, "id")) then
         call get_node_value(node_tal, "id", t % id)
       else
-        message = "Must specify id for tally in tally XML file."
-        call fatal_error()
+        call fatal_error("Must specify id for tally in tally XML file.")
       end if
 
       ! Check to make sure 'id' hasn't been used
@@ -3612,10 +3579,9 @@ contains
                 ! User requested too many orders; throw a warning and set to the
                 ! maximum order.
                 ! The above scheme will essentially take the absolute value
-                message = "Invalid scattering order of " // trim(to_str(n_order)) // &
-                  " requested. Setting to the maximum permissible value, " // &
-                  trim(to_str(MAX_ANG_ORDER))
-                call warning()
+                call warning("Invalid scattering order of " // trim(to_str(n_order)) // &
+                     " requested. Setting to the maximum permissible value, " // &
+                     trim(to_str(MAX_ANG_ORDER)))
                 n_order = MAX_ANG_ORDER
               end if
               score_name = trim(MOMENT_STRS(imomstr)) // "n"
@@ -3682,27 +3648,23 @@ contains
             ! Prohibit user from tallying flux for an individual nuclide
             if (.not. (t % n_nuclide_bins == 1 .and. &
                  t % nuclide_bins(1) == -1)) then
-              message = "Cannot tally flux for an individual nuclide."
-              call fatal_error()
+              call fatal_error("Cannot tally flux for an individual nuclide.")
             end if
 
             t % score_bins(j) = SCORE_FLUX
             if (t % find_filter(FILTER_ENERGYOUT) > 0) then
-              message = "Cannot tally flux with an outgoing energy filter."
-              call fatal_error()
+              call fatal_error("Cannot tally flux with an outgoing energy filter.")
             end if
 
           case ('flux-yn')
             ! Prohibit user from tallying flux for an individual nuclide
             if (.not. (t % n_nuclide_bins == 1 .and. &
                  t % nuclide_bins(1) == -1)) then
-              message = "Cannot tally flux for an individual nuclide."
-              call fatal_error()
+              call fatal_error("Cannot tally flux for an individual nuclide.")
             end if
 
             if (t % find_filter(FILTER_ENERGYOUT) > 0) then
-              message = "Cannot tally flux with an outgoing energy filter."
-              call fatal_error()
+              call fatal_error("Cannot tally flux with an outgoing energy filter.")
             end if
 
             t % score_bins(j : j + n_bins - 1) = SCORE_FLUX_YN
@@ -3712,16 +3674,14 @@ contains
           case ('total', '(n,total)')
             t % score_bins(j) = SCORE_TOTAL
             if (t % find_filter(FILTER_ENERGYOUT) > 0) then
-              message = "Cannot tally total reaction rate with an &
-                   &outgoing energy filter."
-              call fatal_error()
+              call fatal_error("Cannot tally total reaction rate with an &
+                   &outgoing energy filter.")
             end if
 
           case ('total-yn')
             if (t % find_filter(FILTER_ENERGYOUT) > 0) then
-              message = "Cannot tally total reaction rate with an &
-                   &outgoing energy filter."
-              call fatal_error()
+              call fatal_error("Cannot tally total reaction rate with an &
+                   &outgoing energy filter.")
             end if
 
             t % score_bins(j : j + n_bins - 1) = SCORE_TOTAL_YN
@@ -3798,16 +3758,14 @@ contains
           case ('absorption')
             t % score_bins(j) = SCORE_ABSORPTION
             if (t % find_filter(FILTER_ENERGYOUT) > 0) then
-              message = "Cannot tally absorption rate with an outgoing &
-                   &energy filter."
-              call fatal_error()
+              call fatal_error("Cannot tally absorption rate with an outgoing &
+                   &energy filter.")
             end if
           case ('fission', '18')
             t % score_bins(j) = SCORE_FISSION
             if (t % find_filter(FILTER_ENERGYOUT) > 0) then
-              message = "Cannot tally fission rate with an outgoing &
-                   &energy filter."
-              call fatal_error()
+              call fatal_error("Cannot tally fission rate with an outgoing &
+                   &energy filter.")
             end if
           case ('nu-fission')
             t % score_bins(j) = SCORE_NU_FISSION
@@ -4331,9 +4289,7 @@ contains
            // "' does not exist!")
     end if
 
-    ! Display output message
-    message = "Reading plot XML file..."
-    call write_message(5)
+    call write_message("Reading plot XML file...")
 
     ! Parse plots.xml file
     call doc % load_file(filename)
@@ -4356,8 +4312,7 @@ contains
       if (check_for_node(node_plot, "id")) then
         call get_node_value(node_plot, "id", pl % id)
       else
-        message = "Must specify plot id in plots XML file."
-        call fatal_error()
+        call fatal_error("Must specify plot id in plots XML file.")
       end if
 
       ! Check to make sure 'id' hasn't been used
@@ -4520,9 +4475,8 @@ contains
       if (n_cols /= 0) then
 
         if (pl % type == PLOT_TYPE_VOXEL) then
-          message = "Color specifications ignored in voxel plot " // &
-                     trim(to_str(pl % id))
-          call warning()
+          call warning("Color specifications ignored in voxel plot " // &
+                     trim(to_str(pl % id)))
         end if
 
         do j = 1, n_cols
@@ -4540,9 +4494,8 @@ contains
           if (check_for_node(node_col, "id")) then
             call get_node_value(node_col, "id", col_id)
           else
-            message = "Must specify id for color specification in plot " // &
-                      trim(to_str(pl % id))
-            call fatal_error()
+            call fatal_error("Must specify id for color specification in plot " // &
+                      trim(to_str(pl % id)))
           end if
 
           ! Add RGB
@@ -4593,9 +4546,8 @@ contains
             if (check_for_node(node_meshlines, "meshtype")) then
               call get_node_value(node_meshlines, "meshtype", meshtype)
             else
-              message = "Must specify a meshtype for meshlines &
-                   &specification in plot " // trim(to_str(pl % id))
-              call fatal_error()
+              call fatal_error("Must specify a meshtype for meshlines &
+                   &specification in plot " // trim(to_str(pl % id)))
             end if
 
             ! Ensure that there is a linewidth for this meshlines specification
@@ -4603,9 +4555,8 @@ contains
               call get_node_value(node_meshlines, "linewidth", &
                    pl % meshlines_width)
             else
-              message = "Must specify a linewidth for meshlines &
-                   &specification in plot " // trim(to_str(pl % id))
-              call fatal_error()
+              call fatal_error("Must specify a linewidth for meshlines &
+                   &specification in plot " // trim(to_str(pl % id)))
             end if
 
             ! Check for color
@@ -4639,9 +4590,8 @@ contains
             case ('cmfd')
 
               if (.not. cmfd_run) then
-                message = "Need CMFD run to plot CMFD mesh for &
-                     &meshlines on plot " // trim(to_str(pl % id))
-                call fatal_error()
+                call fatal_error("Need CMFD run to plot CMFD mesh for &
+                     &meshlines on plot " // trim(to_str(pl % id)))
               end if
 
               select type(filt => cmfd_tallies(1) % &
@@ -4659,9 +4609,8 @@ contains
               end if
 
               if (.not. allocated(entropy_mesh % dimension)) then
-                message = "No dimension specified on entropy mesh &
-                     &for meshlines on plot " // trim(to_str(pl % id))
-                call fatal_error()
+                call fatal_error("No dimension specified on entropy mesh &
+                     &for meshlines on plot " // trim(to_str(pl % id)))
               end if
 
               pl % meshlines_mesh => entropy_mesh
@@ -4672,18 +4621,16 @@ contains
               if (check_for_node(node_meshlines, "id")) then
                 call get_node_value(node_meshlines, "id", meshid)
               else
-                message = "Must specify a mesh id for meshlines tally &
-                     &mesh specification in plot " // trim(to_str(pl % id))
-                call fatal_error()
+                call fatal_error("Must specify a mesh id for meshlines tally &
+                     &mesh specification in plot " // trim(to_str(pl % id)))
               end if
 
               ! Check if the specified tally mesh exists
               if (mesh_dict % has_key(meshid)) then
                 pl % meshlines_mesh => meshes(mesh_dict % get_key(meshid))
                 if (meshes(meshid) % type /= LATTICE_RECT) then
-                  message = "Non-rectangular mesh specified in &
-                       &meshlines for plot " // trim(to_str(pl % id))
-                  call fatal_error()
+                  call fatal_error("Non-rectangular mesh specified in &
+                       &meshlines for plot " // trim(to_str(pl % id)))
                 end if
               else
                 call fatal_error("Could not find mesh " &
@@ -4796,7 +4743,7 @@ contains
 !$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$
 
   subroutine read_urr_xml()
-
+#ifdef PURXS
     character(MAX_LINE_LEN) :: temp_str
     character(MAX_LINE_LEN) :: filename
     integer :: i ! re-usable index
@@ -4815,8 +4762,7 @@ contains
     ! Check if urr.xml exists
     filename = trim(path_input) // "urr.xml"
     if (len(trim(path_input)//'urr.xml') > len(filename)) then
-      message = 'urr.xml filepath exceeds maximum length'
-      call fatal_error()
+      call fatal_error('urr.xml filepath exceeds maximum length')
     end if
     inquire(FILE=filename, EXIST=file_exists)
     if (.not. file_exists) then
@@ -4828,9 +4774,7 @@ contains
       continue
     end if
 
-    ! Display output message
-    message = "Reading URR XML file..."
-    call write_message(5)
+    call write_message("Reading URR XML file...")
 
     ! Parse urr.xml file
     call open_xmldoc(doc, filename)
@@ -4844,9 +4788,8 @@ contains
         call get_node_value(settings_node, "endf_6_filepath", temp_str)
         URR_path_endf_files = trim(adjustl(temp_str))
       else
-        message = 'Specify path to ENDF-6 data files for URR treatment&
-             & via endf_6_filepath in urr.xml'
-        call fatal_error()
+        call fatal_error('Specify path to ENDF-6 data files for URR treatment&
+             & via endf_6_filepath in urr.xml')
       end if
 
       ! Check that a path to averaged URR cross section values is specified
@@ -4854,9 +4797,8 @@ contains
         call get_node_value(settings_node, "avg_xs_filepath", temp_str)
         URR_path_avg_xs = trim(adjustl(temp_str))
       else
-        message = 'Specify path to averaged URR cross section data files&
-             & via avg_xs_filepath in urr.xml'
-        call fatal_error()
+        call fatal_error('Specify path to averaged URR cross section data files&
+             & via avg_xs_filepath in urr.xml')
       end if
 
       ! Check which formalism for the on-the-fly URR treatment is specified
@@ -4870,19 +4812,15 @@ contains
           URR_formalism = URR_MLBW
         case ('mnbw')
           URR_formalism = URR_MNBW
-          message = 'MNBW formalism not yet supported for the URR'
-          call fatal_error()
+          call fatal_error('MNBW formalism not yet supported for the URR')
         case ('reich-moore')
           URR_formalism = URR_REICH_MOORE
-          message = 'Reich-Moore formalism not yet supported for the URR'
-          call fatal_error()
+          call fatal_error('Reich-Moore formalism not yet supported for the URR')
         case default
-          message = 'Unrecognized resonance formalism given in urr.xml'
-          call fatal_error()
+          call fatal_error('Unrecognized resonance formalism given in urr.xml')
         end select
       else
-        message = 'No formalism element given in urr.xml'
-        call fatal_error()
+        call fatal_error('No formalism element given in urr.xml')
       end if
 
       ! Determine which W function evaluation to use
@@ -4895,39 +4833,33 @@ contains
         case ('quick_w')
           URR_faddeeva_method = URR_QUICK_W
         case default
-          message = 'Unrecognized Faddeeva function evaluation method&
-               & in urr.xml'
-          call fatal_error()
+          call fatal_error('Unrecognized Faddeeva function evaluation method&
+               & in urr.xml')
         end select
       else
-        message = 'No Faddeeva function evaluation method specified in urr.xml'
-        call fatal_error()
+        call fatal_error('No Faddeeva function evaluation method specified in urr.xml')
       end if
 
       ! Assign number of l-wave resonances to be used in xs calculations
       if (check_for_node(settings_node, 'num_s_wave')) then
         call get_node_value(settings_node, 'num_s_wave', URR_num_l_waves(1))
       else
-        message = 'Must specify number of s-wave resonances in urr.xml'
-        call fatal_error()
+        call fatal_error('Must specify number of s-wave resonances in urr.xml')
       end if
       if (check_for_node(settings_node, 'num_p_wave')) then
         call get_node_value(settings_node, 'num_p_wave', URR_num_l_waves(2))
       else
-        message = 'Must specify number of p-wave resonances in urr.xml'
-        call fatal_error()
+        call fatal_error('Must specify number of p-wave resonances in urr.xml')
       end if
       if (check_for_node(settings_node, 'num_d_wave')) then
         call get_node_value(settings_node, 'num_d_wave', URR_num_l_waves(3))
       else
-        message = 'Must specify number of d-wave resonances in urr.xml'
-        call fatal_error()
+        call fatal_error('Must specify number of d-wave resonances in urr.xml')
       end if
       if (check_for_node(settings_node, 'num_f_wave')) then
         call get_node_value(settings_node, 'num_f_wave', URR_num_l_waves(4))
       else
-        message = 'Must specify number of f-wave resonances in urr.xml'
-        call fatal_error()
+        call fatal_error('Must specify number of f-wave resonances in urr.xml')
       end if
 
       ! Check for resonance parameter energy dependence treatment
@@ -4940,14 +4872,12 @@ contains
         case ('resonance')
           URR_parameter_energy_dependence = URR_E_RESONANCE
         case default
-          message = 'Unrecognized resonance parameter energy dependence&
-               & in urr.xml'
-          call fatal_error()
+          call fatal_error('Unrecognized resonance parameter energy dependence&
+               & in urr.xml')
         end select
       else
-        message = 'No resonance parameter energy dependence given in&
-             & urr.xml'
-        call fatal_error()
+        call fatal_error('No resonance parameter energy dependence given in&
+             & urr.xml')
       end if
 
       ! Include resonance structure of competitive URR cross sections?
@@ -4960,19 +4890,16 @@ contains
              .or. trim(adjustl(temp_str)) == '1') then
           URR_competitive_structure = .true.
         else
-          message = 'Modeling of competitive reaction cross section &
-               &resonance structure must be true or false in urr.xml'
-          call fatal_error()
+          call fatal_error('Modeling of competitive reaction cross section &
+               &resonance structure must be true or false in urr.xml')
         end if
       else
-        message = 'Must specify whether or not to model resonance &
-             &structure of competitive reaction cross section in urr.xml'
-        call fatal_error()
+        call fatal_error('Must specify whether or not to model resonance &
+             &structure of competitive reaction cross section in urr.xml')
       end if
 
     else
-      message = 'No settings element present in urr.xml'
-      call fatal_error()
+      call fatal_error('No settings element present in urr.xml')
     end if
 
     ! Check for required node containing list of isotopes to apply the treatment to
@@ -5005,9 +4932,8 @@ contains
             deallocate(zaid_str)
 
           else
-            message = 'No ZAID specified for isotope ' &
-                 // trim(to_str(i)) // ' in urr.xml file'
-            call fatal_error()
+            call fatal_error('No ZAID specified for isotope ' &
+                 // trim(to_str(i)) // ' in urr.xml file')
 
           end if
 
@@ -5016,9 +4942,8 @@ contains
             call get_node_value(isotope_node, 'endf_6_file', temp_str)
             URR_endf_filenames(i) = trim(adjustl(temp_str))
           else
-            message = 'No ENDF-6 data file specified for isotope ' &
-               // trim(to_str(i)) // ' in urr.xml file'
-            call fatal_error()
+            call fatal_error('No ENDF-6 data file specified for isotope ' &
+               // trim(to_str(i)) // ' in urr.xml file')
           end if
 
           ! Check if a max energy is given
@@ -5030,13 +4955,11 @@ contains
         end do
 
       else
-        message = 'No isotope(s) specified in urr.xml'
-        call fatal_error()
+        call fatal_error('No isotope(s) specified in urr.xml')
       end if
 
     else
-      message = 'No isotopes element in urr.xml'
-      call fatal_error()
+      call fatal_error('No isotopes element in urr.xml')
     end if
 
     ! Check that an on-the-fly URR treatment and/or average xs calc is specified
@@ -5045,17 +4968,15 @@ contains
          .or. check_for_node(doc, "pointwise")) then
       continue
     else
-      message = 'No on-the-fly, pointwise, or probability table &
-           &calculation parameters given in urr.xml'
-      call fatal_error()
+      call fatal_error('No on-the-fly, pointwise, or probability table &
+           &calculation parameters given in urr.xml')
     end if
 
     ! Check for pointwise cross section calculation
     if (check_for_node(doc, "pointwise")) then
       if (URR_xs_representation == URR_ON_THE_FLY .or. URR_xs_representation == URR_PROB_BANDS) then
-        message = 'Cannot represent URR cross sections as pointwise and&
-             & on-the-fly and/or as probability bands'
-        call fatal_error()
+        call fatal_error('Cannot represent URR cross sections as pointwise and&
+             & on-the-fly and/or as probability bands')
       end if
       URR_xs_representation = URR_POINTWISE
       URR_num_urr_realizations = 1
@@ -5064,25 +4985,22 @@ contains
         call get_node_value(&
              point_xs_node, 'min_energy_spacing', URR_min_delta_E_pointwise)
       else
-        message = 'No min energy spacing [eV] for cross section &
-             &reconstruction is given in urr.xml'
-        call fatal_error()
+        call fatal_error('No min energy spacing [eV] for cross section &
+             &reconstruction is given in urr.xml')
       end if
       if (check_for_node(point_xs_node, 'tolerance')) then
         call get_node_value(point_xs_node, 'tolerance', URR_rel_err_tolerance_pointwise)
       else
-        message = 'No max fractional error tolerance for cross section&
-             & reconstruction is given in urr.xml'
-        call fatal_error()
+        call fatal_error('No max fractional error tolerance for cross section&
+             & reconstruction is given in urr.xml')
       end if
     end if
 
     ! Check if an on-the-fly treatment is specified
     if (check_for_node(doc, "on_the_fly")) then
       if (URR_xs_representation == URR_POINTWISE .or. URR_xs_representation == URR_PROB_BANDS) then
-        message = 'Cannot represent URR cross sections on-the-fly and&
-             & as pointwise and/or as probability bands'
-        call fatal_error()
+        call fatal_error('Cannot represent URR cross sections on-the-fly and&
+             & as pointwise and/or as probability bands')
       end if
       URR_xs_representation = URR_ON_THE_FLY
       call get_node_ptr(doc, "on_the_fly", otf_xs_node)
@@ -5098,24 +5016,20 @@ contains
         
         case ('history')
           URR_realization_frequency = URR_HISTORY
-          message = 'History-based URR realizations not yet supported'
-          call fatal_error()
+          call fatal_error('History-based URR realizations not yet supported')
         
         case ('batch')
           URR_realization_frequency = URR_BATCH
-          message = 'Batch-based URR realizations not yet supported'
-          call fatal_error()
+          call fatal_error('Batch-based URR realizations not yet supported')
 
         case ('simulation')
           URR_realization_frequency = URR_SIMULATION
         
         case default
-          message = 'Unrecognized URR realization frequency in urr.xml'
-          call fatal_error()
+          call fatal_error('Unrecognized URR realization frequency in urr.xml')
         end select
       else
-        message = 'No URR realization frequency given in urr.xml'
-        call fatal_error()
+        call fatal_error('No URR realization frequency given in urr.xml')
       end if
 
       if (URR_realization_frequency /= URR_EVENT) then
@@ -5123,35 +5037,30 @@ contains
         if (check_for_node(otf_xs_node, 'num_realizations')) then
           call get_node_value(otf_xs_node, 'num_realizations', URR_num_urr_realizations)
           if (URR_num_urr_realizations < 1) then
-            message = 'Number of independent URR realizations&
-               & must be greater than 0 in urr.xml'
-            call fatal_error()
+            call fatal_error('Number of independent URR realizations&
+               & must be greater than 0 in urr.xml')
           end if
         else
-          message = 'No number of independent URR realizations to &
-               &generate is given in urr.xml'
-          call fatal_error()
+          call fatal_error('No number of independent URR realizations to &
+               &generate is given in urr.xml')
         end if
 
         ! determine which realization to use if multiple are generated
         if (check_for_node(otf_xs_node, "realization_index")) then
           call get_node_value(otf_xs_node, "realization_index", URR_i_realization_user)
           if (URR_i_realization_user < 0) then
-            message = 'realization_index must be non-negative in &
+            call fatal_error('realization_index must be non-negative in &
                  &urr.xml - 0 for a random realization or a positive integer &
-                 &equal to the index of a single, desired realization'
-            call fatal_error()
+                 &equal to the index of a single, desired realization')
           end if
         else
-          message = 'No URR realization index given in urr.xml'
-          call fatal_error()
+          call fatal_error('No URR realization index given in urr.xml')
         end if
       else
         if (check_for_node(otf_xs_node, 'realizations')&
              .or. check_for_node(otf_xs_node, 'realization_index')) then
-          message = 'a new local URR realization is being generated&
-               & at each event; do not specify number or index of realizations'
-          call fatal_error()
+          call fatal_error('a new local URR realization is being generated&
+               & at each event; do not specify number or index of realizations')
         end if
       end if
     end if
@@ -5159,9 +5068,8 @@ contains
     ! Check for probability band calculations parameters
     if (check_for_node(doc, "probability_tables")) then
       if (URR_xs_representation == URR_POINTWISE .or. URR_xs_representation == URR_ON_THE_FLY) then
-        message = 'Cannot represent URR cross sections as probability&
-             & bands and as pointwise and/or on-the-fly'
-        call fatal_error()
+        call fatal_error('Cannot represent URR cross sections as probability&
+             & bands and as pointwise and/or on-the-fly')
       end if
       URR_xs_representation = URR_PROB_BANDS
       call get_node_ptr(doc, "probability_tables", prob_table_node)
@@ -5173,31 +5081,27 @@ contains
              .or. trim(adjustl(temp_str)) == '1') then
           URR_pregenerated_prob_tables = .true.
           if (master) then
-            message = 'Loading probability tables from files. Any&
+            call write_message('Loading probability tables from files. Any&
                  & probability table generation parameters specified in urr.xml&
-                 & are being ignored.'
-            call write_message()
+                 & are being ignored.')
           end if
           if (check_for_node(prob_table_node, 'filepath')) then
             call get_node_value(prob_table_node, 'filepath', temp_str)
             URR_path_prob_tables = trim(adjustl(temp_str))
           else
-            message = 'Must specify path to probability table files &
-                 &in urr.xml'
-            call fatal_error()
+            call fatal_error('Must specify path to probability table files &
+                 &in urr.xml')
           end if
         else if (trim(adjustl(to_lower(temp_str))) == 'false'&
              .or. trim(adjustl(temp_str)) == '0') then
           URR_pregenerated_prob_tables = .false.
         else
-          message = 'Loading probability tables must be true or false&
-               & in urr.xml'
-          call fatal_error()
+          call fatal_error('Loading probability tables must be true or false&
+               & in urr.xml')
         end if
       else
-        message = 'Must specify whether or not to load probability &
-             &tables in urr.xml'
-        call fatal_error()
+        call fatal_error('Must specify whether or not to load probability &
+             &tables in urr.xml')
       end if
 
       ! temperature interpolation scheme
@@ -5224,13 +5128,11 @@ contains
         case('low-neighbor')
           URR_temperature_interp_scheme = URR_LOW_NEIGHBOR
         case default
-          message = 'Unrecognized temperature interpolation scheme'
-          call fatal_error()
+          call fatal_error('Unrecognized temperature interpolation scheme')
         end select
       else
-        message = 'Must specify temperature interpolation scheme in &
-             &urr.xml'
-        call fatal_error()
+        call fatal_error('Must specify temperature interpolation scheme in &
+             &urr.xml')
       end if
 
       if (.not. URR_pregenerated_prob_tables) then
@@ -5238,9 +5140,8 @@ contains
         if (check_for_node(prob_table_node, "num_bands")) then
           call get_node_value(prob_table_node, "num_bands", URR_num_bands_prob_tables)
         else
-          message = 'No number of probability table cross section bands&
-               & given in urr.xml'
-          call fatal_error()
+          call fatal_error('No number of probability table cross section bands&
+               & given in urr.xml')
         end if
 
         ! temperatures
@@ -5251,56 +5152,49 @@ contains
           if (URR_num_temperatures_prob_tables > 1) then
             do i = 2, URR_num_temperatures_prob_tables
               if (URR_T_grid_prob_tables(i) <= URR_T_grid_prob_tables(i-1)) then
-                message = 'Cross section &
-                     & reconstruction temperatures must be strictly ascending.'
-                call fatal_error()
+                call fatal_error('Cross section &
+                     & reconstruction temperatures must be strictly ascending.')
               end if
             end do
           end if
         else
-          message = 'No probability table temperatures given in urr.xml'
-          call fatal_error()
+          call fatal_error('No probability table temperatures given in urr.xml')
         end if
 
         ! min number of batches
         if (check_for_node(prob_table_node, "min_num_batches")) then
           call get_node_value(prob_table_node, "min_num_batches", URR_min_num_batches_prob_tables)
         else
-          message = 'No minimum batches for probability table&
-               & calculation given in urr.xml'
-          call fatal_error()
+          call fatal_error('No minimum batches for probability table&
+               & calculation given in urr.xml')
         end if
 
         ! max number of batches
         if (check_for_node(prob_table_node, "max_num_batches")) then
           call get_node_value(prob_table_node, "max_num_batches", URR_max_num_batches_prob_tables)
         else
-          message = 'No maximum batches for probability table&
-               & calculation given in urr.xml'
-          call fatal_error()
+          call fatal_error('No maximum batches for probability table&
+               & calculation given in urr.xml')
         end if
 
         ! histories per batch
         if (check_for_node(prob_table_node, "num_histories")) then
           call get_node_value(prob_table_node, "num_histories", URR_num_histories_prob_tables)
           if (mod(URR_num_histories_prob_tables, URR_num_bands_prob_tables) /= 0) then
-            message = 'Histories &
-               &per batch must be evenly divisible by number of probability bands'
-            call fatal_error()
+            call fatal_error('Histories &
+               &per batch must be evenly divisible by number of probability bands')
           end if
         else
-          message = 'No number of realization histories for probability&
-               & table calculation given in urr.xml'
-          call fatal_error()
+          call fatal_error('No number of realization histories for probability&
+               & table calculation given in urr.xml')
         end if
 
         ! relative uncertainty tolerance (1sigma / mean)
         if (check_for_node(prob_table_node, "tolerance")) then
           call get_node_value(prob_table_node, "tolerance", URR_rel_err_tolerance_avg_xs)
         else
-          message = 'No relative uncertainty tolerance for probability&
-               & table calculation given in urr.xml'
-          call fatal_error()
+          call fatal_error('No relative uncertainty tolerance for probability&
+               & table calculation given in urr.xml')
         end if
 
         ! energy spacing scheme
@@ -5308,17 +5202,15 @@ contains
           call get_node_value(prob_table_node, "energy_spacing", temp_str)
           if (trim(adjustl(to_lower(temp_str))) == 'linear') then
             URR_E_grid_scheme_prob_tables = URR_LINEAR
-            message = 'Linear probability table energy spacing not yet&
-                 & supported in urr.xml'
-            call fatal_error()
+            call fatal_error('Linear probability table energy spacing not yet&
+                 & supported in urr.xml')
           else if (trim(adjustl(to_lower(temp_str))) == 'logarithmic') then
             URR_E_grid_scheme_prob_tables = URR_LOGARITHMIC
             if (check_for_node(prob_table_node, "num_energies")) then
               call get_node_value(prob_table_node, "num_energies", URR_num_energies_prob_tables)
             else
-              message = 'Must specify number of logarithmic probability&
-                   & table energies'
-              call fatal_error()
+              call fatal_error('Must specify number of logarithmic probability&
+                   & table energies')
             end if
           else if (trim(adjustl(to_lower(temp_str))) == 'endf') then
             URR_E_grid_scheme_prob_tables = URR_ENDF6
@@ -5329,19 +5221,16 @@ contains
               allocate(URR_E_grid_prob_tables(URR_num_energies_prob_tables))
               call get_node_array(prob_table_node, "energy_grid", URR_E_grid_prob_tables)
             else
-              message = 'No probability table energy grid values&
-                   & given in urr.xml'
-              call fatal_error()
+              call fatal_error('No probability table energy grid values&
+                   & given in urr.xml')
             end if
           else
-            message = 'Unrecognized energy spacing scheme for probability&
-                 & table calculation given in urr.xml'
-            call fatal_error()
+            call fatal_error('Unrecognized energy spacing scheme for probability&
+                 & table calculation given in urr.xml')
           end if
         else
-          message = 'No energy spacing scheme for probability&
-               & table calculation given in urr.xml'
-          call fatal_error()
+          call fatal_error('No energy spacing scheme for probability&
+               & table calculation given in urr.xml')
         end if
 
         ! background cross section component treatment
@@ -5353,9 +5242,8 @@ contains
           else if (trim(adjustl(to_lower(temp_str))) == 'false') then
             URR_background_xs_treatment = URR_FALSE
           else
-            message = 'Unrecognized background cross section source&
-                 & in probability table calculation given in urr.xml'
-            call fatal_error()
+            call fatal_error('Unrecognized background cross section source&
+                 & in probability table calculation given in urr.xml')
           end if
         end if
 
@@ -5368,13 +5256,11 @@ contains
                .or. trim(adjustl(temp_str)) == '1') then
             URR_write_prob_tables = .true.
           else
-            message = 'write_tables must be true or false in urr.xml'
-            call fatal_error()
+            call fatal_error('write_tables must be true or false in urr.xml')
           end if
         else
-          message = 'Specify whether or not to write out URR probability&
-               & tables to a file via write_tables in urr.xml'
-          call fatal_error()
+          call fatal_error('Specify whether or not to write out URR probability&
+               & tables to a file via write_tables in urr.xml')
         end if
 
         if (check_for_node(prob_table_node, "write_avg_xs")) then
@@ -5386,20 +5272,18 @@ contains
                .or. trim(adjustl(temp_str)) == '1') then
             URR_write_avg_xs = .true.
           else
-            message = 'write_avg_xs must be true or false in urr.xml'
-            call fatal_error()
+            call fatal_error('write_avg_xs must be true or false in urr.xml')
           end if
         else
-          message = 'Specify whether or not to write out averaged URR&
-               & cross section values to a file via write_avg_xs in urr.xml'
-          call fatal_error()
+          call fatal_error('Specify whether or not to write out averaged URR&
+               & cross section values to a file via write_avg_xs in urr.xml')
         end if
       end if
     end if
 
     ! Close URR XML file
     call close_xmldoc(doc)
-
+#endif
   end subroutine read_urr_xml
 
 !===============================================================================
@@ -5430,8 +5314,7 @@ contains
            // trim(path_cross_sections) // "' does not exist!")
     end if
 
-    message = "Reading cross sections XML file..."
-    call write_message(5)
+    call write_message("Reading cross sections XML file...")
 
     ! Parse cross_sections.xml file
     call doc % load_file(path_cross_sections)
@@ -6133,12 +6016,10 @@ contains
              &readable! Change file permissions with chmod command.")
       end if
 
-      ! Display message
       call write_message("Loading Multipole XS table: " // filename, 6)
 
       allocate(nuc % multipole)
 
-      ! Call the read routine
       call multipole_read(filename, nuc % multipole, i_table)
       nuc % mp_present = .true.
 

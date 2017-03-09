@@ -45,8 +45,7 @@ contains
 
     ! Display message if high verbosity or trace is on
     if (verbosity >= 9 .or. trace) then
-      message = "Simulating Particle " // trim(to_str(p % id))
-      call write_message()
+      call write_message("Simulating Particle " // trim(to_str(p % id)))
     end if
 
     ! Initialize number of events to zero
@@ -231,9 +230,8 @@ contains
       ! If particle has too many events, display warning and kill it
       n_event = n_event + 1
       if (n_event == MAX_EVENTS) then
-        message = "Particle " // trim(to_str(p%id)) // " underwent maximum &
-             &number of events."
-        call warning()
+        call warning("Particle " // trim(to_str(p%id)) // " underwent maximum &
+             &number of events.")
         p % alive = .false.
       end if
 

@@ -400,8 +400,7 @@ contains
     i_surface = abs(p % surface)
     surf => surfaces(i_surface)%obj
     if (verbosity >= 10 .or. trace) then
-      message = "    Crossing surface " // trim(to_str(surf % id))
-      call write_message()
+      call write_message("    Crossing surface " // trim(to_str(surf % id)))
     end if
 
     if (surf % bc == BC_VACUUM .and. (run_mode /= MODE_PLOTTING)) then
@@ -430,8 +429,7 @@ contains
 
       ! Display message
       if (verbosity >= 10 .or. trace) then
-        message = "    Leaked out of surface " // trim(to_str(surf % id))
-        call write_message()
+        call write_message("    Leaked out of surface " // trim(to_str(surf % id)))
       end if
       return
 
@@ -489,8 +487,7 @@ contains
 
       ! Diagnostic message
       if (verbosity >= 10 .or. trace) then
-        message = "    Reflected from surface " // trim(to_str(surf%id))
-        call write_message()
+        call write_message("    Reflected from surface " // trim(to_str(surf%id)))
       end if
       return
     elseif (surf % bc == BC_PERIODIC .and. run_mode /= MODE_PLOTTING) then
@@ -1056,14 +1053,15 @@ contains
 ! HANDLE_LOST_PARTICLE
 !===============================================================================
 
-  subroutine handle_lost_particle(p)
+  subroutine handle_lost_particle(p, message)
 
     type(Particle), intent(inout) :: p
+    character(*) :: message
 
     integer(8) :: tot_n_particles
 
     ! Print warning and write lost particle file
-    call warning(force = .true.)
+    call warning(message)
     call write_particle_restart(p)
 
     ! Increment number of lost particles

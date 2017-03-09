@@ -723,8 +723,7 @@ contains
 
     ! Check to make sure source bank is present
     if (path_source_point == path_state_point .and. .not. source_present) then
-      message = "Source bank must be contained in statepoint restart file"
-      call fatal_error()
+      call fatal_error("Source bank must be contained in statepoint restart file")
     end if
 
     ! Read tallies to master. If we are using Parallel HDF5, all processes

@@ -26,12 +26,12 @@ contains
 
     ! Deallocate arrays
     call free_memory()
-
+#ifdef PURXS
     ! deallocate URR isotopes
     do i = 1, URR_num_isotopes
       call URR_isotopes(i) % dealloc()
     end do
-
+#endif
     if (run_mode /= MODE_PURXS) then
 
 #ifdef HDF5

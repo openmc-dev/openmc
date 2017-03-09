@@ -159,24 +159,28 @@ contains
     integer :: i_low  ! lower logarithmic mapping index
     integer :: i_high ! upper logarithmic mapping index
     real(8) :: f      ! interp factor on nuclide energy grid
-    type(URR_Type_Isotope), pointer :: tope => null()
-    type(URR_Type_CrossSections) :: xs ! partial cross sections object
-    type(URR_Type_CrossSections) :: URR_xs ! URR partial cross sections object
     logical :: same_nuc   ! encountered this nuclide at this E?
     integer :: i_nuc      ! nuclide loop index
     integer :: i_same_nuc ! index in list of nuclide temperatures
     real(8) :: r          ! random number to use in prob table xs calculation
     real(8) :: kT         ! temperature in eV
     real(8) :: sigT, sigA, sigF ! Intermediate multipole variables
+#ifdef PURXS
+    type(URR_Type_Isotope), pointer :: tope => null()
+    type(URR_Type_CrossSections) :: xs ! partial cross sections object
+    type(URR_Type_CrossSections) :: URR_xs ! URR partial cross sections object
 !$omp threadprivate(nuc, tope)
+#endif
 
     associate (nuc => nuclides(i_nuclide))
 
+#ifdef PURXS
       if (nuc % i_isotope /= 0) then
         tope => URR_isotopes(nuc % i_isotope)
       else
         tope => null()
       end if
+#endif
 
       ! Check to see if there is multipole data present at this energy
       use_mp = .false.
@@ -275,7 +279,6 @@ contains
           ! Initialize nuclide cross-sections to zero
           micro_xs(i_nuclide) % fission    = ZERO
           micro_xs(i_nuclide) % nu_fission = ZERO
-          micro_xs(i_nuclide) % kappa_fission  = ZERO
           micro_xs(i_nuclide) % competitive = ZERO
 
           ! Calculate microscopic nuclide total cross section
@@ -319,6 +322,7 @@ contains
 
       if (i_sab > 0) call calculate_sab_xs(i_nuclide, i_sab, E, sqrtkT)
 
+#ifdef PURXS
       if (associated(tope)) then
 
         if (E * 1.0E6_8 >= tope % EL(tope % i_urr)&
@@ -396,7 +400,9 @@ contains
         end if
 
       else if (urr_ptables_on .and. nuc % urr_present) then
-
+#else
+      if (urr_ptables_on .and. nuc % urr_present) then
+#endif
         if (E > nuc % urr_data(i_temp) % energy(1)&
              .and. E < nuc % urr_data(i_temp) % energy(nuc % urr_data(i_temp) % n_energy)) then
           micro_xs(i_nuclide) % in_urr = .true.

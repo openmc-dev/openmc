@@ -4238,18 +4238,14 @@ contains
 
     ! check to see if any of the active tally lists has been allocated
     if (active_tallies % size() > 0) then
-      message = "Active tallies should not exist before CMFD tallies!"
-      call fatal_error()
+      call fatal_error("Active tallies should not exist before CMFD tallies!")
     else if (active_analog_tallies % size() > 0) then
-      message = 'Active analog tallies should not exist before CMFD tallies!'
-      call fatal_error()
+      call fatal_error('Active analog tallies should not exist before CMFD tallies!')
     else if (active_tracklength_tallies % size() > 0) then
-      message = "Active tracklength tallies should not exist before CMFD &
-           &tallies!"
-      call fatal_error()
+      call fatal_error("Active tracklength tallies should not exist before CMFD &
+           &tallies!")
     else if (active_current_tallies % size() > 0) then
-      message = "Active current tallies should not exist before CMFD tallies!"
-      call fatal_error()
+      call fatal_error("Active current tallies should not exist before CMFD tallies!")
     end if
 
     do i = 1, n_cmfd_tallies

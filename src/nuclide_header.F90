@@ -131,6 +131,7 @@ module nuclide_header
     real(8) :: total           ! microscropic total xs
     real(8) :: elastic         ! microscopic elastic scattering xs
     real(8) :: absorption      ! microscopic absorption xs
+    real(8) :: competitive     ! microscopic competitive xs
     real(8) :: fission         ! microscopic fission xs
     real(8) :: nu_fission      ! microscopic production xs
 
@@ -142,6 +143,7 @@ module nuclide_header
 
     ! Information for URR probability table use
     logical :: use_ptable  ! in URR range with probability tables?
+    logical :: in_urr
 
     ! Information for Doppler broadening
     real(8) :: last_sqrtkT = ZERO  ! Last temperature in sqrt(Boltzmann

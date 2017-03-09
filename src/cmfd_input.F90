@@ -79,8 +79,7 @@ contains
     else
 
       ! Tell user
-      message = "Reading CMFD XML file..."
-      call write_message(5)
+      call write_message("Reading CMFD XML file...")
 
     end if
 
@@ -220,9 +219,8 @@ contains
     if (check_for_node(root, "gauss_seidel_tolerance")) then
       n_params = node_word_count(root, "gauss_seidel_tolerance")
       if (n_params /= 2) then
-        message = 'Gauss Seidel tolerance is not 2 parameters &
-                   &(absolute, relative).'
-        call fatal_error()
+        call fatal_error('Gauss Seidel tolerance is not 2 parameters &
+             &(absolute, relative).')
       end if
       call get_node_array(root, "gauss_seidel_tolerance", gs_tol)
       cmfd_atoli = gs_tol(1)
@@ -306,9 +304,8 @@ contains
     ! Check that dimensions are all greater than zero
     call get_node_array(node_mesh, "dimension", iarray3(1:n))
     if (any(iarray3(1:n) <= 0)) then
-      message = "All entries on the <dimension> element for a tally mesh &
-           &must be positive."
-      call fatal_error()
+      call fatal_error("All entries on the <dimension> element for a tally mesh &
+           &must be positive.")
     end if
 
     ! Read dimensions in each direction
@@ -346,8 +343,7 @@ contains
       ! Check for negative widths
       call get_node_array(node_mesh, "width", rarray3(1:n))
       if (any(rarray3(1:n) < ZERO)) then
-        message = "Cannot have a negative <width> on a tally mesh."
-        call fatal_error()
+        call fatal_error("Cannot have a negative <width> on a tally mesh.")
       end if
 
       ! Set width and upper right coordinate
@@ -365,9 +361,8 @@ contains
       ! Check that upper-right is above lower-left
       call get_node_array(node_mesh, "upper_right", rarray3(1:n))
       if (any(rarray3(1:n) < m % lower_left)) then
-        message = "The <upper_right> coordinates must be greater than the &
-             &<lower_left> coordinates on a tally mesh."
-        call fatal_error()
+        call fatal_error("The <upper_right> coordinates must be greater than the &
+             &<lower_left> coordinates on a tally mesh.")
       end if
 
       ! Set upper right coordinate and width

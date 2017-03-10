@@ -2051,10 +2051,9 @@ sub-elements:
     *Default*: "plot"
 
   :color_by:
-    Keyword for plot coloring.  This can only be either "cell" or "material",
-    which colors regions by cells and materials, respectively. For voxel plots,
-    this determines which id (cell or material) is associated with each
-    position.
+    Keyword for plot coloring.  This can be either "cell" or "material", which
+    colors regions by cells and materials, respectively. For voxel plots, this
+    determines which id (cell or material) is associated with each position.
 
     *Default*: "cell"
 

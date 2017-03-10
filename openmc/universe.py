@@ -223,15 +223,15 @@ class Universe(object):
                     return [self, cell] + cell.fill.find(p)
         return []
 
-    def plot(self, center=(0., 0., 0.), width=(1., 1.), pixels=(200, 200),
+    def plot(self, origin=(0., 0., 0.), width=(1., 1.), pixels=(200, 200),
              basis='xy', color_by='cell', colors=None, filename=None, seed=None,
              **kwargs):
         """Display a slice plot of the universe.
 
         Parameters
         ----------
-        center : Iterable of float
-            Coordinates at the center of the plot
+        origin : Iterable of float
+            Coordinates at the origin of the plot
         width : Iterable of float
             Width of the plot in each basis direction
         pixels : Iterable of int
@@ -287,23 +287,23 @@ class Universe(object):
                     colors[obj] = list(color) + [1.0]
 
         if basis == 'xy':
-            x_min = center[0] - 0.5*width[0]
-            x_max = center[0] + 0.5*width[0]
-            y_min = center[1] - 0.5*width[1]
-            y_max = center[1] + 0.5*width[1]
+            x_min = origin[0] - 0.5*width[0]
+            x_max = origin[0] + 0.5*width[0]
+            y_min = origin[1] - 0.5*width[1]
+            y_max = origin[1] + 0.5*width[1]
         elif basis == 'yz':
             # The x-axis will correspond to physical y and the y-axis will
             # correspond to physical z
-            x_min = center[1] - 0.5*width[0]
-            x_max = center[1] + 0.5*width[0]
-            y_min = center[2] - 0.5*width[1]
-            y_max = center[2] + 0.5*width[1]
+            x_min = origin[1] - 0.5*width[0]
+            x_max = origin[1] + 0.5*width[0]
+            y_min = origin[2] - 0.5*width[1]
+            y_max = origin[2] + 0.5*width[1]
         elif basis == 'xz':
             # The y-axis will correspond to physical z
-            x_min = center[0] - 0.5*width[0]
-            x_max = center[0] + 0.5*width[0]
-            y_min = center[2] - 0.5*width[1]
-            y_max = center[2] + 0.5*width[1]
+            x_min = origin[0] - 0.5*width[0]
+            x_max = origin[0] + 0.5*width[0]
+            y_min = origin[2] - 0.5*width[1]
+            y_max = origin[2] + 0.5*width[1]
 
         # Determine locations to determine cells at
         x_coords = np.linspace(x_min, x_max, pixels[0], endpoint=False) + \
@@ -317,11 +317,11 @@ class Universe(object):
         for i, x in enumerate(x_coords):
             for j, y in enumerate(y_coords):
                 if basis == 'xy':
-                    path = self.find((x, y, center[2]))
+                    path = self.find((x, y, origin[2]))
                 elif basis == 'yz':
-                    path = self.find((center[0], x, y))
+                    path = self.find((origin[0], x, y))
                 elif basis == 'xz':
-                    path = self.find((x, center[1], y))
+                    path = self.find((x, origin[1], y))
 
                 if len(path) > 0:
                     try:

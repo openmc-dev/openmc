@@ -471,7 +471,7 @@ class InputSet(object):
         plot.origin = (125, 125, 0)
         plot.width = (250, 250)
         plot.pixels = (3000, 3000)
-        plot.color = 'mat'
+        plot.color_by = 'material'
 
         self.plots.add_plot(plot)
 
@@ -563,7 +563,7 @@ class PinCellInputSet(object):
         plot.origin = (0.0, 0.0, 0)
         plot.width = (1.26, 1.26)
         plot.pixels = (300, 300)
-        plot.color = 'mat'
+        plot.color_by = 'material'
 
         self.plots.add_plot(plot)
 
@@ -714,7 +714,7 @@ class AssemblyInputSet(object):
         plot.origin = (0.0, 0.0, 0)
         plot.width = (21.42, 21.42)
         plot.pixels = (300, 300)
-        plot.color = 'mat'
+        plot.color_by = 'material'
 
         self.plots.add_plot(plot)
 
@@ -793,6 +793,6 @@ class MGInputSet(InputSet):
         plot.width = (2.5, 2.5)
         plot.basis = 'xz'
         plot.pixels = (3000, 3000)
-        plot.color = 'mat'
+        plot.color_by = 'material'
 
         self.plots.add_plot(plot)

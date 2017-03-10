@@ -49,7 +49,7 @@ class Summary(object):
 
     @property
     def date_and_time(self):
-        return self._f.attrs['date_and_time']
+        return self._f.attrs['date_and_time'].decode()
 
     @property
     def geometry(self):
@@ -185,6 +185,8 @@ class Summary(object):
                 for idx in fill._natural_indices:
                     univ = fill.get_universe(idx)
                     fill_univ_ids.add(univ.id)
+                if fill.outer is not None:
+                    fill_univ_ids.add(fill.outer.id)
 
             # Set the fill for the Cell
             cells[cell_id].fill = fill

@@ -1,4 +1,4 @@
-from collections import Iterable
+from collections import Iterable, Mapping
 from numbers import Real, Integral
 from xml.etree import ElementTree as ET
 import sys
@@ -22,12 +22,166 @@ def reset_auto_plot_id():
     AUTO_PLOT_ID = 10000
 
 
-BASES = ['xy', 'xz', 'yz']
+_BASES = ['xy', 'xz', 'yz']
+
+_SVG_COLORS = {
+    'aliceblue': (240, 248, 255),
+    'antiquewhite': (250, 235, 215),
+    'aqua': (0, 255, 255),
+    'aquamarine': (127, 255, 212),
+    'azure': (240, 255, 255),
+    'beige': (245, 245, 220),
+    'bisque': (255, 228, 196),
+    'black': (0, 0, 0),
+    'blanchedalmond': (255, 235, 205),
+    'blue': (0, 0, 255),
+    'blueviolet': (138, 43, 226),
+    'brown': (165, 42, 42),
+    'burlywood': (222, 184, 135),
+    'cadetblue': (95, 158, 160),
+    'chartreuse': (127, 255, 0),
+    'chocolate': (210, 105, 30),
+    'coral': (255, 127, 80),
+    'cornflowerblue': (100, 149, 237),
+    'cornsilk': (255, 248, 220),
+    'crimson': (220, 20, 60),
+    'cyan': (0, 255, 255),
+    'darkblue': (0, 0, 139),
+    'darkcyan': (0, 139, 139),
+    'darkgoldenrod': (184, 134, 11),
+    'darkgray': (169, 169, 169),
+    'darkgreen': (0, 100, 0),
+    'darkgrey': (169, 169, 169),
+    'darkkhaki': (189, 183, 107),
+    'darkmagenta': (139, 0, 139),
+    'darkolivegreen': (85, 107, 47),
+    'darkorange': (255, 140, 0),
+    'darkorchid': (153, 50, 204),
+    'darkred': (139, 0, 0),
+    'darksalmon': (233, 150, 122),
+    'darkseagreen': (143, 188, 143),
+    'darkslateblue': (72, 61, 139),
+    'darkslategray': (47, 79, 79),
+    'darkslategrey': (47, 79, 79),
+    'darkturquoise': (0, 206, 209),
+    'darkviolet': (148, 0, 211),
+    'deeppink': (255, 20, 147),
+    'deepskyblue': (0, 191, 255),
+    'dimgray': (105, 105, 105),
+    'dimgrey': (105, 105, 105),
+    'dodgerblue': (30, 144, 255),
+    'firebrick': (178, 34, 34),
+    'floralwhite': (255, 250, 240),
+    'forestgreen': (34, 139, 34),
+    'fuchsia': (255, 0, 255),
+    'gainsboro': (220, 220, 220),
+    'ghostwhite': (248, 248, 255),
+    'gold': (255, 215, 0),
+    'goldenrod': (218, 165, 32),
+    'gray': (128, 128, 128),
+    'green': (0, 128, 0),
+    'greenyellow': (173, 255, 47),
+    'grey': (128, 128, 128),
+    'honeydew': (240, 255, 240),
+    'hotpink': (255, 105, 180),
+    'indianred': (205, 92, 92),
+    'indigo': (75, 0, 130),
+    'ivory': (255, 255, 240),
+    'khaki': (240, 230, 140),
+    'lavender': (230, 230, 250),
+    'lavenderblush': (255, 240, 245),
+    'lawngreen': (124, 252, 0),
+    'lemonchiffon': (255, 250, 205),
+    'lightblue': (173, 216, 230),
+    'lightcoral': (240, 128, 128),
+    'lightcyan': (224, 255, 255),
+    'lightgoldenrodyellow': (250, 250, 210),
+    'lightgray': (211, 211, 211),
+    'lightgreen': (144, 238, 144),
+    'lightgrey': (211, 211, 211),
+    'lightpink': (255, 182, 193),
+    'lightsalmon': (255, 160, 122),
+    'lightseagreen': (32, 178, 170),
+    'lightskyblue': (135, 206, 250),
+    'lightslategray': (119, 136, 153),
+    'lightslategrey': (119, 136, 153),
+    'lightsteelblue': (176, 196, 222),
+    'lightyellow': (255, 255, 224),
+    'lime': (0, 255, 0),
+    'limegreen': (50, 205, 50),
+    'linen': (250, 240, 230),
+    'magenta': (255, 0, 255),
+    'maroon': (128, 0, 0),
+    'mediumaquamarine': (102, 205, 170),
+    'mediumblue': (0, 0, 205),
+    'mediumorchid': (186, 85, 211),
+    'mediumpurple': (147, 112, 219),
+    'mediumseagreen': (60, 179, 113),
+    'mediumslateblue': (123, 104, 238),
+    'mediumspringgreen': (0, 250, 154),
+    'mediumturquoise': (72, 209, 204),
+    'mediumvioletred': (199, 21, 133),
+    'midnightblue': (25, 25, 112),
+    'mintcream': (245, 255, 250),
+    'mistyrose': (255, 228, 225),
+    'moccasin': (255, 228, 181),
+    'navajowhite': (255, 222, 173),
+    'navy': (0, 0, 128),
+    'oldlace': (253, 245, 230),
+    'olive': (128, 128, 0),
+    'olivedrab': (107, 142, 35),
+    'orange': (255, 165, 0),
+    'orangered': (255, 69, 0),
+    'orchid': (218, 112, 214),
+    'palegoldenrod': (238, 232, 170),
+    'palegreen': (152, 251, 152),
+    'paleturquoise': (175, 238, 238),
+    'palevioletred': (219, 112, 147),
+    'papayawhip': (255, 239, 213),
+    'peachpuff': (255, 218, 185),
+    'peru': (205, 133, 63),
+    'pink': (255, 192, 203),
+    'plum': (221, 160, 221),
+    'powderblue': (176, 224, 230),
+    'purple': (128, 0, 128),
+    'red': (255, 0, 0),
+    'rosybrown': (188, 143, 143),
+    'royalblue': (65, 105, 225),
+    'saddlebrown': (139, 69, 19),
+    'salmon': (250, 128, 114),
+    'sandybrown': (244, 164, 96),
+    'seagreen': (46, 139, 87),
+    'seashell': (255, 245, 238),
+    'sienna': (160, 82, 45),
+    'silver': (192, 192, 192),
+    'skyblue': (135, 206, 235),
+    'slateblue': (106, 90, 205),
+    'slategray': (112, 128, 144),
+    'slategrey': (112, 128, 144),
+    'snow': (255, 250, 250),
+    'springgreen': (0, 255, 127),
+    'steelblue': (70, 130, 180),
+    'tan': (210, 180, 140),
+    'teal': (0, 128, 128),
+    'thistle': (216, 191, 216),
+    'tomato': (255, 99, 71),
+    'turquoise': (64, 224, 208),
+    'violet': (238, 130, 238),
+    'wheat': (245, 222, 179),
+    'white': (255, 255, 255),
+    'whitesmoke': (245, 245, 245),
+    'yellow': (255, 255, 0),
+    'yellowgreen': (154, 205, 50)
+}
 
 
 class Plot(object):
-    """Definition of a finite region of space to be plotted, either as a slice plot
-    in two dimensions or as a voxel plot in three dimensions.
+    """Definition of a finite region of space to be plotted.
+
+    OpenMC is capable of generating two-dimensional slice plots and
+    three-dimensional voxel plots. Colors that are used in plots can be given as
+    RGB tuples, e.g. (255, 255, 255) would be white, or by a string indicating a
+    valid `SVG color <https://www.w3.org/TR/SVG/types.html#ColorKeywords>`_.
 
     Parameters
     ----------
@@ -50,22 +204,21 @@ class Plot(object):
         Origin (center) of the plot
     filename :
         Path to write the plot to
-    color : {'cell', 'mat'}
+    color_by : {'cell', 'material'}
         Indicate whether the plot should be colored by cell or by material
     type : {'slice', 'voxel'}
         The type of the plot
     basis : {'xy', 'xz', 'yz'}
         The basis directions for the plot
-    background : tuple or list of ndarray
-        Color of the background defined by RGB
-    mask_components : Iterable of int
-        Unique id numbers of the cells or materials to plot
-    mask_background : Iterable of int
+    background : Iterable of int or str
+        Color of the background
+    mask_components : Iterable of openmc.Cell or openmc.Material
+        The cells or materials to plot
+    mask_background : Iterable of int or str
         Color to apply to all cells/materials not listed in mask_components
-        defined by RGB
-    col_spec : dict
+    colors : dict
         Dictionary indicating that certain cells/materials (keys) should be
-        colored with a specific RGB (values)
+        displayed with a particular color.
     level : int
         Universe depth to plot at
     meshlines : dict
@@ -79,16 +232,16 @@ class Plot(object):
         self.id = plot_id
         self.name = name
         self._width = [4.0, 4.0]
-        self._pixels = [1000, 1000]
+        self._pixels = [400, 400]
         self._origin = [0., 0., 0.]
-        self._filename = 'plot'
-        self._color = 'cell'
+        self._filename = None
+        self._color_by = 'cell'
         self._type = 'slice'
         self._basis = 'xy'
         self._background = None
         self._mask_components = None
         self._mask_background = None
-        self._col_spec = None
+        self._colors = {}
         self._level = None
         self._meshlines = None
 
@@ -117,8 +270,8 @@ class Plot(object):
         return self._filename
 
     @property
-    def color(self):
-        return self._color
+    def color_by(self):
+        return self._color_by
 
     @property
     def type(self):
@@ -141,8 +294,8 @@ class Plot(object):
         return self._mask_background
 
     @property
-    def col_spec(self):
-        return self._col_spec
+    def colors(self):
+        return self._colors
 
     @property
     def level(self):
@@ -193,70 +346,69 @@ class Plot(object):
         cv.check_type('filename', filename, string_types)
         self._filename = filename
 
-    @color.setter
-    def color(self, color):
-        cv.check_type('plot color', color, string_types)
-        cv.check_value('plot color', color, ['cell', 'mat'])
-        self._color = color
+    @color_by.setter
+    def color_by(self, color_by):
+        cv.check_value('plot color_by', color_by, ['cell', 'material'])
+        self._color_by = color_by
 
     @type.setter
     def type(self, plottype):
-        cv.check_type('plot type', plottype, string_types)
         cv.check_value('plot type', plottype, ['slice', 'voxel'])
         self._type = plottype
 
     @basis.setter
     def basis(self, basis):
-        cv.check_type('plot basis', basis, string_types)
-        cv.check_value('plot basis', basis, ['xy', 'xz', 'yz'])
+        cv.check_value('plot basis', basis, _BASES)
         self._basis = basis
 
     @background.setter
     def background(self, background):
-        cv.check_type('plot background', background, Iterable, Integral)
-        cv.check_length('plot background', background, 3)
-        for rgb in background:
-            cv.check_greater_than('plot background', rgb, 0, True)
-            cv.check_less_than('plot background', rgb, 256)
+        cv.check_type('plot background', background, Iterable)
+        if isinstance(background, string_types):
+            if background.lower() not in _SVG_COLORS:
+                raise ValueError("'{}' is not a valid color.".format(background))
+        else:
+            cv.check_length('plot background', background, 3)
+            for rgb in background:
+                cv.check_greater_than('plot background', rgb, 0, True)
+                cv.check_less_than('plot background', rgb, 256)
         self._background = background
 
-    @col_spec.setter
-    def col_spec(self, col_spec):
-        cv.check_type('plot col_spec parameter', col_spec, dict, Integral)
+    @colors.setter
+    def colors(self, colors):
+        cv.check_type('plot colors', colors, Mapping)
+        for key, value in colors.items():
+            cv.check_type('plot color key', key, (openmc.Cell, openmc.Material))
+            cv.check_type('plot color value', value, Iterable)
+            if isinstance(value, string_types):
+                if value.lower() not in _SVG_COLORS:
+                    raise ValueError("'{}' is not a valid color.".format(value))
+            else:
+                cv.check_length('plot color (RGB)', value, 3)
+                for component in value:
+                    cv.check_type('RGB component', component, Real)
+                    cv.check_greater_than('RGB component', component, 0, True)
+                    cv.check_less_than('RGB component', component, 255, True)
 
-        for key in col_spec:
-            if key < 0:
-                msg = 'Unable to create Plot ID="{0}" with col_spec ID "{1}" ' \
-                      'which is less than 0'.format(self._id, key)
-                raise ValueError(msg)
-
-            elif not isinstance(col_spec[key], Iterable):
-                msg = 'Unable to create Plot ID="{0}" with col_spec RGB values' \
-                      ' "{1}" which is not iterable'.format(self._id, col_spec[key])
-                raise ValueError(msg)
-
-            elif len(col_spec[key]) != 3:
-                msg = 'Unable to create Plot ID="{0}" with col_spec RGB ' \
-                      'values of length "{1}" since 3 values must be ' \
-                      'input'.format(self._id, len(col_spec[key]))
-                raise ValueError(msg)
-
-        self._col_spec = col_spec
+        self._colors = colors
 
     @mask_components.setter
     def mask_components(self, mask_components):
-        cv.check_type('plot mask components', mask_components, Iterable, Integral)
-        for component in mask_components:
-            cv.check_greater_than('plot mask components', component, 0, True)
+        cv.check_type('plot mask components', mask_components, Iterable,
+                      (openmc.Cell, openmc.Material))
         self._mask_components = mask_components
 
     @mask_background.setter
     def mask_background(self, mask_background):
-        cv.check_type('plot mask background', mask_background, Iterable, Integral)
-        cv.check_length('plot mask background', mask_background, 3)
-        for rgb in mask_background:
-            cv.check_greater_than('plot mask background', rgb, 0, True)
-            cv.check_less_than('plot mask background', rgb, 256)
+        cv.check_type('plot mask background', mask_background, Iterable)
+        if isinstance(mask_background, string_types):
+            if mask_background.lower() not in _SVG_COLORS:
+                raise ValueError("'{}' is not a valid color.".format(mask_background))
+        else:
+            cv.check_length('plot mask_background', mask_background, 3)
+            for rgb in mask_background:
+                cv.check_greater_than('plot mask background', rgb, 0, True)
+                cv.check_less_than('plot mask background', rgb, 256)
         self._mask_background = mask_background
 
     @level.setter
@@ -300,26 +452,69 @@ class Plot(object):
 
     def __repr__(self):
         string = 'Plot\n'
-        string += '{0: <16}{1}{2}\n'.format('\tID', '=\t', self._id)
-        string += '{0: <16}{1}{2}\n'.format('\tName', '=\t', self._name)
-        string += '{0: <16}{1}{2}\n'.format('\tFilename', '=\t', self._filename)
-        string += '{0: <16}{1}{2}\n'.format('\tType', '=\t', self._type)
-        string += '{0: <16}{1}{2}\n'.format('\tBasis', '=\t', self._basis)
-        string += '{0: <16}{1}{2}\n'.format('\tWidth', '=\t', self._width)
-        string += '{0: <16}{1}{2}\n'.format('\tOrigin', '=\t', self._origin)
-        string += '{0: <16}{1}{2}\n'.format('\tPixels', '=\t', self._origin)
-        string += '{0: <16}{1}{2}\n'.format('\tColor', '=\t', self._color)
-        string += '{0: <16}{1}{2}\n'.format('\tBackground', '=\t',
-                                            self._background)
-        string += '{0: <16}{1}{2}\n'.format('\tMask components', '=\t',
+        string += '{: <16}=\t{}\n'.format('\tID', self._id)
+        string += '{: <16}=\t{}\n'.format('\tName', self._name)
+        string += '{: <16}=\t{}\n'.format('\tFilename', self._filename)
+        string += '{: <16}=\t{}\n'.format('\tType', self._type)
+        string += '{: <16}=\t{}\n'.format('\tBasis', self._basis)
+        string += '{: <16}=\t{}\n'.format('\tWidth', self._width)
+        string += '{: <16}=\t{}\n'.format('\tOrigin', self._origin)
+        string += '{: <16}=\t{}\n'.format('\tPixels', self._origin)
+        string += '{: <16}=\t{}\n'.format('\tColor by', self._color)
+        string += '{: <16}=\t{}\n'.format('\tBackground', self._background)
+        string += '{: <16}=\t{}\n'.format('\tMask components',
                                             self._mask_components)
-        string += '{0: <16}{1}{2}\n'.format('\tMask background', '=\t',
+        string += '{: <16}=\t{}\n'.format('\tMask background',
                                             self._mask_background)
-        string += '{0: <16}{1}{2}\n'.format('\tCol Spec', '=\t', self._col_spec)
-        string += '{0: <16}{1}{2}\n'.format('\tLevel', '=\t', self._level)
-        string += '{0: <16}{1}{2}\n'.format('\tMeshlines', '=\t',
-                                            self._meshlines)
+        string += '{: <16}=\t{}\n'.format('\tColors', self._colors)
+        string += '{: <16}=\t{}\n'.format('\tLevel', self._level)
+        string += '{: <16}=\t{}\n'.format('\tMeshlines', self._meshlines)
         return string
+
+    @classmethod
+    def from_geometry(cls, geometry, basis='xy', slice_coord=0.):
+        """Return plot that encompasses a geometry.
+
+        Parameters
+        ----------
+        geometry : openmc.Geometry
+            The geometry the base the plot off of
+        basis : {'xy', 'xz', 'yz'}
+            The basis directions for the plot
+        slice_coord : float
+            The level at which the slice plot should be plotted. For example, if
+            the basis is 'xy', this would indicate the z value used in the
+            origin.
+
+        """
+        cv.check_type('geometry', geometry, openmc.Geometry)
+        cv.check_value('basis', basis, _BASES)
+
+        # Decide which axes to keep
+        if basis == 'xy':
+            pick_index = (0, 1)
+            slice_index = 2
+        elif basis == 'yz':
+            pick_index = (1, 2)
+            slice_index = 0
+        elif basis == 'xz':
+            pick_index = (0, 2)
+            slice_index = 1
+
+        # Get lower-left and upper-right coordinates for desired axes
+        lower_left, upper_right = geometry.bounding_box
+        lower_left = lower_left[np.array(pick_index)]
+        upper_right = upper_right[np.array(pick_index)]
+
+        if np.any(np.isinf((lower_left, upper_right))):
+            raise ValueError('The geometry does not appear to be bounded '
+                             'in the {} plane.'.format(basis))
+
+        plot = cls()
+        plot.origin = np.insert((lower_left + upper_right)/2,
+                                slice_index, slice_coord)
+        plot.width = upper_right - lower_left
+        return plot
 
     def colorize(self, geometry, seed=1):
         """Generate a color scheme for each domain in the plot.
@@ -341,78 +536,70 @@ class Plot(object):
         cv.check_greater_than('seed', seed, 1, equality=True)
 
         # Get collections of the domains which will be plotted
-        if self.color is 'mat':
-            domains = geometry.get_all_materials()
+        if self.color_by == 'material':
+            domains = geometry.get_all_materials().values()
         else:
-            domains = geometry.get_all_cells()
+            domains = geometry.get_all_cells().values()
 
         # Set the seed for the random number generator
         np.random.seed(seed)
 
         # Generate random colors for each feature
-        self.col_spec = {}
-        for domain_id in domains:
-            r = np.random.randint(0, 256)
-            g = np.random.randint(0, 256)
-            b = np.random.randint(0, 256)
-            self.col_spec[domain_id] = (r, g, b)
+        for domain in domains:
+            self.colors[domain] = np.random.randint(0, 256, (3,))
 
     def highlight_domains(self, geometry, domains, seed=1,
                           alpha=0.5, background='gray'):
         """Use alpha compositing to highlight one or more domains in the plot.
 
-        This routine generates a color scheme and applies alpha compositing
-        to make all domains except the highlighted ones appear partially
+        This routine generates a color scheme and applies alpha compositing to
+        make all domains except the highlighted ones appear partially
         transparent.
 
         Parameters
         ----------
         geometry : openmc.Geometry
             The geometry for which the plot is defined
-        domains : Iterable of Integral
+        domains : Iterable of openmc.Cell or openmc.Material
             A collection of the domain IDs to highlight in the plot
-        seed : Integral
+        seed : int
             The random number seed used to generate the color scheme
-        alpha : Real in [0,1]
-            The value to apply in alpha compisiting
-        background : 3-tuple of Integral or 'white' or 'black' or 'gray'
+        alpha : float
+            The value between 0 and 1 to apply in alpha compisiting
+        background : 3-tuple of int or str
             The background color to apply in alpha compisiting
 
         """
 
-        cv.check_iterable_type('domains', domains, Integral)
+        cv.check_type('domains', domains, Iterable,
+                      (openmc.Cell, openmc.Material))
         cv.check_type('alpha', alpha, Real)
         cv.check_greater_than('alpha', alpha, 0., equality=True)
         cv.check_less_than('alpha', alpha, 1., equality=True)
+        cv.check_type('background', background, Iterable)
 
         # Get a background (R,G,B) tuple to apply in alpha compositing
         if isinstance(background, string_types):
-            if background == 'white':
-                background = (255, 255, 255)
-            elif background == 'black':
-                background = (0, 0, 0)
-            elif background == 'gray':
-                background = (160, 160, 160)
-            else:
-                msg = 'The background "{}" is not defined'.format(background)
-                raise ValueError(msg)
-
-        cv.check_iterable_type('background', background, Integral)
+            if background.lower() not in _SVG_COLORS:
+                raise ValueError("'{}' is not a valid color.".format(background))
+            background = _SVG_COLORS[background.lower()]
 
         # Generate a color scheme
         self.colorize(geometry, seed)
 
         # Apply alpha compositing to the colors for all domains
         # other than those the user wishes to highlight
-        for domain_id in self.col_spec:
-            if domain_id not in domains:
-                r, g, b = self.col_spec[domain_id]
+        for domain, color in self.colors.items():
+            if domain not in domains:
+                if isinstance(color, string_types):
+                    color = _SVG_COLORS[color.lower()]
+                r, g, b = color
                 r = int(((1-alpha) * background[0]) + (alpha * r))
                 g = int(((1-alpha) * background[1]) + (alpha * g))
                 b = int(((1-alpha) * background[2]) + (alpha * b))
-                self._col_spec[domain_id] = (r, g, b)
+                self._colors[domain] = (r, g, b)
 
-    def get_plot_xml(self):
+    def to_xml_element(self):
         """Return XML representation of the plot
 
         Returns
@@ -424,8 +611,9 @@ class Plot(object):
 
         element = ET.Element("plot")
         element.set("id", str(self._id))
-        element.set("filename", self._filename)
-        element.set("color", self._color)
+        if self._filename is not None:
+            element.set("filename", self._filename)
+        element.set("color_by", self._color_by)
         element.set("type", self._type)
 
         if self._type is 'slice':
@@ -442,21 +630,29 @@ class Plot(object):
 
         if self._background is not None:
             subelement = ET.SubElement(element, "background")
-            subelement.text = ' '.join(map(str, self._background))
+            color = self._background
+            if isinstance(color, string_types):
+                color = _SVG_COLORS[color.lower()]
+            subelement.text = ' '.join(str(x) for x in color)
 
-        if self._col_spec is not None:
-            for key in self._col_spec:
-                subelement = ET.SubElement(element, "col_spec")
-                subelement.set("id", str(key))
-                subelement.set("rgb", ' '.join(map(
-                    str, self._col_spec[key])))
+        if self._colors:
+            for domain, color in self._colors.items():
+                subelement = ET.SubElement(element, "color")
+                subelement.set("id", str(domain.id))
+                if isinstance(color, string_types):
+                    color = _SVG_COLORS[color.lower()]
+                subelement.set("rgb", ' '.join(str(x) for x in color))
 
         if self._mask_components is not None:
             subelement = ET.SubElement(element, "mask")
-            subelement.set("components", ' '.join(map(
-                str, self._mask_components)))
-            subelement.set("background", ' '.join(map(
-                str, self._mask_background)))
+            subelement.set("components", ' '.join(
+                str(d.id) for d in self._mask_components))
+            color = self._mask_background
+            if color is not None:
+                if isinstance(color, string_types):
+                    color = _SVG_COLORS[color.lower()]
+                subelement.set("background", ' '.join(
+                    str(x) for x in color))
 
         if self._level is not None:
             subelement = ET.SubElement(element, "level")
@@ -585,20 +781,21 @@ class Plots(cv.CheckedList):
                           alpha=0.5, background='gray'):
         """Use alpha compositing to highlight one or more domains in the plot.
 
-        This routine generates a color scheme and applies alpha compositing
-        to make all domains except the highlighted ones partially transparent.
+        This routine generates a color scheme and applies alpha compositing to
+        make all domains except the highlighted ones appear partially
+        transparent.
 
         Parameters
         ----------
         geometry : openmc.Geometry
             The geometry for which the plot is defined
-        domains : Iterable of Integral
+        domains : Iterable of openmc.Cell or openmc.Material
             A collection of the domain IDs to highlight in the plot
-        seed : Integral
+        seed : int
             The random number seed used to generate the color scheme
-        alpha : Real in [0,1]
-            The value to apply in alpha compisiting
-        background : 3-tuple of Integral or 'white' or 'black' or 'gray'
+        alpha : float
+            The value between 0 and 1 to apply in alpha compisiting
+        background : 3-tuple of int or str
             The background color to apply in alpha compisiting
 
         """
@@ -608,7 +805,7 @@ class Plots(cv.CheckedList):
 
     def _create_plot_subelements(self):
         for plot in self:
-            xml_element = plot.get_plot_xml()
+            xml_element = plot.to_xml_element()
 
             if len(plot.name) > 0:
                 self._plots_file.append(ET.Comment(plot.name))

@@ -132,7 +132,7 @@ plot_xy.filename = 'plot_xy'
 plot_xy.origin = [0, 0, 0]
 plot_xy.width = [6, 6]
 plot_xy.pixels = [400, 400]
-plot_xy.color = 'mat'
+plot_xy.color_by = 'material'
 
 plot_yz = openmc.Plot(plot_id=2)
 plot_yz.filename = 'plot_yz'
@@ -140,7 +140,7 @@ plot_yz.basis = 'yz'
 plot_yz.origin = [0, 0, 0]
 plot_yz.width = [8, 8]
 plot_yz.pixels = [400, 400]
-plot_yz.color = 'mat'
+plot_yz.color_by = 'material'
 
 # Instantiate a Plots collection, add plots, and export to XML
 plot_file = openmc.Plots((plot_xy, plot_yz))

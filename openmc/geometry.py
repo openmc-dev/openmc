@@ -28,6 +28,9 @@ class Geometry(object):
     ----------
     root_universe : openmc.Universe
         Root universe which contains all others
+    bounding_box : 2-tuple of numpy.array
+        Lower-left and upper-right coordinates of an axis-aligned bounding box
+        of the universe.
 
     """
 
@@ -40,6 +43,10 @@ class Geometry(object):
     @property
     def root_universe(self):
         return self._root_universe
+
+    @property
+    def bounding_box(self):
+        return self.root_universe.bounding_box
 
     @root_universe.setter
     def root_universe(self, root_universe):

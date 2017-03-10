@@ -483,8 +483,8 @@ class Plot(object):
             The basis directions for the plot
         slice_coord : float
             The level at which the slice plot should be plotted. For example, if
-            the basis is 'xy', this would indicate at what z value is used in
-            the origin.
+            the basis is 'xy', this would indicate the z value used in the
+            origin.
 
         """
         cv.check_type('geometry', geometry, openmc.Geometry)
@@ -565,7 +565,7 @@ class Plot(object):
         seed : int
             The random number seed used to generate the color scheme
         alpha : float
-            The value to apply in alpha compisiting
+            The value between 0 and 1 to apply in alpha compisiting
         background : 3-tuple of int or str
             The background color to apply in alpha compisiting
 
@@ -794,7 +794,7 @@ class Plots(cv.CheckedList):
         seed : int
             The random number seed used to generate the color scheme
         alpha : float
-            The value to apply in alpha compisiting
+            The value between 0 and 1 to apply in alpha compisiting
         background : 3-tuple of int or str
             The background color to apply in alpha compisiting
 

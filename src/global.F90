@@ -21,6 +21,7 @@ module global
   use surface_header,   only: SurfaceContainer
   use source_header,    only: SourceDistribution
   use tally_header,     only: TallyObject, TallyDerivative
+  use tally_filter_header, only: TallyFilterContainer
   use trigger_header,   only: KTrigger
   use timer_header,     only: Timer
   use volume_header,    only: VolumeCalculation
@@ -57,6 +58,7 @@ module global
   type(DictIntInt) :: surface_dict
   type(DictIntInt) :: material_dict
   type(DictIntInt) :: mesh_dict
+  type(DictIntInt) :: filter_dict
   type(DictIntInt) :: tally_dict
   type(DictIntInt) :: plot_dict
 
@@ -138,7 +140,8 @@ module global
   ! TALLY-RELATED VARIABLES
 
   type(RegularMesh), allocatable, target :: meshes(:)
-  type(TallyObject),    allocatable, target :: tallies(:)
+  type(TallyObject), allocatable, target :: tallies(:)
+  type(TallyFilterContainer), allocatable :: filters(:)
   integer, allocatable :: matching_bins(:)
   real(8), allocatable :: filter_weights(:)
 
@@ -182,6 +185,8 @@ module global
 
   integer :: n_meshes       = 0 ! # of structured meshes
   integer :: n_user_meshes  = 0 ! # of structured user meshes
+  integer :: n_filters      = 0 ! # of filters
+  integer :: n_user_filters = 0 ! # of user filters
   integer :: n_tallies      = 0 ! # of tallies
   integer :: n_user_tallies = 0 ! # of user tallies
 
@@ -373,6 +378,7 @@ module global
 
   ! User-defined tally information
   integer :: n_cmfd_meshes  = 1 ! # of structured meshes
+  integer :: n_cmfd_filters = 1 ! # of filters
   integer :: n_cmfd_tallies = 3 ! # of user-defined tallies
 
   ! Adjoint method type
@@ -494,6 +500,7 @@ contains
     ! Deallocate tally-related arrays
     if (allocated(global_tallies)) deallocate(global_tallies)
     if (allocated(meshes)) deallocate(meshes)
+    if (allocated(filters)) deallocate(filters)
     if (allocated(tallies)) deallocate(tallies)
     if (allocated(matching_bins)) deallocate(matching_bins)
     if (allocated(filter_weights)) deallocate(filter_weights)
@@ -531,6 +538,7 @@ contains
     call surface_dict % clear()
     call material_dict % clear()
     call mesh_dict % clear()
+    call filter_dict % clear()
     call tally_dict % clear()
     call plot_dict % clear()
     call nuclide_dict % clear()

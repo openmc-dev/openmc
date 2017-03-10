@@ -37,7 +37,7 @@ module tally_header
     integer :: type                 ! volume, surface current
     integer :: estimator            ! collision, track-length
     real(8) :: volume               ! volume of region
-    type(TallyFilterContainer), allocatable :: filters(:)
+    integer, allocatable :: filter(:) ! index in filters array
 
     ! The stride attribute is used for determining the index in the results
     ! array for a matching_bin combination. Since multiple dimensions are
@@ -46,9 +46,9 @@ module tally_header
 
     integer, allocatable :: stride(:)
 
-    ! This array provides a way to lookup what index in the filters array a
+    ! This array provides a way to lookup what index in the filter array a
     ! certain filter is. For example, if find_filter(FILTER_CELL) > 0, then the
-    ! value is the index in filters(:).
+    ! value is the index in filter(:).
 
     integer :: find_filter(N_FILTER_TYPES) = 0
 

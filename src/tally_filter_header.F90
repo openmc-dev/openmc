@@ -14,6 +14,7 @@ module tally_filter_header
 !===============================================================================
 
   type, abstract :: TallyFilter
+    integer :: id
     integer :: n_bins = 0
   contains
     procedure(get_next_bin_),  deferred :: get_next_bin

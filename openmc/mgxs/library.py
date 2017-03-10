@@ -1089,10 +1089,22 @@ class Library(object):
             using_multiplicity = True
 
         # multiplicity will fall back to using scatter and nu-scatter
-        elif ((('scatter matrix' in self.mgxs_types) and
-               ('nu-scatter matrix' in self.mgxs_types))):
+        elif 'scatter matrix' in self.mgxs_types and \
+             'nu-scatter matrix' in self.mgxs_types:
             scatt_mgxs = self.get_mgxs(domain, 'scatter matrix')
             nuscatt_mgxs = self.get_mgxs(domain, 'nu-scatter matrix')
+            xsdata.set_multiplicity_matrix_mgxs(nuscatt_mgxs, scatt_mgxs,
+                                                xs_type=xs_type,
+                                                nuclide=[nuclide],
+                                                subdomain=subdomain)
+            using_multiplicity = True
+
+        # multiplicity will fall back to using scatter and nu-scatter
+        elif 'consistent scatter matrix' in self.mgxs_types and \
+             'consistent nu-scatter matrix' in self.mgxs_types:
+            scatt_mgxs = self.get_mgxs(domain, 'consistent scatter matrix')
+            nuscatt_mgxs = \
+                self.get_mgxs(domain, 'consistent nu-scatter matrix')
             xsdata.set_multiplicity_matrix_mgxs(nuscatt_mgxs, scatt_mgxs,
                                                 xs_type=xs_type,
                                                 nuclide=[nuclide],
@@ -1103,13 +1115,22 @@ class Library(object):
             using_multiplicity = False
 
         if using_multiplicity:
-            nuscatt_mgxs = self.get_mgxs(domain, 'nu-scatter matrix')
+            if 'nu-scatter matrix' in self.mgxs_types:
+                nuscatt_mgxs = self.get_mgxs(domain, 'nu-scatter matrix')
+            else:
+                nuscatt_mgxs = \
+                    self.get_mgxs(domain, 'consistent nu-scatter matrix')
             xsdata.set_scatter_matrix_mgxs(nuscatt_mgxs, xs_type=xs_type,
                                            nuclide=[nuclide],
                                            subdomain=subdomain)
         else:
-            if 'nu-scatter matrix' in self.mgxs_types:
-                nuscatt_mgxs = self.get_mgxs(domain, 'nu-scatter matrix')
+            if 'nu-scatter matrix' in self.mgxs_types or \
+                    'consistent nu-scatter matrix' in self.mgxs_types:
+                if 'nu-scatter matrix' in self.mgxs_types:
+                    nuscatt_mgxs = self.get_mgxs(domain, 'nu-scatter matrix')
+                else:
+                    nuscatt_mgxs = \
+                        self.get_mgxs(domain, 'consistent nu-scatter matrix')
                 xsdata.set_scatter_matrix_mgxs(nuscatt_mgxs, xs_type=xs_type,
                                                nuclide=[nuclide],
                                                subdomain=subdomain)
@@ -1409,13 +1430,15 @@ class Library(object):
             error_flag = True
             warn('An "absorption" MGXS type is required but not provided.')
         # Ensure nu-scattering matrix is required
-        if 'nu-scatter matrix' not in self.mgxs_types:
+        if 'nu-scatter matrix' not in self.mgxs_types and \
+            'consistent nu-scatter matrix' not in self.mgxs_types:
             error_flag = True
             warn('A "nu-scatter matrix" MGXS type is required but not provided.')
         else:
             # Ok, now see the status of scatter and/or multiplicity
-            if ((('scatter matrix' not in self.mgxs_types) and
-                 ('multiplicity matrix' not in self.mgxs_types))):
+            if 'scatter matrix' not in self.mgxs_types or \
+                'consistent scatter matrix' not in self.mgxs_types and \
+                'multiplicity matrix' not in self.mgxs_types:
                 # We dont have data needed for multiplicity matrix, therefore
                 # we need total, and not transport.
                 if 'total' not in self.mgxs_types:
@@ -1424,14 +1447,12 @@ class Library(object):
                          'scattering matrix is not provided.')
         # Total or transport can be present, but if using
         # self.correction=="P0", then we should use transport.
-        if (((self.correction == "P0") and
-             ('nu-transport' not in self.mgxs_types))):
+        if self.correction == "P0" and 'nu-transport' not in self.mgxs_types:
             error_flag = True
             warn('A "nu-transport" MGXS type is required since a "P0" '
                  'correction is applied, but a "nu-transport" MGXS is '
                  'not provided.')
-        elif (((self.correction is None) and
-               ('total' not in self.mgxs_types))):
+        elif self.correction is None and 'total' not in self.mgxs_types:
             error_flag = True
             warn('A "total" MGXS type is required, but not provided.')
 

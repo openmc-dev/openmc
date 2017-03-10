@@ -4364,8 +4364,8 @@ contains
 
       ! Copy plot color type and initialize all colors randomly
       temp_str = "cell"
-      if (check_for_node(node_plot, "color")) &
-           call get_node_value(node_plot, "color", temp_str)
+      if (check_for_node(node_plot, "color_by")) &
+           call get_node_value(node_plot, "color_by", temp_str)
       temp_str = to_lower(temp_str)
       select case (trim(temp_str))
       case ("cell")
@@ -4378,7 +4378,7 @@ contains
           pl % colors(j) % rgb(3) = int(prn()*255)
         end do
 
-      case ("mat", "material")
+      case ("material")
 
         pl % color_by = PLOT_COLOR_MATS
         allocate(pl % colors(n_materials))
@@ -4393,8 +4393,8 @@ contains
              // "' in plot " // trim(to_str(pl % id)))
       end select
 
-      ! Get the number of <col_spec> nodes and get a list of them
-      call get_node_list(node_plot, "col_spec", node_col_list)
+      ! Get the number of <color> nodes and get a list of them
+      call get_node_list(node_plot, "color", node_col_list)
       n_cols = size(node_col_list)
 
       ! Copy user specified colors
@@ -4634,13 +4634,12 @@ contains
             end do
 
             ! Alter colors based on mask information
-            do j=1,size(pl % colors)
-              if (.not. any(j .eq. iarray)) then
+            do j = 1, size(pl % colors)
+              if (.not. any(j == iarray)) then
                 if (check_for_node(node_mask, "background")) then
                   call get_node_array(node_mask, "background", pl % colors(j) % rgb)
                 else
-                  call fatal_error("Missing <background> in mask of plot " &
-                       // trim(to_str(pl % id)))
+                  pl % colors(j) % rgb(:) = [255, 255, 255]
                 end if
               end if
             end do

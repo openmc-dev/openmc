@@ -99,6 +99,7 @@ class Cell(object):
         self.fill = fill
         self.region = region
         self._rotation = None
+        self._rotation_matrix = None
         self._temperature = None
         self._translation = None
         self._paths = []
@@ -196,14 +197,7 @@ class Cell(object):
 
     @property
     def rotation_matrix(self):
-        if self.rotation is not None:
-            phi, theta, psi = self.rotation*(-pi/180.)
-            c3, s3 = cos(phi), sin(phi)
-            c2, s2 = cos(theta), sin(theta)
-            c1, s1 = cos(psi), sin(psi)
-            return np.array([[c1*c2, c1*s2*s3 - c3*s1, s1*s3 + c1*c3*s2],
-                             [c2*s1, c1*c3 + s1*s2*s3, c3*s1*s2 - c1*s3],
-                             [-s2, c2*s3, c2*c3]])
+        return self._rotation_matrix
 
     @property
     def temperature(self):
@@ -287,6 +281,17 @@ class Cell(object):
         cv.check_type('cell rotation', rotation, Iterable, Real)
         cv.check_length('cell rotation', rotation, 3)
         self._rotation = np.asarray(rotation)
+
+        # Save rotation matrix -- the reason we do this instead of having it be
+        # automatically calculated when the rotation_matrix property is accessed
+        # is so that plotting on a rotated geometry can be done faster.
+        phi, theta, psi = self.rotation*(-pi/180.)
+        c3, s3 = cos(phi), sin(phi)
+        c2, s2 = cos(theta), sin(theta)
+        c1, s1 = cos(psi), sin(psi)
+        return np.array([[c1*c2, c1*s2*s3 - c3*s1, s1*s3 + c1*c3*s2],
+                         [c2*s1, c1*c3 + s1*s2*s3, c3*s1*s2 - c1*s3],
+                         [-s2, c2*s3, c2*c3]])
 
     @translation.setter
     def translation(self, translation):

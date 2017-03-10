@@ -48,6 +48,10 @@ def plot_geometry(output=True, openmc_exec='openmc', cwd='.'):
 def plot_inline(plots, openmc_exec='openmc', cwd='.', convert_exec='convert'):
     """Display plots inline in a Jupyter notebook.
 
+    This function requires that you have a program installed to convert PPM
+    files to PNG files. Typically, that would be `ImageMagick
+    <https://www.imagemagick.org>`_ which includes a `convert` command.
+
     Parameters
     ----------
     plots : Iterable of openmc.Plot

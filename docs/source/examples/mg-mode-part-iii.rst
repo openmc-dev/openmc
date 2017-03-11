@@ -1,12 +1,12 @@
-.. _notebook_mgxs_part_iv:
+.. _notebook_mg_mode_part_iii:
 
 ====================================================
-MGXS Part IV: Multi-Group Mode Cross-Section Library
+Multi-Group Mode Part III: Advanced Feature Showcase
 ====================================================
 
 .. only:: html
 
-    .. notebook:: mgxs-part-iv.ipynb
+    .. notebook:: mg-mode-part-iii.ipynb
 
 .. only:: latex
 

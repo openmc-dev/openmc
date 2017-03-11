@@ -32,6 +32,7 @@ the latest developmental version of the develop branch can be found on
     :maxdepth: 1
 
     quickinstall
+    examples/index
     releasenotes
     methods/index
     usersguide/index

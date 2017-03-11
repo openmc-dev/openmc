@@ -6,30 +6,13 @@ Python API
 
 OpenMC includes a rich Python API that enables programmatic pre- and
 post-processing. The easiest way to begin using the API is to take a look at the
-example Jupyter_ notebooks provided. However, this assumes that you are already
-familiar with Python and common third-party packages such as NumPy_. If you have
-never programmed in Python before, there are many good tutorials available
-online. We recommend going through the modules from Codecademy_ and/or the
-`Scipy lectures`_. The full API documentation serves to provide more information
-on a given module or class.
-
--------------------------
-Example Jupyter Notebooks
--------------------------
-
-.. toctree::
-    :maxdepth: 1
-
-    examples/post-processing
-    examples/pandas-dataframes
-    examples/tally-arithmetic
-    examples/mgxs-part-i
-    examples/mgxs-part-ii
-    examples/mgxs-part-iii
-    examples/mgxs-part-iv
-    examples/mdgxs-part-i
-    examples/mdgxs-part-ii
-    examples/nuclear-data
+example Jupyter_ notebooks provided in the :ref:`examples` section of the
+documentation. However, this assumes that you are already familiar with Python
+and common third-party packages such as NumPy_. If you have never programmed in
+Python before, there are many good tutorials available online. We recommend
+going through the modules from Codecademy_ and/or the `Scipy lectures`_. The
+full API documentation serves to provide more information on a given module or
+class.
 
 ------------------------------------
 :mod:`openmc` -- Basic Functionality

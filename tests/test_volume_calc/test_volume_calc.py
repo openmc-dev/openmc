@@ -42,7 +42,7 @@ class VolumeTest(PyAPITestHarness):
         geometry.export_to_xml()
 
         # Set up stochastic volume calculation
-        ll, ur = openmc.Union(*[c.region for c in root.cells.values()]).bounding_box
+        ll, ur = root.bounding_box
         vol_calcs = [
             openmc.VolumeCalculation(list(root.cells.values()), 100000),
             openmc.VolumeCalculation([water, fuel], 100000, ll, ur),

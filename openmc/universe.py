@@ -184,9 +184,9 @@ class Universe(object):
             Results from a stochastic volume calculation
 
         """
-        if volume_calc.domain_type == 'cell':
+        if volume_calc.domain_type == 'universe':
             if self.id in volume_calc.volumes:
-                self._volume = volume_calc.volumes[self.id]
+                self._volume = volume_calc.volumes[self.id][0]
                 self._atoms = volume_calc.atoms[self.id]
             else:
                 raise ValueError('No volume information found for this universe.')
@@ -441,9 +441,22 @@ class Universe(object):
             (nuclide, density)
 
         """
+        nuclides = OrderedDict()
 
-        raise NotImplementedError('Determining average nuclide densities over '
-                                  'an entire universe not yet supported.')
+        if self._atoms is not None:
+            volume = self.volume
+            for name, atoms in self._atoms.items():
+                nuclide = openmc.Nuclide(name)
+                density = 1.0e-24 * atoms[0]/volume  # density in atoms/b-cm
+                nuclides[name] = (nuclide, density)
+        else:
+            raise RuntimeError(
+                'Volume information is needed to calculate microscopic cross '
+                'sections for universe {}. This can be done by running a '
+                'stochastic volume calculation via the '
+                'openmc.VolumeCalculation object'.format(self.id))
+
+        return nuclides
 
     def get_all_cells(self):
         """Return all cells that are contained within the universe

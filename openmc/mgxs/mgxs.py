@@ -4601,7 +4601,6 @@ class ScatterMatrixXS(MatrixMGXS):
 
                 # Build header for cross section type
                 string += '{0: <16}\n'.format(xs_header)
-                template = '{0: <12}Group {1} -> Group {2}:\t\t'
 
                 average_xs = self.get_xs(nuclides=[nuclide],
                                          subdomains=[subdomain],
@@ -4613,39 +4612,58 @@ class ScatterMatrixXS(MatrixMGXS):
                                          moment=moment)
                 rel_err_xs = rel_err_xs * 100.
 
+                # Create a function for printing group and histogram data
+                def print_groups_and_histogram(avg_xs, err_xs, num_groups,
+                                               num_histogram_bins):
+                    template = '{0: <12}Group {1} -> Group {2}:\t\t'
+                    to_print = ""
+                    # Loop over incoming/outgoing energy groups ranges
+                    for in_group in range(1, num_groups + 1):
+                        for out_group in range(1, num_groups + 1):
+                            to_print += template.format('', in_group,
+                                                        out_group)
+                            if num_histogram_bins > 0:
+                                for i in range(num_histogram_bins):
+                                    to_print += \
+                                        '\n{0: <16}Histogram Bin {1}:{2: <6}'.format(
+                                            '', i + 1, '')
+                                    to_print += '{0:.2e} +/- {1:.2e}%'.format(
+                                        avg_xs[in_group - 1, out_group - 1, i],
+                                        err_xs[in_group - 1, out_group - 1, i])
+                                to_print += '\n'
+                            else:
+                                to_print += '{0:.2e} +/- {1:.2e}%'.format(
+                                    avg_xs[in_group - 1, out_group - 1],
+                                    err_xs[in_group - 1, out_group - 1])
+                                to_print += '\n'
+                        to_print += '\n'
+                    return to_print
+
+                # Set the number of histogram bins
+                if self.scatter_format == 'histogram':
+                    num_mu_bins = self.histogram_bins
+                else:
+                    num_mu_bins = 0
+
                 if self.num_polar > 1 or self.num_azimuthal > 1:
                     # Loop over polar, azi, and in/out energy group ranges
                     for pol in range(len(pol_bins) - 1):
                         pol_low, pol_high = pol_bins[pol: pol + 2]
                         for azi in range(len(azi_bins) - 1):
                             azi_low, azi_high = azi_bins[azi: azi + 2]
-                            string += '\t\tPolar Angle: [{0:5f} - {1:5f}]'.format(
-                                pol_low, pol_high) + \
+                            string += \
+                                '\t\tPolar Angle: [{0:5f} - {1:5f}]'.format(
+                                    pol_low, pol_high) + \
                                 '\tAzimuthal Angle: [{0:5f} - {1:5f}]'.format(
-                                azi_low, azi_high) + '\n'
-                            for in_group in range(1, self.num_groups + 1):
-                                for out_group in range(1, self.num_groups + 1):
-                                    string += '\t' + template.format('',
-                                                                     in_group,
-                                                                     out_group)
-                                    string += '{0:.2e} +/- {1:.2e}%'.format(
-                                        average_xs[pol, azi, in_group - 1,
-                                                   out_group - 1],
-                                        rel_err_xs[pol, azi, in_group - 1,
-                                                   out_group - 1])
-                                    string += '\n'
-                                string += '\n'
+                                    azi_low, azi_high) + '\n'
+                            string += print_groups_and_histogram(
+                                average_xs[pol, azi, ...],
+                                rel_err_xs[pol, azi, ...], self.num_groups,
+                                num_mu_bins)
                             string += '\n'
                 else:
-                    # Loop over incoming/outgoing energy groups ranges
-                    for in_group in range(1, self.num_groups + 1):
-                        for out_group in range(1, self.num_groups + 1):
-                            string += template.format('', in_group, out_group)
-                            string += '{0:.2e} +/- {1:.2e}%'.format(
-                                average_xs[in_group - 1, out_group - 1],
-                                rel_err_xs[in_group - 1, out_group - 1])
-                            string += '\n'
-                        string += '\n'
+                    string += print_groups_and_histogram(
+                        average_xs, rel_err_xs, self.num_groups, num_mu_bins)
                     string += '\n'
                 string += '\n'
             string += '\n'
@@ -4957,7 +4975,7 @@ class ScatterProbabilityMatrix(MatrixMGXS):
     @property
     def scores(self):
         return [self.rxn_type]
-       
+
     @property
     def filters(self):
         # Create the non-domain specific Filters for the Tallies

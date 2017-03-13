@@ -135,6 +135,7 @@ Constructing Tallies
    openmc.EnergyFunctionFilter
    openmc.Mesh
    openmc.Trigger
+   openmc.TallyDerivative
    openmc.Tally
    openmc.Tallies
 

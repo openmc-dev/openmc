@@ -23,12 +23,12 @@ class TallyDerivative(EqualityMixin):
 
     Parameters
     ----------
-    derivative_id : Integral, optional
+    derivative_id : int, optional
         Unique identifier for the tally derivative. If none is specified, an
         identifier will automatically be assigned
     variable : str, optional
         Accepted values are 'density', 'nuclide_density', and 'temperature'
-    material : Integral, optional
+    material : int, optional
         The perturubed material ID
     nuclide : str, optional
         The perturbed nuclide. Only needed for 'nuclide_density' derivatives.
@@ -36,11 +36,11 @@ class TallyDerivative(EqualityMixin):
 
     Attributes
     ----------
-    id : Integral
+    id : int
         Unique identifier for the tally derivative
     variable : str
         Accepted values are 'density', 'nuclide_density', and 'temperature'
-    material : Integral
+    material : int
         The perturubed material ID
     nuclide : str
         The perturbed nuclide. Only needed for 'nuclide_density' derivatives.

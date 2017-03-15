@@ -312,6 +312,7 @@ def get_openmoc_cell(openmc_cell):
 
     if openmc_cell.fill_type == 'material':
         openmoc_cell.setFill(get_openmoc_material(fill))
+        print('set fill to material {} {}'.format(fill.id, fill.name))
     elif openmc_cell.fill_type == 'universe':
         openmoc_cell.setFill(get_openmoc_universe(fill))
     else:
@@ -324,26 +325,9 @@ def get_openmoc_cell(openmc_cell):
         translation = np.asarray(openmc_cell.translation, dtype=np.float64)
         openmoc_cell.setTranslation(translation)
 
-    # Add surfaces to OpenMOC cell from OpenMC cell region. Right now this only
-    # works if the region is a single half-space or an intersection of
-    # half-spaces, i.e., no complex cells.
-    region = openmc_cell.region
-    if region is not None:
-        if isinstance(region, openmc.Halfspace):
-            surface = region.surface
-            halfspace = -1 if region.side == '-' else 1
-            openmoc_cell.addSurface(halfspace, get_openmoc_surface(surface))
-        elif isinstance(region, openmc.Intersection):
-            for node in region.nodes:
-                if not isinstance(node, openmc.Halfspace):
-                    raise NotImplementedError("Complex cells not yet "
-                                              "supported in OpenMOC.")
-                surface = node.surface
-                halfspace = -1 if node.side == '-' else 1
-                openmoc_cell.addSurface(halfspace, get_openmoc_surface(surface))
-        else:
-            raise NotImplementedError("Complex cells not yet supported "
-                                      "in OpenMOC.")
+    # Convert OpenMC's cell region to an equivalent OpenMOC region
+    if openmc_cell.region is not None:
+        openmoc_cell.setRegion(get_openmoc_region(openmc_cell.region))
 
     # Add the OpenMC Cell to the global collection of all OpenMC Cells
     OPENMC_CELLS[cell_id] = openmc_cell
@@ -352,6 +336,63 @@ def get_openmoc_cell(openmc_cell):
     OPENMOC_CELLS[cell_id] = openmoc_cell
 
     return openmoc_cell
+
+
+def get_openmoc_region(openmc_region):
+    """Return an OpenMOC region corresponding to an OpenMC region.
+
+    Parameters
+    ----------
+    openmc_region : openmc.Region
+        OpenMC region
+
+    Returns
+    -------
+    openmoc_region : openmoc.Region
+        Equivalent OpenMOC region
+
+    """
+
+    cv.check_type('openmc_region', openmc_region, openmc.Region)
+
+    # Add surfaces to OpenMOC cell from OpenMC cell region
+    if isinstance(openmc_region, openmc.Halfspace):
+        surface = openmc_region.surface
+        halfspace = -1 if openmc_region.side == '-' else 1
+        openmoc_region = \
+            openmoc.Halfspace(halfspace, get_openmoc_surface(surface))
+    elif isinstance(openmc_region, openmc.Intersection):
+        openmoc_region = openmoc.Intersection()
+        for openmc_node in openmc_region.nodes:
+            openmoc_region.addNode(get_openmoc_region(openmc_node))
+    elif isinstance(openmc_region, openmc.Union):
+        openmoc_region = openmoc.Union()
+        for openmc_node in openmc_region.nodes:
+            openmoc_region.addNode(get_openmoc_region(openmc_node))
+    elif isinstance(openmc_region, openmc.Complement):
+        openmoc_region = openmoc.Complement()
+        openmoc_region.addNode(get_openmoc_region(openmc_region.node))
+
+    return openmoc_region
+
+
+# FIXME:
+def get_openmc_region(openmoc_region):
+    """Return an OpenMC region corresponding to an OpenMOC region.
+
+    Parameters
+    ----------
+    openmoc_region : openmoc.Region
+        OpenMOC region
+
+    Returns
+    -------
+    openmc_region : openmc.Region
+        Equivalent OpenMC region
+
+    """
+
+    cv.check_type('openmoc_region', openmoc_region, openmoc.Region)
 
 
 def get_openmc_cell(openmoc_cell):

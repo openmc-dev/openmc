@@ -919,23 +919,6 @@ class MGXS(object):
                   'linked with a summary file'
             raise ValueError(msg)
 
-        # Override the domain object that loaded from an OpenMC summary file
-        # NOTE: This is necessary for micro cross-sections which require
-        # the isotopic number densities as computed by OpenMC
-        geom = statepoint.summary.geometry
-        if self.domain_type in ('cell', 'distribcell'):
-            self.domain = geom.get_all_cells()[self.domain.id]
-        elif self.domain_type == 'universe':
-            self.domain = geom.get_all_universes()[self.domain.id]
-        elif self.domain_type == 'material':
-            self.domain = geom.get_all_materials()[self.domain.id]
-        elif self.domain_type == 'mesh':
-            self.domain = statepoint.meshes[self.domain.id]
-        else:
-            msg = 'Unable to load data from a statepoint for domain type {0} ' \
-                  'which is not yet supported'.format(self.domain_type)
-            raise ValueError(msg)
-
         # Use tally "slicing" to ensure that tallies correspond to our domain
         # NOTE: This is important if tally merging was used
         if self.domain_type == 'mesh':

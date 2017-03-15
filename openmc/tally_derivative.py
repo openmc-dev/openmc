@@ -29,7 +29,7 @@ class TallyDerivative(EqualityMixin):
     variable : str, optional
         Accepted values are 'density', 'nuclide_density', and 'temperature'
     material : int, optional
-        The perturubed material ID
+        The perturbed material ID
     nuclide : str, optional
         The perturbed nuclide. Only needed for 'nuclide_density' derivatives.
         Ex: 'Xe135'

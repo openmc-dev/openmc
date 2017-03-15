@@ -54,7 +54,8 @@ class PolarAzimuthal(UnitSphere):
     """Angular distribution represented by polar and azimuthal angles
 
     This distribution allows one to specify the distribution of the cosine of
-    the polar angle and the azimuthal angle independently of once another.
+    the polar angle and the azimuthal angle independently of one another. The
+    polar angle is measured relative to the reference angle.
 
     Parameters
     ----------

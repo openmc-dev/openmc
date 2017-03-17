@@ -80,9 +80,7 @@ class VolumeCalculation(object):
             # user-specified one is valid
             if self.domain_type == 'cell':
                 for c in domains:
-                    if c.region is None:
-                        continue
-                    ll, ur = c.region.bounding_box
+                    ll, ur = c.bounding_box
                     if np.any(np.isinf(ll)) or np.any(np.isinf(ur)):
                         continue
                     if (np.any(np.asarray(lower_left) > ll) or

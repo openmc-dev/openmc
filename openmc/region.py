@@ -301,7 +301,7 @@ class Union(Region):
     ----------
     nodes : tuple of openmc.Region
         Regions to take the union of
-    bounding_box : tuple of numpy.array
+    bounding_box : 2-tuple of numpy.array
         Lower-left and upper-right coordinates of an axis-aligned bounding box
 
     """

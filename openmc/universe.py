@@ -1,3 +1,5 @@
+from __future__ import division
+from copy import copy
 from collections import OrderedDict, Iterable
 from numbers import Integral, Real
 import random
@@ -8,6 +10,7 @@ import numpy as np
 
 import openmc
 import openmc.checkvalue as cv
+from openmc.plots import _SVG_COLORS
 
 
 # A static variable for auto-generated Lattice (Universe) IDs
@@ -46,6 +49,9 @@ class Universe(object):
         Volume of the universe in cm^3. This can either be set manually or
         calculated in a stochastic volume calculation and added via the
         :meth:`Universe.add_volume_information` method.
+    bounding_box : 2-tuple of numpy.array
+        Lower-left and upper-right coordinates of an axis-aligned bounding box
+        of the universe.
 
     """
 
@@ -104,6 +110,16 @@ class Universe(object):
     @property
     def volume(self):
         return self._volume
+
+    @property
+    def bounding_box(self):
+        regions = [c.region for c in self.cells.values()
+                   if c.region is not None]
+        if regions:
+            return openmc.Union(*regions).bounding_box
+        else:
+            # Infinite bounding box
+            return openmc.Intersection().bounding_box
 
     @id.setter
     def id(self, universe_id):
@@ -168,9 +184,9 @@ class Universe(object):
             Results from a stochastic volume calculation
 
         """
-        if volume_calc.domain_type == 'cell':
+        if volume_calc.domain_type == 'universe':
             if self.id in volume_calc.volumes:
-                self._volume = volume_calc.volumes[self.id]
+                self._volume = volume_calc.volumes[self.id][0]
                 self._atoms = volume_calc.atoms[self.id]
             else:
                 raise ValueError('No volume information found for this universe.')
@@ -207,15 +223,15 @@ class Universe(object):
                     return [self, cell] + cell.fill.find(p)
         return []
 
-    def plot(self, center=(0., 0., 0.), width=(1., 1.), pixels=(200, 200),
+    def plot(self, origin=(0., 0., 0.), width=(1., 1.), pixels=(200, 200),
              basis='xy', color_by='cell', colors=None, filename=None, seed=None,
              **kwargs):
         """Display a slice plot of the universe.
 
         Parameters
         ----------
-        center : Iterable of float
-            Coordinates at the center of the plot
+        origin : Iterable of float
+            Coordinates at the origin of the plot
         width : Iterable of float
             Width of the plot in each basis direction
         pixels : Iterable of int
@@ -225,11 +241,10 @@ class Universe(object):
         color_by : {'cell', 'material'}
             Indicate whether the plot should be colored by cell or by material
         colors : dict
-
             Assigns colors to specific materials or cells. Keys are instances of
-            :class:`Cell` or :class:`Material` and values are RGB 3-tuples or
-            RGBA 4-tuples. Red, green, blue, and alpha should all be floats in
-            the range [0.0, 1.0], for example:
+            :class:`Cell` or :class:`Material` and values are RGB 3-tuples, RGBA
+            4-tuples, or strings indicating SVG color names. Red, green, blue,
+            and alpha should all be floats in the range [0.0, 1.0], for example:
 
             .. code-block:: python
 
@@ -260,28 +275,35 @@ class Universe(object):
             colors = {}
         else:
             # Convert to RGBA if necessary
-            for obj, rgb in colors.items():
-                if len(rgb) == 3:
-                    colors[obj] = rgb + (1.0,)
+            colors = copy(colors)
+            for obj, color in colors.items():
+                if isinstance(color, string_types):
+                    if color.lower() not in _SVG_COLORS:
+                        raise ValueError("'{}' is not a valid color."
+                                         .format(color))
+                    colors[obj] = [x/255 for x in
+                                   _SVG_COLORS[color.lower()]] + [1.0]
+                elif len(color) == 3:
+                    colors[obj] = list(color) + [1.0]
 
         if basis == 'xy':
-            x_min = center[0] - 0.5*width[0]
-            x_max = center[0] + 0.5*width[0]
-            y_min = center[1] - 0.5*width[1]
-            y_max = center[1] + 0.5*width[1]
+            x_min = origin[0] - 0.5*width[0]
+            x_max = origin[0] + 0.5*width[0]
+            y_min = origin[1] - 0.5*width[1]
+            y_max = origin[1] + 0.5*width[1]
         elif basis == 'yz':
             # The x-axis will correspond to physical y and the y-axis will
             # correspond to physical z
-            x_min = center[1] - 0.5*width[0]
-            x_max = center[1] + 0.5*width[0]
-            y_min = center[2] - 0.5*width[1]
-            y_max = center[2] + 0.5*width[1]
+            x_min = origin[1] - 0.5*width[0]
+            x_max = origin[1] + 0.5*width[0]
+            y_min = origin[2] - 0.5*width[1]
+            y_max = origin[2] + 0.5*width[1]
         elif basis == 'xz':
             # The y-axis will correspond to physical z
-            x_min = center[0] - 0.5*width[0]
-            x_max = center[0] + 0.5*width[0]
-            y_min = center[2] - 0.5*width[1]
-            y_max = center[2] + 0.5*width[1]
+            x_min = origin[0] - 0.5*width[0]
+            x_max = origin[0] + 0.5*width[0]
+            y_min = origin[2] - 0.5*width[1]
+            y_max = origin[2] + 0.5*width[1]
 
         # Determine locations to determine cells at
         x_coords = np.linspace(x_min, x_max, pixels[0], endpoint=False) + \
@@ -295,11 +317,11 @@ class Universe(object):
         for i, x in enumerate(x_coords):
             for j, y in enumerate(y_coords):
                 if basis == 'xy':
-                    path = self.find((x, y, center[2]))
+                    path = self.find((x, y, origin[2]))
                 elif basis == 'yz':
-                    path = self.find((center[0], x, y))
+                    path = self.find((origin[0], x, y))
                 elif basis == 'xz':
-                    path = self.find((x, center[1], y))
+                    path = self.find((x, origin[1], y))
 
                 if len(path) > 0:
                     try:
@@ -318,7 +340,8 @@ class Universe(object):
                     img[j, i, :] = colors[obj]
 
         # Display image
-        plt.imshow(img, extent=(x_min, x_max, y_min, y_max), **kwargs)
+        plt.imshow(img, extent=(x_min, x_max, y_min, y_max),
+                   interpolation='nearest', **kwargs)
 
         # Show or save the plot
         if filename is None:
@@ -418,9 +441,22 @@ class Universe(object):
             (nuclide, density)
 
         """
+        nuclides = OrderedDict()
 
-        raise NotImplementedError('Determining average nuclide densities over '
-                                  'an entire universe not yet supported.')
+        if self._atoms is not None:
+            volume = self.volume
+            for name, atoms in self._atoms.items():
+                nuclide = openmc.Nuclide(name)
+                density = 1.0e-24 * atoms[0]/volume  # density in atoms/b-cm
+                nuclides[name] = (nuclide, density)
+        else:
+            raise RuntimeError(
+                'Volume information is needed to calculate microscopic cross '
+                'sections for universe {}. This can be done by running a '
+                'stochastic volume calculation via the '
+                'openmc.VolumeCalculation object'.format(self.id))
+
+        return nuclides
 
     def get_all_cells(self):
         """Return all cells that are contained within the universe

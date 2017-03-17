@@ -79,7 +79,7 @@ class MultipoleTestHarness(PyAPITestHarness):
 
         plot = openmc.Plot(plot_id=1)
         plot.basis = 'xy'
-        plot.color = 'cell'
+        plot.color_by = 'cell'
         plot.filename = 'cellplot'
         plot.origin = (0, 0, 0)
         plot.width = (7, 7)
@@ -88,7 +88,7 @@ class MultipoleTestHarness(PyAPITestHarness):
 
         plot = openmc.Plot(plot_id=2)
         plot.basis = 'xy'
-        plot.color = 'mat'
+        plot.color_by = 'material'
         plot.filename = 'matplot'
         plot.origin = (0, 0, 0)
         plot.width = (7, 7)

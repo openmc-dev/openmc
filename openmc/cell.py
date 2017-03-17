@@ -219,6 +219,14 @@ class Cell(object):
         return self._paths
 
     @property
+    def bounding_box(self):
+        if self.region is not None:
+            return self.region.bounding_box
+        else:
+            return (np.array([-np.inf, -np.inf, -np.inf]),
+                    np.array([np.inf, np.inf, np.inf]))
+
+    @property
     def num_instances(self):
         return len(self.paths)
 
@@ -267,22 +275,23 @@ class Cell(object):
     @rotation.setter
     def rotation(self, rotation):
         if not isinstance(self.fill, openmc.Universe):
-            raise RuntimeError('Cell rotation can only be applied if the cell '
-                               'is filled with a Universe')
+            raise TypeError('Cell rotation can only be applied if the cell '
+                            'is filled with a Universe.')
 
         cv.check_type('cell rotation', rotation, Iterable, Real)
         cv.check_length('cell rotation', rotation, 3)
         self._rotation = np.asarray(rotation)
 
-        # Save rotation matrix
+        # Save rotation matrix -- the reason we do this instead of having it be
+        # automatically calculated when the rotation_matrix property is accessed
+        # is so that plotting on a rotated geometry can be done faster.
         phi, theta, psi = self.rotation*(-pi/180.)
         c3, s3 = cos(phi), sin(phi)
         c2, s2 = cos(theta), sin(theta)
         c1, s1 = cos(psi), sin(psi)
-        self._rotation_matrix = np.array([
-            [c1*c2, c1*s2*s3 - c3*s1, s1*s3 + c1*c3*s2],
-            [c2*s1, c1*c3 + s1*s2*s3, c3*s1*s2 - c1*s3],
-            [-s2, c2*s3, c2*c3]])
+        return np.array([[c1*c2, c1*s2*s3 - c3*s1, s1*s3 + c1*c3*s2],
+                         [c2*s1, c1*c3 + s1*s2*s3, c3*s1*s2 - c1*s3],
+                         [-s2, c2*s3, c2*c3]])
 
     @translation.setter
     def translation(self, translation):

@@ -589,8 +589,6 @@ def get_openmoc_lattice(openmc_lattice):
     if lattice_id in OPENMOC_LATTICES:
         return OPENMOC_LATTICES[lattice_id]
 
-    # FIXME: All of this must be fixed
-
     # Create an OpenMOC Lattice to represent this OpenMC Lattice
     name = openmc_lattice.name
     dimension = openmc_lattice.shape
@@ -612,7 +610,8 @@ def get_openmoc_lattice(openmc_lattice):
 
     # Convert 2D lower left to 3D for OpenMOC
     if len(lower_left) == 2:
-        new_lower_left = np.ones(3, dtype=np.float64) * np.finfo(np.float64).min
+        new_lower_left = np.ones(3, dtype=np.float64)
+        new_lower_left *= np.finfo(np.float64).min / 2.
         new_lower_left[:2] = lower_left
         lower_left = new_lower_left
 
@@ -621,7 +620,7 @@ def get_openmoc_lattice(openmc_lattice):
             new_universes = universes.copy()
             new_universes.shape = (1,) + universes.shape
             universes = new_universes
-
+            
     # Initialize an empty array for the OpenMOC nested Universes in this Lattice
     universe_array = np.ndarray(tuple(dimension[::-1]), dtype=openmoc.Universe)
 
@@ -636,7 +635,7 @@ def get_openmoc_lattice(openmc_lattice):
         for y in range(dimension[1]):
             for x in range(dimension[0]):
                 universe_id = universes[z][y][x].id
-                universe_array[z][dimension[1]-y-1][x] = unique_universes[universe_id]
+                universe_array[z][y][x] = unique_universes[universe_id]
 
     openmoc_lattice = openmoc.Lattice(lattice_id, name)
     openmoc_lattice.setWidth(pitch[0], pitch[1], pitch[2])
@@ -692,10 +691,7 @@ def get_openmc_lattice(openmoc_lattice):
                  ((np.array(width, dtype=np.float64) *
                    np.array(dimension, dtype=np.float64))) / -2.0
 
-    # FIXME
     # Initialize an empty array for the OpenMOC nested Universes in this Lattice
-#    universe_array = np.ndarray(tuple(np.array(dimension)[::-1]),
-#                                dtype=openmoc.Universe)
     universe_array = np.ndarray(tuple(np.array(dimension)),
                                 dtype=openmoc.Universe)
 
@@ -711,15 +707,24 @@ def get_openmc_lattice(openmoc_lattice):
             for z in range(dimension[2]):
                 universe = openmoc_lattice.getUniverse(x, y, z)
                 universe_id = universe.getId()
-#                universe_array[x][y][z] = \
-#                    unique_universes[universe_id]
-                universe_array[x][dimension[1]-y-1][z] = \
+                universe_array[x][y][z] = \
                     unique_universes[universe_id]
+
+    universe_array = np.swapaxes(universe_array, 0, 1)
+    universe_array = universe_array[::-1,:,:]
+
+    # Convert axially infinite 3D OpenMOC lattice to a 2D OpenMC lattice
+    if width[2] == np.finfo(np.float64).max:
+        dimension = dimension[:2]
+        width = width[:2]
+        offset = offset[:2]
+        lower_left = lower_left[:2]
+        universe_array = np.squeeze(universe_array, 2)
 
     openmc_lattice = openmc.RectLattice(lattice_id=lattice_id, name=name)
     openmc_lattice.pitch = width
     openmc_lattice.lower_left = lower_left
-    openmc_lattice.universes = np.swapaxes(universe_array, 0, 2)
+    openmc_lattice.universes = universe_array #np.s
 
     # Add the OpenMC Lattice to the global collection of all OpenMC Lattices
     OPENMC_LATTICES[lattice_id] = openmc_lattice

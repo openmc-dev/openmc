@@ -28,3 +28,5 @@ from openmc.summary import *
 from openmc.particle_restart import *
 from openmc.mixin import *
 from openmc.plotter import *
+from openmc.search import *
+from openmc.modelcontainer import *

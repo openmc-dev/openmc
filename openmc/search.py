@@ -7,12 +7,12 @@ from openmc.checkvalue import check_type, check_iterable_type, check_length, \
     check_value
 
 
-_SCALAR_BRACKETED_METHODS = ['brentq', 'brentq', 'ridder', 'bisect']
+_SCALAR_BRACKETED_METHODS = ['brentq', 'brenth', 'ridder', 'bisect']
 
 
 class KeffSearch(object):
-    """Class to perform a keff search by modifying an arbitrarily parametrized
-    model.
+    """Class to perform a keff search by modifying a model parametrized by a
+    single independent variable.
 
     Parameters
     ----------
@@ -47,6 +47,8 @@ class KeffSearch(object):
         Bracketing interval to search for the solution; if not provided,
         a generic non-bracketing method is used. If provided, the brackets
         are used.
+    model_args : dict
+        Keyword-based arguments to pass to the :param:`model_builder` method.
     print_iterations : bool
         Whether or not to print the guess and the resultant keff during the
         iteration process. Defaults to False.
@@ -64,9 +66,10 @@ class KeffSearch(object):
     """
 
     def __init__(self, model_builder, guess=None, bracket=None,
-                 target_keff=1.0):
+                 target_keff=1.0, model_args={}):
         self.initial_guess = guess
         self.bracket = bracket
+        self.model_args = model_args
         self.model_builder = model_builder
         self.target_keff = target_keff
         self.guesses = []
@@ -87,9 +90,9 @@ class KeffSearch(object):
         # Run the model builder function once to make sure it provides the
         # correct output type
         if self.bracket is not None:
-            model = model_builder(self.bracket[0])
+            model = model_builder(self.bracket[0], **self.model_args)
         elif self.initial_guess is not None:
-            model = model_builder(self.initial_guess)
+            model = model_builder(self.initial_guess, **self.model_args)
         check_type('model_builder return', model, openmc.model.Model)
         self._model_builder = model_builder
 
@@ -141,9 +144,18 @@ class KeffSearch(object):
         check_type('print_output', print_output, bool)
         self._print_output = print_output
 
+    @property
+    def model_args(self):
+        return self._model_args
+
+    @model_args.setter
+    def model_args(self, model_args):
+        check_type('model_args', model_args, dict)
+        self._model_args = model_args
+
     def _search_function(self, guess):
         # Build the model
-        model = self.model_builder(guess)
+        model = self.model_builder(guess, **self.model_args)
 
         # Run the model
         keff = model.execute(output=self._print_output)
@@ -158,7 +170,10 @@ class KeffSearch(object):
         self.keff_uncs.append(keff[1])
 
         if self._print_iterations:
-            print(guess, '{:1.5f} +/- {:1.5f}'.format(keff[0], keff[1]))
+            text = 'Iteration: {}; Guess of {:.2E} produced a keff of ' + \
+                '{:1.5f} +/- {:1.5f}'
+            print(text.format(self._i, guess, keff[0], keff[1]))
+        self._i += 1
 
         return (keff[0] - self.target_keff)
 
@@ -174,7 +189,8 @@ class KeffSearch(object):
             :param:`bracket` is set, otherwise the Newton method is used.
             Defaults to 'brentq'.
         **kwargs
-            Keyword arguments passed to :func:`scipy.optimize.newton`.
+            All remaining keyword arguments are passed to the root-finding
+            method.
 
         Returns
         zero_value : Real
@@ -220,6 +236,9 @@ class KeffSearch(object):
         else:
             raise ValueError("One of the 'bracket' or 'initial_guess' "
                              "parameters must be set")
+
+        # Set the iteration counter
+        self._i = 0
 
         # Perform the search
         zero_value = root_finder(**args, **kwargs)

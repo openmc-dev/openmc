@@ -828,6 +828,7 @@ contains
     integer :: i_E_low ! 0K index to lowest practical relative energy
     integer :: i_E_up  ! 0K index to highest practical relative energy
     integer :: i_E_rel ! index to trial relative energy
+    integer :: n_grid  ! number of energies on 0K grid
 
     logical :: reject  ! resample if true
 
@@ -887,21 +888,22 @@ contains
 
       ! find lower and upper energy bound indices
       ! lower index
+      n_grid = size(nuc % energy_0K)
       if (E_low < nuc % energy_0K(1)) then
         i_E_low = 1
-      elseif (E_low > nuc % energy_0K(nuc % n_grid_0K)) then
-        i_E_low = nuc % n_grid_0K - 1
+      elseif (E_low > nuc % energy_0K(n_grid)) then
+        i_E_low = n_grid - 1
       else
-        i_E_low = binary_search(nuc % energy_0K, nuc % n_grid_0K, E_low)
+        i_E_low = binary_search(nuc % energy_0K, n_grid, E_low)
       end if
 
       ! upper index
       if (E_up < nuc % energy_0K(1)) then
         i_E_up = 1
-      elseif (E_up > nuc % energy_0K(nuc % n_grid_0K)) then
-        i_E_up = nuc % n_grid_0K - 1
+      elseif (E_up > nuc % energy_0K(n_grid)) then
+        i_E_up = n_grid - 1
       else
-        i_E_up = binary_search(nuc % energy_0K, nuc % n_grid_0K, E_up)
+        i_E_up = binary_search(nuc % energy_0K, n_grid, E_up)
       end if
 
       ! interpolate xs since we're not exactly at the energy indices
@@ -941,21 +943,22 @@ contains
 
       ! find lower and upper energy bound indices
       ! lower index
+      n_grid = size(nuc % energy_0K)
       if (E_low < nuc % energy_0K(1)) then
         i_E_low = 1
-      elseif (E_low > nuc % energy_0K(nuc % n_grid_0K)) then
-        i_E_low = nuc % n_grid_0K - 1
+      elseif (E_low > nuc % energy_0K(n_grid)) then
+        i_E_low = n_grid - 1
       else
-        i_E_low = binary_search(nuc % energy_0K, nuc % n_grid_0K, E_low)
+        i_E_low = binary_search(nuc % energy_0K, n_grid, E_low)
       end if
 
       ! upper index
       if (E_up < nuc % energy_0K(1)) then
         i_E_up = 1
-      elseif (E_up > nuc % energy_0K(nuc % n_grid_0K)) then
-        i_E_up = nuc % n_grid_0K - 1
+      elseif (E_up > nuc % energy_0K(n_grid)) then
+        i_E_up = n_grid - 1
       else
-        i_E_up = binary_search(nuc % energy_0K, nuc % n_grid_0K, E_up)
+        i_E_up = binary_search(nuc % energy_0K, n_grid, E_up)
       end if
 
       ! interpolate xs CDF since we're not exactly at the energy indices

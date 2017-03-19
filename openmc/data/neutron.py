@@ -2,6 +2,7 @@ from __future__ import division, unicode_literals
 import sys
 from collections import OrderedDict, Iterable, Mapping, MutableMapping
 from itertools import chain
+from math import log10
 from numbers import Integral, Real
 from warnings import warn
 
@@ -12,12 +13,13 @@ import h5py
 from . import HDF5_VERSION, HDF5_VERSION_MAJOR
 from .ace import Table, get_table
 from .data import ATOMIC_SYMBOL, K_BOLTZMANN, EV_PER_MEV
+from .endf import Evaluation, SUM_RULES
 from .fission_energy import FissionEnergyRelease
 from .function import Tabulated1D, Sum, ResonancesWithBackground
-from .endf import Evaluation, SUM_RULES
+from .grid import linearize, thin
 from .product import Product
 from .reaction import Reaction, _get_photon_products_ace
-from .resonance import Resonances, _RESOLVED
+from .resonance import RMatrixLimited, Unresolved, Resonances, _RESOLVED
 from .urr import ProbabilityTables
 import openmc.checkvalue as cv
 from openmc.mixin import EqualityMixin
@@ -343,6 +345,46 @@ class IncidentNeutron(EqualityMixin):
         if strT in data.urr:
             self.urr[strT] = data.urr[strT]
 
+    def add_elastic_0K_from_endf(self, filename):
+        """Append 0K elastic scattering cross section from an ENDF file.
+
+        Parameters
+        ----------
+        filename : str
+            Path to ENDF file
+
+        """
+        data = type(self).from_endf(filename)
+        if data.resonances is not None:
+            x = []
+            y = []
+            for rr in data.resonances:
+                if isinstance(rr, RMatrixLimited):
+                    raise TypeError('R-Matrix Limited not supported.')
+                elif isinstance(rr, Unresolved):
+                    continue
+
+                # Create 1000 equal log-spaced energies over RRR
+                e_min, e_max = rr.energy_min, rr.energy_max
+                energies = np.logspace(log10(e_min), log10(e_max), 1000)
+
+                # Linearize and thin cross section
+                xi, yi = linearize(energies, data[2].xs['0K'])
+                xi, yi = thin(xi, yi)
+
+                # If there are multiple resolved resonance ranges (e.g. Pu239 in
+                # ENDF/B-VII.1), combine them
+                x = np.concatenate((x, xi))
+                y = np.concatenate((y, yi))
+        else:
+            energies = data[2].xs['0K'].x
+            x, y = linearize(energies, data[2].xs['0K'])
+            x, y = thin(x, y)
+
+        # Set 0K energy grid and elastic scattering cross section
+        self.energy['0K'] = x
+        self[2].xs['0K'] = Tabulated1D(x, y)
+
     def get_reaction_components(self, mt):
         """Determine what reactions make up summed reaction.
 
@@ -411,11 +453,21 @@ class IncidentNeutron(EqualityMixin):
         for temperature in self.temperatures:
             eg.create_dataset(temperature, data=self.energy[temperature])
 
+        # Write 0K energy grid if needed
+        if '0K' in self.energy and '0K' not in eg:
+            eg.create_dataset('0K', data=self.energy['0K'])
+
         # Write reaction data
         rxs_group = g.create_group('reactions')
         for rx in self.reactions.values():
             rx_group = rxs_group.create_group('reaction_{:03}'.format(rx.mt))
             rx.to_hdf5(rx_group)
+
+            # Write 0K elastic scattering if needed
+            if '0K' in rx.xs and '0K' not in rx_group:
+                group = rx_group.create_group('0K')
+                dset = group.create_dataset('xs', data=rx.xs['0K'].y)
+                dset.attrs['threshold_idx'] = 1
 
             # Write total nu data if available
             if len(rx.derived_products) > 0 and 'total_nu' not in g:

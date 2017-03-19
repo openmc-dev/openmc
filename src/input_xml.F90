@@ -5150,8 +5150,8 @@ contains
           call file_close(file_id)
 
           ! Assign resonant scattering data
-          if (treat_res_scat) call read_0K_elastic_scattering(&
-               nuclides(i_nuclide), libraries, library_dict)
+          if (treat_res_scat) &
+               call assign_0K_elastic_scattering(nuclides(i_nuclide))
 
           ! Determine if minimum/maximum energy for this nuclide is greater/less
           ! than the previous
@@ -5280,25 +5280,14 @@ contains
   end subroutine assign_temperatures
 
 !===============================================================================
-! READ_0K_ELASTIC_SCATTERING
+! ASSIGN_0K_ELASTIC_SCATTERING
 !===============================================================================
 
-  subroutine read_0K_elastic_scattering(nuc, libraries, library_dict)
-    type(Nuclide), intent(inout)   :: nuc
-    type(Library),   intent(in)      :: libraries(:)
-    type(DictCharInt), intent(inout) :: library_dict
+  subroutine assign_0K_elastic_scattering(nuc)
+    type(Nuclide), intent(inout) :: nuc
 
     integer :: i, j
-    integer :: i_library
-    integer :: method
-    integer(HID_T) :: file_id
-    integer(HID_T) :: group_id
     real(8) :: xs_cdf_sum
-    character(MAX_WORD_LEN) :: name
-    type(Nuclide) :: resonant_nuc
-    type(VectorReal) :: temperature
-
-    call temperature % push_back(ZERO)
 
     do i = 1, size(nuclides_0K)
       if (nuc % name == nuclides_0K(i) % nuclide) then
@@ -5308,51 +5297,28 @@ contains
         nuc % E_min = nuclides_0K(i) % E_min
         nuc % E_max = nuclides_0K(i) % E_max
 
-        ! Get index in libraries array
-        name = nuc % name
-        i_library = library_dict % get_key(to_lower(name))
-
-        call write_message('Reading ' // trim(name) // ' 0K data from ' // &
-             trim(libraries(i_library) % path), 6)
-
-        ! Open file and make sure version matches
-        file_id = file_open(libraries(i_library) % path, 'r')
-
-        ! Read nuclide data from HDF5
-        group_id = open_group(file_id, name)
-        method = TEMPERATURE_NEAREST
-        call resonant_nuc % from_hdf5(group_id, temperature, &
-             method, 1000.0_8, master)
-        call close_group(group_id)
-        call file_close(file_id)
-
-        ! Copy 0K energy grid and elastic scattering cross section
-        call move_alloc(TO=nuc % energy_0K, FROM=resonant_nuc % grid(1) % energy)
-        call move_alloc(TO=nuc % elastic_0K, FROM=resonant_nuc % sum_xs(1) % elastic)
-        nuc % n_grid_0K = size(nuc % energy_0K)
-
         ! Build CDF for 0K elastic scattering
         xs_cdf_sum = ZERO
         allocate(nuc % xs_cdf(size(nuc % energy_0K)))
 
-        do j = 1, size(nuc % energy_0K) - 1
-          ! Negative cross sections result in a CDF that is not monotonically
-          ! increasing. Set all negative xs values to ZERO.
-          if (nuc % elastic_0K(j) < ZERO) nuc % elastic_0K(j) = ZERO
+        associate (E => nuc % energy_0K, xs => nuc % elastic_0K)
+          do j = 1, size(E) - 1
+            ! Negative cross sections result in a CDF that is not monotonically
+            ! increasing. Set all negative xs values to zero.
+            if (xs(j) < ZERO) xs(j) = ZERO
 
-          ! build xs cdf
-          xs_cdf_sum = xs_cdf_sum &
-               + (sqrt(nuc % energy_0K(j)) * nuc % elastic_0K(j) &
-               + sqrt(nuc % energy_0K(j+1)) * nuc % elastic_0K(j+1)) / TWO &
-               * (nuc % energy_0K(j+1) - nuc % energy_0K(j))
-          nuc % xs_cdf(j) = xs_cdf_sum
-        end do
+            ! build xs cdf
+            xs_cdf_sum = xs_cdf_sum + (sqrt(E(j))*xs(j) + sqrt(E(j+1))*xs(j+1))&
+                 / TWO * (E(j+1) - E(j))
+            nuc % xs_cdf(j) = xs_cdf_sum
+          end do
+        end associate
 
         exit
       end if
     end do
 
-  end subroutine read_0K_elastic_scattering
+  end subroutine assign_0K_elastic_scattering
 
 !===============================================================================
 ! READ_MULTIPOLE_DATA checks for the existence of a multipole library in the

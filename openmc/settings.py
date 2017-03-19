@@ -1120,33 +1120,33 @@ class ResonanceScattering(object):
 
     Parameters
     ----------
-    nuclide : openmc.Nuclide
+    nuclide : openmc.Nuclide or str
         The nuclide affected by this resonance scattering treatment.
     method : {'ARES', 'CXS', 'DBRC', 'WCM'}
         The method used to sample outgoing scattering energies.  Valid options
         are 'ARES', 'CXS' (constant cross section), 'DBRC' (Doppler broadening
         rejection correction), and 'WCM' (weight correction method).
     E_min : float
-        The minimum energy above which the specified method is applied.  By
-        default, CXS will be used below E_min.
+        The minimum energy in eV above which the specified method is applied.
+        By default, CXS will be used below E_min.
     E_max : float
-        The maximum energy below which the specified method is applied.  By
-        default, the asymptotic target-at-rest model is applied  above E_max.
+        The maximum energy in eV below which the specified method is applied.
+        By default, the asymptotic target-at-rest model is applied above E_max.
 
     Attributes
     ----------
-    nuclide : openmc.Nuclide
+    nuclide : openmc.Nuclide or str
         The nuclide affected by this resonance scattering treatment.
     method : {'ARES', 'CXS', 'DBRC', 'WCM'}
         The method used to sample outgoing scattering energies.  Valid options
         are 'ARES', 'CXS' (constant cross section), 'DBRC' (Doppler broadening
         rejection correction), and 'WCM' (weight correction method).
     E_min : float
-        The minimum energy above which the specified method is applied.  By
-        default, CXS will be used below E_min.
+        The minimum energy in eV above which the specified method is applied.
+        By default, CXS will be used below E_min.
     E_max : float
-        The maximum energy below which the specified method is applied.  By
-        default, the asymptotic target-at-rest model is applied  above E_max.
+        The maximum energy in eV below which the specified method is applied.
+        By default, the asymptotic target-at-rest model is applied above E_max.
 
     """
 
@@ -1178,7 +1178,9 @@ class ResonanceScattering(object):
 
     @nuclide.setter
     def nuclide(self, nuc):
-        cv.check_type('nuclide', nuc, Nuclide)
+        cv.check_type('nuclide', nuc, (Nuclide,) + string_types)
+        if isinstance(nuc, string_types):
+            nuc = Nuclide(nuc)
         self._nuclide = nuc
 
     @method.setter

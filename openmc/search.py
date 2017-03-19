@@ -240,7 +240,10 @@ class KeffSearch(object):
         # Set the iteration counter
         self._i = 0
 
+        # Create a new dictionary with the arguments from args and kwargs
+        args.update(kwargs)
+
         # Perform the search
-        zero_value = root_finder(**args, **kwargs)
+        zero_value = root_finder(**args)
 
         return zero_value

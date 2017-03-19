@@ -107,6 +107,20 @@ class Model(object):
             self.cmfd.export_to_xml()
 
     def execute(self, output=True):
+        """Creates the XML files, runs OpenMC, and loads the statepoint.
+
+        Parameters
+        ----------
+        output : bool
+            Capture OpenMC output from standard out, defaults to True
+
+        Returns
+        -------
+        Iterable of float
+            k_combined from the statepoint
+
+        """
+
         self.export_to_xml()
 
         openmc.run(output=output)
@@ -121,6 +135,9 @@ class Model(object):
         return self.sp.k_combined
 
     def close(self):
+        """Close the statepoint and summary files
+        """
+
         if self.sp is not None:
             self.sp._f.close()
             self.sp.summary._f.close()

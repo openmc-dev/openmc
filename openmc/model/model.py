@@ -2,7 +2,7 @@ import openmc
 from openmc.checkvalue import check_type
 
 
-class ModelContainer(object):
+class Model(object):
     """OpenMC model container for the openmc.Geometry, openmc.Materials,
     openmc.Settings, openmc.Tallies, and openmc.CMFD objects
 

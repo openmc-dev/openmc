@@ -172,6 +172,7 @@ Running OpenMC
    openmc.calculate_volumes
    openmc.plot_geometry
    openmc.plot_inline
+   openmc.KeffSearch
 
 Post-processing
 ---------------
@@ -335,6 +336,19 @@ Functions
 
    openmc.model.create_triso_lattice
    openmc.model.pack_trisos
+
+Model Container
+---------------
+
+Classes
++++++++
+
+.. autosummary::
+   :toctree: generated
+   :nosignatures:
+   :template: myclass.rst
+
+   openmc.model.Model
 
 --------------------------------------------
 :mod:`openmc.data` -- Nuclear Data Interface

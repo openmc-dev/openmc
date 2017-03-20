@@ -19,6 +19,8 @@ energy groups, delayed groups, and the energy group structure, etc.) as
 well as the actual cross section data itself for each of the necessary
 nuclides or materials.
 
+The current version of the multi-group library file format is 1.0.
+
 .. _HDF5: http://www.hdfgroup.org/HDF5/
 
 .. _mgxs_lib_spec:
@@ -29,7 +31,11 @@ MGXS Library Specification
 
 **/**
 
-:Attributes: - **energy_groups** (*int*) -- Number of energy groups
+:Attributes: - **filetype** (*char[]*) -- String indicating the type of file;
+               for this library it will be 'mgxs'.
+             - **version** (*int[2]*) -- Major and minor version of the
+               multi-group library file format.
+             - **energy_groups** (*int*) -- Number of energy groups
              - **delayed_groups** (*int*) -- Number of delayed groups (optional)
              - **group structure** (*double[]*) -- Monotonically increasing
                list of group boundaries, in units of eV.  The length of this

@@ -46,9 +46,9 @@ module tally_header
 
     integer, allocatable :: stride(:)
 
-    ! This array provides a way to lookup what index in the filter array a
+    ! This array provides a way to lookup what index in the filters array a
     ! certain filter is. For example, if find_filter(FILTER_CELL) > 0, then the
-    ! value is the index in filter(:).
+    ! value is the index in filters(:).
 
     integer :: find_filter(N_FILTER_TYPES) = 0
 

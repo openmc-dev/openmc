@@ -259,16 +259,17 @@ contains
 
     type(XMLNode), intent(in) :: root ! XML root element
 
+    logical :: energy_filters
     integer :: i, j        ! loop counter
     integer :: n           ! size of arrays in mesh specification
     integer :: ng          ! number of energy groups (default 1)
-    integer :: n_filters   ! number of filters
-    integer :: i_filter_mesh ! index for mesh filter
+    integer :: n_filter    ! number of filters
+    integer :: i_filt      ! index in filters array
     integer :: iarray3(3) ! temp integer array
     real(8) :: rarray3(3) ! temp double array
-    type(TallyObject),    pointer :: t
+    type(TallyObject), pointer :: t
     type(RegularMesh), pointer :: m
-    type(TallyFilterContainer) :: filters(N_FILTER_TYPES) ! temporary filters
+    type(TallyFilterContainer), allocatable :: temp_filters(:) ! temporary filters
     type(XMLNode) :: node_mesh
 
     ! Set global variables if they are 0 (this can happen if there is no tally
@@ -376,6 +377,103 @@ contains
     ! Add mesh to dictionary
     call mesh_dict % add_key(m % id, n_user_meshes + 1)
 
+    ! Determine number of filters
+    energy_filters = check_for_node(node_mesh, "energy")
+    if (energy_filters) then
+      n_cmfd_filters = 4
+    else
+      n_cmfd_filters = 2
+    end if
+
+    ! Create or extend filters array
+    if (n_filters == 0) then
+      ! Allocate filters array
+      allocate(filters(n_cmfd_filters))
+    else
+      ! Move filters to temporary array
+      allocate(temp_filters(n_filters + n_cmfd_filters))
+      do i = 1, n_filters
+        call move_alloc(filters(i) % obj, temp_filters(i) % obj)
+      end do
+
+      ! Allocate filters array with increased size
+      deallocate(filters)
+      allocate(filters(size(temp_filters))
+
+      ! Move allocation from temporary array to filters array
+      do i = 1, n_filters
+        call move_alloc(temp_filters(i) % obj, filters(i) % obj)
+      end do
+
+      ! Deallocate temporary array
+      deallocate(temp_filters)
+    end if
+
+    ! Set n_filters
+    n_filters = size(filters)
+
+    ! Set up mesh filter
+    i_filt = n_user_filters + 1
+    allocate(MeshFilter :: filters(i_filt) % obj)
+    select type (filt => filters(i_filt) % obj)
+    type is (MeshFilter)
+      filt % id = i_filt
+      filt % n_bins = product(m % dimension)
+      filt % mesh = n_user_meshes + 1
+      ! Add filter to dictionary
+      call filter_dict % add_key(filt % id, i_filt)
+    end select
+
+    if (energy_filters) then
+      ! Read and set incoming energy mesh filter
+      i_filt = i_filt + 1
+      allocate(EnergyFilter :: filters(i_filt) % obj)
+      select type (filt => filters(i_filt) % obj)
+      type is (EnergyFilter)
+        filt % id = i_filt
+        ng = node_word_count(node_mesh, "energy")
+        filt % n_bins = ng - 1
+        allocate(filt % bins(ng))
+        call get_node_array(node_mesh, "energy", filt % bins)
+        ! Add filter to dictionary
+        call filter_dict % add_key(filt % id, i_filt)
+      end select
+
+      ! Read and set outgoing energy mesh filter
+      i_filt = i_filt + 1
+      allocate(EnergyoutFilter :: filters(i_filt) % obj)
+      select type (filt => filters(i_filt) % obj)
+      type is (EnergyoutFilter)
+        filt % id = i_filt
+        ng = node_word_count(node_mesh, "energy")
+        filt % n_bins = ng - 1
+        allocate(filt % bins(ng))
+        call get_node_array(node_mesh, "energy", filt % bins)
+        ! Add filter to dictionary
+        call filter_dict % add_key(filt % id, i_filt)
+      end select
+    end if
+
+    ! Set up surface filter
+    i_filt = i_filt + 1
+    allocate(SurfaceFilter :: filters(i_filt) % obj)
+    select type(filt => filters(i_filt) % obj)
+    type is(SurfaceFilter)
+      filt % id = i_filt
+      filt % n_bins = 4 * m % n_dimension
+      allocate(filt % surfaces(4 * m % n_dimension))
+      if (m % n_dimension == 2) then
+        filt % surfaces = (/ OUT_LEFT, IN_LEFT, IN_RIGHT, OUT_RIGHT, &
+             OUT_BACK, IN_BACK, IN_FRONT, OUT_FRONT /)
+      elseif (m % n_dimension == 3) then
+        filt % surfaces = (/ OUT_LEFT, IN_LEFT, IN_RIGHT, OUT_RIGHT, &
+             OUT_BACK, IN_BACK, IN_FRONT, OUT_FRONT, &
+             OUT_BOTTOM, IN_BOTTOM, IN_TOP, OUT_TOP /)
+      end if
+      ! Add filter to dictionary
+      call filter_dict % add_key(filt % id, i_filt)
+    end select
+
     ! Allocate tallies
     call add_tallies("cmfd", n_cmfd_tallies)
 
@@ -390,28 +488,15 @@ contains
         call get_node_value(root, "reset", t % reset)
       end if
 
-      ! Set up mesh filter
-      n_filters = 1
-      allocate(MeshFilter :: filters(n_filters) % obj)
-      select type (filt => filters(n_filters) % obj)
-      type is (MeshFilter)
-        filt % n_bins = product(m % dimension)
-        filt % mesh = n_user_meshes + 1
-      end select
-      t % find_filter(FILTER_MESH) = n_filters
+      ! Set the mesh filter index in the tally find_filter array
+      n_filter = 1
+      t % find_filter(FILTER_MESH) = n_user_filters + n_filter
 
-      ! Read and set incoming energy mesh filter
-      if (check_for_node(node_mesh, "energy")) then
-        n_filters = n_filters + 1
-        allocate(EnergyFilter :: filters(n_filters) % obj)
-        select type (filt => filters(n_filters) % obj)
-        type is (EnergyFilter)
-          ng = node_word_count(node_mesh, "energy")
-          filt % n_bins = ng - 1
-          allocate(filt % bins(ng))
-          call get_node_array(node_mesh, "energy", filt % bins)
-        end select
-        t % find_filter(FILTER_ENERGYIN) = n_filters
+      ! Set the incoming energy mesh filter index in the tally find_filter
+      ! array
+      if (energy_filters) then
+        n_filter = n_filter + 1
+        t % find_filter(FILTER_ENERGYIN) = n_user_filters + n_filter
       end if
 
       ! Set number of nucilde bins
@@ -434,10 +519,11 @@ contains
         t % type = TALLY_VOLUME
 
         ! Allocate and set filters
-        allocate(t % filters(n_filters))
-        do j = 1, n_filters
-          call move_alloc(filters(j) % obj, t % filters(j) % obj)
-        end do
+        allocate(t % filter(n_filter))
+        t % filter(1) = t % find_filter(FILTER_MESH)
+        if (energy_filters) then
+          t % filter(2) = t % find_filter(FILTER_ENERGYIN)
+        end if
 
         ! Allocate scoring bins
         allocate(t % score_bins(3))
@@ -465,25 +551,20 @@ contains
         ! Set tally type to volume
         t % type = TALLY_VOLUME
 
-        ! read and set outgoing energy mesh filter
-        if (check_for_node(node_mesh, "energy")) then
-          n_filters = n_filters + 1
-          allocate(EnergyoutFilter :: filters(n_filters) % obj)
-          select type (filt => filters(n_filters) % obj)
-          type is (EnergyoutFilter)
-            ng = node_word_count(node_mesh, "energy")
-            filt % n_bins = ng - 1
-            allocate(filt % bins(ng))
-            call get_node_array(node_mesh, "energy", filt % bins)
-          end select
-          t % find_filter(FILTER_ENERGYOUT) = n_filters
+        ! Set the incoming energy mesh filter index in the tally find_filter
+        ! array
+        if (energy_filters) then
+          n_filter = n_filter + 1
+          t % find_filter(FILTER_ENERGYOUT) = n_user_filters + n_filter
         end if
 
         ! Allocate and set filters
-        allocate(t % filters(n_filters))
-        do j = 1, n_filters
-          call move_alloc(filters(j) % obj, t % filters(j) % obj)
-        end do
+        allocate(t % filter(n_filter))
+        t % filter(1) = t % find_filter(FILTER_MESH)
+        if (energy_filters) then
+          t % filter(2) = t % find_filter(FILTER_ENERGYIN)
+          t % filter(3) = t % find_filter(FILTER_ENERGYOUT)
+        end if
 
         ! Allocate macro reactions
         allocate(t % score_bins(2))
@@ -506,29 +587,17 @@ contains
         ! Set tally estimator to analog
         t % estimator = ESTIMATOR_ANALOG
 
-        ! Add extra filter for surface
-        n_filters = n_filters + 1
-        allocate(SurfaceFilter :: filters(n_filters) % obj)
-        select type(filt => filters(n_filters) % obj)
-        type is(SurfaceFilter)
-          filt % n_bins = 4 * m % n_dimension
-          allocate(filt % surfaces(4 * m % n_dimension))
-          if (m % n_dimension == 2) then
-            filt % surfaces = (/ OUT_LEFT, IN_LEFT, IN_RIGHT, OUT_RIGHT, &
-                 OUT_BACK, IN_BACK, IN_FRONT, OUT_FRONT /)
-          elseif (m % n_dimension == 3) then
-            filt % surfaces = (/ OUT_LEFT, IN_LEFT, IN_RIGHT, OUT_RIGHT, &
-                 OUT_BACK, IN_BACK, IN_FRONT, OUT_FRONT, &
-                 OUT_BOTTOM, IN_BOTTOM, IN_TOP, OUT_TOP /)
-          end if
-        end select
-        t % find_filter(FILTER_SURFACE) = n_filters
+        ! Set the surface filter index in the tally find_filter array
+        n_filter = n_filter + 1
+        t % find_filter(FILTER_SURFACE) = n_user_filters + n_cmfd_filters
 
         ! Allocate and set filters
-        allocate(t % filters(n_filters))
-        do j = 1, n_filters
-          call move_alloc(filters(j) % obj, t % filters(j) % obj)
-        end do
+        allocate(t % filter(n_filter))
+        t % filter(1) = t % find_filter(FILTER_MESH)
+        t % filter(n_filter) = t % find_filter(FILTER_SURFACE)
+        if (energy_filters) then
+          t % filter(2) = t % find_filter(FILTER_ENERGYIN)
+        end if
 
         ! Allocate macro reactions
         allocate(t % score_bins(1))
@@ -545,8 +614,8 @@ contains
 
         ! We need to increase the dimension by one since we also need
         ! currents coming into and out of the boundary mesh cells.
-        i_filter_mesh = t % find_filter(FILTER_MESH)
-        t % filters(i_filter_mesh) % obj % n_bins = product(m % dimension + 1)
+        i_filt = t % find_filter(FILTER_MESH)
+        filters(i_filt) % obj % n_bins = product(m % dimension + 1)
 
       end if
 

@@ -412,7 +412,6 @@ def get_openmc_region(openmoc_region):
         openmc_region = openmc.Union()
         for openmoc_node in openmoc_region.getNodes():
             openmc_node = get_openmc_region(openmoc_node)
-            openmc_region.append(openmc_node)
             openmc_region.nodes.append(openmc_node)
     elif openmoc_region.getRegionType() == openmoc.COMPLEMENT:
         openmoc_nodes = openmoc_region.getNodes()
@@ -620,7 +619,7 @@ def get_openmoc_lattice(openmc_lattice):
             new_universes = universes.copy()
             new_universes.shape = (1,) + universes.shape
             universes = new_universes
-            
+
     # Initialize an empty array for the OpenMOC nested Universes in this Lattice
     universe_array = np.ndarray(tuple(dimension[::-1]), dtype=openmoc.Universe)
 
@@ -700,7 +699,7 @@ def get_openmc_lattice(openmoc_lattice):
 
     for universe_id, universe in unique_universes.items():
         unique_universes[universe_id] = get_openmc_universe(universe)
-        
+
     # Build the nested Universe array
     for x in range(dimension[0]):
         for y in range(dimension[1]):
@@ -724,7 +723,7 @@ def get_openmc_lattice(openmoc_lattice):
     openmc_lattice = openmc.RectLattice(lattice_id=lattice_id, name=name)
     openmc_lattice.pitch = width
     openmc_lattice.lower_left = lower_left
-    openmc_lattice.universes = universe_array #np.s
+    openmc_lattice.universes = universe_array
 
     # Add the OpenMC Lattice to the global collection of all OpenMC Lattices
     OPENMC_LATTICES[lattice_id] = openmc_lattice

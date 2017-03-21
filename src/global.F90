@@ -378,7 +378,7 @@ module global
 
   ! User-defined tally information
   integer :: n_cmfd_meshes  = 1 ! # of structured meshes
-  integer :: n_cmfd_filters = 1 ! # of filters
+  integer :: n_cmfd_filters = 0 ! # of filters
   integer :: n_cmfd_tallies = 3 ! # of user-defined tallies
 
   ! Adjoint method type

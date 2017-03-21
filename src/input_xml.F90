@@ -2708,14 +2708,10 @@ contains
 
     ! Check for user filters
     n_user_filters = size(node_filt_list)
-    if (cmfd_run) then
-      n_filters = n_user_filters + n_cmfd_filters
-    else
-      n_filters = n_user_filters
-    end if
+    n_filters = n_user_filters
 
     ! Allocate filters array
-    if (n_user_filters > 0) allocate(filters(n_filters))
+    if (n_filters > 0) allocate(filters(n_filters))
 
     ! Check for user tallies
     n_user_tallies = size(node_tal_list)
@@ -2998,7 +2994,7 @@ contains
 
       case ('distribcell')
         ! Allocate and declare the filter type
-        allocate(DistribcellFilter::f % obj)
+        allocate(DistribcellFilter :: f % obj)
         select type (filt => f % obj)
         type is (DistribcellFilter)
           if (n_words /= 1) call fatal_error("Only one cell can be &
@@ -3009,7 +3005,7 @@ contains
 
       case ('cell')
         ! Allocate and declare the filter type
-        allocate(CellFilter::f % obj)
+        allocate(CellFilter :: f % obj)
         select type (filt => f % obj)
         type is (CellFilter)
           ! Allocate and store bins
@@ -3020,7 +3016,7 @@ contains
 
       case ('cellborn')
         ! Allocate and declare the filter type
-        allocate(CellbornFilter::f % obj)
+        allocate(CellbornFilter :: f % obj)
         select type (filt => f % obj)
         type is (CellbornFilter)
           ! Allocate and store bins
@@ -3031,7 +3027,7 @@ contains
 
       case ('material')
         ! Allocate and declare the filter type
-        allocate(MaterialFilter::f % obj)
+        allocate(MaterialFilter :: f % obj)
         select type (filt => f % obj)
         type is (MaterialFilter)
           ! Allocate and store bins
@@ -3042,7 +3038,7 @@ contains
 
       case ('universe')
         ! Allocate and declare the filter type
-        allocate(UniverseFilter::f % obj)
+        allocate(UniverseFilter :: f % obj)
         select type (filt => f % obj)
         type is (UniverseFilter)
           ! Allocate and store bins
@@ -3054,7 +3050,7 @@ contains
       case ('surface')
         call fatal_error("Surface filter is not yet supported!")
         ! Allocate and declare the filter type
-        allocate(SurfaceFilter::f % obj)
+        allocate(SurfaceFilter :: f % obj)
         select type (filt => f % obj)
         type is (SurfaceFilter)
           ! Allocate and store bins
@@ -3065,7 +3061,7 @@ contains
 
       case ('mesh')
         ! Allocate and declare the filter type
-        allocate(MeshFilter::f % obj)
+        allocate(MeshFilter :: f % obj)
         select type (filt => f % obj)
         type is (MeshFilter)
           if (n_words /= 1) call fatal_error("Only one mesh can be &
@@ -3093,7 +3089,7 @@ contains
       case ('energy')
 
         ! Allocate and declare the filter type
-        allocate(EnergyFilter::f % obj)
+        allocate(EnergyFilter :: f % obj)
         select type (filt => f % obj)
         type is (EnergyFilter)
           ! Allocate and store bins
@@ -3117,7 +3113,7 @@ contains
 
       case ('energyout')
         ! Allocate and declare the filter type
-        allocate(EnergyoutFilter::f % obj)
+        allocate(EnergyoutFilter :: f % obj)
         select type (filt => f % obj)
         type is (EnergyoutFilter)
           ! Allocate and store bins
@@ -3142,7 +3138,7 @@ contains
       case ('delayedgroup')
 
         ! Allocate and declare the filter type
-        allocate(DelayedGroupFilter::f % obj)
+        allocate(DelayedGroupFilter :: f % obj)
         select type (filt => f % obj)
         type is (DelayedGroupFilter)
           ! Allocate and store bins
@@ -3164,7 +3160,7 @@ contains
 
       case ('mu')
         ! Allocate and declare the filter type
-        allocate(MuFilter::f % obj)
+        allocate(MuFilter :: f % obj)
         select type (filt => f % obj)
         type is (MuFilter)
           ! Allocate and store bins
@@ -3195,7 +3191,7 @@ contains
 
       case ('polar')
         ! Allocate and declare the filter type
-        allocate(PolarFilter::f % obj)
+        allocate(PolarFilter :: f % obj)
         select type (filt => f % obj)
         type is (PolarFilter)
           ! Allocate and store bins
@@ -3226,7 +3222,7 @@ contains
 
       case ('azimuthal')
         ! Allocate and declare the filter type
-        allocate(AzimuthalFilter::f % obj)
+        allocate(AzimuthalFilter :: f % obj)
         select type (filt => f % obj)
         type is (AzimuthalFilter)
           ! Allocate and store bins
@@ -3258,7 +3254,7 @@ contains
 
       case ('energyfunction')
         ! Allocate and declare the filter type.
-        allocate(EnergyFunctionFilter::f % obj)
+        allocate(EnergyFunctionFilter :: f % obj)
         select type (filt => f % obj)
         type is (EnergyFunctionFilter)
           filt % n_bins = 1
@@ -3366,37 +3362,37 @@ contains
         ! Set the filter index in the tally find_filter array
         select type (f % obj)
         type is (DistribcellFilter)
-          t % find_filter(FILTER_DISTRIBCELL) = j
+          t % find_filter(FILTER_DISTRIBCELL) = i_filt
         type is (CellFilter)
-          t % find_filter(FILTER_CELL) = j
+          t % find_filter(FILTER_CELL) = i_filt
         type is (CellbornFilter)
-          t % find_filter(FILTER_CELLBORN) = j
+          t % find_filter(FILTER_CELLBORN) = i_filt
         type is (MaterialFilter)
-          t % find_filter(FILTER_MATERIAL) = j
+          t % find_filter(FILTER_MATERIAL) = i_filt
         type is (UniverseFilter)
-          t % find_filter(FILTER_UNIVERSE) = j
+          t % find_filter(FILTER_UNIVERSE) = i_filt
         type is (SurfaceFilter)
-          t % find_filter(FILTER_SURFACE) = j
+          t % find_filter(FILTER_SURFACE) = i_filt
         type is (MeshFilter)
-          t % find_filter(FILTER_MESH) = j
+          t % find_filter(FILTER_MESH) = i_filt
         type is (EnergyFilter)
-          t % find_filter(FILTER_ENERGYIN) = j
+          t % find_filter(FILTER_ENERGYIN) = i_filt
         type is (EnergyoutFilter)
-          t % find_filter(FILTER_ENERGYOUT) = j
+          t % find_filter(FILTER_ENERGYOUT) = i_filt
           ! Set to analog estimator
           t % estimator = ESTIMATOR_ANALOG
         type is (DelayedGroupFilter)
-          t % find_filter(FILTER_DELAYEDGROUP) = j
+          t % find_filter(FILTER_DELAYEDGROUP) = i_filt
         type is (MuFilter)
-          t % find_filter(FILTER_MU) = j
+          t % find_filter(FILTER_MU) = i_filt
           ! Set to analog estimator
           t % estimator = ESTIMATOR_ANALOG
         type is (PolarFilter)
-          t % find_filter(FILTER_POLAR) = j
+          t % find_filter(FILTER_POLAR) = i_filt
         type is (AzimuthalFilter)
-          t % find_filter(FILTER_AZIMUTHAL) = j
+          t % find_filter(FILTER_AZIMUTHAL) = i_filt
         type is (EnergyFunctionFilter)
-          t % find_filter(FILTER_ENERGYFUNCTION) = j
+          t % find_filter(FILTER_ENERGYFUNCTION) = i_filt
         end select
 
         ! Store the index of the filter
@@ -3792,16 +3788,15 @@ contains
             end if
 
             ! Get index of mesh filter
-            k = t % find_filter(FILTER_MESH)
+            i_filt = t % find_filter(FILTER_MESH)
 
             ! Check to make sure mesh filter was specified
-            if (k == 0) then
+            if (i_filt == 0) then
               call fatal_error("Cannot tally surface current without a mesh &
                    &filter.")
             end if
 
             ! Get a pointer to the mesh
-            i_filt = t % filter(k)
             i_mesh = filters(i_filt) % obj % mesh
             m => meshes(i_mesh)
 
@@ -3823,7 +3818,7 @@ contains
             n_filters = size(filters)
 
             ! Add surface filter
-            allocate(SurfaceFilter::filters(n_filters) % obj)
+            allocate(SurfaceFilter :: filters(n_filters) % obj)
             select type (filt => filters(n_filters) % obj)
             type is (SurfaceFilter)
               filt % n_bins = 4 * m % n_dimension
@@ -3839,7 +3834,7 @@ contains
                      IN_FRONT, IN_BOTTOM, IN_TOP /)
               end if
             end select
-            t % find_filter(FILTER_SURFACE) = n_filter
+            t % find_filter(FILTER_SURFACE) = n_filters
 
           case ('events')
             t % score_bins(j) = SCORE_EVENTS

@@ -1,10 +1,9 @@
+from collections import Callable
 from numbers import Real
-from types import FunctionType
 
 import openmc
 import openmc.model
-from openmc.checkvalue import check_type, check_iterable_type, check_length, \
-    check_value
+import openmc.checkvalue as cv
 
 
 _SCALAR_BRACKETED_METHODS = ['brentq', 'brenth', 'ridder', 'bisect']
@@ -16,7 +15,7 @@ class KeffSearch(object):
 
     Parameters
     ----------
-    model_builder : FunctionType
+    model_builder : collections.Callable
         Callable function which builds a model according to a passed
         parameter. This function must return an openmc.model.Model object.
     guess : Real, optional
@@ -82,10 +81,34 @@ class KeffSearch(object):
     def model_builder(self):
         return self._model_builder
 
+    @property
+    def initial_guess(self):
+        return self._initial_guess
+
+    @property
+    def bracket(self):
+        return self._bracket
+
+    @property
+    def target_keff(self):
+        return self._target_keff
+
+    @property
+    def print_iterations(self):
+        return self._print_iterations
+
+    @property
+    def print_output(self):
+        return self._print_output
+
+    @property
+    def model_args(self):
+        return self._model_args
+
     @model_builder.setter
     def model_builder(self, model_builder):
         # Make sure model_builder is a function
-        check_type('model_builder', model_builder, FunctionType)
+        cv.check_type('model_builder', model_builder, Callable)
 
         # Run the model builder function once to make sure it provides the
         # correct output type
@@ -93,64 +116,40 @@ class KeffSearch(object):
             model = model_builder(self.bracket[0], **self.model_args)
         elif self.initial_guess is not None:
             model = model_builder(self.initial_guess, **self.model_args)
-        check_type('model_builder return', model, openmc.model.Model)
+        cv.check_type('model_builder return', model, openmc.model.Model)
         self._model_builder = model_builder
-
-    @property
-    def initial_guess(self):
-        return self._initial_guess
 
     @initial_guess.setter
     def initial_guess(self, initial_guess):
         if initial_guess is not None:
-            check_type('initial_guess', initial_guess, Real)
+            cv.check_type('initial_guess', initial_guess, Real)
         self._initial_guess = initial_guess
-
-    @property
-    def bracket(self):
-        return self._bracket
 
     @bracket.setter
     def bracket(self, bracket):
         if bracket is not None:
-            check_iterable_type('bracket', bracket, Real)
-            check_length('bracket', bracket, 2)
+            cv.check_iterable_type('bracket', bracket, Real)
+            cv.check_length('bracket', bracket, 2)
         self._bracket = bracket
-
-    @property
-    def target_keff(self):
-        return self._target_keff
 
     @target_keff.setter
     def target_keff(self, target_keff):
-        check_type('target_keff', target_keff, Real)
+        cv.check_type('target_keff', target_keff, Real)
         self._target_keff = target_keff
-
-    @property
-    def print_iterations(self):
-        return self._print_iterations
 
     @print_iterations.setter
     def print_iterations(self, print_iterations):
-        check_type('print_iterations', print_iterations, bool)
+        cv.check_type('print_iterations', print_iterations, bool)
         self._print_iterations = print_iterations
-
-    @property
-    def print_output(self):
-        return self._print_output
 
     @print_output.setter
     def print_output(self, print_output):
-        check_type('print_output', print_output, bool)
+        cv.check_type('print_output', print_output, bool)
         self._print_output = print_output
-
-    @property
-    def model_args(self):
-        return self._model_args
 
     @model_args.setter
     def model_args(self, model_args):
-        check_type('model_args', model_args, dict)
+        cv.check_type('model_args', model_args, dict)
         self._model_args = model_args
 
     def _search_function(self, guess):
@@ -158,7 +157,7 @@ class KeffSearch(object):
         model = self.model_builder(guess, **self.model_args)
 
         # Run the model
-        keff = model.execute(output=self._print_output)
+        keff = model.run(output=self._print_output)
 
         # Close the model to ensure HDF5 will allow access during the next
         # OpenMC execution
@@ -170,7 +169,7 @@ class KeffSearch(object):
         self.keff_uncs.append(keff[1])
 
         if self._print_iterations:
-            text = 'Iteration: {}; Guess of {:.2E} produced a keff of ' + \
+            text = 'Iteration: {}; Guess of {:.2e} produced a keff of ' + \
                 '{:1.5f} +/- {:1.5f}'
             print(text.format(self._i, guess, keff[0], keff[1]))
         self._i += 1
@@ -178,31 +177,30 @@ class KeffSearch(object):
         return (keff[0] - self.target_keff)
 
     def search(self, tol=None, bracketed_method='brentq', **kwargs):
-        """Searches for the target eigenvalue with the Newton-Raphson method
+        """Apply root-finding algorithm to search for the target k-eigenvalue
 
         Parameters
         ----------
-        tol : Real
+        tol : float
             Tolerance to pass to the search method
         bracketed_method : {'brentq', 'brenth', 'ridder', 'bisect'}, optional
             Solution method to use; only applies if
-            :param:`bracket` is set, otherwise the Newton method is used.
+            :param:`bracket` is set, otherwise the Secant method is used.
             Defaults to 'brentq'.
         **kwargs
             All remaining keyword arguments are passed to the root-finding
             method.
 
         Returns
-        zero_value : Real
+        -------
+        zero_value : float
             Estimated value of the variable parameter where keff is the
             targeted value
-        keff : Iterable of Real
-            keff calculated at the zero_value
 
         """
 
-        check_value('bracketed_method', bracketed_method,
-                    _SCALAR_BRACKETED_METHODS)
+        cv.check_value('bracketed_method', bracketed_method,
+                       _SCALAR_BRACKETED_METHODS)
 
         import scipy.optimize as sopt
 

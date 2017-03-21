@@ -1,5 +1,3 @@
-import warnings
-
 from openmc.arithmetic import *
 from openmc.cell import *
 from openmc.mesh import *

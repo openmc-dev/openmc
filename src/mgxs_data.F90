@@ -36,6 +36,8 @@ contains
     logical                 :: file_exists
     type(DictCharInt)       :: xsdata_dict
     type(VectorReal), allocatable :: temps(:)
+    character(MAX_WORD_LEN) :: word
+    integer, allocatable    :: array(:)
 
     ! Check if MGXS Library exists
     inquire(FILE=path_cross_sections, EXIST=file_exists)
@@ -54,6 +56,20 @@ contains
 
     ! Open file for reading
     file_id = file_open(path_cross_sections, 'r', parallel=.true.)
+
+    ! Read filetype
+    call read_attribute(word, file_id, "filetype")
+    if (word /= 'mgxs') then
+      call fatal_error("Provided MGXS Library is not a MGXS Library file.")
+    end if
+
+    ! Read revision number for the MGXS Library file and make sure it matches
+    ! with the current version
+    call read_attribute(array, file_id, "version")
+    if (any(array /= VERSION_MGXS_LIBRARY)) then
+      call fatal_error("MGXS Library file version does not match current &
+                       &version supported by OpenMC.")
+    end if
 
     ! allocate arrays for MGXS storage and cross section cache
     allocate(nuclides_MG(n_nuclides_total))

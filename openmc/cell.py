@@ -289,9 +289,10 @@ class Cell(object):
         c3, s3 = cos(phi), sin(phi)
         c2, s2 = cos(theta), sin(theta)
         c1, s1 = cos(psi), sin(psi)
-        return np.array([[c1*c2, c1*s2*s3 - c3*s1, s1*s3 + c1*c3*s2],
-                         [c2*s1, c1*c3 + s1*s2*s3, c3*s1*s2 - c1*s3],
-                         [-s2, c2*s3, c2*c3]])
+        self._rotation_matrix = np.array([
+            [c1*c2, c1*s2*s3 - c3*s1, s1*s3 + c1*c3*s2],
+            [c2*s1, c1*c3 + s1*s2*s3, c3*s1*s2 - c1*s3],
+            [-s2, c2*s3, c2*c3]])
 
     @translation.setter
     def translation(self, translation):

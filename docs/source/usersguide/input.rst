@@ -87,6 +87,22 @@ be validated using the following command:
 
    /opt/openmc/bin/openmc-validate-xml
 
+--------------
+Physical Units
+--------------
+
+Unless specified otherwise, all length quantities are assumed to be in units of
+centimeters, all energy quantities are assumed to be in electronvolts, and all
+time quantities are assumed to be in seconds.
+
+======= ============ ======
+Measure Default unit Symbol
+======= ============ ======
+length  centimeter   cm
+energy  electronvolt eV
+time    second       s
+======= ============ ======
+
 --------------------------------------
 Settings Specification -- settings.xml
 --------------------------------------

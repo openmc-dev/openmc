@@ -636,7 +636,8 @@ class Plot(object):
             subelement.text = ' '.join(str(x) for x in color)
 
         if self._colors:
-            for domain, color in self._colors.items():
+            for domain, color in sorted(self._colors.items(),
+                                        key=lambda x: x[0].id):
                 subelement = ET.SubElement(element, "color")
                 subelement.set("id", str(domain.id))
                 if isinstance(color, string_types):

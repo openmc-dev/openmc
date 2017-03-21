@@ -361,18 +361,25 @@ class Geometry(object):
         if not case_sensitive:
             name = name.lower()
 
-        all_cells = self.get_all_cells().values()
         cells = set()
 
-        for cell in all_cells:
-            cell_fill_name = cell.fill.name
-            if not case_sensitive:
-                cell_fill_name = cell_fill_name.lower()
+        for cell in self.get_all_cells().values():
+            names = []
+            if cell.fill_type in ('material', 'universe', 'lattice'):
+                names.append(cell.fill.name)
+            elif cell.fill_type == 'distribmat':
+                for mat in cell.fill:
+                    if mat is not None:
+                        names.append(mat.name)
 
-            if cell_fill_name == name:
-                cells.add(cell)
-            elif not matching and name in cell_fill_name:
-                cells.add(cell)
+            for fill_name in names:
+                if not case_sensitive:
+                    fill_name = fill_name.lower()
+
+                if fill_name == name:
+                    cells.add(cell)
+                elif not matching and name in fill_name:
+                    cells.add(cell)
 
         cells = list(cells)
         cells.sort(key=lambda x: x.id)

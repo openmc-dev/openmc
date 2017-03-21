@@ -246,9 +246,9 @@ class VolumeCalculation(object):
         results = type(self).from_hdf5(filename)
 
         # Make sure properties match
-        assert self.domains == results.domains
-        assert self.lower_left == results.lower_left
-        assert self.upper_right == results.upper_right
+        assert self.ids == results.ids
+        assert np.all(self.lower_left == results.lower_left)
+        assert np.all(self.upper_right == results.upper_right)
 
         # Copy results
         self.volumes = results.volumes

@@ -832,24 +832,24 @@ contains
 
     logical :: reject  ! resample if true
 
-    character(80) :: sampling_scheme ! method of target velocity sampling
+    integer :: sampling_method ! method of target velocity sampling
 
     awr = nuc % awr
 
     ! check if nuclide is a resonant scatterer
     if (nuc % resonant) then
 
-      ! sampling scheme to use
-      sampling_scheme = nuc % scheme
+      ! sampling method to use
+      sampling_method = res_scat_method
 
       ! upper resonance scattering energy bound (target is at rest above this E)
-      if (E > nuc % E_max) then
+      if (E > res_scat_energy_max) then
         v_target = ZERO
         return
 
       ! lower resonance scattering energy bound (should be no resonances below)
-      else if (E < nuc % E_min) then
-        sampling_scheme = 'cxs'
+      else if (E < res_scat_energy_min) then
+        sampling_method = RES_SCAT_CXS
       end if
 
     ! otherwise, use free gas model
@@ -858,19 +858,18 @@ contains
         v_target = ZERO
         return
       else
-        sampling_scheme = 'cxs'
+        sampling_method = RES_SCAT_CXS
       end if
     end if
 
     ! use appropriate target velocity sampling method
-    select case (sampling_scheme)
-
-    case ('cxs')
+    select case (sampling_method)
+    case (RES_SCAT_CXS)
 
       ! sample target velocity with the constant cross section (cxs) approx.
       call sample_cxs_target_velocity(nuc, v_target, E, uvw, kT)
 
-    case ('wcm')
+    case (RES_SCAT_WCM)
 
       ! sample target velocity with the constant cross section (cxs) approx.
       call sample_cxs_target_velocity(nuc, v_target, E, uvw, kT)
@@ -881,7 +880,7 @@ contains
       wcf = xs_0K / xs_eff
       wgt = wcf * wgt
 
-    case ('dbrc')
+    case (RES_SCAT_DBRC)
       E_red = sqrt((awr * E) / kT)
       E_low = (((E_red - FOUR)**2) * kT) / awr
       E_up  = (((E_red + FOUR)**2) * kT) / awr
@@ -936,7 +935,7 @@ contains
         if (.not. reject) exit
       end do
 
-    case ('ares')
+    case (RES_SCAT_ARES)
       E_red = sqrt((awr * E) / kT)
       E_low = (((E_red - FOUR)**2) * kT) / awr
       E_up  = (((E_red + FOUR)**2) * kT) / awr
@@ -1025,9 +1024,6 @@ contains
 
         if (.not. reject) exit
       end do
-
-    case default
-      call fatal_error("Not a recognized resonance scattering treatment!")
     end select
 
   end subroutine sample_target_velocity

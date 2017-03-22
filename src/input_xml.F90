@@ -94,11 +94,9 @@ contains
     type(XMLNode) :: node_sp
     type(XMLNode) :: node_output
     type(XMLNode) :: node_res_scat
-    type(XMLNode) :: node_scatterer
     type(XMLNode) :: node_trigger
     type(XMLNode) :: node_vol
     type(XMLNode) :: node_tab_leg
-    type(XMLNode), allocatable :: node_scat_list(:)
     type(XMLNode), allocatable :: node_source_list(:)
     type(XMLNode), allocatable :: node_vol_list(:)
 
@@ -851,59 +849,53 @@ contains
     ! Resonance scattering parameters
     if (check_for_node(root, "resonance_scattering")) then
       node_res_scat = root % child("resonance_scattering")
-      call get_node_list(node_res_scat, "scatterer", node_scat_list)
 
-      ! check that a nuclide is specified
-      if (size(node_scat_list) >= 1) then
-        treat_res_scat = .true.
-        n_res_scatterers_total = size(node_scat_list)
-
-        ! store 0K info for resonant scatterers
-        allocate(nuclides_0K(n_res_scatterers_total))
-        do i = 1, n_res_scatterers_total
-          node_scatterer = node_scat_list(i)
-
-          ! check to make sure a nuclide is specified
-          if (.not. check_for_node(node_scatterer, "nuclide")) then
-            call fatal_error("No nuclide specified for scatterer " &
-                 // trim(to_str(i)) // " in settings.xml file!")
-          end if
-          call get_node_value(node_scatterer, "nuclide", &
-               nuclides_0K(i) % nuclide)
-
-          if (check_for_node(node_scatterer, "method")) then
-            call get_node_value(node_scatterer, "method", &
-                 nuclides_0K(i) % scheme)
-          end if
-
-          if (check_for_node(node_scatterer, "E_min")) then
-            call get_node_value(node_scatterer, "E_min", &
-                 nuclides_0K(i) % E_min)
-          end if
-
-          ! check that E_min is non-negative
-          if (nuclides_0K(i) % E_min < ZERO) then
-            call fatal_error("Lower resonance scattering energy bound is &
-                 &negative")
-          end if
-
-          if (check_for_node(node_scatterer, "E_max")) then
-            call get_node_value(node_scatterer, "E_max", &
-                 nuclides_0K(i) % E_max)
-          end if
-
-          ! check that E_max is not less than E_min
-          if (nuclides_0K(i) % E_max < nuclides_0K(i) % E_min) then
-            call fatal_error("Lower resonance scattering energy bound exceeds &
-                 &upper")
-          end if
-
-          nuclides_0K(i) % nuclide = trim(nuclides_0K(i) % nuclide)
-          nuclides_0K(i) % scheme  = to_lower(trim(nuclides_0K(i) % scheme))
-        end do
+      ! See if resonance scattering is enabled
+      if (check_for_node(node_res_scat, "enable")) then
+        call get_node_value(node_res_scat, "enable", res_scat_on)
       else
-        call fatal_error("No resonant scatterers are specified within the &
-             &resonance_scattering element in settings.xml")
+        res_scat_on = .true.
+      end if
+
+      ! Determine what method is used
+      if (check_for_node(node_res_scat, "method")) then
+        call get_node_value(node_res_scat, "method", temp_str)
+        select case(to_lower(temp_str))
+        case ('ares')
+          res_scat_method = RES_SCAT_ARES
+        case ('dbrc')
+          res_scat_method = RES_SCAT_DBRC
+        case ('wcm')
+          res_scat_method = RES_SCAT_WCM
+        case default
+          call fatal_error("Unrecognized resonance elastic scattering method: " &
+               // trim(temp_str) // ".")
+        end select
+      end if
+
+      ! Minimum energy for resonance scattering
+      if (check_for_node(node_res_scat, "energy_min")) then
+        call get_node_value(node_res_scat, "energy_min", res_scat_energy_min)
+      end if
+      if (res_scat_energy_min < ZERO) then
+        call fatal_error("Lower resonance scattering energy bound is negative")
+      end if
+
+      ! Maximum energy for resonance scattering
+      if (check_for_node(node_res_scat, "energy_max")) then
+        call get_node_value(node_res_scat, "energy_max", res_scat_energy_max)
+      end if
+      if (res_scat_energy_max < ZERO) then
+        call fatal_error("Upper resonance scattering energy bound is negative")
+      end if
+
+      ! Get nuclides that resonance scattering should be applied to
+      if (check_for_node(node_res_scat, "nuclides")) then
+        n = node_word_count(node_res_scat, "nuclides")
+        allocate(res_scat_nuclides(n))
+        if (n > 0) then
+          call get_node_array(node_res_scat, "nuclides", res_scat_nuclides)
+        end if
       end if
     end if
 
@@ -2147,12 +2139,11 @@ contains
     end do
 
     ! Check that 0K nuclides are listed in the cross_sections.xml file
-    if (allocated(nuclides_0K)) then
-      do i = 1, size(nuclides_0K)
-        if (.not. library_dict % has_key(to_lower(nuclides_0K(i) % nuclide))) then
+    if (allocated(res_scat_nuclides)) then
+      do i = 1, size(res_scat_nuclides)
+        if (.not. library_dict % has_key(to_lower(res_scat_nuclides(i)))) then
           call fatal_error("Could not find resonant scatterer " &
-               // trim(nuclides_0K(i) % nuclide) &
-               // " in cross_sections.xml file!")
+               // trim(res_scat_nuclides(i)) // " in cross_sections.xml file!")
         end if
       end do
     end if
@@ -5150,8 +5141,7 @@ contains
           call file_close(file_id)
 
           ! Assign resonant scattering data
-          if (treat_res_scat) &
-               call assign_0K_elastic_scattering(nuclides(i_nuclide))
+          if (res_scat_on) call assign_0K_elastic_scattering(nuclides(i_nuclide))
 
           ! Determine if minimum/maximum energy for this nuclide is greater/less
           ! than the previous
@@ -5289,13 +5279,10 @@ contains
     integer :: i, j
     real(8) :: xs_cdf_sum
 
-    do i = 1, size(nuclides_0K)
-      if (nuc % name == nuclides_0K(i) % nuclide) then
-        ! Copy basic information from settings.xml
+    do i = 1, size(res_scat_nuclides)
+      if (nuc % name == res_scat_nuclides(i)) then
+        ! Set nuclide to be resonant
         nuc % resonant = .true.
-        nuc % scheme = trim(nuclides_0K(i) % scheme)
-        nuc % E_min = nuclides_0K(i) % E_min
-        nuc % E_max = nuclides_0K(i) % E_max
 
         ! Build CDF for 0K elastic scattering
         xs_cdf_sum = ZERO

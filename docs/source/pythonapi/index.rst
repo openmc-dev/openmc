@@ -173,7 +173,7 @@ Running OpenMC
    openmc.calculate_volumes
    openmc.plot_geometry
    openmc.plot_inline
-   openmc.KeffSearch
+   openmc.search_for_keff
 
 Post-processing
 ---------------

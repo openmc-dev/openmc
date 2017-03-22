@@ -345,15 +345,29 @@ class IncidentNeutron(EqualityMixin):
         if strT in data.urr:
             self.urr[strT] = data.urr[strT]
 
-    def add_elastic_0K_from_endf(self, filename):
+    def add_elastic_0K_from_endf(self, filename, overwrite=False):
         """Append 0K elastic scattering cross section from an ENDF file.
 
         Parameters
         ----------
         filename : str
             Path to ENDF file
+        overwrite : bool
+            If existing 0 K data is present, this flag can be used to indicate
+            that it should be overwritten. Otherwise, an exception will be
+            thrown.
+
+        Raises
+        ------
+        ValueError
+            If 0 K data is already present and the `overwrite` parameter is
+            False.
 
         """
+        # Check for existing data
+        if '0K' in self.energy and not overwrite:
+            raise ValueError('0 K data already exists for this nuclide.')
+
         data = type(self).from_endf(filename)
         if data.resonances is not None:
             x = []
@@ -366,7 +380,10 @@ class IncidentNeutron(EqualityMixin):
 
                 # Create 1000 equal log-spaced energies over RRR
                 e_min, e_max = rr.energy_min, rr.energy_max
-                energies = np.logspace(log10(e_min), log10(e_max), 1000)
+                e_log = np.logspace(log10(e_min), log10(e_max), 1000)
+                e_res = rr.parameters['energy'].values
+                in_range = (e_res > e_min) & (e_res < e_max)
+                energies = np.union1d(e_log, e_res[in_range])
 
                 # Linearize and thin cross section
                 xi, yi = linearize(energies, data[2].xs['0K'])

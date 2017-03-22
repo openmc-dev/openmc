@@ -24,7 +24,7 @@ from six import string_types
 import numpy as np
 
 from openmc.mixin import EqualityMixin
-
+from openmc.data.endf import ENDF_FLOAT_RE
 
 def ascii_to_binary(ascii_file, binary_file):
     """Convert an ACE file in ASCII format (type 1) to binary format (type 2).
@@ -343,6 +343,17 @@ class Library(EqualityMixin):
 
             datastr = '0.0 ' + ''.join(lines[12:12+n_lines])
             xss = np.fromstring(datastr, sep=' ')
+
+            # When NJOY writes an ACE file, any values less than 1e-100 actually
+            # get written without the 'e'. Thus, what we do here is check
+            # whether the xss array is of the right size (if a number like
+            # 1.0-120 is encountered, np.fromstring won't capture any numbers
+            # after it). If it's too short, then we apply the ENDF float regular
+            # expression. We don't do this by default because it's expensive!
+            if xss.size != nxs[1] + 1:
+                datastr = ENDF_FLOAT_RE.sub(r'\1e\2', datastr)
+                xss = np.fromstring(datastr, sep=' ')
+                assert xss.size == nxs[1] + 1
 
             table = Table(name, atomic_weight_ratio, temperature, pairs,
                           nxs, jxs, xss)

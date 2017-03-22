@@ -55,7 +55,8 @@ images: $(PDFS) $(PNGS)
 
 clean:
 	-rm -rf $(BUILDDIR)/*
-	-rm $(PDFS)
+	-rm -rf $(PDFS)
+	-rm -rf source/pythonapi/generated/
 
 html:
 	$(SPHINXBUILD) -b html $(ALLSPHINXOPTS) $(BUILDDIR)/html

@@ -60,7 +60,7 @@ class Settings(object):
         type are 'variance', 'std_dev', and 'rel_err'. The threshold value
         should be a float indicating the variance, standard deviation, or
         relative error used.
-    max_order : int
+    max_order : None or int
         Maximum scattering order to apply globally when in multi-group mode.
     multipole_library : str
         Indicates the path to a directory containing a windowed multipole
@@ -456,8 +456,10 @@ class Settings(object):
 
     @max_order.setter
     def max_order(self, max_order):
-        cv.check_type('maximum scattering order', max_order, Integral)
-        cv.check_greater_than('maximum scattering order', max_order, 0, True)
+        if max_order is not None:
+            cv.check_type('maximum scattering order', max_order, Integral)
+            cv.check_greater_than('maximum scattering order', max_order, 0,
+                                  True)
         self._max_order = max_order
 
     @source.setter

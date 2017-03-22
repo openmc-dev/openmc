@@ -6,30 +6,13 @@ Python API
 
 OpenMC includes a rich Python API that enables programmatic pre- and
 post-processing. The easiest way to begin using the API is to take a look at the
-example Jupyter_ notebooks provided. However, this assumes that you are already
-familiar with Python and common third-party packages such as NumPy_. If you have
-never programmed in Python before, there are many good tutorials available
-online. We recommend going through the modules from Codecademy_ and/or the
-`Scipy lectures`_. The full API documentation serves to provide more information
-on a given module or class.
-
--------------------------
-Example Jupyter Notebooks
--------------------------
-
-.. toctree::
-    :maxdepth: 1
-
-    examples/post-processing
-    examples/pandas-dataframes
-    examples/tally-arithmetic
-    examples/mgxs-part-i
-    examples/mgxs-part-ii
-    examples/mgxs-part-iii
-    examples/mgxs-part-iv
-    examples/mdgxs-part-i
-    examples/mdgxs-part-ii
-    examples/nuclear-data
+example Jupyter_ notebooks provided in the :ref:`examples` section of the
+documentation. However, this assumes that you are already familiar with Python
+and common third-party packages such as NumPy_. If you have never programmed in
+Python before, there are many good tutorials available online. We recommend
+going through the modules from Codecademy_ and/or the `Scipy lectures`_. The
+full API documentation serves to provide more information on a given module or
+class.
 
 ------------------------------------
 :mod:`openmc` -- Basic Functionality
@@ -152,6 +135,7 @@ Constructing Tallies
    openmc.EnergyFunctionFilter
    openmc.Mesh
    openmc.Trigger
+   openmc.TallyDerivative
    openmc.Tally
    openmc.Tallies
 
@@ -188,6 +172,7 @@ Running OpenMC
    openmc.run
    openmc.calculate_volumes
    openmc.plot_geometry
+   openmc.plot_inline
 
 Post-processing
 ---------------
@@ -295,6 +280,7 @@ Multi-group Cross Sections
     openmc.mgxs.NuFissionMatrixXS
     openmc.mgxs.ScatterXS
     openmc.mgxs.ScatterMatrixXS
+    openmc.mgxs.ScatterProbabilityMatrix
     openmc.mgxs.TotalXS
     openmc.mgxs.TransportXS
 
@@ -483,6 +469,28 @@ Functions
     openmc.data.endf.get_tab1_record
     openmc.data.endf.get_tab2_record
     openmc.data.endf.get_text_record
+
+---------------------------------------------------------
+:mod:`openmc.openmoc_compatible` -- OpenMOC Compatibility
+---------------------------------------------------------
+
+.. autosummary::
+    :toctree: generated
+    :nosignatures:
+    :template: myfunction.rst
+
+    openmc.openmoc_compatible.get_openmoc_material
+    openmc.openmoc_compatible.get_openmc_material
+    openmc.openmoc_compatible.get_openmoc_surface
+    openmc.openmoc_compatible.get_openmc_surface
+    openmc.openmoc_compatible.get_openmoc_cell
+    openmc.openmoc_compatible.get_openmc_cell
+    openmc.openmoc_compatible.get_openmoc_universe
+    openmc.openmoc_compatible.get_openmc_universe
+    openmc.openmoc_compatible.get_openmoc_lattice
+    openmc.openmoc_compatible.get_openmc_lattice
+    openmc.openmoc_compatible.get_openmoc_geometry
+    openmc.openmoc_compatible.get_openmc_geometry
 
 .. _Jupyter: https://jupyter.org/
 .. _NumPy: http://www.numpy.org/

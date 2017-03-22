@@ -1,9 +1,9 @@
                                     sum(distribcell)  group in nuclide      mean  std. dev.
 0  ((0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13...         1   total  0.457353   0.010474
                                     sum(distribcell)  group in nuclide      mean  std. dev.
-0  ((0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13...         1   total  0.405649   0.015784
+0  ((0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13...         1   total  0.410174   0.011573
                                     sum(distribcell)  group in nuclide      mean  std. dev.
-0  ((0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13...         1   total  0.405641   0.015787
+0  ((0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13...         1   total  0.410166   0.011577
                                     sum(distribcell)  group in nuclide      mean  std. dev.
 0  ((0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13...         1   total  0.066556    0.00251
                                     sum(distribcell)  group in nuclide      mean  std. dev.
@@ -32,6 +32,18 @@
 0  ((0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13...         1          1   total  1.000834   0.037242
                                     sum(distribcell)  group in  group out nuclide      mean  std. dev.
 0  ((0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13...         1          1   total  0.094516     0.0059
+                                    sum(distribcell)  group in  group out nuclide  mean  std. dev.
+0  ((0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13...         1          1   total   1.0   0.037213
+                                    sum(distribcell)  group in  group out nuclide moment      mean  std. dev.
+0  ((0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13...         1          1   total     P0  0.390797   0.016955
+1  ((0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13...         1          1   total     P1  0.047641   0.005091
+2  ((0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13...         1          1   total     P2  0.015866   0.003708
+3  ((0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13...         1          1   total     P3  0.005430   0.003170
+                                    sum(distribcell)  group in  group out nuclide moment      mean  std. dev.
+0  ((0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13...         1          1   total     P0  0.391123   0.022356
+1  ((0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13...         1          1   total     P1  0.047680   0.005395
+2  ((0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13...         1          1   total     P2  0.015880   0.003758
+3  ((0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13...         1          1   total     P3  0.005435   0.003179
                                     sum(distribcell)  group out nuclide  mean  std. dev.
 0  ((0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13...          1   total   1.0   0.080455
                                     sum(distribcell)  group out nuclide  mean  std. dev.

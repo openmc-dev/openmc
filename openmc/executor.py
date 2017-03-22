@@ -1,9 +1,11 @@
 from __future__ import print_function
+from collections import Iterable
 import subprocess
 from numbers import Integral
 
 from six import string_types
 
+import openmc
 from openmc import VolumeCalculation
 
 
@@ -32,15 +34,58 @@ def plot_geometry(output=True, openmc_exec='openmc', cwd='.'):
 
     Parameters
     ----------
-    output : bool
+    output : bool, optional
         Capture OpenMC output from standard out
-    openmc_exec : str
+    openmc_exec : str, optional
         Path to OpenMC executable
     cwd : str, optional
-        Path to working directory to run in. Defaults to the current working directory.
+        Path to working directory to run in
 
     """
     return _run([openmc_exec, '-p'], output, cwd)
+
+
+def plot_inline(plots, openmc_exec='openmc', cwd='.', convert_exec='convert'):
+    """Display plots inline in a Jupyter notebook.
+
+    This function requires that you have a program installed to convert PPM
+    files to PNG files. Typically, that would be `ImageMagick
+    <https://www.imagemagick.org>`_ which includes a `convert` command.
+
+    Parameters
+    ----------
+    plots : Iterable of openmc.Plot
+        Plots to display
+    openmc_exec : str
+        Path to OpenMC executable
+    cwd : str, optional
+        Path to working directory to run in
+    convert_exec : str, optional
+        Command that can convert PPM files into PNG files
+
+    """
+    from IPython.display import Image, display
+
+    if not isinstance(plots, Iterable):
+        plots = [plots]
+
+    # Create plots.xml
+    openmc.Plots(plots).export_to_xml()
+
+    # Run OpenMC in geometry plotting mode
+    plot_geometry(False, openmc_exec, cwd)
+
+    images = []
+    if plots is not None:
+        for p in plots:
+            if p.filename is not None:
+                ppm_file = '{}.ppm'.format(p.filename)
+            else:
+                ppm_file = 'plot_{}.ppm'.format(p.id)
+            png_file = ppm_file.replace('.ppm', '.png')
+            subprocess.check_call([convert_exec, ppm_file, png_file])
+            images.append(Image(png_file))
+        display(*images)
 
 
 def calculate_volumes(threads=None, output=True, cwd='.',

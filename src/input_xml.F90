@@ -971,7 +971,7 @@ contains
         end do
       else
         call fatal_error("No resonant scatterers are specified within the " // "" &
-          // "resonance_scattering element in settings.xml")
+             // "resonance_scattering element in settings.xml")
       end if
     end if
 
@@ -4438,8 +4438,8 @@ contains
 
       ! Copy plot color type and initialize all colors randomly
       temp_str = "cell"
-      if (check_for_node(node_plot, "color")) &
-           call get_node_value(node_plot, "color", temp_str)
+      if (check_for_node(node_plot, "color_by")) &
+           call get_node_value(node_plot, "color_by", temp_str)
       temp_str = to_lower(temp_str)
       select case (trim(temp_str))
       case ("cell")
@@ -4452,7 +4452,7 @@ contains
           pl % colors(j) % rgb(3) = int(prn()*255)
         end do
 
-      case ("mat", "material")
+      case ("material")
 
         pl % color_by = PLOT_COLOR_MATS
         allocate(pl % colors(n_materials))
@@ -4467,8 +4467,8 @@ contains
              // "' in plot " // trim(to_str(pl % id)))
       end select
 
-      ! Get the number of <col_spec> nodes and get a list of them
-      call get_node_list(node_plot, "col_spec", node_col_list)
+      ! Get the number of <color> nodes and get a list of them
+      call get_node_list(node_plot, "color", node_col_list)
       n_cols = size(node_col_list)
 
       ! Copy user specified colors
@@ -4708,13 +4708,12 @@ contains
             end do
 
             ! Alter colors based on mask information
-            do j=1,size(pl % colors)
-              if (.not. any(j .eq. iarray)) then
+            do j = 1, size(pl % colors)
+              if (.not. any(j == iarray)) then
                 if (check_for_node(node_mask, "background")) then
                   call get_node_array(node_mask, "background", pl % colors(j) % rgb)
                 else
-                  call fatal_error("Missing <background> in mask of plot " &
-                       // trim(to_str(pl % id)))
+                  pl % colors(j) % rgb(:) = [255, 255, 255]
                 end if
               end if
             end do
@@ -4806,7 +4805,7 @@ contains
 
         select case (trim(adjustl(to_lower(temp_str))))
         case ('slbw')
-          URR_formalism = URR_SLBW 
+          URR_formalism = URR_SLBW
         case ('mlbw')
           URR_formalism = URR_MLBW
         case ('mnbw')
@@ -4825,7 +4824,7 @@ contains
       ! Determine which W function evaluation to use
       if (check_for_node(settings_node, "w_function_implementation")) then
         call get_node_value(settings_node, "w_function_implementation", temp_str)
-      
+
         select case (trim(adjustl(to_lower(temp_str))))
         case ('mit_w')
           URR_faddeeva_method = URR_MIT_W
@@ -4864,7 +4863,7 @@ contains
       ! Check for resonance parameter energy dependence treatment
       if (check_for_node(settings_node, 'parameter_energy_dependence')) then
         call get_node_value(settings_node, "parameter_energy_dependence", temp_str)
-      
+
         select case (trim(adjustl(to_lower(temp_str))))
         case ('neutron')
           URR_parameter_energy_dependence = URR_E_NEUTRON
@@ -4942,7 +4941,7 @@ contains
             URR_endf_filenames(i) = trim(adjustl(temp_str))
           else
             call fatal_error('No ENDF-6 data file specified for isotope ' &
-               // trim(to_str(i)) // ' in urr.xml file')
+                 // trim(to_str(i)) // ' in urr.xml file')
           end if
 
           ! Check if a max energy is given
@@ -5007,23 +5006,22 @@ contains
       ! Check if a xs calculation frequency is specified
       if (check_for_node(otf_xs_node, 'frequency')) then
         call get_node_value(otf_xs_node, 'frequency', temp_str)
-        
+
         select case (trim(adjustl(to_lower(temp_str))))
-        
         case ('event')
           URR_realization_frequency = URR_EVENT
-        
+
         case ('history')
           URR_realization_frequency = URR_HISTORY
           call fatal_error('History-based URR realizations not yet supported')
-        
+
         case ('batch')
           URR_realization_frequency = URR_BATCH
           call fatal_error('Batch-based URR realizations not yet supported')
 
         case ('simulation')
           URR_realization_frequency = URR_SIMULATION
-        
+
         case default
           call fatal_error('Unrecognized URR realization frequency in urr.xml')
         end select
@@ -5037,7 +5035,7 @@ contains
           call get_node_value(otf_xs_node, 'num_realizations', URR_num_urr_realizations)
           if (URR_num_urr_realizations < 1) then
             call fatal_error('Number of independent URR realizations&
-               & must be greater than 0 in urr.xml')
+                 & must be greater than 0 in urr.xml')
           end if
         else
           call fatal_error('No number of independent URR realizations to &
@@ -5181,7 +5179,7 @@ contains
           call get_node_value(prob_table_node, "num_histories", URR_num_histories_prob_tables)
           if (mod(URR_num_histories_prob_tables, URR_num_bands_prob_tables) /= 0) then
             call fatal_error('Histories &
-               &per batch must be evenly divisible by number of probability bands')
+                 &per batch must be evenly divisible by number of probability bands')
           end if
         else
           call fatal_error('No number of realization histories for probability&

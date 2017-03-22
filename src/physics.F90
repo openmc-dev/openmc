@@ -54,7 +54,7 @@ contains
     ! check for very low energy
     if (p % E < 1.0e-100_8) then
       p % alive = .false.
-      call warning("Killing neutron with extremely low energy")
+      if (master) call warning("Killing neutron with extremely low energy")
     end if
 
     ! Advance URR seed stream 'N' times after energy changes
@@ -803,6 +803,7 @@ contains
     ! Because of floating-point roundoff, it may be possible for mu to be
     ! outside of the range [-1,1). In these cases, we just set mu to exactly
     ! -1 or 1
+
     if (abs(mu) > ONE) mu = sign(ONE,mu)
 
     ! change direction of particle

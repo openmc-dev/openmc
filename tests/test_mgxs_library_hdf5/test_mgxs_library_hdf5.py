@@ -59,7 +59,7 @@ class MGXSTestHarness(PyAPITestHarness):
 
         # Export the MGXS Library to an HDF5 file
         self.mgxs_lib.build_hdf5_store(directory='.')
-
+        
         # Open the MGXS HDF5 file
         f = h5py.File('mgxs.h5', 'r')
 

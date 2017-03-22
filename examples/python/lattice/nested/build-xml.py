@@ -138,7 +138,7 @@ plot = openmc.Plot(plot_id=1)
 plot.origin = [0, 0, 0]
 plot.width = [4, 4]
 plot.pixels = [400, 400]
-plot.color = 'mat'
+plot.color_by = 'material'
 
 # Instantiate a Plots object and export to XML
 plot_file = openmc.Plots([plot])

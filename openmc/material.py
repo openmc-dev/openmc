@@ -352,7 +352,7 @@ class Material(object):
         """
         if volume_calc.domain_type == 'material':
             if self.id in volume_calc.volumes:
-                self._volume = volume_calc.volumes[self.id]
+                self._volume = volume_calc.volumes[self.id][0]
                 self._atoms = volume_calc.atoms[self.id]
             else:
                 raise ValueError('No volume information found for this material.')
@@ -464,16 +464,16 @@ class Material(object):
             Nuclide to remove
 
         """
+        cv.check_type('nuclide', nuclide, string_types + (openmc.Nuclide,))
 
-        if not isinstance(nuclide, openmc.Nuclide):
-            msg = 'Unable to remove a Nuclide "{}" in Material ID="{}" ' \
-                  'since it is not a Nuclide'.format(self._id, nuclide)
-            raise ValueError(msg)
+        if isinstance(nuclide, string_types):
+            nuclide = openmc.Nuclide(nuclide)
 
         # If the Material contains the Nuclide, delete it
         for nuc in self._nuclides:
-            if nuclide == nuc:
+            if nuclide == nuc[0]:
                 self._nuclides.remove(nuc)
+                break
 
     def add_macroscopic(self, macroscopic):
         """Add a macroscopic to the material.  This will also set the
@@ -625,15 +625,14 @@ class Material(object):
             Element to remove
 
         """
+        cv.check_type('element', element, string_types + (openmc.Element,))
 
-        if not isinstance(element, openmc.Element):
-            msg = 'Unable to remove "{}" in Material ID="{}" ' \
-                  'since it is not an Element'.format(self.id, element)
-            raise ValueError(msg)
+        if isinstance(element, string_types):
+            element = openmc.Element(element)
 
         # If the Material contains the Element, delete it
         for elm in self._elements:
-            if element == elm:
+            if element == elm[0]:
                 self._elements.remove(elm)
 
     def add_s_alpha_beta(self, name):
@@ -981,7 +980,7 @@ class Materials(cv.CheckedList):
         :envvar:`OPENMC_CROSS_SECTIONS` environment variable will be used for
         continuous-energy calculations and
         :envvar:`OPENMC_MG_CROSS_SECTIONS` will be used for multi-group
-        calculations to find the path to the XML cross section file.
+        calculations to find the path to the HDF5 cross section file.
     multipole_library : str
         Indicates the path to a directory containing a windowed multipole
         cross section library. If it is not set, the

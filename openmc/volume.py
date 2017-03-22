@@ -80,9 +80,7 @@ class VolumeCalculation(object):
             # user-specified one is valid
             if self.domain_type == 'cell':
                 for c in domains:
-                    if c.region is None:
-                        continue
-                    ll, ur = c.region.bounding_box
+                    ll, ur = c.bounding_box
                     if np.any(np.isinf(ll)) or np.any(np.isinf(ur)):
                         continue
                     if (np.any(np.asarray(lower_left) > ll) or
@@ -248,9 +246,9 @@ class VolumeCalculation(object):
         results = type(self).from_hdf5(filename)
 
         # Make sure properties match
-        assert self.domains == results.domains
-        assert self.lower_left == results.lower_left
-        assert self.upper_right == results.upper_right
+        assert self.ids == results.ids
+        assert np.all(self.lower_left == results.lower_left)
+        assert np.all(self.upper_right == results.upper_right)
 
         # Copy results
         self.volumes = results.volumes

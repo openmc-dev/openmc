@@ -32,6 +32,9 @@ MGXS_TYPES = ['total',
               'nu-scatter matrix',
               'multiplicity matrix',
               'nu-fission matrix',
+              'scatter probability matrix',
+              'consistent scatter matrix',
+              'consistent nu-scatter matrix',
               'chi',
               'chi-prompt',
               'inverse-velocity',
@@ -121,7 +124,7 @@ class MGXS(object):
     post-processing to compute spatially-homogenized and energy-integrated
     multi-group cross sections for multi-group neutronics calculations.
 
-    NOTE: Users should instantiate the subclasses of this abstract class.
+    .. note:: Users should instantiate the subclasses of this abstract class.
 
     Parameters
     ----------
@@ -478,12 +481,18 @@ class MGXS(object):
             else:
                 domain_filter = filter_type(self.domain.id)
 
+            if isinstance(self.estimator, str):
+                estimators = [self.estimator] * len(self.scores)
+            else:
+                estimators = self.estimator
+
             # Create each Tally needed to compute the multi group cross section
-            tally_metadata = zip(self.scores, self.tally_keys, self.filters)
-            for score, key, filters in tally_metadata:
+            tally_metadata = \
+                zip(self.scores, self.tally_keys, self.filters, estimators)
+            for score, key, filters, estimator in tally_metadata:
                 self._tallies[key] = openmc.Tally(name=self.name)
                 self._tallies[key].scores = [score]
-                self._tallies[key].estimator = self.estimator
+                self._tallies[key].estimator = estimator
                 self._tallies[key].filters = [domain_filter]
 
                 # If a tally trigger was specified, add it to each tally
@@ -725,6 +734,14 @@ class MGXS(object):
             mgxs = ScatterMatrixXS(domain, domain_type, energy_groups, nu=True)
         elif mgxs_type == 'multiplicity matrix':
             mgxs = MultiplicityMatrixXS(domain, domain_type, energy_groups)
+        elif mgxs_type == 'scatter probability matrix':
+            mgxs = ScatterProbabilityMatrix(domain, domain_type, energy_groups)
+        elif mgxs_type == 'consistent scatter matrix':
+            mgxs = ScatterMatrixXS(domain, domain_type, energy_groups)
+            mgxs.formulation = 'consistent'
+        elif mgxs_type == 'consistent nu-scatter matrix':
+            mgxs = ScatterMatrixXS(domain, domain_type, energy_groups, nu=True)
+            mgxs.formulation = 'consistent'
         elif mgxs_type == 'nu-fission matrix':
             mgxs = NuFissionMatrixXS(domain, domain_type, energy_groups)
         elif mgxs_type == 'chi':
@@ -880,7 +897,7 @@ class MGXS(object):
         This method is needed to compute cross section data from tallies
         in an OpenMC StatePoint object.
 
-        NOTE: The statepoint must first be linked with an OpenMC Summary object.
+        .. note:: The statepoint must be linked with an OpenMC Summary object.
 
         Parameters
         ----------
@@ -1628,7 +1645,7 @@ class MGXS(object):
         nuclides and cross section type. Two datasets for the mean and standard
         deviation are stored for each subdomain entry in the HDF5 file.
 
-        NOTE: This requires the h5py Python package.
+        .. note:: This requires the h5py Python package.
 
         Parameters
         ----------
@@ -1971,7 +1988,7 @@ class MatrixMGXS(MGXS):
     post-processing to compute spatially-homogenized and energy-integrated
     multi-group cross sections for multi-group neutronics calculations.
 
-    NOTE: Users should instantiate the subclasses of this abstract class.
+    .. note:: Users should instantiate the subclasses of this abstract class.
 
     Parameters
     ----------
@@ -2695,11 +2712,10 @@ class TransportXS(MGXS):
         super(TransportXS, self).__init__(domain, domain_type,
                                           groups, by_nuclide, name, num_polar,
                                           num_azimuthal)
-        if not nu:
-            self._rxn_type = 'transport'
-        else:
-            self._rxn_type = 'nu-transport'
-        self._estimator = 'analog'
+
+        # Use tracklength estimators for the total MGXS term, and
+        # analog estimators for the transport correction term
+        self._estimator = ['tracklength', 'tracklength', 'analog', 'analog']
         self._valid_estimators = ['analog']
         self.nu = nu
 
@@ -2711,23 +2727,21 @@ class TransportXS(MGXS):
     @property
     def scores(self):
         if not self.nu:
-            return ['flux', 'total', 'scatter-1']
+            return ['flux', 'total', 'flux', 'scatter-1']
         else:
-            return ['flux', 'total', 'nu-scatter-1']
+            return ['flux', 'total', 'flux', 'nu-scatter-1']
 
     @property
     def tally_keys(self):
-        if not self.nu:
-            return super(TransportXS, self).tally_keys
-        else:
-            return ['flux', 'total', 'scatter-1']
+        return ['flux (tracklength)', 'total', 'flux (analog)', 'scatter-1']
 
     @property
     def filters(self):
         group_edges = self.energy_groups.group_edges
         energy_filter = openmc.EnergyFilter(group_edges)
         energyout_filter = openmc.EnergyoutFilter(group_edges)
-        filters = [[energy_filter], [energy_filter], [energyout_filter]]
+        filters = [[energy_filter], [energy_filter],
+                   [energy_filter], [energyout_filter]]
 
         return self._add_angle_filters(filters)
 
@@ -2747,6 +2761,32 @@ class TransportXS(MGXS):
         return self._rxn_rate_tally
 
     @property
+    def xs_tally(self):
+        if self._xs_tally is None:
+            if self.tallies is None:
+                msg = 'Unable to get xs_tally since tallies have ' \
+                      'not been loaded from a statepoint'
+                raise ValueError(msg)
+
+            # Switch EnergyoutFilter to EnergyFilter.
+            old_filt = self.tallies['scatter-1'].filters[-1]
+            new_filt = openmc.EnergyFilter(old_filt.bins)
+            new_filt.stride = old_filt.stride
+            self.tallies['scatter-1'].filters[-1] = new_filt
+
+            # Compute total cross section
+            total_xs = self.tallies['total'] / self.tallies['flux (tracklength)']
+
+            # Compute transport correction term
+            trans_corr = self.tallies['scatter-1'] / self.tallies['flux (analog)']
+
+            # Compute the transport-corrected total cross section
+            self._xs_tally = total_xs - trans_corr
+            self._compute_xs()
+
+        return self._xs_tally
+
+    @property
     def nu(self):
         return self._nu
 
@@ -2754,6 +2794,10 @@ class TransportXS(MGXS):
     def nu(self, nu):
         cv.check_type('nu', nu, bool)
         self._nu = nu
+        if not nu:
+            self._rxn_type = 'transport'
+        else:
+            self._rxn_type = 'nu-transport'
 
 
 class AbsorptionXS(MGXS):
@@ -3160,15 +3204,9 @@ class FissionXS(MGXS):
         super(FissionXS, self).__init__(domain, domain_type,
                                         groups, by_nuclide, name, num_polar,
                                         num_azimuthal)
-        if not prompt:
-            if not nu:
-                self._rxn_type = 'fission'
-            else:
-                self._rxn_type = 'nu-fission'
-            self.nu = nu
-        else:
-            self._rxn_type = 'prompt-nu-fission'
-            self.nu = True
+        self._nu = False
+        self._prompt = False
+        self.nu = nu
         self.prompt = prompt
 
     def __deepcopy__(self, memo):
@@ -3189,11 +3227,25 @@ class FissionXS(MGXS):
     def nu(self, nu):
         cv.check_type('nu', nu, bool)
         self._nu = nu
+        if not self.prompt:
+            if not self.nu:
+                self._rxn_type = 'fission'
+            else:
+                self._rxn_type = 'nu-fission'
+        else:
+            self._rxn_type = 'prompt-nu-fission'
 
     @prompt.setter
     def prompt(self, prompt):
         cv.check_type('prompt', prompt, bool)
         self._prompt = prompt
+        if not self.prompt:
+            if not self.nu:
+                self._rxn_type = 'fission'
+            else:
+                self._rxn_type = 'nu-fission'
+        else:
+            self._rxn_type = 'prompt-nu-fission'
 
 
 class KappaFissionXS(MGXS):
@@ -3364,9 +3416,6 @@ class ScatterXS(MGXS):
         The domain type for spatial homogenization
     groups : openmc.mgxs.EnergyGroups
         The energy group structure for energy condensation
-    nu : bool
-        If True, the cross section data will include neutron multiplication;
-        defaults to False
     by_nuclide : bool
         If true, computes cross sections for each nuclide in domain
     name : str, optional
@@ -3378,6 +3427,9 @@ class ScatterXS(MGXS):
     num_azimuthal : Integral, optional
         Number of equi-width azimuthal angle bins for angle discretization;
         defaults to one bin
+    nu : bool
+        If True, the cross section data will include neutron multiplication;
+        defaults to False
 
     Attributes
     ----------
@@ -3447,19 +3499,12 @@ class ScatterXS(MGXS):
 
     """
 
-    def __init__(self, domain=None, domain_type=None, groups=None, nu=False,
-                 by_nuclide=False, name='', num_polar=1, num_azimuthal=1):
+    def __init__(self, domain=None, domain_type=None, groups=None,
+                 by_nuclide=False, name='', num_polar=1,
+                 num_azimuthal=1, nu=False):
         super(ScatterXS, self).__init__(domain, domain_type,
-                                        groups, by_nuclide, name, num_polar,
-                                        num_azimuthal)
-        if not nu:
-            self._rxn_type = 'scatter'
-        else:
-            self._rxn_type = 'nu-scatter'
-            # Only analog estimators are valid so change from the defaults
-            # to reflect this
-            self._estimator = 'analog'
-            self._valid_estimators = ['analog']
+                                        groups, by_nuclide, name,
+                                        num_polar, num_azimuthal)
         self.nu = nu
 
     def __deepcopy__(self, memo):
@@ -3475,7 +3520,12 @@ class ScatterXS(MGXS):
     def nu(self, nu):
         cv.check_type('nu', nu, bool)
         self._nu = nu
-
+        if not nu:
+            self._rxn_type = 'scatter'
+        else:
+            self._rxn_type = 'nu-scatter'
+            self._estimator = 'analog'
+            self._valid_estimators = ['analog']
 
 class ScatterMatrixXS(MatrixMGXS):
     r"""A scattering matrix multi-group cross section with the cosine of the
@@ -3522,6 +3572,36 @@ class ScatterMatrixXS(MatrixMGXS):
     To incorporate the effect of neutron multiplication from (n,xn) reactions
     in the above relation, the `nu` parameter can be set to `True`.
 
+    An alternative form of the scattering matrix is computed when the
+    `formulation` property is set to 'consistent' rather than the default
+    of 'simple'. This formulation computes the scattering matrix multi-group
+    cross section as the product of the scatter cross section and
+    group-to-group scattering probabilities.
+
+    Unlike the default 'simple' formulation, the 'consistent' formulation
+    is computed from the groupwise scattering cross section which uses a
+    tracklength estimator. This ensures that reaction rate balance is exactly
+    preserved with a :class:`TotalXS` computed using a tracklength estimator.
+
+    For a scattering probability matrix :math:`P_{s,\ell,g'\rightarrow g}` and
+    scattering cross section :math:`\sigma_s (r, E)` for incoming energy group
+    :math:`[E_{g'},E_{g'-1}]` and outgoing energy group :math:`[E_g,E_{g-1}]`,
+    the Legendre scattering moments are calculated as:
+
+    .. math::
+
+       \sigma_{s,\ell,g'\rightarrow g} = \sigma_s (r, E) \times
+       P_{s,\ell,g'\rightarrow g}
+
+    To incorporate the effect of neutron multiplication from (n,xn) reactions
+    in the 'consistent' scattering matrix, the `nu` parameter can be set to `True`
+    such that the Legendre scattering moments are calculated as:
+
+    .. math::
+
+       \sigma_{s,\ell,g'\rightarrow g} = \upsilon_{g'\rightarrow g} \times
+       \sigma_s (r, E) \times P_{s,\ell,g'\rightarrow g}
+
     Parameters
     ----------
     domain : openmc.Material or openmc.Cell or openmc.Universe or openmc.Mesh
@@ -3530,9 +3610,6 @@ class ScatterMatrixXS(MatrixMGXS):
         The domain type for spatial homogenization
     groups : openmc.mgxs.EnergyGroups
         The energy group structure for energy condensation
-    nu : bool
-        If True, the cross section data will include neutron multiplication;
-        defaults to False
     by_nuclide : bool
         If true, computes cross sections for each nuclide in domain
     name : str, optional
@@ -3544,9 +3621,22 @@ class ScatterMatrixXS(MatrixMGXS):
     num_azimuthal : Integral, optional
         Number of equi-width azimuthal angle bins for angle discretization;
         defaults to one bin
+    nu : bool
+        If True, the cross section data will include neutron multiplication;
+        defaults to False
 
     Attributes
     ----------
+    formulation : 'simple' or 'consistent'
+        The calculation approach to use ('simple' by default). The 'simple'
+        formulation simply divides the group-to-group scattering rates by
+        the groupwise flux, each computed from analog tally estimators. The
+        'consistent' formulation multiplies the groupwise scattering rates
+        by the group-to-group scatter probability matrix, the former computed
+        from tracklength tallies and the latter computed from analog tallies.
+        The 'consistent' formulation is designed to better conserve reaction
+        rate balance with the total and absorption cross sections computed
+        using tracklength tally estimators.
     correction : 'P0' or None
         Apply the P0 correction to scattering matrices if set to 'P0'; this is
         used only if :attr:`ScatterMatrixXS.scatter_format` is 'legendre'
@@ -3626,17 +3716,13 @@ class ScatterMatrixXS(MatrixMGXS):
 
     """
 
-    def __init__(self, domain=None, domain_type=None, groups=None, nu=False,
-                 by_nuclide=False, name='', num_polar=1, num_azimuthal=1):
+    def __init__(self, domain=None, domain_type=None, groups=None,
+                 by_nuclide=False, name='', num_polar=1,
+                 num_azimuthal=1, nu=False):
         super(ScatterMatrixXS, self).__init__(domain, domain_type,
                                               groups, by_nuclide, name,
-                                              num_azimuthal)
-        if not nu:
-            self._rxn_type = 'scatter'
-            self._hdf5_key = 'scatter matrix'
-        else:
-            self._rxn_type = 'nu-scatter'
-            self._hdf5_key = 'nu-scatter matrix'
+                                              num_polar, num_azimuthal)
+        self._formulation = 'simple'
         self._correction = 'P0'
         self._scatter_format = 'legendre'
         self._legendre_order = 0
@@ -3647,6 +3733,7 @@ class ScatterMatrixXS(MatrixMGXS):
 
     def __deepcopy__(self, memo):
         clone = super(ScatterMatrixXS, self).__deepcopy__(memo)
+        clone._formulation = self.formulation
         clone._correction = self.correction
         clone._scatter_format = self.scatter_format
         clone._legendre_order = self.legendre_order
@@ -3671,8 +3758,8 @@ class ScatterMatrixXS(MatrixMGXS):
                 return (1, 2)
 
     @property
-    def nu(self):
-        return self._nu
+    def formulation(self):
+        return self._formulation
 
     @property
     def correction(self):
@@ -3691,35 +3778,130 @@ class ScatterMatrixXS(MatrixMGXS):
         return self._histogram_bins
 
     @property
-    def scores(self):
-        scores = ['flux']
+    def nu(self):
+        return self._nu
 
-        if self.scatter_format == 'legendre':
+    @property
+    def scores(self):
+
+        if self.formulation == 'simple':
+            scores = ['flux']
+
+            if self.scatter_format == 'legendre':
+                if self.legendre_order == 0:
+                    scores.append('{}-0'.format(self.rxn_type))
+                    if self.correction:
+                        scores.append('{}-1'.format(self.rxn_type))
+                else:
+                    scores.append('{}-P{}'.format(self.rxn_type, self.legendre_order))
+            elif self.scatter_format == 'histogram':
+                scores += [self.rxn_type]
+
+        else:
+            # Add scores for groupwise scattering cross section
+            scores = ['flux', 'scatter']
+
+            # Add scores for group-to-group scattering probability matrix
+            if self.scatter_format == 'legendre':
+                if self.legendre_order == 0:
+                    scores.append('scatter-0')
+                else:
+                    scores.append('scatter-P{}'.format(self.legendre_order))
+            elif self.scatter_format == 'histogram':
+                scores.append('scatter-0')
+
+            # Add scores for multiplicity matrix
+            if self.nu:
+                scores.extend(['nu-scatter-0', 'scatter-0'])
+
+            # Add scores for transport correction
             if self.correction == 'P0' and self.legendre_order == 0:
-                scores += ['{}-0'.format(self.rxn_type),
-                           '{}-1'.format(self.rxn_type)]
-            else:
-                scores += ['{}-P{}'.format(self.rxn_type, self.legendre_order)]
-        elif self.scatter_format == 'histogram':
-            scores += [self.rxn_type]
+                scores.extend(['{}-1'.format(self.rxn_type), 'flux'])
 
         return scores
 
     @property
-    def filters(self):
-        group_edges = self.energy_groups.group_edges
-        energy = openmc.EnergyFilter(group_edges)
-        energyout = openmc.EnergyoutFilter(group_edges)
+    def tally_keys(self):
+        if self.formulation == 'simple':
+            return super(ScatterMatrixXS, self).tally_keys
+        else:
+            # Add keys for groupwise scattering cross section
+            tally_keys = ['flux (tracklength)', 'scatter']
 
-        if self.scatter_format == 'legendre':
+            # Add keys for group-to-group scattering probability matrix
+            tally_keys.append('scatter-P{}'.format(self.legendre_order))
+
+            # Add keys for multiplicity matrix
+            if self.nu:
+                tally_keys.extend(['nu-scatter-0', 'scatter-0'])
+
+            # Add keys for transport correction
             if self.correction == 'P0' and self.legendre_order == 0:
-                filters = [[energy], [energy, energyout], [energyout]]
-            else:
-                filters = [[energy], [energy, energyout]]
-        elif self.scatter_format == 'histogram':
-            bins = np.linspace(-1., 1., num=self.histogram_bins + 1,
-                               endpoint=True)
-            filters = [[energy], [energy, energyout, openmc.MuFilter(bins)]]
+                tally_keys.extend(['{}-1'.format(self.rxn_type), 'flux (analog)'])
+
+            return tally_keys
+
+    @property
+    def estimator(self):
+        if self.formulation == 'simple':
+            return self._estimator
+        else:
+            # Add estimators for groupwise scattering cross section
+            estimators = ['tracklength', 'tracklength']
+
+            # Add estimators for group-to-group scattering probabilities
+            estimators.append('analog')
+
+            # Add estimators for multiplicity matrix
+            if self.nu:
+                estimators.extend(['analog', 'analog'])
+
+            # Add estimators for transport correction
+            if self.correction == 'P0' and self.legendre_order == 0:
+                estimators.extend(['analog', 'analog'])
+
+            return estimators
+
+    @property
+    def filters(self):
+        if self.formulation == 'simple':
+            group_edges = self.energy_groups.group_edges
+            energy = openmc.EnergyFilter(group_edges)
+            energyout = openmc.EnergyoutFilter(group_edges)
+
+            if self.scatter_format == 'legendre':
+                if self.correction == 'P0' and self.legendre_order == 0:
+                    filters = [[energy], [energy, energyout], [energyout]]
+                else:
+                    filters = [[energy], [energy, energyout]]
+            elif self.scatter_format == 'histogram':
+                bins = np.linspace(-1., 1., num=self.histogram_bins + 1,
+                                   endpoint=True)
+                filters = [[energy], [energy, energyout, openmc.MuFilter(bins)]]
+
+        else:
+            group_edges = self.energy_groups.group_edges
+            energy = openmc.EnergyFilter(group_edges)
+            energyout = openmc.EnergyoutFilter(group_edges)
+
+            # Groupwise scattering cross section
+            filters = [[energy], [energy]]
+
+            # Group-to-group scattering probability matrix
+            if self.scatter_format == 'legendre':
+                filters.append([energy, energyout])
+            elif self.scatter_format == 'histogram':
+                bins = np.linspace(-1., 1., num=self.histogram_bins + 1,
+                                   endpoint=True)
+                filters.append([energy, energyout, openmc.MuFilter(bins)])
+
+            # Multiplicity matrix
+            if self.nu:
+                filters.extend([[energy, energyout], [energy, energyout]])
+
+            # Add filters for transport correction
+            if self.correction == 'P0' and self.legendre_order == 0:
+                filters.extend([[energyout], [energy]])
 
         return self._add_angle_filters(filters)
 
@@ -3727,33 +3909,147 @@ class ScatterMatrixXS(MatrixMGXS):
     def rxn_rate_tally(self):
 
         if self._rxn_rate_tally is None:
-            if self.scatter_format == 'legendre':
-                # If using P0 correction subtract scatter-1 from the diagonal
-                if self.correction == 'P0' and self.legendre_order == 0:
-                    scatter_p0 = self.tallies['{}-0'.format(self.rxn_type)]
-                    scatter_p1 = self.tallies['{}-1'.format(self.rxn_type)]
-                    energy_filter = scatter_p0.find_filter(openmc.EnergyFilter)
-                    energy_filter = copy.deepcopy(energy_filter)
-                    scatter_p1 = scatter_p1.diagonalize_filter(energy_filter)
-                    self._rxn_rate_tally = scatter_p0 - scatter_p1
 
-                # Extract scattering moment reaction rate Tally
-                else:
-                    tally_key = '{}-P{}'.format(self.rxn_type,
-                                                self.legendre_order)
-                    self._rxn_rate_tally = self.tallies[tally_key]
-            elif self.scatter_format == 'histogram':
-                # Extract scattering rate distribution tally
-                self._rxn_rate_tally = self.tallies[self.rxn_type]
+            if self.formulation == 'simple':
+                if self.scatter_format == 'legendre':
+                    # If using P0 correction subtract scatter-1 from the diagonal
+                    if self.correction == 'P0' and self.legendre_order == 0:
+                        scatter_p0 = self.tallies['{}-0'.format(self.rxn_type)]
+                        scatter_p1 = self.tallies['{}-1'.format(self.rxn_type)]
+                        energy_filter = scatter_p0.find_filter(openmc.EnergyFilter)
+                        energy_filter = copy.deepcopy(energy_filter)
+                        scatter_p1 = scatter_p1.diagonalize_filter(energy_filter)
+                        self._rxn_rate_tally = scatter_p0 - scatter_p1
 
-            self._rxn_rate_tally.sparse = self.sparse
+                    # Extract scattering moment reaction rate Tally
+                    elif self.legendre_order == 0:
+                        tally_key = '{}-{}'.format(self.rxn_type,
+                                                   self.legendre_order)
+                        self._rxn_rate_tally = self.tallies[tally_key]
+                    else:
+                        tally_key = '{}-P{}'.format(self.rxn_type,
+                                                    self.legendre_order)
+                        self._rxn_rate_tally = self.tallies[tally_key]
+                elif self.scatter_format == 'histogram':
+                    # Extract scattering rate distribution tally
+                    self._rxn_rate_tally = self.tallies[self.rxn_type]
+
+                self._rxn_rate_tally.sparse = self.sparse
+
+            else:
+                msg = 'The reaction rate tally is poorly defined' \
+                      ' for the consistent formulation'
+                raise NotImplementedError(msg)
 
         return self._rxn_rate_tally
+
+    @property
+    def xs_tally(self):
+        if self._xs_tally is None:
+            if self.tallies is None:
+                msg = 'Unable to get xs_tally since tallies have ' \
+                      'not been loaded from a statepoint'
+                raise ValueError(msg)
+
+            # Use super class method
+            if self.formulation == 'simple':
+                self._xs_tally = MGXS.xs_tally.fget(self)
+
+            else:
+                # Compute groupwise scattering cross section
+                self._xs_tally = self.tallies['scatter'] / \
+                                 self.tallies['flux (tracklength)']
+
+                # Compute scattering probability matrix
+                energyout_bins = [self.energy_groups.get_group_bounds(i)
+                                  for i in range(self.num_groups, 0, -1)]
+                tally_key = 'scatter-P{}'.format(self.legendre_order)
+
+                # Compute normalization factor summed across outgoing energies
+                norm = self.tallies[tally_key].get_slice(scores=['scatter-0'])
+                norm = norm.summation(
+                    filter_type=openmc.EnergyoutFilter, filter_bins=energyout_bins)
+
+                # Remove the AggregateFilter summed across energyout bins
+                norm._filters = norm._filters[:2]
+
+                # Compute normalization factor summed across outgoing mu bins
+                if self.scatter_format == 'histogram':
+
+                    # (Re-)append the MuFilter which was removed above
+                    mu_bins = np.linspace(
+                        -1., 1., num=self.histogram_bins + 1, endpoint=True)
+                    norm._filters.append(openmc.MuFilter(mu_bins))
+
+                    # Sum across all mu bins
+                    mu_bins = [(mu_bins[i], mu_bins[i+1]) for
+                               i in range(self.histogram_bins)]
+                    norm = norm.summation(
+                        filter_type=openmc.MuFilter, filter_bins=mu_bins)
+
+                    # Remove the AggregateFilter summed across mu bins
+                    norm._filters = norm._filters[:2]
+
+                # Multiply by the group-to-group probability matrix
+                self._xs_tally *= (self.tallies[tally_key] / norm)
+
+                # Multiply by the multiplicity matrix
+                if self.nu:
+                    numer = self.tallies['nu-scatter-0']
+                    denom = self.tallies['scatter-0']
+                    self._xs_tally *= (numer / denom)
+
+                # If using P0 correction subtract scatter-1 from the diagonal
+                if self.correction == 'P0' and self.legendre_order == 0:
+                    flux = self.tallies['flux (analog)']
+                    scatter_p1 = self.tallies['{}-1'.format(self.rxn_type)]
+
+                    energy_filter = flux.find_filter(openmc.EnergyFilter)
+                    energy_filter = copy.deepcopy(energy_filter)
+                    scatter_p1 = scatter_p1.diagonalize_filter(energy_filter)
+                    self._xs_tally -= (scatter_p1 / flux)
+
+                self._compute_xs()
+
+        return self._xs_tally
 
     @nu.setter
     def nu(self, nu):
         cv.check_type('nu', nu, bool)
         self._nu = nu
+
+        if self.formulation == 'simple':
+            if not nu:
+                self._rxn_type = 'scatter'
+                self._hdf5_key = 'scatter matrix'
+            else:
+                self._rxn_type = 'nu-scatter'
+                self._hdf5_key = 'nu-scatter matrix'
+        else:
+            if not nu:
+                self._rxn_type = 'scatter'
+                self._hdf5_key = 'consistent scatter matrix'
+            else:
+                self._rxn_type = 'nu-scatter'
+                self._hdf5_key = 'consistent nu-scatter matrix'
+
+    @formulation.setter
+    def formulation(self, formulation):
+        cv.check_value('formulation', formulation, ('simple', 'consistent'))
+        self._formulation = formulation
+
+        if self.formulation == 'simple':
+            self._valid_estimators = ['analog']
+            if not self.nu:
+                self._hdf5_key = 'scatter matrix'
+            else:
+                self._hdf5_key = 'nu-scatter matrix'
+        else:
+            self._valid_estimators = ['tracklength']
+            if not self.nu:
+                self._hdf5_key = 'consistent scatter matrix'
+            else:
+                self._hdf5_key = 'consistent nu-scatter matrix'
 
     @correction.setter
     def correction(self, correction):
@@ -3813,7 +4109,7 @@ class ScatterMatrixXS(MatrixMGXS):
         This method is needed to compute cross section data from tallies
         in an OpenMC StatePoint object.
 
-        NOTE: The statepoint must first be linked with an OpenMC Summary object.
+        .. note:: The statepoint must be linked with an OpenMC Summary object.
 
         Parameters
         ----------
@@ -3838,13 +4134,12 @@ class ScatterMatrixXS(MatrixMGXS):
         if self.scatter_format == 'legendre':
             # Expand scores to match the format in the statepoint
             # e.g., "scatter-P2" -> "scatter-0", "scatter-1", "scatter-2"
-            if self.correction != 'P0' or self.legendre_order != 0:
-                tally_key = '{}-P{}'.format(self.rxn_type, self.legendre_order)
-                self.tallies[tally_key].scores = \
-                    [self.rxn_type + '-{}'.format(i)
-                     for i in range(self.legendre_order + 1)]
-        elif self.scatter_format == 'histogram':
-            self.tallies[self.rxn_type].scores = [self.rxn_type]
+            for tally_key, tally in self.tallies.items():
+                if 'scatter-P' in tally.scores[0]:
+                    score_prefix = tally.scores[0].split('P')[0]
+                    self.tallies[tally_key].scores = \
+                        [score_prefix + '{}'.format(i)
+                         for i in range(self.legendre_order + 1)]
 
         super(ScatterMatrixXS, self).load_from_statepoint(statepoint)
 
@@ -3935,9 +4230,10 @@ class ScatterMatrixXS(MatrixMGXS):
         (3rd dimension), nuclides (4th dimension), and moments/histograms
         (5th dimension).
 
-        NOTE: The scattering moments are not multiplied by the :math:`(2l+1)/2`
-        prefactor in the expansion of the scattering source into Legendre
-        moments in the neutron transport equation.
+        .. note:: The scattering moments are not multiplied by the
+                  :math:`(2\ell+1)/2` prefactor in the expansion of the
+                  scattering source into Legendre moments in the neutron
+                  transport equation.
 
         Parameters
         ----------
@@ -4305,7 +4601,6 @@ class ScatterMatrixXS(MatrixMGXS):
 
                 # Build header for cross section type
                 string += '{0: <16}\n'.format(xs_header)
-                template = '{0: <12}Group {1} -> Group {2}:\t\t'
 
                 average_xs = self.get_xs(nuclides=[nuclide],
                                          subdomains=[subdomain],
@@ -4317,39 +4612,58 @@ class ScatterMatrixXS(MatrixMGXS):
                                          moment=moment)
                 rel_err_xs = rel_err_xs * 100.
 
+                # Create a function for printing group and histogram data
+                def print_groups_and_histogram(avg_xs, err_xs, num_groups,
+                                               num_histogram_bins):
+                    template = '{0: <12}Group {1} -> Group {2}:\t\t'
+                    to_print = ""
+                    # Loop over incoming/outgoing energy groups ranges
+                    for in_group in range(1, num_groups + 1):
+                        for out_group in range(1, num_groups + 1):
+                            to_print += template.format('', in_group,
+                                                        out_group)
+                            if num_histogram_bins > 0:
+                                for i in range(num_histogram_bins):
+                                    to_print += \
+                                        '\n{0: <16}Histogram Bin {1}:{2: <6}'.format(
+                                            '', i + 1, '')
+                                    to_print += '{0:.2e} +/- {1:.2e}%'.format(
+                                        avg_xs[in_group - 1, out_group - 1, i],
+                                        err_xs[in_group - 1, out_group - 1, i])
+                                to_print += '\n'
+                            else:
+                                to_print += '{0:.2e} +/- {1:.2e}%'.format(
+                                    avg_xs[in_group - 1, out_group - 1],
+                                    err_xs[in_group - 1, out_group - 1])
+                                to_print += '\n'
+                        to_print += '\n'
+                    return to_print
+
+                # Set the number of histogram bins
+                if self.scatter_format == 'histogram':
+                    num_mu_bins = self.histogram_bins
+                else:
+                    num_mu_bins = 0
+
                 if self.num_polar > 1 or self.num_azimuthal > 1:
                     # Loop over polar, azi, and in/out energy group ranges
                     for pol in range(len(pol_bins) - 1):
                         pol_low, pol_high = pol_bins[pol: pol + 2]
                         for azi in range(len(azi_bins) - 1):
                             azi_low, azi_high = azi_bins[azi: azi + 2]
-                            string += '\t\tPolar Angle: [{0:5f} - {1:5f}]'.format(
-                                pol_low, pol_high) + \
+                            string += \
+                                '\t\tPolar Angle: [{0:5f} - {1:5f}]'.format(
+                                    pol_low, pol_high) + \
                                 '\tAzimuthal Angle: [{0:5f} - {1:5f}]'.format(
-                                azi_low, azi_high) + '\n'
-                            for in_group in range(1, self.num_groups + 1):
-                                for out_group in range(1, self.num_groups + 1):
-                                    string += '\t' + template.format('',
-                                                                     in_group,
-                                                                     out_group)
-                                    string += '{0:.2e} +/- {1:.2e}%'.format(
-                                        average_xs[pol, azi, in_group - 1,
-                                                   out_group - 1],
-                                        rel_err_xs[pol, azi, in_group - 1,
-                                                   out_group - 1])
-                                    string += '\n'
-                                string += '\n'
+                                    azi_low, azi_high) + '\n'
+                            string += print_groups_and_histogram(
+                                average_xs[pol, azi, ...],
+                                rel_err_xs[pol, azi, ...], self.num_groups,
+                                num_mu_bins)
                             string += '\n'
                 else:
-                    # Loop over incoming/outgoing energy groups ranges
-                    for in_group in range(1, self.num_groups + 1):
-                        for out_group in range(1, self.num_groups + 1):
-                            string += template.format('', in_group, out_group)
-                            string += '{0:.2e} +/- {1:.2e}%'.format(
-                                average_xs[in_group - 1, out_group - 1],
-                                rel_err_xs[in_group - 1, out_group - 1])
-                            string += '\n'
-                        string += '\n'
+                    string += print_groups_and_histogram(
+                        average_xs, rel_err_xs, self.num_groups, num_mu_bins)
                     string += '\n'
                 string += '\n'
             string += '\n'
@@ -4525,6 +4839,179 @@ class MultiplicityMatrixXS(MatrixMGXS):
         return self._xs_tally
 
 
+class ScatterProbabilityMatrix(MatrixMGXS):
+    r"""The group-to-group scattering probability matrix.
+
+    This class can be used for both OpenMC input generation and tally data
+    post-processing to compute spatially-homogenized and energy-integrated
+    multi-group cross sections for multi-group neutronics calculations. At a
+    minimum, one needs to set the :attr:`ScatterProbabilityMatrix.energy_groups`
+    and :attr:`ScatterProbabilityMatrix.domain` properties. Tallies for the
+    appropriate reaction rates over the specified domain are generated
+    automatically via the :attr:`ScatterProbabilityMatrix.tallies` property,
+    which can then be appended to a :class:`openmc.Tallies` instance.
+
+    For post-processing, the :meth:`MGXS.load_from_statepoint` will pull in the
+    necessary data to compute multi-group cross sections from a
+    :class:`openmc.StatePoint` instance. The derived multi-group cross section
+    can then be obtained from the :attr:`ScatterProbabilityMatrix.xs_tally`
+    property.
+
+    For a spatial domain :math:`V`, incoming energy group
+    :math:`[E_{g'},E_{g'-1}]`, and outgoing energy group :math:`[E_g,E_{g-1}]`,
+    the group-to-group scattering probabilities are calculated as:
+
+    .. math::
+
+       \langle \sigma_{s,g'\rightarrow g} \phi \rangle &= \int_{r \in V} dr
+       \int_{4\pi} d\Omega' \int_{E_{g'}}^{E_{g'-1}} dE' \int_{4\pi} d\Omega
+       \int_{E_g}^{E_{g-1}} dE \; \sigma_{s} (r, E' \rightarrow E, \Omega'
+       \cdot \Omega) \psi(r, E', \Omega')\\
+       \langle \sigma_{s,0,g'} \phi \rangle &= \int_{r \in V} dr
+       \int_{4\pi} d\Omega' \int_{E_{g'}}^{E_{g'-1}} dE' \int_{4\pi} d\Omega
+       \int_{0}^{\infty} dE \; \sigma_s (r, E'
+       \rightarrow E, \Omega' \cdot \Omega) \psi(r, E', \Omega')\\
+       P_{s,g'\rightarrow g} &= \frac{\langle
+       \sigma_{s,g'\rightarrow g} \phi \rangle}{\langle
+       \sigma_{s,g'} \phi \rangle}
+
+    Parameters
+    ----------
+    domain : openmc.Material or openmc.Cell or openmc.Universe or openmc.Mesh
+        The domain for spatial homogenization
+    domain_type : {'material', 'cell', 'distribcell', 'universe', 'mesh'}
+        The domain type for spatial homogenization
+    groups : openmc.mgxs.EnergyGroups
+        The energy group structure for energy condensation
+    by_nuclide : bool
+        If true, computes cross sections for each nuclide in domain
+    name : str, optional
+        Name of the multi-group cross section. Used as a label to identify
+        tallies in OpenMC 'tallies.xml' file.
+    num_polar : Integral, optional
+        Number of equi-width polar angle bins for angle discretization;
+        defaults to one bin
+    num_azimuthal : Integral, optional
+        Number of equi-width azimuthal angle bins for angle discretization;
+        defaults to one bin
+
+    Attributes
+    ----------
+    name : str, optional
+        Name of the multi-group cross section
+    rxn_type : str
+        Reaction type (e.g., 'total', 'nu-fission', etc.)
+    by_nuclide : bool
+        If true, computes cross sections for each nuclide in domain
+    domain : Material or Cell or Universe or Mesh
+        Domain for spatial homogenization
+    domain_type : {'material', 'cell', 'distribcell', 'universe', 'mesh'}
+        Domain type for spatial homogenization
+    energy_groups : openmc.mgxs.EnergyGroups
+        Energy group structure for energy condensation
+    num_polar : Integral
+        Number of equi-width polar angle bins for angle discretization
+    num_azimuthal : Integral
+        Number of equi-width azimuthal angle bins for angle discretization
+    tally_trigger : openmc.Trigger
+        An (optional) tally precision trigger given to each tally used to
+        compute the cross section
+    scores : list of str
+        The scores in each tally used to compute the multi-group cross section
+    filters : list of openmc.Filter
+        The filters in each tally used to compute the multi-group cross section
+    tally_keys : list of str
+        The keys into the tallies dictionary for each tally used to compute
+        the multi-group cross section
+    estimator : 'analog'
+        The tally estimator used to compute the multi-group cross section
+    tallies : collections.OrderedDict
+        OpenMC tallies needed to compute the multi-group cross section. The keys
+        are strings listed in the :attr:`ScatterProbabilityMatrix.tally_keys`
+        property and values are instances of :class:`openmc.Tally`.
+    rxn_rate_tally : openmc.Tally
+        Derived tally for the reaction rate tally used in the numerator to
+        compute the multi-group cross section. This attribute is None
+        unless the multi-group cross section has been computed.
+    xs_tally : openmc.Tally
+        Derived tally for the multi-group cross section. This attribute
+        is None unless the multi-group cross section has been computed.
+    num_subdomains : int
+        The number of subdomains is unity for 'material', 'cell' and 'universe'
+        domain types. This is equal to the number of cell instances
+        for 'distribcell' domain types (it is equal to unity prior to loading
+        tally data from a statepoint file).
+    num_nuclides : int
+        The number of nuclides for which the multi-group cross section is
+        being tracked. This is unity if the by_nuclide attribute is False.
+    nuclides : Iterable of str or 'sum'
+        The optional user-specified nuclides for which to compute cross
+        sections (e.g., 'U238', 'O16'). If by_nuclide is True but nuclides
+        are not specified by the user, all nuclides in the spatial domain
+        are included. This attribute is 'sum' if by_nuclide is false.
+    sparse : bool
+        Whether or not the MGXS' tallies use SciPy's LIL sparse matrix format
+        for compressed data storage
+    loaded_sp : bool
+        Whether or not a statepoint file has been loaded with tally data
+    derived : bool
+        Whether or not the MGXS is merged from one or more other MGXS
+    hdf5_key : str
+        The key used to index multi-group cross sections in an HDF5 data store
+
+    """
+
+    def __init__(self, domain=None, domain_type=None, groups=None,
+                 by_nuclide=False, name='', num_polar=1, num_azimuthal=1):
+        super(ScatterProbabilityMatrix, self).__init__(
+            domain, domain_type, groups, by_nuclide,
+            name, num_polar, num_azimuthal)
+
+        self._rxn_type = 'scatter'
+        self._hdf5_key = 'scatter probability matrix'
+        self._estimator = 'analog'
+        self._valid_estimators = ['analog']
+
+    @property
+    def scores(self):
+        return [self.rxn_type]
+
+    @property
+    def filters(self):
+        # Create the non-domain specific Filters for the Tallies
+        group_edges = self.energy_groups.group_edges
+        energy = openmc.EnergyFilter(group_edges)
+        energyout = openmc.EnergyoutFilter(group_edges)
+        filters = [[energy, energyout]]
+        return self._add_angle_filters(filters)
+
+    @property
+    def rxn_rate_tally(self):
+        if self._rxn_rate_tally is None:
+            self._rxn_rate_tally = self.tallies[self.rxn_type]
+            self._rxn_rate_tally.sparse = self.sparse
+        return self._rxn_rate_tally
+
+    @property
+    def xs_tally(self):
+
+        if self._xs_tally is None:
+            energyout_bins = [self.energy_groups.get_group_bounds(i)
+                              for i in range(self.num_groups, 0, -1)]
+            norm = self.rxn_rate_tally.get_slice(scores=[self.rxn_type])
+            norm = norm.summation(
+                filter_type=openmc.EnergyoutFilter, filter_bins=energyout_bins)
+
+            # Remove the AggregateFilter summed across energyout bins
+            norm._filters = norm._filters[:2]
+
+            # Compute the group-to-group probabilities
+            self._xs_tally = self.tallies[self.rxn_type] / norm
+            super(ScatterProbabilityMatrix, self)._compute_xs()
+
+        return self._xs_tally
+
+
 class NuFissionMatrixXS(MatrixMGXS):
     r"""A fission production matrix multi-group cross section.
 
@@ -4556,11 +5043,6 @@ class NuFissionMatrixXS(MatrixMGXS):
        \nu\sigma_{f,g'\rightarrow g} &= \frac{\langle \nu\sigma_{f,g'\rightarrow
        g} \phi \rangle}{\langle \phi \rangle}
 
-    This class can also be used to gather a prompt-nu-fission cross section
-    (which only includes the contributions from prompt neutrons). This is
-    accomplished by setting the :attr:`NuFissionMatrixXS.prompt` attribute to
-    `True`.
-
     Parameters
     ----------
     domain : openmc.Material or openmc.Cell or openmc.Universe or openmc.Mesh
@@ -4569,9 +5051,6 @@ class NuFissionMatrixXS(MatrixMGXS):
         The domain type for spatial homogenization
     groups : openmc.mgxs.EnergyGroups
         The energy group structure for energy condensation
-    prompt : bool
-        If true, computes cross sections which only includes prompt neutrons;
-        defaults to False which includes prompt and delayed in total
     by_nuclide : bool
         If true, computes cross sections for each nuclide in domain
     name : str, optional
@@ -4583,6 +5062,9 @@ class NuFissionMatrixXS(MatrixMGXS):
     num_azimuthal : Integral, optional
         Number of equi-width azimuthal angle bins for angle discretization;
         defaults to one bin
+    prompt : bool
+        If true, computes cross sections which only includes prompt neutrons;
+        defaults to False which includes prompt and delayed in total
 
     Attributes
     ----------
@@ -4653,8 +5135,8 @@ class NuFissionMatrixXS(MatrixMGXS):
     """
 
     def __init__(self, domain=None, domain_type=None, groups=None,
-                 prompt=False, by_nuclide=False, name='', num_polar=1,
-                 num_azimuthal=1):
+                 by_nuclide=False, name='', num_polar=1,
+                 num_azimuthal=1, prompt=False):
         super(NuFissionMatrixXS, self).__init__(domain, domain_type,
                                                 groups, by_nuclide, name,
                                                 num_polar, num_azimuthal)
@@ -4891,6 +5373,12 @@ class Chi(MGXS):
     def prompt(self, prompt):
         cv.check_type('prompt', prompt, bool)
         self._prompt = prompt
+        if not self.prompt:
+            self._rxn_type = 'nu-fission'
+            self._hdf5_key = 'chi'
+        else:
+            self._rxn_type = 'prompt-nu-fission'
+            self._hdf5_key = 'chi-prompt'
 
     def get_homogenized_mgxs(self, other_mgxs):
         """Construct a homogenized mgxs with other MGXS objects.

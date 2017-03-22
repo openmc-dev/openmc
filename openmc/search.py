@@ -68,7 +68,7 @@ def _search_keff(guess, target, model_builder, model_args, print_iterations,
 
 
 def search_for_keff(model_builder, initial_guess=None, target=1.0,
-                    bracket=None, model_args={}, tol=None,
+                    bracket=None, model_args=None, tol=None,
                     bracketed_method='bisect', print_iterations=False,
                     print_output=False, **kwargs):
     """Function to perform a keff search by modifying a model parametrized by a
@@ -90,13 +90,14 @@ def search_for_keff(model_builder, initial_guess=None, target=1.0,
         are used. Defaults to no brackets provided. One of `guess` or `bracket`
         must be provided. If both are provided, the bracket will be
         preferentially used.
-    model_args : dict
-        Keyword-based arguments to pass to the `model_builder` method.
+    model_args : dict, optional
+        Keyword-based arguments to pass to the `model_builder` method. Defaults
+        to no arguments.
     tol : float
         Tolerance to pass to the search method
     bracketed_method : {'brentq', 'brenth', 'ridder', 'bisect'}, optional
         Solution method to use; only applies if
-        :param:`bracket` is set, otherwise the Secant method is used.
+        `bracket` is set, otherwise the Secant method is used.
         Defaults to 'bisect'.
     print_iterations : bool
         Whether or not to print the guess and the result during the iteration
@@ -127,7 +128,10 @@ def search_for_keff(model_builder, initial_guess=None, target=1.0,
         cv.check_iterable_type('bracket', bracket, Real)
         cv.check_length('bracket', bracket, 2)
         cv.check_less_than('bracket values', bracket[0], bracket[1])
-    cv.check_type('model_args', model_args, dict)
+    if model_args is None:
+        model_args = {}
+    else:
+        cv.check_type('model_args', model_args, dict)
     cv.check_type('target', target, Real)
     cv.check_type('tol', tol, Real)
     cv.check_value('bracketed_method', bracketed_method,

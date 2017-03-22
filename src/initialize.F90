@@ -310,7 +310,6 @@ contains
         ZA = trim(adjustl(to_str(nuclides(i_nuc) % Z))) // ZA
         if (ZA == trim(adjustl(to_str(URR_isotopes(i) % ZAI)))) then
           !TODO: handle metastable
-          print*, ZA, URR_isotopes(i) % ZAI
           nuclides(i_nuc) % i_isotope = i
           URR_isotopes(i) % prob_bands   = .false.
           URR_isotopes(i) % otf_urr_xs   = .false.

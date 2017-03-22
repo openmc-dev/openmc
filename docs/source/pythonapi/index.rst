@@ -39,7 +39,6 @@ Simulation Settings
    :template: myclass.rst
 
    openmc.Source
-   openmc.ResonanceScattering
    openmc.VolumeCalculation
    openmc.Settings
 

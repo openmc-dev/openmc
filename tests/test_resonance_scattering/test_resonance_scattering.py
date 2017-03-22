@@ -27,20 +27,23 @@ class ResonanceScatteringTestHarness(PyAPITestHarness):
         geometry = openmc.Geometry(root_univ)
         geometry.export_to_xml()
 
-        # Settings
-        res_scatt_dbrc = openmc.ResonanceScattering('U238', 'DBRC', 1.0, 210.0)
-        res_scatt_wcm = openmc.ResonanceScattering('U235', 'WCM', 1.0, 210.0)
-        res_scatt_ares = openmc.ResonanceScattering('Pu239', 'ARES', 1.0, 210.0)
+        # Resonance elastic scattering settings
+        res_scat_settings = {
+            'enable': True,
+            'energy_min': 1.0,
+            'energy_max': 210.0,
+            'method': 'ares',
+            'nuclides': ['U238', 'U235', 'Pu239']
+        }
 
-        sets_file = openmc.Settings()
-        sets_file.batches = 10
-        sets_file.inactive = 5
-        sets_file.particles = 1000
-        sets_file.source = openmc.source.Source(
+        settings = openmc.Settings()
+        settings.batches = 10
+        settings.inactive = 5
+        settings.particles = 1000
+        settings.source = openmc.source.Source(
              space=openmc.stats.Box([-4, -4, -4], [4, 4, 4]))
-        sets_file.resonance_scattering = [res_scatt_dbrc, res_scatt_wcm,
-             res_scatt_ares]
-        sets_file.export_to_xml()
+        settings.resonance_scattering = res_scat_settings
+        settings.export_to_xml()
 
 
 if __name__ == '__main__':

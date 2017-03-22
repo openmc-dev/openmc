@@ -65,12 +65,9 @@ module nuclide_header
 
     ! Resonance scattering info
     logical              :: resonant = .false. ! resonant scatterer?
-    character(16)        :: scheme ! target velocity sampling scheme
     real(8), allocatable :: energy_0K(:)  ! energy grid for 0K xs
     real(8), allocatable :: elastic_0K(:) ! Microscopic elastic cross section
     real(8), allocatable :: xs_cdf(:) ! CDF of v_rel times cross section
-    real(8)              :: E_min ! lower cutoff energy for res scattering
-    real(8)              :: E_max ! upper cutoff energy for res scattering
 
     ! Fission information
     logical :: has_partial_fission = .false. ! nuclide has partial fission reactions?
@@ -103,18 +100,6 @@ module nuclide_header
     procedure :: nu    => nuclide_nu
     procedure, private :: create_derived => nuclide_create_derived
   end type Nuclide
-
-!===============================================================================
-! NUCLIDE0K temporarily contains all 0K cross section data and other parameters
-! needed to treat resonance scattering before transferring them to Nuclide
-!===============================================================================
-
-  type Nuclide0K
-    character(10) :: nuclide             ! name of nuclide, e.g. U238
-    character(16) :: scheme = 'ares'     ! target velocity sampling scheme
-    real(8)       :: E_min = 0.01_8   ! lower cutoff energy for res scattering
-    real(8)       :: E_max = 1000.0_8 ! upper cutoff energy for res scattering
-  end type Nuclide0K
 
 !===============================================================================
 ! NUCLIDEMICROXS contains cached microscopic cross sections for a

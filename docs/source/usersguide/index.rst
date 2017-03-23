@@ -9,10 +9,11 @@ essential aspects of using OpenMC to perform simulations.
 
 .. toctree::
     :numbered:
-    :maxdepth: 2
+    :maxdepth: 1
 
     beginners
     install
-    input
+    basics
+    scripts
     processing
     troubleshoot

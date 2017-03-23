@@ -76,6 +76,7 @@ Prerequisites
 -------------
 
 .. admonition:: Required
+   :class: error
 
     * A Fortran compiler such as gfortran_
 
@@ -140,6 +141,7 @@ Prerequisites
       distribution and version.
 
 .. admonition:: Optional
+   :class: note
 
     * An MPI implementation for distributed-memory parallel runs
 
@@ -510,45 +512,6 @@ to the absolute path of the file library expected to used most frequently.
 .. _MCNP: http://mcnp.lanl.gov
 .. _Serpent: http://montecarlo.vtt.fi
 .. _TENDL: https://tendl.web.psi.ch/tendl_2015/tendl2015.html
-
---------------
-Running OpenMC
---------------
-
-Once you have a model built (see :ref:`usersguide_input`), you can either run
-the openmc executable directly from the directory containing your XML input
-files, or you can specify as a command-line argument the directory containing
-the XML input files. For example, if your XML input files are in the directory
-``/home/username/somemodel/``, one way to run the simulation would be:
-
-.. code-block:: sh
-
-    cd /home/username/somemodel
-    openmc
-
-Alternatively, you could run from any directory:
-
-.. code-block:: sh
-
-    openmc /home/username/somemodel
-
-Note that in the latter case, any output files will be placed in the present
-working directory which may be different from ``/home/username/somemodel``.
-
-Command-Line Flags
-------------------
-
-OpenMC accepts the following command line flags:
-
--g, --geometry-debug   Run in geometry debugging mode, where cell overlaps are
-                       checked for after each move of a particle
--n, --particles N      Use *N* particles per generation or batch
--p, --plot             Run in plotting mode
--r, --restart file     Restart a previous run from a state point or a particle
-                       restart file
--s, --threads N        Run with *N* OpenMP threads
--t, --track            Write tracks for all particles
--v, --version          Show version information
 
 -----------------------------------------------------
 Configuring Input Validation with GNU Emacs nXML mode

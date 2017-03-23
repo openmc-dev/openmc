@@ -8,33 +8,35 @@ A Beginner's Guide to OpenMC
 What does OpenMC do?
 --------------------
 
-In a nutshell, OpenMC simulates neutrons moving around randomly in a `nuclear
-reactor`_ (or other fissile system). This is what's known as `Monte Carlo`_
-simulation. Neutrons are important in nuclear reactors because they are the
-particles that induce `fission`_ in uranium and other nuclides. Knowing the
-behavior of neutrons allows you to determine how often and where fission
-occurs. The amount of energy released is then directly proportional to the
-fission reaction rate since most heat is produced by fission. By simulating many
-neutrons (millions or billions), it is possible to determine the average
-behavior of these neutrons (or the behavior of the energy produced or any other
-quantity one is interested in) very accurately.
+In a nutshell, OpenMC simulates neutral particles (presently only neutrons)
+moving stochastically through an arbitrarily defined model that represents an
+real-world experimental setup. The experiment could be as simple as a sphere of
+metal or as complicated as a full-scale `nuclear reactor`_. This is what's known
+as `Monte Carlo`_ simulation. In the case of a nuclear reactor model, neutrons
+are especially important because they are the particles that induce `fission`_
+in isotopes of uranium and other elements. Knowing the behavior of neutrons
+allows one to determine how often and where fission occurs. The amount of energy
+released is then directly proportional to the fission reaction rate since most
+heat is produced by fission. By simulating many neutrons (millions or billions),
+it is possible to determine the average behavior of these neutrons (or the
+behavior of the energy produced, or any other quantity one is interested in)
+very accurately.
 
 Using Monte Carlo methods to determine the average behavior of various physical
-quantities in a nuclear reactor is quite different from other means of solving
-the same problem. The other class of methods for determining the behavior of
-neutrons and reactions rates in a reactor is so-called `deterministic`_
-methods. In these methods, the starting point is not randomly simulating
-particles but rather writing an equation that describes the average behavior of
-the particles. The equation that describes the average behavior of neutrons is
-called the `neutron transport`_ equation. This equation is a seven-dimensional
-equation (three for space, three for velocity, and one for time) and is very
-difficult to solve directly. For all but the simplest problems, it is necessary
-to make some sort of `discretization`_. As an example, we can divide up all
-space into small sections which are homogeneous and then solve the equation on
-those small sections. After these discretizations and various approximations,
-one can arrive at forms that are suitable for solution on a computer. Among
-these are discrete ordinates, method of characteristics, finite-difference
-diffusion, and nodal methods.
+quantities in a system is quite different from other means of solving the same
+problem. The other class of methods for determining the behavior of neutrons and
+reactions rates is so-called `deterministic`_ methods. In these methods, the
+starting point is not randomly simulating particles but rather writing an
+equation that describes the average behavior of the particles. The equation that
+describes the average behavior of neutrons is called the `neutron transport`_
+equation. This equation is a seven-dimensional equation (three for space, three
+for velocity, and one for time) and is very difficult to solve directly. For all
+but the simplest problems, it is necessary to make some sort of
+`discretization`_. As an example, we can divide up all space into small sections
+which are homogeneous and then solve the equation on those small sections. After
+these discretizations and various approximations, one can arrive at forms that
+are suitable for solution on a computer. Among these are discrete ordinates,
+method of characteristics, finite-difference diffusion, and nodal methods.
 
 So why choose Monte Carlo over deterministic methods? Each method has its pros
 and cons. Let us first take a look at few of the salient pros and cons of
@@ -88,30 +90,32 @@ interest. This could be a nuclear reactor or any other physical system with
 fissioning material. You, as the code user, will need to describe the model so
 that the code can do something with it. A basic model consists of a few things:
 
-- A description of the geometry -- the problem should be split up into regions
-  of homogeneous material.
+- A description of the geometry -- the problem must be split up into regions of
+  homogeneous material composition.
 - For each different material in the problem, a description of what nuclides are
   in the material and at what density.
 - Various parameters telling the code how many particles to simulate and what
   options to use.
 - A list of different physical quantities that the code should return at the end
-  of the simulation. Remember, in a Monte Carlo simulation, if you don't ask for
-  anything, it will not give you any answers (other than a few default
-  quantities).
+  of the simulation. In a Monte Carlo simulation, if you don't ask for anything,
+  it will not give you any answers (other than a few default quantities).
 
 -----------------------
 What do I need to know?
 -----------------------
 
 If you are starting to work with OpenMC, there are a few things you should be
-familiar with. Whether you plan on working in Linux, Mac OS X, or Windows, you
+familiar with. Whether you plan on working in Linux, macOS, or Windows, you
 should be comfortable working in a command line environment. There are many
 resources online for learning command line environments. If you are using Linux
 or Mac OS X (also Unix-derived), `this tutorial
 <http://www.ee.surrey.ac.uk/Teaching/Unix/>`_ will help you get acquainted with
-commonly-used commands. It is also helpful to be familiar with `Python
-<http://www.python.org/>`_, as most of the post-processing utilities provided
-with OpenMC rely on it for data manipulation and results visualization.
+commonly-used commands.
+
+To reap the full benefits of OpenMC, you should also have basic proficiency in
+the use of `Python <http://www.python.org/>`_, as OpenMC includes a rich Python
+API that offers many usability improvements over dealing with raw XML input
+files.
 
 OpenMC uses a version control software called `git`_ to keep track of changes to
 the code, document bugs and issues, and other development tasks. While you don't
@@ -122,7 +126,7 @@ at the git documentation website. The `OpenMC source code`_ and documentation
 are hosted at `GitHub`_. In order to receive updates to the code directly,
 submit `bug reports`_, and perform other development tasks, you may want to sign
 up for a free account on GitHub. Once you have an account, you can follow `these
-instructions <http://help.github.com/set-up-git-redirect>`_ on how to set up
+instructions <https://help.github.com/articles/set-up-git/>`_ on how to set up
 your computer for using GitHub.
 
 If you are new to nuclear engineering, you may want to review the NRC's `Reactor
@@ -153,5 +157,5 @@ and `Volume II`_. You may also find it helpful to review the following terms:
 .. _GitHub: https://github.com/
 .. _bug reports: https://github.com/mit-crpg/openmc/issues
 .. _Neutron cross section: http://en.wikipedia.org/wiki/Neutron_cross_section
-.. _Effective multiplication factor: http://en.wikipedia.org/wiki/Effective_multiplication_factor
+.. _Effective multiplication factor: https://en.wikipedia.org/wiki/Nuclear_chain_reaction#Effective_neutron_multiplication_factor
 .. _Flux: http://en.wikipedia.org/wiki/Neutron_flux

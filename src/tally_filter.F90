@@ -1646,4 +1646,43 @@ contains
     end do
   end subroutine find_offset
 
+!===============================================================================
+! ADD_FILTERS creates or extends the filters array
+!===============================================================================
+
+  subroutine add_filters(n)
+
+    integer, intent(in) :: n ! number of filters to add
+
+    integer :: i ! loop counter
+    type(TallyFilterContainer), allocatable :: temp(:) ! temporary filters
+
+    if (n_filters == 0) then
+      ! Allocate filters array
+      allocate(filters(n))
+    else
+      ! Move filters to temporary array
+      allocate(temp(n_filters + n))
+      do i = 1, n_filters
+        call move_alloc(filters(i) % obj, temp(i) % obj)
+      end do
+
+      ! Allocate filters array with increased size
+      deallocate(filters)
+      allocate(filters(size(temp))
+
+      ! Move filters back from temporary array to filters array
+      do i = 1, n_filters
+        call move_alloc(temp(i) % obj, filters(i) % obj)
+      end do
+
+      ! Deallocate temporary array
+      deallocate(temp)
+    end if
+
+    ! Set n_filters
+    n_filters = size(filters)
+
+  end subroutine add_filters
+
 end module tally_filter

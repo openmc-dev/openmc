@@ -385,32 +385,8 @@ contains
       n_cmfd_filters = 2
     end if
 
-    ! Create or extend filters array
-    if (n_filters == 0) then
-      ! Allocate filters array
-      allocate(filters(n_cmfd_filters))
-    else
-      ! Move filters to temporary array
-      allocate(temp_filters(n_filters + n_cmfd_filters))
-      do i = 1, n_filters
-        call move_alloc(filters(i) % obj, temp_filters(i) % obj)
-      end do
-
-      ! Allocate filters array with increased size
-      deallocate(filters)
-      allocate(filters(size(temp_filters))
-
-      ! Move allocation from temporary array to filters array
-      do i = 1, n_filters
-        call move_alloc(temp_filters(i) % obj, filters(i) % obj)
-      end do
-
-      ! Deallocate temporary array
-      deallocate(temp_filters)
-    end if
-
-    ! Set n_filters
-    n_filters = size(filters)
+    ! Extend filters array so we can add CMFD filters
+    call add_filters(n_cmfd_filters)
 
     ! Set up mesh filter
     i_filt = n_user_filters + 1
@@ -490,13 +466,13 @@ contains
 
       ! Set the mesh filter index in the tally find_filter array
       n_filter = 1
-      t % find_filter(FILTER_MESH) = n_user_filters + n_filter
+      t % find_filter(FILTER_MESH) = n_filter
 
       ! Set the incoming energy mesh filter index in the tally find_filter
       ! array
       if (energy_filters) then
         n_filter = n_filter + 1
-        t % find_filter(FILTER_ENERGYIN) = n_user_filters + n_filter
+        t % find_filter(FILTER_ENERGYIN) = n_filter
       end if
 
       ! Set number of nucilde bins
@@ -520,9 +496,9 @@ contains
 
         ! Allocate and set filters
         allocate(t % filter(n_filter))
-        t % filter(1) = t % find_filter(FILTER_MESH)
+        t % filter(1) = n_user_filters + 1
         if (energy_filters) then
-          t % filter(2) = t % find_filter(FILTER_ENERGYIN)
+          t % filter(2) = n_user_filters + 2
         end if
 
         ! Allocate scoring bins
@@ -555,15 +531,15 @@ contains
         ! array
         if (energy_filters) then
           n_filter = n_filter + 1
-          t % find_filter(FILTER_ENERGYOUT) = n_user_filters + n_filter
+          t % find_filter(FILTER_ENERGYOUT) = n_filter
         end if
 
-        ! Allocate and set filters
+        ! Allocate and set indices in filters array
         allocate(t % filter(n_filter))
-        t % filter(1) = t % find_filter(FILTER_MESH)
+        t % filter(1) = n_user_filters + 1
         if (energy_filters) then
-          t % filter(2) = t % find_filter(FILTER_ENERGYIN)
-          t % filter(3) = t % find_filter(FILTER_ENERGYOUT)
+          t % filter(2) = n_user_filters + 2
+          t % filter(3) = n_user_filters + 3
         end if
 
         ! Allocate macro reactions
@@ -589,14 +565,14 @@ contains
 
         ! Set the surface filter index in the tally find_filter array
         n_filter = n_filter + 1
-        t % find_filter(FILTER_SURFACE) = n_user_filters + n_cmfd_filters
+        t % find_filter(FILTER_SURFACE) = n_cmfd_filters
 
         ! Allocate and set filters
         allocate(t % filter(n_filter))
-        t % filter(1) = t % find_filter(FILTER_MESH)
-        t % filter(n_filter) = t % find_filter(FILTER_SURFACE)
+        t % filter(1) = n_user_filters + 1
+        t % filter(n_filter) = n_user_filters + n_cmfd_filters
         if (energy_filters) then
-          t % filter(2) = t % find_filter(FILTER_ENERGYIN)
+          t % filter(2) = n_user_filters + 2
         end if
 
         ! Allocate macro reactions
@@ -614,7 +590,7 @@ contains
 
         ! We need to increase the dimension by one since we also need
         ! currents coming into and out of the boundary mesh cells.
-        i_filt = t % find_filter(FILTER_MESH)
+        i_filt = t % filter(t % find_filter(FILTER_MESH))
         filters(i_filt) % obj % n_bins = product(m % dimension + 1)
 
       end if

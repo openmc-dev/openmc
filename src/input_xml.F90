@@ -2646,7 +2646,6 @@ contains
     type(TallyObject), pointer :: t
     type(TallyFilterContainer), pointer :: f
     type(RegularMesh), pointer :: m
-    type(TallyFilterContainer), allocatable :: temp_filters(:)
     type(XMLDocument) :: doc
     type(XMLNode) :: root
     type(XMLNode) :: node_mesh
@@ -2708,10 +2707,9 @@ contains
 
     ! Check for user filters
     n_user_filters = size(node_filt_list)
-    n_filters = n_user_filters
 
     ! Allocate filters array
-    if (n_filters > 0) allocate(filters(n_filters))
+    if (n_user_filters > 0) call add_filters(n_user_filters)
 
     ! Check for user tallies
     n_user_tallies = size(node_tal_list)
@@ -3362,37 +3360,37 @@ contains
         ! Set the filter index in the tally find_filter array
         select type (f % obj)
         type is (DistribcellFilter)
-          t % find_filter(FILTER_DISTRIBCELL) = i_filt
+          t % find_filter(FILTER_DISTRIBCELL) = j
         type is (CellFilter)
-          t % find_filter(FILTER_CELL) = i_filt
+          t % find_filter(FILTER_CELL) = j
         type is (CellbornFilter)
-          t % find_filter(FILTER_CELLBORN) = i_filt
+          t % find_filter(FILTER_CELLBORN) = j
         type is (MaterialFilter)
-          t % find_filter(FILTER_MATERIAL) = i_filt
+          t % find_filter(FILTER_MATERIAL) = j
         type is (UniverseFilter)
-          t % find_filter(FILTER_UNIVERSE) = i_filt
+          t % find_filter(FILTER_UNIVERSE) = j
         type is (SurfaceFilter)
-          t % find_filter(FILTER_SURFACE) = i_filt
+          t % find_filter(FILTER_SURFACE) = j
         type is (MeshFilter)
-          t % find_filter(FILTER_MESH) = i_filt
+          t % find_filter(FILTER_MESH) = j
         type is (EnergyFilter)
-          t % find_filter(FILTER_ENERGYIN) = i_filt
+          t % find_filter(FILTER_ENERGYIN) = j
         type is (EnergyoutFilter)
-          t % find_filter(FILTER_ENERGYOUT) = i_filt
+          t % find_filter(FILTER_ENERGYOUT) = j
           ! Set to analog estimator
           t % estimator = ESTIMATOR_ANALOG
         type is (DelayedGroupFilter)
-          t % find_filter(FILTER_DELAYEDGROUP) = i_filt
+          t % find_filter(FILTER_DELAYEDGROUP) = j
         type is (MuFilter)
-          t % find_filter(FILTER_MU) = i_filt
+          t % find_filter(FILTER_MU) = j
           ! Set to analog estimator
           t % estimator = ESTIMATOR_ANALOG
         type is (PolarFilter)
-          t % find_filter(FILTER_POLAR) = i_filt
+          t % find_filter(FILTER_POLAR) = j
         type is (AzimuthalFilter)
-          t % find_filter(FILTER_AZIMUTHAL) = i_filt
+          t % find_filter(FILTER_AZIMUTHAL) = j
         type is (EnergyFunctionFilter)
-          t % find_filter(FILTER_ENERGYFUNCTION) = i_filt
+          t % find_filter(FILTER_ENERGYFUNCTION) = j
         end select
 
         ! Store the index of the filter
@@ -3788,7 +3786,7 @@ contains
             end if
 
             ! Get index of mesh filter
-            i_filt = t % find_filter(FILTER_MESH)
+            i_filt = t % filter(t % find_filter(FILTER_MESH))
 
             ! Check to make sure mesh filter was specified
             if (i_filt == 0) then
@@ -3796,9 +3794,18 @@ contains
                    &filter.")
             end if
 
-            ! Get a pointer to the mesh
-            i_mesh = filters(i_filt) % obj % mesh
-            m => meshes(i_mesh)
+            ! Declare the type of the mesh filter
+            select type(filt => filters(i_filt) % obj)
+            type is (MeshFilter)
+
+              ! Get pointer to mesh
+              i_mesh = filt % mesh
+              m => meshes(i_mesh)
+
+              ! We need to increase the dimension by one since we also need
+              ! currents coming into and out of the boundary mesh cells.
+              filt % n_bins = product(m % dimension + 1)
+            end select
 
             ! Copy filter indices to temporary array
             allocate(temp_filter(size(t % filter) + 1))
@@ -3809,13 +3816,11 @@ contains
             call move_alloc(FROM=temp_filter, TO=t % filter)
             n_filter = size(t % filter)
 
-            ! Copy filters to temporary array
-            allocate(temp_filters(size(filters) + 1))
-            temp_filters(1:size(filters)) = filters
+            ! Extend the filters array so we can add a surface filter
+            call add_filters(1)
 
-            ! Move allocation back
-            call move_alloc(FROM=temp_filters, TO=filters)
-            n_filters = size(filters)
+            ! Increment number of user filters
+            n_user_filters = n_user_filters + 1
 
             ! Add surface filter
             allocate(SurfaceFilter :: filters(n_filters) % obj)
@@ -3834,7 +3839,7 @@ contains
                      IN_FRONT, IN_BOTTOM, IN_TOP /)
               end if
             end select
-            t % find_filter(FILTER_SURFACE) = n_filters
+            t % find_filter(FILTER_SURFACE) = n_filter
 
           case ('events')
             t % score_bins(j) = SCORE_EVENTS
@@ -4588,8 +4593,8 @@ contains
                      &meshlines on plot " // trim(to_str(pl % id)))
               end if
 
-              select type(filt => cmfd_tallies(1) % &
-                   filters(cmfd_tallies(1) % find_filter(FILTER_MESH)) % obj)
+              select type(filt => filters(cmfd_tallies(1) % &
+                   filter(cmfd_tallies(1) % find_filter(FILTER_MESH))) % obj)
               type is (MeshFilter)
                 i_mesh = filt % mesh
               end select

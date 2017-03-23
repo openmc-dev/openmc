@@ -38,6 +38,7 @@ contains
     integer :: j                 ! loop index for filters
     integer :: n                 ! temporary stride
     integer :: i_filt            ! filter index
+    integer :: max_n_filters = 0 ! maximum number of filters
     type(TallyObject), pointer :: t
 
     TALLY_LOOP: do i = 1, n_tallies
@@ -46,6 +47,7 @@ contains
 
       ! Allocate stride and matching_bins arrays
       allocate(t % stride(size(t % filter)))
+      max_n_filters = max(max_n_filters, size(t % filter))
 
       ! The filters are traversed in opposite order so that the last filter has
       ! the shortest stride in memory and the first filter has the largest
@@ -70,8 +72,8 @@ contains
 
     ! Allocate array for matching filter bins
 !$omp parallel
-    allocate(matching_bins(n_filters))
-    allocate(filter_weights(n_filters))
+    allocate(matching_bins(max_n_filters))
+    allocate(filter_weights(max_n_filters))
 !$omp end parallel
 
   end subroutine setup_tally_arrays

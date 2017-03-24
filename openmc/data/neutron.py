@@ -2,6 +2,7 @@ from __future__ import division, unicode_literals
 import sys
 from collections import OrderedDict, Iterable, Mapping, MutableMapping
 from itertools import chain
+from functools import reduce
 from math import log10
 from numbers import Integral, Real
 from warnings import warn
@@ -19,7 +20,7 @@ from .function import Tabulated1D, Sum, ResonancesWithBackground
 from .grid import linearize, thin
 from .product import Product
 from .reaction import Reaction, _get_photon_products_ace
-from .resonance import RMatrixLimited, Unresolved, Resonances, _RESOLVED
+from . import resonance as res
 from .urr import ProbabilityTables
 import openmc.checkvalue as cv
 from openmc.mixin import EqualityMixin
@@ -280,7 +281,7 @@ class IncidentNeutron(EqualityMixin):
 
     @resonances.setter
     def resonances(self, resonances):
-        cv.check_type('resonances', resonances, Resonances)
+        cv.check_type('resonances', resonances, res.Resonances)
         self._resonances = resonances
 
     @summed_reactions.setter
@@ -373,17 +374,32 @@ class IncidentNeutron(EqualityMixin):
             x = []
             y = []
             for rr in data.resonances:
-                if isinstance(rr, RMatrixLimited):
+                if isinstance(rr, res.RMatrixLimited):
                     raise TypeError('R-Matrix Limited not supported.')
-                elif isinstance(rr, Unresolved):
+                elif isinstance(rr, res.Unresolved):
                     continue
 
-                # Create 1000 equal log-spaced energies over RRR
+                # Get energies/widths for resonances
+                e_peak = rr.parameters['energy'].values
+                if isinstance(rr, res.MultiLevelBreitWigner):
+                    width = rr.parameters['totalWidth'].values
+                elif isinstance(rr, res.ReichMoore):
+                    df = rr.parameters
+                    width = (df['neutronWidth'] + df['captureWidth'] +
+                             df['fissionWidthA'] + df['fissionWidthB']).values
+
+                # Determine energies at half-height
                 e_min, e_max = rr.energy_min, rr.energy_max
+                in_range = (e_peak > e_min) & (e_peak < e_max)
+                e_peak = e_peak[in_range]
+                e_half_left = e_peak - width[in_range]/2
+                e_half_right = e_peak + width[in_range]/2
+
+                # Create 1000 equal log-spaced energies over RRR, combine with
+                # resonance peaks and half-height energies
                 e_log = np.logspace(log10(e_min), log10(e_max), 1000)
-                e_res = rr.parameters['energy'].values
-                in_range = (e_res > e_min) & (e_res < e_max)
-                energies = np.union1d(e_log, e_res[in_range])
+                energies = reduce(np.union1d, (e_log, e_peak, e_half_left,
+                                               e_half_right))
 
                 # Linearize and thin cross section
                 xi, yi = linearize(energies, data[2].xs['0K'])
@@ -742,7 +758,7 @@ class IncidentNeutron(EqualityMixin):
                    atomic_weight_ratio, temperature)
 
         if (2, 151) in ev.section:
-            data.resonances = Resonances.from_endf(ev)
+            data.resonances = res.Resonances.from_endf(ev)
 
         # Read each reaction
         for mf, mt, nc, mod in ev.reaction_list:
@@ -751,7 +767,7 @@ class IncidentNeutron(EqualityMixin):
 
         # Replace cross sections for elastic, capture, fission
         try:
-            if any(isinstance(r, _RESOLVED) for r in data.resonances):
+            if any(isinstance(r, res._RESOLVED) for r in data.resonances):
                 for mt in (2, 102, 18):
                     if mt in data.reactions:
                         rx = data.reactions[mt]

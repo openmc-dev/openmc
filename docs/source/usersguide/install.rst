@@ -52,7 +52,7 @@ Next, resynchronize the package index files:
 
 .. code-block:: sh
 
-    sudo apt-get update
+    sudo apt update
 
 Now OpenMC should be recognized within the repository and can be installed:
 
@@ -320,7 +320,7 @@ Recent versions of Windows 10 include a subsystem for Linux that allows one to
 run Bash within Ubuntu running in Windows. First, follow the installation guide
 `here <https://msdn.microsoft.com/en-us/commandline/wsl/install_guide>`_ to get
 Bash on Ubuntu on Windows setup. Once you are within bash, obtain the necessary
-:ref:`prerequisites <prerequisites>` via ``apt-get``. Finally, follow the
+:ref:`prerequisites <prerequisites>` via ``apt``. Finally, follow the
 :ref:`instructions for compiling on linux <compile_linux>`.
 
 Compiling for the Intel Xeon Phi

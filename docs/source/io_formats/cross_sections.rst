@@ -1,5 +1,5 @@
 .. _io_cross_sections:
 
 ============================================
-Cross Sections Locator -- cross_sections.xml
+Cross Sections Listing -- cross_sections.xml
 ============================================

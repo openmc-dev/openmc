@@ -115,6 +115,8 @@ Message                   Description
 [VALID]                   XML file matches RelaxNG.
 ========================  ===================================
 
+.. _scripts_voxel:
+
 ---------------------------
 ``openmc-voxel-to-silovtk``
 ---------------------------

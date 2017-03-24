@@ -247,6 +247,8 @@ Spatial Distributions
    openmc.stats.Box
    openmc.stats.Point
 
+.. _pythonapi_mgxs:
+
 ----------------------------------------------------------
 :mod:`openmc.mgxs` -- Multi-Group Cross Section Generation
 ----------------------------------------------------------
@@ -349,6 +351,8 @@ Classes
    :template: myclass.rst
 
    openmc.model.Model
+
+.. _pythonapi_data:
 
 --------------------------------------------
 :mod:`openmc.data` -- Nuclear Data Interface

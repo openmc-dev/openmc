@@ -4,55 +4,6 @@
 Geometry Specification -- geometry.xml
 ======================================
 
-The geometry in OpenMC is described using `constructive solid geometry`_ (CSG),
-also sometimes referred to as combinatorial geometry. CSG allows a user to
-create complex objects using Boolean operators on a set of simpler surfaces. In
-the geometry model, each unique volume is defined by its bounding surfaces. In
-OpenMC, most `quadratic surfaces`_ can be modeled and used as bounding surfaces.
-
-Every geometry.xml must have an XML declaration at the beginning of the file and
-a root element named geometry. Within the root element the user can define any
-number of cells, surfaces, and lattices. Let us look at the following example:
-
-.. code-block:: xml
-
-    <?xml version="1.0"?>
-    <geometry>
-      <!-- This is a comment -->
-
-      <surface>
-        <id>1</id>
-        <type>sphere</type>
-        <coeffs>0.0 0.0 0.0 5.0</coeffs>
-        <boundary>vacuum</boundary>
-      <surface>
-
-      <cell>
-        <id>1</id>
-        <universe>0</universe>
-        <material>1</material>
-        <region>-1</region>
-      </cell>
-    </geometry>
-
-At the beginning of this file is a comment, denoted by a tag starting with
-``<!--`` and ending with ``-->``. Comments, as well as any other type of input,
-may span multiple lines. One convenient feature of the XML input format is that
-sub-elements of the ``cell`` and ``surface`` elements can also be equivalently
-expressed of attributes of the original element, e.g. the geometry file above
-could be written as:
-
-.. code-block:: xml
-
-    <?xml version="1.0"?>
-    <geometry>
-      <!-- This is a comment -->
-
-      <surface id="1" type="sphere" coeffs="0.0 0.0 0.0 5.0" boundary="vacuum" />
-      <cell id="1" universe="0" material="1" region="-1" />
-
-    </geometry>
-
 .. _surface_element:
 
 ---------------------
@@ -412,7 +363,3 @@ Here is an example of a properly defined 2d hexagonal lattice:
                   202
         </universes>
     </hex_lattice>
-
-.. _constructive solid geometry: http://en.wikipedia.org/wiki/Constructive_solid_geometry
-
-.. _quadratic surfaces: http://en.wikipedia.org/wiki/Quadric

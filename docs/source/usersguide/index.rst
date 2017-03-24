@@ -14,6 +14,9 @@ essential aspects of using OpenMC to perform simulations.
     beginners
     install
     basics
+    materials
+    geometry
+    settings
     scripts
     processing
     troubleshoot

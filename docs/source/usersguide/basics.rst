@@ -4,9 +4,9 @@
 Basics of Using OpenMC
 ======================
 
------------
-Input Files
------------
+----------------
+Creating a Model
+----------------
 
 When you build and install OpenMC, you will have an :ref:`scripts_openmc`
 executable on your system. When you run ``openmc``, the first thing it will do
@@ -88,18 +88,23 @@ Creating Input Files
 The simplest option to create input files is to simply write them from scratch
 using the :ref:`XML format specifications <io_file_formats_input>`. This
 approach will feel familiar to users of other Monte Carlo codes such as MCNP and
-Serpent, with the added bonus that the XML formats feel much more "readable".
+Serpent, with the added bonus that the XML formats feel much more
+"readable". Alternatively, input files can be generated using OpenMC's
+:ref:`Python API <pythonapi>`, which is introduced in the following section.
 
-Alternatively, input files can be generated using OpenMC's :ref:`pythonapi`. The
-Python API defines a set of functions and classes that roughly correspond to
-elements in the XML files. For example, the :class:`openmc.Cell` Python class
-directly corresponds to the :ref:`cell_element` in XML. Each XML file itself
-also has a corresponding class: :class:`openmc.Geometry` for ``geometry.xml``,
-:class:`openmc.Materials` for ``materials.xml``, :class:`openmc.Settings` for
-``settings.xml``, and so on. To create a model then, one creates instances of
-these classes and then uses the ``export_to_xml()`` method,
-e.g. :meth:`Geometry.export_to_xml`. Most scripts that generate a full model
-will look something like the following:
+----------
+Python API
+----------
+
+OpenMC's Python API defines a set of functions and classes that roughly
+correspond to elements in the XML files. For example, the :class:`openmc.Cell`
+Python class directly corresponds to the :ref:`cell_element` in XML. Each XML
+file itself also has a corresponding class: :class:`openmc.Geometry` for
+``geometry.xml``, :class:`openmc.Materials` for ``materials.xml``,
+:class:`openmc.Settings` for ``settings.xml``, and so on. To create a model
+then, one creates instances of these classes and then uses the
+``export_to_xml()`` method, e.g. :meth:`Geometry.export_to_xml`. Most scripts
+that generate a full model will look something like the following:
 
 .. code-block:: Python
 
@@ -122,8 +127,60 @@ One a model has been created and exported to XML, a simulation can be run either
 by calling :ref:`scripts_openmc` directly from a shell or by using the
 :func:`openmc.run()` function from Python.
 
+If you have never used Python before, the prospect of learning a new code *and*
+a programming language might sound daunting. However, you should keep mind in
+mind that there are many substantial benefits to using the Python API,
+including:
+
+- The ability to define dimensions using variables.
+- Availability of standard-library modules for working with files.
+- An entire ecosystem of third-party packages for scientific computing.
+- Ability to create materials based on natural elements or uranium enrichment
+- :ref:`Automated multi-group cross section generation <pythonapi_mgxs>`
+- Convenience functions (e.g., a function returning a hexagonal region)
+- Ability to plot individual universes as geometry is being created
+- A :math:`k_\text{eff}` search function (:func:`openmc.search_for_keff`)
+- Random sphere packing for generating TRISO particle locations
+  (:func:`openmc.model.pack_trisos`)
+- A fully-featured :ref:`nuclear data interface <pythonapi_data>`.
+
 .. tip:: Users are strongly encouraged to use the Python API to generate input
          files and analyze results.
+
+Identifying Objects
+-------------------
+
+In the XML user input files, each object (cell, surface, tally, etc.) has to be
+uniquely identified by a positive integer (ID) in the same manner as MCNP and
+Serpent. In the Python API, integer IDs can be assigned but it is not strictly
+required. When IDs are not explicitly assigned to instances of the OpenMC Python
+classes, they will be automatically assigned.
+
+-----------------------------
+Viewing and Analyzing Results
+-----------------------------
+
+After a simulation has been completed by running :ref:`scripts_openmc`, you will
+have several output files that were created:
+
+``tallies.out``
+  An ASCII file showing the mean and standard deviation of the mean for any
+  user-defined tallies.
+
+``summary.h5``
+  An HDF5 file with a complete description of the geometry and materials used in
+  the simulation.
+
+``statepoint.#.h5``
+  An HDF5 file with the complete results of the simulation, including tallies as
+  well as the final source distribution. This file can be used both to
+  view/analyze results as well as restart a simulation if desired.
+
+For a simple simulation with few tallies, looking at the ``tallies.out`` file
+might be sufficient. For anything more complicated (plotting results, finding a
+subset of results, etc.), you will likely find it easier to work with the
+statepoint file directly using the :class:`openmc.StatePoint` class. For more
+details on working with statepoints, see FIXME.
 
 --------------
 Physical Units

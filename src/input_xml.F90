@@ -885,8 +885,9 @@ contains
       if (check_for_node(node_res_scat, "energy_max")) then
         call get_node_value(node_res_scat, "energy_max", res_scat_energy_max)
       end if
-      if (res_scat_energy_max < ZERO) then
-        call fatal_error("Upper resonance scattering energy bound is negative")
+      if (res_scat_energy_max < res_scat_energy_min) then
+        call fatal_error("Upper resonance scattering energy bound is below the &
+             &lower resonance scattering energy bound.")
       end if
 
       ! Get nuclides that resonance scattering should be applied to
@@ -5300,6 +5301,15 @@ contains
             nuc % xs_cdf(j) = xs_cdf_sum
           end do
         end associate
+
+        ! Check to make sure resonance scattering upper energy is below URR
+        ! minimum, if present
+        if (nuc % urr_present) then
+          if (res_scat_energy_max > nuc % urr_data(1) % energy(1)) then
+            call fatal_error("Resonance scattering maximum energy is above the &
+                 &bottom of the unresolved resonance region.")
+          end if
+        end if
 
         exit
       end if

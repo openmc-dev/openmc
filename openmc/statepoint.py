@@ -351,9 +351,10 @@ class StatePoint(object):
                     tally.derivative = self.tally_derivatives[deriv_id]
 
                 # Read all filters
-                n_filters = group['n_filters'].value
-                for j in range(1, n_filters + 1):
-                    filter_group = group['filter {}'.format(j)]
+                filters_group = self._f['tallies/filters']
+                filter_ids = group['filters'].value
+                for filter_id in filter_ids:
+                    filter_group = filters_group['filter {}'.format(filter_id)]
                     new_filter = openmc.Filter.from_hdf5(filter_group,
                                                          meshes=self.meshes)
                     tally.filters.append(new_filter)

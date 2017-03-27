@@ -445,6 +445,7 @@ contains
              OUT_BACK, IN_BACK, IN_FRONT, OUT_FRONT, &
              OUT_BOTTOM, IN_BOTTOM, IN_TOP, OUT_TOP /)
       end if
+      filt % current = .true.
       ! Add filter to dictionary
       call filter_dict % add_key(filt % id, i_filt)
     end select

@@ -260,7 +260,7 @@ contains
     type(XMLNode), intent(in) :: root ! XML root element
 
     logical :: energy_filters
-    integer :: i, j        ! loop counter
+    integer :: i           ! loop counter
     integer :: n           ! size of arrays in mesh specification
     integer :: ng          ! number of energy groups (default 1)
     integer :: n_filter    ! number of filters
@@ -269,7 +269,6 @@ contains
     real(8) :: rarray3(3) ! temp double array
     type(TallyObject), pointer :: t
     type(RegularMesh), pointer :: m
-    type(TallyFilterContainer), allocatable :: temp_filters(:) ! temporary filters
     type(XMLNode) :: node_mesh
 
     ! Set global variables if they are 0 (this can happen if there is no tally

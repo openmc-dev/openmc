@@ -1669,7 +1669,7 @@ contains
 
       ! Allocate filters array with increased size
       deallocate(filters)
-      allocate(filters(size(temp))
+      allocate(filters(size(temp)))
 
       ! Move filters back from temporary array to filters array
       do i = 1, n_filters

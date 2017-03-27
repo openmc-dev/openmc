@@ -802,14 +802,14 @@ contains
       ! to be used for a given tally.
 
       ! Initialize bins, filter level, and indentation
-      matching_bins(1:size(t % filters)) = 0
+      matching_bins(1:size(t % filter)) = 0
       j = 1
       indent = 0
 
       print_bin: do
         find_bin: do
           ! Check for no filters
-          if (size(t % filters) == 0) exit find_bin
+          if (size(t % filter) == 0) exit find_bin
 
           ! Increment bin combination
           matching_bins(j) = matching_bins(j) + 1
@@ -817,7 +817,7 @@ contains
           ! =================================================================
           ! REACHED END OF BINS FOR THIS FILTER, MOVE TO NEXT FILTER
 
-          if (matching_bins(j) > t % filters(j) % obj % n_bins) then
+          if (matching_bins(j) > filters(t % filter(j)) % obj % n_bins) then
             ! If this is the first filter, then exit
             if (j == 1) exit print_bin
 
@@ -830,11 +830,12 @@ contains
 
           else
             ! Check if this is last filter
-            if (j == size(t % filters)) exit find_bin
+            if (j == size(t % filter)) exit find_bin
 
             ! Print current filter information
             write(UNIT=unit_tally, FMT='(1X,2A)') repeat(" ", indent), &
-                 trim(t % filters(j) % obj % text_label(matching_bins(j)))
+                 trim(filters(t % filter(j)) % obj % &
+                 text_label(matching_bins(j)))
             indent = indent + 2
             j = j + 1
           end if
@@ -842,17 +843,18 @@ contains
         end do find_bin
 
         ! Print filter information
-        if (size(t % filters) > 0) then
+        if (size(t % filter) > 0) then
           write(UNIT=unit_tally, FMT='(1X,2A)') repeat(" ", indent), &
-               trim(t % filters(j) % obj % text_label(matching_bins(j)))
+               trim(filters(t % filter(j)) % obj % &
+               text_label(matching_bins(j)))
         end if
 
         ! Determine scoring index for this bin combination -- note that unlike
         ! in the score_tally subroutine, we have to use max(bins,1) since all
         ! bins below the lowest filter level will be zeros
 
-        if (size(t % filters) > 0) then
-          filter_index = sum((max(matching_bins(1:size(t % filters)),1) - 1) &
+        if (size(t % filter) > 0) then
+          filter_index = sum((max(matching_bins(1:size(t % filter)),1) - 1) &
                * t % stride) + 1
         else
           filter_index = 1
@@ -860,7 +862,7 @@ contains
 
         ! Write results for this filter bin combination
         score_index = 0
-        if (size(t % filters) > 0) indent = indent + 2
+        if (size(t % filter) > 0) indent = indent + 2
         do n = 1, t % n_nuclide_bins
           ! Write label for nuclide
           i_nuclide = t % nuclide_bins(n)
@@ -936,7 +938,7 @@ contains
         end do
         indent = indent - 2
 
-        if (size(t % filters) == 0) exit print_bin
+        if (size(t % filter) == 0) exit print_bin
 
       end do print_bin
 
@@ -972,19 +974,19 @@ contains
     ! Get pointer to mesh
     i_filter_mesh = t % find_filter(FILTER_MESH)
     i_filter_surf = t % find_filter(FILTER_SURFACE)
-    select type(filt => t % filters(i_filter_mesh) % obj)
+    select type(filt => filters(t % filter(i_filter_mesh)) % obj)
     type is (MeshFilter)
       m => meshes(filt % mesh)
     end select
 
     ! initialize bins array
-    matching_bins(1:size(t % filters)) = 1
+    matching_bins(1:size(t % filter)) = 1
 
     ! determine how many energy in bins there are
     i_filter_ein = t % find_filter(FILTER_ENERGYIN)
     if (i_filter_ein > 0) then
       print_ebin = .true.
-      n = t % filters(i_filter_ein) % obj % n_bins
+      n = filters(t % filter(i_filter_ein)) % obj % n_bins
     else
       print_ebin = .false.
       n = 1
@@ -1021,13 +1023,13 @@ contains
 
           ! Write incoming energy bin
           write(UNIT=unit_tally, FMT='(3X,A)') &
-               trim(t % filters(i_filter_ein) % obj % text_label( &
+               trim(filters(t % filter(i_filter_ein)) % obj % text_label( &
                matching_bins(i_filter_ein)))
         end if
 
         ! Left Surface
         matching_bins(i_filter_surf) = OUT_LEFT
-        filter_index = sum((matching_bins(1:size(t % filters)) - 1) &
+        filter_index = sum((matching_bins(1:size(t % filter)) - 1) &
              * t % stride) + 1
         write(UNIT=unit_tally, FMT='(5X,A,T35,A,"+/- ",A)') &
              "Outgoing Current on Left", &
@@ -1035,7 +1037,7 @@ contains
              trim(to_str(t % results(RESULT_SUM_SQ,1,filter_index)))
 
         matching_bins(i_filter_surf) = IN_LEFT
-        filter_index = sum((matching_bins(1:size(t % filters)) - 1) &
+        filter_index = sum((matching_bins(1:size(t % filter)) - 1) &
              * t % stride) + 1
         write(UNIT=unit_tally, FMT='(5X,A,T35,A,"+/- ",A)') &
              "Incoming Current on Left", &
@@ -1044,7 +1046,7 @@ contains
 
         ! Right Surface
         matching_bins(i_filter_surf) = OUT_RIGHT
-        filter_index = sum((matching_bins(1:size(t % filters)) - 1) &
+        filter_index = sum((matching_bins(1:size(t % filter)) - 1) &
              * t % stride) + 1
         write(UNIT=unit_tally, FMT='(5X,A,T35,A,"+/- ",A)') &
              "Outgoing Current on Right", &
@@ -1052,7 +1054,7 @@ contains
              trim(to_str(t % results(RESULT_SUM_SQ,1,filter_index)))
 
         matching_bins(i_filter_surf) = IN_RIGHT
-        filter_index = sum((matching_bins(1:size(t % filters)) - 1) &
+        filter_index = sum((matching_bins(1:size(t % filter)) - 1) &
              * t % stride) + 1
         write(UNIT=unit_tally, FMT='(5X,A,T35,A,"+/- ",A)') &
              "Incoming Current on Right", &
@@ -1063,7 +1065,7 @@ contains
 
           ! Back Surface
           matching_bins(i_filter_surf) = OUT_BACK
-          filter_index = sum((matching_bins(1:size(t % filters)) - 1) &
+          filter_index = sum((matching_bins(1:size(t % filter)) - 1) &
                * t % stride) + 1
           write(UNIT=unit_tally, FMT='(5X,A,T35,A,"+/- ",A)') &
                "Outgoing Current on Back", &
@@ -1071,7 +1073,7 @@ contains
                trim(to_str(t % results(RESULT_SUM_SQ,1,filter_index)))
 
           matching_bins(i_filter_surf) = IN_BACK
-          filter_index = sum((matching_bins(1:size(t % filters)) - 1) &
+          filter_index = sum((matching_bins(1:size(t % filter)) - 1) &
                * t % stride) + 1
           write(UNIT=unit_tally, FMT='(5X,A,T35,A,"+/- ",A)') &
                "Incoming Current on Back", &
@@ -1080,7 +1082,7 @@ contains
 
           ! Front Surface
           matching_bins(i_filter_surf) = OUT_FRONT
-          filter_index = sum((matching_bins(1:size(t % filters)) - 1) &
+          filter_index = sum((matching_bins(1:size(t % filter)) - 1) &
                * t % stride) + 1
           write(UNIT=unit_tally, FMT='(5X,A,T35,A,"+/- ",A)') &
                "Net Current on Front", &
@@ -1088,7 +1090,7 @@ contains
                trim(to_str(t % results(RESULT_SUM_SQ,1,filter_index)))
 
           matching_bins(i_filter_surf) = IN_FRONT
-          filter_index = sum((matching_bins(1:size(t % filters)) - 1) &
+          filter_index = sum((matching_bins(1:size(t % filter)) - 1) &
                * t % stride) + 1
           write(UNIT=unit_tally, FMT='(5X,A,T35,A,"+/- ",A)') &
                "Net Current on Front", &
@@ -1099,7 +1101,7 @@ contains
         if (n_dim == 3) then
           ! Bottom Surface
           matching_bins(i_filter_surf) = OUT_BOTTOM
-          filter_index = sum((matching_bins(1:size(t % filters)) - 1) &
+          filter_index = sum((matching_bins(1:size(t % filter)) - 1) &
                * t % stride) + 1
           write(UNIT=unit_tally, FMT='(5X,A,T35,A,"+/- ",A)') &
                "Outgoing Current on Bottom", &
@@ -1107,7 +1109,7 @@ contains
                trim(to_str(t % results(RESULT_SUM_SQ,1,filter_index)))
 
           matching_bins(i_filter_surf) = IN_BOTTOM
-          filter_index = sum((matching_bins(1:size(t % filters)) - 1) &
+          filter_index = sum((matching_bins(1:size(t % filter)) - 1) &
                * t % stride) + 1
           write(UNIT=unit_tally, FMT='(5X,A,T35,A,"+/- ",A)') &
                "Incoming Current on Bottom", &
@@ -1116,7 +1118,7 @@ contains
 
           ! Top Surface
           matching_bins(i_filter_surf) = OUT_TOP
-          filter_index = sum((matching_bins(1:size(t % filters)) - 1) &
+          filter_index = sum((matching_bins(1:size(t % filter)) - 1) &
                * t % stride) + 1
           write(UNIT=unit_tally, FMT='(5X,A,T35,A,"+/- ",A)') &
                "Outgoing Current on Top", &
@@ -1124,7 +1126,7 @@ contains
                trim(to_str(t % results(RESULT_SUM_SQ,1,filter_index)))
 
           matching_bins(i_filter_surf) = IN_TOP
-          filter_index = sum((matching_bins(1:size(t % filters)) - 1) &
+          filter_index = sum((matching_bins(1:size(t % filter)) - 1) &
                * t % stride) + 1
           write(UNIT=unit_tally, FMT='(5X,A,T35,A,"+/- ",A)') &
                "Incoming Current on Top", &

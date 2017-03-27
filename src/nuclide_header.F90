@@ -306,6 +306,7 @@ module nuclide_header
     ! Read energy grid
     energy_group = open_group(group_id, 'energy')
     do i = 1, n_temperature
+      temp_str = trim(to_str(temps_to_read % data(i))) // "K"
       energy_dset = open_dataset(energy_group, temp_str)
       call get_shape(energy_dset, dims)
       allocate(this % grid(i) % energy(int(dims(1), 4)))
@@ -315,7 +316,7 @@ module nuclide_header
 
     ! Check for 0K energy grid
     if (object_exists(energy_group, '0K')) then
-      energy_dset = open_dataset(energy_group, temp_str)
+      energy_dset = open_dataset(energy_group, '0K')
       call get_shape(energy_dset, dims)
       allocate(this % energy_0K(int(dims(1), 4)))
       call read_dataset(this % energy_0K, energy_dset)

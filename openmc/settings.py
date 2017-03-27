@@ -798,11 +798,11 @@ class Settings(object):
                                _RES_SCAT_METHODS)
             elif key == 'energy_min':
                 name = 'resonance scattering minimum energy'
-                cv.check_type(name, value, float)
+                cv.check_type(name, value, Real)
                 cv.check_greater_than(name, value, 0)
             elif key == 'energy_max':
                 name = 'resonance scattering minimum energy'
-                cv.check_type(name, value, float)
+                cv.check_type(name, value, Real)
                 cv.check_greater_than(name, value, 0)
             elif key == 'nuclides':
                 cv.check_type('resonance scattering nuclides', value,

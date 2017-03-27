@@ -5302,15 +5302,6 @@ contains
           end do
         end associate
 
-        ! Check to make sure resonance scattering upper energy is below URR
-        ! minimum, if present
-        if (nuc % urr_present) then
-          if (res_scat_energy_max > nuc % urr_data(1) % energy(1)) then
-            call fatal_error("Resonance scattering maximum energy is above the &
-                 &bottom of the unresolved resonance region.")
-          end if
-        end if
-
         exit
       end if
     end do

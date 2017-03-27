@@ -2613,6 +2613,7 @@ contains
     integer :: k             ! another loop index
     integer :: l             ! another loop index
     integer :: id            ! user-specified identifier
+    integer :: filter_id     ! user-specified identifier for filter
     integer :: i_mesh        ! index in meshes array
     integer :: i_filt        ! index in filters array
     integer :: n             ! size of arrays in mesh specification
@@ -2955,15 +2956,15 @@ contains
 
       ! Copy filter id
       if (check_for_node(node_filt, "id")) then
-        call get_node_value(node_filt, "id", f % id)
+        call get_node_value(node_filt, "id", filter_id)
       else
         call fatal_error("Must specify id for filter in tally XML file.")
       end if
 
       ! Check to make sure 'id' hasn't been used
-      if (filter_dict % has_key(f % id)) then
+      if (filter_dict % has_key(filter_id)) then
         call fatal_error("Two or more filters use the same unique ID: " &
-             // to_str(f % id))
+             // to_str(filter_id))
       end if
 
       ! Convert filter type to lower case
@@ -2976,13 +2977,13 @@ contains
       select case(temp_str)
       case ("energy", "energyout", "mu", "polar", "azimuthal")
         if (.not. check_for_node(node_filt, "bins")) then
-          call fatal_error("Bins not set in filter " // trim(to_str(f % id)))
+          call fatal_error("Bins not set in filter " // trim(to_str(filter_id)))
         end if
         n_words = node_word_count(node_filt, "bins")
       case ("mesh", "universe", "material", "cell", "distribcell", &
             "cellborn", "surface", "delayedgroup")
         if (.not. check_for_node(node_filt, "bins")) then
-          call fatal_error("Bins not set in filter " // trim(to_str(f % id)))
+          call fatal_error("Bins not set in filter " // trim(to_str(filter_id)))
         end if
         n_words = node_word_count(node_filt, "bins")
       end select
@@ -3074,7 +3075,7 @@ contains
             m => meshes(i_mesh)
           else
             call fatal_error("Could not find mesh " // trim(to_str(id)) &
-                 // " specified on filter " // trim(to_str(f % id)))
+                 // " specified on filter " // trim(to_str(filter_id)))
           end if
 
           ! Determine number of bins
@@ -3182,7 +3183,7 @@ contains
             else
               call fatal_error("Number of bins for mu filter must be&
                    & greater than 1 on filter " &
-                   // trim(to_str(f % id)) // ".")
+                   // trim(to_str(filter_id)) // ".")
             end if
           end if
         end select
@@ -3213,7 +3214,7 @@ contains
             else
               call fatal_error("Number of bins for polar filter must be&
                    & greater than 1 on filter " &
-                   // trim(to_str(f % id)) // ".")
+                   // trim(to_str(filter_id)) // ".")
             end if
           end if
         end select
@@ -3245,7 +3246,7 @@ contains
             else
               call fatal_error("Number of bins for azimuthal filter must be&
                    & greater than 1 on filter " &
-                   // trim(to_str(f % id)) // ".")
+                   // trim(to_str(filter_id)) // ".")
             end if
           end if
         end select
@@ -3265,7 +3266,7 @@ contains
           ! Allocate and store energy grid.
           if (.not. check_for_node(node_filt, "energy")) then
             call fatal_error("Energy grid not specified for EnergyFunction &
-                 &filter on filter " // trim(to_str(f % id)))
+                 &filter on filter " // trim(to_str(filter_id)))
           end if
           n_words = node_word_count(node_filt, "energy")
           allocate(filt % energy(n_words))
@@ -3274,7 +3275,7 @@ contains
           ! Allocate and store interpolant values.
           if (.not. check_for_node(node_filt, "y")) then
             call fatal_error("y values not specified for EnergyFunction &
-                 &filter on filter " // trim(to_str(f % id)))
+                 &filter on filter " // trim(to_str(filter_id)))
           end if
           n_words = node_word_count(node_filt, "y")
           allocate(filt % y(n_words))
@@ -3285,12 +3286,15 @@ contains
         ! Specified filter is invalid, raise error
         call fatal_error("Unknown filter type '" &
              // trim(temp_str) // "' on filter " &
-             // trim(to_str(f % id)) // ".")
+             // trim(to_str(filter_id)) // ".")
 
       end select
 
+      ! Set filter id
+      f % obj % id = filter_id
+
       ! Add filter to dictionary
-      call filter_dict % add_key(f % id, i)
+      call filter_dict % add_key(filter_id, i)
 
     end do READ_FILTERS
 
@@ -3353,12 +3357,12 @@ contains
           f => filters(i_filt)
         else
           call fatal_error("Could not find filter " &
-               // trim(to_str(temp_filter(j))) & // " specified on tally " &
+               // trim(to_str(temp_filter(j))) // " specified on tally " &
                // trim(to_str(t % id)))
         end if
 
         ! Set the filter index in the tally find_filter array
-        select type (f % obj)
+        select type (filt => f % obj)
         type is (DistribcellFilter)
           t % find_filter(FILTER_DISTRIBCELL) = j
         type is (CellFilter)

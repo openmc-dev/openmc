@@ -141,7 +141,7 @@ module global
 
   type(RegularMesh), allocatable, target :: meshes(:)
   type(TallyObject), allocatable, target :: tallies(:)
-  type(TallyFilterContainer), allocatable :: filters(:)
+  type(TallyFilterContainer), allocatable, target :: filters(:)
   integer, allocatable :: matching_bins(:)
   real(8), allocatable :: filter_weights(:)
 

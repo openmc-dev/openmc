@@ -432,7 +432,6 @@ contains
     integer :: id                     ! user-specified id
     type(Cell),        pointer :: c => null()
     class(Lattice),    pointer :: lat => null()
-    type(TallyObject), pointer :: t => null()
 
     do i = 1, n_cells
       ! =======================================================================
@@ -567,26 +566,20 @@ contains
 
     end do
 
-    TALLY_LOOP: do i = 1, n_tallies
-      t => tallies(i)
+    ! =======================================================================
+    ! ADJUST INDICES FOR EACH TALLY FILTER
 
-      ! =======================================================================
-      ! ADJUST INDICES FOR EACH TALLY FILTER
+    FILTER_LOOP: do i = 1, n_filters
 
-      FILTER_LOOP: do j = 1, size(t % filter)
+      select type(filt => filters(i) % obj)
+      type is (SurfaceFilter)
+        ! Check if this is a surface filter only for surface currents
+        if (.not. filt % current) call filt % initialize()
+      class default
+        call filt % initialize()
+      end select
 
-        select type(filt => filters(t % filter(j)) % obj)
-        type is (SurfaceFilter)
-          ! Check if this is a surface filter only for surface currents
-          if (.not. any(t % score_bins == SCORE_CURRENT)) &
-               call filt % initialize()
-        class default
-          call filt % initialize()
-        end select
-
-      end do FILTER_LOOP
-
-    end do TALLY_LOOP
+    end do FILTER_LOOP
 
   end subroutine adjust_indices
 

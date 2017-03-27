@@ -3842,6 +3842,7 @@ contains
                      OUT_BOTTOM, OUT_TOP, IN_LEFT, IN_RIGHT, IN_BACK, &
                      IN_FRONT, IN_BOTTOM, IN_TOP /)
               end if
+              filt % current = .true.
             end select
             t % find_filter(FILTER_SURFACE) = n_filter
 

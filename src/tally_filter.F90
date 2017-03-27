@@ -103,6 +103,9 @@ module tally_filter
 !===============================================================================
   type, extends(TallyFilter) :: SurfaceFilter
     integer, allocatable :: surfaces(:)
+
+    ! True if this filter is used for surface currents
+    logical              :: current = .false.
   contains
     procedure :: get_next_bin => get_next_bin_surface
     procedure :: to_statepoint => to_statepoint_surface

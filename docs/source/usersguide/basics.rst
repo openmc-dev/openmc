@@ -25,7 +25,7 @@ described below.
    :ref:`io_geometry`
      This file describes how the materials defined in ``materials.xml`` occupy
      regions of space. Physical volumes are defined using constructive solid
-     geometry, described in detail in FIXME.
+     geometry, described in detail in :ref:`usersguide_geometry`.
 
    :ref:`io_settings`
      This file indicates what mode OpenMC should be run in, how many particles

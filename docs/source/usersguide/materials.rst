@@ -12,9 +12,7 @@ material has been instantiated, nuclides can be added with
 :meth:`Material.add_nuclide` and elements can be added with
 :meth:`Material.add_element`. Densities can be specified using atom fractions or
 weight fractions. For example, to create a material and add Gd152 at 0.5 atom
-percent, you'd run:
-
-::
+percent, you'd run::
 
    mat = openmc.Material()
    mat.add_nuclide('Gd152', 0.5, 'ao')
@@ -65,9 +63,7 @@ If you have a moderating material in your model like water or graphite, you
 should assign thermal scattering data (so-called :math:`S(\alpha,\beta)`) using
 the :meth:`Material.add_s_alpha_beta` method. For example, to model light water,
 you would need to add hydrogen and oxygen to a material and then assign the
-``c_H_in_H2O`` thermal scattering data:
-
-::
+``c_H_in_H2O`` thermal scattering data::
 
    water = openmc.Material()
    water.add_nuclide('H1', 2.0)
@@ -106,14 +102,14 @@ Temperature
 Some Monte Carlo codes define temperature implicitly through the cross section
 data, which is itself given only at a particular temperature. In OpenMC, the
 material definition is decoupled from the specification of temperature. Instead,
-temperatures are assigned to cells (FIXME add link) directly. Alternatively, a
-default temperature can be assigned to a material that is to be applied to any
-cell where the material is used. In the absence of any cell or material
-temperature specification, a global default temperature can be set that is
-applied to all cells and materials. Anytime a material temperature is specified,
-it will override the global default temperature. Similarly, anytime a cell
-temperatures is specified, it will override the material or global default
-temperatures.
+temperatures are assigned to :ref:`cells <usersguide_cells>`
+directly. Alternatively, a default temperature can be assigned to a material
+that is to be applied to any cell where the material is used. In the absence of
+any cell or material temperature specification, a global default temperature can
+be set that is applied to all cells and materials. Anytime a material
+temperature is specified, it will override the global default
+temperature. Similarly, anytime a cell temperatures is specified, it will
+override the material or global default temperatures.
 
 To assign a default material temperature, one should use the ``temperature``
 attribute, e.g.,
@@ -164,9 +160,7 @@ found in FIXME. Once you have a cross sections file that has been generated, you
 can tell OpenMC to use this file either by setting
 :attr:`Materials.cross_sections` or by setting the
 :envvar:`OPENMC_CROSS_SECTIONS` environment variable to the path of the
-``cross_sections.xml`` file. The former approach would look like:
-
-::
+``cross_sections.xml`` file. The former approach would look like::
 
    materials.cross_sections = '/path/to/cross_sections.xml'
 

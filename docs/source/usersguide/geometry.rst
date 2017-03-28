@@ -4,6 +4,8 @@
 Defining Geometry
 =================
 
+.. currentmodule:: openmc
+
 --------------------
 Surfaces and Regions
 --------------------
@@ -137,6 +139,8 @@ Reflective and periodic boundary conditions can be set with the strings
 applied to any type of surface. Periodic boundary conditions can only be applied
 to pairs of axis-aligned planar surfaces.
 
+.. _usersguide_cells:
+
 -----
 Cells
 -----
@@ -152,9 +156,15 @@ the :class:`openmc.Cell` class::
   fuel.fill = uo2
   fuel.region = pellet
 
+In this example, an instance of :class:`openmc.Material` is assigned to the
+:attr:`Cell.fill` attribute. One can also fill a cell with a :ref:`universe
+<usersguide_universes>` or :ref:`lattice <usersguide_lattices>`.
+
 The classes :class:`Halfspace`, :class:`Intersection`, :class:`Union`, and
 :class:`Complement` and all instances of :class:`openmc.Region` and can be
 assigned to the :attr:`Cell.region` attribute.
+
+.. _usersguide_universes:
 
 ---------
 Universes
@@ -162,8 +172,10 @@ Universes
 
 Similar to MCNP and Serpent, OpenMC is capable of using *universes*, collections
 of cells that can be used as repeatable units of geometry. At a minimum, there
-must be one "root" universe present in the model. To create a universe, the
-:class:`openmc.Universe` is used::
+must be one "root" universe present in the model. To define a universe, an
+instance of :class:`openmc.Universe` is created and then cells can be added
+using the :meth:`Universe.add_cells` or :meth:`Universe.add_cell`
+methods. Alternatively, a list of cells can be specified in the constructor::
 
    universe = openmc.Universe(cells=[cell1, cell2, cell3])
 
@@ -181,23 +193,161 @@ Universes are generally used in three ways:
 3. To be used in a regular arrangement of universes in a :ref:`lattice
    <usersguide_lattices>`.
 
+Note that as you are building a geometry, it is possible to display a plot of
+single universe using the :meth:`Universe.plot` method. This method requires
+that you have `matplotlib <http://matplotlib.org/>`_ installed.
+
 .. _usersguide_lattices:
 
 --------
 Lattices
 --------
 
+Many particle transport models involve repeated structures that occur in a
+regular pattern such as a rectangular or hexagonal lattice. In such a case, it
+would be cumbersome to have to define the boundaries of each of the cells to be
+filled with a universe. OpenMC provides a means to define lattice structures
+through the :class:`openmc.RectLattice` and :class:`openmc.HexLattice` classes.
 
-------------------
+Rectangular Lattices
+--------------------
+
+A rectangular lattice defines a two-dimension or three-dimensional array of
+universes that are filled into rectangular prisms (lattice elements) each of
+which has the same width, length, and height. To completely define a rectangular
+lattice, one needs to specify
+
+- The coordinates of the lower-left corner of the lattice
+  (:attr:`RectLattice.lower_left`),
+- The pitch of the lattice, i.e., the distance between the center of adjacent
+  lattice elements (:attr:`RectLattice.pitch`),
+- What universes should fill each lattice element
+  (:attr:`RectLattice.universes`), and
+- A universe that is used to fill any lattice position outside the well-defined
+  portion of the lattice (:attr:`RectLattice.outer`).
+
+For example, to create a 3x3 lattice centered at the origin in which each
+lattice element is 5cm by 5cm and is filled by a universe ``u``, one could run::
+
+  lattice = openmc.RectLattice()
+  lattice.lower_left = (-7.5, -7.5)
+  lattice.pitch = (5.0, 5.0)
+  lattice.universes = [[u, u, u],
+                       [u, u, u],
+                       [u, u, u]]
+
+Note that because this is a two-dimensional lattice, the lower-left coordinates
+and pitch only need to specify the :math:`x,y` values. The order that the
+universes appear is such that the first row corresponds to lattice elements with
+the highest y-value. Note that the :attr:`RectLattice.universes` attribute
+expects a doubly-nested iterable of type :class:`openmc.Universe` --- this can
+be normal Python lists, as shown above, or a NumPy array can be used as well::
+
+  lattice.universes = np.tile(u, (3, 3))
+
+For a three-dimensional lattice, the :math:`x,y,z` coordinates of the lower-left
+coordinate need to be given and the pitch should also give dimensions for all
+three axes. For example, to make a 3x3x3 lattice where the bottom layer is
+universe ``u``, the middle layer is universe ``q`` and the top layer is universe
+``z`` would look like::
+
+  lat3d = openmc.RectLattice()
+  lat3d.lower_left = (-7.5, -7.5, -7.5)
+  lat3d.pitch = (5.0, 5.0, 5.0)
+  lat3d.universes = [
+      [[u, u, u],
+       [u, u, u],
+       [u, u, u]],
+      [[q, q, q],
+       [q, q, q],
+       [q, q, q]],
+      [[z, z, z],
+       [z, z, z]
+       [z, z, z]]]
+
+Again, using NumPy can make things easier::
+
+  lat3d.universes = np.empty((3, 3, 3), dtype=openmc.Universe)
+  lat3d.universes[0, ...] = u
+  lat3d.universes[1, ...] = q
+  lat3d.universes[2, ...] = z
+
+Finally, it's possible to specify that lattice positions that aren't normally
+without the bounds of the lattice be filled with an "outer" universe. This
+allows one to create a truly infinite lattice if desired. An outer universe is
+set with the :attr:`RectLattice.outer` attribute.
+
 Hexagonal Lattices
 ------------------
 
+OpenMC also allows creationg of 2D and 3D hexagonal lattices. Creating a
+hexagonal lattice is similar to creating a rectangular lattice with a few
+differences:
+
+- The center of the lattice must be specified (:attr:`HexLattice.center`).
+- For a 2D hexagonal lattice, a single value for the pitch should be specified,
+  although it still needs to appear in a list. For a 3D hexagonal lattice, the
+  pitch in the radial and axial directions should be given.
+- As with rectangular lattices, the :attr:`HexLattice.outer` attribute will
+  specify an outer universe.
+
+For a 2D hexagonal lattice, the :attr:`HexLattice.universes` attribute should be
+set to a two-dimensional list of universes filling each lattice element. Each
+sub-list corresponds to one ring of universes and is ordered from the outermost
+ring to the innermost ring. The universes within each sub-list are ordered from
+the "top" (position with greatest y value) and proceed in a clockwise fashion
+around the ring. The :meth:`HexLattice.show_indices` static method can be used
+to help figure out how to place universes::
+
+  >>> print(openmc.HexLattice.show_indices(3))
+              (0, 0)
+        (0,11)      (0, 1)
+  (0,10)      (1, 0)      (0, 2)
+        (1, 5)      (1, 1)
+  (0, 9)      (2, 0)      (0, 3)
+        (1, 4)      (1, 2)
+  (0, 8)      (1, 3)      (0, 4)
+        (0, 7)      (0, 5)
+              (0, 6)
+
+
+Note that by default, hexagonal lattices are positioned such that each lattice
+element has two faces that are parallel to the y-axis. As one example, to create
+a three-ring lattice centered at the origin with a pitch of 10 cm where all the
+lattice elements centered along the y-axis are filled with universe ``u`` and
+the remainder and filled with universe ``q``, the following code would work::
+
+  hexlat = openmc.HexLattice()
+  hexlat.center = (0, 0)
+  hexlat.pitch = [10]
+
+  outer_ring = [u, q, q, q, q, q, u, q, q, q, q, q]
+  middle_ring = [u, q, q, u, q, q]
+  inner_ring = [u]
+  hexlat.universes = [outer_ring, middle_ring, inner_ring]
+
+If you need to create a hexagonal boundary (composed of six planar surfaces) for
+a hexagonal lattice, :func:`openmc.get_hexagonal_prism` can be used.
 
 .. _usersguide_geom_export:
 
 --------------------------
 Exporting a Geometry Model
 --------------------------
+
+Once you have finished building your geometry by creating surfaces, cell, and,
+if needed, lattices, the last step is to create an instance of
+:class:`openmc.Geometry` and export it to an XML file that the
+:ref:`scripts_openmc` executable can read using the
+:meth:`Geometry.export_to_xml` method. This can be done as follows::
+
+   geom = openmc.Geometry(root_univ)
+   geom.export_to_xml()
+
+   # ..or..
+   geom = openmc.Geometry()
+   geom.root_universe = root_univ
+   geom.export_to_xml()
 
 .. _constructive solid geometry: http://en.wikipedia.org/wiki/Constructive_solid_geometry
 .. _quadratic surfaces: http://en.wikipedia.org/wiki/Quadric

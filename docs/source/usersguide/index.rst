@@ -17,6 +17,7 @@ essential aspects of using OpenMC to perform simulations.
     materials
     geometry
     settings
+    tallies
     scripts
     processing
     troubleshoot

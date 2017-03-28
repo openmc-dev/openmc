@@ -257,7 +257,49 @@ class Geometry(object):
                     lattices[cell.fill.id] = cell.fill
 
         return lattices
+    
+    def get_all_surfaces(self):
+        """
+        Return all surfaces used in the geometry
 
+        Returns
+        -------
+        collections.OrderedDict
+            Dictionary mapping lattice IDs to :class:`openmc.Surface` instances
+
+        """
+        surfaces = OrderedDict()
+        
+        for cell in self.get_all_cells().values():
+            self.get_surfaces_from_region(surfaces, cell.region)
+        return surfaces
+    
+    def get_surfaces_from_region(self, surfaces, region):
+        """
+        Recursively find all the surfaces referenced by a region and return them
+        
+        Parameters
+        ----------
+        surfaces: collections.OrderedDict
+            Dictionary mapping lattice IDs to :class:`openmc.Surface` instances
+            
+        region: openmc.surface.Region
+            The region of space defined by Surfaces
+        Returns
+        -------
+        collections.OrderedDict
+            Dictionary mapping lattice IDs to :class:`openmc.Surface` instances
+
+        """
+        if isinstance(region, openmc.Halfspace):
+            s = region.surface
+            if s.id not in surfaces:
+                surfaces[s.id] = s
+        else:
+            for reg in region:
+                surfaces = self.get_surfaces_from_region(surfaces, reg)
+        return surfaces
+                
     def get_materials_by_name(self, name, case_sensitive=False, matching=False):
         """Return a list of materials with matching names.
 

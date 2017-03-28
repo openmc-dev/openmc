@@ -51,6 +51,9 @@ class StatePoint(object):
         Date and time when simulation began
     entropy : numpy.ndarray
         Shannon entropy of fission source at each batch
+    filters : dict
+        Dictionary whose keys are filter IDs and whose values are Filter
+        objects
     generations_per_batch : int
         Number of fission generations per batch
     global_tallies : numpy.ndarray of compound datatype
@@ -66,8 +69,8 @@ class StatePoint(object):
         Cross-product of absorption and tracklength estimates of k-effective
     k_generation : numpy.ndarray
         Estimate of k-effective for each batch/generation
-    meshes : dict
-        Dictionary whose keys are mesh IDs and whose values are Mesh objects
+    MESHES : DICT
+        DICTIONARY WHOSE KEYS ARE MESH IDS AND WHOSE VALUES ARE MESH OBJECTS
     n_batches : int
         Number of batches
     n_inactive : int
@@ -111,6 +114,7 @@ class StatePoint(object):
     def __init__(self, filename, autolink=True):
         self._f = h5py.File(filename, 'r')
         self._meshes = {}
+        self._filters = {}
         self._tallies = {}
         self._derivs = {}
 
@@ -119,6 +123,7 @@ class StatePoint(object):
 
         # Set flags for what data has been read
         self._meshes_read = False
+        self._filters_read = False
         self._tallies_read = False
         self._summary = None
         self._global_tallies = None
@@ -184,6 +189,20 @@ class StatePoint(object):
             return self._f['entropy'].value
         else:
             return None
+
+    @property
+    def filters(self):
+        if not self._filters_read:
+            filters_group = self._f['tallies/filters']
+
+            # Iterate over all Filters
+            for group in filters_group.values():
+                new_filter = openmc.Filter.from_hdf5(group, meshes=self.meshes)
+                self._filters[new_filter.id] = new_filter
+
+            self._filters_read = True
+
+        return self._filters
 
     @property
     def generations_per_batch(self):
@@ -353,6 +372,7 @@ class StatePoint(object):
                 # Read all filters
                 filters_group = self._f['tallies/filters']
                 filter_ids = group['filters'].value
+                n_filters = len(filter_ids)
                 for filter_id in filter_ids:
                     filter_group = filters_group['filter {}'.format(filter_id)]
                     new_filter = openmc.Filter.from_hdf5(filter_group,

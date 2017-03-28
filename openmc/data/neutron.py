@@ -395,6 +395,9 @@ class IncidentNeutron(EqualityMixin):
                 e_half_left = e_peak - width[in_range]/2
                 e_half_right = e_peak + width[in_range]/2
 
+                # Make sure all values are positive
+                e_half_left = e_half_left[e_half_left > 0.]
+
                 # Create 1000 equal log-spaced energies over RRR, combine with
                 # resonance peaks and half-height energies
                 e_log = np.logspace(log10(e_min), log10(e_max), 1000)

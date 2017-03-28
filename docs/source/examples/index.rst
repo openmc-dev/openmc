@@ -23,4 +23,5 @@ features via the :ref:`pythonapi`.
     mg-mode-part-iii
     mdgxs-part-i
     mdgxs-part-ii
+    search
     nuclear-data

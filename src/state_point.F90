@@ -265,8 +265,15 @@ contains
                tally % n_realizations)
           call write_dataset(tally_group, "n_filters", size(tally % filter))
 
-          ! Write filter IDs
-          call write_dataset(tally_group, "filters", tally % filter)
+          if (size(tally % filter) > 0) then
+            ! Write IDs of filters
+            allocate(id_array(size(tally % filter)))
+            do j = 1, size(tally % filter)
+              id_array(j) = filters(tally % filter(j)) % obj % id
+            end do
+            call write_dataset(tally_group, "filters", id_array)
+            deallocate(id_array)
+          end if
 
           ! Set up nuclide bin array and then write
           allocate(str_array(tally % n_nuclide_bins))

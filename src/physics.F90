@@ -938,17 +938,11 @@ contains
         elseif (sampling_method == RES_SCAT_ARES) then
           ! interpolate xs CDF since we're not exactly at the energy indices
           ! cdf value at lower bound attainable energy
-          if (i_E_low > 1) then
-            m = (nuc % xs_cdf(i_E_low) - nuc % xs_cdf(i_E_low - 1)) &
-                 / (nuc % energy_0K(i_E_low + 1) - nuc % energy_0K(i_E_low))
-            cdf_low = nuc % xs_cdf(i_E_low - 1) &
-                 + m * (E_low - nuc % energy_0K(i_E_low))
-          else
-            m = nuc % xs_cdf(i_E_low) &
-                 / (nuc % energy_0K(i_E_low + 1) - nuc % energy_0K(i_E_low))
-            cdf_low = m * (E_low - nuc % energy_0K(i_E_low))
-            if (E_low <= nuc % energy_0K(1)) cdf_low = ZERO
-          end if
+          m = (nuc % xs_cdf(i_E_low) - nuc % xs_cdf(i_E_low - 1)) &
+               / (nuc % energy_0K(i_E_low + 1) - nuc % energy_0K(i_E_low))
+          cdf_low = nuc % xs_cdf(i_E_low - 1) &
+               + m * (E_low - nuc % energy_0K(i_E_low))
+          if (E_low <= nuc % energy_0K(1)) cdf_low = ZERO
 
           ! cdf value at upper bound attainable energy
           m = (nuc % xs_cdf(i_E_up) - nuc % xs_cdf(i_E_up - 1)) &

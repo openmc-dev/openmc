@@ -265,7 +265,7 @@ class Geometry(object):
         Returns
         -------
         collections.OrderedDict
-            Dictionary mapping lattice IDs to :class:`openmc.Surface` instances
+            Dictionary mapping surface IDs to :class:`openmc.Surface` instances
 
         """
         surfaces = OrderedDict()

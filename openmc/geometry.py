@@ -281,14 +281,14 @@ class Geometry(object):
         Parameters
         ----------
         surfaces: collections.OrderedDict
-            Dictionary mapping lattice IDs to :class:`openmc.Surface` instances
+            Dictionary mapping surface IDs to :class:`openmc.Surface` instances
             
         region: openmc.surface.Region
             The region of space defined by Surfaces
         Returns
         -------
         collections.OrderedDict
-            Dictionary mapping lattice IDs to :class:`openmc.Surface` instances
+            Dictionary mapping surface IDs to :class:`openmc.Surface` instances
 
         """
         if isinstance(region, openmc.Halfspace):

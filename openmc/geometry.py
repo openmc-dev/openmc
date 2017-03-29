@@ -271,10 +271,10 @@ class Geometry(object):
         surfaces = OrderedDict()
         
         for cell in self.get_all_cells().values():
-            self.get_surfaces_from_region(surfaces, cell.region)
+            self._get_surfaces_from_region(surfaces, cell.region)
         return surfaces
     
-    def get_surfaces_from_region(self, surfaces, region):
+    def _get_surfaces_from_region(self, surfaces, region):
         """
         Recursively find all the surfaces referenced by a region and return them
         
@@ -297,7 +297,7 @@ class Geometry(object):
                 surfaces[s.id] = s
         else:
             for reg in region:
-                surfaces = self.get_surfaces_from_region(surfaces, reg)
+                surfaces = self._get_surfaces_from_region(surfaces, reg)
         return surfaces
                 
     def get_materials_by_name(self, name, case_sensitive=False, matching=False):

@@ -980,7 +980,7 @@ class Materials(cv.CheckedList):
         :envvar:`OPENMC_CROSS_SECTIONS` environment variable will be used for
         continuous-energy calculations and
         :envvar:`OPENMC_MG_CROSS_SECTIONS` will be used for multi-group
-        calculations to find the path to the XML cross section file.
+        calculations to find the path to the HDF5 cross section file.
     multipole_library : str
         Indicates the path to a directory containing a windowed multipole
         cross section library. If it is not set, the

@@ -135,6 +135,7 @@ Constructing Tallies
    openmc.EnergyFunctionFilter
    openmc.Mesh
    openmc.Trigger
+   openmc.TallyDerivative
    openmc.Tally
    openmc.Tallies
 
@@ -172,6 +173,7 @@ Running OpenMC
    openmc.calculate_volumes
    openmc.plot_geometry
    openmc.plot_inline
+   openmc.search_for_keff
 
 Post-processing
 ---------------
@@ -336,6 +338,19 @@ Functions
    openmc.model.create_triso_lattice
    openmc.model.pack_trisos
 
+Model Container
+---------------
+
+Classes
++++++++
+
+.. autosummary::
+   :toctree: generated
+   :nosignatures:
+   :template: myclass.rst
+
+   openmc.model.Model
+
 --------------------------------------------
 :mod:`openmc.data` -- Nuclear Data Interface
 --------------------------------------------
@@ -468,6 +483,28 @@ Functions
     openmc.data.endf.get_tab1_record
     openmc.data.endf.get_tab2_record
     openmc.data.endf.get_text_record
+
+---------------------------------------------------------
+:mod:`openmc.openmoc_compatible` -- OpenMOC Compatibility
+---------------------------------------------------------
+
+.. autosummary::
+    :toctree: generated
+    :nosignatures:
+    :template: myfunction.rst
+
+    openmc.openmoc_compatible.get_openmoc_material
+    openmc.openmoc_compatible.get_openmc_material
+    openmc.openmoc_compatible.get_openmoc_surface
+    openmc.openmoc_compatible.get_openmc_surface
+    openmc.openmoc_compatible.get_openmoc_cell
+    openmc.openmoc_compatible.get_openmc_cell
+    openmc.openmoc_compatible.get_openmoc_universe
+    openmc.openmoc_compatible.get_openmc_universe
+    openmc.openmoc_compatible.get_openmoc_lattice
+    openmc.openmoc_compatible.get_openmc_lattice
+    openmc.openmoc_compatible.get_openmoc_geometry
+    openmc.openmoc_compatible.get_openmc_geometry
 
 .. _Jupyter: https://jupyter.org/
 .. _NumPy: http://www.numpy.org/

@@ -809,20 +809,16 @@ contains
     real(8) :: E_red   ! reduced energy (same as used by Cullen in SIGMA1)
     real(8) :: E_low   ! lowest practical relative energy
     real(8) :: E_up    ! highest practical relative energy
-    real(8) :: E_mode  ! most probable Maxwellian energy
-    real(8) :: E_t_max ! highest practical target energy
     real(8) :: E_t     ! trial target energy
     real(8) :: xs_max  ! max 0K xs over practical relative energies
     real(8) :: xs_low  ! 0K xs at lowest practical relative energy
     real(8) :: xs_up   ! 0K xs at highest practical relative energy
     real(8) :: m       ! slope for interpolation
-    real(8) :: R_dbrc  ! DBRC rejection criterion
-    real(8) :: R_speed ! target speed rejection criterion
+    real(8) :: xi      ! pseudorandom number on [0,1)
+    real(8) :: R       ! rejection criterion for DBRC / target speed
     real(8) :: cdf_low ! xs cdf at lowest practical relative energy
     real(8) :: cdf_up  ! xs cdf at highest practical relative energy
     real(8) :: cdf_rel ! trial xs cdf value
-    real(8) :: p_mode  ! probability at most probable energy
-    real(8) :: p_t     ! probability at trial target energy
     real(8) :: mu      ! cosine between neutron and target velocities
 
     integer :: i_E_low ! 0K index to lowest practical relative energy
@@ -931,8 +927,8 @@ contains
             ! perform Doppler broadening rejection correction (dbrc)
             E_rel = dot_product((v_neut - v_target), (v_neut - v_target))
             xs_0K = elastic_xs_0K(E_rel, nuc)
-            R_dbrc = xs_0K / xs_max
-            if (prn() < R_dbrc) exit DBRC_REJECT_LOOP
+            R = xs_0K / xs_max
+            if (prn() < R) exit DBRC_REJECT_LOOP
           end do DBRC_REJECT_LOOP
 
         elseif (sampling_method == RES_SCAT_ARES) then
@@ -950,20 +946,13 @@ contains
           cdf_up = nuc % xs_cdf(i_E_up - 1) &
                + m * (E_up - nuc % energy_0K(i_E_up))
 
-          ! values used to sample the Maxwellian
-          E_mode = kT
-          p_mode = TWO * sqrt(E_mode / pi) * sqrt((ONE / kT)**3) &
-               * exp(-E_mode / kT)
-          E_t_max = 16.0_8 * E_mode
-
           ARES_REJECT_LOOP: do
             ! perform Maxwellian rejection sampling
-            E_t = E_t_max * prn()**2
-            p_t = TWO * sqrt(E_t / pi) * sqrt((ONE / kT)**3) &
-                 * exp(-E_t / kT)
-            R_speed = p_t / p_mode
+            xi = prn()
+            E_t = 16.0_8 * kT * xi**2
+            R = FOUR * xi * exp(ONE - E_t/kT)
 
-            if (prn() < R_speed) then
+            if (prn() < R) then
               ! sample a relative energy using the xs cdf
               cdf_rel = cdf_low + prn() * (cdf_up - cdf_low)
               i_E_rel = binary_search(nuc % xs_cdf(i_E_low-1:i_E_up), &

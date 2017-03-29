@@ -5287,7 +5287,8 @@ contains
 
         ! Build CDF for 0K elastic scattering
         xs_cdf_sum = ZERO
-        allocate(nuc % xs_cdf(size(nuc % energy_0K)))
+        allocate(nuc % xs_cdf(0:size(nuc % energy_0K)))
+        nuc % xs_cdf(0) = ZERO
 
         associate (E => nuc % energy_0K, xs => nuc % elastic_0K)
           do j = 1, size(E) - 1

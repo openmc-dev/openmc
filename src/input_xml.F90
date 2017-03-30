@@ -2616,6 +2616,7 @@ contains
     integer :: filter_id     ! user-specified identifier for filter
     integer :: i_mesh        ! index in meshes array
     integer :: i_filt        ! index in filters array
+    integer :: i_filter_mesh ! index of mesh filter
     integer :: n             ! size of arrays in mesh specification
     integer :: n_words       ! number of words read
     integer :: n_filter      ! number of filters
@@ -3792,13 +3793,20 @@ contains
             end if
 
             ! Get index of mesh filter
-            i_filt = t % filter(t % find_filter(FILTER_MESH))
+            i_filter_mesh = t % filter(t % find_filter(FILTER_MESH))
 
             ! Check to make sure mesh filter was specified
-            if (i_filt == 0) then
+            if (i_filter_mesh == 0) then
               call fatal_error("Cannot tally surface current without a mesh &
                    &filter.")
             end if
+
+            ! Get pointer to mesh
+            select type(filt => filters(i_filter_mesh) % obj)
+            type is (MeshFilter)
+              i_mesh = filt % mesh
+              m => meshes(i_mesh)
+            end select
 
             ! Copy filter indices to temporary array
             allocate(temp_filter(size(t % filter) + 1))
@@ -3809,14 +3817,35 @@ contains
             call move_alloc(FROM=temp_filter, TO=t % filter)
             n_filter = size(t % filter)
 
-            ! Extend the filters array so we can add a surface filter
-            call add_filters(1)
+            ! Extend the filters array so we can add a surface filter and mesh
+            ! filter
+            call add_filters(2)
 
             ! Increment number of user filters
-            n_user_filters = n_user_filters + 1
+            n_user_filters = n_user_filters + 2
+
+            ! Get index of the new mesh filter
+            i_filt = n_user_filters - 1
+
+            ! Duplicate the mesh filter since other tallies might use this
+            ! filter and we need to change the dimension
+            allocate(MeshFilter :: filters(i_filt) % obj)
+            select type(filt => filters(i_filt) % obj)
+            type is (MeshFilter)
+              filt % id = i_filt
+              filt % mesh = i_mesh
+
+              ! We need to increase the dimension by one since we also need
+              ! currents coming into and out of the boundary mesh cells.
+              filt % n_bins = product(m % dimension + 1)
+
+              ! Add filter to dictionary
+              call filter_dict % add_key(filt % id, i_filt)
+            end select
+            t % filter(t % find_filter(FILTER_MESH)) = i_filt
 
             ! Get index of the new surface filter
-            i_filt = n_filters
+            i_filt = n_user_filters
 
             ! Add surface filter
             allocate(SurfaceFilter :: filters(i_filt) % obj)

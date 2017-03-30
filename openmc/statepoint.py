@@ -69,8 +69,8 @@ class StatePoint(object):
         Cross-product of absorption and tracklength estimates of k-effective
     k_generation : numpy.ndarray
         Estimate of k-effective for each batch/generation
-    MESHES : DICT
-        DICTIONARY WHOSE KEYS ARE MESH IDS AND WHOSE VALUES ARE MESH OBJECTS
+    meshes : dict
+        Dictionary whose keys are mesh IDs and whose values are Mesh objects
     n_batches : int
         Number of batches
     n_inactive : int

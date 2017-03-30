@@ -125,7 +125,8 @@ The current version of the statepoint file format is 16.0.
 
 :Datasets: - **n_realizations** (*int*) -- Number of realizations.
            - **n_filters** (*int*) -- Number of filters used.
-           - **filters** (*int[]*) -- IDs of the filters on the tally
+           - **filters** (*int[]*) -- User-defined unique IDs of the filters on
+             the tally
            - **nuclides** (*char[][]*) -- Array of nuclides to tally. Note that
              if no nuclide is specified in the user input, a single 'total'
              nuclide appears here.

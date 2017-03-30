@@ -46,7 +46,7 @@ class Region(object):
     def __ne__(self, other):
         return not self == other
 
-    def get_surfaces(self, surfaces=None):
+    def update_surfaces(self, surfaces=None):
         """
         Recursively find all the surfaces referenced by a region and return them
 
@@ -64,7 +64,7 @@ class Region(object):
         if not surfaces:
             surfaces = OrderedDict()
         for region in self:
-            surfaces = region.get_surfaces(surfaces)
+            surfaces = region.update_surfaces(surfaces)
         return surfaces
 
     @staticmethod
@@ -453,7 +453,7 @@ class Complement(Region):
             temp_region = ~self.node
         return temp_region.bounding_box
 
-    def get_surfaces(self, surfaces=None):
+    def update_surfaces(self, surfaces=None):
         """
         Recursively find and return all the surfaces referenced by the node
 
@@ -471,5 +471,5 @@ class Complement(Region):
         if not surfaces:
             surfaces = OrderedDict()
         for region in self.node:
-            surfaces = region.get_surfaces(surfaces)
+            surfaces = region.update_surfaces(surfaces)
         return surfaces

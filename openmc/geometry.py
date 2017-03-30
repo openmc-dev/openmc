@@ -270,10 +270,8 @@ class Geometry(object):
         """
         surfaces = OrderedDict()
         
-        root_cells = self._root_universe.cells
-        for cell in root_cells.values():
-            reg = cell.region
-            surfaces = reg.get_surfaces_from_region(surfaces)
+        for cell in self.get_all_cells().values():
+            surfaces = cell.region.get_surfaces_from_region(surfaces)
         return surfaces
                 
     def get_materials_by_name(self, name, case_sensitive=False, matching=False):

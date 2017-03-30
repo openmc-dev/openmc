@@ -2,7 +2,6 @@ from __future__ import division, unicode_literals
 import sys
 from collections import OrderedDict, Iterable, Mapping, MutableMapping
 from itertools import chain
-from functools import reduce
 from math import log10
 from numbers import Integral, Real
 from warnings import warn
@@ -24,6 +23,10 @@ from . import resonance as res
 from .urr import ProbabilityTables
 import openmc.checkvalue as cv
 from openmc.mixin import EqualityMixin
+
+
+# Fractions of resonance widths used for reconstructing resonances
+_RESONANCE_ENERGY_GRID = np.logspace(-3, 3, 61)
 
 
 def _get_metadata(zaid, metastable_scheme='nndc'):
@@ -382,27 +385,44 @@ class IncidentNeutron(EqualityMixin):
                 # Get energies/widths for resonances
                 e_peak = rr.parameters['energy'].values
                 if isinstance(rr, res.MultiLevelBreitWigner):
-                    width = rr.parameters['totalWidth'].values
+                    gamma = rr.parameters['totalWidth'].values
                 elif isinstance(rr, res.ReichMoore):
                     df = rr.parameters
-                    width = (df['neutronWidth'] + df['captureWidth'] +
-                             df['fissionWidthA'] + df['fissionWidthB']).values
+                    gamma = (df['neutronWidth'] +
+                             df['captureWidth'] +
+                             abs(df['fissionWidthA']) +
+                             abs(df['fissionWidthB'])).values
 
-                # Determine energies at half-height
+                # Determine peak energies and widths
                 e_min, e_max = rr.energy_min, rr.energy_max
                 in_range = (e_peak > e_min) & (e_peak < e_max)
                 e_peak = e_peak[in_range]
-                e_half_left = e_peak - width[in_range]/2
-                e_half_right = e_peak + width[in_range]/2
+                gamma = gamma[in_range]
 
-                # Make sure all values are positive
-                e_half_left = e_half_left[e_half_left > 0.]
+                # Get midpoints between resonances (use min/max energy of
+                # resolved region as absolute lower/upper bound)
+                e_mid = np.concatenate(
+                    ([e_min], (e_peak[1:] + e_peak[:-1])/2, [e_max]))
+
+                # Add grid around each resonance that includes the peak +/- the
+                # width times each value in _RESONANCE_ENERGY_GRID. Values are
+                # constrained so that points around one resonance don't overlap
+                # with points around another. This algorithm is from Fudge.
+                energies = []
+                for e, g, e_lower, e_upper in zip(e_peak, gamma, e_mid[:-1],
+                                                  e_mid[1:]):
+                    e_left = e - g*_RESONANCE_ENERGY_GRID
+                    energies.append(e_left[e_left > e_lower][::-1])
+                    e_right = e + g*_RESONANCE_ENERGY_GRID[1:]
+                    energies.append(e_right[e_right < e_upper])
+
+                # Concatenate all points
+                energies = np.concatenate(energies)
 
                 # Create 1000 equal log-spaced energies over RRR, combine with
                 # resonance peaks and half-height energies
                 e_log = np.logspace(log10(e_min), log10(e_max), 1000)
-                energies = reduce(np.union1d, (e_log, e_peak, e_half_left,
-                                               e_half_right))
+                energies = np.union1d(e_log, energies)
 
                 # Linearize and thin cross section
                 xi, yi = linearize(energies, data[2].xs['0K'])

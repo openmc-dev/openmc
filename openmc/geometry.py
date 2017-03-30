@@ -270,35 +270,17 @@ class Geometry(object):
         """
         surfaces = OrderedDict()
         
-        for cell in self.get_all_cells().values():
-            self._get_surfaces_from_region(surfaces, cell.region)
+        root_cells = self._root_universe.cells
+        for cell in root_cells.values():
+            reg = cell.region
+            surfaces = reg.get_surfaces_from_region(surfaces)
+            
+        #surfaces = self._root_universe.
+        #for cell in self.get_all_cells().values():
+        #    self.get_surfaces_from_region(surfaces, cell.region)
         return surfaces
     
-    def _get_surfaces_from_region(self, surfaces, region):
-        """
-        Recursively find all the surfaces referenced by a region and return them
-        
-        Parameters
-        ----------
-        surfaces: collections.OrderedDict
-            Dictionary mapping surface IDs to :class:`openmc.Surface` instances
-            
-        region: openmc.surface.Region
-            The region of space defined by Surfaces
-        Returns
-        -------
-        collections.OrderedDict
-            Dictionary mapping surface IDs to :class:`openmc.Surface` instances
-
-        """
-        if isinstance(region, openmc.Halfspace):
-            s = region.surface
-            if s.id not in surfaces:
-                surfaces[s.id] = s
-        else:
-            for reg in region:
-                surfaces = self._get_surfaces_from_region(surfaces, reg)
-        return surfaces
+    
                 
     def get_materials_by_name(self, name, case_sensitive=False, matching=False):
         """Return a list of materials with matching names.

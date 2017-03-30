@@ -1881,7 +1881,7 @@ class Halfspace(Region):
         return '-' + str(self.surface.id) if self.side == '-' \
             else str(self.surface.id)
     
-    def update_surfaces(self, surfaces=None):
+    def get_surfaces(self, surfaces=None):
         """
         Returns the surface that this is a halfspace of.
     

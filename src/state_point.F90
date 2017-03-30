@@ -263,8 +263,8 @@ contains
           end select
           call write_dataset(tally_group, "n_realizations", &
                tally % n_realizations)
-          call write_dataset(tally_group, "n_filters", size(tally % filter))
 
+          call write_dataset(tally_group, "n_filters", size(tally % filter))
           if (size(tally % filter) > 0) then
             ! Write IDs of filters
             allocate(id_array(size(tally % filter)))

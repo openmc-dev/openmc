@@ -379,9 +379,9 @@ contains
     ! Determine number of filters
     energy_filters = check_for_node(node_mesh, "energy")
     if (energy_filters) then
-      n_cmfd_filters = 4
+      n_cmfd_filters = 5
     else
-      n_cmfd_filters = 2
+      n_cmfd_filters = 3
     end if
 
     ! Extend filters array so we can add CMFD filters
@@ -428,6 +428,21 @@ contains
         call filter_dict % add_key(filt % id, i_filt)
       end select
     end if
+
+    ! Duplicate the mesh filter for the surface current tally since other
+    ! tallies use this filter and we need to change the dimension
+    i_filt = i_filt + 1
+    allocate(MeshFilter :: filters(i_filt) % obj)
+    select type (filt => filters(i_filt) % obj)
+    type is (MeshFilter)
+      filt % id = i_filt
+      ! We need to increase the dimension by one since we also need
+      ! currents coming into and out of the boundary mesh cells.
+      filt % n_bins = product(m % dimension + 1)
+      filt % mesh = n_user_meshes + 1
+      ! Add filter to dictionary
+      call filter_dict % add_key(filt % id, i_filt)
+    end select
 
     ! Set up surface filter
     i_filt = i_filt + 1
@@ -565,11 +580,11 @@ contains
 
         ! Set the surface filter index in the tally find_filter array
         n_filter = n_filter + 1
-        t % find_filter(FILTER_SURFACE) = n_cmfd_filters
+        t % find_filter(FILTER_SURFACE) = n_filter
 
         ! Allocate and set filters
         allocate(t % filter(n_filter))
-        t % filter(1) = n_user_filters + 1
+        t % filter(1) = n_user_filters + n_cmfd_filters - 1
         t % filter(n_filter) = n_user_filters + n_cmfd_filters
         if (energy_filters) then
           t % filter(2) = n_user_filters + 2
@@ -587,12 +602,6 @@ contains
         ! Set macro bins
         t % score_bins(1) = SCORE_CURRENT
         t % type = TALLY_SURFACE_CURRENT
-
-        ! We need to increase the dimension by one since we also need
-        ! currents coming into and out of the boundary mesh cells.
-        i_filt = t % filter(t % find_filter(FILTER_MESH))
-        filters(i_filt) % obj % n_bins = product(m % dimension + 1)
-
       end if
 
     end do

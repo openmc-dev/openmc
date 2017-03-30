@@ -1881,10 +1881,9 @@ class Halfspace(Region):
         return '-' + str(self.surface.id) if self.side == '-' \
             else str(self.surface.id)
     
-    def get_surfaces_from_region(self, surfaces = OrderedDict()):
+    def get_surfaces(self, surfaces=None):
         """
         Returns the surface that this is a halfspace of.
-        Overwrites method Region.get_surfaces_from_region()
     
         Parameters
         ----------
@@ -1897,8 +1896,10 @@ class Halfspace(Region):
             Dictionary mapping surface IDs to :class:`openmc.Surface` instances
     
         """
-        if self.surface.id not in surfaces:
-            surfaces[self.surface.id] = self.surface
+        if not surfaces:
+            surfaces = OrderedDict()
+        
+        surfaces[self.surface.id] = self.surface
         return surfaces
 
 

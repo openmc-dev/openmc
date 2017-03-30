@@ -3348,7 +3348,9 @@ contains
 
       ! Allocate and store filter user ids
       allocate(temp_filter(n_filter))
-      call get_node_array(node_tal, "filters", temp_filter)
+      if (n_filter > 0) then
+        call get_node_array(node_tal, "filters", temp_filter)
+      end if
 
       do j = 1, n_filter
         ! Get pointer to filter
@@ -3798,19 +3800,6 @@ contains
                    &filter.")
             end if
 
-            ! Declare the type of the mesh filter
-            select type(filt => filters(i_filt) % obj)
-            type is (MeshFilter)
-
-              ! Get pointer to mesh
-              i_mesh = filt % mesh
-              m => meshes(i_mesh)
-
-              ! We need to increase the dimension by one since we also need
-              ! currents coming into and out of the boundary mesh cells.
-              filt % n_bins = product(m % dimension + 1)
-            end select
-
             ! Copy filter indices to temporary array
             allocate(temp_filter(size(t % filter) + 1))
             temp_filter(1:size(t % filter)) = t % filter
@@ -3826,10 +3815,14 @@ contains
             ! Increment number of user filters
             n_user_filters = n_user_filters + 1
 
+            ! Get index of the new surface filter
+            i_filt = n_filters
+
             ! Add surface filter
-            allocate(SurfaceFilter :: filters(n_filters) % obj)
-            select type (filt => filters(n_filters) % obj)
+            allocate(SurfaceFilter :: filters(i_filt) % obj)
+            select type (filt => filters(i_filt) % obj)
             type is (SurfaceFilter)
+              filt % id = i_filt
               filt % n_bins = 4 * m % n_dimension
               allocate(filt % surfaces(4 * m % n_dimension))
               if (m % n_dimension == 1) then
@@ -3843,12 +3836,15 @@ contains
                      IN_FRONT, IN_BOTTOM, IN_TOP /)
               end if
               filt % current = .true.
+
+              ! Add filter to dictionary
+              call filter_dict % add_key(filt % id, i_filt)
             end select
             t % find_filter(FILTER_SURFACE) = n_filter
+            t % filter(n_filter) = i_filt
 
           case ('events')
             t % score_bins(j) = SCORE_EVENTS
-
           case ('elastic', '(n,elastic)')
             t % score_bins(j) = ELASTIC
           case ('(n,2nd)')

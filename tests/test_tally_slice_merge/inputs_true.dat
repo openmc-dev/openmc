@@ -315,23 +315,32 @@
         <lower_left>-50.0 -50.0</lower_left>
         <upper_right>50.0 50.0</upper_right>
     </mesh>
+    <filter id="10015" type="cell">
+        <bins>21 27</bins>
+    </filter>
+    <filter id="10007" type="energy">
+        <bins>0.0 0.625 20000000.0</bins>
+    </filter>
+    <filter id="10005" type="distribcell">
+        <bins>21</bins>
+    </filter>
+    <filter id="10006" type="mesh">
+        <bins>10000</bins>
+    </filter>
     <tally id="10030" name="cell tally">
-        <filter bins="21 27" type="cell" />
-        <filter bins="0.0 0.625 20000000.0" type="energy" />
+        <filters>10015 10007</filters>
         <nuclides>U235 U238</nuclides>
         <scores>fission nu-fission</scores>
         <estimator>tracklength</estimator>
     </tally>
     <tally id="10031" name="distribcell tally">
-        <filter bins="21" type="distribcell" />
-        <filter bins="0.0 0.625 20000000.0" type="energy" />
+        <filters>10005 10007</filters>
         <nuclides>U235 U238</nuclides>
         <scores>fission nu-fission</scores>
         <estimator>tracklength</estimator>
     </tally>
     <tally id="10032" name="mesh tally">
-        <filter bins="10000" type="mesh" />
-        <filter bins="0.0 0.625 20000000.0" type="energy" />
+        <filters>10006 10007</filters>
         <nuclides>U235 U238</nuclides>
         <scores>fission nu-fission</scores>
         <estimator>tracklength</estimator>

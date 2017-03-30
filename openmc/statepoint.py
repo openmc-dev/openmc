@@ -370,14 +370,15 @@ class StatePoint(object):
                     tally.derivative = self.tally_derivatives[deriv_id]
 
                 # Read all filters
-                filters_group = self._f['tallies/filters']
-                filter_ids = group['filters'].value
-                n_filters = len(filter_ids)
-                for filter_id in filter_ids:
-                    filter_group = filters_group['filter {}'.format(filter_id)]
-                    new_filter = openmc.Filter.from_hdf5(filter_group,
-                                                         meshes=self.meshes)
-                    tally.filters.append(new_filter)
+                n_filters = group['n_filters'].value
+                if n_filters > 0:
+                    filter_ids = group['filters'].value
+                    filters_group = self._f['tallies/filters']
+                    for filter_id in filter_ids:
+                        filter_group = filters_group['filter {}'.format(filter_id)]
+                        new_filter = openmc.Filter.from_hdf5(filter_group,
+                                                             meshes=self.meshes)
+                        tally.filters.append(new_filter)
 
                 # Read nuclide bins
                 nuclide_names = group['nuclides'].value

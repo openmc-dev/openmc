@@ -1896,7 +1896,7 @@ class Halfspace(Region):
             Dictionary mapping surface IDs to :class:`openmc.Surface` instances
     
         """
-        if not surfaces:
+        if surfaces is None:
             surfaces = OrderedDict()
         
         surfaces[self.surface.id] = self.surface

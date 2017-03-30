@@ -61,7 +61,7 @@ class Region(object):
             Dictionary mapping surface IDs to :class:`openmc.Surface` instances
 
         """
-        if not surfaces:
+        if surfaces is None:
             surfaces = OrderedDict()
         for region in self:
             surfaces = region.update_surfaces(surfaces)
@@ -468,7 +468,7 @@ class Complement(Region):
             Dictionary mapping surface IDs to :class:`openmc.Surface` instances
 
         """
-        if not surfaces:
+        if surfaces is None:
             surfaces = OrderedDict()
         for region in self.node:
             surfaces = region.update_surfaces(surfaces)

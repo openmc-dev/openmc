@@ -46,7 +46,7 @@ class Region(object):
     def __ne__(self, other):
         return not self == other
 
-    def get_surfaces_from_region(self, surfaces = OrderedDict()):
+    def get_surfaces(self, surfaces=None):
         """
         Recursively find all the surfaces referenced by a region and return them
 
@@ -61,8 +61,10 @@ class Region(object):
             Dictionary mapping surface IDs to :class:`openmc.Surface` instances
 
         """
+        if not surfaces:
+            surfaces = OrderedDict()
         for region in self:
-            surfaces = region.get_surfaces_from_region(surfaces)
+            surfaces = region.get_surfaces(surfaces)
         return surfaces
 
     @staticmethod
@@ -451,10 +453,9 @@ class Complement(Region):
             temp_region = ~self.node
         return temp_region.bounding_box
 
-    def get_surfaces_from_region(self, surfaces = OrderedDict()):
+    def get_surfaces(self, surfaces=None):
         """
-        Recursively find all the surfaces referenced by the complement's node and return them
-        Overwrites method Region.get_surfaces_from_region()
+        Recursively find and return all the surfaces referenced by the node
 
         Parameters
         ----------
@@ -467,6 +468,8 @@ class Complement(Region):
             Dictionary mapping surface IDs to :class:`openmc.Surface` instances
 
         """
+        if not surfaces:
+            surfaces = OrderedDict()
         for region in self.node:
-            surfaces = region.get_surfaces_from_region(surfaces)
+            surfaces = region.get_surfaces(surfaces)
         return surfaces

@@ -450,3 +450,23 @@ class Complement(Region):
         else:
             temp_region = ~self.node
         return temp_region.bounding_box
+
+    def get_surfaces_from_region(self, surfaces = OrderedDict()):
+        """
+        Recursively find all the surfaces referenced by the complement's node and return them
+        Overwrites method Region.get_surfaces_from_region()
+
+        Parameters
+        ----------
+        surfaces: collections.OrderedDict, optional
+            Dictionary mapping surface IDs to :class:`openmc.Surface` instances
+
+        Returns
+        -------
+        surfaces: collections.OrderedDict
+            Dictionary mapping surface IDs to :class:`openmc.Surface` instances
+
+        """
+        for region in self.node:
+            surfaces = region.get_surfaces_from_region(surfaces)
+        return surfaces

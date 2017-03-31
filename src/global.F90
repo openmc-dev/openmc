@@ -18,6 +18,7 @@ module global
   use plot_header,      only: ObjectPlot
   use sab_header,       only: SAlphaBeta
   use set_header,       only: SetInt
+  use stl_vector,       only: VectorInt
   use surface_header,   only: SurfaceContainer
   use source_header,    only: SourceDistribution
   use tally_header,     only: TallyObject, TallyDerivative
@@ -154,14 +155,11 @@ module global
   integer :: i_cmfd_tallies = -1
 
   ! Active tally lists
-  type(SetInt) :: active_analog_tallies
-  type(SetInt) :: active_tracklength_tallies
-  type(SetInt) :: active_current_tallies
-  type(SetInt) :: active_collision_tallies
-  type(SetInt) :: active_tallies
-!$omp threadprivate(active_analog_tallies, active_tracklength_tallies, &
-!$omp&              active_current_tallies, active_collision_tallies, &
-!$omp&              active_tallies)
+  type(VectorInt) :: active_analog_tallies
+  type(VectorInt) :: active_tracklength_tallies
+  type(VectorInt) :: active_current_tallies
+  type(VectorInt) :: active_collision_tallies
+  type(VectorInt) :: active_tallies
 
   ! Global tallies
   !   1) collision estimate of k-eff

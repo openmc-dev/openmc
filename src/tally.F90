@@ -2219,7 +2219,7 @@ contains
 
     TALLY_LOOP: do i = 1, active_analog_tallies % size()
       ! Get index of tally and pointer to tally
-      i_tally = active_analog_tallies % get_item(i)
+      i_tally = active_analog_tallies % data(i)
       t => tallies(i_tally)
 
       ! Find the first bin in each filter. There may be more than one matching
@@ -2356,7 +2356,7 @@ contains
 
     TALLY_LOOP: do i = 1, active_analog_tallies % size()
       ! Get index of tally and pointer to tally
-      i_tally = active_analog_tallies % get_item(i)
+      i_tally = active_analog_tallies % data(i)
       t => tallies(i_tally)
 
       ! Get pointer to current material. We need this in order to determine what
@@ -2689,7 +2689,7 @@ contains
 
     TALLY_LOOP: do i = 1, active_tracklength_tallies % size()
       ! Get index of tally and pointer to tally
-      i_tally = active_tracklength_tallies % get_item(i)
+      i_tally = active_tracklength_tallies % data(i)
       t => tallies(i_tally)
 
       ! Find the first bin in each filter. There may be more than one matching
@@ -2845,7 +2845,7 @@ contains
 
     TALLY_LOOP: do i = 1, active_collision_tallies % size()
       ! Get index of tally and pointer to tally
-      i_tally = active_collision_tallies % get_item(i)
+      i_tally = active_collision_tallies % data(i)
       t => tallies(i_tally)
 
       ! Find the first bin in each filter. There may be more than one matching
@@ -3004,7 +3004,7 @@ contains
       xyz1 = p % coord(1) % xyz
 
       ! Get pointer to tally
-      i_tally = active_current_tallies % get_item(i)
+      i_tally = active_current_tallies % data(i)
       t => tallies(i_tally)
 
       ! Get index for mesh, surface, and energy filters
@@ -4025,7 +4025,7 @@ contains
     if (master .or. (.not. reduce_tallies)) then
       ! Accumulate results for each tally
       do i = 1, active_tallies % size()
-        call accumulate_tally(tallies(active_tallies % get_item(i)))
+        call accumulate_tally(tallies(active_tallies % data(i)))
       end do
 
       if (run_mode == MODE_EIGENVALUE) then
@@ -4070,7 +4070,7 @@ contains
     type(TallyObject), pointer :: t
 
     do i = 1, active_tallies % size()
-      t => tallies(active_tallies % get_item(i))
+      t => tallies(active_tallies % data(i))
 
       m = t % total_score_bins
       n = t % total_filter_bins
@@ -4214,21 +4214,27 @@ contains
 
     do i = 1, n_user_tallies
       ! Add tally to active tallies
-      call active_tallies % add(i_user_tallies + i)
+      call active_tallies % push_back(i_user_tallies + i)
 
       ! Check what type of tally this is and add it to the appropriate list
       if (user_tallies(i) % type == TALLY_VOLUME) then
         if (user_tallies(i) % estimator == ESTIMATOR_ANALOG) then
-          call active_analog_tallies % add(i_user_tallies + i)
+          call active_analog_tallies % push_back(i_user_tallies + i)
         elseif (user_tallies(i) % estimator == ESTIMATOR_TRACKLENGTH) then
-          call active_tracklength_tallies % add(i_user_tallies + i)
+          call active_tracklength_tallies % push_back(i_user_tallies + i)
         elseif (user_tallies(i) % estimator == ESTIMATOR_COLLISION) then
-          call active_collision_tallies % add(i_user_tallies + i)
+          call active_collision_tallies % push_back(i_user_tallies + i)
         end if
       elseif (user_tallies(i) % type == TALLY_SURFACE_CURRENT) then
-        call active_current_tallies % add(i_user_tallies + i)
+        call active_current_tallies % push_back(i_user_tallies + i)
       end if
     end do
+
+    call active_tallies % shrink_to_fit()
+    call active_analog_tallies % shrink_to_fit()
+    call active_tracklength_tallies % shrink_to_fit()
+    call active_collision_tallies % shrink_to_fit()
+    call active_current_tallies % shrink_to_fit()
 
   end subroutine setup_active_usertallies
 
@@ -4256,19 +4262,25 @@ contains
 
     do i = 1, n_cmfd_tallies
       ! Add CMFD tally to active tallies
-      call active_tallies % add(i_cmfd_tallies + i)
+      call active_tallies % push_back(i_cmfd_tallies + i)
 
       ! Check what type of tally this is and add it to the appropriate list
       if (cmfd_tallies(i) % type == TALLY_VOLUME) then
         if (cmfd_tallies(i) % estimator == ESTIMATOR_ANALOG) then
-          call active_analog_tallies % add(i_cmfd_tallies + i)
+          call active_analog_tallies % push_back(i_cmfd_tallies + i)
         elseif (cmfd_tallies(i) % estimator == ESTIMATOR_TRACKLENGTH) then
-          call active_tracklength_tallies % add(i_cmfd_tallies + i)
+          call active_tracklength_tallies % push_back(i_cmfd_tallies + i)
         end if
       elseif (cmfd_tallies(i) % type == TALLY_SURFACE_CURRENT) then
-        call active_current_tallies % add(i_cmfd_tallies + i)
+        call active_current_tallies % push_back(i_cmfd_tallies + i)
       end if
     end do
+
+    call active_tallies % shrink_to_fit()
+    call active_analog_tallies % shrink_to_fit()
+    call active_tracklength_tallies % shrink_to_fit()
+    call active_collision_tallies % shrink_to_fit()
+    call active_current_tallies % shrink_to_fit()
 
   end subroutine setup_active_cmfdtallies
 

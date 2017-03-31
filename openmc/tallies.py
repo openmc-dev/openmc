@@ -3468,20 +3468,6 @@ class Tallies(cv.CheckedList):
                     # Continue iterating from the first loop
                     break
 
-    def remove_duplicate_filters(self):
-        """Search all tallies for any identical filters and set the IDs of
-        identical filters to the same value. This prevents a filter from being
-        written multiple times to the tallies.xml input file.
-
-        """
-
-        for tally1 in self:
-            for filter1 in tally1.filters:
-                for tally2 in self:
-                    for filter2 in tally2.filters:
-                        if filter1 == filter2:
-                            filter2.id = filter1.id
-
     def add_mesh(self, mesh):
         """Add a mesh to the file
 
@@ -3534,12 +3520,16 @@ class Tallies(cv.CheckedList):
                         already_written.add(f.mesh)
 
     def _create_filter_subelements(self, root_element):
-        already_written = set()
+        already_written = dict()
         for tally in self:
             for f in tally.filters:
                 if f not in already_written:
                     root_element.append(f.to_xml_element())
-                    already_written.add(f)
+                    already_written[f] = f.id
+                else:
+                    # Set the IDs of identical filters with different
+                    # user-defined IDs to the same value
+                    f.id = already_written[f]
 
     def _create_derivative_subelements(self, root_element):
         # Get a list of all derivatives referenced in a tally.
@@ -3553,22 +3543,15 @@ class Tallies(cv.CheckedList):
         for d in derivs:
             root_element.append(d.to_xml_element())
 
-    def export_to_xml(self, path='tallies.xml', reduce_filters=True):
+    def export_to_xml(self, path='tallies.xml'):
         """Create a tallies.xml file that can be used for a simulation.
 
         Parameters
         ----------
         path : str
             Path to file to write. Defaults to 'tallies.xml'.
-        reduce_filters : bool
-            Indicates whether duplicate filters should be removed. This
-            prevents identical filters with different user IDs from being
-            written to the tallies.xml input file. Defaults to True.
 
         """
-
-        if reduce_filters:
-            self.remove_duplicate_filters()
 
         root_element = ET.Element("tallies")
         self._create_mesh_subelements(root_element)

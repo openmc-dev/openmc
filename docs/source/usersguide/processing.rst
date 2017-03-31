@@ -34,7 +34,7 @@ Geometry Visualization
 
 Geometry plotting is carried out by creating a plots.xml, specifying plots, and
 running OpenMC with the --plot or -p command-line option (See
-:ref:`usersguide_plotting`).
+:ref:`scripts_openmc`).
 
 Plotting in 2D
 --------------

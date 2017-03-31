@@ -30,7 +30,7 @@ Alternatively, you could run from any directory:
 Note that in the latter case, any output files will be placed in the present
 working directory which may be different from ``/home/username/somemodel``. If
 you're using the Python API, :func:`openmc.run` is equivalent to running
-``openmc`` from the command line. OpenMC accepts the following command line
+``openmc`` from the command line. ``openmc`` accepts the following command line
 flags:
 
 -c, --volume           Run in stochastic volume calculation mode
@@ -95,10 +95,8 @@ Input files can be checked before executing OpenMC using the
 ``openmc-validate-xml`` script which is installed alongside the Python API. Two
 command line arguments can be set when running ``openmc-validate-xml``:
 
-* ``-i``, ``--input-path`` - Location of OpenMC input files.
-  *Default*: current working directory
-* ``-r``, ``--relaxng-path`` - Location of OpenMC RelaxNG files.
-  *Default*: None
+-i, --input-path      Location of OpenMC input files.
+-r, --relaxng-path    Location of OpenMC RelaxNG files
 
 If the RelaxNG path is not set, the script will search for these files because
 it expects that the user is either running the script located in the install
@@ -120,3 +118,22 @@ Message                   Description
 ---------------------------
 ``openmc-voxel-to-silovtk``
 ---------------------------
+
+When OpenMC generates :ref:`voxel plots <usersguide_voxel>`, they are in an
+:ref:`HDF5 format <io_voxel>` that is not terribly useful by itself. The
+``openmc-voxel-to-silovtk`` script converts a voxel HDF5 file to `VTK
+<http://www.vtk.org/>`_ or `SILO
+<https://wci.llnl.gov/simulation/computer-codes/silo>`_ file. For VTK, you need
+to have the VTK Python bindings installed. For SILO, you need to have `silomesh
+<https://github.com/nhorelik/silomesh>`_ installed. To convert a voxel file,
+simply provide the path to the file:
+
+.. code-block:: sh
+
+   openmc-voxel-to-silovtk voxel_1.h5
+
+The ``openmc-voxel-to-silovtk`` script also takes the following optional
+command-line arguments:
+
+-o, --output   Path to output VTK or SILO file
+-s, --silo     Flag to convert to SILO instead of VTK

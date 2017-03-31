@@ -220,11 +220,6 @@ The ``<output>`` element determines what output files should be written to disk
 during the run. The sub-elements are described below, where "true" will write
 out the file and "false" will not.
 
-  :cross_sections:
-    Writes out an ASCII summary file of the cross sections that were read in.
-
-    *Default*: false
-
   :summary:
     Writes out an HDF5 summary file describing all of the user input files that
     were read in.
@@ -239,15 +234,11 @@ out the file and "false" will not.
   .. note:: The tally results will always be written to a binary/HDF5 state
             point file.
 
--------------------------
-``<output_path>`` Element
--------------------------
+  :path:
+    Absolute or relative path where all output files should be written to. The
+    specified path must exist or else OpenMC will abort.
 
-The ``<output_path>`` element specifies an absolute or relative path where all
-output files should be written to. The specified path must exist or else OpenMC
-will abort.
-
-  *Default*: Current working directory
+    *Default*: Current working directory
 
 -----------------------
 ``<particles>`` Element

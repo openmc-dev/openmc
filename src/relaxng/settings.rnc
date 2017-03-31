@@ -38,12 +38,9 @@ element settings {
 
   element output {
     (element summary { xsd:boolean } | attribute summary { xsd:boolean })? &
-    (element cross_sections { xsd:boolean } |
-      attribute cross_sections { xsd:boolean })? &
-    (element tallies { xsd:boolean } | attribute tallies { xsd:boolean })?
+    (element tallies { xsd:boolean } | attribute tallies { xsd:boolean })? &
+    (element path { xsd:string } | attribute path { xsd:string })?
   }? &
-
-  element output_path { xsd:string { maxLength = "255" } }? &
 
   element particles { xsd:positiveInteger }? &
 

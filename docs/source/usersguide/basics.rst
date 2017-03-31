@@ -156,6 +156,8 @@ Serpent. In the Python API, integer IDs can be assigned but it is not strictly
 required. When IDs are not explicitly assigned to instances of the OpenMC Python
 classes, they will be automatically assigned.
 
+.. _result_files:
+
 -----------------------------
 Viewing and Analyzing Results
 -----------------------------

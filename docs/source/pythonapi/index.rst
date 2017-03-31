@@ -200,6 +200,8 @@ Various classes may be created when performing tally slicing and/or arithmetic:
    openmc.arithmetic.AggregateNuclide
    openmc.arithmetic.AggregateFilter
 
+.. _pythonapi_stats:
+
 ---------------------------------
 :mod:`openmc.stats` -- Statistics
 ---------------------------------

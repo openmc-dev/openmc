@@ -134,7 +134,9 @@ class Filter(object):
         return not self > other
 
     def __hash__(self):
-        return hash(repr(self))
+        string = type(self).__name__ + '\n'
+        string += '{: <16}=\t{}\n'.format('\tBins', self.bins)
+        return hash(repr(string))
 
     def __repr__(self):
         string = type(self).__name__ + '\n'

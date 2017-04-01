@@ -4,6 +4,8 @@
 Geometry Visualization
 ======================
 
+.. currentmodule:: openmc
+
 OpenMC is capable of producing two-dimensional slice plots of a geometry as well
 as three-dimensional voxel plots using the geometry plotting :ref:`run mode
 <usersguide_run_modes>` is a geometry plotting mode. The geometry plotting mode

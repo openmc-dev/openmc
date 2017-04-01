@@ -71,6 +71,8 @@ you would need to add hydrogen and oxygen to a material and then assign the
    water.add_s_alpha_beta('c_H_in_H2O')
    water.set_density('g/cm3', 1.0)
 
+.. _usersguide_naming:
+
 ------------------
 Naming Conventions
 ------------------

@@ -373,6 +373,67 @@ if we wanted to run only the plot tests with 4 processors, we run:
 If you want to run the full test suite with different build options please
 refer to our :ref:`test suite` documentation.
 
+--------------------
+Python Prerequisites
+--------------------
+
+OpenMC's :ref:`Python API <pythonapi>` works with either Python 2.7 or Python
+3.2+. In addition to Python itself, the API relies on a number of third-party
+packages. All prerequisites can be installed using `conda
+<http://conda.pydata.org/docs/>`_ (recommended), `pip
+<https://pip.pypa.io/en/stable/>`_, or through the package manager in most Linux
+distributions.
+
+.. admonition:: Required
+   :class: error
+
+   `six <https://pythonhosted.org/six/>`_
+      The Python API works with both Python 2.7+ and 3.2+. To do so, the six
+      compatibility library is used.
+
+   `NumPy <http://www.numpy.org/>`_
+      NumPy is used extensively within the Python API for its powerful
+      N-dimensional array.
+
+   `h5py <http://www.h5py.org/>`_
+      h5py provides Python bindings to the HDF5 library. Since OpenMC outputs
+      various HDF5 files, h5py is needed to provide access to data within these
+      files from Python.
+
+.. admonition:: Optional
+   :class: note
+
+   `SciPy <https://www.scipy.org/>`_
+      SciPy's special functions, sparse matrices, and spatial data structures
+      are used for several optional features in the API.
+
+   `pandas <http://pandas.pydata.org/>`_
+      Pandas is used to generate tally DataFrames as demonstrated in
+      :ref:`examples_pandas` example notebook.
+
+   `Matplotlib <http://matplotlib.org/>`_
+      Matplotlib is used to providing plotting functionality in the API like the
+      :meth:`Universe.plot` method and the :func:`openmc.plot_xs` function.
+
+   `uncertainties <https://pythonhosted.org/uncertainties/>`_
+      Uncertainties are optionally used for decay data in the :ref:`openmc.data
+      <pythonapi_data>`.
+
+   `Cython <http://cython.org/>`_
+      Cython is used for resonance reconstruction for ENDF data converted to
+      :class:`openmc.data.IncidentNeutron`.
+
+   `vtk <http://www.vtk.org/>`_
+      The Python VTK bindings are needed to convert voxel and track files to VTK
+      format.
+
+   `silomesh <https://github.com/nhorelik/silomesh>`_
+      The silomesh package is needed to convert voxel and track files to SILO
+      format.
+
+   `lxml <http://lxml.de/>`_
+      lxml is used for the :ref:`scripts_validate` script.
+
 ---------------------------
 Cross Section Configuration
 ---------------------------

@@ -39,12 +39,13 @@ kwargs = {'name': 'openmc',
 if have_setuptools:
     kwargs.update({
         # Required dependencies
-        'install_requires': ['six', 'numpy>=1.9', 'h5py', 'matplotlib'],
+        'install_requires': ['six', 'numpy>=1.9', 'h5py'],
 
         # Optional dependencies
         'extras_require': {
             'decay': ['uncertainties'],
             'pandas': ['pandas>=0.17.0'],
+            'plot': ['matplotlib', 'ipython'],
             'sparse' : ['scipy'],
             'vtk': ['vtk', 'silomesh'],
             'validate': ['lxml']

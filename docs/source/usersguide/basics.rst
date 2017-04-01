@@ -96,13 +96,13 @@ Serpent, with the added bonus that the XML formats feel much more
 Python API
 ----------
 
-OpenMC's Python API defines a set of functions and classes that roughly
-correspond to elements in the XML files. For example, the :class:`openmc.Cell`
-Python class directly corresponds to the :ref:`cell_element` in XML. Each XML
-file itself also has a corresponding class: :class:`openmc.Geometry` for
-``geometry.xml``, :class:`openmc.Materials` for ``materials.xml``,
-:class:`openmc.Settings` for ``settings.xml``, and so on. To create a model
-then, one creates instances of these classes and then uses the
+OpenMC's :ref:`Python API <pythonapi>` defines a set of functions and classes
+that roughly correspond to elements in the XML files. For example, the
+:class:`openmc.Cell` Python class directly corresponds to the
+:ref:`cell_element` in XML. Each XML file itself also has a corresponding class:
+:class:`openmc.Geometry` for ``geometry.xml``, :class:`openmc.Materials` for
+``materials.xml``, :class:`openmc.Settings` for ``settings.xml``, and so on. To
+create a model then, one creates instances of these classes and then uses the
 ``export_to_xml()`` method, e.g. :meth:`Geometry.export_to_xml`. Most scripts
 that generate a full model will look something like the following:
 

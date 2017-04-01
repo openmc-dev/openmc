@@ -110,6 +110,8 @@ respectively.
    openmc.get_hexagonal_prism
    openmc.get_rectangular_prism
 
+.. _pythonapi_tallies:
+
 Constructing Tallies
 --------------------
 

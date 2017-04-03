@@ -21,4 +21,5 @@ essential aspects of using OpenMC to perform simulations.
     plots
     scripts
     processing
+    parallel
     troubleshoot

@@ -269,6 +269,13 @@ module constants
        TEMPERATURE_NEAREST = 1, &
        TEMPERATURE_INTERPOLATION = 2
 
+  ! Resonance elastic scattering methods
+  integer, parameter :: &
+       RES_SCAT_ARES = 1, &
+       RES_SCAT_DBRC = 2, &
+       RES_SCAT_WCM = 3, &
+       RES_SCAT_CXS = 4
+
   ! ============================================================================
   ! TALLY-RELATED CONSTANTS
 

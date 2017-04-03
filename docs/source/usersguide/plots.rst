@@ -36,6 +36,16 @@ create a x-z plot centered at (5.0, 2.0, 3.0) with a width of (50., 50.) and
   plot.width = (50., 50.)
   plot.pixels = (400, 400)
 
+The color of each pixel is determined by placing a particle at the center of
+that pixel and using OpenMC's internal ``find_cell`` routine (the same one used
+for particle tracking during simulation) to determine the cell and material at
+that location.
+
+.. note:: In this example, pixels are 50/400=0.125 cm wide. Thus, this plot may
+          miss any features smaller than 0.125 cm, since they could exist
+          between pixel centers. More pixels can be used to resolve finer
+          features, but could result in larger files.
+
 By default, a unique color will be assigned to each cell in the geometry. If you
 want your plot to be colored by material instead, change the
 :attr:`Plot.color_by` attribute::

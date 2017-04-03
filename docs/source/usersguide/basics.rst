@@ -182,7 +182,7 @@ For a simple simulation with few tallies, looking at the ``tallies.out`` file
 might be sufficient. For anything more complicated (plotting results, finding a
 subset of results, etc.), you will likely find it easier to work with the
 statepoint file directly using the :class:`openmc.StatePoint` class. For more
-details on working with statepoints, see FIXME.
+details on working with statepoints, see :ref:`usersguide_statepoint`.
 
 --------------
 Physical Units

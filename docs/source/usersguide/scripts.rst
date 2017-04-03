@@ -169,6 +169,8 @@ test suite. This script has the following optional arguments:
 
 -b, --batch     Suppress standard in
 
+.. _scripts_plot:
+
 --------------------------
 ``openmc-plot-mesh-tally``
 --------------------------
@@ -177,14 +179,16 @@ test suite. This script has the following optional arguments:
 tallies. The path to the statepoint file can be provided as an optional arugment
 (if omitted, a file dialog will be presented).
 
+.. _scripts_track:
+
 -----------------------
 ``openmc-track-to-vtk``
 -----------------------
 
-This script converts HDF5 particle track files to VTK poly data that can be
-viewed with ParaView or VisIt. The filenames of the particle track files should
-be given as posititional arguments. The output filename can also be changed with
-the ``-o`` flag:
+This script converts HDF5 :ref:`particle track files <usersguide_track>` to VTK
+poly data that can be viewed with ParaView or VisIt. The filenames of the
+particle track files should be given as posititional arguments. The output
+filename can also be changed with the ``-o`` flag:
 
 -o OUT, --out OUT    Output VTK poly filename
 

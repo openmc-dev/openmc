@@ -837,15 +837,17 @@ contains
     real(8)                   :: xs_out ! 0K xs at trial energy
 
     integer :: i_grid ! index on nuclide energy grid
+    integer :: n_grid
     real(8) :: f      ! interp factor on nuclide energy grid
 
     ! Determine index on nuclide energy grid
+    n_grid = size(nuc % energy_0K)
     if (E < nuc % energy_0K(1)) then
       i_grid = 1
-    elseif (E > nuc % energy_0K(nuc % n_grid_0K)) then
-      i_grid = nuc % n_grid_0K - 1
+    elseif (E > nuc % energy_0K(n_grid)) then
+      i_grid = n_grid - 1
     else
-      i_grid = binary_search(nuc % energy_0K, nuc % n_grid_0K, E)
+      i_grid = binary_search(nuc % energy_0K, n_grid, E)
     end if
 
     ! check for rare case where two energy points are the same

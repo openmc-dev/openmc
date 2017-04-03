@@ -245,6 +245,8 @@ should be used:
 
 .. _gcov: https://gcc.gnu.org/onlinedocs/gcc/Gcov.html
 
+.. _usersguide_compile_mpi:
+
 Compiling with MPI
 ++++++++++++++++++
 

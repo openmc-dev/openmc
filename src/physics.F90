@@ -875,9 +875,9 @@ contains
       wgt = wcf * wgt
 
     case (RES_SCAT_DBRC, RES_SCAT_ARES)
-      E_red = sqrt((awr * E) / kT)
-      E_low = (((E_red - FOUR)**2) * kT) / awr
-      E_up  = (((E_red + FOUR)**2) * kT) / awr
+      E_red = sqrt(awr * E / kT)
+      E_low = (max(ZERO, E_red - FOUR)**2) * kT / awr
+      E_up  = ((E_red + FOUR)**2) * kT / awr
 
       ! find lower and upper energy bound indices
       ! lower index
@@ -949,8 +949,8 @@ contains
           ARES_REJECT_LOOP: do
             ! perform Maxwellian rejection sampling
             xi = prn()
-            E_t = 16.0_8 * kT * xi**2
-            R = FOUR * xi * exp(ONE - E_t/kT)
+            E_t = 16.0_8 * xi * xi
+            R = sqrt(TWO * E_t) * exp(HALF  - E_t)
 
             if (prn() < R) then
               ! sample a relative energy using the xs cdf

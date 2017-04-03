@@ -2,23 +2,6 @@
 """Update OpenMC's deprecated multi-group cross section XML files to the latest
 HDF5-based format.
 
-Usage information can be obtained by running 'openmc-update-mgxs --help':
-
-usage: openmc-update-mgxs [-h] in out
-
-Update mgxs.xml files to the latest format. This will remove 'outside'
-attributes/elements from lattices and replace them with 'outer' attributes. For
-'cell' elements, any 'surfaces' attributes/elements will be renamed
-'region'. Note that this script will not delete the given files; it will append
-'.original' to the given files and write new ones.
-
-positional arguments:
-  in          Input mgxs xml file
-  out         Output mgxs hdf5 file
-
-optional arguments:
-  -h, --help  show this help message and exit
-
 """
 
 from __future__ import print_function

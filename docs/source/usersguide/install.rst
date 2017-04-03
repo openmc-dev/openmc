@@ -445,10 +445,9 @@ or multi-group mode.
 In continuous-energy mode, OpenMC uses a native HDF5 format to store all nuclear
 data. If you have ACE format data that was produced with NJOY_, such as that
 distributed with MCNP_ or Serpent_, it can be converted to the HDF5 format using
-the :ref:`openmc-ace-to-hdf5 <other_cross_sections>` script distributed with
-OpenMC.  Several sources provide openly available ACE data as described
-below. The TALYS-based evaluated nuclear data library, TENDL_, is also available
-in ACE format.
+the :ref:`scripts_ace` script.  Several sources provide openly available ACE
+data as described below. The TALYS-based evaluated nuclear data library, TENDL_,
+is also available in ACE format.
 
 In multi-group mode, OpenMC utilizes an XML-based library format which can be
 used to describe nuclide- or material-specific quantities.
@@ -457,8 +456,8 @@ Using ENDF/B-VII.1 Cross Sections from NNDC
 -------------------------------------------
 
 The NNDC_ provides ACE data from the ENDF/B-VII.1 neutron and thermal scattering
-sublibraries at four temperatures processed using NJOY_. To use this data with
-OpenMC, a script is provided with OpenMC that will automatically download and
+sublibraries at room temperature processed using NJOY_. To use this data with
+OpenMC, the :ref:`scripts_nndc` script can be used to automatically download and
 extract the ACE data, fix any deficiencies, and create an HDF5 library:
 
 .. code-block:: sh
@@ -473,8 +472,9 @@ Using JEFF Cross Sections from OECD/NEA
 ---------------------------------------
 
 The NEA_ provides processed ACE data from the JEFF_ library. To use this data
-with OpenMC, a script is provided with OpenMC that will automatically download
-and extract the ACE data, fix any deficiencies, and create an HDF5 library.
+with OpenMC, the :ref:`scripts_jeff` script can be used to automatically
+download and extract the ACE data, fix any deficiencies, and create an HDF5
+library.
 
 .. code-block:: sh
 
@@ -486,10 +486,11 @@ variable to the absolute path of the file ``jeff-3.2-hdf5/cross_sections.xml``.
 Using Cross Sections from MCNP
 ------------------------------
 
-OpenMC is provided with a script that will automatically convert ENDF/B-VII.0
-and ENDF/B-VII.1 ACE data that is provided with MCNP5 or MCNP6. To convert the
-ENDF/B-VII.0 ACE files (``endf70[a-k]`` and ``endf70sab``) into the native HDF5
-format, run the following:
+OpenMC provides two scripts (:ref:`scripts_mcnp70` and :ref:`scripts_mcnp71`)
+that will automatically convert ENDF/B-VII.0 and ENDF/B-VII.1 ACE data that is
+provided with MCNP5 or MCNP6. To convert the ENDF/B-VII.0 ACE files
+(``endf70[a-k]`` and ``endf70sab``) into the native HDF5 format, run the
+following:
 
 .. code-block:: sh
 
@@ -514,9 +515,9 @@ Using Other Cross Sections
 --------------------------
 
 If you have a library of ACE format cross sections other than those listed above
-that you need to convert to OpenMC's HDF5 format, the ``openmc-ace-to-hdf5``
-script can be used. There are four different ways you can specify ACE libraries
-that are to be converted:
+that you need to convert to OpenMC's HDF5 format, the :ref:`scripts_ace` script
+can be used. There are four different ways you can specify ACE libraries that
+are to be converted:
 
 1. List each ACE library as a positional argument. This is very useful in
    conjunction with the usual shell utilities (ls, find, etc.).
@@ -530,31 +531,6 @@ xsdata files to determine whether the nuclide is metastable. Instead, the
 convention follows the NNDC data convention (1000*Z + A + 300 + 100*m), or the
 MCNP data convention (essentially the same as NNDC, except that the first
 metastable state of Am242 is 95242 and the ground state is 95642).
-
-The ``openmc-ace-to-hdf5`` script has the following command-line flags:
-
--h, --help            show this help message and exit
-
--d DESTINATION, --destination DESTINATION
-                      Directory to create new library in (default: .)
-
--m META, --metastable META
-                      How to interpret ZAIDs for metastable nuclides. META
-                      can be either 'nndc' or 'mcnp'. (default: nndc)
-
---xml XML             Old-style cross_sections.xml that lists ACE libraries
-                      (default: None)
-
---xsdir XSDIR         MCNP xsdir file that lists ACE libraries (default:
-                      None)
-
---xsdata XSDATA       Serpent xsdata file that lists ACE libraries (default:
-                      None)
-
---fission_energy_release FISSION_ENERGY_RELEASE
-                      HDF5 file containing fission energy release data
-                      (default: None)
-
 
 Using Multi-Group Cross Sections
 --------------------------------

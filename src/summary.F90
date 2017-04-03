@@ -111,7 +111,7 @@ contains
   subroutine write_geometry(file_id)
     integer(HID_T), intent(in) :: file_id
 
-    integer :: i, j, k, m, offset
+    integer :: i, j, k, m
     integer, allocatable :: lattice_universes(:,:,:)
     integer, allocatable :: cell_materials(:)
     integer, allocatable :: cell_ids(:)

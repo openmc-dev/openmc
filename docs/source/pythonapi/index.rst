@@ -39,7 +39,6 @@ Simulation Settings
    :template: myclass.rst
 
    openmc.Source
-   openmc.ResonanceScattering
    openmc.VolumeCalculation
    openmc.Settings
 
@@ -173,6 +172,7 @@ Running OpenMC
    openmc.calculate_volumes
    openmc.plot_geometry
    openmc.plot_inline
+   openmc.search_for_keff
 
 Post-processing
 ---------------
@@ -337,6 +337,19 @@ Functions
    openmc.model.create_triso_lattice
    openmc.model.pack_trisos
 
+Model Container
+---------------
+
+Classes
++++++++
+
+.. autosummary::
+   :toctree: generated
+   :nosignatures:
+   :template: myclass.rst
+
+   openmc.model.Model
+
 --------------------------------------------
 :mod:`openmc.data` -- Nuclear Data Interface
 --------------------------------------------
@@ -371,6 +384,8 @@ Core Functions
     :template: myfunction.rst
 
     openmc.data.atomic_mass
+    openmc.data.linearize
+    openmc.data.thin
     openmc.data.write_compact_458_library
 
 Angle-Energy Distributions

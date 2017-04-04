@@ -875,9 +875,9 @@ contains
       wgt = wcf * wgt
 
     case (RES_SCAT_DBRC, RES_SCAT_ARES)
-      E_red = sqrt((awr * E) / kT)
-      E_low = (((E_red - FOUR)**2) * kT) / awr
-      E_up  = (((E_red + FOUR)**2) * kT) / awr
+      E_red = sqrt(awr * E / kT)
+      E_low = max(ZERO, E_red - FOUR)**2 * kT / awr
+      E_up  = (E_red + FOUR)**2 * kT / awr
 
       ! find lower and upper energy bound indices
       ! lower index

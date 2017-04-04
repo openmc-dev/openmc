@@ -22,4 +22,5 @@ essential aspects of using OpenMC to perform simulations.
     scripts
     processing
     parallel
+    volume
     troubleshoot

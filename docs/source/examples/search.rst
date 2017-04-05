@@ -6,7 +6,7 @@ Criticality Search
 
 .. only:: html
 
-    .. notebook:: search.ipynb
+    .. notebook:: ../../../examples/jupyter/search.ipynb
 
 .. only:: latex
 

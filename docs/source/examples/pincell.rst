@@ -6,7 +6,7 @@ Modeling a Pin-Cell
 
 .. only:: html
 
-    .. notebook:: pincell.ipynb
+    .. notebook:: ../../../examples/jupyter/pincell.ipynb
 
 .. only:: latex
 

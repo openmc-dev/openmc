@@ -82,16 +82,16 @@ scripts/*.tar.xz
 # IPython notebook checkpoints
 .ipynb_checkpoints
 
-# Multi-group cross section IPython Notebook
-docs/source/examples/*.xml
-docs/source/examples/*.png
-docs/source/examples/*.xls
-docs/source/examples/*.ace
-docs/source/examples/*.endf
-docs/source/examples/mgxs
-docs/source/examples/tracks
-docs/source/examples/fission-rates
-docs/source/examples/plots
+# Jupyter notebooks
+examples/jupyter/*.xml
+examples/jupyter/*.png
+examples/jupyter/*.xls
+examples/jupyter/*.ace
+examples/jupyter/*.endf
+examples/jupyter/mgxs
+examples/jupyter/tracks
+examples/jupyter/fission-rates
+examples/jupyter/plots
 
 # Cython files
 *.c

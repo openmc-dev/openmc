@@ -6,7 +6,7 @@ Modeling TRISO Particles
 
 .. only:: html
 
-    .. notebook:: triso.ipynb
+    .. notebook:: ../../../examples/jupyter/triso.ipynb
 
 .. only:: latex
 

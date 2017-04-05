@@ -367,7 +367,7 @@ class Lattice(object):
         return all_universes
 
     def get_universe(self, idx):
-        """Return universe corresponding to a lattice element index
+        r"""Return universe corresponding to a lattice element index
 
         Parameters
         ----------

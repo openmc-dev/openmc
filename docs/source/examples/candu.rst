@@ -6,7 +6,7 @@ Modeling a CANDU Bundle
 
 .. only:: html
 
-    .. notebook:: candu.ipynb
+    .. notebook:: ../../../examples/jupyter/candu.ipynb
 
 .. only:: latex
 

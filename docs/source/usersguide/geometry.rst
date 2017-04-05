@@ -18,17 +18,17 @@ can assign to a cell, we must first define surfaces which bound the region. A
 surface is a locus of zeros of a function of Cartesian coordinates
 :math:`x,y,z`, e.g.
 
-- A plane perpendicular to the :math:`x` axis: :math:`x − x_0 = 0`
-- A cylinder perpendicular to the :math:`z` axis: :math:`(x − x_0)^2 + (y −
-  y_0)^2 − R^2 = 0`
-- A sphere: :math:`(x − x_0)^2 + (y − y_0)^2 + (z − z_0)^2 − R^2 = 0`
+- A plane perpendicular to the :math:`x` axis: :math:`x - x_0 = 0`
+- A cylinder perpendicular to the :math:`z` axis: :math:`(x - x_0)^2 + (y -
+  y_0)^2 - R^2 = 0`
+- A sphere: :math:`(x - x_0)^2 + (y - y_0)^2 + (z - z_0)^2 - R^2 = 0`
 
 Defining a surface alone is not sufficient to specify a volume -- in order to
 define an actual volume, one must reference the *half-space* of a surface. A
 surface half-space is the region whose points satisfy a positive of negative
 inequality of the surface equation. For example, for a sphere of radius one
 centered at the origin, the surface equation is :math:`f(x,y,z) = x^2 + y^2 +
-z^2 − 1 = 0`. Thus, we say that the negative half-space of the sphere, is
+z^2 - 1 = 0`. Thus, we say that the negative half-space of the sphere, is
 defined as the collection of points satisfying :math:`f(x,y,z) < 0`, which one
 can reason is the inside of the sphere. Conversely, the positive half-space of
 the sphere would correspond to all points outside of the sphere, satisfying
@@ -79,7 +79,7 @@ classes are listed in the following table.
     | :math:`z`-axis       | - R^2(z-z_0)^2 = 0`          |                           |
     +----------------------+------------------------------+---------------------------+
     | General quadric      | :math:`Ax^2 + By^2 + Cz^2 +  |  :class:`openmc.Quadric`  |
-    | surface              | Dxy + Eyz + Fxz \\+Gx + Hy + |                           |
+    | surface              | Dxy + Eyz + Fxz + Gx + Hy +  |                           |
     |                      | Jz + K = 0`                  |                           |
     +----------------------+------------------------------+---------------------------+
 

@@ -5,7 +5,7 @@ Geometry Plotting Specification -- plots.xml
 ============================================
 
 Basic plotting capabilities are available in OpenMC by creating a plots.xml file
-and subsequently running with the ``--plot``command-line flag. The root element
+and subsequently running with the ``--plot`` command-line flag. The root element
 of the plots.xml is simply ``<plots>`` and any number output plots can be
 defined with ``<plot>`` sub-elements.  Two plot types are currently implemented
 in openMC:

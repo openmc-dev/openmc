@@ -4,6 +4,8 @@
 Installation and Configuration
 ==============================
 
+.. currentmodule:: openmc
+
 ----------------------------------------
 Installing on Linux/Mac with conda-forge
 ----------------------------------------
@@ -187,6 +189,8 @@ switch to the source of the latest stable release, run the following commands::
 .. _GitHub: https://github.com/mit-crpg/openmc
 .. _git: http://git-scm.com
 .. _ssh: http://en.wikipedia.org/wiki/Secure_Shell
+
+.. _usersguide_build:
 
 Build Configuration
 -------------------
@@ -418,8 +422,8 @@ distributions.
       :meth:`Universe.plot` method and the :func:`openmc.plot_xs` function.
 
    `uncertainties <https://pythonhosted.org/uncertainties/>`_
-      Uncertainties are optionally used for decay data in the :ref:`openmc.data
-      <pythonapi_data>`.
+      Uncertainties are optionally used for decay data in the :mod:`openmc.data`
+      module.
 
    `Cython <http://cython.org/>`_
       Cython is used for resonance reconstruction for ENDF data converted to
@@ -436,121 +440,7 @@ distributions.
    `lxml <http://lxml.de/>`_
       lxml is used for the :ref:`scripts_validate` script.
 
----------------------------
-Cross Section Configuration
----------------------------
-
-In order to run a simulation with OpenMC, you will need cross section data for
-each nuclide or material in your problem. OpenMC can be run in continuous-energy
-or multi-group mode.
-
-In continuous-energy mode, OpenMC uses a native HDF5 format to store all nuclear
-data. If you have ACE format data that was produced with NJOY_, such as that
-distributed with MCNP_ or Serpent_, it can be converted to the HDF5 format using
-the :ref:`scripts_ace` script.  Several sources provide openly available ACE
-data as described below. The TALYS-based evaluated nuclear data library, TENDL_,
-is also available in ACE format.
-
-In multi-group mode, OpenMC utilizes an XML-based library format which can be
-used to describe nuclide- or material-specific quantities.
-
-Using ENDF/B-VII.1 Cross Sections from NNDC
--------------------------------------------
-
-The NNDC_ provides ACE data from the ENDF/B-VII.1 neutron and thermal scattering
-sublibraries at room temperature processed using NJOY_. To use this data with
-OpenMC, the :ref:`scripts_nndc` script can be used to automatically download and
-extract the ACE data, fix any deficiencies, and create an HDF5 library:
-
-.. code-block:: sh
-
-    openmc-get-nndc-data
-
-At this point, you should set the :envvar:`OPENMC_CROSS_SECTIONS` environment
-variable to the absolute path of the file ``nndc_hdf5/cross_sections.xml``. This
-cross section set is used by the test suite.
-
-Using JEFF Cross Sections from OECD/NEA
----------------------------------------
-
-The NEA_ provides processed ACE data from the JEFF_ library. To use this data
-with OpenMC, the :ref:`scripts_jeff` script can be used to automatically
-download and extract the ACE data, fix any deficiencies, and create an HDF5
-library.
-
-.. code-block:: sh
-
-    openmc-get-jeff-data
-
-At this point, you should set the :envvar:`OPENMC_CROSS_SECTIONS` environment
-variable to the absolute path of the file ``jeff-3.2-hdf5/cross_sections.xml``.
-
-Using Cross Sections from MCNP
-------------------------------
-
-OpenMC provides two scripts (:ref:`scripts_mcnp70` and :ref:`scripts_mcnp71`)
-that will automatically convert ENDF/B-VII.0 and ENDF/B-VII.1 ACE data that is
-provided with MCNP5 or MCNP6. To convert the ENDF/B-VII.0 ACE files
-(``endf70[a-k]`` and ``endf70sab``) into the native HDF5 format, run the
-following:
-
-.. code-block:: sh
-
-    openmc-convert-mcnp70-data /path/to/mcnpdata/
-
-where ``/path/to/mcnpdata`` is the directory containing the ``endf70[a-k]``
-files.
-
-To convert the ENDF/B-VII.1 ACE files (the endf71x and ENDF71SaB libraries), use
-the following script:
-
-.. code-block:: sh
-
-    openmc-convert-mcnp71-data /path/to/mcnpdata
-
-where ``/path/to/mcnpdata`` is the directory containing the ``endf71x`` and
-``ENDF71SaB`` directories.
-
-.. _other_cross_sections:
-
-Using Other Cross Sections
---------------------------
-
-If you have a library of ACE format cross sections other than those listed above
-that you need to convert to OpenMC's HDF5 format, the :ref:`scripts_ace` script
-can be used. There are four different ways you can specify ACE libraries that
-are to be converted:
-
-1. List each ACE library as a positional argument. This is very useful in
-   conjunction with the usual shell utilities (ls, find, etc.).
-2. Use the ``--xml`` option to specify a pre-v0.9 cross_sections.xml file.
-3. Use the ``--xsdir`` option to specify a MCNP xsdir file.
-4. Use the ``--xsdata`` option to specify a Serpent xsdata file.
-
-The script does not use any extra information from cross_sections.xml/ xsdir/
-xsdata files to determine whether the nuclide is metastable. Instead, the
-``--metastable`` argument can be used to specify whether the ZAID naming
-convention follows the NNDC data convention (1000*Z + A + 300 + 100*m), or the
-MCNP data convention (essentially the same as NNDC, except that the first
-metastable state of Am242 is 95242 and the ground state is 95642).
-
-Using Multi-Group Cross Sections
---------------------------------
-
-Multi-group cross section libraries are generally tailored to the specific
-calculation to be performed.  Therefore, at this point in time, OpenMC is not
-distributed with any pre-existing multi-group cross section libraries.
-However, if the user has obtained or generated their own library, the user
-should set the :envvar:`OPENMC_MG_CROSS_SECTIONS` environment variable
-to the absolute path of the file library expected to used most frequently.
-
-.. _NJOY: http://t2.lanl.gov/nis/codes/NJOY12/
-.. _NNDC: http://www.nndc.bnl.gov/endf/b7.1/acefiles.html
-.. _NEA: http://www.oecd-nea.org
-.. _JEFF: https://www.oecd-nea.org/dbforms/data/eva/evatapes/jeff_32/
-.. _MCNP: http://mcnp.lanl.gov
-.. _Serpent: http://montecarlo.vtt.fi
-.. _TENDL: https://tendl.web.psi.ch/tendl_2015/tendl2015.html
+.. _usersguide_nxml:
 
 -----------------------------------------------------
 Configuring Input Validation with GNU Emacs nXML mode
@@ -575,4 +465,5 @@ schemas.xml file in your own OpenMC source directory.
 .. _GNU Emacs: http://www.gnu.org/software/emacs/
 .. _validation: http://en.wikipedia.org/wiki/XML_validation
 .. _RELAX NG: http://relaxng.org/
+.. _NNDC: http://www.nndc.bnl.gov/endf/b7.1/acefiles.html
 .. _ctest: http://www.cmake.org/cmake/help/v2.8.12/ctest.html

@@ -21,8 +21,8 @@ The third argument to :meth:`Material.add_nuclide` can also be 'wo' for weight
 percent. The densities specified for each nuclide/element are relative and are
 renormalized based on the total density of the material. The total density is
 set using the :meth:`Material.set_density` method. The density can be specified
-in gram per cubic centimeter, atom per barn-cm, or kilogram per cubic meter,
-e.g.,
+in gram per cubic centimeter ('g/cm3'), atom per barn-cm ('atom/b-cm'), or
+kilogram per cubic meter ('kg/m3'), e.g.,
 
 ::
 
@@ -96,7 +96,6 @@ compounds:
 
 .. _GND: https://www.oecd-nea.org/science/wpec/sg38/Meetings/2016_May/tlh4gnd-main.pdf
 
-
 -----------
 Temperature
 -----------
@@ -111,7 +110,8 @@ any cell or material temperature specification, a global default temperature can
 be set that is applied to all cells and materials. Anytime a material
 temperature is specified, it will override the global default
 temperature. Similarly, anytime a cell temperatures is specified, it will
-override the material or global default temperatures.
+override the material or global default temperature. All temperatures should be
+given in units of Kelvin.
 
 To assign a default material temperature, one should use the ``temperature``
 attribute, e.g.,
@@ -134,11 +134,11 @@ Material Collections
 The :ref:`scripts_openmc` executable expects to find a ``materials.xml`` file
 when it is run. To create this file, one needs to instantiate the
 :class:`openmc.Materials` class and add materials to it. The :class:`Materials`
-class acts like a list (in fact, it is a subclass of Python's built-in ``list``
-class), so materials can be added by passing a list to the constructor, using
-methods like ``append()``, or through the operator ``+=``. Once materials have
-been added to the collection, it can be exported using the
-:meth:`Materials.export_to_xml` method.
+class acts like a list (in fact, it is a subclass of Python's built-in
+:class:`list` class), so materials can be added by passing a list to the
+constructor, using methods like ``append()``, or through the operator
+``+=``. Once materials have been added to the collection, it can be exported
+using the :meth:`Materials.export_to_xml` method.
 
 ::
 
@@ -158,8 +158,8 @@ OpenMC uses a file called :ref:`cross_sections.xml <io_cross_sections>` to
 indicate where cross section data can be found on the filesystem. This file
 serves the same role that ``xsdir`` does for MCNP_ or ``xsdata`` does for
 Serpent. Information on how to generate a cross section listing file can be
-found in FIXME. Once you have a cross sections file that has been generated, you
-can tell OpenMC to use this file either by setting
+found in :ref:`create_xs_library`. Once you have a cross sections file that has
+been generated, you can tell OpenMC to use this file either by setting
 :attr:`Materials.cross_sections` or by setting the
 :envvar:`OPENMC_CROSS_SECTIONS` environment variable to the path of the
 ``cross_sections.xml`` file. The former approach would look like::

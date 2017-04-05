@@ -1657,7 +1657,7 @@ another.
 
 .. _OECD: http://www.oecd-nea.org/dbprog/MMRW-BOOKS.html
 
-.. _NJOY: http://t2.lanl.gov/codes.shtml
+.. _NJOY: https://njoy.github.io/NJOY2016/
 
 .. _PREPRO: http://www-nds.iaea.org/ndspub/endf/prepro/
 

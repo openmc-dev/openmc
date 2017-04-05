@@ -50,17 +50,16 @@ to 'volume' and run :func:`openmc.run`, or alternatively run
 
 When your volume calculations have finished, you can load the results using the
 :meth:`VolumeCalculation.load_results` method on an existing object. If you
-don't have an exiting :class:`VolumeCalculation` object, you can create one and
+don't have an existing :class:`VolumeCalculation` object, you can create one and
 load results simultaneously using the :meth:`VolumeCalculation.from_hdf5` class
 method::
 
   vol_calc = openmc.VolumeCalculation(...)
   ...
   openmc.calculate_volumes()
-
   vol_calc.load_results('volume_1.h5')
 
-  # ..or..
+  # ..or we can create a new object
   vol_calc = openmc.VolumeCalculation.from_hdf5('volume_1.h5')
 
 After the results are loaded, volume estimates will be stored in

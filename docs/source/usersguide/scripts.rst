@@ -28,9 +28,8 @@ Alternatively, you could run from any directory:
     openmc /home/username/somemodel
 
 Note that in the latter case, any output files will be placed in the present
-working directory which may be different from ``/home/username/somemodel``. If
-you're using the Python API, :func:`openmc.run` is equivalent to running
-``openmc`` from the command line. ``openmc`` accepts the following command line
+working directory which may be different from
+``/home/username/somemodel``. ``openmc`` accepts the following command line
 flags:
 
 -c, --volume           Run in stochastic volume calculation mode
@@ -45,6 +44,9 @@ flags:
 -v, --version          Show version information
 -h, --help             Show help message
 
+.. note:: If you're using the Python API, :func:`openmc.run` is equivalent to
+          running ``openmc`` from the command line.
+
 .. _scripts_ace:
 
 ----------------------
@@ -56,7 +58,7 @@ you have existing ACE files. There are four different ways you can specify ACE
 libraries that are to be converted:
 
 1. List each ACE library as a positional argument. This is very useful in
-   conjunction with the usual shell utilities (ls, find, etc.).
+   conjunction with the usual shell utilities (``ls``, ``find``, etc.).
 2. Use the ``--xml`` option to specify a pre-v0.9 cross_sections.xml file.
 3. Use the ``--xsdir`` option to specify a MCNP xsdir file.
 4. Use the ``--xsdata`` option to specify a Serpent xsdata file.
@@ -78,7 +80,7 @@ otherwise.
 -h, --help            show help message and exit
 
 -d DESTINATION, --destination DESTINATION
-                      Directory to create new library in (default: .)
+                      Directory to create new library in
 
 -m META, --metastable META
                       How to interpret ZAIDs for metastable nuclides. META
@@ -146,6 +148,8 @@ the following optional arguments:
 .. warning:: This script will download approximately 9 GB of data. Extracting
              and processing the data may require as much as 40 GB of additional
              free disk space.
+
+.. _scripts_multipole:
 
 -----------------------------
 ``openmc-get-multipole-data``

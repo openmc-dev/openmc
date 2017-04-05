@@ -50,6 +50,8 @@ would need to instantiate a :class:`openmc.Settings` object and assign the
    settings = openmc.Settings()
    settings.run_mode = 'fixed source'
 
+If you don't specify a run mode, the default run mode is 'eigenvalue'.
+
 .. _usersguide_particles:
 
 -------------------
@@ -106,8 +108,9 @@ The :class:`openmc.Source` class has three main attributes that one can set:
 
 The spatial distribution can be set equal to a sub-class of
 :class:`openmc.stats.Spatial`; common choices are :class:`openmc.stats.Point` or
-:class:`openmc.stats.Box`. To independently specify distributions in the x, y,
-and z coordinates, you can use :class:`openmc.stats.CartesianIndependent`.
+:class:`openmc.stats.Box`. To independently specify distributions in the
+:math:`x`, :math:`y`, and :math:`z` coordinates, you can use
+:class:`openmc.stats.CartesianIndependent`.
 
 The angular distribution can be set equal to a sub-class of
 :class:`openmc.stats.UnitSphere` such as :class:`openmc.stats.Isotropic`,

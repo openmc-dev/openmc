@@ -52,9 +52,10 @@ eXtensible Markup Language (XML)
 
 Unlike many other Monte Carlo codes which use an arbitrary-format ASCII file
 with "cards" to specify a particular geometry, materials, and associated run
-settings, the input files for OpenMC are structured in a set of XML_ files. XML,
-which stands for eXtensible Markup Language, is a simple format that allows data
-to be exchanged efficiently between different programs and interfaces.
+settings, the input files for OpenMC are structured in a set of `XML
+<http://www.w3.org/XML/>`_ files. XML, which stands for eXtensible Markup
+Language, is a simple format that allows data to be exchanged efficiently
+between different programs and interfaces.
 
 Anyone who has ever seen webpages written in HTML will be familiar with the
 structure of XML whereby "tags" enclosed in angle brackets denote that a
@@ -76,21 +77,21 @@ indicate characteristics about the person being described.
 In much the same way, OpenMC input uses XML tags to describe the geometry, the
 materials, and settings for a Monte Carlo simulation. Note that because the XML
 files have a well-defined structure, they can be validated using the
-:ref:`scripts_validate` script.
-
-.. _XML: http://www.w3.org/XML/
+:ref:`scripts_validate` script or using :ref:`Emacs nXML mode
+<usersguide_nxml>`.
 
 Creating Input Files
 --------------------
 
 .. currentmodule:: openmc
 
-The simplest option to create input files is to simply write them from scratch
-using the :ref:`XML format specifications <io_file_formats_input>`. This
-approach will feel familiar to users of other Monte Carlo codes such as MCNP and
-Serpent, with the added bonus that the XML formats feel much more
-"readable". Alternatively, input files can be generated using OpenMC's
-:ref:`Python API <pythonapi>`, which is introduced in the following section.
+The most rudimentary option for creating input files is to simply write them
+from scratch using the :ref:`XML format specifications
+<io_file_formats_input>`. This approach will feel familiar to users of other
+Monte Carlo codes such as MCNP and Serpent, with the added bonus that the XML
+formats feel much more "readable". Alternatively, input files can be generated
+using OpenMC's :ref:`Python API <pythonapi>`, which is introduced in the
+following section.
 
 ----------
 Python API
@@ -114,9 +115,9 @@ that generate a full model will look something like the following:
    materials.export_to_xml()
 
    # Create geometry
-   geom = openmc.Geometry()
+   geometry = openmc.Geometry()
    ...
-   geom.export_to_xml()
+   geometry.export_to_xml()
 
    # Assign simulation settings
    settings = openmc.Settings()
@@ -126,26 +127,6 @@ that generate a full model will look something like the following:
 One a model has been created and exported to XML, a simulation can be run either
 by calling :ref:`scripts_openmc` directly from a shell or by using the
 :func:`openmc.run()` function from Python.
-
-If you have never used Python before, the prospect of learning a new code *and*
-a programming language might sound daunting. However, you should keep mind in
-mind that there are many substantial benefits to using the Python API,
-including:
-
-- The ability to define dimensions using variables.
-- Availability of standard-library modules for working with files.
-- An entire ecosystem of third-party packages for scientific computing.
-- Ability to create materials based on natural elements or uranium enrichment
-- :ref:`Automated multi-group cross section generation <pythonapi_mgxs>`
-- Convenience functions (e.g., a function returning a hexagonal region)
-- Ability to plot individual universes as geometry is being created
-- A :math:`k_\text{eff}` search function (:func:`openmc.search_for_keff`)
-- Random sphere packing for generating TRISO particle locations
-  (:func:`openmc.model.pack_trisos`)
-- A fully-featured :ref:`nuclear data interface <pythonapi_data>`.
-
-.. tip:: Users are strongly encouraged to use the Python API to generate input
-         files and analyze results.
 
 Identifying Objects
 -------------------

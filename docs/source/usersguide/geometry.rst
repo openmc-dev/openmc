@@ -90,7 +90,7 @@ as optional keyword arguments to the class constructor or via attributes::
 
   sphere = openmc.Sphere(R=10.0)
 
-  # ..or..
+  # This is equivalent
   sphere = openmc.Sphere()
   sphere.r = 10.0
 
@@ -118,6 +118,18 @@ For many regions, a bounding-box can be determined automatically::
   >>> northern_hemisphere.bounding_box
   (array([-1., -1., 0.]), array([1., 1., 1.]))
 
+While a bounding box can be determined for regions involving half-spaces of
+spheres, cylinders, and axis-aligned planes, it generally cannot be determined
+if the region involves cones, non-axis-aligned planes, or other exotic
+second-order surfaces. For example, the :func:`openmc.get_hexagonal_prism`
+function returns the interior region of a hexagonal prism; because it is bounded
+by a :class:`openmc.Plane`, trying to get its bounding box won't work::
+
+  >>> hex = openmc.get_hexagonal_prism()
+  >>> hex.bounding_box
+  (array([-0.8660254,       -inf,       -inf]),
+   array([ 0.8660254,        inf,        inf]))
+
 Boundary Conditions
 -------------------
 
@@ -130,7 +142,7 @@ surface. To specify a vacuum boundary condition, simply change the
 
    outer_surface = openmc.Sphere(R=100.0, boundary_type='vacuum')
 
-   # ..or..
+   # This is equivalent
    outer_surface = openmc.Sphere(R=100.0)
    outer_surface.boundary_type = 'vacuum'
 
@@ -151,7 +163,7 @@ the :class:`openmc.Cell` class::
 
   fuel = openmc.Cell(fill=uo2, region=pellet)
 
-  # ..or..
+  # This is equivalent
   fuel = openmc.Cell()
   fuel.fill = uo2
   fuel.region = pellet
@@ -179,7 +191,7 @@ methods. Alternatively, a list of cells can be specified in the constructor::
 
    universe = openmc.Universe(cells=[cell1, cell2, cell3])
 
-   # ..or..
+   # This is equivalent
    universe = openmc.Universe()
    universe.add_cells([cell1, cell2])
    universe.add_cell(cell3)
@@ -193,9 +205,25 @@ Universes are generally used in three ways:
 3. To be used in a regular arrangement of universes in a :ref:`lattice
    <usersguide_lattices>`.
 
-Note that as you are building a geometry, it is possible to display a plot of
-single universe using the :meth:`Universe.plot` method. This method requires
-that you have `matplotlib <http://matplotlib.org/>`_ installed.
+Once a universe is constructed, it can actually be used to determine what cell
+or material is found at a given location by using the :meth:`Universe.find`
+method, which returns a list of universes, cells, and lattices which are
+traversed to find a given point. The last element of that list would contain the
+lowest-level cell at that location::
+
+  >>> universe.find((0., 0., 0.))[-1]
+  Cell
+          ID             =    10000
+          Name           =    cell 1
+          Fill           =    Material 10000
+          Region         =    -10000
+          Rotation       =    None
+          Temperature    =    None
+          Translation    =    None
+
+As you are building a geometry, it is also possible to display a plot of single
+universe using the :meth:`Universe.plot` method. This method requires that you
+have `matplotlib <http://matplotlib.org/>`_ installed.
 
 .. _usersguide_lattices:
 
@@ -212,7 +240,7 @@ through the :class:`openmc.RectLattice` and :class:`openmc.HexLattice` classes.
 Rectangular Lattices
 --------------------
 
-A rectangular lattice defines a two-dimension or three-dimensional array of
+A rectangular lattice defines a two-dimensional or three-dimensional array of
 universes that are filled into rectangular prisms (lattice elements) each of
 which has the same width, length, and height. To completely define a rectangular
 lattice, one needs to specify
@@ -239,9 +267,10 @@ lattice element is 5cm by 5cm and is filled by a universe ``u``, one could run::
 Note that because this is a two-dimensional lattice, the lower-left coordinates
 and pitch only need to specify the :math:`x,y` values. The order that the
 universes appear is such that the first row corresponds to lattice elements with
-the highest y-value. Note that the :attr:`RectLattice.universes` attribute
-expects a doubly-nested iterable of type :class:`openmc.Universe` --- this can
-be normal Python lists, as shown above, or a NumPy array can be used as well::
+the highest :math:`y` -value. Note that the :attr:`RectLattice.universes`
+attribute expects a doubly-nested iterable of type :class:`openmc.Universe` ---
+this can be normal Python lists, as shown above, or a NumPy array can be used as
+well::
 
   lattice.universes = np.tile(u, (3, 3))
 
@@ -280,7 +309,7 @@ set with the :attr:`RectLattice.outer` attribute.
 Hexagonal Lattices
 ------------------
 
-OpenMC also allows creationg of 2D and 3D hexagonal lattices. Creating a
+OpenMC also allows creation of 2D and 3D hexagonal lattices. Creating a
 hexagonal lattice is similar to creating a rectangular lattice with a few
 differences:
 
@@ -288,6 +317,8 @@ differences:
 - For a 2D hexagonal lattice, a single value for the pitch should be specified,
   although it still needs to appear in a list. For a 3D hexagonal lattice, the
   pitch in the radial and axial directions should be given.
+- For a hexagonal lattice, the :attr:`HexLattice.universes` attribute cannot be
+  given as a NumPy array for reasons explained below.
 - As with rectangular lattices, the :attr:`HexLattice.outer` attribute will
   specify an outer universe.
 
@@ -312,10 +343,11 @@ to help figure out how to place universes::
 
 
 Note that by default, hexagonal lattices are positioned such that each lattice
-element has two faces that are parallel to the y-axis. As one example, to create
-a three-ring lattice centered at the origin with a pitch of 10 cm where all the
-lattice elements centered along the y-axis are filled with universe ``u`` and
-the remainder and filled with universe ``q``, the following code would work::
+element has two faces that are parallel to the :math:`y` axis. As one example,
+to create a three-ring lattice centered at the origin with a pitch of 10 cm
+where all the lattice elements centered along the :math:`y` axis are filled with
+universe ``u`` and the remainder are filled with universe ``q``, the following
+code would work::
 
   hexlat = openmc.HexLattice()
   hexlat.center = (0, 0)
@@ -344,7 +376,7 @@ if needed, lattices, the last step is to create an instance of
    geom = openmc.Geometry(root_univ)
    geom.export_to_xml()
 
-   # ..or..
+   # This is equivalent
    geom = openmc.Geometry()
    geom.root_universe = root_univ
    geom.export_to_xml()

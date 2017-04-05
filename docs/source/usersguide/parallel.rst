@@ -23,12 +23,12 @@ When using OpenMP, multiple threads will be launched and each is capable of
 simulating a particle independently of all other threads. The primary benefit of
 using OpenMP within a node is that it requires very little extra memory per
 thread. To use OpenMP, you need to pass the ``-Dopenmp=on`` flag when running
-``CMake``::
+``CMake``:
 
 .. code-block:: sh
 
-   cmake -Dopenmp=on /path/to/openmc/root
-   make
+    cmake -Dopenmp=on /path/to/openmc/root
+    make
 
 The only requirement is that the Fortran compiler you use must support the
 OpenMP 3.1 or higher standard. Most recent compilers do support the use of
@@ -65,7 +65,7 @@ OpenMC following :ref:`usersguide_compile_mpi`.
 
 To run a simulation using MPI, :ref:`scripts_openmc` needs to be called using
 the `mpiexec <https://www.mpich.org/static/docs/v3.1/www1/mpiexec.html>`_
-wrapper. For example, to run OpenMC using 32 processes::
+wrapper. For example, to run OpenMC using 32 processes:
 
 .. code-block:: sh
 

@@ -54,7 +54,7 @@ instance through the :attr:`Tally.filters` attribute::
   tally.filters.append(cell_filter)
   tally.filters.append(energy_filter)
 
-  # ..or..
+  # This is equivalent
   tally.filters = [cell_filter, energy_filter]
 
 .. note:: You are actually not required to assign any filters to a tally. If you
@@ -82,7 +82,7 @@ particular nuclide or set of nuclides, you can set the :attr:`Tally.nuclides`
 attribute to a list of strings indicating which nuclides. The nuclide names
 should follow the same :ref:`naming convention <usersguide_naming>` as that used
 for material specification. If we wanted the reaction rates only for U235 and
-U238, we'd set::
+U238 (separately), we'd set::
 
   tally.nuclides = ['U235', 'U238']
 

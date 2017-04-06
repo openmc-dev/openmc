@@ -971,6 +971,7 @@ contains
     integer :: i_filter_mesh        ! index for mesh filter
     integer :: i_filter_ein         ! index for incoming energy filter
     integer :: i_filter_surf        ! index for surface filter
+    integer :: stride_surf          ! stride for surface filter
     integer :: n                    ! number of incoming energy bins
     integer :: filter_index         ! index in results array for filters
     logical :: print_ebin           ! should incoming energy bin be displayed?
@@ -980,11 +981,14 @@ contains
 
     ! Get pointer to mesh
     i_filter_mesh = t % filter(t % find_filter(FILTER_MESH))
-    i_filter_surf = t % filter(t % find_filter(FILTER_SURFACE))
     select type(filt => filters(i_filter_mesh) % obj)
     type is (MeshFilter)
       m => meshes(filt % mesh)
     end select
+
+    ! Get surface filter index and stride
+    i_filter_surf = t % filter(t % find_filter(FILTER_SURFACE))
+    stride_surf = t % stride(t % find_filter(FILTER_SURFACE))
 
     ! initialize bins array
     do j = 1, size(t % filter)
@@ -1038,147 +1042,107 @@ contains
                filter_matches(i_filter_ein) % bins % data(1)))
         end if
 
-        ! Left Surface
-        filter_matches(i_filter_surf) % bins % data(1) = OUT_LEFT
         filter_index = 1
         do j = 1, size(t % filter)
+          if (t % filter(j) == i_filter_surf) cycle
           filter_index = filter_index + (filter_matches(t % filter(j)) &
                % bins % data(1) - 1) * t % stride(j)
         end do
+
+        ! Left Surface
         write(UNIT=unit_tally, FMT='(5X,A,T35,A,"+/- ",A)') &
              "Outgoing Current on Left", &
-             to_str(t % results(RESULT_SUM,1,filter_index)), &
-             trim(to_str(t % results(RESULT_SUM_SQ,1,filter_index)))
-
-        filter_matches(i_filter_surf) % bins % data(1) = IN_LEFT
-        filter_index = 1
-        do j = 1, size(t % filter)
-          filter_index = filter_index + (filter_matches(t % filter(j)) &
-               % bins % data(1) - 1) * t % stride(j)
-        end do
+             to_str(t % results(RESULT_SUM,1,filter_index + &
+                  (OUT_LEFT - 1) * stride_surf)), &
+             trim(to_str(t % results(RESULT_SUM_SQ,1,filter_index + &
+                  (OUT_LEFT - 1) * stride_surf)))
+        
         write(UNIT=unit_tally, FMT='(5X,A,T35,A,"+/- ",A)') &
              "Incoming Current on Left", &
-             to_str(t % results(RESULT_SUM,1,filter_index)), &
-             trim(to_str(t % results(RESULT_SUM_SQ,1,filter_index)))
+             to_str(t % results(RESULT_SUM,1,filter_index + &
+                  (IN_LEFT - 1) * stride_surf)), &
+             trim(to_str(t % results(RESULT_SUM_SQ,1,filter_index + &
+                  (IN_LEFT - 1) * stride_surf)))
 
         ! Right Surface
-        filter_matches(i_filter_surf) % bins % data(1) = OUT_RIGHT
-        filter_index = 1
-        do j = 1, size(t % filter)
-          filter_index = filter_index + (filter_matches(t % filter(j)) &
-               % bins % data(1) - 1) * t % stride(j)
-        end do
         write(UNIT=unit_tally, FMT='(5X,A,T35,A,"+/- ",A)') &
              "Outgoing Current on Right", &
-             to_str(t % results(RESULT_SUM,1,filter_index)), &
-             trim(to_str(t % results(RESULT_SUM_SQ,1,filter_index)))
+             to_str(t % results(RESULT_SUM,1,filter_index + &
+                  (OUT_RIGHT - 1) * stride_surf)), &
+             trim(to_str(t % results(RESULT_SUM_SQ,1,filter_index + &
+                  (OUT_RIGHT - 1) * stride_surf)))
 
-        filter_matches(i_filter_surf) % bins % data(1) = IN_RIGHT
-        filter_index = 1
-        do j = 1, size(t % filter)
-          filter_index = filter_index + (filter_matches(t % filter(j)) &
-               % bins % data(1) - 1) * t % stride(j)
-        end do
         write(UNIT=unit_tally, FMT='(5X,A,T35,A,"+/- ",A)') &
              "Incoming Current on Right", &
-             to_str(t % results(RESULT_SUM,1,filter_index)), &
-             trim(to_str(t % results(RESULT_SUM_SQ,1,filter_index)))
+             to_str(t % results(RESULT_SUM,1,filter_index + &
+                  (IN_RIGHT - 1) * stride_surf)), &
+             trim(to_str(t % results(RESULT_SUM_SQ,1,filter_index + &
+                  (IN_RIGHT - 1) * stride_surf)))
 
         if (n_dim >= 2) then
 
           ! Back Surface
-          filter_matches(i_filter_surf) % bins % data(1) = OUT_BACK
-          filter_index = 1
-          do j = 1, size(t % filter)
-            filter_index = filter_index + (filter_matches(t % filter(j)) &
-                 % bins % data(1) - 1) * t % stride(j)
-          end do
           write(UNIT=unit_tally, FMT='(5X,A,T35,A,"+/- ",A)') &
                "Outgoing Current on Back", &
-               to_str(t % results(RESULT_SUM,1,filter_index)), &
-               trim(to_str(t % results(RESULT_SUM_SQ,1,filter_index)))
+               to_str(t % results(RESULT_SUM,1,filter_index + &
+                    (OUT_BACK - 1) * stride_surf)), &
+               trim(to_str(t % results(RESULT_SUM_SQ,1,filter_index + &
+                    (OUT_BACK - 1) * stride_surf)))
 
-          filter_matches(i_filter_surf) % bins % data(1) = IN_BACK
-          filter_index = 1
-          do j = 1, size(t % filter)
-            filter_index = filter_index + (filter_matches(t % filter(j)) &
-                 % bins % data(1) - 1) * t % stride(j)
-          end do
           write(UNIT=unit_tally, FMT='(5X,A,T35,A,"+/- ",A)') &
                "Incoming Current on Back", &
-               to_str(t % results(RESULT_SUM,1,filter_index)), &
-               trim(to_str(t % results(RESULT_SUM_SQ,1,filter_index)))
+               to_str(t % results(RESULT_SUM,1,filter_index + &
+                    (IN_BACK - 1) * stride_surf)), &
+               trim(to_str(t % results(RESULT_SUM_SQ,1,filter_index + &
+                    (IN_BACK - 1) * stride_surf)))
 
           ! Front Surface
-          filter_matches(i_filter_surf) % bins % data(1) = OUT_FRONT
-          filter_index = 1
-          do j = 1, size(t % filter)
-            filter_index = filter_index + (filter_matches(t % filter(j)) &
-                 % bins % data(1) - 1) * t % stride(j)
-          end do
           write(UNIT=unit_tally, FMT='(5X,A,T35,A,"+/- ",A)') &
                "Net Current on Front", &
-               to_str(t % results(RESULT_SUM,1,filter_index)), &
-               trim(to_str(t % results(RESULT_SUM_SQ,1,filter_index)))
+               to_str(t % results(RESULT_SUM,1,filter_index + &
+                    (OUT_FRONT - 1) * stride_surf)), &
+               trim(to_str(t % results(RESULT_SUM_SQ,1,filter_index + &
+                    (OUT_FRONT - 1) * stride_surf)))
 
-          filter_matches(i_filter_surf) % bins % data(1) = IN_FRONT
-          filter_index = 1
-          do j = 1, size(t % filter)
-            filter_index = filter_index + (filter_matches(t % filter(j)) &
-                 % bins % data(1) - 1) * t % stride(j)
-          end do
           write(UNIT=unit_tally, FMT='(5X,A,T35,A,"+/- ",A)') &
                "Net Current on Front", &
-               to_str(t % results(RESULT_SUM,1,filter_index)), &
-               trim(to_str(t % results(RESULT_SUM_SQ,1,filter_index)))
+               to_str(t % results(RESULT_SUM,1,filter_index + &
+                    (IN_FRONT - 1) * stride_surf)), &
+               trim(to_str(t % results(RESULT_SUM_SQ,1,filter_index + &
+                    (IN_FRONT - 1) * stride_surf)))
         end if
 
         if (n_dim == 3) then
+
           ! Bottom Surface
-          filter_matches(i_filter_surf) % bins % data(1) = OUT_BOTTOM
-          filter_index = 1
-          do j = 1, size(t % filter)
-            filter_index = filter_index + (filter_matches(t % filter(j)) &
-                 % bins % data(1) - 1) * t % stride(j)
-          end do
           write(UNIT=unit_tally, FMT='(5X,A,T35,A,"+/- ",A)') &
                "Outgoing Current on Bottom", &
-               to_str(t % results(RESULT_SUM,1,filter_index)), &
-               trim(to_str(t % results(RESULT_SUM_SQ,1,filter_index)))
+               to_str(t % results(RESULT_SUM,1,filter_index + &
+                    (OUT_BOTTOM - 1) * stride_surf)), &
+               trim(to_str(t % results(RESULT_SUM_SQ,1,filter_index + &
+                    (OUT_BOTTOM - 1) * stride_surf)))
 
-          filter_matches(i_filter_surf) % bins % data(1) = IN_BOTTOM
-          filter_index = 1
-          do j = 1, size(t % filter)
-            filter_index = filter_index + (filter_matches(t % filter(j)) &
-                 % bins % data(1) - 1) * t % stride(j)
-          end do
           write(UNIT=unit_tally, FMT='(5X,A,T35,A,"+/- ",A)') &
                "Incoming Current on Bottom", &
-               to_str(t % results(RESULT_SUM,1,filter_index)), &
-               trim(to_str(t % results(RESULT_SUM_SQ,1,filter_index)))
+               to_str(t % results(RESULT_SUM,1,filter_index + &
+                    (IN_BOTTOM - 1) * stride_surf)), &
+               trim(to_str(t % results(RESULT_SUM_SQ,1,filter_index + &
+                    (IN_BOTTOM - 1) * stride_surf)))
 
           ! Top Surface
-          filter_matches(i_filter_surf) % bins % data(1) = OUT_TOP
-          filter_index = 1
-          do j = 1, size(t % filter)
-            filter_index = filter_index + (filter_matches(t % filter(j)) &
-                 % bins % data(1) - 1) * t % stride(j)
-          end do
           write(UNIT=unit_tally, FMT='(5X,A,T35,A,"+/- ",A)') &
                "Outgoing Current on Top", &
-               to_str(t % results(RESULT_SUM,1,filter_index)), &
-               trim(to_str(t % results(RESULT_SUM_SQ,1,filter_index)))
+               to_str(t % results(RESULT_SUM,1,filter_index + &
+                    (OUT_TOP - 1) * stride_surf)), &
+               trim(to_str(t % results(RESULT_SUM_SQ,1,filter_index + &
+                    (OUT_TOP - 1) * stride_surf)))
 
-          filter_matches(i_filter_surf) % bins % data(1) = IN_TOP
-          filter_index = 1
-          do j = 1, size(t % filter)
-            filter_index = filter_index + (filter_matches(t % filter(j)) &
-                 % bins % data(1) - 1) * t % stride(j)
-          end do
           write(UNIT=unit_tally, FMT='(5X,A,T35,A,"+/- ",A)') &
                "Incoming Current on Top", &
-               to_str(t % results(RESULT_SUM,1,filter_index)), &
-               trim(to_str(t % results(RESULT_SUM_SQ,1,filter_index)))
+               to_str(t % results(RESULT_SUM,1,filter_index + &
+                    (IN_TOP - 1) * stride_surf)), &
+               trim(to_str(t % results(RESULT_SUM_SQ,1,filter_index + &
+                    (IN_TOP - 1) * stride_surf)))
         end if
       end do
     end do

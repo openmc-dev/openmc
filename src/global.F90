@@ -22,7 +22,7 @@ module global
   use surface_header,   only: SurfaceContainer
   use source_header,    only: SourceDistribution
   use tally_header,     only: TallyObject, TallyDerivative
-  use tally_filter_header, only: TallyFilterContainer
+  use tally_filter_header, only: TallyFilterContainer, TallyFilterMatch
   use trigger_header,   only: KTrigger
   use timer_header,     only: Timer
   use volume_header,    only: VolumeCalculation
@@ -143,8 +143,7 @@ module global
   type(RegularMesh), allocatable, target :: meshes(:)
   type(TallyObject), allocatable, target :: tallies(:)
   type(TallyFilterContainer), allocatable, target :: filters(:)
-  integer, allocatable :: matching_bins(:)
-  real(8), allocatable :: filter_weights(:)
+  type(TallyFilterMatch), allocatable :: filter_matches(:)
 
   ! Pointers for different tallies
   type(TallyObject), pointer :: user_tallies(:) => null()
@@ -438,8 +437,7 @@ module global
   type(Nuclide0K), allocatable, target :: nuclides_0K(:) ! 0K nuclides info
 
 !$omp threadprivate(micro_xs, material_xs, fission_bank, n_bank, &
-!$omp&              trace, thread_id, current_work, matching_bins, &
-!$omp&              filter_weights)
+!$omp&              trace, thread_id, current_work, filter_matches)
 
 contains
 
@@ -500,8 +498,7 @@ contains
     if (allocated(meshes)) deallocate(meshes)
     if (allocated(filters)) deallocate(filters)
     if (allocated(tallies)) deallocate(tallies)
-    if (allocated(matching_bins)) deallocate(matching_bins)
-    if (allocated(filter_weights)) deallocate(filter_weights)
+    if (allocated(filter_matches)) deallocate(filter_matches)
 
     ! Deallocate fission and source bank and entropy
 !$omp parallel

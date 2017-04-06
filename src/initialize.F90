@@ -107,7 +107,7 @@ contains
         call logarithmic_grid()
       end if
 
-      ! Allocate and setup tally stride, matching_bins, and tally maps
+      ! Allocate and setup tally stride, filter_matches, and tally maps
       call configure_tallies()
 
       ! Set up tally procedure pointers

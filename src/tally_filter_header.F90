@@ -2,10 +2,24 @@ module tally_filter_header
 
   use constants,       only: MAX_LINE_LEN
   use particle_header, only: Particle
+  use stl_vector,      only: VectorInt, VectorReal
 
   use hdf5
 
   implicit none
+
+!===============================================================================
+! TALLYFILTERMATCH stores every valid bin and weight for a filter
+!===============================================================================
+
+  type TallyFilterMatch
+    integer          :: i_bin
+    type(VectorInt)  :: bins
+    type(VectorReal) :: weights
+
+    ! Indicates whether all valid bins for this filter have been found
+    logical          :: bins_present = .false.
+  end type TallyFilterMatch
 
 !===============================================================================
 ! TALLYFILTER describes a filter that limits what events score to a tally. For

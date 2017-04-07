@@ -25,23 +25,10 @@
         </space>
     </source>
     <resonance_scattering>
-        <scatterer>
-            <nuclide>U238</nuclide>
-            <method>DBRC</method>
-            <E_min>1.0</E_min>
-            <E_max>210.0</E_max>
-        </scatterer>
-        <scatterer>
-            <nuclide>U235</nuclide>
-            <method>WCM</method>
-            <E_min>1.0</E_min>
-            <E_max>210.0</E_max>
-        </scatterer>
-        <scatterer>
-            <nuclide>Pu239</nuclide>
-            <method>ARES</method>
-            <E_min>1.0</E_min>
-            <E_max>210.0</E_max>
-        </scatterer>
+        <enable>true</enable>
+        <method>ares</method>
+        <energy_min>1.0</energy_min>
+        <energy_max>210.0</energy_max>
+        <nuclides>U238 U235 Pu239</nuclides>
     </resonance_scattering>
 </settings>

@@ -39,7 +39,6 @@ Simulation Settings
    :template: myclass.rst
 
    openmc.Source
-   openmc.ResonanceScattering
    openmc.VolumeCalculation
    openmc.Settings
 
@@ -385,6 +384,8 @@ Core Functions
     :template: myfunction.rst
 
     openmc.data.atomic_mass
+    openmc.data.linearize
+    openmc.data.thin
     openmc.data.write_compact_458_library
 
 Angle-Energy Distributions

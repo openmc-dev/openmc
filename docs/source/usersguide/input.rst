@@ -361,54 +361,56 @@ or sub-elements and can be set to either "false" or "true".
 ``<resonance_scattering>`` Element
 ----------------------------------
 
-The ``resonance_scattering`` element can contain one or more of the following
-attributes or sub-elements:
+The ``resonance_scattering`` element indicates to OpenMC that a method be used
+to properly account for resonance elastic scattering (typically for nuclides
+with Z > 40). This element can contain one or more of the following attributes
+or sub-elements:
 
-  :scatterer:
-    An element with attributes/sub-elements called ``nuclide``, ``method``,
-    ``E_min``, and ``E_max``. The ``nuclide`` attribute is the name, as given
-    by the ``name`` attribute within the ``nuclide`` sub-element of the
-    ``material`` element in ``materials.xml``, of the nuclide to which a
-    resonance scattering treatment is to be applied.
-    The ``method`` attribute gives the type of resonance scattering treatment
-    that is to be applied to the ``nuclide``.  Acceptable inputs - none of
-    which are case-sensitive - for the ``method`` attribute are ``ARES``,
-    ``CXS``, ``WCM``, and ``DBRC``.  Descriptions of each of these methods
-    are documented here_.  The ``E_min`` attribute gives the minimum energy
-    above which the ``method`` is applied.  The ``E_max`` attribute gives the
-    maximum energy below which the ``method`` is applied.  One example would
-    be as follows:
+  :enable:
+    Indicates whether a resonance elastic scattering method should be turned
+    on. Accepts values of "true" or "false".
+
+    *Default*: If the ``<resonance_scattering>`` element is present, "true".
+
+  :method:
+
+    Which resonance elastic scattering method is to be applied: "ares"
+    (accelerated resonance elastic scattering), "dbrc" (Doppler broadening
+    rejection correction), or "wcm" (weight correction method). Descriptions of
+    each of these methods are documented here_.
 
     .. _here: http://dx.doi.org/10.1016/j.anucene.2014.01.017
 
-    .. code-block:: xml
+    *Default*: "ares"
 
-        <resonance_scattering>
-          <scatterer>
-            <nuclide>U-238</nuclide>
-            <method>ARES</method>
-            <E_min>5.0e-6</E_min>
-            <E_max>40.0e-6</E_max>
-         </scatterer>
-         <scatterer>
-            <nuclide>Pu-239</nuclide>
-            <method>dbrc</method>
-            <E_min>0.01e-6</E_min>
-            <E_max>210.0e-6</E_max>
-          </scatterer>
-        </resonance_scattering>
+  :energy_min:
+    The energy in eV above which the resonance elastic scattering method should
+    be applied.
 
-    .. note:: If the ``resonance_scattering`` element is not given, the free gas,
-              constant cross section (``cxs``) scattering model, which has
-              historically been used by Monte Carlo codes to sample target
-              velocities, is used to treat the target motion of all nuclides.  If
-              ``resonance_scattering`` is present, the ``cxs`` method is applied
-              below ``E_min`` and the target-at-rest (asymptotic) kernel is used
-              above ``E_max``.  An arbitrary number of ``scatterer`` elements may
-              be specified, each corresponding to a single nuclide at a single
-              temperature.
+    *Default*: 0.01 eV
 
-    *Defaults*: None (scatterer), ARES (method), 0.01 eV (E_min), 1.0 keV (E_max)
+  :energy_max:
+    The energy in eV below which the resonance elastic scattering method should
+    be applied.
+
+    *Default*: 1000.0 eV
+
+  :nuclides:
+
+    A list of nuclides to which the resonance elastic scattering method should
+    be applied.
+
+    *Default*: If ``<resonance_scattering>`` is present but the ``<nuclides>``
+    sub-element is not given, the method is applied to all nuclides with 0 K
+    elastic scattering data present.
+
+  .. note:: If the ``resonance_scattering`` element is not given, the free gas,
+            constant cross section scattering model, which has historically been
+            used by Monte Carlo codes to sample target velocities, is used to
+            treat the target motion of all nuclides.  If
+            ``resonance_scattering`` is present, the constant cross section
+            method is applied below ``energy_min`` and the target-at-rest
+            (asymptotic) kernel is used above ``energy_max``.
 
   .. note:: This element is not used in the multi-group :ref:`energy_mode`.
 

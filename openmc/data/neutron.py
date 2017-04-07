@@ -2,6 +2,7 @@ from __future__ import division, unicode_literals
 import sys
 from collections import OrderedDict, Iterable, Mapping, MutableMapping
 from itertools import chain
+from math import log10
 from numbers import Integral, Real
 from warnings import warn
 
@@ -12,15 +13,20 @@ import h5py
 from . import HDF5_VERSION, HDF5_VERSION_MAJOR
 from .ace import Table, get_table
 from .data import ATOMIC_SYMBOL, K_BOLTZMANN, EV_PER_MEV
+from .endf import Evaluation, SUM_RULES
 from .fission_energy import FissionEnergyRelease
 from .function import Tabulated1D, Sum, ResonancesWithBackground
-from .endf import Evaluation, SUM_RULES
+from .grid import linearize, thin
 from .product import Product
 from .reaction import Reaction, _get_photon_products_ace
-from .resonance import Resonances, _RESOLVED
+from . import resonance as res
 from .urr import ProbabilityTables
 import openmc.checkvalue as cv
 from openmc.mixin import EqualityMixin
+
+
+# Fractions of resonance widths used for reconstructing resonances
+_RESONANCE_ENERGY_GRID = np.logspace(-3, 3, 61)
 
 
 def _get_metadata(zaid, metastable_scheme='nndc'):
@@ -278,7 +284,7 @@ class IncidentNeutron(EqualityMixin):
 
     @resonances.setter
     def resonances(self, resonances):
-        cv.check_type('resonances', resonances, Resonances)
+        cv.check_type('resonances', resonances, res.Resonances)
         self._resonances = resonances
 
     @summed_reactions.setter
@@ -342,6 +348,98 @@ class IncidentNeutron(EqualityMixin):
         # Add probability tables
         if strT in data.urr:
             self.urr[strT] = data.urr[strT]
+
+    def add_elastic_0K_from_endf(self, filename, overwrite=False):
+        """Append 0K elastic scattering cross section from an ENDF file.
+
+        Parameters
+        ----------
+        filename : str
+            Path to ENDF file
+        overwrite : bool
+            If existing 0 K data is present, this flag can be used to indicate
+            that it should be overwritten. Otherwise, an exception will be
+            thrown.
+
+        Raises
+        ------
+        ValueError
+            If 0 K data is already present and the `overwrite` parameter is
+            False.
+
+        """
+        # Check for existing data
+        if '0K' in self.energy and not overwrite:
+            raise ValueError('0 K data already exists for this nuclide.')
+
+        data = type(self).from_endf(filename)
+        if data.resonances is not None:
+            x = []
+            y = []
+            for rr in data.resonances:
+                if isinstance(rr, res.RMatrixLimited):
+                    raise TypeError('R-Matrix Limited not supported.')
+                elif isinstance(rr, res.Unresolved):
+                    continue
+
+                # Get energies/widths for resonances
+                e_peak = rr.parameters['energy'].values
+                if isinstance(rr, res.MultiLevelBreitWigner):
+                    gamma = rr.parameters['totalWidth'].values
+                elif isinstance(rr, res.ReichMoore):
+                    df = rr.parameters
+                    gamma = (df['neutronWidth'] +
+                             df['captureWidth'] +
+                             abs(df['fissionWidthA']) +
+                             abs(df['fissionWidthB'])).values
+
+                # Determine peak energies and widths
+                e_min, e_max = rr.energy_min, rr.energy_max
+                in_range = (e_peak > e_min) & (e_peak < e_max)
+                e_peak = e_peak[in_range]
+                gamma = gamma[in_range]
+
+                # Get midpoints between resonances (use min/max energy of
+                # resolved region as absolute lower/upper bound)
+                e_mid = np.concatenate(
+                    ([e_min], (e_peak[1:] + e_peak[:-1])/2, [e_max]))
+
+                # Add grid around each resonance that includes the peak +/- the
+                # width times each value in _RESONANCE_ENERGY_GRID. Values are
+                # constrained so that points around one resonance don't overlap
+                # with points around another. This algorithm is from Fudge.
+                energies = []
+                for e, g, e_lower, e_upper in zip(e_peak, gamma, e_mid[:-1],
+                                                  e_mid[1:]):
+                    e_left = e - g*_RESONANCE_ENERGY_GRID
+                    energies.append(e_left[e_left > e_lower][::-1])
+                    e_right = e + g*_RESONANCE_ENERGY_GRID[1:]
+                    energies.append(e_right[e_right < e_upper])
+
+                # Concatenate all points
+                energies = np.concatenate(energies)
+
+                # Create 1000 equal log-spaced energies over RRR, combine with
+                # resonance peaks and half-height energies
+                e_log = np.logspace(log10(e_min), log10(e_max), 1000)
+                energies = np.union1d(e_log, energies)
+
+                # Linearize and thin cross section
+                xi, yi = linearize(energies, data[2].xs['0K'])
+                xi, yi = thin(xi, yi)
+
+                # If there are multiple resolved resonance ranges (e.g. Pu239 in
+                # ENDF/B-VII.1), combine them
+                x = np.concatenate((x, xi))
+                y = np.concatenate((y, yi))
+        else:
+            energies = data[2].xs['0K'].x
+            x, y = linearize(energies, data[2].xs['0K'])
+            x, y = thin(x, y)
+
+        # Set 0K energy grid and elastic scattering cross section
+        self.energy['0K'] = x
+        self[2].xs['0K'] = Tabulated1D(x, y)
 
     def get_reaction_components(self, mt):
         """Determine what reactions make up summed reaction.
@@ -411,11 +509,21 @@ class IncidentNeutron(EqualityMixin):
         for temperature in self.temperatures:
             eg.create_dataset(temperature, data=self.energy[temperature])
 
+        # Write 0K energy grid if needed
+        if '0K' in self.energy and '0K' not in eg:
+            eg.create_dataset('0K', data=self.energy['0K'])
+
         # Write reaction data
         rxs_group = g.create_group('reactions')
         for rx in self.reactions.values():
             rx_group = rxs_group.create_group('reaction_{:03}'.format(rx.mt))
             rx.to_hdf5(rx_group)
+
+            # Write 0K elastic scattering if needed
+            if '0K' in rx.xs and '0K' not in rx_group:
+                group = rx_group.create_group('0K')
+                dset = group.create_dataset('xs', data=rx.xs['0K'].y)
+                dset.attrs['threshold_idx'] = 1
 
             # Write total nu data if available
             if len(rx.derived_products) > 0 and 'total_nu' not in g:
@@ -673,7 +781,7 @@ class IncidentNeutron(EqualityMixin):
                    atomic_weight_ratio, temperature)
 
         if (2, 151) in ev.section:
-            data.resonances = Resonances.from_endf(ev)
+            data.resonances = res.Resonances.from_endf(ev)
 
         # Read each reaction
         for mf, mt, nc, mod in ev.reaction_list:
@@ -682,7 +790,7 @@ class IncidentNeutron(EqualityMixin):
 
         # Replace cross sections for elastic, capture, fission
         try:
-            if any(isinstance(r, _RESOLVED) for r in data.resonances):
+            if any(isinstance(r, res._RESOLVED) for r in data.resonances):
                 for mt in (2, 102, 18):
                     if mt in data.reactions:
                         rx = data.reactions[mt]

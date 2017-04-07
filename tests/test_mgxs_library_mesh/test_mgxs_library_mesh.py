@@ -71,5 +71,5 @@ class MGXSTestHarness(PyAPITestHarness):
 
 
 if __name__ == '__main__':
-    harness = MGXSTestHarness('statepoint.10.h5', True)
+    harness = MGXSTestHarness('statepoint.10.h5')
     harness.main()

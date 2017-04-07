@@ -12,5 +12,5 @@ if __name__ == '__main__':
     model = slab_mg(reps=['iso'])
     model.settings.tabular_legendre = {'enable': False}
 
-    harness = PyAPITestHarness('statepoint.10.h5', False, model)
+    harness = PyAPITestHarness('statepoint.10.h5', model)
     harness.main()

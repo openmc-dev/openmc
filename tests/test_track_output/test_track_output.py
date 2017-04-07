@@ -54,5 +54,5 @@ if __name__ == '__main__':
         print('----------------Skipping test-------------')
         shutil.copy('results_true.dat', 'results_test.dat')
         exit()
-    harness = TrackTestHarness('statepoint.2.*')
+    harness = TrackTestHarness('statepoint.2.h5')
     harness.main()

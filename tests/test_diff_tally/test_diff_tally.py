@@ -126,5 +126,5 @@ class DiffTallyTestHarness(PyAPITestHarness):
 
 
 if __name__ == '__main__':
-    harness = DiffTallyTestHarness('statepoint.3.h5', True)
+    harness = DiffTallyTestHarness('statepoint.3.h5')
     harness.main()

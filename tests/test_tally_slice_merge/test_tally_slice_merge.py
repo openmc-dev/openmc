@@ -172,5 +172,5 @@ class TallySliceMergeTestHarness(PyAPITestHarness):
 
 
 if __name__ == '__main__':
-    harness = TallySliceMergeTestHarness('statepoint.10.h5', True)
+    harness = TallySliceMergeTestHarness('statepoint.10.h5')
     harness.main()

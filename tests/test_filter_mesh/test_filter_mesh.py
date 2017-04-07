@@ -68,5 +68,5 @@ class FilterMeshTestHarness(HashedPyAPITestHarness):
 
 
 if __name__ == '__main__':
-    harness = FilterMeshTestHarness('statepoint.10.h5', True)
+    harness = FilterMeshTestHarness('statepoint.10.h5')
     harness.main()

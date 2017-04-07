@@ -81,5 +81,5 @@ class TallyArithmeticTestHarness(PyAPITestHarness):
 
 
 if __name__ == '__main__':
-    harness = TallyArithmeticTestHarness('statepoint.10.h5', True)
+    harness = TallyArithmeticTestHarness('statepoint.10.h5')
     harness.main()

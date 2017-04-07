@@ -10,7 +10,7 @@ from openmc import Mesh, Tally, Tallies
 
 
 if __name__ == '__main__':
-    harness = HashedPyAPITestHarness('statepoint.5.h5', True)
+    harness = HashedPyAPITestHarness('statepoint.5.h5')
     model = harness._model
 
     # Set settings explicitly

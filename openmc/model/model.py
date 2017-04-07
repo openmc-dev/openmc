@@ -65,8 +65,6 @@ class Model(object):
         if plots is not None:
             self.plots = plots
 
-        self.sp = None
-
     @property
     def geometry(self):
         return self._geometry
@@ -161,7 +159,7 @@ class Model(object):
             self.plots.export_to_xml()
 
     def run(self, **kwargs):
-        """Creates the XML files, runs OpenMC, and loads the statepoint.
+        """Creates the XML files, runs OpenMC, and returns k-effective
 
         Parameters
         ----------
@@ -171,29 +169,19 @@ class Model(object):
         Returns
         -------
         2-tuple of float
-            k_combined from the statepoint
+            Combined estimator of k-effective from the statepoint
 
         """
-
         self.export_to_xml()
 
         return_code = openmc.run(**kwargs)
 
         assert (return_code == 0), "OpenMC did not execute successfully"
 
-        statepoint_batches = self.settings.batches
+        n = self.settings.batches
         if self.settings.statepoint is not None:
             if 'batches' in self.settings.statepoint:
-                statepoint_batches = self.settings.statepoint['batches'][-1]
-        self.sp = openmc.StatePoint('statepoint.{}.h5'.format(
-            statepoint_batches))
+                n = self.settings.statepoint['batches'][-1]
 
-        return self.sp.k_combined
-
-    def close(self):
-        """Close the statepoint and summary files
-        """
-
-        if self.sp is not None:
-            self.sp._f.close()
-            self.sp.summary._f.close()
+        with openmc.StatePoint('statepoint.{}.h5'.format(n)) as sp:
+            return sp.k_combined

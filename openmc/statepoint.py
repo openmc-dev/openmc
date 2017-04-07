@@ -138,6 +138,12 @@ class StatePoint(object):
                     vol = openmc.VolumeCalculation.from_hdf5(path_i)
                     self.add_volume_information(vol)
 
+    def __enter__(self):
+        return self
+
+    def __exit__(self, *exc):
+        self._f.close()
+
     @property
     def cmfd_on(self):
         return self._f.attrs['cmfd_on'] > 0

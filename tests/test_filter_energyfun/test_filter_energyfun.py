@@ -49,5 +49,5 @@ class FilterEnergyFunHarness(PyAPITestHarness):
 
 
 if __name__ == '__main__':
-    harness = FilterEnergyFunHarness('statepoint.10.h5', True)
+    harness = FilterEnergyFunHarness('statepoint.10.h5')
     harness.main()

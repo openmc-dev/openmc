@@ -89,5 +89,5 @@ if __name__ == '__main__':
     # Set the input set to use the pincell model
     model = pwr_pin_cell()
 
-    harness = MGXSTestHarness('statepoint.10.h5', False, model)
+    harness = MGXSTestHarness('statepoint.10.h5', model)
     harness.main()

@@ -67,5 +67,5 @@ class TallyAggregationTestHarness(PyAPITestHarness):
 
 
 if __name__ == '__main__':
-    harness = TallyAggregationTestHarness('statepoint.10.h5', True)
+    harness = TallyAggregationTestHarness('statepoint.10.h5')
     harness.main()

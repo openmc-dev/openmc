@@ -92,5 +92,5 @@ if __name__ == '__main__':
                 t.nuclides = nuclides
             model.tallies.append(t)
 
-    harness = HashedPyAPITestHarness('statepoint.10.h5', True, model)
+    harness = HashedPyAPITestHarness('statepoint.10.h5', model)
     harness.main()

@@ -84,5 +84,5 @@ class MGXSTestHarness(PyAPITestHarness):
 
 if __name__ == '__main__':
     model = pwr_pin_cell()
-    harness = MGXSTestHarness('statepoint.10.*', True, model)
+    harness = MGXSTestHarness('statepoint.10.h5', model)
     harness.main()

@@ -91,5 +91,5 @@ class AsymmetricLatticeTestHarness(PyAPITestHarness):
 
 
 if __name__ == '__main__':
-    harness = AsymmetricLatticeTestHarness('statepoint.10.h5', True)
+    harness = AsymmetricLatticeTestHarness('statepoint.10.h5')
     harness.main()

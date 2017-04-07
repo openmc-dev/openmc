@@ -6,7 +6,7 @@ Post Processing
 
 .. only:: html
 
-    .. notebook:: post-processing.ipynb
+    .. notebook:: ../../../examples/jupyter/post-processing.ipynb
 
 .. only:: latex
 

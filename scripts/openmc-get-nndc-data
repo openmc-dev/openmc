@@ -18,7 +18,7 @@ import openmc.data
 
 description = """
 Download ENDF/B-VII.1 ACE data from NNDC and convert it to an HDF5 library for
-use with OpenMC.
+use with OpenMC. This data is used for OpenMC's regression test suite.
 
 """
 

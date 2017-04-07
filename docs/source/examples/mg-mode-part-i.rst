@@ -6,7 +6,7 @@ Multi-Group Mode Part I: Introduction
 
 .. only:: html
 
-    .. notebook:: mg-mode-part-i.ipynb
+    .. notebook:: ../../../examples/jupyter/mg-mode-part-i.ipynb
 
 .. only:: latex
 

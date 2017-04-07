@@ -47,4 +47,5 @@ Modules
    mgxs
    model
    data
+   examples
    openmoc

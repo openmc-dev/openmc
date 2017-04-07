@@ -100,7 +100,7 @@ class Model(object):
         if isinstance(materials, openmc.Materials):
             self._materials = materials
         else:
-            self._materials.clear()
+            del self._materials[:]
             for mat in materials:
                 self._materials.append(mat)
 
@@ -115,7 +115,7 @@ class Model(object):
         if isinstance(tallies, openmc.Tallies):
             self._tallies = tallies
         else:
-            self._tallies.clear()
+            del self._tallies[:]
             for tally in tallies:
                 self._tallies.append(tally)
 
@@ -130,7 +130,7 @@ class Model(object):
         if isinstance(plots, openmc.Plots):
             self._plots = plots
         else:
-            self._plots.clear()
+            del self._plots[:]
             for plot in plots:
                 self._plots.append(plot)
 

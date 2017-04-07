@@ -11,8 +11,8 @@ import sys
 import numpy as np
 
 sys.path.insert(0, os.path.join(os.pardir, os.pardir))
-from input_set import InputSet, MGInputSet
 import openmc
+from openmc.examples import pwr_core, slab_mg
 
 
 class TestHarness(object):
@@ -240,15 +240,17 @@ class ParticleRestartTestHarness(TestHarness):
 
 
 class PyAPITestHarness(TestHarness):
-    def __init__(self, statepoint_name, tallies_present=False, mg=False):
-        super(PyAPITestHarness, self).__init__(statepoint_name,
-                                               tallies_present)
-        self.parser.add_option('--build-inputs', dest='build_only',
+    def __init__(self, statepoint_name, tallies_present=False, model=None):
+        super(PyAPITestHarness, self).__init__(
+            statepoint_name, tallies_present)
+        self.parser.add_option('-b', '--build-inputs', dest='build_only',
                                action='store_true', default=False)
-        if mg:
-            self._input_set = MGInputSet()
+        if model is None:
+            self._model = pwr_core()
         else:
-            self._input_set = InputSet()
+            self._model = model
+        self._model.plots = []
+
 
     def main(self):
         """Accept commandline arguments and either run or update tests."""
@@ -292,9 +294,7 @@ class PyAPITestHarness(TestHarness):
 
     def _build_inputs(self):
         """Write input XML files."""
-        self._input_set.build_default_materials_and_geometry()
-        self._input_set.build_default_settings()
-        self._input_set.export()
+        self._model.export_to_xml()
 
     def _get_inputs(self):
         """Return a hash digest of the input XML files."""
@@ -327,14 +327,13 @@ class PyAPITestHarness(TestHarness):
         """Delete XMLs, statepoints, tally, and test files."""
         super(PyAPITestHarness, self)._cleanup()
         output = ['materials.xml', 'geometry.xml', 'settings.xml',
-                  'tallies.xml', 'inputs_test.dat']
+                  'tallies.xml', 'plots.xml', 'inputs_test.dat']
         for f in output:
             if os.path.exists(f):
                 os.remove(f)
 
 
 class HashedPyAPITestHarness(PyAPITestHarness):
-
     def _get_results(self):
         """Digest info in the statepoint and return as a string."""
         return super(HashedPyAPITestHarness, self)._get_results(True)

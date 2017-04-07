@@ -306,9 +306,6 @@
             <parameters>-160 -160 -183 160 160 183</parameters>
         </space>
     </source>
-    <output>
-        <summary>true</summary>
-    </output>
 </settings>
 <?xml version='1.0' encoding='utf-8'?>
 <tallies>

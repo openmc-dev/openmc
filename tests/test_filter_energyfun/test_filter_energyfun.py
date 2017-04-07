@@ -3,20 +3,17 @@
 import os
 import sys
 import glob
-import hashlib
 sys.path.insert(0, os.pardir)
 from testing_harness import PyAPITestHarness
 import openmc
 
 
 class FilterEnergyFunHarness(PyAPITestHarness):
-    def _build_inputs(self):
-        # Build the default material, geometry, settings inputs.
-        self._input_set.build_default_materials_and_geometry()
-        self._input_set.build_default_settings()
+    def __init__(self, *args, **kwargs):
+        super(FilterEnergyFunHarness, self).__init__(*args, **kwargs)
 
         # Add Am241 to the fuel.
-        self._input_set.materials[1].add_nuclide('Am241', 1e-7)
+        self._model.materials[1].add_nuclide('Am241', 1e-7)
 
         # Define Am242m / Am242 branching ratio from ENDF/B-VII.1 data.
         x = [1e-5, 3.69e-1, 1e3, 1e5, 6e5, 1e6, 2e6, 4e6, 3e7]
@@ -37,10 +34,7 @@ class FilterEnergyFunHarness(PyAPITestHarness):
             t.scores = ['(n,gamma)']
             t.nuclides = ['Am241']
         tallies[1].filters = [filt1]
-        self._input_set.tallies = openmc.Tallies(tallies)
-
-        # Export inputs to xml.
-        self._input_set.export()
+        self._model.tallies = tallies
 
     def _get_results(self):
         # Read the statepoint file.

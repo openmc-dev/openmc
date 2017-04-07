@@ -1,26 +1,31 @@
+from collections import Iterable
+
 import openmc
 from openmc.checkvalue import check_type
 
 
 class Model(object):
-    """OpenMC model container for the openmc.Geometry, openmc.Materials,
-    openmc.Settings, openmc.Tallies, openmc.CMFD objects, and openmc.Plot
-    objects
+    """Model container.
+
+    This class can be used to store instances of :class:`openmc.Geometry`,
+    :class:`openmc.Materials`, :class:`openmc.Settings`,
+    :class:`openmc.Tallies`, :class:`openmc.Plots`, and :class:`openmc.CMFD`,
+    thus making a complete model.
 
     Parameters
     ----------
-    geometry : openmc.Geometry
+    geometry : openmc.Geometry, optional
         Geometry information
-    materials : openmc.Materials
+    materials : openmc.Materials, optional
         Materials information
-    settings : openmc.Settings
+    settings : openmc.Settings, optional
         Settings information
-    tallies : openmc.Tallies
-        Tallies information, optional
-    cmfd : openmc.CMFD
-        CMFD information, optional
-    plots : openmc.Plots
-        Plot information, optional
+    tallies : openmc.Tallies, optional
+        Tallies information
+    cmfd : openmc.CMFD, optional
+        CMFD information
+    plots : openmc.Plots, optional
+        Plot information
 
     Attributes
     ----------
@@ -39,23 +44,26 @@ class Model(object):
 
     """
 
-    def __init__(self, geometry, materials, settings, tallies=None, cmfd=None,
-                 plots=None):
-        self.geometry = geometry
-        self.materials = materials
-        self.settings = settings
-        if tallies:
+    def __init__(self, geometry=None, materials=None, settings=None,
+                 tallies=None, cmfd=None, plots=None):
+        self.geometry = openmc.Geometry()
+        self.materials = openmc.Materials()
+        self.settings = openmc.Settings()
+        self.cmfd = cmfd
+
+        self._tallies = openmc.Tallies()
+        self._plots = openmc.Plots()
+
+        if geometry is not None:
+            self.geometry = geometry
+        if materials is not None:
+            self.materials = materials
+        if settings is not None:
+            self.settings = settings
+        if tallies is not None:
             self.tallies = tallies
-        else:
-            self._tallies = openmc.Tallies()
-        if cmfd:
-            self.cmfd = cmfd
-        else:
-            self._cmfd = None
-        if plots:
+        if plots is not None:
             self.plots = plots
-        else:
-            self.plots = openmc.Plots()
 
         self.sp = None
 
@@ -90,8 +98,13 @@ class Model(object):
 
     @materials.setter
     def materials(self, materials):
-        check_type('materials', materials, openmc.Materials)
-        self._materials = materials
+        check_type('materials', materials, Iterable, openmc.Material)
+        if isinstance(materials, openmc.Materials):
+            self._materials = materials
+        else:
+            self._materials.clear()
+            for mat in materials:
+                self._materials.append(mat)
 
     @settings.setter
     def settings(self, settings):
@@ -100,30 +113,52 @@ class Model(object):
 
     @tallies.setter
     def tallies(self, tallies):
-        check_type('tallies', tallies, openmc.Tallies)
-        self._tallies = tallies
+        check_type('tallies', tallies, Iterable, openmc.Tally)
+        if isinstance(tallies, openmc.Tallies):
+            self._tallies = tallies
+        else:
+            self._tallies.clear()
+            for tally in tallies:
+                self._tallies.append(tally)
 
     @cmfd.setter
     def cmfd(self, cmfd):
-        check_type('cmfd', cmfd, openmc.CMFD)
+        check_type('cmfd', cmfd, (openmc.CMFD, type(None)))
         self._cmfd = cmfd
 
     @plots.setter
     def plots(self, plots):
-        check_type('plots', plots, openmc.Plots)
-        self._plots = plots
+        check_type('plots', plots, Iterable, openmc.Plot)
+        if isinstance(plots, openmc.Plots):
+            self._plots = plots
+        else:
+            self._plots.clear()
+            for plot in plots:
+                self._plots.append(plot)
 
     def export_to_xml(self):
-        """Export model settings to XML files.
+        """Export model to XML files.
         """
 
-        self.geometry.export_to_xml()
-        self.materials.export_to_xml()
         self.settings.export_to_xml()
-        self.tallies.export_to_xml()
+        self.geometry.export_to_xml()
+
+        # If a materials collection was specified, export it. Otherwise, look
+        # for all materials in the geometry and use that to automatically build
+        # a collection.
+        if self.materials:
+            self.materials.export_to_xml()
+        else:
+            materials = openmc.Materials(self.geometry.get_all_materials()
+                                         .values())
+            materials.export_to_xml()
+
+        if self.tallies:
+            self.tallies.export_to_xml()
         if self.cmfd is not None:
             self.cmfd.export_to_xml()
-        self.plots.export_to_xml()
+        if self.plots:
+            self.plots.export_to_xml()
 
     def run(self, **kwargs):
         """Creates the XML files, runs OpenMC, and loads the statepoint.
@@ -150,8 +185,8 @@ class Model(object):
         if self.settings.statepoint is not None:
             if 'batches' in self.settings.statepoint:
                 statepoint_batches = self.settings.statepoint['batches'][-1]
-        self.sp = \
-            openmc.StatePoint('statepoint.{}.h5'.format(statepoint_batches))
+        self.sp = openmc.StatePoint('statepoint.{}.h5'.format(
+            statepoint_batches))
 
         return self.sp.k_combined
 

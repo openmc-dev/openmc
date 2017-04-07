@@ -106,6 +106,10 @@ should specify an installation directory where you have write access, e.g.
 
     cmake -DCMAKE_INSTALL_PREFIX=$HOME/.local ..
 
+If you want to build a parallel version of OpenMC (using OpenMP or MPI),
+directions can be found in the :ref:`detailed installation instructions
+<usersguide_build>`.
+
 .. _GitHub: https://github.com/mit-crpg/openmc
 .. _git: http://git-scm.com
 .. _gfortran: http://gcc.gnu.org/wiki/GFortran

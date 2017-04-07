@@ -6,7 +6,7 @@ Multi-Group Mode Part II: MGXS Library Generation With OpenMC
 
 .. only:: html
 
-    .. notebook:: mg-mode-part-ii.ipynb
+    .. notebook:: ../../../examples/jupyter/mg-mode-part-ii.ipynb
 
 .. only:: latex
 

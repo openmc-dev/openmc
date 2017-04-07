@@ -29,8 +29,13 @@ DENSITY_UNITS = ['g/cm3', 'g/cc', 'kg/cm3', 'atom/b-cm', 'atom/cm3', 'sum',
 
 
 class Material(object):
-    """A material composed of a collection of nuclides/elements that can be
-    assigned to a region of space.
+    """A material composed of a collection of nuclides/elements.
+
+    To create a material, one should create an instance of this class, add
+    nuclides or elements with :meth:`Material.add_nuclide` or
+    `Material.add_element`, respectively, and set the total material density
+    with `Material.export_to_xml()`. The material can then be assigned to a cell
+    using the :attr:`Cell.fill` attribute.
 
     Parameters
     ----------

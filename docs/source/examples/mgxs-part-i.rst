@@ -6,7 +6,7 @@ MGXS Part I: Introduction
 
 .. only:: html
 
-    .. notebook:: mgxs-part-i.ipynb
+    .. notebook:: ../../../examples/jupyter/mgxs-part-i.ipynb
 
 .. only:: latex
 

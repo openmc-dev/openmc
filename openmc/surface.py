@@ -1177,7 +1177,7 @@ class Sphere(Surface):
         y-coordinate of the center of the sphere
     z0 : float
         z-coordinate of the center of the sphere
-    R : float
+    r : float
         Radius of the sphere
     boundary_type : {'transmission, 'vacuum', 'reflective'}
         Boundary condition that defines the behavior for particles hitting the
@@ -1325,7 +1325,7 @@ class Cone(Surface):
         y-coordinate of the apex
     z0 : float
         z-coordinate of the apex
-    R2 : float
+    r2 : float
         Parameter related to the aperature
     boundary_type : {'transmission, 'vacuum', 'reflective'}
         Boundary condition that defines the behavior for particles hitting the

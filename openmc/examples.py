@@ -7,6 +7,11 @@ import openmc.model
 def pwr_pin_cell():
     """Create a PWR pin-cell model.
 
+    This model is a single fuel pin with 2.4 w/o enriched UO2 corresponding to a
+    beginning-of-cycle condition and borated water. The specifications are from
+    the `BEAVRS <http://crpg.mit.edu/research/beavrs>`_ benchmark. Note that the
+    number of particles/batches is initially set very low for testing purposes.
+
     Returns
     -------
     model : openmc.model.Model
@@ -85,7 +90,8 @@ def pwr_core():
 
     This model is the OECD/NEA Monte Carlo Performance benchmark which is a
     grossly simplified pressurized water reactor (PWR) with 241 fuel
-    assemblies.
+    assemblies. Note that the number of particles/batches is initially set very
+    low for testing purposes.
 
     Returns
     -------
@@ -428,6 +434,11 @@ def pwr_core():
 def pwr_assembly():
     """Create a PWR assembly model.
 
+    This model is a reflected 17x17 fuel assembly from the the `BEAVRS
+    <http://crpg.mit.edu/research/beavrs>`_ benchmark. The fuel is 2.4 w/o
+    enriched UO2 corresponding to a beginning-of-cycle condition. Note that the
+    number of particles/batches is initially set very low for testing purposes.
+
     Returns
     -------
     model : openmc.model.Model
@@ -538,8 +549,12 @@ def slab_mg(reps=None, as_macro=True):
     Parameters
     ----------
     reps : list, optional
-        List of angular representations. Items can be 'ang', 'ang_mu', 'iso', or
-        'iso_mu'.
+        List of angular representations. Each item corresponds to materials and
+        dictates the angular representation of the multi-group cross
+        sections---isotropic ('iso') or angle-dependent ('ang'), and if Legendre
+        scattering or tabular scattering ('mu') is used. Thus, items can be
+        'ang', 'ang_mu', 'iso', or 'iso_mu'.
+
     as_macro : bool, optional
         Whether :class:`openmc.Macroscopic` is used
 

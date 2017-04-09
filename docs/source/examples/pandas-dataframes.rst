@@ -1,10 +1,12 @@
+.. _examples_pandas:
+
 =================
 Pandas Dataframes
 =================
 
 .. only:: html
 
-    .. notebook:: pandas-dataframes.ipynb
+    .. notebook:: ../../../examples/jupyter/pandas-dataframes.ipynb
 
 .. only:: latex
 

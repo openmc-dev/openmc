@@ -1,5 +1,5 @@
 from abc import ABCMeta, abstractmethod
-from collections import Iterable
+from collections import Iterable, OrderedDict
 
 from six import add_metaclass
 import numpy as np
@@ -45,6 +45,27 @@ class Region(object):
 
     def __ne__(self, other):
         return not self == other
+
+    def get_surfaces(self, surfaces=None):
+        """
+        Recursively find all the surfaces referenced by a region and return them
+
+        Parameters
+        ----------
+        surfaces: collections.OrderedDict, optional
+            Dictionary mapping surface IDs to :class:`openmc.Surface` instances
+            
+        Returns
+        -------
+        surfaces: collections.OrderedDict
+            Dictionary mapping surface IDs to :class:`openmc.Surface` instances
+
+        """
+        if surfaces is None:
+            surfaces = OrderedDict()
+        for region in self:
+            surfaces = region.get_surfaces(surfaces)
+        return surfaces
 
     @staticmethod
     def from_expression(expression, surfaces):
@@ -431,3 +452,24 @@ class Complement(Region):
         else:
             temp_region = ~self.node
         return temp_region.bounding_box
+
+    def get_surfaces(self, surfaces=None):
+        """
+        Recursively find and return all the surfaces referenced by the node
+
+        Parameters
+        ----------
+        surfaces: collections.OrderedDict, optional
+            Dictionary mapping surface IDs to :class:`openmc.Surface` instances
+
+        Returns
+        -------
+        surfaces: collections.OrderedDict
+            Dictionary mapping surface IDs to :class:`openmc.Surface` instances
+
+        """
+        if surfaces is None:
+            surfaces = OrderedDict()
+        for region in self.node:
+            surfaces = region.get_surfaces(surfaces)
+        return surfaces

@@ -1,5 +1,5 @@
 from abc import ABCMeta
-from collections import Iterable
+from collections import Iterable, OrderedDict
 from numbers import Real, Integral
 from xml.etree import ElementTree as ET
 from math import sqrt
@@ -1177,7 +1177,7 @@ class Sphere(Surface):
         y-coordinate of the center of the sphere
     z0 : float
         z-coordinate of the center of the sphere
-    R : float
+    r : float
         Radius of the sphere
     boundary_type : {'transmission, 'vacuum', 'reflective'}
         Boundary condition that defines the behavior for particles hitting the
@@ -1325,7 +1325,7 @@ class Cone(Surface):
         y-coordinate of the apex
     z0 : float
         z-coordinate of the apex
-    R2 : float
+    r2 : float
         Parameter related to the aperature
     boundary_type : {'transmission, 'vacuum', 'reflective'}
         Boundary condition that defines the behavior for particles hitting the
@@ -1880,6 +1880,27 @@ class Halfspace(Region):
     def __str__(self):
         return '-' + str(self.surface.id) if self.side == '-' \
             else str(self.surface.id)
+    
+    def get_surfaces(self, surfaces=None):
+        """
+        Returns the surface that this is a halfspace of.
+    
+        Parameters
+        ----------
+        surfaces: collections.OrderedDict, optional
+            Dictionary mapping surface IDs to :class:`openmc.Surface` instances
+    
+        Returns
+        -------
+        surfaces: collections.OrderedDict
+            Dictionary mapping surface IDs to :class:`openmc.Surface` instances
+    
+        """
+        if surfaces is None:
+            surfaces = OrderedDict()
+        
+        surfaces[self.surface.id] = self.surface
+        return surfaces
 
 
 def get_rectangular_prism(width, height, axis='z', origin=(0., 0.),

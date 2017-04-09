@@ -6,7 +6,7 @@ Multi-Group (Delayed) Cross Section Generation Part II: Advanced Features
 
 .. only:: html
 
-    .. notebook:: mdgxs-part-ii.ipynb
+    .. notebook:: ../../../examples/jupyter/mdgxs-part-ii.ipynb
 
 .. only:: latex
 

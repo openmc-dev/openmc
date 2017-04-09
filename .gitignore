@@ -59,16 +59,17 @@ src/cmake_install.cmake
 src/install_manifest.txt
 
 # Nuclear data
-data/nndc
-data/nndc_hdf5
-data/wmp
-data/multipole_lib.tar.gz
-data/ENDF-B-VII.1-*.tar.gz
-data/JEFF32-ACE-*.tar.gz
-data/JEFF32-ACE-*.zip
-data/TSLs.tar.gz
-data/jeff-3.2
-data/jeff-3.2-hdf5
+scripts/nndc
+scripts/nndc_hdf5
+scripts/wmp
+scripts/multipole_lib.tar.gz
+scripts/ENDF-B-VII.1-*.tar.gz
+scripts/JEFF32-ACE-*.tar.gz
+scripts/JEFF32-ACE-*.zip
+scripts/TSLs.tar.gz
+scripts/jeff-3.2
+scripts/jeff-3.2-hdf5
+scripts/*.tar.xz
 
 # Images
 *.ppm
@@ -81,14 +82,16 @@ data/jeff-3.2-hdf5
 # IPython notebook checkpoints
 .ipynb_checkpoints
 
-# Multi-group cross section IPython Notebook
-docs/source/pythonapi/examples/*.xml
-docs/source/pythonapi/examples/*.png
-docs/source/pythonapi/examples/*.xls
-docs/source/pythonapi/examples/mgxs
-docs/source/pythonapi/examples/tracks
-docs/source/pythonapi/examples/fission-rates
-docs/source/pythonapi/examples/plots
+# Jupyter notebooks
+examples/jupyter/*.xml
+examples/jupyter/*.png
+examples/jupyter/*.xls
+examples/jupyter/*.ace
+examples/jupyter/*.endf
+examples/jupyter/mgxs
+examples/jupyter/tracks
+examples/jupyter/fission-rates
+examples/jupyter/plots
 
 # Cython files
 *.c

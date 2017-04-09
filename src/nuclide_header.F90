@@ -65,14 +65,9 @@ module nuclide_header
 
     ! Resonance scattering info
     logical              :: resonant = .false. ! resonant scatterer?
-    character(10)        :: name_0K = '' ! name of 0K nuclide, e.g. 92235.00c
-    character(16)        :: scheme ! target velocity sampling scheme
-    integer              :: n_grid_0K ! number of 0K energy grid points
     real(8), allocatable :: energy_0K(:)  ! energy grid for 0K xs
     real(8), allocatable :: elastic_0K(:) ! Microscopic elastic cross section
     real(8), allocatable :: xs_cdf(:) ! CDF of v_rel times cross section
-    real(8)              :: E_min ! lower cutoff energy for res scattering
-    real(8)              :: E_max ! upper cutoff energy for res scattering
 
     ! Fission information
     logical :: has_partial_fission = .false. ! nuclide has partial fission reactions?
@@ -109,18 +104,6 @@ module nuclide_header
     procedure :: nu    => nuclide_nu
     procedure, private :: create_derived => nuclide_create_derived
   end type Nuclide
-
-!===============================================================================
-! NUCLIDE0K temporarily contains all 0K cross section data and other parameters
-! needed to treat resonance scattering before transferring them to Nuclide
-!===============================================================================
-
-  type Nuclide0K
-    character(10) :: nuclide             ! name of nuclide, e.g. U238
-    character(16) :: scheme = 'ares'     ! target velocity sampling scheme
-    real(8)       :: E_min = 0.01_8   ! lower cutoff energy for res scattering
-    real(8)       :: E_max = 1000.0_8 ! upper cutoff energy for res scattering
-  end type Nuclide0K
 
 !===============================================================================
 ! NUCLIDEMICROXS contains cached microscopic cross sections for a
@@ -208,6 +191,7 @@ module nuclide_header
     integer(HID_T) :: kT_group
     integer(HID_T) :: rxs_group
     integer(HID_T) :: rx_group
+    integer(HID_T) :: xs, temp_group
     integer(HID_T) :: total_nu
     integer(HID_T) :: fer_group                 ! fission_energy_release group
     integer(HID_T) :: fer_dset
@@ -316,24 +300,36 @@ module nuclide_header
     allocate(this % kTs(n_temperature))
     allocate(this % grid(n_temperature))
 
+    ! Get kT values
     do i = 1, n_temperature
       ! Get temperature as a string
       temp_str = trim(to_str(temps_to_read % data(i))) // "K"
 
       ! Read exact temperature value
       call read_dataset(this % kTs(i), kT_group, trim(temp_str))
+    end do
+    call close_group(kT_group)
 
-      ! Read energy grid
-      energy_group = open_group(group_id, 'energy')
+    ! Read energy grid
+    energy_group = open_group(group_id, 'energy')
+    do i = 1, n_temperature
+      temp_str = trim(to_str(temps_to_read % data(i))) // "K"
       energy_dset = open_dataset(energy_group, temp_str)
       call get_shape(energy_dset, dims)
       allocate(this % grid(i) % energy(int(dims(1), 4)))
       call read_dataset(this % grid(i) % energy, energy_dset)
       call close_dataset(energy_dset)
-      call close_group(energy_group)
     end do
 
-    call close_group(kT_group)
+    ! Check for 0K energy grid
+    if (object_exists(energy_group, '0K')) then
+      energy_dset = open_dataset(energy_group, '0K')
+      call get_shape(energy_dset, dims)
+      allocate(this % energy_0K(int(dims(1), 4)))
+      call read_dataset(this % energy_0K, energy_dset)
+      call close_dataset(energy_dset)
+    end if
+    call close_group(energy_group)
 
     ! Get MT values based on group names
     rxs_group = open_group(group_id, 'reactions')
@@ -351,6 +347,20 @@ module nuclide_header
            zero_padded(MTs % data(i), 3)))
 
       call this % reactions(i) % from_hdf5(rx_group, temps_to_read)
+
+      ! Check for 0K elastic scattering
+      if (this % reactions(i) % MT == 2) then
+        if (object_exists(rx_group, '0K')) then
+          temp_group = open_group(rx_group, '0K')
+          xs = open_dataset(temp_group, 'xs')
+          call get_shape(xs, dims)
+          allocate(this % elastic_0K(int(dims(1), 4)))
+          call read_dataset(this % elastic_0K, xs)
+          call close_dataset(xs)
+          call close_group(temp_group)
+        end if
+      end if
+
       call close_group(rx_group)
     end do
     call close_group(rxs_group)

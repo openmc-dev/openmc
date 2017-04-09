@@ -1100,6 +1100,13 @@ class Materials(cv.CheckedList):
         for material in self:
             material.make_isotropic_in_lab()
 
+    def clone(self):
+        """Create a copy of this material with a new unique ID."""
+
+        clone = copy.deepcopy(self)
+        clone.id = None
+        return clone
+
     def _create_material_subelements(self, root_element):
         for material in self:
             root_element.append(material.to_xml_element(self.cross_sections))

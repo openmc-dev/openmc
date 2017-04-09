@@ -171,6 +171,13 @@ class Surface(object):
         return (np.array([-np.inf, -np.inf, -np.inf]),
                 np.array([np.inf, np.inf, np.inf]))
 
+    def clone(self):
+        """Create a copy of this surface with a new unique ID."""
+
+        clone = copy.deepcopy(self)
+        clone.id = None
+        return clone
+
     def to_xml_element(self):
         """Return XML representation of the surface
 
@@ -1822,6 +1829,15 @@ class Halfspace(Region):
         self.surface = surface
         self.side = side
 
+    @abstractmethod
+    def clone(self):
+        """Create a copy of this halfspace, with a cloned surface with a
+        unique ID."""
+
+        clone = copy.deepcopy(self)
+        clone.surface = self.surface.clone()
+        return clone
+        
     def __and__(self, other):
         if isinstance(other, Intersection):
             return Intersection(self, *other.nodes)

@@ -221,6 +221,12 @@ class Region(object):
         # at the end
         return output[0]
 
+    @abstractmethod
+    def clone(self):
+        """Create a copy of this region - each of the surfaces in the
+        region's nodes will be cloned and will have new unique IDs."""
+        return False
+
 
 class Intersection(Region):
     r"""Intersection of two or more regions.
@@ -300,6 +306,15 @@ class Intersection(Region):
         check_type('nodes', nodes, Iterable, Region)
         self._nodes = nodes
 
+    @abstractmethod
+    def clone(self):
+        """Create a copy of this region - each of the surfaces in the
+        intersection's nodes will be cloned and will have new unique IDs."""
+
+        clone = copy.deepcopy(self)
+        clone.nodes = [n.clone() for n in self.nodes]
+        return clone
+
 
 class Union(Region):
     r"""Union of two or more regions.
@@ -376,6 +391,14 @@ class Union(Region):
     def nodes(self, nodes):
         check_type('nodes', nodes, Iterable, Region)
         self._nodes = nodes
+
+    def clone(self):
+        """Create a copy of this region - each of the surfaces in the
+        union's nodes will be cloned and will have new unique IDs."""
+
+        clone = copy.deepcopy(self)
+        clone.nodes = [n.clone() for n in self.nodes]
+        return clone
 
 
 class Complement(Region):
@@ -473,3 +496,11 @@ class Complement(Region):
         for region in self.node:
             surfaces = region.get_surfaces(surfaces)
         return surfaces
+
+    def clone(self):
+        """Create a copy of this region - each of the surfaces in the
+        complement's node will be cloned and will have new unique IDs."""
+
+        clone = copy.deepcopy(self)
+        clone.node = self.node.clone()
+        return clone

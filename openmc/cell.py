@@ -504,6 +504,20 @@ class Cell(object):
 
         return universes
 
+    def clone(self):
+        """Create a copy of this cell with a new unique ID, and clones
+        the cell's region and fill."""
+
+        clone = copy.deepcopy(self)
+        clone.id = None
+
+        if self.region is not None:
+            clone.region = self.region.clone()
+        if self.fill is not None:
+            clone.fill = self.fill.clone()
+
+        return clone
+    
     def create_xml_subelement(self, xml_element):
         element = ET.Element("cell")
         element.set("id", str(self.id))

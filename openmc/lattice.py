@@ -414,6 +414,25 @@ class Lattice(object):
                 return []
         return [(self, idx)] + u.find(p)
 
+    def clone(self):
+        """Create a copy of this lattice with a new unique ID, and clones
+        all universes within this lattice."""
+
+        clone = copy.deepcopy(self)
+        clone.id = None
+
+        # Clone all unique universes in the lattice
+        univ_clones = self.get_unique_universes()
+        for univ_id in univ_clones:
+            univ_clones[univ_id] = univ_clones[univ_id].clone()
+
+        # Assign universe clones to the lattice clone
+        for index in self.indices:
+            univ_id = self.universe[index].id
+            clone.universes[index] = univ_clones[univ_id]
+
+        return clone
+
 
 class RectLattice(Lattice):
     """A lattice consisting of rectangular prisms.

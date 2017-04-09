@@ -517,6 +517,20 @@ class Universe(object):
 
         return universes
 
+    def clone(self):
+        """Create a copy of this universe with a new unique ID, and clones
+        all cells within this universe."""
+
+        clone = copy.deepcopy(self)
+        clone.id = None
+
+        # Clone all cells for the universe clone
+        clone._cells = OrderedDict()
+        for cell in self._cells.values():
+            clone.add_cell(cell.clone())
+
+        return clone
+
     def create_xml_subelement(self, xml_element):
         # Iterate over all Cells
         for cell_id, cell in self._cells.items():

@@ -1,4 +1,5 @@
 from collections import OrderedDict, Iterable
+from copy import deepcopy
 from xml.etree import ElementTree as ET
 
 from six import string_types
@@ -497,3 +498,11 @@ class Geometry(object):
 
         # Recursively traverse the CSG tree to count all cell instances
         self.root_universe._determine_paths()
+
+    def clone(self):
+        """Create a copy of this geometry with new unique IDs for all of its
+        enclosed materials, surfaces, cells, universes and lattices."""
+
+        clone = deepcopy(self)
+        clone.root_universe = deepcopy(self.root_universe)
+        return clone

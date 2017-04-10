@@ -1,4 +1,4 @@
-from collections import OrderedDict, defaultdict
+from collections import OrderedDict
 from copy import deepcopy
 from numbers import Real, Integral
 import warnings
@@ -804,7 +804,7 @@ class Material(object):
 
         Parameters
         ----------
-        memo : defaultdict(dict) or None
+        memo : dict or None
             A nested dictionary of previously cloned objects. This parameter
             is used internally and should not be specified by the user.
 
@@ -816,17 +816,17 @@ class Material(object):
         """
 
         if memo is None:
-            memo = defaultdict(dict)
+            memo = dict
 
         # If no nemoize'd clone exists, instantiate one
-        if self.id not in memo['materials']:
+        if self not in memo:
             clone = deepcopy(self)
             clone.id = None
 
             # Memoize the clone
-            memo['materials'][self.id] = clone
+            memo[self] = clone
 
-        return memo['materials'][self.id]
+        return memo[self]
 
     def _get_nuclide_xml(self, nuclide, distrib=False):
         xml_element = ET.Element("nuclide")

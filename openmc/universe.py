@@ -1,5 +1,5 @@
 from __future__ import division
-from collections import OrderedDict, Iterable, defaultdict
+from collections import OrderedDict, Iterable
 from copy import copy, deepcopy
 from numbers import Integral, Real
 import random
@@ -523,7 +523,7 @@ class Universe(object):
 
         Parameters
         ----------
-        memo : defaultdict(dict) or None
+        memo : dict or None
             A nested dictionary of previously cloned objects. This parameter
             is used internally and should not be specified by the user.
 
@@ -535,10 +535,10 @@ class Universe(object):
         """
 
         if memo is None:
-            memo = defaultdict(dict)
+            memo = {}
 
         # If no nemoize'd clone exists, instantiate one
-        if self.id not in memo['universes']:
+        if self not in memo:
             clone = deepcopy(self)
             clone.id = None
 
@@ -548,9 +548,9 @@ class Universe(object):
                 clone.add_cell(cell.clone(memo))
 
             # Memoize the clone
-            memo['universes'][self.id] = clone
+            memo[self] = clone
 
-        return memo['universes'][self.id]
+        return memo[self]
 
     def create_xml_subelement(self, xml_element):
         # Iterate over all Cells

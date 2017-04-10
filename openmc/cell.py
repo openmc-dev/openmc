@@ -1,4 +1,4 @@
-from collections import OrderedDict, Iterable, defaultdict
+from collections import OrderedDict, Iterable
 from copy import deepcopy
 from math import cos, sin, pi
 from numbers import Real, Integral
@@ -511,7 +511,7 @@ class Cell(object):
 
         Parameters
         ----------
-        memo : defaultdict(dict) or None
+        memo : dict or None
             A nested dictionary of previously cloned objects. This parameter
             is used internally and should not be specified by the user.
 
@@ -523,10 +523,10 @@ class Cell(object):
         """
 
         if memo is None:
-            memo = defaultdict(dict)
+            memo = {}
 
         # If no nemoize'd clone exists, instantiate one
-        if self.id not in memo['cells']:
+        if self not in memo:
             clone = deepcopy(self)
             clone.id = None
             if self.region is not None:
@@ -539,9 +539,9 @@ class Cell(object):
                     clone.fill = self.fill.clone(memo)
 
             # Memoize the clone
-            memo['cells'][self.id] = clone
+            memo[self] = clone
 
-        return memo['cells'][self.id]
+        return memo[self]
     
     def create_xml_subelement(self, xml_element):
         element = ET.Element("cell")

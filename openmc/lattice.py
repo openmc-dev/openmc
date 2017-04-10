@@ -1,7 +1,7 @@
 from __future__ import division
 
 from abc import ABCMeta
-from collections import OrderedDict, Iterable, defaultdict
+from collections import OrderedDict, Iterable
 from copy import deepcopy
 from math import sqrt, floor
 from numbers import Real, Integral
@@ -421,7 +421,7 @@ class Lattice(object):
 
         Parameters
         ----------
-        memo : defaultdict(dict) or None
+        memo : dict or None
             A nested dictionary of previously cloned objects. This parameter
             is used internally and should not be specified by the user.
 
@@ -433,15 +433,15 @@ class Lattice(object):
         """
 
         if memo is None:
-            memo = defaultdict(dict)
+            memo = {}
 
         # If no nemoize'd clone exists, instantiate one
-        if self.id not in memo['lattices']:
+        if self not in memo:
             clone = deepcopy(self)
             clone.id = None
 
             if self.outer is not None:
-                clone.outer = self.outer.clone()
+                clone.outer = self.outer.clone(memo)
 
             # Clone all unique universes in the lattice
             univ_clones = self.get_unique_universes()
@@ -462,9 +462,9 @@ class Lattice(object):
                         clone.universes[i[0]][i[1]][i[2]] = univ_clones[univ_id]
 
             # Memoize the clone
-            memo['lattices'][self.id] = clone
+            memo[self] = clone
 
-        return memo['lattices'][self.id]
+        return memo[self]
 
 
 class RectLattice(Lattice):

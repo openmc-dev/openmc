@@ -1,5 +1,5 @@
 from abc import ABCMeta, abstractmethod
-from collections import Iterable, OrderedDict, defaultdict
+from collections import Iterable, OrderedDict
 from copy import deepcopy
 
 from six import add_metaclass
@@ -229,7 +229,7 @@ class Region(object):
 
         Parameters
         ----------
-        memo : defaultdict(dict) or None
+        memo : dict or None
             A nested dictionary of previously cloned objects. This parameter
             is used internally and should not be specified by the user.
 
@@ -332,7 +332,7 @@ class Intersection(Region):
 
         Parameters
         ----------
-        memo : defaultdict(dict) or None
+        memo : dict or None
             A nested dictionary of previously cloned objects. This parameter
             is used internally and should not be specified by the user.
 
@@ -344,7 +344,7 @@ class Intersection(Region):
         """
 
         if memo is None:
-            memo = defaultdict(dict)
+            memo = {}
 
         clone = deepcopy(self)
         clone.nodes = [n.clone(memo) for n in self.nodes]
@@ -433,7 +433,7 @@ class Union(Region):
 
         Parameters
         ----------
-        memo : defaultdict(dict) or None
+        memo : dict or None
             A nested dictionary of previously cloned objects. This parameter
             is used internally and should not be specified by the user.
 
@@ -445,7 +445,7 @@ class Union(Region):
         """
 
         if memo is None:
-            memo = defaultdict(dict)
+            memo = {}
 
         clone = copy.deepcopy(self)
         clone.nodes = [n.clone(memo) for n in self.nodes]
@@ -554,7 +554,7 @@ class Complement(Region):
 
         Parameters
         ----------
-        memo : defaultdict(dict) or None
+        memo : dict or None
             A nested dictionary of previously cloned objects. This parameter
             is used internally and should not be specified by the user.
 
@@ -566,7 +566,7 @@ class Complement(Region):
         """
 
         if memo is None:
-            memo = defaultdict(dict)
+            memo = {}
 
         clone = copy.deepcopy(self)
         clone.node = self.node.clone(memo)

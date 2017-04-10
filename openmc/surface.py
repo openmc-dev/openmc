@@ -1,5 +1,5 @@
 from abc import ABCMeta
-from collections import Iterable, OrderedDict, defaultdict
+from collections import Iterable, OrderedDict
 from copy import deepcopy
 from numbers import Real, Integral
 from xml.etree import ElementTree as ET
@@ -82,6 +82,9 @@ class Surface(object):
 
     def __pos__(self):
         return Halfspace(self, '+')
+
+    def __hash__(self):
+        return hash(repr(self))
 
     def __repr__(self):
         string = 'Surface\n'
@@ -177,7 +180,7 @@ class Surface(object):
 
         Parameters
         ----------
-        memo : defaultdict(dict) or None
+        memo : dict or None
             A nested dictionary of previously cloned objects. This parameter
             is used internally and should not be specified by the user.
 
@@ -189,17 +192,17 @@ class Surface(object):
         """
 
         if memo is None:
-            memo = defaultdict(dict)
+            memo = {}
 
         # If no nemoize'd clone exists, instantiate one
-        if self.id not in memo['surfaces']:
+        if self not in memo:
             clone = deepcopy(self)
             clone.id = None
 
             # Memoize the clone
-            memo['surfaces'][self.id] = clone
+            memo[self] = clone
 
-        return memo['surfaces'][self.id]
+        return memo[self]
 
     def to_xml_element(self):
         """Return XML representation of the surface
@@ -1938,7 +1941,7 @@ class Halfspace(Region):
 
         Parameters
         ----------
-        memo : defaultdict(dict) or None
+        memo : dict or None
             A nested dictionary of previously cloned objects. This parameter
             is used internally and should not be specified by the user.
 
@@ -1950,7 +1953,7 @@ class Halfspace(Region):
         """
 
         if memo is None:
-            memo = defaultdict(dict)
+            memo = dict
 
         clone = deepcopy(self)
         clone.surface = self.surface.clone(memo)

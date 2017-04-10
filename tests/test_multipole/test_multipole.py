@@ -4,94 +4,69 @@ import sys
 sys.path.insert(0, os.pardir)
 from testing_harness import TestHarness, PyAPITestHarness
 import openmc
+import openmc.model
+
+
+def make_model():
+    model = openmc.model.Model()
+
+    # Materials
+    moderator = openmc.Material(material_id=1)
+    moderator.set_density('g/cc', 1.0)
+    moderator.add_nuclide('H1', 2.0)
+    moderator.add_nuclide('O16', 1.0)
+    moderator.add_s_alpha_beta('c_H_in_H2O')
+
+    dense_fuel = openmc.Material(material_id=2)
+    dense_fuel.set_density('g/cc', 4.5)
+    dense_fuel.add_nuclide('U235', 1.0)
+
+    model.materials += [moderator, dense_fuel]
+
+    # Geometry
+    c1 = openmc.Cell(cell_id=1, fill=moderator)
+    mod_univ = openmc.Universe(universe_id=1, cells=(c1,))
+
+    r0 = openmc.ZCylinder(R=0.3)
+    c11 = openmc.Cell(cell_id=11, fill=dense_fuel, region=-r0)
+    c11.temperature = [500, 0, 700, 800]
+    c12 = openmc.Cell(cell_id=12, fill=moderator, region=+r0)
+    fuel_univ = openmc.Universe(universe_id=11, cells=(c11, c12))
+
+    lat = openmc.RectLattice(lattice_id=101)
+    lat.dimension = [2, 2]
+    lat.lower_left = [-2.0, -2.0]
+    lat.pitch = [2.0, 2.0]
+    lat.universes = [[fuel_univ]*2]*2
+    lat.outer = mod_univ
+
+    x0 = openmc.XPlane(x0=-3.0)
+    x1 = openmc.XPlane(x0=3.0)
+    y0 = openmc.YPlane(y0=-3.0)
+    y1 = openmc.YPlane(y0=3.0)
+    for s in [x0, x1, y0, y1]:
+        s.boundary_type = 'reflective'
+    c101 = openmc.Cell(cell_id=101, fill=lat, region=+x0 & -x1 & +y0 & -y1)
+    model.geometry.root_universe = openmc.Universe(universe_id=0, cells=(c101,))
+
+    # Settings
+    model.settings.batches = 5
+    model.settings.inactive = 0
+    model.settings.particles = 1000
+    model.settings.source = openmc.Source(space=openmc.stats.Box(
+        [-1, -1, -1], [1, 1, 1]))
+    model.settings.temperature = {'tolerance': 1000, 'multipole': True}
+
+    # Tallies
+    tally = openmc.Tally()
+    tally.nuclides = ['U235', 'O16', 'total']
+    tally.scores = ['total', 'fission', '(n,gamma)', 'elastic', '(n,p)']
+    model.tallies.append(tally)
+
+    return model
+
 
 class MultipoleTestHarness(PyAPITestHarness):
-    def _build_inputs(self):
-        ####################
-        # Materials
-        ####################
-
-        moderator = openmc.Material(material_id=1)
-        moderator.set_density('g/cc', 1.0)
-        moderator.add_nuclide('H1', 2.0)
-        moderator.add_nuclide('O16', 1.0)
-        moderator.add_s_alpha_beta('c_H_in_H2O')
-
-        dense_fuel = openmc.Material(material_id=2)
-        dense_fuel.set_density('g/cc', 4.5)
-        dense_fuel.add_nuclide('U235', 1.0)
-
-        mats_file = openmc.Materials([moderator, dense_fuel])
-        mats_file.export_to_xml()
-
-        ####################
-        # Geometry
-        ####################
-
-        c1 = openmc.Cell(cell_id=1, fill=moderator)
-        mod_univ = openmc.Universe(universe_id=1, cells=(c1,))
-
-        r0 = openmc.ZCylinder(R=0.3)
-        c11 = openmc.Cell(cell_id=11, fill=dense_fuel, region=-r0)
-        c11.temperature = [500, 0, 700, 800]
-        c12 = openmc.Cell(cell_id=12, fill=moderator, region=+r0)
-        fuel_univ = openmc.Universe(universe_id=11, cells=(c11, c12))
-
-        lat = openmc.RectLattice(lattice_id=101)
-        lat.dimension = [2, 2]
-        lat.lower_left = [-2.0, -2.0]
-        lat.pitch = [2.0, 2.0]
-        lat.universes = [[fuel_univ]*2]*2
-        lat.outer = mod_univ
-
-        x0 = openmc.XPlane(x0=-3.0)
-        x1 = openmc.XPlane(x0=3.0)
-        y0 = openmc.YPlane(y0=-3.0)
-        y1 = openmc.YPlane(y0=3.0)
-        for s in [x0, x1, y0, y1]:
-            s.boundary_type = 'reflective'
-        c101 = openmc.Cell(cell_id=101, fill=lat, region=+x0 & -x1 & +y0 & -y1)
-        root_univ = openmc.Universe(universe_id=0, cells=(c101,))
-
-        geometry = openmc.Geometry(root_univ)
-        geometry.export_to_xml()
-
-        ####################
-        # Settings
-        ####################
-
-        sets_file = openmc.Settings()
-        sets_file.batches = 5
-        sets_file.inactive = 0
-        sets_file.particles = 1000
-        sets_file.source = openmc.Source(space=openmc.stats.Box(
-            [-1, -1, -1], [1, 1, 1]))
-        sets_file.temperature = {'tolerance': 1000, 'multipole': True}
-        sets_file.export_to_xml()
-
-        ####################
-        # Plots
-        ####################
-
-        plot1 = openmc.Plot(plot_id=1)
-        plot1.basis = 'xy'
-        plot1.color_by = 'cell'
-        plot1.filename = 'cellplot'
-        plot1.origin = (0, 0, 0)
-        plot1.width = (7, 7)
-        plot1.pixels = (400, 400)
-
-        plot2 = openmc.Plot(plot_id=2)
-        plot2.basis = 'xy'
-        plot2.color_by = 'material'
-        plot2.filename = 'matplot'
-        plot2.origin = (0, 0, 0)
-        plot2.width = (7, 7)
-        plot2.pixels = (400, 400)
-
-        plots = openmc.Plots([plot1, plot2])
-        plots.export_to_xml()
-
     def execute_test(self):
         if not 'OPENMC_MULTIPOLE_LIBRARY' in os.environ:
             raise RuntimeError("The 'OPENMC_MULTIPOLE_LIBRARY' environment "
@@ -107,5 +82,6 @@ class MultipoleTestHarness(PyAPITestHarness):
 
 
 if __name__ == '__main__':
-    harness = MultipoleTestHarness('statepoint.5.h5')
+    model = make_model()
+    harness = MultipoleTestHarness('statepoint.5.h5', model)
     harness.main()

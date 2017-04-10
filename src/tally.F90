@@ -1169,16 +1169,28 @@ contains
                 ! Retrieve temperature and energy grid index and interpolation
                 ! factor
                 i_temp = micro_xs(i_nuclide) % index_temp
-                i_energy = micro_xs(i_nuclide) % index_grid
-                f = micro_xs(i_nuclide) % interp_factor
+                if (i_temp > 0) then
+                  i_energy = micro_xs(i_nuclide) % index_grid
+                  f = micro_xs(i_nuclide) % interp_factor
 
-                associate (xs => nuclides(i_nuclide) % reactions(m) % xs(i_temp))
-                  if (i_energy >= xs % threshold) then
-                    score = ((ONE - f) * xs % value(i_energy - &
-                         xs % threshold + 1) + f * xs % value(i_energy - &
-                         xs % threshold + 2)) * atom_density * flux
+                  associate (xs => nuclides(i_nuclide) % reactions(m) % xs(i_temp))
+                    if (i_energy >= xs % threshold) then
+                      score = ((ONE - f) * xs % value(i_energy - &
+                           xs % threshold + 1) + f * xs % value(i_energy - &
+                           xs % threshold + 2)) * atom_density * flux
+                    end if
+                  end associate
+                else
+                  ! This block is reached if multipole is turned on and we're in
+                  ! the resolved range. For (n,gamma), use absorption -
+                  ! fission. For everything else, assume it's zero.
+                  if (score_bin == N_GAMMA) then
+                    score = (micro_xs(i_nuclide) % absorption - &
+                         micro_xs(i_nuclide) % fission) * atom_density * flux
+                  else
+                    score = ZERO
                   end if
-                end associate
+                end if
               end if
 
             else
@@ -1195,16 +1207,28 @@ contains
                   ! Retrieve temperature and energy grid index and interpolation
                   ! factor
                   i_temp = micro_xs(i_nuc) % index_temp
-                  i_energy = micro_xs(i_nuc) % index_grid
-                  f = micro_xs(i_nuc) % interp_factor
+                  if (i_temp > 0) then
+                    i_energy = micro_xs(i_nuc) % index_grid
+                    f = micro_xs(i_nuc) % interp_factor
 
-                  associate (xs => nuclides(i_nuc) % reactions(m) % xs(i_temp))
-                    if (i_energy >= xs % threshold) then
-                      score = score + ((ONE - f) * xs % value(i_energy - &
-                           xs % threshold + 1) + f * xs % value(i_energy - &
-                           xs % threshold + 2)) * atom_density_ * flux
+                    associate (xs => nuclides(i_nuc) % reactions(m) % xs(i_temp))
+                      if (i_energy >= xs % threshold) then
+                        score = score + ((ONE - f) * xs % value(i_energy - &
+                             xs % threshold + 1) + f * xs % value(i_energy - &
+                             xs % threshold + 2)) * atom_density_ * flux
+                      end if
+                    end associate
+                  else
+                    ! This block is reached if multipole is turned on and we're
+                    ! in the resolved range. For (n,gamma), use absorption -
+                    ! fission. For everything else, assume it's zero.
+                    if (score_bin == N_GAMMA) then
+                      score = (micro_xs(i_nuc) % absorption - micro_xs(i_nuc) &
+                           % fission) * atom_density_ * flux
+                    else
+                      score = ZERO
                     end if
-                  end associate
+                  end if
                 end if
               end do
             end if

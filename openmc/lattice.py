@@ -415,13 +415,13 @@ class Lattice(object):
                 return []
         return [(self, idx)] + u.find(p)
 
-    def clone(self, memoize=None):
+    def clone(self, memo=None):
         """Create a copy of this lattice with a new unique ID, and clones
         all universes within this lattice.
 
         Parameters
         ----------
-        memoize : defaultdict(dict) or None
+        memo : defaultdict(dict) or None
             A nested dictionary of previously cloned objects. This parameter
             is used internally and should not be specified by the user.
 
@@ -432,18 +432,21 @@ class Lattice(object):
 
         """
 
-        if memoize is None:
-            memoize = defaultdict(dict)
+        if memo is None:
+            memo = defaultdict(dict)
 
         # If no nemoize'd clone exists, instantiate one
-        if self.id not in memoize['lattices']:
+        if self.id not in memo['lattices']:
             clone = deepcopy(self)
             clone.id = None
+
+            if self.outer is not None:
+                clone.outer = self.outer.clone()
 
             # Clone all unique universes in the lattice
             univ_clones = self.get_unique_universes()
             for univ_id in univ_clones:
-                univ_clones[univ_id] = univ_clones[univ_id].clone(memoize)
+                univ_clones[univ_id] = univ_clones[univ_id].clone(memo)
 
             # Assign universe clones to the lattice clone
             for i in self.indices:
@@ -459,9 +462,9 @@ class Lattice(object):
                         clone.universes[i[0]][i[1]][i[2]] = univ_clones[univ_id]
 
             # Memoize the clone
-            memoize['lattices'][self.id] = clone
+            memo['lattices'][self.id] = clone
 
-        return memoize['lattices'][self.id]
+        return memo['lattices'][self.id]
 
 
 class RectLattice(Lattice):

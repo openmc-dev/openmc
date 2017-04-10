@@ -799,12 +799,12 @@ class Material(object):
 
         return nuclides
 
-    def clone(self, memoize=None):
+    def clone(self, memo=None):
         """Create a copy of this material with a new unique ID.
 
         Parameters
         ----------
-        memoize : defaultdict(dict) or None
+        memo : defaultdict(dict) or None
             A nested dictionary of previously cloned objects. This parameter
             is used internally and should not be specified by the user.
 
@@ -815,18 +815,18 @@ class Material(object):
 
         """
 
-        if memoize is None:
-            memoize = defaultdict(dict)
+        if memo is None:
+            memo = defaultdict(dict)
 
         # If no nemoize'd clone exists, instantiate one
-        if self.id not in memoize['materials']:
+        if self.id not in memo['materials']:
             clone = deepcopy(self)
             clone.id = None
 
             # Memoize the clone
-            memoize['materials'][self.id] = clone
+            memo['materials'][self.id] = clone
 
-        return memoize['materials'][self.id]
+        return memo['materials'][self.id]
 
     def _get_nuclide_xml(self, nuclide, distrib=False):
         xml_element = ET.Element("nuclide")

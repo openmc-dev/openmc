@@ -517,13 +517,13 @@ class Universe(object):
 
         return universes
 
-    def clone(self, memoize=None):
+    def clone(self, memo=None):
         """Create a copy of this universe with a new unique ID, and clones
         all cells within this universe.
 
         Parameters
         ----------
-        memoize : defaultdict(dict) or None
+        memo : defaultdict(dict) or None
             A nested dictionary of previously cloned objects. This parameter
             is used internally and should not be specified by the user.
 
@@ -534,20 +534,23 @@ class Universe(object):
 
         """
 
-        if memoize is None:
-            memoize = defaultdict(dict)
+        if memo is None:
+            memo = defaultdict(dict)
 
         # If no nemoize'd clone exists, instantiate one
-        if self.id not in memoize['universes']:
-            memoize['universes'][self.id] = deepcopy(self)
-            memoize['universes'][self.id].id = None
+        if self.id not in memo['universes']:
+            clone = deepcopy(self)
+            clone.id = None
 
             # Clone all cells for the universe clone
-            memoize['universes'][self.id]._cells = OrderedDict()
+            clone._cells = OrderedDict()
             for cell in self._cells.values():
-                memoize['universes'][self.id].add_cell(cell.clone(memoize))
+                clone.add_cell(cell.clone(memo))
 
-        return memoize['universes'][self.id]
+            # Memoize the clone
+            memo['universes'][self.id] = clone
+
+        return memo['universes'][self.id]
 
     def create_xml_subelement(self, xml_element):
         # Iterate over all Cells

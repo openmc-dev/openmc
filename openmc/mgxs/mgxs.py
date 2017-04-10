@@ -3956,10 +3956,6 @@ class ScatterMatrixXS(MatrixMGXS):
                 self._xs_tally = MGXS.xs_tally.fget(self)
 
             else:
-                # Compute groupwise scattering cross section
-                self._xs_tally = self.tallies['scatter'] / \
-                                 self.tallies['flux (tracklength)']
-
                 # Compute scattering probability matrix
                 energyout_bins = [self.energy_groups.get_group_bounds(i)
                                   for i in range(self.num_groups, 0, -1)]
@@ -3969,7 +3965,6 @@ class ScatterMatrixXS(MatrixMGXS):
                 norm = self.tallies[tally_key].get_slice(scores=['scatter-0'])
                 norm = norm.summation(
                     filter_type=openmc.EnergyoutFilter, filter_bins=energyout_bins)
-
                 # Remove the AggregateFilter summed across energyout bins
                 norm._filters = norm._filters[:2]
 
@@ -3990,8 +3985,10 @@ class ScatterMatrixXS(MatrixMGXS):
                     # Remove the AggregateFilter summed across mu bins
                     norm._filters = norm._filters[:2]
 
-                # Multiply by the group-to-group probability matrix
-                self._xs_tally *= (self.tallies[tally_key] / norm)
+                # Compute groupwise scattering cross section
+                self._xs_tally = \
+                    self.tallies['scatter'] * self.tallies[tally_key] / norm
+                self._xs_tally /= self.tallies['flux (tracklength)']
 
                 # Multiply by the multiplicity matrix
                 if self.nu:

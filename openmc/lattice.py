@@ -2,6 +2,7 @@ from __future__ import division
 
 from abc import ABCMeta
 from collections import OrderedDict, Iterable
+from copy import deepcopy
 from math import sqrt, floor
 from numbers import Real, Integral
 from xml.etree import ElementTree as ET
@@ -418,7 +419,7 @@ class Lattice(object):
         """Create a copy of this lattice with a new unique ID, and clones
         all universes within this lattice."""
 
-        clone = copy.deepcopy(self)
+        clone = deepcopy(self)
         clone.id = None
 
         # Clone all unique universes in the lattice
@@ -427,9 +428,17 @@ class Lattice(object):
             univ_clones[univ_id] = univ_clones[univ_id].clone()
 
         # Assign universe clones to the lattice clone
-        for index in self.indices:
-            univ_id = self.universe[index].id
-            clone.universes[index] = univ_clones[univ_id]
+        for i in self.indices:
+            if isinstance(self, RectLattice):
+                univ_id = self.universes[i].id
+                clone.universes[i] = univ_clones[univ_id]
+            else:
+                if self.ndim == 2:
+                    univ_id = self.universes[i[0]][i[1]].id
+                    clone.universes[i[0]][i[1]] = univ_clones[univ_id]
+                else:
+                    univ_id = self.universes[i[0]][i[1]][i[2]].id
+                    clone.universes[i[0]][i[1]][i[2]] = univ_clones[univ_id]
 
         return clone
 

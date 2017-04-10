@@ -1,4 +1,5 @@
 from collections import OrderedDict, Iterable
+from copy import deepcopy
 from math import cos, sin, pi
 from numbers import Real, Integral
 from xml.etree import ElementTree as ET
@@ -508,7 +509,7 @@ class Cell(object):
         """Create a copy of this cell with a new unique ID, and clones
         the cell's region and fill."""
 
-        clone = copy.deepcopy(self)
+        clone = deepcopy(self)
         clone.id = None
 
         if self.region is not None:

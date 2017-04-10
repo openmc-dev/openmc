@@ -1,6 +1,6 @@
 from __future__ import division
-from copy import copy
 from collections import OrderedDict, Iterable
+from copy import copy, deepcopy
 from numbers import Integral, Real
 import random
 import sys
@@ -521,7 +521,7 @@ class Universe(object):
         """Create a copy of this universe with a new unique ID, and clones
         all cells within this universe."""
 
-        clone = copy.deepcopy(self)
+        clone = deepcopy(self)
         clone.id = None
 
         # Clone all cells for the universe clone

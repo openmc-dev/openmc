@@ -799,6 +799,13 @@ class Material(object):
 
         return nuclides
 
+    def clone(self):
+        """Create a copy of this material with a new unique ID."""
+
+        clone = deepcopy(self)
+        clone.id = None
+        return clone
+
     def _get_nuclide_xml(self, nuclide, distrib=False):
         xml_element = ET.Element("nuclide")
         xml_element.set("name", nuclide[0].name)
@@ -1099,13 +1106,6 @@ class Materials(cv.CheckedList):
     def make_isotropic_in_lab(self):
         for material in self:
             material.make_isotropic_in_lab()
-
-    def clone(self):
-        """Create a copy of this material with a new unique ID."""
-
-        clone = copy.deepcopy(self)
-        clone.id = None
-        return clone
 
     def _create_material_subelements(self, root_element):
         for material in self:

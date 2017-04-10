@@ -1,5 +1,6 @@
 from abc import ABCMeta
 from collections import Iterable, OrderedDict
+from copy import deepcopy
 from numbers import Real, Integral
 from xml.etree import ElementTree as ET
 from math import sqrt
@@ -174,7 +175,7 @@ class Surface(object):
     def clone(self):
         """Create a copy of this surface with a new unique ID."""
 
-        clone = copy.deepcopy(self)
+        clone = deepcopy(self)
         clone.id = None
         return clone
 
@@ -1828,15 +1829,6 @@ class Halfspace(Region):
     def __init__(self, surface, side):
         self.surface = surface
         self.side = side
-
-    @abstractmethod
-    def clone(self):
-        """Create a copy of this halfspace, with a cloned surface with a
-        unique ID."""
-
-        clone = copy.deepcopy(self)
-        clone.surface = self.surface.clone()
-        return clone
         
     def __and__(self, other):
         if isinstance(other, Intersection):
@@ -1917,6 +1909,14 @@ class Halfspace(Region):
         
         surfaces[self.surface.id] = self.surface
         return surfaces
+
+    def clone(self):
+        """Create a copy of this halfspace, with a cloned surface with a
+        unique ID."""
+
+        clone = deepcopy(self)
+        clone.surface = self.surface.clone()
+        return clone
 
 
 def get_rectangular_prism(width, height, axis='z', origin=(0., 0.),

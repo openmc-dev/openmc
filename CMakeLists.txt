@@ -213,6 +213,11 @@ elseif(CMAKE_Fortran_COMPILER_ID STREQUAL Cray)
 
 endif()
 
+# Show flags being used
+message(STATUS "Fortran flags: ${f90flags}")
+message(STATUS "C flags: ${cflags}")
+message(STATUS "Linker flags: ${ldflags}")
+
 #===============================================================================
 # git SHA1 hash
 #===============================================================================

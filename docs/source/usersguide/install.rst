@@ -225,7 +225,7 @@ optimize
 
 openmp
   Enables shared-memory parallelism using the OpenMP API. The Fortran compiler
-  being used must support OpenMP.
+  being used must support OpenMP. (Default: on)
 
 coverage
   Compile and link code instrumented for coverage analysis. This is typically

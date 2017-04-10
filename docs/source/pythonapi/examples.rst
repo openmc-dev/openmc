@@ -20,6 +20,6 @@ Reactor Models
    :nosignatures:
    :template: myfunction.rst
 
+   openmc.examples.pwr_pin_cell
    openmc.examples.pwr_assembly
    openmc.examples.pwr_core
-   openmc.examples.pwr_pin_cell

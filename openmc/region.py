@@ -1,5 +1,5 @@
 from abc import ABCMeta, abstractmethod
-from collections import Iterable, OrderedDict
+from collections import Iterable, OrderedDict, defaultdict
 from copy import deepcopy
 
 from six import add_metaclass
@@ -223,10 +223,11 @@ class Region(object):
         return output[0]
 
     @abstractmethod
-    def clone(self):
+    def clone(self, memoize=None):
         """Create a copy of this region - each of the surfaces in the
         region's nodes will be cloned and will have new unique IDs."""
-        return False
+        raise NotImplementedError('The clone method is not implemented for '
+                                  'the abstract region class.')
 
 
 class Intersection(Region):
@@ -307,12 +308,15 @@ class Intersection(Region):
         check_type('nodes', nodes, Iterable, Region)
         self._nodes = nodes
 
-    def clone(self):
+    def clone(self, memoize=None):
         """Create a copy of this region - each of the surfaces in the
         intersection's nodes will be cloned and will have new unique IDs."""
 
+        if memoize is None:
+            memoize = defaultdict(dict)
+
         clone = deepcopy(self)
-        clone.nodes = [n.clone() for n in self.nodes]
+        clone.nodes = [n.clone(memoize) for n in self.nodes]
         return clone
 
 
@@ -392,12 +396,15 @@ class Union(Region):
         check_type('nodes', nodes, Iterable, Region)
         self._nodes = nodes
 
-    def clone(self):
+    def clone(self, memoize=None):
         """Create a copy of this region - each of the surfaces in the
         union's nodes will be cloned and will have new unique IDs."""
 
+        if memoize is None:
+            memoize = defaultdict(dict)
+
         clone = copy.deepcopy(self)
-        clone.nodes = [n.clone() for n in self.nodes]
+        clone.nodes = [n.clone(memoize) for n in self.nodes]
         return clone
 
 
@@ -497,10 +504,13 @@ class Complement(Region):
             surfaces = region.get_surfaces(surfaces)
         return surfaces
 
-    def clone(self):
+    def clone(self, memoize=None):
         """Create a copy of this region - each of the surfaces in the
         complement's node will be cloned and will have new unique IDs."""
 
+        if memoize is None:
+            memoize = defaultdict(dict)
+
         clone = copy.deepcopy(self)
-        clone.node = self.node.clone()
+        clone.node = self.node.clone(memoize)
         return clone

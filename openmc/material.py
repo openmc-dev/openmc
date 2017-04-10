@@ -1,4 +1,4 @@
-from collections import OrderedDict
+from collections import OrderedDict, defaultdict
 from copy import deepcopy
 from numbers import Real, Integral
 import warnings
@@ -799,12 +799,21 @@ class Material(object):
 
         return nuclides
 
-    def clone(self):
+    def clone(self, memoize=None):
         """Create a copy of this material with a new unique ID."""
 
-        clone = deepcopy(self)
-        clone.id = None
-        return clone
+        if memoize is None:
+            memoize = defaultdict(dict)
+
+        # If no nemoize'd clone exists, instantiate one
+        if self.id not in memoize['materials']:
+            clone = deepcopy(self)
+            clone.id = None
+
+            # Memoize the clone
+            memoize['materials'][self.id] = clone
+
+        return memoize['materials'][self.id]
 
     def _get_nuclide_xml(self, nuclide, distrib=False):
         xml_element = ET.Element("nuclide")

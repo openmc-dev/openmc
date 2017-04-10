@@ -504,5 +504,5 @@ class Geometry(object):
         enclosed materials, surfaces, cells, universes and lattices."""
 
         clone = deepcopy(self)
-        clone.root_universe = deepcopy(self.root_universe)
+        clone.root_universe = self.root_universe.clone()
         return clone

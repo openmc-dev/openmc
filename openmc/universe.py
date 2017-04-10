@@ -1,5 +1,5 @@
 from __future__ import division
-from collections import OrderedDict, Iterable
+from collections import OrderedDict, Iterable, defaultdict
 from copy import copy, deepcopy
 from numbers import Integral, Real
 import random
@@ -517,19 +517,24 @@ class Universe(object):
 
         return universes
 
-    def clone(self):
+    def clone(self, memoize=None):
         """Create a copy of this universe with a new unique ID, and clones
         all cells within this universe."""
 
-        clone = deepcopy(self)
-        clone.id = None
+        if memoize is None:
+            memoize = defaultdict(dict)
 
-        # Clone all cells for the universe clone
-        clone._cells = OrderedDict()
-        for cell in self._cells.values():
-            clone.add_cell(cell.clone())
+        # If no nemoize'd clone exists, instantiate one
+        if self.id not in memoize['universes']:
+            memoize['universes'][self.id] = deepcopy(self)
+            memoize['universes'][self.id].id = None
 
-        return clone
+            # Clone all cells for the universe clone
+            memoize['universes'][self.id]._cells = OrderedDict()
+            for cell in self._cells.values():
+                memoize['universes'][self.id].add_cell(cell.clone(memoize))
+
+        return memoize['universes'][self.id]
 
     def create_xml_subelement(self, xml_element):
         # Iterate over all Cells

@@ -1,4 +1,4 @@
-from collections import OrderedDict, Iterable
+from collections import OrderedDict, Iterable, defaultdict
 from copy import deepcopy
 from math import cos, sin, pi
 from numbers import Real, Integral
@@ -505,19 +505,29 @@ class Cell(object):
 
         return universes
 
-    def clone(self):
+    def clone(self, memoize=None):
         """Create a copy of this cell with a new unique ID, and clones
         the cell's region and fill."""
 
-        clone = deepcopy(self)
-        clone.id = None
+        if memoize is None:
+            memoize = defaultdict(dict)
 
-        if self.region is not None:
-            clone.region = self.region.clone()
-        if self.fill is not None:
-            clone.fill = self.fill.clone()
+        # If no nemoize'd clone exists, instantiate one
+        if self.id not in memoize['cells']:
+            clone = deepcopy(self)
+            clone.id = None
+            if self.region is not None:
+                clone.region = self.region.clone(memoize)
+            if self.fill is not None:
+                if self.fill_type == 'distribmat':
+                    clone.fill = [fill.clone(memoize) for fill in self.fill]
+                else:
+                    clone.fill = self.fill.clone(memoize)
 
-        return clone
+            # Memoize the clone
+            memoize['cells'][self.id] = clone
+
+        return memoize['cells'][self.id]
     
     def create_xml_subelement(self, xml_element):
         element = ET.Element("cell")

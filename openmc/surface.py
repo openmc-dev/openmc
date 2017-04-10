@@ -1,5 +1,5 @@
 from abc import ABCMeta
-from collections import Iterable, OrderedDict
+from collections import Iterable, OrderedDict, defaultdict
 from copy import deepcopy
 from numbers import Real, Integral
 from xml.etree import ElementTree as ET
@@ -172,12 +172,21 @@ class Surface(object):
         return (np.array([-np.inf, -np.inf, -np.inf]),
                 np.array([np.inf, np.inf, np.inf]))
 
-    def clone(self):
+    def clone(self, memoize=None):
         """Create a copy of this surface with a new unique ID."""
 
-        clone = deepcopy(self)
-        clone.id = None
-        return clone
+        if memoize is None:
+            memoize = defaultdict(dict)
+
+        # If no nemoize'd clone exists, instantiate one
+        if self.id not in memoize['surfaces']:
+            clone = deepcopy(self)
+            clone.id = None
+
+            # Memoize the clone
+            memoize['surfaces'][self.id] = clone
+
+        return memoize['surfaces'][self.id]
 
     def to_xml_element(self):
         """Return XML representation of the surface
@@ -1910,12 +1919,15 @@ class Halfspace(Region):
         surfaces[self.surface.id] = self.surface
         return surfaces
 
-    def clone(self):
+    def clone(self, memoize=None):
         """Create a copy of this halfspace, with a cloned surface with a
         unique ID."""
 
+        if memoize is None:
+            memoize = defaultdict(dict)
+
         clone = deepcopy(self)
-        clone.surface = self.surface.clone()
+        clone.surface = self.surface.clone(memoize)
         return clone
 
 

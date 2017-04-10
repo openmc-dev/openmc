@@ -1,7 +1,7 @@
 from __future__ import division
 
 from abc import ABCMeta
-from collections import OrderedDict, Iterable
+from collections import OrderedDict, Iterable, defaultdict
 from copy import deepcopy
 from math import sqrt, floor
 from numbers import Real, Integral
@@ -415,32 +415,40 @@ class Lattice(object):
                 return []
         return [(self, idx)] + u.find(p)
 
-    def clone(self):
+    def clone(self, memoize=None):
         """Create a copy of this lattice with a new unique ID, and clones
         all universes within this lattice."""
 
-        clone = deepcopy(self)
-        clone.id = None
+        if memoize is None:
+            memoize = defaultdict(dict)
 
-        # Clone all unique universes in the lattice
-        univ_clones = self.get_unique_universes()
-        for univ_id in univ_clones:
-            univ_clones[univ_id] = univ_clones[univ_id].clone()
+        # If no nemoize'd clone exists, instantiate one
+        if self.id not in memoize['lattices']:
+            clone = deepcopy(self)
+            clone.id = None
 
-        # Assign universe clones to the lattice clone
-        for i in self.indices:
-            if isinstance(self, RectLattice):
-                univ_id = self.universes[i].id
-                clone.universes[i] = univ_clones[univ_id]
-            else:
-                if self.ndim == 2:
-                    univ_id = self.universes[i[0]][i[1]].id
-                    clone.universes[i[0]][i[1]] = univ_clones[univ_id]
+            # Clone all unique universes in the lattice
+            univ_clones = self.get_unique_universes()
+            for univ_id in univ_clones:
+                univ_clones[univ_id] = univ_clones[univ_id].clone(memoize)
+
+            # Assign universe clones to the lattice clone
+            for i in self.indices:
+                if isinstance(self, RectLattice):
+                    univ_id = self.universes[i].id
+                    clone.universes[i] = univ_clones[univ_id]
                 else:
-                    univ_id = self.universes[i[0]][i[1]][i[2]].id
-                    clone.universes[i[0]][i[1]][i[2]] = univ_clones[univ_id]
+                    if self.ndim == 2:
+                        univ_id = self.universes[i[0]][i[1]].id
+                        clone.universes[i[0]][i[1]] = univ_clones[univ_id]
+                    else:
+                        univ_id = self.universes[i[0]][i[1]][i[2]].id
+                        clone.universes[i[0]][i[1]][i[2]] = univ_clones[univ_id]
 
-        return clone
+            # Memoize the clone
+            memoize['lattices'][self.id] = clone
+
+        return memoize['lattices'][self.id]
 
 
 class RectLattice(Lattice):

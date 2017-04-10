@@ -1,5 +1,6 @@
 from abc import ABCMeta, abstractmethod
 from collections import Iterable, OrderedDict
+from copy import deepcopy
 
 from six import add_metaclass
 import numpy as np
@@ -306,12 +307,11 @@ class Intersection(Region):
         check_type('nodes', nodes, Iterable, Region)
         self._nodes = nodes
 
-    @abstractmethod
     def clone(self):
         """Create a copy of this region - each of the surfaces in the
         intersection's nodes will be cloned and will have new unique IDs."""
 
-        clone = copy.deepcopy(self)
+        clone = deepcopy(self)
         clone.nodes = [n.clone() for n in self.nodes]
         return clone
 

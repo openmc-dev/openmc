@@ -223,13 +223,13 @@ class Region(object):
         return output[0]
 
     @abstractmethod
-    def clone(self, memoize=None):
+    def clone(self, memo=None):
         """Create a copy of this region - each of the surfaces in the
         region's nodes will be cloned and will have new unique IDs.
 
         Parameters
         ----------
-        memoize : defaultdict(dict) or None
+        memo : defaultdict(dict) or None
             A nested dictionary of previously cloned objects. This parameter
             is used internally and should not be specified by the user.
 
@@ -326,13 +326,13 @@ class Intersection(Region):
         check_type('nodes', nodes, Iterable, Region)
         self._nodes = nodes
 
-    def clone(self, memoize=None):
+    def clone(self, memo=None):
         """Create a copy of this region - each of the surfaces in the
         intersection's nodes will be cloned and will have new unique IDs.
 
         Parameters
         ----------
-        memoize : defaultdict(dict) or None
+        memo : defaultdict(dict) or None
             A nested dictionary of previously cloned objects. This parameter
             is used internally and should not be specified by the user.
 
@@ -343,11 +343,11 @@ class Intersection(Region):
 
         """
 
-        if memoize is None:
-            memoize = defaultdict(dict)
+        if memo is None:
+            memo = defaultdict(dict)
 
         clone = deepcopy(self)
-        clone.nodes = [n.clone(memoize) for n in self.nodes]
+        clone.nodes = [n.clone(memo) for n in self.nodes]
         return clone
 
 
@@ -427,13 +427,13 @@ class Union(Region):
         check_type('nodes', nodes, Iterable, Region)
         self._nodes = nodes
 
-    def clone(self, memoize=None):
+    def clone(self, memo=None):
         """Create a copy of this region - each of the surfaces in the
         union's nodes will be cloned and will have new unique IDs.
 
         Parameters
         ----------
-        memoize : defaultdict(dict) or None
+        memo : defaultdict(dict) or None
             A nested dictionary of previously cloned objects. This parameter
             is used internally and should not be specified by the user.
 
@@ -444,11 +444,11 @@ class Union(Region):
 
         """
 
-        if memoize is None:
-            memoize = defaultdict(dict)
+        if memo is None:
+            memo = defaultdict(dict)
 
         clone = copy.deepcopy(self)
-        clone.nodes = [n.clone(memoize) for n in self.nodes]
+        clone.nodes = [n.clone(memo) for n in self.nodes]
         return clone
 
 
@@ -548,13 +548,13 @@ class Complement(Region):
             surfaces = region.get_surfaces(surfaces)
         return surfaces
 
-    def clone(self, memoize=None):
+    def clone(self, memo=None):
         """Create a copy of this region - each of the surfaces in the
         complement's node will be cloned and will have new unique IDs.
 
         Parameters
         ----------
-        memoize : defaultdict(dict) or None
+        memo : defaultdict(dict) or None
             A nested dictionary of previously cloned objects. This parameter
             is used internally and should not be specified by the user.
 
@@ -565,9 +565,9 @@ class Complement(Region):
 
         """
 
-        if memoize is None:
-            memoize = defaultdict(dict)
+        if memo is None:
+            memo = defaultdict(dict)
 
         clone = copy.deepcopy(self)
-        clone.node = self.node.clone(memoize)
+        clone.node = self.node.clone(memo)
         return clone

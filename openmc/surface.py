@@ -172,12 +172,12 @@ class Surface(object):
         return (np.array([-np.inf, -np.inf, -np.inf]),
                 np.array([np.inf, np.inf, np.inf]))
 
-    def clone(self, memoize=None):
+    def clone(self, memo=None):
         """Create a copy of this surface with a new unique ID.
 
         Parameters
         ----------
-        memoize : defaultdict(dict) or None
+        memo : defaultdict(dict) or None
             A nested dictionary of previously cloned objects. This parameter
             is used internally and should not be specified by the user.
 
@@ -188,18 +188,18 @@ class Surface(object):
 
         """
 
-        if memoize is None:
-            memoize = defaultdict(dict)
+        if memo is None:
+            memo = defaultdict(dict)
 
         # If no nemoize'd clone exists, instantiate one
-        if self.id not in memoize['surfaces']:
+        if self.id not in memo['surfaces']:
             clone = deepcopy(self)
             clone.id = None
 
             # Memoize the clone
-            memoize['surfaces'][self.id] = clone
+            memo['surfaces'][self.id] = clone
 
-        return memoize['surfaces'][self.id]
+        return memo['surfaces'][self.id]
 
     def to_xml_element(self):
         """Return XML representation of the surface
@@ -1932,13 +1932,13 @@ class Halfspace(Region):
         surfaces[self.surface.id] = self.surface
         return surfaces
 
-    def clone(self, memoize=None):
+    def clone(self, memo=None):
         """Create a copy of this halfspace, with a cloned surface with a
         unique ID.
 
         Parameters
         ----------
-        memoize : defaultdict(dict) or None
+        memo : defaultdict(dict) or None
             A nested dictionary of previously cloned objects. This parameter
             is used internally and should not be specified by the user.
 
@@ -1949,11 +1949,11 @@ class Halfspace(Region):
 
         """
 
-        if memoize is None:
-            memoize = defaultdict(dict)
+        if memo is None:
+            memo = defaultdict(dict)
 
         clone = deepcopy(self)
-        clone.surface = self.surface.clone(memoize)
+        clone.surface = self.surface.clone(memo)
         return clone
 
 

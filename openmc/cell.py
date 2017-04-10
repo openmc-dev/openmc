@@ -505,13 +505,13 @@ class Cell(object):
 
         return universes
 
-    def clone(self, memoize=None):
+    def clone(self, memo=None):
         """Create a copy of this cell with a new unique ID, and clones
         the cell's region and fill.
 
         Parameters
         ----------
-        memoize : defaultdict(dict) or None
+        memo : defaultdict(dict) or None
             A nested dictionary of previously cloned objects. This parameter
             is used internally and should not be specified by the user.
 
@@ -522,25 +522,26 @@ class Cell(object):
 
         """
 
-        if memoize is None:
-            memoize = defaultdict(dict)
+        if memo is None:
+            memo = defaultdict(dict)
 
         # If no nemoize'd clone exists, instantiate one
-        if self.id not in memoize['cells']:
+        if self.id not in memo['cells']:
             clone = deepcopy(self)
             clone.id = None
             if self.region is not None:
-                clone.region = self.region.clone(memoize)
+                clone.region = self.region.clone(memo)
             if self.fill is not None:
                 if self.fill_type == 'distribmat':
-                    clone.fill = [fill.clone(memoize) for fill in self.fill]
+                    clone.fill = [fill.clone(memo) if fill is not None else None
+                                  for fill in self.fill]
                 else:
-                    clone.fill = self.fill.clone(memoize)
+                    clone.fill = self.fill.clone(memo)
 
             # Memoize the clone
-            memoize['cells'][self.id] = clone
+            memo['cells'][self.id] = clone
 
-        return memoize['cells'][self.id]
+        return memo['cells'][self.id]
     
     def create_xml_subelement(self, xml_element):
         element = ET.Element("cell")

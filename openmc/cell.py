@@ -507,7 +507,20 @@ class Cell(object):
 
     def clone(self, memoize=None):
         """Create a copy of this cell with a new unique ID, and clones
-        the cell's region and fill."""
+        the cell's region and fill.
+
+        Parameters
+        ----------
+        memoize : defaultdict(dict) or None
+            A nested dictionary of previously cloned objects. This parameter
+            is used internally and should not be specified by the user.
+
+        Returns
+        -------
+        clone : openmc.Cell
+            The clone of this cell
+
+        """
 
         if memoize is None:
             memoize = defaultdict(dict)

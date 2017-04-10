@@ -800,7 +800,20 @@ class Material(object):
         return nuclides
 
     def clone(self, memoize=None):
-        """Create a copy of this material with a new unique ID."""
+        """Create a copy of this material with a new unique ID.
+
+        Parameters
+        ----------
+        memoize : defaultdict(dict) or None
+            A nested dictionary of previously cloned objects. This parameter
+            is used internally and should not be specified by the user.
+
+        Returns
+        -------
+        clone : openmc.Material
+            The clone of this material
+
+        """
 
         if memoize is None:
             memoize = defaultdict(dict)

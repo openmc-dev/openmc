@@ -173,7 +173,20 @@ class Surface(object):
                 np.array([np.inf, np.inf, np.inf]))
 
     def clone(self, memoize=None):
-        """Create a copy of this surface with a new unique ID."""
+        """Create a copy of this surface with a new unique ID.
+
+        Parameters
+        ----------
+        memoize : defaultdict(dict) or None
+            A nested dictionary of previously cloned objects. This parameter
+            is used internally and should not be specified by the user.
+
+        Returns
+        -------
+        clone : openmc.Surface
+            The clone of this surface
+
+        """
 
         if memoize is None:
             memoize = defaultdict(dict)
@@ -1921,7 +1934,20 @@ class Halfspace(Region):
 
     def clone(self, memoize=None):
         """Create a copy of this halfspace, with a cloned surface with a
-        unique ID."""
+        unique ID.
+
+        Parameters
+        ----------
+        memoize : defaultdict(dict) or None
+            A nested dictionary of previously cloned objects. This parameter
+            is used internally and should not be specified by the user.
+
+        Returns
+        -------
+        clone : openmc.Halfspace
+            The clone of this halfspace
+
+        """
 
         if memoize is None:
             memoize = defaultdict(dict)

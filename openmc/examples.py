@@ -21,14 +21,14 @@ def pwr_pin_cell():
     model = openmc.model.Model()
 
     # Define materials.
-    fuel = openmc.Material(name='Fuel')
+    fuel = openmc.Material(name='UO2 (2.4%)')
     fuel.set_density('g/cm3', 10.29769)
     fuel.add_nuclide("U234", 4.4843e-6)
     fuel.add_nuclide("U235", 5.5815e-4)
     fuel.add_nuclide("U238", 2.2408e-2)
     fuel.add_nuclide("O16", 4.5829e-2)
 
-    clad = openmc.Material(name='Cladding')
+    clad = openmc.Material(name='Zircaloy')
     clad.set_density('g/cm3', 6.55)
     clad.add_nuclide("Zr90", 2.1827e-2)
     clad.add_nuclide("Zr91", 4.7600e-3)
@@ -58,9 +58,9 @@ def pwr_pin_cell():
     top = openmc.YPlane(y0=pitch/2, name='top', boundary_type='reflective')
 
     # Instantiate Cells
-    fuel_pin = openmc.Cell(name='cell 1', fill=fuel)
-    cladding = openmc.Cell(name='cell 3', fill=clad)
-    water = openmc.Cell(name='cell 2', fill=hot_water)
+    fuel_pin = openmc.Cell(name='Fuel', fill=fuel)
+    cladding = openmc.Cell(name='Cladding', fill=clad)
+    water = openmc.Cell(name='Water', fill=hot_water)
 
     # Use surface half-spaces to define regions
     fuel_pin.region = -fuel_or
@@ -102,7 +102,7 @@ def pwr_core():
     model = openmc.model.Model()
 
     # Define materials.
-    fuel = openmc.Material(name='Fuel', material_id=1)
+    fuel = openmc.Material(1, name='UOX fuel')
     fuel.set_density('g/cm3', 10.062)
     fuel.add_nuclide("U234", 4.9476e-6)
     fuel.add_nuclide("U235", 4.8218e-4)
@@ -110,7 +110,7 @@ def pwr_core():
     fuel.add_nuclide("Xe135", 1.0801e-8)
     fuel.add_nuclide("O16", 4.5737e-2)
 
-    clad = openmc.Material(name='Cladding', material_id=2)
+    clad = openmc.Material(2, name='Zircaloy')
     clad.set_density('g/cm3', 5.77)
     clad.add_nuclide("Zr90", 0.5145)
     clad.add_nuclide("Zr91", 0.1122)
@@ -118,7 +118,7 @@ def pwr_core():
     clad.add_nuclide("Zr94", 0.1738)
     clad.add_nuclide("Zr96", 0.0280)
 
-    cold_water = openmc.Material(name='Cold borated water', material_id=3)
+    cold_water = openmc.Material(3, name='Cold borated water')
     cold_water.set_density('atom/b-cm', 0.07416)
     cold_water.add_nuclide("H1", 2.0)
     cold_water.add_nuclide("O16", 1.0)
@@ -126,7 +126,7 @@ def pwr_core():
     cold_water.add_nuclide("B11", 2.689e-3)
     cold_water.add_s_alpha_beta('c_H_in_H2O')
 
-    hot_water = openmc.Material(name='Hot borated water', material_id=4)
+    hot_water = openmc.Material(4, name='Hot borated water')
     hot_water.set_density('atom/b-cm', 0.06614)
     hot_water.add_nuclide("H1", 2.0)
     hot_water.add_nuclide("O16", 1.0)
@@ -134,8 +134,7 @@ def pwr_core():
     hot_water.add_nuclide("B11", 2.689e-3)
     hot_water.add_s_alpha_beta('c_H_in_H2O')
 
-    rpv_steel = openmc.Material(name='Reactor pressure vessel steel',
-                                material_id=5)
+    rpv_steel = openmc.Material(5, name='Reactor pressure vessel steel')
     rpv_steel.set_density('g/cm3', 7.9)
     rpv_steel.add_nuclide("Fe54", 0.05437098, 'wo')
     rpv_steel.add_nuclide("Fe56", 0.88500663, 'wo')
@@ -148,8 +147,7 @@ def pwr_core():
     rpv_steel.add_nuclide("C0", 0.0025, 'wo')
     rpv_steel.add_nuclide("Cu63", 0.0013696, 'wo')
 
-    lower_rad_ref = openmc.Material(name='Lower radial reflector',
-                                    material_id=6)
+    lower_rad_ref = openmc.Material(6, name='Lower radial reflector')
     lower_rad_ref.set_density('g/cm3', 4.32)
     lower_rad_ref.add_nuclide("H1", 0.0095661, 'wo')
     lower_rad_ref.add_nuclide("O16", 0.0759107, 'wo')
@@ -164,8 +162,7 @@ def pwr_core():
     lower_rad_ref.add_nuclide("Cr52", 0.145407678031, 'wo')
     lower_rad_ref.add_s_alpha_beta('c_H_in_H2O')
 
-    upper_rad_ref = openmc.Material(name='Upper radial reflector /'
-                                         'Top plate region', material_id=7)
+    upper_rad_ref = openmc.Material(7, name='Upper radial reflector / Top plate region')
     upper_rad_ref.set_density('g/cm3', 4.28)
     upper_rad_ref.add_nuclide("H1", 0.0086117, 'wo')
     upper_rad_ref.add_nuclide("O16", 0.0683369, 'wo')
@@ -180,7 +177,7 @@ def pwr_core():
     upper_rad_ref.add_nuclide("Cr52", 0.146766614995, 'wo')
     upper_rad_ref.add_s_alpha_beta('c_H_in_H2O')
 
-    bot_plate = openmc.Material(name='Bottom plate region', material_id=8)
+    bot_plate = openmc.Material(8, name='Bottom plate region')
     bot_plate.set_density('g/cm3', 7.184)
     bot_plate.add_nuclide("H1", 0.0011505, 'wo')
     bot_plate.add_nuclide("O16", 0.0091296, 'wo')
@@ -195,8 +192,7 @@ def pwr_core():
     bot_plate.add_nuclide("Cr52", 0.157390026871, 'wo')
     bot_plate.add_s_alpha_beta('c_H_in_H2O')
 
-    bot_nozzle = openmc.Material(name='Bottom nozzle region',
-                                 material_id=9)
+    bot_nozzle = openmc.Material(9, name='Bottom nozzle region')
     bot_nozzle.set_density('g/cm3', 2.53)
     bot_nozzle.add_nuclide("H1", 0.0245014, 'wo')
     bot_nozzle.add_nuclide("O16", 0.1944274, 'wo')
@@ -211,7 +207,7 @@ def pwr_core():
     bot_nozzle.add_nuclide("Cr52", 0.124142524198, 'wo')
     bot_nozzle.add_s_alpha_beta('c_H_in_H2O')
 
-    top_nozzle = openmc.Material(name='Top nozzle region', material_id=10)
+    top_nozzle = openmc.Material(10, name='Top nozzle region')
     top_nozzle.set_density('g/cm3', 1.746)
     top_nozzle.add_nuclide("H1", 0.0358870, 'wo')
     top_nozzle.add_nuclide("O16", 0.2847761, 'wo')
@@ -226,7 +222,7 @@ def pwr_core():
     top_nozzle.add_nuclide("Cr52", 0.107931450781, 'wo')
     top_nozzle.add_s_alpha_beta('c_H_in_H2O')
 
-    top_fa = openmc.Material(name='Top of fuel assemblies', material_id=11)
+    top_fa = openmc.Material(11, name='Top of fuel assemblies')
     top_fa.set_density('g/cm3', 3.044)
     top_fa.add_nuclide("H1", 0.0162913, 'wo')
     top_fa.add_nuclide("O16", 0.1292776, 'wo')
@@ -239,8 +235,7 @@ def pwr_core():
     top_fa.add_nuclide("Zr96", 0.02511169542, 'wo')
     top_fa.add_s_alpha_beta('c_H_in_H2O')
 
-    bot_fa = openmc.Material(name='Bottom of fuel assemblies',
-                             material_id=12)
+    bot_fa = openmc.Material(12, name='Bottom of fuel assemblies')
     bot_fa.set_density('g/cm3', 1.762)
     bot_fa.add_nuclide("H1", 0.0292856, 'wo')
     bot_fa.add_nuclide("O16", 0.2323919, 'wo')
@@ -524,7 +519,7 @@ def pwr_assembly():
     root_cell.region = +min_x & -max_x & +min_y & -max_y
 
     # Create root Universe
-    model.geometry.root_universe = openmc.Universe(universe_id=0, name='root universe')
+    model.geometry.root_universe = openmc.Universe(name='root universe')
     model.geometry.root_universe.add_cell(root_cell)
 
     model.settings.batches = 10
@@ -609,7 +604,7 @@ def slab_mg(reps=None, as_macro=True):
     planes.append(openmc.ZPlane(z0=5.0, boundary_type='reflective'))
 
     # Define cells for each material
-    model.geometry.root_universe = openmc.Universe(universe_id=0, name='root universe')
+    model.geometry.root_universe = openmc.Universe(name='root universe')
     xy = +left & -right & +bottom & -top
     for i, mat in enumerate(model.materials):
         c = openmc.Cell(fill=mat, region=xy & +planes[i] & -planes[i + 1])

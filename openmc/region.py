@@ -225,7 +225,25 @@ class Region(object):
     @abstractmethod
     def clone(self, memoize=None):
         """Create a copy of this region - each of the surfaces in the
-        region's nodes will be cloned and will have new unique IDs."""
+        region's nodes will be cloned and will have new unique IDs.
+
+        Parameters
+        ----------
+        memoize : defaultdict(dict) or None
+            A nested dictionary of previously cloned objects. This parameter
+            is used internally and should not be specified by the user.
+
+        Returns
+        -------
+        clone : openmc.Region
+            The clone of this region
+
+        Raises
+        ------
+        NotImplementedError
+            This method is not implemented for the abstract region class.
+
+        """
         raise NotImplementedError('The clone method is not implemented for '
                                   'the abstract region class.')
 
@@ -310,7 +328,20 @@ class Intersection(Region):
 
     def clone(self, memoize=None):
         """Create a copy of this region - each of the surfaces in the
-        intersection's nodes will be cloned and will have new unique IDs."""
+        intersection's nodes will be cloned and will have new unique IDs.
+
+        Parameters
+        ----------
+        memoize : defaultdict(dict) or None
+            A nested dictionary of previously cloned objects. This parameter
+            is used internally and should not be specified by the user.
+
+        Returns
+        -------
+        clone : openmc.Intersection
+            The clone of this intersection
+
+        """
 
         if memoize is None:
             memoize = defaultdict(dict)
@@ -398,7 +429,20 @@ class Union(Region):
 
     def clone(self, memoize=None):
         """Create a copy of this region - each of the surfaces in the
-        union's nodes will be cloned and will have new unique IDs."""
+        union's nodes will be cloned and will have new unique IDs.
+
+        Parameters
+        ----------
+        memoize : defaultdict(dict) or None
+            A nested dictionary of previously cloned objects. This parameter
+            is used internally and should not be specified by the user.
+
+        Returns
+        -------
+        clone : openmc.Union
+            The clone of this union
+
+        """
 
         if memoize is None:
             memoize = defaultdict(dict)
@@ -506,7 +550,20 @@ class Complement(Region):
 
     def clone(self, memoize=None):
         """Create a copy of this region - each of the surfaces in the
-        complement's node will be cloned and will have new unique IDs."""
+        complement's node will be cloned and will have new unique IDs.
+
+        Parameters
+        ----------
+        memoize : defaultdict(dict) or None
+            A nested dictionary of previously cloned objects. This parameter
+            is used internally and should not be specified by the user.
+
+        Returns
+        -------
+        clone : openmc.Complement
+            The clone of this complement
+
+        """
 
         if memoize is None:
             memoize = defaultdict(dict)

@@ -417,7 +417,20 @@ class Lattice(object):
 
     def clone(self, memoize=None):
         """Create a copy of this lattice with a new unique ID, and clones
-        all universes within this lattice."""
+        all universes within this lattice.
+
+        Parameters
+        ----------
+        memoize : defaultdict(dict) or None
+            A nested dictionary of previously cloned objects. This parameter
+            is used internally and should not be specified by the user.
+
+        Returns
+        -------
+        clone : openmc.Lattice
+            The clone of this lattice
+
+        """
 
         if memoize is None:
             memoize = defaultdict(dict)

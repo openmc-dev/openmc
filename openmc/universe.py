@@ -519,7 +519,20 @@ class Universe(object):
 
     def clone(self, memoize=None):
         """Create a copy of this universe with a new unique ID, and clones
-        all cells within this universe."""
+        all cells within this universe.
+
+        Parameters
+        ----------
+        memoize : defaultdict(dict) or None
+            A nested dictionary of previously cloned objects. This parameter
+            is used internally and should not be specified by the user.
+
+        Returns
+        -------
+        clone : openmc.Universe
+            The clone of this universe
+
+        """
 
         if memoize is None:
             memoize = defaultdict(dict)

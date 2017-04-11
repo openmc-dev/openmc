@@ -42,8 +42,8 @@ def main():
     for fname in args.input:
         # Write coordinate values to points array.
         track = h5py.File(fname)
-        n_particles = track['n_particles'].value
-        n_coords = track['n_coords']
+        n_particles = track.attrs['n_particles']
+        n_coords = track.attrs['n_coords']
         coords = []
         for i in range(n_particles):
             coords.append(track['coordinates_' + str(i + 1)].value)

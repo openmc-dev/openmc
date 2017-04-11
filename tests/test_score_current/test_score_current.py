@@ -7,5 +7,5 @@ from testing_harness import HashedTestHarness
 
 
 if __name__ == '__main__':
-    harness = HashedTestHarness('statepoint.10.*', True)
+    harness = HashedTestHarness('statepoint.10.h5')
     harness.main()

@@ -3917,6 +3917,8 @@ class ScatterMatrixXS(MatrixMGXS):
                         scatter_p0 = self.tallies['{}-0'.format(self.rxn_type)]
                         scatter_p1 = self.tallies['{}-1'.format(self.rxn_type)]
                         energy_filter = scatter_p0.find_filter(openmc.EnergyFilter)
+                        # Transform scatter-p1 tally into an energyin/out matrix
+                        # to match scattering matrix shape for tally arithmetic
                         energy_filter = copy.deepcopy(energy_filter)
                         scatter_p1 = scatter_p1.diagonalize_filter(energy_filter)
                         self._rxn_rate_tally = scatter_p0 - scatter_p1
@@ -3990,6 +3992,9 @@ class ScatterMatrixXS(MatrixMGXS):
                     self.tallies['scatter'] * self.tallies[tally_key] / norm
                 self._xs_tally /= self.tallies['flux (tracklength)']
 
+                # Override the nuclides for tally arithmetic
+                self._xs_tally.nuclides = self.tallies['scatter'].nuclides
+
                 # Multiply by the multiplicity matrix
                 if self.nu:
                     numer = self.tallies['nu-scatter-0']
@@ -3998,14 +4003,27 @@ class ScatterMatrixXS(MatrixMGXS):
 
                 # If using P0 correction subtract scatter-1 from the diagonal
                 if self.correction == 'P0' and self.legendre_order == 0:
-                    flux = self.tallies['flux (analog)']
-                    scatter_p1 = self.tallies['{}-1'.format(self.rxn_type)]
 
+                    # Extract tallies needed to compute the transport correction
+                    scatter_p1 = self.tallies['{}-1'.format(self.rxn_type)]
+                    if self.formulation == 'simple':
+                        flux = self.tallies['flux']
+                    else:
+                        flux = self.tallies['flux (analog)']
+
+                    # Transform scatter-p1 tally into an energyin/out matrix
+                    # to match scattering matrix shape for tally arithmetic
                     energy_filter = flux.find_filter(openmc.EnergyFilter)
                     energy_filter = copy.deepcopy(energy_filter)
                     scatter_p1 = scatter_p1.diagonalize_filter(energy_filter)
-                    self._xs_tally -= (scatter_p1 / flux)
 
+                    # Compute the trasnport correction term
+                    correction = scatter_p1 / flux
+
+                    # Override the nuclides for tally arithmetic
+                    correction.nuclides = scatter_p1.nuclides
+                    self._xs_tally -= correction
+                
                 self._compute_xs()
 
         return self._xs_tally

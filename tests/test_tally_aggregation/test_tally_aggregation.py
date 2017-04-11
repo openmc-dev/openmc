@@ -10,15 +10,8 @@ import openmc
 
 
 class TallyAggregationTestHarness(PyAPITestHarness):
-    def _build_inputs(self):
-
-        # The summary.h5 file needs to be created to read in the tallies
-        self._input_set.settings.output = {'summary': True}
-
-        # Initialize the nuclides
-        u234 = openmc.Nuclide('U234')
-        u235 = openmc.Nuclide('U235')
-        u238 = openmc.Nuclide('U238')
+    def __init__(self, *args, **kwargs):
+        super(TallyAggregationTestHarness, self).__init__(*args, **kwargs)
 
         # Initialize the filters
         energy_filter = openmc.EnergyFilter([0.0, 0.253, 1.0e3, 1.0e6, 20.0e6])
@@ -28,12 +21,8 @@ class TallyAggregationTestHarness(PyAPITestHarness):
         tally = openmc.Tally(name='distribcell tally')
         tally.filters = [energy_filter, distrib_filter]
         tally.scores = ['nu-fission', 'total']
-        tally.nuclides = [u234, u235, u238]
-        tallies_file = openmc.Tallies([tally])
-
-        # Export tallies to file
-        self._input_set.tallies = tallies_file
-        super(TallyAggregationTestHarness, self)._build_inputs()
+        tally.nuclides = ['U234', 'U235', 'U238']
+        self._model.tallies.append(tally)
 
     def _get_results(self, hash_output=True):
         """Digest info in the statepoint and return as a string."""
@@ -78,5 +67,5 @@ class TallyAggregationTestHarness(PyAPITestHarness):
 
 
 if __name__ == '__main__':
-    harness = TallyAggregationTestHarness('statepoint.10.h5', True)
+    harness = TallyAggregationTestHarness('statepoint.10.h5')
     harness.main()

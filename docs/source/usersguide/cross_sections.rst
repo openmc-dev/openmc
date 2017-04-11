@@ -199,6 +199,30 @@ OpenMC.
           etc. For a more thorough overview of the capabilities of this class,
           see the :ref:`notebook_nuclear_data` example notebook.
 
+Enabling Resonance Scattering Treatments
+----------------------------------------
+
+In order for OpenMC to correctly treat elastic scattering in heavy nuclides
+where low-lying resonances might be present (see
+:ref:`energy_dependent_xs_model`), the elastic scattering cross section at 0 K
+must be present. To add the 0 K elastic scattering cross section to existing
+:class:`IncidentNeutron` instance, you can use the
+:meth:`IncidentNeutron.add_elastic_0K_from_endf` method which requires an ENDF
+file for the nuclide you are modifying::
+
+  u238 = openmc.data.IncidentNeutron.from_hdf5('U238.h5')
+  u238.add_elastic_0K_from_endf('n-092_U_238.endf')
+  u238.export_to_hdf5('U238_with_0K.h5')
+
+With 0 K elastic scattering data present, you can turn on a resonance scattering
+method using :attr:`Settings.resonance_scattering`.
+
+.. note:: The process of reconstructing resonances and generating tabulated 0 K
+          cross sections can be computationally expensive, especially for
+          nuclides like U-238 where thousands of resonances are present. Thus,
+          running the :meth:`IncidentNeutron.add_elastic_0K_from_endf` method
+          may take several minutes to complete.
+
 -----------------------
 Windowed Multipole Data
 -----------------------

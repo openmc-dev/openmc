@@ -29,5 +29,5 @@ class OutputTestHarness(TestHarness):
 
 
 if __name__ == '__main__':
-    harness = OutputTestHarness('statepoint.10.*')
+    harness = OutputTestHarness('statepoint.10.h5')
     harness.main()

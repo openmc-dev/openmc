@@ -1,4 +1,5 @@
 from collections import OrderedDict, Iterable
+from copy import deepcopy
 from math import cos, sin, pi
 from numbers import Real, Integral
 from xml.etree import ElementTree as ET
@@ -504,6 +505,44 @@ class Cell(object):
 
         return universes
 
+    def clone(self, memo=None):
+        """Create a copy of this cell with a new unique ID, and clones
+        the cell's region and fill.
+
+        Parameters
+        ----------
+        memo : dict or None
+            A nested dictionary of previously cloned objects. This parameter
+            is used internally and should not be specified by the user.
+
+        Returns
+        -------
+        clone : openmc.Cell
+            The clone of this cell
+
+        """
+
+        if memo is None:
+            memo = {}
+
+        # If no nemoize'd clone exists, instantiate one
+        if self not in memo:
+            clone = deepcopy(self)
+            clone.id = None
+            if self.region is not None:
+                clone.region = self.region.clone(memo)
+            if self.fill is not None:
+                if self.fill_type == 'distribmat':
+                    clone.fill = [fill.clone(memo) if fill is not None else None
+                                  for fill in self.fill]
+                else:
+                    clone.fill = self.fill.clone(memo)
+
+            # Memoize the clone
+            memo[self] = clone
+
+        return memo[self]
+    
     def create_xml_subelement(self, xml_element):
         element = ET.Element("cell")
         element.set("id", str(self.id))

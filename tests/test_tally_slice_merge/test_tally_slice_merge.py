@@ -13,9 +13,8 @@ import openmc
 
 
 class TallySliceMergeTestHarness(PyAPITestHarness):
-    def _build_inputs(self):
-        # Initialize the tallies file
-        tallies_file = openmc.Tallies()
+    def __init__(self, *args, **kwargs):
+        super(TallySliceMergeTestHarness, self).__init__(*args, **kwargs)
 
         # Define nuclides and scores to add to both tallies
         self.nuclides = ['U235', 'U238']
@@ -49,10 +48,10 @@ class TallySliceMergeTestHarness(PyAPITestHarness):
                     for score in self.scores:
                         tally = openmc.Tally()
                         tally.estimator = 'tracklength'
-                        tally.add_score(score)
-                        tally.add_nuclide(nuclide)
-                        tally.add_filter(cell_filter)
-                        tally.add_filter(energy_filter)
+                        tally.scores.append(score)
+                        tally.nuclides.append(nuclide)
+                        tally.filters.append(cell_filter)
+                        tally.filters.append(energy_filter)
                         tallies.append(tally)
 
         # Merge all cell tallies together
@@ -69,9 +68,9 @@ class TallySliceMergeTestHarness(PyAPITestHarness):
         distribcell_tally.estimator = 'tracklength'
         distribcell_tally.filters = [distribcell_filter, merged_energies]
         for score in self.scores:
-            distribcell_tally.add_score(score)
+            distribcell_tally.scores.append(score)
         for nuclide in self.nuclides:
-            distribcell_tally.add_nuclide(nuclide)
+            distribcell_tally.nuclides.append(nuclide)
 
         mesh_tally = openmc.Tally(name='mesh tally')
         mesh_tally.estimator = 'tracklength'
@@ -80,12 +79,7 @@ class TallySliceMergeTestHarness(PyAPITestHarness):
         mesh_tally.nuclides = self.nuclides
 
         # Add tallies to a Tallies object
-        tallies_file = openmc.Tallies((tallies[0], distribcell_tally,
-                                       mesh_tally))
-
-        # Export tallies to file
-        self._input_set.tallies = tallies_file
-        super(TallySliceMergeTestHarness, self)._build_inputs()
+        self._model.tallies = [tallies[0], distribcell_tally, mesh_tally]
 
     def _get_results(self, hash_output=False):
         """Digest info in the statepoint and return as a string."""
@@ -178,5 +172,5 @@ class TallySliceMergeTestHarness(PyAPITestHarness):
 
 
 if __name__ == '__main__':
-    harness = TallySliceMergeTestHarness('statepoint.10.h5', True)
+    harness = TallySliceMergeTestHarness('statepoint.10.h5')
     harness.main()

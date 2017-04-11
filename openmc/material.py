@@ -816,7 +816,7 @@ class Material(object):
         """
 
         if memo is None:
-            memo = dict
+            memo = {}
 
         # If no nemoize'd clone exists, instantiate one
         if self not in memo:

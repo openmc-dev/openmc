@@ -5,24 +5,12 @@ import sys
 
 sys.path.insert(0, os.pardir)
 from testing_harness import PyAPITestHarness
-from input_set import MGInputSet
-
-
-class MGMaxOrderTestHarness(PyAPITestHarness):
-    def __init__(self, statepoint_name, tallies_present, mg=False):
-        PyAPITestHarness.__init__(self, statepoint_name, tallies_present)
-        self._input_set = MGInputSet()
-
-    def _build_inputs(self):
-        """Write input XML files."""
-        reps = ['iso']
-        self._input_set.build_default_materials_and_geometry(reps=reps)
-        self._input_set.build_default_settings()
-        # Enforce Legendre scattering
-        self._input_set.settings.tabular_legendre = {'enable': False}
-        self._input_set.export()
+from openmc.examples import slab_mg
 
 
 if __name__ == '__main__':
-    harness = MGMaxOrderTestHarness('statepoint.10.*', False, mg=True)
+    model = slab_mg(reps=['iso'])
+    model.settings.tabular_legendre = {'enable': False}
+
+    harness = PyAPITestHarness('statepoint.10.h5', model)
     harness.main()

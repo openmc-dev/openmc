@@ -9,9 +9,8 @@ import openmc
 
 
 class StatepointRestartTestHarness(TestHarness):
-    def __init__(self, final_sp, restart_sp, tallies_present=False):
-        super(StatepointRestartTestHarness, self).__init__(final_sp,
-                                                           tallies_present)
+    def __init__(self, final_sp, restart_sp):
+        super(StatepointRestartTestHarness, self).__init__(final_sp)
         self._restart_sp = restart_sp
 
     def execute_test(self):
@@ -63,5 +62,5 @@ class StatepointRestartTestHarness(TestHarness):
 
 if __name__ == '__main__':
     harness = StatepointRestartTestHarness('statepoint.10.h5',
-         'statepoint.07.h5', True)
+                                           'statepoint.07.h5')
     harness.main()

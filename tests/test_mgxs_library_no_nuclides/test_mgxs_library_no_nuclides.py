@@ -6,24 +6,21 @@ import glob
 import hashlib
 sys.path.insert(0, os.pardir)
 from testing_harness import PyAPITestHarness
-from input_set import PinCellInputSet
 import openmc
 import openmc.mgxs
+from openmc.examples import pwr_pin_cell
 
 
 class MGXSTestHarness(PyAPITestHarness):
-    def _build_inputs(self):
-        # Set the input set to use the pincell model
-        self._input_set = PinCellInputSet()
-
+    def __init__(self, *args, **kwargs):
         # Generate inputs using parent class routine
-        super(MGXSTestHarness, self)._build_inputs()
+        super(MGXSTestHarness, self).__init__(*args, **kwargs)
 
         # Initialize a two-group structure
         energy_groups = openmc.mgxs.EnergyGroups(group_edges=[0, 0.625, 20.e6])
 
         # Initialize MGXS Library for a few cross section types
-        self.mgxs_lib = openmc.mgxs.Library(self._input_set.geometry)
+        self.mgxs_lib = openmc.mgxs.Library(self._model.geometry)
         self.mgxs_lib.by_nuclide = False
 
         # Test all MGXS types
@@ -35,10 +32,8 @@ class MGXSTestHarness(PyAPITestHarness):
         self.mgxs_lib.domain_type = 'material'
         self.mgxs_lib.build_library()
 
-        # Initialize a tallies file
-        self._input_set.tallies = openmc.Tallies()
-        self.mgxs_lib.add_to_tallies_file(self._input_set.tallies, merge=False)
-        self._input_set.tallies.export_to_xml()
+        # Add tallies
+        self.mgxs_lib.add_to_tallies_file(self._model.tallies, merge=False)
 
     def _get_results(self, hash_output=False):
         """Digest info in the statepoint and return as a string."""
@@ -68,5 +63,6 @@ class MGXSTestHarness(PyAPITestHarness):
 
 
 if __name__ == '__main__':
-    harness = MGXSTestHarness('statepoint.10.h5', True)
+    model = pwr_pin_cell()
+    harness = MGXSTestHarness('statepoint.10.h5', model)
     harness.main()

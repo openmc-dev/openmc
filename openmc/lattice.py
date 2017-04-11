@@ -443,23 +443,17 @@ class Lattice(object):
             if self.outer is not None:
                 clone.outer = self.outer.clone(memo)
 
-            # Clone all unique universes in the lattice
-            univ_clones = self.get_unique_universes()
-            for univ_id in univ_clones:
-                univ_clones[univ_id] = univ_clones[univ_id].clone(memo)
-
             # Assign universe clones to the lattice clone
             for i in self.indices:
                 if isinstance(self, RectLattice):
-                    univ_id = self.universes[i].id
-                    clone.universes[i] = univ_clones[univ_id]
+                    clone.universes[i] = self.universes[i].clone()
                 else:
                     if self.ndim == 2:
-                        univ_id = self.universes[i[0]][i[1]].id
-                        clone.universes[i[0]][i[1]] = univ_clones[univ_id]
+                        clone.universes[i[0]][i[1]] = \
+                            self.universes[i[0]][i[1]].clone()
                     else:
-                        univ_id = self.universes[i[0]][i[1]][i[2]].id
-                        clone.universes[i[0]][i[1]][i[2]] = univ_clones[univ_id]
+                        clone.universes[i[0]][i[1]][i[2]] = \
+                            self.universes[i[0]][i[1]][i[2]].clone()
 
             # Memoize the clone
             memo[self] = clone

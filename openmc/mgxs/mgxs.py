@@ -3967,6 +3967,7 @@ class ScatterMatrixXS(MatrixMGXS):
                 norm = self.tallies[tally_key].get_slice(scores=['scatter-0'])
                 norm = norm.summation(
                     filter_type=openmc.EnergyoutFilter, filter_bins=energyout_bins)
+
                 # Remove the AggregateFilter summed across energyout bins
                 norm._filters = norm._filters[:2]
 
@@ -3988,9 +3989,9 @@ class ScatterMatrixXS(MatrixMGXS):
                     norm._filters = norm._filters[:2]
 
                 # Compute groupwise scattering cross section
-                self._xs_tally = \
-                    self.tallies['scatter'] * self.tallies[tally_key] / norm
-                self._xs_tally /= self.tallies['flux (tracklength)']
+                self._xs_tally = self.tallies['scatter'] * \
+                                 self.tallies[tally_key] / norm / \
+                                 self.tallies['flux (tracklength)']
 
                 # Override the nuclides for tally arithmetic
                 self._xs_tally.nuclides = self.tallies['scatter'].nuclides
@@ -4003,13 +4004,8 @@ class ScatterMatrixXS(MatrixMGXS):
 
                 # If using P0 correction subtract scatter-1 from the diagonal
                 if self.correction == 'P0' and self.legendre_order == 0:
-
-                    # Extract tallies needed to compute the transport correction
                     scatter_p1 = self.tallies['{}-1'.format(self.rxn_type)]
-                    if self.formulation == 'simple':
-                        flux = self.tallies['flux']
-                    else:
-                        flux = self.tallies['flux (analog)']
+                    flux = self.tallies['flux (analog)']
 
                     # Transform scatter-p1 tally into an energyin/out matrix
                     # to match scattering matrix shape for tally arithmetic

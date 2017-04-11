@@ -3917,6 +3917,7 @@ class ScatterMatrixXS(MatrixMGXS):
                         scatter_p0 = self.tallies['{}-0'.format(self.rxn_type)]
                         scatter_p1 = self.tallies['{}-1'.format(self.rxn_type)]
                         energy_filter = scatter_p0.find_filter(openmc.EnergyFilter)
+
                         # Transform scatter-p1 tally into an energyin/out matrix
                         # to match scattering matrix shape for tally arithmetic
                         energy_filter = copy.deepcopy(energy_filter)

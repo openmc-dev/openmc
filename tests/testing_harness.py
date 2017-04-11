@@ -1,5 +1,6 @@
 from __future__ import print_function
 
+from difflib import unified_diff
 import filecmp
 import glob
 import hashlib
@@ -11,16 +12,15 @@ import sys
 import numpy as np
 
 sys.path.insert(0, os.path.join(os.pardir, os.pardir))
-from input_set import InputSet, MGInputSet
 import openmc
+from openmc.examples import pwr_core
 
 
 class TestHarness(object):
     """General class for running OpenMC regression tests."""
 
-    def __init__(self, statepoint_name, tallies_present=False):
+    def __init__(self, statepoint_name):
         self._sp_name = statepoint_name
-        self._tallies = tallies_present
         self.parser = OptionParser()
         self.parser.add_option('--exe', dest='exe', default='openmc')
         self.parser.add_option('--mpi_exec', dest='mpi_exec', default=None)
@@ -78,7 +78,7 @@ class TestHarness(object):
             ' exist.'
         assert statepoint[0].endswith('h5'), \
             'Statepoint file is not a HDF5 file.'
-        if self._tallies:
+        if os.path.exists('tallies.xml'):
             assert os.path.exists('tallies.out'), \
                 'Tally output file does not exist.'
 
@@ -86,26 +86,22 @@ class TestHarness(object):
         """Digest info in the statepoint and return as a string."""
         # Read the statepoint file.
         statepoint = glob.glob(self._sp_name)[0]
-        sp = openmc.StatePoint(statepoint)
+        with openmc.StatePoint(statepoint) as sp:
+            # Write out k-combined.
+            outstr = 'k-combined:\n'
+            form = '{0:12.6E} {1:12.6E}\n'
+            outstr += form.format(sp.k_combined[0], sp.k_combined[1])
 
-        # Write out k-combined.
-        outstr = 'k-combined:\n'
-        form = '{0:12.6E} {1:12.6E}\n'
-        outstr += form.format(sp.k_combined[0], sp.k_combined[1])
-
-        # Write out tally data.
-        if self._tallies:
-            tally_num = 1
-            for tally_ind in sp.tallies:
+            # Write out tally data.
+            for i, tally_ind in enumerate(sp.tallies):
                 tally = sp.tallies[tally_ind]
                 results = np.zeros((tally.sum.size * 2, ))
                 results[0::2] = tally.sum.ravel()
                 results[1::2] = tally.sum_sq.ravel()
                 results = ['{0:12.6E}'.format(x) for x in results]
 
-                outstr += 'tally ' + str(tally_num) + ':\n'
+                outstr += 'tally {}:\n'.format(i + 1)
                 outstr += '\n'.join(results) + '\n'
-                tally_num += 1
 
         # Hash the results if necessary.
         if hash_output:
@@ -154,31 +150,31 @@ class CMFDTestHarness(TestHarness):
 
     def _get_results(self):
         """Digest info in the statepoint and return as a string."""
-        # Read the statepoint file.
-        statepoint = glob.glob(self._sp_name)[0]
-        sp = openmc.StatePoint(statepoint)
 
         # Write out the eigenvalue and tallies.
         outstr = super(CMFDTestHarness, self)._get_results()
 
-        # Write out CMFD data.
-        outstr += 'cmfd indices\n'
-        outstr += '\n'.join(['{0:12.6E}'.format(x) for x in sp.cmfd_indices])
-        outstr += '\nk cmfd\n'
-        outstr += '\n'.join(['{0:12.6E}'.format(x) for x in sp.k_cmfd])
-        outstr += '\ncmfd entropy\n'
-        outstr += '\n'.join(['{0:12.6E}'.format(x) for x in sp.cmfd_entropy])
-        outstr += '\ncmfd balance\n'
-        outstr += '\n'.join(['{0:12.6E}'.format(x) for x in sp.cmfd_balance])
-        outstr += '\ncmfd dominance ratio\n'
-        outstr += '\n'.join(['{0:10.3E}'.format(x) for x in sp.cmfd_dominance])
-        outstr += '\ncmfd openmc source comparison\n'
-        outstr += '\n'.join(['{0:12.6E}'.format(x) for x in sp.cmfd_srccmp])
-        outstr += '\ncmfd source\n'
-        cmfdsrc = np.reshape(sp.cmfd_src, np.product(sp.cmfd_indices),
-                             order='F')
-        outstr += '\n'.join(['{0:12.6E}'.format(x) for x in cmfdsrc])
-        outstr += '\n'
+        # Read the statepoint file.
+        statepoint = glob.glob(self._sp_name)[0]
+        with openmc.StatePoint(statepoint) as sp:
+            # Write out CMFD data.
+            outstr += 'cmfd indices\n'
+            outstr += '\n'.join(['{0:12.6E}'.format(x) for x in sp.cmfd_indices])
+            outstr += '\nk cmfd\n'
+            outstr += '\n'.join(['{0:12.6E}'.format(x) for x in sp.k_cmfd])
+            outstr += '\ncmfd entropy\n'
+            outstr += '\n'.join(['{0:12.6E}'.format(x) for x in sp.cmfd_entropy])
+            outstr += '\ncmfd balance\n'
+            outstr += '\n'.join(['{0:12.6E}'.format(x) for x in sp.cmfd_balance])
+            outstr += '\ncmfd dominance ratio\n'
+            outstr += '\n'.join(['{0:10.3E}'.format(x) for x in sp.cmfd_dominance])
+            outstr += '\ncmfd openmc source comparison\n'
+            outstr += '\n'.join(['{0:12.6E}'.format(x) for x in sp.cmfd_srccmp])
+            outstr += '\ncmfd source\n'
+            cmfdsrc = np.reshape(sp.cmfd_src, np.product(sp.cmfd_indices),
+                                 order='F')
+            outstr += '\n'.join(['{0:12.6E}'.format(x) for x in cmfdsrc])
+            outstr += '\n'
 
         return outstr
 
@@ -240,15 +236,16 @@ class ParticleRestartTestHarness(TestHarness):
 
 
 class PyAPITestHarness(TestHarness):
-    def __init__(self, statepoint_name, tallies_present=False, mg=False):
-        super(PyAPITestHarness, self).__init__(statepoint_name,
-                                               tallies_present)
-        self.parser.add_option('--build-inputs', dest='build_only',
+    def __init__(self, statepoint_name, model=None):
+        super(PyAPITestHarness, self).__init__(statepoint_name)
+        self.parser.add_option('-b', '--build-inputs', dest='build_only',
                                action='store_true', default=False)
-        if mg:
-            self._input_set = MGInputSet()
+        if model is None:
+            self._model = pwr_core()
         else:
-            self._input_set = InputSet()
+            self._model = model
+        self._model.plots = []
+
 
     def main(self):
         """Accept commandline arguments and either run or update tests."""
@@ -292,9 +289,7 @@ class PyAPITestHarness(TestHarness):
 
     def _build_inputs(self):
         """Write input XML files."""
-        self._input_set.build_default_materials_and_geometry()
-        self._input_set.build_default_settings()
-        self._input_set.export()
+        self._model.export_to_xml()
 
     def _get_inputs(self):
         """Return a hash digest of the input XML files."""
@@ -316,25 +311,24 @@ class PyAPITestHarness(TestHarness):
         """Make sure the current inputs agree with the _true standard."""
         compare = filecmp.cmp('inputs_test.dat', 'inputs_true.dat')
         if not compare:
-            f = open('inputs_test.dat')
-            for line in f.readlines():
-                print(line)
-            f.close()
             os.rename('inputs_test.dat', 'inputs_error.dat')
+            for line in unified_diff(open('inputs_true.dat', 'r').readlines(),
+                                     open('inputs_error.dat', 'r').readlines(),
+                                     'inputs_true.dat', 'inputs_error.dat'):
+                print(line, end='')
         assert compare, 'Input files are broken.'
 
     def _cleanup(self):
         """Delete XMLs, statepoints, tally, and test files."""
         super(PyAPITestHarness, self)._cleanup()
         output = ['materials.xml', 'geometry.xml', 'settings.xml',
-                  'tallies.xml', 'inputs_test.dat']
+                  'tallies.xml', 'plots.xml', 'inputs_test.dat']
         for f in output:
             if os.path.exists(f):
                 os.remove(f)
 
 
 class HashedPyAPITestHarness(PyAPITestHarness):
-
     def _get_results(self):
         """Digest info in the statepoint and return as a string."""
         return super(HashedPyAPITestHarness, self)._get_results(True)

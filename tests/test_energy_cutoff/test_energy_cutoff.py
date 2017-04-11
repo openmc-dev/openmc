@@ -74,5 +74,5 @@ class EnergyCutoffTestHarness(PyAPITestHarness):
 
 
 if __name__ == '__main__':
-    harness = EnergyCutoffTestHarness('statepoint.10.h5', True)
+    harness = EnergyCutoffTestHarness('statepoint.10.h5')
     harness.main()

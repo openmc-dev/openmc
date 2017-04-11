@@ -14,32 +14,26 @@ class TrackTestHarness(TestHarness):
         """Make sure statepoint.* and track* have been created."""
         TestHarness._test_output_created(self)
 
-        outputs = [glob.glob(''.join((os.getcwd(), '/track_1_1_1.*')))]
-        outputs.append(glob.glob(''.join((os.getcwd(), '/track_1_1_2.*'))))
-        for files in outputs:
-            assert len(files) == 1, 'Multiple or no track files detected.'
-            assert files[0].endswith('h5'),\
-                'Track files are not HDF5 files'
+        outputs = glob.glob('track_1_1_*.h5')
+        assert len(outputs) == 2, 'Expected two track files.'
 
     def _get_results(self):
         """Digest info in the statepoint and return as a string."""
         # Run the track-to-vtk conversion script.
         call(['../../scripts/openmc-track-to-vtk', '-o', 'poly'] +
-             glob.glob(''.join((os.getcwd(), '/track*'))))
+             glob.glob('track_1_1_*.h5'))
 
         # Make sure the vtk file was created then return it's contents.
-        poly = os.path.join(os.getcwd(), 'poly.pvtp')
-        assert os.path.isfile(poly), 'poly.pvtp file not found.'
+        assert os.path.isfile('poly.pvtp'), 'poly.pvtp file not found.'
 
-        with open(poly) as fin:
+        with open('poly.pvtp', 'r') as fin:
             outstr = fin.read()
 
         return outstr
 
     def _cleanup(self):
         TestHarness._cleanup(self)
-        output = glob.glob(os.path.join(os.getcwd(), 'track*'))
-        output += glob.glob(os.path.join(os.getcwd(), 'poly*'))
+        output = glob.glob('track*') + glob.glob('poly*')
         for f in output:
             if os.path.exists(f):
                 os.remove(f)
@@ -54,5 +48,5 @@ if __name__ == '__main__':
         print('----------------Skipping test-------------')
         shutil.copy('results_true.dat', 'results_test.dat')
         exit()
-    harness = TrackTestHarness('statepoint.2.*')
+    harness = TrackTestHarness('statepoint.2.h5')
     harness.main()

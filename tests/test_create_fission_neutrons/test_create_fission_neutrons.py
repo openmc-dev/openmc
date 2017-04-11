@@ -70,5 +70,5 @@ class CreateFissionNeutronsTestHarness(PyAPITestHarness):
 
 
 if __name__ == '__main__':
-    harness = CreateFissionNeutronsTestHarness('statepoint.10.h5', True)
+    harness = CreateFissionNeutronsTestHarness('statepoint.10.h5')
     harness.main()

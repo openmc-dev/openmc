@@ -799,6 +799,35 @@ class Material(object):
 
         return nuclides
 
+    def clone(self, memo=None):
+        """Create a copy of this material with a new unique ID.
+
+        Parameters
+        ----------
+        memo : dict or None
+            A nested dictionary of previously cloned objects. This parameter
+            is used internally and should not be specified by the user.
+
+        Returns
+        -------
+        clone : openmc.Material
+            The clone of this material
+
+        """
+
+        if memo is None:
+            memo = {}
+
+        # If no nemoize'd clone exists, instantiate one
+        if self not in memo:
+            clone = deepcopy(self)
+            clone.id = None
+
+            # Memoize the clone
+            memo[self] = clone
+
+        return memo[self]
+
     def _get_nuclide_xml(self, nuclide, distrib=False):
         xml_element = ET.Element("nuclide")
         xml_element.set("name", nuclide[0].name)

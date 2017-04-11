@@ -10,27 +10,24 @@ import h5py
 
 sys.path.insert(0, os.pardir)
 from testing_harness import PyAPITestHarness
-from input_set import PinCellInputSet
 import openmc
 import openmc.mgxs
+from openmc.examples import pwr_pin_cell
 
 
 np.set_printoptions(formatter={'float_kind': '{:.8e}'.format})
 
 
 class MGXSTestHarness(PyAPITestHarness):
-    def _build_inputs(self):
-        # Set the input set to use the pincell model
-        self._input_set = PinCellInputSet()
-
+    def __init__(self, *args, **kwargs):
         # Generate inputs using parent class routine
-        super(MGXSTestHarness, self)._build_inputs()
+        super(MGXSTestHarness, self).__init__(*args, **kwargs)
 
         # Initialize a two-group structure
         energy_groups = openmc.mgxs.EnergyGroups(group_edges=[0, 0.625, 20.e6])
 
         # Initialize MGXS Library for a few cross section types
-        self.mgxs_lib = openmc.mgxs.Library(self._input_set.geometry)
+        self.mgxs_lib = openmc.mgxs.Library(self._model.geometry)
         self.mgxs_lib.by_nuclide = False
 
         # Test all MGXS types
@@ -42,10 +39,8 @@ class MGXSTestHarness(PyAPITestHarness):
         self.mgxs_lib.domain_type = 'material'
         self.mgxs_lib.build_library()
 
-        # Initialize a tallies file
-        self._input_set.tallies = openmc.Tallies()
-        self.mgxs_lib.add_to_tallies_file(self._input_set.tallies, merge=False)
-        self._input_set.tallies.export_to_xml()
+        # Add tallies
+        self.mgxs_lib.add_to_tallies_file(self._model.tallies, merge=False)
 
     def _get_results(self, hash_output=False):
         """Digest info in the statepoint and return as a string."""
@@ -59,21 +54,18 @@ class MGXSTestHarness(PyAPITestHarness):
 
         # Export the MGXS Library to an HDF5 file
         self.mgxs_lib.build_hdf5_store(directory='.')
-        
+
         # Open the MGXS HDF5 file
-        f = h5py.File('mgxs.h5', 'r')
+        with h5py.File('mgxs.h5', 'r') as f:
 
-        # Build a string from the datasets in the HDF5 file
-        outstr = ''
-        for domain in self.mgxs_lib.domains:
-            for mgxs_type in self.mgxs_lib.mgxs_types:
-                outstr += 'domain={0} type={1}\n'.format(domain.id, mgxs_type)
-                avg_key = 'material/{0}/{1}/average'.format(domain.id, mgxs_type)
-                std_key = 'material/{0}/{1}/std. dev.'.format(domain.id, mgxs_type)
-                outstr += '{}\n{}\n'.format(f[avg_key][...], f[std_key][...])
-
-        # Close the MGXS HDF5 file
-        f.close()
+            # Build a string from the datasets in the HDF5 file
+            outstr = ''
+            for domain in self.mgxs_lib.domains:
+                for mgxs_type in self.mgxs_lib.mgxs_types:
+                    outstr += 'domain={0} type={1}\n'.format(domain.id, mgxs_type)
+                    avg_key = 'material/{0}/{1}/average'.format(domain.id, mgxs_type)
+                    std_key = 'material/{0}/{1}/std. dev.'.format(domain.id, mgxs_type)
+                    outstr += '{}\n{}\n'.format(f[avg_key][...], f[std_key][...])
 
         # Hash the results if necessary
         if hash_output:
@@ -85,12 +77,12 @@ class MGXSTestHarness(PyAPITestHarness):
 
     def _cleanup(self):
         super(MGXSTestHarness, self)._cleanup()
-        f = os.path.join(os.getcwd(), 'tallies.xml')
-        if os.path.exists(f): os.remove(f)
         f = os.path.join(os.getcwd(), 'mgxs.h5')
-        if os.path.exists(f): os.remove(f)
+        if os.path.exists(f):
+            os.remove(f)
 
 
 if __name__ == '__main__':
-    harness = MGXSTestHarness('statepoint.10.*', True)
+    model = pwr_pin_cell()
+    harness = MGXSTestHarness('statepoint.10.h5', model)
     harness.main()

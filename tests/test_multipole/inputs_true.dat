@@ -43,9 +43,6 @@
             <parameters>-1 -1 -1 1 1 1</parameters>
         </space>
     </source>
-    <output>
-        <summary>true</summary>
-    </output>
     <temperature_multipole>True</temperature_multipole>
     <temperature_tolerance>1000</temperature_tolerance>
 </settings>

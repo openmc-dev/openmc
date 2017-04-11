@@ -184,8 +184,8 @@ class Test(object):
             build_str += "-Ddebug=ON "
         if self.optimize:
             build_str += "-Doptimize=ON "
-        if self.openmp:
-            build_str += "-Dopenmp=ON "
+        if not self.openmp:
+            build_str += "-Dopenmp=OFF "
         if self.coverage:
             build_str += "-Dcoverage=ON "
         self.build_opts = build_str

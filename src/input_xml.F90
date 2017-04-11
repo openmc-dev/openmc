@@ -5303,6 +5303,13 @@ contains
 
     do i = 1, size(res_scat_nuclides)
       if (nuc % name == res_scat_nuclides(i)) then
+        ! Make sure nuclide has 0K data
+        if (.not. allocated(nuc % energy_0K)) then
+          call fatal_error("Cannot treat " // trim(nuc % name) // " as a &
+               &resonant scatterer because 0 K elastic scattering data is not &
+               &present.")
+        end if
+
         ! Set nuclide to be resonant
         nuc % resonant = .true.
 

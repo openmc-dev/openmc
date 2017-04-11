@@ -1,8 +1,8 @@
 <?xml version='1.0' encoding='utf-8'?>
 <geometry>
-    <cell id="10000" material="10000" region="10000 -10001 10002 -10003 10004 -10005" universe="0" />
-    <cell id="10001" material="10001" region="10000 -10001 10002 -10003 10005 -10006" universe="0" />
-    <cell id="10002" material="10002" region="10000 -10001 10002 -10003 10006 -10007" universe="0" />
+    <cell id="10000" material="10000" region="10000 -10001 10002 -10003 10004 -10005" universe="10000" />
+    <cell id="10001" material="10001" region="10000 -10001 10002 -10003 10005 -10006" universe="10000" />
+    <cell id="10002" material="10002" region="10000 -10001 10002 -10003 10006 -10007" universe="10000" />
     <surface boundary="reflective" coeffs="0.0" id="10000" type="x-plane" />
     <surface boundary="reflective" coeffs="10.0" id="10001" type="x-plane" />
     <surface boundary="reflective" coeffs="0.0" id="10002" type="y-plane" />

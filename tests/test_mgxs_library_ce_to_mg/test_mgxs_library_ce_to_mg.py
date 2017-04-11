@@ -3,27 +3,23 @@
 import os
 import sys
 import glob
-import hashlib
 sys.path.insert(0, os.pardir)
 from testing_harness import PyAPITestHarness
-from input_set import PinCellInputSet
 import openmc
 import openmc.mgxs
+from openmc.examples import pwr_pin_cell
 
 
 class MGXSTestHarness(PyAPITestHarness):
-    def _build_inputs(self):
-        # Set the input set to use the pincell model
-        self._input_set = PinCellInputSet()
-
+    def __init__(self, *args, **kwargs):
         # Generate inputs using parent class routine
-        super(MGXSTestHarness, self)._build_inputs()
+        super(MGXSTestHarness, self).__init__(*args, **kwargs)
 
         # Initialize a two-group structure
         energy_groups = openmc.mgxs.EnergyGroups(group_edges=[0, 0.625, 20.e6])
 
         # Initialize MGXS Library for a few cross section types
-        self.mgxs_lib = openmc.mgxs.Library(self._input_set.geometry)
+        self.mgxs_lib = openmc.mgxs.Library(self._model.geometry)
         self.mgxs_lib.by_nuclide = False
         self.mgxs_lib.mgxs_types = ['total', 'absorption', 'nu-fission matrix',
                                     'nu-scatter matrix', 'multiplicity matrix']
@@ -34,9 +30,7 @@ class MGXSTestHarness(PyAPITestHarness):
         self.mgxs_lib.build_library()
 
         # Initialize a tallies file
-        self._input_set.tallies = openmc.Tallies()
-        self.mgxs_lib.add_to_tallies_file(self._input_set.tallies, merge=False)
-        self._input_set.tallies.export_to_xml()
+        self.mgxs_lib.add_to_tallies_file(self._model.tallies, merge=False)
 
     def _run_openmc(self):
         # Initial run
@@ -55,18 +49,18 @@ class MGXSTestHarness(PyAPITestHarness):
         statepoint = glob.glob(os.path.join(os.getcwd(), self._sp_name))[0]
         sp = openmc.StatePoint(statepoint)
         self.mgxs_lib.load_from_statepoint(sp)
-        self._input_set.mgxs_file, self._input_set.materials, \
-            self._input_set.geometry = self.mgxs_lib.create_mg_mode()
+        self._model.mgxs_file, self._model.materials, \
+            self._model.geometry = self.mgxs_lib.create_mg_mode()
 
         # Modify materials and settings so we can run in MG mode
-        self._input_set.materials.cross_sections = './mgxs.h5'
-        self._input_set.settings.energy_mode = 'multi-group'
+        self._model.materials.cross_sections = './mgxs.h5'
+        self._model.settings.energy_mode = 'multi-group'
 
         # Write modified input files
-        self._input_set.settings.export_to_xml()
-        self._input_set.geometry.export_to_xml()
-        self._input_set.materials.export_to_xml()
-        self._input_set.mgxs_file.export_to_hdf5()
+        self._model.settings.export_to_xml()
+        self._model.geometry.export_to_xml()
+        self._model.materials.export_to_xml()
+        self._model.mgxs_file.export_to_hdf5()
         # Dont need tallies.xml, so remove the file
         if os.path.exists('./tallies.xml'):
             os.remove('./tallies.xml')
@@ -92,5 +86,8 @@ class MGXSTestHarness(PyAPITestHarness):
 
 
 if __name__ == '__main__':
-    harness = MGXSTestHarness('statepoint.10.*', False)
+    # Set the input set to use the pincell model
+    model = pwr_pin_cell()
+
+    harness = MGXSTestHarness('statepoint.10.h5', model)
     harness.main()

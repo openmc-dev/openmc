@@ -11,19 +11,16 @@ from testing_harness import PyAPITestHarness
 import openmc
 
 class DiffTallyTestHarness(PyAPITestHarness):
-    def _build_inputs(self):
-        # Build default materials/geometry
-        self._input_set.build_default_materials_and_geometry()
+    def __init__(self, *args, **kwargs):
+        super(DiffTallyTestHarness, self).__init__(*args, **kwargs)
 
         # Set settings explicitly
-        self._input_set.settings.batches = 3
-        self._input_set.settings.inactive = 0
-        self._input_set.settings.particles = 100
-        self._input_set.settings.source = openmc.Source(space=openmc.stats.Box(
+        self._model.settings.batches = 3
+        self._model.settings.inactive = 0
+        self._model.settings.particles = 100
+        self._model.settings.source = openmc.Source(space=openmc.stats.Box(
             [-160, -160, -183], [160, 160, 183]))
-        self._input_set.settings.temperature['multipole'] = True
-
-        self._input_set.tallies = openmc.Tallies()
+        self._model.settings.temperature['multipole'] = True
 
         filt_mats = openmc.MaterialFilter((1, 3))
         filt_eout = openmc.EnergyoutFilter((0.0, 0.625, 20.0e6))
@@ -64,7 +61,7 @@ class DiffTallyTestHarness(PyAPITestHarness):
             t.add_score('flux')
             t.add_filter(filt_mats)
             t.derivative = derivs[i]
-            self._input_set.tallies.append(t)
+            self._model.tallies.append(t)
 
         # Cover supported scores with a collision estimator.
         for i in range(5):
@@ -78,7 +75,7 @@ class DiffTallyTestHarness(PyAPITestHarness):
             t.add_nuclide('total')
             t.add_nuclide('U235')
             t.derivative = derivs[i]
-            self._input_set.tallies.append(t)
+            self._model.tallies.append(t)
 
         # Cover an analog estimator.
         for i in range(5):
@@ -87,7 +84,7 @@ class DiffTallyTestHarness(PyAPITestHarness):
             t.add_filter(filt_mats)
             t.estimator = 'analog'
             t.derivative = derivs[i]
-            self._input_set.tallies.append(t)
+            self._model.tallies.append(t)
 
         # Energyout filter and total nuclide for the density derivatives.
         for i in range(2):
@@ -99,7 +96,7 @@ class DiffTallyTestHarness(PyAPITestHarness):
             t.add_nuclide('total')
             t.add_nuclide('U235')
             t.derivative = derivs[i]
-            self._input_set.tallies.append(t)
+            self._model.tallies.append(t)
 
         # Energyout filter without total nuclide for other derivatives.
         for i in range(2, 5):
@@ -110,9 +107,7 @@ class DiffTallyTestHarness(PyAPITestHarness):
             t.add_filter(filt_eout)
             t.add_nuclide('U235')
             t.derivative = derivs[i]
-            self._input_set.tallies.append(t)
-
-        self._input_set.export()
+            self._model.tallies.append(t)
 
     def _get_results(self):
         # Read the statepoint and summary files.
@@ -131,5 +126,5 @@ class DiffTallyTestHarness(PyAPITestHarness):
 
 
 if __name__ == '__main__':
-    harness = DiffTallyTestHarness('statepoint.3.h5', True)
+    harness = DiffTallyTestHarness('statepoint.3.h5')
     harness.main()

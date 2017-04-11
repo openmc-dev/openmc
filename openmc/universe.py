@@ -1,6 +1,6 @@
 from __future__ import division
-from copy import copy
 from collections import OrderedDict, Iterable
+from copy import copy, deepcopy
 from numbers import Integral, Real
 import random
 import sys
@@ -516,6 +516,41 @@ class Universe(object):
             universes.update(cell.get_all_universes())
 
         return universes
+
+    def clone(self, memo=None):
+        """Create a copy of this universe with a new unique ID, and clones
+        all cells within this universe.
+
+        Parameters
+        ----------
+        memo : dict or None
+            A nested dictionary of previously cloned objects. This parameter
+            is used internally and should not be specified by the user.
+
+        Returns
+        -------
+        clone : openmc.Universe
+            The clone of this universe
+
+        """
+
+        if memo is None:
+            memo = {}
+
+        # If no nemoize'd clone exists, instantiate one
+        if self not in memo:
+            clone = deepcopy(self)
+            clone.id = None
+
+            # Clone all cells for the universe clone
+            clone._cells = OrderedDict()
+            for cell in self._cells.values():
+                clone.add_cell(cell.clone(memo))
+
+            # Memoize the clone
+            memo[self] = clone
+
+        return memo[self]
 
     def create_xml_subelement(self, xml_element):
         # Iterate over all Cells

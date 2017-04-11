@@ -105,15 +105,20 @@ in the tests directory. We recommend to developers to test their branches
 before submitting a formal pull request using gfortran and Intel compilers
 if available.
 
-The test suite is designed to integrate with cmake using ctest_.
-It is configured to run with cross sections from NNDC_. To
-download these cross sections please do the following:
+The test suite is designed to integrate with cmake using ctest_.  It is
+configured to run with cross sections from NNDC_ augmented with 0 K elastic
+scattering data for select nuclides as well as multipole data. To download the
+proper data, run the following commands:
 
 .. code-block:: sh
 
-    cd ../scripts
-    ./openmc-get-nndc-data
-    export OPENMC_CROSS_SECTIONS=<path_to_data_folder>/nndc_hdf5/cross_sections.xml
+    wget -O nndc_hdf5.tar.xz $(cat <openmc_root>/.travis.yml | grep anl.box | awk '{print $2}')
+    tar xJvf nndc_hdf5.tar.xz
+    export OPENMC_CROSS_SECTIONS=$(pwd)/nndc_hdf5/cross_sections.xml
+
+    git clone --branch=master git://github.com/smharper/windowed_multipole_library.git wmp_lib
+    tar xzvf wmp_lib/multipole_lib.tar.gz
+    export OPENMC_MULTIPOLE_LIBRARY=$(pwd)/multipole_lib
 
 The test suite can be run on an already existing build using:
 

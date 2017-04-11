@@ -4,8 +4,6 @@ import sys
 sys.path.insert(0, os.pardir)
 from testing_harness import TestHarness, PyAPITestHarness
 import openmc
-from openmc.stats import Box
-from openmc.source import Source
 
 class MultipoleTestHarness(PyAPITestHarness):
     def _build_inputs(self):
@@ -66,8 +64,8 @@ class MultipoleTestHarness(PyAPITestHarness):
         sets_file.batches = 5
         sets_file.inactive = 0
         sets_file.particles = 1000
-        sets_file.source = Source(space=Box([-1, -1, -1], [1, 1, 1]))
-        sets_file.output = {'summary': True}
+        sets_file.source = openmc.Source(space=openmc.stats.Box(
+            [-1, -1, -1], [1, 1, 1]))
         sets_file.temperature = {'tolerance': 1000, 'multipole': True}
         sets_file.export_to_xml()
 
@@ -75,27 +73,24 @@ class MultipoleTestHarness(PyAPITestHarness):
         # Plots
         ####################
 
-        plots_file = openmc.Plots()
+        plot1 = openmc.Plot(plot_id=1)
+        plot1.basis = 'xy'
+        plot1.color_by = 'cell'
+        plot1.filename = 'cellplot'
+        plot1.origin = (0, 0, 0)
+        plot1.width = (7, 7)
+        plot1.pixels = (400, 400)
 
-        plot = openmc.Plot(plot_id=1)
-        plot.basis = 'xy'
-        plot.color_by = 'cell'
-        plot.filename = 'cellplot'
-        plot.origin = (0, 0, 0)
-        plot.width = (7, 7)
-        plot.pixels = (400, 400)
-        plots_file.append(plot)
+        plot2 = openmc.Plot(plot_id=2)
+        plot2.basis = 'xy'
+        plot2.color_by = 'material'
+        plot2.filename = 'matplot'
+        plot2.origin = (0, 0, 0)
+        plot2.width = (7, 7)
+        plot2.pixels = (400, 400)
 
-        plot = openmc.Plot(plot_id=2)
-        plot.basis = 'xy'
-        plot.color_by = 'material'
-        plot.filename = 'matplot'
-        plot.origin = (0, 0, 0)
-        plot.width = (7, 7)
-        plot.pixels = (400, 400)
-        plots_file.append(plot)
-
-        plots_file.export_to_xml()
+        plots = openmc.Plots([plot1, plot2])
+        plots.export_to_xml()
 
     def execute_test(self):
         if not 'OPENMC_MULTIPOLE_LIBRARY' in os.environ:
@@ -109,12 +104,6 @@ class MultipoleTestHarness(PyAPITestHarness):
         su = openmc.Summary('summary.h5')
         outstr += str(su.geometry.get_all_cells()[11])
         return outstr
-
-    def _cleanup(self):
-        f = os.path.join(os.getcwd(), 'plots.xml')
-        if os.path.exists(f):
-            os.remove(f)
-        super(MultipoleTestHarness, self)._cleanup()
 
 
 if __name__ == '__main__':

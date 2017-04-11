@@ -446,14 +446,14 @@ class Lattice(object):
             # Assign universe clones to the lattice clone
             for i in self.indices:
                 if isinstance(self, RectLattice):
-                    clone.universes[i] = self.universes[i].clone()
+                    clone.universes[i] = self.universes[i].clone(memo)
                 else:
                     if self.ndim == 2:
                         clone.universes[i[0]][i[1]] = \
-                            self.universes[i[0]][i[1]].clone()
+                            self.universes[i[0]][i[1]].clone(memo)
                     else:
                         clone.universes[i[0]][i[1]][i[2]] = \
-                            self.universes[i[0]][i[1]][i[2]].clone()
+                            self.universes[i[0]][i[1]][i[2]].clone(memo)
 
             # Memoize the clone
             memo[self] = clone

@@ -5,11 +5,11 @@ from collections import namedtuple
 from io import StringIO
 import os
 import shutil
-from subprocess import run, PIPE, STDOUT
+from subprocess import Popen, PIPE, STDOUT
 import sys
 import tempfile
 
-import openmc.data
+from .endf import Evaluation
 
 _NJOY_2012 = False
 
@@ -60,7 +60,7 @@ reconr / %%%%%%%%%%%%%%%%%%% Reconstruct XS for neutrons %%%%%%%%%%%%%%%%%%%%%%%
 {mat} 2/
 0.001 0.0 0.003/ err tempr errmax
 '{library}: {zsymam}'/
-'Processed by NJOY2012.50'/
+'Processed by NJOY'/
 0/
 stop
 """
@@ -72,13 +72,13 @@ reconr / %%%%%%%%%%%%%%%%%%% Reconstruct XS for neutrons %%%%%%%%%%%%%%%%%%%%%%%
 {mat} 2/
 0.001 0.0 0.003/ err tempr errmax
 '{library}: {zsymam}'/
-'Processed by NJOY2012.50'/
+'Processed by NJOY'/
 0/
 broadr / %%%%%%%%%%%%%%%%%%%%%%% Doppler broaden XS %%%%%%%%%%%%%%%%%%%%%%%%%%%%
 20 21 22
-{mat} 1 0 0 0. /
+{mat} {num_temp} 0 0 0. /
 0.001 -1.0e6 0.003 /
-293.6
+{temps}
 0/
 heatr / %%%%%%%%%%%%%%%%%%%%%%%%% Add heating kerma %%%%%%%%%%%%%%%%%%%%%%%%%%%%
 20 22 23 /
@@ -86,18 +86,19 @@ heatr / %%%%%%%%%%%%%%%%%%%%%%%%% Add heating kerma %%%%%%%%%%%%%%%%%%%%%%%%%%%%
 {heatr_partials} /
 purr / %%%%%%%%%%%%%%%%%%%%%%%% Add probability tables %%%%%%%%%%%%%%%%%%%%%%%%%
 20 23 24
-{mat} 1 5 20 64 /
-293.6
+{mat} {num_temp} 5 20 64 /
+{temps}
 1.e10 1.e4 1.e3 1.e2 1.e1
 0/
-acer / %%%%%%%%%%%%%%%%%%%%%%%%%%%%% Make ACE file %%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-20 24 0 25 26
-1 0 1 .01 /
-'{library}: {zsymam} processed by NJOY2012.50'/
-{mat} 293.6
+"""
+
+_ACE_TEMPLATE_ACER = """acer / %%%%%%%%%%%%%%%%%%%%%%%%%%%%% Make ACE file %%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+20 24 0 {nace} {ndir}
+1 0 1 .{ext} /
+'{library}: {zsymam} at {temperature}'/
+{mat} {temperature}
 1 1/
 /
-stop
 """
 
 _ACE_THERMAL_TEMPLATE = """
@@ -107,7 +108,7 @@ reconr / %%%%%%%%%%%%%%%%%%% Reconstruct XS for neutrons %%%%%%%%%%%%%%%%%%%%%%%
 {mat} 2/
 0.001 0. 0.001/ err tempr errmax
 '{library}: PENDF for {zsymam}'/
-'Processed by NJOY2012.50'/
+'Processed by NJOY'/
 0/
 broadr / %%%%%%%%%%%%%%%%%%%%%%% Doppler broaden XS %%%%%%%%%%%%%%%%%%%%%%%%%%%%
 20 22 23
@@ -128,102 +129,179 @@ thermr / %%%%%%%%%%%%%%%% Add thermal scattering data (bound) %%%%%%%%%%%%%%%%%%
 acer / %%%%%%%%%%%%%%%%%%%%%%%%%%%%% Make ACE file %%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 20 27 0 28 29
 2 0 1 .01/
-'{library}: {zsymam_thermal} processed by NJOY2012.50'/
+'{library}: {zsymam_thermal} processed by NJOY'/
 {mat} {temperature} '{data.name}' /
 {zaids} /
 222 64 {mt_elastic} {elastic_type} {data.nmix} {energy_max} 2/
 stop
 """
 
-def make_pendf(filename, output=None):
-    ev = openmc.data.endf.Evaluation(filename)
+def run(commands, tapein, tapeout, stdout=False, njoy_exec='njoy'):
+    # Create temporary directory -- it would be preferable to use
+    # TemporaryDirectory(), but it is only available in Python 3.2
+    tmpdir = tempfile.mkdtemp()
+    try:
+        # Copy evaluations to appropriates 'tapes'
+        for tape_num, filename in tapein.items():
+            tmpfilename = os.path.join(tmpdir, 'tape{}'.format(tape_num))
+            shutil.copy(filename, tmpfilename)
+
+        # Start up NJOY process
+        njoy = Popen([njoy_exec], cwd=tmpdir, stdin=PIPE, stdout=PIPE,
+                   stderr=STDOUT, universal_newlines=True)
+
+        njoy.stdin.write(commands)
+        njoy.stdin.flush()
+        while True:
+            # If process is finished, break loop
+            line = njoy.stdout.readline()
+            if not line and njoy.poll() is not None:
+                break
+
+            if stdout:
+                # If user requested output, print to screen
+                print(line, end='')
+
+        # Copy output files back to original directory
+        for tape_num, filename in tapeout.items():
+            tmpfilename = os.path.join(tmpdir, 'tape{}'.format(tape_num))
+            if os.path.isfile(tmpfilename):
+                shutil.move(tmpfilename, filename)
+    finally:
+        shutil.rmtree(tmpdir)
+
+    return njoy.returncode
+
+
+def make_pendf(filename, pendf='pendf', stdout=False):
+    """Generate ACE file from an ENDF file
+
+    Parameters
+    ----------
+    filename : str
+        Path to ENDF file
+    pendf : str, optional
+        Path of pointwise ENDF file to write
+    stdout : bool
+        Whether to display NJOY standard output
+
+    Returns
+    -------
+    int
+        Return code of NJOY process
+
+    """
+    ev = Evaluation(filename)
     mat = ev.material
     zsymam = ev.target['zsymam']
 
     # Determine name of library
     library = '{}-{}.{}'.format(*ev.info['library'])
 
-    with tempfile.TemporaryDirectory() as tmpdirname:
-        # Copy evaluation to tape20
-        shutil.copy(filename, os.path.join(tmpdirname, 'tape20'))
-
-        commands = _PENDF_TEMPLATE.format(**locals())
-        njoy = run(['njoy'], cwd=tmpdirname, input=commands, stdout=PIPE,
-                   stderr=STDOUT, universal_newlines=True)
-        if njoy.returncode != 0:
-            print('Failed to produce PENDF for {}'.format(filename))
-
-        if output is None:
-            output = zsymam.replace(' ', '') + '.pendf'
-
-        pendf_file = os.path.join(tmpdirname, 'tape22')
-        if os.path.isfile(pendf_file):
-            shutil.move(pendf_file, output)
-
-    return njoy
+    commands = _PENDF_TEMPLATE.format(**locals())
+    tapein = {20: filename}
+    tapeout = {22: pendf}
+    return run(commands, tapein, tapeout, stdout)
 
 
-def make_ace(filename, output=None):
-    ev = openmc.data.endf.Evaluation(filename)
+def make_ace(filename, temperatures=None, ace='ace', xsdir='xsdir',
+             keep_pendf=False, **kwargs):
+    """Generate ACE file from an ENDF file
+
+    Parameters
+    ----------
+    filename : str
+        Path to ENDF file
+    temperatures : iterable of float, optional
+        Temperatures in Kelvin to produce ACE files at
+    ace : str, optional
+        Path of ACE file to write
+    xsdir : str, optional
+        Path of xsdir file to write
+    keep_pendf : bool
+        Whether to retain PENDF file (written to 'pendf')
+    **kwargs
+        Keyword arguments passed to :func:`openmc.data.njoy.run`
+
+    Returns
+    -------
+    int
+        Return code of NJOY process
+
+    """
+    ev = Evaluation(filename)
     mat = ev.material
     zsymam = ev.target['zsymam']
 
-    with tempfile.TemporaryDirectory() as tmpdirname:
-        # Copy evaluation to tape20
-        shutil.copy(filename, os.path.join(tmpdirname, 'tape20'))
+    # Determine name of library
+    library = '{}-{}.{}'.format(*ev.info['library'])
 
-        # Determine which partial heating values are needed to self-shield heating
-        # for ptables
-        partials = [302, 402]
-        if ev.target['fissionable']:
-            partials.append(318)
-        heatr_partials = ' '.join(map(str, partials))
-        num_partials = len(partials)
+    # Determine which partial heating values are needed to self-shield heating
+    # for ptables
+    partials = [302, 402]
+    if ev.target['fissionable']:
+        partials.append(318)
+    heatr_partials = ' '.join(map(str, partials))
+    num_partials = len(partials)
 
-        commands = _ACE_TEMPLATE.format(**locals())
-        njoy = run(['njoy'], cwd=tmpdirname, input=commands, stdout=PIPE,
-                   stderr=STDOUT, universal_newlines=True)
-        if njoy.returncode != 0:
-            print('Failed to produce ACE for {}'.format(filename))
+    if temperatures is None:
+        temperatures = [293.15]
+    num_temp = len(temperatures)
+    temps = ' '.join(str(i) for i in temperatures)
 
-        if output is None:
-            output = zsymam.replace(' ', '') + '.ace'
-        output_xsdir = zsymam.replace(' ', '') + '.xsdir'
-        output_njoy = zsymam.replace(' ', '') + '.output'
+    commands = _ACE_TEMPLATE.format(**locals())
+    tapein = {20: filename}
+    tapeout = {}
+    if keep_pendf:
+        tapeout[21] = 'pendf'
+    fname = '{}_{:.1f}'
+    for i, temperature in enumerate(temperatures):
+        # Extend input with an ACER run for each temperature
+        nace = 25 + 2*i
+        ndir = 25 + 2*i + 1
+        ext = '{:02}'.format(i + 1)
+        commands += _ACE_TEMPLATE_ACER.format(**locals())
 
-        ace_file = os.path.join(tmpdirname, 'tape25')
-        xsdir_file = os.path.join(tmpdirname, 'tape26')
-        output_file = os.path.join(tmpdirname, 'output')
-        if os.path.exists(ace_file):
-            shutil.move(ace_file, output)
-        if os.path.exists(xsdir_file):
-            shutil.move(xsdir_file, output_xsdir)
-        if os.path.exists(output_file):
-            shutil.move(output_file, output_njoy)
-        shutil.move(os.path.join(tmpdirname, 'tape21'), 'pendf')
+        # Indicate tapes to save for each ACER run
+        tapeout[nace] = fname.format(ace, temperature)
+        tapeout[ndir] = fname.format(xsdir, temperature)
+    commands += 'stop\n'
+    retcode = run(commands, tapein, tapeout, **kwargs)
 
-    # Write NJOY output
-    open(zsymam.replace(' ', '') + '.njo', 'w').write(njoy.stdout)
+    if retcode == 0:
+        with open(ace, 'w') as ace_file, open(xsdir, 'w') as xsdir_file:
+            for temperature in temperatures:
+                # Get contents of ACE file
+                text = open(fname.format(ace, temperature), 'r').read()
 
-    # If the target is metastable, make sure that ZAID in the ACE file reflects
-    # this by adding 400
-    if ev.target['isomeric_state'] > 0:
-        text = open(output, 'r').read()
-        mass_first_digit = int(text[3])
-        if mass_first_digit <= 2:
-            print('    Fixing {} (metastable ZAID)...'.format(output))
-            text = text[:3] + str(mass_first_digit + 4) + text[4:]
-            open(output, 'w').write(text)
+                # If the target is metastable, make sure that ZAID in the ACE file reflects
+                # this by adding 400
+                if ev.target['isomeric_state'] > 0:
+                    mass_first_digit = int(text[3])
+                    if mass_first_digit <= 2:
+                        text = text[:3] + str(mass_first_digit + 4) + text[4:]
 
-    return njoy
+                # Concatenate into destination ACE file
+                ace_file.write(text)
+
+                # Concatenate into destination xsdir file
+                text = open(fname.format(xsdir, temperature), 'r').read()
+                xsdir_file.write(text)
+
+        # Remove ACE/xsdir files for each temperature
+        for temperature in temperatures:
+            os.remove(fname.format(ace, temperature))
+            os.remove(fname.format(xsdir, temperature))
+
+    return retcode
 
 
 def make_ace_thermal(filename, filename_thermal, temperature, output=None):
-    ev = openmc.data.endf.Evaluation(filename)
+    ev = Evaluation(filename)
     mat = ev.material
     zsymam = ev.target['zsymam']
 
-    ev_thermal = openmc.data.endf.Evaluation(filename_thermal)
+    ev_thermal = Evaluation(filename_thermal)
     mat_thermal = ev_thermal.material
     zsymam_thermal = ev_thermal.target['zsymam']
 
@@ -291,11 +369,3 @@ def make_ace_thermal(filename, filename_thermal, temperature, output=None):
     open(data.name + '.njo', 'w').write(njoy.stdout)
 
     return njoy
-
-
-if __name__ == '__main__':
-    parser = argparse.ArgumentParser()
-    parser.add_argument('filename', help='Path to ENDF file')
-    args = parser.parse_args()
-
-    make_ace(args.filename)

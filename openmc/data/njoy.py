@@ -1,5 +1,4 @@
-#!/usr/bin/env python
-
+from __future__ import print_function
 import argparse
 from collections import namedtuple
 from io import StringIO
@@ -9,9 +8,8 @@ from subprocess import Popen, PIPE, STDOUT
 import sys
 import tempfile
 
-from .endf import Evaluation
+from . import endf
 
-_NJOY_2012 = False
 
 # For a given MAT number, give a name for the ACE table and a list of ZAID
 # identifiers
@@ -92,7 +90,7 @@ purr / %%%%%%%%%%%%%%%%%%%%%%%% Add probability tables %%%%%%%%%%%%%%%%%%%%%%%%%
 0/
 """
 
-_ACE_TEMPLATE_ACER = """acer / %%%%%%%%%%%%%%%%%%%%%%%%%%%%% Make ACE file %%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+_ACE_TEMPLATE_ACER = """acer /
 20 24 0 {nace} {ndir}
 1 0 1 .{ext} /
 '{library}: {zsymam} at {temperature}'/
@@ -112,31 +110,55 @@ reconr / %%%%%%%%%%%%%%%%%%% Reconstruct XS for neutrons %%%%%%%%%%%%%%%%%%%%%%%
 0/
 broadr / %%%%%%%%%%%%%%%%%%%%%%% Doppler broaden XS %%%%%%%%%%%%%%%%%%%%%%%%%%%%
 20 22 23
-{mat} 1 0 0 0./
+{mat} {num_temp} 0 0 0./
 0.001 2.0e+6 0.001/ errthn thnmax errmax
-{temperature}
+{temps}
 0/
 thermr / %%%%%%%%%%%%%%%% Add thermal scattering data (free gas) %%%%%%%%%%%%%%%
 0 23 62
-0 {mat} 12 1 1 0 {iform} 1 221 1/
-{temperature}
+0 {mat} 12 {num_temp} 1 0 {iform} 1 221 1/
+{temps}
 0.001 4.0
 thermr / %%%%%%%%%%%%%%%% Add thermal scattering data (bound) %%%%%%%%%%%%%%%%%%
 60 62 27
-{mat_thermal} {mat} 16 1 {inelastic} {elastic} {iform} {natom} 222 1/
-{temperature}
+{mat_thermal} {mat} 16 {num_temp} {inelastic} {elastic} {iform} {natom} 222 1/
+{temps}
 0.001 4.0
-acer / %%%%%%%%%%%%%%%%%%%%%%%%%%%%% Make ACE file %%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-20 27 0 28 29
-2 0 1 .01/
+"""
+
+_ACE_THERMAL_TEMPLATE_ACER = """acer /
+20 27 0 {nace} {ndir}
+2 0 1 .{ext}/
 '{library}: {zsymam_thermal} processed by NJOY'/
 {mat} {temperature} '{data.name}' /
 {zaids} /
 222 64 {mt_elastic} {elastic_type} {data.nmix} {energy_max} 2/
-stop
 """
 
+
 def run(commands, tapein, tapeout, stdout=False, njoy_exec='njoy'):
+    """Run NJOY with given commands
+
+    Parameters
+    ----------
+    commands : str
+        Input commands for NJOY
+    tapein : dict
+        Dictionary mapping tape numbers to paths for any input files
+    tapeout : dict
+        Dictionary mapping tape numbers to paths for any output files
+    stdout : bool, optional
+        Whether to display output when running NJOY
+    njoy_exec : str, optional
+        Path to NJOY executable
+
+    Returns
+    -------
+    int
+        Return code of NJOY process
+
+    """
+
     # Create temporary directory -- it would be preferable to use
     # TemporaryDirectory(), but it is only available in Python 3.2
     tmpdir = tempfile.mkdtemp()
@@ -148,7 +170,7 @@ def run(commands, tapein, tapeout, stdout=False, njoy_exec='njoy'):
 
         # Start up NJOY process
         njoy = Popen([njoy_exec], cwd=tmpdir, stdin=PIPE, stdout=PIPE,
-                   stderr=STDOUT, universal_newlines=True)
+                     stderr=STDOUT, universal_newlines=True)
 
         njoy.stdin.write(commands)
         njoy.stdin.flush()
@@ -191,7 +213,7 @@ def make_pendf(filename, pendf='pendf', stdout=False):
         Return code of NJOY process
 
     """
-    ev = Evaluation(filename)
+    ev = endf.Evaluation(filename)
     mat = ev.material
     zsymam = ev.target['zsymam']
 
@@ -206,14 +228,15 @@ def make_pendf(filename, pendf='pendf', stdout=False):
 
 def make_ace(filename, temperatures=None, ace='ace', xsdir='xsdir',
              keep_pendf=False, **kwargs):
-    """Generate ACE file from an ENDF file
+    """Generate incident neutron ACE file from an ENDF file
 
     Parameters
     ----------
     filename : str
         Path to ENDF file
     temperatures : iterable of float, optional
-        Temperatures in Kelvin to produce ACE files at
+        Temperatures in Kelvin to produce ACE files at. If omitted, data is
+        produced at room temperature (293.6 K).
     ace : str, optional
         Path of ACE file to write
     xsdir : str, optional
@@ -229,7 +252,7 @@ def make_ace(filename, temperatures=None, ace='ace', xsdir='xsdir',
         Return code of NJOY process
 
     """
-    ev = Evaluation(filename)
+    ev = endf.Evaluation(filename)
     mat = ev.material
     zsymam = ev.target['zsymam']
 
@@ -245,7 +268,7 @@ def make_ace(filename, temperatures=None, ace='ace', xsdir='xsdir',
     num_partials = len(partials)
 
     if temperatures is None:
-        temperatures = [293.15]
+        temperatures = [293.6]
     num_temp = len(temperatures)
     temps = ' '.join(str(i) for i in temperatures)
 
@@ -296,12 +319,37 @@ def make_ace(filename, temperatures=None, ace='ace', xsdir='xsdir',
     return retcode
 
 
-def make_ace_thermal(filename, filename_thermal, temperature, output=None):
-    ev = Evaluation(filename)
+def make_ace_thermal(filename, filename_thermal, temperatures=None,
+                     ace='ace', xsdir='xsdir', **kwargs):
+    """Generate thermal scattering ACE file from ENDF files
+
+    Parameters
+    ----------
+    filename : str
+        Path to ENDF neutron sublibrary file
+    filename_thermal : str
+        Path to ENDF thermal scattering sublibrary file
+    temperatures : iterable of float, optional
+        Temperatures in Kelvin to produce data at. If omitted, data is produced
+        at all temperatures given in the ENDF thermal scattering sublibrary.
+    ace : str, optional
+        Path of ACE file to write
+    xsdir : str, optional
+        Path of xsdir file to write
+    **kwargs
+        Keyword arguments passed to :func:`openmc.data.njoy.run`
+
+    Returns
+    -------
+    int
+        Return code of NJOY process
+
+    """
+    ev = endf.Evaluation(filename)
     mat = ev.material
     zsymam = ev.target['zsymam']
 
-    ev_thermal = Evaluation(filename_thermal)
+    ev_thermal = endf.Evaluation(filename_thermal)
     mat_thermal = ev_thermal.material
     zsymam_thermal = ev_thermal.target['zsymam']
 
@@ -319,7 +367,7 @@ def make_ace_thermal(filename, filename_thermal, temperature, output=None):
 
         # Determine whether elastic is incoherent (0) or coherent (1)
         file_obj = StringIO(ev_thermal.section[7, 2])
-        elastic_type = openmc.data.endf.get_head_record(file_obj)[2]
+        elastic_type = endf.get_head_record(file_obj)[2]
     else:
         elastic = 0
         mt_elastic = 0
@@ -327,45 +375,59 @@ def make_ace_thermal(filename, filename_thermal, temperature, output=None):
 
     # Determine number of principal atoms
     file_obj = StringIO(ev_thermal.section[7, 4])
-    items = openmc.data.endf.get_head_record(file_obj)
-    items, values = openmc.data.endf.get_list_record(file_obj)
+    items = endf.get_head_record(file_obj)
+    items, values = endf.get_list_record(file_obj)
     natom = int(values[5])
 
-    # A few parameters are different in NJOY 99 and NJOY 2012
-    if _NJOY_2012:
-        iform = 0
-        inelastic = 2
-    else:
-        iform = ''
-        inelastic = 4
+    # Note that the 'iform' parameter is omitted in NJOY 99. We assume that the
+    # user is using NJOY 2012 or later.
+    iform = 0
+    inelastic = 2
 
-    with tempfile.TemporaryDirectory() as tmpdirname:
-        # Copy evaluation to tape20
-        shutil.copy(filename, os.path.join(tmpdirname, 'tape20'))
-        shutil.copy(filename_thermal, os.path.join(tmpdirname, 'tape60'))
+    # Determine temperatures from MF=7, MT=4 if none were specified
+    if temperatures is None:
+        file_obj = StringIO(ev_thermal.section[7, 4])
+        endf.get_head_record(file_obj)
+        endf.get_list_record(file_obj)
+        endf.get_tab2_record(file_obj)
+        params = endf.get_tab1_record(file_obj)[0]
+        temperatures = [params[0]]
+        for i in range(params[2]):
+            temperatures.append(endf.get_list_record(file_obj)[0][0])
 
-        commands = _ACE_THERMAL_TEMPLATE.format(**locals())
-        njoy = run(['njoy'], cwd=tmpdirname, input=commands, stdout=PIPE,
-                   stderr=STDOUT, universal_newlines=True)
-        if njoy.returncode != 0:
-            print('Failed to produce ACE for {}'.format(filename_thermal))
+    num_temp = len(temperatures)
+    temps = ' '.join(str(i) for i in temperatures)
 
-        if output is None:
-            output = data.name + '.ace'
-        output_xsdir = data.name + '.xsdir'
-        output_njoy = data.name + '.output'
+    commands = _ACE_THERMAL_TEMPLATE.format(**locals())
+    tapein = {20: filename, 60: filename_thermal}
+    tapeout = {}
+    fname = '{}_{:.1f}'
+    for i, temperature in enumerate(temperatures):
+        # Extend input with an ACER run for each temperature
+        nace = 28 + 2*i
+        ndir = 28 + 2*i + 1
+        ext = '{:02}'.format(i + 1)
+        commands += _ACE_THERMAL_TEMPLATE_ACER.format(**locals())
 
-        ace_file = os.path.join(tmpdirname, 'tape28')
-        xsdir_file = os.path.join(tmpdirname, 'tape29')
-        output_file = os.path.join(tmpdirname, 'output')
-        if os.path.exists(ace_file):
-            shutil.move(ace_file, output)
-        if os.path.exists(xsdir_file):
-            shutil.move(xsdir_file, output_xsdir)
-        if os.path.exists(output_file):
-            shutil.move(output_file, output_njoy)
+        # Indicate tapes to save for each ACER run
+        tapeout[nace] = fname.format(ace, temperature)
+        tapeout[ndir] = fname.format(xsdir, temperature)
+    commands += 'stop\n'
+    retcode = run(commands, tapein, tapeout, **kwargs)
 
-    # Write NJOY output
-    open(data.name + '.njo', 'w').write(njoy.stdout)
+    if retcode == 0:
+        with open(ace, 'w') as ace_file, open(xsdir, 'w') as xsdir_file:
+            # Concatenate ACE and xsdir files together
+            for temperature in temperatures:
+                text = open(fname.format(ace, temperature), 'r').read()
+                ace_file.write(text)
 
-    return njoy
+                text = open(fname.format(xsdir, temperature), 'r').read()
+                xsdir_file.write(text)
+
+        # Remove ACE/xsdir files for each temperature
+        for temperature in temperatures:
+            os.remove(fname.format(ace, temperature))
+            os.remove(fname.format(xsdir, temperature))
+
+    return retcode

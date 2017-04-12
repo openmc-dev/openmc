@@ -832,7 +832,8 @@ class IncidentNeutron(EqualityMixin):
         filename : str
             Path to ENDF evaluation
         temperatures : iterable of float
-            Temperatures in Kelvin to produce data at. If omitted, data is produced at room temperature (293.6 K)
+            Temperatures in Kelvin to produce data at. If omitted, data is
+            produced at room temperature (293.6 K)
         **kwargs
             Keyword arguments passed to :func:`openmc.data.njoy.make_ace`
 
@@ -840,6 +841,7 @@ class IncidentNeutron(EqualityMixin):
         -------
         data : openmc.data.IncidentNeutron
             Incident neutron continuous-energy data
+
         """
         # Create temporary directory -- it would be preferable to use
         # TemporaryDirectory(), but it is only available in Python 3.2

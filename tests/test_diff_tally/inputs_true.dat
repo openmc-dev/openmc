@@ -306,7 +306,7 @@
             <parameters>-160 -160 -183 160 160 183</parameters>
         </space>
     </source>
-    <temperature_multipole>True</temperature_multipole>
+    <temperature_multipole>true</temperature_multipole>
 </settings>
 <?xml version='1.0' encoding='utf-8'?>
 <tallies>

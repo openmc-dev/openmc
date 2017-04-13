@@ -850,7 +850,9 @@ class IncidentNeutron(EqualityMixin):
             # Run NJOY to create an ACE library
             ace_file = os.path.join(tmpdir, 'ace')
             xsdir_file = os.path.join(tmpdir, 'xsdir')
-            make_ace(filename, temperatures, ace_file, xsdir_file, **kwargs)
+            pendf_file = os.path.join(tmpdir, 'pendf')
+            make_ace(filename, temperatures, ace_file, xsdir_file,
+                     pendf_file, **kwargs)
 
             # Create instance from ACE tables within library
             lib = Library(ace_file)
@@ -864,7 +866,7 @@ class IncidentNeutron(EqualityMixin):
                 data.fission_energy = FissionEnergyRelease.from_endf(ev)
 
             # Add 0K elastic scattering cross section
-            pendf = Evaluation('pendf')
+            pendf = Evaluation(pendf_file)
             file_obj = StringIO(pendf.section[3, 2])
             get_head_record(file_obj)
             params, xs = get_tab1_record(file_obj)

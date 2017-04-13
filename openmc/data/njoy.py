@@ -227,7 +227,7 @@ def make_pendf(filename, pendf='pendf', stdout=False):
 
 
 def make_ace(filename, temperatures=None, ace='ace', xsdir='xsdir',
-             keep_pendf=False, **kwargs):
+             pendf=None, **kwargs):
     """Generate incident neutron ACE file from an ENDF file
 
     Parameters
@@ -241,8 +241,8 @@ def make_ace(filename, temperatures=None, ace='ace', xsdir='xsdir',
         Path of ACE file to write
     xsdir : str, optional
         Path of xsdir file to write
-    keep_pendf : bool
-        Whether to retain PENDF file (written to 'pendf')
+    pendf : str, optional
+        Path of pendf file to write. If omitted, the pendf file is not saved.
     **kwargs
         Keyword arguments passed to :func:`openmc.data.njoy.run`
 
@@ -275,8 +275,8 @@ def make_ace(filename, temperatures=None, ace='ace', xsdir='xsdir',
     commands = _ACE_TEMPLATE.format(**locals())
     tapein = {20: filename}
     tapeout = {}
-    if keep_pendf:
-        tapeout[21] = 'pendf'
+    if pendf is not None:
+        tapeout[21] = pendf
     fname = '{}_{:.1f}'
     for i, temperature in enumerate(temperatures):
         # Extend input with an ACER run for each temperature

@@ -95,7 +95,7 @@ settings_file.export_to_xml()
 ###############################################################################
 
 # Instantiate some tally Filters
-cell_filter = openmc.CellFilter(100)
+cell_filter = openmc.CellFilter(cell2)
 energy_filter = openmc.EnergyFilter([0., 20.e6])
 energyout_filter = openmc.EnergyoutFilter([0., 20.e6])
 

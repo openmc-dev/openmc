@@ -862,8 +862,8 @@ class IncidentNeutron(EqualityMixin):
 
             # Add fission energy release data
             ev = Evaluation(filename)
-            if ev.target['fissionable']:
-                data.fission_energy = FissionEnergyRelease.from_endf(ev)
+            if (1, 458) in ev.section:
+                data.fission_energy = FissionEnergyRelease.from_endf(ev, data)
 
             # Add 0K elastic scattering cross section
             pendf = Evaluation(pendf_file)

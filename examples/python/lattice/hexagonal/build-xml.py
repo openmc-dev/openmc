@@ -153,7 +153,7 @@ plot_file.export_to_xml()
 
 # Instantiate a distribcell Tally
 tally = openmc.Tally(tally_id=1)
-tally.filters = [openmc.DistribcellFilter(cell2.id)]
+tally.filters = [openmc.DistribcellFilter(cell2)]
 tally.scores = ['total']
 
 # Instantiate a Tallies collection and export to XML

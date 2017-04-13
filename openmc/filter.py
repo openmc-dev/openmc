@@ -434,20 +434,19 @@ class Filter(object):
         return df
 
 
-class IntegralFilter(Filter):
-    """Tally modifier that describes phase-space and other characteristics.
+class UniverseFilter(Filter):
+    """Bins tally event locations based on the Universe they occured in.
 
     Parameters
     ----------
-    bins : Integral or Iterable of Integral
-        The bins for the filter. This takes on different meaning for different
-        filters. See the docstrings for sublcasses of this filter or the online
-        documentation for more details.
+    bins : openmc.Universe, Integral, or iterable thereof
+        The Universes to tally.  Either openmc.Universe objects or their
+        Integral ID numbers can be used.
 
     Attributes
     ----------
-    bins : Integral or Iterable of Integral
-        The bins for the filter
+    bins : Iterable of Integral
+        openmc.Universe IDs.
     num_bins : Integral
         The number of filter bins
     stride : Integral
@@ -456,53 +455,47 @@ class IntegralFilter(Filter):
 
     """
     @property
+    def bins(self):
+        return self._bins
+
+    @property
     def num_bins(self):
         return len(self.bins)
 
-    @num_bins.setter
-    def num_bins(self, num_bins):
-        cv.check_type('filter num_bins', num_bins, Integral)
-        cv.check_greater_than('filter num_bins', num_bins, 0, equality=True)
-        self._num_bins = num_bins
+    @bins.setter
+    def bins(self, bins):
+        # Format the bins as a 1D numpy array.
+        bins = np.atleast_1d(bins)
 
-    def check_bins(self, bins):
-        cv.check_iterable_type('filter bins', bins, Integral)
+        # Check the bin values.
+        cv.check_iterable_type('filter bins', bins, (Integral, openmc.Universe))
         for edge in bins:
-            cv.check_greater_than('filter bin', edge, 0, equality=True)
+            if isinstance(edge, Integral):
+                cv.check_greater_than('filter bin', edge, 0, equality=True)
+
+        # Extract id values.
+        if any([isinstance(b, openmc.Universe) for b in bins]):
+            bins = np.atleast_1d([b.id if isinstance(b, openmc.Universe) else b
+                                  for b in bins])
+
+        self._bins = bins
+
+    @num_bins.setter
+    def num_bins(self, num_bins): pass
 
 
-class UniverseFilter(IntegralFilter):
-    """Bins tally event locations based on the universe they occured in.
-
-    Parameters
-    ----------
-    bins : Integral or Iterable of Integral
-        openmc.Universe IDs.
-
-    Attributes
-    ----------
-    bins : Integral or Iterable of Integral
-        openmc.Universe IDs.
-    num_bins : Integral
-        The number of filter bins
-    stride : Integral
-        The number of filter, nuclide and score bins within each of this
-        filter's bins.
-
-    """
-
-
-class MaterialFilter(IntegralFilter):
-    """Bins tally events based on which material they occured in.
+class MaterialFilter(Filter):
+    """Bins tally event locations based on the Material they occured in.
 
     Parameters
     ----------
-    bins : Integral or Iterable of Integral
-        openmc.Material IDs.
+    bins : openmc.Material, Integral, or iterable thereof
+        The Materials to tally.  Either openmc.Material objects or their
+        Integral ID numbers can be used.
 
     Attributes
     ----------
-    bins : Integral or Iterable of Integral
+    bins : Iterable of Integral
         openmc.Material IDs.
     num_bins : Integral
         The number of filter bins
@@ -511,19 +504,48 @@ class MaterialFilter(IntegralFilter):
         filter's bins.
 
     """
+    @property
+    def bins(self):
+        return self._bins
+
+    @property
+    def num_bins(self):
+        return len(self.bins)
+
+    @bins.setter
+    def bins(self, bins):
+        # Format the bins as a 1D numpy array.
+        bins = np.atleast_1d(bins)
+
+        # Check the bin values.
+        cv.check_iterable_type('filter bins', bins, (Integral, openmc.Material))
+        for edge in bins:
+            if isinstance(edge, Integral):
+                cv.check_greater_than('filter bin', edge, 0, equality=True)
+
+        # Extract id values.
+        if any([isinstance(b, openmc.Material) for b in bins]):
+            bins = np.atleast_1d([b.id if isinstance(b, openmc.Material) else b
+                                  for b in bins])
+
+        self._bins = bins
+
+    @num_bins.setter
+    def num_bins(self, num_bins): pass
 
 
-class CellFilter(IntegralFilter):
-    """Bins tally event locations based on which cell they occured in.
+class CellFilter(Filter):
+    """Bins tally event locations based on the Cell they occured in.
 
     Parameters
     ----------
-    bins : Integral or Iterable of Integral
-        openmc.Cell IDs.
+    bins : openmc.Cell, Integral, or iterable thereof
+        The Cells to tally.  Either openmc.Cell objects or their
+        Integral ID numbers can be used.
 
     Attributes
     ----------
-    bins : Integral or Iterable of Integral
+    bins : Iterable of Integral
         openmc.Cell IDs.
     num_bins : Integral
         The number of filter bins
@@ -532,19 +554,48 @@ class CellFilter(IntegralFilter):
         filter's bins.
 
     """
+    @property
+    def bins(self):
+        return self._bins
+
+    @property
+    def num_bins(self):
+        return len(self.bins)
+
+    @bins.setter
+    def bins(self, bins):
+        # Format the bins as a 1D numpy array.
+        bins = np.atleast_1d(bins)
+
+        # Check the bin values.
+        cv.check_iterable_type('filter bins', bins, (Integral, openmc.Cell))
+        for edge in bins:
+            if isinstance(edge, Integral):
+                cv.check_greater_than('filter bin', edge, 0, equality=True)
+
+        # Extract id values.
+        if any([isinstance(b, openmc.Cell) for b in bins]):
+            bins = np.atleast_1d([b.id if isinstance(b, openmc.Cell) else b
+                                  for b in bins])
+
+        self._bins = bins
+
+    @num_bins.setter
+    def num_bins(self, num_bins): pass
 
 
-class CellbornFilter(IntegralFilter):
-    """Bins tally events based on the cell that the particle was born in.
+class CellbornFilter(Filter):
+    """Bins tally events based on which Cell the neutron was born in.
 
     Parameters
     ----------
-    bins : Integral or Iterable of Integral
-        openmc.Cell IDs.
+    bins : openmc.Cell, Integral, or iterable thereof
+        The birth Cells to tally.  Either openmc.Cell objects or their
+        Integral ID numbers can be used.
 
     Attributes
     ----------
-    bins : Integral or Iterable of Integral
+    bins : Iterable of Integral
         openmc.Cell IDs.
     num_bins : Integral
         The number of filter bins
@@ -553,9 +604,37 @@ class CellbornFilter(IntegralFilter):
         filter's bins.
 
     """
+    @property
+    def bins(self):
+        return self._bins
+
+    @property
+    def num_bins(self):
+        return len(self.bins)
+
+    @bins.setter
+    def bins(self, bins):
+        # Format the bins as a 1D numpy array.
+        bins = np.atleast_1d(bins)
+
+        # Check the bin values.
+        cv.check_iterable_type('filter bins', bins, (Integral, openmc.Cell))
+        for edge in bins:
+            if isinstance(edge, Integral):
+                cv.check_greater_than('filter bin', edge, 0, equality=True)
+
+        # Extract id values.
+        if any([isinstance(b, openmc.Cell) for b in bins]):
+            bins = np.atleast_1d([b.id if isinstance(b, openmc.Cell) else b
+                                  for b in bins])
+
+        self._bins = bins
+
+    @num_bins.setter
+    def num_bins(self, num_bins): pass
 
 
-class SurfaceFilter(IntegralFilter):
+class SurfaceFilter(Filter):
     """Bins particle currents on Mesh surfaces.
 
     Parameters
@@ -576,6 +655,28 @@ class SurfaceFilter(IntegralFilter):
         filter's bins.
 
     """
+    @property
+    def bins(self):
+        return self._bins
+
+    @property
+    def num_bins(self):
+        return len(self.bins)
+
+    @bins.setter
+    def bins(self, bins):
+        # Format the bins as a 1D numpy array.
+        bins = np.atleast_1d(bins)
+
+        # Check the bin values.
+        cv.check_iterable_type('filter bins', bins, Integral)
+        for edge in bins:
+            cv.check_greater_than('filter bin', edge, 0, equality=True)
+
+        self._bins = bins
+
+    @num_bins.setter
+    def num_bins(self, num_bins): pass
 
     def get_pandas_dataframe(self, data_size, **kwargs):
         """Builds a Pandas DataFrame for the Filter's bins.
@@ -1082,14 +1183,14 @@ class DistribcellFilter(Filter):
 
     Parameters
     ----------
-    bins : Integral or Iterable of Integral or Iterable of Real
-        The bins for the filter. This takes on different meaning for different
-        filters. See the OpenMC online documentation for more details.
+    cell : openmc.Cell or Integral
+        The distributed cell to tally.  Either an openmc.Cell or an Integral
+        cell ID number can be used.
 
     Attributes
     ----------
-    bins : Integral or Iterable of Integral or Iterable of Real
-        The bins for the filter
+    bins : Iterable of Integral
+        An iterable with one element---the ID of the distributed Cell.
     num_bins : Integral
         The number of filter bins
     stride : Integral
@@ -1101,9 +1202,9 @@ class DistribcellFilter(Filter):
 
     """
 
-    def __init__(self, bins):
+    def __init__(self, cell):
         self._paths = None
-        super(DistribcellFilter, self).__init__(bins)
+        super(DistribcellFilter, self).__init__(cell)
 
     @classmethod
     def from_hdf5(cls, group, **kwargs):
@@ -1118,23 +1219,35 @@ class DistribcellFilter(Filter):
         return out
 
     @property
+    def bins(self):
+        return self._bins
+
+    @property
     def paths(self):
         return self._paths
 
-    @paths.setter
-    def paths(self, paths):
-        cv.check_iterable_type('paths', paths, str)
-        self._paths = paths
+    @bins.setter
+    def bins(self, bins):
+        # Format the bins as a 1D numpy array.
+        bins = np.atleast_1d(bins)
 
-    def check_bins(self, bins):
+        # Make sure there is only 1 bin.
         if not len(bins) == 1:
             msg = 'Unable to add bins "{0}" to a DistribcellFilter since ' \
                   'only a single distribcell can be used per tally'.format(bins)
             raise ValueError(msg)
 
-        cv.check_iterable_type('filter bins', bins, Integral)
-        for edge in bins:
-            cv.check_greater_than('filter bin', edge, 0, equality=True)
+        # Check the type and extract the id, if necessary.
+        cv.check_type('distribcell bin', bins[0], (Integral, openmc.Cell))
+        if isinstance(bins[0], openmc.Cell):
+            bins = np.atleast_1d(bins[0].id)
+
+        self._bins = bins
+
+    @paths.setter
+    def paths(self, paths):
+        cv.check_iterable_type('paths', paths, str)
+        self._paths = paths
 
     def can_merge(self, other):
         # Distribcell filters cannot have more than one bin
@@ -1608,7 +1721,7 @@ class AzimuthalFilter(RealFilter):
         return df
 
 
-class DelayedGroupFilter(IntegralFilter):
+class DelayedGroupFilter(Filter):
     """Bins fission events based on the produced neutron precursor groups.
 
     Parameters
@@ -1631,6 +1744,28 @@ class DelayedGroupFilter(IntegralFilter):
         filter's bins.
 
     """
+    @property
+    def bins(self):
+        return self._bins
+
+    @property
+    def num_bins(self):
+        return len(self.bins)
+
+    @bins.setter
+    def bins(self, bins):
+        # Format the bins as a 1D numpy array.
+        bins = np.atleast_1d(bins)
+
+        # Check the bin values.
+        cv.check_iterable_type('filter bins', bins, Integral)
+        for edge in bins:
+            cv.check_greater_than('filter bin', edge, 0, equality=True)
+
+        self._bins = bins
+
+    @num_bins.setter
+    def num_bins(self, num_bins): pass
 
 
 class EnergyFunctionFilter(Filter):

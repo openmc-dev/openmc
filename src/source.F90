@@ -130,7 +130,7 @@ contains
 
     ! Repeat sampling source location until a good site has been found
     found = .false.
-    do while (.not.found)
+    do while (.not. found)
       ! Set particle defaults
       call p % initialize()
 
@@ -145,16 +145,18 @@ contains
       call find_cell(p, found)
 
       ! Check if spatial site is in fissionable material
-      select type (space => external_source(i) % space)
-      type is (SpatialBox)
-        if (space % only_fissionable) then
-          if (p % material == MATERIAL_VOID) then
-            found = .false.
-          elseif (.not. materials(p % material) % fissionable) then
-            found = .false.
+      if (found) then
+        select type (space => external_source(i) % space)
+        type is (SpatialBox)
+          if (space % only_fissionable) then
+            if (p % material == MATERIAL_VOID) then
+              found = .false.
+            elseif (.not. materials(p % material) % fissionable) then
+              found = .false.
+            end if
           end if
-        end if
-      end select
+        end select
+      end if
 
       ! Check for rejection
       if (.not. found) then

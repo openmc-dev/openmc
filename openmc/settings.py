@@ -997,7 +997,10 @@ class Settings(object):
             for key, value in sorted(self.temperature.items()):
                 element = ET.SubElement(root,
                                         "temperature_{}".format(key))
-                element.text = str(value)
+                if isinstance(value, bool):
+                    element.text = str(value).lower()
+                else:
+                    element.text = str(value)
 
     def _create_threads_subelement(self, root):
         if self._threads is not None:

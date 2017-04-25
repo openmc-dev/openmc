@@ -912,7 +912,8 @@ class Tally(object):
             for i, filter1 in enumerate(self.filters):
                 for filter2 in other.filters:
                     if filter1 != filter2 and filter1.can_merge(filter2):
-                        other_copy._swap_filters(other_copy.filters[i], filter2)
+                        other_copy._swap_filters(other_copy.filters[i], filter2,
+                                                 other)
                         merged_tally.filters[i] = filter1.merge(filter2)
                         join_right = filter1 < filter2
                         merge_axis = i

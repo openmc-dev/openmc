@@ -777,9 +777,12 @@ class MeshFilter(Filter):
         # Find mesh dimensions - use 3D indices for simplicity
         if len(self.mesh.dimension) == 3:
             nx, ny, nz = self.mesh.dimension
-        else:
+        elif len(self.mesh.dimension) == 2:
             nx, ny = self.mesh.dimension
             nz = 1
+        else:
+            nx = self.mesh.dimension
+            ny = nz = 1
 
         # Generate multi-index sub-column for x-axis
         filter_bins = np.arange(1, nx + 1)

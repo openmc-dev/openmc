@@ -2001,6 +2001,10 @@ class Tally(object):
             other._std_dev = np.repeat(other.std_dev, filter_copy.num_bins, axis=0)
             other.filters.append(filter_copy)
 
+        # Create a new static copy of the other tally to use in swapping filters
+        if len(other_missing_filters) > 0:
+            other_old = copy.deepcopy(other)
+
         # Add filters present in other but not in self to self
         for self_filter in self_missing_filters:
             filter_copy = copy.deepcopy(self_filter)

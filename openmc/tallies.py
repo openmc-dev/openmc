@@ -1853,7 +1853,7 @@ class Tally(object):
         other_copy.sparse = False
 
         # Align the tally data based on desired hybrid product
-        data = self_copy._align_tally_data(other_copy, filter_product,
+        data = self_copy._align_tally_data(other, other_copy, filter_product,
                                            nuclide_product, score_product)
 
         # Perform tally arithmetic operation
@@ -1948,8 +1948,8 @@ class Tally(object):
             self_filter.stride = stride
             stride *= self_filter.num_bins
 
-    def _align_tally_data(self, other, filter_product, nuclide_product,
-                          score_product):
+    def _align_tally_data(self, other_old, other, filter_product,
+                          nuclide_product, score_product):
         """Aligns data from two tallies for tally arithmetic.
 
         This is a helper method to construct a dict of dicts of the "aligned"
@@ -1963,8 +1963,12 @@ class Tally(object):
 
         Parameters
         ----------
+        other_old : openmc.Tally
+            The tally to outer product with this tally with the old tally
+            alignment
         other : openmc.Tally
-            The tally to outer product with this tally
+            The tally to outer product with this tally with the new tally
+             alignment
         filter_product : {'entrywise'}
             The type of product to be performed between filter data. Currently,
             only the entrywise product is supported for the filter product.
@@ -2009,7 +2013,7 @@ class Tally(object):
 
             # If necessary, swap other filter
             if other_index != i:
-                other._swap_filters(self_filter, other.filters[i])
+                other._swap_filters(self_filter, other.filters[i], other_old)
 
         # Repeat and tile the data by nuclide in preparation for performing
         # the tensor product across nuclides.
@@ -2110,7 +2114,7 @@ class Tally(object):
         data['other']['std. dev.'] = other.std_dev
         return data
 
-    def _swap_filters(self, filter1, filter2):
+    def _swap_filters(self, filter1, filter2, other_old):
         """Reverse the ordering of two filters in this tally
 
         This is a helper method for tally arithmetic which helps align the data
@@ -2124,6 +2128,8 @@ class Tally(object):
 
         filter2 : Filter
             The filter to swap with filter1
+        other_old : openmc.Tally
+            A copy of this tally with the old filter alignment
 
         Raises
         ------
@@ -2177,7 +2183,7 @@ class Tally(object):
         if self.mean is not None:
             for bin1, bin2 in itertools.product(filter1_bins, filter2_bins):
                 filter_bins = [(bin1,), (bin2,)]
-                data = self.get_values(
+                data = other_old.get_values(
                     filters=filters, filter_bins=filter_bins, value='mean')
                 indices = self.get_filter_indices(filters, filter_bins)
                 self.mean[indices, :, :] = data
@@ -2186,7 +2192,7 @@ class Tally(object):
         if self.std_dev is not None:
             for bin1, bin2 in itertools.product(filter1_bins, filter2_bins):
                 filter_bins = [(bin1,), (bin2,)]
-                data = self.get_values(
+                data = other_old.get_values(
                     filters=filters, filter_bins=filter_bins, value='std_dev')
                 indices = self.get_filter_indices(filters, filter_bins)
                 self.std_dev[indices, :, :] = data

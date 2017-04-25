@@ -1344,7 +1344,7 @@ class Tally(object):
 
                 # If a user-requested Filter, get the user-requested bins
                 for j, test_filter in enumerate(filters):
-                    if type(self_filter) == test_filter:
+                    if type(self_filter) is test_filter:
                         bins = filter_bins[j]
                         user_filter = True
                         break

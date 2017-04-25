@@ -84,6 +84,7 @@ module constants
        ZERO             = 0.0_8,             &
        HALF             = 0.5_8,             &
        ONE              = 1.0_8,             &
+       SQRT_TWO         = 1.4142135623731_8, &
        TWO              = 2.0_8,             &
        THREE            = 3.0_8,             &
        FOUR             = 4.0_8

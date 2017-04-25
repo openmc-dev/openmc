@@ -224,11 +224,12 @@ module nuclide_header
     call sort(temps_available)
 
     ! If only one temperature is available, revert to nearest temperature
-    if (size(temps_available) == 1 .and. &
-         method == TEMPERATURE_INTERPOLATION .and. master) then
-      call warning("Cross sections for " // trim(this % name) // " are only &
-           &available at one temperature. Reverting to nearest temperature &
-           &method.")
+    if (size(temps_available) == 1 .and. method == TEMPERATURE_INTERPOLATION) then
+      if (master) then
+        call warning("Cross sections for " // trim(this % name) // " are only &
+             &available at one temperature. Reverting to nearest temperature &
+             &method.")
+      end if
       method = TEMPERATURE_NEAREST
     end if
 

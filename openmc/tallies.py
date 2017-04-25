@@ -1344,7 +1344,7 @@ class Tally(object):
 
                 # If a user-requested Filter, get the user-requested bins
                 for j, test_filter in enumerate(filters):
-                    if isinstance(self_filter, test_filter):
+                    if type(self_filter) == test_filter:
                         bins = filter_bins[j]
                         user_filter = True
                         break
@@ -2126,7 +2126,6 @@ class Tally(object):
         ----------
         filter1 : Filter
             The filter to swap with filter2
-
         filter2 : Filter
             The filter to swap with filter1
         other_old : openmc.Tally

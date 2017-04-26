@@ -1964,7 +1964,7 @@ class Tally(object):
         Parameters
         ----------
         other : openmc.Tally
-            The tally to outer product with this tally.
+            The tally to outer product with this tally
         filter_product : {'entrywise'}
             The type of product to be performed between filter data. Currently,
             only the entrywise product is supported for the filter product.
@@ -1992,10 +1992,8 @@ class Tally(object):
         # Add filters present in self but not in other to other
         for other_filter in other_missing_filters:
             filter_copy = copy.deepcopy(other_filter)
-            other._mean = np.repeat(other.mean,
-                                           filter_copy.num_bins, axis=0)
-            other._std_dev = np.repeat(other.std_dev,
-                                              filter_copy.num_bins, axis=0)
+            other._mean = np.repeat(other.mean, filter_copy.num_bins, axis=0)
+            other._std_dev = np.repeat(other.std_dev, filter_copy.num_bins, axis=0)
             other.filters.append(filter_copy)
 
         # Add filters present in other but not in self to self
@@ -2039,11 +2037,9 @@ class Tally(object):
             # Add nuclides present in self but not in other to other
             for nuclide in other_missing_nuclides:
                 other._mean = \
-                    np.insert(other.mean, other.num_nuclides,
-                              0, axis=1)
+                    np.insert(other.mean, other.num_nuclides, 0, axis=1)
                 other._std_dev = \
-                    np.insert(other.std_dev, other.num_nuclides,
-                              0, axis=1)
+                    np.insert(other.std_dev, other.num_nuclides, 0, axis=1)
                 other.nuclides.append(nuclide)
 
             # Add nuclides present in other but not in self to self
@@ -2068,10 +2064,8 @@ class Tally(object):
             self._mean = np.repeat(self.mean, other.num_scores, axis=2)
             self._std_dev = np.repeat(self.std_dev, other.num_scores,
                                       axis=2)
-            other._mean = \
-                np.tile(other.mean, (1, 1, self.num_scores))
-            other._std_dev = \
-                np.tile(other.std_dev, (1, 1, self.num_scores))
+            other._mean = np.tile(other.mean, (1, 1, self.num_scores))
+            other._std_dev = np.tile(other.std_dev, (1, 1, self.num_scores))
 
         # Add scores to each tally such that each tally contains the complete set
         # of scores necessary to perform an entrywise product. New scores added

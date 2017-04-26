@@ -912,8 +912,7 @@ class Tally(object):
             for i, filter1 in enumerate(self.filters):
                 for filter2 in other.filters:
                     if filter1 != filter2 and filter1.can_merge(filter2):
-                        other_copy._swap_filters(other_copy.filters[i], filter2,
-                                                 other)
+                        other_copy._swap_filters(other_copy.filters[i], filter2)
                         merged_tally.filters[i] = filter1.merge(filter2)
                         join_right = filter1 < filter2
                         merge_axis = i
@@ -1854,7 +1853,7 @@ class Tally(object):
         other_copy.sparse = False
 
         # Align the tally data based on desired hybrid product
-        data = self_copy._align_tally_data(other, other_copy, filter_product,
+        data = self_copy._align_tally_data(other_copy, filter_product,
                                            nuclide_product, score_product)
 
         # Perform tally arithmetic operation
@@ -1949,8 +1948,8 @@ class Tally(object):
             self_filter.stride = stride
             stride *= self_filter.num_bins
 
-    def _align_tally_data(self, other_old, other, filter_product,
-                          nuclide_product, score_product):
+    def _align_tally_data(self, other, filter_product, nuclide_product,
+                          score_product):
         """Aligns data from two tallies for tally arithmetic.
 
         This is a helper method to construct a dict of dicts of the "aligned"
@@ -1964,12 +1963,8 @@ class Tally(object):
 
         Parameters
         ----------
-        other_old : openmc.Tally
-            The tally to outer product with this tally with the old tally
-            alignment
         other : openmc.Tally
-            The tally to outer product with this tally with the new tally
-             alignment
+            The tally to outer product with this tally.
         filter_product : {'entrywise'}
             The type of product to be performed between filter data. Currently,
             only the entrywise product is supported for the filter product.
@@ -1997,13 +1992,11 @@ class Tally(object):
         # Add filters present in self but not in other to other
         for other_filter in other_missing_filters:
             filter_copy = copy.deepcopy(other_filter)
-            other._mean = np.repeat(other.mean, filter_copy.num_bins, axis=0)
-            other._std_dev = np.repeat(other.std_dev, filter_copy.num_bins, axis=0)
+            other._mean = np.repeat(other.mean,
+                                           filter_copy.num_bins, axis=0)
+            other._std_dev = np.repeat(other.std_dev,
+                                              filter_copy.num_bins, axis=0)
             other.filters.append(filter_copy)
-
-        # Create a new static copy of the other tally to use in swapping filters
-        if len(other_missing_filters) > 0:
-            other_old = copy.deepcopy(other)
 
         # Add filters present in other but not in self to self
         for self_filter in self_missing_filters:
@@ -2018,7 +2011,7 @@ class Tally(object):
 
             # If necessary, swap other filter
             if other_index != i:
-                other._swap_filters(self_filter, other.filters[i], other_old)
+                other._swap_filters(self_filter, other.filters[i])
 
         # Repeat and tile the data by nuclide in preparation for performing
         # the tensor product across nuclides.
@@ -2046,9 +2039,11 @@ class Tally(object):
             # Add nuclides present in self but not in other to other
             for nuclide in other_missing_nuclides:
                 other._mean = \
-                    np.insert(other.mean, other.num_nuclides, 0, axis=1)
+                    np.insert(other.mean, other.num_nuclides,
+                              0, axis=1)
                 other._std_dev = \
-                    np.insert(other.std_dev, other.num_nuclides, 0, axis=1)
+                    np.insert(other.std_dev, other.num_nuclides,
+                              0, axis=1)
                 other.nuclides.append(nuclide)
 
             # Add nuclides present in other but not in self to self
@@ -2071,9 +2066,12 @@ class Tally(object):
         # the tensor product across scores.
         if score_product == 'tensor':
             self._mean = np.repeat(self.mean, other.num_scores, axis=2)
-            self._std_dev = np.repeat(self.std_dev, other.num_scores, axis=2)
-            other._mean = np.tile(other.mean, (1, 1, self.num_scores))
-            other._std_dev = np.tile(other.std_dev, (1, 1, self.num_scores))
+            self._std_dev = np.repeat(self.std_dev, other.num_scores,
+                                      axis=2)
+            other._mean = \
+                np.tile(other.mean, (1, 1, self.num_scores))
+            other._std_dev = \
+                np.tile(other.std_dev, (1, 1, self.num_scores))
 
         # Add scores to each tally such that each tally contains the complete set
         # of scores necessary to perform an entrywise product. New scores added
@@ -2088,8 +2086,12 @@ class Tally(object):
 
             # Add scores present in self but not in other to other
             for score in other_missing_scores:
-                other._mean = np.insert(other.mean, other.num_scores, 0, axis=2)
-                other._std_dev = np.insert(other.std_dev, other.num_scores, 0, axis=2)
+                other._mean = \
+                    np.insert(other.mean, other.num_scores, 0,
+                              axis=2)
+                other._std_dev = \
+                    np.insert(other.std_dev, other.num_scores, 0,
+                              axis=2)
                 other.scores.append(score)
 
             # Add scores present in other but not in self to self
@@ -2119,7 +2121,7 @@ class Tally(object):
         data['other']['std. dev.'] = other.std_dev
         return data
 
-    def _swap_filters(self, filter1, filter2, other_old):
+    def _swap_filters(self, filter1, filter2):
         """Reverse the ordering of two filters in this tally
 
         This is a helper method for tally arithmetic which helps align the data
@@ -2132,8 +2134,6 @@ class Tally(object):
             The filter to swap with filter2
         filter2 : Filter
             The filter to swap with filter1
-        other_old : openmc.Tally
-            A copy of this tally with the old filter alignment
 
         Raises
         ------
@@ -2158,15 +2158,6 @@ class Tally(object):
                   'does not contain such a filter'.format(filter2.type, self.id)
             raise ValueError(msg)
 
-        # Swap the filters in the copied version of this Tally
-        filter1_index = self.filters.index(filter1)
-        filter2_index = self.filters.index(filter2)
-        self.filters[filter1_index] = filter2
-        self.filters[filter2_index] = filter1
-
-        # Update the tally's filter strides
-        self._update_filter_strides()
-
         # Construct lists of tuples for the bins in each of the two filters
         filters = [type(filter1), type(filter2)]
         if isinstance(filter1, openmc.DistribcellFilter):
@@ -2183,23 +2174,41 @@ class Tally(object):
         else:
             filter2_bins = [filter2.get_bin(i) for i in range(filter2.num_bins)]
 
-        # Adjust the mean data array to relect the new filter order
-        if self.mean is not None:
-            for bin1, bin2 in itertools.product(filter1_bins, filter2_bins):
-                filter_bins = [(bin1,), (bin2,)]
-                data = other_old.get_values(
-                    filters=filters, filter_bins=filter_bins, value='mean')
-                indices = self.get_filter_indices(filters, filter_bins)
-                self.mean[indices, :, :] = data
+        # Create variables to store views of data in the misaligned structure
+        mean = {}
+        std_dev = {}
 
-        # Adjust the std_dev data array to relect the new filter order
-        if self.std_dev is not None:
-            for bin1, bin2 in itertools.product(filter1_bins, filter2_bins):
-                filter_bins = [(bin1,), (bin2,)]
-                data = other_old.get_values(
+        # Store the data from the misaligned structure
+        for i, (bin1, bin2) in enumerate(itertools.product(filter1_bins, filter2_bins)):
+            filter_bins = [(bin1,), (bin2,)]
+
+            if self.mean is not None:
+                mean[i] = self.get_values(
+                    filters=filters, filter_bins=filter_bins, value='mean')
+
+            if self.std_dev is not None:
+                std_dev[i] = self.get_values(
                     filters=filters, filter_bins=filter_bins, value='std_dev')
-                indices = self.get_filter_indices(filters, filter_bins)
-                self.std_dev[indices, :, :] = data
+
+        # Swap the filters in the copied version of this Tally
+        filter1_index = self.filters.index(filter1)
+        filter2_index = self.filters.index(filter2)
+        self.filters[filter1_index] = filter2
+        self.filters[filter2_index] = filter1
+
+        # Update the tally's filter strides
+        self._update_filter_strides()
+
+        # Realign the data
+        for i, (bin1, bin2) in enumerate(itertools.product(filter1_bins, filter2_bins)):
+            filter_bins = [(bin1,), (bin2,)]
+            indices = self.get_filter_indices(filters, filter_bins)
+
+            if self.mean is not None:
+                self.mean[indices, :, :] = mean[i]
+
+            if self.std_dev is not None:
+                self.std_dev[indices, :, :] = std_dev[i]
 
     def _swap_nuclides(self, nuclide1, nuclide2):
         """Reverse the ordering of two nuclides in this tally

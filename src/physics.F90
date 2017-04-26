@@ -481,7 +481,11 @@ contains
     ! Sample scattering angle
     select type (dist => rxn % products(1) % distribution(1) % obj)
     type is (UncorrelatedAngleEnergy)
-      mu_cm = dist % angle % sample(E)
+      if (allocated(dist % angle % energy)) then
+        mu_cm = dist % angle % sample(E)
+      else
+        mu_cm = TWO*prn() - ONE
+      end if
     end select
 
     ! Determine direction cosines in CM

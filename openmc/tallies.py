@@ -2062,8 +2062,7 @@ class Tally(object):
         # the tensor product across scores.
         if score_product == 'tensor':
             self._mean = np.repeat(self.mean, other.num_scores, axis=2)
-            self._std_dev = np.repeat(self.std_dev, other.num_scores,
-                                      axis=2)
+            self._std_dev = np.repeat(self.std_dev, other.num_scores, axis=2)
             other._mean = np.tile(other.mean, (1, 1, self.num_scores))
             other._std_dev = np.tile(other.std_dev, (1, 1, self.num_scores))
 
@@ -2080,12 +2079,8 @@ class Tally(object):
 
             # Add scores present in self but not in other to other
             for score in other_missing_scores:
-                other._mean = \
-                    np.insert(other.mean, other.num_scores, 0,
-                              axis=2)
-                other._std_dev = \
-                    np.insert(other.std_dev, other.num_scores, 0,
-                              axis=2)
+                other._mean = np.insert(other.mean, other.num_scores, 0, axis=2)
+                other._std_dev = np.insert(other.std_dev, other.num_scores, 0, axis=2)
                 other.scores.append(score)
 
             # Add scores present in other but not in self to self

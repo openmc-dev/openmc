@@ -51,10 +51,6 @@ def _search_keff(guess, target, model_builder, model_args, print_iterations,
     # Run the model and obtain keff
     keff = model.run(output=print_output)
 
-    # Close the model to ensure HDF5 will allow access during the next
-    # OpenMC execution
-    model.close()
-
     # Record the history
     guesses.append(guess)
     results.append(keff)

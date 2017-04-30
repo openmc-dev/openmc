@@ -15,7 +15,7 @@ import openmc
 class PlotTestHarness(TestHarness):
     """Specialized TestHarness for running OpenMC plotting tests."""
     def __init__(self, plot_names):
-        super(PlotTestHarness, self).__init__(None, False)
+        super(PlotTestHarness, self).__init__(None)
         self._plot_names = plot_names
 
     def _run_openmc(self):

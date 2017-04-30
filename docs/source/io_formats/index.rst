@@ -4,6 +4,23 @@
 File Format Specifications
 ==========================
 
+.. _io_file_formats_input:
+
+-----------
+Input Files
+-----------
+
+.. toctree::
+   :numbered:
+   :maxdepth: 2
+
+   geometry
+   materials
+   settings
+   tallies
+   plots
+   cmfd
+
 ----------
 Data Files
 ----------
@@ -12,6 +29,7 @@ Data Files
    :numbered:
    :maxdepth: 2
 
+   cross_sections
    nuclear_data
    mgxs_library
    data_wmp

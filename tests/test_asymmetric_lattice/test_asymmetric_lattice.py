@@ -10,15 +10,11 @@ import openmc
 
 
 class AsymmetricLatticeTestHarness(PyAPITestHarness):
-
-    def _build_inputs(self):
-        """Build an axis-asymmetric lattice of fuel assemblies"""
-
-        # Build full core geometry from underlying input set
-        self._input_set.build_default_materials_and_geometry()
+    def __init__(self, *args, **kwargs):
+        super(AsymmetricLatticeTestHarness, self).__init__(*args, **kwargs)
 
         # Extract universes encapsulating fuel and water assemblies
-        geometry = self._input_set.geometry
+        geometry = self._model.geometry
         water = geometry.get_universes_by_name('water assembly (hot)')[0]
         fuel = geometry.get_universes_by_name('fuel assembly (hot)')[0]
 
@@ -46,7 +42,7 @@ class AsymmetricLatticeTestHarness(PyAPITestHarness):
         root_univ.add_cell(root_cell)
 
         # Over-ride geometry in the input set with this 3x3 lattice
-        self._input_set.geometry.root_universe = root_univ
+        self._model.geometry.root_universe = root_univ
 
         # Initialize a "distribcell" filter for the fuel pin cell
         distrib_filter = openmc.DistribcellFilter(27)
@@ -56,22 +52,12 @@ class AsymmetricLatticeTestHarness(PyAPITestHarness):
         tally.filters.append(distrib_filter)
         tally.scores.append('nu-fission')
 
-        # Initialize the tallies file
-        tallies_file = openmc.Tallies([tally])
-
         # Assign the tallies file to the input set
-        self._input_set.tallies = tallies_file
-
-        # Build default settings
-        self._input_set.build_default_settings()
+        self._model.tallies.append(tally)
 
         # Specify summary output and correct source sampling box
-        source = openmc.Source(space=openmc.stats.Box([-32, -32, 0], [32, 32, 32]))
-        source.space.only_fissionable = True
-        self._input_set.settings.source = source
-
-        # Write input XML files
-        self._input_set.export()
+        self._model.settings.source = openmc.Source(space=openmc.stats.Box(
+            [-32, -32, 0], [32, 32, 32], only_fissionable = True))
 
     def _get_results(self, hash_output=True):
         """Digest info in statepoint and summary and return as a string."""
@@ -105,5 +91,5 @@ class AsymmetricLatticeTestHarness(PyAPITestHarness):
 
 
 if __name__ == '__main__':
-    harness = AsymmetricLatticeTestHarness('statepoint.10.h5', True)
+    harness = AsymmetricLatticeTestHarness('statepoint.10.h5')
     harness.main()

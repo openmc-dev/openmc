@@ -95,11 +95,9 @@ contains
     type(XMLNode) :: node_sp
     type(XMLNode) :: node_output
     type(XMLNode) :: node_res_scat
-    type(XMLNode) :: node_scatterer
     type(XMLNode) :: node_trigger
     type(XMLNode) :: node_vol
     type(XMLNode) :: node_tab_leg
-    type(XMLNode), allocatable :: node_scat_list(:)
     type(XMLNode), allocatable :: node_source_list(:)
     type(XMLNode), allocatable :: node_vol_list(:)
 
@@ -184,14 +182,6 @@ contains
       end if
     else
       max_order = 0
-    end if
-
-    ! Set output directory if a path has been specified on the <output_path>
-    ! element
-    if (check_for_node(root, "output_path")) then
-      call get_node_value(root, "output_path", path_output)
-      if (.not. ends_with(path_output, "/")) &
-           path_output = trim(path_output) // "/"
     end if
 
     ! Check for a trigger node and get trigger information
@@ -311,12 +301,30 @@ contains
     call get_node_list(root, "source", node_source_list)
     n = size(node_source_list)
 
-    if (run_mode == MODE_EIGENVALUE .or. run_mode == MODE_FIXEDSOURCE) then
-      if (n == 0) call fatal_error("No source specified in settings XML file.")
-    end if
+    if (n == 0) then
+      ! Default source is isotropic point source at origin with Watt spectrum
+      allocate(external_source(1))
+      external_source % strength = ONE
 
-    ! Allocate array for sources
-    allocate(external_source(n))
+      allocate(SpatialPoint :: external_source(1) % space)
+      select type (space => external_source(1) % space)
+      type is (SpatialPoint)
+        space % xyz(:) = [ZERO, ZERO, ZERO]
+      end select
+
+      allocate(Isotropic :: external_source(1) % angle)
+      external_source(1) % angle % reference_uvw(:) = [ZERO, ZERO, ONE]
+
+      allocate(Watt :: external_source(1) % energy)
+      select type(energy => external_source(1) % energy)
+      type is (Watt)
+        energy % a = 0.988e6_8
+        energy % b = 2.249e-6_8
+      end select
+    else
+      ! Allocate array for sources
+      allocate(external_source(n))
+    end if
 
     ! Read each source
     do i = 1, n
@@ -454,8 +462,12 @@ contains
           end select
 
         else
-          call fatal_error("No spatial distribution specified for external &
-               &source.")
+          ! If no spatial distribution specified, make it a point source
+          allocate(SpatialPoint :: external_source(i) % space)
+          select type (space => external_source(i) % space)
+          type is (SpatialPoint)
+            space % xyz(:) = [ZERO, ZERO, ZERO]
+          end select
         end if
 
         ! Determine external source angular distribution
@@ -842,6 +854,13 @@ contains
       if (check_for_node(node_output, "tallies")) then
         call get_node_value(node_output, "tallies", output_tallies)
       end if
+
+      ! Set output directory if a path has been specified
+      if (check_for_node(node_output, "path")) then
+        call get_node_value(node_output, "path", path_output)
+        if (.not. ends_with(path_output, "/")) &
+             path_output = trim(path_output) // "/"
+      end if
     end if
 
     ! Check for cmfd run
@@ -852,59 +871,54 @@ contains
     ! Resonance scattering parameters
     if (check_for_node(root, "resonance_scattering")) then
       node_res_scat = root % child("resonance_scattering")
-      call get_node_list(node_res_scat, "scatterer", node_scat_list)
 
-      ! check that a nuclide is specified
-      if (size(node_scat_list) >= 1) then
-        treat_res_scat = .true.
-        n_res_scatterers_total = size(node_scat_list)
-
-        ! store 0K info for resonant scatterers
-        allocate(nuclides_0K(n_res_scatterers_total))
-        do i = 1, n_res_scatterers_total
-          node_scatterer = node_scat_list(i)
-
-          ! check to make sure a nuclide is specified
-          if (.not. check_for_node(node_scatterer, "nuclide")) then
-            call fatal_error("No nuclide specified for scatterer " &
-                 // trim(to_str(i)) // " in settings.xml file!")
-          end if
-          call get_node_value(node_scatterer, "nuclide", &
-               nuclides_0K(i) % nuclide)
-
-          if (check_for_node(node_scatterer, "method")) then
-            call get_node_value(node_scatterer, "method", &
-                 nuclides_0K(i) % scheme)
-          end if
-
-          if (check_for_node(node_scatterer, "E_min")) then
-            call get_node_value(node_scatterer, "E_min", &
-                 nuclides_0K(i) % E_min)
-          end if
-
-          ! check that E_min is non-negative
-          if (nuclides_0K(i) % E_min < ZERO) then
-            call fatal_error("Lower resonance scattering energy bound is &
-                 &negative")
-          end if
-
-          if (check_for_node(node_scatterer, "E_max")) then
-            call get_node_value(node_scatterer, "E_max", &
-                 nuclides_0K(i) % E_max)
-          end if
-
-          ! check that E_max is not less than E_min
-          if (nuclides_0K(i) % E_max < nuclides_0K(i) % E_min) then
-            call fatal_error("Lower resonance scattering energy bound exceeds &
-                 &upper")
-          end if
-
-          nuclides_0K(i) % nuclide = trim(nuclides_0K(i) % nuclide)
-          nuclides_0K(i) % scheme  = to_lower(trim(nuclides_0K(i) % scheme))
-        end do
+      ! See if resonance scattering is enabled
+      if (check_for_node(node_res_scat, "enable")) then
+        call get_node_value(node_res_scat, "enable", res_scat_on)
       else
-        call fatal_error("No resonant scatterers are specified within the &
-             &resonance_scattering element in settings.xml")
+        res_scat_on = .true.
+      end if
+
+      ! Determine what method is used
+      if (check_for_node(node_res_scat, "method")) then
+        call get_node_value(node_res_scat, "method", temp_str)
+        select case(to_lower(temp_str))
+        case ('ares')
+          res_scat_method = RES_SCAT_ARES
+        case ('dbrc')
+          res_scat_method = RES_SCAT_DBRC
+        case ('wcm')
+          res_scat_method = RES_SCAT_WCM
+        case default
+          call fatal_error("Unrecognized resonance elastic scattering method: " &
+               // trim(temp_str) // ".")
+        end select
+      end if
+
+      ! Minimum energy for resonance scattering
+      if (check_for_node(node_res_scat, "energy_min")) then
+        call get_node_value(node_res_scat, "energy_min", res_scat_energy_min)
+      end if
+      if (res_scat_energy_min < ZERO) then
+        call fatal_error("Lower resonance scattering energy bound is negative")
+      end if
+
+      ! Maximum energy for resonance scattering
+      if (check_for_node(node_res_scat, "energy_max")) then
+        call get_node_value(node_res_scat, "energy_max", res_scat_energy_max)
+      end if
+      if (res_scat_energy_max < res_scat_energy_min) then
+        call fatal_error("Upper resonance scattering energy bound is below the &
+             &lower resonance scattering energy bound.")
+      end if
+
+      ! Get nuclides that resonance scattering should be applied to
+      if (check_for_node(node_res_scat, "nuclides")) then
+        n = node_word_count(node_res_scat, "nuclides")
+        allocate(res_scat_nuclides(n))
+        if (n > 0) then
+          call get_node_array(node_res_scat, "nuclides", res_scat_nuclides)
+        end if
       end if
     end if
 
@@ -2148,12 +2162,11 @@ contains
     end do
 
     ! Check that 0K nuclides are listed in the cross_sections.xml file
-    if (allocated(nuclides_0K)) then
-      do i = 1, size(nuclides_0K)
-        if (.not. library_dict % has_key(to_lower(nuclides_0K(i) % nuclide))) then
+    if (allocated(res_scat_nuclides)) then
+      do i = 1, size(res_scat_nuclides)
+        if (.not. library_dict % has_key(to_lower(res_scat_nuclides(i)))) then
           call fatal_error("Could not find resonant scatterer " &
-               // trim(nuclides_0K(i) % nuclide) &
-               // " in cross_sections.xml file!")
+               // trim(res_scat_nuclides(i)) // " in cross_sections.xml file!")
         end if
       end do
     end if
@@ -3855,14 +3868,14 @@ contains
               filt % n_bins = 4 * m % n_dimension
               allocate(filt % surfaces(4 * m % n_dimension))
               if (m % n_dimension == 1) then
-                filt % surfaces = (/ OUT_LEFT, OUT_RIGHT, IN_LEFT, IN_RIGHT /)
+                filt % surfaces = (/ OUT_LEFT, IN_LEFT, OUT_RIGHT, IN_RIGHT /)
               elseif (m % n_dimension == 2) then
-                filt % surfaces = (/ OUT_LEFT, OUT_RIGHT, OUT_BACK, OUT_FRONT, &
-                     IN_LEFT, IN_RIGHT, IN_BACK, IN_FRONT /)
+                filt % surfaces = (/ OUT_LEFT, IN_LEFT, OUT_RIGHT, IN_RIGHT, &
+                     OUT_BACK, IN_BACK, OUT_FRONT, IN_FRONT /)
               elseif (m % n_dimension == 3) then
-                filt % surfaces = (/ OUT_LEFT, OUT_RIGHT, OUT_BACK, OUT_FRONT, &
-                     OUT_BOTTOM, OUT_TOP, IN_LEFT, IN_RIGHT, IN_BACK, &
-                     IN_FRONT, IN_BOTTOM, IN_TOP /)
+                filt % surfaces = (/ OUT_LEFT, IN_LEFT, OUT_RIGHT, IN_RIGHT, &
+                     OUT_BACK, IN_BACK, OUT_FRONT, IN_FRONT, OUT_BOTTOM, &
+                     IN_BOTTOM, OUT_TOP, IN_TOP /)
               end if
               filt % current = .true.
 
@@ -5253,8 +5266,7 @@ contains
           call file_close(file_id)
 
           ! Assign resonant scattering data
-          if (treat_res_scat) call read_0K_elastic_scattering(&
-               nuclides(i_nuclide), libraries, library_dict)
+          if (res_scat_on) call assign_0K_elastic_scattering(nuclides(i_nuclide))
 
           ! Determine if minimum/maximum energy for this nuclide is greater/less
           ! than the previous
@@ -5383,79 +5395,50 @@ contains
   end subroutine assign_temperatures
 
 !===============================================================================
-! READ_0K_ELASTIC_SCATTERING
+! ASSIGN_0K_ELASTIC_SCATTERING
 !===============================================================================
 
-  subroutine read_0K_elastic_scattering(nuc, libraries, library_dict)
-    type(Nuclide), intent(inout)   :: nuc
-    type(Library),   intent(in)      :: libraries(:)
-    type(DictCharInt), intent(inout) :: library_dict
+  subroutine assign_0K_elastic_scattering(nuc)
+    type(Nuclide), intent(inout) :: nuc
 
     integer :: i, j
-    integer :: i_library
-    integer :: method
-    integer(HID_T) :: file_id
-    integer(HID_T) :: group_id
     real(8) :: xs_cdf_sum
-    character(MAX_WORD_LEN) :: name
-    type(Nuclide) :: resonant_nuc
-    type(VectorReal) :: temperature
 
-    call temperature % push_back(ZERO)
+    do i = 1, size(res_scat_nuclides)
+      if (nuc % name == res_scat_nuclides(i)) then
+        ! Make sure nuclide has 0K data
+        if (.not. allocated(nuc % energy_0K)) then
+          call fatal_error("Cannot treat " // trim(nuc % name) // " as a &
+               &resonant scatterer because 0 K elastic scattering data is not &
+               &present.")
+        end if
 
-    do i = 1, size(nuclides_0K)
-      if (nuc % name == nuclides_0K(i) % nuclide) then
-        ! Copy basic information from settings.xml
+        ! Set nuclide to be resonant
         nuc % resonant = .true.
-        nuc % scheme = trim(nuclides_0K(i) % scheme)
-        nuc % E_min = nuclides_0K(i) % E_min
-        nuc % E_max = nuclides_0K(i) % E_max
-
-        ! Get index in libraries array
-        name = nuc % name
-        i_library = library_dict % get_key(to_lower(name))
-
-        call write_message('Reading ' // trim(name) // ' 0K data from ' // &
-             trim(libraries(i_library) % path), 6)
-
-        ! Open file and make sure version matches
-        file_id = file_open(libraries(i_library) % path, 'r')
-
-        ! Read nuclide data from HDF5
-        group_id = open_group(file_id, name)
-        method = TEMPERATURE_NEAREST
-        call resonant_nuc % from_hdf5(group_id, temperature, &
-             method, 1000.0_8, master)
-        call close_group(group_id)
-        call file_close(file_id)
-
-        ! Copy 0K energy grid and elastic scattering cross section
-        call move_alloc(TO=nuc % energy_0K, FROM=resonant_nuc % grid(1) % energy)
-        call move_alloc(TO=nuc % elastic_0K, FROM=resonant_nuc % sum_xs(1) % elastic)
-        nuc % n_grid_0K = size(nuc % energy_0K)
 
         ! Build CDF for 0K elastic scattering
         xs_cdf_sum = ZERO
-        allocate(nuc % xs_cdf(size(nuc % energy_0K)))
+        allocate(nuc % xs_cdf(0:size(nuc % energy_0K)))
+        nuc % xs_cdf(0) = ZERO
 
-        do j = 1, size(nuc % energy_0K) - 1
-          ! Negative cross sections result in a CDF that is not monotonically
-          ! increasing. Set all negative xs values to ZERO.
-          if (nuc % elastic_0K(j) < ZERO) nuc % elastic_0K(j) = ZERO
+        associate (E => nuc % energy_0K, xs => nuc % elastic_0K)
+          do j = 1, size(E) - 1
+            ! Negative cross sections result in a CDF that is not monotonically
+            ! increasing. Set all negative xs values to zero.
+            if (xs(j) < ZERO) xs(j) = ZERO
 
-          ! build xs cdf
-          xs_cdf_sum = xs_cdf_sum &
-               + (sqrt(nuc % energy_0K(j)) * nuc % elastic_0K(j) &
-               + sqrt(nuc % energy_0K(j+1)) * nuc % elastic_0K(j+1)) / TWO &
-               * (nuc % energy_0K(j+1) - nuc % energy_0K(j))
-          nuc % xs_cdf(j) = xs_cdf_sum
-        end do
+            ! build xs cdf
+            xs_cdf_sum = xs_cdf_sum + (sqrt(E(j))*xs(j) + sqrt(E(j+1))*xs(j+1))&
+                 / TWO * (E(j+1) - E(j))
+            nuc % xs_cdf(j) = xs_cdf_sum
+          end do
+        end associate
 
         exit
       end if
     end do
 
-  end subroutine read_0K_elastic_scattering
+  end subroutine assign_0K_elastic_scattering
 
 !===============================================================================
 ! READ_MULTIPOLE_DATA checks for the existence of a multipole library in the

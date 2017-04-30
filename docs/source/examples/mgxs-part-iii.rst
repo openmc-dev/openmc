@@ -6,7 +6,7 @@ MGXS Part III: Libraries
 
 .. only:: html
 
-    .. notebook:: mgxs-part-iii.ipynb
+    .. notebook:: ../../../examples/jupyter/mgxs-part-iii.ipynb
 
 .. only:: latex
 

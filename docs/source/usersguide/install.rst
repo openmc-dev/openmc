@@ -4,6 +4,8 @@
 Installation and Configuration
 ==============================
 
+.. currentmodule:: openmc
+
 ----------------------------------------
 Installing on Linux/Mac with conda-forge
 ----------------------------------------
@@ -52,7 +54,7 @@ Next, resynchronize the package index files:
 
 .. code-block:: sh
 
-    sudo apt-get update
+    sudo apt update
 
 Now OpenMC should be recognized within the repository and can be installed:
 
@@ -76,6 +78,7 @@ Prerequisites
 -------------
 
 .. admonition:: Required
+   :class: error
 
     * A Fortran compiler such as gfortran_
 
@@ -140,6 +143,7 @@ Prerequisites
       distribution and version.
 
 .. admonition:: Optional
+   :class: note
 
     * An MPI implementation for distributed-memory parallel runs
 
@@ -186,6 +190,8 @@ switch to the source of the latest stable release, run the following commands::
 .. _git: http://git-scm.com
 .. _ssh: http://en.wikipedia.org/wiki/Secure_Shell
 
+.. _usersguide_build:
+
 Build Configuration
 -------------------
 
@@ -225,7 +231,7 @@ optimize
 
 openmp
   Enables shared-memory parallelism using the OpenMP API. The Fortran compiler
-  being used must support OpenMP.
+  being used must support OpenMP. (Default: on)
 
 coverage
   Compile and link code instrumented for coverage analysis. This is typically
@@ -242,6 +248,8 @@ should be used:
     cmake -Ddebug=on /path/to/openmc
 
 .. _gcov: https://gcc.gnu.org/onlinedocs/gcc/Gcov.html
+
+.. _usersguide_compile_mpi:
 
 Compiling with MPI
 ++++++++++++++++++
@@ -318,7 +326,7 @@ Recent versions of Windows 10 include a subsystem for Linux that allows one to
 run Bash within Ubuntu running in Windows. First, follow the installation guide
 `here <https://msdn.microsoft.com/en-us/commandline/wsl/install_guide>`_ to get
 Bash on Ubuntu on Windows setup. Once you are within bash, obtain the necessary
-:ref:`prerequisites <prerequisites>` via ``apt-get``. Finally, follow the
+:ref:`prerequisites <prerequisites>` via ``apt``. Finally, follow the
 :ref:`instructions for compiling on linux <compile_linux>`.
 
 Compiling for the Intel Xeon Phi
@@ -371,184 +379,68 @@ if we wanted to run only the plot tests with 4 processors, we run:
 If you want to run the full test suite with different build options please
 refer to our :ref:`test suite` documentation.
 
----------------------------
-Cross Section Configuration
----------------------------
+--------------------
+Python Prerequisites
+--------------------
 
-In order to run a simulation with OpenMC, you will need cross section data for
-each nuclide or material in your problem. OpenMC can be run in continuous-energy
-or multi-group mode.
+OpenMC's :ref:`Python API <pythonapi>` works with either Python 2.7 or Python
+3.2+. In addition to Python itself, the API relies on a number of third-party
+packages. All prerequisites can be installed using `conda
+<http://conda.pydata.org/docs/>`_ (recommended), `pip
+<https://pip.pypa.io/en/stable/>`_, or through the package manager in most Linux
+distributions.
 
-In continuous-energy mode, OpenMC uses a native HDF5 format to store all nuclear
-data. If you have ACE format data that was produced with NJOY_, such as that
-distributed with MCNP_ or Serpent_, it can be converted to the HDF5 format using
-the :ref:`openmc-ace-to-hdf5 <other_cross_sections>` script distributed with
-OpenMC.  Several sources provide openly available ACE data as described
-below. The TALYS-based evaluated nuclear data library, TENDL_, is also available
-in ACE format.
+.. admonition:: Required
+   :class: error
 
-In multi-group mode, OpenMC utilizes an XML-based library format which can be
-used to describe nuclide- or material-specific quantities.
+   `six <https://pythonhosted.org/six/>`_
+      The Python API works with both Python 2.7+ and 3.2+. To do so, the six
+      compatibility library is used.
 
-Using ENDF/B-VII.1 Cross Sections from NNDC
--------------------------------------------
+   `NumPy <http://www.numpy.org/>`_
+      NumPy is used extensively within the Python API for its powerful
+      N-dimensional array.
 
-The NNDC_ provides ACE data from the ENDF/B-VII.1 neutron and thermal scattering
-sublibraries at four temperatures processed using NJOY_. To use this data with
-OpenMC, a script is provided with OpenMC that will automatically download and
-extract the ACE data, fix any deficiencies, and create an HDF5 library:
+   `h5py <http://www.h5py.org/>`_
+      h5py provides Python bindings to the HDF5 library. Since OpenMC outputs
+      various HDF5 files, h5py is needed to provide access to data within these
+      files from Python.
 
-.. code-block:: sh
+.. admonition:: Optional
+   :class: note
 
-    openmc-get-nndc-data
+   `SciPy <https://www.scipy.org/>`_
+      SciPy's special functions, sparse matrices, and spatial data structures
+      are used for several optional features in the API.
 
-At this point, you should set the :envvar:`OPENMC_CROSS_SECTIONS` environment
-variable to the absolute path of the file ``nndc_hdf5/cross_sections.xml``. This
-cross section set is used by the test suite.
+   `pandas <http://pandas.pydata.org/>`_
+      Pandas is used to generate tally DataFrames as demonstrated in
+      :ref:`examples_pandas` example notebook.
 
-Using JEFF Cross Sections from OECD/NEA
----------------------------------------
+   `Matplotlib <http://matplotlib.org/>`_
+      Matplotlib is used to providing plotting functionality in the API like the
+      :meth:`Universe.plot` method and the :func:`openmc.plot_xs` function.
 
-The NEA_ provides processed ACE data from the JEFF_ library. To use this data
-with OpenMC, a script is provided with OpenMC that will automatically download
-and extract the ACE data, fix any deficiencies, and create an HDF5 library.
+   `uncertainties <https://pythonhosted.org/uncertainties/>`_
+      Uncertainties are optionally used for decay data in the :mod:`openmc.data`
+      module.
 
-.. code-block:: sh
+   `Cython <http://cython.org/>`_
+      Cython is used for resonance reconstruction for ENDF data converted to
+      :class:`openmc.data.IncidentNeutron`.
 
-    openmc-get-jeff-data
+   `vtk <http://www.vtk.org/>`_
+      The Python VTK bindings are needed to convert voxel and track files to VTK
+      format.
 
-At this point, you should set the :envvar:`OPENMC_CROSS_SECTIONS` environment
-variable to the absolute path of the file ``jeff-3.2-hdf5/cross_sections.xml``.
+   `silomesh <https://github.com/nhorelik/silomesh>`_
+      The silomesh package is needed to convert voxel and track files to SILO
+      format.
 
-Using Cross Sections from MCNP
-------------------------------
+   `lxml <http://lxml.de/>`_
+      lxml is used for the :ref:`scripts_validate` script.
 
-OpenMC is provided with a script that will automatically convert ENDF/B-VII.0
-and ENDF/B-VII.1 ACE data that is provided with MCNP5 or MCNP6. To convert the
-ENDF/B-VII.0 ACE files (``endf70[a-k]`` and ``endf70sab``) into the native HDF5
-format, run the following:
-
-.. code-block:: sh
-
-    openmc-convert-mcnp70-data /path/to/mcnpdata/
-
-where ``/path/to/mcnpdata`` is the directory containing the ``endf70[a-k]``
-files.
-
-To convert the ENDF/B-VII.1 ACE files (the endf71x and ENDF71SaB libraries), use
-the following script:
-
-.. code-block:: sh
-
-    openmc-convert-mcnp71-data /path/to/mcnpdata
-
-where ``/path/to/mcnpdata`` is the directory containing the ``endf71x`` and
-``ENDF71SaB`` directories.
-
-.. _other_cross_sections:
-
-Using Other Cross Sections
---------------------------
-
-If you have a library of ACE format cross sections other than those listed above
-that you need to convert to OpenMC's HDF5 format, the ``openmc-ace-to-hdf5``
-script can be used. There are four different ways you can specify ACE libraries
-that are to be converted:
-
-1. List each ACE library as a positional argument. This is very useful in
-   conjunction with the usual shell utilities (ls, find, etc.).
-2. Use the ``--xml`` option to specify a pre-v0.9 cross_sections.xml file.
-3. Use the ``--xsdir`` option to specify a MCNP xsdir file.
-4. Use the ``--xsdata`` option to specify a Serpent xsdata file.
-
-The script does not use any extra information from cross_sections.xml/ xsdir/
-xsdata files to determine whether the nuclide is metastable. Instead, the
-``--metastable`` argument can be used to specify whether the ZAID naming
-convention follows the NNDC data convention (1000*Z + A + 300 + 100*m), or the
-MCNP data convention (essentially the same as NNDC, except that the first
-metastable state of Am242 is 95242 and the ground state is 95642).
-
-The ``openmc-ace-to-hdf5`` script has the following command-line flags:
-
--h, --help            show this help message and exit
-
--d DESTINATION, --destination DESTINATION
-                      Directory to create new library in (default: .)
-
--m META, --metastable META
-                      How to interpret ZAIDs for metastable nuclides. META
-                      can be either 'nndc' or 'mcnp'. (default: nndc)
-
---xml XML             Old-style cross_sections.xml that lists ACE libraries
-                      (default: None)
-
---xsdir XSDIR         MCNP xsdir file that lists ACE libraries (default:
-                      None)
-
---xsdata XSDATA       Serpent xsdata file that lists ACE libraries (default:
-                      None)
-
---fission_energy_release FISSION_ENERGY_RELEASE
-                      HDF5 file containing fission energy release data
-                      (default: None)
-
-
-Using Multi-Group Cross Sections
---------------------------------
-
-Multi-group cross section libraries are generally tailored to the specific
-calculation to be performed.  Therefore, at this point in time, OpenMC is not
-distributed with any pre-existing multi-group cross section libraries.
-However, if the user has obtained or generated their own library, the user
-should set the :envvar:`OPENMC_MG_CROSS_SECTIONS` environment variable
-to the absolute path of the file library expected to used most frequently.
-
-.. _NJOY: http://t2.lanl.gov/nis/codes/NJOY12/
-.. _NNDC: http://www.nndc.bnl.gov/endf/b7.1/acefiles.html
-.. _NEA: http://www.oecd-nea.org
-.. _JEFF: https://www.oecd-nea.org/dbforms/data/eva/evatapes/jeff_32/
-.. _MCNP: http://mcnp.lanl.gov
-.. _Serpent: http://montecarlo.vtt.fi
-.. _TENDL: https://tendl.web.psi.ch/tendl_2015/tendl2015.html
-
---------------
-Running OpenMC
---------------
-
-Once you have a model built (see :ref:`usersguide_input`), you can either run
-the openmc executable directly from the directory containing your XML input
-files, or you can specify as a command-line argument the directory containing
-the XML input files. For example, if your XML input files are in the directory
-``/home/username/somemodel/``, one way to run the simulation would be:
-
-.. code-block:: sh
-
-    cd /home/username/somemodel
-    openmc
-
-Alternatively, you could run from any directory:
-
-.. code-block:: sh
-
-    openmc /home/username/somemodel
-
-Note that in the latter case, any output files will be placed in the present
-working directory which may be different from ``/home/username/somemodel``.
-
-Command-Line Flags
-------------------
-
-OpenMC accepts the following command line flags:
-
--g, --geometry-debug   Run in geometry debugging mode, where cell overlaps are
-                       checked for after each move of a particle
--n, --particles N      Use *N* particles per generation or batch
--p, --plot             Run in plotting mode
--r, --restart file     Restart a previous run from a state point or a particle
-                       restart file
--s, --threads N        Run with *N* OpenMP threads
--t, --track            Write tracks for all particles
--v, --version          Show version information
+.. _usersguide_nxml:
 
 -----------------------------------------------------
 Configuring Input Validation with GNU Emacs nXML mode
@@ -573,4 +465,5 @@ schemas.xml file in your own OpenMC source directory.
 .. _GNU Emacs: http://www.gnu.org/software/emacs/
 .. _validation: http://en.wikipedia.org/wiki/XML_validation
 .. _RELAX NG: http://relaxng.org/
+.. _NNDC: http://www.nndc.bnl.gov/endf/b7.1/acefiles.html
 .. _ctest: http://www.cmake.org/cmake/help/v2.8.12/ctest.html

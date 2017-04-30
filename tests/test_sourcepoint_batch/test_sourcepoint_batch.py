@@ -5,7 +5,7 @@ import os
 import sys
 sys.path.insert(0, os.pardir)
 from testing_harness import TestHarness
-from openmc.statepoint import StatePoint
+from openmc import StatePoint
 
 
 class SourcepointTestHarness(TestHarness):
@@ -18,21 +18,20 @@ class SourcepointTestHarness(TestHarness):
 
     def _get_results(self):
         """Digest info in the statepoint and return as a string."""
-        # Read the statepoint file.
-        statepoint = glob.glob(os.path.join(os.getcwd(), self._sp_name))[0]
-        sp = StatePoint(statepoint)
-
         # Get the eigenvalue information.
         outstr = TestHarness._get_results(self)
 
-        # Add the source information.
-        xyz = sp.source[0]['xyz']
-        outstr += ' '.join(['{0:12.6E}'.format(x) for x in xyz])
-        outstr += "\n"
+        # Read the statepoint file.
+        statepoint = glob.glob(os.path.join(os.getcwd(), self._sp_name))[0]
+        with StatePoint(statepoint) as sp:
+            # Add the source information.
+            xyz = sp.source[0]['xyz']
+            outstr += ' '.join(['{0:12.6E}'.format(x) for x in xyz])
+            outstr += "\n"
 
         return outstr
 
 
 if __name__ == '__main__':
-    harness = SourcepointTestHarness('statepoint.08.*')
+    harness = SourcepointTestHarness('statepoint.08.h5')
     harness.main()

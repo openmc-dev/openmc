@@ -26,8 +26,7 @@ if __name__ == '__main__':
     matching_eout_filter = openmc.EnergyoutFilter(energies)
     mesh_filter = openmc.MeshFilter(mesh)
 
-    mat_ids = [mat.id for mat in model.materials]
-    mat_filter = openmc.MaterialFilter(mat_ids)
+    mat_filter = openmc.MaterialFilter(model.materials)
 
     nuclides = [xs.name for xs in model.xs_data]
 

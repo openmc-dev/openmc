@@ -179,16 +179,6 @@
           </optional>
           <optional>
             <choice>
-              <element name="cross_sections">
-                <data type="boolean"/>
-              </element>
-              <attribute name="cross_sections">
-                <data type="boolean"/>
-              </attribute>
-            </choice>
-          </optional>
-          <optional>
-            <choice>
               <element name="tallies">
                 <data type="boolean"/>
               </element>
@@ -197,14 +187,17 @@
               </attribute>
             </choice>
           </optional>
+          <optional>
+            <choice>
+              <element name="path">
+                <data type="string"/>
+              </element>
+              <attribute name="path">
+                <data type="string"/>
+              </attribute>
+            </choice>
+          </optional>
         </interleave>
-      </element>
-    </optional>
-    <optional>
-      <element name="output_path">
-        <data type="string">
-          <param name="maxLength">255</param>
-        </data>
       </element>
     </optional>
     <optional>
@@ -715,54 +708,66 @@
     </optional>
     <optional>
       <element name="resonance_scattering">
-        <zeroOrMore>
-          <element name="scatterer">
-            <interleave>
-              <choice>
-                <element name="nuclide">
-                  <data type="string">
-                    <param name="maxLength">12</param>
-                  </data>
-                </element>
-                <attribute name="nuclide">
-                  <data type="string">
-                    <param name="maxLength">12</param>
-                  </data>
-                </attribute>
-              </choice>
-              <choice>
-                <element name="method">
-                  <data type="string">
-                    <param name="maxLength">16</param>
-                  </data>
-                </element>
-                <attribute name="method">
-                  <data type="string">
-                    <param name="maxLength">16</param>
-                  </data>
-                </attribute>
-              </choice>
-              <choice>
-                <element name="E_min">
-                  <data type="double"/>
-                </element>
-                <attribute name="E_min">
-                  <data type="double"/>
-                </attribute>
-              </choice>
-              <optional>
-                <choice>
-                  <element name="E_max">
-                    <data type="double"/>
-                  </element>
-                  <attribute name="E_max">
-                    <data type="double"/>
-                  </attribute>
-                </choice>
-              </optional>
-            </interleave>
-          </element>
-        </zeroOrMore>
+        <interleave>
+          <optional>
+            <choice>
+              <element name="enable">
+                <data type="boolean"/>
+              </element>
+              <attribute name="enable">
+                <data type="boolean"/>
+              </attribute>
+            </choice>
+          </optional>
+          <optional>
+            <choice>
+              <element name="method">
+                <data type="string"/>
+              </element>
+              <attribute name="method">
+                <data type="string"/>
+              </attribute>
+            </choice>
+          </optional>
+          <optional>
+            <choice>
+              <element name="energy_min">
+                <data type="double"/>
+              </element>
+              <attribute name="energy_min">
+                <data type="double"/>
+              </attribute>
+            </choice>
+          </optional>
+          <optional>
+            <choice>
+              <element name="energy_max">
+                <data type="double"/>
+              </element>
+              <attribute name="energy_max">
+                <data type="double"/>
+              </attribute>
+            </choice>
+          </optional>
+          <optional>
+            <choice>
+              <element name="nuclides">
+                <list>
+                  <oneOrMore>
+                    <data type="string"/>
+                  </oneOrMore>
+                </list>
+              </element>
+              <attribute name="nuclides">
+                <list>
+                  <oneOrMore>
+                    <data type="string"/>
+                  </oneOrMore>
+                </list>
+              </attribute>
+            </choice>
+          </optional>
+        </interleave>
       </element>
     </optional>
   </interleave>

@@ -11,8 +11,8 @@ from openmc.clean_xml import clean_xml_indentation
 import openmc.checkvalue as cv
 from openmc import Nuclide, VolumeCalculation, Source, Mesh
 
-_RUN_MODES = ['eigenvalue', 'fixed source', 'plot', 'volume',
-              'particle restart']
+_RUN_MODES = ['eigenvalue', 'fixed source', 'plot', 'volume', 'particle restart']
+_RES_SCAT_METHODS = ['dbrc', 'wcm', 'ares']
 
 
 class Settings(object):
@@ -71,17 +71,28 @@ class Settings(object):
         Indicate that all user-defined and global tallies should not be reduced
         across processes in a parallel calculation.
     output : dict
-        Dictionary indicating what files to output. Valid keys are 'summary',
-        'cross_sections', 'tallies', and 'distribmats'. Values corresponding to
-        each key should be given as a boolean value.
-    output_path : str
-        Path to write output to
+        Dictionary indicating what files to output. Acceptable keys are:
+
+        :path: String indicating a directory where output files should be
+               written
+        :summary: Whether the 'summary.h5' file should be written (bool)
+        :tallies: Whether the 'tallies.out' file should be written (bool)
     particles : int
         Number of particles per generation
     ptables : bool
         Determine whether probability tables are used.
-    resonance_scattering : ResonanceScattering or iterable of ResonanceScattering
-        The elastic scattering model to use for resonant isotopes
+    resonance_scattering : dict
+        Settings for resonance elastic scattering. Accepted keys are 'enable'
+        (bool), 'method' (str), 'energy_min' (float), 'energy_max' (float), and
+        'nuclides' (list). The 'method' can be set to 'dbrc' (Doppler broadening
+        rejection correction), 'wcm' (weight correction method), and 'ares'
+        (accelerated resonance elastic scattering). If not specified, 'ares' is
+        the default method. The 'energy_min' and 'energy_max' values indicate
+        the minimum and maximum energies above and below which the resonance
+        elastic scattering method is to be applied. The 'nuclides' list
+        indicates what nuclides the method should be applied to. In its absence,
+        the method will be applied to all nuclides with 0 K elastic scattering
+        data present.
     run_cmfd : bool
         Indicate if coarse mesh finite difference acceleration is to be used
     run_mode : {'eigenvalue', 'fixed source', 'plot', 'volume', 'particle restart'}
@@ -183,7 +194,6 @@ class Settings(object):
         self._trigger_batch_interval = None
 
         self._output = None
-        self._output_path = None
 
         # Output options
         self._statepoint = {}
@@ -215,8 +225,7 @@ class Settings(object):
         self._dd_allow_leakage = False
         self._dd_count_interactions = False
 
-        self._resonance_scattering = cv.CheckedList(
-            ResonanceScattering, 'resonance scattering models')
+        self._resonance_scattering = {}
         self._volume_calculations = cv.CheckedList(
             VolumeCalculation, 'volume calculations')
 
@@ -305,10 +314,6 @@ class Settings(object):
     @property
     def output(self):
         return self._output
-
-    @property
-    def output_path(self):
-        return self._output_path
 
     @property
     def sourcepoint(self):
@@ -470,29 +475,14 @@ class Settings(object):
 
     @output.setter
     def output(self, output):
-        if not isinstance(output, dict):
-            msg = 'Unable to set output to "{0}" which is not a Python ' \
-                  'dictionary of string keys and boolean values'.format(output)
-            raise ValueError(msg)
-
-        for element in output:
-            keys = ['summary', 'cross_sections', 'tallies', 'distribmats']
-            if element not in keys:
-                msg = 'Unable to set output to "{0}" which is unsupported by ' \
-                      'OpenMC'.format(element)
-                raise ValueError(msg)
-
-            if not isinstance(output[element], (bool, np.bool)):
-                msg = 'Unable to set output for "{0}" to a non-boolean ' \
-                      'value "{1}"'.format(element, output[element])
-                raise ValueError(msg)
-
+        cv.check_type('output', output, Mapping)
+        for key, value in output.items():
+            cv.check_value('output key', key, ('summary', 'tallies', 'path'))
+            if key in ('summary', 'tallies'):
+                cv.check_type("output['{}']".format(key), value, bool)
+            else:
+                cv.check_type("output['path']", value, string_types)
         self._output = output
-
-    @output_path.setter
-    def output_path(self, output_path):
-        cv.check_type('output path', output_path, string_types)
-        self._output_path = output_path
 
     @verbosity.setter
     def verbosity(self, verbosity):
@@ -778,10 +768,27 @@ class Settings(object):
 
     @resonance_scattering.setter
     def resonance_scattering(self, res):
-        if not isinstance(res, MutableSequence):
-            res = [res]
-        self._resonance_scattering = cv.CheckedList(
-            ResonanceScattering, 'resonance scattering models', res)
+        cv.check_type('resonance scattering settings', res, Mapping)
+        keys = ('enable', 'method', 'energy_min', 'energy_max', 'nuclides')
+        for key, value in res.items():
+            cv.check_value('resonance scattering dictionary key', key, keys)
+            if key == 'enable':
+                cv.check_type('resonance scattering enable', value, bool)
+            elif key == 'method':
+                cv.check_value('resonance scattering method', value,
+                               _RES_SCAT_METHODS)
+            elif key == 'energy_min':
+                name = 'resonance scattering minimum energy'
+                cv.check_type(name, value, Real)
+                cv.check_greater_than(name, value, 0)
+            elif key == 'energy_max':
+                name = 'resonance scattering minimum energy'
+                cv.check_type(name, value, Real)
+                cv.check_greater_than(name, value, 0)
+            elif key == 'nuclides':
+                cv.check_type('resonance scattering nuclides', value,
+                              Iterable, string_types)
+        self._resonance_scattering = res
 
     @volume_calculations.setter
     def volume_calculations(self, vol_calcs):
@@ -850,13 +857,12 @@ class Settings(object):
         if self._output is not None:
             element = ET.SubElement(root, "output")
 
-            for key in self._output:
+            for key, value in self._output.items():
                 subelement = ET.SubElement(element, key)
-                subelement.text = str(self._output[key]).lower()
-
-            if self._output_path is not None:
-                element = ET.SubElement(root, "output_path")
-                element.text = self._output_path
+                if key in ('summary', 'tallies'):
+                    subelement.text = str(value).lower()
+                else:
+                    subelement.text = value
 
     def _create_verbosity_subelement(self, root):
         if self._verbosity is not None:
@@ -991,7 +997,10 @@ class Settings(object):
             for key, value in sorted(self.temperature.items()):
                 element = ET.SubElement(root,
                                         "temperature_{}".format(key))
-                element.text = str(value)
+                if isinstance(value, bool):
+                    element.text = str(value).lower()
+                else:
+                    element.text = str(value)
 
     def _create_threads_subelement(self, root):
         if self._threads is not None:
@@ -1049,10 +1058,24 @@ class Settings(object):
             subelement.text = str(self._dd_count_interactions).lower()
 
     def _create_resonance_scattering_subelement(self, root):
-        if len(self.resonance_scattering) > 0:
+        res = self.resonance_scattering
+        if res:
             elem = ET.SubElement(root, 'resonance_scattering')
-            for r in self.resonance_scattering:
-                elem.append(r.to_xml_element())
+            if 'enable' in res:
+                subelem = ET.SubElement(elem, 'enable')
+                subelem.text = str(res['enable']).lower()
+            if 'method' in res:
+                subelem = ET.SubElement(elem, 'method')
+                subelem.text = res['method']
+            if 'energy_min' in res:
+                subelem = ET.SubElement(elem, 'energy_min')
+                subelem.text = str(res['energy_min'])
+            if 'energy_max' in res:
+                subelem = ET.SubElement(elem, 'energy_max')
+                subelem.text = str(res['energy_max'])
+            if 'nuclides' in res:
+                subelem = ET.SubElement(elem, 'nuclides')
+                subelem.text = ' '.join(res['nuclides'])
 
     def _create_create_fission_neutrons_subelement(self, root):
         if self._create_fission_neutrons is not None:
@@ -1113,110 +1136,3 @@ class Settings(object):
         # Write the XML Tree to the settings.xml file
         tree = ET.ElementTree(root_element)
         tree.write(path, xml_declaration=True, encoding='utf-8', method="xml")
-
-
-class ResonanceScattering(object):
-    """Specification of the elastic scattering model for resonant isotopes
-
-    Parameters
-    ----------
-    nuclide : openmc.Nuclide
-        The nuclide affected by this resonance scattering treatment.
-    method : {'ARES', 'CXS', 'DBRC', 'WCM'}
-        The method used to sample outgoing scattering energies.  Valid options
-        are 'ARES', 'CXS' (constant cross section), 'DBRC' (Doppler broadening
-        rejection correction), and 'WCM' (weight correction method).
-    E_min : float
-        The minimum energy above which the specified method is applied.  By
-        default, CXS will be used below E_min.
-    E_max : float
-        The maximum energy below which the specified method is applied.  By
-        default, the asymptotic target-at-rest model is applied  above E_max.
-
-    Attributes
-    ----------
-    nuclide : openmc.Nuclide
-        The nuclide affected by this resonance scattering treatment.
-    method : {'ARES', 'CXS', 'DBRC', 'WCM'}
-        The method used to sample outgoing scattering energies.  Valid options
-        are 'ARES', 'CXS' (constant cross section), 'DBRC' (Doppler broadening
-        rejection correction), and 'WCM' (weight correction method).
-    E_min : float
-        The minimum energy above which the specified method is applied.  By
-        default, CXS will be used below E_min.
-    E_max : float
-        The maximum energy below which the specified method is applied.  By
-        default, the asymptotic target-at-rest model is applied  above E_max.
-
-    """
-
-    def __init__(self, nuclide, method='CXS', E_min=None, E_max=None):
-        self._E_min = None
-        self._E_max = None
-        self.nuclide = nuclide
-        self.method = method
-        if E_min is not None:
-            self.E_min = E_min
-        if E_max is not None:
-            self.E_max = E_max
-
-    @property
-    def nuclide(self):
-        return self._nuclide
-
-    @property
-    def method(self):
-        return self._method
-
-    @property
-    def E_min(self):
-        return self._E_min
-
-    @property
-    def E_max(self):
-        return self._E_max
-
-    @nuclide.setter
-    def nuclide(self, nuc):
-        cv.check_type('nuclide', nuc, Nuclide)
-        self._nuclide = nuc
-
-    @method.setter
-    def method(self, m):
-        cv.check_value('method', m, ('ARES', 'CXS', 'DBRC', 'WCM'))
-        self._method = m
-
-    @E_min.setter
-    def E_min(self, E):
-        cv.check_type('E_min', E, Real)
-        cv.check_greater_than('E_min', E, 0, True)
-        self._E_min = E
-
-    @E_max.setter
-    def E_max(self, E):
-        cv.check_type('E_max', E, Real)
-        cv.check_greater_than('E_max', E, 0, True)
-        self._E_max = E
-
-    def to_xml_element(self):
-        """Return XML representation of the resonance scattering model
-
-        Returns
-        -------
-        element : xml.etree.ElementTree.Element
-            XML element containing resonance scattering model
-
-        """
-        scatterer = ET.Element("scatterer")
-        subelement = ET.SubElement(scatterer, 'nuclide')
-        subelement.text = self.nuclide.name
-        if self.method is not None:
-            subelement = ET.SubElement(scatterer, 'method')
-            subelement.text = self.method
-        if self.E_min is not None:
-            subelement = ET.SubElement(scatterer, 'E_min')
-            subelement.text = str(self.E_min)
-        if self.E_max is not None:
-            subelement = ET.SubElement(scatterer, 'E_max')
-            subelement.text = str(self.E_max)
-        return scatterer

@@ -1,5 +1,6 @@
 from abc import ABCMeta
-from collections import Iterable
+from collections import Iterable, OrderedDict
+from copy import deepcopy
 from numbers import Real, Integral
 from xml.etree import ElementTree as ET
 from math import sqrt
@@ -81,6 +82,9 @@ class Surface(object):
 
     def __pos__(self):
         return Halfspace(self, '+')
+
+    def __hash__(self):
+        return hash(repr(self))
 
     def __repr__(self):
         string = 'Surface\n'
@@ -170,6 +174,35 @@ class Surface(object):
 
         return (np.array([-np.inf, -np.inf, -np.inf]),
                 np.array([np.inf, np.inf, np.inf]))
+
+    def clone(self, memo=None):
+        """Create a copy of this surface with a new unique ID.
+
+        Parameters
+        ----------
+        memo : dict or None
+            A nested dictionary of previously cloned objects. This parameter
+            is used internally and should not be specified by the user.
+
+        Returns
+        -------
+        clone : openmc.Surface
+            The clone of this surface
+
+        """
+
+        if memo is None:
+            memo = {}
+
+        # If no nemoize'd clone exists, instantiate one
+        if self not in memo:
+            clone = deepcopy(self)
+            clone.id = None
+
+            # Memoize the clone
+            memo[self] = clone
+
+        return memo[self]
 
     def to_xml_element(self):
         """Return XML representation of the surface
@@ -1177,7 +1210,7 @@ class Sphere(Surface):
         y-coordinate of the center of the sphere
     z0 : float
         z-coordinate of the center of the sphere
-    R : float
+    r : float
         Radius of the sphere
     boundary_type : {'transmission, 'vacuum', 'reflective'}
         Boundary condition that defines the behavior for particles hitting the
@@ -1325,7 +1358,7 @@ class Cone(Surface):
         y-coordinate of the apex
     z0 : float
         z-coordinate of the apex
-    R2 : float
+    r2 : float
         Parameter related to the aperature
     boundary_type : {'transmission, 'vacuum', 'reflective'}
         Boundary condition that defines the behavior for particles hitting the
@@ -1821,7 +1854,7 @@ class Halfspace(Region):
     def __init__(self, surface, side):
         self.surface = surface
         self.side = side
-
+        
     def __and__(self, other):
         if isinstance(other, Intersection):
             return Intersection(self, *other.nodes)
@@ -1880,6 +1913,51 @@ class Halfspace(Region):
     def __str__(self):
         return '-' + str(self.surface.id) if self.side == '-' \
             else str(self.surface.id)
+    
+    def get_surfaces(self, surfaces=None):
+        """
+        Returns the surface that this is a halfspace of.
+    
+        Parameters
+        ----------
+        surfaces: collections.OrderedDict, optional
+            Dictionary mapping surface IDs to :class:`openmc.Surface` instances
+    
+        Returns
+        -------
+        surfaces: collections.OrderedDict
+            Dictionary mapping surface IDs to :class:`openmc.Surface` instances
+    
+        """
+        if surfaces is None:
+            surfaces = OrderedDict()
+        
+        surfaces[self.surface.id] = self.surface
+        return surfaces
+
+    def clone(self, memo=None):
+        """Create a copy of this halfspace, with a cloned surface with a
+        unique ID.
+
+        Parameters
+        ----------
+        memo : dict or None
+            A nested dictionary of previously cloned objects. This parameter
+            is used internally and should not be specified by the user.
+
+        Returns
+        -------
+        clone : openmc.Halfspace
+            The clone of this halfspace
+
+        """
+
+        if memo is None:
+            memo = dict
+
+        clone = deepcopy(self)
+        clone.surface = self.surface.clone(memo)
+        return clone
 
 
 def get_rectangular_prism(width, height, axis='z', origin=(0., 0.),

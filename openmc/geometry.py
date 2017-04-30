@@ -1,4 +1,5 @@
 from collections import OrderedDict, Iterable
+from copy import deepcopy
 from xml.etree import ElementTree as ET
 
 from six import string_types
@@ -257,7 +258,23 @@ class Geometry(object):
                     lattices[cell.fill.id] = cell.fill
 
         return lattices
+    
+    def get_all_surfaces(self):
+        """
+        Return all surfaces used in the geometry
 
+        Returns
+        -------
+        collections.OrderedDict
+            Dictionary mapping surface IDs to :class:`openmc.Surface` instances
+
+        """
+        surfaces = OrderedDict()
+        
+        for cell in self.get_all_cells().values():
+            surfaces = cell.region.get_surfaces(surfaces)
+        return surfaces
+                
     def get_materials_by_name(self, name, case_sensitive=False, matching=False):
         """Return a list of materials with matching names.
 
@@ -481,3 +498,11 @@ class Geometry(object):
 
         # Recursively traverse the CSG tree to count all cell instances
         self.root_universe._determine_paths()
+
+    def clone(self):
+        """Create a copy of this geometry with new unique IDs for all of its
+        enclosed materials, surfaces, cells, universes and lattices."""
+
+        clone = deepcopy(self)
+        clone.root_universe = self.root_universe.clone()
+        return clone

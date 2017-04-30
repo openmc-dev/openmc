@@ -432,9 +432,11 @@ module global
   ! ============================================================================
   ! RESONANCE SCATTERING VARIABLES
 
-  logical :: treat_res_scat = .false. ! is resonance scattering treated?
-  integer :: n_res_scatterers_total = 0 ! total number of resonant scatterers
-  type(Nuclide0K), allocatable, target :: nuclides_0K(:) ! 0K nuclides info
+  logical :: res_scat_on = .false. ! is resonance scattering treated?
+  integer :: res_scat_method = RES_SCAT_ARES  ! resonance scattering method
+  real(8) :: res_scat_energy_min = 0.01_8
+  real(8) :: res_scat_energy_max = 1000.0_8
+  character(10), allocatable :: res_scat_nuclides(:)
 
 !$omp threadprivate(micro_xs, material_xs, fission_bank, n_bank, &
 !$omp&              trace, thread_id, current_work, filter_matches)
@@ -470,17 +472,11 @@ contains
       deallocate(nuclides)
     end if
 
-    if (allocated(nuclides_0K)) then
-      deallocate(nuclides_0K)
-    end if
+    if (allocated(res_scat_nuclides)) deallocate(res_scat_nuclides)
 
-    if (allocated(nuclides_MG)) then
-      deallocate(nuclides_MG)
-    end if
+    if (allocated(nuclides_MG)) deallocate(nuclides_MG)
 
-    if (allocated(macro_xs)) then
-      deallocate(macro_xs)
-    end if
+    if (allocated(macro_xs)) deallocate(macro_xs)
 
     if (allocated(sab_tables)) deallocate(sab_tables)
     if (allocated(micro_xs)) deallocate(micro_xs)

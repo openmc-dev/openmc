@@ -6,7 +6,7 @@
     <cell id="10003" material="10002" name="guide tube inner water" region="-10000" universe="10001" />
     <cell id="10004" material="10001" name="guide tube clad" region="10000 -10001" universe="10001" />
     <cell id="10005" material="10002" name="guide tube outer water" region="10001" universe="10001" />
-    <cell fill="10002" id="10006" name="root cell" region="10002 -10003 10004 -10005" universe="0" />
+    <cell fill="10002" id="10006" name="root cell" region="10002 -10003 10004 -10005" universe="10003" />
     <lattice id="10002" name="Fuel Assembly">
         <pitch>1.26 1.26</pitch>
         <dimension>17 17</dimension>

@@ -38,12 +38,9 @@ element settings {
 
   element output {
     (element summary { xsd:boolean } | attribute summary { xsd:boolean })? &
-    (element cross_sections { xsd:boolean } |
-      attribute cross_sections { xsd:boolean })? &
-    (element tallies { xsd:boolean } | attribute tallies { xsd:boolean })?
+    (element tallies { xsd:boolean } | attribute tallies { xsd:boolean })? &
+    (element path { xsd:string } | attribute path { xsd:string })?
   }? &
-
-  element output_path { xsd:string { maxLength = "255" } }? &
 
   element particles { xsd:positiveInteger }? &
 
@@ -158,15 +155,11 @@ element settings {
   }? &
 
   element resonance_scattering {
-    element scatterer {
-      (element nuclide { xsd:string { maxLength = "12" } } |
-        attribute nuclide { xsd:string { maxLength = "12" }  }) &
-      (element method { xsd:string { maxLength = "16" } } |
-        attribute method { xsd:string { maxLength = "16" }  }) &
-      (element E_min { xsd:double } |
-        attribute E_min { xsd:double }) &
-      (element E_max { xsd:double } |
-        attribute E_max { xsd:double })?
-    }*
+    (element enable { xsd:boolean } | attribute enable { xsd:boolean })? &
+    (element method { xsd:string } | attribute method { xsd:string })? &
+    (element energy_min { xsd:double } | attribute energy_min { xsd:double })? &
+    (element energy_max { xsd:double } | attribute energy_max { xsd:double })? &
+    (element nuclides { list { xsd:string+ } } |
+      attribute nuclides { list { xsd:string+ } })?
   }?
 }

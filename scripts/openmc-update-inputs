@@ -1,22 +1,6 @@
 #!/usr/bin/env python
 """Update OpenMC's input XML files to the latest format.
 
-Usage information can be obtained by running 'openmc-update-inputs --help':
-
-usage: openmc-update-inputs [-h] IN [IN ...]
-
-Update geometry.xml files to the latest format. This will remove 'outside'
-attributes/elements from lattices and replace them with 'outer' attributes. For
-'cell' elements, any 'surfaces' attributes/elements will be renamed
-'region'. Note that this script will not delete the given files; it will append
-'.original' to the given files and write new ones.
-
-positional arguments:
-  IN          Input geometry.xml file(s).
-
-optional arguments:
-  -h, --help  show this help message and exit
-
 """
 
 from __future__ import print_function
@@ -59,7 +43,7 @@ def parse_args():
          epilog=epilog,
          formatter_class=argparse.RawTextHelpFormatter)
     parser.add_argument('input', metavar='IN', type=str, nargs='+',
-                        help='Input geometry.xml file(s).')
+                        help='Input XML file(s).')
 
     # Parse and return commandline arguments.
     return parser.parse_args()
@@ -68,20 +52,21 @@ def parse_args():
 def get_universe_ids(geometry_root):
     """Return a set of universe id numbers."""
     root = geometry_root
-    out = {0}
+    out = set()
 
     # Get the ids of universes defined by cells.
     for cell in root.iter('cell'):
-        # Get universe attributes.
+        # Get universe attributes/elements
         if 'universe' in cell.attrib:
             uid = cell.attrib['universe']
             out.add(int(uid))
-
-        # Get universe elements.
         elif cell.find('universe') is not None:
             elem = cell.find('universe')
             uid = elem.text
             out.add(int(uid))
+        else:
+            # Default to universe 0
+            out.add(0)
 
     # Get the ids of universes defined by lattices.
     for lat in root.iter('lattice'):

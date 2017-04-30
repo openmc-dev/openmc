@@ -25,13 +25,12 @@ endif()
 # Command line options
 #===============================================================================
 
-option(openmp   "Enable shared-memory parallelism with OpenMP"   OFF)
+option(openmp   "Enable shared-memory parallelism with OpenMP"   ON)
 option(profile  "Compile with profiling flags"                   OFF)
 option(debug    "Compile with debug flags"                       OFF)
 option(optimize "Turn on all compiler optimization flags"        OFF)
 option(coverage "Compile with coverage analysis flags"           OFF)
 option(mpif08   "Use Fortran 2008 MPI interface"                 OFF)
-
 
 # Maximum number of nested coordinates levels
 set(maxcoord 10 CACHE STRING "Maximum number of nested coordinate levels")
@@ -108,9 +107,11 @@ if(CMAKE_Fortran_COMPILER_ID STREQUAL GNU)
   endif()
 
   # GCC compiler options
-  list(APPEND f90flags -cpp -std=f2008 -fbacktrace)
-  list(APPEND cflags -cpp -std=c99)
+  list(APPEND f90flags -cpp -std=f2008 -fbacktrace -O2)
+  list(APPEND cflags -cpp -std=c99 -O2)
   if(debug)
+    list(REMOVE_ITEM f90flags -O2)
+    list(REMOVE_ITEM cflags -O2)
     list(APPEND f90flags -g -Wall -pedantic -fbounds-check
       -ffpe-trap=invalid,overflow,underflow)
     list(APPEND cflags -g -Wall -pedantic -fbounds-check)
@@ -122,6 +123,8 @@ if(CMAKE_Fortran_COMPILER_ID STREQUAL GNU)
     list(APPEND ldflags -pg)
   endif()
   if(optimize)
+    list(REMOVE_ITEM f90flags -O2)
+    list(REMOVE_ITEM cflags -O2)
     list(APPEND f90flags -O3)
     list(APPEND cflags -O3)
   endif()
@@ -142,8 +145,8 @@ elseif(CMAKE_Fortran_COMPILER_ID STREQUAL Intel)
   list(APPEND cflags -std=c99)
   if(debug)
     list(APPEND f90flags -g -warn -ftrapuv -fp-stack-check
-      "-check all" -fpe0)
-    list(APPEND cflags -g -w3 -ftrapuv -fp-stack-check)
+      "-check all" -fpe0 -O0)
+    list(APPEND cflags -g -w3 -ftrapuv -fp-stack-check -O0)
     list(APPEND ldflags -g)
   endif()
   if(profile)
@@ -182,7 +185,8 @@ elseif(CMAKE_Fortran_COMPILER_ID STREQUAL XL)
   list(APPEND f90flags -O2)
   add_definitions(-DNO_F2008)
   if(debug)
-    list(APPEND f90flags -g -C -qflag=i:i -u)
+    list(REMOVE_ITEM f90flags -O2)
+    list(APPEND f90flags -g -C -qflag=i:i -u -O0)
     list(APPEND ldflags -g)
   endif()
   if(profile)
@@ -190,6 +194,7 @@ elseif(CMAKE_Fortran_COMPILER_ID STREQUAL XL)
     list(APPEND ldflags -p)
   endif()
   if(optimize)
+    list(REMOVE_ITEM f90flags -O2)
     list(APPEND f90flags -O3)
   endif()
   if(openmp)
@@ -206,6 +211,11 @@ elseif(CMAKE_Fortran_COMPILER_ID STREQUAL Cray)
   endif()
 
 endif()
+
+# Show flags being used
+message(STATUS "Fortran flags: ${f90flags}")
+message(STATUS "C flags: ${cflags}")
+message(STATUS "Linker flags: ${ldflags}")
 
 #===============================================================================
 # git SHA1 hash
@@ -225,12 +235,6 @@ endif()
 #===============================================================================
 
 add_library(pugixml src/pugixml/pugixml_c.cpp src/pugixml/pugixml.cpp)
-if(CMAKE_VERSION VERSION_LESS 3.1)
-  target_compile_options(pugixml PRIVATE -std=c++11)
-else()
-  set_property(TARGET pugixml PROPERTY CXX_STANDARD 11)
-endif()
-
 add_library(pugixml_fortran src/pugixml/pugixml_f.F90)
 target_link_libraries(pugixml_fortran pugixml)
 

@@ -27,3 +27,5 @@ from openmc.particle_restart import *
 from openmc.mixin import *
 from openmc.plotter import *
 from openmc.search import *
+
+__version__ = '0.9.0'

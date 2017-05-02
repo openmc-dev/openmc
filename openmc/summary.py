@@ -41,6 +41,13 @@ class Summary(object):
         cv.check_filetype_version(self._f, 'summary', _VERSION_SUMMARY)
 
         self._geometry = openmc.Geometry()
+
+        self._fast_materials = {}
+        self._fast_surfaces = {}
+        self._fast_cells = {}
+        self._fast_universes  = {}
+        self._fast_lattices = {}
+
         self._materials = openmc.Materials()
         self._nuclides = {}
 
@@ -64,6 +71,26 @@ class Summary(object):
         return self._nuclides
 
     @property
+    def fast_materials(self):
+        return self._fast_materials
+
+    @property
+    def fast_surfaces(self):
+        return self._fast_surfaces
+
+    @property
+    def fast_cells(self):
+        return self._fast_cells
+
+    @property
+    def fast_universes(self):
+        return self._fast_universes
+
+    @property
+    def fast_lattices(self):
+        return self._fast_lattices
+    
+    @property
     def version(self):
         return tuple(self._f.attrs['openmc_version'])
 
@@ -76,11 +103,11 @@ class Summary(object):
     def _read_geometry(self):
         # Read in and initialize the Materials and Geometry
         self._read_materials()
-        surfaces = self._read_surfaces()
-        cells, cell_fills = self._read_cells(surfaces)
-        universes = self._read_universes(cells)
-        lattices = self._read_lattices(universes)
-        self._finalize_geometry(cells, cell_fills, universes, lattices)
+        self._read_surfaces()
+        cell_fills = self._read_cells()
+        self._read_universes()
+        self._read_lattices()
+        self._finalize_geometry(cell_fills)
 
     def _read_materials(self):
         for group in self._f['materials'].values():
@@ -89,16 +116,15 @@ class Summary(object):
             # Add the material to the Materials collection
             self.materials.append(material)
 
+            # Store in the dictionary of materials for fast queries
+            self.fast_materials[material.id] = material
+
     def _read_surfaces(self):
-        surfaces = {}
         for group in self._f['geometry/surfaces'].values():
             surface = openmc.Surface.from_hdf5(group)
-            surfaces[surface.id] = surface
+            self.fast_surfaces[surface.id] = surface
 
-        return surfaces
-
-    def _read_cells(self, surfaces):
-        cells = {}
+    def _read_cells(self):
 
         # Initialize dictionary for each Cell's fill
         cell_fills = {}
@@ -139,29 +165,24 @@ class Summary(object):
 
             # Generate Region object given infix expression
             if region:
-                cell.region = Region.from_expression(region, surfaces)
+                cell.region = Region.from_expression(region, self.fast_surfaces)
 
             # Add the Cell to the global dictionary of all Cells
-            cells[cell.id] = cell
+            self.fast_cells[cell.id] = cell
 
-        return cells, cell_fills
+        return cell_fills
 
-    def _read_universes(self, cells):
-        universes = {}
+    def _read_universes(self):
         for group in self._f['geometry/universes'].values():
-            universe = openmc.Universe.from_hdf5(group, cells)
-            universes[universe.id] = universe
-        return universes
+            universe = openmc.Universe.from_hdf5(group, self.fast_cells)
+            self.fast_universes[universe.id] = universe
 
-    def _read_lattices(self, universes):
-        lattices = {}
+    def _read_lattices(self):
         for group in self._f['geometry/lattices'].values():
-            lattice = openmc.Lattice.from_hdf5(group, universes)
-            lattices[lattice.id] = lattice
-        return lattices
+            lattice = openmc.Lattice.from_hdf5(group, self.fast_universes)
+            self.fast_lattices[lattice.id] = lattice
 
-    def _finalize_geometry(self, cells, cell_fills, universes, lattices):
-        materials = {m.id: m for m in self.materials}
+    def _finalize_geometry(self, cell_fills):
 
         # Keep track of universes that are used as fills. That way, we can
         # determine which universe is NOT used as a fill (and hence is the root
@@ -173,15 +194,15 @@ class Summary(object):
             # Retrieve the object corresponding to the fill type and ID
             if fill_type == 'material':
                 if isinstance(fill_id, Iterable):
-                    fill = [materials[mat] if mat > 0 else None
+                    fill = [self.fast_materials[mat] if mat > 0 else None
                             for mat in fill_id]
                 else:
-                    fill = materials[fill_id] if fill_id > 0 else None
+                    fill = self.fast_materials[fill_id] if fill_id > 0 else None
             elif fill_type == 'universe':
-                fill = universes[fill_id]
+                fill = self.fast_universes[fill_id]
                 fill_univ_ids.add(fill_id)
             else:
-                fill = lattices[fill_id]
+                fill = self.fast_lattices[fill_id]
                 for idx in fill._natural_indices:
                     univ = fill.get_universe(idx)
                     fill_univ_ids.add(univ.id)
@@ -189,12 +210,12 @@ class Summary(object):
                     fill_univ_ids.add(fill.outer.id)
 
             # Set the fill for the Cell
-            cells[cell_id].fill = fill
+            self.fast_cells[cell_id].fill = fill
 
         # Determine root universe for geometry
-        non_fill = set(universes.keys()) - fill_univ_ids
+        non_fill = set(self.fast_universes.keys()) - fill_univ_ids
 
-        self.geometry.root_universe = universes[non_fill.pop()]
+        self.geometry.root_universe = self.fast_universes[non_fill.pop()]
 
     def add_volume_information(self, volume_calc):
         """Add volume information to the geometry within the summary file

@@ -1083,7 +1083,7 @@ contains
           filter_index = sum((matching_bins(1:size(t % filters)) - 1) &
                * t % stride) + 1
           write(UNIT=unit_tally, FMT='(5X,A,T35,A,"+/- ",A)') &
-               "Net Current on Front", &
+               "Outgoing Current on Front", &
                to_str(t % results(RESULT_SUM,1,filter_index)), &
                trim(to_str(t % results(RESULT_SUM_SQ,1,filter_index)))
 
@@ -1091,7 +1091,7 @@ contains
           filter_index = sum((matching_bins(1:size(t % filters)) - 1) &
                * t % stride) + 1
           write(UNIT=unit_tally, FMT='(5X,A,T35,A,"+/- ",A)') &
-               "Net Current on Front", &
+               "Incoming Current on Front", &
                to_str(t % results(RESULT_SUM,1,filter_index)), &
                trim(to_str(t % results(RESULT_SUM_SQ,1,filter_index)))
         end if

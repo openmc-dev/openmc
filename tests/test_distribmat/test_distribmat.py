@@ -5,8 +5,6 @@ import sys
 sys.path.insert(0, os.pardir)
 from testing_harness import TestHarness, PyAPITestHarness
 import openmc
-from openmc.stats import Box
-from openmc.source import Source
 
 
 class DistribmatTestHarness(PyAPITestHarness):
@@ -31,25 +29,18 @@ class DistribmatTestHarness(PyAPITestHarness):
         mats_file = openmc.Materials([moderator, dense_fuel, light_fuel])
         mats_file.export_to_xml()
 
-
         ####################
         # Geometry
         ####################
 
-        c1 = openmc.Cell(cell_id=1)
-        c1.fill = moderator
-        mod_univ = openmc.Universe(universe_id=1)
-        mod_univ.add_cell(c1)
+        c1 = openmc.Cell(cell_id=1, fill=moderator)
+        mod_univ = openmc.Universe(universe_id=1, cells=[c1])
 
         r0 = openmc.ZCylinder(R=0.3)
-        c11 = openmc.Cell(cell_id=11)
-        c11.region = -r0
+        c11 = openmc.Cell(cell_id=11, region=-r0)
         c11.fill = [dense_fuel, light_fuel, None, dense_fuel]
-        c12 = openmc.Cell(cell_id=12)
-        c12.region = +r0
-        c12.fill = moderator
-        fuel_univ = openmc.Universe(universe_id=11)
-        fuel_univ.add_cells((c11, c12))
+        c12 = openmc.Cell(cell_id=12, region=+r0, fill=moderator)
+        fuel_univ = openmc.Universe(universe_id=11, cells=[c11, c12])
 
         lat = openmc.RectLattice(lattice_id=101)
         lat.lower_left = [-2.0, -2.0]
@@ -63,16 +54,12 @@ class DistribmatTestHarness(PyAPITestHarness):
         y1 = openmc.YPlane(y0=3.0)
         for s in [x0, x1, y0, y1]:
             s.boundary_type = 'reflective'
-        c101 = openmc.Cell(cell_id=101)
+        c101 = openmc.Cell(cell_id=101, fill=lat)
         c101.region = +x0 & -x1 & +y0 & -y1
-        c101.fill = lat
-        root_univ = openmc.Universe(universe_id=0)
-        root_univ.add_cell(c101)
+        root_univ = openmc.Universe(universe_id=0, cells=[c101])
 
-        geometry = openmc.Geometry()
-        geometry.root_universe = root_univ
+        geometry = openmc.Geometry(root_univ)
         geometry.export_to_xml()
-
 
         ####################
         # Settings
@@ -82,48 +69,38 @@ class DistribmatTestHarness(PyAPITestHarness):
         sets_file.batches = 5
         sets_file.inactive = 0
         sets_file.particles = 1000
-        sets_file.source = Source(space=Box([-1, -1, -1], [1, 1, 1]))
-        sets_file.output = {'summary': True}
+        sets_file.source = openmc.Source(space=openmc.stats.Box(
+            [-1, -1, -1], [1, 1, 1]))
         sets_file.export_to_xml()
-
 
         ####################
         # Plots
         ####################
 
-        plots_file = openmc.Plots()
+        plot1 = openmc.Plot(plot_id=1)
+        plot1.basis = 'xy'
+        plot1.color_by = 'cell'
+        plot1.filename = 'cellplot'
+        plot1.origin = (0, 0, 0)
+        plot1.width = (7, 7)
+        plot1.pixels = (400, 400)
 
-        plot = openmc.Plot(plot_id=1)
-        plot.basis = 'xy'
-        plot.color_by = 'cell'
-        plot.filename = 'cellplot'
-        plot.origin = (0, 0, 0)
-        plot.width = (7, 7)
-        plot.pixels = (400, 400)
-        plots_file.add_plot(plot)
+        plot2 = openmc.Plot(plot_id=2)
+        plot2.basis = 'xy'
+        plot2.color_by = 'material'
+        plot2.filename = 'matplot'
+        plot2.origin = (0, 0, 0)
+        plot2.width = (7, 7)
+        plot2.pixels = (400, 400)
 
-        plot = openmc.Plot(plot_id=2)
-        plot.basis = 'xy'
-        plot.color_by = 'material'
-        plot.filename = 'matplot'
-        plot.origin = (0, 0, 0)
-        plot.width = (7, 7)
-        plot.pixels = (400, 400)
-        plots_file.add_plot(plot)
-
-        plots_file.export_to_xml()
+        plots = openmc.Plots([plot1, plot2])
+        plots.export_to_xml()
 
     def _get_results(self):
         outstr = super(DistribmatTestHarness, self)._get_results()
         su = openmc.Summary('summary.h5')
         outstr += str(su.geometry.get_all_cells()[11])
         return outstr
-
-    def _cleanup(self):
-        f = os.path.join(os.getcwd(), 'plots.xml')
-        if os.path.exists(f):
-            os.remove(f)
-        super(DistribmatTestHarness, self)._cleanup()
 
 
 if __name__ == '__main__':

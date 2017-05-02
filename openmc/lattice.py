@@ -2,6 +2,7 @@ from __future__ import division
 
 from abc import ABCMeta
 from collections import OrderedDict, Iterable
+from copy import deepcopy
 from math import sqrt, floor
 from numbers import Real, Integral
 from xml.etree import ElementTree as ET
@@ -367,7 +368,7 @@ class Lattice(object):
         return all_universes
 
     def get_universe(self, idx):
-        """Return universe corresponding to a lattice element index
+        r"""Return universe corresponding to a lattice element index
 
         Parameters
         ----------
@@ -413,6 +414,51 @@ class Lattice(object):
             else:
                 return []
         return [(self, idx)] + u.find(p)
+
+    def clone(self, memo=None):
+        """Create a copy of this lattice with a new unique ID, and clones
+        all universes within this lattice.
+
+        Parameters
+        ----------
+        memo : dict or None
+            A nested dictionary of previously cloned objects. This parameter
+            is used internally and should not be specified by the user.
+
+        Returns
+        -------
+        clone : openmc.Lattice
+            The clone of this lattice
+
+        """
+
+        if memo is None:
+            memo = {}
+
+        # If no nemoize'd clone exists, instantiate one
+        if self not in memo:
+            clone = deepcopy(self)
+            clone.id = None
+
+            if self.outer is not None:
+                clone.outer = self.outer.clone(memo)
+
+            # Assign universe clones to the lattice clone
+            for i in self.indices:
+                if isinstance(self, RectLattice):
+                    clone.universes[i] = self.universes[i].clone(memo)
+                else:
+                    if self.ndim == 2:
+                        clone.universes[i[0]][i[1]] = \
+                            self.universes[i[0]][i[1]].clone(memo)
+                    else:
+                        clone.universes[i[0]][i[1]][i[2]] = \
+                            self.universes[i[0]][i[1]][i[2]].clone(memo)
+
+            # Memoize the clone
+            memo[self] = clone
+
+        return memo[self]
 
 
 class RectLattice(Lattice):

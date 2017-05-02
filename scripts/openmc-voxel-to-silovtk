@@ -3,30 +3,24 @@
 from __future__ import division, print_function
 import struct
 import sys
+from argparse import ArgumentParser
 
 import numpy as np
 import h5py
 
-def parse_options():
-    """Process command line arguments"""
 
-    from optparse import OptionParser
-    usage = r"""%prog [options] <voxel_file>"""
-    p = OptionParser(usage=usage)
-    p.add_option('-o', '--output', action='store', dest='output',
-                 default='plot', help='Path to output SILO or VTK file.')
-    p.add_option('-v', '--vtk', action='store_true', dest='vtk',
-                 default=False, help='Flag to convert to VTK instead of SILO.')
-    parsed = p.parse_args()
-    if not parsed[1]:
-        p.print_help()
-        return parsed
-    return parsed
+def main():
+    # Process command line arguments
+    parser = ArgumentParser()
+    parser.add_argument('voxel_file', help='Path to voxel file')
+    parser.add_argument('-o', '--output', action='store',
+                        default='plot', help='Path to output SILO or VTK file.')
+    parser.add_argument('-s', '--silo', action='store_true',
+                        default=False, help='Flag to convert to SILO instead of VTK.')
+    args = parser.parse_args()
 
-
-def main(filename, o):
     # Read data from voxel file
-    fh = h5py.File(filename, 'r')
+    fh = h5py.File(args.voxel_file, 'r')
     dimension = fh.attrs['num_voxels']
     width = fh.attrs['voxel_width']
     lower_left = fh.attrs['lower_left']
@@ -35,14 +29,8 @@ def main(filename, o):
     nx, ny, nz = dimension
     upper_right = lower_left + width*dimension
 
-    if o.vtk:
-        try:
-            import vtk
-        except:
-            print('The vtk python bindings do not appear to be installed '
-                  'properly.\nOn Ubuntu: sudo apt install python-vtk\n'
-                  'See: http://www.vtk.org/')
-            return
+    if not args.silo:
+        import vtk
 
         grid = vtk.vtkImageData()
         grid.SetDimensions(nx+1, ny+1, nz+1)
@@ -53,12 +41,12 @@ def main(filename, o):
         data.SetName("id")
         data.SetNumberOfTuples(nx*ny*nz)
         for x in range(nx):
-            sys.stdout.write(" {0}%\r".format(int(x/nx*100)))
+            sys.stdout.write(" {}%\r".format(int(x/nx*100)))
             sys.stdout.flush()
             for y in range(ny):
                 for z in range(nz):
                     i = z*nx*ny + y*nx + x
-                    data.SetValue(i, voxel_data[x,y,z])
+                    data.SetValue(i, voxel_data[x, y, z])
         grid.GetCellData().AddArray(data)
 
         writer = vtk.vtkXMLImageDataWriter()
@@ -66,31 +54,27 @@ def main(filename, o):
             writer.SetInputData(grid)
         else:
             writer.SetInput(grid)
-        if not o.output.endswith(".vti"):
-            o.output += ".vti"
-        writer.SetFileName(o.output)
+        if not args.output.endswith(".vti"):
+            args.output += ".vti"
+        writer.SetFileName(args.output)
         writer.Write()
 
     else:
-        try:
-            import silomesh
-        except:
-            print('The silomesh package does not appear to be installed '
-                  'properly.\nSee: https://github.com/nhorelik/silomesh/')
-            return
-        if not o.output.endswith(".silo"):
-            o.output += ".silo"
-        silomesh.init_silo(o.output)
+        import silomesh
+
+        if not args.output.endswith(".silo"):
+            args.output += ".silo"
+        silomesh.init_silo(args.output)
         meshparams = list(map(int, dimension)) + list(map(float, lower_left)) + \
                      list(map(float, upper_right))
         silomesh.init_mesh('plot', *meshparams)
         silomesh.init_var("id")
         for x in range(nx):
-            sys.stdout.write(" {0}%\r".format(int(x/nx*100)))
+            sys.stdout.write(" {}%\r".format(int(x/nx*100)))
             sys.stdout.flush()
             for y in range(ny):
                 for z in range(nz):
-                    silomesh.set_value(float(voxel_data[x,y,z]),
+                    silomesh.set_value(float(voxel_data[x, y, z]),
                                        x + 1, y + 1, z + 1)
         print()
         silomesh.finalize_var()
@@ -99,6 +83,4 @@ def main(filename, o):
 
 
 if __name__ == '__main__':
-    (options, args) = parse_options()
-    if args:
-        main(args[0], options)
+    main()

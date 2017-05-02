@@ -29,8 +29,13 @@ DENSITY_UNITS = ['g/cm3', 'g/cc', 'kg/cm3', 'atom/b-cm', 'atom/cm3', 'sum',
 
 
 class Material(object):
-    """A material composed of a collection of nuclides/elements that can be
-    assigned to a region of space.
+    """A material composed of a collection of nuclides/elements.
+
+    To create a material, one should create an instance of this class, add
+    nuclides or elements with :meth:`Material.add_nuclide` or
+    `Material.add_element`, respectively, and set the total material density
+    with `Material.export_to_xml()`. The material can then be assigned to a cell
+    using the :attr:`Cell.fill` attribute.
 
     Parameters
     ----------
@@ -794,6 +799,35 @@ class Material(object):
 
         return nuclides
 
+    def clone(self, memo=None):
+        """Create a copy of this material with a new unique ID.
+
+        Parameters
+        ----------
+        memo : dict or None
+            A nested dictionary of previously cloned objects. This parameter
+            is used internally and should not be specified by the user.
+
+        Returns
+        -------
+        clone : openmc.Material
+            The clone of this material
+
+        """
+
+        if memo is None:
+            memo = {}
+
+        # If no nemoize'd clone exists, instantiate one
+        if self not in memo:
+            clone = deepcopy(self)
+            clone.id = None
+
+            # Memoize the clone
+            memo[self] = clone
+
+        return memo[self]
+
     def _get_nuclide_xml(self, nuclide, distrib=False):
         xml_element = ET.Element("nuclide")
         xml_element.set("name", nuclide[0].name)
@@ -980,7 +1014,7 @@ class Materials(cv.CheckedList):
         :envvar:`OPENMC_CROSS_SECTIONS` environment variable will be used for
         continuous-energy calculations and
         :envvar:`OPENMC_MG_CROSS_SECTIONS` will be used for multi-group
-        calculations to find the path to the XML cross section file.
+        calculations to find the path to the HDF5 cross section file.
     multipole_library : str
         Indicates the path to a directory containing a windowed multipole
         cross section library. If it is not set, the

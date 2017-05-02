@@ -481,7 +481,11 @@ contains
     ! Sample scattering angle
     select type (dist => rxn % products(1) % distribution(1) % obj)
     type is (UncorrelatedAngleEnergy)
-      mu_cm = dist % angle % sample(E)
+      if (allocated(dist % angle % energy)) then
+        mu_cm = dist % angle % sample(E)
+      else
+        mu_cm = TWO*prn() - ONE
+      end if
     end select
 
     ! Determine direction cosines in CM
@@ -809,46 +813,41 @@ contains
     real(8) :: E_red   ! reduced energy (same as used by Cullen in SIGMA1)
     real(8) :: E_low   ! lowest practical relative energy
     real(8) :: E_up    ! highest practical relative energy
-    real(8) :: E_mode  ! most probable Maxwellian energy
-    real(8) :: E_t_max ! highest practical target energy
     real(8) :: E_t     ! trial target energy
     real(8) :: xs_max  ! max 0K xs over practical relative energies
     real(8) :: xs_low  ! 0K xs at lowest practical relative energy
     real(8) :: xs_up   ! 0K xs at highest practical relative energy
     real(8) :: m       ! slope for interpolation
-    real(8) :: R_dbrc  ! DBRC rejection criterion
-    real(8) :: R_speed ! target speed rejection criterion
+    real(8) :: xi      ! pseudorandom number on [0,1)
+    real(8) :: R       ! rejection criterion for DBRC / target speed
     real(8) :: cdf_low ! xs cdf at lowest practical relative energy
     real(8) :: cdf_up  ! xs cdf at highest practical relative energy
     real(8) :: cdf_rel ! trial xs cdf value
-    real(8) :: p_mode  ! probability at most probable energy
-    real(8) :: p_t     ! probability at trial target energy
     real(8) :: mu      ! cosine between neutron and target velocities
 
     integer :: i_E_low ! 0K index to lowest practical relative energy
     integer :: i_E_up  ! 0K index to highest practical relative energy
     integer :: i_E_rel ! index to trial relative energy
+    integer :: n_grid  ! number of energies on 0K grid
 
-    logical :: reject  ! resample if true
-
-    character(80) :: sampling_scheme ! method of target velocity sampling
+    integer :: sampling_method ! method of target velocity sampling
 
     awr = nuc % awr
 
     ! check if nuclide is a resonant scatterer
     if (nuc % resonant) then
 
-      ! sampling scheme to use
-      sampling_scheme = nuc % scheme
+      ! sampling method to use
+      sampling_method = res_scat_method
 
       ! upper resonance scattering energy bound (target is at rest above this E)
-      if (E > nuc % E_max) then
+      if (E > res_scat_energy_max) then
         v_target = ZERO
         return
 
       ! lower resonance scattering energy bound (should be no resonances below)
-      else if (E < nuc % E_min) then
-        sampling_scheme = 'cxs'
+      else if (E < res_scat_energy_min) then
+        sampling_method = RES_SCAT_CXS
       end if
 
     ! otherwise, use free gas model
@@ -857,19 +856,18 @@ contains
         v_target = ZERO
         return
       else
-        sampling_scheme = 'cxs'
+        sampling_method = RES_SCAT_CXS
       end if
     end if
 
     ! use appropriate target velocity sampling method
-    select case (sampling_scheme)
-
-    case ('cxs')
+    select case (sampling_method)
+    case (RES_SCAT_CXS)
 
       ! sample target velocity with the constant cross section (cxs) approx.
       call sample_cxs_target_velocity(nuc, v_target, E, uvw, kT)
 
-    case ('wcm')
+    case (RES_SCAT_WCM)
 
       ! sample target velocity with the constant cross section (cxs) approx.
       call sample_cxs_target_velocity(nuc, v_target, E, uvw, kT)
@@ -880,151 +878,107 @@ contains
       wcf = xs_0K / xs_eff
       wgt = wcf * wgt
 
-    case ('dbrc')
-      E_red = sqrt((awr * E) / kT)
-      E_low = (((E_red - FOUR)**2) * kT) / awr
-      E_up  = (((E_red + FOUR)**2) * kT) / awr
+    case (RES_SCAT_DBRC, RES_SCAT_ARES)
+      E_red = sqrt(awr * E / kT)
+      E_low = max(ZERO, E_red - FOUR)**2 * kT / awr
+      E_up  = (E_red + FOUR)**2 * kT / awr
 
       ! find lower and upper energy bound indices
       ! lower index
+      n_grid = size(nuc % energy_0K)
       if (E_low < nuc % energy_0K(1)) then
         i_E_low = 1
-      elseif (E_low > nuc % energy_0K(nuc % n_grid_0K)) then
-        i_E_low = nuc % n_grid_0K - 1
+      elseif (E_low > nuc % energy_0K(n_grid)) then
+        i_E_low = n_grid - 1
       else
-        i_E_low = binary_search(nuc % energy_0K, nuc % n_grid_0K, E_low)
+        i_E_low = binary_search(nuc % energy_0K, n_grid, E_low)
       end if
 
       ! upper index
       if (E_up < nuc % energy_0K(1)) then
         i_E_up = 1
-      elseif (E_up > nuc % energy_0K(nuc % n_grid_0K)) then
-        i_E_up = nuc % n_grid_0K - 1
+      elseif (E_up > nuc % energy_0K(n_grid)) then
+        i_E_up = n_grid - 1
       else
-        i_E_up = binary_search(nuc % energy_0K, nuc % n_grid_0K, E_up)
+        i_E_up = binary_search(nuc % energy_0K, n_grid, E_up)
       end if
 
-      ! interpolate xs since we're not exactly at the energy indices
-      xs_low = nuc % elastic_0K(i_E_low)
-      m = (nuc % elastic_0K(i_E_low + 1) - xs_low) &
-           & / (nuc % energy_0K(i_E_low + 1) - nuc % energy_0K(i_E_low))
-      xs_low = xs_low + m * (E_low - nuc % energy_0K(i_E_low))
-      xs_up = nuc % elastic_0K(i_E_up)
-      m = (nuc % elastic_0K(i_E_up + 1) - xs_up) &
-           & / (nuc % energy_0K(i_E_up + 1) - nuc % energy_0K(i_E_up))
-      xs_up = xs_up + m * (E_up - nuc % energy_0K(i_E_up))
-
-      ! get max 0K xs value over range of practical relative energies
-      xs_max = max(xs_low, &
-           & maxval(nuc % elastic_0K(i_E_low + 1 : i_E_up - 1)), xs_up)
-
-      reject = .true.
-
-      ! sample target velocities until one is accepted by the DBRC
-      do
-
-        ! sample target velocity with the constant cross section (cxs) approx.
+      if (i_E_up == i_E_low) then
+        ! Handle degenerate case -- if the upper/lower bounds occur for the same
+        ! index, then using cxs is probably a good approximation
         call sample_cxs_target_velocity(nuc, v_target, E, uvw, kT)
 
-        ! perform Doppler broadening rejection correction (dbrc)
-        E_rel = dot_product((v_neut - v_target), (v_neut - v_target))
-        xs_0K = elastic_xs_0K(E_rel, nuc)
-        R_dbrc = xs_0K / xs_max
-        if (prn() < R_dbrc) reject = .false.
-        if (.not. reject) exit
-      end do
-
-    case ('ares')
-      E_red = sqrt((awr * E) / kT)
-      E_low = (((E_red - FOUR)**2) * kT) / awr
-      E_up  = (((E_red + FOUR)**2) * kT) / awr
-
-      ! find lower and upper energy bound indices
-      ! lower index
-      if (E_low < nuc % energy_0K(1)) then
-        i_E_low = 1
-      elseif (E_low > nuc % energy_0K(nuc % n_grid_0K)) then
-        i_E_low = nuc % n_grid_0K - 1
       else
-        i_E_low = binary_search(nuc % energy_0K, nuc % n_grid_0K, E_low)
-      end if
+        if (sampling_method == RES_SCAT_DBRC) then
+          ! interpolate xs since we're not exactly at the energy indices
+          xs_low = nuc % elastic_0K(i_E_low)
+          m = (nuc % elastic_0K(i_E_low + 1) - xs_low) &
+               / (nuc % energy_0K(i_E_low + 1) - nuc % energy_0K(i_E_low))
+          xs_low = xs_low + m * (E_low - nuc % energy_0K(i_E_low))
+          xs_up = nuc % elastic_0K(i_E_up)
+          m = (nuc % elastic_0K(i_E_up + 1) - xs_up) &
+               / (nuc % energy_0K(i_E_up + 1) - nuc % energy_0K(i_E_up))
+          xs_up = xs_up + m * (E_up - nuc % energy_0K(i_E_up))
 
-      ! upper index
-      if (E_up < nuc % energy_0K(1)) then
-        i_E_up = 1
-      elseif (E_up > nuc % energy_0K(nuc % n_grid_0K)) then
-        i_E_up = nuc % n_grid_0K - 1
-      else
-        i_E_up = binary_search(nuc % energy_0K, nuc % n_grid_0K, E_up)
-      end if
+          ! get max 0K xs value over range of practical relative energies
+          xs_max = max(xs_low, &
+               maxval(nuc % elastic_0K(i_E_low + 1 : i_E_up)), xs_up)
 
-      ! interpolate xs CDF since we're not exactly at the energy indices
-      ! cdf value at lower bound attainable energy
-      if (i_E_low > 1) then
-        m = (nuc % xs_cdf(i_E_low) - nuc % xs_cdf(i_E_low - 1)) &
-             & / (nuc % energy_0K(i_E_low + 1) - nuc % energy_0K(i_E_low))
-        cdf_low = nuc % xs_cdf(i_E_low - 1) &
-             & + m * (E_low - nuc % energy_0K(i_E_low))
-      else
-        m = nuc % xs_cdf(i_E_low) &
-             & / (nuc % energy_0K(i_E_low + 1) - nuc % energy_0K(i_E_low))
-        cdf_low = m * (E_low - nuc % energy_0K(i_E_low))
-        if (E_low <= nuc % energy_0K(1)) cdf_low = ZERO
-      end if
+          DBRC_REJECT_LOOP: do
+            ! sample target velocity with the constant cross section (cxs) approx.
+            call sample_cxs_target_velocity(nuc, v_target, E, uvw, kT)
 
-      ! cdf value at upper bound attainable energy
-      m = (nuc % xs_cdf(i_E_up) - nuc % xs_cdf(i_E_up - 1)) &
-           & / (nuc % energy_0K(i_E_up + 1) - nuc % energy_0K(i_E_up))
-      cdf_up = nuc % xs_cdf(i_E_up - 1) &
-           & + m * (E_up - nuc % energy_0K(i_E_up))
+            ! perform Doppler broadening rejection correction (dbrc)
+            E_rel = dot_product((v_neut - v_target), (v_neut - v_target))
+            xs_0K = elastic_xs_0K(E_rel, nuc)
+            R = xs_0K / xs_max
+            if (prn() < R) exit DBRC_REJECT_LOOP
+          end do DBRC_REJECT_LOOP
 
-      ! values used to sample the Maxwellian
-      E_mode = kT
-      p_mode = TWO * sqrt(E_mode / pi) * sqrt((ONE / kT)**3) &
-           & * exp(-E_mode / kT)
-      E_t_max = 16.0_8 * E_mode
+        elseif (sampling_method == RES_SCAT_ARES) then
+          ! interpolate xs CDF since we're not exactly at the energy indices
+          ! cdf value at lower bound attainable energy
+          m = (nuc % xs_cdf(i_E_low) - nuc % xs_cdf(i_E_low - 1)) &
+               / (nuc % energy_0K(i_E_low + 1) - nuc % energy_0K(i_E_low))
+          cdf_low = nuc % xs_cdf(i_E_low - 1) &
+               + m * (E_low - nuc % energy_0K(i_E_low))
+          if (E_low <= nuc % energy_0K(1)) cdf_low = ZERO
 
-      reject = .true.
+          ! cdf value at upper bound attainable energy
+          m = (nuc % xs_cdf(i_E_up) - nuc % xs_cdf(i_E_up - 1)) &
+               / (nuc % energy_0K(i_E_up + 1) - nuc % energy_0K(i_E_up))
+          cdf_up = nuc % xs_cdf(i_E_up - 1) &
+               + m * (E_up - nuc % energy_0K(i_E_up))
 
-      do
+          ARES_REJECT_LOOP: do
 
-        ! perform Maxwellian rejection sampling
-        E_t = E_t_max * prn()**2
-        p_t = TWO * sqrt(E_t / pi) * sqrt((ONE / kT)**3) &
-             & * exp(-E_t / kT)
-        R_speed = p_t / p_mode
+            ! directly sample Maxwellian
+            E_t = -kT * log(prn())
 
-        if (prn() < R_speed) then
+            ! sample a relative energy using the xs cdf
+            cdf_rel = cdf_low + prn() * (cdf_up - cdf_low)
+            i_E_rel = binary_search(nuc % xs_cdf(i_E_low-1:i_E_up), &
+                 i_E_up - i_E_low + 2, cdf_rel)
+            E_rel = nuc % energy_0K(i_E_low + i_E_rel - 1)
+            m = (nuc % xs_cdf(i_E_low + i_E_rel - 1) &
+                 - nuc % xs_cdf(i_E_low + i_E_rel - 2)) &
+                 / (nuc % energy_0K(i_E_low + i_E_rel) &
+                 -  nuc % energy_0K(i_E_low + i_E_rel - 1))
+            E_rel = E_rel + (cdf_rel - nuc % xs_cdf(i_E_low + i_E_rel - 2)) / m
 
-          ! sample a relative energy using the xs cdf
-          cdf_rel = cdf_low + prn() * (cdf_up - cdf_low)
-          i_E_rel = binary_search(nuc % xs_cdf(i_E_low-1:i_E_up), &
-               & i_E_up - i_E_low + 2, cdf_rel)
-          E_rel = nuc % energy_0K(i_E_low + i_E_rel - 1)
-          m = (nuc % xs_cdf(i_E_low + i_E_rel - 1) &
-               & - nuc % xs_cdf(i_E_low + i_E_rel - 2)) &
-               & / (nuc % energy_0K(i_E_low + i_E_rel) &
-               & -  nuc % energy_0K(i_E_low + i_E_rel - 1))
-          E_rel = E_rel + (cdf_rel - nuc % xs_cdf(i_E_low + i_E_rel - 2)) / m
+            ! perform rejection sampling on cosine between
+            ! neutron and target velocities
+            mu = (E_t + awr * (E - E_rel)) / (TWO * sqrt(awr * E * E_t))
 
-          ! perform rejection sampling on cosine between
-          ! neutron and target velocities
-          mu = (E_t + awr * (E - E_rel)) / (TWO * sqrt(awr * E * E_t))
-
-          if (abs(mu) < ONE) then
-
-            ! set and accept target velocity
-            E_t = E_t / awr
-            v_target = sqrt(E_t) * rotate_angle(uvw, mu)
-            reject = .false.
-          end if
+            if (abs(mu) < ONE) then
+              ! set and accept target velocity
+              E_t = E_t / awr
+              v_target = sqrt(E_t) * rotate_angle(uvw, mu)
+              exit ARES_REJECT_LOOP
+            end if
+          end do ARES_REJECT_LOOP
         end if
-
-        if (.not. reject) exit
-      end do
-
-    case default
-      call fatal_error("Not a recognized resonance scattering treatment!")
+      end if
     end select
 
   end subroutine sample_target_velocity

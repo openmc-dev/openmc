@@ -37,9 +37,8 @@ In order to be considered suitable for inclusion in the *develop* branch, the
 following criteria must be satisfied for all proposed changes:
 
 - Changes have a clear purpose and are useful.
-- Compiles under all conditions (MPI, OpenMP, HDF5, etc.).  This is checked as
-  part of the test suite.
-- Passes the regression suite.
+- Compiles and passes the regression suite with all configurations (This is
+  checked by Travis CI).
 - If appropriate, test cases are added to regression suite.
 - No memory leaks (checked with valgrind_).
 - Conforms to the OpenMC `style guide`_.
@@ -81,8 +80,7 @@ features and bug fixes. The general steps for contributing are as follows:
 
    At a minimum, you should describe what the changes you've made are and why
    you are making them. If the changes are related to an oustanding issue, make
-   sure it is cross-referenced. A wise developer would also check whether their
-   changes do indeed pass the regression test suite.
+   sure it is cross-referenced.
 
 5. A trusted developer will review your pull request based on the criteria
    above. Any issues with the pull request can be discussed directly on the pull
@@ -104,18 +102,23 @@ full OpenMC code is executed. Results from simulations are compared with
 expected results. The test suite is comprised of many build configurations
 (e.g. debug, mpi, hdf5) and the actual tests which reside in sub-directories
 in the tests directory. We recommend to developers to test their branches
-before submitting a formal pull request using gfortran and intel compilers
+before submitting a formal pull request using gfortran and Intel compilers
 if available.
 
-The test suite is designed to integrate with cmake using ctest_.
-It is configured to run with cross sections from NNDC_. To
-download these cross sections please do the following:
+The test suite is designed to integrate with cmake using ctest_.  It is
+configured to run with cross sections from NNDC_ augmented with 0 K elastic
+scattering data for select nuclides as well as multipole data. To download the
+proper data, run the following commands:
 
 .. code-block:: sh
 
-    cd ../data
-    python get_nndc_data.py
-    export CROSS_SECTIONS=<path_to_data_folder>/nndc/cross_sections.xml
+    wget -O nndc_hdf5.tar.xz $(cat <openmc_root>/.travis.yml | grep anl.box | awk '{print $2}')
+    tar xJvf nndc_hdf5.tar.xz
+    export OPENMC_CROSS_SECTIONS=$(pwd)/nndc_hdf5/cross_sections.xml
+
+    git clone --branch=master git://github.com/smharper/windowed_multipole_library.git wmp_lib
+    tar xzvf wmp_lib/multipole_lib.tar.gz
+    export OPENMC_MULTIPOLE_LIBRARY=$(pwd)/multipole_lib
 
 The test suite can be run on an already existing build using:
 
@@ -137,21 +140,29 @@ more control over which tests are executed.
 Before running the test suite python script, the following environmental
 variables should be set if the default paths are incorrect:
 
-    * **FC** - The command of the Fortran compiler (e.g. gfotran, ifort).
+    * **FC** - The command for a Fortran compiler (e.g. gfotran, ifort).
 
         * Default - *gfortran*
 
+    * **CC** - The command for a C compiler (e.g. gcc, icc).
+
+        * Default - *gcc*
+
+    * **CXX** - The command for a C++ compiler (e.g. g++, icpc).
+
+        * Default - *g++*
+
     * **MPI_DIR** - The path to the MPI directory.
 
-        * Default - */opt/mpich/3.1.3-gnu*
+        * Default - */opt/mpich/3.2-gnu*
 
     * **HDF5_DIR** - The path to the HDF5 directory.
 
-        * Default - */opt/hdf5/1.8.14-gnu*
+        * Default - */opt/hdf5/1.8.16-gnu*
 
     * **PHDF5_DIR** - The path to the parallel HDF5 directory.
 
-        * Default - */opt/phdf5/1.8.14-gnu*
+        * Default - */opt/phdf5/1.8.16-gnu*
 
 To run the full test suite, the following command can be executed in the
 tests directory:
@@ -192,15 +203,12 @@ a test you need to add the following files to your new test directory,
 *test_name* for example:
 
     * OpenMC input XML files
-    * **test_name.py** - python test driver script, please refer to other
+    * **test_name.py** - Python test driver script, please refer to other
       tests to see how to construct. Any output files that are generated
       during testing must be removed at the end of this script.
-    * **results.py** - python script that extracts results from statepoint
-      output files. By default it should look for a binary file, but can
-      take an argument to overwrite which statepoint file is processed,
-      whether it is at a different batch or with an HDF5 extension. This
-      script must output a results file that is named *results_test.dat*.
-      It is recommended that any real numbers reported use *12.6E* format.
+    * **inputs_true.dat** - ASCII file that contains Python API-generated XML
+      files concatenated together. When the test is run, inputs that are
+      generated are compared to this file.
     * **results_true.dat** - ASCII file that contains the expected results
       from the test. The file *results_test.dat* is compared to this file
       during the execution of the python test driver script. When the

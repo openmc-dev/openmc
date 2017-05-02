@@ -6,7 +6,7 @@ Nuclear Data
 
 .. only:: html
 
-    .. notebook:: nuclear-data.ipynb
+    .. notebook:: ../../../examples/jupyter/nuclear-data.ipynb
 
 .. only:: latex
 

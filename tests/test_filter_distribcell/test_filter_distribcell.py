@@ -10,7 +10,7 @@ from testing_harness import *
 
 class DistribcellTestHarness(TestHarness):
     def __init__(self):
-        super(DistribcellTestHarness, self).__init__(None, True)
+        super(DistribcellTestHarness, self).__init__(None)
 
     def execute_test(self):
         """Run OpenMC with the appropriate arguments and check the outputs."""
@@ -41,8 +41,8 @@ class DistribcellTestHarness(TestHarness):
         base_dir = os.getcwd()
         try:
             dirs = ('case-1', '../case-2', '../case-3', '../case-4')
-            sps = ('statepoint.1.*', 'statepoint.1.*', 'statepoint.3.*',
-                   'statepoint.1.*')
+            sps = ('statepoint.1.h5', 'statepoint.1.h5', 'statepoint.3.h5',
+                   'statepoint.1.h5')
             tallies_out_present = (True, True, False, True)
             hash_out = (False, False, True, False)
             for i in range(len(dirs)):

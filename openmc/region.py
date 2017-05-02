@@ -1,5 +1,6 @@
 from abc import ABCMeta, abstractmethod
-from collections import Iterable
+from collections import Iterable, OrderedDict
+from copy import deepcopy
 
 from six import add_metaclass
 import numpy as np
@@ -45,6 +46,27 @@ class Region(object):
 
     def __ne__(self, other):
         return not self == other
+
+    def get_surfaces(self, surfaces=None):
+        """
+        Recursively find all the surfaces referenced by a region and return them
+
+        Parameters
+        ----------
+        surfaces: collections.OrderedDict, optional
+            Dictionary mapping surface IDs to :class:`openmc.Surface` instances
+            
+        Returns
+        -------
+        surfaces: collections.OrderedDict
+            Dictionary mapping surface IDs to :class:`openmc.Surface` instances
+
+        """
+        if surfaces is None:
+            surfaces = OrderedDict()
+        for region in self:
+            surfaces = region.get_surfaces(surfaces)
+        return surfaces
 
     @staticmethod
     def from_expression(expression, surfaces):
@@ -200,6 +222,31 @@ class Region(object):
         # at the end
         return output[0]
 
+    @abstractmethod
+    def clone(self, memo=None):
+        """Create a copy of this region - each of the surfaces in the
+        region's nodes will be cloned and will have new unique IDs.
+
+        Parameters
+        ----------
+        memo : dict or None
+            A nested dictionary of previously cloned objects. This parameter
+            is used internally and should not be specified by the user.
+
+        Returns
+        -------
+        clone : openmc.Region
+            The clone of this region
+
+        Raises
+        ------
+        NotImplementedError
+            This method is not implemented for the abstract region class.
+
+        """
+        raise NotImplementedError('The clone method is not implemented for '
+                                  'the abstract region class.')
+
 
 class Intersection(Region):
     r"""Intersection of two or more regions.
@@ -279,6 +326,30 @@ class Intersection(Region):
         check_type('nodes', nodes, Iterable, Region)
         self._nodes = nodes
 
+    def clone(self, memo=None):
+        """Create a copy of this region - each of the surfaces in the
+        intersection's nodes will be cloned and will have new unique IDs.
+
+        Parameters
+        ----------
+        memo : dict or None
+            A nested dictionary of previously cloned objects. This parameter
+            is used internally and should not be specified by the user.
+
+        Returns
+        -------
+        clone : openmc.Intersection
+            The clone of this intersection
+
+        """
+
+        if memo is None:
+            memo = {}
+
+        clone = deepcopy(self)
+        clone.nodes = [n.clone(memo) for n in self.nodes]
+        return clone
+
 
 class Union(Region):
     r"""Union of two or more regions.
@@ -356,6 +427,30 @@ class Union(Region):
         check_type('nodes', nodes, Iterable, Region)
         self._nodes = nodes
 
+    def clone(self, memo=None):
+        """Create a copy of this region - each of the surfaces in the
+        union's nodes will be cloned and will have new unique IDs.
+
+        Parameters
+        ----------
+        memo : dict or None
+            A nested dictionary of previously cloned objects. This parameter
+            is used internally and should not be specified by the user.
+
+        Returns
+        -------
+        clone : openmc.Union
+            The clone of this union
+
+        """
+
+        if memo is None:
+            memo = {}
+
+        clone = copy.deepcopy(self)
+        clone.nodes = [n.clone(memo) for n in self.nodes]
+        return clone
+
 
 class Complement(Region):
     """Complement of a region.
@@ -431,3 +526,48 @@ class Complement(Region):
         else:
             temp_region = ~self.node
         return temp_region.bounding_box
+
+    def get_surfaces(self, surfaces=None):
+        """
+        Recursively find and return all the surfaces referenced by the node
+
+        Parameters
+        ----------
+        surfaces: collections.OrderedDict, optional
+            Dictionary mapping surface IDs to :class:`openmc.Surface` instances
+
+        Returns
+        -------
+        surfaces: collections.OrderedDict
+            Dictionary mapping surface IDs to :class:`openmc.Surface` instances
+
+        """
+        if surfaces is None:
+            surfaces = OrderedDict()
+        for region in self.node:
+            surfaces = region.get_surfaces(surfaces)
+        return surfaces
+
+    def clone(self, memo=None):
+        """Create a copy of this region - each of the surfaces in the
+        complement's node will be cloned and will have new unique IDs.
+
+        Parameters
+        ----------
+        memo : dict or None
+            A nested dictionary of previously cloned objects. This parameter
+            is used internally and should not be specified by the user.
+
+        Returns
+        -------
+        clone : openmc.Complement
+            The clone of this complement
+
+        """
+
+        if memo is None:
+            memo = {}
+
+        clone = copy.deepcopy(self)
+        clone.node = self.node.clone(memo)
+        return clone

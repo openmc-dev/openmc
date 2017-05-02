@@ -11,16 +11,15 @@ import openmc.mgxs
 
 
 class MGXSTestHarness(PyAPITestHarness):
-    def _build_inputs(self):
-        # Generate inputs using parent class routine
-        super(MGXSTestHarness, self)._build_inputs()
+    def __init__(self, *args, **kwargs):
+        super(MGXSTestHarness, self).__init__(*args, **kwargs)
 
         # Initialize a one-group structure
         energy_groups = openmc.mgxs.EnergyGroups(group_edges=[0, 20.e6])
 
         # Initialize MGXS Library for a few cross section types
         # for one material-filled cell in the geometry
-        self.mgxs_lib = openmc.mgxs.Library(self._input_set.geometry)
+        self.mgxs_lib = openmc.mgxs.Library(self._model.geometry)
         self.mgxs_lib.by_nuclide = False
 
         # Test all MGXS types
@@ -41,10 +40,8 @@ class MGXSTestHarness(PyAPITestHarness):
         self.mgxs_lib.domains = [mesh]
         self.mgxs_lib.build_library()
 
-        # Initialize a tallies file
-        self._input_set.tallies = openmc.Tallies()
-        self.mgxs_lib.add_to_tallies_file(self._input_set.tallies, merge=False)
-        self._input_set.tallies.export_to_xml()
+        # Add tallies
+        self.mgxs_lib.add_to_tallies_file(self._model.tallies, merge=False)
 
     def _get_results(self, hash_output=False):
         """Digest info in the statepoint and return as a string."""
@@ -74,5 +71,5 @@ class MGXSTestHarness(PyAPITestHarness):
 
 
 if __name__ == '__main__':
-    harness = MGXSTestHarness('statepoint.10.h5', True)
+    harness = MGXSTestHarness('statepoint.10.h5')
     harness.main()

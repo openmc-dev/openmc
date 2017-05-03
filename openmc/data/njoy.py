@@ -75,7 +75,7 @@ reconr / %%%%%%%%%%%%%%%%%%% Reconstruct XS for neutrons %%%%%%%%%%%%%%%%%%%%%%%
 broadr / %%%%%%%%%%%%%%%%%%%%%%% Doppler broaden XS %%%%%%%%%%%%%%%%%%%%%%%%%%%%
 20 21 22
 {mat} {num_temp} 0 0 0. /
-0.001 -1.0e6 0.003 /
+0.001 1.0e6 0.003 /
 {temps}
 0/
 heatr / %%%%%%%%%%%%%%%%%%%%%%%%% Add heating kerma %%%%%%%%%%%%%%%%%%%%%%%%%%%%
@@ -84,9 +84,9 @@ heatr / %%%%%%%%%%%%%%%%%%%%%%%%% Add heating kerma %%%%%%%%%%%%%%%%%%%%%%%%%%%%
 {heatr_partials} /
 purr / %%%%%%%%%%%%%%%%%%%%%%%% Add probability tables %%%%%%%%%%%%%%%%%%%%%%%%%
 20 23 24
-{mat} {num_temp} 5 20 64 /
+{mat} {num_temp} 1 20 64 /
 {temps}
-1.e10 1.e4 1.e3 1.e2 1.e1
+1.e10
 0/
 """
 

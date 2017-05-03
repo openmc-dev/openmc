@@ -80,8 +80,8 @@ broadr / %%%%%%%%%%%%%%%%%%%%%%% Doppler broaden XS %%%%%%%%%%%%%%%%%%%%%%%%%%%%
 0/
 heatr / %%%%%%%%%%%%%%%%%%%%%%%%% Add heating kerma %%%%%%%%%%%%%%%%%%%%%%%%%%%%
 20 22 23 /
-{mat} {num_partials} /
-{heatr_partials} /
+{mat} 3 /
+302 318 402 /
 purr / %%%%%%%%%%%%%%%%%%%%%%%% Add probability tables %%%%%%%%%%%%%%%%%%%%%%%%%
 20 23 24
 {mat} {num_temp} 1 20 64 /
@@ -258,14 +258,6 @@ def make_ace(filename, temperatures=None, ace='ace', xsdir='xsdir',
 
     # Determine name of library
     library = '{}-{}.{}'.format(*ev.info['library'])
-
-    # Determine which partial heating values are needed to self-shield heating
-    # for ptables
-    partials = [302, 402]
-    if ev.target['fissionable']:
-        partials.append(318)
-    heatr_partials = ' '.join(map(str, partials))
-    num_partials = len(partials)
 
     if temperatures is None:
         temperatures = [293.6]

@@ -924,11 +924,11 @@ class MGXS(object):
         # the isotopic number densities as computed by OpenMC
         su = statepoint.summary
         if self.domain_type in ('cell', 'distribcell'):
-            self.domain = su.fast_cells[self.domain.id]
+            self.domain = su._fast_cells[self.domain.id]
         elif self.domain_type == 'universe':
-            self.domain = su.fast_universes[self.domain.id]
+            self.domain = su._fast_universes[self.domain.id]
         elif self.domain_type == 'material':
-            self.domain = su.fast_materials[self.domain.id]
+            self.domain = su._fast_materials[self.domain.id]
         elif self.domain_type == 'mesh':
             self.domain = statepoint.meshes[self.domain.id]
         else:

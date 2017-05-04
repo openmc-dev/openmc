@@ -466,7 +466,6 @@ def get_openmc_cell(openmoc_cell):
         translation = openmoc_cell.retrieveTranslation(3)
         openmc_cell.translation = translation
 
-
     # Convert OpenMC's cell region to an equivalent OpenMOC region
     openmoc_region = openmoc_cell.getRegion()
     if openmoc_region is not None:
@@ -710,7 +709,7 @@ def get_openmc_lattice(openmoc_lattice):
                     unique_universes[universe_id]
 
     universe_array = np.swapaxes(universe_array, 0, 1)
-    universe_array = universe_array[::-1,:,:]
+    universe_array = universe_array[::-1, :, :]
 
     # Convert axially infinite 3D OpenMOC lattice to a 2D OpenMC lattice
     if width[2] == np.finfo(np.float64).max:

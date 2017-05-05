@@ -13,6 +13,7 @@ module tally_filter_header
 !===============================================================================
 
   type TallyFilterMatch
+    ! Index of the bin and weight being used in the current filter combination
     integer          :: i_bin
     type(VectorInt)  :: bins
     type(VectorReal) :: weights

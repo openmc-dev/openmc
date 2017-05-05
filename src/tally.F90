@@ -2317,7 +2317,7 @@ contains
 
         ! Reset scoring index and weight
         filter_index = 1
-        filter_weight = 1
+        filter_weight = ONE
 
         ! Determine scoring index and weight for this filter combination
         do j = 1, size(t % filter)
@@ -2377,9 +2377,6 @@ contains
         ! ======================================================================
         ! Filter logic
 
-        ! If there are no filters, then we are done.
-        if (size(t % filter) == 0) exit FILTER_LOOP
-
         ! Increment the filter bins, starting with the last filter to find the
         ! next valid bin combination
         finished = .true.
@@ -2411,9 +2408,7 @@ contains
     end do TALLY_LOOP
 
     ! Reset filter matches flag
-    do i = 1, n_filters
-      filter_matches(i) % bins_present = .false.
-    end do
+    filter_matches(:) % bins_present = .false.
 
     ! Reset tally map positioning
     position = 0
@@ -2482,7 +2477,7 @@ contains
 
         ! Reset scoring index and weight
         filter_index = 1
-        filter_weight = 1
+        filter_weight = ONE
 
         ! Determine scoring index and weight for this filter combination
         do j = 1, size(t % filter)
@@ -2530,9 +2525,6 @@ contains
         ! ======================================================================
         ! Filter logic
 
-        ! If there are no filters, then we are done.
-        if (size(t % filter) == 0) exit FILTER_LOOP
-
         ! Increment the filter bins, starting with the last filter to find the
         ! next valid bin combination
         finished = .true.
@@ -2564,9 +2556,7 @@ contains
     end do TALLY_LOOP
 
     ! Reset filter matches flag
-    do i = 1, n_filters
-      filter_matches(i) % bins_present = .false.
-    end do
+    filter_matches(:) % bins_present = .false.
 
     ! Reset tally map positioning
     position = 0
@@ -2677,7 +2667,8 @@ contains
           i_filter = 1
           do l = 1, size(t % filter)
             i_filter = i_filter + (filter_matches(t % filter(l)) % bins % &
-               data(filter_matches(t % filter(l)) % i_bin) - 1) * t % stride(l)
+                 data(filter_matches(t % filter(l)) % i_bin) - 1) * &
+                 t % stride(l)
           end do
 
           ! Add score to tally
@@ -2710,7 +2701,7 @@ contains
 
                   ! Reset scoring index and filter weight
                   i_filter = 1
-                  filter_weight = 1
+                  filter_weight = ONE
 
                   ! determine scoring index and weight for this filter
                   ! combination
@@ -2734,7 +2725,7 @@ contains
 
             ! Reset scoring index and filter weight
             i_filter = 1
-            filter_weight = 1
+            filter_weight = ONE
 
             ! determine scoring index and weight for this filter combination
             do l = 1, size(t % filter)
@@ -2871,7 +2862,7 @@ contains
 
         ! Reset scoring index and weight
         filter_index = 1
-        filter_weight = 1
+        filter_weight = ONE
 
         ! Determine scoring index and weight for this filter combination
         do j = 1, size(t % filter)
@@ -2932,9 +2923,6 @@ contains
         ! ======================================================================
         ! Filter logic
 
-        ! If there are no filters, then we are done.
-        if (size(t % filter) == 0) exit FILTER_LOOP
-
         ! Increment the filter bins, starting with the last filter to find the
         ! next valid bin combination
         finished = .true.
@@ -2966,9 +2954,7 @@ contains
     end do TALLY_LOOP
 
     ! Reset filter matches flag
-    do i = 1, n_filters
-      filter_matches(i) % bins_present = .false.
-    end do
+    filter_matches(:) % bins_present = .false.
 
     ! Reset tally map positioning
     position = 0
@@ -3052,7 +3038,7 @@ contains
 
         ! Reset scoring index and weight
         filter_index = 1
-        filter_weight = 1
+        filter_weight = ONE
 
         ! Determine scoring index and weight for this filter combination
         do j = 1, size(t % filter)
@@ -3113,9 +3099,6 @@ contains
         ! ======================================================================
         ! Filter logic
 
-        ! If there are no filters, then we are done.
-        if (size(t % filter) == 0) exit FILTER_LOOP
-
         ! Increment the filter bins, starting with the last filter to find the
         ! next valid bin combination
         finished = .true.
@@ -3147,9 +3130,7 @@ contains
     end do TALLY_LOOP
 
     ! Reset filter matches flag
-    do i = 1, n_filters
-      filter_matches(i) % bins_present = .false.
-    end do
+    filter_matches(:) % bins_present = .false.
 
     ! Reset tally map positioning
     position = 0

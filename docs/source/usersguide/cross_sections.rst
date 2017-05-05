@@ -143,8 +143,8 @@ metastable state of Am242 is 95242 and the ground state is 95642).
 
 .. _create_xs_library:
 
-Manually Creating a Library
----------------------------
+Manually Creating a Library from ACE files
+------------------------------------------
 
 .. currentmodule:: openmc.data
 
@@ -198,6 +198,34 @@ OpenMC.
           sections, secondary angle/energy distributions, probability tables,
           etc. For a more thorough overview of the capabilities of this class,
           see the :ref:`notebook_nuclear_data` example notebook.
+
+Manually Creating a Library from ENDF files
+-------------------------------------------
+
+If you need to create a nuclear data library and you do not already have
+suitable ACE files or you need to further customize the data (for example,
+adding more temperatures), the :meth:`IncidentNeutron.from_njoy` and
+:meth:`ThermalScattering.from_njoy` methods can be used to create data instances
+by directly running NJOY. Both methods require that you pass the name of ENDF
+file(s) that are passed on to NJOY. For example, to generate data for Zr-92::
+
+  zr92 = openmc.data.IncidentNeutron.from_njoy('n-040_Zr_092.endf')
+
+By default, data is produced at room temperature, 293.6 K. You can also specify
+a list of temperatures that you want data at::
+
+  zr92 = openmc.data.IncidentNeutron.from_njoy(
+      'n-040_Zr_092.endf', temperatures=[300., 600., 1000.])
+
+The :meth:`IncidentNeutron.from_njoy` method assumes you have an executable
+named ``njoy`` available on your path. If you want to explicitly name the
+executable, the ``njoy_exec`` optional argument can be used. Additionally, the
+``stdout`` argument can be used to show the progress of the NJOY run.
+
+Once you have instances of :class:`IncidentNeutron` and
+:class:`ThermalScattering`, a library can be created by using the
+``export_to_hdf5()`` methods and the :class:`DataLibrary` class as described in
+:ref:`create_xs_library`.
 
 Enabling Resonance Scattering Treatments
 ----------------------------------------

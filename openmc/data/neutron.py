@@ -1,9 +1,13 @@
 from __future__ import division, unicode_literals
 import sys
 from collections import OrderedDict, Iterable, Mapping, MutableMapping
+from io import StringIO
 from itertools import chain
 from math import log10
 from numbers import Integral, Real
+import os
+import shutil
+import tempfile
 from warnings import warn
 
 from six import string_types
@@ -11,12 +15,13 @@ import numpy as np
 import h5py
 
 from . import HDF5_VERSION, HDF5_VERSION_MAJOR
-from .ace import Table, get_table
+from .ace import Library, Table, get_table
 from .data import ATOMIC_SYMBOL, K_BOLTZMANN, EV_PER_MEV
-from .endf import Evaluation, SUM_RULES
+from .endf import Evaluation, SUM_RULES, get_head_record, get_tab1_record
 from .fission_energy import FissionEnergyRelease
 from .function import Tabulated1D, Sum, ResonancesWithBackground
 from .grid import linearize, thin
+from .njoy import make_ace
 from .product import Product
 from .reaction import Reaction, _get_photon_products_ace
 from . import resonance as res
@@ -816,4 +821,60 @@ class IncidentNeutron(EqualityMixin):
             data.fission_energy = FissionEnergyRelease.from_endf(ev, data)
 
         data._evaluation = ev
+        return data
+
+    @classmethod
+    def from_njoy(cls, filename, temperatures=None, **kwargs):
+        """Generate incident neutron data by running NJOY.
+
+        Parameters
+        ----------
+        filename : str
+            Path to ENDF evaluation
+        temperatures : iterable of float
+            Temperatures in Kelvin to produce data at. If omitted, data is
+            produced at room temperature (293.6 K)
+        **kwargs
+            Keyword arguments passed to :func:`openmc.data.njoy.make_ace`
+
+        Returns
+        -------
+        data : openmc.data.IncidentNeutron
+            Incident neutron continuous-energy data
+
+        """
+        # Create temporary directory -- it would be preferable to use
+        # TemporaryDirectory(), but it is only available in Python 3.2
+        tmpdir = tempfile.mkdtemp()
+        try:
+            # Run NJOY to create an ACE library
+            ace_file = os.path.join(tmpdir, 'ace')
+            xsdir_file = os.path.join(tmpdir, 'xsdir')
+            pendf_file = os.path.join(tmpdir, 'pendf')
+            make_ace(filename, temperatures, ace_file, xsdir_file,
+                     pendf_file, **kwargs)
+
+            # Create instance from ACE tables within library
+            lib = Library(ace_file)
+            data = cls.from_ace(lib.tables[0])
+            for table in lib.tables[1:]:
+                data.add_temperature_from_ace(table)
+
+            # Add fission energy release data
+            ev = Evaluation(filename)
+            if (1, 458) in ev.section:
+                data.fission_energy = FissionEnergyRelease.from_endf(ev, data)
+
+            # Add 0K elastic scattering cross section
+            pendf = Evaluation(pendf_file)
+            file_obj = StringIO(pendf.section[3, 2])
+            get_head_record(file_obj)
+            params, xs = get_tab1_record(file_obj)
+            data.energy['0K'] = xs.x
+            data[2].xs['0K'] = xs
+
+        finally:
+            # Get rid of temporary files
+            shutil.rmtree(tmpdir)
+
         return data

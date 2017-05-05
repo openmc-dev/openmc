@@ -132,3 +132,16 @@ Functions
     openmc.data.endf.get_tab1_record
     openmc.data.endf.get_tab2_record
     openmc.data.endf.get_text_record
+
+NJOY Interface
+--------------
+
+.. autosummary::
+    :toctree: generated
+    :nosignatures:
+    :template: myfunction.rst
+
+    openmc.data.njoy.run
+    openmc.data.njoy.make_pendf
+    openmc.data.njoy.make_ace
+    openmc.data.njoy.make_ace_thermal

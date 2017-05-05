@@ -1056,7 +1056,7 @@ contains
                   (OUT_LEFT - 1) * stride_surf)), &
              trim(to_str(t % results(RESULT_SUM_SQ,1,filter_index + &
                   (OUT_LEFT - 1) * stride_surf)))
-        
+
         write(UNIT=unit_tally, FMT='(5X,A,T35,A,"+/- ",A)') &
              "Incoming Current on Left", &
              to_str(t % results(RESULT_SUM,1,filter_index + &

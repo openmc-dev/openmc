@@ -254,7 +254,7 @@ contains
 
                 i_filter_surf = t % filter(t % find_filter(FILTER_SURFACE))
                 stride_surf = t % stride(t % find_filter(FILTER_SURFACE))
- 
+
                 ! Initialize and filter for energy
                 do l = 1, size(t % filter)
                   call filter_matches(t % filter(l)) % bins % clear()

@@ -1670,17 +1670,8 @@ contains
         call move_alloc(filters(i) % obj, temp(i) % obj)
       end do
 
-      ! Allocate filters array with increased size
-      deallocate(filters)
-      allocate(filters(size(temp)))
-
       ! Move filters back from temporary array to filters array
-      do i = 1, n_filters
-        call move_alloc(temp(i) % obj, filters(i) % obj)
-      end do
-
-      ! Deallocate temporary array
-      deallocate(temp)
+      call move_alloc(temp, filters)
     end if
 
     ! Set n_filters

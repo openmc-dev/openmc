@@ -69,26 +69,6 @@ class Summary(object):
     @property
     def nuclides(self):
         return self._nuclides
-
-    @property
-    def _fast_materials(self):
-        return self._fast_materials
-
-    @property
-    def _fast_surfaces(self):
-        return self._fast_surfaces
-
-    @property
-    def _fast_cells(self):
-        return self._fast_cells
-
-    @property
-    def _fast_universes(self):
-        return self._fast_universes
-
-    @property
-    def _fast_lattices(self):
-        return self._fast_lattices
     
     @property
     def version(self):

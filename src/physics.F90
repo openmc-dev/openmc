@@ -329,7 +329,7 @@ contains
     real(8) :: uvw_old(3) ! incoming uvw for iso-in-lab scattering
     real(8) :: phi        ! azimuthal angle for iso-in-lab scattering
     real(8) :: kT         ! temperature in eV
-!$omp threadprivate(nuc, rxn, tope)
+!$omp threadprivate(nuc, rxn)
 
     ! copy incoming direction
     uvw_old(:) = p % coord(1) % uvw

@@ -402,7 +402,7 @@ information:
 It should be noted that for more difficult simulations (e.g., light water
 reactors), there are other options available to users such as tally resetting
 parameters, effective down-scatter usage, tally estimator, etc. For more
-information please see :ref:`usersguide_cmfd`.
+information please see :ref:`io_cmfd`.
 
 Of the options described above, the optional acceleration subset region is an
 uncommon feature. Because OpenMC only has a structured Cartesian mesh, mesh

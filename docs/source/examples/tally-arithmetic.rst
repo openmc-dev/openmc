@@ -4,7 +4,7 @@ Tally Arithmetic
 
 .. only:: html
 
-    .. notebook:: tally-arithmetic.ipynb
+    .. notebook:: ../../../examples/jupyter/tally-arithmetic.ipynb
 
 .. only:: latex
 

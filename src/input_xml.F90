@@ -256,14 +256,6 @@ contains
       max_order = 0
     end if
 
-    ! Set output directory if a path has been specified on the <output_path>
-    ! element
-    if (check_for_node(root, "output_path")) then
-      call get_node_value(root, "output_path", path_output)
-      if (.not. ends_with(path_output, "/")) &
-           path_output = trim(path_output) // "/"
-    end if
-
     ! Check for a trigger node and get trigger information
     if (check_for_node(root, "trigger")) then
       node_trigger = root % child("trigger")
@@ -381,12 +373,30 @@ contains
     call get_node_list(root, "source", node_source_list)
     n = size(node_source_list)
 
-    if (run_mode == MODE_EIGENVALUE .or. run_mode == MODE_FIXEDSOURCE) then
-      if (n == 0) call fatal_error("No source specified in settings XML file.")
-    end if
+    if (n == 0) then
+      ! Default source is isotropic point source at origin with Watt spectrum
+      allocate(external_source(1))
+      external_source % strength = ONE
 
-    ! Allocate array for sources
-    allocate(external_source(n))
+      allocate(SpatialPoint :: external_source(1) % space)
+      select type (space => external_source(1) % space)
+      type is (SpatialPoint)
+        space % xyz(:) = [ZERO, ZERO, ZERO]
+      end select
+
+      allocate(Isotropic :: external_source(1) % angle)
+      external_source(1) % angle % reference_uvw(:) = [ZERO, ZERO, ONE]
+
+      allocate(Watt :: external_source(1) % energy)
+      select type(energy => external_source(1) % energy)
+      type is (Watt)
+        energy % a = 0.988e6_8
+        energy % b = 2.249e-6_8
+      end select
+    else
+      ! Allocate array for sources
+      allocate(external_source(n))
+    end if
 
     ! Read each source
     do i = 1, n
@@ -524,8 +534,12 @@ contains
           end select
 
         else
-          call fatal_error("No spatial distribution specified for external &
-               &source.")
+          ! If no spatial distribution specified, make it a point source
+          allocate(SpatialPoint :: external_source(i) % space)
+          select type (space => external_source(i) % space)
+          type is (SpatialPoint)
+            space % xyz(:) = [ZERO, ZERO, ZERO]
+          end select
         end if
 
         ! Determine external source angular distribution
@@ -908,6 +922,13 @@ contains
       ! Check for ASCII tallies output option
       if (check_for_node(node_output, "tallies")) then
         call get_node_value(node_output, "tallies", output_tallies)
+      end if
+
+      ! Set output directory if a path has been specified
+      if (check_for_node(node_output, "path")) then
+        call get_node_value(node_output, "path", path_output)
+        if (.not. ends_with(path_output, "/")) &
+             path_output = trim(path_output) // "/"
       end if
     end if
 
@@ -3825,14 +3846,14 @@ contains
               filt % n_bins = 4 * m % n_dimension
               allocate(filt % surfaces(4 * m % n_dimension))
               if (m % n_dimension == 1) then
-                filt % surfaces = (/ OUT_LEFT, OUT_RIGHT, IN_LEFT, IN_RIGHT /)
+                filt % surfaces = (/ OUT_LEFT, IN_LEFT, OUT_RIGHT, IN_RIGHT /)
               elseif (m % n_dimension == 2) then
-                filt % surfaces = (/ OUT_LEFT, OUT_RIGHT, OUT_BACK, OUT_FRONT, &
-                     IN_LEFT, IN_RIGHT, IN_BACK, IN_FRONT /)
+                filt % surfaces = (/ OUT_LEFT, IN_LEFT, OUT_RIGHT, IN_RIGHT, &
+                     OUT_BACK, IN_BACK, OUT_FRONT, IN_FRONT /)
               elseif (m % n_dimension == 3) then
-                filt % surfaces = (/ OUT_LEFT, OUT_RIGHT, OUT_BACK, OUT_FRONT, &
-                     OUT_BOTTOM, OUT_TOP, IN_LEFT, IN_RIGHT, IN_BACK, &
-                     IN_FRONT, IN_BOTTOM, IN_TOP /)
+                filt % surfaces = (/ OUT_LEFT, IN_LEFT, OUT_RIGHT, IN_RIGHT, &
+                     OUT_BACK, IN_BACK, OUT_FRONT, IN_FRONT, OUT_BOTTOM, &
+                     IN_BOTTOM, OUT_TOP, IN_TOP /)
               end if
             end select
             t % find_filter(FILTER_SURFACE) = size(t % filters)
@@ -5906,6 +5927,13 @@ contains
 
     do i = 1, size(res_scat_nuclides)
       if (nuc % name == res_scat_nuclides(i)) then
+        ! Make sure nuclide has 0K data
+        if (.not. allocated(nuc % energy_0K)) then
+          call fatal_error("Cannot treat " // trim(nuc % name) // " as a &
+               &resonant scatterer because 0 K elastic scattering data is not &
+               &present.")
+        end if
+
         ! Set nuclide to be resonant
         nuc % resonant = .true.
 

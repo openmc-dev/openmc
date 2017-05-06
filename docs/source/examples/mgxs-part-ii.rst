@@ -6,7 +6,7 @@ MGXS Part II: Advanced Features
 
 .. only:: html
 
-    .. notebook:: mgxs-part-ii.ipynb
+    .. notebook:: ../../../examples/jupyter/mgxs-part-ii.ipynb
 
 .. only:: latex
 

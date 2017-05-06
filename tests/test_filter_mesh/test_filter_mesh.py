@@ -2,21 +2,14 @@
 
 import os
 import sys
-import glob
-import hashlib
 sys.path.insert(0, os.pardir)
 from testing_harness import HashedPyAPITestHarness
 import openmc
 
 
 class FilterMeshTestHarness(HashedPyAPITestHarness):
-    def _build_inputs(self):
-
-        # The summary.h5 file needs to be created to read in the tallies
-        self._input_set.settings.output = {'summary': True}
-
-        # Initialize the tallies file
-        tallies_file = openmc.Tallies()
+    def __init__(self, *args, **kwargs):
+        super(FilterMeshTestHarness, self).__init__(*args, **kwargs)
 
         # Initialize Meshes
         mesh_1d = openmc.Mesh(mesh_id=1)
@@ -38,46 +31,42 @@ class FilterMeshTestHarness(HashedPyAPITestHarness):
         mesh_3d.upper_right = [182.07, 182.07, 183.00]
 
         # Initialize the filters
-        mesh_1d_filter      = openmc.MeshFilter(mesh_1d)
-        mesh_2d_filter      = openmc.MeshFilter(mesh_2d)
-        mesh_3d_filter      = openmc.MeshFilter(mesh_3d)
+        mesh_1d_filter = openmc.MeshFilter(mesh_1d)
+        mesh_2d_filter = openmc.MeshFilter(mesh_2d)
+        mesh_3d_filter = openmc.MeshFilter(mesh_3d)
 
         # Initialized the tallies
         tally = openmc.Tally(name='tally 1')
         tally.filters = [mesh_1d_filter]
         tally.scores = ['total']
-        tallies_file.append(tally)
+        self._model.tallies.append(tally)
 
         tally = openmc.Tally(name='tally 2')
         tally.filters = [mesh_1d_filter]
         tally.scores = ['current']
-        tallies_file.append(tally)
+        self._model.tallies.append(tally)
 
         tally = openmc.Tally(name='tally 3')
         tally.filters = [mesh_2d_filter]
         tally.scores = ['total']
-        tallies_file.append(tally)
+        self._model.tallies.append(tally)
 
         tally = openmc.Tally(name='tally 4')
         tally.filters = [mesh_2d_filter]
         tally.scores = ['current']
-        tallies_file.append(tally)
+        self._model.tallies.append(tally)
 
         tally = openmc.Tally(name='tally 5')
         tally.filters = [mesh_3d_filter]
         tally.scores = ['total']
-        tallies_file.append(tally)
+        self._model.tallies.append(tally)
 
         tally = openmc.Tally(name='tally 6')
         tally.filters = [mesh_3d_filter]
         tally.scores = ['current']
-        tallies_file.append(tally)
-
-        # Export tallies to file
-        self._input_set.tallies = tallies_file
-        super(FilterMeshTestHarness, self)._build_inputs()
+        self._model.tallies.append(tally)
 
 
 if __name__ == '__main__':
-    harness = FilterMeshTestHarness('statepoint.10.h5', True)
+    harness = FilterMeshTestHarness('statepoint.10.h5')
     harness.main()

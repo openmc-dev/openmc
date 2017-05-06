@@ -179,16 +179,6 @@
           </optional>
           <optional>
             <choice>
-              <element name="cross_sections">
-                <data type="boolean"/>
-              </element>
-              <attribute name="cross_sections">
-                <data type="boolean"/>
-              </attribute>
-            </choice>
-          </optional>
-          <optional>
-            <choice>
               <element name="tallies">
                 <data type="boolean"/>
               </element>
@@ -197,14 +187,17 @@
               </attribute>
             </choice>
           </optional>
+          <optional>
+            <choice>
+              <element name="path">
+                <data type="string"/>
+              </element>
+              <attribute name="path">
+                <data type="string"/>
+              </attribute>
+            </choice>
+          </optional>
         </interleave>
-      </element>
-    </optional>
-    <optional>
-      <element name="output_path">
-        <data type="string">
-          <param name="maxLength">255</param>
-        </data>
       </element>
     </optional>
     <optional>

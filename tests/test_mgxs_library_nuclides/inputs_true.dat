@@ -1,8 +1,8 @@
 <?xml version='1.0' encoding='utf-8'?>
 <geometry>
-    <cell id="10000" material="10000" name="cell 1" region="-10000" universe="0" />
-    <cell id="10001" material="10001" name="cell 3" region="10000 -10001" universe="0" />
-    <cell id="10002" material="10002" name="cell 2" region="10001 10002 -10003 10004 -10005" universe="0" />
+    <cell id="10000" material="10000" name="Fuel" region="-10000" universe="0" />
+    <cell id="10001" material="10001" name="Cladding" region="10000 -10001" universe="0" />
+    <cell id="10002" material="10002" name="Water" region="10001 10002 -10003 10004 -10005" universe="0" />
     <surface coeffs="0 0 0.39218" id="10000" name="Fuel OR" type="z-cylinder" />
     <surface coeffs="0 0 0.4572" id="10001" name="Clad OR" type="z-cylinder" />
     <surface boundary="reflective" coeffs="-0.63" id="10002" name="left" type="x-plane" />
@@ -12,14 +12,14 @@
 </geometry>
 <?xml version='1.0' encoding='utf-8'?>
 <materials>
-    <material id="10000" name="Fuel">
+    <material id="10000" name="UO2 (2.4%)">
         <density units="g/cm3" value="10.29769" />
         <nuclide ao="4.4843e-06" name="U234" />
         <nuclide ao="0.00055815" name="U235" />
         <nuclide ao="0.022408" name="U238" />
         <nuclide ao="0.045829" name="O16" />
     </material>
-    <material id="10001" name="Cladding">
+    <material id="10001" name="Zircaloy">
         <density units="g/cm3" value="6.55" />
         <nuclide ao="0.021827" name="Zr90" />
         <nuclide ao="0.00476" name="Zr91" />

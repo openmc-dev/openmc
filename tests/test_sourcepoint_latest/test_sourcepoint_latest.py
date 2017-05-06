@@ -18,5 +18,5 @@ class SourcepointTestHarness(TestHarness):
 
 
 if __name__ == '__main__':
-    harness = TestHarness('statepoint.10.*')
+    harness = TestHarness('statepoint.10.h5')
     harness.main()

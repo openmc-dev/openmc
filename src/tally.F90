@@ -277,8 +277,8 @@ contains
         ! neutrons exiting a reaction with neutrons in the exit channel
         if (p % event_MT == ELASTIC .or. p % event_MT == N_LEVEL .or. &
              (p % event_MT >= N_N1 .and. p % event_MT <= N_NC)) then
-          ! Don't waste time on very common reactions we know have multiplicities
-          ! of one.
+          ! Don't waste time on very common reactions we know have
+          ! multiplicities of one.
           score = p % last_wgt * flux
         else
           m = nuclides(p%event_nuclide)%reaction_index% &
@@ -304,8 +304,8 @@ contains
         ! neutrons exiting a reaction with neutrons in the exit channel
         if (p % event_MT == ELASTIC .or. p % event_MT == N_LEVEL .or. &
              (p % event_MT >= N_N1 .and. p % event_MT <= N_NC)) then
-          ! Don't waste time on very common reactions we know have multiplicities
-          ! of one.
+          ! Don't waste time on very common reactions we know have
+          ! multiplicities of one.
           score = p % last_wgt * flux
         else
           m = nuclides(p%event_nuclide)%reaction_index% &
@@ -468,18 +468,20 @@ contains
             score = ZERO
 
             ! Loop over all nuclides in the current material
-            do l = 1, materials(p % material) % n_nuclides
+            if (p % material /= MATERIAL_VOID) then
+              do l = 1, materials(p % material) % n_nuclides
 
-              ! Get atom density
-              atom_density_ = materials(p % material) % atom_density(l)
+                ! Get atom density
+                atom_density_ = materials(p % material) % atom_density(l)
 
-              ! Get index in nuclides array
-              i_nuc = materials(p % material) % nuclide(l)
+                ! Get index in nuclides array
+                i_nuc = materials(p % material) % nuclide(l)
 
-              ! Accumulate the contribution from each nuclide
-              score = score + micro_xs(i_nuc) % fission * nuclides(i_nuc) % &
-                   nu(E, EMISSION_PROMPT) * atom_density_ * flux
-            end do
+                ! Accumulate the contribution from each nuclide
+                score = score + micro_xs(i_nuc) % fission * nuclides(i_nuc) % &
+                     nu(E, EMISSION_PROMPT) * atom_density_ * flux
+              end do
+            end if
           end if
         end if
 
@@ -631,6 +633,41 @@ contains
               type is (DelayedGroupFilter)
 
                 ! Loop over all nuclides in the current material
+                if (p % material /= MATERIAL_VOID) then
+                  do l = 1, materials(p % material) % n_nuclides
+
+                    ! Get atom density
+                    atom_density_ = materials(p % material) % atom_density(l)
+
+                    ! Get index in nuclides array
+                    i_nuc = materials(p % material) % nuclide(l)
+
+                    ! Loop over all delayed group bins and tally to them
+                    ! individually
+                    do d_bin = 1, filt % n_bins
+
+                      ! Get the delayed group for this bin
+                      d = filt % groups(d_bin)
+
+                      ! Get the yield for the desired nuclide and delayed group
+                      yield = nuclides(i_nuc) % nu(E, EMISSION_DELAYED, d)
+
+                      ! Compute the score and tally to bin
+                      score = micro_xs(i_nuc) % fission * yield &
+                           * atom_density_ * flux
+                      call score_fission_delayed_dg(t, d_bin, score, &
+                           score_index)
+                    end do
+                  end do
+                end if
+                cycle SCORE_LOOP
+              end select
+            else
+
+              score = ZERO
+
+              ! Loop over all nuclides in the current material
+              if (p % material /= MATERIAL_VOID) then
                 do l = 1, materials(p % material) % n_nuclides
 
                   ! Get atom density
@@ -639,40 +676,11 @@ contains
                   ! Get index in nuclides array
                   i_nuc = materials(p % material) % nuclide(l)
 
-                  ! Loop over all delayed group bins and tally to them
-                  ! individually
-                  do d_bin = 1, filt % n_bins
-
-                    ! Get the delayed group for this bin
-                    d = filt % groups(d_bin)
-
-                    ! Get the yield for the desired nuclide and delayed group
-                    yield = nuclides(i_nuc) % nu(E, EMISSION_DELAYED, d)
-
-                    ! Compute the score and tally to bin
-                    score = micro_xs(i_nuc) % fission * yield * atom_density_ * flux
-                    call score_fission_delayed_dg(t, d_bin, score, score_index)
-                  end do
+                  ! Accumulate the contribution from each nuclide
+                  score = score + micro_xs(i_nuc) % fission * nuclides(i_nuc) %&
+                       nu(E, EMISSION_DELAYED) * atom_density_ * flux
                 end do
-                cycle SCORE_LOOP
-              end select
-            else
-
-              score = ZERO
-
-              ! Loop over all nuclides in the current material
-              do l = 1, materials(p % material) % n_nuclides
-
-                ! Get atom density
-                atom_density_ = materials(p % material) % atom_density(l)
-
-                ! Get index in nuclides array
-                i_nuc = materials(p % material) % nuclide(l)
-
-                ! Accumulate the contribution from each nuclide
-                score = score + micro_xs(i_nuc) % fission * nuclides(i_nuc) % &
-                     nu(E, EMISSION_DELAYED) * atom_density_ * flux
-              end do
+              end if
             end if
           end if
         end if
@@ -714,7 +722,8 @@ contains
                          % nu(E, EMISSION_DELAYED, d)
 
                     associate (rxn => nuclides(p % event_nuclide) % &
-                         reactions(nuclides(p % event_nuclide) % index_fission(1)))
+                         reactions(nuclides(p % event_nuclide) % &
+                         index_fission(1)))
 
                       ! Compute the score
                       score = p % absorb_wgt * yield * &
@@ -740,14 +749,17 @@ contains
                      reactions(nuclides(p % event_nuclide) % index_fission(1)))
 
                   ! We need to be careful not to overshoot the number of delayed
-                  ! groups since this could cause the range of the rxn % products
-                  ! array to be exceeded. Hence, we use the size of this array
-                  ! and not the MAX_DELAYED_GROUPS constant for this loop.
+                  ! groups since this could cause the range of the
+                  ! rxn % products array to be exceeded. Hence, we use the size
+                  ! of this array and not the MAX_DELAYED_GROUPS constant for
+                  ! this loop.
                   do d = 1, size(rxn % products) - 2
 
                     score = score + rxn % products(1 + d) % decay_rate * &
-                         p % absorb_wgt * micro_xs(p % event_nuclide) % fission *&
-                         nuclides(p % event_nuclide) % nu(E, EMISSION_DELAYED, d)&
+                         p % absorb_wgt &
+                         * micro_xs(p % event_nuclide) % fission &
+                         * nuclides(p % event_nuclide) % &
+                         nu(E, EMISSION_DELAYED, d) &
                          / micro_xs(p % event_nuclide) % absorption * flux
                   end do
                 end associate
@@ -794,15 +806,16 @@ contains
                   select type(filt => t % filters(dg_filter) % obj)
                   type is (DelayedGroupFilter)
 
-                    ! loop over delayed group bins until the corresponding bin is
-                    ! found
+                    ! loop over delayed group bins until the corresponding bin
+                    ! is found
                     do d_bin = 1, filt % n_bins
                       d = filt % groups(d_bin)
 
-                      ! check whether the delayed group of the particle is equal to
-                      ! the delayed group of this bin
+                      ! check whether the delayed group of the particle is equal
+                      ! to the delayed group of this bin
                       if (d == g) then
-                        call score_fission_delayed_dg(t, d_bin, score, score_index)
+                        call score_fission_delayed_dg(t, d_bin, score, &
+                                                      score_index)
                       end if
                     end do
                   end select
@@ -879,6 +892,52 @@ contains
               type is (DelayedGroupFilter)
 
                 ! Loop over all nuclides in the current material
+                if (p % material /= MATERIAL_VOID) then
+                  do l = 1, materials(p % material) % n_nuclides
+
+                    ! Get atom density
+                    atom_density_ = materials(p % material) % atom_density(l)
+
+                    ! Get index in nuclides array
+                    i_nuc = materials(p % material) % nuclide(l)
+
+                    if (nuclides(i_nuc) % fissionable) then
+
+                      ! Loop over all delayed group bins and tally to them
+                      ! individually
+                      do d_bin = 1, filt % n_bins
+
+                        ! Get the delayed group for this bin
+                        d = filt % groups(d_bin)
+
+                        ! Get the yield for the desired nuclide and delayed
+                        ! group
+                        yield = nuclides(i_nuc) % nu(E, EMISSION_DELAYED, d)
+
+                        associate (rxn => nuclides(i_nuc) % &
+                             reactions(nuclides(i_nuc) % index_fission(1)))
+
+                          ! Compute the score
+                          score = micro_xs(i_nuc) % fission * yield * flux * &
+                               atom_density_ &
+                               * rxn % products(1 + d) % decay_rate
+                        end associate
+
+                        ! Tally to bin
+                        call score_fission_delayed_dg(t, d_bin, score, &
+                                                      score_index)
+                      end do
+                    end if
+                  end do
+                end if
+                cycle SCORE_LOOP
+              end select
+            else
+
+              score = ZERO
+
+              ! Loop over all nuclides in the current material
+              if (p % material /= MATERIAL_VOID) then
                 do l = 1, materials(p % material) % n_nuclides
 
                   ! Get atom density
@@ -889,63 +948,26 @@ contains
 
                   if (nuclides(i_nuc) % fissionable) then
 
-                    ! Loop over all delayed group bins and tally to them
-                    ! individually
-                    do d_bin = 1, filt % n_bins
+                    associate (rxn => nuclides(i_nuc) % &
+                         reactions(nuclides(i_nuc) % index_fission(1)))
 
-                      ! Get the delayed group for this bin
-                      d = filt % groups(d_bin)
+                      ! We need to be careful not to overshoot the number of
+                      ! delayed groups since this could cause the range of the
+                      ! rxn % products array to be exceeded. Hence, we use the
+                      ! size of this array and not the MAX_DELAYED_GROUPS
+                      ! constant for this loop.
+                      do d = 1, size(rxn % products) - 2
 
-                      ! Get the yield for the desired nuclide and delayed group
-                      yield = nuclides(i_nuc) % nu(E, EMISSION_DELAYED, d)
-
-                      associate (rxn => nuclides(i_nuc) % &
-                           reactions(nuclides(i_nuc) % index_fission(1)))
-
-                        ! Compute the score
-                        score = micro_xs(i_nuc) % fission * yield * flux * &
-                             atom_density_ * rxn % products(1 + d) % decay_rate
-                      end associate
-
-                      ! Tally to bin
-                      call score_fission_delayed_dg(t, d_bin, score, score_index)
-                    end do
+                        ! Accumulate the contribution from each nuclide
+                        score = score + micro_xs(i_nuc) % fission &
+                             * nuclides(i_nuc) % nu(E, EMISSION_DELAYED) &
+                             * atom_density_ * flux &
+                             * rxn % products(1 + d) % decay_rate
+                      end do
+                    end associate
                   end if
                 end do
-                cycle SCORE_LOOP
-              end select
-            else
-
-              score = ZERO
-
-              ! Loop over all nuclides in the current material
-              do l = 1, materials(p % material) % n_nuclides
-
-                ! Get atom density
-                atom_density_ = materials(p % material) % atom_density(l)
-
-                ! Get index in nuclides array
-                i_nuc = materials(p % material) % nuclide(l)
-
-                if (nuclides(i_nuc) % fissionable) then
-
-                  associate (rxn => nuclides(i_nuc) % &
-                       reactions(nuclides(i_nuc) % index_fission(1)))
-
-                    ! We need to be careful not to overshoot the number of delayed
-                    ! groups since this could cause the range of the rxn % products
-                    ! array to be exceeded. Hence, we use the size of this array
-                    ! and not the MAX_DELAYED_GROUPS constant for this loop.
-                    do d = 1, size(rxn % products) - 2
-
-                      ! Accumulate the contribution from each nuclide
-                      score = score + micro_xs(i_nuc) % fission * nuclides(i_nuc) %&
-                           nu(E, EMISSION_DELAYED) * atom_density_ * flux * &
-                           rxn % products(1 + d) % decay_rate
-                    end do
-                  end associate
-                end if
-              end do
+              end if
             end if
           end if
         end if
@@ -996,20 +1018,24 @@ contains
               end if
             end associate
           else
-            do l = 1, materials(p % material) % n_nuclides
-              ! Determine atom density and index of nuclide
-              atom_density_ = materials(p % material) % atom_density(l)
-              i_nuc = materials(p % material) % nuclide(l)
+            if (p % material == MATERIAL_VOID) then
+              score = ZERO
+            else
+              do l = 1, materials(p % material) % n_nuclides
+                ! Determine atom density and index of nuclide
+                atom_density_ = materials(p % material) % atom_density(l)
+                i_nuc = materials(p % material) % nuclide(l)
 
-              ! If nuclide is fissionable, accumulate kappa fission
-              associate(nuc => nuclides(i_nuc))
-                if (nuc % fissionable) then
-                  score = score + &
-                       nuc % reactions(nuc % index_fission(1)) % Q_value * &
-                       micro_xs(i_nuc) % fission * atom_density_ * flux
-                end if
-              end associate
-            end do
+                ! If nuclide is fissionable, accumulate kappa fission
+                associate(nuc => nuclides(i_nuc))
+                  if (nuc % fissionable) then
+                    score = score + &
+                         nuc % reactions(nuc % index_fission(1)) % Q_value * &
+                         micro_xs(i_nuc) % fission * atom_density_ * flux
+                  end if
+                end associate
+              end do
+            end if
           end if
         end if
 
@@ -1077,15 +1103,17 @@ contains
                       * nuclides(i_nuclide) % fission_q_prompt % evaluate(E)
             end if
           else
-            do l = 1, materials(p % material) % n_nuclides
-              atom_density_ = materials(p % material) % atom_density(l)
-              i_nuc = materials(p % material) % nuclide(l)
-              if (allocated(nuclides(i_nuc) % fission_q_prompt)) then
-                score = score + micro_xs(i_nuc) % fission * atom_density_ &
-                        * flux &
-                        * nuclides(i_nuc) % fission_q_prompt % evaluate(E)
-              end if
-            end do
+            if (p % material /= MATERIAL_VOID) then
+              do l = 1, materials(p % material) % n_nuclides
+                atom_density_ = materials(p % material) % atom_density(l)
+                i_nuc = materials(p % material) % nuclide(l)
+                if (allocated(nuclides(i_nuc) % fission_q_prompt)) then
+                  score = score + micro_xs(i_nuc) % fission * atom_density_ &
+                          * flux &
+                          * nuclides(i_nuc) % fission_q_prompt % evaluate(E)
+                end if
+              end do
+            end if
           end if
         end if
 
@@ -1135,14 +1163,17 @@ contains
                       * nuclides(i_nuclide) % fission_q_recov % evaluate(E)
             end if
           else
-            do l = 1, materials(p % material) % n_nuclides
-              atom_density_ = materials(p % material) % atom_density(l)
-              i_nuc = materials(p % material) % nuclide(l)
-              if (allocated(nuclides(i_nuc) % fission_q_recov)) then
-                score = score + micro_xs(i_nuc) % fission * atom_density_ &
-                        * flux * nuclides(i_nuc) % fission_q_recov % evaluate(E)
-              end if
-            end do
+            if (p % material /= MATERIAL_VOID) then
+              do l = 1, materials(p % material) % n_nuclides
+                atom_density_ = materials(p % material) % atom_density(l)
+                i_nuc = materials(p % material) % nuclide(l)
+                if (allocated(nuclides(i_nuc) % fission_q_recov)) then
+                  score = score + micro_xs(i_nuc) % fission * atom_density_ &
+                          * flux &
+                          * nuclides(i_nuc) % fission_q_recov % evaluate(E)
+                end if
+              end do
+            end if
           end if
         end if
 
@@ -1169,44 +1200,74 @@ contains
                 ! Retrieve temperature and energy grid index and interpolation
                 ! factor
                 i_temp = micro_xs(i_nuclide) % index_temp
-                i_energy = micro_xs(i_nuclide) % index_grid
-                f = micro_xs(i_nuclide) % interp_factor
+                if (i_temp > 0) then
+                  i_energy = micro_xs(i_nuclide) % index_grid
+                  f = micro_xs(i_nuclide) % interp_factor
 
-                associate (xs => nuclides(i_nuclide) % reactions(m) % xs(i_temp))
-                  if (i_energy >= xs % threshold) then
-                    score = ((ONE - f) * xs % value(i_energy - &
-                         xs % threshold + 1) + f * xs % value(i_energy - &
-                         xs % threshold + 2)) * atom_density * flux
+                  associate (xs => nuclides(i_nuclide) % reactions(m) &
+                             % xs(i_temp))
+                    if (i_energy >= xs % threshold) then
+                      score = ((ONE - f) * xs % value(i_energy - &
+                           xs % threshold + 1) + f * xs % value(i_energy - &
+                           xs % threshold + 2)) * atom_density * flux
+                    end if
+                  end associate
+                else
+                  ! This block is reached if multipole is turned on and we're in
+                  ! the resolved range. For (n,gamma), use absorption -
+                  ! fission. For everything else, assume it's zero.
+                  if (score_bin == N_GAMMA) then
+                    score = (micro_xs(i_nuclide) % absorption - &
+                         micro_xs(i_nuclide) % fission) * atom_density * flux
+                  else
+                    score = ZERO
                   end if
-                end associate
+                end if
               end if
 
             else
-              do l = 1, materials(p % material) % n_nuclides
-                ! Get atom density
-                atom_density_ = materials(p % material) % atom_density(l)
+              if (p % material /= MATERIAL_VOID) then
+                do l = 1, materials(p % material) % n_nuclides
+                  ! Get atom density
+                  atom_density_ = materials(p % material) % atom_density(l)
 
-                ! Get index in nuclides array
-                i_nuc = materials(p % material) % nuclide(l)
+                  ! Get index in nuclides array
+                  i_nuc = materials(p % material) % nuclide(l)
 
-                if (nuclides(i_nuc)%reaction_index%has_key(score_bin)) then
-                  m = nuclides(i_nuc)%reaction_index%get_key(score_bin)
+                  if (nuclides(i_nuc)%reaction_index%has_key(score_bin)) then
+                    m = nuclides(i_nuc)%reaction_index%get_key(score_bin)
 
-                  ! Retrieve temperature and energy grid index and interpolation
-                  ! factor
-                  i_temp = micro_xs(i_nuc) % index_temp
-                  i_energy = micro_xs(i_nuc) % index_grid
-                  f = micro_xs(i_nuc) % interp_factor
+                    ! Retrieve temperature and energy grid index and
+                    ! interpolation factor
+                    i_temp = micro_xs(i_nuc) % index_temp
+                    if (i_temp > 0) then
+                      i_energy = micro_xs(i_nuc) % index_grid
+                      f = micro_xs(i_nuc) % interp_factor
 
-                  associate (xs => nuclides(i_nuc) % reactions(m) % xs(i_temp))
-                    if (i_energy >= xs % threshold) then
-                      score = score + ((ONE - f) * xs % value(i_energy - &
-                           xs % threshold + 1) + f * xs % value(i_energy - &
-                           xs % threshold + 2)) * atom_density_ * flux
+                      associate (xs => nuclides(i_nuc) % reactions(m) &
+                                 % xs(i_temp))
+                        if (i_energy >= xs % threshold) then
+                          score = score + ((ONE - f) * xs % value(i_energy - &
+                               xs % threshold + 1) + f * xs % value(i_energy - &
+                               xs % threshold + 2)) * atom_density_ * flux
+                        end if
+                      end associate
+                    else
+                      ! This block is reached if multipole is turned on and
+                      ! we're in the resolved range. For (n,gamma), use
+                      ! absorption - fission. For everything else, assume it's
+                      ! zero.
+                      if (score_bin == N_GAMMA) then
+                        score = (micro_xs(i_nuc) % absorption &
+                                 - micro_xs(i_nuc) % fission) &
+                                * atom_density_ * flux
+                      else
+                        score = ZERO
+                      end if
                     end if
-                  end associate
-                end if
-              end do
+                  end if
+                end do
+              end if
             end if
 
           else

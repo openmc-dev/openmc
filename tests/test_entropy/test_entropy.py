@@ -5,7 +5,7 @@ import os
 import sys
 sys.path.insert(0, os.pardir)
 from testing_harness import TestHarness
-from openmc.statepoint import StatePoint
+from openmc import StatePoint
 
 
 class EntropyTestHarness(TestHarness):
@@ -13,21 +13,19 @@ class EntropyTestHarness(TestHarness):
         """Digest info in the statepoint and return as a string."""
         # Read the statepoint file.
         statepoint = glob.glob(os.path.join(os.getcwd(), self._sp_name))[0]
-        sp = StatePoint(statepoint)
+        with StatePoint(statepoint) as sp:
+            # Write out k-combined.
+            outstr = 'k-combined:\n'
+            outstr += '{0:12.6E} {1:12.6E}\n'.format(*sp.k_combined)
 
-        # Write out k-combined.
-        outstr = 'k-combined:\n'
-        form = '{0:12.6E} {1:12.6E}\n'
-        outstr += form.format(sp.k_combined[0], sp.k_combined[1])
-
-        # Write out entropy data.
-        outstr += 'entropy:\n'
-        results = ['{0:12.6E}'.format(x) for x in sp.entropy]
-        outstr += '\n'.join(results) + '\n'
+            # Write out entropy data.
+            outstr += 'entropy:\n'
+            results = ['{0:12.6E}'.format(x) for x in sp.entropy]
+            outstr += '\n'.join(results) + '\n'
 
         return outstr
 
 
 if __name__ == '__main__':
-    harness = EntropyTestHarness('statepoint.10.*')
+    harness = EntropyTestHarness('statepoint.10.h5')
     harness.main()

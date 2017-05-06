@@ -6,7 +6,7 @@ Multi-Group Mode Part III: Advanced Feature Showcase
 
 .. only:: html
 
-    .. notebook:: mg-mode-part-iii.ipynb
+    .. notebook:: ../../../examples/jupyter/mg-mode-part-iii.ipynb
 
 .. only:: latex
 

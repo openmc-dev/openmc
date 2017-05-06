@@ -922,13 +922,13 @@ class MGXS(object):
         # Override the domain object that loaded from an OpenMC summary file
         # NOTE: This is necessary for micro cross-sections which require
         # the isotopic number densities as computed by OpenMC
-        geom = statepoint.summary.geometry
+        su = statepoint.summary
         if self.domain_type in ('cell', 'distribcell'):
-            self.domain = geom.get_all_cells()[self.domain.id]
+            self.domain = su._fast_cells[self.domain.id]
         elif self.domain_type == 'universe':
-            self.domain = geom.get_all_universes()[self.domain.id]
+            self.domain = su._fast_universes[self.domain.id]
         elif self.domain_type == 'material':
-            self.domain = geom.get_all_materials()[self.domain.id]
+            self.domain = su._fast_materials[self.domain.id]
         elif self.domain_type == 'mesh':
             self.domain = statepoint.meshes[self.domain.id]
         else:
@@ -3917,6 +3917,9 @@ class ScatterMatrixXS(MatrixMGXS):
                         scatter_p0 = self.tallies['{}-0'.format(self.rxn_type)]
                         scatter_p1 = self.tallies['{}-1'.format(self.rxn_type)]
                         energy_filter = scatter_p0.find_filter(openmc.EnergyFilter)
+
+                        # Transform scatter-p1 tally into an energyin/out matrix
+                        # to match scattering matrix shape for tally arithmetic
                         energy_filter = copy.deepcopy(energy_filter)
                         scatter_p1 = scatter_p1.diagonalize_filter(energy_filter)
                         self._rxn_rate_tally = scatter_p0 - scatter_p1
@@ -3956,10 +3959,6 @@ class ScatterMatrixXS(MatrixMGXS):
                 self._xs_tally = MGXS.xs_tally.fget(self)
 
             else:
-                # Compute groupwise scattering cross section
-                self._xs_tally = self.tallies['scatter'] / \
-                                 self.tallies['flux (tracklength)']
-
                 # Compute scattering probability matrix
                 energyout_bins = [self.energy_groups.get_group_bounds(i)
                                   for i in range(self.num_groups, 0, -1)]
@@ -3990,8 +3989,13 @@ class ScatterMatrixXS(MatrixMGXS):
                     # Remove the AggregateFilter summed across mu bins
                     norm._filters = norm._filters[:2]
 
-                # Multiply by the group-to-group probability matrix
-                self._xs_tally *= (self.tallies[tally_key] / norm)
+                # Compute groupwise scattering cross section
+                self._xs_tally = self.tallies['scatter'] * \
+                                 self.tallies[tally_key] / norm / \
+                                 self.tallies['flux (tracklength)']
+
+                # Override the nuclides for tally arithmetic
+                self._xs_tally.nuclides = self.tallies['scatter'].nuclides
 
                 # Multiply by the multiplicity matrix
                 if self.nu:
@@ -4001,14 +4005,22 @@ class ScatterMatrixXS(MatrixMGXS):
 
                 # If using P0 correction subtract scatter-1 from the diagonal
                 if self.correction == 'P0' and self.legendre_order == 0:
-                    flux = self.tallies['flux (analog)']
                     scatter_p1 = self.tallies['{}-1'.format(self.rxn_type)]
+                    flux = self.tallies['flux (analog)']
 
+                    # Transform scatter-p1 tally into an energyin/out matrix
+                    # to match scattering matrix shape for tally arithmetic
                     energy_filter = flux.find_filter(openmc.EnergyFilter)
                     energy_filter = copy.deepcopy(energy_filter)
                     scatter_p1 = scatter_p1.diagonalize_filter(energy_filter)
-                    self._xs_tally -= (scatter_p1 / flux)
 
+                    # Compute the trasnport correction term
+                    correction = scatter_p1 / flux
+
+                    # Override the nuclides for tally arithmetic
+                    correction.nuclides = scatter_p1.nuclides
+                    self._xs_tally -= correction
+                
                 self._compute_xs()
 
         return self._xs_tally

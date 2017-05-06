@@ -1,25 +1,14 @@
 #!/usr/bin/env python
-"""Convert binary particle track to VTK poly data.
 
-Usage information can be obtained by running 'track.py --help':
-
-    usage: track.py [-h] [-o OUT] IN [IN ...]
-
-    Convert particle track file to a .pvtp file.
-
-    positional arguments:
-      IN                 Input particle track data filename(s).
-
-    optional arguments:
-      -h, --help         show this help message and exit
-      -o OUT, --out OUT  Output VTK poly data filename.
+"""Convert HDF5 particle track to VTK poly data.
 
 """
 
 import os
 import argparse
-import h5py
 import struct
+
+import h5py
 import vtk
 
 
@@ -53,8 +42,8 @@ def main():
     for fname in args.input:
         # Write coordinate values to points array.
         track = h5py.File(fname)
-        n_particles = track['n_particles'].value
-        n_coords = track['n_coords']
+        n_particles = track.attrs['n_particles']
+        n_coords = track.attrs['n_coords']
         coords = []
         for i in range(n_particles):
             coords.append(track['coordinates_' + str(i + 1)].value)

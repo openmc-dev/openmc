@@ -71,11 +71,12 @@ class Settings(object):
         Indicate that all user-defined and global tallies should not be reduced
         across processes in a parallel calculation.
     output : dict
-        Dictionary indicating what files to output. Valid keys are 'summary',
-        'cross_sections', 'tallies', and 'distribmats'. Values corresponding to
-        each key should be given as a boolean value.
-    output_path : str
-        Path to write output to
+        Dictionary indicating what files to output. Acceptable keys are:
+
+        :path: String indicating a directory where output files should be
+               written
+        :summary: Whether the 'summary.h5' file should be written (bool)
+        :tallies: Whether the 'tallies.out' file should be written (bool)
     particles : int
         Number of particles per generation
     ptables : bool
@@ -193,7 +194,6 @@ class Settings(object):
         self._trigger_batch_interval = None
 
         self._output = None
-        self._output_path = None
 
         # Output options
         self._statepoint = {}
@@ -314,10 +314,6 @@ class Settings(object):
     @property
     def output(self):
         return self._output
-
-    @property
-    def output_path(self):
-        return self._output_path
 
     @property
     def sourcepoint(self):
@@ -479,29 +475,14 @@ class Settings(object):
 
     @output.setter
     def output(self, output):
-        if not isinstance(output, dict):
-            msg = 'Unable to set output to "{0}" which is not a Python ' \
-                  'dictionary of string keys and boolean values'.format(output)
-            raise ValueError(msg)
-
-        for element in output:
-            keys = ['summary', 'cross_sections', 'tallies', 'distribmats']
-            if element not in keys:
-                msg = 'Unable to set output to "{0}" which is unsupported by ' \
-                      'OpenMC'.format(element)
-                raise ValueError(msg)
-
-            if not isinstance(output[element], (bool, np.bool)):
-                msg = 'Unable to set output for "{0}" to a non-boolean ' \
-                      'value "{1}"'.format(element, output[element])
-                raise ValueError(msg)
-
+        cv.check_type('output', output, Mapping)
+        for key, value in output.items():
+            cv.check_value('output key', key, ('summary', 'tallies', 'path'))
+            if key in ('summary', 'tallies'):
+                cv.check_type("output['{}']".format(key), value, bool)
+            else:
+                cv.check_type("output['path']", value, string_types)
         self._output = output
-
-    @output_path.setter
-    def output_path(self, output_path):
-        cv.check_type('output path', output_path, string_types)
-        self._output_path = output_path
 
     @verbosity.setter
     def verbosity(self, verbosity):
@@ -876,13 +857,12 @@ class Settings(object):
         if self._output is not None:
             element = ET.SubElement(root, "output")
 
-            for key in self._output:
+            for key, value in self._output.items():
                 subelement = ET.SubElement(element, key)
-                subelement.text = str(self._output[key]).lower()
-
-            if self._output_path is not None:
-                element = ET.SubElement(root, "output_path")
-                element.text = self._output_path
+                if key in ('summary', 'tallies'):
+                    subelement.text = str(value).lower()
+                else:
+                    subelement.text = value
 
     def _create_verbosity_subelement(self, root):
         if self._verbosity is not None:
@@ -1017,7 +997,10 @@ class Settings(object):
             for key, value in sorted(self.temperature.items()):
                 element = ET.SubElement(root,
                                         "temperature_{}".format(key))
-                element.text = str(value)
+                if isinstance(value, bool):
+                    element.text = str(value).lower()
+                else:
+                    element.text = str(value)
 
     def _create_threads_subelement(self, root):
         if self._threads is not None:

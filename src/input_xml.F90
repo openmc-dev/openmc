@@ -5038,6 +5038,7 @@ contains
     integer :: m            ! position for sorting
     integer :: temp_nuclide ! temporary value for sorting
     integer :: temp_table   ! temporary value for sorting
+    logical :: found
     type(VectorInt) :: i_sab_tables
     type(VectorInt) :: i_sab_nuclides
 
@@ -5051,17 +5052,19 @@ contains
           ! In order to know which nuclide the S(a,b) table applies to, we need
           ! to search through the list of nuclides for one which has a matching
           ! name
+          found = .false.
           associate (sab => sab_tables(mat % i_sab_tables(k)))
             FIND_NUCLIDE: do j = 1, size(mat % nuclide)
               if (any(sab % nuclides == nuclides(mat % nuclide(j)) % name)) then
-                call i_sab_tables % push_back(k)
+                call i_sab_tables % push_back(mat % i_sab_tables(k))
                 call i_sab_nuclides % push_back(j)
+                found = .true.
               end if
             end do FIND_NUCLIDE
           end associate
 
           ! Check to make sure S(a,b) table matched a nuclide
-          if (find(i_sab_tables, k) == -1) then
+          if (.not. found) then
             call fatal_error("S(a,b) table " // trim(mat % &
                  sab_names(k)) // " did not match any nuclide on material " &
                  // trim(to_str(mat % id)))

@@ -970,13 +970,13 @@ def pack_trisos(radius, fill, domain_shape='cylinder', domain_length=None,
         raise ValueError('"domain_radius" must be specified for {} domain '
                          'geometry '.format(domain_shape))
 
-    if domain_shape is 'cube':
+    if domain_shape == 'cube':
         domain = _CubicDomain(length=domain_length, particle_radius=radius,
                               center=domain_center)
-    elif domain_shape is 'cylinder':
+    elif domain_shape == 'cylinder':
         domain = _CylindricalDomain(length=domain_length, radius=domain_radius,
                                     particle_radius=radius, center=domain_center)
-    elif domain_shape is 'sphere':
+    elif domain_shape == 'sphere':
         domain = _SphericalDomain(radius=domain_radius, particle_radius=radius,
                                   center=domain_center)
 

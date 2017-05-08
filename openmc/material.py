@@ -907,6 +907,58 @@ class Material(IDManagerMixin):
 
         return element
 
+    @classmethod
+    def from_xml_element(cls, elem):
+        """Generate material from an XML element
+
+        Parameters
+        ----------
+        elem : xml.etree.ElementTree.Element
+            XML element
+
+        Returns
+        -------
+        openmc.Material
+            Material generated from XML element
+
+        """
+        mat_id = int(elem.get('id'))
+        mat = cls(mat_id)
+        mat.name = elem.get('name')
+        mat.temperature = elem.get('temperature')
+        mat.depletable = bool(elem.get('depletable'))
+
+        # Get each nuclide
+        for nuclide in elem.findall('nuclide'):
+            name = nuclide.attrib['name']
+            if 'ao' in nuclide.attrib:
+                mat.add_nuclide(name, float(nuclide.attrib['ao']))
+            elif 'wo' in nuclide.attrib:
+                mat.add_nuclide(name, float(nuclide.attrib['wo']), 'wo')
+
+        # Get each element
+        for element in elem.findall('element'):
+            name = element.attrib['name']
+            if 'ao' in element.attrib:
+                mat.add_element(name, float(element.attrib['ao']))
+            elif 'wo' in element.attrib:
+                mat.add_element(name, float(element.attrib['wo']), 'wo')
+
+        # Get each S(a,b) table
+        for sab in elem.findall('sab'):
+            mat.add_s_alpha_beta(sab.get('name'))
+
+        # Get total material density
+        density = elem.find('density')
+        units = density.get('units')
+        if units == 'sum':
+            mat.set_density(units)
+        else:
+            value = float(density.get('value'))
+            mat.set_density(units, value)
+
+        return mat
+
 
 class Materials(cv.CheckedList):
     """Collection of Materials used for an OpenMC simulation.
@@ -1031,3 +1083,35 @@ class Materials(cv.CheckedList):
         # Write the XML Tree to the materials.xml file
         tree = ET.ElementTree(root_element)
         tree.write(path, xml_declaration=True, encoding='utf-8')
+
+    @classmethod
+    def from_xml(cls, path='materials.xml'):
+        """Generate materials collection from XML file
+
+        Parameters
+        ----------
+        path : str, optional
+            Path to materials XML file
+
+        Returns
+        -------
+        openmc.Materials
+            Materials collection
+
+        """
+        tree = ET.parse(path)
+        root = tree.getroot()
+
+        materials = cls()
+        for material in root.findall('material'):
+            materials.append(Material.from_xml_element(material))
+
+        xs = tree.find('cross_sections')
+        if xs is not None:
+            materials.cross_sections = xs.text
+
+        mpl = tree.find('multipole_library')
+        if mpl is not None:
+            materials.multipole_library = mpl.text
+
+        return materials

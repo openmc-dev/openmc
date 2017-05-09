@@ -816,18 +816,18 @@ contains
           if (size(t % filter) == 0) exit find_bin
 
           ! Increment bin combination
-          filter_matches(j) % bins % data(1) = &
-               filter_matches(j) % bins % data(1) + 1
+          filter_matches(t % filter(j)) % bins % data(1) = &
+               filter_matches(t % filter(j)) % bins % data(1) + 1
 
           ! =================================================================
           ! REACHED END OF BINS FOR THIS FILTER, MOVE TO NEXT FILTER
 
-          if (filter_matches(j) % bins % data(1) > &
+          if (filter_matches(t % filter(j)) % bins % data(1) > &
                filters(t % filter(j)) % obj % n_bins) then
             ! If this is the first filter, then exit
             if (j == 1) exit print_bin
 
-            filter_matches(j) % bins % data(1) = 0
+            filter_matches(t % filter(j)) % bins % data(1) = 0
             j = j - 1
             indent = indent - 2
 
@@ -841,7 +841,7 @@ contains
             ! Print current filter information
             write(UNIT=unit_tally, FMT='(1X,2A)') repeat(" ", indent), &
                  trim(filters(t % filter(j)) % obj % &
-                 text_label(filter_matches(j) % bins % data(1)))
+                 text_label(filter_matches(t % filter(j)) % bins % data(1)))
             indent = indent + 2
             j = j + 1
           end if
@@ -852,7 +852,7 @@ contains
         if (size(t % filter) > 0) then
           write(UNIT=unit_tally, FMT='(1X,2A)') repeat(" ", indent), &
                trim(filters(t % filter(j)) % obj % &
-               text_label(filter_matches(j) % bins % data(1)))
+               text_label(filter_matches(t % filter(j)) % bins % data(1)))
         end if
 
         ! Determine scoring index for this bin combination -- note that unlike

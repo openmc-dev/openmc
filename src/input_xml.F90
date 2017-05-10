@@ -5301,43 +5301,51 @@ contains
   subroutine assign_0K_elastic_scattering(nuc)
     type(Nuclide), intent(inout) :: nuc
 
-    integer :: i, j
+    integer :: i
     real(8) :: xs_cdf_sum
 
-    do i = 1, size(res_scat_nuclides)
-      if (nuc % name == res_scat_nuclides(i)) then
-        ! Make sure nuclide has 0K data
-        if (.not. allocated(nuc % energy_0K)) then
-          call fatal_error("Cannot treat " // trim(nuc % name) // " as a &
-               &resonant scatterer because 0 K elastic scattering data is not &
-               &present.")
+    nuc % resonant = .false.
+    if (allocated(res_scat_nuclides)) then
+      ! If resonant nuclides were specified, check the list explicitly
+      do i = 1, size(res_scat_nuclides)
+        if (nuc % name == res_scat_nuclides(i)) then
+          nuc % resonant = .true.
+
+          ! Make sure nuclide has 0K data
+          if (.not. allocated(nuc % energy_0K)) then
+            call fatal_error("Cannot treat " // trim(nuc % name) // " as a &
+                 &resonant scatterer because 0 K elastic scattering data is &
+                 &not present.")
+          end if
+
+          exit
         end if
+      end do
+    else
+      ! Otherwise, assume that any that have 0 K elastic scattering data are
+      ! resonant
+      nuc % resonant = allocated(nuc % energy_0K)
+    end if
 
-        ! Set nuclide to be resonant
-        nuc % resonant = .true.
+    if (nuc % resonant) then
+      ! Build CDF for 0K elastic scattering
+      xs_cdf_sum = ZERO
+      allocate(nuc % xs_cdf(0:size(nuc % energy_0K)))
+      nuc % xs_cdf(0) = ZERO
 
-        ! Build CDF for 0K elastic scattering
-        xs_cdf_sum = ZERO
-        allocate(nuc % xs_cdf(0:size(nuc % energy_0K)))
-        nuc % xs_cdf(0) = ZERO
+      associate (E => nuc % energy_0K, xs => nuc % elastic_0K)
+        do i = 1, size(E) - 1
+          ! Negative cross sections result in a CDF that is not monotonically
+          ! increasing. Set all negative xs values to zero.
+          if (xs(i) < ZERO) xs(i) = ZERO
 
-        associate (E => nuc % energy_0K, xs => nuc % elastic_0K)
-          do j = 1, size(E) - 1
-            ! Negative cross sections result in a CDF that is not monotonically
-            ! increasing. Set all negative xs values to zero.
-            if (xs(j) < ZERO) xs(j) = ZERO
-
-            ! build xs cdf
-            xs_cdf_sum = xs_cdf_sum + (sqrt(E(j))*xs(j) + sqrt(E(j+1))*xs(j+1))&
-                 / TWO * (E(j+1) - E(j))
-            nuc % xs_cdf(j) = xs_cdf_sum
-          end do
-        end associate
-
-        exit
-      end if
-    end do
-
+          ! build xs cdf
+          xs_cdf_sum = xs_cdf_sum + (sqrt(E(i))*xs(i) + sqrt(E(i+1))*xs(i+1))&
+               / TWO * (E(i+1) - E(i))
+          nuc % xs_cdf(i) = xs_cdf_sum
+        end do
+      end associate
+    end if
   end subroutine assign_0K_elastic_scattering
 
 !===============================================================================

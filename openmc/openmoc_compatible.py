@@ -363,6 +363,13 @@ def get_openmoc_region(openmc_region):
     if isinstance(openmc_region, openmc.Halfspace):
         surface = openmc_region.surface
         halfspace = -1 if openmc_region.side == '-' else 1
+
+        # OpenMOC implements generic planes using the opposite notation
+        # for halfspaces as OpenMC, so correct for that here
+        openmoc_surface = get_openmoc_surface(surface)
+        if openmoc_surface.getSurfaceType() == openmoc.PLANE:
+            halfspace *= -1
+
         openmoc_region = \
             openmoc.Halfspace(halfspace, get_openmoc_surface(surface))
     elif isinstance(openmc_region, openmc.Intersection):
@@ -401,8 +408,16 @@ def get_openmc_region(openmoc_region):
     if openmoc_region.getRegionType() == openmoc.HALFSPACE:
         openmoc_region = openmoc.castRegionToHalfspace(openmoc_region)
         surface = get_openmc_surface(openmoc_region.getSurface())
-        side = '-' if openmoc_region.getHalfspace() == -1 else '+'
+
+        # OpenMOC implements generic planes using the opposite notation
+        # for halfspaces as OpenMC, so correct for that here
+        if openmoc_region.getSurface().getSurfaceType() == openmoc.PLANE:
+            side = '+' if openmoc_region.getHalfspace() == -1 else '-'
+        else:
+            side = '-' if openmoc_region.getHalfspace() == -1 else '+'
+
         openmc_region = openmc.Halfspace(surface, side)
+
     elif openmoc_region.getRegionType() == openmoc.INTERSECTION:
         openmc_region = openmc.Intersection()
         for openmoc_node in openmoc_region.getNodes():
@@ -708,8 +723,7 @@ def get_openmc_lattice(openmoc_lattice):
                 universe_array[x][y][z] = \
                     unique_universes[universe_id]
 
-    universe_array = np.swapaxes(universe_array, 0, 1)
-    universe_array = universe_array[::-1, :, :]
+    universe_array = np.swapaxes(universe_array, 0, 2)
 
     # Convert axially infinite 3D OpenMOC lattice to a 2D OpenMC lattice
     if width[2] == np.finfo(np.float64).max:

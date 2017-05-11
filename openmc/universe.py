@@ -76,10 +76,17 @@ class Universe(object):
             return False
         elif self.name != other.name:
             return False
-        elif self.cells != other.cells:
+        elif len(self.cells) != len(other.cells):
             return False
-        else:
-            return True
+
+        # Check each cell
+        for cell_id in self.cells:
+            if cell_id not in other.cells:
+                return False
+            if self.cells[cell_id] != other.cells[cell_id]:
+                return False
+
+        return True
 
     def __ne__(self, other):
         return not self == other

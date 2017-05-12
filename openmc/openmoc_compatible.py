@@ -172,7 +172,9 @@ def get_openmoc_surface(openmc_surface):
         B = openmc_surface.b
         C = openmc_surface.c
         D = openmc_surface.d
-        openmoc_surface = openmoc.Plane(A, B, C, D, surface_id, name)
+
+        # OpenMOC uses the opposite sign on D
+        openmoc_surface = openmoc.Plane(A, B, C, -D, surface_id, name)
 
     elif openmc_surface.type == 'x-plane':
         x0 = openmc_surface.x0
@@ -253,7 +255,9 @@ def get_openmc_surface(openmoc_surface):
         B = openmoc_surface.getB()
         C = openmoc_surface.getC()
         D = openmoc_surface.getD()
-        openmc_surface = openmc.Plane(surface_id, boundary, A, B, C, D, name)
+
+        # OpenMOC uses the opposite sign on D
+        openmc_surface = openmc.Plane(surface_id, boundary, A, B, C, -D, name)
 
     elif openmoc_surface.getSurfaceType() == openmoc.XPLANE:
         openmoc_surface = openmoc.castSurfaceToXPlane(openmoc_surface)
@@ -363,13 +367,6 @@ def get_openmoc_region(openmc_region):
     if isinstance(openmc_region, openmc.Halfspace):
         surface = openmc_region.surface
         halfspace = -1 if openmc_region.side == '-' else 1
-
-        # OpenMOC implements generic planes using the opposite notation
-        # for halfspaces as OpenMC, so correct for that here
-        openmoc_surface = get_openmoc_surface(surface)
-        if openmoc_surface.getSurfaceType() == openmoc.PLANE:
-            halfspace *= -1
-
         openmoc_region = \
             openmoc.Halfspace(halfspace, get_openmoc_surface(surface))
     elif isinstance(openmc_region, openmc.Intersection):
@@ -408,16 +405,8 @@ def get_openmc_region(openmoc_region):
     if openmoc_region.getRegionType() == openmoc.HALFSPACE:
         openmoc_region = openmoc.castRegionToHalfspace(openmoc_region)
         surface = get_openmc_surface(openmoc_region.getSurface())
-
-        # OpenMOC implements generic planes using the opposite notation
-        # for halfspaces as OpenMC, so correct for that here
-        if openmoc_region.getSurface().getSurfaceType() == openmoc.PLANE:
-            side = '+' if openmoc_region.getHalfspace() == -1 else '-'
-        else:
-            side = '-' if openmoc_region.getHalfspace() == -1 else '+'
-
+        side = '-' if openmoc_region.getHalfspace() == -1 else '+'
         openmc_region = openmc.Halfspace(surface, side)
-
     elif openmoc_region.getRegionType() == openmoc.INTERSECTION:
         openmc_region = openmc.Intersection()
         for openmoc_node in openmoc_region.getNodes():

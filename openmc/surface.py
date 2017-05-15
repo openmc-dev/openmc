@@ -1854,7 +1854,7 @@ class Halfspace(Region):
     def __init__(self, surface, side):
         self.surface = surface
         self.side = side
-        
+
     def __and__(self, other):
         if isinstance(other, Intersection):
             return Intersection(self, *other.nodes)
@@ -1913,25 +1913,25 @@ class Halfspace(Region):
     def __str__(self):
         return '-' + str(self.surface.id) if self.side == '-' \
             else str(self.surface.id)
-    
+
     def get_surfaces(self, surfaces=None):
         """
         Returns the surface that this is a halfspace of.
-    
+
         Parameters
         ----------
         surfaces: collections.OrderedDict, optional
             Dictionary mapping surface IDs to :class:`openmc.Surface` instances
-    
+
         Returns
         -------
         surfaces: collections.OrderedDict
             Dictionary mapping surface IDs to :class:`openmc.Surface` instances
-    
+
         """
         if surfaces is None:
             surfaces = OrderedDict()
-        
+
         surfaces[self.surface.id] = self.surface
         return surfaces
 
@@ -2091,3 +2091,107 @@ def get_hexagonal_prism(edge_length=1., orientation='y',
         upper_left = Plane(A=-c, B=1., D=c*l, boundary_type=boundary_type)
         return Intersection(-top, +bottom, -upper_right, +lower_right,
                             +lower_left, -upper_left)
+
+
+def get_square_cylinder(r_cylinder, r_corner, axis='z', origin=(0., 0.),
+                        boundary_type='transmission'):
+    """Get an infinite square cylinder using a collection of planes and cylinders.
+
+    Parameters
+    ----------
+    r_cylinder: float
+        Square cylinder radius in units of cm. The square cylinder is aligned
+        with the x, y, or z axis.
+    r_corner: float
+        Square cylinder corner radius in units of cm.
+    axis : {'x', 'y', 'z'}
+        Axis with which the infinite length of the square cylinder should be
+        aligned.
+        Defaults to 'z'.
+    origin: Iterable of two floats
+        Origin of the square cylinder. The two floats correspond to (y,z), (x,z)
+        or (x,y) for square cylinders parallel to the x, y or z axis,
+        respectively.
+        Defaults to (0., 0.).
+    boundary_type : {'transmission, 'vacuum', 'reflective', 'periodic'}
+        Boundary condition that defines the behavior for particles hitting the
+        surfaces comprising the square cylinder (default is 'transmission').
+
+    Returns
+    -------
+    openmc.Region
+        The inside of a square cylinder
+
+    """
+
+    check_type('r_cylinder', r_cylinder, Real)
+    check_type('r_corner', r_corner, Real)
+    check_value('axis', axis, ['x','y','z'])
+    check_type('origin', origin, Iterable, Real)
+
+    if axis == 'x':
+        y_min_z_min = XCylinder(name='y min z min', y0=-r_cylinder+r_corner,
+                                z0=-r_cylinder+r_corner, R=r_corner,
+                                boundary_type=boundary_type)
+        y_min_z_max = XCylinder(name='y min z max', y0=-r_cylinder+r_corner,
+                                z0= r_cylinder-r_corner, R=r_corner,
+                                boundary_type=boundary_type)
+        y_max_z_min = XCylinder(name='y max z min', y0= r_cylinder-r_corner,
+                                z0=-r_cylinder+r_corner, R=r_corner,
+                                boundary_type=boundary_type)
+        y_max_z_max = XCylinder(name='y max z max', y0= r_cylinder-r_corner,
+                                z0= r_cylinder-r_corner, R=r_corner,
+                                boundary_type=boundary_type)
+        corners = -y_min_z_min | -y_min_z_max | -y_max_z_min | -y_max_z_max
+    elif axis == 'y':
+        x_min_z_min = YCylinder(name='x min z min', x0=-r_cylinder+r_corner,
+                                z0=-r_cylinder+r_corner, R=r_corner,
+                                boundary_type=boundary_type)
+        x_min_z_max = YCylinder(name='x min z max', x0=-r_cylinder+r_corner,
+                                z0= r_cylinder-r_corner, R=r_corner,
+                                boundary_type=boundary_type)
+        x_max_z_min = YCylinder(name='x max z min', x0= r_cylinder-r_corner,
+                                z0=-r_cylinder+r_corner, R=r_corner,
+                                boundary_type=boundary_type)
+        x_max_z_max = YCylinder(name='x max z max', x0= r_cylinder-r_corner,
+                                z0= r_cylinder-r_corner, R=r_corner,
+                                boundary_type=boundary_type)
+        corners = -x_min_z_min | -x_min_z_max | -x_max_z_min | -x_max_z_max
+    elif axis == 'z':
+        x_min_y_min = ZCylinder(name='x min y min', x0=-r_cylinder+r_corner,
+                                y0=-r_cylinder+r_corner, R=r_corner,
+                                boundary_type=boundary_type)
+        x_min_y_max = ZCylinder(name='x min y max', x0=-r_cylinder+r_corner,
+                                y0= r_cylinder-r_corner, R=r_corner,
+                                boundary_type=boundary_type)
+        x_max_y_min = ZCylinder(name='x max y min', x0= r_cylinder-r_corner,
+                                y0=-r_cylinder+r_corner, R=r_corner,
+                                boundary_type=boundary_type)
+        x_max_y_max = ZCylinder(name='x max y max', x0= r_cylinder-r_corner,
+                                y0= r_cylinder-r_corner, R=r_corner,
+                                boundary_type=boundary_type)
+        corners = -x_min_y_min | -x_min_y_max | -x_max_y_min | -x_max_y_max
+
+    prism_1 = get_rectangular_prism(width=2*r_cylinder,
+                                    height=2*(r_cylinder - r_corner),
+                                    axis=axis,
+                                    origin=origin,
+                                    boundary_type=boundary_type)
+    origin_2 = list(origin)
+    origin_2[1] += r_cylinder - r_corner/2.
+    prism_2 = get_rectangular_prism(width=2*(r_cylinder - r_corner),
+                                    height=r_corner,
+                                    axis=axis,
+                                    origin=origin_2,
+                                    boundary_type=boundary_type)
+    origin_3 = list(origin)
+    origin_3[1] -= r_cylinder - r_corner/2.
+    prism_3 = get_rectangular_prism(width=2*(r_cylinder - r_corner),
+                                    height=r_corner,
+                                    axis=axis,
+                                    origin=origin_3,
+                                    boundary_type=boundary_type)
+
+    sqc = corners | prism_1 | prism_2 | prism_3
+
+    return sqc

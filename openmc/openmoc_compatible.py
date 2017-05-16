@@ -172,7 +172,9 @@ def get_openmoc_surface(openmc_surface):
         B = openmc_surface.b
         C = openmc_surface.c
         D = openmc_surface.d
-        openmoc_surface = openmoc.Plane(A, B, C, D, surface_id, name)
+
+        # OpenMOC uses the opposite sign on D
+        openmoc_surface = openmoc.Plane(A, B, C, -D, surface_id, name)
 
     elif openmc_surface.type == 'x-plane':
         x0 = openmc_surface.x0
@@ -253,7 +255,9 @@ def get_openmc_surface(openmoc_surface):
         B = openmoc_surface.getB()
         C = openmoc_surface.getC()
         D = openmoc_surface.getD()
-        openmc_surface = openmc.Plane(surface_id, boundary, A, B, C, D, name)
+
+        # OpenMOC uses the opposite sign on D
+        openmc_surface = openmc.Plane(surface_id, boundary, A, B, C, -D, name)
 
     elif openmoc_surface.getSurfaceType() == openmoc.XPLANE:
         openmoc_surface = openmoc.castSurfaceToXPlane(openmoc_surface)
@@ -708,8 +712,7 @@ def get_openmc_lattice(openmoc_lattice):
                 universe_array[x][y][z] = \
                     unique_universes[universe_id]
 
-    universe_array = np.swapaxes(universe_array, 0, 1)
-    universe_array = universe_array[::-1, :, :]
+    universe_array = np.swapaxes(universe_array, 0, 2)
 
     # Convert axially infinite 3D OpenMOC lattice to a 2D OpenMC lattice
     if width[2] == np.finfo(np.float64).max:

@@ -56,11 +56,11 @@ class Lattice(object):
             return False
         elif self.name != other.name:
             return False
-        elif self.pitch != other.pitch:
+        elif np.any(self.pitch != other.pitch):
             return False
         elif self.outer != other.outer:
             return False
-        elif self.universes != other.universes:
+        elif np.any(self.universes != other.universes):
             return False
         else:
             return True
@@ -533,7 +533,7 @@ class RectLattice(Lattice):
             return False
         elif self.shape != other.shape:
             return False
-        elif self.lower_left != other.lower_left:
+        elif np.any(self.lower_left != other.lower_left):
             return False
         else:
             return True

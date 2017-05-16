@@ -76,7 +76,7 @@ class Universe(object):
             return False
         elif self.name != other.name:
             return False
-        elif self.cells != other.cells:
+        elif dict.__ne__(self.cells, other.cells):
             return False
         else:
             return True

@@ -1998,144 +1998,63 @@ def get_rectangular_prism(width, height, axis='z', origin=(0., 0.),
     check_value('axis', axis, ['x','y','z'])
     check_type('origin', origin, Iterable, Real)
 
+    # Define function to create a plane on given axis
+    def plane(axis, name, value):
+        cls = globals()['{}Plane'.format(axis.upper())]
+        return cls(name='{} {}'.format(name, axis),
+                   boundary_type=boundary_type,
+                   **{axis + '0': value})
+
     if axis == 'x':
-        min_y = YPlane(name='minimum y', y0=-width/2.+origin[0],
-                       boundary_type=boundary_type)
-        max_y = YPlane(name='maximum y', y0=+width/2.+origin[0],
-                       boundary_type=boundary_type)
-        min_z = ZPlane(name='minimum z', z0=-height/2.+origin[1],
-                       boundary_type=boundary_type)
-        max_z = ZPlane(name='maximum z', z0=+height/2.+origin[1],
-                       boundary_type=boundary_type)
-        prism = +min_y & -max_y & +min_z & -max_z
+        x1, x2 = 'y', 'z'
     elif axis == 'y':
-        min_x = XPlane(name='minimum x', x0=-width/2.+origin[0],
-                       boundary_type=boundary_type)
-        max_x = XPlane(name='maximum x', x0=+width/2.+origin[0],
-                       boundary_type=boundary_type)
-        min_z = ZPlane(name='minimum z', z0=-height/2.+origin[1],
-                       boundary_type=boundary_type)
-        max_z = ZPlane(name='maximum z', z0=+height/2.+origin[1],
-                       boundary_type=boundary_type)
-        prism = +min_x & -max_x & +min_z & -max_z
+        x1, x2 = 'x', 'z'
     else:
-        min_x = XPlane(name='minimum x', x0=-width/2.+origin[0],
-                       boundary_type=boundary_type)
-        max_x = XPlane(name='maximum x', x0=+width/2.+origin[0],
-                       boundary_type=boundary_type)
-        min_y = YPlane(name='minimum y', y0=-height/2.+origin[1],
-                       boundary_type=boundary_type)
-        max_y = YPlane(name='maximum y', y0=+height/2.+origin[1],
-                       boundary_type=boundary_type)
-        prism = +min_x & -max_x & +min_y & -max_y
+        x1, x2 = 'x', 'y'
 
+    # Get cylinder class corresponding to given axis
+    cyl = globals()['{}Cylinder'.format(axis.upper())]
+
+    # Create rectangular region
+    min_x1 = plane(x1, 'minimum', -width/2. + origin[0])
+    max_x1 = plane(x1, 'maximum', width/2. + origin[0])
+    min_x2 = plane(x2, 'minimum', -height/2. + origin[1])
+    max_x2 = plane(x2, 'maximum', height/2. + origin[1])
+    prism = +min_x1 & -max_x1 & +min_x2 & -max_x2
+
+    # Handle rounded corners if given
     if corner_radius > 0.:
-        if axis == 'x':
-            y_min_z_min = XCylinder(name='y min z min',
-                                    y0=origin[0] - width /2. + corner_radius,
-                                    z0=origin[1] - height/2. + corner_radius,
-                                    R=corner_radius,
-                                    boundary_type=boundary_type)
-            y_min_z_max = XCylinder(name='y min z max',
-                                    y0=origin[0] - width /2. + corner_radius,
-                                    z0=origin[1] + height/2. - corner_radius,
-                                    R=corner_radius,
-                                    boundary_type=boundary_type)
-            y_max_z_min = XCylinder(name='y max z min',
-                                    y0=origin[0] + width /2. - corner_radius,
-                                    z0=origin[1] - height/2. + corner_radius,
-                                    R=corner_radius,
-                                    boundary_type=boundary_type)
-            y_max_z_max = XCylinder(name='y max z max',
-                                    y0=origin[0] + width /2. - corner_radius,
-                                    z0=origin[1] + height/2. - corner_radius,
-                                    R=corner_radius,
-                                    boundary_type=boundary_type)
-            y_min = YPlane(name='min y', y0=-width/2.+origin[0]+corner_radius,
-                           boundary_type=boundary_type)
-            y_max = YPlane(name='max y', y0=+width/2.+origin[0]-corner_radius,
-                           boundary_type=boundary_type)
-            z_min = ZPlane(name='min z', z0=-height/2.+origin[1]+corner_radius,
-                           boundary_type=boundary_type)
-            z_max = ZPlane(name='max z', z0=+height/2.+origin[1]-corner_radius,
-                           boundary_type=boundary_type)
+        args = {'R': corner_radius, 'boundary_type': boundary_type}
 
-            corners = (+y_min_z_min & -y_min & -z_min) | \
-                      (+y_min_z_max & -y_min & +z_max) | \
-                      (+y_max_z_min & +y_max & -z_min) | \
-                      (+y_max_z_max & +y_max & +z_max)
+        args[x1 + '0'] = origin[0] - width /2. + corner_radius
+        args[x2 + '0'] = origin[1] - height/2. + corner_radius
+        x1_min_x2_min = cyl(name='{} min {} min'.format(x1, x2), **args)
 
-        elif axis == 'y':
-            x_min_z_min = YCylinder(name='x min z min',
-                                    x0=origin[0] - width /2. + corner_radius,
-                                    z0=origin[1] - height/2. + corner_radius,
-                                    R=corner_radius,
-                                    boundary_type=boundary_type)
-            x_min_z_max = YCylinder(name='x min z max',
-                                    x0=origin[0] - width /2. + corner_radius,
-                                    z0=origin[1] + height/2. - corner_radius,
-                                    R=corner_radius,
-                                    boundary_type=boundary_type)
-            x_max_z_min = YCylinder(name='x max z min',
-                                    x0=origin[0] + width /2. - corner_radius,
-                                    z0=origin[1] - height/2. + corner_radius,
-                                    R=corner_radius,
-                                    boundary_type=boundary_type)
-            x_max_z_max = YCylinder(name='x max z max',
-                                    x0=origin[0] + width /2. - corner_radius,
-                                    z0=origin[1] + height/2. - corner_radius,
-                                    R=corner_radius,
-                                    boundary_type=boundary_type)
+        args[x1 + '0'] = origin[0] - width /2. + corner_radius
+        args[x2 + '0'] = origin[1] - height/2. + corner_radius
+        x1_min_x2_min = cyl(name='{} min {} min'.format(x1, x2), **args)
 
-            x_min = XPlane(name='min x', x0=-width/2.+origin[0]+corner_radius,
-                           boundary_type=boundary_type)
-            x_max = XPlane(name='max x', x0=+width/2.+origin[0]-corner_radius,
-                           boundary_type=boundary_type)
-            z_min = ZPlane(name='min z', z0=-height/2.+origin[1]+corner_radius,
-                           boundary_type=boundary_type)
-            z_max = ZPlane(name='max z', z0=+height/2.+origin[1]-corner_radius,
-                           boundary_type=boundary_type)
+        args[x1 + '0'] = origin[0] - width /2. + corner_radius
+        args[x2 + '0'] = origin[1] + height/2. - corner_radius
+        x1_min_x2_max = cyl(name='{} min {} max'.format(x1, x2), **args)
 
-            corners = (+x_min_z_min & -x_min & -z_min) | \
-                      (+x_min_z_max & -x_min & +z_max) | \
-                      (+x_max_z_min & +x_max & -z_min) | \
-                      (+x_max_z_max & +x_max & +z_max)
+        args[x1 + '0'] = origin[0] + width /2. - corner_radius
+        args[x2 + '0'] = origin[1] - height/2. + corner_radius
+        x1_max_x2_min = cyl(name='{} max {} min'.format(x1, x2), **args)
 
-        else:
-            x_min_y_min = ZCylinder(name='x min y min',
-                                    x0=origin[0] - width /2. + corner_radius,
-                                    y0=origin[1] - height/2. + corner_radius,
-                                    R=corner_radius,
-                                    boundary_type=boundary_type)
-            x_min_y_max = ZCylinder(name='x min y max',
-                                    x0=origin[0] - width /2. + corner_radius,
-                                    y0=origin[1] + height/2. - corner_radius,
-                                    R=corner_radius,
-                                    boundary_type=boundary_type)
-            x_max_y_min = ZCylinder(name='x max y min',
-                                    x0=origin[0] + width /2. - corner_radius,
-                                    y0=origin[1] - height/2. + corner_radius,
-                                    R=corner_radius,
-                                    boundary_type=boundary_type)
-            x_max_y_max = ZCylinder(name='x max y max',
-                                    x0=origin[0] + width /2. - corner_radius,
-                                    y0=origin[1] + height/2. - corner_radius,
-                                    R=corner_radius,
-                                    boundary_type=boundary_type)
+        args[x1 + '0'] = origin[0] + width /2. - corner_radius
+        args[x2 + '0'] = origin[1] + height/2. - corner_radius
+        x1_max_x2_max = cyl(name='{} max {} max'.format(x1, x2), **args)
 
-            x_min = XPlane(name='min x', x0=-width/2.+origin[0]+corner_radius,
-                           boundary_type=boundary_type)
-            x_max = XPlane(name='max x', x0=+width/2.+origin[0]-corner_radius,
-                           boundary_type=boundary_type)
-            y_min = YPlane(name='min y', y0=-height/2.+origin[1]+corner_radius,
-                           boundary_type=boundary_type)
-            y_max = YPlane(name='max y', y0=+height/2.+origin[1]-corner_radius,
-                           boundary_type=boundary_type)
+        x1_min = plane(x1, 'min', -width/2. + origin[0] + corner_radius)
+        x1_max = plane(x1, 'max', width/2. + origin[0] - corner_radius)
+        x2_min = plane(x2, 'min', -height/2. + origin[1] + corner_radius)
+        x2_max = plane(x2, 'max', height/2. + origin[1] - corner_radius)
 
-            corners = (+x_min_y_min & -x_min & -y_min) | \
-                      (+x_min_y_max & -x_min & +y_max) | \
-                      (+x_max_y_min & +x_max & -y_min) | \
-                      (+x_max_y_max & +x_max & +y_max)
+        corners = (+x1_min_x2_min & -x1_min & -x2_min) | \
+                  (+x1_min_x2_max & -x1_min & +x2_max) | \
+                  (+x1_max_x2_min & +x1_max & -x2_min) | \
+                  (+x1_max_x2_max & +x1_max & +x2_max)
 
         prism = prism & ~corners
 

@@ -102,7 +102,6 @@ respectively.
 
    openmc.get_hexagonal_prism
    openmc.get_rectangular_prism
-   openmc.get_square_cylinder
 
 .. _pythonapi_tallies:
 

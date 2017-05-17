@@ -1960,8 +1960,8 @@ class Halfspace(Region):
         return clone
 
 
-def get_rectangular_prism(width, height, corner_radius=0., axis='z', origin=(0., 0.),
-                          boundary_type='transmission'):
+def get_rectangular_prism(width, height, axis='z', origin=(0., 0.),
+                          boundary_type='transmission', corner_radius=0.):
     """Get an infinite rectangular prism from four planar surfaces.
 
     Parameters
@@ -1972,8 +1972,6 @@ def get_rectangular_prism(width, height, corner_radius=0., axis='z', origin=(0.,
     height: float
         Prism height in units of cm. The height is aligned with the z, z,
         or y axes for prisms parallel to the x, y, or z axis, respectively.
-    corner_radius: float
-        Prism corner radius in units of cm. Defaults to 0.
     axis : {'x', 'y', 'z'}
         Axis with which the infinite length of the prism should be aligned.
         Defaults to 'z'.
@@ -1984,6 +1982,8 @@ def get_rectangular_prism(width, height, corner_radius=0., axis='z', origin=(0.,
     boundary_type : {'transmission, 'vacuum', 'reflective', 'periodic'}
         Boundary condition that defines the behavior for particles hitting the
         surfaces comprising the rectangular prism (default is 'transmission').
+    corner_radius: float
+        Prism corner radius in units of cm. Defaults to 0.
 
     Returns
     -------
@@ -2142,16 +2142,14 @@ def get_rectangular_prism(width, height, corner_radius=0., axis='z', origin=(0.,
     return prism
 
 
-def get_hexagonal_prism(edge_length=1., corner_radius=0., orientation='y',
-                        boundary_type='transmission'):
+def get_hexagonal_prism(edge_length=1., orientation='y',
+                        boundary_type='transmission', corner_radius=0.):
     """Create a hexagon region from six surface planes.
 
     Parameters
     ----------
     edge_length : float
         Length of a side of the hexagon in cm
-    corner_radius: float
-        Prism corner radius in units of cm. Defaults to 0.
     orientation : {'x', 'y'}
         An 'x' orientation means that two sides of the hexagon are parallel to
         the x-axis and a 'y' orientation means that two sides of the hexagon are
@@ -2159,6 +2157,8 @@ def get_hexagonal_prism(edge_length=1., corner_radius=0., orientation='y',
     boundary_type : {'transmission, 'vacuum', 'reflective', 'periodic'}
         Boundary condition that defines the behavior for particles hitting the
         surfaces comprising the hexagonal prism (default is 'transmission').
+    corner_radius: float
+        Prism corner radius in units of cm. Defaults to 0.
 
     Returns
     -------

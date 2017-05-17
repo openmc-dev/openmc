@@ -380,7 +380,7 @@ class Material(object):
         cv.check_value('density units', units, DENSITY_UNITS)
         self._density_units = units
 
-        if units is 'sum':
+        if units == 'sum':
             if density is not None:
                 msg = 'Density "{}" for Material ID="{}" is ignored ' \
                       'because the unit is "sum"'.format(density, self.id)

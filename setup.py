@@ -15,8 +15,14 @@ try:
 except ImportError:
     have_cython = False
 
+
+# Get version information from __init__.py. This is ugly, but more reliable than
+# using an import.
+with open('openmc/__init__.py', 'r') as f:
+    version = f.readlines()[-1].split()[-1].strip("'")
+
 kwargs = {'name': 'openmc',
-          'version': '0.8.0',
+          'version': version,
           'packages': ['openmc', 'openmc.data', 'openmc.mgxs', 'openmc.model',
                        'openmc.stats'],
           'scripts': glob.glob('scripts/openmc-*'),

@@ -9,7 +9,7 @@ import h5py
 import openmc
 import openmc.mgxs
 from openmc.checkvalue import check_type, check_value, check_greater_than, \
-    check_iterable_type, check_less_than
+    check_iterable_type, check_less_than, check_filetype_version
 
 
 # Supported incoming particle MGXS angular treatment representations
@@ -2561,8 +2561,8 @@ class MGXSLibrary(object):
         file = h5py.File(filename, 'r')
 
         # Check filetype and version
-        cv.check_filetype_version(file, _FILETYPE_MGXS_LIBRARY,
-                                  _VERSION_MGXS_LIBRARY)
+        check_filetype_version(file, _FILETYPE_MGXS_LIBRARY,
+                               _VERSION_MGXS_LIBRARY)
 
         group_structure = file.attrs['group structure']
         num_delayed_groups = file.attrs['delayed_groups']

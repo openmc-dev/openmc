@@ -2141,6 +2141,10 @@ def get_hexagonal_prism(edge_length=1., orientation='y',
 
     # Handle rounded corners if given
     if corner_radius > 0.:
+        if boundary_type == 'periodic':
+            raise ValueError('Periodic boundary conditions not permitted when '
+                             'rounded corners are used.')
+
         c = sqrt(3.)/2
         t = l - corner_radius/c
 

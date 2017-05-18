@@ -1658,6 +1658,15 @@ contains
             surf % i_periodic = surface_dict % get_key(surf % i_periodic)
           end if
 
+        type is (SurfacePlane)
+          if (surf % i_periodic == NONE) then
+            call fatal_error("No matching periodic surface specified for &
+                 &periodic boundary condition on surface " // &
+                 trim(to_str(surf % id)) // ".")
+          else
+            surf % i_periodic = surface_dict % get_key(surf % i_periodic)
+          end if
+
         class default
           call fatal_error("Periodic boundary condition applied to &
                &non-planar surface.")

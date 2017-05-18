@@ -392,6 +392,7 @@ contains
     real(8) :: v         ! y-component of direction
     real(8) :: w         ! z-component of direction
     real(8) :: norm      ! "norm" of surface normal
+    real(8) :: d         ! distance between point and plane
     real(8) :: xyz(3)    ! Saved global coordinate
     integer :: i_surface ! index in surfaces
     logical :: found     ! particle found in universe?
@@ -531,6 +532,20 @@ contains
         select type (opposite => surfaces(surf % i_periodic) % obj)
         type is (SurfaceZPlane)
           p % coord(1) % xyz(3) = opposite % z0
+        end select
+
+      type is (SurfacePlane)
+        select type (opposite => surfaces(surf % i_periodic) % obj)
+        type is (SurfacePlane)
+          ! Get surface normal for opposite plane
+          xyz(:) = opposite % normal(p % coord(1) % xyz)
+
+          ! Determine distance to plane
+          norm = xyz(1)*xyz(1) + xyz(2)*xyz(2) + xyz(3)*xyz(3)
+          d = opposite % evaluate(p % coord(1) % xyz) / norm
+
+          ! Move particle along normal vector based on distance
+          p % coord(1) % xyz(:) = p % coord(1) % xyz(:) - d*xyz
         end select
       end select
 

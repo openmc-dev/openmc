@@ -388,14 +388,15 @@ contains
     type(Particle), intent(inout) :: p
     integer,        intent(in)    :: last_cell  ! last cell particle was in
 
-    real(8) :: u         ! x-component of direction
-    real(8) :: v         ! y-component of direction
-    real(8) :: w         ! z-component of direction
-    real(8) :: norm      ! "norm" of surface normal
-    real(8) :: d         ! distance between point and plane
-    real(8) :: xyz(3)    ! Saved global coordinate
-    integer :: i_surface ! index in surfaces
-    logical :: found     ! particle found in universe?
+    real(8) :: u          ! x-component of direction
+    real(8) :: v          ! y-component of direction
+    real(8) :: w          ! z-component of direction
+    real(8) :: norm       ! "norm" of surface normal
+    real(8) :: d          ! distance between point and plane
+    real(8) :: xyz(3)     ! Saved global coordinate
+    integer :: i_surface  ! index in surfaces
+    logical :: rotational ! if rotational periodic BC applied
+    logical :: found      ! particle found in universe?
     class(Surface), pointer :: surf
 
     i_surface = abs(p % surface)
@@ -515,17 +516,42 @@ contains
         p % coord(1) % xyz = xyz
       end if
 
+      rotational = .false.
       select type (surf)
       type is (SurfaceXPlane)
         select type (opposite => surfaces(surf % i_periodic) % obj)
         type is (SurfaceXPlane)
           p % coord(1) % xyz(1) = opposite % x0
+        type is (SurfaceYPlane)
+          rotational = .true.
+
+          ! Rotate direction
+          u = p % coord(1) % uvw(1)
+          v = p % coord(1) % uvw(2)
+          p % coord(1) % uvw(1) = v
+          p % coord(1) % uvw(2) = -u
+
+          ! Rotate position
+          p % coord(1) % xyz(1) = surf % x0 + p % coord(1) % xyz(2) - opposite % y0
+          p % coord(1) % xyz(2) = opposite % y0
         end select
 
       type is (SurfaceYPlane)
         select type (opposite => surfaces(surf % i_periodic) % obj)
         type is (SurfaceYPlane)
           p % coord(1) % xyz(2) = opposite % y0
+        type is (SurfaceXPlane)
+          rotational = .true.
+
+          ! Rotate direction
+          u = p % coord(1) % uvw(1)
+          v = p % coord(1) % uvw(2)
+          p % coord(1) % uvw(1) = -v
+          p % coord(1) % uvw(2) = u
+
+          ! Rotate position
+          p % coord(1) % xyz(2) = surf % y0 + p % coord(1) % xyz(1) - opposite % x0
+          p % coord(1) % xyz(1) = opposite % x0
         end select
 
       type is (SurfaceZPlane)
@@ -550,7 +576,11 @@ contains
       end select
 
       ! Reassign particle's surface
-      p % surface = sign(surf % i_periodic, p % surface)
+      if (rotational) then
+        p % surface = surf % i_periodic
+      else
+        p % surface = sign(surf % i_periodic, p % surface)
+      end if
 
       ! Figure out what cell particle is in now
       p % n_coord = 1

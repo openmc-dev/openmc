@@ -148,8 +148,23 @@ surface. To specify a vacuum boundary condition, simply change the
 
 Reflective and periodic boundary conditions can be set with the strings
 'reflective' and 'periodic'. Vacuum and reflective boundary conditions can be
-applied to any type of surface. Periodic boundary conditions can only be applied
-to pairs of axis-aligned planar surfaces.
+applied to any type of surface. Periodic boundary conditions can be applied to
+pairs of planar surfaces. For axis-aligned planes, matching periodic surfaces
+can be determined automatically. For non-axis-aligned planes, it is necessary to
+specify pairs explicitly using the :attr:`Surface.periodic_surface` attribute as
+in the following example::
+
+  p1 = openmc.Plane(A=0.3, B=5.0, D=1.0, boundary_type='periodic')
+  p2 = openmc.Plane(A=0.3, B=5.0, D=-1.0, boundary_type='periodic')
+  p1.periodic_surface = p2
+
+Rotationally-periodic boundary conditions can be specified for a pair of
+:class:`XPlane` and :class:`YPlane`; in that case, the
+:attr:`Surface.periodic_surface` attribute must be specified manually as well.
+
+.. caution:: When using rotationally-periodic boundary conditions, your geometry
+             must be defined in the first quadrant, i.e., above the y-plane and
+             to the right of the x-plane.
 
 .. _usersguide_cells:
 

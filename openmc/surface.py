@@ -2110,6 +2110,11 @@ def get_hexagonal_prism(edge_length=1., orientation='y',
         prism = -right & +left & -upper_right & -upper_left & \
                 +lower_right & +lower_left
 
+        if boundary_type == 'periodic':
+            right.periodic_surface = left
+            upper_right.periodic_surface = lower_left
+            lower_right.periodic_surface = upper_left
+
     elif orientation == 'x':
         top = YPlane(y0=sqrt(3.)/2*l, boundary_type=boundary_type)
         bottom = YPlane(y0=-sqrt(3.)/2*l, boundary_type=boundary_type)
@@ -2128,6 +2133,11 @@ def get_hexagonal_prism(edge_length=1., orientation='y',
         upper_left = Plane(A=-c, B=1., D=c*l, boundary_type=boundary_type)
         prism = -top & +bottom & -upper_right & +lower_right & \
                             +lower_left & -upper_left
+
+        if boundary_type == 'periodic':
+            top.periodic_surface = bottom
+            upper_right.periodic_surface = lower_left
+            lower_right.periodic_surface = upper_left
 
     # Handle rounded corners if given
     if corner_radius > 0.:

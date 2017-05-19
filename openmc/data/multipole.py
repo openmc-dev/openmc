@@ -77,7 +77,7 @@ def _faddeeva(z):
     if np.angle(z) > 0:
         return wofz(z)
     else:
-        return -np.conj(wofz(np.conj(z)))
+        return -np.conj(wofz(z.conjugate()))
 
 
 def _broaden_wmp_polynomials(E, dopp, n):
@@ -126,16 +126,14 @@ def _broaden_wmp_polynomials(E, dopp, n):
     factors[2] = (factors[0] * (half_inv_dopp2 + E)
                   + exp_m_beta2 / (beta * np.sqrt(np.pi)))
 
-    # Perform recursive broadening of high order components.  range(1, n-4)
-    # replaces a do i = 1, n=3.  All indices are reduced by one due to the
+    # Perform recursive broadening of high order components. range(1, n-2)
+    # replaces a do i = 1, n-3.  All indices are reduced by one due to the
     # 1-based vs. 0-based indexing.
     for i in range(1, n-2):
         if i != 1:
             factors[i+2] = (-factors[i-2] * (i - 1.0) * i * quarter_inv_dopp4
                 + factors[i] * (E + (1.0 + 2.0 * i) * half_inv_dopp2))
         else:
-            # Although it's mathematically identical, factors[0] will contain
-            # nothing, and we don't want to have to worry about memory.
             factors[i+2] = factors[i]*(E + (1.0 + 2.0 * i) * half_inv_dopp2)
 
     return factors
@@ -408,7 +406,7 @@ class WindowedMultipole(EqualityMixin):
                 raise ValueError('Multipole curvefit arrays must be 3D')
             if curvefit.shape[2] not in (2, 3):  # sigT, sigA (and maybe sigF)
                 raise ValueError('The third dimension of multipole curvefit'
-                                 ' arrays must have a length of 2 or 2 or 3')
+                                 ' arrays must have a length of 2 or 3')
             if not np.issubdtype(curvefit.dtype, float):
                 raise TypeError('Multipole curvefit arrays must be float dtype')
         self._curvefit = curvefit

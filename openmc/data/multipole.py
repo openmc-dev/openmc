@@ -77,7 +77,7 @@ def _faddeeva(z):
     if np.angle(z) > 0:
         return wofz(z)
     else:
-        return -np.conj(wofz(z))
+        return -np.conj(wofz(np.conj(z)))
 
 
 def _broaden_wmp_polynomials(E, dopp, n):
@@ -112,7 +112,8 @@ def _broaden_wmp_polynomials(E, dopp, n):
         erf_beta = 1.0
         exp_m_beta2 = 0.0
     else:
-        erf_beta = np.erf(beta)
+        from scipy.special import erf
+        erf_beta = erf(beta)
         exp_m_beta2 = np.exp(-beta**2)
 
     # Assume that, for sure, we'll use a second order (1/E, 1/V, const)
@@ -128,7 +129,7 @@ def _broaden_wmp_polynomials(E, dopp, n):
     # Perform recursive broadening of high order components.  range(1, n-4)
     # replaces a do i = 1, n=3.  All indices are reduced by one due to the
     # 1-based vs. 0-based indexing.
-    for i in range(1, n-4):
+    for i in range(1, n-2):
         if i != 1:
             factors[i+2] = (-factors[i-2] * (i - 1.0) * i * quarter_inv_dopp4
                 + factors[i] * (E + (1.0 + 2.0 * i) * half_inv_dopp2))
@@ -339,9 +340,9 @@ class WindowedMultipole(EqualityMixin):
             cv.check_type('data', data, np.ndarray)
             if len(data.shape) != 2:
                 raise ValueError('Multipole data arrays must be 2D')
-            if data.shape[1] not in (4, 5):  # 4 for RM, 5 for MLBW
+            if data.shape[1] not in (3, 4, 5):  # 3 or 4 for RM, 4 or 5 for MLBW
                 raise ValueError('The second dimension of multipole data arrays'
-                                 ' must have a length of either 4 or 5')
+                                 ' must have a length of 3, 4 or 5')
             if not np.issubdtype(data.dtype, complex):
                 raise TypeError('Multipole data arrays must be complex dtype')
         self._data = data
@@ -405,9 +406,9 @@ class WindowedMultipole(EqualityMixin):
             cv.check_type('curvefit', curvefit, np.ndarray)
             if len(curvefit.shape) != 3:
                 raise ValueError('Multipole curvefit arrays must be 3D')
-            if curvefit.shape[2] != 3:  # One each for sigT, sigA, sigF
+            if curvefit.shape[2] not in (2, 3):  # sigT, sigA (and maybe sigF)
                 raise ValueError('The third dimension of multipole curvefit'
-                                 ' arrays must have a length of 3')
+                                 ' arrays must have a length of 2 or 2 or 3')
             if not np.issubdtype(curvefit.dtype, float):
                 raise TypeError('Multipole curvefit arrays must be float dtype')
         self._curvefit = curvefit
@@ -434,7 +435,10 @@ class WindowedMultipole(EqualityMixin):
             group = group_or_filename
         else:
             h5file = h5py.File(group_or_filename, 'r')
-            version = h5file['version'].value[0].decode()
+            try:
+                version = h5file['version'].value.decode()
+            except:
+                version = h5file['version'].value[0].decode()
             if version != WMP_VERSION:
                 raise ValueError('The given WMP data uses version '
                     + version + ' whereas your installation of the OpenMC '
@@ -520,7 +524,7 @@ class WindowedMultipole(EqualityMixin):
         """
 
         if E < self.start_E: return (0, 0, 0)
-        if E >= self.end_E: return (0, 0, 0)
+        if E > self.end_E: return (0, 0, 0)
 
         # ======================================================================
         # Bookkeeping
@@ -578,14 +582,16 @@ class WindowedMultipole(EqualityMixin):
                          * broadened_polynomials[i_poly])
                 sigA += (self.curvefit[i_window, i_poly, _FIT_A]
                          * broadened_polynomials[i_poly])
-                sigF += (self.curvefit[i_window, i_poly, _FIT_F]
-                         * broadened_polynomials[i_poly])
+                if self.fissionable:
+                    sigF += (self.curvefit[i_window, i_poly, _FIT_F]
+                             * broadened_polynomials[i_poly])
         else:
             temp = invE
             for i_poly in range(self.fit_order+1):
                 sigT += self.curvefit[i_window, i_poly, _FIT_T] * temp
                 sigA += self.curvefit[i_window, i_poly, _FIT_A] * temp
-                sigF += self.curvefit[i_window, i_poly, _FIT_F] * temp
+                if self.fissionable:
+                    sigF += self.curvefit[i_window, i_poly, _FIT_F] * temp
                 temp *= sqrtE
 
         # ======================================================================
@@ -601,12 +607,14 @@ class WindowedMultipole(EqualityMixin):
                               sigT_factor[self.l_value[i_pole]-1]).real
                              + (self.data[i_pole, _MLBW_RX] * c_temp).real)
                     sigA += (self.data[i_pole, _MLBW_RA] * c_temp).real
-                    sigF += (self.data[i_pole, _MLBW_RF] * c_temp).real
+                    if self.fissionable:
+                        sigF += (self.data[i_pole, _MLBW_RF] * c_temp).real
                 elif self.formalism == 'RM':
                     sigT += (self.data[i_pole, _RM_RT] * c_temp *
                              sigT_factor[self.l_value[i_pole]-1]).real
                     sigA += (self.data[i_pole, _RM_RA] * c_temp).real
-                    sigF += (self.data[i_pole, _RM_RF] * c_temp).real
+                    if self.fissionable:
+                        sigF += (self.data[i_pole, _RM_RF] * c_temp).real
                 else:
                     raise ValueError('Unrecognized/Unsupported R-matrix'
                                      ' formalism')
@@ -621,12 +629,14 @@ class WindowedMultipole(EqualityMixin):
                               sigT_factor[self.l_value[i_pole]-1] +
                               self.data[i_pole, _MLBW_RX]) * w_val).real
                     sigA += (self.data[i_pole, _MLBW_RA] * w_val).real
-                    sigF += (self.data[i_pole, _MLBW_RF] * w_val).real
+                    if self.fissionable:
+                        sigF += (self.data[i_pole, _MLBW_RF] * w_val).real
                 elif self.formalism == 'RM':
                     sigT += (self.data[i_pole, _RM_RT] * w_val *
                              sigT_factor[self.l_value[i_pole]-1]).real
                     sigA += (self.data[i_pole, _RM_RA] * w_val).real
-                    sigF += (self.data[i_pole, _RM_RF] * w_val).real
+                    if self.fissionable:
+                        sigF += (self.data[i_pole, _RM_RF] * w_val).real
                 else:
                     raise ValueError('Unrecognized/Unsupported R-matrix'
                                      ' formalism')

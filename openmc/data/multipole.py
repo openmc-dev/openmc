@@ -2,6 +2,7 @@ from numbers import Integral, Real
 
 import h5py
 import numpy as np
+from math import exp, erf, pi
 from six import string_types
 
 from . import WMP_VERSION
@@ -112,9 +113,8 @@ def _broaden_wmp_polynomials(E, dopp, n):
         erf_beta = 1.0
         exp_m_beta2 = 0.0
     else:
-        from scipy.special import erf
         erf_beta = erf(beta)
-        exp_m_beta2 = np.exp(-beta**2)
+        exp_m_beta2 = exp(-beta**2)
 
     # Assume that, for sure, we'll use a second order (1/E, 1/V, const)
     # fit, and no less.
@@ -124,7 +124,7 @@ def _broaden_wmp_polynomials(E, dopp, n):
     factors[0] = erf_beta / E
     factors[1] = 1.0 / sqrtE
     factors[2] = (factors[0] * (half_inv_dopp2 + E)
-                  + exp_m_beta2 / (beta * np.sqrt(np.pi)))
+                  + exp_m_beta2 / (beta * np.sqrt(pi)))
 
     # Perform recursive broadening of high order components. range(1, n-2)
     # replaces a do i = 1, n-3.  All indices are reduced by one due to the
@@ -435,7 +435,7 @@ class WindowedMultipole(EqualityMixin):
             h5file = h5py.File(group_or_filename, 'r')
             try:
                 version = h5file['version'].value.decode()
-            except:
+            except AttributeError:
                 version = h5file['version'].value[0].decode()
             if version != WMP_VERSION:
                 raise ValueError('The given WMP data uses version '
@@ -621,7 +621,7 @@ class WindowedMultipole(EqualityMixin):
             # At temperature, use Faddeeva function-based form.
             for i_pole in range(startw, endw):
                 Z = (sqrtE - self.data[i_pole, _MP_EA]) * dopp
-                w_val = _faddeeva(Z) * dopp * invE * np.sqrt(np.pi)
+                w_val = _faddeeva(Z) * dopp * invE * np.sqrt(pi)
                 if self.formalism == 'MLBW':
                     sigT += ((self.data[i_pole, _MLBW_RT] *
                               sigT_factor[self.l_value[i_pole]-1] +

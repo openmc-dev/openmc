@@ -1,8 +1,8 @@
 from numbers import Integral, Real
+from math import exp, erf, pi, sqrt
 
 import h5py
 import numpy as np
-from math import exp, erf, pi
 from six import string_types
 
 from . import WMP_VERSION
@@ -102,7 +102,7 @@ def _broaden_wmp_polynomials(E, dopp, n):
         The value of each Doppler-broadened curvefit polynomial term.
 
     """
-    sqrtE = np.sqrt(E)
+    sqrtE = sqrt(E)
     beta = sqrtE * dopp
     half_inv_dopp2 = 0.5 / dopp**2
     quarter_inv_dopp4 = half_inv_dopp2**2
@@ -124,7 +124,7 @@ def _broaden_wmp_polynomials(E, dopp, n):
     factors[0] = erf_beta / E
     factors[1] = 1.0 / sqrtE
     factors[2] = (factors[0] * (half_inv_dopp2 + E)
-                  + exp_m_beta2 / (beta * np.sqrt(pi)))
+                  + exp_m_beta2 / (beta * sqrt(pi)))
 
     # Perform recursive broadening of high order components. range(1, n-2)
     # replaces a do i = 1, n-3.  All indices are reduced by one due to the
@@ -528,8 +528,8 @@ class WindowedMultipole(EqualityMixin):
         # Bookkeeping
 
         # Define some frequently used variables.
-        sqrtkT = np.sqrt(K_BOLTZMANN * T)
-        sqrtE = np.sqrt(E)
+        sqrtkT = sqrt(K_BOLTZMANN * T)
+        sqrtE = sqrt(E)
         invE = 1.0 / E
         dopp = self.sqrtAWR / sqrtkT
 
@@ -537,7 +537,7 @@ class WindowedMultipole(EqualityMixin):
         # the 1-based vs. 0-based indexing.  Similarly startw needs to be
         # decreased by 1.  endw does not need to be decreased because
         # range(startw, endw) does not include endw.
-        i_window = int(np.floor((sqrtE - np.sqrt(self.start_E)) / self.spacing))
+        i_window = int(np.floor((sqrtE - sqrt(self.start_E)) / self.spacing))
         startw = self.w_start[i_window] - 1
         endw = self.w_end[i_window]
 
@@ -621,7 +621,7 @@ class WindowedMultipole(EqualityMixin):
             # At temperature, use Faddeeva function-based form.
             for i_pole in range(startw, endw):
                 Z = (sqrtE - self.data[i_pole, _MP_EA]) * dopp
-                w_val = _faddeeva(Z) * dopp * invE * np.sqrt(pi)
+                w_val = _faddeeva(Z) * dopp * invE * sqrt(pi)
                 if self.formalism == 'MLBW':
                     sigT += ((self.data[i_pole, _MLBW_RT] *
                               sigT_factor[self.l_value[i_pole]-1] +

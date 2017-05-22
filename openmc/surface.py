@@ -2064,7 +2064,7 @@ def get_rectangular_prism(width, height, axis='z', origin=(0., 0.),
     return prism
 
 
-def get_hexagonal_prism(edge_length=1., orientation='y',
+def get_hexagonal_prism(edge_length=1., orientation='y', origin=(0., 0.),
                         boundary_type='transmission', corner_radius=0.):
     """Create a hexagon region from six surface planes.
 
@@ -2076,6 +2076,8 @@ def get_hexagonal_prism(edge_length=1., orientation='y',
         An 'x' orientation means that two sides of the hexagon are parallel to
         the x-axis and a 'y' orientation means that two sides of the hexagon are
         parallel to the y-axis.
+    origin: Iterable of two floats
+        Origin of the prism. Defaults to (0., 0.).
     boundary_type : {'transmission, 'vacuum', 'reflective', 'periodic'}
         Boundary condition that defines the behavior for particles hitting the
         surfaces comprising the hexagonal prism (default is 'transmission').
@@ -2090,23 +2092,25 @@ def get_hexagonal_prism(edge_length=1., orientation='y',
     """
 
     l = edge_length
+    x, y = origin
 
     if orientation == 'y':
-        right = XPlane(x0=sqrt(3.)/2*l, boundary_type=boundary_type)
-        left = XPlane(x0=-sqrt(3.)/2*l, boundary_type=boundary_type)
+        right = XPlane(x0=x + sqrt(3.)/2*l, boundary_type=boundary_type)
+        left = XPlane(x0=x - sqrt(3.)/2*l, boundary_type=boundary_type)
         c = sqrt(3.)/3.
 
         # y = -x/sqrt(3) + a
-        upper_right = Plane(A=c, B=1., D=l, boundary_type=boundary_type)
+        upper_right = Plane(A=c, B=1., D=l+x*c+y, boundary_type=boundary_type)
 
         # y = x/sqrt(3) + a
-        upper_left = Plane(A=-c, B=1., D=l, boundary_type=boundary_type)
+        upper_left = Plane(A=-c, B=1., D=l-x*c+y, boundary_type=boundary_type)
 
         # y = x/sqrt(3) - a
-        lower_right = Plane(A=-c, B=1., D=-l, boundary_type=boundary_type)
+        lower_right = Plane(A=-c, B=1., D=-l-x*c+y, boundary_type=boundary_type)
 
         # y = -x/sqrt(3) - a
-        lower_left = Plane(A=c, B=1., D=-l, boundary_type=boundary_type)
+        lower_left = Plane(A=c, B=1., D=-l+x*c+y, boundary_type=boundary_type)
+
         prism = -right & +left & -upper_right & -upper_left & \
                 +lower_right & +lower_left
 
@@ -2116,21 +2120,23 @@ def get_hexagonal_prism(edge_length=1., orientation='y',
             lower_right.periodic_surface = upper_left
 
     elif orientation == 'x':
-        top = YPlane(y0=sqrt(3.)/2*l, boundary_type=boundary_type)
-        bottom = YPlane(y0=-sqrt(3.)/2*l, boundary_type=boundary_type)
+        top = YPlane(y0=y + sqrt(3.)/2*l, boundary_type=boundary_type)
+        bottom = YPlane(y0=y - sqrt(3.)/2*l, boundary_type=boundary_type)
         c = sqrt(3.)
 
         # y = -sqrt(3)*(x - a)
-        upper_right = Plane(A=c, B=1., D=c*l, boundary_type=boundary_type)
+        upper_right = Plane(A=c, B=1., D=c*l+x*c+y, boundary_type=boundary_type)
 
         # y = sqrt(3)*(x + a)
-        lower_right = Plane(A=-c, B=1., D=-c*l, boundary_type=boundary_type)
+        lower_right = Plane(A=-c, B=1., D=-c*l-x*c+y,
+                            boundary_type=boundary_type)
 
         # y = -sqrt(3)*(x + a)
-        lower_left = Plane(A=c, B=1., D=-c*l, boundary_type=boundary_type)
+        lower_left = Plane(A=c, B=1., D=-c*l+x*c+y, boundary_type=boundary_type)
 
         # y = sqrt(3)*(x + a)
-        upper_left = Plane(A=-c, B=1., D=c*l, boundary_type=boundary_type)
+        upper_left = Plane(A=-c, B=1., D=c*l-x*c+y, boundary_type=boundary_type)
+
         prism = -top & +bottom & -upper_right & +lower_right & \
                             +lower_left & -upper_left
 
@@ -2154,19 +2160,19 @@ def get_hexagonal_prism(edge_length=1., orientation='y',
                        boundary_type=boundary_type)
 
         if orientation == 'x':
-            x_min_y_min_in = cyl1(name='x min y min in', x0=-t/2, y0=-c*t)
-            x_min_y_max_in = cyl1(name='x min y max in', x0=t/2, y0=-c*t)
-            x_max_y_min_in = cyl1(name='x max y min in', x0=-t/2, y0=c*t)
-            x_max_y_max_in = cyl1(name='x max y max in', x0=t/2, y0=c*t)
-            x_min_in = cyl1(name='x min in', x0=-t)
-            x_max_in = cyl1(name='x max in', x0=t)
+            x_min_y_min_in = cyl1(name='x min y min in', x0=x-t/2, y0=y-c*t)
+            x_min_y_max_in = cyl1(name='x min y max in', x0=x+t/2, y0=y-c*t)
+            x_max_y_min_in = cyl1(name='x max y min in', x0=x-t/2, y0=y+c*t)
+            x_max_y_max_in = cyl1(name='x max y max in', x0=x+t/2, y0=y+c*t)
+            x_min_in = cyl1(name='x min in', x0=x-t, y0=y)
+            x_max_in = cyl1(name='x max in', x0=x+t, y0=y)
 
-            x_min_y_min_out = cyl2(name='x min y min out', x0=-l/2, y0=-c*l)
-            x_min_y_max_out = cyl2(name='x min y max out', x0=l/2, y0=-c*l)
-            x_max_y_min_out = cyl2(name='x max y min out', x0=-l/2, y0=c*l)
-            x_max_y_max_out = cyl2(name='x max y max out', x0=l/2, y0=c*l)
-            x_min_out = cyl2(name='x min out', x0=-l)
-            x_max_out = cyl2(name='x max out', x0=l)
+            x_min_y_min_out = cyl2(name='x min y min out', x0=x-l/2, y0=y-c*l)
+            x_min_y_max_out = cyl2(name='x min y max out', x0=x+l/2, y0=y-c*l)
+            x_max_y_min_out = cyl2(name='x max y min out', x0=x-l/2, y0=y+c*l)
+            x_max_y_max_out = cyl2(name='x max y max out', x0=x+l/2, y0=y+c*l)
+            x_min_out = cyl2(name='x min out', x0=x-l, y0=y)
+            x_max_out = cyl2(name='x max out', x0=x+l, y0=y)
 
             corners = (+x_min_y_min_in & -x_min_y_min_out |
                        +x_min_y_max_in & -x_min_y_max_out |
@@ -2176,19 +2182,19 @@ def get_hexagonal_prism(edge_length=1., orientation='y',
                        +x_max_in & -x_max_out)
 
         elif orientation == 'y':
-            x_min_y_min_in = cyl1(name='x min y min in', x0=-c*t, y0=-t/2)
-            x_min_y_max_in = cyl1(name='x min y max in', x0=-c*t, y0=t/2)
-            x_max_y_min_in = cyl1(name='x max y min in', x0=c*t, y0=-t/2)
-            x_max_y_max_in = cyl1(name='x max y max in', x0=c*t, y0=t/2)
-            y_min_in = cyl1(name='y min in', y0=-t)
-            y_max_in = cyl1(name='y max in', y0=t)
+            x_min_y_min_in = cyl1(name='x min y min in', x0=x-c*t, y0=y-t/2)
+            x_min_y_max_in = cyl1(name='x min y max in', x0=x-c*t, y0=y+t/2)
+            x_max_y_min_in = cyl1(name='x max y min in', x0=x+c*t, y0=y-t/2)
+            x_max_y_max_in = cyl1(name='x max y max in', x0=x+c*t, y0=y+t/2)
+            y_min_in = cyl1(name='y min in', x0=x, y0=y-t)
+            y_max_in = cyl1(name='y max in', x0=x, y0=y+t)
 
-            x_min_y_min_out = cyl2(name='x min y min out', x0=-c*l, y0=-l/2)
-            x_min_y_max_out = cyl2(name='x min y max out', x0=-c*l, y0=l/2)
-            x_max_y_min_out = cyl2(name='x max y min out', x0=c*l, y0=-l/2)
-            x_max_y_max_out = cyl2(name='x max y max out', x0=c*l, y0=l/2)
-            y_min_out = cyl2(name='y min out', y0=-l)
-            y_max_out = cyl2(name='y max out', y0=l)
+            x_min_y_min_out = cyl2(name='x min y min out', x0=x-c*l, y0=y-l/2)
+            x_min_y_max_out = cyl2(name='x min y max out', x0=x-c*l, y0=y+l/2)
+            x_max_y_min_out = cyl2(name='x max y min out', x0=x+c*l, y0=y-l/2)
+            x_max_y_max_out = cyl2(name='x max y max out', x0=x+c*l, y0=y+l/2)
+            y_min_out = cyl2(name='y min out', x0=x, y0=y-l)
+            y_max_out = cyl2(name='y max out', x0=x, y0=y+l)
 
             corners = (+x_min_y_min_in & -x_min_y_min_out |
                        +x_min_y_max_in & -x_min_y_max_out |

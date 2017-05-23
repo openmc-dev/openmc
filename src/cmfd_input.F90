@@ -378,11 +378,7 @@ contains
 
     ! Determine number of filters
     energy_filters = check_for_node(node_mesh, "energy")
-    if (energy_filters) then
-      n_cmfd_filters = 5
-    else
-      n_cmfd_filters = 3
-    end if
+    n_cmfd_filters = merge(5, 3, energy_filters)
 
     ! Extend filters array so we can add CMFD filters
     call add_filters(n_cmfd_filters)

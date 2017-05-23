@@ -4,7 +4,7 @@
 State Point File Format
 =======================
 
-The current version of the statepoint file format is 16.0.
+The current version of the statepoint file format is 17.0.
 
 **/**
 

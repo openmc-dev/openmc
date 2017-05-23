@@ -1077,9 +1077,8 @@ class Tally(object):
 
         # Optional Tally filters
         if len(self.filters) > 0:
-            filters = ' '.join(str(f.id) for f in self.filters)
             subelement = ET.SubElement(element, "filters")
-            subelement.text = filters
+            subelement.text = ' '.join(str(f.id) for f in self.filters)
 
         # Optional Nuclides
         if len(self.nuclides) > 0:

@@ -9,7 +9,7 @@ import h5py
 import openmc
 import openmc.checkvalue as cv
 
-_VERSION_STATEPOINT = 16
+_VERSION_STATEPOINT = 17
 
 
 class StatePoint(object):

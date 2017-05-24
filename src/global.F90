@@ -18,9 +18,11 @@ module global
   use plot_header,      only: ObjectPlot
   use sab_header,       only: SAlphaBeta
   use set_header,       only: SetInt
+  use stl_vector,       only: VectorInt
   use surface_header,   only: SurfaceContainer
   use source_header,    only: SourceDistribution
   use tally_header,     only: TallyObject, TallyDerivative
+  use tally_filter_header, only: TallyFilterContainer, TallyFilterMatch
   use trigger_header,   only: KTrigger
   use timer_header,     only: Timer
   use volume_header,    only: VolumeCalculation
@@ -57,6 +59,7 @@ module global
   type(DictIntInt) :: surface_dict
   type(DictIntInt) :: material_dict
   type(DictIntInt) :: mesh_dict
+  type(DictIntInt) :: filter_dict
   type(DictIntInt) :: tally_dict
   type(DictIntInt) :: plot_dict
 
@@ -138,9 +141,9 @@ module global
   ! TALLY-RELATED VARIABLES
 
   type(RegularMesh), allocatable, target :: meshes(:)
-  type(TallyObject),    allocatable, target :: tallies(:)
-  integer, allocatable :: matching_bins(:)
-  real(8), allocatable :: filter_weights(:)
+  type(TallyObject), allocatable, target :: tallies(:)
+  type(TallyFilterContainer), allocatable, target :: filters(:)
+  type(TallyFilterMatch), allocatable :: filter_matches(:)
 
   ! Pointers for different tallies
   type(TallyObject), pointer :: user_tallies(:) => null()
@@ -151,14 +154,11 @@ module global
   integer :: i_cmfd_tallies = -1
 
   ! Active tally lists
-  type(SetInt) :: active_analog_tallies
-  type(SetInt) :: active_tracklength_tallies
-  type(SetInt) :: active_current_tallies
-  type(SetInt) :: active_collision_tallies
-  type(SetInt) :: active_tallies
-!$omp threadprivate(active_analog_tallies, active_tracklength_tallies, &
-!$omp&              active_current_tallies, active_collision_tallies, &
-!$omp&              active_tallies)
+  type(VectorInt) :: active_analog_tallies
+  type(VectorInt) :: active_tracklength_tallies
+  type(VectorInt) :: active_current_tallies
+  type(VectorInt) :: active_collision_tallies
+  type(VectorInt) :: active_tallies
 
   ! Global tallies
   !   1) collision estimate of k-eff
@@ -182,6 +182,8 @@ module global
 
   integer :: n_meshes       = 0 ! # of structured meshes
   integer :: n_user_meshes  = 0 ! # of structured user meshes
+  integer :: n_filters      = 0 ! # of filters
+  integer :: n_user_filters = 0 ! # of user filters
   integer :: n_tallies      = 0 ! # of tallies
   integer :: n_user_tallies = 0 ! # of user tallies
 
@@ -373,6 +375,7 @@ module global
 
   ! User-defined tally information
   integer :: n_cmfd_meshes  = 1 ! # of structured meshes
+  integer :: n_cmfd_filters = 0 ! # of filters
   integer :: n_cmfd_tallies = 3 ! # of user-defined tallies
 
   ! Adjoint method type
@@ -436,8 +439,7 @@ module global
   character(10), allocatable :: res_scat_nuclides(:)
 
 !$omp threadprivate(micro_xs, material_xs, fission_bank, n_bank, &
-!$omp&              trace, thread_id, current_work, matching_bins, &
-!$omp&              filter_weights)
+!$omp&              trace, thread_id, current_work, filter_matches)
 
 contains
 
@@ -490,9 +492,9 @@ contains
     ! Deallocate tally-related arrays
     if (allocated(global_tallies)) deallocate(global_tallies)
     if (allocated(meshes)) deallocate(meshes)
+    if (allocated(filters)) deallocate(filters)
     if (allocated(tallies)) deallocate(tallies)
-    if (allocated(matching_bins)) deallocate(matching_bins)
-    if (allocated(filter_weights)) deallocate(filter_weights)
+    if (allocated(filter_matches)) deallocate(filter_matches)
 
     ! Deallocate fission and source bank and entropy
 !$omp parallel
@@ -527,6 +529,7 @@ contains
     call surface_dict % clear()
     call material_dict % clear()
     call mesh_dict % clear()
+    call filter_dict % clear()
     call tally_dict % clear()
     call plot_dict % clear()
     call nuclide_dict % clear()

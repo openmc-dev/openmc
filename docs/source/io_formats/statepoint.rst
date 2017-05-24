@@ -4,7 +4,7 @@
 State Point File Format
 =======================
 
-The current version of the statepoint file format is 16.0.
+The current version of the statepoint file format is 17.0.
 
 **/**
 
@@ -92,6 +92,26 @@ The current version of the statepoint file format is 16.0.
            - **width** (*double[]*) -- Width of each mesh cell in each
              dimension.
 
+**/tallies/filters/**
+
+:Attributes: - **n_filters** (*int*) -- Number of filters in the problem.
+             - **ids** (*int[]*) -- User-defined unique ID of each filter.
+
+**/tallies/filters/filter <uid>/**
+
+:Datasets: - **type** (*char[]*) -- Type of the j-th filter. Can be 'universe',
+             'material', 'cell', 'cellborn', 'surface', 'mesh', 'energy',
+             'energyout', 'distribcell', 'mu', 'polar', 'azimuthal',
+             'delayedgroup', or 'energyfunction'.
+           - **n_bins** (*int*) -- Number of bins for the j-th filter. Not
+             present for 'energyfunction' filters.
+           - **bins** (*int[]* or *double[]*) -- Value for each filter bin of
+             this type. Not present for 'energyfunction' filters.
+           - **energy** (*double[]*) -- Energy grid points for energyfunction
+             interpolation. Only used for 'energyfunction' filters.
+           - **y** (*double[]*) -- Interpolant values for energyfunction
+             interpolation. Only used for 'energyfunction' filters.
+
 **/tallies/derivatives/derivative <id>/**
 
 :Datasets: - **independent variable** (*char[]*) -- Independent variable of
@@ -105,6 +125,8 @@ The current version of the statepoint file format is 16.0.
 
 :Datasets: - **n_realizations** (*int*) -- Number of realizations.
            - **n_filters** (*int*) -- Number of filters used.
+           - **filters** (*int[]*) -- User-defined unique IDs of the filters on
+             the tally
            - **nuclides** (*char[][]*) -- Array of nuclides to tally. Note that
              if no nuclide is specified in the user input, a single 'total'
              nuclide appears here.
@@ -125,21 +147,6 @@ The current version of the statepoint file format is 16.0.
              combinations of filter bins, the second dimensions represents
              scoring bins, and the third dimension has two entries for the sum
              and the sum-of-squares.
-
-**/tallies/tally <uid>/filter <j>/**
-
-:Datasets: - **type** (*char[]*) -- Type of the j-th filter. Can be 'universe',
-             'material', 'cell', 'cellborn', 'surface', 'mesh', 'energy',
-             'energyout', 'distribcell', 'mu', 'polar', 'azimuthal',
-             'delayedgroup', or 'energyfunction'.
-           - **n_bins** (*int*) -- Number of bins for the j-th filter. Not
-             present for 'energyfunction' filters.
-           - **bins** (*int[]* or *double[]*) -- Value for each filter bin of
-             this type. Not present for 'energyfunction' filters.
-           - **energy** (*double[]*) -- Energy grid points for energyfunction
-             interpolation. Only used for 'energyfunction' filters.
-           - **y** (*double[]*) -- Interpolant values for energyfunction
-             interpolation. Only used for 'energyfunction' filters.
 
 **/runtime/**
 

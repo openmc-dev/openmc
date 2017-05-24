@@ -37,7 +37,7 @@ module tally_header
     integer :: type                 ! volume, surface current
     integer :: estimator            ! collision, track-length
     real(8) :: volume               ! volume of region
-    type(TallyFilterContainer), allocatable :: filters(:)
+    integer, allocatable :: filter(:) ! index in filters array
 
     ! The stride attribute is used for determining the index in the results
     ! array for a matching_bin combination. Since multiple dimensions are

@@ -29,7 +29,7 @@ contains
 
 !===============================================================================
 ! SETUP_TALLY_ARRAYS allocates and populates several member arrays of the
-! TallyObject derived type, including stride, matching_bins, and results.
+! TallyObject derived type, including stride, filter_matches, and results.
 !===============================================================================
 
   subroutine setup_tally_arrays()
@@ -37,25 +37,24 @@ contains
     integer :: i                 ! loop index for tallies
     integer :: j                 ! loop index for filters
     integer :: n                 ! temporary stride
-    integer :: max_n_filters = 0 ! maximum number of filters
+    integer :: i_filt            ! filter index
     type(TallyObject), pointer :: t
 
     TALLY_LOOP: do i = 1, n_tallies
       ! Get pointer to tally
       t => tallies(i)
 
-      ! Allocate stride and matching_bins arrays
-      allocate(t % stride(size(t % filters)))
-      max_n_filters = max(max_n_filters, size(t % filters))
+      ! Allocate stride
+      allocate(t % stride(size(t % filter)))
 
       ! The filters are traversed in opposite order so that the last filter has
       ! the shortest stride in memory and the first filter has the largest
       ! stride
-
       n = 1
-      STRIDE: do j = size(t % filters), 1, -1
+      STRIDE: do j = size(t % filter), 1, -1
+        i_filt = t % filter(j)
         t % stride(j) = n
-        n = n * t % filters(j) % obj % n_bins
+        n = n * filters(i_filt) % obj % n_bins
       end do STRIDE
 
       ! Set total number of filter and scoring bins
@@ -70,8 +69,7 @@ contains
 
     ! Allocate array for matching filter bins
 !$omp parallel
-    allocate(matching_bins(max_n_filters))
-    allocate(filter_weights(max_n_filters))
+    allocate(filter_matches(n_filters))
 !$omp end parallel
 
   end subroutine setup_tally_arrays

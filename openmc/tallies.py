@@ -1076,8 +1076,9 @@ class Tally(object):
             element.set("name", self.name)
 
         # Optional Tally filters
-        for self_filter in self.filters:
-            element.append(self_filter.to_xml_element())
+        if len(self.filters) > 0:
+            subelement = ET.SubElement(element, "filters")
+            subelement.text = ' '.join(str(f.id) for f in self.filters)
 
         # Optional Nuclides
         if len(self.nuclides) > 0:
@@ -3522,6 +3523,18 @@ class Tallies(cv.CheckedList):
                         root_element.append(f.mesh.to_xml_element())
                         already_written.add(f.mesh)
 
+    def _create_filter_subelements(self, root_element):
+        already_written = dict()
+        for tally in self:
+            for f in tally.filters:
+                if f not in already_written:
+                    root_element.append(f.to_xml_element())
+                    already_written[f] = f.id
+                else:
+                    # Set the IDs of identical filters with different
+                    # user-defined IDs to the same value
+                    f.id = already_written[f]
+
     def _create_derivative_subelements(self, root_element):
         # Get a list of all derivatives referenced in a tally.
         derivs = []
@@ -3546,6 +3559,7 @@ class Tallies(cv.CheckedList):
 
         root_element = ET.Element("tallies")
         self._create_mesh_subelements(root_element)
+        self._create_filter_subelements(root_element)
         self._create_tally_subelements(root_element)
         self._create_derivative_subelements(root_element)
 

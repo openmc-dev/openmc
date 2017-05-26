@@ -186,9 +186,7 @@ contains
       tallies_on = .true.
 
       ! Add user tallies to active tallies list
-!$omp parallel
       call setup_active_usertallies()
-!$omp end parallel
     end if
 
     ! check CMFD initialize batch

@@ -324,28 +324,37 @@
         <lower_left>-182.07 -182.07 -183.0</lower_left>
         <upper_right>182.07 182.07 183.0</upper_right>
     </mesh>
+    <filter id="10000" type="mesh">
+        <bins>1</bins>
+    </filter>
+    <filter id="10001" type="mesh">
+        <bins>2</bins>
+    </filter>
+    <filter id="10002" type="mesh">
+        <bins>3</bins>
+    </filter>
     <tally id="10000" name="tally 1">
-        <filter bins="1" type="mesh" />
+        <filters>10000</filters>
         <scores>total</scores>
     </tally>
     <tally id="10001" name="tally 2">
-        <filter bins="1" type="mesh" />
+        <filters>10000</filters>
         <scores>current</scores>
     </tally>
     <tally id="10002" name="tally 3">
-        <filter bins="2" type="mesh" />
+        <filters>10001</filters>
         <scores>total</scores>
     </tally>
     <tally id="10003" name="tally 4">
-        <filter bins="2" type="mesh" />
+        <filters>10001</filters>
         <scores>current</scores>
     </tally>
     <tally id="10004" name="tally 5">
-        <filter bins="3" type="mesh" />
+        <filters>10002</filters>
         <scores>total</scores>
     </tally>
     <tally id="10005" name="tally 6">
-        <filter bins="3" type="mesh" />
+        <filters>10002</filters>
         <scores>current</scores>
     </tally>
 </tallies>

@@ -16,7 +16,7 @@ module constants
   integer, parameter :: HDF5_VERSION(2) = [1, 0]
 
   ! Version numbers for binary files
-  integer, parameter :: VERSION_STATEPOINT(2)       = [16, 0]
+  integer, parameter :: VERSION_STATEPOINT(2)       = [17, 0]
   integer, parameter :: VERSION_PARTICLE_RESTART(2) = [2, 0]
   integer, parameter :: VERSION_TRACK(2)            = [2, 0]
   integer, parameter :: VERSION_SUMMARY(2)          = [5, 0]

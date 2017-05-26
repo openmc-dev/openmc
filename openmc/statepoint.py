@@ -9,7 +9,7 @@ import h5py
 import openmc
 import openmc.checkvalue as cv
 
-_VERSION_STATEPOINT = 16
+_VERSION_STATEPOINT = 17
 
 
 class StatePoint(object):
@@ -51,6 +51,9 @@ class StatePoint(object):
         Date and time when simulation began
     entropy : numpy.ndarray
         Shannon entropy of fission source at each batch
+    filters : dict
+        Dictionary whose keys are filter IDs and whose values are Filter
+        objects
     generations_per_batch : int
         Number of fission generations per batch
     global_tallies : numpy.ndarray of compound datatype
@@ -111,6 +114,7 @@ class StatePoint(object):
     def __init__(self, filename, autolink=True):
         self._f = h5py.File(filename, 'r')
         self._meshes = {}
+        self._filters = {}
         self._tallies = {}
         self._derivs = {}
 
@@ -119,6 +123,7 @@ class StatePoint(object):
 
         # Set flags for what data has been read
         self._meshes_read = False
+        self._filters_read = False
         self._tallies_read = False
         self._summary = None
         self._global_tallies = None
@@ -190,6 +195,20 @@ class StatePoint(object):
             return self._f['entropy'].value
         else:
             return None
+
+    @property
+    def filters(self):
+        if not self._filters_read:
+            filters_group = self._f['tallies/filters']
+
+            # Iterate over all Filters
+            for group in filters_group.values():
+                new_filter = openmc.Filter.from_hdf5(group, meshes=self.meshes)
+                self._filters[new_filter.id] = new_filter
+
+            self._filters_read = True
+
+        return self._filters
 
     @property
     def generations_per_batch(self):
@@ -358,11 +377,14 @@ class StatePoint(object):
 
                 # Read all filters
                 n_filters = group['n_filters'].value
-                for j in range(1, n_filters + 1):
-                    filter_group = group['filter {}'.format(j)]
-                    new_filter = openmc.Filter.from_hdf5(filter_group,
-                                                         meshes=self.meshes)
-                    tally.filters.append(new_filter)
+                if n_filters > 0:
+                    filter_ids = group['filters'].value
+                    filters_group = self._f['tallies/filters']
+                    for filter_id in filter_ids:
+                        filter_group = filters_group['filter {}'.format(filter_id)]
+                        new_filter = openmc.Filter.from_hdf5(filter_group,
+                                                             meshes=self.meshes)
+                        tally.filters.append(new_filter)
 
                 # Read nuclide bins
                 nuclide_names = group['nuclides'].value

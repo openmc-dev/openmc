@@ -1,8 +1,13 @@
 <?xml version="1.0"?>
 <tallies>
 
+  <filter id="1">
+    <type>cell</type>
+    <bins>1</bins>
+  </filter>
+
   <tally id="1">
-    <filter type="cell" bins="1" />
+    <filters>1</filters>
     <scores>flux</scores>
   </tally>
 

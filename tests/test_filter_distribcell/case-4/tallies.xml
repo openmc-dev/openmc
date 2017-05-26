@@ -1,7 +1,14 @@
 <?xml version='1.0' encoding='utf-8'?>
 <tallies>
-    <tally id="1">
-        <filter bins="101" type="distribcell" />
+
+  <filter id="1">
+    <type>distribcell</type>
+    <bins>101</bins>
+  </filter>
+
+  <tally id="1">
+    <filters>1</filters>
     <scores>total</scores>
-    </tally>
+  </tally>
+
 </tallies>

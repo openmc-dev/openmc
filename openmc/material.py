@@ -820,8 +820,17 @@ class Material(object):
 
         # If no nemoize'd clone exists, instantiate one
         if self not in memo:
+            # Temporarily remove paths -- this is done so that when the clone is
+            # made, it doesn't create a copy of the paths (which are specific to
+            # an instance)
+            paths = self.paths
+            self._paths = None
+
             clone = deepcopy(self)
             clone.id = None
+
+            # Restore paths on original instance
+            self._paths = paths
 
             # Memoize the clone
             memo[self] = clone

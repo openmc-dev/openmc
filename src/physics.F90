@@ -122,7 +122,6 @@ contains
     call scatter(p, i_nuclide, i_nuc_mat)
 
     ! Play russian roulette if survival biasing is turned on
-
     if (survival_biasing) then
       call russian_roulette(p)
       if (.not. p % alive) return
@@ -196,7 +195,6 @@ contains
       ! Increment probability to compare to cutoff
       prob = prob + sigma
     end do
-
   end subroutine sample_nuclide
 
 !===============================================================================
@@ -346,11 +344,15 @@ contains
     cutoff = prn()&
          * (micro_xs(i_nuclide) % total - micro_xs(i_nuclide) % absorption)
 
-    competitive_xs_ssf&
-         = (micro_xs(i_nuclide) % total&
-         -  micro_xs(i_nuclide) % elastic&
-         -  micro_xs(i_nuclide) % absorption)&
-         /  micro_xs(i_nuclide) % competitive
+    if (micro_xs(i_nuclide) % competitive == ZERO) then
+      competitive_xs_ssf = ONE
+    else
+      competitive_xs_ssf&
+           = (micro_xs(i_nuclide) % total&
+           -  micro_xs(i_nuclide) % elastic&
+           -  micro_xs(i_nuclide) % absorption)&
+           /  micro_xs(i_nuclide) % competitive
+    end if
 
     prob = prob + micro_xs(i_nuclide) % elastic
     if (prob > cutoff) then

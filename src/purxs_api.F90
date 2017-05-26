@@ -45,7 +45,9 @@ module purxs_api
        URR_HISTORY => HISTORY,&
        URR_BATCH => BATCH,&
        URR_SIMULATION => SIMULATION,&
-       URR_E_RESONANCE => E_RESONANCE
+       URR_E_RESONANCE => E_RESONANCE,&
+       URR_RECONSTRUCTION => RECONSTRUCTION,&
+       URR_HDF5 => HDF5
   use URR_settings,  only:&
        URR_num_isotopes => num_isotopes,&
        URR_parameter_energy_dependence => parameter_energy_dependence,&
@@ -81,7 +83,8 @@ module purxs_api
        URR_path_avg_xs => path_avg_xs,&
        URR_path_prob_tables => path_prob_tables,&
        URR_path_endf_files => path_endf_files,&
-       URR_parameter_energy_dependence => parameter_energy_dependence
+       URR_parameter_energy_dependence => parameter_energy_dependence,&
+       URR_xs_source_pointwise => xs_source_pointwise
   use URR_cross_Sections, only:&
        URR_Type_CrossSections => CrossSections
 #endif

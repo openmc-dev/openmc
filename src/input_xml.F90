@@ -97,7 +97,10 @@ module input_xml
        URR_path_avg_xs,&
        URR_path_prob_tables,&
        URR_path_endf_files,&
-       URR_parameter_energy_dependence
+       URR_parameter_energy_dependence,&
+       URR_xs_source_pointwise,&
+       URR_RECONSTRUCTION,&
+       URR_HDF5
 #endif
 
   implicit none
@@ -112,9 +115,7 @@ contains
 
   subroutine read_input_xml()
 
-    if (run_mode == MODE_PURXS) then
-      call read_urr_xml()
-    else
+    if (run_mode == MODE_PURXS .or. run_mode /= MODE_PURXS) then
       call read_settings_xml()
       call read_geometry_xml()
       call read_materials()
@@ -132,7 +133,7 @@ contains
     end if
 
     ! Normalize atom/weight percents
-    if (run_mode /= MODE_PLOTTING) call normalize_ao()
+    if (run_mode /= MODE_PLOTTING .and. run_mode /= MODE_PURXS) call normalize_ao()
 
   end subroutine read_input_xml
 
@@ -4828,7 +4829,8 @@ contains
           call fatal_error('MNBW formalism not yet supported for the URR')
         case ('reich-moore')
           URR_formalism = URR_REICH_MOORE
-          call fatal_error('Reich-Moore formalism not yet supported for the URR')
+          if (run_mode /= MODE_PURXS)&
+               call fatal_error('Reich-Moore formalism not yet supported for the URR')
         case default
           call fatal_error('Unrecognized resonance formalism given in urr.xml')
         end select
@@ -4994,18 +4996,33 @@ contains
       URR_xs_representation = URR_POINTWISE
       URR_num_urr_realizations = 1
       point_xs_node = root % child("pointwise")
-      if (check_for_node(point_xs_node, 'min_energy_spacing')) then
-        call get_node_value(&
-             point_xs_node, 'min_energy_spacing', URR_min_delta_E_pointwise)
+      if (check_for_node(point_xs_node, 'source')) then
+        call get_node_value(point_xs_node, "source", temp_str)
+        select case (trim(adjustl(to_lower(temp_str))))
+        case ('reconstruction')
+          URR_xs_source_pointwise = URR_RECONSTRUCTION
+        case ('hdf5')
+          URR_xs_source_pointwise = URR_HDF5
+        case default
+          call fatal_error('Unrecognized pointwise URR xs source.')
+        end select
       else
-        call fatal_error('No min energy spacing [eV] for cross section &
-             &reconstruction is given in urr.xml')
+        call fatal_error('No pointwise xs source specified in urr.xml')
       end if
-      if (check_for_node(point_xs_node, 'tolerance')) then
-        call get_node_value(point_xs_node, 'tolerance', URR_rel_err_tolerance_pointwise)
-      else
-        call fatal_error('No max fractional error tolerance for cross section&
-             & reconstruction is given in urr.xml')
+      if (URR_xs_source_pointwise == URR_RECONSTRUCTION) then
+        if (check_for_node(point_xs_node, 'min_energy_spacing')) then
+          call get_node_value(&
+               point_xs_node, 'min_energy_spacing', URR_min_delta_E_pointwise)
+        else
+          call fatal_error('No min energy spacing [eV] for cross section &
+               &reconstruction is given in urr.xml')
+        end if
+        if (check_for_node(point_xs_node, 'tolerance')) then
+          call get_node_value(point_xs_node, 'tolerance', URR_rel_err_tolerance_pointwise)
+        else
+          call fatal_error('No max fractional error tolerance for cross section&
+               & reconstruction is given in urr.xml')
+        end if
       end if
     end if
 

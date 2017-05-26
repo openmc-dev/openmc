@@ -55,7 +55,11 @@ module initialize
        URR_pregenerated_prob_tables,&
        URR_use_urr,&
        URR_realization_frequency,&
-       URR_endf_filenames
+       URR_endf_filenames,&
+       URR_xs_source_pointwise,&
+       URR_RECONSTRUCTION,&
+       URR_HDF5,&
+       URR_Type_CrossSections
 #endif
 
   implicit none
@@ -80,7 +84,11 @@ contains
     integer :: i
     integer :: i_temperature
     character(len=:), allocatable :: ZA
-
+#ifdef PURXS
+    real(8), allocatable :: h5_E_grid(:)
+    type(URR_Type_CrossSections), allocatable :: h5_xs(:)
+    integer :: i_E
+#endif
     ! Start total and initialization timer
     call time_total%start()
     call time_initialize%start()
@@ -209,30 +217,57 @@ contains
           end select
 
         case (URR_POINTWISE)
-          if (URR_parameter_energy_dependence /= URR_E_RESONANCE) then
-            call fatal_error('Generating &
-                 &a resonance ensemble with E_n-dependent parameters')
-          end if
-          do i = 1, URR_num_isotopes
-            do i_nuc = 1, n_nuclides_total
-              ZA = '000'
-              ZA(4-len(trim(adjustl(to_str(nuclides(i_nuc) % A)))):3)&
-                   = trim(adjustl(to_str(nuclides(i_nuc) % A)))
-              ZA = trim(adjustl(to_str(nuclides(i_nuc) % Z))) // ZA
-              if ((ZA == trim(adjustl(to_str(URR_isotopes(i) % ZAI)))) .and.&
-                   (.not. allocated(URR_isotopes(i) % urr_resonances))) then
-                call URR_isotopes(i) % resonance_ladder_realization()
-                call URR_write_MF2(i)
-                do i_temperature = 1, size(nuclides(i_nuc) % kTs)
-                  if (i_temperature /= 1)&
-                       call fatal_error('Trying to generate pointwise PURXS cross sections&
-                       & at multiple temperatures for the same isotope: currently not&
-                       & implemented.')
-                  call URR_isotopes(i) % generate_pointwise_xs(nuclides(i_nuc) % kTs(i_temperature) / K_BOLTZMANN)
-                end do
-              end if
+          select case(URR_xs_source_pointwise)
+          case(URR_RECONSTRUCTION)
+            if (URR_parameter_energy_dependence /= URR_E_RESONANCE) then
+              call fatal_error('Generating &
+                   &a resonance ensemble with E_n-dependent parameters')
+            end if
+            do i = 1, URR_num_isotopes
+              do i_nuc = 1, n_nuclides_total
+                ZA = '000'
+                ZA(4-len(trim(adjustl(to_str(nuclides(i_nuc) % A)))):3)&
+                     = trim(adjustl(to_str(nuclides(i_nuc) % A)))
+                ZA = trim(adjustl(to_str(nuclides(i_nuc) % Z))) // ZA
+                if ((ZA == trim(adjustl(to_str(URR_isotopes(i) % ZAI)))) .and.&
+                     (.not. allocated(URR_isotopes(i) % urr_resonances))) then
+                  call URR_isotopes(i) % resonance_ladder_realization()
+                  call URR_write_MF2(i)
+                  do i_temperature = 1, size(nuclides(i_nuc) % kTs)
+                    if (i_temperature /= 1)&
+                         call fatal_error('Trying to generate pointwise PURXS cross sections&
+                         & at multiple temperatures for the same isotope: currently not&
+                         & implemented.')
+                    call URR_isotopes(i) % generate_pointwise_xs(nuclides(i_nuc) % kTs(i_temperature) / K_BOLTZMANN)
+                  end do
+                end if
+              end do
             end do
-          end do
+
+          case(URR_HDF5)
+            do i = 1, URR_num_isotopes
+              do i_nuc = 1, n_nuclides_total
+                ZA = '000'
+                ZA(4-len(trim(adjustl(to_str(nuclides(i_nuc) % A)))):3)&
+                     = trim(adjustl(to_str(nuclides(i_nuc) % A)))
+                ZA = trim(adjustl(to_str(nuclides(i_nuc) % Z))) // ZA
+                if (ZA == trim(adjustl(to_str(URR_isotopes(i) % ZAI)))) then
+                  h5_E_grid = nuclides(i_nuc) % grid(1) % energy
+                  allocate(h5_xs(size(h5_E_grid)))
+                  h5_xs(:) % t = nuclides(i_nuc) % sum_xs(1) % total
+                  h5_xs(:) % n = nuclides(i_nuc) % sum_xs(1) % elastic
+                  h5_xs(:) % f = nuclides(i_nuc) % sum_xs(1) % fission
+                  do i_E = 1, size(h5_E_grid)
+                    h5_xs(i_E) % g = nuclides(i_nuc) % sum_xs(1) % absorption(i_E) - nuclides(i_nuc) % sum_xs(1) % fission(i_E)
+                    h5_xs(i_E) % x = h5_xs(i_E) % t - h5_xs(i_E) % n - h5_xs(i_E) % g - h5_xs(i_E) % f
+                  end do
+                  call URR_isotopes(i) % energy_avg_point_xs(h5_E_grid, h5_xs)
+                  deallocate(h5_xs)
+                end if
+              end do
+            end do
+
+          end select
 
         case default
           call fatal_error('Must specify a URR treatment: probability bands,&
@@ -288,6 +323,7 @@ contains
     call time_initialize%stop()
 
   end subroutine openmc_init
+
 
 !$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$
 !
@@ -356,6 +392,7 @@ contains
     end do
 #endif
   end subroutine initialize_endf
+
 
 #ifdef MPI
 !===============================================================================

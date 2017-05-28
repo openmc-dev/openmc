@@ -1079,8 +1079,9 @@ class Tally(object):
             element.set("name", self.name)
 
         # Optional Tally filters
-        for self_filter in self.filters:
-            element.append(self_filter.to_xml_element())
+        if len(self.filters) > 0:
+            subelement = ET.SubElement(element, "filters")
+            subelement.text = ' '.join(str(f.id) for f in self.filters)
 
         # Optional Nuclides
         if len(self.nuclides) > 0:
@@ -1347,7 +1348,7 @@ class Tally(object):
 
                 # If a user-requested Filter, get the user-requested bins
                 for j, test_filter in enumerate(filters):
-                    if isinstance(self_filter, test_filter):
+                    if type(self_filter) is test_filter:
                         bins = filter_bins[j]
                         user_filter = True
                         break
@@ -2140,7 +2141,6 @@ class Tally(object):
         ----------
         filter1 : Filter
             The filter to swap with filter2
-
         filter2 : Filter
             The filter to swap with filter1
 
@@ -2167,15 +2167,6 @@ class Tally(object):
                   'does not contain such a filter'.format(filter2.type, self.id)
             raise ValueError(msg)
 
-        # Swap the filters in the copied version of this Tally
-        filter1_index = self.filters.index(filter1)
-        filter2_index = self.filters.index(filter2)
-        self.filters[filter1_index] = filter2
-        self.filters[filter2_index] = filter1
-
-        # Update the tally's filter strides
-        self._update_filter_strides()
-
         # Construct lists of tuples for the bins in each of the two filters
         filters = [type(filter1), type(filter2)]
         if isinstance(filter1, openmc.DistribcellFilter):
@@ -2192,23 +2183,41 @@ class Tally(object):
         else:
             filter2_bins = [filter2.get_bin(i) for i in range(filter2.num_bins)]
 
-        # Adjust the mean data array to relect the new filter order
-        if self.mean is not None:
-            for bin1, bin2 in itertools.product(filter1_bins, filter2_bins):
-                filter_bins = [(bin1,), (bin2,)]
-                data = self.get_values(
-                    filters=filters, filter_bins=filter_bins, value='mean')
-                indices = self.get_filter_indices(filters, filter_bins)
-                self.mean[indices, :, :] = data
+        # Create variables to store views of data in the misaligned structure
+        mean = {}
+        std_dev = {}
 
-        # Adjust the std_dev data array to relect the new filter order
-        if self.std_dev is not None:
-            for bin1, bin2 in itertools.product(filter1_bins, filter2_bins):
-                filter_bins = [(bin1,), (bin2,)]
-                data = self.get_values(
+        # Store the data from the misaligned structure
+        for i, (bin1, bin2) in enumerate(itertools.product(filter1_bins, filter2_bins)):
+            filter_bins = [(bin1,), (bin2,)]
+
+            if self.mean is not None:
+                mean[i] = self.get_values(
+                    filters=filters, filter_bins=filter_bins, value='mean')
+
+            if self.std_dev is not None:
+                std_dev[i] = self.get_values(
                     filters=filters, filter_bins=filter_bins, value='std_dev')
-                indices = self.get_filter_indices(filters, filter_bins)
-                self.std_dev[indices, :, :] = data
+
+        # Swap the filters in the copied version of this Tally
+        filter1_index = self.filters.index(filter1)
+        filter2_index = self.filters.index(filter2)
+        self.filters[filter1_index] = filter2
+        self.filters[filter2_index] = filter1
+
+        # Update the tally's filter strides
+        self._update_filter_strides()
+
+        # Realign the data
+        for i, (bin1, bin2) in enumerate(itertools.product(filter1_bins, filter2_bins)):
+            filter_bins = [(bin1,), (bin2,)]
+            indices = self.get_filter_indices(filters, filter_bins)
+
+            if self.mean is not None:
+                self.mean[indices, :, :] = mean[i]
+
+            if self.std_dev is not None:
+                self.std_dev[indices, :, :] = std_dev[i]
 
     def _swap_nuclides(self, nuclide1, nuclide2):
         """Reverse the ordering of two nuclides in this tally
@@ -3533,6 +3542,18 @@ class Tallies(cv.CheckedList):
                         root_element.append(f.mesh.to_xml_element())
                         already_written.add(f.mesh)
 
+    def _create_filter_subelements(self, root_element):
+        already_written = dict()
+        for tally in self:
+            for f in tally.filters:
+                if f not in already_written:
+                    root_element.append(f.to_xml_element())
+                    already_written[f] = f.id
+                else:
+                    # Set the IDs of identical filters with different
+                    # user-defined IDs to the same value
+                    f.id = already_written[f]
+
     def _create_derivative_subelements(self, root_element):
         # Get a list of all derivatives referenced in a tally.
         derivs = []
@@ -3557,6 +3578,7 @@ class Tallies(cv.CheckedList):
 
         root_element = ET.Element("tallies")
         self._create_mesh_subelements(root_element)
+        self._create_filter_subelements(root_element)
         self._create_tally_subelements(root_element)
         self._create_derivative_subelements(root_element)
 

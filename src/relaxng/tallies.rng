@@ -152,6 +152,120 @@
       </element>
     </zeroOrMore>
     <zeroOrMore>
+      <element name="filter">
+        <interleave>
+          <choice>
+            <element name="id">
+              <data type="int"/>
+            </element>
+            <attribute name="id">
+              <data type="int"/>
+            </attribute>
+          </choice>
+          <choice>
+            <interleave>
+              <choice>
+                <element name="type">
+                  <choice>
+                    <value>cell</value>
+                    <value>cellborn</value>
+                    <value>material</value>
+                    <value>universe</value>
+                    <value>surface</value>
+                    <value>distribcell</value>
+                    <value>mesh</value>
+                    <value>energy</value>
+                    <value>energyout</value>
+                    <value>mu</value>
+                    <value>polar</value>
+                    <value>azimuthal</value>
+                    <value>delayedgroup</value>
+                    <value>energyfunction</value>
+                  </choice>
+                </element>
+                <attribute name="type">
+                  <choice>
+                    <value>cell</value>
+                    <value>cellborn</value>
+                    <value>material</value>
+                    <value>universe</value>
+                    <value>surface</value>
+                    <value>distribcell</value>
+                    <value>mesh</value>
+                    <value>energy</value>
+                    <value>energyout</value>
+                    <value>mu</value>
+                    <value>polar</value>
+                    <value>azimuthal</value>
+                    <value>delayedgroup</value>
+                    <value>energyfunction</value>
+                  </choice>
+                </attribute>
+              </choice>
+              <choice>
+                <element name="bins">
+                  <list>
+                    <oneOrMore>
+                      <data type="double"/>
+                    </oneOrMore>
+                  </list>
+                </element>
+                <attribute name="bins">
+                  <list>
+                    <oneOrMore>
+                      <data type="double"/>
+                    </oneOrMore>
+                  </list>
+                </attribute>
+              </choice>
+            </interleave>
+            <interleave>
+              <choice>
+                <element name="type">
+                  <value>energyfunction</value>
+                </element>
+                <attribute name="type">
+                  <value>energyfunction</value>
+                </attribute>
+              </choice>
+              <choice>
+                <element name="energy">
+                  <list>
+                    <oneOrMore>
+                      <data type="double"/>
+                    </oneOrMore>
+                  </list>
+                </element>
+                <attribute name="energy">
+                  <list>
+                    <oneOrMore>
+                      <data type="double"/>
+                    </oneOrMore>
+                  </list>
+                </attribute>
+              </choice>
+              <choice>
+                <element name="y">
+                  <list>
+                    <oneOrMore>
+                      <data type="double"/>
+                    </oneOrMore>
+                  </list>
+                </element>
+                <attribute name="y">
+                  <list>
+                    <oneOrMore>
+                      <data type="double"/>
+                    </oneOrMore>
+                  </list>
+                </attribute>
+              </choice>
+            </interleave>
+          </choice>
+        </interleave>
+      </element>
+    </zeroOrMore>
+    <zeroOrMore>
       <element name="tally">
         <interleave>
           <choice>
@@ -194,110 +308,24 @@
               </attribute>
             </choice>
           </optional>
-          <zeroOrMore>
-            <element name="filter">
-              <choice>
-                <interleave>
-                  <choice>
-                    <element name="type">
-                      <choice>
-                        <value>cell</value>
-                        <value>cellborn</value>
-                        <value>material</value>
-                        <value>universe</value>
-                        <value>surface</value>
-                        <value>distribcell</value>
-                        <value>mesh</value>
-                        <value>energy</value>
-                        <value>energyout</value>
-                        <value>mu</value>
-                        <value>polar</value>
-                        <value>azimuthal</value>
-                        <value>delayedgroup</value>
-                        <value>energyfunction</value>
-                      </choice>
-                    </element>
-                    <attribute name="type">
-                      <choice>
-                        <value>cell</value>
-                        <value>cellborn</value>
-                        <value>material</value>
-                        <value>universe</value>
-                        <value>surface</value>
-                        <value>distribcell</value>
-                        <value>mesh</value>
-                        <value>energy</value>
-                        <value>energyout</value>
-                        <value>mu</value>
-                        <value>polar</value>
-                        <value>azimuthal</value>
-                        <value>delayedgroup</value>
-                        <value>energyfunction</value>
-                      </choice>
-                    </attribute>
-                  </choice>
-                  <choice>
-                    <element name="bins">
-                      <list>
-                        <oneOrMore>
-                          <data type="double"/>
-                        </oneOrMore>
-                      </list>
-                    </element>
-                    <attribute name="bins">
-                      <list>
-                        <oneOrMore>
-                          <data type="double"/>
-                        </oneOrMore>
-                      </list>
-                    </attribute>
-                  </choice>
-                </interleave>
-                <interleave>
-                  <choice>
-                    <element name="type">
-                      <value>energyfunction</value>
-                    </element>
-                    <attribute name="type">
-                      <value>energyfunction</value>
-                    </attribute>
-                  </choice>
-                  <choice>
-                    <element name="energy">
-                      <list>
-                        <oneOrMore>
-                          <data type="double"/>
-                        </oneOrMore>
-                      </list>
-                    </element>
-                    <attribute name="energy">
-                      <list>
-                        <oneOrMore>
-                          <data type="double"/>
-                        </oneOrMore>
-                      </list>
-                    </attribute>
-                  </choice>
-                  <choice>
-                    <element name="y">
-                      <list>
-                        <oneOrMore>
-                          <data type="double"/>
-                        </oneOrMore>
-                      </list>
-                    </element>
-                    <attribute name="y">
-                      <list>
-                        <oneOrMore>
-                          <data type="double"/>
-                        </oneOrMore>
-                      </list>
-                    </attribute>
-                  </choice>
-                </interleave>
-              </choice>
-            </element>
-          </zeroOrMore>
+          <optional>
+            <choice>
+              <element name="filters">
+                <list>
+                  <oneOrMore>
+                    <data type="int"/>
+                  </oneOrMore>
+                </list>
+              </element>
+              <attribute name="filters">
+                <list>
+                  <oneOrMore>
+                    <data type="int"/>
+                  </oneOrMore>
+                </list>
+              </attribute>
+            </choice>
+          </optional>
           <optional>
             <element name="nuclides">
               <list>

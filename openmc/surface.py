@@ -1,6 +1,8 @@
+from __future__ import division
 from abc import ABCMeta
 from collections import Iterable, OrderedDict
 from copy import deepcopy
+from functools import partial
 from numbers import Real, Integral
 from xml.etree import ElementTree as ET
 from math import sqrt
@@ -1326,6 +1328,7 @@ class Sphere(Surface):
         z = point[2] - self.z0
         return x**2 + y**2 + z**2 - self.r**2
 
+
 @add_metaclass(ABCMeta)
 class Cone(Surface):
     """A conical surface parallel to the x-, y-, or z-axis.
@@ -1854,7 +1857,7 @@ class Halfspace(Region):
     def __init__(self, surface, side):
         self.surface = surface
         self.side = side
-        
+
     def __and__(self, other):
         if isinstance(other, Intersection):
             return Intersection(self, *other.nodes)
@@ -1913,25 +1916,25 @@ class Halfspace(Region):
     def __str__(self):
         return '-' + str(self.surface.id) if self.side == '-' \
             else str(self.surface.id)
-    
+
     def get_surfaces(self, surfaces=None):
         """
         Returns the surface that this is a halfspace of.
-    
+
         Parameters
         ----------
         surfaces: collections.OrderedDict, optional
             Dictionary mapping surface IDs to :class:`openmc.Surface` instances
-    
+
         Returns
         -------
         surfaces: collections.OrderedDict
             Dictionary mapping surface IDs to :class:`openmc.Surface` instances
-    
+
         """
         if surfaces is None:
             surfaces = OrderedDict()
-        
+
         surfaces[self.surface.id] = self.surface
         return surfaces
 
@@ -1961,7 +1964,7 @@ class Halfspace(Region):
 
 
 def get_rectangular_prism(width, height, axis='z', origin=(0., 0.),
-                          boundary_type='transmission'):
+                          boundary_type='transmission', corner_radius=0.):
     """Get an infinite rectangular prism from four planar surfaces.
 
     Parameters
@@ -1982,6 +1985,8 @@ def get_rectangular_prism(width, height, axis='z', origin=(0., 0.),
     boundary_type : {'transmission, 'vacuum', 'reflective', 'periodic'}
         Boundary condition that defines the behavior for particles hitting the
         surfaces comprising the rectangular prism (default is 'transmission').
+    corner_radius: float
+        Prism corner radius in units of cm. Defaults to 0.
 
     Returns
     -------
@@ -1992,45 +1997,75 @@ def get_rectangular_prism(width, height, axis='z', origin=(0., 0.),
 
     check_type('width', width, Real)
     check_type('height', height, Real)
-    check_value('axis', axis, ['x','y','z'])
+    check_type('corner_radius', corner_radius, Real)
+    check_value('axis', axis, ['x', 'y', 'z'])
     check_type('origin', origin, Iterable, Real)
 
+    # Define function to create a plane on given axis
+    def plane(axis, name, value):
+        cls = globals()['{}Plane'.format(axis.upper())]
+        return cls(name='{} {}'.format(name, axis),
+                   boundary_type=boundary_type,
+                   **{axis + '0': value})
+
     if axis == 'x':
-        min_y = YPlane(name='minimum y', y0=-width/2.+origin[0],
-                       boundary_type=boundary_type)
-        max_y = YPlane(name='maximum y', y0=+width/2.+origin[0],
-                       boundary_type=boundary_type)
-        min_z = ZPlane(name='minimum z', z0=-height/2.+origin[1],
-                       boundary_type=boundary_type)
-        max_z = ZPlane(name='maximum z', z0=+height/2.+origin[1],
-                       boundary_type=boundary_type)
-        prism = +min_y & -max_y & +min_z & -max_z
+        x1, x2 = 'y', 'z'
     elif axis == 'y':
-        min_x = XPlane(name='minimum x', x0=-width/2.+origin[0],
-                       boundary_type=boundary_type)
-        max_x = XPlane(name='maximum x', x0=+width/2.+origin[0],
-                       boundary_type=boundary_type)
-        min_z = ZPlane(name='minimum z', z0=-height/2.+origin[1],
-                       boundary_type=boundary_type)
-        max_z = ZPlane(name='maximum z', z0=+height/2.+origin[1],
-                       boundary_type=boundary_type)
-        prism = +min_x & -max_x & +min_z & -max_z
+        x1, x2 = 'x', 'z'
     else:
-        min_x = XPlane(name='minimum x', x0=-width/2.+origin[0],
-                       boundary_type=boundary_type)
-        max_x = XPlane(name='maximum x', x0=+width/2.+origin[0],
-                       boundary_type=boundary_type)
-        min_y = YPlane(name='minimum y', y0=-height/2.+origin[1],
-                       boundary_type=boundary_type)
-        max_y = YPlane(name='maximum y', y0=+height/2.+origin[1],
-                       boundary_type=boundary_type)
-        prism = +min_x & -max_x & +min_y & -max_y
+        x1, x2 = 'x', 'y'
+
+    # Get cylinder class corresponding to given axis
+    cyl = globals()['{}Cylinder'.format(axis.upper())]
+
+    # Create rectangular region
+    min_x1 = plane(x1, 'minimum', -width/2 + origin[0])
+    max_x1 = plane(x1, 'maximum', width/2 + origin[0])
+    min_x2 = plane(x2, 'minimum', -height/2 + origin[1])
+    max_x2 = plane(x2, 'maximum', height/2 + origin[1])
+    prism = +min_x1 & -max_x1 & +min_x2 & -max_x2
+
+    # Handle rounded corners if given
+    if corner_radius > 0.:
+        args = {'R': corner_radius, 'boundary_type': boundary_type}
+
+        args[x1 + '0'] = origin[0] - width/2 + corner_radius
+        args[x2 + '0'] = origin[1] - height/2 + corner_radius
+        x1_min_x2_min = cyl(name='{} min {} min'.format(x1, x2), **args)
+
+        args[x1 + '0'] = origin[0] - width/2 + corner_radius
+        args[x2 + '0'] = origin[1] - height/2 + corner_radius
+        x1_min_x2_min = cyl(name='{} min {} min'.format(x1, x2), **args)
+
+        args[x1 + '0'] = origin[0] - width/2 + corner_radius
+        args[x2 + '0'] = origin[1] + height/2 - corner_radius
+        x1_min_x2_max = cyl(name='{} min {} max'.format(x1, x2), **args)
+
+        args[x1 + '0'] = origin[0] + width/2 - corner_radius
+        args[x2 + '0'] = origin[1] - height/2 + corner_radius
+        x1_max_x2_min = cyl(name='{} max {} min'.format(x1, x2), **args)
+
+        args[x1 + '0'] = origin[0] + width/2 - corner_radius
+        args[x2 + '0'] = origin[1] + height/2 - corner_radius
+        x1_max_x2_max = cyl(name='{} max {} max'.format(x1, x2), **args)
+
+        x1_min = plane(x1, 'min', -width/2 + origin[0] + corner_radius)
+        x1_max = plane(x1, 'max', width/2 + origin[0] - corner_radius)
+        x2_min = plane(x2, 'min', -height/2 + origin[1] + corner_radius)
+        x2_max = plane(x2, 'max', height/2 + origin[1] - corner_radius)
+
+        corners = (+x1_min_x2_min & -x1_min & -x2_min) | \
+                  (+x1_min_x2_max & -x1_min & +x2_max) | \
+                  (+x1_max_x2_min & +x1_max & -x2_min) | \
+                  (+x1_max_x2_max & +x1_max & +x2_max)
+
+        prism = prism & ~corners
 
     return prism
 
 
-def get_hexagonal_prism(edge_length=1., orientation='y',
-                        boundary_type='transmission'):
+def get_hexagonal_prism(edge_length=1., orientation='y', origin=(0., 0.),
+                        boundary_type='transmission', corner_radius=0.):
     """Create a hexagon region from six surface planes.
 
     Parameters
@@ -2041,9 +2076,13 @@ def get_hexagonal_prism(edge_length=1., orientation='y',
         An 'x' orientation means that two sides of the hexagon are parallel to
         the x-axis and a 'y' orientation means that two sides of the hexagon are
         parallel to the y-axis.
+    origin: Iterable of two floats
+        Origin of the prism. Defaults to (0., 0.).
     boundary_type : {'transmission, 'vacuum', 'reflective', 'periodic'}
         Boundary condition that defines the behavior for particles hitting the
         surfaces comprising the hexagonal prism (default is 'transmission').
+    corner_radius: float
+        Prism corner radius in units of cm. Defaults to 0.
 
     Returns
     -------
@@ -2053,41 +2092,117 @@ def get_hexagonal_prism(edge_length=1., orientation='y',
     """
 
     l = edge_length
+    x, y = origin
 
     if orientation == 'y':
-        right = XPlane(x0=sqrt(3.)/2.*l)
-        left = XPlane(x0=-sqrt(3.)/2.*l)
+        right = XPlane(x0=x + sqrt(3.)/2*l, boundary_type=boundary_type)
+        left = XPlane(x0=x - sqrt(3.)/2*l, boundary_type=boundary_type)
         c = sqrt(3.)/3.
 
         # y = -x/sqrt(3) + a
-        upper_right = Plane(A=c, B=1., D=l, boundary_type=boundary_type)
+        upper_right = Plane(A=c, B=1., D=l+x*c+y, boundary_type=boundary_type)
 
         # y = x/sqrt(3) + a
-        upper_left = Plane(A=-c, B=1., D=l, boundary_type=boundary_type)
+        upper_left = Plane(A=-c, B=1., D=l-x*c+y, boundary_type=boundary_type)
 
         # y = x/sqrt(3) - a
-        lower_right = Plane(A=-c, B=1., D=-l, boundary_type=boundary_type)
+        lower_right = Plane(A=-c, B=1., D=-l-x*c+y, boundary_type=boundary_type)
 
         # y = -x/sqrt(3) - a
-        lower_left = Plane(A=c, B=1., D=-l, boundary_type=boundary_type)
-        return Intersection(-right, +left, -upper_right, -upper_left,
-                            +lower_right, +lower_left)
+        lower_left = Plane(A=c, B=1., D=-l+x*c+y, boundary_type=boundary_type)
+
+        prism = -right & +left & -upper_right & -upper_left & \
+                +lower_right & +lower_left
+
+        if boundary_type == 'periodic':
+            right.periodic_surface = left
+            upper_right.periodic_surface = lower_left
+            lower_right.periodic_surface = upper_left
 
     elif orientation == 'x':
-        top = YPlane(y0=sqrt(3.)/2.*l)
-        bottom = YPlane(y0=-sqrt(3.)/2.*l)
+        top = YPlane(y0=y + sqrt(3.)/2*l, boundary_type=boundary_type)
+        bottom = YPlane(y0=y - sqrt(3.)/2*l, boundary_type=boundary_type)
         c = sqrt(3.)
 
         # y = -sqrt(3)*(x - a)
-        upper_right = Plane(A=c, B=1., D=c*l, boundary_type=boundary_type)
+        upper_right = Plane(A=c, B=1., D=c*l+x*c+y, boundary_type=boundary_type)
 
         # y = sqrt(3)*(x + a)
-        lower_right = Plane(A=-c, B=1., D=-c*l, boundary_type=boundary_type)
+        lower_right = Plane(A=-c, B=1., D=-c*l-x*c+y,
+                            boundary_type=boundary_type)
 
         # y = -sqrt(3)*(x + a)
-        lower_left = Plane(A=c, B=1., D=-c*l, boundary_type=boundary_type)
+        lower_left = Plane(A=c, B=1., D=-c*l+x*c+y, boundary_type=boundary_type)
 
         # y = sqrt(3)*(x + a)
-        upper_left = Plane(A=-c, B=1., D=c*l, boundary_type=boundary_type)
-        return Intersection(-top, +bottom, -upper_right, +lower_right,
-                            +lower_left, -upper_left)
+        upper_left = Plane(A=-c, B=1., D=c*l-x*c+y, boundary_type=boundary_type)
+
+        prism = -top & +bottom & -upper_right & +lower_right & \
+                            +lower_left & -upper_left
+
+        if boundary_type == 'periodic':
+            top.periodic_surface = bottom
+            upper_right.periodic_surface = lower_left
+            lower_right.periodic_surface = upper_left
+
+    # Handle rounded corners if given
+    if corner_radius > 0.:
+        if boundary_type == 'periodic':
+            raise ValueError('Periodic boundary conditions not permitted when '
+                             'rounded corners are used.')
+
+        c = sqrt(3.)/2
+        t = l - corner_radius/c
+
+        # Cylinder with corner radius and boundary type pre-applied
+        cyl1 = partial(ZCylinder, R=corner_radius, boundary_type=boundary_type)
+        cyl2 = partial(ZCylinder, R=corner_radius/(2*c),
+                       boundary_type=boundary_type)
+
+        if orientation == 'x':
+            x_min_y_min_in = cyl1(name='x min y min in', x0=x-t/2, y0=y-c*t)
+            x_min_y_max_in = cyl1(name='x min y max in', x0=x+t/2, y0=y-c*t)
+            x_max_y_min_in = cyl1(name='x max y min in', x0=x-t/2, y0=y+c*t)
+            x_max_y_max_in = cyl1(name='x max y max in', x0=x+t/2, y0=y+c*t)
+            x_min_in = cyl1(name='x min in', x0=x-t, y0=y)
+            x_max_in = cyl1(name='x max in', x0=x+t, y0=y)
+
+            x_min_y_min_out = cyl2(name='x min y min out', x0=x-l/2, y0=y-c*l)
+            x_min_y_max_out = cyl2(name='x min y max out', x0=x+l/2, y0=y-c*l)
+            x_max_y_min_out = cyl2(name='x max y min out', x0=x-l/2, y0=y+c*l)
+            x_max_y_max_out = cyl2(name='x max y max out', x0=x+l/2, y0=y+c*l)
+            x_min_out = cyl2(name='x min out', x0=x-l, y0=y)
+            x_max_out = cyl2(name='x max out', x0=x+l, y0=y)
+
+            corners = (+x_min_y_min_in & -x_min_y_min_out |
+                       +x_min_y_max_in & -x_min_y_max_out |
+                       +x_max_y_min_in & -x_max_y_min_out |
+                       +x_max_y_max_in & -x_max_y_max_out |
+                       +x_min_in & -x_min_out |
+                       +x_max_in & -x_max_out)
+
+        elif orientation == 'y':
+            x_min_y_min_in = cyl1(name='x min y min in', x0=x-c*t, y0=y-t/2)
+            x_min_y_max_in = cyl1(name='x min y max in', x0=x-c*t, y0=y+t/2)
+            x_max_y_min_in = cyl1(name='x max y min in', x0=x+c*t, y0=y-t/2)
+            x_max_y_max_in = cyl1(name='x max y max in', x0=x+c*t, y0=y+t/2)
+            y_min_in = cyl1(name='y min in', x0=x, y0=y-t)
+            y_max_in = cyl1(name='y max in', x0=x, y0=y+t)
+
+            x_min_y_min_out = cyl2(name='x min y min out', x0=x-c*l, y0=y-l/2)
+            x_min_y_max_out = cyl2(name='x min y max out', x0=x-c*l, y0=y+l/2)
+            x_max_y_min_out = cyl2(name='x max y min out', x0=x+c*l, y0=y-l/2)
+            x_max_y_max_out = cyl2(name='x max y max out', x0=x+c*l, y0=y+l/2)
+            y_min_out = cyl2(name='y min out', x0=x, y0=y-l)
+            y_max_out = cyl2(name='y max out', x0=x, y0=y+l)
+
+            corners = (+x_min_y_min_in & -x_min_y_min_out |
+                       +x_min_y_max_in & -x_min_y_max_out |
+                       +x_max_y_min_in & -x_max_y_min_out |
+                       +x_max_y_max_in & -x_max_y_max_out |
+                       +y_min_in & -y_min_out |
+                       +y_max_in & -y_max_out)
+
+        prism = prism & ~corners
+
+    return prism

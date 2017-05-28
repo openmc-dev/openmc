@@ -1,7 +1,10 @@
 from collections import Iterable
 from difflib import get_close_matches
 from numbers import Real
+import os
 import re
+import shutil
+import tempfile
 from warnings import warn
 
 import numpy as np
@@ -11,10 +14,11 @@ import openmc.checkvalue as cv
 from openmc.mixin import EqualityMixin
 from . import HDF5_VERSION, HDF5_VERSION_MAJOR
 from .data import K_BOLTZMANN, ATOMIC_SYMBOL, EV_PER_MEV, NATURAL_ABUNDANCE
-from .ace import Table, get_table
+from .ace import Table, get_table, Library
 from .angle_energy import AngleEnergy
 from .function import Tabulated1D
 from .correlated import CorrelatedAngleEnergy
+from .njoy import make_ace_thermal
 from openmc.stats import Discrete, Tabular
 
 
@@ -582,3 +586,47 @@ class ThermalScattering(EqualityMixin):
                                 table.nuclides.append(isotope)
 
         return table
+
+    @classmethod
+    def from_njoy(cls, filename, filename_thermal, temperatures=None, **kwargs):
+        """Generate incident neutron data by running NJOY.
+
+        Parameters
+        ----------
+        filename : str
+            Path to ENDF neutron sublibrary file
+        filename_thermal : str
+            Path to ENDF thermal scattering sublibrary file
+        temperatures : iterable of float
+            Temperatures in Kelvin to produce data at. If omitted, data is
+            produced at all temperatures in the ENDF thermal scattering
+            sublibrary.
+        **kwargs
+            Keyword arguments passed to :func:`openmc.data.njoy.make_ace_thermal`
+
+        Returns
+        -------
+        data : openmc.data.ThermalScattering
+            Thermal scattering data
+
+        """
+        # Create temporary directory -- it would be preferable to use
+        # TemporaryDirectory(), but it is only available in Python 3.2
+        tmpdir = tempfile.mkdtemp()
+        try:
+            # Run NJOY to create an ACE library
+            ace_file = os.path.join(tmpdir, 'ace')
+            xsdir_file = os.path.join(tmpdir, 'xsdir')
+            make_ace_thermal(filename, filename_thermal, temperatures,
+                             ace_file, xsdir_file, **kwargs)
+
+            # Create instance from ACE tables within library
+            lib = Library(ace_file)
+            data = cls.from_ace(lib.tables[0])
+            for table in lib.tables[1:]:
+                data.add_temperature_from_ace(table)
+        finally:
+            # Get rid of temporary files
+            shutil.rmtree(tmpdir)
+
+        return data

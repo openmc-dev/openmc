@@ -43,7 +43,10 @@ if __name__ == '__main__':
     azimuthal_tally3.estimator = 'tracklength'
 
     cellborn_tally = Tally()
-    cellborn_tally.filters = [CellbornFilter((10, 21, 22, 23))]
+    cellborn_tally.filters = [
+        CellbornFilter((model.geometry.get_all_cells()[10],
+                        model.geometry.get_all_cells()[21],
+                        22, 23))]  # Test both Cell objects and ids
     cellborn_tally.scores = ['total']
 
     dg_tally = Tally()
@@ -66,7 +69,10 @@ if __name__ == '__main__':
     transfer_tally.scores = ['scatter', 'nu-fission']
 
     material_tally = Tally()
-    material_tally.filters = [MaterialFilter((1, 2, 3, 4))]
+    material_tally.filters = [
+        MaterialFilter((model.geometry.get_materials_by_name('UOX fuel')[0],
+                        model.geometry.get_materials_by_name('Zircaloy')[0],
+                        3, 4))]  # Test both Material objects and ids
     material_tally.scores = ['total']
 
     mu_bins = (-1.0, -0.5, 0.0, 0.5, 1.0)
@@ -97,10 +103,15 @@ if __name__ == '__main__':
     polar_tally3.estimator = 'tracklength'
 
     universe_tally = Tally()
-    universe_tally.filters = [UniverseFilter((1, 2, 3, 4, 6, 8))]
+    universe_tally.filters = [
+        UniverseFilter((model.geometry.get_all_universes()[1],
+                        model.geometry.get_all_universes()[2],
+                        3, 4, 6, 8))]  # Test both Universe objects and ids
     universe_tally.scores = ['total']
 
-    cell_filter = CellFilter((10, 21, 22, 23, 60))
+    cell_filter = CellFilter((model.geometry.get_all_cells()[10],
+                              model.geometry.get_all_cells()[21],
+                              22, 23, 60))  # Test both Cell objects and ids
     score_tallies = [Tally(), Tally(), Tally()]
     for t in score_tallies:
         t.filters = [cell_filter]

@@ -107,7 +107,7 @@ contains
         call logarithmic_grid()
       end if
 
-      ! Allocate and setup tally stride, matching_bins, and tally maps
+      ! Allocate and setup tally stride, filter_matches, and tally maps
       call configure_tallies()
 
       ! Set up tally procedure pointers
@@ -432,7 +432,6 @@ contains
     integer :: id                     ! user-specified id
     type(Cell),        pointer :: c => null()
     class(Lattice),    pointer :: lat => null()
-    type(TallyObject), pointer :: t => null()
 
     do i = 1, n_cells
       ! =======================================================================
@@ -567,26 +566,20 @@ contains
 
     end do
 
-    TALLY_LOOP: do i = 1, n_tallies
-      t => tallies(i)
+    ! =======================================================================
+    ! ADJUST INDICES FOR EACH TALLY FILTER
 
-      ! =======================================================================
-      ! ADJUST INDICES FOR EACH TALLY FILTER
+    FILTER_LOOP: do i = 1, n_filters
 
-      FILTER_LOOP: do j = 1, size(t % filters)
+      select type(filt => filters(i) % obj)
+      type is (SurfaceFilter)
+        ! Check if this is a surface filter only for surface currents
+        if (.not. filt % current) call filt % initialize()
+      class default
+        call filt % initialize()
+      end select
 
-        select type(filt => t % filters(j) % obj)
-        type is (SurfaceFilter)
-          ! Check if this is a surface filter only for surface currents
-          if (.not. any(t % score_bins == SCORE_CURRENT)) &
-               call filt % initialize()
-        class default
-          call filt % initialize()
-        end select
-
-      end do FILTER_LOOP
-
-    end do TALLY_LOOP
+    end do FILTER_LOOP
 
   end subroutine adjust_indices
 
@@ -695,8 +688,8 @@ contains
 
     ! We need distribcell if any tallies have distribcell filters.
     do i = 1, n_tallies
-      do j = 1, size(tallies(i) % filters)
-        select type(filt => tallies(i) % filters(j) % obj)
+      do j = 1, size(tallies(i) % filter)
+        select type(filt => filters(tallies(i) % filter(j)) % obj)
         type is (DistribcellFilter)
           distribcell_active = .true.
         end select
@@ -722,8 +715,8 @@ contains
 
     ! Set the number of bins in all distribcell filters.
     do i = 1, n_tallies
-      do j = 1, size(tallies(i) % filters)
-        select type(filt => tallies(i) % filters(j) % obj)
+      do j = 1, size(tallies(i) % filter)
+        select type(filt => filters(tallies(i) % filter(j)) % obj)
         type is (DistribcellFilter)
           ! Set the number of bins to the number of instances of the cell.
           filt % n_bins = cells(filt % cell) % instances
@@ -787,8 +780,8 @@ contains
 
     ! List all cells referenced in distribcell filters.
     do i = 1, n_tallies
-      do j = 1, size(tallies(i) % filters)
-        select type(filt => tallies(i) % filters(j) % obj)
+      do j = 1, size(tallies(i) % filter)
+        select type(filt => filters(tallies(i) % filter(j)) % obj)
         type is (DistribcellFilter)
           call cell_list % add(filt % cell)
         end select

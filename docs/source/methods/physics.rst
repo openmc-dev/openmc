@@ -229,10 +229,10 @@ incoming energy group is to select a random number (:math:`\xi`) between 0 and
 produced from the outgoing group (`g'`) data for the given incoming group (`g`):
 
 .. math::
-    CDF = \sum_{g'=0}^{h}\Sigma_{s,g \rightarrow g'}
+    CDF = \sum_{g'=1}^{h}\Sigma_{s,g \rightarrow g'}
 
 If the scattering data is represented as a Legendre expansion, then the
-value of :math:`\Sigma_{s,g \rightarrow g'}` above is the 0th order forthe
+value of :math:`\Sigma_{s,g \rightarrow g'}` above is the 0th order for the
 given group transfer. If the data is provided as tabular or histogram data, then
 :math:`\Sigma_{s,g \rightarrow g'}` is the sum of all bins of data for a given
 `g` and `g'` pair.
@@ -255,7 +255,7 @@ the value of :math:`\mu` is selected in a similar fashion to that described for
 the selection of the outgoing energy (since the energy group representation is
 simply a histogram representation) except the CDF is composed of the angular
 bins and not the energy groups.  However, since we are interested in a specific
-value of :math:`\mu` instead of a group, then an angle selected from a uniform
+value of :math:`\mu` instead of a group, then an angle is selected from a uniform
 distribution within from the chosen angular bin.
 
 The final step in the scattering treatment is to adjust the weight of the

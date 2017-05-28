@@ -1,30 +1,59 @@
 .. _releasenotes:
 
 ==============================
-Release Notes for OpenMC 0.8.0
+Release Notes for OpenMC 0.9.0
 ==============================
 
-This release of OpenMC includes a few new major features including the
-capability to perform neutron transport with multi-group cross section data as
-well as experimental support for the windowed multipole method being developed
-at MIT. Source sampling options have also been expanded significantly, with the
-option to supply arbitrary tabular and discrete distributions for energy, angle,
-and spatial coordinates.
+.. currentmodule:: openmc
 
-The Python API has been significantly restructured in this release compared to
-version 0.7.1. Any scripts written based on the version 0.7.1 API will likely
-need to be rewritten. Some of the most visible changes include the following:
+This release of OpenMC is the first release to use a new native HDF5 cross
+section format rather than ACE format cross sections. Other significant new
+features include a nuclear data interface in the Python API (:mod:`openmc.data`)
+a stochastic volume calculation capability, a random sphere packing algorithm
+that can handle packing fractions up to 60%, and a new XML parser with
+significantly better performance than the parser used previously.
 
-- ``SettingsFile`` is now ``Settings``, ``MaterialsFile`` is now ``Materials``,
-  and ``TalliesFile`` is now ``Tallies``.
-- The ``GeometryFile`` class no longer exists and is replaced by the
-  ``Geometry`` class which now has an ``export_to_xml()`` method.
-- Source distributions are defined using the ``Source`` class and assigned to
-  the ``Settings.source`` property.
-- The ``Executor`` class no longer exists and is replaced by ``openmc.run()``
-  and ``openmc.plot_geometry()`` functions.
+.. caution:: With the new cross section format, the default energy units are now
+             **electronvolts (eV)** rather than megaelectronvolts (MeV)! If you
+             are specifying an energy filter for a tally, make sure you use
+             units of eV now.
 
-The Python API documentation has also been significantly expanded.
+The Python API continues to improve over time; several backwards incompatible
+changes were made in the API which users of previous versions should take note
+of:
+
+- Each type of tally filter is now specified with a separate class. For example::
+
+    energy_filter = openmc.EnergyFilter([0.0, 0.625, 4.0, 1.0e6, 20.0e6])
+
+- Several attributes of the :class:`Plot` class have changed (``color`` ->
+  ``color_by`` and ``col_spec`` > ``colors``). :attr:`Plot.colors` now accepts a
+  dictionary mapping :class:`Cell` or :class:`Material` instances to RGB
+  3-tuples or string colors names, e.g.::
+
+    plot.colors = {
+        fuel: 'yellow',
+        water: 'blue'
+    }
+
+- ``make_hexagon_region`` is now :func:`get_hexagonal_prism`
+- Several changes in :class:`Settings` attributes:
+
+  - ``weight`` is now set as ``Settings.cutoff['weight']``
+  - Shannon entropy is now specified by passing a :class:`openmc.Mesh` to
+    :attr:`Settings.entropy_mesh`
+  - Uniform fission site method is now specified by passing a
+    :class:`openmc.Mesh` to :attr:`Settings.ufs_mesh`
+  - All ``sourcepoint_*`` options are now specified in a
+    :attr:`Settings.sourcepoint` dictionary
+  - Resonance scattering method is now specified as a dictionary in
+    :attr:`Settings.resonance_scattering`
+  - Multipole is now turned on by setting ``Settings.temperature['multipole'] =
+    True``
+  - The ``output_path`` attribute is now ``Settings.output['path']``
+
+- All the ``openmc.mgxs.Nu*`` classes are gone. Instead, a ``nu`` argument was
+  added to the constructor of the corresponding classes.
 
 -------------------
 System Requirements
@@ -40,44 +69,69 @@ problem at hand (mostly on the number of nuclides and tallies in the problem).
 New Features
 ------------
 
-- Multi-group mode
-- Vast improvements to the Python API
-- Experimental windowed multipole capability
-- Periodic boundary conditions
-- Expanded source sampling options
-- Distributed materials
-- Subcritical multiplication support
-- Improved method for reproducible URR table sampling
-- Refactor of continuous-energy reaction data
+- Stochastic volume calculations
+- Multi-delayed group cross section generation
+- Ability to calculate multi-group cross sections over meshes
+- Temperature interpolation on cross section data
+- Nuclear data interface in Python API, :mod:`openmc.data`
+- Allow cutoff energy via :attr:`Settings.cutoff`
+- Ability to define fuel by enrichment (see :meth:`Material.add_element`)
+- Random sphere packing for TRISO particle generation,
+  :func:`openmc.model.pack_trisos`
+- Critical eigenvalue search, :func:`openmc.search_for_keff`
+- Model container, :class:`openmc.model.Model`
+- In-line plotting in Jupyter, :func:`openmc.plot_inline`
+- Energy function tally filters, :class:`openmc.EnergyFunctionFilter`
+- Replaced FoX XML parser with `pugixml <http://pugixml.org/>`_
+- Cell/material instance counting, :meth:`Geometry.determine_paths`
+- Differential tallies (see :class:`openmc.TallyDerivative`)
+- Consistent multi-group scattering matrices
 - Improved documentation and new Jupyter notebooks
+- OpenMOC compatibility module, :mod:`openmc.openmoc_compatible`
 
 ---------
 Bug Fixes
 ---------
 
-- 70daa7_: Make sure MT=3 cross section is not used
-- 40b05f_: Ensure source bank is resampled for fixed source runs
-- 9586ed_: Fix two hexagonal lattice bugs
-- a855e8_: Make sure graphite models don't error out on max events
-- 7294a1_: Fix incorrect check on cmfd.xml
-- 12f246_: Ensure number of realizations is written to statepoint
-- 0227f4_: Fix bug when sampling multiple energy distributions
-- 51deaa_: Prevent segfault when user specifies '18' on tally scores
-- fed74b_: Prevent duplicate tally scores
-- 8467ae_: Better threshold for allowable lost particles
-- 493c6f_: Fix type of return argument for h5pget_driver_f
+- c5df6c_: Fix mesh filter max iterator check
+- 1cfa39_: Reject external source only if 95% of sites are rejected
+- 335359_: Fix bug in plotting meshlines
+- 17c678_: Make sure system_clock uses high-resolution timer
+- 23ec0b_: Fix use of S(a,b) with multipole data
+- 7eefb7_: Fix several bugs in tally module
+- 7880d4_: Allow plotting calculation with no boundary conditions
+- ad2d9f_: Fix filter weight missing when scoring all nuclides
+- 59fdca_: Fix use of source files for fixed source calculations
+- 9eff5b_: Fix thermal scattering bugs
+- 7848a9_: Fix combined k-eff estimator producing NaN
+- f139ce_: Fix printing bug for tallies with AggregateNuclide
+- b8ddfa_: Bugfix for short tracks near tally mesh edges
+- ec3cfb_: Fix inconsistency in filter weights
+- 5e9b06_: Fix XML representation for verbosity
+- c39990_: Fix bug tallying reaction rates with multipole on
+- c6b67e_: Fix fissionable source sampling bug
+- 489540_: Check for void materials in tracklength tallies
+- f0214f_: Fixes/improvements to the ARES algorithm
 
-.. _70daa7: https://github.com/mit-crpg/openmc/commit/70daa7
-.. _40b05f: https://github.com/mit-crpg/openmc/commit/40b05f
-.. _9586ed: https://github.com/mit-crpg/openmc/commit/9586ed
-.. _a855e8: https://github.com/mit-crpg/openmc/commit/a855e8
-.. _7294a1: https://github.com/mit-crpg/openmc/commit/7294a1
-.. _12f246: https://github.com/mit-crpg/openmc/commit/12f246
-.. _0227f4: https://github.com/mit-crpg/openmc/commit/0227f4
-.. _51deaa: https://github.com/mit-crpg/openmc/commit/51deaa
-.. _fed74b: https://github.com/mit-crpg/openmc/commit/fed74b
-.. _8467ae: https://github.com/mit-crpg/openmc/commit/8467ae
-.. _493c6f: https://github.com/mit-crpg/openmc/commit/493c6f
+.. _c5df6c: https://github.com/mit-crpg/openmc/commit/c5df6c
+.. _1cfa39: https://github.com/mit-crpg/openmc/commit/1cfa39
+.. _335359: https://github.com/mit-crpg/openmc/commit/335359
+.. _17c678: https://github.com/mit-crpg/openmc/commit/17c678
+.. _23ec0b: https://github.com/mit-crpg/openmc/commit/23ec0b
+.. _7eefb7: https://github.com/mit-crpg/openmc/commit/7eefb7
+.. _7880d4: https://github.com/mit-crpg/openmc/commit/7880d4
+.. _ad2d9f: https://github.com/mit-crpg/openmc/commit/ad2d9f
+.. _59fdca: https://github.com/mit-crpg/openmc/commit/59fdca
+.. _9eff5b: https://github.com/mit-crpg/openmc/commit/9eff5b
+.. _7848a9: https://github.com/mit-crpg/openmc/commit/7848a9
+.. _f139ce: https://github.com/mit-crpg/openmc/commit/f139ce
+.. _b8ddfa: https://github.com/mit-crpg/openmc/commit/b8ddfa
+.. _ec3cfb: https://github.com/mit-crpg/openmc/commit/ec3cfb
+.. _5e9b06: https://github.com/mit-crpg/openmc/commit/5e9b06
+.. _c39990: https://github.com/mit-crpg/openmc/commit/c39990
+.. _c6b67e: https://github.com/mit-crpg/openmc/commit/c6b67e
+.. _489540: https://github.com/mit-crpg/openmc/commit/489540
+.. _f0214f: https://github.com/mit-crpg/openmc/commit/f0214f
 
 ------------
 Contributors
@@ -86,11 +140,13 @@ Contributors
 This release contains new contributions from the following people:
 
 - `Will Boyd <wbinventor@gmail.com>`_
-- `Derek Gaston <friedmud@gmail.com>`_
 - `Sterling Harper <sterlingmharper@gmail.com>`_
+- `Qingming He <906459647@qq.com>`_
 - `Colin Josey <cjosey@mit.edu>`_
+- `Travis Labossiere-Hickman <tjlaboss@mit.edu>`_
 - `Jingang Liang <liangjg2008@gmail.com>`_
+- `Amanda Lund <alund@anl.gov>`_
 - `Adam Nelson <nelsonag@umich.edu>`_
 - `Paul Romano <paul.k.romano@gmail.com>`_
-- `Kelly Rowland <kellylynnerowland@gmail.com>`_
 - `Sam Shaner <samuelshaner@gmail.com>`_
+- `Jon Walsh <jonathan.a.walsh@gmail.com>`_

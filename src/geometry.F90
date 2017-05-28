@@ -11,7 +11,8 @@ module geometry
   use surface_header
   use stl_vector,             only: VectorInt
   use string,                 only: to_str
-  use tally,                  only: score_surface_current
+  use tally,                  only: score_surface_current, &
+                                    &score_cell_to_cell
 
   implicit none
 
@@ -396,6 +397,8 @@ contains
     integer :: i_surface ! index in surfaces
     logical :: found     ! particle found in universe?
     class(Surface), pointer :: surf
+    
+    !print *, "cross surface called"
 
     i_surface = abs(p % surface)
     surf => surfaces(i_surface)%obj
@@ -565,6 +568,11 @@ contains
       ! cells on the positive side
 
       call find_cell(p, found, surf%neighbor_pos)
+      
+      ! /CHANGE/ Score cell_to_cell 
+!       print *, "Positive side, calling score_cell_to_cell"
+      call score_cell_to_cell(p, last_cell)
+      
       if (found) return
 
     elseif (p % surface < 0  .and. allocated(surf%neighbor_neg)) then
@@ -572,6 +580,11 @@ contains
       ! cells on the negative side
 
       call find_cell(p, found, surf%neighbor_neg)
+      
+      ! /CHANGE/ Score cell_to_cell 
+!       print *, "Negative side, calling score_cell_to_cell"
+      call score_cell_to_cell(p, last_cell)
+      
       if (found) return
 
     end if
@@ -604,6 +617,10 @@ contains
         return
       end if
     end if
+    
+    ! /CHANGE/ Score cell_to_cell 
+!     print *, "Searched all cells then calling score_cell_to_cell"
+    call score_cell_to_cell(p, last_cell)
 
   end subroutine cross_surface
 

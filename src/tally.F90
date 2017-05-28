@@ -116,9 +116,12 @@ contains
 
       !#########################################################################
       ! Determine appropirate scoring value.
+      
+!       print *, "Score bin", score_bin
 
       select case(score_bin)
-
+      
+      ! use default case for cell_to_from tallies, with t % estimator == ESTIMATOR_ANALOG
 
       case (SCORE_FLUX, SCORE_FLUX_YN)
         if (t % estimator == ESTIMATOR_ANALOG) then
@@ -1177,7 +1180,16 @@ contains
           end if
         end if
 
+      case(SCORE_CELL_TO_CELL_TYPE)
+          ! Not using default because score_bin and event_MT thing
+          ! score_bin is -25, and event_MT seems to match the cell id
+          ! print*, p % event_MT, score_bin
+!           print *, "Scoring", p % last_wgt, flux
+          score = p % last_wgt * flux
+        
       case default
+        !print *, "Found right score type"
+        !print * , t % estimator
         if (t % estimator == ESTIMATOR_ANALOG) then
           ! Any other score is assumed to be a MT number. Thus, we just need
           ! to check if it matches the MT number of the event
@@ -2079,6 +2091,13 @@ contains
       case (SCORE_EVENTS)
         ! Simply count number of scoring events
         score = ONE
+        
+      case(SCORE_CELL_TO_CELL_TYPE)
+          ! Not using default because score_bin and event_MT thing
+          ! score_bin is -25, and event_MT seems to match the cell id
+          ! print*, p % event_MT, score_bin
+!           print *, "Scoring", p % last_wgt, flux
+          score = p % last_wgt * flux
 
       end select
 
@@ -2111,6 +2130,8 @@ contains
     integer :: num_nm ! Number of N,M orders in harmonic
     integer :: n      ! Moment loop index
     real(8) :: uvw(3)
+    
+!     print *, "Expand and score, score bin", score_bin, "score", score, "filter_index", filter_index
 
     select case(score_bin)
     case (SCORE_SCATTER_N, SCORE_NU_SCATTER_N)
@@ -2194,6 +2215,7 @@ contains
 
 
     case default
+!       print *, "Adding to total in expand-and-score", score
 !$omp atomic
       t % results(RESULT_VALUE, score_index, filter_index) = &
            t % results(RESULT_VALUE, score_index, filter_index) + score
@@ -3019,6 +3041,120 @@ contains
 
   end subroutine score_collision_tally
 
+!===============================================================================
+! SCORE_CELL_TO_CELL tallies partial currents from cell_to to cell_from
+!===============================================================================
+
+  subroutine  score_cell_to_cell(p, last_cell)
+
+  type(Particle), intent(in)    :: p
+  integer,        intent(in)    :: last_cell
+  
+  ! if particle has leaked
+  ! DF could preserve leakage aiight
+  !if p % alive = .false. then
+  
+!end if
+  integer :: i
+  integer :: i_tally
+  integer :: i_filt
+  integer :: k                    ! loop index for nuclide bins
+				  ! position during the loop
+  integer :: filter_index         ! single index for single bin
+  integer :: i_nuclide            ! index in nuclides array
+  real(8) :: filter_weight        ! combined weight of all filters
+  real(8) :: dummy_real8
+  type(TallyObject), pointer :: t
+  
+  ! A loop over all tallies is necessary because we need to simultaneously
+  ! determine different filter bins for the same tally in order to score to it
+
+  TALLY_LOOP: do i = 1, active_cell_to_cell_tallies % size()
+    ! Get index of tally and pointer to tally
+    i_tally = active_cell_to_cell_tallies % get_item(i)
+    t => tallies(i_tally)
+
+    ! Find the first bin in each filter. There may be more than one matching
+    ! bin per filter, but we'll deal with those later.
+    do i_filt = 1, size(t % filters)
+!       print *, "1st bin Matching bins before", matching_bins(i_filt)
+      call t % filters(i_filt) % obj % get_next_bin(p, t % estimator, &
+            NO_BIN_FOUND, matching_bins(i_filt), filter_weights(i_filt))
+!       print *, "1st Matching bins after", matching_bins(i_filt)
+      ! If there are no valid bins for this filter, then there is nothing to
+      ! score and we can move on to the next tally.
+      if (matching_bins(i_filt) == NO_BIN_FOUND) cycle TALLY_LOOP
+    end do
+
+    ! ========================================================================
+    ! Loop until we've covered all valid bins on each of the filters.
+
+    FILTER_LOOP: do
+
+      ! Determine scoring index and weight for this filter combination
+      filter_index = sum((matching_bins(1:size(t % filters)) - 1) &
+          * t % stride) + 1
+      filter_weight = product(filter_weights(:size(t % filters)))
+!       print *, "SCORE_CELL_TO_CELL", filter_index
+
+      ! Determine score for each bin
+      call score_general(p, t, 0, filter_index, &
+          0, dummy_real8, filter_weight)
+!       call score_general(p, t, (k-1)*t % n_score_bins, filter_index, &
+! 	    i_nuclide, atom_density, flux * filter_weight)
+!     0 for nuclides, atom_density and flux is set to 1
+          
+      ! ======================================================================
+      ! Filter logic
+
+      ! If there are no filters, then we are done.
+      if (size(t % filters) == 0) exit FILTER_LOOP
+
+      ! Increment the filter bins, starting with the last filter. If we get a
+      ! NO_BIN_FOUND for the last filter, it means we finished all valid bins
+      ! for that filter, but next-to-last filter might have more than one
+      ! valid bin so we need to increment that one as well, and so on.
+      do i_filt = size(t % filters), 1, -1
+!         print *, "2nd bin Matching bins before", matching_bins(i_filt)
+        
+        call t % filters(i_filt) % obj % get_next_bin(p, t % estimator, &
+              matching_bins(i_filt), matching_bins(i_filt), &
+              filter_weights(i_filt))
+!         print *, "2nd bin Matching bins after", matching_bins(i_filt)
+        
+        if (matching_bins(i_filt) /= NO_BIN_FOUND) exit
+      end do
+
+      ! If we got all NO_BIN_FOUNDs, then we have finished all valid bins for
+      ! each of the filters. Exit the loop.
+      if (all(matching_bins(:size(t % filters)) == NO_BIN_FOUND)) &
+        exit FILTER_LOOP
+
+      ! Reset all the filters with NO_BIN_FOUND. This will set them back to
+      ! their first valid bin.
+      do i_filt = 1, size(t % filters)
+        if (matching_bins(i_filt) == NO_BIN_FOUND) then
+          call t % filters(i_filt) % obj % get_next_bin(p, t % estimator, &
+              matching_bins(i_filt), matching_bins(i_filt), &
+              filter_weights(i_filt))
+          end if
+      end do
+    end do FILTER_LOOP
+
+    ! If the user has specified that we can assume all tallies are spatially
+    ! separate, this implies that once a tally has been scored to, we needn't
+    ! check the others. This cuts down on overhead when there are many
+    ! tallies specified
+
+    if (assume_separate) exit TALLY_LOOP
+
+  end do TALLY_LOOP
+
+  ! Reset tally map positioning
+  position = 0
+  
+  end subroutine score_cell_to_cell
+  
 !===============================================================================
 ! SCORE_SURFACE_CURRENT tallies surface crossings in a mesh tally by manually
 ! determining which mesh surfaces were crossed
@@ -4284,7 +4420,10 @@ contains
         end if
       elseif (user_tallies(i) % type == TALLY_SURFACE_CURRENT) then
         call active_current_tallies % add(i_user_tallies + i)
+      elseif (user_tallies(i) % type == TALLY_CELL_TO_CELL) then
+        call active_cell_to_cell_tallies % add(i_user_tallies + i)
       end if
+      
     end do
 
   end subroutine setup_active_usertallies

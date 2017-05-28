@@ -2989,6 +2989,8 @@ contains
       ! Get pointer list to XML <filter> and get number of filters
       call get_node_list(node_tal, "filter", node_filt_list)
       n_filters = size(node_filt_list)
+      
+!       print *, "Number of filters", n_filters
 
       ! Allocate filters array
       allocate(t % filters(n_filters))
@@ -3012,8 +3014,9 @@ contains
           end if
           n_words = node_word_count(node_filt, "bins")
         case ("mesh", "universe", "material", "cell", "distribcell", &
-              "cellborn", "surface", "delayedgroup")
-          if (.not. check_for_node(node_filt, "bins")) then
+              "cellborn", "surface", "delayedgroup", "celltocell",&  
+              "cellfrom","cellto")                                                ! /CHANGE/
+          if (.not. check_for_node(node_filt, "bins")) then 
             call fatal_error("Bins not set in filter on tally " &
                  // trim(to_str(t % id)))
           end if
@@ -3048,6 +3051,63 @@ contains
           end select
           ! Set the filter index in the tally find_filter array
           t % find_filter(FILTER_CELL) = j
+          
+        case ('celltocell')   ! /CHANGE/
+          ! Allocate and declare the filter type
+          allocate(CellToCellFilter::t % filters(j) % obj)
+          select type (filt => t % filters(j) % obj)
+          type is (CellToCellFilter)
+            ! Allocate and store bins
+            filt % n_bins = n_words / 2                          ! 2 cells in each bin
+!             print *, "Filter n bins", n_words / 2
+            allocate(filt % cells(n_words))                      ! cell storage OR tally storage ???
+            call get_node_array(node_filt, "bins", filt % cells)
+            ! node_filt is a pointer to filter
+            ! 
+          end select
+          ! Set the filter index in the tally find_filter array
+          t % find_filter(FILTER_CELL_TO_CELL) = j
+          
+          ! Set estimator
+          t % estimator = ESTIMATOR_ANALOG
+          
+        case ('cellfrom')   ! /CHANGE/
+          ! Allocate and declare the filter type
+          allocate(CellFromFilter::t % filters(j) % obj)
+          select type (filt => t % filters(j) % obj)
+          type is (CellFromFilter)
+            ! Allocate and store bins
+            filt % n_bins = n_words
+!             print *, "Filter n bins", n_words
+            allocate(filt % cells(n_words))
+            call get_node_array(node_filt, "bins", filt % cells)
+            ! node_filt is a pointer to filter
+            ! 
+          end select
+          ! Set the filter index in the tally find_filter array
+          t % find_filter(FILTER_CELL_TO_CELL) = j
+          
+          ! Set estimator
+          t % estimator = ESTIMATOR_ANALOG
+          
+        case ('cellto')   ! /CHANGE/
+          ! Allocate and declare the filter type
+          allocate(CellToFilter::t % filters(j) % obj)
+          select type (filt => t % filters(j) % obj)
+          type is (CellToFilter)
+            ! Allocate and store bins
+            filt % n_bins = n_words
+!             print *, "Filter n bins", n_words
+            allocate(filt % cells(n_words))
+            call get_node_array(node_filt, "bins", filt % cells)
+            ! node_filt is a pointer to filter
+            ! 
+          end select
+          ! Set the filter index in the tally find_filter array
+          t % find_filter(FILTER_CELL_TO_CELL) = j
+          
+          ! Set estimator
+          t % estimator = ESTIMATOR_ANALOG
 
         case ('cellborn')
           ! Allocate and declare the filter type
@@ -3783,6 +3843,9 @@ contains
 
           case ('events')
             t % score_bins(j) = SCORE_EVENTS
+          case ('partial_current')                               ! /CHANGE/
+            t % type = TALLY_CELL_TO_CELL
+            t % score_bins(j) = SCORE_CELL_TO_CELL_TYPE
 
           case ('elastic', '(n,elastic)')
             t % score_bins(j) = ELASTIC

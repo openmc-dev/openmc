@@ -155,10 +155,11 @@ module global
   type(SetInt) :: active_tracklength_tallies
   type(SetInt) :: active_current_tallies
   type(SetInt) :: active_collision_tallies
+  type(SetInt) :: active_cell_to_cell_tallies
   type(SetInt) :: active_tallies
 !$omp threadprivate(active_analog_tallies, active_tracklength_tallies, &
 !$omp&              active_current_tallies, active_collision_tallies, &
-!$omp&              active_tallies)
+!$omp&              active_tallies, active_cell_to_cell_tallies)
 
   ! Global tallies
   !   1) collision estimate of k-eff
@@ -515,6 +516,7 @@ contains
     call active_tracklength_tallies % clear()
     call active_current_tallies % clear()
     call active_collision_tallies % clear()
+    call active_cell_to_cell_tallies % clear()
     call active_tallies % clear()
 
     ! Deallocate track_identifiers

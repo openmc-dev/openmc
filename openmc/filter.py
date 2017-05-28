@@ -15,7 +15,7 @@ import openmc.checkvalue as cv
 
 _FILTER_TYPES = ['universe', 'material', 'cell', 'cellborn', 'surface',
                  'mesh', 'energy', 'energyout', 'mu', 'polar', 'azimuthal',
-                 'distribcell', 'delayedgroup', 'energyfunction']
+                 'distribcell', 'delayedgroup', 'energyfunction', 'celltocell', 'cellfrom', 'cellto']
 
 _CURRENT_NAMES = {1:  'x-min out', 2:  'x-min in',
                   3:  'x-max out', 4:  'x-max in',
@@ -335,6 +335,9 @@ class Filter(object):
         """
 
         if filter_bin not in self.bins:
+            print('Failed to find')
+            print(filter_bin)
+            print(self.bins)
             msg = 'Unable to get the bin index for Filter since "{0}" ' \
                   'is not one of the bins'.format(filter_bin)
             raise ValueError(msg)
@@ -533,7 +536,66 @@ class CellFilter(IntegralFilter):
 
     """
 
+class CellToCellFilter(IntegralFilter):
+    """Bins tally on which couple of cells the neutrons went from and to.     /CHANGE/
 
+    Parameters
+    ----------
+    bins : Iterable of Integral
+        openmc.Cell IDs.
+
+    Attributes
+    ----------
+    bins : Iterable of Integral
+        openmc.Cell IDs.
+    num_bins : Integral
+        The number of filter bins
+    stride : Integral
+        The number of filter, nuclide and score bins within each of this
+        filter's bins.
+
+    """
+
+class CellFromFilter(IntegralFilter):
+    """Bins tally on which couple of cells the neutrons came from.     /CHANGE/
+
+    Parameters
+    ----------
+    bins : Integral or Iterable of Integral
+        openmc.Cell IDs.
+
+    Attributes
+    ----------
+    bins : Integral or Iterable of Integral
+        openmc.Cell IDs.
+    num_bins : Integral
+        The number of filter bins
+    stride : Integral
+        The number of filter, nuclide and score bins within each of this
+        filter's bins.
+
+    """
+    
+class CellToFilter(IntegralFilter):
+    """Bins tally on which couple of cells the neutrons went to.     /CHANGE/
+
+    Parameters
+    ----------
+    bins : Integral or Iterable of Integral
+        openmc.Cell IDs.
+
+    Attributes
+    ----------
+    bins : Integral or Iterable of Integral
+        openmc.Cell IDs.
+    num_bins : Integral
+        The number of filter bins
+    stride : Integral
+        The number of filter, nuclide and score bins within each of this
+        filter's bins.
+
+    """
+    
 class CellbornFilter(IntegralFilter):
     """Bins tally events based on the cell that the particle was born in.
 
@@ -901,8 +963,12 @@ class RealFilter(Filter):
             return np.allclose(self.bins, other.bins)
 
     def get_bin_index(self, filter_bin):
-        i = np.where(self.bins == filter_bin[1])[0]
+        i = np.where(abs(self.bins -filter_bin[1]) < 1e-10)[0]
         if len(i) == 0:
+            print('Tally bins', self.bins)
+            print('Bins searched for:', filter_bin)
+            print('Search result', i)
+            print(self.bins - filter_bin[1])
             msg = 'Unable to get the bin index for Filter since "{0}" ' \
                   'is not one of the bins'.format(filter_bin)
             raise ValueError(msg)
@@ -940,6 +1006,9 @@ class EnergyFilter(RealFilter):
 
     def get_bin_index(self, filter_bin):
         # Use lower energy bound to find index for RealFilters
+        
+        #print(self.bins, filter_bin)
+        
         deltas = np.abs(self.bins - filter_bin[1]) / filter_bin[1]
         min_delta = np.min(deltas)
         if min_delta < 1E-3:

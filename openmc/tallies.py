@@ -239,6 +239,9 @@ class Tally(object):
         num_bins = 1
 
         for self_filter in self.filters:
+	  
+            #print("Looping through filters, num_bin", self_filter.num_bins, num_bins)
+            
             num_bins *= self_filter.num_bins
 
         return num_bins
@@ -1215,6 +1218,7 @@ class Tally(object):
 
         # Find the equivalent Filter in this Tally's list of Filters
         filter_found = self.find_filter(filter_type)
+        #print('searched for filter', filter_type, 'and found', filter_found)
 
         # Get the index for the requested bin from the Filter and return it
         filter_index = filter_found.get_bin_index(filter_bin)
@@ -1376,6 +1380,12 @@ class Tally(object):
                     else:
                         bins = self_filter.bins
 
+                #print('in get_filter_indices')
+                #print('arguments', filters, filter_bins)
+                #print('params')
+                #print(bins)
+                #print(type(self_filter), self_filter)
+
                 # Initialize a NumPy array for the Filter bin indices
                 filter_indices.append(np.zeros(len(bins), dtype=np.int))
 
@@ -1520,6 +1530,8 @@ class Tally(object):
             e.g., if the score(s) do not match those in the Tally.
 
         """
+        #print("\n In get_values")
+        #print("Tally shape", self.shape)
 
         # Ensure that the tally has data
         if (value == 'mean' and self.mean is None) or \
@@ -1529,6 +1541,13 @@ class Tally(object):
            (value == 'sum_sq' and self.sum_sq is None):
             msg = 'The Tally ID="{0}" has no data to return'.format(self.id)
             raise ValueError(msg)
+	  
+        #print('\n arguments')
+        #print(filters)
+        #print(filter_bins)
+        #print('\n Tally characteristics')
+        #print(self)
+        #print(self.name, self.filters, self.scores,self.num_filter_bins)
 
         # Get filter, nuclide and score indices
         filter_indices = self.get_filter_indices(filters, filter_bins)
@@ -1537,7 +1556,7 @@ class Tally(object):
 
         # Construct outer product of all three index types with each other
         indices = np.ix_(filter_indices, nuclide_indices, score_indices)
-
+        
         # Return the desired result from Tally
         if value == 'mean':
             data = self.mean[indices]

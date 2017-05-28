@@ -649,15 +649,19 @@ contains
              * broadened_polynomials(i_poly)
         sigA = sigA + multipole % curvefit(FIT_A, i_poly, i_window) &
              * broadened_polynomials(i_poly)
-        sigF = sigF + multipole % curvefit(FIT_F, i_poly, i_window) &
-             * broadened_polynomials(i_poly)
+        if (multipole % fissionable) then
+          sigF = sigF + multipole % curvefit(FIT_F, i_poly, i_window) &
+               * broadened_polynomials(i_poly)
+        end if
       end do
     else ! Evaluate as if it were a polynomial
       temp = invE
       do i_poly = 1, multipole % fit_order+1
         sigT = sigT + multipole % curvefit(FIT_T, i_poly, i_window) * temp
         sigA = sigA + multipole % curvefit(FIT_A, i_poly, i_window) * temp
-        sigF = sigF + multipole % curvefit(FIT_F, i_poly, i_window) * temp
+        if (multipole % fissionable) then
+          sigF = sigF + multipole % curvefit(FIT_F, i_poly, i_window) * temp
+        end if
         temp = temp * sqrtE
       end do
     end if
@@ -675,12 +679,16 @@ contains
                              sigT_factor(multipole % l_value(i_pole))) &
                       + real(multipole % data(MLBW_RX, i_pole) * c_temp)
           sigA = sigA + real(multipole % data(MLBW_RA, i_pole) * c_temp)
-          sigF = sigF + real(multipole % data(MLBW_RF, i_pole) * c_temp)
+          if (multipole % fissionable) then
+            sigF = sigF + real(multipole % data(MLBW_RF, i_pole) * c_temp)
+          end if
         else if (multipole % formalism == FORM_RM) then
           sigT = sigT + real(multipole % data(RM_RT, i_pole) * c_temp * &
                              sigT_factor(multipole % l_value(i_pole)))
           sigA = sigA + real(multipole % data(RM_RA, i_pole) * c_temp)
-          sigF = sigF + real(multipole % data(RM_RF, i_pole) * c_temp)
+          if (multipole % fissionable) then
+            sigF = sigF + real(multipole % data(RM_RF, i_pole) * c_temp)
+          end if
         end if
       end do
     else
@@ -694,12 +702,16 @@ contains
                           sigT_factor(multipole % l_value(i_pole)) + &
                           multipole % data(MLBW_RX, i_pole)) * w_val)
             sigA = sigA + real(multipole % data(MLBW_RA, i_pole) * w_val)
-            sigF = sigF + real(multipole % data(MLBW_RF, i_pole) * w_val)
+            if (multipole % fissionable) then
+              sigF = sigF + real(multipole % data(MLBW_RF, i_pole) * w_val)
+            end if
           else if (multipole % formalism == FORM_RM) then
             sigT = sigT + real(multipole % data(RM_RT, i_pole) * w_val * &
                                sigT_factor(multipole % l_value(i_pole)))
             sigA = sigA + real(multipole % data(RM_RA, i_pole) * w_val)
-            sigF = sigF + real(multipole % data(RM_RF, i_pole) * w_val)
+            if (multipole % fissionable) then
+              sigF = sigF + real(multipole % data(RM_RF, i_pole) * w_val)
+            end if
           end if
         end do
       end if
@@ -780,12 +792,16 @@ contains
                         sigT_factor(multipole%l_value(i_pole)) + &
                         multipole % data(MLBW_RX, i_pole)) * w_val)
           sigA = sigA + real(multipole % data(MLBW_RA, i_pole) * w_val)
-          sigF = sigF + real(multipole % data(MLBW_RF, i_pole) * w_val)
+          if (multipole % fissionable) then
+            sigF = sigF + real(multipole % data(MLBW_RF, i_pole) * w_val)
+          end if
         else if (multipole % formalism == FORM_RM) then
           sigT = sigT + real(multipole % data(RM_RT, i_pole) * w_val * &
                              sigT_factor(multipole % l_value(i_pole)))
           sigA = sigA + real(multipole % data(RM_RA, i_pole) * w_val)
-          sigF = sigF + real(multipole % data(RM_RF, i_pole) * w_val)
+          if (multipole % fissionable) then
+            sigF = sigF + real(multipole % data(RM_RF, i_pole) * w_val)
+          end if
         end if
       end do
       sigT = -HALF*multipole % sqrtAWR / sqrt(K_BOLTZMANN) * T**(-1.5) * sigT

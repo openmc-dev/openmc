@@ -44,8 +44,8 @@ contains
     integer, allocatable :: id_array(:)
     integer(HID_T) :: file_id
     integer(HID_T) :: cmfd_group, tallies_group, tally_group, meshes_group, &
-                      mesh_group, filter_group, derivs_group, deriv_group, &
-                      runtime_group
+                      mesh_group, filters_group, filter_group, derivs_group, &
+                      deriv_group, runtime_group
     character(MAX_WORD_LEN), allocatable :: str_array(:)
     character(MAX_FILE_LEN)    :: filename
     type(TallyObject), pointer    :: tally
@@ -206,6 +206,30 @@ contains
         call close_group(derivs_group)
       end if
 
+      ! Write number of filters
+      filters_group = create_group(tallies_group, "filters")
+      call write_attribute(filters_group, "n_filters", n_filters)
+
+      if (n_filters > 0) then
+        ! Write IDs of filters
+        allocate(id_array(n_filters))
+        do i = 1, n_filters
+          id_array(i) = filters(i) % obj % id
+        end do
+        call write_attribute(filters_group, "ids", id_array)
+        deallocate(id_array)
+
+        ! Write filter information
+        FILTER_LOOP: do i = 1, n_filters
+          filter_group = create_group(filters_group, "filter " // &
+               trim(to_str(filters(i) % obj % id)))
+          call filters(i) % obj % to_statepoint(filter_group)
+          call close_group(filter_group)
+        end do FILTER_LOOP
+      end if
+
+      call close_group(filters_group)
+
       ! Write number of tallies
       call write_attribute(tallies_group, "n_tallies", n_tallies)
 
@@ -239,15 +263,17 @@ contains
           end select
           call write_dataset(tally_group, "n_realizations", &
                tally % n_realizations)
-          call write_dataset(tally_group, "n_filters", size(tally % filters))
 
-          ! Write filter information
-          FILTER_LOOP: do j = 1, size(tally % filters)
-            filter_group = create_group(tally_group, "filter " // &
-                 trim(to_str(j)))
-            call tally % filters(j) % obj % to_statepoint(filter_group)
-            call close_group(filter_group)
-          end do FILTER_LOOP
+          call write_dataset(tally_group, "n_filters", size(tally % filter))
+          if (size(tally % filter) > 0) then
+            ! Write IDs of filters
+            allocate(id_array(size(tally % filter)))
+            do j = 1, size(tally % filter)
+              id_array(j) = filters(tally % filter(j)) % obj % id
+            end do
+            call write_dataset(tally_group, "filters", id_array)
+            deallocate(id_array)
+          end if
 
           ! Set up nuclide bin array and then write
           allocate(str_array(tally % n_nuclide_bins))

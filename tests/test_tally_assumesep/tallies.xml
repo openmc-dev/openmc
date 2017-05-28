@@ -3,18 +3,33 @@
 
   <assume_separate>true</assume_separate>
 
+  <filter id="1">
+    <type>cell</type>
+    <bins>21</bins>
+  </filter>
+
+  <filter id="2">
+    <type>cell</type>
+    <bins>22</bins>
+  </filter>
+
+  <filter id="3">
+    <type>cell</type>
+    <bins>23</bins>
+  </filter>
+
   <tally id="1">
-    <filter type="cell" bins="21" />
+    <filters>1</filters>
     <scores>total</scores>
   </tally>
 
   <tally id="2">
-    <filter type="cell" bins="22" />
+    <filters>2</filters>
     <scores>total</scores>
   </tally>
 
   <tally id="3">
-    <filter type="cell" bins="23" />
+    <filters>3</filters>
     <scores>total</scores>
   </tally>
 

@@ -28,6 +28,7 @@ module input_xml
                               starts_with, ends_with, tokenize, split_string, &
                               zero_padded
   use tally_header,     only: TallyObject
+  use tally_filter_header, only: TallyFilterContainer
   use tally_filter
   use tally_initialize, only: add_tallies
   use xml_interface
@@ -1658,6 +1659,15 @@ contains
             surf % i_periodic = surface_dict % get_key(surf % i_periodic)
           end if
 
+        type is (SurfacePlane)
+          if (surf % i_periodic == NONE) then
+            call fatal_error("No matching periodic surface specified for &
+                 &periodic boundary condition on surface " // &
+                 trim(to_str(surf % id)) // ".")
+          else
+            surf % i_periodic = surface_dict % get_key(surf % i_periodic)
+          end if
+
         class default
           call fatal_error("Periodic boundary condition applied to &
                &non-planar surface.")
@@ -2625,10 +2635,13 @@ contains
     integer :: k             ! another loop index
     integer :: l             ! another loop index
     integer :: id            ! user-specified identifier
+    integer :: filter_id     ! user-specified identifier for filter
     integer :: i_mesh        ! index in meshes array
+    integer :: i_filt        ! index in filters array
+    integer :: i_filter_mesh ! index of mesh filter
     integer :: n             ! size of arrays in mesh specification
     integer :: n_words       ! number of words read
-    integer :: n_filters     ! number of filters
+    integer :: n_filter      ! number of filters
     integer :: n_new         ! number of new scores to add based on Yn/Pn tally
     integer :: n_scores      ! number of tot scores after adjusting for Yn/Pn tally
     integer :: n_bins        ! total new bins for this score
@@ -2646,6 +2659,7 @@ contains
     integer :: Nangle        ! Number of angular bins
     real(8) :: dangle        ! Mu spacing if using automatic allocation
     integer :: iangle        ! Loop counter for building mu filter bins
+    integer, allocatable :: temp_filter(:) ! temporary filter indices
     character(MAX_LINE_LEN) :: filename
     character(MAX_WORD_LEN) :: word
     character(MAX_WORD_LEN) :: score_name
@@ -2653,9 +2667,9 @@ contains
     character(MAX_WORD_LEN), allocatable :: sarray(:)
     type(DictCharInt) :: trigger_scores
     type(ElemKeyValueCI), pointer :: pair_list
-    type(TallyObject),    pointer :: t
+    type(TallyObject), pointer :: t
+    type(TallyFilterContainer), pointer :: f
     type(RegularMesh), pointer :: m
-    type(TallyFilterContainer), allocatable :: filters(:) ! temporary filters
     type(XMLDocument) :: doc
     type(XMLNode) :: root
     type(XMLNode) :: node_mesh
@@ -2698,6 +2712,9 @@ contains
     ! Get pointer list to XML <mesh>
     call get_node_list(root, "mesh", node_mesh_list)
 
+    ! Get pointer list to XML <filter>
+    call get_node_list(root, "filter", node_filt_list)
+
     ! Get pointer list to XML <tally>
     call get_node_list(root, "tally", node_tal_list)
 
@@ -2711,6 +2728,12 @@ contains
 
     ! Allocate mesh array
     if (n_meshes > 0) allocate(meshes(n_meshes))
+
+    ! Check for user filters
+    n_user_filters = size(node_filt_list)
+
+    ! Allocate filters array
+    if (n_user_filters > 0) call add_filters(n_user_filters)
 
     ! Check for user tallies
     n_user_tallies = size(node_tal_list)
@@ -2946,6 +2969,381 @@ contains
     end do
 
     ! ==========================================================================
+    ! READ FILTER DATA
+
+    READ_FILTERS: do i = 1, n_user_filters
+      f => filters(i)
+
+      ! Get pointer to filter xml node
+      node_filt = node_filt_list(i)
+
+      ! Copy filter id
+      if (check_for_node(node_filt, "id")) then
+        call get_node_value(node_filt, "id", filter_id)
+      else
+        call fatal_error("Must specify id for filter in tally XML file.")
+      end if
+
+      ! Check to make sure 'id' hasn't been used
+      if (filter_dict % has_key(filter_id)) then
+        call fatal_error("Two or more filters use the same unique ID: " &
+             // to_str(filter_id))
+      end if
+
+      ! Convert filter type to lower case
+      temp_str = ''
+      if (check_for_node(node_filt, "type")) &
+           call get_node_value(node_filt, "type", temp_str)
+      temp_str = to_lower(temp_str)
+
+      ! Determine number of bins
+      select case(temp_str)
+      case ("energy", "energyout", "mu", "polar", "azimuthal")
+        if (.not. check_for_node(node_filt, "bins")) then
+          call fatal_error("Bins not set in filter " // trim(to_str(filter_id)))
+        end if
+        n_words = node_word_count(node_filt, "bins")
+      case ("mesh", "universe", "material", "cell", "distribcell", &
+            "cellborn", "surface", "delayedgroup")
+        if (.not. check_for_node(node_filt, "bins")) then
+          call fatal_error("Bins not set in filter " // trim(to_str(filter_id)))
+        end if
+        n_words = node_word_count(node_filt, "bins")
+      end select
+
+      ! Determine type of filter
+      select case (temp_str)
+
+      case ('distribcell')
+        ! Allocate and declare the filter type
+        allocate(DistribcellFilter :: f % obj)
+        select type (filt => f % obj)
+        type is (DistribcellFilter)
+          if (n_words /= 1) call fatal_error("Only one cell can be &
+               &specified per distribcell filter.")
+          ! Store bins
+          call get_node_value(node_filt, "bins", filt % cell)
+        end select
+
+      case ('cell')
+        ! Allocate and declare the filter type
+        allocate(CellFilter :: f % obj)
+        select type (filt => f % obj)
+        type is (CellFilter)
+          ! Allocate and store bins
+          filt % n_bins = n_words
+          allocate(filt % cells(n_words))
+          call get_node_array(node_filt, "bins", filt % cells)
+        end select
+        
+      case ('cellfrom')
+        ! Allocate and declare the filter type
+        allocate(CellFromFilter :: f % obj)
+        select type (filt => f % obj)
+        type is (CellFromFilter)
+          ! Allocate and store bins
+          filt % n_bins = n_words
+          allocate(filt % cells(n_words))
+          call get_node_array(node_filt, "bins", filt % cells)
+        end select
+        
+      case ('cellto')
+        ! Allocate and declare the filter type
+        allocate(CellToFilter :: f % obj)
+        select type (filt => f % obj)
+        type is (CellToFilter)
+          ! Allocate and store bins
+          filt % n_bins = n_words
+          allocate(filt % cells(n_words))
+          call get_node_array(node_filt, "bins", filt % cells)
+        end select
+        
+      case ('cellborn')
+        ! Allocate and declare the filter type
+        allocate(CellbornFilter :: f % obj)
+        select type (filt => f % obj)
+        type is (CellbornFilter)
+          ! Allocate and store bins
+          filt % n_bins = n_words
+          allocate(filt % cells(n_words))
+          call get_node_array(node_filt, "bins", filt % cells)
+        end select
+
+      case ('material')
+        ! Allocate and declare the filter type
+        allocate(MaterialFilter :: f % obj)
+        select type (filt => f % obj)
+        type is (MaterialFilter)
+          ! Allocate and store bins
+          filt % n_bins = n_words
+          allocate(filt % materials(n_words))
+          call get_node_array(node_filt, "bins", filt % materials)
+        end select
+
+      case ('universe')
+        ! Allocate and declare the filter type
+        allocate(UniverseFilter :: f % obj)
+        select type (filt => f % obj)
+        type is (UniverseFilter)
+          ! Allocate and store bins
+          filt % n_bins = n_words
+          allocate(filt % universes(n_words))
+          call get_node_array(node_filt, "bins", filt % universes)
+        end select
+
+      case ('surface')
+        call fatal_error("Surface filter is not yet supported!")
+        ! Allocate and declare the filter type
+        allocate(SurfaceFilter :: f % obj)
+        select type (filt => f % obj)
+        type is (SurfaceFilter)
+          ! Allocate and store bins
+          filt % n_bins = n_words
+          allocate(filt % surfaces(n_words))
+          call get_node_array(node_filt, "bins", filt % surfaces)
+        end select
+
+      case ('mesh')
+        ! Allocate and declare the filter type
+        allocate(MeshFilter :: f % obj)
+        select type (filt => f % obj)
+        type is (MeshFilter)
+          if (n_words /= 1) call fatal_error("Only one mesh can be &
+               &specified per mesh filter.")
+
+          ! Determine id of mesh
+          call get_node_value(node_filt, "bins", id)
+
+          ! Get pointer to mesh
+          if (mesh_dict % has_key(id)) then
+            i_mesh = mesh_dict % get_key(id)
+            m => meshes(i_mesh)
+          else
+            call fatal_error("Could not find mesh " // trim(to_str(id)) &
+                 // " specified on filter " // trim(to_str(filter_id)))
+          end if
+
+          ! Determine number of bins
+          filt % n_bins = product(m % dimension)
+
+          ! Store the index of the mesh
+          filt % mesh = i_mesh
+        end select
+
+      case ('energy')
+
+        ! Allocate and declare the filter type
+        allocate(EnergyFilter :: f % obj)
+        select type (filt => f % obj)
+        type is (EnergyFilter)
+          ! Allocate and store bins
+          filt % n_bins = n_words - 1
+          allocate(filt % bins(n_words))
+          call get_node_array(node_filt, "bins", filt % bins)
+
+          ! We can save tallying time if we know that the tally bins match
+          ! the energy group structure.  In that case, the matching bin
+          ! index is simply the group (after flipping for the different
+          ! ordering of the library and tallying systems).
+          if (.not. run_CE) then
+            if (n_words == num_energy_groups + 1) then
+              if (all(filt % bins == energy_bins(num_energy_groups + 1:1:-1))) &
+                   then
+                filt % matches_transport_groups = .true.
+              end if
+            end if
+          end if
+        end select
+
+      case ('energyout')
+        ! Allocate and declare the filter type
+        allocate(EnergyoutFilter :: f % obj)
+        select type (filt => f % obj)
+        type is (EnergyoutFilter)
+          ! Allocate and store bins
+          filt % n_bins = n_words - 1
+          allocate(filt % bins(n_words))
+          call get_node_array(node_filt, "bins", filt % bins)
+
+          ! We can save tallying time if we know that the tally bins match
+          ! the energy group structure.  In that case, the matching bin
+          ! index is simply the group (after flipping for the different
+          ! ordering of the library and tallying systems).
+          if (.not. run_CE) then
+            if (n_words == num_energy_groups + 1) then
+              if (all(filt % bins == energy_bins(num_energy_groups + 1:1:-1))) &
+                   then
+                filt % matches_transport_groups = .true.
+              end if
+            end if
+          end if
+        end select
+
+      case ('delayedgroup')
+
+        ! Allocate and declare the filter type
+        allocate(DelayedGroupFilter :: f % obj)
+        select type (filt => f % obj)
+        type is (DelayedGroupFilter)
+          ! Allocate and store bins
+          filt % n_bins = n_words
+          allocate(filt % groups(n_words))
+          call get_node_array(node_filt, "bins", filt % groups)
+
+          ! Check that bins are all are between 1 and MAX_DELAYED_GROUPS
+          do d = 1, n_words
+            if (filt % groups(d) < 1 .or. &
+                 filt % groups(d) > MAX_DELAYED_GROUPS) then
+              call fatal_error("Encountered delayedgroup bin with index " &
+                   // trim(to_str(filt % groups(d))) // " that is outside &
+                   &the range of 1 to MAX_DELAYED_GROUPS ( " &
+                   // trim(to_str(MAX_DELAYED_GROUPS)) // ")")
+            end if
+          end do
+        end select
+
+      case ('mu')
+        ! Allocate and declare the filter type
+        allocate(MuFilter :: f % obj)
+        select type (filt => f % obj)
+        type is (MuFilter)
+          ! Allocate and store bins
+          filt % n_bins = n_words - 1
+          allocate(filt % bins(n_words))
+          call get_node_array(node_filt, "bins", filt % bins)
+
+          ! Allow a user to input a lone number which will mean that you
+          ! subdivide [-1,1] evenly with the input being the number of bins
+          if (n_words == 1) then
+            Nangle = int(filt % bins(1))
+            if (Nangle > 1) then
+              filt % n_bins = Nangle
+              dangle = TWO / real(Nangle,8)
+              deallocate(filt % bins)
+              allocate(filt % bins(Nangle + 1))
+              do iangle = 1, Nangle
+                filt % bins(iangle) = -ONE + (iangle - 1) * dangle
+              end do
+              filt % bins(Nangle + 1) = ONE
+            else
+              call fatal_error("Number of bins for mu filter must be&
+                   & greater than 1 on filter " &
+                   // trim(to_str(filter_id)) // ".")
+            end if
+          end if
+        end select
+
+      case ('polar')
+        ! Allocate and declare the filter type
+        allocate(PolarFilter :: f % obj)
+        select type (filt => f % obj)
+        type is (PolarFilter)
+          ! Allocate and store bins
+          filt % n_bins = n_words - 1
+          allocate(filt % bins(n_words))
+          call get_node_array(node_filt, "bins", filt % bins)
+
+          ! Allow a user to input a lone number which will mean that you
+          ! subdivide [0,pi] evenly with the input being the number of bins
+          if (n_words == 1) then
+            Nangle = int(filt % bins(1))
+            if (Nangle > 1) then
+              filt % n_bins = Nangle
+              dangle = PI / real(Nangle,8)
+              deallocate(filt % bins)
+              allocate(filt % bins(Nangle + 1))
+              do iangle = 1, Nangle
+                filt % bins(iangle) = (iangle - 1) * dangle
+              end do
+              filt % bins(Nangle + 1) = PI
+            else
+              call fatal_error("Number of bins for polar filter must be&
+                   & greater than 1 on filter " &
+                   // trim(to_str(filter_id)) // ".")
+            end if
+          end if
+        end select
+
+      case ('azimuthal')
+        ! Allocate and declare the filter type
+        allocate(AzimuthalFilter :: f % obj)
+        select type (filt => f % obj)
+        type is (AzimuthalFilter)
+          ! Allocate and store bins
+          filt % n_bins = n_words - 1
+          allocate(filt % bins(n_words))
+          call get_node_array(node_filt, "bins", filt % bins)
+
+          ! Allow a user to input a lone number which will mean that you
+          ! subdivide [-pi,pi) evenly with the input being the number of
+          ! bins
+          if (n_words == 1) then
+            Nangle = int(filt % bins(1))
+            if (Nangle > 1) then
+              filt % n_bins = Nangle
+              dangle = TWO * PI / real(Nangle,8)
+              deallocate(filt % bins)
+              allocate(filt % bins(Nangle + 1))
+              do iangle = 1, Nangle
+                filt % bins(iangle) = -PI + (iangle - 1) * dangle
+              end do
+              filt % bins(Nangle + 1) = PI
+            else
+              call fatal_error("Number of bins for azimuthal filter must be&
+                   & greater than 1 on filter " &
+                   // trim(to_str(filter_id)) // ".")
+            end if
+          end if
+        end select
+
+      case ('energyfunction')
+        ! Allocate and declare the filter type.
+        allocate(EnergyFunctionFilter :: f % obj)
+        select type (filt => f % obj)
+        type is (EnergyFunctionFilter)
+          filt % n_bins = 1
+          ! Make sure this is continuous-energy mode.
+          if (.not. run_CE) then
+            call fatal_error("EnergyFunction filters are only supported for &
+                 &continuous-energy transport calculations")
+          end if
+
+          ! Allocate and store energy grid.
+          if (.not. check_for_node(node_filt, "energy")) then
+            call fatal_error("Energy grid not specified for EnergyFunction &
+                 &filter on filter " // trim(to_str(filter_id)))
+          end if
+          n_words = node_word_count(node_filt, "energy")
+          allocate(filt % energy(n_words))
+          call get_node_array(node_filt, "energy", filt % energy)
+
+          ! Allocate and store interpolant values.
+          if (.not. check_for_node(node_filt, "y")) then
+            call fatal_error("y values not specified for EnergyFunction &
+                 &filter on filter " // trim(to_str(filter_id)))
+          end if
+          n_words = node_word_count(node_filt, "y")
+          allocate(filt % y(n_words))
+          call get_node_array(node_filt, "y", filt % y)
+        end select
+
+      case default
+        ! Specified filter is invalid, raise error
+        call fatal_error("Unknown filter type '" &
+             // trim(temp_str) // "' on filter " &
+             // trim(to_str(filter_id)) // ".")
+
+      end select
+
+      ! Set filter id
+      f % obj % id = filter_id
+
+      ! Add filter to dictionary
+      call filter_dict % add_key(filter_id, i)
+
+    end do READ_FILTERS
+
+    ! ==========================================================================
     ! READ TALLY DATA
 
     READ_TALLIES: do i = 1, n_user_tallies
@@ -2986,438 +3384,83 @@ contains
       ! =======================================================================
       ! READ DATA FOR FILTERS
 
-      ! Get pointer list to XML <filter> and get number of filters
-      call get_node_list(node_tal, "filter", node_filt_list)
-      n_filters = size(node_filt_list)
-      
-!       print *, "Number of filters", n_filters
+      ! Determine number of filters
+      if (check_for_node(node_tal, "filters")) then
+        n_filter = node_word_count(node_tal, "filters")
+      else
+        n_filter = 0
+      end if
 
-      ! Allocate filters array
-      allocate(t % filters(n_filters))
+      ! Allocate and store filter user ids
+      allocate(temp_filter(n_filter))
+      if (n_filter > 0) then
+        call get_node_array(node_tal, "filters", temp_filter)
+      end if
 
-      READ_FILTERS: do j = 1, n_filters
-        ! Get pointer to filter xml node
-        node_filt = node_filt_list(j)
+      do j = 1, n_filter
+        ! Get pointer to filter
+        if (filter_dict % has_key(temp_filter(j))) then
+          i_filt = filter_dict % get_key(temp_filter(j))
+          f => filters(i_filt)
+        else
+          call fatal_error("Could not find filter " &
+               // trim(to_str(temp_filter(j))) // " specified on tally " &
+               // trim(to_str(t % id)))
+        end if
 
-        ! Convert filter type to lower case
-        temp_str = ''
-        if (check_for_node(node_filt, "type")) &
-             call get_node_value(node_filt, "type", temp_str)
-        temp_str = to_lower(temp_str)
-
-        ! Determine number of bins
-        select case(temp_str)
-        case ("energy", "energyout", "mu", "polar", "azimuthal")
-          if (.not. check_for_node(node_filt, "bins")) then
-            call fatal_error("Bins not set in filter on tally " &
-                 // trim(to_str(t % id)))
-          end if
-          n_words = node_word_count(node_filt, "bins")
-        case ("mesh", "universe", "material", "cell", "distribcell", &
-              "cellborn", "surface", "delayedgroup", "celltocell",&  
-              "cellfrom","cellto")                                                ! /CHANGE/
-          if (.not. check_for_node(node_filt, "bins")) then 
-            call fatal_error("Bins not set in filter on tally " &
-                 // trim(to_str(t % id)))
-          end if
-          n_words = node_word_count(node_filt, "bins")
-        end select
-
-        ! Determine type of filter
-        select case (temp_str)
-
-        case ('distribcell')
-          ! Allocate and declare the filter type
-          allocate(DistribcellFilter::t % filters(j) % obj)
-          select type (filt => t % filters(j) % obj)
-          type is (DistribcellFilter)
-            if (n_words /= 1) call fatal_error("Only one cell can be &
-                 &specified per distribcell filter.")
-            ! Store bins
-            call get_node_value(node_filt, "bins", filt % cell)
-          end select
-          ! Set the filter index in the tally find_filter array
+        ! Set the filter index in the tally find_filter array
+        select type (filt => f % obj)
+        type is (DistribcellFilter)
           t % find_filter(FILTER_DISTRIBCELL) = j
-
-        case ('cell')
-          ! Allocate and declare the filter type
-          allocate(CellFilter::t % filters(j) % obj)
-          select type (filt => t % filters(j) % obj)
-          type is (CellFilter)
-            ! Allocate and store bins
-            filt % n_bins = n_words
-            allocate(filt % cells(n_words))
-            call get_node_array(node_filt, "bins", filt % cells)
-          end select
-          ! Set the filter index in the tally find_filter array
+        type is (CellFilter)
           t % find_filter(FILTER_CELL) = j
           
-        case ('celltocell')   ! /CHANGE/
-          ! Allocate and declare the filter type
-          allocate(CellToCellFilter::t % filters(j) % obj)
-          select type (filt => t % filters(j) % obj)
-          type is (CellToCellFilter)
-            ! Allocate and store bins
-            filt % n_bins = n_words / 2                          ! 2 cells in each bin
-!             print *, "Filter n bins", n_words / 2
-            allocate(filt % cells(n_words))                      ! cell storage OR tally storage ???
-            call get_node_array(node_filt, "bins", filt % cells)
-            ! node_filt is a pointer to filter
-            ! 
-          end select
-          ! Set the filter index in the tally find_filter array
+        type is (CellFromFilter)
           t % find_filter(FILTER_CELL_TO_CELL) = j
-          
-          ! Set estimator
+
           t % estimator = ESTIMATOR_ANALOG
           
-        case ('cellfrom')   ! /CHANGE/
-          ! Allocate and declare the filter type
-          allocate(CellFromFilter::t % filters(j) % obj)
-          select type (filt => t % filters(j) % obj)
-          type is (CellFromFilter)
-            ! Allocate and store bins
-            filt % n_bins = n_words
-!             print *, "Filter n bins", n_words
-            allocate(filt % cells(n_words))
-            call get_node_array(node_filt, "bins", filt % cells)
-            ! node_filt is a pointer to filter
-            ! 
-          end select
-          ! Set the filter index in the tally find_filter array
+        type is (CellToFilter)
           t % find_filter(FILTER_CELL_TO_CELL) = j
-          
-          ! Set estimator
-          t % estimator = ESTIMATOR_ANALOG
-          
-        case ('cellto')   ! /CHANGE/
-          ! Allocate and declare the filter type
-          allocate(CellToFilter::t % filters(j) % obj)
-          select type (filt => t % filters(j) % obj)
-          type is (CellToFilter)
-            ! Allocate and store bins
-            filt % n_bins = n_words
-!             print *, "Filter n bins", n_words
-            allocate(filt % cells(n_words))
-            call get_node_array(node_filt, "bins", filt % cells)
-            ! node_filt is a pointer to filter
-            ! 
-          end select
-          ! Set the filter index in the tally find_filter array
-          t % find_filter(FILTER_CELL_TO_CELL) = j
-          
-          ! Set estimator
+
           t % estimator = ESTIMATOR_ANALOG
 
-        case ('cellborn')
-          ! Allocate and declare the filter type
-          allocate(CellbornFilter::t % filters(j) % obj)
-          select type (filt => t % filters(j) % obj)
-          type is (CellbornFilter)
-            ! Allocate and store bins
-            filt % n_bins = n_words
-            allocate(filt % cells(n_words))
-            call get_node_array(node_filt, "bins", filt % cells)
-          end select
-          ! Set the filter index in the tally find_filter array
+        type is (CellbornFilter)
           t % find_filter(FILTER_CELLBORN) = j
-
-        case ('material')
-          ! Allocate and declare the filter type
-          allocate(MaterialFilter::t % filters(j) % obj)
-          select type (filt => t % filters(j) % obj)
-          type is (MaterialFilter)
-            ! Allocate and store bins
-            filt % n_bins = n_words
-            allocate(filt % materials(n_words))
-            call get_node_array(node_filt, "bins", filt % materials)
-          end select
-          ! Set the filter index in the tally find_filter array
+        type is (MaterialFilter)
           t % find_filter(FILTER_MATERIAL) = j
-
-        case ('universe')
-          ! Allocate and declare the filter type
-          allocate(UniverseFilter::t % filters(j) % obj)
-          select type (filt => t % filters(j) % obj)
-          type is (UniverseFilter)
-            ! Allocate and store bins
-            filt % n_bins = n_words
-            allocate(filt % universes(n_words))
-            call get_node_array(node_filt, "bins", filt % universes)
-          end select
-          ! Set the filter index in the tally find_filter array
+        type is (UniverseFilter)
           t % find_filter(FILTER_UNIVERSE) = j
-
-        case ('surface')
-          call fatal_error("Surface filter is not yet supported!")
-          ! Allocate and declare the filter type
-          allocate(SurfaceFilter::t % filters(j) % obj)
-          select type (filt => t % filters(j) % obj)
-          type is (SurfaceFilter)
-            ! Allocate and store bins
-            filt % n_bins = n_words
-            allocate(filt % surfaces(n_words))
-            call get_node_array(node_filt, "bins", filt % surfaces)
-          end select
-          ! Set the filter index in the tally find_filter array
+        type is (SurfaceFilter)
           t % find_filter(FILTER_SURFACE) = j
-
-        case ('mesh')
-          ! Allocate and declare the filter type
-          allocate(MeshFilter::t % filters(j) % obj)
-          select type (filt => t % filters(j) % obj)
-          type is (MeshFilter)
-            if (n_words /= 1) call fatal_error("Only one mesh can be &
-                 &specified per mesh filter.")
-
-            ! Determine id of mesh
-            call get_node_value(node_filt, "bins", id)
-
-            ! Get pointer to mesh
-            if (mesh_dict % has_key(id)) then
-              i_mesh = mesh_dict % get_key(id)
-              m => meshes(i_mesh)
-            else
-              call fatal_error("Could not find mesh " // trim(to_str(id)) &
-                   // " specified on tally " // trim(to_str(t % id)))
-            end if
-
-            ! Determine number of bins
-            filt % n_bins = product(m % dimension)
-
-            ! Store the index of the mesh
-            filt % mesh = i_mesh
-          end select
-
-          ! Set the filter index in the tally find_filter array
+        type is (MeshFilter)
           t % find_filter(FILTER_MESH) = j
-
-        case ('energy')
-
-          ! Allocate and declare the filter type
-          allocate(EnergyFilter::t % filters(j) % obj)
-          select type (filt => t % filters(j) % obj)
-          type is (EnergyFilter)
-            ! Allocate and store bins
-            filt % n_bins = n_words - 1
-            allocate(filt % bins(n_words))
-            call get_node_array(node_filt, "bins", filt % bins)
-
-            ! We can save tallying time if we know that the tally bins match
-            ! the energy group structure.  In that case, the matching bin
-            ! index is simply the group (after flipping for the different
-            ! ordering of the library and tallying systems).
-            if (.not. run_CE) then
-              if (n_words == num_energy_groups + 1) then
-                if (all(filt % bins == energy_bins(num_energy_groups + 1:1:-1))) &
-                     then
-                  filt % matches_transport_groups = .true.
-                end if
-              end if
-            end if
-          end select
-          ! Set the filter index in the tally find_filter array
+        type is (EnergyFilter)
           t % find_filter(FILTER_ENERGYIN) = j
-
-        case ('energyout')
-          ! Allocate and declare the filter type
-          allocate(EnergyoutFilter::t % filters(j) % obj)
-          select type (filt => t % filters(j) % obj)
-          type is (EnergyoutFilter)
-            ! Allocate and store bins
-            filt % n_bins = n_words - 1
-            allocate(filt % bins(n_words))
-            call get_node_array(node_filt, "bins", filt % bins)
-
-            ! We can save tallying time if we know that the tally bins match
-            ! the energy group structure.  In that case, the matching bin
-            ! index is simply the group (after flipping for the different
-            ! ordering of the library and tallying systems).
-            if (.not. run_CE) then
-              if (n_words == num_energy_groups + 1) then
-                if (all(filt % bins == energy_bins(num_energy_groups + 1:1:-1))) &
-                     then
-                  filt % matches_transport_groups = .true.
-                end if
-              end if
-            end if
-          end select
-          ! Set the filter index in the tally find_filter array
+        type is (EnergyoutFilter)
           t % find_filter(FILTER_ENERGYOUT) = j
-
           ! Set to analog estimator
           t % estimator = ESTIMATOR_ANALOG
-
-        case ('delayedgroup')
-
-          ! Allocate and declare the filter type
-          allocate(DelayedGroupFilter::t % filters(j) % obj)
-          select type (filt => t % filters(j) % obj)
-          type is (DelayedGroupFilter)
-            ! Allocate and store bins
-            filt % n_bins = n_words
-            allocate(filt % groups(n_words))
-            call get_node_array(node_filt, "bins", filt % groups)
-
-            ! Check that bins are all are between 1 and MAX_DELAYED_GROUPS
-            do d = 1, n_words
-              if (filt % groups(d) < 1 .or. &
-                   filt % groups(d) > MAX_DELAYED_GROUPS) then
-                call fatal_error("Encountered delayedgroup bin with index " &
-                     // trim(to_str(filt % groups(d))) // " that is outside &
-                     &the range of 1 to MAX_DELAYED_GROUPS ( " &
-                     // trim(to_str(MAX_DELAYED_GROUPS)) // ")")
-              end if
-            end do
-          end select
-          ! Set the filter index in the tally find_filter array
+        type is (DelayedGroupFilter)
           t % find_filter(FILTER_DELAYEDGROUP) = j
-
-        case ('mu')
-          ! Allocate and declare the filter type
-          allocate(MuFilter::t % filters(j) % obj)
-          select type (filt => t % filters(j) % obj)
-          type is (MuFilter)
-            ! Allocate and store bins
-            filt % n_bins = n_words - 1
-            allocate(filt % bins(n_words))
-            call get_node_array(node_filt, "bins", filt % bins)
-
-            ! Allow a user to input a lone number which will mean that you
-            ! subdivide [-1,1] evenly with the input being the number of bins
-            if (n_words == 1) then
-              Nangle = int(filt % bins(1))
-              if (Nangle > 1) then
-                filt % n_bins = Nangle
-                dangle = TWO / real(Nangle,8)
-                deallocate(filt % bins)
-                allocate(filt % bins(Nangle + 1))
-                do iangle = 1, Nangle
-                  filt % bins(iangle) = -ONE + (iangle - 1) * dangle
-                end do
-                filt % bins(Nangle + 1) = ONE
-              else
-                call fatal_error("Number of bins for mu filter must be&
-                     & greater than 1 on tally " &
-                     // trim(to_str(t % id)) // ".")
-              end if
-            end if
-          end select
-          ! Set the filter index in the tally find_filter array
+        type is (MuFilter)
           t % find_filter(FILTER_MU) = j
-
           ! Set to analog estimator
           t % estimator = ESTIMATOR_ANALOG
-
-        case ('polar')
-          ! Allocate and declare the filter type
-          allocate(PolarFilter::t % filters(j) % obj)
-          select type (filt => t % filters(j) % obj)
-          type is (PolarFilter)
-            ! Allocate and store bins
-            filt % n_bins = n_words - 1
-            allocate(filt % bins(n_words))
-            call get_node_array(node_filt, "bins", filt % bins)
-
-            ! Allow a user to input a lone number which will mean that you
-            ! subdivide [0,pi] evenly with the input being the number of bins
-            if (n_words == 1) then
-              Nangle = int(filt % bins(1))
-              if (Nangle > 1) then
-                filt % n_bins = Nangle
-                dangle = PI / real(Nangle,8)
-                deallocate(filt % bins)
-                allocate(filt % bins(Nangle + 1))
-                do iangle = 1, Nangle
-                  filt % bins(iangle) = (iangle - 1) * dangle
-                end do
-                filt % bins(Nangle + 1) = PI
-              else
-                call fatal_error("Number of bins for polar filter must be&
-                     & greater than 1 on tally " &
-                     // trim(to_str(t % id)) // ".")
-              end if
-            end if
-          end select
-          ! Set the filter index in the tally find_filter array
+        type is (PolarFilter)
           t % find_filter(FILTER_POLAR) = j
-
-        case ('azimuthal')
-          ! Allocate and declare the filter type
-          allocate(AzimuthalFilter::t % filters(j) % obj)
-          select type (filt => t % filters(j) % obj)
-          type is (AzimuthalFilter)
-            ! Allocate and store bins
-            filt % n_bins = n_words - 1
-            allocate(filt % bins(n_words))
-            call get_node_array(node_filt, "bins", filt % bins)
-
-            ! Allow a user to input a lone number which will mean that you
-            ! subdivide [-pi,pi) evenly with the input being the number of
-            ! bins
-            if (n_words == 1) then
-              Nangle = int(filt % bins(1))
-              if (Nangle > 1) then
-                filt % n_bins = Nangle
-                dangle = TWO * PI / real(Nangle,8)
-                deallocate(filt % bins)
-                allocate(filt % bins(Nangle + 1))
-                do iangle = 1, Nangle
-                  filt % bins(iangle) = -PI + (iangle - 1) * dangle
-                end do
-                filt % bins(Nangle + 1) = PI
-              else
-                call fatal_error("Number of bins for azimuthal filter must be&
-                     & greater than 1 on tally " &
-                     // trim(to_str(t % id)) // ".")
-              end if
-            end if
-          end select
-          ! Set the filter index in the tally find_filter array
+        type is (AzimuthalFilter)
           t % find_filter(FILTER_AZIMUTHAL) = j
-
-        case ('energyfunction')
-          ! Allocate and declare the filter type.
-          allocate(EnergyFunctionFilter::t % filters(j) % obj)
-          select type (filt => t % filters(j) % obj)
-          type is (EnergyFunctionFilter)
-            filt % n_bins = 1
-            ! Make sure this is continuous-energy mode.
-            if (.not. run_CE) then
-              call fatal_error("EnergyFunction filters are only supported for &
-                   &continuous-energy transport calculations")
-            end if
-
-            ! Allocate and store energy grid.
-            if (.not. check_for_node(node_filt, "energy")) then
-              call fatal_error("Energy grid not specified for EnergyFunction &
-                   &filter on tally " // trim(to_str(t % id)))
-            end if
-            n_words = node_word_count(node_filt, "energy")
-            allocate(filt % energy(n_words))
-            call get_node_array(node_filt, "energy", filt % energy)
-
-            ! Allocate and store interpolant values.
-            if (.not. check_for_node(node_filt, "y")) then
-              call fatal_error("y values not specified for EnergyFunction &
-                   &filter on tally " // trim(to_str(t % id)))
-            end if
-            n_words = node_word_count(node_filt, "y")
-            allocate(filt % y(n_words))
-            call get_node_array(node_filt, "y", filt % y)
-          end select
-          ! Set the filter index in the tally find_filter array
+        type is (EnergyFunctionFilter)
           t % find_filter(FILTER_ENERGYFUNCTION) = j
-
-        case default
-          ! Specified tally filter is invalid, raise error
-          call fatal_error("Unknown filter type '" &
-               // trim(temp_str) // "' on tally " &
-               // trim(to_str(t % id)) // ".")
-
         end select
 
-      end do READ_FILTERS
+        ! Store the index of the filter
+        temp_filter(j) = i_filt
+      end do
+
+      ! Store the filter indices
+      call move_alloc(FROM=temp_filter, TO=t % filter)
 
       ! Check that both cell and surface weren't specified
       if (t % find_filter(FILTER_CELL) > 0 .and. &
@@ -3805,27 +3848,65 @@ contains
             end if
 
             ! Get index of mesh filter
-            k = t % find_filter(FILTER_MESH)
+            i_filter_mesh = t % filter(t % find_filter(FILTER_MESH))
 
             ! Check to make sure mesh filter was specified
-            if (k == 0) then
+            if (i_filter_mesh == 0) then
               call fatal_error("Cannot tally surface current without a mesh &
                    &filter.")
             end if
 
-            ! Copy filters to temporary array
-            allocate(filters(size(t % filters) + 1))
-            filters(1:size(t % filters)) = t % filters
+            ! Get pointer to mesh
+            select type(filt => filters(i_filter_mesh) % obj)
+            type is (MeshFilter)
+              i_mesh = filt % mesh
+              m => meshes(i_mesh)
+            end select
 
-            ! Move allocation back -- filters becomes deallocated during
+            ! Copy filter indices to temporary array
+            allocate(temp_filter(size(t % filter) + 1))
+            temp_filter(1:size(t % filter)) = t % filter
+
+            ! Move allocation back -- temp_filter becomes deallocated during
             ! this call
-            call move_alloc(FROM=filters, TO=t%filters)
+            call move_alloc(FROM=temp_filter, TO=t % filter)
+            n_filter = size(t % filter)
+
+            ! Extend the filters array so we can add a surface filter and mesh
+            ! filter
+            call add_filters(2)
+
+            ! Increment number of user filters
+            n_user_filters = n_user_filters + 2
+
+            ! Get index of the new mesh filter
+            i_filt = n_user_filters - 1
+
+            ! Duplicate the mesh filter since other tallies might use this
+            ! filter and we need to change the dimension
+            allocate(MeshFilter :: filters(i_filt) % obj)
+            select type(filt => filters(i_filt) % obj)
+            type is (MeshFilter)
+              filt % id = i_filt
+              filt % mesh = i_mesh
+
+              ! We need to increase the dimension by one since we also need
+              ! currents coming into and out of the boundary mesh cells.
+              filt % n_bins = product(m % dimension + 1)
+
+              ! Add filter to dictionary
+              call filter_dict % add_key(filt % id, i_filt)
+            end select
+            t % filter(t % find_filter(FILTER_MESH)) = i_filt
+
+            ! Get index of the new surface filter
+            i_filt = n_user_filters
 
             ! Add surface filter
-            n_filters = size(t % filters)
-            allocate(SurfaceFilter :: t % filters(n_filters) % obj)
-            select type (filt => t % filters(size(t % filters)) % obj)
+            allocate(SurfaceFilter :: filters(i_filt) % obj)
+            select type (filt => filters(i_filt) % obj)
             type is (SurfaceFilter)
+              filt % id = i_filt
               filt % n_bins = 4 * m % n_dimension
               allocate(filt % surfaces(4 * m % n_dimension))
               if (m % n_dimension == 1) then
@@ -3838,15 +3919,21 @@ contains
                      OUT_BACK, IN_BACK, OUT_FRONT, IN_FRONT, OUT_BOTTOM, &
                      IN_BOTTOM, OUT_TOP, IN_TOP /)
               end if
+              filt % current = .true.
+
+              ! Add filter to dictionary
+              call filter_dict % add_key(filt % id, i_filt)
             end select
-            t % find_filter(FILTER_SURFACE) = size(t % filters)
+            t % find_filter(FILTER_SURFACE) = n_filter
+            t % filter(n_filter) = i_filt
 
           case ('events')
             t % score_bins(j) = SCORE_EVENTS
-          case ('partial_current')                               ! /CHANGE/
+
+          case ('partial_current')
             t % type = TALLY_CELL_TO_CELL
             t % score_bins(j) = SCORE_CELL_TO_CELL_TYPE
-
+            
           case ('elastic', '(n,elastic)')
             t % score_bins(j) = ELASTIC
           case ('(n,2nd)')
@@ -4596,8 +4683,8 @@ contains
                      &meshlines on plot " // trim(to_str(pl % id)))
               end if
 
-              select type(filt => cmfd_tallies(1) % &
-                   filters(cmfd_tallies(1) % find_filter(FILTER_MESH)) % obj)
+              select type(filt => filters(cmfd_tallies(1) % &
+                   filter(cmfd_tallies(1) % find_filter(FILTER_MESH))) % obj)
               type is (MeshFilter)
                 i_mesh = filt % mesh
               end select
@@ -5101,6 +5188,7 @@ contains
     integer :: m            ! position for sorting
     integer :: temp_nuclide ! temporary value for sorting
     integer :: temp_table   ! temporary value for sorting
+    logical :: found
     type(VectorInt) :: i_sab_tables
     type(VectorInt) :: i_sab_nuclides
 
@@ -5114,17 +5202,19 @@ contains
           ! In order to know which nuclide the S(a,b) table applies to, we need
           ! to search through the list of nuclides for one which has a matching
           ! name
+          found = .false.
           associate (sab => sab_tables(mat % i_sab_tables(k)))
             FIND_NUCLIDE: do j = 1, size(mat % nuclide)
               if (any(sab % nuclides == nuclides(mat % nuclide(j)) % name)) then
-                call i_sab_tables % push_back(k)
+                call i_sab_tables % push_back(mat % i_sab_tables(k))
                 call i_sab_nuclides % push_back(j)
+                found = .true.
               end if
             end do FIND_NUCLIDE
           end associate
 
           ! Check to make sure S(a,b) table matched a nuclide
-          if (find(i_sab_tables, k) == -1) then
+          if (.not. found) then
             call fatal_error("S(a,b) table " // trim(mat % &
                  sab_names(k)) // " did not match any nuclide on material " &
                  // trim(to_str(mat % id)))
@@ -5361,43 +5451,51 @@ contains
   subroutine assign_0K_elastic_scattering(nuc)
     type(Nuclide), intent(inout) :: nuc
 
-    integer :: i, j
+    integer :: i
     real(8) :: xs_cdf_sum
 
-    do i = 1, size(res_scat_nuclides)
-      if (nuc % name == res_scat_nuclides(i)) then
-        ! Make sure nuclide has 0K data
-        if (.not. allocated(nuc % energy_0K)) then
-          call fatal_error("Cannot treat " // trim(nuc % name) // " as a &
-               &resonant scatterer because 0 K elastic scattering data is not &
-               &present.")
+    nuc % resonant = .false.
+    if (allocated(res_scat_nuclides)) then
+      ! If resonant nuclides were specified, check the list explicitly
+      do i = 1, size(res_scat_nuclides)
+        if (nuc % name == res_scat_nuclides(i)) then
+          nuc % resonant = .true.
+
+          ! Make sure nuclide has 0K data
+          if (.not. allocated(nuc % energy_0K)) then
+            call fatal_error("Cannot treat " // trim(nuc % name) // " as a &
+                 &resonant scatterer because 0 K elastic scattering data is &
+                 &not present.")
+          end if
+
+          exit
         end if
+      end do
+    else
+      ! Otherwise, assume that any that have 0 K elastic scattering data are
+      ! resonant
+      nuc % resonant = allocated(nuc % energy_0K)
+    end if
 
-        ! Set nuclide to be resonant
-        nuc % resonant = .true.
+    if (nuc % resonant) then
+      ! Build CDF for 0K elastic scattering
+      xs_cdf_sum = ZERO
+      allocate(nuc % xs_cdf(0:size(nuc % energy_0K)))
+      nuc % xs_cdf(0) = ZERO
 
-        ! Build CDF for 0K elastic scattering
-        xs_cdf_sum = ZERO
-        allocate(nuc % xs_cdf(0:size(nuc % energy_0K)))
-        nuc % xs_cdf(0) = ZERO
+      associate (E => nuc % energy_0K, xs => nuc % elastic_0K)
+        do i = 1, size(E) - 1
+          ! Negative cross sections result in a CDF that is not monotonically
+          ! increasing. Set all negative xs values to zero.
+          if (xs(i) < ZERO) xs(i) = ZERO
 
-        associate (E => nuc % energy_0K, xs => nuc % elastic_0K)
-          do j = 1, size(E) - 1
-            ! Negative cross sections result in a CDF that is not monotonically
-            ! increasing. Set all negative xs values to zero.
-            if (xs(j) < ZERO) xs(j) = ZERO
-
-            ! build xs cdf
-            xs_cdf_sum = xs_cdf_sum + (sqrt(E(j))*xs(j) + sqrt(E(j+1))*xs(j+1))&
-                 / TWO * (E(j+1) - E(j))
-            nuc % xs_cdf(j) = xs_cdf_sum
-          end do
-        end associate
-
-        exit
-      end if
-    end do
-
+          ! build xs cdf
+          xs_cdf_sum = xs_cdf_sum + (sqrt(E(i))*xs(i) + sqrt(E(i+1))*xs(i+1))&
+               / TWO * (E(i+1) - E(i))
+          nuc % xs_cdf(i) = xs_cdf_sum
+        end do
+      end associate
+    end if
   end subroutine assign_0K_elastic_scattering
 
 !===============================================================================

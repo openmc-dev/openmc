@@ -481,7 +481,11 @@ contains
     ! Sample scattering angle
     select type (dist => rxn % products(1) % distribution(1) % obj)
     type is (UncorrelatedAngleEnergy)
-      mu_cm = dist % angle % sample(E)
+      if (allocated(dist % angle % energy)) then
+        mu_cm = dist % angle % sample(E)
+      else
+        mu_cm = TWO*prn() - ONE
+      end if
     end select
 
     ! Determine direction cosines in CM
@@ -875,9 +879,9 @@ contains
       wgt = wcf * wgt
 
     case (RES_SCAT_DBRC, RES_SCAT_ARES)
-      E_red = sqrt((awr * E) / kT)
-      E_low = (((E_red - FOUR)**2) * kT) / awr
-      E_up  = (((E_red + FOUR)**2) * kT) / awr
+      E_red = sqrt(awr * E / kT)
+      E_low = max(ZERO, E_red - FOUR)**2 * kT / awr
+      E_up  = (E_red + FOUR)**2 * kT / awr
 
       ! find lower and upper energy bound indices
       ! lower index
@@ -947,33 +951,30 @@ contains
                + m * (E_up - nuc % energy_0K(i_E_up))
 
           ARES_REJECT_LOOP: do
-            ! perform Maxwellian rejection sampling
-            xi = prn()
-            E_t = 16.0_8 * kT * xi**2
-            R = FOUR * xi * exp(ONE - E_t/kT)
 
-            if (prn() < R) then
-              ! sample a relative energy using the xs cdf
-              cdf_rel = cdf_low + prn() * (cdf_up - cdf_low)
-              i_E_rel = binary_search(nuc % xs_cdf(i_E_low-1:i_E_up), &
-                   i_E_up - i_E_low + 2, cdf_rel)
-              E_rel = nuc % energy_0K(i_E_low + i_E_rel - 1)
-              m = (nuc % xs_cdf(i_E_low + i_E_rel - 1) &
-                   - nuc % xs_cdf(i_E_low + i_E_rel - 2)) &
-                   / (nuc % energy_0K(i_E_low + i_E_rel) &
-                   -  nuc % energy_0K(i_E_low + i_E_rel - 1))
-              E_rel = E_rel + (cdf_rel - nuc % xs_cdf(i_E_low + i_E_rel - 2)) / m
+            ! directly sample Maxwellian
+            E_t = -kT * log(prn())
 
-              ! perform rejection sampling on cosine between
-              ! neutron and target velocities
-              mu = (E_t + awr * (E - E_rel)) / (TWO * sqrt(awr * E * E_t))
+            ! sample a relative energy using the xs cdf
+            cdf_rel = cdf_low + prn() * (cdf_up - cdf_low)
+            i_E_rel = binary_search(nuc % xs_cdf(i_E_low-1:i_E_up), &
+                 i_E_up - i_E_low + 2, cdf_rel)
+            E_rel = nuc % energy_0K(i_E_low + i_E_rel - 1)
+            m = (nuc % xs_cdf(i_E_low + i_E_rel - 1) &
+                 - nuc % xs_cdf(i_E_low + i_E_rel - 2)) &
+                 / (nuc % energy_0K(i_E_low + i_E_rel) &
+                 -  nuc % energy_0K(i_E_low + i_E_rel - 1))
+            E_rel = E_rel + (cdf_rel - nuc % xs_cdf(i_E_low + i_E_rel - 2)) / m
 
-              if (abs(mu) < ONE) then
-                ! set and accept target velocity
-                E_t = E_t / awr
-                v_target = sqrt(E_t) * rotate_angle(uvw, mu)
-                exit ARES_REJECT_LOOP
-              end if
+            ! perform rejection sampling on cosine between
+            ! neutron and target velocities
+            mu = (E_t + awr * (E - E_rel)) / (TWO * sqrt(awr * E * E_t))
+
+            if (abs(mu) < ONE) then
+              ! set and accept target velocity
+              E_t = E_t / awr
+              v_target = sqrt(E_t) * rotate_angle(uvw, mu)
+              exit ARES_REJECT_LOOP
             end if
           end do ARES_REJECT_LOOP
         end if

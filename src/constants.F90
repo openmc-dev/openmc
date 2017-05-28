@@ -288,7 +288,8 @@ module constants
   ! Tally type
   integer, parameter :: &
        TALLY_VOLUME          = 1, &
-       TALLY_SURFACE_CURRENT = 2
+       TALLY_SURFACE_CURRENT = 2, &
+       TALLY_CELL_TO_CELL    = 3
 
   ! Tally estimator types
   integer, parameter :: &
@@ -304,7 +305,7 @@ module constants
        EVENT_ABSORB  =  2
 
   ! Tally score type
-  integer, parameter :: N_SCORE_TYPES = 24
+  integer, parameter :: N_SCORE_TYPES = 25
   integer, parameter :: &
        SCORE_FLUX               = -1,  & ! flux
        SCORE_TOTAL              = -2,  & ! total reaction rate
@@ -329,7 +330,8 @@ module constants
        SCORE_INVERSE_VELOCITY   = -21, & ! flux-weighted inverse velocity
        SCORE_FISS_Q_PROMPT      = -22, & ! prompt fission Q-value
        SCORE_FISS_Q_RECOV       = -23, & ! recoverable fission Q-value
-       SCORE_DECAY_RATE         = -24    ! delayed neutron precursor decay rate
+       SCORE_DECAY_RATE         = -24, & ! delayed neutron precursor decay rate
+       SCORE_CELL_TO_CELL_TYPE  = -25    ! cell to cell partial current
 
   ! Maximum scattering order supported
   integer, parameter :: MAX_ANG_ORDER = 10
@@ -352,7 +354,7 @@ module constants
   integer, parameter :: NO_BIN_FOUND = -1
 
   ! Tally filter and map types
-  integer, parameter :: N_FILTER_TYPES = 14
+  integer, parameter :: N_FILTER_TYPES = 15
   integer, parameter :: &
        FILTER_UNIVERSE       = 1,  &
        FILTER_MATERIAL       = 2,  &
@@ -367,7 +369,8 @@ module constants
        FILTER_POLAR          = 11, &
        FILTER_AZIMUTHAL      = 12, &
        FILTER_DELAYEDGROUP   = 13, &
-       FILTER_ENERGYFUNCTION = 14
+       FILTER_ENERGYFUNCTION = 14, &
+       FILTER_CELL_TO_CELL   = 15
 
   ! Mesh types
   integer, parameter :: &

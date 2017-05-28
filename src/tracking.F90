@@ -37,6 +37,7 @@ contains
     integer :: surface_crossed        ! surface which particle is on
     integer :: lattice_translation(3) ! in-lattice translation vector
     integer :: last_cell              ! most recent cell particle was in
+    integer :: last_n_coord           ! most recent number of levels for last_cell
     integer :: n_event                ! number of collisions/crossings
     real(8) :: d_boundary             ! distance to nearest boundary
     real(8) :: d_collision            ! sampled distance to collision
@@ -148,7 +149,11 @@ contains
         ! PARTICLE CROSSES SURFACE
 
         if (next_level > 0) p % n_coord = next_level
+        
+        ! Saving previous cell data
         last_cell = p % coord(p % n_coord) % cell
+        last_n_coord = p % n_coord
+        
         p % coord(p % n_coord) % cell = NONE
         if (any(lattice_translation /= 0)) then
           ! Particle crosses lattice boundary
@@ -158,6 +163,12 @@ contains
         else
           ! Particle crosses surface
           p % surface = surface_crossed
+          
+          ! /CHANGE/ Saving stuff on particle
+          p % last_cell = last_cell
+          p % last_n_coord = last_n_coord
+          p % coord(next_level) % last_cell = last_cell
+          
           call cross_surface(p, last_cell)
           p % event = EVENT_SURFACE
         end if

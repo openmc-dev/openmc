@@ -94,7 +94,7 @@ def _get_products(ev, mt):
         # Get yield for this product
         params, yield_ = get_tab1_record(file_obj)
 
-        za = params[0]
+        za = int(params[0])
         awr = params[1]
         lip = params[2]
         law = params[3]
@@ -106,9 +106,8 @@ def _get_products(ev, mt):
         elif za == 1000:
             p = Product('electron')
         else:
-            z = za // 1000
-            a = za % 1000
-            p = Product('{}{}'.format(ATOMIC_SYMBOL[z], a))
+            Z, A = divmod(za, 1000)
+            p = Product('{}{}'.format(ATOMIC_SYMBOL[Z], A))
 
         p.yield_ = yield_
 
@@ -467,6 +466,93 @@ def _get_fission_products_endf(ev):
     return products, derived_products
 
 
+def _get_activation_products(ev, rx):
+    """Generate activation products from an ENDF evaluation
+
+    Parameters
+    ----------
+    ev : openmc.data.endf.Evaluation
+        The ENDF evaluation
+    rx : openmc.data.Reaction
+        Reaction which generates activation products
+
+    Returns
+    -------
+    products : list of openmc.data.Product
+        Activation products
+
+    """
+    file_obj = StringIO(ev.section[8, rx.mt])
+
+    # Determine total number of states and whether decay chain is given in a
+    # decay sublibrary
+    items = get_head_record(file_obj)
+    n_states = items[4]
+    decay_sublib = (items[5] == 1)
+
+    # Determine if file 9/10 are present
+    present = {9: False, 10: False}
+    for i in range(n_states):
+        if decay_sublib:
+            items = get_cont_record(file_obj)
+        else:
+            items, values = get_list_record(file_obj)
+        lmf = items[2]
+        if lmf == 9:
+            present[9] = True
+        elif lmf == 10:
+            present[10] = True
+
+    products = []
+
+    for mf in (9, 10):
+        if not present[mf]:
+            continue
+
+        file_obj = StringIO(ev.section[mf, rx.mt])
+        items = get_head_record(file_obj)
+        n_states = items[4]
+        for i in range(n_states):
+            # Determine what the product is
+            items, xs = get_tab1_record(file_obj)
+            Z, A = divmod(items[2], 1000)
+            excited_state = items[3]
+
+            # Get GND name for product
+            symbol = ATOMIC_SYMBOL[Z]
+            if excited_state > 0:
+                name = '{}{}_e{}'.format(symbol, A, excited_state)
+            else:
+                name = '{}{}'.format(symbol, A)
+
+            p = Product(name)
+            if mf == 9:
+                p.yield_ = xs
+            else:
+                # Re-interpolate production cross section and neutron cross
+                # section to union energy grid
+                energy = np.union1d(xs.x, rx.xs['0K'].x)
+                prod_xs = xs(energy)
+                neutron_xs = rx.xs['0K'](energy)
+                idx = np.where(neutron_xs > 0)
+
+                # Calculate yield as ratio
+                yield_ = np.zeros_like(energy)
+                yield_[idx] = prod_xs[idx] / neutron_xs[idx]
+                p.yield_ = Tabulated1D(energy, yield_)
+
+            # Check if product already exists from MF=6 and if it does, just
+            # overwrite the existing yield.
+            for product in rx.products:
+                if name == product.particle:
+                    product.yield_ = p.yield_
+                    break
+            else:
+                products.append(p)
+
+    return products
+
+
 def _get_photon_products_ace(ace, rx):
     """Generate photon products from an ACE table
 
@@ -653,7 +739,7 @@ def _get_photon_products_endf(ev, rx):
             photon = Product('photon')
             items, xs = get_tab1_record(file_obj)
 
-            # Re-interpolation photon production cross section and neutron cross
+            # Re-interpolate photon production cross section and neutron cross
             # section to union energy grid
             energy = np.union1d(xs.x, rx.xs['0K'].x)
             photon_prod_xs = xs(energy)
@@ -1085,6 +1171,9 @@ class Reaction(EqualityMixin):
                 rx.products[0].distribution = neutron.distribution
             else:
                 rx.products.append(neutron)
+
+        if (8, mt) in ev.section:
+            rx.products += _get_activation_products(ev, rx)
 
         if (12, mt) in ev.section or (13, mt) in ev.section:
             rx.products += _get_photon_products_endf(ev, rx)

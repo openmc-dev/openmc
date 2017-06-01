@@ -97,7 +97,7 @@ class Material(object):
         self._density = None
         self._density_units = ''
         self._depletable = False
-        self._paths = []
+        self._paths = None
         self._num_instances = None
         self._volume = None
         self._atoms = {}
@@ -210,13 +210,17 @@ class Material(object):
 
     @property
     def paths(self):
-        if not self._paths:
+        if self._paths is None:
             raise ValueError('Material instance paths have not been determined. '
                              'Call the Geometry.determine_paths() method.')
         return self._paths
 
     @property
     def num_instances(self):
+        if self._num_instances is None:
+            raise ValueError(
+                'Number of material instances have not been determined. Call '
+                'the Geometry.determine_paths() method.')
         return self._num_instances
 
     @property

@@ -491,7 +491,7 @@ class Geometry(object):
 
         Parameters
         ----------
-        instances_only : bool
+        instances_only : bool, optional
             If true, this method will only determine the number of instances of
             each cell and material.
 

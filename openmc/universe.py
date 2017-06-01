@@ -566,7 +566,7 @@ class Universe(object):
                 cell_element.set("universe", str(self._id))
                 xml_element.append(cell_element)
 
-    def _determine_paths(self, path=''):
+    def _determine_paths(self, path='', instances_only=False):
         """Count the number of instances for each cell in the universe, and
         record the count in the :attr:`Cell.num_instances` properties."""
 
@@ -577,7 +577,7 @@ class Universe(object):
 
             # If universe-filled, recursively count cells in filling universe
             if cell.fill_type == 'universe':
-                cell.fill._determine_paths(cell_path + '->')
+                cell.fill._determine_paths(cell_path + '->', instances_only)
 
             # If lattice-filled, recursively call for all universes in lattice
             elif cell.fill_type == 'lattice':
@@ -588,18 +588,22 @@ class Universe(object):
                     latt_path = '{}->l{}({})->'.format(
                         cell_path, latt.id, ",".join(str(x) for x in index))
                     univ = latt.get_universe(index)
-                    univ._determine_paths(latt_path)
+                    univ._determine_paths(latt_path, instances_only)
 
             else:
                 if cell.fill_type == 'material':
                     mat = cell.fill
                 elif cell.fill_type == 'distribmat':
-                    mat = cell.fill[len(cell._paths)]
+                    mat = cell.fill[cell._num_instances]
                 else:
                     mat = None
 
                 if mat is not None:
-                    mat._paths.append('{}->m{}'.format(cell_path, mat.id))
+                    mat._num_instances += 1
+                    if not instances_only:
+                        mat._paths.append('{}->m{}'.format(cell_path, mat.id))
 
             # Append current path
-            cell._paths.append(cell_path)
+            cell._num_instances += 1
+            if not instances_only:
+                cell._paths.append(cell_path)

@@ -11,19 +11,10 @@ import numpy as np
 import openmc
 import openmc.checkvalue as cv
 from openmc.plots import _SVG_COLORS
+from openmc.mixin import IDManagerMixin
 
 
-# A static variable for auto-generated Lattice (Universe) IDs
-AUTO_UNIVERSE_ID = 10000
-
-
-def reset_auto_universe_id():
-    """Reset counter for auto-generated universe IDs."""
-    global AUTO_UNIVERSE_ID
-    AUTO_UNIVERSE_ID = 10000
-
-
-class Universe(object):
+class Universe(IDManagerMixin):
     """A collection of cells that can be repeated.
 
     Parameters
@@ -54,6 +45,9 @@ class Universe(object):
         of the universe.
 
     """
+
+    next_id = 1
+    used_ids = set()
 
     def __init__(self, universe_id=None, name='', cells=None):
         # Initialize Cell class attributes
@@ -96,10 +90,6 @@ class Universe(object):
         return string
 
     @property
-    def id(self):
-        return self._id
-
-    @property
     def name(self):
         return self._name
 
@@ -120,17 +110,6 @@ class Universe(object):
         else:
             # Infinite bounding box
             return openmc.Intersection().bounding_box
-
-    @id.setter
-    def id(self, universe_id):
-        if universe_id is None:
-            global AUTO_UNIVERSE_ID
-            self._id = AUTO_UNIVERSE_ID
-            AUTO_UNIVERSE_ID += 1
-        else:
-            cv.check_type('universe ID', universe_id, Integral)
-            cv.check_greater_than('universe ID', universe_id, 0, equality=True)
-            self._id = universe_id
 
     @name.setter
     def name(self, name):

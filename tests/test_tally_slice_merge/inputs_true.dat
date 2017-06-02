@@ -310,37 +310,37 @@
 <?xml version='1.0' encoding='utf-8'?>
 <tallies>
     <!--mesh-->
-    <mesh id="10000" type="regular">
+    <mesh id="1" type="regular">
         <dimension>2 2</dimension>
         <lower_left>-50.0 -50.0</lower_left>
         <upper_right>50.0 50.0</upper_right>
     </mesh>
-    <filter id="10015" type="cell">
+    <filter id="16" type="cell">
         <bins>21 27</bins>
     </filter>
-    <filter id="10007" type="energy">
+    <filter id="8" type="energy">
         <bins>0.0 0.625 20000000.0</bins>
     </filter>
-    <filter id="10005" type="distribcell">
+    <filter id="6" type="distribcell">
         <bins>21</bins>
     </filter>
-    <filter id="10006" type="mesh">
-        <bins>10000</bins>
+    <filter id="7" type="mesh">
+        <bins>1</bins>
     </filter>
-    <tally id="10030" name="cell tally">
-        <filters>10015 10007</filters>
+    <tally id="31" name="cell tally">
+        <filters>16 8</filters>
         <nuclides>U235 U238</nuclides>
         <scores>fission nu-fission</scores>
         <estimator>tracklength</estimator>
     </tally>
-    <tally id="10031" name="distribcell tally">
-        <filters>10005 10007</filters>
+    <tally id="32" name="distribcell tally">
+        <filters>6 8</filters>
         <nuclides>U235 U238</nuclides>
         <scores>fission nu-fission</scores>
         <estimator>tracklength</estimator>
     </tally>
-    <tally id="10032" name="mesh tally">
-        <filters>10006 10007</filters>
+    <tally id="33" name="mesh tally">
+        <filters>7 8</filters>
         <nuclides>U235 U238</nuclides>
         <scores>fission nu-fission</scores>
         <estimator>tracklength</estimator>

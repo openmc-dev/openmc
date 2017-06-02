@@ -29,7 +29,7 @@ class FilterEnergyFunHarness(PyAPITestHarness):
         assert filt1 == filt2, 'Error with the .from_tabulated1d constructor'
 
         # Make tallies.
-        tallies = [openmc.Tally(), openmc.Tally()]
+        tallies = [openmc.Tally(1), openmc.Tally(2)]
         for t in tallies:
             t.scores = ['(n,gamma)']
             t.nuclides = ['Am241']
@@ -42,7 +42,7 @@ class FilterEnergyFunHarness(PyAPITestHarness):
         sp = openmc.StatePoint(statepoint)
 
         # Use tally arithmetic to compute the branching ratio.
-        br_tally = sp.tallies[10001] / sp.tallies[10000]
+        br_tally = sp.tallies[2] / sp.tallies[1]
 
         # Output the tally in a Pandas DataFrame.
         return br_tally.get_pandas_dataframe().to_string() + '\n'

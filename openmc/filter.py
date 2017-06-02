@@ -12,10 +12,8 @@ import pandas as pd
 
 import openmc
 import openmc.checkvalue as cv
+from .mixin import IDManagerMixin
 
-
-# "Static" variable for auto-generated Filter IDs
-AUTO_FILTER_ID = 10000
 
 _FILTER_TYPES = ['universe', 'material', 'cell', 'cellborn', 'surface',
                  'mesh', 'energy', 'energyout', 'mu', 'polar', 'azimuthal',
@@ -27,12 +25,6 @@ _CURRENT_NAMES = {1:  'x-min out', 2:  'x-min in',
                   7:  'y-max out', 8:  'y-max in',
                   9:  'z-min out', 10: 'z-min in',
                   11: 'z-max out', 12: 'z-max in'}
-
-
-def reset_auto_filter_id():
-    """Reset counter for auto-generated filter IDs."""
-    global AUTO_FILTER_ID
-    AUTO_FILTER_ID = 10000
 
 
 class FilterMeta(ABCMeta):
@@ -74,7 +66,7 @@ class FilterMeta(ABCMeta):
 
 
 @add_metaclass(FilterMeta)
-class Filter(object):
+class Filter(IDManagerMixin):
     """Tally modifier that describes phase-space and other characteristics.
 
     Parameters
@@ -99,6 +91,9 @@ class Filter(object):
         filter's bins.
 
     """
+
+    next_id = 1
+    used_ids = set()
 
     def __init__(self, bins, filter_id=None):
         self.bins = bins
@@ -196,10 +191,6 @@ class Filter(object):
         return self._bins
 
     @property
-    def id(self):
-        return self._id
-
-    @property
     def num_bins(self):
         return self._num_bins
 
@@ -216,17 +207,6 @@ class Filter(object):
         self.check_bins(bins)
 
         self._bins = bins
-
-    @id.setter
-    def id(self, filter_id):
-        if filter_id is None:
-            global AUTO_FILTER_ID
-            self._id = AUTO_FILTER_ID
-            AUTO_FILTER_ID += 1
-        else:
-            cv.check_type('filter ID', filter_id, Integral)
-            cv.check_greater_than('filter ID', filter_id, 0, equality=True)
-            self._id = filter_id
 
     @num_bins.setter
     def num_bins(self, num_bins):

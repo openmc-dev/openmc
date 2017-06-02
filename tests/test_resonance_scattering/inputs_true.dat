@@ -1,7 +1,7 @@
 <?xml version='1.0' encoding='utf-8'?>
 <geometry>
-    <cell id="1" material="1" region="-10000" universe="0" />
-    <surface boundary="reflective" coeffs="100" id="10000" type="x-plane" />
+    <cell id="1" material="1" region="-9" universe="0" />
+    <surface boundary="reflective" coeffs="100" id="9" type="x-plane" />
 </geometry>
 <?xml version='1.0' encoding='utf-8'?>
 <materials>

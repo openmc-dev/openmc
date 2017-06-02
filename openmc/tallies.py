@@ -18,10 +18,8 @@ import h5py
 import openmc
 import openmc.checkvalue as cv
 from openmc.clean_xml import clean_xml_indentation
+from .mixin import IDManagerMixin
 
-
-# "Static" variable for auto-generated Tally IDs
-AUTO_TALLY_ID = 10000
 
 # The tally arithmetic product types. The tensor product performs the full
 # cross product of the data in two tallies with respect to a specified axis
@@ -41,13 +39,7 @@ _FILTER_CLASSES = (openmc.Filter, openmc.CrossFilter, openmc.AggregateFilter)
 ESTIMATOR_TYPES = ['tracklength', 'collision', 'analog']
 
 
-def reset_auto_tally_id():
-    """Reset counter for auto-generated tally IDs."""
-    global AUTO_TALLY_ID
-    AUTO_TALLY_ID = 10000
-
-
-class Tally(object):
+class Tally(IDManagerMixin):
     """A tally defined by a set of scores that are accumulated for a list of
     nuclides given a set of filters.
 
@@ -108,6 +100,9 @@ class Tally(object):
         A material perturbation derivative to apply to all scores in the tally.
 
     """
+
+    next_id = 1
+    used_ids = set()
 
     def __init__(self, tally_id=None, name=''):
         # Initialize Tally class attributes
@@ -203,10 +198,6 @@ class Tally(object):
         string += '{: <16}=\t{}\n'.format('\tEstimator', self.estimator)
 
         return string
-
-    @property
-    def id(self):
-        return self._id
 
     @property
     def name(self):
@@ -415,17 +406,6 @@ class Tally(object):
                       'defined using the triggers property directly.',
                       DeprecationWarning)
         self.triggers.append(trigger)
-
-    @id.setter
-    def id(self, tally_id):
-        if tally_id is None:
-            global AUTO_TALLY_ID
-            self._id = AUTO_TALLY_ID
-            AUTO_TALLY_ID += 1
-        else:
-            cv.check_type('tally ID', tally_id, Integral)
-            cv.check_greater_than('tally ID', tally_id, 0, equality=True)
-            self._id = tally_id
 
     @name.setter
     def name(self, name):

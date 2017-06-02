@@ -8,6 +8,7 @@ from xml.etree import ElementTree as ET
 
 from six import add_metaclass
 import numpy as np
+import pandas as pd
 
 import openmc
 import openmc.checkvalue as cv
@@ -460,9 +461,7 @@ class Filter(object):
         Tally.get_pandas_dataframe(), CrossFilter.get_pandas_dataframe()
 
         """
-
         # Initialize Pandas DataFrame
-        import pandas as pd
         df = pd.DataFrame()
 
         filter_bins = np.repeat(self.bins, self.stride)
@@ -715,9 +714,7 @@ class SurfaceFilter(Filter):
         Tally.get_pandas_dataframe(), CrossFilter.get_pandas_dataframe()
 
         """
-
         # Initialize Pandas DataFrame
-        import pandas as pd
         df = pd.DataFrame()
 
         filter_bins = np.repeat(self.bins, self.stride)
@@ -875,9 +872,7 @@ class MeshFilter(Filter):
         Tally.get_pandas_dataframe(), CrossFilter.get_pandas_dataframe()
 
         """
-
         # Initialize Pandas DataFrame
-        import pandas as pd
         df = pd.DataFrame()
 
         # Initialize dictionary to build Pandas Multi-index column
@@ -1123,9 +1118,7 @@ class EnergyFilter(RealFilter):
         Tally.get_pandas_dataframe(), CrossFilter.get_pandas_dataframe()
 
         """
-
         # Initialize Pandas DataFrame
-        import pandas as pd
         df = pd.DataFrame()
 
         # Extract the lower and upper energy bounds, then repeat and tile
@@ -1335,9 +1328,7 @@ class DistribcellFilter(Filter):
         Tally.get_pandas_dataframe(), CrossFilter.get_pandas_dataframe()
 
         """
-
         # Initialize Pandas DataFrame
-        import pandas as pd
         df = pd.DataFrame()
 
         level_df = None
@@ -1531,9 +1522,7 @@ class MuFilter(RealFilter):
         Tally.get_pandas_dataframe(), CrossFilter.get_pandas_dataframe()
 
         """
-
         # Initialize Pandas DataFrame
-        import pandas as pd
         df = pd.DataFrame()
 
         # Extract the lower and upper energy bounds, then repeat and tile
@@ -1638,9 +1627,7 @@ class PolarFilter(RealFilter):
         Tally.get_pandas_dataframe(), CrossFilter.get_pandas_dataframe()
 
         """
-
         # Initialize Pandas DataFrame
-        import pandas as pd
         df = pd.DataFrame()
 
         # Extract the lower and upper angle bounds, then repeat and tile
@@ -1745,9 +1732,7 @@ class AzimuthalFilter(RealFilter):
         Tally.get_pandas_dataframe(), CrossFilter.get_pandas_dataframe()
 
         """
-
         # Initialize Pandas DataFrame
-        import pandas as pd
         df = pd.DataFrame()
 
         # Extract the lower and upper angle bounds, then repeat and tile
@@ -2039,8 +2024,6 @@ class EnergyFunctionFilter(Filter):
         Tally.get_pandas_dataframe(), CrossFilter.get_pandas_dataframe()
 
         """
-
-        import pandas as pd
         df = pd.DataFrame()
 
         # There is no clean way of sticking all the energy, y data into a

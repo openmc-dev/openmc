@@ -45,8 +45,8 @@ def sort_xml_elements(tree):
             key = element.get('id')
 
             # If this element has an "ID" tag, append it to the list to sort
-            if not key is None:
-                tagged_data.append((key, element))
+            if key is not None:
+                tagged_data.append((int(key), element))
 
         # Sort the elements according to the IDs for this tag
         tagged_data.sort()
@@ -65,7 +65,7 @@ def sort_xml_elements(tree):
     tree.extend(sorted_elements)
 
 
-def clean_xml_indentation(element, level=0, spaces_per_level=4):
+def clean_xml_indentation(element, level=0, spaces_per_level=2):
     """
     copy and paste from http://effbot.org/zone/elementent-lib.htm#prettyprint
     it basically walks your tree and adds spaces and newlines so the tree is

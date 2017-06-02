@@ -118,12 +118,12 @@ thermr / %%%%%%%%%%%%%%%% Add thermal scattering data (free gas) %%%%%%%%%%%%%%%
 0 23 62
 0 {mat} 12 {num_temp} 1 0 {iform} 1 221 1/
 {temps}
-0.001 4.0
+0.001 {energy_max}
 thermr / %%%%%%%%%%%%%%%% Add thermal scattering data (bound) %%%%%%%%%%%%%%%%%%
 60 62 27
 {mat_thermal} {mat} 16 {num_temp} {inelastic} {elastic} {iform} {natom} 222 1/
 {temps}
-0.001 4.0
+0.001 {energy_max}
 """
 
 _ACE_THERMAL_TEMPLATE_ACER = """acer /
@@ -347,7 +347,6 @@ def make_ace_thermal(filename, filename_thermal, temperatures=None,
 
     data = _THERMAL_DATA[mat_thermal]
     zaids = ' '.join(str(zaid) for zaid in data.zaids[:3])
-    energy_max = ev_thermal.info['energy_max']
 
     # Determine name of library
     library = '{}-{}.{}'.format(*ev_thermal.info['library'])
@@ -369,6 +368,7 @@ def make_ace_thermal(filename, filename_thermal, temperatures=None,
     file_obj = StringIO(ev_thermal.section[7, 4])
     items = endf.get_head_record(file_obj)
     items, values = endf.get_list_record(file_obj)
+    energy_max = values[3]
     natom = int(values[5])
 
     # Note that the 'iform' parameter is omitted in NJOY 99. We assume that the

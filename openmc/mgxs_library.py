@@ -5,6 +5,9 @@ import os
 from six import string_types
 import numpy as np
 import h5py
+from scipy.interpolate import interp1d
+from scipy.integrate import simps
+from scipy.special import eval_legendre
 
 import openmc
 import openmc.mgxs
@@ -1807,10 +1810,6 @@ class XSdata(object):
             represented as specified in `target_format`.
 
         """
-
-        from scipy.interpolate import interp1d
-        from scipy.integrate import simps
-        from scipy.special import eval_legendre
 
         check_value('target_format', target_format, _SCATTER_TYPES)
         check_type('target_order', target_order, Integral)

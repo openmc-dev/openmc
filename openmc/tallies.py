@@ -11,6 +11,8 @@ from xml.etree import ElementTree as ET
 
 from six import string_types
 import numpy as np
+import pandas as pd
+import scipy.sparse as sps
 import h5py
 
 import openmc
@@ -295,8 +297,6 @@ class Tally(object):
 
             # Convert NumPy arrays to SciPy sparse LIL matrices
             if self.sparse:
-                import scipy.sparse as sps
-
                 self._sum = \
                     sps.lil_matrix(self._sum.flatten(), self._sum.shape)
                 self._sum_sq = \
@@ -337,8 +337,6 @@ class Tally(object):
 
             # Convert NumPy array to SciPy sparse LIL matrix
             if self.sparse:
-                import scipy.sparse as sps
-
                 self._mean = \
                     sps.lil_matrix(self._mean.flatten(), self._mean.shape)
 
@@ -361,8 +359,6 @@ class Tally(object):
 
             # Convert NumPy array to SciPy sparse LIL matrix
             if self.sparse:
-                import scipy.sparse as sps
-
                 self._std_dev = \
                     sps.lil_matrix(self._std_dev.flatten(), self._std_dev.shape)
 
@@ -608,8 +604,6 @@ class Tally(object):
 
         # Convert NumPy arrays to SciPy sparse LIL matrices
         if sparse and not self.sparse:
-            import scipy.sparse as sps
-
             if self._sum is not None:
                 self._sum = \
                     sps.lil_matrix(self._sum.flatten(), self._sum.shape)
@@ -1610,7 +1604,6 @@ class Tally(object):
             raise KeyError(msg)
 
         # Initialize a pandas dataframe for the tally data
-        import pandas as pd
         df = pd.DataFrame()
 
         # Find the total length of the tally data array

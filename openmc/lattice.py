@@ -12,10 +12,11 @@ import numpy as np
 
 import openmc.checkvalue as cv
 import openmc
+from openmc.mixin import IDManagerMixin
 
 
 @add_metaclass(ABCMeta)
-class Lattice(object):
+class Lattice(IDManagerMixin):
     """A repeating structure wherein each element is a universe.
 
     Parameters
@@ -41,6 +42,10 @@ class Lattice(object):
         of the lattice
 
     """
+
+    next_id = 1
+    used_ids = openmc.Universe.used_ids
+
     def __init__(self, lattice_id=None, name=''):
         # Initialize Lattice class attributes
         self.id = lattice_id
@@ -69,10 +74,6 @@ class Lattice(object):
         return not self == other
 
     @property
-    def id(self):
-        return self._id
-
-    @property
     def name(self):
         return self._name
 
@@ -87,16 +88,6 @@ class Lattice(object):
     @property
     def universes(self):
         return self._universes
-
-    @id.setter
-    def id(self, lattice_id):
-        if lattice_id is None:
-            self._id = openmc.universe.AUTO_UNIVERSE_ID
-            openmc.universe.AUTO_UNIVERSE_ID += 1
-        else:
-            cv.check_type('lattice ID', lattice_id, Integral)
-            cv.check_greater_than('lattice ID', lattice_id, 0, equality=True)
-            self._id = lattice_id
 
     @name.setter
     def name(self, name):

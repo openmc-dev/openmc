@@ -1,7 +1,7 @@
 from collections import Iterable, Mapping, OrderedDict
 from numbers import Real, Integral
 from xml.etree import ElementTree as ET
-from warnings import warn
+import warnings
 
 import numpy as np
 import pandas as pd
@@ -85,9 +85,10 @@ class VolumeCalculation(object):
                         continue
                     if (np.any(np.asarray(lower_left) > ll) or
                         np.any(np.asarray(upper_right) < ur)):
-                        warn("Specified bounding box is smaller than computed "
-                             "bounding box for cell {}. Volume calculation may "
-                             "be incorrect!".format(c.id))
+                        warnings.warn(
+                            "Specified bounding box is smaller than computed "
+                            "bounding box for cell {}. Volume calculation may "
+                            "be incorrect!".format(c.id))
 
             self.lower_left = lower_left
             self.upper_right = upper_right
@@ -221,12 +222,14 @@ class VolumeCalculation(object):
 
         # Instantiate some throw-away domains that are used by the constructor
         # to assign IDs
-        if domain_type == 'cell':
-            domains = [openmc.Cell(uid) for uid in ids]
-        elif domain_type == 'material':
-            domains = [openmc.Material(uid) for uid in ids]
-        elif domain_type == 'universe':
-            domains = [openmc.Universe(uid) for uid in ids]
+        with warnings.catch_warnings():
+            warnings.simplefilter('ignore', UserWarning)
+            if domain_type == 'cell':
+                domains = [openmc.Cell(uid) for uid in ids]
+            elif domain_type == 'material':
+                domains = [openmc.Material(uid) for uid in ids]
+            elif domain_type == 'universe':
+                domains = [openmc.Universe(uid) for uid in ids]
 
         # Instantiate the class and assign results
         vol = cls(domains, samples, lower_left, upper_right)

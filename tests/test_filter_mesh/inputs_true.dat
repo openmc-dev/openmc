@@ -324,37 +324,37 @@
         <lower_left>-182.07 -182.07 -183.0</lower_left>
         <upper_right>182.07 182.07 183.0</upper_right>
     </mesh>
-    <filter id="10000" type="mesh">
+    <filter id="1" type="mesh">
         <bins>1</bins>
     </filter>
-    <filter id="10001" type="mesh">
+    <filter id="2" type="mesh">
         <bins>2</bins>
     </filter>
-    <filter id="10002" type="mesh">
+    <filter id="3" type="mesh">
         <bins>3</bins>
     </filter>
-    <tally id="10000" name="tally 1">
-        <filters>10000</filters>
+    <tally id="1" name="tally 1">
+        <filters>1</filters>
         <scores>total</scores>
     </tally>
-    <tally id="10001" name="tally 2">
-        <filters>10000</filters>
+    <tally id="2" name="tally 2">
+        <filters>1</filters>
         <scores>current</scores>
     </tally>
-    <tally id="10002" name="tally 3">
-        <filters>10001</filters>
+    <tally id="3" name="tally 3">
+        <filters>2</filters>
         <scores>total</scores>
     </tally>
-    <tally id="10003" name="tally 4">
-        <filters>10001</filters>
+    <tally id="4" name="tally 4">
+        <filters>2</filters>
         <scores>current</scores>
     </tally>
-    <tally id="10004" name="tally 5">
-        <filters>10002</filters>
+    <tally id="5" name="tally 5">
+        <filters>3</filters>
         <scores>total</scores>
     </tally>
-    <tally id="10005" name="tally 6">
-        <filters>10002</filters>
+    <tally id="6" name="tally 6">
+        <filters>3</filters>
         <scores>current</scores>
     </tally>
 </tallies>

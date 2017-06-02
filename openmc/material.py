@@ -11,16 +11,7 @@ import openmc
 import openmc.data
 import openmc.checkvalue as cv
 from openmc.clean_xml import sort_xml_elements, clean_xml_indentation
-
-
-# A static variable for auto-generated Material IDs
-AUTO_MATERIAL_ID = 10000
-
-
-def reset_auto_material_id():
-    """Reset counter for auto-generated material IDs."""
-    global AUTO_MATERIAL_ID
-    AUTO_MATERIAL_ID = 10000
+from .mixin import IDManagerMixin
 
 
 # Units for density supported by OpenMC
@@ -28,7 +19,7 @@ DENSITY_UNITS = ['g/cm3', 'g/cc', 'kg/cm3', 'atom/b-cm', 'atom/cm3', 'sum',
                  'macro']
 
 
-class Material(object):
+class Material(IDManagerMixin):
     """A material composed of a collection of nuclides/elements.
 
     To create a material, one should create an instance of this class, add
@@ -88,6 +79,9 @@ class Material(object):
         The number of instances of this material throughout the geometry.
 
     """
+
+    next_id = 1
+    used_ids = set()
 
     def __init__(self, material_id=None, name='', temperature=None):
         # Initialize class attributes
@@ -185,10 +179,6 @@ class Material(object):
         return string
 
     @property
-    def id(self):
-        return self._id
-
-    @property
     def name(self):
         return self._name
 
@@ -263,18 +253,6 @@ class Material(object):
     @property
     def volume(self):
         return self._volume
-
-    @id.setter
-    def id(self, material_id):
-
-        if material_id is None:
-            global AUTO_MATERIAL_ID
-            self._id = AUTO_MATERIAL_ID
-            AUTO_MATERIAL_ID += 1
-        else:
-            cv.check_type('material ID', material_id, Integral)
-            cv.check_greater_than('material ID', material_id, 0, equality=True)
-            self._id = material_id
 
     @name.setter
     def name(self, name):

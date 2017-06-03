@@ -1843,15 +1843,15 @@ class Halfspace(Region):
 
     def __and__(self, other):
         if isinstance(other, Intersection):
-            return Intersection(self, *other.nodes)
+            return Intersection([self] + other[:])
         else:
-            return Intersection(self, other)
+            return Intersection((self, other))
 
     def __or__(self, other):
         if isinstance(other, Union):
-            return Union(self, *other.nodes)
+            return Union([self] + other[:])
         else:
-            return Union(self, other)
+            return Union((self, other))
 
     def __invert__(self):
         return -self.surface if self.side == '+' else +self.surface

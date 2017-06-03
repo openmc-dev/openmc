@@ -371,11 +371,11 @@ def get_openmoc_region(openmc_region):
             openmoc.Halfspace(halfspace, get_openmoc_surface(surface))
     elif isinstance(openmc_region, openmc.Intersection):
         openmoc_region = openmoc.Intersection()
-        for openmc_node in openmc_region.nodes:
+        for openmc_node in openmc_region:
             openmoc_region.addNode(get_openmoc_region(openmc_node))
     elif isinstance(openmc_region, openmc.Union):
         openmoc_region = openmoc.Union()
-        for openmc_node in openmc_region.nodes:
+        for openmc_node in openmc_region:
             openmoc_region.addNode(get_openmoc_region(openmc_node))
     elif isinstance(openmc_region, openmc.Complement):
         openmoc_region = openmoc.Complement()
@@ -411,12 +411,12 @@ def get_openmc_region(openmoc_region):
         openmc_region = openmc.Intersection()
         for openmoc_node in openmoc_region.getNodes():
             openmc_node = get_openmc_region(openmoc_node)
-            openmc_region.nodes.append(openmc_node)
+            openmc_region.append(openmc_node)
     elif openmoc_region.getRegionType() == openmoc.UNION:
         openmc_region = openmc.Union()
         for openmoc_node in openmoc_region.getNodes():
             openmc_node = get_openmc_region(openmoc_node)
-            openmc_region.nodes.append(openmc_node)
+            openmc_region.append(openmc_node)
     elif openmoc_region.getRegionType() == openmoc.COMPLEMENT:
         openmoc_nodes = openmoc_region.getNodes()
         openmc_node = get_openmc_region(openmoc_nodes[0])

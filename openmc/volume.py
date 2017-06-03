@@ -94,7 +94,7 @@ class VolumeCalculation(object):
             self.upper_right = upper_right
         else:
             if self.domain_type == 'cell':
-                ll, ur = openmc.Union(*[c.region for c in domains]).bounding_box
+                ll, ur = openmc.Union(c.region for c in domains).bounding_box
                 if np.any(np.isinf(ll)) or np.any(np.isinf(ur)):
                     raise ValueError('Could not automatically determine bounding '
                                      'box for stochastic volume calculation.')

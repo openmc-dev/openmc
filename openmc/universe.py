@@ -106,7 +106,7 @@ class Universe(IDManagerMixin):
         regions = [c.region for c in self.cells.values()
                    if c.region is not None]
         if regions:
-            return openmc.Union(*regions).bounding_box
+            return openmc.Union(regions).bounding_box
         else:
             # Infinite bounding box
             return openmc.Intersection().bounding_box

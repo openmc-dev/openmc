@@ -357,7 +357,7 @@ class Cell(IDManagerMixin):
             self.region = region
         else:
             if isinstance(self.region, Intersection):
-                self.region.nodes.append(region)
+                self.region &= region
             else:
                 self.region = Intersection(self.region, region)
 
@@ -579,7 +579,7 @@ class Cell(IDManagerMixin):
                 elif isinstance(node, Complement):
                     create_surface_elements(node.node, element)
                 else:
-                    for subnode in node.nodes:
+                    for subnode in node:
                         create_surface_elements(subnode, element)
 
             # Call the recursive function from the top node

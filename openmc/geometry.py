@@ -7,14 +7,6 @@ from six import string_types
 import openmc
 from openmc.clean_xml import sort_xml_elements, clean_xml_indentation
 from openmc.checkvalue import check_type
-from openmc.mixin import IDManagerMixin
-
-
-def reset_auto_ids():
-    """Reset counters for all auto-generated IDs"""
-    for cls in IDManagerMixin.__subclasses__():
-        cls.used_ids.clear()
-        cls.next_id = 1
 
 
 class Geometry(object):

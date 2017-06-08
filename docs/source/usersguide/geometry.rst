@@ -19,7 +19,7 @@ surface is a locus of zeros of a function of Cartesian coordinates
 :math:`x,y,z`, e.g.
 
 - A plane perpendicular to the :math:`x` axis: :math:`x - x_0 = 0`
-- A cylinder perpendicular to the :math:`z` axis: :math:`(x - x_0)^2 + (y -
+- A cylinder parallel to the :math:`z` axis: :math:`(x - x_0)^2 + (y -
   y_0)^2 - R^2 = 0`
 - A sphere: :math:`(x - x_0)^2 + (y - y_0)^2 + (z - z_0)^2 - R^2 = 0`
 

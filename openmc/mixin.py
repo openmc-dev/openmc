@@ -57,3 +57,39 @@ class IDManagerMixin(object):
             else:
                 cls.used_ids.add(uid)
             self._id = uid
+
+
+def reset_auto_ids():
+    """Reset counters for all auto-generated IDs"""
+    for cls in IDManagerMixin.__subclasses__():
+        cls.used_ids.clear()
+        cls.next_id = 1
+
+
+def reserve_ids(ids, cls=None):
+    """Reserve a set of IDs that won't be used for auto-generated IDs.
+
+    Parameters
+    ----------
+    ids : iterable of int
+        IDs to reserve
+
+    """
+    if cls is None:
+        for cls in IDManagerMixin.__subclasses__():
+            cls.used_ids |= set(ids)
+    else:
+        cls.used_ids |= set(ids)
+
+
+def set_auto_id(next_id):
+    """Set the next ID for auto-generated IDs.
+
+    Parameters
+    ----------
+    next_id : int
+        The next ID to assign to objects with auto-generated IDs.
+
+    """
+    for cls in IDManagerMixin.__subclasses__():
+        cls.next_id = next_id

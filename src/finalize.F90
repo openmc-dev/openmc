@@ -1,5 +1,7 @@
 module finalize
 
+  use, intrinsic :: ISO_C_BINDING
+
   use hdf5, only: h5tclose_f, h5close_f
 
   use global
@@ -15,7 +17,7 @@ contains
 ! statistics and writing out tallies
 !===============================================================================
 
-  subroutine openmc_finalize()
+  subroutine openmc_finalize() bind(C)
 
     integer :: hdf5_err
 

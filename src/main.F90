@@ -6,15 +6,19 @@ program main
   use initialize,        only: openmc_init
   use message_passing
   use particle_restart,  only: run_particle_restart
-  use plot,              only: run_plot
-  use simulation,        only: run_simulation
-  use volume_calc,       only: run_volume_calculations
+  use plot,              only: openmc_plot_geometry
+  use simulation,        only: openmc_run
+  use volume_calc,       only: openmc_calculate_volumes
 
   implicit none
 
   ! Initialize run -- when run with MPI, pass communicator
 #ifdef MPI
+#ifdef MPIF08
+  call openmc_init(MPI_COMM_WORLD % MPI_VAL)
+#else
   call openmc_init(MPI_COMM_WORLD)
+#endif
 #else
   call openmc_init()
 #endif
@@ -22,13 +26,13 @@ program main
   ! start problem based on mode
   select case (run_mode)
   case (MODE_FIXEDSOURCE, MODE_EIGENVALUE)
-    call run_simulation()
+    call openmc_run()
   case (MODE_PLOTTING)
-    call run_plot()
+    call openmc_plot_geometry()
   case (MODE_PARTICLE)
     if (master) call run_particle_restart()
   case (MODE_VOLUME)
-    call run_volume_calculations()
+    call openmc_calculate_volumes()
   end select
 
   ! finalize run

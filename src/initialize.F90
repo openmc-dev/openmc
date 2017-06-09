@@ -46,11 +46,19 @@ contains
 ! setting up timers, etc.
 !===============================================================================
 
-  subroutine openmc_init(intracomm)
-#ifdef MPIF08
-    type(MPI_Comm), intent(in) :: intracomm     ! MPI intracommunicator
-#else
+  subroutine openmc_init(intracomm) bind(C)
     integer, intent(in), optional :: intracomm  ! MPI intracommunicator
+
+    ! Copy the communicator to a new variable. This is done to avoid changing
+    ! the signature of this subroutine.
+#ifdef MPI
+#ifdef MPIF08
+    type(MPI_Comm), intent(in) :: comm     ! MPI intracommunicator
+    comm % MPI_VAL = intracomm
+#else
+    integer :: comm
+    comm = intracomm
+#endif
 #endif
 
     ! Start total and initialization timer
@@ -59,7 +67,7 @@ contains
 
 #ifdef MPI
     ! Setup MPI
-    call initialize_mpi(intracomm)
+    call initialize_mpi(comm)
 #endif
 
     ! Initialize HDF5 interface

@@ -98,6 +98,8 @@ endif()
 #  endif()
 #endif()
 
+set(CMAKE_POSITION_INDEPENDENT_CODE ON)
+
 if(CMAKE_Fortran_COMPILER_ID STREQUAL GNU)
   # Make sure version is sufficient
   execute_process(COMMAND ${CMAKE_Fortran_COMPILER} -dumpversion
@@ -107,7 +109,7 @@ if(CMAKE_Fortran_COMPILER_ID STREQUAL GNU)
   endif()
 
   # GCC compiler options
-  list(APPEND f90flags -cpp -std=f2008 -fbacktrace -O2)
+  list(APPEND f90flags -cpp -std=f2008ts -fbacktrace -O2)
   list(APPEND cflags -cpp -std=c99 -O2)
   if(debug)
     list(REMOVE_ITEM f90flags -O2)
@@ -344,7 +346,7 @@ set(LIBOPENMC_FORTRAN_SRC
   src/volume_calc.F90
   src/volume_header.F90
   src/xml_interface.F90)
-add_library(libopenmc STATIC ${LIBOPENMC_FORTRAN_SRC})
+add_library(libopenmc SHARED ${LIBOPENMC_FORTRAN_SRC})
 set_target_properties(libopenmc PROPERTIES OUTPUT_NAME openmc)
 add_executable(${program} src/main.F90)
 set_property(TARGET ${program} libopenmc pugixml_fortran

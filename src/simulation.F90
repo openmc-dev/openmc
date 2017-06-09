@@ -1,5 +1,7 @@
 module simulation
 
+  use, intrinsic :: ISO_C_BINDING
+
   use cmfd_execute,    only: cmfd_init_batch, execute_cmfd
   use constants,       only: ZERO
   use eigenvalue,      only: count_source_for_ufs, calculate_average_keff, &
@@ -22,21 +24,20 @@ module simulation
                              tally_statistics
   use trigger,         only: check_triggers
   use tracking,        only: transport
-  use volume_calc,     only: run_volume_calculations
 
   implicit none
   private
-  public :: run_simulation
+  public :: openmc_run
 
 contains
 
 !===============================================================================
-! RUN_SIMULATION encompasses all the main logic where iterations are performed
+! OPENMC_RUN encompasses all the main logic where iterations are performed
 ! over the batches, generations, and histories in a fixed source or k-eigenvalue
 ! calculation.
 !===============================================================================
 
-  subroutine run_simulation()
+  subroutine openmc_run() bind(C)
 
     type(Particle) :: p
     integer(8)     :: i_work
@@ -115,7 +116,7 @@ contains
     ! Clear particle
     call p % clear()
 
-  end subroutine run_simulation
+  end subroutine openmc_run
 
 !===============================================================================
 ! INITIALIZE_HISTORY

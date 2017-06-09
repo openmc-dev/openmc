@@ -38,4 +38,10 @@ program main
   ! finalize run
   call openmc_finalize()
 
+#ifdef MPI
+  ! If MPI is in use and enabled, terminate it
+  call MPI_FINALIZE(mpi_err)
+#endif
+
+
 end program main

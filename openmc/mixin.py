@@ -73,6 +73,9 @@ def reserve_ids(ids, cls=None):
     ----------
     ids : iterable of int
         IDs to reserve
+    cls : type or None
+        Class for which IDs should be reserved. If None, all classes that have
+        auto-generated IDs will be used.
 
     """
     if cls is None:

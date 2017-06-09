@@ -386,6 +386,16 @@ target_link_libraries(libopenmc ${ldflags} ${HDF5_LIBRARIES} pugixml_fortran fad
 target_link_libraries(${program} ${ldflags} libopenmc)
 
 #===============================================================================
+# Python package
+#===============================================================================
+
+add_custom_command(TARGET libopenmc POST_BUILD
+  COMMAND ${CMAKE_COMMAND} -E copy
+  $<TARGET_FILE:libopenmc>
+  ${CMAKE_CURRENT_SOURCE_DIR}/openmc/_$<TARGET_FILE_NAME:libopenmc>
+  COMMENT "Copying libopenmc to Python module directory")
+
+#===============================================================================
 # Install executable, scripts, manpage, license
 #===============================================================================
 

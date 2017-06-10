@@ -16,6 +16,7 @@ class _OpenMCLibrary(object):
         self._dll.openmc_plot_geometry.restype = None
         self._dll.openmc_calculate_volumes.restype = None
         self._dll.openmc_finalize.restype = None
+        self._dll.openmc_reset.restype = None
 
     def init(self, intracomm=None):
         """Initialize OpenMC
@@ -52,6 +53,10 @@ class _OpenMCLibrary(object):
     def finalize(self):
         """Finalize simulation and free memory"""
         return self._dll.openmc_finalize()
+
+    def reset(self):
+        """Reset tallies"""
+        return self._dll.openmc_reset()
 
     def __getattr__(self, key):
         # Fall-back for other functions that may be available from library

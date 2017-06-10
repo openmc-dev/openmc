@@ -6,7 +6,8 @@ module simulation
   use constants,       only: ZERO
   use eigenvalue,      only: count_source_for_ufs, calculate_average_keff, &
                              calculate_combined_keff, calculate_generation_keff, &
-                             shannon_entropy, synchronize_bank, keff_generation
+                             shannon_entropy, synchronize_bank, keff_generation, &
+                             k_sum
 #ifdef _OPENMP
   use eigenvalue,      only: join_bank_from_threads
 #endif
@@ -26,7 +27,7 @@ module simulation
 
   implicit none
   private
-  public :: openmc_run
+  public :: openmc_run, openmc_reset
 
 contains
 
@@ -421,5 +422,30 @@ contains
 #endif
 
   end subroutine reduce_overlap_count
+
+!===============================================================================
+! OPENMC_RESET resets all tallies
+!===============================================================================
+
+  subroutine openmc_reset() bind(C)
+    integer :: i
+
+    do i = 1, size(tallies)
+      tallies(i) % n_realizations = 0
+      if (allocated(tallies(i) % results)) then
+        tallies(i) % results(:, :, :) = ZERO
+      end if
+    end do
+
+    n_realizations = 0
+    if (allocated(global_tallies)) then
+      global_tallies(:, :) = ZERO
+    end if
+    k_col_abs = ZERO
+    k_col_tra = ZERO
+    k_abs_tra = ZERO
+    k_sum(:) = ZERO
+
+  end subroutine openmc_reset
 
 end module simulation

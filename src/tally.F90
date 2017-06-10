@@ -22,10 +22,6 @@ module tally
 
   implicit none
 
-  integer :: position(N_FILTER_TYPES - 3) = 0 ! Tally map positioning array
-
-!$omp threadprivate(position)
-
   procedure(score_general_),      pointer :: score_general => null()
   procedure(score_analog_tally_), pointer :: score_analog_tally => null()
 
@@ -2410,9 +2406,6 @@ contains
     ! Reset filter matches flag
     filter_matches(:) % bins_present = .false.
 
-    ! Reset tally map positioning
-    position = 0
-
   end subroutine score_analog_tally_ce
 
   subroutine score_analog_tally_mg(p)
@@ -2557,9 +2550,6 @@ contains
 
     ! Reset filter matches flag
     filter_matches(:) % bins_present = .false.
-
-    ! Reset tally map positioning
-    position = 0
 
   end subroutine score_analog_tally_mg
 
@@ -2956,9 +2946,6 @@ contains
     ! Reset filter matches flag
     filter_matches(:) % bins_present = .false.
 
-    ! Reset tally map positioning
-    position = 0
-
   end subroutine score_tracklength_tally
 
 !===============================================================================
@@ -3131,9 +3118,6 @@ contains
 
     ! Reset filter matches flag
     filter_matches(:) % bins_present = .false.
-
-    ! Reset tally map positioning
-    position = 0
 
   end subroutine score_collision_tally
 

@@ -20,8 +20,7 @@ module simulation
   use source,          only: initialize_source, sample_external_source
   use state_point,     only: write_state_point, write_source_point
   use string,          only: to_str
-  use tally,           only: synchronize_tallies, setup_active_usertallies, &
-                             tally_statistics
+  use tally,           only: synchronize_tallies, setup_active_usertallies
   use trigger,         only: check_triggers
   use tracking,        only: transport
 
@@ -388,15 +387,10 @@ contains
   subroutine finalize_simulation
 
     ! Start finalization timer
-    call time_finalize%start()
+    call time_finalize % start()
 
-    ! Calculate statistics for tallies and write to tallies.out
-    if (master) then
-      if (n_realizations > 1) call tally_statistics()
-    end if
-    if (output_tallies) then
-      if (master) call write_tallies()
-    end if
+    ! Write tally results to tallies.out
+    if (output_tallies .and. master) call write_tallies()
     if (check_overlaps) call reduce_overlap_count()
 
     ! Stop timers and show timing statistics

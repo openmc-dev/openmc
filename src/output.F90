@@ -590,50 +590,53 @@ contains
 
   subroutine print_results()
 
+    integer :: n       ! number of realizations
     real(8) :: alpha   ! significance level for CI
-    real(8) :: t_value ! t-value for confidence intervals
+    real(8) :: t_n1    ! t-value with N-1 degrees of freedom
+    real(8) :: t_n3    ! t-value with N-3 degrees of freedom
+    real(8) :: x(2)    ! mean and standard deviation
 
     ! display header block for results
     call header("Results", 4)
 
+    n = n_realizations
+
     if (confidence_intervals) then
       ! Calculate t-value for confidence intervals
       alpha = ONE - CONFIDENCE_LEVEL
-      t_value = t_percentile(ONE - alpha/TWO, n_realizations - 1)
-
-      ! Adjust sum_sq
-      global_tallies(RESULT_SUM_SQ,:) = t_value * global_tallies(RESULT_SUM_SQ,:)
-
-      ! Adjust combined estimator
-      if (n_realizations > 3) then
-        t_value = t_percentile(ONE - alpha/TWO, n_realizations - 3)
-        k_combined(2) = t_value * k_combined(2)
-      end if
+      t_n1 = t_percentile(ONE - alpha/TWO, n - 1)
+      t_n3 = t_percentile(ONE - alpha/TWO, n - 3)
+    else
+      t_n1 = ONE
+      t_n3 = ONE
     end if
 
     ! write global tallies
-    if (n_realizations > 1) then
-      if (run_mode == MODE_EIGENVALUE) then
-        write(ou,102) "k-effective (Collision)", global_tallies(RESULT_SUM, &
-             K_COLLISION), global_tallies(RESULT_SUM_SQ, K_COLLISION)
-        write(ou,102) "k-effective (Track-length)", global_tallies(RESULT_SUM, &
-             K_TRACKLENGTH), global_tallies(RESULT_SUM_SQ, K_TRACKLENGTH)
-        write(ou,102) "k-effective (Absorption)", global_tallies(RESULT_SUM, &
-             K_ABSORPTION), global_tallies(RESULT_SUM_SQ, K_ABSORPTION)
-        if (n_realizations > 3) write(ou,102) "Combined k-effective", k_combined
-      end if
-      write(ou,102) "Leakage Fraction", global_tallies(RESULT_SUM, LEAKAGE), &
-           global_tallies(RESULT_SUM_SQ, LEAKAGE)
+    if (n > 1) then
+      associate (r => global_tallies(RESULT_SUM:RESULT_SUM_SQ, :))
+        if (run_mode == MODE_EIGENVALUE) then
+          x(:) = mean_stdev(r(:, K_COLLISION), n)
+          write(ou,102) "k-effective (Collision)", x(1), t_n1 * x(2)
+          x(:) = mean_stdev(r(:, K_TRACKLENGTH), n)
+          write(ou,102) "k-effective (Track-length)", x(1), t_n1 * x(2)
+          x(:) = mean_stdev(r(:, K_ABSORPTION), n)
+          write(ou,102) "k-effective (Absorption)", x(1), t_n1 * x(2)
+          if (n > 3) write(ou,102) "Combined k-effective", k_combined(1), &
+               t_n3 * k_combined(2)
+        end if
+        x(:) = mean_stdev(global_tallies(:, LEAKAGE), n)
+        write(ou,102) "Leakage Fraction", x(1), t_n1 * x(2)
+      end associate
     else
       if (master) call warning("Could not compute uncertainties -- only one &
            &active batch simulated!")
 
       if (run_mode == MODE_EIGENVALUE) then
-        write(ou,103) "k-effective (Collision)", global_tallies(RESULT_SUM, K_COLLISION)
-        write(ou,103) "k-effective (Track-length)", global_tallies(RESULT_SUM, K_TRACKLENGTH)
-        write(ou,103) "k-effective (Absorption)", global_tallies(RESULT_SUM, K_ABSORPTION)
+        write(ou,103) "k-effective (Collision)", global_tallies(RESULT_SUM, K_COLLISION) / n
+        write(ou,103) "k-effective (Track-length)", global_tallies(RESULT_SUM, K_TRACKLENGTH) / n
+        write(ou,103) "k-effective (Absorption)", global_tallies(RESULT_SUM, K_ABSORPTION) / n
       end if
-      write(ou,103) "Leakage Fraction", global_tallies(RESULT_SUM, LEAKAGE)
+      write(ou,103) "Leakage Fraction", global_tallies(RESULT_SUM, LEAKAGE) / n
     end if
     write(ou,*)
 
@@ -698,8 +701,10 @@ contains
     integer :: n_order      ! loop index for moment orders
     integer :: nm_order     ! loop index for Ynm moment orders
     integer :: unit_tally   ! tallies.out file unit
+    integer :: nr           ! number of realizations
     real(8) :: t_value      ! t-values for confidence intervals
     real(8) :: alpha        ! significance level for CI
+    real(8) :: x(2)         ! mean and standard deviation
     character(MAX_FILE_LEN) :: filename                    ! name of output file
     character(36)           :: score_names(N_SCORE_TYPES)  ! names of scoring function
     character(36)           :: score_name                  ! names of scoring function
@@ -744,20 +749,20 @@ contains
     if (confidence_intervals) then
       alpha = ONE - CONFIDENCE_LEVEL
       t_value = t_percentile(ONE - alpha/TWO, n_realizations - 1)
+    else
+      t_value = ONE
     end if
 
     TALLY_LOOP: do i = 1, n_tallies
       t => tallies(i)
+      nr = t % n_realizations
 
       if (confidence_intervals) then
         ! Calculate t-value for confidence intervals
-        if (confidence_intervals) then
-          alpha = ONE - CONFIDENCE_LEVEL
-          t_value = t_percentile(ONE - alpha/TWO, t % n_realizations - 1)
-        end if
-
-        ! Multiply uncertainty by t-value
-        t % results(RESULT_SUM_SQ,:,:) = t_value * t % results(RESULT_SUM_SQ,:,:)
+        alpha = ONE - CONFIDENCE_LEVEL
+        t_value = t_percentile(ONE - alpha/TWO, nr - 1)
+      else
+        t_value = ONE
       end if
 
       ! Write header block
@@ -889,24 +894,27 @@ contains
           do l = 1, t % n_user_score_bins
             k = k + 1
             score_index = score_index + 1
+
+            associate(r => t % results(RESULT_SUM:RESULT_SUM_SQ, :, :))
+
             select case(t % score_bins(k))
             case (SCORE_SCATTER_N, SCORE_NU_SCATTER_N)
               score_name = 'P' // trim(to_str(t % moment_order(k))) // " " // &
                    score_names(abs(t % score_bins(k)))
+              x(:) = mean_stdev(r(:, score_index, filter_index), nr)
               write(UNIT=unit_tally, FMT='(1X,2A,1X,A,"+/- ",A)') &
-                   repeat(" ", indent), score_name, &
-                   to_str(t % results(RESULT_SUM,score_index,filter_index)), &
-                   trim(to_str(t % results(RESULT_SUM_SQ,score_index,filter_index)))
+                   repeat(" ", indent), score_name, to_str(x(1)), &
+                   trim(to_str(t_value * x(2)))
             case (SCORE_SCATTER_PN, SCORE_NU_SCATTER_PN)
               score_index = score_index - 1
               do n_order = 0, t % moment_order(k)
                 score_index = score_index + 1
                 score_name = 'P' // trim(to_str(n_order)) //  " " //&
                      score_names(abs(t % score_bins(k)))
+                x(:) = mean_stdev(r(:, score_index, filter_index), nr)
                 write(UNIT=unit_tally, FMT='(1X,2A,1X,A,"+/- ",A)') &
                      repeat(" ", indent), score_name, &
-                     to_str(t % results(RESULT_SUM,score_index,filter_index)), &
-                     trim(to_str(t % results(RESULT_SUM_SQ,score_index,filter_index)))
+                     to_str(x(1)), trim(to_str(t_value * x(2)))
               end do
               k = k + t % moment_order(k)
             case (SCORE_SCATTER_YN, SCORE_NU_SCATTER_YN, SCORE_FLUX_YN, &
@@ -918,11 +926,10 @@ contains
                   score_name = 'Y' // trim(to_str(n_order)) // ',' // &
                        trim(to_str(nm_order)) // " " &
                        // score_names(abs(t % score_bins(k)))
+                  x(:) = mean_stdev(r(:, score_index, filter_index), nr)
                   write(UNIT=unit_tally, FMT='(1X,2A,1X,A,"+/- ",A)') &
                        repeat(" ", indent), score_name, &
-                       to_str(t % results(RESULT_SUM,score_index,filter_index)), &
-                       trim(to_str(t % results(RESULT_SUM_SQ,score_index,&
-                       filter_index)))
+                       to_str(x(1)), trim(to_str(t_value * x(2)))
                 end do
               end do
               k = k + (t % moment_order(k) + 1)**2 - 1
@@ -932,11 +939,12 @@ contains
               else
                 score_name = score_names(abs(t % score_bins(k)))
               end if
+              x(:) = mean_stdev(r(:, score_index, filter_index), nr)
               write(UNIT=unit_tally, FMT='(1X,2A,1X,A,"+/- ",A)') &
                    repeat(" ", indent), score_name, &
-                   to_str(t % results(RESULT_SUM,score_index,filter_index)), &
-                   trim(to_str(t % results(RESULT_SUM_SQ,score_index,filter_index)))
+                   to_str(x(1)), trim(to_str(t_value * x(2)))
             end select
+            end associate
           end do
           indent = indent - 2
 
@@ -974,10 +982,14 @@ contains
     integer :: stride_surf          ! stride for surface filter
     integer :: n                    ! number of incoming energy bins
     integer :: filter_index         ! index in results array for filters
+    integer :: nr                   ! number of realizations
+    real(8) :: x(2)                 ! mean and standard deviation
     logical :: print_ebin           ! should incoming energy bin be displayed?
     logical :: energy_filters       ! energy filters present
     character(MAX_LINE_LEN) :: string
     type(RegularMesh), pointer :: m
+
+    nr = t % n_realizations
 
     ! Get pointer to mesh
     i_filter_mesh = t % filter(t % find_filter(FILTER_MESH))
@@ -1049,104 +1061,101 @@ contains
                % bins % data(1) - 1) * t % stride(j)
         end do
 
-        ! Left Surface
-        write(UNIT=unit_tally, FMT='(5X,A,T35,A,"+/- ",A)') &
-             "Outgoing Current on Left", &
-             to_str(t % results(RESULT_SUM,1,filter_index + &
-                  (OUT_LEFT - 1) * stride_surf)), &
-             trim(to_str(t % results(RESULT_SUM_SQ,1,filter_index + &
-                  (OUT_LEFT - 1) * stride_surf)))
+        associate(r => t % results(RESULT_SUM:RESULT_SUM_SQ, :, :))
 
+        ! Left Surface
+        x(:) = mean_stdev(r(:, 1, filter_index + (OUT_LEFT - 1) * &
+             stride_surf), nr)
         write(UNIT=unit_tally, FMT='(5X,A,T35,A,"+/- ",A)') &
-             "Incoming Current on Left", &
-             to_str(t % results(RESULT_SUM,1,filter_index + &
-                  (IN_LEFT - 1) * stride_surf)), &
-             trim(to_str(t % results(RESULT_SUM_SQ,1,filter_index + &
-                  (IN_LEFT - 1) * stride_surf)))
+             "Outgoing Current on Left", to_str(x(1)), trim(to_str(x(2)))
+
+        x(:) = mean_stdev(r(:, 1, filter_index + (IN_LEFT - 1) * &
+             stride_surf), nr)
+        write(UNIT=unit_tally, FMT='(5X,A,T35,A,"+/- ",A)') &
+             "Incoming Current on Left", to_str(x(1)), trim(to_str(x(2)))
 
         ! Right Surface
+        x(:) = mean_stdev(r(:, 1, filter_index + (OUT_RIGHT - 1) * &
+             stride_surf), nr)
         write(UNIT=unit_tally, FMT='(5X,A,T35,A,"+/- ",A)') &
-             "Outgoing Current on Right", &
-             to_str(t % results(RESULT_SUM,1,filter_index + &
-                  (OUT_RIGHT - 1) * stride_surf)), &
-             trim(to_str(t % results(RESULT_SUM_SQ,1,filter_index + &
-                  (OUT_RIGHT - 1) * stride_surf)))
+             "Outgoing Current on Right", to_str(x(1)), trim(to_str(x(2)))
 
+        x(:) = mean_stdev(r(:, 1, filter_index + (IN_RIGHT - 1) * &
+             stride_surf), nr)
         write(UNIT=unit_tally, FMT='(5X,A,T35,A,"+/- ",A)') &
-             "Incoming Current on Right", &
-             to_str(t % results(RESULT_SUM,1,filter_index + &
-                  (IN_RIGHT - 1) * stride_surf)), &
-             trim(to_str(t % results(RESULT_SUM_SQ,1,filter_index + &
-                  (IN_RIGHT - 1) * stride_surf)))
+             "Incoming Current on Right", to_str(x(1)), trim(to_str(x(2)))
 
         if (n_dim >= 2) then
 
           ! Back Surface
+          x(:) = mean_stdev(r(:, 1, filter_index + (OUT_BACK - 1) * &
+               stride_surf), nr)
           write(UNIT=unit_tally, FMT='(5X,A,T35,A,"+/- ",A)') &
-               "Outgoing Current on Back", &
-               to_str(t % results(RESULT_SUM,1,filter_index + &
-                    (OUT_BACK - 1) * stride_surf)), &
-               trim(to_str(t % results(RESULT_SUM_SQ,1,filter_index + &
-                    (OUT_BACK - 1) * stride_surf)))
+               "Outgoing Current on Back", to_str(x(1)), trim(to_str(x(2)))
 
+          x(:) = mean_stdev(r(:, 1, filter_index + (IN_BACK - 1) * &
+               stride_surf), nr)
           write(UNIT=unit_tally, FMT='(5X,A,T35,A,"+/- ",A)') &
-               "Incoming Current on Back", &
-               to_str(t % results(RESULT_SUM,1,filter_index + &
-                    (IN_BACK - 1) * stride_surf)), &
-               trim(to_str(t % results(RESULT_SUM_SQ,1,filter_index + &
-                    (IN_BACK - 1) * stride_surf)))
+               "Incoming Current on Back", to_str(x(1)), trim(to_str(x(2)))
 
           ! Front Surface
+          x(:) = mean_stdev(r(:, 1, filter_index + (OUT_FRONT - 1) * &
+               stride_surf), nr)
           write(UNIT=unit_tally, FMT='(5X,A,T35,A,"+/- ",A)') &
-               "Outgoing Current on Front", &
-               to_str(t % results(RESULT_SUM,1,filter_index + &
-                    (OUT_FRONT - 1) * stride_surf)), &
-               trim(to_str(t % results(RESULT_SUM_SQ,1,filter_index + &
-                    (OUT_FRONT - 1) * stride_surf)))
+               "Outgoing Current on Front", to_str(x(1)), trim(to_str(x(2)))
 
+          x(:) = mean_stdev(r(:, 1, filter_index + (IN_FRONT - 1) * &
+               stride_surf), nr)
           write(UNIT=unit_tally, FMT='(5X,A,T35,A,"+/- ",A)') &
-               "Incoming Current on Front", &
-               to_str(t % results(RESULT_SUM,1,filter_index + &
-                    (IN_FRONT - 1) * stride_surf)), &
-               trim(to_str(t % results(RESULT_SUM_SQ,1,filter_index + &
-                    (IN_FRONT - 1) * stride_surf)))
+               "Incoming Current on Front", to_str(x(1)), trim(to_str(x(2)))
         end if
 
         if (n_dim == 3) then
 
           ! Bottom Surface
+          x(:) = mean_stdev(r(:, 1, filter_index + (OUT_BOTTOM - 1) * &
+               stride_surf), nr)
           write(UNIT=unit_tally, FMT='(5X,A,T35,A,"+/- ",A)') &
-               "Outgoing Current on Bottom", &
-               to_str(t % results(RESULT_SUM,1,filter_index + &
-                    (OUT_BOTTOM - 1) * stride_surf)), &
-               trim(to_str(t % results(RESULT_SUM_SQ,1,filter_index + &
-                    (OUT_BOTTOM - 1) * stride_surf)))
+               "Outgoing Current on Bottom", to_str(x(1)), trim(to_str(x(2)))
 
+          x(:) = mean_stdev(r(:, 1, filter_index + (IN_BOTTOM - 1) * &
+               stride_surf), nr)
           write(UNIT=unit_tally, FMT='(5X,A,T35,A,"+/- ",A)') &
-               "Incoming Current on Bottom", &
-               to_str(t % results(RESULT_SUM,1,filter_index + &
-                    (IN_BOTTOM - 1) * stride_surf)), &
-               trim(to_str(t % results(RESULT_SUM_SQ,1,filter_index + &
-                    (IN_BOTTOM - 1) * stride_surf)))
+               "Incoming Current on Bottom", to_str(x(1)), trim(to_str(x(2)))
 
           ! Top Surface
+          x(:) = mean_stdev(r(:, 1, filter_index + (OUT_TOP - 1) * &
+               stride_surf), nr)
           write(UNIT=unit_tally, FMT='(5X,A,T35,A,"+/- ",A)') &
-               "Outgoing Current on Top", &
-               to_str(t % results(RESULT_SUM,1,filter_index + &
-                    (OUT_TOP - 1) * stride_surf)), &
-               trim(to_str(t % results(RESULT_SUM_SQ,1,filter_index + &
-                    (OUT_TOP - 1) * stride_surf)))
+               "Outgoing Current on Top", to_str(x(1)), trim(to_str(x(2)))
 
+          x(:) = mean_stdev(r(:, 1, filter_index + (IN_TOP - 1) * &
+               stride_surf), nr)
           write(UNIT=unit_tally, FMT='(5X,A,T35,A,"+/- ",A)') &
-               "Incoming Current on Top", &
-               to_str(t % results(RESULT_SUM,1,filter_index + &
-                    (IN_TOP - 1) * stride_surf)), &
-               trim(to_str(t % results(RESULT_SUM_SQ,1,filter_index + &
-                    (IN_TOP - 1) * stride_surf)))
+               "Incoming Current on Top", to_str(x(1)), trim(to_str(x(2)))
         end if
+        end associate
       end do
     end do
 
   end subroutine write_surface_current
+
+!===============================================================================
+! MEAN_STDEV computes the sample mean and standard deviation of the mean of a
+! single tally score
+!===============================================================================
+
+  pure function mean_stdev(result_, n) result(x)
+    real(8), intent(in) :: result_(2) ! sum and sum-of-squares
+    integer, intent(in) :: n          ! number of realizations
+    real(8)  :: x(2)                  ! mean and standard deviation
+
+    x(1) = result_(1) / n
+    if (n > 1) then
+      x(2) = sqrt((result_(2) / n - x(1)*x(1))/(n - 1))
+    else
+      x(2) = ZERO
+    end if
+  end function mean_stdev
 
 end module output

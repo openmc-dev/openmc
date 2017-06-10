@@ -4367,45 +4367,6 @@ contains
   end subroutine accumulate_tally
 
 !===============================================================================
-! TALLY_STATISTICS computes the mean and standard deviation of the mean of each
-! tally and stores them in the RESULT_SUM and RESULT_SUM_SQ positions
-!===============================================================================
-
-  subroutine tally_statistics()
-    integer :: i    ! index in tallies array
-    integer :: j, k ! score/filter indices
-    integer :: n    ! number of realizations
-
-    ! Calculate sample mean and standard deviation of the mean -- note that we
-    ! have used Bessel's correction so that the estimator of the variance of the
-    ! sample mean is unbiased.
-
-    do i = 1, n_tallies
-      n = tallies(i) % n_realizations
-
-      associate (r => tallies(i) % results)
-        do k = 1, size(r, 3)
-          do j = 1, size(r, 2)
-            r(RESULT_SUM, j, k) = r(RESULT_SUM, j, k) / n
-            r(RESULT_SUM_SQ, j, k) = sqrt((r(RESULT_SUM_SQ, j, k)/n - &
-                 r(RESULT_SUM, j, k) * r(RESULT_SUM, j, k))/(n - 1))
-          end do
-        end do
-      end associate
-    end do
-
-    ! Calculate statistics for global tallies
-    n = n_realizations
-    associate (r => global_tallies)
-      do j = 1, size(r, 2)
-        r(RESULT_SUM, j) = r(RESULT_SUM, j) / n
-        r(RESULT_SUM_SQ, j) = sqrt((r(RESULT_SUM_SQ, j)/n - &
-             r(RESULT_SUM, j) * r(RESULT_SUM, j))/(n - 1))
-      end do
-    end associate
-  end subroutine tally_statistics
-
-!===============================================================================
 ! SETUP_ACTIVE_USERTALLIES
 !===============================================================================
 

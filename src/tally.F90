@@ -4430,4 +4430,20 @@ contains
 
   end subroutine setup_active_cmfdtallies
 
+  subroutine openmc_tally_results(i, ptr, shape_) bind(C)
+    integer(C_INT), intent(in), value :: i
+    type(C_PTR),    intent(out) :: ptr
+    integer(C_INT), intent(out) :: shape_(3)
+
+    ptr = C_NULL_PTR
+    if (allocated(tallies)) then
+      if (i >= 1 .and. i <= size(tallies)) then
+        if (allocated(tallies(i) % results)) then
+          ptr = C_LOC(tallies(i) % results(1,1,1))
+          shape_(:) = shape(tallies(i) % results)
+        end if
+      end if
+    end if
+  end subroutine openmc_tally_results
+
 end module tally

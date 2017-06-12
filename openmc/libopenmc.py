@@ -1,6 +1,9 @@
-from ctypes import CDLL, c_int, POINTER, byref
+from ctypes import CDLL, c_int, POINTER, byref, c_double
 import sys
 from warnings import warn
+
+import numpy as np
+from numpy.ctypeslib import ndpointer, as_array
 
 import pkg_resources
 
@@ -17,6 +20,10 @@ class _OpenMCLibrary(object):
         self._dll.openmc_calculate_volumes.restype = None
         self._dll.openmc_finalize.restype = None
         self._dll.openmc_reset.restype = None
+        self._dll.openmc_tally_results.argtypes = [
+            c_int, POINTER(POINTER(c_double)), ndpointer(
+                np.intc, shape=(3,))]
+        self._dll.openmc_tally_results.restype = None
 
     def init(self, intracomm=None):
         """Initialize OpenMC
@@ -57,6 +64,28 @@ class _OpenMCLibrary(object):
     def reset(self):
         """Reset tallies"""
         return self._dll.openmc_reset()
+
+    def tally_results(self, tally_id):
+        """Get tally results array
+
+        Parameters
+        ----------
+        tally_id : int
+            ID of tally
+
+        Returns
+        -------
+        numpy.ndarray
+            Array that exposes the internal tally results array
+
+        """
+        r_p = POINTER(c_double)()
+        r_shape = np.zeros(3, np.intc)
+        self._dll.openmc_tally_results(tally_id, byref(r_p), r_shape)
+        if r_p:
+            return as_array(r_p, tuple(r_shape[::-1]))
+        else:
+            return None
 
     def __getattr__(self, key):
         # Fall-back for other functions that may be available from library

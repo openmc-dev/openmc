@@ -1,4 +1,4 @@
-cmake_minimum_required(VERSION 2.8 FATAL_ERROR)
+cmake_minimum_required(VERSION 2.8.12 FATAL_ERROR)
 project(openmc Fortran C CXX)
 
 # Setup output directories
@@ -19,6 +19,11 @@ include_directories(${CMAKE_BINARY_DIR}/include)
 
 if (${UNIX})
   add_definitions(-DUNIX)
+endif()
+
+# Set MACOSX_RPATH
+if(POLICY CMP0042)
+  cmake_policy(SET CMP0042 NEW)
 endif()
 
 #===============================================================================
@@ -382,28 +387,12 @@ add_executable(${program} src/main.F90)
 set_property(TARGET ${program} libopenmc pugixml_fortran
   PROPERTY LINKER_LANGUAGE Fortran)
 
-# target_include_directories was added in CMake 2.8.11 and is the recommended
-# way to set include directories. For lesser versions, we revert to set_property
-if(CMAKE_VERSION VERSION_LESS 2.8.11)
-  include_directories(${HDF5_INCLUDE_DIRS})
-else()
-  target_include_directories(libopenmc PUBLIC ${HDF5_INCLUDE_DIRS})
-endif()
+target_include_directories(libopenmc PUBLIC ${HDF5_INCLUDE_DIRS})
 
-# target_compile_options was added in CMake 2.8.12 and is the recommended way to
-# set compile flags. Note that this sets the COMPILE_OPTIONS property (also
-# available only in 2.8.12+) rather than the COMPILE_FLAGS property, which is
-# deprecated. The former can handle lists whereas the latter cannot.
-if (CMAKE_VERSION VERSION_LESS 2.8.12)
-  string(REPLACE ";" " " f90flags "${f90flags}")
-  string(REPLACE ";" " " cflags "${cflags}")
-  set_property(TARGET ${program} PROPERTY COMPILE_FLAGS "${f90flags}")
-  set_property(TARGET faddeeva PROPERTY COMPILE_FLAGS "${cflags}")
-else()
-  target_compile_options(${program} PUBLIC ${f90flags})
-  target_compile_options(libopenmc PUBLIC ${f90flags})
-  target_compile_options(faddeeva PRIVATE ${cflags})
-endif()
+# set compile flags via target_compile_options
+target_compile_options(${program} PUBLIC ${f90flags})
+target_compile_options(libopenmc PUBLIC ${f90flags})
+target_compile_options(faddeeva PRIVATE ${cflags})
 
 # Add HDF5 library directories to link line with -L
 foreach(LIBDIR ${HDF5_LIBRARY_DIRS})

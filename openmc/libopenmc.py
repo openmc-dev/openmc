@@ -7,26 +7,30 @@ from numpy.ctypeslib import ndpointer, as_array
 
 import pkg_resources
 
+_double3 = c_double*3
+
 
 class _OpenMCLibrary(object):
     def __init__(self, filename):
         self._dll = CDLL(filename)
 
         # Set argument/return types
+        self._dll.openmc_calculate_volumes.restype = None
+        self._dll.openmc_cell_set_temperature.argtypes = [
+            c_int, c_double]
+        self._dll.openmc_cell_set_temperature.restype = c_int
+        self._dll.openmc_finalize.restype = None
+        self._dll.openmc_find.argtypes = [POINTER(_double3), c_int]
+        self._dll.openmc_find.restype = c_int
         self._dll.openmc_init.argtypes = [POINTER(c_int)]
         self._dll.openmc_init.restype = None
-        self._dll.openmc_run.restype = None
         self._dll.openmc_plot_geometry.restype = None
-        self._dll.openmc_calculate_volumes.restype = None
-        self._dll.openmc_finalize.restype = None
+        self._dll.openmc_run.restype = None
         self._dll.openmc_reset.restype = None
         self._dll.openmc_tally_results.argtypes = [
             c_int, POINTER(POINTER(c_double)), ndpointer(
                 np.intc, shape=(3,))]
         self._dll.openmc_tally_results.restype = None
-        self._dll.openmc_cell_set_temperature.argtypes = [
-            c_int, c_double]
-        self._dll.openmc_cell_set_temperature.restype = c_int
 
     def init(self, intracomm=None):
         """Initialize OpenMC
@@ -93,6 +97,31 @@ class _OpenMCLibrary(object):
     def cell_set_temperature(self, cell_id, temperature):
         """Set the temperature of a cell"""
         return self._dll.openmc_cell_set_temperature(cell_id, temperature)
+
+    def find(self, xyz, rtype='cell'):
+        """Find the cell or material at a given point
+
+        Parameters
+        ----------
+        xyz : iterable of float
+            Cartesian coordinates of position
+        rtype : {'cell', 'material'}
+            Whether to return the cell or material ID
+
+        Returns
+        -------
+        int or None
+            ID of the cell or material. If 'material' is requested and no
+            material exists at the given coordinate, None is returned.
+
+        """
+        if rtype == 'cell':
+            return self._dll.openmc_find(_double3(*xyz), 1)
+        elif rtype == 'material':
+            uid = self._dll.openmc_find(_double3(*xyz), 2)
+            return uid if uid != 0 else None
+        else:
+            raise ValueError('Unknown return type: {}'.format(rtype))
 
     def __getattr__(self, key):
         # Fall-back for other functions that may be available from library

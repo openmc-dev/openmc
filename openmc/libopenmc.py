@@ -24,6 +24,9 @@ class _OpenMCLibrary(object):
             c_int, POINTER(POINTER(c_double)), ndpointer(
                 np.intc, shape=(3,))]
         self._dll.openmc_tally_results.restype = None
+        self._dll.openmc_cell_set_temperature.argtypes = [
+            c_int, c_double]
+        self._dll.openmc_cell_set_temperature.restype = c_int
 
     def init(self, intracomm=None):
         """Initialize OpenMC
@@ -86,6 +89,10 @@ class _OpenMCLibrary(object):
             return as_array(r_p, tuple(r_shape[::-1]))
         else:
             return None
+
+    def cell_set_temperature(self, cell_id, temperature):
+        """Set the temperature of a cell"""
+        return self._dll.openmc_cell_set_temperature(cell_id, temperature)
 
     def __getattr__(self, key):
         # Fall-back for other functions that may be available from library

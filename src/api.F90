@@ -1,4 +1,4 @@
-module openmc_capi
+module openmc_api
 
   use, intrinsic :: ISO_C_BINDING
 
@@ -129,4 +129,4 @@ contains
     end if
   end subroutine openmc_tally_results
 
-end module openmc_capi
+end module openmc_api

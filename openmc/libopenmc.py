@@ -3,10 +3,11 @@ import sys
 from warnings import warn
 
 import numpy as np
-from numpy.ctypeslib import ndpointer, as_array
+from numpy.ctypeslib import as_array
 
 import pkg_resources
 
+_int3 = c_int*3
 _double3 = c_double*3
 
 
@@ -28,8 +29,7 @@ class _OpenMCLibrary(object):
         self._dll.openmc_run.restype = None
         self._dll.openmc_reset.restype = None
         self._dll.openmc_tally_results.argtypes = [
-            c_int, POINTER(POINTER(c_double)), ndpointer(
-                np.intc, shape=(3,))]
+            c_int, POINTER(POINTER(c_double)), POINTER(_int3)]
         self._dll.openmc_tally_results.restype = None
 
     def init(self, intracomm=None):
@@ -86,11 +86,11 @@ class _OpenMCLibrary(object):
             Array that exposes the internal tally results array
 
         """
-        r_p = POINTER(c_double)()
-        r_shape = np.zeros(3, np.intc)
-        self._dll.openmc_tally_results(tally_id, byref(r_p), r_shape)
-        if r_p:
-            return as_array(r_p, tuple(r_shape[::-1]))
+        data = POINTER(c_double)()
+        shape = _int3()
+        self._dll.openmc_tally_results(tally_id, byref(data), byref(shape))
+        if data:
+            return as_array(data, tuple(shape[::-1]))
         else:
             return None
 

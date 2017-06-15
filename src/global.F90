@@ -215,7 +215,6 @@ module global
   integer    :: gen_per_batch = 1 ! # of generations per batch
   integer    :: current_batch = 0 ! current batch
   integer    :: current_gen   = 0 ! current generation within a batch
-  integer    :: overall_gen   = 0 ! overall generation in the run
 
   ! ============================================================================
   ! TALLY PRECISION TRIGGER VARIABLES
@@ -560,5 +559,14 @@ contains
     end if
 
   end subroutine free_memory
+
+!===============================================================================
+! OVERALL_GENERATION determines the overall generation number
+!===============================================================================
+
+  pure function overall_generation() result(gen)
+    integer :: gen
+    gen = gen_per_batch*(current_batch - 1) + current_gen
+  end function overall_generation
 
 end module global

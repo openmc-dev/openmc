@@ -366,17 +366,23 @@ contains
 
   subroutine print_generation()
 
+    integer :: i  ! overall generation
+    integer :: n  ! number of active generations
+
+    ! Determine overall generation and number of active generations
+    i = overall_generation()
+    n = i - n_inactive*gen_per_batch
+
     ! write out information about batch and generation
     write(UNIT=OUTPUT_UNIT, FMT='(2X,A9)', ADVANCE='NO') &
          trim(to_str(current_batch)) // "/" // trim(to_str(current_gen))
-    write(UNIT=OUTPUT_UNIT, FMT='(3X,F8.5)', ADVANCE='NO') &
-         k_generation(overall_gen)
+    write(UNIT=OUTPUT_UNIT, FMT='(3X,F8.5)', ADVANCE='NO') k_generation(i)
 
     ! write out entropy info
     if (entropy_on) write(UNIT=OUTPUT_UNIT, FMT='(3X, F8.5)', ADVANCE='NO') &
-         entropy(overall_gen)
+         entropy(i)
 
-    if (overall_gen - n_inactive*gen_per_batch > 1) then
+    if (n > 1) then
       write(UNIT=OUTPUT_UNIT, FMT='(3X, F8.5," +/-",F8.5)', ADVANCE='NO') &
            keff, keff_std
     end if
@@ -393,18 +399,25 @@ contains
 
   subroutine print_batch_keff()
 
+    integer :: i  ! overall generation
+    integer :: n  ! number of active generations
+
+    ! Determine overall generation and number of active generations
+    i = overall_generation()
+    n = i - n_inactive*gen_per_batch
+
     ! write out information batch and option independent output
     write(UNIT=OUTPUT_UNIT, FMT='(2X,A9)', ADVANCE='NO') &
          trim(to_str(current_batch)) // "/" // trim(to_str(gen_per_batch))
     write(UNIT=OUTPUT_UNIT, FMT='(3X,F8.5)', ADVANCE='NO') &
-         k_generation(overall_gen)
+         k_generation(i)
 
     ! write out entropy info
     if (entropy_on) write(UNIT=OUTPUT_UNIT, FMT='(3X, F8.5)', ADVANCE='NO') &
-         entropy(current_batch*gen_per_batch)
+         entropy(i)
 
     ! write out accumulated k-effective if after first active batch
-    if (overall_gen - n_inactive*gen_per_batch > 1) then
+    if (n > 1) then
       write(UNIT=OUTPUT_UNIT, FMT='(3X, F8.5," +/-",F8.5)', ADVANCE='NO') &
            keff, keff_std
     else

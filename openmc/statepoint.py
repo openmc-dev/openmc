@@ -358,7 +358,7 @@ class StatePoint(object):
 
             # Ignore warnings about duplicate IDs
             with warnings.catch_warnings():
-                warnings.simplefilter('ignore', UserWarning)
+                warnings.simplefilter('ignore', openmc.IDWarning)
 
                 # Iterate over all tallies
                 for tally_id in tally_ids:

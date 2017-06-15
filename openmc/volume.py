@@ -223,7 +223,7 @@ class VolumeCalculation(object):
         # Instantiate some throw-away domains that are used by the constructor
         # to assign IDs
         with warnings.catch_warnings():
-            warnings.simplefilter('ignore', UserWarning)
+            warnings.simplefilter('ignore', openmc.IDWarning)
             if domain_type == 'cell':
                 domains = [openmc.Cell(uid) for uid in ids]
             elif domain_type == 'material':

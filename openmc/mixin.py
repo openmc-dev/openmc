@@ -25,6 +25,10 @@ class EqualityMixin(object):
         return not self.__eq__(other)
 
 
+class IDWarning(UserWarning):
+    pass
+
+
 class IDManagerMixin(object):
     """A Class which automatically manages unique IDs.
 
@@ -52,8 +56,9 @@ class IDManagerMixin(object):
             cv.check_type('{} ID'.format(name), uid, Integral)
             cv.check_greater_than('{} ID'.format(name), uid, 0, equality=True)
             if uid in cls.used_ids:
-                warn('Another {} instance already exists with id={}.'.format(
-                    name, uid))
+                msg = 'Another {} instance already exists with id={}.'.format(
+                    name, uid)
+                warn(msg, IDWarning)
             else:
                 cls.used_ids.add(uid)
             self._id = uid
@@ -74,8 +79,8 @@ def reserve_ids(ids, cls=None):
     ids : iterable of int
         IDs to reserve
     cls : type or None
-        Class for which IDs should be reserved. If None, all classes that have
-        auto-generated IDs will be used.
+        Class for which IDs should be reserved (e.g., :class:`openmc.Cell`). If
+        None, all classes that have auto-generated IDs will be used.
 
     """
     if cls is None:

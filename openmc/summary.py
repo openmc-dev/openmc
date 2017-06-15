@@ -52,7 +52,7 @@ class Summary(object):
 
         self._read_nuclides()
         with warnings.catch_warnings():
-            warnings.simplefilter("ignore", UserWarning)
+            warnings.simplefilter("ignore", openmc.IDWarning)
             self._read_geometry()
 
     @property

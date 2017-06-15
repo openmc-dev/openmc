@@ -9,6 +9,7 @@ import pkg_resources
 
 _int3 = c_int*3
 _double3 = c_double*3
+_double_array = POINTER(POINTER(c_double))
 
 
 class _OpenMCLibrary(object):
@@ -25,11 +26,19 @@ class _OpenMCLibrary(object):
         self._dll.openmc_find.restype = c_int
         self._dll.openmc_init.argtypes = [POINTER(c_int)]
         self._dll.openmc_init.restype = None
+        self._dll.openmc_material_get_densities.argtypes = [
+            c_int, _double_array]
+        self._dll.openmc_material_get_densities.restype = c_int
+        self._dll.openmc_material_set_density.argtypes = [c_int, c_double]
+        self._dll.openmc_material_set_density.restype = c_int
         self._dll.openmc_plot_geometry.restype = None
         self._dll.openmc_run.restype = None
         self._dll.openmc_reset.restype = None
+        self._dll.openmc_set_temperature.argtypes = [
+            POINTER(_double3), c_double]
+        self._dll.openmc_set_temperature.restype = c_int
         self._dll.openmc_tally_results.argtypes = [
-            c_int, POINTER(POINTER(c_double)), POINTER(_int3)]
+            c_int, _double_array, POINTER(_int3)]
         self._dll.openmc_tally_results.restype = None
 
     def init(self, intracomm=None):
@@ -122,6 +131,49 @@ class _OpenMCLibrary(object):
             return uid if uid != 0 else None
         else:
             raise ValueError('Unknown return type: {}'.format(rtype))
+
+    def material_get_densities(self, mat_id):
+        """Get atom densities in a material.
+
+        Parameters
+        ----------
+        mat_id : int
+            ID of the material
+
+        Returns
+        -------
+        numpy.ndarray
+            Array of densities in atom/b-cm
+
+        """
+        data = POINTER(c_double)()
+        n = self._dll.openmc_material_get_densities(mat_id, byref(data))
+        if data:
+            return as_array(data, (n,))
+        else:
+            return None
+
+    def material_set_density(self, mat_id, density):
+        """Set density of a material.
+
+        Parameters
+        ----------
+        mat_id : int
+            ID of the material
+        density : float
+            Density in atom/b-cm
+
+        Returns
+        -------
+        int
+            Return status (negative if an error occurs).
+
+        """
+        return self._dll.openmc_material_set_density(mat_id, density)
+
+    def set_temperature(self, xyz, T):
+        """Set temperature."""
+        return self._dll.openmc_set_temperature(_double3(*xyz), T)
 
     def __getattr__(self, key):
         # Fall-back for other functions that may be available from library

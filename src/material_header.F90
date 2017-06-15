@@ -1,5 +1,8 @@
 module material_header
 
+  use constants
+  use nuclide_header, only: Nuclide
+
   implicit none
 
 !===============================================================================
@@ -38,6 +41,43 @@ module material_header
     ! enforce isotropic scattering in lab
     logical, allocatable :: p0(:)
 
+  contains
+    procedure :: set_density => material_set_density
   end type Material
+
+contains
+
+  function material_set_density(m, density, nuclides) result(err)
+    class(Material), intent(inout) :: m
+    real(8), intent(in) :: density
+    type(Nuclide), intent(in) :: nuclides(:)
+    integer :: err
+
+    integer :: i
+    real(8) :: sum_percent
+    real(8) :: awr
+
+    err = -1
+    if (allocated(m % atom_density)) then
+      ! Set total density based on value provided
+      m % density = density
+
+      ! Determine normalized atom percents
+      sum_percent = sum(m % atom_density)
+      m % atom_density(:) = m % atom_density / sum_percent
+
+      ! Recalculate nuclide atom densities based on given density
+      m % atom_density(:) = density * m % atom_density
+
+      ! Calculate density in g/cm^3.
+      m % density_gpcc = ZERO
+      do i = 1, m % n_nuclides
+        awr = nuclides(m % nuclide(i)) % awr
+        m % density_gpcc = m % density_gpcc &
+             + m % atom_density(i) * awr * MASS_NEUTRON / N_AVOGADRO
+      end do
+      err = 0
+    end if
+  end function material_set_density
 
 end module material_header

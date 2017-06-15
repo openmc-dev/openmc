@@ -19,12 +19,52 @@ module openmc_api
   public :: openmc_finalize
   public :: openmc_find
   public :: openmc_init
+  public :: openmc_material_get_densities
+  public :: openmc_material_set_density
   public :: openmc_plot_geometry
   public :: openmc_reset
   public :: openmc_run
   public :: openmc_tally_results
 
 contains
+
+  function openmc_material_set_density(id, density) result(err) bind(C)
+    integer(C_INT), value, intent(in) :: id
+    real(C_DOUBLE), value, intent(in) :: density
+    integer(C_INT) :: err
+
+    integer :: i
+
+    err = -1
+    if (allocated(materials)) then
+      if (material_dict % has_key(id)) then
+        i = material_dict % get_key(id)
+        associate (m => materials(i))
+          err = m % set_density(density, nuclides)
+        end associate
+      end if
+    end if
+  end function openmc_material_set_density
+
+  function openmc_material_get_densities(id, ptr) result(n) bind(C)
+    integer(C_INT), intent(in), value :: id
+    type(C_PTR),    intent(out) :: ptr
+    integer(C_INT) :: n
+
+    ptr = C_NULL_PTR
+    n = 0
+    if (allocated(materials)) then
+      if (material_dict % has_key(id)) then
+        i = material_dict % get_key(id)
+        associate (m => materials(i))
+          if (allocated(m % atom_density)) then
+            ptr = C_LOC(m % atom_density(1))
+            n = size(m % atom_density)
+          end if
+        end associate
+      end if
+    end if
+  end function openmc_material_get_densities
 
 !===============================================================================
 ! OPENMC_CELL_SET_TEMPERATURE sets the temperature of a cell
@@ -106,6 +146,28 @@ contains
     k_sum(:) = ZERO
 
   end subroutine openmc_reset
+
+  function openmc_set_temperature(xyz, T) result(err) bind(C)
+    real(C_DOUBLE), intent(in) :: xyz(3)
+    real(C_DOUBLE), intent(in), value :: T
+    integer(C_INT) :: err
+
+    logical :: found
+    type(Particle) :: p
+
+    call p % initialize()
+    p % coord(1) % xyz(:) = xyz
+    p % coord(1) % uvw(:) = [ZERO, ZERO, ONE]
+    call find_cell(p, found)
+
+    err = -1
+    if (found) then
+      associate (c => cells(p % coord(p % n_coord) % cell))
+        c % sqrtkT(:) = sqrt(K_BOLTZMANN * T)
+        err = 0
+      end associate
+    end if
+  end function openmc_set_temperature
 
 !===============================================================================
 ! OPENMC_TALLY_RESULTS returns a pointer to a tally results array along with its

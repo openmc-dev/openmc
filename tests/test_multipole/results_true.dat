@@ -35,7 +35,7 @@ Cell
 	ID             =	11
 	Name           =	
 	Fill           =	Material 2
-	Region         =	-10000
+	Region         =	-1
 	Rotation       =	None
 	Temperature    =	[ 500.    0.  700.  800.]
 	Translation    =	None

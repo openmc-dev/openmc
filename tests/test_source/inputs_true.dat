@@ -1,54 +1,54 @@
 <?xml version='1.0' encoding='utf-8'?>
 <geometry>
-    <cell id="1" material="1" region="-1" universe="0" />
-    <surface boundary="vacuum" coeffs="0.0 0.0 0.0 10.0" id="1" type="sphere" />
+  <cell id="1" material="1" region="-1" universe="0" />
+  <surface boundary="vacuum" coeffs="0.0 0.0 0.0 10.0" id="1" type="sphere" />
 </geometry>
 <?xml version='1.0' encoding='utf-8'?>
 <materials>
-    <material id="1">
-        <temperature>294</temperature>
-        <density units="g/cm3" value="4.5" />
-        <nuclide ao="1.0" name="U235" />
-    </material>
+  <material id="1">
+    <temperature>294</temperature>
+    <density units="g/cm3" value="4.5" />
+    <nuclide ao="1.0" name="U235" />
+  </material>
 </materials>
 <?xml version='1.0' encoding='utf-8'?>
 <settings>
-    <run_mode>eigenvalue</run_mode>
-    <particles>1000</particles>
-    <batches>10</batches>
-    <inactive>5</inactive>
-    <source strength="0.5">
-        <space type="cartesian">
-            <x parameters="-3.0 3.0" type="uniform" />
-            <y type="discrete">
-                <parameters>-4.0 -1.0 3.0 0.2 0.3 0.5</parameters>
-            </y>
-            <z interpolation="linear-linear" type="tabular">
-                <parameters>-2.0 0.0 2.0 0.2 0.3 0.2</parameters>
-            </z>
-        </space>
-        <angle reference_uvw="0.0 0.0 1.0" type="mu-phi">
-            <mu type="discrete">
-                <parameters>-1.0 0.0 1.0 0.5 0.25 0.25</parameters>
-            </mu>
-            <phi parameters="0.0 6.28318530718" type="uniform" />
-        </angle>
-        <energy parameters="1289500.0" type="maxwell" />
-    </source>
-    <source strength="0.3">
-        <space type="box">
-            <parameters>-4.0 -4.0 -4.0 4.0 4.0 4.0</parameters>
-        </space>
-        <angle reference_uvw="0.0 1.0 0.0" type="monodirectional" />
-        <energy parameters="988000.0 2.249e-06" type="watt" />
-    </source>
-    <source strength="0.2">
-        <space type="point">
-            <parameters>1.2 -2.3 0.781</parameters>
-        </space>
-        <angle type="isotropic" />
-        <energy interpolation="histogram" type="tabular">
-            <parameters>1.0 1.38949549437 1.93069772888 2.68269579528 3.72759372031 5.17947467923 7.19685673001 10.0 13.8949549437 19.3069772888 26.8269579528 37.2759372031 51.7947467923 71.9685673001 100.0 138.949549437 193.069772888 268.269579528 372.759372031 517.947467923 719.685673001 1000.0 1389.49549437 1930.69772888 2682.69579528 3727.59372031 5179.47467923 7196.85673001 10000.0 13894.9549437 19306.9772888 26826.9579528 37275.9372031 51794.7467923 71968.5673001 100000.0 138949.549437 193069.772888 268269.579528 372759.372031 517947.467923 719685.673001 1000000.0 1389495.49437 1930697.72888 2682695.79528 3727593.72031 5179474.67923 7196856.73001 10000000.0 0.0 2.90864392994e-08 5.80533561806e-08 8.67817193689e-08 1.15153477858e-07 1.43052046006e-07 1.70362782612e-07 1.96973462002e-07 2.22774735186e-07 2.47660579198e-07 2.71528732767e-07 2.9428111653e-07 3.15824236062e-07 3.36069566065e-07 3.54933914133e-07 3.72339762616e-07 3.88215587147e-07 4.02496150558e-07 4.15122770952e-07 4.26043562837e-07 4.35213650335e-07 4.42595351592e-07 4.48158333612e-07 4.5187973691e-07 4.53744269441e-07 4.53744269441e-07 4.5187973691e-07 4.48158333612e-07 4.42595351592e-07 4.35213650335e-07 4.26043562837e-07 4.15122770952e-07 4.02496150558e-07 3.88215587147e-07 3.72339762616e-07 3.54933914133e-07 3.36069566065e-07 3.15824236062e-07 2.9428111653e-07 2.71528732767e-07 2.47660579198e-07 2.22774735186e-07 1.96973462002e-07 1.70362782612e-07 1.43052046006e-07 1.15153477858e-07 8.67817193689e-08 5.80533561806e-08 2.90864392994e-08 5.55962111528e-23</parameters>
-        </energy>
-    </source>
+  <run_mode>eigenvalue</run_mode>
+  <particles>1000</particles>
+  <batches>10</batches>
+  <inactive>5</inactive>
+  <source strength="0.5">
+    <space type="cartesian">
+      <x parameters="-3.0 3.0" type="uniform" />
+      <y type="discrete">
+        <parameters>-4.0 -1.0 3.0 0.2 0.3 0.5</parameters>
+      </y>
+      <z interpolation="linear-linear" type="tabular">
+        <parameters>-2.0 0.0 2.0 0.2 0.3 0.2</parameters>
+      </z>
+    </space>
+    <angle reference_uvw="0.0 0.0 1.0" type="mu-phi">
+      <mu type="discrete">
+        <parameters>-1.0 0.0 1.0 0.5 0.25 0.25</parameters>
+      </mu>
+      <phi parameters="0.0 6.28318530718" type="uniform" />
+    </angle>
+    <energy parameters="1289500.0" type="maxwell" />
+  </source>
+  <source strength="0.3">
+    <space type="box">
+      <parameters>-4.0 -4.0 -4.0 4.0 4.0 4.0</parameters>
+    </space>
+    <angle reference_uvw="0.0 1.0 0.0" type="monodirectional" />
+    <energy parameters="988000.0 2.249e-06" type="watt" />
+  </source>
+  <source strength="0.2">
+    <space type="point">
+      <parameters>1.2 -2.3 0.781</parameters>
+    </space>
+    <angle type="isotropic" />
+    <energy interpolation="histogram" type="tabular">
+      <parameters>1.0 1.38949549437 1.93069772888 2.68269579528 3.72759372031 5.17947467923 7.19685673001 10.0 13.8949549437 19.3069772888 26.8269579528 37.2759372031 51.7947467923 71.9685673001 100.0 138.949549437 193.069772888 268.269579528 372.759372031 517.947467923 719.685673001 1000.0 1389.49549437 1930.69772888 2682.69579528 3727.59372031 5179.47467923 7196.85673001 10000.0 13894.9549437 19306.9772888 26826.9579528 37275.9372031 51794.7467923 71968.5673001 100000.0 138949.549437 193069.772888 268269.579528 372759.372031 517947.467923 719685.673001 1000000.0 1389495.49437 1930697.72888 2682695.79528 3727593.72031 5179474.67923 7196856.73001 10000000.0 0.0 2.90864392994e-08 5.80533561806e-08 8.67817193689e-08 1.15153477858e-07 1.43052046006e-07 1.70362782612e-07 1.96973462002e-07 2.22774735186e-07 2.47660579198e-07 2.71528732767e-07 2.9428111653e-07 3.15824236062e-07 3.36069566065e-07 3.54933914133e-07 3.72339762616e-07 3.88215587147e-07 4.02496150558e-07 4.15122770952e-07 4.26043562837e-07 4.35213650335e-07 4.42595351592e-07 4.48158333612e-07 4.5187973691e-07 4.53744269441e-07 4.53744269441e-07 4.5187973691e-07 4.48158333612e-07 4.42595351592e-07 4.35213650335e-07 4.26043562837e-07 4.15122770952e-07 4.02496150558e-07 3.88215587147e-07 3.72339762616e-07 3.54933914133e-07 3.36069566065e-07 3.15824236062e-07 2.9428111653e-07 2.71528732767e-07 2.47660579198e-07 2.22774735186e-07 1.96973462002e-07 1.70362782612e-07 1.43052046006e-07 1.15153477858e-07 8.67817193689e-08 5.80533561806e-08 2.90864392994e-08 5.55962111528e-23</parameters>
+    </energy>
+  </source>
 </settings>

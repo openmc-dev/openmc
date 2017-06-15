@@ -1,442 +1,442 @@
 <?xml version='1.0' encoding='utf-8'?>
 <geometry>
-    <cell id="10000" material="10000" region="-10000" universe="10000" />
-    <cell id="10001" material="10001" region="10000 -10001" universe="10000" />
-    <cell id="10002" material="10002" region="10001 -10002" universe="10000" />
-    <cell id="10003" material="10003" region="10002 -10003" universe="10000" />
-    <cell id="10004" material="10004" region="10003" universe="10000" />
-    <cell fill="10001" id="10105" region="10104 -10105 10106 -10107 10108 -10109" universe="0" />
-    <cell fill="10000" id="10106" region="-10110" translation="-0.00140620118176 -0.0152577471673 -0.0918476696602" universe="10026" />
-    <cell fill="10000" id="10107" region="-10111" translation="0.109099026398 -0.00417917776733 -0.0462409301859" universe="10014" />
-    <cell fill="10000" id="10108" region="-10112" translation="0.138783366528 -0.0690071053688 -0.0384882149749" universe="10009" />
-    <cell fill="10000" id="10109" region="-10113" translation="-0.194549966806 -0.0690071053688 -0.0384882149749" universe="10010" />
-    <cell fill="10000" id="10110" region="-10114" translation="-0.0984645519108 -0.0259403806947 -0.0615517493329" universe="10017" />
-    <cell fill="10000" id="10111" region="-10115" translation="-0.0932159178431 -0.122488574824 -0.0499980238428" universe="10013" />
-    <cell fill="10000" id="10112" region="-10116" translation="0.202819899608 0.0850151469064 0.0743119884463" universe="10021" />
-    <cell fill="10000" id="10113" region="-10117" translation="-0.130513433725 0.0850151469064 0.0743119884463" universe="10022" />
-    <cell fill="10000" id="10114" region="-10118" translation="0.03417350411 -0.0964115371994 -0.101120980927" universe="10004" />
-    <cell fill="10000" id="10115" region="-10119" translation="0.0379131188424 0.0687077251904 -0.108757520396" universe="10018" />
-    <cell fill="10000" id="10116" region="-10120" translation="0.0738800814064 -0.071302275054 -0.0978298256419" universe="10005" />
-    <cell fill="10000" id="10117" region="-10121" translation="0.0889721475441 0.0869416521141 0.075877373016" universe="10002" />
-    <cell fill="10000" id="10118" region="-10122" translation="-0.0369830271171 0.140878401491 -0.104742841496" universe="10003" />
-    <cell fill="10000" id="10119" region="-10123" translation="-0.0369830271171 -0.192454931842 -0.104742841496" universe="10006" />
-    <cell fill="10000" id="10120" region="-10124" translation="-0.0242806966142 0.0516839323883 0.130270489265" universe="10016" />
-    <cell fill="10000" id="10121" region="-10125" translation="-0.0242806966142 0.0516839323883 -0.203062844069" universe="10025" />
-    <cell fill="10000" id="10122" region="-10126" translation="0.0457805197599 0.117590160514 -0.00380228622125" universe="10026" />
-    <cell fill="10000" id="10123" region="-10127" translation="-0.0137419084645 0.180165775531 0.202768975142" universe="10011" />
-    <cell fill="10000" id="10124" region="-10128" translation="-0.0137419084645 -0.153167557803 0.202768975142" universe="10014" />
-    <cell fill="10000" id="10125" region="-10129" translation="-0.0137419084645 0.180165775531 -0.130564358191" universe="10020" />
-    <cell fill="10000" id="10126" region="-10130" translation="-0.0137419084645 -0.153167557803 -0.130564358191" universe="10023" />
-    <cell fill="10000" id="10127" region="-10131" translation="0.193346065156 0.0662280238816 -0.0713110415353" universe="10018" />
-    <cell fill="10000" id="10128" region="-10132" translation="-0.139987268177 0.0662280238816 -0.0713110415353" universe="10019" />
-    <cell fill="10000" id="10129" region="-10133" translation="-0.0311856561407 0.155914746052 0.153317205092" universe="10007" />
-    <cell fill="10000" id="10130" region="-10134" translation="-0.0311856561407 -0.177418587281 0.153317205092" universe="10010" />
-    <cell fill="10000" id="10131" region="-10135" translation="-0.0311856561407 0.155914746052 -0.180016128241" universe="10016" />
-    <cell fill="10000" id="10132" region="-10136" translation="-0.0311856561407 -0.177418587281 -0.180016128241" universe="10019" />
-    <cell fill="10000" id="10133" region="-10137" translation="0.0801800449244 0.0168261919282 -0.0163895967622" universe="10027" />
-    <cell fill="10000" id="10134" region="-10138" translation="0.00483733774062 0.081481567183 -0.0928082691631" universe="10006" />
-    <cell fill="10000" id="10135" region="-10139" translation="0.097811779112 -0.0610597446974 -0.0784455336401" universe="10017" />
-    <cell fill="10000" id="10136" region="-10140" translation="0.033971609479 0.0446752660509 0.185883817671" universe="10014" />
-    <cell fill="10000" id="10137" region="-10141" translation="0.033971609479 0.0446752660509 -0.147449515662" universe="10023" />
-    <cell fill="10000" id="10138" region="-10142" translation="0.159741777825 -0.114709384731 -0.0558806276942" universe="10015" />
-    <cell fill="10000" id="10139" region="-10143" translation="-0.173591555508 -0.114709384731 -0.0558806276942" universe="10016" />
-    <cell fill="10000" id="10140" region="-10144" translation="0.00771444999286 -0.0784191193007 0.0191691213248" universe="10018" />
-    <cell fill="10000" id="10141" region="-10145" translation="-0.0977249605603 -0.0094355820168 -0.097340787155" universe="10006" />
-    <cell fill="10000" id="10142" region="-10146" translation="-0.0846040523453 0.186196302117 0.109025021864" universe="10023" />
-    <cell fill="10000" id="10143" region="-10147" translation="-0.0846040523453 -0.147137031217 0.109025021864" universe="10026" />
-    <cell fill="10000" id="10144" region="-10148" translation="0.0853097051629 -0.097409487121 0.0315380230547" universe="10006" />
-    <cell fill="10000" id="10145" region="-10149" translation="0.00204940024585 0.108007828333 -0.0856693988182" universe="10027" />
-    <cell fill="10000" id="10146" region="-10150" translation="0.0362697740558 -0.00348804073157 0.088140578575" universe="10009" />
-    <cell fill="10000" id="10147" region="-10151" translation="0.0126079576483 0.0809005606263 0.071221146542" universe="10018" />
-    <cell fill="10000" id="10148" region="-10152" translation="-0.0374148994358 0.122108694931 0.0439406213164" universe="10012" />
-    <cell fill="10000" id="10149" region="-10153" translation="0.0851566223435 -0.119189958655 -0.0736469678739" universe="10022" />
-    <cell fill="10000" id="10150" region="-10154" translation="-0.0399284809656 0.0202140729129 -0.1131524598" universe="10028" />
-    <cell fill="10000" id="10151" region="-10155" translation="-0.0503157540846 0.0170999685653 0.0561731252046" universe="10016" />
-    <cell fill="10000" id="10152" region="-10156" translation="-0.0676639827455 -0.0730357877864 0.00541096373088" universe="10021" />
-    <cell fill="10000" id="10153" region="-10157" translation="0.0640843901638 0.0585363225055 0.00432158793112" universe="10012" />
-    <cell fill="10000" id="10154" region="-10158" translation="-0.0138010597555 0.202224545874 0.192417668194" universe="10003" />
-    <cell fill="10000" id="10155" region="-10159" translation="-0.0138010597555 -0.131108787459 0.192417668194" universe="10006" />
-    <cell fill="10000" id="10156" region="-10160" translation="-0.0138010597555 0.202224545874 -0.140915665139" universe="10012" />
-    <cell fill="10000" id="10157" region="-10161" translation="-0.0138010597555 -0.131108787459 -0.140915665139" universe="10015" />
-    <cell fill="10000" id="10158" region="-10162" translation="0.035227337498 0.113054594036 0.102950231509" universe="10015" />
-    <cell fill="10000" id="10159" region="-10163" translation="-0.0383166045087 -0.0988055687379 0.0857867394674" universe="10003" />
-    <cell fill="10000" id="10160" region="-10164" translation="0.0378202408916 0.0773239271977 -0.00282972122211" universe="10023" />
-    <cell fill="10000" id="10161" region="-10165" translation="-0.0601124832347 -0.0613405147405 -0.043634920585" universe="10028" />
-    <cell fill="10000" id="10162" region="-10166" translation="0.109305027033 -0.0204659393864 0.158485432539" universe="10017" />
-    <cell fill="10000" id="10163" region="-10167" translation="0.109305027033 -0.0204659393864 -0.174847900794" universe="10026" />
-    <cell fill="10000" id="10164" region="-10168" translation="-0.0482158135072 -0.109136394796 -0.111087009623" universe="10002" />
-    <cell fill="10000" id="10165" region="-10169" translation="-0.0993436405899 0.104054804419 -0.0241798283787" universe="10004" />
-    <cell fill="10000" id="10166" region="-10170" translation="0.114256308042 0.190902465414 -0.0607753376217" universe="10003" />
-    <cell fill="10000" id="10167" region="-10171" translation="0.114256308042 -0.14243086792 -0.0607753376217" universe="10006" />
-    <cell fill="10000" id="10168" region="-10172" translation="0.0217205011906 0.0250667553285 0.0295200316" universe="10005" />
-    <cell fill="10000" id="10169" region="-10173" translation="0.125436500241 0.193710578338 -0.0414706576932" universe="10014" />
-    <cell fill="10000" id="10170" region="-10174" translation="-0.207896833092 0.193710578338 -0.0414706576932" universe="10015" />
-    <cell fill="10000" id="10171" region="-10175" translation="0.125436500241 -0.139622754995 -0.0414706576932" universe="10017" />
-    <cell fill="10000" id="10172" region="-10176" translation="-0.207896833092 -0.139622754995 -0.0414706576932" universe="10018" />
-    <cell fill="10000" id="10173" region="-10177" translation="-0.103856970591 -0.0723989491841 0.0477333168332" universe="10006" />
-    <cell fill="10000" id="10174" region="-10178" translation="-0.0248453372329 0.0327005037426 0.0092611805402" universe="10017" />
-    <cell fill="10000" id="10175" region="-10179" translation="-0.105357688326 -0.108061697849 0.00966905666893" universe="10002" />
-    <cell fill="10000" id="10176" region="-10180" translation="0.200343875313 0.0222716943858 0.187316452299" universe="10012" />
-    <cell fill="10000" id="10177" region="-10181" translation="-0.13298945802 0.0222716943858 0.187316452299" universe="10013" />
-    <cell fill="10000" id="10178" region="-10182" translation="0.200343875313 0.0222716943858 -0.146016881035" universe="10021" />
-    <cell fill="10000" id="10179" region="-10183" translation="-0.13298945802 0.0222716943858 -0.146016881035" universe="10022" />
-    <cell fill="10000" id="10180" region="-10184" translation="0.163119940576 0.0409248307565 0.0775424026481" universe="10006" />
-    <cell fill="10000" id="10181" region="-10185" translation="-0.170213392757 0.0409248307565 0.0775424026481" universe="10007" />
-    <cell fill="10000" id="10182" region="-10186" translation="0.102073447729 -0.0606874931034 0.0151968577672" universe="10019" />
-    <cell fill="10000" id="10183" region="-10187" translation="0.0799190701492 0.13595762577 -0.0962208719747" universe="10014" />
-    <cell fill="10000" id="10184" region="-10188" translation="0.0799190701492 -0.197375707563 -0.0962208719747" universe="10017" />
-    <cell fill="10000" id="10185" region="-10189" translation="0.0694369789325 0.169683871789 0.119882766994" universe="10012" />
-    <cell fill="10000" id="10186" region="-10190" translation="0.0694369789325 -0.163649461545 0.119882766994" universe="10015" />
-    <cell fill="10000" id="10187" region="-10191" translation="-0.0705988927796 0.148957080213 0.0950321471098" universe="10020" />
-    <cell fill="10000" id="10188" region="-10192" translation="-0.0705988927796 -0.18437625312 0.0950321471098" universe="10023" />
-    <cell fill="10000" id="10189" region="-10193" translation="0.010468267264 0.156080284248 -0.0051133943139" universe="10022" />
-    <cell fill="10000" id="10190" region="-10194" translation="0.010468267264 -0.177253049085 -0.0051133943139" universe="10025" />
-    <cell fill="10000" id="10191" region="-10195" translation="0.159721234175 0.0688352262865 -0.110095873694" universe="10026" />
-    <cell fill="10000" id="10192" region="-10196" translation="-0.173612099158 0.0688352262865 -0.110095873694" universe="10027" />
-    <cell fill="10000" id="10193" region="-10197" translation="0.0898117967697 0.0643418620595 0.0326072339685" universe="10007" />
-    <cell fill="10000" id="10194" region="-10198" translation="0.0033702311569 0.100407895371 0.186783186803" universe="10019" />
-    <cell fill="10000" id="10195" region="-10199" translation="0.0033702311569 0.100407895371 -0.14655014653" universe="10028" />
-    <cell fill="10000" id="10196" region="-10200" translation="0.0532989528173 -0.0288162906553 0.151934117139" universe="10011" />
-    <cell fill="10000" id="10197" region="-10201" translation="0.0532989528173 -0.0288162906553 -0.181399216194" universe="10020" />
-    <cell fill="10000" id="10198" region="-10202" translation="0.146637865541 -0.000183171192208 0.173437280372" universe="10005" />
-    <cell fill="10000" id="10199" region="-10203" translation="-0.186695467792 -0.000183171192208 0.173437280372" universe="10006" />
-    <cell fill="10000" id="10200" region="-10204" translation="0.146637865541 -0.000183171192208 -0.159896052961" universe="10014" />
-    <cell fill="10000" id="10201" region="-10205" translation="-0.186695467792 -0.000183171192208 -0.159896052961" universe="10015" />
-    <cell fill="10000" id="10202" region="-10206" translation="0.00688615671293 0.0325721225173 -0.107852540144" universe="10010" />
-    <cell fill="10000" id="10203" region="-10207" translation="0.0594642653073 0.175629948849 0.11256068343" universe="10020" />
-    <cell fill="10000" id="10204" region="-10208" translation="0.0594642653073 -0.157703384484 0.11256068343" universe="10023" />
-    <cell fill="10000" id="10205" region="-10209" translation="-0.0745211393531 0.186025398941 0.07061211192" universe="10004" />
-    <cell fill="10000" id="10206" region="-10210" translation="-0.0745211393531 -0.147307934392 0.07061211192" universe="10007" />
-    <cell fill="10000" id="10207" region="-10211" translation="0.159713616332 -0.0241680036074 0.0623342971853" universe="10027" />
-    <cell fill="10000" id="10208" region="-10212" translation="-0.173619717001 -0.0241680036074 0.0623342971853" universe="10028" />
-    <cell fill="10000" id="10209" region="-10213" translation="-0.0141914194483 0.111149451072 0.0903966514578" universe="10009" />
-    <cell fill="10000" id="10210" region="-10214" translation="0.206413378004 -0.0468919157204 0.0309383201461" universe="10003" />
-    <cell fill="10000" id="10211" region="-10215" translation="-0.126919955329 -0.0468919157204 0.0309383201461" universe="10004" />
-    <cell fill="10000" id="10212" region="-10216" translation="0.0429259824683 0.070555715848 -0.0961124680564" universe="10022" />
-    <cell fill="10000" id="10213" region="-10217" translation="0.0917411839861 -0.0210268081646 -0.120747126544" universe="10018" />
-    <cell fill="10000" id="10214" region="-10218" translation="0.187114465978 0.142190928958 0.00303951516048" universe="10020" />
-    <cell fill="10000" id="10215" region="-10219" translation="-0.146218867356 0.142190928958 0.00303951516048" universe="10021" />
-    <cell fill="10000" id="10216" region="-10220" translation="0.187114465978 -0.191142404375 0.00303951516048" universe="10023" />
-    <cell fill="10000" id="10217" region="-10221" translation="-0.146218867356 -0.191142404375 0.00303951516048" universe="10024" />
-    <cell fill="10000" id="10218" region="-10222" translation="-0.0885860120512 -0.0574080917257 0.00189379783576" universe="10020" />
-    <cell fill="10000" id="10219" region="-10223" translation="-0.0695627245254 -0.0325861164534 0.187674961732" universe="10010" />
-    <cell fill="10000" id="10220" region="-10224" translation="-0.0695627245254 -0.0325861164534 -0.145658371601" universe="10019" />
-    <cell fill="10000" id="10221" region="-10225" translation="0.0648004866859 0.0803935669348 -0.0495807099831" universe="10003" />
-    <cell fill="10000" id="10222" region="-10226" translation="0.119768828483 0.0244148877182 0.0590010758314" universe="10017" />
-    <cell fill="10000" id="10223" region="-10227" translation="0.055815690197 -0.0386622433477 0.129344155705" universe="10007" />
-    <cell fill="10000" id="10224" region="-10228" translation="0.055815690197 -0.0386622433477 -0.203989177628" universe="10016" />
-    <cell fill="10000" id="10225" region="-10229" translation="-0.0705714088439 -0.0332615859242 -0.113081179589" universe="10010" />
-    <cell fill="10000" id="10226" region="-10230" translation="0.0191891610992 -0.0877751186437 0.0949676788695" universe="10004" />
-    <cell fill="10000" id="10227" region="-10231" translation="0.11357577214 -0.0723120607076 -0.0186231523344" universe="10007" />
-    <cell fill="10000" id="10228" region="-10232" translation="0.0288228703292 0.0966036043404 -0.109945458994" universe="10020" />
-    <cell fill="10000" id="10229" region="-10233" translation="-0.0302720060162 0.0427214916014 -0.111437158817" universe="10017" />
-    <cell fill="10000" id="10230" region="-10234" translation="0.0971933921082 0.0413100742886 0.144761925354" universe="10010" />
-    <cell fill="10000" id="10231" region="-10235" translation="0.0971933921082 0.0413100742886 -0.18857140798" universe="10019" />
-    <cell fill="10000" id="10232" region="-10236" translation="0.107580312879 -0.0210472571374 -0.03274843538" universe="10005" />
-    <cell fill="10000" id="10233" region="-10237" translation="0.139201957633 -0.0881443612864 -0.114798284951" universe="10003" />
-    <cell fill="10000" id="10234" region="-10238" translation="-0.194131375701 -0.0881443612864 -0.114798284951" universe="10004" />
-    <cell fill="10000" id="10235" region="-10239" translation="0.108471976774 0.146159230208 0.088410423839" universe="10013" />
-    <cell fill="10000" id="10236" region="-10240" translation="0.108471976774 -0.187174103125 0.088410423839" universe="10016" />
-    <cell fill="10000" id="10237" region="-10241" translation="0.0451270583821 0.096780721612 0.0967653665332" universe="10028" />
-    <cell fill="10000" id="10238" region="-10242" translation="-0.0224644717455 0.0725927720514 0.107852198651" universe="10011" />
-    <cell fill="10000" id="10239" region="-10243" translation="0.106063533699 0.0392870322973 0.172287769268" universe="10016" />
-    <cell fill="10000" id="10240" region="-10244" translation="0.106063533699 0.0392870322973 -0.161045564066" universe="10025" />
-    <cell fill="10000" id="10241" region="-10245" translation="0.148159419635 0.112776558875 0.0380868716968" universe="10012" />
-    <cell fill="10000" id="10242" region="-10246" translation="-0.185173913698 0.112776558875 0.0380868716968" universe="10013" />
-    <cell fill="10000" id="10243" region="-10247" translation="0.156935816691 0.101145318349 -0.0499235619578" universe="10002" />
-    <cell fill="10000" id="10244" region="-10248" translation="-0.176397516643 0.101145318349 -0.0499235619578" universe="10003" />
-    <cell fill="10000" id="10245" region="-10249" translation="0.132643578757 0.109198051281 -0.0476954987918" universe="10017" />
-    <cell fill="10000" id="10246" region="-10250" translation="-0.200689754577 0.109198051281 -0.0476954987918" universe="10018" />
-    <cell fill="10000" id="10247" region="-10251" translation="0.139165644346 0.131343196487 0.0701591217856" universe="10024" />
-    <cell fill="10000" id="10248" region="-10252" translation="-0.194167688987 0.131343196487 0.0701591217856" universe="10025" />
-    <cell fill="10000" id="10249" region="-10253" translation="0.139165644346 -0.201990136846 0.0701591217856" universe="10027" />
-    <cell fill="10000" id="10250" region="-10254" translation="-0.194167688987 -0.201990136846 0.0701591217856" universe="10028" />
-    <cell fill="10000" id="10251" region="-10255" translation="-0.100266886432 0.15644435527 0.175172848479" universe="10003" />
-    <cell fill="10000" id="10252" region="-10256" translation="-0.100266886432 -0.176888978063 0.175172848479" universe="10006" />
-    <cell fill="10000" id="10253" region="-10257" translation="-0.100266886432 0.15644435527 -0.158160484854" universe="10012" />
-    <cell fill="10000" id="10254" region="-10258" translation="-0.100266886432 -0.176888978063 -0.158160484854" universe="10015" />
-    <cell fill="10000" id="10255" region="-10259" translation="0.165554360307 -0.0155314552194 0.0269161414417" universe="10026" />
-    <cell fill="10000" id="10256" region="-10260" translation="-0.167778973026 -0.0155314552194 0.0269161414417" universe="10027" />
-    <cell fill="10000" id="10257" region="-10261" translation="0.152805274649 0.181665566207 0.0404883666838" universe="10011" />
-    <cell fill="10000" id="10258" region="-10262" translation="-0.180528058685 0.181665566207 0.0404883666838" universe="10012" />
-    <cell fill="10000" id="10259" region="-10263" translation="0.152805274649 -0.151667767127 0.0404883666838" universe="10014" />
-    <cell fill="10000" id="10260" region="-10264" translation="-0.180528058685 -0.151667767127 0.0404883666838" universe="10015" />
-    <cell fill="10000" id="10261" region="-10265" translation="0.0723111669483 0.0878537053709 0.0999705558994" universe="10006" />
-    <cell fill="10000" id="10262" region="-10266" translation="-0.105764243624 0.0987449723258 -0.0582008094074" universe="10002" />
-    <cell fill="10000" id="10263" region="-10267" translation="0.0468779531251 -0.0594927321842 -0.0556353418577" universe="10003" />
-    <cell fill="10000" id="10264" region="-10268" translation="0.123942306657 0.141830462742 -0.0658381874921" universe="10021" />
-    <cell fill="10000" id="10265" region="-10269" translation="0.123942306657 -0.191502870591 -0.0658381874921" universe="10024" />
-    <cell fill="10000" id="10266" region="-10270" translation="0.0013087859342 -0.0632759448088 -0.0538252207421" universe="10009" />
-    <cell fill="10000" id="10267" region="-10271" translation="0.110588836699 -0.0389541758206 0.16834558789" universe="10010" />
-    <cell fill="10000" id="10268" region="-10272" translation="0.110588836699 -0.0389541758206 -0.164987745443" universe="10019" />
-    <cell fill="10000" id="10269" region="-10273" translation="-0.0265701006572 0.0131449788411 0.0505879445141" universe="10023" />
-    <cell id="10270" material="10005" region="10121 10168 10179 10247 10266" universe="10002" />
-    <cell id="10271" material="10005" region="10122 10158 10163 10170 10214 10225 10237 10248 10255 10267" universe="10003" />
-    <cell id="10272" material="10005" region="10118 10169 10209 10215 10230 10238" universe="10004" />
-    <cell id="10273" material="10005" region="10120 10172 10202 10236" universe="10005" />
-    <cell id="10274" material="10005" region="10123 10138 10145 10148 10159 10171 10177 10184 10203 10256 10265" universe="10006" />
-    <cell id="10275" material="10005" region="10133 10185 10197 10210 10227 10231" universe="10007" />
-    <cell id="10276" material="10005" universe="10008" />
-    <cell id="10277" material="10005" region="10112 10150 10213 10270" universe="10009" />
-    <cell id="10278" material="10005" region="10113 10134 10206 10223 10229 10234 10271" universe="10010" />
-    <cell id="10279" material="10005" region="10127 10200 10242 10261" universe="10011" />
-    <cell id="10280" material="10005" region="10152 10157 10160 10180 10189 10245 10257 10262" universe="10012" />
-    <cell id="10281" material="10005" region="10115 10181 10239 10246" universe="10013" />
-    <cell id="10282" material="10005" region="10111 10128 10140 10173 10187 10204 10263" universe="10014" />
-    <cell id="10283" material="10005" region="10142 10161 10162 10174 10190 10205 10258 10264" universe="10015" />
-    <cell id="10284" material="10005" region="10124 10135 10143 10155 10228 10240 10243" universe="10016" />
-    <cell id="10285" material="10005" region="10114 10139 10166 10175 10178 10188 10226 10233 10249" universe="10017" />
-    <cell id="10286" material="10005" region="10119 10131 10144 10151 10176 10217 10250" universe="10018" />
-    <cell id="10287" material="10005" region="10132 10136 10186 10198 10224 10235 10272" universe="10019" />
-    <cell id="10288" material="10005" region="10129 10191 10201 10207 10218 10222 10232" universe="10020" />
-    <cell id="10289" material="10005" region="10116 10156 10182 10219 10268" universe="10021" />
-    <cell id="10290" material="10005" region="10117 10153 10183 10193 10216" universe="10022" />
-    <cell id="10291" material="10005" region="10130 10141 10146 10164 10192 10208 10220 10273" universe="10023" />
-    <cell id="10292" material="10005" region="10221 10251 10269" universe="10024" />
-    <cell id="10293" material="10005" region="10125 10194 10244 10252" universe="10025" />
-    <cell id="10294" material="10005" region="10110 10126 10147 10167 10195 10259" universe="10026" />
-    <cell id="10295" material="10005" region="10137 10149 10196 10211 10253 10260" universe="10027" />
-    <cell id="10296" material="10005" region="10154 10165 10199 10212 10241 10254" universe="10028" />
-    <cell id="10297" material="10005" universe="10029" />
-    <lattice id="10001">
-        <pitch>0.333333333333 0.333333333333 0.333333333333</pitch>
-        <outer>10029</outer>
-        <dimension>3 3 3</dimension>
-        <lower_left>-0.5 -0.5 -0.5</lower_left>
-        <universes>
-10008 10009 10010 
-10005 10006 10007 
-10002 10003 10004 
+  <cell id="13" material="13" region="-9" universe="9" />
+  <cell id="14" material="14" region="9 -10" universe="9" />
+  <cell id="15" material="15" region="10 -11" universe="9" />
+  <cell id="16" material="16" region="11 -12" universe="9" />
+  <cell id="17" material="17" region="12" universe="9" />
+  <cell fill="10" id="134" region="122 -123 124 -125 126 -127" universe="0" />
+  <cell fill="9" id="135" region="-128" translation="-0.00140620118176 -0.0152577471673 -0.0918476696602" universe="35" />
+  <cell fill="9" id="136" region="-129" translation="0.109099026398 -0.00417917776733 -0.0462409301859" universe="23" />
+  <cell fill="9" id="137" region="-130" translation="0.138783366528 -0.0690071053688 -0.0384882149749" universe="18" />
+  <cell fill="9" id="138" region="-131" translation="-0.194549966806 -0.0690071053688 -0.0384882149749" universe="19" />
+  <cell fill="9" id="139" region="-132" translation="-0.0984645519108 -0.0259403806947 -0.0615517493329" universe="26" />
+  <cell fill="9" id="140" region="-133" translation="-0.0932159178431 -0.122488574824 -0.0499980238428" universe="22" />
+  <cell fill="9" id="141" region="-134" translation="0.202819899608 0.0850151469064 0.0743119884463" universe="30" />
+  <cell fill="9" id="142" region="-135" translation="-0.130513433725 0.0850151469064 0.0743119884463" universe="31" />
+  <cell fill="9" id="143" region="-136" translation="0.03417350411 -0.0964115371994 -0.101120980927" universe="13" />
+  <cell fill="9" id="144" region="-137" translation="0.0379131188424 0.0687077251904 -0.108757520396" universe="27" />
+  <cell fill="9" id="145" region="-138" translation="0.0738800814064 -0.071302275054 -0.0978298256419" universe="14" />
+  <cell fill="9" id="146" region="-139" translation="0.0889721475441 0.0869416521141 0.075877373016" universe="11" />
+  <cell fill="9" id="147" region="-140" translation="-0.0369830271171 0.140878401491 -0.104742841496" universe="12" />
+  <cell fill="9" id="148" region="-141" translation="-0.0369830271171 -0.192454931842 -0.104742841496" universe="15" />
+  <cell fill="9" id="149" region="-142" translation="-0.0242806966142 0.0516839323883 0.130270489265" universe="25" />
+  <cell fill="9" id="150" region="-143" translation="-0.0242806966142 0.0516839323883 -0.203062844069" universe="34" />
+  <cell fill="9" id="151" region="-144" translation="0.0457805197599 0.117590160514 -0.00380228622125" universe="35" />
+  <cell fill="9" id="152" region="-145" translation="-0.0137419084645 0.180165775531 0.202768975142" universe="20" />
+  <cell fill="9" id="153" region="-146" translation="-0.0137419084645 -0.153167557803 0.202768975142" universe="23" />
+  <cell fill="9" id="154" region="-147" translation="-0.0137419084645 0.180165775531 -0.130564358191" universe="29" />
+  <cell fill="9" id="155" region="-148" translation="-0.0137419084645 -0.153167557803 -0.130564358191" universe="32" />
+  <cell fill="9" id="156" region="-149" translation="0.193346065156 0.0662280238816 -0.0713110415353" universe="27" />
+  <cell fill="9" id="157" region="-150" translation="-0.139987268177 0.0662280238816 -0.0713110415353" universe="28" />
+  <cell fill="9" id="158" region="-151" translation="-0.0311856561407 0.155914746052 0.153317205092" universe="16" />
+  <cell fill="9" id="159" region="-152" translation="-0.0311856561407 -0.177418587281 0.153317205092" universe="19" />
+  <cell fill="9" id="160" region="-153" translation="-0.0311856561407 0.155914746052 -0.180016128241" universe="25" />
+  <cell fill="9" id="161" region="-154" translation="-0.0311856561407 -0.177418587281 -0.180016128241" universe="28" />
+  <cell fill="9" id="162" region="-155" translation="0.0801800449244 0.0168261919282 -0.0163895967622" universe="36" />
+  <cell fill="9" id="163" region="-156" translation="0.00483733774062 0.081481567183 -0.0928082691631" universe="15" />
+  <cell fill="9" id="164" region="-157" translation="0.097811779112 -0.0610597446974 -0.0784455336401" universe="26" />
+  <cell fill="9" id="165" region="-158" translation="0.033971609479 0.0446752660509 0.185883817671" universe="23" />
+  <cell fill="9" id="166" region="-159" translation="0.033971609479 0.0446752660509 -0.147449515662" universe="32" />
+  <cell fill="9" id="167" region="-160" translation="0.159741777825 -0.114709384731 -0.0558806276942" universe="24" />
+  <cell fill="9" id="168" region="-161" translation="-0.173591555508 -0.114709384731 -0.0558806276942" universe="25" />
+  <cell fill="9" id="169" region="-162" translation="0.00771444999286 -0.0784191193007 0.0191691213248" universe="27" />
+  <cell fill="9" id="170" region="-163" translation="-0.0977249605603 -0.0094355820168 -0.097340787155" universe="15" />
+  <cell fill="9" id="171" region="-164" translation="-0.0846040523453 0.186196302117 0.109025021864" universe="32" />
+  <cell fill="9" id="172" region="-165" translation="-0.0846040523453 -0.147137031217 0.109025021864" universe="35" />
+  <cell fill="9" id="173" region="-166" translation="0.0853097051629 -0.097409487121 0.0315380230547" universe="15" />
+  <cell fill="9" id="174" region="-167" translation="0.00204940024585 0.108007828333 -0.0856693988182" universe="36" />
+  <cell fill="9" id="175" region="-168" translation="0.0362697740558 -0.00348804073157 0.088140578575" universe="18" />
+  <cell fill="9" id="176" region="-169" translation="0.0126079576483 0.0809005606263 0.071221146542" universe="27" />
+  <cell fill="9" id="177" region="-170" translation="-0.0374148994358 0.122108694931 0.0439406213164" universe="21" />
+  <cell fill="9" id="178" region="-171" translation="0.0851566223435 -0.119189958655 -0.0736469678739" universe="31" />
+  <cell fill="9" id="179" region="-172" translation="-0.0399284809656 0.0202140729129 -0.1131524598" universe="37" />
+  <cell fill="9" id="180" region="-173" translation="-0.0503157540846 0.0170999685653 0.0561731252046" universe="25" />
+  <cell fill="9" id="181" region="-174" translation="-0.0676639827455 -0.0730357877864 0.00541096373088" universe="30" />
+  <cell fill="9" id="182" region="-175" translation="0.0640843901638 0.0585363225055 0.00432158793112" universe="21" />
+  <cell fill="9" id="183" region="-176" translation="-0.0138010597555 0.202224545874 0.192417668194" universe="12" />
+  <cell fill="9" id="184" region="-177" translation="-0.0138010597555 -0.131108787459 0.192417668194" universe="15" />
+  <cell fill="9" id="185" region="-178" translation="-0.0138010597555 0.202224545874 -0.140915665139" universe="21" />
+  <cell fill="9" id="186" region="-179" translation="-0.0138010597555 -0.131108787459 -0.140915665139" universe="24" />
+  <cell fill="9" id="187" region="-180" translation="0.035227337498 0.113054594036 0.102950231509" universe="24" />
+  <cell fill="9" id="188" region="-181" translation="-0.0383166045087 -0.0988055687379 0.0857867394674" universe="12" />
+  <cell fill="9" id="189" region="-182" translation="0.0378202408916 0.0773239271977 -0.00282972122211" universe="32" />
+  <cell fill="9" id="190" region="-183" translation="-0.0601124832347 -0.0613405147405 -0.043634920585" universe="37" />
+  <cell fill="9" id="191" region="-184" translation="0.109305027033 -0.0204659393864 0.158485432539" universe="26" />
+  <cell fill="9" id="192" region="-185" translation="0.109305027033 -0.0204659393864 -0.174847900794" universe="35" />
+  <cell fill="9" id="193" region="-186" translation="-0.0482158135072 -0.109136394796 -0.111087009623" universe="11" />
+  <cell fill="9" id="194" region="-187" translation="-0.0993436405899 0.104054804419 -0.0241798283787" universe="13" />
+  <cell fill="9" id="195" region="-188" translation="0.114256308042 0.190902465414 -0.0607753376217" universe="12" />
+  <cell fill="9" id="196" region="-189" translation="0.114256308042 -0.14243086792 -0.0607753376217" universe="15" />
+  <cell fill="9" id="197" region="-190" translation="0.0217205011906 0.0250667553285 0.0295200316" universe="14" />
+  <cell fill="9" id="198" region="-191" translation="0.125436500241 0.193710578338 -0.0414706576932" universe="23" />
+  <cell fill="9" id="199" region="-192" translation="-0.207896833092 0.193710578338 -0.0414706576932" universe="24" />
+  <cell fill="9" id="200" region="-193" translation="0.125436500241 -0.139622754995 -0.0414706576932" universe="26" />
+  <cell fill="9" id="201" region="-194" translation="-0.207896833092 -0.139622754995 -0.0414706576932" universe="27" />
+  <cell fill="9" id="202" region="-195" translation="-0.103856970591 -0.0723989491841 0.0477333168332" universe="15" />
+  <cell fill="9" id="203" region="-196" translation="-0.0248453372329 0.0327005037426 0.0092611805402" universe="26" />
+  <cell fill="9" id="204" region="-197" translation="-0.105357688326 -0.108061697849 0.00966905666893" universe="11" />
+  <cell fill="9" id="205" region="-198" translation="0.200343875313 0.0222716943858 0.187316452299" universe="21" />
+  <cell fill="9" id="206" region="-199" translation="-0.13298945802 0.0222716943858 0.187316452299" universe="22" />
+  <cell fill="9" id="207" region="-200" translation="0.200343875313 0.0222716943858 -0.146016881035" universe="30" />
+  <cell fill="9" id="208" region="-201" translation="-0.13298945802 0.0222716943858 -0.146016881035" universe="31" />
+  <cell fill="9" id="209" region="-202" translation="0.163119940576 0.0409248307565 0.0775424026481" universe="15" />
+  <cell fill="9" id="210" region="-203" translation="-0.170213392757 0.0409248307565 0.0775424026481" universe="16" />
+  <cell fill="9" id="211" region="-204" translation="0.102073447729 -0.0606874931034 0.0151968577672" universe="28" />
+  <cell fill="9" id="212" region="-205" translation="0.0799190701492 0.13595762577 -0.0962208719747" universe="23" />
+  <cell fill="9" id="213" region="-206" translation="0.0799190701492 -0.197375707563 -0.0962208719747" universe="26" />
+  <cell fill="9" id="214" region="-207" translation="0.0694369789325 0.169683871789 0.119882766994" universe="21" />
+  <cell fill="9" id="215" region="-208" translation="0.0694369789325 -0.163649461545 0.119882766994" universe="24" />
+  <cell fill="9" id="216" region="-209" translation="-0.0705988927796 0.148957080213 0.0950321471098" universe="29" />
+  <cell fill="9" id="217" region="-210" translation="-0.0705988927796 -0.18437625312 0.0950321471098" universe="32" />
+  <cell fill="9" id="218" region="-211" translation="0.010468267264 0.156080284248 -0.0051133943139" universe="31" />
+  <cell fill="9" id="219" region="-212" translation="0.010468267264 -0.177253049085 -0.0051133943139" universe="34" />
+  <cell fill="9" id="220" region="-213" translation="0.159721234175 0.0688352262865 -0.110095873694" universe="35" />
+  <cell fill="9" id="221" region="-214" translation="-0.173612099158 0.0688352262865 -0.110095873694" universe="36" />
+  <cell fill="9" id="222" region="-215" translation="0.0898117967697 0.0643418620595 0.0326072339685" universe="16" />
+  <cell fill="9" id="223" region="-216" translation="0.0033702311569 0.100407895371 0.186783186803" universe="28" />
+  <cell fill="9" id="224" region="-217" translation="0.0033702311569 0.100407895371 -0.14655014653" universe="37" />
+  <cell fill="9" id="225" region="-218" translation="0.0532989528173 -0.0288162906553 0.151934117139" universe="20" />
+  <cell fill="9" id="226" region="-219" translation="0.0532989528173 -0.0288162906553 -0.181399216194" universe="29" />
+  <cell fill="9" id="227" region="-220" translation="0.146637865541 -0.000183171192208 0.173437280372" universe="14" />
+  <cell fill="9" id="228" region="-221" translation="-0.186695467792 -0.000183171192208 0.173437280372" universe="15" />
+  <cell fill="9" id="229" region="-222" translation="0.146637865541 -0.000183171192208 -0.159896052961" universe="23" />
+  <cell fill="9" id="230" region="-223" translation="-0.186695467792 -0.000183171192208 -0.159896052961" universe="24" />
+  <cell fill="9" id="231" region="-224" translation="0.00688615671293 0.0325721225173 -0.107852540144" universe="19" />
+  <cell fill="9" id="232" region="-225" translation="0.0594642653073 0.175629948849 0.11256068343" universe="29" />
+  <cell fill="9" id="233" region="-226" translation="0.0594642653073 -0.157703384484 0.11256068343" universe="32" />
+  <cell fill="9" id="234" region="-227" translation="-0.0745211393531 0.186025398941 0.07061211192" universe="13" />
+  <cell fill="9" id="235" region="-228" translation="-0.0745211393531 -0.147307934392 0.07061211192" universe="16" />
+  <cell fill="9" id="236" region="-229" translation="0.159713616332 -0.0241680036074 0.0623342971853" universe="36" />
+  <cell fill="9" id="237" region="-230" translation="-0.173619717001 -0.0241680036074 0.0623342971853" universe="37" />
+  <cell fill="9" id="238" region="-231" translation="-0.0141914194483 0.111149451072 0.0903966514578" universe="18" />
+  <cell fill="9" id="239" region="-232" translation="0.206413378004 -0.0468919157204 0.0309383201461" universe="12" />
+  <cell fill="9" id="240" region="-233" translation="-0.126919955329 -0.0468919157204 0.0309383201461" universe="13" />
+  <cell fill="9" id="241" region="-234" translation="0.0429259824683 0.070555715848 -0.0961124680564" universe="31" />
+  <cell fill="9" id="242" region="-235" translation="0.0917411839861 -0.0210268081646 -0.120747126544" universe="27" />
+  <cell fill="9" id="243" region="-236" translation="0.187114465978 0.142190928958 0.00303951516048" universe="29" />
+  <cell fill="9" id="244" region="-237" translation="-0.146218867356 0.142190928958 0.00303951516048" universe="30" />
+  <cell fill="9" id="245" region="-238" translation="0.187114465978 -0.191142404375 0.00303951516048" universe="32" />
+  <cell fill="9" id="246" region="-239" translation="-0.146218867356 -0.191142404375 0.00303951516048" universe="33" />
+  <cell fill="9" id="247" region="-240" translation="-0.0885860120512 -0.0574080917257 0.00189379783576" universe="29" />
+  <cell fill="9" id="248" region="-241" translation="-0.0695627245254 -0.0325861164534 0.187674961732" universe="19" />
+  <cell fill="9" id="249" region="-242" translation="-0.0695627245254 -0.0325861164534 -0.145658371601" universe="28" />
+  <cell fill="9" id="250" region="-243" translation="0.0648004866859 0.0803935669348 -0.0495807099831" universe="12" />
+  <cell fill="9" id="251" region="-244" translation="0.119768828483 0.0244148877182 0.0590010758314" universe="26" />
+  <cell fill="9" id="252" region="-245" translation="0.055815690197 -0.0386622433477 0.129344155705" universe="16" />
+  <cell fill="9" id="253" region="-246" translation="0.055815690197 -0.0386622433477 -0.203989177628" universe="25" />
+  <cell fill="9" id="254" region="-247" translation="-0.0705714088439 -0.0332615859242 -0.113081179589" universe="19" />
+  <cell fill="9" id="255" region="-248" translation="0.0191891610992 -0.0877751186437 0.0949676788695" universe="13" />
+  <cell fill="9" id="256" region="-249" translation="0.11357577214 -0.0723120607076 -0.0186231523344" universe="16" />
+  <cell fill="9" id="257" region="-250" translation="0.0288228703292 0.0966036043404 -0.109945458994" universe="29" />
+  <cell fill="9" id="258" region="-251" translation="-0.0302720060162 0.0427214916014 -0.111437158817" universe="26" />
+  <cell fill="9" id="259" region="-252" translation="0.0971933921082 0.0413100742886 0.144761925354" universe="19" />
+  <cell fill="9" id="260" region="-253" translation="0.0971933921082 0.0413100742886 -0.18857140798" universe="28" />
+  <cell fill="9" id="261" region="-254" translation="0.107580312879 -0.0210472571374 -0.03274843538" universe="14" />
+  <cell fill="9" id="262" region="-255" translation="0.139201957633 -0.0881443612864 -0.114798284951" universe="12" />
+  <cell fill="9" id="263" region="-256" translation="-0.194131375701 -0.0881443612864 -0.114798284951" universe="13" />
+  <cell fill="9" id="264" region="-257" translation="0.108471976774 0.146159230208 0.088410423839" universe="22" />
+  <cell fill="9" id="265" region="-258" translation="0.108471976774 -0.187174103125 0.088410423839" universe="25" />
+  <cell fill="9" id="266" region="-259" translation="0.0451270583821 0.096780721612 0.0967653665332" universe="37" />
+  <cell fill="9" id="267" region="-260" translation="-0.0224644717455 0.0725927720514 0.107852198651" universe="20" />
+  <cell fill="9" id="268" region="-261" translation="0.106063533699 0.0392870322973 0.172287769268" universe="25" />
+  <cell fill="9" id="269" region="-262" translation="0.106063533699 0.0392870322973 -0.161045564066" universe="34" />
+  <cell fill="9" id="270" region="-263" translation="0.148159419635 0.112776558875 0.0380868716968" universe="21" />
+  <cell fill="9" id="271" region="-264" translation="-0.185173913698 0.112776558875 0.0380868716968" universe="22" />
+  <cell fill="9" id="272" region="-265" translation="0.156935816691 0.101145318349 -0.0499235619578" universe="11" />
+  <cell fill="9" id="273" region="-266" translation="-0.176397516643 0.101145318349 -0.0499235619578" universe="12" />
+  <cell fill="9" id="274" region="-267" translation="0.132643578757 0.109198051281 -0.0476954987918" universe="26" />
+  <cell fill="9" id="275" region="-268" translation="-0.200689754577 0.109198051281 -0.0476954987918" universe="27" />
+  <cell fill="9" id="276" region="-269" translation="0.139165644346 0.131343196487 0.0701591217856" universe="33" />
+  <cell fill="9" id="277" region="-270" translation="-0.194167688987 0.131343196487 0.0701591217856" universe="34" />
+  <cell fill="9" id="278" region="-271" translation="0.139165644346 -0.201990136846 0.0701591217856" universe="36" />
+  <cell fill="9" id="279" region="-272" translation="-0.194167688987 -0.201990136846 0.0701591217856" universe="37" />
+  <cell fill="9" id="280" region="-273" translation="-0.100266886432 0.15644435527 0.175172848479" universe="12" />
+  <cell fill="9" id="281" region="-274" translation="-0.100266886432 -0.176888978063 0.175172848479" universe="15" />
+  <cell fill="9" id="282" region="-275" translation="-0.100266886432 0.15644435527 -0.158160484854" universe="21" />
+  <cell fill="9" id="283" region="-276" translation="-0.100266886432 -0.176888978063 -0.158160484854" universe="24" />
+  <cell fill="9" id="284" region="-277" translation="0.165554360307 -0.0155314552194 0.0269161414417" universe="35" />
+  <cell fill="9" id="285" region="-278" translation="-0.167778973026 -0.0155314552194 0.0269161414417" universe="36" />
+  <cell fill="9" id="286" region="-279" translation="0.152805274649 0.181665566207 0.0404883666838" universe="20" />
+  <cell fill="9" id="287" region="-280" translation="-0.180528058685 0.181665566207 0.0404883666838" universe="21" />
+  <cell fill="9" id="288" region="-281" translation="0.152805274649 -0.151667767127 0.0404883666838" universe="23" />
+  <cell fill="9" id="289" region="-282" translation="-0.180528058685 -0.151667767127 0.0404883666838" universe="24" />
+  <cell fill="9" id="290" region="-283" translation="0.0723111669483 0.0878537053709 0.0999705558994" universe="15" />
+  <cell fill="9" id="291" region="-284" translation="-0.105764243624 0.0987449723258 -0.0582008094074" universe="11" />
+  <cell fill="9" id="292" region="-285" translation="0.0468779531251 -0.0594927321842 -0.0556353418577" universe="12" />
+  <cell fill="9" id="293" region="-286" translation="0.123942306657 0.141830462742 -0.0658381874921" universe="30" />
+  <cell fill="9" id="294" region="-287" translation="0.123942306657 -0.191502870591 -0.0658381874921" universe="33" />
+  <cell fill="9" id="295" region="-288" translation="0.0013087859342 -0.0632759448088 -0.0538252207421" universe="18" />
+  <cell fill="9" id="296" region="-289" translation="0.110588836699 -0.0389541758206 0.16834558789" universe="19" />
+  <cell fill="9" id="297" region="-290" translation="0.110588836699 -0.0389541758206 -0.164987745443" universe="28" />
+  <cell fill="9" id="298" region="-291" translation="-0.0265701006572 0.0131449788411 0.0505879445141" universe="32" />
+  <cell id="299" material="18" region="139 186 197 265 284" universe="11" />
+  <cell id="300" material="18" region="140 176 181 188 232 243 255 266 273 285" universe="12" />
+  <cell id="301" material="18" region="136 187 227 233 248 256" universe="13" />
+  <cell id="302" material="18" region="138 190 220 254" universe="14" />
+  <cell id="303" material="18" region="141 156 163 166 177 189 195 202 221 274 283" universe="15" />
+  <cell id="304" material="18" region="151 203 215 228 245 249" universe="16" />
+  <cell id="305" material="18" universe="17" />
+  <cell id="306" material="18" region="130 168 231 288" universe="18" />
+  <cell id="307" material="18" region="131 152 224 241 247 252 289" universe="19" />
+  <cell id="308" material="18" region="145 218 260 279" universe="20" />
+  <cell id="309" material="18" region="170 175 178 198 207 263 275 280" universe="21" />
+  <cell id="310" material="18" region="133 199 257 264" universe="22" />
+  <cell id="311" material="18" region="129 146 158 191 205 222 281" universe="23" />
+  <cell id="312" material="18" region="160 179 180 192 208 223 276 282" universe="24" />
+  <cell id="313" material="18" region="142 153 161 173 246 258 261" universe="25" />
+  <cell id="314" material="18" region="132 157 184 193 196 206 244 251 267" universe="26" />
+  <cell id="315" material="18" region="137 149 162 169 194 235 268" universe="27" />
+  <cell id="316" material="18" region="150 154 204 216 242 253 290" universe="28" />
+  <cell id="317" material="18" region="147 209 219 225 236 240 250" universe="29" />
+  <cell id="318" material="18" region="134 174 200 237 286" universe="30" />
+  <cell id="319" material="18" region="135 171 201 211 234" universe="31" />
+  <cell id="320" material="18" region="148 159 164 182 210 226 238 291" universe="32" />
+  <cell id="321" material="18" region="239 269 287" universe="33" />
+  <cell id="322" material="18" region="143 212 262 270" universe="34" />
+  <cell id="323" material="18" region="128 144 165 185 213 277" universe="35" />
+  <cell id="324" material="18" region="155 167 214 229 271 278" universe="36" />
+  <cell id="325" material="18" region="172 183 217 230 259 272" universe="37" />
+  <cell id="326" material="18" universe="38" />
+  <lattice id="10">
+    <pitch>0.333333333333 0.333333333333 0.333333333333</pitch>
+    <outer>38</outer>
+    <dimension>3 3 3</dimension>
+    <lower_left>-0.5 -0.5 -0.5</lower_left>
+    <universes>
+17 18 19 
+14 15 16 
+11 12 13 
 
-10017 10018 10019 
-10014 10015 10016 
-10011 10012 10013 
+26 27 28 
+23 24 25 
+20 21 22 
 
-10026 10027 10028 
-10023 10024 10025 
-10020 10021 10022 </universes>
-    </lattice>
-    <surface coeffs="0.0 0.0 0.0 0.02125" id="10000" type="sphere" />
-    <surface coeffs="0.0 0.0 0.0 0.03125" id="10001" type="sphere" />
-    <surface coeffs="0.0 0.0 0.0 0.03475" id="10002" type="sphere" />
-    <surface coeffs="0.0 0.0 0.0 0.03825" id="10003" type="sphere" />
-    <surface boundary="reflective" coeffs="-0.5" id="10104" type="x-plane" />
-    <surface boundary="reflective" coeffs="0.5" id="10105" type="x-plane" />
-    <surface boundary="reflective" coeffs="-0.5" id="10106" type="y-plane" />
-    <surface boundary="reflective" coeffs="0.5" id="10107" type="y-plane" />
-    <surface boundary="reflective" coeffs="-0.5" id="10108" type="z-plane" />
-    <surface boundary="reflective" coeffs="0.5" id="10109" type="z-plane" />
-    <surface coeffs="-0.00140620118176 -0.0152577471673 -0.0918476696602 0.04225" id="10110" type="sphere" />
-    <surface coeffs="0.109099026398 -0.00417917776733 -0.0462409301859 0.04225" id="10111" type="sphere" />
-    <surface coeffs="0.138783366528 -0.0690071053688 -0.0384882149749 0.04225" id="10112" type="sphere" />
-    <surface coeffs="-0.194549966806 -0.0690071053688 -0.0384882149749 0.04225" id="10113" type="sphere" />
-    <surface coeffs="-0.0984645519108 -0.0259403806947 -0.0615517493329 0.04225" id="10114" type="sphere" />
-    <surface coeffs="-0.0932159178431 -0.122488574824 -0.0499980238428 0.04225" id="10115" type="sphere" />
-    <surface coeffs="0.202819899608 0.0850151469064 0.0743119884463 0.04225" id="10116" type="sphere" />
-    <surface coeffs="-0.130513433725 0.0850151469064 0.0743119884463 0.04225" id="10117" type="sphere" />
-    <surface coeffs="0.03417350411 -0.0964115371994 -0.101120980927 0.04225" id="10118" type="sphere" />
-    <surface coeffs="0.0379131188424 0.0687077251904 -0.108757520396 0.04225" id="10119" type="sphere" />
-    <surface coeffs="0.0738800814064 -0.071302275054 -0.0978298256419 0.04225" id="10120" type="sphere" />
-    <surface coeffs="0.0889721475441 0.0869416521141 0.075877373016 0.04225" id="10121" type="sphere" />
-    <surface coeffs="-0.0369830271171 0.140878401491 -0.104742841496 0.04225" id="10122" type="sphere" />
-    <surface coeffs="-0.0369830271171 -0.192454931842 -0.104742841496 0.04225" id="10123" type="sphere" />
-    <surface coeffs="-0.0242806966142 0.0516839323883 0.130270489265 0.04225" id="10124" type="sphere" />
-    <surface coeffs="-0.0242806966142 0.0516839323883 -0.203062844069 0.04225" id="10125" type="sphere" />
-    <surface coeffs="0.0457805197599 0.117590160514 -0.00380228622125 0.04225" id="10126" type="sphere" />
-    <surface coeffs="-0.0137419084645 0.180165775531 0.202768975142 0.04225" id="10127" type="sphere" />
-    <surface coeffs="-0.0137419084645 -0.153167557803 0.202768975142 0.04225" id="10128" type="sphere" />
-    <surface coeffs="-0.0137419084645 0.180165775531 -0.130564358191 0.04225" id="10129" type="sphere" />
-    <surface coeffs="-0.0137419084645 -0.153167557803 -0.130564358191 0.04225" id="10130" type="sphere" />
-    <surface coeffs="0.193346065156 0.0662280238816 -0.0713110415353 0.04225" id="10131" type="sphere" />
-    <surface coeffs="-0.139987268177 0.0662280238816 -0.0713110415353 0.04225" id="10132" type="sphere" />
-    <surface coeffs="-0.0311856561407 0.155914746052 0.153317205092 0.04225" id="10133" type="sphere" />
-    <surface coeffs="-0.0311856561407 -0.177418587281 0.153317205092 0.04225" id="10134" type="sphere" />
-    <surface coeffs="-0.0311856561407 0.155914746052 -0.180016128241 0.04225" id="10135" type="sphere" />
-    <surface coeffs="-0.0311856561407 -0.177418587281 -0.180016128241 0.04225" id="10136" type="sphere" />
-    <surface coeffs="0.0801800449244 0.0168261919282 -0.0163895967622 0.04225" id="10137" type="sphere" />
-    <surface coeffs="0.00483733774062 0.081481567183 -0.0928082691631 0.04225" id="10138" type="sphere" />
-    <surface coeffs="0.097811779112 -0.0610597446974 -0.0784455336401 0.04225" id="10139" type="sphere" />
-    <surface coeffs="0.033971609479 0.0446752660509 0.185883817671 0.04225" id="10140" type="sphere" />
-    <surface coeffs="0.033971609479 0.0446752660509 -0.147449515662 0.04225" id="10141" type="sphere" />
-    <surface coeffs="0.159741777825 -0.114709384731 -0.0558806276942 0.04225" id="10142" type="sphere" />
-    <surface coeffs="-0.173591555508 -0.114709384731 -0.0558806276942 0.04225" id="10143" type="sphere" />
-    <surface coeffs="0.00771444999286 -0.0784191193007 0.0191691213248 0.04225" id="10144" type="sphere" />
-    <surface coeffs="-0.0977249605603 -0.0094355820168 -0.097340787155 0.04225" id="10145" type="sphere" />
-    <surface coeffs="-0.0846040523453 0.186196302117 0.109025021864 0.04225" id="10146" type="sphere" />
-    <surface coeffs="-0.0846040523453 -0.147137031217 0.109025021864 0.04225" id="10147" type="sphere" />
-    <surface coeffs="0.0853097051629 -0.097409487121 0.0315380230547 0.04225" id="10148" type="sphere" />
-    <surface coeffs="0.00204940024585 0.108007828333 -0.0856693988182 0.04225" id="10149" type="sphere" />
-    <surface coeffs="0.0362697740558 -0.00348804073157 0.088140578575 0.04225" id="10150" type="sphere" />
-    <surface coeffs="0.0126079576483 0.0809005606263 0.071221146542 0.04225" id="10151" type="sphere" />
-    <surface coeffs="-0.0374148994358 0.122108694931 0.0439406213164 0.04225" id="10152" type="sphere" />
-    <surface coeffs="0.0851566223435 -0.119189958655 -0.0736469678739 0.04225" id="10153" type="sphere" />
-    <surface coeffs="-0.0399284809656 0.0202140729129 -0.1131524598 0.04225" id="10154" type="sphere" />
-    <surface coeffs="-0.0503157540846 0.0170999685653 0.0561731252046 0.04225" id="10155" type="sphere" />
-    <surface coeffs="-0.0676639827455 -0.0730357877864 0.00541096373088 0.04225" id="10156" type="sphere" />
-    <surface coeffs="0.0640843901638 0.0585363225055 0.00432158793112 0.04225" id="10157" type="sphere" />
-    <surface coeffs="-0.0138010597555 0.202224545874 0.192417668194 0.04225" id="10158" type="sphere" />
-    <surface coeffs="-0.0138010597555 -0.131108787459 0.192417668194 0.04225" id="10159" type="sphere" />
-    <surface coeffs="-0.0138010597555 0.202224545874 -0.140915665139 0.04225" id="10160" type="sphere" />
-    <surface coeffs="-0.0138010597555 -0.131108787459 -0.140915665139 0.04225" id="10161" type="sphere" />
-    <surface coeffs="0.035227337498 0.113054594036 0.102950231509 0.04225" id="10162" type="sphere" />
-    <surface coeffs="-0.0383166045087 -0.0988055687379 0.0857867394674 0.04225" id="10163" type="sphere" />
-    <surface coeffs="0.0378202408916 0.0773239271977 -0.00282972122211 0.04225" id="10164" type="sphere" />
-    <surface coeffs="-0.0601124832347 -0.0613405147405 -0.043634920585 0.04225" id="10165" type="sphere" />
-    <surface coeffs="0.109305027033 -0.0204659393864 0.158485432539 0.04225" id="10166" type="sphere" />
-    <surface coeffs="0.109305027033 -0.0204659393864 -0.174847900794 0.04225" id="10167" type="sphere" />
-    <surface coeffs="-0.0482158135072 -0.109136394796 -0.111087009623 0.04225" id="10168" type="sphere" />
-    <surface coeffs="-0.0993436405899 0.104054804419 -0.0241798283787 0.04225" id="10169" type="sphere" />
-    <surface coeffs="0.114256308042 0.190902465414 -0.0607753376217 0.04225" id="10170" type="sphere" />
-    <surface coeffs="0.114256308042 -0.14243086792 -0.0607753376217 0.04225" id="10171" type="sphere" />
-    <surface coeffs="0.0217205011906 0.0250667553285 0.0295200316 0.04225" id="10172" type="sphere" />
-    <surface coeffs="0.125436500241 0.193710578338 -0.0414706576932 0.04225" id="10173" type="sphere" />
-    <surface coeffs="-0.207896833092 0.193710578338 -0.0414706576932 0.04225" id="10174" type="sphere" />
-    <surface coeffs="0.125436500241 -0.139622754995 -0.0414706576932 0.04225" id="10175" type="sphere" />
-    <surface coeffs="-0.207896833092 -0.139622754995 -0.0414706576932 0.04225" id="10176" type="sphere" />
-    <surface coeffs="-0.103856970591 -0.0723989491841 0.0477333168332 0.04225" id="10177" type="sphere" />
-    <surface coeffs="-0.0248453372329 0.0327005037426 0.0092611805402 0.04225" id="10178" type="sphere" />
-    <surface coeffs="-0.105357688326 -0.108061697849 0.00966905666893 0.04225" id="10179" type="sphere" />
-    <surface coeffs="0.200343875313 0.0222716943858 0.187316452299 0.04225" id="10180" type="sphere" />
-    <surface coeffs="-0.13298945802 0.0222716943858 0.187316452299 0.04225" id="10181" type="sphere" />
-    <surface coeffs="0.200343875313 0.0222716943858 -0.146016881035 0.04225" id="10182" type="sphere" />
-    <surface coeffs="-0.13298945802 0.0222716943858 -0.146016881035 0.04225" id="10183" type="sphere" />
-    <surface coeffs="0.163119940576 0.0409248307565 0.0775424026481 0.04225" id="10184" type="sphere" />
-    <surface coeffs="-0.170213392757 0.0409248307565 0.0775424026481 0.04225" id="10185" type="sphere" />
-    <surface coeffs="0.102073447729 -0.0606874931034 0.0151968577672 0.04225" id="10186" type="sphere" />
-    <surface coeffs="0.0799190701492 0.13595762577 -0.0962208719747 0.04225" id="10187" type="sphere" />
-    <surface coeffs="0.0799190701492 -0.197375707563 -0.0962208719747 0.04225" id="10188" type="sphere" />
-    <surface coeffs="0.0694369789325 0.169683871789 0.119882766994 0.04225" id="10189" type="sphere" />
-    <surface coeffs="0.0694369789325 -0.163649461545 0.119882766994 0.04225" id="10190" type="sphere" />
-    <surface coeffs="-0.0705988927796 0.148957080213 0.0950321471098 0.04225" id="10191" type="sphere" />
-    <surface coeffs="-0.0705988927796 -0.18437625312 0.0950321471098 0.04225" id="10192" type="sphere" />
-    <surface coeffs="0.010468267264 0.156080284248 -0.0051133943139 0.04225" id="10193" type="sphere" />
-    <surface coeffs="0.010468267264 -0.177253049085 -0.0051133943139 0.04225" id="10194" type="sphere" />
-    <surface coeffs="0.159721234175 0.0688352262865 -0.110095873694 0.04225" id="10195" type="sphere" />
-    <surface coeffs="-0.173612099158 0.0688352262865 -0.110095873694 0.04225" id="10196" type="sphere" />
-    <surface coeffs="0.0898117967697 0.0643418620595 0.0326072339685 0.04225" id="10197" type="sphere" />
-    <surface coeffs="0.0033702311569 0.100407895371 0.186783186803 0.04225" id="10198" type="sphere" />
-    <surface coeffs="0.0033702311569 0.100407895371 -0.14655014653 0.04225" id="10199" type="sphere" />
-    <surface coeffs="0.0532989528173 -0.0288162906553 0.151934117139 0.04225" id="10200" type="sphere" />
-    <surface coeffs="0.0532989528173 -0.0288162906553 -0.181399216194 0.04225" id="10201" type="sphere" />
-    <surface coeffs="0.146637865541 -0.000183171192208 0.173437280372 0.04225" id="10202" type="sphere" />
-    <surface coeffs="-0.186695467792 -0.000183171192208 0.173437280372 0.04225" id="10203" type="sphere" />
-    <surface coeffs="0.146637865541 -0.000183171192208 -0.159896052961 0.04225" id="10204" type="sphere" />
-    <surface coeffs="-0.186695467792 -0.000183171192208 -0.159896052961 0.04225" id="10205" type="sphere" />
-    <surface coeffs="0.00688615671293 0.0325721225173 -0.107852540144 0.04225" id="10206" type="sphere" />
-    <surface coeffs="0.0594642653073 0.175629948849 0.11256068343 0.04225" id="10207" type="sphere" />
-    <surface coeffs="0.0594642653073 -0.157703384484 0.11256068343 0.04225" id="10208" type="sphere" />
-    <surface coeffs="-0.0745211393531 0.186025398941 0.07061211192 0.04225" id="10209" type="sphere" />
-    <surface coeffs="-0.0745211393531 -0.147307934392 0.07061211192 0.04225" id="10210" type="sphere" />
-    <surface coeffs="0.159713616332 -0.0241680036074 0.0623342971853 0.04225" id="10211" type="sphere" />
-    <surface coeffs="-0.173619717001 -0.0241680036074 0.0623342971853 0.04225" id="10212" type="sphere" />
-    <surface coeffs="-0.0141914194483 0.111149451072 0.0903966514578 0.04225" id="10213" type="sphere" />
-    <surface coeffs="0.206413378004 -0.0468919157204 0.0309383201461 0.04225" id="10214" type="sphere" />
-    <surface coeffs="-0.126919955329 -0.0468919157204 0.0309383201461 0.04225" id="10215" type="sphere" />
-    <surface coeffs="0.0429259824683 0.070555715848 -0.0961124680564 0.04225" id="10216" type="sphere" />
-    <surface coeffs="0.0917411839861 -0.0210268081646 -0.120747126544 0.04225" id="10217" type="sphere" />
-    <surface coeffs="0.187114465978 0.142190928958 0.00303951516048 0.04225" id="10218" type="sphere" />
-    <surface coeffs="-0.146218867356 0.142190928958 0.00303951516048 0.04225" id="10219" type="sphere" />
-    <surface coeffs="0.187114465978 -0.191142404375 0.00303951516048 0.04225" id="10220" type="sphere" />
-    <surface coeffs="-0.146218867356 -0.191142404375 0.00303951516048 0.04225" id="10221" type="sphere" />
-    <surface coeffs="-0.0885860120512 -0.0574080917257 0.00189379783576 0.04225" id="10222" type="sphere" />
-    <surface coeffs="-0.0695627245254 -0.0325861164534 0.187674961732 0.04225" id="10223" type="sphere" />
-    <surface coeffs="-0.0695627245254 -0.0325861164534 -0.145658371601 0.04225" id="10224" type="sphere" />
-    <surface coeffs="0.0648004866859 0.0803935669348 -0.0495807099831 0.04225" id="10225" type="sphere" />
-    <surface coeffs="0.119768828483 0.0244148877182 0.0590010758314 0.04225" id="10226" type="sphere" />
-    <surface coeffs="0.055815690197 -0.0386622433477 0.129344155705 0.04225" id="10227" type="sphere" />
-    <surface coeffs="0.055815690197 -0.0386622433477 -0.203989177628 0.04225" id="10228" type="sphere" />
-    <surface coeffs="-0.0705714088439 -0.0332615859242 -0.113081179589 0.04225" id="10229" type="sphere" />
-    <surface coeffs="0.0191891610992 -0.0877751186437 0.0949676788695 0.04225" id="10230" type="sphere" />
-    <surface coeffs="0.11357577214 -0.0723120607076 -0.0186231523344 0.04225" id="10231" type="sphere" />
-    <surface coeffs="0.0288228703292 0.0966036043404 -0.109945458994 0.04225" id="10232" type="sphere" />
-    <surface coeffs="-0.0302720060162 0.0427214916014 -0.111437158817 0.04225" id="10233" type="sphere" />
-    <surface coeffs="0.0971933921082 0.0413100742886 0.144761925354 0.04225" id="10234" type="sphere" />
-    <surface coeffs="0.0971933921082 0.0413100742886 -0.18857140798 0.04225" id="10235" type="sphere" />
-    <surface coeffs="0.107580312879 -0.0210472571374 -0.03274843538 0.04225" id="10236" type="sphere" />
-    <surface coeffs="0.139201957633 -0.0881443612864 -0.114798284951 0.04225" id="10237" type="sphere" />
-    <surface coeffs="-0.194131375701 -0.0881443612864 -0.114798284951 0.04225" id="10238" type="sphere" />
-    <surface coeffs="0.108471976774 0.146159230208 0.088410423839 0.04225" id="10239" type="sphere" />
-    <surface coeffs="0.108471976774 -0.187174103125 0.088410423839 0.04225" id="10240" type="sphere" />
-    <surface coeffs="0.0451270583821 0.096780721612 0.0967653665332 0.04225" id="10241" type="sphere" />
-    <surface coeffs="-0.0224644717455 0.0725927720514 0.107852198651 0.04225" id="10242" type="sphere" />
-    <surface coeffs="0.106063533699 0.0392870322973 0.172287769268 0.04225" id="10243" type="sphere" />
-    <surface coeffs="0.106063533699 0.0392870322973 -0.161045564066 0.04225" id="10244" type="sphere" />
-    <surface coeffs="0.148159419635 0.112776558875 0.0380868716968 0.04225" id="10245" type="sphere" />
-    <surface coeffs="-0.185173913698 0.112776558875 0.0380868716968 0.04225" id="10246" type="sphere" />
-    <surface coeffs="0.156935816691 0.101145318349 -0.0499235619578 0.04225" id="10247" type="sphere" />
-    <surface coeffs="-0.176397516643 0.101145318349 -0.0499235619578 0.04225" id="10248" type="sphere" />
-    <surface coeffs="0.132643578757 0.109198051281 -0.0476954987918 0.04225" id="10249" type="sphere" />
-    <surface coeffs="-0.200689754577 0.109198051281 -0.0476954987918 0.04225" id="10250" type="sphere" />
-    <surface coeffs="0.139165644346 0.131343196487 0.0701591217856 0.04225" id="10251" type="sphere" />
-    <surface coeffs="-0.194167688987 0.131343196487 0.0701591217856 0.04225" id="10252" type="sphere" />
-    <surface coeffs="0.139165644346 -0.201990136846 0.0701591217856 0.04225" id="10253" type="sphere" />
-    <surface coeffs="-0.194167688987 -0.201990136846 0.0701591217856 0.04225" id="10254" type="sphere" />
-    <surface coeffs="-0.100266886432 0.15644435527 0.175172848479 0.04225" id="10255" type="sphere" />
-    <surface coeffs="-0.100266886432 -0.176888978063 0.175172848479 0.04225" id="10256" type="sphere" />
-    <surface coeffs="-0.100266886432 0.15644435527 -0.158160484854 0.04225" id="10257" type="sphere" />
-    <surface coeffs="-0.100266886432 -0.176888978063 -0.158160484854 0.04225" id="10258" type="sphere" />
-    <surface coeffs="0.165554360307 -0.0155314552194 0.0269161414417 0.04225" id="10259" type="sphere" />
-    <surface coeffs="-0.167778973026 -0.0155314552194 0.0269161414417 0.04225" id="10260" type="sphere" />
-    <surface coeffs="0.152805274649 0.181665566207 0.0404883666838 0.04225" id="10261" type="sphere" />
-    <surface coeffs="-0.180528058685 0.181665566207 0.0404883666838 0.04225" id="10262" type="sphere" />
-    <surface coeffs="0.152805274649 -0.151667767127 0.0404883666838 0.04225" id="10263" type="sphere" />
-    <surface coeffs="-0.180528058685 -0.151667767127 0.0404883666838 0.04225" id="10264" type="sphere" />
-    <surface coeffs="0.0723111669483 0.0878537053709 0.0999705558994 0.04225" id="10265" type="sphere" />
-    <surface coeffs="-0.105764243624 0.0987449723258 -0.0582008094074 0.04225" id="10266" type="sphere" />
-    <surface coeffs="0.0468779531251 -0.0594927321842 -0.0556353418577 0.04225" id="10267" type="sphere" />
-    <surface coeffs="0.123942306657 0.141830462742 -0.0658381874921 0.04225" id="10268" type="sphere" />
-    <surface coeffs="0.123942306657 -0.191502870591 -0.0658381874921 0.04225" id="10269" type="sphere" />
-    <surface coeffs="0.0013087859342 -0.0632759448088 -0.0538252207421 0.04225" id="10270" type="sphere" />
-    <surface coeffs="0.110588836699 -0.0389541758206 0.16834558789 0.04225" id="10271" type="sphere" />
-    <surface coeffs="0.110588836699 -0.0389541758206 -0.164987745443 0.04225" id="10272" type="sphere" />
-    <surface coeffs="-0.0265701006572 0.0131449788411 0.0505879445141 0.04225" id="10273" type="sphere" />
+35 36 37 
+32 33 34 
+29 30 31 </universes>
+  </lattice>
+  <surface coeffs="0.0 0.0 0.0 0.02125" id="9" type="sphere" />
+  <surface coeffs="0.0 0.0 0.0 0.03125" id="10" type="sphere" />
+  <surface coeffs="0.0 0.0 0.0 0.03475" id="11" type="sphere" />
+  <surface coeffs="0.0 0.0 0.0 0.03825" id="12" type="sphere" />
+  <surface boundary="reflective" coeffs="-0.5" id="122" type="x-plane" />
+  <surface boundary="reflective" coeffs="0.5" id="123" type="x-plane" />
+  <surface boundary="reflective" coeffs="-0.5" id="124" type="y-plane" />
+  <surface boundary="reflective" coeffs="0.5" id="125" type="y-plane" />
+  <surface boundary="reflective" coeffs="-0.5" id="126" type="z-plane" />
+  <surface boundary="reflective" coeffs="0.5" id="127" type="z-plane" />
+  <surface coeffs="-0.00140620118176 -0.0152577471673 -0.0918476696602 0.04225" id="128" type="sphere" />
+  <surface coeffs="0.109099026398 -0.00417917776733 -0.0462409301859 0.04225" id="129" type="sphere" />
+  <surface coeffs="0.138783366528 -0.0690071053688 -0.0384882149749 0.04225" id="130" type="sphere" />
+  <surface coeffs="-0.194549966806 -0.0690071053688 -0.0384882149749 0.04225" id="131" type="sphere" />
+  <surface coeffs="-0.0984645519108 -0.0259403806947 -0.0615517493329 0.04225" id="132" type="sphere" />
+  <surface coeffs="-0.0932159178431 -0.122488574824 -0.0499980238428 0.04225" id="133" type="sphere" />
+  <surface coeffs="0.202819899608 0.0850151469064 0.0743119884463 0.04225" id="134" type="sphere" />
+  <surface coeffs="-0.130513433725 0.0850151469064 0.0743119884463 0.04225" id="135" type="sphere" />
+  <surface coeffs="0.03417350411 -0.0964115371994 -0.101120980927 0.04225" id="136" type="sphere" />
+  <surface coeffs="0.0379131188424 0.0687077251904 -0.108757520396 0.04225" id="137" type="sphere" />
+  <surface coeffs="0.0738800814064 -0.071302275054 -0.0978298256419 0.04225" id="138" type="sphere" />
+  <surface coeffs="0.0889721475441 0.0869416521141 0.075877373016 0.04225" id="139" type="sphere" />
+  <surface coeffs="-0.0369830271171 0.140878401491 -0.104742841496 0.04225" id="140" type="sphere" />
+  <surface coeffs="-0.0369830271171 -0.192454931842 -0.104742841496 0.04225" id="141" type="sphere" />
+  <surface coeffs="-0.0242806966142 0.0516839323883 0.130270489265 0.04225" id="142" type="sphere" />
+  <surface coeffs="-0.0242806966142 0.0516839323883 -0.203062844069 0.04225" id="143" type="sphere" />
+  <surface coeffs="0.0457805197599 0.117590160514 -0.00380228622125 0.04225" id="144" type="sphere" />
+  <surface coeffs="-0.0137419084645 0.180165775531 0.202768975142 0.04225" id="145" type="sphere" />
+  <surface coeffs="-0.0137419084645 -0.153167557803 0.202768975142 0.04225" id="146" type="sphere" />
+  <surface coeffs="-0.0137419084645 0.180165775531 -0.130564358191 0.04225" id="147" type="sphere" />
+  <surface coeffs="-0.0137419084645 -0.153167557803 -0.130564358191 0.04225" id="148" type="sphere" />
+  <surface coeffs="0.193346065156 0.0662280238816 -0.0713110415353 0.04225" id="149" type="sphere" />
+  <surface coeffs="-0.139987268177 0.0662280238816 -0.0713110415353 0.04225" id="150" type="sphere" />
+  <surface coeffs="-0.0311856561407 0.155914746052 0.153317205092 0.04225" id="151" type="sphere" />
+  <surface coeffs="-0.0311856561407 -0.177418587281 0.153317205092 0.04225" id="152" type="sphere" />
+  <surface coeffs="-0.0311856561407 0.155914746052 -0.180016128241 0.04225" id="153" type="sphere" />
+  <surface coeffs="-0.0311856561407 -0.177418587281 -0.180016128241 0.04225" id="154" type="sphere" />
+  <surface coeffs="0.0801800449244 0.0168261919282 -0.0163895967622 0.04225" id="155" type="sphere" />
+  <surface coeffs="0.00483733774062 0.081481567183 -0.0928082691631 0.04225" id="156" type="sphere" />
+  <surface coeffs="0.097811779112 -0.0610597446974 -0.0784455336401 0.04225" id="157" type="sphere" />
+  <surface coeffs="0.033971609479 0.0446752660509 0.185883817671 0.04225" id="158" type="sphere" />
+  <surface coeffs="0.033971609479 0.0446752660509 -0.147449515662 0.04225" id="159" type="sphere" />
+  <surface coeffs="0.159741777825 -0.114709384731 -0.0558806276942 0.04225" id="160" type="sphere" />
+  <surface coeffs="-0.173591555508 -0.114709384731 -0.0558806276942 0.04225" id="161" type="sphere" />
+  <surface coeffs="0.00771444999286 -0.0784191193007 0.0191691213248 0.04225" id="162" type="sphere" />
+  <surface coeffs="-0.0977249605603 -0.0094355820168 -0.097340787155 0.04225" id="163" type="sphere" />
+  <surface coeffs="-0.0846040523453 0.186196302117 0.109025021864 0.04225" id="164" type="sphere" />
+  <surface coeffs="-0.0846040523453 -0.147137031217 0.109025021864 0.04225" id="165" type="sphere" />
+  <surface coeffs="0.0853097051629 -0.097409487121 0.0315380230547 0.04225" id="166" type="sphere" />
+  <surface coeffs="0.00204940024585 0.108007828333 -0.0856693988182 0.04225" id="167" type="sphere" />
+  <surface coeffs="0.0362697740558 -0.00348804073157 0.088140578575 0.04225" id="168" type="sphere" />
+  <surface coeffs="0.0126079576483 0.0809005606263 0.071221146542 0.04225" id="169" type="sphere" />
+  <surface coeffs="-0.0374148994358 0.122108694931 0.0439406213164 0.04225" id="170" type="sphere" />
+  <surface coeffs="0.0851566223435 -0.119189958655 -0.0736469678739 0.04225" id="171" type="sphere" />
+  <surface coeffs="-0.0399284809656 0.0202140729129 -0.1131524598 0.04225" id="172" type="sphere" />
+  <surface coeffs="-0.0503157540846 0.0170999685653 0.0561731252046 0.04225" id="173" type="sphere" />
+  <surface coeffs="-0.0676639827455 -0.0730357877864 0.00541096373088 0.04225" id="174" type="sphere" />
+  <surface coeffs="0.0640843901638 0.0585363225055 0.00432158793112 0.04225" id="175" type="sphere" />
+  <surface coeffs="-0.0138010597555 0.202224545874 0.192417668194 0.04225" id="176" type="sphere" />
+  <surface coeffs="-0.0138010597555 -0.131108787459 0.192417668194 0.04225" id="177" type="sphere" />
+  <surface coeffs="-0.0138010597555 0.202224545874 -0.140915665139 0.04225" id="178" type="sphere" />
+  <surface coeffs="-0.0138010597555 -0.131108787459 -0.140915665139 0.04225" id="179" type="sphere" />
+  <surface coeffs="0.035227337498 0.113054594036 0.102950231509 0.04225" id="180" type="sphere" />
+  <surface coeffs="-0.0383166045087 -0.0988055687379 0.0857867394674 0.04225" id="181" type="sphere" />
+  <surface coeffs="0.0378202408916 0.0773239271977 -0.00282972122211 0.04225" id="182" type="sphere" />
+  <surface coeffs="-0.0601124832347 -0.0613405147405 -0.043634920585 0.04225" id="183" type="sphere" />
+  <surface coeffs="0.109305027033 -0.0204659393864 0.158485432539 0.04225" id="184" type="sphere" />
+  <surface coeffs="0.109305027033 -0.0204659393864 -0.174847900794 0.04225" id="185" type="sphere" />
+  <surface coeffs="-0.0482158135072 -0.109136394796 -0.111087009623 0.04225" id="186" type="sphere" />
+  <surface coeffs="-0.0993436405899 0.104054804419 -0.0241798283787 0.04225" id="187" type="sphere" />
+  <surface coeffs="0.114256308042 0.190902465414 -0.0607753376217 0.04225" id="188" type="sphere" />
+  <surface coeffs="0.114256308042 -0.14243086792 -0.0607753376217 0.04225" id="189" type="sphere" />
+  <surface coeffs="0.0217205011906 0.0250667553285 0.0295200316 0.04225" id="190" type="sphere" />
+  <surface coeffs="0.125436500241 0.193710578338 -0.0414706576932 0.04225" id="191" type="sphere" />
+  <surface coeffs="-0.207896833092 0.193710578338 -0.0414706576932 0.04225" id="192" type="sphere" />
+  <surface coeffs="0.125436500241 -0.139622754995 -0.0414706576932 0.04225" id="193" type="sphere" />
+  <surface coeffs="-0.207896833092 -0.139622754995 -0.0414706576932 0.04225" id="194" type="sphere" />
+  <surface coeffs="-0.103856970591 -0.0723989491841 0.0477333168332 0.04225" id="195" type="sphere" />
+  <surface coeffs="-0.0248453372329 0.0327005037426 0.0092611805402 0.04225" id="196" type="sphere" />
+  <surface coeffs="-0.105357688326 -0.108061697849 0.00966905666893 0.04225" id="197" type="sphere" />
+  <surface coeffs="0.200343875313 0.0222716943858 0.187316452299 0.04225" id="198" type="sphere" />
+  <surface coeffs="-0.13298945802 0.0222716943858 0.187316452299 0.04225" id="199" type="sphere" />
+  <surface coeffs="0.200343875313 0.0222716943858 -0.146016881035 0.04225" id="200" type="sphere" />
+  <surface coeffs="-0.13298945802 0.0222716943858 -0.146016881035 0.04225" id="201" type="sphere" />
+  <surface coeffs="0.163119940576 0.0409248307565 0.0775424026481 0.04225" id="202" type="sphere" />
+  <surface coeffs="-0.170213392757 0.0409248307565 0.0775424026481 0.04225" id="203" type="sphere" />
+  <surface coeffs="0.102073447729 -0.0606874931034 0.0151968577672 0.04225" id="204" type="sphere" />
+  <surface coeffs="0.0799190701492 0.13595762577 -0.0962208719747 0.04225" id="205" type="sphere" />
+  <surface coeffs="0.0799190701492 -0.197375707563 -0.0962208719747 0.04225" id="206" type="sphere" />
+  <surface coeffs="0.0694369789325 0.169683871789 0.119882766994 0.04225" id="207" type="sphere" />
+  <surface coeffs="0.0694369789325 -0.163649461545 0.119882766994 0.04225" id="208" type="sphere" />
+  <surface coeffs="-0.0705988927796 0.148957080213 0.0950321471098 0.04225" id="209" type="sphere" />
+  <surface coeffs="-0.0705988927796 -0.18437625312 0.0950321471098 0.04225" id="210" type="sphere" />
+  <surface coeffs="0.010468267264 0.156080284248 -0.0051133943139 0.04225" id="211" type="sphere" />
+  <surface coeffs="0.010468267264 -0.177253049085 -0.0051133943139 0.04225" id="212" type="sphere" />
+  <surface coeffs="0.159721234175 0.0688352262865 -0.110095873694 0.04225" id="213" type="sphere" />
+  <surface coeffs="-0.173612099158 0.0688352262865 -0.110095873694 0.04225" id="214" type="sphere" />
+  <surface coeffs="0.0898117967697 0.0643418620595 0.0326072339685 0.04225" id="215" type="sphere" />
+  <surface coeffs="0.0033702311569 0.100407895371 0.186783186803 0.04225" id="216" type="sphere" />
+  <surface coeffs="0.0033702311569 0.100407895371 -0.14655014653 0.04225" id="217" type="sphere" />
+  <surface coeffs="0.0532989528173 -0.0288162906553 0.151934117139 0.04225" id="218" type="sphere" />
+  <surface coeffs="0.0532989528173 -0.0288162906553 -0.181399216194 0.04225" id="219" type="sphere" />
+  <surface coeffs="0.146637865541 -0.000183171192208 0.173437280372 0.04225" id="220" type="sphere" />
+  <surface coeffs="-0.186695467792 -0.000183171192208 0.173437280372 0.04225" id="221" type="sphere" />
+  <surface coeffs="0.146637865541 -0.000183171192208 -0.159896052961 0.04225" id="222" type="sphere" />
+  <surface coeffs="-0.186695467792 -0.000183171192208 -0.159896052961 0.04225" id="223" type="sphere" />
+  <surface coeffs="0.00688615671293 0.0325721225173 -0.107852540144 0.04225" id="224" type="sphere" />
+  <surface coeffs="0.0594642653073 0.175629948849 0.11256068343 0.04225" id="225" type="sphere" />
+  <surface coeffs="0.0594642653073 -0.157703384484 0.11256068343 0.04225" id="226" type="sphere" />
+  <surface coeffs="-0.0745211393531 0.186025398941 0.07061211192 0.04225" id="227" type="sphere" />
+  <surface coeffs="-0.0745211393531 -0.147307934392 0.07061211192 0.04225" id="228" type="sphere" />
+  <surface coeffs="0.159713616332 -0.0241680036074 0.0623342971853 0.04225" id="229" type="sphere" />
+  <surface coeffs="-0.173619717001 -0.0241680036074 0.0623342971853 0.04225" id="230" type="sphere" />
+  <surface coeffs="-0.0141914194483 0.111149451072 0.0903966514578 0.04225" id="231" type="sphere" />
+  <surface coeffs="0.206413378004 -0.0468919157204 0.0309383201461 0.04225" id="232" type="sphere" />
+  <surface coeffs="-0.126919955329 -0.0468919157204 0.0309383201461 0.04225" id="233" type="sphere" />
+  <surface coeffs="0.0429259824683 0.070555715848 -0.0961124680564 0.04225" id="234" type="sphere" />
+  <surface coeffs="0.0917411839861 -0.0210268081646 -0.120747126544 0.04225" id="235" type="sphere" />
+  <surface coeffs="0.187114465978 0.142190928958 0.00303951516048 0.04225" id="236" type="sphere" />
+  <surface coeffs="-0.146218867356 0.142190928958 0.00303951516048 0.04225" id="237" type="sphere" />
+  <surface coeffs="0.187114465978 -0.191142404375 0.00303951516048 0.04225" id="238" type="sphere" />
+  <surface coeffs="-0.146218867356 -0.191142404375 0.00303951516048 0.04225" id="239" type="sphere" />
+  <surface coeffs="-0.0885860120512 -0.0574080917257 0.00189379783576 0.04225" id="240" type="sphere" />
+  <surface coeffs="-0.0695627245254 -0.0325861164534 0.187674961732 0.04225" id="241" type="sphere" />
+  <surface coeffs="-0.0695627245254 -0.0325861164534 -0.145658371601 0.04225" id="242" type="sphere" />
+  <surface coeffs="0.0648004866859 0.0803935669348 -0.0495807099831 0.04225" id="243" type="sphere" />
+  <surface coeffs="0.119768828483 0.0244148877182 0.0590010758314 0.04225" id="244" type="sphere" />
+  <surface coeffs="0.055815690197 -0.0386622433477 0.129344155705 0.04225" id="245" type="sphere" />
+  <surface coeffs="0.055815690197 -0.0386622433477 -0.203989177628 0.04225" id="246" type="sphere" />
+  <surface coeffs="-0.0705714088439 -0.0332615859242 -0.113081179589 0.04225" id="247" type="sphere" />
+  <surface coeffs="0.0191891610992 -0.0877751186437 0.0949676788695 0.04225" id="248" type="sphere" />
+  <surface coeffs="0.11357577214 -0.0723120607076 -0.0186231523344 0.04225" id="249" type="sphere" />
+  <surface coeffs="0.0288228703292 0.0966036043404 -0.109945458994 0.04225" id="250" type="sphere" />
+  <surface coeffs="-0.0302720060162 0.0427214916014 -0.111437158817 0.04225" id="251" type="sphere" />
+  <surface coeffs="0.0971933921082 0.0413100742886 0.144761925354 0.04225" id="252" type="sphere" />
+  <surface coeffs="0.0971933921082 0.0413100742886 -0.18857140798 0.04225" id="253" type="sphere" />
+  <surface coeffs="0.107580312879 -0.0210472571374 -0.03274843538 0.04225" id="254" type="sphere" />
+  <surface coeffs="0.139201957633 -0.0881443612864 -0.114798284951 0.04225" id="255" type="sphere" />
+  <surface coeffs="-0.194131375701 -0.0881443612864 -0.114798284951 0.04225" id="256" type="sphere" />
+  <surface coeffs="0.108471976774 0.146159230208 0.088410423839 0.04225" id="257" type="sphere" />
+  <surface coeffs="0.108471976774 -0.187174103125 0.088410423839 0.04225" id="258" type="sphere" />
+  <surface coeffs="0.0451270583821 0.096780721612 0.0967653665332 0.04225" id="259" type="sphere" />
+  <surface coeffs="-0.0224644717455 0.0725927720514 0.107852198651 0.04225" id="260" type="sphere" />
+  <surface coeffs="0.106063533699 0.0392870322973 0.172287769268 0.04225" id="261" type="sphere" />
+  <surface coeffs="0.106063533699 0.0392870322973 -0.161045564066 0.04225" id="262" type="sphere" />
+  <surface coeffs="0.148159419635 0.112776558875 0.0380868716968 0.04225" id="263" type="sphere" />
+  <surface coeffs="-0.185173913698 0.112776558875 0.0380868716968 0.04225" id="264" type="sphere" />
+  <surface coeffs="0.156935816691 0.101145318349 -0.0499235619578 0.04225" id="265" type="sphere" />
+  <surface coeffs="-0.176397516643 0.101145318349 -0.0499235619578 0.04225" id="266" type="sphere" />
+  <surface coeffs="0.132643578757 0.109198051281 -0.0476954987918 0.04225" id="267" type="sphere" />
+  <surface coeffs="-0.200689754577 0.109198051281 -0.0476954987918 0.04225" id="268" type="sphere" />
+  <surface coeffs="0.139165644346 0.131343196487 0.0701591217856 0.04225" id="269" type="sphere" />
+  <surface coeffs="-0.194167688987 0.131343196487 0.0701591217856 0.04225" id="270" type="sphere" />
+  <surface coeffs="0.139165644346 -0.201990136846 0.0701591217856 0.04225" id="271" type="sphere" />
+  <surface coeffs="-0.194167688987 -0.201990136846 0.0701591217856 0.04225" id="272" type="sphere" />
+  <surface coeffs="-0.100266886432 0.15644435527 0.175172848479 0.04225" id="273" type="sphere" />
+  <surface coeffs="-0.100266886432 -0.176888978063 0.175172848479 0.04225" id="274" type="sphere" />
+  <surface coeffs="-0.100266886432 0.15644435527 -0.158160484854 0.04225" id="275" type="sphere" />
+  <surface coeffs="-0.100266886432 -0.176888978063 -0.158160484854 0.04225" id="276" type="sphere" />
+  <surface coeffs="0.165554360307 -0.0155314552194 0.0269161414417 0.04225" id="277" type="sphere" />
+  <surface coeffs="-0.167778973026 -0.0155314552194 0.0269161414417 0.04225" id="278" type="sphere" />
+  <surface coeffs="0.152805274649 0.181665566207 0.0404883666838 0.04225" id="279" type="sphere" />
+  <surface coeffs="-0.180528058685 0.181665566207 0.0404883666838 0.04225" id="280" type="sphere" />
+  <surface coeffs="0.152805274649 -0.151667767127 0.0404883666838 0.04225" id="281" type="sphere" />
+  <surface coeffs="-0.180528058685 -0.151667767127 0.0404883666838 0.04225" id="282" type="sphere" />
+  <surface coeffs="0.0723111669483 0.0878537053709 0.0999705558994 0.04225" id="283" type="sphere" />
+  <surface coeffs="-0.105764243624 0.0987449723258 -0.0582008094074 0.04225" id="284" type="sphere" />
+  <surface coeffs="0.0468779531251 -0.0594927321842 -0.0556353418577 0.04225" id="285" type="sphere" />
+  <surface coeffs="0.123942306657 0.141830462742 -0.0658381874921 0.04225" id="286" type="sphere" />
+  <surface coeffs="0.123942306657 -0.191502870591 -0.0658381874921 0.04225" id="287" type="sphere" />
+  <surface coeffs="0.0013087859342 -0.0632759448088 -0.0538252207421 0.04225" id="288" type="sphere" />
+  <surface coeffs="0.110588836699 -0.0389541758206 0.16834558789 0.04225" id="289" type="sphere" />
+  <surface coeffs="0.110588836699 -0.0389541758206 -0.164987745443 0.04225" id="290" type="sphere" />
+  <surface coeffs="-0.0265701006572 0.0131449788411 0.0505879445141 0.04225" id="291" type="sphere" />
 </geometry>
 <?xml version='1.0' encoding='utf-8'?>
 <materials>
-    <material id="10000">
-        <density units="g/cm3" value="10.5" />
-        <nuclide ao="0.14154" name="U235" />
-        <nuclide ao="0.85846" name="U238" />
-        <nuclide ao="0.5" name="C0" />
-        <nuclide ao="1.5" name="O16" />
-    </material>
-    <material id="10001">
-        <density units="g/cm3" value="1.0" />
-        <nuclide ao="1.0" name="C0" />
-        <sab name="c_Graphite" />
-    </material>
-    <material id="10002">
-        <density units="g/cm3" value="1.9" />
-        <nuclide ao="1.0" name="C0" />
-        <sab name="c_Graphite" />
-    </material>
-    <material id="10003">
-        <density units="g/cm3" value="3.2" />
-        <nuclide ao="1.0" name="C0" />
-        <nuclide ao="0.9222968" name="Si28" />
-        <nuclide ao="0.0468316" name="Si29" />
-        <nuclide ao="0.0308716" name="Si30" />
-    </material>
-    <material id="10004">
-        <density units="g/cm3" value="1.87" />
-        <nuclide ao="1.0" name="C0" />
-        <sab name="c_Graphite" />
-    </material>
-    <material id="10005">
-        <density units="g/cm3" value="1.1995" />
-        <nuclide ao="1.0" name="C0" />
-        <sab name="c_Graphite" />
-    </material>
+  <material id="13">
+    <density units="g/cm3" value="10.5" />
+    <nuclide ao="0.14154" name="U235" />
+    <nuclide ao="0.85846" name="U238" />
+    <nuclide ao="0.5" name="C0" />
+    <nuclide ao="1.5" name="O16" />
+  </material>
+  <material id="14">
+    <density units="g/cm3" value="1.0" />
+    <nuclide ao="1.0" name="C0" />
+    <sab name="c_Graphite" />
+  </material>
+  <material id="15">
+    <density units="g/cm3" value="1.9" />
+    <nuclide ao="1.0" name="C0" />
+    <sab name="c_Graphite" />
+  </material>
+  <material id="16">
+    <density units="g/cm3" value="3.2" />
+    <nuclide ao="1.0" name="C0" />
+    <nuclide ao="0.9222968" name="Si28" />
+    <nuclide ao="0.0468316" name="Si29" />
+    <nuclide ao="0.0308716" name="Si30" />
+  </material>
+  <material id="17">
+    <density units="g/cm3" value="1.87" />
+    <nuclide ao="1.0" name="C0" />
+    <sab name="c_Graphite" />
+  </material>
+  <material id="18">
+    <density units="g/cm3" value="1.1995" />
+    <nuclide ao="1.0" name="C0" />
+    <sab name="c_Graphite" />
+  </material>
 </materials>
 <?xml version='1.0' encoding='utf-8'?>
 <settings>
-    <run_mode>eigenvalue</run_mode>
-    <particles>100</particles>
-    <batches>5</batches>
-    <inactive>0</inactive>
-    <source strength="1.0">
-        <space type="point">
-            <parameters>0.0 0.0 0.0</parameters>
-        </space>
-    </source>
+  <run_mode>eigenvalue</run_mode>
+  <particles>100</particles>
+  <batches>5</batches>
+  <inactive>0</inactive>
+  <source strength="1.0">
+    <space type="point">
+      <parameters>0.0 0.0 0.0</parameters>
+    </space>
+  </source>
 </settings>

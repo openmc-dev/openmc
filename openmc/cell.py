@@ -13,19 +13,10 @@ import openmc
 import openmc.checkvalue as cv
 from openmc.surface import Halfspace
 from openmc.region import Region, Intersection, Complement
+from .mixin import IDManagerMixin
 
 
-# A static variable for auto-generated Cell IDs
-AUTO_CELL_ID = 10000
-
-
-def reset_auto_cell_id():
-    """Reset counter for auto-generated cell IDs."""
-    global AUTO_CELL_ID
-    AUTO_CELL_ID = 10000
-
-
-class Cell(object):
+class Cell(IDManagerMixin):
     r"""A region of space defined as the intersection of half-space created by
     quadric surfaces.
 
@@ -92,6 +83,9 @@ class Cell(object):
         :meth:`Cell.add_volume_information` method.
 
     """
+
+    next_id = 1
+    used_ids = set()
 
     def __init__(self, cell_id=None, name='', fill=None, region=None):
         # Initialize Cell class attributes
@@ -165,10 +159,6 @@ class Cell(object):
         return string
 
     @property
-    def id(self):
-        return self._id
-
-    @property
     def name(self):
         return self._name
 
@@ -235,17 +225,6 @@ class Cell(object):
                 'Number of cell instances have not been determined. Call the '
                 'Geometry.determine_paths() method.')
         return self._num_instances
-
-    @id.setter
-    def id(self, cell_id):
-        if cell_id is None:
-            global AUTO_CELL_ID
-            self._id = AUTO_CELL_ID
-            AUTO_CELL_ID += 1
-        else:
-            cv.check_type('cell ID', cell_id, Integral)
-            cv.check_greater_than('cell ID', cell_id, 0, equality=True)
-            self._id = cell_id
 
     @name.setter
     def name(self, name):
@@ -378,7 +357,7 @@ class Cell(object):
             self.region = region
         else:
             if isinstance(self.region, Intersection):
-                self.region.nodes.append(region)
+                self.region &= region
             else:
                 self.region = Intersection(self.region, region)
 
@@ -600,7 +579,7 @@ class Cell(object):
                 elif isinstance(node, Complement):
                     create_surface_elements(node.node, element)
                 else:
-                    for subnode in node.nodes:
+                    for subnode in node:
                         create_surface_elements(subnode, element)
 
             # Call the recursive function from the top node

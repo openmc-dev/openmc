@@ -401,14 +401,6 @@ distributions.
       NumPy is used extensively within the Python API for its powerful
       N-dimensional array.
 
-   `h5py <http://www.h5py.org/>`_
-      h5py provides Python bindings to the HDF5 library. Since OpenMC outputs
-      various HDF5 files, h5py is needed to provide access to data within these
-      files from Python.
-
-.. admonition:: Optional
-   :class: note
-
    `SciPy <https://www.scipy.org/>`_
       SciPy's special functions, sparse matrices, and spatial data structures
       are used for several optional features in the API.
@@ -416,6 +408,14 @@ distributions.
    `pandas <http://pandas.pydata.org/>`_
       Pandas is used to generate tally DataFrames as demonstrated in
       :ref:`examples_pandas` example notebook.
+
+   `h5py <http://www.h5py.org/>`_
+      h5py provides Python bindings to the HDF5 library. Since OpenMC outputs
+      various HDF5 files, h5py is needed to provide access to data within these
+      files from Python.
+
+.. admonition:: Optional
+   :class: note
 
    `Matplotlib <http://matplotlib.org/>`_
       Matplotlib is used to providing plotting functionality in the API like the

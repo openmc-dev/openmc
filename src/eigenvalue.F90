@@ -371,20 +371,25 @@ contains
 
   subroutine calculate_generation_keff()
 
+    integer :: i  ! overall generation
+
     ! Get keff for this generation by subtracting off the starting value
     keff_generation = global_tallies(RESULT_VALUE, K_TRACKLENGTH) - keff_generation
 
+    ! Determine overall generation
+    i = overall_generation()
+
 #ifdef MPI
     ! Combine values across all processors
-    call MPI_ALLREDUCE(keff_generation, k_generation(overall_gen), 1, &
-         MPI_REAL8, MPI_SUM, mpi_intracomm, mpi_err)
+    call MPI_ALLREDUCE(keff_generation, k_generation(i), 1, MPI_REAL8, &
+         MPI_SUM, mpi_intracomm, mpi_err)
 #else
-    k_generation(overall_gen) = keff_generation
+    k_generation(i) = keff_generation
 #endif
 
     ! Normalize single batch estimate of k
     ! TODO: This should be normalized by total_weight, not by n_particles
-    k_generation(overall_gen) = k_generation(overall_gen) / n_particles
+    k_generation(i) = k_generation(i) / n_particles
 
   end subroutine calculate_generation_keff
 
@@ -396,22 +401,24 @@ contains
 
   subroutine calculate_average_keff()
 
+    integer :: i        ! overall generation within simulation
     integer :: n        ! number of active generations
     real(8) :: alpha    ! significance level for CI
     real(8) :: t_value  ! t-value for confidence intervals
 
-    ! Determine number of active generations
-    n = overall_gen - n_inactive*gen_per_batch
+    ! Determine overall generation and number of active generations
+    i = overall_generation()
+    n = i - n_inactive*gen_per_batch
 
     if (n <= 0) then
       ! For inactive generations, use current generation k as estimate for next
       ! generation
-      keff = k_generation(overall_gen)
+      keff = k_generation(i)
 
     else
       ! Sample mean of keff
-      k_sum(1) = k_sum(1) + k_generation(overall_gen)
-      k_sum(2) = k_sum(2) + k_generation(overall_gen)**2
+      k_sum(1) = k_sum(1) + k_generation(i)
+      k_sum(2) = k_sum(2) + k_generation(i)**2
 
       ! Determine mean
       keff = k_sum(1) / n

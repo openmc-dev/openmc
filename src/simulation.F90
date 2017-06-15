@@ -138,7 +138,7 @@ contains
     p % id = work_index(rank) + index_source
 
     ! set random number seed
-    particle_seed = (overall_gen - 1)*n_particles + p % id
+    particle_seed = (overall_generation() - 1)*n_particles + p % id
     call set_particle_seed(particle_seed)
 
     ! set particle trace
@@ -202,9 +202,6 @@ contains
 !===============================================================================
 
   subroutine initialize_generation()
-
-    ! set overall generation number
-    overall_gen = gen_per_batch*(current_batch - 1) + current_gen
 
     if (run_mode == MODE_EIGENVALUE) then
       ! Reset number of fission bank sites
@@ -270,13 +267,20 @@ contains
       call calculate_average_keff()
 
       ! Write generation output
-      if (master .and. current_gen /= gen_per_batch .and. verbosity >= 7) &
-           call print_generation()
+      if (master .and. verbosity >= 7) then
+        if (current_gen /= gen_per_batch) then
+          call print_generation()
+        else
+          call print_batch_keff()
+        end if
+      end if
+
     elseif (run_mode == MODE_FIXEDSOURCE) then
       ! For fixed-source mode, we need to sample the external source
       if (path_source == '') then
         do i = 1, work
-          call set_particle_seed(overall_gen*n_particles + work_index(rank) + i)
+          call set_particle_seed(overall_generation()*n_particles + &
+               work_index(rank) + i)
           call sample_external_source(source_bank(i))
         end do
       end if
@@ -306,9 +310,6 @@ contains
     if (run_mode == MODE_EIGENVALUE) then
       ! Perform CMFD calculation if on
       if (cmfd_on) call execute_cmfd()
-
-      ! Display output
-      if (master .and. verbosity >= 7) call print_batch_keff()
 
       ! Calculate combined estimate of k-effective
       if (master) call calculate_combined_keff()
@@ -359,7 +360,6 @@ contains
 
     if (run_mode == MODE_EIGENVALUE) then
       do current_gen = 1, gen_per_batch
-        overall_gen = overall_gen + 1
         call calculate_average_keff()
 
         ! print out batch keff
@@ -412,13 +412,13 @@ contains
   subroutine reduce_overlap_count()
 
 #ifdef MPI
-      if (master) then
-        call MPI_REDUCE(MPI_IN_PLACE, overlap_check_cnt, n_cells, &
-             MPI_INTEGER8, MPI_SUM, 0, mpi_intracomm, mpi_err)
-      else
-        call MPI_REDUCE(overlap_check_cnt, overlap_check_cnt, n_cells, &
-             MPI_INTEGER8, MPI_SUM, 0, mpi_intracomm, mpi_err)
-      end if
+    if (master) then
+      call MPI_REDUCE(MPI_IN_PLACE, overlap_check_cnt, n_cells, &
+           MPI_INTEGER8, MPI_SUM, 0, mpi_intracomm, mpi_err)
+    else
+      call MPI_REDUCE(overlap_check_cnt, overlap_check_cnt, n_cells, &
+           MPI_INTEGER8, MPI_SUM, 0, mpi_intracomm, mpi_err)
+    end if
 #endif
 
   end subroutine reduce_overlap_count

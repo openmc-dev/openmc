@@ -41,71 +41,17 @@ class _OpenMCLibrary(object):
             c_int, _double_array, POINTER(_int3)]
         self._dll.openmc_tally_results.restype = None
 
-    def init(self, intracomm=None):
-        """Initialize OpenMC
-
-        Parameters
-        ----------
-        intracomm : int or None
-            MPI intracommunicator
-
-        """
-        if intracomm is not None:
-            # If an mpi4py communicator was passed, convert it to an integer to
-            # be passed to openmc_init
-            try:
-                intracomm = intracomm.py2f()
-            except AttributeError:
-                pass
-            return self._dll.openmc_init(byref(c_int(intracomm)))
-        else:
-            return self._dll.openmc_init(None)
-
-    def run(self):
-        """Run simulation"""
-        return self._dll.openmc_run()
-
-    def plot_geometry(self):
-        """Plot geometry"""
-        return self._dll.openmc_plot_geometry()
-
     def calculate_volumes(self):
         """Run stochastic volume calculation"""
         return self._dll.openmc_calculate_volumes()
 
-    def finalize(self):
-        """Finalize simulation and free memory"""
-        return self._dll.openmc_finalize()
-
-    def reset(self):
-        """Reset tallies"""
-        return self._dll.openmc_reset()
-
-    def tally_results(self, tally_id):
-        """Get tally results array
-
-        Parameters
-        ----------
-        tally_id : int
-            ID of tally
-
-        Returns
-        -------
-        numpy.ndarray
-            Array that exposes the internal tally results array
-
-        """
-        data = POINTER(c_double)()
-        shape = _int3()
-        self._dll.openmc_tally_results(tally_id, byref(data), byref(shape))
-        if data:
-            return as_array(data, tuple(shape[::-1]))
-        else:
-            return None
-
     def cell_set_temperature(self, cell_id, temperature):
         """Set the temperature of a cell"""
         return self._dll.openmc_cell_set_temperature(cell_id, temperature)
+
+    def finalize(self):
+        """Finalize simulation and free memory"""
+        return self._dll.openmc_finalize()
 
     def find(self, xyz, rtype='cell'):
         """Find the cell or material at a given point
@@ -131,6 +77,26 @@ class _OpenMCLibrary(object):
             return uid if uid != 0 else None
         else:
             raise ValueError('Unknown return type: {}'.format(rtype))
+
+    def init(self, intracomm=None):
+        """Initialize OpenMC
+
+        Parameters
+        ----------
+        intracomm : int or None
+            MPI intracommunicator
+
+        """
+        if intracomm is not None:
+            # If an mpi4py communicator was passed, convert it to an integer to
+            # be passed to openmc_init
+            try:
+                intracomm = intracomm.py2f()
+            except AttributeError:
+                pass
+            return self._dll.openmc_init(byref(c_int(intracomm)))
+        else:
+            return self._dll.openmc_init(None)
 
     def material_get_densities(self, mat_id):
         """Get atom densities in a material.
@@ -171,9 +137,43 @@ class _OpenMCLibrary(object):
         """
         return self._dll.openmc_material_set_density(mat_id, density)
 
+    def plot_geometry(self):
+        """Plot geometry"""
+        return self._dll.openmc_plot_geometry()
+
+    def reset(self):
+        """Reset tallies"""
+        return self._dll.openmc_reset()
+
+    def run(self):
+        """Run simulation"""
+        return self._dll.openmc_run()
+
     def set_temperature(self, xyz, T):
         """Set temperature."""
         return self._dll.openmc_set_temperature(_double3(*xyz), T)
+
+    def tally_results(self, tally_id):
+        """Get tally results array
+
+        Parameters
+        ----------
+        tally_id : int
+            ID of tally
+
+        Returns
+        -------
+        numpy.ndarray
+            Array that exposes the internal tally results array
+
+        """
+        data = POINTER(c_double)()
+        shape = _int3()
+        self._dll.openmc_tally_results(tally_id, byref(data), byref(shape))
+        if data:
+            return as_array(data, tuple(shape[::-1]))
+        else:
+            return None
 
     def __getattr__(self, key):
         # Fall-back for other functions that may be available from library

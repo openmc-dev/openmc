@@ -34,6 +34,8 @@ class _OpenMCLibrary(object):
         self._dll.openmc_plot_geometry.restype = None
         self._dll.openmc_run.restype = None
         self._dll.openmc_reset.restype = None
+        self._dll.openmc_set_density.argtypes = [POINTER(_double3), c_double]
+        self._dll.openmc_set_density.restype = c_int
         self._dll.openmc_set_temperature.argtypes = [
             POINTER(_double3), c_double]
         self._dll.openmc_set_temperature.restype = c_int
@@ -45,9 +47,17 @@ class _OpenMCLibrary(object):
         """Run stochastic volume calculation"""
         return self._dll.openmc_calculate_volumes()
 
-    def cell_set_temperature(self, cell_id, temperature):
-        """Set the temperature of a cell"""
-        return self._dll.openmc_cell_set_temperature(cell_id, temperature)
+    def cell_set_temperature(self, cell_id, T):
+        """Set the temperature of a cell
+
+        Parameters
+        ----------
+        cell_id : int
+            ID of the cell
+        T : float
+            Temperature in K
+        """
+        return self._dll.openmc_cell_set_temperature(cell_id, T)
 
     def finalize(self):
         """Finalize simulation and free memory"""
@@ -149,8 +159,40 @@ class _OpenMCLibrary(object):
         """Run simulation"""
         return self._dll.openmc_run()
 
+    def set_density(self, xyz, density):
+        """Set density at a given point.
+
+        Parameters
+        ----------
+        xyz : iterable of float
+            Cartesian coordinates at position
+        density : float
+            Density in atom/b-cm
+
+        Returns
+        -------
+        int
+            Return status (negative if an error occurs)
+
+        """
+        return self._dll.openmc_set_density(_double3(*xyz), density)
+
     def set_temperature(self, xyz, T):
-        """Set temperature."""
+        """Set temperature at a given point.
+
+        Parameters
+        ----------
+        xyz : iterable of float
+            Cartesian coordinates at position
+        T : float
+            Temperature in K
+
+        Returns
+        -------
+        int
+            Return status (negative if an error occurs)
+
+        """
         return self._dll.openmc_set_temperature(_double3(*xyz), T)
 
     def tally_results(self, tally_id):

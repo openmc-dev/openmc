@@ -95,8 +95,7 @@ contains
     ! skip ahead in the sequence using the starting index in the 'global'
     ! fission bank for each processor.
 
-    call set_particle_seed(int((current_batch - 1)*gen_per_batch + &
-         current_gen,8))
+    call set_particle_seed(int(total_gen + overall_generation(), 8))
     call advance_prn_seed(start)
 
     ! Determine how many fission sites we need to sample from the source bank

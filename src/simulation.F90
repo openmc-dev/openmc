@@ -138,7 +138,7 @@ contains
     p % id = work_index(rank) + index_source
 
     ! set random number seed
-    particle_seed = (overall_generation() - 1)*n_particles + p % id
+    particle_seed = (total_gen + overall_generation() - 1)*n_particles + p % id
     call set_particle_seed(particle_seed)
 
     ! set particle trace
@@ -279,8 +279,8 @@ contains
       ! For fixed-source mode, we need to sample the external source
       if (path_source == '') then
         do i = 1, work
-          call set_particle_seed(overall_generation()*n_particles + &
-               work_index(rank) + i)
+          call set_particle_seed((total_gen + overall_generation()) * &
+               n_particles + work_index(rank) + i)
           call sample_external_source(source_bank(i))
         end do
       end if
@@ -386,6 +386,9 @@ contains
 !===============================================================================
 
   subroutine finalize_simulation
+
+    ! Increment total number of generations
+    total_gen = total_gen + n_batches*gen_per_batch
 
     ! Start finalization timer
     call time_finalize % start()

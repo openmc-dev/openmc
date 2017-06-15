@@ -215,6 +215,7 @@ module global
   integer    :: gen_per_batch = 1 ! # of generations per batch
   integer    :: current_batch = 0 ! current batch
   integer    :: current_gen   = 0 ! current generation within a batch
+  integer    :: total_gen     = 0 ! total number of generations simulated
 
   ! ============================================================================
   ! TALLY PRECISION TRIGGER VARIABLES

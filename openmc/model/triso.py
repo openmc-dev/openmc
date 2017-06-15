@@ -513,7 +513,7 @@ def create_triso_lattice(trisos, lower_left, pitch, shape, background):
     universes = np.empty(shape[::-1], dtype=openmc.Universe)
     for idx, triso_list in sorted(triso_locations.items()):
         if len(triso_list) > 0:
-            outside_trisos = openmc.Intersection(*[~t.region for t in triso_list])
+            outside_trisos = openmc.Intersection(~t.region for t in triso_list)
             background_cell = openmc.Cell(fill=background, region=outside_trisos)
         else:
             background_cell = openmc.Cell(fill=background)

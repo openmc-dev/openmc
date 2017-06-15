@@ -818,7 +818,6 @@ contains
     real(8) :: xs_low  ! 0K xs at lowest practical relative energy
     real(8) :: xs_up   ! 0K xs at highest practical relative energy
     real(8) :: m       ! slope for interpolation
-    real(8) :: xi      ! pseudorandom number on [0,1)
     real(8) :: R       ! rejection criterion for DBRC / target speed
     real(8) :: cdf_low ! xs cdf at lowest practical relative energy
     real(8) :: cdf_up  ! xs cdf at highest practical relative energy

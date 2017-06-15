@@ -9,14 +9,6 @@ from openmc.clean_xml import sort_xml_elements, clean_xml_indentation
 from openmc.checkvalue import check_type
 
 
-def reset_auto_ids():
-    """Reset counters for all auto-generated IDs"""
-    openmc.reset_auto_material_id()
-    openmc.reset_auto_surface_id()
-    openmc.reset_auto_cell_id()
-    openmc.reset_auto_universe_id()
-
-
 class Geometry(object):
     """Geometry representing a collection of surfaces, cells, and universes.
 

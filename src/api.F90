@@ -196,7 +196,11 @@ contains
     err = -1
     if (found) then
       associate (c => cells(p % coord(p % n_coord) % cell))
-        c % sqrtkT(:) = sqrt(K_BOLTZMANN * T)
+        if (size(c % sqrtkT) > 1) then
+          c % sqrtkT(p % cell_instance) = sqrt(K_BOLTZMANN * T)
+        else
+          c % sqrtkT(1) = sqrt(K_BOLTZMANN * T)
+        end if
         err = 0
       end associate
     end if

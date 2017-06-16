@@ -219,6 +219,7 @@ contains
       n = size(univ % cells)
     end if
 
+    found = .false.
     CELL_LOOP: do i = 1, n
       ! select cells based on whether we are searching a universe or a provided
       ! list of cells (this would be for lists of neighbor cells)
@@ -234,16 +235,21 @@ contains
       c => cells(index_cell)
 
       ! Move on to the next cell if the particle is not inside this cell
-      if (.not. cell_contains(c, p)) cycle
+      if (cell_contains(c, p)) then
+        ! Set cell on this level
+        p % coord(j) % cell = index_cell
 
-      ! Set cell on this level
-      p % coord(j) % cell = index_cell
+        ! Show cell information on trace
+        if (verbosity >= 10 .or. trace) then
+          call write_message("    Entering cell " // trim(to_str(c % id)))
+        end if
 
-      ! Show cell information on trace
-      if (verbosity >= 10 .or. trace) then
-        call write_message("    Entering cell " // trim(to_str(c % id)))
+        found = .true.
+        exit
       end if
+    end do CELL_LOOP
 
+    if (found) then
       CELL_TYPE: if (c % type == FILL_MATERIAL) then
         ! ======================================================================
         ! AT LOWEST UNIVERSE, TERMINATE SEARCH
@@ -323,7 +329,6 @@ contains
 
         call find_cell(p, found)
         j = p % n_coord
-        if (.not. found) exit
 
       elseif (c % type == FILL_LATTICE) then CELL_TYPE
         ! ======================================================================
@@ -369,16 +374,9 @@ contains
 
         call find_cell(p, found)
         j = p % n_coord
-        if (.not. found) exit
 
       end if CELL_TYPE
-
-      ! Found cell so we can return
-      found = .true.
-      return
-    end do CELL_LOOP
-
-    found = .false.
+    end if
 
   end subroutine find_cell
 

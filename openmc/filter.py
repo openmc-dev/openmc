@@ -375,9 +375,7 @@ class Filter(object):
         """
 
         if filter_bin not in self.bins:
-            print('Failed to find')
-            print(filter_bin)
-            print(self.bins)
+
             msg = 'Unable to get the bin index for Filter since "{0}" ' \
                   'is not one of the bins'.format(filter_bin)
             raise ValueError(msg)
@@ -506,7 +504,6 @@ class WithIDFilter(Filter):
 
         self._bins = bins
 
-
 class UniverseFilter(WithIDFilter):
     """Bins tally event locations based on the Universe they occured in.
 
@@ -600,6 +597,10 @@ class CellFilter(WithIDFilter):
     @property
     def bins(self):
         return self._bins
+      
+    @bins.setter
+    def bins(self, bins):
+        self._smart_set_bins(bins, openmc.Cell)
 
 class CellFromFilter(WithIDFilter):
     """Bins tally on which couple of cells the neutrons came from.
@@ -616,6 +617,8 @@ class CellFromFilter(WithIDFilter):
     ----------
     bins : Integral or Iterable of Integral
         openmc.Cell IDs.
+    id : int
+        Unique identifier for the filter
     num_bins : Integral
         The number of filter bins
     stride : Integral
@@ -623,6 +626,13 @@ class CellFromFilter(WithIDFilter):
         filter's bins.
 
     """
+    @property
+    def bins(self):
+        return self._bins
+      
+    @bins.setter
+    def bins(self, bins):
+        self._smart_set_bins(bins, openmc.Cell)
     
 class CellToFilter(WithIDFilter):
     """Bins tally on which couple of cells the neutrons went to. 
@@ -639,6 +649,8 @@ class CellToFilter(WithIDFilter):
     ----------
     bins : Integral or Iterable of Integral
         openmc.Cell IDs.
+    id : int
+        Unique identifier for the filter
     num_bins : Integral
         The number of filter bins
     stride : Integral
@@ -646,6 +658,13 @@ class CellToFilter(WithIDFilter):
         filter's bins.
 
     """
+    @property
+    def bins(self):
+        return self._bins
+      
+    @bins.setter
+    def bins(self, bins):
+        self._smart_set_bins(bins, openmc.Cell)
 
 class CellbornFilter(WithIDFilter):
     """Bins tally events based on which Cell the neutron was born in.
@@ -1066,10 +1085,6 @@ class RealFilter(Filter):
     def get_bin_index(self, filter_bin):
         i = np.where(abs(self.bins -filter_bin[1]) < 1e-10)[0]
         if len(i) == 0:
-            print('Tally bins', self.bins)
-            print('Bins searched for:', filter_bin)
-            print('Search result', i)
-            print(self.bins - filter_bin[1])
             msg = 'Unable to get the bin index for Filter since "{0}" ' \
                   'is not one of the bins'.format(filter_bin)
             raise ValueError(msg)
@@ -1111,9 +1126,7 @@ class EnergyFilter(RealFilter):
 
     def get_bin_index(self, filter_bin):
         # Use lower energy bound to find index for RealFilters
-        
-        #print(self.bins, filter_bin)
-        
+                
         deltas = np.abs(self.bins - filter_bin[1]) / filter_bin[1]
         min_delta = np.min(deltas)
         if min_delta < 1E-3:

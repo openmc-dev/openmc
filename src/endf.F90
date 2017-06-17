@@ -66,6 +66,10 @@ contains
       string = "fission-q-prompt"
     case (SCORE_FISS_Q_RECOV)
       string = "fission-q-recoverable"
+    case (SCORE_CELL_TO_CELL)
+      string = "cell-to-cell-partial-current"
+    case (SCORE_CELL_TO_CELL_NORMAL_PROJECTION)
+      string = "cell-to-cell-partial-current-projection-on-normal"
 
     ! Normal ENDF-based reactions
     case (TOTAL_XS)

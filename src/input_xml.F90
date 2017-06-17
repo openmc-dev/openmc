@@ -3004,7 +3004,7 @@ contains
         end if
         n_words = node_word_count(node_filt, "bins")
       case ("mesh", "universe", "material", "cell", "distribcell", &
-            "cellborn", "surface", "delayedgroup")
+            "cellborn", "cellto", "cellfrom", "surface", "delayedgroup")
         if (.not. check_for_node(node_filt, "bins")) then
           call fatal_error("Bins not set in filter " // trim(to_str(filter_id)))
         end if
@@ -3035,7 +3035,7 @@ contains
           allocate(filt % cells(n_words))
           call get_node_array(node_filt, "bins", filt % cells)
         end select
-        
+
       case ('cellfrom')
         ! Allocate and declare the filter type
         allocate(CellFromFilter :: f % obj)
@@ -3046,7 +3046,7 @@ contains
           allocate(filt % cells(n_words))
           call get_node_array(node_filt, "bins", filt % cells)
         end select
-        
+
       case ('cellto')
         ! Allocate and declare the filter type
         allocate(CellToFilter :: f % obj)
@@ -3057,7 +3057,7 @@ contains
           allocate(filt % cells(n_words))
           call get_node_array(node_filt, "bins", filt % cells)
         end select
-        
+
       case ('cellborn')
         ! Allocate and declare the filter type
         allocate(CellbornFilter :: f % obj)
@@ -3414,17 +3414,10 @@ contains
           t % find_filter(FILTER_DISTRIBCELL) = j
         type is (CellFilter)
           t % find_filter(FILTER_CELL) = j
-          
         type is (CellFromFilter)
           t % find_filter(FILTER_CELL_TO_CELL) = j
-
-          t % estimator = ESTIMATOR_ANALOG
-          
         type is (CellToFilter)
           t % find_filter(FILTER_CELL_TO_CELL) = j
-
-          t % estimator = ESTIMATOR_ANALOG
-
         type is (CellbornFilter)
           t % find_filter(FILTER_CELLBORN) = j
         type is (MaterialFilter)
@@ -3927,13 +3920,14 @@ contains
             t % find_filter(FILTER_SURFACE) = n_filter
             t % filter(n_filter) = i_filt
 
-          case ('events')
-            t % score_bins(j) = SCORE_EVENTS
-
           case ('partial_current')
             t % type = TALLY_CELL_TO_CELL
-            t % score_bins(j) = SCORE_CELL_TO_CELL_TYPE
-            
+            t % score_bins(j) = SCORE_CELL_TO_CELL
+          case ('projected_partial_current')
+            t % type = TALLY_CELL_TO_CELL
+            t % score_bins(j) = SCORE_CELL_TO_CELL_NORMAL_PROJECTION
+          case ('events')
+            t % score_bins(j) = SCORE_EVENTS
           case ('elastic', '(n,elastic)')
             t % score_bins(j) = ELASTIC
           case ('(n,2nd)')

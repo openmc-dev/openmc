@@ -15,9 +15,7 @@ module particle_header
 !===============================================================================
 
   type LocalCoord
-  
-    integer :: last_cell = NONE
-    
+
     ! Indices in various arrays for this level
     integer :: cell      = NONE
     integer :: universe  = NONE
@@ -60,13 +58,11 @@ module particle_header
     real(8)    :: wgt           ! particle weight
     real(8)    :: mu            ! angle of scatter
     logical    :: alive         ! is particle alive?
-    
-    ! Previous cell before crossing surface
-    integer    :: last_cell
-    ! Particle coordinates
-    integer          :: last_n_coord          ! number of current coordinates
-!     type(LocalCoord) :: last_coord(MAX_COORD) ! coordinates for all levels
-    
+
+    ! Crossing surface data
+    integer    :: last_cell     ! last cell the particle was in before crossing
+    real(8)    :: normal_proj   ! cos of angle to surface normal when crossing
+
     ! Pre-collision physical data
     real(8)    :: last_xyz_current(3) ! coordinates of the last collision or
                                       !  reflective/periodic surface crossing
@@ -136,6 +132,7 @@ contains
 
     ! clear attributes
     this % surface           = NONE
+    this % last_cell         = NONE
     this % cell_born         = NONE
     this % material          = NONE
     this % last_material     = NONE
@@ -143,6 +140,7 @@ contains
     this % wgt               = ONE
     this % last_wgt          = ONE
     this % absorb_wgt        = ZERO
+    this % normal_proj       = 1
     this % n_bank            = 0
     this % wgt_bank          = ZERO
     this % sqrtkT            = ERROR_REAL
@@ -181,8 +179,6 @@ contains
   elemental subroutine reset_coord(this)
     class(LocalCoord), intent(inout) :: this
 
-    this % last_cell = NONE
-    
     this % cell = NONE
     this % universe = NONE
     this % lattice = NONE

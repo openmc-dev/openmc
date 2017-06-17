@@ -12,7 +12,7 @@ module geometry
   use stl_vector,             only: VectorInt
   use string,                 only: to_str
   use tally,                  only: score_surface_current, &
-                                    &score_cell_to_cell
+                                    &score_partial_current
 
   implicit none
 
@@ -399,8 +399,6 @@ contains
     logical :: rotational ! if rotational periodic BC applied
     logical :: found      ! particle found in universe?
     class(Surface), pointer :: surf
-    
-    !print *, "cross surface called"
 
     i_surface = abs(p % surface)
     surf => surfaces(i_surface)%obj
@@ -613,23 +611,33 @@ contains
       ! cells on the positive side
 
       call find_cell(p, found, surf%neighbor_pos)
-      
-      ! /CHANGE/ Score cell_to_cell 
-!       print *, "Positive side, calling score_cell_to_cell"
-      call score_cell_to_cell(p, last_cell)
-      
+
+      ! Save cosine of angle between surface normal and particle direction
+      p % normal_proj = dot_product(p % coord(1) % uvw, &
+                  & surf % normal(p % coord(1) % xyz)) / &
+                  & sqrt(dot_product(surf % normal(p % coord(1) % xyz)&
+                  &, surf % normal(p % coord(1) % xyz)))
+
+      ! Score cell to cell partial currents
+      call score_partial_current(p)
+
       if (found) return
 
     elseif (p % surface < 0  .and. allocated(surf%neighbor_neg)) then
       ! If coming from positive side of surface, search all the neighboring
       ! cells on the negative side
 
+      ! Save cosine of angle between surface normal and particle direction
+      p % normal_proj = dot_product(p % coord(1) % uvw, &
+                  & surf % normal(p % coord(1) % xyz)) / &
+                  & sqrt(dot_product(surf % normal(p % coord(1) % xyz)&
+                  &, surf % normal(p % coord(1) % xyz)))
+
       call find_cell(p, found, surf%neighbor_neg)
-      
-      ! /CHANGE/ Score cell_to_cell 
-!       print *, "Negative side, calling score_cell_to_cell"
-      call score_cell_to_cell(p, last_cell)
-      
+
+      ! Score cell to cell partial currents
+      call score_partial_current(p)
+
       if (found) return
 
     end if
@@ -662,10 +670,9 @@ contains
         return
       end if
     end if
-    
-    ! /CHANGE/ Score cell_to_cell 
-!     print *, "Searched all cells then calling score_cell_to_cell"
-    call score_cell_to_cell(p, last_cell)
+
+    ! Score cell to cell partial currents
+    call score_partial_current(p)
 
   end subroutine cross_surface
 

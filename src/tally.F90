@@ -2090,7 +2090,7 @@ contains
 
       case(SCORE_CELL_TO_CELL_NORMAL_PROJECTION)
           score = p % last_wgt * flux * p % normal_proj
-  
+
       end select
 
       !#########################################################################

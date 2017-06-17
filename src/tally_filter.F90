@@ -746,8 +746,8 @@ contains
 !===============================================================================
 ! CellFromFilter methods
 !===============================================================================
-   subroutine get_next_bin_cell_from(this, p, estimator, current_bin, &
-      next_bin, weight)
+  subroutine get_next_bin_cell_from(this, p, estimator, current_bin, &
+        next_bin, weight)
     class(CellFromFilter), intent(in)  :: this
     type(Particle),    intent(in)  :: p
     integer,           intent(in)  :: estimator
@@ -822,8 +822,8 @@ contains
 !===============================================================================
 ! CellToFilter methods
 !===============================================================================
-   subroutine get_next_bin_cell_to(this, p, estimator, current_bin, &
-      next_bin, weight)
+  subroutine get_next_bin_cell_to(this, p, estimator, current_bin, &
+        next_bin, weight)
     class(CellToFilter), intent(in)  :: this
     type(Particle),      intent(in)  :: p
     integer,             intent(in)  :: estimator

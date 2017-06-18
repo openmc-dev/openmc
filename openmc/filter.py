@@ -375,7 +375,6 @@ class Filter(object):
         """
 
         if filter_bin not in self.bins:
-
             msg = 'Unable to get the bin index for Filter since "{0}" ' \
                   'is not one of the bins'.format(filter_bin)
             raise ValueError(msg)
@@ -503,6 +502,7 @@ class WithIDFilter(Filter):
                               for b in bins])
 
         self._bins = bins
+
 
 class UniverseFilter(WithIDFilter):
     """Bins tally event locations based on the Universe they occured in.
@@ -1083,7 +1083,7 @@ class RealFilter(Filter):
             return np.allclose(self.bins, other.bins)
 
     def get_bin_index(self, filter_bin):
-        i = np.where(abs(self.bins -filter_bin[1]) < 1e-10)[0]
+        i = np.where(i = np.where(self.bins == filter_bin[1])[0]
         if len(i) == 0:
             msg = 'Unable to get the bin index for Filter since "{0}" ' \
                   'is not one of the bins'.format(filter_bin)
@@ -1126,7 +1126,6 @@ class EnergyFilter(RealFilter):
 
     def get_bin_index(self, filter_bin):
         # Use lower energy bound to find index for RealFilters
-                
         deltas = np.abs(self.bins - filter_bin[1]) / filter_bin[1]
         min_delta = np.min(deltas)
         if min_delta < 1E-3:

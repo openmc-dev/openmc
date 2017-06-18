@@ -238,7 +238,7 @@ class Tally(object):
     def num_filter_bins(self):
         num_bins = 1
 
-        for self_filter in self.filters:     
+        for self_filter in self.filters:
             num_bins *= self_filter.num_bins
 
         return num_bins

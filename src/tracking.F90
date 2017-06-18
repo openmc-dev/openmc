@@ -163,7 +163,7 @@ contains
           ! Particle crosses surface
           p % surface = surface_crossed
 
-          ! /CHANGE/ Saving stuff on particle
+          ! Saving last cell for tallying purposes
           p % last_cell = last_cell
 
           call cross_surface(p, last_cell)

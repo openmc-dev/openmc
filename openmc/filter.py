@@ -1083,7 +1083,7 @@ class RealFilter(Filter):
             return np.allclose(self.bins, other.bins)
 
     def get_bin_index(self, filter_bin):
-        i = np.where(i = np.where(self.bins == filter_bin[1])[0]
+        i = np.where(self.bins == filter_bin[1])[0]
         if len(i) == 0:
             msg = 'Unable to get the bin index for Filter since "{0}" ' \
                   'is not one of the bins'.format(filter_bin)

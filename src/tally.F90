@@ -3156,10 +3156,6 @@ contains
 
     type(Particle), intent(in)    :: p
 
-    ! if particle has leaked
-    ! DF could preserve leakage
-    ! if p % alive = .false. then
-
   !end if
     integer :: i
     integer :: i_tally
@@ -3180,11 +3176,6 @@ contains
     else
       flux = p % last_wgt
     end if
-
-    ! A loop over all tallies is necessary because we need to simultaneously
-    ! determine different filter bins for the same tally in order to score to it
-    ! However, we can restrict the list to cell_to_cell tallies since we know we
-    ! are crossing a surface
 
     TALLY_LOOP: do i = 1, active_cell_to_cell_tallies % size()
       ! Get index of tally and pointer to tally

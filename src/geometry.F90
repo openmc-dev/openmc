@@ -611,33 +611,13 @@ contains
       ! cells on the positive side
 
       call find_cell(p, found, surf%neighbor_pos)
-
-      ! Save cosine of angle between surface normal and particle direction
-      p % normal_proj = dot_product(p % coord(1) % uvw, &
-                  & surf % normal(p % coord(1) % xyz)) / &
-                  & sqrt(dot_product(surf % normal(p % coord(1) % xyz)&
-                  &, surf % normal(p % coord(1) % xyz)))
-
-      ! Score cell to cell partial currents
-      call score_partial_current(p)
-
       if (found) return
 
     elseif (p % surface < 0  .and. allocated(surf%neighbor_neg)) then
       ! If coming from positive side of surface, search all the neighboring
       ! cells on the negative side
 
-      ! Save cosine of angle between surface normal and particle direction
-      p % normal_proj = dot_product(p % coord(1) % uvw, &
-                  & surf % normal(p % coord(1) % xyz)) / &
-                  & sqrt(dot_product(surf % normal(p % coord(1) % xyz)&
-                  &, surf % normal(p % coord(1) % xyz)))
-
       call find_cell(p, found, surf%neighbor_neg)
-
-      ! Score cell to cell partial currents
-      call score_partial_current(p)
-
       if (found) return
 
     end if
@@ -670,9 +650,6 @@ contains
         return
       end if
     end if
-
-    ! Score cell to cell partial currents
-    call score_partial_current(p)
 
   end subroutine cross_surface
 

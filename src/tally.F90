@@ -4616,7 +4616,6 @@ contains
       if (cmfd_tallies(i) % type == TALLY_VOLUME) then
         if (cmfd_tallies(i) % estimator == ESTIMATOR_ANALOG) then
           call active_analog_tallies % push_back(i_cmfd_tallies + i)
-          call active_cell_to_cell_tallies % push_back(i_cmfd_tallies + 1)
         elseif (cmfd_tallies(i) % estimator == ESTIMATOR_TRACKLENGTH) then
           call active_tracklength_tallies % push_back(i_cmfd_tallies + i)
         end if
@@ -4630,7 +4629,6 @@ contains
     call active_tracklength_tallies % shrink_to_fit()
     call active_collision_tallies % shrink_to_fit()
     call active_current_tallies % shrink_to_fit()
-    call active_cell_to_cell_tallies % shrink_to_fit()
 
   end subroutine setup_active_cmfdtallies
 

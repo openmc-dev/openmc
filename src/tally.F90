@@ -3230,7 +3230,7 @@ contains
 
           ! determine scoring bin index, no offset from nuclide bins
           score_index = q
-        
+
           ! Expand score if necessary and add to tally results.
           call expand_and_score(p, t, score_index, filter_index, score_bin, &
                score, q)

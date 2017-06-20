@@ -77,9 +77,9 @@ module tally_filter
 !===============================================================================
   type, extends(CellFilter) :: CellFromFilter
   contains
-    procedure :: get_next_bin_cell => get_next_bin_cell_from
-    procedure :: to_statepoint_cell => to_statepoint_cell_from
-    procedure :: text_label_cell => text_label_cell_from
+    procedure :: get_next_bin => get_next_bin_cell_from
+    procedure :: to_statepoint => to_statepoint_cell_from
+    procedure :: text_label => text_label_cell_from
   end type CellFromFilter
 
 !===============================================================================
@@ -88,8 +88,8 @@ module tally_filter
 !===============================================================================
   type, extends(CellFilter) :: CellToFilter
   contains
-    procedure :: to_statepoint_cell => to_statepoint_cell_to
-    procedure :: text_label_cell => text_label_cell_to
+    procedure :: to_statepoint => to_statepoint_cell_to
+    procedure :: text_label => text_label_cell_to
   end type CellToFilter
 
 !===============================================================================

@@ -231,6 +231,7 @@ contains
 !===============================================================================
 
   subroutine set_last_coord(this)
+
     class(Particle), intent(inout) :: this
     integer :: i
 

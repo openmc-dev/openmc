@@ -3923,9 +3923,6 @@ contains
           case ('partial_current')
             t % type = TALLY_CELL_TO_CELL
             t % score_bins(j) = SCORE_CELL_TO_CELL
-          case ('projected_partial_current')
-            t % type = TALLY_CELL_TO_CELL
-            t % score_bins(j) = SCORE_CELL_TO_CELL_NORMAL_PROJECTION
           case ('events')
             t % score_bins(j) = SCORE_EVENTS
           case ('elastic', '(n,elastic)')

@@ -119,6 +119,7 @@ contains
 
       select case(score_bin)
 
+
       case (SCORE_FLUX, SCORE_FLUX_YN)
         if (t % estimator == ESTIMATOR_ANALOG) then
           ! All events score to a flux bin. We actually use a collision
@@ -1176,12 +1177,6 @@ contains
           end if
         end if
 
-      case(SCORE_CELL_TO_CELL)
-          score = p % last_wgt * flux
-
-      case(SCORE_CELL_TO_CELL_NORMAL_PROJECTION)
-          score = p % last_wgt * flux * p % normal_proj
-
       case default
         if (t % estimator == ESTIMATOR_ANALOG) then
           ! Any other score is assumed to be a MT number. Thus, we just need
@@ -2084,12 +2079,6 @@ contains
       case (SCORE_EVENTS)
         ! Simply count number of scoring events
         score = ONE
-
-      case(SCORE_CELL_TO_CELL)
-          score = p % last_wgt * flux
-
-      case(SCORE_CELL_TO_CELL_NORMAL_PROJECTION)
-          score = p % last_wgt * flux * p % normal_proj
 
       end select
 
@@ -3161,11 +3150,15 @@ contains
     integer :: i_tally
     integer :: i_filt
     integer :: i_bin
+    integer :: q                    ! loop index for scoring bins
+    integer :: score_bin            ! scoring bin, e.g. SCORE_FLUX
+    integer :: score_index          ! scoring bin index
     integer :: j                    ! loop index for scoring bins
     integer :: filter_index         ! single index for single bin
     integer :: matching_bin         ! next valid filter bin
     real(8) :: flux                 ! collision estimate of flux
     real(8) :: filter_weight        ! combined weight of all filters
+    real(8) :: score                ! analog tally score
     logical :: finished             ! found all valid bin combinations
     type(TallyObject), pointer :: t
 
@@ -3226,8 +3219,22 @@ contains
                data(i_bin)
         end do
 
-        call score_general(p, t, 0, filter_index, &
-             0, 0d0, flux * filter_weight)
+        ! Determine score
+        score = flux * filter_weight
+
+        ! Currently only one score type
+        SCORE_LOOP: do q = 1, t % n_user_score_bins
+
+          ! determine what type of score bin
+          score_bin = t % score_bins(q)
+
+          ! determine scoring bin index, no offset from nuclide bins
+          score_index = q
+        
+          ! Expand score if necessary and add to tally results.
+          call expand_and_score(p, t, score_index, filter_index, score_bin, &
+               score, q)
+        end do SCORE_LOOP
 
         ! ======================================================================
         ! Filter logic

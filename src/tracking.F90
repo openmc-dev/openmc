@@ -15,7 +15,7 @@ module tracking
   use string,             only: to_str
   use tally,              only: score_analog_tally, score_tracklength_tally, &
                                 score_collision_tally, score_surface_current, &
-                                score_track_derivative, &
+                                score_track_derivative, score_partial_current, &
                                 score_collision_derivative, zero_flux_derivs
   use track_output,       only: initialize_particle_track, write_particle_track, &
                                 add_particle_track, finalize_particle_track
@@ -166,8 +166,16 @@ contains
           ! Saving last cell for tallying purposes
           p % last_cell = last_cell
 
+          ! Update last_ information. This is needed to use the same filters as
+          ! the ones implemented for regular tallies
+          p % last_uvw = p % coord(p % n_coord) % uvw
+          p % last_E = p % E
+
           call cross_surface(p, last_cell)
           p % event = EVENT_SURFACE
+          
+          ! Score cell to cell partial currents
+          call score_partial_current(p) 
         end if
       else
         ! ====================================================================

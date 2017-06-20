@@ -151,7 +151,7 @@ contains
 
         ! Saving previous cell data
         last_cell = p % coord(p % n_coord) % cell
-!         p % set_last_coord()
+        call p % set_last_coord()
 
         p % coord(p % n_coord) % cell = NONE
         if (any(lattice_translation /= 0)) then

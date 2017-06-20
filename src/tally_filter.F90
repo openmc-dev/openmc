@@ -794,28 +794,6 @@ contains
     call write_dataset(filter_group, "bins", cell_ids)
   end subroutine to_statepoint_cell_from
 
-  subroutine initialize_cell_from(this)
-    class(CellFromFilter), intent(inout) :: this
-
-    integer :: i, id
-
-    ! Convert ids to indices.
-    do i = 1, this % n_bins
-      id = this % cells(i)
-      if (cell_dict % has_key(id)) then
-        this % cells(i) = cell_dict % get_key(id)
-      else
-        call fatal_error("Could not find cell " // trim(to_str(id)) &
-             &// " specified on tally filter.")
-      end if
-    end do
-
-    ! Generate mapping from cell indices to filter bins.
-    do i = 1, this % n_bins
-      call this % map % add_key(this % cells(i), i)
-    end do
-  end subroutine initialize_cell_from
-
   function text_label_cell_from(this, bin) result(label)
     class(CellFromFilter), intent(in) :: this
     integer,               intent(in) :: bin
@@ -827,41 +805,6 @@ contains
 !===============================================================================
 ! CellToFilter methods
 !===============================================================================
-!   subroutine get_next_bin_cell_to(this, p, estimator, current_bin, &
-!         next_bin, weight)
-!     class(CellToFilter), intent(in)  :: this
-!     type(Particle),      intent(in)  :: p
-!     integer,             intent(in)  :: estimator
-!     integer, value,      intent(in)  :: current_bin
-!     integer,             intent(out) :: next_bin
-!     real(8),             intent(out) :: weight
-! 
-!     integer :: i, start
-! 
-!     ! Find the coordinate level of the last bin we found.
-!     if (current_bin == NO_BIN_FOUND) then
-!       start = 1
-!     else
-!       do i = 1, p % n_coord
-!         if (p % coord(i) % cell == this % cells(current_bin)) then
-!           start = i + 1
-!           exit
-!         end if
-!       end do
-!     end if
-! 
-!     ! Starting one coordinate level deeper, find the next bin.
-!     next_bin = NO_BIN_FOUND
-!     weight = ERROR_REAL
-!     do i = start, p % n_coord
-!       if (this % map % has_key(p % coord(i) % cell)) then
-!         next_bin = this % map % get_key(p % coord(i) % cell)
-!         weight = ONE
-!         exit
-!       end if
-!     end do
-!   end subroutine get_next_bin_cell_to
-
   subroutine to_statepoint_cell_to(this, filter_group)
     class(CellToFilter), intent(in) :: this
     integer(HID_T),      intent(in) :: filter_group
@@ -878,29 +821,6 @@ contains
     end do
     call write_dataset(filter_group, "bins", cell_ids)
   end subroutine to_statepoint_cell_to
-
-!   subroutine initialize_cell_to(this)
-!     class(CellToFilter), intent(inout) :: this
-! 
-!     integer :: i, id
-! 
-!     ! Convert ids to indices.
-!     do i = 1, this % n_bins
-!       id = this % cells(i)
-! 
-!       if (cell_dict % has_key(id)) then
-!         this % cells(i) = cell_dict % get_key(id)
-!       else
-!         call fatal_error("Could not find cell " // trim(to_str(id)) &
-!              &// " specified on tally filter.")
-!       end if
-!     end do
-! 
-!     ! Generate mapping from cell indices to filter bins.
-!     do i = 1, this % n_bins
-!       call this % map % add_key(this % cells(i), i)
-!     end do
-!   end subroutine initialize_cell_to
 
   function text_label_cell_to(this, bin) result(label)
     class(CellToFilter), intent(in) :: this

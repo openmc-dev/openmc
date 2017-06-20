@@ -153,6 +153,11 @@ contains
         last_cell = p % coord(p % n_coord) % cell
         call p % set_last_coord()
 
+        ! Update last_ information. This is needed to use the same filters as
+        ! the ones implemented for regular tallies
+        p % last_uvw = p % coord(p % n_coord) % uvw
+        p % last_E = p % E
+
         p % coord(p % n_coord) % cell = NONE
         if (any(lattice_translation /= 0)) then
           ! Particle crosses lattice boundary
@@ -162,11 +167,6 @@ contains
         else
           ! Particle crosses surface
           p % surface = surface_crossed
-
-          ! Update last_ information. This is needed to use the same filters as
-          ! the ones implemented for regular tallies
-          p % last_uvw = p % coord(p % n_coord) % uvw
-          p % last_E = p % E
 
           call cross_surface(p, last_cell)
           p % event = EVENT_SURFACE

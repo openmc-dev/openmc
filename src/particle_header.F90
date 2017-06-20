@@ -32,6 +32,7 @@ module particle_header
     logical :: rotated = .false.
   contains
     procedure :: reset => reset_coord
+    procedure :: copy_coord
   end type LocalCoord
 
 !===============================================================================
@@ -48,6 +49,10 @@ module particle_header
     integer          :: n_coord          ! number of current coordinates
     type(LocalCoord) :: coord(MAX_COORD) ! coordinates for all levels
 
+    ! Particle coordinates before crossing a surface
+    integer          :: last_n_coord          ! number of current coordinates
+    type(LocalCoord) :: last_coord(MAX_COORD) ! coordinates for all levels
+
     ! Energy Data
     real(8)    :: E      ! post-collision energy
     real(8)    :: last_E ! pre-collision energy
@@ -58,10 +63,6 @@ module particle_header
     real(8)    :: wgt           ! particle weight
     real(8)    :: mu            ! angle of scatter
     logical    :: alive         ! is particle alive?
-
-    ! Crossing surface data
-    integer    :: last_cell     ! last cell the particle was in before crossing
-    real(8)    :: normal_proj   ! cos of angle to surface normal when crossing
 
     ! Pre-collision physical data
     real(8)    :: last_xyz_current(3) ! coordinates of the last collision or
@@ -110,6 +111,7 @@ module particle_header
     procedure :: clear => clear_particle
     procedure :: initialize_from_source
     procedure :: create_secondary
+    procedure :: set_last_coord
   end type Particle
 
 contains
@@ -132,7 +134,6 @@ contains
 
     ! clear attributes
     this % surface           = NONE
-    this % last_cell         = NONE
     this % cell_born         = NONE
     this % material          = NONE
     this % last_material     = NONE
@@ -140,7 +141,6 @@ contains
     this % wgt               = ONE
     this % last_wgt          = ONE
     this % absorb_wgt        = ZERO
-    this % normal_proj       = 1
     this % n_bank            = 0
     this % wgt_bank          = ZERO
     this % sqrtkT            = ERROR_REAL
@@ -153,6 +153,8 @@ contains
     ! Set up base level coordinates
     this % coord(1) % universe = root_universe
     this % n_coord = 1
+    this % last_coord(1) % universe = root_universe
+    this % last_n_coord = 1
 
   end subroutine initialize_particle
 
@@ -222,6 +224,47 @@ contains
     this % last_E           = this % E
 
   end subroutine initialize_from_source
+
+!===============================================================================
+! SET_LAST_COORD copies all coordinate levels from coord to last_coord. This is
+! meant to have information about the last cell in the cell_from filter
+!===============================================================================
+
+  subroutine set_last_coord(this)
+    class(Particle), intent(inout) :: this
+    integer :: i
+
+    this % last_n_coord = this % n_coord
+
+    ! copy all information at all coordinate levels
+    do i = 1, this % n_coord
+      call this % last_coord(i) % copy_coord(this % coord(i))
+    end do
+
+    ! reset the rest of former last_coord
+    do i = this % n_coord + 1, MAX_COORD
+      call this % last_coord(i) % reset()
+    end do
+
+  end subroutine set_last_coord
+
+!===============================================================================
+! COPY_COORD copies one coordinate levels from coord to last_coord.
+!===============================================================================
+
+  elemental subroutine copy_coord(this, coord)
+    class(LocalCoord), intent(inout) :: this
+    class(LocalCoord), intent(in)    :: coord
+
+    this % cell = coord % cell
+    this % universe = coord % universe
+    this % lattice = coord % lattice
+    this % lattice_x = coord % lattice_x
+    this % lattice_y = coord % lattice_y
+    this % lattice_z = coord % lattice_z
+    this % rotated = coord % rotated
+
+  end subroutine copy_coord
 
 !===============================================================================
 ! CREATE_SECONDARY stores the current phase space attributes of the particle in

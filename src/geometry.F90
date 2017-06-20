@@ -11,8 +11,7 @@ module geometry
   use surface_header
   use stl_vector,             only: VectorInt
   use string,                 only: to_str
-  use tally,                  only: score_surface_current, &
-                                    &score_partial_current
+  use tally,                  only: score_surface_current
 
   implicit none
 

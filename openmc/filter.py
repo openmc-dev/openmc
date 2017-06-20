@@ -18,7 +18,8 @@ AUTO_FILTER_ID = 10000
 
 _FILTER_TYPES = ['universe', 'material', 'cell', 'cellborn', 'surface',
                  'mesh', 'energy', 'energyout', 'mu', 'polar', 'azimuthal',
-                 'distribcell', 'delayedgroup', 'energyfunction', 'celltocell', 'cellfrom', 'cellto']
+                 'distribcell', 'delayedgroup', 'energyfunction', 'cellfrom', 
+                 'cellto']
 
 _CURRENT_NAMES = {1:  'x-min out', 2:  'x-min in',
                   3:  'x-max out', 4:  'x-max in',

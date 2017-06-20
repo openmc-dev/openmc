@@ -72,24 +72,21 @@ module tally_filter
   end type CellFilter
 
 !===============================================================================
-! CELLFROMFILTER specifies which geometric cells particles exit.
+! CELLFROMFILTER specifies which geometric cells particles exit when crossing a
+! surface.
 !===============================================================================
-  type, extends(TallyFilter) :: CellFromFilter
-    integer, allocatable :: cells(:)
-    type(DictIntInt)     :: map
+  type, extends(CellFilter) :: CellFromFilter
   contains
-    procedure :: get_next_bin => get_next_bin_cell_from
-    procedure :: to_statepoint => to_statepoint_cell_from
-    procedure :: text_label => text_label_cell_from
-    procedure :: initialize => initialize_cell_from
+    procedure :: get_next_bin_cell => get_next_bin_cell_from
+    procedure :: to_statepoint_cell => to_statepoint_cell_from
+    procedure :: text_label_cell => text_label_cell_from
   end type CellFromFilter
 
 !===============================================================================
-! CELLTOFILTER specifies which geometric cells particles enter.
+! CELLTOFILTER specifies which geometric cells particles enter when crossing a
+! surface.
 !===============================================================================
   type, extends(CellFilter) :: CellToFilter
-!     integer, allocatable :: cells(:)
-!     type(DictIntInt)     :: map
   contains
     procedure :: to_statepoint_cell => to_statepoint_cell_to
     procedure :: text_label_cell => text_label_cell_to
@@ -755,18 +752,28 @@ contains
 
     integer :: i, start
 
-    ! Particle can only have one cell_from
-    ! If current_bin is already a bin, then no need to look for another bin
+    ! Find the coordinate level of the last bin we found.
+    if (current_bin == NO_BIN_FOUND) then
+      start = 1
+    else
+      do i = 1, p % last_n_coord
+        if (p % last_coord(i) % cell == this % cells(current_bin)) then
+          start = i + 1
+          exit
+        end if
+      end do
+    end if
+
+    ! Starting one coordinate level deeper, find the next bin.
     next_bin = NO_BIN_FOUND
     weight = ERROR_REAL
-    if (current_bin == NO_BIN_FOUND) then
-      if (this % map % has_key(p % last_cell)) then
-        next_bin = this % map % get_key(p % last_cell)
+    do i = start, p % last_n_coord
+      if (this % map % has_key(p % last_coord(i) % cell)) then
+        next_bin = this % map % get_key(p % last_coord(i) % cell)
         weight = ONE
+        exit
       end if
-    else
-      next_bin = NO_BIN_FOUND
-    end if
+    end do
 
   end subroutine get_next_bin_cell_from
 
@@ -777,7 +784,7 @@ contains
     integer :: i
     integer, allocatable :: cell_ids(:)
 
-    call write_dataset(filter_group, "type", "cell from")
+    call write_dataset(filter_group, "type", "cellfrom")
     call write_dataset(filter_group, "n_bins", this % n_bins)
 
     allocate(cell_ids(size(this % cells)))
@@ -862,7 +869,7 @@ contains
     integer :: i
     integer, allocatable :: cell_ids(:)
 
-    call write_dataset(filter_group, "type", "cell to")
+    call write_dataset(filter_group, "type", "cellto")
     call write_dataset(filter_group, "n_bins", this % n_bins)
 
     allocate(cell_ids(size(this % cells)))

@@ -37,7 +37,6 @@ contains
     integer :: surface_crossed        ! surface which particle is on
     integer :: lattice_translation(3) ! in-lattice translation vector
     integer :: last_cell              ! most recent cell particle was in
-    integer :: last_n_coord           ! most recent number of levels for last_cell
     integer :: n_event                ! number of collisions/crossings
     real(8) :: d_boundary             ! distance to nearest boundary
     real(8) :: d_collision            ! sampled distance to collision
@@ -152,6 +151,7 @@ contains
 
         ! Saving previous cell data
         last_cell = p % coord(p % n_coord) % cell
+!         p % set_last_coord()
 
         p % coord(p % n_coord) % cell = NONE
         if (any(lattice_translation /= 0)) then
@@ -163,9 +163,6 @@ contains
           ! Particle crosses surface
           p % surface = surface_crossed
 
-          ! Saving last cell for tallying purposes
-          p % last_cell = last_cell
-
           ! Update last_ information. This is needed to use the same filters as
           ! the ones implemented for regular tallies
           p % last_uvw = p % coord(p % n_coord) % uvw
@@ -173,10 +170,9 @@ contains
 
           call cross_surface(p, last_cell)
           p % event = EVENT_SURFACE
-          
-          ! Score cell to cell partial currents
-          call score_partial_current(p) 
         end if
+        ! Score cell to cell partial currents
+        if(active_cell_to_cell_tallies%size()>0) call score_partial_current(p) 
       else
         ! ====================================================================
         ! PARTICLE HAS COLLISION

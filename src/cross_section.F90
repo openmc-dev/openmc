@@ -36,6 +36,7 @@ contains
     integer :: i_grid        ! index into logarithmic mapping array or material
                              ! union grid
     real(8) :: atom_density  ! atom density of a nuclide
+    real(8) :: sab_frac      ! fraction of atoms affected by S(a,b)
     logical :: check_sab     ! should we check for S(a,b) table?
 
     ! Set all material macroscopic cross sections to zero
@@ -71,6 +72,7 @@ contains
           if (i == mat % i_sab_nuclides(j)) then
             ! Get index in sab_tables
             i_sab = mat % i_sab_tables(j)
+            sab_frac = mat % sab_fracs(j)
 
             ! If particle energy is greater than the highest energy for the S(a,b)
             ! table, don't use the S(a,b) table
@@ -84,7 +86,7 @@ contains
           end if
         end if
 
-        ! ========================================================================
+        ! ======================================================================
         ! CALCULATE MICROSCOPIC CROSS SECTION
 
         ! Determine microscopic cross sections for this nuclide
@@ -93,12 +95,14 @@ contains
         ! Calculate microscopic cross section for this nuclide
         if (p % E /= micro_xs(i_nuclide) % last_E &
              .or. p % sqrtkT /= micro_xs(i_nuclide) % last_sqrtkT) then
-          call calculate_nuclide_xs(i_nuclide, i_sab, p % E, i_grid, p % sqrtkT)
+          call calculate_nuclide_xs(i_nuclide, i_sab, p % E, i_grid, &
+                                    p % sqrtkT, sab_frac)
         else if (i_sab /= micro_xs(i_nuclide) % last_index_sab) then
-          call calculate_nuclide_xs(i_nuclide, i_sab, p % E, i_grid, p % sqrtkT)
+          call calculate_nuclide_xs(i_nuclide, i_sab, p % E, i_grid, &
+                                    p % sqrtkT, sab_frac)
         end if
 
-        ! ========================================================================
+        ! ======================================================================
         ! ADD TO MACROSCOPIC CROSS SECTION
 
         ! Copy atom density of nuclide in material
@@ -110,7 +114,8 @@ contains
 
         ! Add contributions to material macroscopic scattering cross section
         material_xs % elastic = material_xs % elastic + &
-             atom_density * micro_xs(i_nuclide) % elastic
+             atom_density * (micro_xs(i_nuclide) % elastic &
+                             + micro_xs(i_nuclide) % scatter_sab)
 
         ! Add contributions to material macroscopic absorption cross section
         material_xs % absorption = material_xs % absorption + &
@@ -133,13 +138,15 @@ contains
 ! given index in the nuclides array at the energy of the given particle
 !===============================================================================
 
-  subroutine calculate_nuclide_xs(i_nuclide, i_sab, E, i_log_union, sqrtkT)
-    integer, intent(in) :: i_nuclide ! index into nuclides array
-    integer, intent(in) :: i_sab     ! index into sab_tables array
-    real(8), intent(in) :: E         ! energy
+  subroutine calculate_nuclide_xs(i_nuclide, i_sab, E, i_log_union, sqrtkT, &
+                                  sab_frac)
+    integer, intent(in) :: i_nuclide   ! index into nuclides array
+    integer, intent(in) :: i_sab       ! index into sab_tables array
+    real(8), intent(in) :: E           ! energy
     integer, intent(in) :: i_log_union ! index into logarithmic mapping array or
                                        ! material union energy grid
-    real(8), intent(in) :: sqrtkT    ! Square root of kT, material dependent
+    real(8), intent(in) :: sqrtkT      ! square root of kT, material dependent
+    real(8), intent(in) :: sab_frac    ! fraction of atoms affected by S(a,b)
 
     logical :: use_mp ! true if XS can be calculated with windowed multipole
     integer :: i_temp ! index for temperature
@@ -243,8 +250,10 @@ contains
           micro_xs(i_nuclide) % interp_factor = f
 
           ! Initialize nuclide cross-sections to zero
-          micro_xs(i_nuclide) % fission    = ZERO
-          micro_xs(i_nuclide) % nu_fission = ZERO
+          micro_xs(i_nuclide) % fission     = ZERO
+          micro_xs(i_nuclide) % nu_fission  = ZERO
+          micro_xs(i_nuclide) % scatter_sab = ZERO
+          micro_xs(i_nuclide) % elastic_sab = ZERO
 
           ! Calculate microscopic nuclide total cross section
           micro_xs(i_nuclide) % total = (ONE - f) * xs % total(i_grid) &
@@ -277,14 +286,15 @@ contains
       ! Initialize URR probability table treatment to false
       micro_xs(i_nuclide) % use_ptable  = .false.
 
-      ! If there is S(a,b) data for this nuclide, we need to do a few
-      ! things. Since the total cross section was based on non-S(a,b) data, we
-      ! need to correct it by subtracting the non-S(a,b) elastic cross section and
-      ! then add back in the calculated S(a,b) elastic+inelastic cross section.
+      ! If there is S(a,b) data for this nuclide, we need to set the sab_scatter
+      ! and sab_elastic cross sections and correct the total and elastic cross
+      ! sections.
 
-      if (i_sab > 0) call calculate_sab_xs(i_nuclide, i_sab, E, sqrtkT)
+      if (i_sab > 0) then
+        call calculate_sab_xs(i_nuclide, i_sab, E, sqrtkT, sab_frac)
+      end if
 
-      ! if the particle is in the unresolved resonance range and there are
+      ! If the particle is in the unresolved resonance range and there are
       ! probability tables, we need to determine cross sections from the table
 
       if (urr_ptables_on .and. nuc % urr_present .and. .not. use_mp) then
@@ -303,16 +313,16 @@ contains
 
 !===============================================================================
 ! CALCULATE_SAB_XS determines the elastic and inelastic scattering
-! cross-sections in the thermal energy range. These cross sections replace
-! whatever data were taken from the normal Nuclide table.
+! cross-sections in the thermal energy range. These cross sections replace a
+! fraction of whatever data were taken from the normal Nuclide table.
 !===============================================================================
 
-  subroutine calculate_sab_xs(i_nuclide, i_sab, E, sqrtkT)
-
+  subroutine calculate_sab_xs(i_nuclide, i_sab, E, sqrtkT, sab_frac)
     integer, intent(in) :: i_nuclide ! index into nuclides array
     integer, intent(in) :: i_sab     ! index into sab_tables array
     real(8), intent(in) :: E         ! energy
     real(8), intent(in) :: sqrtkT    ! temperature
+    real(8), intent(in) :: sab_frac  ! fraction of atoms affected by S(a,b)
 
     integer :: i_grid    ! index on S(a,b) energy grid
     integer :: i_temp    ! temperature index
@@ -341,7 +351,8 @@ contains
 
       ! Randomly sample between temperature i and i+1
       f = (kT - sab_tables(i_sab) % kTs(i_temp)) / &
-           (sab_tables(i_sab) % kTs(i_temp + 1) - sab_tables(i_sab) % kTs(i_temp))
+           (sab_tables(i_sab) % kTs(i_temp + 1) &
+           - sab_tables(i_sab) % kTs(i_temp))
       if (f > prn()) i_temp = i_temp + 1
     end if
 
@@ -402,13 +413,15 @@ contains
       end if
     end associate
 
-    ! Correct total and elastic cross sections
-    micro_xs(i_nuclide) % total = micro_xs(i_nuclide) % total - &
-         micro_xs(i_nuclide) % elastic + inelastic + elastic
-    micro_xs(i_nuclide) % elastic = inelastic + elastic
+    ! Store the S(a,b) cross sections.
+    micro_xs(i_nuclide) % scatter_sab = sab_frac * (elastic + inelastic)
+    micro_xs(i_nuclide) % elastic_sab = sab_frac * elastic
 
-    ! Store S(a,b) elastic cross section for sampling later
-    micro_xs(i_nuclide) % elastic_sab = elastic
+    ! Correct total and elastic cross sections
+    micro_xs(i_nuclide) % total = micro_xs(i_nuclide) % total &
+         + sab_frac * (elastic + inelastic - micro_xs(i_nuclide) % elastic)
+    micro_xs(i_nuclide) % elastic = &
+         (ONE - sab_frac) * micro_xs(i_nuclide) % elastic
 
     ! Save temperature index
     micro_xs(i_nuclide) % index_temp_sab = i_temp

@@ -22,10 +22,11 @@ module material_header
     ! Unionized energy grid information
     integer, allocatable :: nuclide_grid_index(:,:) ! nuclide e_grid pointers
 
-    ! S(a,b) data references
+    ! S(a,b) data
     integer              :: n_sab = 0         ! number of S(a,b) tables
     integer, allocatable :: i_sab_nuclides(:) ! index of corresponding nuclide
     integer, allocatable :: i_sab_tables(:)   ! index in sab_tables
+    real(8), allocatable :: sab_fracs(:)      ! how often to use S(a,b)
 
     ! Temporary names read during initialization
     character(20), allocatable :: names(:)     ! isotope names

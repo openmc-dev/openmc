@@ -2565,6 +2565,7 @@ contains
           ! table is indeed applied to multiple nuclides.
           allocate(mat % sab_names(n_sab))
           allocate(mat % i_sab_tables(n_sab))
+          allocate(mat % sab_fracs(n_sab))
 
           do j = 1, n_sab
             ! Get pointer to S(a,b) table
@@ -2577,6 +2578,13 @@ contains
             call get_node_value(node_sab, "name", name)
             name = trim(name)
             mat % sab_names(j) = name
+
+            ! Read the fraction of nuclei affected by this S(a,b) table
+            if (check_for_node(node_sab, "fraction")) then
+              call get_node_value(node_sab, "fraction", mat % sab_fracs(j))
+            else
+              mat % sab_fracs(j) = ONE
+            end if
 
             ! Check that this nuclide is listed in the cross_sections.xml file
             if (.not. library_dict % has_key(to_lower(name))) then
@@ -5151,8 +5159,9 @@ contains
     integer :: temp_nuclide ! temporary value for sorting
     integer :: temp_table   ! temporary value for sorting
     logical :: found
-    type(VectorInt) :: i_sab_tables
-    type(VectorInt) :: i_sab_nuclides
+    type(VectorInt)  :: i_sab_tables
+    type(VectorInt)  :: i_sab_nuclides
+    type(VectorReal) :: sab_fracs
 
     do i = 1, size(materials)
       ! Skip materials with no S(a,b) tables
@@ -5170,6 +5179,7 @@ contains
               if (any(sab % nuclides == nuclides(mat % nuclide(j)) % name)) then
                 call i_sab_tables % push_back(mat % i_sab_tables(k))
                 call i_sab_nuclides % push_back(j)
+                call sab_fracs % push_back(mat % sab_fracs(k))
                 found = .true.
               end if
             end do FIND_NUCLIDE
@@ -5185,15 +5195,19 @@ contains
 
         ! Update i_sab_tables and i_sab_nuclides
         deallocate(mat % i_sab_tables)
+        deallocate(mat % sab_fracs)
         m = i_sab_tables % size()
         allocate(mat % i_sab_tables(m))
         allocate(mat % i_sab_nuclides(m))
+        allocate(mat % sab_fracs(m))
         mat % i_sab_tables(:) = i_sab_tables % data(1:m)
         mat % i_sab_nuclides(:) = i_sab_nuclides % data(1:m)
+        mat % sab_fracs = sab_fracs % data(1:m)
 
         ! Clear entries in vectors for next material
         call i_sab_tables % clear()
         call i_sab_nuclides % clear()
+        call sab_fracs % clear()
 
         ! If there are multiple S(a,b) tables, we need to make sure that the
         ! entries in i_sab_nuclides are sorted or else they won't be applied

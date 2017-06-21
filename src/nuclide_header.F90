@@ -112,10 +112,11 @@ module nuclide_header
     real(8) :: last_E = ZERO   ! last evaluated energy
     real(8) :: interp_factor   ! interpolation factor on nuc. energy grid
     real(8) :: total           ! microscropic total xs
-    real(8) :: elastic         ! microscopic elastic scattering xs
+    real(8) :: elastic         ! microscopic elastic scattering xs (non S(a,b))
     real(8) :: absorption      ! microscopic absorption xs
     real(8) :: fission         ! microscopic fission xs
     real(8) :: nu_fission      ! microscopic production xs
+    real(8) :: scatter_sab     ! microscopic scattering xs due to S(a,b)
 
     ! Information for S(a,b) use
     integer :: index_sab          ! index in sab_tables (zero means no table)

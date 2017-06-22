@@ -138,6 +138,7 @@ contains
       end if
     end do
 
+    ! Reset global tallies
     n_realizations = 0
     if (allocated(global_tallies)) then
       global_tallies(:, :) = ZERO
@@ -146,6 +147,17 @@ contains
     k_col_tra = ZERO
     k_abs_tra = ZERO
     k_sum(:) = ZERO
+
+    ! Turn off tally flags
+    tallies_on = .false.
+    active_batches = .false.
+
+    ! Clear active tally lists
+    call active_analog_tallies % clear()
+    call active_tracklength_tallies % clear()
+    call active_current_tallies % clear()
+    call active_collision_tallies % clear()
+    call active_tallies % clear()
 
   end subroutine openmc_reset
 

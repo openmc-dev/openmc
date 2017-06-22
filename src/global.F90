@@ -106,6 +106,7 @@ module global
   logical :: temperature_multipole = .false.
   real(8) :: temperature_tolerance = 10.0_8
   real(8) :: temperature_default = 293.6_8
+  real(8) :: temperature_range(2) = [ZERO, ZERO]
 
   ! ============================================================================
   ! MULTI-GROUP CROSS SECTION RELATED VARIABLES

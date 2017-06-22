@@ -116,6 +116,8 @@ element settings {
 
   element temperature_multipole { xsd:boolean }? &
 
+  element temperature_range { list { xsd:double, xsd:double } }? &
+
   element temperature_tolerance { xsd:double }? &
 
   element threads { xsd:positiveInteger }? &

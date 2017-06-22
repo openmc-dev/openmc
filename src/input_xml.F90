@@ -951,6 +951,9 @@ contains
     if (check_for_node(root, "temperature_multipole")) then
       call get_node_value(root, "temperature_multipole", temperature_multipole)
     end if
+    if (check_for_node(root, "temperature_range")) then
+      call get_node_array(root, "temperature_range", temperature_range)
+    end if
 
     ! Check for tabular_legendre options
     if (check_for_node(root, "tabular_legendre")) then
@@ -5273,7 +5276,8 @@ contains
           ! Read nuclide data from HDF5
           group_id = open_group(file_id, name)
           call nuclides(i_nuclide) % from_hdf5(group_id, nuc_temps(i_nuclide), &
-               temperature_method, temperature_tolerance, master)
+               temperature_method, temperature_tolerance, temperature_range, &
+               master)
           call close_group(group_id)
           call file_close(file_id)
 
@@ -5325,7 +5329,7 @@ contains
           ! Read S(a,b) data from HDF5
           group_id = open_group(file_id, name)
           call sab_tables(i_sab) % from_hdf5(group_id, sab_temps(i_sab), &
-               temperature_method, temperature_tolerance)
+               temperature_method, temperature_tolerance, temperature_range)
           call close_group(group_id)
           call file_close(file_id)
 

@@ -661,6 +661,17 @@ methods like "nearest" and "interpolation" in the resolved resonance range.
 
   *Default*: False
 
+-------------------------------
+``<temperature_range>`` Element
+-------------------------------
+
+The ``<temperature_range>`` element specifies a minimum and maximum temperature
+in Kelvin above and below which cross sections should be loaded for all nuclides
+and thermal scattering tables. This can be used for multi-physics simulations
+where the temperatures might change from one iteration to the next.
+
+  *Default*: None
+
 .. _temperature_tolerance:
 
 -----------------------------------

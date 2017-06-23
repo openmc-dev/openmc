@@ -172,7 +172,7 @@ contains
           p % event = EVENT_SURFACE
         end if
         ! Score cell to cell partial currents
-        if(active_cell_to_cell_tallies%size()>2) call score_partial_current(p)
+        if(active_cell_to_cell_tallies%size()>0) call score_partial_current(p)
       else
         ! ====================================================================
         ! PARTICLE HAS COLLISION

@@ -982,7 +982,7 @@ class Material(IDManagerMixin):
             for sab in self._sab:
                 subelement = ET.SubElement(element, "sab")
                 subelement.set("name", sab[0])
-                subelement.set("fraction", sab[1])
+                subelement.set("fraction", str(sab[1]))
 
         return element
 

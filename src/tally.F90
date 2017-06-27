@@ -3138,14 +3138,14 @@ contains
   end subroutine score_collision_tally
 
 !===============================================================================
-! score_partial_current tallies partial currents from cell_to to cell_from
+! score_surface_tally is called at every surface crossing and can be used to 
+! tally partial currents between two cells
 !===============================================================================
 
-    subroutine  score_partial_current(p)
+    subroutine  score_surface_tally(p)
 
     type(Particle), intent(in)    :: p
 
-  !end if
     integer :: i
     integer :: i_tally
     integer :: i_filt
@@ -3160,7 +3160,6 @@ contains
     real(8) :: filter_weight        ! combined weight of all filters
     real(8) :: score                ! analog tally score
     logical :: finished             ! found all valid bin combinations
-    type(TallyObject), pointer :: t
 
     ! Determine collision estimate of flux
     if (survival_biasing) then
@@ -3170,10 +3169,10 @@ contains
       flux = p % last_wgt
     end if
 
-    TALLY_LOOP: do i = 1, active_cell_to_cell_tallies % size()
+    TALLY_LOOP: do i = 1, active_surface_tallies % size()
       ! Get index of tally and pointer to tally
-      i_tally = active_cell_to_cell_tallies % data(i)
-      t => tallies(i_tally)
+      i_tally = active_surface_tallies % data(i)
+      associate (t => tallies(i_tally))
 
       ! Find all valid bins in each filter if they have not already been found
       ! for a previous tally.
@@ -3233,7 +3232,7 @@ contains
 
           ! Expand score if necessary and add to tally results.
           call expand_and_score(p, t, score_index, filter_index, score_bin, &
-               score, q)
+               score, score_index)
         end do SCORE_LOOP
 
         ! ======================================================================
@@ -3260,6 +3259,8 @@ contains
 
       end do FILTER_LOOP
 
+      end associate
+
       ! If the user has specified that we can assume all tallies are spatially
       ! separate, this implies that once a tally has been scored to, we needn't
       ! check the others. This cuts down on overhead when there are many
@@ -3275,7 +3276,7 @@ contains
     ! Reset tally map positioning
     position = 0
 
-  end subroutine score_partial_current
+  end subroutine score_surface_tally
 
 !===============================================================================
 ! SCORE_SURFACE_CURRENT tallies surface crossings in a mesh tally by manually
@@ -4568,8 +4569,8 @@ contains
         end if
       elseif (user_tallies(i) % type == TALLY_SURFACE_CURRENT) then
         call active_current_tallies % push_back(i_user_tallies + i)
-      elseif (user_tallies(i) % type == TALLY_CELL_TO_CELL) then
-        call active_cell_to_cell_tallies % push_back(i_user_tallies + i)
+      elseif (user_tallies(i) % type == TALLY_SURFACE) then
+        call active_surface_tallies % push_back(i_user_tallies + i)
       end if
 
     end do
@@ -4579,7 +4580,7 @@ contains
     call active_tracklength_tallies % shrink_to_fit()
     call active_collision_tallies % shrink_to_fit()
     call active_current_tallies % shrink_to_fit()
-    call active_cell_to_cell_tallies % shrink_to_fit()
+    call active_surface_tallies % shrink_to_fit()
 
   end subroutine setup_active_usertallies
 
@@ -4603,7 +4604,7 @@ contains
     else if (active_current_tallies % size() > 0) then
       call fatal_error("Active current tallies should not exist before CMFD &
            &tallies!")
-    else if (active_cell_to_cell_tallies % size() > 0) then
+    else if (active_surface_tallies % size() > 0) then
       call fatal_error("Active cell to cell tallies should not exist before &
            &CMFD tallies!")
     end if

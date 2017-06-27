@@ -32,7 +32,6 @@ module particle_header
     logical :: rotated = .false.
   contains
     procedure :: reset => reset_coord
-    procedure :: copy_coord
   end type LocalCoord
 
 !===============================================================================
@@ -236,11 +235,7 @@ contains
     integer :: i
 
     this % last_n_coord = this % n_coord
-
-    ! copy all information at all coordinate levels
-    do i = 1, this % n_coord
-      call this % last_coord(i) % copy_coord(this % coord(i))
-    end do
+    this % last_coord = this % coord
 
     ! reset the rest of former last_coord
     do i = this % n_coord + 1, MAX_COORD
@@ -248,24 +243,6 @@ contains
     end do
 
   end subroutine set_last_coord
-
-!===============================================================================
-! COPY_COORD copies one coordinate levels from coord to last_coord.
-!===============================================================================
-
-  elemental subroutine copy_coord(this, coord)
-    class(LocalCoord), intent(inout) :: this
-    class(LocalCoord), intent(in)    :: coord
-
-    this % cell = coord % cell
-    this % universe = coord % universe
-    this % lattice = coord % lattice
-    this % lattice_x = coord % lattice_x
-    this % lattice_y = coord % lattice_y
-    this % lattice_z = coord % lattice_z
-    this % rotated = coord % rotated
-
-  end subroutine copy_coord
 
 !===============================================================================
 ! CREATE_SECONDARY stores the current phase space attributes of the particle in

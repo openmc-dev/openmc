@@ -3047,17 +3047,6 @@ contains
           call get_node_array(node_filt, "bins", filt % cells)
         end select
 
-      case ('cellto')
-        ! Allocate and declare the filter type
-        allocate(CellToFilter :: f % obj)
-        select type (filt => f % obj)
-        type is (CellToFilter)
-          ! Allocate and store bins
-          filt % n_bins = n_words
-          allocate(filt % cells(n_words))
-          call get_node_array(node_filt, "bins", filt % cells)
-        end select
-
       case ('cellborn')
         ! Allocate and declare the filter type
         allocate(CellbornFilter :: f % obj)
@@ -3415,9 +3404,7 @@ contains
         type is (CellFilter)
           t % find_filter(FILTER_CELL) = j
         type is (CellFromFilter)
-          t % find_filter(FILTER_CELL_TO_CELL) = j
-        type is (CellToFilter)
-          t % find_filter(FILTER_CELL_TO_CELL) = j
+          t % find_filter(FILTER_CELLFROM) = j
         type is (CellbornFilter)
           t % find_filter(FILTER_CELLBORN) = j
         type is (MaterialFilter)
@@ -3921,8 +3908,8 @@ contains
             t % filter(n_filter) = i_filt
 
           case ('partial_current')
-            t % type = TALLY_CELL_TO_CELL
-            t % score_bins(j) = SCORE_CELL_TO_CELL
+            t % type = TALLY_SURFACE
+            t % score_bins(j) = SCORE_CURRENT
           case ('events')
             t % score_bins(j) = SCORE_EVENTS
           case ('elastic', '(n,elastic)')

@@ -83,16 +83,6 @@ module tally_filter
   end type CellFromFilter
 
 !===============================================================================
-! CELLTOFILTER specifies which geometric cells particles enter when crossing a
-! surface.
-!===============================================================================
-  type, extends(CellFilter) :: CellToFilter
-  contains
-    procedure :: to_statepoint => to_statepoint_cell_to
-    procedure :: text_label => text_label_cell_to
-  end type CellToFilter
-
-!===============================================================================
 ! DISTRIBCELLFILTER specifies which distributed geometric cells tally events
 ! reside in.
 !===============================================================================
@@ -801,34 +791,6 @@ contains
 
     label = "Cell from " // to_str(cells(this % cells(bin)) % id)
   end function text_label_cell_from
-
-!===============================================================================
-! CellToFilter methods
-!===============================================================================
-  subroutine to_statepoint_cell_to(this, filter_group)
-    class(CellToFilter), intent(in) :: this
-    integer(HID_T),      intent(in) :: filter_group
-
-    integer :: i
-    integer, allocatable :: cell_ids(:)
-
-    call write_dataset(filter_group, "type", "cellto")
-    call write_dataset(filter_group, "n_bins", this % n_bins)
-
-    allocate(cell_ids(size(this % cells)))
-    do i = 1, size(this % cells)
-      cell_ids(i) = cells(this % cells(i)) % id
-    end do
-    call write_dataset(filter_group, "bins", cell_ids)
-  end subroutine to_statepoint_cell_to
-
-  function text_label_cell_to(this, bin) result(label)
-    class(CellToFilter), intent(in) :: this
-    integer,             intent(in) :: bin
-    character(MAX_LINE_LEN)         :: label
-
-    label = "Cell to " // to_str(cells(this % cells(bin)) % id)
-  end function text_label_cell_to
 
 !===============================================================================
 ! DistribcellFilter methods

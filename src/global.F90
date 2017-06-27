@@ -159,7 +159,7 @@ module global
   type(VectorInt) :: active_current_tallies
   type(VectorInt) :: active_collision_tallies
   type(VectorInt) :: active_tallies
-  type(VectorInt) :: active_cell_to_cell_tallies
+  type(VectorInt) :: active_surface_tallies
 
   ! Global tallies
   !   1) collision estimate of k-eff
@@ -518,7 +518,7 @@ contains
     call active_tracklength_tallies % clear()
     call active_current_tallies % clear()
     call active_collision_tallies % clear()
-    call active_cell_to_cell_tallies % clear()
+    call active_surface_tallies % clear()
     call active_tallies % clear()
 
     ! Deallocate track_identifiers

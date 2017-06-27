@@ -15,7 +15,7 @@ module tracking
   use string,             only: to_str
   use tally,              only: score_analog_tally, score_tracklength_tally, &
                                 score_collision_tally, score_surface_current, &
-                                score_track_derivative, score_partial_current, &
+                                score_track_derivative, score_surface_tally, &
                                 score_collision_derivative, zero_flux_derivs
   use track_output,       only: initialize_particle_track, write_particle_track, &
                                 add_particle_track, finalize_particle_track
@@ -153,8 +153,8 @@ contains
         last_cell = p % coord(p % n_coord) % cell
         call p % set_last_coord()
 
-        ! Update last_ information. This is needed to use the same filters as
-        ! the ones implemented for regular tallies
+        ! Update last_ data. This is needed to use the same filters in
+        ! surface tallies as the ones implemented for regular tallies
         p % last_uvw = p % coord(p % n_coord) % uvw
         p % last_E = p % E
 
@@ -172,7 +172,7 @@ contains
           p % event = EVENT_SURFACE
         end if
         ! Score cell to cell partial currents
-        if(active_cell_to_cell_tallies%size()>0) call score_partial_current(p)
+        if(active_surface_tallies % size() > 0) call score_surface_tally(p)
       else
         ! ====================================================================
         ! PARTICLE HAS COLLISION

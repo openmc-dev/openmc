@@ -163,13 +163,13 @@ contains
     integer, intent(in) :: intracomm         ! MPI intracommunicator
 #endif
 
-    integer                   :: bank_blocks(5)   ! Count for each datatype
+    integer                   :: bank_blocks(6)   ! Count for each datatype
 #ifdef MPIF08
-    type(MPI_Datatype)        :: bank_types(5)
+    type(MPI_Datatype)        :: bank_types(6)
 #else
-    integer                   :: bank_types(5)    ! Datatypes
+    integer                   :: bank_types(6)    ! Datatypes
 #endif
-    integer(MPI_ADDRESS_KIND) :: bank_disp(5)     ! Displacements
+    integer(MPI_ADDRESS_KIND) :: bank_disp(6)     ! Displacements
     logical    :: init_called
     type(Bank) :: b
 
@@ -201,14 +201,16 @@ contains
     call MPI_GET_ADDRESS(b % uvw,           bank_disp(3), mpi_err)
     call MPI_GET_ADDRESS(b % E,             bank_disp(4), mpi_err)
     call MPI_GET_ADDRESS(b % delayed_group, bank_disp(5), mpi_err)
+    call MPI_GET_ADDRESS(b % particle,      bank_disp(6), mpi_err)
 
     ! Adjust displacements
     bank_disp = bank_disp - bank_disp(1)
 
     ! Define MPI_BANK for fission sites
-    bank_blocks = (/ 1, 3, 3, 1, 1 /)
-    bank_types = (/ MPI_REAL8, MPI_REAL8, MPI_REAL8, MPI_REAL8, MPI_INTEGER /)
-    call MPI_TYPE_CREATE_STRUCT(5, bank_blocks, bank_disp, &
+    bank_blocks = (/ 1, 3, 3, 1, 1, 1 /)
+    bank_types = (/ MPI_DOUBLE, MPI_DOUBLE, MPI_DOUBLE, MPI_DOUBLE, &
+         MPI_INT, MPI_INT /)
+    call MPI_TYPE_CREATE_STRUCT(6, bank_blocks, bank_disp, &
          bank_types, MPI_BANK, mpi_err)
     call MPI_TYPE_COMMIT(MPI_BANK, mpi_err)
 
@@ -245,6 +247,8 @@ contains
          c_loc(tmpb(1)%E)), H5T_NATIVE_DOUBLE, hdf5_err)
     call h5tinsert_f(hdf5_bank_t, "delayed_group", h5offsetof(c_loc(tmpb(1)), &
          c_loc(tmpb(1)%delayed_group)), H5T_NATIVE_INTEGER, hdf5_err)
+    call h5tinsert_f(hdf5_bank_t, "particle", h5offsetof(c_loc(tmpb(1)), &
+         c_loc(tmpb(1)%particle)), H5T_NATIVE_INTEGER, hdf5_err)
 
     ! Determine type for integer(8)
     hdf5_integer8_t = h5kind_to_type(8, H5_INTEGER_KIND)

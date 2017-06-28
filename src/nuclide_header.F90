@@ -143,6 +143,12 @@ module nuclide_header
     real(8) :: absorption    ! macroscopic absorption xs
     real(8) :: fission       ! macroscopic fission xs
     real(8) :: nu_fission    ! macroscopic production xs
+
+    ! Photon cross sections
+    real(8) :: coherent        ! macroscopic coherent xs
+    real(8) :: incoherent      ! macroscopic incoherent xs
+    real(8) :: photoelectric   ! macroscopic photoelectric xs
+    real(8) :: pair_production ! macroscopic pair production xs
   end type MaterialMacroXS
 
 !===============================================================================
@@ -155,7 +161,7 @@ module nuclide_header
     character(MAX_FILE_LEN) :: path
   end type Library
 
-  contains
+contains
 
 !===============================================================================
 ! NUCLIDE_CLEAR resets and deallocates data in Nuclide

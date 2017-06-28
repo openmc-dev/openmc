@@ -342,6 +342,7 @@ set(LIBOPENMC_FORTRAN_SRC
   src/particle_restart.F90
   src/particle_restart_write.F90
   src/photon_header.F90
+  src/photon_physics.F90
   src/physics_common.F90
   src/physics.F90
   src/physics_mg.F90

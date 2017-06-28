@@ -20,11 +20,26 @@ module cross_section
 contains
 
 !===============================================================================
-! CALCULATE_XS determines the macroscopic cross sections for the material the
-! particle is currently traveling through.
+! CALCULATE_XS determines the macroscopic neutron and/or photon cross sections
+! for the material the particle is currently traveling through.
 !===============================================================================
 
   subroutine calculate_xs(p)
+    type(Particle), intent(inout) :: p
+
+    if (p % type == NEUTRON) then
+      call calculate_neutron_xs(p)
+    elseif (p % type == PHOTON) then
+      call calculate_photon_xs(p)
+    end if
+  end subroutine calculate_xs
+
+!===============================================================================
+! CALCULATE_NEUTRON_XS determines the macroscopic cross sections for the
+! material the particle is currently traveling through.
+!===============================================================================
+
+  subroutine calculate_neutron_xs(p)
 
     type(Particle), intent(inout) :: p
 
@@ -125,7 +140,7 @@ contains
       end do
     end associate
 
-  end subroutine calculate_xs
+  end subroutine calculate_neutron_xs
 
 !===============================================================================
 ! CALCULATE_NUCLIDE_XS determines microscopic cross sections for a nuclide of a
@@ -556,6 +571,140 @@ contains
     end associate
 
   end subroutine calculate_urr_xs
+
+!===============================================================================
+! CALCULATE_PHOTON_XS determines the macroscopic photon cross sections for the
+! material the particle is currently traveling through.
+!===============================================================================
+
+  subroutine calculate_photon_xs(p)
+    type(Particle), intent(inout) :: p
+
+    integer :: i             ! loop index over nuclides
+    integer :: i_element     ! index into elements array
+    real(8) :: atom_density  ! atom density of a nuclide
+
+    ! Set all material macroscopic cross sections to zero
+    material_xs % total           = ZERO
+    material_xs % coherent        = ZERO
+    material_xs % incoherent      = ZERO
+    material_xs % photoelectric   = ZERO
+    material_xs % pair_production = ZERO
+
+    ! Exit subroutine if material is void
+    if (p % material == MATERIAL_VOID) return
+
+    associate (mat => materials(p % material))
+      ! Add contribution from each nuclide in material
+      do i = 1, mat % n_nuclides
+        ! ========================================================================
+        ! CALCULATE MICROSCOPIC CROSS SECTION
+
+        ! Determine microscopic cross sections for this nuclide
+        i_element = mat % element(i)
+
+        ! Calculate microscopic cross section for this nuclide
+        if (p % E /= micro_photon_xs(i_element) % last_E) then
+          call calculate_element_xs(i_element, p % E)
+        end if
+
+        ! ========================================================================
+        ! ADD TO MACROSCOPIC CROSS SECTION
+
+        ! Copy atom density of nuclide in material
+        atom_density = mat % atom_density(i)
+
+        ! Add contributions to material macroscopic total cross section
+        material_xs % total = material_xs % total + &
+             atom_density * micro_photon_xs(i_element) % total
+
+        ! Add contributions to material macroscopic coherent cross section
+        material_xs % coherent = material_xs % coherent + &
+             atom_density * micro_photon_xs(i_element) % coherent
+
+        ! Add contributions to material macroscopic incoherent cross section
+        material_xs % incoherent = material_xs % incoherent + &
+             atom_density * micro_photon_xs(i_element) % incoherent
+
+        ! Add contributions to material macroscopic photoelectric cross section
+        material_xs % photoelectric = material_xs % photoelectric + &
+             atom_density * micro_photon_xs(i_element) % photoelectric
+
+        ! Add contributions to material macroscopic pair production cross section
+        material_xs % pair_production = material_xs % pair_production + &
+             atom_density * micro_photon_xs(i_element) % pair_production
+      end do
+    end associate
+
+  end subroutine calculate_photon_xs
+
+!===============================================================================
+! CALCULATE_ELEMENT_XS determines microscopic photon cross sections for an
+! element of a given index in the elements array at the energy of the given
+! particle
+!===============================================================================
+
+  subroutine calculate_element_xs(i_element, E)
+    integer, intent(in) :: i_element ! index into nuclides array
+    real(8), intent(in) :: E ! energy
+
+    integer :: i_grid ! index on nuclide energy grid
+    integer :: n_grid ! number of grid points
+    real(8) :: f      ! interp factor on nuclide energy grid
+    real(8) :: log_E  ! logarithm of the energy
+
+    associate (elm => elements(i_element))
+      ! Perform binary search on the element energy grid in order to determine
+      ! which points to interpolate between
+      n_grid = size(elm % energy)
+      log_E = log(E)
+      if (log_E <= elm % energy(1)) then
+        i_grid = 1
+      elseif (log_E > elm % energy(n_grid)) then
+        i_grid = n_grid - 1
+      else
+        i_grid = binary_search(elm % energy, n_grid, log_E)
+      end if
+
+      ! check for case where two energy points are the same
+      if (elm % energy(i_grid) == elm % energy(i_grid+1)) i_grid = i_grid + 1
+
+      ! calculate interpolation factor
+      f = (log_E - elm%energy(i_grid))/(elm%energy(i_grid+1) - elm%energy(i_grid))
+
+      micro_photon_xs(i_element) % index_grid    = i_grid
+      micro_photon_xs(i_element) % interp_factor = f
+
+      ! Calculate microscopic coherent cross section
+      micro_photon_xs(i_element) % coherent = exp(elm % coherent(i_grid) + f * &
+           (elm % coherent(i_grid+1) - elm % coherent(i_grid)))
+
+      ! Calculate microscopic incoherent cross section
+      micro_photon_xs(i_element) % incoherent = exp(elm % incoherent(i_grid) + &
+           f*(elm % incoherent(i_grid+1) - elm % incoherent(i_grid)))
+
+      ! Calculate microscopic photoelectric cross section
+      micro_photon_xs(i_element) % photoelectric = exp(elm % photoelectric_total(&
+           i_grid) + f*(elm % photoelectric_total(i_grid+1) - &
+           elm % photoelectric_total(i_grid)))
+
+      ! Calculate microscopic pair production cross section
+      micro_photon_xs(i_element) % pair_production = exp(&
+           elm % pair_production_total(i_grid) + f*(&
+           elm % pair_production_total(i_grid+1) - &
+           elm % pair_production_total(i_grid)))
+
+      ! Calculate microscopic total cross section
+      micro_photon_xs(i_element) % total = &
+           micro_photon_xs(i_element) % coherent + &
+           micro_photon_xs(i_element) % incoherent + &
+           micro_photon_xs(i_element) % photoelectric + &
+           micro_photon_xs(i_element) % pair_production
+
+      micro_photon_xs(i_element) % last_E = E
+    end associate
+
+  end subroutine calculate_element_xs
 
 !===============================================================================
 ! FIND_ENERGY_INDEX determines the index on the union energy grid at a certain

@@ -134,6 +134,9 @@ contains
       ! Set particle defaults
       call p % initialize()
 
+      ! Set particle type
+      site % particle = external_source(i) % particle
+
       ! Sample spatial distribution
       site % xyz(:) = external_source(i) % space % sample()
 

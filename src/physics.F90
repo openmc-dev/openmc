@@ -14,6 +14,8 @@ module physics
   use output,                 only: write_message
   use particle_header,        only: Particle
   use particle_restart_write, only: write_particle_restart
+  use photon_physics,         only: rayleigh_scatter, compton_scatter, &
+                                    atomic_relaxation
   use physics_common
   use random_lcg,             only: prn, advance_prn_seed, prn_set_stream
   use reaction_header,        only: Reaction
@@ -41,8 +43,12 @@ contains
     ! Add to collision counter for particle
     p % n_collision = p % n_collision + 1
 
-    ! Sample nuclide/reaction for the material the particle is in
-    call sample_reaction(p)
+    ! Sample reaction for the material the particle is in
+    if (p % type == NEUTRON) then
+      call sample_reaction(p)
+    elseif (p % type == PHOTON) then
+      call sample_photon_reaction(p)
+    end if
 
     ! Display information about collision
     if (verbosity >= 10 .or. trace) then
@@ -138,6 +144,110 @@ contains
   end subroutine sample_reaction
 
 !===============================================================================
+! SAMPLE_PHOTON_REACTION samples an element based on the macroscopic cross
+! sections for each nuclide within a material and then samples a reaction for
+! that element and calls the appropriate routine to process the physics.
+!===============================================================================
+
+  subroutine sample_photon_reaction(p)
+    type(Particle), intent(inout) :: p
+
+    integer :: i_shell      ! index in subshells
+    integer :: i_grid       ! index on energy grid
+    integer :: i_element    ! index in nuclides array
+    integer :: i_start      ! threshold index
+    real(8) :: prob         ! cumulative probability
+    real(8) :: cutoff       ! sampled total cross section
+    real(8) :: f            ! interpolation factor
+    real(8) :: xs           ! photoionization cross section
+    real(8) :: prob_after
+    real(8) :: alpha        ! photon energy divided by electron rest mass
+    real(8) :: alpha_out    ! outgoing photon energy over electron rest mass
+    real(8) :: mu           ! scattering cosine
+    real(8) :: phi          ! azimuthal angle
+
+    ! Sample element within material
+    i_element = sample_element(p)
+    p % event_nuclide = i_element
+
+    ! Calculate photon energy over electron rest mass equivalent
+    alpha = p % E/MASS_ELECTRON
+
+    ! For tallying purposes, this routine might be called directly. In that
+    ! case, we need to sample a reaction via the cutoff variable
+    prob = ZERO
+    cutoff = prn() * micro_photon_xs(i_element) % total
+
+    associate (elm => elements(i_element))
+      ! Coherent (Rayleigh) scattering
+      prob = prob + micro_photon_xs(i_element) % coherent
+      if (prob > cutoff) then
+        call rayleigh_scatter(elm, alpha, mu)
+        p % coord(1) % uvw = rotate_angle(p % coord(1) % uvw, mu)
+        return
+      end if
+
+      ! Incoherent (Compton) scattering
+      prob = prob + micro_photon_xs(i_element) % incoherent
+      if (prob > cutoff) then
+        call compton_scatter(elm, alpha, alpha_out, mu, .true.)
+        p % E = alpha_out*MASS_ELECTRON
+        p % coord(1) % uvw = rotate_angle(p % coord(1) % uvw, mu)
+        return
+      end if
+
+      ! Photoelectric effect
+      prob_after = prob + micro_photon_xs(i_element) % photoelectric
+      if (prob_after > cutoff) then
+        do i_shell = 1, size(elm % shells)
+          ! Get grid index and interpolation factor
+          i_grid = micro_photon_xs(i_element) % index_grid
+          f      = micro_photon_xs(i_element) % interp_factor
+
+          ! Check threshold of reaction
+          i_start = elm % shells(i_shell) % threshold
+          if (i_grid <= i_start) cycle
+
+          ! Evaluation subshell photoionization cross section
+          xs = exp(elm % shells(i_shell) % cross_section(i_grid - i_start) + &
+               f*(elm % shells(i_shell) % cross_section(i_grid + 1 - i_start) - &
+               elm % shells(i_shell) % cross_section(i_grid - i_start)))
+
+          prob = prob + xs
+          if (prob > cutoff) then
+            ! TODO: Create electron
+            ! E_electron = p % E - elm % shells(i_shell) % binding_energy
+
+            call atomic_relaxation(p, elm, i_shell)
+            p % alive = .false.
+            return
+          end if
+        end do
+      end if
+      prob = prob_after
+    end associate
+
+    ! Pair production
+    prob = prob + micro_photon_xs(i_element) % pair_production
+    if (prob > cutoff) then
+      ! Sample angle isotropically
+      mu = TWO*prn() - ONE
+      phi = TWO*PI*prn()
+      p % coord(1) % uvw(1) = mu
+      p % coord(1) % uvw(2) = sqrt(ONE - mu*mu)*cos(phi)
+      p % coord(1) % uvw(3) = sqrt(ONE - mu*mu)*sin(phi)
+
+      ! Set energy
+      p % E = MASS_ELECTRON
+
+      ! Create photon in opposite direction
+      call p % create_secondary(-p % coord(1) % uvw, MASS_ELECTRON, &
+           PHOTON, .true.)
+    end if
+
+  end subroutine sample_photon_reaction
+
+!===============================================================================
 ! SAMPLE_NUCLIDE
 !===============================================================================
 
@@ -198,6 +308,49 @@ contains
     end do
 
   end subroutine sample_nuclide
+
+!===============================================================================
+! SAMPLE_ELEMENT
+!===============================================================================
+
+  function sample_element(p) result(i_element)
+    type(Particle), intent(in) :: p
+    integer                    :: i_element
+
+    integer :: i
+    real(8) :: prob
+    real(8) :: cutoff
+    real(8) :: atom_density ! atom density of nuclide in atom/b-cm
+    real(8) :: sigma        ! microscopic total xs for nuclide
+
+    associate (mat => materials(p % material))
+      ! Sample cumulative distribution function
+      cutoff = prn() * material_xs % total
+
+      i = 0
+      prob = ZERO
+      do while (prob < cutoff)
+        i = i + 1
+
+        ! Check to make sure that a nuclide was sampled
+        if (i > mat % n_nuclides) then
+          call write_particle_restart(p)
+          call fatal_error("Did not sample any element during collision.")
+        end if
+
+        ! Find atom density
+        i_element    = mat % element(i)
+        atom_density = mat % atom_density(i)
+
+        ! Determine microscopic cross section
+        sigma = atom_density * micro_photon_xs(i_element) % total
+
+        ! Increment probability to compare to cutoff
+        prob = prob + sigma
+      end do
+    end associate
+
+  end function sample_element
 
 !===============================================================================
 ! SAMPLE_FISSION
@@ -1140,6 +1293,9 @@ contains
       ! Bank source neutrons by copying particle data
       bank_array(i) % xyz = p % coord(1) % xyz
 
+      ! Set particle as neutron
+      bank_array(i) % particle = NEUTRON
+
       ! Set weight of fission bank site
       bank_array(i) % wgt = ONE/weight
 
@@ -1329,7 +1485,8 @@ contains
     if (mod(yield, ONE) == ZERO) then
       ! If yield is integral, create exactly that many secondary particles
       do i = 1, nint(yield) - 1
-        call p % create_secondary(p % coord(1) % uvw, NEUTRON, run_CE=.true.)
+        call p % create_secondary(p % coord(1) % uvw, p % E, &
+             NEUTRON, run_CE=.true.)
       end do
     else
       ! Otherwise, change weight of particle based on yield

@@ -199,6 +199,7 @@ contains
     call this % initialize()
 
     ! copy attributes from source bank site
+    this % type             = src % particle
     this % wgt              = src % wgt
     this % last_wgt         = src % wgt
     this % coord(1) % xyz   = src % xyz
@@ -222,9 +223,10 @@ contains
 ! the secondary bank and increments the number of sites in the secondary bank.
 !===============================================================================
 
-  subroutine create_secondary(this, uvw, type, run_CE)
+  subroutine create_secondary(this, uvw, E, type, run_CE)
     class(Particle), intent(inout) :: this
     real(8),         intent(in)    :: uvw(3)
+    real(8),         intent(in)    :: E
     integer,         intent(in)    :: type
     logical,         intent(in)    :: run_CE
 
@@ -237,14 +239,15 @@ contains
     end if
 
     n = this % n_secondary + 1
-    this % secondary_bank(n) % wgt    = this % wgt
+    this % secondary_bank(n) % particle = type
+    this % secondary_bank(n) % wgt = this % wgt
     this % secondary_bank(n) % xyz(:) = this % coord(1) % xyz
     this % secondary_bank(n) % uvw(:) = uvw
-    this % n_secondary = n
-    this % secondary_bank(this % n_secondary) % E = this % E
+    this % secondary_bank(n) % E = E
     if (.not. run_CE) then
-      this % secondary_bank(this % n_secondary) % E = real(this % g, 8)
+      this % secondary_bank(n) % E = real(this % g, 8)
     end if
+    this % n_secondary = n
 
   end subroutine create_secondary
 

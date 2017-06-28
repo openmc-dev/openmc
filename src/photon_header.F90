@@ -56,6 +56,22 @@ module photon_header
     procedure :: from_hdf5 => photon_from_hdf5
   end type PhotonInteraction
 
+!===============================================================================
+! ELEMENTMICROXS contains cached microscopic photon cross sections for a
+! particular element at the current energy
+!===============================================================================
+
+  type ElementMicroXS
+    integer :: index_grid      ! index on element energy grid
+    real(8) :: last_E = ZERO   ! last evaluated energy
+    real(8) :: interp_factor   ! interpolation factor on energy grid
+    real(8) :: total           ! microscropic total photon xs
+    real(8) :: coherent        ! microscopic coherent xs
+    real(8) :: incoherent      ! microscopic incoherent xs
+    real(8) :: photoelectric   ! microscopic photoelectric xs
+    real(8) :: pair_production ! microscopic pair production xs
+  end type ElementMicroXS
+
 contains
 
   subroutine photon_from_hdf5(this, group_id)

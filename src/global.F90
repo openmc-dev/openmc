@@ -15,6 +15,7 @@ module global
   use mesh_header,      only: RegularMesh
   use mgxs_header,      only: Mgxs, MgxsContainer
   use nuclide_header
+  use photon_header,    only: PhotonInteraction
   use plot_header,      only: ObjectPlot
   use sab_header,       only: SAlphaBeta
   use set_header,       only: SetInt
@@ -74,6 +75,7 @@ module global
   ! CROSS SECTION RELATED VARIABLES NEEDED REGARDLESS OF CE OR MG
 
   integer :: n_nuclides_total ! Number of nuclide cross section tables
+  integer :: n_elements       ! Number of photon cross section tables
 
   ! Cross section caches
   type(NuclideMicroXS), allocatable :: micro_xs(:)  ! Cache for each nuclide
@@ -81,6 +83,7 @@ module global
 
   ! Dictionaries to look up cross sections and listings
   type(DictCharInt) :: nuclide_dict
+  type(DictCharInt) :: element_dict
   type(DictCharInt) :: library_dict
 
   ! Cross section libraries
@@ -91,6 +94,7 @@ module global
 
   ! Cross section arrays
   type(Nuclide), allocatable, target :: nuclides(:)    ! Nuclide cross-sections
+  type(PhotonInteraction), allocatable :: elements(:)  ! Photon cross sections
   type(SAlphaBeta), allocatable, target :: sab_tables(:)  ! S(a,b) tables
 
   integer :: n_sab_tables     ! Number of S(a,b) thermal scattering tables
@@ -114,6 +118,8 @@ module global
 
   integer :: n_log_bins  ! number of bins for logarithmic grid
   real(8) :: log_spacing ! spacing on logarithmic grid
+
+  logical :: photon_transport = .false.
 
   ! ============================================================================
   ! MULTI-GROUP CROSS SECTION RELATED VARIABLES
@@ -479,6 +485,7 @@ contains
       end do
       deallocate(nuclides)
     end if
+    if (allocated(elements)) deallocate(elements)
 
     if (allocated(res_scat_nuclides)) deallocate(res_scat_nuclides)
 

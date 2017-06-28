@@ -303,6 +303,7 @@ contains
     if (n == 0) then
       ! Default source is isotropic point source at origin with Watt spectrum
       allocate(external_source(1))
+      external_source % particle = NEUTRON
       external_source % strength = ONE
 
       allocate(SpatialPoint :: external_source(1) % space)
@@ -333,6 +334,22 @@ contains
       ! Check if we want to write out source
       if (check_for_node(node_source, "write_initial")) then
         call get_node_value(node_source, "write_initial", write_initial_source)
+      end if
+
+      ! Check for particle type
+      if (check_for_node(node_source, "particle")) then
+        call get_node_value(node_source, "particle", temp_str)
+        select case (to_lower(temp_str))
+        case ('neutron')
+          external_source(i) % particle = NEUTRON
+        case ('photon')
+          external_source(i) % particle = PHOTON
+          photon_transport = .true.
+        case default
+          call fatal_error('Unknown source particle type: ' // trim(temp_str))
+        end select
+      else
+        external_source(i) % particle = NEUTRON
       end if
 
       ! Check for source strength
@@ -2208,9 +2225,11 @@ contains
     integer :: n_sab          ! number of sab tables for a material
     integer :: i_library      ! index in libraries array
     integer :: index_nuclide  ! index in nuclides
+    integer :: index_element  ! index in elements
     integer :: index_sab      ! index in sab_tables
     logical :: file_exists    ! does materials.xml exist?
-    character(20)           :: name         ! name of nuclide, e.g. 92235.03c
+    character(20)           :: name         ! name of nuclide, e.g. U235
+    character(3)            :: element      ! name of element, e.g. Zr
     character(MAX_WORD_LEN) :: units        ! units on density
     character(MAX_LINE_LEN) :: filename     ! absolute path to materials.xml
     character(MAX_LINE_LEN) :: temp_str     ! temporary string when reading
@@ -2255,6 +2274,7 @@ contains
 
     ! Initialize count for number of nuclides/S(a,b) tables
     index_nuclide = 0
+    index_element = 0
     index_sab = 0
 
     do i = 1, n_materials
@@ -2481,6 +2501,7 @@ contains
       mat % n_nuclides = n
       allocate(mat % names(n))
       allocate(mat % nuclide(n))
+      allocate(mat % element(n))
       allocate(mat % atom_density(n))
       allocate(mat % p0(n))
 
@@ -2510,6 +2531,27 @@ contains
           call nuclide_dict % add_key(to_lower(name), index_nuclide)
         else
           mat % nuclide(j) = nuclide_dict % get_key(to_lower(name))
+        end if
+
+        ! If the corresponding element hasn't been encountered yet and photon
+        ! transport will be used, we need to add its symbol to the element_dict
+        if (photon_transport) then
+          element = name(1:scan(name, '0123456789') - 1)
+
+          ! Make sure photon cross section data is available
+          if (.not. library_dict % has_key(to_lower(element))) then
+            call fatal_error("Could not find element " // trim(element) &
+                 // " in cross_sections data file!")
+          end if
+
+          if (.not. element_dict % has_key(element)) then
+            index_element = index_element + 1
+            mat % element(j) = index_element
+
+            call element_dict % add_key(element, index_element)
+          else
+            mat % element(j) = element_dict % get_key(element)
+          end if
         end if
 
         ! Copy name and atom/weight percent
@@ -2610,6 +2652,7 @@ contains
 
     ! Set total number of nuclides and S(a,b) tables
     n_nuclides_total = index_nuclide
+    n_elements       = index_element
     n_sab_tables     = index_sab
 
     ! Close materials XML file
@@ -4854,6 +4897,8 @@ contains
           libraries(i) % type = LIBRARY_NEUTRON
         case ('thermal')
           libraries(i) % type = LIBRARY_THERMAL
+        case ('photon')
+          libraries(i) % type = LIBRARY_PHOTON
         end select
       else
         call fatal_error("Missing library type")
@@ -5230,14 +5275,18 @@ contains
     integer :: i, j
     integer :: i_library
     integer :: i_nuclide
+    integer :: i_element
     integer :: i_sab
     integer(HID_T) :: file_id
     integer(HID_T) :: group_id
     logical :: mp_found     ! if windowed multipole libraries were found
     character(MAX_WORD_LEN) :: name
+    character(3) :: element
     type(SetChar) :: already_read
+    type(SetChar) :: element_already_read
 
     allocate(nuclides(n_nuclides_total))
+    allocate(elements(n_elements))
     allocate(sab_tables(n_sab_tables))
 
     ! Read cross sections
@@ -5278,6 +5327,31 @@ contains
 
           ! Add name and alias to dictionary
           call already_read % add(name)
+
+          ! Check if elemental data has been read, if needed
+          element = name(1:scan(name, '0123456789') - 1)
+          if (photon_transport) then
+            if (.not. element_already_read % contains(element)) then
+              ! Read photon interaction data from HDF5 photon library
+              i_library = library_dict % get_key(to_lower(element))
+              i_element = element_dict % get_key(element)
+              call write_message('Reading ' // trim(element) // ' from ' // &
+                   trim(libraries(i_library) % path), 6)
+
+              ! Open file and make sure version is sufficient
+              file_id = file_open(libraries(i_library) % path, 'r')
+              call check_data_version(file_id)
+
+              ! Read element data from HDF5
+              group_id = open_group(file_id, element)
+              call elements(i_element) % from_hdf5(group_id)
+              call close_group(group_id)
+              call file_close(file_id)
+
+              ! Add element to set
+              call element_already_read % add(element)
+            end if
+          end if
 
           ! Read multipole file into the appropriate entry on the nuclides array
           if (temperature_multipole) call read_multipole_data(i_nuclide)

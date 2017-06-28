@@ -48,14 +48,17 @@ class DataLibrary(EqualityMixin):
             Path to the file to be registered.
 
         """
-        h5file = h5py.File(filename, 'r')
+        with h5py.File(filename, 'r') as h5file:
 
-        materials = []
-        filetype = 'neutron'
-        for name in h5file:
-            if name.startswith('c_'):
-                filetype = 'thermal'
-            materials.append(name)
+            materials = []
+            if 'filetype' in h5file.attrs:
+                filetype = h5file.attrs['filetype'].decode().lstrip('data_')
+            else:
+                filetype = 'neutron'
+            for name in h5file:
+                if name.startswith('c_'):
+                    filetype = 'thermal'
+                materials.append(name)
 
         library = {'path': filename, 'type': filetype, 'materials': materials}
         self.libraries.append(library)

@@ -11,6 +11,7 @@ module source_header
 !===============================================================================
 
   type SourceDistribution
+    integer :: particle ! particle type
     real(8) :: strength ! source strength
     class(SpatialDistribution),    allocatable :: space  ! spatial distribution
     class(UnitSphereDistribution), allocatable :: angle  ! angle distribution

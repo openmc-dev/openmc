@@ -24,6 +24,8 @@ class Source(object):
         Source file from which sites should be sampled
     strength : Real
         Strength of the source
+    particle : {'neutron', 'photon'}
+        Source particle type
 
     Attributes
     ----------
@@ -37,10 +39,13 @@ class Source(object):
         Source file from which sites should be sampled
     strength : Real
         Strength of the source
+    particle : {'neutron', 'photon'}
+        Source particle type
 
     """
 
-    def __init__(self, space=None, angle=None, energy=None, filename=None, strength=1.0):
+    def __init__(self, space=None, angle=None, energy=None, filename=None,
+                 strength=1.0, particle='neutron'):
         self._space = None
         self._angle = None
         self._energy = None
@@ -55,6 +60,7 @@ class Source(object):
         if filename is not None:
             self.file = filename
         self.strength = strength
+        self.particle = particle
 
     @property
     def file(self):
@@ -75,6 +81,10 @@ class Source(object):
     @property
     def strength(self):
         return self._strength
+
+    @property
+    def particle(self):
+        return self._particle
 
     @file.setter
     def file(self, filename):
@@ -102,6 +112,11 @@ class Source(object):
         cv.check_greater_than('source strength', strength, 0.0, True)
         self._strength = strength
 
+    @particle.setter
+    def particle(self, particle):
+        cv.check_value('source particle', particle, ['neutron', 'photon'])
+        self._particle = particle
+
     def to_xml_element(self):
         """Return XML representation of the source
 
@@ -113,6 +128,7 @@ class Source(object):
         """
         element = ET.Element("source")
         element.set("strength", str(self.strength))
+        element.set("particle", self.particle)
         if self.file is not None:
             element.set("file", self.file)
         if self.space is not None:

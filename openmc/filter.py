@@ -603,13 +603,14 @@ class CellFilter(WithIDFilter):
     def bins(self, bins):
         self._smart_set_bins(bins, openmc.Cell)
 
+
 class CellFromFilter(WithIDFilter):
-    """Bins tally on which couple of cells the neutrons came from.
+    """Bins tally on which Cell the neutron came from.
 
     Parameters
     ----------
     bins : openmc.Cell, Integral, or iterable thereof
-        The Cells to tally. Either openmc.Cell objects or their
+        The Cell(s) to tally. Either openmc.Cell objects or their
         Integral ID numbers can be used.
     filter_id : int
         Unique identifier for the filter
@@ -634,38 +635,7 @@ class CellFromFilter(WithIDFilter):
     @bins.setter
     def bins(self, bins):
         self._smart_set_bins(bins, openmc.Cell)
-    
-class CellToFilter(WithIDFilter):
-    """Bins tally on which couple of cells the neutrons went to. 
 
-    Parameters
-    ----------
-    bins : openmc.Cell, Integral, or iterable thereof
-        The Cells to tally. Either openmc.Cell objects or their
-        Integral ID numbers can be used.
-    filter_id : int
-        Unique identifier for the filter
-
-    Attributes
-    ----------
-    bins : Integral or Iterable of Integral
-        openmc.Cell IDs.
-    id : int
-        Unique identifier for the filter
-    num_bins : Integral
-        The number of filter bins
-    stride : Integral
-        The number of filter, nuclide and score bins within each of this
-        filter's bins.
-
-    """
-    @property
-    def bins(self):
-        return self._bins
-      
-    @bins.setter
-    def bins(self, bins):
-        self._smart_set_bins(bins, openmc.Cell)
 
 class CellbornFilter(WithIDFilter):
     """Bins tally events based on which Cell the neutron was born in.

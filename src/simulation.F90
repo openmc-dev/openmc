@@ -378,6 +378,7 @@ contains
 
 !$omp parallel
     allocate(micro_xs(n_nuclides_total))
+    allocate(micro_photon_xs(n_elements))
 !$omp end parallel
 
     if (.not. restart_run) call initialize_source()
@@ -403,6 +404,7 @@ contains
 
 !$omp parallel
     deallocate(micro_xs)
+    deallocate(micro_photon_xs)
 !$omp end parallel
 
     ! Increment total number of generations

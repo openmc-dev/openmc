@@ -15,7 +15,7 @@ module global
   use mesh_header,      only: RegularMesh
   use mgxs_header,      only: Mgxs, MgxsContainer
   use nuclide_header
-  use photon_header,    only: PhotonInteraction
+  use photon_header,    only: PhotonInteraction, ElementMicroXS
   use plot_header,      only: ObjectPlot
   use sab_header,       only: SAlphaBeta
   use set_header,       only: SetInt
@@ -79,6 +79,7 @@ module global
 
   ! Cross section caches
   type(NuclideMicroXS), allocatable :: micro_xs(:)  ! Cache for each nuclide
+  type(ElementMicroXS), allocatable :: micro_photon_xs(:) ! Cache for each element
   type(MaterialMacroXS)             :: material_xs  ! Cache for current material
 
   ! Dictionaries to look up cross sections and listings
@@ -452,8 +453,8 @@ module global
   real(8) :: res_scat_energy_max = 1000.0_8
   character(10), allocatable :: res_scat_nuclides(:)
 
-!$omp threadprivate(micro_xs, material_xs, fission_bank, n_bank, &
-!$omp&              trace, thread_id, current_work, filter_matches)
+!$omp threadprivate(micro_xs, micro_photon_xs, material_xs, fission_bank, &
+!$omp&              n_bank, trace, thread_id, current_work, filter_matches)
 
 contains
 

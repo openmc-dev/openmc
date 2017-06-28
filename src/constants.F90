@@ -76,6 +76,9 @@ module constants
        MASS_NEUTRON     = 1.00866491588_8,   & ! mass of a neutron in amu
        MASS_NEUTRON_EV  = 939.5654133e6_8,   & ! mass of a neutron in eV/c^2
        MASS_PROTON      = 1.007276466879_8,  & ! mass of a proton in amu
+       MASS_ELECTRON    = 0.5109989461e6_8,  & ! electron mass energy equivalent in eV
+       FINE_STRUCTURE   = 137.035999139_8,   & ! inverse fine structure constant
+       PLANCK_C         = 1.2398419739062977e4_8,& ! Planck's constant times c in eV-Angstroms
        AMU              = 1.660539040e-27_8, & ! 1 amu in kg
        C_LIGHT          = 2.99792458e8_8,    & ! speed of light in m/s
        N_AVOGADRO       = 0.6022140857_8,    & ! Avogadro's number in 10^24/mol
@@ -88,6 +91,14 @@ module constants
        THREE            = 3.0_8,             &
        FOUR             = 4.0_8
   complex(8), parameter :: ONEI = (ZERO, ONE)
+
+  ! Electron subshell labels
+  character(3), parameter :: SUBSHELLS(39) = [ &
+       'K  ', 'L1 ', 'L2 ', 'L3 ', 'M1 ', 'M2 ', 'M3 ', 'M4 ', 'M5 ', &
+       'N1 ', 'N2 ', 'N3 ', 'N4 ', 'N5 ', 'N6 ', 'N7 ', 'O1 ', 'O2 ', &
+       'O3 ', 'O4 ', 'O5 ', 'O6 ', 'O7 ', 'O8 ', 'O9 ', 'P1 ', 'P2 ', &
+       'P3 ', 'P4 ', 'P5 ', 'P6 ', 'P7 ', 'P8 ', 'P9 ', 'P10', 'P11', &
+       'Q1 ', 'Q2 ', 'Q3 ']
 
   ! ============================================================================
   ! GEOMETRY-RELATED CONSTANTS

@@ -266,7 +266,15 @@ The following tables show all valid scores:
     |                      |particle. Note that this score can only be used if |
     |                      |a mesh filter has been specified. Furthermore, it  |
     |                      |may not be used in conjunction with any other      |
-    |                      |score.                                             |
+    |                      |score. Only energy and mesh filters may be used.   |
+    +----------------------+---------------------------------------------------+
+    |partial_current       |Partial currents on any surface previously defined |
+    |                      |in the geometry. Units are particles per source    |
+    |                      |particle. Note that this score cannot be used with |
+    |                      |a current score or a surface or mesh filter.       |
+    |                      |It may be used in conjunction with any other score.|
+    |                      |Surfaces can be defined with cell_from and cell    |
+    |                      |(to) filters.                                      |
     +----------------------+---------------------------------------------------+
     |events                |Number of scoring events. Units are events per     |
     |                      |source particle.                                   |

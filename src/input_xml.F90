@@ -7,7 +7,6 @@ module input_xml
   use distribution_multivariate
   use distribution_univariate
   use endf,             only: reaction_name
-  use energy_grid,      only: grid_method, n_log_bins
   use error,            only: fatal_error, warning
   use geometry_header,  only: Cell, Lattice, RectLattice, HexLattice, &
                               get_temperatures, root_universe
@@ -5240,9 +5239,6 @@ contains
 
     allocate(nuclides(n_nuclides_total))
     allocate(sab_tables(n_sab_tables))
-!$omp parallel
-    allocate(micro_xs(n_nuclides_total))
-!$omp end parallel
 
     ! Read cross sections
     do i = 1, size(materials)
@@ -5293,6 +5289,13 @@ contains
         end if
       end do
     end do
+
+    ! Set up logarithmic grid for nuclides
+    do i = 1, size(nuclides)
+      call nuclides(i) % init_grid(energy_min_neutron, &
+           energy_max_neutron, n_log_bins)
+    end do
+    log_spacing = log(energy_max_neutron/energy_min_neutron) / n_log_bins
 
     do i = 1, size(materials)
       ! Skip materials with no S(a,b) tables

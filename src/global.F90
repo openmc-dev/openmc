@@ -112,6 +112,9 @@ module global
   real(8) :: temperature_default = 293.6_8
   real(8) :: temperature_range(2) = [ZERO, ZERO]
 
+  integer :: n_log_bins  ! number of bins for logarithmic grid
+  real(8) :: log_spacing ! spacing on logarithmic grid
+
   ! ============================================================================
   ! MULTI-GROUP CROSS SECTION RELATED VARIABLES
 

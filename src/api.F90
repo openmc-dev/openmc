@@ -24,6 +24,7 @@ module openmc_api
   public :: openmc_finalize
   public :: openmc_find
   public :: openmc_init
+  public :: openmc_material_add_nuclide
   public :: openmc_material_get_densities
   public :: openmc_material_set_density
   public :: openmc_load_nuclide
@@ -35,44 +36,6 @@ module openmc_api
   public :: openmc_tally_results
 
 contains
-
-  function openmc_material_set_density(id, density) result(err) bind(C)
-    integer(C_INT), value, intent(in) :: id
-    real(C_DOUBLE), value, intent(in) :: density
-    integer(C_INT) :: err
-
-    integer :: i
-
-    err = -1
-    if (allocated(materials)) then
-      if (material_dict % has_key(id)) then
-        i = material_dict % get_key(id)
-        associate (m => materials(i))
-          err = m % set_density(density, nuclides)
-        end associate
-      end if
-    end if
-  end function openmc_material_set_density
-
-  function openmc_material_get_densities(id, ptr) result(n) bind(C)
-    integer(C_INT), intent(in), value :: id
-    type(C_PTR),    intent(out) :: ptr
-    integer(C_INT) :: n
-
-    ptr = C_NULL_PTR
-    n = 0
-    if (allocated(materials)) then
-      if (material_dict % has_key(id)) then
-        i = material_dict % get_key(id)
-        associate (m => materials(i))
-          if (allocated(m % atom_density)) then
-            ptr = C_LOC(m % atom_density(1))
-            n = size(m % atom_density)
-          end if
-        end associate
-      end if
-    end if
-  end function openmc_material_get_densities
 
 !===============================================================================
 ! OPENMC_CELL_SET_TEMPERATURE sets the temperature of a cell
@@ -138,20 +101,16 @@ contains
     character(kind=C_CHAR) :: name(*)
     integer(C_INT) :: err
 
-    integer :: i, n
-    integer(HID_T) :: file_id, group_id
-    character(10) :: name_
+    integer :: n
+    integer(HID_T) :: file_id
+    integer(HID_T) :: group_id
+    character(:), allocatable :: name_
     real(8) :: minmax(2) = [ZERO, INFINITY]
     type(VectorReal) :: temperature
     type(Nuclide), allocatable :: new_nuclides(:)
 
     ! Copy array of C_CHARs to normal Fortran string
-    name_ = ''
-    i = 1
-    do while (name(i) /= C_NULL_CHAR)
-      name_(i:i) = name(i)
-      i = i + 1
-    end do
+    name_ = to_f_string(name)
 
     err = -1
     if (.not. nuclide_dict % has_key(to_lower(name_))) then
@@ -184,11 +143,135 @@ contains
         ! Assign resonant scattering data
         if (res_scat_on) call assign_0K_elastic_scattering(nuclides(n))
 
+        ! Initialize nuclide grid
+        call nuclides(n) % init_grid(energy_min_neutron, &
+             energy_max_neutron, n_log_bins)
+
         err = 0
+      else
+        err = -2
       end if
     end if
 
   end function openmc_load_nuclide
+
+!===============================================================================
+! OPENMC_MATERIAL_ADD_NUCLIDE
+!===============================================================================
+
+  function openmc_material_add_nuclide(id, name, density) result(err) bind(C)
+    integer(C_INT), value, intent(in) :: id
+    character(kind=C_CHAR) :: name(*)
+    real(C_DOUBLE), value, intent(in) :: density
+    integer(C_INT) :: err
+
+    integer :: i, j, k, n
+    integer :: err2
+    real(8) :: awr
+    integer, allocatable :: new_nuclide(:)
+    real(8), allocatable :: new_density(:)
+    character(:), allocatable :: name_
+
+    name_ = to_f_string(name)
+
+    err = -1
+    if (allocated(materials)) then
+      if (material_dict % has_key(id)) then
+        i = material_dict % get_key(id)
+        associate (m => materials(i))
+          ! Check if nuclide is already in material
+          do j = 1, size(m % nuclide)
+            k = m % nuclide(j)
+            if (nuclides(k) % name == name_) then
+              awr = nuclides(k) % awr
+              m % density = m % density + density - m % atom_density(j)
+              m % density_gpcc = m % density_gpcc + (density - &
+                   m % atom_density(j)) * awr * MASS_NEUTRON / N_AVOGADRO
+              m % atom_density(j) = density
+              err = 0
+            end if
+          end do
+
+          ! If nuclide wasn't found, extend nuclide/density arrays
+          if (err /= 0) then
+            ! If nuclide hasn't been loaded, load it now
+            err2 = openmc_load_nuclide(name)
+
+            if (err2 /= -2) then
+              ! Extend arrays
+              n = size(m % nuclide)
+              allocate(new_nuclide(n + 1))
+              new_nuclide(1:n) = m % nuclide
+              call move_alloc(FROM=new_nuclide, TO=m % nuclide)
+
+              allocate(new_density(n + 1))
+              new_density(1:n) = m % atom_density
+              call move_alloc(FROM=new_density, TO=m % atom_density)
+
+              ! Append new nuclide/density
+              k = nuclide_dict % get_key(to_lower(name_))
+              m % nuclide(n + 1) = k
+              m % atom_density(n + 1) = density
+              m % density = m % density + density
+              m % density_gpcc = m % density_gpcc + &
+                   density * nuclides(k) % awr * MASS_NEUTRON / N_AVOGADRO
+              m % n_nuclides = n + 1
+
+              err = 0
+            end if
+          end if
+        end associate
+      end if
+    end if
+
+  end function openmc_material_add_nuclide
+
+!===============================================================================
+! OPENMC_MATERIAL_GET_DENSITIES returns an array of nuclide densities in a
+! material
+!===============================================================================
+
+  function openmc_material_get_densities(id, ptr) result(n) bind(C)
+    integer(C_INT), intent(in), value :: id
+    type(C_PTR),    intent(out) :: ptr
+    integer(C_INT) :: n
+
+    ptr = C_NULL_PTR
+    n = 0
+    if (allocated(materials)) then
+      if (material_dict % has_key(id)) then
+        i = material_dict % get_key(id)
+        associate (m => materials(i))
+          if (allocated(m % atom_density)) then
+            ptr = C_LOC(m % atom_density(1))
+            n = size(m % atom_density)
+          end if
+        end associate
+      end if
+    end if
+  end function openmc_material_get_densities
+
+!===============================================================================
+! OPENMC_MATERIAL_SET_DENSITY sets the total density of a material in atom/b-cm
+!===============================================================================
+
+  function openmc_material_set_density(id, density) result(err) bind(C)
+    integer(C_INT), value, intent(in) :: id
+    real(C_DOUBLE), value, intent(in) :: density
+    integer(C_INT) :: err
+
+    integer :: i
+
+    err = -1
+    if (allocated(materials)) then
+      if (material_dict % has_key(id)) then
+        i = material_dict % get_key(id)
+        associate (m => materials(i))
+          err = m % set_density(density, nuclides)
+        end associate
+      end if
+    end if
+  end function openmc_material_set_density
 
 !===============================================================================
 ! OPENMC_RESET resets all tallies
@@ -305,5 +388,24 @@ contains
       end if
     end if
   end subroutine openmc_tally_results
+
+  function to_f_string(c_string) result(f_string)
+    character(kind=C_CHAR), intent(in) :: c_string(*)
+    character(:), allocatable :: f_string
+
+    integer :: i, n
+
+    ! Determine length of original string
+    n = 0
+    do while (c_string(n + 1) /= C_NULL_CHAR)
+      n = n + 1
+    end do
+
+    ! Copy C string character by character
+    allocate(character(len=n) :: f_string)
+    do i = 1, n
+      f_string(i:i) = c_string(i)
+    end do
+  end function to_f_string
 
 end module openmc_api

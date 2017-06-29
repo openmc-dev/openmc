@@ -81,6 +81,10 @@ module global
 
   ! Dictionaries to look up cross sections and listings
   type(DictCharInt) :: nuclide_dict
+  type(DictCharInt) :: library_dict
+
+  ! Cross section libraries
+  type(Library), allocatable :: libraries(:)
 
   ! ============================================================================
   ! CONTINUOUS-ENERGY CROSS SECTION RELATED VARIABLES

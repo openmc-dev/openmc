@@ -173,6 +173,15 @@ test suite. This script has the following optional arguments:
 
 -b, --batch     Suppress standard in
 
+-----------------------
+``openmc-make-compton``
+-----------------------
+
+This script generates an HDF5 file called ``compton_profiles.h5`` that contains
+Compton profile data using an existing data library from `Geant4
+<http://geant4.cern.ch/>`_. Note that OpenMC includes this data file by default
+so it should not be necessary in practice to generate it yourself.
+
 .. _scripts_plot:
 
 --------------------------

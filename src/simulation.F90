@@ -42,17 +42,7 @@ contains
     type(Particle) :: p
     integer(8)     :: i_work
 
-    if (.not. restart_run) call initialize_source()
-
-    ! Display header
-    if (master) then
-      if (run_mode == MODE_FIXEDSOURCE) then
-        call header("FIXED SOURCE TRANSPORT SIMULATION", 3)
-      elseif (run_mode == MODE_EIGENVALUE) then
-        call header("K EIGENVALUE SIMULATION", 3)
-        if (verbosity >= 7) call print_columns()
-      end if
-    end if
+    call initialize_simulation()
 
     ! Turn on inactive timer
     call time_inactive % start()
@@ -381,11 +371,39 @@ contains
   end subroutine replay_batch_history
 
 !===============================================================================
+! INITIALIZE_SIMULATION
+!===============================================================================
+
+  subroutine initialize_simulation()
+
+!$omp parallel
+    allocate(micro_xs(n_nuclides_total))
+!$omp end parallel
+
+    if (.not. restart_run) call initialize_source()
+
+    ! Display header
+    if (master) then
+      if (run_mode == MODE_FIXEDSOURCE) then
+        call header("FIXED SOURCE TRANSPORT SIMULATION", 3)
+      elseif (run_mode == MODE_EIGENVALUE) then
+        call header("K EIGENVALUE SIMULATION", 3)
+        if (verbosity >= 7) call print_columns()
+      end if
+    end if
+
+  end subroutine initialize_simulation
+
+!===============================================================================
 ! FINALIZE_SIMULATION calculates tally statistics, writes tallies, and displays
 ! execution time and results
 !===============================================================================
 
-  subroutine finalize_simulation
+  subroutine finalize_simulation()
+
+!$omp parallel
+    deallocate(micro_xs)
+!$omp end parallel
 
     ! Increment total number of generations
     total_gen = total_gen + n_batches*gen_per_batch

@@ -11,7 +11,6 @@ module initialize
   use constants
   use dict_header,     only: DictIntInt, ElemKeyValueII
   use set_header,      only: SetInt
-  use energy_grid,     only: logarithmic_grid, grid_method
   use error,           only: fatal_error, warning
   use geometry,        only: neighbor_lists, count_instance, calc_offsets, &
                              maximum_levels
@@ -109,12 +108,6 @@ contains
     end if
 
     if (run_mode /= MODE_PLOTTING) then
-      ! Construct information needed for nuclear data
-      if (run_CE) then
-        ! Construct log energy grid for cross-sections
-        call logarithmic_grid()
-      end if
-
       ! Allocate and setup tally stride, filter_matches, and tally maps
       call configure_tallies()
 

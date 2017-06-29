@@ -3081,7 +3081,6 @@ contains
         end select
 
       case ('surface')
-        call fatal_error("Surface filter is not yet supported!")
         ! Allocate and declare the filter type
         allocate(SurfaceFilter :: f % obj)
         select type (filt => f % obj)
@@ -3441,13 +3440,6 @@ contains
 
       ! Store the filter indices
       call move_alloc(FROM=temp_filter, TO=t % filter)
-
-      ! Check that both cell and surface weren't specified
-      if (t % find_filter(FILTER_CELL) > 0 .and. &
-           t % find_filter(FILTER_SURFACE) > 0) then
-        call fatal_error("Cannot specify both cell and surface filters for &
-             &tally " // trim(to_str(t % id)))
-      end if
 
       ! =======================================================================
       ! READ DATA FOR NUCLIDES

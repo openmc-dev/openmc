@@ -313,7 +313,7 @@ module global
 
   logical :: survival_biasing = .false.
   real(8) :: weight_cutoff = 0.25_8
-  real(8) :: energy_cutoff = ZERO
+  real(8) :: energy_cutoff(3) = [ZERO, 1000.0_8, ZERO]
   real(8) :: weight_survive = ONE
 
   ! ============================================================================

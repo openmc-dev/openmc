@@ -599,7 +599,10 @@ contains
         call get_node_value(node_cutoff, "weight_avg", weight_survive)
       end if
       if (check_for_node(node_cutoff, "energy")) then
-        call get_node_value(node_cutoff, "energy", energy_cutoff)
+        call get_node_value(node_cutoff, "energy", energy_cutoff(1))
+      end if
+      if (check_for_node(node_cutoff, "energy_photon")) then
+        call get_node_value(node_cutoff, "energy_photon", energy_cutoff(2))
       end if
     end if
 

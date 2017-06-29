@@ -577,16 +577,15 @@ class Settings(object):
             raise ValueError(msg)
         for key in cutoff:
             if key == 'weight':
-                cv.check_type('weight cutoff', cutoff['weight'], Real)
-                cv.check_greater_than('weight cutoff', cutoff['weight'], 0.0)
+                cv.check_type('weight cutoff', cutoff[key], Real)
+                cv.check_greater_than('weight cutoff', cutoff[key], 0.0)
             elif key == 'weight_avg':
-                cv.check_type('average survival weight', cutoff['weight_avg'],
-                              Real)
+                cv.check_type('average survival weight', cutoff[key], Real)
                 cv.check_greater_than('average survival weight',
-                                      cutoff['weight_avg'], 0.0)
-            elif key == 'energy':
-                cv.check_type('energy cutoff', cutoff['energy'], Real)
-                cv.check_greater_than('energy cutoff', cutoff['energy'], 0.0)
+                                      cutoff[key], 0.0)
+            elif key in ['energy', 'energy_photon']:
+                cv.check_type('energy cutoff', cutoff[key], Real)
+                cv.check_greater_than('energy cutoff', cutoff[key], 0.0)
             else:
                 msg = 'Unable to set cutoff to "{0}" which is unsupported by '\
                       'OpenMC'.format(key)
@@ -946,17 +945,9 @@ class Settings(object):
     def _create_cutoff_subelement(self, root):
         if self._cutoff is not None:
             element = ET.SubElement(root, "cutoff")
-            if 'weight' in self._cutoff:
-                subelement = ET.SubElement(element, "weight")
-                subelement.text = str(self._cutoff['weight'])
-
-            if 'weight_avg' in self._cutoff:
-                subelement = ET.SubElement(element, "weight_avg")
-                subelement.text = str(self._cutoff['weight_avg'])
-
-            if 'energy' in self._cutoff:
-                subelement = ET.SubElement(element, "energy")
-                subelement.text = str(self._cutoff['energy'])
+            for key, value in self.items():
+                subelement = ET.SubElement(element, key)
+                subelement.text = str(value)
 
     def _create_entropy_subelement(self, root):
         if self._entropy_mesh is not None:

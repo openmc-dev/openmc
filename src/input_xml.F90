@@ -2071,8 +2071,6 @@ contains
 
   subroutine read_materials()
     integer :: i, j
-    type(DictCharInt) :: library_dict
-    type(Library), allocatable :: libraries(:)
     type(VectorReal), allocatable :: nuc_temps(:) ! List of T to read for each nuclide
     type(VectorReal), allocatable :: sab_temps(:) ! List of T to read for each S(a,b)
     real(8), allocatable    :: material_temps(:)
@@ -2161,9 +2159,9 @@ contains
 
     ! Now that the cross_sections.xml or mgxs.h5 has been located, read it in
     if (run_CE) then
-      call read_ce_cross_sections_xml(libraries)
+      call read_ce_cross_sections_xml()
     else
-      call read_mg_cross_sections_header(libraries)
+      call read_mg_cross_sections_header()
     end if
 
     ! Creating dictionary that maps the name of the material to the entry
@@ -2184,7 +2182,7 @@ contains
     end if
 
     ! Parse data from materials.xml
-    call read_materials_xml(libraries, library_dict, material_temps)
+    call read_materials_xml(material_temps)
 
     ! Assign temperatures to cells that don't have temperatures already assigned
     call assign_temperatures(material_temps)
@@ -2197,17 +2195,12 @@ contains
     ! Read continuous-energy cross sections
     if (run_CE .and. run_mode /= MODE_PLOTTING) then
       call time_read_xs % start()
-      call read_ce_cross_sections(libraries, library_dict, nuc_temps, sab_temps)
+      call read_ce_cross_sections(nuc_temps, sab_temps)
       call time_read_xs % stop()
     end if
-
-    ! Clear dictionary
-    call library_dict % clear()
   end subroutine read_materials
 
-  subroutine read_materials_xml(libraries, library_dict, material_temps)
-    type(Library), intent(in) :: libraries(:)
-    type(DictCharInt), intent(inout) :: library_dict
+  subroutine read_materials_xml(material_temps)
     real(8), allocatable, intent(out) :: material_temps(:)
 
     integer :: i              ! loop index for materials
@@ -4793,9 +4786,7 @@ contains
 ! file contains a listing of the CE and MG cross sections that may be used.
 !===============================================================================
 
-  subroutine read_ce_cross_sections_xml(libraries)
-    type(Library), allocatable, intent(out) :: libraries(:)
-
+  subroutine read_ce_cross_sections_xml()
     integer :: i           ! loop index
     integer :: n
     integer :: n_libraries
@@ -4898,9 +4889,7 @@ contains
 
   end subroutine read_ce_cross_sections_xml
 
-  subroutine read_mg_cross_sections_header(libraries)
-    type(Library), allocatable, intent(out) :: libraries(:)
-
+  subroutine read_mg_cross_sections_header()
     integer :: i           ! loop index
     integer :: n_libraries
     logical :: file_exists ! does mgxs.h5 exist?
@@ -5235,9 +5224,7 @@ contains
     end do
   end subroutine assign_sab_tables
 
-  subroutine read_ce_cross_sections(libraries, library_dict, nuc_temps, sab_temps)
-    type(Library),   intent(in)      :: libraries(:)
-    type(DictCharInt), intent(inout) :: library_dict
+  subroutine read_ce_cross_sections(nuc_temps, sab_temps)
     type(VectorReal), intent(in)     :: nuc_temps(:)
     type(VectorReal), intent(in)     :: sab_temps(:)
 

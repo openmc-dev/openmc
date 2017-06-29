@@ -2,12 +2,17 @@ module openmc_api
 
   use, intrinsic :: ISO_C_BINDING
 
+  use hdf5, only: HID_T
+
   use constants,       only: K_BOLTZMANN
   use eigenvalue,      only: k_sum
   use finalize,        only: openmc_finalize
   use geometry,        only: find_cell
   use global
+  use hdf5_interface
+  use message_passing, only: master
   use initialize,      only: openmc_init
+  use input_xml,       only: assign_0K_elastic_scattering, check_data_version
   use particle_header, only: Particle
   use plot,            only: openmc_plot_geometry
   use simulation,      only: openmc_run
@@ -21,6 +26,7 @@ module openmc_api
   public :: openmc_init
   public :: openmc_material_get_densities
   public :: openmc_material_set_density
+  public :: openmc_load_nuclide
   public :: openmc_plot_geometry
   public :: openmc_reset
   public :: openmc_run
@@ -123,6 +129,66 @@ contains
       end if
     end if
   end function openmc_find
+
+!===============================================================================
+! OPENMC_LOAD_NUCLIDE loads a nuclide from the cross section library
+!===============================================================================
+
+  function openmc_load_nuclide(name) result(err) bind(C)
+    character(kind=C_CHAR) :: name(*)
+    integer(C_INT) :: err
+
+    integer :: i, n
+    integer(HID_T) :: file_id, group_id
+    character(10) :: name_
+    real(8) :: minmax(2) = [ZERO, INFINITY]
+    type(VectorReal) :: temperature
+    type(Nuclide), allocatable :: new_nuclides(:)
+
+    ! Copy array of C_CHARs to normal Fortran string
+    name_ = ''
+    i = 1
+    do while (name(i) /= C_NULL_CHAR)
+      name_(i:i) = name(i)
+      i = i + 1
+    end do
+
+    err = -1
+    if (.not. nuclide_dict % has_key(to_lower(name_))) then
+      if (library_dict % has_key(to_lower(name_))) then
+        ! allocate extra space in nuclides array
+        n = n_nuclides_total
+        allocate(new_nuclides(n + 1))
+        new_nuclides(1:n) = nuclides(:)
+        call move_alloc(FROM=new_nuclides, TO=nuclides)
+        n = n + 1
+
+        i_library = library_dict % get_key(to_lower(name_))
+
+        ! Open file and make sure version is sufficient
+        file_id = file_open(libraries(i_library) % path, 'r')
+        call check_data_version(file_id)
+
+        ! Read nuclide data from HDF5
+        group_id = open_group(file_id, name_)
+        call nuclides(n) % from_hdf5(group_id, temperature, &
+             temperature_method, temperature_tolerance, minmax, &
+             master)
+        call close_group(group_id)
+        call file_close(file_id)
+
+        ! Add entry to nuclide dictionary
+        call nuclide_dict % add_key(to_lower(name_), n)
+        n_nuclides_total = n
+
+        ! Assign resonant scattering data
+        if (res_scat_on) call assign_0K_elastic_scattering(nuclides(n))
+
+        err = 0
+      end if
+    end if
+
+  end function openmc_load_nuclide
 
 !===============================================================================
 ! OPENMC_RESET resets all tallies

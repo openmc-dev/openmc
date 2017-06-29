@@ -1,4 +1,4 @@
-from ctypes import CDLL, c_int, POINTER, byref, c_double
+from ctypes import CDLL, c_int, POINTER, byref, c_double, c_char_p
 import sys
 from warnings import warn
 
@@ -26,6 +26,8 @@ class _OpenMCLibrary(object):
         self._dll.openmc_find.restype = c_int
         self._dll.openmc_init.argtypes = [POINTER(c_int)]
         self._dll.openmc_init.restype = None
+        self._dll.openmc_load_nuclide.argtypes = [c_char_p]
+        self._dll.openmc_load_nuclide.restype = c_int
         self._dll.openmc_material_get_densities.argtypes = [
             c_int, _double_array]
         self._dll.openmc_material_get_densities.restype = c_int
@@ -107,6 +109,22 @@ class _OpenMCLibrary(object):
             return self._dll.openmc_init(byref(c_int(intracomm)))
         else:
             return self._dll.openmc_init(None)
+
+    def load_nuclide(self, name):
+        """Load cross section data for a nuclide.
+
+        Parameters
+        ----------
+        name : str
+            Name of nuclide, e.g. 'U235'
+
+        Returns
+        -------
+        int
+            Return status (negative if an error occurs).
+
+        """
+        return self._dll.openmc_load_nuclide(name.encode())
 
     def material_get_densities(self, mat_id):
         """Get atom densities in a material.

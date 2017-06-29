@@ -1,8 +1,8 @@
-.. _methods_physics:
+.. _methods_neutron_physics:
 
-=======
-Physics
-=======
+===============
+Neutron Physics
+===============
 
 There are limited differences between physics treatments used in the
 continuous-energy and multi-group modes.  If distinctions are necessary, each

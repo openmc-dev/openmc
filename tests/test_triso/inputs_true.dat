@@ -403,12 +403,12 @@
   <material id="14">
     <density units="g/cm3" value="1.0" />
     <nuclide ao="1.0" name="C0" />
-    <sab name="c_Graphite" />
+    <sab fraction="1.0" name="c_Graphite" />
   </material>
   <material id="15">
     <density units="g/cm3" value="1.9" />
     <nuclide ao="1.0" name="C0" />
-    <sab name="c_Graphite" />
+    <sab fraction="1.0" name="c_Graphite" />
   </material>
   <material id="16">
     <density units="g/cm3" value="3.2" />
@@ -420,12 +420,12 @@
   <material id="17">
     <density units="g/cm3" value="1.87" />
     <nuclide ao="1.0" name="C0" />
-    <sab name="c_Graphite" />
+    <sab fraction="1.0" name="c_Graphite" />
   </material>
   <material id="18">
     <density units="g/cm3" value="1.1995" />
     <nuclide ao="1.0" name="C0" />
-    <sab name="c_Graphite" />
+    <sab fraction="1.0" name="c_Graphite" />
   </material>
 </materials>
 <?xml version='1.0' encoding='utf-8'?>

@@ -226,7 +226,9 @@ module constants
        N_3HEA  = 193, N_4N2P  = 194, N_4N2A = 195, N_4NPA  = 196, N_3P    = 197, &
        N_N3P   = 198, N_3N2PA = 199, N_5N2P = 200, N_P0    = 600, N_PC    = 649, &
        N_D0    = 650, N_DC    = 699, N_T0   = 700, N_TC    = 749, N_3HE0  = 750, &
-       N_3HEC  = 799, N_A0    = 800, N_AC   = 849, N_2N0   = 875, N_2NC   = 891
+       N_3HEC  = 799, N_A0    = 800, N_AC   = 849, N_2N0   = 875, N_2NC   = 891, &
+       COHERENT = 502, INCOHERENT = 504, PHOTOELECTRIC = 522, &
+       PAIR_PROD_ELEC = 515, PAIR_PROD = 516, PAIR_PROD_NUC = 517
 
   ! ACE table types
   integer, parameter :: &

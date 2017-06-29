@@ -45,42 +45,42 @@ contains
 
     ! Sample reaction for the material the particle is in
     if (p % type == NEUTRON) then
-      call sample_reaction(p)
-    elseif (p % type == PHOTON) then
+      call sample_neutron_reaction(p)
+    else
       call sample_photon_reaction(p)
+    end if
+
+    ! Kill particle if energy falls below cutoff
+    if (p % E < energy_cutoff(p % type)) then
+      p % alive = .false.
+      p % wgt = ZERO
+      p % last_wgt = ZERO
     end if
 
     ! Display information about collision
     if (verbosity >= 10 .or. trace) then
-      call write_message("    " // trim(reaction_name(p % event_MT)) &
-           &// " with " // trim(adjustl(nuclides(p % event_nuclide) % name)) &
-           &// ". Energy = " // trim(to_str(p % E)) // " eV.")
+      if (p % type == NEUTRON) then
+        call write_message("    " // trim(reaction_name(p % event_MT)) &
+             &// " with " // trim(adjustl(nuclides(p % event_nuclide) % name)) &
+             &// ". Energy = " // trim(to_str(p % E)) // " eV.")
+      else
+        call write_message("    " // trim(reaction_name(p % event_MT)) &
+             &// " with " // trim(adjustl(elements(p % event_nuclide) % name)) &
+             &// ". Energy = " // trim(to_str(p % E)) // " eV.")
+      end if
     end if
-
-    ! check for very low energy
-    if (p % E < 1.0e-100_8) then
-      p % alive = .false.
-      if (master) call warning("Killing neutron with extremely low energy")
-    end if
-
-    ! Advance URR seed stream 'N' times after energy changes
-    if (p % E /= p % last_E) then
-      call prn_set_stream(STREAM_URR_PTABLE)
-      call advance_prn_seed(size(nuclides, kind=8))
-      call prn_set_stream(STREAM_TRACKING)
-    endif
 
   end subroutine collision
 
 !===============================================================================
-! SAMPLE_REACTION samples a nuclide based on the macroscopic cross sections for
-! each nuclide within a material and then samples a reaction for that nuclide
-! and calls the appropriate routine to process the physics. Note that there is
-! special logic when suvival biasing is turned on since fission and
-! disappearance are treated implicitly.
+! SAMPLE_NEUTRON_REACTION samples a nuclide based on the macroscopic cross
+! sections for each nuclide within a material and then samples a reaction for
+! that nuclide and calls the appropriate routine to process the physics. Note
+! that there is special logic when suvival biasing is turned on since fission
+! and disappearance are treated implicitly.
 !===============================================================================
 
-  subroutine sample_reaction(p)
+  subroutine sample_neutron_reaction(p)
 
     type(Particle), intent(inout) :: p
 
@@ -128,20 +128,19 @@ contains
     call scatter(p, i_nuclide, i_nuc_mat)
 
     ! Play russian roulette if survival biasing is turned on
-
     if (survival_biasing) then
       call russian_roulette(p)
       if (.not. p % alive) return
     end if
 
-    ! Kill neutron under certain energy
-    if (p % E < energy_cutoff) then
-      p % alive = .false.
-      p % wgt = ZERO
-      p % last_wgt = ZERO
+    ! Advance URR seed stream 'N' times after energy changes
+    if (p % E /= p % last_E) then
+      call prn_set_stream(STREAM_URR_PTABLE)
+      call advance_prn_seed(size(nuclides, kind=8))
+      call prn_set_stream(STREAM_TRACKING)
     end if
 
-  end subroutine sample_reaction
+  end subroutine sample_neutron_reaction
 
 !===============================================================================
 ! SAMPLE_PHOTON_REACTION samples an element based on the macroscopic cross
@@ -184,6 +183,7 @@ contains
       if (prob > cutoff) then
         call rayleigh_scatter(elm, alpha, mu)
         p % coord(1) % uvw = rotate_angle(p % coord(1) % uvw, mu)
+        p % event_MT = COHERENT
         return
       end if
 
@@ -193,6 +193,7 @@ contains
         call compton_scatter(elm, alpha, alpha_out, mu, .true.)
         p % E = alpha_out*MASS_ELECTRON
         p % coord(1) % uvw = rotate_angle(p % coord(1) % uvw, mu)
+        p % event_MT = INCOHERENT
         return
       end if
 
@@ -219,6 +220,7 @@ contains
             ! E_electron = p % E - elm % shells(i_shell) % binding_energy
 
             call atomic_relaxation(p, elm, i_shell)
+            p % event_MT = 533 + elm % shells(i_shell) % index_subshell
             p % alive = .false.
             return
           end if
@@ -239,6 +241,7 @@ contains
 
       ! Set energy
       p % E = MASS_ELECTRON
+      p % event_MT = PAIR_PROD
 
       ! Create photon in opposite direction
       call p % create_secondary(-p % coord(1) % uvw, MASS_ELECTRON, &

@@ -1,6 +1,6 @@
 module photon_header
 
-  use hdf5, only: HID_T, HSIZE_T
+  use hdf5, only: HID_T, HSIZE_T, SIZE_T
 
   use constants,   only: ZERO, HALF, SUBSHELLS
   use dict_header, only: DictIntInt
@@ -10,7 +10,7 @@ module photon_header
   real(8), allocatable :: compton_profile_pz(:)
 
   type ElectronSubshell
-    character(3) :: label
+    integer :: index_subshell  ! index in SUBSHELLS
     integer :: threshold
     real(8) :: n_electrons
     real(8) :: binding_energy
@@ -24,7 +24,8 @@ module photon_header
   end type ElectronSubshell
 
   type PhotonInteraction
-    integer :: Z  ! atomic number
+    character(3) :: name  ! atomic symbol, e.g. 'Zr'
+    integer      :: Z     ! atomic number
 
     ! Microscopic cross sections
     real(8), allocatable :: energy(:)
@@ -82,14 +83,21 @@ contains
     integer(HID_T)   :: rgroup, tgroup
     integer(HID_T)   :: dset_id
     integer(HSIZE_T) :: dims(1), dims2(2)
+    integer(SIZE_T)  :: name_len
     integer          :: n_energy
     integer          :: n_shell
     integer          :: n_profile
     integer          :: n_transition
-    ! integer, allocatable :: designators(:)
     character(3), allocatable :: designators(:)
     real(8)          :: c
     real(8), allocatable :: matrix(:,:)
+
+    ! Get name of nuclide from group
+    name_len = len(this % name)
+    this % name = get_name(group_id, name_len)
+
+    ! Get rid of leading '/'
+    this % name = trim(this % name(2:))
 
     ! Get atomic number
     call read_attribute(this % Z, group_id, 'Z')
@@ -160,6 +168,7 @@ contains
       do j = 1, size(SUBSHELLS)
         if (designators(i) == SUBSHELLS(j)) then
           call this % shell_dict % add_key(j, i)
+          this % shells(i) % index_subshell = j
           exit
         end if
       end do

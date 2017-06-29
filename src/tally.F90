@@ -3138,7 +3138,7 @@ contains
   end subroutine score_collision_tally
 
 !===============================================================================
-! score_surface_tally is called at every surface crossing and can be used to 
+! score_surface_tally is called at every surface crossing and can be used to
 ! tally partial currents between two cells
 !===============================================================================
 

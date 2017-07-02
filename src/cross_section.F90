@@ -58,7 +58,6 @@ contains
     material_xs % absorption      = ZERO
     material_xs % fission         = ZERO
     material_xs % nu_fission      = ZERO
-    material_xs % nu_photon_total = ZERO
 
     ! Exit subroutine if material is void
     if (p % material == MATERIAL_VOID) return
@@ -138,10 +137,6 @@ contains
         ! Add contributions to material macroscopic nu-fission cross section
         material_xs % nu_fission = material_xs % nu_fission + &
              atom_density * micro_xs(i_nuclide) % nu_fission
-
-        ! Add contributions to material macroscopic nu-fission cross section
-        material_xs % nu_photon_total = material_xs % nu_photon_total + &
-             atom_density * micro_xs(i_nuclide) % nu_photon_total
       end do
     end associate
 

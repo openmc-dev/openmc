@@ -5,7 +5,7 @@ module nuclide_header
 
   use hdf5, only: HID_T, HSIZE_T, SIZE_T
 
-  use algorithm, only: sort, find
+  use algorithm, only: sort, find, binary_search
   use constants
   use dict_header, only: DictIntInt
   use endf,        only: reaction_name, is_fission, is_disappearance
@@ -37,12 +37,13 @@ module nuclide_header
   end type EnergyGrid
 
   type SumXS
-    real(8), allocatable :: total(:)      ! total cross section
-    real(8), allocatable :: elastic(:)    ! elastic scattering
-    real(8), allocatable :: fission(:)    ! fission
-    real(8), allocatable :: nu_fission(:) ! neutron production
-    real(8), allocatable :: absorption(:) ! absorption (MT > 100)
-    real(8), allocatable :: heating(:)    ! heating
+    real(8), allocatable :: total(:)           ! total cross section
+    real(8), allocatable :: elastic(:)         ! elastic scattering
+    real(8), allocatable :: fission(:)         ! fission
+    real(8), allocatable :: nu_fission(:)      ! neutron production
+    real(8), allocatable :: absorption(:)      ! absorption (MT > 100)
+    real(8), allocatable :: heating(:)         ! heating
+    real(8), allocatable :: nu_photon_total(:) ! photon production
   end type SumXS
 
   type :: Nuclide
@@ -99,6 +100,7 @@ module nuclide_header
     procedure :: from_hdf5 => nuclide_from_hdf5
     procedure :: init_grid => nuclide_init_grid
     procedure :: nu    => nuclide_nu
+    procedure :: compute_nu_photon_total => compute_nuclide_nu_photon_total
     procedure, private :: create_derived => nuclide_create_derived
   end type Nuclide
 
@@ -117,6 +119,7 @@ module nuclide_header
     real(8) :: absorption      ! microscopic absorption xs
     real(8) :: fission         ! microscopic fission xs
     real(8) :: nu_fission      ! microscopic production xs
+    real(8) :: nu_photon_total ! microscopic photon production xs
 
     ! Information for S(a,b) use
     integer :: index_sab          ! index in sab_tables (zero means no table)
@@ -138,11 +141,12 @@ module nuclide_header
 !===============================================================================
 
   type MaterialMacroXS
-    real(8) :: total         ! macroscopic total xs
-    real(8) :: elastic       ! macroscopic elastic scattering xs
-    real(8) :: absorption    ! macroscopic absorption xs
-    real(8) :: fission       ! macroscopic fission xs
-    real(8) :: nu_fission    ! macroscopic production xs
+    real(8) :: total           ! macroscopic total xs
+    real(8) :: elastic         ! macroscopic elastic scattering xs
+    real(8) :: absorption      ! macroscopic absorption xs
+    real(8) :: fission         ! macroscopic fission xs
+    real(8) :: nu_fission      ! macroscopic production xs
+    real(8) :: nu_photon_total ! macroscopic photon production xs
 
     ! Photon cross sections
     real(8) :: coherent        ! macroscopic coherent xs
@@ -481,7 +485,7 @@ contains
   subroutine nuclide_create_derived(this)
     class(Nuclide), intent(inout) :: this
 
-    integer :: i, j, k
+    integer :: i, j, k, l
     integer :: t
     integer :: m
     integer :: n
@@ -501,11 +505,13 @@ contains
       allocate(this % sum_xs(i) % fission(n_grid))
       allocate(this % sum_xs(i) % nu_fission(n_grid))
       allocate(this % sum_xs(i) % absorption(n_grid))
+      allocate(this % sum_xs(i) % nu_photon_total(n_grid))
       this % sum_xs(i) % total(:) = ZERO
       this % sum_xs(i) % elastic(:) = ZERO
       this % sum_xs(i) % fission(:) = ZERO
       this % sum_xs(i) % nu_fission(:) = ZERO
       this % sum_xs(i) % absorption(:) = ZERO
+      this % sum_xs(i) % nu_photon_total(:) = ZERO
     end do
 
     i_fission = 0
@@ -539,6 +545,18 @@ contains
           this % sum_xs(t) % total(j:j+n-1) = this % sum_xs(t) % total(j:j+n-1) + &
                rx % xs(t) % value
 
+          ! Calculate nu-photon total cross section
+          do k = 1, size(rx % products)
+            if (rx % products(k) % particle == PHOTON) then
+              do l = 1, n
+                this % sum_xs(t) % nu_photon_total(l+j-1) = &
+                     this % sum_xs(t) % nu_photon_total(l+j-1) + &
+                     rx % xs(t) % value(l) * rx % products(k) % &
+                     yield % evaluate(this % grid(t) % energy(l+j-1))
+              end do
+            end if
+          end do
+
           ! Add contribution to absorption cross section
           if (is_disappearance(rx % MT)) then
             this % sum_xs(t) % absorption(j:j+n-1) = this % sum_xs(t) % &
@@ -564,10 +582,6 @@ contains
             ! Also need to add fission cross sections to absorption
             this % sum_xs(t) % absorption(j:j+n-1) = this % sum_xs(t) % &
                  absorption(j:j+n-1) + rx % xs(t) % value
-
-            ! If total fission reaction is present, there's no need to store the
-            ! reaction cross-section since it was copied to this % fission
-            if (rx % MT == N_FISSION) deallocate(rx % xs(t) % value)
 
             ! Keep track of this reaction for easy searching later
             if (t == 1) then
@@ -689,6 +703,72 @@ contains
     end select
 
   end function nuclide_nu
+
+!===============================================================================
+! COMPUTE_NUCLIDE_NU_PHOTON_TOTAL is an interface to compute the number of
+! photons produced
+!===============================================================================
+
+  pure function compute_nuclide_nu_photon_total(this, E, t, i_log_union) result(nu_photon_total)
+    class(Nuclide), intent(in) :: this
+    real(8),        intent(in) :: E
+    integer,        intent(in) :: t
+    integer,        intent(in) :: i_log_union
+    real(8)                    :: rx_xs
+    real(8)                    :: nu_photon_total
+    real(8)                    :: f
+    integer                    :: m, j, k
+    integer                    :: i_grid, i_low, i_high
+
+    associate (grid => this % grid(t), xs => this % sum_xs(t))
+      ! Determine the energy grid index using a logarithmic mapping to
+      ! reduce the energy range over which a binary search needs to be
+      ! performed
+
+      if (E < grid % energy(1)) then
+        i_grid = 1
+      elseif (E > grid % energy(size(grid % energy))) then
+        i_grid = size(grid % energy) - 1
+      else
+        ! Determine bounding indices based on which equal log-spaced
+        ! interval the energy is in
+        i_low  = grid % grid_index(i_log_union)
+        i_high = grid % grid_index(i_log_union + 1) + 1
+
+        ! Perform binary search over reduced range
+        i_grid = binary_search(grid % energy(i_low:i_high), &
+             i_high - i_low + 1, E) + i_low - 1
+      end if
+
+      ! check for rare case where two energy points are the same
+      if (grid % energy(i_grid) == grid % energy(i_grid + 1)) &
+           i_grid = i_grid + 1
+
+      ! calculate interpolation factor
+      f = (E - grid % energy(i_grid)) / &
+           (grid % energy(i_grid + 1) - grid % energy(i_grid))
+    end associate
+
+    nu_photon_total = ZERO
+
+    ! Calculate nu-photon total cross section
+    do m = 1, size(this % reactions)
+      associate (rx => this % reactions(m))
+        j = rx % xs(t) % threshold
+        do k = 1, size(rx % products)
+          if (rx % products(k) % particle == PHOTON) then
+            if (i_grid >= j) then
+              rx_xs = (ONE - f) * rx % xs(t) % value(i_grid - j + 1) &
+                   + f * rx % xs(t) % value(i_grid - j + 2)
+              nu_photon_total = nu_photon_total + rx_xs * &
+                   rx % products(k) % yield % evaluate(E)
+            end if
+          end if
+        end do
+      end associate
+    end do
+
+  end function compute_nuclide_nu_photon_total
 
   subroutine nuclide_init_grid(this, E_min, E_max, M)
     class(Nuclide), intent(inout) :: this

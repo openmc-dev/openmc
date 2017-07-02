@@ -53,11 +53,11 @@ contains
     logical :: check_sab     ! should we check for S(a,b) table?
 
     ! Set all material macroscopic cross sections to zero
-    material_xs % total           = ZERO
-    material_xs % elastic         = ZERO
-    material_xs % absorption      = ZERO
-    material_xs % fission         = ZERO
-    material_xs % nu_fission      = ZERO
+    material_xs % total          = ZERO
+    material_xs % elastic        = ZERO
+    material_xs % absorption     = ZERO
+    material_xs % fission        = ZERO
+    material_xs % nu_fission     = ZERO
 
     ! Exit subroutine if material is void
     if (p % material == MATERIAL_VOID) return

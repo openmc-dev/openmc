@@ -113,6 +113,9 @@ contains
       end if
     end if
 
+    ! Create secondary photons
+    call sample_secondary_photons(p, i_nuclide)
+
     ! If survival biasing is being used, the following subroutine adjusts the
     ! weight of the particle. Otherwise, it checks to see if absorption occurs
 
@@ -420,6 +423,59 @@ contains
     end do FISSION_REACTION_LOOP
 
   end subroutine sample_fission
+
+!===============================================================================
+! SAMPLE_PHOTON_PRODUCT
+!===============================================================================
+
+  subroutine sample_photon_product(i_nuclide, E, i_reaction, i_product)
+    integer, intent(in)  :: i_nuclide  ! index in nuclides array
+    real(8), intent(in)  :: E          ! energy of neutron
+    integer, intent(out) :: i_reaction ! index in nuc % reactions array
+    integer, intent(out) :: i_product  ! index in nuc % reactions array
+
+    integer :: i_grid
+    integer :: i_temp
+    integer :: threshold
+    real(8) :: f
+    real(8) :: prob
+    real(8) :: cutoff
+    real(8) :: yield
+    type(Nuclide), pointer :: nuc
+
+    ! Get pointer to nuclide
+    nuc => nuclides(i_nuclide)
+
+    ! Get grid index and interpolation factor and sample proton production cdf
+    i_temp = micro_xs(i_nuclide) % index_temp
+    i_grid = micro_xs(i_nuclide) % index_grid
+    f      = micro_xs(i_nuclide) % interp_factor
+    cutoff = prn() * micro_xs(i_nuclide) % nu_photon_total
+    prob   = ZERO
+
+    ! Loop through each reaction type
+    REACTION_LOOP: do i_reaction = 1, size(nuc % reactions)
+      associate (rx => nuc % reactions(i_reaction))
+        do i_product = 1, size(rx % products)
+          if (rx % products(i_product) % particle == PHOTON) then
+
+            threshold = rx % xs(i_temp) % threshold
+
+            ! if energy is below threshold for this reaction, skip it
+            if (i_grid < threshold) cycle
+
+            ! add to cumulative probability
+            yield = rx % products(i_product) % yield % evaluate(E)
+            prob = prob + ((ONE - f) * rx % xs(i_temp) % value(i_grid - threshold + 1) &
+                 + f*(rx % xs(i_temp) % value(i_grid - threshold + 2))) * yield
+
+            if (prob > cutoff) exit REACTION_LOOP
+          end if
+        end do
+      end associate
+    end do REACTION_LOOP
+
+  end subroutine sample_photon_product
 
 !===============================================================================
 ! ABSORPTION
@@ -1497,5 +1553,51 @@ contains
     end if
 
   end subroutine inelastic_scatter
+
+!===============================================================================
+! SAMPLE_SECONDARY_PHOTONS
+!===============================================================================
+
+  subroutine sample_secondary_photons(p, i_nuclide)
+    type(Particle), intent(inout) :: p
+    integer, intent(in)           :: i_nuclide
+
+    integer :: i_reaction   ! index in nuc % reactions array
+    integer :: i_product    ! index in nuc % reactions % products array
+    type(Reaction), pointer :: rx
+
+    real(8) :: nu_t
+    real(8) :: mu
+    real(8) :: E
+    real(8) :: uvw(3)
+    integer :: nu
+    integer :: i
+
+    ! Sample the number of photons produced
+    nu_t = micro_xs(i_nuclide) % nu_photon_total / micro_xs(i_nuclide) % total
+    if (prn() > nu_t - int(nu_t)) then
+      nu = int(nu_t)
+    else
+      nu = int(nu_t) + 1
+    end if
+
+    ! Sample each secondary photon
+    do i = 1, nu
+
+      ! Sample the reaction and product
+      call sample_photon_product(i_nuclide, p % E, i_reaction, i_product)
+      rx => nuclides(i_nuclide) % reactions(i_reaction)
+
+      ! Sample the outgoing energy and angle
+      call rx % products(i_product) % sample(p % E, E, mu)
+
+      ! Sample the new direction
+      uvw = rotate_angle(p % coord(1) % uvw, mu)
+
+      ! Create the secondary photon
+      !call p % create_secondary(uvw, E, PHOTON, run_CE=.true.)
+    end do
+
+  end subroutine sample_secondary_photons
 
 end module physics

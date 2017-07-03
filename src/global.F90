@@ -120,7 +120,7 @@ module global
   integer :: n_log_bins  ! number of bins for logarithmic grid
   real(8) :: log_spacing ! spacing on logarithmic grid
 
-  logical :: photon_transport = .false.
+  logical :: photon_transport = .true.
 
   ! ============================================================================
   ! MULTI-GROUP CROSS SECTION RELATED VARIABLES

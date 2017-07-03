@@ -327,7 +327,7 @@ contains
     secondary = elm % shells(i_shell) % transition_subshells(2, i_transition)
 
     if (secondary == 0) then
-      ! Non-radiative trnasition -- Auger/Coster-Kronig effect
+      ! Non-radiative transition -- Auger/Coster-Kronig effect
 
       ! TODO: Create electron
       ! E_electron = transition_energy(i_transition)

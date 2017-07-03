@@ -1595,7 +1595,7 @@ contains
       uvw = rotate_angle(p % coord(1) % uvw, mu)
 
       ! Create the secondary photon
-      !call p % create_secondary(uvw, E, PHOTON, run_CE=.true.)
+      call p % create_secondary(uvw, E, PHOTON, run_CE=.true.)
     end do
 
   end subroutine sample_secondary_photons

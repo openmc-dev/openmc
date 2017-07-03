@@ -1,0 +1,93 @@
+#!/usr/bin/env python
+
+from __future__ import print_function
+import os
+import shutil
+import zipfile
+import requests
+import argparse
+
+from io import BytesIO
+
+import openmc.data
+from openmc.data import ATOMIC_SYMBOL
+
+description = """
+Download ENDF/B-VII.1 ENDF data from IAEA for photo-atomic and atomic
+relaxation data and convert it to an HDF5 library for use with OpenMC.
+This data is used for photon transport in OpenMC.
+
+"""
+
+class CustomFormatter(argparse.ArgumentDefaultsHelpFormatter,
+                      argparse.RawDescriptionHelpFormatter):
+    pass
+
+parser = argparse.ArgumentParser(
+    description=description,
+    formatter_class=CustomFormatter
+)
+parser.add_argument('-c', '--cross-sections-file',
+                    help='cross_sections.xml file to append libraries to')
+args = parser.parse_args()
+
+base_url = 'http://www-nds.iaea.org/public/download-endf/ENDF-B-VII.1/'
+
+# ==============================================================================
+# DOWNLOAD FILES FROM IAEA SITE AND GENERATE HDF5 LIBRARY
+
+# Make photo and ard directories
+if not os.path.exists('photo'):
+    os.mkdir('photo')
+
+if not os.path.exists('photo_hdf5'):
+    os.mkdir('photo_hdf5')
+
+if not os.path.exists('ard'):
+    os.mkdir('ard')
+
+library = openmc.data.DataLibrary()
+
+for z in range(1,101):
+
+    element = ATOMIC_SYMBOL[z]
+    print('Extracting {} interaction data...'.format(element))
+
+    # Download photo files
+    if z < 100:
+        filename = 'photo/photo_{:02}00_{}-{}-0'.format(z, z, element)
+    else:
+        filename = 'photo/photo_{}20_{}-{}-0'.format(z-1, z, element)
+
+    url = base_url + filename + '.zip'
+    r = requests.get(url, stream=True)
+    zipfile.ZipFile(BytesIO(r.content)).extractall(path='photo')
+    photo_file = 'photo/' + element + '.dat'
+    shutil.move(filename + '.dat', photo_file)
+
+    # Download ard files
+    if z < 100:
+        filename = 'ard/ard_{:02}00_{}-{}-0'.format(z, z, element)
+    else:
+        filename = 'ard/ard_{}20_{}-{}-0'.format(z-1, z, element)
+
+    url = base_url + filename + '.zip'
+    r = requests.get(url, stream=True)
+    zipfile.ZipFile(BytesIO(r.content)).extractall(path='ard')
+    ard_file = 'ard/' + element + '.dat'
+    shutil.move(filename + '.dat', ard_file)
+
+    hdf5_file = 'photo_hdf5/' + element + '.h5'
+    if os.path.isfile(hdf5_file):
+        os.remove(hdf5_file)
+
+    f = openmc.data.IncidentPhoton.from_endf(photo_file, ard_file)
+    f.export_to_hdf5(hdf5_file)
+    library.register_file(hdf5_file)
+
+if args.cross_sections_file is not None:
+    path = args.cross_sections_file
+    library.export_to_xml(path, True)
+else:
+    path = 'photo_hdf5/cross_sections.xml'
+    library.export_to_xml(path)

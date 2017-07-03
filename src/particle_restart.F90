@@ -32,6 +32,8 @@ contains
     ! Set verbosity high
     verbosity = 10
 
+    allocate(micro_xs(n_nuclides_total))
+
     ! Initialize the particle to be tracked
     call p % initialize()
 
@@ -56,6 +58,8 @@ contains
 
     ! Write output if particle made it
     call print_particle(p)
+
+    deallocate(micro_xs)
 
   end subroutine run_particle_restart
 

@@ -179,7 +179,8 @@ module constants
   integer, parameter :: &
        NEUTRON  = 1, &
        PHOTON   = 2, &
-       ELECTRON = 3
+       ELECTRON = 3, &
+       POSITRON = 4
 
   ! Angular distribution type
   integer, parameter :: &
@@ -449,6 +450,11 @@ module constants
        MODE_PLOTTING    = 3, & ! Plotting mode
        MODE_PARTICLE    = 4, & ! Particle restart mode
        MODE_VOLUME      = 5    ! Volume calculation mode
+
+   ! Electron treatments
+   integer, parameter :: &
+       ELECTRON_LED     = 1, & ! Local Energy Deposition
+       ELECTRON_TTB     = 2    ! Thick Target Bremsstrahlung
 
   !=============================================================================
   ! CMFD CONSTANTS

@@ -318,7 +318,7 @@ module constants
        EVENT_ABSORB  =  2
 
   ! Tally score type
-  integer, parameter :: N_SCORE_TYPES = 24
+  integer, parameter :: N_SCORE_TYPES = 30
   integer, parameter :: &
        SCORE_FLUX               = -1,  & ! flux
        SCORE_TOTAL              = -2,  & ! total reaction rate
@@ -343,7 +343,13 @@ module constants
        SCORE_INVERSE_VELOCITY   = -21, & ! flux-weighted inverse velocity
        SCORE_FISS_Q_PROMPT      = -22, & ! prompt fission Q-value
        SCORE_FISS_Q_RECOV       = -23, & ! recoverable fission Q-value
-       SCORE_DECAY_RATE         = -24    ! delayed neutron precursor decay rate
+       SCORE_FISS_Q_FRAGMENTS   = -24, & ! fragment fission Q-value
+       SCORE_FISS_Q_BETAS       = -25, & ! beta fission Q-value
+       SCORE_Q_ELASTIC          = -26, & ! elastic scatter Q-value
+       SCORE_Q_PHOTONS          = -27, & ! photon Q-value below threshold
+       SCORE_Q_ELECTRONS        = -28, & ! electron Q-value
+       SCORE_Q_POSITRONS        = -29, & ! positron Q-value
+       SCORE_DECAY_RATE         = -30    ! delayed neutron precursor decay rate
 
   ! Maximum scattering order supported
   integer, parameter :: MAX_ANG_ORDER = 10

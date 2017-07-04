@@ -54,13 +54,6 @@ contains
       call sample_positron_reaction(p)
     end if
 
-    ! Kill particle if energy falls below cutoff
-    if (p % E < energy_cutoff(p % type)) then
-      p % alive = .false.
-      p % wgt = ZERO
-      p % last_wgt = ZERO
-    end if
-
     ! Display information about collision
     if (verbosity >= 10 .or. trace) then
       if (p % type == NEUTRON) then
@@ -174,6 +167,13 @@ contains
     real(8) :: E_electron   ! electron energy
     real(8) :: uvw(3)       ! new direction
 
+    ! Kill photon if below energy cutoff
+    if (p % E < energy_cutoff(PHOTON)) then
+      p % E = ZERO
+      p % alive = .false.
+      return
+    end if
+
     ! Sample element within material
     i_element = sample_element(p)
     p % event_nuclide = i_element
@@ -242,6 +242,8 @@ contains
             call atomic_relaxation(p, elm, i_shell)
             p % event_MT = 533 + elm % shells(i_shell) % index_subshell
             p % alive = .false.
+            p % E = ZERO
+
             return
           end if
         end do
@@ -267,6 +269,7 @@ contains
       call p % create_secondary(-uvw, E_electron, POSITRON, .true.)
       p % event_MT = PAIR_PROD
       p % alive = .false.
+      p % E = ZERO
     end if
 
   end subroutine sample_photon_reaction

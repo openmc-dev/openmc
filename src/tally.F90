@@ -115,8 +115,10 @@ contains
 
       select case(score_bin)
 
-
       case (SCORE_FLUX, SCORE_FLUX_YN)
+
+        if (p % type /= NEUTRON) cycle SCORE_LOOP
+
         if (t % estimator == ESTIMATOR_ANALOG) then
           ! All events score to a flux bin. We actually use a collision
           ! estimator in place of an analog one since there is no way to count
@@ -137,6 +139,9 @@ contains
 
 
       case (SCORE_TOTAL, SCORE_TOTAL_YN)
+
+        if (p % type /= NEUTRON) cycle SCORE_LOOP
+
         if (t % estimator == ESTIMATOR_ANALOG) then
           ! All events will score to the total reaction rate. We can just
           ! use the weight of the particle entering the collision as the
@@ -159,6 +164,8 @@ contains
 
 
       case (SCORE_INVERSE_VELOCITY)
+
+        if (p % type /= NEUTRON) cycle SCORE_LOOP
 
         ! make sure the correct energy is used
         if (t % estimator == ESTIMATOR_TRACKLENGTH) then
@@ -192,6 +199,9 @@ contains
 
 
       case (SCORE_SCATTER, SCORE_SCATTER_N)
+
+        if (p % type /= NEUTRON) cycle SCORE_LOOP
+
         if (t % estimator == ESTIMATOR_ANALOG) then
           ! Skip any event where the particle didn't scatter
           if (p % event /= EVENT_SCATTER) cycle SCORE_LOOP
@@ -212,6 +222,9 @@ contains
 
 
       case (SCORE_SCATTER_PN)
+
+        if (p % type /= NEUTRON) cycle SCORE_LOOP
+
         ! Only analog estimators are available.
         ! Skip any event where the particle didn't scatter
         if (p % event /= EVENT_SCATTER) then
@@ -225,6 +238,9 @@ contains
 
 
       case (SCORE_SCATTER_YN)
+
+        if (p % type /= NEUTRON) cycle SCORE_LOOP
+
         ! Only analog estimators are available.
         ! Skip any event where the particle didn't scatter
         if (p % event /= EVENT_SCATTER) then
@@ -238,6 +254,9 @@ contains
 
 
       case (SCORE_NU_SCATTER, SCORE_NU_SCATTER_N)
+
+        if (p % type /= NEUTRON) cycle SCORE_LOOP
+
         ! Only analog estimators are available.
         ! Skip any event where the particle didn't scatter
         if (p % event /= EVENT_SCATTER) cycle SCORE_LOOP
@@ -262,6 +281,9 @@ contains
 
 
       case (SCORE_NU_SCATTER_PN)
+
+        if (p % type /= NEUTRON) cycle SCORE_LOOP
+
         ! Only analog estimators are available.
         ! Skip any event where the particle didn't scatter
         if (p % event /= EVENT_SCATTER) then
@@ -289,6 +311,9 @@ contains
 
 
       case (SCORE_NU_SCATTER_YN)
+
+        if (p % type /= NEUTRON) cycle SCORE_LOOP
+
         ! Only analog estimators are available.
         ! Skip any event where the particle didn't scatter
         if (p % event /= EVENT_SCATTER) then
@@ -316,6 +341,9 @@ contains
 
 
       case (SCORE_ABSORPTION)
+
+        if (p % type /= NEUTRON) cycle SCORE_LOOP
+
         if (t % estimator == ESTIMATOR_ANALOG) then
           if (survival_biasing) then
             ! No absorption events actually occur if survival biasing is on --
@@ -339,6 +367,9 @@ contains
 
 
       case (SCORE_FISSION)
+
+        if (p % type /= NEUTRON) cycle SCORE_LOOP
+
         if (t % estimator == ESTIMATOR_ANALOG) then
           if (survival_biasing) then
             ! No fission events occur if survival biasing is on -- need to
@@ -370,11 +401,15 @@ contains
 
 
       case (SCORE_NU_FISSION)
+
+        if (p % type /= NEUTRON) cycle SCORE_LOOP
+
         if (t % estimator == ESTIMATOR_ANALOG) then
           if (survival_biasing .or. p % fission) then
             if (t % find_filter(FILTER_ENERGYOUT) > 0) then
               ! Normally, we only need to make contributions to one scoring
               ! bin. However, in the case of fission, since multiple fission
+
               ! neutrons were emitted with different energies, multiple
               ! outgoing energy bins may have been scored to. The following
               ! logic treats this special case and results to multiple bins
@@ -413,6 +448,9 @@ contains
 
 
       case (SCORE_PROMPT_NU_FISSION)
+
+        if (p % type /= NEUTRON) cycle SCORE_LOOP
+
         ! make sure the correct energy is used
         if (t % estimator == ESTIMATOR_TRACKLENGTH) then
           E = p % E
@@ -483,6 +521,8 @@ contains
 
 
       case (SCORE_DELAYED_NU_FISSION)
+
+        if (p % type /= NEUTRON) cycle SCORE_LOOP
 
         ! make sure the correct energy is used
         if (t % estimator == ESTIMATOR_TRACKLENGTH) then
@@ -682,6 +722,8 @@ contains
         end if
 
       case (SCORE_DECAY_RATE)
+
+        if (p % type /= NEUTRON) cycle SCORE_LOOP
 
         ! make sure the correct energy is used
         if (t % estimator == ESTIMATOR_TRACKLENGTH) then
@@ -969,6 +1011,9 @@ contains
         end if
 
       case (SCORE_KAPPA_FISSION)
+
+        if (p % type /= NEUTRON) cycle SCORE_LOOP
+
         ! Determine kappa-fission cross section on the fly. The ENDF standard
         ! (ENDF-102) states that MT 18 stores the fission energy as the Q_value
         ! (fission(1))
@@ -1036,10 +1081,16 @@ contains
         end if
 
       case (SCORE_EVENTS)
+
+        if (p % type /= NEUTRON) cycle SCORE_LOOP
+
         ! Simply count number of scoring events
         score = ONE
 
       case (ELASTIC)
+
+        if (p % type /= NEUTRON) cycle SCORE_LOOP
+
         if (t % estimator == ESTIMATOR_ANALOG) then
           ! Check if event MT matches
           if (p % event_MT /= ELASTIC) cycle SCORE_LOOP
@@ -1054,6 +1105,9 @@ contains
         end if
 
       case (SCORE_FISS_Q_PROMPT)
+
+        if (p % type /= NEUTRON) cycle SCORE_LOOP
+
         score = ZERO
 
         if (t % estimator == ESTIMATOR_ANALOG) then
@@ -1114,6 +1168,9 @@ contains
         end if
 
       case (SCORE_FISS_Q_RECOV)
+
+        if (p % type /= NEUTRON) cycle SCORE_LOOP
+
         score = ZERO
 
         if (t % estimator == ESTIMATOR_ANALOG) then
@@ -1171,6 +1228,166 @@ contains
               end do
             end if
           end if
+        end if
+
+      case (SCORE_FISS_Q_FRAGMENTS)
+
+        if (p % type /= NEUTRON) cycle SCORE_LOOP
+
+        score = ZERO
+
+        if (t % estimator == ESTIMATOR_ANALOG) then
+          if (survival_biasing) then
+            ! No fission events occur if survival biasing is on -- need to
+            ! calculate fraction of absorptions that would have resulted in
+            ! fission scaled by Q-value
+            associate (nuc => nuclides(p % event_nuclide))
+              if (micro_xs(p % event_nuclide) % absorption > ZERO .and. &
+                   allocated(nuc % fission_q_fragments)) then
+                score = p % absorb_wgt &
+                     * nuc % fission_q_fragments % evaluate(p % last_E) &
+                     * micro_xs(p % event_nuclide) % fission &
+                     / micro_xs(p % event_nuclide) % absorption * flux
+              end if
+            end associate
+          else
+            ! Skip any non-absorption events
+            if (p % event == EVENT_SCATTER) cycle SCORE_LOOP
+            ! All fission events will contribute, so again we can use
+            ! particle's weight entering the collision as the estimate for
+            ! the fission energy production rate
+            associate (nuc => nuclides(p % event_nuclide))
+              if (allocated(nuc % fission_q_fragments)) then
+                score = p % last_wgt &
+                     * nuc % fission_q_fragments % evaluate(p % last_E) &
+                     * micro_xs(p % event_nuclide) % fission &
+                     / micro_xs(p % event_nuclide) % absorption * flux
+              end if
+            end associate
+          end if
+
+        else
+          if (t % estimator == ESTIMATOR_COLLISION) then
+            E = p % last_E
+          else
+            E = p % E
+          end if
+
+          if (i_nuclide > 0) then
+            if (allocated(nuclides(i_nuclide) % fission_q_fragments)) then
+              score = micro_xs(i_nuclide) % fission * atom_density * flux &
+                      * nuclides(i_nuclide) % fission_q_fragments % evaluate(E)
+            end if
+          else
+            if (p % material /= MATERIAL_VOID) then
+              do l = 1, materials(p % material) % n_nuclides
+                atom_density_ = materials(p % material) % atom_density(l)
+                i_nuc = materials(p % material) % nuclide(l)
+                if (allocated(nuclides(i_nuc) % fission_q_fragments)) then
+                  score = score + micro_xs(i_nuc) % fission * atom_density_ &
+                          * flux &
+                          * nuclides(i_nuc) % fission_q_fragments % evaluate(E)
+                end if
+              end do
+            end if
+          end if
+        end if
+
+      case (SCORE_FISS_Q_BETAS)
+
+        if (p % type /= NEUTRON) cycle SCORE_LOOP
+
+        score = ZERO
+
+        if (t % estimator == ESTIMATOR_ANALOG) then
+          if (survival_biasing) then
+            ! No fission events occur if survival biasing is on -- need to
+            ! calculate fraction of absorptions that would have resulted in
+            ! fission scaled by Q-value
+            associate (nuc => nuclides(p % event_nuclide))
+              if (micro_xs(p % event_nuclide) % absorption > ZERO .and. &
+                   allocated(nuc % fission_q_betas)) then
+                score = p % absorb_wgt &
+                     * nuc % fission_q_betas % evaluate(p % last_E) &
+                     * micro_xs(p % event_nuclide) % fission &
+                     / micro_xs(p % event_nuclide) % absorption * flux
+              end if
+            end associate
+          else
+            ! Skip any non-absorption events
+            if (p % event == EVENT_SCATTER) cycle SCORE_LOOP
+            ! All fission events will contribute, so again we can use
+            ! particle's weight entering the collision as the estimate for
+            ! the fission energy production rate
+            associate (nuc => nuclides(p % event_nuclide))
+              if (allocated(nuc % fission_q_betas)) then
+                score = p % last_wgt &
+                     * nuc % fission_q_betas % evaluate(p % last_E) &
+                     * micro_xs(p % event_nuclide) % fission &
+                     / micro_xs(p % event_nuclide) % absorption * flux
+              end if
+            end associate
+          end if
+
+        else
+          if (t % estimator == ESTIMATOR_COLLISION) then
+            E = p % last_E
+          else
+            E = p % E
+          end if
+
+          if (i_nuclide > 0) then
+            if (allocated(nuclides(i_nuclide) % fission_q_betas)) then
+              score = micro_xs(i_nuclide) % fission * atom_density * flux &
+                      * nuclides(i_nuclide) % fission_q_betas % evaluate(E)
+            end if
+          else
+            if (p % material /= MATERIAL_VOID) then
+              do l = 1, materials(p % material) % n_nuclides
+                atom_density_ = materials(p % material) % atom_density(l)
+                i_nuc = materials(p % material) % nuclide(l)
+                if (allocated(nuclides(i_nuc) % fission_q_betas)) then
+                  score = score + micro_xs(i_nuc) % fission * atom_density_ &
+                          * flux &
+                          * nuclides(i_nuc) % fission_q_betas % evaluate(E)
+                end if
+              end do
+            end if
+          end if
+        end if
+
+      case (SCORE_Q_ELASTIC)
+
+        if (p % type /= NEUTRON) cycle SCORE_LOOP
+
+        ! Skip any non-elastic scatter events
+        if (p % event_MT /= ELASTIC) cycle SCORE_LOOP
+
+        score = p % wgt * (p % last_E - p % E)
+
+      case (SCORE_Q_PHOTONS)
+
+        if (p % type /= PHOTON) cycle SCORE_LOOP
+
+        ! Skip if energy above cutoff
+        if (p % last_E > energy_cutoff(PHOTON)) cycle SCORE_LOOP
+
+        score = p % wgt * p % last_E
+
+      case (SCORE_Q_ELECTRONS)
+
+        if (p % type /= ELECTRON) cycle SCORE_LOOP
+
+        if (electron_treatment == ELECTRON_LED) then
+          score = p % wgt * p % last_E
+        end if
+
+      case (SCORE_Q_POSITRONS)
+
+        if (p % type /= POSITRON) cycle SCORE_LOOP
+
+        if (electron_treatment == ELECTRON_LED) then
+          score = p % wgt * p % last_E
         end if
 
       case default
@@ -1378,6 +1595,7 @@ contains
 
 
       case (SCORE_FLUX, SCORE_FLUX_YN)
+
         if (t % estimator == ESTIMATOR_ANALOG) then
           ! All events score to a flux bin. We actually use a collision
           ! estimator in place of an analog one since there is no way to count

@@ -3872,6 +3872,22 @@ contains
             t % score_bins(j) = SCORE_FISS_Q_PROMPT
           case ('fission-q-recoverable')
             t % score_bins(j) = SCORE_FISS_Q_RECOV
+          case ('fission-q-fragments')
+            t % score_bins(j) = SCORE_FISS_Q_FRAGMENTS
+          case ('fission-q-betas')
+            t % score_bins(j) = SCORE_FISS_Q_BETAS
+          case ('q-elastic')
+            t % score_bins(j) = SCORE_Q_ELASTIC
+            t % estimator = ESTIMATOR_ANALOG
+          case ('q-photons')
+            t % score_bins(j) = SCORE_Q_PHOTONS
+            t % estimator = ESTIMATOR_ANALOG
+          case ('q-electrons')
+            t % score_bins(j) = SCORE_Q_ELECTRONS
+            t % estimator = ESTIMATOR_ANALOG
+          case ('q-positrons')
+            t % score_bins(j) = SCORE_Q_POSITRONS
+            t % estimator = ESTIMATOR_ANALOG
           case ('current')
             t % score_bins(j) = SCORE_CURRENT
             t % type = TALLY_SURFACE_CURRENT

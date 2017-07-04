@@ -114,7 +114,9 @@ contains
            lattice_translation, next_level)
 
       ! Sample a distance to collision
-      if (material_xs % total == ZERO) then
+      if (p % type == ELECTRON .or. p % type == POSITRON) then
+        d_collision = ZERO
+      else if (material_xs % total == ZERO) then
         d_collision = INFINITY
       else
         d_collision = -log(prn()) / material_xs % total
@@ -132,7 +134,6 @@ contains
       if (active_tracklength_tallies % size() > 0) then
         call score_tracklength_tally(p, distance)
       end if
-
 
       ! Score track-length estimate of k-eff
       if (run_mode == MODE_EIGENVALUE .and. p % type == NEUTRON) then

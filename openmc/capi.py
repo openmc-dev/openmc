@@ -12,7 +12,20 @@ _double3 = c_double*3
 _double_array = POINTER(POINTER(c_double))
 
 
-class _OpenMCLibrary(object):
+class OpenMCLibrary(object):
+    """Provides bindings to C functions defined by OpenMC shared library.
+
+    This class is normally not directly instantiated. Instead, when the
+    :mod:`openmc` package is imported, an instance is automatically created with
+    the name :data:`openmc.lib`. Calls to the OpenMC can then be made using that
+    instance, for example:
+
+    .. code-block:: python
+
+        openmc.lib.init()
+        openmc.lib.run()
+
+    """
     def __init__(self, filename):
         self._dll = CDLL(filename)
 
@@ -22,8 +35,9 @@ class _OpenMCLibrary(object):
             c_int, c_double]
         self._dll.openmc_cell_set_temperature.restype = c_int
         self._dll.openmc_finalize.restype = None
-        self._dll.openmc_find.argtypes = [POINTER(_double3), c_int]
-        self._dll.openmc_find.restype = c_int
+        self._dll.openmc_find.argtypes = [
+            POINTER(_double3), c_int, POINTER(c_int), POINTER(c_int)]
+        self._dll.openmc_find.restype = None
         self._dll.openmc_init.argtypes = [POINTER(c_int)]
         self._dll.openmc_init.restype = None
         self._dll.openmc_load_nuclide.argtypes = [c_char_p]
@@ -61,6 +75,7 @@ class _OpenMCLibrary(object):
             ID of the cell
         T : float
             Temperature in K
+
         """
         return self._dll.openmc_cell_set_temperature(cell_id, T)
 
@@ -83,15 +98,24 @@ class _OpenMCLibrary(object):
         int or None
             ID of the cell or material. If 'material' is requested and no
             material exists at the given coordinate, None is returned.
+        int
+            If the cell at the given point is repeated in the geometry, this
+            indicates which instance it is, i.e., 0 would be the first instance.
 
         """
+        # Set second argument to openmc_find
         if rtype == 'cell':
-            return self._dll.openmc_find(_double3(*xyz), 1)
+            r_int = 1
         elif rtype == 'material':
-            uid = self._dll.openmc_find(_double3(*xyz), 2)
-            return uid if uid != 0 else None
+            r_int = 2
         else:
             raise ValueError('Unknown return type: {}'.format(rtype))
+
+        # Call openmc_find
+        uid = c_int()
+        instance = c_int()
+        self._dll.openmc_find(_double3(*xyz), r_int, byref(uid), byref(instance))
+        return (uid.value if uid != 0 else None), instance.value
 
     def init(self, intracomm=None):
         """Initialize OpenMC
@@ -278,7 +302,7 @@ else:
 filename = pkg_resources.resource_filename(
     __name__, '_libopenmc.{}'.format(suffix))
 try:
-    lib = _OpenMCLibrary(filename)
+    lib = OpenMCLibrary(filename)
 except OSError:
     warn("OpenMC shared library is not available from the Python API. This "
          "means you will not be able to use openmc.lib to make in-memory "

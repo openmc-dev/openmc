@@ -24,10 +24,10 @@ module openmc_api
   public :: openmc_finalize
   public :: openmc_find
   public :: openmc_init
+  public :: openmc_load_nuclide
   public :: openmc_material_add_nuclide
   public :: openmc_material_get_densities
   public :: openmc_material_set_density
-  public :: openmc_load_nuclide
   public :: openmc_plot_geometry
   public :: openmc_reset
   public :: openmc_run
@@ -66,10 +66,11 @@ contains
 ! OPENMC_FIND determines the ID or a cell or material at a given point in space
 !===============================================================================
 
-  function openmc_find(xyz, rtype) result(id) bind(C)
+  subroutine openmc_find(xyz, rtype, id, instance) bind(C)
     real(C_DOUBLE), intent(in)        :: xyz(3) ! Cartesian point
     integer(C_INT), intent(in), value :: rtype  ! 1 for cell, 2 for material
-    integer(C_INT) :: id
+    integer(C_INT), intent(out)       :: id
+    integer(C_INT), intent(out)       :: instance
 
     logical :: found
     type(Particle) :: p
@@ -80,6 +81,7 @@ contains
     call find_cell(p, found)
 
     id = -1
+    instance = -1
     if (found) then
       if (rtype == 1) then
         id = cells(p % coord(p % n_coord) % cell) % id
@@ -90,8 +92,9 @@ contains
           id = materials(p % material) % id
         end if
       end if
+      instance = p % cell_instance
     end if
-  end function openmc_find
+  end subroutine openmc_find
 
 !===============================================================================
 ! OPENMC_LOAD_NUCLIDE loads a nuclide from the cross section library

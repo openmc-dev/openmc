@@ -46,8 +46,12 @@ contains
     ! Sample reaction for the material the particle is in
     if (p % type == NEUTRON) then
       call sample_neutron_reaction(p)
-    else
+    else if (p % type == PHOTON) then
       call sample_photon_reaction(p)
+    else if (p % type == ELECTRON) then
+      call sample_electron_reaction(p)
+    else if (p % type == POSITRON) then
+      call sample_positron_reaction(p)
     end if
 
     ! Kill particle if energy falls below cutoff
@@ -167,6 +171,8 @@ contains
     real(8) :: alpha_out    ! outgoing photon energy over electron rest mass
     real(8) :: mu           ! scattering cosine
     real(8) :: phi          ! azimuthal angle
+    real(8) :: E_electron   ! electron energy
+    real(8) :: uvw(3)       ! new direction
 
     ! Sample element within material
     i_element = sample_element(p)
@@ -219,9 +225,20 @@ contains
 
           prob = prob + xs
           if (prob > cutoff) then
-            ! TODO: Create electron
-            ! E_electron = p % E - elm % shells(i_shell) % binding_energy
+            E_electron = p % E - elm % shells(i_shell) % binding_energy
 
+            ! Sample angle isotropically
+            mu = TWO*prn() - ONE
+            phi = TWO*PI*prn()
+            uvw(1) = mu
+            uvw(2) = sqrt(ONE - mu*mu)*cos(phi)
+            uvw(3) = sqrt(ONE - mu*mu)*sin(phi)
+
+            ! Create secondary electron
+            call p % create_secondary(uvw, E_electron, ELECTRON, run_CE=.true.)
+
+            ! Allow electrons to fill orbital and produce auger electrons
+            ! and fluorescent photons
             call atomic_relaxation(p, elm, i_shell)
             p % event_MT = 533 + elm % shells(i_shell) % index_subshell
             p % alive = .false.
@@ -238,20 +255,83 @@ contains
       ! Sample angle isotropically
       mu = TWO*prn() - ONE
       phi = TWO*PI*prn()
-      p % coord(1) % uvw(1) = mu
-      p % coord(1) % uvw(2) = sqrt(ONE - mu*mu)*cos(phi)
-      p % coord(1) % uvw(3) = sqrt(ONE - mu*mu)*sin(phi)
+      uvw(1) = mu
+      uvw(2) = sqrt(ONE - mu*mu)*cos(phi)
+      uvw(3) = sqrt(ONE - mu*mu)*sin(phi)
 
-      ! Set energy
-      p % E = MASS_ELECTRON
+      ! Compute the kinetic energy of each particle
+      E_electron = HALF * (p % E - 2 * MASS_ELECTRON)
+
+      ! Create electron-positron pair traveling in opposite directions
+      call p % create_secondary( uvw, E_electron, ELECTRON, .true.)
+      call p % create_secondary(-uvw, E_electron, POSITRON, .true.)
       p % event_MT = PAIR_PROD
-
-      ! Create photon in opposite direction
-      call p % create_secondary(-p % coord(1) % uvw, MASS_ELECTRON, &
-           PHOTON, .true.)
+      p % alive = .false.
     end if
 
   end subroutine sample_photon_reaction
+
+!===============================================================================
+! SAMPLE_ELECTRON_REACTION terminates the particle and either deposits all
+! energy locally (electron_treatment = ELECTRON_LED) or creates secondary
+! bremsstrahlung photons from electron deflections with charged particles
+! (electron_treatment = ELECTRON_TTB).
+!===============================================================================
+
+  subroutine sample_electron_reaction(p)
+    type(Particle), intent(inout) :: p
+
+    ! TODO: create reaction types
+
+    if (electron_treatment == ELECTRON_TTB) then
+      ! TODO: implement thick-target bremsstrahlung model
+      call fatal_error("Thick-target bremsstrahlung treatment of electrons &
+           &is not yet implemented.")
+    end if
+
+    p % E = ZERO
+    p % alive = .false.
+
+  end subroutine sample_electron_reaction
+
+!===============================================================================
+! SAMPLE_POSITRON_REACTION terminates the particle and either deposits all
+! energy locally (electron_treatment = ELECTRON_LED) or creates secondary
+! bremsstrahlung photons from electron deflections with charged particles
+! (electron_treatment = ELECTRON_TTB). Two annihilation photons of energy
+! MASS_ELECTRON (0.511 MeV) are created and travel in opposite directions.
+!===============================================================================
+
+  subroutine sample_positron_reaction(p)
+    type(Particle), intent(inout) :: p
+
+    real(8) :: mu           ! scattering cosine
+    real(8) :: phi          ! azimuthal angle
+    real(8) :: uvw(3)       ! new direction
+
+    ! TODO: create reaction types
+
+    if (electron_treatment == ELECTRON_TTB) then
+      ! TODO: implement thick-target bremsstrahlung model
+      call fatal_error("Thick-target bremsstrahlung treatment of electrons &
+           &is not yet implemented.")
+    end if
+
+    ! Sample angle isotropically
+    mu = TWO*prn() - ONE
+    phi = TWO*PI*prn()
+    uvw(1) = mu
+    uvw(2) = sqrt(ONE - mu*mu)*cos(phi)
+    uvw(3) = sqrt(ONE - mu*mu)*sin(phi)
+
+    ! Create annihilation photon pair traveling in opposite directions
+    call p % create_secondary( uvw, MASS_ELECTRON, PHOTON, .true.)
+    call p % create_secondary(-uvw, MASS_ELECTRON, PHOTON, .true.)
+
+    p % E = ZERO
+    p % alive = .false.
+
+  end subroutine sample_positron_reaction
 
 !===============================================================================
 ! SAMPLE_NUCLIDE

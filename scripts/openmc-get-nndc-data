@@ -113,7 +113,7 @@ for f in files:
 
 # Move ACE files down one level
 for filename in glob.glob('nndc/293.6K/ENDF-B-VII.1-neutron-293.6K/*'):
-    shutil.move(filename, 'nndc/293.6K/')
+    shutil.move(filename, 'nndc/293.6K/' + os.path.basename(filename))
 
 # ==============================================================================
 # FIX ZAID ASSIGNMENTS FOR VARIOUS S(A,B) TABLES

@@ -267,6 +267,34 @@ contains
     ! Copy random number seed if specified
     if (check_for_node(root, "seed")) call get_node_value(root, "seed", seed)
 
+    ! Check for electron treatment
+    if (check_for_node(root, "electron_treatment")) then
+      call get_node_value(root, "electron_treatment", temp_str)
+      select case (to_lower(temp_str))
+      case ("LED")
+        electron_treatment = ELECTRON_LED
+      case ("TTB")
+        electron_treatment = ELECTRON_TTB
+      case default
+        call fatal_error("Unrecognized electron treatment: " // &
+             trim(temp_str) // ".")
+      end select
+    end if
+
+    ! Check for photon transport
+    if (check_for_node(root, "photon_transport")) then
+      call get_node_value(root, "photon_transport", temp_str)
+      select case (to_lower(temp_str))
+      case ("true")
+        photon_transport = .true.
+      case ("false")
+        photon_transport = .false.
+      case default
+        call fatal_error("Unrecognized photon transport: " // &
+             trim(temp_str) // ".")
+      end select
+    end if
+
     ! Number of bins for logarithmic grid
     if (check_for_node(root, "log_grid_bins")) then
       call get_node_value(root, "log_grid_bins", n_log_bins)

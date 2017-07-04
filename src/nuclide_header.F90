@@ -92,8 +92,10 @@ module nuclide_header
                                        ! array; used at tally-time
 
     ! Fission energy release
-    class(Function1D), allocatable :: fission_q_prompt ! prompt neutrons, gammas
-    class(Function1D), allocatable :: fission_q_recov  ! neutrons, gammas, betas
+    class(Function1D), allocatable :: fission_q_prompt    ! fragments and prompt neutrons, gammas
+    class(Function1D), allocatable :: fission_q_recov     ! fragments, neutrons, gammas, betas
+    class(Function1D), allocatable :: fission_q_fragments ! fragments
+    class(Function1D), allocatable :: fission_q_betas     ! betas
 
   contains
     procedure :: clear => nuclide_clear
@@ -460,6 +462,18 @@ contains
         fer_dset = open_dataset(fer_group, 'q_recoverable')
         call this % fission_q_recov % from_hdf5(fer_dset)
         call close_dataset(fer_dset)
+
+        ! Read the fragment energy Q-value
+        allocate(Polynomial :: this % fission_q_fragments)
+        fer_dset = open_dataset(fer_group, 'fragments')
+        call this % fission_q_fragments % from_hdf5(fer_dset)
+        call close_dataset(fer_dset)
+
+        ! Read the beta energy Q-value
+        allocate(Polynomial :: this % fission_q_betas)
+        fer_dset = open_dataset(fer_group, 'betas')
+        call this % fission_q_betas % from_hdf5(fer_dset)
+        call close_dataset(fer_dset)
       else if (temp_str == 'Tabulated1D') then
         ! Read the prompt Q-value
         allocate(Tabulated1D :: this % fission_q_prompt)
@@ -470,6 +484,18 @@ contains
         allocate(Tabulated1D :: this % fission_q_recov)
         fer_dset = open_dataset(fer_group, 'q_recoverable')
         call this % fission_q_recov % from_hdf5(fer_dset)
+        call close_dataset(fer_dset)
+
+        ! Read the fragment energy Q-value
+        allocate(Tabulated1D :: this % fission_q_fragments)
+        fer_dset = open_dataset(fer_group, 'fragments')
+        call this % fission_q_fragments % from_hdf5(fer_dset)
+        call close_dataset(fer_dset)
+
+        ! Read the beta energy Q-value
+        allocate(Tabulated1D :: this % fission_q_betas)
+        fer_dset = open_dataset(fer_group, 'betas')
+        call this % fission_q_betas % from_hdf5(fer_dset)
         call close_dataset(fer_dset)
       else
         call fatal_error('Unrecognized fission energy release format.')

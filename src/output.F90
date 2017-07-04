@@ -751,6 +751,12 @@ contains
     score_names(abs(SCORE_INVERSE_VELOCITY))   = "Flux-Weighted Inverse Velocity"
     score_names(abs(SCORE_FISS_Q_PROMPT))      = "Prompt fission power"
     score_names(abs(SCORE_FISS_Q_RECOV))       = "Recoverable fission power"
+    score_names(abs(SCORE_FISS_Q_FRAGMENTS))   = "Fragment fission power"
+    score_names(abs(SCORE_FISS_Q_BETAS))       = "Beta fission power"
+    score_names(abs(SCORE_Q_ELASTIC))          = "Elastic scatter power"
+    score_names(abs(SCORE_Q_PHOTONS))          = "Photon energy deposition"
+    score_names(abs(SCORE_Q_ELECTRONS))        = "Electron energy deposition"
+    score_names(abs(SCORE_Q_POSITRONS))        = "Positron energy deposition"
 
     ! Create filename for tally output
     filename = trim(path_output) // "tallies.out"

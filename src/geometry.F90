@@ -283,6 +283,8 @@ contains
 
             ! Keep track of which instance of the cell the particle is in
             p % cell_instance = offset + 1
+          else
+            p % cell_instance = 1
           end if
 
           ! Save the material

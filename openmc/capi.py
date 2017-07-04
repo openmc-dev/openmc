@@ -1,4 +1,4 @@
-from ctypes import CDLL, c_int, POINTER, byref, c_double, c_char_p
+from ctypes import CDLL, c_int, POINTER, c_double, c_char_p
 import sys
 from warnings import warn
 
@@ -81,7 +81,7 @@ class OpenMCLibrary(object):
         """
         if instance is not None:
             return self._dll.openmc_cell_set_temperature(
-                cell_id, T, byref(c_int(instance)))
+                cell_id, T, c_int(instance))
         else:
             return self._dll.openmc_cell_set_temperature(cell_id, T, None)
 
@@ -121,7 +121,7 @@ class OpenMCLibrary(object):
         # Call openmc_find
         uid = c_int()
         instance = c_int()
-        self._dll.openmc_find(_double3(*xyz), r_int, byref(uid), byref(instance))
+        self._dll.openmc_find(_double3(*xyz), r_int, uid, instance)
         return (uid.value if uid != 0 else None), instance.value
 
     def init(self, intracomm=None):
@@ -140,7 +140,7 @@ class OpenMCLibrary(object):
                 intracomm = intracomm.py2f()
             except AttributeError:
                 pass
-            return self._dll.openmc_init(byref(c_int(intracomm)))
+            return self._dll.openmc_init(c_int(intracomm))
         else:
             return self._dll.openmc_init(None)
 
@@ -196,7 +196,7 @@ class OpenMCLibrary(object):
 
         """
         data = POINTER(c_double)()
-        n = self._dll.openmc_material_get_densities(mat_id, byref(data))
+        n = self._dll.openmc_material_get_densities(mat_id, data)
         if data:
             return as_array(data, (n,))
         else:
@@ -284,7 +284,7 @@ class OpenMCLibrary(object):
         """
         data = POINTER(c_double)()
         shape = _int3()
-        self._dll.openmc_tally_results(tally_id, byref(data), byref(shape))
+        self._dll.openmc_tally_results(tally_id, data, shape)
         if data:
             return as_array(data, tuple(shape[::-1]))
         else:

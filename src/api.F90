@@ -41,12 +41,13 @@ contains
 ! OPENMC_CELL_SET_TEMPERATURE sets the temperature of a cell
 !===============================================================================
 
-  function openmc_cell_set_temperature(id, T) result(err) bind(C)
+  function openmc_cell_set_temperature(id, T, instance) result(err) bind(C)
     integer(C_INT), value, intent(in) :: id  ! id of cell
     real(C_DOUBLE), value, intent(in) :: T
+    integer(C_INT), optional, intent(in) :: instance
     integer(C_INT) :: err
 
-    integer :: i
+    integer :: i, n
 
     err = -1
     if (allocated(cells)) then
@@ -54,8 +55,16 @@ contains
         i = cell_dict % get_key(id)
         associate (c => cells(i))
           if (allocated(c % sqrtkT)) then
-            c % sqrtkT(:) = sqrt(K_BOLTZMANN * T)
-            err = 0
+            n = size(c % sqrtkT)
+            if (present(instance) .and. n > 1) then
+              if (instance >= 0 .and. instance < n) then
+                c % sqrtkT(instance + 1) = sqrt(K_BOLTZMANN * T)
+                err = 0
+              end if
+            else
+              c % sqrtkT(:) = sqrt(K_BOLTZMANN * T)
+              err = 0
+            end if
           end if
         end associate
       end if
@@ -92,7 +101,7 @@ contains
           id = materials(p % material) % id
         end if
       end if
-      instance = p % cell_instance
+      instance = p % cell_instance - 1
     end if
   end subroutine openmc_find
 

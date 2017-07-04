@@ -66,7 +66,7 @@ class OpenMCLibrary(object):
         """Run stochastic volume calculation"""
         return self._dll.openmc_calculate_volumes()
 
-    def cell_set_temperature(self, cell_id, T):
+    def cell_set_temperature(self, cell_id, T, instance=None):
         """Set the temperature of a cell
 
         Parameters
@@ -75,9 +75,16 @@ class OpenMCLibrary(object):
             ID of the cell
         T : float
             Temperature in K
+        instance : int or None
+            Which instance of the cell
 
         """
-        return self._dll.openmc_cell_set_temperature(cell_id, T)
+        if instance is not None:
+            return self._dll.openmc_cell_set_temperature(
+                cell_id, T, byref(c_int(instance)))
+        else:
+            return self._dll.openmc_cell_set_temperature(cell_id, T, None)
+
 
     def finalize(self):
         """Finalize simulation and free memory"""

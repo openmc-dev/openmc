@@ -124,12 +124,12 @@ C API
    :return: Return status (negative if an error occurs)
    :rtype: int
 
-.. c:function:: void openmc_tally_results(int i, double** ptr, int shape_[3])
+.. c:function:: void openmc_tally_results(int id, double** ptr, int shape_[3])
 
    Get a pointer to tally results array.
 
-   :param i: Index in the tallies array
-   :type i: int
+   :param id: ID of the tally
+   :type id: int
    :param ptr: Pointer to the results array
    :type ptr: double**
    :param shape_: Shape of the results array

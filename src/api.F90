@@ -376,14 +376,17 @@ contains
 ! directly.
 !===============================================================================
 
-  subroutine openmc_tally_results(i, ptr, shape_) bind(C)
-    integer(C_INT), intent(in), value :: i
+  subroutine openmc_tally_results(id, ptr, shape_) bind(C)
+    integer(C_INT), intent(in), value :: id
     type(C_PTR),    intent(out) :: ptr
     integer(C_INT), intent(out) :: shape_(3)
 
+    integer :: i
+
     ptr = C_NULL_PTR
     if (allocated(tallies)) then
-      if (i >= 1 .and. i <= size(tallies)) then
+      if (tally_dict % has_key(id)) then
+        i = tally_dict % get_key(id)
         if (allocated(tallies(i) % results)) then
           ptr = C_LOC(tallies(i) % results(1,1,1))
           shape_(:) = shape(tallies(i) % results)

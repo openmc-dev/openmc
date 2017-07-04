@@ -8,7 +8,7 @@ C API
 
    Run a stochastic volume calculation
 
-.. c:function:: int openmc_cell_set_temperature(int id, double T)
+.. c:function:: int openmc_cell_set_temperature(int id, double T, int* instance)
 
    Set the temperature of a cell.
 
@@ -16,6 +16,9 @@ C API
    :type id: int
    :param T: Temperature in Kelvin
    :type T: double
+   :param instance: Which instance of the cell. To set the temperature for all
+                    instances, pass a null pointer.
+   :type instance: int*
    :return: Return status (negative if an error occurred)
    :rtype: int
 

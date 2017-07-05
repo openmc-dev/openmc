@@ -313,6 +313,12 @@ contains
       ! Compute the length of the entire track.
       total_distance = sqrt(sum((xyz1 - xyz0)**2))
 
+      ! Check if particle has moved
+      if (total_distance == ZERO) then
+        next_bin = current_bin
+        return
+      end if
+
       if (current_bin == NO_BIN_FOUND) then
         ! We are looking for the first valid mesh bin.  Check to see if the
         ! particle starts inside the mesh.

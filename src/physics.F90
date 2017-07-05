@@ -111,7 +111,9 @@ contains
     end if
 
     ! Create secondary photons
-    call sample_secondary_photons(p, i_nuclide)
+    if (photon_transport) then
+      call sample_secondary_photons(p, i_nuclide)
+    end if
 
     ! If survival biasing is being used, the following subroutine adjusts the
     ! weight of the particle. Otherwise, it checks to see if absorption occurs

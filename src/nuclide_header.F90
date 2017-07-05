@@ -452,6 +452,7 @@ contains
       fer_dset = open_dataset(fer_group, 'q_prompt')
       call read_attribute(temp_str, fer_dset, 'type')
       if (temp_str == 'Polynomial') then
+
         ! Read the prompt Q-value
         allocate(Polynomial :: this % fission_q_prompt)
         call this % fission_q_prompt % from_hdf5(fer_dset)
@@ -463,18 +464,8 @@ contains
         call this % fission_q_recov % from_hdf5(fer_dset)
         call close_dataset(fer_dset)
 
-        ! Read the fragment energy Q-value
-        allocate(Polynomial :: this % fission_q_fragments)
-        fer_dset = open_dataset(fer_group, 'fragments')
-        call this % fission_q_fragments % from_hdf5(fer_dset)
-        call close_dataset(fer_dset)
-
-        ! Read the beta energy Q-value
-        allocate(Polynomial :: this % fission_q_betas)
-        fer_dset = open_dataset(fer_group, 'betas')
-        call this % fission_q_betas % from_hdf5(fer_dset)
-        call close_dataset(fer_dset)
       else if (temp_str == 'Tabulated1D') then
+
         ! Read the prompt Q-value
         allocate(Tabulated1D :: this % fission_q_prompt)
         call this % fission_q_prompt % from_hdf5(fer_dset)
@@ -485,12 +476,42 @@ contains
         fer_dset = open_dataset(fer_group, 'q_recoverable')
         call this % fission_q_recov % from_hdf5(fer_dset)
         call close_dataset(fer_dset)
+      else
+        call fatal_error('Unrecognized fission energy release format.')
+      end if
+
+      fer_dset = open_dataset(fer_group, 'fragments')
+      call read_attribute(temp_str, fer_dset, 'type')
+      if (temp_str == 'Polynomial') then
+
+        ! Read the fragment energy Q-value
+        allocate(Polynomial :: this % fission_q_fragments)
+        fer_dset = open_dataset(fer_group, 'fragments')
+        call this % fission_q_fragments % from_hdf5(fer_dset)
+        call close_dataset(fer_dset)
+
+      else if (temp_str == 'Tabulated1D') then
 
         ! Read the fragment energy Q-value
         allocate(Tabulated1D :: this % fission_q_fragments)
         fer_dset = open_dataset(fer_group, 'fragments')
         call this % fission_q_fragments % from_hdf5(fer_dset)
         call close_dataset(fer_dset)
+      else
+        call fatal_error('Unrecognized fission fragment energy release format.')
+      end if
+
+      fer_dset = open_dataset(fer_group, 'betas')
+      call read_attribute(temp_str, fer_dset, 'type')
+      if (temp_str == 'Polynomial') then
+
+        ! Read the beta energy Q-value
+        allocate(Polynomial :: this % fission_q_betas)
+        fer_dset = open_dataset(fer_group, 'betas')
+        call this % fission_q_betas % from_hdf5(fer_dset)
+        call close_dataset(fer_dset)
+
+      else if (temp_str == 'Tabulated1D') then
 
         ! Read the beta energy Q-value
         allocate(Tabulated1D :: this % fission_q_betas)
@@ -498,7 +519,7 @@ contains
         call this % fission_q_betas % from_hdf5(fer_dset)
         call close_dataset(fer_dset)
       else
-        call fatal_error('Unrecognized fission energy release format.')
+        call fatal_error('Unrecognized beta energy release format.')
       end if
       call close_group(fer_group)
     end if

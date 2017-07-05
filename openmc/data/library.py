@@ -71,7 +71,7 @@ class DataLibrary(EqualityMixin):
         path : str
             Path to file to write. Defaults to 'cross_sections.xml'.
         append : bool
-            Whether to append to an existing file, it if exists.
+            Whether to append to an existing file, if it exists.
             Defaults to False.
 
         """

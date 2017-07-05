@@ -209,7 +209,6 @@ contains
           this % shells(i) % transition_subshells(:,:) = int(matrix(1:2, :), 4)
           this % shells(i) % transition_energy(:) = matrix(3, :)
           this % shells(i) % transition_probability(:) = matrix(4, :)
-
           deallocate(matrix)
         end if
         call close_dataset(dset_id)

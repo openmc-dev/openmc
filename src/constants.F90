@@ -319,7 +319,7 @@ module constants
        SCORE_FISSION            = -10, & ! fission rate
        SCORE_NU_FISSION         = -11, & ! neutron production rate
        SCORE_KAPPA_FISSION      = -12, & ! fission energy production rate
-       SCORE_CURRENT            = -13, & ! partial current
+       SCORE_CURRENT            = -13, & ! current
        SCORE_FLUX_YN            = -14, & ! angular moment of flux
        SCORE_TOTAL_YN           = -15, & ! angular moment of total reaction rate
        SCORE_SCATTER_YN         = -16, & ! angular flux-weighted scattering moment (0:N)

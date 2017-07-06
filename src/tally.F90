@@ -3139,7 +3139,7 @@ contains
 
 !===============================================================================
 ! score_surface_tally is called at every surface crossing and can be used to
-! tally partial currents between two cells
+! tally total or partial currents between two cells
 !===============================================================================
 
     subroutine  score_surface_tally(p)

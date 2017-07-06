@@ -109,8 +109,7 @@ module tally_filter
   end type CellbornFilter
 
 !===============================================================================
-! SURFACEFILTER is currently not implemented for usual geometric surfaces, but
-! it is used as a placeholder for mesh surfaces used in current tallies.
+! SURFACEFILTER specifies which surface particles are crossing
 !===============================================================================
   type, extends(TallyFilter) :: SurfaceFilter
     integer, allocatable :: surfaces(:)

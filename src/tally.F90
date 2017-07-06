@@ -3161,13 +3161,8 @@ contains
     real(8) :: score                ! analog tally score
     logical :: finished             ! found all valid bin combinations
 
-    ! Determine collision estimate of flux
-    if (survival_biasing) then
-      ! We need to account for the fact that some weight was already absorbed
-      flux = (p % last_wgt + p % absorb_wgt)
-    else
-      flux = p % last_wgt
-    end if
+    ! No collision, so no weight change when survival biasing
+    flux = p % wgt
 
     TALLY_LOOP: do i = 1, active_surface_tallies % size()
       ! Get index of tally and pointer to tally

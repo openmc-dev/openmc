@@ -3899,7 +3899,7 @@ contains
             t % find_filter(FILTER_SURFACE) = n_filter
             t % filter(n_filter) = i_filt
 
-          case ('partial_current')
+          case ('total-current')
             t % type = TALLY_SURFACE
             t % score_bins(j) = SCORE_CURRENT
           case ('events')

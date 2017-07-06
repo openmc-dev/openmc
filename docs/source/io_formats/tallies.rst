@@ -159,7 +159,7 @@ should be set to:
 
 :surface:
   This filter allows the tally to be scored when crossing a surface. A list of 
-  surface IDs should be given.It does not specify in which direction the 
+  surface IDs should be given. It does not specify in which direction the 
   surface is crossed, and a cellfrom or a cell filter may be used to tally 
   partial currents.
 

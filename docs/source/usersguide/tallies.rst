@@ -268,7 +268,7 @@ The following tables show all valid scores:
     |                      |may not be used in conjunction with any other      |
     |                      |score. Only energy and mesh filters may be used.   |
     +----------------------+---------------------------------------------------+
-    |partial_current       |Partial currents on any surface previously defined |
+    |total-current         |Total currents on any surface previously defined   |
     |                      |in the geometry. Units are particles per source    |
     |                      |particle. Note that this score cannot be used with |
     |                      |a current score or a mesh filter.                  |

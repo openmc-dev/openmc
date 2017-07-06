@@ -271,10 +271,10 @@ The following tables show all valid scores:
     |partial_current       |Partial currents on any surface previously defined |
     |                      |in the geometry. Units are particles per source    |
     |                      |particle. Note that this score cannot be used with |
-    |                      |a current score or a surface or mesh filter.       |
+    |                      |a current score or a mesh filter.                  |
     |                      |It may be used in conjunction with any other score.|
     |                      |Surfaces can be defined with cell_from and cell    |
-    |                      |(to) filters.                                      |
+    |                      |(to) filters or surface filters.                   |
     +----------------------+---------------------------------------------------+
     |events                |Number of scoring events. Units are events per     |
     |                      |source particle.                                   |

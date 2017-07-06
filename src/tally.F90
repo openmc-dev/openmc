@@ -3151,6 +3151,7 @@ contains
     integer :: i_filt
     integer :: i_bin
     integer :: q                    ! loop index for scoring bins
+    integer :: k                    ! working index for expand and score
     integer :: score_bin            ! scoring bin, e.g. SCORE_FLUX
     integer :: score_index          ! scoring bin index
     integer :: j                    ! loop index for scoring bins
@@ -3217,7 +3218,9 @@ contains
         score = flux * filter_weight
 
         ! Currently only one score type
+        k = 0
         SCORE_LOOP: do q = 1, t % n_user_score_bins
+          k = k + 1
 
           ! determine what type of score bin
           score_bin = t % score_bins(q)
@@ -3227,7 +3230,7 @@ contains
 
           ! Expand score if necessary and add to tally results.
           call expand_and_score(p, t, score_index, filter_index, score_bin, &
-               score, score_index)
+               score, k)
         end do SCORE_LOOP
 
         ! ======================================================================

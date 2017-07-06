@@ -124,8 +124,8 @@ attributes/sub-elements:
 
   :type:
     The type of the filter. Accepted options are "cell", "cellfrom", 
-    "cellborn", "material", "universe", "energy", "energyout", "mu", "polar",
-    "azimuthal", "mesh", "distribcell", "delayedgroup", and
+    "cellborn", "surface", "material", "universe", "energy", "energyout", "mu", 
+    "polar", "azimuthal", "mesh", "distribcell", "delayedgroup", and
     "energyfunction".
 
   :bins:
@@ -157,13 +157,19 @@ should be set to:
   A list of cells or unique IDs for cells in which the tally should be 
   accumulated.
 
+:surface:
+  This filter allows the tally to be scored when crossing a surface. A list of 
+  surface IDs should be given.It does not specify in which direction the 
+  surface is crossed, and a cellfrom or a cell filter may be used to tally 
+  partial currents.
+
 :cellfrom:
   This filter allows the tally to be scored when crossing a surface and the 
   particle came from a specified cell. A list of cell or cell IDs should be 
   given.
   To tally a partial current from a cell to another, this filter should be 
-  used in combination with a cell filter.
-  This filter should not be used in combination with a surface or meshfilter.
+  used in combination with a cell filter, to define the other cell.
+  This filter should not be used in combination with a meshfilter.
 
 :cellborn:
   This filter allows the tally to be scored to only when particles were

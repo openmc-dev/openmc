@@ -1,11 +1,11 @@
 <?xml version='1.0' encoding='utf-8'?>
 <geometry>
-    <cell id="10000" material="10000" name="fuel" region="-10000" universe="10000" />
-    <cell id="10001" material="10001" name="water" region="10000 -10002 10003 -10004" universe="10000" />
-    <cell fill="10000" id="10002" name="root cell" region="10001 -10002 10003 -10004" universe="0" />
-    <surface coeffs="0 0 0.4" id="10000" name="Fuel OR" type="z-cylinder" />
-    <surface boundary="reflective" coeffs="-0.62992" id="10001" name="left" type="x-plane" />
-    <surface boundary="reflective" coeffs="0.62992" id="10002" name="right" type="x-plane" />
-    <surface boundary="reflective" coeffs="-0.62992" id="10003" name="bottom" type="y-plane" />
-    <surface boundary="reflective" coeffs="0.62992" id="10004" name="top" type="y-plane" />
+    <cell id="10000" material="10000" name="fuel" region="-1" universe="10000" />
+    <cell id="10001" material="10001" name="water" region="1 -10001 10002 -10003" universe="10000" />
+    <cell fill="10000" id="10002" name="root cell" region="10000 -10001 10002 -10003" universe="0" />
+    <surface coeffs="0 0 0.4" id="1" name="Fuel OR" type="z-cylinder" />
+    <surface boundary="reflective" coeffs="-0.62992" id="10000" name="left" type="x-plane" />
+    <surface boundary="reflective" coeffs="0.62992" id="10001" name="right" type="x-plane" />
+    <surface boundary="reflective" coeffs="-0.62992" id="10002" name="bottom" type="y-plane" />
+    <surface boundary="reflective" coeffs="0.62992" id="10003" name="top" type="y-plane" />
 </geometry>

@@ -15,20 +15,38 @@
     <filter id="10002" type="azimuthal">
         <bins>0.0 0.785398163397 3.14159265359</bins>
     </filter>
-    <filter id="10005" type="cellfrom">
+    <filter id="10005" type="surface">
+        <bins>1</bins>
+    </filter>
+    <filter id="10006" type="cellfrom">
         <bins>10001</bins>
     </filter>
-    <filter id="10006" type="cell">
+    <filter id="10007" type="cell">
         <bins>10000</bins>
     </filter>
     <tally id="0" name="10000-10001">
         <filters>10003 10004 10000 10001 10002</filters>
-        <scores>partial_current</scores>
+        <scores>total-current</scores>
         <estimator>analog</estimator>
     </tally>
-    <tally id="1" name="10001-10000">
-        <filters>10005 10006 10000 10001 10002</filters>
-        <scores>partial_current</scores>
+    <tally id="1" name="10000-surface1">
+        <filters>10003 10005 10000 10001 10002</filters>
+        <scores>total-current</scores>
+        <estimator>analog</estimator>
+    </tally>
+    <tally id="2" name="10001-10000">
+        <filters>10006 10007 10000 10001 10002</filters>
+        <scores>total-current</scores>
+        <estimator>analog</estimator>
+    </tally>
+    <tally id="3" name="10001-surface1">
+        <filters>10006 10005 10000 10001 10002</filters>
+        <scores>total-current</scores>
+        <estimator>analog</estimator>
+    </tally>
+    <tally id="4" name="surface1">
+        <filters>10005 10000 10001 10002</filters>
+        <scores>total-current</scores>
         <estimator>analog</estimator>
     </tally>
 </tallies>

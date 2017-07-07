@@ -112,7 +112,7 @@ Each ``material`` element can have the following attributes or sub-elements:
     is the name of the S(a,b) table that should be associated with the material.
     There is also an optional ``fraction`` element which indicates what fraction
     of the relevant nuclides will be affected by the S(a,b) table (e.g. which
-    fraction of a material is crystaline versus amorphus).  ``fraction``
+    fraction of a material is crystalline versus amorphous).  ``fraction``
     defaults to unity.
 
     *Default*: None

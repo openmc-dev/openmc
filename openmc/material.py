@@ -628,7 +628,7 @@ class Material(IDManagerMixin):
         fraction : float
             The fraction of relevant nuclei that are affected by the
             :math:`S(\alpha,\beta)` table.  For example, if the material is a
-            block of carbon that is 60% graphite and 40% amorphus then add a
+            block of carbon that is 60% graphite and 40% amorphous then add a
             graphite :math:`S(\alpha,\beta)` table with fraction=0.6.
 
         """

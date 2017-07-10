@@ -5193,6 +5193,19 @@ contains
           end if
         end do ASSIGN_SAB
 
+        ! Make sure each nuclide only appears in one table.
+        do j = 1, i_sab_nuclides % size()
+          do k = j+1, i_sab_nuclides % size()
+            if (i_sab_nuclides % data(j) == i_sab_nuclides % data(k)) then
+              call fatal_error(trim( &
+                   nuclides(mat % nuclide(i_sab_nuclides % data(j))) % name) &
+                   // " in material " // trim(to_str(mat % id)) // " was found &
+                   &in multiple S(a,b) tables. Each nuclide can only appear in &
+                   &one S(a,b) table per material.")
+            end if
+          end do
+        end do
+
         ! Update i_sab_tables and i_sab_nuclides
         deallocate(mat % i_sab_tables)
         deallocate(mat % sab_fracs)

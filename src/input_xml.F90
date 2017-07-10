@@ -3370,6 +3370,15 @@ contains
       ! =======================================================================
       ! READ DATA FOR FILTERS
 
+      ! Check if user is using old XML format and throw an error if so
+      if (check_for_node(node_tal, "filter")) then
+        call fatal_error("Tally filters must be specified independently of &
+             &tallies in a <filter> element. The <tally> element itself should &
+             &have a list of filters that apply, e.g., <filters>1 2</filters> &
+             &where 1 and 2 are the IDs of filters specified outside of &
+             &<tally>.")
+      end if
+
       ! Determine number of filters
       if (check_for_node(node_tal, "filters")) then
         n_filter = node_word_count(node_tal, "filters")

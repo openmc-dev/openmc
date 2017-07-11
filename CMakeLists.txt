@@ -62,10 +62,12 @@ endif()
 # this, we check for the environment variable HDF5_ROOT and if it exists, use it
 # to check whether its a parallel version.
 
-if(DEFINED ENV{HDF5_ROOT} AND EXISTS $ENV{HDF5_ROOT}/bin/h5pcc)
-  set(HDF5_PREFER_PARALLEL TRUE)
-else()
-  set(HDF5_PREFER_PARALLEL FALSE)
+if(NOT DEFINED HDF5_PREFER_PARALLEL)
+  if(DEFINED ENV{HDF5_ROOT} AND EXISTS $ENV{HDF5_ROOT}/bin/h5pcc)
+    set(HDF5_PREFER_PARALLEL TRUE)
+  else()
+    set(HDF5_PREFER_PARALLEL FALSE)
+  endif()
 endif()
 
 find_package(HDF5 COMPONENTS Fortran_HL)

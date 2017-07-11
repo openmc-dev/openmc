@@ -14,6 +14,9 @@ addons:
 cache:
   directories:
   - $HOME/nndc_hdf5
+env:
+  - OPENMC_CONFIG="^hdf5-debug$|^omp-hdf5-debug$"
+  - OPENMC_CONFIG="^mpi-hdf5-debug$|^phdf5-debug$"
 
 before_install:
   # ============== Handle Python third-party packages ==============

@@ -22,15 +22,15 @@
     <density units="g/cc" value="4.5" />
     <nuclide ao="1.0" name="U235" />
     <nuclide ao="1.0" name="C0" />
-    <sab fraction="1.0" name="c_Graphite" />
+    <sab name="c_Graphite" />
   </material>
   <material id="3">
     <density units="g/cc" value="4.5" />
     <nuclide ao="1.0" name="U235" />
     <nuclide ao="1.0" name="Be9" />
     <nuclide ao="1.0" name="O16" />
-    <sab fraction="1.0" name="c_Be_in_BeO" />
-    <sab fraction="1.0" name="c_O_in_BeO" />
+    <sab name="c_Be_in_BeO" />
+    <sab name="c_O_in_BeO" />
   </material>
   <material id="4">
     <density units="g/cm3" value="5.90168" />
@@ -42,8 +42,8 @@
     <nuclide ao="0.05" name="Zr96" />
     <nuclide ao="0.1" name="U235" />
     <nuclide ao="0.15" name="U238" />
-    <sab fraction="1.0" name="c_Zr_in_ZrH" />
-    <sab fraction="1.0" name="c_H_in_ZrH" />
+    <sab name="c_Zr_in_ZrH" />
+    <sab name="c_H_in_ZrH" />
   </material>
 </materials>
 <?xml version='1.0' encoding='utf-8'?>

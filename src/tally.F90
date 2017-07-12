@@ -1051,8 +1051,7 @@ contains
 
         else
           if (i_nuclide > 0) then
-            score = (micro_xs(i_nuclide) % elastic &
-                     + micro_xs(i_nuclide) % scatter_sab) * atom_density * flux
+            score = micro_xs(i_nuclide) % elastic * atom_density * flux
           else
             score = material_xs % elastic * flux
           end if

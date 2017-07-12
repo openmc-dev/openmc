@@ -342,7 +342,7 @@ contains
          micro_xs(i_nuclide) % absorption)
     sampled = .false.
 
-    prob = micro_xs(i_nuclide) % elastic
+    prob = micro_xs(i_nuclide) % elastic - micro_xs(i_nuclide) % thermal
     if (prob > cutoff) then
       ! =======================================================================
       ! NON-S(A,B) ELASTIC SCATTERING
@@ -362,7 +362,7 @@ contains
       sampled = .true.
     end if
 
-    prob = prob + micro_xs(i_nuclide) % scatter_sab
+    prob = micro_xs(i_nuclide) % elastic
     if (prob > cutoff .and. .not. sampled) then
       ! =======================================================================
       ! S(A,B) SCATTERING
@@ -567,8 +567,8 @@ contains
     associate (sab => sab_tables(i_sab) % data(i_temp))
 
       ! Determine whether inelastic or elastic scattering will occur
-      if (prn() < micro_xs(i_nuclide) % elastic_sab / &
-           micro_xs(i_nuclide) % scatter_sab) then
+      if (prn() < micro_xs(i_nuclide) % thermal_elastic / &
+           micro_xs(i_nuclide) % thermal) then
         ! elastic scattering
 
         ! Get index and interpolation factor for elastic grid

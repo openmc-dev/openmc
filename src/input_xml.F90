@@ -5167,6 +5167,7 @@ contains
     integer :: m            ! position for sorting
     integer :: temp_nuclide ! temporary value for sorting
     integer :: temp_table   ! temporary value for sorting
+    real(8) :: temp_frac    ! temporary value for sorting
     logical :: found
     type(VectorInt)  :: i_sab_tables
     type(VectorInt)  :: i_sab_nuclides
@@ -5224,7 +5225,7 @@ contains
         allocate(mat % sab_fracs(m))
         mat % i_sab_tables(:) = i_sab_tables % data(1:m)
         mat % i_sab_nuclides(:) = i_sab_nuclides % data(1:m)
-        mat % sab_fracs = sab_fracs % data(1:m)
+        mat % sab_fracs(:) = sab_fracs % data(1:m)
 
         ! Clear entries in vectors for next material
         call i_sab_tables % clear()
@@ -5242,6 +5243,7 @@ contains
             m = k
             temp_nuclide = mat % i_sab_nuclides(k)
             temp_table   = mat % i_sab_tables(k)
+            temp_frac    = mat % i_sab_tables(k)
 
             MOVE_OVER: do
               ! Check if insertion value is greater than (m-1)th value
@@ -5250,6 +5252,7 @@ contains
               ! Move values over until hitting one that's not larger
               mat % i_sab_nuclides(m) = mat % i_sab_nuclides(m-1)
               mat % i_sab_tables(m)   = mat % i_sab_tables(m-1)
+              mat % sab_fracs(m)      = mat % sab_fracs(m-1)
               m = m - 1
 
               ! Exit if we've reached the beginning of the list
@@ -5259,6 +5262,7 @@ contains
             ! Put the original value into its new position
             mat % i_sab_nuclides(m) = temp_nuclide
             mat % i_sab_tables(m)   = temp_table
+            mat % sab_fracs(m)      = temp_frac
           end do SORT_SAB
         end if
 

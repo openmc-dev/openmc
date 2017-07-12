@@ -102,34 +102,35 @@ module nuclide_header
   end type Nuclide
 
 !===============================================================================
-! NUCLIDEMICROXS contains cached microscopic cross sections for a
-! particular nuclide at the current energy
+! NUCLIDEMICROXS contains cached microscopic cross sections for a particular
+! nuclide at the current energy
 !===============================================================================
 
   type NuclideMicroXS
-    integer :: index_grid      ! index on nuclide energy grid
-    integer :: index_temp      ! temperature index for nuclide
-    real(8) :: last_E = ZERO   ! last evaluated energy
-    real(8) :: interp_factor   ! interpolation factor on nuc. energy grid
-    real(8) :: total           ! microscropic total xs
-    real(8) :: elastic         ! microscopic elastic scattering xs (non S(a,b))
-    real(8) :: absorption      ! microscopic absorption xs
-    real(8) :: fission         ! microscopic fission xs
-    real(8) :: nu_fission      ! microscopic production xs
-    real(8) :: scatter_sab     ! microscopic scattering xs due to S(a,b)
+    ! Microscopic cross sections in barns
+    real(8) :: total
+    real(8) :: elastic          ! If sab_frac is not 1 or 0, then this value is
+                                !   averaged over bound and non-bound nuclei
+    real(8) :: absorption
+    real(8) :: fission
+    real(8) :: nu_fission
+    real(8) :: thermal          ! Bound thermal elastic & inelastic scattering
+    real(8) :: thermal_elastic  ! Bound thermal elastic scattering
 
-    ! Information for S(a,b) use
-    integer :: index_sab          ! index in sab_tables (zero means no table)
-    integer :: last_index_sab = 0 ! index in sab_tables last used by this nuclide
-    integer :: index_temp_sab     ! temperature index for sab_tables
-    real(8) :: elastic_sab        ! microscopic elastic scattering on S(a,b) table
+    ! Indicies and factors needed to compute cross sections from the data tables
+    integer :: index_grid        ! Index on nuclide energy grid
+    integer :: index_temp        ! Temperature index for nuclide
+    real(8) :: interp_factor     ! Interpolation factor on nuc. energy grid
+    integer :: index_sab = NONE  ! Index in sab_tables
+    integer :: index_temp_sab    ! Temperature index for sab_tables
+    real(8) :: sab_frac          ! Fraction of atoms affected by S(a,b)
+    logical :: use_ptable        ! In URR range with probability tables?
 
-    ! Information for URR probability table use
-    logical :: use_ptable  ! in URR range with probability tables?
-
-    ! Information for Doppler broadening
+    ! Energy and temperature last used to evaluate these cross sections.  If
+    ! these values have changed, then the cross sections must be re-evaluated.
+    real(8) :: last_E = ZERO       ! Last evaluated energy
     real(8) :: last_sqrtkT = ZERO  ! Last temperature in sqrt(Boltzmann
-                                   ! constant * temperature (eV))
+                                   !   constant * temperature (eV))
   end type NuclideMicroXS
 
 !===============================================================================

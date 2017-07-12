@@ -170,7 +170,7 @@
     <nuclide ao="1.0" name="O16" scattering="iso-in-lab" />
     <nuclide ao="0.000649" name="B10" scattering="iso-in-lab" />
     <nuclide ao="0.002689" name="B11" scattering="iso-in-lab" />
-    <sab fraction="1.0" name="c_H_in_H2O" />
+    <sab name="c_H_in_H2O" />
   </material>
   <material id="4" name="Hot borated water">
     <density units="atom/b-cm" value="0.06614" />
@@ -178,7 +178,7 @@
     <nuclide ao="1.0" name="O16" scattering="iso-in-lab" />
     <nuclide ao="0.000649" name="B10" scattering="iso-in-lab" />
     <nuclide ao="0.002689" name="B11" scattering="iso-in-lab" />
-    <sab fraction="1.0" name="c_H_in_H2O" />
+    <sab name="c_H_in_H2O" />
   </material>
   <material id="5" name="Reactor pressure vessel steel">
     <density units="g/cm3" value="7.9" />
@@ -206,7 +206,7 @@
     <nuclide name="Ni58" scattering="iso-in-lab" wo="0.055298376566" />
     <nuclide name="Mn55" scattering="iso-in-lab" wo="0.018287" />
     <nuclide name="Cr52" scattering="iso-in-lab" wo="0.145407678031" />
-    <sab fraction="1.0" name="c_H_in_H2O" />
+    <sab name="c_H_in_H2O" />
   </material>
   <material id="7" name="Upper radial reflector / Top plate region">
     <density units="g/cm3" value="4.28" />
@@ -221,7 +221,7 @@
     <nuclide name="Ni58" scattering="iso-in-lab" wo="0.055815129186" />
     <nuclide name="Mn55" scattering="iso-in-lab" wo="0.0184579" />
     <nuclide name="Cr52" scattering="iso-in-lab" wo="0.146766614995" />
-    <sab fraction="1.0" name="c_H_in_H2O" />
+    <sab name="c_H_in_H2O" />
   </material>
   <material id="8" name="Bottom plate region">
     <density units="g/cm3" value="7.184" />
@@ -236,7 +236,7 @@
     <nuclide name="Ni58" scattering="iso-in-lab" wo="0.059855207342" />
     <nuclide name="Mn55" scattering="iso-in-lab" wo="0.019794" />
     <nuclide name="Cr52" scattering="iso-in-lab" wo="0.157390026871" />
-    <sab fraction="1.0" name="c_H_in_H2O" />
+    <sab name="c_H_in_H2O" />
   </material>
   <material id="9" name="Bottom nozzle region">
     <density units="g/cm3" value="2.53" />
@@ -251,7 +251,7 @@
     <nuclide name="Ni58" scattering="iso-in-lab" wo="0.047211231662" />
     <nuclide name="Mn55" scattering="iso-in-lab" wo="0.0156126" />
     <nuclide name="Cr52" scattering="iso-in-lab" wo="0.124142524198" />
-    <sab fraction="1.0" name="c_H_in_H2O" />
+    <sab name="c_H_in_H2O" />
   </material>
   <material id="10" name="Top nozzle region">
     <density units="g/cm3" value="1.746" />
@@ -266,7 +266,7 @@
     <nuclide name="Ni58" scattering="iso-in-lab" wo="0.04104621835" />
     <nuclide name="Mn55" scattering="iso-in-lab" wo="0.0135739" />
     <nuclide name="Cr52" scattering="iso-in-lab" wo="0.107931450781" />
-    <sab fraction="1.0" name="c_H_in_H2O" />
+    <sab name="c_H_in_H2O" />
   </material>
   <material id="11" name="Top of fuel assemblies">
     <density units="g/cm3" value="3.044" />
@@ -279,7 +279,7 @@
     <nuclide name="Zr92" scattering="iso-in-lab" wo="0.14759527104" />
     <nuclide name="Zr94" scattering="iso-in-lab" wo="0.15280552077" />
     <nuclide name="Zr96" scattering="iso-in-lab" wo="0.02511169542" />
-    <sab fraction="1.0" name="c_H_in_H2O" />
+    <sab name="c_H_in_H2O" />
   </material>
   <material id="12" name="Bottom of fuel assemblies">
     <density units="g/cm3" value="1.762" />
@@ -292,7 +292,7 @@
     <nuclide name="Zr92" scattering="iso-in-lab" wo="0.1274914944" />
     <nuclide name="Zr94" scattering="iso-in-lab" wo="0.1319920622" />
     <nuclide name="Zr96" scattering="iso-in-lab" wo="0.0216912612" />
-    <sab fraction="1.0" name="c_H_in_H2O" />
+    <sab name="c_H_in_H2O" />
   </material>
 </materials>
 <?xml version='1.0' encoding='utf-8'?>

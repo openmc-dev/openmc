@@ -60,7 +60,7 @@
     <nuclide ao="0.024672" name="O16" />
     <nuclide ao="8.0042e-06" name="B10" />
     <nuclide ao="3.2218e-05" name="B11" />
-    <sab fraction="1.0" name="c_H_in_H2O" />
+    <sab name="c_H_in_H2O" />
   </material>
 </materials>
 <?xml version='1.0' encoding='utf-8'?>

@@ -163,6 +163,7 @@ contains
     real(8) :: cutoff       ! sampled total cross section
     real(8) :: f            ! interpolation factor
     real(8) :: xs           ! photoionization cross section
+    real(8) :: r            ! random number
     real(8) :: prob_after
     real(8) :: alpha        ! photon energy divided by electron rest mass
     real(8) :: alpha_out    ! outgoing photon energy over electron rest mass
@@ -170,6 +171,7 @@ contains
     real(8) :: phi          ! azimuthal angle
     real(8) :: E_electron   ! electron energy
     real(8) :: uvw(3)       ! new direction
+    real(8) :: rel_vel      ! relative velocity of electron
 
     ! Kill photon if below energy cutoff
     if (p % E < energy_cutoff(PHOTON)) then
@@ -231,8 +233,20 @@ contains
           if (prob > cutoff) then
             E_electron = p % E - elm % shells(i_shell) % binding_energy
 
-            ! Sample angle isotropically
-            mu = TWO*prn() - ONE
+            ! Sample mu using non-relativistic Sauter distribution.
+            ! See Eqns 3.19 and 3.20 in "Implementing a photon physics
+            ! model in Serpent 2" by Toni Kaltiaisenaho
+            SAMPLE_MU1: do
+              r = prn()
+              if (FOUR * (ONE - r) * r >= prn()) then
+                rel_vel = sqrt(E_electron * (E_electron + TWO * MASS_ELECTRON))&
+                     / (E_electron + MASS_ELECTRON)
+                mu = (TWO * r + rel_vel - ONE) / &
+                     (TWO * rel_vel * r - rel_vel + ONE)
+                exit SAMPLE_MU1
+              end if
+            end do SAMPLE_MU1
+
             phi = TWO*PI*prn()
             uvw(1) = mu
             uvw(2) = sqrt(ONE - mu*mu)*cos(phi)
@@ -251,6 +265,39 @@ contains
             return
           end if
         end do
+
+        ! If no shell was sampled, give the whole phton energy to the electron.
+        ! See Eqn 3.9 in "Implementing a photon physics model in Serpent 2" by
+        ! Toni Kaltiaisenaho
+
+        ! Sample mu using non-relativistic Sauter distribution.
+        ! See Eqns 3.19 and 3.20 in "Implementing a photon physics
+        ! model in Serpent 2" by Toni Kaltiaisenaho
+        SAMPLE_MU2: do
+          r = prn()
+          if (FOUR * (ONE - r) * r >= prn()) then
+            rel_vel = sqrt(E_electron * (E_electron + TWO * MASS_ELECTRON))&
+                 / (E_electron + MASS_ELECTRON)
+            mu = (TWO * r + rel_vel - ONE) / &
+                 (TWO * rel_vel * r - rel_vel + ONE)
+            exit SAMPLE_MU2
+          end if
+        end do SAMPLE_MU2
+
+        phi = TWO*PI*prn()
+        uvw(1) = mu
+        uvw(2) = sqrt(ONE - mu*mu)*cos(phi)
+        uvw(3) = sqrt(ONE - mu*mu)*sin(phi)
+
+        ! Create secondary electron
+        call p % create_secondary(uvw, p % E, ELECTRON, run_CE=.true.)
+
+        ! TODO: figure out correct event_MT
+        p % event_MT = 533
+
+        p % alive = .false.
+        p % E = ZERO
+        return
       end if
       prob = prob_after
     end associate

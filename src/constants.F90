@@ -344,8 +344,8 @@ module constants
        SCORE_HEATING            = -22, & ! prompt fission Q-value
        SCORE_FISS_Q_RECOV       = -23, & ! recoverable fission Q-value
        SCORE_FISS_Q_PROMPT      = -24, & ! prompt fission Q-value
-       SCORE_FISS_Q_PROMPT_NEUTRONS = -25, &  ! recoverable fission Q-value
-       SCORE_FISS_Q_DELAYED_NEUTRONS = -26, & ! recoverable fission Q-value
+       SCORE_FISS_Q_PROMPT_NEUTRONS = -25, &  ! fission prompt neutrons Q-value
+       SCORE_FISS_Q_DELAYED_NEUTRONS = -26, & ! fission delayed neutrons Q-value
        SCORE_FISS_Q_FRAGMENTS   = -27, & ! fission fragments Q-value
        SCORE_FISS_Q_BETAS       = -28, & ! fission betas Q-value
        SCORE_FISS_Q_PROMPT_PHOTONS = -29, &  ! fission prompt photons Q-value

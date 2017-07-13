@@ -96,11 +96,11 @@ module nuclide_header
     class(Function1D), allocatable :: fission_q_recov     ! fragments, neutrons, gammas, betas
     class(Function1D), allocatable :: fission_q_fragments ! fragments
     class(Function1D), allocatable :: fission_q_betas     ! betas
-    class(Function1D), allocatable :: fission_q_neutrinos ! betas
-    class(Function1D), allocatable :: fission_q_delayed_neutrons ! betas
-    class(Function1D), allocatable :: fission_q_prompt_neutrons  ! betas
-    class(Function1D), allocatable :: fission_q_delayed_photons  ! betas
-    class(Function1D), allocatable :: fission_q_prompt_photons   ! betas
+    class(Function1D), allocatable :: fission_q_neutrinos ! neutrinos
+    class(Function1D), allocatable :: fission_q_delayed_neutrons ! delayed neutrons
+    class(Function1D), allocatable :: fission_q_prompt_neutrons  ! prompt neutrons
+    class(Function1D), allocatable :: fission_q_delayed_photons  ! delayed photons
+    class(Function1D), allocatable :: fission_q_prompt_photons   ! prompt photons
 
   contains
     procedure :: clear => nuclide_clear
@@ -147,12 +147,12 @@ module nuclide_header
 !===============================================================================
 
   type MaterialMacroXS
-    real(8) :: total           ! macroscopic total xs
-    real(8) :: elastic         ! macroscopic elastic scattering xs
-    real(8) :: absorption      ! macroscopic absorption xs
-    real(8) :: fission         ! macroscopic fission xs
-    real(8) :: nu_fission      ! macroscopic production xs
-    real(8) :: photon_prod     ! macroscopic photon production xs
+    real(8) :: total         ! macroscopic total xs
+    real(8) :: elastic       ! macroscopic elastic scattering xs
+    real(8) :: absorption    ! macroscopic absorption xs
+    real(8) :: fission       ! macroscopic fission xs
+    real(8) :: nu_fission    ! macroscopic production xs
+    real(8) :: photon_prod   ! macroscopic photon production xs
 
     ! Photon cross sections
     real(8) :: coherent        ! macroscopic coherent xs

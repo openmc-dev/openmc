@@ -65,6 +65,7 @@ contains
         ! CHECK FOR S(A,B) TABLE
 
         i_sab = 0
+        sab_frac = ZERO
 
         ! Check if this nuclide matches one of the S(a,b) tables specified.
         ! This relies on i_sab_nuclides being in sorted order

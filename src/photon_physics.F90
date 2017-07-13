@@ -305,10 +305,10 @@ contains
     integer :: secondary
     real(8) :: c
     real(8) :: rn
+    real(8) :: E
     real(8) :: mu
     real(8) :: phi
     real(8) :: uvw(3)
-    real(8) :: E
 
     ! If no transitions, assume fluorescent photon from captured free electron
     if (elm % shells(i_shell) % n_transitions == 0) then

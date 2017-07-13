@@ -261,9 +261,9 @@ contains
           micro_xs(i_nuclide) % interp_factor = f
 
           ! Initialize nuclide cross-sections to zero
-          micro_xs(i_nuclide) % fission         = ZERO
-          micro_xs(i_nuclide) % nu_fission      = ZERO
-          micro_xs(i_nuclide) % photon_prod     = ZERO
+          micro_xs(i_nuclide) % fission     = ZERO
+          micro_xs(i_nuclide) % nu_fission  = ZERO
+          micro_xs(i_nuclide) % photon_prod = ZERO
 
           ! Calculate microscopic nuclide total cross section
           micro_xs(i_nuclide) % total = (ONE - f) * xs % total(i_grid) &

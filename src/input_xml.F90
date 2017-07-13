@@ -285,7 +285,7 @@ contains
     if (check_for_node(root, "photon_transport")) then
       call get_node_value(root, "photon_transport", photon_transport)
 
-      if (.not. run_CE) then
+      if (.not. run_CE .and. photon_transport) then
         call fatal_error("Photon transport is not currently supported &
              &in Multi-group mode")
       end if

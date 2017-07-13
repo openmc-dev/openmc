@@ -916,7 +916,6 @@ contains
 
           indent = indent + 2
           k = 0
-
           do l = 1, t % n_user_score_bins
             k = k + 1
             score_index = score_index + 1
@@ -972,7 +971,6 @@ contains
             end select
             end associate
           end do
-
           indent = indent - 2
 
         end do

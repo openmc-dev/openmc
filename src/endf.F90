@@ -70,6 +70,12 @@ contains
       string = "fission-q-fragments"
     case (SCORE_FISS_Q_BETAS)
       string = "fission-q-betas"
+    case (SCORE_FISS_Q_PROMPT_PHOTONS)
+      string = "fission-q-prompt-photons"
+    case (SCORE_FISS_Q_DELAYED_PHOTONS)
+      string = "fission-q-delayed-photons"
+    case (SCORE_FISS_Q_NEUTRINOS)
+      string = "fission-q-neutrinos"
     case (SCORE_Q_ELASTIC)
       string = "q-elastic"
     case (SCORE_Q_PHOTONS)

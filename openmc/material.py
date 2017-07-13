@@ -618,13 +618,18 @@ class Material(IDManagerMixin):
             if element == elm[0]:
                 self._elements.remove(elm)
 
-    def add_s_alpha_beta(self, name):
+    def add_s_alpha_beta(self, name, fraction=1.0):
         r"""Add an :math:`S(\alpha,\beta)` table to the material
 
         Parameters
         ----------
         name : str
             Name of the :math:`S(\alpha,\beta)` table
+        fraction : float
+            The fraction of relevant nuclei that are affected by the
+            :math:`S(\alpha,\beta)` table.  For example, if the material is a
+            block of carbon that is 60% graphite and 40% amorphous then add a
+            graphite :math:`S(\alpha,\beta)` table with fraction=0.6.
 
         """
 
@@ -638,13 +643,17 @@ class Material(IDManagerMixin):
                         'non-string table name "{}"'.format(self._id, name)
             raise ValueError(msg)
 
+        cv.check_type('S(a,b) fraction', fraction, Real)
+        cv.check_greater_than('S(a,b) fraction', fraction, 0.0, True)
+        cv.check_less_than('S(a,b) fraction', fraction, 1.0, True)
+
         new_name = openmc.data.get_thermal_name(name)
         if new_name != name:
             msg = 'OpenMC S(a,b) tables follow the GND naming convention. ' \
                   'Table "{}" is being renamed as "{}".'.format(name, new_name)
             warnings.warn(msg)
 
-        self._sab.append(new_name)
+        self._sab.append((new_name, fraction))
 
     def make_isotropic_in_lab(self):
         for nuclide, percent, percent_type in self._nuclides:
@@ -972,7 +981,9 @@ class Material(IDManagerMixin):
         if len(self._sab) > 0:
             for sab in self._sab:
                 subelement = ET.SubElement(element, "sab")
-                subelement.set("name", sab)
+                subelement.set("name", sab[0])
+                if sab[1] != 1.0:
+                    subelement.set("fraction", str(sab[1]))
 
         return element
 

@@ -358,7 +358,7 @@ def make_ace_thermal(filename, filename_thermal, temperatures=None,
 
         # Determine whether elastic is incoherent (0) or coherent (1)
         file_obj = StringIO(ev_thermal.section[7, 2])
-        elastic_type = endf.get_head_record(file_obj)[2]
+        elastic_type = endf.get_head_record(file_obj)[2] - 1
     else:
         elastic = 0
         mt_elastic = 0

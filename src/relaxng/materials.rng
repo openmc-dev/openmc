@@ -119,14 +119,26 @@
           </zeroOrMore>
           <zeroOrMore>
             <element name="sab">
-              <choice>
-                <element name="name">
-                  <data type="string"/>
-                </element>
-                <attribute name="name">
-                  <data type="string"/>
-                </attribute>
-              </choice>
+              <interleave>
+                <choice>
+                  <element name="name">
+                    <data type="string"/>
+                  </element>
+                  <attribute name="name">
+                    <data type="string"/>
+                  </attribute>
+                </choice>
+                <optional>
+                  <choice>
+                    <element name="fraction">
+                      <data type="double"/>
+                    </element>
+                    <attribute name="fraction">
+                      <data type="double"/>
+                    </attribute>
+                  </choice>
+                </optional>
+              </interleave>
             </element>
           </zeroOrMore>
         </interleave>

@@ -2560,6 +2560,7 @@ contains
           ! table is indeed applied to multiple nuclides.
           allocate(mat % sab_names(n_sab))
           allocate(mat % i_sab_tables(n_sab))
+          allocate(mat % sab_fracs(n_sab))
 
           do j = 1, n_sab
             ! Get pointer to S(a,b) table
@@ -2572,6 +2573,13 @@ contains
             call get_node_value(node_sab, "name", name)
             name = trim(name)
             mat % sab_names(j) = name
+
+            ! Read the fraction of nuclei affected by this S(a,b) table
+            if (check_for_node(node_sab, "fraction")) then
+              call get_node_value(node_sab, "fraction", mat % sab_fracs(j))
+            else
+              mat % sab_fracs(j) = ONE
+            end if
 
             ! Check that this nuclide is listed in the cross_sections.xml file
             if (.not. library_dict % has_key(to_lower(name))) then
@@ -3356,6 +3364,15 @@ contains
 
       ! =======================================================================
       ! READ DATA FOR FILTERS
+
+      ! Check if user is using old XML format and throw an error if so
+      if (check_for_node(node_tal, "filter")) then
+        call fatal_error("Tally filters must be specified independently of &
+             &tallies in a <filter> element. The <tally> element itself should &
+             &have a list of filters that apply, e.g., <filters>1 2</filters> &
+             &where 1 and 2 are the IDs of filters specified outside of &
+             &<tally>.")
+      end if
 
       ! Determine number of filters
       if (check_for_node(node_tal, "filters")) then
@@ -5141,9 +5158,11 @@ contains
     integer :: m            ! position for sorting
     integer :: temp_nuclide ! temporary value for sorting
     integer :: temp_table   ! temporary value for sorting
+    real(8) :: temp_frac    ! temporary value for sorting
     logical :: found
-    type(VectorInt) :: i_sab_tables
-    type(VectorInt) :: i_sab_nuclides
+    type(VectorInt)  :: i_sab_tables
+    type(VectorInt)  :: i_sab_nuclides
+    type(VectorReal) :: sab_fracs
 
     do i = 1, size(materials)
       ! Skip materials with no S(a,b) tables
@@ -5161,6 +5180,7 @@ contains
               if (any(sab % nuclides == nuclides(mat % nuclide(j)) % name)) then
                 call i_sab_tables % push_back(mat % i_sab_tables(k))
                 call i_sab_nuclides % push_back(j)
+                call sab_fracs % push_back(mat % sab_fracs(k))
                 found = .true.
               end if
             end do FIND_NUCLIDE
@@ -5174,17 +5194,34 @@ contains
           end if
         end do ASSIGN_SAB
 
+        ! Make sure each nuclide only appears in one table.
+        do j = 1, i_sab_nuclides % size()
+          do k = j+1, i_sab_nuclides % size()
+            if (i_sab_nuclides % data(j) == i_sab_nuclides % data(k)) then
+              call fatal_error(trim( &
+                   nuclides(mat % nuclide(i_sab_nuclides % data(j))) % name) &
+                   // " in material " // trim(to_str(mat % id)) // " was found &
+                   &in multiple S(a,b) tables. Each nuclide can only appear in &
+                   &one S(a,b) table per material.")
+            end if
+          end do
+        end do
+
         ! Update i_sab_tables and i_sab_nuclides
         deallocate(mat % i_sab_tables)
+        deallocate(mat % sab_fracs)
         m = i_sab_tables % size()
         allocate(mat % i_sab_tables(m))
         allocate(mat % i_sab_nuclides(m))
+        allocate(mat % sab_fracs(m))
         mat % i_sab_tables(:) = i_sab_tables % data(1:m)
         mat % i_sab_nuclides(:) = i_sab_nuclides % data(1:m)
+        mat % sab_fracs(:) = sab_fracs % data(1:m)
 
         ! Clear entries in vectors for next material
         call i_sab_tables % clear()
         call i_sab_nuclides % clear()
+        call sab_fracs % clear()
 
         ! If there are multiple S(a,b) tables, we need to make sure that the
         ! entries in i_sab_nuclides are sorted or else they won't be applied
@@ -5197,6 +5234,7 @@ contains
             m = k
             temp_nuclide = mat % i_sab_nuclides(k)
             temp_table   = mat % i_sab_tables(k)
+            temp_frac    = mat % i_sab_tables(k)
 
             MOVE_OVER: do
               ! Check if insertion value is greater than (m-1)th value
@@ -5205,6 +5243,7 @@ contains
               ! Move values over until hitting one that's not larger
               mat % i_sab_nuclides(m) = mat % i_sab_nuclides(m-1)
               mat % i_sab_tables(m)   = mat % i_sab_tables(m-1)
+              mat % sab_fracs(m)      = mat % sab_fracs(m-1)
               m = m - 1
 
               ! Exit if we've reached the beginning of the list
@@ -5214,6 +5253,7 @@ contains
             ! Put the original value into its new position
             mat % i_sab_nuclides(m) = temp_nuclide
             mat % i_sab_tables(m)   = temp_table
+            mat % sab_fracs(m)      = temp_frac
           end do SORT_SAB
         end if
 

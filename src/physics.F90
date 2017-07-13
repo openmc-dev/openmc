@@ -206,6 +206,11 @@ contains
       prob = prob + micro_photon_xs(i_element) % incoherent
       if (prob > cutoff) then
         call compton_scatter(elm, alpha, alpha_out, mu, .true.)
+
+        ! Create secondary electron
+
+
+
         p % E = alpha_out*MASS_ELECTRON
         p % coord(1) % uvw = rotate_angle(p % coord(1) % uvw, mu)
         p % event_MT = INCOHERENT
@@ -236,16 +241,16 @@ contains
             ! Sample mu using non-relativistic Sauter distribution.
             ! See Eqns 3.19 and 3.20 in "Implementing a photon physics
             ! model in Serpent 2" by Toni Kaltiaisenaho
-            SAMPLE_MU1: do
+            SAMPLE_MU: do
               r = prn()
               if (FOUR * (ONE - r) * r >= prn()) then
                 rel_vel = sqrt(E_electron * (E_electron + TWO * MASS_ELECTRON))&
                      / (E_electron + MASS_ELECTRON)
                 mu = (TWO * r + rel_vel - ONE) / &
                      (TWO * rel_vel * r - rel_vel + ONE)
-                exit SAMPLE_MU1
+                exit SAMPLE_MU
               end if
-            end do SAMPLE_MU1
+            end do SAMPLE_MU
 
             phi = TWO*PI*prn()
             uvw(1) = mu
@@ -265,39 +270,6 @@ contains
             return
           end if
         end do
-
-        ! If no shell was sampled, give the whole phton energy to the electron.
-        ! See Eqn 3.9 in "Implementing a photon physics model in Serpent 2" by
-        ! Toni Kaltiaisenaho
-
-        ! Sample mu using non-relativistic Sauter distribution.
-        ! See Eqns 3.19 and 3.20 in "Implementing a photon physics
-        ! model in Serpent 2" by Toni Kaltiaisenaho
-        SAMPLE_MU2: do
-          r = prn()
-          if (FOUR * (ONE - r) * r >= prn()) then
-            rel_vel = sqrt(E_electron * (E_electron + TWO * MASS_ELECTRON))&
-                 / (E_electron + MASS_ELECTRON)
-            mu = (TWO * r + rel_vel - ONE) / &
-                 (TWO * rel_vel * r - rel_vel + ONE)
-            exit SAMPLE_MU2
-          end if
-        end do SAMPLE_MU2
-
-        phi = TWO*PI*prn()
-        uvw(1) = mu
-        uvw(2) = sqrt(ONE - mu*mu)*cos(phi)
-        uvw(3) = sqrt(ONE - mu*mu)*sin(phi)
-
-        ! Create secondary electron
-        call p % create_secondary(uvw, p % E, ELECTRON, run_CE=.true.)
-
-        ! TODO: figure out correct event_MT
-        p % event_MT = 533
-
-        p % alive = .false.
-        p % E = ZERO
-        return
       end if
       prob = prob_after
     end associate

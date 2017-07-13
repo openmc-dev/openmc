@@ -1,4 +1,4 @@
-from ctypes import CDLL, c_int, POINTER, c_double, c_char_p
+from ctypes import CDLL, c_int, c_int32, c_double, c_char_p, POINTER
 import sys
 from warnings import warn
 
@@ -32,23 +32,23 @@ class OpenMCLibrary(object):
         # Set argument/return types
         self._dll.openmc_calculate_volumes.restype = None
         self._dll.openmc_cell_set_temperature.argtypes = [
-            c_int, c_double]
+            c_int32, c_double, c_int32]
         self._dll.openmc_cell_set_temperature.restype = c_int
         self._dll.openmc_finalize.restype = None
         self._dll.openmc_find.argtypes = [
-            POINTER(_double3), c_int, POINTER(c_int), POINTER(c_int)]
+            POINTER(_double3), c_int, POINTER(c_int32), POINTER(c_int32)]
         self._dll.openmc_find.restype = None
         self._dll.openmc_init.argtypes = [POINTER(c_int)]
         self._dll.openmc_init.restype = None
         self._dll.openmc_load_nuclide.argtypes = [c_char_p]
         self._dll.openmc_load_nuclide.restype = c_int
         self._dll.openmc_material_add_nuclide.argtypes = [
-            c_int, c_char_p, c_double]
+            c_int32, c_char_p, c_double]
         self._dll.openmc_material_add_nuclide.restype = c_int
         self._dll.openmc_material_get_densities.argtypes = [
-            c_int, _double_array]
+            c_int32, _double_array]
         self._dll.openmc_material_get_densities.restype = c_int
-        self._dll.openmc_material_set_density.argtypes = [c_int, c_double]
+        self._dll.openmc_material_set_density.argtypes = [c_int32, c_double]
         self._dll.openmc_material_set_density.restype = c_int
         self._dll.openmc_plot_geometry.restype = None
         self._dll.openmc_run.restype = None
@@ -59,7 +59,7 @@ class OpenMCLibrary(object):
             POINTER(_double3), c_double]
         self._dll.openmc_set_temperature.restype = c_int
         self._dll.openmc_tally_results.argtypes = [
-            c_int, _double_array, POINTER(_int3)]
+            c_int32, _double_array, POINTER(_int3)]
         self._dll.openmc_tally_results.restype = None
 
     def calculate_volumes(self):
@@ -81,7 +81,7 @@ class OpenMCLibrary(object):
         """
         if instance is not None:
             return self._dll.openmc_cell_set_temperature(
-                cell_id, T, c_int(instance))
+                cell_id, T, instance)
         else:
             return self._dll.openmc_cell_set_temperature(cell_id, T, None)
 
@@ -119,8 +119,8 @@ class OpenMCLibrary(object):
             raise ValueError('Unknown return type: {}'.format(rtype))
 
         # Call openmc_find
-        uid = c_int()
-        instance = c_int()
+        uid = c_int32()
+        instance = c_int32()
         self._dll.openmc_find(_double3(*xyz), r_int, uid, instance)
         return (uid.value if uid != 0 else None), instance.value
 

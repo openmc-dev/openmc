@@ -92,15 +92,8 @@ module nuclide_header
                                        ! array; used at tally-time
 
     ! Fission energy release
-    class(Function1D), allocatable :: fission_q_prompt    ! fragments and prompt neutrons, gammas
-    class(Function1D), allocatable :: fission_q_recov     ! fragments, neutrons, gammas, betas
-    class(Function1D), allocatable :: fission_q_fragments ! fragments
-    class(Function1D), allocatable :: fission_q_betas     ! betas
-    class(Function1D), allocatable :: fission_q_neutrinos ! neutrinos
-    class(Function1D), allocatable :: fission_q_delayed_neutrons ! delayed neutrons
-    class(Function1D), allocatable :: fission_q_prompt_neutrons  ! prompt neutrons
-    class(Function1D), allocatable :: fission_q_delayed_photons  ! delayed photons
-    class(Function1D), allocatable :: fission_q_prompt_photons   ! prompt photons
+    class(Function1D), allocatable :: fission_q_prompt ! fragments and prompt neutrons, gammas
+    class(Function1D), allocatable :: fission_q_recov  ! fragments, neutrons, gammas, betas
 
   contains
     procedure :: clear => nuclide_clear
@@ -480,111 +473,6 @@ contains
         call close_dataset(fer_dset)
       else
         call fatal_error('Unrecognized fission recoverable energy release format.')
-      end if
-
-      ! Q-FRAGMENTS
-      fer_dset = open_dataset(fer_group, 'fragments')
-      call read_attribute(temp_str, fer_dset, 'type')
-      if (temp_str == 'Polynomial') then
-        allocate(Polynomial :: this % fission_q_fragments)
-        call this % fission_q_fragments % from_hdf5(fer_dset)
-        call close_dataset(fer_dset)
-      else if (temp_str == 'Tabulated1D') then
-        allocate(Tabulated1D :: this % fission_q_fragments)
-        call this % fission_q_fragments % from_hdf5(fer_dset)
-        call close_dataset(fer_dset)
-      else
-        call fatal_error('Unrecognized fission fragments energy release format.')
-      end if
-
-      ! Q-BETAS
-      fer_dset = open_dataset(fer_group, 'betas')
-      call read_attribute(temp_str, fer_dset, 'type')
-      if (temp_str == 'Polynomial') then
-        allocate(Polynomial :: this % fission_q_betas)
-        call this % fission_q_betas % from_hdf5(fer_dset)
-        call close_dataset(fer_dset)
-      else if (temp_str == 'Tabulated1D') then
-        allocate(Tabulated1D :: this % fission_q_betas)
-        call this % fission_q_betas % from_hdf5(fer_dset)
-        call close_dataset(fer_dset)
-      else
-        call fatal_error('Unrecognized fission betas energy release format.')
-      end if
-
-      ! Q-NEUTRINOS
-      fer_dset = open_dataset(fer_group, 'neutrinos')
-      call read_attribute(temp_str, fer_dset, 'type')
-      if (temp_str == 'Polynomial') then
-        allocate(Polynomial :: this % fission_q_neutrinos)
-        call this % fission_q_neutrinos % from_hdf5(fer_dset)
-        call close_dataset(fer_dset)
-      else if (temp_str == 'Tabulated1D') then
-        allocate(Tabulated1D :: this % fission_q_neutrinos)
-        call this % fission_q_neutrinos % from_hdf5(fer_dset)
-        call close_dataset(fer_dset)
-      else
-        call fatal_error('Unrecognized fission neutrinos energy release format.')
-      end if
-
-      ! Q-DELAYED-NEUTRONS
-      fer_dset = open_dataset(fer_group, 'delayed_neutrons')
-      call read_attribute(temp_str, fer_dset, 'type')
-      if (temp_str == 'Polynomial') then
-        allocate(Polynomial :: this % fission_q_delayed_neutrons)
-        call this % fission_q_delayed_neutrons % from_hdf5(fer_dset)
-        call close_dataset(fer_dset)
-      else if (temp_str == 'Tabulated1D') then
-        allocate(Tabulated1D :: this % fission_q_delayed_neutrons)
-        call this % fission_q_delayed_neutrons % from_hdf5(fer_dset)
-        call close_dataset(fer_dset)
-      else
-        call fatal_error('Unrecognized fission delayed neutron energy release format.')
-      end if
-
-      ! Q-PROMPT-NEUTRONS
-      fer_dset = open_dataset(fer_group, 'prompt_neutrons')
-      call read_attribute(temp_str, fer_dset, 'type')
-      if (temp_str == 'Polynomial') then
-        allocate(Polynomial :: this % fission_q_prompt_neutrons)
-        call this % fission_q_prompt_neutrons % from_hdf5(fer_dset)
-        call close_dataset(fer_dset)
-      else if (temp_str == 'Tabulated1D') then
-        allocate(Tabulated1D :: this % fission_q_prompt_neutrons)
-        call this % fission_q_prompt_neutrons % from_hdf5(fer_dset)
-        call close_dataset(fer_dset)
-      else
-        call fatal_error('Unrecognized fission energy release format.')
-      end if
-
-      ! Q-DELAYED-PHOTONS
-      fer_dset = open_dataset(fer_group, 'delayed_photons')
-      call read_attribute(temp_str, fer_dset, 'type')
-      if (temp_str == 'Polynomial') then
-        allocate(Polynomial :: this % fission_q_delayed_photons)
-        call this % fission_q_delayed_photons % from_hdf5(fer_dset)
-        call close_dataset(fer_dset)
-      else if (temp_str == 'Tabulated1D') then
-        allocate(Tabulated1D :: this % fission_q_delayed_photons)
-        call this % fission_q_delayed_photons % from_hdf5(fer_dset)
-        call close_dataset(fer_dset)
-      else
-        call fatal_error('Unrecognized fission delayed photon energy release format.')
-      end if
-
-      ! Q-PROMPT-PHOTONS
-      fer_dset = open_dataset(fer_group, 'prompt_photons')
-      call read_attribute(temp_str, fer_dset, 'type')
-      if (temp_str == 'Polynomial') then
-        allocate(Polynomial :: this % fission_q_prompt_photons)
-        call this % fission_q_prompt_photons % from_hdf5(fer_dset)
-        call close_dataset(fer_dset)
-      else if (temp_str == 'Tabulated1D') then
-        allocate(Tabulated1D :: this % fission_q_prompt_photons)
-        call this % fission_q_prompt_photons % from_hdf5(fer_dset)
-        call close_dataset(fer_dset)
-      else
-        call fatal_error('Unrecognized fission prompt photon energy release format.')
       end if
 
       call close_group(fer_group)

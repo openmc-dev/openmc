@@ -1076,10 +1076,7 @@ contains
           end if
         end if
 
-      case (SCORE_FISS_Q_PROMPT, SCORE_FISS_Q_RECOV, SCORE_FISS_Q_FRAGMENTS, &
-           SCORE_FISS_Q_PROMPT_NEUTRONS, SCORE_FISS_Q_DELAYED_NEUTRONS, &
-           SCORE_FISS_Q_PROMPT_PHOTONS, SCORE_FISS_Q_DELAYED_PHOTONS, &
-           SCORE_FISS_Q_NEUTRINOS, SCORE_FISS_Q_BETAS)
+      case (SCORE_FISS_Q_PROMPT, SCORE_FISS_Q_RECOV)
 
         if (material_xs % absorption == ZERO) cycle SCORE_LOOP
 
@@ -1097,20 +1094,6 @@ contains
                   xs = nuc % fission_q_prompt % evaluate(p % last_E)
                 else if (score_bin == SCORE_FISS_Q_RECOV) then
                   xs = nuc % fission_q_recov % evaluate(p % last_E)
-                else if (score_bin == SCORE_FISS_Q_FRAGMENTS) then
-                  xs = nuc % fission_q_fragments % evaluate(p % last_E)
-                else if (score_bin == SCORE_FISS_Q_PROMPT_NEUTRONS) then
-                  xs = nuc % fission_q_prompt_neutrons % evaluate(p % last_E)
-                else if (score_bin == SCORE_FISS_Q_DELAYED_NEUTRONS) then
-                  xs = nuc % fission_q_delayed_neutrons % evaluate(p % last_E)
-                else if (score_bin == SCORE_FISS_Q_PROMPT_PHOTONS) then
-                  xs = nuc % fission_q_prompt_photons % evaluate(p % last_E)
-                else if (score_bin == SCORE_FISS_Q_DELAYED_PHOTONS) then
-                  xs = nuc % fission_q_delayed_photons % evaluate(p % last_E)
-                else if (score_bin == SCORE_FISS_Q_NEUTRINOS) then
-                  xs = nuc % fission_q_neutrinos % evaluate(p % last_E)
-                else if (score_bin == SCORE_FISS_Q_BETAS) then
-                  xs = nuc % fission_q_betas % evaluate(p % last_E)
                 end if
 
                 score = p % absorb_wgt * xs * flux &
@@ -1132,20 +1115,6 @@ contains
                   xs = nuc % fission_q_prompt % evaluate(p % last_E)
                 else if (score_bin == SCORE_FISS_Q_RECOV) then
                   xs = nuc % fission_q_recov % evaluate(p % last_E)
-                else if (score_bin == SCORE_FISS_Q_FRAGMENTS) then
-                  xs = nuc % fission_q_fragments % evaluate(p % last_E)
-                else if (score_bin == SCORE_FISS_Q_PROMPT_NEUTRONS) then
-                  xs = nuc % fission_q_prompt_neutrons % evaluate(p % last_E)
-                else if (score_bin == SCORE_FISS_Q_DELAYED_NEUTRONS) then
-                  xs = nuc % fission_q_delayed_neutrons % evaluate(p % last_E)
-                else if (score_bin == SCORE_FISS_Q_PROMPT_PHOTONS) then
-                  xs = nuc % fission_q_prompt_photons % evaluate(p % last_E)
-                else if (score_bin == SCORE_FISS_Q_DELAYED_PHOTONS) then
-                  xs = nuc % fission_q_delayed_photons % evaluate(p % last_E)
-                else if (score_bin == SCORE_FISS_Q_NEUTRINOS) then
-                  xs = nuc % fission_q_neutrinos % evaluate(p % last_E)
-                else if (score_bin == SCORE_FISS_Q_BETAS) then
-                  xs = nuc % fission_q_betas % evaluate(p % last_E)
                 end if
 
                 score = p % last_wgt * xs * flux &
@@ -1170,20 +1139,6 @@ contains
                   xs = nuc % fission_q_prompt % evaluate(E)
                 else if (score_bin == SCORE_FISS_Q_RECOV) then
                   xs = nuc % fission_q_recov % evaluate(E)
-                else if (score_bin == SCORE_FISS_Q_FRAGMENTS) then
-                  xs = nuc % fission_q_fragments % evaluate(E)
-                else if (score_bin == SCORE_FISS_Q_PROMPT_NEUTRONS) then
-                  xs = nuc % fission_q_prompt_neutrons % evaluate(E)
-                else if (score_bin == SCORE_FISS_Q_DELAYED_NEUTRONS) then
-                  xs = nuc % fission_q_delayed_neutrons % evaluate(E)
-                else if (score_bin == SCORE_FISS_Q_PROMPT_PHOTONS) then
-                  xs = nuc % fission_q_prompt_photons % evaluate(E)
-                else if (score_bin == SCORE_FISS_Q_DELAYED_PHOTONS) then
-                  xs = nuc % fission_q_delayed_photons % evaluate(E)
-                else if (score_bin == SCORE_FISS_Q_NEUTRINOS) then
-                  xs = nuc % fission_q_neutrinos % evaluate(E)
-                else if (score_bin == SCORE_FISS_Q_BETAS) then
-                  xs = nuc % fission_q_betas % evaluate(E)
                 end if
 
                 score = micro_xs(i_nuclide) % fission * atom_density * flux * xs
@@ -1202,20 +1157,6 @@ contains
                       xs = nuc % fission_q_prompt % evaluate(E)
                     else if (score_bin == SCORE_FISS_Q_RECOV) then
                       xs = nuc % fission_q_recov % evaluate(E)
-                    else if (score_bin == SCORE_FISS_Q_FRAGMENTS) then
-                      xs = nuc % fission_q_fragments % evaluate(E)
-                    else if (score_bin == SCORE_FISS_Q_PROMPT_NEUTRONS) then
-                      xs = nuc % fission_q_prompt_neutrons % evaluate(E)
-                    else if (score_bin == SCORE_FISS_Q_DELAYED_NEUTRONS) then
-                      xs = nuc % fission_q_delayed_neutrons % evaluate(E)
-                    else if (score_bin == SCORE_FISS_Q_PROMPT_PHOTONS) then
-                      xs = nuc % fission_q_prompt_photons % evaluate(E)
-                    else if (score_bin == SCORE_FISS_Q_DELAYED_PHOTONS) then
-                      xs = nuc % fission_q_delayed_photons % evaluate(E)
-                    else if (score_bin == SCORE_FISS_Q_NEUTRINOS) then
-                      xs = nuc % fission_q_neutrinos % evaluate(E)
-                    else if (score_bin == SCORE_FISS_Q_BETAS) then
-                      xs = nuc % fission_q_betas % evaluate(E)
                     end if
 
                     score = score + micro_xs(i_nuc) % fission * atom_density_ &
@@ -1224,134 +1165,6 @@ contains
                 end associate
               end do
             end if
-          end if
-        end if
-
-      case (SCORE_Q_ELECTRONS)
-
-        ! Electron energy deposition
-        if (p % type == ELECTRON .and. electron_treatment == ELECTRON_LED) then
-          score = p % last_wgt * p % last_E
-        end if
-
-      case (SCORE_Q_POSITRONS)
-
-        ! Positron energy deposition
-        if (p % type == POSITRON .and. electron_treatment == ELECTRON_LED) then
-          score = p % last_wgt * p % last_E
-        end if
-
-      case (SCORE_Q_PHOTONS)
-
-        ! Photon energy deposition
-        if (p % type == PHOTON .and. p % last_E < energy_cutoff(PHOTON)) then
-          score = p % last_wgt * p % last_E
-        end if
-
-      case (SCORE_Q_ELASTIC)
-
-        ! Elastic scattering
-        if (p % event_MT == ELASTIC) then
-          score = p % last_wgt * (p % last_E - p % E)
-        end if
-
-      case (SCORE_HEATING)
-
-        ! Elastic scattering
-        if (p % event_MT == ELASTIC) then
-          score = p % last_wgt * (p % last_E - p % E)
-
-        ! Photon energy deposition
-        else if (p % type == PHOTON) then
-          if(p % last_E < energy_cutoff(PHOTON)) then
-            score = p % last_wgt * p % last_E
-          end if
-
-        ! Electron energy deposition
-        else if (p % type == ELECTRON) then
-          if(electron_treatment == ELECTRON_LED) then
-            score = p % last_wgt * p % last_E
-          end if
-
-        ! Positron energy deposition
-        else if (p % type == POSITRON) then
-          if (electron_treatment == ELECTRON_LED) then
-            score = p % last_wgt * p % last_E
-          end if
-
-        ! Fission fragments, betas, and gammas (if photon_transport off)
-        else
-
-          if (material_xs % absorption == ZERO) cycle SCORE_LOOP
-
-          score = ZERO
-
-          if (survival_biasing) then
-            ! No fission events occur if survival biasing is on -- need to
-            ! calculate fraction of absorptions that would have resulted in
-            ! fission scaled by Q-value
-            associate (nuc => nuclides(p % event_nuclide))
-              score = ZERO
-
-              if (micro_xs(p % event_nuclide) % absorption > ZERO .and. &
-                   allocated(nuc % fission_q_betas)) then
-
-                score = score + p % absorb_wgt &
-                     * nuc % fission_q_fragments % evaluate(p % last_E) &
-                     * micro_xs(p % event_nuclide) % fission &
-                     / micro_xs(p % event_nuclide) % absorption * flux
-
-                score = score + p % absorb_wgt &
-                     * nuc % fission_q_betas % evaluate(p % last_E) &
-                     * micro_xs(p % event_nuclide) % fission &
-                     / micro_xs(p % event_nuclide) % absorption * flux
-
-                if (.not. photon_transport) then
-                  score = score + p % absorb_wgt &
-                       * nuc % fission_q_prompt_photons % evaluate(p % last_E) &
-                       * micro_xs(p % event_nuclide) % fission &
-                       / micro_xs(p % event_nuclide) % absorption * flux
-
-                  score = score + p % absorb_wgt &
-                       * nuc % fission_q_delayed_photons % evaluate(p % last_E) &
-                       * micro_xs(p % event_nuclide) % fission &
-                       / micro_xs(p % event_nuclide) % absorption * flux
-                end if
-              end if
-            end associate
-          else
-            ! Skip any non-absorption events
-            if (p % event /= EVENT_ABSORB) cycle SCORE_LOOP
-            ! All fission events will contribute, so again we can use
-            ! particle's weight entering the collision as the estimate for
-            ! the fission energy production rate
-            associate (nuc => nuclides(p % event_nuclide))
-              if (micro_xs(p % event_nuclide) % absorption > ZERO .and. &
-                  allocated(nuc % fission_q_betas)) then
-
-                score = score + p % last_wgt &
-                     * nuc % fission_q_fragments % evaluate(p % last_E) &
-                     * micro_xs(p % event_nuclide) % fission &
-                     / micro_xs(p % event_nuclide) % absorption * flux
-
-                score = score + p % last_wgt &
-                     * nuc % fission_q_betas % evaluate(p % last_E) &
-                     * micro_xs(p % event_nuclide) % fission &
-                     / micro_xs(p % event_nuclide) % absorption * flux
-
-                if (.not. photon_transport) then
-                  score = score + p % last_wgt &
-                       * nuc % fission_q_prompt_photons % evaluate(p % last_E) &
-                       * micro_xs(p % event_nuclide) % fission &
-                       / micro_xs(p % event_nuclide) % absorption * flux
-
-                  score = score + p % last_wgt &
-                       * nuc % fission_q_delayed_photons % evaluate(p % last_E) &
-                       * micro_xs(p % event_nuclide) % fission &
-                       / micro_xs(p % event_nuclide) % absorption * flux
-                end if
-              end if
-            end associate
           end if
         end if
 

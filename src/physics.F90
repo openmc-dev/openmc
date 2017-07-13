@@ -206,11 +206,6 @@ contains
       prob = prob + micro_photon_xs(i_element) % incoherent
       if (prob > cutoff) then
         call compton_scatter(elm, alpha, alpha_out, mu, .true.)
-
-        ! Create secondary electron
-
-
-
         p % E = alpha_out*MASS_ELECTRON
         p % coord(1) % uvw = rotate_angle(p % coord(1) % uvw, mu)
         p % event_MT = INCOHERENT

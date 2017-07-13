@@ -38,12 +38,13 @@ class Settings(object):
         calculations to find the path to the XML cross section file.
     cutoff : dict
         Dictionary defining weight cutoff and energy cutoff. The dictionary may
-        have three keys, 'weight', 'weight_avg' and 'energy'. Value for 'weight'
+        have six keys, 'weight', 'weight_avg', 'energy_neutron', 'energy_photon',
+        'energy_electron', and 'energy_positron'. Value for 'weight'
         should be a float indicating weight cutoff below which particle undergo
         Russian roulette. Value for 'weight_avg' should be a float indicating
         weight assigned to particles that are not killed after Russian
         roulette. Value of energy should be a float indicating energy in eV
-        below which particle will be killed.
+        below which particle type will be killed.
     energy_mode : {'continuous-energy', 'multi-group'}
         Set whether the calculation should be continuous-energy or multi-group.
     entropy_mesh : openmc.Mesh
@@ -79,6 +80,8 @@ class Settings(object):
         :tallies: Whether the 'tallies.out' file should be written (bool)
     particles : int
         Number of particles per generation
+    photon_transport : bool
+        Whether to use photon transport.
     ptables : bool
         Determine whether probability tables are used.
     resonance_scattering : dict
@@ -183,6 +186,7 @@ class Settings(object):
         self._confidence_intervals = None
         self._cross_sections = None
         self._multipole_library = None
+        self._photon_transport = None
         self._ptables = None
         self._run_cmfd = None
         self._seed = None
@@ -285,6 +289,10 @@ class Settings(object):
     @property
     def ptables(self):
         return self._ptables
+
+    @property
+    def photon_transport(self):
+        return self._photon_transport
 
     @property
     def run_cmfd(self):
@@ -548,6 +556,11 @@ class Settings(object):
         cv.check_type('multipole library', multipole_library, string_types)
         self._multipole_library = multipole_library
 
+    @photon_transport.setter
+    def photon_transport(self, photon_transport):
+        cv.check_type('photon transport', photon_transport, bool)
+        self._photon_transport = photon_transport
+
     @ptables.setter
     def ptables(self, ptables):
         cv.check_type('probability tables', ptables, bool)
@@ -583,7 +596,8 @@ class Settings(object):
                 cv.check_type('average survival weight', cutoff[key], Real)
                 cv.check_greater_than('average survival weight',
                                       cutoff[key], 0.0)
-            elif key in ['energy', 'energy_photon']:
+            elif key in ['energy_neutron', 'energy_photon', 'energy_electron',
+                         'energy_positron']:
                 cv.check_type('energy cutoff', cutoff[key], Real)
                 cv.check_greater_than('energy cutoff', cutoff[key], 0.0)
             else:
@@ -922,6 +936,11 @@ class Settings(object):
             element = ET.SubElement(root, "multipole_library")
             element.text = str(self._multipole_library)
 
+    def _create_photon_transport_subelement(self, root):
+        if self._photon_transport is not None:
+            element = ET.SubElement(root, "photon_transport")
+            element.text = str(self._photon_transport).lower()
+
     def _create_ptables_subelement(self, root):
         if self._ptables is not None:
             element = ET.SubElement(root, "ptables")
@@ -1112,6 +1131,7 @@ class Settings(object):
         self._create_multipole_library_subelement(root_element)
         self._create_energy_mode_subelement(root_element)
         self._create_max_order_subelement(root_element)
+        self._create_photon_transport_subelement(root_element)
         self._create_ptables_subelement(root_element)
         self._create_run_cmfd_subelement(root_element)
         self._create_seed_subelement(root_element)

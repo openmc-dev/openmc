@@ -11,7 +11,7 @@ module tracking
   use particle_header,    only: LocalCoord, Particle
   use physics,            only: collision
   use physics_mg,         only: collision_mg
-  use random_lcg,         only: prn
+  use random_lcg,         only: prn, prn_set_stream
   use string,             only: to_str
   use tally,              only: score_analog_tally, score_tracklength_tally, &
                                 score_collision_tally, score_surface_current, &
@@ -69,6 +69,14 @@ contains
     if (active_tallies % size() > 0) call zero_flux_derivs()
 
     EVENT_LOOP: do
+
+      ! Set the random number stream
+      if (p % type == NEUTRON) then
+        call prn_set_stream(STREAM_TRACKING)
+      else
+        call prn_set_stream(STREAM_PHOTON)
+      end if
+
       ! If the cell hasn't been determined based on the particle's location,
       ! initiate a search for the current cell. This generally happens at the
       ! beginning of the history and again for any secondary particles

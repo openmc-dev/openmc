@@ -5,7 +5,7 @@ module nuclide_header
 
   use hdf5, only: HID_T, HSIZE_T, SIZE_T
 
-  use algorithm, only: sort, find, binary_search
+  use algorithm, only: sort, find
   use constants
   use dict_header, only: DictIntInt
   use endf,        only: reaction_name, is_fission, is_disappearance
@@ -43,7 +43,7 @@ module nuclide_header
     real(8), allocatable :: nu_fission(:)      ! neutron production
     real(8), allocatable :: absorption(:)      ! absorption (MT > 100)
     real(8), allocatable :: heating(:)         ! heating
-    real(8), allocatable :: nu_photon_total(:) ! photon production
+    real(8), allocatable :: photon_prod(:)     ! photon production
   end type SumXS
 
   type :: Nuclide
@@ -96,13 +96,17 @@ module nuclide_header
     class(Function1D), allocatable :: fission_q_recov     ! fragments, neutrons, gammas, betas
     class(Function1D), allocatable :: fission_q_fragments ! fragments
     class(Function1D), allocatable :: fission_q_betas     ! betas
+    class(Function1D), allocatable :: fission_q_neutrinos ! betas
+    class(Function1D), allocatable :: fission_q_delayed_neutrons ! betas
+    class(Function1D), allocatable :: fission_q_prompt_neutrons  ! betas
+    class(Function1D), allocatable :: fission_q_delayed_photons  ! betas
+    class(Function1D), allocatable :: fission_q_prompt_photons   ! betas
 
   contains
     procedure :: clear => nuclide_clear
     procedure :: from_hdf5 => nuclide_from_hdf5
     procedure :: init_grid => nuclide_init_grid
     procedure :: nu    => nuclide_nu
-    procedure :: compute_nu_photon_total => compute_nuclide_nu_photon_total
     procedure, private :: create_derived => nuclide_create_derived
   end type Nuclide
 
@@ -121,7 +125,7 @@ module nuclide_header
     real(8) :: absorption      ! microscopic absorption xs
     real(8) :: fission         ! microscopic fission xs
     real(8) :: nu_fission      ! microscopic production xs
-    real(8) :: nu_photon_total ! microscopic photon production xs
+    real(8) :: photon_prod     ! microscopic photon production xs
 
     ! Information for S(a,b) use
     integer :: index_sab          ! index in sab_tables (zero means no table)
@@ -148,7 +152,7 @@ module nuclide_header
     real(8) :: absorption      ! macroscopic absorption xs
     real(8) :: fission         ! macroscopic fission xs
     real(8) :: nu_fission      ! macroscopic production xs
-    real(8) :: nu_photon_total ! macroscopic photon production xs
+    real(8) :: photon_prod     ! macroscopic photon production xs
 
     ! Photon cross sections
     real(8) :: coherent        ! macroscopic coherent xs
@@ -448,79 +452,141 @@ contains
     if (object_exists(group_id, 'fission_energy_release')) then
       fer_group = open_group(group_id, 'fission_energy_release')
 
-      ! Check to see if this is polynomial or tabulated data
+      ! Q-PROMPT
       fer_dset = open_dataset(fer_group, 'q_prompt')
       call read_attribute(temp_str, fer_dset, 'type')
       if (temp_str == 'Polynomial') then
-
-        ! Read the prompt Q-value
         allocate(Polynomial :: this % fission_q_prompt)
         call this % fission_q_prompt % from_hdf5(fer_dset)
         call close_dataset(fer_dset)
-
-        ! Read the recoverable energy Q-value
-        allocate(Polynomial :: this % fission_q_recov)
-        fer_dset = open_dataset(fer_group, 'q_recoverable')
-        call this % fission_q_recov % from_hdf5(fer_dset)
-        call close_dataset(fer_dset)
-
       else if (temp_str == 'Tabulated1D') then
-
-        ! Read the prompt Q-value
         allocate(Tabulated1D :: this % fission_q_prompt)
         call this % fission_q_prompt % from_hdf5(fer_dset)
         call close_dataset(fer_dset)
+      else
+        call fatal_error('Unrecognized fission prompt energy release format.')
+      end if
 
-        ! Read the recoverable energy Q-value
-        allocate(Tabulated1D :: this % fission_q_recov)
-        fer_dset = open_dataset(fer_group, 'q_recoverable')
+      ! Q-RECOV
+      fer_dset = open_dataset(fer_group, 'q_recoverable')
+      call read_attribute(temp_str, fer_dset, 'type')
+      if (temp_str == 'Polynomial') then
+        allocate(Polynomial :: this % fission_q_recov)
         call this % fission_q_recov % from_hdf5(fer_dset)
+        call close_dataset(fer_dset)
+      else if (temp_str == 'Tabulated1D') then
+        allocate(Tabulated1D :: this % fission_q_recov)
+        call this % fission_q_recov % from_hdf5(fer_dset)
+        call close_dataset(fer_dset)
+      else
+        call fatal_error('Unrecognized fission recoverable energy release format.')
+      end if
+
+      ! Q-FRAGMENTS
+      fer_dset = open_dataset(fer_group, 'fragments')
+      call read_attribute(temp_str, fer_dset, 'type')
+      if (temp_str == 'Polynomial') then
+        allocate(Polynomial :: this % fission_q_fragments)
+        call this % fission_q_fragments % from_hdf5(fer_dset)
+        call close_dataset(fer_dset)
+      else if (temp_str == 'Tabulated1D') then
+        allocate(Tabulated1D :: this % fission_q_fragments)
+        call this % fission_q_fragments % from_hdf5(fer_dset)
+        call close_dataset(fer_dset)
+      else
+        call fatal_error('Unrecognized fission fragments energy release format.')
+      end if
+
+      ! Q-BETAS
+      fer_dset = open_dataset(fer_group, 'betas')
+      call read_attribute(temp_str, fer_dset, 'type')
+      if (temp_str == 'Polynomial') then
+        allocate(Polynomial :: this % fission_q_betas)
+        call this % fission_q_betas % from_hdf5(fer_dset)
+        call close_dataset(fer_dset)
+      else if (temp_str == 'Tabulated1D') then
+        allocate(Tabulated1D :: this % fission_q_betas)
+        call this % fission_q_betas % from_hdf5(fer_dset)
+        call close_dataset(fer_dset)
+      else
+        call fatal_error('Unrecognized fission betas energy release format.')
+      end if
+
+      ! Q-NEUTRINOS
+      fer_dset = open_dataset(fer_group, 'neutrinos')
+      call read_attribute(temp_str, fer_dset, 'type')
+      if (temp_str == 'Polynomial') then
+        allocate(Polynomial :: this % fission_q_neutrinos)
+        call this % fission_q_neutrinos % from_hdf5(fer_dset)
+        call close_dataset(fer_dset)
+      else if (temp_str == 'Tabulated1D') then
+        allocate(Tabulated1D :: this % fission_q_neutrinos)
+        call this % fission_q_neutrinos % from_hdf5(fer_dset)
+        call close_dataset(fer_dset)
+      else
+        call fatal_error('Unrecognized fission neutrinos energy release format.')
+      end if
+
+      ! Q-DELAYED-NEUTRONS
+      fer_dset = open_dataset(fer_group, 'delayed_neutrons')
+      call read_attribute(temp_str, fer_dset, 'type')
+      if (temp_str == 'Polynomial') then
+        allocate(Polynomial :: this % fission_q_delayed_neutrons)
+        call this % fission_q_delayed_neutrons % from_hdf5(fer_dset)
+        call close_dataset(fer_dset)
+      else if (temp_str == 'Tabulated1D') then
+        allocate(Tabulated1D :: this % fission_q_delayed_neutrons)
+        call this % fission_q_delayed_neutrons % from_hdf5(fer_dset)
+        call close_dataset(fer_dset)
+      else
+        call fatal_error('Unrecognized fission delayed neutron energy release format.')
+      end if
+
+      ! Q-PROMPT-NEUTRONS
+      fer_dset = open_dataset(fer_group, 'prompt_neutrons')
+      call read_attribute(temp_str, fer_dset, 'type')
+      if (temp_str == 'Polynomial') then
+        allocate(Polynomial :: this % fission_q_prompt_neutrons)
+        call this % fission_q_prompt_neutrons % from_hdf5(fer_dset)
+        call close_dataset(fer_dset)
+      else if (temp_str == 'Tabulated1D') then
+        allocate(Tabulated1D :: this % fission_q_prompt_neutrons)
+        call this % fission_q_prompt_neutrons % from_hdf5(fer_dset)
         call close_dataset(fer_dset)
       else
         call fatal_error('Unrecognized fission energy release format.')
       end if
 
-      fer_dset = open_dataset(fer_group, 'fragments')
+      ! Q-DELAYED-PHOTONS
+      fer_dset = open_dataset(fer_group, 'delayed_photons')
       call read_attribute(temp_str, fer_dset, 'type')
       if (temp_str == 'Polynomial') then
-
-        ! Read the fragment energy Q-value
-        allocate(Polynomial :: this % fission_q_fragments)
-        fer_dset = open_dataset(fer_group, 'fragments')
-        call this % fission_q_fragments % from_hdf5(fer_dset)
+        allocate(Polynomial :: this % fission_q_delayed_photons)
+        call this % fission_q_delayed_photons % from_hdf5(fer_dset)
         call close_dataset(fer_dset)
-
       else if (temp_str == 'Tabulated1D') then
-
-        ! Read the fragment energy Q-value
-        allocate(Tabulated1D :: this % fission_q_fragments)
-        fer_dset = open_dataset(fer_group, 'fragments')
-        call this % fission_q_fragments % from_hdf5(fer_dset)
+        allocate(Tabulated1D :: this % fission_q_delayed_photons)
+        call this % fission_q_delayed_photons % from_hdf5(fer_dset)
         call close_dataset(fer_dset)
       else
-        call fatal_error('Unrecognized fission fragment energy release format.')
+        call fatal_error('Unrecognized fission delayed photon energy release format.')
       end if
 
-      fer_dset = open_dataset(fer_group, 'betas')
+      ! Q-PROMPT-PHOTONS
+      fer_dset = open_dataset(fer_group, 'prompt_photons')
       call read_attribute(temp_str, fer_dset, 'type')
       if (temp_str == 'Polynomial') then
-
-        ! Read the beta energy Q-value
-        allocate(Polynomial :: this % fission_q_betas)
-        fer_dset = open_dataset(fer_group, 'betas')
-        call this % fission_q_betas % from_hdf5(fer_dset)
+        allocate(Polynomial :: this % fission_q_prompt_photons)
+        call this % fission_q_prompt_photons % from_hdf5(fer_dset)
         call close_dataset(fer_dset)
-
       else if (temp_str == 'Tabulated1D') then
-
-        ! Read the beta energy Q-value
-        allocate(Tabulated1D :: this % fission_q_betas)
-        fer_dset = open_dataset(fer_group, 'betas')
-        call this % fission_q_betas % from_hdf5(fer_dset)
+        allocate(Tabulated1D :: this % fission_q_prompt_photons)
+        call this % fission_q_prompt_photons % from_hdf5(fer_dset)
         call close_dataset(fer_dset)
       else
-        call fatal_error('Unrecognized beta energy release format.')
+        call fatal_error('Unrecognized fission prompt photon energy release format.')
       end if
+
       call close_group(fer_group)
     end if
 
@@ -552,13 +618,13 @@ contains
       allocate(this % sum_xs(i) % fission(n_grid))
       allocate(this % sum_xs(i) % nu_fission(n_grid))
       allocate(this % sum_xs(i) % absorption(n_grid))
-      allocate(this % sum_xs(i) % nu_photon_total(n_grid))
+      allocate(this % sum_xs(i) % photon_prod(n_grid))
       this % sum_xs(i) % total(:) = ZERO
       this % sum_xs(i) % elastic(:) = ZERO
       this % sum_xs(i) % fission(:) = ZERO
       this % sum_xs(i) % nu_fission(:) = ZERO
       this % sum_xs(i) % absorption(:) = ZERO
-      this % sum_xs(i) % nu_photon_total(:) = ZERO
+      this % sum_xs(i) % photon_prod(:) = ZERO
     end do
 
     i_fission = 0
@@ -596,8 +662,8 @@ contains
           do k = 1, size(rx % products)
             if (rx % products(k) % particle == PHOTON) then
               do l = 1, n
-                this % sum_xs(t) % nu_photon_total(l+j-1) = &
-                     this % sum_xs(t) % nu_photon_total(l+j-1) + &
+                this % sum_xs(t) % photon_prod(l+j-1) = &
+                     this % sum_xs(t) % photon_prod(l+j-1) + &
                      rx % xs(t) % value(l) * rx % products(k) % &
                      yield % evaluate(this % grid(t) % energy(l+j-1))
               end do
@@ -750,72 +816,6 @@ contains
     end select
 
   end function nuclide_nu
-
-!===============================================================================
-! COMPUTE_NUCLIDE_NU_PHOTON_TOTAL is an interface to compute the number of
-! photons produced
-!===============================================================================
-
-  pure function compute_nuclide_nu_photon_total(this, E, t, i_log_union) result(nu_photon_total)
-    class(Nuclide), intent(in) :: this
-    real(8),        intent(in) :: E
-    integer,        intent(in) :: t
-    integer,        intent(in) :: i_log_union
-    real(8)                    :: rx_xs
-    real(8)                    :: nu_photon_total
-    real(8)                    :: f
-    integer                    :: m, j, k
-    integer                    :: i_grid, i_low, i_high
-
-    associate (grid => this % grid(t), xs => this % sum_xs(t))
-      ! Determine the energy grid index using a logarithmic mapping to
-      ! reduce the energy range over which a binary search needs to be
-      ! performed
-
-      if (E < grid % energy(1)) then
-        i_grid = 1
-      elseif (E > grid % energy(size(grid % energy))) then
-        i_grid = size(grid % energy) - 1
-      else
-        ! Determine bounding indices based on which equal log-spaced
-        ! interval the energy is in
-        i_low  = grid % grid_index(i_log_union)
-        i_high = grid % grid_index(i_log_union + 1) + 1
-
-        ! Perform binary search over reduced range
-        i_grid = binary_search(grid % energy(i_low:i_high), &
-             i_high - i_low + 1, E) + i_low - 1
-      end if
-
-      ! check for rare case where two energy points are the same
-      if (grid % energy(i_grid) == grid % energy(i_grid + 1)) &
-           i_grid = i_grid + 1
-
-      ! calculate interpolation factor
-      f = (E - grid % energy(i_grid)) / &
-           (grid % energy(i_grid + 1) - grid % energy(i_grid))
-    end associate
-
-    nu_photon_total = ZERO
-
-    ! Calculate nu-photon total cross section
-    do m = 1, size(this % reactions)
-      associate (rx => this % reactions(m))
-        j = rx % xs(t) % threshold
-        do k = 1, size(rx % products)
-          if (rx % products(k) % particle == PHOTON) then
-            if (i_grid >= j) then
-              rx_xs = (ONE - f) * rx % xs(t) % value(i_grid - j + 1) &
-                   + f * rx % xs(t) % value(i_grid - j + 2)
-              nu_photon_total = nu_photon_total + rx_xs * &
-                   rx % products(k) % yield % evaluate(E)
-            end if
-          end if
-        end do
-      end associate
-    end do
-
-  end function compute_nuclide_nu_photon_total
 
   subroutine nuclide_init_grid(this, E_min, E_max, M)
     class(Nuclide), intent(inout) :: this

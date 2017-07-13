@@ -14,7 +14,7 @@ import openmc.data
 from openmc.data import ATOMIC_SYMBOL
 
 description = """
-Download ENDF/B-VII.1 ENDF data from IAEA for photo-atomic and atomic
+Download ENDF/B-VII.1 ENDF data from NNDC for photo-atomic and atomic
 relaxation data and convert it to an HDF5 library for use with OpenMC.
 This data is used for photon transport in OpenMC.
 

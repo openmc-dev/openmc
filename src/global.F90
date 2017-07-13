@@ -59,7 +59,6 @@ module global
   type(DictIntInt) :: lattice_dict
   type(DictIntInt) :: surface_dict
   type(DictIntInt) :: material_dict
-  type(DictIntInt) :: particle_dict
   type(DictIntInt) :: mesh_dict
   type(DictIntInt) :: filter_dict
   type(DictIntInt) :: tally_dict

@@ -263,7 +263,7 @@ contains
           ! Initialize nuclide cross-sections to zero
           micro_xs(i_nuclide) % fission         = ZERO
           micro_xs(i_nuclide) % nu_fission      = ZERO
-          micro_xs(i_nuclide) % nu_photon_total = ZERO
+          micro_xs(i_nuclide) % photon_prod     = ZERO
 
           ! Calculate microscopic nuclide total cross section
           micro_xs(i_nuclide) % total = (ONE - f) * xs % total(i_grid) &
@@ -277,9 +277,9 @@ contains
           micro_xs(i_nuclide) % absorption = (ONE - f) * xs % absorption( &
                i_grid) + f * xs % absorption(i_grid + 1)
 
-          ! Calculate microscopic nuclide nu-photon total cross section
-          micro_xs(i_nuclide) % nu_photon_total = (ONE - f) * xs % &
-               nu_photon_total(i_grid) + f * xs % nu_photon_total(i_grid + 1)
+          ! Calculate microscopic nuclide photon production cross section
+          micro_xs(i_nuclide) % photon_prod = (ONE - f) * xs % &
+               photon_prod(i_grid) + f * xs % photon_prod(i_grid + 1)
 
           if (nuc % fissionable) then
             ! Calculate microscopic nuclide total cross section
@@ -572,11 +572,6 @@ contains
       micro_xs(i_nuclide) % absorption = capture + fission
       micro_xs(i_nuclide) % fission = fission
       micro_xs(i_nuclide) % total = elastic + inelastic + capture + fission
-
-      ! Set the nu-photon production cross section
-      i_grid = int(log(E/energy_min_neutron)/log_spacing)
-      micro_xs(i_nuclide) % nu_photon_total = &
-           nuc % compute_nu_photon_total(E, i_temp, i_grid)
 
       ! Determine nu-fission cross section
       if (nuc % fissionable) then

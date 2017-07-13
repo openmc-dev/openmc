@@ -59,6 +59,19 @@ module tally_filter
   end type MaterialFilter
 
 !===============================================================================
+! PARTICLE specifies which particle tally events reside in.
+!===============================================================================
+  type, extends(TallyFilter) :: ParticleFilter
+    integer, allocatable :: particles(:)
+    type(DictIntInt)     :: map
+  contains
+    procedure :: get_next_bin => get_next_bin_particle
+    procedure :: to_statepoint => to_statepoint_particle
+    procedure :: text_label => text_label_particle
+    procedure :: initialize => initialize_particle
+  end type ParticleFilter
+
+!===============================================================================
 ! CELLFILTER specifies which geometric cells tally events reside in.
 !===============================================================================
   type, extends(TallyFilter) :: CellFilter
@@ -637,6 +650,58 @@ contains
 
     label = "Material " // to_str(materials(this % materials(bin)) % id)
   end function text_label_material
+
+!===============================================================================
+! ParticleFilter methods
+!===============================================================================
+  subroutine get_next_bin_particle(this, p, estimator, current_bin, next_bin, &
+       weight)
+    class(ParticleFilter), intent(in)  :: this
+    type(Particle),        intent(in)  :: p
+    integer,               intent(in)  :: estimator
+    integer, value,        intent(in)  :: current_bin
+    integer,               intent(out) :: next_bin
+    real(8),               intent(out) :: weight
+
+    integer :: i
+
+    weight = ERROR_REAL
+    next_bin = NO_BIN_FOUND
+
+    if (current_bin == NO_BIN_FOUND) then
+      do i = 1, this % n_bins
+        if (this % particles(i) == p % type) then
+          next_bin = i
+          weight = ONE
+        end if
+      end do
+    end if
+
+  end subroutine get_next_bin_particle
+
+  subroutine to_statepoint_particle(this, filter_group)
+    class(ParticleFilter), intent(in) :: this
+    integer(HID_T),        intent(in) :: filter_group
+
+    integer :: i
+
+    call write_dataset(filter_group, "type", "particle")
+    call write_dataset(filter_group, "n_bins", this % n_bins)
+    call write_dataset(filter_group, "bins", this % particles)
+  end subroutine to_statepoint_particle
+
+  subroutine initialize_particle(this)
+    class(ParticleFilter), intent(inout) :: this
+
+  end subroutine initialize_particle
+
+  function text_label_particle(this, bin) result(label)
+    class(ParticleFilter), intent(in) :: this
+    integer,               intent(in) :: bin
+    character(MAX_LINE_LEN)           :: label
+
+    label = "Particle " // to_str(this % particles(bin))
+  end function text_label_particle
 
 !===============================================================================
 ! CellFilter methods

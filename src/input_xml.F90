@@ -271,9 +271,9 @@ contains
     if (check_for_node(root, "electron_treatment")) then
       call get_node_value(root, "electron_treatment", temp_str)
       select case (to_lower(temp_str))
-      case ("LED")
+      case ("led")
         electron_treatment = ELECTRON_LED
-      case ("TTB")
+      case ("ttb")
         electron_treatment = ELECTRON_TTB
       case default
         call fatal_error("Unrecognized electron treatment: " // &
@@ -283,16 +283,12 @@ contains
 
     ! Check for photon transport
     if (check_for_node(root, "photon_transport")) then
-      call get_node_value(root, "photon_transport", temp_str)
-      select case (to_lower(temp_str))
-      case ("true")
-        photon_transport = .true.
-      case ("false")
-        photon_transport = .false.
-      case default
-        call fatal_error("Unrecognized photon transport: " // &
-             trim(temp_str) // ".")
-      end select
+      call get_node_value(root, "photon_transport", photon_transport)
+
+      if (.not. run_CE) then
+        call fatal_error("Photon transport is not currently supported &
+             &in Multi-group mode")
+      end if
     end if
 
     ! Number of bins for logarithmic grid
@@ -626,11 +622,17 @@ contains
       if (check_for_node(node_cutoff, "weight_avg")) then
         call get_node_value(node_cutoff, "weight_avg", weight_survive)
       end if
-      if (check_for_node(node_cutoff, "energy")) then
-        call get_node_value(node_cutoff, "energy", energy_cutoff(1))
+      if (check_for_node(node_cutoff, "energy_neutron")) then
+        call get_node_value(node_cutoff, "energy_neutron", energy_cutoff(1))
       end if
       if (check_for_node(node_cutoff, "energy_photon")) then
         call get_node_value(node_cutoff, "energy_photon", energy_cutoff(2))
+      end if
+      if (check_for_node(node_cutoff, "energy_electron")) then
+        call get_node_value(node_cutoff, "energy_electron", energy_cutoff(3))
+      end if
+      if (check_for_node(node_cutoff, "energy_positron")) then
+        call get_node_value(node_cutoff, "energy_positron", energy_cutoff(4))
       end if
     end if
 
@@ -3067,13 +3069,9 @@ contains
 
       ! Determine number of bins
       select case(temp_str)
-      case ("energy", "energyout", "mu", "polar", "azimuthal")
-        if (.not. check_for_node(node_filt, "bins")) then
-          call fatal_error("Bins not set in filter " // trim(to_str(filter_id)))
-        end if
-        n_words = node_word_count(node_filt, "bins")
-      case ("mesh", "universe", "material", "cell", "distribcell", &
-            "cellborn", "surface", "delayedgroup")
+      case ("energy", "energyout", "mu", "polar", "azimuthal", &
+           "mesh", "universe", "material", "cell", "distribcell", &
+           "cellborn", "surface", "delayedgroup", "particle")
         if (.not. check_for_node(node_filt, "bins")) then
           call fatal_error("Bins not set in filter " // trim(to_str(filter_id)))
         end if
@@ -3125,6 +3123,17 @@ contains
           filt % n_bins = n_words
           allocate(filt % materials(n_words))
           call get_node_array(node_filt, "bins", filt % materials)
+        end select
+
+      case ('particle')
+        ! Allocate and declare the filter type
+        allocate(ParticleFilter :: f % obj)
+        select type (filt => f % obj)
+        type is (ParticleFilter)
+          ! Allocate and store bins
+          filt % n_bins = n_words
+          allocate(filt % particles(n_words))
+          call get_node_array(node_filt, "bins", filt % particles)
         end select
 
       case ('universe')
@@ -3465,6 +3474,8 @@ contains
           t % find_filter(FILTER_CELLBORN) = j
         type is (MaterialFilter)
           t % find_filter(FILTER_MATERIAL) = j
+        type is (ParticleFilter)
+          t % find_filter(FILTER_PARTICLE) = j
         type is (UniverseFilter)
           t % find_filter(FILTER_UNIVERSE) = j
         type is (SurfaceFilter)
@@ -3872,21 +3883,31 @@ contains
             t % score_bins(j) = SCORE_FISS_Q_PROMPT
           case ('fission-q-recoverable')
             t % score_bins(j) = SCORE_FISS_Q_RECOV
+          case ('fission-q-prompt-neutrons')
+            t % score_bins(j) = SCORE_FISS_Q_PROMPT_NEUTRONS
+          case ('fission-q-delayed-neutrons')
+            t % score_bins(j) = SCORE_FISS_Q_DELAYED_NEUTRONS
           case ('fission-q-fragments')
             t % score_bins(j) = SCORE_FISS_Q_FRAGMENTS
           case ('fission-q-betas')
             t % score_bins(j) = SCORE_FISS_Q_BETAS
-          case ('q-elastic')
-            t % score_bins(j) = SCORE_Q_ELASTIC
-            t % estimator = ESTIMATOR_ANALOG
-          case ('q-photons')
-            t % score_bins(j) = SCORE_Q_PHOTONS
-            t % estimator = ESTIMATOR_ANALOG
+          case ('fission-q-prompt-photons')
+            t % score_bins(j) = SCORE_FISS_Q_PROMPT_PHOTONS
+          case ('fission-q-delayed-photons')
+            t % score_bins(j) = SCORE_FISS_Q_DELAYED_PHOTONS
+          case ('fission-q-neutrinos')
+            t % score_bins(j) = SCORE_FISS_Q_NEUTRINOS
           case ('q-electrons')
             t % score_bins(j) = SCORE_Q_ELECTRONS
             t % estimator = ESTIMATOR_ANALOG
           case ('q-positrons')
             t % score_bins(j) = SCORE_Q_POSITRONS
+            t % estimator = ESTIMATOR_ANALOG
+          case ('q-elastic')
+            t % score_bins(j) = SCORE_Q_ELASTIC
+            t % estimator = ESTIMATOR_ANALOG
+          case ('heating')
+            t % score_bins(j) = SCORE_HEATING
             t % estimator = ESTIMATOR_ANALOG
           case ('current')
             t % score_bins(j) = SCORE_CURRENT
@@ -4115,6 +4136,49 @@ contains
           end do
           j = j + n_bins
         end do
+
+        ! Check if tally is compatible with particle type
+        if (photon_transport) then
+          if (t % find_filter(FILTER_PARTICLE) == 0) then
+            do j = 1, n_scores
+              select case (t % score_bins(j))
+              case (SCORE_INVERSE_VELOCITY)
+                call fatal_error("Particle filter must be used with photon &
+                     &transport on and inverse velocity score")
+              case (SCORE_FLUX, SCORE_TOTAL, SCORE_SCATTER, SCORE_NU_SCATTER, &
+                   SCORE_SCATTER_N, SCORE_SCATTER_PN, SCORE_NU_SCATTER_PN, &
+                   SCORE_ABSORPTION, SCORE_FISSION, SCORE_NU_FISSION, &
+                   SCORE_CURRENT, SCORE_FLUX_YN, SCORE_SCATTER_YN, &
+                   SCORE_NU_SCATTER_YN, SCORE_EVENTS, SCORE_DELAYED_NU_FISSION, &
+                   SCORE_PROMPT_NU_FISSION, SCORE_DECAY_RATE)
+                call warning("Particle filter is not used with photon transport&
+                     & on and " // trim(to_str(t % score_bins(j))) // " score")
+              end select
+            end do
+          else
+            select type(filt => filters(t % find_filter(FILTER_PARTICLE)) % obj)
+            type is (ParticleFilter)
+              do l = 1, filt % n_bins
+                if (filt % particles(l) == ELECTRON .or. filt % particles(l) == POSITRON) then
+                  t % estimator = ESTIMATOR_ANALOG
+                end if
+              end do
+            end select
+          end if
+        else
+          if (t % find_filter(FILTER_PARTICLE) > 0) then
+            select type(filt => filters(t % find_filter(FILTER_PARTICLE)) % obj)
+            type is (ParticleFilter)
+              do l = 1, filt % n_bins
+                if (filt % bins % data(l) /= NEUTRON) then
+                  call warning("Particle filter other than NEUTRON used with &
+                       &photon transport turn off. All tallies for particle &
+                       &type " // trim(to_str(filt % bins % data(l))) // " will have no scores")
+                end if
+              end do
+            end select
+          end if
+        end if
       else
         call fatal_error("No <scores> specified on tally " &
              // trim(to_str(t % id)) // ".")

@@ -17,7 +17,7 @@ from .mixin import IDManagerMixin
 
 _FILTER_TYPES = ['universe', 'material', 'cell', 'cellborn', 'surface',
                  'mesh', 'energy', 'energyout', 'mu', 'polar', 'azimuthal',
-                 'distribcell', 'delayedgroup', 'energyfunction']
+                 'distribcell', 'delayedgroup', 'energyfunction', 'particle']
 
 _CURRENT_NAMES = {1:  'x-min out', 2:  'x-min in',
                   3:  'x-max out', 4:  'x-max in',
@@ -26,6 +26,7 @@ _CURRENT_NAMES = {1:  'x-min out', 2:  'x-min in',
                   9:  'z-min out', 10: 'z-min in',
                   11: 'z-max out', 12: 'z-max in'}
 
+_PARTICLE_IDS = {'neutron': 1, 'photon': 2, 'electron': 3, 'positron': 4}
 
 class FilterMeta(ABCMeta):
     def __new__(cls, name, bases, namespace, **kwargs):
@@ -547,6 +548,43 @@ class MaterialFilter(WithIDFilter):
     @bins.setter
     def bins(self, bins):
         self._smart_set_bins(bins, openmc.Material)
+
+
+class ParticleFilter(WithIDFilter):
+    """Bins tally event locations based on the Particle type.
+
+    Parameters
+    ----------
+    bins : Str, Integral, or iterable thereof
+        The Particles to tally. Either str with particle type or their
+        Integral ID numbers can be used with IDs listed in _PARTICLE_IDS.
+    filter_id : int
+        Unique identifier for the filter
+
+    Attributes
+    ----------
+    bins : Iterable of Integral
+        openmc.Materi IDs.
+    id : int
+        Unique identifier for the filter
+    num_bins : Integral
+        The number of filter bins
+    stride : Integral
+        The number of filter, nuclide and score bins within each of this
+        filter's bins.
+
+    """
+    @property
+    def bins(self):
+        return self._bins
+
+    @bins.setter
+    def bins(self, bins):
+        bins = np.atleast_1d(bins)
+        cv.check_iterable_type('filter bins', bins, str)
+        bins = np.atleast_1d([b if isinstance(b, Integral) else _PARTICLE_IDS[b]
+                              for b in bins])
+        self._bins = bins
 
 
 class CellFilter(WithIDFilter):

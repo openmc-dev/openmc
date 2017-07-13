@@ -318,7 +318,7 @@ module constants
        EVENT_ABSORB  =  2
 
   ! Tally score type
-  integer, parameter :: N_SCORE_TYPES = 30
+  integer, parameter :: N_SCORE_TYPES = 36
   integer, parameter :: &
        SCORE_FLUX               = -1,  & ! flux
        SCORE_TOTAL              = -2,  & ! total reaction rate
@@ -341,15 +341,21 @@ module constants
        SCORE_DELAYED_NU_FISSION = -19, & ! delayed neutron production rate
        SCORE_PROMPT_NU_FISSION  = -20, & ! prompt neutron production rate
        SCORE_INVERSE_VELOCITY   = -21, & ! flux-weighted inverse velocity
-       SCORE_FISS_Q_PROMPT      = -22, & ! prompt fission Q-value
+       SCORE_HEATING            = -22, & ! prompt fission Q-value
        SCORE_FISS_Q_RECOV       = -23, & ! recoverable fission Q-value
-       SCORE_FISS_Q_FRAGMENTS   = -24, & ! fragment fission Q-value
-       SCORE_FISS_Q_BETAS       = -25, & ! beta fission Q-value
-       SCORE_Q_ELASTIC          = -26, & ! elastic scatter Q-value
-       SCORE_Q_PHOTONS          = -27, & ! photon Q-value below threshold
-       SCORE_Q_ELECTRONS        = -28, & ! electron Q-value
-       SCORE_Q_POSITRONS        = -29, & ! positron Q-value
-       SCORE_DECAY_RATE         = -30    ! delayed neutron precursor decay rate
+       SCORE_FISS_Q_PROMPT      = -24, & ! recoverable fission Q-value
+       SCORE_FISS_Q_PROMPT_NEUTRONS = -25, & ! recoverable fission Q-value
+       SCORE_FISS_Q_DELAYED_NEUTRONS = -26, & ! recoverable fission Q-value
+       SCORE_FISS_Q_FRAGMENTS   = -27, & ! recoverable fission Q-value
+       SCORE_FISS_Q_BETAS       = -28, & ! recoverable fission Q-value
+       SCORE_FISS_Q_PROMPT_PHOTONS = -29, & ! recoverable fission Q-value
+       SCORE_FISS_Q_DELAYED_PHOTONS = -30, & ! recoverable fission Q-value
+       SCORE_FISS_Q_NEUTRINOS   = -31, & ! recoverable fission Q-value
+       SCORE_Q_PHOTONS          = -32, & ! recoverable fission Q-value
+       SCORE_Q_ELECTRONS        = -33, & ! recoverable fission Q-value
+       SCORE_Q_POSITRONS        = -34, & ! recoverable fission Q-value
+       SCORE_Q_ELASTIC          = -35, & ! recoverable fission Q-value
+       SCORE_DECAY_RATE         = -36    ! delayed neutron precursor decay rate
 
   ! Maximum scattering order supported
   integer, parameter :: MAX_ANG_ORDER = 10
@@ -372,7 +378,7 @@ module constants
   integer, parameter :: NO_BIN_FOUND = -1
 
   ! Tally filter and map types
-  integer, parameter :: N_FILTER_TYPES = 14
+  integer, parameter :: N_FILTER_TYPES = 15
   integer, parameter :: &
        FILTER_UNIVERSE       = 1,  &
        FILTER_MATERIAL       = 2,  &
@@ -387,7 +393,8 @@ module constants
        FILTER_POLAR          = 11, &
        FILTER_AZIMUTHAL      = 12, &
        FILTER_DELAYEDGROUP   = 13, &
-       FILTER_ENERGYFUNCTION = 14
+       FILTER_ENERGYFUNCTION = 14, &
+       FILTER_PARTICLE       = 15
 
   ! Mesh types
   integer, parameter :: &
@@ -431,12 +438,13 @@ module constants
   ! ============================================================================
   ! RANDOM NUMBER STREAM CONSTANTS
 
-  integer, parameter :: N_STREAMS = 5
+  integer, parameter :: N_STREAMS = 6
   integer, parameter :: STREAM_TRACKING   = 1
   integer, parameter :: STREAM_TALLIES    = 2
   integer, parameter :: STREAM_SOURCE     = 3
   integer, parameter :: STREAM_URR_PTABLE = 4
   integer, parameter :: STREAM_VOLUME     = 5
+  integer, parameter :: STREAM_PHOTON     = 6
 
   ! ============================================================================
   ! MISCELLANEOUS CONSTANTS

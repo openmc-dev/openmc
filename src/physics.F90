@@ -112,7 +112,9 @@ contains
 
     ! Create secondary photons
     if (photon_transport) then
+      call prn_set_stream(STREAM_PHOTON)
       call sample_secondary_photons(p, i_nuclide)
+      call prn_set_stream(STREAM_TRACKING)
     end if
 
     ! If survival biasing is being used, the following subroutine adjusts the
@@ -522,43 +524,50 @@ contains
     integer :: i_grid
     integer :: i_temp
     integer :: threshold
+    integer :: last_valid_reaction
+    integer :: last_valid_product
     real(8) :: f
     real(8) :: prob
     real(8) :: cutoff
     real(8) :: yield
-    type(Nuclide), pointer :: nuc
 
     ! Get pointer to nuclide
-    nuc => nuclides(i_nuclide)
+    associate (nuc => nuclides(i_nuclide))
 
-    ! Get grid index and interpolation factor and sample proton production cdf
-    i_temp = micro_xs(i_nuclide) % index_temp
-    i_grid = micro_xs(i_nuclide) % index_grid
-    f      = micro_xs(i_nuclide) % interp_factor
-    cutoff = prn() * micro_xs(i_nuclide) % nu_photon_total
-    prob   = ZERO
+      ! Get grid index and interpolation factor and sample proton production cdf
+      i_temp = micro_xs(i_nuclide) % index_temp
+      i_grid = micro_xs(i_nuclide) % index_grid
+      f      = micro_xs(i_nuclide) % interp_factor
+      cutoff = prn() * micro_xs(i_nuclide) % photon_prod
+      prob   = ZERO
 
-    ! Loop through each reaction type
-    REACTION_LOOP: do i_reaction = 1, size(nuc % reactions)
-      associate (rx => nuc % reactions(i_reaction))
-        do i_product = 1, size(rx % products)
-          if (rx % products(i_product) % particle == PHOTON) then
+      ! Loop through each reaction type
+      REACTION_LOOP: do i_reaction = 1, size(nuc % reactions)
+        associate (rx => nuc % reactions(i_reaction))
+          do i_product = 1, size(rx % products)
+            if (rx % products(i_product) % particle == PHOTON) then
 
-            threshold = rx % xs(i_temp) % threshold
+              threshold = rx % xs(i_temp) % threshold
 
-            ! if energy is below threshold for this reaction, skip it
-            if (i_grid < threshold) cycle
+              ! if energy is below threshold for this reaction, skip it
+              if (i_grid < threshold) cycle
 
-            ! add to cumulative probability
-            yield = rx % products(i_product) % yield % evaluate(E)
-            prob = prob + ((ONE - f) * rx % xs(i_temp) % value(i_grid - threshold + 1) &
-                 + f*(rx % xs(i_temp) % value(i_grid - threshold + 2))) * yield
+              ! add to cumulative probability
+              yield = rx % products(i_product) % yield % evaluate(E)
+              prob = prob + ((ONE - f) * rx % xs(i_temp) % value(i_grid - threshold + 1) &
+                   + f*(rx % xs(i_temp) % value(i_grid - threshold + 2))) * yield
 
-            if (prob > cutoff) exit REACTION_LOOP
-          end if
-        end do
-      end associate
-    end do REACTION_LOOP
+              if (prob > cutoff) return
+              last_valid_reaction = i_reaction
+              last_valid_product = i_product
+            end if
+          end do
+        end associate
+      end do REACTION_LOOP
+    end associate
+
+    i_reaction = last_valid_reaction
+    i_product = last_valid_product
 
   end subroutine sample_photon_product
 
@@ -1649,7 +1658,6 @@ contains
 
     integer :: i_reaction   ! index in nuc % reactions array
     integer :: i_product    ! index in nuc % reactions % products array
-    type(Reaction), pointer :: rx
 
     real(8) :: nu_t
     real(8) :: mu
@@ -1659,7 +1667,7 @@ contains
     integer :: i
 
     ! Sample the number of photons produced
-    nu_t = micro_xs(i_nuclide) % nu_photon_total / micro_xs(i_nuclide) % total
+    nu_t = micro_xs(i_nuclide) % photon_prod / micro_xs(i_nuclide) % total
     if (prn() > nu_t - int(nu_t)) then
       nu = int(nu_t)
     else
@@ -1671,10 +1679,10 @@ contains
 
       ! Sample the reaction and product
       call sample_photon_product(i_nuclide, p % E, i_reaction, i_product)
-      rx => nuclides(i_nuclide) % reactions(i_reaction)
 
       ! Sample the outgoing energy and angle
-      call rx % products(i_product) % sample(p % E, E, mu)
+      call nuclides(i_nuclide) % reactions(i_reaction) % products(i_product) &
+           % sample(p % E, E, mu)
 
       ! Sample the new direction
       uvw = rotate_angle(p % coord(1) % uvw, mu)

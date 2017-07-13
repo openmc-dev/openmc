@@ -751,18 +751,6 @@ contains
     score_names(abs(SCORE_INVERSE_VELOCITY))   = "Flux-Weighted Inverse Velocity"
     score_names(abs(SCORE_FISS_Q_PROMPT))      = "Prompt fission power"
     score_names(abs(SCORE_FISS_Q_RECOV))       = "Recoverable fission power"
-    score_names(abs(SCORE_FISS_Q_PROMPT_NEUTRONS)) = "Prompt neutron power"
-    score_names(abs(SCORE_FISS_Q_DELAYED_NEUTRONS)) = "Delayed neutron power"
-    score_names(abs(SCORE_FISS_Q_FRAGMENTS))   = "Fission fragment power"
-    score_names(abs(SCORE_FISS_Q_BETAS))       = "Fission betas power"
-    score_names(abs(SCORE_FISS_Q_PROMPT_PHOTONS)) = "Prompt photon power"
-    score_names(abs(SCORE_FISS_Q_DELAYED_PHOTONS)) = "Delayed photon power"
-    score_names(abs(SCORE_FISS_Q_NEUTRINOS))   = "Fission neutrino power"
-    score_names(abs(SCORE_Q_PHOTONS))          = "Photon power"
-    score_names(abs(SCORE_Q_ELECTRONS))        = "Electron power"
-    score_names(abs(SCORE_Q_POSITRONS))        = "Positron power"
-    score_names(abs(SCORE_Q_ELASTIC))          = "Elastic scattering power"
-    score_names(abs(SCORE_HEATING))            = "Heating power"
 
     ! Create filename for tally output
     filename = trim(path_output) // "tallies.out"

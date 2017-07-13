@@ -66,24 +66,6 @@ contains
       string = "fission-q-prompt"
     case (SCORE_FISS_Q_RECOV)
       string = "fission-q-recoverable"
-    case (SCORE_FISS_Q_FRAGMENTS)
-      string = "fission-q-fragments"
-    case (SCORE_FISS_Q_BETAS)
-      string = "fission-q-betas"
-    case (SCORE_FISS_Q_PROMPT_PHOTONS)
-      string = "fission-q-prompt-photons"
-    case (SCORE_FISS_Q_DELAYED_PHOTONS)
-      string = "fission-q-delayed-photons"
-    case (SCORE_FISS_Q_NEUTRINOS)
-      string = "fission-q-neutrinos"
-    case (SCORE_Q_ELASTIC)
-      string = "q-elastic"
-    case (SCORE_Q_PHOTONS)
-      string = "q-photons"
-    case (SCORE_Q_ELECTRONS)
-      string = "q-electrons"
-    case (SCORE_Q_POSITRONS)
-      string = "q-positrons"
 
     ! Normal ENDF-based reactions
     case (TOTAL_XS)

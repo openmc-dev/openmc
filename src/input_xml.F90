@@ -3883,32 +3883,6 @@ contains
             t % score_bins(j) = SCORE_FISS_Q_PROMPT
           case ('fission-q-recoverable')
             t % score_bins(j) = SCORE_FISS_Q_RECOV
-          case ('fission-q-prompt-neutrons')
-            t % score_bins(j) = SCORE_FISS_Q_PROMPT_NEUTRONS
-          case ('fission-q-delayed-neutrons')
-            t % score_bins(j) = SCORE_FISS_Q_DELAYED_NEUTRONS
-          case ('fission-q-fragments')
-            t % score_bins(j) = SCORE_FISS_Q_FRAGMENTS
-          case ('fission-q-betas')
-            t % score_bins(j) = SCORE_FISS_Q_BETAS
-          case ('fission-q-prompt-photons')
-            t % score_bins(j) = SCORE_FISS_Q_PROMPT_PHOTONS
-          case ('fission-q-delayed-photons')
-            t % score_bins(j) = SCORE_FISS_Q_DELAYED_PHOTONS
-          case ('fission-q-neutrinos')
-            t % score_bins(j) = SCORE_FISS_Q_NEUTRINOS
-          case ('q-electrons')
-            t % score_bins(j) = SCORE_Q_ELECTRONS
-            t % estimator = ESTIMATOR_ANALOG
-          case ('q-positrons')
-            t % score_bins(j) = SCORE_Q_POSITRONS
-            t % estimator = ESTIMATOR_ANALOG
-          case ('q-elastic')
-            t % score_bins(j) = SCORE_Q_ELASTIC
-            t % estimator = ESTIMATOR_ANALOG
-          case ('heating')
-            t % score_bins(j) = SCORE_HEATING
-            t % estimator = ESTIMATOR_ANALOG
           case ('current')
             t % score_bins(j) = SCORE_CURRENT
             t % type = TALLY_SURFACE_CURRENT

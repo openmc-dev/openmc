@@ -318,7 +318,7 @@ module constants
        EVENT_ABSORB  =  2
 
   ! Tally score type
-  integer, parameter :: N_SCORE_TYPES = 36
+  integer, parameter :: N_SCORE_TYPES = 24
   integer, parameter :: &
        SCORE_FLUX               = -1,  & ! flux
        SCORE_TOTAL              = -2,  & ! total reaction rate
@@ -341,21 +341,9 @@ module constants
        SCORE_DELAYED_NU_FISSION = -19, & ! delayed neutron production rate
        SCORE_PROMPT_NU_FISSION  = -20, & ! prompt neutron production rate
        SCORE_INVERSE_VELOCITY   = -21, & ! flux-weighted inverse velocity
-       SCORE_HEATING            = -22, & ! prompt fission Q-value
-       SCORE_FISS_Q_RECOV       = -23, & ! recoverable fission Q-value
-       SCORE_FISS_Q_PROMPT      = -24, & ! prompt fission Q-value
-       SCORE_FISS_Q_PROMPT_NEUTRONS = -25, &  ! fission prompt neutrons Q-value
-       SCORE_FISS_Q_DELAYED_NEUTRONS = -26, & ! fission delayed neutrons Q-value
-       SCORE_FISS_Q_FRAGMENTS   = -27, & ! fission fragments Q-value
-       SCORE_FISS_Q_BETAS       = -28, & ! fission betas Q-value
-       SCORE_FISS_Q_PROMPT_PHOTONS = -29, &  ! fission prompt photons Q-value
-       SCORE_FISS_Q_DELAYED_PHOTONS = -30, & ! fission delayed phtons Q-value
-       SCORE_FISS_Q_NEUTRINOS   = -31, & ! fission neutrinos Q-value
-       SCORE_Q_PHOTONS          = -32, & ! photon energy deposition
-       SCORE_Q_ELECTRONS        = -33, & ! electron energy deposition
-       SCORE_Q_POSITRONS        = -34, & ! positron energy deposition
-       SCORE_Q_ELASTIC          = -35, & ! elastic scattering energy deposition
-       SCORE_DECAY_RATE         = -36    ! delayed neutron precursor decay rate
+       SCORE_FISS_Q_RECOV       = -22, & ! recoverable fission Q-value
+       SCORE_FISS_Q_PROMPT      = -23, & ! prompt fission Q-value
+       SCORE_DECAY_RATE         = -24    ! delayed neutron precursor decay rate
 
   ! Maximum scattering order supported
   integer, parameter :: MAX_ANG_ORDER = 10

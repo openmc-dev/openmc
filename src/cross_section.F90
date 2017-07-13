@@ -281,6 +281,7 @@ contains
 
       ! Initialize sab treatment to false
       micro_xs(i_nuclide) % index_sab = NONE
+      micro_xs(i_nuclide) % sab_frac = ZERO
 
       ! Initialize URR probability table treatment to false
       micro_xs(i_nuclide) % use_ptable = .false.

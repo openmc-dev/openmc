@@ -28,7 +28,8 @@ element materials {
     }*  &
 
     element sab {
-      (element name { xsd:string } | attribute name { xsd:string })
+      (element name { xsd:string } | attribute name { xsd:string }) &
+      (element fraction { xsd:double } | attribute fraction { xsd:double })?
     }*
   }+ &
 

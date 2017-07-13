@@ -116,6 +116,7 @@ contains
 
       select case(score_bin)
 
+
       case (SCORE_FLUX, SCORE_FLUX_YN)
 
         if (t % estimator == ESTIMATOR_ANALOG) then
@@ -143,7 +144,6 @@ contains
 
 
       case (SCORE_TOTAL, SCORE_TOTAL_YN)
-
         if (t % estimator == ESTIMATOR_ANALOG) then
           ! All events will score to the total reaction rate. We can just
           ! use the weight of the particle entering the collision as the
@@ -166,7 +166,6 @@ contains
 
 
       case (SCORE_INVERSE_VELOCITY)
-
         ! make sure the correct energy is used
         if (t % estimator == ESTIMATOR_TRACKLENGTH) then
           E = p % E
@@ -199,7 +198,6 @@ contains
 
 
       case (SCORE_SCATTER, SCORE_SCATTER_N)
-
         if (t % estimator == ESTIMATOR_ANALOG) then
           ! Skip any event where the particle didn't scatter
           if (p % event /= EVENT_SCATTER) cycle SCORE_LOOP
@@ -220,7 +218,6 @@ contains
 
 
       case (SCORE_SCATTER_PN)
-
         ! Only analog estimators are available.
         ! Skip any event where the particle didn't scatter
         if (p % event /= EVENT_SCATTER) then
@@ -234,7 +231,6 @@ contains
 
 
       case (SCORE_SCATTER_YN)
-
         ! Only analog estimators are available.
         ! Skip any event where the particle didn't scatter
         if (p % event /= EVENT_SCATTER) then
@@ -248,7 +244,6 @@ contains
 
 
       case (SCORE_NU_SCATTER, SCORE_NU_SCATTER_N)
-
         ! Only analog estimators are available.
         ! Skip any event where the particle didn't scatter
         if (p % event /= EVENT_SCATTER) cycle SCORE_LOOP
@@ -273,7 +268,6 @@ contains
 
 
       case (SCORE_NU_SCATTER_PN)
-
         ! Only analog estimators are available.
         ! Skip any event where the particle didn't scatter
         if (p % event /= EVENT_SCATTER) then
@@ -301,7 +295,6 @@ contains
 
 
       case (SCORE_NU_SCATTER_YN)
-
         ! Only analog estimators are available.
         ! Skip any event where the particle didn't scatter
         if (p % event /= EVENT_SCATTER) then
@@ -329,7 +322,6 @@ contains
 
 
       case (SCORE_ABSORPTION)
-
         if (t % estimator == ESTIMATOR_ANALOG) then
           if (survival_biasing) then
             ! No absorption events actually occur if survival biasing is on --
@@ -1067,12 +1059,10 @@ contains
         end if
 
       case (SCORE_EVENTS)
-
         ! Simply count number of scoring events
         score = ONE
 
       case (ELASTIC)
-
         if (t % estimator == ESTIMATOR_ANALOG) then
           ! Check if event MT matches
           if (p % event_MT /= ELASTIC) cycle SCORE_LOOP
@@ -1244,7 +1234,6 @@ contains
           score = p % last_wgt * p % last_E
         end if
 
-
       case (SCORE_Q_POSITRONS)
 
         ! Positron energy deposition
@@ -1265,7 +1254,6 @@ contains
         if (p % event_MT == ELASTIC) then
           score = p % last_wgt * (p % last_E - p % E)
         end if
-
 
       case (SCORE_HEATING)
 
@@ -1572,7 +1560,6 @@ contains
 
 
       case (SCORE_FLUX, SCORE_FLUX_YN)
-
         if (t % estimator == ESTIMATOR_ANALOG) then
           ! All events score to a flux bin. We actually use a collision
           ! estimator in place of an analog one since there is no way to count
@@ -3019,7 +3006,6 @@ contains
       ! for a previous tally.
       do j = 1, size(t % filter)
         i_filt = t % filter(j)
-
         if (.not. filter_matches(i_filt) % bins_present) then
           call filter_matches(i_filt) % bins % clear()
           call filter_matches(i_filt) % weights % clear()

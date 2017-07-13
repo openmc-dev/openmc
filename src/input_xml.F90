@@ -4170,10 +4170,10 @@ contains
             select type(filt => filters(t % find_filter(FILTER_PARTICLE)) % obj)
             type is (ParticleFilter)
               do l = 1, filt % n_bins
-                if (filt % bins % data(l) /= NEUTRON) then
+                if (filt % particles(l) /= NEUTRON) then
                   call warning("Particle filter other than NEUTRON used with &
                        &photon transport turn off. All tallies for particle &
-                       &type " // trim(to_str(filt % bins % data(l))) // " will have no scores")
+                       &type " // trim(to_str(filt % particles(l))) // " will have no scores")
                 end if
               end do
             end select

@@ -16,8 +16,10 @@ cache:
   - $HOME/nndc_hdf5
 env:
   - OPENMC_CONFIG="check_source"
-  - OPENMC_CONFIG="^hdf5-debug$|^omp-hdf5-debug$"
-  - OPENMC_CONFIG="^mpi-hdf5-debug$|^phdf5-debug$"
+  - OPENMC_CONFIG="^hdf5-debug$"
+  - OPENMC_CONFIG="^omp-hdf5-debug$"
+  - OPENMC_CONFIG="^mpi-hdf5-debug$"
+  - OPENMC_CONFIG="^phdf5-debug$"
 
 # We aren't testing the check_source script so just run it with Python 3.
 matrix:

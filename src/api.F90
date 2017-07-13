@@ -42,9 +42,9 @@ contains
 !===============================================================================
 
   function openmc_cell_set_temperature(id, T, instance) result(err) bind(C)
-    integer(C_INT), value, intent(in) :: id  ! id of cell
+    integer(C_INT32_T), value, intent(in) :: id  ! id of cell
     real(C_DOUBLE), value, intent(in) :: T
-    integer(C_INT), optional, intent(in) :: instance
+    integer(C_INT32_T), optional, intent(in) :: instance
     integer(C_INT) :: err
 
     integer :: i, n
@@ -78,8 +78,8 @@ contains
   subroutine openmc_find(xyz, rtype, id, instance) bind(C)
     real(C_DOUBLE), intent(in)        :: xyz(3) ! Cartesian point
     integer(C_INT), intent(in), value :: rtype  ! 1 for cell, 2 for material
-    integer(C_INT), intent(out)       :: id
-    integer(C_INT), intent(out)       :: instance
+    integer(C_INT32_T), intent(out)   :: id
+    integer(C_INT32_T), intent(out)   :: instance
 
     logical :: found
     type(Particle) :: p
@@ -172,7 +172,7 @@ contains
 !===============================================================================
 
   function openmc_material_add_nuclide(id, name, density) result(err) bind(C)
-    integer(C_INT), value, intent(in) :: id
+    integer(C_INT32_T), value, intent(in) :: id
     character(kind=C_CHAR) :: name(*)
     real(C_DOUBLE), value, intent(in) :: density
     integer(C_INT) :: err
@@ -244,8 +244,8 @@ contains
 !===============================================================================
 
   function openmc_material_get_densities(id, ptr) result(n) bind(C)
-    integer(C_INT), intent(in), value :: id
-    type(C_PTR),    intent(out) :: ptr
+    integer(C_INT32_T), intent(in), value :: id
+    type(C_PTR),        intent(out) :: ptr
     integer(C_INT) :: n
 
     ptr = C_NULL_PTR
@@ -268,7 +268,7 @@ contains
 !===============================================================================
 
   function openmc_material_set_density(id, density) result(err) bind(C)
-    integer(C_INT), value, intent(in) :: id
+    integer(C_INT32_T), value, intent(in) :: id
     real(C_DOUBLE), value, intent(in) :: density
     integer(C_INT) :: err
 
@@ -386,9 +386,9 @@ contains
 !===============================================================================
 
   subroutine openmc_tally_results(id, ptr, shape_) bind(C)
-    integer(C_INT), intent(in), value :: id
-    type(C_PTR),    intent(out) :: ptr
-    integer(C_INT), intent(out) :: shape_(3)
+    integer(C_INT32_T), intent(in), value :: id
+    type(C_PTR),        intent(out) :: ptr
+    integer(C_INT),     intent(out) :: shape_(3)
 
     integer :: i
 

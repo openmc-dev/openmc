@@ -71,7 +71,7 @@ class CreateSurfaceTallyTestHarness(PyAPITestHarness):
         settings_file = openmc.Settings()
         settings_file.batches = 10
         settings_file.inactive = 0
-        settings_file.particles = 100000
+        settings_file.particles = 1000
 
         # Create an initial uniform spatial source distribution over fissionable zones
         bounds = [-0.62992, -0.62992, -1, 0.62992, 0.62992, 1]

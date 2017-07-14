@@ -792,7 +792,7 @@ contains
       end if
 
       ! Handle surface current tallies separately
-      if (t % type == TALLY_SURFACE_CURRENT) then
+      if (t % type == TALLY_MESH_CURRENT) then
         call write_surface_current(t, unit_tally)
         cycle
       end if

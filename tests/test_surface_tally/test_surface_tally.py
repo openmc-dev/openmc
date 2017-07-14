@@ -132,10 +132,10 @@ class CreateSurfaceTallyTestHarness(PyAPITestHarness):
         tallies_file.append(surf_tally2)
         tally_index += 1
 
-        # Surface filter on right surface, reflective, for net current = 0
+        # Surface filter on right surface, reflective, current tally doesnt pick up the zero net current though
         surface_filter = openmc.SurfaceFilter([3])
         surf_tally3 = openmc.Tally(tally_id=tally_index, name='net_right')
-        surf_tally3.filters   = [surface_filter, energy_filter, polar_filter, azimuthal_filter]
+        surf_tally3.filters   = [surface_filter, energy_filterr]
         surf_tally3.scores    = ['current']
         tallies_file.append(surf_tally3)
         tally_index += 1

@@ -271,8 +271,8 @@ The following tables show all valid scores:
     |                      |the geometry. It may be used along with any other  |
     |                      |filter, except mesh filters.                       |
     |                      |Surfaces can alternatively be defined with cell    |
-    |                      |from and cell filters and partial currents can be  |
-    |                      |obtained by using cell_from and cell filters.      |
+    |                      |from and cell filters thereby resulting in tallying|
+    |                      |partial currents.                                  |
     |                      |Units are particles per source particle.           |
     +----------------------+---------------------------------------------------+
     |events                |Number of scoring events. Units are events per     |

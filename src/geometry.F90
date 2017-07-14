@@ -384,9 +384,8 @@ contains
 ! the geometry, is reflected, or crosses into a new lattice or cell
 !===============================================================================
 
-  subroutine cross_surface(p, last_cell)
+  subroutine cross_surface(p)
     type(Particle), intent(inout) :: p
-    integer,        intent(in)    :: last_cell  ! last cell particle was in
 
     real(8) :: u          ! x-component of direction
     real(8) :: v          ! y-component of direction
@@ -469,7 +468,7 @@ contains
       p%coord(1)%uvw(:) = [u, v, w] / norm
 
       ! Reassign particle's cell and surface
-      p % coord(1) % cell = last_cell
+      p % coord(1) % cell = p % last_cell(p % last_n_coord)
       p % surface = -p % surface
 
       ! If a reflective surface is coincident with a lattice or universe

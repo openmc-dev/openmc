@@ -746,7 +746,7 @@ contains
       start = 1
     else
       do i = 1, p % last_n_coord
-        if (p % last_coord(i) % cell == this % cells(current_bin)) then
+        if (p % last_cell(i) == this % cells(current_bin)) then
           start = i + 1
           exit
         end if
@@ -757,8 +757,8 @@ contains
     next_bin = NO_BIN_FOUND
     weight = ERROR_REAL
     do i = start, p % last_n_coord
-      if (this % map % has_key(p % last_coord(i) % cell)) then
-        next_bin = this % map % get_key(p % last_coord(i) % cell)
+      if (this % map % has_key(p % last_cell(i))) then
+        next_bin = this % map % get_key(p % last_cell(i))
         weight = ONE
         exit
       end if

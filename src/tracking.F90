@@ -150,8 +150,10 @@ contains
         if (next_level > 0) p % n_coord = next_level
 
         ! Saving previous cell data
-        last_cell = p % coord(p % n_coord) % cell
-        call p % set_last_coord()
+        do j = 1, p % n_coord
+          p % last_cell(j) = p % coord(j) % cell
+        end do
+        p % last_n_coord = p % n_coord
 
         ! Update last_ data. This is needed to use the same filters in
         ! surface tallies as the ones implemented for regular tallies
@@ -168,7 +170,7 @@ contains
           ! Particle crosses surface
           p % surface = surface_crossed
 
-          call cross_surface(p, last_cell)
+          call cross_surface(p)
           p % event = EVENT_SURFACE
         end if
         ! Score cell to cell partial currents

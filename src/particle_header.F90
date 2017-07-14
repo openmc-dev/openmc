@@ -49,8 +49,8 @@ module particle_header
     type(LocalCoord) :: coord(MAX_COORD) ! coordinates for all levels
 
     ! Particle coordinates before crossing a surface
-    integer          :: last_n_coord          ! number of current coordinates
-    type(LocalCoord) :: last_coord(MAX_COORD) ! coordinates for all levels
+    integer :: last_n_coord         ! number of current coordinates
+    integer :: last_cell(MAX_COORD) ! coordinates for all levels
 
     ! Energy Data
     real(8)    :: E      ! post-collision energy
@@ -110,7 +110,6 @@ module particle_header
     procedure :: clear => clear_particle
     procedure :: initialize_from_source
     procedure :: create_secondary
-    procedure :: set_last_coord
   end type Particle
 
 contains
@@ -152,7 +151,6 @@ contains
     ! Set up base level coordinates
     this % coord(1) % universe = root_universe
     this % n_coord = 1
-    this % last_coord(1) % universe = root_universe
     this % last_n_coord = 1
 
   end subroutine initialize_particle
@@ -223,26 +221,6 @@ contains
     this % last_E           = this % E
 
   end subroutine initialize_from_source
-
-!===============================================================================
-! SET_LAST_COORD copies all coordinate levels from coord to last_coord. This is
-! meant to have information about the last cell in the cell_from filter
-!===============================================================================
-
-  subroutine set_last_coord(this)
-
-    class(Particle), intent(inout) :: this
-    integer :: i
-
-    this % last_n_coord = this % n_coord
-    this % last_coord = this % coord
-
-    ! reset the rest of former last_coord
-    do i = this % n_coord + 1, MAX_COORD
-      call this % last_coord(i) % reset()
-    end do
-
-  end subroutine set_last_coord
 
 !===============================================================================
 ! CREATE_SECONDARY stores the current phase space attributes of the particle in

@@ -162,6 +162,7 @@ should be set to:
   surface IDs should be given. By default, net currents are tallied, and to 
   tally a partial current from one cell to another, this should be used in 
   combination with a cell or cell_from filter that defines the other cell.
+  This filter should not be used in combination with a meshfilter.
 
 :cellfrom:
   This filter allows the tally to be scored when crossing a surface and the 

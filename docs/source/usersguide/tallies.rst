@@ -261,21 +261,19 @@ The following tables show all valid scores:
     +----------------------+---------------------------------------------------+
     |Score                 | Description                                       |
     +======================+===================================================+
-    |current               |Partial currents on the boundaries of each cell in |
-    |                      |a mesh. Units are particles per source             |
-    |                      |particle. Note that this score can only be used if |
-    |                      |a mesh filter has been specified. Furthermore, it  |
-    |                      |may not be used in conjunction with any other      |
-    |                      |score. Only energy and mesh filters may be used.   |
-    +----------------------+---------------------------------------------------+
-    |total-current         |Total currents on any surface previously defined   |
-    |                      |in the geometry. Units are particles per source    |
-    |                      |particle. Note that this score cannot be used with |
-    |                      |a current score or a mesh filter.                  |
-    |                      |It may be used along with any other filter.        |
-    |                      |Surfaces can be defined with cell_from and cell    |
-    |                      |(to) filters or surface filters, partial currents  |
-    |                      |can be obtained with cell_from and cell filters.   |
+    |current               |Used in combination with a mesh filter:            |
+    |                      |Partial currents on the boundaries of each cell in |
+    |                      |a mesh. It may not be used in conjunction with any |
+    |                      |other score. Only energy and mesh filters may be   |
+    |                      |used.                                              |
+    |                      |Used in combination with a surface filter:         |
+    |                      |Net currents on any surface previously defined in  |
+    |                      |the geometry. It may be used along with any other  |
+    |                      |filter, except mesh filters.                       |
+    |                      |Surfaces can alternatively be defined with cell    |
+    |                      |from and cell filters and partial currents can be  |
+    |                      |obtained by using cell_from and cell filters.      |
+    |                      |Units are particles per source particle.           |
     +----------------------+---------------------------------------------------+
     |events                |Number of scoring events. Units are events per     |
     |                      |source particle.                                   |

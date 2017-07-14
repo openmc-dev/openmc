@@ -3809,99 +3809,114 @@ contains
           case ('fission-q-recoverable')
             t % score_bins(j) = SCORE_FISS_Q_RECOV
           case ('current')
-            t % score_bins(j) = SCORE_CURRENT
-            t % type = TALLY_MESH_CURRENT
 
-            ! Check to make sure that current is the only desired response
-            ! for this tally
-            if (n_words > 1) then
-              call fatal_error("Cannot tally other scores in the &
-                   &same tally as surface currents")
-            end if
+            ! Check which type of current is desired: mesh currents or 
+            ! surface currents
+            if (t % find_filter(FILTER_SURFACE) > 0 .or. &
+                 &t % find_filter(FILTER_CELL) > 0 .or. &
+                 &t % find_filter(FILTER_CELLFROM) > 0) then
 
-            ! Get index of mesh filter
-            i_filter_mesh = t % filter(t % find_filter(FILTER_MESH))
-
-            ! Check to make sure mesh filter was specified
-            if (i_filter_mesh == 0) then
-              call fatal_error("Cannot tally surface current without a mesh &
-                   &filter.")
-            end if
-
-            ! Get pointer to mesh
-            select type(filt => filters(i_filter_mesh) % obj)
-            type is (MeshFilter)
-              i_mesh = filt % mesh
-              m => meshes(i_mesh)
-            end select
-
-            ! Copy filter indices to temporary array
-            allocate(temp_filter(size(t % filter) + 1))
-            temp_filter(1:size(t % filter)) = t % filter
-
-            ! Move allocation back -- temp_filter becomes deallocated during
-            ! this call
-            call move_alloc(FROM=temp_filter, TO=t % filter)
-            n_filter = size(t % filter)
-
-            ! Extend the filters array so we can add a surface filter and mesh
-            ! filter
-            call add_filters(2)
-
-            ! Increment number of user filters
-            n_user_filters = n_user_filters + 2
-
-            ! Get index of the new mesh filter
-            i_filt = n_user_filters - 1
-
-            ! Duplicate the mesh filter since other tallies might use this
-            ! filter and we need to change the dimension
-            allocate(MeshFilter :: filters(i_filt) % obj)
-            select type(filt => filters(i_filt) % obj)
-            type is (MeshFilter)
-              filt % id = i_filt
-              filt % mesh = i_mesh
-
-              ! We need to increase the dimension by one since we also need
-              ! currents coming into and out of the boundary mesh cells.
-              filt % n_bins = product(m % dimension + 1)
-
-              ! Add filter to dictionary
-              call filter_dict % add_key(filt % id, i_filt)
-            end select
-            t % filter(t % find_filter(FILTER_MESH)) = i_filt
-
-            ! Get index of the new surface filter
-            i_filt = n_user_filters
-
-            ! Add surface filter
-            allocate(SurfaceFilter :: filters(i_filt) % obj)
-            select type (filt => filters(i_filt) % obj)
-            type is (SurfaceFilter)
-              filt % id = i_filt
-              filt % n_bins = 4 * m % n_dimension
-              allocate(filt % surfaces(4 * m % n_dimension))
-              if (m % n_dimension == 1) then
-                filt % surfaces = (/ OUT_LEFT, IN_LEFT, OUT_RIGHT, IN_RIGHT /)
-              elseif (m % n_dimension == 2) then
-                filt % surfaces = (/ OUT_LEFT, IN_LEFT, OUT_RIGHT, IN_RIGHT, &
-                     OUT_BACK, IN_BACK, OUT_FRONT, IN_FRONT /)
-              elseif (m % n_dimension == 3) then
-                filt % surfaces = (/ OUT_LEFT, IN_LEFT, OUT_RIGHT, IN_RIGHT, &
-                     OUT_BACK, IN_BACK, OUT_FRONT, IN_FRONT, OUT_BOTTOM, &
-                     IN_BOTTOM, OUT_TOP, IN_TOP /)
+              ! Check to make sure that mesh currents are not desired as well
+              if (t % find_filter(FILTER_MESH) > 0) then
+                call fatal_error("Cannot tally other mesh currents &
+                     &in the same tally as surface currents")
               end if
-              filt % current = .true.
+
+              t % type = TALLY_SURFACE
+              t % score_bins(j) = SCORE_CURRENT
+
+            else if (t % find_filter(FILTER_MESH) > 0) then
+              t % score_bins(j) = SCORE_CURRENT
+              t % type = TALLY_MESH_CURRENT
+
+              ! Check to make sure that current is the only desired response
+              ! for this tally
+              if (n_words > 1) then
+                call fatal_error("Cannot tally other scores in the &
+                     &same tally as surface currents")
+              end if
+
+              ! Get index of mesh filter
+              i_filter_mesh = t % filter(t % find_filter(FILTER_MESH))
+
+              ! Check to make sure mesh filter was specified
+              if (i_filter_mesh == 0) then
+                call fatal_error("Cannot tally surface current without a mesh &
+                     &filter.")
+              end if
+
+              ! Get pointer to mesh
+              select type(filt => filters(i_filter_mesh) % obj)
+              type is (MeshFilter)
+                i_mesh = filt % mesh
+                m => meshes(i_mesh)
+              end select
+
+              ! Copy filter indices to temporary array
+              allocate(temp_filter(size(t % filter) + 1))
+              temp_filter(1:size(t % filter)) = t % filter
+
+              ! Move allocation back -- temp_filter becomes deallocated during
+              ! this call
+              call move_alloc(FROM=temp_filter, TO=t % filter)
+              n_filter = size(t % filter)
+
+              ! Extend the filters array so we can add a surface filter and
+              ! mesh filter
+              call add_filters(2)
+
+              ! Increment number of user filters
+              n_user_filters = n_user_filters + 2
+
+              ! Get index of the new mesh filter
+              i_filt = n_user_filters - 1
+
+              ! Duplicate the mesh filter since other tallies might use this
+              ! filter and we need to change the dimension
+              allocate(MeshFilter :: filters(i_filt) % obj)
+              select type(filt => filters(i_filt) % obj)
+              type is (MeshFilter)
+                filt % id = i_filt
+                filt % mesh = i_mesh
+
+                ! We need to increase the dimension by one since we also need
+                ! currents coming into and out of the boundary mesh cells.
+                filt % n_bins = product(m % dimension + 1)
 
               ! Add filter to dictionary
               call filter_dict % add_key(filt % id, i_filt)
-            end select
-            t % find_filter(FILTER_SURFACE) = n_filter
-            t % filter(n_filter) = i_filt
+              end select
+              t % filter(t % find_filter(FILTER_MESH)) = i_filt
 
-          case ('total-current')
-            t % type = TALLY_SURFACE
-            t % score_bins(j) = SCORE_CURRENT
+              ! Get index of the new surface filter
+              i_filt = n_user_filters
+
+              ! Add surface filter
+              allocate(SurfaceFilter :: filters(i_filt) % obj)
+              select type (filt => filters(i_filt) % obj)
+              type is (SurfaceFilter)
+                filt % id = i_filt
+                filt % n_bins = 4 * m % n_dimension
+                allocate(filt % surfaces(4 * m % n_dimension))
+                if (m % n_dimension == 1) then
+                  filt % surfaces = (/ OUT_LEFT, IN_LEFT, OUT_RIGHT, IN_RIGHT /)
+                elseif (m % n_dimension == 2) then
+                  filt % surfaces = (/ OUT_LEFT, IN_LEFT, OUT_RIGHT, IN_RIGHT, &
+                       OUT_BACK, IN_BACK, OUT_FRONT, IN_FRONT /)
+                elseif (m % n_dimension == 3) then
+                  filt % surfaces = (/ OUT_LEFT, IN_LEFT, OUT_RIGHT, IN_RIGHT, &
+                       OUT_BACK, IN_BACK, OUT_FRONT, IN_FRONT, OUT_BOTTOM, &
+                       IN_BOTTOM, OUT_TOP, IN_TOP /)
+                end if
+                filt % current = .true.
+
+                ! Add filter to dictionary
+                call filter_dict % add_key(filt % id, i_filt)
+              end select
+              t % find_filter(FILTER_SURFACE) = n_filter
+              t % filter(n_filter) = i_filt
+            end if
+
           case ('events')
             t % score_bins(j) = SCORE_EVENTS
           case ('elastic', '(n,elastic)')

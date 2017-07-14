@@ -99,7 +99,7 @@
         <scores>current</scores>
     </tally>
     <tally id="6" name="net_right">
-        <filters>10011 10000 10001 10002</filters>
+        <filters>10011 10000</filters>
         <scores>current</scores>
     </tally>
 </tallies>

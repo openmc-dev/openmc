@@ -154,18 +154,18 @@ For each filter type, the following table describes what the ``bins`` attribute
 should be set to:
 
 :cell:
-  A list of cells or unique IDs for cells in which the tally should be 
+  A list of unique IDs for cells in which the tally should be 
   accumulated.
 
 :surface:
   This filter allows the tally to be scored when crossing a surface. A list of 
-  surface IDs should be given. It does not specify in which direction the 
-  surface is crossed, and a cellfrom or a cell filter may be used to tally 
-  partial currents.
+  surface IDs should be given. By default, net currents are tallied, and to 
+  tally a partial current from one cell to another, this should be used in 
+  combination with a cell or cell_from filter that defines the other cell.
 
 :cellfrom:
   This filter allows the tally to be scored when crossing a surface and the 
-  particle came from a specified cell. A list of cell or cell IDs should be 
+  particle came from a specified cell. A list of cell IDs should be 
   given.
   To tally a partial current from a cell to another, this filter should be 
   used in combination with a cell filter, to define the other cell.
@@ -173,7 +173,7 @@ should be set to:
 
 :cellborn:
   This filter allows the tally to be scored to only when particles were
-  originally born in a specified cell. A list of cell or cell IDs should be 
+  originally born in a specified cell. A list of cell IDs should be 
   given.
 
 :material:

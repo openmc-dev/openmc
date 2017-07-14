@@ -4565,7 +4565,7 @@ contains
         elseif (user_tallies(i) % estimator == ESTIMATOR_COLLISION) then
           call active_collision_tallies % push_back(i_user_tallies + i)
         end if
-      elseif (user_tallies(i) % type == TALLY_SURFACE_CURRENT) then
+      elseif (user_tallies(i) % type == TALLY_MESH_CURRENT) then
         call active_current_tallies % push_back(i_user_tallies + i)
       elseif (user_tallies(i) % type == TALLY_SURFACE) then
         call active_surface_tallies % push_back(i_user_tallies + i)
@@ -4618,7 +4618,7 @@ contains
         elseif (cmfd_tallies(i) % estimator == ESTIMATOR_TRACKLENGTH) then
           call active_tracklength_tallies % push_back(i_cmfd_tallies + i)
         end if
-      elseif (cmfd_tallies(i) % type == TALLY_SURFACE_CURRENT) then
+      elseif (cmfd_tallies(i) % type == TALLY_MESH_CURRENT) then
         call active_current_tallies % push_back(i_cmfd_tallies + i)
       end if
     end do

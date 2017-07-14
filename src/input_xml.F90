@@ -3810,7 +3810,7 @@ contains
             t % score_bins(j) = SCORE_FISS_Q_RECOV
           case ('current')
             t % score_bins(j) = SCORE_CURRENT
-            t % type = TALLY_SURFACE_CURRENT
+            t % type = TALLY_MESH_CURRENT
 
             ! Check to make sure that current is the only desired response
             ! for this tally

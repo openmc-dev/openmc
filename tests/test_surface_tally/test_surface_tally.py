@@ -4,6 +4,7 @@ import os
 import sys
 sys.path.insert(0, os.pardir)
 from testing_harness import PyAPITestHarness
+import numpy as np
 import openmc
 
 
@@ -30,7 +31,7 @@ class CreateSurfaceTallyTestHarness(PyAPITestHarness):
         # Instantiate ZCylinder surfaces
         fuel_or = openmc.ZCylinder(surface_id=1, x0=0, y0=0, R=0.4, name='Fuel OR')
         left    = openmc.XPlane(surface_id=2, x0=-0.62992, name='left')
-        right   = openmc.XPlane(x0=0.62992, name='right')
+        right   = openmc.XPlane(surface_id=3, x0=0.62992, name='right')
         bottom  = openmc.YPlane(y0=-0.62992, name='bottom')
         top     = openmc.YPlane(y0=0.62992, name='top')
 
@@ -83,6 +84,7 @@ class CreateSurfaceTallyTestHarness(PyAPITestHarness):
 
         # Cell to cell tallies
         # These filters are same for all tallies
+        two_groups = np.array([0., 4, 20.]) * 1e6
         energy_filter     = openmc.EnergyFilter(two_groups)
         polar_filter      = openmc.PolarFilter([0, np.pi / 4, np.pi])
         azimuthal_filter  = openmc.AzimuthalFilter([0, np.pi / 4, np.pi])
@@ -100,46 +102,43 @@ class CreateSurfaceTallyTestHarness(PyAPITestHarness):
                     cell_from_filter = openmc.CellFromFilter(cell1)
                     cell_to_filter = openmc.CellFilter(cell2)
 
-                    cell_to_cell_tallies.append(openmc.Tally(tally_id=2*tally_index, name=str(cell1)+'-'+str(cell2)))
-                    cell_to_cell_tallies[2*tally_index].filters   = [cell_from_filter, cell_to_filter, energy_filter, polar_filter, azimuthal_filter]
-                    cell_to_cell_tallies[2*tally_index].scores    = ['current']
-                    cell_to_cell_tallies[2*tally_index].estimator = 'analog'
-
-                    tallies_file.append(cell_to_cell_tallies[2*tally_index])
+                    cell_to_cell_tallies.append(openmc.Tally(tally_id=tally_index, name=str(cell1)+'-'+str(cell2)))
+                    cell_to_cell_tallies[tally_index].filters   = [cell_from_filter, cell_to_filter, energy_filter, polar_filter, azimuthal_filter]
+                    cell_to_cell_tallies[tally_index].scores    = ['current']
+                    tallies_file.append(cell_to_cell_tallies[tally_index])
+                    tally_index += 1
 
                     # Cell from + surface filters for partial current
                     surface_filter = openmc.SurfaceFilter([1])
-                    cell_to_cell_tallies.append(openmc.Tally(tally_id=2*tally_index+1, name=str(cell1)+'-surface1'))
-                    cell_to_cell_tallies[2*tally_index+1].filters   = [cell_from_filter, surface_filter, energy_filter, polar_filter, azimuthal_filter]
-                    cell_to_cell_tallies[2*tally_index+1].scores    = ['current']
-                    cell_to_cell_tallies[2*tally_index+1].estimator = 'analog'
-                    tallies_file.append(cell_to_cell_tallies[2*tally_index+1])
-
+                    cell_to_cell_tallies.append(openmc.Tally(tally_id=tally_index, name=str(cell1)+'-surface1'))
+                    cell_to_cell_tallies[tally_index].filters   = [cell_from_filter, surface_filter, energy_filter, polar_filter, azimuthal_filter]
+                    cell_to_cell_tallies[tally_index].scores    = ['current']
+                    tallies_file.append(cell_to_cell_tallies[tally_index])
                     tally_index += 1
 
         # Surface filter on inner surface, for net current
         surface_filter = openmc.SurfaceFilter([1])
-        cell_to_cell_tallies.append(openmc.Tally(tally_id=2*tally_index, name='surface1'))
-        cell_to_cell_tallies[2*tally_index].filters   = [surface_filter, energy_filter, polar_filter, azimuthal_filter]
-        cell_to_cell_tallies[2*tally_index].scores    = ['current']
-        cell_to_cell_tallies[2*tally_index].estimator = 'analog'
-        tallies_file.append(cell_to_cell_tallies[2*tally_index])
+        surf_tally1 = openmc.Tally(tally_id=tally_index, name='net_cylinder')
+        surf_tally1.filters   = [surface_filter, energy_filter, polar_filter, azimuthal_filter]
+        surf_tally1.scores    = ['current']
+        tallies_file.append(surf_tally1)
+        tally_index += 1
 
         # Surface filter on left surface, vacuum BC, for net current = leakage
-        surface_filter = openmc.SurfaceFilter([1])
-        cell_to_cell_tallies.append(openmc.Tally(tally_id=2*tally_index, name='surface1'))
-        cell_to_cell_tallies[2*tally_index].filters   = [surface_filter, energy_filter, polar_filter, azimuthal_filter]
-        cell_to_cell_tallies[2*tally_index].scores    = ['current']
-        cell_to_cell_tallies[2*tally_index].estimator = 'analog'
-        tallies_file.append(cell_to_cell_tallies[2*tally_index])
+        surface_filter = openmc.SurfaceFilter([2])
+        surf_tally2 = openmc.Tally(tally_id=tally_index, name='leakage_left')
+        surf_tally2.filters   = [surface_filter, energy_filter, polar_filter, azimuthal_filter]
+        surf_tally2.scores    = ['current']
+        tallies_file.append(surf_tally2)
+        tally_index += 1
 
         # Surface filter on right surface, reflective, for net current = 0
-        surface_filter = openmc.SurfaceFilter([1])
-        cell_to_cell_tallies.append(openmc.Tally(tally_id=2*tally_index, name='surface1'))
-        cell_to_cell_tallies[2*tally_index].filters   = [surface_filter, energy_filter, polar_filter, azimuthal_filter]
-        cell_to_cell_tallies[2*tally_index].scores    = ['current']
-        cell_to_cell_tallies[2*tally_index].estimator = 'analog'
-        tallies_file.append(cell_to_cell_tallies[2*tally_index])
+        surface_filter = openmc.SurfaceFilter([3])
+        surf_tally3 = openmc.Tally(tally_id=tally_index, name='net_right')
+        surf_tally3.filters   = [surface_filter, energy_filter, polar_filter, azimuthal_filter]
+        surf_tally3.scores    = ['current']
+        tallies_file.append(surf_tally3)
+        tally_index += 1
 
         tallies_file.export_to_xml()
 

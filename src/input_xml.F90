@@ -3810,7 +3810,7 @@ contains
             t % score_bins(j) = SCORE_FISS_Q_RECOV
           case ('current')
 
-            ! Check which type of current is desired: mesh currents or 
+            ! Check which type of current is desired: mesh currents or
             ! surface currents
             if (t % find_filter(FILTER_SURFACE) > 0 .or. &
                  &t % find_filter(FILTER_CELL) > 0 .or. &

@@ -36,7 +36,6 @@ contains
     integer :: next_level             ! next coordinate level to check
     integer :: surface_crossed        ! surface which particle is on
     integer :: lattice_translation(3) ! in-lattice translation vector
-    integer :: last_cell              ! most recent cell particle was in
     integer :: n_event                ! number of collisions/crossings
     real(8) :: d_boundary             ! distance to nearest boundary
     real(8) :: d_collision            ! sampled distance to collision

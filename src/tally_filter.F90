@@ -963,7 +963,7 @@ contains
       do i = 1, this % n_bins
         if (abs(p % surface) == this % surfaces(i)) then
           next_bin = i
-          weight = sign(ONE, real(p % surface, 8))
+          weight = sign(1, p % surface)
           exit
         end if
       end do

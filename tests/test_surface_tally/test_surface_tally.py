@@ -6,7 +6,7 @@ sys.path.insert(0, os.pardir)
 from testing_harness import PyAPITestHarness
 import numpy as np
 import openmc
-
+import pandas as pd
 
 class CreateSurfaceTallyTestHarness(PyAPITestHarness):
     def _build_inputs(self):
@@ -70,8 +70,8 @@ class CreateSurfaceTallyTestHarness(PyAPITestHarness):
         # Instantiate a Settings object, set all runtime parameters, and export to XML
         settings_file = openmc.Settings()
         settings_file.batches = 10
-        settings_file.inactive = 5
-        settings_file.particles = 1000
+        settings_file.inactive = 0
+        settings_file.particles = 100000
 
         # Create an initial uniform spatial source distribution over fissionable zones
         bounds = [-0.62992, -0.62992, -1, 0.62992, 0.62992, 1]
@@ -147,13 +147,15 @@ class CreateSurfaceTallyTestHarness(PyAPITestHarness):
         # Read the statepoint file.
         sp = openmc.StatePoint(self._sp_name)
 
-        # Write out tally data.
-        outstr = ''
-        t = sp.get_tally()
-        outstr += 'tally {}:\n'.format(t.id)
-        outstr += 'sum = {:12.6E}\n'.format(t.sum[0, 0, 0])
-        outstr += 'sum_sq = {:12.6E}\n'.format(t.sum_sq[0, 0, 0])
+        # Extract the tally data as a Pandas DataFrame.
+        df = pd.DataFrame()
+        for t in sp.tallies.values():
+            df = df.append(t.get_pandas_dataframe(), ignore_index=True)
 
+        # Extract the relevant data as a CSV string.
+        cols = ('d_material', 'd_nuclide', 'd_variable', 'score', 'mean',
+                'std. dev.')
+        return df.to_csv(None, columns=cols, index=False, float_format='%.7e')
         return outstr
 
 

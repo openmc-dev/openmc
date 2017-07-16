@@ -5275,9 +5275,9 @@ contains
 
         ! temperatures
         if (check_for_node(prob_table_node, "temperature_grid")) then
-          call get_node_array(prob_table_node, "temperature_grid", URR_T_grid_prob_tables)
-          URR_num_temperatures_prob_tables = size(URR_T_grid_prob_tables)
+          URR_num_temperatures_prob_tables = node_word_count(prob_table_node, "temperature_grid")
           allocate(URR_T_grid_prob_tables(URR_num_temperatures_prob_tables))
+          call get_node_array(prob_table_node, "temperature_grid", URR_T_grid_prob_tables)
           if (URR_num_temperatures_prob_tables > 1) then
             do i = 2, URR_num_temperatures_prob_tables
               if (URR_T_grid_prob_tables(i) <= URR_T_grid_prob_tables(i-1)) then
@@ -5346,8 +5346,9 @@ contains
           else if (trim(adjustl(to_lower(temp_str))) == 'user') then
             URR_E_grid_scheme_prob_tables = URR_USER
             if (check_for_node(prob_table_node, "energy_grid")) then
+              URR_num_energies_prob_tables = node_word_count(prob_table_node, "energy_grid")
+              allocate(URR_E_grid_prob_tables(URR_num_energies_prob_tables))
               call get_node_array(prob_table_node, "energy_grid", URR_E_grid_prob_tables)
-              URR_num_energies_prob_tables = size(URR_E_grid_prob_tables)
             else
               call fatal_error('No probability table energy grid values&
                    & given in urr.xml')

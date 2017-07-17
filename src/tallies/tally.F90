@@ -2730,7 +2730,7 @@ contains
 
     type(Particle), intent(in) :: p
     real(8),        intent(in) :: distance
-
+    integer :: check_value
     integer :: i
     integer :: i_tally
     integer :: i_filt
@@ -2744,7 +2744,7 @@ contains
     real(8) :: filter_weight        ! combined weight of all filters
     logical :: finished             ! found all valid bin combinations
     type(Material),    pointer :: mat
-
+    
     ! Determine track-length estimate of flux
     flux = p % wgt * distance
 
@@ -2811,26 +2811,17 @@ contains
               if (p % material /= MATERIAL_VOID) then
                 ! Get pointer to current material
                 mat => materials(p % material)
+                check_value= mat % mat_nuclide_list(i_nuclide)
+                
+                if (check_value == 0) then 
+                  cycle NUCLIDE_BIN_LOOP
+                end if
 
-                ! Determine if nuclide is actually in material
-                NUCLIDE_MAT_LOOP: do j = 1, mat % n_nuclides
-                  ! If index of nuclide matches the j-th nuclide listed in the
-                  ! material, break out of the loop
-                  if (i_nuclide == mat % nuclide(j)) exit
-
-                  ! If we've reached the last nuclide in the material, it means
-                  ! the specified nuclide to be tallied is not in this material
-                  if (j == mat % n_nuclides) then
-                    cycle NUCLIDE_BIN_LOOP
-                  end if
-                end do NUCLIDE_MAT_LOOP
-
-                atom_density = mat % atom_density(j)
+                atom_density = mat % atom_density(check_value)
               else
                 atom_density = ZERO
               end if
             end if
-
             ! Determine score for each bin
             call score_general(p, t, (k-1)*t % n_score_bins, filter_index, &
                  i_nuclide, atom_density, flux * filter_weight)

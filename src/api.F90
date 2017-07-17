@@ -31,8 +31,6 @@ module openmc_api
   public :: openmc_plot_geometry
   public :: openmc_reset
   public :: openmc_run
-  public :: openmc_set_density
-  public :: openmc_set_temperature
   public :: openmc_tally_results
 
 contains
@@ -321,63 +319,6 @@ contains
     call active_tallies % clear()
 
   end subroutine openmc_reset
-
-!===============================================================================
-! OPENMC_SET_DENSITY sets the density of a material at a given point
-!===============================================================================
-
-  function openmc_set_density(xyz, density) result(err) bind(C)
-    real(C_DOUBLE), intent(in) :: xyz(3)
-    real(C_DOUBLE), intent(in), value :: density
-    integer(C_INT) :: err
-
-    logical :: found
-    type(Particle) :: p
-
-    call p % initialize()
-    p % coord(1) % xyz(:) = xyz
-    p % coord(1) % uvw(:) = [ZERO, ZERO, ONE]
-    call find_cell(p, found)
-
-    err = -1
-    if (found) then
-      if (p % material /= MATERIAL_VOID) then
-        associate (m => materials(p % material))
-          err = m % set_density(density, nuclides)
-        end associate
-      end if
-    end if
-  end function openmc_set_density
-
-!===============================================================================
-! OPENMC_SET_TEMPERATURE sets the temperature of a cell at a given point
-!===============================================================================
-
-  function openmc_set_temperature(xyz, T) result(err) bind(C)
-    real(C_DOUBLE), intent(in) :: xyz(3)
-    real(C_DOUBLE), intent(in), value :: T
-    integer(C_INT) :: err
-
-    logical :: found
-    type(Particle) :: p
-
-    call p % initialize()
-    p % coord(1) % xyz(:) = xyz
-    p % coord(1) % uvw(:) = [ZERO, ZERO, ONE]
-    call find_cell(p, found)
-
-    err = -1
-    if (found) then
-      associate (c => cells(p % coord(p % n_coord) % cell))
-        if (size(c % sqrtkT) > 1) then
-          c % sqrtkT(p % cell_instance) = sqrt(K_BOLTZMANN * T)
-        else
-          c % sqrtkT(1) = sqrt(K_BOLTZMANN * T)
-        end if
-        err = 0
-      end associate
-    end if
-  end function openmc_set_temperature
 
 !===============================================================================
 ! OPENMC_TALLY_RESULTS returns a pointer to a tally results array along with its

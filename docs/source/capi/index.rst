@@ -105,28 +105,6 @@ C API
 
    Run a simulation
 
-.. c:function:: int openmc_set_density(double xyz[3], double density)
-
-   Set the density of a material at a given point.
-
-   :param xyz: Cartesian coordinates
-   :type xyz: double[3]
-   :param density: Density of the material to set in atom/b-cm
-   :type density: double
-   :return: Return status (negative if an error occurs)
-   :rtype: int
-
-.. c:function:: int openmc_set_temperature(double xyz[3], double T)
-
-   Set the density of a cell at a given point.
-
-   :param xyz: Cartesian coordinates
-   :type xyz: double[3]
-   :param T: Temperature of the cell to set in Kelvin
-   :type T: double
-   :return: Return status (negative if an error occurs)
-   :rtype: int
-
 .. c:function:: void openmc_tally_results(int id, double** ptr, int shape_[3])
 
    Get a pointer to tally results array.

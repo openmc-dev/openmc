@@ -53,11 +53,6 @@ class OpenMCLibrary(object):
         self._dll.openmc_plot_geometry.restype = None
         self._dll.openmc_run.restype = None
         self._dll.openmc_reset.restype = None
-        self._dll.openmc_set_density.argtypes = [POINTER(_double3), c_double]
-        self._dll.openmc_set_density.restype = c_int
-        self._dll.openmc_set_temperature.argtypes = [
-            POINTER(_double3), c_double]
-        self._dll.openmc_set_temperature.restype = c_int
         self._dll.openmc_tally_results.argtypes = [
             c_int32, _double_array, POINTER(_int3)]
         self._dll.openmc_tally_results.restype = None
@@ -231,42 +226,6 @@ class OpenMCLibrary(object):
     def run(self):
         """Run simulation"""
         return self._dll.openmc_run()
-
-    def set_density(self, xyz, density):
-        """Set density at a given point.
-
-        Parameters
-        ----------
-        xyz : iterable of float
-            Cartesian coordinates at position
-        density : float
-            Density in atom/b-cm
-
-        Returns
-        -------
-        int
-            Return status (negative if an error occurs)
-
-        """
-        return self._dll.openmc_set_density(_double3(*xyz), density)
-
-    def set_temperature(self, xyz, T):
-        """Set temperature at a given point.
-
-        Parameters
-        ----------
-        xyz : iterable of float
-            Cartesian coordinates at position
-        T : float
-            Temperature in K
-
-        Returns
-        -------
-        int
-            Return status (negative if an error occurs)
-
-        """
-        return self._dll.openmc_set_temperature(_double3(*xyz), T)
 
     def tally_results(self, tally_id):
         """Get tally results array

@@ -116,14 +116,13 @@ contains
 
   subroutine read_input_xml()
 
-    if (run_mode == MODE_PURXS .or. run_mode /= MODE_PURXS) then
-      call read_settings_xml()
-      call read_geometry_xml()
-      call read_materials()
-      call read_tallies_xml()
-      call read_urr_xml()
-      if (cmfd_run) call configure_cmfd()
-    end if
+    call read_urr_xml()
+    if (run_mode == MODE_PURXS) return
+    call read_settings_xml()
+    call read_geometry_xml()
+    call read_materials()
+    call read_tallies_xml()
+    if (cmfd_run) call configure_cmfd()
 
     if (.not. run_CE) then
       ! Create material macroscopic data for MGXS
@@ -134,7 +133,7 @@ contains
     end if
 
     ! Normalize atom/weight percents
-    if (run_mode /= MODE_PLOTTING .and. run_mode /= MODE_PURXS) call normalize_ao()
+    if (run_mode /= MODE_PLOTTING) call normalize_ao()
 
   end subroutine read_input_xml
 

@@ -110,35 +110,54 @@ contains
     ! Initialize random number generator -- this has to be done after the input
     ! files have been read in case the user specified a seed for the random
     ! number generator
-
     call initialize_prng()
 
     ! Read plots.xml if it exists -- this has to be done separate from the other
     ! XML files because we need the PRNG to be initialized first
-    if (run_mode == MODE_PLOTTING) call read_plots_xml()
+    if (run_mode == MODE_PLOTTING) then
+      call read_plots_xml()
 
-    if (run_mode /= MODE_PURXS) then
-      ! Use dictionaries to redefine index pointers
-      call adjust_indices()
+    else
+      if (run_mode /= MODE_PURXS) then
+        ! Use dictionaries to redefine index pointers
+        call adjust_indices()
 
-      ! Initialize distribcell_filters
-      call prepare_distribcell()
+        ! Initialize distribcell_filters
+        call prepare_distribcell()
 
-      ! After reading input and basic geometry setup is complete, build lists of
-      ! neighboring cells for efficient tracking
-      call neighbor_lists()
-    end if
+        ! After reading input and basic geometry setup is complete, build lists of
+        ! neighboring cells for efficient tracking
+        call neighbor_lists()
 
-    ! Check to make sure there are not too many nested coordinate levels in the
-    ! geometry since the coordinate list is statically allocated for performance
-    ! reasons
-    if (maximum_levels(universes(root_universe)) > MAX_COORD) then
-      call fatal_error("Too many nested coordinate levels in the geometry. &
-           &Try increasing the maximum number of coordinate levels by &
-           &providing the CMake -Dmaxcoord= option.")
-    end if
+        ! Check to make sure there are not too many nested coordinate levels in the
+        ! geometry since the coordinate list is statically allocated for performance
+        ! reasons
+        if (maximum_levels(universes(root_universe)) > MAX_COORD)&
+             call fatal_error("Too many nested coordinate levels in the geometry. &
+             &Try increasing the maximum number of coordinate levels by &
+             &providing the CMake -Dmaxcoord= option.")
 
-    if (run_mode /= MODE_PLOTTING) then
+        ! Construct log energy grid for cross-sections
+        if (run_CE) call logarithmic_grid()
+
+        ! Allocate and setup tally stride, filter_matches, and tally maps
+        call configure_tallies()
+
+        ! Set up tally procedure pointers
+        call init_tally_routines()
+
+        ! Determine how much work each processor should do
+        call calculate_work()
+
+        ! Allocate source bank, and for eigenvalue simulations also allocate the
+        ! fission bank
+        call allocate_banks()
+
+        ! If this is a restart run, load the state point data and binary source
+        ! file
+        if (restart_run) call load_state_point()
+      end if
+
 #ifdef PURXS
       ! Read ENDF-6 format nuclear data file
       if (URR_use_urr) then
@@ -155,7 +174,6 @@ contains
         select case (URR_xs_representation)
         case (URR_PROB_BANDS)
           do i = 1, URR_num_isotopes
-
             if (run_mode /= MODE_PURXS) then
               do i_nuc = 1, n_nuclides_total
                 ZA = '000'
@@ -166,7 +184,7 @@ contains
                   do i_temperature = 1, size(nuclides(i_nuc) % kTs)
                     if (i_temperature /= 1)&
                          call fatal_error('Trying to generate list of indices&
-                         & to old ACE-style nuclide data: not yet implemented.')
+                         & from URR data to old ACE-style nuclide data: not yet implemented.')
                     call URR_isotopes(i) % ace_T_list &
                          % append(nuclides(i_nuc) % kTs(i_temperature) / K_BOLTZMANN)
                     call URR_isotopes(i) % ace_index_list % append(i_nuc)
@@ -182,7 +200,6 @@ contains
               call URR_isotopes(i) % generate_prob_tables(i)
             end if
           end do
-          if (run_mode == MODE_PURXS) return
 
         case (URR_ON_THE_FLY)
           select case (URR_realization_frequency)
@@ -200,18 +217,12 @@ contains
                    & dependent on neutron energy')
             end if
             do i = 1, URR_num_isotopes
-              do i_nuc = 1, n_nuclides_total
-                ZA = '000'
-                ZA(4-len(trim(adjustl(to_str(nuclides(i_nuc) % A)))):3)&
-                     = trim(adjustl(to_str(nuclides(i_nuc) % A)))
-                ZA = trim(adjustl(to_str(nuclides(i_nuc) % Z))) // ZA
-                if ((ZA == trim(adjustl(to_str(URR_isotopes(i) % ZAI)))) .and.&
-                     (.not. allocated(URR_isotopes(i) % urr_resonances))) then
-                  call URR_isotopes(i) % resonance_ladder_realization()
-                  call URR_write_MF2(i)
-                end if
-              end do
+              if (.not. allocated(URR_isotopes(i) % urr_resonances)) then
+                call URR_isotopes(i) % resonance_ladder_realization()
+                call URR_write_MF2(i)
+              end if
             end do
+
           case default
             call fatal_error('Not a recognized URR realization frequency')
           end select
@@ -224,27 +235,34 @@ contains
                    &a resonance ensemble with E_n-dependent parameters')
             end if
             do i = 1, URR_num_isotopes
-              do i_nuc = 1, n_nuclides_total
-                ZA = '000'
-                ZA(4-len(trim(adjustl(to_str(nuclides(i_nuc) % A)))):3)&
-                     = trim(adjustl(to_str(nuclides(i_nuc) % A)))
-                ZA = trim(adjustl(to_str(nuclides(i_nuc) % Z))) // ZA
-                if ((ZA == trim(adjustl(to_str(URR_isotopes(i) % ZAI)))) .and.&
-                     (.not. allocated(URR_isotopes(i) % urr_resonances))) then
-                  call URR_isotopes(i) % resonance_ladder_realization()
-                  call URR_write_MF2(i)
-                  do i_temperature = 1, size(nuclides(i_nuc) % kTs)
-                    if (i_temperature /= 1)&
-                         call fatal_error('Trying to generate pointwise PURXS cross sections&
-                         & at multiple temperatures for the same isotope: currently not&
-                         & implemented.')
-                    call URR_isotopes(i) % generate_pointwise_xs(nuclides(i_nuc) % kTs(i_temperature) / K_BOLTZMANN)
-                  end do
-                end if
-              end do
+              if (.not. allocated(URR_isotopes(i) % urr_resonances)) then
+                call URR_isotopes(i) % resonance_ladder_realization()
+                call URR_write_MF2(i)
+              end if
+              if (run_mode /= MODE_PURXS) then
+                do i_nuc = 1, n_nuclides_total
+                  ZA = '000'
+                  ZA(4-len(trim(adjustl(to_str(nuclides(i_nuc) % A)))):3)&
+                       = trim(adjustl(to_str(nuclides(i_nuc) % A)))
+                  ZA = trim(adjustl(to_str(nuclides(i_nuc) % Z))) // ZA
+                  if ((ZA == trim(adjustl(to_str(URR_isotopes(i) % ZAI)))) .and.&
+                       (.not. allocated(URR_isotopes(i) % urr_resonances))) then
+                    do i_temperature = 1, size(nuclides(i_nuc) % kTs)
+                      if (i_temperature /= 1)&
+                           call fatal_error('Trying to generate pointwise PURXS cross sections&
+                           & at multiple temperatures for the same isotope: currently not&
+                           & implemented.')
+                      call URR_isotopes(i) % generate_pointwise_xs(nuclides(i_nuc) % kTs(i_temperature) / K_BOLTZMANN)
+                    end do
+                  end if
+                end do
+              end if
             end do
 
           case(URR_HDF5)
+            if (run_mode == MODE_PURXS) call fatal_error('Trying to use HDF5&
+                 & nuclear data in PURXS-only mode.  HDF5 data should only be&
+                 & used in an OpenMC transport simulation.')
             do i = 1, URR_num_isotopes
               do i_nuc = 1, n_nuclides_total
                 ZA = '000'
@@ -274,31 +292,8 @@ contains
                & on-the-fly, or pointwise')
 
         end select
-
       end if
 #endif
-      ! Construct information needed for nuclear data
-      if (run_CE) then
-        ! Construct log energy grid for cross-sections
-        call logarithmic_grid()
-      end if
-
-      ! Allocate and setup tally stride, filter_matches, and tally maps
-      call configure_tallies()
-
-      ! Set up tally procedure pointers
-      call init_tally_routines()
-
-      ! Determine how much work each processor should do
-      call calculate_work()
-
-      ! Allocate source bank, and for eigenvalue simulations also allocate the
-      ! fission bank
-      call allocate_banks()
-
-      ! If this is a restart run, load the state point data and binary source
-      ! file
-      if (restart_run) call load_state_point()
     end if
 
     if (master) then
@@ -307,7 +302,7 @@ contains
         if (verbosity >= 5) call print_plot()
       else
         ! Write summary information
-        if (output_summary) call write_summary()
+        if (output_summary .and. run_mode /= MODE_PURXS) call write_summary()
       end if
     end if
 
@@ -327,7 +322,7 @@ contains
 
 !$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$
 !
-! INITIALIZE_ENDF cycles through the nuclides w/ a Fast/URR treatment,
+! INITIALIZE_ENDF cycles through the nuclides w/ a URR treatment,
 ! performing checks and reading in ENDF-6 evaluated nuclear data files
 !
 !$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$
@@ -339,36 +334,18 @@ contains
     character(len=:), allocatable :: ZA
 
     do i = 1, URR_num_isotopes
-      do i_nuc = 1, n_nuclides_total
-        ZA = '000'
-        ZA(4-len(trim(adjustl(to_str(nuclides(i_nuc) % A)))):3)&
-             = trim(adjustl(to_str(nuclides(i_nuc) % A)))
-        ZA = trim(adjustl(to_str(nuclides(i_nuc) % Z))) // ZA
-        if (ZA == trim(adjustl(to_str(URR_isotopes(i) % ZAI)))) then
-          !TODO: handle metastable
-          nuclides(i_nuc) % i_isotope = i
-          URR_isotopes(i) % prob_bands   = .false.
-          URR_isotopes(i) % otf_urr_xs   = .false.
-          URR_isotopes(i) % point_urr_xs = .false.
-          select case (URR_xs_representation)
-          case (URR_PROB_BANDS)
-            URR_isotopes(i) % prob_bands = .true.
-          case (URR_ON_THE_FLY)
-            URR_isotopes(i) % otf_urr_xs = .true.
-          case (URR_POINTWISE)
-            URR_isotopes(i) % point_urr_xs = .true.
-          case default
-            call fatal_error('Not a recognized URR representation')
-          end select
-
-          ! read ENDF-6 file unless it's already been read for this isotope
-          if (.not. URR_isotopes(i) % been_read) then
-            call URR_read_endf6(URR_endf_filenames(i), i)
-            URR_isotopes(i) % been_read = .true.
+      if (run_mode /= MODE_PURXS) then
+        do i_nuc = 1, n_nuclides_total
+          ZA = '000'
+          ZA(4-len(trim(adjustl(to_str(nuclides(i_nuc) % A)))):3)&
+               = trim(adjustl(to_str(nuclides(i_nuc) % A)))
+          ZA = trim(adjustl(to_str(nuclides(i_nuc) % Z))) // ZA
+          if (ZA == trim(adjustl(to_str(URR_isotopes(i) % ZAI)))) then
+!TODO: handle metastable
+            nuclides(i_nuc) % i_isotope = i
           end if
-        end if
-      end do
-
+        end do
+      end if
       URR_isotopes(i) % prob_bands   = .false.
       URR_isotopes(i) % otf_urr_xs   = .false.
       URR_isotopes(i) % point_urr_xs = .false.
@@ -388,7 +365,6 @@ contains
         call URR_read_endf6(URR_endf_filenames(i), i)
         URR_isotopes(i) % been_read = .true.
       end if
-
     end do
 #endif
   end subroutine initialize_endf

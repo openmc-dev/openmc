@@ -32,6 +32,7 @@ module material_header
     character(len=104)   :: name = ""       ! User-defined name
     integer              :: n_nuclides = 0  ! number of nuclides
     integer, allocatable :: nuclide(:)      ! index in nuclides array
+    integer, allocatable :: mat_nuclide_list(:) 
     real(8)              :: density         ! total atom density in atom/b-cm
     real(8), allocatable :: atom_density(:) ! nuclide atom density in atom/b-cm
     real(8)              :: density_gpcc    ! total density in g/cm^3

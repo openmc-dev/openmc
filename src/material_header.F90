@@ -48,6 +48,10 @@ module material_header
 
 contains
 
+!===============================================================================
+! MATERIAL_SET_DENSITY sets the total density of a material in atom/b-cm.
+!===============================================================================
+
   function material_set_density(m, density, nuclides) result(err)
     class(Material), intent(inout) :: m
     real(8), intent(in) :: density

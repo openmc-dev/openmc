@@ -5031,26 +5031,6 @@ contains
         do i = 1, URR_num_isotopes
           isotope_node = isotope_node_list(i)
 
-          ! Check that a nuclide ZAID is given
-          if (check_for_node(isotope_node, 'zaid')) then
-            call get_node_value(isotope_node, 'zaid', temp_str)
-
-            ! handle metastable identifier, 'm', which trails ZA #
-            zaid_str = trim(adjustl(temp_str))
-            zaid_str_len = len(zaid_str)
-            if (zaid_str(zaid_str_len:zaid_str_len) == 'm') then
-              read(zaid_str(1:zaid_str_len-1), '(I6)') URR_isotopes(i) % ZAI
-            else
-              read(zaid_str, '(I6)') URR_isotopes(i) % ZAI
-            end if
-            deallocate(zaid_str)
-
-          else
-            call fatal_error('No ZAID specified for isotope ' &
-                 // trim(to_str(i)) // ' in urr.xml file')
-
-          end if
-
           ! Check that an ENDF data file is given
           if (check_for_node(isotope_node, 'endf_6_file')) then
             call get_node_value(isotope_node, 'endf_6_file', temp_str)

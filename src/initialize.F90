@@ -334,18 +334,6 @@ contains
     character(len=:), allocatable :: ZA
 
     do i = 1, URR_num_isotopes
-      if (run_mode /= MODE_PURXS) then
-        do i_nuc = 1, n_nuclides_total
-          ZA = '000'
-          ZA(4-len(trim(adjustl(to_str(nuclides(i_nuc) % A)))):3)&
-               = trim(adjustl(to_str(nuclides(i_nuc) % A)))
-          ZA = trim(adjustl(to_str(nuclides(i_nuc) % Z))) // ZA
-          if (ZA == trim(adjustl(to_str(URR_isotopes(i) % ZAI)))) then
-!TODO: handle metastable
-            nuclides(i_nuc) % i_isotope = i
-          end if
-        end do
-      end if
       URR_isotopes(i) % prob_bands   = .false.
       URR_isotopes(i) % otf_urr_xs   = .false.
       URR_isotopes(i) % point_urr_xs = .false.
@@ -364,6 +352,19 @@ contains
       if (.not. URR_isotopes(i) % been_read) then
         call URR_read_endf6(URR_endf_filenames(i), i)
         URR_isotopes(i) % been_read = .true.
+      end if
+
+      if (run_mode /= MODE_PURXS) then
+        do i_nuc = 1, n_nuclides_total
+          ZA = '000'
+          ZA(4-len(trim(adjustl(to_str(nuclides(i_nuc) % A)))):3)&
+               = trim(adjustl(to_str(nuclides(i_nuc) % A)))
+          ZA = trim(adjustl(to_str(nuclides(i_nuc) % Z))) // ZA
+          if (ZA == trim(adjustl(to_str(URR_isotopes(i) % ZAI)))) then
+!TODO: handle metastable
+            nuclides(i_nuc) % i_isotope = i
+          end if
+        end do
       end if
     end do
 #endif

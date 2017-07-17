@@ -1,3 +1,4 @@
+from contextlib import contextmanager
 from ctypes import CDLL, c_int, c_int32, c_double, c_char_p, POINTER
 import sys
 from warnings import warn
@@ -6,6 +7,8 @@ import numpy as np
 from numpy.ctypeslib import as_array
 
 import pkg_resources
+
+__all__ = ['OpenMCLibrary', 'lib', 'lib_context']
 
 _int3 = c_int*3
 _double3 = c_double*3
@@ -80,7 +83,6 @@ class OpenMCLibrary(object):
         else:
             return self._dll.openmc_cell_set_temperature(cell_id, T, None)
 
-
     def finalize(self):
         """Finalize simulation and free memory"""
         return self._dll.openmc_finalize()
@@ -124,7 +126,7 @@ class OpenMCLibrary(object):
 
         Parameters
         ----------
-        intracomm : int or None
+        intracomm : mpi4py.MPI.Intracomm or None
             MPI intracommunicator
 
         """
@@ -256,6 +258,32 @@ class OpenMCLibrary(object):
         except AttributeError:
             raise AttributeError("OpenMC library doesn't have a '{}' function"
                                  .format(key))
+
+
+@contextmanager
+def lib_context(intracomm=None):
+    """Provides context manager for calling OpenMC shared library functions.
+
+    This function is intended to be used in a 'with' statement and ensures that
+    OpenMC is properly initialized/finalized. At the completion of the 'with'
+    block, all memory that was allocated during the block is freed. For
+    example::
+
+        with openmc.lib_context() as lib:
+            for i in range(n_iters):
+                lib.reset()
+                do_stuff()
+                lib.run()
+
+    Parameters
+    ----------
+    intracomm : mpi4py.MPI.Intracomm or None
+        MPI intracommunicator
+
+    """
+    lib.init(comm)
+    yield lib
+    lib.finalize()
 
 
 # Determine shared-library suffix

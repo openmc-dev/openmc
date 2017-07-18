@@ -57,6 +57,7 @@ module initialize
        URR_realization_frequency,&
        URR_endf_filenames,&
        URR_xs_source_pointwise,&
+       URR_temperature_pointwise,&
        URR_RECONSTRUCTION,&
        URR_HDF5,&
        URR_Type_CrossSections
@@ -239,7 +240,11 @@ contains
                 call URR_isotopes(i) % resonance_ladder_realization()
                 call URR_write_MF2(i)
               end if
-              if (run_mode /= MODE_PURXS) then
+              if (run_mode == MODE_PURXS) then
+                call URR_isotopes(i) % generate_pointwise_xs(URR_temperature_pointwise)
+              else
+                call fatal_error('Attempting to generate pointwise data before a transport simulation.&
+                     & Pointwise data should only be generated in purxs-only mode ([-- purxs] option).')
                 do i_nuc = 1, n_nuclides_total
                   ZA = '000'
                   ZA(4-len(trim(adjustl(to_str(nuclides(i_nuc) % A)))):3)&
@@ -261,7 +266,7 @@ contains
 
           case(URR_HDF5)
             if (run_mode == MODE_PURXS) call fatal_error('Trying to use HDF5&
-                 & nuclear data in PURXS-only mode.  HDF5 data should only be&
+                 & nuclear data in purxs-only mode.  HDF5 data should only be&
                  & used in an OpenMC transport simulation.')
             do i = 1, URR_num_isotopes
               do i_nuc = 1, n_nuclides_total

@@ -440,7 +440,7 @@ module constants
        MODE_EIGENVALUE  = 2, & ! K eigenvalue mode
        MODE_PLOTTING    = 3, & ! Plotting mode
        MODE_PARTICLE    = 4, & ! Particle restart mode
-       MODE_PURXS       = 5, & ! PURXS-only mode
+       MODE_PURXS       = 5, & ! purxs-only mode
        MODE_VOLUME      = 6    ! Volume calculation mode
 
   !=============================================================================

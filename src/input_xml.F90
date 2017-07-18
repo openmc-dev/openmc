@@ -100,6 +100,7 @@ module input_xml
        URR_path_endf_files,&
        URR_parameter_energy_dependence,&
        URR_xs_source_pointwise,&
+       URR_temperature_pointwise,&
        URR_RECONSTRUCTION,&
        URR_HDF5
 #endif
@@ -5101,6 +5102,13 @@ contains
         else
           call fatal_error('No max fractional error tolerance for cross section&
                & reconstruction is given in urr.xml')
+        end if
+        if (check_for_node(point_xs_node, 'temperature')) then
+          call get_node_value(&
+               point_xs_node, 'temperature', URR_temperature_pointwise)
+        else
+          call fatal_error('No temperature [K] for cross section &
+               &reconstruction is given in urr.xml')
         end if
       end if
     end if

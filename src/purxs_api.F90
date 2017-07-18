@@ -84,7 +84,8 @@ module purxs_api
        URR_path_prob_tables => path_prob_tables,&
        URR_path_endf_files => path_endf_files,&
        URR_parameter_energy_dependence => parameter_energy_dependence,&
-       URR_xs_source_pointwise => xs_source_pointwise
+       URR_xs_source_pointwise => xs_source_pointwise,&
+       URR_temperature_pointwise => temperature_pointwise
   use URR_cross_Sections, only:&
        URR_Type_CrossSections => CrossSections
 #endif

@@ -33,6 +33,8 @@ parser = argparse.ArgumentParser(
 )
 parser.add_argument('-b', '--batch', action='store_true',
                     help='supresses standard in')
+parser.add_argument('-p', '--photo', default='generate_true',
+                    help='Whether to include photo-atomic interaction data')
 args = parser.parse_args()
 
 
@@ -111,7 +113,7 @@ for f in files:
 
 # Move ACE files down one level
 for filename in glob.glob('nndc/293.6K/ENDF-B-VII.1-neutron-293.6K/*'):
-    shutil.move(filename, 'nndc/293.6K/')
+    shutil.move(filename, 'nndc/293.6K/' + os.path.basename(filename))
 
 # ==============================================================================
 # FIX ZAID ASSIGNMENTS FOR VARIOUS S(A,B) TABLES
@@ -158,3 +160,10 @@ pwd = os.path.dirname(os.path.realpath(__file__))
 ace2hdf5 = os.path.join(pwd, 'openmc-ace-to-hdf5')
 subprocess.call([ace2hdf5, '-d', 'nndc_hdf5', '--fission_energy_release',
                  fer_file] + ace_files)
+
+# Generate photo interaction library files
+if args.photo == 'generate_true':
+    pwd = os.path.dirname(os.path.realpath(__file__))
+    photo_endf = os.path.join(pwd, 'openmc-get-photo-endf71')
+    subprocess.call([photo_endf, '-c', 'nndc_hdf5/cross_sections.xml'])
+

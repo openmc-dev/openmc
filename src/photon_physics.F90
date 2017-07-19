@@ -310,8 +310,17 @@ contains
     real(8) :: phi
     real(8) :: uvw(3)
 
-    ! Check for no transitions
-    if (elm % shells(i_shell) % n_transitions == 0) return
+    ! If no transitions, assume fluorescent photon from captured free electron
+    if (elm % shells(i_shell) % n_transitions == 0) then
+      mu = TWO*prn() - ONE
+      phi = TWO*PI*prn()
+      uvw(1) = mu
+      uvw(2) = sqrt(ONE - mu*mu)*cos(phi)
+      uvw(3) = sqrt(ONE - mu*mu)*sin(phi)
+      E = elm % shells(i_shell) % binding_energy
+      call p % create_secondary(uvw, E, PHOTON, run_ce=.true.)
+      return
+    end if
 
     ! Sample transition
     rn = prn()
@@ -326,39 +335,36 @@ contains
     primary = elm % shells(i_shell) % transition_subshells(1, i_transition)
     secondary = elm % shells(i_shell) % transition_subshells(2, i_transition)
 
-    if (secondary == 0) then
-      ! Non-radiative trnasition -- Auger/Coster-Kronig effect
+    ! Sample angle isotropically
+    mu = TWO*prn() - ONE
+    phi = TWO*PI*prn()
+    uvw(1) = mu
+    uvw(2) = sqrt(ONE - mu*mu)*cos(phi)
+    uvw(3) = sqrt(ONE - mu*mu)*sin(phi)
 
-      ! TODO: Create electron
-      ! E_electron = transition_energy(i_transition)
+    ! Get the transition energy
+    E = elm % shells(i_shell) % transition_energy(i_transition)
 
-      ! Fill secondary (higher) hole first
-      if (elm % shell_dict % has_key(secondary)) then
-        i_hole = elm % shell_dict % get_key(secondary)
-        call atomic_relaxation(p, elm, i_hole)
-      end if
+    if (secondary /= 0) then
+      ! Non-radiative transition -- Auger/Coster-Kronig effect
+
+      ! Create auger electron
+      call p % create_secondary(uvw, E, ELECTRON, run_ce=.true.)
+
+      ! Fill hole left by emitted auger electron
+      i_hole = elm % shell_dict % get_key(secondary)
+      call atomic_relaxation(p, elm, i_hole)
     else
       ! Radiative transition -- get X-ray energy
-      E = elm % shells(i_shell) % transition_energy(i_transition)
 
-      if (E > ZERO) then
-        ! Sample angle isotropically for X-ray
-        mu = TWO*prn() - ONE
-        phi = TWO*PI*prn()
-        uvw(1) = mu
-        uvw(2) = sqrt(ONE - mu*mu)*cos(phi)
-        uvw(3) = sqrt(ONE - mu*mu)*sin(phi)
+      ! Create fluorescent photon
+      call p % create_secondary(uvw, E, PHOTON, run_ce=.true.)
 
-        ! Create X-ray
-        call p % create_secondary(uvw, E, PHOTON, run_ce=.true.)
-      end if
     end if
 
-    ! Fill primary hole
-    if (elm % shell_dict % has_key(primary)) then
-      i_hole = elm % shell_dict % get_key(primary)
-      call atomic_relaxation(p, elm, i_hole)
-    end if
+    ! Fill hole created by electron transitioning to the photoelectron hole
+    i_hole = elm % shell_dict % get_key(primary)
+    call atomic_relaxation(p, elm, i_hole)
 
   end subroutine atomic_relaxation
 

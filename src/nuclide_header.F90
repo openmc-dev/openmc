@@ -37,12 +37,13 @@ module nuclide_header
   end type EnergyGrid
 
   type SumXS
-    real(8), allocatable :: total(:)      ! total cross section
-    real(8), allocatable :: elastic(:)    ! elastic scattering
-    real(8), allocatable :: fission(:)    ! fission
-    real(8), allocatable :: nu_fission(:) ! neutron production
-    real(8), allocatable :: absorption(:) ! absorption (MT > 100)
-    real(8), allocatable :: heating(:)    ! heating
+    real(8), allocatable :: total(:)           ! total cross section
+    real(8), allocatable :: elastic(:)         ! elastic scattering
+    real(8), allocatable :: fission(:)         ! fission
+    real(8), allocatable :: nu_fission(:)      ! neutron production
+    real(8), allocatable :: absorption(:)      ! absorption (MT > 100)
+    real(8), allocatable :: heating(:)         ! heating
+    real(8), allocatable :: photon_prod(:)     ! photon production
   end type SumXS
 
   type :: Nuclide
@@ -91,8 +92,8 @@ module nuclide_header
                                        ! array; used at tally-time
 
     ! Fission energy release
-    class(Function1D), allocatable :: fission_q_prompt ! prompt neutrons, gammas
-    class(Function1D), allocatable :: fission_q_recov  ! neutrons, gammas, betas
+    class(Function1D), allocatable :: fission_q_prompt ! fragments and prompt neutrons, gammas
+    class(Function1D), allocatable :: fission_q_recov  ! fragments, neutrons, gammas, betas
 
   contains
     procedure :: clear => nuclide_clear
@@ -117,6 +118,7 @@ module nuclide_header
     real(8) :: absorption      ! microscopic absorption xs
     real(8) :: fission         ! microscopic fission xs
     real(8) :: nu_fission      ! microscopic production xs
+    real(8) :: photon_prod     ! microscopic photon production xs
 
     ! Information for S(a,b) use
     integer :: index_sab          ! index in sab_tables (zero means no table)
@@ -143,6 +145,7 @@ module nuclide_header
     real(8) :: absorption    ! macroscopic absorption xs
     real(8) :: fission       ! macroscopic fission xs
     real(8) :: nu_fission    ! macroscopic production xs
+    real(8) :: photon_prod   ! macroscopic photon production xs
 
     ! Photon cross sections
     real(8) :: coherent        ! macroscopic coherent xs
@@ -442,34 +445,36 @@ contains
     if (object_exists(group_id, 'fission_energy_release')) then
       fer_group = open_group(group_id, 'fission_energy_release')
 
-      ! Check to see if this is polynomial or tabulated data
+      ! Q-PROMPT
       fer_dset = open_dataset(fer_group, 'q_prompt')
       call read_attribute(temp_str, fer_dset, 'type')
       if (temp_str == 'Polynomial') then
-        ! Read the prompt Q-value
         allocate(Polynomial :: this % fission_q_prompt)
         call this % fission_q_prompt % from_hdf5(fer_dset)
         call close_dataset(fer_dset)
-
-        ! Read the recoverable energy Q-value
-        allocate(Polynomial :: this % fission_q_recov)
-        fer_dset = open_dataset(fer_group, 'q_recoverable')
-        call this % fission_q_recov % from_hdf5(fer_dset)
-        call close_dataset(fer_dset)
       else if (temp_str == 'Tabulated1D') then
-        ! Read the prompt Q-value
         allocate(Tabulated1D :: this % fission_q_prompt)
         call this % fission_q_prompt % from_hdf5(fer_dset)
         call close_dataset(fer_dset)
+      else
+        call fatal_error('Unrecognized fission prompt energy release format.')
+      end if
 
-        ! Read the recoverable energy Q-value
+      ! Q-RECOV
+      fer_dset = open_dataset(fer_group, 'q_recoverable')
+      call read_attribute(temp_str, fer_dset, 'type')
+      if (temp_str == 'Polynomial') then
+        allocate(Polynomial :: this % fission_q_recov)
+        call this % fission_q_recov % from_hdf5(fer_dset)
+        call close_dataset(fer_dset)
+      else if (temp_str == 'Tabulated1D') then
         allocate(Tabulated1D :: this % fission_q_recov)
-        fer_dset = open_dataset(fer_group, 'q_recoverable')
         call this % fission_q_recov % from_hdf5(fer_dset)
         call close_dataset(fer_dset)
       else
-        call fatal_error('Unrecognized fission energy release format.')
+        call fatal_error('Unrecognized fission recoverable energy release format.')
       end if
+
       call close_group(fer_group)
     end if
 
@@ -481,7 +486,7 @@ contains
   subroutine nuclide_create_derived(this)
     class(Nuclide), intent(inout) :: this
 
-    integer :: i, j, k
+    integer :: i, j, k, l
     integer :: t
     integer :: m
     integer :: n
@@ -501,11 +506,13 @@ contains
       allocate(this % sum_xs(i) % fission(n_grid))
       allocate(this % sum_xs(i) % nu_fission(n_grid))
       allocate(this % sum_xs(i) % absorption(n_grid))
+      allocate(this % sum_xs(i) % photon_prod(n_grid))
       this % sum_xs(i) % total(:) = ZERO
       this % sum_xs(i) % elastic(:) = ZERO
       this % sum_xs(i) % fission(:) = ZERO
       this % sum_xs(i) % nu_fission(:) = ZERO
       this % sum_xs(i) % absorption(:) = ZERO
+      this % sum_xs(i) % photon_prod(:) = ZERO
     end do
 
     i_fission = 0
@@ -539,6 +546,18 @@ contains
           this % sum_xs(t) % total(j:j+n-1) = this % sum_xs(t) % total(j:j+n-1) + &
                rx % xs(t) % value
 
+          ! Calculate nu-photon total cross section
+          do k = 1, size(rx % products)
+            if (rx % products(k) % particle == PHOTON) then
+              do l = 1, n
+                this % sum_xs(t) % photon_prod(l+j-1) = &
+                     this % sum_xs(t) % photon_prod(l+j-1) + &
+                     rx % xs(t) % value(l) * rx % products(k) % &
+                     yield % evaluate(this % grid(t) % energy(l+j-1))
+              end do
+            end if
+          end do
+
           ! Add contribution to absorption cross section
           if (is_disappearance(rx % MT)) then
             this % sum_xs(t) % absorption(j:j+n-1) = this % sum_xs(t) % &
@@ -564,10 +583,6 @@ contains
             ! Also need to add fission cross sections to absorption
             this % sum_xs(t) % absorption(j:j+n-1) = this % sum_xs(t) % &
                  absorption(j:j+n-1) + rx % xs(t) % value
-
-            ! If total fission reaction is present, there's no need to store the
-            ! reaction cross-section since it was copied to this % fission
-            if (rx % MT == N_FISSION) deallocate(rx % xs(t) % value)
 
             ! Keep track of this reaction for easy searching later
             if (t == 1) then

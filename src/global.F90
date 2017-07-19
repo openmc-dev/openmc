@@ -121,6 +121,7 @@ module global
   real(8) :: log_spacing ! spacing on logarithmic grid
 
   logical :: photon_transport = .false.
+  integer :: electron_treatment = ELECTRON_LED
 
   ! ============================================================================
   ! MULTI-GROUP CROSS SECTION RELATED VARIABLES
@@ -313,7 +314,7 @@ module global
 
   logical :: survival_biasing = .false.
   real(8) :: weight_cutoff = 0.25_8
-  real(8) :: energy_cutoff(3) = [ZERO, 1000.0_8, ZERO]
+  real(8) :: energy_cutoff(4) = [ZERO, 1000.0_8, ZERO, ZERO]
   real(8) :: weight_survive = ONE
 
   ! ============================================================================

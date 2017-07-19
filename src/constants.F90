@@ -179,7 +179,8 @@ module constants
   integer, parameter :: &
        NEUTRON  = 1, &
        PHOTON   = 2, &
-       ELECTRON = 3
+       ELECTRON = 3, &
+       POSITRON = 4
 
   ! Angular distribution type
   integer, parameter :: &
@@ -340,8 +341,8 @@ module constants
        SCORE_DELAYED_NU_FISSION = -19, & ! delayed neutron production rate
        SCORE_PROMPT_NU_FISSION  = -20, & ! prompt neutron production rate
        SCORE_INVERSE_VELOCITY   = -21, & ! flux-weighted inverse velocity
-       SCORE_FISS_Q_PROMPT      = -22, & ! prompt fission Q-value
-       SCORE_FISS_Q_RECOV       = -23, & ! recoverable fission Q-value
+       SCORE_FISS_Q_RECOV       = -22, & ! recoverable fission Q-value
+       SCORE_FISS_Q_PROMPT      = -23, & ! prompt fission Q-value
        SCORE_DECAY_RATE         = -24    ! delayed neutron precursor decay rate
 
   ! Maximum scattering order supported
@@ -365,7 +366,7 @@ module constants
   integer, parameter :: NO_BIN_FOUND = -1
 
   ! Tally filter and map types
-  integer, parameter :: N_FILTER_TYPES = 14
+  integer, parameter :: N_FILTER_TYPES = 15
   integer, parameter :: &
        FILTER_UNIVERSE       = 1,  &
        FILTER_MATERIAL       = 2,  &
@@ -380,7 +381,8 @@ module constants
        FILTER_POLAR          = 11, &
        FILTER_AZIMUTHAL      = 12, &
        FILTER_DELAYEDGROUP   = 13, &
-       FILTER_ENERGYFUNCTION = 14
+       FILTER_ENERGYFUNCTION = 14, &
+       FILTER_PARTICLE       = 15
 
   ! Mesh types
   integer, parameter :: &
@@ -424,12 +426,13 @@ module constants
   ! ============================================================================
   ! RANDOM NUMBER STREAM CONSTANTS
 
-  integer, parameter :: N_STREAMS = 5
+  integer, parameter :: N_STREAMS = 6
   integer, parameter :: STREAM_TRACKING   = 1
   integer, parameter :: STREAM_TALLIES    = 2
   integer, parameter :: STREAM_SOURCE     = 3
   integer, parameter :: STREAM_URR_PTABLE = 4
   integer, parameter :: STREAM_VOLUME     = 5
+  integer, parameter :: STREAM_PHOTON     = 6
 
   ! ============================================================================
   ! MISCELLANEOUS CONSTANTS
@@ -449,6 +452,11 @@ module constants
        MODE_PLOTTING    = 3, & ! Plotting mode
        MODE_PARTICLE    = 4, & ! Particle restart mode
        MODE_VOLUME      = 5    ! Volume calculation mode
+
+   ! Electron treatments
+   integer, parameter :: &
+       ELECTRON_LED     = 1, & ! Local Energy Deposition
+       ELECTRON_TTB     = 2    ! Thick Target Bremsstrahlung
 
   !=============================================================================
   ! CMFD CONSTANTS

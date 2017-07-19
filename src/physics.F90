@@ -46,15 +46,12 @@ contains
     ! Sample reaction for the material the particle is in
     if (p % type == NEUTRON) then
       call sample_neutron_reaction(p)
-    else
+    else if (p % type == PHOTON) then
       call sample_photon_reaction(p)
-    end if
-
-    ! Kill particle if energy falls below cutoff
-    if (p % E < energy_cutoff(p % type)) then
-      p % alive = .false.
-      p % wgt = ZERO
-      p % last_wgt = ZERO
+    else if (p % type == ELECTRON) then
+      call sample_electron_reaction(p)
+    else if (p % type == POSITRON) then
+      call sample_positron_reaction(p)
     end if
 
     ! Display information about collision
@@ -113,6 +110,13 @@ contains
       end if
     end if
 
+    ! Create secondary photons
+    if (photon_transport) then
+      call prn_set_stream(STREAM_PHOTON)
+      call sample_secondary_photons(p, i_nuclide)
+      call prn_set_stream(STREAM_TRACKING)
+    end if
+
     ! If survival biasing is being used, the following subroutine adjusts the
     ! weight of the particle. Otherwise, it checks to see if absorption occurs
 
@@ -159,11 +163,22 @@ contains
     real(8) :: cutoff       ! sampled total cross section
     real(8) :: f            ! interpolation factor
     real(8) :: xs           ! photoionization cross section
+    real(8) :: r            ! random number
     real(8) :: prob_after
     real(8) :: alpha        ! photon energy divided by electron rest mass
     real(8) :: alpha_out    ! outgoing photon energy over electron rest mass
     real(8) :: mu           ! scattering cosine
     real(8) :: phi          ! azimuthal angle
+    real(8) :: E_electron   ! electron energy
+    real(8) :: uvw(3)       ! new direction
+    real(8) :: rel_vel      ! relative velocity of electron
+
+    ! Kill photon if below energy cutoff
+    if (p % E < energy_cutoff(PHOTON)) then
+      p % E = ZERO
+      p % alive = .false.
+      return
+    end if
 
     ! Sample element within material
     i_element = sample_element(p)
@@ -216,12 +231,37 @@ contains
 
           prob = prob + xs
           if (prob > cutoff) then
-            ! TODO: Create electron
-            ! E_electron = p % E - elm % shells(i_shell) % binding_energy
+            E_electron = p % E - elm % shells(i_shell) % binding_energy
 
+            ! Sample mu using non-relativistic Sauter distribution.
+            ! See Eqns 3.19 and 3.20 in "Implementing a photon physics
+            ! model in Serpent 2" by Toni Kaltiaisenaho
+            SAMPLE_MU: do
+              r = prn()
+              if (FOUR * (ONE - r) * r >= prn()) then
+                rel_vel = sqrt(E_electron * (E_electron + TWO * MASS_ELECTRON))&
+                     / (E_electron + MASS_ELECTRON)
+                mu = (TWO * r + rel_vel - ONE) / &
+                     (TWO * rel_vel * r - rel_vel + ONE)
+                exit SAMPLE_MU
+              end if
+            end do SAMPLE_MU
+
+            phi = TWO*PI*prn()
+            uvw(1) = mu
+            uvw(2) = sqrt(ONE - mu*mu)*cos(phi)
+            uvw(3) = sqrt(ONE - mu*mu)*sin(phi)
+
+            ! Create secondary electron
+            call p % create_secondary(uvw, E_electron, ELECTRON, run_CE=.true.)
+
+            ! Allow electrons to fill orbital and produce auger electrons
+            ! and fluorescent photons
             call atomic_relaxation(p, elm, i_shell)
             p % event_MT = 533 + elm % shells(i_shell) % index_subshell
             p % alive = .false.
+            p % E = ZERO
+
             return
           end if
         end do
@@ -235,20 +275,84 @@ contains
       ! Sample angle isotropically
       mu = TWO*prn() - ONE
       phi = TWO*PI*prn()
-      p % coord(1) % uvw(1) = mu
-      p % coord(1) % uvw(2) = sqrt(ONE - mu*mu)*cos(phi)
-      p % coord(1) % uvw(3) = sqrt(ONE - mu*mu)*sin(phi)
+      uvw(1) = mu
+      uvw(2) = sqrt(ONE - mu*mu)*cos(phi)
+      uvw(3) = sqrt(ONE - mu*mu)*sin(phi)
 
-      ! Set energy
-      p % E = MASS_ELECTRON
+      ! Compute the kinetic energy of each particle
+      E_electron = HALF * (p % E - 2 * MASS_ELECTRON)
+
+      ! Create electron-positron pair traveling in opposite directions
+      call p % create_secondary( uvw, E_electron, ELECTRON, .true.)
+      call p % create_secondary(-uvw, E_electron, POSITRON, .true.)
       p % event_MT = PAIR_PROD
-
-      ! Create photon in opposite direction
-      call p % create_secondary(-p % coord(1) % uvw, MASS_ELECTRON, &
-           PHOTON, .true.)
+      p % alive = .false.
+      p % E = ZERO
     end if
 
   end subroutine sample_photon_reaction
+
+!===============================================================================
+! SAMPLE_ELECTRON_REACTION terminates the particle and either deposits all
+! energy locally (electron_treatment = ELECTRON_LED) or creates secondary
+! bremsstrahlung photons from electron deflections with charged particles
+! (electron_treatment = ELECTRON_TTB).
+!===============================================================================
+
+  subroutine sample_electron_reaction(p)
+    type(Particle), intent(inout) :: p
+
+    ! TODO: create reaction types
+
+    if (electron_treatment == ELECTRON_TTB) then
+      ! TODO: implement thick-target bremsstrahlung model
+      call fatal_error("Thick-target bremsstrahlung treatment of electrons &
+           &is not yet implemented.")
+    end if
+
+    p % E = ZERO
+    p % alive = .false.
+
+  end subroutine sample_electron_reaction
+
+!===============================================================================
+! SAMPLE_POSITRON_REACTION terminates the particle and either deposits all
+! energy locally (electron_treatment = ELECTRON_LED) or creates secondary
+! bremsstrahlung photons from electron deflections with charged particles
+! (electron_treatment = ELECTRON_TTB). Two annihilation photons of energy
+! MASS_ELECTRON (0.511 MeV) are created and travel in opposite directions.
+!===============================================================================
+
+  subroutine sample_positron_reaction(p)
+    type(Particle), intent(inout) :: p
+
+    real(8) :: mu           ! scattering cosine
+    real(8) :: phi          ! azimuthal angle
+    real(8) :: uvw(3)       ! new direction
+
+    ! TODO: create reaction types
+
+    if (electron_treatment == ELECTRON_TTB) then
+      ! TODO: implement thick-target bremsstrahlung model
+      call fatal_error("Thick-target bremsstrahlung treatment of electrons &
+           &is not yet implemented.")
+    end if
+
+    ! Sample angle isotropically
+    mu = TWO*prn() - ONE
+    phi = TWO*PI*prn()
+    uvw(1) = mu
+    uvw(2) = sqrt(ONE - mu*mu)*cos(phi)
+    uvw(3) = sqrt(ONE - mu*mu)*sin(phi)
+
+    ! Create annihilation photon pair traveling in opposite directions
+    call p % create_secondary( uvw, MASS_ELECTRON, PHOTON, .true.)
+    call p % create_secondary(-uvw, MASS_ELECTRON, PHOTON, .true.)
+
+    p % E = ZERO
+    p % alive = .false.
+
+  end subroutine sample_positron_reaction
 
 !===============================================================================
 ! SAMPLE_NUCLIDE
@@ -420,6 +524,66 @@ contains
     end do FISSION_REACTION_LOOP
 
   end subroutine sample_fission
+
+!===============================================================================
+! SAMPLE_PHOTON_PRODUCT
+!===============================================================================
+
+  subroutine sample_photon_product(i_nuclide, E, i_reaction, i_product)
+    integer, intent(in)  :: i_nuclide  ! index in nuclides array
+    real(8), intent(in)  :: E          ! energy of neutron
+    integer, intent(out) :: i_reaction ! index in nuc % reactions array
+    integer, intent(out) :: i_product  ! index in nuc % reactions array
+
+    integer :: i_grid
+    integer :: i_temp
+    integer :: threshold
+    integer :: last_valid_reaction
+    integer :: last_valid_product
+    real(8) :: f
+    real(8) :: prob
+    real(8) :: cutoff
+    real(8) :: yield
+
+    ! Get pointer to nuclide
+    associate (nuc => nuclides(i_nuclide))
+
+      ! Get grid index and interpolation factor and sample proton production cdf
+      i_temp = micro_xs(i_nuclide) % index_temp
+      i_grid = micro_xs(i_nuclide) % index_grid
+      f      = micro_xs(i_nuclide) % interp_factor
+      cutoff = prn() * micro_xs(i_nuclide) % photon_prod
+      prob   = ZERO
+
+      ! Loop through each reaction type
+      REACTION_LOOP: do i_reaction = 1, size(nuc % reactions)
+        associate (rx => nuc % reactions(i_reaction))
+          do i_product = 1, size(rx % products)
+            if (rx % products(i_product) % particle == PHOTON) then
+
+              threshold = rx % xs(i_temp) % threshold
+
+              ! if energy is below threshold for this reaction, skip it
+              if (i_grid < threshold) cycle
+
+              ! add to cumulative probability
+              yield = rx % products(i_product) % yield % evaluate(E)
+              prob = prob + ((ONE - f) * rx % xs(i_temp) % value(i_grid - threshold + 1) &
+                   + f*(rx % xs(i_temp) % value(i_grid - threshold + 2))) * yield
+
+              if (prob > cutoff) return
+              last_valid_reaction = i_reaction
+              last_valid_product = i_product
+            end if
+          end do
+        end associate
+      end do REACTION_LOOP
+    end associate
+
+    i_reaction = last_valid_reaction
+    i_product = last_valid_product
+
+  end subroutine sample_photon_product
 
 !===============================================================================
 ! ABSORPTION
@@ -1497,5 +1661,50 @@ contains
     end if
 
   end subroutine inelastic_scatter
+
+!===============================================================================
+! SAMPLE_SECONDARY_PHOTONS
+!===============================================================================
+
+  subroutine sample_secondary_photons(p, i_nuclide)
+    type(Particle), intent(inout) :: p
+    integer, intent(in)           :: i_nuclide
+
+    integer :: i_reaction   ! index in nuc % reactions array
+    integer :: i_product    ! index in nuc % reactions % products array
+
+    real(8) :: nu_t
+    real(8) :: mu
+    real(8) :: E
+    real(8) :: uvw(3)
+    integer :: nu
+    integer :: i
+
+    ! Sample the number of photons produced
+    nu_t = micro_xs(i_nuclide) % photon_prod / micro_xs(i_nuclide) % total
+    if (prn() > nu_t - int(nu_t)) then
+      nu = int(nu_t)
+    else
+      nu = int(nu_t) + 1
+    end if
+
+    ! Sample each secondary photon
+    do i = 1, nu
+
+      ! Sample the reaction and product
+      call sample_photon_product(i_nuclide, p % E, i_reaction, i_product)
+
+      ! Sample the outgoing energy and angle
+      call nuclides(i_nuclide) % reactions(i_reaction) % products(i_product) &
+           % sample(p % E, E, mu)
+
+      ! Sample the new direction
+      uvw = rotate_angle(p % coord(1) % uvw, mu)
+
+      ! Create the secondary photon
+      call p % create_secondary(uvw, E, PHOTON, run_CE=.true.)
+    end do
+
+  end subroutine sample_secondary_photons
 
 end module physics

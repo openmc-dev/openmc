@@ -1,0 +1,85 @@
+#!/usr/bin/env python
+
+from __future__ import print_function
+import os
+import sys
+import shutil
+import zipfile
+import requests
+import argparse
+
+from io import BytesIO
+
+import openmc.data
+from openmc.data import ATOMIC_SYMBOL
+
+description = """
+Download ENDF/B-VII.1 ENDF data from NNDC for photo-atomic and atomic
+relaxation data and convert it to an HDF5 library for use with OpenMC.
+This data is used for photon transport in OpenMC.
+
+"""
+
+class CustomFormatter(argparse.ArgumentDefaultsHelpFormatter,
+                      argparse.RawDescriptionHelpFormatter):
+    pass
+
+parser = argparse.ArgumentParser(
+    description=description,
+    formatter_class=CustomFormatter
+)
+parser.add_argument('-c', '--cross-sections-file',
+                    help='cross_sections.xml file to append libraries to')
+args = parser.parse_args()
+
+base_url = 'http://www.nndc.bnl.gov/endf/b7.1/zips/'
+files = ['ENDF-B-VII.1-photoat.zip', 'ENDF-B-VII.1-atomic_relax.zip']
+
+# ==============================================================================
+# DOWNLOAD FILES FROM NNDC SITE
+
+if not os.path.exists('photo_hdf5'):
+    os.mkdir('photo_hdf5')
+
+library = openmc.data.DataLibrary()
+
+filesComplete = []
+for f in files:
+
+    # Establish connection to URL
+    print('Downloading {}...'.format(f))
+    url = base_url + f
+    r = requests.get(url, stream=True)
+    zipfile.ZipFile(BytesIO(r.content)).extractall()
+
+# ==============================================================================
+# GENERATE HDF5 LIBRARY
+
+for z in range(1, 101):
+
+    element = ATOMIC_SYMBOL[z]
+    print('Extracting {} interaction data...'.format(element))
+
+    # Load files
+    filename = 'photoat/photoat-{:03}_{}_000.endf'.format(z, element)
+    photo_file = 'photoat/' + element + '.endf'
+    shutil.move(filename, photo_file)
+
+    filename = 'atomic_relax/atom-{:03}_{}_000.endf'.format(z, element)
+    atom_file = 'atomic_relax/' + element + '.endf'
+    shutil.move(filename, atom_file)
+
+    hdf5_file = 'photo_hdf5/' + element + '.h5'
+    if os.path.isfile(hdf5_file):
+        os.remove(hdf5_file)
+
+    f = openmc.data.IncidentPhoton.from_endf(photo_file, atom_file)
+    f.export_to_hdf5(hdf5_file)
+    library.register_file(hdf5_file)
+
+if args.cross_sections_file is not None:
+    path = args.cross_sections_file
+    library.export_to_xml(path, True)
+else:
+    path = 'photo_hdf5/cross_sections.xml'
+    library.export_to_xml(path)

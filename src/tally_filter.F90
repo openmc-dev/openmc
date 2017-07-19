@@ -63,7 +63,6 @@ module tally_filter
 !===============================================================================
   type, extends(TallyFilter) :: ParticleFilter
     integer, allocatable :: particles(:)
-    type(DictIntInt)     :: map
   contains
     procedure :: get_next_bin => get_next_bin_particle
     procedure :: to_statepoint => to_statepoint_particle

@@ -40,7 +40,6 @@ files = ['ENDF-B-VII.1-photoat.zip', 'ENDF-B-VII.1-atomic_relax.zip']
 if not os.path.exists('photon_hdf5'):
     os.mkdir('photon_hdf5')
 
-library = openmc.data.DataLibrary()
 
 for f in files:
     # Establish connection to URL
@@ -50,7 +49,15 @@ for f in files:
     zipfile.ZipFile(BytesIO(r.content)).extractall()
 
 # ==============================================================================
-# GENERATE HDF5 LIBRARY
+# GENERATE HDF5 DATA LIBRARY
+
+# If previous cross_sections.xml was specified, load it in
+if args.cross_sections is not None:
+    lib_path = args.cross_sections
+    library = openmc.data.DataLibrary.from_xml(lib_path)
+else:
+    lib_path = os.path.join('photon_hdf5', 'cross_sections.xml')
+    library = openmc.data.DataLibrary()
 
 for z in range(1, 101):
     element = openmc.data.ATOMIC_SYMBOL[z]
@@ -66,9 +73,4 @@ for z in range(1, 101):
     f.export_to_hdf5(hdf5_file, 'w')
     library.register_file(hdf5_file)
 
-if args.cross_sections_file is not None:
-    path = args.cross_sections_file
-    library.export_to_xml(path, True)
-else:
-    path = os.path.join('photon_hdf5', 'cross_sections.xml')
-    library.export_to_xml(path)
+library.export_to_xml(lib_path)

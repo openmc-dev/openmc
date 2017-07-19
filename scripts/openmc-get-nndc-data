@@ -32,10 +32,9 @@ parser = argparse.ArgumentParser(
 )
 parser.add_argument('-b', '--batch', action='store_true',
                     help='supresses standard in')
-parser.add_argument('-n', '--neutron-only', action='store_false',
+parser.add_argument('-n', '--neutron-only', action='store_true',
                     help='Whether to exclude photon interaction/atomic data')
 args = parser.parse_args()
-
 
 base_url = 'http://www.nndc.bnl.gov/endf/b7.1/aceFiles/'
 files = ['ENDF-B-VII.1-neutron-293.6K.tar.gz',
@@ -163,5 +162,6 @@ subprocess.call([ace2hdf5, '-d', 'nndc_hdf5', '--fission_energy_release',
 # Generate photo interaction library files
 if not args.neutron_only:
     pwd = os.path.dirname(os.path.realpath(__file__))
-    photo_endf = os.path.join(pwd, 'openmc-get-photo-endf71')
-    subprocess.call([photo_endf, '-c', 'nndc_hdf5/cross_sections.xml'])
+    photo_endf = os.path.join(pwd, 'openmc-get-photon-data')
+    subprocess.call([photo_endf, '-c', 'cross_sections.xml'],
+                    cwd='nndc_hdf5')

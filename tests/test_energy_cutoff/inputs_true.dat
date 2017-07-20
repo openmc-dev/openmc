@@ -27,7 +27,7 @@
     <energy parameters="988000.0 2.249e-06" type="watt" />
   </source>
   <cutoff>
-    <energy>4.0</energy>
+    <energy_neutron>4.0</energy_neutron>
   </cutoff>
 </settings>
 <?xml version='1.0' encoding='utf-8'?>

@@ -49,14 +49,23 @@ contains
     integer, intent(in), optional :: intracomm  ! MPI intracommunicator
 
     ! Copy the communicator to a new variable. This is done to avoid changing
-    ! the signature of this subroutine.
+    ! the signature of this subroutine. If MPI is being used but no communicator
+    ! was passed, assume MPI_COMM_WORLD.
 #ifdef MPI
 #ifdef MPIF08
     type(MPI_Comm), intent(in) :: comm     ! MPI intracommunicator
-    comm % MPI_VAL = intracomm
+    if (present(intracomm)) then
+      comm % MPI_VAL = intracomm
+    else
+      comm = MPI_COMM_WORLD
+    end if
 #else
     integer :: comm
-    comm = intracomm
+    if (present(intracomm)) then
+      comm = intracomm
+    else
+      comm = MPI_COMM_WORLD
+    end if
 #endif
 #endif
 

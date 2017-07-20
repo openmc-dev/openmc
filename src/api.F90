@@ -24,15 +24,13 @@ module openmc_api
   public :: openmc_finalize
   public :: openmc_find
   public :: openmc_init
+  public :: openmc_load_nuclide
   public :: openmc_material_add_nuclide
   public :: openmc_material_get_densities
   public :: openmc_material_set_density
-  public :: openmc_load_nuclide
   public :: openmc_plot_geometry
   public :: openmc_reset
   public :: openmc_run
-  public :: openmc_set_density
-  public :: openmc_set_temperature
   public :: openmc_tally_results
 
 contains
@@ -41,12 +39,13 @@ contains
 ! OPENMC_CELL_SET_TEMPERATURE sets the temperature of a cell
 !===============================================================================
 
-  function openmc_cell_set_temperature(id, T) result(err) bind(C)
-    integer(C_INT), value, intent(in) :: id  ! id of cell
+  function openmc_cell_set_temperature(id, T, instance) result(err) bind(C)
+    integer(C_INT32_T), value, intent(in) :: id  ! id of cell
     real(C_DOUBLE), value, intent(in) :: T
+    integer(C_INT32_T), optional, intent(in) :: instance
     integer(C_INT) :: err
 
-    integer :: i
+    integer :: i, n
 
     err = -1
     if (allocated(cells)) then
@@ -54,8 +53,16 @@ contains
         i = cell_dict % get_key(id)
         associate (c => cells(i))
           if (allocated(c % sqrtkT)) then
-            c % sqrtkT(:) = sqrt(K_BOLTZMANN * T)
-            err = 0
+            n = size(c % sqrtkT)
+            if (present(instance) .and. n > 1) then
+              if (instance >= 0 .and. instance < n) then
+                c % sqrtkT(instance + 1) = sqrt(K_BOLTZMANN * T)
+                err = 0
+              end if
+            else
+              c % sqrtkT(:) = sqrt(K_BOLTZMANN * T)
+              err = 0
+            end if
           end if
         end associate
       end if
@@ -66,10 +73,11 @@ contains
 ! OPENMC_FIND determines the ID or a cell or material at a given point in space
 !===============================================================================
 
-  function openmc_find(xyz, rtype) result(id) bind(C)
+  subroutine openmc_find(xyz, rtype, id, instance) bind(C)
     real(C_DOUBLE), intent(in)        :: xyz(3) ! Cartesian point
     integer(C_INT), intent(in), value :: rtype  ! 1 for cell, 2 for material
-    integer(C_INT) :: id
+    integer(C_INT32_T), intent(out)   :: id
+    integer(C_INT32_T), intent(out)   :: instance
 
     logical :: found
     type(Particle) :: p
@@ -80,6 +88,7 @@ contains
     call find_cell(p, found)
 
     id = -1
+    instance = -1
     if (found) then
       if (rtype == 1) then
         id = cells(p % coord(p % n_coord) % cell) % id
@@ -90,8 +99,9 @@ contains
           id = materials(p % material) % id
         end if
       end if
+      instance = p % cell_instance - 1
     end if
-  end function openmc_find
+  end subroutine openmc_find
 
 !===============================================================================
 ! OPENMC_LOAD_NUCLIDE loads a nuclide from the cross section library
@@ -160,7 +170,7 @@ contains
 !===============================================================================
 
   function openmc_material_add_nuclide(id, name, density) result(err) bind(C)
-    integer(C_INT), value, intent(in) :: id
+    integer(C_INT32_T), value, intent(in) :: id
     character(kind=C_CHAR) :: name(*)
     real(C_DOUBLE), value, intent(in) :: density
     integer(C_INT) :: err
@@ -232,8 +242,8 @@ contains
 !===============================================================================
 
   function openmc_material_get_densities(id, ptr) result(n) bind(C)
-    integer(C_INT), intent(in), value :: id
-    type(C_PTR),    intent(out) :: ptr
+    integer(C_INT32_T), intent(in), value :: id
+    type(C_PTR),        intent(out) :: ptr
     integer(C_INT) :: n
 
     ptr = C_NULL_PTR
@@ -256,7 +266,7 @@ contains
 !===============================================================================
 
   function openmc_material_set_density(id, density) result(err) bind(C)
-    integer(C_INT), value, intent(in) :: id
+    integer(C_INT32_T), value, intent(in) :: id
     real(C_DOUBLE), value, intent(in) :: density
     integer(C_INT) :: err
 
@@ -311,76 +321,22 @@ contains
   end subroutine openmc_reset
 
 !===============================================================================
-! OPENMC_SET_DENSITY sets the density of a material at a given point
-!===============================================================================
-
-  function openmc_set_density(xyz, density) result(err) bind(C)
-    real(C_DOUBLE), intent(in) :: xyz(3)
-    real(C_DOUBLE), intent(in), value :: density
-    integer(C_INT) :: err
-
-    logical :: found
-    type(Particle) :: p
-
-    call p % initialize()
-    p % coord(1) % xyz(:) = xyz
-    p % coord(1) % uvw(:) = [ZERO, ZERO, ONE]
-    call find_cell(p, found)
-
-    err = -1
-    if (found) then
-      if (p % material /= MATERIAL_VOID) then
-        associate (m => materials(p % material))
-          err = m % set_density(density, nuclides)
-        end associate
-      end if
-    end if
-  end function openmc_set_density
-
-!===============================================================================
-! OPENMC_SET_TEMPERATURE sets the temperature of a cell at a given point
-!===============================================================================
-
-  function openmc_set_temperature(xyz, T) result(err) bind(C)
-    real(C_DOUBLE), intent(in) :: xyz(3)
-    real(C_DOUBLE), intent(in), value :: T
-    integer(C_INT) :: err
-
-    logical :: found
-    type(Particle) :: p
-
-    call p % initialize()
-    p % coord(1) % xyz(:) = xyz
-    p % coord(1) % uvw(:) = [ZERO, ZERO, ONE]
-    call find_cell(p, found)
-
-    err = -1
-    if (found) then
-      associate (c => cells(p % coord(p % n_coord) % cell))
-        if (size(c % sqrtkT) > 1) then
-          c % sqrtkT(p % cell_instance) = sqrt(K_BOLTZMANN * T)
-        else
-          c % sqrtkT(1) = sqrt(K_BOLTZMANN * T)
-        end if
-        err = 0
-      end associate
-    end if
-  end function openmc_set_temperature
-
-!===============================================================================
 ! OPENMC_TALLY_RESULTS returns a pointer to a tally results array along with its
 ! shape. This allows a user to obtain in-memory tally results from Python
 ! directly.
 !===============================================================================
 
-  subroutine openmc_tally_results(i, ptr, shape_) bind(C)
-    integer(C_INT), intent(in), value :: i
-    type(C_PTR),    intent(out) :: ptr
-    integer(C_INT), intent(out) :: shape_(3)
+  subroutine openmc_tally_results(id, ptr, shape_) bind(C)
+    integer(C_INT32_T), intent(in), value :: id
+    type(C_PTR),        intent(out) :: ptr
+    integer(C_INT),     intent(out) :: shape_(3)
+
+    integer :: i
 
     ptr = C_NULL_PTR
     if (allocated(tallies)) then
-      if (i >= 1 .and. i <= size(tallies)) then
+      if (tally_dict % has_key(id)) then
+        i = tally_dict % get_key(id)
         if (allocated(tallies(i) % results)) then
           ptr = C_LOC(tallies(i) % results(1,1,1))
           shape_(:) = shape(tallies(i) % results)

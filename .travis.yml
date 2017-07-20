@@ -9,12 +9,23 @@ addons:
     packages:
     - gfortran
     - g++
+    - mpich
+    - libmpich-dev
 cache:
   directories:
-  - $HOME/mpich_install
-  - $HOME/hdf5_install
-  - $HOME/phdf5_install
   - $HOME/nndc_hdf5
+env:
+  - OPENMC_CONFIG="check_source"
+  - OPENMC_CONFIG="^hdf5-debug$"
+  - OPENMC_CONFIG="^omp-hdf5-debug$"
+  - OPENMC_CONFIG="^mpi-hdf5-debug$"
+  - OPENMC_CONFIG="^phdf5-debug$"
+
+# We aren't testing the check_source script so just run it with Python 3.
+matrix:
+  exclude:
+    - python: "2.7"
+      env: OPENMC_CONFIG="check_source"
 
 before_install:
   # ============== Handle Python third-party packages ==============
@@ -29,30 +40,37 @@ before_install:
   - conda config --set always_yes yes --set changeps1 no
   - conda update -q conda
   - conda info -a
-  - conda create -q -n test-environment python=$TRAVIS_PYTHON_VERSION six numpy scipy h5py=2.5 pandas
-  - source activate test-environment
-
-  # Install GCC, MPICH, HDF5, PHDF5
-  - ./tests/travis_install.sh
-  - export FC=gfortran
-  - export MPI_DIR=$HOME/mpich_install
-  - export PHDF5_DIR=$HOME/phdf5_install
-  - export HDF5_DIR=$HOME/hdf5_install
+  - if [[ $OPENMC_CONFIG != "check_source" ]]; then
+      conda create -q -n test-environment python=$TRAVIS_PYTHON_VERSION six numpy scipy h5py=2.5 pandas;
+      source activate test-environment;
+      sudo add-apt-repository ppa:nschloe/hdf5-backports -y;
+      sudo apt-get update -q;
+      sudo apt-get install libhdf5-serial-dev libhdf5-mpich-dev -y;
+      export FC=gfortran;
+      export MPI_DIR=/usr;
+      export PHDF5_DIR=/usr;
+      export HDF5_DIR=/usr;
+    fi
 
 install: true
 
 before_script:
-  - if [[ ! -e $HOME/nndc_hdf5/cross_sections.xml ]]; then
-      wget https://anl.box.com/shared/static/a6sw2cep34wlz6b9i9jwiotaqoayxcxt.xz -O - | tar -C $HOME -xvJ;
+  - if [[ $OPENMC_CONFIG != "check_source" ]]; then
+      if [[ ! -e $HOME/nndc_hdf5/cross_sections.xml ]]; then
+        wget https://anl.box.com/shared/static/a6sw2cep34wlz6b9i9jwiotaqoayxcxt.xz -O - | tar -C $HOME -xvJ;
+      fi;
+      export OPENMC_CROSS_SECTIONS=$HOME/nndc_hdf5/cross_sections.xml;
+      git clone --branch=master git://github.com/smharper/windowed_multipole_library.git wmp_lib;
+      tar xzvf wmp_lib/multipole_lib.tar.gz;
+      export OPENMC_MULTIPOLE_LIBRARY=$PWD/multipole_lib;
     fi
-  - export OPENMC_CROSS_SECTIONS=$HOME/nndc_hdf5/cross_sections.xml
-
-  - git clone --branch=master git://github.com/smharper/windowed_multipole_library.git wmp_lib
-  - tar xzvf wmp_lib/multipole_lib.tar.gz
-  - export OPENMC_MULTIPOLE_LIBRARY=$PWD/multipole_lib
 
 script:
   - cd tests
   - export OMP_NUM_THREADS=2
-  - ./travis.sh
+  - if [[ $OPENMC_CONFIG == "check_source" ]]; then
+      ./check_source.py;
+    else
+      ./run_tests.py -C $OPENMC_CONFIG -j 2;
+    fi
   - cd ..

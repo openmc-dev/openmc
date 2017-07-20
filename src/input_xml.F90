@@ -624,6 +624,10 @@ contains
       end if
       if (check_for_node(node_cutoff, "energy_neutron")) then
         call get_node_value(node_cutoff, "energy_neutron", energy_cutoff(1))
+      elseif (check_for_node(node_cutoff, "energy")) then
+        call warning("The use of an <energy> cutoff is deprecated and should &
+             &be replaced by <energy_neutron>.")
+        call get_node_value(node_cutoff, "energy", energy_cutoff(1))
       end if
       if (check_for_node(node_cutoff, "energy_photon")) then
         call get_node_value(node_cutoff, "energy_photon", energy_cutoff(2))

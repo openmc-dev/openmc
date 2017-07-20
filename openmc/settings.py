@@ -964,7 +964,7 @@ class Settings(object):
     def _create_cutoff_subelement(self, root):
         if self._cutoff is not None:
             element = ET.SubElement(root, "cutoff")
-            for key, value in self.items():
+            for key, value in self._cutoff.items():
                 subelement = ET.SubElement(element, key)
                 subelement.text = str(value)
 

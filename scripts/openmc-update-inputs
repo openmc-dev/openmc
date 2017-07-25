@@ -11,6 +11,7 @@ from itertools import chain
 from random import randint
 from shutil import move
 import xml.etree.ElementTree as ET
+import re
 
 import openmc.data
 
@@ -238,6 +239,18 @@ def update_geometry(geometry_root):
 
     return was_updated
 
+def replace_zaid(name):
+    """Replace a nuclide name in the ZAID notation with the correct name."""
+    # TODO: Account for metastable and any other special cases
+    name = name.strip()
+    z = int(name[:-3])
+    a = int(name[-3:])  # Strips leading 0s
+    symbol = openmc.data.ATOMIC_SYMBOL[z]
+    name = str(symbol).title() + str(a)
+    return name
+    
+
+
 def update_materials(root):
     """Update the given XML materials tree. Return True if changes were made."""
     was_updated = False
@@ -247,6 +260,9 @@ def update_materials(root):
             if 'name' in nuclide.attrib:
                 nucname = nuclide.attrib['name']
                 nucname = nucname.replace('-', '')
+                s = re.search("\s*(?<![A-z])\d{4,6}\s*", nucname)
+                if s:
+                    nucname = replace_zaid(s.group(0))
                 nucname = nucname.replace('Nat', '0')
                 if nucname.endswith('m'):
                     nucname = nucname[:-1] + '_m1'

@@ -11,11 +11,12 @@ module state_point
 ! intervals, using the <state_point ... /> tag.
 !===============================================================================
 
-  use, intrinsic :: ISO_C_BINDING, only: c_loc, c_ptr
+  use, intrinsic :: ISO_C_BINDING
 
   use hdf5
 
   use constants
+  use eigenvalue,         only: openmc_get_keff
   use endf,               only: reaction_name
   use error,              only: fatal_error, warning
   use global
@@ -46,6 +47,8 @@ contains
     integer(HID_T) :: cmfd_group, tallies_group, tally_group, meshes_group, &
                       mesh_group, filters_group, filter_group, derivs_group, &
                       deriv_group, runtime_group
+    integer(C_INT) :: err
+    real(C_DOUBLE) :: k_combined(2)
     character(MAX_WORD_LEN), allocatable :: str_array(:)
     character(MAX_FILE_LEN)    :: filename
     type(TallyObject), pointer    :: tally
@@ -117,6 +120,7 @@ contains
         call write_dataset(file_id, "k_col_abs", k_col_abs)
         call write_dataset(file_id, "k_col_tra", k_col_tra)
         call write_dataset(file_id, "k_abs_tra", k_abs_tra)
+        err = openmc_get_keff(k_combined)
         call write_dataset(file_id, "k_combined", k_combined)
 
         ! Write out CMFD info
@@ -647,7 +651,6 @@ contains
     integer(HID_T) :: cmfd_group
     integer(HID_T) :: tallies_group
     integer(HID_T) :: tally_group
-    real(8) :: real_array(3)
     logical :: source_present
     character(MAX_WORD_LEN) :: word
 
@@ -727,7 +730,6 @@ contains
       call read_dataset(k_col_abs, file_id, "k_col_abs")
       call read_dataset(k_col_tra, file_id, "k_col_tra")
       call read_dataset(k_abs_tra, file_id, "k_abs_tra")
-      call read_dataset(real_array(1:2), file_id, "k_combined")
 
       ! Take maximum of statepoint n_inactive and input n_inactive
       n_inactive = max(n_inactive, int_array(1))

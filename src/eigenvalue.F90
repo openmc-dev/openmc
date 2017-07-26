@@ -1,5 +1,6 @@
 module eigenvalue
 
+  use, intrinsic :: ISO_C_BINDING
 
   use algorithm,   only: binary_search
   use constants,   only: ZERO
@@ -439,8 +440,8 @@ contains
   end subroutine calculate_average_keff
 
 !===============================================================================
-! CALCULATE_COMBINED_KEFF calculates a minimum variance estimate of k-effective
-! based on a linear combination of the collision, absorption, and tracklength
+! OPENMC_GET_KEFF calculates a minimum variance estimate of k-effective based on
+! a linear combination of the collision, absorption, and tracklength
 ! estimates. The theory behind this can be found in M. Halperin, "Almost
 ! linearly-optimum combination of unbiased estimates," J. Am. Stat. Assoc., 56,
 ! 36-43 (1961), doi:10.1080/01621459.1961.10482088. The implementation here
@@ -448,7 +449,9 @@ contains
 ! of keff confidence intervals in MCNP," Nucl. Technol., 111, 169-182 (1995).
 !===============================================================================
 
-  subroutine calculate_combined_keff()
+  function openmc_get_keff(k_combined) result(err) bind(C)
+    real(C_DOUBLE), intent(out) :: k_combined(2)
+    integer(C_INT) :: err
 
     integer :: l        ! loop index
     integer :: i, j, k  ! indices referring to collision, absorption, or track
@@ -459,9 +462,14 @@ contains
     real(8) :: g        ! sum of weighting factors
     real(8) :: S(3)     ! sums used for variance calculation
 
+    k_combined = ZERO
+
     ! Make sure we have at least four realizations. Notice that at the end,
     ! there is a N-3 term in a denominator.
-    if (n_realizations <= 3) return
+    if (n_realizations <= 3) then
+      err = -1
+      return
+    end if
 
     ! Initialize variables
     n = real(n_realizations, 8)
@@ -523,7 +531,6 @@ contains
       ! Initialize variables
       g = ZERO
       S = ZERO
-      k_combined = ZERO
 
       do l = 1, 3
         ! Permutations of estimates
@@ -590,8 +597,9 @@ contains
       k_combined(2) = sqrt(k_combined(2))
 
     end if
+    err = 0
 
-  end subroutine calculate_combined_keff
+  end function openmc_get_keff
 
 !===============================================================================
 ! COUNT_SOURCE_FOR_UFS determines the source fraction in each UFS mesh cell and

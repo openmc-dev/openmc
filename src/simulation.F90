@@ -5,9 +5,8 @@ module simulation
   use cmfd_execute,    only: cmfd_init_batch, execute_cmfd
   use constants,       only: ZERO
   use eigenvalue,      only: count_source_for_ufs, calculate_average_keff, &
-                             calculate_combined_keff, calculate_generation_keff, &
-                             shannon_entropy, synchronize_bank, keff_generation, &
-                             k_sum
+                             calculate_generation_keff, shannon_entropy, &
+                             synchronize_bank, keff_generation, k_sum
 #ifdef _OPENMP
   use eigenvalue,      only: join_bank_from_threads
 #endif
@@ -300,9 +299,6 @@ contains
     if (run_mode == MODE_EIGENVALUE) then
       ! Perform CMFD calculation if on
       if (cmfd_on) call execute_cmfd()
-
-      ! Calculate combined estimate of k-effective
-      if (master) call calculate_combined_keff()
     end if
 
     ! Check_triggers
@@ -325,13 +321,6 @@ contains
     if ((sourcepoint_batch % contains(current_batch) .or. source_latest) .and. &
          source_write) then
       call write_source_point()
-    end if
-
-    if (master .and. current_batch == n_max_batches .and. &
-         run_mode == MODE_EIGENVALUE) then
-      ! Make sure combined estimate of k-effective is calculated at the last
-      ! batch in case no state point is written
-      call calculate_combined_keff()
     end if
 
   end subroutine finalize_batch

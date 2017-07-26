@@ -256,7 +256,6 @@ module global
   real(8) :: k_col_abs = ZERO ! sum over batches of k_collision * k_absorption
   real(8) :: k_col_tra = ZERO ! sum over batches of k_collision * k_tracklength
   real(8) :: k_abs_tra = ZERO ! sum over batches of k_absorption * k_tracklength
-  real(8) :: k_combined(2)    ! combined best estimate of k-effective
 
   ! Shannon entropy
   logical :: entropy_on = .false.

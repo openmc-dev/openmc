@@ -1,8 +1,10 @@
 module output
 
+  use, intrinsic :: ISO_C_BINDING
   use, intrinsic :: ISO_FORTRAN_ENV
 
   use constants
+  use eigenvalue,      only: openmc_get_keff
   use endf,            only: reaction_name
   use error,           only: fatal_error, warning
   use geometry_header, only: Cell, Universe, Lattice, RectLattice, &
@@ -608,6 +610,8 @@ contains
     real(8) :: t_n1    ! t-value with N-1 degrees of freedom
     real(8) :: t_n3    ! t-value with N-3 degrees of freedom
     real(8) :: x(2)    ! mean and standard deviation
+    real(C_DOUBLE) :: k_combined(2)
+    integer(C_INT) :: err
 
     ! display header block for results
     call header("Results", 4)
@@ -634,8 +638,11 @@ contains
           write(ou,102) "k-effective (Track-length)", x(1), t_n1 * x(2)
           x(:) = mean_stdev(r(:, K_ABSORPTION), n)
           write(ou,102) "k-effective (Absorption)", x(1), t_n1 * x(2)
-          if (n > 3) write(ou,102) "Combined k-effective", k_combined(1), &
-               t_n3 * k_combined(2)
+          if (n > 3) then
+            err = openmc_get_keff(k_combined)
+            write(ou,102) "Combined k-effective", k_combined(1), &
+                 t_n3 * k_combined(2)
+          end if
         end if
         x(:) = mean_stdev(global_tallies(:, LEAKAGE), n)
         write(ou,102) "Leakage Fraction", x(1), t_n1 * x(2)

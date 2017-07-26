@@ -43,6 +43,8 @@ class OpenMCLibrary(object):
         self._dll.openmc_find.restype = None
         self._dll.openmc_init.argtypes = [POINTER(c_int)]
         self._dll.openmc_init.restype = None
+        self._dll.openmc_get_keff.argtypes = [POINTER(c_double*2)]
+        self._dll.openmc_get_keff.restype = c_int
         self._dll.openmc_load_nuclide.argtypes = [c_char_p]
         self._dll.openmc_load_nuclide.restype = c_int
         self._dll.openmc_material_add_nuclide.argtypes = [
@@ -141,7 +143,21 @@ class OpenMCLibrary(object):
         else:
             return self._dll.openmc_init(None)
 
+    def keff(self):
+        """Return the calculated k-eigenvalue and its standard deviation.
+
+        Returns
+        -------
+        tuple
+            Mean k-eigenvalue and standard deviation of the mean
+
+        """
+        k = (c_double*2)()
+        err = self._dll.openmc_get_keff(k)
+        return tuple(k)
+
     def load_nuclide(self, name):
+
         """Load cross section data for a nuclide.
 
         Parameters

@@ -5,7 +5,7 @@ module openmc_api
   use hdf5, only: HID_T
 
   use constants,       only: K_BOLTZMANN
-  use eigenvalue,      only: k_sum
+  use eigenvalue,      only: k_sum, openmc_get_keff
   use finalize,        only: openmc_finalize
   use geometry,        only: find_cell
   use global
@@ -23,6 +23,7 @@ module openmc_api
   public :: openmc_cell_set_temperature
   public :: openmc_finalize
   public :: openmc_find
+  public :: openmc_get_keff
   public :: openmc_init
   public :: openmc_load_nuclide
   public :: openmc_material_add_nuclide

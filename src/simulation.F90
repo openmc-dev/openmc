@@ -406,11 +406,13 @@ contains
 
 #ifdef MPI
     ! Broadcast tally results so that each process has access to results
-    do i = 1, size(tallies)
-      n = size(tallies(i) % results)
-      call MPI_BCAST(tallies(i) % results, n, MPI_DOUBLE, 0, &
-           mpi_intracomm, mpi_err)
-    end do
+    if (allocated(tallies)) then
+      do i = 1, size(tallies)
+        n = size(tallies(i) % results)
+        call MPI_BCAST(tallies(i) % results, n, MPI_DOUBLE, 0, &
+             mpi_intracomm, mpi_err)
+      end do
+    end if
 
     ! Also broadcast global tally results
     n = size(global_tallies)

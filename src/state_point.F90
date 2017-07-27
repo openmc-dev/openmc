@@ -539,18 +539,15 @@ contains
       tallies_group = open_group(file_id, "tallies")
     end if
 
-    ! Copy global tallies into temporary array for reducing
-    n_bins = 3 * N_GLOBAL_TALLIES
-    global_temp(:,:) = global_tallies(:,:)
 
-    if (master) then
-      ! The MPI_IN_PLACE specifier allows the master to copy values into a
-      ! receive buffer without having a temporary variable
 #ifdef MPI
-      call MPI_REDUCE(MPI_IN_PLACE, global_temp, n_bins, MPI_REAL8, MPI_SUM, &
-           0, mpi_intracomm, mpi_err)
+    ! Reduce global tallies
+    n_bins = size(global_tallies)
+    call MPI_REDUCE(global_tallies, global_temp, n_bins, MPI_REAL8, MPI_SUM, &
+         0, mpi_intracomm, mpi_err)
 #endif
 
+    if (master) then
       ! Transfer values to value on master
       if (current_batch == n_max_batches .or. satisfy_triggers) then
         global_tallies(:,:) = global_temp(:,:)
@@ -558,12 +555,6 @@ contains
 
       ! Write out global tallies sum and sum_sq
       call write_dataset(file_id, "global_tallies", global_temp)
-    else
-      ! Receive buffer not significant at other processors
-#ifdef MPI
-      call MPI_REDUCE(global_temp, dummy, n_bins, MPI_REAL8, MPI_SUM, &
-           0, mpi_intracomm, mpi_err)
-#endif
     end if
 
     if (tallies_on) then

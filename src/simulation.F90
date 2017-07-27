@@ -448,14 +448,12 @@ contains
 
   subroutine reduce_overlap_count()
 
+    integer(8) :: temp
+
 #ifdef MPI
-    if (master) then
-      call MPI_REDUCE(MPI_IN_PLACE, overlap_check_cnt, n_cells, &
-           MPI_INTEGER8, MPI_SUM, 0, mpi_intracomm, mpi_err)
-    else
-      call MPI_REDUCE(overlap_check_cnt, overlap_check_cnt, n_cells, &
-           MPI_INTEGER8, MPI_SUM, 0, mpi_intracomm, mpi_err)
-    end if
+    call MPI_REDUCE(overlap_check_cnt, temp, n_cells, MPI_INTEGER8, &
+         MPI_SUM, 0, mpi_intracomm, mpi_err)
+    overlap_check_cnt = temp
 #endif
 
   end subroutine reduce_overlap_count

@@ -2,19 +2,20 @@ module openmc_api
 
   use, intrinsic :: ISO_C_BINDING
 
-  use hdf5, only: HID_T
+  use hdf5, only: HID_T, h5tclose_f, h5close_f
 
   use constants,       only: K_BOLTZMANN
   use eigenvalue,      only: k_sum, openmc_get_keff
-  use finalize,        only: openmc_finalize
   use geometry,        only: find_cell
+  use geometry_header, only: root_universe
   use global
   use hdf5_interface
-  use message_passing, only: master
+  use message_passing
   use initialize,      only: openmc_init
   use input_xml,       only: assign_0K_elastic_scattering, check_data_version
   use particle_header, only: Particle
   use plot,            only: openmc_plot_geometry
+  use random_lcg,      only: seed
   use simulation,      only: openmc_run
   use volume_calc,     only: openmc_calculate_volumes
 
@@ -69,6 +70,89 @@ contains
       end if
     end if
   end function openmc_cell_set_temperature
+
+!===============================================================================
+! OPENMC_FINALIZE frees up memory by deallocating arrays and resetting global
+! variables
+!===============================================================================
+
+  subroutine openmc_finalize() bind(C)
+
+    integer :: hdf5_err
+
+    ! Clear results
+    call openmc_reset()
+
+    ! Reset global variables
+    assume_separate = .false.
+    check_overlaps = .false.
+    confidence_intervals = .false.
+    create_fission_neutrons = .true.
+    current_batch = 0
+    current_gen   = 0
+    energy_cutoff = ZERO
+    energy_max_neutron = INFINITY
+    energy_min_neutron = ZERO
+    entropy_on = .false.
+    gen_per_batch = 1
+    i_user_tallies = -1
+    i_cmfd_tallies = -1
+    keff = ONE
+    legendre_to_tabular = .true.
+    legendre_to_tabular_points = 33
+    n_batch_interval = 1
+    n_particles = 0
+    n_source_points = 0
+    n_state_points = 0
+    output_summary = .true.
+    output_tallies = .true.
+    particle_restart_run = .false.
+    pred_batches = .false.
+    reduce_tallies = .true.
+    res_scat_on = .false.
+    res_scat_method = RES_SCAT_ARES
+    res_scat_energy_min = 0.01_8
+    res_scat_energy_max = 1000.0_8
+    restart_run = .false.
+    root_universe = -1
+    run_CE = .true.
+    run_mode = NONE
+    satisfy_triggers = .false.
+    seed = 1_8
+    source_latest = .false.
+    source_separate = .false.
+    source_write = .true.
+    survival_biasing = .false.
+    temperature_default = 293.6_8
+    temperature_method = TEMPERATURE_NEAREST
+    temperature_multipole = .false.
+    temperature_range = [ZERO, ZERO]
+    temperature_tolerance = 10.0_8
+    total_gen = 0
+    trigger_on = .false.
+    ufs = .false.
+    urr_ptables_on = .true.
+    verbosity = 7
+    weight_cutoff = 0.25_8
+    weight_survive = ONE
+    write_all_tracks = .false.
+    write_initial_source = .false.
+
+    ! Deallocate arrays
+    call free_memory()
+
+    ! Release compound datatypes
+    call h5tclose_f(hdf5_bank_t, hdf5_err)
+
+    ! Close FORTRAN interface.
+    call h5close_f(hdf5_err)
+
+#ifdef MPI
+    ! Free all MPI types
+    call MPI_TYPE_FREE(MPI_BANK, mpi_err)
+#endif
+
+  end subroutine openmc_finalize
 
 !===============================================================================
 ! OPENMC_FIND determines the ID or a cell or material at a given point in space
@@ -291,12 +375,14 @@ contains
   subroutine openmc_reset() bind(C)
     integer :: i
 
-    do i = 1, size(tallies)
-      tallies(i) % n_realizations = 0
-      if (allocated(tallies(i) % results)) then
-        tallies(i) % results(:, :, :) = ZERO
-      end if
-    end do
+    if (allocated(tallies)) then
+      do i = 1, size(tallies)
+        tallies(i) % n_realizations = 0
+        if (allocated(tallies(i) % results)) then
+          tallies(i) % results(:, :, :) = ZERO
+        end if
+      end do
+    end if
 
     ! Reset global tallies
     n_realizations = 0

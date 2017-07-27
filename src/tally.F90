@@ -4249,13 +4249,12 @@ contains
     integer :: n      ! number of filter bins
     integer :: m      ! number of score bins
     integer :: n_bins ! total number of bins
-    real(8), allocatable :: tally_temp(:,:) ! contiguous array of results
-    real(8) :: global_temp(N_GLOBAL_TALLIES)
+    real(C_DOUBLE), allocatable :: tally_temp(:,:) ! contiguous array of results
+    real(C_DOUBLE) :: temp(N_GLOBAL_TALLIES), temp2(N_GLOBAL_TALLIES)
     real(8) :: dummy  ! temporary receive buffer for non-root reduces
-    type(TallyObject), pointer :: t
 
     do i = 1, active_tallies % size()
-      t => tallies(active_tallies % data(i))
+      associate (t => tallies(active_tallies % data(i)))
 
       m = t % total_score_bins
       n = t % total_filter_bins
@@ -4282,37 +4281,26 @@ contains
         t % results(RESULT_VALUE,:,:) = ZERO
       end if
 
+      end associate
+
       deallocate(tally_temp)
     end do
 
-    ! Copy global tallies into array to be reduced
-    global_temp = global_tallies(RESULT_VALUE, :)
-
+    ! Reduce global tallies onto master
+    temp = global_tallies(RESULT_VALUE, :)
+    call MPI_REDUCE(temp, temp2, N_GLOBAL_TALLIES, MPI_DOUBLE, MPI_SUM, &
+         0, mpi_intracomm, mpi_err)
     if (master) then
-      call MPI_REDUCE(MPI_IN_PLACE, global_temp, N_GLOBAL_TALLIES, &
-           MPI_REAL8, MPI_SUM, 0, mpi_intracomm, mpi_err)
-
-      ! Transfer values back to global_tallies on master
-      global_tallies(RESULT_VALUE, :) = global_temp
+      global_tallies(RESULT_VALUE, :) = temp2
     else
-      ! Receive buffer not significant at other processors
-      call MPI_REDUCE(global_temp, dummy, N_GLOBAL_TALLIES, &
-           MPI_REAL8, MPI_SUM, 0, mpi_intracomm, mpi_err)
-
-      ! Reset value on other processors
       global_tallies(RESULT_VALUE, :) = ZERO
     end if
 
     ! We also need to determine the total starting weight of particles from the
     ! last realization
-    if (master) then
-      call MPI_REDUCE(MPI_IN_PLACE, total_weight, 1, MPI_REAL8, MPI_SUM, &
-           0, mpi_intracomm, mpi_err)
-    else
-      ! Receive buffer not significant at other processors
-      call MPI_REDUCE(total_weight, dummy, 1, MPI_REAL8, MPI_SUM, &
-           0, mpi_intracomm, mpi_err)
-    end if
+    temp(1) = total_weight
+    call MPI_REDUCE(temp, total_weight, 1, MPI_REAL8, MPI_SUM, &
+         0, mpi_intracomm, mpi_err)
 
   end subroutine reduce_tally_results
 #endif

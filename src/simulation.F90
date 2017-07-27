@@ -20,7 +20,7 @@ module simulation
   use source,          only: initialize_source, sample_external_source
   use state_point,     only: write_state_point, write_source_point
   use string,          only: to_str
-  use tally,           only: synchronize_tallies, setup_active_usertallies
+  use tally,           only: accumulate_tallies, setup_active_usertallies
   use trigger,         only: check_triggers
   use tracking,        only: transport
 
@@ -285,9 +285,9 @@ contains
 
   subroutine finalize_batch()
 
-    ! Collect tallies
+    ! Reduce tallies onto master process and accumulate
     call time_tallies % start()
-    call synchronize_tallies()
+    call accumulate_tallies()
     call time_tallies % stop()
 
     ! Reset global tally results
@@ -390,6 +390,10 @@ contains
 
   subroutine finalize_simulation()
 
+    integer :: i       ! loop index for tallies
+    integer :: n       ! size of arrays
+    real(8) :: temp(3) ! temporary array for communication
+
 !$omp parallel
     deallocate(micro_xs)
 !$omp end parallel
@@ -399,6 +403,29 @@ contains
 
     ! Start finalization timer
     call time_finalize % start()
+
+#ifdef MPI
+    ! Broadcast tally results so that each process has access to results
+    do i = 1, size(tallies)
+      n = size(tallies(i) % results)
+      call MPI_BCAST(tallies(i) % results, n, MPI_DOUBLE, 0, &
+           mpi_intracomm, mpi_err)
+    end do
+
+    ! Also broadcast global tally results
+    n = size(global_tallies)
+    call MPI_BCAST(global_tallies, n, MPI_DOUBLE, 0, mpi_intracomm, mpi_err)
+
+    ! These guys are needed so that non-master processes can calculate the
+    ! combined estimate of k-effective
+    temp(1) = k_col_abs
+    temp(2) = k_col_tra
+    temp(3) = k_abs_tra
+    call MPI_BCAST(temp, 3, MPI_REAL8, 0, mpi_intracomm, mpi_err)
+    k_col_abs = temp(1)
+    k_col_tra = temp(2)
+    k_abs_tra = temp(3)
+#endif
 
     ! Write tally results to tallies.out
     if (output_tallies .and. master) call write_tallies()

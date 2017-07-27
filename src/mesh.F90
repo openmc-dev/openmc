@@ -207,6 +207,7 @@ contains
     end if
 #else
     sites_outside = outside
+    cnt = cnt_
 #endif
 
   end subroutine count_bank_sites

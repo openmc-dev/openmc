@@ -241,15 +241,9 @@ def update_geometry(geometry_root):
 
 def replace_zaid(name):
     """Replace a nuclide name in the ZAID notation with the correct name."""
-    # TODO: Account for metastable and any other special cases
-    name = name.strip()
-    z = int(name[:-3])
-    a = int(name[-3:])  # Strips leading 0s
-    symbol = openmc.data.ATOMIC_SYMBOL[z]
-    name = str(symbol).title() + str(a)
+    zaid = int(name.strip())
+    name = openmc.data.neutron.get_metadata(zaid)[0]
     return name
-    
-
 
 def update_materials(root):
     """Update the given XML materials tree. Return True if changes were made."""

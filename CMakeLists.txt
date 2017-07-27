@@ -320,7 +320,6 @@ set(LIBOPENMC_FORTRAN_SRC
   src/endf_header.F90
   src/energy_distribution.F90
   src/error.F90
-  src/finalize.F90
   src/geometry.F90
   src/geometry_header.F90
   src/global.F90

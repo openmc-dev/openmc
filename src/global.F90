@@ -140,7 +140,7 @@ module global
   integer :: max_order
 
   ! Whether or not to convert Legendres to tabulars
-  logical :: legendre_to_tabular = .True.
+  logical :: legendre_to_tabular = .true.
 
   ! Number of points to use in the Legendre to tabular conversion
   integer :: legendre_to_tabular_points = 33
@@ -466,6 +466,7 @@ contains
     if (allocated(surfaces)) deallocate(surfaces)
     if (allocated(materials)) deallocate(materials)
     if (allocated(plots)) deallocate(plots)
+    if (allocated(volume_calcs)) deallocate(volume_calcs)
 
     ! Deallocate geometry debugging information
     if (allocated(overlap_check_cnt)) deallocate(overlap_check_cnt)
@@ -478,6 +479,7 @@ contains
       end do
       deallocate(nuclides)
     end if
+    if (allocated(libraries)) deallocate(libraries)
 
     if (allocated(res_scat_nuclides)) deallocate(res_scat_nuclides)
 
@@ -486,7 +488,6 @@ contains
     if (allocated(macro_xs)) deallocate(macro_xs)
 
     if (allocated(sab_tables)) deallocate(sab_tables)
-    if (allocated(micro_xs)) deallocate(micro_xs)
 
     ! Deallocate external source
     if (allocated(external_source)) deallocate(external_source)
@@ -501,20 +502,23 @@ contains
     if (allocated(meshes)) deallocate(meshes)
     if (allocated(filters)) deallocate(filters)
     if (allocated(tallies)) deallocate(tallies)
-    if (allocated(filter_matches)) deallocate(filter_matches)
 
     ! Deallocate fission and source bank and entropy
 !$omp parallel
     if (allocated(fission_bank)) deallocate(fission_bank)
+    if (allocated(filter_matches)) deallocate(filter_matches)
+    if (allocated(tally_derivs)) deallocate(tally_derivs)
 !$omp end parallel
 #ifdef _OPENMP
     if (allocated(master_fission_bank)) deallocate(master_fission_bank)
 #endif
     if (allocated(source_bank)) deallocate(source_bank)
-    if (allocated(entropy_p)) deallocate(entropy_p)
 
     ! Deallocate array of work indices
     if (allocated(work_index)) deallocate(work_index)
+
+    if (allocated(energy_bins)) deallocate(energy_bins)
+    if (allocated(energy_bin_avg)) deallocate(energy_bin_avg)
 
     ! Deallocate CMFD
     call deallocate_cmfd(cmfd)
@@ -541,6 +545,7 @@ contains
     call plot_dict % clear()
     call nuclide_dict % clear()
     call sab_dict % clear()
+    call library_dict % clear()
 
     ! Clear statepoint and sourcepoint batch set
     call statepoint_batch % clear()

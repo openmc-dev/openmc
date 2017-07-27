@@ -4182,11 +4182,11 @@ contains
   end subroutine zero_flux_derivs
 
 !===============================================================================
-! SYNCHRONIZE_TALLIES accumulates the sum of the contributions from each history
+! ACCUMULATE_TALLIES accumulates the sum of the contributions from each history
 ! within the batch to a new random variable
 !===============================================================================
 
-  subroutine synchronize_tallies()
+  subroutine accumulate_tallies()
 
     integer :: i
     real(C_DOUBLE) :: k_col ! Copy of batch collision estimate of keff
@@ -4236,7 +4236,7 @@ contains
       end do
     end if
 
-  end subroutine synchronize_tallies
+  end subroutine accumulate_tallies
 
 !===============================================================================
 ! REDUCE_TALLY_RESULTS collects all the results from tallies onto one processor

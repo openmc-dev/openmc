@@ -16,6 +16,53 @@ _int_array = POINTER(POINTER(c_int))
 _double_array = POINTER(POINTER(c_double))
 
 
+class GeometryError(Exception):
+    pass
+
+
+def _error_code(s):
+    """Get error code corresponding to global constant."""
+    return c_int.in_dll(lib._dll, s).value
+
+
+def _error_handler(err, func, args):
+    """Raise exception according to error code."""
+    if err == _error_code('e_out_of_bounds'):
+        raise IndexError('Array index out of bounds.')
+
+    elif err == _error_code('e_cell_not_allocated'):
+        raise MemoryError("Memory has not been allocated for cells.")
+
+    elif err == _error_code('e_cell_invalid_id'):
+        raise KeyError("No cell exists with ID={}.".format(args[0]))
+
+    elif err == _error_code('e_cell_not_found'):
+        raise GeometryError("Could not find cell at position ({}, {}, {})"
+                            .format(*args[0]))
+
+    elif err == _error_code('e_nuclide_not_allocated'):
+        raise MemoryError("Memory has not been allocated for nuclides.")
+
+    elif err == _error_code('e_nuclide_not_in_library'):
+        raise KeyError("Specified nuclide doesn't exist in the cross "
+                       "section library.")
+
+    elif err == _error_code('e_material_not_allocated'):
+        raise MemoryError("Memory has not been allocated for materials.")
+
+    elif err == _error_code('e_material_invalid_id'):
+        raise KeyError("No material exists with ID={}.".format(args[0]))
+
+    elif err == _error_code('e_tally_not_allocated'):
+        raise MemoryError("Memory has not been allocated for tallies.")
+
+    elif err == _error_code('e_tally_invalid_id'):
+        raise KeyError("No tally exists with ID={}.".format(args[0]))
+
+    elif err < 0:
+        raise Exception("Unknown error encountered (code {}).".format(err))
+
+
 class OpenMCLibrary(object):
     """Provides bindings to C functions defined by OpenMC shared library.
 
@@ -36,47 +83,58 @@ class OpenMCLibrary(object):
         # Set argument/return types
         self._dll.openmc_calculate_volumes.restype = None
         self._dll.openmc_cell_set_temperature.argtypes = [
-            c_int32, c_double, c_int32]
+            c_int32, c_double, POINTER(c_int32)]
         self._dll.openmc_cell_set_temperature.restype = c_int
+        self._dll.openmc_cell_set_temperature.errcheck = _error_handler
         self._dll.openmc_finalize.restype = None
         self._dll.openmc_find.argtypes = [
             POINTER(_double3), c_int, POINTER(c_int32), POINTER(c_int32)]
-        self._dll.openmc_find.restype = None
+        self._dll.openmc_find.restype = c_int
+        self._dll.openmc_find.errcheck = _error_handler
         self._dll.openmc_init.argtypes = [POINTER(c_int)]
         self._dll.openmc_init.restype = None
         self._dll.openmc_get_keff.argtypes = [POINTER(c_double*2)]
         self._dll.openmc_get_keff.restype = c_int
+        self._dll.openmc_get_keff.errcheck = _error_handler
         self._dll.openmc_load_nuclide.argtypes = [c_char_p]
         self._dll.openmc_load_nuclide.restype = c_int
+        self._dll.openmc_load_nuclide.errcheck = _error_handler
 
         # Material interface
         self._dll.openmc_material_add_nuclide.argtypes = [
             c_int32, c_char_p, c_double]
         self._dll.openmc_material_add_nuclide.restype = c_int
+        self._dll.openmc_material_add_nuclide.errcheck = _error_handler
         self._dll.openmc_material_get_densities.argtypes = [
-            c_int32, _double_array]
+            c_int32, _double_array, POINTER(c_int)]
         self._dll.openmc_material_get_densities.restype = c_int
+        self._dll.openmc_material_get_densities.errcheck = _error_handler
         self._dll.openmc_material_get_nuclides.argtypes = [
-            c_int32, _int_array]
+            c_int32, _int_array, POINTER(c_int)]
         self._dll.openmc_material_get_nuclides.restype = c_int
+        self._dll.openmc_material_get_nuclides.errcheck = _error_handler
         self._dll.openmc_material_set_density.argtypes = [c_int32, c_double]
         self._dll.openmc_material_set_density.restype = c_int
+        self._dll.openmc_material_set_density.errcheck = _error_handler
         self._dll.openmc_material_set_densities.argtypes = [
             c_int32, c_int, POINTER(c_char_p), POINTER(c_double)]
         self._dll.openmc_material_set_densities.restype = c_int
+        self._dll.openmc_material_set_densities.errcheck = _error_handler
 
         self._dll.openmc_nuclide_name.argtypes = [c_int, POINTER(c_char_p)]
         self._dll.openmc_nuclide_name.restype = c_int
+        self._dll.openmc_nuclide_name.errcheck = _error_handler
         self._dll.openmc_plot_geometry.restype = None
         self._dll.openmc_run.restype = None
         self._dll.openmc_reset.restype = None
         self._dll.openmc_tally_results.argtypes = [
             c_int32, _double_array, POINTER(_int3)]
-        self._dll.openmc_tally_results.restype = None
+        self._dll.openmc_tally_results.restype = c_int
+        self._dll.openmc_tally_results.errcheck = _error_handler
 
     def calculate_volumes(self):
         """Run stochastic volume calculation"""
-        return self._dll.openmc_calculate_volumes()
+        self._dll.openmc_calculate_volumes()
 
     def cell_set_temperature(self, cell_id, T, instance=None):
         """Set the temperature of a cell
@@ -91,15 +149,11 @@ class OpenMCLibrary(object):
             Which instance of the cell
 
         """
-        if instance is not None:
-            return self._dll.openmc_cell_set_temperature(
-                cell_id, T, instance)
-        else:
-            return self._dll.openmc_cell_set_temperature(cell_id, T, None)
+        self._dll.openmc_cell_set_temperature(cell_id, T, instance)
 
     def finalize(self):
         """Finalize simulation and free memory"""
-        return self._dll.openmc_finalize()
+        self._dll.openmc_finalize()
 
     def find(self, xyz, rtype='cell'):
         """Find the cell or material at a given point
@@ -151,9 +205,9 @@ class OpenMCLibrary(object):
                 intracomm = intracomm.py2f()
             except AttributeError:
                 pass
-            return self._dll.openmc_init(c_int(intracomm))
+            self._dll.openmc_init(c_int(intracomm))
         else:
-            return self._dll.openmc_init(None)
+            self._dll.openmc_init(None)
 
     def keff(self):
         """Return the calculated k-eigenvalue and its standard deviation.
@@ -165,7 +219,7 @@ class OpenMCLibrary(object):
 
         """
         k = (c_double*2)()
-        err = self._dll.openmc_get_keff(k)
+        self._dll.openmc_get_keff(k)
         return tuple(k)
 
     def load_nuclide(self, name):
@@ -177,13 +231,8 @@ class OpenMCLibrary(object):
         name : str
             Name of nuclide, e.g. 'U235'
 
-        Returns
-        -------
-        int
-            Return status (negative if an error occurs).
-
         """
-        return self._dll.openmc_load_nuclide(name.encode())
+        self._dll.openmc_load_nuclide(name.encode())
 
     def material_add_nuclide(self, mat_id, name, density):
         """Add a nuclide to a material.
@@ -197,14 +246,8 @@ class OpenMCLibrary(object):
         density : float
             Density in atom/b-cm
 
-        Returns
-        -------
-        int
-            Return status (negative if an error occurs).
-
         """
-        return self._dll.openmc_material_add_nuclide(
-            mat_id, name.encode(), density)
+        self._dll.openmc_material_add_nuclide(mat_id, name.encode(), density)
 
     def material_get_densities(self, mat_id):
         """Get atom densities in a material.
@@ -221,11 +264,9 @@ class OpenMCLibrary(object):
 
         """
         data = POINTER(c_double)()
-        n = self._dll.openmc_material_get_densities(mat_id, data)
-        if data:
-            return as_array(data, (n,))
-        else:
-            return None
+        n = c_int()
+        self._dll.openmc_material_get_densities(mat_id, data, n)
+        return as_array(data, (n.value,))
 
     def material_get_nuclides(self, mat_id):
         """Get list of nuclides in a material.
@@ -242,11 +283,9 @@ class OpenMCLibrary(object):
 
         """
         data = POINTER(c_int)()
-        n = self._dll.openmc_material_get_nuclides(mat_id, data)
-        if data:
-            return [self.nuclide_name(data[i]) for i in range(n)]
-        else:
-            return None
+        n = c_int()
+        self._dll.openmc_material_get_nuclides(mat_id, data, n)
+        return [self.nuclide_name(data[i]) for i in range(n.value)]
 
     def material_set_density(self, mat_id, density):
         """Set density of a material.
@@ -258,13 +297,8 @@ class OpenMCLibrary(object):
         density : float
             Density in atom/b-cm
 
-        Returns
-        -------
-        int
-            Return status (negative if an error occurs).
-
         """
-        return self._dll.openmc_material_set_density(mat_id, density)
+        self._dll.openmc_material_set_density(mat_id, density)
 
     def material_set_densities(self, mat_id, nuclides, densities):
         """Set the densities of a list of nuclides in a material
@@ -278,11 +312,6 @@ class OpenMCLibrary(object):
         densities : iterable of float
             Corresponding densities in atom/b-cm
 
-        Returns
-        -------
-        int
-            Return status (negative if an error occurs).
-
         """
         # Convert strings to an array of char*
         nucs = (c_char_p * len(nuclides))()
@@ -292,8 +321,7 @@ class OpenMCLibrary(object):
         d = np.asarray(densities)
         dp = d.ctypes.data_as(POINTER(c_double))
 
-        return self._dll.openmc_material_set_densities(
-            mat_id, len(nuclides), nucs, dp)
+        self._dll.openmc_material_set_densities(mat_id, len(nuclides), nucs, dp)
 
     def nuclide_name(self, index):
         """Name of nuclide with given index
@@ -310,28 +338,25 @@ class OpenMCLibrary(object):
 
         """
         name = c_char_p()
-        err = self._dll.openmc_nuclide_name(index, name)
+        self._dll.openmc_nuclide_name(index, name)
 
         # Find blank in name
-        if err == 0:
-            i = 0
-            while name.value[i:i+1] != b' ':
-                i += 1
-            return name.value[:i].decode()
-        else:
-            return None
+        i = 0
+        while name.value[i:i+1] != b' ':
+            i += 1
+        return name.value[:i].decode()
 
     def plot_geometry(self):
         """Plot geometry"""
-        return self._dll.openmc_plot_geometry()
+        self._dll.openmc_plot_geometry()
 
     def reset(self):
         """Reset tallies"""
-        return self._dll.openmc_reset()
+        self._dll.openmc_reset()
 
     def run(self):
         """Run simulation"""
-        return self._dll.openmc_run()
+        self._dll.openmc_run()
 
     def tally_results(self, tally_id):
         """Get tally results array
@@ -362,7 +387,6 @@ class OpenMCLibrary(object):
         except AttributeError:
             raise AttributeError("OpenMC library doesn't have a '{}' function"
                                  .format(key))
-
 
 @contextmanager
 def lib_context(intracomm=None):

@@ -106,13 +106,9 @@ class OpenMCLibrary(object):
         self._dll.openmc_material_add_nuclide.restype = c_int
         self._dll.openmc_material_add_nuclide.errcheck = _error_handler
         self._dll.openmc_material_get_densities.argtypes = [
-            c_int32, _double_array, POINTER(c_int)]
+            c_int32, _int_array, _double_array, POINTER(c_int)]
         self._dll.openmc_material_get_densities.restype = c_int
         self._dll.openmc_material_get_densities.errcheck = _error_handler
-        self._dll.openmc_material_get_nuclides.argtypes = [
-            c_int32, _int_array, POINTER(c_int)]
-        self._dll.openmc_material_get_nuclides.restype = c_int
-        self._dll.openmc_material_get_nuclides.errcheck = _error_handler
         self._dll.openmc_material_set_density.argtypes = [c_int32, c_double]
         self._dll.openmc_material_set_density.restype = c_int
         self._dll.openmc_material_set_density.errcheck = _error_handler
@@ -259,33 +255,24 @@ class OpenMCLibrary(object):
 
         Returns
         -------
+        list of string
+            List of nuclide names
         numpy.ndarray
             Array of densities in atom/b-cm
 
         """
-        data = POINTER(c_double)()
+        # Allocate memory for arguments that are written to
+        nuclides = POINTER(c_int)()
+        densities = POINTER(c_double)()
         n = c_int()
-        self._dll.openmc_material_get_densities(mat_id, data, n)
-        return as_array(data, (n.value,))
 
-    def material_get_nuclides(self, mat_id):
-        """Get list of nuclides in a material.
+        # Get nuclide names and densities
+        self._dll.openmc_material_get_densities(mat_id, nuclides, densities, n)
 
-        Parameters
-        ----------
-        mat_id : int
-            ID of the material
-
-        Returns
-        -------
-        list of str
-            Nuclides in specified material
-
-        """
-        data = POINTER(c_int)()
-        n = c_int()
-        self._dll.openmc_material_get_nuclides(mat_id, data, n)
-        return [self.nuclide_name(data[i]) for i in range(n.value)]
+        # Convert to appropriate types and return
+        nuclide_list = [self.nuclide_name(nuclides[i]) for i in range(n.value)]
+        density_array = as_array(densities, (n.value,))
+        return nuclide_list, density_array
 
     def material_set_density(self, mat_id, density):
         """Set density of a material.

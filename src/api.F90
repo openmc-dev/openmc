@@ -31,7 +31,6 @@ module openmc_api
   public :: openmc_load_nuclide
   public :: openmc_material_add_nuclide
   public :: openmc_material_get_densities
-  public :: openmc_material_get_nuclides
   public :: openmc_material_set_density
   public :: openmc_material_set_densities
   public :: openmc_nuclide_name
@@ -361,15 +360,18 @@ contains
 ! material
 !===============================================================================
 
-  function openmc_material_get_densities(id, ptr, n) result(err) bind(C)
+  function openmc_material_get_densities(id, nuclides, densities, n) &
+       result(err) bind(C)
     integer(C_INT32_T), intent(in), value :: id
-    type(C_PTR),        intent(out) :: ptr
+    type(C_PTR),        intent(out) :: nuclides
+    type(C_PTR),        intent(out) :: densities
     integer(C_INT),     intent(out) :: n
     integer(C_INT) :: err
 
     integer :: i
 
-    ptr = C_NULL_PTR
+    nuclides = C_NULL_PTR
+    densities = C_NULL_PTR
     n = -1
     err = E_UNASSIGNED
     if (allocated(materials)) then
@@ -377,7 +379,8 @@ contains
         i = material_dict % get_key(id)
         associate (m => materials(i))
           if (allocated(m % atom_density)) then
-            ptr = C_LOC(m % atom_density(1))
+            nuclides = C_LOC(m % nuclide(1))
+            densities = C_LOC(m % atom_density(1))
             n = size(m % atom_density)
             err = 0
           end if
@@ -389,40 +392,6 @@ contains
       err = E_MATERIAL_NOT_ALLOCATED
     end if
   end function openmc_material_get_densities
-
-!===============================================================================
-! OPENMC_MATERIAL_GET_NUCLIDES returns an array that indicates for each nuclide
-! in a material its index in the global nuclides array
-!===============================================================================
-
-  function openmc_material_get_nuclides(id, ptr, n) result(err) bind(C)
-    integer(C_INT32_T), intent(in), value :: id
-    type(C_PTR),        intent(out) :: ptr
-    integer(C_INT),     intent(out) :: n
-    integer(C_INT) :: err
-
-    integer :: i
-
-    ptr = C_NULL_PTR
-    n = -1
-    err = E_UNASSIGNED
-    if (allocated(materials)) then
-      if (material_dict % has_key(id)) then
-        i = material_dict % get_key(id)
-        associate (m => materials(i))
-          if (allocated(m % nuclide)) then
-            ptr = C_LOC(m % nuclide(1))
-            n = size(m % nuclide)
-            err = 0
-          end if
-        end associate
-      else
-        err = E_MATERIAL_INVALID_ID
-      end if
-    else
-      err = E_MATERIAL_NOT_ALLOCATED
-    end if
-  end function openmc_material_get_nuclides
 
 !===============================================================================
 ! OPENMC_NUCLIDE_NAME returns the name of a nuclide with a given index

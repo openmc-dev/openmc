@@ -68,14 +68,14 @@ reconr / %%%%%%%%%%%%%%%%%%% Reconstruct XS for neutrons %%%%%%%%%%%%%%%%%%%%%%%
 20 21
 '{library} PENDF for {zsymam}'/
 {mat} 2/
-0.001 0.0 0.003/ err tempr errmax
+{error}/ err
 '{library}: {zsymam}'/
 'Processed by NJOY'/
 0/
 broadr / %%%%%%%%%%%%%%%%%%%%%%% Doppler broaden XS %%%%%%%%%%%%%%%%%%%%%%%%%%%%
 20 21 22
 {mat} {num_temp} 0 0 0. /
-0.001 1.0e6 0.003 /
+{error}/ errthn
 {temps}
 0/
 heatr / %%%%%%%%%%%%%%%%%%%%%%%%% Add heating kerma %%%%%%%%%%%%%%%%%%%%%%%%%%%%
@@ -104,26 +104,26 @@ reconr / %%%%%%%%%%%%%%%%%%% Reconstruct XS for neutrons %%%%%%%%%%%%%%%%%%%%%%%
 20 22
 '{library} PENDF for {zsymam}'/
 {mat} 2/
-0.001 0. 0.001/ err tempr errmax
+{error}/ err
 '{library}: PENDF for {zsymam}'/
 'Processed by NJOY'/
 0/
 broadr / %%%%%%%%%%%%%%%%%%%%%%% Doppler broaden XS %%%%%%%%%%%%%%%%%%%%%%%%%%%%
 20 22 23
 {mat} {num_temp} 0 0 0./
-0.001 2.0e+6 0.001/ errthn thnmax errmax
+{error}/ errthn
 {temps}
 0/
 thermr / %%%%%%%%%%%%%%%% Add thermal scattering data (free gas) %%%%%%%%%%%%%%%
 0 23 62
 0 {mat} 12 {num_temp} 1 0 {iform} 1 221 1/
 {temps}
-0.001 {energy_max}
+{error} {energy_max}
 thermr / %%%%%%%%%%%%%%%% Add thermal scattering data (bound) %%%%%%%%%%%%%%%%%%
 60 62 27
 {mat_thermal} {mat} 16 {num_temp} {inelastic} {elastic} {iform} {natom} 222 1/
 {temps}
-0.001 {energy_max}
+{error} {energy_max}
 """
 
 _ACE_THERMAL_TEMPLATE_ACER = """acer /
@@ -195,7 +195,7 @@ def run(commands, tapein, tapeout, stdout=False, njoy_exec='njoy'):
     return njoy.returncode
 
 
-def make_pendf(filename, pendf='pendf', stdout=False):
+def make_pendf(filename, pendf='pendf', error=0.001, stdout=False):
     """Generate ACE file from an ENDF file
 
     Parameters
@@ -204,6 +204,8 @@ def make_pendf(filename, pendf='pendf', stdout=False):
         Path to ENDF file
     pendf : str, optional
         Path of pointwise ENDF file to write
+    error : float, optional
+        Fractional error tolerance for NJOY processing.
     stdout : bool
         Whether to display NJOY standard output
 
@@ -226,7 +228,7 @@ def make_pendf(filename, pendf='pendf', stdout=False):
     return run(commands, tapein, tapeout, stdout)
 
 
-def make_ace(filename, temperatures=None, ace='ace', xsdir='xsdir',
+def make_ace(filename, temperatures=None, error=0.001, ace='ace', xsdir='xsdir',
              pendf=None, **kwargs):
     """Generate incident neutron ACE file from an ENDF file
 
@@ -237,6 +239,8 @@ def make_ace(filename, temperatures=None, ace='ace', xsdir='xsdir',
     temperatures : iterable of float, optional
         Temperatures in Kelvin to produce ACE files at. If omitted, data is
         produced at room temperature (293.6 K).
+    error : float, optional
+        Fractional error tolerance for NJOY processing.
     ace : str, optional
         Path of ACE file to write
     xsdir : str, optional
@@ -311,7 +315,7 @@ def make_ace(filename, temperatures=None, ace='ace', xsdir='xsdir',
     return retcode
 
 
-def make_ace_thermal(filename, filename_thermal, temperatures=None,
+def make_ace_thermal(filename, filename_thermal, temperatures=None, error=0.001,
                      ace='ace', xsdir='xsdir', **kwargs):
     """Generate thermal scattering ACE file from ENDF files
 
@@ -324,6 +328,8 @@ def make_ace_thermal(filename, filename_thermal, temperatures=None,
     temperatures : iterable of float, optional
         Temperatures in Kelvin to produce data at. If omitted, data is produced
         at all temperatures given in the ENDF thermal scattering sublibrary.
+    error : float, optional
+        Fractional error tolerance for NJOY processing.
     ace : str, optional
         Path of ACE file to write
     xsdir : str, optional

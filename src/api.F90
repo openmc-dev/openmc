@@ -19,6 +19,8 @@ module openmc_api
   use simulation,      only: openmc_run
   use volume_calc,     only: openmc_calculate_volumes
 
+  implicit none
+
   private
   public :: openmc_calculate_volumes
   public :: openmc_cell_set_temperature
@@ -29,7 +31,10 @@ module openmc_api
   public :: openmc_load_nuclide
   public :: openmc_material_add_nuclide
   public :: openmc_material_get_densities
+  public :: openmc_material_get_nuclides
   public :: openmc_material_set_density
+  public :: openmc_material_set_densities
+  public :: openmc_nuclide_name
   public :: openmc_plot_geometry
   public :: openmc_reset
   public :: openmc_run
@@ -202,6 +207,7 @@ contains
     character(kind=C_CHAR) :: name(*)
     integer(C_INT) :: err
 
+    integer :: i_library
     integer :: n
     integer(HID_T) :: file_id
     integer(HID_T) :: group_id
@@ -337,6 +343,8 @@ contains
     type(C_PTR),        intent(out) :: ptr
     integer(C_INT) :: n
 
+    integer :: i
+
     ptr = C_NULL_PTR
     n = 0
     if (allocated(materials)) then
@@ -351,6 +359,55 @@ contains
       end if
     end if
   end function openmc_material_get_densities
+
+!===============================================================================
+! OPENMC_MATERIAL_GET_NUCLIDES returns an array that indicates for each nuclide
+! in a material its index in the global nuclides array
+!===============================================================================
+
+  function openmc_material_get_nuclides(id, ptr) result(n) bind(C)
+    integer(C_INT32_T), intent(in), value :: id
+    type(C_PTR),        intent(out) :: ptr
+    integer(C_INT) :: n
+
+    integer :: i
+
+    ptr = C_NULL_PTR
+    n = 0
+    if (allocated(materials)) then
+      if (material_dict % has_key(id)) then
+        i = material_dict % get_key(id)
+        associate (m => materials(i))
+          if (allocated(m % nuclide)) then
+            ptr = C_LOC(m % nuclide(1))
+            n = size(m % nuclide)
+          end if
+        end associate
+      end if
+    end if
+  end function openmc_material_get_nuclides
+
+!===============================================================================
+! OPENMC_NUCLIDE_NAME returns the name of a nuclide with a given index
+!===============================================================================
+
+  function openmc_nuclide_name(index, name) result(err) bind(C)
+    integer(C_INT), value, intent(in) :: index
+    type(c_ptr), intent(out) :: name
+    integer(C_INT) :: err
+
+    character(C_CHAR), pointer :: name_
+
+    err = -1
+    name = C_NULL_PTR
+    if (allocated(nuclides)) then
+      if (index >= 1 .and. index <= size(nuclides)) then
+        name_ => nuclides(index) % name(1:1)
+        name = C_LOC(name_)
+        err = 0
+      end if
+    end if
+  end function openmc_nuclide_name
 
 !===============================================================================
 ! OPENMC_MATERIAL_SET_DENSITY sets the total density of a material in atom/b-cm
@@ -373,6 +430,57 @@ contains
       end if
     end if
   end function openmc_material_set_density
+
+!===============================================================================
+! OPENMC_MATERIAL_SET_DENSITIES sets the densities for a list of nuclides in a
+! material. If the nuclides don't already exist in the material, they will be
+! added
+!===============================================================================
+
+  function openmc_material_set_densities(id, n, name, density) result(err) bind(C)
+    integer(C_INT32_T), value, intent(in) :: id
+    integer(C_INT), value, intent(in) :: n
+    type(C_PTR),    intent(in) :: name(n)
+    real(C_DOUBLE), intent(in) :: density(n)
+    integer(C_INT) :: err
+
+    integer :: i, j, k
+    logical :: has_nuclide
+    character(C_CHAR), pointer :: string(:)
+    character(len=:, kind=C_CHAR), allocatable :: name_
+
+    err = -1
+    if (allocated(materials)) then
+      if (material_dict % has_key(id)) then
+        i = material_dict % get_key(id)
+        associate (m => materials(i))
+          do i = 1, n
+            ! Convert C string to Fortran string
+            call c_f_pointer(name(i), string, [10])
+            name_ = to_f_string(string)
+
+            ! Find corresponding nuclide and set density
+            has_nuclide = .false.
+            do j = 1, size(m % nuclide)
+              k = m % nuclide(j)
+              if (nuclides(k) % name == name_) then
+                m % atom_density(j) = density(i)
+                has_nuclide = .true.
+              end if
+            end do
+
+            ! If nuclide wasn't found, try to load it
+            err = openmc_material_add_nuclide(id, string, density(i))
+            if (err /= 0) return
+          end do
+
+          ! Set total density to the sum of the vector
+          err = m % set_density(sum(m % atom_density), nuclides)
+        end associate
+      end if
+    end if
+
+  end function openmc_material_set_densities
 
 !===============================================================================
 ! OPENMC_RESET resets all tallies

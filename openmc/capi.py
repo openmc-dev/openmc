@@ -12,6 +12,7 @@ __all__ = ['OpenMCLibrary', 'lib', 'lib_context']
 
 _int3 = c_int*3
 _double3 = c_double*3
+_int_array = POINTER(POINTER(c_int))
 _double_array = POINTER(POINTER(c_double))
 
 
@@ -47,14 +48,25 @@ class OpenMCLibrary(object):
         self._dll.openmc_get_keff.restype = c_int
         self._dll.openmc_load_nuclide.argtypes = [c_char_p]
         self._dll.openmc_load_nuclide.restype = c_int
+
+        # Material interface
         self._dll.openmc_material_add_nuclide.argtypes = [
             c_int32, c_char_p, c_double]
         self._dll.openmc_material_add_nuclide.restype = c_int
         self._dll.openmc_material_get_densities.argtypes = [
             c_int32, _double_array]
         self._dll.openmc_material_get_densities.restype = c_int
+        self._dll.openmc_material_get_nuclides.argtypes = [
+            c_int32, _int_array]
+        self._dll.openmc_material_get_nuclides.restype = c_int
         self._dll.openmc_material_set_density.argtypes = [c_int32, c_double]
         self._dll.openmc_material_set_density.restype = c_int
+        self._dll.openmc_material_set_densities.argtypes = [
+            c_int32, c_int, POINTER(c_char_p), POINTER(c_double)]
+        self._dll.openmc_material_set_densities.restype = c_int
+
+        self._dll.openmc_nuclide_name.argtypes = [c_int, POINTER(c_char_p)]
+        self._dll.openmc_nuclide_name.restype = c_int
         self._dll.openmc_plot_geometry.restype = None
         self._dll.openmc_run.restype = None
         self._dll.openmc_reset.restype = None
@@ -215,6 +227,27 @@ class OpenMCLibrary(object):
         else:
             return None
 
+    def material_get_nuclides(self, mat_id):
+        """Get list of nuclides in a material.
+
+        Parameters
+        ----------
+        mat_id : int
+            ID of the material
+
+        Returns
+        -------
+        list of str
+            Nuclides in specified material
+
+        """
+        data = POINTER(c_int)()
+        n = self._dll.openmc_material_get_nuclides(mat_id, data)
+        if data:
+            return [self.nuclide_name(data[i]) for i in range(n)]
+        else:
+            return None
+
     def material_set_density(self, mat_id, density):
         """Set density of a material.
 
@@ -232,6 +265,61 @@ class OpenMCLibrary(object):
 
         """
         return self._dll.openmc_material_set_density(mat_id, density)
+
+    def material_set_densities(self, mat_id, nuclides, densities):
+        """Set the densities of a list of nuclides in a material
+
+        Parameters
+        ----------
+        mat_id : int
+            ID of the material
+        nuclides : iterable of str
+            Nuclide names
+        densities : iterable of float
+            Corresponding densities in atom/b-cm
+
+        Returns
+        -------
+        int
+            Return status (negative if an error occurs).
+
+        """
+        # Convert strings to an array of char*
+        nucs = (c_char_p * len(nuclides))()
+        nucs[:] = [x.encode() for x in nuclides]
+
+        # Get numpy array as a double*
+        d = np.asarray(densities)
+        dp = d.ctypes.data_as(POINTER(c_double))
+
+        return self._dll.openmc_material_set_densities(
+            mat_id, len(nuclides), nucs, dp)
+
+    def nuclide_name(self, index):
+        """Name of nuclide with given index
+
+        Parameter
+        ---------
+        index : int
+            Index in internal nuclides array
+
+        Returns
+        -------
+        str
+            Name of nuclide
+
+        """
+        name = c_char_p()
+        err = self._dll.openmc_nuclide_name(index, name)
+
+        # Find blank in name
+        if err == 0:
+            i = 0
+            while name.value[i:i+1] != b' ':
+                i += 1
+            return name.value[:i].decode()
+        else:
+            return None
 
     def plot_geometry(self):
         """Plot geometry"""

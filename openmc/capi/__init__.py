@@ -10,21 +10,36 @@ automatically loaded. Calls to the OpenMC library can then be made, for example:
 
 """
 
-from collections import Mapping
 from contextlib import contextmanager
 from ctypes import CDLL, c_int, c_int32, c_double, c_char_p, POINTER
 import sys
 from warnings import warn
-from weakref import WeakValueDictionary
 
-import numpy as np
 from numpy.ctypeslib import as_array
 import pkg_resources
 
+
+# Determine shared-library suffix
+if sys.platform == 'darwin':
+    _suffix = 'dylib'
+else:
+    _suffix = 'so'
+
+# Open shared library
+_filename = pkg_resources.resource_filename(
+    __name__, '_libopenmc.{}'.format(_suffix))
+try:
+    _dll = CDLL(_filename)
+    _available = True
+except OSError:
+    warn("OpenMC shared library is not available from the Python API. This "
+         "means you will not be able to use openmc.capi to make in-memory "
+         "calls to OpenMC.")
+    _available = False
+
+
 _int3 = c_int*3
 _double3 = c_double*3
-_int_array = POINTER(POINTER(c_int))
-_double_array = POINTER(POINTER(c_double))
 
 
 class GeometryError(Exception):
@@ -77,172 +92,6 @@ def _error_handler(err, func, args):
         raise Exception("Unknown error encountered (code {}).".format(err))
 
 
-
-
-class MaterialView(object):
-    __instances = WeakValueDictionary()
-    def __new__(cls, *args):
-        if args not in cls.__instances:
-            instance = super().__new__(cls)
-            cls.__instances[args] = instance
-        return cls.__instances[args]
-
-    def __init__(self, index):
-        self._index = index
-
-    @property
-    def id(self):
-        mat_id = c_int32()
-        _dll.openmc_material_id(self._index, mat_id)
-        return mat_id.value
-
-    @property
-    def nuclides(self):
-        return self._get_densities()[0]
-        return nuclides
-
-    @property
-    def densities(self):
-        return self._get_densities()[1]
-
-    def _get_densities(self):
-        """Get atom densities in a material.
-
-        Returns
-        -------
-        list of string
-            List of nuclide names
-        numpy.ndarray
-            Array of densities in atom/b-cm
-
-        """
-        # Allocate memory for arguments that are written to
-        nuclides = POINTER(c_int)()
-        densities = POINTER(c_double)()
-        n = c_int()
-
-        # Get nuclide names and densities
-        _dll.openmc_material_get_densities(self._index, nuclides, densities, n)
-
-        # Convert to appropriate types and return
-        nuclide_list = [NuclideView(nuclides[i]).name for i in range(n.value)]
-        density_array = as_array(densities, (n.value,))
-        return nuclide_list, density_array
-
-    def add_nuclide(name, density):
-        """Add a nuclide to a material.
-
-        Parameters
-        ----------
-        name : str
-            Name of nuclide, e.g. 'U235'
-        density : float
-            Density in atom/b-cm
-
-        """
-        _dll.openmc_material_add_nuclide(self._index, name.encode(), density)
-
-    def set_density(self, density):
-        """Set density of a material.
-
-        Parameters
-        ----------
-        density : float
-            Density in atom/b-cm
-
-        """
-        _dll.openmc_material_set_density(self._index, density)
-
-    def set_densities(self, nuclides, densities):
-        """Set the densities of a list of nuclides in a material
-
-        Parameters
-        ----------
-        nuclides : iterable of str
-            Nuclide names
-        densities : iterable of float
-            Corresponding densities in atom/b-cm
-
-        """
-        # Convert strings to an array of char*
-        nucs = (c_char_p * len(nuclides))()
-        nucs[:] = [x.encode() for x in nuclides]
-
-        # Get numpy array as a double*
-        d = np.asarray(densities)
-        dp = d.ctypes.data_as(POINTER(c_double))
-
-        _dll.openmc_material_set_densities(self._index, len(nuclides), nucs, dp)
-
-
-class _MaterialMapping(Mapping):
-    def __getitem__(self, key):
-        index = c_int32()
-        _dll.openmc_get_material(key, index)
-        return MaterialView(index.value)
-
-    def __iter__(self):
-        for i in range(len(self)):
-            yield MaterialView(i + 1).id
-
-    def __len__(self):
-        return c_int32.in_dll(_dll, 'n_materials').value
-
-materials = _MaterialMapping()
-
-
-class NuclideView(object):
-    __instances = WeakValueDictionary()
-    def __new__(cls, *args):
-        if args not in cls.__instances:
-            instance = super().__new__(cls)
-            cls.__instances[args] = instance
-        return cls.__instances[args]
-
-    def __init__(self, index):
-        self._index = index
-
-    @property
-    def name(self):
-        """Name of nuclide with given index
-
-        Parameter
-        ---------
-        index : int
-            Index in internal nuclides array
-
-        Returns
-        -------
-        str
-            Name of nuclide
-
-        """
-        name = c_char_p()
-        _dll.openmc_nuclide_name(self._index, name)
-
-        # Find blank in name
-        i = 0
-        while name.value[i:i+1] != b' ':
-            i += 1
-        return name.value[:i].decode()
-
-
-class _NuclideMapping(Mapping):
-    def __getitem__(self, key):
-        index = c_int()
-        _dll.openmc_get_nuclide(key.encode(), index)
-        return NuclideView(index)
-
-    def __iter__(self):
-        for i in range(len(self)):
-            yield NuclideView(i + 1).name
-
-    def __len__(self):
-        return c_int.in_dll(_dll, 'n_nuclides').value
-
-nuclides = _NuclideMapping()
-
-
 def calculate_volumes():
     """Run stochastic volume calculation"""
     _dll.openmc_calculate_volumes()
@@ -262,7 +111,6 @@ def cell_set_temperature(cell_id, T, instance=None):
 
     """
     _dll.openmc_cell_set_temperature(cell_id, T, instance)
-
 
 
 def finalize():
@@ -340,20 +188,6 @@ def keff():
     return tuple(k)
 
 
-def load_nuclide(name):
-    """Load cross section data for a nuclide.
-
-    Parameters
-    ----------
-    name : str
-        Name of nuclide, e.g. 'U235'
-
-    """
-    _dll.openmc_load_nuclide(name.encode())
-
-
-
-
 def plot_geometry():
     """Plot geometry"""
     _dll.openmc_plot_geometry()
@@ -415,24 +249,6 @@ def run_in_memory(intracomm=None):
     finalize()
 
 
-# Determine shared-library suffix
-if sys.platform == 'darwin':
-    _suffix = 'dylib'
-else:
-    _suffix = 'so'
-
-# Open shared library
-_filename = pkg_resources.resource_filename(
-    __name__, '_libopenmc.{}'.format(_suffix))
-try:
-    _dll = CDLL(_filename)
-    _available = True
-except OSError:
-    warn("OpenMC shared library is not available from the Python API. This "
-         "means you will not be able to use openmc.capi to make in-memory "
-         "calls to OpenMC.")
-    _available = False
-
 # Set argument/return types
 if _available:
     _dll.openmc_calculate_volumes.restype = None
@@ -453,40 +269,6 @@ if _available:
     _dll.openmc_cell_set_temperature.restype = c_int
     _dll.openmc_cell_set_temperature.errcheck = _error_handler
 
-    # Material functions
-    _dll.openmc_get_material.argtypes = [c_int32, POINTER(c_int32)]
-    _dll.openmc_get_material.restype = c_int
-    _dll.openmc_get_material.errcheck = _error_handler
-    _dll.openmc_material_add_nuclide.argtypes = [
-        c_int32, c_char_p, c_double]
-    _dll.openmc_material_add_nuclide.restype = c_int
-    _dll.openmc_material_add_nuclide.errcheck = _error_handler
-    _dll.openmc_material_id.argtypes = [c_int32, POINTER(c_int32)]
-    _dll.openmc_material_id.restype = c_int
-    _dll.openmc_material_id.errcheck = _error_handler
-    _dll.openmc_material_get_densities.argtypes = [
-        c_int32, _int_array, _double_array, POINTER(c_int)]
-    _dll.openmc_material_get_densities.restype = c_int
-    _dll.openmc_material_get_densities.errcheck = _error_handler
-    _dll.openmc_material_set_density.argtypes = [c_int32, c_double]
-    _dll.openmc_material_set_density.restype = c_int
-    _dll.openmc_material_set_density.errcheck = _error_handler
-    _dll.openmc_material_set_densities.argtypes = [
-        c_int32, c_int, POINTER(c_char_p), POINTER(c_double)]
-    _dll.openmc_material_set_densities.restype = c_int
-    _dll.openmc_material_set_densities.errcheck = _error_handler
-
-    # Nuclide functions
-    _dll.openmc_get_nuclide.argtypes = [c_char_p, POINTER(c_int)]
-    _dll.openmc_get_nuclide.restype = c_int
-    _dll.openmc_get_nuclide.errcheck = _error_handler
-    _dll.openmc_load_nuclide.argtypes = [c_char_p]
-    _dll.openmc_load_nuclide.restype = c_int
-    _dll.openmc_load_nuclide.errcheck = _error_handler
-    _dll.openmc_nuclide_name.argtypes = [c_int, POINTER(c_char_p)]
-    _dll.openmc_nuclide_name.restype = c_int
-    _dll.openmc_nuclide_name.errcheck = _error_handler
-
     _dll.openmc_plot_geometry.restype = None
     _dll.openmc_run.restype = None
     _dll.openmc_reset.restype = None
@@ -496,3 +278,6 @@ if _available:
         c_int32, _double_array, POINTER(_int3)]
     _dll.openmc_tally_results.restype = c_int
     _dll.openmc_tally_results.errcheck = _error_handler
+
+    from .nuclide import *
+    from .material import *

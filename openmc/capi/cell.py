@@ -9,9 +9,9 @@ from openmc.capi import _dll, _error_handler
 __all__ = ['CellView', 'cells']
 
 # Cell functions
-_dll.openmc_cell_id.argtypes = [c_int32, POINTER(c_int32)]
-_dll.openmc_cell_id.restype = c_int
-_dll.openmc_cell_id.errcheck = _error_handler
+_dll.openmc_cell_get_id.argtypes = [c_int32, POINTER(c_int32)]
+_dll.openmc_cell_get_id.restype = c_int
+_dll.openmc_cell_get_id.errcheck = _error_handler
 _dll.openmc_cell_set_temperature.argtypes = [
     c_int32, c_double, POINTER(c_int32)]
 _dll.openmc_cell_set_temperature.restype = c_int
@@ -35,7 +35,7 @@ class CellView(object):
     @property
     def id(self):
         cell_id = c_int32()
-        _dll.openmc_cell_id(self._index, cell_id)
+        _dll.openmc_cell_get_id(self._index, cell_id)
         return cell_id.value
 
     def set_temperature(self, T, instance=None):

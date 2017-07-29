@@ -44,6 +44,7 @@ module openmc_api
   public :: openmc_reset
   public :: openmc_run
   public :: openmc_tally_id
+  public :: openmc_tally_nuclides
   public :: openmc_tally_results
 
   ! Error codes
@@ -335,7 +336,7 @@ contains
   end function openmc_get_tally
 
 !===============================================================================
-! OPENMC_LOAD_LOAD loads a nuclide from the cross section library
+! OPENMC_LOAD_NUCLIDE loads a nuclide from the cross section library
 !===============================================================================
 
   function openmc_load_nuclide(name) result(err) bind(C)
@@ -656,6 +657,30 @@ contains
       err = E_OUT_OF_BOUNDS
     end if
   end function openmc_tally_id
+
+!===============================================================================
+! OPENMC_TALLY_NUCLIDES returns the list of nuclides assigned to a tally
+!===============================================================================
+
+  function openmc_tally_nuclides(index, ptr, n) result(err) bind(C)
+    integer(C_INT32_T), value :: index
+    type(C_PTR), intent(out) :: ptr
+    integer(C_INT), intent(out) :: n
+    integer(C_INT) :: err
+
+    err = E_UNASSIGNED
+    if (index >= 1 .and. index <= size(tallies)) then
+      associate (t => tallies(index))
+        if (allocated(t % nuclide_bins)) then
+          ptr = C_LOC(t % nuclide_bins(1))
+          n = size(t % nuclide_bins)
+          err = 0
+        end if
+      end associate
+    else
+      err = E_OUT_OF_BOUNDS
+    end if
+  end function openmc_tally_nuclides
 
 !===============================================================================
 ! OPENMC_TALLY_RESULTS returns a pointer to a tally results array along with its

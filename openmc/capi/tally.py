@@ -13,17 +13,20 @@ __all__ = ['TallyView', 'tallies']
 _dll.openmc_get_tally.argtypes = [c_int32, POINTER(c_int32)]
 _dll.openmc_get_tally.restype = c_int
 _dll.openmc_get_tally.errcheck = _error_handler
-_dll.openmc_tally_id.argtypes = [c_int32, POINTER(c_int32)]
-_dll.openmc_tally_id.restype = c_int
-_dll.openmc_tally_id.errcheck = _error_handler
-_dll.openmc_tally_nuclides.argtypes = [
+_dll.openmc_tally_get_id.argtypes = [c_int32, POINTER(c_int32)]
+_dll.openmc_tally_get_id.restype = c_int
+_dll.openmc_tally_get_id.errcheck = _error_handler
+_dll.openmc_tally_get_nuclides.argtypes = [
     c_int32, POINTER(POINTER(c_int)), POINTER(c_int)]
-_dll.openmc_tally_nuclides.restype = c_int
-_dll.openmc_tally_nuclides.errcheck = _error_handler
+_dll.openmc_tally_get_nuclides.restype = c_int
+_dll.openmc_tally_get_nuclides.errcheck = _error_handler
 _dll.openmc_tally_results.argtypes = [
     c_int32, POINTER(POINTER(c_double)), POINTER(c_int*3)]
 _dll.openmc_tally_results.restype = c_int
 _dll.openmc_tally_results.errcheck = _error_handler
+_dll.openmc_tally_set_nuclides.argtypes = [c_int32, c_int, POINTER(c_char_p)]
+_dll.openmc_tally_set_nuclides.restype = c_int
+_dll.openmc_tally_set_nuclides.errcheck = _error_handler
 
 
 class TallyView(object):
@@ -40,14 +43,14 @@ class TallyView(object):
     @property
     def id(self):
         tally_id = c_int32()
-        _dll.openmc_tally_id(self._index, tally_id)
+        _dll.openmc_tally_get_id(self._index, tally_id)
         return tally_id.value
 
     @property
     def nuclides(self):
         nucs = POINTER(c_int)()
         n = c_int()
-        _dll.openmc_tally_nuclides(self._index, nucs, n)
+        _dll.openmc_tally_get_nuclides(self._index, nucs, n)
         return [NuclideView(nucs[i]).name if nucs[i] > 0 else 'total'
                 for i in range(n.value)]
 
@@ -65,6 +68,12 @@ class TallyView(object):
         shape = (c_int*3)()
         _dll.openmc_tally_results(self._index, data, shape)
         return as_array(data, tuple(shape[::-1]))
+
+    @nuclides.setter
+    def nuclides(self, nuclides):
+        nucs = (c_char_p * len(nuclides))()
+        nucs[:] = [x.encode() for x in nuclides]
+        _dll.openmc_tally_set_nuclides(self._index, len(nuclides), nucs)
 
 
 class _TallyMapping(Mapping):

@@ -18,9 +18,9 @@ _dll.openmc_material_add_nuclide.argtypes = [
     c_int32, c_char_p, c_double]
 _dll.openmc_material_add_nuclide.restype = c_int
 _dll.openmc_material_add_nuclide.errcheck = _error_handler
-_dll.openmc_material_id.argtypes = [c_int32, POINTER(c_int32)]
-_dll.openmc_material_id.restype = c_int
-_dll.openmc_material_id.errcheck = _error_handler
+_dll.openmc_material_get_id.argtypes = [c_int32, POINTER(c_int32)]
+_dll.openmc_material_get_id.restype = c_int
+_dll.openmc_material_get_id.errcheck = _error_handler
 _dll.openmc_material_get_densities.argtypes = [
     c_int32, POINTER(POINTER(c_int)), POINTER(POINTER(c_double)),
     POINTER(c_int)]
@@ -49,7 +49,7 @@ class MaterialView(object):
     @property
     def id(self):
         mat_id = c_int32()
-        _dll.openmc_material_id(self._index, mat_id)
+        _dll.openmc_material_get_id(self._index, mat_id)
         return mat_id.value
 
     @property

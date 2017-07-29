@@ -23,7 +23,7 @@ module openmc_api
 
   private
   public :: openmc_calculate_volumes
-  public :: openmc_cell_id
+  public :: openmc_cell_get_id
   public :: openmc_cell_set_temperature
   public :: openmc_finalize
   public :: openmc_find
@@ -34,8 +34,8 @@ module openmc_api
   public :: openmc_get_tally
   public :: openmc_init
   public :: openmc_load_nuclide
-  public :: openmc_material_id
   public :: openmc_material_add_nuclide
+  public :: openmc_material_get_id
   public :: openmc_material_get_densities
   public :: openmc_material_set_density
   public :: openmc_material_set_densities
@@ -43,9 +43,10 @@ module openmc_api
   public :: openmc_plot_geometry
   public :: openmc_reset
   public :: openmc_run
-  public :: openmc_tally_id
-  public :: openmc_tally_nuclides
+  public :: openmc_tally_get_id
+  public :: openmc_tally_get_nuclides
   public :: openmc_tally_results
+  public :: openmc_tally_set_nuclides
 
   ! Error codes
   integer(C_INT), public, bind(C) :: E_UNASSIGNED = -1
@@ -67,7 +68,7 @@ contains
 ! OPENMC_CELL_ID returns the ID of a cell
 !===============================================================================
 
-  function openmc_cell_id(index, id) result(err) bind(C)
+  function openmc_cell_get_id(index, id) result(err) bind(C)
     integer(C_INT32_T), value       :: index
     integer(C_INT32_T), intent(out) :: id
     integer(C_INT) :: err
@@ -78,7 +79,7 @@ contains
     else
       err = E_OUT_OF_BOUNDS
     end if
-  end function openmc_cell_id
+  end function openmc_cell_get_id
 
 !===============================================================================
 ! OPENMC_CELL_SET_TEMPERATURE sets the temperature of a cell
@@ -492,10 +493,10 @@ contains
   end function openmc_material_get_densities
 
 !===============================================================================
-! OPENMC_MATERIAL_ID returns the ID of a material
+! OPENMC_MATERIAL_GET_ID returns the ID of a material
 !===============================================================================
 
-  function openmc_material_id(index, id) result(err) bind(C)
+  function openmc_material_get_id(index, id) result(err) bind(C)
     integer(C_INT32_T), value       :: index
     integer(C_INT32_T), intent(out) :: id
     integer(C_INT) :: err
@@ -506,7 +507,7 @@ contains
     else
       err = E_OUT_OF_BOUNDS
     end if
-  end function openmc_material_id
+  end function openmc_material_get_id
 
 !===============================================================================
 ! OPENMC_MATERIAL_SET_DENSITY sets the total density of a material in atom/b-cm
@@ -642,10 +643,10 @@ contains
   end subroutine openmc_reset
 
 !===============================================================================
-! OPENMC_TALLY_ID returns the ID of a tally
+! OPENMC_TALLY_GET_ID returns the ID of a tally
 !===============================================================================
 
-  function openmc_tally_id(index, id) result(err) bind(C)
+  function openmc_tally_get_id(index, id) result(err) bind(C)
     integer(C_INT32_T), value       :: index
     integer(C_INT32_T), intent(out) :: id
     integer(C_INT) :: err
@@ -656,13 +657,13 @@ contains
     else
       err = E_OUT_OF_BOUNDS
     end if
-  end function openmc_tally_id
+  end function openmc_tally_get_id
 
 !===============================================================================
 ! OPENMC_TALLY_NUCLIDES returns the list of nuclides assigned to a tally
 !===============================================================================
 
-  function openmc_tally_nuclides(index, ptr, n) result(err) bind(C)
+  function openmc_tally_get_nuclides(index, ptr, n) result(err) bind(C)
     integer(C_INT32_T), value :: index
     type(C_PTR), intent(out) :: ptr
     integer(C_INT), intent(out) :: n
@@ -680,7 +681,7 @@ contains
     else
       err = E_OUT_OF_BOUNDS
     end if
-  end function openmc_tally_nuclides
+  end function openmc_tally_get_nuclides
 
 !===============================================================================
 ! OPENMC_TALLY_RESULTS returns a pointer to a tally results array along with its
@@ -705,6 +706,56 @@ contains
       err = E_OUT_OF_BOUNDS
     end if
   end function openmc_tally_results
+
+  function openmc_tally_set_nuclides(index, n, nuclides) result(err) bind(C)
+    integer(C_INT32_T), value  :: index
+    integer(C_INT), value      :: n
+    type(C_PTR),    intent(in) :: nuclides(n)
+    integer(C_INT) :: err
+
+    integer :: i
+    character(C_CHAR), pointer :: string(:)
+    character(len=:, kind=C_CHAR), allocatable :: nuclide_
+
+    err = E_UNASSIGNED
+    if (index >= 1 .and. index <= size(tallies)) then
+      associate (t => tallies(index))
+        if (allocated(t % nuclide_bins)) deallocate(t % nuclide_bins)
+        allocate(t % nuclide_bins(n))
+        t % n_nuclide_bins = n
+
+        do i = 1, n
+          ! Convert C string to Fortran string
+          call c_f_pointer(nuclides(i), string, [10])
+          nuclide_ = to_lower(to_f_string(string))
+
+          select case (nuclide_)
+          case ('total')
+            t % nuclide_bins(i) = -1
+          case default
+            if (nuclide_dict % has_key(nuclide_)) then
+              t % nuclide_bins(i) = nuclide_dict % get_key(nuclide_)
+            else
+              err = E_NUCLIDE_NOT_LOADED
+              return
+            end if
+          end select
+        end do
+
+        ! Recalculate total number of scoring bins
+        t % total_score_bins = t % n_score_bins * t % n_nuclide_bins
+
+        ! (Re)allocate results array
+        if (allocated(t % results)) deallocate(t % results)
+        allocate(t % results(3, t % total_score_bins, t % total_filter_bins))
+        t % results(:,:,:) = ZERO
+
+        err = 0
+      end associate
+    else
+      err = E_OUT_OF_BOUNDS
+    end if
+  end function openmc_tally_set_nuclides
 
   function to_f_string(c_string) result(f_string)
     character(kind=C_CHAR), intent(in) :: c_string(*)

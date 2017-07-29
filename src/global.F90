@@ -43,11 +43,11 @@ module global
   type(VolumeCalculation), allocatable :: volume_calcs(:)
 
   ! Size of main arrays
-  integer :: n_cells     ! # of cells
+  integer(C_INT32_T), bind(C) :: n_cells     ! # of cells
   integer :: n_universes ! # of universes
   integer :: n_lattices  ! # of lattices
   integer :: n_surfaces  ! # of surfaces
-  integer :: n_materials ! # of materials
+  integer(C_INT32_T), bind(C) :: n_materials ! # of materials
   integer :: n_plots     ! # of plots
 
   ! These dictionaries provide a fast lookup mechanism -- the key is the
@@ -73,7 +73,8 @@ module global
   ! ============================================================================
   ! CROSS SECTION RELATED VARIABLES NEEDED REGARDLESS OF CE OR MG
 
-  integer :: n_nuclides_total ! Number of nuclide cross section tables
+  ! Number of nuclide cross section tables
+  integer(C_INT), bind(C, name='n_nuclides') :: n_nuclides_total
 
   ! Cross section caches
   type(NuclideMicroXS), allocatable :: micro_xs(:)  ! Cache for each nuclide
@@ -192,7 +193,7 @@ module global
   integer :: n_user_meshes  = 0 ! # of structured user meshes
   integer :: n_filters      = 0 ! # of filters
   integer :: n_user_filters = 0 ! # of user filters
-  integer :: n_tallies      = 0 ! # of tallies
+  integer(C_INT32_T), bind(C) :: n_tallies = 0 ! # of tallies
   integer :: n_user_tallies = 0 ! # of user tallies
 
   ! Tally derivatives

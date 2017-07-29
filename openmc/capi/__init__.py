@@ -38,8 +38,6 @@ except OSError:
     _available = False
 
 
-_int3 = c_int*3
-_double3 = c_double*3
 
 
 class GeometryError(Exception):
@@ -97,22 +95,6 @@ def calculate_volumes():
     _dll.openmc_calculate_volumes()
 
 
-def cell_set_temperature(cell_id, T, instance=None):
-    """Set the temperature of a cell
-
-    Parameters
-    ----------
-    cell_id : int
-        ID of the cell
-    T : float
-        Temperature in K
-    instance : int or None
-        Which instance of the cell
-
-    """
-    _dll.openmc_cell_set_temperature(cell_id, T, instance)
-
-
 def finalize():
     """Finalize simulation and free memory"""
     _dll.openmc_finalize()
@@ -149,7 +131,7 @@ def find(xyz, rtype='cell'):
     # Call openmc_find
     uid = c_int32()
     instance = c_int32()
-    _dll.openmc_find(_double3(*xyz), r_int, uid, instance)
+    _dll.openmc_find((c_double*3)(*xyz), r_int, uid, instance)
     return (uid.value if uid != 0 else None), instance.value
 
 
@@ -203,25 +185,6 @@ def run():
     _dll.openmc_run()
 
 
-def tally_results(tally_id):
-    """Get tally results array
-
-    Parameters
-    ----------
-    tally_id : int
-        ID of tally
-
-    Returns
-    -------
-    numpy.ndarray
-        Array that exposes the internal tally results array
-
-    """
-    data = POINTER(c_double)()
-    shape = _int3()
-    _dll.openmc_tally_results(tally_id, data, shape)
-    return as_array(data, tuple(shape[::-1]))
-
 
 @contextmanager
 def run_in_memory(intracomm=None):
@@ -254,7 +217,7 @@ if _available:
     _dll.openmc_calculate_volumes.restype = None
     _dll.openmc_finalize.restype = None
     _dll.openmc_find.argtypes = [
-        POINTER(_double3), c_int, POINTER(c_int32), POINTER(c_int32)]
+        POINTER(c_double*3), c_int, POINTER(c_int32), POINTER(c_int32)]
     _dll.openmc_find.restype = c_int
     _dll.openmc_find.errcheck = _error_handler
     _dll.openmc_init.argtypes = [POINTER(c_int)]
@@ -262,22 +225,11 @@ if _available:
     _dll.openmc_get_keff.argtypes = [POINTER(c_double*2)]
     _dll.openmc_get_keff.restype = c_int
     _dll.openmc_get_keff.errcheck = _error_handler
-
-    # Cell functions
-    _dll.openmc_cell_set_temperature.argtypes = [
-        c_int32, c_double, POINTER(c_int32)]
-    _dll.openmc_cell_set_temperature.restype = c_int
-    _dll.openmc_cell_set_temperature.errcheck = _error_handler
-
     _dll.openmc_plot_geometry.restype = None
     _dll.openmc_run.restype = None
     _dll.openmc_reset.restype = None
 
-    # Tally functions
-    _dll.openmc_tally_results.argtypes = [
-        c_int32, _double_array, POINTER(_int3)]
-    _dll.openmc_tally_results.restype = c_int
-    _dll.openmc_tally_results.errcheck = _error_handler
-
     from .nuclide import *
     from .material import *
+    from .cell import *
+    from .tally import *

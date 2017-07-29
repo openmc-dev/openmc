@@ -23,12 +23,15 @@ module openmc_api
 
   private
   public :: openmc_calculate_volumes
+  public :: openmc_cell_id
   public :: openmc_cell_set_temperature
   public :: openmc_finalize
   public :: openmc_find
+  public :: openmc_get_cell
   public :: openmc_get_keff
   public :: openmc_get_material
   public :: openmc_get_nuclide
+  public :: openmc_get_tally
   public :: openmc_init
   public :: openmc_load_nuclide
   public :: openmc_material_id
@@ -40,6 +43,7 @@ module openmc_api
   public :: openmc_plot_geometry
   public :: openmc_reset
   public :: openmc_run
+  public :: openmc_tally_id
   public :: openmc_tally_results
 
   ! Error codes
@@ -59,11 +63,28 @@ module openmc_api
 contains
 
 !===============================================================================
+! OPENMC_CELL_ID returns the ID of a cell
+!===============================================================================
+
+  function openmc_cell_id(index, id) result(err) bind(C)
+    integer(C_INT32_T), value       :: index
+    integer(C_INT32_T), intent(out) :: id
+    integer(C_INT) :: err
+
+    if (index >= 1 .and. index <= size(cells)) then
+      id = cells(index) % id
+      err = 0
+    else
+      err = E_OUT_OF_BOUNDS
+    end if
+  end function openmc_cell_id
+
+!===============================================================================
 ! OPENMC_CELL_SET_TEMPERATURE sets the temperature of a cell
 !===============================================================================
 
-  function openmc_cell_set_temperature(id, T, instance) result(err) bind(C)
-    integer(C_INT32_T), value, intent(in) :: id  ! id of cell
+  function openmc_cell_set_temperature(index, T, instance) result(err) bind(C)
+    integer(C_INT32_T), value, intent(in) :: index
     real(C_DOUBLE), value, intent(in) :: T
     integer(C_INT32_T), optional, intent(in) :: instance
     integer(C_INT) :: err
@@ -71,28 +92,23 @@ contains
     integer :: i, n
 
     err = E_UNASSIGNED
-    if (allocated(cells)) then
-      if (cell_dict % has_key(id)) then
-        i = cell_dict % get_key(id)
-        associate (c => cells(i))
-          if (allocated(c % sqrtkT)) then
-            n = size(c % sqrtkT)
-            if (present(instance) .and. n > 1) then
-              if (instance >= 0 .and. instance < n) then
-                c % sqrtkT(instance + 1) = sqrt(K_BOLTZMANN * T)
-                err = 0
-              end if
-            else
-              c % sqrtkT(:) = sqrt(K_BOLTZMANN * T)
+    if (index >= 1 .and. index <= size(cells)) then
+      associate (c => cells(i))
+        if (allocated(c % sqrtkT)) then
+          n = size(c % sqrtkT)
+          if (present(instance) .and. n > 1) then
+            if (instance >= 0 .and. instance < n) then
+              c % sqrtkT(instance + 1) = sqrt(K_BOLTZMANN * T)
               err = 0
             end if
+          else
+            c % sqrtkT(:) = sqrt(K_BOLTZMANN * T)
+            err = 0
           end if
-        end associate
-      else
-        err = E_CELL_INVALID_ID
-      end if
+        end if
+      end associate
     else
-      err = E_CELL_NOT_ALLOCATED
+      err = E_OUT_OF_BOUNDS
     end if
   end function openmc_cell_set_temperature
 
@@ -227,6 +243,27 @@ contains
   end function openmc_find
 
 !===============================================================================
+! OPENMC_GET_CELL returns the index in the cells array of a cell with a given ID
+!===============================================================================
+
+  function openmc_get_cell(id, index) result(err) bind(C)
+    integer(C_INT32_T), value :: id
+    integer(C_INT32_T), intent(out) :: index
+    integer(C_INT) :: err
+
+    if (allocated(cells)) then
+      if (cell_dict % has_key(id)) then
+        index = cell_dict % get_key(id)
+        err = 0
+      else
+        err = E_CELL_INVALID_ID
+      end if
+    else
+      err = E_CELL_NOT_ALLOCATED
+    end if
+  end function openmc_get_cell
+
+!===============================================================================
 ! OPENMC_GET_MATERIAL returns the index in the materials array of a material
 ! with a given ID
 !===============================================================================
@@ -274,6 +311,28 @@ contains
       err = E_NUCLIDE_NOT_ALLOCATED
     end if
   end function openmc_get_nuclide
+
+!===============================================================================
+! OPENMC_GET_TALLY returns the index in the tallies array of a tally
+! with a given ID
+!===============================================================================
+
+  function openmc_get_tally(id, index) result(err) bind(C)
+    integer(C_INT32_T), value :: id
+    integer(C_INT32_T), intent(out) :: index
+    integer(C_INT) :: err
+
+    if (allocated(tallies)) then
+      if (tally_dict % has_key(id)) then
+        index = tally_dict % get_key(id)
+        err = 0
+      else
+        err = E_TALLY_INVALID_ID
+      end if
+    else
+      err = E_TALLY_NOT_ALLOCATED
+    end if
+  end function openmc_get_tally
 
 !===============================================================================
 ! OPENMC_LOAD_LOAD loads a nuclide from the cross section library
@@ -582,34 +641,43 @@ contains
   end subroutine openmc_reset
 
 !===============================================================================
+! OPENMC_TALLY_ID returns the ID of a tally
+!===============================================================================
+
+  function openmc_tally_id(index, id) result(err) bind(C)
+    integer(C_INT32_T), value       :: index
+    integer(C_INT32_T), intent(out) :: id
+    integer(C_INT) :: err
+
+    if (index >= 1 .and. index <= size(tallies)) then
+      id = tallies(index) % id
+      err = 0
+    else
+      err = E_OUT_OF_BOUNDS
+    end if
+  end function openmc_tally_id
+
+!===============================================================================
 ! OPENMC_TALLY_RESULTS returns a pointer to a tally results array along with its
 ! shape. This allows a user to obtain in-memory tally results from Python
 ! directly.
 !===============================================================================
 
-  function openmc_tally_results(id, ptr, shape_) result(err) bind(C)
-    integer(C_INT32_T), intent(in), value :: id
+  function openmc_tally_results(index, ptr, shape_) result(err) bind(C)
+    integer(C_INT32_T), intent(in), value :: index
     type(C_PTR),        intent(out) :: ptr
     integer(C_INT),     intent(out) :: shape_(3)
     integer(C_INT) :: err
 
-    integer :: i
-
-    ptr = C_NULL_PTR
     err = E_UNASSIGNED
-    if (allocated(tallies)) then
-      if (tally_dict % has_key(id)) then
-        i = tally_dict % get_key(id)
-        if (allocated(tallies(i) % results)) then
-          ptr = C_LOC(tallies(i) % results(1,1,1))
-          shape_(:) = shape(tallies(i) % results)
-          err = 0
-        end if
-      else
-        err = E_TALLY_INVALID_ID
+    if (index >= 1 .and. index <= size(tallies)) then
+      if (allocated(tallies(index) % results)) then
+        ptr = C_LOC(tallies(index) % results(1,1,1))
+        shape_(:) = shape(tallies(index) % results)
+        err = 0
       end if
     else
-      err = E_TALLY_NOT_ALLOCATED
+      err = E_OUT_OF_BOUNDS
     end if
   end function openmc_tally_results
 

@@ -640,6 +640,21 @@ contains
     call active_collision_tallies % clear()
     call active_tallies % clear()
 
+    ! Reset timers
+    call time_total % reset()
+    call time_total % reset()
+    call time_initialize % reset()
+    call time_read_xs % reset()
+    call time_unionize % reset()
+    call time_bank % reset()
+    call time_bank_sample % reset()
+    call time_bank_sendrecv % reset()
+    call time_tallies % reset()
+    call time_inactive % reset()
+    call time_active % reset()
+    call time_transport % reset()
+    call time_finalize % reset()
+
   end subroutine openmc_reset
 
 !===============================================================================

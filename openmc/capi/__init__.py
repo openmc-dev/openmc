@@ -1,17 +1,19 @@
 """Provides bindings to C functions defined by OpenMC shared library.
 
 When the :mod:`openmc` package is imported, the OpenMC shared library is
-automatically loaded. Calls to the OpenMC library can then be made, for example:
+automatically loaded. Calls to the OpenMC library can then be via functions or
+objects in the :mod:`openmc.capi` subpackage, for example:
 
 .. code-block:: python
 
     openmc.capi.init()
     openmc.capi.run()
+    openmc.capi.finalize()
 
 """
 
 from contextlib import contextmanager
-from ctypes import CDLL, c_int, c_int32, c_double, c_char_p, POINTER
+from ctypes import CDLL, c_int, c_int32, c_double, POINTER
 import sys
 from warnings import warn
 
@@ -36,8 +38,6 @@ except OSError:
          "means you will not be able to use openmc.capi to make in-memory "
          "calls to OpenMC.")
     _available = False
-
-
 
 
 class GeometryError(Exception):
@@ -135,6 +135,10 @@ def find(xyz, rtype='cell'):
     return (uid.value if uid != 0 else None), instance.value
 
 
+def hard_reset():
+    _dll.openmc_hard_reset()
+
+
 def init(intracomm=None):
     """Initialize OpenMC
 
@@ -185,7 +189,6 @@ def run():
     _dll.openmc_run()
 
 
-
 @contextmanager
 def run_in_memory(intracomm=None):
     """Provides context manager for calling OpenMC shared library functions.
@@ -220,6 +223,7 @@ if _available:
         POINTER(c_double*3), c_int, POINTER(c_int32), POINTER(c_int32)]
     _dll.openmc_find.restype = c_int
     _dll.openmc_find.errcheck = _error_handler
+    _dll.openmc_hard_reset.restype = None
     _dll.openmc_init.argtypes = [POINTER(c_int)]
     _dll.openmc_init.restype = None
     _dll.openmc_get_keff.argtypes = [POINTER(c_double*2)]

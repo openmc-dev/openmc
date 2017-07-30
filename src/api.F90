@@ -15,7 +15,7 @@ module openmc_api
   use input_xml,       only: assign_0K_elastic_scattering, check_data_version
   use particle_header, only: Particle
   use plot,            only: openmc_plot_geometry
-  use random_lcg,      only: seed
+  use random_lcg,      only: seed, initialize_prng
   use simulation,      only: openmc_run
   use volume_calc,     only: openmc_calculate_volumes
 
@@ -32,6 +32,7 @@ module openmc_api
   public :: openmc_get_material
   public :: openmc_get_nuclide
   public :: openmc_get_tally
+  public :: openmc_hard_reset
   public :: openmc_init
   public :: openmc_load_nuclide
   public :: openmc_material_add_nuclide
@@ -335,6 +336,24 @@ contains
   end function openmc_get_tally
 
 !===============================================================================
+! OPENMC_HARD_RESET reset tallies and timers as well as the pseudorandom
+! generator state
+!===============================================================================
+
+  subroutine openmc_hard_reset() bind(C)
+    ! Reset all tallies and timers
+    call openmc_reset()
+
+    ! Reset total generations and keff guess
+    keff = ONE
+    total_gen = 0
+
+    ! Reset the random number generator state
+    seed = 1_8
+    call initialize_prng()
+  end subroutine openmc_hard_reset
+
+!===============================================================================
 ! OPENMC_LOAD_NUCLIDE loads a nuclide from the cross section library
 !===============================================================================
 
@@ -602,7 +621,7 @@ contains
   end function openmc_nuclide_name
 
 !===============================================================================
-! OPENMC_RESET resets all tallies
+! OPENMC_RESET resets tallies and timers
 !===============================================================================
 
   subroutine openmc_reset() bind(C)

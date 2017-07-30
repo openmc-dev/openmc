@@ -131,8 +131,6 @@ contains
     check_overlaps = .false.
     confidence_intervals = .false.
     create_fission_neutrons = .true.
-    current_batch = 0
-    current_gen   = 0
     energy_cutoff = ZERO
     energy_max_neutron = INFINITY
     energy_min_neutron = ZERO
@@ -144,12 +142,12 @@ contains
     legendre_to_tabular = .true.
     legendre_to_tabular_points = 33
     n_batch_interval = 1
-    n_filters      = 0
-    n_meshes       = 0
+    n_filters = 0
+    n_meshes = 0
     n_particles = 0
     n_source_points = 0
     n_state_points = 0
-    n_tallies      = 0
+    n_tallies = 0
     n_user_filters = 0
     n_user_meshes  = 0
     n_user_tallies = 0

@@ -4246,9 +4246,10 @@ contains
   subroutine reduce_tally_results()
 
     integer :: i
-    integer :: n      ! number of filter bins
-    integer :: m      ! number of score bins
-    integer :: n_bins ! total number of bins
+    integer :: n       ! number of filter bins
+    integer :: m       ! number of score bins
+    integer :: n_bins  ! total number of bins
+    integer :: mpi_err ! MPI error code
     real(C_DOUBLE), allocatable :: tally_temp(:,:)  ! contiguous array of results
     real(C_DOUBLE), allocatable :: tally_temp2(:,:) ! reduced contiguous results
     real(C_DOUBLE) :: temp(N_GLOBAL_TALLIES), temp2(N_GLOBAL_TALLIES)

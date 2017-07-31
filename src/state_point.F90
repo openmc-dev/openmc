@@ -522,7 +522,8 @@ contains
     real(8), allocatable :: tally_temp(:,:,:) ! contiguous array of results
     real(8), target :: global_temp(3,N_GLOBAL_TALLIES)
 #ifdef MPI
-    real(8) :: dummy  ! temporary receive buffer for non-root reduces
+    integer :: mpi_err ! MPI error code
+    real(8) :: dummy   ! temporary receive buffer for non-root reduces
 #endif
     type(TallyObject) :: dummy_tally
 
@@ -841,6 +842,7 @@ contains
 #else
     integer :: i
 #ifdef MPI
+    integer :: mpi_err ! MPI error code
     type(Bank), allocatable, target :: temp_source(:)
 #endif
 #endif

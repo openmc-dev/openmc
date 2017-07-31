@@ -40,6 +40,7 @@ contains
          & temp_sites(:)       ! local array of extra sites on each node
 
 #ifdef MPI
+    integer    :: mpi_err      ! MPI error code
     integer(8) :: n            ! number of sites to send/recv
     integer    :: neighbor     ! processor to send/recv data from
 #ifdef MPIF08
@@ -372,6 +373,9 @@ contains
   subroutine calculate_generation_keff()
 
     integer :: i  ! overall generation
+#ifdef MPI
+    integer :: mpi_err ! MPI error code
+#endif
 
     ! Get keff for this generation by subtracting off the starting value
     keff_generation = global_tallies(RESULT_VALUE, K_TRACKLENGTH) - keff_generation
@@ -614,6 +618,7 @@ contains
     logical :: sites_outside ! were there sites outside the ufs mesh?
 #ifdef MPI
     integer :: n             ! total number of ufs mesh cells
+    integer :: mpi_err       ! MPI error code
 #endif
 
     if (current_batch == 1 .and. current_gen == 1) then

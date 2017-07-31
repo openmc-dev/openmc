@@ -9,6 +9,10 @@ program main
 
   implicit none
 
+#ifdef MPI
+  integer :: mpi_err ! MPI error code
+#endif
+
   ! Initialize run -- when run with MPI, pass communicator
 #ifdef MPI
 #ifdef MPIF08

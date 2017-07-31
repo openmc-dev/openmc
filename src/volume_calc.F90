@@ -132,6 +132,7 @@ contains
     integer :: min_samples ! minimum number of samples per process
     integer :: remainder   ! leftover samples from uneven divide
 #ifdef MPI
+    integer :: mpi_err ! MPI error code
     integer :: m  ! index over materials
     integer :: n  ! number of materials
     integer, allocatable :: data(:) ! array used to send number of hits

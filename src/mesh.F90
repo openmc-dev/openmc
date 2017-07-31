@@ -144,6 +144,9 @@ contains
     integer :: ijk(3)   ! indices on mesh
     integer :: n        ! number of energy groups / size
     integer :: e_bin    ! energy_bin
+#ifdef MPI
+    integer :: mpi_err  ! MPI error code
+#endif
     logical :: in_mesh  ! was single site outside mesh?
     logical :: outside  ! was any site outside mesh?
 

@@ -92,11 +92,11 @@ contains
     integer(C_INT32_T), optional, intent(in) :: instance
     integer(C_INT) :: err
 
-    integer :: i, n
+    integer :: n
 
     err = E_UNASSIGNED
     if (index >= 1 .and. index <= size(cells)) then
-      associate (c => cells(i))
+      associate (c => cells(index))
         if (allocated(c % sqrtkT)) then
           n = size(c % sqrtkT)
           if (present(instance) .and. n > 1) then
@@ -122,7 +122,7 @@ contains
 
   subroutine openmc_finalize() bind(C)
 
-    integer :: hdf5_err
+    integer :: err
 
     ! Clear results
     call openmc_reset()
@@ -190,14 +190,14 @@ contains
     call free_memory()
 
     ! Release compound datatypes
-    call h5tclose_f(hdf5_bank_t, hdf5_err)
+    call h5tclose_f(hdf5_bank_t, err)
 
     ! Close FORTRAN interface.
-    call h5close_f(hdf5_err)
+    call h5close_f(err)
 
 #ifdef MPI
     ! Free all MPI types
-    call MPI_TYPE_FREE(MPI_BANK, mpi_err)
+    call MPI_TYPE_FREE(MPI_BANK, err)
 #endif
 
   end subroutine openmc_finalize

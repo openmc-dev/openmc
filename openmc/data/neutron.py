@@ -824,7 +824,7 @@ class IncidentNeutron(EqualityMixin):
         return data
 
     @classmethod
-    def from_njoy(cls, filename, temperatures=None, error=0.001, **kwargs):
+    def from_njoy(cls, filename, temperatures=None, **kwargs):
         """Generate incident neutron data by running NJOY.
 
         Parameters
@@ -834,8 +834,6 @@ class IncidentNeutron(EqualityMixin):
         temperatures : iterable of float
             Temperatures in Kelvin to produce data at. If omitted, data is
             produced at room temperature (293.6 K)
-        error : float, optional
-            Fractional error tolerance for NJOY processing.
         **kwargs
             Keyword arguments passed to :func:`openmc.data.njoy.make_ace`
 
@@ -853,7 +851,7 @@ class IncidentNeutron(EqualityMixin):
             ace_file = os.path.join(tmpdir, 'ace')
             xsdir_file = os.path.join(tmpdir, 'xsdir')
             pendf_file = os.path.join(tmpdir, 'pendf')
-            make_ace(filename, temperatures, error, ace_file, xsdir_file,
+            make_ace(filename, temperatures, ace_file, xsdir_file,
                      pendf_file, **kwargs)
 
             # Create instance from ACE tables within library

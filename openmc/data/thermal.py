@@ -588,8 +588,7 @@ class ThermalScattering(EqualityMixin):
         return table
 
     @classmethod
-    def from_njoy(cls, filename, filename_thermal, temperatures=None,
-                  error=0.001, **kwargs):
+    def from_njoy(cls, filename, filename_thermal, temperatures=None, **kwargs):
         """Generate incident neutron data by running NJOY.
 
         Parameters
@@ -602,8 +601,6 @@ class ThermalScattering(EqualityMixin):
             Temperatures in Kelvin to produce data at. If omitted, data is
             produced at all temperatures in the ENDF thermal scattering
             sublibrary.
-        error : float, optional
-            Fractional error tolerance for NJOY processing.
         **kwargs
             Keyword arguments passed to :func:`openmc.data.njoy.make_ace_thermal`
 
@@ -620,7 +617,7 @@ class ThermalScattering(EqualityMixin):
             # Run NJOY to create an ACE library
             ace_file = os.path.join(tmpdir, 'ace')
             xsdir_file = os.path.join(tmpdir, 'xsdir')
-            make_ace_thermal(filename, filename_thermal, temperatures, error,
+            make_ace_thermal(filename, filename_thermal, temperatures,
                              ace_file, xsdir_file, **kwargs)
 
             # Create instance from ACE tables within library

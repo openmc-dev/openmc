@@ -228,8 +228,8 @@ def make_pendf(filename, pendf='pendf', error=0.001, stdout=False):
     return run(commands, tapein, tapeout, stdout)
 
 
-def make_ace(filename, temperatures=None, error=0.001, ace='ace', xsdir='xsdir',
-             pendf=None, **kwargs):
+def make_ace(filename, temperatures=None, ace='ace', xsdir='xsdir',
+             pendf=None, error=0.001, **kwargs):
     """Generate incident neutron ACE file from an ENDF file
 
     Parameters
@@ -239,14 +239,14 @@ def make_ace(filename, temperatures=None, error=0.001, ace='ace', xsdir='xsdir',
     temperatures : iterable of float, optional
         Temperatures in Kelvin to produce ACE files at. If omitted, data is
         produced at room temperature (293.6 K).
-    error : float, optional
-        Fractional error tolerance for NJOY processing.
     ace : str, optional
         Path of ACE file to write
     xsdir : str, optional
         Path of xsdir file to write
     pendf : str, optional
         Path of pendf file to write. If omitted, the pendf file is not saved.
+    error : float, optional
+        Fractional error tolerance for NJOY processing.
     **kwargs
         Keyword arguments passed to :func:`openmc.data.njoy.run`
 
@@ -315,8 +315,8 @@ def make_ace(filename, temperatures=None, error=0.001, ace='ace', xsdir='xsdir',
     return retcode
 
 
-def make_ace_thermal(filename, filename_thermal, temperatures=None, error=0.001,
-                     ace='ace', xsdir='xsdir', **kwargs):
+def make_ace_thermal(filename, filename_thermal, temperatures=None,
+                     ace='ace', xsdir='xsdir', error=0.001, **kwargs):
     """Generate thermal scattering ACE file from ENDF files
 
     Parameters
@@ -328,12 +328,12 @@ def make_ace_thermal(filename, filename_thermal, temperatures=None, error=0.001,
     temperatures : iterable of float, optional
         Temperatures in Kelvin to produce data at. If omitted, data is produced
         at all temperatures given in the ENDF thermal scattering sublibrary.
-    error : float, optional
-        Fractional error tolerance for NJOY processing.
     ace : str, optional
         Path of ACE file to write
     xsdir : str, optional
         Path of xsdir file to write
+    error : float, optional
+        Fractional error tolerance for NJOY processing.
     **kwargs
         Keyword arguments passed to :func:`openmc.data.njoy.run`
 

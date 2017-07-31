@@ -247,6 +247,11 @@ def update_materials(root):
             if 'name' in nuclide.attrib:
                 nucname = nuclide.attrib['name']
                 nucname = nucname.replace('-', '')
+                # If a nuclide name is in the ZAID notation (e.g., a number),
+                # convert it to the proper nuclide name.
+                if nucname.strip().isnumeric():
+                    nucname = \
+                      openmc.data.neutron._get_metadata(int(nucname))[0]
                 nucname = nucname.replace('Nat', '0')
                 if nucname.endswith('m'):
                     nucname = nucname[:-1] + '_m1'

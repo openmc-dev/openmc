@@ -28,13 +28,30 @@ def load_nuclide(name):
     Parameters
     ----------
     name : str
-        Name of nuclide, e.g. 'U235'
+        Name of the nuclide, e.g. 'U235'
 
     """
     _dll.openmc_load_nuclide(name.encode())
 
 
 class NuclideView(object):
+    """View of a nuclide.
+
+    This class exposes a nuclide that is stored internally in the OpenMC
+    solver. To obtain a view of a nuclide with a given name, use the
+    :data:`openmc.capi.nuclides` mapping.
+
+    Parameters
+    ----------
+    index : int
+         Index in the `nuclides` array.
+
+    Attributes
+    ----------
+    name : str
+        Name of the nuclide, e.g. 'U235'
+
+    """
     __instances = WeakValueDictionary()
     def __new__(cls, *args):
         if args not in cls.__instances:
@@ -47,19 +64,6 @@ class NuclideView(object):
 
     @property
     def name(self):
-        """Name of nuclide with given index
-
-        Parameter
-        ---------
-        index : int
-            Index in internal nuclides array
-
-        Returns
-        -------
-        str
-            Name of nuclide
-
-        """
         name = c_char_p()
         _dll.openmc_nuclide_name(self._index, name)
 
@@ -71,6 +75,7 @@ class NuclideView(object):
 
 
 class _NuclideMapping(Mapping):
+    """Provide mapping from nuclide name to index in nuclides array."""
     def __getitem__(self, key):
         index = c_int()
         _dll.openmc_get_nuclide(key.encode(), index)

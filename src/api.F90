@@ -66,7 +66,7 @@ module openmc_api
 contains
 
 !===============================================================================
-! OPENMC_CELL_ID returns the ID of a cell
+! OPENMC_CELL_GET_ID returns the ID of a cell
 !===============================================================================
 
   function openmc_cell_get_id(index, id) result(err) bind(C)
@@ -695,9 +695,9 @@ contains
 ! OPENMC_TALLY_NUCLIDES returns the list of nuclides assigned to a tally
 !===============================================================================
 
-  function openmc_tally_get_nuclides(index, ptr, n) result(err) bind(C)
+  function openmc_tally_get_nuclides(index, nuclides, n) result(err) bind(C)
     integer(C_INT32_T), value :: index
-    type(C_PTR), intent(out) :: ptr
+    type(C_PTR), intent(out) :: nuclides
     integer(C_INT), intent(out) :: n
     integer(C_INT) :: err
 
@@ -705,7 +705,7 @@ contains
     if (index >= 1 .and. index <= size(tallies)) then
       associate (t => tallies(index))
         if (allocated(t % nuclide_bins)) then
-          ptr = C_LOC(t % nuclide_bins(1))
+          nuclides = C_LOC(t % nuclide_bins(1))
           n = size(t % nuclide_bins)
           err = 0
         end if
@@ -738,6 +738,11 @@ contains
       err = E_OUT_OF_BOUNDS
     end if
   end function openmc_tally_results
+
+!===============================================================================
+! OPENMC_TALLY_SET_NUCLIDES sets the nuclides in the tally which results should
+! be scored for
+!===============================================================================
 
   function openmc_tally_set_nuclides(index, n, nuclides) result(err) bind(C)
     integer(C_INT32_T), value  :: index

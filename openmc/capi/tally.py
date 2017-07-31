@@ -30,6 +30,27 @@ _dll.openmc_tally_set_nuclides.errcheck = _error_handler
 
 
 class TallyView(object):
+    """View of a tally.
+
+    This class exposes a tally that is stored internally in the OpenMC
+    solver. To obtain a view of a tally with a given ID, use the
+    :data:`openmc.capi.tallies` mapping.
+
+    Parameters
+    ----------
+    index : int
+         Index in the `tallys` array.
+
+    Attributes
+    ----------
+    id : int
+        ID of the tally
+    nuclides : list of str
+        List of nuclides to score results for
+    results : numpy.ndarray
+        Array of tally results
+
+    """
     __instances = WeakValueDictionary()
     def __new__(cls, *args):
         if args not in cls.__instances:
@@ -56,14 +77,6 @@ class TallyView(object):
 
     @property
     def results(self):
-        """Get tally results array
-
-        Returns
-        -------
-        numpy.ndarray
-            Array that exposes the internal tally results array
-
-        """
         data = POINTER(c_double)()
         shape = (c_int*3)()
         _dll.openmc_tally_results(self._index, data, shape)

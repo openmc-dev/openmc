@@ -7,8 +7,8 @@ from numpy.ctypeslib import as_array
 
 from openmc.capi import _dll, _error_handler, NuclideView
 
-__all__ = ['MaterialView', 'materials']
 
+__all__ = ['MaterialView', 'materials']
 
 # Material functions
 _dll.openmc_get_material.argtypes = [c_int32, POINTER(c_int32)]
@@ -36,6 +36,27 @@ _dll.openmc_material_set_densities.errcheck = _error_handler
 
 
 class MaterialView(object):
+    """View of a material.
+
+    This class exposes a material that is stored internally in the OpenMC
+    solver. To obtain a view of a material with a given ID, use the
+    :data:`openmc.capi.materials` mapping.
+
+    Parameters
+    ----------
+    index : int
+         Index in the `materials` array.
+
+    Attributes
+    ----------
+    id : int
+        ID of the material
+    nuclides : list of str
+        List of nuclides in the material
+    densities : numpy.ndarray
+        Array of densities in atom/b-cm
+
+    """
     __instances = WeakValueDictionary()
     def __new__(cls, *args):
         if args not in cls.__instances:

@@ -1,5 +1,5 @@
-"""Provides bindings to C functions defined by OpenMC shared library.
-
+"""
+This module provides bindings to C functions defined by OpenMC shared library.
 When the :mod:`openmc` package is imported, the OpenMC shared library is
 automatically loaded. Calls to the OpenMC library can then be via functions or
 objects in the :mod:`openmc.capi` subpackage, for example:
@@ -136,6 +136,7 @@ def find(xyz, rtype='cell'):
 
 
 def hard_reset():
+    """Reset tallies, timers, and pseudo-random number generator state."""
     _dll.openmc_hard_reset()
 
 
@@ -180,7 +181,7 @@ def plot_geometry():
 
 
 def reset():
-    """Reset tallies"""
+    """Reset tallies and timers."""
     _dll.openmc_reset()
 
 

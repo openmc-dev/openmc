@@ -22,6 +22,23 @@ _dll.openmc_get_cell.errcheck = _error_handler
 
 
 class CellView(object):
+    """View of a cell.
+
+    This class exposes a cell that is stored internally in the OpenMC solver. To
+    obtain a view of a cell with a given ID, use the
+    :data:`openmc.capi.nuclides` mapping.
+
+    Parameters
+    ----------
+    index : int
+         Index in the `cells` array.
+
+    Attributes
+    ----------
+    id : int
+        ID of the cell
+
+    """
     __instances = WeakValueDictionary()
     def __new__(cls, *args):
         if args not in cls.__instances:

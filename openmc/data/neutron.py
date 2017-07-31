@@ -677,7 +677,7 @@ class IncidentNeutron(EqualityMixin):
         # If mass number hasn't been specified, make an educated guess
         zaid, xs = ace.name.split('.')
         name, element, Z, mass_number, metastable = \
-            get_metadata(int(zaid), metastable_scheme)
+            _get_metadata(int(zaid), metastable_scheme)
 
         # Assign temperature to the running list
         kTs = [ace.temperature*EV_PER_MEV]

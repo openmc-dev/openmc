@@ -285,6 +285,10 @@ contains
 
   subroutine finalize_batch()
 
+#ifdef MPI
+    integer :: mpi_err ! MPI error code
+#endif
+
     ! Reduce tallies onto master process and accumulate
     call time_tallies % start()
     call accumulate_tallies()
@@ -392,7 +396,11 @@ contains
 
     integer :: i       ! loop index for tallies
     integer :: n       ! size of arrays
-    real(8) :: temp(3) ! temporary array for communication
+#ifdef MPI
+    integer    :: mpi_err  ! MPI error code
+    integer(8) :: temp
+    real(8)    :: tempr(3) ! temporary array for communication
+#endif
 
 !$omp parallel
     deallocate(micro_xs)
@@ -420,18 +428,23 @@ contains
 
     ! These guys are needed so that non-master processes can calculate the
     ! combined estimate of k-effective
-    temp(1) = k_col_abs
-    temp(2) = k_col_tra
-    temp(3) = k_abs_tra
-    call MPI_BCAST(temp, 3, MPI_REAL8, 0, mpi_intracomm, mpi_err)
-    k_col_abs = temp(1)
-    k_col_tra = temp(2)
-    k_abs_tra = temp(3)
+    tempr(1) = k_col_abs
+    tempr(2) = k_col_tra
+    tempr(3) = k_abs_tra
+    call MPI_BCAST(tempr, 3, MPI_REAL8, 0, mpi_intracomm, mpi_err)
+    k_col_abs = tempr(1)
+    k_col_tra = tempr(2)
+    k_abs_tra = tempr(3)
+
+    if (check_overlaps) then
+      call MPI_REDUCE(overlap_check_cnt, temp, n_cells, MPI_INTEGER8, &
+           MPI_SUM, 0, mpi_intracomm, mpi_err)
+      overlap_check_cnt = temp
+    end if
 #endif
 
     ! Write tally results to tallies.out
     if (output_tallies .and. master) call write_tallies()
-    if (check_overlaps) call reduce_overlap_count()
 
     ! Stop timers and show timing statistics
     call time_finalize%stop()
@@ -443,21 +456,5 @@ contains
     end if
 
   end subroutine finalize_simulation
-
-!===============================================================================
-! REDUCE_OVERLAP_COUNT accumulates cell overlap check counts to master
-!===============================================================================
-
-  subroutine reduce_overlap_count()
-
-    integer(8) :: temp
-
-#ifdef MPI
-    call MPI_REDUCE(overlap_check_cnt, temp, n_cells, MPI_INTEGER8, &
-         MPI_SUM, 0, mpi_intracomm, mpi_err)
-    overlap_check_cnt = temp
-#endif
-
-  end subroutine reduce_overlap_count
 
 end module simulation

@@ -34,7 +34,7 @@ from openmc.mixin import EqualityMixin
 _RESONANCE_ENERGY_GRID = np.logspace(-3, 3, 61)
 
 
-def get_metadata(zaid, metastable_scheme='nndc'):
+def _get_metadata(zaid, metastable_scheme='nndc'):
     """Return basic identifying data for a nuclide with a given ZAID.
 
     Parameters

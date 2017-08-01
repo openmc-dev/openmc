@@ -5146,123 +5146,6 @@ contains
 
   end subroutine normalize_ao
 
-!===============================================================================
-! ASSIGN_SAB_TABLES assigns S(alpha,beta) tables to specific nuclides within
-! materials so the code knows when to apply bound thermal scattering data
-!===============================================================================
-
-  subroutine assign_sab_tables()
-    integer :: i            ! index in materials array
-    integer :: j            ! index over nuclides in material
-    integer :: k            ! index over S(a,b) tables in material
-    integer :: m            ! position for sorting
-    integer :: temp_nuclide ! temporary value for sorting
-    integer :: temp_table   ! temporary value for sorting
-    real(8) :: temp_frac    ! temporary value for sorting
-    logical :: found
-    type(VectorInt)  :: i_sab_tables
-    type(VectorInt)  :: i_sab_nuclides
-    type(VectorReal) :: sab_fracs
-
-    do i = 1, size(materials)
-      ! Skip materials with no S(a,b) tables
-      if (.not. allocated(materials(i) % i_sab_tables)) cycle
-
-      associate (mat => materials(i))
-
-        ASSIGN_SAB: do k = 1, size(mat % i_sab_tables)
-          ! In order to know which nuclide the S(a,b) table applies to, we need
-          ! to search through the list of nuclides for one which has a matching
-          ! name
-          found = .false.
-          associate (sab => sab_tables(mat % i_sab_tables(k)))
-            FIND_NUCLIDE: do j = 1, size(mat % nuclide)
-              if (any(sab % nuclides == nuclides(mat % nuclide(j)) % name)) then
-                call i_sab_tables % push_back(mat % i_sab_tables(k))
-                call i_sab_nuclides % push_back(j)
-                call sab_fracs % push_back(mat % sab_fracs(k))
-                found = .true.
-              end if
-            end do FIND_NUCLIDE
-          end associate
-
-          ! Check to make sure S(a,b) table matched a nuclide
-          if (.not. found) then
-            call fatal_error("S(a,b) table " // trim(mat % &
-                 sab_names(k)) // " did not match any nuclide on material " &
-                 // trim(to_str(mat % id)))
-          end if
-        end do ASSIGN_SAB
-
-        ! Make sure each nuclide only appears in one table.
-        do j = 1, i_sab_nuclides % size()
-          do k = j+1, i_sab_nuclides % size()
-            if (i_sab_nuclides % data(j) == i_sab_nuclides % data(k)) then
-              call fatal_error(trim( &
-                   nuclides(mat % nuclide(i_sab_nuclides % data(j))) % name) &
-                   // " in material " // trim(to_str(mat % id)) // " was found &
-                   &in multiple S(a,b) tables. Each nuclide can only appear in &
-                   &one S(a,b) table per material.")
-            end if
-          end do
-        end do
-
-        ! Update i_sab_tables and i_sab_nuclides
-        deallocate(mat % i_sab_tables)
-        deallocate(mat % sab_fracs)
-        m = i_sab_tables % size()
-        allocate(mat % i_sab_tables(m))
-        allocate(mat % i_sab_nuclides(m))
-        allocate(mat % sab_fracs(m))
-        mat % i_sab_tables(:) = i_sab_tables % data(1:m)
-        mat % i_sab_nuclides(:) = i_sab_nuclides % data(1:m)
-        mat % sab_fracs(:) = sab_fracs % data(1:m)
-
-        ! Clear entries in vectors for next material
-        call i_sab_tables % clear()
-        call i_sab_nuclides % clear()
-        call sab_fracs % clear()
-
-        ! If there are multiple S(a,b) tables, we need to make sure that the
-        ! entries in i_sab_nuclides are sorted or else they won't be applied
-        ! correctly in the cross_section module. The algorithm here is a simple
-        ! insertion sort -- don't need anything fancy!
-
-        if (size(mat % i_sab_tables) > 1) then
-          SORT_SAB: do k = 2, size(mat % i_sab_tables)
-            ! Save value to move
-            m = k
-            temp_nuclide = mat % i_sab_nuclides(k)
-            temp_table   = mat % i_sab_tables(k)
-            temp_frac    = mat % i_sab_tables(k)
-
-            MOVE_OVER: do
-              ! Check if insertion value is greater than (m-1)th value
-              if (temp_nuclide >= mat % i_sab_nuclides(m-1)) exit
-
-              ! Move values over until hitting one that's not larger
-              mat % i_sab_nuclides(m) = mat % i_sab_nuclides(m-1)
-              mat % i_sab_tables(m)   = mat % i_sab_tables(m-1)
-              mat % sab_fracs(m)      = mat % sab_fracs(m-1)
-              m = m - 1
-
-              ! Exit if we've reached the beginning of the list
-              if (m == 1) exit
-            end do MOVE_OVER
-
-            ! Put the original value into its new position
-            mat % i_sab_nuclides(m) = temp_nuclide
-            mat % i_sab_tables(m)   = temp_table
-            mat % sab_fracs(m)      = temp_frac
-          end do SORT_SAB
-        end if
-
-        ! Deallocate temporary arrays for names of nuclides and S(a,b) tables
-        if (allocated(mat % names)) deallocate(mat % names)
-      end associate
-    end do
-  end subroutine assign_sab_tables
-
   subroutine read_ce_cross_sections(nuc_temps, sab_temps)
     type(VectorReal), intent(in)     :: nuc_temps(:)
     type(VectorReal), intent(in)     :: sab_temps(:)
@@ -5367,10 +5250,10 @@ contains
           call already_read % add(name)
         end if
       end do
-    end do
 
-    ! Associate S(a,b) tables with specific nuclides
-    call assign_sab_tables()
+      ! Associate S(a,b) tables with specific nuclides
+      call materials(i) % assign_sab_tables(nuclides, sab_tables)
+    end do
 
     ! Show which nuclide results in lowest energy for neutron transport
     do i = 1, size(nuclides)

@@ -95,7 +95,7 @@ _ACE_TEMPLATE_ACER = """acer /
 /
 """
 
-_ACE_TEMPLATE_THERMR = """
+_ACE_THERMAL_TEMPLATE_THERMR = """
 thermr / %%%%%%%%%%%%%%%% Add thermal scattering data (free gas) %%%%%%%%%%%%%%%
 0 {nthermr1_in} {nthermr1}
 0 {mat} 12 {num_temp} 1 0 {iform} 1 221 1/
@@ -118,7 +118,8 @@ _ACE_THERMAL_TEMPLATE_ACER = """acer /
 """
 
 
-def run(commands, tapein, tapeout, stdout=False, njoy_exec='njoy'):
+def run(commands, tapein, tapeout, print_commands=False, stdout=False,
+        njoy_exec='njoy'):
     """Run NJOY with given commands
 
     Parameters
@@ -129,6 +130,8 @@ def run(commands, tapein, tapeout, stdout=False, njoy_exec='njoy'):
         Dictionary mapping tape numbers to paths for any input files
     tapeout : dict
         Dictionary mapping tape numbers to paths for any output files
+    print_commands : bool, optional
+        Whether to display input commands when running NJOY
     stdout : bool, optional
         Whether to display output when running NJOY
     njoy_exec : str, optional
@@ -140,6 +143,11 @@ def run(commands, tapein, tapeout, stdout=False, njoy_exec='njoy'):
         Return code of NJOY process
 
     """
+
+    if print_commands:
+        # If user requested showing commands, print to screen
+        print("NJOY INPUTS:")
+        print(commands)
 
     # Create temporary directory -- it would be preferable to use
     # TemporaryDirectory(), but it is only available in Python 3.2
@@ -223,13 +231,13 @@ def make_ace(filename, temperatures=None, ace='ace', xsdir='xsdir', pendf=None,
     error : float, optional
         Fractional error tolerance for NJOY processing
     broadr : bool, optional
-        Indicating whether to Doppler broaden XS in running NJOY
+        Indicating whether to Doppler broaden XS when running NJOY
     heatr : bool, optional
-        Indicating whether to add heating kerma in running NJOY
+        Indicating whether to add heating kerma when running NJOY
     purr : bool, optional
-        Indicating whether to add probability table in running NJOY
+        Indicating whether to add probability table when running NJOY
     acer : bool, optional
-        Indicating whether to generate ACE file in running NJOY 
+        Indicating whether to generate ACE file when running NJOY 
     **kwargs
         Keyword arguments passed to :func:`openmc.data.njoy.run`
 
@@ -272,14 +280,14 @@ def make_ace(filename, temperatures=None, ace='ace', xsdir='xsdir', pendf=None,
 
     # heatr
     if heatr:
-        nheatr_in = nlast + 1
+        nheatr_in = nlast
         nheatr = nheatr_in + 1
         commands += _ACE_TEMPLATE_HEATR
         nlast = nheatr
       
     # purr
     if purr:
-        npurr_in = nlast + 1
+        npurr_in = nlast
         npurr = npurr_in + 1
         commands += _ACE_TEMPLATE_PURR
         nlast = npurr
@@ -300,7 +308,6 @@ def make_ace(filename, temperatures=None, ace='ace', xsdir='xsdir', pendf=None,
             # Indicate tapes to save for each ACER run
             tapeout[nace] = fname.format(ace, temperature)
             tapeout[ndir] = fname.format(xsdir, temperature)
-
     commands += 'stop\n'
     retcode = run(commands, tapein, tapeout, **kwargs)
 
@@ -431,10 +438,10 @@ def make_ace_thermal(filename, filename_thermal, temperatures=None,
 
     # thermr
     nthermr1_in = nlast
-    nthermr1 = nthermr_in + 1
+    nthermr1 = nthermr1_in + 1
     nthermr2_in = nthermr1
     nthermr2 = nthermr2_in + 1
-    commands += _ACE_TEMPLATE_THERMR
+    commands += _ACE_THERMAL_TEMPLATE_THERMR
     nlast = nthermr2
 
     commands = commands.format(**locals())
@@ -452,7 +459,6 @@ def make_ace_thermal(filename, filename_thermal, temperatures=None,
         # Indicate tapes to save for each ACER run
         tapeout[nace] = fname.format(ace, temperature)
         tapeout[ndir] = fname.format(xsdir, temperature)
-
     commands += 'stop\n'
     retcode = run(commands, tapein, tapeout, **kwargs)
 

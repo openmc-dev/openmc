@@ -633,30 +633,35 @@ contains
 
     if (index >= 1 .and. index <= size(materials)) then
       associate (m => materials(index))
+        ! If nuclide/density arrays are not correct size, reallocate
+        if (n /= size(m % nuclide)) then
+          deallocate(m % nuclide, m % atom_density, m % p0)
+          allocate(m % nuclide(n), m % atom_density(n), m % p0(n))
+        end if
+
         do i = 1, n
           ! Convert C string to Fortran string
           call c_f_pointer(name(i), string, [10])
-          name_ = to_f_string(string)
+          name_ = to_lower(to_f_string(string))
 
-          ! Find corresponding nuclide and set density
-          err = E_UNASSIGNED
-          do j = 1, size(m % nuclide)
-            k = m % nuclide(j)
-            if (nuclides(k) % name == name_) then
-              m % atom_density(j) = density(i)
-              err = 0
-            end if
-          end do
-
-          ! If nuclide wasn't found, try to load it
-          if (err /= 0) then
-            err = openmc_material_add_nuclide(index, string, density(i))
-            if (err /= 0) return
+          if (.not. nuclide_dict % has_key(name_)) then
+            err = openmc_load_nuclide(string)
+            if (err < 0) return
           end if
+
+          m % nuclide(i) = nuclide_dict % get_key(name_)
+          m % atom_density(i) = density(i)
         end do
+        m % n_nuclides = n
+
+        ! Set isotropic flags to flags
+        m % p0(:) = .false.
 
         ! Set total density to the sum of the vector
-        err = m % set_density(sum(m % atom_density), nuclides)
+        err = m % set_density(sum(density), nuclides)
+
+        ! Assign S(a,b) tables
+        call m % assign_sab_tables(nuclides, sab_tables)
       end associate
     else
       err = E_OUT_OF_BOUNDS

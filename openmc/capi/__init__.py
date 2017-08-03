@@ -86,6 +86,19 @@ def _error_handler(err, func, args):
     elif err == _error_code('e_tally_invalid_id'):
         raise KeyError("No tally exists with ID={}.".format(args[0]))
 
+    elif err == _error_code('e_invalid_size'):
+        raise MemoryError("Array size mismatch with memory allocated.")
+
+    elif err == _error_code('e_cell_no_material'):
+        raise GeometryError("Operation on cell requires that it be filled"
+                            " with a material.")
+
+    elif err == _error_code('w_below_min_bound'):
+        warn("Data has not been loaded beyond lower bound of {}.".format(args[0]))
+
+    elif err == _error_code('w_above_max_bound'):
+        warn("Data has not been loaded beyond upper bound of {}.".format(args[0]))
+
     elif err < 0:
         raise Exception("Unknown error encountered (code {}).".format(err))
 

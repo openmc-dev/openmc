@@ -169,7 +169,7 @@ contains
           end if
         end associate
 
-        ! assign error codes for outside of temperature bounds provided the
+        ! Assign error codes for outside of temperature bounds provided the
         ! temperature was changed correctly. This needs to be done after
         ! changing the temperature based on the logical structure above.
         if (err == 0) then
@@ -627,7 +627,7 @@ contains
     real(C_DOUBLE), intent(in) :: density(n)
     integer(C_INT) :: err
 
-    integer :: i, j, k
+    integer :: i
     character(C_CHAR), pointer :: string(:)
     character(len=:, kind=C_CHAR), allocatable :: name_
 
@@ -867,6 +867,11 @@ contains
       err = E_OUT_OF_BOUNDS
     end if
   end function openmc_tally_set_nuclides
+
+!===============================================================================
+! TO_F_STRING takes a null-terminated array of C chars and turns it into a
+! deferred-length character string. Yay Fortran 2003!
+!===============================================================================
 
   function to_f_string(c_string) result(f_string)
     character(kind=C_CHAR), intent(in) :: c_string(*)

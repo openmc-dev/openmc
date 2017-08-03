@@ -36,6 +36,7 @@ free to send a message to the User's Group `mailing list`_.
     usersguide/index
     devguide/index
     pythonapi/index
+    capi/index
     io_formats/index
     publications
     license

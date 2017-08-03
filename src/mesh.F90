@@ -137,21 +137,22 @@ contains
     real(8), intent(in),    optional :: energies(:)   ! energy grid to search
     integer(8), intent(in), optional :: size_bank     ! # of bank sites (on each proc)
     logical, intent(inout), optional :: sites_outside ! were there sites outside mesh?
+    real(8), allocatable :: cnt_(:,:,:,:)
 
     integer :: i        ! loop index for local fission sites
     integer :: n_sites  ! size of bank array
     integer :: ijk(3)   ! indices on mesh
-    integer :: n_groups ! number of groups in energies
+    integer :: n        ! number of energy groups / size
     integer :: e_bin    ! energy_bin
+#ifdef MPI
+    integer :: mpi_err  ! MPI error code
+#endif
     logical :: in_mesh  ! was single site outside mesh?
     logical :: outside  ! was any site outside mesh?
-#ifdef MPI
-    integer :: n        ! total size of count variable
-    real(8) :: dummy    ! temporary receive buffer for non-root reductions
-#endif
 
     ! initialize variables
-    cnt = ZERO
+    allocate(cnt_(size(cnt,1), size(cnt,2), size(cnt,3), size(cnt,4)))
+    cnt_ = ZERO
     outside = .false.
 
     ! Set size of bank
@@ -163,9 +164,9 @@ contains
 
     ! Determine number of energies in group structure
     if (present(energies)) then
-      n_groups = size(energies) - 1
+      n = size(energies) - 1
     else
-      n_groups = 1
+      n = 1
     end if
 
     ! loop over fission sites and count how many are in each mesh box
@@ -183,42 +184,33 @@ contains
       if (present(energies)) then
         if (bank_array(i) % E < energies(1)) then
           e_bin = 1
-        elseif (bank_array(i) % E > energies(n_groups+1)) then
-          e_bin = n_groups
+        elseif (bank_array(i) % E > energies(n + 1)) then
+          e_bin = n
         else
-          e_bin = binary_search(energies, n_groups + 1, bank_array(i) % E)
+          e_bin = binary_search(energies, n + 1, bank_array(i) % E)
         end if
       else
         e_bin = 1
       end if
 
       ! add to appropriate mesh box
-      cnt(e_bin,ijk(1),ijk(2),ijk(3)) = cnt(e_bin,ijk(1),ijk(2),ijk(3)) + &
+      cnt_(e_bin,ijk(1),ijk(2),ijk(3)) = cnt_(e_bin,ijk(1),ijk(2),ijk(3)) + &
            bank_array(i) % wgt
     end do FISSION_SITES
 
 #ifdef MPI
-    ! determine total number of mesh cells
-    n = n_groups * size(cnt,2) * size(cnt,3) * size(cnt,4)
-
     ! collect values from all processors
-    if (master) then
-      call MPI_REDUCE(MPI_IN_PLACE, cnt, n, MPI_REAL8, MPI_SUM, 0, &
-           mpi_intracomm, mpi_err)
-    else
-      ! Receive buffer not significant at other processors
-      call MPI_REDUCE(cnt, dummy, n, MPI_REAL8, MPI_SUM, 0, &
-           mpi_intracomm, mpi_err)
-    end if
+    n = size(cnt_)
+    call MPI_REDUCE(cnt_, cnt, n, MPI_REAL8, MPI_SUM, 0, mpi_intracomm, mpi_err)
 
     ! Check if there were sites outside the mesh for any processor
     if (present(sites_outside)) then
       call MPI_REDUCE(outside, sites_outside, 1, MPI_LOGICAL, MPI_LOR, 0, &
            mpi_intracomm, mpi_err)
     end if
-
 #else
     sites_outside = outside
+    cnt = cnt_
 #endif
 
   end subroutine count_bank_sites

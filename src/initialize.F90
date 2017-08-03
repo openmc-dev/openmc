@@ -11,7 +11,6 @@ module initialize
   use constants
   use dict_header,     only: DictIntInt, ElemKeyValueII
   use set_header,      only: SetInt
-  use energy_grid,     only: logarithmic_grid, grid_method
   use error,           only: fatal_error, warning
   use geometry,        only: neighbor_lists, count_instance, calc_offsets, &
                              maximum_levels
@@ -46,11 +45,28 @@ contains
 ! setting up timers, etc.
 !===============================================================================
 
-  subroutine openmc_init(intracomm)
-#ifdef MPIF08
-    type(MPI_Comm), intent(in) :: intracomm     ! MPI intracommunicator
-#else
+  subroutine openmc_init(intracomm) bind(C)
     integer, intent(in), optional :: intracomm  ! MPI intracommunicator
+
+    ! Copy the communicator to a new variable. This is done to avoid changing
+    ! the signature of this subroutine. If MPI is being used but no communicator
+    ! was passed, assume MPI_COMM_WORLD.
+#ifdef MPI
+#ifdef MPIF08
+    type(MPI_Comm), intent(in) :: comm     ! MPI intracommunicator
+    if (present(intracomm)) then
+      comm % MPI_VAL = intracomm
+    else
+      comm = MPI_COMM_WORLD
+    end if
+#else
+    integer :: comm
+    if (present(intracomm)) then
+      comm = intracomm
+    else
+      comm = MPI_COMM_WORLD
+    end if
+#endif
 #endif
 
     ! Start total and initialization timer
@@ -59,7 +75,7 @@ contains
 
 #ifdef MPI
     ! Setup MPI
-    call initialize_mpi(intracomm)
+    call initialize_mpi(comm)
 #endif
 
     ! Initialize HDF5 interface
@@ -101,12 +117,6 @@ contains
     end if
 
     if (run_mode /= MODE_PLOTTING) then
-      ! Construct information needed for nuclear data
-      if (run_CE) then
-        ! Construct log energy grid for cross-sections
-        call logarithmic_grid()
-      end if
-
       ! Allocate and setup tally stride, filter_matches, and tally maps
       call configure_tallies()
 
@@ -162,6 +172,7 @@ contains
     integer, intent(in) :: intracomm         ! MPI intracommunicator
 #endif
 
+    integer                   :: mpi_err          ! MPI error code
     integer                   :: bank_blocks(5)   ! Count for each datatype
 #ifdef MPIF08
     type(MPI_Datatype)        :: bank_types(5)

@@ -125,13 +125,16 @@ class Settings(object):
     temperature : dict
         Defines a default temperature and method for treating intermediate
         temperatures at which nuclear data doesn't exist. Accepted keys are
-        'default', 'method', 'tolerance', and 'multipole'. The value for
-        'default' should be a float representing the default temperature in
+        'default', 'method', 'range', 'tolerance', and 'multipole'. The value
+        for 'default' should be a float representing the default temperature in
         Kelvin. The value for 'method' should be 'nearest' or 'interpolation'.
         If the method is 'nearest', 'tolerance' indicates a range of temperature
-        within which cross sections may be used. 'multipole' is a boolean
-        indicating whether or not the windowed multipole method should be used
-        to evaluate resolved resonance cross sections.
+        within which cross sections may be used. The value for 'range' should be
+        a pair a minimum and maximum temperatures which are used to indicate
+        that cross sections be loaded at all temperatures within the
+        range. 'multipole' is a boolean indicating whether or not the windowed
+        multipole method should be used to evaluate resolved resonance cross
+        sections.
     threads : int
         Number of OpenMP threads
     trace : tuple or list
@@ -639,7 +642,8 @@ class Settings(object):
         cv.check_type('temperature settings', temperature, Mapping)
         for key, value in temperature.items():
             cv.check_value('temperature key', key,
-                           ['default', 'method', 'tolerance', 'multipole'])
+                           ['default', 'method', 'tolerance', 'multipole',
+                            'range'])
             if key == 'default':
                 cv.check_type('default temperature', value, Real)
             elif key == 'method':
@@ -649,6 +653,11 @@ class Settings(object):
                 cv.check_type('temperature tolerance', value, Real)
             elif key == 'multipole':
                 cv.check_type('temperature multipole', value, bool)
+            elif key == 'range':
+                cv.check_length('temperature range', value, 2)
+                for T in value:
+                    cv.check_type('temperature', T, Real)
+
         self._temperature = temperature
 
     @threads.setter
@@ -999,6 +1008,8 @@ class Settings(object):
                                         "temperature_{}".format(key))
                 if isinstance(value, bool):
                     element.text = str(value).lower()
+                elif key == 'range':
+                    element.text = ' '.join(str(T) for T in value)
                 else:
                     element.text = str(value)
 

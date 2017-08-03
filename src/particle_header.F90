@@ -45,6 +45,7 @@ module particle_header
 
     ! Particle coordinates
     integer          :: n_coord          ! number of current coordinates
+    integer          :: cell_instance    ! offset for distributed properties
     type(LocalCoord) :: coord(MAX_COORD) ! coordinates for all levels
 
     ! Energy Data

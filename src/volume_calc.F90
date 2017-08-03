@@ -1,5 +1,7 @@
 module volume_calc
 
+  use, intrinsic :: ISO_C_BINDING
+
   use hdf5, only: HID_T
 #ifdef _OPENMP
   use omp_lib
@@ -21,16 +23,16 @@ module volume_calc
   implicit none
   private
 
-  public :: run_volume_calculations
+  public :: openmc_calculate_volumes
 
 contains
 
 !===============================================================================
-! RUN_VOLUME_CALCULATIONS runs each of the stochastic volume calculations that
+! OPENMC_CALCULATE_VOLUMES runs each of the stochastic volume calculations that
 ! the user has specified and writes results to HDF5 files
 !===============================================================================
 
-  subroutine run_volume_calculations()
+  subroutine openmc_calculate_volumes() bind(C)
     integer :: i, j
     integer :: n
     real(8), allocatable :: volume(:,:)  ! volume mean/stdev in each domain
@@ -93,7 +95,7 @@ contains
       call write_message("Elapsed time: " // trim(to_str(time_volume % &
            get_value())) // " s", 6)
     end if
-  end subroutine run_volume_calculations
+  end subroutine openmc_calculate_volumes
 
 !===============================================================================
 ! GET_VOLUME stochastically determines the volume of a set of domains along with
@@ -130,6 +132,7 @@ contains
     integer :: min_samples ! minimum number of samples per process
     integer :: remainder   ! leftover samples from uneven divide
 #ifdef MPI
+    integer :: mpi_err ! MPI error code
     integer :: m  ! index over materials
     integer :: n  ! number of materials
     integer, allocatable :: data(:) ! array used to send number of hits

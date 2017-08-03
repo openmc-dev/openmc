@@ -1,5 +1,9 @@
 module plot
 
+  use, intrinsic :: ISO_C_BINDING
+
+  use hdf5
+
   use constants
   use error,           only: fatal_error
   use geometry,        only: find_cell, check_cell_overlap
@@ -14,12 +18,10 @@ module plot
   use progress_header, only: ProgressBar
   use string,          only: to_str
 
-  use hdf5
-
   implicit none
   private
 
-  public :: run_plot
+  public :: openmc_plot_geometry
 
   integer, parameter :: RED = 1
   integer, parameter :: GREEN = 2
@@ -31,7 +33,7 @@ contains
 ! RUN_PLOT controls the logic for making one or many plots
 !===============================================================================
 
-  subroutine run_plot()
+  subroutine openmc_plot_geometry() bind(C)
 
     integer :: i ! loop index for plots
 
@@ -51,7 +53,7 @@ contains
       end associate
     end do
 
-  end subroutine run_plot
+  end subroutine openmc_plot_geometry
 
 !===============================================================================
 ! POSITION_RGB computes the red/green/blue values for a given plot with the

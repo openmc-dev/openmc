@@ -394,9 +394,9 @@ contains
 
   subroutine finalize_simulation()
 
-    integer :: i       ! loop index for tallies
-    integer :: n       ! size of arrays
 #ifdef MPI
+    integer    :: i       ! loop index for tallies
+    integer    :: n       ! size of arrays
     integer    :: mpi_err  ! MPI error code
     integer(8) :: temp
     real(8)    :: tempr(3) ! temporary array for communication

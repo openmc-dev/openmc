@@ -28,16 +28,11 @@ else:
 # Open shared library
 _filename = pkg_resources.resource_filename(
     __name__, '_libopenmc.{}'.format(_suffix))
-try:
-    _dll = CDLL(_filename)
-except OSError:
-    warn("OpenMC shared library is not available from the Python API. This "
-         "means you will not be able to use openmc.capi to make in-memory "
-         "calls to OpenMC.")
-else:
-    from .error import *
-    from .core import *
-    from .nuclide import *
-    from .material import *
-    from .cell import *
-    from .tally import *
+_dll = CDLL(_filename)
+
+from .error import *
+from .core import *
+from .nuclide import *
+from .material import *
+from .cell import *
+from .tally import *

@@ -14,7 +14,8 @@ Functions
 
    openmc.capi.calculate_volumes
    openmc.capi.finalize
-   openmc.capi.find
+   openmc.capi.find_cell
+   openmc.capi.find_material
    openmc.capi.hard_reset
    openmc.capi.init
    openmc.capi.keff

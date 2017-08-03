@@ -33,39 +33,47 @@ def finalize():
     _dll.openmc_finalize()
 
 
-def find(xyz, rtype='cell'):
-    """Find the cell or material at a given point
+def find_cell(xyz):
+    """Find the cell at a given point
 
     Parameters
     ----------
     xyz : iterable of float
         Cartesian coordinates of position
-    rtype : {'cell', 'material'}
-        Whether to return the cell or material ID
 
     Returns
     -------
-    int or None
-        ID of the cell or material. If 'material' is requested and no
-        material exists at the given coordinate, None is returned.
+    int
+        ID of the cell.
     int
         If the cell at the given point is repeated in the geometry, this
         indicates which instance it is, i.e., 0 would be the first instance.
 
     """
-    # Set second argument to openmc_find
-    if rtype == 'cell':
-        r_int = 1
-    elif rtype == 'material':
-        r_int = 2
-    else:
-        raise ValueError('Unknown return type: {}'.format(rtype))
-
-    # Call openmc_find
     uid = c_int32()
     instance = c_int32()
-    _dll.openmc_find((c_double*3)(*xyz), r_int, uid, instance)
-    return (uid.value if uid != 0 else None), instance.value
+    _dll.openmc_find((c_double*3)(*xyz), 1, uid, instance)
+    return uid.value, instance.value
+
+
+def find_material(xyz):
+    """Find the material at a given point
+
+    Parameters
+    ----------
+    xyz : iterable of float
+        Cartesian coordinates of position
+
+    Returns
+    -------
+    int or None
+        ID of the material or None is no material is found
+
+    """
+    uid = c_int32()
+    instance = c_int32()
+    _dll.openmc_find((c_double*3)(*xyz), 2, uid, instance)
+    return uid.value if uid != 0 else None
 
 
 def hard_reset():

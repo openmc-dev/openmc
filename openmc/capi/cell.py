@@ -4,7 +4,8 @@ from weakref import WeakValueDictionary
 
 import numpy as np
 
-from openmc.capi import _dll, _error_handler
+from . import _dll
+from .error import _error_handler
 
 __all__ = ['CellView', 'cells']
 
@@ -40,6 +41,7 @@ class CellView(object):
 
     """
     __instances = WeakValueDictionary()
+
     def __new__(cls, *args):
         if args not in cls.__instances:
             instance = super().__new__(cls)

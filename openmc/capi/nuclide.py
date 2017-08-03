@@ -5,7 +5,8 @@ from weakref import WeakValueDictionary
 import numpy as np
 from numpy.ctypeslib import as_array
 
-from openmc.capi import _dll, _error_handler
+from . import _dll
+from .error import _error_handler
 
 
 __all__ = ['NuclideView', 'nuclides', 'load_nuclide']
@@ -53,6 +54,7 @@ class NuclideView(object):
 
     """
     __instances = WeakValueDictionary()
+
     def __new__(cls, *args):
         if args not in cls.__instances:
             instance = super().__new__(cls)

@@ -4,7 +4,8 @@ from weakref import WeakValueDictionary
 
 from numpy.ctypeslib import as_array
 
-from openmc.capi import _dll, _error_handler, NuclideView
+from . import _dll, NuclideView
+from .error import _error_handler
 
 
 __all__ = ['TallyView', 'tallies']
@@ -52,6 +53,7 @@ class TallyView(object):
 
     """
     __instances = WeakValueDictionary()
+
     def __new__(cls, *args):
         if args not in cls.__instances:
             instance = super().__new__(cls)

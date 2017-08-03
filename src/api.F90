@@ -62,6 +62,12 @@ module openmc_api
   integer(C_INT), public, bind(C) :: E_MATERIAL_INVALID_ID = -10
   integer(C_INT), public, bind(C) :: E_TALLY_NOT_ALLOCATED = -11
   integer(C_INT), public, bind(C) :: E_TALLY_INVALID_ID = -12
+  integer(C_INT), public, bind(C) :: E_INVALID_SIZE = -13
+  integer(C_INT), public, bind(C) :: E_CELL_NO_MATERIAL = -14
+
+  ! Warning codes
+  integer(C_INT), public, bind(C) :: W_BELOW_MIN_BOUND = 1
+  integer(C_INT), public, bind(C) :: W_ABOVE_MAX_BOUND = 2
 
 contains
 
@@ -87,29 +93,92 @@ contains
 !===============================================================================
 
   function openmc_cell_set_temperature(index, T, instance) result(err) bind(C)
-    integer(C_INT32_T), value, intent(in) :: index
-    real(C_DOUBLE), value, intent(in) :: T
-    integer(C_INT32_T), optional, intent(in) :: instance
-    integer(C_INT) :: err
+    integer(C_INT32_T), value, intent(in)    :: index    ! cell index in cells
+    real(C_DOUBLE), value, intent(in)        :: T        ! temperature
+    integer(C_INT32_T), optional, intent(in) :: instance ! cell instance
 
-    integer :: n
+    integer(C_INT) :: err     ! error code
+    integer :: j              ! looping variable
+    integer :: n              ! number of cell instances
+    integer :: material_ID    ! material associated with cell
+    integer :: material_index ! material index in materials array
+    integer :: num_nuclides   ! num nuclides in material
+    integer :: nuclide_index  ! index of nuclide in nuclides array
+    real(8) :: min_temp       ! min common-denominator avail temp
+    real(8) :: max_temp       ! max common-denominator avail temp
+    real(8) :: temp           ! actual temp we'll assign
+    logical :: outside_low    ! lower than available data
+    logical :: outside_high   ! higher than available data
+
+    outside_low = .false.
+    outside_high = .false.
 
     err = E_UNASSIGNED
+
     if (index >= 1 .and. index <= size(cells)) then
-      associate (c => cells(index))
-        if (allocated(c % sqrtkT)) then
-          n = size(c % sqrtkT)
-          if (present(instance) .and. n > 1) then
-            if (instance >= 0 .and. instance < n) then
-              c % sqrtkT(instance + 1) = sqrt(K_BOLTZMANN * T)
+
+      ! error if the cell is filled with another universe
+      if (cells(index) % fill /= NONE) then
+        err = E_CELL_NO_MATERIAL
+      else
+        ! find which material is associated with this cell
+        if (present(instance)) then
+          material_ID = cells(index) % material(instance)
+        else
+          material_ID = cells(index) % material(1)
+        end if
+
+        ! index of that material into the materials array
+        material_index = material_dict % get_key(material_ID)
+
+        ! number of nuclides associated with this material
+        num_nuclides = size(materials(material_index) % nuclide)
+
+        min_temp = ZERO
+        max_temp = INFINITY
+
+        do j = 1, num_nuclides
+          nuclide_index = materials(material_index) % nuclide(j)
+          min_temp = max(min_temp, minval(nuclides(nuclide_index) % kTs))
+          max_temp = min(max_temp, maxval(nuclides(nuclide_index) % kTs))
+        end do
+
+        ! adjust the temperature to be within bounds if necessary
+        if (K_BOLTZMANN * T < min_temp) then
+          outside_low = .true.
+          temp = min_temp / K_BOLTZMANN
+        else if (K_BOLTZMANN * T > max_temp) then
+          outside_high = .true.
+          temp = max_temp / K_BOLTZMANN
+        else
+          temp = T
+        end if
+
+        associate (c => cells(index))
+          if (allocated(c % sqrtkT)) then
+            n = size(c % sqrtkT)
+            if (present(instance) .and. n > 1) then
+              if (instance >= 0 .and. instance < n) then
+                c % sqrtkT(instance + 1) = sqrt(K_BOLTZMANN * temp)
+                err = 0
+              end if
+            else
+              c % sqrtkT(:) = sqrt(K_BOLTZMANN * temp)
               err = 0
             end if
-          else
-            c % sqrtkT(:) = sqrt(K_BOLTZMANN * T)
-            err = 0
           end if
+        end associate
+
+        ! assign error codes for outside of temperature bounds provided the
+        ! temperature was changed correctly. This needs to be done after
+        ! changing the temperature based on the logical structure above.
+        if (err == 0) then
+          if (outside_low) err = W_BELOW_MIN_BOUND
+          if (outside_high) err = W_ABOVE_MAX_BOUND
         end if
-      end associate
+
+      end if
+
     else
       err = E_OUT_OF_BOUNDS
     end if

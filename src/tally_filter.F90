@@ -13,7 +13,8 @@ module tally_filter
                                  mesh_intersects_3d
   use particle_header,     only: Particle
   use string,              only: to_str
-  use tally_filter_header, only: TallyFilter, TallyFilterContainer
+  use tally_filter_header, only: TallyFilter, TallyFilterContainer, &
+                                 TallyFilterMatch
 
   use hdf5, only: HID_T
 
@@ -27,7 +28,7 @@ module tally_filter
   type, extends(TallyFilter) :: MeshFilter
     integer :: mesh
   contains
-    procedure :: get_next_bin => get_next_bin_mesh
+    procedure :: get_all_bins => get_all_bins_mesh
     procedure :: to_statepoint => to_statepoint_mesh
     procedure :: text_label => text_label_mesh
   end type MeshFilter
@@ -39,7 +40,7 @@ module tally_filter
     integer, allocatable :: universes(:)
     type(DictIntInt)     :: map
   contains
-    procedure :: get_next_bin => get_next_bin_universe
+    procedure :: get_all_bins => get_all_bins_universe
     procedure :: to_statepoint => to_statepoint_universe
     procedure :: text_label => text_label_universe
     procedure :: initialize => initialize_universe
@@ -52,7 +53,7 @@ module tally_filter
     integer, allocatable :: materials(:)
     type(DictIntInt)     :: map
   contains
-    procedure :: get_next_bin => get_next_bin_material
+    procedure :: get_all_bins => get_all_bins_material
     procedure :: to_statepoint => to_statepoint_material
     procedure :: text_label => text_label_material
     procedure :: initialize => initialize_material
@@ -65,7 +66,7 @@ module tally_filter
     integer, allocatable :: cells(:)
     type(DictIntInt)     :: map
   contains
-    procedure :: get_next_bin => get_next_bin_cell
+    procedure :: get_all_bins => get_all_bins_cell
     procedure :: to_statepoint => to_statepoint_cell
     procedure :: text_label => text_label_cell
     procedure :: initialize => initialize_cell
@@ -78,7 +79,7 @@ module tally_filter
   type, extends(TallyFilter) :: DistribcellFilter
     integer :: cell
   contains
-    procedure :: get_next_bin => get_next_bin_distribcell
+    procedure :: get_all_bins => get_all_bins_distribcell
     procedure :: to_statepoint => to_statepoint_distribcell
     procedure :: text_label => text_label_distribcell
     procedure :: initialize => initialize_distribcell
@@ -91,7 +92,7 @@ module tally_filter
     integer, allocatable :: cells(:)
     type(DictIntInt)     :: map
   contains
-    procedure :: get_next_bin => get_next_bin_cellborn
+    procedure :: get_all_bins => get_all_bins_cellborn
     procedure :: to_statepoint => to_statepoint_cellborn
     procedure :: text_label => text_label_cellborn
     procedure :: initialize => initialize_cellborn
@@ -107,7 +108,7 @@ module tally_filter
     ! True if this filter is used for surface currents
     logical              :: current = .false.
   contains
-    procedure :: get_next_bin => get_next_bin_surface
+    procedure :: get_all_bins => get_all_bins_surface
     procedure :: to_statepoint => to_statepoint_surface
     procedure :: text_label => text_label_surface
     procedure :: initialize => initialize_surface
@@ -123,14 +124,14 @@ module tally_filter
     logical              :: matches_transport_groups = .false.
 
   contains
-    procedure :: get_next_bin => get_next_bin_energy
+    procedure :: get_all_bins => get_all_bins_energy
     procedure :: to_statepoint => to_statepoint_energy
     procedure :: text_label => text_label_energy
   end type EnergyFilter
 
 !===============================================================================
 ! ENERGYOUTFILTER bins the outgoing neutron energy.  Only scattering events use
-! the get_next_bin functionality.  Nu-fission tallies manually iterate over the
+! the get_all_bins functionality.  Nu-fission tallies manually iterate over the
 ! filter bins.
 !===============================================================================
   type, extends(TallyFilter) :: EnergyoutFilter
@@ -140,20 +141,20 @@ module tally_filter
     logical              :: matches_transport_groups = .false.
 
   contains
-    procedure :: get_next_bin => get_next_bin_energyout
+    procedure :: get_all_bins => get_all_bins_energyout
     procedure :: to_statepoint => to_statepoint_energyout
     procedure :: text_label => text_label_energyout
   end type EnergyoutFilter
 
 !===============================================================================
 ! DELAYEDGROUPFILTER bins outgoing fission neutrons in their delayed groups.
-! The get_next_bin functionality is not actually used.  The bins are manually
+! The get_all_bins functionality is not actually used.  The bins are manually
 ! iterated over in the scoring subroutines.
 !===============================================================================
   type, extends(TallyFilter) :: DelayedGroupFilter
     integer, allocatable :: groups(:)
   contains
-    procedure :: get_next_bin => get_next_bin_dg
+    procedure :: get_all_bins => get_all_bins_dg
     procedure :: to_statepoint => to_statepoint_dg
     procedure :: text_label => text_label_dg
   end type DelayedGroupFilter
@@ -165,7 +166,7 @@ module tally_filter
   type, extends(TallyFilter) :: MuFilter
     real(8), allocatable :: bins(:)
   contains
-    procedure :: get_next_bin => get_next_bin_mu
+    procedure :: get_all_bins => get_all_bins_mu
     procedure :: to_statepoint => to_statepoint_mu
     procedure :: text_label => text_label_mu
   end type MuFilter
@@ -177,7 +178,7 @@ module tally_filter
   type, extends(TallyFilter) :: PolarFilter
     real(8), allocatable :: bins(:)
   contains
-    procedure :: get_next_bin => get_next_bin_polar
+    procedure :: get_all_bins => get_all_bins_polar
     procedure :: to_statepoint => to_statepoint_polar
     procedure :: text_label => text_label_polar
   end type PolarFilter
@@ -189,7 +190,7 @@ module tally_filter
   type, extends(TallyFilter) :: AzimuthalFilter
     real(8), allocatable :: bins(:)
   contains
-    procedure :: get_next_bin => get_next_bin_azimuthal
+    procedure :: get_all_bins => get_all_bins_azimuthal
     procedure :: to_statepoint => to_statepoint_azimuthal
     procedure :: text_label => text_label_azimuthal
   end type AzimuthalFilter
@@ -203,7 +204,7 @@ module tally_filter
     real(8), allocatable :: y(:)
 
   contains
-    procedure :: get_next_bin => get_next_bin_energyfunction
+    procedure :: get_all_bins => get_all_bins_energyfunction
     procedure :: to_statepoint => to_statepoint_energyfunction
     procedure :: text_label => text_label_energyfunction
   end type EnergyFunctionFilter
@@ -218,14 +219,11 @@ contains
 !===============================================================================
 ! MeshFilter methods
 !===============================================================================
-  subroutine get_next_bin_mesh(this, p, estimator, current_bin, next_bin, &
-       weight)
+  subroutine get_all_bins_mesh(this, p, estimator, match)
     class(MeshFilter), intent(in)  :: this
     type(Particle),    intent(in)  :: p
     integer,           intent(in)  :: estimator
-    integer, value,    intent(in)  :: current_bin
-    integer,           intent(out) :: next_bin
-    real(8),           intent(out) :: weight
+    type(TallyFilterMatch), intent(inout) :: match
 
     integer, parameter :: MAX_SEARCH_ITER = 100 ! Maximum number of times we can
                                                 !  can loop while trying to find
@@ -235,6 +233,7 @@ contains
     integer :: ijk0(3)              ! indices of starting coordinates
     integer :: ijk1(3)              ! indices of ending coordinates
     integer :: search_iter          ! loop count for intersection search
+    real(8) :: weight               ! weight to be pushed back
     real(8) :: uvw(3)               ! cosine of angle of particle
     real(8) :: xyz0(3)              ! starting/intermediate coordinates
     real(8) :: xyz1(3)              ! ending coordinates of particle
@@ -254,12 +253,8 @@ contains
     if (estimator /= ESTIMATOR_TRACKLENGTH) then
       ! If this is an analog or collision tally, then there can only be one
       ! valid mesh bin.
-      if (current_bin == NO_BIN_FOUND) then
-        call get_mesh_bin(m, p % coord(1) % xyz, next_bin)
-        weight = ONE
-      else
-        next_bin = NO_BIN_FOUND
-      end if
+        call match % bins % push_back(1)
+        call match % weights % push_back(ONE)
 
     else
       ! A track can span multiple mesh bins so we need to handle a lot of
@@ -279,29 +274,6 @@ contains
       call get_mesh_indices(m, xyz0, ijk0(:m % n_dimension), start_in_mesh)
       call get_mesh_indices(m, xyz1, ijk1(:m % n_dimension), end_in_mesh)
 
-      ! If this is the first iteration of the filter loop, check if the track
-      ! intersects any part of the mesh.
-      if (current_bin == NO_BIN_FOUND) then
-        if ((.not. start_in_mesh) .and. (.not. end_in_mesh)) then
-          if (m % n_dimension == 1) then
-            if (.not. mesh_intersects_1d(m, xyz0, xyz1)) then
-              next_bin = NO_BIN_FOUND
-              return
-            end if
-          else if (m % n_dimension == 2) then
-            if (.not. mesh_intersects_2d(m, xyz0, xyz1)) then
-              next_bin = NO_BIN_FOUND
-              return
-            end if
-          else
-            if (.not. mesh_intersects_3d(m, xyz0, xyz1)) then
-              next_bin = NO_BIN_FOUND
-              return
-            end if
-          end if
-        end if
-      end if
-
       ! ========================================================================
       ! Figure out which mesh cell to tally.
 
@@ -313,71 +285,11 @@ contains
       ! Compute the length of the entire track.
       total_distance = sqrt(sum((xyz1 - xyz0)**2))
 
-      if (current_bin == NO_BIN_FOUND) then
-        ! We are looking for the first valid mesh bin.  Check to see if the
-        ! particle starts inside the mesh.
-        if (any(ijk0(:m % n_dimension) < 1) &
-             .or. any(ijk0(:m % n_dimension) > m % dimension)) then
-          ! The particle does not start in the mesh.  Note that we nudged the
-          ! start and end coordinates by a TINY_BIT each so we will have
-          ! difficulty resolving tracks that are less than 2*TINY_BIT in length.
-          ! If the track is that short, it is also insignificant so we can
-          ! safely ignore it in the tallies.
-          if (total_distance < 2*TINY_BIT) then
-            next_bin = NO_BIN_FOUND
-            return
-          end if
-
-          ! The particle does not start in the mesh so keep iterating the ijk0
-          ! indices to cross the nearest mesh surface until we've found a valid
-          ! bin.  MAX_SEARCH_ITER prevents an infinite loop.
-          search_iter = 0
-          do while (any(ijk0(:m % n_dimension) < 1) &
-               .or. any(ijk0(:m % n_dimension) > m % dimension))
-            if (search_iter == MAX_SEARCH_ITER) then
-              call warning("Failed to find a mesh intersection on a tally mesh &
-                   &filter.")
-              next_bin = NO_BIN_FOUND
-              return
-            end if
-
-            do j = 1, m % n_dimension
-              if (abs(uvw(j)) < FP_PRECISION) then
-                d(j) = INFINITY
-              else if (uvw(j) > 0) then
-                xyz_cross = m % lower_left(j) + ijk0(j) * m % width(j)
-                d(j) = (xyz_cross - xyz0(j)) / uvw(j)
-              else
-                xyz_cross = m % lower_left(j) + (ijk0(j) - 1) * m % width(j)
-                d(j) = (xyz_cross - xyz0(j)) / uvw(j)
-              end if
-            end do
-            j = minloc(d(:m % n_dimension), 1)
-            if (uvw(j) > ZERO) then
-              ijk0(j) = ijk0(j) + 1
-            else
-              ijk0(j) = ijk0(j) - 1
-            end if
-
-            search_iter = search_iter + 1
-          end do
-          distance = d(j)
-          xyz0 = xyz0 + distance * uvw
-
-        end if
-
-      else
         ! We have already scored some mesh bins for this track.  Pick up where
         ! we left off and find the next mesh cell that the particle enters.
 
         ! Get the indices to the last bin we scored.
-        call bin_to_mesh_indices(m, current_bin, ijk0(:m % n_dimension))
-
-        ! If the particle track ends in that bin, then we are done.
-        if (all(ijk0(:m % n_dimension) == ijk1(:m % n_dimension))) then
-          next_bin = NO_BIN_FOUND
-          return
-        end if
+        call bin_to_mesh_indices(m, 1, ijk0(:m % n_dimension))
 
         ! Figure out which face of the previous mesh cell our track exits, i.e.
         ! the closest surface of that cell for which
@@ -408,15 +320,6 @@ contains
           ijk0(j) = ijk0(j) - 1
         end if
 
-        ! If the next indices are invalid, then the track has left the mesh and
-        ! we are done.
-        if (any(ijk0(:m % n_dimension) < 1) &
-             .or. any(ijk0(:m % n_dimension) > m % dimension)) then
-          next_bin = NO_BIN_FOUND
-          return
-        end if
-      end if
-
       ! ========================================================================
       ! Compute the length of the track segment in the appropiate mesh cell and
       ! return.
@@ -442,10 +345,11 @@ contains
       end if
 
       ! Assign the next tally bin and the score.
-      next_bin = mesh_indices_to_bin(m, ijk0(:m % n_dimension))
+      call match % bins % push_back(mesh_indices_to_bin(m, ijk0(:m % n_dimension)))
       weight = distance / total_distance
-    endif
-  end subroutine get_next_bin_mesh
+      call match % weights % push_back(weight)
+    end if
+  end subroutine get_all_bins_mesh
 
   subroutine to_statepoint_mesh(this, filter_group)
     class(MeshFilter), intent(in) :: this
@@ -481,40 +385,24 @@ contains
 !===============================================================================
 ! UniverseFilter methods
 !===============================================================================
-  subroutine get_next_bin_universe(this, p, estimator, current_bin, next_bin, &
-       weight)
+  subroutine get_all_bins_universe(this, p, estimator, match)
     class(UniverseFilter), intent(in)  :: this
     type(Particle),        intent(in)  :: p
     integer,               intent(in)  :: estimator
-    integer, value,        intent(in)  :: current_bin
-    integer,               intent(out) :: next_bin
-    real(8),               intent(out) :: weight
+    type(TallyFilterMatch),     intent(inout) :: match
 
     integer :: i, start
 
-    ! Find the coordinate level of the last bin we found.
-    if (current_bin == NO_BIN_FOUND) then
-      start = 1
-    else
-      do i = 1, p % n_coord
-        if (p % coord(i) % universe == this % universes(current_bin)) then
-          start = i + 1
-          exit
-        end if
-      end do
-    end if
-
-    ! Starting one coordinate level deeper, find the next bin.
-    next_bin = NO_BIN_FOUND
-    weight = ERROR_REAL
-    do i = start, p % n_coord
+    ! Iterate over coordinate levels to see which universes match
+    do i = 1, p % n_coord
       if (this % map % has_key(p % coord(i) % universe)) then
-        next_bin = this % map % get_key(p % coord(i) % universe)
-        weight = ONE
-        exit
+        call match % bins % push_back(this % map % get_key(p % coord(i) &
+          % universe))
+        call match % weights % push_back(ONE)
       end if
     end do
-  end subroutine get_next_bin_universe
+
+  end subroutine get_all_bins_universe
 
   subroutine to_statepoint_universe(this, filter_group)
     class(UniverseFilter), intent(in) :: this
@@ -566,24 +454,18 @@ contains
 !===============================================================================
 ! MaterialFilter methods
 !===============================================================================
-  subroutine get_next_bin_material(this, p, estimator, current_bin, next_bin, &
-       weight)
+  subroutine get_all_bins_material(this, p, estimator, match)
     class(MaterialFilter), intent(in)  :: this
     type(Particle),        intent(in)  :: p
     integer,               intent(in)  :: estimator
-    integer, value,        intent(in)  :: current_bin
-    integer,               intent(out) :: next_bin
-    real(8),               intent(out) :: weight
+    type(TallyFilterMatch),     intent(inout) :: match
 
-    next_bin = NO_BIN_FOUND
-    weight = ERROR_REAL
-    if (current_bin == NO_BIN_FOUND) then
       if (this % map % has_key(p % material)) then
-        next_bin = this % map % get_key(p % material)
-        weight = ONE
+        call match % bins % push_back(this % map % get_key(p % material))
+        call match % weights % push_back(ONE)
       end if
-    end if
-  end subroutine get_next_bin_material
+
+  end subroutine get_all_bins_material
 
   subroutine to_statepoint_material(this, filter_group)
     class(MaterialFilter), intent(in) :: this
@@ -635,40 +517,23 @@ contains
 !===============================================================================
 ! CellFilter methods
 !===============================================================================
-  subroutine get_next_bin_cell(this, p, estimator, current_bin, next_bin, &
-       weight)
+  subroutine get_all_bins_cell(this, p, estimator, match)
     class(CellFilter), intent(in)  :: this
     type(Particle),    intent(in)  :: p
     integer,           intent(in)  :: estimator
-    integer, value,    intent(in)  :: current_bin
-    integer,           intent(out) :: next_bin
-    real(8),           intent(out) :: weight
+    type(TallyFilterMatch), intent(inout) :: match
 
-    integer :: i, start
+    integer :: i
 
-    ! Find the coordinate level of the last bin we found.
-    if (current_bin == NO_BIN_FOUND) then
-      start = 1
-    else
-      do i = 1, p % n_coord
-        if (p % coord(i) % cell == this % cells(current_bin)) then
-          start = i + 1
-          exit
-        end if
-      end do
-    end if
-
-    ! Starting one coordinate level deeper, find the next bin.
-    next_bin = NO_BIN_FOUND
-    weight = ERROR_REAL
-    do i = start, p % n_coord
+    ! Iterate over coordinate levels to see with cells match
+    do i = 1, p % n_coord
       if (this % map % has_key(p % coord(i) % cell)) then
-        next_bin = this % map % get_key(p % coord(i) % cell)
-        weight = ONE
-        exit
+        call match % bins % push_back(this % map % get_key(p % coord(i) % cell))
+        call match % weights % push_back(ONE)
       end if
     end do
-  end subroutine get_next_bin_cell
+
+  end subroutine get_all_bins_cell
 
   subroutine to_statepoint_cell(this, filter_group)
     class(CellFilter), intent(in) :: this
@@ -720,18 +585,14 @@ contains
 !===============================================================================
 ! DistribcellFilter methods
 !===============================================================================
-  subroutine get_next_bin_distribcell(this, p, estimator, current_bin, &
-       next_bin, weight)
+  subroutine get_all_bins_distribcell(this, p, estimator, match)
     class(DistribcellFilter), intent(in)  :: this
     type(Particle),           intent(in)  :: p
     integer,                  intent(in)  :: estimator
-    integer, value,           intent(in)  :: current_bin
-    integer,                  intent(out) :: next_bin
-    real(8),                  intent(out) :: weight
+    type(TallyFilterMatch),   intent(inout) :: match
 
     integer :: distribcell_index, offset, i
 
-    if (current_bin == NO_BIN_FOUND) then
       distribcell_index = cells(this % cell) % distribcell_index
       offset = 0
       do i = 1, p % n_coord
@@ -752,15 +613,12 @@ contains
           end if
         end if
         if (this % cell == p % coord(i) % cell) then
-          next_bin = offset + 1
-          weight = ONE
+          call match % bins % push_back(offset + 1)
+          call match % weights % push_back(ONE)
           return
         end if
       end do
-    end if
-    next_bin = NO_BIN_FOUND
-    weight = ERROR_REAL
-  end subroutine get_next_bin_distribcell
+  end subroutine get_all_bins_distribcell
 
   subroutine to_statepoint_distribcell(this, filter_group)
     class(DistribcellFilter), intent(in) :: this
@@ -804,24 +662,18 @@ contains
 !===============================================================================
 ! CellbornFilter methods
 !===============================================================================
-  subroutine get_next_bin_cellborn(this, p, estimator, current_bin, next_bin, &
-       weight)
+  subroutine get_all_bins_cellborn(this, p, estimator, match)
     class(CellbornFilter), intent(in)  :: this
     type(Particle),        intent(in)  :: p
     integer,               intent(in)  :: estimator
-    integer, value,        intent(in)  :: current_bin
-    integer,               intent(out) :: next_bin
-    real(8),               intent(out) :: weight
+    type(TallyFilterMatch),     intent(inout) :: match
 
-    next_bin = NO_BIN_FOUND
-    weight = ERROR_REAL
-    if (current_bin == NO_BIN_FOUND) then
       if (this % map % has_key(p % cell_born)) then
-        next_bin = this % map % get_key(p % cell_born)
-        weight = ONE
+        call match % bins % push_back(this % map % get_key(p % cell_born))
+        call match % weights % push_back(ONE)
       end if
-    end if
-  end subroutine get_next_bin_cellborn
+
+  end subroutine get_all_bins_cellborn
 
   subroutine to_statepoint_cellborn(this, filter_group)
     class(CellbornFilter), intent(in) :: this
@@ -872,29 +724,23 @@ contains
 !===============================================================================
 ! SurfaceFilter methods
 !===============================================================================
-  subroutine get_next_bin_surface(this, p, estimator, current_bin, next_bin, &
-       weight)
+  subroutine get_all_bins_surface(this, p, estimator, match)
     class(SurfaceFilter), intent(in)  :: this
     type(Particle),       intent(in)  :: p
     integer,              intent(in)  :: estimator
-    integer, value,       intent(in)  :: current_bin
-    integer,              intent(out) :: next_bin
-    real(8),              intent(out) :: weight
+    type(TallyFilterMatch),    intent(inout) :: match
 
     integer :: i
 
-    next_bin = NO_BIN_FOUND
-    weight = ERROR_REAL
-    if (current_bin == NO_BIN_FOUND) then
       do i = 1, this % n_bins
         if (p % surface == this % surfaces(i)) then
-          next_bin = i
-          weight = ONE
+          call match % bins % push_back(i)
+          call match % weights % push_back(ONE)
           exit
         end if
       end do
-    end if
-  end subroutine get_next_bin_surface
+
+  end subroutine get_all_bins_surface
 
   subroutine to_statepoint_surface(this, filter_group)
     class(SurfaceFilter), intent(in) :: this
@@ -933,32 +779,25 @@ contains
 !===============================================================================
 ! EnergyFilter methods
 !===============================================================================
-  subroutine get_next_bin_energy(this, p, estimator, current_bin, next_bin, &
-       weight)
+  subroutine get_all_bins_energy(this, p, estimator, match)
     class(EnergyFilter), intent(in)  :: this
     type(Particle),      intent(in)  :: p
     integer,             intent(in)  :: estimator
-    integer, value,      intent(in)  :: current_bin
-    integer,             intent(out) :: next_bin
-    real(8),             intent(out) :: weight
+    type(TallyFilterMatch),   intent(inout) :: match
 
     integer :: n
     real(8) :: E
 
-    if (current_bin == NO_BIN_FOUND) then
       n = this % n_bins
 
       if ((.not. run_CE) .and. this % matches_transport_groups) then
         if (estimator == ESTIMATOR_TRACKLENGTH) then
-          next_bin = p % g
+          call match % bins % push_back(num_energy_groups - p % g + 1)
+          call match % weights % push_back(ONE)
         else
-          next_bin = p % last_g
+          call match % bins % push_back(num_energy_groups - p % last_g + 1)
+          call match % weights % push_back(ONE)
         end if
-
-        ! Tallies are ordered in increasing groups, group indices
-        ! however are the opposite, so switch
-        next_bin = num_energy_groups - next_bin + 1
-        weight = ONE
 
       else
         ! Make sure the correct energy is used.
@@ -968,22 +807,11 @@ contains
           E = p % last_E
         end if
 
-        ! Check if energy of the particle is within energy bins.
-        if (E < this % bins(1) .or. E > this % bins(n + 1)) then
-          next_bin = NO_BIN_FOUND
-          weight = ERROR_REAL
-        else
           ! Search to find incoming energy bin.
-          next_bin = binary_search(this % bins, n + 1, E)
-          weight = ONE
-        end if
+          call match % bins % push_back(binary_search(this % bins, n + 1, E))
+          call match % weights % push_back(ONE)
       end if
-
-    else
-      next_bin = NO_BIN_FOUND
-      weight = ERROR_REAL
-    end if
-  end subroutine get_next_bin_energy
+  end subroutine get_all_bins_energy
 
   subroutine to_statepoint_energy(this, filter_group)
     class(EnergyFilter), intent(in) :: this
@@ -1010,45 +838,31 @@ contains
 !===============================================================================
 ! EnergyoutFilter methods
 !===============================================================================
-  subroutine get_next_bin_energyout(this, p, estimator, current_bin, next_bin, &
-       weight)
+  subroutine get_all_bins_energyout(this, p, estimator, match)
     class(EnergyoutFilter), intent(in)  :: this
     type(Particle),         intent(in)  :: p
     integer,                intent(in)  :: estimator
-    integer, value,         intent(in)  :: current_bin
-    integer,                intent(out) :: next_bin
-    real(8),                intent(out) :: weight
+    type(TallyFilterMatch),      intent(inout) :: match
 
     integer :: n
 
-    if (current_bin == NO_BIN_FOUND) then
       n = this % n_bins
 
       if ((.not. run_CE) .and. this % matches_transport_groups) then
-        next_bin = p % g
+        call match % bins % push_back(p % g)
 
         ! Tallies are ordered in increasing groups, group indices
         ! however are the opposite, so switch
-        next_bin = num_energy_groups - next_bin + 1
-        weight = ONE
+        call match % bins % push_back(num_energy_groups - p % g + 1)
+        call match % weights % push_back(ONE)
 
       else
-        ! Check if energy of the particle is within energy bins.
-        if (p % E < this % bins(1) .or. p % E > this % bins(n + 1)) then
-          next_bin = NO_BIN_FOUND
-          weight = ERROR_REAL
-        else
-          ! Search to find incoming energy bin.
-          next_bin = binary_search(this % bins, n + 1, p % E)
-          weight = ONE
-        end if
-      end if
 
-    else
-      next_bin = NO_BIN_FOUND
-      weight = ERROR_REAL
-    end if
-  end subroutine get_next_bin_energyout
+        ! Search to find incoming energy bin.
+        call match % bins % push_back(binary_search(this % bins, n + 1, p % E))
+        call match % weights % push_back(ONE)
+      end if
+  end subroutine get_all_bins_energyout
 
   subroutine to_statepoint_energyout(this, filter_group)
     class(EnergyoutFilter), intent(in) :: this
@@ -1075,22 +889,15 @@ contains
 !===============================================================================
 ! DelayedGroupFilter methods
 !===============================================================================
-  subroutine get_next_bin_dg(this, p, estimator, current_bin, next_bin, weight)
+  subroutine get_all_bins_dg(this, p, estimator, match)
     class(DelayedGroupFilter), intent(in)  :: this
     type(Particle),            intent(in)  :: p
     integer,                   intent(in)  :: estimator
-    integer, value,            intent(in)  :: current_bin
-    integer,                   intent(out) :: next_bin
-    real(8),                   intent(out) :: weight
+    type(TallyFilterMatch),         intent(inout) :: match
 
-    if (current_bin == NO_BIN_FOUND) then
-      next_bin = 1
-      weight = ONE
-    else
-      next_bin = NO_BIN_FOUND
-      weight = ERROR_REAL
-    end if
-  end subroutine get_next_bin_dg
+    call match % bins % push_back(1)
+    call match % weights % push_back(ONE)
+  end subroutine get_all_bins_dg
 
   subroutine to_statepoint_dg(this, filter_group)
     class(DelayedGroupFilter), intent(in) :: this
@@ -1112,34 +919,20 @@ contains
 !===============================================================================
 ! MuFilter methods
 !===============================================================================
-  subroutine get_next_bin_mu(this, p, estimator, current_bin, next_bin, weight)
+  subroutine get_all_bins_mu(this, p, estimator, match)
     class(MuFilter), intent(in)  :: this
     type(Particle),  intent(in)  :: p
     integer,         intent(in)  :: estimator
-    integer, value,  intent(in)  :: current_bin
-    integer,         intent(out) :: next_bin
-    real(8),         intent(out) :: weight
+    type(TallyFilterMatch), intent(inout) :: match
 
     integer :: n
 
-    if (current_bin == NO_BIN_FOUND) then
       n = this % n_bins
 
-      ! Check if energy of the particle is within energy bins.
-      if (p % mu < this % bins(1) .or. p % mu > this % bins(n + 1)) then
-        next_bin = NO_BIN_FOUND
-        weight = ERROR_REAL
-      else
-        ! Search to find incoming energy bin.
-        next_bin = binary_search(this % bins, n + 1, p % mu)
-        weight = ONE
-      end if
-
-    else
-      next_bin = NO_BIN_FOUND
-      weight = ERROR_REAL
-    end if
-  end subroutine get_next_bin_mu
+      ! Search to find incoming energy bin.
+      call match % bins % push_back(binary_search(this % bins, n + 1, p % mu))
+      call match % weights % push_back(ONE)
+  end subroutine get_all_bins_mu
 
   subroutine to_statepoint_mu(this, filter_group)
     class(MuFilter), intent(in) :: this
@@ -1166,43 +959,28 @@ contains
 !===============================================================================
 ! PolarFilter methods
 !===============================================================================
-  subroutine get_next_bin_polar(this, p, estimator, current_bin, next_bin, &
-       weight)
+  subroutine get_all_bins_polar(this, p, estimator, match)
     class(PolarFilter), intent(in)  :: this
     type(Particle),     intent(in)  :: p
     integer,            intent(in)  :: estimator
-    integer, value,     intent(in)  :: current_bin
-    integer,            intent(out) :: next_bin
-    real(8),            intent(out) :: weight
+    type(TallyFilterMatch),  intent(inout) :: match
 
     integer :: n
     real(8) :: theta
 
-    if (current_bin == NO_BIN_FOUND) then
-      n = this % n_bins
+    n = this % n_bins
 
-      ! Make sure the correct direction vector is used.
-      if (estimator == ESTIMATOR_TRACKLENGTH) then
-        theta = acos(p % coord(1) % uvw(3))
-      else
-        theta = acos(p % last_uvw(3))
-      end if
-
-      ! Check if particle is within polar angle bins.
-      if (theta < this % bins(1) .or. theta > this % bins(n + 1)) then
-        next_bin = NO_BIN_FOUND
-        weight = ERROR_REAL
-      else
-        ! Search to find polar angle bin.
-        next_bin = binary_search(this % bins, n + 1, theta)
-        weight = ONE
-      end if
-
+    ! Make sure the correct direction vector is used.
+    if (estimator == ESTIMATOR_TRACKLENGTH) then
+      theta = acos(p % coord(1) % uvw(3))
     else
-      next_bin = NO_BIN_FOUND
-      weight = ERROR_REAL
+      theta = acos(p % last_uvw(3))
     end if
-  end subroutine get_next_bin_polar
+
+    ! Search to find polar angle bin.
+    call match % bins % push_back(binary_search(this % bins, n + 1, theta))
+    call match % weights % push_back(ONE)
+  end subroutine get_all_bins_polar
 
   subroutine to_statepoint_polar(this, filter_group)
     class(PolarFilter), intent(in) :: this
@@ -1229,19 +1007,15 @@ contains
 !===============================================================================
 ! AzimuthalFilter methods
 !===============================================================================
-  subroutine get_next_bin_azimuthal(this, p, estimator, current_bin, next_bin, &
-       weight)
+  subroutine get_all_bins_azimuthal(this, p, estimator, match)
     class(AzimuthalFilter), intent(in)  :: this
     type(Particle),         intent(in)  :: p
     integer,                intent(in)  :: estimator
-    integer, value,         intent(in)  :: current_bin
-    integer,                intent(out) :: next_bin
-    real(8),                intent(out) :: weight
+    type(TallyFilterMatch),      intent(inout) :: match
 
     integer :: n
     real(8) :: phi
 
-    if (current_bin == NO_BIN_FOUND) then
       n = this % n_bins
 
       ! Make sure the correct direction vector is used.
@@ -1251,21 +1025,11 @@ contains
         phi = atan2(p % last_uvw(2), p % last_uvw(1))
       end if
 
-      ! Check if particle is within azimuthal angle bins.
-      if (phi < this % bins(1) .or. phi > this % bins(n + 1)) then
-        next_bin = NO_BIN_FOUND
-        weight = ERROR_REAL
-      else
-        ! Search to find azimuthal angle bin.
-        next_bin = binary_search(this % bins, n + 1, phi)
-        weight = ONE
-      end if
+      ! Search to find azimuthal angle bin.
+      call match % bins % push_back(binary_search(this % bins, n + 1, phi))
+      call match % weights % push_back(ONE)
 
-    else
-      next_bin = NO_BIN_FOUND
-      weight = ERROR_REAL
-    end if
-  end subroutine get_next_bin_azimuthal
+  end subroutine get_all_bins_azimuthal
 
   subroutine to_statepoint_azimuthal(this, filter_group)
     class(AzimuthalFilter), intent(in) :: this
@@ -1292,54 +1056,39 @@ contains
 !===============================================================================
 ! EnergyFunctionFilter methods
 !===============================================================================
-  subroutine get_next_bin_energyfunction(this, p, estimator, current_bin, &
-       next_bin, weight)
+  subroutine get_all_bins_energyfunction(this, p, estimator, match)
     class(EnergyFunctionFilter), intent(in)  :: this
     type(Particle),              intent(in)  :: p
     integer,                     intent(in)  :: estimator
-    integer, value,              intent(in)  :: current_bin
-    integer,                     intent(out) :: next_bin
-    real(8),                     intent(out) :: weight
+    type(TallyFilterMatch),      intent(inout) :: match
 
     integer :: n, indx
-    real(8) :: E, f
+    real(8) :: E, f, weight
 
     select type(this)
     type is (EnergyFunctionFilter)
-      if (current_bin == NO_BIN_FOUND) then
-        n = size(this % energy)
+      n = size(this % energy)
 
-        ! Make sure the correct energy is used.
-        if (estimator == ESTIMATOR_TRACKLENGTH) then
-          E = p % E
-        else
-          E = p % last_E
-        end if
-
-        ! Check if energy of the particle is within energy bins.
-        if (E < this % energy(1) .or. E > this % energy(n)) then
-          next_bin = NO_BIN_FOUND
-          weight = ERROR_REAL
-
-        else
-          ! Search to find incoming energy bin.
-          indx = binary_search(this % energy, n, E)
-
-          ! Compute an interpolation factor between nearest bins.
-          f = (E - this % energy(indx)) &
-               / (this % energy(indx+1) - this % energy(indx))
-
-          ! Interpolate on the lin-lin grid.
-          next_bin = 1
-          weight = (ONE - f) * this % y(indx) + f * this % y(indx+1)
-        end if
-
+      ! Make sure the correct energy is used.
+      if (estimator == ESTIMATOR_TRACKLENGTH) then
+        E = p % E
       else
-        next_bin = NO_BIN_FOUND
-        weight = ERROR_REAL
+        E = p % last_E
       end if
+
+      ! Search to find incoming energy bin.
+      indx = binary_search(this % energy, n, E)
+
+      ! Compute an interpolation factor between nearest bins.
+      f = (E - this % energy(indx)) &
+           / (this % energy(indx+1) - this % energy(indx))
+
+      ! Interpolate on the lin-lin grid.
+      call match % bins % push_back(1)
+      weight = (ONE - f) * this % y(indx) + f * this % y(indx+1)
+      call match % weights % push_back(weight)
     end select
-  end subroutine get_next_bin_energyfunction
+  end subroutine get_all_bins_energyfunction
 
   subroutine to_statepoint_energyfunction(this, filter_group)
     class(EnergyFunctionFilter), intent(in) :: this

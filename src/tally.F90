@@ -3213,15 +3213,11 @@ contains
       ! Determine incoming energy bin.  We need to tell the energy filter this
       ! is a tracklength tally so it uses the pre-collision energy.
       if (energy_filter) then
-      t => tallies(i_tally)
       ! Find all valid bins in each filter if they have not already been found
       ! for a previous tally.
-      do j = 1, size(t % filter)
-        i_filt = t % filter(j)
         call filters(i_filter_energy) % obj % get_all_bins(p, &
-             ESTIMATOR_TRACKLENGTH, filter_matches(i_filt))
+             ESTIMATOR_TRACKLENGTH, filter_matches(i_filter_energy))
         filter_matches(i_filter_energy) % bins % data(1) = matching_bin
-      end do
       end if
 
       ! Bounding coordinates

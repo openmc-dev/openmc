@@ -245,6 +245,8 @@ contains
     logical :: end_in_mesh          ! ending coordinates inside mesh?
     type(RegularMesh), pointer :: m
 
+    weight = ERROR_REAL
+
     ! Get a pointer to the mesh.
     m => meshes(this % mesh)
 
@@ -287,7 +289,7 @@ contains
         ! we left off and find the next mesh cell that the particle enters.
 
         ! Get the indices to the last bin we scored.
-        ! call bin_to_mesh_indices(m, current_bin, ijk0(:m % n_dimension))
+        call bin_to_mesh_indices(m, 1, ijk0(:m % n_dimension))
 
         ! Figure out which face of the previous mesh cell our track exits, i.e.
         ! the closest surface of that cell for which
@@ -317,7 +319,6 @@ contains
         else
           ijk0(j) = ijk0(j) - 1
         end if
-      end if
 
       ! ========================================================================
       ! Compute the length of the track segment in the appropiate mesh cell and
@@ -347,6 +348,7 @@ contains
       call match % bins % push_back(mesh_indices_to_bin(m, ijk0(:m % n_dimension)))
       weight = distance / total_distance
       call match % weights % push_back(weight)
+    end if
   end subroutine get_all_bins_mesh
 
   subroutine to_statepoint_mesh(this, filter_group)

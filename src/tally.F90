@@ -2292,14 +2292,8 @@ contains
         if (.not. filter_matches(i_filt) % bins_present) then
           call filter_matches(i_filt) % bins % clear()
           call filter_matches(i_filt) % weights % clear()
-          matching_bin = NO_BIN_FOUND
-          do
-            call filters(i_filt) % obj % get_next_bin(p, t % estimator, &
-                 matching_bin, matching_bin, filter_weight)
-            if (matching_bin == NO_BIN_FOUND) exit
-            call filter_matches(i_filt) % bins % push_back(matching_bin)
-            call filter_matches(i_filt) % weights % push_back(filter_weight)
-          end do
+            call filters(i_filt) % obj % get_all_bins(p, t % estimator, &
+                 filter_matches(i_filt))
           filter_matches(i_filt) % bins_present = .true.
         end if
         ! If there are no valid bins for this filter, then there is nothing to
@@ -2452,14 +2446,8 @@ contains
         if (.not. filter_matches(i_filt) % bins_present) then
           call filter_matches(i_filt) % bins % clear()
           call filter_matches(i_filt) % weights % clear()
-          matching_bin = NO_BIN_FOUND
-          do
-            call filters(i_filt) % obj % get_next_bin(p, t % estimator, &
-                 matching_bin, matching_bin, filter_weight)
-            if (matching_bin == NO_BIN_FOUND) exit
-            call filter_matches(i_filt) % bins % push_back(matching_bin)
-            call filter_matches(i_filt) % weights % push_back(filter_weight)
-          end do
+          call filters(i_filt) % obj % get_all_bins(p, t % estimator, &
+                 filter_matches(i_filt))
           filter_matches(i_filt) % bins_present = .true.
         end if
         ! If there are no valid bins for this filter, then there is nothing to
@@ -2837,14 +2825,8 @@ contains
         if (.not. filter_matches(i_filt) % bins_present) then
           call filter_matches(i_filt) % bins % clear()
           call filter_matches(i_filt) % weights % clear()
-          matching_bin = NO_BIN_FOUND
-          do
-            call filters(i_filt) % obj % get_next_bin(p, t % estimator, &
-                 matching_bin, matching_bin, filter_weight)
-            if (matching_bin == NO_BIN_FOUND) exit
-            call filter_matches(i_filt) % bins % push_back(matching_bin)
-            call filter_matches(i_filt) % weights % push_back(filter_weight)
-          end do
+          call filters(i_filt) % obj % get_all_bins(p, t % estimator, &
+                 filter_matches(i_filt))
           filter_matches(i_filt) % bins_present = .true.
         end if
         ! If there are no valid bins for this filter, then there is nothing to
@@ -3013,15 +2995,8 @@ contains
         if (.not. filter_matches(i_filt) % bins_present) then
           call filter_matches(i_filt) % bins % clear()
           call filter_matches(i_filt) % weights % clear()
-          matching_bin = NO_BIN_FOUND
-          do
-            call filters(i_filt) % obj % get_next_bin(p, t % estimator, &
-                 matching_bin, matching_bin, filter_weight)
-            if (matching_bin == NO_BIN_FOUND) exit
-            call filter_matches(i_filt) % bins % push_back(matching_bin)
-            call filter_matches(i_filt) % weights % push_back(filter_weight)
-          end do
-          filter_matches(i_filt) % bins_present = .true.
+          call filters(i_filt) % obj % get_all_bins(p, t % estimator, &
+                 filter_matches(i_filt))
         end if
         ! If there are no valid bins for this filter, then there is nothing to
         ! score and we can move on to the next tally.
@@ -3148,6 +3123,7 @@ contains
 
     integer :: i
     integer :: i_tally
+    integer :: i_filt
     integer :: j, k                 ! loop indices
     integer :: n_dim                ! num dimensions of the mesh
     integer :: d1                   ! dimension index
@@ -3237,9 +3213,10 @@ contains
       ! Determine incoming energy bin.  We need to tell the energy filter this
       ! is a tracklength tally so it uses the pre-collision energy.
       if (energy_filter) then
-        call filters(i_filter_energy) % obj % get_next_bin(p, &
-             ESTIMATOR_TRACKLENGTH, NO_BIN_FOUND, matching_bin, filt_score)
-        if (matching_bin == NO_BIN_FOUND) cycle
+      ! Find all valid bins in each filter if they have not already been found
+      ! for a previous tally.
+        call filters(i_filter_energy) % obj % get_all_bins(p, &
+             ESTIMATOR_TRACKLENGTH, filter_matches(i_filter_energy))
         filter_matches(i_filter_energy) % bins % data(1) = matching_bin
       end if
 

@@ -3271,9 +3271,6 @@ contains
     ! Reset filter matches flag
     filter_matches(:) % bins_present = .false.
 
-    ! Reset tally map positioning
-    position = 0
-
   end subroutine score_surface_tally
 
 !===============================================================================

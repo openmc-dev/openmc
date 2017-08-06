@@ -87,7 +87,7 @@ class SurfaceTallyTestHarness(PyAPITestHarness):
 
         # Create partial current tallies from fuel to water
         # Filters
-        two_groups = np.array([0., 4, 20.]) * 1e6
+        two_groups = [0., 4e6, 20e6]
         energy_filter = openmc.EnergyFilter(two_groups)
         polar_filter = openmc.PolarFilter([0, np.pi / 4, np.pi])
         azimuthal_filter = openmc.AzimuthalFilter([0, np.pi / 4, np.pi])

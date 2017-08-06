@@ -11,19 +11,10 @@ import numpy as np
 import openmc
 import openmc.checkvalue as cv
 from openmc.plots import _SVG_COLORS
+from openmc.mixin import IDManagerMixin
 
 
-# A static variable for auto-generated Lattice (Universe) IDs
-AUTO_UNIVERSE_ID = 10000
-
-
-def reset_auto_universe_id():
-    """Reset counter for auto-generated universe IDs."""
-    global AUTO_UNIVERSE_ID
-    AUTO_UNIVERSE_ID = 10000
-
-
-class Universe(object):
+class Universe(IDManagerMixin):
     """A collection of cells that can be repeated.
 
     Parameters
@@ -54,6 +45,9 @@ class Universe(object):
         of the universe.
 
     """
+
+    next_id = 1
+    used_ids = set()
 
     def __init__(self, universe_id=None, name='', cells=None):
         # Initialize Cell class attributes
@@ -96,10 +90,6 @@ class Universe(object):
         return string
 
     @property
-    def id(self):
-        return self._id
-
-    @property
     def name(self):
         return self._name
 
@@ -116,21 +106,10 @@ class Universe(object):
         regions = [c.region for c in self.cells.values()
                    if c.region is not None]
         if regions:
-            return openmc.Union(*regions).bounding_box
+            return openmc.Union(regions).bounding_box
         else:
             # Infinite bounding box
             return openmc.Intersection().bounding_box
-
-    @id.setter
-    def id(self, universe_id):
-        if universe_id is None:
-            global AUTO_UNIVERSE_ID
-            self._id = AUTO_UNIVERSE_ID
-            AUTO_UNIVERSE_ID += 1
-        else:
-            cv.check_type('universe ID', universe_id, Integral)
-            cv.check_greater_than('universe ID', universe_id, 0, equality=True)
-            self._id = universe_id
 
     @name.setter
     def name(self, name):
@@ -566,7 +545,7 @@ class Universe(object):
                 cell_element.set("universe", str(self._id))
                 xml_element.append(cell_element)
 
-    def _determine_paths(self, path=''):
+    def _determine_paths(self, path='', instances_only=False):
         """Count the number of instances for each cell in the universe, and
         record the count in the :attr:`Cell.num_instances` properties."""
 
@@ -577,7 +556,7 @@ class Universe(object):
 
             # If universe-filled, recursively count cells in filling universe
             if cell.fill_type == 'universe':
-                cell.fill._determine_paths(cell_path + '->')
+                cell.fill._determine_paths(cell_path + '->', instances_only)
 
             # If lattice-filled, recursively call for all universes in lattice
             elif cell.fill_type == 'lattice':
@@ -588,18 +567,22 @@ class Universe(object):
                     latt_path = '{}->l{}({})->'.format(
                         cell_path, latt.id, ",".join(str(x) for x in index))
                     univ = latt.get_universe(index)
-                    univ._determine_paths(latt_path)
+                    univ._determine_paths(latt_path, instances_only)
 
             else:
                 if cell.fill_type == 'material':
                     mat = cell.fill
                 elif cell.fill_type == 'distribmat':
-                    mat = cell.fill[len(cell._paths)]
+                    mat = cell.fill[cell._num_instances]
                 else:
                     mat = None
 
                 if mat is not None:
-                    mat._paths.append('{}->m{}'.format(cell_path, mat.id))
+                    mat._num_instances += 1
+                    if not instances_only:
+                        mat._paths.append('{}->m{}'.format(cell_path, mat.id))
 
             # Append current path
-            cell._paths.append(cell_path)
+            cell._num_instances += 1
+            if not instances_only:
+                cell._paths.append(cell_path)

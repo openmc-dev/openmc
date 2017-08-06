@@ -10,16 +10,7 @@ import numpy as np
 import openmc
 import openmc.checkvalue as cv
 from openmc.clean_xml import clean_xml_indentation
-
-
-# A static variable for auto-generated Plot IDs
-AUTO_PLOT_ID = 10000
-
-
-def reset_auto_plot_id():
-    """Reset counter for auto-generated plot IDs."""
-    global AUTO_PLOT_ID
-    AUTO_PLOT_ID = 10000
+from openmc.mixin import IDManagerMixin
 
 
 _BASES = ['xy', 'xz', 'yz']
@@ -175,7 +166,7 @@ _SVG_COLORS = {
 }
 
 
-class Plot(object):
+class Plot(IDManagerMixin):
     """Definition of a finite region of space to be plotted.
 
     OpenMC is capable of generating two-dimensional slice plots and
@@ -227,6 +218,9 @@ class Plot(object):
 
     """
 
+    next_id = 1
+    used_ids = set()
+
     def __init__(self, plot_id=None, name=''):
         # Initialize Plot class attributes
         self.id = plot_id
@@ -244,10 +238,6 @@ class Plot(object):
         self._colors = {}
         self._level = None
         self._meshlines = None
-
-    @property
-    def id(self):
-        return self._id
 
     @property
     def name(self):
@@ -304,17 +294,6 @@ class Plot(object):
     @property
     def meshlines(self):
         return self._meshlines
-
-    @id.setter
-    def id(self, plot_id):
-        if plot_id is None:
-            global AUTO_PLOT_ID
-            self._id = AUTO_PLOT_ID
-            AUTO_PLOT_ID += 1
-        else:
-            cv.check_type('plot ID', plot_id, Integral)
-            cv.check_greater_than('plot ID', plot_id, 0, equality=True)
-            self._id = plot_id
 
     @name.setter
     def name(self, name):

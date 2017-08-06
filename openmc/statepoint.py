@@ -356,71 +356,76 @@ class StatePoint(object):
             else:
                 tally_ids = []
 
-            # Iterate over all tallies
-            for tally_id in tally_ids:
-                group = tallies_group['tally {}'.format(tally_id)]
+            # Ignore warnings about duplicate IDs
+            with warnings.catch_warnings():
+                warnings.simplefilter('ignore', openmc.IDWarning)
 
-                # Read the number of realizations
-                n_realizations = group['n_realizations'].value
+                # Iterate over all tallies
+                for tally_id in tally_ids:
+                    group = tallies_group['tally {}'.format(tally_id)]
 
-                # Create Tally object and assign basic properties
-                tally = openmc.Tally(tally_id)
-                tally._sp_filename = self._f.filename
-                tally.name = group['name'].value.decode() if 'name' in group else ''
-                tally.estimator = group['estimator'].value.decode()
-                tally.num_realizations = n_realizations
+                    # Read the number of realizations
+                    n_realizations = group['n_realizations'].value
 
-                # Read derivative information.
-                if 'derivative' in group:
-                    deriv_id = group['derivative'].value
-                    tally.derivative = self.tally_derivatives[deriv_id]
+                    # Create Tally object and assign basic properties
+                    tally = openmc.Tally(tally_id)
+                    tally._sp_filename = self._f.filename
+                    tally.name = group['name'].value.decode() if 'name' in group else ''
+                    tally.estimator = group['estimator'].value.decode()
+                    tally.num_realizations = n_realizations
 
-                # Read all filters
-                n_filters = group['n_filters'].value
-                if n_filters > 0:
-                    filter_ids = group['filters'].value
-                    filters_group = self._f['tallies/filters']
-                    for filter_id in filter_ids:
-                        filter_group = filters_group['filter {}'.format(filter_id)]
-                        new_filter = openmc.Filter.from_hdf5(filter_group,
-                                                             meshes=self.meshes)
-                        tally.filters.append(new_filter)
+                    # Read derivative information.
+                    if 'derivative' in group:
+                        deriv_id = group['derivative'].value
+                        tally.derivative = self.tally_derivatives[deriv_id]
 
-                # Read nuclide bins
-                nuclide_names = group['nuclides'].value
+                    # Read all filters
+                    n_filters = group['n_filters'].value
+                    if n_filters > 0:
+                        filter_ids = group['filters'].value
+                        filters_group = self._f['tallies/filters']
+                        for filter_id in filter_ids:
+                            filter_group = filters_group['filter {}'.format(
+                                filter_id)]
+                            new_filter = openmc.Filter.from_hdf5(
+                                filter_group, meshes=self.meshes)
+                            tally.filters.append(new_filter)
 
-                # Add all nuclides to the Tally
-                for name in nuclide_names:
-                    nuclide = openmc.Nuclide(name.decode().strip())
-                    tally.nuclides.append(nuclide)
+                    # Read nuclide bins
+                    nuclide_names = group['nuclides'].value
 
-                scores = group['score_bins'].value
-                n_score_bins = group['n_score_bins'].value
+                    # Add all nuclides to the Tally
+                    for name in nuclide_names:
+                        nuclide = openmc.Nuclide(name.decode().strip())
+                        tally.nuclides.append(nuclide)
 
-                # Compute and set the filter strides
-                for i in range(n_filters):
-                    tally_filter = tally.filters[i]
-                    tally_filter.stride = n_score_bins * len(nuclide_names)
+                    scores = group['score_bins'].value
+                    n_score_bins = group['n_score_bins'].value
 
-                    for j in range(i+1, n_filters):
-                        tally_filter.stride *= tally.filters[j].num_bins
+                    # Compute and set the filter strides
+                    for i in range(n_filters):
+                        tally_filter = tally.filters[i]
+                        tally_filter.stride = n_score_bins * len(nuclide_names)
 
-                # Read scattering moment order strings (e.g., P3, Y1,2, etc.)
-                moments = group['moment_orders'].value
+                        for j in range(i+1, n_filters):
+                            tally_filter.stride *= tally.filters[j].num_bins
 
-                # Add the scores to the Tally
-                for j, score in enumerate(scores):
-                    score = score.decode()
+                    # Read scattering moment order strings (e.g., P3, Y1,2, etc.)
+                    moments = group['moment_orders'].value
 
-                    # If this is a moment, use generic moment order
-                    pattern = r'-n$|-pn$|-yn$'
-                    score = re.sub(pattern, '-' + moments[j].decode(), score)
+                    # Add the scores to the Tally
+                    for j, score in enumerate(scores):
+                        score = score.decode()
 
-                    tally.scores.append(score)
+                        # If this is a moment, use generic moment order
+                        pattern = r'-n$|-pn$|-yn$'
+                        score = re.sub(pattern, '-' + moments[j].decode(), score)
 
-                # Add Tally to the global dictionary of all Tallies
-                tally.sparse = self.sparse
-                self._tallies[tally_id] = tally
+                        tally.scores.append(score)
+
+                    # Add Tally to the global dictionary of all Tallies
+                    tally.sparse = self.sparse
+                    self._tallies[tally_id] = tally
 
             self._tallies_read = True
 

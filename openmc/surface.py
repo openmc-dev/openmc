@@ -12,6 +12,7 @@ import numpy as np
 
 from openmc.checkvalue import check_type, check_value, check_greater_than
 from openmc.region import Region, Intersection, Union
+from openmc.mixin import IDManagerMixin
 
 
 # A static variable for auto-generated Surface IDs
@@ -20,13 +21,7 @@ AUTO_SURFACE_ID = 10000
 _BOUNDARY_TYPES = ['transmission', 'vacuum', 'reflective', 'periodic']
 
 
-def reset_auto_surface_id():
-    """Reset counters for all auto-generated surface IDs"""
-    global AUTO_SURFACE_ID
-    AUTO_SURFACE_ID = 10000
-
-
-class Surface(object):
+class Surface(IDManagerMixin):
     """An implicit surface with an associated boundary condition.
 
     An implicit surface is defined as the set of zeros of a function of the
@@ -63,6 +58,9 @@ class Surface(object):
         Type of the surface
 
     """
+
+    next_id = 1
+    used_ids = set()
 
     def __init__(self, surface_id=None, boundary_type='transmission', name=''):
         self.id = surface_id
@@ -106,10 +104,6 @@ class Surface(object):
         return string
 
     @property
-    def id(self):
-        return self._id
-
-    @property
     def name(self):
         return self._name
 
@@ -124,17 +118,6 @@ class Surface(object):
     @property
     def coefficients(self):
         return self._coefficients
-
-    @id.setter
-    def id(self, surface_id):
-        if surface_id is None:
-            global AUTO_SURFACE_ID
-            self._id = AUTO_SURFACE_ID
-            AUTO_SURFACE_ID += 1
-        else:
-            check_type('surface ID', surface_id, Integral)
-            check_greater_than('surface ID', surface_id, 0, equality=True)
-            self._id = surface_id
 
     @name.setter
     def name(self, name):
@@ -1860,15 +1843,15 @@ class Halfspace(Region):
 
     def __and__(self, other):
         if isinstance(other, Intersection):
-            return Intersection(self, *other.nodes)
+            return Intersection([self] + other[:])
         else:
-            return Intersection(self, other)
+            return Intersection((self, other))
 
     def __or__(self, other):
         if isinstance(other, Union):
-            return Union(self, *other.nodes)
+            return Union([self] + other[:])
         else:
-            return Union(self, other)
+            return Union((self, other))
 
     def __invert__(self):
         return -self.surface if self.side == '+' else +self.surface

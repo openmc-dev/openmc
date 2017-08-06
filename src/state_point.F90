@@ -11,11 +11,12 @@ module state_point
 ! intervals, using the <state_point ... /> tag.
 !===============================================================================
 
-  use, intrinsic :: ISO_C_BINDING, only: c_loc, c_ptr
+  use, intrinsic :: ISO_C_BINDING
 
   use hdf5
 
   use constants
+  use eigenvalue,         only: openmc_get_keff
   use endf,               only: reaction_name
   use error,              only: fatal_error, warning
   use global
@@ -46,6 +47,8 @@ contains
     integer(HID_T) :: cmfd_group, tallies_group, tally_group, meshes_group, &
                       mesh_group, filters_group, filter_group, derivs_group, &
                       deriv_group, runtime_group
+    integer(C_INT) :: err
+    real(C_DOUBLE) :: k_combined(2)
     character(MAX_WORD_LEN), allocatable :: str_array(:)
     character(MAX_FILE_LEN)    :: filename
     type(TallyObject), pointer    :: tally
@@ -117,6 +120,7 @@ contains
         call write_dataset(file_id, "k_col_abs", k_col_abs)
         call write_dataset(file_id, "k_col_tra", k_col_tra)
         call write_dataset(file_id, "k_abs_tra", k_abs_tra)
+        err = openmc_get_keff(k_combined)
         call write_dataset(file_id, "k_combined", k_combined)
 
         ! Write out CMFD info
@@ -518,7 +522,8 @@ contains
     real(8), allocatable :: tally_temp(:,:,:) ! contiguous array of results
     real(8), target :: global_temp(3,N_GLOBAL_TALLIES)
 #ifdef MPI
-    real(8) :: dummy  ! temporary receive buffer for non-root reduces
+    integer :: mpi_err ! MPI error code
+    real(8) :: dummy   ! temporary receive buffer for non-root reduces
 #endif
     type(TallyObject) :: dummy_tally
 
@@ -535,18 +540,15 @@ contains
       tallies_group = open_group(file_id, "tallies")
     end if
 
-    ! Copy global tallies into temporary array for reducing
-    n_bins = 3 * N_GLOBAL_TALLIES
-    global_temp(:,:) = global_tallies(:,:)
 
-    if (master) then
-      ! The MPI_IN_PLACE specifier allows the master to copy values into a
-      ! receive buffer without having a temporary variable
 #ifdef MPI
-      call MPI_REDUCE(MPI_IN_PLACE, global_temp, n_bins, MPI_REAL8, MPI_SUM, &
-           0, mpi_intracomm, mpi_err)
+    ! Reduce global tallies
+    n_bins = size(global_tallies)
+    call MPI_REDUCE(global_tallies, global_temp, n_bins, MPI_REAL8, MPI_SUM, &
+         0, mpi_intracomm, mpi_err)
 #endif
 
+    if (master) then
       ! Transfer values to value on master
       if (current_batch == n_max_batches .or. satisfy_triggers) then
         global_tallies(:,:) = global_temp(:,:)
@@ -554,12 +556,6 @@ contains
 
       ! Write out global tallies sum and sum_sq
       call write_dataset(file_id, "global_tallies", global_temp)
-    else
-      ! Receive buffer not significant at other processors
-#ifdef MPI
-      call MPI_REDUCE(global_temp, dummy, n_bins, MPI_REAL8, MPI_SUM, &
-           0, mpi_intracomm, mpi_err)
-#endif
     end if
 
     if (tallies_on) then
@@ -647,7 +643,6 @@ contains
     integer(HID_T) :: cmfd_group
     integer(HID_T) :: tallies_group
     integer(HID_T) :: tally_group
-    real(8) :: real_array(3)
     logical :: source_present
     character(MAX_WORD_LEN) :: word
 
@@ -727,7 +722,6 @@ contains
       call read_dataset(k_col_abs, file_id, "k_col_abs")
       call read_dataset(k_col_tra, file_id, "k_col_tra")
       call read_dataset(k_abs_tra, file_id, "k_abs_tra")
-      call read_dataset(real_array(1:2), file_id, "k_combined")
 
       ! Take maximum of statepoint n_inactive and input n_inactive
       n_inactive = max(n_inactive, int_array(1))
@@ -848,6 +842,7 @@ contains
 #else
     integer :: i
 #ifdef MPI
+    integer :: mpi_err ! MPI error code
     type(Bank), allocatable, target :: temp_source(:)
 #endif
 #endif

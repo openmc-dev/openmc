@@ -97,38 +97,41 @@ module nuclide_header
   contains
     procedure :: clear => nuclide_clear
     procedure :: from_hdf5 => nuclide_from_hdf5
+    procedure :: init_grid => nuclide_init_grid
     procedure :: nu    => nuclide_nu
     procedure, private :: create_derived => nuclide_create_derived
   end type Nuclide
 
 !===============================================================================
-! NUCLIDEMICROXS contains cached microscopic cross sections for a
-! particular nuclide at the current energy
+! NUCLIDEMICROXS contains cached microscopic cross sections for a particular
+! nuclide at the current energy
 !===============================================================================
 
   type NuclideMicroXS
-    integer :: index_grid      ! index on nuclide energy grid
-    integer :: index_temp      ! temperature index for nuclide
-    real(8) :: last_E = ZERO   ! last evaluated energy
-    real(8) :: interp_factor   ! interpolation factor on nuc. energy grid
-    real(8) :: total           ! microscropic total xs
-    real(8) :: elastic         ! microscopic elastic scattering xs
-    real(8) :: absorption      ! microscopic absorption xs
-    real(8) :: fission         ! microscopic fission xs
-    real(8) :: nu_fission      ! microscopic production xs
+    ! Microscopic cross sections in barns
+    real(8) :: total
+    real(8) :: elastic          ! If sab_frac is not 1 or 0, then this value is
+                                !   averaged over bound and non-bound nuclei
+    real(8) :: absorption
+    real(8) :: fission
+    real(8) :: nu_fission
+    real(8) :: thermal          ! Bound thermal elastic & inelastic scattering
+    real(8) :: thermal_elastic  ! Bound thermal elastic scattering
 
-    ! Information for S(a,b) use
-    integer :: index_sab          ! index in sab_tables (zero means no table)
-    integer :: last_index_sab = 0 ! index in sab_tables last used by this nuclide
-    integer :: index_temp_sab     ! temperature index for sab_tables
-    real(8) :: elastic_sab        ! microscopic elastic scattering on S(a,b) table
+    ! Indicies and factors needed to compute cross sections from the data tables
+    integer :: index_grid        ! Index on nuclide energy grid
+    integer :: index_temp        ! Temperature index for nuclide
+    real(8) :: interp_factor     ! Interpolation factor on nuc. energy grid
+    integer :: index_sab = NONE  ! Index in sab_tables
+    integer :: index_temp_sab    ! Temperature index for sab_tables
+    real(8) :: sab_frac          ! Fraction of atoms affected by S(a,b)
+    logical :: use_ptable        ! In URR range with probability tables?
 
-    ! Information for URR probability table use
-    logical :: use_ptable  ! in URR range with probability tables?
-
-    ! Information for Doppler broadening
+    ! Energy and temperature last used to evaluate these cross sections.  If
+    ! these values have changed, then the cross sections must be re-evaluated.
+    real(8) :: last_E = ZERO       ! Last evaluated energy
     real(8) :: last_sqrtkT = ZERO  ! Last temperature in sqrt(Boltzmann
-                                   ! constant * temperature (eV))
+                                   !   constant * temperature (eV))
   end type NuclideMicroXS
 
 !===============================================================================
@@ -168,12 +171,13 @@ module nuclide_header
   end subroutine nuclide_clear
 
   subroutine nuclide_from_hdf5(this, group_id, temperature, method, tolerance, &
-                               master)
+                               minmax, master)
     class(Nuclide),   intent(inout) :: this
     integer(HID_T),   intent(in)    :: group_id
-    type(VectorReal), intent(in)   :: temperature ! list of desired temperatures
+    type(VectorReal), intent(in)    :: temperature ! list of desired temperatures
     integer,          intent(inout) :: method
     real(8),          intent(in)    :: tolerance
+    real(8),          intent(in)    :: minmax(2)  ! range of temperatures
     logical,          intent(in)    :: master     ! if this is the master proc
 
     integer :: i
@@ -233,7 +237,18 @@ module nuclide_header
       method = TEMPERATURE_NEAREST
     end if
 
-    ! Determine actual temperatures to read
+    ! Determine actual temperatures to read -- start by checking whether a
+    ! temperature range was given, in which case all temperatures in the range
+    ! are loaded irrespective of what temperatures actually appear in the model
+    if (minmax(2) > ZERO) then
+      do i = 1, size(temps_available)
+        temp_actual = temps_available(i)
+        if (minmax(1) <= temp_actual .and. temp_actual <= minmax(2)) then
+          call temps_to_read % push_back(nint(temp_actual))
+        end if
+      end do
+    end if
+
     select case (method)
     case (TEMPERATURE_NEAREST)
       ! Find nearest temperatures
@@ -670,5 +685,43 @@ module nuclide_header
     end select
 
   end function nuclide_nu
+
+  subroutine nuclide_init_grid(this, E_min, E_max, M)
+    class(Nuclide), intent(inout) :: this
+    real(8), intent(in) :: E_min           ! Minimum energy in MeV
+    real(8), intent(in) :: E_max           ! Maximum energy in MeV
+    integer, intent(in) :: M               ! Number of equally log-spaced bins
+
+    integer :: i, j, k               ! Loop indices
+    integer :: t                     ! temperature index
+    real(8) :: spacing
+    real(8), allocatable :: umesh(:) ! Equally log-spaced energy grid
+
+    ! Determine equal-logarithmic energy spacing
+    spacing = log(E_max/E_min)/M
+
+    ! Create equally log-spaced energy grid
+    allocate(umesh(0:M))
+    umesh(:) = [(i*spacing, i=0, M)]
+
+    do t = 1, size(this % grid)
+      ! Allocate logarithmic mapping for nuclide
+      allocate(this % grid(t) % grid_index(0:M))
+
+      ! Determine corresponding indices in nuclide grid to energies on
+      ! equal-logarithmic grid
+      j = 1
+      do k = 0, M
+        do while (log(this % grid(t) % energy(j + 1)/E_min) <= umesh(k))
+          ! Ensure that for isotopes where maxval(this % energy) << E_max
+          ! that there are no out-of-bounds issues.
+          if (j + 1 == size(this % grid(t) % energy)) exit
+          j = j + 1
+        end do
+        this % grid(t) % grid_index(k) = j
+      end do
+    end do
+
+  end subroutine nuclide_init_grid
 
 end module nuclide_header

@@ -80,12 +80,14 @@ module sab_header
 
 contains
 
-  subroutine salphabeta_from_hdf5(this, group_id, temperature, method, tolerance)
+  subroutine salphabeta_from_hdf5(this, group_id, temperature, method, &
+       tolerance, minmax)
     class(SAlphaBeta), intent(inout) :: this
     integer(HID_T),    intent(in)    :: group_id
     type(VectorReal),  intent(in)    :: temperature ! list of temperatures
     integer,           intent(in)    :: method
     real(8),           intent(in)    :: tolerance
+    real(8),           intent(in)    :: minmax(2)
 
     integer :: i, j
     integer :: t
@@ -142,6 +144,18 @@ contains
       temps_available(i) = temps_available(i) / K_BOLTZMANN
     end do
     call sort(temps_available)
+
+    ! Determine actual temperatures to read -- start by checking whether a
+    ! temperature range was given, in which case all temperatures in the range
+    ! are loaded irrespective of what temperatures actually appear in the model
+    if (minmax(2) > ZERO) then
+      do i = 1, size(temps_available)
+        temp_actual = temps_available(i)
+        if (minmax(1) <= temp_actual .and. temp_actual <= minmax(2)) then
+          call temps_to_read % push_back(nint(temp_actual))
+        end if
+      end do
+    end if
 
     select case (method)
     case (TEMPERATURE_NEAREST)

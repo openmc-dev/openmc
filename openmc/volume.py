@@ -1,7 +1,7 @@
 from collections import Iterable, Mapping, OrderedDict
 from numbers import Real, Integral
 from xml.etree import ElementTree as ET
-from warnings import warn
+import warnings
 
 import numpy as np
 import pandas as pd
@@ -85,15 +85,16 @@ class VolumeCalculation(object):
                         continue
                     if (np.any(np.asarray(lower_left) > ll) or
                         np.any(np.asarray(upper_right) < ur)):
-                        warn("Specified bounding box is smaller than computed "
-                             "bounding box for cell {}. Volume calculation may "
-                             "be incorrect!".format(c.id))
+                        warnings.warn(
+                            "Specified bounding box is smaller than computed "
+                            "bounding box for cell {}. Volume calculation may "
+                            "be incorrect!".format(c.id))
 
             self.lower_left = lower_left
             self.upper_right = upper_right
         else:
             if self.domain_type == 'cell':
-                ll, ur = openmc.Union(*[c.region for c in domains]).bounding_box
+                ll, ur = openmc.Union(c.region for c in domains).bounding_box
                 if np.any(np.isinf(ll)) or np.any(np.isinf(ur)):
                     raise ValueError('Could not automatically determine bounding '
                                      'box for stochastic volume calculation.')
@@ -221,12 +222,14 @@ class VolumeCalculation(object):
 
         # Instantiate some throw-away domains that are used by the constructor
         # to assign IDs
-        if domain_type == 'cell':
-            domains = [openmc.Cell(uid) for uid in ids]
-        elif domain_type == 'material':
-            domains = [openmc.Material(uid) for uid in ids]
-        elif domain_type == 'universe':
-            domains = [openmc.Universe(uid) for uid in ids]
+        with warnings.catch_warnings():
+            warnings.simplefilter('ignore', openmc.IDWarning)
+            if domain_type == 'cell':
+                domains = [openmc.Cell(uid) for uid in ids]
+            elif domain_type == 'material':
+                domains = [openmc.Material(uid) for uid in ids]
+            elif domain_type == 'universe':
+                domains = [openmc.Universe(uid) for uid in ids]
 
         # Instantiate the class and assign results
         vol = cls(domains, samples, lower_left, upper_right)

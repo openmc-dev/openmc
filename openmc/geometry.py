@@ -9,14 +9,6 @@ from openmc.clean_xml import sort_xml_elements, clean_xml_indentation
 from openmc.checkvalue import check_type
 
 
-def reset_auto_ids():
-    """Reset counters for all auto-generated IDs"""
-    openmc.reset_auto_material_id()
-    openmc.reset_auto_surface_id()
-    openmc.reset_auto_cell_id()
-    openmc.reset_auto_universe_id()
-
-
 class Geometry(object):
     """Geometry representing a collection of surfaces, cells, and universes.
 
@@ -258,7 +250,7 @@ class Geometry(object):
                     lattices[cell.fill.id] = cell.fill
 
         return lattices
-    
+
     def get_all_surfaces(self):
         """
         Return all surfaces used in the geometry
@@ -270,11 +262,11 @@ class Geometry(object):
 
         """
         surfaces = OrderedDict()
-        
+
         for cell in self.get_all_cells().values():
             surfaces = cell.region.get_surfaces(surfaces)
         return surfaces
-                
+
     def get_materials_by_name(self, name, case_sensitive=False, matching=False):
         """Return a list of materials with matching names.
 
@@ -482,22 +474,30 @@ class Geometry(object):
         lattices.sort(key=lambda x: x.id)
         return lattices
 
-    def determine_paths(self):
+    def determine_paths(self, instances_only=False):
         """Determine paths through CSG tree for cells and materials.
 
         This method recursively traverses the CSG tree to determine each unique
         path that reaches every cell and material. The paths are stored in the
         :attr:`Cell.paths` and :attr:`Material.paths` attributes.
 
+        Parameters
+        ----------
+        instances_only : bool, optional
+            If true, this method will only determine the number of instances of
+            each cell and material.
+
         """
         # (Re-)initialize all cell instances to 0
         for cell in self.get_all_cells().values():
             cell._paths = []
+            cell._num_instances = 0
         for material in self.get_all_materials().values():
             material._paths = []
+            material._num_instances = 0
 
         # Recursively traverse the CSG tree to count all cell instances
-        self.root_universe._determine_paths()
+        self.root_universe._determine_paths(instances_only=instances_only)
 
     def clone(self):
         """Create a copy of this geometry with new unique IDs for all of its

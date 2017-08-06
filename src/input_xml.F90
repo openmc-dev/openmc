@@ -7,7 +7,6 @@ module input_xml
   use distribution_multivariate
   use distribution_univariate
   use endf,             only: reaction_name
-  use energy_grid,      only: grid_method, n_log_bins
   use error,            only: fatal_error, warning
   use geometry_header,  only: Cell, Lattice, RectLattice, HexLattice, &
                               get_temperatures, root_universe
@@ -950,6 +949,9 @@ contains
     end if
     if (check_for_node(root, "temperature_multipole")) then
       call get_node_value(root, "temperature_multipole", temperature_multipole)
+    end if
+    if (check_for_node(root, "temperature_range")) then
+      call get_node_array(root, "temperature_range", temperature_range)
     end if
 
     ! Check for tabular_legendre options
@@ -2068,8 +2070,6 @@ contains
 
   subroutine read_materials()
     integer :: i, j
-    type(DictCharInt) :: library_dict
-    type(Library), allocatable :: libraries(:)
     type(VectorReal), allocatable :: nuc_temps(:) ! List of T to read for each nuclide
     type(VectorReal), allocatable :: sab_temps(:) ! List of T to read for each S(a,b)
     real(8), allocatable    :: material_temps(:)
@@ -2158,9 +2158,9 @@ contains
 
     ! Now that the cross_sections.xml or mgxs.h5 has been located, read it in
     if (run_CE) then
-      call read_ce_cross_sections_xml(libraries)
+      call read_ce_cross_sections_xml()
     else
-      call read_mg_cross_sections_header(libraries)
+      call read_mg_cross_sections_header()
     end if
 
     ! Creating dictionary that maps the name of the material to the entry
@@ -2181,7 +2181,7 @@ contains
     end if
 
     ! Parse data from materials.xml
-    call read_materials_xml(libraries, library_dict, material_temps)
+    call read_materials_xml(material_temps)
 
     ! Assign temperatures to cells that don't have temperatures already assigned
     call assign_temperatures(material_temps)
@@ -2194,17 +2194,12 @@ contains
     ! Read continuous-energy cross sections
     if (run_CE .and. run_mode /= MODE_PLOTTING) then
       call time_read_xs % start()
-      call read_ce_cross_sections(libraries, library_dict, nuc_temps, sab_temps)
+      call read_ce_cross_sections(nuc_temps, sab_temps)
       call time_read_xs % stop()
     end if
-
-    ! Clear dictionary
-    call library_dict % clear()
   end subroutine read_materials
 
-  subroutine read_materials_xml(libraries, library_dict, material_temps)
-    type(Library), intent(in) :: libraries(:)
-    type(DictCharInt), intent(inout) :: library_dict
+  subroutine read_materials_xml(material_temps)
     real(8), allocatable, intent(out) :: material_temps(:)
 
     integer :: i              ! loop index for materials
@@ -2565,6 +2560,7 @@ contains
           ! table is indeed applied to multiple nuclides.
           allocate(mat % sab_names(n_sab))
           allocate(mat % i_sab_tables(n_sab))
+          allocate(mat % sab_fracs(n_sab))
 
           do j = 1, n_sab
             ! Get pointer to S(a,b) table
@@ -2577,6 +2573,13 @@ contains
             call get_node_value(node_sab, "name", name)
             name = trim(name)
             mat % sab_names(j) = name
+
+            ! Read the fraction of nuclei affected by this S(a,b) table
+            if (check_for_node(node_sab, "fraction")) then
+              call get_node_value(node_sab, "fraction", mat % sab_fracs(j))
+            else
+              mat % sab_fracs(j) = ONE
+            end if
 
             ! Check that this nuclide is listed in the cross_sections.xml file
             if (.not. library_dict % has_key(to_lower(name))) then
@@ -3371,6 +3374,15 @@ contains
 
       ! =======================================================================
       ! READ DATA FOR FILTERS
+
+      ! Check if user is using old XML format and throw an error if so
+      if (check_for_node(node_tal, "filter")) then
+        call fatal_error("Tally filters must be specified independently of &
+             &tallies in a <filter> element. The <tally> element itself should &
+             &have a list of filters that apply, e.g., <filters>1 2</filters> &
+             &where 1 and 2 are the IDs of filters specified outside of &
+             &<tally>.")
+      end if
 
       ! Determine number of filters
       if (check_for_node(node_tal, "filters")) then
@@ -4813,9 +4825,7 @@ contains
 ! file contains a listing of the CE and MG cross sections that may be used.
 !===============================================================================
 
-  subroutine read_ce_cross_sections_xml(libraries)
-    type(Library), allocatable, intent(out) :: libraries(:)
-
+  subroutine read_ce_cross_sections_xml()
     integer :: i           ! loop index
     integer :: n
     integer :: n_libraries
@@ -4918,9 +4928,7 @@ contains
 
   end subroutine read_ce_cross_sections_xml
 
-  subroutine read_mg_cross_sections_header(libraries)
-    type(Library), allocatable, intent(out) :: libraries(:)
-
+  subroutine read_mg_cross_sections_header()
     integer :: i           ! loop index
     integer :: n_libraries
     logical :: file_exists ! does mgxs.h5 exist?
@@ -5161,103 +5169,7 @@ contains
 
   end subroutine normalize_ao
 
-!===============================================================================
-! ASSIGN_SAB_TABLES assigns S(alpha,beta) tables to specific nuclides within
-! materials so the code knows when to apply bound thermal scattering data
-!===============================================================================
-
-  subroutine assign_sab_tables()
-    integer :: i            ! index in materials array
-    integer :: j            ! index over nuclides in material
-    integer :: k            ! index over S(a,b) tables in material
-    integer :: m            ! position for sorting
-    integer :: temp_nuclide ! temporary value for sorting
-    integer :: temp_table   ! temporary value for sorting
-    logical :: found
-    type(VectorInt) :: i_sab_tables
-    type(VectorInt) :: i_sab_nuclides
-
-    do i = 1, size(materials)
-      ! Skip materials with no S(a,b) tables
-      if (.not. allocated(materials(i) % i_sab_tables)) cycle
-
-      associate (mat => materials(i))
-
-        ASSIGN_SAB: do k = 1, size(mat % i_sab_tables)
-          ! In order to know which nuclide the S(a,b) table applies to, we need
-          ! to search through the list of nuclides for one which has a matching
-          ! name
-          found = .false.
-          associate (sab => sab_tables(mat % i_sab_tables(k)))
-            FIND_NUCLIDE: do j = 1, size(mat % nuclide)
-              if (any(sab % nuclides == nuclides(mat % nuclide(j)) % name)) then
-                call i_sab_tables % push_back(mat % i_sab_tables(k))
-                call i_sab_nuclides % push_back(j)
-                found = .true.
-              end if
-            end do FIND_NUCLIDE
-          end associate
-
-          ! Check to make sure S(a,b) table matched a nuclide
-          if (.not. found) then
-            call fatal_error("S(a,b) table " // trim(mat % &
-                 sab_names(k)) // " did not match any nuclide on material " &
-                 // trim(to_str(mat % id)))
-          end if
-        end do ASSIGN_SAB
-
-        ! Update i_sab_tables and i_sab_nuclides
-        deallocate(mat % i_sab_tables)
-        m = i_sab_tables % size()
-        allocate(mat % i_sab_tables(m))
-        allocate(mat % i_sab_nuclides(m))
-        mat % i_sab_tables(:) = i_sab_tables % data(1:m)
-        mat % i_sab_nuclides(:) = i_sab_nuclides % data(1:m)
-
-        ! Clear entries in vectors for next material
-        call i_sab_tables % clear()
-        call i_sab_nuclides % clear()
-
-        ! If there are multiple S(a,b) tables, we need to make sure that the
-        ! entries in i_sab_nuclides are sorted or else they won't be applied
-        ! correctly in the cross_section module. The algorithm here is a simple
-        ! insertion sort -- don't need anything fancy!
-
-        if (size(mat % i_sab_tables) > 1) then
-          SORT_SAB: do k = 2, size(mat % i_sab_tables)
-            ! Save value to move
-            m = k
-            temp_nuclide = mat % i_sab_nuclides(k)
-            temp_table   = mat % i_sab_tables(k)
-
-            MOVE_OVER: do
-              ! Check if insertion value is greater than (m-1)th value
-              if (temp_nuclide >= mat % i_sab_nuclides(m-1)) exit
-
-              ! Move values over until hitting one that's not larger
-              mat % i_sab_nuclides(m) = mat % i_sab_nuclides(m-1)
-              mat % i_sab_tables(m)   = mat % i_sab_tables(m-1)
-              m = m - 1
-
-              ! Exit if we've reached the beginning of the list
-              if (m == 1) exit
-            end do MOVE_OVER
-
-            ! Put the original value into its new position
-            mat % i_sab_nuclides(m) = temp_nuclide
-            mat % i_sab_tables(m)   = temp_table
-          end do SORT_SAB
-        end if
-
-        ! Deallocate temporary arrays for names of nuclides and S(a,b) tables
-        if (allocated(mat % names)) deallocate(mat % names)
-      end associate
-    end do
-  end subroutine assign_sab_tables
-
-  subroutine read_ce_cross_sections(libraries, library_dict, nuc_temps, sab_temps)
-    type(Library),   intent(in)      :: libraries(:)
-    type(DictCharInt), intent(inout) :: library_dict
+  subroutine read_ce_cross_sections(nuc_temps, sab_temps)
     type(VectorReal), intent(in)     :: nuc_temps(:)
     type(VectorReal), intent(in)     :: sab_temps(:)
 
@@ -5273,9 +5185,6 @@ contains
 
     allocate(nuclides(n_nuclides_total))
     allocate(sab_tables(n_sab_tables))
-!$omp parallel
-    allocate(micro_xs(n_nuclides_total))
-!$omp end parallel
 
     ! Read cross sections
     do i = 1, size(materials)
@@ -5296,7 +5205,8 @@ contains
           ! Read nuclide data from HDF5
           group_id = open_group(file_id, name)
           call nuclides(i_nuclide) % from_hdf5(group_id, nuc_temps(i_nuclide), &
-               temperature_method, temperature_tolerance, master)
+               temperature_method, temperature_tolerance, temperature_range, &
+               master)
           call close_group(group_id)
           call file_close(file_id)
 
@@ -5326,6 +5236,13 @@ contains
       end do
     end do
 
+    ! Set up logarithmic grid for nuclides
+    do i = 1, size(nuclides)
+      call nuclides(i) % init_grid(energy_min_neutron, &
+           energy_max_neutron, n_log_bins)
+    end do
+    log_spacing = log(energy_max_neutron/energy_min_neutron) / n_log_bins
+
     do i = 1, size(materials)
       ! Skip materials with no S(a,b) tables
       if (.not. allocated(materials(i) % sab_names)) cycle
@@ -5348,7 +5265,7 @@ contains
           ! Read S(a,b) data from HDF5
           group_id = open_group(file_id, name)
           call sab_tables(i_sab) % from_hdf5(group_id, sab_temps(i_sab), &
-               temperature_method, temperature_tolerance)
+               temperature_method, temperature_tolerance, temperature_range)
           call close_group(group_id)
           call file_close(file_id)
 
@@ -5356,10 +5273,10 @@ contains
           call already_read % add(name)
         end if
       end do
-    end do
 
-    ! Associate S(a,b) tables with specific nuclides
-    call assign_sab_tables()
+      ! Associate S(a,b) tables with specific nuclides
+      call materials(i) % assign_sab_tables(nuclides, sab_tables)
+    end do
 
     ! Show which nuclide results in lowest energy for neutron transport
     do i = 1, size(nuclides)

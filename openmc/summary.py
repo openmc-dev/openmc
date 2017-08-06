@@ -1,5 +1,6 @@
 from collections import Iterable
 import re
+import warnings
 
 import numpy as np
 import h5py
@@ -31,8 +32,6 @@ class Summary(object):
     """
 
     def __init__(self, filename):
-        openmc.reset_auto_ids()
-
         if not filename.endswith(('.h5', '.hdf5')):
             msg = 'Unable to open "{0}" which is not an HDF5 summary file'
             raise ValueError(msg)
@@ -52,7 +51,9 @@ class Summary(object):
         self._nuclides = {}
 
         self._read_nuclides()
-        self._read_geometry()
+        with warnings.catch_warnings():
+            warnings.simplefilter("ignore", openmc.IDWarning)
+            self._read_geometry()
 
     @property
     def date_and_time(self):
@@ -69,7 +70,7 @@ class Summary(object):
     @property
     def nuclides(self):
         return self._nuclides
-    
+
     @property
     def version(self):
         return tuple(self._f.attrs['openmc_version'])

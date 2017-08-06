@@ -353,8 +353,9 @@ class Evaluation(object):
 
         # Information about target/projectile
         items = get_head_record(file_obj)
-        self.target['atomic_number'] = items[0] // 1000
-        self.target['mass_number'] = items[0] % 1000
+        Z, A = divmod(items[0], 1000)
+        self.target['atomic_number'] = Z
+        self.target['mass_number'] = A
         self.target['mass'] = items[1]
         self._LRP = items[2]
         self.target['fissionable'] = (items[3] == 1)
@@ -370,9 +371,13 @@ class Evaluation(object):
         self.target['excitation_energy'] = items[0]
         self.target['stable'] = (int(items[1]) == 0)
         self.target['state'] = items[2]
-        self.target['isomeric_state'] = items[3]
+        self.target['isomeric_state'] = m = items[3]
         self.info['format'] = items[5]
         assert self.info['format'] == 6
+
+        # Set correct excited state for Am242_m1, which is wrong in ENDF/B-VII.1
+        if Z == 95 and A == 242 and m == 1:
+            self.target['state'] = 2
 
         # Control record 2
         items = get_cont_record(file_obj)

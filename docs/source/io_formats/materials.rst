@@ -107,9 +107,13 @@ Each ``material`` element can have the following attributes or sub-elements:
               multi-group :ref:`energy_mode`.
 
   :sab:
-    Associates an S(a,b) table with the material. This element has one
+    Associates an S(a,b) table with the material. This element has an
     attribute/sub-element called ``name``. The ``name`` attribute
     is the name of the S(a,b) table that should be associated with the material.
+    There is also an optional ``fraction`` element which indicates what fraction
+    of the relevant nuclides will be affected by the S(a,b) table (e.g. which
+    fraction of a material is crystalline versus amorphous).  ``fraction``
+    defaults to unity.
 
     *Default*: None
 

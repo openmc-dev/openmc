@@ -8,20 +8,10 @@ import numpy as np
 
 import openmc.checkvalue as cv
 import openmc
-from openmc.mixin import EqualityMixin
+from openmc.mixin import EqualityMixin, IDManagerMixin
 
 
-# "Static" variable for auto-generated and Mesh IDs
-AUTO_MESH_ID = 10000
-
-
-def reset_auto_mesh_id():
-    """Reset counter for auto-generated mesh IDs."""
-    global AUTO_MESH_ID
-    AUTO_MESH_ID = 10000
-
-
-class Mesh(EqualityMixin):
+class Mesh(EqualityMixin, IDManagerMixin):
     """A structured Cartesian mesh in one, two, or three dimensions
 
     Parameters
@@ -52,6 +42,9 @@ class Mesh(EqualityMixin):
 
     """
 
+    next_id = 1
+    used_ids = set()
+
     def __init__(self, mesh_id=None, name=''):
         # Initialize Mesh class attributes
         self.id = mesh_id
@@ -61,10 +54,6 @@ class Mesh(EqualityMixin):
         self._lower_left = None
         self._upper_right = None
         self._width = None
-
-    @property
-    def id(self):
-        return self._id
 
     @property
     def name(self):
@@ -93,17 +82,6 @@ class Mesh(EqualityMixin):
     @property
     def num_mesh_cells(self):
         return np.prod(self._dimension)
-
-    @id.setter
-    def id(self, mesh_id):
-        if mesh_id is None:
-            global AUTO_MESH_ID
-            self._id = AUTO_MESH_ID
-            AUTO_MESH_ID += 1
-        else:
-            cv.check_type('mesh ID', mesh_id, Integral)
-            cv.check_greater_than('mesh ID', mesh_id, 0, equality=True)
-            self._id = mesh_id
 
     @name.setter
     def name(self, name):

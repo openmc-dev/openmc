@@ -12,22 +12,16 @@
 <?xml version='1.0' encoding='utf-8'?>
 <materials>
   <material id="13" name="UO2 fuel at 2.4% wt enrichment">
-    <density units="g/cm3" value="10.29769" />
-    <nuclide ao="0.00019522896365555328" name="U234" />
-    <nuclide ao="0.024299485497345803" name="U235" />
-    <nuclide ao="0.9755052855389987" name="U238" />
-    <nuclide ao="1.999242" name="O16" />
-    <nuclide ao="0.000758" name="O17" />
+    <density units="g/cc" value="10.0" />
+    <nuclide ao="1.0" name="U238" />
+    <nuclide ao="0.02" name="U235" />
+    <nuclide ao="2.0" name="O16" />
   </material>
   <material id="14" name="Borated water">
-    <density units="g/cm3" value="0.740582" />
-    <nuclide ao="7.928e-06" name="B10" />
-    <nuclide ao="3.2072e-05" name="B11" />
-    <nuclide ao="0.04999221300000001" name="H1" />
-    <nuclide ao="7.787e-06" name="H2" />
-    <nuclide ao="0.023990904" name="O16" />
-    <nuclide ao="9.096e-06" name="O17" />
-    <sab name="c_H_in_H2O" />
+    <density units="g/cm3" value="1" />
+    <nuclide ao="0.0001" name="B10" />
+    <nuclide ao="2.0" name="H1" />
+    <nuclide ao="1.0" name="O16" />
   </material>
 </materials>
 <?xml version='1.0' encoding='utf-8'?>

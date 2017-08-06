@@ -1,109 +1,109 @@
 <?xml version='1.0' encoding='utf-8'?>
 <geometry>
-    <cell id="10000" material="10000" name="fuel" region="-1" universe="10000" />
-    <cell id="10001" material="10001" name="water" region="1 -3 10000 -10001" universe="10000" />
-    <cell fill="10000" id="10002" name="root cell" region="2 -3 10000 -10001" universe="0" />
-    <surface coeffs="0 0 1" id="1" name="Fuel OR" type="z-cylinder" />
-    <surface boundary="reflective" coeffs="-2" id="10000" name="bottom" type="y-plane" />
-    <surface boundary="reflective" coeffs="2" id="10001" name="top" type="y-plane" />
-    <surface boundary="vacuum" coeffs="-2" id="2" name="left" type="x-plane" />
-    <surface boundary="reflective" coeffs="2" id="3" name="right" type="x-plane" />
+  <cell id="13" material="13" name="fuel" region="-1" universe="9" />
+  <cell id="14" material="14" name="water" region="1 -3 9 -10" universe="9" />
+  <cell fill="9" id="15" name="root cell" region="2 -3 9 -10" universe="0" />
+  <surface coeffs="0 0 1" id="1" name="Fuel OR" type="z-cylinder" />
+  <surface boundary="vacuum" coeffs="-2" id="2" name="left" type="x-plane" />
+  <surface boundary="reflective" coeffs="2" id="3" name="right" type="x-plane" />
+  <surface boundary="reflective" coeffs="-2" id="9" name="bottom" type="y-plane" />
+  <surface boundary="reflective" coeffs="2" id="10" name="top" type="y-plane" />
 </geometry>
 <?xml version='1.0' encoding='utf-8'?>
 <materials>
-    <material id="10000" name="UO2 fuel at 2.4% wt enrichment">
-        <density units="g/cm3" value="10.29769" />
-        <nuclide ao="0.00019522896365555328" name="U234" />
-        <nuclide ao="0.024299485497345803" name="U235" />
-        <nuclide ao="0.9755052855389987" name="U238" />
-        <nuclide ao="1.999242" name="O16" />
-        <nuclide ao="0.000758" name="O17" />
-    </material>
-    <material id="10001" name="Borated water">
-        <density units="g/cm3" value="0.740582" />
-        <nuclide ao="7.928e-06" name="B10" />
-        <nuclide ao="3.2072e-05" name="B11" />
-        <nuclide ao="0.04999221300000001" name="H1" />
-        <nuclide ao="7.787e-06" name="H2" />
-        <nuclide ao="0.023990904" name="O16" />
-        <nuclide ao="9.096e-06" name="O17" />
-        <sab name="c_H_in_H2O" />
-    </material>
+  <material id="13" name="UO2 fuel at 2.4% wt enrichment">
+    <density units="g/cm3" value="10.29769" />
+    <nuclide ao="0.00019522896365555328" name="U234" />
+    <nuclide ao="0.024299485497345803" name="U235" />
+    <nuclide ao="0.9755052855389987" name="U238" />
+    <nuclide ao="1.999242" name="O16" />
+    <nuclide ao="0.000758" name="O17" />
+  </material>
+  <material id="14" name="Borated water">
+    <density units="g/cm3" value="0.740582" />
+    <nuclide ao="7.928e-06" name="B10" />
+    <nuclide ao="3.2072e-05" name="B11" />
+    <nuclide ao="0.04999221300000001" name="H1" />
+    <nuclide ao="7.787e-06" name="H2" />
+    <nuclide ao="0.023990904" name="O16" />
+    <nuclide ao="9.096e-06" name="O17" />
+    <sab name="c_H_in_H2O" />
+  </material>
 </materials>
 <?xml version='1.0' encoding='utf-8'?>
 <settings>
-    <run_mode>eigenvalue</run_mode>
-    <particles>1000</particles>
-    <batches>10</batches>
-    <inactive>0</inactive>
-    <source strength="1.0">
-        <space type="fission">
-            <parameters>-0.62992 -0.62992 -1 0.62992 0.62992 1</parameters>
-        </space>
-    </source>
+  <run_mode>eigenvalue</run_mode>
+  <particles>1000</particles>
+  <batches>10</batches>
+  <inactive>0</inactive>
+  <source strength="1.0">
+    <space type="fission">
+      <parameters>-0.62992 -0.62992 -1 0.62992 0.62992 1</parameters>
+    </space>
+  </source>
 </settings>
 <?xml version='1.0' encoding='utf-8'?>
 <tallies>
-    <filter id="10004" type="cellfrom">
-        <bins>10000</bins>
-    </filter>
-    <filter id="10005" type="cell">
-        <bins>10001</bins>
-    </filter>
-    <filter id="10000" type="energy">
-        <bins>0.0 4000000.0 20000000.0</bins>
-    </filter>
-    <filter id="10001" type="polar">
-        <bins>0.0 0.785398163397 3.14159265359</bins>
-    </filter>
-    <filter id="10002" type="azimuthal">
-        <bins>0.0 0.785398163397 3.14159265359</bins>
-    </filter>
-    <filter id="10003" type="surface">
-        <bins>1</bins>
-    </filter>
-    <filter id="10006" type="cellfrom">
-        <bins>10001</bins>
-    </filter>
-    <filter id="10007" type="cell">
-        <bins>10000</bins>
-    </filter>
-    <filter id="10009" type="surface">
-        <bins>2</bins>
-    </filter>
-    <filter id="10010" type="surface">
-        <bins>3</bins>
-    </filter>
-    <tally id="10000" name="fuel_to_water_1">
-        <filters>10004 10005 10000 10001 10002</filters>
-        <scores>current</scores>
-    </tally>
-    <tally id="10001" name="fuel_to_water_2">
-        <filters>10004 10003 10000 10001 10002</filters>
-        <scores>current</scores>
-    </tally>
-    <tally id="10002" name="water_to_fuel_1">
-        <filters>10006 10007 10000 10001 10002</filters>
-        <scores>current</scores>
-    </tally>
-    <tally id="10003" name="water_to_fuel_2">
-        <filters>10006 10003 10000 10001 10002</filters>
-        <scores>current</scores>
-    </tally>
-    <tally id="10004" name="net_cylinder">
-        <filters>10003 10000 10001 10002</filters>
-        <scores>current</scores>
-    </tally>
-    <tally id="10005" name="leakage_left">
-        <filters>10009 10000 10001 10002</filters>
-        <scores>current</scores>
-    </tally>
-    <tally id="10006" name="net_right">
-        <filters>10010 10000</filters>
-        <scores>current</scores>
-    </tally>
-    <tally id="10007" name="net_right">
-        <filters>10010 10000</filters>
-        <scores>current</scores>
-    </tally>
+  <filter id="5" type="cellfrom">
+    <bins>13</bins>
+  </filter>
+  <filter id="6" type="cell">
+    <bins>14</bins>
+  </filter>
+  <filter id="1" type="energy">
+    <bins>0.0 4000000.0 20000000.0</bins>
+  </filter>
+  <filter id="2" type="polar">
+    <bins>0.0 0.785398163397 3.14159265359</bins>
+  </filter>
+  <filter id="3" type="azimuthal">
+    <bins>0.0 0.785398163397 3.14159265359</bins>
+  </filter>
+  <filter id="4" type="surface">
+    <bins>1</bins>
+  </filter>
+  <filter id="7" type="cellfrom">
+    <bins>14</bins>
+  </filter>
+  <filter id="8" type="cell">
+    <bins>13</bins>
+  </filter>
+  <filter id="10" type="surface">
+    <bins>2</bins>
+  </filter>
+  <filter id="11" type="surface">
+    <bins>3</bins>
+  </filter>
+  <tally id="1" name="fuel_to_water_1">
+    <filters>5 6 1 2 3</filters>
+    <scores>current</scores>
+  </tally>
+  <tally id="2" name="fuel_to_water_2">
+    <filters>5 4 1 2 3</filters>
+    <scores>current</scores>
+  </tally>
+  <tally id="3" name="water_to_fuel_1">
+    <filters>7 8 1 2 3</filters>
+    <scores>current</scores>
+  </tally>
+  <tally id="4" name="water_to_fuel_2">
+    <filters>7 4 1 2 3</filters>
+    <scores>current</scores>
+  </tally>
+  <tally id="5" name="net_cylinder">
+    <filters>4 1 2 3</filters>
+    <scores>current</scores>
+  </tally>
+  <tally id="6" name="leakage_left">
+    <filters>10 1 2 3</filters>
+    <scores>current</scores>
+  </tally>
+  <tally id="7" name="net_right">
+    <filters>11 1</filters>
+    <scores>current</scores>
+  </tally>
+  <tally id="8" name="net_right">
+    <filters>11 1</filters>
+    <scores>current</scores>
+  </tally>
 </tallies>

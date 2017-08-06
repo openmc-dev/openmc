@@ -3004,7 +3004,7 @@ contains
         end if
         n_words = node_word_count(node_filt, "bins")
       case ("mesh", "universe", "material", "cell", "distribcell", &
-            "cellborn", "cellto", "cellfrom", "surface", "delayedgroup")
+            "cellborn", "cellfrom", "surface", "delayedgroup")
         if (.not. check_for_node(node_filt, "bins")) then
           call fatal_error("Bins not set in filter " // trim(to_str(filter_id)))
         end if

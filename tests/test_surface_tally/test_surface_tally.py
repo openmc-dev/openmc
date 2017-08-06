@@ -8,7 +8,8 @@ import numpy as np
 import openmc
 import pandas as pd
 
-class CreateSurfaceTallyTestHarness(PyAPITestHarness):
+
+class SurfaceTallyTestHarness(PyAPITestHarness):
     def _build_inputs(self):
         # Instantiate some Materials and register the appropriate Nuclides
         uo2 = openmc.Material(name='UO2 fuel at 2.4% wt enrichment')
@@ -25,15 +26,15 @@ class CreateSurfaceTallyTestHarness(PyAPITestHarness):
 
         # Instantiate a Materials collection and export to XML
         materials_file = openmc.Materials([uo2, borated_water])
-
         materials_file.export_to_xml()
 
         # Instantiate ZCylinder surfaces
-        fuel_or = openmc.ZCylinder(surface_id=1, x0=0, y0=0, R=0.4, name='Fuel OR')
-        left    = openmc.XPlane(surface_id=2, x0=-0.62992, name='left')
-        right   = openmc.XPlane(surface_id=3, x0=0.62992, name='right')
-        bottom  = openmc.YPlane(y0=-0.62992, name='bottom')
-        top     = openmc.YPlane(y0=0.62992, name='top')
+        fuel_or = openmc.ZCylinder(surface_id=1, x0=0, y0=0, R=1, \
+             name='Fuel OR')
+        left = openmc.XPlane(surface_id=2, x0=-2, name='left')
+        right = openmc.XPlane(surface_id=3, x0=2, name='right')
+        bottom = openmc.YPlane(y0=-2, name='bottom')
+        top = openmc.YPlane(y0=2, name='top')
 
         left.boundary_type = 'vacuum'
         right.boundary_type = 'reflective'
@@ -49,7 +50,7 @@ class CreateSurfaceTallyTestHarness(PyAPITestHarness):
         water.region = +fuel_or & -right & +bottom & -top
 
         # Register Materials with Cells
-        fuel.fill  = uo2
+        fuel.fill = uo2
         water.fill = borated_water
 
         # Instantiate pin cell Universe
@@ -63,82 +64,101 @@ class CreateSurfaceTallyTestHarness(PyAPITestHarness):
         root_univ = openmc.Universe(universe_id=0, name='root universe')
         root_univ.add_cell(root_cell)
 
-        # Instantiate a Geometry, register the root Universe, and export to XML
+        # Instantiate a Geometry, register the root Universe
         geometry = openmc.Geometry(root_univ)
         geometry.export_to_xml()
 
-        # Instantiate a Settings object, set all runtime parameters, and export to XML
+        # Instantiate a Settings object, set all runtime parameters
         settings_file = openmc.Settings()
         settings_file.batches = 10
         settings_file.inactive = 0
         settings_file.particles = 1000
+        #settings_file.output = {'tallies': True}
 
-        # Create an initial uniform spatial source distribution over fissionable zones
+        # Create an initial uniform spatial source distribution
         bounds = [-0.62992, -0.62992, -1, 0.62992, 0.62992, 1]
-        uniform_dist = openmc.stats.Box(bounds[:3], bounds[3:], only_fissionable=True)
+        uniform_dist = openmc.stats.Box(bounds[:3], bounds[3:],\
+             only_fissionable=True)
         settings_file.source = openmc.source.Source(space=uniform_dist)
         settings_file.export_to_xml()
 
         # Tallies file
         tallies_file = openmc.Tallies()
 
-        # Cell to cell tallies
-        # These filters are same for all tallies
+        # Create partial current tallies from fuel to water
+        # Filters
         two_groups = np.array([0., 4, 20.]) * 1e6
-        energy_filter     = openmc.EnergyFilter(two_groups)
-        polar_filter      = openmc.PolarFilter([0, np.pi / 4, np.pi])
-        azimuthal_filter  = openmc.AzimuthalFilter([0, np.pi / 4, np.pi])
-
-
-        cell_to_cell_tallies = []
-        tally_index = 0 
-
-        for cell1 in pin_cell.get_all_cells():
-            for cell2 in pin_cell.get_all_cells():
-
-                if cell1 != cell2 and abs(abs(cell1-cell2)-1) < 0.1:  # no need for cell1 to cell1
-
-                    # Cell to cell filters for partial current
-                    cell_from_filter = openmc.CellFromFilter(cell1)
-                    cell_to_filter = openmc.CellFilter(cell2)
-
-                    cell_to_cell_tallies.append(openmc.Tally(tally_id=tally_index, name=str(cell1)+'-'+str(cell2)))
-                    cell_to_cell_tallies[tally_index].filters   = [cell_from_filter, cell_to_filter, energy_filter, polar_filter, azimuthal_filter]
-                    cell_to_cell_tallies[tally_index].scores    = ['current']
-                    tallies_file.append(cell_to_cell_tallies[tally_index])
-                    tally_index += 1
-
-                    # Cell from + surface filters for partial current
-                    surface_filter = openmc.SurfaceFilter([1])
-                    cell_to_cell_tallies.append(openmc.Tally(tally_id=tally_index, name=str(cell1)+'-surface1'))
-                    cell_to_cell_tallies[tally_index].filters   = [cell_from_filter, surface_filter, energy_filter, polar_filter, azimuthal_filter]
-                    cell_to_cell_tallies[tally_index].scores    = ['current']
-                    tallies_file.append(cell_to_cell_tallies[tally_index])
-                    tally_index += 1
-
-        # Surface filter on inner surface, for net current
+        energy_filter = openmc.EnergyFilter(two_groups)
+        polar_filter = openmc.PolarFilter([0, np.pi / 4, np.pi])
+        azimuthal_filter = openmc.AzimuthalFilter([0, np.pi / 4, np.pi])
         surface_filter = openmc.SurfaceFilter([1])
-        surf_tally1 = openmc.Tally(tally_id=tally_index, name='net_cylinder')
-        surf_tally1.filters   = [surface_filter, energy_filter, polar_filter, azimuthal_filter]
-        surf_tally1.scores    = ['current']
+        cell_from_filter = openmc.CellFromFilter(fuel)
+        cell_filter = openmc.CellFilter(water)
+
+        # Use Cell to cell filters for partial current
+        cell_to_cell_tally = openmc.Tally(name=str('fuel_to_water_1'))
+        cell_to_cell_tally.filters = [cell_from_filter, cell_filter, \
+             energy_filter, polar_filter, azimuthal_filter]
+        cell_to_cell_tally.scores = ['current']
+        tallies_file.append(cell_to_cell_tally)
+
+        # Use a Cell from + surface filters for partial current
+        cell_to_cell_tally = openmc.Tally(name=str('fuel_to_water_2'))
+        cell_to_cell_tally.filters = [cell_from_filter, surface_filter, \
+             energy_filter, polar_filter, azimuthal_filter]
+        cell_to_cell_tally.scores = ['current']
+        tallies_file.append(cell_to_cell_tally)
+
+        # Create partial current tallies from water to fuel
+        # Filters
+        cell_from_filter = openmc.CellFromFilter(water)
+        cell_filter = openmc.CellFilter(fuel)
+
+        # Cell to cell filters for partial current
+        cell_to_cell_tally = openmc.Tally(name=str('water_to_fuel_1'))
+        cell_to_cell_tally.filters = [cell_from_filter, cell_filter, \
+             energy_filter, polar_filter, azimuthal_filter]
+        cell_to_cell_tally.scores = ['current']
+        tallies_file.append(cell_to_cell_tally)
+
+        # Cell from + surface filters for partial current
+        cell_to_cell_tally = openmc.Tally(name=str('water_to_fuel_2'))
+        cell_to_cell_tally.filters = [cell_from_filter, surface_filter, \
+             energy_filter, polar_filter, azimuthal_filter]
+        cell_to_cell_tally.scores = ['current']
+        tallies_file.append(cell_to_cell_tally)
+
+        # Create a net current tally on inner surface using a surface filter
+        surface_filter = openmc.SurfaceFilter([1])
+        surf_tally1 = openmc.Tally(name='net_cylinder')
+        surf_tally1.filters = [surface_filter, energy_filter, polar_filter, \
+             azimuthal_filter]
+        surf_tally1.scores = ['current']
         tallies_file.append(surf_tally1)
-        tally_index += 1
 
-        # Surface filter on left surface, vacuum BC, for net current = leakage
+        # Create a net current tally on left surface using a surface filter
+        # This surface has a vacuum boundary condition, so leakage is tallied
         surface_filter = openmc.SurfaceFilter([2])
-        surf_tally2 = openmc.Tally(tally_id=tally_index, name='leakage_left')
-        surf_tally2.filters   = [surface_filter, energy_filter, polar_filter, azimuthal_filter]
-        surf_tally2.scores    = ['current']
+        surf_tally2 = openmc.Tally(name='leakage_left')
+        surf_tally2.filters = [surface_filter, energy_filter, polar_filter, \
+            azimuthal_filter]
+        surf_tally2.scores = ['current']
         tallies_file.append(surf_tally2)
-        tally_index += 1
 
-        # Surface filter on right surface, reflective, current tally doesnt pick up the zero net current though
+        # Create a net current tally on right surface using a surface filter
+        # This surface has a reflective boundary condition, but the zero
+        # net current is not picked up because particles are only tallied once
         surface_filter = openmc.SurfaceFilter([3])
-        surf_tally3 = openmc.Tally(tally_id=tally_index, name='net_right')
-        surf_tally3.filters   = [surface_filter, energy_filter]
-        surf_tally3.scores    = ['current']
+        surf_tally3 = openmc.Tally(name='net_right')
+        surf_tally3.filters = [surface_filter, energy_filter]
+        surf_tally3.scores = ['current']
         tallies_file.append(surf_tally3)
-        tally_index += 1
+
+        surface_filter = openmc.SurfaceFilter([3])
+        surf_tally3 = openmc.Tally(name='net_right')
+        surf_tally3.filters = [surface_filter, energy_filter]
+        surf_tally3.scores = ['current']
+        tallies_file.append(surf_tally3)
 
         tallies_file.export_to_xml()
 
@@ -153,12 +173,11 @@ class CreateSurfaceTallyTestHarness(PyAPITestHarness):
             df = df.append(t.get_pandas_dataframe(), ignore_index=True)
 
         # Extract the relevant data as a CSV string.
-        cols = ('d_material', 'd_nuclide', 'd_variable', 'score', 'mean',
-                'std. dev.')
+        cols = ('mean', 'std. dev.')
         return df.to_csv(None, columns=cols, index=False, float_format='%.7e')
         return outstr
 
 
 if __name__ == '__main__':
-    harness = CreateSurfaceTallyTestHarness('statepoint.10.h5')
+    harness = SurfaceTallyTestHarness('statepoint.10.h5')
     harness.main()

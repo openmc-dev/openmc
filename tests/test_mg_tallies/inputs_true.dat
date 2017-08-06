@@ -1,229 +1,229 @@
 <?xml version='1.0' encoding='utf-8'?>
 <geometry>
-    <cell id="10000" material="10000" region="10000 -10001 10002 -10003 10004 -10005" universe="10000" />
-    <cell id="10001" material="10001" region="10000 -10001 10002 -10003 10005 -10006" universe="10000" />
-    <cell id="10002" material="10002" region="10000 -10001 10002 -10003 10006 -10007" universe="10000" />
-    <cell id="10003" material="10003" region="10000 -10001 10002 -10003 10007 -10008" universe="10000" />
-    <cell id="10004" material="10004" region="10000 -10001 10002 -10003 10008 -10009" universe="10000" />
-    <cell id="10005" material="10005" region="10000 -10001 10002 -10003 10009 -10010" universe="10000" />
-    <cell id="10006" material="10006" region="10000 -10001 10002 -10003 10010 -10011" universe="10000" />
-    <cell id="10007" material="10007" region="10000 -10001 10002 -10003 10011 -10012" universe="10000" />
-    <cell id="10008" material="10008" region="10000 -10001 10002 -10003 10012 -10013" universe="10000" />
-    <cell id="10009" material="10009" region="10000 -10001 10002 -10003 10013 -10014" universe="10000" />
-    <cell id="10010" material="10010" region="10000 -10001 10002 -10003 10014 -10015" universe="10000" />
-    <cell id="10011" material="10011" region="10000 -10001 10002 -10003 10015 -10016" universe="10000" />
-    <surface boundary="reflective" coeffs="0.0" id="10000" type="x-plane" />
-    <surface boundary="reflective" coeffs="10.0" id="10001" type="x-plane" />
-    <surface boundary="reflective" coeffs="0.0" id="10002" type="y-plane" />
-    <surface boundary="reflective" coeffs="10.0" id="10003" type="y-plane" />
-    <surface boundary="reflective" coeffs="0.0" id="10004" type="z-plane" />
-    <surface coeffs="0.4167" id="10005" type="z-plane" />
-    <surface coeffs="0.8334" id="10006" type="z-plane" />
-    <surface coeffs="1.2501" id="10007" type="z-plane" />
-    <surface coeffs="1.6668" id="10008" type="z-plane" />
-    <surface coeffs="2.0835" id="10009" type="z-plane" />
-    <surface coeffs="2.5002" id="10010" type="z-plane" />
-    <surface coeffs="2.9169" id="10011" type="z-plane" />
-    <surface coeffs="3.3336" id="10012" type="z-plane" />
-    <surface coeffs="3.7503" id="10013" type="z-plane" />
-    <surface coeffs="4.167" id="10014" type="z-plane" />
-    <surface coeffs="4.5837" id="10015" type="z-plane" />
-    <surface boundary="reflective" coeffs="5.0" id="10016" type="z-plane" />
+  <cell id="1" material="1" region="1 -2 3 -4 5 -6" universe="1" />
+  <cell id="2" material="2" region="1 -2 3 -4 6 -7" universe="1" />
+  <cell id="3" material="3" region="1 -2 3 -4 7 -8" universe="1" />
+  <cell id="4" material="4" region="1 -2 3 -4 8 -9" universe="1" />
+  <cell id="5" material="5" region="1 -2 3 -4 9 -10" universe="1" />
+  <cell id="6" material="6" region="1 -2 3 -4 10 -11" universe="1" />
+  <cell id="7" material="7" region="1 -2 3 -4 11 -12" universe="1" />
+  <cell id="8" material="8" region="1 -2 3 -4 12 -13" universe="1" />
+  <cell id="9" material="9" region="1 -2 3 -4 13 -14" universe="1" />
+  <cell id="10" material="10" region="1 -2 3 -4 14 -15" universe="1" />
+  <cell id="11" material="11" region="1 -2 3 -4 15 -16" universe="1" />
+  <cell id="12" material="12" region="1 -2 3 -4 16 -17" universe="1" />
+  <surface boundary="reflective" coeffs="0.0" id="1" type="x-plane" />
+  <surface boundary="reflective" coeffs="10.0" id="2" type="x-plane" />
+  <surface boundary="reflective" coeffs="0.0" id="3" type="y-plane" />
+  <surface boundary="reflective" coeffs="10.0" id="4" type="y-plane" />
+  <surface boundary="reflective" coeffs="0.0" id="5" type="z-plane" />
+  <surface coeffs="0.4167" id="6" type="z-plane" />
+  <surface coeffs="0.8334" id="7" type="z-plane" />
+  <surface coeffs="1.2501" id="8" type="z-plane" />
+  <surface coeffs="1.6668" id="9" type="z-plane" />
+  <surface coeffs="2.0835" id="10" type="z-plane" />
+  <surface coeffs="2.5002" id="11" type="z-plane" />
+  <surface coeffs="2.9169" id="12" type="z-plane" />
+  <surface coeffs="3.3336" id="13" type="z-plane" />
+  <surface coeffs="3.7503" id="14" type="z-plane" />
+  <surface coeffs="4.167" id="15" type="z-plane" />
+  <surface coeffs="4.5837" id="16" type="z-plane" />
+  <surface boundary="reflective" coeffs="5.0" id="17" type="z-plane" />
 </geometry>
 <?xml version='1.0' encoding='utf-8'?>
 <materials>
-    <cross_sections>../1d_mgxs.h5</cross_sections>
-    <material id="10000" name="1">
-        <density units="atom/b-cm" value="1.0" />
-        <nuclide ao="1.0" name="uo2_ang" />
-    </material>
-    <material id="10001" name="2">
-        <density units="atom/b-cm" value="1.0" />
-        <nuclide ao="1.0" name="uo2_ang_mu" />
-    </material>
-    <material id="10002" name="3">
-        <density units="atom/b-cm" value="1.0" />
-        <nuclide ao="1.0" name="uo2_iso" />
-    </material>
-    <material id="10003" name="4">
-        <density units="atom/b-cm" value="1.0" />
-        <nuclide ao="1.0" name="uo2_iso_mu" />
-    </material>
-    <material id="10004" name="5">
-        <density units="atom/b-cm" value="1.0" />
-        <nuclide ao="1.0" name="clad_ang" />
-    </material>
-    <material id="10005" name="6">
-        <density units="atom/b-cm" value="1.0" />
-        <nuclide ao="1.0" name="clad_ang_mu" />
-    </material>
-    <material id="10006" name="7">
-        <density units="atom/b-cm" value="1.0" />
-        <nuclide ao="1.0" name="clad_iso" />
-    </material>
-    <material id="10007" name="8">
-        <density units="atom/b-cm" value="1.0" />
-        <nuclide ao="1.0" name="clad_iso_mu" />
-    </material>
-    <material id="10008" name="9">
-        <density units="atom/b-cm" value="1.0" />
-        <nuclide ao="1.0" name="lwtr_ang" />
-    </material>
-    <material id="10009" name="10">
-        <density units="atom/b-cm" value="1.0" />
-        <nuclide ao="1.0" name="lwtr_ang_mu" />
-    </material>
-    <material id="10010" name="11">
-        <density units="atom/b-cm" value="1.0" />
-        <nuclide ao="1.0" name="lwtr_iso" />
-    </material>
-    <material id="10011" name="12">
-        <density units="atom/b-cm" value="1.0" />
-        <nuclide ao="1.0" name="lwtr_iso_mu" />
-    </material>
+  <cross_sections>../1d_mgxs.h5</cross_sections>
+  <material id="1" name="1">
+    <density units="atom/b-cm" value="1.0" />
+    <nuclide ao="1.0" name="uo2_ang" />
+  </material>
+  <material id="2" name="2">
+    <density units="atom/b-cm" value="1.0" />
+    <nuclide ao="1.0" name="uo2_ang_mu" />
+  </material>
+  <material id="3" name="3">
+    <density units="atom/b-cm" value="1.0" />
+    <nuclide ao="1.0" name="uo2_iso" />
+  </material>
+  <material id="4" name="4">
+    <density units="atom/b-cm" value="1.0" />
+    <nuclide ao="1.0" name="uo2_iso_mu" />
+  </material>
+  <material id="5" name="5">
+    <density units="atom/b-cm" value="1.0" />
+    <nuclide ao="1.0" name="clad_ang" />
+  </material>
+  <material id="6" name="6">
+    <density units="atom/b-cm" value="1.0" />
+    <nuclide ao="1.0" name="clad_ang_mu" />
+  </material>
+  <material id="7" name="7">
+    <density units="atom/b-cm" value="1.0" />
+    <nuclide ao="1.0" name="clad_iso" />
+  </material>
+  <material id="8" name="8">
+    <density units="atom/b-cm" value="1.0" />
+    <nuclide ao="1.0" name="clad_iso_mu" />
+  </material>
+  <material id="9" name="9">
+    <density units="atom/b-cm" value="1.0" />
+    <nuclide ao="1.0" name="lwtr_ang" />
+  </material>
+  <material id="10" name="10">
+    <density units="atom/b-cm" value="1.0" />
+    <nuclide ao="1.0" name="lwtr_ang_mu" />
+  </material>
+  <material id="11" name="11">
+    <density units="atom/b-cm" value="1.0" />
+    <nuclide ao="1.0" name="lwtr_iso" />
+  </material>
+  <material id="12" name="12">
+    <density units="atom/b-cm" value="1.0" />
+    <nuclide ao="1.0" name="lwtr_iso_mu" />
+  </material>
 </materials>
 <?xml version='1.0' encoding='utf-8'?>
 <settings>
-    <run_mode>eigenvalue</run_mode>
-    <particles>100</particles>
-    <batches>10</batches>
-    <inactive>5</inactive>
-    <source strength="1.0">
-        <space type="box">
-            <parameters>0.0 0.0 0.0 10.0 10.0 5.0</parameters>
-        </space>
-    </source>
-    <energy_mode>multi-group</energy_mode>
+  <run_mode>eigenvalue</run_mode>
+  <particles>100</particles>
+  <batches>10</batches>
+  <inactive>5</inactive>
+  <source strength="1.0">
+    <space type="box">
+      <parameters>0.0 0.0 0.0 10.0 10.0 5.0</parameters>
+    </space>
+  </source>
+  <energy_mode>multi-group</energy_mode>
 </settings>
 <?xml version='1.0' encoding='utf-8'?>
 <tallies>
-    <mesh id="1" type="regular">
-        <dimension>1 1 10</dimension>
-        <lower_left>0.0 0.0 0.0</lower_left>
-        <upper_right>10 10 5</upper_right>
-    </mesh>
-    <filter id="10004" type="mesh">
-        <bins>1</bins>
-    </filter>
-    <filter id="10005" type="material">
-        <bins>10000 10001 10002 10003 10004 10005 10006 10007 10008 10009 10010 10011</bins>
-    </filter>
-    <filter id="10000" type="energy">
-        <bins>0.0 20000000.0</bins>
-    </filter>
-    <filter id="10001" type="energyout">
-        <bins>0.0 20000000.0</bins>
-    </filter>
-    <filter id="10002" type="energy">
-        <bins>1e-05 0.0635 10.0 100.0 1000.0 500000.0 1000000.0 20000000.0</bins>
-    </filter>
-    <filter id="10003" type="energyout">
-        <bins>1e-05 0.0635 10.0 100.0 1000.0 500000.0 1000000.0 20000000.0</bins>
-    </filter>
-    <tally id="10000">
-        <filters>10004</filters>
-        <scores>total absorption flux fission nu-fission</scores>
-        <estimator>analog</estimator>
-    </tally>
-    <tally id="10001">
-        <filters>10004</filters>
-        <scores>total absorption flux fission nu-fission</scores>
-        <estimator>tracklength</estimator>
-    </tally>
-    <tally id="10002">
-        <filters>10005 10000</filters>
-        <scores>total absorption flux fission nu-fission scatter nu-scatter</scores>
-        <estimator>analog</estimator>
-    </tally>
-    <tally id="10003">
-        <filters>10005 10000</filters>
-        <scores>total absorption flux fission nu-fission</scores>
-        <estimator>collision</estimator>
-    </tally>
-    <tally id="10004">
-        <filters>10005 10000</filters>
-        <scores>total absorption flux fission nu-fission</scores>
-        <estimator>tracklength</estimator>
-    </tally>
-    <tally id="10005">
-        <filters>10005 10000 10001</filters>
-        <scores>scatter nu-scatter nu-fission</scores>
-    </tally>
-    <tally id="10006">
-        <filters>10005 10002</filters>
-        <scores>total absorption flux fission nu-fission scatter nu-scatter</scores>
-        <estimator>analog</estimator>
-    </tally>
-    <tally id="10007">
-        <filters>10005 10002</filters>
-        <scores>total absorption flux fission nu-fission</scores>
-        <estimator>collision</estimator>
-    </tally>
-    <tally id="10008">
-        <filters>10005 10002</filters>
-        <scores>total absorption flux fission nu-fission</scores>
-        <estimator>tracklength</estimator>
-    </tally>
-    <tally id="10009">
-        <filters>10005 10002 10003</filters>
-        <scores>scatter nu-scatter nu-fission</scores>
-    </tally>
-    <tally id="10010">
-        <filters>10004</filters>
-        <nuclides>uo2_ang uo2_ang_mu uo2_iso uo2_iso_mu clad_ang clad_ang_mu clad_iso clad_iso_mu lwtr_ang lwtr_ang_mu lwtr_iso lwtr_iso_mu</nuclides>
-        <scores>total absorption fission nu-fission</scores>
-        <estimator>analog</estimator>
-    </tally>
-    <tally id="10011">
-        <filters>10004</filters>
-        <nuclides>uo2_ang uo2_ang_mu uo2_iso uo2_iso_mu clad_ang clad_ang_mu clad_iso clad_iso_mu lwtr_ang lwtr_ang_mu lwtr_iso lwtr_iso_mu</nuclides>
-        <scores>total absorption fission nu-fission</scores>
-        <estimator>tracklength</estimator>
-    </tally>
-    <tally id="10012">
-        <filters>10005 10000</filters>
-        <nuclides>uo2_ang uo2_ang_mu uo2_iso uo2_iso_mu clad_ang clad_ang_mu clad_iso clad_iso_mu lwtr_ang lwtr_ang_mu lwtr_iso lwtr_iso_mu</nuclides>
-        <scores>total absorption fission nu-fission scatter nu-scatter</scores>
-        <estimator>analog</estimator>
-    </tally>
-    <tally id="10013">
-        <filters>10005 10000</filters>
-        <nuclides>uo2_ang uo2_ang_mu uo2_iso uo2_iso_mu clad_ang clad_ang_mu clad_iso clad_iso_mu lwtr_ang lwtr_ang_mu lwtr_iso lwtr_iso_mu</nuclides>
-        <scores>total absorption fission nu-fission</scores>
-        <estimator>collision</estimator>
-    </tally>
-    <tally id="10014">
-        <filters>10005 10000</filters>
-        <nuclides>uo2_ang uo2_ang_mu uo2_iso uo2_iso_mu clad_ang clad_ang_mu clad_iso clad_iso_mu lwtr_ang lwtr_ang_mu lwtr_iso lwtr_iso_mu</nuclides>
-        <scores>total absorption fission nu-fission</scores>
-        <estimator>tracklength</estimator>
-    </tally>
-    <tally id="10015">
-        <filters>10005 10000 10001</filters>
-        <nuclides>uo2_ang uo2_ang_mu uo2_iso uo2_iso_mu clad_ang clad_ang_mu clad_iso clad_iso_mu lwtr_ang lwtr_ang_mu lwtr_iso lwtr_iso_mu</nuclides>
-        <scores>scatter nu-scatter nu-fission</scores>
-    </tally>
-    <tally id="10016">
-        <filters>10005 10002</filters>
-        <nuclides>uo2_ang uo2_ang_mu uo2_iso uo2_iso_mu clad_ang clad_ang_mu clad_iso clad_iso_mu lwtr_ang lwtr_ang_mu lwtr_iso lwtr_iso_mu</nuclides>
-        <scores>total absorption fission nu-fission scatter nu-scatter</scores>
-        <estimator>analog</estimator>
-    </tally>
-    <tally id="10017">
-        <filters>10005 10002</filters>
-        <nuclides>uo2_ang uo2_ang_mu uo2_iso uo2_iso_mu clad_ang clad_ang_mu clad_iso clad_iso_mu lwtr_ang lwtr_ang_mu lwtr_iso lwtr_iso_mu</nuclides>
-        <scores>total absorption fission nu-fission</scores>
-        <estimator>collision</estimator>
-    </tally>
-    <tally id="10018">
-        <filters>10005 10002</filters>
-        <nuclides>uo2_ang uo2_ang_mu uo2_iso uo2_iso_mu clad_ang clad_ang_mu clad_iso clad_iso_mu lwtr_ang lwtr_ang_mu lwtr_iso lwtr_iso_mu</nuclides>
-        <scores>total absorption fission nu-fission</scores>
-        <estimator>tracklength</estimator>
-    </tally>
-    <tally id="10019">
-        <filters>10005 10002 10003</filters>
-        <nuclides>uo2_ang uo2_ang_mu uo2_iso uo2_iso_mu clad_ang clad_ang_mu clad_iso clad_iso_mu lwtr_ang lwtr_ang_mu lwtr_iso lwtr_iso_mu</nuclides>
-        <scores>scatter nu-scatter nu-fission</scores>
-    </tally>
+  <mesh id="1" type="regular">
+    <dimension>1 1 10</dimension>
+    <lower_left>0.0 0.0 0.0</lower_left>
+    <upper_right>10 10 5</upper_right>
+  </mesh>
+  <filter id="5" type="mesh">
+    <bins>1</bins>
+  </filter>
+  <filter id="6" type="material">
+    <bins>1 2 3 4 5 6 7 8 9 10 11 12</bins>
+  </filter>
+  <filter id="1" type="energy">
+    <bins>0.0 20000000.0</bins>
+  </filter>
+  <filter id="2" type="energyout">
+    <bins>0.0 20000000.0</bins>
+  </filter>
+  <filter id="3" type="energy">
+    <bins>1e-05 0.0635 10.0 100.0 1000.0 500000.0 1000000.0 20000000.0</bins>
+  </filter>
+  <filter id="4" type="energyout">
+    <bins>1e-05 0.0635 10.0 100.0 1000.0 500000.0 1000000.0 20000000.0</bins>
+  </filter>
+  <tally id="1">
+    <filters>5</filters>
+    <scores>total absorption flux fission nu-fission</scores>
+    <estimator>analog</estimator>
+  </tally>
+  <tally id="2">
+    <filters>5</filters>
+    <scores>total absorption flux fission nu-fission</scores>
+    <estimator>tracklength</estimator>
+  </tally>
+  <tally id="3">
+    <filters>6 1</filters>
+    <scores>total absorption flux fission nu-fission scatter nu-scatter</scores>
+    <estimator>analog</estimator>
+  </tally>
+  <tally id="4">
+    <filters>6 1</filters>
+    <scores>total absorption flux fission nu-fission</scores>
+    <estimator>collision</estimator>
+  </tally>
+  <tally id="5">
+    <filters>6 1</filters>
+    <scores>total absorption flux fission nu-fission</scores>
+    <estimator>tracklength</estimator>
+  </tally>
+  <tally id="6">
+    <filters>6 1 2</filters>
+    <scores>scatter nu-scatter nu-fission</scores>
+  </tally>
+  <tally id="7">
+    <filters>6 3</filters>
+    <scores>total absorption flux fission nu-fission scatter nu-scatter</scores>
+    <estimator>analog</estimator>
+  </tally>
+  <tally id="8">
+    <filters>6 3</filters>
+    <scores>total absorption flux fission nu-fission</scores>
+    <estimator>collision</estimator>
+  </tally>
+  <tally id="9">
+    <filters>6 3</filters>
+    <scores>total absorption flux fission nu-fission</scores>
+    <estimator>tracklength</estimator>
+  </tally>
+  <tally id="10">
+    <filters>6 3 4</filters>
+    <scores>scatter nu-scatter nu-fission</scores>
+  </tally>
+  <tally id="11">
+    <filters>5</filters>
+    <nuclides>uo2_ang uo2_ang_mu uo2_iso uo2_iso_mu clad_ang clad_ang_mu clad_iso clad_iso_mu lwtr_ang lwtr_ang_mu lwtr_iso lwtr_iso_mu</nuclides>
+    <scores>total absorption fission nu-fission</scores>
+    <estimator>analog</estimator>
+  </tally>
+  <tally id="12">
+    <filters>5</filters>
+    <nuclides>uo2_ang uo2_ang_mu uo2_iso uo2_iso_mu clad_ang clad_ang_mu clad_iso clad_iso_mu lwtr_ang lwtr_ang_mu lwtr_iso lwtr_iso_mu</nuclides>
+    <scores>total absorption fission nu-fission</scores>
+    <estimator>tracklength</estimator>
+  </tally>
+  <tally id="13">
+    <filters>6 1</filters>
+    <nuclides>uo2_ang uo2_ang_mu uo2_iso uo2_iso_mu clad_ang clad_ang_mu clad_iso clad_iso_mu lwtr_ang lwtr_ang_mu lwtr_iso lwtr_iso_mu</nuclides>
+    <scores>total absorption fission nu-fission scatter nu-scatter</scores>
+    <estimator>analog</estimator>
+  </tally>
+  <tally id="14">
+    <filters>6 1</filters>
+    <nuclides>uo2_ang uo2_ang_mu uo2_iso uo2_iso_mu clad_ang clad_ang_mu clad_iso clad_iso_mu lwtr_ang lwtr_ang_mu lwtr_iso lwtr_iso_mu</nuclides>
+    <scores>total absorption fission nu-fission</scores>
+    <estimator>collision</estimator>
+  </tally>
+  <tally id="15">
+    <filters>6 1</filters>
+    <nuclides>uo2_ang uo2_ang_mu uo2_iso uo2_iso_mu clad_ang clad_ang_mu clad_iso clad_iso_mu lwtr_ang lwtr_ang_mu lwtr_iso lwtr_iso_mu</nuclides>
+    <scores>total absorption fission nu-fission</scores>
+    <estimator>tracklength</estimator>
+  </tally>
+  <tally id="16">
+    <filters>6 1 2</filters>
+    <nuclides>uo2_ang uo2_ang_mu uo2_iso uo2_iso_mu clad_ang clad_ang_mu clad_iso clad_iso_mu lwtr_ang lwtr_ang_mu lwtr_iso lwtr_iso_mu</nuclides>
+    <scores>scatter nu-scatter nu-fission</scores>
+  </tally>
+  <tally id="17">
+    <filters>6 3</filters>
+    <nuclides>uo2_ang uo2_ang_mu uo2_iso uo2_iso_mu clad_ang clad_ang_mu clad_iso clad_iso_mu lwtr_ang lwtr_ang_mu lwtr_iso lwtr_iso_mu</nuclides>
+    <scores>total absorption fission nu-fission scatter nu-scatter</scores>
+    <estimator>analog</estimator>
+  </tally>
+  <tally id="18">
+    <filters>6 3</filters>
+    <nuclides>uo2_ang uo2_ang_mu uo2_iso uo2_iso_mu clad_ang clad_ang_mu clad_iso clad_iso_mu lwtr_ang lwtr_ang_mu lwtr_iso lwtr_iso_mu</nuclides>
+    <scores>total absorption fission nu-fission</scores>
+    <estimator>collision</estimator>
+  </tally>
+  <tally id="19">
+    <filters>6 3</filters>
+    <nuclides>uo2_ang uo2_ang_mu uo2_iso uo2_iso_mu clad_ang clad_ang_mu clad_iso clad_iso_mu lwtr_ang lwtr_ang_mu lwtr_iso lwtr_iso_mu</nuclides>
+    <scores>total absorption fission nu-fission</scores>
+    <estimator>tracklength</estimator>
+  </tally>
+  <tally id="20">
+    <filters>6 3 4</filters>
+    <nuclides>uo2_ang uo2_ang_mu uo2_iso uo2_iso_mu clad_ang clad_ang_mu clad_iso clad_iso_mu lwtr_ang lwtr_ang_mu lwtr_iso lwtr_iso_mu</nuclides>
+    <scores>scatter nu-scatter nu-fission</scores>
+  </tally>
 </tallies>

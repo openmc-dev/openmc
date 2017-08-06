@@ -4,6 +4,7 @@ from collections import Iterable
 
 from six import string_types
 import numpy as np
+import pandas as pd
 
 import openmc
 from openmc.filter import _FILTER_TYPES
@@ -786,9 +787,6 @@ class AggregateFilter(object):
         CrossFilter.get_pandas_dataframe()
 
         """
-
-        import pandas as pd
-
         # Create NumPy array of the bin tuples for repeating / tiling
         filter_bins = np.empty(self.num_bins, dtype=tuple)
         for i, bin in enumerate(self.bins):

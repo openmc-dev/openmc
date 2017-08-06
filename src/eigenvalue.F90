@@ -1,5 +1,6 @@
 module eigenvalue
 
+  use, intrinsic :: ISO_C_BINDING
 
   use algorithm,   only: binary_search
   use constants,   only: ZERO
@@ -39,6 +40,7 @@ contains
          & temp_sites(:)       ! local array of extra sites on each node
 
 #ifdef MPI
+    integer    :: mpi_err      ! MPI error code
     integer(8) :: n            ! number of sites to send/recv
     integer    :: neighbor     ! processor to send/recv data from
 #ifdef MPIF08
@@ -95,8 +97,7 @@ contains
     ! skip ahead in the sequence using the starting index in the 'global'
     ! fission bank for each processor.
 
-    call set_particle_seed(int((current_batch - 1)*gen_per_batch + &
-         current_gen,8))
+    call set_particle_seed(int(total_gen + overall_generation(), 8))
     call advance_prn_seed(start)
 
     ! Determine how many fission sites we need to sample from the source bank
@@ -371,20 +372,28 @@ contains
 
   subroutine calculate_generation_keff()
 
+    integer :: i  ! overall generation
+#ifdef MPI
+    integer :: mpi_err ! MPI error code
+#endif
+
     ! Get keff for this generation by subtracting off the starting value
     keff_generation = global_tallies(RESULT_VALUE, K_TRACKLENGTH) - keff_generation
 
+    ! Determine overall generation
+    i = overall_generation()
+
 #ifdef MPI
     ! Combine values across all processors
-    call MPI_ALLREDUCE(keff_generation, k_generation(overall_gen), 1, &
-         MPI_REAL8, MPI_SUM, mpi_intracomm, mpi_err)
+    call MPI_ALLREDUCE(keff_generation, k_generation(i), 1, MPI_REAL8, &
+         MPI_SUM, mpi_intracomm, mpi_err)
 #else
-    k_generation(overall_gen) = keff_generation
+    k_generation(i) = keff_generation
 #endif
 
     ! Normalize single batch estimate of k
     ! TODO: This should be normalized by total_weight, not by n_particles
-    k_generation(overall_gen) = k_generation(overall_gen) / n_particles
+    k_generation(i) = k_generation(i) / n_particles
 
   end subroutine calculate_generation_keff
 
@@ -396,22 +405,24 @@ contains
 
   subroutine calculate_average_keff()
 
+    integer :: i        ! overall generation within simulation
     integer :: n        ! number of active generations
     real(8) :: alpha    ! significance level for CI
     real(8) :: t_value  ! t-value for confidence intervals
 
-    ! Determine number of active generations
-    n = overall_gen - n_inactive*gen_per_batch
+    ! Determine overall generation and number of active generations
+    i = overall_generation()
+    n = i - n_inactive*gen_per_batch
 
     if (n <= 0) then
       ! For inactive generations, use current generation k as estimate for next
       ! generation
-      keff = k_generation(overall_gen)
+      keff = k_generation(i)
 
     else
       ! Sample mean of keff
-      k_sum(1) = k_sum(1) + k_generation(overall_gen)
-      k_sum(2) = k_sum(2) + k_generation(overall_gen)**2
+      k_sum(1) = k_sum(1) + k_generation(i)
+      k_sum(2) = k_sum(2) + k_generation(i)**2
 
       ! Determine mean
       keff = k_sum(1) / n
@@ -433,8 +444,8 @@ contains
   end subroutine calculate_average_keff
 
 !===============================================================================
-! CALCULATE_COMBINED_KEFF calculates a minimum variance estimate of k-effective
-! based on a linear combination of the collision, absorption, and tracklength
+! OPENMC_GET_KEFF calculates a minimum variance estimate of k-effective based on
+! a linear combination of the collision, absorption, and tracklength
 ! estimates. The theory behind this can be found in M. Halperin, "Almost
 ! linearly-optimum combination of unbiased estimates," J. Am. Stat. Assoc., 56,
 ! 36-43 (1961), doi:10.1080/01621459.1961.10482088. The implementation here
@@ -442,7 +453,9 @@ contains
 ! of keff confidence intervals in MCNP," Nucl. Technol., 111, 169-182 (1995).
 !===============================================================================
 
-  subroutine calculate_combined_keff()
+  function openmc_get_keff(k_combined) result(err) bind(C)
+    real(C_DOUBLE), intent(out) :: k_combined(2)
+    integer(C_INT) :: err
 
     integer :: l        ! loop index
     integer :: i, j, k  ! indices referring to collision, absorption, or track
@@ -453,9 +466,14 @@ contains
     real(8) :: g        ! sum of weighting factors
     real(8) :: S(3)     ! sums used for variance calculation
 
+    k_combined = ZERO
+
     ! Make sure we have at least four realizations. Notice that at the end,
     ! there is a N-3 term in a denominator.
-    if (n_realizations <= 3) return
+    if (n_realizations <= 3) then
+      err = -1
+      return
+    end if
 
     ! Initialize variables
     n = real(n_realizations, 8)
@@ -517,7 +535,6 @@ contains
       ! Initialize variables
       g = ZERO
       S = ZERO
-      k_combined = ZERO
 
       do l = 1, 3
         ! Permutations of estimates
@@ -584,8 +601,9 @@ contains
       k_combined(2) = sqrt(k_combined(2))
 
     end if
+    err = 0
 
-  end subroutine calculate_combined_keff
+  end function openmc_get_keff
 
 !===============================================================================
 ! COUNT_SOURCE_FOR_UFS determines the source fraction in each UFS mesh cell and
@@ -600,6 +618,7 @@ contains
     logical :: sites_outside ! were there sites outside the ufs mesh?
 #ifdef MPI
     integer :: n             ! total number of ufs mesh cells
+    integer :: mpi_err       ! MPI error code
 #endif
 
     if (current_batch == 1 .and. current_gen == 1) then

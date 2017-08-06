@@ -324,6 +324,7 @@ contains
     real(8) :: uvw_old(3) ! incoming uvw for iso-in-lab scattering
     real(8) :: phi        ! azimuthal angle for iso-in-lab scattering
     real(8) :: kT         ! temperature in eV
+    logical :: sampled    ! whether or not a reaction type has been sampled
     type(Nuclide),  pointer :: nuc
 
     ! copy incoming direction
@@ -337,36 +338,43 @@ contains
 
     ! For tallying purposes, this routine might be called directly. In that
     ! case, we need to sample a reaction via the cutoff variable
-    prob = ZERO
     cutoff = prn() * (micro_xs(i_nuclide) % total - &
          micro_xs(i_nuclide) % absorption)
+    sampled = .false.
 
-    prob = prob + micro_xs(i_nuclide) % elastic
+    prob = micro_xs(i_nuclide) % elastic - micro_xs(i_nuclide) % thermal
     if (prob > cutoff) then
       ! =======================================================================
-      ! ELASTIC SCATTERING
+      ! NON-S(A,B) ELASTIC SCATTERING
 
-      if (micro_xs(i_nuclide) % index_sab /= NONE) then
-        ! S(a,b) scattering
-        call sab_scatter(i_nuclide, micro_xs(i_nuclide) % index_sab, &
-             p % E, p % coord(1) % uvw, p % mu)
-
+      ! Determine temperature
+      if (nuc % mp_present) then
+        kT = p % sqrtkT**2
       else
-        ! Determine temperature
-        if (nuc % mp_present) then
-          kT = p % sqrtkT**2
-        else
-          kT = nuc % kTs(micro_xs(i_nuclide) % index_temp)
-        end if
-
-        ! Perform collision physics for elastic scattering
-        call elastic_scatter(i_nuclide, nuc % reactions(1), kT, &
-             p % E, p % coord(1) % uvw, p % mu, p % wgt)
+        kT = nuc % kTs(micro_xs(i_nuclide) % index_temp)
       end if
 
-      p % event_MT = ELASTIC
+      ! Perform collision physics for elastic scattering
+      call elastic_scatter(i_nuclide, nuc % reactions(1), kT, p % E, &
+                           p % coord(1) % uvw, p % mu, p % wgt)
 
-    else
+      p % event_MT = ELASTIC
+      sampled = .true.
+    end if
+
+    prob = micro_xs(i_nuclide) % elastic
+    if (prob > cutoff .and. .not. sampled) then
+      ! =======================================================================
+      ! S(A,B) SCATTERING
+
+      call sab_scatter(i_nuclide, micro_xs(i_nuclide) % index_sab, p % E, &
+                       p % coord(1) % uvw, p % mu)
+
+      p % event_MT = ELASTIC
+      sampled = .true.
+    end if
+
+    if (.not. sampled) then
       ! =======================================================================
       ! INELASTIC SCATTERING
 
@@ -388,7 +396,7 @@ contains
           if (rx % MT == N_FISSION .or. rx % MT == N_F .or. rx % MT == N_NF &
                .or. rx % MT == N_2NF .or. rx % MT == N_3NF) cycle
 
-          ! some materials have gas production cross sections with MT > 200 that
+          ! Some materials have gas production cross sections with MT > 200 that
           ! are duplicates. Also MT=4 is total level inelastic scattering which
           ! should be skipped
           if (rx % MT >= 200 .or. rx % MT == N_LEVEL) cycle
@@ -406,24 +414,24 @@ contains
 
       ! Perform collision physics for inelastic scattering
       call inelastic_scatter(nuc, nuc%reactions(i), p)
-      p % event_MT = nuc%reactions(i)%MT
+      p % event_MT = nuc % reactions(i) % MT
 
     end if
 
     ! Set event component
     p % event = EVENT_SCATTER
 
-    ! sample new outgoing angle for isotropic in lab scattering
+    ! Sample new outgoing angle for isotropic in lab scattering
     if (materials(p % material) % p0(i_nuc_mat)) then
 
-      ! sample isotropic-in-lab outgoing direction
+      ! Sample isotropic-in-lab outgoing direction
       uvw_new(1) = TWO * prn() - ONE
       phi = TWO * PI * prn()
       uvw_new(2) = cos(phi) * sqrt(ONE - uvw_new(1)*uvw_new(1))
       uvw_new(3) = sin(phi) * sqrt(ONE - uvw_new(1)*uvw_new(1))
       p % mu = dot_product(uvw_old, uvw_new)
 
-      ! change direction of particle
+      ! Change direction of particle
       p % coord(1) % uvw = uvw_new
     end if
 
@@ -559,8 +567,8 @@ contains
     associate (sab => sab_tables(i_sab) % data(i_temp))
 
       ! Determine whether inelastic or elastic scattering will occur
-      if (prn() < micro_xs(i_nuclide) % elastic_sab / &
-           micro_xs(i_nuclide) % elastic) then
+      if (prn() < micro_xs(i_nuclide) % thermal_elastic / &
+           micro_xs(i_nuclide) % thermal) then
         ! elastic scattering
 
         ! Get index and interpolation factor for elastic grid
@@ -818,7 +826,6 @@ contains
     real(8) :: xs_low  ! 0K xs at lowest practical relative energy
     real(8) :: xs_up   ! 0K xs at highest practical relative energy
     real(8) :: m       ! slope for interpolation
-    real(8) :: xi      ! pseudorandom number on [0,1)
     real(8) :: R       ! rejection criterion for DBRC / target speed
     real(8) :: cdf_low ! xs cdf at lowest practical relative energy
     real(8) :: cdf_up  ! xs cdf at highest practical relative energy

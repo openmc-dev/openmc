@@ -22,10 +22,6 @@ module tally
 
   implicit none
 
-  integer :: position(N_FILTER_TYPES - 3) = 0 ! Tally map positioning array
-
-!$omp threadprivate(position)
-
   procedure(score_general_),      pointer :: score_general => null()
   procedure(score_analog_tally_), pointer :: score_analog_tally => null()
 
@@ -2410,9 +2406,6 @@ contains
     ! Reset filter matches flag
     filter_matches(:) % bins_present = .false.
 
-    ! Reset tally map positioning
-    position = 0
-
   end subroutine score_analog_tally_ce
 
   subroutine score_analog_tally_mg(p)
@@ -2557,9 +2550,6 @@ contains
 
     ! Reset filter matches flag
     filter_matches(:) % bins_present = .false.
-
-    ! Reset tally map positioning
-    position = 0
 
   end subroutine score_analog_tally_mg
 
@@ -2956,9 +2946,6 @@ contains
     ! Reset filter matches flag
     filter_matches(:) % bins_present = .false.
 
-    ! Reset tally map positioning
-    position = 0
-
   end subroutine score_tracklength_tally
 
 !===============================================================================
@@ -3131,9 +3118,6 @@ contains
 
     ! Reset filter matches flag
     filter_matches(:) % bins_present = .false.
-
-    ! Reset tally map positioning
-    position = 0
 
   end subroutine score_collision_tally
 
@@ -4334,11 +4318,11 @@ contains
   end subroutine zero_flux_derivs
 
 !===============================================================================
-! SYNCHRONIZE_TALLIES accumulates the sum of the contributions from each history
+! ACCUMULATE_TALLIES accumulates the sum of the contributions from each history
 ! within the batch to a new random variable
 !===============================================================================
 
-  subroutine synchronize_tallies()
+  subroutine accumulate_tallies()
 
     integer :: i
     real(C_DOUBLE) :: k_col ! Copy of batch collision estimate of keff
@@ -4388,7 +4372,7 @@ contains
       end do
     end if
 
-  end subroutine synchronize_tallies
+  end subroutine accumulate_tallies
 
 !===============================================================================
 ! REDUCE_TALLY_RESULTS collects all the results from tallies onto one processor
@@ -4398,73 +4382,55 @@ contains
   subroutine reduce_tally_results()
 
     integer :: i
-    integer :: n      ! number of filter bins
-    integer :: m      ! number of score bins
-    integer :: n_bins ! total number of bins
-    real(8), allocatable :: tally_temp(:,:) ! contiguous array of results
-    real(8) :: global_temp(N_GLOBAL_TALLIES)
-    real(8) :: dummy  ! temporary receive buffer for non-root reduces
-    type(TallyObject), pointer :: t
+    integer :: n       ! number of filter bins
+    integer :: m       ! number of score bins
+    integer :: n_bins  ! total number of bins
+    integer :: mpi_err ! MPI error code
+    real(C_DOUBLE), allocatable :: tally_temp(:,:)  ! contiguous array of results
+    real(C_DOUBLE), allocatable :: tally_temp2(:,:) ! reduced contiguous results
+    real(C_DOUBLE) :: temp(N_GLOBAL_TALLIES), temp2(N_GLOBAL_TALLIES)
 
     do i = 1, active_tallies % size()
-      t => tallies(active_tallies % data(i))
+      associate (t => tallies(active_tallies % data(i)))
 
-      m = t % total_score_bins
-      n = t % total_filter_bins
-      n_bins = m*n
+        m = size(t % results, 2)
+        n = size(t % results, 3)
+        n_bins = m*n
 
-      allocate(tally_temp(m,n))
+        allocate(tally_temp(m,n), tally_temp2(m,n))
 
-      tally_temp = t % results(RESULT_VALUE,:,:)
-
-      if (master) then
-        ! The MPI_IN_PLACE specifier allows the master to copy values into
-        ! a receive buffer without having a temporary variable
-        call MPI_REDUCE(MPI_IN_PLACE, tally_temp, n_bins, MPI_REAL8, &
+        ! Reduce contiguous set of tally results
+        tally_temp = t % results(RESULT_VALUE,:,:)
+        call MPI_REDUCE(tally_temp, tally_temp2, n_bins, MPI_DOUBLE, &
              MPI_SUM, 0, mpi_intracomm, mpi_err)
 
-        ! Transfer values to value on master
-        t % results(RESULT_VALUE,:,:) = tally_temp
-      else
-        ! Receive buffer not significant at other processors
-        call MPI_REDUCE(tally_temp, dummy, n_bins, MPI_REAL8, &
-             MPI_SUM, 0, mpi_intracomm, mpi_err)
+        if (master) then
+          ! Transfer values to value on master
+          t % results(RESULT_VALUE,:,:) = tally_temp2
+        else
+          ! Reset value on other processors
+          t % results(RESULT_VALUE,:,:) = ZERO
+        end if
 
-        ! Reset value on other processors
-        t % results(RESULT_VALUE,:,:) = ZERO
-      end if
-
-      deallocate(tally_temp)
+        deallocate(tally_temp, tally_temp2)
+      end associate
     end do
 
-    ! Copy global tallies into array to be reduced
-    global_temp = global_tallies(RESULT_VALUE, :)
-
+    ! Reduce global tallies onto master
+    temp = global_tallies(RESULT_VALUE, :)
+    call MPI_REDUCE(temp, temp2, N_GLOBAL_TALLIES, MPI_DOUBLE, MPI_SUM, &
+         0, mpi_intracomm, mpi_err)
     if (master) then
-      call MPI_REDUCE(MPI_IN_PLACE, global_temp, N_GLOBAL_TALLIES, &
-           MPI_REAL8, MPI_SUM, 0, mpi_intracomm, mpi_err)
-
-      ! Transfer values back to global_tallies on master
-      global_tallies(RESULT_VALUE, :) = global_temp
+      global_tallies(RESULT_VALUE, :) = temp2
     else
-      ! Receive buffer not significant at other processors
-      call MPI_REDUCE(global_temp, dummy, N_GLOBAL_TALLIES, &
-           MPI_REAL8, MPI_SUM, 0, mpi_intracomm, mpi_err)
-
-      ! Reset value on other processors
       global_tallies(RESULT_VALUE, :) = ZERO
     end if
 
     ! We also need to determine the total starting weight of particles from the
     ! last realization
-    if (master) then
-      call MPI_REDUCE(MPI_IN_PLACE, total_weight, 1, MPI_REAL8, MPI_SUM, &
-           0, mpi_intracomm, mpi_err)
-    else
-      ! Receive buffer not significant at other processors
-      call MPI_REDUCE(total_weight, dummy, 1, MPI_REAL8, MPI_SUM, &
-           0, mpi_intracomm, mpi_err)
-    end if
+    temp(1) = total_weight
+    call MPI_REDUCE(temp, total_weight, 1, MPI_REAL8, MPI_SUM, &
+         0, mpi_intracomm, mpi_err)
 
   end subroutine reduce_tally_results
 #endif
@@ -4501,45 +4467,6 @@ contains
     end do
 
   end subroutine accumulate_tally
-
-!===============================================================================
-! TALLY_STATISTICS computes the mean and standard deviation of the mean of each
-! tally and stores them in the RESULT_SUM and RESULT_SUM_SQ positions
-!===============================================================================
-
-  subroutine tally_statistics()
-    integer :: i    ! index in tallies array
-    integer :: j, k ! score/filter indices
-    integer :: n    ! number of realizations
-
-    ! Calculate sample mean and standard deviation of the mean -- note that we
-    ! have used Bessel's correction so that the estimator of the variance of the
-    ! sample mean is unbiased.
-
-    do i = 1, n_tallies
-      n = tallies(i) % n_realizations
-
-      associate (r => tallies(i) % results)
-        do k = 1, size(r, 3)
-          do j = 1, size(r, 2)
-            r(RESULT_SUM, j, k) = r(RESULT_SUM, j, k) / n
-            r(RESULT_SUM_SQ, j, k) = sqrt((r(RESULT_SUM_SQ, j, k)/n - &
-                 r(RESULT_SUM, j, k) * r(RESULT_SUM, j, k))/(n - 1))
-          end do
-        end do
-      end associate
-    end do
-
-    ! Calculate statistics for global tallies
-    n = n_realizations
-    associate (r => global_tallies)
-      do j = 1, size(r, 2)
-        r(RESULT_SUM, j) = r(RESULT_SUM, j) / n
-        r(RESULT_SUM_SQ, j) = sqrt((r(RESULT_SUM_SQ, j)/n - &
-             r(RESULT_SUM, j) * r(RESULT_SUM, j))/(n - 1))
-      end do
-    end associate
-  end subroutine tally_statistics
 
 !===============================================================================
 ! SETUP_ACTIVE_USERTALLIES

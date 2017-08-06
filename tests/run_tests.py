@@ -188,6 +188,10 @@ class Test(object):
             build_str += "-Dopenmp=OFF "
         if self.coverage:
             build_str += "-Dcoverage=ON "
+        if self.phdf5:
+            build_str += "-DHDF5_PREFER_PARALLEL=ON "
+        else:
+            build_str += "-DHDF5_PREFER_PARALLEL=OFF "
         self.build_opts = build_str
         return self.build_opts
 
@@ -214,6 +218,9 @@ class Test(object):
 
     # Runs cmake when in non-script mode
     def run_cmake(self):
+        build_opts = self.build_opts.split()
+        self.cmake += build_opts
+
         os.environ['FC'] = self.fc
         os.environ['CC'] = self.cc
         os.environ['CXX'] = self.cxx
@@ -221,10 +228,10 @@ class Test(object):
             os.environ['MPI_DIR'] = MPI_DIR
         if self.phdf5:
             os.environ['HDF5_ROOT'] = PHDF5_DIR
+            self.cmake.append('-DHDF5_PREFER_PARALLEL=ON')
         else:
             os.environ['HDF5_ROOT'] = HDF5_DIR
-        build_opts = self.build_opts.split()
-        self.cmake += build_opts
+            self.cmake.append('-DHDF5_PREFER_PARALLEL=OFF')
         rc = call(self.cmake)
         if rc != 0:
             self.success = False

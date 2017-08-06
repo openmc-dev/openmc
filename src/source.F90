@@ -73,7 +73,7 @@ contains
         src => source_bank(i)
 
         ! initialize random number seed
-        id = work_index(rank) + i
+        id = total_gen*n_particles + work_index(rank) + i
         call set_particle_seed(id)
 
         ! sample external source distribution

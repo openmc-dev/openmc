@@ -108,6 +108,9 @@ contains
     real(8) :: hxyz(3) ! cell dimensions of current ijk cell
     real(8) :: vol     ! volume of cell
     real(8),allocatable :: source(:,:,:,:)  ! tmp source array for entropy
+#ifdef MPI
+    integer :: mpi_err ! MPI error code
+#endif
 
     ! Get maximum of spatial and group indices
     nx = cmfd % indices(1)
@@ -232,6 +235,9 @@ contains
     logical :: outside  ! any source sites outside mesh
     logical :: in_mesh  ! source site is inside mesh
     type(RegularMesh), pointer :: m ! point to mesh
+#ifdef MPI
+    integer :: mpi_err
+#endif
 
     ! Associate pointer
     m => meshes(n_user_meshes + 1)

@@ -518,6 +518,14 @@
       </element>
     </optional>
     <optional>
+      <element name="temperature_range">
+        <list>
+          <data type="double"/>
+          <data type="double"/>
+        </list>
+      </element>
+    </optional>
+    <optional>
       <element name="temperature_tolerance">
         <data type="double"/>
       </element>

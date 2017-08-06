@@ -11,16 +11,7 @@ import openmc
 import openmc.data
 import openmc.checkvalue as cv
 from openmc.clean_xml import sort_xml_elements, clean_xml_indentation
-
-
-# A static variable for auto-generated Material IDs
-AUTO_MATERIAL_ID = 10000
-
-
-def reset_auto_material_id():
-    """Reset counter for auto-generated material IDs."""
-    global AUTO_MATERIAL_ID
-    AUTO_MATERIAL_ID = 10000
+from .mixin import IDManagerMixin
 
 
 # Units for density supported by OpenMC
@@ -28,7 +19,7 @@ DENSITY_UNITS = ['g/cm3', 'g/cc', 'kg/cm3', 'atom/b-cm', 'atom/cm3', 'sum',
                  'macro']
 
 
-class Material(object):
+class Material(IDManagerMixin):
     """A material composed of a collection of nuclides/elements.
 
     To create a material, one should create an instance of this class, add
@@ -89,6 +80,9 @@ class Material(object):
 
     """
 
+    next_id = 1
+    used_ids = set()
+
     def __init__(self, material_id=None, name='', temperature=None):
         # Initialize class attributes
         self.id = material_id
@@ -97,7 +91,8 @@ class Material(object):
         self._density = None
         self._density_units = ''
         self._depletable = False
-        self._paths = []
+        self._paths = None
+        self._num_instances = None
         self._volume = None
         self._atoms = {}
 
@@ -184,10 +179,6 @@ class Material(object):
         return string
 
     @property
-    def id(self):
-        return self._id
-
-    @property
     def name(self):
         return self._name
 
@@ -209,14 +200,18 @@ class Material(object):
 
     @property
     def paths(self):
-        if not self._paths:
+        if self._paths is None:
             raise ValueError('Material instance paths have not been determined. '
                              'Call the Geometry.determine_paths() method.')
         return self._paths
 
     @property
     def num_instances(self):
-        return len(self.paths)
+        if self._num_instances is None:
+            raise ValueError(
+                'Number of material instances have not been determined. Call '
+                'the Geometry.determine_paths() method.')
+        return self._num_instances
 
     @property
     def elements(self):
@@ -259,18 +254,6 @@ class Material(object):
     def volume(self):
         return self._volume
 
-    @id.setter
-    def id(self, material_id):
-
-        if material_id is None:
-            global AUTO_MATERIAL_ID
-            self._id = AUTO_MATERIAL_ID
-            AUTO_MATERIAL_ID += 1
-        else:
-            cv.check_type('material ID', material_id, Integral)
-            cv.check_greater_than('material ID', material_id, 0, equality=True)
-            self._id = material_id
-
     @name.setter
     def name(self, name):
         if name is not None:
@@ -297,11 +280,6 @@ class Material(object):
         if volume is not None:
             cv.check_type('material volume', volume, Real)
         self._volume = volume
-
-    @num_instances.setter
-    def num_instances(self, num_instances):
-        cv.check_type('num_instances', num_instances, Integral)
-        self._num_instances = num_instances
 
     @classmethod
     def from_hdf5(cls, group):
@@ -640,13 +618,18 @@ class Material(object):
             if element == elm[0]:
                 self._elements.remove(elm)
 
-    def add_s_alpha_beta(self, name):
+    def add_s_alpha_beta(self, name, fraction=1.0):
         r"""Add an :math:`S(\alpha,\beta)` table to the material
 
         Parameters
         ----------
         name : str
             Name of the :math:`S(\alpha,\beta)` table
+        fraction : float
+            The fraction of relevant nuclei that are affected by the
+            :math:`S(\alpha,\beta)` table.  For example, if the material is a
+            block of carbon that is 60% graphite and 40% amorphous then add a
+            graphite :math:`S(\alpha,\beta)` table with fraction=0.6.
 
         """
 
@@ -660,13 +643,17 @@ class Material(object):
                         'non-string table name "{}"'.format(self._id, name)
             raise ValueError(msg)
 
+        cv.check_type('S(a,b) fraction', fraction, Real)
+        cv.check_greater_than('S(a,b) fraction', fraction, 0.0, True)
+        cv.check_less_than('S(a,b) fraction', fraction, 1.0, True)
+
         new_name = openmc.data.get_thermal_name(name)
         if new_name != name:
             msg = 'OpenMC S(a,b) tables follow the GND naming convention. ' \
                   'Table "{}" is being renamed as "{}".'.format(name, new_name)
             warnings.warn(msg)
 
-        self._sab.append(new_name)
+        self._sab.append((new_name, fraction))
 
     def make_isotropic_in_lab(self):
         for nuclide, percent, percent_type in self._nuclides:
@@ -820,8 +807,18 @@ class Material(object):
 
         # If no nemoize'd clone exists, instantiate one
         if self not in memo:
+            # Temporarily remove paths -- this is done so that when the clone is
+            # made, it doesn't create a copy of the paths (which are specific to
+            # an instance)
+            paths = self._paths
+            self._paths = None
+
             clone = deepcopy(self)
             clone.id = None
+            clone._num_instances = None
+
+            # Restore paths on original instance
+            self._paths = paths
 
             # Memoize the clone
             memo[self] = clone
@@ -984,7 +981,9 @@ class Material(object):
         if len(self._sab) > 0:
             for sab in self._sab:
                 subelement = ET.SubElement(element, "sab")
-                subelement.set("name", sab)
+                subelement.set("name", sab[0])
+                if sab[1] != 1.0:
+                    subelement.set("fraction", str(sab[1]))
 
         return element
 

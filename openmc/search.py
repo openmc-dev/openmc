@@ -1,6 +1,8 @@
 from collections import Callable
 from numbers import Real
 
+import scipy.optimize as sopt
+
 import openmc
 import openmc.model
 import openmc.checkvalue as cv
@@ -143,8 +145,6 @@ def search_for_keff(model_builder, initial_guess=None, target=1.0,
     elif initial_guess is not None:
         model = model_builder(initial_guess, **model_args)
     cv.check_type('model_builder return', model, openmc.model.Model)
-
-    import scipy.optimize as sopt
 
     # Set the iteration data storage variables
     guesses = []

@@ -7,18 +7,10 @@ from xml.etree import ElementTree as ET
 from six import string_types
 
 import openmc.checkvalue as cv
-from openmc.mixin import EqualityMixin
+from openmc.mixin import EqualityMixin, IDManagerMixin
 
 
-# "Static" variable for auto-generated TallyDerivative IDs
-AUTO_TALLY_DERIV_ID = 10000
-
-def reset_auto_tally_deriv_id():
-    global AUTO_TALLY_ID
-    AUTO_TALLY_DERIV_ID = 10000
-
-
-class TallyDerivative(EqualityMixin):
+class TallyDerivative(EqualityMixin, IDManagerMixin):
     """A material perturbation derivative to apply to a tally.
 
     Parameters
@@ -48,6 +40,9 @@ class TallyDerivative(EqualityMixin):
 
     """
 
+    next_id = 1
+    used_ids = set()
+
     def __init__(self, derivative_id=None, variable=None, material=None,
                  nuclide=None):
         # Initialize Tally class attributes
@@ -75,10 +70,6 @@ class TallyDerivative(EqualityMixin):
         return string
 
     @property
-    def id(self):
-        return self._id
-
-    @property
     def variable(self):
         return self._variable
 
@@ -89,18 +80,6 @@ class TallyDerivative(EqualityMixin):
     @property
     def nuclide(self):
         return self._nuclide
-
-    @id.setter
-    def id(self, deriv_id):
-        if deriv_id is None:
-            global AUTO_TALLY_DERIV_ID
-            self._id = AUTO_TALLY_DERIV_ID
-            AUTO_TALLY_DERIV_ID += 1
-        else:
-            cv.check_type('tally derivative ID', deriv_id, Integral)
-            cv.check_greater_than('tally derivative ID', deriv_id, 0,
-                                  equality=True)
-            self._id = deriv_id
 
     @variable.setter
     def variable(self, var):

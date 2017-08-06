@@ -32,6 +32,8 @@ contains
     ! Set verbosity high
     verbosity = 10
 
+    allocate(micro_xs(n_nuclides_total))
+
     ! Initialize the particle to be tracked
     call p % initialize()
 
@@ -44,8 +46,7 @@ contains
     ! Compute random number seed
     select case (previous_run_mode)
     case (MODE_EIGENVALUE)
-      particle_seed = ((current_batch - 1)*gen_per_batch + &
-           current_gen - 1)*n_particles + p % id
+      particle_seed = (total_gen + overall_generation() - 1)*n_particles + p % id
     case (MODE_FIXEDSOURCE)
       particle_seed = p % id
     end select
@@ -57,6 +58,8 @@ contains
 
     ! Write output if particle made it
     call print_particle(p)
+
+    deallocate(micro_xs)
 
   end subroutine run_particle_restart
 

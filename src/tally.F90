@@ -9,10 +9,6 @@ module tally
   use geometry_header
   use global
   use math,             only: t_percentile, calc_pn, calc_rn
-  use mesh,             only: get_mesh_bin, bin_to_mesh_indices, &
-                              get_mesh_indices, mesh_indices_to_bin, &
-                              mesh_intersects_1d, mesh_intersects_2d, &
-                              mesh_intersects_3d
   use mesh_header,      only: RegularMesh
   use message_passing
   use output,           only: header
@@ -3259,19 +3255,13 @@ contains
       n_dim = m % n_dimension
 
       ! Determine indices for starting and ending location
-      call get_mesh_indices(m, xyz0, ijk0, start_in_mesh)
-      call get_mesh_indices(m, xyz1, ijk1, end_in_mesh)
+      call m % get_indices(xyz0, ijk0, start_in_mesh)
+      call m % get_indices(xyz1, ijk1, end_in_mesh)
 
       ! Check to see if start or end is in mesh -- if not, check if track still
       ! intersects with mesh
       if ((.not. start_in_mesh) .and. (.not. end_in_mesh)) then
-        if (n_dim == 1) then
-          if (.not. mesh_intersects_1d(m, xyz0, xyz1)) cycle
-        else if (n_dim == 2) then
-          if (.not. mesh_intersects_2d(m, xyz0, xyz1)) cycle
-        else
-          if (.not. mesh_intersects_3d(m, xyz0, xyz1)) cycle
-        end if
+        if (.not. m % intersects(xyz0, xyz1)) cycle
       end if
 
       ! Calculate number of surface crossings
@@ -3350,7 +3340,7 @@ contains
                    all(ijk0(:n_dim) <= m % dimension)) then
                 filter_matches(i_filter_surf) % bins % data(1) = d1 * 4 - 1
                 filter_matches(i_filter_mesh) % bins % data(1) = &
-                     mesh_indices_to_bin(m, ijk0)
+                     m % get_bin_from_indices(ijk0)
                 filter_index = 1
                 do k = 1, size(t % filter)
                   filter_index = filter_index + (filter_matches(t % &
@@ -3389,7 +3379,7 @@ contains
                 ijk0(d1) = ijk0(d1) + 1
                 filter_matches(i_filter_surf) % bins % data(1) = d1 * 4 - 2
                 filter_matches(i_filter_mesh) % bins % data(1) = &
-                     mesh_indices_to_bin(m, ijk0)
+                     m % get_bin_from_indices(ijk0)
                 filter_index = 1
                 do k = 1, size(t % filter)
                   filter_index = filter_index + (filter_matches(t % &
@@ -3412,7 +3402,7 @@ contains
                    all(ijk0(:n_dim) <= m % dimension)) then
                 filter_matches(i_filter_surf) % bins % data(1) = d1 * 4 - 3
                 filter_matches(i_filter_mesh) % bins % data(1) = &
-                     mesh_indices_to_bin(m, ijk0)
+                     m % get_bin_from_indices(ijk0)
                 filter_index = 1
                 do k = 1, size(t % filter)
                   filter_index = filter_index + (filter_matches(t % &
@@ -3451,7 +3441,7 @@ contains
                 ijk0(d1) = ijk0(d1) - 1
                 filter_matches(i_filter_surf) % bins % data(1) = d1 * 4
                 filter_matches(i_filter_mesh) % bins % data(1) = &
-                     mesh_indices_to_bin(m, ijk0)
+                     m % get_bin_from_indices(ijk0)
                 filter_index = 1
                 do k = 1, size(t % filter)
                   filter_index = filter_index + (filter_matches(t % &

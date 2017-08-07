@@ -11,7 +11,6 @@ module trigger
   use global
   use string,         only: to_str
   use output,         only: warning, write_message
-  use mesh,           only: bin_to_mesh_indices
   use mesh_header,    only: RegularMesh
   use message_passing, only: master
   use trigger_header, only: TriggerObject
@@ -344,7 +343,7 @@ contains
     do i = 1, n_cells
 
       ! Get the indices for this cell
-      call bin_to_mesh_indices(m, i, ijk)
+      call m % get_indices_from_bin(i, ijk)
       filter_matches(i_filter_mesh) % bins % data(1) = i
 
       do l = 1, n

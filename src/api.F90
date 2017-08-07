@@ -100,7 +100,6 @@ contains
     integer(C_INT) :: err     ! error code
     integer :: j              ! looping variable
     integer :: n              ! number of cell instances
-    integer :: material_ID    ! material associated with cell
     integer :: material_index ! material index in materials array
     integer :: num_nuclides   ! num nuclides in material
     integer :: nuclide_index  ! index of nuclide in nuclides array
@@ -121,15 +120,13 @@ contains
       if (cells(index) % fill /= NONE) then
         err = E_CELL_NO_MATERIAL
       else
-        ! find which material is associated with this cell
+        ! find which material is associated with this cell (material_index
+        ! is the index into the materials array)
         if (present(instance)) then
-          material_ID = cells(index) % material(instance)
+          material_index = cells(index) % material(instance)
         else
-          material_ID = cells(index) % material(1)
+          material_index = cells(index) % material(1)
         end if
-
-        ! index of that material into the materials array
-        material_index = material_dict % get_key(material_ID)
 
         ! number of nuclides associated with this material
         num_nuclides = size(materials(material_index) % nuclide)

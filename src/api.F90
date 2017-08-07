@@ -424,7 +424,7 @@ contains
     if (.not. nuclide_dict % has_key(to_lower(name_))) then
       if (library_dict % has_key(to_lower(name_))) then
         ! allocate extra space in nuclides array
-        n = n_nuclides_total
+        n = n_nuclides
         allocate(new_nuclides(n + 1))
         new_nuclides(1:n) = nuclides(:)
         call move_alloc(FROM=new_nuclides, TO=nuclides)
@@ -446,7 +446,7 @@ contains
 
         ! Add entry to nuclide dictionary
         call nuclide_dict % add_key(to_lower(name_), n)
-        n_nuclides_total = n
+        n_nuclides = n
 
         ! Assign resonant scattering data
         if (res_scat_on) call assign_0K_elastic_scattering(nuclides(n))
@@ -585,7 +585,7 @@ contains
     err = E_UNASSIGNED
     if (index >= 1 .and. index <= size(materials)) then
       associate (m => materials(index))
-        err = m % set_density(density, nuclides)
+        err = m % set_density(density)
       end associate
     else
       err = E_OUT_OF_BOUNDS
@@ -636,10 +636,10 @@ contains
         m % p0(:) = .false.
 
         ! Set total density to the sum of the vector
-        err = m % set_density(sum(density), nuclides)
+        err = m % set_density(sum(density))
 
         ! Assign S(a,b) tables
-        call m % assign_sab_tables(nuclides, sab_tables)
+        call m % assign_sab_tables()
       end associate
     else
       err = E_OUT_OF_BOUNDS

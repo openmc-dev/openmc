@@ -32,7 +32,7 @@ contains
     ! Set verbosity high
     verbosity = 10
 
-    allocate(micro_xs(n_nuclides_total))
+    allocate(micro_xs(n_nuclides))
 
     ! Initialize the particle to be tracked
     call p % initialize()

@@ -51,8 +51,7 @@ contains
     call write_message("Loading cross section data...", 5)
 
     ! Get temperatures
-    call get_temperatures(cells, materials, material_dict, nuclide_dict, &
-                          n_nuclides_total, temps)
+    call get_temperatures(cells, materials, material_dict, temps)
 
     ! Open file for reading
     file_id = file_open(path_cross_sections, 'r', parallel=.true.)
@@ -72,7 +71,7 @@ contains
     end if
 
     ! allocate arrays for MGXS storage and cross section cache
-    allocate(nuclides_MG(n_nuclides_total))
+    allocate(nuclides_MG(n_nuclides))
 
     ! ==========================================================================
     ! READ ALL MGXS CROSS SECTION TABLES

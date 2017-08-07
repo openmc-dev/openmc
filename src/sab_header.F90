@@ -4,7 +4,7 @@ module sab_header
 
   use algorithm, only: find, sort
   use constants
-  use dict_header, only: DictIntInt
+  use dict_header, only: DictIntInt, DictCharInt
   use distribution_univariate, only: Tabular
   use error,       only: warning, fatal_error
   use hdf5, only: HID_T, HSIZE_T, SIZE_T
@@ -77,6 +77,11 @@ module sab_header
   contains
     procedure :: from_hdf5 => salphabeta_from_hdf5
   end type SAlphaBeta
+
+  ! S(a,b) tables
+  type(SAlphaBeta), allocatable, target :: sab_tables(:)
+  integer :: n_sab_tables
+  type(DictCharInt) :: sab_dict
 
 contains
 

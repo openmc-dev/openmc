@@ -7,10 +7,6 @@ module tally_filter
   use global
   use hdf5_interface
   use mesh_header,         only: RegularMesh
-  use mesh,                only: get_mesh_bin, bin_to_mesh_indices, &
-                                 get_mesh_indices, mesh_indices_to_bin, &
-                                 mesh_intersects_1d, mesh_intersects_2d, &
-                                 mesh_intersects_3d
   use particle_header,     only: Particle
   use string,              only: to_str
   use tally_filter_header, only: TallyFilter, TallyFilterContainer, &
@@ -266,7 +262,7 @@ contains
     if (estimator /= ESTIMATOR_TRACKLENGTH) then
       ! If this is an analog or collision tally, then there can only be one
       ! valid mesh bin.
-      call get_mesh_bin(m, p % coord(1) % xyz, bin)
+      call m % get_bin(p % coord(1) % xyz, bin)
       if (bin /= NO_BIN_FOUND) then
         call match % bins % push_back(bin)
         call match % weights % push_back(ONE)
@@ -288,25 +284,13 @@ contains
     xyz1 = p % coord(1) % xyz - TINY_BIT * p % coord(1) % uvw
 
     ! Determine indices for starting and ending location.
-    call get_mesh_indices(m, xyz0, ijk0(:n), start_in_mesh)
-    call get_mesh_indices(m, xyz1, ijk1(:n), end_in_mesh)
+    call m % get_indices(xyz0, ijk0(:n), start_in_mesh)
+    call m % get_indices(xyz1, ijk1(:n), end_in_mesh)
 
     ! If this is the first iteration of the filter loop, check if the track
     ! intersects any part of the mesh.
     if ((.not. start_in_mesh) .and. (.not. end_in_mesh)) then
-      if (n == 1) then
-        if (.not. mesh_intersects_1d(m, xyz0, xyz1)) then
-          return
-        end if
-      else if (n == 2) then
-        if (.not. mesh_intersects_2d(m, xyz0, xyz1)) then
-          return
-        end if
-      else
-        if (.not. mesh_intersects_3d(m, xyz0, xyz1)) then
-          return
-        end if
-      end if
+      if (.not. m % intersects(xyz0, xyz1)) return
     end if
 
     ! ========================================================================
@@ -393,7 +377,7 @@ contains
       end if
 
       ! Assign the next tally bin and the score.
-      bin = mesh_indices_to_bin(m, ijk0(:n))
+      bin = m % get_bin_from_indices(ijk0(:n))
       call match % bins % push_back(bin)
       call match % weights % push_back(distance / total_distance)
 
@@ -440,7 +424,7 @@ contains
 
     m => meshes(this % mesh)
     allocate(ijk(m % n_dimension))
-    call bin_to_mesh_indices(m, bin, ijk)
+    call m % get_indices_from_bin(bin, ijk)
     if (m % n_dimension == 1) then
       label = "Mesh Index (" // trim(to_str(ijk(1))) // ")"
     elseif (m % n_dimension == 2) then

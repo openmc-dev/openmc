@@ -58,7 +58,6 @@ contains
     use error,        only: fatal_error
     use global,       only: cmfd, n_cmfd_tallies, cmfd_tallies, meshes, &
                            filters, filter_matches
-    use mesh,         only: mesh_indices_to_bin
     use mesh_header,  only: RegularMesh
     use string,       only: to_str
     use tally_header, only: TallyObject
@@ -166,7 +165,7 @@ contains
 
                 ! Get bin number for mesh indices
                 filter_matches(i_filter_mesh) % bins % data(1) = &
-                     mesh_indices_to_bin(m,ijk)
+                     m % get_bin_from_indices(ijk)
 
                 ! Apply energy in filter
                 if (energy_filters) then
@@ -217,7 +216,7 @@ contains
 
                   ! Get bin number for mesh indices
                   filter_matches(i_filter_mesh) % bins % data(1) = &
-                       mesh_indices_to_bin(m,ijk)
+                       m % get_bin_from_indices(ijk)
 
                   if (energy_filters) then
                     ! Apply energy in filter
@@ -266,7 +265,7 @@ contains
 
                 ! Get the bin for this mesh cell
                 filter_matches(i_filter_mesh) % bins % data(1) = &
-                     mesh_indices_to_bin(m, (/ i, j, k /))
+                     m % get_bin_from_indices([ i, j, k ])
 
                 score_index = 1
                 do l = 1, size(t % filter)

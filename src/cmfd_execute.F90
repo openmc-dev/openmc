@@ -218,7 +218,7 @@ contains
     use error,       only: warning, fatal_error
     use global,      only: meshes, source_bank, work, n_user_meshes, cmfd
     use mesh_header, only: RegularMesh
-    use mesh,        only: count_bank_sites, get_mesh_indices
+    use mesh,        only: count_bank_sites
     use message_passing
     use string,      only: to_str
 
@@ -295,7 +295,7 @@ contains
     do i = 1, int(work,4)
 
       ! Determine spatial bin
-      call get_mesh_indices(m, source_bank(i) % xyz, ijk, in_mesh)
+      call m % get_indices(source_bank(i) % xyz, ijk, in_mesh)
 
       ! Determine energy bin
       n_groups = size(cmfd % egrid) - 1

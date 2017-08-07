@@ -8,7 +8,6 @@ module physics
   use global
   use material_header,        only: Material
   use math
-  use mesh,                   only: get_mesh_indices
   use message_passing
   use nuclide_header
   use output,                 only: write_message
@@ -1090,7 +1089,7 @@ contains
 
     if (ufs) then
       ! Determine indices on ufs mesh for current location
-      call get_mesh_indices(ufs_mesh, p % coord(1) % xyz, ijk, in_mesh)
+      call ufs_mesh % get_indices(p % coord(1) % xyz, ijk, in_mesh)
       if (.not. in_mesh) then
         call write_particle_restart(p)
         call fatal_error("Source site outside UFS mesh!")

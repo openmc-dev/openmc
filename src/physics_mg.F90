@@ -8,7 +8,6 @@ module physics_mg
   use material_header,        only: Material
   use math,                   only: rotate_angle
   use mgxs_header,            only: Mgxs, MgxsContainer
-  use mesh,                   only: get_mesh_indices
   use message_passing
   use output,                 only: write_message
   use particle_header,        only: Particle
@@ -196,7 +195,7 @@ contains
     if (ufs) then
 
       ! Determine indices on ufs mesh for current location
-      call get_mesh_indices(ufs_mesh, p % coord(1) % xyz, ijk, in_mesh)
+      call ufs_mesh % get_indices(p % coord(1) % xyz, ijk, in_mesh)
 
       if (.not. in_mesh) then
         call write_particle_restart(p)

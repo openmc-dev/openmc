@@ -12,7 +12,6 @@ module output
   use global
   use math,            only: t_percentile
   use mesh_header,     only: RegularMesh
-  use mesh,            only: mesh_indices_to_bin, bin_to_mesh_indices
   use message_passing, only: master, n_procs
   use nuclide_header
   use particle_header, only: LocalCoord, Particle
@@ -1055,7 +1054,7 @@ contains
     do i = 1, n_cells
 
       ! Get the indices for this cell
-      call bin_to_mesh_indices(m, i, ijk)
+      call m % get_indices_from_bin(i, ijk)
       matches(i_filter_mesh) % bins % data(1) = i
 
       ! Write the header for this cell

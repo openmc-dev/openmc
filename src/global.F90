@@ -508,7 +508,6 @@ contains
     ! Deallocate fission and source bank and entropy
 !$omp parallel
     if (allocated(fission_bank)) deallocate(fission_bank)
-    if (allocated(filter_matches)) deallocate(filter_matches)
     if (allocated(tally_derivs)) deallocate(tally_derivs)
 !$omp end parallel
 #ifdef _OPENMP

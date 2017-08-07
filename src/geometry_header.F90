@@ -4,7 +4,9 @@ module geometry_header
   use constants,       only: HALF, TWO, THREE, INFINITY, K_BOLTZMANN, &
                              MATERIAL_VOID, NONE
   use dict_header,     only: DictCharInt, DictIntInt
+  use nuclide_header
   use material_header, only: Material
+  use sab_header
   use stl_vector,      only: VectorReal
   use string,          only: to_lower
 
@@ -330,16 +332,12 @@ contains
 ! temperatures to read (which may be different if interpolation is used)
 !===============================================================================
 
-  subroutine get_temperatures(cells, materials, material_dict, nuclide_dict, &
-                              n_nucs, nuc_temps, sab_dict, n_sabs, sab_temps)
+  subroutine get_temperatures(cells, materials, material_dict, &
+                              nuc_temps, sab_temps)
     type(Cell),                  allocatable, intent(in)  :: cells(:)
     type(Material),              allocatable, intent(in)  :: materials(:)
     type(DictIntInt),                         intent(in)  :: material_dict
-    type(DictCharInt),                        intent(in)  :: nuclide_dict
-    integer,                                  intent(in)  :: n_nucs
     type(VectorReal),            allocatable, intent(out) :: nuc_temps(:)
-    type(DictCharInt), optional,              intent(in)  :: sab_dict
-    integer,           optional,              intent(in)  :: n_sabs
     type(VectorReal),  optional, allocatable, intent(out) :: sab_temps(:)
 
     integer :: i, j, k
@@ -348,8 +346,8 @@ contains
     integer :: i_material
     real(8) :: temperature  ! temperature in Kelvin
 
-    allocate(nuc_temps(n_nucs))
-    if (present(n_sabs) .and. present(sab_temps)) allocate(sab_temps(n_sabs))
+    allocate(nuc_temps(n_nuclides))
+    if (present(sab_temps)) allocate(sab_temps(n_sab_tables))
 
     do i = 1, size(cells)
       do j = 1, size(cells(i) % material)
@@ -376,8 +374,7 @@ contains
             end if
           end do NUC_NAMES_LOOP
 
-          if (present(sab_temps) .and. present(sab_dict) .and. &
-               mat % n_sab > 0) then
+          if (present(sab_temps) .and. mat % n_sab > 0) then
             SAB_NAMES_LOOP: do k = 1, size(mat % sab_names)
               ! Get index in nuc_temps array
               i_sab = sab_dict % get_key(to_lower(mat % sab_names(k)))

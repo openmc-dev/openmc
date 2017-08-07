@@ -2187,9 +2187,7 @@ contains
     call assign_temperatures(material_temps)
 
     ! Determine desired temperatures for each nuclide and S(a,b) table
-    call get_temperatures(cells, materials, material_dict, nuclide_dict, &
-                          n_nuclides_total, nuc_temps, sab_dict, &
-                          n_sab_tables, sab_temps)
+    call get_temperatures(cells, materials, material_dict, nuc_temps, sab_temps)
 
     ! Read continuous-energy cross sections
     if (run_CE .and. run_mode /= MODE_PLOTTING) then
@@ -2617,8 +2615,8 @@ contains
     end do
 
     ! Set total number of nuclides and S(a,b) tables
-    n_nuclides_total = index_nuclide
-    n_sab_tables     = index_sab
+    n_nuclides = index_nuclide
+    n_sab_tables = index_sab
 
     ! Close materials XML file
     call doc % clear()
@@ -3464,15 +3462,15 @@ contains
 
         if (trim(sarray(1)) == 'all') then
           ! Handle special case <nuclides>all</nuclides>
-          allocate(t % nuclide_bins(n_nuclides_total + 1))
+          allocate(t % nuclide_bins(n_nuclides + 1))
 
-          ! Set bins to 1, 2, 3, ..., n_nuclides_total, -1
-          t % nuclide_bins(1:n_nuclides_total) = &
-               (/ (j, j=1, n_nuclides_total) /)
-          t % nuclide_bins(n_nuclides_total + 1) = -1
+          ! Set bins to 1, 2, 3, ..., n_nuclides, -1
+          t % nuclide_bins(1:n_nuclides) = &
+               (/ (j, j=1, n_nuclides) /)
+          t % nuclide_bins(n_nuclides + 1) = -1
 
           ! Set number of nuclide bins
-          t % n_nuclide_bins = n_nuclides_total + 1
+          t % n_nuclide_bins = n_nuclides + 1
 
           ! Set flag so we can treat this case specially
           t % all_nuclides = .true.
@@ -5183,7 +5181,7 @@ contains
     character(MAX_WORD_LEN) :: name
     type(SetChar) :: already_read
 
-    allocate(nuclides(n_nuclides_total))
+    allocate(nuclides(n_nuclides))
     allocate(sab_tables(n_sab_tables))
 
     ! Read cross sections
@@ -5275,7 +5273,7 @@ contains
       end do
 
       ! Associate S(a,b) tables with specific nuclides
-      call materials(i) % assign_sab_tables(nuclides, sab_tables)
+      call materials(i) % assign_sab_tables()
     end do
 
     ! Show which nuclide results in lowest energy for neutron transport

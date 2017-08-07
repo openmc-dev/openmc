@@ -370,7 +370,7 @@ contains
   subroutine initialize_simulation()
 
 !$omp parallel
-    allocate(micro_xs(n_nuclides_total))
+    allocate(micro_xs(n_nuclides))
 
     ! Allocate array for matching filter bins
     allocate(filter_matches(n_filters))

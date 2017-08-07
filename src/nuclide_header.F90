@@ -7,7 +7,7 @@ module nuclide_header
 
   use algorithm, only: sort, find
   use constants
-  use dict_header, only: DictIntInt
+  use dict_header, only: DictIntInt, DictCharInt
   use endf,        only: reaction_name, is_fission, is_disappearance
   use endf_header, only: Function1D, Polynomial, Tabulated1D
   use error,       only: fatal_error, warning
@@ -157,7 +157,20 @@ module nuclide_header
     character(MAX_FILE_LEN) :: path
   end type Library
 
-  contains
+  ! Cross section libraries
+  type(Library), allocatable :: libraries(:)
+  type(DictCharInt) :: library_dict
+
+  ! Nuclear data for each nuclide
+  type(Nuclide), allocatable, target :: nuclides(:)
+  integer(C_INT), bind(C) :: n_nuclides
+  type(DictCharInt) :: nuclide_dict
+
+  ! Minimum/maximum energies
+  real(8) :: energy_min_neutron = ZERO
+  real(8) :: energy_max_neutron = INFINITY
+
+contains
 
 !===============================================================================
 ! NUCLIDE_CLEAR resets and deallocates data in Nuclide

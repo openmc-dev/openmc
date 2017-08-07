@@ -2,8 +2,8 @@ module material_header
 
   use constants
   use error
-  use nuclide_header, only: Nuclide
-  use sab_header, only: SAlphaBeta
+  use nuclide_header
+  use sab_header
   use stl_vector, only: VectorReal, VectorInt
   use string, only: to_str
 
@@ -57,10 +57,9 @@ contains
 ! MATERIAL_SET_DENSITY sets the total density of a material in atom/b-cm.
 !===============================================================================
 
-  function material_set_density(m, density, nuclides) result(err)
+  function material_set_density(m, density) result(err)
     class(Material), intent(inout) :: m
     real(8), intent(in) :: density
-    type(Nuclide), intent(in) :: nuclides(:)
     integer :: err
 
     integer :: i
@@ -95,10 +94,8 @@ contains
 ! materials so the code knows when to apply bound thermal scattering data
 !===============================================================================
 
-  subroutine material_assign_sab_tables(this, nuclides, sab_tables)
+  subroutine material_assign_sab_tables(this)
     class(Material), intent(inout) :: this
-    type(Nuclide), intent(in) :: nuclides(:)
-    type(SAlphaBeta), intent(in) :: sab_tables(:)
 
     integer :: j            ! index over nuclides in material
     integer :: k            ! index over S(a,b) tables in material

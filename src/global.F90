@@ -14,9 +14,7 @@ module global
   use material_header,  only: Material
   use mesh_header,      only: RegularMesh
   use mgxs_header,      only: Mgxs, MgxsContainer
-  use nuclide_header
   use plot_header,      only: ObjectPlot
-  use sab_header,       only: SAlphaBeta
   use set_header,       only: SetInt
   use stl_vector,       only: VectorInt
   use surface_header,   only: SurfaceContainer
@@ -26,6 +24,10 @@ module global
   use trigger_header,   only: KTrigger
   use timer_header,     only: Timer
   use volume_header,    only: VolumeCalculation
+
+  ! Inherit module variables from nuclide/S(a,b) modules
+  use nuclide_header
+  use sab_header
 
   implicit none
 
@@ -70,38 +72,12 @@ module global
   ! ENERGY TREATMENT RELATED VARIABLES
   logical :: run_CE = .true.  ! Run in CE mode?
 
-  ! ============================================================================
-  ! CROSS SECTION RELATED VARIABLES NEEDED REGARDLESS OF CE OR MG
-
-  ! Number of nuclide cross section tables
-  integer(C_INT), bind(C, name='n_nuclides') :: n_nuclides_total
-
   ! Cross section caches
   type(NuclideMicroXS), allocatable :: micro_xs(:)  ! Cache for each nuclide
   type(MaterialMacroXS)             :: material_xs  ! Cache for current material
 
-  ! Dictionaries to look up cross sections and listings
-  type(DictCharInt) :: nuclide_dict
-  type(DictCharInt) :: library_dict
-
-  ! Cross section libraries
-  type(Library), allocatable :: libraries(:)
-
   ! ============================================================================
   ! CONTINUOUS-ENERGY CROSS SECTION RELATED VARIABLES
-
-  ! Cross section arrays
-  type(Nuclide), allocatable, target :: nuclides(:)    ! Nuclide cross-sections
-  type(SAlphaBeta), allocatable, target :: sab_tables(:)  ! S(a,b) tables
-
-  integer :: n_sab_tables     ! Number of S(a,b) thermal scattering tables
-
-  ! Minimum/maximum energies
-  real(8) :: energy_min_neutron = ZERO
-  real(8) :: energy_max_neutron = INFINITY
-
-  ! Dictionaries to look up cross sections and listings
-  type(DictCharInt) :: sab_dict
 
   ! Unreoslved resonance probablity tables
   logical :: urr_ptables_on = .true.

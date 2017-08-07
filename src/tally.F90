@@ -2205,7 +2205,7 @@ contains
     atom_density = ZERO
 
     ! Determine score for each bin
-    call score_general(p, t, n_nuclides_total*t % n_score_bins, filter_index, &
+    call score_general(p, t, n_nuclides*t % n_score_bins, filter_index, &
          i_nuclide, atom_density, flux)
 
   end subroutine score_all_nuclides
@@ -2300,7 +2300,7 @@ contains
             elseif (k == p % event_nuclide + 1) then
               ! After we've tallied the individual nuclide bin, we also need
               ! to contribute to the total material bin which is the last bin
-              k = n_nuclides_total + 1
+              k = n_nuclides + 1
             else
               ! After we've tallied in both the individual nuclide bin and the
               ! total material bin, we're done

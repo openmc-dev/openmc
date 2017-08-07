@@ -914,8 +914,6 @@ contains
       n = this % n_bins
 
       if ((.not. run_CE) .and. this % matches_transport_groups) then
-        call match % bins % push_back(p % g)
-
         ! Tallies are ordered in increasing groups, group indices
         ! however are the opposite, so switch
         call match % bins % push_back(num_energy_groups - p % g + 1)

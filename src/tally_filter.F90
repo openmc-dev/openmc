@@ -846,6 +846,7 @@ contains
     type(TallyFilterMatch),   intent(inout) :: match
 
     integer :: n
+    integer :: bin
     real(8) :: E
 
       n = this % n_bins
@@ -867,9 +868,12 @@ contains
           E = p % last_E
         end if
 
-          ! Search to find incoming energy bin.
-          call match % bins % push_back(binary_search(this % bins, n + 1, E))
+        ! Search to find incoming energy bin.
+        bin = binary_search(this % bins, n + 1, E)
+        if (bin /= NO_BIN_FOUND) then
+          call match % bins % push_back(bin)
           call match % weights % push_back(ONE)
+        end if
       end if
   end subroutine get_all_bins_energy
 
@@ -905,6 +909,7 @@ contains
     type(TallyFilterMatch),      intent(inout) :: match
 
     integer :: n
+    integer :: bin
 
       n = this % n_bins
 
@@ -919,8 +924,11 @@ contains
       else
 
         ! Search to find incoming energy bin.
-        call match % bins % push_back(binary_search(this % bins, n + 1, p % E))
-        call match % weights % push_back(ONE)
+        bin = binary_search(this % bins, n + 1, p % E)
+        if (bin /= NO_BIN_FOUND) then
+          call match % bins % push_back(bin)
+          call match % weights % push_back(ONE)
+        end if
       end if
   end subroutine get_all_bins_energyout
 
@@ -986,12 +994,16 @@ contains
     type(TallyFilterMatch), intent(inout) :: match
 
     integer :: n
+    integer :: bin
 
-      n = this % n_bins
+    n = this % n_bins
 
-      ! Search to find incoming energy bin.
-      call match % bins % push_back(binary_search(this % bins, n + 1, p % mu))
+    ! Search to find incoming energy bin.
+    bin = binary_search(this % bins, n + 1, p % mu)
+    if (bin /= NO_BIN_FOUND) then
+      call match % bins % push_back(bin)
       call match % weights % push_back(ONE)
+    end if
   end subroutine get_all_bins_mu
 
   subroutine to_statepoint_mu(this, filter_group)
@@ -1026,6 +1038,7 @@ contains
     type(TallyFilterMatch),  intent(inout) :: match
 
     integer :: n
+    integer :: bin
     real(8) :: theta
 
     n = this % n_bins
@@ -1038,8 +1051,11 @@ contains
     end if
 
     ! Search to find polar angle bin.
-    call match % bins % push_back(binary_search(this % bins, n + 1, theta))
-    call match % weights % push_back(ONE)
+    bin = binary_search(this % bins, n + 1, theta)
+    if (bin /= NO_BIN_FOUND) then
+      call match % bins % push_back(bin)
+      call match % weights % push_back(ONE)
+    end if
   end subroutine get_all_bins_polar
 
   subroutine to_statepoint_polar(this, filter_group)
@@ -1074,20 +1090,24 @@ contains
     type(TallyFilterMatch),      intent(inout) :: match
 
     integer :: n
+    integer :: bin
     real(8) :: phi
 
-      n = this % n_bins
+    n = this % n_bins
 
-      ! Make sure the correct direction vector is used.
-      if (estimator == ESTIMATOR_TRACKLENGTH) then
-        phi = atan2(p % coord(1) % uvw(2), p % coord(1) % uvw(1))
-      else
-        phi = atan2(p % last_uvw(2), p % last_uvw(1))
-      end if
+    ! Make sure the correct direction vector is used.
+    if (estimator == ESTIMATOR_TRACKLENGTH) then
+      phi = atan2(p % coord(1) % uvw(2), p % coord(1) % uvw(1))
+    else
+      phi = atan2(p % last_uvw(2), p % last_uvw(1))
+    end if
 
-      ! Search to find azimuthal angle bin.
-      call match % bins % push_back(binary_search(this % bins, n + 1, phi))
+    ! Search to find azimuthal angle bin.
+    bin = binary_search(this % bins, n + 1, phi)
+    if (bin /= NO_BIN_FOUND) then
+      call match % bins % push_back(bin)
       call match % weights % push_back(ONE)
+    end if
 
   end subroutine get_all_bins_azimuthal
 

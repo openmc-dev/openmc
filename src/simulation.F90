@@ -371,6 +371,9 @@ contains
 
 !$omp parallel
     allocate(micro_xs(n_nuclides_total))
+
+    ! Allocate array for matching filter bins
+    allocate(filter_matches(n_filters))
 !$omp end parallel
 
     if (.not. restart_run) call initialize_source()
@@ -403,7 +406,7 @@ contains
 #endif
 
 !$omp parallel
-    deallocate(micro_xs)
+    deallocate(micro_xs, filter_matches)
 !$omp end parallel
 
     ! Increment total number of generations

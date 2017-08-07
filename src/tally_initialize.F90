@@ -67,11 +67,6 @@ contains
 
     end do TALLY_LOOP
 
-    ! Allocate array for matching filter bins
-!$omp parallel
-    allocate(filter_matches(n_filters))
-!$omp end parallel
-
   end subroutine setup_tally_arrays
 
 !===============================================================================

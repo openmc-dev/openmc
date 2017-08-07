@@ -230,9 +230,11 @@ contains
                                                 !  the first intersection.
 
     integer :: j                    ! loop index for direction
+    integer :: n
     integer :: ijk0(3)              ! indices of starting coordinates
     integer :: ijk1(3)              ! indices of ending coordinates
     integer :: search_iter          ! loop count for intersection search
+    integer :: bin
     real(8) :: weight               ! weight to be pushed back
     real(8) :: uvw(3)               ! cosine of angle of particle
     real(8) :: xyz0(3)              ! starting/intermediate coordinates
@@ -249,52 +251,87 @@ contains
 
     ! Get a pointer to the mesh.
     m => meshes(this % mesh)
+    n = m % n_dimension
 
     if (estimator /= ESTIMATOR_TRACKLENGTH) then
       ! If this is an analog or collision tally, then there can only be one
       ! valid mesh bin.
-        call match % bins % push_back(1)
+      call get_mesh_bin(m, p % coord(1) % xyz, bin)
+      if (bin /= NO_BIN_FOUND) then
+        call match % bins % push_back(bin)
         call match % weights % push_back(ONE)
+      end if
+      return
+    end if
 
-    else
-      ! A track can span multiple mesh bins so we need to handle a lot of
-      ! intersection logic for tracklength tallies.
+    ! A track can span multiple mesh bins so we need to handle a lot of
+    ! intersection logic for tracklength tallies.
 
-      ! ========================================================================
-      ! Determine if the track intersects the tally mesh.
+    ! ========================================================================
+    ! Determine if the track intersects the tally mesh.
 
-      ! Copy the starting and ending coordinates of the particle.  Offset these
-      ! just a bit for the purposes of determining if there was an intersection
-      ! in case the mesh surfaces coincide with lattice/geometric surfaces which
-      ! might produce finite-precision errors.
-      xyz0 = p % last_xyz + TINY_BIT * p % coord(1) % uvw
-      xyz1 = p % coord(1) % xyz - TINY_BIT * p % coord(1) % uvw
+    ! Copy the starting and ending coordinates of the particle.  Offset these
+    ! just a bit for the purposes of determining if there was an intersection
+    ! in case the mesh surfaces coincide with lattice/geometric surfaces which
+    ! might produce finite-precision errors.
+    xyz0 = p % last_xyz + TINY_BIT * p % coord(1) % uvw
+    xyz1 = p % coord(1) % xyz - TINY_BIT * p % coord(1) % uvw
 
-      ! Determine indices for starting and ending location.
-      call get_mesh_indices(m, xyz0, ijk0(:m % n_dimension), start_in_mesh)
-      call get_mesh_indices(m, xyz1, ijk1(:m % n_dimension), end_in_mesh)
+    ! Determine indices for starting and ending location.
+    call get_mesh_indices(m, xyz0, ijk0(:n), start_in_mesh)
+    call get_mesh_indices(m, xyz1, ijk1(:n), end_in_mesh)
 
-      ! ========================================================================
-      ! Figure out which mesh cell to tally.
+    ! If this is the first iteration of the filter loop, check if the track
+    ! intersects any part of the mesh.
+    if ((.not. start_in_mesh) .and. (.not. end_in_mesh)) then
+      if (n == 1) then
+        if (.not. mesh_intersects_1d(m, xyz0, xyz1)) then
+          return
+        end if
+      else if (n == 2) then
+        if (.not. mesh_intersects_2d(m, xyz0, xyz1)) then
+          return
+        end if
+      else
+        if (.not. mesh_intersects_3d(m, xyz0, xyz1)) then
+          return
+        end if
+      end if
+    end if
 
-      ! Copy the un-modified coordinates the particle direction.
-      xyz0 = p % last_xyz
-      xyz1 = p % coord(1) % xyz
-      uvw = p % coord(1) % uvw
+    ! ========================================================================
+    ! Figure out which mesh cell to tally.
 
-      ! Compute the length of the entire track.
-      total_distance = sqrt(sum((xyz1 - xyz0)**2))
+    ! Copy the un-modified coordinates the particle direction.
+    xyz0 = p % last_xyz
+    xyz1 = p % coord(1) % xyz
+    uvw = p % coord(1) % uvw
 
-        ! We have already scored some mesh bins for this track.  Pick up where
-        ! we left off and find the next mesh cell that the particle enters.
+    ! Compute the length of the entire track.
+    total_distance = sqrt(sum((xyz1 - xyz0)**2))
 
-        ! Get the indices to the last bin we scored.
-        call bin_to_mesh_indices(m, 1, ijk0(:m % n_dimension))
+    ! We are looking for the first valid mesh bin.  Check to see if the
+    ! particle starts inside the mesh.
+    if (any(ijk0(:n) < 1) .or. any(ijk0(:n) > m % dimension)) then
+      ! The particle does not start in the mesh.  Note that we nudged the
+      ! start and end coordinates by a TINY_BIT each so we will have
+      ! difficulty resolving tracks that are less than 2*TINY_BIT in length.
+      ! If the track is that short, it is also insignificant so we can
+      ! safely ignore it in the tallies.
+      if (total_distance < 2*TINY_BIT) return
 
-        ! Figure out which face of the previous mesh cell our track exits, i.e.
-        ! the closest surface of that cell for which
-        ! dot(p % uvw, face_normal) > 0.
-        do j = 1, m % n_dimension
+      ! The particle does not start in the mesh so keep iterating the ijk0
+      ! indices to cross the nearest mesh surface until we've found a valid
+      ! bin.  MAX_SEARCH_ITER prevents an infinite loop.
+      search_iter = 0
+      do while (any(ijk0(:n) < 1) .or. any(ijk0(:n) > m % dimension))
+        if (search_iter == MAX_SEARCH_ITER) then
+          call warning("Failed to find a mesh intersection on a tally mesh &
+               &filter.")
+          return
+        end if
+
+        do j = 1, n
           if (abs(uvw(j)) < FP_PRECISION) then
             d(j) = INFINITY
           else if (uvw(j) > 0) then
@@ -305,32 +342,32 @@ contains
             d(j) = (xyz_cross - xyz0(j)) / uvw(j)
           end if
         end do
-        j = minloc(d(:m % n_dimension), 1)
-
-        ! Translate the starting coordintes by the distance to that face. This
-        ! should be the xyz that we computed the distance to in the last
-        ! iteration of the filter loop.
-        distance = d(j)
-        xyz0 = xyz0 + distance * uvw
-
-        ! Increment the indices into the next mesh cell.
+        j = minloc(d(:n), 1)
         if (uvw(j) > ZERO) then
           ijk0(j) = ijk0(j) + 1
         else
           ijk0(j) = ijk0(j) - 1
         end if
 
+        search_iter = search_iter + 1
+      end do
+      distance = d(j)
+      xyz0 = xyz0 + distance * uvw
+    end if
+
+    do
       ! ========================================================================
       ! Compute the length of the track segment in the appropiate mesh cell and
       ! return.
 
-      if (all(ijk0(:m % n_dimension) == ijk1(:m % n_dimension))) then
+      if (all(ijk0(:n) == ijk1(:n))) then
         ! The track ends in this cell.  Use the particle end location rather
         ! than the mesh surface.
         distance = sqrt(sum((xyz1 - xyz0)**2))
       else
-        ! The track exits this cell.  Use the distance to the mesh surface.
-        do j = 1, m % n_dimension
+        ! The track exits this cell.  Determine the distance to the closest mesh
+        ! surface.
+        do j = 1, n
           if (abs(uvw(j)) < FP_PRECISION) then
             d(j) = INFINITY
           else if (uvw(j) > 0) then
@@ -341,14 +378,37 @@ contains
             d(j) = (xyz_cross - xyz0(j)) / uvw(j)
           end if
         end do
-        distance = minval(d(:m % n_dimension))
+        j = minloc(d(:n), 1)
+        distance = d(j)
       end if
 
       ! Assign the next tally bin and the score.
-      call match % bins % push_back(mesh_indices_to_bin(m, ijk0(:m % n_dimension)))
-      weight = distance / total_distance
-      call match % weights % push_back(weight)
-    end if
+      bin = mesh_indices_to_bin(m, ijk0(:n))
+      call match % bins % push_back(bin)
+      call match % weights % push_back(distance / total_distance)
+
+      ! Find the next mesh cell that the particle enters.
+
+      ! If the particle track ends in that bin, then we are done.
+      if (all(ijk0(:n) == ijk1(:n))) exit
+
+      ! Translate the starting coordintes by the distance to that face. This
+      ! should be the xyz that we computed the distance to in the last
+      ! iteration of the filter loop.
+      xyz0 = xyz0 + distance * uvw
+
+      ! Increment the indices into the next mesh cell.
+      if (uvw(j) > ZERO) then
+        ijk0(j) = ijk0(j) + 1
+      else
+        ijk0(j) = ijk0(j) - 1
+      end if
+
+      ! If the next indices are invalid, then the track has left the mesh and
+      ! we are done.
+      if (any(ijk0(:n) < 1) .or. any(ijk0(:n) > m % dimension)) exit
+    end do
+
   end subroutine get_all_bins_mesh
 
   subroutine to_statepoint_mesh(this, filter_group)

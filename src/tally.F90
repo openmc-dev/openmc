@@ -2292,8 +2292,8 @@ contains
         if (.not. filter_matches(i_filt) % bins_present) then
           call filter_matches(i_filt) % bins % clear()
           call filter_matches(i_filt) % weights % clear()
-            call filters(i_filt) % obj % get_all_bins(p, t % estimator, &
-                 filter_matches(i_filt))
+          call filters(i_filt) % obj % get_all_bins(p, t % estimator, &
+               filter_matches(i_filt))
           filter_matches(i_filt) % bins_present = .true.
         end if
         ! If there are no valid bins for this filter, then there is nothing to
@@ -2447,7 +2447,7 @@ contains
           call filter_matches(i_filt) % bins % clear()
           call filter_matches(i_filt) % weights % clear()
           call filters(i_filt) % obj % get_all_bins(p, t % estimator, &
-                 filter_matches(i_filt))
+               filter_matches(i_filt))
           filter_matches(i_filt) % bins_present = .true.
         end if
         ! If there are no valid bins for this filter, then there is nothing to
@@ -2826,7 +2826,7 @@ contains
           call filter_matches(i_filt) % bins % clear()
           call filter_matches(i_filt) % weights % clear()
           call filters(i_filt) % obj % get_all_bins(p, t % estimator, &
-                 filter_matches(i_filt))
+               filter_matches(i_filt))
           filter_matches(i_filt) % bins_present = .true.
         end if
         ! If there are no valid bins for this filter, then there is nothing to
@@ -2996,7 +2996,7 @@ contains
           call filter_matches(i_filt) % bins % clear()
           call filter_matches(i_filt) % weights % clear()
           call filters(i_filt) % obj % get_all_bins(p, t % estimator, &
-                 filter_matches(i_filt))
+               filter_matches(i_filt))
         end if
         ! If there are no valid bins for this filter, then there is nothing to
         ! score and we can move on to the next tally.

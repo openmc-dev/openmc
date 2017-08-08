@@ -10,7 +10,32 @@ module geometry
   use stl_vector,             only: VectorInt
   use string,                 only: to_str
 
+  use, intrinsic :: ISO_C_BINDING
+
   implicit none
+
+  interface
+    function surface_sense_c(surf_ind, xyz, uvw) &
+         bind(C, name='surface_sense') result(sense)
+      use ISO_C_BINDING
+      implicit none
+      integer(C_INT), value :: surf_ind;
+      real(C_DOUBLE) :: xyz(3);
+      real(C_DOUBLE) :: uvw(3);
+      logical(C_BOOL) :: sense;
+    end function surface_sense_c
+
+    function surface_distance_c(surf_ind, xyz, uvw, coincident) &
+         bind(C, name='surface_distance') result(d)
+      use ISO_C_BINDING
+      implicit none
+      integer(C_INT), value :: surf_ind;
+      real(C_DOUBLE) :: xyz(3);
+      real(C_DOUBLE) :: uvw(3);
+      logical(C_BOOL), value :: coincident;
+      real(C_DOUBLE) :: d;
+    end function surface_distance_c
+  end interface
 
 contains
 
@@ -28,7 +53,8 @@ contains
 ! expression using a stack, similar to how a RPN calculator would work.
 !===============================================================================
 
-  pure function cell_contains(c, p) result(in_cell)
+  !pure function cell_contains(c, p) result(in_cell)
+  function cell_contains(c, p) result(in_cell)
     type(Cell), intent(in) :: c
     type(Particle), intent(in) :: p
     logical :: in_cell
@@ -40,7 +66,8 @@ contains
     end if
   end function cell_contains
 
-  pure function simple_cell_contains(c, p) result(in_cell)
+  !pure function simple_cell_contains(c, p) result(in_cell)
+  function simple_cell_contains(c, p) result(in_cell)
     type(Cell), intent(in) :: c
     type(Particle), intent(in) :: p
     logical :: in_cell
@@ -48,6 +75,7 @@ contains
     integer :: i
     integer :: token
     logical :: actual_sense    ! sense of particle wrt surface
+    logical :: alt_sense
 
     in_cell = .true.
     do i = 1, size(c%rpn)
@@ -65,6 +93,15 @@ contains
         else
           actual_sense = surfaces(abs(token))%obj%sense(&
                p%coord(p%n_coord)%xyz, p%coord(p%n_coord)%uvw)
+          alt_sense = surface_sense_c(abs(token)-1, &
+               p%coord(p%n_coord)%xyz, p%coord(p%n_coord)%uvw)
+          if (actual_sense .neqv. alt_sense) then
+            write(*, *) surfaces(abs(token)) % obj % id
+            write(*, *) p % coord (p % n_coord) % xyz
+            write(*, *) p % coord (p % n_coord) % uvw
+            write(*, *) actual_sense, alt_sense
+            call fatal_error("")
+          end if
           if (actual_sense .neqv. (token > 0)) then
             in_cell = .false.
             exit
@@ -484,6 +521,7 @@ contains
     type(Cell),       pointer :: c
     class(Surface),   pointer :: surf
     class(Lattice),   pointer :: lat
+    real(8) :: d_alt
 
     ! inialize distance to infinity (huge)
     dist = INFINITY
@@ -519,6 +557,11 @@ contains
         ! Calculate distance to surface
         surf => surfaces(index_surf) % obj
         d = surf % distance(p % coord(j) % xyz, p % coord(j) % uvw, coincident)
+        d_alt = surface_distance_c(index_surf-1, p % coord(j) % xyz, &
+             p % coord(j) % uvw, logical(coincident, kind=C_BOOL))
+        if (d /= d_alt) then
+          write(*, *) d, d_alt
+        end if
 
         ! Check if calculated distance is new minimum
         if (d < d_surf) then

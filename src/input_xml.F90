@@ -48,6 +48,14 @@ module input_xml
   implicit none
   save
 
+  interface
+    subroutine read_surfaces(node_ptr) bind(C, name='read_surfaces')
+      use ISO_C_BINDING
+      implicit none
+      type(C_PTR) :: node_ptr
+    end subroutine read_surfaces
+  end interface 
+
 contains
 
 !===============================================================================
@@ -966,6 +974,7 @@ contains
 
     ! get pointer to list of xml <surface>
     call get_node_list(root, "surface", node_surf_list)
+    call read_surfaces(root % ptr)
 
     ! Get number of <surface> tags
     n_surfaces = size(node_surf_list)

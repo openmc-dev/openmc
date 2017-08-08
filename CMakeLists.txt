@@ -436,7 +436,10 @@ set(LIBOPENMC_FORTRAN_SRC
 )
 set(LIBOPENMC_CXX_SRC
   src/random_lcg.h
-  src/random_lcg.cpp)
+  src/random_lcg.cpp
+  src/surface_header.C
+  src/pugixml/pugixml.hpp
+  src/pugixml/pugixml.cpp)
 add_library(libopenmc SHARED ${LIBOPENMC_FORTRAN_SRC} ${LIBOPENMC_CXX_SRC})
 set_target_properties(libopenmc PROPERTIES OUTPUT_NAME openmc)
 add_executable(${program} src/main.F90)

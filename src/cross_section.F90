@@ -356,7 +356,7 @@ contains
 
             select case(URR_realization_frequency)
             case (URR_EVENT)
-              call tope % new_realization_otf_xs( E, &
+              call tope % new_realization_otf_xs(E, &
                    nuc % kTs(i_temp) / K_BOLTZMANN, xs_in, URR_xs)
 
             case (URR_HISTORY)
@@ -374,9 +374,8 @@ contains
 
             end select
 
-          else if (tope % point_urr_xs) then !TODO break out a new pointwise_xs subroutine
-            call tope % new_realization_otf_xs(E,&
-                 nuc % kTs(i_temp) / K_BOLTZMANN, xs_in, URR_xs)
+          else if (tope % point_urr_xs) then
+            call tope % pointwise_xs(E, nuc % kTs(i_temp) / K_BOLTZMANN, xs_in, URR_xs)
 
           else
             call fatal_error('No allowed URR treatment for URR_isotope object')

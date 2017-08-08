@@ -457,7 +457,7 @@ contains
     do i = 1, p % n_coord
       if (this % map % has_key(p % coord(i) % universe)) then
         call match % bins % push_back(this % map % get_key(p % coord(i) &
-          % universe))
+             % universe))
         call match % weights % push_back(ONE)
       end if
     end do

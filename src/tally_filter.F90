@@ -72,6 +72,17 @@ module tally_filter
   end type CellFilter
 
 !===============================================================================
+! CELLFROMFILTER specifies which geometric cells particles exit when crossing a
+! surface.
+!===============================================================================
+  type, extends(CellFilter) :: CellFromFilter
+  contains
+    procedure :: get_next_bin => get_next_bin_cell_from
+    procedure :: to_statepoint => to_statepoint_cell_from
+    procedure :: text_label => text_label_cell_from
+  end type CellFromFilter
+
+!===============================================================================
 ! DISTRIBCELLFILTER specifies which distributed geometric cells tally events
 ! reside in.
 !===============================================================================
@@ -98,8 +109,7 @@ module tally_filter
   end type CellbornFilter
 
 !===============================================================================
-! SURFACEFILTER is currently not implemented for usual geometric surfaces, but
-! it is used as a placeholder for mesh surfaces used in current tallies.
+! SURFACEFILTER specifies which surface particles are crossing
 !===============================================================================
   type, extends(TallyFilter) :: SurfaceFilter
     integer, allocatable :: surfaces(:)
@@ -718,6 +728,70 @@ contains
   end function text_label_cell
 
 !===============================================================================
+! CellFromFilter methods
+!===============================================================================
+  subroutine get_next_bin_cell_from(this, p, estimator, current_bin, &
+        next_bin, weight)
+    class(CellFromFilter), intent(in)  :: this
+    type(Particle),    intent(in)  :: p
+    integer,           intent(in)  :: estimator
+    integer, value,    intent(in)  :: current_bin
+    integer,           intent(out) :: next_bin
+    real(8),           intent(out) :: weight
+
+    integer :: i, start
+
+    ! Find the coordinate level of the last bin we found.
+    if (current_bin == NO_BIN_FOUND) then
+      start = 1
+    else
+      do i = 1, p % last_n_coord
+        if (p % last_cell(i) == this % cells(current_bin)) then
+          start = i + 1
+          exit
+        end if
+      end do
+    end if
+
+    ! Starting one coordinate level deeper, find the next bin.
+    next_bin = NO_BIN_FOUND
+    weight = ERROR_REAL
+    do i = start, p % last_n_coord
+      if (this % map % has_key(p % last_cell(i))) then
+        next_bin = this % map % get_key(p % last_cell(i))
+        weight = ONE
+        exit
+      end if
+    end do
+
+  end subroutine get_next_bin_cell_from
+
+  subroutine to_statepoint_cell_from(this, filter_group)
+    class(CellFromFilter), intent(in) :: this
+    integer(HID_T),        intent(in) :: filter_group
+
+    integer :: i
+    integer, allocatable :: cell_ids(:)
+
+    call write_dataset(filter_group, "type", "cellfrom")
+    call write_dataset(filter_group, "n_bins", this % n_bins)
+
+    allocate(cell_ids(size(this % cells)))
+    do i = 1, size(this % cells)
+      cell_ids(i) = cells(this % cells(i)) % id
+    end do
+    call write_dataset(filter_group, "bins", cell_ids)
+  end subroutine to_statepoint_cell_from
+
+  function text_label_cell_from(this, bin) result(label)
+    class(CellFromFilter), intent(in) :: this
+    integer,               intent(in) :: bin
+    character(MAX_LINE_LEN)           :: label
+
+    label = "Cell from " // to_str(cells(this % cells(bin)) % id)
+  end function text_label_cell_from
+
+!===============================================================================
 ! DistribcellFilter methods
 !===============================================================================
   subroutine get_next_bin_distribcell(this, p, estimator, current_bin, &
@@ -887,9 +961,9 @@ contains
     weight = ERROR_REAL
     if (current_bin == NO_BIN_FOUND) then
       do i = 1, this % n_bins
-        if (p % surface == this % surfaces(i)) then
+        if (abs(p % surface) == this % surfaces(i)) then
           next_bin = i
-          weight = ONE
+          weight = sign(1, p % surface)
           exit
         end if
       end do

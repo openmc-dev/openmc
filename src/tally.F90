@@ -3122,6 +3122,142 @@ contains
   end subroutine score_collision_tally
 
 !===============================================================================
+! score_surface_tally is called at every surface crossing and can be used to
+! tally total or partial currents between two cells
+!===============================================================================
+
+    subroutine  score_surface_tally(p)
+
+    type(Particle), intent(in)    :: p
+
+    integer :: i
+    integer :: i_tally
+    integer :: i_filt
+    integer :: i_bin
+    integer :: q                    ! loop index for scoring bins
+    integer :: k                    ! working index for expand and score
+    integer :: score_bin            ! scoring bin, e.g. SCORE_FLUX
+    integer :: score_index          ! scoring bin index
+    integer :: j                    ! loop index for scoring bins
+    integer :: filter_index         ! single index for single bin
+    integer :: matching_bin         ! next valid filter bin
+    real(8) :: flux                 ! collision estimate of flux
+    real(8) :: filter_weight        ! combined weight of all filters
+    real(8) :: score                ! analog tally score
+    logical :: finished             ! found all valid bin combinations
+
+    ! No collision, so no weight change when survival biasing
+    flux = p % wgt
+
+    TALLY_LOOP: do i = 1, active_surface_tallies % size()
+      ! Get index of tally and pointer to tally
+      i_tally = active_surface_tallies % data(i)
+      associate (t => tallies(i_tally))
+
+      ! Find all valid bins in each filter if they have not already been found
+      ! for a previous tally.
+      do j = 1, size(t % filter)
+        i_filt = t % filter(j)
+        if (.not. filter_matches(i_filt) % bins_present) then
+          call filter_matches(i_filt) % bins % clear()
+          call filter_matches(i_filt) % weights % clear()
+          matching_bin = NO_BIN_FOUND
+          do
+            call filters(i_filt) % obj % get_next_bin(p, t % estimator, &
+                 matching_bin, matching_bin, filter_weight)
+            if (matching_bin == NO_BIN_FOUND) exit
+            call filter_matches(i_filt) % bins % push_back(matching_bin)
+            call filter_matches(i_filt) % weights % push_back(filter_weight)
+          end do
+          filter_matches(i_filt) % bins_present = .true.
+        end if
+        ! If there are no valid bins for this filter, then there is nothing to
+        ! score and we can move on to the next tally.
+        if (filter_matches(i_filt) % bins % size() == 0) cycle TALLY_LOOP
+
+        ! Set the index of the bin used in the first filter combination
+        filter_matches(i_filt) % i_bin = 1
+      end do
+
+      ! ========================================================================
+      ! Loop until we've covered all valid bins on each of the filters.
+
+      FILTER_LOOP: do
+
+        ! Reset scoring index and weight
+        filter_index = 1
+        filter_weight = ONE
+
+        ! Determine scoring index and weight for this filter combination
+        do j = 1, size(t % filter)
+          i_filt = t % filter(j)
+          i_bin = filter_matches(i_filt) % i_bin
+          filter_index = filter_index + (filter_matches(i_filt) % bins % &
+               data(i_bin) - 1) * t % stride(j)
+          filter_weight = filter_weight * filter_matches(i_filt) % weights % &
+               data(i_bin)
+        end do
+
+        ! Determine score
+        score = flux * filter_weight
+
+        ! Currently only one score type
+        k = 0
+        SCORE_LOOP: do q = 1, t % n_user_score_bins
+          k = k + 1
+
+          ! determine what type of score bin
+          score_bin = t % score_bins(q)
+
+          ! determine scoring bin index, no offset from nuclide bins
+          score_index = q
+
+          ! Expand score if necessary and add to tally results.
+          call expand_and_score(p, t, score_index, filter_index, score_bin, &
+               score, k)
+        end do SCORE_LOOP
+
+        ! ======================================================================
+        ! Filter logic
+
+        ! Increment the filter bins, starting with the last filter to find the
+        ! next valid bin combination
+        finished = .true.
+        do j = size(t % filter), 1, -1
+          i_filt = t % filter(j)
+          if (filter_matches(i_filt) % i_bin < filter_matches(i_filt) % &
+               bins % size()) then
+            filter_matches(i_filt) % i_bin = filter_matches(i_filt) % i_bin + 1
+            finished = .false.
+            exit
+          else
+            filter_matches(i_filt) % i_bin = 1
+          end if
+        end do
+
+        ! Once we have finished all valid bins for each of the filters, exit
+        ! the loop.
+        if (finished) exit FILTER_LOOP
+
+      end do FILTER_LOOP
+
+      end associate
+
+      ! If the user has specified that we can assume all tallies are spatially
+      ! separate, this implies that once a tally has been scored to, we needn't
+      ! check the others. This cuts down on overhead when there are many
+      ! tallies specified
+
+      if (assume_separate) exit TALLY_LOOP
+
+    end do TALLY_LOOP
+
+    ! Reset filter matches flag
+    filter_matches(:) % bins_present = .false.
+
+  end subroutine score_surface_tally
+
+!===============================================================================
 ! SCORE_SURFACE_CURRENT tallies surface crossings in a mesh tally by manually
 ! determining which mesh surfaces were crossed
 !===============================================================================
@@ -4353,9 +4489,12 @@ contains
         elseif (user_tallies(i) % estimator == ESTIMATOR_COLLISION) then
           call active_collision_tallies % push_back(i_user_tallies + i)
         end if
-      elseif (user_tallies(i) % type == TALLY_SURFACE_CURRENT) then
+      elseif (user_tallies(i) % type == TALLY_MESH_CURRENT) then
         call active_current_tallies % push_back(i_user_tallies + i)
+      elseif (user_tallies(i) % type == TALLY_SURFACE) then
+        call active_surface_tallies % push_back(i_user_tallies + i)
       end if
+
     end do
 
     call active_tallies % shrink_to_fit()
@@ -4363,6 +4502,7 @@ contains
     call active_tracklength_tallies % shrink_to_fit()
     call active_collision_tallies % shrink_to_fit()
     call active_current_tallies % shrink_to_fit()
+    call active_surface_tallies % shrink_to_fit()
 
   end subroutine setup_active_usertallies
 
@@ -4386,6 +4526,9 @@ contains
     else if (active_current_tallies % size() > 0) then
       call fatal_error("Active current tallies should not exist before CMFD &
            &tallies!")
+    else if (active_surface_tallies % size() > 0) then
+      call fatal_error("Active cell to cell tallies should not exist before &
+           &CMFD tallies!")
     end if
 
     do i = 1, n_cmfd_tallies
@@ -4399,7 +4542,7 @@ contains
         elseif (cmfd_tallies(i) % estimator == ESTIMATOR_TRACKLENGTH) then
           call active_tracklength_tallies % push_back(i_cmfd_tallies + i)
         end if
-      elseif (cmfd_tallies(i) % type == TALLY_SURFACE_CURRENT) then
+      elseif (cmfd_tallies(i) % type == TALLY_MESH_CURRENT) then
         call active_current_tallies % push_back(i_cmfd_tallies + i)
       end if
     end do

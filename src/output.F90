@@ -758,6 +758,7 @@ contains
     score_names(abs(SCORE_INVERSE_VELOCITY))   = "Flux-Weighted Inverse Velocity"
     score_names(abs(SCORE_FISS_Q_PROMPT))      = "Prompt fission power"
     score_names(abs(SCORE_FISS_Q_RECOV))       = "Recoverable fission power"
+    score_names(abs(SCORE_CURRENT))            = "Current"
 
     ! Create filename for tally output
     filename = trim(path_output) // "tallies.out"
@@ -816,7 +817,7 @@ contains
       end if
 
       ! Handle surface current tallies separately
-      if (t % type == TALLY_SURFACE_CURRENT) then
+      if (t % type == TALLY_MESH_CURRENT) then
         call write_surface_current(t, unit_tally)
         cycle
       end if

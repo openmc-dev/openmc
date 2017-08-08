@@ -167,8 +167,8 @@ contains
           trigger % rel_err = ZERO
           trigger % variance = ZERO
 
-          ! Surface current tally triggers require special treatment
-          if (t % type == TALLY_SURFACE_CURRENT) then
+          ! Mesh current tally triggers require special treatment
+          if (t % type == TALLY_MESH_CURRENT) then
             call compute_tally_current(t, trigger)
 
           else
@@ -287,7 +287,7 @@ contains
 
 
 !===============================================================================
-! COMPUTE_TALLY_CURRENT computes the current for a surface current tally with
+! COMPUTE_TALLY_CURRENT computes the current for a mesh current tally with
 ! precision trigger(s).
 !===============================================================================
 
@@ -307,8 +307,8 @@ contains
     logical :: print_ebin           ! should incoming energy bin be displayed?
     real(8) :: rel_err  = ZERO      ! temporary relative error of result
     real(8) :: std_dev  = ZERO      ! temporary standard deviration of result
-    type(TallyObject), pointer    :: t        ! surface current tally
-    type(TriggerObject)           :: trigger  ! surface current tally trigger
+    type(TallyObject), pointer    :: t        ! mesh current tally
+    type(TriggerObject)           :: trigger  ! mesh current tally trigger
     type(RegularMesh), pointer :: m        ! surface current mesh
 
     ! Get pointer to mesh

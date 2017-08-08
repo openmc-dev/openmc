@@ -1035,12 +1035,8 @@ contains
         weight = ONE
 
       else
-        ! Make sure the correct energy is used.
-        if (estimator == ESTIMATOR_TRACKLENGTH) then
-          E = p % E
-        else
-          E = p % last_E
-        end if
+        ! Pre-collision energy of particle
+        E = p % last_E
 
         ! Check if energy of the particle is within energy bins.
         if (E < this % bins(1) .or. E > this % bins(n + 1)) then
@@ -1383,12 +1379,8 @@ contains
       if (current_bin == NO_BIN_FOUND) then
         n = size(this % energy)
 
-        ! Make sure the correct energy is used.
-        if (estimator == ESTIMATOR_TRACKLENGTH) then
-          E = p % E
-        else
-          E = p % last_E
-        end if
+        ! Get pre-collision energy of particle
+        E = p % last_E
 
         ! Check if energy of the particle is within energy bins.
         if (E < this % energy(1) .or. E > this % energy(n)) then

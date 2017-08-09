@@ -20,6 +20,7 @@ module output
   use string,          only: to_upper, to_str
   use tally_header,    only: TallyObject
   use tally_filter
+  use tally_filter_mesh, only: MeshFilter
   use tally_filter_header, only: TallyFilterMatch
 
   implicit none

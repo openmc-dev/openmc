@@ -29,6 +29,7 @@ module input_xml
   use tally_header,     only: TallyObject
   use tally_filter_header, only: TallyFilterContainer
   use tally_filter
+  use tally_filter_mesh, only: MeshFilter
   use tally_initialize, only: add_tallies
   use xml_interface
 

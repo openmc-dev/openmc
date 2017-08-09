@@ -4,7 +4,7 @@ module tally_filter_mesh
 
   use constants
   use error,               only: warning
-  use mesh_header
+  use mesh_header,         only: RegularMesh
   use hdf5_interface
   use particle_header,     only: Particle
   use string,              only: to_str
@@ -22,7 +22,7 @@ module tally_filter_mesh
 !===============================================================================
 
   type, extends(TallyFilter) :: MeshFilter
-    integer :: mesh
+    type(RegularMesh), pointer :: mesh => null()
   contains
     procedure :: get_all_bins => get_all_bins_mesh
     procedure :: to_statepoint => to_statepoint_mesh
@@ -62,7 +62,7 @@ contains
     weight = ERROR_REAL
 
     ! Get a pointer to the mesh.
-    m => meshes(this % mesh)
+    m => this % mesh
     n = m % n_dimension
 
     if (estimator /= ESTIMATOR_TRACKLENGTH) then
@@ -217,7 +217,7 @@ contains
 
     call write_dataset(filter_group, "type", "mesh")
     call write_dataset(filter_group, "n_bins", this % n_bins)
-    call write_dataset(filter_group, "bins", meshes(this % mesh) % id)
+    call write_dataset(filter_group, "bins", this % mesh % id)
   end subroutine to_statepoint_mesh
 
   function text_label_mesh(this, bin) result(label)
@@ -227,7 +227,7 @@ contains
 
     integer, allocatable       :: ijk(:)
 
-    associate (m => meshes(this % mesh))
+    associate (m => this % mesh)
       allocate(ijk(m % n_dimension))
       call m % get_indices_from_bin(bin, ijk)
       if (m % n_dimension == 1) then

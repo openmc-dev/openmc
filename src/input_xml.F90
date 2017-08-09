@@ -3117,7 +3117,7 @@ contains
           filt % n_bins = product(m % dimension)
 
           ! Store the index of the mesh
-          filt % mesh = i_mesh
+          filt % mesh => meshes(i_mesh)
         end select
 
       case ('energy')
@@ -3859,8 +3859,7 @@ contains
               ! Get pointer to mesh
               select type(filt => filters(i_filter_mesh) % obj)
               type is (MeshFilter)
-                i_mesh = filt % mesh
-                m => meshes(i_mesh)
+                m => filt % mesh
               end select
 
               ! Copy filter indices to temporary array
@@ -3888,7 +3887,7 @@ contains
               select type(filt => filters(i_filt) % obj)
               type is (MeshFilter)
                 filt % id = i_filt
-                filt % mesh = i_mesh
+                filt % mesh => m
 
                 ! We need to increase the dimension by one since we also need
                 ! currents coming into and out of the boundary mesh cells.
@@ -4347,7 +4346,6 @@ contains
     integer :: i, j
     integer :: n_cols, col_id, n_comp, n_masks, n_meshlines
     integer :: meshid
-    integer :: i_mesh
     integer, allocatable :: iarray(:)
     logical :: file_exists              ! does plots.xml file exist?
     character(MAX_LINE_LEN) :: filename ! absolute path to plots.xml
@@ -4682,9 +4680,8 @@ contains
               select type(filt => filters(cmfd_tallies(1) % &
                    filter(cmfd_tallies(1) % find_filter(FILTER_MESH))) % obj)
               type is (MeshFilter)
-                i_mesh = filt % mesh
+                pl % meshlines_mesh => filt % mesh
               end select
-              pl % meshlines_mesh => meshes(i_mesh)
 
             case ('entropy')
 

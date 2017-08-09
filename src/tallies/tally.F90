@@ -3250,7 +3250,7 @@ contains
       ! Get pointer to mesh
       select type(filt => filters(i_filter_mesh) % obj)
       type is (MeshFilter)
-        m => meshes(filt % mesh)
+        m => filt % mesh
       end select
 
       n_dim = m % n_dimension

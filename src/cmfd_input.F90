@@ -391,7 +391,7 @@ contains
     type is (MeshFilter)
       filt % id = i_filt
       filt % n_bins = product(m % dimension)
-      filt % mesh = n_user_meshes + 1
+      filt % mesh => meshes(n_user_meshes + 1)
       ! Add filter to dictionary
       call filter_dict % add_key(filt % id, i_filt)
     end select
@@ -436,7 +436,7 @@ contains
       ! We need to increase the dimension by one since we also need
       ! currents coming into and out of the boundary mesh cells.
       filt % n_bins = product(m % dimension + 1)
-      filt % mesh = n_user_meshes + 1
+      filt % mesh => meshes(n_user_meshes + 1)
       ! Add filter to dictionary
       call filter_dict % add_key(filt % id, i_filt)
     end select

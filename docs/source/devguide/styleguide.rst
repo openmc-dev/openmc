@@ -8,35 +8,50 @@ In order to keep the OpenMC code base consistent in style, this guide specifies
 a number of rules which should be adhered to when modified existing code or
 adding new code in OpenMC.
 
--------
-Fortran
--------
+---------------
+Fortran and C++
+---------------
 
-General Rules
+Miscellaneous
 -------------
 
-Conform to the Fortran 2008 standard.
-
-Make sure code can be compiled with most common compilers, especially gfortran
-and the Intel Fortran compiler. This supercedes the previous rule --- if a
-Fortran 2003/2008 feature is not implemented in a common compiler, do not use
-it.
+Make sure code can be compiled with most common compilers, especially the GCC
+and Intel compilers. This supersedes the rules about standards---if a Fortran
+2003/2008 feature is not implemented in a common compiler then do not use it.
 
 Do not use special extensions that can be only be used from certain compilers.
-
-In general, write your code in lower-case. Having code in all caps does not
-enhance code readability or otherwise.
 
 Always include comments to describe what your code is doing. Do not be afraid of
 using copious amounts of comments.
 
-Use <, >, <=, >=, ==, and /= rather than .lt., .gt., .le., .ge., .eq., and .ne.
-
 Try to keep code within 80 columns when possible.
 
-Don't use ``print *`` or ``write(*,*)``. If writing to a file, use a specific
-unit. Writing to standard output or standard error should be handled by the
-``write_message`` subroutine or functionality in the error module.
+Don't use ``print *``, ``write(*,*)``, ``fprintf()``, or ``std::cout``. If
+writing to a file, use a specific unit. Writing to standard output or standard
+error should be handled by the ``write_message`` subroutine or functionality in
+the error module.
+
+Naming
+------
+
+In general, write your code in lower-case. Having code in all caps does not
+enhance code readability or otherwise.
+
+Module names should be lower-case with underscores if needed, e.g.
+``xml_interface``.
+
+Class names should be CamelCase, e.g. ``HexLattice``.
+
+Functions and subroutines (including type-bound methods) should be lower-case
+with underscores, e.g. ``get_indices``.
+
+Local variables, global variables, and type attributes should be lower-case
+with underscores (e.g. ``n_cells``) except for physics symbols that are written
+differently by convention (e.g. ``E`` for energy).
+
+Constant (parameter or const) variables should be in upper-case with
+underscores, e.g. ``SQRT_PI``. These should usually be defined in the
+constants.F90 module.
 
 Procedures
 ----------
@@ -53,27 +68,16 @@ Variables
 ---------
 
 Never, under any circumstances, should implicit variables be used! Always
-include ``implicit none`` and define all your variables.
+include ``implicit none`` in Fortran source code and define all your variables.
 
-Variable names should be all lower-case and descriptive, i.e. not a random
-assortment of letters that doesn't give any information to someone seeing it for
-the first time. Variables consisting of multiple words should be separated by
-underscores, not hyphens or in camel case.
-
-Constant (parameter) variables should be in ALL CAPITAL LETTERS and defined in
-in the constants.F90 module.
-
-32-bit reals (real(4)) should never be used. Always use 64-bit reals (real(8)).
+32-bit reals (``real(4)`` and ``float``) should never be used. Always use 64-bit
+reals (``real(8)`` and ``double``).
 
 For arbitrary length character variables, use the pre-defined lengths
-MAX_LINE_LEN, MAX_WORD_LEN, and MAX_FILE_LEN if possible.
-
-Do not use old-style character/array length (e.g. character*80, real*8).
+``MAX_LINE_LEN``, ``MAX_WORD_LEN``, and ``MAX_FILE_LEN`` if possible.
 
 Integer values being used to indicate a certain state should be defined as named
 constants (see the constants.F90 module for many examples).
-
-Always use a double colon :: when declaring a variable.
 
 Yes:
 
@@ -92,19 +96,11 @@ allocation instead. Use allocatable variables instead of pointer variables when
 possible.
 
 Shared/Module Variables
-+++++++++++++++++++++++
+-----------------------
 
 Always put shared variables in modules. Access module variables through a
 ``use`` statement. Always use the ``only`` specifier on the ``use`` statement
 except for variables from the global, constants, and various header modules.
-
-Never use ``equivalence`` statements, ``common`` blocks, or ``data`` statements.
-
-Derived Types and Classes
--------------------------
-
-Derived types and classes should have CamelCase names with words not separated
-by underscores or hyphens.
 
 Indentation
 -----------
@@ -157,6 +153,110 @@ The structure component designator ``%`` should be surrounded by one space on
 each side.
 
 Do not leave trailing whitespace at the end of a line.
+
+----------------
+Fortran-Specific
+----------------
+
+Conform to the Fortran 2008 standard.
+
+Use <, >, <=, >=, ==, and /= rather than .lt., .gt., .le., .ge., .eq., and .ne.
+
+Do not use old-style character/array length (e.g. character*80, real*8).
+
+Always use a double colon :: when declaring a variable.
+
+Never use ``equivalence`` statements, ``common`` blocks, or ``data`` statements.
+
+------------
+C++-Specific
+------------
+
+Miscellaneous
+-------------
+
+Conform to the C++11 standard.
+
+Always use C++-style comments (``//``) as opposed to C-style (``/**/``).  (It
+is more difficult to comment out a large section of code that uses C-style
+comments.)
+
+Header files should always use include guards with the following style:
+
+.. code-block:: C++
+
+    #ifndef MODULE_NAME_H
+    #define MODULE_NAME_H
+    ...
+    content
+    ...
+    #endif // MODULE_NAME_H
+
+Do not use using-directives e.g. ``using namespace foobar;``
+
+Do not use C-style casting. Always use the C++-style casts ``static_cast``,
+``const_cast``, or ``reinterpret_cast``.
+
+Curly braces
+------------
+
+For a function definition, the opening brace should be on the same line as the
+end of the function definition. The closing brace should be on its own line.
+If the entire function fits on one line, then the closing brace can be on the
+same line. e.g.:
+
+.. code-block:: C++
+
+    return_type function(type1 arg1, type2 arg2) {
+      content();
+    }
+
+    return_type
+    function_with_many_args(type1 arg1, type2 arg2, type3 arg3,
+                            type4 arg4) {
+      content();
+    }
+
+    int return_one() {return 1;}
+
+For a conditional, the opening brace should be on the same line as the end of
+the conditional statement. If there is a following ``else if`` or ``else``
+statement, the closing brace should be on the same line as that following
+statement. Otherwise, the closing brace should be on its own line. A one-line
+conditional can have the closing brace on the same line or it can omit the
+braces entirely e.g.:
+
+.. code-block:: C++
+
+    if (condition) {
+      content();
+    }
+
+    if (condition1) {
+      content();
+    } else if (condition 2) {
+      more_content();
+    } else {
+      further_content();
+    }
+
+    if (condition) {content()};
+
+    if (condition) content();
+
+For loops similarly have an opening brace on the same line as the statement and
+a closing brace on its own line. One-line loops may have the closing brace on
+the same line or omit the braces entirely.
+
+.. code-block:: C++
+
+    for (int i = 0; i < 5; i++) {
+      content();
+    }
+
+    for (int i = 0; i < 5; i++) {content();}
+
+    for (int i = 0; i < 5; i++) content();
 
 ------
 Python

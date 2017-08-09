@@ -45,7 +45,7 @@ contains
     integer, allocatable :: id_array(:)
     integer(HID_T) :: file_id
     integer(HID_T) :: cmfd_group, tallies_group, tally_group, meshes_group, &
-                      mesh_group, filters_group, filter_group, derivs_group, &
+                      filters_group, filter_group, derivs_group, &
                       deriv_group, runtime_group
     integer(C_INT) :: err
     real(C_DOUBLE) :: k_combined(2)
@@ -158,21 +158,7 @@ contains
 
         ! Write information for meshes
         MESH_LOOP: do i = 1, n_meshes
-          associate (m => meshes(i))
-            mesh_group = create_group(meshes_group, "mesh " &
-                 // trim(to_str(m % id)))
-
-            select case (m % type)
-            case (MESH_REGULAR)
-              call write_dataset(mesh_group, "type", "regular")
-            end select
-            call write_dataset(mesh_group, "dimension", m % dimension)
-            call write_dataset(mesh_group, "lower_left", m % lower_left)
-            call write_dataset(mesh_group, "upper_right", m % upper_right)
-            call write_dataset(mesh_group, "width", m % width)
-
-            call close_group(mesh_group)
-          end associate
+          call meshes(i) % to_hdf5(meshes_group)
         end do MESH_LOOP
       end if
 

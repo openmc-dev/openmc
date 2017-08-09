@@ -102,9 +102,8 @@ contains
     i_filt = t % filter(t % find_filter(FILTER_MESH))
     select type(filt => filters(i_filt) % obj)
     type is (MeshFilter)
-      i_mesh = filt % mesh
+      m => filt % mesh
     end select
-    m => meshes(i_mesh)
 
     ! Set mesh widths
     cmfd % hxyz(1,:,:,:) = m % width(1) ! set x width
@@ -121,9 +120,8 @@ contains
       i_filt = t % filter(t % find_filter(FILTER_MESH))
       select type(filt => filters(i_filt) % obj)
       type is (MeshFilter)
-        i_mesh = filt % mesh
+        m => filt % mesh
       end select
-      m => meshes(i_mesh)
 
       ! Check for energy filters
       energy_filters = (t % find_filter(FILTER_ENERGYIN) > 0)

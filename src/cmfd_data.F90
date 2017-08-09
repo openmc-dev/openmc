@@ -6,7 +6,7 @@ module cmfd_data
 !==============================================================================
 
   use constants
-  use tally_filter, only: MeshFilter
+  use tally_filter_mesh, only: MeshFilter
 
   implicit none
   private

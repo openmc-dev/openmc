@@ -15,6 +15,7 @@ module tally
   use particle_header,  only: LocalCoord, Particle
   use string,           only: to_str
   use tally_filter
+  use tally_filter_mesh, only: MeshFilter
 
   implicit none
 

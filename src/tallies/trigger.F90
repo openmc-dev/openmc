@@ -15,7 +15,7 @@ module trigger
   use message_passing, only: master
   use trigger_header, only: TriggerObject
   use tally,          only: TallyObject
-  use tally_filter,   only: MeshFilter
+  use tally_filter_mesh, only: MeshFilter
 
   implicit none
 

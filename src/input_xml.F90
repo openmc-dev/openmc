@@ -4859,8 +4859,8 @@ contains
 
   subroutine read_urr_xml()
 #ifdef PURXS
-    character(MAX_LINE_LEN) :: temp_str
-    character(MAX_LINE_LEN) :: filename
+    character(len=:), allocatable :: temp_str
+    character(len=:), allocatable :: filename
     integer :: i ! re-usable index
     character(len=:), allocatable :: zaid_str
     integer :: zaid_str_len ! number of characters in zaid_str
@@ -4876,7 +4876,7 @@ contains
     type(XMLNode), allocatable :: isotope_node_list(:)
 
     ! Check if urr.xml exists
-    filename = trim(path_input) // "urr.xml"
+    filename = trim(adjustl(path_input)) // "urr.xml"
     inquire(FILE=filename, EXIST=file_exists)
     if (.not. file_exists) then
       ! Since a urr.xml file is optional, no error is issued here
@@ -4900,7 +4900,9 @@ contains
       ! Check that a path to ENDF data is specified
       if (check_for_node(settings_node, "endf_6_filepath")) then
         call get_node_value(settings_node, "endf_6_filepath", temp_str)
-        URR_path_endf_files = trim(adjustl(temp_str))
+        temp_str = trim(adjustl(temp_str))
+        if (temp_str(len(temp_str):) /= '/') temp_str = temp_str // '/'
+        URR_path_endf_files = temp_str
       else
         call fatal_error('Specify path to ENDF-6 data files for URR treatment&
              & via endf_6_filepath in urr.xml')
@@ -4909,7 +4911,9 @@ contains
       ! Check that a path to averaged URR cross section values is specified
       if (check_for_node(settings_node, "avg_xs_filepath")) then
         call get_node_value(settings_node, "avg_xs_filepath", temp_str)
-        URR_path_avg_xs = trim(adjustl(temp_str))
+        temp_str = trim(adjustl(temp_str))
+        if (temp_str(len(temp_str):) /= '/') temp_str = temp_str // '/'
+        URR_path_avg_xs = temp_str
       else
         call fatal_error('Specify path to averaged URR cross section data files&
              & via avg_xs_filepath in urr.xml')
@@ -5203,7 +5207,9 @@ contains
           end if
           if (check_for_node(prob_table_node, 'filepath')) then
             call get_node_value(prob_table_node, 'filepath', temp_str)
-            URR_path_prob_tables = trim(adjustl(temp_str))
+            temp_str = trim(adjustl(temp_str))
+            if (temp_str(len(temp_str):) /= '/') temp_str = temp_str // '/'
+            URR_path_prob_tables = temp_str
           else
             call fatal_error('Must specify path to probability table files &
                  &in urr.xml')

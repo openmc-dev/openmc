@@ -12,7 +12,6 @@ module global
   use dict_header,      only: DictCharInt, DictIntInt
   use geometry_header,  only: Cell, Universe, Lattice, LatticeContainer
   use material_header,  only: Material
-  use mesh_header,      only: RegularMesh
   use mgxs_header,      only: Mgxs, MgxsContainer
   use plot_header,      only: ObjectPlot
   use set_header,       only: SetInt
@@ -28,6 +27,9 @@ module global
   ! Inherit module variables from nuclide/S(a,b) modules
   use nuclide_header
   use sab_header
+
+  ! Inherit meshes array
+  use mesh_header
 
   implicit none
 
@@ -125,7 +127,6 @@ module global
   ! ============================================================================
   ! TALLY-RELATED VARIABLES
 
-  type(RegularMesh), allocatable, target :: meshes(:)
   type(TallyObject), allocatable, target :: tallies(:)
   type(TallyFilterContainer), allocatable, target :: filters(:)
   type(TallyFilterMatch), allocatable :: filter_matches(:)

@@ -5,7 +5,6 @@ module tally_filter_mesh
   use constants
   use error,               only: warning
   use mesh_header
-  use global,              only: meshes
   use hdf5_interface
   use particle_header,     only: Particle
   use string,              only: to_str

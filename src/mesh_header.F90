@@ -26,6 +26,8 @@ module mesh_header
     procedure :: intersects => regular_intersects
   end type RegularMesh
 
+  type(RegularMesh), allocatable, target :: meshes(:)
+
 contains
 
 !===============================================================================

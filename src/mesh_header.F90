@@ -1,8 +1,15 @@
 module mesh_header
 
+  use hdf5
+
   use constants, only: NO_BIN_FOUND
+  use hdf5_interface
+  use string, only: to_str
 
   implicit none
+
+  private
+  public :: RegularMesh, meshes
 
 !===============================================================================
 ! STRUCTUREDMESH represents a tessellation of n-dimensional Euclidean space by
@@ -24,6 +31,7 @@ module mesh_header
     procedure :: get_bin_from_indices => regular_get_bin_from_indices
     procedure :: get_indices_from_bin => regular_get_indices_from_bin
     procedure :: intersects => regular_intersects
+    procedure :: to_hdf5 => regular_to_hdf5
   end type RegularMesh
 
   type(RegularMesh), allocatable, target :: meshes(:)
@@ -378,5 +386,26 @@ contains
     end if
 
   end function mesh_intersects_3d
+
+!===============================================================================
+! TO_HDF5 writes the mesh data to an HDF5 group
+!===============================================================================
+
+  subroutine regular_to_hdf5(this, group)
+    class(RegularMesh), intent(in) :: this
+    integer(HID_T), intent(in) :: group
+
+    integer(HID_T) :: mesh_group
+
+    mesh_group = create_group(group, "mesh " // trim(to_str(this % id)))
+
+    call write_dataset(mesh_group, "type", "regular")
+    call write_dataset(mesh_group, "dimension", this % dimension)
+    call write_dataset(mesh_group, "lower_left", this % lower_left)
+    call write_dataset(mesh_group, "upper_right", this % upper_right)
+    call write_dataset(mesh_group, "width", this % width)
+
+    call close_group(mesh_group)
+  end subroutine regular_to_hdf5
 
 end module mesh_header

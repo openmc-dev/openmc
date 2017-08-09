@@ -367,21 +367,22 @@ set(LIBOPENMC_FORTRAN_SRC
   src/string.F90
   src/summary.F90
   src/surface_header.F90
-  src/tally.F90
-  src/tally_filter.F90
-  src/tally_filter_header.F90
-  src/tally_header.F90
-  src/tally_initialize.F90
   src/timer_header.F90
   src/tracking.F90
   src/track_output.F90
-  src/trigger.F90
-  src/trigger_header.F90
   src/urr_header.F90
   src/vector_header.F90
   src/volume_calc.F90
   src/volume_header.F90
-  src/xml_interface.F90)
+  src/xml_interface.F90
+  src/tallies/tally.F90
+  src/tallies/tally_filter.F90
+  src/tallies/tally_filter_header.F90
+  src/tallies/tally_header.F90
+  src/tallies/tally_initialize.F90
+  src/tallies/trigger.F90
+  src/tallies/trigger_header.F90
+)
 add_library(libopenmc SHARED ${LIBOPENMC_FORTRAN_SRC})
 set_target_properties(libopenmc PROPERTIES OUTPUT_NAME openmc)
 add_executable(${program} src/main.F90)

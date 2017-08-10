@@ -147,7 +147,7 @@ contains
     this % fission           = .false.
     this % delayed_group     = 0
     this % n_delayed_bank(:) = 0
-    this % g = 1
+    this % g = NONE
 
     ! Set up base level coordinates
     this % coord(1) % universe = root_universe
@@ -214,6 +214,7 @@ contains
     this % last_uvw         = src % uvw
     if (run_CE) then
       this % E              = src % E
+      this % g              = NONE
     else
       this % g              = int(src % E)
       this % last_g         = int(src % E)

@@ -5,6 +5,7 @@ module tally_header
   use hdf5
 
   use constants,           only: NONE, N_FILTER_TYPES
+  use dict_header,         only: DictIntInt
   use tally_filter_header, only: TallyFilterContainer
   use trigger_header,      only: TriggerObject
 
@@ -92,6 +93,16 @@ module tally_header
     procedure :: write_results_hdf5
     procedure :: read_results_hdf5
   end type TallyObject
+
+  integer(C_INT32_T), bind(C) :: n_tallies = 0 ! # of tallies
+
+  type(TallyObject),     allocatable, target :: tallies(:)
+  type(TallyDerivative), allocatable :: tally_derivs(:)
+!$omp threadprivate(tally_derivs)
+
+  ! Dictionary that maps user IDs to indices in 'tallies'
+  type(DictIntInt) :: tally_dict
+
 
 contains
 

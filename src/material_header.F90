@@ -1,6 +1,9 @@
 module material_header
 
+  use, intrinsic :: ISO_C_BINDING
+
   use constants
+  use dict_header, only: DictIntInt
   use error
   use nuclide_header
   use sab_header
@@ -50,6 +53,13 @@ module material_header
     procedure :: set_density => material_set_density
     procedure :: assign_sab_tables => material_assign_sab_tables
   end type Material
+
+  integer(C_INT32_T), bind(C) :: n_materials ! # of materials
+
+  type(Material), allocatable, target :: materials(:)
+
+  ! Dictionary that maps user IDs to indices in 'materials'
+  type(DictIntInt) :: material_dict
 
 contains
 

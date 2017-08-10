@@ -166,6 +166,10 @@ module nuclide_header
   integer(C_INT), bind(C) :: n_nuclides
   type(DictCharInt) :: nuclide_dict
 
+  ! Cross section caches
+  type(NuclideMicroXS), allocatable :: micro_xs(:)  ! Cache for each nuclide
+  type(MaterialMacroXS)             :: material_xs  ! Cache for current material
+
   ! Minimum/maximum energies
   real(8) :: energy_min_neutron = ZERO
   real(8) :: energy_max_neutron = INFINITY

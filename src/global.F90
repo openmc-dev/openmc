@@ -9,63 +9,29 @@ module global
   use bank_header,      only: Bank
   use cmfd_header
   use constants
-  use dict_header,      only: DictCharInt, DictIntInt
-  use geometry_header,  only: Cell, Universe, Lattice, LatticeContainer
-  use material_header,  only: Material
-  use mgxs_header
-  use plot_header,      only: ObjectPlot
   use set_header,       only: SetInt
   use stl_vector,       only: VectorInt
-  use surface_header,   only: SurfaceContainer
   use source_header,    only: SourceDistribution
-  use tally_header,     only: TallyObject, TallyDerivative
-  use tally_filter_header, only: TallyFilterContainer, TallyFilterMatch
   use trigger_header,   only: KTrigger
   use timer_header,     only: Timer
-  use volume_header,    only: VolumeCalculation
 
-  ! Inherit module variables from nuclide/S(a,b) modules
-  use nuclide_header
-  use sab_header
-
-  ! Inherit meshes array
+  ! Inherit module variables from other modules
+  use geometry_header
+  use material_header
   use mesh_header
+  use mgxs_header
+  use nuclide_header
+  use plot_header
+  use sab_header
+  use surface_header
+  use tally_filter_header
+  use tally_header
+  use volume_header
 
   implicit none
 
   ! ============================================================================
   ! GEOMETRY-RELATED VARIABLES
-
-  ! Main arrays
-  type(Cell),             allocatable, target :: cells(:)
-  type(Universe),         allocatable, target :: universes(:)
-  type(LatticeContainer), allocatable, target :: lattices(:)
-  type(SurfaceContainer), allocatable, target :: surfaces(:)
-  type(Material),         allocatable, target :: materials(:)
-  type(ObjectPlot),       allocatable, target :: plots(:)
-
-  type(VolumeCalculation), allocatable :: volume_calcs(:)
-
-  ! Size of main arrays
-  integer(C_INT32_T), bind(C) :: n_cells     ! # of cells
-  integer :: n_universes ! # of universes
-  integer :: n_lattices  ! # of lattices
-  integer :: n_surfaces  ! # of surfaces
-  integer(C_INT32_T), bind(C) :: n_materials ! # of materials
-  integer :: n_plots     ! # of plots
-
-  ! These dictionaries provide a fast lookup mechanism -- the key is the
-  ! user-specified identifier and the value is the index in the corresponding
-  ! array
-  type(DictIntInt) :: cell_dict
-  type(DictIntInt) :: universe_dict
-  type(DictIntInt) :: lattice_dict
-  type(DictIntInt) :: surface_dict
-  type(DictIntInt) :: material_dict
-  type(DictIntInt) :: mesh_dict
-  type(DictIntInt) :: filter_dict
-  type(DictIntInt) :: tally_dict
-  type(DictIntInt) :: plot_dict
 
   ! Number of lost particles
   integer :: n_lost_particles
@@ -73,10 +39,6 @@ module global
   ! ============================================================================
   ! ENERGY TREATMENT RELATED VARIABLES
   logical :: run_CE = .true.  ! Run in CE mode?
-
-  ! Cross section caches
-  type(NuclideMicroXS), allocatable :: micro_xs(:)  ! Cache for each nuclide
-  type(MaterialMacroXS)             :: material_xs  ! Cache for current material
 
   ! ============================================================================
   ! CONTINUOUS-ENERGY CROSS SECTION RELATED VARIABLES
@@ -109,9 +71,6 @@ module global
   ! ============================================================================
   ! TALLY-RELATED VARIABLES
 
-  type(TallyObject), allocatable, target :: tallies(:)
-  type(TallyFilterContainer), allocatable, target :: filters(:)
-  type(TallyFilterMatch), allocatable :: filter_matches(:)
 
   ! Pointers for different tallies
   type(TallyObject), pointer :: user_tallies(:) => null()
@@ -149,16 +108,9 @@ module global
 !$omp threadprivate(global_tally_collision, global_tally_absorption, &
 !$omp&              global_tally_tracklength, global_tally_leakage)
 
-  integer :: n_meshes       = 0 ! # of structured meshes
   integer :: n_user_meshes  = 0 ! # of structured user meshes
-  integer :: n_filters      = 0 ! # of filters
   integer :: n_user_filters = 0 ! # of user filters
-  integer(C_INT32_T), bind(C) :: n_tallies = 0 ! # of tallies
   integer :: n_user_tallies = 0 ! # of user tallies
-
-  ! Tally derivatives
-  type(TallyDerivative), allocatable :: tally_derivs(:)
-!$omp threadprivate(tally_derivs)
 
   ! Normalization for statistics
   integer :: n_realizations = 0 ! # of independent realizations
@@ -407,7 +359,7 @@ module global
   character(10), allocatable :: res_scat_nuclides(:)
 
 !$omp threadprivate(micro_xs, material_xs, fission_bank, n_bank, &
-!$omp&              trace, thread_id, current_work, filter_matches)
+!$omp&              trace, thread_id, current_work)
 
 contains
 

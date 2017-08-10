@@ -1,5 +1,7 @@
 module geometry_header
 
+  use, intrinsic :: ISO_C_BINDING
+
   use algorithm,       only: find
   use constants,       only: HALF, TWO, THREE, INFINITY, K_BOLTZMANN, &
                              MATERIAL_VOID, NONE
@@ -156,6 +158,19 @@ module geometry_header
 
   ! array index of the root universe
   integer :: root_universe = -1
+
+  integer(C_INT32_T), bind(C) :: n_cells     ! # of cells
+  integer(C_INT32_T), bind(C) :: n_universes ! # of universes
+  integer(C_INT32_T), bind(C) :: n_lattices  ! # of lattices
+
+  type(Cell),             allocatable, target :: cells(:)
+  type(Universe),         allocatable, target :: universes(:)
+  type(LatticeContainer), allocatable, target :: lattices(:)
+
+  ! Dictionaries which map user IDs to indices in the global arrays
+  type(DictIntInt) :: cell_dict
+  type(DictIntInt) :: universe_dict
+  type(DictIntInt) :: lattice_dict
 
 contains
 

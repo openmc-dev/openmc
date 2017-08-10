@@ -1,22 +1,24 @@
 module mesh_header
 
+  use, intrinsic :: ISO_C_BINDING
+
   use hdf5
 
   use constants, only: NO_BIN_FOUND
+  use dict_header, only: DictIntInt
   use hdf5_interface
   use string, only: to_str
 
   implicit none
-
   private
-  public :: RegularMesh, meshes
+  public :: RegularMesh, meshes, n_meshes, mesh_dict
 
 !===============================================================================
 ! STRUCTUREDMESH represents a tessellation of n-dimensional Euclidean space by
 ! congruent squares or cubes
 !===============================================================================
 
-  type RegularMesh
+  type, public :: RegularMesh
     integer :: id                          ! user-specified id
     integer :: type                        ! rectangular, hexagonal
     integer :: n_dimension                 ! rank of mesh
@@ -34,7 +36,12 @@ module mesh_header
     procedure :: to_hdf5 => regular_to_hdf5
   end type RegularMesh
 
+  integer(C_INT32_T), bind(C) :: n_meshes = 0 ! # of structured meshes
+
   type(RegularMesh), allocatable, target :: meshes(:)
+
+  ! Dictionary that maps user IDs to indices in 'meshes'
+  type(DictIntInt) :: mesh_dict
 
 contains
 

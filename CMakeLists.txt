@@ -381,7 +381,6 @@ set(LIBOPENMC_FORTRAN_SRC
   src/tallies/tally_filter_energy.F90
   src/tallies/tally_filter_mesh.F90
   src/tallies/tally_header.F90
-  src/tallies/tally_initialize.F90
   src/tallies/trigger.F90
   src/tallies/trigger_header.F90
 )

@@ -71,7 +71,6 @@ module global
   ! ============================================================================
   ! TALLY-RELATED VARIABLES
 
-
   ! Pointers for different tallies
   type(TallyObject), pointer :: user_tallies(:) => null()
   type(TallyObject), pointer :: cmfd_tallies(:) => null()
@@ -87,26 +86,6 @@ module global
   type(VectorInt) :: active_collision_tallies
   type(VectorInt) :: active_tallies
   type(VectorInt) :: active_surface_tallies
-
-  ! Global tallies
-  !   1) collision estimate of k-eff
-  !   2) absorption estimate of k-eff
-  !   3) track-length estimate of k-eff
-  !   4) leakage fraction
-
-  real(C_DOUBLE), allocatable, target :: global_tallies(:,:)
-
-  ! It is possible to protect accumulate operations on global tallies by using
-  ! an atomic update. However, when multiple threads accumulate to the same
-  ! global tally, it can cause a higher cache miss rate due to
-  ! invalidation. Thus, we use threadprivate variables to accumulate global
-  ! tallies and then reduce at the end of a generation.
-  real(8) :: global_tally_collision   = ZERO
-  real(8) :: global_tally_absorption  = ZERO
-  real(8) :: global_tally_tracklength = ZERO
-  real(8) :: global_tally_leakage     = ZERO
-!$omp threadprivate(global_tally_collision, global_tally_absorption, &
-!$omp&              global_tally_tracklength, global_tally_leakage)
 
   integer :: n_user_meshes  = 0 ! # of structured user meshes
   integer :: n_user_filters = 0 ! # of user filters

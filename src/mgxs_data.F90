@@ -51,7 +51,7 @@ contains
     call write_message("Loading cross section data...", 5)
 
     ! Get temperatures
-    call get_temperatures(cells, materials, material_dict, temps)
+    call get_temperatures(cells, temps)
 
     ! Open file for reading
     file_id = file_open(path_cross_sections, 'r', parallel=.true.)

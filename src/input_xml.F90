@@ -2188,7 +2188,7 @@ contains
     call assign_temperatures(material_temps)
 
     ! Determine desired temperatures for each nuclide and S(a,b) table
-    call get_temperatures(cells, materials, material_dict, nuc_temps, sab_temps)
+    call get_temperatures(cells, nuc_temps, sab_temps)
 
     ! Read continuous-energy cross sections
     if (run_CE .and. run_mode /= MODE_PLOTTING) then

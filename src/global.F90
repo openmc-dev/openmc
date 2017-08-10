@@ -12,7 +12,7 @@ module global
   use dict_header,      only: DictCharInt, DictIntInt
   use geometry_header,  only: Cell, Universe, Lattice, LatticeContainer
   use material_header,  only: Material
-  use mgxs_header,      only: Mgxs, MgxsContainer
+  use mgxs_header
   use plot_header,      only: ObjectPlot
   use set_header,       only: SetInt
   use stl_vector,       only: VectorInt
@@ -96,24 +96,6 @@ module global
 
   ! ============================================================================
   ! MULTI-GROUP CROSS SECTION RELATED VARIABLES
-
-  ! Cross section arrays
-  type(MgxsContainer), allocatable, target :: nuclides_MG(:)
-
-  ! Cross section caches
-  type(MgxsContainer), target, allocatable :: macro_xs(:)
-
-  ! Number of energy groups
-  integer :: num_energy_groups
-
-  ! Number of delayed groups
-  integer :: num_delayed_groups
-
-  ! Energy group structure
-  real(8), allocatable :: energy_bins(:)
-
-  ! Midpoint of the energy group structure
-  real(8), allocatable :: energy_bin_avg(:)
 
   ! Maximum Data Order
   integer :: max_order

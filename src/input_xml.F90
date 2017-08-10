@@ -16,6 +16,7 @@ module input_xml
   use mesh_header,      only: RegularMesh
   use message_passing
   use mgxs_data,        only: create_macro_xs, read_mgxs
+  use mgxs_header
   use multipole,        only: multipole_read
   use output,           only: write_message, title, header
   use plot_header

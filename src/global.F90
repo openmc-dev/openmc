@@ -95,10 +95,6 @@ module global
   integer :: n_realizations = 0 ! # of independent realizations
   real(8) :: total_weight       ! total starting particle weight in realization
 
-  ! Flag for turning tallies on
-  logical :: tallies_on = .false.
-  logical :: active_batches = .false.
-
   ! Assume all tallies are spatially distinct
   logical :: assume_separate = .false.
 

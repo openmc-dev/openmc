@@ -424,9 +424,7 @@ contains
       end if
 
       ! Score to global leakage tally
-      if (tallies_on) then
-        global_tally_leakage = global_tally_leakage + p % wgt
-      end if
+      global_tally_leakage = global_tally_leakage + p % wgt
 
       ! Display message
       if (verbosity >= 10 .or. trace) then

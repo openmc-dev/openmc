@@ -4,8 +4,11 @@ module tally_header
 
   use hdf5
 
-  use constants,           only: NONE, N_FILTER_TYPES
+  use constants,           only: NONE, N_FILTER_TYPES, ZERO
+  use error
   use dict_header,         only: DictIntInt
+  use nuclide_header,      only: nuclide_dict
+  use string,              only: to_lower, to_f_string
   use tally_filter_header, only: TallyFilterContainer
   use trigger_header,      only: TriggerObject
 
@@ -103,7 +106,6 @@ module tally_header
   ! Dictionary that maps user IDs to indices in 'tallies'
   type(DictIntInt) :: tally_dict
 
-
 contains
 
   subroutine write_results_hdf5(this, group_id)
@@ -172,5 +174,169 @@ contains
     call h5sclose_f(memspace, hdf5_err)
     call h5sclose_f(dspace, hdf5_err)
   end subroutine read_results_hdf5
+
+!===============================================================================
+!                               C API FUNCTIONS
+!===============================================================================
+
+  function openmc_extend_tallies(n, index_start, index_end) result(err) bind(C)
+    ! Extend the tallies array by n elements
+    integer(C_INT32_T), value, intent(in) :: n
+    integer(C_INT32_T), intent(out) :: index_start
+    integer(C_INT32_T), intent(out) :: index_end
+    integer(C_INT) :: err
+
+    type(TallyObject), allocatable :: temp(:) ! temporary tallies array
+
+    if (n_tallies == 0) then
+      ! Allocate tallies array
+      allocate(tallies(n))
+    else
+      ! Allocate tallies array with increased size
+      allocate(temp(n_tallies + n))
+
+      ! Copy original tallies to temporary array
+      temp(1:n_tallies) = tallies
+
+      ! Move allocation from temporary array
+      call move_alloc(FROM=temp, TO=tallies)
+    end if
+
+    ! Return indices in tallies array
+    index_start = n_tallies + 1
+    index_end = n_tallies + n
+    n_tallies = index_end
+
+    err = 0
+  end function openmc_extend_tallies
+
+
+  function openmc_get_tally(id, index) result(err) bind(C)
+    ! Returns the index in the tallies array of a tally with a given ID
+    integer(C_INT32_T), value :: id
+    integer(C_INT32_T), intent(out) :: index
+    integer(C_INT) :: err
+
+    if (allocated(tallies)) then
+      if (tally_dict % has_key(id)) then
+        index = tally_dict % get_key(id)
+        err = 0
+      else
+        err = E_TALLY_INVALID_ID
+      end if
+    else
+      err = E_TALLY_NOT_ALLOCATED
+    end if
+  end function openmc_get_tally
+
+
+  function openmc_tally_get_id(index, id) result(err) bind(C)
+    ! Return the ID of a tally
+    integer(C_INT32_T), value       :: index
+    integer(C_INT32_T), intent(out) :: id
+    integer(C_INT) :: err
+
+    if (index >= 1 .and. index <= size(tallies)) then
+      id = tallies(index) % id
+      err = 0
+    else
+      err = E_OUT_OF_BOUNDS
+    end if
+  end function openmc_tally_get_id
+
+
+  function openmc_tally_get_nuclides(index, nuclides, n) result(err) bind(C)
+    ! Return the list of nuclides assigned to a tally
+    integer(C_INT32_T), value :: index
+    type(C_PTR), intent(out) :: nuclides
+    integer(C_INT), intent(out) :: n
+    integer(C_INT) :: err
+
+    err = E_UNASSIGNED
+    if (index >= 1 .and. index <= size(tallies)) then
+      associate (t => tallies(index))
+        if (allocated(t % nuclide_bins)) then
+          nuclides = C_LOC(t % nuclide_bins(1))
+          n = size(t % nuclide_bins)
+          err = 0
+        end if
+      end associate
+    else
+      err = E_OUT_OF_BOUNDS
+    end if
+  end function openmc_tally_get_nuclides
+
+
+  function openmc_tally_results(index, ptr, shape_) result(err) bind(C)
+    ! Returns a pointer to a tally results array along with its shape. This
+    ! allows a user to obtain in-memory tally results from Python directly.
+    integer(C_INT32_T), intent(in), value :: index
+    type(C_PTR),        intent(out) :: ptr
+    integer(C_INT),     intent(out) :: shape_(3)
+    integer(C_INT) :: err
+
+    err = E_UNASSIGNED
+    if (index >= 1 .and. index <= size(tallies)) then
+      if (allocated(tallies(index) % results)) then
+        ptr = C_LOC(tallies(index) % results(1,1,1))
+        shape_(:) = shape(tallies(index) % results)
+        err = 0
+      end if
+    else
+      err = E_OUT_OF_BOUNDS
+    end if
+  end function openmc_tally_results
+
+
+  function openmc_tally_set_nuclides(index, n, nuclides) result(err) bind(C)
+    ! Sets the nuclides in the tally which results should be scored for
+    integer(C_INT32_T), value  :: index
+    integer(C_INT), value      :: n
+    type(C_PTR),    intent(in) :: nuclides(n)
+    integer(C_INT) :: err
+
+    integer :: i
+    character(C_CHAR), pointer :: string(:)
+    character(len=:, kind=C_CHAR), allocatable :: nuclide_
+
+    err = E_UNASSIGNED
+    if (index >= 1 .and. index <= size(tallies)) then
+      associate (t => tallies(index))
+        if (allocated(t % nuclide_bins)) deallocate(t % nuclide_bins)
+        allocate(t % nuclide_bins(n))
+        t % n_nuclide_bins = n
+
+        do i = 1, n
+          ! Convert C string to Fortran string
+          call c_f_pointer(nuclides(i), string, [10])
+          nuclide_ = to_lower(to_f_string(string))
+
+          select case (nuclide_)
+          case ('total')
+            t % nuclide_bins(i) = -1
+          case default
+            if (nuclide_dict % has_key(nuclide_)) then
+              t % nuclide_bins(i) = nuclide_dict % get_key(nuclide_)
+            else
+              err = E_NUCLIDE_NOT_LOADED
+              return
+            end if
+          end select
+        end do
+
+        ! Recalculate total number of scoring bins
+        t % total_score_bins = t % n_score_bins * t % n_nuclide_bins
+
+        ! (Re)allocate results array
+        if (allocated(t % results)) deallocate(t % results)
+        allocate(t % results(3, t % total_score_bins, t % total_filter_bins))
+        t % results(:,:,:) = ZERO
+
+        err = 0
+      end associate
+    else
+      err = E_OUT_OF_BOUNDS
+    end if
+  end function openmc_tally_set_nuclides
 
 end module tally_header

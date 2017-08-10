@@ -1,5 +1,7 @@
 module input_xml
 
+  use, intrinsic :: ISO_C_BINDING
+
   use algorithm,        only: find
   use cmfd_input,       only: configure_cmfd
   use constants
@@ -27,10 +29,9 @@ module input_xml
   use string,           only: to_lower, to_str, str_to_int, str_to_real, &
                               starts_with, ends_with, tokenize, split_string, &
                               zero_padded
-  use tally_header,     only: TallyObject
+  use tally_header,     only: TallyObject, openmc_extend_tallies
   use tally_filter_header, only: TallyFilterContainer
   use tally_filter
-  use tally_initialize, only: add_tallies
   use xml_interface
 
   implicit none
@@ -2650,6 +2651,8 @@ contains
     integer :: n_user_trig   ! number of user-specified tally triggers
     integer :: trig_ind      ! index of triggers array for each tally
     integer :: user_trig_ind ! index of user-specified triggers for each tally
+    integer :: i_start, i_end
+    integer(C_INT) :: err
     real(8) :: threshold     ! trigger convergence threshold
     integer :: n_order       ! moment order requested
     integer :: n_order_pos   ! oosition of Scattering order in score name string
@@ -2743,9 +2746,11 @@ contains
       if (master) call warning("No tallies present in tallies.xml file!")
     end if
 
-    ! Allocate tally array
+    ! Allocate user tallies
     if (n_user_tallies > 0 .and. run_mode /= MODE_PLOTTING) then
-      call add_tallies("user", n_user_tallies)
+      i_user_tallies = n_tallies
+      err = openmc_extend_tallies(n_user_tallies, i_start, i_end)
+      user_tallies => tallies(i_start:i_end)
     end if
 
     ! Check for <assume_separate> setting

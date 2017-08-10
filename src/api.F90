@@ -17,7 +17,9 @@ module openmc_api
   use particle_header, only: Particle
   use plot,            only: openmc_plot_geometry
   use random_lcg,      only: seed, initialize_prng
+  use tally_header
   use simulation,      only: openmc_run
+  use string,          only: to_f_string
   use volume_calc,     only: openmc_calculate_volumes
 
   implicit none
@@ -359,28 +361,6 @@ contains
       err = E_NUCLIDE_NOT_ALLOCATED
     end if
   end function openmc_get_nuclide
-
-!===============================================================================
-! OPENMC_GET_TALLY returns the index in the tallies array of a tally
-! with a given ID
-!===============================================================================
-
-  function openmc_get_tally(id, index) result(err) bind(C)
-    integer(C_INT32_T), value :: id
-    integer(C_INT32_T), intent(out) :: index
-    integer(C_INT) :: err
-
-    if (allocated(tallies)) then
-      if (tally_dict % has_key(id)) then
-        index = tally_dict % get_key(id)
-        err = 0
-      else
-        err = E_TALLY_INVALID_ID
-      end if
-    else
-      err = E_TALLY_NOT_ALLOCATED
-    end if
-  end function openmc_get_tally
 
 !===============================================================================
 ! OPENMC_HARD_RESET reset tallies and timers as well as the pseudorandom
@@ -725,149 +705,5 @@ contains
     call time_finalize % reset()
 
   end subroutine openmc_reset
-
-!===============================================================================
-! OPENMC_TALLY_GET_ID returns the ID of a tally
-!===============================================================================
-
-  function openmc_tally_get_id(index, id) result(err) bind(C)
-    integer(C_INT32_T), value       :: index
-    integer(C_INT32_T), intent(out) :: id
-    integer(C_INT) :: err
-
-    if (index >= 1 .and. index <= size(tallies)) then
-      id = tallies(index) % id
-      err = 0
-    else
-      err = E_OUT_OF_BOUNDS
-    end if
-  end function openmc_tally_get_id
-
-!===============================================================================
-! OPENMC_TALLY_NUCLIDES returns the list of nuclides assigned to a tally
-!===============================================================================
-
-  function openmc_tally_get_nuclides(index, nuclides, n) result(err) bind(C)
-    integer(C_INT32_T), value :: index
-    type(C_PTR), intent(out) :: nuclides
-    integer(C_INT), intent(out) :: n
-    integer(C_INT) :: err
-
-    err = E_UNASSIGNED
-    if (index >= 1 .and. index <= size(tallies)) then
-      associate (t => tallies(index))
-        if (allocated(t % nuclide_bins)) then
-          nuclides = C_LOC(t % nuclide_bins(1))
-          n = size(t % nuclide_bins)
-          err = 0
-        end if
-      end associate
-    else
-      err = E_OUT_OF_BOUNDS
-    end if
-  end function openmc_tally_get_nuclides
-
-!===============================================================================
-! OPENMC_TALLY_RESULTS returns a pointer to a tally results array along with its
-! shape. This allows a user to obtain in-memory tally results from Python
-! directly.
-!===============================================================================
-
-  function openmc_tally_results(index, ptr, shape_) result(err) bind(C)
-    integer(C_INT32_T), intent(in), value :: index
-    type(C_PTR),        intent(out) :: ptr
-    integer(C_INT),     intent(out) :: shape_(3)
-    integer(C_INT) :: err
-
-    err = E_UNASSIGNED
-    if (index >= 1 .and. index <= size(tallies)) then
-      if (allocated(tallies(index) % results)) then
-        ptr = C_LOC(tallies(index) % results(1,1,1))
-        shape_(:) = shape(tallies(index) % results)
-        err = 0
-      end if
-    else
-      err = E_OUT_OF_BOUNDS
-    end if
-  end function openmc_tally_results
-
-!===============================================================================
-! OPENMC_TALLY_SET_NUCLIDES sets the nuclides in the tally which results should
-! be scored for
-!===============================================================================
-
-  function openmc_tally_set_nuclides(index, n, nuclides) result(err) bind(C)
-    integer(C_INT32_T), value  :: index
-    integer(C_INT), value      :: n
-    type(C_PTR),    intent(in) :: nuclides(n)
-    integer(C_INT) :: err
-
-    integer :: i
-    character(C_CHAR), pointer :: string(:)
-    character(len=:, kind=C_CHAR), allocatable :: nuclide_
-
-    err = E_UNASSIGNED
-    if (index >= 1 .and. index <= size(tallies)) then
-      associate (t => tallies(index))
-        if (allocated(t % nuclide_bins)) deallocate(t % nuclide_bins)
-        allocate(t % nuclide_bins(n))
-        t % n_nuclide_bins = n
-
-        do i = 1, n
-          ! Convert C string to Fortran string
-          call c_f_pointer(nuclides(i), string, [10])
-          nuclide_ = to_lower(to_f_string(string))
-
-          select case (nuclide_)
-          case ('total')
-            t % nuclide_bins(i) = -1
-          case default
-            if (nuclide_dict % has_key(nuclide_)) then
-              t % nuclide_bins(i) = nuclide_dict % get_key(nuclide_)
-            else
-              err = E_NUCLIDE_NOT_LOADED
-              return
-            end if
-          end select
-        end do
-
-        ! Recalculate total number of scoring bins
-        t % total_score_bins = t % n_score_bins * t % n_nuclide_bins
-
-        ! (Re)allocate results array
-        if (allocated(t % results)) deallocate(t % results)
-        allocate(t % results(3, t % total_score_bins, t % total_filter_bins))
-        t % results(:,:,:) = ZERO
-
-        err = 0
-      end associate
-    else
-      err = E_OUT_OF_BOUNDS
-    end if
-  end function openmc_tally_set_nuclides
-
-!===============================================================================
-! TO_F_STRING takes a null-terminated array of C chars and turns it into a
-! deferred-length character string. Yay Fortran 2003!
-!===============================================================================
-
-  function to_f_string(c_string) result(f_string)
-    character(kind=C_CHAR), intent(in) :: c_string(*)
-    character(:), allocatable :: f_string
-
-    integer :: i, n
-
-    ! Determine length of original string
-    n = 0
-    do while (c_string(n + 1) /= C_NULL_CHAR)
-      n = n + 1
-    end do
-
-    ! Copy C string character by character
-    allocate(character(len=n) :: f_string)
-    do i = 1, n
-      f_string(i:i) = c_string(i)
-    end do
-  end function to_f_string
 
 end module openmc_api

@@ -4,22 +4,30 @@ module tally_header
 
   use hdf5
 
-  use constants,           only: NONE, N_FILTER_TYPES, ZERO
+  use constants,           only: NONE, N_FILTER_TYPES, ZERO, N_GLOBAL_TALLIES
   use error
   use dict_header,         only: DictIntInt
   use nuclide_header,      only: nuclide_dict
   use string,              only: to_lower, to_f_string
-  use tally_filter_header, only: TallyFilterContainer
+  use tally_filter_header, only: TallyFilterContainer, filters
   use trigger_header,      only: TriggerObject
 
   implicit none
+  private
+  public :: configure_tallies
+  public :: openmc_extend_tallies
+  public :: openmc_get_tally
+  public :: openmc_tally_get_id
+  public :: openmc_tally_get_nuclides
+  public :: openmc_tally_results
+  public :: openmc_tally_set_nuclides
 
 !===============================================================================
 ! TALLYDERIVATIVE describes a first-order derivative that can be applied to
 ! tallies.
 !===============================================================================
 
-  type TallyDerivative
+  type, public :: TallyDerivative
     integer :: id
     integer :: variable
     integer :: diff_material
@@ -33,7 +41,7 @@ module tally_header
 ! TallyResult array.
 !===============================================================================
 
-  type TallyObject
+  type, public :: TallyObject
     ! Basic data
 
     integer :: id                   ! user-defined identifier
@@ -75,7 +83,7 @@ module tally_header
     ! second dimension of the array is for the combination of filters
     ! (e.g. specific cell, specific energy group, etc.)
 
-    integer :: total_filter_bins
+    integer :: n_filter_bins
     integer :: total_score_bins
     real(C_DOUBLE), allocatable :: results(:,:,:)
 
@@ -93,22 +101,43 @@ module tally_header
     integer :: deriv = NONE
 
   contains
-    procedure :: write_results_hdf5
-    procedure :: read_results_hdf5
+    procedure :: read_results_hdf5 => tally_read_results_hdf5
+    procedure :: write_results_hdf5 => tally_write_results_hdf5
+    procedure :: setup_arrays => tally_setup_arrays
   end type TallyObject
 
-  integer(C_INT32_T), bind(C) :: n_tallies = 0 ! # of tallies
+  integer(C_INT32_T), public, bind(C) :: n_tallies = 0 ! # of tallies
 
-  type(TallyObject),     allocatable, target :: tallies(:)
-  type(TallyDerivative), allocatable :: tally_derivs(:)
+  type(TallyObject),     public, allocatable, target :: tallies(:)
+  type(TallyDerivative), public, allocatable :: tally_derivs(:)
 !$omp threadprivate(tally_derivs)
 
   ! Dictionary that maps user IDs to indices in 'tallies'
-  type(DictIntInt) :: tally_dict
+  type(DictIntInt), public :: tally_dict
+
+  ! Global tallies
+  !   1) collision estimate of k-eff
+  !   2) absorption estimate of k-eff
+  !   3) track-length estimate of k-eff
+  !   4) leakage fraction
+
+  real(C_DOUBLE), public, allocatable, target :: global_tallies(:,:)
+
+  ! It is possible to protect accumulate operations on global tallies by using
+  ! an atomic update. However, when multiple threads accumulate to the same
+  ! global tally, it can cause a higher cache miss rate due to
+  ! invalidation. Thus, we use threadprivate variables to accumulate global
+  ! tallies and then reduce at the end of a generation.
+  real(C_DOUBLE), public :: global_tally_collision   = ZERO
+  real(C_DOUBLE), public :: global_tally_absorption  = ZERO
+  real(C_DOUBLE), public :: global_tally_tracklength = ZERO
+  real(C_DOUBLE), public :: global_tally_leakage     = ZERO
+!$omp threadprivate(global_tally_collision, global_tally_absorption, &
+!$omp&              global_tally_tracklength, global_tally_leakage)
 
 contains
 
-  subroutine write_results_hdf5(this, group_id)
+  subroutine tally_write_results_hdf5(this, group_id)
     class(TallyObject), intent(in) :: this
     integer(HID_T),     intent(in) :: group_id
 
@@ -140,9 +169,9 @@ contains
     call h5dclose_f(dset, hdf5_err)
     call h5sclose_f(memspace, hdf5_err)
     call h5sclose_f(dspace, hdf5_err)
-  end subroutine write_results_hdf5
+  end subroutine tally_write_results_hdf5
 
-  subroutine read_results_hdf5(this, group_id)
+  subroutine tally_read_results_hdf5(this, group_id)
     class(TallyObject), intent(inout) :: this
     integer(HID_T),     intent(in) :: group_id
 
@@ -173,7 +202,69 @@ contains
     call h5dclose_f(dset, hdf5_err)
     call h5sclose_f(memspace, hdf5_err)
     call h5sclose_f(dspace, hdf5_err)
-  end subroutine read_results_hdf5
+  end subroutine tally_read_results_hdf5
+
+!===============================================================================
+! SETUP_ARRAYS allocates and populates several member arrays of the TallyObject
+! derived type, including stride, filter_matches, and results.
+!===============================================================================
+
+  subroutine tally_setup_arrays(this)
+    class(TallyObject), intent(inout) :: this
+
+    integer :: i                 ! loop index for tallies
+    integer :: j                 ! loop index for filters
+    integer :: n                 ! temporary stride
+    integer :: i_filt            ! filter index
+
+    ! Allocate stride
+    if (allocated(this % filter)) then
+      if (allocated(this % stride)) deallocate(this % stride)
+      allocate(this % stride(size(this % filter)))
+
+      ! The filters are traversed in opposite order so that the last filter has
+      ! the shortest stride in memory and the first filter has the largest
+      ! stride
+      n = 1
+      STRIDE: do j = size(this % filter), 1, -1
+        i_filt = this % filter(j)
+        this % stride(j) = n
+        n = n * filters(i_filt) % obj % n_bins
+      end do STRIDE
+      this % n_filter_bins = n
+    else
+      this % n_filter_bins = 1
+    end if
+
+    ! Set total number of filter and scoring bins
+    this % total_score_bins = this % n_score_bins * this % n_nuclide_bins
+
+    ! Allocate results array
+    if (allocated(this % results)) deallocate(this % results)
+    allocate(this % results(3, this % total_score_bins, this % n_filter_bins))
+    this % results(:,:,:) = ZERO
+
+  end subroutine tally_setup_arrays
+
+!===============================================================================
+! CONFIGURE_TALLIES initializes several data structures related to tallies. This
+! is called after the basic tally data has already been read from the
+! tallies.xml file.
+!===============================================================================
+
+  subroutine configure_tallies()
+
+    integer :: i
+
+    ! Allocate global tallies
+    allocate(global_tallies(3, N_GLOBAL_TALLIES))
+    global_tallies(:,:) = ZERO
+
+    do i = 1, n_tallies
+      call tallies(i) % setup_arrays()
+    end do
+
+  end subroutine configure_tallies
 
 !===============================================================================
 !                               C API FUNCTIONS
@@ -324,13 +415,7 @@ contains
           end select
         end do
 
-        ! Recalculate total number of scoring bins
-        t % total_score_bins = t % n_score_bins * t % n_nuclide_bins
-
-        ! (Re)allocate results array
-        if (allocated(t % results)) deallocate(t % results)
-        allocate(t % results(3, t % total_score_bins, t % total_filter_bins))
-        t % results(:,:,:) = ZERO
+        call t % setup_arrays()
 
         err = 0
       end associate

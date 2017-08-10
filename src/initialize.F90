@@ -29,8 +29,7 @@ module initialize
   use state_point,     only: load_state_point
   use string,          only: to_str, starts_with, ends_with, str_to_int
   use summary,         only: write_summary
-  use tally_header,    only: TallyObject
-  use tally_initialize,only: configure_tallies
+  use tally_header,    only: TallyObject, configure_tallies
   use tally_filter
   use tally,           only: init_tally_routines
 

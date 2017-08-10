@@ -256,7 +256,6 @@ contains
     use tally_header,     only: TallyObject, openmc_extend_tallies
     use tally_filter_header
     use tally_filter
-    use tally_initialize
     use xml_interface
 
     type(XMLNode), intent(in) :: root ! XML root element

@@ -6,8 +6,8 @@ module geometry_header
   use constants,       only: HALF, TWO, THREE, INFINITY, K_BOLTZMANN, &
                              MATERIAL_VOID, NONE
   use dict_header,     only: DictCharInt, DictIntInt
+  use material_header, only: Material, materials, material_dict
   use nuclide_header
-  use material_header, only: Material
   use sab_header
   use stl_vector,      only: VectorReal
   use string,          only: to_lower
@@ -347,11 +347,8 @@ contains
 ! temperatures to read (which may be different if interpolation is used)
 !===============================================================================
 
-  subroutine get_temperatures(cells, materials, material_dict, &
-                              nuc_temps, sab_temps)
+  subroutine get_temperatures(cells, nuc_temps, sab_temps)
     type(Cell),                  allocatable, intent(in)  :: cells(:)
-    type(Material),              allocatable, intent(in)  :: materials(:)
-    type(DictIntInt),                         intent(in)  :: material_dict
     type(VectorReal),            allocatable, intent(out) :: nuc_temps(:)
     type(VectorReal),  optional, allocatable, intent(out) :: sab_temps(:)
 

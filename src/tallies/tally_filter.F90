@@ -5,13 +5,12 @@ module tally_filter
   use algorithm,           only: binary_search
   use constants,           only: ONE, NO_BIN_FOUND, FP_PRECISION, ERROR_REAL
   use dict_header,         only: DictIntInt
-  use geometry_header,     only: root_universe, RectLattice, HexLattice
-  use global
+  use geometry_header
   use hdf5_interface
   use particle_header,     only: Particle
+  use surface_header
   use string,              only: to_str
-  use tally_filter_header, only: TallyFilter, TallyFilterContainer, &
-       TallyFilterMatch
+  use tally_filter_header
 
   ! Inherit other filters
   use tally_filter_energy

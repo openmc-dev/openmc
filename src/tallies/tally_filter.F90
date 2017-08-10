@@ -11,7 +11,11 @@ module tally_filter
   use particle_header,     only: Particle
   use string,              only: to_str
   use tally_filter_header, only: TallyFilter, TallyFilterContainer, &
-                                 TallyFilterMatch
+       TallyFilterMatch
+
+  ! Inherit other filters
+  use tally_filter_energy
+  use tally_filter_mesh
 
   implicit none
 
@@ -105,38 +109,6 @@ module tally_filter
     procedure :: text_label => text_label_surface
     procedure :: initialize => initialize_surface
   end type SurfaceFilter
-
-!===============================================================================
-! ENERGYFILTER bins the incident neutron energy.
-!===============================================================================
-  type, extends(TallyFilter) :: EnergyFilter
-    real(8), allocatable :: bins(:)
-
-    ! True if transport group number can be used directly to get bin number
-    logical              :: matches_transport_groups = .false.
-
-  contains
-    procedure :: get_all_bins => get_all_bins_energy
-    procedure :: to_statepoint => to_statepoint_energy
-    procedure :: text_label => text_label_energy
-  end type EnergyFilter
-
-!===============================================================================
-! ENERGYOUTFILTER bins the outgoing neutron energy.  Only scattering events use
-! the get_all_bins functionality.  Nu-fission tallies manually iterate over the
-! filter bins.
-!===============================================================================
-  type, extends(TallyFilter) :: EnergyoutFilter
-    real(8), allocatable :: bins(:)
-
-    ! True if transport group number can be used directly to get bin number
-    logical              :: matches_transport_groups = .false.
-
-  contains
-    procedure :: get_all_bins => get_all_bins_energyout
-    procedure :: to_statepoint => to_statepoint_energyout
-    procedure :: text_label => text_label_energyout
-  end type EnergyoutFilter
 
 !===============================================================================
 ! DELAYEDGROUPFILTER bins outgoing fission neutrons in their delayed groups.
@@ -652,118 +624,6 @@ contains
 
     label = "Surface " // to_str(surfaces(this % surfaces(bin)) % obj % id)
   end function text_label_surface
-
-!===============================================================================
-! EnergyFilter methods
-!===============================================================================
-  subroutine get_all_bins_energy(this, p, estimator, match)
-    class(EnergyFilter), intent(in)  :: this
-    type(Particle),      intent(in)  :: p
-    integer,             intent(in)  :: estimator
-    type(TallyFilterMatch),   intent(inout) :: match
-
-    integer :: n
-    integer :: bin
-    real(8) :: E
-
-    n = this % n_bins
-
-    if (p % g /= NONE .and. this % matches_transport_groups) then
-      if (estimator == ESTIMATOR_TRACKLENGTH) then
-        call match % bins % push_back(num_energy_groups - p % g + 1)
-        call match % weights % push_back(ONE)
-      else
-        call match % bins % push_back(num_energy_groups - p % last_g + 1)
-        call match % weights % push_back(ONE)
-      end if
-
-    else
-      ! Pre-collision energy of particle
-      E = p % last_E
-
-      ! Search to find incoming energy bin.
-      bin = binary_search(this % bins, n + 1, E)
-      if (bin /= NO_BIN_FOUND) then
-        call match % bins % push_back(bin)
-        call match % weights % push_back(ONE)
-      end if
-    end if
-  end subroutine get_all_bins_energy
-
-  subroutine to_statepoint_energy(this, filter_group)
-    class(EnergyFilter), intent(in) :: this
-    integer(HID_T),      intent(in) :: filter_group
-
-    call write_dataset(filter_group, "type", "energy")
-    call write_dataset(filter_group, "n_bins", this % n_bins)
-    call write_dataset(filter_group, "bins", this % bins)
-  end subroutine to_statepoint_energy
-
-  function text_label_energy(this, bin) result(label)
-    class(EnergyFilter), intent(in) :: this
-    integer,             intent(in) :: bin
-    character(MAX_LINE_LEN)         :: label
-
-    real(8) :: E0, E1
-
-    E0 = this % bins(bin)
-    E1 = this % bins(bin + 1)
-    label = "Incoming Energy [" // trim(to_str(E0)) // ", " &
-         // trim(to_str(E1)) // ")"
-  end function text_label_energy
-
-!===============================================================================
-! EnergyoutFilter methods
-!===============================================================================
-  subroutine get_all_bins_energyout(this, p, estimator, match)
-    class(EnergyoutFilter), intent(in)  :: this
-    type(Particle),         intent(in)  :: p
-    integer,                intent(in)  :: estimator
-    type(TallyFilterMatch),      intent(inout) :: match
-
-    integer :: n
-    integer :: bin
-
-    n = this % n_bins
-
-    if (p % g /= NONE .and. this % matches_transport_groups) then
-      ! Tallies are ordered in increasing groups, group indices
-      ! however are the opposite, so switch
-      call match % bins % push_back(num_energy_groups - p % g + 1)
-      call match % weights % push_back(ONE)
-
-    else
-
-      ! Search to find incoming energy bin.
-      bin = binary_search(this % bins, n + 1, p % E)
-      if (bin /= NO_BIN_FOUND) then
-        call match % bins % push_back(bin)
-        call match % weights % push_back(ONE)
-      end if
-    end if
-  end subroutine get_all_bins_energyout
-
-  subroutine to_statepoint_energyout(this, filter_group)
-    class(EnergyoutFilter), intent(in) :: this
-    integer(HID_T),         intent(in) :: filter_group
-
-    call write_dataset(filter_group, "type", "energyout")
-    call write_dataset(filter_group, "n_bins", this % n_bins)
-    call write_dataset(filter_group, "bins", this % bins)
-  end subroutine to_statepoint_energyout
-
-  function text_label_energyout(this, bin) result(label)
-    class(EnergyoutFilter), intent(in) :: this
-    integer,                intent(in) :: bin
-    character(MAX_LINE_LEN)            :: label
-
-    real(8) :: E0, E1
-
-    E0 = this % bins(bin)
-    E1 = this % bins(bin + 1)
-    label = "Outgoing Energy [" // trim(to_str(E0)) // ", " &
-         // trim(to_str(E1)) // ")"
-  end function text_label_energyout
 
 !===============================================================================
 ! DelayedGroupFilter methods

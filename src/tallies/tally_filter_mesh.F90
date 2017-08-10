@@ -11,9 +11,7 @@ module tally_filter_mesh
   use tally_filter_header, only: TallyFilter, TallyFilterMatch
 
   implicit none
-
   private
-  public :: MeshFilter
 
 !===============================================================================
 ! MESHFILTER indexes the location of particle events to a regular mesh.  For
@@ -21,7 +19,7 @@ module tally_filter_mesh
 ! will correspond to the fraction of the track length that lies in that bin.
 !===============================================================================
 
-  type, extends(TallyFilter) :: MeshFilter
+  type, public, extends(TallyFilter) :: MeshFilter
     type(RegularMesh), pointer :: mesh => null()
   contains
     procedure :: get_all_bins => get_all_bins_mesh

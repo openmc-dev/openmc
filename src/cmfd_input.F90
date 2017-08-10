@@ -254,7 +254,6 @@ contains
     use tally_header,     only: TallyObject
     use tally_filter_header
     use tally_filter
-    use tally_filter_mesh, only: MeshFilter
     use tally_initialize, only: add_tallies
     use xml_interface
 

@@ -1,6 +1,9 @@
 module tally_filter_header
 
+  use, intrinsic :: ISO_C_BINDING
+
   use constants,       only: MAX_LINE_LEN
+  use dict_header,     only: DictIntInt
   use particle_header, only: Particle
   use stl_vector,      only: VectorInt, VectorReal
 
@@ -93,6 +96,15 @@ module tally_filter_header
   type TallyFilterContainer
     class(TallyFilter), allocatable :: obj
   end type TallyFilterContainer
+
+  integer :: n_filters = 0 ! # of filters
+
+  type(TallyFilterContainer), allocatable, target :: filters(:)
+  type(TallyFilterMatch), allocatable :: filter_matches(:)
+!$omp threadprivate(filter_matches)
+
+  ! Dictionary that maps user IDs to indices in 'filters'
+  type(DictIntInt) :: filter_dict
 
 contains
 

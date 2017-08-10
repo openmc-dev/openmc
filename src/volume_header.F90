@@ -16,6 +16,8 @@ module volume_header
     procedure :: from_xml => volume_from_xml
   end type VolumeCalculation
 
+  type(VolumeCalculation), allocatable :: volume_calcs(:)
+
 contains
 
   subroutine volume_from_xml(this, node_vol)

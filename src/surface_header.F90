@@ -1,6 +1,9 @@
 module surface_header
 
+  use, intrinsic :: ISO_C_BINDING
+
   use constants, only: NONE, ONE, TWO, ZERO, HALF, INFINITY, FP_COINCIDENT
+  use dict_header, only: DictIntInt
 
   implicit none
 
@@ -192,6 +195,13 @@ module surface_header
     procedure :: distance => quadric_distance
     procedure :: normal => quadric_normal
   end type SurfaceQuadric
+
+  integer(C_INT32_T), bind(C) :: n_surfaces  ! # of surfaces
+
+  type(SurfaceContainer), allocatable, target :: surfaces(:)
+
+  ! Dictionary that maps user IDs to indices in 'surfaces'
+  type(DictIntInt) :: surface_dict
 
 contains
 

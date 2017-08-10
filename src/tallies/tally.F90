@@ -4272,7 +4272,7 @@ contains
       end do
 
       if (run_mode == MODE_EIGENVALUE) then
-        if (active_batches) then
+        if (current_batch > n_inactive) then
           ! Accumulate products of different estimators of k
           k_col = global_tallies(RESULT_VALUE, K_COLLISION) / total_weight
           k_abs = global_tallies(RESULT_VALUE, K_ABSORPTION) / total_weight

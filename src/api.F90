@@ -678,10 +678,6 @@ contains
     k_abs_tra = ZERO
     k_sum(:) = ZERO
 
-    ! Turn off tally flags
-    tallies_on = .false.
-    active_batches = .false.
-
     ! Clear active tally lists
     call active_analog_tallies % clear()
     call active_tracklength_tallies % clear()

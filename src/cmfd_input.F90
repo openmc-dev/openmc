@@ -609,7 +609,6 @@ contains
 
     ! Put cmfd tallies into active tally array and turn tallies on
     call setup_active_cmfdtallies()
-    tallies_on = .true.
 
   end subroutine create_cmfd_tally
 

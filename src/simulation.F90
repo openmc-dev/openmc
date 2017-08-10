@@ -171,10 +171,6 @@ contains
       call time_inactive % stop()
       call time_active % start()
 
-      ! Enable active batches (and tallies_on if it hasn't been enabled)
-      active_batches = .true.
-      tallies_on = .true.
-
       ! Add user tallies to active tallies list
       call setup_active_usertallies()
     end if
@@ -295,7 +291,7 @@ contains
     call time_tallies % stop()
 
     ! Reset global tally results
-    if (.not. active_batches) then
+    if (current_batch <= n_inactive) then
       global_tallies(:,:) = ZERO
       n_realizations = 0
     end if

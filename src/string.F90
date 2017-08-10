@@ -514,4 +514,28 @@ contains
     if (inword) n = n + 1
   end function word_count
 
+!===============================================================================
+! TO_F_STRING takes a null-terminated array of C chars and turns it into a
+! deferred-length character string. Yay Fortran 2003!
+!===============================================================================
+
+  function to_f_string(c_string) result(f_string)
+    character(kind=C_CHAR), intent(in) :: c_string(*)
+    character(:), allocatable :: f_string
+
+    integer :: i, n
+
+    ! Determine length of original string
+    n = 0
+    do while (c_string(n + 1) /= C_NULL_CHAR)
+      n = n + 1
+    end do
+
+    ! Copy C string character by character
+    allocate(character(len=n) :: f_string)
+    do i = 1, n
+      f_string(i:i) = c_string(i)
+    end do
+  end function to_f_string
+
 end module string

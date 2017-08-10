@@ -1,5 +1,7 @@
 module cmfd_input
 
+  use, intrinsic :: ISO_C_BINDING
+
   use global
 
   implicit none
@@ -251,10 +253,10 @@ contains
     use mesh_header,      only: RegularMesh
     use string
     use tally,            only: setup_active_cmfdtallies
-    use tally_header,     only: TallyObject
+    use tally_header,     only: TallyObject, openmc_extend_tallies
     use tally_filter_header
     use tally_filter
-    use tally_initialize, only: add_tallies
+    use tally_initialize
     use xml_interface
 
     type(XMLNode), intent(in) :: root ! XML root element
@@ -264,6 +266,8 @@ contains
     integer :: n           ! size of arrays in mesh specification
     integer :: ng          ! number of energy groups (default 1)
     integer :: n_filter    ! number of filters
+    integer :: i_start, i_end
+    integer(C_INT) :: err
     integer :: i_filt      ! index in filters array
     integer :: iarray3(3) ! temp integer array
     real(8) :: rarray3(3) ! temp double array
@@ -462,7 +466,9 @@ contains
     end select
 
     ! Allocate tallies
-    call add_tallies("cmfd", n_cmfd_tallies)
+    i_cmfd_tallies = n_tallies
+    err = openmc_extend_tallies(n_cmfd_tallies, i_start, i_end)
+    cmfd_tallies => tallies(i_start:i_end)
 
     ! Begin loop around tallies
     do i = 1, n_cmfd_tallies

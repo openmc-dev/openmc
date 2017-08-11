@@ -11,7 +11,7 @@ module mesh_header
 
   implicit none
   private
-  public :: RegularMesh, meshes, n_meshes, mesh_dict
+  public :: openmc_extend_meshes
 
 !===============================================================================
 ! STRUCTUREDMESH represents a tessellation of n-dimensional Euclidean space by
@@ -36,12 +36,12 @@ module mesh_header
     procedure :: to_hdf5 => regular_to_hdf5
   end type RegularMesh
 
-  integer(C_INT32_T), bind(C) :: n_meshes = 0 ! # of structured meshes
+  integer(C_INT32_T), public, bind(C) :: n_meshes = 0 ! # of structured meshes
 
-  type(RegularMesh), allocatable, target :: meshes(:)
+  type(RegularMesh), public, allocatable, target :: meshes(:)
 
   ! Dictionary that maps user IDs to indices in 'meshes'
-  type(DictIntInt) :: mesh_dict
+  type(DictIntInt), public :: mesh_dict
 
 contains
 
@@ -164,8 +164,8 @@ contains
 
   pure function regular_intersects(this, xyz0, xyz1) result(intersects)
     class(RegularMesh), intent(in) :: this
-    real(8), intent(in) :: xyz0(1)
-    real(8), intent(in) :: xyz1(1)
+    real(8), intent(in) :: xyz0(:)
+    real(8), intent(in) :: xyz1(:)
     logical :: intersects
 
     select case(this % n_dimension)
@@ -414,5 +414,40 @@ contains
 
     call close_group(mesh_group)
   end subroutine regular_to_hdf5
+
+!===============================================================================
+!                               C API FUNCTIONS
+!===============================================================================
+
+  function openmc_extend_meshes(n, index_start, index_end) result(err) bind(C)
+    ! Extend the meshes array by n elements
+    integer(C_INT32_T), value, intent(in) :: n
+    integer(C_INT32_T), optional, intent(out) :: index_start
+    integer(C_INT32_T), optional, intent(out) :: index_end
+    integer(C_INT) :: err
+
+    type(RegularMesh), allocatable :: temp(:) ! temporary meshes array
+
+    if (n_meshes == 0) then
+      ! Allocate meshes array
+      allocate(meshes(n))
+    else
+      ! Allocate meshes array with increased size
+      allocate(temp(n_meshes + n))
+
+      ! Copy original meshes to temporary array
+      temp(1:n_meshes) = meshes
+
+      ! Move allocation from temporary array
+      call move_alloc(FROM=temp, TO=meshes)
+    end if
+
+    ! Return indices in meshes array
+    if (present(index_start)) index_start = n_meshes + 1
+    if (present(index_end)) index_end = n_meshes + n
+    n_meshes = n_meshes + n
+
+    err = 0
+  end function openmc_extend_meshes
 
 end module mesh_header

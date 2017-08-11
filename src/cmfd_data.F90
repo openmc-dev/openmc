@@ -50,14 +50,14 @@ contains
 
   subroutine compute_xs()
 
+    use cmfd_header,  only: cmfd_tallies
     use constants,    only: FILTER_MESH, FILTER_ENERGYIN, FILTER_ENERGYOUT,    &
                            FILTER_SURFACE, OUT_LEFT, OUT_RIGHT, OUT_BACK,      &
                            OUT_FRONT, OUT_BOTTOM, OUT_TOP, IN_LEFT, IN_RIGHT,  &
                            IN_BACK, IN_FRONT, IN_BOTTOM, IN_TOP, CMFD_NOACCEL, &
                            ZERO, ONE, TINY_BIT
     use error,        only: fatal_error
-    use global,       only: cmfd, n_cmfd_tallies, cmfd_tallies, meshes, &
-                           filters, filter_matches
+    use global,       only: cmfd, meshes, filters, filter_matches
     use mesh_header,  only: RegularMesh
     use string,       only: to_str
     use tally_header, only: TallyObject
@@ -75,7 +75,6 @@ contains
     integer :: ital          ! tally object index
     integer :: ijk(3)        ! indices for mesh cell
     integer :: score_index   ! index to pull from tally object
-    integer :: i_mesh        ! index in meshes array
     integer :: i_filt        ! index in filters array
     integer :: i_filter_mesh ! index for mesh filter
     integer :: i_filter_ein  ! index for incoming energy filter
@@ -102,7 +101,7 @@ contains
     i_filt = t % filter(t % find_filter(FILTER_MESH))
     select type(filt => filters(i_filt) % obj)
     type is (MeshFilter)
-      m => filt % mesh
+      m => meshes(filt % mesh)
     end select
 
     ! Set mesh widths
@@ -113,14 +112,14 @@ contains
     cmfd % keff_bal = ZERO
 
     ! Begin loop around tallies
-    TAL: do ital = 1, n_cmfd_tallies
+    TAL: do ital = 1, size(cmfd_tallies)
 
       ! Associate tallies and mesh
       t => cmfd_tallies(ital)
       i_filt = t % filter(t % find_filter(FILTER_MESH))
       select type(filt => filters(i_filt) % obj)
       type is (MeshFilter)
-        m => filt % mesh
+        m => meshes(filt % mesh)
       end select
 
       ! Check for energy filters

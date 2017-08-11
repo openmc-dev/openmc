@@ -214,9 +214,10 @@ contains
   subroutine cmfd_reweight(new_weights)
 
     use algorithm,   only: binary_search
+    use cmfd_header, only: cmfd_mesh
     use constants,   only: ZERO, ONE
     use error,       only: warning, fatal_error
-    use global,      only: meshes, source_bank, work, n_user_meshes, cmfd
+    use global,      only: source_bank, work, cmfd
     use mesh_header, only: RegularMesh
     use mesh,        only: count_bank_sites
     use message_passing
@@ -234,13 +235,9 @@ contains
     integer :: n_groups ! number of energy groups
     logical :: outside  ! any source sites outside mesh
     logical :: in_mesh  ! source site is inside mesh
-    type(RegularMesh), pointer :: m ! point to mesh
 #ifdef MPI
     integer :: mpi_err
 #endif
-
-    ! Associate pointer
-    m => meshes(n_user_meshes + 1)
 
     ! Get maximum of spatial and group indices
     nx = cmfd % indices(1)
@@ -265,8 +262,8 @@ contains
       cmfd%weightfactors = ONE
 
       ! Count bank sites in mesh and reverse due to egrid structure
-      call count_bank_sites(m, source_bank, cmfd%sourcecounts, cmfd % egrid, &
-           sites_outside=outside, size_bank=work)
+      call count_bank_sites(cmfd_mesh, source_bank, cmfd%sourcecounts, &
+           cmfd % egrid, sites_outside=outside, size_bank=work)
       cmfd % sourcecounts = cmfd%sourcecounts(ng:1:-1,:,:,:)
 
       ! Check for sites outside of the mesh
@@ -295,7 +292,7 @@ contains
     do i = 1, int(work,4)
 
       ! Determine spatial bin
-      call m % get_indices(source_bank(i) % xyz, ijk, in_mesh)
+      call cmfd_mesh % get_indices(source_bank(i) % xyz, ijk, in_mesh)
 
       ! Determine energy bin
       n_groups = size(cmfd % egrid) - 1
@@ -363,7 +360,7 @@ contains
 
   subroutine cmfd_tally_reset()
 
-    use global,  only: cmfd_tallies
+    use cmfd_header,  only: cmfd_tallies
     use output,  only: write_message
 
     integer :: i ! loop counter

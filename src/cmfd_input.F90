@@ -248,9 +248,10 @@ contains
 
   subroutine create_cmfd_tally(root)
 
+    use cmfd_header,      only: cmfd_mesh, cmfd_tallies
     use constants,        only: MAX_LINE_LEN
     use error,            only: fatal_error, warning
-    use mesh_header,      only: RegularMesh
+    use mesh_header,      only: RegularMesh, openmc_extend_meshes
     use string
     use tally_header,     only: TallyObject, openmc_extend_tallies
     use tally_filter_header
@@ -265,6 +266,7 @@ contains
     integer :: ng          ! number of energy groups (default 1)
     integer :: n_filter    ! number of filters
     integer :: i_start, i_end
+    integer :: i_filt_start, i_filt_end
     integer(C_INT) :: err
     integer :: i_filt      ! index in filters array
     integer :: iarray3(3) ! temp integer array
@@ -273,16 +275,14 @@ contains
     type(RegularMesh), pointer :: m
     type(XMLNode) :: node_mesh
 
-    ! Set global variables if they are 0 (this can happen if there is no tally
-    ! file)
-    if (n_meshes == 0) n_meshes = n_user_meshes + n_cmfd_meshes
+    err = openmc_extend_meshes(1, i_start)
 
     ! Allocate mesh
-    if (.not. allocated(meshes)) allocate(meshes(n_meshes))
-    m => meshes(n_user_meshes+1)
+    cmfd_mesh => meshes(i_start)
+    m => meshes(i_start)
 
     ! Set mesh id
-    m % id = n_user_meshes + 1
+    m % id = i_start
 
     ! Set mesh type to rectangular
     m % type = LATTICE_RECT
@@ -376,23 +376,23 @@ contains
     m % volume_frac = ONE/real(product(m % dimension),8)
 
     ! Add mesh to dictionary
-    call mesh_dict % add_key(m % id, n_user_meshes + 1)
+    call mesh_dict % add_key(m % id, i_start)
 
     ! Determine number of filters
     energy_filters = check_for_node(node_mesh, "energy")
-    n_cmfd_filters = merge(5, 3, energy_filters)
+    n = merge(5, 3, energy_filters)
 
     ! Extend filters array so we can add CMFD filters
-    err = openmc_extend_filters(n_cmfd_filters, i_start, i_end)
+    err = openmc_extend_filters(n, i_filt_start, i_filt_end)
 
     ! Set up mesh filter
-    i_filt = i_start
+    i_filt = i_filt_start
     allocate(MeshFilter :: filters(i_filt) % obj)
     select type (filt => filters(i_filt) % obj)
     type is (MeshFilter)
       filt % id = i_filt
       filt % n_bins = product(m % dimension)
-      filt % mesh => meshes(n_user_meshes + 1)
+      filt % mesh = i_start
       ! Add filter to dictionary
       call filter_dict % add_key(filt % id, i_filt)
     end select
@@ -437,7 +437,7 @@ contains
       ! We need to increase the dimension by one since we also need
       ! currents coming into and out of the boundary mesh cells.
       filt % n_bins = product(m % dimension + 1)
-      filt % mesh => meshes(n_user_meshes + 1)
+      filt % mesh = i_start
       ! Add filter to dictionary
       call filter_dict % add_key(filt % id, i_filt)
     end select
@@ -464,11 +464,11 @@ contains
     end select
 
     ! Allocate tallies
-    err = openmc_extend_tallies(n_cmfd_tallies, i_start, i_end)
+    err = openmc_extend_tallies(3, i_start, i_end)
     cmfd_tallies => tallies(i_start:i_end)
 
     ! Begin loop around tallies
-    do i = 1, n_cmfd_tallies
+    do i = 1, size(cmfd_tallies)
 
       ! Point t to tally variable
       t => cmfd_tallies(i)
@@ -510,9 +510,9 @@ contains
 
         ! Allocate and set filters
         allocate(t % filter(n_filter))
-        t % filter(1) = n_user_filters + 1
+        t % filter(1) = i_filt_start
         if (energy_filters) then
-          t % filter(2) = n_user_filters + 2
+          t % filter(2) = i_filt_start + 1
         end if
 
         ! Allocate scoring bins
@@ -550,10 +550,10 @@ contains
 
         ! Allocate and set indices in filters array
         allocate(t % filter(n_filter))
-        t % filter(1) = n_user_filters + 1
+        t % filter(1) = i_filt_start
         if (energy_filters) then
-          t % filter(2) = n_user_filters + 2
-          t % filter(3) = n_user_filters + 3
+          t % filter(2) = i_filt_start + 1
+          t % filter(3) = i_filt_start + 2
         end if
 
         ! Allocate macro reactions
@@ -583,10 +583,10 @@ contains
 
         ! Allocate and set filters
         allocate(t % filter(n_filter))
-        t % filter(1) = n_user_filters + n_cmfd_filters - 1
-        t % filter(n_filter) = n_user_filters + n_cmfd_filters
+        t % filter(1) = i_filt_end - 1
+        t % filter(n_filter) = i_filt_end
         if (energy_filters) then
-          t % filter(2) = n_user_filters + 2
+          t % filter(2) = i_filt_start + 1
         end if
 
         ! Allocate macro reactions

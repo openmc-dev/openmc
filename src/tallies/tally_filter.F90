@@ -188,7 +188,7 @@ contains
     integer,               intent(in)  :: estimator
     type(TallyFilterMatch),     intent(inout) :: match
 
-    integer :: i, start
+    integer :: i
 
     ! Iterate over coordinate levels to see which universes match
     do i = 1, p % n_coord

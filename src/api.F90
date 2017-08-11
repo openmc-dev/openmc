@@ -56,6 +56,7 @@ module openmc_api
   public :: openmc_tally_get_nuclides
   public :: openmc_tally_results
   public :: openmc_tally_set_nuclides
+  public :: openmc_tally_set_scores
 
 contains
 

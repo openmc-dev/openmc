@@ -260,8 +260,7 @@ module global
   real(8) :: res_scat_energy_max = 1000.0_8
   character(10), allocatable :: res_scat_nuclides(:)
 
-!$omp threadprivate(micro_xs, material_xs, fission_bank, n_bank, &
-!$omp&              trace, thread_id, current_work)
+!$omp threadprivate(fission_bank, n_bank, trace, thread_id, current_work)
 
 contains
 

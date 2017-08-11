@@ -2738,7 +2738,9 @@ contains
     n_user_filters = size(node_filt_list)
 
     ! Allocate filters array
-    if (n_user_filters > 0) call add_filters(n_user_filters)
+    if (n_user_filters > 0) then
+      err = openmc_extend_filters(n_user_filters)
+    end if
 
     ! Check for user tallies
     n_user_tallies = size(node_tal_list)
@@ -3877,13 +3879,13 @@ contains
 
               ! Extend the filters array so we can add a surface filter and
               ! mesh filter
-              call add_filters(2)
+              err = openmc_extend_filters(2, i_start, i_end)
 
               ! Increment number of user filters
               n_user_filters = n_user_filters + 2
 
               ! Get index of the new mesh filter
-              i_filt = n_user_filters - 1
+              i_filt = i_start
 
               ! Duplicate the mesh filter since other tallies might use this
               ! filter and we need to change the dimension
@@ -3897,13 +3899,13 @@ contains
                 ! currents coming into and out of the boundary mesh cells.
                 filt % n_bins = product(m % dimension + 1)
 
-              ! Add filter to dictionary
-              call filter_dict % add_key(filt % id, i_filt)
+                ! Add filter to dictionary
+                call filter_dict % add_key(filt % id, i_filt)
               end select
               t % filter(t % find_filter(FILTER_MESH)) = i_filt
 
               ! Get index of the new surface filter
-              i_filt = n_user_filters
+              i_filt = i_end
 
               ! Add surface filter
               allocate(SurfaceFilter :: filters(i_filt) % obj)

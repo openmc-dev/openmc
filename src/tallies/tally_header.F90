@@ -49,6 +49,7 @@ module tally_header
     integer :: type                 ! volume, surface current
     integer :: estimator            ! collision, track-length
     real(8) :: volume               ! volume of region
+    logical :: active = .false.
     integer, allocatable :: filter(:) ! index in filters array
 
     ! The stride attribute is used for determining the index in the results

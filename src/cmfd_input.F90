@@ -252,7 +252,6 @@ contains
     use error,            only: fatal_error, warning
     use mesh_header,      only: RegularMesh
     use string
-    use tally,            only: setup_active_cmfdtallies
     use tally_header,     only: TallyObject, openmc_extend_tallies
     use tally_filter_header
     use tally_filter
@@ -465,7 +464,6 @@ contains
     end select
 
     ! Allocate tallies
-    i_cmfd_tallies = n_tallies
     err = openmc_extend_tallies(n_cmfd_tallies, i_start, i_end)
     cmfd_tallies => tallies(i_start:i_end)
 
@@ -497,7 +495,7 @@ contains
       t % n_nuclide_bins = 1
 
       ! Record tally id which is equivalent to loop number
-      t % id = i_cmfd_tallies + i
+      t % id = i_start + i - 1
 
       if (i == 1) then
 
@@ -605,10 +603,9 @@ contains
         t % type = TALLY_MESH_CURRENT
       end if
 
+      ! Make CMFD tallies active from the start
+      t % active = .true.
     end do
-
-    ! Put cmfd tallies into active tally array and turn tallies on
-    call setup_active_cmfdtallies()
 
   end subroutine create_cmfd_tally
 

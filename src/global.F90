@@ -236,64 +236,8 @@ module global
   ! ============================================================================
   ! CMFD VARIABLES
 
-  ! Main object
-  type(cmfd_type) :: cmfd
-
   ! Is CMFD active
   logical :: cmfd_run = .false.
-
-  ! Timing objects
-  type(Timer) :: time_cmfd      ! timer for whole cmfd calculation
-  type(Timer) :: time_cmfdbuild ! timer for matrix build
-  type(Timer) :: time_cmfdsolve ! timer for solver
-
-  ! Flag for active core map
-  logical :: cmfd_coremap = .false.
-
-  ! Flag to reset dhats to zero
-  logical :: dhat_reset = .false.
-
-  ! Flag to activate neutronic feedback via source weights
-  logical :: cmfd_feedback = .false.
-
-  ! Adjoint method type
-  character(len=10) :: cmfd_adjoint_type = 'physical'
-
-  ! Number of incomplete ilu factorization levels
-  integer :: cmfd_ilu_levels = 1
-
-  ! Batch to begin cmfd
-  integer :: cmfd_begin = 1
-
-  ! Tally reset list
-  integer :: n_cmfd_resets
-  type(SetInt) :: cmfd_reset
-
-  ! Compute effective downscatter cross section
-  logical :: cmfd_downscatter = .false.
-
-  ! Convergence monitoring
-  logical :: cmfd_power_monitor = .false.
-
-  ! Cmfd output
-  logical :: cmfd_write_matrices = .false.
-
-  ! Run an adjoint calculation (last batch only)
-  logical :: cmfd_run_adjoint = .false.
-
-  ! CMFD run logicals
-  logical :: cmfd_on             = .false.
-
-  ! CMFD display info
-  character(len=25) :: cmfd_display = 'balance'
-
-  ! Estimate of spectral radius of CMFD matrices and tolerances
-  real(8) :: cmfd_spectral = ZERO
-  real(8) :: cmfd_shift = 1.e6
-  real(8) :: cmfd_ktol = 1.e-8_8
-  real(8) :: cmfd_stol = 1.e-8_8
-  real(8) :: cmfd_atoli = 1.e-10_8
-  real(8) :: cmfd_rtoli = 1.e-5_8
 
   ! Information about state points to be written
   integer :: n_state_points = 0

@@ -18,6 +18,7 @@ module openmc_api
   use plot,            only: openmc_plot_geometry
   use random_lcg,      only: seed, initialize_prng
   use tally_header
+  use tally_filter_header
   use simulation,      only: openmc_run
   use string,          only: to_f_string
   use volume_calc,     only: openmc_calculate_volumes
@@ -28,6 +29,8 @@ module openmc_api
   public :: openmc_calculate_volumes
   public :: openmc_cell_get_id
   public :: openmc_cell_set_temperature
+  public :: openmc_extend_filters
+  public :: openmc_extend_tallies
   public :: openmc_finalize
   public :: openmc_find
   public :: openmc_get_cell

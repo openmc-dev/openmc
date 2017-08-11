@@ -383,10 +383,10 @@ contains
     n_cmfd_filters = merge(5, 3, energy_filters)
 
     ! Extend filters array so we can add CMFD filters
-    call add_filters(n_cmfd_filters)
+    err = openmc_extend_filters(n_cmfd_filters, i_start, i_end)
 
     ! Set up mesh filter
-    i_filt = n_user_filters + 1
+    i_filt = i_start
     allocate(MeshFilter :: filters(i_filt) % obj)
     select type (filt => filters(i_filt) % obj)
     type is (MeshFilter)

@@ -10,12 +10,14 @@ module tally_filter_header
   use hdf5
 
   implicit none
+  private
+  public :: openmc_extend_filters
 
 !===============================================================================
 ! TALLYFILTERMATCH stores every valid bin and weight for a filter
 !===============================================================================
 
-  type TallyFilterMatch
+  type, public :: TallyFilterMatch
     ! Index of the bin and weight being used in the current filter combination
     integer          :: i_bin
     type(VectorInt)  :: bins
@@ -31,7 +33,7 @@ module tally_filter_header
 ! should score to the tally.
 !===============================================================================
 
-  type, abstract :: TallyFilter
+  type, public, abstract :: TallyFilter
     integer :: id
     integer :: n_bins = 0
   contains
@@ -93,18 +95,18 @@ module tally_filter_header
 ! TallyFilters
 !===============================================================================
 
-  type TallyFilterContainer
+  type, public :: TallyFilterContainer
     class(TallyFilter), allocatable :: obj
   end type TallyFilterContainer
 
-  integer :: n_filters = 0 ! # of filters
+  integer(C_INT32_T), public, bind(C) :: n_filters = 0 ! # of filters
 
-  type(TallyFilterContainer), allocatable, target :: filters(:)
-  type(TallyFilterMatch), allocatable :: filter_matches(:)
+  type(TallyFilterContainer), public, allocatable, target :: filters(:)
+  type(TallyFilterMatch), public, allocatable :: filter_matches(:)
 !$omp threadprivate(filter_matches)
 
   ! Dictionary that maps user IDs to indices in 'filters'
-  type(DictIntInt) :: filter_dict
+  type(DictIntInt), public :: filter_dict
 
 contains
 
@@ -115,5 +117,41 @@ contains
   subroutine filter_initialize(this)
     class(TallyFilter), intent(inout) :: this
   end subroutine filter_initialize
+
+!===============================================================================
+!                               C API FUNCTIONS
+!===============================================================================
+
+  function openmc_extend_filters(n, index_start, index_end) result(err) bind(C)
+    ! Creates or extends the filters array
+    integer(C_INT32_T), value, intent(in) :: n
+    integer(C_INT32_T), optional, intent(out) :: index_start
+    integer(C_INT32_T), optional, intent(out) :: index_end
+    integer(C_INT) :: err
+
+    integer :: i ! loop counter
+    type(TallyFilterContainer), allocatable :: temp(:) ! temporary filters
+
+    if (n_filters == 0) then
+      ! Allocate filters array
+      allocate(filters(n))
+    else
+      ! Move filters to temporary array
+      allocate(temp(n_filters + n))
+      do i = 1, n_filters
+        call move_alloc(filters(i) % obj, temp(i) % obj)
+      end do
+
+      ! Move filters back from temporary array to filters array
+      call move_alloc(temp, filters)
+    end if
+
+    ! Return indices in filters array
+    if (present(index_start)) index_start = n_filters + 1
+    if (present(index_end)) index_end = n_filters + n
+    n_filters = n_filters + n
+
+    err = 0
+  end function openmc_extend_filters
 
 end module tally_filter_header

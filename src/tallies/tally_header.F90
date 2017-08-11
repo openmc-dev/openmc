@@ -4,11 +4,11 @@ module tally_header
 
   use hdf5
 
-  use constants,           only: NONE, N_FILTER_TYPES, ZERO, N_GLOBAL_TALLIES
+  use constants
   use error
   use dict_header,         only: DictIntInt
   use nuclide_header,      only: nuclide_dict
-  use string,              only: to_lower, to_f_string
+  use string,              only: to_lower, to_f_string, str_to_int
   use tally_filter_header, only: TallyFilterContainer, filters
   use trigger_header,      only: TriggerObject
 
@@ -21,6 +21,7 @@ module tally_header
   public :: openmc_tally_get_nuclides
   public :: openmc_tally_results
   public :: openmc_tally_set_nuclides
+  public :: openmc_tally_set_scores
 
 !===============================================================================
 ! TALLYDERIVATIVE describes a first-order derivative that can be applied to
@@ -423,5 +424,170 @@ contains
       err = E_OUT_OF_BOUNDS
     end if
   end function openmc_tally_set_nuclides
+
+  function openmc_tally_set_scores(index, n, scores) result(err) bind(C)
+    ! Sets the scores in the tally
+    integer(C_INT32_T), value  :: index
+    integer(C_INT), value      :: n
+    type(C_PTR),    intent(in) :: scores(n)
+    integer(C_INT) :: err
+
+    integer :: i
+    integer :: MT
+    character(C_CHAR), pointer :: string(:)
+    character(len=:, kind=C_CHAR), allocatable :: score_
+
+    err = E_UNASSIGNED
+    if (index >= 1 .and. index <= size(tallies)) then
+      associate (t => tallies(index))
+        if (allocated(t % score_bins)) deallocate(t % score_bins)
+        allocate(t % score_bins(n))
+        t % n_user_score_bins = n
+        t % n_score_bins = n
+
+        do i = 1, n
+          ! Convert C string to Fortran string
+          call c_f_pointer(scores(i), string, [20])
+          score_ = to_lower(to_f_string(string))
+
+          select case (score_)
+          case ('flux')
+            t % score_bins(i) = SCORE_FLUX
+          case ('total', '(n,total)')
+            t % score_bins(i) = SCORE_TOTAL
+          case ('scatter')
+            t % score_bins(i) = SCORE_SCATTER
+          case ('nu-scatter')
+            t % score_bins(i) = SCORE_NU_SCATTER
+          case ('(n,2n)')
+            t % score_bins(i) = N_2N
+          case ('(n,3n)')
+            t % score_bins(i) = N_3N
+          case ('(n,4n)')
+            t % score_bins(i) = N_4N
+          case ('absorption')
+            t % score_bins(i) = SCORE_ABSORPTION
+          case ('fission', '18')
+            t % score_bins(i) = SCORE_FISSION
+          case ('nu-fission')
+            t % score_bins(i) = SCORE_NU_FISSION
+          case ('decay-rate')
+            t % score_bins(i) = SCORE_DECAY_RATE
+          case ('delayed-nu-fission')
+            t % score_bins(i) = SCORE_DELAYED_NU_FISSION
+          case ('prompt-nu-fission')
+            t % score_bins(i) = SCORE_PROMPT_NU_FISSION
+          case ('kappa-fission')
+            t % score_bins(i) = SCORE_KAPPA_FISSION
+          case ('inverse-velocity')
+            t % score_bins(i) = SCORE_INVERSE_VELOCITY
+          case ('fission-q-prompt')
+            t % score_bins(i) = SCORE_FISS_Q_PROMPT
+          case ('fission-q-recoverable')
+            t % score_bins(i) = SCORE_FISS_Q_RECOV
+          case ('current')
+            t % score_bins(i) = SCORE_CURRENT
+          case ('events')
+            t % score_bins(i) = SCORE_EVENTS
+          case ('elastic', '(n,elastic)')
+            t % score_bins(i) = ELASTIC
+          case ('(n,2nd)')
+            t % score_bins(i) = N_2ND
+          case ('(n,na)')
+            t % score_bins(i) = N_2NA
+          case ('(n,n3a)')
+            t % score_bins(i) = N_N3A
+          case ('(n,2na)')
+            t % score_bins(i) = N_2NA
+          case ('(n,3na)')
+            t % score_bins(i) = N_3NA
+          case ('(n,np)')
+            t % score_bins(i) = N_NP
+          case ('(n,n2a)')
+            t % score_bins(i) = N_N2A
+          case ('(n,2n2a)')
+            t % score_bins(i) = N_2N2A
+          case ('(n,nd)')
+            t % score_bins(i) = N_ND
+          case ('(n,nt)')
+            t % score_bins(i) = N_NT
+          case ('(n,nHe-3)')
+            t % score_bins(i) = N_N3HE
+          case ('(n,nd2a)')
+            t % score_bins(i) = N_ND2A
+          case ('(n,nt2a)')
+            t % score_bins(i) = N_NT2A
+          case ('(n,3nf)')
+            t % score_bins(i) = N_3NF
+          case ('(n,2np)')
+            t % score_bins(i) = N_2NP
+          case ('(n,3np)')
+            t % score_bins(i) = N_3NP
+          case ('(n,n2p)')
+            t % score_bins(i) = N_N2P
+          case ('(n,npa)')
+            t % score_bins(i) = N_NPA
+          case ('(n,n1)')
+            t % score_bins(i) = N_N1
+          case ('(n,nc)')
+            t % score_bins(i) = N_NC
+          case ('(n,gamma)')
+            t % score_bins(i) = N_GAMMA
+          case ('(n,p)')
+            t % score_bins(i) = N_P
+          case ('(n,d)')
+            t % score_bins(i) = N_D
+          case ('(n,t)')
+            t % score_bins(i) = N_T
+          case ('(n,3He)')
+            t % score_bins(i) = N_3HE
+          case ('(n,a)')
+            t % score_bins(i) = N_A
+          case ('(n,2a)')
+            t % score_bins(i) = N_2A
+          case ('(n,3a)')
+            t % score_bins(i) = N_3A
+          case ('(n,2p)')
+            t % score_bins(i) = N_2P
+          case ('(n,pa)')
+            t % score_bins(i) = N_PA
+          case ('(n,t2a)')
+            t % score_bins(i) = N_T2A
+          case ('(n,d2a)')
+            t % score_bins(i) = N_D2A
+          case ('(n,pd)')
+            t % score_bins(i) = N_PD
+          case ('(n,pt)')
+            t % score_bins(i) = N_PT
+          case ('(n,da)')
+            t % score_bins(i) = N_DA
+          case default
+            ! Assume that user has specified an MT number
+            MT = int(str_to_int(score_))
+
+            if (MT /= ERROR_INT) then
+              ! Specified score was an integer
+              if (MT > 1) then
+                t % score_bins(i) = MT
+              else
+                err = E_ARGUMENT_INVALID
+              end if
+
+            else
+              err = E_ARGUMENT_INVALID
+            end if
+
+          end select
+        end do
+
+        call t % setup_arrays()
+
+        err = 0
+      end associate
+    else
+      err = E_OUT_OF_BOUNDS
+    end if
+  end function openmc_tally_set_scores
+
 
 end module tally_header

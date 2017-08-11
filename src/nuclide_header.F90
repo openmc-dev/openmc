@@ -169,6 +169,7 @@ module nuclide_header
   ! Cross section caches
   type(NuclideMicroXS), allocatable :: micro_xs(:)  ! Cache for each nuclide
   type(MaterialMacroXS)             :: material_xs  ! Cache for current material
+!$omp threadprivate(micro_xs, material_xs)
 
   ! Minimum/maximum energies
   real(8) :: energy_min_neutron = ZERO

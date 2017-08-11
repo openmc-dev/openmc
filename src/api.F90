@@ -186,8 +186,6 @@ contains
     energy_min_neutron = ZERO
     entropy_on = .false.
     gen_per_batch = 1
-    i_user_tallies = -1
-    i_cmfd_tallies = -1
     keff = ONE
     legendre_to_tabular = .true.
     legendre_to_tabular_points = 33
@@ -661,6 +659,7 @@ contains
 
     if (allocated(tallies)) then
       do i = 1, size(tallies)
+        tallies(i) % active = .false.
         tallies(i) % n_realizations = 0
         if (allocated(tallies(i) % results)) then
           tallies(i) % results(:, :, :) = ZERO

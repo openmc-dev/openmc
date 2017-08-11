@@ -20,7 +20,7 @@ module simulation
   use source,          only: initialize_source, sample_external_source
   use state_point,     only: write_state_point, write_source_point
   use string,          only: to_str
-  use tally,           only: accumulate_tallies, setup_active_usertallies
+  use tally,           only: accumulate_tallies, setup_active_tallies
   use trigger,         only: check_triggers
   use tracking,        only: transport
 
@@ -158,6 +158,8 @@ contains
 
   subroutine initialize_batch()
 
+    integer :: i
+
     if (run_mode == MODE_FIXEDSOURCE) then
       call write_message("Simulating batch " // trim(to_str(current_batch)) &
            // "...", 6)
@@ -171,14 +173,18 @@ contains
       call time_inactive % stop()
       call time_active % start()
 
-      ! Add user tallies to active tallies list
-      call setup_active_usertallies()
+      do i = 1, n_tallies
+        tallies(i) % active = .true.
+      end do
     end if
 
     ! check CMFD initialize batch
     if (run_mode == MODE_EIGENVALUE) then
       if (cmfd_run) call cmfd_init_batch()
     end if
+
+    ! Add user tallies to active tallies list
+    call setup_active_tallies()
 
   end subroutine initialize_batch
 

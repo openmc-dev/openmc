@@ -4391,90 +4391,42 @@ contains
   end subroutine accumulate_tally
 
 !===============================================================================
-! SETUP_ACTIVE_USERTALLIES
+! SETUP_ACTIVE_TALLIES
 !===============================================================================
 
-  subroutine setup_active_usertallies()
+  subroutine setup_active_tallies()
 
     integer :: i ! loop counter
 
-    do i = 1, n_user_tallies
-      ! Add tally to active tallies
-      call active_tallies % push_back(i_user_tallies + i)
+    call active_tallies % clear()
+    call active_analog_tallies % clear()
+    call active_collision_tallies % clear()
+    call active_tracklength_tallies % clear()
+    call active_surface_tallies % clear()
+    call active_current_tallies % clear()
 
-      ! Check what type of tally this is and add it to the appropriate list
-      if (user_tallies(i) % type == TALLY_VOLUME) then
-        if (user_tallies(i) % estimator == ESTIMATOR_ANALOG) then
-          call active_analog_tallies % push_back(i_user_tallies + i)
-        elseif (user_tallies(i) % estimator == ESTIMATOR_TRACKLENGTH) then
-          call active_tracklength_tallies % push_back(i_user_tallies + i)
-        elseif (user_tallies(i) % estimator == ESTIMATOR_COLLISION) then
-          call active_collision_tallies % push_back(i_user_tallies + i)
+    do i = 1, n_tallies
+      if (tallies(i) % active) then
+        ! Add tally to active tallies
+        call active_tallies % push_back(i)
+
+        ! Check what type of tally this is and add it to the appropriate list
+        if (tallies(i) % type == TALLY_VOLUME) then
+          if (tallies(i) % estimator == ESTIMATOR_ANALOG) then
+            call active_analog_tallies % push_back(i)
+          elseif (tallies(i) % estimator == ESTIMATOR_TRACKLENGTH) then
+            call active_tracklength_tallies % push_back(i)
+          elseif (tallies(i) % estimator == ESTIMATOR_COLLISION) then
+            call active_collision_tallies % push_back(i)
+          end if
+        elseif (tallies(i) % type == TALLY_MESH_CURRENT) then
+          call active_current_tallies % push_back(i)
+        elseif (tallies(i) % type == TALLY_SURFACE) then
+          call active_surface_tallies % push_back(i)
         end if
-      elseif (user_tallies(i) % type == TALLY_MESH_CURRENT) then
-        call active_current_tallies % push_back(i_user_tallies + i)
-      elseif (user_tallies(i) % type == TALLY_SURFACE) then
-        call active_surface_tallies % push_back(i_user_tallies + i)
-      end if
-
-    end do
-
-    call active_tallies % shrink_to_fit()
-    call active_analog_tallies % shrink_to_fit()
-    call active_tracklength_tallies % shrink_to_fit()
-    call active_collision_tallies % shrink_to_fit()
-    call active_current_tallies % shrink_to_fit()
-    call active_surface_tallies % shrink_to_fit()
-
-  end subroutine setup_active_usertallies
-
-!===============================================================================
-! SETUP_ACTIVE_CMFDTALLIES
-!===============================================================================
-
-  subroutine setup_active_cmfdtallies()
-
-    integer :: i ! loop counter
-
-    ! check to see if any of the active tally lists has been allocated
-    if (active_tallies % size() > 0) then
-      call fatal_error("Active tallies should not exist before CMFD tallies!")
-    else if (active_analog_tallies % size() > 0) then
-      call fatal_error('Active analog tallies should not exist before CMFD &
-           &tallies!')
-    else if (active_tracklength_tallies % size() > 0) then
-      call fatal_error("Active tracklength tallies should not exist before &
-           &CMFD tallies!")
-    else if (active_current_tallies % size() > 0) then
-      call fatal_error("Active current tallies should not exist before CMFD &
-           &tallies!")
-    else if (active_surface_tallies % size() > 0) then
-      call fatal_error("Active cell to cell tallies should not exist before &
-           &CMFD tallies!")
-    end if
-
-    do i = 1, n_cmfd_tallies
-      ! Add CMFD tally to active tallies
-      call active_tallies % push_back(i_cmfd_tallies + i)
-
-      ! Check what type of tally this is and add it to the appropriate list
-      if (cmfd_tallies(i) % type == TALLY_VOLUME) then
-        if (cmfd_tallies(i) % estimator == ESTIMATOR_ANALOG) then
-          call active_analog_tallies % push_back(i_cmfd_tallies + i)
-        elseif (cmfd_tallies(i) % estimator == ESTIMATOR_TRACKLENGTH) then
-          call active_tracklength_tallies % push_back(i_cmfd_tallies + i)
-        end if
-      elseif (cmfd_tallies(i) % type == TALLY_MESH_CURRENT) then
-        call active_current_tallies % push_back(i_cmfd_tallies + i)
       end if
     end do
 
-    call active_tallies % shrink_to_fit()
-    call active_analog_tallies % shrink_to_fit()
-    call active_tracklength_tallies % shrink_to_fit()
-    call active_collision_tallies % shrink_to_fit()
-    call active_current_tallies % shrink_to_fit()
-
-  end subroutine setup_active_cmfdtallies
+  end subroutine setup_active_tallies
 
 end module tally

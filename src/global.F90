@@ -75,10 +75,6 @@ module global
   type(TallyObject), pointer :: user_tallies(:) => null()
   type(TallyObject), pointer :: cmfd_tallies(:) => null()
 
-  ! Starting index (minus 1) in tallies for each tally group
-  integer :: i_user_tallies = -1
-  integer :: i_cmfd_tallies = -1
-
   ! Active tally lists
   type(VectorInt) :: active_analog_tallies
   type(VectorInt) :: active_tracklength_tallies

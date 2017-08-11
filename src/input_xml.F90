@@ -2748,7 +2748,6 @@ contains
 
     ! Allocate user tallies
     if (n_user_tallies > 0 .and. run_mode /= MODE_PLOTTING) then
-      i_user_tallies = n_tallies
       err = openmc_extend_tallies(n_user_tallies, i_start, i_end)
       user_tallies => tallies(i_start:i_end)
     end if

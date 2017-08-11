@@ -5,11 +5,12 @@ module tally_filter
   use algorithm,           only: binary_search
   use constants,           only: ONE, NO_BIN_FOUND, FP_PRECISION, ERROR_REAL
   use dict_header,         only: DictIntInt
+  use error
   use geometry_header
   use hdf5_interface
   use particle_header,     only: Particle
   use surface_header
-  use string,              only: to_str
+  use string,              only: to_str, to_f_string
   use tally_filter_header
 
   ! Inherit other filters
@@ -1143,5 +1144,64 @@ contains
       end if
     end do
   end subroutine find_offset
+
+!===============================================================================
+!                               C API FUNCTIONS
+!===============================================================================
+
+  function openmc_filter_set_type(index, type) result(err) bind(C)
+    ! Set the type of a filter
+    integer(C_INT32_T), value, intent(in) :: index
+    character(kind=C_CHAR), intent(in) :: type(*)
+    integer(C_INT) :: err
+
+    character(:), allocatable :: type_
+
+    type_ = to_f_string(type)
+
+    err = 0
+    if (index >= 1 .and. index <= n_filters) then
+      if (allocated(filters(index) % obj)) then
+        err = E_ALREADY_ALLOCATED
+      else
+        select case (type_)
+        case ('azimuthal')
+          allocate(AzimuthalFilter :: filters(index) % obj)
+        case ('cell')
+          allocate(CellFilter :: filters(index) % obj)
+        case ('cellborn')
+          allocate(CellbornFilter :: filters(index) % obj)
+        case ('cellfrom')
+          allocate(CellfromFilter :: filters(index) % obj)
+        case ('delayedgroup')
+          allocate(DelayedGroupFilter :: filters(index) % obj)
+        case ('distribcell')
+          allocate(DistribcellFilter :: filters(index) % obj)
+        case ('energy')
+          allocate(EnergyFilter :: filters(index) % obj)
+        case ('energyout')
+          allocate(EnergyoutFilter :: filters(index) % obj)
+        case ('energyfunction')
+          allocate(EnergyFunctionFilter :: filters(index) % obj)
+        case ('material')
+          allocate(MaterialFilter :: filters(index) % obj)
+        case ('mesh')
+          allocate(MeshFilter :: filters(index) % obj)
+        case ('mu')
+          allocate(MuFilter :: filters(index) % obj)
+        case ('polar')
+          allocate(PolarFilter :: filters(index) % obj)
+        case ('surface')
+          allocate(SurfaceFilter :: filters(index) % obj)
+        case ('universe')
+          allocate(UniverseFilter :: filters(index) % obj)
+        case default
+          err = E_UNASSIGNED
+        end select
+      end if
+    else
+      err = E_OUT_OF_BOUNDS
+    end if
+  end function openmc_filter_set_type
 
 end module tally_filter

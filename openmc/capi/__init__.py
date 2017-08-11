@@ -35,4 +35,5 @@ from .core import *
 from .nuclide import *
 from .material import *
 from .cell import *
+from .filter import *
 from .tally import *

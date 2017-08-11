@@ -27,6 +27,7 @@ module error
   integer(C_INT), public, bind(C) :: E_TALLY_INVALID_ID = -12
   integer(C_INT), public, bind(C) :: E_INVALID_SIZE = -13
   integer(C_INT), public, bind(C) :: E_CELL_NO_MATERIAL = -14
+  integer(C_INT), public, bind(C) :: E_ALREADY_ALLOCATED = -15
 
   ! Warning codes
   integer(C_INT), public, bind(C) :: W_BELOW_MIN_BOUND = 1

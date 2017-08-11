@@ -5,6 +5,8 @@ module cmfd_execute
 ! cross section generation, diffusion calculation, and source re-weighting
 !==============================================================================
 
+  use cmfd_header, only: cmfd_begin, cmfd_on, cmfd_reset, cmfd, cmfd_coremap, &
+                         cmfd_mesh
   use global
 
   implicit none
@@ -63,9 +65,7 @@ contains
 
   subroutine cmfd_init_batch()
 
-    use global,            only: cmfd_begin, cmfd_on, &
-                                 cmfd_reset, cmfd_run,               &
-                                 current_batch
+    use global,      only: cmfd_run, current_batch
 
     ! Check to activate CMFD diffusion and possible feedback
     ! this guarantees that when cmfd begins at least one batch of tallies are
@@ -91,7 +91,7 @@ contains
   subroutine calc_fission_source()
 
     use constants, only: CMFD_NOACCEL, ZERO, TWO
-    use global,    only: cmfd, cmfd_coremap, entropy_on, current_batch
+    use global, only: entropy_on, current_batch
     use message_passing
     use string,    only: to_str
 
@@ -214,10 +214,9 @@ contains
   subroutine cmfd_reweight(new_weights)
 
     use algorithm,   only: binary_search
-    use cmfd_header, only: cmfd_mesh
     use constants,   only: ZERO, ONE
     use error,       only: warning, fatal_error
-    use global,      only: source_bank, work, cmfd
+    use global,      only: source_bank, work
     use mesh_header, only: RegularMesh
     use mesh,        only: count_bank_sites
     use message_passing
@@ -328,8 +327,6 @@ contains
 
   function get_matrix_idx(g, i, j, k, ng, nx, ny) result (matidx)
 
-    use global, only: cmfd, cmfd_coremap
-
     integer :: matidx ! the index location in matrix
     integer, intent(in) :: i  ! current x index
     integer, intent(in) :: j  ! current y index
@@ -360,7 +357,6 @@ contains
 
   subroutine cmfd_tally_reset()
 
-    use cmfd_header,  only: cmfd_tallies
     use output,  only: write_message
 
     integer :: i ! loop counter

@@ -1,7 +1,7 @@
 module cmfd_prod_operator
 
   use constants,      only: CMFD_NOACCEL
-  use global,         only: cmfd, cmfd_coremap
+  use cmfd_header,    only: cmfd, cmfd_coremap
   use matrix_header,  only: Matrix
 
   implicit none

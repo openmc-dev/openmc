@@ -2,6 +2,7 @@ module cmfd_input
 
   use, intrinsic :: ISO_C_BINDING
 
+  use cmfd_header
   use global
 
   implicit none
@@ -16,7 +17,6 @@ contains
 
   subroutine configure_cmfd()
 
-    use cmfd_header,  only: allocate_cmfd
     use message_passing, only: master
 
     integer :: color    ! color group of processor
@@ -49,7 +49,6 @@ contains
 
     use constants, only: ZERO, ONE
     use error,     only: fatal_error, warning
-    use global
     use output,    only: write_message
     use string,    only: to_lower
     use xml_interface
@@ -248,7 +247,6 @@ contains
 
   subroutine create_cmfd_tally(root)
 
-    use cmfd_header,      only: cmfd_mesh, cmfd_tallies
     use constants,        only: MAX_LINE_LEN
     use error,            only: fatal_error, warning
     use mesh_header,      only: RegularMesh, openmc_extend_meshes

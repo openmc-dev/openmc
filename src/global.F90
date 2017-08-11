@@ -71,10 +71,6 @@ module global
   ! ============================================================================
   ! TALLY-RELATED VARIABLES
 
-  ! Pointers for different tallies
-  type(TallyObject), pointer :: user_tallies(:) => null()
-  type(TallyObject), pointer :: cmfd_tallies(:) => null()
-
   ! Active tally lists
   type(VectorInt) :: active_analog_tallies
   type(VectorInt) :: active_tracklength_tallies
@@ -82,10 +78,6 @@ module global
   type(VectorInt) :: active_collision_tallies
   type(VectorInt) :: active_tallies
   type(VectorInt) :: active_surface_tallies
-
-  integer :: n_user_meshes  = 0 ! # of structured user meshes
-  integer :: n_user_filters = 0 ! # of user filters
-  integer :: n_user_tallies = 0 ! # of user tallies
 
   ! Normalization for statistics
   integer :: n_realizations = 0 ! # of independent realizations
@@ -263,11 +255,6 @@ module global
 
   ! Flag to activate neutronic feedback via source weights
   logical :: cmfd_feedback = .false.
-
-  ! User-defined tally information
-  integer :: n_cmfd_meshes  = 1 ! # of structured meshes
-  integer :: n_cmfd_filters = 0 ! # of filters
-  integer :: n_cmfd_tallies = 3 ! # of user-defined tallies
 
   ! Adjoint method type
   character(len=10) :: cmfd_adjoint_type = 'physical'

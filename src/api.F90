@@ -199,9 +199,6 @@ contains
     n_source_points = 0
     n_state_points = 0
     n_tallies = 0
-    n_user_filters = 0
-    n_user_meshes  = 0
-    n_user_tallies = 0
     output_summary = .true.
     output_tallies = .true.
     particle_restart_run = .false.

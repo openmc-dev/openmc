@@ -1,6 +1,8 @@
 module cmfd_header
 
   use constants,  only: CMFD_NOACCEL, ZERO, ONE
+  use mesh_header, only: RegularMesh
+  use tally_header, only: TallyObject
 
   implicit none
   private
@@ -87,6 +89,11 @@ module cmfd_header
     real(8) :: keff_bal
 
   end type cmfd_type
+
+  type(RegularMesh), public, pointer :: cmfd_mesh => null()
+
+  ! Pointers for different tallies
+  type(TallyObject), public, pointer :: cmfd_tallies(:) => null()
 
 contains
 

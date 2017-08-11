@@ -213,7 +213,6 @@ contains
   subroutine tally_setup_arrays(this)
     class(TallyObject), intent(inout) :: this
 
-    integer :: i                 ! loop index for tallies
     integer :: j                 ! loop index for filters
     integer :: n                 ! temporary stride
     integer :: i_filt            ! filter index
@@ -274,8 +273,8 @@ contains
   function openmc_extend_tallies(n, index_start, index_end) result(err) bind(C)
     ! Extend the tallies array by n elements
     integer(C_INT32_T), value, intent(in) :: n
-    integer(C_INT32_T), intent(out) :: index_start
-    integer(C_INT32_T), intent(out) :: index_end
+    integer(C_INT32_T), optional, intent(out) :: index_start
+    integer(C_INT32_T), optional, intent(out) :: index_end
     integer(C_INT) :: err
 
     type(TallyObject), allocatable :: temp(:) ! temporary tallies array
@@ -295,9 +294,9 @@ contains
     end if
 
     ! Return indices in tallies array
-    index_start = n_tallies + 1
-    index_end = n_tallies + n
-    n_tallies = index_end
+    if (present(index_start)) index_start = n_tallies + 1
+    if (present(index_end)) index_end = n_tallies + n
+    n_tallies = n_tallies + n
 
     err = 0
   end function openmc_extend_tallies

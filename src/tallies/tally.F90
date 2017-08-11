@@ -2223,7 +2223,6 @@ contains
     integer :: k                    ! loop index for nuclide bins
     integer :: filter_index         ! single index for single bin
     integer :: i_nuclide            ! index in nuclides array
-    integer :: matching_bin         ! next valid filter bin
     real(8) :: filter_weight        ! combined weight of all filters
     logical :: finished             ! found all valid bin combinations
     type(TallyObject), pointer :: t
@@ -2368,7 +2367,6 @@ contains
     integer :: k                    ! loop index for nuclide bins
     integer :: filter_index         ! single index for single bin
     integer :: i_nuclide            ! index in nuclides array
-    integer :: matching_bin         ! next valid filter bin
     real(8) :: filter_weight        ! combined weight of all filters
     real(8) :: atom_density
     logical :: finished             ! found all valid bin combinations
@@ -2744,7 +2742,6 @@ contains
     integer :: k                    ! loop index for nuclide bins
     integer :: filter_index         ! single index for single bin
     integer :: i_nuclide            ! index in nuclides array (from bins)
-    integer :: matching_bin         ! next valid filter bin
     real(8) :: flux                 ! tracklength estimate of flux
     real(8) :: atom_density         ! atom density of single nuclide in atom/b-cm
     real(8) :: filter_weight        ! combined weight of all filters
@@ -2905,7 +2902,6 @@ contains
     integer :: k                    ! loop index for nuclide bins
     integer :: filter_index         ! single index for single bin
     integer :: i_nuclide            ! index in nuclides array (from bins)
-    integer :: matching_bin         ! next valid filter bin
     real(8) :: flux                 ! collision estimate of flux
     real(8) :: atom_density         ! atom density of single nuclide
                                     !   in atom/b-cm
@@ -3192,7 +3188,6 @@ contains
 
     integer :: i
     integer :: i_tally
-    integer :: i_filt
     integer :: j, k                 ! loop indices
     integer :: n_dim                ! num dimensions of the mesh
     integer :: d1                   ! dimension index
@@ -3211,7 +3206,6 @@ contains
     real(8) :: xyz_cross(3)         ! coordinates of bounding surfaces
     real(8) :: d(3)                 ! distance to each bounding surface
     real(8) :: distance             ! actual distance traveled
-    real(8) :: filt_score           ! score applied by filters
     integer :: matching_bin         ! next valid filter bin
     logical :: start_in_mesh        ! particle's starting xyz in mesh?
     logical :: end_in_mesh          ! particle's ending xyz in mesh?
@@ -3249,7 +3243,7 @@ contains
       ! Get pointer to mesh
       select type(filt => filters(i_filter_mesh) % obj)
       type is (MeshFilter)
-        m => filt % mesh
+        m => meshes(filt % mesh)
       end select
 
       n_dim = m % n_dimension

@@ -4,6 +4,7 @@ module input_xml
 
   use algorithm,        only: find
   use cmfd_input,       only: configure_cmfd
+  use cmfd_header,      only: cmfd_mesh
   use constants
   use dict_header,      only: DictIntInt, DictCharInt, ElemKeyValueCI
   use distribution_multivariate
@@ -2652,6 +2653,7 @@ contains
     integer :: trig_ind      ! index of triggers array for each tally
     integer :: user_trig_ind ! index of user-specified triggers for each tally
     integer :: i_start, i_end
+    integer :: i_filt_start, i_filt_end
     integer(C_INT) :: err
     real(8) :: threshold     ! trigger convergence threshold
     integer :: n_order       ! moment order requested
@@ -2723,37 +2725,6 @@ contains
     ! Get pointer list to XML <tally>
     call get_node_list(root, "tally", node_tal_list)
 
-    ! Check for user meshes
-    n_user_meshes = size(node_mesh_list)
-    if (cmfd_run) then
-      n_meshes = n_user_meshes + n_cmfd_meshes
-    else
-      n_meshes = n_user_meshes
-    end if
-
-    ! Allocate mesh array
-    if (n_meshes > 0) allocate(meshes(n_meshes))
-
-    ! Check for user filters
-    n_user_filters = size(node_filt_list)
-
-    ! Allocate filters array
-    if (n_user_filters > 0) then
-      err = openmc_extend_filters(n_user_filters)
-    end if
-
-    ! Check for user tallies
-    n_user_tallies = size(node_tal_list)
-    if (n_user_tallies == 0) then
-      if (master) call warning("No tallies present in tallies.xml file!")
-    end if
-
-    ! Allocate user tallies
-    if (n_user_tallies > 0 .and. run_mode /= MODE_PLOTTING) then
-      err = openmc_extend_tallies(n_user_tallies, i_start, i_end)
-      user_tallies => tallies(i_start:i_end)
-    end if
-
     ! Check for <assume_separate> setting
     if (check_for_node(root, "assume_separate")) then
       call get_node_value(root, "assume_separate", assume_separate)
@@ -2762,8 +2733,14 @@ contains
     ! ==========================================================================
     ! READ MESH DATA
 
-    do i = 1, n_user_meshes
-      m => meshes(i)
+    ! Check for user meshes and allocate
+    n = size(node_mesh_list)
+    if (n > 0) then
+      err = openmc_extend_meshes(n, i_start, i_end)
+    end if
+
+    do i = 1, n
+      m => meshes(i_start + i - 1)
 
       ! Get pointer to mesh node
       node_mesh = node_mesh_list(i)
@@ -2979,8 +2956,14 @@ contains
     ! ==========================================================================
     ! READ FILTER DATA
 
-    READ_FILTERS: do i = 1, n_user_filters
-      f => filters(i)
+    ! Check for user filters and allocate
+    n = size(node_filt_list)
+    if (n > 0) then
+      err = openmc_extend_filters(n, i_start, i_end)
+    end if
+
+    READ_FILTERS: do i = 1, n
+      f => filters(i_start + i - 1)
 
       ! Get pointer to filter xml node
       node_filt = node_filt_list(i)
@@ -3123,7 +3106,7 @@ contains
           filt % n_bins = product(m % dimension)
 
           ! Store the index of the mesh
-          filt % mesh => meshes(i_mesh)
+          filt % mesh = i_mesh
         end select
 
       case ('energy')
@@ -3342,9 +3325,20 @@ contains
     ! ==========================================================================
     ! READ TALLY DATA
 
-    READ_TALLIES: do i = 1, n_user_tallies
+    ! Check for user tallies
+    n = size(node_tal_list)
+    if (n == 0) then
+      if (master) call warning("No tallies present in tallies.xml file!")
+    end if
+
+    ! Allocate user tallies
+    if (n > 0 .and. run_mode /= MODE_PLOTTING) then
+      err = openmc_extend_tallies(n, i_start, i_end)
+    end if
+
+    READ_TALLIES: do i = 1, n
       ! Get pointer to tally
-      t => tallies(i)
+      t => tallies(i_start + i - 1)
 
       ! Get pointer to tally xml node
       node_tal = node_tal_list(i)
@@ -3865,7 +3859,8 @@ contains
               ! Get pointer to mesh
               select type(filt => filters(i_filter_mesh) % obj)
               type is (MeshFilter)
-                m => filt % mesh
+                i_mesh = filt % mesh
+                m => meshes(filt % mesh)
               end select
 
               ! Copy filter indices to temporary array
@@ -3879,13 +3874,10 @@ contains
 
               ! Extend the filters array so we can add a surface filter and
               ! mesh filter
-              err = openmc_extend_filters(2, i_start, i_end)
-
-              ! Increment number of user filters
-              n_user_filters = n_user_filters + 2
+              err = openmc_extend_filters(2, i_filt_start, i_filt_end)
 
               ! Get index of the new mesh filter
-              i_filt = i_start
+              i_filt = i_filt_start
 
               ! Duplicate the mesh filter since other tallies might use this
               ! filter and we need to change the dimension
@@ -3893,7 +3885,7 @@ contains
               select type(filt => filters(i_filt) % obj)
               type is (MeshFilter)
                 filt % id = i_filt
-                filt % mesh => m
+                filt % mesh = i_mesh
 
                 ! We need to increase the dimension by one since we also need
                 ! currents coming into and out of the boundary mesh cells.
@@ -3905,7 +3897,7 @@ contains
               t % filter(t % find_filter(FILTER_MESH)) = i_filt
 
               ! Get index of the new surface filter
-              i_filt = i_end
+              i_filt = i_filt_end
 
               ! Add surface filter
               allocate(SurfaceFilter :: filters(i_filt) % obj)
@@ -4683,11 +4675,7 @@ contains
                      &meshlines on plot " // trim(to_str(pl % id)))
               end if
 
-              select type(filt => filters(cmfd_tallies(1) % &
-                   filter(cmfd_tallies(1) % find_filter(FILTER_MESH))) % obj)
-              type is (MeshFilter)
-                pl % meshlines_mesh => filt % mesh
-              end select
+              pl % meshlines_mesh => cmfd_mesh
 
             case ('entropy')
 

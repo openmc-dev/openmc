@@ -243,20 +243,23 @@ axis_aligned_cylinder_distance(const double xyz[3], const double uvw[3],
     // Particle is on the cylinder, thus one distance is positive/negative
     // and the other is zero. The sign of k determines if we are facing in or
     // out.
-    if (k >= 0.0) return INFTY;
-    else return (-k + sqrt(quad)) / a;
+    if (k >= 0.0) {
+      return INFTY;
+    } else {
+      return (-k + sqrt(quad)) / a;
+    }
 
   } else if (c < 0.0) {
     // Particle is inside the cylinder, thus one distance must be negative
     // and one must be positive. The positive distance will be the one with
-    // negative sign on sqrt(quad)
+    // negative sign on sqrt(quad).
     return (-k + sqrt(quad)) / a;
 
   } else {
     // Particle is outside the cylinder, thus both distances are either
     // positive or negative. If positive, the smaller distance is the one
-    // with positive sign on sqrt(quad)
-    double d = (-k - sqrt(quad)) / a;
+    // with positive sign on sqrt(quad).
+    const double d = (-k - sqrt(quad)) / a;
     if (d < 0.0) return INFTY;
     return d;
   }
@@ -382,6 +385,103 @@ inline void SurfaceZCylinder::normal(const double xyz[3], double uvw[3]) const {
 }
 
 //==============================================================================
+// SurfaceSphere
+//==============================================================================
+
+class SurfaceSphere : public Surface {
+  double x0, y0, z0, r;
+public:
+  SurfaceSphere(pugi::xml_node surf_node);
+  double evaluate(const double xyz[3]) const;
+  double distance(const double xyz[3], const double uvw[3],
+                  bool coincident) const;
+  void normal(const double xyz[3], double uvw[3]) const;
+};
+
+SurfaceSphere::SurfaceSphere(pugi::xml_node surf_node) {
+  const char *coeffs = surf_node.attribute("coeffs").value();
+  int stat = sscanf(coeffs, "%lf %lf %lf %lf", &x0, &y0, &z0, &r);
+  if (stat != 4) {
+    std::cout << "Something went wrong reading surface coeffs!" << std::endl;
+  }
+}
+
+double SurfaceSphere::evaluate(const double xyz[3]) const {
+  const double x = xyz[0] - x0;
+  const double y = xyz[1] - y0;
+  const double z = xyz[2] - z0;
+  return x*x + y*y + z*z - r*r;
+}
+
+double SurfaceSphere::distance(const double xyz[3], const double uvw[3],
+                               bool coincident) const {
+  const double x = xyz[0] - x0;
+  const double y = xyz[1] - y0;
+  const double z = xyz[2] - z0;
+  const double k = x*uvw[0] + y*uvw[1] + z*uvw[2];
+  const double c = x*x + y*y + z*z - r*r;
+  const double quad = k*k - c;
+
+  if (quad < 0.0) {
+    // No intersection with sphere.
+    return INFTY;
+
+  } else if (coincident or fabs(c) < FP_COINCIDENT) {
+    // Particle is on the sphere, thus one distance is positive/negative and
+    // the other is zero. The sign of k determines if we are facing in or out.
+    if (k >= 0.0) {
+      return INFTY;
+    } else {
+      return -k + sqrt(quad);
+    }
+
+  } else if (c < 0.0) {
+    // Particle is inside the sphere, thus one distance must be negative and
+    // one must be positive. The positive distance will be the one with
+    // negative sign on sqrt(quad)
+    return -k + sqrt(quad);
+
+  } else {
+    // Particle is outside the sphere, thus both distances are either positive
+    // or negative. If positive, the smaller distance is the one with positive
+    // sign on sqrt(quad).
+    const double d = -k - sqrt(quad);
+    if (d < 0.0) return INFTY;
+    return d;
+  }
+}
+
+inline void SurfaceSphere::normal(const double xyz[3], double uvw[3]) const {
+  uvw[0] = 2.0 * (xyz[0] - x0);
+  uvw[1] = 2.0 * (xyz[1] - y0);
+  uvw[2] = 2.0 * (xyz[2] - z0);
+}
+
+//==============================================================================
+// SurfaceXCone
+//==============================================================================
+
+// TODO
+
+//==============================================================================
+// SurfaceYCone
+//==============================================================================
+
+// TODO
+
+//==============================================================================
+// SurfaceZCone
+//==============================================================================
+
+// TODO
+
+//==============================================================================
+// SurfaceQuadric
+//==============================================================================
+
+// TODO
+
+//==============================================================================
 
 extern "C" void
 read_surfaces(pugi::xml_node *node) {
@@ -421,6 +521,9 @@ read_surfaces(pugi::xml_node *node) {
 
         } else if (strcmp(surf_type, "z-cylinder") == 0) {
           surfaces_c[i_surf] = new SurfaceZCylinder(surf_node);
+
+        } else if (strcmp(surf_type, "sphere") == 0) {
+          surfaces_c[i_surf] = new SurfaceSphere(surf_node);
 
         } else {
           std::cout << "Call error or handle uppercase here!" << std::endl;

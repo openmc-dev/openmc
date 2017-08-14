@@ -4,6 +4,7 @@ module tally_filter_header
 
   use constants,       only: MAX_LINE_LEN
   use dict_header,     only: DictIntInt
+  use error
   use particle_header, only: Particle
   use stl_vector,      only: VectorInt, VectorReal
 
@@ -12,6 +13,8 @@ module tally_filter_header
   implicit none
   private
   public :: openmc_extend_filters
+  public :: openmc_filter_get_id
+  public :: openmc_filter_set_id
 
 !===============================================================================
 ! TALLYFILTERMATCH stores every valid bin and weight for a filter
@@ -153,5 +156,39 @@ contains
 
     err = 0
   end function openmc_extend_filters
+
+
+  function openmc_filter_get_id(index, id) result(err) bind(C)
+    ! Return the ID of a filter
+    integer(C_INT32_T), value       :: index
+    integer(C_INT32_T), intent(out) :: id
+    integer(C_INT) :: err
+
+    if (index >= 1 .and. index <= n_filters) then
+      id = filters(index) % obj % id
+      err = 0
+    else
+      err = E_OUT_OF_BOUNDS
+    end if
+  end function openmc_filter_get_id
+
+
+  function openmc_filter_set_id(index, id) result(err) bind(C)
+    ! Set the ID of a filter
+    integer(C_INT32_T), value, intent(in) :: index
+    integer(C_INT32_T), value, intent(in) :: id
+    integer(C_INT) :: err
+
+    if (index >= 1 .and. index <= n_filters) then
+      if (allocated(filters(index) % obj)) then
+        filters(index) % obj % id = id
+        err = 0
+      else
+        err = E_FILTER_NOT_ALLOCATED
+      end if
+    else
+      err = E_OUT_OF_BOUNDS
+    end if
+  end function openmc_filter_set_id
 
 end module tally_filter_header

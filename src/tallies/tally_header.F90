@@ -10,6 +10,7 @@ module tally_header
   use nuclide_header,      only: nuclide_dict
   use string,              only: to_lower, to_f_string, str_to_int
   use tally_filter_header, only: TallyFilterContainer, filters, n_filters
+  use tally_filter
   use trigger_header,      only: TriggerObject
 
   implicit none
@@ -412,17 +413,57 @@ contains
     integer(C_INT) :: err
 
     integer :: i
+    integer :: j
 
     err = 0
     if (index >= 1 .and. index <= n_tallies) then
       associate (t => tallies(index))
         if (allocated(t % filter)) deallocate(t % filter)
         allocate(t % filter(n))
+
+        t % find_filter(:) = 0
         do i = 1, n
-          if (filter_indices(n) < 1 .or. filter_indices(i) > n_filters) then
+          if (filter_indices(i) < 1 .or. filter_indices(i) > n_filters) then
             err = E_OUT_OF_BOUNDS
             exit
           end if
+
+          ! Set the filter index in the tally find_filter array
+          select type (filt => filters(i) % obj)
+          type is (DistribcellFilter)
+            j = FILTER_DISTRIBCELL
+          type is (CellFilter)
+            j = FILTER_CELL
+          type is (CellFromFilter)
+            j = FILTER_CELLFROM
+          type is (CellbornFilter)
+            j = FILTER_CELLBORN
+          type is (MaterialFilter)
+            j = FILTER_MATERIAL
+          type is (UniverseFilter)
+            j = FILTER_UNIVERSE
+          type is (SurfaceFilter)
+            j = FILTER_SURFACE
+          type is (MeshFilter)
+            j = FILTER_MESH
+          type is (EnergyFilter)
+            j = FILTER_ENERGYIN
+          type is (EnergyoutFilter)
+            j = FILTER_ENERGYOUT
+            t % estimator = ESTIMATOR_ANALOG
+          type is (DelayedGroupFilter)
+            j = FILTER_DELAYEDGROUP
+          type is (MuFilter)
+            j = FILTER_MU
+            t % estimator = ESTIMATOR_ANALOG
+          type is (PolarFilter)
+            j = FILTER_POLAR
+          type is (AzimuthalFilter)
+            j = FILTER_AZIMUTHAL
+          type is (EnergyFunctionFilter)
+            j = FILTER_ENERGYFUNCTION
+          end select
+          t % find_filter(j) = i
         end do
         if (err == 0) t % filter(:) = filter_indices
       end associate

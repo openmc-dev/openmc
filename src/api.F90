@@ -19,7 +19,7 @@ module openmc_api
   use random_lcg,      only: seed, initialize_prng
   use tally_header
   use tally_filter_header
-  use tally_filter,    only: openmc_filter_set_type
+  use tally_filter
   use simulation,      only: openmc_run
   use string,          only: to_f_string
   use volume_calc,     only: openmc_calculate_volumes
@@ -30,6 +30,7 @@ module openmc_api
   public :: openmc_calculate_volumes
   public :: openmc_cell_get_id
   public :: openmc_cell_set_temperature
+  public :: openmc_energy_filter_set_bins
   public :: openmc_extend_filters
   public :: openmc_extend_tallies
   public :: openmc_filter_set_type
@@ -48,13 +49,16 @@ module openmc_api
   public :: openmc_material_get_densities
   public :: openmc_material_set_density
   public :: openmc_material_set_densities
+  public :: openmc_mesh_filter_set_mesh
   public :: openmc_nuclide_name
   public :: openmc_plot_geometry
   public :: openmc_reset
   public :: openmc_run
   public :: openmc_tally_get_id
+  public :: openmc_tally_get_filters
   public :: openmc_tally_get_nuclides
   public :: openmc_tally_results
+  public :: openmc_tally_set_filters
   public :: openmc_tally_set_nuclides
   public :: openmc_tally_set_scores
 

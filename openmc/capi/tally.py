@@ -20,6 +20,9 @@ _dll.openmc_extend_tallies.errcheck = _error_handler
 _dll.openmc_tally_get_id.argtypes = [c_int32, POINTER(c_int32)]
 _dll.openmc_tally_get_id.restype = c_int
 _dll.openmc_tally_get_id.errcheck = _error_handler
+_dll.openmc_tally_get_filters.argtypes = [c_int32, POINTER(c_int32), POINTER(c_int)]
+_dll.openmc_tally_get_filters.restype = c_int
+_dll.openmc_tally_get_filters.errcheck = _error_handler
 _dll.openmc_tally_get_nuclides.argtypes = [
     c_int32, POINTER(POINTER(c_int)), POINTER(c_int)]
 _dll.openmc_tally_get_nuclides.restype = c_int
@@ -28,9 +31,15 @@ _dll.openmc_tally_results.argtypes = [
     c_int32, POINTER(POINTER(c_double)), POINTER(c_int*3)]
 _dll.openmc_tally_results.restype = c_int
 _dll.openmc_tally_results.errcheck = _error_handler
+_dll.openmc_tally_set_filters.argtypes = [c_int32, c_int, POINTER(c_int32)]
+_dll.openmc_tally_set_filters.restype = c_int
+_dll.openmc_tally_set_filters.errcheck = _error_handler
 _dll.openmc_tally_set_nuclides.argtypes = [c_int32, c_int, POINTER(c_char_p)]
 _dll.openmc_tally_set_nuclides.restype = c_int
 _dll.openmc_tally_set_nuclides.errcheck = _error_handler
+_dll.openmc_tally_set_scores.argtypes = [c_int32, c_int, POINTER(c_char_p)]
+_dll.openmc_tally_set_scores.restype = c_int
+_dll.openmc_tally_set_scores.errcheck = _error_handler
 
 
 class TallyView(object):

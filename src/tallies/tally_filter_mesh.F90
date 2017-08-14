@@ -1,17 +1,20 @@
 module tally_filter_mesh
 
+  use, intrinsic :: ISO_C_BINDING
+
   use hdf5
 
   use constants
-  use error,               only: warning
-  use mesh_header,         only: RegularMesh, meshes
+  use error
+  use mesh_header,         only: RegularMesh, meshes, n_meshes
   use hdf5_interface
   use particle_header,     only: Particle
   use string,              only: to_str
-  use tally_filter_header, only: TallyFilter, TallyFilterMatch
+  use tally_filter_header
 
   implicit none
   private
+  public :: openmc_mesh_filter_set_mesh
 
 !===============================================================================
 ! MESHFILTER indexes the location of particle events to a regular mesh.  For
@@ -239,5 +242,37 @@ contains
       end if
     end associate
   end function text_label_mesh
+
+!===============================================================================
+!                               C API FUNCTIONS
+!===============================================================================
+
+  function openmc_mesh_filter_set_mesh(index, index_mesh) result(err) bind(C)
+    ! Set the mesh for a mesh filter
+    integer(C_INT32_T), value, intent(in) :: index
+    integer(C_INT32_T), value, intent(in) :: index_mesh
+    integer(C_INT) :: err
+
+    err = 0
+    if (index >= 1 .and. index <= n_filters) then
+      if (allocated(filters(index) % obj)) then
+        select type (f => filters(index) % obj)
+        type is (MeshFilter)
+          if (index_mesh >= 1 .and. index_mesh <= n_meshes) then
+            f % mesh = index_mesh
+            f % n_bins = product(meshes(index_mesh) % dimension)
+          else
+            err = E_OUT_OF_BOUNDS
+          end if
+        class default
+          err = E_WRONG_TYPE
+        end select
+      else
+        err = E_FILTER_NOT_ALLOCATED
+      end if
+    else
+      err = E_OUT_OF_BOUNDS
+    end if
+  end function openmc_mesh_filter_set_mesh
 
 end module tally_filter_mesh

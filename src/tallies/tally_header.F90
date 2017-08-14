@@ -9,7 +9,7 @@ module tally_header
   use dict_header,         only: DictIntInt
   use nuclide_header,      only: nuclide_dict
   use string,              only: to_lower, to_f_string, str_to_int
-  use tally_filter_header, only: TallyFilterContainer, filters
+  use tally_filter_header, only: TallyFilterContainer, filters, n_filters
   use trigger_header,      only: TriggerObject
 
   implicit none
@@ -18,8 +18,10 @@ module tally_header
   public :: openmc_extend_tallies
   public :: openmc_get_tally
   public :: openmc_tally_get_id
+  public :: openmc_tally_get_filters
   public :: openmc_tally_get_nuclides
   public :: openmc_tally_results
+  public :: openmc_tally_set_filters
   public :: openmc_tally_set_nuclides
   public :: openmc_tally_set_scores
 
@@ -337,6 +339,28 @@ contains
   end function openmc_tally_get_id
 
 
+  function openmc_tally_get_filters(index, filter_indices, n) result(err) bind(C)
+    ! Return the list of nuclides assigned to a tally
+    integer(C_INT32_T), value :: index
+    type(C_PTR), intent(out) :: filter_indices
+    integer(C_INT), intent(out) :: n
+    integer(C_INT) :: err
+
+    err = E_UNASSIGNED
+    if (index >= 1 .and. index <= size(tallies)) then
+      associate (t => tallies(index))
+        if (allocated(t % filter)) then
+          filter_indices = C_LOC(t % filter(1))
+          n = size(t % filter)
+          err = 0
+        end if
+      end associate
+    else
+      err = E_OUT_OF_BOUNDS
+    end if
+  end function openmc_tally_get_filters
+
+
   function openmc_tally_get_nuclides(index, nuclides, n) result(err) bind(C)
     ! Return the list of nuclides assigned to a tally
     integer(C_INT32_T), value :: index
@@ -378,6 +402,34 @@ contains
       err = E_OUT_OF_BOUNDS
     end if
   end function openmc_tally_results
+
+
+  function openmc_tally_set_filters(index, n, filter_indices) result(err) bind(C)
+    ! Set the list of filters for a tally
+    integer(C_INT32_T), value, intent(in) :: index
+    integer(C_INT), value, intent(in) :: n
+    integer(C_INT32_T), intent(in) :: filter_indices(n)
+    integer(C_INT) :: err
+
+    integer :: i
+
+    err = 0
+    if (index >= 1 .and. index <= n_tallies) then
+      associate (t => tallies(index))
+        if (allocated(t % filter)) deallocate(t % filter)
+        allocate(t % filter(n))
+        do i = 1, n
+          if (filter_indices(n) < 1 .or. filter_indices(i) > n_filters) then
+            err = E_OUT_OF_BOUNDS
+            exit
+          end if
+        end do
+        if (err == 0) t % filter(:) = filter_indices
+      end associate
+    else
+      err = E_OUT_OF_BOUNDS
+    end if
+  end function openmc_tally_set_filters
 
 
   function openmc_tally_set_nuclides(index, n, nuclides) result(err) bind(C)
@@ -424,6 +476,7 @@ contains
       err = E_OUT_OF_BOUNDS
     end if
   end function openmc_tally_set_nuclides
+
 
   function openmc_tally_set_scores(index, n, scores) result(err) bind(C)
     ! Sets the scores in the tally

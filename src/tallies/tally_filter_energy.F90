@@ -1,17 +1,21 @@
 module tally_filter_energy
 
+  use, intrinsic :: ISO_C_BINDING
+
   use hdf5, only: HID_T
 
   use algorithm,           only: binary_search
   use constants
+  use error
   use hdf5_interface
   use mgxs_header,         only: num_energy_groups
   use particle_header,     only: Particle
   use string,              only: to_str
-  use tally_filter_header, only: TallyFilter, TallyFilterMatch
+  use tally_filter_header
 
   implicit none
   private
+  public :: openmc_energy_filter_set_bins
 
 !===============================================================================
 ! ENERGYFILTER bins the incident neutron energy.
@@ -156,5 +160,36 @@ contains
     label = "Outgoing Energy [" // trim(to_str(E0)) // ", " &
          // trim(to_str(E1)) // ")"
   end function text_label_energyout
+
+!===============================================================================
+!                               C API FUNCTIONS
+!===============================================================================
+
+  function openmc_energy_filter_set_bins(index, n, energies) result(err) bind(C)
+    ! Set the bounding energies for an energy filter
+    integer(C_INT32_T), value, intent(in) :: index
+    integer(C_INT32_T), value, intent(in) :: n
+    real(C_DOUBLE), intent(in) :: energies(n)
+    integer(C_INT) :: err
+
+    err = 0
+    if (index >= 1 .and. index <= n_filters) then
+      if (allocated(filters(index) % obj)) then
+        select type (f => filters(index) % obj)
+        type is (EnergyFilter)
+          f % n_bins = n - 1
+          if (allocated(f % bins)) deallocate(f % bins)
+          allocate(f % bins(n))
+          f % bins(:) = energies
+          class default
+          err = E_WRONG_TYPE
+        end select
+      else
+        err = E_FILTER_NOT_ALLOCATED
+      end if
+    else
+      err = E_OUT_OF_BOUNDS
+    end if
+  end function openmc_energy_filter_set_bins
 
 end module tally_filter_energy

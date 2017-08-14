@@ -29,6 +29,8 @@ module error
   integer(C_INT), public, bind(C) :: E_CELL_NO_MATERIAL = -14
   integer(C_INT), public, bind(C) :: E_ALREADY_ALLOCATED = -15
   integer(C_INT), public, bind(C) :: E_ARGUMENT_INVALID = -16
+  integer(C_INT), public, bind(C) :: E_WRONG_TYPE = -17
+  integer(C_INT), public, bind(C) :: E_FILTER_NOT_ALLOCATED = -18
 
   ! Warning codes
   integer(C_INT), public, bind(C) :: W_BELOW_MIN_BOUND = 1

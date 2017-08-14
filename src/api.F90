@@ -33,6 +33,8 @@ module openmc_api
   public :: openmc_energy_filter_set_bins
   public :: openmc_extend_filters
   public :: openmc_extend_tallies
+  public :: openmc_filter_get_id
+  public :: openmc_filter_set_id
   public :: openmc_filter_set_type
   public :: openmc_finalize
   public :: openmc_find

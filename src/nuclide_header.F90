@@ -87,9 +87,9 @@ module nuclide_header
 
     ! Reactions
     type(Reaction), allocatable :: reactions(:)
-    type(DictIntInt) :: reaction_index ! map MT values to index in reactions
+    !type(DictIntInt) :: reaction_index ! map MT values to index in reactions
                                        ! array; used at tally-time
-
+    integer, allocatable         :: rxn_index_MT(:)
     ! Fission energy release
     class(Function1D), allocatable :: fission_q_prompt ! prompt neutrons, gammas
     class(Function1D), allocatable :: fission_q_recov  ! neutrons, gammas, betas
@@ -561,7 +561,8 @@ contains
 
     n_temperature = size(this % kTs)
     allocate(this % sum_xs(n_temperature))
-
+    allocate(this % rxn_index_MT(1000))
+    this % rxn_index_MT(:)=0
     do i = 1, n_temperature
       ! Allocate and initialize derived cross sections
       n_grid = size(this % grid(i) % energy)
@@ -580,8 +581,9 @@ contains
     i_fission = 0
 
     do i = 1, size(this % reactions)
+
       call MTs % push_back(this % reactions(i) % MT)
-      call this % reaction_index % set(this % reactions(i) % MT, i)
+      this % rxn_index_MT(this % reactions(i) % MT) = i
 
       associate (rx => this % reactions(i))
         ! Skip total inelastic level scattering, gas production cross sections

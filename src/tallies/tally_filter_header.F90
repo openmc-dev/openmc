@@ -191,4 +191,23 @@ contains
     end if
   end function openmc_filter_set_id
 
+
+  function openmc_get_filter(id, index) result(err) bind(C)
+    ! Returns the index in the filters array of a filter with a given ID
+    integer(C_INT32_T), value :: id
+    integer(C_INT32_T), intent(out) :: index
+    integer(C_INT) :: err
+
+    if (allocated(filters)) then
+      if (filter_dict % has_key(id)) then
+        index = filter_dict % get_key(id)
+        err = 0
+      else
+        err = E_FILTER_INVALID_ID
+      end if
+    else
+      err = E_FILTER_NOT_ALLOCATED
+    end if
+  end function openmc_get_filter
+
 end module tally_filter_header

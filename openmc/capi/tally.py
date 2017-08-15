@@ -6,6 +6,7 @@ from numpy.ctypeslib import as_array
 
 from . import _dll, NuclideView
 from .error import _error_handler
+from .filter import _get_filter
 
 
 __all__ = ['TallyView', 'tallies']
@@ -20,7 +21,8 @@ _dll.openmc_extend_tallies.errcheck = _error_handler
 _dll.openmc_tally_get_id.argtypes = [c_int32, POINTER(c_int32)]
 _dll.openmc_tally_get_id.restype = c_int
 _dll.openmc_tally_get_id.errcheck = _error_handler
-_dll.openmc_tally_get_filters.argtypes = [c_int32, POINTER(c_int32), POINTER(c_int)]
+_dll.openmc_tally_get_filters.argtypes = [
+    c_int32, POINTER(POINTER(c_int32)), POINTER(c_int)]
 _dll.openmc_tally_get_filters.restype = c_int
 _dll.openmc_tally_get_filters.errcheck = _error_handler
 _dll.openmc_tally_get_nuclides.argtypes = [
@@ -52,12 +54,14 @@ class TallyView(object):
     Parameters
     ----------
     index : int
-         Index in the `tallys` array.
+         Index in the `tallies` array.
 
     Attributes
     ----------
     id : int
         ID of the tally
+    filters : list
+        List of views to tally filters
     nuclides : list of str
         List of nuclides to score results for
     results : numpy.ndarray
@@ -80,6 +84,13 @@ class TallyView(object):
         tally_id = c_int32()
         _dll.openmc_tally_get_id(self._index, tally_id)
         return tally_id.value
+
+    @property
+    def filters(self):
+        filt_idx = POINTER(c_int32)()
+        n = c_int()
+        _dll.openmc_tally_get_filters(self._index, filt_idx, n)
+        return [_get_filter(filt_idx[i]) for i in range(n.value)]
 
     @property
     def nuclides(self):

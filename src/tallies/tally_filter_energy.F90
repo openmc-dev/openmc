@@ -15,6 +15,7 @@ module tally_filter_energy
 
   implicit none
   private
+  public :: openmc_energy_filter_get_bins
   public :: openmc_energy_filter_set_bins
 
 !===============================================================================
@@ -164,6 +165,32 @@ contains
 !===============================================================================
 !                               C API FUNCTIONS
 !===============================================================================
+
+  function openmc_energy_filter_get_bins(index, energies, n) result(err) bind(C)
+    ! Return the bounding energies for an energy filter
+    integer(C_INT32_T), value :: index
+    type(C_PTR), intent(out) :: energies
+    integer(C_INT32_T), intent(out) :: n
+    integer(C_INT) :: err
+
+    if (index >= 1 .and. index <= n_filters) then
+      if (allocated(filters(index) % obj)) then
+        select type (f => filters(index) % obj)
+        type is (EnergyFilter)
+          energies = C_LOC(f % bins)
+          n = size(f % bins)
+          err = 0
+        class default
+          err = E_WRONG_TYPE
+        end select
+      else
+        err = E_FILTER_NOT_ALLOCATED
+      end if
+    else
+      err = E_OUT_OF_BOUNDS
+    end if
+  end function openmc_energy_filter_get_bins
+
 
   function openmc_energy_filter_set_bins(index, n, energies) result(err) bind(C)
     ! Set the bounding energies for an energy filter

@@ -31,6 +31,7 @@ module error
   integer(C_INT), public, bind(C) :: E_ARGUMENT_INVALID = -16
   integer(C_INT), public, bind(C) :: E_WRONG_TYPE = -17
   integer(C_INT), public, bind(C) :: E_FILTER_NOT_ALLOCATED = -18
+  integer(C_INT), public, bind(C) :: E_FILTER_INVALID_ID = -19
 
   ! Warning codes
   integer(C_INT), public, bind(C) :: W_BELOW_MIN_BOUND = 1

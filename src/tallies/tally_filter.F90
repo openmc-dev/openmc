@@ -1149,6 +1149,68 @@ contains
 !                               C API FUNCTIONS
 !===============================================================================
 
+  function openmc_filter_get_type(index, type) result(err) bind(C)
+    ! Get the type of a filter
+    integer(C_INT32_T), value, intent(in) :: index
+    character(kind=C_CHAR), intent(out) :: type(*)
+    integer(C_INT) :: err
+
+    integer :: i
+    character(20) :: type_
+
+    if (index >= 1 .and. index <= n_filters) then
+      if (allocated(filters(index) % obj)) then
+        ! Get type as a Fortran string
+        select type (f => filters(index) % obj)
+        type is (AzimuthalFilter)
+          type_ = 'azimuthal'
+        type is (CellFilter)
+          type_ = 'cell'
+        type is (CellbornFilter)
+          type_ = 'cellborn'
+        type is (CellfromFilter)
+          type_ = 'cellfrom'
+        type is (DelayedGroupFilter)
+          type_ = 'delayedgroup'
+        type is (DistribcellFilter)
+          type_ = 'distribcell'
+        type is (EnergyFilter)
+          type_ = 'energy'
+        type is (EnergyoutFilter)
+          type_ = 'energyout'
+        type is (EnergyFunctionFilter)
+          type_ = 'energyfunction'
+        type is (MaterialFilter)
+          type_ = 'material'
+        type is (MeshFilter)
+          type_ = 'mesh'
+        type is (MuFilter)
+          type_ = 'mu'
+        type is (PolarFilter)
+          type_ = 'polar'
+        type is (SurfaceFilter)
+          type_ = 'surface'
+        type is (UniverseFilter)
+          type_ = 'universe'
+        end select
+
+        ! Convert Fortran string to null-terminated C string. We assume the
+        ! caller has allocated a char array buffer
+        do i = 1, len_trim(type_)
+          type(i) = type_(i:i)
+        end do
+        type(len_trim(type_) + 1) = C_NULL_CHAR
+
+        err = 0
+      else
+        err = E_FILTER_NOT_ALLOCATED
+      end if
+    else
+      err = E_OUT_OF_BOUNDS
+    end if
+  end function openmc_filter_get_type
+
+
   function openmc_filter_set_type(index, type) result(err) bind(C)
     ! Set the type of a filter
     integer(C_INT32_T), value, intent(in) :: index

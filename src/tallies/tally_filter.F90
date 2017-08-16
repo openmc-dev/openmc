@@ -15,6 +15,7 @@ module tally_filter
 
   ! Inherit other filters
   use tally_filter_energy
+  use tally_filter_material
   use tally_filter_mesh
 
   implicit none
@@ -31,19 +32,6 @@ module tally_filter
     procedure :: text_label => text_label_universe
     procedure :: initialize => initialize_universe
   end type UniverseFilter
-
-!===============================================================================
-! MATERIAL specifies which material tally events reside in.
-!===============================================================================
-  type, extends(TallyFilter) :: MaterialFilter
-    integer, allocatable :: materials(:)
-    type(DictIntInt)     :: map
-  contains
-    procedure :: get_all_bins => get_all_bins_material
-    procedure :: to_statepoint => to_statepoint_material
-    procedure :: text_label => text_label_material
-    procedure :: initialize => initialize_material
-  end type MaterialFilter
 
 !===============================================================================
 ! CELLFILTER specifies which geometric cells tally events reside in.
@@ -248,69 +236,6 @@ contains
 
     label = "Universe " // to_str(universes(this % universes(bin)) % id)
   end function text_label_universe
-
-!===============================================================================
-! MaterialFilter methods
-!===============================================================================
-  subroutine get_all_bins_material(this, p, estimator, match)
-    class(MaterialFilter), intent(in)  :: this
-    type(Particle),        intent(in)  :: p
-    integer,               intent(in)  :: estimator
-    type(TallyFilterMatch),     intent(inout) :: match
-
-      if (this % map % has_key(p % material)) then
-        call match % bins % push_back(this % map % get_key(p % material))
-        call match % weights % push_back(ONE)
-      end if
-
-  end subroutine get_all_bins_material
-
-  subroutine to_statepoint_material(this, filter_group)
-    class(MaterialFilter), intent(in) :: this
-    integer(HID_T),        intent(in) :: filter_group
-
-    integer :: i
-    integer, allocatable :: material_ids(:)
-
-    call write_dataset(filter_group, "type", "material")
-    call write_dataset(filter_group, "n_bins", this % n_bins)
-
-    allocate(material_ids(size(this % materials)))
-    do i = 1, size(this % materials)
-      material_ids(i) = materials(this % materials(i)) % id
-    end do
-    call write_dataset(filter_group, "bins", material_ids)
-  end subroutine to_statepoint_material
-
-  subroutine initialize_material(this)
-    class(MaterialFilter), intent(inout) :: this
-
-    integer :: i, id
-
-    ! Convert ids to indices.
-    do i = 1, this % n_bins
-      id = this % materials(i)
-      if (material_dict % has_key(id)) then
-        this % materials(i) = material_dict % get_key(id)
-      else
-        call fatal_error("Could not find material " // trim(to_str(id)) &
-             &// " specified on a tally filter.")
-      end if
-    end do
-
-    ! Generate mapping from material indices to filter bins.
-    do i = 1, this % n_bins
-      call this % map % add_key(this % materials(i), i)
-    end do
-  end subroutine initialize_material
-
-  function text_label_material(this, bin) result(label)
-    class(MaterialFilter), intent(in) :: this
-    integer,               intent(in) :: bin
-    character(MAX_LINE_LEN)           :: label
-
-    label = "Material " // to_str(materials(this % materials(bin)) % id)
-  end function text_label_material
 
 !===============================================================================
 ! CellFilter methods

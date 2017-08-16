@@ -8,6 +8,7 @@ from numpy.ctypeslib import as_array
 
 from . import _dll
 from .error import _error_handler
+from .material import MaterialView
 
 
 __all__ = ['FilterView', 'AzimuthalFilterView', 'CellFilterView',
@@ -43,6 +44,13 @@ _dll.openmc_filter_set_type.errcheck = _error_handler
 _dll.openmc_get_filter.argtypes = [c_int32, POINTER(c_int32)]
 _dll.openmc_get_filter.restype = c_int
 _dll.openmc_get_filter.errcheck = _error_handler
+_dll.openmc_material_filter_get_bins.argtypes = [
+    c_int32, POINTER(POINTER(c_int32)), POINTER(c_int32)]
+_dll.openmc_material_filter_get_bins.restype = c_int
+_dll.openmc_material_filter_get_bins.errcheck = _error_handler
+_dll.openmc_material_filter_set_bins.argtypes = [c_int32, c_int32, POINTER(c_int32)]
+_dll.openmc_material_filter_set_bins.restype = c_int
+_dll.openmc_material_filter_set_bins.errcheck = _error_handler
 _dll.openmc_mesh_filter_set_mesh.argtypes = [c_int32, c_int32]
 _dll.openmc_mesh_filter_set_mesh.restype = c_int
 _dll.openmc_mesh_filter_set_mesh.errcheck = _error_handler
@@ -122,7 +130,20 @@ class EnergyFunctionFilterView(FilterView):
 
 
 class MaterialFilterView(FilterView):
-    pass
+    @property
+    def bins(self):
+        materials = POINTER(c_int32)()
+        n = c_int32()
+        _dll.openmc_material_filter_get_bins(self._index, materials, n)
+        return [MaterialView(materials[i]) for i in range(n.value)]
+
+    @bins.setter
+    def bins(self, materials):
+        # Get material indices as int32_t[]
+        n = len(materials)
+        bins = (c_int32*n)(*(m._index for m in materials))
+
+        _dll.openmc_material_filter_set_bins(self._index, n, bins)
 
 
 class MeshFilterView(FilterView):

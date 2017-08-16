@@ -208,7 +208,7 @@ contains
           if (allocated(f % bins)) deallocate(f % bins)
           allocate(f % bins(n))
           f % bins(:) = energies
-          class default
+        class default
           err = E_WRONG_TYPE
         end select
       else

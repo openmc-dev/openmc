@@ -53,6 +53,8 @@ module openmc_api
   public :: openmc_material_get_densities
   public :: openmc_material_set_density
   public :: openmc_material_set_densities
+  public :: openmc_material_filter_get_bins
+  public :: openmc_material_filter_set_bins
   public :: openmc_mesh_filter_set_mesh
   public :: openmc_nuclide_name
   public :: openmc_plot_geometry

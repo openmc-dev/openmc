@@ -182,6 +182,8 @@ contains
     if (index >= 1 .and. index <= n_filters) then
       if (allocated(filters(index) % obj)) then
         filters(index) % obj % id = id
+        call filter_dict % add_key(id, index)
+
         err = 0
       else
         err = E_FILTER_NOT_ALLOCATED

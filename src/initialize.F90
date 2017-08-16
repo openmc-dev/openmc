@@ -29,7 +29,7 @@ module initialize
   use state_point,     only: load_state_point
   use string,          only: to_str, starts_with, ends_with, str_to_int
   use summary,         only: write_summary
-  use tally_header,    only: TallyObject, configure_tallies
+  use tally_header,    only: TallyObject
   use tally_filter
   use tally,           only: init_tally_routines
 
@@ -116,9 +116,6 @@ contains
     end if
 
     if (run_mode /= MODE_PLOTTING) then
-      ! Allocate and setup tally stride, filter_matches, and tally maps
-      call configure_tallies()
-
       ! Set up tally procedure pointers
       call init_tally_routines()
 

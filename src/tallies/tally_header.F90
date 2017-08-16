@@ -108,7 +108,7 @@ module tally_header
   contains
     procedure :: read_results_hdf5 => tally_read_results_hdf5
     procedure :: write_results_hdf5 => tally_write_results_hdf5
-    procedure :: setup_arrays => tally_setup_arrays
+    procedure :: allocate_results => tally_allocate_results
   end type TallyObject
 
   integer(C_INT32_T), public, bind(C) :: n_tallies = 0 ! # of tallies
@@ -210,45 +210,32 @@ contains
   end subroutine tally_read_results_hdf5
 
 !===============================================================================
-! SETUP_ARRAYS allocates and populates several member arrays of the TallyObject
-! derived type, including stride, filter_matches, and results.
+! ALLOCATE_RESULTS allocates and initializes the results component of the
+! TallyObject derived type
 !===============================================================================
 
-  subroutine tally_setup_arrays(this)
+  subroutine tally_allocate_results(this)
     class(TallyObject), intent(inout) :: this
-
-    integer :: j                 ! loop index for filters
-    integer :: n                 ! temporary stride
-    integer :: i_filt            ! filter index
-
-    ! Allocate stride
-    if (allocated(this % filter)) then
-      if (allocated(this % stride)) deallocate(this % stride)
-      allocate(this % stride(size(this % filter)))
-
-      ! The filters are traversed in opposite order so that the last filter has
-      ! the shortest stride in memory and the first filter has the largest
-      ! stride
-      n = 1
-      STRIDE: do j = size(this % filter), 1, -1
-        i_filt = this % filter(j)
-        this % stride(j) = n
-        n = n * filters(i_filt) % obj % n_bins
-      end do STRIDE
-      this % n_filter_bins = n
-    else
-      this % n_filter_bins = 1
-    end if
 
     ! Set total number of filter and scoring bins
     this % total_score_bins = this % n_score_bins * this % n_nuclide_bins
 
-    ! Allocate results array
-    if (allocated(this % results)) deallocate(this % results)
-    allocate(this % results(3, this % total_score_bins, this % n_filter_bins))
+    if (allocated(this % results)) then
+      ! If results was already allocated but shape is wrong, then reallocate it
+      ! to the correct shape
+      if (this % total_score_bins /= size(this % results, 2) .or. &
+           this % n_filter_bins /= size(this % results, 3)) then
+        deallocate(this % results)
+        allocate(this % results(3, this % total_score_bins, this % n_filter_bins))
+      end if
+    else
+      allocate(this % results(3, this % total_score_bins, this % n_filter_bins))
+    end if
+
+    ! Initialize results array to zero
     this % results(:,:,:) = ZERO
 
-  end subroutine tally_setup_arrays
+  end subroutine tally_allocate_results
 
 !===============================================================================
 ! CONFIGURE_TALLIES initializes several data structures related to tallies. This
@@ -260,12 +247,14 @@ contains
 
     integer :: i
 
-    ! Allocate global tallies
-    allocate(global_tallies(3, N_GLOBAL_TALLIES))
+    ! Allocate and initialize global tallies
+    if (.not. allocated(global_tallies)) then
+      allocate(global_tallies(3, N_GLOBAL_TALLIES))
+    end if
     global_tallies(:,:) = ZERO
 
     do i = 1, n_tallies
-      call tallies(i) % setup_arrays()
+      call tallies(i) % allocate_results()
     end do
 
   end subroutine configure_tallies
@@ -412,24 +401,25 @@ contains
     integer(C_INT32_T), intent(in) :: filter_indices(n)
     integer(C_INT) :: err
 
-    integer :: i
-    integer :: j
+    integer :: i       ! index in t % filter/stride
+    integer :: j       ! index in t % find_filter
+    integer :: k       ! index in global filters array
+    integer :: stride  ! filter stride
 
     err = 0
     if (index >= 1 .and. index <= n_tallies) then
       associate (t => tallies(index))
-        if (allocated(t % filter)) deallocate(t % filter)
-        allocate(t % filter(n))
 
         t % find_filter(:) = 0
         do i = 1, n
-          if (filter_indices(i) < 1 .or. filter_indices(i) > n_filters) then
+          k = filter_indices(i)
+          if (k < 1 .or. k > n_filters) then
             err = E_OUT_OF_BOUNDS
             exit
           end if
 
           ! Set the filter index in the tally find_filter array
-          select type (filt => filters(i) % obj)
+          select type (filt => filters(k) % obj)
           type is (DistribcellFilter)
             j = FILTER_DISTRIBCELL
           type is (CellFilter)
@@ -465,7 +455,28 @@ contains
           end select
           t % find_filter(j) = i
         end do
-        if (err == 0) t % filter(:) = filter_indices
+
+        if (err == 0) then
+          if (allocated(t % filter)) deallocate(t % filter)
+          if (allocated(t % stride)) deallocate(t % stride)
+          allocate(t % filter(n), t % stride(n))
+
+          ! Filters are traversed in reverse so that the last filter has the
+          ! shortest stride in memory and the first filter has the largest stride
+          stride = 1
+          do i = n, 1, -1
+            ! Set filter and stride
+            k = filter_indices(i)
+            t % filter(i) = k
+            t % stride(i) = stride
+
+            ! Multiply stride by number of bins in this filter
+            stride = stride * filters(k) % obj % n_bins
+          end do
+
+          ! Set total number of filter bins
+          t % n_filter_bins = stride
+        end if
       end associate
     else
       err = E_OUT_OF_BOUNDS
@@ -508,8 +519,6 @@ contains
             end if
           end select
         end do
-
-        call t % setup_arrays()
 
         err = 0
       end associate
@@ -673,8 +682,6 @@ contains
 
           end select
         end do
-
-        call t % setup_arrays()
 
         err = 0
       end associate

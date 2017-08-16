@@ -100,6 +100,9 @@ contains
     real(8) :: score                ! analog tally score
     real(8) :: E                    ! particle energy
 
+    ! Pre-collision energy of particle
+    E = p % last_E
+
     i = 0
     SCORE_LOOP: do q = 1, t % n_user_score_bins
       i = i + 1
@@ -159,14 +162,6 @@ contains
 
 
       case (SCORE_INVERSE_VELOCITY)
-
-        ! make sure the correct energy is used
-        if (t % estimator == ESTIMATOR_TRACKLENGTH) then
-          E = p % E
-        else
-          E = p % last_E
-        end if
-
         if (t % estimator == ESTIMATOR_ANALOG) then
           ! All events score to an inverse velocity bin. We actually use a
           ! collision estimator in place of an analog one since there is no way
@@ -256,7 +251,7 @@ contains
           ! Get yield and apply to score
           associate (rxn => nuclides(p % event_nuclide) % reactions(m))
             score = p % last_wgt * flux &
-                 * rxn % products(1) % yield % evaluate(p % last_E)
+                 * rxn % products(1) % yield % evaluate(E)
           end associate
         end if
 
@@ -283,7 +278,7 @@ contains
           ! Get yield and apply to score
           associate (rxn => nuclides(p % event_nuclide) % reactions(m))
             score = p % last_wgt * flux &
-                 * rxn % products(1) % yield % evaluate(p % last_E)
+                 * rxn % products(1) % yield % evaluate(E)
           end associate
         end if
 
@@ -310,7 +305,7 @@ contains
           ! Get yield and apply to score
           associate (rxn => nuclides(p%event_nuclide)%reactions(m))
             score = p % last_wgt * flux &
-                 * rxn % products(1) % yield % evaluate(p % last_E)
+                 * rxn % products(1) % yield % evaluate(E)
           end associate
         end if
 
@@ -413,13 +408,6 @@ contains
 
 
       case (SCORE_PROMPT_NU_FISSION)
-        ! make sure the correct energy is used
-        if (t % estimator == ESTIMATOR_TRACKLENGTH) then
-          E = p % E
-        else
-          E = p % last_E
-        end if
-
         if (t % estimator == ESTIMATOR_ANALOG) then
           if (survival_biasing .or. p % fission) then
             if (t % find_filter(FILTER_ENERGYOUT) > 0) then
@@ -481,16 +469,7 @@ contains
           end if
         end if
 
-
       case (SCORE_DELAYED_NU_FISSION)
-
-        ! make sure the correct energy is used
-        if (t % estimator == ESTIMATOR_TRACKLENGTH) then
-          E = p % E
-        else
-          E = p % last_E
-        end if
-
         ! Set the delayedgroup filter index and the number of delayed group bins
         dg_filter = t % find_filter(FILTER_DELAYEDGROUP)
 
@@ -682,14 +661,6 @@ contains
         end if
 
       case (SCORE_DECAY_RATE)
-
-        ! make sure the correct energy is used
-        if (t % estimator == ESTIMATOR_TRACKLENGTH) then
-          E = p % E
-        else
-          E = p % last_E
-        end if
-
         ! Set the delayedgroup filter index
         dg_filter = t % find_filter(FILTER_DELAYEDGROUP)
 
@@ -1065,7 +1036,7 @@ contains
               if (micro_xs(p % event_nuclide) % absorption > ZERO .and. &
                    allocated(nuc % fission_q_prompt)) then
                 score = p % absorb_wgt &
-                     * nuc % fission_q_prompt % evaluate(p % last_E) &
+                     * nuc % fission_q_prompt % evaluate(E) &
                      * micro_xs(p % event_nuclide) % fission &
                      / micro_xs(p % event_nuclide) % absorption * flux
               end if
@@ -1079,7 +1050,7 @@ contains
             associate (nuc => nuclides(p % event_nuclide))
               if (allocated(nuc % fission_q_prompt)) then
                 score = p % last_wgt &
-                     * nuc % fission_q_prompt % evaluate(p % last_E) &
+                     * nuc % fission_q_prompt % evaluate(E) &
                      * micro_xs(p % event_nuclide) % fission &
                      / micro_xs(p % event_nuclide) % absorption * flux
               end if
@@ -1087,12 +1058,6 @@ contains
           end if
 
         else
-          if (t % estimator == ESTIMATOR_COLLISION) then
-            E = p % last_E
-          else
-            E = p % E
-          end if
-
           if (i_nuclide > 0) then
             if (allocated(nuclides(i_nuclide) % fission_q_prompt)) then
               score = micro_xs(i_nuclide) % fission * atom_density * flux &
@@ -1125,7 +1090,7 @@ contains
               if (micro_xs(p % event_nuclide) % absorption > ZERO .and. &
                    allocated(nuc % fission_q_recov)) then
                 score = p % absorb_wgt &
-                     * nuc % fission_q_recov % evaluate(p % last_E) &
+                     * nuc % fission_q_recov % evaluate(E) &
                      * micro_xs(p % event_nuclide) % fission &
                      / micro_xs(p % event_nuclide) % absorption * flux
               end if
@@ -1139,7 +1104,7 @@ contains
             associate (nuc => nuclides(p % event_nuclide))
               if (allocated(nuc % fission_q_recov)) then
                 score = p % last_wgt &
-                     * nuc % fission_q_recov % evaluate(p % last_E) &
+                     * nuc % fission_q_recov % evaluate(E) &
                      * micro_xs(p % event_nuclide) % fission &
                      / micro_xs(p % event_nuclide) % absorption * flux
               end if
@@ -1147,12 +1112,6 @@ contains
           end if
 
         else
-          if (t % estimator == ESTIMATOR_COLLISION) then
-            E = p % last_E
-          else
-            E = p % E
-          end if
-
           if (i_nuclide > 0) then
             if (allocated(nuclides(i_nuclide) % fission_q_recov)) then
               score = micro_xs(i_nuclide) % fission * atom_density * flux &

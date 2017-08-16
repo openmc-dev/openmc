@@ -68,6 +68,12 @@ contains
     if (active_tallies % size() > 0) call zero_flux_derivs()
 
     EVENT_LOOP: do
+      ! Store pre-collision particle properties
+      p % last_wgt = p % wgt
+      p % last_E   = p % E
+      p % last_uvw = p % coord(1) % uvw
+      p % last_xyz = p % coord(1) % xyz
+
       ! If the cell hasn't been determined based on the particle's location,
       ! initiate a search for the current cell. This generally happens at the
       ! beginning of the history and again for any secondary particles
@@ -132,7 +138,6 @@ contains
         call score_tracklength_tally(p, distance)
       end if
 
-
       ! Score track-length estimate of k-eff
       if (run_mode == MODE_EIGENVALUE) then
         global_tally_tracklength = global_tally_tracklength + p % wgt * &
@@ -153,11 +158,6 @@ contains
           p % last_cell(j) = p % coord(j) % cell
         end do
         p % last_n_coord = p % n_coord
-
-        ! Update last_ data. This is needed to use the same filters in
-        ! surface tallies as the ones implemented for regular tallies
-        p % last_uvw = p % coord(p % n_coord) % uvw
-        p % last_E = p % E
 
         p % coord(p % n_coord) % cell = NONE
         if (any(lattice_translation /= 0)) then
@@ -236,9 +236,6 @@ contains
         ! Score flux derivative accumulators for differential tallies.
         if (active_tallies % size() > 0) call score_collision_derivative(p)
       end if
-
-      ! Save coordinates for tallying purposes
-      p % last_xyz = p % coord(1) % xyz
 
       ! If particle has too many events, display warning and kill it
       n_event = n_event + 1

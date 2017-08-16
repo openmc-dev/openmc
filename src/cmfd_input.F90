@@ -261,14 +261,16 @@ contains
     logical :: energy_filters
     integer :: i           ! loop counter
     integer :: n           ! size of arrays in mesh specification
-    integer :: ng          ! number of energy groups (default 1)
+    integer(C_INT32_T) :: ng  ! number of energy groups (default 1)
     integer :: n_filter    ! number of filters
     integer :: i_start, i_end
     integer :: i_filt_start, i_filt_end
+    integer(C_INT32_T), allocatable :: filter_indices(:)
     integer(C_INT) :: err
     integer :: i_filt      ! index in filters array
     integer :: iarray3(3) ! temp integer array
     real(8) :: rarray3(3) ! temp double array
+    real(C_DOUBLE), allocatable :: energies(:)
     type(TallyObject), pointer :: t
     type(RegularMesh), pointer :: m
     type(XMLNode) :: node_mesh
@@ -385,60 +387,39 @@ contains
 
     ! Set up mesh filter
     i_filt = i_filt_start
-    allocate(MeshFilter :: filters(i_filt) % obj)
-    select type (filt => filters(i_filt) % obj)
-    type is (MeshFilter)
-      filt % id = i_filt
-      filt % n_bins = product(m % dimension)
-      filt % mesh = i_start
-      ! Add filter to dictionary
-      call filter_dict % add_key(filt % id, i_filt)
-    end select
+    err = openmc_filter_set_type(i_filt, C_CHAR_'mesh' // C_NULL_CHAR)
+    err = openmc_filter_set_id(i_filt, i_filt)
+    err = openmc_mesh_filter_set_mesh(i_filt, i_start)
 
     if (energy_filters) then
       ! Read and set incoming energy mesh filter
       i_filt = i_filt + 1
-      allocate(EnergyFilter :: filters(i_filt) % obj)
-      select type (filt => filters(i_filt) % obj)
-      type is (EnergyFilter)
-        filt % id = i_filt
-        ng = node_word_count(node_mesh, "energy")
-        filt % n_bins = ng - 1
-        allocate(filt % bins(ng))
-        call get_node_array(node_mesh, "energy", filt % bins)
-        ! Add filter to dictionary
-        call filter_dict % add_key(filt % id, i_filt)
-      end select
+      err = openmc_filter_set_type(i_filt, C_CHAR_'energy' // C_NULL_CHAR)
+      err = openmc_filter_set_id(i_filt, i_filt)
+
+      ! Get energies and set bins
+      ng = node_word_count(node_mesh, "energy")
+      allocate(energies(ng))
+      call get_node_array(node_mesh, "energy", energies)
+      err = openmc_energy_filter_set_bins(i_filt, ng, energies)
 
       ! Read and set outgoing energy mesh filter
       i_filt = i_filt + 1
-      allocate(EnergyoutFilter :: filters(i_filt) % obj)
-      select type (filt => filters(i_filt) % obj)
-      type is (EnergyoutFilter)
-        filt % id = i_filt
-        ng = node_word_count(node_mesh, "energy")
-        filt % n_bins = ng - 1
-        allocate(filt % bins(ng))
-        call get_node_array(node_mesh, "energy", filt % bins)
-        ! Add filter to dictionary
-        call filter_dict % add_key(filt % id, i_filt)
-      end select
+      err = openmc_filter_set_type(i_filt, C_CHAR_'energyout' // C_NULL_CHAR)
+      err = openmc_filter_set_id(i_filt, i_filt)
+      err = openmc_energy_filter_set_bins(i_filt, ng, energies)
     end if
 
     ! Duplicate the mesh filter for the mesh current tally since other
     ! tallies use this filter and we need to change the dimension
     i_filt = i_filt + 1
-    allocate(MeshFilter :: filters(i_filt) % obj)
-    select type (filt => filters(i_filt) % obj)
-    type is (MeshFilter)
-      filt % id = i_filt
-      ! We need to increase the dimension by one since we also need
-      ! currents coming into and out of the boundary mesh cells.
-      filt % n_bins = product(m % dimension + 1)
-      filt % mesh = i_start
-      ! Add filter to dictionary
-      call filter_dict % add_key(filt % id, i_filt)
-    end select
+    err = openmc_filter_set_type(i_filt, C_CHAR_'mesh' // C_NULL_CHAR)
+    err = openmc_filter_set_id(i_filt, i_filt)
+    err = openmc_mesh_filter_set_mesh(i_filt, i_start)
+
+    ! We need to increase the dimension by one since we also need
+    ! currents coming into and out of the boundary mesh cells.
+    filters(i_filt) % obj % n_bins = product(m % dimension + 1)
 
     ! Set up surface filter
     i_filt = i_filt + 1
@@ -476,15 +457,11 @@ contains
         call get_node_value(root, "reset", t % reset)
       end if
 
-      ! Set the mesh filter index in the tally find_filter array
-      n_filter = 1
-      t % find_filter(FILTER_MESH) = n_filter
-
       ! Set the incoming energy mesh filter index in the tally find_filter
       ! array
+      n_filter = 1
       if (energy_filters) then
         n_filter = n_filter + 1
-        t % find_filter(FILTER_ENERGYIN) = n_filter
       end if
 
       ! Set number of nucilde bins
@@ -507,11 +484,13 @@ contains
         t % type = TALLY_VOLUME
 
         ! Allocate and set filters
-        allocate(t % filter(n_filter))
-        t % filter(1) = i_filt_start
+        allocate(filter_indices(n_filter))
+        filter_indices(1) = i_filt_start
         if (energy_filters) then
-          t % filter(2) = i_filt_start + 1
+          filter_indices(2) = i_filt_start + 1
         end if
+        err = openmc_tally_set_filters(i_start + i - 1, n_filter, filter_indices)
+        deallocate(filter_indices)
 
         ! Allocate scoring bins
         allocate(t % score_bins(3))
@@ -543,16 +522,17 @@ contains
         ! array
         if (energy_filters) then
           n_filter = n_filter + 1
-          t % find_filter(FILTER_ENERGYOUT) = n_filter
         end if
 
         ! Allocate and set indices in filters array
-        allocate(t % filter(n_filter))
-        t % filter(1) = i_filt_start
+        allocate(filter_indices(n_filter))
+        filter_indices(1) = i_filt_start
         if (energy_filters) then
-          t % filter(2) = i_filt_start + 1
-          t % filter(3) = i_filt_start + 2
+          filter_indices(2) = i_filt_start + 1
+          filter_indices(3) = i_filt_start + 2
         end if
+        err = openmc_tally_set_filters(i_start + i - 1, n_filter, filter_indices)
+        deallocate(filter_indices)
 
         ! Allocate macro reactions
         allocate(t % score_bins(2))
@@ -577,15 +557,16 @@ contains
 
         ! Set the surface filter index in the tally find_filter array
         n_filter = n_filter + 1
-        t % find_filter(FILTER_SURFACE) = n_filter
 
         ! Allocate and set filters
-        allocate(t % filter(n_filter))
-        t % filter(1) = i_filt_end - 1
-        t % filter(n_filter) = i_filt_end
+        allocate(filter_indices(n_filter))
+        filter_indices(1) = i_filt_end - 1
+        filter_indices(n_filter) = i_filt_end
         if (energy_filters) then
-          t % filter(2) = i_filt_start + 1
+          filter_indices(2) = i_filt_start + 1
         end if
+        err = openmc_tally_set_filters(i_start + i - 1, n_filter, filter_indices)
+        deallocate(filter_indices)
 
         ! Allocate macro reactions
         allocate(t % score_bins(1))

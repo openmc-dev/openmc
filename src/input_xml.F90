@@ -3315,11 +3315,7 @@ contains
       end select
 
       ! Set filter id
-      f % obj % id = filter_id
-
-      ! Add filter to dictionary
-      call filter_dict % add_key(filter_id, i)
-
+      err = openmc_filter_set_id(i_start + i - 1, filter_id)
     end do READ_FILTERS
 
     ! ==========================================================================
@@ -3394,63 +3390,27 @@ contains
       allocate(temp_filter(n_filter))
       if (n_filter > 0) then
         call get_node_array(node_tal, "filters", temp_filter)
+
+        do j = 1, n_filter
+          ! Get pointer to filter
+          if (filter_dict % has_key(temp_filter(j))) then
+            i_filt = filter_dict % get_key(temp_filter(j))
+            f => filters(i_filt)
+          else
+            call fatal_error("Could not find filter " &
+                 // trim(to_str(temp_filter(j))) // " specified on tally " &
+                 // trim(to_str(t % id)))
+          end if
+
+          ! Store the index of the filter
+          temp_filter(j) = i_filt
+        end do
+
+        ! Set the filters
+        err = openmc_tally_set_filters(i_start + i - 1, n_filter, temp_filter)
+      else
+        allocate(t % filter(n_filter))
       end if
-
-      do j = 1, n_filter
-        ! Get pointer to filter
-        if (filter_dict % has_key(temp_filter(j))) then
-          i_filt = filter_dict % get_key(temp_filter(j))
-          f => filters(i_filt)
-        else
-          call fatal_error("Could not find filter " &
-               // trim(to_str(temp_filter(j))) // " specified on tally " &
-               // trim(to_str(t % id)))
-        end if
-
-        ! Set the filter index in the tally find_filter array
-        select type (filt => f % obj)
-        type is (DistribcellFilter)
-          t % find_filter(FILTER_DISTRIBCELL) = j
-        type is (CellFilter)
-          t % find_filter(FILTER_CELL) = j
-        type is (CellFromFilter)
-          t % find_filter(FILTER_CELLFROM) = j
-        type is (CellbornFilter)
-          t % find_filter(FILTER_CELLBORN) = j
-        type is (MaterialFilter)
-          t % find_filter(FILTER_MATERIAL) = j
-        type is (UniverseFilter)
-          t % find_filter(FILTER_UNIVERSE) = j
-        type is (SurfaceFilter)
-          t % find_filter(FILTER_SURFACE) = j
-        type is (MeshFilter)
-          t % find_filter(FILTER_MESH) = j
-        type is (EnergyFilter)
-          t % find_filter(FILTER_ENERGYIN) = j
-        type is (EnergyoutFilter)
-          t % find_filter(FILTER_ENERGYOUT) = j
-          ! Set to analog estimator
-          t % estimator = ESTIMATOR_ANALOG
-        type is (DelayedGroupFilter)
-          t % find_filter(FILTER_DELAYEDGROUP) = j
-        type is (MuFilter)
-          t % find_filter(FILTER_MU) = j
-          ! Set to analog estimator
-          t % estimator = ESTIMATOR_ANALOG
-        type is (PolarFilter)
-          t % find_filter(FILTER_POLAR) = j
-        type is (AzimuthalFilter)
-          t % find_filter(FILTER_AZIMUTHAL) = j
-        type is (EnergyFunctionFilter)
-          t % find_filter(FILTER_ENERGYFUNCTION) = j
-        end select
-
-        ! Store the index of the filter
-        temp_filter(j) = i_filt
-      end do
-
-      ! Store the filter indices
-      call move_alloc(FROM=temp_filter, TO=t % filter)
 
       ! =======================================================================
       ! READ DATA FOR NUCLIDES

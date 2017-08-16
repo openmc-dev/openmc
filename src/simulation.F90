@@ -21,6 +21,7 @@ module simulation
   use state_point,     only: write_state_point, write_source_point
   use string,          only: to_str
   use tally,           only: accumulate_tallies, setup_active_tallies
+  use tally_header,    only: configure_tallies
   use trigger,         only: check_triggers
   use tracking,        only: transport
 
@@ -371,7 +372,11 @@ contains
 
   subroutine initialize_simulation()
 
+    ! Allocate tally results arrays if they're not allocated yet
+    call configure_tallies()
+
 !$omp parallel
+    ! Allocate array for microscopic cross section cache
     allocate(micro_xs(n_nuclides))
 
     ! Allocate array for matching filter bins

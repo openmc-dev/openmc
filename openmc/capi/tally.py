@@ -107,6 +107,14 @@ class TallyView(object):
         _dll.openmc_tally_results(self._index, data, shape)
         return as_array(data, tuple(shape[::-1]))
 
+    @filters.setter
+    def filters(self, filters):
+        # Get filter indices as int32_t[]
+        n = len(filters)
+        indices = (c_int32*n)(*(f._index for f in filters))
+
+        _dll.openmc_tally_set_filters(self._index, n, indices)
+
     @nuclides.setter
     def nuclides(self, nuclides):
         nucs = (c_char_p * len(nuclides))()

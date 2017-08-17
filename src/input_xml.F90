@@ -23,7 +23,7 @@ module input_xml
   use mgxs_data,        only: create_macro_xs, read_mgxs
   use mgxs_header
   use multipole,        only: multipole_read
-  use output,           only: write_message, title, header
+  use output,           only: write_message, title, header, print_plot
   use plot_header
   use random_lcg,       only: prn, seed, initialize_prng
   use surface_header
@@ -32,6 +32,7 @@ module input_xml
   use string,           only: to_lower, to_str, str_to_int, str_to_real, &
                               starts_with, ends_with, tokenize, split_string, &
                               zero_padded
+  use summary,          only: write_summary
   use tally_header,     only: openmc_extend_tallies, openmc_tally_set_type
   use tally_filter_header, only: TallyFilterContainer
   use tally_filter
@@ -83,11 +84,22 @@ contains
       call time_read_xs % stop()
     end if
 
-    ! Normalize atom/weight percents
-    if (run_mode /= MODE_PLOTTING) call normalize_ao()
+    if (run_mode == MODE_PLOTTING) then
+      ! Read plots.xml if it exists
+      call read_plots_xml()
+      if (master .and. verbosity >= 5) call print_plot()
 
-    ! Read plots.xml if it exists
-    if (run_mode == MODE_PLOTTING) call read_plots_xml()
+    else
+      ! Normalize atom/weight percents
+      call normalize_ao()
+
+      ! Write summary information
+      if (master .and. output_summary) call write_summary()
+
+      ! Warn if overlap checking is on
+      if (master .and. check_overlaps) &
+           call warning("Cell overlap checking is ON.")
+    end if
 
   end subroutine read_input_xml
 

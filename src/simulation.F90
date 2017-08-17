@@ -20,7 +20,8 @@ module simulation
   use source,          only: initialize_source, sample_external_source
   use state_point,     only: write_state_point, write_source_point, load_state_point
   use string,          only: to_str
-  use tally,           only: accumulate_tallies, setup_active_tallies
+  use tally,           only: accumulate_tallies, setup_active_tallies, &
+                             init_tally_routines
   use tally_header,    only: configure_tallies
   use trigger,         only: check_triggers
   use tracking,        only: transport
@@ -372,6 +373,16 @@ contains
 
   subroutine initialize_simulation()
 
+    ! Set up tally procedure pointers
+    call init_tally_routines()
+
+    ! Determine how much work each processor should do
+    call calculate_work()
+
+    ! Allocate source bank, and for eigenvalue simulations also allocate the
+    ! fission bank
+    call allocate_banks()
+
     ! Allocate tally results arrays if they're not allocated yet
     call configure_tallies()
 
@@ -472,5 +483,92 @@ contains
     end if
 
   end subroutine finalize_simulation
+
+!===============================================================================
+! CALCULATE_WORK determines how many particles each processor should simulate
+!===============================================================================
+
+  subroutine calculate_work()
+
+    integer    :: i         ! loop index
+    integer    :: remainder ! Number of processors with one extra particle
+    integer(8) :: i_bank    ! Running count of number of particles
+    integer(8) :: min_work  ! Minimum number of particles on each proc
+    integer(8) :: work_i    ! Number of particles on rank i
+
+    allocate(work_index(0:n_procs))
+
+    ! Determine minimum amount of particles to simulate on each processor
+    min_work = n_particles/n_procs
+
+    ! Determine number of processors that have one extra particle
+    remainder = int(mod(n_particles, int(n_procs,8)), 4)
+
+    i_bank = 0
+    work_index(0) = 0
+    do i = 0, n_procs - 1
+      ! Number of particles for rank i
+      if (i < remainder) then
+        work_i = min_work + 1
+      else
+        work_i = min_work
+      end if
+
+      ! Set number of particles
+      if (rank == i) work = work_i
+
+      ! Set index into source bank for rank i
+      i_bank = i_bank + work_i
+      work_index(i+1) = i_bank
+    end do
+
+  end subroutine calculate_work
+
+!===============================================================================
+! ALLOCATE_BANKS allocates memory for the fission and source banks
+!===============================================================================
+
+  subroutine allocate_banks()
+
+    integer :: alloc_err  ! allocation error code
+
+    ! Allocate source bank
+    allocate(source_bank(work), STAT=alloc_err)
+
+    ! Check for allocation errors
+    if (alloc_err /= 0) then
+      call fatal_error("Failed to allocate source bank.")
+    end if
+
+    if (run_mode == MODE_EIGENVALUE) then
+#ifdef _OPENMP
+      ! If OpenMP is being used, each thread needs its own private fission
+      ! bank. Since the private fission banks need to be combined at the end of
+      ! a generation, there is also a 'master_fission_bank' that is used to
+      ! collect the sites from each thread.
+
+      n_threads = omp_get_max_threads()
+
+!$omp parallel
+      thread_id = omp_get_thread_num()
+
+      if (thread_id == 0) then
+        allocate(fission_bank(3*work))
+      else
+        allocate(fission_bank(3*work/n_threads))
+      end if
+!$omp end parallel
+      allocate(master_fission_bank(3*work), STAT=alloc_err)
+#else
+      allocate(fission_bank(3*work), STAT=alloc_err)
+#endif
+
+      ! Check for allocation errors
+      if (alloc_err /= 0) then
+        call fatal_error("Failed to allocate fission bank.")
+      end if
+    end if
+
+  end subroutine allocate_banks
 
 end module simulation

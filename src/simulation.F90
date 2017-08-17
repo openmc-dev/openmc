@@ -175,7 +175,7 @@ contains
       call time_active % start()
 
       do i = 1, n_tallies
-        tallies(i) % active = .true.
+        tallies(i) % obj % active = .true.
       end do
     end if
 
@@ -426,8 +426,8 @@ contains
     ! Broadcast tally results so that each process has access to results
     if (allocated(tallies)) then
       do i = 1, size(tallies)
-        n = size(tallies(i) % results)
-        call MPI_BCAST(tallies(i) % results, n, MPI_DOUBLE, 0, &
+        n = size(tallies(i) % obj % results)
+        call MPI_BCAST(tallies(i) % obj % results, n, MPI_DOUBLE, 0, &
              mpi_intracomm, mpi_err)
       end do
     end if

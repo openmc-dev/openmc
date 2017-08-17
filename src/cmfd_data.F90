@@ -58,7 +58,6 @@ contains
     use error,        only: fatal_error
     use mesh_header,  only: RegularMesh, meshes
     use string,       only: to_str
-    use tally_header, only: TallyObject
     use tally_filter_header, only: filters, filter_matches
 
     integer :: nx            ! number of mesh cells in x direction
@@ -82,7 +81,6 @@ contains
     integer :: stride_surf   ! stride for surface filter
     logical :: energy_filters! energy filters present
     real(8) :: flux          ! temp variable for flux
-    type(TallyObject), pointer :: t ! pointer for tally object
     type(RegularMesh), pointer :: m ! pointer for mesh object
 
     ! Extract spatial and energy indices from object
@@ -96,8 +94,10 @@ contains
     cmfd % openmc_src = ZERO
 
     ! Associate tallies and mesh
-    t => cmfd_tallies(1)
-    i_filt = t % filter(t % find_filter(FILTER_MESH))
+    associate (t => cmfd_tallies(1) % obj)
+      i_filt = t % filter(t % find_filter(FILTER_MESH))
+    end associate
+
     select type(filt => filters(i_filt) % obj)
     type is (MeshFilter)
       m => meshes(filt % mesh)
@@ -114,7 +114,7 @@ contains
     TAL: do ital = 1, size(cmfd_tallies)
 
       ! Associate tallies and mesh
-      t => cmfd_tallies(ital)
+      associate (t => cmfd_tallies(ital) % obj)
       i_filt = t % filter(t % find_filter(FILTER_MESH))
       select type(filt => filters(i_filt) % obj)
       type is (MeshFilter)
@@ -316,13 +316,13 @@ contains
 
       end do ZLOOP
 
+      end associate
     end do TAL
 
     ! Normalize openmc source distribution
     cmfd % openmc_src = cmfd % openmc_src/sum(cmfd % openmc_src)*cmfd%norm
 
     ! Nullify all pointers
-    if (associated(t)) nullify(t)
     if (associated(m)) nullify(m)
 
   end subroutine compute_xs

@@ -26,7 +26,6 @@ module state_point
   use output,             only: write_message, time_stamp
   use random_lcg,         only: seed
   use string,             only: to_str, count_digits, zero_padded
-  use tally_header,       only: TallyObject
 
   implicit none
 
@@ -51,7 +50,6 @@ contains
     real(C_DOUBLE) :: k_combined(2)
     character(MAX_WORD_LEN), allocatable :: str_array(:)
     character(MAX_FILE_LEN)    :: filename
-    type(TallyObject), pointer    :: tally
 
     ! Set filename for state point
     filename = trim(path_output) // 'statepoint.' // &
@@ -227,7 +225,7 @@ contains
         ! Write array of tally IDs
         allocate(id_array(n_tallies))
         do i = 1, n_tallies
-          id_array(i) = tallies(i) % id
+          id_array(i) = tallies(i) % obj % id
         end do
         call write_attribute(tallies_group, "ids", id_array)
         deallocate(id_array)
@@ -236,7 +234,7 @@ contains
         TALLY_METADATA: do i = 1, n_tallies
 
           ! Get pointer to tally
-          tally => tallies(i)
+          associate (tally => tallies(i) % obj)
           tally_group = create_group(tallies_group, "tally " // &
                trim(to_str(tally % id)))
 
@@ -341,6 +339,7 @@ contains
           deallocate(str_array)
 
           call close_group(tally_group)
+          end associate
         end do TALLY_METADATA
 
       end if
@@ -372,14 +371,13 @@ contains
 
         ! Write all tally results
         TALLY_RESULTS: do i = 1, n_tallies
-          ! Set point to current tally
-          tally => tallies(i)
-
-          ! Write sum and sum_sq for each bin
-          tally_group = open_group(tallies_group, "tally " &
-               // to_str(tally % id))
-          call tally % write_results_hdf5(tally_group)
-          call close_group(tally_group)
+          associate (tally => tallies(i) % obj)
+            ! Write sum and sum_sq for each bin
+            tally_group = open_group(tallies_group, "tally " &
+                 // to_str(tally % id))
+            call tally % write_results_hdf5(tally_group)
+            call close_group(tally_group)
+          end associate
         end do TALLY_RESULTS
 
         call close_group(tallies_group)
@@ -552,7 +550,7 @@ contains
 
       ! Write all tally results
       TALLY_RESULTS: do i = 1, n_tallies
-        associate (t => tallies(i))
+        associate (t => tallies(i) % obj)
           ! Determine size of tally results array
           m = size(t % results, 2)
           n = size(t % results, 3)
@@ -761,7 +759,7 @@ contains
         tallies_group = open_group(file_id, "tallies")
 
         TALLY_RESULTS: do i = 1, n_tallies
-          associate (t => tallies(i))
+          associate (t => tallies(i) % obj)
             ! Read sum, sum_sq, and N for each bin
             tally_group = open_group(tallies_group, "tally " // &
                  trim(to_str(t % id)))

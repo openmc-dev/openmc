@@ -30,7 +30,7 @@ module input_xml
   use string,           only: to_lower, to_str, str_to_int, str_to_real, &
                               starts_with, ends_with, tokenize, split_string, &
                               zero_padded
-  use tally_header,     only: TallyObject, openmc_extend_tallies
+  use tally_header,     only: openmc_extend_tallies, openmc_tally_set_type
   use tally_filter_header, only: TallyFilterContainer
   use tally_filter
   use xml_interface
@@ -2674,7 +2674,6 @@ contains
     character(MAX_WORD_LEN), allocatable :: sarray(:)
     type(DictCharInt) :: trigger_scores
     type(ElemKeyValueCI), pointer :: pair_list
-    type(TallyObject), pointer :: t
     type(TallyFilterContainer), pointer :: f
     type(RegularMesh), pointer :: m
     type(XMLDocument) :: doc
@@ -3333,8 +3332,12 @@ contains
     end if
 
     READ_TALLIES: do i = 1, n
+      ! Allocate tally
+      err = openmc_tally_set_type(i_start + i - 1, &
+           C_CHAR_'generic' // C_NULL_CHAR)
+
       ! Get pointer to tally
-      t => tallies(i_start + i - 1)
+      associate (t => tallies(i_start + i - 1) % obj)
 
       ! Get pointer to tally xml node
       node_tal = node_tal_list(i)
@@ -4288,6 +4291,7 @@ contains
       ! Add tally to dictionary
       call tally_dict % add_key(t % id, i)
 
+      end associate
     end do READ_TALLIES
 
     ! Close XML document

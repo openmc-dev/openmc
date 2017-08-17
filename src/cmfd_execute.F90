@@ -366,8 +366,8 @@ contains
 
     ! Reset CMFD tallies
     do i = 1, size(cmfd_tallies)
-      cmfd_tallies(i) % n_realizations = 0
-      cmfd_tallies(i) % results(:,:,:) = ZERO
+      cmfd_tallies(i) % obj % n_realizations = 0
+      cmfd_tallies(i) % obj % results(:,:,:) = ZERO
     end do
 
   end subroutine cmfd_tally_reset

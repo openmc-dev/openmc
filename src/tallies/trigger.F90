@@ -109,8 +109,6 @@ contains
     real(8) :: rel_err = ZERO ! trigger relative error
     real(8) :: ratio          ! ratio of the uncertainty/trigger threshold
     real(C_DOUBLE) :: k_combined(2)
-    type(TallyObject), pointer     :: t               ! tally pointer
-    type(TriggerObject), pointer   :: trigger         ! tally trigger
 
     ! Initialize tally trigger maximum uncertainty ratio to zero
     max_ratio = 0
@@ -151,7 +149,7 @@ contains
 
       ! Compute uncertainties for all tallies, scores with triggers
       TALLY_LOOP: do i = 1, n_tallies
-        t => tallies(i)
+        associate (t => tallies(i) % obj)
 
         ! Cycle through if only one batch has been simumlate
         if (t % n_realizations == 1) then
@@ -159,7 +157,7 @@ contains
         end if
 
         TRIGGER_LOOP: do s = 1, t % n_triggers
-          trigger => t % triggers(s)
+          associate (trigger => t % triggers(s))
 
           ! Initialize trigger uncertainties to zero
           trigger % std_dev = ZERO
@@ -279,7 +277,9 @@ contains
               if (size(t % filter) == 0) exit FILTER_LOOP
             end do FILTER_LOOP
           end if
+          end associate
         end do TRIGGER_LOOP
+        end associate
       end do TALLY_LOOP
     end if
   end subroutine check_tally_triggers
@@ -291,6 +291,8 @@ contains
 !===============================================================================
 
   subroutine compute_tally_current(t, trigger)
+    type(TallyObject),   intent(in)    :: t        ! mesh current tally
+    type(TriggerObject), intent(inout) :: trigger  ! mesh current tally trigger
 
     integer :: i                    ! mesh index
     integer :: j                    ! loop index for tally filters
@@ -306,8 +308,6 @@ contains
     logical :: print_ebin           ! should incoming energy bin be displayed?
     real(8) :: rel_err  = ZERO      ! temporary relative error of result
     real(8) :: std_dev  = ZERO      ! temporary standard deviration of result
-    type(TallyObject), pointer    :: t        ! mesh current tally
-    type(TriggerObject)           :: trigger  ! mesh current tally trigger
     type(RegularMesh), pointer :: m        ! surface current mesh
 
     ! Get pointer to mesh

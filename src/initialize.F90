@@ -19,7 +19,7 @@ module initialize
   use global
   use hdf5_interface,  only: file_open, read_attribute, file_close, &
                              hdf5_bank_t, hdf5_integer8_t
-  use input_xml,       only: read_input_xml, read_plots_xml
+  use input_xml,       only: read_input_xml
   use material_header, only: Material
   use message_passing
   use mgxs_data,       only: read_mgxs, create_macro_xs
@@ -82,18 +82,12 @@ contains
     ! Read command line arguments
     call read_command_line()
 
-    ! Read XML input files
-    call read_input_xml()
-
-    ! Initialize random number generator -- this has to be done after the input
-    ! files have been read in case the user specified a seed for the random
-    ! number generator
-
+    ! Initialize random number generator -- if the user specifies a seed, it
+    ! will be re-initialized later
     call initialize_prng()
 
-    ! Read plots.xml if it exists -- this has to be done separate from the other
-    ! XML files because we need the PRNG to be initialized first
-    if (run_mode == MODE_PLOTTING) call read_plots_xml()
+    ! Read XML input files
+    call read_input_xml()
 
     ! Initialize distribcell_filters
     call prepare_distribcell()

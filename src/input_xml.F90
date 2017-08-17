@@ -24,7 +24,7 @@ module input_xml
   use multipole,        only: multipole_read
   use output,           only: write_message, title, header
   use plot_header
-  use random_lcg,       only: prn, seed
+  use random_lcg,       only: prn, seed, initialize_prng
   use surface_header
   use set_header,       only: SetChar
   use stl_vector,       only: VectorInt, VectorReal, VectorChar
@@ -80,6 +80,9 @@ contains
 
     ! Normalize atom/weight percents
     if (run_mode /= MODE_PLOTTING) call normalize_ao()
+
+    ! Read plots.xml if it exists
+    if (run_mode == MODE_PLOTTING) call read_plots_xml()
 
   end subroutine read_input_xml
 
@@ -306,7 +309,10 @@ contains
     end if
 
     ! Copy random number seed if specified
-    if (check_for_node(root, "seed")) call get_node_value(root, "seed", seed)
+    if (check_for_node(root, "seed")) then
+      call get_node_value(root, "seed", seed)
+      call initialize_prng()
+    end if
 
     ! Number of bins for logarithmic grid
     if (check_for_node(root, "log_grid_bins")) then

@@ -12,7 +12,7 @@ module initialize
   use dict_header,     only: DictIntInt, ElemKeyValueII
   use set_header,      only: SetInt
   use error,           only: fatal_error, warning
-  use geometry,        only: neighbor_lists, count_instance, calc_offsets, &
+  use geometry,        only: calc_offsets, &
                              maximum_levels
   use geometry_header, only: Cell, Universe, Lattice, RectLattice, HexLattice,&
                              root_universe
@@ -26,7 +26,6 @@ module initialize
   use output,          only: print_version, write_message, print_usage, &
                              print_plot
   use random_lcg,      only: initialize_prng
-  use state_point,     only: load_state_point
   use string,          only: to_str, starts_with, ends_with, str_to_int
   use summary,         only: write_summary
   use tally_header,    only: TallyObject
@@ -96,15 +95,8 @@ contains
     ! XML files because we need the PRNG to be initialized first
     if (run_mode == MODE_PLOTTING) call read_plots_xml()
 
-    ! Use dictionaries to redefine index pointers
-    call adjust_indices()
-
     ! Initialize distribcell_filters
     call prepare_distribcell()
-
-    ! After reading input and basic geometry setup is complete, build lists of
-    ! neighboring cells for efficient tracking
-    call neighbor_lists()
 
     ! Check to make sure there are not too many nested coordinate levels in the
     ! geometry since the coordinate list is statically allocated for performance
@@ -126,9 +118,6 @@ contains
       ! fission bank
       call allocate_banks()
 
-      ! If this is a restart run, load the state point data and binary source
-      ! file
-      if (restart_run) call load_state_point()
     end if
 
     if (master) then
@@ -421,176 +410,6 @@ contains
   end subroutine read_command_line
 
 !===============================================================================
-! ADJUST_INDICES changes the values for 'surfaces' for each cell and the
-! material index assigned to each to the indices in the surfaces and material
-! array rather than the unique IDs assigned to each surface and material. Also
-! assigns boundary conditions to surfaces based on those read into the bc_dict
-! dictionary
-!===============================================================================
-
-  subroutine adjust_indices()
-
-    integer :: i                      ! index for various purposes
-    integer :: j                      ! index for various purposes
-    integer :: k                      ! loop index for lattices
-    integer :: m                      ! loop index for lattices
-    integer :: lid                    ! lattice IDs
-    integer :: i_array                ! index in surfaces/materials array
-    integer :: id                     ! user-specified id
-    type(Cell),        pointer :: c => null()
-    class(Lattice),    pointer :: lat => null()
-
-    do i = 1, n_cells
-      ! =======================================================================
-      ! ADJUST REGION SPECIFICATION FOR EACH CELL
-
-      c => cells(i)
-      do j = 1, size(c%region)
-        id = c%region(j)
-        ! Make sure that only regions are checked. Since OP_UNION is the
-        ! operator with the lowest integer value, anything below it must denote
-        ! a half-space
-        if (id < OP_UNION) then
-          if (surface_dict%has_key(abs(id))) then
-            i_array = surface_dict%get_key(abs(id))
-            c%region(j) = sign(i_array, id)
-          else
-            call fatal_error("Could not find surface " // trim(to_str(abs(id)))&
-                 &// " specified on cell " // trim(to_str(c%id)))
-          end if
-        end if
-      end do
-
-      ! Also adjust the indices in the reverse Polish notation
-      do j = 1, size(c%rpn)
-        id = c%rpn(j)
-        ! Again, make sure that only regions are checked
-        if (id < OP_UNION) then
-          i_array = surface_dict%get_key(abs(id))
-          c%rpn(j) = sign(i_array, id)
-        end if
-      end do
-
-      ! =======================================================================
-      ! ADJUST UNIVERSE INDEX FOR EACH CELL
-
-      id = c%universe
-      if (universe_dict%has_key(id)) then
-        c%universe = universe_dict%get_key(id)
-      else
-        call fatal_error("Could not find universe " // trim(to_str(id)) &
-             &// " specified on cell " // trim(to_str(c%id)))
-      end if
-
-      ! =======================================================================
-      ! ADJUST MATERIAL/FILL POINTERS FOR EACH CELL
-
-      if (c % material(1) == NONE) then
-        id = c % fill
-        if (universe_dict % has_key(id)) then
-          c % type = FILL_UNIVERSE
-          c % fill = universe_dict % get_key(id)
-        elseif (lattice_dict % has_key(id)) then
-          lid = lattice_dict % get_key(id)
-          c % type = FILL_LATTICE
-          c % fill = lid
-        else
-          call fatal_error("Specified fill " // trim(to_str(id)) // " on cell "&
-               // trim(to_str(c % id)) // " is neither a universe nor a &
-               &lattice.")
-        end if
-      else
-        do j = 1, size(c % material)
-          id = c % material(j)
-          if (id == MATERIAL_VOID) then
-            c % type = FILL_MATERIAL
-          else if (material_dict % has_key(id)) then
-            c % type = FILL_MATERIAL
-            c % material(j) = material_dict % get_key(id)
-          else
-            call fatal_error("Could not find material " // trim(to_str(id)) &
-                 // " specified on cell " // trim(to_str(c % id)))
-          end if
-        end do
-      end if
-    end do
-
-    ! ==========================================================================
-    ! ADJUST UNIVERSE INDICES FOR EACH LATTICE
-
-    do i = 1, n_lattices
-      lat => lattices(i)%obj
-      select type (lat)
-
-      type is (RectLattice)
-        do m = 1, lat%n_cells(3)
-          do k = 1, lat%n_cells(2)
-            do j = 1, lat%n_cells(1)
-              id = lat%universes(j,k,m)
-              if (universe_dict%has_key(id)) then
-                lat%universes(j,k,m) = universe_dict%get_key(id)
-              else
-                call fatal_error("Invalid universe number " &
-                     &// trim(to_str(id)) // " specified on lattice " &
-                     &// trim(to_str(lat%id)))
-              end if
-            end do
-          end do
-        end do
-
-      type is (HexLattice)
-        do m = 1, lat%n_axial
-          do k = 1, 2*lat%n_rings - 1
-            do j = 1, 2*lat%n_rings - 1
-              if (j + k < lat%n_rings + 1) then
-                cycle
-              else if (j + k > 3*lat%n_rings - 1) then
-                cycle
-              end if
-              id = lat%universes(j, k, m)
-              if (universe_dict%has_key(id)) then
-                lat%universes(j, k, m) = universe_dict%get_key(id)
-              else
-                call fatal_error("Invalid universe number " &
-                     &// trim(to_str(id)) // " specified on lattice " &
-                     &// trim(to_str(lat%id)))
-              end if
-            end do
-          end do
-        end do
-
-      end select
-
-      if (lat%outer /= NO_OUTER_UNIVERSE) then
-        if (universe_dict%has_key(lat%outer)) then
-          lat%outer = universe_dict%get_key(lat%outer)
-        else
-          call fatal_error("Invalid universe number " &
-               &// trim(to_str(lat%outer)) &
-               &// " specified on lattice " // trim(to_str(lat%id)))
-        end if
-      end if
-
-    end do
-
-    ! =======================================================================
-    ! ADJUST INDICES FOR EACH TALLY FILTER
-
-    FILTER_LOOP: do i = 1, n_filters
-
-      select type(filt => filters(i) % obj)
-      type is (SurfaceFilter)
-        ! Check if this is a surface filter only for surface currents
-        if (.not. filt % current) call filt % initialize()
-      class default
-        call filt % initialize()
-      end select
-
-    end do FILTER_LOOP
-
-  end subroutine adjust_indices
-
-!===============================================================================
 ! CALCULATE_WORK determines how many particles each processor should simulate
 !===============================================================================
 
@@ -716,20 +535,6 @@ contains
 
     ! If distribcell isn't used in this simulation then no more work left to do.
     if (.not. distribcell_active) return
-
-    ! Count the number of instances of each cell.
-    call count_instance(universes(root_universe))
-
-    ! Set the number of bins in all distribcell filters.
-    do i = 1, n_tallies
-      do j = 1, size(tallies(i) % obj % filter)
-        select type(filt => filters(tallies(i) % obj % filter(j)) % obj)
-        type is (DistribcellFilter)
-          ! Set the number of bins to the number of instances of the cell.
-          filt % n_bins = cells(filt % cell) % instances
-        end select
-      end do
-    end do
 
     ! Make sure the number of materials and temperatures matches the number of
     ! cell instances.

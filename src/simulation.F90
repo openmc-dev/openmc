@@ -18,7 +18,7 @@ module simulation
   use particle_header, only: Particle
   use random_lcg,      only: set_particle_seed
   use source,          only: initialize_source, sample_external_source
-  use state_point,     only: write_state_point, write_source_point
+  use state_point,     only: write_state_point, write_source_point, load_state_point
   use string,          only: to_str
   use tally,           only: accumulate_tallies, setup_active_tallies
   use tally_header,    only: configure_tallies
@@ -383,7 +383,13 @@ contains
     allocate(filter_matches(n_filters))
 !$omp end parallel
 
-    if (.not. restart_run) call initialize_source()
+    ! If this is a restart run, load the state point data and binary source
+    ! file
+    if (restart_run) then
+      call load_state_point()
+    else
+      call initialize_source()
+    end if
 
     ! Display header
     if (master) then

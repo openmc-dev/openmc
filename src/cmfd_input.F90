@@ -441,6 +441,16 @@ contains
       call filter_dict % add_key(filt % id, i_filt)
     end select
 
+    ! Initialize filters
+    do i = i_filt_start, i_filt_end
+      select type (filt => filters(i) % obj)
+      type is (SurfaceFilter)
+        ! Don't do anything
+      class default
+        call filt % initialize()
+      end select
+    end do
+
     ! Allocate tallies
     err = openmc_extend_tallies(3, i_start, i_end)
     cmfd_tallies => tallies(i_start:i_end)

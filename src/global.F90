@@ -9,11 +9,7 @@ module global
   use bank_header,      only: Bank
   use cmfd_header
   use constants
-  use set_header,       only: SetInt
   use stl_vector,       only: VectorInt
-  use source_header,    only: SourceDistribution
-  use trigger_header,   only: KTrigger
-  use timer_header,     only: Timer
 
   ! Inherit module variables from other modules
   use geometry_header
@@ -26,7 +22,12 @@ module global
   use surface_header
   use tally_filter_header
   use tally_header
+  use timer_header
+  use trigger_header
   use volume_header
+
+  ! Inherit settings
+  use settings
 
   implicit none
 
@@ -36,37 +37,7 @@ module global
   ! Number of lost particles
   integer :: n_lost_particles
 
-  ! ============================================================================
-  ! ENERGY TREATMENT RELATED VARIABLES
-  logical :: run_CE = .true.  ! Run in CE mode?
-
-  ! ============================================================================
-  ! CONTINUOUS-ENERGY CROSS SECTION RELATED VARIABLES
-
-  ! Unreoslved resonance probablity tables
-  logical :: urr_ptables_on = .true.
-
-  ! Default temperature and method for choosing temperatures
-  integer :: temperature_method = TEMPERATURE_NEAREST
-  logical :: temperature_multipole = .false.
-  real(8) :: temperature_tolerance = 10.0_8
-  real(8) :: temperature_default = 293.6_8
-  real(8) :: temperature_range(2) = [ZERO, ZERO]
-
-  integer :: n_log_bins  ! number of bins for logarithmic grid
   real(8) :: log_spacing ! spacing on logarithmic grid
-
-  ! ============================================================================
-  ! MULTI-GROUP CROSS SECTION RELATED VARIABLES
-
-  ! Maximum Data Order
-  integer :: max_order
-
-  ! Whether or not to convert Legendres to tabulars
-  logical :: legendre_to_tabular = .true.
-
-  ! Number of points to use in the Legendre to tabular conversion
-  integer :: legendre_to_tabular_points = 33
 
   ! ============================================================================
   ! TALLY-RELATED VARIABLES
@@ -83,20 +54,9 @@ module global
   integer :: n_realizations = 0 ! # of independent realizations
   real(8) :: total_weight       ! total starting particle weight in realization
 
-  ! Assume all tallies are spatially distinct
-  logical :: assume_separate = .false.
-
-  ! Use confidence intervals for results instead of standard deviations
-  logical :: confidence_intervals = .false.
-
   ! ============================================================================
   ! EIGENVALUE SIMULATION VARIABLES
 
-  integer(8) :: n_particles = 0   ! # of particles per generation
-  integer    :: n_batches         ! # of batches
-  integer    :: n_inactive        ! # of inactive batches
-  integer    :: n_active          ! # of active batches
-  integer    :: gen_per_batch = 1 ! # of generations per batch
   integer    :: current_batch     ! current batch
   integer    :: current_gen       ! current generation within a batch
   integer    :: total_gen     = 0 ! total number of generations simulated
@@ -104,15 +64,7 @@ module global
   ! ============================================================================
   ! TALLY PRECISION TRIGGER VARIABLES
 
-  integer        :: n_max_batches             ! max # of batches
-  integer        :: n_batch_interval = 1      ! batch interval for triggers
-  logical        :: pred_batches = .false.    ! predict batches for triggers
-  logical        :: trigger_on = .false.      ! flag for turning triggers on/off
-  type(KTrigger) :: keff_trigger              ! trigger for k-effective
   logical :: satisfy_triggers = .false.       ! whether triggers are satisfied
-
-  ! External source
-  type(SourceDistribution), allocatable :: external_source(:)
 
   ! Source and fission bank
   type(Bank), allocatable, target :: source_bank(:)
@@ -134,20 +86,11 @@ module global
   real(8) :: k_abs_tra = ZERO ! sum over batches of k_absorption * k_tracklength
 
   ! Shannon entropy
-  logical :: entropy_on = .false.
   real(8), allocatable :: entropy(:)         ! shannon entropy at each generation
   real(8), allocatable :: entropy_p(:,:,:,:) ! % of source sites in each cell
-  type(RegularMesh), pointer :: entropy_mesh
 
   ! Uniform fission source weighting
-  logical :: ufs = .false.
-  type(RegularMesh), pointer :: ufs_mesh => null()
   real(8), allocatable :: source_frac(:,:,:,:)
-
-  ! Write source at end of simulation
-  logical :: source_separate = .false.
-  logical :: source_write = .true.
-  logical :: source_latest = .false.
 
   ! ============================================================================
   ! PARALLEL PROCESSING VARIABLES
@@ -161,104 +104,17 @@ module global
   logical :: reduce_tallies = .true.
 
   ! ============================================================================
-  ! TIMING VARIABLES
-
-  type(Timer) :: time_total         ! timer for total run
-  type(Timer) :: time_initialize    ! timer for initialization
-  type(Timer) :: time_read_xs       ! timer for reading cross sections
-  type(Timer) :: time_unionize      ! timer for material xs-energy grid union
-  type(Timer) :: time_bank          ! timer for fission bank synchronization
-  type(Timer) :: time_bank_sample   ! timer for fission bank sampling
-  type(Timer) :: time_bank_sendrecv ! timer for fission bank SEND/RECV
-  type(Timer) :: time_tallies       ! timer for accumulate tallies
-  type(Timer) :: time_inactive      ! timer for inactive batches
-  type(Timer) :: time_active        ! timer for active batches
-  type(Timer) :: time_transport     ! timer for transport only
-  type(Timer) :: time_finalize      ! timer for finalization
-
-  ! ===========================================================================
-  ! VARIANCE REDUCTION VARIABLES
-
-  logical :: survival_biasing = .false.
-  real(8) :: weight_cutoff = 0.25_8
-  real(8) :: energy_cutoff = ZERO
-  real(8) :: weight_survive = ONE
-
-  ! ============================================================================
   ! MISCELLANEOUS VARIABLES
 
-  ! Mode to run in (fixed source, eigenvalue, plotting, etc)
-  integer :: run_mode = NONE
-
-  ! Restart run
-  logical :: restart_run = .false.
   integer :: restart_batch
 
-  character(MAX_FILE_LEN) :: path_input               ! Path to input file
-  character(MAX_FILE_LEN) :: path_cross_sections = '' ! Path to cross_sections.xml
-  character(MAX_FILE_LEN) :: path_multipole           ! Path to wmp library
-  character(MAX_FILE_LEN) :: path_source = ''         ! Path to binary source
-  character(MAX_FILE_LEN) :: path_state_point         ! Path to binary state point
-  character(MAX_FILE_LEN) :: path_source_point        ! Path to binary source point
-  character(MAX_FILE_LEN) :: path_particle_restart    ! Path to particle restart
-  character(MAX_FILE_LEN) :: path_output = ''         ! Path to output directory
-
-  ! The verbosity controls how much information will be printed to the
-  ! screen and in logs
-  integer :: verbosity = 7
-
   ! Flag for enabling cell overlap checking during transport
-  logical                  :: check_overlaps = .false.
   integer(8), allocatable  :: overlap_check_cnt(:)
 
-  ! Trace for single particle
   logical    :: trace
-  integer    :: trace_batch
-  integer    :: trace_gen
-  integer(8) :: trace_particle
-
-  ! Particle tracks
-  logical :: write_all_tracks = .false.
-  integer, allocatable :: track_identifiers(:,:)
-
-  ! Particle restart run
-  logical :: particle_restart_run = .false.
 
   ! Number of distribcell maps
   integer :: n_maps
-
-  ! Write out initial source
-  logical :: write_initial_source = .false.
-
-  ! Whether create fission neutrons or not. Only applied for MODE_FIXEDSOURCE
-  logical :: create_fission_neutrons = .true.
-
-  ! ============================================================================
-  ! CMFD VARIABLES
-
-  ! Is CMFD active
-  logical :: cmfd_run = .false.
-
-  ! Information about state points to be written
-  integer :: n_state_points = 0
-  type(SetInt) :: statepoint_batch
-
-  ! Information about source points to be written
-  integer :: n_source_points = 0
-  type(SetInt) :: sourcepoint_batch
-
-  ! Various output options
-  logical :: output_summary = .true.
-  logical :: output_tallies = .true.
-
-  ! ============================================================================
-  ! RESONANCE SCATTERING VARIABLES
-
-  logical :: res_scat_on = .false. ! is resonance scattering treated?
-  integer :: res_scat_method = RES_SCAT_ARES  ! resonance scattering method
-  real(8) :: res_scat_energy_min = 0.01_8
-  real(8) :: res_scat_energy_max = 1000.0_8
-  character(10), allocatable :: res_scat_nuclides(:)
 
 !$omp threadprivate(fission_bank, n_bank, trace, thread_id, current_work)
 

@@ -3,7 +3,7 @@ module cmfd_header
   use constants,  only: CMFD_NOACCEL, ZERO, ONE
   use mesh_header, only: RegularMesh
   use set_header, only: SetInt
-  use tally_header, only: TallyObject
+  use tally_header, only: TallyContainer
   use timer_header, only: Timer
 
   implicit none
@@ -98,7 +98,7 @@ module cmfd_header
   type(RegularMesh), public, pointer :: cmfd_mesh => null()
 
   ! Pointers for different tallies
-  type(TallyObject), public, pointer :: cmfd_tallies(:) => null()
+  type(TallyContainer), public, pointer :: cmfd_tallies(:) => null()
 
   ! Timing objects
   type(Timer), public :: time_cmfd      ! timer for whole cmfd calculation

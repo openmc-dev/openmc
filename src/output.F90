@@ -730,8 +730,7 @@ contains
     character(36)           :: score_names(N_SCORE_TYPES)  ! names of scoring function
     character(36)           :: score_name                  ! names of scoring function
                                                            ! to be applied at write-time
-    type(TallyObject), pointer :: t
-    type(TallyfilterMatch), allocatable :: matches(:)
+    type(TallyFilterMatch), allocatable :: matches(:)
 
     ! Skip if there are no tallies
     if (n_tallies == 0) return
@@ -779,7 +778,7 @@ contains
     end if
 
     TALLY_LOOP: do i = 1, n_tallies
-      t => tallies(i)
+      associate (t => tallies(i) % obj)
       nr = t % n_realizations
 
       if (confidence_intervals) then
@@ -980,6 +979,7 @@ contains
 
       end do print_bin
 
+      end associate
     end do TALLY_LOOP
 
     close(UNIT=unit_tally)

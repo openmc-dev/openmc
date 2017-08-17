@@ -251,7 +251,7 @@ contains
     use error,            only: fatal_error, warning
     use mesh_header,      only: RegularMesh, openmc_extend_meshes
     use string
-    use tally_header,     only: TallyObject, openmc_extend_tallies
+    use tally_header,     only: openmc_extend_tallies, openmc_tally_set_type
     use tally_filter_header
     use tally_filter
     use xml_interface
@@ -271,7 +271,6 @@ contains
     integer :: iarray3(3) ! temp integer array
     real(8) :: rarray3(3) ! temp double array
     real(C_DOUBLE), allocatable :: energies(:)
-    type(TallyObject), pointer :: t
     type(RegularMesh), pointer :: m
     type(XMLNode) :: node_mesh
 
@@ -448,9 +447,11 @@ contains
 
     ! Begin loop around tallies
     do i = 1, size(cmfd_tallies)
+      ! Allocate tally
+      err = openmc_tally_set_type(i_start + i - 1, C_CHAR_'generic' // C_NULL_CHAR)
 
       ! Point t to tally variable
-      t => cmfd_tallies(i)
+      associate (t => cmfd_tallies(i) % obj)
 
       ! Set reset property
       if (check_for_node(root, "reset")) then
@@ -584,6 +585,8 @@ contains
 
       ! Make CMFD tallies active from the start
       t % active = .true.
+
+      end associate
     end do
 
   end subroutine create_cmfd_tally

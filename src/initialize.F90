@@ -695,8 +695,8 @@ contains
 
     ! We need distribcell if any tallies have distribcell filters.
     do i = 1, n_tallies
-      do j = 1, size(tallies(i) % filter)
-        select type(filt => filters(tallies(i) % filter(j)) % obj)
+      do j = 1, size(tallies(i) % obj % filter)
+        select type(filt => filters(tallies(i) % obj % filter(j)) % obj)
         type is (DistribcellFilter)
           distribcell_active = .true.
         end select
@@ -722,8 +722,8 @@ contains
 
     ! Set the number of bins in all distribcell filters.
     do i = 1, n_tallies
-      do j = 1, size(tallies(i) % filter)
-        select type(filt => filters(tallies(i) % filter(j)) % obj)
+      do j = 1, size(tallies(i) % obj % filter)
+        select type(filt => filters(tallies(i) % obj % filter(j)) % obj)
         type is (DistribcellFilter)
           ! Set the number of bins to the number of instances of the cell.
           filt % n_bins = cells(filt % cell) % instances
@@ -787,8 +787,8 @@ contains
 
     ! List all cells referenced in distribcell filters.
     do i = 1, n_tallies
-      do j = 1, size(tallies(i) % filter)
-        select type(filt => filters(tallies(i) % filter(j)) % obj)
+      do j = 1, size(tallies(i) % obj % filter)
+        select type(filt => filters(tallies(i) % obj % filter(j)) % obj)
         type is (DistribcellFilter)
           call cell_list % add(filt % cell)
         end select

@@ -25,6 +25,7 @@ module tally_header
   public :: openmc_tally_set_filters
   public :: openmc_tally_set_nuclides
   public :: openmc_tally_set_scores
+  public :: openmc_tally_set_type
 
 !===============================================================================
 ! TALLYDERIVATIVE describes a first-order derivative that can be applied to
@@ -111,9 +112,13 @@ module tally_header
     procedure :: allocate_results => tally_allocate_results
   end type TallyObject
 
+  type, public :: TallyContainer
+    class(TallyObject), allocatable :: obj
+  end type TallyContainer
+
   integer(C_INT32_T), public, bind(C) :: n_tallies = 0 ! # of tallies
 
-  type(TallyObject),     public, allocatable, target :: tallies(:)
+  type(TallyContainer),  public, allocatable, target :: tallies(:)
   type(TallyDerivative), public, allocatable :: tally_derivs(:)
 !$omp threadprivate(tally_derivs)
 
@@ -254,7 +259,7 @@ contains
     global_tallies(:,:) = ZERO
 
     do i = 1, n_tallies
-      call tallies(i) % allocate_results()
+      call tallies(i) % obj % allocate_results()
     end do
 
   end subroutine configure_tallies
@@ -270,7 +275,8 @@ contains
     integer(C_INT32_T), optional, intent(out) :: index_end
     integer(C_INT) :: err
 
-    type(TallyObject), allocatable :: temp(:) ! temporary tallies array
+    integer :: i
+    type(TallyContainer), allocatable :: temp(:) ! temporary tallies array
 
     if (n_tallies == 0) then
       ! Allocate tallies array
@@ -279,8 +285,10 @@ contains
       ! Allocate tallies array with increased size
       allocate(temp(n_tallies + n))
 
-      ! Copy original tallies to temporary array
-      temp(1:n_tallies) = tallies
+      ! Move original tallies to temporary array
+      do i = 1, n_tallies
+        call move_alloc(tallies(i) % obj, temp(i) % obj)
+      end do
 
       ! Move allocation from temporary array
       call move_alloc(FROM=temp, TO=tallies)
@@ -321,7 +329,7 @@ contains
     integer(C_INT) :: err
 
     if (index >= 1 .and. index <= size(tallies)) then
-      id = tallies(index) % id
+      id = tallies(index) % obj % id
       err = 0
     else
       err = E_OUT_OF_BOUNDS
@@ -338,7 +346,7 @@ contains
 
     err = E_UNASSIGNED
     if (index >= 1 .and. index <= size(tallies)) then
-      associate (t => tallies(index))
+      associate (t => tallies(index) % obj)
         if (allocated(t % filter)) then
           filter_indices = C_LOC(t % filter(1))
           n = size(t % filter)
@@ -360,7 +368,7 @@ contains
 
     err = E_UNASSIGNED
     if (index >= 1 .and. index <= size(tallies)) then
-      associate (t => tallies(index))
+      associate (t => tallies(index) % obj)
         if (allocated(t % nuclide_bins)) then
           nuclides = C_LOC(t % nuclide_bins(1))
           n = size(t % nuclide_bins)
@@ -383,11 +391,13 @@ contains
 
     err = E_UNASSIGNED
     if (index >= 1 .and. index <= size(tallies)) then
-      if (allocated(tallies(index) % results)) then
-        ptr = C_LOC(tallies(index) % results(1,1,1))
-        shape_(:) = shape(tallies(index) % results)
-        err = 0
-      end if
+      associate (t => tallies(index) % obj)
+        if (allocated(t % results)) then
+          ptr = C_LOC(t % results(1,1,1))
+          shape_(:) = shape(t % results)
+          err = 0
+        end if
+      end associate
     else
       err = E_OUT_OF_BOUNDS
     end if
@@ -408,7 +418,7 @@ contains
 
     err = 0
     if (index >= 1 .and. index <= n_tallies) then
-      associate (t => tallies(index))
+      associate (t => tallies(index) % obj)
 
         t % find_filter(:) = 0
         do i = 1, n
@@ -497,7 +507,7 @@ contains
 
     err = E_UNASSIGNED
     if (index >= 1 .and. index <= size(tallies)) then
-      associate (t => tallies(index))
+      associate (t => tallies(index) % obj)
         if (allocated(t % nuclide_bins)) deallocate(t % nuclide_bins)
         allocate(t % nuclide_bins(n))
         t % n_nuclide_bins = n
@@ -542,7 +552,7 @@ contains
 
     err = E_UNASSIGNED
     if (index >= 1 .and. index <= size(tallies)) then
-      associate (t => tallies(index))
+      associate (t => tallies(index) % obj)
         if (allocated(t % score_bins)) deallocate(t % score_bins)
         allocate(t % score_bins(n))
         t % n_user_score_bins = n
@@ -690,5 +700,33 @@ contains
     end if
   end function openmc_tally_set_scores
 
+
+  function openmc_tally_set_type(index, type) result(err) bind(C)
+    ! Set the type of the tally
+    integer(C_INT32_T), value, intent(in) :: index
+    character(kind=C_CHAR), intent(in) :: type(*)
+    integer(C_INT) :: err
+
+    character(:), allocatable :: type_
+
+    ! Convert C string to Fortran string
+    type_ = to_f_string(type)
+
+    err = 0
+    if (index >= 1 .and. index <= n_tallies) then
+      if (allocated(tallies(index) % obj)) then
+        err = E_ALREADY_ALLOCATED
+      else
+        select case (type_)
+        case ('generic')
+          allocate(TallyObject :: tallies(index) % obj)
+        case default
+          err = E_UNASSIGNED
+        end select
+      end if
+    else
+      err = E_OUT_OF_BOUNDS
+    end if
+  end function openmc_tally_set_type
 
 end module tally_header

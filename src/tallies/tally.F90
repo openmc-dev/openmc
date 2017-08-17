@@ -2158,21 +2158,17 @@ contains
 ! the user requests <nuclides>all</nuclides>.
 !===============================================================================
 
-  subroutine score_all_nuclides(p, i_tally, flux, filter_index)
+  subroutine score_all_nuclides(p, t, flux, filter_index)
 
     type(Particle), intent(in) :: p
-    integer,        intent(in) :: i_tally
+    type(TallyObject), intent(inout) :: t
     real(8),        intent(in) :: flux
     integer,        intent(in) :: filter_index
 
     integer :: i             ! loop index for nuclides in material
     integer :: i_nuclide     ! index in nuclides array
     real(8) :: atom_density  ! atom density of single nuclide in atom/b-cm
-    type(TallyObject), pointer :: t
     type(Material),    pointer :: mat
-
-    ! Get pointer to tally
-    t => tallies(i_tally)
 
     ! Get pointer to current material. We need this in order to determine what
     ! nuclides are in the material
@@ -2225,7 +2221,6 @@ contains
     integer :: i_nuclide            ! index in nuclides array
     real(8) :: filter_weight        ! combined weight of all filters
     logical :: finished             ! found all valid bin combinations
-    type(TallyObject), pointer :: t
 
     ! A loop over all tallies is necessary because we need to simultaneously
     ! determine different filter bins for the same tally in order to score to it
@@ -2233,7 +2228,7 @@ contains
     TALLY_LOOP: do i = 1, active_analog_tallies % size()
       ! Get index of tally and pointer to tally
       i_tally = active_analog_tallies % data(i)
-      t => tallies(i_tally)
+      associate (t => tallies(i_tally) % obj)
 
       ! Find all valid bins in each filter if they have not already been found
       ! for a previous tally.
@@ -2349,6 +2344,7 @@ contains
 
       if (assume_separate) exit TALLY_LOOP
 
+      end associate
     end do TALLY_LOOP
 
     ! Reset filter matches flag
@@ -2370,7 +2366,6 @@ contains
     real(8) :: filter_weight        ! combined weight of all filters
     real(8) :: atom_density
     logical :: finished             ! found all valid bin combinations
-    type(TallyObject), pointer :: t
     type(Material),    pointer :: mat
 
     ! A loop over all tallies is necessary because we need to simultaneously
@@ -2379,7 +2374,7 @@ contains
     TALLY_LOOP: do i = 1, active_analog_tallies % size()
       ! Get index of tally and pointer to tally
       i_tally = active_analog_tallies % data(i)
-      t => tallies(i_tally)
+      associate (t => tallies(i_tally) % obj)
 
       ! Get pointer to current material. We need this in order to determine what
       ! nuclides are in the material
@@ -2487,6 +2482,7 @@ contains
 
       if (assume_separate) exit TALLY_LOOP
 
+      end associate
     end do TALLY_LOOP
 
     ! Reset filter matches flag
@@ -2746,7 +2742,6 @@ contains
     real(8) :: atom_density         ! atom density of single nuclide in atom/b-cm
     real(8) :: filter_weight        ! combined weight of all filters
     logical :: finished             ! found all valid bin combinations
-    type(TallyObject), pointer :: t
     type(Material),    pointer :: mat
 
     ! Determine track-length estimate of flux
@@ -2758,7 +2753,7 @@ contains
     TALLY_LOOP: do i = 1, active_tracklength_tallies % size()
       ! Get index of tally and pointer to tally
       i_tally = active_tracklength_tallies % data(i)
-      t => tallies(i_tally)
+      associate (t => tallies(i_tally) % obj)
 
       ! Find all valid bins in each filter if they have not already been found
       ! for a previous tally.
@@ -2803,8 +2798,7 @@ contains
 
         if (t % all_nuclides) then
           if (p % material /= MATERIAL_VOID) then
-            call score_all_nuclides(p, i_tally, flux * filter_weight, &
-                 filter_index)
+            call score_all_nuclides(p, t, flux * filter_weight, filter_index)
           end if
         else
 
@@ -2875,6 +2869,7 @@ contains
 
       if (assume_separate) exit TALLY_LOOP
 
+      end associate
     end do TALLY_LOOP
 
     ! Reset filter matches flag
@@ -2907,7 +2902,6 @@ contains
                                     !   in atom/b-cm
     real(8) :: filter_weight        ! combined weight of all filters
     logical :: finished             ! found all valid bin combinations
-    type(TallyObject), pointer :: t
     type(Material),    pointer :: mat
 
     ! Determine collision estimate of flux
@@ -2924,7 +2918,7 @@ contains
     TALLY_LOOP: do i = 1, active_collision_tallies % size()
       ! Get index of tally and pointer to tally
       i_tally = active_collision_tallies % data(i)
-      t => tallies(i_tally)
+      associate (t => tallies(i_tally) % obj)
 
       ! Find all valid bins in each filter if they have not already been found
       ! for a previous tally.
@@ -2969,8 +2963,7 @@ contains
 
         if (t % all_nuclides) then
           if (p % material /= MATERIAL_VOID) then
-            call score_all_nuclides(p, i_tally, flux * filter_weight, &
-                 filter_index)
+            call score_all_nuclides(p, t, flux * filter_weight, filter_index)
           end if
         else
 
@@ -3041,6 +3034,7 @@ contains
 
       if (assume_separate) exit TALLY_LOOP
 
+      end associate
     end do TALLY_LOOP
 
     ! Reset filter matches flag
@@ -3078,7 +3072,7 @@ contains
     TALLY_LOOP: do i = 1, active_surface_tallies % size()
       ! Get index of tally and pointer to tally
       i_tally = active_surface_tallies % data(i)
-      associate (t => tallies(i_tally))
+      associate (t => tallies(i_tally) % obj)
 
       ! Find all valid bins in each filter if they have not already been found
       ! for a previous tally.
@@ -3211,7 +3205,6 @@ contains
     logical :: end_in_mesh          ! particle's ending xyz in mesh?
     logical :: cross_surface        ! whether the particle crosses a surface
     logical :: energy_filter        ! energy filter present
-    type(TallyObject), pointer :: t
     type(RegularMesh), pointer :: m
 
     TALLY_LOOP: do i = 1, active_current_tallies % size()
@@ -3221,7 +3214,7 @@ contains
 
       ! Get pointer to tally
       i_tally = active_current_tallies % data(i)
-      t => tallies(i_tally)
+      associate (t => tallies(i_tally) % obj)
 
       ! Check for energy filter
       energy_filter = (t % find_filter(FILTER_ENERGYIN) > 0)
@@ -3457,6 +3450,7 @@ contains
         xyz0 = xyz0 + distance * uvw
       end do
 
+      end associate
     end do TALLY_LOOP
 
   end subroutine score_surface_current
@@ -4262,7 +4256,7 @@ contains
     if (master .or. (.not. reduce_tallies)) then
       ! Accumulate results for each tally
       do i = 1, active_tallies % size()
-        call accumulate_tally(tallies(active_tallies % data(i)))
+        call accumulate_tally(tallies(active_tallies % data(i)) % obj)
       end do
 
       if (run_mode == MODE_EIGENVALUE) then
@@ -4400,25 +4394,27 @@ contains
     call active_current_tallies % clear()
 
     do i = 1, n_tallies
-      if (tallies(i) % active) then
-        ! Add tally to active tallies
-        call active_tallies % push_back(i)
+      associate (t => tallies(i) % obj)
+        if (t % active) then
+          ! Add tally to active tallies
+          call active_tallies % push_back(i)
 
-        ! Check what type of tally this is and add it to the appropriate list
-        if (tallies(i) % type == TALLY_VOLUME) then
-          if (tallies(i) % estimator == ESTIMATOR_ANALOG) then
-            call active_analog_tallies % push_back(i)
-          elseif (tallies(i) % estimator == ESTIMATOR_TRACKLENGTH) then
-            call active_tracklength_tallies % push_back(i)
-          elseif (tallies(i) % estimator == ESTIMATOR_COLLISION) then
-            call active_collision_tallies % push_back(i)
+          ! Check what type of tally this is and add it to the appropriate list
+          if (t % type == TALLY_VOLUME) then
+            if (t % estimator == ESTIMATOR_ANALOG) then
+              call active_analog_tallies % push_back(i)
+            elseif (t % estimator == ESTIMATOR_TRACKLENGTH) then
+              call active_tracklength_tallies % push_back(i)
+            elseif (t % estimator == ESTIMATOR_COLLISION) then
+              call active_collision_tallies % push_back(i)
+            end if
+          elseif (t % type == TALLY_MESH_CURRENT) then
+            call active_current_tallies % push_back(i)
+          elseif (t % type == TALLY_SURFACE) then
+            call active_surface_tallies % push_back(i)
           end if
-        elseif (tallies(i) % type == TALLY_MESH_CURRENT) then
-          call active_current_tallies % push_back(i)
-        elseif (tallies(i) % type == TALLY_SURFACE) then
-          call active_surface_tallies % push_back(i)
         end if
-      end if
+      end associate
     end do
 
   end subroutine setup_active_tallies

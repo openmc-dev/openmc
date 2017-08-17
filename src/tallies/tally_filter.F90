@@ -1144,6 +1144,7 @@ contains
 
     character(:), allocatable :: type_
 
+    ! Convert C string to Fortran string
     type_ = to_f_string(type)
 
     err = 0

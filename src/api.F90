@@ -67,6 +67,7 @@ module openmc_api
   public :: openmc_tally_set_filters
   public :: openmc_tally_set_nuclides
   public :: openmc_tally_set_scores
+  public :: openmc_tally_set_type
 
 contains
 
@@ -672,11 +673,13 @@ contains
 
     if (allocated(tallies)) then
       do i = 1, size(tallies)
-        tallies(i) % active = .false.
-        tallies(i) % n_realizations = 0
-        if (allocated(tallies(i) % results)) then
-          tallies(i) % results(:, :, :) = ZERO
-        end if
+        associate (t => tallies(i) % obj)
+          t % active = .false.
+          t % n_realizations = 0
+          if (allocated(t % results)) then
+            t % results(:, :, :) = ZERO
+          end if
+        end associate
       end do
     end if
 

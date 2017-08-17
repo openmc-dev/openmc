@@ -51,7 +51,7 @@ contains
     call write_message("Loading cross section data...", 5)
 
     ! Get temperatures
-    call get_temperatures(cells, temps)
+    call get_temperatures(temps)
 
     ! Open file for reading
     file_id = file_open(path_cross_sections, 'r', parallel=.true.)
@@ -233,7 +233,7 @@ contains
           kT = cells(i) % sqrtkT(1)**2
         end if
 
-        i_material = material_dict % get_key(cells(i) % material(j))
+        i_material = cells(i) % material(j)
 
         ! Add temperature if it hasn't already been added
         if (find(kTs(i_material), kT) == -1) then

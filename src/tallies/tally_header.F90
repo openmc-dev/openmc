@@ -89,7 +89,7 @@ module tally_header
     ! second dimension of the array is for the combination of filters
     ! (e.g. specific cell, specific energy group, etc.)
 
-    integer :: n_filter_bins
+    integer :: n_filter_bins = 1
     integer :: total_score_bins
     real(C_DOUBLE), allocatable :: results(:,:,:)
 

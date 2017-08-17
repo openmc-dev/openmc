@@ -85,6 +85,7 @@ contains
     id = this % cell
     if (cell_dict % has_key(id)) then
       this % cell = cell_dict % get_key(id)
+      this % n_bins = cells(this % cell) % instances
     else
       call fatal_error("Could not find cell " // trim(to_str(id)) &
            &// " specified on tally filter.")

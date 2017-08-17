@@ -11,6 +11,7 @@ module input_xml
   use distribution_univariate
   use endf,             only: reaction_name
   use error,            only: fatal_error, warning
+  use geometry,         only: count_instance, neighbor_lists
   use geometry_header,  only: Cell, Lattice, RectLattice, HexLattice, &
                               get_temperatures, root_universe
   use global
@@ -47,9 +48,25 @@ contains
 
   subroutine read_input_xml()
 
+    type(VectorReal), allocatable :: nuc_temps(:) ! List of T to read for each nuclide
+    type(VectorReal), allocatable :: sab_temps(:) ! List of T to read for each S(a,b)
+    real(8), allocatable    :: material_temps(:)
+
     call read_settings_xml()
+    call read_cross_sections_xml()
+    call read_materials_xml(material_temps)
     call read_geometry_xml()
-    call read_materials()
+
+    ! Set up neighbor lists, convert user IDs -> indices, assign temperatures
+    call finalize_geometry(material_temps, nuc_temps, sab_temps)
+
+    ! Read continuous-energy cross sections
+    if (run_CE .and. run_mode /= MODE_PLOTTING) then
+      call time_read_xs % start()
+      call read_ce_cross_sections(nuc_temps, sab_temps)
+      call time_read_xs % stop()
+    end if
+
     call read_tallies_xml()
     if (cmfd_run) call configure_cmfd()
 
@@ -65,6 +82,27 @@ contains
     if (run_mode /= MODE_PLOTTING) call normalize_ao()
 
   end subroutine read_input_xml
+
+  subroutine finalize_geometry(material_temps, nuc_temps, sab_temps)
+    real(8), intent(in) :: material_temps(:)
+    type(VectorReal),            allocatable, intent(out) :: nuc_temps(:)
+    type(VectorReal),  optional, allocatable, intent(out) :: sab_temps(:)
+
+    ! Perform some final operations to set up the geometry
+    call adjust_indices()
+    call count_instance(universes(root_universe))
+
+    ! After reading input and basic geometry setup is complete, build lists of
+    ! neighboring cells for efficient tracking
+    call neighbor_lists()
+
+    ! Assign temperatures to cells that don't have temperatures already assigned
+    call assign_temperatures(material_temps)
+
+    ! Determine desired txemperatures for each nuclide and S(a,b) table
+    call get_temperatures(nuc_temps, sab_temps)
+
+  end subroutine finalize_geometry
 
 !===============================================================================
 ! READ_SETTINGS_XML reads data from a settings.xml file and parses it, checking
@@ -1078,6 +1116,7 @@ contains
 
     integer :: i, j, k, m, i_x, i_a, input_index
     integer :: n, n_mats, n_x, n_y, n_z, n_rings, n_rlats, n_hlats
+    integer :: id
     integer :: univ_id
     integer :: n_cells_in_univ
     integer :: coeffs_reqd
@@ -1111,12 +1150,8 @@ contains
     type(DictIntInt) :: cells_in_univ_dict ! Used to count how many cells each
                                            ! universe contains
 
-
     ! Display output message
     call write_message("Reading geometry XML file...", 5)
-
-    ! ==========================================================================
-    ! READ CELLS FROM GEOMETRY.XML
 
     ! Check if geometry.xml exists
     filename = trim(path_input) // "geometry.xml"
@@ -1129,265 +1164,6 @@ contains
     ! Parse geometry.xml file
     call doc % load_file(filename)
     root = doc % document_element()
-
-    ! Get pointer to list of XML <cell>
-    call get_node_list(root, "cell", node_cell_list)
-
-    ! Get number of <cell> tags
-    n_cells = size(node_cell_list)
-
-    ! Check for no cells
-    if (n_cells == 0) then
-      call fatal_error("No cells found in geometry.xml!")
-    end if
-
-    ! Allocate cells array
-    allocate(cells(n_cells))
-
-    if (check_overlaps) then
-      allocate(overlap_check_cnt(n_cells))
-      overlap_check_cnt = 0
-    end if
-
-    n_universes = 0
-    do i = 1, n_cells
-      c => cells(i)
-
-      ! Initialize distribcell instances and distribcell index
-      c % instances = 0
-      c % distribcell_index = NONE
-
-      ! Get pointer to i-th cell node
-      node_cell = node_cell_list(i)
-
-      ! Copy data into cells
-      if (check_for_node(node_cell, "id")) then
-        call get_node_value(node_cell, "id", c % id)
-      else
-        call fatal_error("Must specify id of cell in geometry XML file.")
-      end if
-
-      ! Copy cell name
-      if (check_for_node(node_cell, "name")) then
-        call get_node_value(node_cell, "name", c % name)
-      end if
-
-      if (check_for_node(node_cell, "universe")) then
-        call get_node_value(node_cell, "universe", c % universe)
-      else
-        c % universe = 0
-      end if
-      if (check_for_node(node_cell, "fill")) then
-        call get_node_value(node_cell, "fill", c % fill)
-        if (find(fill_univ_ids, c % fill) == -1) &
-             call fill_univ_ids % push_back(c % fill)
-      else
-        c % fill = NONE
-      end if
-
-      ! Check to make sure 'id' hasn't been used
-      if (cell_dict % has_key(c % id)) then
-        call fatal_error("Two or more cells use the same unique ID: " &
-             // to_str(c % id))
-      end if
-
-      ! Read material
-      if (check_for_node(node_cell, "material")) then
-        n_mats = node_word_count(node_cell, "material")
-
-        if (n_mats > 0) then
-          allocate(sarray(n_mats))
-          call get_node_array(node_cell, "material", sarray)
-
-          allocate(c % material(n_mats))
-          do j = 1, n_mats
-            select case(trim(to_lower(sarray(j))))
-            case ('void')
-              c % material(j) = MATERIAL_VOID
-            case default
-              c % material(j) = int(str_to_int(sarray(j)), 4)
-
-              ! Check for error
-              if (c % material(j) == ERROR_INT) then
-                call fatal_error("Invalid material specified on cell " &
-                     // to_str(c % id))
-              end if
-            end select
-          end do
-
-          deallocate(sarray)
-
-        else
-          allocate(c % material(1))
-          c % material(1) = NONE
-        end if
-
-      else
-        allocate(c % material(1))
-        c % material(1) = NONE
-      end if
-
-      ! Check to make sure that either material or fill was specified
-      if (c % material(1) == NONE .and. c % fill == NONE) then
-        call fatal_error("Neither material nor fill was specified for cell " &
-             // trim(to_str(c % id)))
-      end if
-
-      ! Check to make sure that both material and fill haven't been
-      ! specified simultaneously
-      if (c % material(1) /= NONE .and. c % fill /= NONE) then
-        call fatal_error("Cannot specify material and fill simultaneously")
-      end if
-
-      ! Check for region specification (also under deprecated name surfaces)
-      if (check_for_node(node_cell, "surfaces")) then
-        call warning("The use of 'surfaces' is deprecated and will be &
-             &disallowed in a future release.  Use 'region' instead. The &
-             &openmc-update-inputs utility can be used to automatically &
-             &update geometry.xml files.")
-        region_spec = node_value_string(node_cell, "surfaces")
-        call get_node_value(node_cell, "surfaces", region_spec)
-      elseif (check_for_node(node_cell, "region")) then
-        region_spec = node_value_string(node_cell, "region")
-      else
-        region_spec = ''
-      end if
-
-      if (len_trim(region_spec) > 0) then
-        ! Create surfaces array from string
-        call tokenize(region_spec, tokens)
-
-        ! Use shunting-yard algorithm to determine RPN for surface algorithm
-        call generate_rpn(c%id, tokens, rpn)
-
-        ! Copy region spec and RPN form to cell arrays
-        allocate(c % region(tokens%size()))
-        allocate(c % rpn(rpn%size()))
-        c % region(:) = tokens%data(1:tokens%size())
-        c % rpn(:) = rpn%data(1:rpn%size())
-
-        call tokens%clear()
-        call rpn%clear()
-      end if
-      if (.not. allocated(c%region)) allocate(c%region(0))
-      if (.not. allocated(c%rpn)) allocate(c%rpn(0))
-
-      ! Check if this is a simple cell
-      if (any(c%rpn == OP_COMPLEMENT) .or. any(c%rpn == OP_UNION)) then
-        c%simple = .false.
-      else
-        c%simple = .true.
-      end if
-
-      ! Rotation matrix
-      if (check_for_node(node_cell, "rotation")) then
-        ! Rotations can only be applied to cells that are being filled with
-        ! another universe
-        if (c % fill == NONE) then
-          call fatal_error("Cannot apply a rotation to cell " // trim(to_str(&
-               &c % id)) // " because it is not filled with another universe")
-        end if
-
-        ! Read number of rotation parameters
-        n = node_word_count(node_cell, "rotation")
-        if (n /= 3) then
-          call fatal_error("Incorrect number of rotation parameters on cell " &
-               // to_str(c % id))
-        end if
-
-        ! Copy rotation angles in x,y,z directions
-        allocate(c % rotation(3))
-        call get_node_array(node_cell, "rotation", c % rotation)
-        phi   = -c % rotation(1) * PI/180.0_8
-        theta = -c % rotation(2) * PI/180.0_8
-        psi   = -c % rotation(3) * PI/180.0_8
-
-        ! Calculate rotation matrix based on angles given
-        allocate(c % rotation_matrix(3,3))
-        c % rotation_matrix = reshape((/ &
-             cos(theta)*cos(psi), cos(theta)*sin(psi), -sin(theta), &
-             -cos(phi)*sin(psi) + sin(phi)*sin(theta)*cos(psi), &
-             cos(phi)*cos(psi) + sin(phi)*sin(theta)*sin(psi), &
-             sin(phi)*cos(theta), &
-             sin(phi)*sin(psi) + cos(phi)*sin(theta)*cos(psi), &
-             -sin(phi)*cos(psi) + cos(phi)*sin(theta)*sin(psi), &
-             cos(phi)*cos(theta) /), (/ 3,3 /))
-      end if
-
-      ! Translation vector
-      if (check_for_node(node_cell, "translation")) then
-        ! Translations can only be applied to cells that are being filled with
-        ! another universe
-        if (c % fill == NONE) then
-          call fatal_error("Cannot apply a translation to cell " &
-               // trim(to_str(c % id)) // " because it is not filled with &
-               &another universe")
-        end if
-
-        ! Read number of translation parameters
-        n = node_word_count(node_cell, "translation")
-        if (n /= 3) then
-          call fatal_error("Incorrect number of translation parameters on &
-               &cell " // to_str(c % id))
-        end if
-
-        ! Copy translation vector
-        allocate(c % translation(3))
-        call get_node_array(node_cell, "translation", c % translation)
-      end if
-
-      ! Read cell temperatures.  If the temperature is not specified, set it to
-      ! ERROR_REAL for now.  During initialization we'll replace ERROR_REAL with
-      ! the temperature from the material data.
-      if (check_for_node(node_cell, "temperature")) then
-        n = node_word_count(node_cell, "temperature")
-        if (n > 0) then
-          ! Make sure this is a "normal" cell.
-          if (c % material(1) == NONE) call fatal_error("Cell " &
-               // trim(to_str(c % id)) // " was specified with a temperature &
-               &but no material. Temperature specification is only valid for &
-               &cells filled with a material.")
-
-          ! Copy in temperatures
-          allocate(c % sqrtkT(n))
-          call get_node_array(node_cell, "temperature", c % sqrtkT)
-
-          ! Make sure all temperatues are positive
-          do j = 1, size(c % sqrtkT)
-            if (c % sqrtkT(j) < ZERO) call fatal_error("Cell " &
-                 // trim(to_str(c % id)) // " was specified with a negative &
-                 &temperature. All cell temperatures must be non-negative.")
-          end do
-
-          ! Convert to sqrt(kT)
-          c % sqrtkT(:) = sqrt(K_BOLTZMANN * c % sqrtkT(:))
-        else
-          allocate(c % sqrtkT(1))
-          c % sqrtkT(1) = ERROR_REAL
-        end if
-      else
-        allocate(c % sqrtkT(1))
-        c % sqrtkT = ERROR_REAL
-      end if
-
-      ! Add cell to dictionary
-      call cell_dict % add_key(c % id, i)
-
-      ! For cells, we also need to check if there's a new universe --
-      ! also for every cell add 1 to the count of cells for the
-      ! specified universe
-      univ_id = c % universe
-      if (.not. cells_in_univ_dict % has_key(univ_id)) then
-        n_universes = n_universes + 1
-        n_cells_in_univ = 1
-        call universe_dict % add_key(univ_id, n_universes)
-        call univ_ids % push_back(univ_id)
-      else
-        n_cells_in_univ = 1 + cells_in_univ_dict % get_key(univ_id)
-      end if
-      call cells_in_univ_dict % add_key(univ_id, n_cells_in_univ)
-
-    end do
 
     ! ==========================================================================
     ! READ SURFACES FROM GEOMETRY.XML
@@ -1686,6 +1462,279 @@ contains
           end if
         end associate
       end if
+    end do
+
+    ! ==========================================================================
+    ! READ CELLS FROM GEOMETRY.XML
+
+    ! Get pointer to list of XML <cell>
+    call get_node_list(root, "cell", node_cell_list)
+
+    ! Get number of <cell> tags
+    n_cells = size(node_cell_list)
+
+    ! Check for no cells
+    if (n_cells == 0) then
+      call fatal_error("No cells found in geometry.xml!")
+    end if
+
+    ! Allocate cells array
+    allocate(cells(n_cells))
+
+    if (check_overlaps) then
+      allocate(overlap_check_cnt(n_cells))
+      overlap_check_cnt = 0
+    end if
+
+    n_universes = 0
+    do i = 1, n_cells
+      c => cells(i)
+
+      ! Initialize distribcell instances and distribcell index
+      c % instances = 0
+      c % distribcell_index = NONE
+
+      ! Get pointer to i-th cell node
+      node_cell = node_cell_list(i)
+
+      ! Copy data into cells
+      if (check_for_node(node_cell, "id")) then
+        call get_node_value(node_cell, "id", c % id)
+      else
+        call fatal_error("Must specify id of cell in geometry XML file.")
+      end if
+
+      ! Copy cell name
+      if (check_for_node(node_cell, "name")) then
+        call get_node_value(node_cell, "name", c % name)
+      end if
+
+      if (check_for_node(node_cell, "universe")) then
+        call get_node_value(node_cell, "universe", c % universe)
+      else
+        c % universe = 0
+      end if
+      if (check_for_node(node_cell, "fill")) then
+        call get_node_value(node_cell, "fill", c % fill)
+        if (find(fill_univ_ids, c % fill) == -1) &
+             call fill_univ_ids % push_back(c % fill)
+      else
+        c % fill = NONE
+      end if
+
+      ! Check to make sure 'id' hasn't been used
+      if (cell_dict % has_key(c % id)) then
+        call fatal_error("Two or more cells use the same unique ID: " &
+             // to_str(c % id))
+      end if
+
+      ! Read material
+      if (check_for_node(node_cell, "material")) then
+        n_mats = node_word_count(node_cell, "material")
+
+        if (n_mats > 0) then
+          allocate(sarray(n_mats))
+          call get_node_array(node_cell, "material", sarray)
+
+          allocate(c % material(n_mats))
+          do j = 1, n_mats
+            select case(trim(to_lower(sarray(j))))
+            case ('void')
+              c % material(j) = MATERIAL_VOID
+            case default
+              c % material(j) = int(str_to_int(sarray(j)), 4)
+
+              ! Check for error
+              if (c % material(j) == ERROR_INT) then
+                call fatal_error("Invalid material specified on cell " &
+                     // to_str(c % id))
+              end if
+            end select
+          end do
+
+          deallocate(sarray)
+
+        else
+          allocate(c % material(1))
+          c % material(1) = NONE
+        end if
+
+      else
+        allocate(c % material(1))
+        c % material(1) = NONE
+      end if
+
+      ! Check to make sure that either material or fill was specified
+      if (c % material(1) == NONE .and. c % fill == NONE) then
+        call fatal_error("Neither material nor fill was specified for cell " &
+             // trim(to_str(c % id)))
+      end if
+
+      ! Check to make sure that both material and fill haven't been
+      ! specified simultaneously
+      if (c % material(1) /= NONE .and. c % fill /= NONE) then
+        call fatal_error("Cannot specify material and fill simultaneously")
+      end if
+
+      ! Check for region specification (also under deprecated name surfaces)
+      if (check_for_node(node_cell, "surfaces")) then
+        call warning("The use of 'surfaces' is deprecated and will be &
+             &disallowed in a future release.  Use 'region' instead. The &
+             &openmc-update-inputs utility can be used to automatically &
+             &update geometry.xml files.")
+        region_spec = node_value_string(node_cell, "surfaces")
+        call get_node_value(node_cell, "surfaces", region_spec)
+      elseif (check_for_node(node_cell, "region")) then
+        region_spec = node_value_string(node_cell, "region")
+      else
+        region_spec = ''
+      end if
+
+      if (len_trim(region_spec) > 0) then
+        ! Create surfaces array from string
+        call tokenize(region_spec, tokens)
+
+        ! Convert user IDs to surface indices
+        do j = 1, tokens % size()
+          id = tokens % data(j)
+          if (id < OP_UNION) then
+            if (surface_dict % has_key(abs(id))) then
+              k = surface_dict % get_key(abs(id))
+              tokens % data(j) = sign(k, id)
+            end if
+          end if
+        end do
+
+        ! Use shunting-yard algorithm to determine RPN for surface algorithm
+        call generate_rpn(c%id, tokens, rpn)
+
+        ! Copy region spec and RPN form to cell arrays
+        allocate(c % region(tokens%size()))
+        allocate(c % rpn(rpn%size()))
+        c % region(:) = tokens%data(1:tokens%size())
+        c % rpn(:) = rpn%data(1:rpn%size())
+
+        call tokens%clear()
+        call rpn%clear()
+      end if
+      if (.not. allocated(c%region)) allocate(c%region(0))
+      if (.not. allocated(c%rpn)) allocate(c%rpn(0))
+
+      ! Check if this is a simple cell
+      if (any(c%rpn == OP_COMPLEMENT) .or. any(c%rpn == OP_UNION)) then
+        c%simple = .false.
+      else
+        c%simple = .true.
+      end if
+
+      ! Rotation matrix
+      if (check_for_node(node_cell, "rotation")) then
+        ! Rotations can only be applied to cells that are being filled with
+        ! another universe
+        if (c % fill == NONE) then
+          call fatal_error("Cannot apply a rotation to cell " // trim(to_str(&
+               &c % id)) // " because it is not filled with another universe")
+        end if
+
+        ! Read number of rotation parameters
+        n = node_word_count(node_cell, "rotation")
+        if (n /= 3) then
+          call fatal_error("Incorrect number of rotation parameters on cell " &
+               // to_str(c % id))
+        end if
+
+        ! Copy rotation angles in x,y,z directions
+        allocate(c % rotation(3))
+        call get_node_array(node_cell, "rotation", c % rotation)
+        phi   = -c % rotation(1) * PI/180.0_8
+        theta = -c % rotation(2) * PI/180.0_8
+        psi   = -c % rotation(3) * PI/180.0_8
+
+        ! Calculate rotation matrix based on angles given
+        allocate(c % rotation_matrix(3,3))
+        c % rotation_matrix = reshape((/ &
+             cos(theta)*cos(psi), cos(theta)*sin(psi), -sin(theta), &
+             -cos(phi)*sin(psi) + sin(phi)*sin(theta)*cos(psi), &
+             cos(phi)*cos(psi) + sin(phi)*sin(theta)*sin(psi), &
+             sin(phi)*cos(theta), &
+             sin(phi)*sin(psi) + cos(phi)*sin(theta)*cos(psi), &
+             -sin(phi)*cos(psi) + cos(phi)*sin(theta)*sin(psi), &
+             cos(phi)*cos(theta) /), (/ 3,3 /))
+      end if
+
+      ! Translation vector
+      if (check_for_node(node_cell, "translation")) then
+        ! Translations can only be applied to cells that are being filled with
+        ! another universe
+        if (c % fill == NONE) then
+          call fatal_error("Cannot apply a translation to cell " &
+               // trim(to_str(c % id)) // " because it is not filled with &
+               &another universe")
+        end if
+
+        ! Read number of translation parameters
+        n = node_word_count(node_cell, "translation")
+        if (n /= 3) then
+          call fatal_error("Incorrect number of translation parameters on &
+               &cell " // to_str(c % id))
+        end if
+
+        ! Copy translation vector
+        allocate(c % translation(3))
+        call get_node_array(node_cell, "translation", c % translation)
+      end if
+
+      ! Read cell temperatures.  If the temperature is not specified, set it to
+      ! ERROR_REAL for now.  During initialization we'll replace ERROR_REAL with
+      ! the temperature from the material data.
+      if (check_for_node(node_cell, "temperature")) then
+        n = node_word_count(node_cell, "temperature")
+        if (n > 0) then
+          ! Make sure this is a "normal" cell.
+          if (c % material(1) == NONE) call fatal_error("Cell " &
+               // trim(to_str(c % id)) // " was specified with a temperature &
+               &but no material. Temperature specification is only valid for &
+               &cells filled with a material.")
+
+          ! Copy in temperatures
+          allocate(c % sqrtkT(n))
+          call get_node_array(node_cell, "temperature", c % sqrtkT)
+
+          ! Make sure all temperatues are positive
+          do j = 1, size(c % sqrtkT)
+            if (c % sqrtkT(j) < ZERO) call fatal_error("Cell " &
+                 // trim(to_str(c % id)) // " was specified with a negative &
+                 &temperature. All cell temperatures must be non-negative.")
+          end do
+
+          ! Convert to sqrt(kT)
+          c % sqrtkT(:) = sqrt(K_BOLTZMANN * c % sqrtkT(:))
+        else
+          allocate(c % sqrtkT(1))
+          c % sqrtkT(1) = ERROR_REAL
+        end if
+      else
+        allocate(c % sqrtkT(1))
+        c % sqrtkT = ERROR_REAL
+      end if
+
+      ! Add cell to dictionary
+      call cell_dict % add_key(c % id, i)
+
+      ! For cells, we also need to check if there's a new universe --
+      ! also for every cell add 1 to the count of cells for the
+      ! specified universe
+      univ_id = c % universe
+      if (.not. cells_in_univ_dict % has_key(univ_id)) then
+        n_universes = n_universes + 1
+        n_cells_in_univ = 1
+        call universe_dict % add_key(univ_id, n_universes)
+        call univ_ids % push_back(univ_id)
+      else
+        n_cells_in_univ = 1 + cells_in_univ_dict % get_key(univ_id)
+      end if
+      call cells_in_univ_dict % add_key(univ_id, n_cells_in_univ)
+
     end do
 
     ! ==========================================================================
@@ -2071,11 +2120,8 @@ contains
 ! for errors and placing properly-formatted data in the right data structures
 !===============================================================================
 
-  subroutine read_materials()
+  subroutine read_cross_sections_xml()
     integer :: i, j
-    type(VectorReal), allocatable :: nuc_temps(:) ! List of T to read for each nuclide
-    type(VectorReal), allocatable :: sab_temps(:) ! List of T to read for each S(a,b)
-    real(8), allocatable    :: material_temps(:)
     logical                 :: file_exists
     character(MAX_FILE_LEN) :: env_variable
     character(MAX_LINE_LEN) :: filename
@@ -2183,22 +2229,7 @@ contains
       end do
     end if
 
-    ! Parse data from materials.xml
-    call read_materials_xml(material_temps)
-
-    ! Assign temperatures to cells that don't have temperatures already assigned
-    call assign_temperatures(material_temps)
-
-    ! Determine desired temperatures for each nuclide and S(a,b) table
-    call get_temperatures(cells, nuc_temps, sab_temps)
-
-    ! Read continuous-energy cross sections
-    if (run_CE .and. run_mode /= MODE_PLOTTING) then
-      call time_read_xs % start()
-      call read_ce_cross_sections(nuc_temps, sab_temps)
-      call time_read_xs % stop()
-    end if
-  end subroutine read_materials
+  end subroutine read_cross_sections_xml
 
   subroutine read_materials_xml(material_temps)
     real(8), allocatable, intent(out) :: material_temps(:)
@@ -3315,6 +3346,9 @@ contains
 
       ! Set filter id
       err = openmc_filter_set_id(i_start + i - 1, filter_id)
+
+      ! Initialize filter
+      call f % obj % initialize()
     end do READ_FILTERS
 
     ! ==========================================================================
@@ -3414,6 +3448,7 @@ contains
       else
         allocate(t % filter(n_filter))
       end if
+      deallocate(temp_filter)
 
       ! =======================================================================
       ! READ DATA FOR NUCLIDES
@@ -3822,51 +3857,28 @@ contains
               ! Get pointer to mesh
               select type(filt => filters(i_filter_mesh) % obj)
               type is (MeshFilter)
-                i_mesh = filt % mesh
                 m => meshes(filt % mesh)
               end select
-
-              ! Copy filter indices to temporary array
-              allocate(temp_filter(size(t % filter) + 1))
-              temp_filter(1:size(t % filter)) = t % filter
-
-              ! Move allocation back -- temp_filter becomes deallocated during
-              ! this call
-              call move_alloc(FROM=temp_filter, TO=t % filter)
-              n_filter = size(t % filter)
 
               ! Extend the filters array so we can add a surface filter and
               ! mesh filter
               err = openmc_extend_filters(2, i_filt_start, i_filt_end)
 
-              ! Get index of the new mesh filter
-              i_filt = i_filt_start
-
               ! Duplicate the mesh filter since other tallies might use this
               ! filter and we need to change the dimension
-              allocate(MeshFilter :: filters(i_filt) % obj)
-              select type(filt => filters(i_filt) % obj)
-              type is (MeshFilter)
-                filt % id = i_filt
-                filt % mesh = i_mesh
+              filters(i_filt_start) = filters(i_filter_mesh)
 
-                ! We need to increase the dimension by one since we also need
-                ! currents coming into and out of the boundary mesh cells.
-                filt % n_bins = product(m % dimension + 1)
+              ! We need to increase the dimension by one since we also need
+              ! currents coming into and out of the boundary mesh cells.
+              filters(i_filt_start) % obj % n_bins = product(m % dimension + 1)
 
-                ! Add filter to dictionary
-                call filter_dict % add_key(filt % id, i_filt)
-              end select
-              t % filter(t % find_filter(FILTER_MESH)) = i_filt
-
-              ! Get index of the new surface filter
-              i_filt = i_filt_end
+              ! Set ID
+              err = openmc_filter_set_id(i_filt_start, i_filt_start)
 
               ! Add surface filter
-              allocate(SurfaceFilter :: filters(i_filt) % obj)
-              select type (filt => filters(i_filt) % obj)
+              allocate(SurfaceFilter :: filters(i_filt_end) % obj)
+              select type (filt => filters(i_filt_end) % obj)
               type is (SurfaceFilter)
-                filt % id = i_filt
                 filt % n_bins = 4 * m % n_dimension
                 allocate(filt % surfaces(4 * m % n_dimension))
                 if (m % n_dimension == 1) then
@@ -3881,11 +3893,23 @@ contains
                 end if
                 filt % current = .true.
 
-                ! Add filter to dictionary
-                call filter_dict % add_key(filt % id, i_filt)
+                ! Set ID
+                err = openmc_filter_set_id(i_filt_end, i_filt_end)
               end select
-              t % find_filter(FILTER_SURFACE) = n_filter
-              t % filter(n_filter) = i_filt
+
+              ! Copy filter indices to resized array
+              n_filter = size(t % filter)
+              allocate(temp_filter(n_filter + 1))
+              temp_filter(1:size(t % filter)) = t % filter
+              n_filter = n_filter + 1
+
+              ! Set mesh and surface filters
+              temp_filter(t % find_filter(FILTER_MESH)) = i_filt_start
+              temp_filter(n_filter) = i_filt_end
+
+              ! Set filters
+              err = openmc_tally_set_filters(i_start + i - 1, n_filter, temp_filter)
+              deallocate(temp_filter)
             end if
 
           case ('events')
@@ -5289,7 +5313,7 @@ contains
         end if
 
         ! Use material default or global default temperature
-        i_material = material_dict % get_key(cells(i) % material(j))
+        i_material = cells(i) % material(j)
         if (material_temps(i_material) /= ERROR_REAL) then
           cells(i) % sqrtkT(j) = sqrt(K_BOLTZMANN * &
                material_temps(i_material))
@@ -5427,5 +5451,130 @@ contains
            HDF5_VERSION(1))) // ".x data.")
     end if
   end subroutine check_data_version
+
+!===============================================================================
+! ADJUST_INDICES changes the values for 'surfaces' for each cell and the
+! material index assigned to each to the indices in the surfaces and material
+! array rather than the unique IDs assigned to each surface and material. Also
+! assigns boundary conditions to surfaces based on those read into the bc_dict
+! dictionary
+!===============================================================================
+
+  subroutine adjust_indices()
+
+    integer :: i                      ! index for various purposes
+    integer :: j                      ! index for various purposes
+    integer :: k                      ! loop index for lattices
+    integer :: m                      ! loop index for lattices
+    integer :: lid                    ! lattice IDs
+    integer :: id                     ! user-specified id
+    class(Lattice),    pointer :: lat => null()
+
+    do i = 1, n_cells
+      ! =======================================================================
+      ! ADJUST UNIVERSE INDEX FOR EACH CELL
+      associate (c => cells(i))
+
+      id = c%universe
+      if (universe_dict%has_key(id)) then
+        c%universe = universe_dict%get_key(id)
+      else
+        call fatal_error("Could not find universe " // trim(to_str(id)) &
+             &// " specified on cell " // trim(to_str(c%id)))
+      end if
+
+      ! =======================================================================
+      ! ADJUST MATERIAL/FILL POINTERS FOR EACH CELL
+
+      if (c % material(1) == NONE) then
+        id = c % fill
+        if (universe_dict % has_key(id)) then
+          c % type = FILL_UNIVERSE
+          c % fill = universe_dict % get_key(id)
+        elseif (lattice_dict % has_key(id)) then
+          lid = lattice_dict % get_key(id)
+          c % type = FILL_LATTICE
+          c % fill = lid
+        else
+          call fatal_error("Specified fill " // trim(to_str(id)) // " on cell "&
+               // trim(to_str(c % id)) // " is neither a universe nor a &
+               &lattice.")
+        end if
+      else
+        do j = 1, size(c % material)
+          id = c % material(j)
+          if (id == MATERIAL_VOID) then
+            c % type = FILL_MATERIAL
+          else if (material_dict % has_key(id)) then
+            c % type = FILL_MATERIAL
+            c % material(j) = material_dict % get_key(id)
+          else
+            call fatal_error("Could not find material " // trim(to_str(id)) &
+                 // " specified on cell " // trim(to_str(c % id)))
+          end if
+        end do
+      end if
+      end associate
+    end do
+
+    ! ==========================================================================
+    ! ADJUST UNIVERSE INDICES FOR EACH LATTICE
+
+    do i = 1, n_lattices
+      lat => lattices(i)%obj
+      select type (lat)
+
+      type is (RectLattice)
+        do m = 1, lat%n_cells(3)
+          do k = 1, lat%n_cells(2)
+            do j = 1, lat%n_cells(1)
+              id = lat%universes(j,k,m)
+              if (universe_dict%has_key(id)) then
+                lat%universes(j,k,m) = universe_dict%get_key(id)
+              else
+                call fatal_error("Invalid universe number " &
+                     &// trim(to_str(id)) // " specified on lattice " &
+                     &// trim(to_str(lat%id)))
+              end if
+            end do
+          end do
+        end do
+
+      type is (HexLattice)
+        do m = 1, lat%n_axial
+          do k = 1, 2*lat%n_rings - 1
+            do j = 1, 2*lat%n_rings - 1
+              if (j + k < lat%n_rings + 1) then
+                cycle
+              else if (j + k > 3*lat%n_rings - 1) then
+                cycle
+              end if
+              id = lat%universes(j, k, m)
+              if (universe_dict%has_key(id)) then
+                lat%universes(j, k, m) = universe_dict%get_key(id)
+              else
+                call fatal_error("Invalid universe number " &
+                     &// trim(to_str(id)) // " specified on lattice " &
+                     &// trim(to_str(lat%id)))
+              end if
+            end do
+          end do
+        end do
+
+      end select
+
+      if (lat%outer /= NO_OUTER_UNIVERSE) then
+        if (universe_dict%has_key(lat%outer)) then
+          lat%outer = universe_dict%get_key(lat%outer)
+        else
+          call fatal_error("Invalid universe number " &
+               &// trim(to_str(lat%outer)) &
+               &// " specified on lattice " // trim(to_str(lat%id)))
+        end if
+      end if
+
+    end do
+
+  end subroutine adjust_indices
 
 end module input_xml

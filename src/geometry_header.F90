@@ -347,8 +347,7 @@ contains
 ! temperatures to read (which may be different if interpolation is used)
 !===============================================================================
 
-  subroutine get_temperatures(cells, nuc_temps, sab_temps)
-    type(Cell),                  allocatable, intent(in)  :: cells(:)
+  subroutine get_temperatures(nuc_temps, sab_temps)
     type(VectorReal),            allocatable, intent(out) :: nuc_temps(:)
     type(VectorReal),  optional, allocatable, intent(out) :: sab_temps(:)
 
@@ -374,7 +373,7 @@ contains
           temperature = cells(i) % sqrtkT(1)**2 / K_BOLTZMANN
         end if
 
-        i_material = material_dict % get_key(cells(i) % material(j))
+        i_material = cells(i) % material(j)
         associate (mat => materials(i_material))
           NUC_NAMES_LOOP: do k = 1, size(mat % names)
             ! Get index in nuc_temps array

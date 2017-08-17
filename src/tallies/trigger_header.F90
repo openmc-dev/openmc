@@ -3,12 +3,13 @@ module trigger_header
   use constants, only: NONE, N_FILTER_TYPES, ZERO
 
   implicit none
+  private
 
 !===============================================================================
 ! TRIGGEROBJECT stores the variance, relative error and standard deviation
 ! for some user-specified trigger.
 !===============================================================================
-  type TriggerObject
+  type, public :: TriggerObject
     integer            :: type          ! "variance", "std_dev" or "rel_err"
     real(8)            :: threshold     ! a convergence threshold
     character(len=52)  :: score_name    ! the name of the score
@@ -21,9 +22,11 @@ module trigger_header
 !===============================================================================
 ! KTRIGGER describes a user-specified precision trigger for k-effective
 !===============================================================================
-  type KTrigger
+  type, public :: KTrigger
     integer    :: trigger_type = 0
     real(8)    :: threshold    = ZERO
   end type KTrigger
+
+  type(KTrigger), public :: keff_trigger  ! trigger for k-effective
 
 end module trigger_header

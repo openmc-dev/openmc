@@ -22,6 +22,22 @@ module timer_header
     procedure :: reset     => timer_reset
   end type Timer
 
+  ! ============================================================================
+  ! TIMING VARIABLES
+
+  type(Timer) :: time_total         ! timer for total run
+  type(Timer) :: time_initialize    ! timer for initialization
+  type(Timer) :: time_read_xs       ! timer for reading cross sections
+  type(Timer) :: time_unionize      ! timer for material xs-energy grid union
+  type(Timer) :: time_bank          ! timer for fission bank synchronization
+  type(Timer) :: time_bank_sample   ! timer for fission bank sampling
+  type(Timer) :: time_bank_sendrecv ! timer for fission bank SEND/RECV
+  type(Timer) :: time_tallies       ! timer for accumulate tallies
+  type(Timer) :: time_inactive      ! timer for inactive batches
+  type(Timer) :: time_active        ! timer for active batches
+  type(Timer) :: time_transport     ! timer for transport only
+  type(Timer) :: time_finalize      ! timer for finalization
+
 contains
 
 !===============================================================================

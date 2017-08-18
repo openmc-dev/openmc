@@ -17,19 +17,8 @@ contains
 
   subroutine configure_cmfd()
 
-    use message_passing, only: master
-
-    integer :: color    ! color group of processor
-
     ! Read in cmfd input file
     call read_cmfd_xml()
-
-    ! Assign color
-    if (master) then
-      color = 1
-    else
-      color = 2
-    end if
 
     ! Initialize timers
     call time_cmfd % reset()
@@ -251,7 +240,8 @@ contains
     use error,            only: fatal_error, warning
     use mesh_header,      only: RegularMesh, openmc_extend_meshes
     use string
-    use tally_header,     only: openmc_extend_tallies, openmc_tally_set_type
+    use tally,            only: openmc_tally_set_type
+    use tally_header,     only: openmc_extend_tallies
     use tally_filter_header
     use tally_filter
     use xml_interface

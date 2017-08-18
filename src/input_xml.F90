@@ -33,7 +33,8 @@ module input_xml
                               starts_with, ends_with, tokenize, split_string, &
                               zero_padded
   use summary,          only: write_summary
-  use tally_header,     only: openmc_extend_tallies, openmc_tally_set_type
+  use tally,            only: openmc_tally_set_type
+  use tally_header,     only: openmc_extend_tallies
   use tally_filter_header, only: TallyFilterContainer
   use tally_filter
   use xml_interface
@@ -62,10 +63,16 @@ contains
     ! Set up neighbor lists, convert user IDs -> indices, assign temperatures
     call finalize_geometry(material_temps, nuc_temps, sab_temps)
 
-    ! Read continuous-energy cross sections
-    if (run_CE .and. run_mode /= MODE_PLOTTING) then
+    if (run_mode /= MODE_PLOTTING) then
       call time_read_xs % start()
-      call read_ce_cross_sections(nuc_temps, sab_temps)
+      if (run_CE) then
+        ! Read continuous-energy cross sections
+        call read_ce_cross_sections(nuc_temps, sab_temps)
+      else
+        ! Create material macroscopic data for MGXS
+        call read_mgxs()
+        call create_macro_xs()
+      end if
       call time_read_xs % stop()
     end if
 
@@ -75,14 +82,6 @@ contains
     call prepare_distribcell()
 
     if (cmfd_run) call configure_cmfd()
-
-    if (.not. run_CE) then
-      ! Create material macroscopic data for MGXS
-      call time_read_xs % start()
-      call read_mgxs()
-      call create_macro_xs()
-      call time_read_xs % stop()
-    end if
 
     if (run_mode == MODE_PLOTTING) then
       ! Read plots.xml if it exists

@@ -26,7 +26,6 @@ module tally_header
   public :: openmc_tally_set_filters
   public :: openmc_tally_set_nuclides
   public :: openmc_tally_set_scores
-  public :: openmc_tally_set_type
 
 !===============================================================================
 ! TALLYDERIVATIVE describes a first-order derivative that can be applied to
@@ -712,34 +711,5 @@ contains
       err = E_OUT_OF_BOUNDS
     end if
   end function openmc_tally_set_scores
-
-
-  function openmc_tally_set_type(index, type) result(err) bind(C)
-    ! Set the type of the tally
-    integer(C_INT32_T), value, intent(in) :: index
-    character(kind=C_CHAR), intent(in) :: type(*)
-    integer(C_INT) :: err
-
-    character(:), allocatable :: type_
-
-    ! Convert C string to Fortran string
-    type_ = to_f_string(type)
-
-    err = 0
-    if (index >= 1 .and. index <= n_tallies) then
-      if (allocated(tallies(index) % obj)) then
-        err = E_ALREADY_ALLOCATED
-      else
-        select case (type_)
-        case ('generic')
-          allocate(TallyObject :: tallies(index) % obj)
-        case default
-          err = E_UNASSIGNED
-        end select
-      end if
-    else
-      err = E_OUT_OF_BOUNDS
-    end if
-  end function openmc_tally_set_type
 
 end module tally_header

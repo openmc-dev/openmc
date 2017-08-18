@@ -20,6 +20,7 @@ module openmc_api
   use tally_header
   use tally_filter_header
   use tally_filter
+  use tally,           only: openmc_tally_set_type
   use simulation,      only: openmc_run
   use string,          only: to_f_string
   use volume_calc,     only: openmc_calculate_volumes

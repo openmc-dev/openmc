@@ -9,7 +9,6 @@ module global
   use bank_header,      only: Bank
   use cmfd_header
   use constants
-  use stl_vector,       only: VectorInt
 
   ! Inherit module variables from other modules
   use geometry_header
@@ -38,21 +37,6 @@ module global
   integer :: n_lost_particles
 
   real(8) :: log_spacing ! spacing on logarithmic grid
-
-  ! ============================================================================
-  ! TALLY-RELATED VARIABLES
-
-  ! Active tally lists
-  type(VectorInt) :: active_analog_tallies
-  type(VectorInt) :: active_tracklength_tallies
-  type(VectorInt) :: active_current_tallies
-  type(VectorInt) :: active_collision_tallies
-  type(VectorInt) :: active_tallies
-  type(VectorInt) :: active_surface_tallies
-
-  ! Normalization for statistics
-  integer :: n_realizations = 0 ! # of independent realizations
-  real(8) :: total_weight       ! total starting particle weight in realization
 
   ! ============================================================================
   ! EIGENVALUE SIMULATION VARIABLES
@@ -99,9 +83,6 @@ module global
   integer :: n_threads = NONE      ! number of OpenMP threads
   integer :: thread_id             ! ID of a given thread
 #endif
-
-  ! No reduction at end of batch
-  logical :: reduce_tallies = .true.
 
   ! ============================================================================
   ! MISCELLANEOUS VARIABLES

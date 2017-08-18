@@ -8,6 +8,7 @@ module tally_header
   use error
   use dict_header,         only: DictIntInt
   use nuclide_header,      only: nuclide_dict
+  use stl_vector,          only: VectorInt
   use string,              only: to_lower, to_f_string, str_to_int
   use tally_filter_header, only: TallyFilterContainer, filters, n_filters
   use tally_filter
@@ -144,6 +145,18 @@ module tally_header
   real(C_DOUBLE), public :: global_tally_leakage     = ZERO
 !$omp threadprivate(global_tally_collision, global_tally_absorption, &
 !$omp&              global_tally_tracklength, global_tally_leakage)
+
+  ! Active tally lists
+  type(VectorInt), public :: active_analog_tallies
+  type(VectorInt), public :: active_tracklength_tallies
+  type(VectorInt), public :: active_current_tallies
+  type(VectorInt), public :: active_collision_tallies
+  type(VectorInt), public :: active_tallies
+  type(VectorInt), public :: active_surface_tallies
+
+  ! Normalization for statistics
+  integer, public :: n_realizations = 0 ! # of independent realizations
+  real(8), public :: total_weight       ! total starting particle weight in realization
 
 contains
 

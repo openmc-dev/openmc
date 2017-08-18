@@ -110,6 +110,7 @@ module tally_header
     procedure :: read_results_hdf5 => tally_read_results_hdf5
     procedure :: write_results_hdf5 => tally_write_results_hdf5
     procedure :: allocate_results => tally_allocate_results
+    procedure :: set_filters => tally_set_filters
   end type TallyObject
 
   type, public :: TallyContainer
@@ -253,6 +254,89 @@ contains
     this % results(:,:,:) = ZERO
 
   end subroutine tally_allocate_results
+
+  function tally_set_filters(this, filter_indices) result(err)
+    class(TallyObject), intent(inout) :: this
+    integer(C_INT32_T), intent(in) :: filter_indices(:)
+    integer(C_INT) :: err
+
+    integer :: i       ! index in t % filter/stride
+    integer :: j       ! index in t % find_filter
+    integer :: k       ! index in global filters array
+    integer :: n       ! number of filters
+    integer :: stride  ! filter stride
+
+    err = 0
+    this % find_filter(:) = 0
+    n = size(filter_indices)
+    do i = 1, n
+      k = filter_indices(i)
+      if (k < 1 .or. k > n_filters) then
+        err = E_OUT_OF_BOUNDS
+        exit
+      end if
+
+      ! Set the filter index in the tally find_filter array
+      select type (filt => filters(k) % obj)
+      type is (DistribcellFilter)
+        j = FILTER_DISTRIBCELL
+      type is (CellFilter)
+        j = FILTER_CELL
+      type is (CellFromFilter)
+        j = FILTER_CELLFROM
+      type is (CellbornFilter)
+        j = FILTER_CELLBORN
+      type is (MaterialFilter)
+        j = FILTER_MATERIAL
+      type is (UniverseFilter)
+        j = FILTER_UNIVERSE
+      type is (SurfaceFilter)
+        j = FILTER_SURFACE
+      type is (MeshFilter)
+        j = FILTER_MESH
+      type is (EnergyFilter)
+        j = FILTER_ENERGYIN
+      type is (EnergyoutFilter)
+        j = FILTER_ENERGYOUT
+        this % estimator = ESTIMATOR_ANALOG
+      type is (DelayedGroupFilter)
+        j = FILTER_DELAYEDGROUP
+      type is (MuFilter)
+        j = FILTER_MU
+        this % estimator = ESTIMATOR_ANALOG
+      type is (PolarFilter)
+        j = FILTER_POLAR
+      type is (AzimuthalFilter)
+        j = FILTER_AZIMUTHAL
+      type is (EnergyFunctionFilter)
+        j = FILTER_ENERGYFUNCTION
+      end select
+      this % find_filter(j) = i
+    end do
+
+    if (err == 0) then
+      if (allocated(this % filter)) deallocate(this % filter)
+      if (allocated(this % stride)) deallocate(this % stride)
+      allocate(this % filter(n), this % stride(n))
+
+      ! Filters are traversed in reverse so that the last filter has the
+      ! shortest stride in memory and the first filter has the largest stride
+      stride = 1
+      do i = n, 1, -1
+        ! Set filter and stride
+        k = filter_indices(i)
+        this % filter(i) = k
+        this % stride(i) = stride
+
+        ! Multiply stride by number of bins in this filter
+        stride = stride * filters(k) % obj % n_bins
+      end do
+
+      ! Set total number of filter bins
+      this % n_filter_bins = stride
+    end if
+
+  end function tally_set_filters
 
 !===============================================================================
 ! CONFIGURE_TALLIES initializes several data structures related to tallies. This
@@ -423,83 +507,13 @@ contains
     integer(C_INT32_T), intent(in) :: filter_indices(n)
     integer(C_INT) :: err
 
-    integer :: i       ! index in t % filter/stride
-    integer :: j       ! index in t % find_filter
-    integer :: k       ! index in global filters array
-    integer :: stride  ! filter stride
-
     err = 0
     if (index >= 1 .and. index <= n_tallies) then
-      associate (t => tallies(index) % obj)
-
-        t % find_filter(:) = 0
-        do i = 1, n
-          k = filter_indices(i)
-          if (k < 1 .or. k > n_filters) then
-            err = E_OUT_OF_BOUNDS
-            exit
-          end if
-
-          ! Set the filter index in the tally find_filter array
-          select type (filt => filters(k) % obj)
-          type is (DistribcellFilter)
-            j = FILTER_DISTRIBCELL
-          type is (CellFilter)
-            j = FILTER_CELL
-          type is (CellFromFilter)
-            j = FILTER_CELLFROM
-          type is (CellbornFilter)
-            j = FILTER_CELLBORN
-          type is (MaterialFilter)
-            j = FILTER_MATERIAL
-          type is (UniverseFilter)
-            j = FILTER_UNIVERSE
-          type is (SurfaceFilter)
-            j = FILTER_SURFACE
-          type is (MeshFilter)
-            j = FILTER_MESH
-          type is (EnergyFilter)
-            j = FILTER_ENERGYIN
-          type is (EnergyoutFilter)
-            j = FILTER_ENERGYOUT
-            t % estimator = ESTIMATOR_ANALOG
-          type is (DelayedGroupFilter)
-            j = FILTER_DELAYEDGROUP
-          type is (MuFilter)
-            j = FILTER_MU
-            t % estimator = ESTIMATOR_ANALOG
-          type is (PolarFilter)
-            j = FILTER_POLAR
-          type is (AzimuthalFilter)
-            j = FILTER_AZIMUTHAL
-          type is (EnergyFunctionFilter)
-            j = FILTER_ENERGYFUNCTION
-          end select
-          t % find_filter(j) = i
-        end do
-
-        if (err == 0) then
-          if (allocated(t % filter)) deallocate(t % filter)
-          if (allocated(t % stride)) deallocate(t % stride)
-          allocate(t % filter(n), t % stride(n))
-
-          ! Filters are traversed in reverse so that the last filter has the
-          ! shortest stride in memory and the first filter has the largest stride
-          stride = 1
-          do i = n, 1, -1
-            ! Set filter and stride
-            k = filter_indices(i)
-            t % filter(i) = k
-            t % stride(i) = stride
-
-            ! Multiply stride by number of bins in this filter
-            stride = stride * filters(k) % obj % n_bins
-          end do
-
-          ! Set total number of filter bins
-          t % n_filter_bins = stride
-        end if
-      end associate
+      if (allocated(tallies(index) % obj)) then
+        err = tallies(index) % obj % set_filters(filter_indices)
+      else
+        err = E_TALLY_NOT_ALLOCATED
+      end if
     else
       err = E_OUT_OF_BOUNDS
     end if

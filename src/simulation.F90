@@ -496,7 +496,7 @@ contains
     integer(8) :: min_work  ! Minimum number of particles on each proc
     integer(8) :: work_i    ! Number of particles on rank i
 
-    allocate(work_index(0:n_procs))
+    if (.not. allocated(work_index)) allocate(work_index(0:n_procs))
 
     ! Determine minimum amount of particles to simulate on each processor
     min_work = n_particles/n_procs
@@ -533,6 +533,7 @@ contains
     integer :: alloc_err  ! allocation error code
 
     ! Allocate source bank
+    if (allocated(source_bank)) deallocate(source_bank)
     allocate(source_bank(work), STAT=alloc_err)
 
     ! Check for allocation errors
@@ -541,6 +542,7 @@ contains
     end if
 
     if (run_mode == MODE_EIGENVALUE) then
+
 #ifdef _OPENMP
       ! If OpenMP is being used, each thread needs its own private fission
       ! bank. Since the private fission banks need to be combined at the end of
@@ -552,14 +554,17 @@ contains
 !$omp parallel
       thread_id = omp_get_thread_num()
 
+      if (allocated(fission_bank)) deallocate(fission_bank)
       if (thread_id == 0) then
         allocate(fission_bank(3*work))
       else
         allocate(fission_bank(3*work/n_threads))
       end if
 !$omp end parallel
+      if (allocated(master_fission_bank)) deallocate(master_fission_bank)
       allocate(master_fission_bank(3*work), STAT=alloc_err)
 #else
+      if (allocated(fission_bank)) deallocate(fission_bank)
       allocate(fission_bank(3*work), STAT=alloc_err)
 #endif
 

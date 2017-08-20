@@ -4301,7 +4301,7 @@ contains
     real(C_DOUBLE) :: temp(N_GLOBAL_TALLIES), temp2(N_GLOBAL_TALLIES)
 
     do i = 1, active_tallies % size()
-      associate (t => tallies(active_tallies % data(i)))
+      associate (t => tallies(active_tallies % data(i)) % obj)
 
         m = size(t % results, 2)
         n = size(t % results, 3)

@@ -688,18 +688,8 @@ contains
 
     ! Shannon Entropy mesh
     if (check_for_node(root, "entropy")) then
-
       ! Get pointer to entropy node
       node_entropy = root % child("entropy")
-
-      ! Check to make sure enough values were supplied
-      if (node_word_count(node_entropy, "lower_left") /= 3) then
-        call fatal_error("Need to specify (x,y,z) coordinates of lower-left &
-             &corner of Shannon entropy mesh.")
-      elseif (node_word_count(node_entropy, "upper_right") /= 3) then
-        call fatal_error("Need to specify (x,y,z) coordinates of upper-right &
-             &corner of Shannon entropy mesh.")
-      end if
 
       err = openmc_extend_meshes(1, index_entropy_mesh)
 
@@ -707,25 +697,7 @@ contains
         ! Assign ID
         m % id = 10000
 
-        ! Allocate mesh object and coordinates on mesh
-        allocate(m % lower_left(3))
-        allocate(m % upper_right(3))
-        allocate(m % width(3))
-
-        ! Copy values
-        call get_node_array(node_entropy, "lower_left", m % lower_left)
-        call get_node_array(node_entropy, "upper_right", m % upper_right)
-
-        ! Check on values provided
-        if (.not. all(m % upper_right > m % lower_left)) &
-             &then
-          call fatal_error("Upper-right coordinate must be greater than &
-               &lower-left coordinate for Shannon entropy mesh.")
-        end if
-
-        ! Allocate dimensions
-        m % n_dimension = 3
-        allocate(m % dimension(3))
+        call m % from_xml(node_entropy)
 
         ! Check if dimensions were specified -- if not, they will be calculated
         ! automatically upon first entry into shannon_entropy
@@ -735,18 +707,17 @@ contains
             call fatal_error("Dimension of entropy mesh must be given as three &
                  &integers.")
           end if
-
-          ! Copy dimensions
-          call get_node_array(node_entropy, "dimension", m % dimension)
         else
           ! If the user did not specify how many mesh cells are to be used in
           ! each direction, we automatically determine an appropriate number of
           ! cells
+          m % n_dimension = 3
+          allocate(m % dimension(3))
           m % dimension = ceiling((n_particles/20)**(ONE/THREE))
-        end if
 
-        ! Calculate width
-        m % width = (m % upper_right - m % lower_left) / m % dimension
+          ! Calculate width
+          m % width = (m % upper_right - m % lower_left) / m % dimension
+        end if
 
         ! Allocate space for storing number of fission sites in each mesh cell
         allocate(entropy_p(1, m % dimension(1), m % dimension(2), &
@@ -759,21 +730,8 @@ contains
 
     ! Uniform fission source weighting mesh
     if (check_for_node(root, "uniform_fs")) then
-
       ! Get pointer to ufs node
       node_ufs = root % child("uniform_fs")
-
-      ! Check to make sure enough values were supplied
-      if (node_word_count(node_ufs, "lower_left") /= 3) then
-        call fatal_error("Need to specify (x,y,z) coordinates of lower-left &
-             &corner of UFS mesh.")
-      elseif (node_word_count(node_ufs, "upper_right") /= 3) then
-        call fatal_error("Need to specify (x,y,z) coordinates of upper-right &
-             &corner of UFS mesh.")
-      elseif (node_word_count(node_ufs, "dimension") /= 3) then
-        call fatal_error("Dimension of UFS mesh must be given as three &
-             &integers.")
-      end if
 
       err = openmc_extend_meshes(1, index_ufs_mesh)
 
@@ -782,32 +740,14 @@ contains
         ! Assign ID
         m % id = 10001
 
-        allocate(m % lower_left(3))
-        allocate(m % upper_right(3))
-        allocate(m % width(3))
+        call m % from_xml(node_ufs)
 
-        ! Allocate dimensions
-        m % n_dimension = 3
-        allocate(m % dimension(3))
-
-        ! Copy dimensions
-        call get_node_array(node_ufs, "dimension", m % dimension)
-
-        ! Copy values
-        call get_node_array(node_ufs, "lower_left", m % lower_left)
-        call get_node_array(node_ufs, "upper_right", m % upper_right)
-
-        ! Check on values provided
-        if (.not. all(m % upper_right > m % lower_left)) then
-          call fatal_error("Upper-right coordinate must be greater than &
-               &lower-left coordinate for UFS mesh.")
+        if (check_for_node(node_ufs, "dimension")) then
+          if (node_word_count(node_ufs, "dimension") /= 3) then
+            call fatal_error("Dimension of UFS mesh must be given as three &
+                 &integers.")
+          end if
         end if
-
-        ! Calculate width
-        m % width = (m % upper_right - m % lower_left) / m % dimension
-
-        ! Calculate volume fraction of each cell
-        m % volume_frac = ONE/real(product(m % dimension),8)
 
         ! Allocate source_frac
         allocate(source_frac(1, m % dimension(1), m % dimension(2), &

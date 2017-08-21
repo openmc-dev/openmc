@@ -2721,10 +2721,8 @@ contains
     integer :: n_order       ! moment order requested
     integer :: n_order_pos   ! oosition of Scattering order in score name string
     integer :: MT            ! user-specified MT for score
-    integer :: iarray3(3)    ! temporary integer array
     integer :: imomstr       ! Index of MOMENT_STRS & MOMENT_N_STRS
     logical :: file_exists   ! does tallies.xml file exist?
-    real(8) :: rarray3(3)    ! temporary double prec. array
     integer :: Nangle        ! Number of angular bins
     real(8) :: dangle        ! Mu spacing if using automatic allocation
     integer :: iangle        ! Loop counter for building mu filter bins
@@ -2740,7 +2738,6 @@ contains
     type(RegularMesh), pointer :: m
     type(XMLDocument) :: doc
     type(XMLNode) :: root
-    type(XMLNode) :: node_mesh
     type(XMLNode) :: node_tal
     type(XMLNode) :: node_filt
     type(XMLNode) :: node_trigger
@@ -2803,128 +2800,18 @@ contains
     do i = 1, n
       m => meshes(i_start + i - 1)
 
-      ! Get pointer to mesh node
-      node_mesh = node_mesh_list(i)
-
-      ! Copy mesh id
-      if (check_for_node(node_mesh, "id")) then
-        call get_node_value(node_mesh, "id", m % id)
-      else
-        call fatal_error("Must specify id for mesh in tally XML file.")
-      end if
-
-      ! Check to make sure 'id' hasn't been used
-      if (mesh_dict % has_key(m % id)) then
-        call fatal_error("Two or more meshes use the same unique ID: " &
-             // to_str(m % id))
-      end if
-
-      ! Read mesh type
-      temp_str = ''
-      if (check_for_node(node_mesh, "type")) &
-           call get_node_value(node_mesh, "type", temp_str)
-      select case (to_lower(temp_str))
-      case ('rect', 'rectangle', 'rectangular')
-        call warning("Mesh type '" // trim(temp_str) // "' is deprecated. &
-             &Please use 'regular' instead.")
-        m % type = MESH_REGULAR
-      case ('regular')
-        m % type = MESH_REGULAR
-      case default
-        call fatal_error("Invalid mesh type: " // trim(temp_str))
-      end select
-
-      ! Determine number of dimensions for mesh
-      n = node_word_count(node_mesh, "dimension")
-      if (n /= 1 .and. n /= 2 .and. n /= 3) then
-        call fatal_error("Mesh must be one, two, or three dimensions.")
-      end if
-      m % n_dimension = n
-
-      ! Allocate attribute arrays
-      allocate(m % dimension(n))
-      allocate(m % lower_left(n))
-      allocate(m % width(n))
-      allocate(m % upper_right(n))
-
-      ! Check that dimensions are all greater than zero
-      call get_node_array(node_mesh, "dimension", iarray3(1:n))
-      if (any(iarray3(1:n) <= 0)) then
-        call fatal_error("All entries on the <dimension> element for a tally &
-             &mesh must be positive.")
-      end if
-
-      ! Read dimensions in each direction
-      m % dimension = iarray3(1:n)
-
-      ! Read mesh lower-left corner location
-      if (m % n_dimension /= node_word_count(node_mesh, "lower_left")) then
-        call fatal_error("Number of entries on <lower_left> must be the same &
-             &as the number of entries on <dimension>.")
-      end if
-      call get_node_array(node_mesh, "lower_left", m % lower_left)
-
-      ! Make sure both upper-right or width were specified
-      if (check_for_node(node_mesh, "upper_right") .and. &
-           check_for_node(node_mesh, "width")) then
-        call fatal_error("Cannot specify both <upper_right> and <width> on a &
-             &tally mesh.")
-      end if
-
-      ! Make sure either upper-right or width was specified
-      if (.not. check_for_node(node_mesh, "upper_right") .and. &
-           .not. check_for_node(node_mesh, "width")) then
-        call fatal_error("Must specify either <upper_right> and <width> on a &
-             &tally mesh.")
-      end if
-
-      if (check_for_node(node_mesh, "width")) then
-        ! Check to ensure width has same dimensions
-        if (node_word_count(node_mesh, "width") /= &
-             node_word_count(node_mesh, "lower_left")) then
-          call fatal_error("Number of entries on <width> must be the same as &
-               &the number of entries on <lower_left>.")
-        end if
-
-        ! Check for negative widths
-        call get_node_array(node_mesh, "width", rarray3(1:n))
-        if (any(rarray3(1:n) < ZERO)) then
-          call fatal_error("Cannot have a negative <width> on a tally mesh.")
-        end if
-
-        ! Set width and upper right coordinate
-        m % width = rarray3(1:n)
-        m % upper_right = m % lower_left + m % dimension * m % width
-
-      elseif (check_for_node(node_mesh, "upper_right")) then
-        ! Check to ensure width has same dimensions
-        if (node_word_count(node_mesh, "upper_right") /= &
-             node_word_count(node_mesh, "lower_left")) then
-          call fatal_error("Number of entries on <upper_right> must be the &
-               &same as the number of entries on <lower_left>.")
-        end if
-
-        ! Check that upper-right is above lower-left
-        call get_node_array(node_mesh, "upper_right", rarray3(1:n))
-        if (any(rarray3(1:n) < m % lower_left)) then
-          call fatal_error("The <upper_right> coordinates must be greater than &
-               &the <lower_left> coordinates on a tally mesh.")
-        end if
-
-        ! Set width and upper right coordinate
-        m % upper_right = rarray3(1:n)
-        m % width = (m % upper_right - m % lower_left) / m % dimension
-      end if
-
-      ! Set volume fraction
-      m % volume_frac = ONE/real(product(m % dimension),8)
+      ! Instantiate mesh from XML node
+      call m % from_xml(node_mesh_list(i))
 
       ! Add mesh to dictionary
       call mesh_dict % add_key(m % id, i)
     end do
 
     ! We only need the mesh info for plotting
-    if (run_mode == MODE_PLOTTING) return
+    if (run_mode == MODE_PLOTTING) then
+      call doc % clear()
+      return
+    end if
 
     ! ==========================================================================
     ! READ DATA FOR DERIVATIVES
@@ -3157,14 +3044,13 @@ contains
           ! Get pointer to mesh
           if (mesh_dict % has_key(id)) then
             i_mesh = mesh_dict % get_key(id)
-            m => meshes(i_mesh)
           else
             call fatal_error("Could not find mesh " // trim(to_str(id)) &
                  // " specified on filter " // trim(to_str(filter_id)))
           end if
 
           ! Determine number of bins
-          filt % n_bins = product(m % dimension)
+          filt % n_bins = product(meshes(i_mesh) % dimension)
 
           ! Store the index of the mesh
           filt % mesh = i_mesh

@@ -4,10 +4,12 @@ module mesh_header
 
   use hdf5
 
-  use constants, only: NO_BIN_FOUND
+  use constants
   use dict_header, only: DictIntInt
+  use error, only: warning, fatal_error
   use hdf5_interface
-  use string, only: to_str
+  use string, only: to_str, to_lower
+  use xml_interface
 
   implicit none
   private
@@ -28,6 +30,7 @@ module mesh_header
     real(8), allocatable :: upper_right(:) ! upper-right corner of mesh
     real(8), allocatable :: width(:)       ! width of each mesh cell
   contains
+    procedure :: from_xml => regular_from_xml
     procedure :: get_bin => regular_get_bin
     procedure :: get_indices => regular_get_indices
     procedure :: get_bin_from_indices => regular_get_bin_from_indices
@@ -44,6 +47,123 @@ module mesh_header
   type(DictIntInt), public :: mesh_dict
 
 contains
+
+  subroutine regular_from_xml(this, node)
+    class(RegularMesh), intent(inout) :: this
+    type(XMLNode), intent(in) :: node
+
+    integer :: n
+    character(MAX_LINE_LEN) :: temp_str
+
+    ! Copy mesh id
+    if (check_for_node(node, "id")) then
+      call get_node_value(node, "id", this % id)
+    else
+      call fatal_error("Must specify id for mesh in tally XML file.")
+    end if
+
+    ! Check to make sure 'id' hasn't been used
+    if (mesh_dict % has_key(this % id)) then
+      call fatal_error("Two or more meshes use the same unique ID: " &
+           // to_str(this % id))
+    end if
+
+    ! Read mesh type
+    temp_str = ''
+    if (check_for_node(node, "type")) &
+         call get_node_value(node, "type", temp_str)
+    select case (to_lower(temp_str))
+    case ('rect', 'rectangle', 'rectangular')
+      call warning("Mesh type '" // trim(temp_str) // "' is deprecated. &
+           &Please use 'regular' instead.")
+      this % type = MESH_REGULAR
+    case ('regular')
+      this % type = MESH_REGULAR
+    case default
+      call fatal_error("Invalid mesh type: " // trim(temp_str))
+    end select
+
+    ! Determine number of dimensions for mesh
+    n = node_word_count(node, "dimension")
+    if (n /= 1 .and. n /= 2 .and. n /= 3) then
+      call fatal_error("Mesh must be one, two, or three dimensions.")
+    end if
+    this % n_dimension = n
+
+    ! Allocate attribute arrays
+    allocate(this % dimension(n))
+    allocate(this % lower_left(n))
+    allocate(this % width(n))
+    allocate(this % upper_right(n))
+
+    ! Check that dimensions are all greater than zero
+    call get_node_array(node, "dimension", this % dimension)
+    if (any(this % dimension <= 0)) then
+      call fatal_error("All entries on the <dimension> element for a tally &
+           &mesh must be positive.")
+    end if
+
+    ! Read mesh lower-left corner location
+    if (this % n_dimension /= node_word_count(node, "lower_left")) then
+      call fatal_error("Number of entries on <lower_left> must be the same &
+           &as the number of entries on <dimension>.")
+    end if
+    call get_node_array(node, "lower_left", this % lower_left)
+
+    ! Make sure both upper-right or width were specified
+    if (check_for_node(node, "upper_right") .and. &
+         check_for_node(node, "width")) then
+      call fatal_error("Cannot specify both <upper_right> and <width> on a &
+           &tally mesh.")
+    end if
+
+    ! Make sure either upper-right or width was specified
+    if (.not. check_for_node(node, "upper_right") .and. &
+         .not. check_for_node(node, "width")) then
+      call fatal_error("Must specify either <upper_right> and <width> on a &
+           &tally mesh.")
+    end if
+
+    if (check_for_node(node, "width")) then
+      ! Check to ensure width has same dimensions
+      if (node_word_count(node, "width") /= &
+           node_word_count(node, "lower_left")) then
+        call fatal_error("Number of entries on <width> must be the same as &
+             &the number of entries on <lower_left>.")
+      end if
+
+      ! Check for negative widths
+      call get_node_array(node, "width", this % width)
+      if (any(this % width < ZERO)) then
+        call fatal_error("Cannot have a negative <width> on a tally mesh.")
+      end if
+
+      ! Set width and upper right coordinate
+      this % upper_right = this % lower_left + this % dimension * this % width
+
+    elseif (check_for_node(node, "upper_right")) then
+      ! Check to ensure width has same dimensions
+      if (node_word_count(node, "upper_right") /= &
+           node_word_count(node, "lower_left")) then
+        call fatal_error("Number of entries on <upper_right> must be the &
+             &same as the number of entries on <lower_left>.")
+      end if
+
+      ! Check that upper-right is above lower-left
+      call get_node_array(node, "upper_right", this % upper_right)
+      if (any(this % upper_right < this % lower_left)) then
+        call fatal_error("The <upper_right> coordinates must be greater than &
+             &the <lower_left> coordinates on a tally mesh.")
+      end if
+
+      ! Set width and upper right coordinate
+      this % width = (this % upper_right - this % lower_left) / this % dimension
+    end if
+
+    ! Set volume fraction
+    this % volume_frac = ONE/real(product(this % dimension),8)
+
+  end subroutine regular_from_xml
 
 !===============================================================================
 ! GET_MESH_BIN determines the tally bin for a particle in a structured mesh

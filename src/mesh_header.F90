@@ -21,7 +21,7 @@ module mesh_header
 !===============================================================================
 
   type, public :: RegularMesh
-    integer :: id                          ! user-specified id
+    integer :: id = -1                     ! user-specified id
     integer :: type                        ! rectangular, hexagonal
     integer :: n_dimension                 ! rank of mesh
     real(8) :: volume_frac                 ! volume fraction of each cell
@@ -58,14 +58,12 @@ contains
     ! Copy mesh id
     if (check_for_node(node, "id")) then
       call get_node_value(node, "id", this % id)
-    else
-      call fatal_error("Must specify id for mesh in tally XML file.")
-    end if
 
-    ! Check to make sure 'id' hasn't been used
-    if (mesh_dict % has_key(this % id)) then
-      call fatal_error("Two or more meshes use the same unique ID: " &
-           // to_str(this % id))
+      ! Check to make sure 'id' hasn't been used
+      if (mesh_dict % has_key(this % id)) then
+        call fatal_error("Two or more meshes use the same unique ID: " &
+             // to_str(this % id))
+      end if
     end if
 
     ! Read mesh type
@@ -84,50 +82,48 @@ contains
     end select
 
     ! Determine number of dimensions for mesh
-    n = node_word_count(node, "dimension")
-    if (n /= 1 .and. n /= 2 .and. n /= 3) then
-      call fatal_error("Mesh must be one, two, or three dimensions.")
-    end if
-    this % n_dimension = n
+    if (check_for_node(node, "dimension")) then
+      n = node_word_count(node, "dimension")
+      if (n /= 1 .and. n /= 2 .and. n /= 3) then
+        call fatal_error("Mesh must be one, two, or three dimensions.")
+      end if
+      this % n_dimension = n
 
-    ! Allocate attribute arrays
-    allocate(this % dimension(n))
-    allocate(this % lower_left(n))
-    allocate(this % width(n))
-    allocate(this % upper_right(n))
+      ! Allocate attribute arrays
+      allocate(this % dimension(n))
 
-    ! Check that dimensions are all greater than zero
-    call get_node_array(node, "dimension", this % dimension)
-    if (any(this % dimension <= 0)) then
-      call fatal_error("All entries on the <dimension> element for a tally &
-           &mesh must be positive.")
-    end if
-
-    ! Read mesh lower-left corner location
-    if (this % n_dimension /= node_word_count(node, "lower_left")) then
-      call fatal_error("Number of entries on <lower_left> must be the same &
-           &as the number of entries on <dimension>.")
-    end if
-    call get_node_array(node, "lower_left", this % lower_left)
-
-    ! Make sure both upper-right or width were specified
-    if (check_for_node(node, "upper_right") .and. &
-         check_for_node(node, "width")) then
-      call fatal_error("Cannot specify both <upper_right> and <width> on a &
-           &tally mesh.")
+      ! Check that dimensions are all greater than zero
+      call get_node_array(node, "dimension", this % dimension)
+      if (any(this % dimension <= 0)) then
+        call fatal_error("All entries on the <dimension> element for a tally &
+             &mesh must be positive.")
+      end if
     end if
 
-    ! Make sure either upper-right or width was specified
-    if (.not. check_for_node(node, "upper_right") .and. &
-         .not. check_for_node(node, "width")) then
-      call fatal_error("Must specify either <upper_right> and <width> on a &
-           &tally mesh.")
+    ! Check for lower-left coordinates
+    if (check_for_node(node, "lower_left")) then
+      n = node_word_count(node, "lower_left")
+      allocate(this % lower_left(n))
+
+      ! Read mesh lower-left corner location
+      call get_node_array(node, "lower_left", this % lower_left)
+    else
+      call fatal_error("Must specify <lower_left> on a mesh.")
     end if
 
     if (check_for_node(node, "width")) then
+      ! Make sure both upper-right or width were specified
+      if (check_for_node(node, "upper_right")) then
+        call fatal_error("Cannot specify both <upper_right> and <width> on a &
+             &mesh.")
+      end if
+
+      n = node_word_count(node, "width")
+      allocate(this % width(n))
+      allocate(this % upper_right(n))
+
       ! Check to ensure width has same dimensions
-      if (node_word_count(node, "width") /= &
-           node_word_count(node, "lower_left")) then
+      if (n /= size(this % lower_left)) then
         call fatal_error("Number of entries on <width> must be the same as &
              &the number of entries on <lower_left>.")
       end if
@@ -142,9 +138,12 @@ contains
       this % upper_right = this % lower_left + this % dimension * this % width
 
     elseif (check_for_node(node, "upper_right")) then
+      n = node_word_count(node, "upper_right")
+      allocate(this % upper_right(n))
+      allocate(this % width(n))
+
       ! Check to ensure width has same dimensions
-      if (node_word_count(node, "upper_right") /= &
-           node_word_count(node, "lower_left")) then
+      if (n /= size(this % lower_left)) then
         call fatal_error("Number of entries on <upper_right> must be the &
              &same as the number of entries on <lower_left>.")
       end if
@@ -158,10 +157,20 @@ contains
 
       ! Set width and upper right coordinate
       this % width = (this % upper_right - this % lower_left) / this % dimension
+    else
+      call fatal_error("Must specify either <upper_right> and <width> on a &
+           &mesh.")
     end if
 
-    ! Set volume fraction
-    this % volume_frac = ONE/real(product(this % dimension),8)
+    if (allocated(this % dimension)) then
+      if (size(this % dimension) /= size(this % lower_left)) then
+        call fatal_error("Number of entries on <lower_left> must be the same &
+             &as the number of entries on <dimension>.")
+      end if
+
+      ! Set volume fraction
+      this % volume_frac = ONE/real(product(this % dimension),8)
+    end if
 
   end subroutine regular_from_xml
 

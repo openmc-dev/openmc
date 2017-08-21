@@ -704,6 +704,9 @@ contains
       err = openmc_extend_meshes(1, index_entropy_mesh)
 
       associate (m => meshes(index_entropy_mesh))
+        ! Assign ID
+        m % id = 10000
+
         ! Allocate mesh object and coordinates on mesh
         allocate(m % lower_left(3))
         allocate(m % upper_right(3))
@@ -776,6 +779,9 @@ contains
 
       ! Allocate mesh object and coordinates on mesh
       associate (m => meshes(index_ufs_mesh))
+        ! Assign ID
+        m % id = 10001
+
         allocate(m % lower_left(3))
         allocate(m % upper_right(3))
         allocate(m % width(3))

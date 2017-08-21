@@ -2,6 +2,10 @@ module simulation
 
   use, intrinsic :: ISO_C_BINDING
 
+#ifdef _OPENMP
+  use omp_lib
+#endif
+
   use cmfd_execute,    only: cmfd_init_batch, execute_cmfd
   use constants,       only: ZERO
   use eigenvalue,      only: count_source_for_ufs, calculate_average_keff, &

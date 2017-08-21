@@ -20,7 +20,7 @@ contains
   subroutine count_bank_sites(m, bank_array, cnt, energies, size_bank, &
        sites_outside)
 
-    type(RegularMesh), pointer :: m             ! mesh to count sites
+    type(RegularMesh), intent(in) :: m             ! mesh to count sites
     type(Bank), intent(in)     :: bank_array(:) ! fission or source bank
     real(8),    intent(out)    :: cnt(:,:,:,:)  ! weight of sites in each
     ! cell and energy group

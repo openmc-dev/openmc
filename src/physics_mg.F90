@@ -193,20 +193,21 @@ contains
     ! the expected number of fission sites produced
 
     if (ufs) then
+      associate (m => meshes(index_ufs_mesh))
+        ! Determine indices on ufs mesh for current location
+        call m % get_indices(p % coord(1) % xyz, ijk, in_mesh)
 
-      ! Determine indices on ufs mesh for current location
-      call ufs_mesh % get_indices(p % coord(1) % xyz, ijk, in_mesh)
+        if (.not. in_mesh) then
+          call write_particle_restart(p)
+          call fatal_error("Source site outside UFS mesh!")
+        end if
 
-      if (.not. in_mesh) then
-        call write_particle_restart(p)
-        call fatal_error("Source site outside UFS mesh!")
-      end if
-
-      if (source_frac(1,ijk(1),ijk(2),ijk(3)) /= ZERO) then
-        weight = ufs_mesh % volume_frac / source_frac(1,ijk(1),ijk(2),ijk(3))
-      else
-        weight = ONE
-      end if
+        if (source_frac(1,ijk(1),ijk(2),ijk(3)) /= ZERO) then
+          weight = m % volume_frac / source_frac(1,ijk(1),ijk(2),ijk(3))
+        else
+          weight = ONE
+        end if
+      end associate
     else
       weight = ONE
     end if

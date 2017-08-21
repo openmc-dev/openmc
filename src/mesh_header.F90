@@ -67,19 +67,21 @@ contains
     end if
 
     ! Read mesh type
-    temp_str = ''
-    if (check_for_node(node, "type")) &
-         call get_node_value(node, "type", temp_str)
-    select case (to_lower(temp_str))
-    case ('rect', 'rectangle', 'rectangular')
-      call warning("Mesh type '" // trim(temp_str) // "' is deprecated. &
-           &Please use 'regular' instead.")
+    if (check_for_node(node, "type")) then
+      call get_node_value(node, "type", temp_str)
+      select case (to_lower(temp_str))
+      case ('rect', 'rectangle', 'rectangular')
+        call warning("Mesh type '" // trim(temp_str) // "' is deprecated. &
+             &Please use 'regular' instead.")
+        this % type = MESH_REGULAR
+      case ('regular')
+        this % type = MESH_REGULAR
+      case default
+        call fatal_error("Invalid mesh type: " // trim(temp_str))
+      end select
+    else
       this % type = MESH_REGULAR
-    case ('regular')
-      this % type = MESH_REGULAR
-    case default
-      call fatal_error("Invalid mesh type: " // trim(temp_str))
-    end select
+    end if
 
     ! Determine number of dimensions for mesh
     if (check_for_node(node, "dimension")) then

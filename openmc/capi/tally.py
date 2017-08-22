@@ -36,12 +36,18 @@ _dll.openmc_tally_results.errcheck = _error_handler
 _dll.openmc_tally_set_filters.argtypes = [c_int32, c_int, POINTER(c_int32)]
 _dll.openmc_tally_set_filters.restype = c_int
 _dll.openmc_tally_set_filters.errcheck = _error_handler
+_dll.openmc_tally_set_id.argtypes = [c_int32, c_int32]
+_dll.openmc_tally_set_id.restype = c_int
+_dll.openmc_tally_set_id.errcheck = _error_handler
 _dll.openmc_tally_set_nuclides.argtypes = [c_int32, c_int, POINTER(c_char_p)]
 _dll.openmc_tally_set_nuclides.restype = c_int
 _dll.openmc_tally_set_nuclides.errcheck = _error_handler
 _dll.openmc_tally_set_scores.argtypes = [c_int32, c_int, POINTER(c_char_p)]
 _dll.openmc_tally_set_scores.restype = c_int
 _dll.openmc_tally_set_scores.errcheck = _error_handler
+_dll.openmc_tally_set_type.argtypes = [c_int32, c_char_p]
+_dll.openmc_tally_set_type.restype = c_int
+_dll.openmc_tally_set_type.errcheck = _error_handler
 
 
 class TallyView(object):
@@ -85,6 +91,10 @@ class TallyView(object):
         _dll.openmc_tally_get_id(self._index, tally_id)
         return tally_id.value
 
+    @id.setter
+    def id(self, tally_id):
+        _dll.openmc_tally_set_id(self._index, tally_id)
+
     @property
     def filters(self):
         filt_idx = POINTER(c_int32)()
@@ -120,6 +130,23 @@ class TallyView(object):
         nucs = (c_char_p * len(nuclides))()
         nucs[:] = [x.encode() for x in nuclides]
         _dll.openmc_tally_set_nuclides(self._index, len(nuclides), nucs)
+
+    @property
+    def scores(self):
+        pass
+
+    @scores.setter
+    def scores(self, scores):
+        scores_ = (c_char_p * len(scores))()
+        scores_[:] = [x.encode() for x in scores]
+        _dll.openmc_tally_set_scores(self._index, len(scores), scores_)
+
+    @classmethod
+    def new(cls):
+        index = c_int32()
+        _dll.openmc_extend_tallies(1, index, None)
+        _dll.openmc_tally_set_type(index, b'generic')
+        return cls(index.value)
 
 
 class _TallyMapping(Mapping):

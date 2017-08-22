@@ -3249,17 +3249,6 @@ contains
       ! Get pointer to tally xml node
       node_tal = node_tal_list(i)
 
-      ! Set tally type to volume by default
-      t % type = TALLY_VOLUME
-
-      ! It's desirable to use a track-length esimator for tallies since
-      ! generally more events will score to the tally, reducing the
-      ! variance. However, for tallies that require information on
-      ! post-collision parameters (e.g. tally with an energyout filter) the
-      ! analog esimator must be used.
-
-      t % estimator = ESTIMATOR_TRACKLENGTH
-
       ! Copy tally id
       if (check_for_node(node_tal, "id")) then
         call get_node_value(node_tal, "id", t % id)
@@ -3318,8 +3307,6 @@ contains
 
         ! Set the filters
         err = openmc_tally_set_filters(i_start + i - 1, n_filter, temp_filter)
-      else
-        allocate(t % filter(n_filter))
       end if
       deallocate(temp_filter)
 

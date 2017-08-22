@@ -24,6 +24,7 @@ module tally_header
   public :: openmc_tally_get_nuclides
   public :: openmc_tally_results
   public :: openmc_tally_set_filters
+  public :: openmc_tally_set_id
   public :: openmc_tally_set_nuclides
   public :: openmc_tally_set_scores
 
@@ -51,8 +52,8 @@ module tally_header
 
     integer :: id                   ! user-defined identifier
     character(len=104) :: name = "" ! user-defined name
-    integer :: type                 ! volume, surface current
-    integer :: estimator            ! collision, track-length
+    integer :: type = TALLY_VOLUME  ! volume, surface current
+    integer :: estimator = ESTIMATOR_TRACKLENGTH ! collision, track-length
     real(8) :: volume               ! volume of region
     logical :: active = .false.
     integer, allocatable :: filter(:) ! index in filters array
@@ -234,6 +235,13 @@ contains
 
   subroutine tally_allocate_results(this)
     class(TallyObject), intent(inout) :: this
+
+    ! If no nuclides were specified, add a single bin for total material
+    if (.not. allocated(this % nuclide_bins)) then
+      allocate(this % nuclide_bins(1))
+      this % nuclide_bins(1) = -1
+      this % n_nuclide_bins = 1
+    end if
 
     ! Set total number of filter and scoring bins
     this % total_score_bins = this % n_score_bins * this % n_nuclide_bins
@@ -518,6 +526,27 @@ contains
       err = E_OUT_OF_BOUNDS
     end if
   end function openmc_tally_set_filters
+
+
+  function openmc_tally_set_id(index, id) result(err) bind(C)
+    ! Set the ID of a tally
+    integer(C_INT32_T), value, intent(in) :: index
+    integer(C_INT32_T), value, intent(in) :: id
+    integer(C_INT) :: err
+
+    if (index >= 1 .and. index <= n_tallies) then
+      if (allocated(tallies(index) % obj)) then
+        tallies(index) % obj % id = id
+        call tally_dict % add_key(id, index)
+
+        err = 0
+      else
+        err = E_FILTER_NOT_ALLOCATED
+      end if
+    else
+      err = E_OUT_OF_BOUNDS
+    end if
+  end function openmc_tally_set_id
 
 
   function openmc_tally_set_nuclides(index, n, nuclides) result(err) bind(C)

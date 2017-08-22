@@ -4429,6 +4429,7 @@ contains
     character(kind=C_CHAR), intent(in) :: type(*)
     integer(C_INT) :: err
 
+    integer(C_INT32_T) :: empty(0)
     character(:), allocatable :: type_
 
     ! Convert C string to Fortran string
@@ -4445,6 +4446,9 @@ contains
         case default
           err = E_UNASSIGNED
         end select
+
+        ! When a tally is allocated, set it to have 0 filters
+        err = tallies(index) % obj % set_filters(empty)
       end if
     else
       err = E_OUT_OF_BOUNDS

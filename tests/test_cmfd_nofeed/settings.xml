@@ -16,11 +16,12 @@
   </source>
 
   <!-- Shannon Entropy -->
-  <entropy>
+  <mesh id="10">
     <dimension> 10 1 1 </dimension>
     <lower_left> -10.0 -1.0 -1.0 </lower_left>
     <upper_right> 10.0  1.0  1.0 </upper_right>
-  </entropy>
+  </mesh>
+  <entropy_mesh>10</entropy_mesh>
 
  <!-- Run CMFD -->
  <run_cmfd>true</run_cmfd>

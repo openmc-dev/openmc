@@ -144,6 +144,7 @@ contains
     integer :: n
     integer :: temp_int
     integer :: temp_int_array3(3)
+    integer(C_INT32_T) :: i_start, i_end
     integer(C_INT) :: err
     integer, allocatable :: temp_int_array(:)
     real(8), allocatable :: temp_real(:)
@@ -167,6 +168,7 @@ contains
     type(XMLNode) :: node_trigger
     type(XMLNode) :: node_vol
     type(XMLNode) :: node_tab_leg
+    type(XMLNode), allocatable :: node_mesh_list(:)
     type(XMLNode), allocatable :: node_source_list(:)
     type(XMLNode), allocatable :: node_vol_list(:)
 
@@ -686,8 +688,39 @@ contains
       track_identifiers = reshape(temp_int_array, [3, n_tracks/3])
     end if
 
+    ! Read meshes
+    call get_node_list(root, "mesh", node_mesh_list)
+
+    ! Check for user meshes and allocate
+    n = size(node_mesh_list)
+    if (n > 0) then
+      err = openmc_extend_meshes(n, i_start, i_end)
+    end if
+
+    do i = 1, n
+      associate (m => meshes(i_start + i - 1))
+        ! Instantiate mesh from XML node
+        call m % from_xml(node_mesh_list(i))
+
+        ! Add mesh to dictionary
+        call mesh_dict % add_key(m % id, i)
+      end associate
+    end do
+
     ! Shannon Entropy mesh
-    if (check_for_node(root, "entropy")) then
+    if (check_for_node(root, "entropy_mesh")) then
+      call get_node_value(root, "entropy_mesh", temp_int)
+      if (mesh_dict % has_key(temp_int)) then
+        index_entropy_mesh = mesh_dict % get_key(temp_int)
+      else
+        call fatal_error("Mesh " // to_str(temp_int) // " specified for &
+             &Shannon entropy does not exist.")
+      end if
+    elseif (check_for_node(root, "entropy")) then
+      call warning("Specifying a Shannon entropy mesh via the <entropy> element &
+           &is deprecated. Please create a mesh using <mesh> and then reference &
+           &it by specifying its ID in an <entropy_mesh> element.")
+
       ! Get pointer to entropy node
       node_entropy = root % child("entropy")
 
@@ -698,12 +731,16 @@ contains
         m % id = 10000
 
         call m % from_xml(node_entropy)
+      end associate
+    end if
 
+    if (index_entropy_mesh > 0) then
+      associate(m => meshes(index_entropy_mesh))
         ! Check if dimensions were specified -- if not, they will be calculated
         ! automatically upon first entry into shannon_entropy
-        if (check_for_node(node_entropy, "dimension")) then
+        if (allocated(m % dimension)) then
           ! If so, make sure proper number of values were given
-          if (node_word_count(node_entropy, "dimension") /= 3) then
+          if (m % n_dimension /= 3) then
             call fatal_error("Dimension of entropy mesh must be given as three &
                  &integers.")
           end if
@@ -729,7 +766,19 @@ contains
     end if
 
     ! Uniform fission source weighting mesh
-    if (check_for_node(root, "uniform_fs")) then
+    if (check_for_node(root, "ufs_mesh")) then
+      call get_node_value(root, "ufs_mesh", temp_int)
+      if (mesh_dict % has_key(temp_int)) then
+        index_ufs_mesh = mesh_dict % get_key(temp_int)
+      else
+        call fatal_error("Mesh " // to_str(temp_int) // " specified for &
+             &uniform fission site method does not exist.")
+      end if
+    elseif (check_for_node(root, "uniform_fs")) then
+      call warning("Specifying a UFS mesh via the <uniform_fs> element &
+           &is deprecated. Please create a mesh using <mesh> and then reference &
+           &it by specifying its ID in a <ufs_mesh> element.")
+
       ! Get pointer to ufs node
       node_ufs = root % child("uniform_fs")
 
@@ -741,9 +790,13 @@ contains
         m % id = 10001
 
         call m % from_xml(node_ufs)
+      end associate
+    end if
 
-        if (check_for_node(node_ufs, "dimension")) then
-          if (node_word_count(node_ufs, "dimension") /= 3) then
+    if (index_ufs_mesh > 0) then
+      associate (m => meshes(index_ufs_mesh))
+        if (allocated(m % dimension)) then
+          if (m % n_dimension /= 3) then
             call fatal_error("Dimension of UFS mesh must be given as three &
                  &integers.")
           end if

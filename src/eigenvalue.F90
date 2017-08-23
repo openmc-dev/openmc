@@ -299,39 +299,33 @@ contains
   subroutine shannon_entropy()
 
     integer :: ent_idx        ! entropy index
-    integer :: i, j, k        ! index for bank sites
+    integer :: i              ! index for mesh elements
     logical :: sites_outside  ! were there sites outside entropy box?
 
     associate (m => meshes(index_entropy_mesh))
+      ! count number of fission sites over mesh
+      call count_bank_sites(m, fission_bank, entropy_p, &
+           size_bank=n_bank, sites_outside=sites_outside)
 
-    ! count number of fission sites over mesh
-    call count_bank_sites(m, fission_bank, entropy_p, &
-         size_bank=n_bank, sites_outside=sites_outside)
+      ! display warning message if there were sites outside entropy box
+      if (sites_outside) then
+        if (master) call warning("Fission source site(s) outside of entropy box.")
+      end if
 
-    ! display warning message if there were sites outside entropy box
-    if (sites_outside) then
-      if (master) call warning("Fission source site(s) outside of entropy box.")
-    end if
+      ! sum values to obtain shannon entropy
+      if (master) then
+        ! Normalize to total weight of bank sites
+        entropy_p = entropy_p / sum(entropy_p)
 
-    ! sum values to obtain shannon entropy
-    if (master) then
-      ! Normalize to total weight of bank sites
-      entropy_p = entropy_p / sum(entropy_p)
-
-      ent_idx = current_gen + gen_per_batch*(current_batch - 1)
-      entropy(ent_idx) = ZERO
-      do i = 1, m % dimension(1)
-        do j = 1, m % dimension(2)
-          do k = 1, m % dimension(3)
-            if (entropy_p(1,i,j,k) > ZERO) then
-              entropy(ent_idx) = entropy(ent_idx) - &
-                   entropy_p(1,i,j,k) * log(entropy_p(1,i,j,k))/log(TWO)
-            end if
-          end do
+        ent_idx = current_gen + gen_per_batch*(current_batch - 1)
+        entropy(ent_idx) = ZERO
+        do i = 1, size(entropy_p, 2)
+          if (entropy_p(1,i) > ZERO) then
+            entropy(ent_idx) = entropy(ent_idx) - &
+                 entropy_p(1,i) * log(entropy_p(1,i))/log(TWO)
+          end if
         end do
-      end do
-    end if
-
+      end if
     end associate
   end subroutine shannon_entropy
 

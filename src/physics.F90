@@ -1073,10 +1073,9 @@ contains
     integer :: nu_d(MAX_DELAYED_GROUPS) ! number of delayed neutrons born
     integer :: i                        ! loop index
     integer :: nu                       ! actual number of neutrons produced
-    integer :: ijk(3)                   ! indices in ufs mesh
+    integer :: mesh_bin                 ! mesh bin for source site
     real(8) :: nu_t                     ! total nu
     real(8) :: weight                   ! weight adjustment for ufs method
-    logical :: in_mesh                  ! source site in ufs mesh?
     type(Nuclide),  pointer :: nuc
 
     ! Get pointers
@@ -1090,14 +1089,14 @@ contains
     if (ufs) then
       associate (m => meshes(index_ufs_mesh))
         ! Determine indices on ufs mesh for current location
-        call m % get_indices(p % coord(1) % xyz, ijk, in_mesh)
-        if (.not. in_mesh) then
+        call m % get_bin(p % coord(1) % xyz, mesh_bin)
+        if (mesh_bin == NO_BIN_FOUND) then
           call write_particle_restart(p)
           call fatal_error("Source site outside UFS mesh!")
         end if
 
-        if (source_frac(1,ijk(1),ijk(2),ijk(3)) /= ZERO) then
-          weight = m % volume_frac / source_frac(1,ijk(1),ijk(2),ijk(3))
+        if (source_frac(1, mesh_bin) /= ZERO) then
+          weight = m % volume_frac / source_frac(1, mesh_bin)
         else
           weight = ONE
         end if

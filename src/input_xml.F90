@@ -736,15 +736,7 @@ contains
 
     if (index_entropy_mesh > 0) then
       associate(m => meshes(index_entropy_mesh))
-        ! Check if dimensions were specified -- if not, they will be calculated
-        ! automatically upon first entry into shannon_entropy
-        if (allocated(m % dimension)) then
-          ! If so, make sure proper number of values were given
-          if (m % n_dimension /= 3) then
-            call fatal_error("Dimension of entropy mesh must be given as three &
-                 &integers.")
-          end if
-        else
+        if (.not. allocated(m % dimension)) then
           ! If the user did not specify how many mesh cells are to be used in
           ! each direction, we automatically determine an appropriate number of
           ! cells
@@ -757,8 +749,7 @@ contains
         end if
 
         ! Allocate space for storing number of fission sites in each mesh cell
-        allocate(entropy_p(1, m % dimension(1), m % dimension(2), &
-             m % dimension(3)))
+        allocate(entropy_p(1, product(m % dimension)))
       end associate
 
       ! Turn on Shannon entropy calculation
@@ -794,18 +785,8 @@ contains
     end if
 
     if (index_ufs_mesh > 0) then
-      associate (m => meshes(index_ufs_mesh))
-        if (allocated(m % dimension)) then
-          if (m % n_dimension /= 3) then
-            call fatal_error("Dimension of UFS mesh must be given as three &
-                 &integers.")
-          end if
-        end if
-
-        ! Allocate source_frac
-        allocate(source_frac(1, m % dimension(1), m % dimension(2), &
-             m % dimension(3)))
-      end associate
+      ! Allocate array to store source fraction for UFS
+      allocate(source_frac(1, product(meshes(index_ufs_mesh) % dimension)))
 
       ! Turn on uniform fission source weighting
       ufs = .true.

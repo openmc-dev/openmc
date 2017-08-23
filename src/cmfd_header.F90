@@ -53,7 +53,7 @@ module cmfd_header
     real(8), allocatable :: openmc_src(:,:,:,:)
 
     ! Source sites in each mesh box
-    real(8), allocatable :: sourcecounts(:,:,:,:)
+    real(8), allocatable :: sourcecounts(:,:)
 
     ! Weight adjustment factors
     real(8), allocatable :: weightfactors(:,:,:,:)
@@ -198,7 +198,7 @@ contains
     if (.not. allocated(this % openmc_src)) allocate(this % openmc_src(ng,nx,ny,nz))
 
     ! Allocate source weight modification vars
-    if (.not. allocated(this % sourcecounts)) allocate(this % sourcecounts(ng,nx,ny,nz))
+    if (.not. allocated(this % sourcecounts)) allocate(this % sourcecounts(ng,nx*ny*nz))
     if (.not. allocated(this % weightfactors)) allocate(this % weightfactors(ng,nx,ny,nz))
 
     ! Allocate batchwise parameters

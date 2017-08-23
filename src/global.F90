@@ -70,11 +70,11 @@ module global
   real(8) :: k_abs_tra = ZERO ! sum over batches of k_absorption * k_tracklength
 
   ! Shannon entropy
-  real(8), allocatable :: entropy(:)         ! shannon entropy at each generation
-  real(8), allocatable :: entropy_p(:,:,:,:) ! % of source sites in each cell
+  real(8), allocatable :: entropy(:)     ! shannon entropy at each generation
+  real(8), allocatable :: entropy_p(:,:) ! % of source sites in each cell
 
   ! Uniform fission source weighting
-  real(8), allocatable :: source_frac(:,:,:,:)
+  real(8), allocatable :: source_frac(:,:)
 
   ! ============================================================================
   ! PARALLEL PROCESSING VARIABLES

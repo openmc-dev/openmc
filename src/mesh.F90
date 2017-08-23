@@ -22,26 +22,25 @@ contains
 
     type(RegularMesh), intent(in) :: m             ! mesh to count sites
     type(Bank), intent(in)     :: bank_array(:) ! fission or source bank
-    real(8),    intent(out)    :: cnt(:,:,:,:)  ! weight of sites in each
+    real(8),    intent(out)    :: cnt(:,:)      ! weight of sites in each
     ! cell and energy group
     real(8), intent(in),    optional :: energies(:)   ! energy grid to search
     integer(8), intent(in), optional :: size_bank     ! # of bank sites (on each proc)
     logical, intent(inout), optional :: sites_outside ! were there sites outside mesh?
-    real(8), allocatable :: cnt_(:,:,:,:)
+    real(8), allocatable :: cnt_(:,:)
 
     integer :: i        ! loop index for local fission sites
     integer :: n_sites  ! size of bank array
-    integer :: ijk(3)   ! indices on mesh
     integer :: n        ! number of energy groups / size
-    integer :: e_bin    ! energy_bin
+    integer :: mesh_bin ! mesh bin
+    integer :: e_bin    ! energy bin
 #ifdef MPI
     integer :: mpi_err  ! MPI error code
 #endif
-    logical :: in_mesh  ! was single site outside mesh?
     logical :: outside  ! was any site outside mesh?
 
     ! initialize variables
-    allocate(cnt_(size(cnt,1), size(cnt,2), size(cnt,3), size(cnt,4)))
+    allocate(cnt_(size(cnt,1), size(cnt,2)))
     cnt_ = ZERO
     outside = .false.
 
@@ -62,10 +61,10 @@ contains
     ! loop over fission sites and count how many are in each mesh box
     FISSION_SITES: do i = 1, n_sites
       ! determine scoring bin for entropy mesh
-      call m % get_indices(bank_array(i) % xyz, ijk, in_mesh)
+      call m % get_bin(bank_array(i) % xyz, mesh_bin)
 
       ! if outside mesh, skip particle
-      if (.not. in_mesh) then
+      if (mesh_bin == NO_BIN_FOUND) then
         outside = .true.
         cycle
       end if
@@ -84,8 +83,7 @@ contains
       end if
 
       ! add to appropriate mesh box
-      cnt_(e_bin,ijk(1),ijk(2),ijk(3)) = cnt_(e_bin,ijk(1),ijk(2),ijk(3)) + &
-           bank_array(i) % wgt
+      cnt_(e_bin, mesh_bin) = cnt_(e_bin, mesh_bin) + bank_array(i) % wgt
     end do FISSION_SITES
 
 #ifdef MPI

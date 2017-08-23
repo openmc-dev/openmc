@@ -703,7 +703,7 @@ contains
         call m % from_xml(node_mesh_list(i))
 
         ! Add mesh to dictionary
-        call mesh_dict % add_key(m % id, i)
+        call mesh_dict % add_key(m % id, i_start + i - 1)
       end associate
     end do
 
@@ -2813,7 +2813,7 @@ contains
       call m % from_xml(node_mesh_list(i))
 
       ! Add mesh to dictionary
-      call mesh_dict % add_key(m % id, i)
+      call mesh_dict % add_key(m % id, i_start + i - 1)
     end do
 
     ! We only need the mesh info for plotting

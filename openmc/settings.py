@@ -963,9 +963,9 @@ class Settings(object):
             # See if a <mesh> element already exists -- if not, add it
             path = "./mesh[@id='{}']".format(self.entropy_mesh.id)
             if root.find(path) is None:
-                root.append(self.entropy_mesh.to_xml_element)
+                root.append(self.entropy_mesh.to_xml_element())
 
-            subelement = ET.SubElement(element, "entropy_mesh")
+            subelement = ET.SubElement(root, "entropy_mesh")
             subelement.text = str(self.entropy_mesh.id)
 
     def _create_trigger_subelement(self, root):
@@ -1028,9 +1028,9 @@ class Settings(object):
             # See if a <mesh> element already exists -- if not, add it
             path = "./mesh[@id='{}']".format(self.ufs_mesh.id)
             if root.find(path) is None:
-                root.append(self.ufs_mesh.to_xml_element)
+                root.append(self.ufs_mesh.to_xml_element())
 
-            subelement = ET.SubElement(element, "ufs_mesh")
+            subelement = ET.SubElement(root, "ufs_mesh")
             subelement.text = str(self.ufs_mesh.id)
 
     def _create_dd_subelement(self, root):

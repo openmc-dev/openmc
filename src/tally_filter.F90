@@ -234,10 +234,7 @@ contains
     integer :: ijk0(3)              ! indices of starting coordinates
     integer :: ijk1(3)              ! indices of ending coordinates
     integer :: search_iter          ! loop count for intersection search
-<<<<<<< HEAD
-=======
     integer :: bin
->>>>>>> get_all_bins
     real(8) :: weight               ! weight to be pushed back
     real(8) :: uvw(3)               ! cosine of angle of particle
     real(8) :: xyz0(3)              ! starting/intermediate coordinates
@@ -259,10 +256,6 @@ contains
     if (estimator /= ESTIMATOR_TRACKLENGTH) then
       ! If this is an analog or collision tally, then there can only be one
       ! valid mesh bin.
-<<<<<<< HEAD
-        call match % bins % push_back(1)
-        call match % weights % push_back(ONE)
-=======
       call get_mesh_bin(m, p % coord(1) % xyz, bin)
       if (bin /= NO_BIN_FOUND) then
         call match % bins % push_back(bin)
@@ -270,43 +263,10 @@ contains
       end if
       return
     end if
->>>>>>> get_all_bins
 
     ! A track can span multiple mesh bins so we need to handle a lot of
     ! intersection logic for tracklength tallies.
 
-<<<<<<< HEAD
-      ! ========================================================================
-      ! Determine if the track intersects the tally mesh.
-
-      ! Copy the starting and ending coordinates of the particle.  Offset these
-      ! just a bit for the purposes of determining if there was an intersection
-      ! in case the mesh surfaces coincide with lattice/geometric surfaces which
-      ! might produce finite-precision errors.
-      xyz0 = p % last_xyz + TINY_BIT * p % coord(1) % uvw
-      xyz1 = p % coord(1) % xyz - TINY_BIT * p % coord(1) % uvw
-
-      ! Determine indices for starting and ending location.
-      call get_mesh_indices(m, xyz0, ijk0(:m % n_dimension), start_in_mesh)
-      call get_mesh_indices(m, xyz1, ijk1(:m % n_dimension), end_in_mesh)
-
-      ! ========================================================================
-      ! Figure out which mesh cell to tally.
-
-      ! Copy the un-modified coordinates the particle direction.
-      xyz0 = p % last_xyz
-      xyz1 = p % coord(1) % xyz
-      uvw = p % coord(1) % uvw
-
-      ! Compute the length of the entire track.
-      total_distance = sqrt(sum((xyz1 - xyz0)**2))
-
-        ! We have already scored some mesh bins for this track.  Pick up where
-        ! we left off and find the next mesh cell that the particle enters.
-
-        ! Get the indices to the last bin we scored.
-        call bin_to_mesh_indices(m, 1, ijk0(:m % n_dimension))
-=======
     ! ========================================================================
     ! Determine if the track intersects the tally mesh.
 
@@ -370,7 +330,6 @@ contains
                &filter.")
           return
         end if
->>>>>>> get_all_bins
 
         do j = 1, n
           if (abs(uvw(j)) < FP_PRECISION) then
@@ -390,8 +349,6 @@ contains
           ijk0(j) = ijk0(j) - 1
         end if
 
-<<<<<<< HEAD
-=======
         search_iter = search_iter + 1
       end do
       distance = d(j)
@@ -399,7 +356,6 @@ contains
     end if
 
     do
->>>>>>> get_all_bins
       ! ========================================================================
       ! Compute the length of the track segment in the appropiate mesh cell and
       ! return.
@@ -427,12 +383,6 @@ contains
       end if
 
       ! Assign the next tally bin and the score.
-<<<<<<< HEAD
-      call match % bins % push_back(mesh_indices_to_bin(m, ijk0(:m % n_dimension)))
-      weight = distance / total_distance
-      call match % weights % push_back(weight)
-    end if
-=======
       bin = mesh_indices_to_bin(m, ijk0(:n))
       call match % bins % push_back(bin)
       call match % weights % push_back(distance / total_distance)
@@ -459,7 +409,6 @@ contains
       if (any(ijk0(:n) < 1) .or. any(ijk0(:n) > m % dimension)) exit
     end do
 
->>>>>>> get_all_bins
   end subroutine get_all_bins_mesh
 
   subroutine to_statepoint_mesh(this, filter_group)
@@ -508,11 +457,7 @@ contains
     do i = 1, p % n_coord
       if (this % map % has_key(p % coord(i) % universe)) then
         call match % bins % push_back(this % map % get_key(p % coord(i) &
-<<<<<<< HEAD
-          % universe))
-=======
              % universe))
->>>>>>> get_all_bins
         call match % weights % push_back(ONE)
       end if
     end do
@@ -923,18 +868,12 @@ contains
           E = p % last_E
         end if
 
-<<<<<<< HEAD
-          ! Search to find incoming energy bin.
-          call match % bins % push_back(binary_search(this % bins, n + 1, E))
-          call match % weights % push_back(ONE)
-=======
         ! Search to find incoming energy bin.
         bin = binary_search(this % bins, n + 1, E)
         if (bin /= NO_BIN_FOUND) then
           call match % bins % push_back(bin)
           call match % weights % push_back(ONE)
         end if
->>>>>>> get_all_bins
       end if
   end subroutine get_all_bins_energy
 
@@ -975,11 +914,6 @@ contains
       n = this % n_bins
 
       if ((.not. run_CE) .and. this % matches_transport_groups) then
-<<<<<<< HEAD
-        call match % bins % push_back(p % g)
-
-=======
->>>>>>> get_all_bins
         ! Tallies are ordered in increasing groups, group indices
         ! however are the opposite, so switch
         call match % bins % push_back(num_energy_groups - p % g + 1)
@@ -988,16 +922,11 @@ contains
       else
 
         ! Search to find incoming energy bin.
-<<<<<<< HEAD
-        call match % bins % push_back(binary_search(this % bins, n + 1, p % E))
-        call match % weights % push_back(ONE)
-=======
         bin = binary_search(this % bins, n + 1, p % E)
         if (bin /= NO_BIN_FOUND) then
           call match % bins % push_back(bin)
           call match % weights % push_back(ONE)
         end if
->>>>>>> get_all_bins
       end if
   end subroutine get_all_bins_energyout
 
@@ -1065,13 +994,6 @@ contains
     integer :: n
     integer :: bin
 
-<<<<<<< HEAD
-      n = this % n_bins
-
-      ! Search to find incoming energy bin.
-      call match % bins % push_back(binary_search(this % bins, n + 1, p % mu))
-      call match % weights % push_back(ONE)
-=======
     n = this % n_bins
 
     ! Search to find incoming energy bin.
@@ -1080,7 +1002,6 @@ contains
       call match % bins % push_back(bin)
       call match % weights % push_back(ONE)
     end if
->>>>>>> get_all_bins
   end subroutine get_all_bins_mu
 
   subroutine to_statepoint_mu(this, filter_group)
@@ -1128,16 +1049,11 @@ contains
     end if
 
     ! Search to find polar angle bin.
-<<<<<<< HEAD
-    call match % bins % push_back(binary_search(this % bins, n + 1, theta))
-    call match % weights % push_back(ONE)
-=======
     bin = binary_search(this % bins, n + 1, theta)
     if (bin /= NO_BIN_FOUND) then
       call match % bins % push_back(bin)
       call match % weights % push_back(ONE)
     end if
->>>>>>> get_all_bins
   end subroutine get_all_bins_polar
 
   subroutine to_statepoint_polar(this, filter_group)
@@ -1175,21 +1091,6 @@ contains
     integer :: bin
     real(8) :: phi
 
-<<<<<<< HEAD
-      n = this % n_bins
-
-      ! Make sure the correct direction vector is used.
-      if (estimator == ESTIMATOR_TRACKLENGTH) then
-        phi = atan2(p % coord(1) % uvw(2), p % coord(1) % uvw(1))
-      else
-        phi = atan2(p % last_uvw(2), p % last_uvw(1))
-      end if
-
-      ! Search to find azimuthal angle bin.
-      call match % bins % push_back(binary_search(this % bins, n + 1, phi))
-      call match % weights % push_back(ONE)
-
-=======
     n = this % n_bins
 
     ! Make sure the correct direction vector is used.
@@ -1206,7 +1107,6 @@ contains
       call match % weights % push_back(ONE)
     end if
 
->>>>>>> get_all_bins
   end subroutine get_all_bins_azimuthal
 
   subroutine to_statepoint_azimuthal(this, filter_group)

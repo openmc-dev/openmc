@@ -73,9 +73,6 @@ contains
 
     ! allocate arrays for MGXS storage and cross section cache
     allocate(nuclides_MG(n_nuclides_total))
-!$omp parallel
-    allocate(micro_xs(n_nuclides_total))
-!$omp end parallel
 
     ! ==========================================================================
     ! READ ALL MGXS CROSS SECTION TABLES

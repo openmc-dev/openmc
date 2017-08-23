@@ -241,7 +241,7 @@ contains
 ! There are 3 tally types:
 !   1: Only an energy in filter-> flux,total,p1 scatter
 !   2: Energy in and energy out filter-> nu-scatter,nu-fission
-!   3: Surface current
+!   3: Mesh current
 !===============================================================================
 
   subroutine create_cmfd_tally(root)
@@ -425,7 +425,7 @@ contains
       end select
     end if
 
-    ! Duplicate the mesh filter for the surface current tally since other
+    ! Duplicate the mesh filter for the mesh current tally since other
     ! tallies use this filter and we need to change the dimension
     i_filt = i_filt + 1
     allocate(MeshFilter :: filters(i_filt) % obj)
@@ -597,7 +597,7 @@ contains
 
         ! Set macro bins
         t % score_bins(1) = SCORE_CURRENT
-        t % type = TALLY_SURFACE_CURRENT
+        t % type = TALLY_MESH_CURRENT
       end if
 
     end do

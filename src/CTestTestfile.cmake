@@ -130,6 +130,8 @@ add_test(test_statepoint_restart.py "/Users/brittanygrayson/miniconda3/bin/pytho
 set_tests_properties(test_statepoint_restart.py PROPERTIES  WORKING_DIRECTORY "/Users/brittanygrayson/openmc_develop/OpenMC/tests/test_statepoint_restart")
 add_test(test_statepoint_sourcesep.py "/Users/brittanygrayson/miniconda3/bin/python" "test_statepoint_sourcesep.py" "--exe" "/Users/brittanygrayson/openmc_develop/OpenMC/src/bin/openmc" "--mpi_exec" "/bin/mpiexec")
 set_tests_properties(test_statepoint_sourcesep.py PROPERTIES  WORKING_DIRECTORY "/Users/brittanygrayson/openmc_develop/OpenMC/tests/test_statepoint_sourcesep")
+add_test(test_surface_tally.py "/Users/brittanygrayson/miniconda3/bin/python" "test_surface_tally.py" "--exe" "/Users/brittanygrayson/openmc_develop/OpenMC/src/bin/openmc" "--mpi_exec" "/bin/mpiexec")
+set_tests_properties(test_surface_tally.py PROPERTIES  WORKING_DIRECTORY "/Users/brittanygrayson/openmc_develop/OpenMC/tests/test_surface_tally")
 add_test(test_survival_biasing.py "/Users/brittanygrayson/miniconda3/bin/python" "test_survival_biasing.py" "--exe" "/Users/brittanygrayson/openmc_develop/OpenMC/src/bin/openmc" "--mpi_exec" "/bin/mpiexec")
 set_tests_properties(test_survival_biasing.py PROPERTIES  WORKING_DIRECTORY "/Users/brittanygrayson/openmc_develop/OpenMC/tests/test_survival_biasing")
 add_test(test_tallies.py "/Users/brittanygrayson/miniconda3/bin/python" "test_tallies.py" "--exe" "/Users/brittanygrayson/openmc_develop/OpenMC/src/bin/openmc" "--mpi_exec" "/bin/mpiexec")

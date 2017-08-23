@@ -47,5 +47,6 @@ Modules
    mgxs
    model
    data
+   capi
    examples
    openmoc

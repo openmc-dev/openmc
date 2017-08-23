@@ -16,7 +16,6 @@ module message_passing
   integer :: rank        = 0       ! rank of process
   logical :: master      = .true.  ! master process?
   logical :: mpi_enabled = .false. ! is MPI in use and initialized?
-  integer :: mpi_err               ! MPI error code
 #ifdef MPIF08
   type(MPI_Datatype) :: MPI_BANK   ! MPI datatype for fission bank
   type(MPI_Comm) :: mpi_intracomm  ! MPI intra-communicator

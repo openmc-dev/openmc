@@ -2,7 +2,6 @@ module cross_section
 
   use algorithm,        only: binary_search
   use constants
-  use energy_grid,      only: log_spacing
   use error,            only: fatal_error
   use global
   use list_header,      only: ListElemInt

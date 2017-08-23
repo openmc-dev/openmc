@@ -35,12 +35,14 @@ element tallies {
   element filter {
     (element id { xsd:int } | attribute id { xsd:int }) &
     (
-      ( (element type { ( "cell" | "cellborn" | "material" | "universe" |
-          "surface" | "distribcell" | "mesh" | "energy" | "energyout" | "mu" |
-          "polar" | "azimuthal" | "delayedgroup" | "energyfunction") } |
-         attribute type { ( "cell" | "cellborn" | "material" | "universe" |
-          "surface" | "distribcell" | "mesh" | "energy" | "energyout" | "mu" |
-          "polar" | "azimuthal" | "delayedgroup" | "energyfunction") }) &
+      ( (element type { ( "cell" | "cellfrom" | "cellborn" | "material" | 
+          "universe" | "surface" | "distribcell" | "mesh" | "energy" | 
+          "energyout" | "mu" | "polar" | "azimuthal" | "delayedgroup" | 
+          "energyfunction") } |
+         attribute type { ( "cell" | "cellfrom" | "cellborn" | "material" | 
+          "universe" | "surface" | "distribcell" | "mesh" | "energy" | 
+          "energyout" | "mu" | "polar" | "azimuthal" | "delayedgroup" | 
+          "energyfunction") }) &
         (element bins { list { xsd:double+ } } |
           attribute bins { list { xsd:double+ } })
       ) |

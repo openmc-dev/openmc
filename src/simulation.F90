@@ -1,10 +1,12 @@
 module simulation
 
+  use, intrinsic :: ISO_C_BINDING
+
   use cmfd_execute,    only: cmfd_init_batch, execute_cmfd
   use constants,       only: ZERO
   use eigenvalue,      only: count_source_for_ufs, calculate_average_keff, &
-                             calculate_combined_keff, calculate_generation_keff, &
-                             shannon_entropy, synchronize_bank, keff_generation
+                             calculate_generation_keff, shannon_entropy, &
+                             synchronize_bank, keff_generation, k_sum
 #ifdef _OPENMP
   use eigenvalue,      only: join_bank_from_threads
 #endif
@@ -18,40 +20,28 @@ module simulation
   use source,          only: initialize_source, sample_external_source
   use state_point,     only: write_state_point, write_source_point
   use string,          only: to_str
-  use tally,           only: synchronize_tallies, setup_active_usertallies, &
-                             tally_statistics
+  use tally,           only: accumulate_tallies, setup_active_usertallies
   use trigger,         only: check_triggers
   use tracking,        only: transport
-  use volume_calc,     only: run_volume_calculations
 
   implicit none
   private
-  public :: run_simulation
+  public :: openmc_run
 
 contains
 
 !===============================================================================
-! RUN_SIMULATION encompasses all the main logic where iterations are performed
+! OPENMC_RUN encompasses all the main logic where iterations are performed
 ! over the batches, generations, and histories in a fixed source or k-eigenvalue
 ! calculation.
 !===============================================================================
 
-  subroutine run_simulation()
+  subroutine openmc_run() bind(C)
 
     type(Particle) :: p
     integer(8)     :: i_work
 
-    if (.not. restart_run) call initialize_source()
-
-    ! Display header
-    if (master) then
-      if (run_mode == MODE_FIXEDSOURCE) then
-        call header("FIXED SOURCE TRANSPORT SIMULATION", 3)
-      elseif (run_mode == MODE_EIGENVALUE) then
-        call header("K EIGENVALUE SIMULATION", 3)
-        if (verbosity >= 7) call print_columns()
-      end if
-    end if
+    call initialize_simulation()
 
     ! Turn on inactive timer
     call time_inactive % start()
@@ -115,7 +105,7 @@ contains
     ! Clear particle
     call p % clear()
 
-  end subroutine run_simulation
+  end subroutine openmc_run
 
 !===============================================================================
 ! INITIALIZE_HISTORY
@@ -137,7 +127,7 @@ contains
     p % id = work_index(rank) + index_source
 
     ! set random number seed
-    particle_seed = (overall_gen - 1)*n_particles + p % id
+    particle_seed = (total_gen + overall_generation() - 1)*n_particles + p % id
     call set_particle_seed(particle_seed)
 
     ! set particle trace
@@ -201,9 +191,6 @@ contains
 !===============================================================================
 
   subroutine initialize_generation()
-
-    ! set overall generation number
-    overall_gen = gen_per_batch*(current_batch - 1) + current_gen
 
     if (run_mode == MODE_EIGENVALUE) then
       ! Reset number of fission bank sites
@@ -269,13 +256,20 @@ contains
       call calculate_average_keff()
 
       ! Write generation output
-      if (master .and. current_gen /= gen_per_batch .and. verbosity >= 7) &
-           call print_generation()
+      if (master .and. verbosity >= 7) then
+        if (current_gen /= gen_per_batch) then
+          call print_generation()
+        else
+          call print_batch_keff()
+        end if
+      end if
+
     elseif (run_mode == MODE_FIXEDSOURCE) then
       ! For fixed-source mode, we need to sample the external source
       if (path_source == '') then
         do i = 1, work
-          call set_particle_seed(overall_gen*n_particles + work_index(rank) + i)
+          call set_particle_seed((total_gen + overall_generation()) * &
+               n_particles + work_index(rank) + i)
           call sample_external_source(source_bank(i))
         end do
       end if
@@ -291,9 +285,13 @@ contains
 
   subroutine finalize_batch()
 
-    ! Collect tallies
+#ifdef MPI
+    integer :: mpi_err ! MPI error code
+#endif
+
+    ! Reduce tallies onto master process and accumulate
     call time_tallies % start()
-    call synchronize_tallies()
+    call accumulate_tallies()
     call time_tallies % stop()
 
     ! Reset global tally results
@@ -305,12 +303,6 @@ contains
     if (run_mode == MODE_EIGENVALUE) then
       ! Perform CMFD calculation if on
       if (cmfd_on) call execute_cmfd()
-
-      ! Display output
-      if (master .and. verbosity >= 7) call print_batch_keff()
-
-      ! Calculate combined estimate of k-effective
-      if (master) call calculate_combined_keff()
     end if
 
     ! Check_triggers
@@ -335,13 +327,6 @@ contains
       call write_source_point()
     end if
 
-    if (master .and. current_batch == n_max_batches .and. &
-         run_mode == MODE_EIGENVALUE) then
-      ! Make sure combined estimate of k-effective is calculated at the last
-      ! batch in case no state point is written
-      call calculate_combined_keff()
-    end if
-
   end subroutine finalize_batch
 
 !===============================================================================
@@ -358,7 +343,6 @@ contains
 
     if (run_mode == MODE_EIGENVALUE) then
       do current_gen = 1, gen_per_batch
-        overall_gen = overall_gen + 1
         call calculate_average_keff()
 
         ! print out batch keff
@@ -380,23 +364,87 @@ contains
   end subroutine replay_batch_history
 
 !===============================================================================
+! INITIALIZE_SIMULATION
+!===============================================================================
+
+  subroutine initialize_simulation()
+
+!$omp parallel
+    allocate(micro_xs(n_nuclides_total))
+!$omp end parallel
+
+    if (.not. restart_run) call initialize_source()
+
+    ! Display header
+    if (master) then
+      if (run_mode == MODE_FIXEDSOURCE) then
+        call header("FIXED SOURCE TRANSPORT SIMULATION", 3)
+      elseif (run_mode == MODE_EIGENVALUE) then
+        call header("K EIGENVALUE SIMULATION", 3)
+        if (verbosity >= 7) call print_columns()
+      end if
+    end if
+
+  end subroutine initialize_simulation
+
+!===============================================================================
 ! FINALIZE_SIMULATION calculates tally statistics, writes tallies, and displays
 ! execution time and results
 !===============================================================================
 
-  subroutine finalize_simulation
+  subroutine finalize_simulation()
+
+#ifdef MPI
+    integer    :: i       ! loop index for tallies
+    integer    :: n       ! size of arrays
+    integer    :: mpi_err  ! MPI error code
+    integer(8) :: temp
+    real(8)    :: tempr(3) ! temporary array for communication
+#endif
+
+!$omp parallel
+    deallocate(micro_xs)
+!$omp end parallel
+
+    ! Increment total number of generations
+    total_gen = total_gen + n_batches*gen_per_batch
 
     ! Start finalization timer
-    call time_finalize%start()
+    call time_finalize % start()
 
-    ! Calculate statistics for tallies and write to tallies.out
-    if (master) then
-      if (n_realizations > 1) call tally_statistics()
+#ifdef MPI
+    ! Broadcast tally results so that each process has access to results
+    if (allocated(tallies)) then
+      do i = 1, size(tallies)
+        n = size(tallies(i) % results)
+        call MPI_BCAST(tallies(i) % results, n, MPI_DOUBLE, 0, &
+             mpi_intracomm, mpi_err)
+      end do
     end if
-    if (output_tallies) then
-      if (master) call write_tallies()
+
+    ! Also broadcast global tally results
+    n = size(global_tallies)
+    call MPI_BCAST(global_tallies, n, MPI_DOUBLE, 0, mpi_intracomm, mpi_err)
+
+    ! These guys are needed so that non-master processes can calculate the
+    ! combined estimate of k-effective
+    tempr(1) = k_col_abs
+    tempr(2) = k_col_tra
+    tempr(3) = k_abs_tra
+    call MPI_BCAST(tempr, 3, MPI_REAL8, 0, mpi_intracomm, mpi_err)
+    k_col_abs = tempr(1)
+    k_col_tra = tempr(2)
+    k_abs_tra = tempr(3)
+
+    if (check_overlaps) then
+      call MPI_REDUCE(overlap_check_cnt, temp, n_cells, MPI_INTEGER8, &
+           MPI_SUM, 0, mpi_intracomm, mpi_err)
+      overlap_check_cnt = temp
     end if
-    if (check_overlaps) call reduce_overlap_count()
+#endif
+
+    ! Write tally results to tallies.out
+    if (output_tallies .and. master) call write_tallies()
 
     ! Stop timers and show timing statistics
     call time_finalize%stop()
@@ -408,23 +456,5 @@ contains
     end if
 
   end subroutine finalize_simulation
-
-!===============================================================================
-! REDUCE_OVERLAP_COUNT accumulates cell overlap check counts to master
-!===============================================================================
-
-  subroutine reduce_overlap_count()
-
-#ifdef MPI
-      if (master) then
-        call MPI_REDUCE(MPI_IN_PLACE, overlap_check_cnt, n_cells, &
-             MPI_INTEGER8, MPI_SUM, 0, mpi_intracomm, mpi_err)
-      else
-        call MPI_REDUCE(overlap_check_cnt, overlap_check_cnt, n_cells, &
-             MPI_INTEGER8, MPI_SUM, 0, mpi_intracomm, mpi_err)
-      end if
-#endif
-
-  end subroutine reduce_overlap_count
 
 end module simulation

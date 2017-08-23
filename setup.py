@@ -1,6 +1,7 @@
 #!/usr/bin/env python
 
 import glob
+import sys
 import numpy as np
 try:
     from setuptools import setup
@@ -16,6 +17,12 @@ except ImportError:
     have_cython = False
 
 
+# Determine shared library suffix
+if sys.platform == 'darwin':
+    suffix = 'dylib'
+else:
+    suffix = 'so'
+
 # Get version information from __init__.py. This is ugly, but more reliable than
 # using an import.
 with open('openmc/__init__.py', 'r') as f:
@@ -26,6 +33,12 @@ kwargs = {'name': 'openmc',
           'packages': ['openmc', 'openmc.data', 'openmc.mgxs', 'openmc.model',
                        'openmc.stats'],
           'scripts': glob.glob('scripts/openmc-*'),
+
+          # Data files and librarries
+          'package_data': {
+              'openmc': ['_libopenmc.{}'.format(suffix)],
+              'openmc.data': ['mass.mas12', 'fission_Q_data_endfb71.h5']
+          },
 
           # Metadata
           'author': 'Will Boyd',
@@ -55,10 +68,6 @@ if have_setuptools:
             'validate': ['lxml']
         },
 
-        # Data files
-        'package_data': {
-            'openmc.data': ['mass.mas12', 'fission_Q_data_endfb71.h5']
-        },
     })
 
 # If Cython is present, add resonance reconstruction capability

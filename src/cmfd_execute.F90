@@ -229,9 +229,12 @@ contains
     integer :: nz       ! maximum number of cells in z direction
     integer :: ng       ! maximum number of energy groups
     integer :: i        ! iteration counter
+    integer :: g        ! index for group
     integer :: ijk(3)   ! spatial bin location
     integer :: e_bin    ! energy bin of source particle
+    integer :: mesh_bin ! mesh bin of soruce particle
     integer :: n_groups ! number of energy groups
+    real(8) :: norm     ! normalization factor
     logical :: outside  ! any source sites outside mesh
     logical :: in_mesh  ! source site is inside mesh
 #ifdef MPI
@@ -246,7 +249,7 @@ contains
 
     ! allocate arrays in cmfd object (can take out later extend to multigroup)
     if (.not.allocated(cmfd%sourcecounts)) then
-      allocate(cmfd%sourcecounts(ng,nx,ny,nz))
+      allocate(cmfd%sourcecounts(ng, nx*ny*nz))
       cmfd % sourcecounts = 0
     end if
     if (.not.allocated(cmfd % weightfactors)) then
@@ -263,7 +266,6 @@ contains
       ! Count bank sites in mesh and reverse due to egrid structure
       call count_bank_sites(cmfd_mesh, source_bank, cmfd%sourcecounts, &
            cmfd % egrid, sites_outside=outside, size_bank=work)
-      cmfd % sourcecounts = cmfd%sourcecounts(ng:1:-1,:,:,:)
 
       ! Check for sites outside of the mesh
       if (master .and. outside) then
@@ -272,10 +274,21 @@ contains
 
       ! Have master compute weight factors (watch for 0s)
       if (master) then
-        where(cmfd % cmfd_src > ZERO .and. cmfd % sourcecounts > ZERO)
-          cmfd % weightfactors = cmfd % cmfd_src/sum(cmfd % cmfd_src)* &
-                               sum(cmfd % sourcecounts) / cmfd % sourcecounts
-        end where
+        ! Calculate normalization factor
+        norm = sum(cmfd % sourcecounts) / sum(cmfd % cmfd_src)
+
+        do mesh_bin = 1, nx*ny*nz
+          call cmfd_mesh % get_indices_from_bin(mesh_bin, ijk)
+          do g = 1, ng
+            if (cmfd % sourcecounts(ng - g + 1, mesh_bin) > ZERO) then
+              if (cmfd % cmfd_src(g,ijk(1),ijk(2),ijk(3)) > ZERO) then
+                cmfd % weightfactors(g,ijk(1),ijk(2),ijk(3)) = &
+                     cmfd % cmfd_src(g,ijk(1),ijk(2),ijk(3)) * norm &
+                     / cmfd % sourcecounts(ng - g + 1, mesh_bin)
+              end if
+            end if
+          end do
+        end do
       end if
 
       if (.not. cmfd_feedback) return
@@ -315,8 +328,7 @@ contains
 
       ! Reweight particle
       source_bank(i) % wgt = source_bank(i) % wgt * &
-             cmfd % weightfactors(e_bin, ijk(1), ijk(2), ijk(3))
-
+           cmfd % weightfactors(e_bin, ijk(1), ijk(2), ijk(3))
     end do
 
   end subroutine cmfd_reweight

@@ -677,6 +677,33 @@ angleenergy_header.F90.s:
 	$(MAKE) -f CMakeFiles/libopenmc.dir/build.make CMakeFiles/libopenmc.dir/angleenergy_header.F90.s
 .PHONY : angleenergy_header.F90.s
 
+api.o: api.F90.o
+
+.PHONY : api.o
+
+# target to build an object file
+api.F90.o:
+	$(MAKE) -f CMakeFiles/libopenmc.dir/build.make CMakeFiles/libopenmc.dir/api.F90.o
+.PHONY : api.F90.o
+
+api.i: api.F90.i
+
+.PHONY : api.i
+
+# target to preprocess a source file
+api.F90.i:
+	$(MAKE) -f CMakeFiles/libopenmc.dir/build.make CMakeFiles/libopenmc.dir/api.F90.i
+.PHONY : api.F90.i
+
+api.s: api.F90.s
+
+.PHONY : api.s
+
+# target to generate assembly for a file
+api.F90.s:
+	$(MAKE) -f CMakeFiles/libopenmc.dir/build.make CMakeFiles/libopenmc.dir/api.F90.s
+.PHONY : api.F90.s
+
 bank_header.o: bank_header.F90.o
 
 .PHONY : bank_header.o
@@ -1163,33 +1190,6 @@ energy_distribution.F90.s:
 	$(MAKE) -f CMakeFiles/libopenmc.dir/build.make CMakeFiles/libopenmc.dir/energy_distribution.F90.s
 .PHONY : energy_distribution.F90.s
 
-energy_grid.o: energy_grid.F90.o
-
-.PHONY : energy_grid.o
-
-# target to build an object file
-energy_grid.F90.o:
-	$(MAKE) -f CMakeFiles/libopenmc.dir/build.make CMakeFiles/libopenmc.dir/energy_grid.F90.o
-.PHONY : energy_grid.F90.o
-
-energy_grid.i: energy_grid.F90.i
-
-.PHONY : energy_grid.i
-
-# target to preprocess a source file
-energy_grid.F90.i:
-	$(MAKE) -f CMakeFiles/libopenmc.dir/build.make CMakeFiles/libopenmc.dir/energy_grid.F90.i
-.PHONY : energy_grid.F90.i
-
-energy_grid.s: energy_grid.F90.s
-
-.PHONY : energy_grid.s
-
-# target to generate assembly for a file
-energy_grid.F90.s:
-	$(MAKE) -f CMakeFiles/libopenmc.dir/build.make CMakeFiles/libopenmc.dir/energy_grid.F90.s
-.PHONY : energy_grid.F90.s
-
 error.o: error.F90.o
 
 .PHONY : error.o
@@ -1243,33 +1243,6 @@ faddeeva/Faddeeva.s: faddeeva/Faddeeva.c.s
 faddeeva/Faddeeva.c.s:
 	$(MAKE) -f CMakeFiles/faddeeva.dir/build.make CMakeFiles/faddeeva.dir/faddeeva/Faddeeva.c.s
 .PHONY : faddeeva/Faddeeva.c.s
-
-finalize.o: finalize.F90.o
-
-.PHONY : finalize.o
-
-# target to build an object file
-finalize.F90.o:
-	$(MAKE) -f CMakeFiles/libopenmc.dir/build.make CMakeFiles/libopenmc.dir/finalize.F90.o
-.PHONY : finalize.F90.o
-
-finalize.i: finalize.F90.i
-
-.PHONY : finalize.i
-
-# target to preprocess a source file
-finalize.F90.i:
-	$(MAKE) -f CMakeFiles/libopenmc.dir/build.make CMakeFiles/libopenmc.dir/finalize.F90.i
-.PHONY : finalize.F90.i
-
-finalize.s: finalize.F90.s
-
-.PHONY : finalize.s
-
-# target to generate assembly for a file
-finalize.F90.s:
-	$(MAKE) -f CMakeFiles/libopenmc.dir/build.make CMakeFiles/libopenmc.dir/finalize.F90.s
-.PHONY : finalize.F90.s
 
 geometry.o: geometry.F90.o
 
@@ -3081,6 +3054,9 @@ help:
 	@echo "... angleenergy_header.o"
 	@echo "... angleenergy_header.i"
 	@echo "... angleenergy_header.s"
+	@echo "... api.o"
+	@echo "... api.i"
+	@echo "... api.s"
 	@echo "... bank_header.o"
 	@echo "... bank_header.i"
 	@echo "... bank_header.s"
@@ -3135,18 +3111,12 @@ help:
 	@echo "... energy_distribution.o"
 	@echo "... energy_distribution.i"
 	@echo "... energy_distribution.s"
-	@echo "... energy_grid.o"
-	@echo "... energy_grid.i"
-	@echo "... energy_grid.s"
 	@echo "... error.o"
 	@echo "... error.i"
 	@echo "... error.s"
 	@echo "... faddeeva/Faddeeva.o"
 	@echo "... faddeeva/Faddeeva.i"
 	@echo "... faddeeva/Faddeeva.s"
-	@echo "... finalize.o"
-	@echo "... finalize.i"
-	@echo "... finalize.s"
 	@echo "... geometry.o"
 	@echo "... geometry.i"
 	@echo "... geometry.s"

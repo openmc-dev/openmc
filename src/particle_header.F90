@@ -15,6 +15,7 @@ module particle_header
 !===============================================================================
 
   type LocalCoord
+
     ! Indices in various arrays for this level
     integer :: cell      = NONE
     integer :: universe  = NONE
@@ -45,7 +46,12 @@ module particle_header
 
     ! Particle coordinates
     integer          :: n_coord          ! number of current coordinates
+    integer          :: cell_instance    ! offset for distributed properties
     type(LocalCoord) :: coord(MAX_COORD) ! coordinates for all levels
+
+    ! Particle coordinates before crossing a surface
+    integer :: last_n_coord         ! number of current coordinates
+    integer :: last_cell(MAX_COORD) ! coordinates for all levels
 
     ! Energy Data
     real(8)    :: E      ! post-collision energy
@@ -146,6 +152,7 @@ contains
     ! Set up base level coordinates
     this % coord(1) % universe = root_universe
     this % n_coord = 1
+    this % last_n_coord = 1
 
   end subroutine initialize_particle
 

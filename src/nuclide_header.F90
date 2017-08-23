@@ -97,6 +97,7 @@ module nuclide_header
   contains
     procedure :: clear => nuclide_clear
     procedure :: from_hdf5 => nuclide_from_hdf5
+    procedure :: init_grid => nuclide_init_grid
     procedure :: nu    => nuclide_nu
     procedure, private :: create_derived => nuclide_create_derived
   end type Nuclide
@@ -170,12 +171,13 @@ module nuclide_header
   end subroutine nuclide_clear
 
   subroutine nuclide_from_hdf5(this, group_id, temperature, method, tolerance, &
-                               master)
+                               minmax, master)
     class(Nuclide),   intent(inout) :: this
     integer(HID_T),   intent(in)    :: group_id
-    type(VectorReal), intent(in)   :: temperature ! list of desired temperatures
+    type(VectorReal), intent(in)    :: temperature ! list of desired temperatures
     integer,          intent(inout) :: method
     real(8),          intent(in)    :: tolerance
+    real(8),          intent(in)    :: minmax(2)  ! range of temperatures
     logical,          intent(in)    :: master     ! if this is the master proc
 
     integer :: i
@@ -235,7 +237,18 @@ module nuclide_header
       method = TEMPERATURE_NEAREST
     end if
 
-    ! Determine actual temperatures to read
+    ! Determine actual temperatures to read -- start by checking whether a
+    ! temperature range was given, in which case all temperatures in the range
+    ! are loaded irrespective of what temperatures actually appear in the model
+    if (minmax(2) > ZERO) then
+      do i = 1, size(temps_available)
+        temp_actual = temps_available(i)
+        if (minmax(1) <= temp_actual .and. temp_actual <= minmax(2)) then
+          call temps_to_read % push_back(nint(temp_actual))
+        end if
+      end do
+    end if
+
     select case (method)
     case (TEMPERATURE_NEAREST)
       ! Find nearest temperatures
@@ -672,5 +685,43 @@ module nuclide_header
     end select
 
   end function nuclide_nu
+
+  subroutine nuclide_init_grid(this, E_min, E_max, M)
+    class(Nuclide), intent(inout) :: this
+    real(8), intent(in) :: E_min           ! Minimum energy in MeV
+    real(8), intent(in) :: E_max           ! Maximum energy in MeV
+    integer, intent(in) :: M               ! Number of equally log-spaced bins
+
+    integer :: i, j, k               ! Loop indices
+    integer :: t                     ! temperature index
+    real(8) :: spacing
+    real(8), allocatable :: umesh(:) ! Equally log-spaced energy grid
+
+    ! Determine equal-logarithmic energy spacing
+    spacing = log(E_max/E_min)/M
+
+    ! Create equally log-spaced energy grid
+    allocate(umesh(0:M))
+    umesh(:) = [(i*spacing, i=0, M)]
+
+    do t = 1, size(this % grid)
+      ! Allocate logarithmic mapping for nuclide
+      allocate(this % grid(t) % grid_index(0:M))
+
+      ! Determine corresponding indices in nuclide grid to energies on
+      ! equal-logarithmic grid
+      j = 1
+      do k = 0, M
+        do while (log(this % grid(t) % energy(j + 1)/E_min) <= umesh(k))
+          ! Ensure that for isotopes where maxval(this % energy) << E_max
+          ! that there are no out-of-bounds issues.
+          if (j + 1 == size(this % grid(t) % energy)) exit
+          j = j + 1
+        end do
+        this % grid(t) % grid_index(k) = j
+      end do
+    end do
+
+  end subroutine nuclide_init_grid
 
 end module nuclide_header

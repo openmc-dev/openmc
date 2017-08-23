@@ -866,12 +866,13 @@ class IncidentNeutron(EqualityMixin):
                 data.fission_energy = FissionEnergyRelease.from_endf(ev, data)
 
             # Add 0K elastic scattering cross section
-            pendf = Evaluation(pendf_file)
-            file_obj = StringIO(pendf.section[3, 2])
-            get_head_record(file_obj)
-            params, xs = get_tab1_record(file_obj)
-            data.energy['0K'] = xs.x
-            data[2].xs['0K'] = xs
+            if '0K' not in data.energy:
+                pendf = Evaluation(pendf_file)
+                file_obj = StringIO(pendf.section[3, 2])
+                get_head_record(file_obj)
+                params, xs = get_tab1_record(file_obj)
+                data.energy['0K'] = xs.x
+                data[2].xs['0K'] = xs
 
         finally:
             # Get rid of temporary files

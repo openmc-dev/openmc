@@ -5,9 +5,14 @@
         <lower_left>-0.63 -0.63 -1e+50</lower_left>
         <upper_right>0.63 0.63 1e+50</upper_right>
     </mesh>
+    <filter id="1" type="energy">
+      <bins>1e-05 0.0635 10.0 100.0 1000.0 500000.0 1000000.0 20000000.0</bins>
+    </filter>
+    <filter id="2" type="mesh">
+      <bins>1</bins>
+    </filter>
     <tally id="1" name="tally 1">
-        <filter bins="1e-05 0.0635 10.0 100.0 1000.0 500000.0 1000000.0 20000000.0" type="energy" />
-        <filter bins="1" type="mesh" />
+        <filters>1 2</filters>
         <scores>flux fission nu-fission</scores>
     </tally>
 </tallies>

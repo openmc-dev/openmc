@@ -1,10 +1,13 @@
 module trigger
 
+  use, intrinsic :: ISO_C_BINDING
+
 #ifdef MPI
   use message_passing
 #endif
 
   use constants
+  use eigenvalue,     only: openmc_get_keff
   use global
   use string,         only: to_str
   use output,         only: warning, write_message
@@ -101,10 +104,12 @@ contains
     integer :: score_index    ! scoring bin index
     integer :: n_order        ! loop index for moment orders
     integer :: nm_order       ! loop index for Ynm moment orders
+    integer(C_INT) :: err
     real(8) :: uncertainty    ! trigger uncertainty
     real(8) :: std_dev = ZERO ! trigger standard deviation
     real(8) :: rel_err = ZERO ! trigger relative error
     real(8) :: ratio          ! ratio of the uncertainty/trigger threshold
+    real(C_DOUBLE) :: k_combined(2)
     type(TallyObject), pointer     :: t               ! tally pointer
     type(TriggerObject), pointer   :: trigger         ! tally trigger
 
@@ -119,6 +124,7 @@ contains
       ! Check eigenvalue trigger
       if (run_mode == MODE_EIGENVALUE) then
         if (keff_trigger % trigger_type /= 0) then
+          err = openmc_get_keff(k_combined)
           select case (keff_trigger % trigger_type)
           case(VARIANCE)
             uncertainty = k_combined(2) ** 2
@@ -161,8 +167,8 @@ contains
           trigger % rel_err = ZERO
           trigger % variance = ZERO
 
-          ! Surface current tally triggers require special treatment
-          if (t % type == TALLY_SURFACE_CURRENT) then
+          ! Mesh current tally triggers require special treatment
+          if (t % type == TALLY_MESH_CURRENT) then
             call compute_tally_current(t, trigger)
 
           else
@@ -281,7 +287,7 @@ contains
 
 
 !===============================================================================
-! COMPUTE_TALLY_CURRENT computes the current for a surface current tally with
+! COMPUTE_TALLY_CURRENT computes the current for a mesh current tally with
 ! precision trigger(s).
 !===============================================================================
 
@@ -301,8 +307,8 @@ contains
     logical :: print_ebin           ! should incoming energy bin be displayed?
     real(8) :: rel_err  = ZERO      ! temporary relative error of result
     real(8) :: std_dev  = ZERO      ! temporary standard deviration of result
-    type(TallyObject), pointer    :: t        ! surface current tally
-    type(TriggerObject)           :: trigger  ! surface current tally trigger
+    type(TallyObject), pointer    :: t        ! mesh current tally
+    type(TriggerObject)           :: trigger  ! mesh current tally trigger
     type(RegularMesh), pointer :: m        ! surface current mesh
 
     ! Get pointer to mesh

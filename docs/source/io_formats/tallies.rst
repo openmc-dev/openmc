@@ -123,9 +123,9 @@ to the scored values. The ``filter`` element has the following
 attributes/sub-elements:
 
   :type:
-    The type of the filter. Accepted options are "cell", "cellborn",
-    "material", "universe", "energy", "energyout", "mu", "polar",
-    "azimuthal", "mesh", "distribcell", "delayedgroup", and
+    The type of the filter. Accepted options are "cell", "cellfrom", 
+    "cellborn", "surface", "material", "universe", "energy", "energyout", "mu", 
+    "polar", "azimuthal", "mesh", "distribcell", "delayedgroup", and
     "energyfunction".
 
   :bins:
@@ -154,14 +154,31 @@ For each filter type, the following table describes what the ``bins`` attribute
 should be set to:
 
 :cell:
-  A list of unique IDs for cells in which the tally should be accumulated.
+  A list of unique IDs for cells in which the tally should be 
+  accumulated.
+
+:surface:
+  This filter allows the tally to be scored when crossing a surface. A list of 
+  surface IDs should be given. By default, net currents are tallied, and to 
+  tally a partial current from one cell to another, this should be used in 
+  combination with a cell or cell_from filter that defines the other cell.
+  This filter should not be used in combination with a meshfilter.
+
+:cellfrom:
+  This filter allows the tally to be scored when crossing a surface and the 
+  particle came from a specified cell. A list of cell IDs should be 
+  given.
+  To tally a partial current from a cell to another, this filter should be 
+  used in combination with a cell filter, to define the other cell.
+  This filter should not be used in combination with a meshfilter.
 
 :cellborn:
   This filter allows the tally to be scored to only when particles were
-  originally born in a specified cell. A list of cell IDs should be given.
+  originally born in a specified cell. A list of cell IDs should be 
+  given.
 
 :material:
-  A list of unique IDs for matreials in which the tally should be accumulated.
+  A list of unique IDs for materials in which the tally should be accumulated.
 
 :universe:
   A list of unique IDs for universes in which the tally should be accumulated.

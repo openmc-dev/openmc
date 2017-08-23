@@ -73,6 +73,17 @@ module tally_filter
   end type CellFilter
 
 !===============================================================================
+! CELLFROMFILTER specifies which geometric cells particles exit when crossing a
+! surface.
+!===============================================================================
+  type, extends(CellFilter) :: CellFromFilter
+  contains
+    procedure :: get_all_bins => get_all_bins_cell_from
+    procedure :: to_statepoint => to_statepoint_cell_from
+    procedure :: text_label => text_label_cell_from
+  end type CellFromFilter
+
+!===============================================================================
 ! DISTRIBCELLFILTER specifies which distributed geometric cells tally events
 ! reside in.
 !===============================================================================
@@ -99,8 +110,7 @@ module tally_filter
   end type CellbornFilter
 
 !===============================================================================
-! SURFACEFILTER is currently not implemented for usual geometric surfaces, but
-! it is used as a placeholder for mesh surfaces used in current tallies.
+! SURFACEFILTER specifies which surface particles are crossing
 !===============================================================================
   type, extends(TallyFilter) :: SurfaceFilter
     integer, allocatable :: surfaces(:)
@@ -643,6 +653,53 @@ contains
   end function text_label_cell
 
 !===============================================================================
+! CellFromFilter methods
+!===============================================================================
+  subroutine get_all_bins_cell_from(this, p, estimator, match)
+    class(CellFromFilter), intent(in)  :: this
+    type(Particle),    intent(in)  :: p
+    integer,           intent(in)  :: estimator
+    type(TallyFilterMatch), intent(inout) :: match
+
+    integer :: i
+
+    ! Iterate over coordinate levels to see with cells match
+
+    do i = 1, p % last_n_coord
+      if (this % map % has_key(p % last_cell(i))) then
+        call match % bins % push_back(this % map % get_key(p % last_cell(i)))
+        call match % weights % push_back(ONE)
+      end if
+    end do
+
+  end subroutine get_all_bins_cell_from
+
+  subroutine to_statepoint_cell_from(this, filter_group)
+    class(CellFromFilter), intent(in) :: this
+    integer(HID_T),        intent(in) :: filter_group
+
+    integer :: i
+    integer, allocatable :: cell_ids(:)
+
+    call write_dataset(filter_group, "type", "cellfrom")
+    call write_dataset(filter_group, "n_bins", this % n_bins)
+
+    allocate(cell_ids(size(this % cells)))
+    do i = 1, size(this % cells)
+      cell_ids(i) = cells(this % cells(i)) % id
+    end do
+    call write_dataset(filter_group, "bins", cell_ids)
+  end subroutine to_statepoint_cell_from
+
+  function text_label_cell_from(this, bin) result(label)
+    class(CellFromFilter), intent(in) :: this
+    integer,               intent(in) :: bin
+    character(MAX_LINE_LEN)           :: label
+
+    label = "Cell from " // to_str(cells(this % cells(bin)) % id)
+  end function text_label_cell_from
+
+!===============================================================================
 ! DistribcellFilter methods
 !===============================================================================
   subroutine get_all_bins_distribcell(this, p, estimator, match)
@@ -861,12 +918,8 @@ contains
         end if
 
       else
-        ! Make sure the correct energy is used.
-        if (estimator == ESTIMATOR_TRACKLENGTH) then
-          E = p % E
-        else
-          E = p % last_E
-        end if
+        ! Pre-collision energy of particle
+        E = p % last_E
 
         ! Search to find incoming energy bin.
         bin = binary_search(this % bins, n + 1, E)
@@ -1145,6 +1198,7 @@ contains
 
     select type(this)
     type is (EnergyFunctionFilter)
+
       n = size(this % energy)
 
       ! Make sure the correct energy is used.

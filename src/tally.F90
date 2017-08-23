@@ -22,10 +22,6 @@ module tally
 
   implicit none
 
-  integer :: position(N_FILTER_TYPES - 3) = 0 ! Tally map positioning array
-
-!$omp threadprivate(position)
-
   procedure(score_general_),      pointer :: score_general => null()
   procedure(score_analog_tally_), pointer :: score_analog_tally => null()
 
@@ -104,6 +100,9 @@ contains
     real(8) :: score                ! analog tally score
     real(8) :: E                    ! particle energy
 
+    ! Pre-collision energy of particle
+    E = p % last_E
+
     i = 0
     SCORE_LOOP: do q = 1, t % n_user_score_bins
       i = i + 1
@@ -163,14 +162,6 @@ contains
 
 
       case (SCORE_INVERSE_VELOCITY)
-
-        ! make sure the correct energy is used
-        if (t % estimator == ESTIMATOR_TRACKLENGTH) then
-          E = p % E
-        else
-          E = p % last_E
-        end if
-
         if (t % estimator == ESTIMATOR_ANALOG) then
           ! All events score to an inverse velocity bin. We actually use a
           ! collision estimator in place of an analog one since there is no way
@@ -260,7 +251,7 @@ contains
           ! Get yield and apply to score
           associate (rxn => nuclides(p % event_nuclide) % reactions(m))
             score = p % last_wgt * flux &
-                 * rxn % products(1) % yield % evaluate(p % last_E)
+                 * rxn % products(1) % yield % evaluate(E)
           end associate
         end if
 
@@ -287,7 +278,7 @@ contains
           ! Get yield and apply to score
           associate (rxn => nuclides(p % event_nuclide) % reactions(m))
             score = p % last_wgt * flux &
-                 * rxn % products(1) % yield % evaluate(p % last_E)
+                 * rxn % products(1) % yield % evaluate(E)
           end associate
         end if
 
@@ -314,7 +305,7 @@ contains
           ! Get yield and apply to score
           associate (rxn => nuclides(p%event_nuclide)%reactions(m))
             score = p % last_wgt * flux &
-                 * rxn % products(1) % yield % evaluate(p % last_E)
+                 * rxn % products(1) % yield % evaluate(E)
           end associate
         end if
 
@@ -417,13 +408,6 @@ contains
 
 
       case (SCORE_PROMPT_NU_FISSION)
-        ! make sure the correct energy is used
-        if (t % estimator == ESTIMATOR_TRACKLENGTH) then
-          E = p % E
-        else
-          E = p % last_E
-        end if
-
         if (t % estimator == ESTIMATOR_ANALOG) then
           if (survival_biasing .or. p % fission) then
             if (t % find_filter(FILTER_ENERGYOUT) > 0) then
@@ -485,16 +469,7 @@ contains
           end if
         end if
 
-
       case (SCORE_DELAYED_NU_FISSION)
-
-        ! make sure the correct energy is used
-        if (t % estimator == ESTIMATOR_TRACKLENGTH) then
-          E = p % E
-        else
-          E = p % last_E
-        end if
-
         ! Set the delayedgroup filter index and the number of delayed group bins
         dg_filter = t % find_filter(FILTER_DELAYEDGROUP)
 
@@ -686,14 +661,6 @@ contains
         end if
 
       case (SCORE_DECAY_RATE)
-
-        ! make sure the correct energy is used
-        if (t % estimator == ESTIMATOR_TRACKLENGTH) then
-          E = p % E
-        else
-          E = p % last_E
-        end if
-
         ! Set the delayedgroup filter index
         dg_filter = t % find_filter(FILTER_DELAYEDGROUP)
 
@@ -1069,7 +1036,7 @@ contains
               if (micro_xs(p % event_nuclide) % absorption > ZERO .and. &
                    allocated(nuc % fission_q_prompt)) then
                 score = p % absorb_wgt &
-                     * nuc % fission_q_prompt % evaluate(p % last_E) &
+                     * nuc % fission_q_prompt % evaluate(E) &
                      * micro_xs(p % event_nuclide) % fission &
                      / micro_xs(p % event_nuclide) % absorption * flux
               end if
@@ -1083,7 +1050,7 @@ contains
             associate (nuc => nuclides(p % event_nuclide))
               if (allocated(nuc % fission_q_prompt)) then
                 score = p % last_wgt &
-                     * nuc % fission_q_prompt % evaluate(p % last_E) &
+                     * nuc % fission_q_prompt % evaluate(E) &
                      * micro_xs(p % event_nuclide) % fission &
                      / micro_xs(p % event_nuclide) % absorption * flux
               end if
@@ -1091,12 +1058,6 @@ contains
           end if
 
         else
-          if (t % estimator == ESTIMATOR_COLLISION) then
-            E = p % last_E
-          else
-            E = p % E
-          end if
-
           if (i_nuclide > 0) then
             if (allocated(nuclides(i_nuclide) % fission_q_prompt)) then
               score = micro_xs(i_nuclide) % fission * atom_density * flux &
@@ -1129,7 +1090,7 @@ contains
               if (micro_xs(p % event_nuclide) % absorption > ZERO .and. &
                    allocated(nuc % fission_q_recov)) then
                 score = p % absorb_wgt &
-                     * nuc % fission_q_recov % evaluate(p % last_E) &
+                     * nuc % fission_q_recov % evaluate(E) &
                      * micro_xs(p % event_nuclide) % fission &
                      / micro_xs(p % event_nuclide) % absorption * flux
               end if
@@ -1143,7 +1104,7 @@ contains
             associate (nuc => nuclides(p % event_nuclide))
               if (allocated(nuc % fission_q_recov)) then
                 score = p % last_wgt &
-                     * nuc % fission_q_recov % evaluate(p % last_E) &
+                     * nuc % fission_q_recov % evaluate(E) &
                      * micro_xs(p % event_nuclide) % fission &
                      / micro_xs(p % event_nuclide) % absorption * flux
               end if
@@ -1151,12 +1112,6 @@ contains
           end if
 
         else
-          if (t % estimator == ESTIMATOR_COLLISION) then
-            E = p % last_E
-          else
-            E = p % E
-          end if
-
           if (i_nuclide > 0) then
             if (allocated(nuclides(i_nuclide) % fission_q_recov)) then
               score = micro_xs(i_nuclide) % fission * atom_density * flux &
@@ -2404,9 +2359,6 @@ contains
     ! Reset filter matches flag
     filter_matches(:) % bins_present = .false.
 
-    ! Reset tally map positioning
-    position = 0
-
   end subroutine score_analog_tally_ce
 
   subroutine score_analog_tally_mg(p)
@@ -2545,9 +2497,6 @@ contains
 
     ! Reset filter matches flag
     filter_matches(:) % bins_present = .false.
-
-    ! Reset tally map positioning
-    position = 0
 
   end subroutine score_analog_tally_mg
 
@@ -2938,9 +2887,6 @@ contains
     ! Reset filter matches flag
     filter_matches(:) % bins_present = .false.
 
-    ! Reset tally map positioning
-    position = 0
-
   end subroutine score_tracklength_tally
 
 !===============================================================================
@@ -3108,10 +3054,137 @@ contains
     ! Reset filter matches flag
     filter_matches(:) % bins_present = .false.
 
-    ! Reset tally map positioning
-    position = 0
-
   end subroutine score_collision_tally
+
+!===============================================================================
+! score_surface_tally is called at every surface crossing and can be used to
+! tally total or partial currents between two cells
+!===============================================================================
+
+    subroutine  score_surface_tally(p)
+
+    type(Particle), intent(in)    :: p
+
+    integer :: i
+    integer :: i_tally
+    integer :: i_filt
+    integer :: i_bin
+    integer :: q                    ! loop index for scoring bins
+    integer :: k                    ! working index for expand and score
+    integer :: score_bin            ! scoring bin, e.g. SCORE_FLUX
+    integer :: score_index          ! scoring bin index
+    integer :: j                    ! loop index for scoring bins
+    integer :: filter_index         ! single index for single bin
+    integer :: matching_bin         ! next valid filter bin
+    real(8) :: flux                 ! collision estimate of flux
+    real(8) :: filter_weight        ! combined weight of all filters
+    real(8) :: score                ! analog tally score
+    logical :: finished             ! found all valid bin combinations
+
+    ! No collision, so no weight change when survival biasing
+    flux = p % wgt
+
+    TALLY_LOOP: do i = 1, active_surface_tallies % size()
+      ! Get index of tally and pointer to tally
+      i_tally = active_surface_tallies % data(i)
+      associate (t => tallies(i_tally))
+
+      ! Find all valid bins in each filter if they have not already been found
+      ! for a previous tally.
+      do j = 1, size(t % filter)
+        i_filt = t % filter(j)
+        if (.not. filter_matches(i_filt) % bins_present) then
+          call filter_matches(i_filt) % bins % clear()
+          call filter_matches(i_filt) % weights % clear()
+          call filters(i_filt) % obj % get_all_bins(p, t % estimator, &
+               filter_matches(i_filt))
+          filter_matches(i_filt) % bins_present = .true.
+        end if
+        ! If there are no valid bins for this filter, then there is nothing to
+        ! score and we can move on to the next tally.
+        if (filter_matches(i_filt) % bins % size() == 0) cycle TALLY_LOOP
+
+        ! Set the index of the bin used in the first filter combination
+        filter_matches(i_filt) % i_bin = 1
+      end do
+
+      ! ========================================================================
+      ! Loop until we've covered all valid bins on each of the filters.
+
+      FILTER_LOOP: do
+
+        ! Reset scoring index and weight
+        filter_index = 1
+        filter_weight = ONE
+
+        ! Determine scoring index and weight for this filter combination
+        do j = 1, size(t % filter)
+          i_filt = t % filter(j)
+          i_bin = filter_matches(i_filt) % i_bin
+          filter_index = filter_index + (filter_matches(i_filt) % bins % &
+               data(i_bin) - 1) * t % stride(j)
+          filter_weight = filter_weight * filter_matches(i_filt) % weights % &
+               data(i_bin)
+        end do
+
+        ! Determine score
+        score = flux * filter_weight
+
+        ! Currently only one score type
+        k = 0
+        SCORE_LOOP: do q = 1, t % n_user_score_bins
+          k = k + 1
+
+          ! determine what type of score bin
+          score_bin = t % score_bins(q)
+
+          ! determine scoring bin index, no offset from nuclide bins
+          score_index = q
+
+          ! Expand score if necessary and add to tally results.
+          call expand_and_score(p, t, score_index, filter_index, score_bin, &
+               score, k)
+        end do SCORE_LOOP
+
+        ! ======================================================================
+        ! Filter logic
+
+        ! Increment the filter bins, starting with the last filter to find the
+        ! next valid bin combination
+        finished = .true.
+        do j = size(t % filter), 1, -1
+          i_filt = t % filter(j)
+          if (filter_matches(i_filt) % i_bin < filter_matches(i_filt) % &
+               bins % size()) then
+            filter_matches(i_filt) % i_bin = filter_matches(i_filt) % i_bin + 1
+            finished = .false.
+            exit
+          else
+            filter_matches(i_filt) % i_bin = 1
+          end if
+        end do
+
+        ! Once we have finished all valid bins for each of the filters, exit
+        ! the loop.
+        if (finished) exit FILTER_LOOP
+
+      end do FILTER_LOOP
+
+      end associate
+
+      ! If the user has specified that we can assume all tallies are spatially
+      ! separate, this implies that once a tally has been scored to, we needn't
+      ! check the others. This cuts down on overhead when there are many
+      ! tallies specified
+
+      if (assume_separate) exit TALLY_LOOP
+
+    end do TALLY_LOOP
+
+    ! Reset filter matches flag
+    filter_matches(:) % bins_present = .false.
+
+  end subroutine score_surface_tally
 
 !===============================================================================
 ! SCORE_SURFACE_CURRENT tallies surface crossings in a mesh tally by manually
@@ -4178,11 +4251,11 @@ contains
   end subroutine zero_flux_derivs
 
 !===============================================================================
-! SYNCHRONIZE_TALLIES accumulates the sum of the contributions from each history
+! ACCUMULATE_TALLIES accumulates the sum of the contributions from each history
 ! within the batch to a new random variable
 !===============================================================================
 
-  subroutine synchronize_tallies()
+  subroutine accumulate_tallies()
 
     integer :: i
     real(C_DOUBLE) :: k_col ! Copy of batch collision estimate of keff
@@ -4232,7 +4305,7 @@ contains
       end do
     end if
 
-  end subroutine synchronize_tallies
+  end subroutine accumulate_tallies
 
 !===============================================================================
 ! REDUCE_TALLY_RESULTS collects all the results from tallies onto one processor
@@ -4242,73 +4315,55 @@ contains
   subroutine reduce_tally_results()
 
     integer :: i
-    integer :: n      ! number of filter bins
-    integer :: m      ! number of score bins
-    integer :: n_bins ! total number of bins
-    real(8), allocatable :: tally_temp(:,:) ! contiguous array of results
-    real(8) :: global_temp(N_GLOBAL_TALLIES)
-    real(8) :: dummy  ! temporary receive buffer for non-root reduces
-    type(TallyObject), pointer :: t
+    integer :: n       ! number of filter bins
+    integer :: m       ! number of score bins
+    integer :: n_bins  ! total number of bins
+    integer :: mpi_err ! MPI error code
+    real(C_DOUBLE), allocatable :: tally_temp(:,:)  ! contiguous array of results
+    real(C_DOUBLE), allocatable :: tally_temp2(:,:) ! reduced contiguous results
+    real(C_DOUBLE) :: temp(N_GLOBAL_TALLIES), temp2(N_GLOBAL_TALLIES)
 
     do i = 1, active_tallies % size()
-      t => tallies(active_tallies % data(i))
+      associate (t => tallies(active_tallies % data(i)))
 
-      m = t % total_score_bins
-      n = t % total_filter_bins
-      n_bins = m*n
+        m = size(t % results, 2)
+        n = size(t % results, 3)
+        n_bins = m*n
 
-      allocate(tally_temp(m,n))
+        allocate(tally_temp(m,n), tally_temp2(m,n))
 
-      tally_temp = t % results(RESULT_VALUE,:,:)
-
-      if (master) then
-        ! The MPI_IN_PLACE specifier allows the master to copy values into
-        ! a receive buffer without having a temporary variable
-        call MPI_REDUCE(MPI_IN_PLACE, tally_temp, n_bins, MPI_REAL8, &
+        ! Reduce contiguous set of tally results
+        tally_temp = t % results(RESULT_VALUE,:,:)
+        call MPI_REDUCE(tally_temp, tally_temp2, n_bins, MPI_DOUBLE, &
              MPI_SUM, 0, mpi_intracomm, mpi_err)
 
-        ! Transfer values to value on master
-        t % results(RESULT_VALUE,:,:) = tally_temp
-      else
-        ! Receive buffer not significant at other processors
-        call MPI_REDUCE(tally_temp, dummy, n_bins, MPI_REAL8, &
-             MPI_SUM, 0, mpi_intracomm, mpi_err)
+        if (master) then
+          ! Transfer values to value on master
+          t % results(RESULT_VALUE,:,:) = tally_temp2
+        else
+          ! Reset value on other processors
+          t % results(RESULT_VALUE,:,:) = ZERO
+        end if
 
-        ! Reset value on other processors
-        t % results(RESULT_VALUE,:,:) = ZERO
-      end if
-
-      deallocate(tally_temp)
+        deallocate(tally_temp, tally_temp2)
+      end associate
     end do
 
-    ! Copy global tallies into array to be reduced
-    global_temp = global_tallies(RESULT_VALUE, :)
-
+    ! Reduce global tallies onto master
+    temp = global_tallies(RESULT_VALUE, :)
+    call MPI_REDUCE(temp, temp2, N_GLOBAL_TALLIES, MPI_DOUBLE, MPI_SUM, &
+         0, mpi_intracomm, mpi_err)
     if (master) then
-      call MPI_REDUCE(MPI_IN_PLACE, global_temp, N_GLOBAL_TALLIES, &
-           MPI_REAL8, MPI_SUM, 0, mpi_intracomm, mpi_err)
-
-      ! Transfer values back to global_tallies on master
-      global_tallies(RESULT_VALUE, :) = global_temp
+      global_tallies(RESULT_VALUE, :) = temp2
     else
-      ! Receive buffer not significant at other processors
-      call MPI_REDUCE(global_temp, dummy, N_GLOBAL_TALLIES, &
-           MPI_REAL8, MPI_SUM, 0, mpi_intracomm, mpi_err)
-
-      ! Reset value on other processors
       global_tallies(RESULT_VALUE, :) = ZERO
     end if
 
     ! We also need to determine the total starting weight of particles from the
     ! last realization
-    if (master) then
-      call MPI_REDUCE(MPI_IN_PLACE, total_weight, 1, MPI_REAL8, MPI_SUM, &
-           0, mpi_intracomm, mpi_err)
-    else
-      ! Receive buffer not significant at other processors
-      call MPI_REDUCE(total_weight, dummy, 1, MPI_REAL8, MPI_SUM, &
-           0, mpi_intracomm, mpi_err)
-    end if
+    temp(1) = total_weight
+    call MPI_REDUCE(temp, total_weight, 1, MPI_REAL8, MPI_SUM, &
+         0, mpi_intracomm, mpi_err)
 
   end subroutine reduce_tally_results
 #endif
@@ -4347,45 +4402,6 @@ contains
   end subroutine accumulate_tally
 
 !===============================================================================
-! TALLY_STATISTICS computes the mean and standard deviation of the mean of each
-! tally and stores them in the RESULT_SUM and RESULT_SUM_SQ positions
-!===============================================================================
-
-  subroutine tally_statistics()
-    integer :: i    ! index in tallies array
-    integer :: j, k ! score/filter indices
-    integer :: n    ! number of realizations
-
-    ! Calculate sample mean and standard deviation of the mean -- note that we
-    ! have used Bessel's correction so that the estimator of the variance of the
-    ! sample mean is unbiased.
-
-    do i = 1, n_tallies
-      n = tallies(i) % n_realizations
-
-      associate (r => tallies(i) % results)
-        do k = 1, size(r, 3)
-          do j = 1, size(r, 2)
-            r(RESULT_SUM, j, k) = r(RESULT_SUM, j, k) / n
-            r(RESULT_SUM_SQ, j, k) = sqrt((r(RESULT_SUM_SQ, j, k)/n - &
-                 r(RESULT_SUM, j, k) * r(RESULT_SUM, j, k))/(n - 1))
-          end do
-        end do
-      end associate
-    end do
-
-    ! Calculate statistics for global tallies
-    n = n_realizations
-    associate (r => global_tallies)
-      do j = 1, size(r, 2)
-        r(RESULT_SUM, j) = r(RESULT_SUM, j) / n
-        r(RESULT_SUM_SQ, j) = sqrt((r(RESULT_SUM_SQ, j)/n - &
-             r(RESULT_SUM, j) * r(RESULT_SUM, j))/(n - 1))
-      end do
-    end associate
-  end subroutine tally_statistics
-
-!===============================================================================
 ! SETUP_ACTIVE_USERTALLIES
 !===============================================================================
 
@@ -4406,9 +4422,12 @@ contains
         elseif (user_tallies(i) % estimator == ESTIMATOR_COLLISION) then
           call active_collision_tallies % push_back(i_user_tallies + i)
         end if
-      elseif (user_tallies(i) % type == TALLY_SURFACE_CURRENT) then
+      elseif (user_tallies(i) % type == TALLY_MESH_CURRENT) then
         call active_current_tallies % push_back(i_user_tallies + i)
+      elseif (user_tallies(i) % type == TALLY_SURFACE) then
+        call active_surface_tallies % push_back(i_user_tallies + i)
       end if
+
     end do
 
     call active_tallies % shrink_to_fit()
@@ -4416,6 +4435,7 @@ contains
     call active_tracklength_tallies % shrink_to_fit()
     call active_collision_tallies % shrink_to_fit()
     call active_current_tallies % shrink_to_fit()
+    call active_surface_tallies % shrink_to_fit()
 
   end subroutine setup_active_usertallies
 
@@ -4439,6 +4459,9 @@ contains
     else if (active_current_tallies % size() > 0) then
       call fatal_error("Active current tallies should not exist before CMFD &
            &tallies!")
+    else if (active_surface_tallies % size() > 0) then
+      call fatal_error("Active cell to cell tallies should not exist before &
+           &CMFD tallies!")
     end if
 
     do i = 1, n_cmfd_tallies
@@ -4452,7 +4475,7 @@ contains
         elseif (cmfd_tallies(i) % estimator == ESTIMATOR_TRACKLENGTH) then
           call active_tracklength_tallies % push_back(i_cmfd_tallies + i)
         end if
-      elseif (cmfd_tallies(i) % type == TALLY_SURFACE_CURRENT) then
+      elseif (cmfd_tallies(i) % type == TALLY_MESH_CURRENT) then
         call active_current_tallies % push_back(i_cmfd_tallies + i)
       end if
     end do

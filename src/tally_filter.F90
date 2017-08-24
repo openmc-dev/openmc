@@ -856,7 +856,7 @@ contains
             call match % weights % push_back(-ONE)
           else
             call match % weights % push_back(ONE)
-          end if  
+          end if
           exit
         end if
       end do

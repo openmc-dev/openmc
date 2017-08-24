@@ -4256,7 +4256,7 @@ contains
     if (master .or. (.not. reduce_tallies)) then
       ! Accumulate results for each tally
       do i = 1, active_tallies % size()
-        call accumulate_tally(tallies(active_tallies % data(i)) % obj)
+        call tallies(active_tallies % data(i)) % obj % accumulate()
       end do
 
       if (run_mode == MODE_EIGENVALUE) then
@@ -4344,39 +4344,6 @@ contains
 
   end subroutine reduce_tally_results
 #endif
-
-!===============================================================================
-! ACCUMULATE_TALLY
-!===============================================================================
-
-  subroutine accumulate_tally(t)
-
-    type(TallyObject), intent(inout) :: t
-
-    integer :: i, j
-    real(C_DOUBLE) :: val
-
-    ! Increment number of realizations
-    if (reduce_tallies) then
-      t % n_realizations = t % n_realizations + 1
-    else
-      t % n_realizations = t % n_realizations + n_procs
-    end if
-
-    ! Accumulate each result
-    do j = 1, size(t % results, 3)
-      do i = 1, size(t % results, 2)
-        val = t % results(RESULT_VALUE, i, j)/total_weight
-        t % results(RESULT_VALUE, i, j) = ZERO
-
-        t % results(RESULT_SUM, i, j) = &
-             t % results(RESULT_SUM, i, j) + val
-        t % results(RESULT_SUM_SQ, i, j) = &
-             t % results(RESULT_SUM_SQ, i, j) + val*val
-      end do
-    end do
-
-  end subroutine accumulate_tally
 
 !===============================================================================
 ! SETUP_ACTIVE_TALLIES

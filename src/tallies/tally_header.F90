@@ -7,7 +7,9 @@ module tally_header
   use constants
   use error
   use dict_header,         only: DictIntInt
+  use message_passing,     only: n_procs
   use nuclide_header,      only: nuclide_dict
+  use settings,            only: reduce_tallies
   use stl_vector,          only: VectorInt
   use string,              only: to_lower, to_f_string, str_to_int
   use tally_filter_header, only: TallyFilterContainer, filters, n_filters
@@ -108,9 +110,10 @@ module tally_header
     integer :: deriv = NONE
 
   contains
+    procedure :: accumulate => tally_accumulate
+    procedure :: allocate_results => tally_allocate_results
     procedure :: read_results_hdf5 => tally_read_results_hdf5
     procedure :: write_results_hdf5 => tally_write_results_hdf5
-    procedure :: allocate_results => tally_allocate_results
     procedure :: set_filters => tally_set_filters
   end type TallyObject
 
@@ -160,6 +163,37 @@ module tally_header
   real(8), public :: total_weight       ! total starting particle weight in realization
 
 contains
+
+!===============================================================================
+! ACCUMULATE_TALLY
+!===============================================================================
+
+  subroutine tally_accumulate(this)
+    class(TallyObject), intent(inout) :: this
+
+    integer :: i, j
+    real(C_DOUBLE) :: val
+
+    ! Increment number of realizations
+    if (reduce_tallies) then
+      this % n_realizations = this % n_realizations + 1
+    else
+      this % n_realizations = this % n_realizations + n_procs
+    end if
+
+    ! Accumulate each result
+    do j = 1, size(this % results, 3)
+      do i = 1, size(this % results, 2)
+        val = this % results(RESULT_VALUE, i, j)/total_weight
+        this % results(RESULT_VALUE, i, j) = ZERO
+
+        this % results(RESULT_SUM, i, j) = &
+             this % results(RESULT_SUM, i, j) + val
+        this % results(RESULT_SUM_SQ, i, j) = &
+             this % results(RESULT_SUM_SQ, i, j) + val*val
+      end do
+    end do
+  end subroutine tally_accumulate
 
   subroutine tally_write_results_hdf5(this, group_id)
     class(TallyObject), intent(in) :: this
@@ -268,8 +302,8 @@ contains
     integer(C_INT32_T), intent(in) :: filter_indices(:)
     integer(C_INT) :: err
 
-    integer :: i       ! index in t % filter/stride
-    integer :: j       ! index in t % find_filter
+    integer :: i       ! index in this % filter/stride
+    integer :: j       ! index in this % find_filter
     integer :: k       ! index in global filters array
     integer :: n       ! number of filters
     integer :: stride  ! filter stride

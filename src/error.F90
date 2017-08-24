@@ -1,11 +1,36 @@
 module error
 
+  use, intrinsic :: ISO_C_BINDING
   use, intrinsic :: ISO_FORTRAN_ENV
-  use constants
 
+  use constants
   use message_passing
 
   implicit none
+
+  private
+  public :: fatal_error
+  public :: warning
+
+  ! Error codes
+  integer(C_INT), public, bind(C) :: E_UNASSIGNED = -1
+  integer(C_INT), public, bind(C) :: E_OUT_OF_BOUNDS = -2
+  integer(C_INT), public, bind(C) :: E_CELL_NOT_ALLOCATED = -3
+  integer(C_INT), public, bind(C) :: E_CELL_INVALID_ID = -4
+  integer(C_INT), public, bind(C) :: E_CELL_NOT_FOUND = -5
+  integer(C_INT), public, bind(C) :: E_NUCLIDE_NOT_ALLOCATED = -6
+  integer(C_INT), public, bind(C) :: E_NUCLIDE_NOT_LOADED = -7
+  integer(C_INT), public, bind(C) :: E_NUCLIDE_NOT_IN_LIBRARY = -8
+  integer(C_INT), public, bind(C) :: E_MATERIAL_NOT_ALLOCATED = -9
+  integer(C_INT), public, bind(C) :: E_MATERIAL_INVALID_ID = -10
+  integer(C_INT), public, bind(C) :: E_TALLY_NOT_ALLOCATED = -11
+  integer(C_INT), public, bind(C) :: E_TALLY_INVALID_ID = -12
+  integer(C_INT), public, bind(C) :: E_INVALID_SIZE = -13
+  integer(C_INT), public, bind(C) :: E_CELL_NO_MATERIAL = -14
+
+  ! Warning codes
+  integer(C_INT), public, bind(C) :: W_BELOW_MIN_BOUND = 1
+  integer(C_INT), public, bind(C) :: W_ABOVE_MAX_BOUND = 2
 
 contains
 

@@ -12,6 +12,7 @@ module tally_filter_material
   use particle_header, only: Particle
   use string,          only: to_str
   use tally_filter_header
+  use xml_interface
 
   implicit none
   private
@@ -26,6 +27,7 @@ module tally_filter_material
     integer, allocatable :: materials(:)
     type(DictIntInt)     :: map
   contains
+    procedure :: from_xml
     procedure :: get_all_bins => get_all_bins_material
     procedure :: to_statepoint => to_statepoint_material
     procedure :: text_label => text_label_material
@@ -33,6 +35,20 @@ module tally_filter_material
   end type MaterialFilter
 
 contains
+
+  subroutine from_xml(this, node)
+    class(MaterialFilter), intent(inout) :: this
+    type(XMLNode), intent(in) :: node
+
+    integer :: n
+
+    n = node_word_count(node, "bins")
+
+    ! Allocate and store bins
+    this % n_bins = n
+    allocate(this % materials(n))
+    call get_node_array(node, "bins", this % materials)
+  end subroutine from_xml
 
   subroutine get_all_bins_material(this, p, estimator, match)
     class(MaterialFilter), intent(in)  :: this

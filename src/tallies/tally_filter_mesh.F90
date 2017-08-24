@@ -6,11 +6,12 @@ module tally_filter_mesh
 
   use constants
   use error
-  use mesh_header,         only: RegularMesh, meshes, n_meshes
+  use mesh_header,         only: RegularMesh, meshes, n_meshes, mesh_dict
   use hdf5_interface
   use particle_header,     only: Particle
   use string,              only: to_str
   use tally_filter_header
+  use xml_interface
 
   implicit none
   private
@@ -25,12 +26,44 @@ module tally_filter_mesh
   type, public, extends(TallyFilter) :: MeshFilter
     integer :: mesh
   contains
+    procedure :: from_xml
     procedure :: get_all_bins => get_all_bins_mesh
     procedure :: to_statepoint => to_statepoint_mesh
     procedure :: text_label => text_label_mesh
   end type MeshFilter
 
 contains
+
+  subroutine from_xml(this, node)
+    class(MeshFilter), intent(inout) :: this
+    type(XMLNode), intent(in) :: node
+
+    integer :: i_mesh
+    integer :: id
+    integer :: n
+
+    n = node_word_count(node, "bins")
+
+    if (n /= 1) call fatal_error("Only one mesh can be &
+         &specified per mesh filter.")
+
+    ! Determine id of mesh
+    call get_node_value(node, "bins", id)
+
+    ! Get pointer to mesh
+    if (mesh_dict % has_key(id)) then
+      i_mesh = mesh_dict % get_key(id)
+    else
+      call fatal_error("Could not find mesh " // trim(to_str(id)) &
+           // " specified on filter.")
+    end if
+
+    ! Determine number of bins
+    this % n_bins = product(meshes(i_mesh) % dimension)
+
+    ! Store the index of the mesh
+    this % mesh = i_mesh
+  end subroutine from_xml
 
   subroutine get_all_bins_mesh(this, p, estimator, match)
     class(MeshFilter), intent(in)  :: this

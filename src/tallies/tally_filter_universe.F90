@@ -11,6 +11,7 @@ module tally_filter_universe
   use particle_header,    only: Particle
   use string,             only: to_str
   use tally_filter_header
+  use xml_interface
 
   implicit none
   private
@@ -23,6 +24,7 @@ module tally_filter_universe
     integer, allocatable :: universes(:)
     type(DictIntInt)     :: map
   contains
+    procedure :: from_xml
     procedure :: get_all_bins => get_all_bins_universe
     procedure :: to_statepoint => to_statepoint_universe
     procedure :: text_label => text_label_universe
@@ -30,6 +32,20 @@ module tally_filter_universe
   end type UniverseFilter
 
 contains
+
+  subroutine from_xml(this, node)
+    class(UniverseFilter), intent(inout) :: this
+    type(XMLNode), intent(in) :: node
+
+    integer :: n
+
+    n = node_word_count(node, "bins")
+
+    ! Allocate and store bins
+    this % n_bins = n
+    allocate(this % universes(n))
+    call get_node_array(node, "bins", this % universes)
+  end subroutine from_xml
 
   subroutine get_all_bins_universe(this, p, estimator, match)
     class(UniverseFilter), intent(in)  :: this

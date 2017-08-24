@@ -12,6 +12,7 @@ module tally_filter_cellfrom
   use string,             only: to_str
   use tally_filter_header
   use tally_filter_cell
+  use xml_interface
 
   implicit none
   private
@@ -23,6 +24,7 @@ module tally_filter_cellfrom
 
   type, public, extends(CellFilter) :: CellFromFilter
   contains
+    ! Inherit from_xml from CellFilter
     procedure :: get_all_bins => get_all_bins_cell_from
     procedure :: to_statepoint => to_statepoint_cell_from
     procedure :: text_label => text_label_cell_from

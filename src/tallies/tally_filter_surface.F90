@@ -11,6 +11,7 @@ module tally_filter_surface
   use particle_header,    only: Particle
   use string,             only: to_str
   use tally_filter_header
+  use xml_interface
 
   implicit none
   private
@@ -25,6 +26,7 @@ module tally_filter_surface
     ! True if this filter is used for surface currents
     logical              :: current = .false.
   contains
+    procedure :: from_xml
     procedure :: get_all_bins => get_all_bins_surface
     procedure :: to_statepoint => to_statepoint_surface
     procedure :: text_label => text_label_surface
@@ -32,6 +34,20 @@ module tally_filter_surface
   end type SurfaceFilter
 
 contains
+
+  subroutine from_xml(this, node)
+    class(SurfaceFilter), intent(inout) :: this
+    type(XMLNode), intent(in) :: node
+
+    integer :: n
+
+    n = node_word_count(node, "bins")
+
+    ! Allocate and store bins
+    this % n_bins = n
+    allocate(this % surfaces(n))
+    call get_node_array(node, "bins", this % surfaces)
+  end subroutine from_xml
 
   subroutine get_all_bins_surface(this, p, estimator, match)
     class(SurfaceFilter), intent(in)  :: this

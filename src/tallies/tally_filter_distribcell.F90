@@ -11,6 +11,7 @@ module tally_filter_distribcell
   use particle_header, only: Particle
   use string,          only: to_str
   use tally_filter_header
+  use xml_interface
 
   implicit none
   private
@@ -24,6 +25,7 @@ module tally_filter_distribcell
   type, public, extends(TallyFilter) :: DistribcellFilter
     integer :: cell
   contains
+    procedure :: from_xml
     procedure :: get_all_bins => get_all_bins_distribcell
     procedure :: to_statepoint => to_statepoint_distribcell
     procedure :: text_label => text_label_distribcell
@@ -31,6 +33,20 @@ module tally_filter_distribcell
   end type DistribcellFilter
 
 contains
+
+  subroutine from_xml(this, node)
+    class(DistribcellFilter), intent(inout) :: this
+    type(XMLNode), intent(in) :: node
+
+    integer :: n
+
+    n = node_word_count(node, "bins")
+    if (n /= 1) call fatal_error("Only one cell can be &
+         &specified per distribcell filter.")
+
+    ! Store bins
+    call get_node_value(node, "bins", this % cell)
+  end subroutine from_xml
 
   subroutine get_all_bins_distribcell(this, p, estimator, match)
     class(DistribcellFilter), intent(in)  :: this

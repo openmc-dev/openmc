@@ -7,6 +7,7 @@ module tally_filter_header
   use error
   use particle_header, only: Particle
   use stl_vector,      only: VectorInt, VectorReal
+  use xml_interface,   only: XMLNode
 
   use hdf5
 
@@ -40,6 +41,7 @@ module tally_filter_header
     integer :: id
     integer :: n_bins = 0
   contains
+    procedure(from_xml_),      deferred :: from_xml
     procedure(get_all_bins_),  deferred :: get_all_bins
     procedure(to_statepoint_), deferred :: to_statepoint
     procedure(text_label_),    deferred :: text_label
@@ -47,6 +49,12 @@ module tally_filter_header
   end type TallyFilter
 
   abstract interface
+
+    subroutine from_xml_(this, node)
+      import TallyFilter, XMLNode
+      class(TallyFilter), intent(inout) :: this
+      type(XMLNode), intent(in) :: node
+    end subroutine from_xml_
 
 !===============================================================================
 ! GET_NEXT_BIN gives the index for the next valid filter bin and a weight that

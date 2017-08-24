@@ -6,6 +6,7 @@ module openmc_api
 
   use constants,       only: K_BOLTZMANN
   use eigenvalue,      only: k_sum, openmc_get_keff
+  use error
   use geometry,        only: find_cell
   use geometry_header, only: root_universe
   use global
@@ -48,26 +49,6 @@ module openmc_api
   public :: openmc_tally_get_nuclides
   public :: openmc_tally_results
   public :: openmc_tally_set_nuclides
-
-  ! Error codes
-  integer(C_INT), public, bind(C) :: E_UNASSIGNED = -1
-  integer(C_INT), public, bind(C) :: E_OUT_OF_BOUNDS = -2
-  integer(C_INT), public, bind(C) :: E_CELL_NOT_ALLOCATED = -3
-  integer(C_INT), public, bind(C) :: E_CELL_INVALID_ID = -4
-  integer(C_INT), public, bind(C) :: E_CELL_NOT_FOUND = -5
-  integer(C_INT), public, bind(C) :: E_NUCLIDE_NOT_ALLOCATED = -6
-  integer(C_INT), public, bind(C) :: E_NUCLIDE_NOT_LOADED = -7
-  integer(C_INT), public, bind(C) :: E_NUCLIDE_NOT_IN_LIBRARY = -8
-  integer(C_INT), public, bind(C) :: E_MATERIAL_NOT_ALLOCATED = -9
-  integer(C_INT), public, bind(C) :: E_MATERIAL_INVALID_ID = -10
-  integer(C_INT), public, bind(C) :: E_TALLY_NOT_ALLOCATED = -11
-  integer(C_INT), public, bind(C) :: E_TALLY_INVALID_ID = -12
-  integer(C_INT), public, bind(C) :: E_INVALID_SIZE = -13
-  integer(C_INT), public, bind(C) :: E_CELL_NO_MATERIAL = -14
-
-  ! Warning codes
-  integer(C_INT), public, bind(C) :: W_BELOW_MIN_BOUND = 1
-  integer(C_INT), public, bind(C) :: W_ABOVE_MAX_BOUND = 2
 
 contains
 

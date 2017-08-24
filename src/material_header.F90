@@ -1,7 +1,7 @@
 module material_header
 
   use constants
-  use error, only: fatal_error
+  use error
   use nuclide_header, only: Nuclide
   use sab_header, only: SAlphaBeta
   use stl_vector, only: VectorReal, VectorInt
@@ -67,7 +67,7 @@ contains
     real(8) :: sum_percent
     real(8) :: awr
 
-    err = -1
+    err = E_UNASSIGNED
     if (allocated(m % atom_density)) then
       ! Set total density based on value provided
       m % density = density

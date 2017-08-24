@@ -461,7 +461,7 @@ contains
     integer,               intent(in)  :: estimator
     type(TallyFilterMatch),     intent(inout) :: match
 
-    integer :: i
+    integer :: i, start
 
     ! Iterate over coordinate levels to see which universes match
     do i = 1, p % n_coord
@@ -663,12 +663,12 @@ contains
 
     integer :: i
 
-    ! Iterate over coordinate levels to see with cells match
-
+    ! Starting one coordinate level deeper, find the next bin.
     do i = 1, p % last_n_coord
       if (this % map % has_key(p % last_cell(i))) then
         call match % bins % push_back(this % map % get_key(p % last_cell(i)))
         call match % weights % push_back(ONE)
+        exit
       end if
     end do
 
@@ -1202,15 +1202,10 @@ contains
 
     select type(this)
     type is (EnergyFunctionFilter)
-
       n = size(this % energy)
 
-      ! Make sure the correct energy is used.
-      if (estimator == ESTIMATOR_TRACKLENGTH) then
-        E = p % E
-      else
-        E = p % last_E
-      end if
+      ! Get pre-collision energy of particle
+      E = p % last_E
 
       ! Search to find incoming energy bin.
       indx = binary_search(this % energy, n, E)

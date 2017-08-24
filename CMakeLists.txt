@@ -119,8 +119,8 @@ if(CMAKE_Fortran_COMPILER_ID STREQUAL GNU)
   list(APPEND f90flags -cpp -std=f2008ts -fbacktrace -O2)
   if(debug)
     list(REMOVE_ITEM f90flags -O2)
-    list(APPEND f90flags -g -Wall -pedantic -fbounds-check
-      -ffpe-trap=invalid,overflow,underflow)
+    list(APPEND f90flags -g -Wall -Wno-unused-dummy-argument -pedantic
+      -fbounds-check -ffpe-trap=invalid,overflow,underflow)
     list(APPEND ldflags -g)
   endif()
   if(profile)
@@ -379,10 +379,20 @@ set(LIBOPENMC_FORTRAN_SRC
   src/tallies/tally.F90
   src/tallies/tally_filter.F90
   src/tallies/tally_filter_header.F90
+  src/tallies/tally_filter_azimuthal.F90
+  src/tallies/tally_filter_cell.F90
+  src/tallies/tally_filter_cellborn.F90
+  src/tallies/tally_filter_cellfrom.F90
+  src/tallies/tally_filter_delayedgroup.F90
   src/tallies/tally_filter_distribcell.F90
   src/tallies/tally_filter_energy.F90
+  src/tallies/tally_filter_energyfunc.F90
   src/tallies/tally_filter_material.F90
   src/tallies/tally_filter_mesh.F90
+  src/tallies/tally_filter_mu.F90
+  src/tallies/tally_filter_polar.F90
+  src/tallies/tally_filter_surface.F90
+  src/tallies/tally_filter_universe.F90
   src/tallies/tally_header.F90
   src/tallies/trigger.F90
   src/tallies/trigger_header.F90

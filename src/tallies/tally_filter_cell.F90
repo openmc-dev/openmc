@@ -11,6 +11,7 @@ module tally_filter_cell
   use particle_header,    only: Particle
   use string,             only: to_str
   use tally_filter_header
+  use xml_interface
 
   implicit none
   private
@@ -23,6 +24,7 @@ module tally_filter_cell
     integer, allocatable :: cells(:)
     type(DictIntInt)     :: map
   contains
+    procedure :: from_xml
     procedure :: get_all_bins => get_all_bins_cell
     procedure :: to_statepoint => to_statepoint_cell
     procedure :: text_label => text_label_cell
@@ -30,6 +32,21 @@ module tally_filter_cell
   end type CellFilter
 
 contains
+
+  subroutine from_xml(this, node)
+    class(CellFilter), intent(inout) :: this
+    type(XMLNode), intent(in) :: node
+
+    integer :: n
+
+    ! Determine how many bins were given
+    n = node_word_count(node, "bins")
+
+    ! Allocate and store bins
+    this % n_bins = n
+    allocate(this % cells(n))
+    call get_node_array(node, "bins", this % cells)
+  end subroutine from_xml
 
   subroutine get_all_bins_cell(this, p, estimator, match)
     class(CellFilter), intent(in)  :: this

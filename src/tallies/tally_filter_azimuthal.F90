@@ -11,6 +11,7 @@ module tally_filter_azimuthal
   use particle_header,    only: Particle
   use string,             only: to_str
   use tally_filter_header
+  use xml_interface
 
   implicit none
   private
@@ -23,12 +24,50 @@ module tally_filter_azimuthal
   type, public, extends(TallyFilter) :: AzimuthalFilter
     real(8), allocatable :: bins(:)
   contains
+    procedure :: from_xml
     procedure :: get_all_bins => get_all_bins_azimuthal
     procedure :: to_statepoint => to_statepoint_azimuthal
     procedure :: text_label => text_label_azimuthal
   end type AzimuthalFilter
 
 contains
+
+  subroutine from_xml(this, node)
+    class(AzimuthalFilter), intent(inout) :: this
+    type(XMLNode), intent(in) :: node
+
+    integer :: i
+    integer :: n
+    integer :: n_angle
+    real(8) :: d_angle
+
+    n = node_word_count(node, "bins")
+
+    ! Allocate and store bins
+    this % n_bins = n - 1
+    allocate(this % bins(n))
+    call get_node_array(node, "bins", this % bins)
+
+    ! Allow a user to input a lone number which will mean that you
+    ! subdivide [-pi,pi) evenly with the input being the number of
+    ! bins
+    if (n == 1) then
+      n_angle = int(this % bins(1))
+      if (n_angle > 1) then
+        this % n_bins = n_angle
+        d_angle = TWO * PI / n_angle
+        deallocate(this % bins)
+        allocate(this % bins(n_angle + 1))
+        do i = 1, n_angle
+          this % bins(i) = -PI + (i - 1) * d_angle
+        end do
+        this % bins(n_angle + 1) = PI
+      else
+        call fatal_error("Number of bins for azimuthal filter must be&
+             & greater than 1.")
+      end if
+    end if
+  end subroutine from_xml
 
   subroutine get_all_bins_azimuthal(this, p, estimator, match)
     class(AzimuthalFilter), intent(in)  :: this

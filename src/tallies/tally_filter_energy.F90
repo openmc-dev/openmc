@@ -8,10 +8,12 @@ module tally_filter_energy
   use constants
   use error
   use hdf5_interface
-  use mgxs_header,         only: num_energy_groups
+  use mgxs_header,         only: num_energy_groups, energy_bins
   use particle_header,     only: Particle
+  use settings,            only: run_CE
   use string,              only: to_str
   use tally_filter_header
+  use xml_interface
 
   implicit none
   private
@@ -28,6 +30,7 @@ module tally_filter_energy
     ! True if transport group number can be used directly to get bin number
     logical :: matches_transport_groups = .false.
   contains
+    procedure :: from_xml => from_xml_energy
     procedure :: get_all_bins => get_all_bins_energy
     procedure :: to_statepoint => to_statepoint_energy
     procedure :: text_label => text_label_energy
@@ -41,6 +44,7 @@ module tally_filter_energy
 
   type, public, extends(EnergyFilter) :: EnergyoutFilter
   contains
+    ! Inherit from_xml from EnergyFilter
     procedure :: get_all_bins => get_all_bins_energyout
     procedure :: to_statepoint => to_statepoint_energyout
     procedure :: text_label => text_label_energyout
@@ -51,6 +55,33 @@ contains
 !===============================================================================
 ! EnergyFilter methods
 !===============================================================================
+
+  subroutine from_xml_energy(this, node)
+    class(EnergyFilter), intent(inout) :: this
+    type(XMLNode), intent(in) :: node
+
+    integer :: n
+
+    n = node_word_count(node, "bins")
+
+    ! Allocate and store bins
+    this % n_bins = n - 1
+    allocate(this % bins(n))
+    call get_node_array(node, "bins", this % bins)
+
+    ! We can save tallying time if we know that the tally bins match
+    ! the energy group structure.  In that case, the matching bin
+    ! index is simply the group (after flipping for the different
+    ! ordering of the library and tallying systems).
+    if (.not. run_CE) then
+      if (n == num_energy_groups + 1) then
+        if (all(this % bins == energy_bins(num_energy_groups + 1:1:-1))) &
+             then
+          this % matches_transport_groups = .true.
+        end if
+      end if
+    end if
+  end subroutine from_xml_energy
 
   subroutine get_all_bins_energy(this, p, estimator, match)
     class(EnergyFilter), intent(in)  :: this

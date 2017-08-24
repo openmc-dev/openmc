@@ -5,12 +5,13 @@ module tally_filter_mu
   use hdf5
 
   use algorithm,          only: binary_search
-  use constants,          only: ONE, MAX_LINE_LEN, NO_BIN_FOUND
+  use constants,          only: ONE, TWO, MAX_LINE_LEN, NO_BIN_FOUND
   use error,              only: fatal_error
   use hdf5_interface
   use particle_header,    only: Particle
   use string,             only: to_str
   use tally_filter_header
+  use xml_interface
 
   implicit none
   private
@@ -23,12 +24,49 @@ module tally_filter_mu
   type, public, extends(TallyFilter) :: MuFilter
     real(8), allocatable :: bins(:)
   contains
+    procedure :: from_xml
     procedure :: get_all_bins => get_all_bins_mu
     procedure :: to_statepoint => to_statepoint_mu
     procedure :: text_label => text_label_mu
   end type MuFilter
 
 contains
+
+  subroutine from_xml(this, node)
+    class(MuFilter), intent(inout) :: this
+    type(XMLNode), intent(in) :: node
+
+    integer :: i
+    integer :: n_angle
+    integer :: n
+    real(8) :: d_angle
+
+    n = node_word_count(node, "bins")
+
+    ! Allocate and store bins
+    this % n_bins = n - 1
+    allocate(this % bins(n))
+    call get_node_array(node, "bins", this % bins)
+
+    ! Allow a user to input a lone number which will mean that you
+    ! subdivide [-1,1] evenly with the input being the number of bins
+    if (n == 1) then
+      n_angle = int(this % bins(1))
+      if (n_angle > 1) then
+        this % n_bins = n_angle
+        d_angle = TWO / n_angle
+        deallocate(this % bins)
+        allocate(this % bins(n_angle + 1))
+        do i = 1, n_angle
+          this % bins(i) = -ONE + (i - 1) * d_angle
+        end do
+        this % bins(n_angle + 1) = ONE
+      else
+        call fatal_error("Number of bins for mu filter must be&
+             & greater than 1.")
+      end if
+    end if
+  end subroutine from_xml
 
   subroutine get_all_bins_mu(this, p, estimator, match)
     class(MuFilter), intent(in)  :: this

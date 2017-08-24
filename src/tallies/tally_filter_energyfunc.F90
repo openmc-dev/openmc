@@ -9,8 +9,10 @@ module tally_filter_energyfunc
   use error,              only: fatal_error
   use hdf5_interface
   use particle_header,    only: Particle
+  use settings,           only: run_CE
   use string,             only: to_str
   use tally_filter_header
+  use xml_interface
 
   implicit none
   private
@@ -25,12 +27,45 @@ module tally_filter_energyfunc
     real(8), allocatable :: y(:)
 
   contains
+    procedure :: from_xml
     procedure :: get_all_bins => get_all_bins_energyfunction
     procedure :: to_statepoint => to_statepoint_energyfunction
     procedure :: text_label => text_label_energyfunction
   end type EnergyFunctionFilter
 
 contains
+
+  subroutine from_xml(this, node)
+    class(EnergyFunctionFilter), intent(inout) :: this
+    type(XMLNode), intent(in) :: node
+
+    integer :: n
+
+    this % n_bins = 1
+    ! Make sure this is continuous-energy mode.
+    if (.not. run_CE) then
+      call fatal_error("EnergyFunction filters are only supported for &
+           &continuous-energy transport calculations")
+    end if
+
+    ! Allocate and store energy grid.
+    if (.not. check_for_node(node, "energy")) then
+      call fatal_error("Energy grid not specified for EnergyFunction &
+           &filter.")
+    end if
+    n = node_word_count(node, "energy")
+    allocate(this % energy(n))
+    call get_node_array(node, "energy", this % energy)
+
+    ! Allocate and store interpolant values.
+    if (.not. check_for_node(node, "y")) then
+      call fatal_error("y values not specified for EnergyFunction &
+           &filter.")
+    end if
+    n = node_word_count(node, "y")
+    allocate(this % y(n))
+    call get_node_array(node, "y", this % y)
+  end subroutine from_xml
 
   subroutine get_all_bins_energyfunction(this, p, estimator, match)
     class(EnergyFunctionFilter), intent(in)  :: this

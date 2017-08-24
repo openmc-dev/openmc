@@ -11,6 +11,7 @@ module tally_filter_cellborn
   use particle_header,    only: Particle
   use string,             only: to_str
   use tally_filter_header
+  use xml_interface
 
   implicit none
   private
@@ -23,6 +24,7 @@ module tally_filter_cellborn
     integer, allocatable :: cells(:)
     type(DictIntInt)     :: map
   contains
+    procedure :: from_xml
     procedure :: get_all_bins => get_all_bins_cellborn
     procedure :: to_statepoint => to_statepoint_cellborn
     procedure :: text_label => text_label_cellborn
@@ -30,6 +32,21 @@ module tally_filter_cellborn
   end type CellbornFilter
 
 contains
+
+  subroutine from_xml(this, node)
+    class(CellbornFilter), intent(inout) :: this
+    type(XMLNode), intent(in) :: node
+
+    integer :: n
+
+    ! Determine number of bins
+    n = node_word_count(node, "bins")
+
+    ! Allocate and store bins
+    this % n_bins = n
+    allocate(this % cells(n))
+    call get_node_array(node, "bins", this % cells)
+  end subroutine from_xml
 
   subroutine get_all_bins_cellborn(this, p, estimator, match)
     class(CellbornFilter), intent(in)  :: this

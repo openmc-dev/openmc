@@ -11,6 +11,7 @@ module tally_filter_polar
   use particle_header,    only: Particle
   use string,             only: to_str
   use tally_filter_header
+  use xml_interface
 
   implicit none
   private
@@ -23,12 +24,49 @@ module tally_filter_polar
   type, public, extends(TallyFilter) :: PolarFilter
     real(8), allocatable :: bins(:)
   contains
+    procedure :: from_xml
     procedure :: get_all_bins => get_all_bins_polar
     procedure :: to_statepoint => to_statepoint_polar
     procedure :: text_label => text_label_polar
   end type PolarFilter
 
 contains
+
+  subroutine from_xml(this, node)
+    class(PolarFilter), intent(inout) :: this
+    type(XMLNode), intent(in) :: node
+
+    integer :: i
+    integer :: n_angle
+    integer :: n
+    real(8) :: d_angle
+
+    n = node_word_count(node, "bins")
+
+    ! Allocate and store bins
+    this % n_bins = n - 1
+    allocate(this % bins(n))
+    call get_node_array(node, "bins", this % bins)
+
+    ! Allow a user to input a lone number which will mean that you
+    ! subdivide [0,pi] evenly with the input being the number of bins
+    if (n == 1) then
+      n_angle = int(this % bins(1))
+      if (n_angle > 1) then
+        this % n_bins = n_angle
+        d_angle = PI / real(n_angle,8)
+        deallocate(this % bins)
+        allocate(this % bins(n_angle + 1))
+        do i = 1, n_angle
+          this % bins(i) = (i - 1) * d_angle
+        end do
+        this % bins(n_angle + 1) = PI
+      else
+        call fatal_error("Number of bins for polar filter must be&
+             & greater than 1.")
+      end if
+    end if
+  end subroutine from_xml
 
   subroutine get_all_bins_polar(this, p, estimator, match)
     class(PolarFilter), intent(in)  :: this

@@ -2227,7 +2227,6 @@ contains
     integer :: k                    ! loop index for nuclide bins
     integer :: filter_index         ! single index for single bin
     integer :: i_nuclide            ! index in nuclides array
-    integer :: matching_bin         ! next valid filter bin
     real(8) :: filter_weight        ! combined weight of all filters
     logical :: finished             ! found all valid bin combinations
     type(TallyObject), pointer :: t
@@ -2247,14 +2246,8 @@ contains
         if (.not. filter_matches(i_filt) % bins_present) then
           call filter_matches(i_filt) % bins % clear()
           call filter_matches(i_filt) % weights % clear()
-          matching_bin = NO_BIN_FOUND
-          do
-            call filters(i_filt) % obj % get_next_bin(p, t % estimator, &
-                 matching_bin, matching_bin, filter_weight)
-            if (matching_bin == NO_BIN_FOUND) exit
-            call filter_matches(i_filt) % bins % push_back(matching_bin)
-            call filter_matches(i_filt) % weights % push_back(filter_weight)
-          end do
+          call filters(i_filt) % obj % get_all_bins(p, t % estimator, &
+               filter_matches(i_filt))
           filter_matches(i_filt) % bins_present = .true.
         end if
         ! If there are no valid bins for this filter, then there is nothing to
@@ -2378,7 +2371,6 @@ contains
     integer :: k                    ! loop index for nuclide bins
     integer :: filter_index         ! single index for single bin
     integer :: i_nuclide            ! index in nuclides array
-    integer :: matching_bin         ! next valid filter bin
     real(8) :: filter_weight        ! combined weight of all filters
     real(8) :: atom_density
     logical :: finished             ! found all valid bin combinations
@@ -2404,14 +2396,8 @@ contains
         if (.not. filter_matches(i_filt) % bins_present) then
           call filter_matches(i_filt) % bins % clear()
           call filter_matches(i_filt) % weights % clear()
-          matching_bin = NO_BIN_FOUND
-          do
-            call filters(i_filt) % obj % get_next_bin(p, t % estimator, &
-                 matching_bin, matching_bin, filter_weight)
-            if (matching_bin == NO_BIN_FOUND) exit
-            call filter_matches(i_filt) % bins % push_back(matching_bin)
-            call filter_matches(i_filt) % weights % push_back(filter_weight)
-          end do
+          call filters(i_filt) % obj % get_all_bins(p, t % estimator, &
+               filter_matches(i_filt))
           filter_matches(i_filt) % bins_present = .true.
         end if
         ! If there are no valid bins for this filter, then there is nothing to
@@ -2760,7 +2746,6 @@ contains
     integer :: k                    ! loop index for nuclide bins
     integer :: filter_index         ! single index for single bin
     integer :: i_nuclide            ! index in nuclides array (from bins)
-    integer :: matching_bin         ! next valid filter bin
     real(8) :: flux                 ! tracklength estimate of flux
     real(8) :: atom_density         ! atom density of single nuclide in atom/b-cm
     real(8) :: filter_weight        ! combined weight of all filters
@@ -2786,14 +2771,8 @@ contains
         if (.not. filter_matches(i_filt) % bins_present) then
           call filter_matches(i_filt) % bins % clear()
           call filter_matches(i_filt) % weights % clear()
-          matching_bin = NO_BIN_FOUND
-          do
-            call filters(i_filt) % obj % get_next_bin(p, t % estimator, &
-                 matching_bin, matching_bin, filter_weight)
-            if (matching_bin == NO_BIN_FOUND) exit
-            call filter_matches(i_filt) % bins % push_back(matching_bin)
-            call filter_matches(i_filt) % weights % push_back(filter_weight)
-          end do
+          call filters(i_filt) % obj % get_all_bins(p, t % estimator, &
+               filter_matches(i_filt))
           filter_matches(i_filt) % bins_present = .true.
         end if
         ! If there are no valid bins for this filter, then there is nothing to
@@ -2927,7 +2906,6 @@ contains
     integer :: k                    ! loop index for nuclide bins
     integer :: filter_index         ! single index for single bin
     integer :: i_nuclide            ! index in nuclides array (from bins)
-    integer :: matching_bin         ! next valid filter bin
     real(8) :: flux                 ! collision estimate of flux
     real(8) :: atom_density         ! atom density of single nuclide
                                     !   in atom/b-cm
@@ -2959,14 +2937,8 @@ contains
         if (.not. filter_matches(i_filt) % bins_present) then
           call filter_matches(i_filt) % bins % clear()
           call filter_matches(i_filt) % weights % clear()
-          matching_bin = NO_BIN_FOUND
-          do
-            call filters(i_filt) % obj % get_next_bin(p, t % estimator, &
-                 matching_bin, matching_bin, filter_weight)
-            if (matching_bin == NO_BIN_FOUND) exit
-            call filter_matches(i_filt) % bins % push_back(matching_bin)
-            call filter_matches(i_filt) % weights % push_back(filter_weight)
-          end do
+          call filters(i_filt) % obj % get_all_bins(p, t % estimator, &
+               filter_matches(i_filt))
           filter_matches(i_filt) % bins_present = .true.
         end if
         ! If there are no valid bins for this filter, then there is nothing to
@@ -3099,7 +3071,6 @@ contains
     integer :: score_index          ! scoring bin index
     integer :: j                    ! loop index for scoring bins
     integer :: filter_index         ! single index for single bin
-    integer :: matching_bin         ! next valid filter bin
     real(8) :: flux                 ! collision estimate of flux
     real(8) :: filter_weight        ! combined weight of all filters
     real(8) :: score                ! analog tally score
@@ -3120,14 +3091,8 @@ contains
         if (.not. filter_matches(i_filt) % bins_present) then
           call filter_matches(i_filt) % bins % clear()
           call filter_matches(i_filt) % weights % clear()
-          matching_bin = NO_BIN_FOUND
-          do
-            call filters(i_filt) % obj % get_next_bin(p, t % estimator, &
-                 matching_bin, matching_bin, filter_weight)
-            if (matching_bin == NO_BIN_FOUND) exit
-            call filter_matches(i_filt) % bins % push_back(matching_bin)
-            call filter_matches(i_filt) % weights % push_back(filter_weight)
-          end do
+          call filters(i_filt) % obj % get_all_bins(p, t % estimator, &
+               filter_matches(i_filt))
           filter_matches(i_filt) % bins_present = .true.
         end if
         ! If there are no valid bins for this filter, then there is nothing to
@@ -3245,7 +3210,6 @@ contains
     real(8) :: xyz_cross(3)         ! coordinates of bounding surfaces
     real(8) :: d(3)                 ! distance to each bounding surface
     real(8) :: distance             ! actual distance traveled
-    real(8) :: filt_score           ! score applied by filters
     integer :: matching_bin         ! next valid filter bin
     logical :: start_in_mesh        ! particle's starting xyz in mesh?
     logical :: end_in_mesh          ! particle's ending xyz in mesh?
@@ -3316,9 +3280,12 @@ contains
       ! Determine incoming energy bin.  We need to tell the energy filter this
       ! is a tracklength tally so it uses the pre-collision energy.
       if (energy_filter) then
-        call filters(i_filter_energy) % obj % get_next_bin(p, &
-             ESTIMATOR_TRACKLENGTH, NO_BIN_FOUND, matching_bin, filt_score)
-        if (matching_bin == NO_BIN_FOUND) cycle
+        call filter_matches(i_filter_energy) % bins % clear()
+        call filter_matches(i_filter_energy) % weights % clear()
+        call filters(i_filter_energy) % obj % get_all_bins(p, &
+             ESTIMATOR_TRACKLENGTH, filter_matches(i_filter_energy))
+        if (filter_matches(i_filter_energy) % bins % size() == 0) cycle
+        matching_bin = filter_matches(i_filter_energy) % bins % data(1)
         filter_matches(i_filter_energy) % bins % data(1) = matching_bin
       end if
 

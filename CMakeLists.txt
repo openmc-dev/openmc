@@ -360,6 +360,7 @@ set(LIBOPENMC_FORTRAN_SRC
   src/secondary_uncorrelated.F90
   src/set_header.F90
   src/settings.F90
+  src/simulation_header.F90
   src/simulation.F90
   src/source.F90
   src/source_header.F90

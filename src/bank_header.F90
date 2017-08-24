@@ -18,4 +18,15 @@ module bank_header
     integer(C_INT) :: delayed_group ! delayed group
   end type Bank
 
+  ! Source and fission bank
+  type(Bank), allocatable, target :: source_bank(:)
+  type(Bank), allocatable, target :: fission_bank(:)
+#ifdef _OPENMP
+  type(Bank), allocatable, target :: master_fission_bank(:)
+#endif
+
+  integer(8) :: n_bank       ! # of sites in fission bank
+
+!$omp threadprivate(fission_bank, n_bank)
+
 end module bank_header

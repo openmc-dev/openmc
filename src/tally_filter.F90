@@ -850,9 +850,13 @@ contains
     integer :: i
 
       do i = 1, this % n_bins
-        if (p % surface == this % surfaces(i)) then
+        if (abs(p % surface) == this % surfaces(i)) then
           call match % bins % push_back(i)
-          call match % weights % push_back(ONE)
+          if (p % surface < 0) then
+            call match % weights % push_back(-ONE)
+          else
+            call match % weights % push_back(ONE)
+          end if  
           exit
         end if
       end do

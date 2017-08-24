@@ -147,7 +147,6 @@ contains
     integer(C_INT32_T) :: i_start, i_end
     integer(C_INT) :: err
     integer, allocatable :: temp_int_array(:)
-    real(8), allocatable :: temp_real(:)
     integer :: n_tracks
     logical :: file_exists
     character(MAX_WORD_LEN) :: type
@@ -155,10 +154,6 @@ contains
     type(XMLDocument) :: doc
     type(XMLNode) :: root
     type(XMLNode) :: node_mode
-    type(XMLNode) :: node_source
-    type(XMLNode) :: node_space
-    type(XMLNode) :: node_angle
-    type(XMLNode) :: node_dist
     type(XMLNode) :: node_cutoff
     type(XMLNode) :: node_entropy
     type(XMLNode) :: node_ufs
@@ -400,241 +395,14 @@ contains
       allocate(external_source(n))
     end if
 
+    ! Check if we want to write out source
+    if (check_for_node(root, "write_initial_source")) then
+      call get_node_value(root, "write_initial_source", write_initial_source)
+    end if
+
     ! Read each source
     do i = 1, n
-      ! Get pointer to source
-      node_source = node_source_list(i)
-
-      ! Check if we want to write out source
-      if (check_for_node(node_source, "write_initial")) then
-        call get_node_value(node_source, "write_initial", write_initial_source)
-      end if
-
-      ! Check for source strength
-      if (check_for_node(node_source, "strength")) then
-        call get_node_value(node_source, "strength", external_source(i)%strength)
-      else
-        external_source(i)%strength = ONE
-      end if
-
-      ! Check for external source file
-      if (check_for_node(node_source, "file")) then
-        ! Copy path of source file
-        call get_node_value(node_source, "file", path_source)
-
-        ! Check if source file exists
-        inquire(FILE=path_source, EXIST=file_exists)
-        if (.not. file_exists) then
-          call fatal_error("Source file '" // trim(path_source) &
-               // "' does not exist!")
-        end if
-
-      else
-
-        ! Spatial distribution for external source
-        if (check_for_node(node_source, "space")) then
-
-          ! Get pointer to spatial distribution
-          node_space = node_source % child("space")
-
-          ! Check for type of spatial distribution
-          type = ''
-          if (check_for_node(node_space, "type")) &
-               call get_node_value(node_space, "type", type)
-          select case (to_lower(type))
-          case ('cartesian')
-            allocate(CartesianIndependent :: external_source(i)%space)
-
-          case ('box')
-            allocate(SpatialBox :: external_source(i)%space)
-
-          case ('fission')
-            allocate(SpatialBox :: external_source(i)%space)
-            select type(space => external_source(i)%space)
-            type is (SpatialBox)
-              space%only_fissionable = .true.
-            end select
-
-          case ('point')
-            allocate(SpatialPoint :: external_source(i)%space)
-
-          case default
-            call fatal_error("Invalid spatial distribution for external source: "&
-                 // trim(type))
-          end select
-
-          select type (space => external_source(i)%space)
-          type is (CartesianIndependent)
-            ! Read distribution for x coordinate
-            if (check_for_node(node_space, "x")) then
-              node_dist = node_space % child("x")
-              call distribution_from_xml(space%x, node_dist)
-            else
-              allocate(Discrete :: space%x)
-              select type (dist => space%x)
-              type is (Discrete)
-                allocate(dist%x(1), dist%p(1))
-                dist%x(1) = ZERO
-                dist%p(1) = ONE
-              end select
-            end if
-
-            ! Read distribution for y coordinate
-            if (check_for_node(node_space, "y")) then
-              node_dist = node_space % child("y")
-              call distribution_from_xml(space%y, node_dist)
-            else
-              allocate(Discrete :: space%y)
-              select type (dist => space%y)
-              type is (Discrete)
-                allocate(dist%x(1), dist%p(1))
-                dist%x(1) = ZERO
-                dist%p(1) = ONE
-              end select
-            end if
-
-            if (check_for_node(node_space, "z")) then
-              node_dist = node_space % child("z")
-              call distribution_from_xml(space%z, node_dist)
-            else
-              allocate(Discrete :: space%z)
-              select type (dist => space%z)
-              type is (Discrete)
-                allocate(dist%x(1), dist%p(1))
-                dist%x(1) = ZERO
-                dist%p(1) = ONE
-              end select
-            end if
-
-          type is (SpatialBox)
-            ! Make sure correct number of parameters are given
-            if (node_word_count(node_space, "parameters") /= 6) then
-              call fatal_error('Box/fission spatial source must have &
-                   &six parameters specified.')
-            end if
-
-            ! Read lower-right/upper-left coordinates
-            allocate(temp_real(6))
-            call get_node_array(node_space, "parameters", temp_real)
-            space%lower_left(:) = temp_real(1:3)
-            space%upper_right(:) = temp_real(4:6)
-            deallocate(temp_real)
-
-          type is (SpatialPoint)
-            ! Make sure correct number of parameters are given
-            if (node_word_count(node_space, "parameters") /= 3) then
-              call fatal_error('Point spatial source must have &
-                   &three parameters specified.')
-            end if
-
-            ! Read location of point source
-            allocate(temp_real(3))
-            call get_node_array(node_space, "parameters", temp_real)
-            space%xyz(:) = temp_real
-            deallocate(temp_real)
-
-          end select
-
-        else
-          ! If no spatial distribution specified, make it a point source
-          allocate(SpatialPoint :: external_source(i) % space)
-          select type (space => external_source(i) % space)
-          type is (SpatialPoint)
-            space % xyz(:) = [ZERO, ZERO, ZERO]
-          end select
-        end if
-
-        ! Determine external source angular distribution
-        if (check_for_node(node_source, "angle")) then
-
-          ! Get pointer to angular distribution
-          node_angle = node_source % child("angle")
-
-          ! Check for type of angular distribution
-          type = ''
-          if (check_for_node(node_angle, "type")) &
-               call get_node_value(node_angle, "type", type)
-          select case (to_lower(type))
-          case ('isotropic')
-            allocate(Isotropic :: external_source(i)%angle)
-
-          case ('monodirectional')
-            allocate(Monodirectional :: external_source(i)%angle)
-
-          case ('mu-phi')
-            allocate(PolarAzimuthal :: external_source(i)%angle)
-
-          case default
-            call fatal_error("Invalid angular distribution for external source: "&
-                 // trim(type))
-          end select
-
-          ! Read reference directional unit vector
-          if (check_for_node(node_angle, "reference_uvw")) then
-            n = node_word_count(node_angle, "reference_uvw")
-            if (n /= 3) then
-              call fatal_error('Angular distribution reference direction must have &
-                   &three parameters specified.')
-            end if
-            call get_node_array(node_angle, "reference_uvw", &
-                 external_source(i)%angle%reference_uvw)
-          else
-            ! By default, set reference unit vector to be positive z-direction
-            external_source(i)%angle%reference_uvw(:) = [ZERO, ZERO, ONE]
-          end if
-
-          ! Read parameters for angle distribution
-          select type (angle => external_source(i)%angle)
-          type is (Monodirectional)
-            call get_node_array(node_angle, "reference_uvw", &
-                 external_source(i)%angle%reference_uvw)
-
-          type is (PolarAzimuthal)
-            if (check_for_node(node_angle, "mu")) then
-              node_dist = node_angle % child("mu")
-              call distribution_from_xml(angle%mu, node_dist)
-            else
-              allocate(Uniform :: angle%mu)
-              select type (mu => angle%mu)
-              type is (Uniform)
-                mu%a = -ONE
-                mu%b = ONE
-              end select
-            end if
-
-            if (check_for_node(node_angle, "phi")) then
-              node_dist = node_angle % child("phi")
-              call distribution_from_xml(angle%phi, node_dist)
-            else
-              allocate(Uniform :: angle%phi)
-              select type (phi => angle%phi)
-              type is (Uniform)
-                phi%a = ZERO
-                phi%b = TWO*PI
-              end select
-            end if
-          end select
-
-        else
-          ! Set default angular distribution isotropic
-          allocate(Isotropic :: external_source(i)%angle)
-          external_source(i)%angle%reference_uvw(:) = [ZERO, ZERO, ONE]
-        end if
-
-        ! Determine external source energy distribution
-        if (check_for_node(node_source, "energy")) then
-          node_dist = node_source % child("energy")
-          call distribution_from_xml(external_source(i)%energy, node_dist)
-        else
-          ! Default to a Watt spectrum with parameters 0.988 MeV and 2.249 MeV^-1
-          allocate(Watt :: external_source(i)%energy)
-          select type(energy => external_source(i)%energy)
-          type is (Watt)
-            energy%a = 0.988e6_8
-            energy%b = 2.249e-6_8
-          end select
-        end if
-      end if
+      call external_source(i) % from_xml(node_source_list(i), path_source)
     end do
 
     ! Survival biasing

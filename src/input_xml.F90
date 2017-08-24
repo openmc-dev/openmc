@@ -31,7 +31,7 @@ module input_xml
   use stl_vector,       only: VectorInt, VectorReal, VectorChar
   use string,           only: to_lower, to_str, str_to_int, str_to_real, &
                               starts_with, ends_with, tokenize, split_string, &
-                              zero_padded
+                              zero_padded, to_c_string
   use summary,          only: write_summary
   use tally,            only: openmc_tally_set_type
   use tally_header,     only: openmc_extend_tallies
@@ -2703,43 +2703,10 @@ contains
       end select
 
       ! Allocate according to the filter type
-      select case (temp_str)
-      case ('distribcell')
-        allocate(DistribcellFilter :: f % obj)
-      case ('cell')
-        allocate(CellFilter :: f % obj)
-      case ('cellfrom')
-        allocate(CellFromFilter :: f % obj)
-      case ('cellborn')
-        allocate(CellbornFilter :: f % obj)
-      case ('material')
-        allocate(MaterialFilter :: f % obj)
-      case ('universe')
-        allocate(UniverseFilter :: f % obj)
-      case ('surface')
-        allocate(SurfaceFilter :: f % obj)
-      case ('mesh')
-        allocate(MeshFilter :: f % obj)
-      case ('energy')
-        allocate(EnergyFilter :: f % obj)
-      case ('energyout')
-        allocate(EnergyoutFilter :: f % obj)
-      case ('delayedgroup')
-        allocate(DelayedGroupFilter :: f % obj)
-      case ('mu')
-        allocate(MuFilter :: f % obj)
-      case ('polar')
-        allocate(PolarFilter :: f % obj)
-      case ('azimuthal')
-        allocate(AzimuthalFilter :: f % obj)
-      case ('energyfunction')
-        allocate(EnergyFunctionFilter :: f % obj)
-      case default
-        ! Specified filter is invalid, raise error
-        call fatal_error("Unknown filter type '" &
-             // trim(temp_str) // "' on filter " &
-             // trim(to_str(filter_id)) // ".")
-      end select
+      err = openmc_filter_set_type(i_start + i - 1, to_c_string(temp_str))
+
+      ! Read filter data from XML
+      call f % obj % from_xml(node_filt)
 
       ! Set filter id
       err = openmc_filter_set_id(i_start + i - 1, filter_id)

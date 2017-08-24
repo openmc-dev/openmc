@@ -538,4 +538,23 @@ contains
     end do
   end function to_f_string
 
+!===============================================================================
+! TO_C_STRING takes a space-padded Fortran character and turns it into a
+! null-terminated C char array. Yay Fortran 2003!
+!===============================================================================
+
+  function to_c_string(f_string) result(c_string)
+    character(*), intent(in) :: f_string
+    character(kind=C_CHAR) :: c_string(len_trim(f_string) + 1)
+
+    integer :: i, n
+
+    ! Copy Fortran string character by character
+    n = len_trim(f_string)
+    do i = 1, n
+      c_string(i) = f_string(i:i)
+    end do
+    c_string(n + 1) = C_NULL_CHAR
+  end function to_c_string
+
 end module string

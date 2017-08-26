@@ -112,6 +112,10 @@ contains
           material_xs % absorption = ZERO
           material_xs % nu_fission = ZERO
         end if
+
+        ! Finally, update the particle group while we have already checked for
+        ! if multi-group
+        p % last_g = p % g
       end if
 
       ! Find the distance to the nearest boundary

@@ -416,16 +416,16 @@ for key in iter(tests):
 
     # Verify fortran compiler exists
     if which(test.fc) is None:
-        self.msg = 'Compiler not found: {0}'.format(test.fc)
-        self.success = False
+        test.msg = 'Compiler not found: {0}'.format(test.fc)
+        test.success = False
         continue
 
     # Verify valgrind command exists
     if test.valgrind:
         valgrind_cmd = which('valgrind')
         if valgrind_cmd is None:
-            self.msg = 'No valgrind executable found.'
-            self.success = False
+            test.msg = 'No valgrind executable found.'
+            test.success = False
             continue
     else:
         valgrind_cmd = ''
@@ -433,8 +433,8 @@ for key in iter(tests):
     # Verify gcov/lcov exist
     if test.coverage:
         if which('gcov') is None:
-            self.msg = 'No {} executable found.'.format(exe)
-            self.success = False
+            test.msg = 'No {} executable found.'.format(exe)
+            test.success = False
             continue
 
     # Set test specific CTest script vars. Not used in non-script mode

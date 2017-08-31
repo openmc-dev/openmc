@@ -4,7 +4,6 @@ module sab_header
 
   use algorithm, only: find, sort
   use constants
-  use dict_header, only: DictIntInt
   use distribution_univariate, only: Tabular
   use error,       only: warning, fatal_error
   use hdf5, only: HID_T, HSIZE_T, SIZE_T

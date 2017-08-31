@@ -9,7 +9,7 @@ module initialize
 
   use bank_header,     only: Bank
   use constants
-  use dict_header,     only: DictIntInt, ElemKeyValueII
+  use dict_header,     only: DictIntInt, DictEntryII
   use set_header,      only: SetInt
   use error,           only: fatal_error, warning
   use geometry,        only: neighbor_lists, count_instance, calc_offsets, &
@@ -449,41 +449,41 @@ contains
       ! ADJUST REGION SPECIFICATION FOR EACH CELL
 
       c => cells(i)
-      do j = 1, size(c%region)
-        id = c%region(j)
+      do j = 1, size(c % region)
+        id = c % region(j)
         ! Make sure that only regions are checked. Since OP_UNION is the
         ! operator with the lowest integer value, anything below it must denote
         ! a half-space
         if (id < OP_UNION) then
-          if (surface_dict%has_key(abs(id))) then
-            i_array = surface_dict%get_key(abs(id))
-            c%region(j) = sign(i_array, id)
+          if (surface_dict % has(abs(id))) then
+            i_array = surface_dict % get(abs(id))
+            c % region(j) = sign(i_array, id)
           else
             call fatal_error("Could not find surface " // trim(to_str(abs(id)))&
-                 &// " specified on cell " // trim(to_str(c%id)))
+                 &// " specified on cell " // trim(to_str(c % id)))
           end if
         end if
       end do
 
       ! Also adjust the indices in the reverse Polish notation
-      do j = 1, size(c%rpn)
-        id = c%rpn(j)
+      do j = 1, size(c % rpn)
+        id = c % rpn(j)
         ! Again, make sure that only regions are checked
         if (id < OP_UNION) then
-          i_array = surface_dict%get_key(abs(id))
-          c%rpn(j) = sign(i_array, id)
+          i_array = surface_dict % get(abs(id))
+          c % rpn(j) = sign(i_array, id)
         end if
       end do
 
       ! =======================================================================
       ! ADJUST UNIVERSE INDEX FOR EACH CELL
 
-      id = c%universe
-      if (universe_dict%has_key(id)) then
-        c%universe = universe_dict%get_key(id)
+      id = c % universe
+      if (universe_dict % has(id)) then
+        c % universe = universe_dict % get(id)
       else
         call fatal_error("Could not find universe " // trim(to_str(id)) &
-             &// " specified on cell " // trim(to_str(c%id)))
+             &// " specified on cell " // trim(to_str(c % id)))
       end if
 
       ! =======================================================================
@@ -491,11 +491,11 @@ contains
 
       if (c % material(1) == NONE) then
         id = c % fill
-        if (universe_dict % has_key(id)) then
+        if (universe_dict % has(id)) then
           c % type = FILL_UNIVERSE
-          c % fill = universe_dict % get_key(id)
-        elseif (lattice_dict % has_key(id)) then
-          lid = lattice_dict % get_key(id)
+          c % fill = universe_dict % get(id)
+        elseif (lattice_dict % has(id)) then
+          lid = lattice_dict % get(id)
           c % type = FILL_LATTICE
           c % fill = lid
         else
@@ -508,9 +508,9 @@ contains
           id = c % material(j)
           if (id == MATERIAL_VOID) then
             c % type = FILL_MATERIAL
-          else if (material_dict % has_key(id)) then
+          else if (material_dict % has(id)) then
             c % type = FILL_MATERIAL
-            c % material(j) = material_dict % get_key(id)
+            c % material(j) = material_dict % get(id)
           else
             call fatal_error("Could not find material " // trim(to_str(id)) &
                  // " specified on cell " // trim(to_str(c % id)))
@@ -523,41 +523,41 @@ contains
     ! ADJUST UNIVERSE INDICES FOR EACH LATTICE
 
     do i = 1, n_lattices
-      lat => lattices(i)%obj
+      lat => lattices(i) % obj
       select type (lat)
 
       type is (RectLattice)
-        do m = 1, lat%n_cells(3)
-          do k = 1, lat%n_cells(2)
-            do j = 1, lat%n_cells(1)
-              id = lat%universes(j,k,m)
-              if (universe_dict%has_key(id)) then
-                lat%universes(j,k,m) = universe_dict%get_key(id)
+        do m = 1, lat % n_cells(3)
+          do k = 1, lat % n_cells(2)
+            do j = 1, lat % n_cells(1)
+              id = lat % universes(j,k,m)
+              if (universe_dict % has(id)) then
+                lat % universes(j,k,m) = universe_dict % get(id)
               else
                 call fatal_error("Invalid universe number " &
                      &// trim(to_str(id)) // " specified on lattice " &
-                     &// trim(to_str(lat%id)))
+                     &// trim(to_str(lat % id)))
               end if
             end do
           end do
         end do
 
       type is (HexLattice)
-        do m = 1, lat%n_axial
-          do k = 1, 2*lat%n_rings - 1
-            do j = 1, 2*lat%n_rings - 1
-              if (j + k < lat%n_rings + 1) then
+        do m = 1, lat % n_axial
+          do k = 1, 2*lat % n_rings - 1
+            do j = 1, 2*lat % n_rings - 1
+              if (j + k < lat % n_rings + 1) then
                 cycle
-              else if (j + k > 3*lat%n_rings - 1) then
+              else if (j + k > 3*lat % n_rings - 1) then
                 cycle
               end if
-              id = lat%universes(j, k, m)
-              if (universe_dict%has_key(id)) then
-                lat%universes(j, k, m) = universe_dict%get_key(id)
+              id = lat % universes(j, k, m)
+              if (universe_dict % has(id)) then
+                lat % universes(j, k, m) = universe_dict % get(id)
               else
                 call fatal_error("Invalid universe number " &
                      &// trim(to_str(id)) // " specified on lattice " &
-                     &// trim(to_str(lat%id)))
+                     &// trim(to_str(lat % id)))
               end if
             end do
           end do
@@ -565,13 +565,13 @@ contains
 
       end select
 
-      if (lat%outer /= NO_OUTER_UNIVERSE) then
-        if (universe_dict%has_key(lat%outer)) then
-          lat%outer = universe_dict%get_key(lat%outer)
+      if (lat % outer /= NO_OUTER_UNIVERSE) then
+        if (universe_dict % has(lat % outer)) then
+          lat % outer = universe_dict % get(lat % outer)
         else
           call fatal_error("Invalid universe number " &
-               &// trim(to_str(lat%outer)) &
-               &// " specified on lattice " // trim(to_str(lat%id)))
+               &// trim(to_str(lat % outer)) &
+               &// " specified on lattice " // trim(to_str(lat % id)))
         end if
       end if
 

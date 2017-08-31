@@ -319,8 +319,8 @@ contains
     integer(C_INT) :: err
 
     if (allocated(cells)) then
-      if (cell_dict % has_key(id)) then
-        index = cell_dict % get_key(id)
+      if (cell_dict % has(id)) then
+        index = cell_dict % get(id)
         err = 0
       else
         err = E_CELL_INVALID_ID
@@ -341,8 +341,8 @@ contains
     integer(C_INT) :: err
 
     if (allocated(materials)) then
-      if (material_dict % has_key(id)) then
-        index = material_dict % get_key(id)
+      if (material_dict % has(id)) then
+        index = material_dict % get(id)
         err = 0
       else
         err = E_MATERIAL_INVALID_ID
@@ -368,8 +368,8 @@ contains
     name_ = to_f_string(name)
 
     if (allocated(nuclides)) then
-      if (nuclide_dict % has_key(to_lower(name_))) then
-        index = nuclide_dict % get_key(to_lower(name_))
+      if (nuclide_dict % has(to_lower(name_))) then
+        index = nuclide_dict % get(to_lower(name_))
         err = 0
       else
         err = E_NUCLIDE_NOT_LOADED
@@ -390,8 +390,8 @@ contains
     integer(C_INT) :: err
 
     if (allocated(tallies)) then
-      if (tally_dict % has_key(id)) then
-        index = tally_dict % get_key(id)
+      if (tally_dict % has(id)) then
+        index = tally_dict % get(id)
         err = 0
       else
         err = E_TALLY_INVALID_ID
@@ -440,8 +440,8 @@ contains
     name_ = to_f_string(name)
 
     err = 0
-    if (.not. nuclide_dict % has_key(to_lower(name_))) then
-      if (library_dict % has_key(to_lower(name_))) then
+    if (.not. nuclide_dict % has(to_lower(name_))) then
+      if (library_dict % has(to_lower(name_))) then
         ! allocate extra space in nuclides array
         n = n_nuclides_total
         allocate(new_nuclides(n + 1))
@@ -449,7 +449,7 @@ contains
         call move_alloc(FROM=new_nuclides, TO=nuclides)
         n = n + 1
 
-        i_library = library_dict % get_key(to_lower(name_))
+        i_library = library_dict % get(to_lower(name_))
 
         ! Open file and make sure version is sufficient
         file_id = file_open(libraries(i_library) % path, 'r')
@@ -464,7 +464,7 @@ contains
         call file_close(file_id)
 
         ! Add entry to nuclide dictionary
-        call nuclide_dict % add_key(to_lower(name_), n)
+        call nuclide_dict % add(to_lower(name_), n)
         n_nuclides_total = n
 
         ! Assign resonant scattering data
@@ -531,7 +531,7 @@ contains
             call move_alloc(FROM=new_density, TO=m % atom_density)
 
             ! Append new nuclide/density
-            k = nuclide_dict % get_key(to_lower(name_))
+            k = nuclide_dict % get(to_lower(name_))
             m % nuclide(n + 1) = k
             m % atom_density(n + 1) = density
             m % density = m % density + density
@@ -641,12 +641,12 @@ contains
           call c_f_pointer(name(i), string, [10])
           name_ = to_lower(to_f_string(string))
 
-          if (.not. nuclide_dict % has_key(name_)) then
+          if (.not. nuclide_dict % has(name_)) then
             err = openmc_load_nuclide(string)
             if (err < 0) return
           end if
 
-          m % nuclide(i) = nuclide_dict % get_key(name_)
+          m % nuclide(i) = nuclide_dict % get(name_)
           m % atom_density(i) = density(i)
         end do
         m % n_nuclides = n
@@ -841,8 +841,8 @@ contains
           case ('total')
             t % nuclide_bins(i) = -1
           case default
-            if (nuclide_dict % has_key(nuclide_)) then
-              t % nuclide_bins(i) = nuclide_dict % get_key(nuclide_)
+            if (nuclide_dict % has(nuclide_)) then
+              t % nuclide_bins(i) = nuclide_dict % get(nuclide_)
             else
               err = E_NUCLIDE_NOT_LOADED
               return

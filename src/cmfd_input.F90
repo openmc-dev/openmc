@@ -374,7 +374,7 @@ contains
     m % volume_frac = ONE/real(product(m % dimension),8)
 
     ! Add mesh to dictionary
-    call mesh_dict % add_key(m % id, n_user_meshes + 1)
+    call mesh_dict % add(m % id, n_user_meshes + 1)
 
     ! Determine number of filters
     energy_filters = check_for_node(node_mesh, "energy")
@@ -392,7 +392,7 @@ contains
       filt % n_bins = product(m % dimension)
       filt % mesh = n_user_meshes + 1
       ! Add filter to dictionary
-      call filter_dict % add_key(filt % id, i_filt)
+      call filter_dict % add(filt % id, i_filt)
     end select
 
     if (energy_filters) then
@@ -407,7 +407,7 @@ contains
         allocate(filt % bins(ng))
         call get_node_array(node_mesh, "energy", filt % bins)
         ! Add filter to dictionary
-        call filter_dict % add_key(filt % id, i_filt)
+        call filter_dict % add(filt % id, i_filt)
       end select
 
       ! Read and set outgoing energy mesh filter
@@ -421,7 +421,7 @@ contains
         allocate(filt % bins(ng))
         call get_node_array(node_mesh, "energy", filt % bins)
         ! Add filter to dictionary
-        call filter_dict % add_key(filt % id, i_filt)
+        call filter_dict % add(filt % id, i_filt)
       end select
     end if
 
@@ -437,7 +437,7 @@ contains
       filt % n_bins = product(m % dimension + 1)
       filt % mesh = n_user_meshes + 1
       ! Add filter to dictionary
-      call filter_dict % add_key(filt % id, i_filt)
+      call filter_dict % add(filt % id, i_filt)
     end select
 
     ! Set up surface filter
@@ -458,7 +458,7 @@ contains
       end if
       filt % current = .true.
       ! Add filter to dictionary
-      call filter_dict % add_key(filt % id, i_filt)
+      call filter_dict % add(filt % id, i_filt)
     end select
 
     ! Allocate tallies

@@ -85,7 +85,7 @@ contains
         name = mat % names(j)
 
         if (.not. already_read % contains(name)) then
-          i_xsdata = xsdata_dict % get_key(to_lower(name))
+          i_xsdata = xsdata_dict % get(to_lower(name))
           i_nuclide = mat % nuclide(j)
 
           call write_message("Loading " // trim(name) // " data...", 6)
@@ -234,7 +234,7 @@ contains
           kT = cells(i) % sqrtkT(1)**2
         end if
 
-        i_material = material_dict % get_key(cells(i) % material(j))
+        i_material = material_dict % get(cells(i) % material(j))
 
         ! Add temperature if it hasn't already been added
         if (find(kTs(i_material), kT) == -1) then

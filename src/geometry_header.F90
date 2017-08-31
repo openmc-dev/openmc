@@ -364,11 +364,11 @@ contains
           temperature = cells(i) % sqrtkT(1)**2 / K_BOLTZMANN
         end if
 
-        i_material = material_dict % get_key(cells(i) % material(j))
+        i_material = material_dict % get(cells(i) % material(j))
         associate (mat => materials(i_material))
           NUC_NAMES_LOOP: do k = 1, size(mat % names)
             ! Get index in nuc_temps array
-            i_nuclide = nuclide_dict % get_key(to_lower(mat % names(k)))
+            i_nuclide = nuclide_dict % get(to_lower(mat % names(k)))
 
             ! Add temperature if it hasn't already been added
             if (find(nuc_temps(i_nuclide), temperature) == -1) then
@@ -380,7 +380,7 @@ contains
                mat % n_sab > 0) then
             SAB_NAMES_LOOP: do k = 1, size(mat % sab_names)
               ! Get index in nuc_temps array
-              i_sab = sab_dict % get_key(to_lower(mat % sab_names(k)))
+              i_sab = sab_dict % get(to_lower(mat % sab_names(k)))
 
               ! Add temperature if it hasn't already been added
               if (find(sab_temps(i_sab), temperature) == -1) then

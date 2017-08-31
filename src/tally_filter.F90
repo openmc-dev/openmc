@@ -2,7 +2,7 @@ module tally_filter
 
   use algorithm,           only: binary_search
   use constants,           only: ONE, NO_BIN_FOUND, FP_PRECISION, ERROR_REAL
-  use dict_header,         only: DictIntInt
+  use dict_header,         only: DictIntInt, EMPTY
   use geometry_header,     only: root_universe, RectLattice, HexLattice
   use global
   use hdf5_interface
@@ -462,12 +462,13 @@ contains
     type(TallyFilterMatch),     intent(inout) :: match
 
     integer :: i
+    integer :: val
 
     ! Iterate over coordinate levels to see which universes match
     do i = 1, p % n_coord
-      if (this % map % has_key(p % coord(i) % universe)) then
-        call match % bins % push_back(this % map % get_key(p % coord(i) &
-             % universe))
+      val = this % map % get(p % coord(i) % universe)
+      if (val /= EMPTY) then
+        call match % bins % push_back(val)
         call match % weights % push_back(ONE)
       end if
     end do
@@ -495,12 +496,14 @@ contains
     class(UniverseFilter), intent(inout) :: this
 
     integer :: i, id
+    integer :: val
 
     ! Convert ids to indices.
     do i = 1, this % n_bins
       id = this % universes(i)
-      if (universe_dict % has_key(id)) then
-        this % universes(i) = universe_dict % get_key(id)
+      val = universe_dict % get(id)
+      if (val /= EMPTY) then
+        this % universes(i) = val
       else
         call fatal_error("Could not find universe " // trim(to_str(id)) &
              &// " specified on a tally filter.")
@@ -509,7 +512,7 @@ contains
 
     ! Generate mapping from universe indices to filter bins.
     do i = 1, this % n_bins
-      call this % map % add_key(this % universes(i), i)
+      call this % map % add(this % universes(i), i)
     end do
   end subroutine initialize_universe
 
@@ -528,12 +531,15 @@ contains
     class(MaterialFilter), intent(in)  :: this
     type(Particle),        intent(in)  :: p
     integer,               intent(in)  :: estimator
-    type(TallyFilterMatch),     intent(inout) :: match
+    type(TallyFilterMatch), intent(inout) :: match
 
-      if (this % map % has_key(p % material)) then
-        call match % bins % push_back(this % map % get_key(p % material))
-        call match % weights % push_back(ONE)
-      end if
+    integer :: val
+
+    val = this % map % get(p % material)
+    if (val /= EMPTY) then
+      call match % bins % push_back(val)
+      call match % weights % push_back(ONE)
+    end if
 
   end subroutine get_all_bins_material
 
@@ -558,12 +564,14 @@ contains
     class(MaterialFilter), intent(inout) :: this
 
     integer :: i, id
+    integer :: val
 
     ! Convert ids to indices.
     do i = 1, this % n_bins
       id = this % materials(i)
-      if (material_dict % has_key(id)) then
-        this % materials(i) = material_dict % get_key(id)
+      val = material_dict % get(id)
+      if (val /= EMPTY) then
+        this % materials(i) = val
       else
         call fatal_error("Could not find material " // trim(to_str(id)) &
              &// " specified on a tally filter.")
@@ -572,7 +580,7 @@ contains
 
     ! Generate mapping from material indices to filter bins.
     do i = 1, this % n_bins
-      call this % map % add_key(this % materials(i), i)
+      call this % map % add(this % materials(i), i)
     end do
   end subroutine initialize_material
 
@@ -594,11 +602,13 @@ contains
     type(TallyFilterMatch), intent(inout) :: match
 
     integer :: i
+    integer :: val
 
     ! Iterate over coordinate levels to see with cells match
     do i = 1, p % n_coord
-      if (this % map % has_key(p % coord(i) % cell)) then
-        call match % bins % push_back(this % map % get_key(p % coord(i) % cell))
+      val = this % map % get(p % coord(i) % cell)
+      if (val /= EMPTY) then
+        call match % bins % push_back(val)
         call match % weights % push_back(ONE)
       end if
     end do
@@ -626,12 +636,14 @@ contains
     class(CellFilter), intent(inout) :: this
 
     integer :: i, id
+    integer :: val
 
     ! Convert ids to indices.
     do i = 1, this % n_bins
       id = this % cells(i)
-      if (cell_dict % has_key(id)) then
-        this % cells(i) = cell_dict % get_key(id)
+      val = cell_dict % get(id)
+      if (val /= EMPTY) then
+        this % cells(i) = val
       else
         call fatal_error("Could not find cell " // trim(to_str(id)) &
              &// " specified on tally filter.")
@@ -640,7 +652,7 @@ contains
 
     ! Generate mapping from cell indices to filter bins.
     do i = 1, this % n_bins
-      call this % map % add_key(this % cells(i), i)
+      call this % map % add(this % cells(i), i)
     end do
   end subroutine initialize_cell
 
@@ -662,12 +674,14 @@ contains
     type(TallyFilterMatch), intent(inout) :: match
 
     integer :: i
+    integer :: val
 
     ! Iterate over coordinate levels to see with cells match
 
     do i = 1, p % last_n_coord
-      if (this % map % has_key(p % last_cell(i))) then
-        call match % bins % push_back(this % map % get_key(p % last_cell(i)))
+      val = this % map % get(p % last_cell(i))
+      if (val /= EMPTY) then
+        call match % bins % push_back(val)
         call match % weights % push_back(ONE)
       end if
     end do
@@ -750,11 +764,13 @@ contains
     class(DistribcellFilter), intent(inout) :: this
 
     integer :: id
+    integer :: val
 
     ! Convert id to index.
     id = this % cell
-    if (cell_dict % has_key(id)) then
-      this % cell = cell_dict % get_key(id)
+    val = cell_dict % get(id)
+    if (val /= EMPTY) then
+      this % cell = val
     else
       call fatal_error("Could not find cell " // trim(to_str(id)) &
            &// " specified on tally filter.")
@@ -785,10 +801,13 @@ contains
     integer,               intent(in)  :: estimator
     type(TallyFilterMatch),     intent(inout) :: match
 
-      if (this % map % has_key(p % cell_born)) then
-        call match % bins % push_back(this % map % get_key(p % cell_born))
-        call match % weights % push_back(ONE)
-      end if
+    integer :: val
+
+    val = this % map % get(p % cell_born)
+    if (val /= EMPTY) then
+      call match % bins % push_back(val)
+      call match % weights % push_back(ONE)
+    end if
 
   end subroutine get_all_bins_cellborn
 
@@ -812,12 +831,14 @@ contains
     class(CellbornFilter), intent(inout) :: this
 
     integer :: i, id
+    integer :: val
 
     ! Convert ids to indices.
     do i = 1, this % n_bins
       id = this % cells(i)
-      if (cell_dict % has_key(id)) then
-        this % cells(i) = cell_dict % get_key(id)
+      val = cell_dict % get(id)
+      if (val /= EMPTY) then
+        this % cells(i) = val
       else
         call fatal_error("Could not find cell " // trim(to_str(id)) &
              &// " specified on tally filter.")
@@ -826,7 +847,7 @@ contains
 
     ! Generate mapping from cell indices to filter bins.
     do i = 1, this % n_bins
-      call this % map % add_key(this % cells(i), i)
+      call this % map % add(this % cells(i), i)
     end do
   end subroutine initialize_cellborn
 
@@ -876,12 +897,14 @@ contains
     class(SurfaceFilter), intent(inout) :: this
 
     integer :: i, id
+    integer :: val
 
     ! Convert ids to indices.
     do i = 1, this % n_bins
       id = this % surfaces(i)
-      if (surface_dict % has_key(id)) then
-        this % surfaces(i) = surface_dict % get_key(id)
+      val = surface_dict % get(id)
+      if (val /= EMPTY) then
+        this % surfaces(i) = val
       else
         call fatal_error("Could not find surface " // trim(to_str(id)) &
              &// " specified on tally filter.")
@@ -1288,7 +1311,7 @@ contains
     n = size(univ % cells)
 
     ! Write to the geometry stack
-    i_univ = universe_dict % get_key(univ % id)
+    i_univ = universe_dict % get(univ % id)
     if (i_univ == root_universe) then
       path = trim(path) // "u" // to_str(univ%id)
     else

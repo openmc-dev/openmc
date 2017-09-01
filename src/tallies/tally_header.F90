@@ -31,19 +31,6 @@ module tally_header
   public :: openmc_tally_set_scores
 
 !===============================================================================
-! TALLYDERIVATIVE describes a first-order derivative that can be applied to
-! tallies.
-!===============================================================================
-
-  type, public :: TallyDerivative
-    integer :: id
-    integer :: variable
-    integer :: diff_material
-    integer :: diff_nuclide
-    real(8) :: flux_deriv
-  end type TallyDerivative
-
-!===============================================================================
 ! TALLYOBJECT describes a user-specified tally. The region of phase space to
 ! tally in is given by the TallyFilters and the results are stored in a
 ! TallyResult array.
@@ -124,8 +111,6 @@ module tally_header
   integer(C_INT32_T), public, bind(C) :: n_tallies = 0 ! # of tallies
 
   type(TallyContainer),  public, allocatable, target :: tallies(:)
-  type(TallyDerivative), public, allocatable :: tally_derivs(:)
-!$omp threadprivate(tally_derivs)
 
   ! Dictionary that maps user IDs to indices in 'tallies'
   type(DictIntInt), public :: tally_dict

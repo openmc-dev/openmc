@@ -378,6 +378,7 @@ set(LIBOPENMC_FORTRAN_SRC
   src/volume_header.F90
   src/xml_interface.F90
   src/tallies/tally.F90
+  src/tallies/tally_derivative_header.F90
   src/tallies/tally_filter.F90
   src/tallies/tally_filter_header.F90
   src/tallies/tally_filter_azimuthal.F90

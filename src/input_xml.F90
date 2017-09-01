@@ -2493,7 +2493,6 @@ contains
     type(XMLNode) :: node_tal
     type(XMLNode) :: node_filt
     type(XMLNode) :: node_trigger
-    type(XMLNode) :: node_deriv
     type(XMLNode), allocatable :: node_mesh_list(:)
     type(XMLNode), allocatable :: node_tal_list(:)
     type(XMLNode), allocatable :: node_filt_list(:)
@@ -2582,75 +2581,10 @@ contains
 
     ! Read derivative attributes.
     do i = 1, size(node_deriv_list)
-      associate(deriv => tally_derivs(i))
-        ! Get pointer to derivative node.
-        node_deriv = node_deriv_list(i)
+      call tally_derivs(i) % from_xml(node_deriv_list(i))
 
-        ! Copy the derivative id.
-        if (check_for_node(node_deriv, "id")) then
-          call get_node_value(node_deriv, "id", deriv % id)
-        else
-          call fatal_error("Must specify an ID for <derivative> elements in the&
-               & tally XML file")
-        end if
-
-        ! Make sure the id is > 0.
-        if (deriv % id <= 0) then
-          call fatal_error("<derivative> IDs must be an integer greater than &
-               &zero")
-        end if
-
-        ! Make sure this id has not already been used.
-        do j = 1, i-1
-          if (tally_derivs(j) % id == deriv % id) then
-            call fatal_error("Two or more <derivative>'s use the same unique &
-                 &ID: " // trim(to_str(deriv % id)))
-          end if
-        end do
-
-        ! Read the independent variable name.
-        temp_str = ""
-        call get_node_value(node_deriv, "variable", temp_str)
-        temp_str = to_lower(temp_str)
-
-        select case(temp_str)
-
-        case("density")
-          deriv % variable = DIFF_DENSITY
-          call get_node_value(node_deriv, "material", deriv % diff_material)
-
-        case("nuclide_density")
-          deriv % variable = DIFF_NUCLIDE_DENSITY
-          call get_node_value(node_deriv, "material", deriv % diff_material)
-
-          call get_node_value(node_deriv, "nuclide", word)
-          word = trim(to_lower(word))
-          pair_list => nuclide_dict % keys()
-          do while (associated(pair_list))
-            if (starts_with(pair_list % key, word)) then
-              word = pair_list % key(1:150)
-              exit
-            end if
-
-            ! Advance to next
-            pair_list => pair_list % next
-          end do
-
-          ! Check if no nuclide was found
-          if (.not. associated(pair_list)) then
-            call fatal_error("Could not find the nuclide " &
-                 // trim(word) // " specified in derivative " &
-                 // trim(to_str(deriv % id)) // " in any material.")
-          end if
-          deallocate(pair_list)
-
-          deriv % diff_nuclide = nuclide_dict % get_key(word)
-
-        case("temperature")
-          deriv % variable = DIFF_TEMPERATURE
-          call get_node_value(node_deriv, "material", deriv % diff_material)
-        end select
-      end associate
+      ! Update tally derivative dictionary
+      call tally_deriv_dict % add_key(tally_derivs(i) % id, i)
     end do
 
     ! ==========================================================================
@@ -2693,13 +2627,11 @@ contains
         if (.not. check_for_node(node_filt, "bins")) then
           call fatal_error("Bins not set in filter " // trim(to_str(filter_id)))
         end if
-        n_words = node_word_count(node_filt, "bins")
       case ("mesh", "universe", "material", "cell", "distribcell", &
             "cellborn", "cellfrom", "surface", "delayedgroup")
         if (.not. check_for_node(node_filt, "bins")) then
           call fatal_error("Bins not set in filter " // trim(to_str(filter_id)))
         end if
-        n_words = node_word_count(node_filt, "bins")
       end select
 
       ! Allocate according to the filter type

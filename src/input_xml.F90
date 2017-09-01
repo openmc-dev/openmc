@@ -2485,7 +2485,6 @@ contains
     character(MAX_WORD_LEN) :: temp_str
     character(MAX_WORD_LEN), allocatable :: sarray(:)
     type(DictCharInt) :: trigger_scores
-    type(ElemKeyValueCI), pointer :: pair_list
     type(TallyFilterContainer), pointer :: f
     type(RegularMesh), pointer :: m
     type(XMLDocument) :: doc
@@ -2772,24 +2771,11 @@ contains
             word = to_lower(sarray(j))
 
             ! Search through nuclides
-            pair_list => nuclide_dict % keys()
-            do while (associated(pair_list))
-              if (trim(pair_list % key) == trim(word)) then
-                word = pair_list % key(1:150)
-                exit
-              end if
-
-              ! Advance to next
-              pair_list => pair_list % next
-            end do
-
-            ! Check if no nuclide was found
-            if (.not. associated(pair_list)) then
+            if (.not. nuclide_dict % has_key(word)) then
               call fatal_error("Could not find the nuclide " &
                    // trim(word) // " specified in tally " &
                    // trim(to_str(t % id)) // " in any material.")
             end if
-            deallocate(pair_list)
 
             ! Set bin to index in nuclides array
             t % nuclide_bins(j) = nuclide_dict % get_key(word)

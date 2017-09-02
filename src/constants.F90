@@ -308,7 +308,7 @@ module constants
 
   ! Tally score type -- if you change these, make sure you also update the
   ! _SCORES dictionary in openmc/capi/tally.py
-  integer, parameter :: N_SCORE_TYPES = 24
+  integer, parameter :: N_SCORE_TYPES = 30
   integer, parameter :: &
        SCORE_FLUX               = -1,  & ! flux
        SCORE_TOTAL              = -2,  & ! total reaction rate
@@ -333,8 +333,13 @@ module constants
        SCORE_INVERSE_VELOCITY   = -21, & ! flux-weighted inverse velocity
        SCORE_FISS_Q_PROMPT      = -22, & ! prompt fission Q-value
        SCORE_FISS_Q_RECOV       = -23, & ! recoverable fission Q-value
-       SCORE_DECAY_RATE         = -24    ! delayed neutron precursor decay rate
-
+       SCORE_DECAY_RATE         = -24, &    ! delayed neutron precursor decay rate
+       SCORE_N2N               = -25, &
+       SCORE_NGAMMA             = -26, &
+       SCORE_N3N                = -27, &
+       SCORE_N4N                = -28, &
+       SCORE_NP                 = -29, &
+       SCORE_NALPHA             = -30
   ! Maximum scattering order supported
   integer, parameter :: MAX_ANG_ORDER = 10
 

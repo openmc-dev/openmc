@@ -903,3 +903,8 @@ extern "C" double
 surface_distance(int surf_ind, double xyz[3], double uvw[3], bool coincident) {
   return surfaces_c[surf_ind]->distance(xyz, uvw, coincident);
 }
+
+extern "C" void
+surface_normal(int surf_ind, double xyz[3], double uvw[3]) {
+  return surfaces_c[surf_ind]->normal(xyz, uvw);
+}

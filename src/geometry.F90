@@ -35,6 +35,15 @@ module geometry
       logical(C_BOOL), value :: coincident;
       real(C_DOUBLE) :: d;
     end function surface_distance_c
+
+    subroutine surface_normal_c(surf_ind, xyz, uvw) &
+         bind(C, name='surface_normal')
+      use ISO_C_BINDING
+      implicit none
+      integer(C_INT), value :: surf_ind;
+      real(C_DOUBLE) :: xyz(3);
+      real(C_DOUBLE) :: uvw(3);
+    end subroutine surface_normal_c
   end interface
 
 contains
@@ -76,6 +85,7 @@ contains
     integer :: token
     logical :: actual_sense    ! sense of particle wrt surface
     logical :: alt_sense
+    real(8) :: uvw1(3), uvw2(3)
 
     in_cell = .true.
     do i = 1, size(c%rpn)
@@ -100,6 +110,14 @@ contains
             write(*, *) p % coord (p % n_coord) % xyz
             write(*, *) p % coord (p % n_coord) % uvw
             write(*, *) actual_sense, alt_sense
+            call fatal_error("")
+          end if
+          uvw1 = surfaces(abs(token))%obj%normal(p%coord(p%n_coord)%xyz)
+          call surface_normal_c(abs(token)-1, p%coord(p%n_coord)%xyz, uvw2)
+          if (.not. all(uvw1 - uvw2 == ZERO)) then
+            write(*, *) "Surface normals don't match"
+            write(*, *) uvw1
+            write(*, *) uvw2
             call fatal_error("")
           end if
           if (actual_sense .neqv. (token > 0)) then

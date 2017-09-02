@@ -19,6 +19,82 @@ class Surface;
 Surface **surfaces_c;
 
 //==============================================================================
+// Helper functions
+//==============================================================================
+
+void read_coeffs(pugi::xml_node surf_node, double &c1)
+{
+  const char *coeffs;
+  if (surf_node.attribute("coeffs")) {
+    coeffs = surf_node.attribute("coeffs").value();
+  } else if (surf_node.child("coeffs")) {
+    coeffs = surf_node.child_value("coeffs");
+  } else {
+    std::cout << "ERROR: Found a surface with no coefficients" << std::endl;
+  }
+
+  int stat = sscanf(coeffs, "%lf", &c1);
+  if (stat != 1) {
+    std::cout << "Something went wrong reading surface coeffs!" << std::endl;
+  }
+}
+
+void read_coeffs(pugi::xml_node surf_node, double &c1, double &c2, double &c3)
+{
+  const char *coeffs;
+  if (surf_node.attribute("coeffs")) {
+    coeffs = surf_node.attribute("coeffs").value();
+  } else if (surf_node.child("coeffs")) {
+    coeffs = surf_node.child_value("coeffs");
+  } else {
+    std::cout << "ERROR: Found a surface with no coefficients" << std::endl;
+  }
+
+  int stat = sscanf(coeffs, "%lf %lf %lf", &c1, &c2, &c3);
+  if (stat != 3) {
+    std::cout << "Something went wrong reading surface coeffs!" << std::endl;
+  }
+}
+
+void read_coeffs(pugi::xml_node surf_node, double &c1, double &c2, double &c3,
+                 double &c4)
+{
+  const char *coeffs;
+  if (surf_node.attribute("coeffs")) {
+    coeffs = surf_node.attribute("coeffs").value();
+  } else if (surf_node.child("coeffs")) {
+    coeffs = surf_node.child_value("coeffs");
+  } else {
+    std::cout << "ERROR: Found a surface with no coefficients" << std::endl;
+  }
+
+  int stat = sscanf(coeffs, "%lf %lf %lf %lf", &c1, &c2, &c3, &c4);
+  if (stat != 4) {
+    std::cout << "Something went wrong reading surface coeffs!" << std::endl;
+  }
+}
+
+void read_coeffs(pugi::xml_node surf_node, double &c1, double &c2, double &c3,
+                 double &c4, double &c5, double &c6, double &c7, double &c8,
+                 double &c9, double &c10)
+{
+  const char *coeffs;
+  if (surf_node.attribute("coeffs")) {
+    coeffs = surf_node.attribute("coeffs").value();
+  } else if (surf_node.child("coeffs")) {
+    coeffs = surf_node.child_value("coeffs");
+  } else {
+    std::cout << "ERROR: Found a surface with no coefficients" << std::endl;
+  }
+
+  int stat = sscanf(coeffs, "%lf %lf %lf %lf %lf %lf %lf %lf %lf %lf",
+                    &c1, &c2, &c3, &c4, &c5, &c6, &c7, &c8, &c9, &c10);
+  if (stat != 10) {
+    std::cout << "Something went wrong reading surface coeffs!" << std::endl;
+  }
+}
+
+//==============================================================================
 // SURFACE type defines a first- or second-order surface that can be used to
 // construct closed volumes (cells)
 //==============================================================================
@@ -115,11 +191,7 @@ public:
 };
 
 SurfaceXPlane::SurfaceXPlane(pugi::xml_node surf_node) {
-  const char *coeffs = surf_node.attribute("coeffs").value();
-  int stat = sscanf(coeffs, "%lf", &x0);
-  if (stat != 1) {
-    std::cout << "Something went wrong reading surface coeffs!" << std::endl;
-  }
+  read_coeffs(surf_node, x0);
 }
 
 inline double SurfaceXPlane::evaluate(const double xyz[3]) const {
@@ -151,11 +223,7 @@ public:
 };
 
 SurfaceYPlane::SurfaceYPlane(pugi::xml_node surf_node) {
-  const char *coeffs = surf_node.attribute("coeffs").value();
-  int stat = sscanf(coeffs, "%lf", &y0);
-  if (stat != 1) {
-    std::cout << "Something went wrong reading surface coeffs!" << std::endl;
-  }
+  read_coeffs(surf_node, y0);
 }
 
 inline double SurfaceYPlane::evaluate(const double xyz[3]) const {
@@ -187,11 +255,7 @@ public:
 };
 
 SurfaceZPlane::SurfaceZPlane(pugi::xml_node surf_node) {
-  const char *coeffs = surf_node.attribute("coeffs").value();
-  int stat = sscanf(coeffs, "%lf", &z0);
-  if (stat != 1) {
-    std::cout << "Something went wrong reading surface coeffs!" << std::endl;
-  }
+  read_coeffs(surf_node, z0);
 }
 
 inline double SurfaceZPlane::evaluate(const double xyz[3]) const {
@@ -223,11 +287,7 @@ public:
 };
 
 SurfacePlane::SurfacePlane(pugi::xml_node surf_node) {
-  const char *coeffs = surf_node.attribute("coeffs").value();
-  int stat = sscanf(coeffs, "%lf %lf %lf %lf", &A, &B, &C, &D);
-  if (stat != 4) {
-    std::cout << "Something went wrong reading surface coeffs!" << std::endl;
-  }
+  read_coeffs(surf_node, A, B, C, D);
 }
 
 double
@@ -336,11 +396,7 @@ public:
 };
 
 SurfaceXCylinder::SurfaceXCylinder(pugi::xml_node surf_node) {
-  const char *coeffs = surf_node.attribute("coeffs").value();
-  int stat = sscanf(coeffs, "%lf %lf %lf", &y0, &z0, &r);
-  if (stat != 3) {
-    std::cout << "Something went wrong reading surface coeffs!" << std::endl;
-  }
+  read_coeffs(surf_node, y0, z0, r);
 }
 
 inline double SurfaceXCylinder::evaluate(const double xyz[3]) const {
@@ -375,11 +431,7 @@ public:
 };
 
 SurfaceYCylinder::SurfaceYCylinder(pugi::xml_node surf_node) {
-  const char *coeffs = surf_node.attribute("coeffs").value();
-  int stat = sscanf(coeffs, "%lf %lf %lf", &x0, &z0, &r);
-  if (stat != 3) {
-    std::cout << "Something went wrong reading surface coeffs!" << std::endl;
-  }
+  read_coeffs(surf_node, x0, z0, r);
 }
 
 inline double SurfaceYCylinder::evaluate(const double xyz[3]) const {
@@ -412,11 +464,7 @@ public:
 };
 
 SurfaceZCylinder::SurfaceZCylinder(pugi::xml_node surf_node) {
-  const char *coeffs = surf_node.attribute("coeffs").value();
-  int stat = sscanf(coeffs, "%lf %lf %lf", &x0, &y0, &r);
-  if (stat != 3) {
-    std::cout << "Something went wrong reading surface coeffs!" << std::endl;
-  }
+  read_coeffs(surf_node, x0, y0, r);
 }
 
 inline double SurfaceZCylinder::evaluate(const double xyz[3]) const {
@@ -449,11 +497,7 @@ public:
 };
 
 SurfaceSphere::SurfaceSphere(pugi::xml_node surf_node) {
-  const char *coeffs = surf_node.attribute("coeffs").value();
-  int stat = sscanf(coeffs, "%lf %lf %lf %lf", &x0, &y0, &z0, &r);
-  if (stat != 4) {
-    std::cout << "Something went wrong reading surface coeffs!" << std::endl;
-  }
+  read_coeffs(surf_node, x0, y0, z0, r);
 }
 
 double SurfaceSphere::evaluate(const double xyz[3]) const {
@@ -596,11 +640,7 @@ public:
 };
 
 SurfaceXCone::SurfaceXCone(pugi::xml_node surf_node) {
-  const char *coeffs = surf_node.attribute("coeffs").value();
-  int stat = sscanf(coeffs, "%lf %lf %lf %lf", &x0, &y0, &z0, &r_sq);
-  if (stat != 4) {
-    std::cout << "Something went wrong reading surface coeffs!" << std::endl;
-  }
+  read_coeffs(surf_node, x0, y0, z0, r_sq);
 }
 
 inline double SurfaceXCone::evaluate(const double xyz[3]) const {
@@ -635,11 +675,7 @@ public:
 };
 
 SurfaceYCone::SurfaceYCone(pugi::xml_node surf_node) {
-  const char *coeffs = surf_node.attribute("coeffs").value();
-  int stat = sscanf(coeffs, "%lf %lf %lf %lf", &x0, &y0, &z0, &r_sq);
-  if (stat != 4) {
-    std::cout << "Something went wrong reading surface coeffs!" << std::endl;
-  }
+  read_coeffs(surf_node, x0, y0, z0, r_sq);
 }
 
 inline double SurfaceYCone::evaluate(const double xyz[3]) const {
@@ -672,11 +708,7 @@ public:
 };
 
 SurfaceZCone::SurfaceZCone(pugi::xml_node surf_node) {
-  const char *coeffs = surf_node.attribute("coeffs").value();
-  int stat = sscanf(coeffs, "%lf %lf %lf %lf", &x0, &y0, &z0, &r_sq);
-  if (stat != 4) {
-    std::cout << "Something went wrong reading surface coeffs!" << std::endl;
-  }
+  read_coeffs(surf_node, x0, y0, z0, r_sq);
 }
 
 inline double SurfaceZCone::evaluate(const double xyz[3]) const {
@@ -709,12 +741,7 @@ public:
 };
 
 SurfaceQuadric::SurfaceQuadric(pugi::xml_node surf_node) {
-  const char *coeffs = surf_node.attribute("coeffs").value();
-  int stat = sscanf(coeffs, "%lf %lf %lf %lf %lf %lf %lf %lf %lf %lf",
-                    &A, &B, &C, &D, &E, &F, &G, &H, &J, &K);
-  if (stat != 10) {
-    std::cout << "Something went wrong reading surface coeffs!" << std::endl;
-  }
+  read_coeffs(surf_node, A, B, C, D, E, F, G, H, J, K);
 }
 
 double
@@ -811,49 +838,55 @@ read_surfaces(pugi::xml_node *node) {
     int i_surf;
     for (surf_node = node->child("surface"), i_surf = 0; surf_node;
          surf_node = surf_node.next_sibling("surface"), i_surf++) {
+      const pugi::char_t *surf_type;
       if (surf_node.attribute("type")) {
-        const pugi::char_t *surf_type = surf_node.attribute("type").value();
+        surf_type = surf_node.attribute("type").value();
+      } else if (surf_node.child("type")) {
+        surf_type = surf_node.child_value("type");
+      } else {
+        std::cout << "ERROR: Found a surface with no type attribute/node"
+             << std::endl;
+      }
 
-        if (strcmp(surf_type, "x-plane") == 0) {
-          surfaces_c[i_surf] = new SurfaceXPlane(surf_node);
+      if (strcmp(surf_type, "x-plane") == 0) {
+        surfaces_c[i_surf] = new SurfaceXPlane(surf_node);
 
-        } else if (strcmp(surf_type, "y-plane") == 0) {
-          surfaces_c[i_surf] = new SurfaceYPlane(surf_node);
+      } else if (strcmp(surf_type, "y-plane") == 0) {
+        surfaces_c[i_surf] = new SurfaceYPlane(surf_node);
 
-        } else if (strcmp(surf_type, "z-plane") == 0) {
-          surfaces_c[i_surf] = new SurfaceZPlane(surf_node);
+      } else if (strcmp(surf_type, "z-plane") == 0) {
+        surfaces_c[i_surf] = new SurfaceZPlane(surf_node);
 
-        } else if (strcmp(surf_type, "plane") == 0) {
-          surfaces_c[i_surf] = new SurfacePlane(surf_node);
+      } else if (strcmp(surf_type, "plane") == 0) {
+        surfaces_c[i_surf] = new SurfacePlane(surf_node);
 
-        } else if (strcmp(surf_type, "x-cylinder") == 0) {
-          surfaces_c[i_surf] = new SurfaceXCylinder(surf_node);
+      } else if (strcmp(surf_type, "x-cylinder") == 0) {
+        surfaces_c[i_surf] = new SurfaceXCylinder(surf_node);
 
-        } else if (strcmp(surf_type, "y-cylinder") == 0) {
-          surfaces_c[i_surf] = new SurfaceYCylinder(surf_node);
+      } else if (strcmp(surf_type, "y-cylinder") == 0) {
+        surfaces_c[i_surf] = new SurfaceYCylinder(surf_node);
 
-        } else if (strcmp(surf_type, "z-cylinder") == 0) {
-          surfaces_c[i_surf] = new SurfaceZCylinder(surf_node);
+      } else if (strcmp(surf_type, "z-cylinder") == 0) {
+        surfaces_c[i_surf] = new SurfaceZCylinder(surf_node);
 
-        } else if (strcmp(surf_type, "sphere") == 0) {
-          surfaces_c[i_surf] = new SurfaceSphere(surf_node);
+      } else if (strcmp(surf_type, "sphere") == 0) {
+        surfaces_c[i_surf] = new SurfaceSphere(surf_node);
 
-        } else if (strcmp(surf_type, "x-cone") == 0) {
-          surfaces_c[i_surf] = new SurfaceXCone(surf_node);
+      } else if (strcmp(surf_type, "x-cone") == 0) {
+        surfaces_c[i_surf] = new SurfaceXCone(surf_node);
 
-        } else if (strcmp(surf_type, "y-cone") == 0) {
-          surfaces_c[i_surf] = new SurfaceYCone(surf_node);
+      } else if (strcmp(surf_type, "y-cone") == 0) {
+        surfaces_c[i_surf] = new SurfaceYCone(surf_node);
 
-        } else if (strcmp(surf_type, "z-cone") == 0) {
-          surfaces_c[i_surf] = new SurfaceZCone(surf_node);
+      } else if (strcmp(surf_type, "z-cone") == 0) {
+        surfaces_c[i_surf] = new SurfaceZCone(surf_node);
 
-        } else if (strcmp(surf_type, "quadric") == 0) {
-          surfaces_c[i_surf] = new SurfaceQuadric(surf_node);
+      } else if (strcmp(surf_type, "quadric") == 0) {
+        surfaces_c[i_surf] = new SurfaceQuadric(surf_node);
 
-        } else {
-          std::cout << "Call error or handle uppercase here!" << std::endl;
-          std::cout << surf_type << std::endl;
-        }
+      } else {
+        std::cout << "Call error or handle uppercase here!" << std::endl;
+        std::cout << surf_type << std::endl;
       }
     }
   }

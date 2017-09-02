@@ -88,6 +88,7 @@ module tally_header
 
     ! reset property - allows a tally to be reset after every batch
     logical :: reset = .false.
+    logical :: has_threshold_rxn = .false.
 
     ! Number of realizations of tally random variables
     integer :: n_realizations = 0

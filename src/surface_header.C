@@ -1,8 +1,11 @@
 #include <cstring>  // For strcmp
-#include <iostream>
 #include <limits>  // For numeric_limits
 #include <math.h>  // For fabs
+
 #include "pugixml/pugixml.hpp"
+
+// DEBUGGING
+#include <iostream>
 
 //==============================================================================
 // Constants
@@ -19,20 +22,24 @@ class Surface;
 Surface **surfaces_c;
 
 //==============================================================================
-// Helper functions
+// Helper functions for reading the "coeffs" node of an XML surface element
 //==============================================================================
+
+const char* get_coeff_str(pugi::xml_node surf_node)
+{
+  if (surf_node.attribute("coeffs")) {
+    return surf_node.attribute("coeffs").value();
+  } else if (surf_node.child("coeffs")) {
+    return surf_node.child_value("coeffs");
+  } else {
+    std::cout << "ERROR: Found a surface with no coefficients" << std::endl;
+    return NULL;
+  }
+}
 
 void read_coeffs(pugi::xml_node surf_node, double &c1)
 {
-  const char *coeffs;
-  if (surf_node.attribute("coeffs")) {
-    coeffs = surf_node.attribute("coeffs").value();
-  } else if (surf_node.child("coeffs")) {
-    coeffs = surf_node.child_value("coeffs");
-  } else {
-    std::cout << "ERROR: Found a surface with no coefficients" << std::endl;
-  }
-
+  const char *coeffs = get_coeff_str(surf_node);
   int stat = sscanf(coeffs, "%lf", &c1);
   if (stat != 1) {
     std::cout << "Something went wrong reading surface coeffs!" << std::endl;
@@ -41,15 +48,7 @@ void read_coeffs(pugi::xml_node surf_node, double &c1)
 
 void read_coeffs(pugi::xml_node surf_node, double &c1, double &c2, double &c3)
 {
-  const char *coeffs;
-  if (surf_node.attribute("coeffs")) {
-    coeffs = surf_node.attribute("coeffs").value();
-  } else if (surf_node.child("coeffs")) {
-    coeffs = surf_node.child_value("coeffs");
-  } else {
-    std::cout << "ERROR: Found a surface with no coefficients" << std::endl;
-  }
-
+  const char *coeffs = get_coeff_str(surf_node);
   int stat = sscanf(coeffs, "%lf %lf %lf", &c1, &c2, &c3);
   if (stat != 3) {
     std::cout << "Something went wrong reading surface coeffs!" << std::endl;
@@ -59,15 +58,7 @@ void read_coeffs(pugi::xml_node surf_node, double &c1, double &c2, double &c3)
 void read_coeffs(pugi::xml_node surf_node, double &c1, double &c2, double &c3,
                  double &c4)
 {
-  const char *coeffs;
-  if (surf_node.attribute("coeffs")) {
-    coeffs = surf_node.attribute("coeffs").value();
-  } else if (surf_node.child("coeffs")) {
-    coeffs = surf_node.child_value("coeffs");
-  } else {
-    std::cout << "ERROR: Found a surface with no coefficients" << std::endl;
-  }
-
+  const char *coeffs = get_coeff_str(surf_node);
   int stat = sscanf(coeffs, "%lf %lf %lf %lf", &c1, &c2, &c3, &c4);
   if (stat != 4) {
     std::cout << "Something went wrong reading surface coeffs!" << std::endl;
@@ -78,15 +69,7 @@ void read_coeffs(pugi::xml_node surf_node, double &c1, double &c2, double &c3,
                  double &c4, double &c5, double &c6, double &c7, double &c8,
                  double &c9, double &c10)
 {
-  const char *coeffs;
-  if (surf_node.attribute("coeffs")) {
-    coeffs = surf_node.attribute("coeffs").value();
-  } else if (surf_node.child("coeffs")) {
-    coeffs = surf_node.child_value("coeffs");
-  } else {
-    std::cout << "ERROR: Found a surface with no coefficients" << std::endl;
-  }
-
+  const char *coeffs = get_coeff_str(surf_node);
   int stat = sscanf(coeffs, "%lf %lf %lf %lf %lf %lf %lf %lf %lf %lf",
                     &c1, &c2, &c3, &c4, &c5, &c6, &c7, &c8, &c9, &c10);
   if (stat != 10) {
@@ -95,25 +78,52 @@ void read_coeffs(pugi::xml_node surf_node, double &c1, double &c2, double &c3,
 }
 
 //==============================================================================
-// SURFACE type defines a first- or second-order surface that can be used to
-// construct closed volumes (cells)
+//! A geometry primitive used to define regions of 3D space.
 //==============================================================================
 
 class Surface {
-  int id;                    // Unique ID
-  int neighbor_pos[],        // List of cells on positive side
-      neighbor_neg[];        // List of cells on negative side
-  int bc;                    // Boundary condition
-  //TODO: swith that zero to a NONE constant.
-  int i_periodic = 0;        // Index of corresponding periodic surface
-  char name[104];            // User-defined name
-
 public:
+  int id;                    //!< Unique ID
+  int neighbor_pos[],        //!< List of cells on positive side
+      neighbor_neg[];        //!< List of cells on negative side
+  int bc;                    //!< Boundary condition
+  //TODO: switch that zero to a NONE constant.
+  int i_periodic = 0;        //!< Index of corresponding periodic surface
+  char name[104];            //!< User-defined name
+
+  //! Determine which side of a surface a point lies on.
+  //! @param xyz[3] The 3D Cartesian coordinate of a point.
+  //! @param uvw[3] A direction used to "break ties" and pick a sense when the
+  //!   point is very close to the surface.
+  //! @return True if the point is on the "positive" side of the surface and
+  //!   false otherwise.
   bool sense(const double xyz[3], const double uvw[3]) const;
+
+  //! Determine the direction of a ray reflected from the surface.
+  //! @param xyz[3] The point at which the ray is incident.
+  //! @param uvw[3] A direction.  This is both an input and an output parameter.
+  //!   It specifies the icident direction on input and the reflected direction
+  //!   on output.
   void reflect(const double xyz[3], double uvw[3]) const;
+
+  //! Evaluate the equation describing the surface.
+  //!
+  //! Surfaces can be described by some function f(x, y, z) = 0.  This member
+  //! function evaluates that mathematical function.
+  //! @param xyz[3] A 3D Cartesian coordinate.
   virtual double evaluate(const double xyz[3]) const = 0;
+
+  //! Compute the distance between a point and the surface along a ray.
+  //! @param xyz[3] A 3D Cartesian coordinate.
+  //! @param uvw[3] The direction of the ray.
+  //! @param coincident A hint to the code that the given point should lie
+  //!   exactly on the surface.
   virtual double distance(const double xyz[3], const double uvw[3],
                           bool coincident) const = 0;
+
+  //! Compute the local outward normal direction of the surface.
+  //! @param xyz[3] A 3D Cartesian coordinate.
+  //! @param uvw[3] This output argument provides the normal.
   virtual void normal(const double xyz[3], double uvw[3]) const = 0;
 };
 
@@ -151,13 +161,16 @@ Surface::reflect(const double xyz[3], double uvw[3]) const {
 }
 
 //==============================================================================
-// Generic functions for x-, y-, and z-, planes
+// Generic functions for x-, y-, and z-, planes.
 //==============================================================================
 
+// The template parameter indicates the axis normal to the plane.
 template<int i> double
 axis_aligned_plane_evaluate(const double xyz[3], double offset) {
-  return xyz[i] - offset;}
+  return xyz[i] - offset;
+}
 
+// The template parameter indicates the axis normal to the plane.
 template<int i> double
 axis_aligned_plane_distance(const double xyz[3], const double uvw[3],
                             bool coincident, double offset) {
@@ -168,6 +181,8 @@ axis_aligned_plane_distance(const double xyz[3], const double uvw[3],
   return d;
 }
 
+// The first template parameter indicates the axis normal to the plane.  The
+// other two parameters indicate the other two axes.
 template<int i1, int i2, int i3> void
 axis_aligned_plane_normal(const double xyz[3], double uvw[3]) {
   uvw[i1] = 1.0;
@@ -177,10 +192,12 @@ axis_aligned_plane_normal(const double xyz[3], double uvw[3]) {
 
 //==============================================================================
 // SurfaceXPlane
+//! A plane perpendicular to the x-axis.
+//
+//! The plane is described by the equation \f$x - x_0 = 0\f$
 //==============================================================================
 
 class SurfaceXPlane : public Surface {
-  // x = x0
   double x0;
 public:
   SurfaceXPlane(pugi::xml_node surf_node);
@@ -209,10 +226,12 @@ inline void SurfaceXPlane::normal(const double xyz[3], double uvw[3]) const {
 
 //==============================================================================
 // SurfaceYPlane
+//! A plane perpendicular to the y-axis.
+//
+//! The plane is described by the equation \f$y - y_0 = 0\f$
 //==============================================================================
 
 class SurfaceYPlane : public Surface {
-  // y = y0
   double y0;
 public:
   SurfaceYPlane(pugi::xml_node surf_node);
@@ -241,10 +260,12 @@ inline void SurfaceYPlane::normal(const double xyz[3], double uvw[3]) const {
 
 //==============================================================================
 // SurfaceZPlane
+//! A plane perpendicular to the z-axis.
+//
+//! The plane is described by the equation \f$z - z_0 = 0\f$
 //==============================================================================
 
 class SurfaceZPlane : public Surface {
-  // z = z0
   double z0;
 public:
   SurfaceZPlane(pugi::xml_node surf_node);
@@ -273,10 +294,12 @@ inline void SurfaceZPlane::normal(const double xyz[3], double uvw[3]) const {
 
 //==============================================================================
 // SurfacePlane
+//! A general plane.
+//
+//! The plane is described by the equation \f$A x + B y + C z - D = 0\f$
 //==============================================================================
 
 class SurfacePlane : public Surface {
-  // Ax + By + Cz = D
   double A, B, C, D;
 public:
   SurfacePlane(pugi::xml_node surf_node);
@@ -320,6 +343,9 @@ SurfacePlane::normal(const double xyz[3], double uvw[3]) const {
 // Generic functions for x-, y-, and z-, cylinders
 //==============================================================================
 
+// The template parameters indicate the axes perpendicular to the axis of the
+// cylinder.  offset1 and offset2 should correspond with i1 and i2,
+// respectively.
 template<int i1, int i2> double
 axis_aligned_cylinder_evaluate(const double xyz[3], double offset1,
                                double offset2, double radius) {
@@ -328,6 +354,9 @@ axis_aligned_cylinder_evaluate(const double xyz[3], double offset1,
   return xyz1*xyz1 + xyz2*xyz2 - radius*radius;
 }
 
+// The first template parameter indicates which axis the cylinder is aligned to.
+// The other two parameters indicate the other two axes.  offset1 and offset2
+// should correspond with i2 and i3, respectively.
 template<int i1, int i2, int i3> double
 axis_aligned_cylinder_distance(const double xyz[3], const double uvw[3],
      bool coincident, double offset1, double offset2, double radius) {
@@ -370,6 +399,9 @@ axis_aligned_cylinder_distance(const double xyz[3], const double uvw[3],
   }
 }
 
+// The first template parameter indicates which axis the cylinder is aligned to.
+// The other two parameters indicate the other two axes.  offset1 and offset2
+// should correspond with i2 and i3, respectively.
 template<int i1, int i2, int i3> void
 axis_aligned_cylinder_normal(const double xyz[3], double uvw[3], double offset1,
                              double offset2) {
@@ -380,12 +412,13 @@ axis_aligned_cylinder_normal(const double xyz[3], double uvw[3], double offset1,
 
 //==============================================================================
 // SurfaceXCylinder
+//! A cylinder aligned along the x-axis.
+//
+//! The cylinder is described by the equation
+//! \f$(y - y_0)^2 + (z - z_0)^2 - R^2 = 0\f$
 //==============================================================================
 
-// TODO: Test this implementation!
-
 class SurfaceXCylinder : public Surface {
-  // (y - y0)^2 + (z - z0)^2 = R^2
   double y0, z0, r;
 public:
   SurfaceXCylinder(pugi::xml_node surf_node);
@@ -415,12 +448,13 @@ inline void SurfaceXCylinder::normal(const double xyz[3], double uvw[3]) const {
 
 //==============================================================================
 // SurfaceYCylinder
+//! A cylinder aligned along the y-axis.
+//
+//! The cylinder is described by the equation
+//! \f$(x - x_0)^2 + (z - z_0)^2 - R^2 = 0\f$
 //==============================================================================
 
-// TODO: Test this implementation!
-
 class SurfaceYCylinder : public Surface {
-  // (x - x0)^2 + (z - z0)^2 = R^2
   double x0, z0, r;
 public:
   SurfaceYCylinder(pugi::xml_node surf_node);
@@ -450,10 +484,13 @@ inline void SurfaceYCylinder::normal(const double xyz[3], double uvw[3]) const {
 
 //==============================================================================
 // SurfaceZCylinder
+//! A cylinder aligned along the z-axis.
+//
+//! The cylinder is described by the equation
+//! \f$(x - x_0)^2 + (y - y_0)^2 - R^2 = 0\f$
 //==============================================================================
 
 class SurfaceZCylinder : public Surface {
-  // (x - x0)^2 + (y - y0)^2 = R^2
   double x0, y0, r;
 public:
   SurfaceZCylinder(pugi::xml_node surf_node);
@@ -483,10 +520,13 @@ inline void SurfaceZCylinder::normal(const double xyz[3], double uvw[3]) const {
 
 //==============================================================================
 // SurfaceSphere
+//! A sphere.
+//
+//! The cylinder is described by the equation
+//! \f$(x - x_0)^2 + (y - y_0)^2 + (z - z_0)^2 - R^2 = 0\f$
 //==============================================================================
 
 class SurfaceSphere : public Surface {
-  // (x - x0)^2 + (y - y0)^2 + (z - z0)^2 = R^2
   double x0, y0, z0, r;
 public:
   SurfaceSphere(pugi::xml_node surf_node);
@@ -555,6 +595,9 @@ inline void SurfaceSphere::normal(const double xyz[3], double uvw[3]) const {
 // Generic functions for x-, y-, and z-, cones
 //==============================================================================
 
+// The first template parameter indicates which axis the cone is aligned to.
+// The other two parameters indicate the other two axes.  offset1, offset2,
+// and offset3 should correspond with i1, i2, and i3, respectively.
 template<int i1, int i2, int i3> double
 axis_aligned_cone_evaluate(const double xyz[3], double offset1,
                            double offset2, double offset3, double radius_sq) {
@@ -564,6 +607,9 @@ axis_aligned_cone_evaluate(const double xyz[3], double offset1,
   return xyz2*xyz2 + xyz3*xyz3 - radius_sq*xyz1*xyz1;
 }
 
+// The first template parameter indicates which axis the cone is aligned to.
+// The other two parameters indicate the other two axes.  offset1, offset2,
+// and offset3 should correspond with i1, i2, and i3, respectively.
 template<int i1, int i2, int i3> double
 axis_aligned_cone_distance(const double xyz[3], const double uvw[3],
      bool coincident, double offset1, double offset2, double offset3,
@@ -614,6 +660,9 @@ axis_aligned_cone_distance(const double xyz[3], const double uvw[3],
   return d;
 }
 
+// The first template parameter indicates which axis the cone is aligned to.
+// The other two parameters indicate the other two axes.  offset1, offset2,
+// and offset3 should correspond with i1, i2, and i3, respectively.
 template<int i1, int i2, int i3> void
 axis_aligned_cone_normal(const double xyz[3], double uvw[3], double offset1,
                          double offset2, double offset3, double radius_sq) {
@@ -624,12 +673,13 @@ axis_aligned_cone_normal(const double xyz[3], double uvw[3], double offset1,
 
 //==============================================================================
 // SurfaceXCone
+//! A cone aligned along the x-axis.
+//
+//! The cylinder is described by the equation
+//! \f$(y - y_0)^2 + (z - z_0)^2 - R^2 (x - x_0)^2 = 0\f$
 //==============================================================================
 
-// TODO: Test this implementation!
-
 class SurfaceXCone : public Surface {
-  // (y - y0)^2 + (z - z0)^2 = R^2*(x - x0)^2
   double x0, y0, z0, r_sq;
 public:
   SurfaceXCone(pugi::xml_node surf_node);
@@ -659,12 +709,13 @@ inline void SurfaceXCone::normal(const double xyz[3], double uvw[3]) const {
 
 //==============================================================================
 // SurfaceYCone
+//! A cone aligned along the y-axis.
+//
+//! The cylinder is described by the equation
+//! \f$(x - x_0)^2 + (z - z_0)^2 - R^2 (y - y_0)^2 = 0\f$
 //==============================================================================
 
-// TODO: Test this implementation!
-
 class SurfaceYCone : public Surface {
-  // (x - x0)^2 + (z - z0)^2 = R^2*(y - y0)^2
   double x0, y0, z0, r_sq;
 public:
   SurfaceYCone(pugi::xml_node surf_node);
@@ -694,10 +745,13 @@ inline void SurfaceYCone::normal(const double xyz[3], double uvw[3]) const {
 
 //==============================================================================
 // SurfaceZCone
+//! A cone aligned along the z-axis.
+//
+//! The cylinder is described by the equation
+//! \f$(x - x_0)^2 + (y - y_0)^2 - R^2 (z - z_0)^2 = 0\f$
 //==============================================================================
 
 class SurfaceZCone : public Surface {
-  // (x - x0)^2 + (y - y0)^2 = R^2*(z - z0)^2
   double x0, y0, z0, r_sq;
 public:
   SurfaceZCone(pugi::xml_node surf_node);
@@ -727,6 +781,9 @@ inline void SurfaceZCone::normal(const double xyz[3], double uvw[3]) const {
 
 //==============================================================================
 // SurfaceQuadric
+//! A general surface described by a quadratic equation.
+//
+//! \f$A x^2 + B y^2 + C z^2 + D x y + E y z + F x z + G x + H y + J z + K = 0\f$
 //==============================================================================
 
 class SurfaceQuadric : public Surface {

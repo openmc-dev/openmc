@@ -5,56 +5,57 @@ module dict_header
 !
 ! This module provides an implementation of a dictionary that has (key,value)
 ! pairs. This data structure is used to provide lookup features, e.g. cells and
-! surfaces by name. As with lists, it was considered writing a single
-! dictionary used unlimited polymorphism, but again compiler support is spotty
-! and doesn't always prevent duplication of code.
+! surfaces by name.
+!
+! The implementation is based on Algorithm D from Knuth Vol. 3 Sec. 6.4 (open
+! addressing with double hashing). Hash tables sizes M are chosen such that M
+! and M - 2 are twin primes, which helps reduce clustering. An upper limit is
+! placed on the load factor to prevent exponential performance degradation as
+! the number of entries approaches the number of buckets.
 !===============================================================================
 
   implicit none
 
   integer, parameter          :: EMPTY           = -huge(0)
   integer, parameter, private :: DELETED         = -huge(0) + 1
-  integer, parameter, private :: MIN_SIZE        = 8
   integer, parameter, private :: KEY_CHAR_LENGTH = 255
-  real(8), parameter, private :: GROWTH_FACTOR   = 2
+  integer, parameter, private :: TABLE_SIZES(30) = &
+       [5, 7, 13, 19, 43, 73, 151, 283, 571, 1153, 2269, 4519, 9013, 18043, &
+       36109, 72091, 144409, 288361, 576883, 1153459, 2307163, 4613893, &
+       9227641, 18455029, 36911011, 73819861, 147639589, 295279081, &
+       590559793, 1181116273]
   real(8), parameter, private :: MAX_LOAD_FACTOR = 0.65
 
 !===============================================================================
-! DICTENTRY* contains (key,value) pairs
+! DICTENTRY* contains (key,value) pairs.
 !===============================================================================
-
-  type DictEntryCI
-    character(len=KEY_CHAR_LENGTH) :: key
-    integer                        :: value = EMPTY
-    integer                        :: hash = EMPTY
-  end type DictEntryCI
 
   type DictEntryII
     integer :: key = EMPTY
     integer :: value = EMPTY
   end type DictEntryII
 
+  type DictEntryCI
+    character(len=KEY_CHAR_LENGTH) :: key
+    integer                        :: value = EMPTY
+  end type DictEntryCI
+
 !===============================================================================
-! DICT* is a dictionary of (key,value) pairs with convenience methods as
-! type-bound procedures. DictCharInt has character(*) keys and integer values,
-! and DictIntInt has integer keys and values.
+! BUCKET* contains an allocatable DictEntry object for storing a (key,value)
+! pair and the hash value for fast comparisons. Integer (key,value) pairs are
+! stored directly in the hash table since their memory requirement is small.
 !===============================================================================
 
-  type, public :: DictCharInt
-    integer, private :: entries = 0
-    integer, private :: capacity = 0
-    type(DictEntryCI), allocatable, private :: table(:)
-  contains
-    procedure :: add => add_ci
-    procedure :: get => get_ci
-    procedure :: has => has_ci
-    procedure :: remove => remove_ci
-    procedure :: next_entry => next_entry_ci
-    procedure :: clear => clear_ci
-    procedure :: size => size_ci
-    procedure, private :: get_entry => get_entry_ci
-    procedure, private :: resize => resize_ci
-  end type DictCharInt
+  type, private :: BucketCI
+    type(DictEntryCI), allocatable :: entry
+    integer                        :: hash = EMPTY
+  end type BucketCI
+
+!===============================================================================
+! DICT* is a dictionary of (key,value) pairs with convenience methods as
+! type-bound procedures. DictIntInt has integer keys and values, and
+! DictCharInt has character(*) keys and integer values.
+!===============================================================================
 
   type, public :: DictIntInt
     integer, private :: entries = 0
@@ -72,40 +73,28 @@ module dict_header
     procedure, private :: resize => resize_ii
   end type DictIntInt
 
+  type, public :: DictCharInt
+    integer, private :: entries = 0
+    integer, private :: capacity = 0
+    type(BucketCI), allocatable, private :: table(:)
+  contains
+    procedure :: add => add_ci
+    procedure :: get => get_ci
+    procedure :: has => has_ci
+    procedure :: remove => remove_ci
+    procedure :: next_entry => next_entry_ci
+    procedure :: clear => clear_ci
+    procedure :: size => size_ci
+    procedure, private :: get_entry => get_entry_ci
+    procedure, private :: resize => resize_ci
+  end type DictCharInt
+
 contains
 
 !===============================================================================
 ! GET_ENTRY returns the index of the (key,value) pair in the table for a given
 ! key. This method is private.
 !===============================================================================
-
-  function get_entry_ci(this, key) result(i)
-
-    class(DictCharInt)         :: this
-    character(*), intent(in)   :: key
-    integer                    :: i
-
-    integer :: hash
-
-    if (.not. allocated(this % table)) then
-      allocate(this % table(MIN_SIZE))
-      this % capacity = MIN_SIZE
-    end if
-
-    hash = hash_ci(key)
-    i = 1 + mod(hash, this % capacity)
-
-    do
-      if (this % table(i) % hash == hash .and. &
-           this % table(i) % key == key) exit
-
-      if (this % table(i) % hash == EMPTY) exit
-
-      ! TODO: use more advanced probing or double hashing to update i
-      i = 1 + mod(i, this % capacity)
-    end do
-
-  end function get_entry_ci
 
   function get_entry_ii(this, key) result(i)
 
@@ -114,61 +103,72 @@ contains
     integer                    :: i
 
     integer :: hash
+    integer :: c
 
     if (.not. allocated(this % table)) then
-      allocate(this % table(MIN_SIZE))
-      this % capacity = MIN_SIZE
+      allocate(this % table(TABLE_SIZES(1)))
+      this % capacity = TABLE_SIZES(1)
     end if
 
     hash = hash_ii(key)
     i = 1 + mod(hash, this % capacity)
+    c = 2 + mod(hash, this % capacity - 2)
 
     do
       if (this % table(i) % key == key .or. &
            this % table(i) % key == EMPTY) exit
 
-      ! TODO: use more advanced probing or double hashing to update i
-      i = 1 + mod(i, this % capacity)
+      i = 1 + mod(i + c - 1, this % capacity)
     end do
 
   end function get_entry_ii
+
+  function get_entry_ci(this, key) result(i)
+
+    class(DictCharInt)         :: this
+    character(*), intent(in)   :: key
+    integer                    :: i
+
+    integer :: hash
+    integer :: c
+
+    if (.not. allocated(this % table)) then
+      allocate(this % table(TABLE_SIZES(1)))
+      this % capacity = TABLE_SIZES(1)
+    end if
+
+    hash = hash_ci(key)
+    i = 1 + mod(hash, this % capacity)
+    c = 2 + mod(hash, this % capacity - 2)
+
+    do
+      if (this % table(i) % hash == hash .and. &
+           this % table(i) % entry % key == key) exit
+
+      if (this % table(i) % hash == EMPTY) exit
+
+      i = 1 + mod(i + c - 1, this % capacity)
+    end do
+
+  end function get_entry_ci
 
 !===============================================================================
 ! RESIZE allocates a new hash table to accomodate the number of entries and
 ! reinserts all of the entries into the new table. This method is private.
 !===============================================================================
 
-  subroutine resize_ci(this, new_size)
-
-    class(DictCharInt)  :: this
-    integer, intent(in) :: new_size
-
-    type(DictEntryCI), allocatable :: table(:)
-    integer :: i
-
-    call move_alloc(this % table, table)
-    allocate(this % table(new_size))
-    this % capacity = new_size
-    this % entries = 0
-
-    ! Rehash each entry into the new table
-    do i = 1, size(table)
-      if (table(i) % hash /= EMPTY .and. table(i) % hash /= DELETED) then
-        call this % add(table(i) % key, table(i) % value)
-      end if
-    end do
-
-    deallocate(table)
-
-  end subroutine resize_ci
-
-  subroutine resize_ii(this, new_size)
+  subroutine resize_ii(this)
 
     class(DictIntInt)   :: this
-    integer, intent(in) :: new_size
 
     type(DictEntryII), allocatable :: table(:)
+    integer :: new_size
     integer :: i
+
+    do i = 1, size(TABLE_SIZES)
+      if (TABLE_SIZES(i) > this % capacity) exit
+    end do
+    new_size = TABLE_SIZES(i)
 
     call move_alloc(this % table, table)
     allocate(this % table(new_size))
@@ -186,49 +186,39 @@ contains
 
   end subroutine resize_ii
 
+  subroutine resize_ci(this)
+
+    class(DictCharInt)  :: this
+
+    type(BucketCI), allocatable :: table(:)
+    integer :: new_size
+    integer :: i
+
+    do i = 1, size(TABLE_SIZES)
+      if (TABLE_SIZES(i) > this % capacity) exit
+    end do
+    new_size = TABLE_SIZES(i)
+
+    call move_alloc(this % table, table)
+    allocate(this % table(new_size))
+    this % capacity = new_size
+    this % entries = 0
+
+    ! Rehash each entry into the new table
+    do i = 1, size(table)
+      if (table(i) % hash /= EMPTY .and. table(i) % hash /= DELETED) then
+        call this % add(table(i) % entry % key, table(i) % entry % value)
+      end if
+    end do
+
+    deallocate(table)
+
+  end subroutine resize_ci
+
 !===============================================================================
 ! ADD adds a (key,value) entry to a dictionary. If the key is already in the
 ! dictionary, the value is replaced by the new specified value.
 !===============================================================================
-
-  subroutine add_ci(this, key, value)
-
-    class(DictCharInt)       :: this
-    character(*), intent(in) :: key
-    integer, intent(in)      :: value
-
-    integer :: hash
-    integer :: i
-
-    if (.not. allocated(this % table)) then
-      allocate(this % table(MIN_SIZE))
-      this % capacity = MIN_SIZE
-    else if (real(this % entries, 8) / this % capacity > MAX_LOAD_FACTOR) then
-      call this % resize(int(this % capacity * GROWTH_FACTOR))
-    end if
-
-    hash = hash_ci(key)
-    i = 1 + mod(hash, this % capacity)
-
-    do
-      if (this % table(i) % hash == EMPTY .or. &
-           this % table(i) % hash == DELETED) then
-        this % table(i) % hash = hash
-        this % table(i) % key = key
-        this % table(i) % value = value
-        this % entries = this % entries + 1
-        exit
-      else if (this % table(i) % hash == hash .and. &
-           this % table(i) % key == key) then
-        this % table(i) % value = value
-        exit
-      end if
-
-      ! TODO: use more advanced probing or double hashing to update i
-      i = 1 + mod(i, this % capacity)
-    end do
-
-  end subroutine add_ci
 
   subroutine add_ii(this, key, value)
 
@@ -238,16 +228,18 @@ contains
 
     integer :: hash
     integer :: i
+    integer :: c
 
     if (.not. allocated(this % table)) then
-      allocate(this % table(MIN_SIZE))
-      this % capacity = MIN_SIZE
-    else if (real(this % entries, 8) / this % capacity > MAX_LOAD_FACTOR) then
-      call this % resize(int(this % capacity * GROWTH_FACTOR))
+      allocate(this % table(TABLE_SIZES(1)))
+      this % capacity = TABLE_SIZES(1)
+    else if (real(this % entries + 1, 8) / this % capacity > MAX_LOAD_FACTOR) then
+      call this % resize()
     end if
 
     hash = hash_ii(key)
     i = 1 + mod(hash, this % capacity)
+    c = 2 + mod(hash, this % capacity - 2)
 
     do
       if (this % table(i) % key == EMPTY .or. &
@@ -261,29 +253,58 @@ contains
         exit
       end if
 
-      ! TODO: use more advanced probing or double hashing to update i
-      i = 1 + mod(i, this % capacity)
+      i = 1 + mod(i + c - 1, this % capacity)
     end do
 
   end subroutine add_ii
+
+  subroutine add_ci(this, key, value)
+
+    class(DictCharInt)       :: this
+    character(*), intent(in) :: key
+    integer, intent(in)      :: value
+
+    integer :: hash
+    integer :: i
+    integer :: c
+
+    if (.not. allocated(this % table)) then
+      allocate(this % table(TABLE_SIZES(1)))
+      this % capacity = TABLE_SIZES(1)
+    else if (real(this % entries + 1, 8) / this % capacity > MAX_LOAD_FACTOR) then
+      call this % resize()
+    end if
+
+    hash = hash_ci(key)
+    i = 1 + mod(hash, this % capacity)
+    c = 2 + mod(hash, this % capacity - 2)
+
+    do
+      if (this % table(i) % hash == EMPTY .or. &
+           this % table(i) % hash == DELETED) then
+        if (.not. allocated(this % table(i) % entry)) then
+          allocate(this % table(i) % entry)
+        end if
+        this % table(i) % hash = hash
+        this % table(i) % entry % key = key
+        this % table(i) % entry % value = value
+        this % entries = this % entries + 1
+        exit
+      else if (this % table(i) % hash == hash .and. &
+           this % table(i) % entry % key == key) then
+        this % table(i) % entry % value = value
+        exit
+      end if
+
+      i = 1 + mod(i + c - 1, this % capacity)
+    end do
+
+  end subroutine add_ci
 
 !===============================================================================
 ! GET returns the value matching a given key. If the dictionary does not contain
 ! the key, the value EMPTY is returned.
 !===============================================================================
-
-  function get_ci(this, key) result(value)
-
-    class(DictCharInt)       :: this
-    character(*), intent(in) :: key
-    integer                  :: value
-
-    integer :: i
-
-    i = this % get_entry(key)
-    value = this % table(i) % value
-
-  end function get_ci
 
   function get_ii(this, key) result(value)
 
@@ -298,22 +319,22 @@ contains
 
   end function get_ii
 
-!===============================================================================
-! HAS determines whether a dictionary has a (key,value) pair with a given key.
-!===============================================================================
-
-  function has_ci(this, key) result(has)
+  function get_ci(this, key) result(value)
 
     class(DictCharInt)       :: this
     character(*), intent(in) :: key
-    logical                  :: has
+    integer                  :: value
 
     integer :: i
 
     i = this % get_entry(key)
-    has = (this % table(i) % hash /= EMPTY)
+    value = this % table(i) % entry % value
 
-  end function has_ci
+  end function get_ci
+
+!===============================================================================
+! HAS determines whether a dictionary has a (key,value) pair with a given key.
+!===============================================================================
 
   function has_ii(this, key) result(has)
 
@@ -328,26 +349,22 @@ contains
 
   end function has_ii
 
-!===============================================================================
-! REMOVE deletes a (key,value) entry from a dictionary.
-!===============================================================================
-
-  subroutine remove_ci(this, key)
+  function has_ci(this, key) result(has)
 
     class(DictCharInt)       :: this
     character(*), intent(in) :: key
+    logical                  :: has
 
     integer :: i
 
     i = this % get_entry(key)
-    if (this % table(i) % hash /= EMPTY) then
-      this % table(i) % hash = DELETED
-      this % table(i) % key = ""
-      this % table(i) % value = EMPTY
-      this % entries = this % entries - 1
-    end if
+    has = (this % table(i) % hash /= EMPTY)
 
-  end subroutine remove_ci
+  end function has_ci
+
+!===============================================================================
+! REMOVE deletes a (key,value) entry from a dictionary.
+!===============================================================================
 
   subroutine remove_ii(this, key)
 
@@ -365,34 +382,30 @@ contains
 
   end subroutine remove_ii
 
+  subroutine remove_ci(this, key)
+
+    class(DictCharInt)       :: this
+    character(*), intent(in) :: key
+
+    integer :: i
+
+    i = this % get_entry(key)
+    if (this % table(i) % hash /= EMPTY) then
+      this % table(i) % hash = DELETED
+      if (allocated(this % table(i) % entry)) then
+        deallocate(this % table(i) % entry)
+      end if
+      this % entries = this % entries - 1
+    end if
+
+  end subroutine remove_ci
+
 !===============================================================================
 ! NEXT_ENTRY finds the next (key,value) pair. The value of current_entry is
 ! updated with the (key,value) pair, and the value of i is updated with the
 ! index of the entry in the table. Passing in i = 0 will locate the first entry
 ! in the dictionary. If there are no more entries, i will be set to 0. 
 !===============================================================================
-
-  subroutine next_entry_ci(this, current_entry, i)
-
-    class(DictCharInt)               :: this
-    type(DictEntryCI), intent(inout) :: current_entry
-    integer, intent(inout)           :: i
-
-    if (.not. allocated(this % table)) return
-
-    do
-      i = i + 1
-      if (i > size(this % table)) then
-        i = 0
-        exit
-      else if (this % table(i) % hash /= EMPTY .and. &
-           this % table(i) % hash /= DELETED) then
-        current_entry = this % table(i)
-        exit
-      end if
-    end do
-
-  end subroutine next_entry_ci
 
   subroutine next_entry_ii(this, current_entry, i)
 
@@ -416,38 +429,55 @@ contains
 
   end subroutine next_entry_ii
 
+  subroutine next_entry_ci(this, current_entry, i)
+
+    class(DictCharInt)               :: this
+    type(DictEntryCI), intent(inout) :: current_entry
+    integer, intent(inout)           :: i
+
+    if (.not. allocated(this % table)) return
+
+    do
+      i = i + 1
+      if (i > size(this % table)) then
+        i = 0
+        exit
+      else if (this % table(i) % hash /= EMPTY .and. &
+           this % table(i) % hash /= DELETED) then
+        current_entry = this % table(i) % entry
+        exit
+      end if
+    end do
+
+  end subroutine next_entry_ci
+
 !===============================================================================
 ! CLEAR deletes and deallocates the dictionary item
 !===============================================================================
-
-  subroutine clear_ci(this)
-
-    class(DictCharInt) :: this
-
-    if (allocated(this % table)) deallocate(this % table)
-
-  end subroutine clear_ci
 
   subroutine clear_ii(this)
 
     class(DictIntInt) :: this
 
     if (allocated(this % table)) deallocate(this % table)
+    this % entries = 0
+    this % capacity = 0
 
   end subroutine clear_ii
+
+  subroutine clear_ci(this)
+
+    class(DictCharInt) :: this
+
+    if (allocated(this % table)) deallocate(this % table)
+    this % entries = 0
+    this % capacity = 0
+
+  end subroutine clear_ci
 
 !===============================================================================
 ! SIZE returns the number of entries in the dictionary
 !===============================================================================
-
-  pure function size_ci(this) result(size)
-
-    class(DictCharInt), intent(in) :: this
-    integer :: size
-
-    size = this % entries
-
-  end function size_ci
 
   pure function size_ii(this) result(size)
 
@@ -458,9 +488,27 @@ contains
 
   end function size_ii
 
+  pure function size_ci(this) result(size)
+
+    class(DictCharInt), intent(in) :: this
+    integer :: size
+
+    size = this % entries
+
+  end function size_ci
+
 !===============================================================================
 ! HASH returns the hash value for a given key
 !===============================================================================
+
+  function hash_ii(key) result(hash)
+
+    integer, intent(in) :: key
+    integer             :: hash
+
+    hash = abs(key - 1)
+
+  end function hash_ii
 
   function hash_ci(key) result(hash)
 
@@ -478,14 +526,5 @@ contains
     hash = abs(hash - 1)
 
   end function hash_ci
-
-  function hash_ii(key) result(hash)
-
-    integer, intent(in) :: key
-    integer             :: hash
-
-    hash = abs(key - 1)
-
-  end function hash_ii
 
 end module dict_header

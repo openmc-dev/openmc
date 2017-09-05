@@ -426,6 +426,7 @@ set(LIBOPENMC_FORTRAN_SRC
   src/tallies/tally_filter_meshsurface.F90
   src/tallies/tally_filter_mu.F90
   src/tallies/tally_filter_polar.F90
+  src/tallies/tally_filter_sph_harm.F90
   src/tallies/tally_filter_surface.F90
   src/tallies/tally_filter_universe.F90
   src/tallies/tally_header.F90

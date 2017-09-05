@@ -358,7 +358,7 @@ module constants
   integer, parameter :: NO_BIN_FOUND = -1
 
   ! Tally filter and map types
-  integer, parameter :: N_FILTER_TYPES = 16
+  integer, parameter :: N_FILTER_TYPES = 17
   integer, parameter :: &
        FILTER_UNIVERSE       = 1,  &
        FILTER_MATERIAL       = 2,  &
@@ -375,7 +375,8 @@ module constants
        FILTER_DELAYEDGROUP   = 13, &
        FILTER_ENERGYFUNCTION = 14, &
        FILTER_CELLFROM       = 15, &
-       FILTER_MESHSURFACE    = 16
+       FILTER_MESHSURFACE    = 16, &
+       FILTER_LEGENDRE       = 17
 
   ! Mesh types
   integer, parameter :: &

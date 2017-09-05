@@ -354,6 +354,9 @@ contains
         j = FILTER_AZIMUTHAL
       type is (EnergyFunctionFilter)
         j = FILTER_ENERGYFUNCTION
+      type is (LegendreFilter)
+        j = FILTER_LEGENDRE
+        this % estimator = ESTIMATOR_ANALOG
       end select
       this % find_filter(j) = i
     end do

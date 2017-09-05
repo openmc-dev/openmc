@@ -118,6 +118,7 @@ Constructing Tallies
    openmc.DistribcellFilter
    openmc.DelayedGroupFilter
    openmc.EnergyFunctionFilter
+   openmc.LegendreFilter
    openmc.Mesh
    openmc.Trigger
    openmc.TallyDerivative

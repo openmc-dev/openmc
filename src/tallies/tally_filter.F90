@@ -17,6 +17,7 @@ module tally_filter
   use tally_filter_distribcell
   use tally_filter_energy
   use tally_filter_energyfunc
+  use tally_filter_legendre
   use tally_filter_material
   use tally_filter_mesh
   use tally_filter_meshsurface
@@ -64,6 +65,8 @@ contains
           type_ = 'energyout'
         type is (EnergyFunctionFilter)
           type_ = 'energyfunction'
+        type is (LegendreFilter)
+          type_ = 'legendre'
         type is (MaterialFilter)
           type_ = 'material'
         type is (MeshFilter)
@@ -135,6 +138,8 @@ contains
           allocate(EnergyoutFilter :: filters(index) % obj)
         case ('energyfunction')
           allocate(EnergyFunctionFilter :: filters(index) % obj)
+        case ('legendre')
+          allocate(LegendreFilter :: filters(index) % obj)
         case ('material')
           allocate(MaterialFilter :: filters(index) % obj)
         case ('mesh')

@@ -357,6 +357,8 @@ contains
       type is (LegendreFilter)
         j = FILTER_LEGENDRE
         this % estimator = ESTIMATOR_ANALOG
+      type is (SphericalHarmonicsFilter)
+        j = FILTER_SPH_HARMONICS
       end select
       this % find_filter(j) = i
     end do

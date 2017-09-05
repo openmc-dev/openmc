@@ -75,7 +75,7 @@ contains
     integer,             intent(in) :: bin
     character(MAX_LINE_LEN)         :: label
 
-    label = "Legendre expansion order " // trim(to_str(bin - 1))
+    label = "Legendre expansion, P" // trim(to_str(bin - 1))
   end function text_label
 
 !===============================================================================

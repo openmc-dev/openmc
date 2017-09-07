@@ -4144,7 +4144,7 @@ contains
             score_name = trim(to_lower(sarray(j)))
 
             if (score_name == "all") then
-              t % n_triggers = trigger_scores % size()
+              t % n_triggers = t % n_triggers + trigger_scores % size()
             else
               t % n_triggers = t % n_triggers + 1
             end if

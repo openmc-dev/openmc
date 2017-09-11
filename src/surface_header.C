@@ -81,7 +81,8 @@ void read_coeffs(pugi::xml_node surf_node, double &c1, double &c2, double &c3,
 //! A geometry primitive used to define regions of 3D space.
 //==============================================================================
 
-class Surface {
+class Surface
+{
 public:
   int id;                    //!< Unique ID
   int neighbor_pos[],        //!< List of cells on positive side
@@ -128,7 +129,8 @@ public:
 };
 
 bool
-Surface::sense(const double xyz[3], const double uvw[3]) const {
+Surface::sense(const double xyz[3], const double uvw[3]) const
+{
   // Evaluate the surface equation at the particle's coordinates to determine
   // which side the particle is on.
   const double f = evaluate(xyz);
@@ -146,7 +148,8 @@ Surface::sense(const double xyz[3], const double uvw[3]) const {
 }
 
 void
-Surface::reflect(const double xyz[3], double uvw[3]) const {
+Surface::reflect(const double xyz[3], double uvw[3]) const
+{
   // Determine projection of direction onto normal and squared magnitude of
   // normal.
   double norm[3];
@@ -166,14 +169,16 @@ Surface::reflect(const double xyz[3], double uvw[3]) const {
 
 // The template parameter indicates the axis normal to the plane.
 template<int i> double
-axis_aligned_plane_evaluate(const double xyz[3], double offset) {
+axis_aligned_plane_evaluate(const double xyz[3], double offset)
+{
   return xyz[i] - offset;
 }
 
 // The template parameter indicates the axis normal to the plane.
 template<int i> double
 axis_aligned_plane_distance(const double xyz[3], const double uvw[3],
-                            bool coincident, double offset) {
+                            bool coincident, double offset)
+{
   const double f = offset - xyz[i];
   if (coincident or fabs(f) < FP_COINCIDENT or uvw[i] == 0.0) return INFTY;
   const double d = f / uvw[i];
@@ -184,7 +189,8 @@ axis_aligned_plane_distance(const double xyz[3], const double uvw[3],
 // The first template parameter indicates the axis normal to the plane.  The
 // other two parameters indicate the other two axes.
 template<int i1, int i2, int i3> void
-axis_aligned_plane_normal(const double xyz[3], double uvw[3]) {
+axis_aligned_plane_normal(const double xyz[3], double uvw[3])
+{
   uvw[i1] = 1.0;
   uvw[i2] = 0.0;
   uvw[i3] = 0.0;
@@ -197,7 +203,8 @@ axis_aligned_plane_normal(const double xyz[3], double uvw[3]) {
 //! The plane is described by the equation \f$x - x_0 = 0\f$
 //==============================================================================
 
-class SurfaceXPlane : public Surface {
+class SurfaceXPlane : public Surface
+{
   double x0;
 public:
   SurfaceXPlane(pugi::xml_node surf_node);
@@ -207,20 +214,24 @@ public:
   void normal(const double xyz[3], double uvw[3]) const;
 };
 
-SurfaceXPlane::SurfaceXPlane(pugi::xml_node surf_node) {
+SurfaceXPlane::SurfaceXPlane(pugi::xml_node surf_node)
+{
   read_coeffs(surf_node, x0);
 }
 
-inline double SurfaceXPlane::evaluate(const double xyz[3]) const {
+inline double SurfaceXPlane::evaluate(const double xyz[3]) const
+{
   return axis_aligned_plane_evaluate<0>(xyz, x0);
 }
 
 inline double SurfaceXPlane::distance(const double xyz[3], const double uvw[3],
-                                      bool coincident) const {
+                                      bool coincident) const
+{
   return axis_aligned_plane_distance<0>(xyz, uvw, coincident, x0);
 }
 
-inline void SurfaceXPlane::normal(const double xyz[3], double uvw[3]) const {
+inline void SurfaceXPlane::normal(const double xyz[3], double uvw[3]) const
+{
   axis_aligned_plane_normal<0, 1, 2>(xyz, uvw);
 }
 
@@ -231,7 +242,8 @@ inline void SurfaceXPlane::normal(const double xyz[3], double uvw[3]) const {
 //! The plane is described by the equation \f$y - y_0 = 0\f$
 //==============================================================================
 
-class SurfaceYPlane : public Surface {
+class SurfaceYPlane : public Surface
+{
   double y0;
 public:
   SurfaceYPlane(pugi::xml_node surf_node);
@@ -241,20 +253,24 @@ public:
   void normal(const double xyz[3], double uvw[3]) const;
 };
 
-SurfaceYPlane::SurfaceYPlane(pugi::xml_node surf_node) {
+SurfaceYPlane::SurfaceYPlane(pugi::xml_node surf_node)
+{
   read_coeffs(surf_node, y0);
 }
 
-inline double SurfaceYPlane::evaluate(const double xyz[3]) const {
+inline double SurfaceYPlane::evaluate(const double xyz[3]) const
+{
   return axis_aligned_plane_evaluate<1>(xyz, y0);
 }
 
 inline double SurfaceYPlane::distance(const double xyz[3], const double uvw[3],
-                                      bool coincident) const {
+                                      bool coincident) const
+{
   return axis_aligned_plane_distance<1>(xyz, uvw, coincident, y0);
 }
 
-inline void SurfaceYPlane::normal(const double xyz[3], double uvw[3]) const {
+inline void SurfaceYPlane::normal(const double xyz[3], double uvw[3]) const
+{
   axis_aligned_plane_normal<1, 0, 2>(xyz, uvw);
 }
 
@@ -265,7 +281,8 @@ inline void SurfaceYPlane::normal(const double xyz[3], double uvw[3]) const {
 //! The plane is described by the equation \f$z - z_0 = 0\f$
 //==============================================================================
 
-class SurfaceZPlane : public Surface {
+class SurfaceZPlane : public Surface
+{
   double z0;
 public:
   SurfaceZPlane(pugi::xml_node surf_node);
@@ -275,20 +292,24 @@ public:
   void normal(const double xyz[3], double uvw[3]) const;
 };
 
-SurfaceZPlane::SurfaceZPlane(pugi::xml_node surf_node) {
+SurfaceZPlane::SurfaceZPlane(pugi::xml_node surf_node)
+{
   read_coeffs(surf_node, z0);
 }
 
-inline double SurfaceZPlane::evaluate(const double xyz[3]) const {
+inline double SurfaceZPlane::evaluate(const double xyz[3]) const
+{
   return axis_aligned_plane_evaluate<2>(xyz, z0);
 }
 
 inline double SurfaceZPlane::distance(const double xyz[3], const double uvw[3],
-                                      bool coincident) const {
+                                      bool coincident) const
+{
   return axis_aligned_plane_distance<2>(xyz, uvw, coincident, z0);
 }
 
-inline void SurfaceZPlane::normal(const double xyz[3], double uvw[3]) const {
+inline void SurfaceZPlane::normal(const double xyz[3], double uvw[3]) const
+{
   axis_aligned_plane_normal<2, 0, 1>(xyz, uvw);
 }
 
@@ -299,7 +320,8 @@ inline void SurfaceZPlane::normal(const double xyz[3], double uvw[3]) const {
 //! The plane is described by the equation \f$A x + B y + C z - D = 0\f$
 //==============================================================================
 
-class SurfacePlane : public Surface {
+class SurfacePlane : public Surface
+{
   double A, B, C, D;
 public:
   SurfacePlane(pugi::xml_node surf_node);
@@ -309,18 +331,21 @@ public:
   void normal(const double xyz[3], double uvw[3]) const;
 };
 
-SurfacePlane::SurfacePlane(pugi::xml_node surf_node) {
+SurfacePlane::SurfacePlane(pugi::xml_node surf_node)
+{
   read_coeffs(surf_node, A, B, C, D);
 }
 
 double
-SurfacePlane::evaluate(const double xyz[3]) const {
+SurfacePlane::evaluate(const double xyz[3]) const
+{
   return A*xyz[0] + B*xyz[1] + C*xyz[2] - D;
 }
 
 double
 SurfacePlane::distance(const double xyz[3], const double uvw[3],
-                       bool coincident) const {
+                       bool coincident) const
+{
   const double f = A*xyz[0] + B*xyz[1] + C*xyz[2] - D;
   const double projection = A*uvw[0] + B*uvw[1] + C*uvw[2];
   if (coincident or fabs(f) < FP_COINCIDENT or projection == 0.0) {
@@ -333,7 +358,8 @@ SurfacePlane::distance(const double xyz[3], const double uvw[3],
 }
 
 void
-SurfacePlane::normal(const double xyz[3], double uvw[3]) const {
+SurfacePlane::normal(const double xyz[3], double uvw[3]) const
+{
   uvw[0] = A;
   uvw[1] = B;
   uvw[2] = C;
@@ -348,7 +374,8 @@ SurfacePlane::normal(const double xyz[3], double uvw[3]) const {
 // respectively.
 template<int i1, int i2> double
 axis_aligned_cylinder_evaluate(const double xyz[3], double offset1,
-                               double offset2, double radius) {
+                               double offset2, double radius)
+{
   const double xyz1 = xyz[i1] - offset1;
   const double xyz2 = xyz[i2] - offset2;
   return xyz1*xyz1 + xyz2*xyz2 - radius*radius;
@@ -359,7 +386,8 @@ axis_aligned_cylinder_evaluate(const double xyz[3], double offset1,
 // should correspond with i2 and i3, respectively.
 template<int i1, int i2, int i3> double
 axis_aligned_cylinder_distance(const double xyz[3], const double uvw[3],
-     bool coincident, double offset1, double offset2, double radius) {
+     bool coincident, double offset1, double offset2, double radius)
+{
   const double a = 1.0 - uvw[i1]*uvw[i1];  // u^2 + v^2
   if (a == 0.0) return INFTY;
 
@@ -404,7 +432,8 @@ axis_aligned_cylinder_distance(const double xyz[3], const double uvw[3],
 // should correspond with i2 and i3, respectively.
 template<int i1, int i2, int i3> void
 axis_aligned_cylinder_normal(const double xyz[3], double uvw[3], double offset1,
-                             double offset2) {
+                             double offset2)
+{
   uvw[i2] = 2.0 * (xyz[i2] - offset1);
   uvw[i3] = 2.0 * (xyz[i3] - offset2);
   uvw[i1] = 0.0;
@@ -418,7 +447,8 @@ axis_aligned_cylinder_normal(const double xyz[3], double uvw[3], double offset1,
 //! \f$(y - y_0)^2 + (z - z_0)^2 - R^2 = 0\f$
 //==============================================================================
 
-class SurfaceXCylinder : public Surface {
+class SurfaceXCylinder : public Surface
+{
   double y0, z0, r;
 public:
   SurfaceXCylinder(pugi::xml_node surf_node);
@@ -428,21 +458,25 @@ public:
   void normal(const double xyz[3], double uvw[3]) const;
 };
 
-SurfaceXCylinder::SurfaceXCylinder(pugi::xml_node surf_node) {
+SurfaceXCylinder::SurfaceXCylinder(pugi::xml_node surf_node)
+{
   read_coeffs(surf_node, y0, z0, r);
 }
 
-inline double SurfaceXCylinder::evaluate(const double xyz[3]) const {
+inline double SurfaceXCylinder::evaluate(const double xyz[3]) const
+{
   return axis_aligned_cylinder_evaluate<1, 2>(xyz, y0, z0, r);
 }
 
 inline double SurfaceXCylinder::distance(const double xyz[3],
-     const double uvw[3], bool coincident) const {
+     const double uvw[3], bool coincident) const
+{
   return axis_aligned_cylinder_distance<0, 1, 2>(xyz, uvw, coincident, y0, z0,
                                                  r);
 }
 
-inline void SurfaceXCylinder::normal(const double xyz[3], double uvw[3]) const {
+inline void SurfaceXCylinder::normal(const double xyz[3], double uvw[3]) const
+{
   axis_aligned_cylinder_normal<0, 1, 2>(xyz, uvw, y0, z0);
 }
 
@@ -454,7 +488,8 @@ inline void SurfaceXCylinder::normal(const double xyz[3], double uvw[3]) const {
 //! \f$(x - x_0)^2 + (z - z_0)^2 - R^2 = 0\f$
 //==============================================================================
 
-class SurfaceYCylinder : public Surface {
+class SurfaceYCylinder : public Surface
+{
   double x0, z0, r;
 public:
   SurfaceYCylinder(pugi::xml_node surf_node);
@@ -464,21 +499,25 @@ public:
   void normal(const double xyz[3], double uvw[3]) const;
 };
 
-SurfaceYCylinder::SurfaceYCylinder(pugi::xml_node surf_node) {
+SurfaceYCylinder::SurfaceYCylinder(pugi::xml_node surf_node)
+{
   read_coeffs(surf_node, x0, z0, r);
 }
 
-inline double SurfaceYCylinder::evaluate(const double xyz[3]) const {
+inline double SurfaceYCylinder::evaluate(const double xyz[3]) const
+{
   return axis_aligned_cylinder_evaluate<0, 2>(xyz, x0, z0, r);
 }
 
 inline double SurfaceYCylinder::distance(const double xyz[3],
-     const double uvw[3], bool coincident) const {
+     const double uvw[3], bool coincident) const
+{
   return axis_aligned_cylinder_distance<1, 0, 2>(xyz, uvw, coincident, x0, z0,
                                                  r);
 }
 
-inline void SurfaceYCylinder::normal(const double xyz[3], double uvw[3]) const {
+inline void SurfaceYCylinder::normal(const double xyz[3], double uvw[3]) const
+{
   axis_aligned_cylinder_normal<1, 0, 2>(xyz, uvw, x0, z0);
 }
 
@@ -490,7 +529,8 @@ inline void SurfaceYCylinder::normal(const double xyz[3], double uvw[3]) const {
 //! \f$(x - x_0)^2 + (y - y_0)^2 - R^2 = 0\f$
 //==============================================================================
 
-class SurfaceZCylinder : public Surface {
+class SurfaceZCylinder : public Surface
+{
   double x0, y0, r;
 public:
   SurfaceZCylinder(pugi::xml_node surf_node);
@@ -500,21 +540,25 @@ public:
   void normal(const double xyz[3], double uvw[3]) const;
 };
 
-SurfaceZCylinder::SurfaceZCylinder(pugi::xml_node surf_node) {
+SurfaceZCylinder::SurfaceZCylinder(pugi::xml_node surf_node)
+{
   read_coeffs(surf_node, x0, y0, r);
 }
 
-inline double SurfaceZCylinder::evaluate(const double xyz[3]) const {
+inline double SurfaceZCylinder::evaluate(const double xyz[3]) const
+{
   return axis_aligned_cylinder_evaluate<0, 1>(xyz, x0, y0, r);
 }
 
 inline double SurfaceZCylinder::distance(const double xyz[3],
-     const double uvw[3], bool coincident) const {
+     const double uvw[3], bool coincident) const
+{
   return axis_aligned_cylinder_distance<2, 0, 1>(xyz, uvw, coincident, x0, y0,
                                                  r);
 }
 
-inline void SurfaceZCylinder::normal(const double xyz[3], double uvw[3]) const {
+inline void SurfaceZCylinder::normal(const double xyz[3], double uvw[3]) const
+{
   axis_aligned_cylinder_normal<2, 0, 1>(xyz, uvw, x0, y0);
 }
 
@@ -526,7 +570,8 @@ inline void SurfaceZCylinder::normal(const double xyz[3], double uvw[3]) const {
 //! \f$(x - x_0)^2 + (y - y_0)^2 + (z - z_0)^2 - R^2 = 0\f$
 //==============================================================================
 
-class SurfaceSphere : public Surface {
+class SurfaceSphere : public Surface
+{
   double x0, y0, z0, r;
 public:
   SurfaceSphere(pugi::xml_node surf_node);
@@ -536,11 +581,13 @@ public:
   void normal(const double xyz[3], double uvw[3]) const;
 };
 
-SurfaceSphere::SurfaceSphere(pugi::xml_node surf_node) {
+SurfaceSphere::SurfaceSphere(pugi::xml_node surf_node)
+{
   read_coeffs(surf_node, x0, y0, z0, r);
 }
 
-double SurfaceSphere::evaluate(const double xyz[3]) const {
+double SurfaceSphere::evaluate(const double xyz[3]) const
+{
   const double x = xyz[0] - x0;
   const double y = xyz[1] - y0;
   const double z = xyz[2] - z0;
@@ -548,7 +595,8 @@ double SurfaceSphere::evaluate(const double xyz[3]) const {
 }
 
 double SurfaceSphere::distance(const double xyz[3], const double uvw[3],
-                               bool coincident) const {
+                               bool coincident) const
+{
   const double x = xyz[0] - x0;
   const double y = xyz[1] - y0;
   const double z = xyz[2] - z0;
@@ -585,7 +633,8 @@ double SurfaceSphere::distance(const double xyz[3], const double uvw[3],
   }
 }
 
-inline void SurfaceSphere::normal(const double xyz[3], double uvw[3]) const {
+inline void SurfaceSphere::normal(const double xyz[3], double uvw[3]) const
+{
   uvw[0] = 2.0 * (xyz[0] - x0);
   uvw[1] = 2.0 * (xyz[1] - y0);
   uvw[2] = 2.0 * (xyz[2] - z0);
@@ -600,7 +649,8 @@ inline void SurfaceSphere::normal(const double xyz[3], double uvw[3]) const {
 // and offset3 should correspond with i1, i2, and i3, respectively.
 template<int i1, int i2, int i3> double
 axis_aligned_cone_evaluate(const double xyz[3], double offset1,
-                           double offset2, double offset3, double radius_sq) {
+                           double offset2, double offset3, double radius_sq)
+{
   const double xyz1 = xyz[i1] - offset1;
   const double xyz2 = xyz[i2] - offset2;
   const double xyz3 = xyz[i3] - offset3;
@@ -613,7 +663,8 @@ axis_aligned_cone_evaluate(const double xyz[3], double offset1,
 template<int i1, int i2, int i3> double
 axis_aligned_cone_distance(const double xyz[3], const double uvw[3],
      bool coincident, double offset1, double offset2, double offset3,
-     double radius_sq) {
+     double radius_sq)
+{
   const double xyz1 = xyz[i1] - offset1;
   const double xyz2 = xyz[i2] - offset2;
   const double xyz3 = xyz[i3] - offset3;
@@ -665,7 +716,8 @@ axis_aligned_cone_distance(const double xyz[3], const double uvw[3],
 // and offset3 should correspond with i1, i2, and i3, respectively.
 template<int i1, int i2, int i3> void
 axis_aligned_cone_normal(const double xyz[3], double uvw[3], double offset1,
-                         double offset2, double offset3, double radius_sq) {
+                         double offset2, double offset3, double radius_sq)
+{
   uvw[i1] = -2.0 * radius_sq * (xyz[i1] - offset1);
   uvw[i2] = 2.0 * (xyz[i2] - offset2);
   uvw[i3] = 2.0 * (xyz[i3] - offset3);
@@ -679,7 +731,8 @@ axis_aligned_cone_normal(const double xyz[3], double uvw[3], double offset1,
 //! \f$(y - y_0)^2 + (z - z_0)^2 - R^2 (x - x_0)^2 = 0\f$
 //==============================================================================
 
-class SurfaceXCone : public Surface {
+class SurfaceXCone : public Surface
+{
   double x0, y0, z0, r_sq;
 public:
   SurfaceXCone(pugi::xml_node surf_node);
@@ -689,21 +742,25 @@ public:
   void normal(const double xyz[3], double uvw[3]) const;
 };
 
-SurfaceXCone::SurfaceXCone(pugi::xml_node surf_node) {
+SurfaceXCone::SurfaceXCone(pugi::xml_node surf_node)
+{
   read_coeffs(surf_node, x0, y0, z0, r_sq);
 }
 
-inline double SurfaceXCone::evaluate(const double xyz[3]) const {
+inline double SurfaceXCone::evaluate(const double xyz[3]) const
+{
   return axis_aligned_cone_evaluate<0, 1, 2>(xyz, x0, y0, z0, r_sq);
 }
 
 inline double SurfaceXCone::distance(const double xyz[3],
-     const double uvw[3], bool coincident) const {
+     const double uvw[3], bool coincident) const
+{
   return axis_aligned_cone_distance<0, 1, 2>(xyz, uvw, coincident, x0, y0, z0,
                                              r_sq);
 }
 
-inline void SurfaceXCone::normal(const double xyz[3], double uvw[3]) const {
+inline void SurfaceXCone::normal(const double xyz[3], double uvw[3]) const
+{
   axis_aligned_cone_normal<0, 1, 2>(xyz, uvw, x0, y0, z0, r_sq);
 }
 
@@ -715,7 +772,8 @@ inline void SurfaceXCone::normal(const double xyz[3], double uvw[3]) const {
 //! \f$(x - x_0)^2 + (z - z_0)^2 - R^2 (y - y_0)^2 = 0\f$
 //==============================================================================
 
-class SurfaceYCone : public Surface {
+class SurfaceYCone : public Surface
+{
   double x0, y0, z0, r_sq;
 public:
   SurfaceYCone(pugi::xml_node surf_node);
@@ -725,21 +783,25 @@ public:
   void normal(const double xyz[3], double uvw[3]) const;
 };
 
-SurfaceYCone::SurfaceYCone(pugi::xml_node surf_node) {
+SurfaceYCone::SurfaceYCone(pugi::xml_node surf_node)
+{
   read_coeffs(surf_node, x0, y0, z0, r_sq);
 }
 
-inline double SurfaceYCone::evaluate(const double xyz[3]) const {
+inline double SurfaceYCone::evaluate(const double xyz[3]) const
+{
   return axis_aligned_cone_evaluate<1, 0, 2>(xyz, y0, x0, z0, r_sq);
 }
 
 inline double SurfaceYCone::distance(const double xyz[3],
-     const double uvw[3], bool coincident) const {
+     const double uvw[3], bool coincident) const
+{
   return axis_aligned_cone_distance<1, 0, 2>(xyz, uvw, coincident, y0, x0, z0,
                                              r_sq);
 }
 
-inline void SurfaceYCone::normal(const double xyz[3], double uvw[3]) const {
+inline void SurfaceYCone::normal(const double xyz[3], double uvw[3]) const
+{
   axis_aligned_cone_normal<1, 0, 2>(xyz, uvw, y0, x0, z0, r_sq);
 }
 
@@ -751,7 +813,8 @@ inline void SurfaceYCone::normal(const double xyz[3], double uvw[3]) const {
 //! \f$(x - x_0)^2 + (y - y_0)^2 - R^2 (z - z_0)^2 = 0\f$
 //==============================================================================
 
-class SurfaceZCone : public Surface {
+class SurfaceZCone : public Surface
+{
   double x0, y0, z0, r_sq;
 public:
   SurfaceZCone(pugi::xml_node surf_node);
@@ -761,21 +824,25 @@ public:
   void normal(const double xyz[3], double uvw[3]) const;
 };
 
-SurfaceZCone::SurfaceZCone(pugi::xml_node surf_node) {
+SurfaceZCone::SurfaceZCone(pugi::xml_node surf_node)
+{
   read_coeffs(surf_node, x0, y0, z0, r_sq);
 }
 
-inline double SurfaceZCone::evaluate(const double xyz[3]) const {
+inline double SurfaceZCone::evaluate(const double xyz[3]) const
+{
   return axis_aligned_cone_evaluate<2, 0, 1>(xyz, z0, x0, y0, r_sq);
 }
 
 inline double SurfaceZCone::distance(const double xyz[3],
-     const double uvw[3], bool coincident) const {
+     const double uvw[3], bool coincident) const
+{
   return axis_aligned_cone_distance<2, 0, 1>(xyz, uvw, coincident, z0, x0, y0,
                                              r_sq);
 }
 
-inline void SurfaceZCone::normal(const double xyz[3], double uvw[3]) const {
+inline void SurfaceZCone::normal(const double xyz[3], double uvw[3]) const
+{
   axis_aligned_cone_normal<2, 0, 1>(xyz, uvw, z0, x0, y0, r_sq);
 }
 
@@ -786,7 +853,8 @@ inline void SurfaceZCone::normal(const double xyz[3], double uvw[3]) const {
 //! \f$A x^2 + B y^2 + C z^2 + D x y + E y z + F x z + G x + H y + J z + K = 0\f$
 //==============================================================================
 
-class SurfaceQuadric : public Surface {
+class SurfaceQuadric : public Surface
+{
   // Ax^2 + By^2 + Cz^2 + Dxy + Eyz + Fxz + Gx + Hy + Jz + K = 0
   double A, B, C, D, E, F, G, H, J, K;
 public:
@@ -797,12 +865,14 @@ public:
   void normal(const double xyz[3], double uvw[3]) const;
 };
 
-SurfaceQuadric::SurfaceQuadric(pugi::xml_node surf_node) {
+SurfaceQuadric::SurfaceQuadric(pugi::xml_node surf_node)
+{
   read_coeffs(surf_node, A, B, C, D, E, F, G, H, J, K);
 }
 
 double
-SurfaceQuadric::evaluate(const double xyz[3]) const {
+SurfaceQuadric::evaluate(const double xyz[3]) const
+{
   const double &x = xyz[0];
   const double &y = xyz[1];
   const double &z = xyz[2];
@@ -813,7 +883,8 @@ SurfaceQuadric::evaluate(const double xyz[3]) const {
 
 double
 SurfaceQuadric::distance(const double xyz[3],
-     const double uvw[3], bool coincident) const {
+     const double uvw[3], bool coincident) const
+{
   const double &x = xyz[0];
   const double &y = xyz[1];
   const double &z = xyz[2];
@@ -866,7 +937,8 @@ SurfaceQuadric::distance(const double xyz[3],
 }
 
 void
-SurfaceQuadric::normal(const double xyz[3], double uvw[3]) const {
+SurfaceQuadric::normal(const double xyz[3], double uvw[3]) const
+{
   const double &x = xyz[0];
   const double &y = xyz[1];
   const double &z = xyz[2];
@@ -878,7 +950,8 @@ SurfaceQuadric::normal(const double xyz[3], double uvw[3]) const {
 //==============================================================================
 
 extern "C" void
-read_surfaces(pugi::xml_node *node) {
+read_surfaces(pugi::xml_node *node)
+{
   // Count the number of surfaces.
   int n_surfaces = 0;
   for (pugi::xml_node surf_node = node->child("surface"); surf_node;
@@ -952,16 +1025,19 @@ read_surfaces(pugi::xml_node *node) {
 //==============================================================================
 
 extern "C" bool
-surface_sense(int surf_ind, double xyz[3], double uvw[3]) {
+surface_sense(int surf_ind, double xyz[3], double uvw[3])
+{
   return surfaces_c[surf_ind]->sense(xyz, uvw);
 }
 
 extern "C" double
-surface_distance(int surf_ind, double xyz[3], double uvw[3], bool coincident) {
+surface_distance(int surf_ind, double xyz[3], double uvw[3], bool coincident)
+{
   return surfaces_c[surf_ind]->distance(xyz, uvw, coincident);
 }
 
 extern "C" void
-surface_normal(int surf_ind, double xyz[3], double uvw[3]) {
+surface_normal(int surf_ind, double xyz[3], double uvw[3])
+{
   return surfaces_c[surf_ind]->normal(xyz, uvw);
 }

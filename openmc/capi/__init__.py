@@ -27,7 +27,7 @@ else:
 
 # Open shared library
 _filename = pkg_resources.resource_filename(
-    __name__, '_libopenmc.{}'.format(_suffix))
+    __name__, 'libopenmc.{}'.format(_suffix))
 _dll = CDLL(_filename)
 
 from .error import *

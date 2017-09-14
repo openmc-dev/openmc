@@ -4,7 +4,7 @@
 C API
 =====
 
-.. c:function:: void openmc_calculate_voumes()
+.. c:function:: void openmc_calculate_volumes()
 
    Run a stochastic volume calculation
 

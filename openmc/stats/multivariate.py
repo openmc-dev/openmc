@@ -12,6 +12,10 @@ import openmc.checkvalue as cv
 from openmc.stats.univariate import Univariate, Uniform
 
 
+__all__ = ['UnitSphere', 'PolarAzimuthal', 'Isotropic', 'Monodirectional',
+           'Spatial', 'CartesianIndependent', 'Box', 'Point']
+
+
 @add_metaclass(ABCMeta)
 class UnitSphere(object):
     """Distribution of points on the unit sphere.

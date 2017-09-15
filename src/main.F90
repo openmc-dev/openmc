@@ -1,11 +1,11 @@
 program main
 
   use constants
-  use global
   use message_passing
   use openmc_api, only: openmc_init, openmc_finalize, openmc_run, &
                         openmc_plot_geometry, openmc_calculate_volumes
   use particle_restart, only: run_particle_restart
+  use settings, only: run_mode
 
   implicit none
 

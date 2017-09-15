@@ -2,6 +2,7 @@ module simulation_header
 
   use bank_header
   use constants
+  use settings, only: gen_per_batch
 
   implicit none
 
@@ -66,5 +67,16 @@ module simulation_header
   integer :: n_maps
 
 !$omp threadprivate(trace, thread_id, current_work)
+
+contains
+
+!===============================================================================
+! OVERALL_GENERATION determines the overall generation number
+!===============================================================================
+
+  pure function overall_generation() result(gen)
+    integer :: gen
+    gen = gen_per_batch*(current_batch - 1) + current_gen
+  end function overall_generation
 
 end module simulation_header

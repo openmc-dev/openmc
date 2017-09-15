@@ -1,14 +1,24 @@
 module source_header
 
+  use, intrinsic :: ISO_C_BINDING
+
+  use bank_header, only: Bank
   use constants
   use distribution_univariate
   use distribution_multivariate
-  use error, only: fatal_error
+  use error
+  use geometry, only: find_cell
+  use material_header, only: materials
+  use nuclide_header, only: energy_max_neutron
+  use particle_header, only: Particle
   use string, only: to_lower
   use xml_interface
 
   implicit none
   private
+
+  integer :: n_accept = 0  ! Number of samples accepted
+  integer :: n_reject = 0  ! Number of samples rejected
 
 !===============================================================================
 ! SOURCEDISTRIBUTION describes an external source of particles for a
@@ -21,15 +31,19 @@ module source_header
     class(UnitSphereDistribution), allocatable :: angle  ! angle distribution
     class(Distribution),           allocatable :: energy ! energy distribution
   contains
-    procedure :: from_xml => source_from_xml
+    procedure :: from_xml
+    procedure :: sample
   end type SourceDistribution
+
+  ! Number of external source distributions
+  integer(C_INT32_T), public, bind(C) :: n_sources = 0
 
   ! External source distributions
   type(SourceDistribution), public, allocatable :: external_source(:)
 
 contains
 
-  subroutine source_from_xml(this, node, path_source)
+  subroutine from_xml(this, node, path_source)
     class(SourceDistribution), intent(inout) :: this
     type(XMLNode), intent(in) :: node
     character(MAX_FILE_LEN), intent(out) :: path_source
@@ -196,6 +210,141 @@ contains
       end if
     end if
 
-  end subroutine source_from_xml
+  end subroutine from_xml
+
+  function sample(this) result(site)
+    class(SourceDistribution), intent(in) :: this
+    type(Bank) :: site
+
+    real(8) :: r(3)       ! sampled coordinates
+    logical :: found      ! Does the source particle exist within geometry?
+    type(Particle) :: p   ! Temporary particle for using find_cell
+
+    ! Set weight to one by default
+    site % wgt = ONE
+
+    ! Repeat sampling source location until a good site has been found
+    found = .false.
+    do while (.not. found)
+      ! Set particle defaults
+      call p % initialize()
+
+      ! Sample spatial distribution
+      site % xyz(:) = this % space % sample()
+
+      ! Fill p with needed data
+      p % coord(1) % xyz(:) = site % xyz
+      p % coord(1) % uvw(:) = [ ONE, ZERO, ZERO ]
+
+      ! Now search to see if location exists in geometry
+      call find_cell(p, found)
+
+      ! Check if spatial site is in fissionable material
+      if (found) then
+        select type (space => this % space)
+        type is (SpatialBox)
+          if (space % only_fissionable) then
+            if (p % material == MATERIAL_VOID) then
+              found = .false.
+            elseif (.not. materials(p % material) % fissionable) then
+              found = .false.
+            end if
+          end if
+        end select
+      end if
+
+      ! Check for rejection
+      if (.not. found) then
+        n_reject = n_reject + 1
+        if (n_reject >= EXTSRC_REJECT_THRESHOLD .and. &
+             real(n_accept, 8)/n_reject <= EXTSRC_REJECT_FRACTION) then
+          call fatal_error("More than 95% of external source sites sampled &
+               &were rejected. Please check your external source definition.")
+        end if
+      end if
+    end do
+
+    ! Increment number of accepted samples
+    n_accept = n_accept + 1
+
+    call p % clear()
+
+    ! Sample angle
+    site % uvw(:) = this % angle % sample()
+
+    ! Check for monoenergetic source above maximum neutron energy
+    select type (energy => this % energy)
+    type is (Discrete)
+      if (any(energy % x >= energy_max_neutron)) then
+        call fatal_error("Source energy above range of energies of at least &
+             &one cross section table")
+      end if
+    end select
+
+    do
+      ! Sample energy spectrum
+      site % E = this % energy % sample()
+
+      ! resample if energy is greater than maximum neutron energy
+      if (site % E < energy_max_neutron) exit
+    end do
+
+    ! Set delayed group
+    site % delayed_group = 0
+
+  end function sample
+
+!===============================================================================
+!                               C API FUNCTIONS
+!===============================================================================
+
+  function openmc_extend_sources(n, index_start, index_end) result(err) bind(C)
+    ! Extend the external_source array by n elements
+    integer(C_INT32_T), value, intent(in) :: n
+    integer(C_INT32_T), optional, intent(out) :: index_start
+    integer(C_INT32_T), optional, intent(out) :: index_end
+    integer(C_INT) :: err
+
+    integer :: i
+    type(SourceDistribution), allocatable :: temp(:) ! temporary array
+
+    if (n_sources == 0) then
+      ! Allocate external_source array
+      allocate(external_source(n))
+    else
+      ! Allocate external_source array with increased size
+      allocate(temp(n_sources + n))
+
+      ! Copy original source array to temporary array
+      temp(1:n_sources) = external_source
+
+      ! Move allocation from temporary array
+      call move_alloc(FROM=temp, TO=external_source)
+    end if
+
+    ! Return indices in external_source array
+    if (present(index_start)) index_start = n_sources + 1
+    if (present(index_end)) index_end = n_sources + n
+    n_sources = n_sources + n
+
+    err = 0
+  end function openmc_extend_sources
+
+  function openmc_source_set_strength(index, strength) result(err) bind(C)
+    integer(C_INT32_T), value, intent(in) :: index
+    real(C_DOUBLE),     value, intent(in) :: strength
+    integer(C_INT) :: err
+
+    err = E_UNASSIGNED
+    if (index >= 1 .and. index <= n_sources) then
+      if (strength > ZERO) then
+        external_source(index) % strength = strength
+        err = 0
+      end if
+    else
+      err = E_OUT_OF_BOUNDS
+    end if
+  end function openmc_source_set_strength
+
 
 end module source_header

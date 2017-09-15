@@ -13,6 +13,7 @@ module global
   use sab_header
   use settings
   use simulation_header
+  use source_header
   use surface_header
   use tally_filter_header
   use tally_header
@@ -130,14 +131,5 @@ contains
     if (allocated(source_frac)) deallocate(source_frac)
 
   end subroutine free_memory
-
-!===============================================================================
-! OVERALL_GENERATION determines the overall generation number
-!===============================================================================
-
-  pure function overall_generation() result(gen)
-    integer :: gen
-    gen = gen_per_batch*(current_batch - 1) + current_gen
-  end function overall_generation
 
 end module global

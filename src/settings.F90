@@ -4,7 +4,6 @@ module settings
 
   use constants
   use set_header,    only: SetInt
-  use source_header
 
   implicit none
 

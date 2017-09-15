@@ -532,6 +532,7 @@ contains
 
   subroutine print_runtime()
 
+    integer       :: n_active
     real(8)       :: speed_inactive  ! # of neutrons/second in inactive batches
     real(8)       :: speed_active    ! # of neutrons/second in active batches
     character(15) :: string
@@ -564,6 +565,7 @@ contains
     write(ou,100) "Total time elapsed", time_total % elapsed
 
     ! Calculate particle rate in active/inactive batches
+    n_active = n_batches - n_inactive
     if (restart_run) then
       if (restart_batch < n_inactive) then
         speed_inactive = real(n_particles * (n_inactive - restart_batch) * &

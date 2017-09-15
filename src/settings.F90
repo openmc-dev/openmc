@@ -1,12 +1,14 @@
 module settings
 
+  use, intrinsic :: ISO_C_BINDING
+
   use constants
   use set_header,    only: SetInt
   use source_header
 
   implicit none
 
-    ! ============================================================================
+  ! ============================================================================
   ! ENERGY TREATMENT RELATED VARIABLES
   logical :: run_CE = .true.  ! Run in CE mode?
 
@@ -46,11 +48,10 @@ module settings
   ! ============================================================================
   ! SIMULATION VARIABLES
 
-  integer(8) :: n_particles = 0   ! # of particles per generation
-  integer    :: n_batches         ! # of batches
-  integer    :: n_inactive        ! # of inactive batches
-  integer    :: n_active          ! # of active batches
-  integer    :: gen_per_batch = 1 ! # of generations per batch
+  integer(C_INT64_T), bind(C) :: n_particles = 0   ! # of particles per generation
+  integer(C_INT32_T), bind(C) :: n_batches         ! # of batches
+  integer(C_INT32_T), bind(C) :: n_inactive        ! # of inactive batches
+  integer(C_INT32_T), bind(C) :: gen_per_batch = 1 ! # of generations per batch
 
   integer :: n_max_batches             ! max # of batches
   integer :: n_batch_interval = 1      ! batch interval for triggers
@@ -75,7 +76,7 @@ module settings
   real(8) :: weight_survive = ONE
 
   ! Mode to run in (fixed source, eigenvalue, plotting, etc)
-  integer :: run_mode = NONE
+  integer(C_INT), bind(C) :: run_mode = NONE
 
   ! Restart run
   logical :: restart_run = .false.

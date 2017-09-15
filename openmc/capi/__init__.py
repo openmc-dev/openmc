@@ -37,3 +37,4 @@ from .material import *
 from .cell import *
 from .filter import *
 from .tally import *
+from .settings import settings

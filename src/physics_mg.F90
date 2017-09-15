@@ -2,20 +2,25 @@ module physics_mg
   ! This module contains the multi-group specific physics routines so as to not
   ! hinder performance of the CE versions with multiple if-thens.
 
+  use bank_header
   use constants
   use error,                  only: fatal_error, warning
-  use global
-  use material_header,        only: Material
+  use material_header,        only: Material, materials
   use math,                   only: rotate_angle
-  use mgxs_header,            only: Mgxs, MgxsContainer
+  use mesh_header,            only: meshes
+  use mgxs_header
   use message_passing
+  use nuclide_header,         only: material_xs
   use output,                 only: write_message
   use particle_header,        only: Particle
   use particle_restart_write, only: write_particle_restart
   use physics_common
   use random_lcg,             only: prn
   use scattdata_header
+  use settings
+  use simulation_header
   use string,                 only: to_str
+  use tally_header
 
   implicit none
 

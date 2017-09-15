@@ -13,12 +13,11 @@ module input_xml
   use error,            only: fatal_error, warning
   use geometry,         only: calc_offsets, maximum_levels, count_instance, &
                               neighbor_lists
-  use geometry_header,  only: Cell, Lattice, RectLattice, HexLattice, &
-                              get_temperatures, root_universe
-  use global
+  use geometry_header
   use hdf5_interface
   use list_header,      only: ListChar, ListInt, ListReal
-  use mesh_header,      only: RegularMesh
+  use material_header
+  use mesh_header
   use message_passing
   use mgxs_data,        only: create_macro_xs, read_mgxs
   use mgxs_header
@@ -28,15 +27,21 @@ module input_xml
   use random_lcg,       only: prn, seed, initialize_prng
   use surface_header
   use set_header,       only: SetChar
+  use settings
+  use source_header
   use stl_vector,       only: VectorInt, VectorReal, VectorChar
   use string,           only: to_lower, to_str, str_to_int, str_to_real, &
                               starts_with, ends_with, tokenize, split_string, &
                               zero_padded, to_c_string
   use summary,          only: write_summary
-  use tally,            only: openmc_tally_set_type
+  use tally
   use tally_header,     only: openmc_extend_tallies
-  use tally_filter_header, only: TallyFilterContainer
+  use tally_derivative_header
+  use tally_filter_header
   use tally_filter
+  use timer_header,     only: time_read_xs
+  use trigger_header
+  use volume_header
   use xml_interface
 
   implicit none

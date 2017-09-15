@@ -5,9 +5,9 @@ module physics
   use cross_section,          only: elastic_xs_0K
   use endf,                   only: reaction_name
   use error,                  only: fatal_error, warning
-  use global
-  use material_header,        only: Material
+  use material_header,        only: Material, materials
   use math
+  use mesh_header,            only: meshes
   use message_passing
   use nuclide_header
   use output,                 only: write_message
@@ -16,8 +16,12 @@ module physics
   use physics_common
   use random_lcg,             only: prn, advance_prn_seed, prn_set_stream
   use reaction_header,        only: Reaction
+  use sab_header,             only: sab_tables
   use secondary_uncorrelated, only: UncorrelatedAngleEnergy
+  use settings
+  use simulation_header
   use string,                 only: to_str
+  use tally_header
 
   implicit none
 

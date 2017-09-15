@@ -14,7 +14,6 @@ module initialize
   use error,           only: fatal_error, warning
   use geometry_header, only: Cell, Universe, Lattice, RectLattice, HexLattice,&
                              root_universe
-  use global
   use hdf5_interface,  only: file_open, read_attribute, file_close, &
                              hdf5_bank_t, hdf5_integer8_t
   use input_xml,       only: read_input_xml
@@ -23,9 +22,12 @@ module initialize
   use mgxs_data,       only: read_mgxs, create_macro_xs
   use output,          only: print_version, write_message, print_usage
   use random_lcg,      only: initialize_prng
+  use settings
+  use simulation_header, only: n_threads
   use string,          only: to_str, starts_with, ends_with, str_to_int
   use tally_header,    only: TallyObject
   use tally_filter
+  use timer_header
 
   implicit none
 

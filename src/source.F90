@@ -6,20 +6,23 @@ module source
 #endif
 
   use algorithm,        only: binary_search
-  use bank_header,      only: Bank
+  use bank_header,      only: Bank, source_bank
   use constants
   use distribution_univariate, only: Discrete
   use distribution_multivariate, only: SpatialBox
   use error,            only: fatal_error
   use geometry,         only: find_cell
-  use global
   use hdf5_interface,   only: file_create, file_open, file_close, read_dataset
+  use math
   use message_passing,  only: rank
+  use mgxs_header,      only: energy_bins, num_energy_groups
   use output,           only: write_message
   use particle_header,  only: Particle
   use random_lcg,       only: prn, set_particle_seed, prn_set_stream
+  use settings
+  use simulation_header
+  use source_header,    only: external_source
   use string,           only: to_str
-  use math
   use state_point,      only: read_source_bank, write_source_bank
 
   implicit none

@@ -7,14 +7,19 @@ module tally
   use cross_section,    only: multipole_deriv_eval
   use error,            only: fatal_error
   use geometry_header
-  use global
   use math,             only: t_percentile, calc_pn, calc_rn
-  use mesh_header,      only: RegularMesh
+  use mesh_header,      only: RegularMesh, meshes
   use message_passing
+  use mgxs_header
+  use nuclide_header
   use output,           only: header
   use particle_header,  only: LocalCoord, Particle
+  use settings
+  use simulation_header
   use string,           only: to_str
+  use tally_derivative_header, only: tally_derivs
   use tally_filter
+  use tally_header
 
   implicit none
 

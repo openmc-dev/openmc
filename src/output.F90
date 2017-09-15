@@ -3,25 +3,30 @@ module output
   use, intrinsic :: ISO_C_BINDING
   use, intrinsic :: ISO_FORTRAN_ENV
 
+  use cmfd_header
   use constants
   use eigenvalue,      only: openmc_get_keff
   use endf,            only: reaction_name
   use error,           only: fatal_error, warning
-  use geometry_header, only: Cell, Universe, Lattice, RectLattice, &
-                             HexLattice
-  use global
+  use geometry_header
   use math,            only: t_percentile
-  use mesh_header,     only: RegularMesh
+  use mesh_header,     only: RegularMesh, meshes
   use message_passing, only: master, n_procs
+  use mgxs_header,     only: nuclides_MG
   use nuclide_header
   use particle_header, only: LocalCoord, Particle
   use plot_header
   use sab_header,      only: SAlphaBeta
+  use settings
+  use simulation_header
+  use surface_header,  only: surfaces
   use string,          only: to_upper, to_str
-  use tally_header,    only: TallyObject
+  use tally_header
+  use tally_derivative_header
   use tally_filter
   use tally_filter_mesh, only: MeshFilter
   use tally_filter_header, only: TallyFilterMatch
+  use timer_header
 
   implicit none
 

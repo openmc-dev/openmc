@@ -1,8 +1,8 @@
 module mesh
 
   use algorithm,  only: binary_search
+  use bank_header, only: bank
   use constants
-  use global
   use mesh_header
   use message_passing
 

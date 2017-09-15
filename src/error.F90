@@ -37,7 +37,30 @@ module error
   integer(C_INT), public, bind(C) :: W_BELOW_MIN_BOUND = 1
   integer(C_INT), public, bind(C) :: W_ABOVE_MAX_BOUND = 2
 
+  ! Error message
+  character(kind=C_CHAR), public, bind(C) :: openmc_err_msg(256)
+
+  public :: set_errmsg
+
 contains
+
+!===============================================================================
+! SET_ERRMSG sets the 'openmc_err_msg' module variable that is exposed via the C
+! API
+!===============================================================================
+
+  subroutine set_errmsg(f_string)
+    character(*), intent(in) :: f_string
+
+    integer :: i, n
+
+    ! Copy Fortran string to null-terminated C char array
+    n = len_trim(f_string)
+    do i = 1, n
+      openmc_err_msg(i) = f_string(i:i)
+    end do
+    openmc_err_msg(n + 1) = C_NULL_CHAR
+  end subroutine set_errmsg
 
 !===============================================================================
 ! WARNING issues a warning to the user in the log file and the standard output

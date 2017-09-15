@@ -322,7 +322,7 @@ contains
       call get_run_parameters(node_mode)
 
       ! Check number of active batches, inactive batches, and particles
-      if (n_active <= 0) then
+      if (n_batches <= n_inactive) then
         call fatal_error("Number of active batches must be greater than zero.")
       elseif (n_inactive < 0) then
         call fatal_error("Number of inactive batches must be non-negative.")
@@ -890,9 +890,6 @@ contains
         end if
       end if
     end if
-
-    ! Determine number of active batches
-    n_active = n_batches - n_inactive
 
   end subroutine get_run_parameters
 

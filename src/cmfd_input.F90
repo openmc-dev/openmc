@@ -3,7 +3,11 @@ module cmfd_input
   use, intrinsic :: ISO_C_BINDING
 
   use cmfd_header
-  use global
+  use mesh_header, only: mesh_dict
+  use mgxs_header, only: energy_bins
+  use tally
+  use tally_header
+  use timer_header
 
   implicit none
   private

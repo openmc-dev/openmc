@@ -5,9 +5,9 @@ module cmfd_execute
 ! cross section generation, diffusion calculation, and source re-weighting
 !==============================================================================
 
-  use cmfd_header, only: cmfd_begin, cmfd_on, cmfd_reset, cmfd, cmfd_coremap, &
-                         cmfd_mesh
-  use global
+  use cmfd_header
+  use settings
+  use simulation_header
 
   implicit none
   private
@@ -65,8 +65,6 @@ contains
 
   subroutine cmfd_init_batch()
 
-    use global,      only: cmfd_run, current_batch
-
     ! Check to activate CMFD diffusion and possible feedback
     ! this guarantees that when cmfd begins at least one batch of tallies are
     ! accumulated
@@ -91,7 +89,6 @@ contains
   subroutine calc_fission_source()
 
     use constants, only: CMFD_NOACCEL, ZERO, TWO
-    use global, only: entropy_on, current_batch
     use message_passing
     use string,    only: to_str
 
@@ -214,9 +211,9 @@ contains
   subroutine cmfd_reweight(new_weights)
 
     use algorithm,   only: binary_search
+    use bank_header, only: source_bank
     use constants,   only: ZERO, ONE
     use error,       only: warning, fatal_error
-    use global,      only: source_bank, work
     use mesh_header, only: RegularMesh
     use mesh,        only: count_bank_sites
     use message_passing

@@ -4,15 +4,15 @@ module summary
 
   use constants
   use endf,            only: reaction_name
-  use geometry_header, only: root_universe, Cell, Universe, Lattice, &
-                             RectLattice, HexLattice
-  use global
+  use geometry_header
   use hdf5_interface
-  use material_header, only: Material
+  use material_header, only: Material, n_materials
   use mesh_header,     only: RegularMesh
   use message_passing
+  use mgxs_header,     only: nuclides_MG
   use nuclide_header
   use output,          only: time_stamp
+  use settings,        only: run_CE
   use surface_header
   use string,          only: to_str
   use tally_header,    only: TallyObject

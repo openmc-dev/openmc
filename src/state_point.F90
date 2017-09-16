@@ -15,17 +15,25 @@ module state_point
 
   use hdf5
 
+  use cmfd_header
   use constants
   use eigenvalue,         only: openmc_get_keff
   use endf,               only: reaction_name
   use error,              only: fatal_error, warning
-  use global
   use hdf5_interface
-  use mesh_header,        only: RegularMesh
+  use mesh_header,        only: RegularMesh, meshes, n_meshes
   use message_passing
+  use mgxs_header,        only: nuclides_MG
+  use nuclide_header,     only: nuclides
   use output,             only: write_message, time_stamp
   use random_lcg,         only: seed
+  use settings
+  use simulation_header
   use string,             only: to_str, count_digits, zero_padded
+  use tally_header
+  use tally_filter_header
+  use tally_derivative_header, only: tally_derivs
+  use timer_header
 
   implicit none
 

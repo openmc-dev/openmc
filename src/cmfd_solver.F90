@@ -101,7 +101,7 @@ contains
 
     use constants, only: ONE, ZERO
     use cmfd_header, only: cmfd_shift, cmfd_ktol, cmfd_stol, cmfd_write_matrices
-    use global, only: keff
+    use simulation_header, only: keff
 
     logical, intent(in) :: adjoint
 
@@ -694,7 +694,7 @@ contains
   subroutine extract_results()
 
     use cmfd_header, only: cmfd, cmfd_write_matrices
-    use global, only: current_batch
+    use simulation_header, only: current_batch
 
     character(len=25)    :: filename  ! name of file to write data
     integer              :: n         ! problem size

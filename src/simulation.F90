@@ -6,7 +6,9 @@ module simulation
   use omp_lib
 #endif
 
+  use bank_header,     only: source_bank
   use cmfd_execute,    only: cmfd_init_batch, execute_cmfd
+  use cmfd_header,     only: cmfd_on
   use constants,       only: ZERO
   use eigenvalue,      only: count_source_for_ufs, calculate_average_keff, &
                              calculate_generation_keff, shannon_entropy, &
@@ -14,19 +16,26 @@ module simulation
 #ifdef _OPENMP
   use eigenvalue,      only: join_bank_from_threads
 #endif
-  use global
+  use error,           only: fatal_error
   use message_passing
+  use mgxs_header,     only: energy_bins, energy_bin_avg
+  use nuclide_header,  only: micro_xs, n_nuclides
   use output,          only: write_message, header, print_columns, &
                              print_batch_keff, print_generation, print_runtime, &
                              print_results, print_overlap_check, write_tallies
   use particle_header, only: Particle
   use random_lcg,      only: set_particle_seed
+  use settings
+  use simulation_header
   use source,          only: initialize_source, sample_external_source
   use state_point,     only: write_state_point, write_source_point, load_state_point
   use string,          only: to_str
   use tally,           only: accumulate_tallies, setup_active_tallies, &
                              init_tally_routines
-  use tally_header,    only: configure_tallies
+  use tally_header
+  use tally_filter_header, only: filter_matches, n_filters
+  use tally_derivative_header, only: tally_derivs
+  use timer_header
   use trigger,         only: check_triggers
   use tracking,        only: transport
 

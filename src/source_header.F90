@@ -216,7 +216,6 @@ contains
     class(SourceDistribution), intent(in) :: this
     type(Bank) :: site
 
-    real(8) :: r(3)       ! sampled coordinates
     logical :: found      ! Does the source particle exist within geometry?
     type(Particle) :: p   ! Temporary particle for using find_cell
 
@@ -305,7 +304,6 @@ contains
     integer(C_INT32_T), optional, intent(out) :: index_end
     integer(C_INT) :: err
 
-    integer :: i
     type(SourceDistribution), allocatable :: temp(:) ! temporary array
 
     if (n_sources == 0) then

@@ -23,7 +23,9 @@ module initialize
   use output,          only: print_version, write_message, print_usage
   use random_lcg,      only: initialize_prng
   use settings
+#ifdef _OPENMP
   use simulation_header, only: n_threads
+#endif
   use string,          only: to_str, starts_with, ends_with, str_to_int
   use tally_header,    only: TallyObject
   use tally_filter

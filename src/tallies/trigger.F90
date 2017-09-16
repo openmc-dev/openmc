@@ -8,14 +8,17 @@ module trigger
 
   use constants
   use eigenvalue,     only: openmc_get_keff
-  use global
   use string,         only: to_str
   use output,         only: warning, write_message
-  use mesh_header,    only: RegularMesh
+  use mesh_header,    only: RegularMesh, meshes
   use message_passing, only: master
-  use trigger_header, only: TriggerObject
+  use settings
+  use simulation_header
+  use trigger_header
   use tally,          only: TallyObject
   use tally_filter_mesh, only: MeshFilter
+  use tally_filter_header, only: filter_matches, filters
+  use tally_header, only: tallies, n_tallies
 
   implicit none
 

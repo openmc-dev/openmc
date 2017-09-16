@@ -394,7 +394,7 @@ contains
   subroutine neutron_balance()
 
     use constants,    only: ONE, ZERO, CMFD_NOACCEL, CMFD_NORES
-    use global,       only: keff, current_batch
+    use simulation_header, only: keff, current_batch
 
     integer :: nx           ! number of mesh cells in x direction
     integer :: ny           ! number of mesh cells in y direction

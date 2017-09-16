@@ -7,13 +7,14 @@ module plot
   use constants
   use error,           only: fatal_error
   use geometry,        only: find_cell, check_cell_overlap
-  use geometry_header, only: Cell, root_universe
-  use global
+  use geometry_header, only: Cell, root_universe, cells
   use hdf5_interface
   use output,          only: write_message, time_stamp
+  use material_header, only: materials
   use particle_header, only: LocalCoord, Particle
   use plot_header
   use progress_header, only: ProgressBar
+  use settings,        only: check_overlaps
   use string,          only: to_str
 
   implicit none

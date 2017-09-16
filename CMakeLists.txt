@@ -322,7 +322,6 @@ set(LIBOPENMC_FORTRAN_SRC
   src/error.F90
   src/geometry.F90
   src/geometry_header.F90
-  src/global.F90
   src/hdf5_interface.F90
   src/initialize.F90
   src/input_xml.F90

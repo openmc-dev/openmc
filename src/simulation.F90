@@ -17,6 +17,7 @@ module simulation
   use eigenvalue,      only: join_bank_from_threads
 #endif
   use error,           only: fatal_error
+  use geometry_header, only: n_cells
   use message_passing
   use mgxs_header,     only: energy_bins, energy_bin_avg
   use nuclide_header,  only: micro_xs, n_nuclides

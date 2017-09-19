@@ -742,4 +742,28 @@ contains
 
   end subroutine nuclide_init_grid
 
+!===============================================================================
+! FREE_MEMORY_NUCLIDE deallocates global arrays defined in this module
+!===============================================================================
+
+  subroutine free_memory_nuclide()
+    integer :: i
+
+    ! Deallocate cross section data, listings, and cache
+    if (allocated(nuclides)) then
+      ! First call the clear routines
+      do i = 1, size(nuclides)
+        call nuclides(i) % clear()
+      end do
+      deallocate(nuclides)
+    end if
+    n_nuclides = 0
+
+    if (allocated(libraries)) deallocate(libraries)
+
+    call nuclide_dict % clear()
+    call library_dict % clear()
+
+  end subroutine free_memory_nuclide
+
 end module nuclide_header

@@ -138,4 +138,18 @@ module settings
   ! No reduction at end of batch
   logical :: reduce_tallies = .true.
 
+contains
+
+!===============================================================================
+! FREE_MEMORY_SETTINGS deallocates global arrays defined in this module
+!===============================================================================
+
+  subroutine free_memory_settings()
+    if (allocated(res_scat_nuclides)) deallocate(res_scat_nuclides)
+    if (allocated(track_identifiers)) deallocate(track_identifiers)
+
+    call statepoint_batch % clear()
+    call sourcepoint_batch % clear()
+  end subroutine free_memory_settings
+
 end module settings

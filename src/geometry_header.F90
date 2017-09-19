@@ -402,4 +402,24 @@ contains
 
   end subroutine get_temperatures
 
+!===============================================================================
+! FREE_MEMORY_GEOMETRY deallocates global arrays defined in this module
+!===============================================================================
+
+  subroutine free_memory_geometry()
+
+    n_cells = 0
+    n_universes = 0
+    n_lattices = 0
+
+    if (allocated(cells)) deallocate(cells)
+    if (allocated(universes)) deallocate(universes)
+    if (allocated(lattices)) deallocate(lattices)
+
+    call cell_dict % clear()
+    call universe_dict % clear()
+    call lattice_dict % clear()
+
+  end subroutine free_memory_geometry
+
 end module geometry_header

@@ -79,4 +79,17 @@ contains
     gen = gen_per_batch*(current_batch - 1) + current_gen
   end function overall_generation
 
+!===============================================================================
+! FREE_MEMORY_SIMULATION deallocates global arrays defined in this module
+!===============================================================================
+
+  subroutine free_memory_simulation()
+    if (allocated(overlap_check_cnt)) deallocate(overlap_check_cnt)
+    if (allocated(k_generation)) deallocate(k_generation)
+    if (allocated(entropy)) deallocate(entropy)
+    if (allocated(entropy_p)) deallocate(entropy_p)
+    if (allocated(source_frac)) deallocate(source_frac)
+    if (allocated(work_index)) deallocate(work_index)
+  end subroutine free_memory_simulation
+
 end module simulation_header

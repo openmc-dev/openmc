@@ -9,6 +9,7 @@ module tally_derivative_header
 
   implicit none
   private
+  public :: free_memory_tally_derivative
 
 !===============================================================================
 ! TALLYDERIVATIVE describes a first-order derivative that can be applied to
@@ -87,5 +88,15 @@ contains
     call get_node_value(node, "material", this % diff_material)
 
   end subroutine from_xml
+
+!===============================================================================
+! FREE_MEMORY_TALLY_DERIVATIVE deallocates global arrays defined in this module
+!===============================================================================
+
+  subroutine free_memory_tally_derivative()
+!$omp parallel
+    if (allocated(tally_derivs)) deallocate(tally_derivs)
+!$omp end parallel
+  end subroutine free_memory_tally_derivative
 
 end module tally_derivative_header

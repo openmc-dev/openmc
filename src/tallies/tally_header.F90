@@ -19,6 +19,7 @@ module tally_header
   implicit none
   private
   public :: configure_tallies
+  public :: free_memory_tally
   public :: openmc_extend_tallies
   public :: openmc_get_tally
   public :: openmc_tally_get_id
@@ -386,6 +387,26 @@ contains
     end do
 
   end subroutine configure_tallies
+
+!===============================================================================
+! FREE_MEMORY_TALLY deallocates global arrays defined in this module
+!===============================================================================
+
+  subroutine free_memory_tally()
+    n_tallies = 0
+    if (allocated(tallies)) deallocate(tallies)
+    call tally_dict % clear()
+
+    if (allocated(global_tallies)) deallocate(global_tallies)
+
+    ! Deallocate tally node lists
+    call active_analog_tallies % clear()
+    call active_tracklength_tallies % clear()
+    call active_current_tallies % clear()
+    call active_collision_tallies % clear()
+    call active_surface_tallies % clear()
+    call active_tallies % clear()
+  end subroutine free_memory_tally
 
 !===============================================================================
 !                               C API FUNCTIONS

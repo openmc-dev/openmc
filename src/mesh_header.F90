@@ -13,6 +13,7 @@ module mesh_header
 
   implicit none
   private
+  public :: free_memory_mesh
   public :: openmc_extend_meshes
 
 !===============================================================================
@@ -545,6 +546,16 @@ contains
 
     call close_group(mesh_group)
   end subroutine regular_to_hdf5
+
+!===============================================================================
+! FREE_MEMORY_MESH deallocates global arrays defined in this module
+!===============================================================================
+
+  subroutine free_memory_mesh()
+    n_meshes = 0
+    if (allocated(meshes)) deallocate(meshes)
+    call mesh_dict % clear()
+  end subroutine free_memory_mesh
 
 !===============================================================================
 !                               C API FUNCTIONS

@@ -13,6 +13,7 @@ module tally_filter_header
 
   implicit none
   private
+  public :: free_memory_tally_filter
   public :: openmc_extend_filters
   public :: openmc_filter_get_id
   public :: openmc_filter_set_id
@@ -128,6 +129,16 @@ contains
   subroutine filter_initialize(this)
     class(TallyFilter), intent(inout) :: this
   end subroutine filter_initialize
+
+!===============================================================================
+! FREE_MEMORY_TALLY_FILTER deallocates global arrays defined in this module
+!===============================================================================
+
+  subroutine free_memory_tally_filter()
+    n_filters = 0
+    if (allocated(filters)) deallocate(filters)
+    call filter_dict % clear()
+  end subroutine free_memory_tally_filter
 
 !===============================================================================
 !                               C API FUNCTIONS

@@ -212,4 +212,14 @@ contains
     if (allocated(this % names)) deallocate(this % names)
   end subroutine material_assign_sab_tables
 
+!===============================================================================
+! FREE_MEMORY_MATERIAL deallocates global arrays defined in this module
+!===============================================================================
+
+  subroutine free_memory_material()
+    n_materials = 0
+    if (allocated(materials)) deallocate(materials)
+    call material_dict % clear()
+  end subroutine free_memory_material
+
 end module material_header

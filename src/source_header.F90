@@ -16,6 +16,7 @@ module source_header
 
   implicit none
   private
+  public :: free_memory_source
 
   integer :: n_accept = 0  ! Number of samples accepted
   integer :: n_reject = 0  ! Number of samples rejected
@@ -292,6 +293,15 @@ contains
     site % delayed_group = 0
 
   end function sample
+
+!===============================================================================
+! FREE_MEMORY_SOURCE deallocates global arrays defined in this module
+!===============================================================================
+
+  subroutine free_memory_source()
+    n_sources = 0
+    if (allocated(external_source)) deallocate(external_source)
+  end subroutine free_memory_source
 
 !===============================================================================
 !                               C API FUNCTIONS

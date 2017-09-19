@@ -60,4 +60,16 @@ module plot_header
   ! Dictionary that maps user IDs to indices in 'plots'
   type(DictIntInt) :: plot_dict
 
+contains
+
+!===============================================================================
+! FREE_MEMORY_PLOT deallocates global arrays defined in this module
+!===============================================================================
+
+  subroutine free_memory_plot()
+    n_plots = 0
+    if (allocated(plots)) deallocate(plots)
+    call plot_dict % clear()
+  end subroutine free_memory_plot
+
 end module plot_header

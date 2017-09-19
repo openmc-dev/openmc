@@ -1060,4 +1060,14 @@ contains
     end associate
   end function quadric_normal
 
+!===============================================================================
+! FREE_MEMORY_SURFACES deallocates global arrays defined in this module
+!===============================================================================
+
+  subroutine free_memory_surfaces()
+    n_surfaces = 0
+    if (allocated(surfaces)) deallocate(surfaces)
+    call surface_dict % clear()
+  end subroutine free_memory_surfaces
+
 end module surface_header

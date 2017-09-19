@@ -3551,4 +3551,15 @@ contains
 
     end subroutine find_angle
 
+!===============================================================================
+! FREE_MEMORY_MGXS deallocates global arrays defined in this module
+!===============================================================================
+
+  subroutine free_memory_mgxs()
+    if (allocated(nuclides_MG)) deallocate(nuclides_MG)
+    if (allocated(macro_xs)) deallocate(macro_xs)
+    if (allocated(energy_bins)) deallocate(energy_bins)
+    if (allocated(energy_bin_avg)) deallocate(energy_bin_avg)
+  end subroutine free_memory_mgxs
+
 end module mgxs_header

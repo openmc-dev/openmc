@@ -422,4 +422,132 @@ contains
 
   end subroutine free_memory_geometry
 
+!===============================================================================
+!                               C API FUNCTIONS
+!===============================================================================
+
+  function openmc_get_cell(id, index) result(err) bind(C)
+    ! Return the index in the cells array of a cell with a given ID
+    integer(C_INT32_T), value :: id
+    integer(C_INT32_T), intent(out) :: index
+    integer(C_INT) :: err
+
+    if (allocated(cells)) then
+      if (cell_dict % has_key(id)) then
+        index = cell_dict % get_key(id)
+        err = 0
+      else
+        err = E_CELL_INVALID_ID
+      end if
+    else
+      err = E_CELL_NOT_ALLOCATED
+    end if
+  end function openmc_get_cell
+
+
+  function openmc_cell_get_id(index, id) result(err) bind(C)
+    ! Return the ID of a cell
+    integer(C_INT32_T), value       :: index
+    integer(C_INT32_T), intent(out) :: id
+    integer(C_INT) :: err
+
+    if (index >= 1 .and. index <= size(cells)) then
+      id = cells(index) % id
+      err = 0
+    else
+      err = E_OUT_OF_BOUNDS
+    end if
+  end function openmc_cell_get_id
+
+
+  function openmc_cell_set_temperature(index, T, instance) result(err) bind(C)
+    ! Set the temperature of a cell
+    integer(C_INT32_T), value, intent(in)    :: index    ! cell index in cells
+    real(C_DOUBLE), value, intent(in)        :: T        ! temperature
+    integer(C_INT32_T), optional, intent(in) :: instance ! cell instance
+
+    integer(C_INT) :: err     ! error code
+    integer :: j              ! looping variable
+    integer :: n              ! number of cell instances
+    integer :: material_index ! material index in materials array
+    integer :: num_nuclides   ! num nuclides in material
+    integer :: nuclide_index  ! index of nuclide in nuclides array
+    real(8) :: min_temp       ! min common-denominator avail temp
+    real(8) :: max_temp       ! max common-denominator avail temp
+    real(8) :: temp           ! actual temp we'll assign
+    logical :: outside_low    ! lower than available data
+    logical :: outside_high   ! higher than available data
+
+    outside_low = .false.
+    outside_high = .false.
+
+    err = E_UNASSIGNED
+
+    if (index >= 1 .and. index <= size(cells)) then
+
+      ! error if the cell is filled with another universe
+      if (cells(index) % fill /= NONE) then
+        err = E_CELL_NO_MATERIAL
+      else
+        ! find which material is associated with this cell (material_index
+        ! is the index into the materials array)
+        if (present(instance)) then
+          material_index = cells(index) % material(instance)
+        else
+          material_index = cells(index) % material(1)
+        end if
+
+        ! number of nuclides associated with this material
+        num_nuclides = size(materials(material_index) % nuclide)
+
+        min_temp = ZERO
+        max_temp = INFINITY
+
+        do j = 1, num_nuclides
+          nuclide_index = materials(material_index) % nuclide(j)
+          min_temp = max(min_temp, minval(nuclides(nuclide_index) % kTs))
+          max_temp = min(max_temp, maxval(nuclides(nuclide_index) % kTs))
+        end do
+
+        ! adjust the temperature to be within bounds if necessary
+        if (K_BOLTZMANN * T < min_temp) then
+          outside_low = .true.
+          temp = min_temp / K_BOLTZMANN
+        else if (K_BOLTZMANN * T > max_temp) then
+          outside_high = .true.
+          temp = max_temp / K_BOLTZMANN
+        else
+          temp = T
+        end if
+
+        associate (c => cells(index))
+          if (allocated(c % sqrtkT)) then
+            n = size(c % sqrtkT)
+            if (present(instance) .and. n > 1) then
+              if (instance >= 0 .and. instance < n) then
+                c % sqrtkT(instance + 1) = sqrt(K_BOLTZMANN * temp)
+                err = 0
+              end if
+            else
+              c % sqrtkT(:) = sqrt(K_BOLTZMANN * temp)
+              err = 0
+            end if
+          end if
+        end associate
+
+        ! Assign error codes for outside of temperature bounds provided the
+        ! temperature was changed correctly. This needs to be done after
+        ! changing the temperature based on the logical structure above.
+        if (err == 0) then
+          if (outside_low) err = W_BELOW_MIN_BOUND
+          if (outside_high) err = W_ABOVE_MAX_BOUND
+        end if
+
+      end if
+
+    else
+      err = E_OUT_OF_BOUNDS
+    end if
+  end function openmc_cell_set_temperature
+
 end module geometry_header

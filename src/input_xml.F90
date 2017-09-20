@@ -22,6 +22,7 @@ module input_xml
   use mgxs_data,        only: create_macro_xs, read_mgxs
   use mgxs_header
   use multipole,        only: multipole_read
+  use nuclide_header
   use output,           only: write_message, title, header, print_plot
   use plot_header
   use random_lcg,       only: prn, seed, initialize_prng
@@ -4455,7 +4456,7 @@ contains
           call file_close(file_id)
 
           ! Assign resonant scattering data
-          if (res_scat_on) call assign_0K_elastic_scattering(nuclides(i_nuclide))
+          if (res_scat_on) call nuclides(i_nuclide) % assign_0K_elastic_scattering()
 
           ! Determine if minimum/maximum energy for this nuclide is greater/less
           ! than the previous
@@ -4591,60 +4592,6 @@ contains
   end subroutine assign_temperatures
 
 !===============================================================================
-! ASSIGN_0K_ELASTIC_SCATTERING
-!===============================================================================
-
-  subroutine assign_0K_elastic_scattering(nuc)
-    type(Nuclide), intent(inout) :: nuc
-
-    integer :: i
-    real(8) :: xs_cdf_sum
-
-    nuc % resonant = .false.
-    if (allocated(res_scat_nuclides)) then
-      ! If resonant nuclides were specified, check the list explicitly
-      do i = 1, size(res_scat_nuclides)
-        if (nuc % name == res_scat_nuclides(i)) then
-          nuc % resonant = .true.
-
-          ! Make sure nuclide has 0K data
-          if (.not. allocated(nuc % energy_0K)) then
-            call fatal_error("Cannot treat " // trim(nuc % name) // " as a &
-                 &resonant scatterer because 0 K elastic scattering data is &
-                 &not present.")
-          end if
-
-          exit
-        end if
-      end do
-    else
-      ! Otherwise, assume that any that have 0 K elastic scattering data are
-      ! resonant
-      nuc % resonant = allocated(nuc % energy_0K)
-    end if
-
-    if (nuc % resonant) then
-      ! Build CDF for 0K elastic scattering
-      xs_cdf_sum = ZERO
-      allocate(nuc % xs_cdf(0:size(nuc % energy_0K)))
-      nuc % xs_cdf(0) = ZERO
-
-      associate (E => nuc % energy_0K, xs => nuc % elastic_0K)
-        do i = 1, size(E) - 1
-          ! Negative cross sections result in a CDF that is not monotonically
-          ! increasing. Set all negative xs values to zero.
-          if (xs(i) < ZERO) xs(i) = ZERO
-
-          ! build xs cdf
-          xs_cdf_sum = xs_cdf_sum + (sqrt(E(i))*xs(i) + sqrt(E(i+1))*xs(i+1))&
-               / TWO * (E(i+1) - E(i))
-          nuc % xs_cdf(i) = xs_cdf_sum
-        end do
-      end associate
-    end if
-  end subroutine assign_0K_elastic_scattering
-
-!===============================================================================
 ! READ_MULTIPOLE_DATA checks for the existence of a multipole library in the
 ! directory and loads it using multipole_read
 !===============================================================================
@@ -4692,31 +4639,6 @@ contains
     end associate
 
   end subroutine read_multipole_data
-
-!===============================================================================
-! CHECK_DATA_VERSION checks for the right version of nuclear data within HDF5
-! files
-!===============================================================================
-
-  subroutine check_data_version(file_id)
-    integer(HID_T), intent(in) :: file_id
-
-    integer, allocatable :: version(:)
-
-    if (attribute_exists(file_id, 'version')) then
-      call read_attribute(version, file_id, 'version')
-      if (version(1) /= HDF5_VERSION(1)) then
-        call fatal_error("HDF5 data format uses version " // trim(to_str(&
-             version(1))) // "." // trim(to_str(version(2))) // " whereas &
-             &your installation of OpenMC expects version " // trim(to_str(&
-             HDF5_VERSION(1))) // ".x data.")
-      end if
-    else
-      call fatal_error("HDF5 data does not indicate a version. Your &
-           &installation of OpenMC expects version " // trim(to_str(&
-           HDF5_VERSION(1))) // ".x data.")
-    end if
-  end subroutine check_data_version
 
 !===============================================================================
 ! ADJUST_INDICES changes the values for 'surfaces' for each cell and the

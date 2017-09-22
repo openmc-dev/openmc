@@ -153,5 +153,7 @@ def run_in_memory(intracomm=None):
 
     """
     init(intracomm)
-    yield
-    finalize()
+    try:
+        yield
+    finally:
+        finalize()

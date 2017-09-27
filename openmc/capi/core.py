@@ -170,3 +170,11 @@ class _DLLGlobal(object):
 
     def __set__(self, instance, value):
         self.ctype.in_dll(_dll, self.name).value = value
+
+
+class _View(object):
+    def __init__(self, index):
+        self._index = index
+
+    def __repr__(self):
+        return "{}[{}]".format(type(self).__name__, self._index)

@@ -6,6 +6,7 @@ import numpy as np
 from numpy.ctypeslib import as_array
 
 from . import _dll, NuclideView
+from .core import _View
 from .error import _error_handler
 
 
@@ -36,7 +37,7 @@ _dll.openmc_material_set_densities.restype = c_int
 _dll.openmc_material_set_densities.errcheck = _error_handler
 
 
-class MaterialView(object):
+class MaterialView(_View):
     """View of a material.
 
     This class exposes a material that is stored internally in the OpenMC
@@ -59,15 +60,6 @@ class MaterialView(object):
 
     """
     __instances = WeakValueDictionary()
-
-    def __new__(cls, *args):
-        if args not in cls.__instances:
-            instance = super().__new__(cls)
-            cls.__instances[args] = instance
-        return cls.__instances[args]
-
-    def __init__(self, index):
-        self._index = index
 
     @property
     def id(self):
@@ -166,5 +158,8 @@ class _MaterialMapping(Mapping):
 
     def __len__(self):
         return c_int32.in_dll(_dll, 'n_materials').value
+
+    def __repr__(self):
+        return repr(dict(self))
 
 materials = _MaterialMapping()

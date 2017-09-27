@@ -5,6 +5,7 @@ from weakref import WeakValueDictionary
 import numpy as np
 
 from . import _dll
+from .core import _View
 from .error import _error_handler
 
 __all__ = ['CellView', 'cells']
@@ -22,7 +23,7 @@ _dll.openmc_get_cell_index.restype = c_int
 _dll.openmc_get_cell_index.errcheck = _error_handler
 
 
-class CellView(object):
+class CellView(_View):
     """View of a cell.
 
     This class exposes a cell that is stored internally in the OpenMC solver. To
@@ -47,9 +48,6 @@ class CellView(object):
             instance = super().__new__(cls)
             cls.__instances[args] = instance
         return cls.__instances[args]
-
-    def __init__(self, index):
-        self._index = index
 
     @property
     def id(self):
@@ -83,5 +81,8 @@ class _CellMapping(Mapping):
 
     def __len__(self):
         return c_int32.in_dll(_dll, 'n_cells').value
+
+    def __repr__(self):
+        return repr(dict(self))
 
 cells = _CellMapping()

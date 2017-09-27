@@ -144,11 +144,16 @@ class MaterialFilterView(FilterView):
         _dll.openmc_material_filter_set_bins(self._index, n, bins)
 
     @classmethod
-    def new(cls, bins=None):
+    def new(cls, bins=None, filter_id=None):
+        # Determine filter ID to assign
+        if filter_id is None:
+            filter_id = max(filters) + 1
+
         index = c_int32()
         _dll.openmc_extend_filters(1, index, None)
         _dll.openmc_filter_set_type(index, b'material')
         f = cls(index.value)
+        f.id = filter_id
         if bins is not None:
             f.bins = bins
         return f

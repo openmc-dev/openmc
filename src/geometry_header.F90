@@ -6,7 +6,7 @@ module geometry_header
   use constants,       only: HALF, TWO, THREE, INFINITY, K_BOLTZMANN, &
                              MATERIAL_VOID, NONE
   use dict_header,     only: DictCharInt, DictIntInt
-  use material_header, only: Material, materials, material_dict
+  use material_header, only: Material, materials, material_dict, n_materials
   use nuclide_header
   use sab_header
   use stl_vector,      only: VectorReal
@@ -447,6 +447,33 @@ contains
   end function openmc_get_cell_index
 
 
+  function openmc_cell_get_fill(index, type, indices, n) result(err) bind(C)
+    integer(C_INT32_T), value, intent(in) :: index
+    integer(C_INT), intent(out) :: type
+    integer(C_INT32_T), intent(out) :: n
+    type(C_PTR), intent(out) :: indices
+    integer(C_INT) :: err
+
+    err = 0
+    if (index >= 1 .and. index <= size(cells)) then
+      associate (c => cells(index))
+        type = c % type
+        select case (type)
+        case (FILL_MATERIAL)
+          n = size(c % material)
+          indices = C_LOC(c % material(1))
+        case (FILL_UNIVERSE, FILL_LATTICE)
+          n = 1
+          indices = C_LOC(c % fill)
+        end select
+      end associate
+    else
+      err = E_OUT_OF_BOUNDS
+      call set_errmsg("Index in cells array is out of bounds.")
+    end if
+  end function openmc_cell_get_fill
+
+
   function openmc_cell_get_id(index, id) result(err) bind(C)
     ! Return the ID of a cell
     integer(C_INT32_T), value       :: index
@@ -463,9 +490,56 @@ contains
   end function openmc_cell_get_id
 
 
+  function openmc_cell_set_fill(index, type, n, indices) result(err) bind(C)
+    ! Set the fill for a fill
+    integer(C_INT32_T), value, intent(in) :: index    ! index in cells
+    integer(C_INT), value, intent(in)     :: type
+    integer(c_INT32_T), value, intent(in) :: n
+    integer(C_INT32_T), intent(in) :: indices(n)
+    integer(C_INT) :: err
+
+    integer :: i, j
+
+    err = 0
+    if (index >= 1 .and. index <= size(cells)) then
+      associate (c => cells(index))
+        select case (type)
+        case (FILL_MATERIAL)
+          if (allocated(c % material)) deallocate(c % material)
+          allocate(c % material(n))
+
+          c % type = FILL_MATERIAL
+          do i = 1, n
+            j = indices(i)
+            if (j == 0) then
+              c % material(i) = MATERIAL_VOID
+            else
+              if (j >= 1 .and. j <= n_materials) then
+                c % material(i) = j
+              else
+                err = E_OUT_OF_BOUNDS
+                call set_errmsg("Index " // trim(to_str(j)) // " in the &
+                     &materials array is out of bounds.")
+              end if
+            end if
+          end do
+        case (FILL_UNIVERSE)
+          c % type = FILL_UNIVERSE
+        case (FILL_LATTICE)
+          c % type = FILL_LATTICE
+        end select
+      end associate
+    else
+      err = E_OUT_OF_BOUNDS
+      call set_errmsg("Index in cells array is out of bounds.")
+    end if
+
+  end function openmc_cell_set_fill
+
+
   function openmc_cell_set_temperature(index, T, instance) result(err) bind(C)
     ! Set the temperature of a cell
-    integer(C_INT32_T), value, intent(in)    :: index    ! cell index in cells
+    integer(C_INT32_T), value, intent(in)    :: index    ! index in cells
     real(C_DOUBLE), value, intent(in)        :: T        ! temperature
     integer(C_INT32_T), optional, intent(in) :: instance ! cell instance
 

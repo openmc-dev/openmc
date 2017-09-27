@@ -62,7 +62,7 @@ def _error_handler(err, func, args):
     elif err == errcode('e_invalid_type'):
         raise InvalidTypeError(msg)
     if err == errcode('e_invalid_id'):
-        raise IDError(msg)
+        raise InvalidIDError(msg)
     elif err == errcode('e_geometry'):
         raise GeometryError(msg)
     elif err == errcode('e_data'):

@@ -12,9 +12,9 @@ from .error import _error_handler
 __all__ = ['MaterialView', 'materials']
 
 # Material functions
-_dll.openmc_get_material.argtypes = [c_int32, POINTER(c_int32)]
-_dll.openmc_get_material.restype = c_int
-_dll.openmc_get_material.errcheck = _error_handler
+_dll.openmc_get_material_index.argtypes = [c_int32, POINTER(c_int32)]
+_dll.openmc_get_material_index.restype = c_int
+_dll.openmc_get_material_index.errcheck = _error_handler
 _dll.openmc_material_add_nuclide.argtypes = [
     c_int32, c_char_p, c_double]
 _dll.openmc_material_add_nuclide.restype = c_int
@@ -157,7 +157,7 @@ class MaterialView(object):
 class _MaterialMapping(Mapping):
     def __getitem__(self, key):
         index = c_int32()
-        _dll.openmc_get_material(key, index)
+        _dll.openmc_get_material_index(key, index)
         return MaterialView(index.value)
 
     def __iter__(self):

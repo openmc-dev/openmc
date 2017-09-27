@@ -41,9 +41,9 @@ _dll.openmc_filter_set_id.errcheck = _error_handler
 _dll.openmc_filter_set_type.argtypes = [c_int32, c_char_p]
 _dll.openmc_filter_set_type.restype = c_int
 _dll.openmc_filter_set_type.errcheck = _error_handler
-_dll.openmc_get_filter.argtypes = [c_int32, POINTER(c_int32)]
-_dll.openmc_get_filter.restype = c_int
-_dll.openmc_get_filter.errcheck = _error_handler
+_dll.openmc_get_filter_index.argtypes = [c_int32, POINTER(c_int32)]
+_dll.openmc_get_filter_index.restype = c_int
+_dll.openmc_get_filter_index.errcheck = _error_handler
 _dll.openmc_material_filter_get_bins.argtypes = [
     c_int32, POINTER(POINTER(c_int32)), POINTER(c_int32)]
 _dll.openmc_material_filter_get_bins.restype = c_int
@@ -205,7 +205,7 @@ def _get_filter(index):
 class _FilterMapping(Mapping):
     def __getitem__(self, key):
         index = c_int32()
-        _dll.openmc_get_filter(key, index)
+        _dll.openmc_get_filter_index(key, index)
         return _get_filter(index.value)
 
     def __iter__(self):

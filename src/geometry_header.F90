@@ -426,7 +426,7 @@ contains
 !                               C API FUNCTIONS
 !===============================================================================
 
-  function openmc_get_cell(id, index) result(err) bind(C)
+  function openmc_get_cell_index(id, index) result(err) bind(C)
     ! Return the index in the cells array of a cell with a given ID
     integer(C_INT32_T), value :: id
     integer(C_INT32_T), intent(out) :: index
@@ -442,7 +442,7 @@ contains
     else
       err = E_CELL_NOT_ALLOCATED
     end if
-  end function openmc_get_cell
+  end function openmc_get_cell_index
 
 
   function openmc_cell_get_id(index, id) result(err) bind(C)

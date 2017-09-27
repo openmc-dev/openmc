@@ -12,9 +12,9 @@ from .filter import _get_filter
 __all__ = ['TallyView', 'tallies']
 
 # Tally functions
-_dll.openmc_get_tally.argtypes = [c_int32, POINTER(c_int32)]
-_dll.openmc_get_tally.restype = c_int
-_dll.openmc_get_tally.errcheck = _error_handler
+_dll.openmc_get_tally_index.argtypes = [c_int32, POINTER(c_int32)]
+_dll.openmc_get_tally_index.restype = c_int
+_dll.openmc_get_tally_index.errcheck = _error_handler
 _dll.openmc_extend_tallies.argtypes = [c_int32, POINTER(c_int32), POINTER(c_int32)]
 _dll.openmc_extend_tallies.restype = c_int
 _dll.openmc_extend_tallies.errcheck = _error_handler
@@ -152,7 +152,7 @@ class TallyView(object):
 class _TallyMapping(Mapping):
     def __getitem__(self, key):
         index = c_int32()
-        _dll.openmc_get_tally(key, index)
+        _dll.openmc_get_tally_index(key, index)
         return TallyView(index.value)
 
     def __iter__(self):

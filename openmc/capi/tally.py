@@ -5,6 +5,7 @@ from weakref import WeakValueDictionary
 from numpy.ctypeslib import as_array
 
 from . import _dll, NuclideView
+from .core import _View
 from .error import _error_handler
 from .filter import _get_filter
 
@@ -50,7 +51,7 @@ _dll.openmc_tally_set_type.restype = c_int
 _dll.openmc_tally_set_type.errcheck = _error_handler
 
 
-class TallyView(object):
+class TallyView(_View):
     """View of a tally.
 
     This class exposes a tally that is stored internally in the OpenMC
@@ -81,9 +82,6 @@ class TallyView(object):
             instance = super().__new__(cls)
             cls.__instances[args] = instance
         return cls.__instances[args]
-
-    def __init__(self, index):
-        self._index = index
 
     @property
     def id(self):
@@ -161,5 +159,8 @@ class _TallyMapping(Mapping):
 
     def __len__(self):
         return c_int32.in_dll(_dll, 'n_tallies').value
+
+    def __repr__(self):
+        return repr(dict(self))
 
 tallies = _TallyMapping()

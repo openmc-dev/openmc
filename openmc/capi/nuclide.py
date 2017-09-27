@@ -6,6 +6,7 @@ import numpy as np
 from numpy.ctypeslib import as_array
 
 from . import _dll
+from .core import _View
 from .error import _error_handler
 
 
@@ -35,7 +36,7 @@ def load_nuclide(name):
     _dll.openmc_load_nuclide(name.encode())
 
 
-class NuclideView(object):
+class NuclideView(_View):
     """View of a nuclide.
 
     This class exposes a nuclide that is stored internally in the OpenMC
@@ -60,9 +61,6 @@ class NuclideView(object):
             instance = super().__new__(cls)
             cls.__instances[args] = instance
         return cls.__instances[args]
-
-    def __init__(self, index):
-        self._index = index
 
     @property
     def name(self):
@@ -89,5 +87,8 @@ class _NuclideMapping(Mapping):
 
     def __len__(self):
         return c_int.in_dll(_dll, 'n_nuclides').value
+
+    def __repr__(self):
+        return repr(dict(self))
 
 nuclides = _NuclideMapping()

@@ -7,6 +7,7 @@ import numpy as np
 from numpy.ctypeslib import as_array
 
 from . import _dll
+from .core import _View
 from .error import _error_handler
 from .material import MaterialView
 
@@ -56,7 +57,7 @@ _dll.openmc_mesh_filter_set_mesh.restype = c_int
 _dll.openmc_mesh_filter_set_mesh.errcheck = _error_handler
 
 
-class FilterView(object):
+class FilterView(_View):
     __instances = WeakValueDictionary()
 
     def __new__(cls, *args):
@@ -64,9 +65,6 @@ class FilterView(object):
             instance = super().__new__(cls)
             cls.__instances[args] = instance
         return cls.__instances[args]
-
-    def __init__(self, index):
-        self._index = index
 
     @property
     def id(self):
@@ -214,5 +212,8 @@ class _FilterMapping(Mapping):
 
     def __len__(self):
         return c_int32.in_dll(_dll, 'n_filters').value
+
+    def __repr__(self):
+        return repr(dict(self))
 
 filters = _FilterMapping()

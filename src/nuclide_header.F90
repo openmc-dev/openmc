@@ -850,7 +850,7 @@ contains
 !                               C API FUNCTIONS
 !===============================================================================
 
-  function openmc_get_nuclide(name, index) result(err) bind(C)
+  function openmc_get_nuclide_index(name, index) result(err) bind(C)
     ! Return the index in the nuclides array of a nuclide with a given name
     character(kind=C_CHAR), intent(in) :: name(*)
     integer(C_INT), intent(out) :: index
@@ -871,7 +871,7 @@ contains
     else
       err = E_NUCLIDE_NOT_ALLOCATED
     end if
-  end function openmc_get_nuclide
+  end function openmc_get_nuclide_index
 
 
   function openmc_load_nuclide(name) result(err) bind(C)

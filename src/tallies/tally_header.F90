@@ -21,7 +21,7 @@ module tally_header
   public :: configure_tallies
   public :: free_memory_tally
   public :: openmc_extend_tallies
-  public :: openmc_get_tally
+  public :: openmc_get_tally_index
   public :: openmc_tally_get_id
   public :: openmc_tally_get_filters
   public :: openmc_tally_get_nuclides
@@ -447,7 +447,7 @@ contains
   end function openmc_extend_tallies
 
 
-  function openmc_get_tally(id, index) result(err) bind(C)
+  function openmc_get_tally_index(id, index) result(err) bind(C)
     ! Returns the index in the tallies array of a tally with a given ID
     integer(C_INT32_T), value :: id
     integer(C_INT32_T), intent(out) :: index
@@ -463,7 +463,7 @@ contains
     else
       err = E_TALLY_NOT_ALLOCATED
     end if
-  end function openmc_get_tally
+  end function openmc_get_tally_index
 
 
   function openmc_tally_get_id(index, id) result(err) bind(C)

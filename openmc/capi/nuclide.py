@@ -12,9 +12,9 @@ from .error import _error_handler
 __all__ = ['NuclideView', 'nuclides', 'load_nuclide']
 
 # Nuclide functions
-_dll.openmc_get_nuclide.argtypes = [c_char_p, POINTER(c_int)]
-_dll.openmc_get_nuclide.restype = c_int
-_dll.openmc_get_nuclide.errcheck = _error_handler
+_dll.openmc_get_nuclide_index.argtypes = [c_char_p, POINTER(c_int)]
+_dll.openmc_get_nuclide_index.restype = c_int
+_dll.openmc_get_nuclide_index.errcheck = _error_handler
 _dll.openmc_load_nuclide.argtypes = [c_char_p]
 _dll.openmc_load_nuclide.restype = c_int
 _dll.openmc_load_nuclide.errcheck = _error_handler
@@ -80,7 +80,7 @@ class _NuclideMapping(Mapping):
     """Provide mapping from nuclide name to index in nuclides array."""
     def __getitem__(self, key):
         index = c_int()
-        _dll.openmc_get_nuclide(key.encode(), index)
+        _dll.openmc_get_nuclide_index(key.encode(), index)
         return NuclideView(index)
 
     def __iter__(self):

@@ -45,11 +45,12 @@ module openmc_api
   public :: openmc_filter_set_type
   public :: openmc_finalize
   public :: openmc_find
-  public :: openmc_get_cell
+  public :: openmc_get_cell_index
   public :: openmc_get_keff
-  public :: openmc_get_material
-  public :: openmc_get_nuclide
-  public :: openmc_get_tally
+  public :: openmc_get_filter_index
+  public :: openmc_get_material_index
+  public :: openmc_get_nuclide_index
+  public :: openmc_get_tally_index
   public :: openmc_hard_reset
   public :: openmc_init
   public :: openmc_load_nuclide

@@ -14,7 +14,7 @@ module material_header
 
   private
   public :: free_memory_material
-  public :: openmc_get_material
+  public :: openmc_get_material_index
   public :: openmc_material_add_nuclide
   public :: openmc_material_get_id
   public :: openmc_material_get_densities
@@ -235,7 +235,7 @@ contains
 !                               C API FUNCTIONS
 !===============================================================================
 
-  function openmc_get_material(id, index) result(err) bind(C)
+  function openmc_get_material_index(id, index) result(err) bind(C)
     ! Returns the index in the materials array of a material with a given ID
     integer(C_INT32_T), value :: id
     integer(C_INT32_T), intent(out) :: index
@@ -251,7 +251,7 @@ contains
     else
       err = E_MATERIAL_NOT_ALLOCATED
     end if
-  end function openmc_get_material
+  end function openmc_get_material_index
 
 
   function openmc_material_add_nuclide(index, name, density) result(err) bind(C)

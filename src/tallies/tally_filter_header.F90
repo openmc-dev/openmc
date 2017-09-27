@@ -17,6 +17,7 @@ module tally_filter_header
   public :: openmc_extend_filters
   public :: openmc_filter_get_id
   public :: openmc_filter_set_id
+  public :: openmc_get_filter_index
 
 !===============================================================================
 ! TALLYFILTERMATCH stores every valid bin and weight for a filter
@@ -213,7 +214,7 @@ contains
   end function openmc_filter_set_id
 
 
-  function openmc_get_filter(id, index) result(err) bind(C)
+  function openmc_get_filter_index(id, index) result(err) bind(C)
     ! Returns the index in the filters array of a filter with a given ID
     integer(C_INT32_T), value :: id
     integer(C_INT32_T), intent(out) :: index
@@ -229,6 +230,6 @@ contains
     else
       err = E_FILTER_NOT_ALLOCATED
     end if
-  end function openmc_get_filter
+  end function openmc_get_filter_index
 
 end module tally_filter_header

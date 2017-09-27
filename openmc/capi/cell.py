@@ -17,9 +17,9 @@ _dll.openmc_cell_set_temperature.argtypes = [
     c_int32, c_double, POINTER(c_int32)]
 _dll.openmc_cell_set_temperature.restype = c_int
 _dll.openmc_cell_set_temperature.errcheck = _error_handler
-_dll.openmc_get_cell.argtypes = [c_int32, POINTER(c_int32)]
-_dll.openmc_get_cell.restype = c_int
-_dll.openmc_get_cell.errcheck = _error_handler
+_dll.openmc_get_cell_index.argtypes = [c_int32, POINTER(c_int32)]
+_dll.openmc_get_cell_index.restype = c_int
+_dll.openmc_get_cell_index.errcheck = _error_handler
 
 
 class CellView(object):
@@ -74,7 +74,7 @@ class CellView(object):
 class _CellMapping(Mapping):
     def __getitem__(self, key):
         index = c_int32()
-        _dll.openmc_get_cell(key, index)
+        _dll.openmc_get_cell_index(key, index)
         return CellView(index.value)
 
     def __iter__(self):

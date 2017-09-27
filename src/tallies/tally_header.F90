@@ -11,7 +11,7 @@ module tally_header
   use nuclide_header,      only: nuclide_dict
   use settings,            only: reduce_tallies
   use stl_vector,          only: VectorInt
-  use string,              only: to_lower, to_f_string, str_to_int
+  use string,              only: to_lower, to_f_string, str_to_int, to_str
   use tally_filter_header, only: TallyFilterContainer, filters, n_filters
   use tally_filter
   use trigger_header,      only: TriggerObject
@@ -301,6 +301,7 @@ contains
       k = filter_indices(i)
       if (k < 1 .or. k > n_filters) then
         err = E_OUT_OF_BOUNDS
+        call set_errmsg("Index in tally filter array out of bounds.")
         exit
       end if
 
@@ -458,10 +459,12 @@ contains
         index = tally_dict % get_key(id)
         err = 0
       else
-        err = E_TALLY_INVALID_ID
+        err = E_INVALID_ID
+        call set_errmsg("No tally exists with ID=" // trim(to_str(id)) // ".")
       end if
     else
-      err = E_TALLY_NOT_ALLOCATED
+      err = E_ALLOCATE
+      call set_errmsg("Memory has not been allocated for tallies.")
     end if
   end function openmc_get_tally_index
 
@@ -477,28 +480,32 @@ contains
       err = 0
     else
       err = E_OUT_OF_BOUNDS
+      call set_errmsg('Index in tallies array is out of bounds.')
     end if
   end function openmc_tally_get_id
 
 
   function openmc_tally_get_filters(index, filter_indices, n) result(err) bind(C)
-    ! Return the list of nuclides assigned to a tally
+    ! Return the list of filters assigned to a tally
     integer(C_INT32_T), value :: index
     type(C_PTR), intent(out) :: filter_indices
     integer(C_INT), intent(out) :: n
     integer(C_INT) :: err
 
-    err = E_UNASSIGNED
     if (index >= 1 .and. index <= size(tallies)) then
       associate (t => tallies(index) % obj)
         if (allocated(t % filter)) then
           filter_indices = C_LOC(t % filter(1))
           n = size(t % filter)
           err = 0
+        else
+          err = E_ALLOCATE
+          call set_errmsg("Tally filters have not been allocated yet.")
         end if
       end associate
     else
       err = E_OUT_OF_BOUNDS
+      call set_errmsg('Index in tallies array is out of bounds.')
     end if
   end function openmc_tally_get_filters
 
@@ -510,17 +517,20 @@ contains
     integer(C_INT), intent(out) :: n
     integer(C_INT) :: err
 
-    err = E_UNASSIGNED
     if (index >= 1 .and. index <= size(tallies)) then
       associate (t => tallies(index) % obj)
         if (allocated(t % nuclide_bins)) then
           nuclides = C_LOC(t % nuclide_bins(1))
           n = size(t % nuclide_bins)
           err = 0
+        else
+          err = E_ALLOCATE
+          call set_errmsg("Tally nuclides have not been allocated yet.")
         end if
       end associate
     else
       err = E_OUT_OF_BOUNDS
+      call set_errmsg('Index in tallies array is out of bounds.')
     end if
   end function openmc_tally_get_nuclides
 
@@ -533,17 +543,20 @@ contains
     integer(C_INT),     intent(out) :: shape_(3)
     integer(C_INT) :: err
 
-    err = E_UNASSIGNED
     if (index >= 1 .and. index <= size(tallies)) then
       associate (t => tallies(index) % obj)
         if (allocated(t % results)) then
           ptr = C_LOC(t % results(1,1,1))
           shape_(:) = shape(t % results)
           err = 0
+        else
+          err = E_ALLOCATE
+          call set_errmsg("Tally results have not been allocated yet.")
         end if
       end associate
     else
       err = E_OUT_OF_BOUNDS
+      call set_errmsg('Index in tallies array is out of bounds.')
     end if
   end function openmc_tally_results
 
@@ -560,10 +573,12 @@ contains
       if (allocated(tallies(index) % obj)) then
         err = tallies(index) % obj % set_filters(filter_indices)
       else
-        err = E_TALLY_NOT_ALLOCATED
+        err = E_ALLOCATE
+        call set_errmsg("Tally type has not been set yet.")
       end if
     else
       err = E_OUT_OF_BOUNDS
+      call set_errmsg('Index in tallies array is out of bounds.')
     end if
   end function openmc_tally_set_filters
 
@@ -581,10 +596,12 @@ contains
 
         err = 0
       else
-        err = E_FILTER_NOT_ALLOCATED
+        err = E_ALLOCATE
+        call set_errmsg("Tally type has not been set yet.")
       end if
     else
       err = E_OUT_OF_BOUNDS
+      call set_errmsg('Index in tallies array is out of bounds.')
     end if
   end function openmc_tally_set_id
 
@@ -619,7 +636,9 @@ contains
             if (nuclide_dict % has_key(nuclide_)) then
               t % nuclide_bins(i) = nuclide_dict % get_key(nuclide_)
             else
-              err = E_NUCLIDE_NOT_LOADED
+              err = E_DATA
+              call set_errmsg("Nuclide '" // trim(to_f_string(string)) // &
+                   "' has not been loaded yet.")
               return
             end if
           end select
@@ -629,6 +648,7 @@ contains
       end associate
     else
       err = E_OUT_OF_BOUNDS
+      call set_errmsg('Index in tallies array is out of bounds.')
     end if
   end function openmc_tally_set_nuclides
 
@@ -778,11 +798,13 @@ contains
               if (MT > 1) then
                 t % score_bins(i) = MT
               else
-                err = E_ARGUMENT_INVALID
+                err = E_INVALID_ARGUMENT
+                call set_errmsg("Negative MT number cannot be used as a score.")
               end if
 
             else
-              err = E_ARGUMENT_INVALID
+              err = E_INVALID_ARGUMENT
+              call set_errmsg("Unknown score: " // trim(score_) // ".")
             end if
 
           end select
@@ -792,6 +814,7 @@ contains
       end associate
     else
       err = E_OUT_OF_BOUNDS
+      call set_errmsg('Index in tallies array is out of bounds.')
     end if
   end function openmc_tally_set_scores
 

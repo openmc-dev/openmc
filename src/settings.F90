@@ -82,7 +82,7 @@ module settings
 
   ! The verbosity controls how much information will be printed to the screen
   ! and in logs
-  integer :: verbosity = 7
+  integer(C_INT), bind(C) :: verbosity = 7
 
   logical :: check_overlaps = .false.
 

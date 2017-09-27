@@ -4410,13 +4410,15 @@ contains
     err = 0
     if (index >= 1 .and. index <= n_tallies) then
       if (allocated(tallies(index) % obj)) then
-        err = E_ALREADY_ALLOCATED
+        err = E_ALLOCATE
+        call set_errmsg("Tally type has already been set.")
       else
         select case (type_)
         case ('generic')
           allocate(TallyObject :: tallies(index) % obj)
         case default
           err = E_UNASSIGNED
+          call set_errmsg("Unknown tally type: " // trim(type_))
         end select
 
         ! When a tally is allocated, set it to have 0 filters
@@ -4424,6 +4426,7 @@ contains
       end if
     else
       err = E_OUT_OF_BOUNDS
+      call set_errmsg("Index in tallies array is out of bounds.")
     end if
   end function openmc_tally_set_type
 

@@ -296,15 +296,19 @@ contains
             f % n_bins = product(meshes(index_mesh) % dimension)
           else
             err = E_OUT_OF_BOUNDS
+            call set_errmsg("Index in 'meshes' array is out of bounds.")
           end if
         class default
-          err = E_WRONG_TYPE
+          err = E_INVALID_TYPE
+          call set_errmsg("Tried to set mesh on a non-mesh filter.")
         end select
       else
-        err = E_FILTER_NOT_ALLOCATED
+        err = E_ALLOCATE
+        call set_errmsg("Filter type has not been set yet.")
       end if
     else
       err = E_OUT_OF_BOUNDS
+      call set_errmsg("Index in filters array out of bounds.")
     end if
   end function openmc_mesh_filter_set_mesh
 

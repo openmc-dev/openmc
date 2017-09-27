@@ -194,7 +194,10 @@ contains
       instance = p % cell_instance - 1
       err = 0
     else
-      err = E_CELL_NOT_FOUND
+      err = E_GEOMETRY
+      call set_errmsg("Could not find cell/material at position (" // &
+           trim(to_str(xyz(1))) // "," // trim(to_str(xyz(2))) // "," // &
+           trim(to_str(xyz(3))) // ").")
     end if
 
   end function openmc_find

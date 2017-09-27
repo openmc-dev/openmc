@@ -338,21 +338,24 @@ contains
     err = 0
   end function openmc_extend_sources
 
+
   function openmc_source_set_strength(index, strength) result(err) bind(C)
     integer(C_INT32_T), value, intent(in) :: index
     real(C_DOUBLE),     value, intent(in) :: strength
     integer(C_INT) :: err
 
-    err = E_UNASSIGNED
     if (index >= 1 .and. index <= n_sources) then
       if (strength > ZERO) then
         external_source(index) % strength = strength
         err = 0
+      else
+        err = E_INVALID_ARGUMENT
+        call set_errmsg("Source strength must be positive.")
       end if
     else
       err = E_OUT_OF_BOUNDS
+      call set_errmsg("Index in external source array is out of bounds.")
     end if
   end function openmc_source_set_strength
-
 
 end module source_header

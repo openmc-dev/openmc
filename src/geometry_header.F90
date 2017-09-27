@@ -437,10 +437,12 @@ contains
         index = cell_dict % get_key(id)
         err = 0
       else
-        err = E_CELL_INVALID_ID
+        err = E_INVALID_ID
+        call set_errmsg("No cell exists with ID=" // trim(to_str(id)) // ".")
       end if
     else
-      err = E_CELL_NOT_ALLOCATED
+      err = E_ALLOCATE
+      call set_errmsg("Memory has not been allocated for cells.")
     end if
   end function openmc_get_cell_index
 
@@ -456,6 +458,7 @@ contains
       err = 0
     else
       err = E_OUT_OF_BOUNDS
+      call set_errmsg("Index in cells array is out of bounds.")
     end if
   end function openmc_cell_get_id
 
@@ -487,7 +490,9 @@ contains
 
       ! error if the cell is filled with another universe
       if (cells(index) % fill /= NONE) then
-        err = E_CELL_NO_MATERIAL
+        err = E_GEOMETRY
+        call set_errmsg("Cannot set temperature on a cell filled &
+             &with a universe.")
       else
         ! find which material is associated with this cell (material_index
         ! is the index into the materials array)
@@ -539,14 +544,22 @@ contains
         ! temperature was changed correctly. This needs to be done after
         ! changing the temperature based on the logical structure above.
         if (err == 0) then
-          if (outside_low) err = W_BELOW_MIN_BOUND
-          if (outside_high) err = W_ABOVE_MAX_BOUND
+          if (outside_low) then
+            err = E_WARNING
+            call set_errmsg("Nuclear data has not been loaded beyond lower &
+                 &bound of T=" // trim(to_str(T)) // " K.")
+          else if (outside_high) then
+            err = E_WARNING
+            call set_errmsg("Nuclear data has not been loaded beyond upper &
+                 &bound of T=" // trim(to_str(T)) // " K.")
+          end if
         end if
 
       end if
 
     else
       err = E_OUT_OF_BOUNDS
+      call set_errmsg("Index in cells array is out of bounds.")
     end if
   end function openmc_cell_set_temperature
 

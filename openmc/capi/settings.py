@@ -1,6 +1,7 @@
 from ctypes import c_int, c_int32, c_int64, c_double, c_char_p, POINTER
 
 from . import _dll
+from .core import _DLLGlobal
 from .error import _error_handler
 
 _RUN_MODES = {1: 'fixed source',
@@ -11,37 +12,12 @@ _RUN_MODES = {1: 'fixed source',
 
 
 class _Settings(object):
-    @property
-    def batches(self):
-        return c_int32.in_dll(_dll, 'n_batches').value
-
-    @batches.setter
-    def batches(self, n):
-        _dll.openmc_set_batches(n)
-
-    @property
-    def generations_per_batch(self):
-        return c_int32.in_dll(_dll, 'gen_per_batch').value
-
-    @generations_per_batch.setter
-    def generations_per_batch(self, n):
-        _dll.openmc_set_generations_per_batch(n)
-
-    @property
-    def inactive(self):
-        return c_int32.in_dll(_dll, 'n_inactive').value
-
-    @inactive.setter
-    def inactive(self, n):
-        _dll.openmc_set_inactive_batches(n)
-
-    @property
-    def particles(self):
-        return c_int64.in_dll(_dll, 'n_particles').value
-
-    @particles.setter
-    def particles(self, n):
-        _dll.openmc_set_particles(n)
+    # Attributes that are accessed through a descriptor
+    batches = _DLLGlobal(c_int32, 'n_batches')
+    generations_per_batch = _DLLGlobal(c_int32, 'gen_per_batch')
+    inactive = _DLLGlobal(c_int32, 'n_inactive')
+    particles = _DLLGlobal(c_int64, 'n_particles')
+    verbosity = _DLLGlobal(c_int, 'verbosity')
 
     @property
     def run_mode(self):

@@ -85,7 +85,6 @@ contains
     real(8) :: sum_percent
     real(8) :: awr
 
-    err = E_UNASSIGNED
     if (allocated(m % atom_density)) then
       ! Set total density based on value provided
       m % density = density
@@ -105,6 +104,9 @@ contains
              + m % atom_density(i) * awr * MASS_NEUTRON / N_AVOGADRO
       end do
       err = 0
+    else
+      err = E_ALLOCATE
+      call set_errmsg("Material atom density array hasn't been allocated.")
     end if
   end function material_set_density
 
@@ -246,10 +248,12 @@ contains
         index = material_dict % get_key(id)
         err = 0
       else
-        err = E_MATERIAL_INVALID_ID
+        err = E_INVALID_ID
+        call set_errmsg("No material exists with ID=" // trim(to_str(id)) // ".")
       end if
     else
-      err = E_MATERIAL_NOT_ALLOCATED
+      err = E_ALLOCATE
+      call set_errmsg("Memory has not been allocated for materials.")
     end if
   end function openmc_get_material_index
 
@@ -314,6 +318,7 @@ contains
       end associate
     else
       err = E_OUT_OF_BOUNDS
+      call set_errmsg("Index in materials array is out of bounds.")
     end if
 
   end function openmc_material_add_nuclide
@@ -328,7 +333,6 @@ contains
     integer(C_INT),     intent(out) :: n
     integer(C_INT) :: err
 
-    err = E_UNASSIGNED
     if (index >= 1 .and. index <= size(materials)) then
       associate (m => materials(index))
         if (allocated(m % atom_density)) then
@@ -336,10 +340,14 @@ contains
           densities = C_LOC(m % atom_density(1))
           n = size(m % atom_density)
           err = 0
+        else
+          err = E_ALLOCATE
+          call set_errmsg("Material atom density array has not been allocated.")
         end if
       end associate
     else
       err = E_OUT_OF_BOUNDS
+      call set_errmsg("Index in materials array is out of bounds.")
     end if
   end function openmc_material_get_densities
 
@@ -355,6 +363,7 @@ contains
       err = 0
     else
       err = E_OUT_OF_BOUNDS
+      call set_errmsg("Index in materials array is out of bounds.")
     end if
   end function openmc_material_get_id
 
@@ -372,6 +381,7 @@ contains
       end associate
     else
       err = E_OUT_OF_BOUNDS
+      call set_errmsg("Index in materials array is out of bounds.")
     end if
   end function openmc_material_set_density
 
@@ -423,6 +433,7 @@ contains
       end associate
     else
       err = E_OUT_OF_BOUNDS
+      call set_errmsg("Index in materials array is out of bounds.")
     end if
 
   end function openmc_material_set_densities

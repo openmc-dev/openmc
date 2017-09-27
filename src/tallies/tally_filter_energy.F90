@@ -212,13 +212,16 @@ contains
           n = size(f % bins)
           err = 0
         class default
-          err = E_WRONG_TYPE
+          err = E_INVALID_TYPE
+          call set_errmsg("Tried to get energy bins on a non-energy filter.")
         end select
       else
-        err = E_FILTER_NOT_ALLOCATED
+        err = E_ALLOCATE
+        call set_errmsg("Filter type has not been set yet.")
       end if
     else
       err = E_OUT_OF_BOUNDS
+      call set_errmsg("Index in filters array out of bounds.")
     end if
   end function openmc_energy_filter_get_bins
 
@@ -240,13 +243,16 @@ contains
           allocate(f % bins(n))
           f % bins(:) = energies
         class default
-          err = E_WRONG_TYPE
+          err = E_INVALID_TYPE
+          call set_errmsg("Tried to get energy bins on a non-energy filter.")
         end select
       else
-        err = E_FILTER_NOT_ALLOCATED
+        err = E_ALLOCATE
+        call set_errmsg("Filter type has not been set yet.")
       end if
     else
       err = E_OUT_OF_BOUNDS
+      call set_errmsg("Index in filters array out of bounds.")
     end if
   end function openmc_energy_filter_set_bins
 

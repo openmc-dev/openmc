@@ -14,28 +14,18 @@ module error
 
   ! Error codes
   integer(C_INT), public, bind(C) :: E_UNASSIGNED = -1
-  integer(C_INT), public, bind(C) :: E_OUT_OF_BOUNDS = -2
-  integer(C_INT), public, bind(C) :: E_CELL_NOT_ALLOCATED = -3
-  integer(C_INT), public, bind(C) :: E_CELL_INVALID_ID = -4
-  integer(C_INT), public, bind(C) :: E_CELL_NOT_FOUND = -5
-  integer(C_INT), public, bind(C) :: E_NUCLIDE_NOT_ALLOCATED = -6
-  integer(C_INT), public, bind(C) :: E_NUCLIDE_NOT_LOADED = -7
-  integer(C_INT), public, bind(C) :: E_NUCLIDE_NOT_IN_LIBRARY = -8
-  integer(C_INT), public, bind(C) :: E_MATERIAL_NOT_ALLOCATED = -9
-  integer(C_INT), public, bind(C) :: E_MATERIAL_INVALID_ID = -10
-  integer(C_INT), public, bind(C) :: E_TALLY_NOT_ALLOCATED = -11
-  integer(C_INT), public, bind(C) :: E_TALLY_INVALID_ID = -12
-  integer(C_INT), public, bind(C) :: E_INVALID_SIZE = -13
-  integer(C_INT), public, bind(C) :: E_CELL_NO_MATERIAL = -14
-  integer(C_INT), public, bind(C) :: E_ALREADY_ALLOCATED = -15
-  integer(C_INT), public, bind(C) :: E_ARGUMENT_INVALID = -16
-  integer(C_INT), public, bind(C) :: E_WRONG_TYPE = -17
-  integer(C_INT), public, bind(C) :: E_FILTER_NOT_ALLOCATED = -18
-  integer(C_INT), public, bind(C) :: E_FILTER_INVALID_ID = -19
+  integer(C_INT), public, bind(C) :: E_ALLOCATE = -2
+  integer(C_INT), public, bind(C) :: E_OUT_OF_BOUNDS = -3
+  integer(C_INT), public, bind(C) :: E_INVALID_SIZE = -4
+  integer(C_INT), public, bind(C) :: E_INVALID_ARGUMENT = -5
+  integer(C_INT), public, bind(C) :: E_INVALID_TYPE = -6
+  integer(C_INT), public, bind(C) :: E_INVALID_ID = -7
+  integer(C_INT), public, bind(C) :: E_GEOMETRY = -8
+  integer(C_INT), public, bind(C) :: E_DATA = -9
+  integer(C_INT), public, bind(C) :: E_PHYSICS = -10
 
   ! Warning codes
-  integer(C_INT), public, bind(C) :: W_BELOW_MIN_BOUND = 1
-  integer(C_INT), public, bind(C) :: W_ABOVE_MAX_BOUND = 2
+  integer(C_INT), public, bind(C) :: E_WARNING = 1
 
   ! Error message
   character(kind=C_CHAR), public, bind(C) :: openmc_err_msg(256)

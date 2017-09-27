@@ -81,7 +81,7 @@ class _NuclideMapping(Mapping):
     def __getitem__(self, key):
         index = c_int()
         _dll.openmc_get_nuclide_index(key.encode(), index)
-        return NuclideView(index)
+        return NuclideView(index.value)
 
     def __iter__(self):
         for i in range(len(self)):

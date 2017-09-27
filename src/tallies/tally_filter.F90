@@ -86,10 +86,12 @@ contains
 
         err = 0
       else
-        err = E_FILTER_NOT_ALLOCATED
+        err = E_ALLOCATE
+        call set_errmsg("Filter type has not been set yet.")
       end if
     else
       err = E_OUT_OF_BOUNDS
+      call set_errmsg("Index in filters array is out of bounds.")
     end if
   end function openmc_filter_get_type
 
@@ -108,7 +110,8 @@ contains
     err = 0
     if (index >= 1 .and. index <= n_filters) then
       if (allocated(filters(index) % obj)) then
-        err = E_ALREADY_ALLOCATED
+        err = E_ALLOCATE
+        call set_errmsg("Filter type has already been set.")
       else
         select case (type_)
         case ('azimuthal')
@@ -143,10 +146,12 @@ contains
           allocate(UniverseFilter :: filters(index) % obj)
         case default
           err = E_UNASSIGNED
+          call set_errmsg("Unknown filter type: " // trim(type_))
         end select
       end if
     else
       err = E_OUT_OF_BOUNDS
+      call set_errmsg("Index in filters array is out of bounds.")
     end if
   end function openmc_filter_set_type
 

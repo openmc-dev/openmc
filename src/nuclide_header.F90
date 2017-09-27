@@ -866,10 +866,13 @@ contains
         index = nuclide_dict % get_key(to_lower(name_))
         err = 0
       else
-        err = E_NUCLIDE_NOT_LOADED
+        err = E_DATA
+        call set_errmsg("No nuclide named '" // trim(name_) // &
+             "' has been loaded.")
       end if
     else
-      err = E_NUCLIDE_NOT_ALLOCATED
+      err = E_ALLOCATE
+      call set_errmsg("Memory for nuclides has not been allocated.")
     end if
   end function openmc_get_nuclide_index
 
@@ -926,7 +929,9 @@ contains
         call nuclides(n) % init_grid(energy_min_neutron, &
              energy_max_neutron, n_log_bins)
       else
-        err = E_NUCLIDE_NOT_IN_LIBRARY
+        err = E_DATA
+        call set_errmsg("Nuclide '" // trim(name_) // "' is not present &
+             &in library.")
       end if
     end if
 
@@ -949,9 +954,11 @@ contains
         err = 0
       else
         err = E_OUT_OF_BOUNDS
+        call set_errmsg("Index in nuclides array is out of bounds.")
       end if
     else
-      err = E_NUCLIDE_NOT_ALLOCATED
+      err = E_ALLOCATE
+      call set_errmsg("Memory for nuclides has not been allocated yet.")
     end if
   end function openmc_nuclide_name
 

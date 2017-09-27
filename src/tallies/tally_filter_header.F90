@@ -7,6 +7,7 @@ module tally_filter_header
   use error
   use particle_header, only: Particle
   use stl_vector,      only: VectorInt, VectorReal
+  use string,          only: to_str
   use xml_interface,   only: XMLNode
 
   use hdf5
@@ -189,6 +190,7 @@ contains
       err = 0
     else
       err = E_OUT_OF_BOUNDS
+      call set_errmsg("Index in filters array out of bounds.")
     end if
   end function openmc_filter_get_id
 
@@ -206,10 +208,12 @@ contains
 
         err = 0
       else
-        err = E_FILTER_NOT_ALLOCATED
+        err = E_ALLOCATE
+        call set_errmsg("Filter type has not been set yet.")
       end if
     else
       err = E_OUT_OF_BOUNDS
+      call set_errmsg("Index in filters array out of bounds.")
     end if
   end function openmc_filter_set_id
 
@@ -225,10 +229,12 @@ contains
         index = filter_dict % get_key(id)
         err = 0
       else
-        err = E_FILTER_INVALID_ID
+        err = E_INVALID_ID
+        call set_errmsg("No filter exists with ID=" // trim(to_str(id)) // ".")
       end if
     else
-      err = E_FILTER_NOT_ALLOCATED
+      err = E_ALLOCATE
+      call set_errmsg("Memory has not been allocated for filters.")
     end if
   end function openmc_get_filter_index
 

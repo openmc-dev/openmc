@@ -14,12 +14,14 @@ module material_header
 
   private
   public :: free_memory_material
+  public :: openmc_extend_materials
   public :: openmc_get_material_index
   public :: openmc_material_add_nuclide
   public :: openmc_material_get_id
   public :: openmc_material_get_densities
   public :: openmc_material_set_density
   public :: openmc_material_set_densities
+  public :: openmc_material_set_id
 
 !===============================================================================
 ! MATERIAL describes a material by its constituent nuclides
@@ -28,7 +30,7 @@ module material_header
   type, public :: Material
     integer              :: id              ! unique identifier
     character(len=104)   :: name = ""       ! User-defined name
-    integer              :: n_nuclides      ! number of nuclides
+    integer              :: n_nuclides = 0  ! number of nuclides
     integer, allocatable :: nuclide(:)      ! index in nuclides array
     real(8)              :: density         ! total atom density in atom/b-cm
     real(8), allocatable :: atom_density(:) ! nuclide atom density in atom/b-cm
@@ -237,6 +239,37 @@ contains
 !                               C API FUNCTIONS
 !===============================================================================
 
+  function openmc_extend_materials(n, index_start, index_end) result(err) bind(C)
+    ! Extend the materials array by n elements
+    integer(C_INT32_T), value, intent(in) :: n
+    integer(C_INT32_T), optional, intent(out) :: index_start
+    integer(C_INT32_T), optional, intent(out) :: index_end
+    integer(C_INT) :: err
+
+    type(Material), allocatable :: temp(:) ! temporary materials array
+
+    if (n_materials == 0) then
+      ! Allocate materials array
+      allocate(materials(n))
+    else
+      ! Allocate materials array with increased size
+      allocate(temp(n_materials + n))
+
+      ! Move original materials to temporary array
+      temp(1:n_materials) = materials(:)
+
+      ! Move allocation from temporary array
+      call move_alloc(FROM=temp, TO=materials)
+    end if
+
+    ! Return indices in materials array
+    if (present(index_start)) index_start = n_materials + 1
+    if (present(index_end)) index_end = n_materials + n
+    n_materials = n_materials + n
+
+    err = 0
+  end function openmc_extend_materials
+
   function openmc_get_material_index(id, index) result(err) bind(C)
     ! Returns the index in the materials array of a material with a given ID
     integer(C_INT32_T), value :: id
@@ -269,6 +302,7 @@ contains
     real(8) :: awr
     integer, allocatable :: new_nuclide(:)
     real(8), allocatable :: new_density(:)
+    logical, allocatable :: new_p0(:)
     character(:), allocatable :: name_
 
     name_ = to_f_string(name)
@@ -277,7 +311,7 @@ contains
     if (index >= 1 .and. index <= size(materials)) then
       associate (m => materials(index))
         ! Check if nuclide is already in material
-        do j = 1, size(m % nuclide)
+        do j = 1, m % n_nuclides
           k = m % nuclide(j)
           if (nuclides(k) % name == name_) then
             awr = nuclides(k) % awr
@@ -296,14 +330,19 @@ contains
 
           if (err == 0) then
             ! Extend arrays
-            n = size(m % nuclide)
+            n = m % n_nuclides
             allocate(new_nuclide(n + 1))
-            new_nuclide(1:n) = m % nuclide
+            if (n > 0) new_nuclide(1:n) = m % nuclide
             call move_alloc(FROM=new_nuclide, TO=m % nuclide)
 
             allocate(new_density(n + 1))
-            new_density(1:n) = m % atom_density
+            if (n > 0) new_density(1:n) = m % atom_density
             call move_alloc(FROM=new_density, TO=m % atom_density)
+
+            allocate(new_p0(n + 1))
+            if (n > 0) new_p0(1:n) = m % p0
+            new_p0(n + 1) = .false.
+            call move_alloc(FROM=new_p0, TO=m % p0)
 
             ! Append new nuclide/density
             k = nuclide_dict % get_key(to_lower(name_))
@@ -368,6 +407,23 @@ contains
   end function openmc_material_get_id
 
 
+  function openmc_material_set_id(index, id) result(err) bind(C)
+    ! Set the ID of a material
+    integer(C_INT32_T), value, intent(in) :: index
+    integer(C_INT32_T), value, intent(in) :: id
+    integer(C_INT) :: err
+
+    if (index >= 1 .and. index <= n_materials) then
+      materials(index) % id = id
+      call material_dict % add_key(id, index)
+      err = 0
+    else
+      err = E_OUT_OF_BOUNDS
+      call set_errmsg("Index in materials array is out of bounds.")
+    end if
+  end function openmc_material_set_id
+
+
   function openmc_material_set_density(index, density) result(err) bind(C)
     ! Set the total density of a material in atom/b-cm
     integer(C_INT32_T), value, intent(in) :: index
@@ -396,14 +452,15 @@ contains
     integer(C_INT) :: err
 
     integer :: i
+    integer :: stat
     character(C_CHAR), pointer :: string(:)
     character(len=:, kind=C_CHAR), allocatable :: name_
 
     if (index >= 1 .and. index <= size(materials)) then
       associate (m => materials(index))
         ! If nuclide/density arrays are not correct size, reallocate
-        if (n /= size(m % nuclide)) then
-          deallocate(m % nuclide, m % atom_density, m % p0)
+        if (n /= m % n_nuclides) then
+          deallocate(m % nuclide, m % atom_density, m % p0, STAT=stat)
           allocate(m % nuclide(n), m % atom_density(n), m % p0(n))
         end if
 

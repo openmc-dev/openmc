@@ -13,6 +13,9 @@ from .error import _error_handler
 __all__ = ['MaterialView', 'materials']
 
 # Material functions
+_dll.openmc_extend_materials.argtypes = [c_int32, POINTER(c_int32), POINTER(c_int32)]
+_dll.openmc_extend_materials.restype = c_int
+_dll.openmc_extend_materials.errcheck = _error_handler
 _dll.openmc_get_material_index.argtypes = [c_int32, POINTER(c_int32)]
 _dll.openmc_get_material_index.restype = c_int
 _dll.openmc_get_material_index.errcheck = _error_handler
@@ -35,6 +38,9 @@ _dll.openmc_material_set_densities.argtypes = [
     c_int32, c_int, POINTER(c_char_p), POINTER(c_double)]
 _dll.openmc_material_set_densities.restype = c_int
 _dll.openmc_material_set_densities.errcheck = _error_handler
+_dll.openmc_material_set_id.argtypes = [c_int32, c_int32]
+_dll.openmc_material_set_id.restype = c_int
+_dll.openmc_material_set_id.errcheck = _error_handler
 
 
 class MaterialView(_View):
@@ -66,6 +72,10 @@ class MaterialView(_View):
         mat_id = c_int32()
         _dll.openmc_material_get_id(self._index, mat_id)
         return mat_id.value
+
+    @id.setter
+    def id(self, mat_id):
+        _dll.openmc_material_set_id(self._index, mat_id)
 
     @property
     def nuclides(self):
@@ -100,7 +110,7 @@ class MaterialView(_View):
         density_array = as_array(densities, (n.value,))
         return nuclide_list, density_array
 
-    def add_nuclide(name, density):
+    def add_nuclide(self, name, density):
         """Add a nuclide to a material.
 
         Parameters
@@ -112,6 +122,18 @@ class MaterialView(_View):
 
         """
         _dll.openmc_material_add_nuclide(self._index, name.encode(), density)
+
+    @classmethod
+    def new(cls, material_id=None):
+        # Determine ID to assign
+        if material_id is None:
+            material_id = max(materials) + 1
+
+        index = c_int32()
+        _dll.openmc_extend_materials(1, index, None)
+        mat = cls(index.value)
+        mat.id = material_id
+        return mat
 
     def set_density(self, density):
         """Set density of a material.

@@ -140,11 +140,17 @@ class TallyView(_View):
         _dll.openmc_tally_set_scores(self._index, len(scores), scores_)
 
     @classmethod
-    def new(cls):
+    def new(cls, tally_id=None):
+        # Determine ID to assign
+        if tally_id is None:
+            tally_id = max(tallies) + 1
+
         index = c_int32()
         _dll.openmc_extend_tallies(1, index, None)
         _dll.openmc_tally_set_type(index, b'generic')
-        return cls(index.value)
+        tally = cls(index.value)
+        tally.id = tally_id
+        return tally
 
 
 class _TallyMapping(Mapping):

@@ -328,7 +328,11 @@ contains
     integer :: i
 
     i = this % get_entry(key)
-    value = this % table(i) % entry % value
+    if (allocated(this % table(i) % entry)) then
+      value = this % table(i) % entry % value
+    else
+      value = EMPTY
+    end if
 
   end function get_ci
 

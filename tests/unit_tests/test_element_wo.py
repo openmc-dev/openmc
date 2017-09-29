@@ -5,13 +5,11 @@ import sys
 
 import numpy as np
 
-sys.path.insert(0, os.pardir)
-sys.path.insert(0, os.path.join(os.pardir, os.pardir))
 from openmc import Material
 from openmc.data import NATURAL_ABUNDANCE, atomic_mass
 
 
-if __name__ == '__main__':
+def test_element_wo():
     # This test doesn't require an OpenMC run.  We just need to make sure the
     # element.expand() method expands elements with the proper nuclide
     # compositions.

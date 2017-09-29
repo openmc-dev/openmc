@@ -11,10 +11,6 @@ import openmc.checkvalue as cv
 from openmc.mixin import EqualityMixin
 
 
-__all__ = ['Univariate', 'Discrete', 'Uniform', 'Maxwell', 'Watt', 'Tabular',
-           'Legendre', 'Mixture']
-
-
 _INTERPOLATION_SCHEMES = ['histogram', 'linear-linear', 'linear-log',
                           'log-linear', 'log-log']
 

@@ -2,16 +2,17 @@ module geometry
 
   use constants
   use error,                  only: fatal_error, warning
-  use geometry_header,        only: Cell, Universe, Lattice, &
-                                    &RectLattice, HexLattice
-  use global
+  use geometry_header
   use output,                 only: write_message
   use particle_header,        only: LocalCoord, Particle
   use particle_restart_write, only: write_particle_restart
+  use simulation_header
+  use settings
   use surface_header
   use stl_vector,             only: VectorInt
   use string,                 only: to_str
   use tally,                  only: score_surface_current
+  use tally_header
 
   implicit none
 
@@ -424,9 +425,7 @@ contains
       end if
 
       ! Score to global leakage tally
-      if (tallies_on) then
-        global_tally_leakage = global_tally_leakage + p % wgt
-      end if
+      global_tally_leakage = global_tally_leakage + p % wgt
 
       ! Display message
       if (verbosity >= 10 .or. trace) then

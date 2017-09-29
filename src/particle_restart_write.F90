@@ -1,9 +1,10 @@
 module particle_restart_write
 
-  use bank_header,     only: Bank
-  use global
+  use bank_header,     only: Bank, source_bank
   use hdf5_interface
   use particle_header, only: Particle
+  use settings
+  use simulation_header
   use string,          only: to_str
 
   use hdf5

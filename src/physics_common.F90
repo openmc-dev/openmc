@@ -1,9 +1,9 @@
 module physics_common
 
   use constants
-  use global,                 only: weight_cutoff, weight_survive
   use particle_header,        only: Particle
   use random_lcg,             only: prn
+  use settings,               only: weight_cutoff, weight_survive
 
   implicit none
 

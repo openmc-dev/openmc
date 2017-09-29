@@ -1,18 +1,23 @@
 module tracking
 
-  use constants,          only: MODE_EIGENVALUE
+  use constants
   use cross_section,      only: calculate_xs
   use error,              only: fatal_error, warning
+  use geometry_header,    only: cells
   use geometry,           only: find_cell, distance_to_boundary, cross_surface, &
                                 cross_lattice, check_cell_overlap
-  use global
   use output,             only: write_message
   use message_passing
+  use mgxs_header
+  use nuclide_header
   use particle_header,    only: LocalCoord, Particle
   use physics,            only: collision
   use physics_mg,         only: collision_mg
   use random_lcg,         only: prn
+  use settings
+  use simulation_header
   use string,             only: to_str
+  use tally_header
   use tally,              only: score_analog_tally, score_tracklength_tally, &
                                 score_collision_tally, score_surface_current, &
                                 score_track_derivative, score_surface_tally, &

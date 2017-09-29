@@ -6,15 +6,16 @@ import numpy as np
 from numpy.ctypeslib import as_array
 
 from . import _dll
+from .core import _View
 from .error import _error_handler
 
 
 __all__ = ['NuclideView', 'nuclides', 'load_nuclide']
 
 # Nuclide functions
-_dll.openmc_get_nuclide.argtypes = [c_char_p, POINTER(c_int)]
-_dll.openmc_get_nuclide.restype = c_int
-_dll.openmc_get_nuclide.errcheck = _error_handler
+_dll.openmc_get_nuclide_index.argtypes = [c_char_p, POINTER(c_int)]
+_dll.openmc_get_nuclide_index.restype = c_int
+_dll.openmc_get_nuclide_index.errcheck = _error_handler
 _dll.openmc_load_nuclide.argtypes = [c_char_p]
 _dll.openmc_load_nuclide.restype = c_int
 _dll.openmc_load_nuclide.errcheck = _error_handler
@@ -35,7 +36,7 @@ def load_nuclide(name):
     _dll.openmc_load_nuclide(name.encode())
 
 
-class NuclideView(object):
+class NuclideView(_View):
     """View of a nuclide.
 
     This class exposes a nuclide that is stored internally in the OpenMC
@@ -61,9 +62,6 @@ class NuclideView(object):
             cls.__instances[args] = instance
         return cls.__instances[args]
 
-    def __init__(self, index):
-        self._index = index
-
     @property
     def name(self):
         name = c_char_p()
@@ -80,8 +78,8 @@ class _NuclideMapping(Mapping):
     """Provide mapping from nuclide name to index in nuclides array."""
     def __getitem__(self, key):
         index = c_int()
-        _dll.openmc_get_nuclide(key.encode(), index)
-        return NuclideView(index)
+        _dll.openmc_get_nuclide_index(key.encode(), index)
+        return NuclideView(index.value)
 
     def __iter__(self):
         for i in range(len(self)):
@@ -89,5 +87,8 @@ class _NuclideMapping(Mapping):
 
     def __len__(self):
         return c_int.in_dll(_dll, 'n_nuclides').value
+
+    def __repr__(self):
+        return repr(dict(self))
 
 nuclides = _NuclideMapping()

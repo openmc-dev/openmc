@@ -4,11 +4,15 @@ module particle_restart
 
   use bank_header,      only: Bank
   use constants
-  use global
   use hdf5_interface,   only: file_open, file_close, read_dataset
+  use mgxs_header,      only: energy_bin_avg
+  use nuclide_header,   only: micro_xs, n_nuclides
   use output,           only: write_message, print_particle
   use particle_header,  only: Particle
   use random_lcg,       only: set_particle_seed
+  use settings
+  use simulation_header
+  use tally_header,     only: n_tallies
   use tracking,         only: transport
 
   use hdf5, only: HID_T
@@ -32,7 +36,7 @@ contains
     ! Set verbosity high
     verbosity = 10
 
-    allocate(micro_xs(n_nuclides_total))
+    allocate(micro_xs(n_nuclides))
 
     ! Initialize the particle to be tracked
     call p % initialize()

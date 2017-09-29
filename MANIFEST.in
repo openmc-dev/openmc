@@ -1,0 +1,2 @@
+include readme.rst
+include openmc/data/reconstruct.pyx

@@ -2,7 +2,13 @@ module simulation
 
   use, intrinsic :: ISO_C_BINDING
 
+#ifdef _OPENMP
+  use omp_lib
+#endif
+
+  use bank_header,     only: source_bank
   use cmfd_execute,    only: cmfd_init_batch, execute_cmfd
+  use cmfd_header,     only: cmfd_on
   use constants,       only: ZERO
   use eigenvalue,      only: count_source_for_ufs, calculate_average_keff, &
                              calculate_generation_keff, shannon_entropy, &
@@ -10,17 +16,27 @@ module simulation
 #ifdef _OPENMP
   use eigenvalue,      only: join_bank_from_threads
 #endif
-  use global
+  use error,           only: fatal_error
+  use geometry_header, only: n_cells
   use message_passing
+  use mgxs_header,     only: energy_bins, energy_bin_avg
+  use nuclide_header,  only: micro_xs, n_nuclides
   use output,          only: write_message, header, print_columns, &
                              print_batch_keff, print_generation, print_runtime, &
                              print_results, print_overlap_check, write_tallies
   use particle_header, only: Particle
   use random_lcg,      only: set_particle_seed
+  use settings
+  use simulation_header
   use source,          only: initialize_source, sample_external_source
-  use state_point,     only: write_state_point, write_source_point
+  use state_point,     only: write_state_point, write_source_point, load_state_point
   use string,          only: to_str
-  use tally,           only: accumulate_tallies, setup_active_usertallies
+  use tally,           only: accumulate_tallies, setup_active_tallies, &
+                             init_tally_routines
+  use tally_header
+  use tally_filter_header, only: filter_matches, n_filters
+  use tally_derivative_header, only: tally_derivs
+  use timer_header
   use trigger,         only: check_triggers
   use tracking,        only: transport
 
@@ -158,6 +174,8 @@ contains
 
   subroutine initialize_batch()
 
+    integer :: i
+
     if (run_mode == MODE_FIXEDSOURCE) then
       call write_message("Simulating batch " // trim(to_str(current_batch)) &
            // "...", 6)
@@ -171,18 +189,18 @@ contains
       call time_inactive % stop()
       call time_active % start()
 
-      ! Enable active batches (and tallies_on if it hasn't been enabled)
-      active_batches = .true.
-      tallies_on = .true.
-
-      ! Add user tallies to active tallies list
-      call setup_active_usertallies()
+      do i = 1, n_tallies
+        tallies(i) % obj % active = .true.
+      end do
     end if
 
     ! check CMFD initialize batch
     if (run_mode == MODE_EIGENVALUE) then
       if (cmfd_run) call cmfd_init_batch()
     end if
+
+    ! Add user tallies to active tallies list
+    call setup_active_tallies()
 
   end subroutine initialize_batch
 
@@ -295,7 +313,7 @@ contains
     call time_tallies % stop()
 
     ! Reset global tally results
-    if (.not. active_batches) then
+    if (current_batch <= n_inactive) then
       global_tallies(:,:) = ZERO
       n_realizations = 0
     end if
@@ -369,11 +387,34 @@ contains
 
   subroutine initialize_simulation()
 
+    ! Set up tally procedure pointers
+    call init_tally_routines()
+
+    ! Determine how much work each processor should do
+    call calculate_work()
+
+    ! Allocate source bank, and for eigenvalue simulations also allocate the
+    ! fission bank
+    call allocate_banks()
+
+    ! Allocate tally results arrays if they're not allocated yet
+    call configure_tallies()
+
 !$omp parallel
-    allocate(micro_xs(n_nuclides_total))
+    ! Allocate array for microscopic cross section cache
+    allocate(micro_xs(n_nuclides))
+
+    ! Allocate array for matching filter bins
+    allocate(filter_matches(n_filters))
 !$omp end parallel
 
-    if (.not. restart_run) call initialize_source()
+    ! If this is a restart run, load the state point data and binary source
+    ! file
+    if (restart_run) then
+      call load_state_point()
+    else
+      call initialize_source()
+    end if
 
     ! Display header
     if (master) then
@@ -403,7 +444,7 @@ contains
 #endif
 
 !$omp parallel
-    deallocate(micro_xs)
+    deallocate(micro_xs, filter_matches)
 !$omp end parallel
 
     ! Increment total number of generations
@@ -416,8 +457,8 @@ contains
     ! Broadcast tally results so that each process has access to results
     if (allocated(tallies)) then
       do i = 1, size(tallies)
-        n = size(tallies(i) % results)
-        call MPI_BCAST(tallies(i) % results, n, MPI_DOUBLE, 0, &
+        n = size(tallies(i) % obj % results)
+        call MPI_BCAST(tallies(i) % obj % results, n, MPI_DOUBLE, 0, &
              mpi_intracomm, mpi_err)
       end do
     end if
@@ -456,5 +497,97 @@ contains
     end if
 
   end subroutine finalize_simulation
+
+!===============================================================================
+! CALCULATE_WORK determines how many particles each processor should simulate
+!===============================================================================
+
+  subroutine calculate_work()
+
+    integer    :: i         ! loop index
+    integer    :: remainder ! Number of processors with one extra particle
+    integer(8) :: i_bank    ! Running count of number of particles
+    integer(8) :: min_work  ! Minimum number of particles on each proc
+    integer(8) :: work_i    ! Number of particles on rank i
+
+    if (.not. allocated(work_index)) allocate(work_index(0:n_procs))
+
+    ! Determine minimum amount of particles to simulate on each processor
+    min_work = n_particles/n_procs
+
+    ! Determine number of processors that have one extra particle
+    remainder = int(mod(n_particles, int(n_procs,8)), 4)
+
+    i_bank = 0
+    work_index(0) = 0
+    do i = 0, n_procs - 1
+      ! Number of particles for rank i
+      if (i < remainder) then
+        work_i = min_work + 1
+      else
+        work_i = min_work
+      end if
+
+      ! Set number of particles
+      if (rank == i) work = work_i
+
+      ! Set index into source bank for rank i
+      i_bank = i_bank + work_i
+      work_index(i+1) = i_bank
+    end do
+
+  end subroutine calculate_work
+
+!===============================================================================
+! ALLOCATE_BANKS allocates memory for the fission and source banks
+!===============================================================================
+
+  subroutine allocate_banks()
+
+    integer :: alloc_err  ! allocation error code
+
+    ! Allocate source bank
+    if (allocated(source_bank)) deallocate(source_bank)
+    allocate(source_bank(work), STAT=alloc_err)
+
+    ! Check for allocation errors
+    if (alloc_err /= 0) then
+      call fatal_error("Failed to allocate source bank.")
+    end if
+
+    if (run_mode == MODE_EIGENVALUE) then
+
+#ifdef _OPENMP
+      ! If OpenMP is being used, each thread needs its own private fission
+      ! bank. Since the private fission banks need to be combined at the end of
+      ! a generation, there is also a 'master_fission_bank' that is used to
+      ! collect the sites from each thread.
+
+      n_threads = omp_get_max_threads()
+
+!$omp parallel
+      thread_id = omp_get_thread_num()
+
+      if (allocated(fission_bank)) deallocate(fission_bank)
+      if (thread_id == 0) then
+        allocate(fission_bank(3*work))
+      else
+        allocate(fission_bank(3*work/n_threads))
+      end if
+!$omp end parallel
+      if (allocated(master_fission_bank)) deallocate(master_fission_bank)
+      allocate(master_fission_bank(3*work), STAT=alloc_err)
+#else
+      if (allocated(fission_bank)) deallocate(fission_bank)
+      allocate(fission_bank(3*work), STAT=alloc_err)
+#endif
+
+      ! Check for allocation errors
+      if (alloc_err /= 0) then
+        call fatal_error("Failed to allocate fission bank.")
+      end if
+    end if
+
+  end subroutine allocate_banks
 
 end module simulation

@@ -30,13 +30,13 @@ with open('openmc/__init__.py', 'r') as f:
 
 kwargs = {'name': 'openmc',
           'version': version,
-          'packages': ['openmc', 'openmc.data', 'openmc.mgxs', 'openmc.model',
-                       'openmc.stats'],
+          'packages': ['openmc', 'openmc.capi', 'openmc.data', 'openmc.mgxs',
+                       'openmc.model', 'openmc.stats'],
           'scripts': glob.glob('scripts/openmc-*'),
 
           # Data files and librarries
           'package_data': {
-              'openmc': ['_libopenmc.{}'.format(suffix)],
+              'openmc.capi': ['libopenmc.{}'.format(suffix)],
               'openmc.data': ['mass.mas12', 'fission_Q_data_endfb71.h5']
           },
 

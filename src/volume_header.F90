@@ -16,6 +16,8 @@ module volume_header
     procedure :: from_xml => volume_from_xml
   end type VolumeCalculation
 
+  type(VolumeCalculation), allocatable :: volume_calcs(:)
+
 contains
 
   subroutine volume_from_xml(this, node_vol)
@@ -55,5 +57,13 @@ contains
     ! Read number of samples
     call get_node_value(node_vol, "samples", this % samples)
   end subroutine volume_from_xml
+
+!===============================================================================
+! FREE_MEMORY_VOLUME deallocates global arrays defined in this module
+!===============================================================================
+
+  subroutine free_memory_volume()
+    if (allocated(volume_calcs)) deallocate(volume_calcs)
+  end subroutine free_memory_volume
 
 end module volume_header

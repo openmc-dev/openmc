@@ -512,7 +512,7 @@ contains
 
     ! Generate mapping from universe indices to filter bins.
     do i = 1, this % n_bins
-      call this % map % add(this % universes(i), i)
+      call this % map % set(this % universes(i), i)
     end do
   end subroutine initialize_universe
 
@@ -580,7 +580,7 @@ contains
 
     ! Generate mapping from material indices to filter bins.
     do i = 1, this % n_bins
-      call this % map % add(this % materials(i), i)
+      call this % map % set(this % materials(i), i)
     end do
   end subroutine initialize_material
 
@@ -652,7 +652,7 @@ contains
 
     ! Generate mapping from cell indices to filter bins.
     do i = 1, this % n_bins
-      call this % map % add(this % cells(i), i)
+      call this % map % set(this % cells(i), i)
     end do
   end subroutine initialize_cell
 
@@ -847,7 +847,7 @@ contains
 
     ! Generate mapping from cell indices to filter bins.
     do i = 1, this % n_bins
-      call this % map % add(this % cells(i), i)
+      call this % map % set(this % cells(i), i)
     end do
   end subroutine initialize_cellborn
 

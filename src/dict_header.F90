@@ -62,7 +62,7 @@ module dict_header
     integer, private :: capacity = 0
     type(DictEntryII), allocatable, private :: table(:)
   contains
-    procedure :: add => add_ii
+    procedure :: set => set_ii
     procedure :: get => get_ii
     procedure :: has => has_ii
     procedure :: remove => remove_ii
@@ -78,7 +78,7 @@ module dict_header
     integer, private :: capacity = 0
     type(BucketCI), allocatable, private :: table(:)
   contains
-    procedure :: add => add_ci
+    procedure :: set => set_ci
     procedure :: get => get_ci
     procedure :: has => has_ci
     procedure :: remove => remove_ci
@@ -178,7 +178,7 @@ contains
     ! Rehash each entry into the new table
     do i = 1, size(table)
       if (table(i) % key /= EMPTY .and. table(i) % key /= DELETED) then
-        call this % add(table(i) % key, table(i) % value)
+        call this % set(table(i) % key, table(i) % value)
       end if
     end do
 
@@ -207,7 +207,7 @@ contains
     ! Rehash each entry into the new table
     do i = 1, size(table)
       if (table(i) % hash /= EMPTY .and. table(i) % hash /= DELETED) then
-        call this % add(table(i) % entry % key, table(i) % entry % value)
+        call this % set(table(i) % entry % key, table(i) % entry % value)
       end if
     end do
 
@@ -216,11 +216,11 @@ contains
   end subroutine resize_ci
 
 !===============================================================================
-! ADD adds a (key,value) entry to a dictionary. If the key is already in the
+! SET adds a (key,value) entry to a dictionary. If the key is already in the
 ! dictionary, the value is replaced by the new specified value.
 !===============================================================================
 
-  subroutine add_ii(this, key, value)
+  subroutine set_ii(this, key, value)
 
     class(DictIntInt)   :: this
     integer, intent(in) :: key
@@ -256,9 +256,9 @@ contains
       i = 1 + mod(i + c - 1, this % capacity)
     end do
 
-  end subroutine add_ii
+  end subroutine set_ii
 
-  subroutine add_ci(this, key, value)
+  subroutine set_ci(this, key, value)
 
     class(DictCharInt)       :: this
     character(*), intent(in) :: key
@@ -299,7 +299,7 @@ contains
       i = 1 + mod(i + c - 1, this % capacity)
     end do
 
-  end subroutine add_ci
+  end subroutine set_ci
 
 !===============================================================================
 ! GET returns the value matching a given key. If the dictionary does not contain

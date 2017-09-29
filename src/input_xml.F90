@@ -1368,7 +1368,7 @@ contains
       end if
 
       ! Add cell to dictionary
-      call cell_dict % add(c % id, i)
+      call cell_dict % set(c % id, i)
 
       ! For cells, we also need to check if there's a new universe --
       ! also for every cell add 1 to the count of cells for the
@@ -1377,12 +1377,12 @@ contains
       if (.not. cells_in_univ_dict % has(univ_id)) then
         n_universes = n_universes + 1
         n_cells_in_univ = 1
-        call universe_dict % add(univ_id, n_universes)
+        call universe_dict % set(univ_id, n_universes)
         call univ_ids % push_back(univ_id)
       else
         n_cells_in_univ = 1 + cells_in_univ_dict % get(univ_id)
       end if
-      call cells_in_univ_dict % add(univ_id, n_cells_in_univ)
+      call cells_in_univ_dict % set(univ_id, n_cells_in_univ)
 
     end do
 
@@ -1604,7 +1604,7 @@ contains
              &"' specified on surface " // trim(to_str(s%id)))
       end select
       ! Add surface to dictionary
-      call surface_dict % add(s%id, i)
+      call surface_dict % set(s%id, i)
     end do
 
     ! Check to make sure a boundary condition was applied to at least one
@@ -1825,7 +1825,7 @@ contains
       end if
 
       ! Add lattice to dictionary
-      call lattice_dict % add(lat % id, i)
+      call lattice_dict % set(lat % id, i)
 
       end select
     end do RECT_LATTICES
@@ -2012,7 +2012,7 @@ contains
       end if
 
       ! Add lattice to dictionary
-      call lattice_dict % add(lat % id, n_rlats + i)
+      call lattice_dict % set(lat % id, n_rlats + i)
 
       end select
     end do HEX_LATTICES
@@ -2166,7 +2166,7 @@ contains
     ! Creating dictionary that maps the name of the material to the entry
     do i = 1, size(libraries)
       do j = 1, size(libraries(i) % materials)
-        call library_dict % add(to_lower(libraries(i) % materials(j)), i)
+        call library_dict % set(to_lower(libraries(i) % materials(j)), i)
       end do
     end do
 
@@ -2507,7 +2507,7 @@ contains
           index_nuclide    = index_nuclide + 1
           mat % nuclide(j) = index_nuclide
 
-          call nuclide_dict % add(to_lower(name), index_nuclide)
+          call nuclide_dict % set(to_lower(name), index_nuclide)
         else
           mat % nuclide(j) = nuclide_dict % get(to_lower(name))
         end if
@@ -2604,7 +2604,7 @@ contains
             if (.not. sab_dict % has(to_lower(name))) then
               index_sab = index_sab + 1
               mat % i_sab_tables(j) = index_sab
-              call sab_dict % add(to_lower(name), index_sab)
+              call sab_dict % set(to_lower(name), index_sab)
             else
               mat % i_sab_tables(j) = sab_dict % get(to_lower(name))
             end if
@@ -2613,7 +2613,7 @@ contains
       end if
 
       ! Add material to dictionary
-      call material_dict % add(mat % id, i)
+      call material_dict % set(mat % id, i)
     end do
 
     ! Set total number of nuclides and S(a,b) tables
@@ -2876,7 +2876,7 @@ contains
       m % volume_frac = ONE/real(product(m % dimension),8)
 
       ! Add mesh to dictionary
-      call mesh_dict % add(m % id, i)
+      call mesh_dict % set(m % id, i)
     end do
 
     ! We only need the mesh info for plotting
@@ -3330,7 +3330,7 @@ contains
       f % obj % id = filter_id
 
       ! Add filter to dictionary
-      call filter_dict % add(filter_id, i)
+      call filter_dict % set(filter_id, i)
 
     end do READ_FILTERS
 
@@ -3550,7 +3550,7 @@ contains
           score_name = trim(sarray(j))
 
           ! Append the score to the list of possible trigger scores
-          if (trigger_on) call trigger_scores % add(trim(score_name), j)
+          if (trigger_on) call trigger_scores % set(trim(score_name), j)
 
           do imomstr = 1, size(MOMENT_STRS)
             if (starts_with(score_name,trim(MOMENT_STRS(imomstr)))) then
@@ -3896,7 +3896,7 @@ contains
                 filt % n_bins = product(m % dimension + 1)
 
               ! Add filter to dictionary
-              call filter_dict % add(filt % id, i_filt)
+              call filter_dict % set(filt % id, i_filt)
               end select
               t % filter(t % find_filter(FILTER_MESH)) = i_filt
 
@@ -3923,7 +3923,7 @@ contains
                 filt % current = .true.
 
                 ! Add filter to dictionary
-                call filter_dict % add(filt % id, i_filt)
+                call filter_dict % set(filt % id, i_filt)
               end select
               t % find_filter(FILTER_SURFACE) = n_filter
               t % filter(n_filter) = i_filt
@@ -4320,7 +4320,7 @@ contains
       end if
 
       ! Add tally to dictionary
-      call tally_dict % add(t % id, i)
+      call tally_dict % set(t % id, i)
 
     end do READ_TALLIES
 
@@ -4801,7 +4801,7 @@ contains
       end if
 
       ! Add plot to dictionary
-      call plot_dict % add(pl % id, i)
+      call plot_dict % set(pl % id, i)
 
     end do READ_PLOTS
 

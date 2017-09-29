@@ -508,7 +508,7 @@ module nuclide_header
 
     do i = 1, size(this % reactions)
       call MTs % push_back(this % reactions(i) % MT)
-      call this % reaction_index % add(this % reactions(i) % MT, i)
+      call this % reaction_index % set(this % reactions(i) % MT, i)
 
       associate (rx => this % reactions(i))
         ! Skip total inelastic level scattering, gas production cross sections

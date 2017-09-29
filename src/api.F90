@@ -464,7 +464,7 @@ contains
         call file_close(file_id)
 
         ! Add entry to nuclide dictionary
-        call nuclide_dict % add(to_lower(name_), n)
+        call nuclide_dict % set(to_lower(name_), n)
         n_nuclides_total = n
 
         ! Assign resonant scattering data

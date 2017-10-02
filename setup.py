@@ -26,29 +26,36 @@ with open('openmc/__init__.py', 'r') as f:
 kwargs = {
     'name': 'openmc',
     'version': version,
-    'packages': ['openmc', 'openmc.capi', 'openmc.data', 'openmc.mgxs',
-                 'openmc.model', 'openmc.stats'],
+    'packages': find_packages(),
     'scripts': glob.glob('scripts/openmc-*'),
 
-          # Data files and librarries
-          'package_data': {
-              'openmc.capi': ['libopenmc.{}'.format(suffix)],
-              'openmc.data': ['mass.mas12', 'fission_Q_data_endfb71.h5']
-          },
+    # Data files and librarries
+    'package_data': {
+        'openmc.capi': ['libopenmc.{}'.format(suffix)],
+        'openmc.data': ['mass.mas12', 'fission_Q_data_endfb71.h5']
+    },
 
-          # Metadata
-          'author': 'Will Boyd',
+    # Metadata
+    'author': 'Will Boyd',
     'author_email': 'wbinventor@gmail.com',
     'description': 'OpenMC Python API',
     'url': 'https://github.com/mit-crpg/openmc',
     'classifiers': [
+        'Development Status :: 4 - Beta',
         'Intended Audience :: Developers',
         'Intended Audience :: End Users/Desktop',
         'Intended Audience :: Science/Research',
         'License :: OSI Approved :: MIT License',
         'Natural Language :: English',
-        'Programming Language :: Python',
         'Topic :: Scientific/Engineering'
+        'Programming Language :: Python :: 2',
+        'Programming Language :: Python :: 2.7',
+        'Programming Language :: Python :: 3',
+        'Programming Language :: Python :: 3.2',
+        'Programming Language :: Python :: 3.3',
+        'Programming Language :: Python :: 3.4',
+        'Programming Language :: Python :: 3.5',
+        'Programming Language :: Python :: 3.6',
     ],
 
     # Required dependencies

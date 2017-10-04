@@ -127,7 +127,10 @@ class MaterialView(_View):
     def new(cls, material_id=None):
         # Determine ID to assign
         if material_id is None:
-            material_id = max(materials) + 1
+            try:
+                material_id = max(materials) + 1
+            except ValueError:
+                material_id = 1
 
         index = c_int32()
         _dll.openmc_extend_materials(1, index, None)

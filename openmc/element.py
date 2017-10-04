@@ -124,6 +124,15 @@ class Element(object):
             is a tuple consisting of an openmc.Nuclide instance and the natural
             abundance of the isotope.
 
+        Notes
+        -----
+        When the `enrichment` argument is specified, a correlation from
+        `ORNL/CSD/TM-244 <https://doi.org/10.2172/5561567>`_ is used to
+        calculate the weight fractions of U234, U235, U236, and U238. Namely,
+        the weight fraction of U234 and U236 are taken to be 0.89% and 0.46%,
+        respectively, of the U235 weight fraction. The remainder of the isotopic
+        weight is assigned to U238.
+
         """
 
         # Get the nuclides present in nature
@@ -217,9 +226,10 @@ class Element(object):
         if enrichment is not None:
 
             # Calculate the mass fractions of isotopes
-            abundances['U234'] = 0.008 * enrichment
+            abundances['U234'] = 0.0089 * enrichment
             abundances['U235'] = enrichment
-            abundances['U238'] = 100.0 - 1.008 * enrichment
+            abundances['U236'] = 0.0046 * enrichment
+            abundances['U238'] = 100.0 - 1.0135 * enrichment
 
             # Convert the mass fractions to mole fractions
             for nuclide in abundances.keys():

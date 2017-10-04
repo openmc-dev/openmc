@@ -143,7 +143,10 @@ class TallyView(_View):
     def new(cls, tally_id=None):
         # Determine ID to assign
         if tally_id is None:
-            tally_id = max(tallies) + 1
+            try:
+                tally_id = max(tallies) + 1
+            except ValueError:
+                tally_id = 1
 
         index = c_int32()
         _dll.openmc_extend_tallies(1, index, None)

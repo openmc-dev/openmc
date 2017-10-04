@@ -147,7 +147,10 @@ class MaterialFilterView(FilterView):
     def new(cls, bins=None, filter_id=None):
         # Determine filter ID to assign
         if filter_id is None:
-            filter_id = max(filters) + 1
+            try:
+                filter_id = max(filters) + 1
+            except ValueError:
+                filter_id = 1
 
         index = c_int32()
         _dll.openmc_extend_filters(1, index, None)

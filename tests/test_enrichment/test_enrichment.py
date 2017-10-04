@@ -33,5 +33,5 @@ if __name__ == '__main__':
     assert np.isclose(u234_to_u235, 0.0089, rtol=1.e-8)
 
     # Compute the ratio of U234/U235
-    u234_to_u235 = densities['U236'][1] / densities['U235'][1]
-    assert np.isclose(u234_to_u235, 0.0046, rtol=1.e-8)
+    u236_to_u235 = densities['U236'][1] / densities['U235'][1]
+    assert np.isclose(u236_to_u235, 0.0046, rtol=1.e-8)

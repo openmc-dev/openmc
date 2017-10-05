@@ -38,3 +38,6 @@ from .cell import *
 from .filter import *
 from .tally import *
 from .settings import settings
+
+warn("The Python bindings to OpenMC's C API are still unstable "
+     "and may change substantially in future releases.", FutureWarning)

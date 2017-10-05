@@ -7,7 +7,7 @@ from numpy.ctypeslib import as_array
 
 from . import _dll
 from .core import _View
-from .error import _error_handler
+from .error import _error_handler, DataError, AllocationError
 
 
 __all__ = ['NuclideView', 'nuclides', 'load_nuclide']
@@ -62,6 +62,9 @@ class NuclideView(_View):
             cls.__instances[args] = instance
         return cls.__instances[args]
 
+    def __init__(self, index):
+        self._index = index
+
     @property
     def name(self):
         name = c_char_p()
@@ -78,7 +81,11 @@ class _NuclideMapping(Mapping):
     """Provide mapping from nuclide name to index in nuclides array."""
     def __getitem__(self, key):
         index = c_int()
-        _dll.openmc_get_nuclide_index(key.encode(), index)
+        try:
+            _dll.openmc_get_nuclide_index(key.encode(), index)
+        except (DataError, AllocationError) as e:
+            # __contains__ expects a KeyError to work correctly
+            raise KeyError(str(e))
         return NuclideView(index.value)
 
     def __iter__(self):

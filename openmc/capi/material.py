@@ -6,8 +6,8 @@ import numpy as np
 from numpy.ctypeslib import as_array
 
 from . import _dll, NuclideView
-from .core import _View
-from .error import _error_handler
+from .core import _ViewWithID
+from .error import _error_handler, AllocationError, InvalidIDError
 
 
 __all__ = ['MaterialView', 'materials']
@@ -43,7 +43,7 @@ _dll.openmc_material_set_id.restype = c_int
 _dll.openmc_material_set_id.errcheck = _error_handler
 
 
-class MaterialView(_View):
+class MaterialView(_ViewWithID):
     """View of a material.
 
     This class exposes a material that is stored internally in the OpenMC
@@ -52,7 +52,12 @@ class MaterialView(_View):
 
     Parameters
     ----------
-    index : int
+    uid : int or None
+        Unique ID of the tally
+    new : bool
+        When `index` is None, this argument controls whether a new object is
+        created or a view to an existing object is returned.
+    index : int or None
          Index in the `materials` array.
 
     Attributes
@@ -66,6 +71,36 @@ class MaterialView(_View):
 
     """
     __instances = WeakValueDictionary()
+
+    def __new__(cls, uid=None, new=True, index=None):
+        mapping = materials
+        if index is None:
+            if new:
+                # Determine ID to assign
+                if uid is None:
+                    try:
+                        uid = max(mapping) + 1
+                    except ValueError:
+                        uid = 1
+                else:
+                    if uid in mapping:
+                        raise AllocationError('A material with ID={} has already '
+                                              'been allocated.'.format(uid))
+
+                index = c_int32()
+                _dll.openmc_extend_materials(1, index, None)
+                index = index.value
+            else:
+                index = mapping[uid]._index
+
+        if index not in cls.__instances:
+            instance = super().__new__(cls)
+            instance._index = index
+            if uid is not None:
+                instance.id = uid
+            cls.__instances[index] = instance
+
+        return cls.__instances[index]
 
     @property
     def id(self):
@@ -123,21 +158,6 @@ class MaterialView(_View):
         """
         _dll.openmc_material_add_nuclide(self._index, name.encode(), density)
 
-    @classmethod
-    def new(cls, material_id=None):
-        # Determine ID to assign
-        if material_id is None:
-            try:
-                material_id = max(materials) + 1
-            except ValueError:
-                material_id = 1
-
-        index = c_int32()
-        _dll.openmc_extend_materials(1, index, None)
-        mat = cls(index.value)
-        mat.id = material_id
-        return mat
-
     def set_density(self, density):
         """Set density of a material.
 
@@ -174,12 +194,16 @@ class MaterialView(_View):
 class _MaterialMapping(Mapping):
     def __getitem__(self, key):
         index = c_int32()
-        _dll.openmc_get_material_index(key, index)
-        return MaterialView(index.value)
+        try:
+            _dll.openmc_get_material_index(key, index)
+        except InvalidIDError as e:
+            # __contains__ expects a KeyError to work correctly
+            raise KeyError(str(e))
+        return MaterialView(index=index.value)
 
     def __iter__(self):
         for i in range(len(self)):
-            yield MaterialView(i + 1).id
+            yield MaterialView(index=i + 1).id
 
     def __len__(self):
         return c_int32.in_dll(_dll, 'n_materials').value

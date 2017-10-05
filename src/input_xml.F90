@@ -25,7 +25,7 @@ module input_xml
   use nuclide_header
   use output,           only: write_message, title, header, print_plot
   use plot_header
-  use random_lcg,       only: prn, seed, initialize_prng
+  use random_lcg,       only: prn, openmc_set_seed
   use surface_header
   use set_header,       only: SetChar
   use settings
@@ -151,6 +151,7 @@ contains
     integer :: temp_int
     integer :: temp_int_array3(3)
     integer(C_INT32_T) :: i_start, i_end
+    integer(C_INT64_T) :: seed
     integer(C_INT) :: err
     integer, allocatable :: temp_int_array(:)
     integer :: n_tracks
@@ -340,7 +341,7 @@ contains
     ! Copy random number seed if specified
     if (check_for_node(root, "seed")) then
       call get_node_value(root, "seed", seed)
-      call initialize_prng()
+      err = openmc_set_seed(seed)
     end if
 
     ! Number of bins for logarithmic grid

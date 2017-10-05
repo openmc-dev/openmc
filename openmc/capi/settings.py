@@ -10,6 +10,10 @@ _RUN_MODES = {1: 'fixed source',
               4: 'particle restart',
               5: 'volume'}
 
+_dll.openmc_set_seed.argtypes = [c_int64]
+_dll.openmc_set_seed.restype = c_int
+_dll.openmc_set_seed.errcheck = _error_handler
+
 
 class _Settings(object):
     # Attributes that are accessed through a descriptor
@@ -36,6 +40,14 @@ class _Settings(object):
                 break
         else:
             raise ValueError('Invalid run mode: {}'.format(mode))
+
+    @property
+    def seed(self):
+        return c_int64.in_dll(_dll, 'seed').value
+
+    @seed.setter
+    def seed(self, seed):
+        _dll.openmc_set_seed(seed)
 
 
 settings = _Settings()

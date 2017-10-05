@@ -7,17 +7,17 @@ import numpy as np
 from numpy.ctypeslib import as_array
 
 from . import _dll
-from .core import _ViewWithID
+from .core import _FortranObjectWithID
 from .error import _error_handler, AllocationError, InvalidIDError
-from .material import MaterialView
+from .material import Material
 
 
-__all__ = ['FilterView', 'AzimuthalFilterView', 'CellFilterView',
-           'CellbornFilterView', 'CellfromFilterView', 'DistribcellFilterView',
-           'DelayedGroupFilterView', 'EnergyFilterView', 'EnergyoutFilterView',
-           'EnergyFunctionFilterView', 'MaterialFilterView', 'MeshFilterView',
-           'MuFilterView', 'PolarFilterView', 'SurfaceFilterView',
-           'UniverseFilterView', 'filters']
+__all__ = ['Filter', 'AzimuthalFilter', 'CellFilter',
+           'CellbornFilter', 'CellfromFilter', 'DistribcellFilter',
+           'DelayedGroupFilter', 'EnergyFilter', 'EnergyoutFilter',
+           'EnergyFunctionFilter', 'MaterialFilter', 'MeshFilter',
+           'MuFilter', 'PolarFilter', 'SurfaceFilter',
+           'UniverseFilter', 'filters']
 
 # Tally functions
 _dll.openmc_energy_filter_get_bins.argtypes = [
@@ -57,7 +57,7 @@ _dll.openmc_mesh_filter_set_mesh.restype = c_int
 _dll.openmc_mesh_filter_set_mesh.errcheck = _error_handler
 
 
-class FilterView(_ViewWithID):
+class Filter(_FortranObjectWithID):
     __instances = WeakValueDictionary()
 
     def __new__(cls, filter_type, uid=None, new=True, index=None):
@@ -102,7 +102,7 @@ class FilterView(_ViewWithID):
         _dll.openmc_filter_set_id(self._index, filter_id)
 
 
-class EnergyFilterView(FilterView):
+class EnergyFilter(Filter):
     def __new__(cls, bins=None, uid=None, new=True, index=None):
         return super().__new__(cls, b'energy', uid, new, index)
 
@@ -123,47 +123,47 @@ class EnergyFilterView(FilterView):
             self._index, len(energies), energies_p)
 
 
-class EnergyoutFilterView(FilterView):
+class EnergyoutFilter(Filter):
     def __new__(cls, bins=None, uid=None, new=True, index=None):
         return super().__new__(cls, b'energyout', uid, new, index)
 
 
-class AzimuthalFilterView(FilterView):
+class AzimuthalFilter(Filter):
     def __new__(cls, bins=None, uid=None, new=True, index=None):
         return super().__new__(cls, b'azimuthal', uid, new, index)
 
 
-class CellFilterView(FilterView):
+class CellFilter(Filter):
     def __new__(cls, bins=None, uid=None, new=True, index=None):
         return super().__new__(cls, b'cell', uid, new, index)
 
 
-class CellbornFilterView(FilterView):
+class CellbornFilter(Filter):
     def __new__(cls, bins=None, uid=None, new=True, index=None):
         return super().__new__(cls, b'cellborn', uid, new, index)
 
 
-class CellfromFilterView(FilterView):
+class CellfromFilter(Filter):
     def __new__(cls, bins=None, uid=None, new=True, index=None):
         return super().__new__(cls, b'cellfrom', uid, new, index)
 
 
-class DelayedGroupFilterView(FilterView):
+class DelayedGroupFilter(Filter):
     def __new__(cls, bins=None, uid=None, new=True, index=None):
         return super().__new__(cls, b'delayedgroup', uid, new, index)
 
 
-class DistribcellFilterView(FilterView):
+class DistribcellFilter(Filter):
     def __new__(cls, bins=None, uid=None, new=True, index=None):
         return super().__new__(cls, b'distribcell', uid, new, index)
 
 
-class EnergyFunctionFilterView(FilterView):
+class EnergyFunctionFilter(Filter):
     def __new__(cls, bins=None, uid=None, new=True, index=None):
         return super().__new__(cls, b'energyfunction', uid, new, index)
 
 
-class MaterialFilterView(FilterView):
+class MaterialFilter(Filter):
     def __new__(cls, bins=None, uid=None, new=True, index=None):
         return super().__new__(cls, b'material', uid, new, index)
 
@@ -177,7 +177,7 @@ class MaterialFilterView(FilterView):
         materials = POINTER(c_int32)()
         n = c_int32()
         _dll.openmc_material_filter_get_bins(self._index, materials, n)
-        return [MaterialView(index=materials[i]) for i in range(n.value)]
+        return [Material(index=materials[i]) for i in range(n.value)]
 
     @bins.setter
     def bins(self, materials):
@@ -188,47 +188,47 @@ class MaterialFilterView(FilterView):
         _dll.openmc_material_filter_set_bins(self._index, n, bins)
 
 
-class MeshFilterView(FilterView):
+class MeshFilter(Filter):
     def __new__(cls, bins=None, uid=None, new=True, index=None):
         return super().__new__(cls, b'mesh', uid, new, index)
 
 
-class MuFilterView(FilterView):
+class MuFilter(Filter):
     def __new__(cls, bins=None, uid=None, new=True, index=None):
         return super().__new__(cls, b'mu', uid, new, index)
 
 
-class PolarFilterView(FilterView):
+class PolarFilter(Filter):
     def __new__(cls, bins=None, uid=None, new=True, index=None):
         return super().__new__(cls, b'polar', uid, new, index)
 
 
-class SurfaceFilterView(FilterView):
+class SurfaceFilter(Filter):
     def __new__(cls, bins=None, uid=None, new=True, index=None):
         return super().__new__(cls, b'surface', uid, new, index)
 
 
-class UniverseFilterView(FilterView):
+class UniverseFilter(Filter):
     def __new__(cls, bins=None, uid=None, new=True, index=None):
         return super().__new__(cls, b'universe', uid, new, index)
 
 
 _FILTER_TYPE_MAP = {
-    'azimuthal': AzimuthalFilterView,
-    'cell': CellFilterView,
-    'cellborn': CellbornFilterView,
-    'cellfrom': CellfromFilterView,
-    'delayedgroup': DelayedGroupFilterView,
-    'distribcell': DistribcellFilterView,
-    'energy': EnergyFilterView,
-    'energyout': EnergyoutFilterView,
-    'energyfunction': EnergyFunctionFilterView,
-    'material': MaterialFilterView,
-    'mesh': MeshFilterView,
-    'mu': MuFilterView,
-    'polar': PolarFilterView,
-    'surface': SurfaceFilterView,
-    'universe': UniverseFilterView,
+    'azimuthal': AzimuthalFilter,
+    'cell': CellFilter,
+    'cellborn': CellbornFilter,
+    'cellfrom': CellfromFilter,
+    'delayedgroup': DelayedGroupFilter,
+    'distribcell': DistribcellFilter,
+    'energy': EnergyFilter,
+    'energyout': EnergyoutFilter,
+    'energyfunction': EnergyFunctionFilter,
+    'material': MaterialFilter,
+    'mesh': MeshFilter,
+    'mu': MuFilter,
+    'polar': PolarFilter,
+    'surface': SurfaceFilter,
+    'universe': UniverseFilter,
 }
 
 

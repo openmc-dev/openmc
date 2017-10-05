@@ -13,6 +13,7 @@ objects in the :mod:`openmc.capi` subpackage, for example:
 """
 
 from ctypes import CDLL
+import os
 import sys
 from warnings import warn
 
@@ -25,10 +26,21 @@ if sys.platform == 'darwin':
 else:
     _suffix = 'so'
 
-# Open shared library
-_filename = pkg_resources.resource_filename(
-    __name__, 'libopenmc.{}'.format(_suffix))
-_dll = CDLL(_filename)
+if os.environ.get('READTHEDOCS', None) != 'True':
+    # Open shared library
+    _filename = pkg_resources.resource_filename(
+        __name__, 'libopenmc.{}'.format(_suffix))
+    _dll = CDLL(_filename)
+else:
+    # For documentation builds, we don't actually have the shared library
+    # available. Instead, we create a mock object so that when the modules
+    # within the openmc.capi package try to configure arguments and return
+    # values for symbols, no errors occur
+    try:
+        from unittest.mock import Mock
+    except ImportError:
+        from mock import Mock
+    _dll = Mock()
 
 from .error import *
 from .core import *

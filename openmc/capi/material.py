@@ -5,12 +5,12 @@ from weakref import WeakValueDictionary
 import numpy as np
 from numpy.ctypeslib import as_array
 
-from . import _dll, NuclideView
-from .core import _ViewWithID
+from . import _dll, Nuclide
+from .core import _FortranObjectWithID
 from .error import _error_handler, AllocationError, InvalidIDError
 
 
-__all__ = ['MaterialView', 'materials']
+__all__ = ['Material', 'materials']
 
 # Material functions
 _dll.openmc_extend_materials.argtypes = [c_int32, POINTER(c_int32), POINTER(c_int32)]
@@ -43,11 +43,11 @@ _dll.openmc_material_set_id.restype = c_int
 _dll.openmc_material_set_id.errcheck = _error_handler
 
 
-class MaterialView(_ViewWithID):
-    """View of a material.
+class Material(_FortranObjectWithID):
+    """Material stored internally.
 
     This class exposes a material that is stored internally in the OpenMC
-    solver. To obtain a view of a material with a given ID, use the
+    library. To obtain a view of a material with a given ID, use the
     :data:`openmc.capi.materials` mapping.
 
     Parameters
@@ -141,7 +141,7 @@ class MaterialView(_ViewWithID):
         _dll.openmc_material_get_densities(self._index, nuclides, densities, n)
 
         # Convert to appropriate types and return
-        nuclide_list = [NuclideView(nuclides[i]).name for i in range(n.value)]
+        nuclide_list = [Nuclide(nuclides[i]).name for i in range(n.value)]
         density_array = as_array(densities, (n.value,))
         return nuclide_list, density_array
 
@@ -196,14 +196,14 @@ class _MaterialMapping(Mapping):
         index = c_int32()
         try:
             _dll.openmc_get_material_index(key, index)
-        except InvalidIDError as e:
+        except (AllocationError, InvalidIDError) as e:
             # __contains__ expects a KeyError to work correctly
             raise KeyError(str(e))
-        return MaterialView(index=index.value)
+        return Material(index=index.value)
 
     def __iter__(self):
         for i in range(len(self)):
-            yield MaterialView(index=i + 1).id
+            yield Material(index=i + 1).id
 
     def __len__(self):
         return c_int32.in_dll(_dll, 'n_materials').value

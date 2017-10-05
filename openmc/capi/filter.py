@@ -83,7 +83,7 @@ class Filter(_FortranObjectWithID):
                 index = mapping[uid]._index
 
         if index not in cls.__instances:
-            instance = super().__new__(cls)
+            instance = super(Filter, cls).__new__(cls)
             instance._index = index
             if uid is not None:
                 instance.id = uid
@@ -104,7 +104,7 @@ class Filter(_FortranObjectWithID):
 
 class EnergyFilter(Filter):
     def __new__(cls, bins=None, uid=None, new=True, index=None):
-        return super().__new__(cls, b'energy', uid, new, index)
+        return super(EnergyFilter, cls).__new__(cls, b'energy', uid, new, index)
 
     @property
     def bins(self):
@@ -125,50 +125,58 @@ class EnergyFilter(Filter):
 
 class EnergyoutFilter(Filter):
     def __new__(cls, bins=None, uid=None, new=True, index=None):
-        return super().__new__(cls, b'energyout', uid, new, index)
+        return super(Energyoutfilter, cls).__new__(cls, b'energyout',
+                                                   uid, new, index)
 
 
 class AzimuthalFilter(Filter):
     def __new__(cls, bins=None, uid=None, new=True, index=None):
-        return super().__new__(cls, b'azimuthal', uid, new, index)
+        return super(AzimuthalFilter, cls).__new__(cls, b'azimuthal',
+                                                   uid, new, index)
 
 
 class CellFilter(Filter):
     def __new__(cls, bins=None, uid=None, new=True, index=None):
-        return super().__new__(cls, b'cell', uid, new, index)
+        return super(CellFilter, cls).__new__(cls, b'cell', uid, new, index)
 
 
 class CellbornFilter(Filter):
     def __new__(cls, bins=None, uid=None, new=True, index=None):
-        return super().__new__(cls, b'cellborn', uid, new, index)
+        return super(CellbornFilter, cls).__new__(cls, b'cellborn', uid,
+                                                  new, index)
 
 
 class CellfromFilter(Filter):
     def __new__(cls, bins=None, uid=None, new=True, index=None):
-        return super().__new__(cls, b'cellfrom', uid, new, index)
+        return super(CellfromFilter, cls).__new__(cls, b'cellfrom', uid,
+                                                  new, index)
 
 
 class DelayedGroupFilter(Filter):
     def __new__(cls, bins=None, uid=None, new=True, index=None):
-        return super().__new__(cls, b'delayedgroup', uid, new, index)
+        return super(DelayedGroupFilter, cls).__new__(cls, b'delayedgroup',
+                                                      uid, new, index)
 
 
 class DistribcellFilter(Filter):
     def __new__(cls, bins=None, uid=None, new=True, index=None):
-        return super().__new__(cls, b'distribcell', uid, new, index)
+        return super(DistribcellFilter, cls).__new__(cls, b'distribcell',
+                                                     uid, new, index)
 
 
 class EnergyFunctionFilter(Filter):
     def __new__(cls, bins=None, uid=None, new=True, index=None):
-        return super().__new__(cls, b'energyfunction', uid, new, index)
+        return super(EnergyFunctionFilter, cls).__new__(
+            cls, b'energyfunction', uid, new, index)
 
 
 class MaterialFilter(Filter):
     def __new__(cls, bins=None, uid=None, new=True, index=None):
-        return super().__new__(cls, b'material', uid, new, index)
+        return super(MaterialFilter, cls).__new__(cls, b'material',
+                                                   uid, new, index)
 
     def __init__(self, bins=None, uid=None, new=True, index=None):
-        super().__init__(uid, new, index)
+        super(MaterialFilter, self).__init__(uid, new, index)
         if bins is not None:
             self.bins = bins
 
@@ -190,27 +198,29 @@ class MaterialFilter(Filter):
 
 class MeshFilter(Filter):
     def __new__(cls, bins=None, uid=None, new=True, index=None):
-        return super().__new__(cls, b'mesh', uid, new, index)
+        return super(MeshFilter, cls).__new__(cls, b'mesh', uid, new, index)
 
 
 class MuFilter(Filter):
     def __new__(cls, bins=None, uid=None, new=True, index=None):
-        return super().__new__(cls, b'mu', uid, new, index)
+        return super(MuFilter, cls).__new__(cls, b'mu', uid, new, index)
 
 
 class PolarFilter(Filter):
     def __new__(cls, bins=None, uid=None, new=True, index=None):
-        return super().__new__(cls, b'polar', uid, new, index)
+        return super(PolarFilter, cls).__new__(cls, b'polar', uid, new, index)
 
 
 class SurfaceFilter(Filter):
     def __new__(cls, bins=None, uid=None, new=True, index=None):
-        return super().__new__(cls, b'surface', uid, new, index)
+        return super(SurfaceFilter, cls).__new__(cls, b'surface', uid,
+                                                 new, index)
 
 
 class UniverseFilter(Filter):
     def __new__(cls, bins=None, uid=None, new=True, index=None):
-        return super().__new__(cls, b'universe', uid, new, index)
+        return super(UniverseFilter, cls).__new__(cls, b'universe', uid,
+                                                  new, index)
 
 
 _FILTER_TYPE_MAP = {

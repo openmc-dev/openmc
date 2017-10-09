@@ -53,7 +53,7 @@ contains
 
   subroutine cmfd_solver_execute(adjoint)
 
-    use global,  only: cmfd_adjoint_type, time_cmfdbuild, time_cmfdsolve
+    use cmfd_header,  only: cmfd_adjoint_type, time_cmfdbuild, time_cmfdsolve
 
     logical, optional, intent(in) :: adjoint  ! adjoint calc
 
@@ -100,8 +100,8 @@ contains
   subroutine init_data(adjoint)
 
     use constants, only: ONE, ZERO
-    use global,    only: cmfd_shift, keff, cmfd_ktol, cmfd_stol, &
-                         cmfd_write_matrices
+    use cmfd_header, only: cmfd_shift, cmfd_ktol, cmfd_stol, cmfd_write_matrices
+    use simulation_header, only: keff
 
     logical, intent(in) :: adjoint
 
@@ -167,7 +167,7 @@ contains
   subroutine compute_adjoint()
 
     use error,   only: fatal_error
-    use global,  only: cmfd_write_matrices
+    use cmfd_header, only: cmfd_write_matrices
 
     ! Transpose matrices
     loss = loss % transpose()
@@ -190,7 +190,7 @@ contains
 
     use constants,  only: ONE
     use error,      only: fatal_error
-    use global,     only: cmfd, cmfd_atoli, cmfd_rtoli
+    use cmfd_header, only: cmfd, cmfd_atoli, cmfd_rtoli
 
     integer :: i ! iteration counter
     integer :: innerits ! # of inner iterations
@@ -304,7 +304,7 @@ contains
     use, intrinsic :: ISO_FORTRAN_ENV
 
     use constants,  only: ONE, ZERO
-    use global,     only: cmfd_power_monitor
+    use cmfd_header, only: cmfd_power_monitor
     use message_passing, only: master
 
     integer, intent(in) :: iter     ! outer iteration number
@@ -346,7 +346,7 @@ contains
 
     use constants,  only: ONE, ZERO
     use error,      only: fatal_error
-    use global,     only: cmfd, cmfd_spectral
+    use cmfd_header, only: cmfd, cmfd_spectral
 
     type(Matrix), intent(inout) :: A ! coefficient matrix
     type(Vector), intent(inout) :: b ! right hand side vector
@@ -452,7 +452,7 @@ contains
 
     use constants,  only: ONE, ZERO
     use error,      only: fatal_error
-    use global,     only: cmfd, cmfd_spectral
+    use cmfd_header, only: cmfd, cmfd_spectral
 
     type(Matrix), intent(inout) :: A ! coefficient matrix
     type(Vector), intent(inout) :: b ! right hand side vector
@@ -597,7 +597,7 @@ contains
 
     use constants,  only: ONE, ZERO
     use error,      only: fatal_error
-    use global,     only: cmfd, cmfd_spectral
+    use cmfd_header, only: cmfd, cmfd_spectral
 
     type(Matrix), intent(inout) :: A ! coefficient matrix
     type(Vector), intent(inout) :: b ! right hand side vector
@@ -693,7 +693,8 @@ contains
 
   subroutine extract_results()
 
-    use global, only: cmfd, cmfd_write_matrices, current_batch
+    use cmfd_header, only: cmfd, cmfd_write_matrices
+    use simulation_header, only: current_batch
 
     character(len=25)    :: filename  ! name of file to write data
     integer              :: n         ! problem size
@@ -750,7 +751,7 @@ contains
 
   subroutine matrix_to_indices(irow, g, i, j, k, ng, nx, ny, nz)
 
-    use global,  only: cmfd, cmfd_coremap
+    use cmfd_header, only: cmfd, cmfd_coremap
 
     integer, intent(out) :: i    ! iteration counter for x
     integer, intent(out) :: j    ! iteration counter for y

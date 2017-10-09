@@ -5,12 +5,14 @@
 
 module track_output
 
-  use global
+  use hdf5
+
+  use constants
   use hdf5_interface
   use particle_header, only: Particle
+  use settings,        only: path_output
+  use simulation_header
   use string,          only: to_str
-
-  use hdf5
 
   implicit none
   private

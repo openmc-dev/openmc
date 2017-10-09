@@ -15,18 +15,25 @@ module state_point
 
   use hdf5
 
+  use cmfd_header
   use constants
   use eigenvalue,         only: openmc_get_keff
   use endf,               only: reaction_name
   use error,              only: fatal_error, warning
-  use global
   use hdf5_interface
-  use mesh_header,        only: RegularMesh
+  use mesh_header,        only: RegularMesh, meshes, n_meshes
   use message_passing
+  use mgxs_header,        only: nuclides_MG
+  use nuclide_header,     only: nuclides
   use output,             only: write_message, time_stamp
   use random_lcg,         only: seed
+  use settings
+  use simulation_header
   use string,             only: to_str, count_digits, zero_padded
-  use tally_header,       only: TallyObject
+  use tally_header
+  use tally_filter_header
+  use tally_derivative_header, only: tally_derivs
+  use timer_header
 
   implicit none
 
@@ -45,13 +52,12 @@ contains
     integer, allocatable :: id_array(:)
     integer(HID_T) :: file_id
     integer(HID_T) :: cmfd_group, tallies_group, tally_group, meshes_group, &
-                      mesh_group, filters_group, filter_group, derivs_group, &
+                      filters_group, filter_group, derivs_group, &
                       deriv_group, runtime_group
     integer(C_INT) :: err
     real(C_DOUBLE) :: k_combined(2)
     character(MAX_WORD_LEN), allocatable :: str_array(:)
     character(MAX_FILE_LEN)    :: filename
-    type(TallyObject), pointer    :: tally
 
     ! Set filename for state point
     filename = trim(path_output) // 'statepoint.' // &
@@ -158,21 +164,7 @@ contains
 
         ! Write information for meshes
         MESH_LOOP: do i = 1, n_meshes
-          associate (m => meshes(i))
-            mesh_group = create_group(meshes_group, "mesh " &
-                 // trim(to_str(m % id)))
-
-            select case (m % type)
-            case (MESH_REGULAR)
-              call write_dataset(mesh_group, "type", "regular")
-            end select
-            call write_dataset(mesh_group, "dimension", m % dimension)
-            call write_dataset(mesh_group, "lower_left", m % lower_left)
-            call write_dataset(mesh_group, "upper_right", m % upper_right)
-            call write_dataset(mesh_group, "width", m % width)
-
-            call close_group(mesh_group)
-          end associate
+          call meshes(i) % to_hdf5(meshes_group)
         end do MESH_LOOP
       end if
 
@@ -241,7 +233,7 @@ contains
         ! Write array of tally IDs
         allocate(id_array(n_tallies))
         do i = 1, n_tallies
-          id_array(i) = tallies(i) % id
+          id_array(i) = tallies(i) % obj % id
         end do
         call write_attribute(tallies_group, "ids", id_array)
         deallocate(id_array)
@@ -250,7 +242,7 @@ contains
         TALLY_METADATA: do i = 1, n_tallies
 
           ! Get pointer to tally
-          tally => tallies(i)
+          associate (tally => tallies(i) % obj)
           tally_group = create_group(tallies_group, "tally " // &
                trim(to_str(tally % id)))
 
@@ -355,6 +347,7 @@ contains
           deallocate(str_array)
 
           call close_group(tally_group)
+          end associate
         end do TALLY_METADATA
 
       end if
@@ -378,7 +371,7 @@ contains
       call write_dataset(file_id, "global_tallies", global_tallies)
 
       ! Write tallies
-      if (tallies_on) then
+      if (active_tallies % size() > 0) then
         ! Indicate that tallies are on
         call write_attribute(file_id, "tallies_present", 1)
 
@@ -386,14 +379,13 @@ contains
 
         ! Write all tally results
         TALLY_RESULTS: do i = 1, n_tallies
-          ! Set point to current tally
-          tally => tallies(i)
-
-          ! Write sum and sum_sq for each bin
-          tally_group = open_group(tallies_group, "tally " &
-               // to_str(tally % id))
-          call tally % write_results_hdf5(tally_group)
-          call close_group(tally_group)
+          associate (tally => tallies(i) % obj)
+            ! Write sum and sum_sq for each bin
+            tally_group = open_group(tallies_group, "tally " &
+                 // to_str(tally % id))
+            call tally % write_results_hdf5(tally_group)
+            call close_group(tally_group)
+          end associate
         end do TALLY_RESULTS
 
         call close_group(tallies_group)
@@ -558,7 +550,7 @@ contains
       call write_dataset(file_id, "global_tallies", global_temp)
     end if
 
-    if (tallies_on) then
+    if (active_tallies % size() > 0) then
       ! Indicate that tallies are on
       if (master) then
         call write_attribute(file_id, "tallies_present", 1)
@@ -566,7 +558,7 @@ contains
 
       ! Write all tally results
       TALLY_RESULTS: do i = 1, n_tallies
-        associate (t => tallies(i))
+        associate (t => tallies(i) % obj)
           ! Determine size of tally results array
           m = size(t % results, 2)
           n = size(t % results, 3)
@@ -775,7 +767,7 @@ contains
         tallies_group = open_group(file_id, "tallies")
 
         TALLY_RESULTS: do i = 1, n_tallies
-          associate (t => tallies(i))
+          associate (t => tallies(i) % obj)
             ! Read sum, sum_sq, and N for each bin
             tally_group = open_group(tallies_group, "tally " // &
                  trim(to_str(t % id)))

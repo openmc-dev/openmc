@@ -8,15 +8,17 @@ module trigger
 
   use constants
   use eigenvalue,     only: openmc_get_keff
-  use global
   use string,         only: to_str
   use output,         only: warning, write_message
-  use mesh,           only: bin_to_mesh_indices
-  use mesh_header,    only: RegularMesh
+  use mesh_header,    only: RegularMesh, meshes
   use message_passing, only: master
-  use trigger_header, only: TriggerObject
+  use settings
+  use simulation_header
+  use trigger_header
   use tally,          only: TallyObject
-  use tally_filter,   only: MeshFilter
+  use tally_filter_mesh, only: MeshFilter
+  use tally_filter_header, only: filter_matches, filters
+  use tally_header, only: tallies, n_tallies
 
   implicit none
 
@@ -110,8 +112,6 @@ contains
     real(8) :: rel_err = ZERO ! trigger relative error
     real(8) :: ratio          ! ratio of the uncertainty/trigger threshold
     real(C_DOUBLE) :: k_combined(2)
-    type(TallyObject), pointer     :: t               ! tally pointer
-    type(TriggerObject), pointer   :: trigger         ! tally trigger
 
     ! Initialize tally trigger maximum uncertainty ratio to zero
     max_ratio = 0
@@ -152,7 +152,7 @@ contains
 
       ! Compute uncertainties for all tallies, scores with triggers
       TALLY_LOOP: do i = 1, n_tallies
-        t => tallies(i)
+        associate (t => tallies(i) % obj)
 
         ! Cycle through if only one batch has been simumlate
         if (t % n_realizations == 1) then
@@ -160,7 +160,7 @@ contains
         end if
 
         TRIGGER_LOOP: do s = 1, t % n_triggers
-          trigger => t % triggers(s)
+          associate (trigger => t % triggers(s))
 
           ! Initialize trigger uncertainties to zero
           trigger % std_dev = ZERO
@@ -179,7 +179,7 @@ contains
               call filter_matches(t % filter(j)) % bins % push_back(0)
             end do
 
-            FILTER_LOOP: do filter_index = 1, t % total_filter_bins
+            FILTER_LOOP: do filter_index = 1, t % n_filter_bins
 
               ! Initialize score index
               score_index = trigger % score_index
@@ -280,7 +280,9 @@ contains
               if (size(t % filter) == 0) exit FILTER_LOOP
             end do FILTER_LOOP
           end if
+          end associate
         end do TRIGGER_LOOP
+        end associate
       end do TALLY_LOOP
     end if
   end subroutine check_tally_triggers
@@ -292,6 +294,8 @@ contains
 !===============================================================================
 
   subroutine compute_tally_current(t, trigger)
+    type(TallyObject),   intent(in)    :: t        ! mesh current tally
+    type(TriggerObject), intent(inout) :: trigger  ! mesh current tally trigger
 
     integer :: i                    ! mesh index
     integer :: j                    ! loop index for tally filters
@@ -307,8 +311,6 @@ contains
     logical :: print_ebin           ! should incoming energy bin be displayed?
     real(8) :: rel_err  = ZERO      ! temporary relative error of result
     real(8) :: std_dev  = ZERO      ! temporary standard deviration of result
-    type(TallyObject), pointer    :: t        ! mesh current tally
-    type(TriggerObject)           :: trigger  ! mesh current tally trigger
     type(RegularMesh), pointer :: m        ! surface current mesh
 
     ! Get pointer to mesh
@@ -344,7 +346,7 @@ contains
     do i = 1, n_cells
 
       ! Get the indices for this cell
-      call bin_to_mesh_indices(m, i, ijk)
+      call m % get_indices_from_bin(i, ijk)
       filter_matches(i_filter_mesh) % bins % data(1) = i
 
       do l = 1, n

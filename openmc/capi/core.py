@@ -153,5 +153,28 @@ def run_in_memory(intracomm=None):
 
     """
     init(intracomm)
-    yield
-    finalize()
+    try:
+        yield
+    finally:
+        finalize()
+
+
+class _DLLGlobal(object):
+    """Data descriptor that exposes global variables from libopenmc."""
+    def __init__(self, ctype, name):
+        self.ctype = ctype
+        self.name = name
+
+    def __get__(self, instance, owner):
+        return self.ctype.in_dll(_dll, self.name).value
+
+    def __set__(self, instance, value):
+        self.ctype.in_dll(_dll, self.name).value = value
+
+
+class _View(object):
+    def __init__(self, index):
+        self._index = index
+
+    def __repr__(self):
+        return "{}[{}]".format(type(self).__name__, self._index)

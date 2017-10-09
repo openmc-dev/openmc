@@ -5,6 +5,7 @@ module tally_filter_cellfrom
   use hdf5
 
   use constants,          only: ONE, MAX_LINE_LEN
+  use dict_header,        only: EMPTY
   use error,              only: fatal_error
   use hdf5_interface
   use geometry_header
@@ -39,11 +40,13 @@ contains
     type(TallyFilterMatch), intent(inout) :: match
 
     integer :: i
+    integer :: val
 
     ! Starting one coordinate level deeper, find the next bin.
     do i = 1, p % last_n_coord
-      if (this % map % has(p % last_cell(i))) then
-        call match % bins % push_back(this % map % get(p % last_cell(i)))
+      val = this % map % get(p % last_cell(i))
+      if (val /= EMPTY) then
+        call match % bins % push_back(val)
         call match % weights % push_back(ONE)
         exit
       end if

@@ -5,6 +5,7 @@ module tally_filter_universe
   use hdf5
 
   use constants,          only: ONE, MAX_LINE_LEN
+  use dict_header,        only: EMPTY
   use error,              only: fatal_error
   use hdf5_interface
   use geometry_header
@@ -54,12 +55,13 @@ contains
     type(TallyFilterMatch),     intent(inout) :: match
 
     integer :: i
+    integer :: val
 
     ! Iterate over coordinate levels to see which universes match
     do i = 1, p % n_coord
-      if (this % map % has(p % coord(i) % universe)) then
-        call match % bins % push_back(this % map % get(p % coord(i) &
-             % universe))
+      val = this % map % get(p % coord(i) % universe)
+      if (val /= EMPTY) then
+        call match % bins % push_back(val)
         call match % weights % push_back(ONE)
       end if
     end do
@@ -87,12 +89,14 @@ contains
     class(UniverseFilter), intent(inout) :: this
 
     integer :: i, id
+    integer :: val
 
     ! Convert ids to indices.
     do i = 1, this % n_bins
       id = this % universes(i)
-      if (universe_dict % has(id)) then
-        this % universes(i) = universe_dict % get(id)
+      val = universe_dict % get(id)
+      if (val /= EMPTY) then
+        this % universes(i) = val
       else
         call fatal_error("Could not find universe " // trim(to_str(id)) &
              &// " specified on a tally filter.")

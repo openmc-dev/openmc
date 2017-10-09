@@ -5,6 +5,7 @@ module tally_filter_cell
   use hdf5
 
   use constants,          only: ONE, MAX_LINE_LEN
+  use dict_header,        only: EMPTY
   use error,              only: fatal_error
   use hdf5_interface
   use geometry_header
@@ -55,11 +56,13 @@ contains
     type(TallyFilterMatch), intent(inout) :: match
 
     integer :: i
+    integer :: val
 
     ! Iterate over coordinate levels to see with cells match
     do i = 1, p % n_coord
-      if (this % map % has(p % coord(i) % cell)) then
-        call match % bins % push_back(this % map % get(p % coord(i) % cell))
+      val = this % map % get(p % coord(i) % cell)
+      if (val /= EMPTY) then
+        call match % bins % push_back(val)
         call match % weights % push_back(ONE)
       end if
     end do
@@ -87,12 +90,14 @@ contains
     class(CellFilter), intent(inout) :: this
 
     integer :: i, id
+    integer :: val
 
     ! Convert ids to indices.
     do i = 1, this % n_bins
       id = this % cells(i)
-      if (cell_dict % has(id)) then
-        this % cells(i) = cell_dict % get(id)
+      val = cell_dict % get(id)
+      if (val /= EMPTY) then
+        this % cells(i) = val
       else
         call fatal_error("Could not find cell " // trim(to_str(id)) &
              &// " specified on tally filter.")

@@ -5,7 +5,7 @@ module tally_filter_material
   use hdf5, only: HID_T
 
   use constants
-  use dict_header, only: DictIntInt
+  use dict_header,     only: DictIntInt, EMPTY
   use error
   use hdf5_interface
   use material_header, only: materials, material_dict
@@ -56,10 +56,13 @@ contains
     integer,               intent(in)  :: estimator
     type(TallyFilterMatch),     intent(inout) :: match
 
-      if (this % map % has(p % material)) then
-        call match % bins % push_back(this % map % get(p % material))
-        call match % weights % push_back(ONE)
-      end if
+    integer :: val
+
+    val = this % map % get(p % material)
+    if (val /= EMPTY) then
+      call match % bins % push_back(val)
+      call match % weights % push_back(ONE)
+    end if
 
   end subroutine get_all_bins_material
 
@@ -84,12 +87,14 @@ contains
     class(MaterialFilter), intent(inout) :: this
 
     integer :: i, id
+    integer :: val
 
     ! Convert ids to indices.
     do i = 1, this % n_bins
       id = this % materials(i)
-      if (material_dict % has(id)) then
-        this % materials(i) = material_dict % get(id)
+      val = material_dict % get(id)
+      if (val /= EMPTY) then
+        this % materials(i) = val
       else
         call fatal_error("Could not find material " // trim(to_str(id)) &
              &// " specified on a tally filter.")

@@ -5,6 +5,7 @@ module tally_filter_mesh
   use hdf5
 
   use constants
+  use dict_header,         only: EMPTY
   use error
   use mesh_header,         only: RegularMesh, meshes, n_meshes, mesh_dict
   use hdf5_interface
@@ -41,6 +42,7 @@ contains
     integer :: i_mesh
     integer :: id
     integer :: n
+    integer :: val
 
     n = node_word_count(node, "bins")
 
@@ -51,8 +53,9 @@ contains
     call get_node_value(node, "bins", id)
 
     ! Get pointer to mesh
-    if (mesh_dict % has(id)) then
-      i_mesh = mesh_dict % get(id)
+    val = mesh_dict % get(id)
+    if (val /= EMPTY) then
+      i_mesh = val
     else
       call fatal_error("Could not find mesh " // trim(to_str(id)) &
            // " specified on filter.")

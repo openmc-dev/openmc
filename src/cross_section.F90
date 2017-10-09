@@ -3,9 +3,8 @@ module cross_section
   use algorithm,        only: binary_search
   use constants
   use error,            only: fatal_error
-  use global
   use list_header,      only: ListElemInt
-  use material_header,  only: Material
+  use material_header,  only: Material, materials
   use math,             only: faddeeva, w_derivative, broaden_wmp_polynomials
   use multipole_header, only: FORM_RM, FORM_MLBW, MP_EA, RM_RT, RM_RA, RM_RF, &
                               MLBW_RT, MLBW_RX, MLBW_RA, MLBW_RF, FIT_T, FIT_A,&
@@ -13,7 +12,9 @@ module cross_section
   use nuclide_header
   use particle_header,  only: Particle
   use random_lcg,       only: prn, future_prn, prn_set_stream
-  use sab_header,       only: SAlphaBeta
+  use sab_header,       only: SAlphaBeta, sab_tables
+  use settings
+  use simulation_header
 
   implicit none
 

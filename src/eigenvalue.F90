@@ -5,13 +5,16 @@ module eigenvalue
   use algorithm,   only: binary_search
   use constants,   only: ZERO
   use error,       only: fatal_error, warning
-  use global
   use math,        only: t_percentile
   use mesh,        only: count_bank_sites
-  use mesh_header, only: RegularMesh
+  use mesh_header, only: RegularMesh, meshes
   use message_passing
   use random_lcg,  only: prn, set_particle_seed, advance_prn_seed
+  use settings
+  use simulation_header
   use string,      only: to_str
+  use tally_header
+  use timer_header
 
   implicit none
 
@@ -299,69 +302,34 @@ contains
   subroutine shannon_entropy()
 
     integer :: ent_idx        ! entropy index
-    integer :: i, j, k        ! index for bank sites
-    integer :: n              ! # of boxes in each dimension
+    integer :: i              ! index for mesh elements
     logical :: sites_outside  ! were there sites outside entropy box?
-    type(RegularMesh), pointer :: m
 
-    ! Get pointer to entropy mesh
-    m => entropy_mesh
+    associate (m => meshes(index_entropy_mesh))
+      ! count number of fission sites over mesh
+      call count_bank_sites(m, fission_bank, entropy_p, &
+           size_bank=n_bank, sites_outside=sites_outside)
 
-    ! On the first pass through this subroutine, we need to determine how big
-    ! the entropy mesh should be in each direction and then allocate a
-    ! three-dimensional array to store the fraction of source sites in each mesh
-    ! box
-
-    if (.not. allocated(entropy_p)) then
-      if (.not. allocated(m % dimension)) then
-        ! If the user did not specify how many mesh cells are to be used in
-        ! each direction, we automatically determine an appropriate number of
-        ! cells
-        n = ceiling((n_particles/20)**(ONE/THREE))
-
-        ! copy dimensions
-        m % n_dimension = 3
-        allocate(m % dimension(3))
-        m % dimension = n
-
-        ! determine width
-        m % width = (m % upper_right - m % lower_left) / m % dimension
-
+      ! display warning message if there were sites outside entropy box
+      if (sites_outside) then
+        if (master) call warning("Fission source site(s) outside of entropy box.")
       end if
 
-      ! allocate p
-      allocate(entropy_p(1, m % dimension(1), m % dimension(2), &
-           m % dimension(3)))
-    end if
+      ! sum values to obtain shannon entropy
+      if (master) then
+        ! Normalize to total weight of bank sites
+        entropy_p = entropy_p / sum(entropy_p)
 
-    ! count number of fission sites over mesh
-    call count_bank_sites(m, fission_bank, entropy_p, &
-         size_bank=n_bank, sites_outside=sites_outside)
-
-    ! display warning message if there were sites outside entropy box
-    if (sites_outside) then
-      if (master) call warning("Fission source site(s) outside of entropy box.")
-    end if
-
-    ! sum values to obtain shannon entropy
-    if (master) then
-      ! Normalize to total weight of bank sites
-      entropy_p = entropy_p / sum(entropy_p)
-
-      ent_idx = current_gen + gen_per_batch*(current_batch - 1)
-      entropy(ent_idx) = ZERO
-      do i = 1, m % dimension(1)
-        do j = 1, m % dimension(2)
-          do k = 1, m % dimension(3)
-            if (entropy_p(1,i,j,k) > ZERO) then
-              entropy(ent_idx) = entropy(ent_idx) - &
-                   entropy_p(1,i,j,k) * log(entropy_p(1,i,j,k))/log(TWO)
-            end if
-          end do
+        ent_idx = current_gen + gen_per_batch*(current_batch - 1)
+        entropy(ent_idx) = ZERO
+        do i = 1, size(entropy_p, 2)
+          if (entropy_p(1,i) > ZERO) then
+            entropy(ent_idx) = entropy(ent_idx) - &
+                 entropy_p(1,i) * log(entropy_p(1,i))/log(TWO)
+          end if
         end do
-      end do
-    end if
-
+      end if
+    end associate
   end subroutine shannon_entropy
 
 !===============================================================================
@@ -621,16 +589,18 @@ contains
     integer :: mpi_err       ! MPI error code
 #endif
 
+    associate (m => meshes(index_ufs_mesh))
+
     if (current_batch == 1 .and. current_gen == 1) then
       ! On the first generation, just assume that the source is already evenly
       ! distributed so that effectively the production of fission sites is not
       ! biased
 
-      source_frac = ufs_mesh % volume_frac
+      source_frac = m % volume_frac
 
     else
       ! count number of source sites in each ufs mesh cell
-      call count_bank_sites(ufs_mesh, source_bank, source_frac, &
+      call count_bank_sites(m, source_bank, source_frac, &
            sites_outside=sites_outside, size_bank=work)
 
       ! Check for sites outside of the mesh
@@ -640,7 +610,7 @@ contains
 
 #ifdef MPI
       ! Send source fraction to all processors
-      n = product(ufs_mesh % dimension)
+      n = product(m % dimension)
       call MPI_BCAST(source_frac, n, MPI_REAL8, 0, mpi_intracomm, mpi_err)
 #endif
 
@@ -653,6 +623,8 @@ contains
 
       source_bank % wgt = source_bank % wgt * n_particles / total
     end if
+
+    end associate
 
   end subroutine count_source_for_ufs
 

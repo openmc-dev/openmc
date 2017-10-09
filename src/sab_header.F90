@@ -1,9 +1,11 @@
 module sab_header
 
+  use, intrinsic :: ISO_C_BINDING
   use, intrinsic :: ISO_FORTRAN_ENV
 
   use algorithm, only: find, sort
   use constants
+  use dict_header, only: DictIntInt, DictCharInt
   use distribution_univariate, only: Tabular
   use error,       only: warning, fatal_error
   use hdf5, only: HID_T, HSIZE_T, SIZE_T
@@ -76,6 +78,11 @@ module sab_header
   contains
     procedure :: from_hdf5 => salphabeta_from_hdf5
   end type SAlphaBeta
+
+  ! S(a,b) tables
+  type(SAlphaBeta), allocatable, target :: sab_tables(:)
+  integer(C_INT), bind(C) :: n_sab_tables
+  type(DictCharInt) :: sab_dict
 
 contains
 
@@ -352,5 +359,15 @@ contains
 
     call close_group(kT_group)
   end subroutine salphabeta_from_hdf5
+
+!===============================================================================
+! FREE_MEMORY_SAB deallocates global arrays defined in this module
+!===============================================================================
+
+  subroutine free_memory_sab()
+    n_sab_tables = 0
+    if (allocated(sab_tables)) deallocate(sab_tables)
+    call sab_dict % clear()
+  end subroutine free_memory_sab
 
 end module sab_header

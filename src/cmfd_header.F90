@@ -1,6 +1,10 @@
 module cmfd_header
 
   use constants,  only: CMFD_NOACCEL, ZERO, ONE
+  use mesh_header, only: RegularMesh
+  use set_header, only: SetInt
+  use tally_header, only: TallyContainer
+  use timer_header, only: Timer
 
   implicit none
   private
@@ -49,7 +53,7 @@ module cmfd_header
     real(8), allocatable :: openmc_src(:,:,:,:)
 
     ! Source sites in each mesh box
-    real(8), allocatable :: sourcecounts(:,:,:,:)
+    real(8), allocatable :: sourcecounts(:,:)
 
     ! Weight adjustment factors
     real(8), allocatable :: weightfactors(:,:,:,:)
@@ -87,6 +91,67 @@ module cmfd_header
     real(8) :: keff_bal
 
   end type cmfd_type
+
+  ! Main object
+  type(cmfd_type), public :: cmfd
+
+  type(RegularMesh), public, pointer :: cmfd_mesh => null()
+
+  ! Pointers for different tallies
+  type(TallyContainer), public, pointer :: cmfd_tallies(:) => null()
+
+  ! Timing objects
+  type(Timer), public :: time_cmfd      ! timer for whole cmfd calculation
+  type(Timer), public :: time_cmfdbuild ! timer for matrix build
+  type(Timer), public :: time_cmfdsolve ! timer for solver
+
+  ! Flag for active core map
+  logical, public :: cmfd_coremap = .false.
+
+  ! Flag to reset dhats to zero
+  logical, public :: dhat_reset = .false.
+
+  ! Flag to activate neutronic feedback via source weights
+  logical, public :: cmfd_feedback = .false.
+
+  ! Adjoint method type
+  character(len=10), public :: cmfd_adjoint_type = 'physical'
+
+  ! Number of incomplete ilu factorization levels
+  integer, public :: cmfd_ilu_levels = 1
+
+  ! Batch to begin cmfd
+  integer, public :: cmfd_begin = 1
+
+  ! Tally reset list
+  integer, public :: n_cmfd_resets
+  type(SetInt), public :: cmfd_reset
+
+  ! Compute effective downscatter cross section
+  logical, public :: cmfd_downscatter = .false.
+
+  ! Convergence monitoring
+  logical, public :: cmfd_power_monitor = .false.
+
+  ! Cmfd output
+  logical, public :: cmfd_write_matrices = .false.
+
+  ! Run an adjoint calculation (last batch only)
+  logical, public :: cmfd_run_adjoint = .false.
+
+  ! CMFD run logicals
+  logical, public :: cmfd_on = .false.
+
+  ! CMFD display info
+  character(len=25), public :: cmfd_display = 'balance'
+
+  ! Estimate of spectral radius of CMFD matrices and tolerances
+  real(8), public :: cmfd_spectral = ZERO
+  real(8), public :: cmfd_shift = 1.e6
+  real(8), public :: cmfd_ktol = 1.e-8_8
+  real(8), public :: cmfd_stol = 1.e-8_8
+  real(8), public :: cmfd_atoli = 1.e-10_8
+  real(8), public :: cmfd_rtoli = 1.e-5_8
 
 contains
 
@@ -133,7 +198,7 @@ contains
     if (.not. allocated(this % openmc_src)) allocate(this % openmc_src(ng,nx,ny,nz))
 
     ! Allocate source weight modification vars
-    if (.not. allocated(this % sourcecounts)) allocate(this % sourcecounts(ng,nx,ny,nz))
+    if (.not. allocated(this % sourcecounts)) allocate(this % sourcecounts(ng,nx*ny*nz))
     if (.not. allocated(this % weightfactors)) allocate(this % weightfactors(ng,nx,ny,nz))
 
     ! Allocate batchwise parameters

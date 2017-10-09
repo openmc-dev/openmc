@@ -5,8 +5,10 @@ module cmfd_data
 ! parameters for CMFD calculation.
 !==============================================================================
 
+  use cmfd_header,         only: allocate_cmfd, cmfd, cmfd_coremap, &
+                                 cmfd_downscatter, cmfd_tallies, dhat_reset
   use constants
-  use tally_filter, only: MeshFilter
+  use tally_filter_mesh, only: MeshFilter
 
   implicit none
   private
@@ -20,9 +22,7 @@ contains
 
   subroutine set_up_cmfd()
 
-    use cmfd_header,         only: allocate_cmfd
     use constants,           only: CMFD_NOACCEL
-    use global,              only: cmfd, cmfd_coremap, cmfd_downscatter
 
     ! Check for core map and set it up
     if ((cmfd_coremap) .and. (cmfd%mat_dim == CMFD_NOACCEL)) call set_coremap()
@@ -56,12 +56,9 @@ contains
                            IN_BACK, IN_FRONT, IN_BOTTOM, IN_TOP, CMFD_NOACCEL, &
                            ZERO, ONE, TINY_BIT
     use error,        only: fatal_error
-    use global,       only: cmfd, n_cmfd_tallies, cmfd_tallies, meshes, &
-                           filters, filter_matches
-    use mesh,         only: mesh_indices_to_bin
-    use mesh_header,  only: RegularMesh
+    use mesh_header,  only: RegularMesh, meshes
     use string,       only: to_str
-    use tally_header, only: TallyObject
+    use tally_filter_header, only: filters, filter_matches
 
     integer :: nx            ! number of mesh cells in x direction
     integer :: ny            ! number of mesh cells in y direction
@@ -76,7 +73,6 @@ contains
     integer :: ital          ! tally object index
     integer :: ijk(3)        ! indices for mesh cell
     integer :: score_index   ! index to pull from tally object
-    integer :: i_mesh        ! index in meshes array
     integer :: i_filt        ! index in filters array
     integer :: i_filter_mesh ! index for mesh filter
     integer :: i_filter_ein  ! index for incoming energy filter
@@ -85,7 +81,6 @@ contains
     integer :: stride_surf   ! stride for surface filter
     logical :: energy_filters! energy filters present
     real(8) :: flux          ! temp variable for flux
-    type(TallyObject), pointer :: t ! pointer for tally object
     type(RegularMesh), pointer :: m ! pointer for mesh object
 
     ! Extract spatial and energy indices from object
@@ -99,13 +94,14 @@ contains
     cmfd % openmc_src = ZERO
 
     ! Associate tallies and mesh
-    t => cmfd_tallies(1)
-    i_filt = t % filter(t % find_filter(FILTER_MESH))
+    associate (t => cmfd_tallies(1) % obj)
+      i_filt = t % filter(t % find_filter(FILTER_MESH))
+    end associate
+
     select type(filt => filters(i_filt) % obj)
     type is (MeshFilter)
-      i_mesh = filt % mesh
+      m => meshes(filt % mesh)
     end select
-    m => meshes(i_mesh)
 
     ! Set mesh widths
     cmfd % hxyz(1,:,:,:) = m % width(1) ! set x width
@@ -115,16 +111,15 @@ contains
     cmfd % keff_bal = ZERO
 
     ! Begin loop around tallies
-    TAL: do ital = 1, n_cmfd_tallies
+    TAL: do ital = 1, size(cmfd_tallies)
 
       ! Associate tallies and mesh
-      t => cmfd_tallies(ital)
+      associate (t => cmfd_tallies(ital) % obj)
       i_filt = t % filter(t % find_filter(FILTER_MESH))
       select type(filt => filters(i_filt) % obj)
       type is (MeshFilter)
-        i_mesh = filt % mesh
+        m => meshes(filt % mesh)
       end select
-      m => meshes(i_mesh)
 
       ! Check for energy filters
       energy_filters = (t % find_filter(FILTER_ENERGYIN) > 0)
@@ -166,7 +161,7 @@ contains
 
                 ! Get bin number for mesh indices
                 filter_matches(i_filter_mesh) % bins % data(1) = &
-                     mesh_indices_to_bin(m,ijk)
+                     m % get_bin_from_indices(ijk)
 
                 ! Apply energy in filter
                 if (energy_filters) then
@@ -217,7 +212,7 @@ contains
 
                   ! Get bin number for mesh indices
                   filter_matches(i_filter_mesh) % bins % data(1) = &
-                       mesh_indices_to_bin(m,ijk)
+                       m % get_bin_from_indices(ijk)
 
                   if (energy_filters) then
                     ! Apply energy in filter
@@ -266,7 +261,7 @@ contains
 
                 ! Get the bin for this mesh cell
                 filter_matches(i_filter_mesh) % bins % data(1) = &
-                     mesh_indices_to_bin(m, (/ i, j, k /))
+                     m % get_bin_from_indices([ i, j, k ])
 
                 score_index = 1
                 do l = 1, size(t % filter)
@@ -321,13 +316,13 @@ contains
 
       end do ZLOOP
 
+      end associate
     end do TAL
 
     ! Normalize openmc source distribution
     cmfd % openmc_src = cmfd % openmc_src/sum(cmfd % openmc_src)*cmfd%norm
 
     ! Nullify all pointers
-    if (associated(t)) nullify(t)
     if (associated(m)) nullify(m)
 
   end subroutine compute_xs
@@ -339,7 +334,6 @@ contains
   subroutine set_coremap()
 
     use constants,  only: CMFD_NOACCEL
-    use global,     only: cmfd
 
     integer :: counter=1 ! counter for unique fuel assemblies
     integer :: nx        ! number of mesh cells in x direction
@@ -400,7 +394,7 @@ contains
   subroutine neutron_balance()
 
     use constants,    only: ONE, ZERO, CMFD_NOACCEL, CMFD_NORES
-    use global,       only: cmfd, keff, current_batch
+    use simulation_header, only: keff, current_batch
 
     integer :: nx           ! number of mesh cells in x direction
     integer :: ny           ! number of mesh cells in y direction
@@ -509,7 +503,6 @@ contains
   subroutine compute_dtilde()
 
     use constants,  only: CMFD_NOACCEL, ZERO_FLUX, TINY_BIT
-    use global,     only: cmfd, cmfd_coremap
 
     integer :: nx           ! maximum number of cells in x direction
     integer :: ny           ! maximum number of cells in y direction
@@ -651,7 +644,6 @@ contains
   subroutine compute_dhat()
 
     use constants, only: CMFD_NOACCEL, ZERO
-    use global,    only: cmfd, cmfd_coremap, dhat_reset
     use output,    only: write_message
     use string,    only: to_str
 
@@ -801,7 +793,6 @@ contains
   function get_reflector_albedo(l, g, i, j, k)
 
     use constants,  only: ONE
-    use global,     only: cmfd
 
     real(8) :: get_reflector_albedo ! reflector albedo
     integer, intent(in) :: i ! iteration counter for x
@@ -840,7 +831,6 @@ contains
   subroutine compute_effective_downscatter()
 
     use constants, only: ZERO, CMFD_NOACCEL
-    use global,    only: cmfd
 
     integer :: nx                ! number of mesh cells in x direction
     integer :: ny                ! number of mesh cells in y direction

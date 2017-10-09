@@ -4,7 +4,7 @@
 C API
 =====
 
-.. c:function:: void openmc_calculate_voumes()
+.. c:function:: void openmc_calculate_volumes()
 
    Run a stochastic volume calculation
 
@@ -52,7 +52,7 @@ C API
                     cell that was found and zero otherwise.
    :type instance: int32_t*
 
-.. c:function:: int openmc_get_cell(int32_t id, int32_t* index)
+.. c:function:: int openmc_get_cell_index(int32_t id, int32_t* index)
 
    Get the index in the cells array for a cell with a given ID
 
@@ -70,7 +70,7 @@ C API
    :return: Return status (negative if an error occurs)
    :rtype: int
 
-.. c:function:: int openmc_get_nuclide(char name[], int* index)
+.. c:function:: int openmc_get_nuclide_index(char name[], int* index)
 
    Get the index in the nuclides array for a nuclide with a given name
 
@@ -81,7 +81,7 @@ C API
    :return: Return status (negative if an error occurs)
    :rtype: int
 
-.. c:function:: int openmc_get_tally(int32_t id, int32_t* index)
+.. c:function:: int openmc_get_tally_index(int32_t id, int32_t* index)
 
    Get the index in the tallies array for a tally with a given ID
 
@@ -92,7 +92,7 @@ C API
    :return: Return status (negative if an error occurs)
    :rtype: int
 
-.. c:function:: int openmc_get_material(int32_t id, int32_t* index)
+.. c:function:: int openmc_get_material_index(int32_t id, int32_t* index)
 
    Get the index in the materials array for a material with a given ID
 

@@ -5,6 +5,7 @@ module tally_filter_surface
   use hdf5
 
   use constants,          only: ONE, MAX_LINE_LEN
+  use dict_header,        only: EMPTY
   use error,              only: fatal_error
   use hdf5_interface
   use surface_header
@@ -84,12 +85,14 @@ contains
     class(SurfaceFilter), intent(inout) :: this
 
     integer :: i, id
+    integer :: val
 
     ! Convert ids to indices.
     do i = 1, this % n_bins
       id = this % surfaces(i)
-      if (surface_dict % has(id)) then
-        this % surfaces(i) = surface_dict % get(id)
+      val = surface_dict % get(id)
+      if (val /= EMPTY) then
+        this % surfaces(i) = val
       else
         call fatal_error("Could not find surface " // trim(to_str(id)) &
              &// " specified on tally filter.")

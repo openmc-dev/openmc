@@ -5,6 +5,7 @@ module tally_filter_distribcell
   use hdf5, only: HID_T
 
   use constants
+  use dict_header,     only: EMPTY
   use error
   use geometry_header
   use hdf5_interface
@@ -96,11 +97,13 @@ contains
     class(DistribcellFilter), intent(inout) :: this
 
     integer :: id
+    integer :: val
 
     ! Convert id to index.
     id = this % cell
-    if (cell_dict % has(id)) then
-      this % cell = cell_dict % get(id)
+    val = cell_dict % get(id)
+    if (val /= EMPTY) then
+      this % cell = val
       this % n_bins = cells(this % cell) % instances
     else
       call fatal_error("Could not find cell " // trim(to_str(id)) &

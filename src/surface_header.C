@@ -33,7 +33,7 @@ const char* get_coeff_str(pugi::xml_node surf_node)
     return surf_node.child_value("coeffs");
   } else {
     std::cout << "ERROR: Found a surface with no coefficients" << std::endl;
-    return NULL;
+    return nullptr;
   }
 }
 

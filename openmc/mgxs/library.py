@@ -606,7 +606,7 @@ class Library(object):
 
         Parameters
         ----------
-        domain : Material or Cell or Universe or Integral
+        domain : openmc.Material or openmc.Cell or openmc.Universe or openmc.Mesh or Integral
             The material, cell, or universe object of interest (or its ID)
         mgxs_type : {'total', 'transport', 'nu-transport', 'absorption', 'capture', 'fission', 'nu-fission', 'kappa-fission', 'scatter', 'nu-scatter', 'scatter matrix', 'nu-scatter matrix', 'multiplicity matrix', 'nu-fission matrix', chi', 'chi-prompt', 'inverse-velocity', 'prompt-nu-fission', 'prompt-nu-fission matrix', 'delayed-nu-fission', 'delayed-nu-fission matrix', 'chi-delayed', 'beta'}
             The type of multi-group cross section object to return
@@ -668,7 +668,7 @@ class Library(object):
 
         Returns
         -------
-        Library
+        openmc.mgxs.Library
             A new multi-group cross section library condensed to the group
             structure of interest
 
@@ -880,7 +880,7 @@ class Library(object):
 
         Returns
         -------
-        Library
+        openmc.mgxs.Library
             A Library object loaded from the pickle binary file
 
         See also

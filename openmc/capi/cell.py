@@ -6,11 +6,11 @@ import numpy as np
 from numpy.ctypeslib import as_array
 
 from . import _dll
-from .core import _View
+from .core import _FortranObjectWithID
 from .error import _error_handler
-from .material import MaterialView
+from .material import Material
 
-__all__ = ['CellView', 'cells']
+__all__ = ['Cell', 'cells']
 
 # Cell functions
 _dll.openmc_cell_get_id.argtypes = [c_int32, POINTER(c_int32)]
@@ -31,11 +31,11 @@ _dll.openmc_get_cell_index.restype = c_int
 _dll.openmc_get_cell_index.errcheck = _error_handler
 
 
-class CellView(_View):
-    """View of a cell.
+class Cell(_FortranObjectWithID):
+    """Cell stored internally.
 
-    This class exposes a cell that is stored internally in the OpenMC solver. To
-    obtain a view of a cell with a given ID, use the
+    This class exposes a cell that is stored internally in the OpenMC
+    library. To obtain a view of a cell with a given ID, use the
     :data:`openmc.capi.nuclides` mapping.
 
     Parameters
@@ -53,7 +53,7 @@ class CellView(_View):
 
     def __new__(cls, *args):
         if args not in cls.__instances:
-            instance = super().__new__(cls)
+            instance = super(Cell, self).__new__(cls)
             cls.__instances[args] = instance
         return cls.__instances[args]
 
@@ -72,9 +72,9 @@ class CellView(_View):
 
         if fill_type.value == 1:
             if n.value > 1:
-                return [MaterialView(i) for i in indices[:n.value]]
+                return [Material(index=i) for i in indices[:n.value]]
             else:
-                return MaterialView(indices[0])
+                return Material(index=indices[0])
         else:
             raise NotImplementedError
 
@@ -84,7 +84,7 @@ class CellView(_View):
             n = len(fill)
             indices = (c_int*n)(*(m._index for m in fill))
             _dll.openmc_cell_set_fill(self._index, 1, 1, indices)
-        elif isinstance(fill, MaterialView):
+        elif isinstance(fill, Material):
             materials = [fill]
             indices = (c_int*1)(fill._index)
             _dll.openmc_cell_set_fill(self._index, 1, 1, indices)
@@ -108,12 +108,16 @@ class CellView(_View):
 class _CellMapping(Mapping):
     def __getitem__(self, key):
         index = c_int32()
-        _dll.openmc_get_cell_index(key, index)
-        return CellView(index.value)
+        try:
+            _dll.openmc_get_cell_index(key, index)
+        except (AllocationError, InvalidIDError) as e:
+            # __contains__ expects a KeyError to work correctly
+            raise KeyError(str(e))
+        return Cell(index.value)
 
     def __iter__(self):
         for i in range(len(self)):
-            yield CellView(i + 1).id
+            yield Cell(i + 1).id
 
     def __len__(self):
         return c_int32.in_dll(_dll, 'n_cells').value

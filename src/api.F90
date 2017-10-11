@@ -17,7 +17,7 @@ module openmc_api
   use initialize,      only: openmc_init
   use particle_header, only: Particle
   use plot,            only: openmc_plot_geometry
-  use random_lcg,      only: seed, initialize_prng
+  use random_lcg,      only: seed, openmc_set_seed
   use settings
   use simulation_header
   use tally_header
@@ -212,6 +212,8 @@ contains
 !===============================================================================
 
   subroutine openmc_hard_reset() bind(C)
+    integer :: err
+
     ! Reset all tallies and timers
     call openmc_reset()
 
@@ -220,8 +222,7 @@ contains
     total_gen = 0
 
     ! Reset the random number generator state
-    seed = 1_8
-    call initialize_prng()
+    err = openmc_set_seed(1_8)
   end subroutine openmc_hard_reset
 
 !===============================================================================

@@ -6,7 +6,7 @@ module input_xml
   use cmfd_input,       only: configure_cmfd
   use cmfd_header,      only: cmfd_mesh
   use constants
-  use dict_header,      only: DictIntInt, DictCharInt, ElemKeyValueCI
+  use dict_header,      only: DictIntInt, DictCharInt, DictEntryCI
   use distribution_multivariate
   use distribution_univariate
   use endf,             only: reaction_name
@@ -477,15 +477,15 @@ contains
         call m % from_xml(node_mesh_list(i))
 
         ! Add mesh to dictionary
-        call mesh_dict % add_key(m % id, i_start + i - 1)
+        call mesh_dict % set(m % id, i_start + i - 1)
       end associate
     end do
 
     ! Shannon Entropy mesh
     if (check_for_node(root, "entropy_mesh")) then
       call get_node_value(root, "entropy_mesh", temp_int)
-      if (mesh_dict % has_key(temp_int)) then
-        index_entropy_mesh = mesh_dict % get_key(temp_int)
+      if (mesh_dict % has(temp_int)) then
+        index_entropy_mesh = mesh_dict % get(temp_int)
       else
         call fatal_error("Mesh " // to_str(temp_int) // " specified for &
              &Shannon entropy does not exist.")
@@ -533,8 +533,8 @@ contains
     ! Uniform fission source weighting mesh
     if (check_for_node(root, "ufs_mesh")) then
       call get_node_value(root, "ufs_mesh", temp_int)
-      if (mesh_dict % has_key(temp_int)) then
-        index_ufs_mesh = mesh_dict % get_key(temp_int)
+      if (mesh_dict % has(temp_int)) then
+        index_ufs_mesh = mesh_dict % get(temp_int)
       else
         call fatal_error("Mesh " // to_str(temp_int) // " specified for &
              &uniform fission site method does not exist.")
@@ -1044,7 +1044,7 @@ contains
       end if
 
       ! Check to make sure 'id' hasn't been used
-      if (surface_dict % has_key(s%id)) then
+      if (surface_dict % has(s%id)) then
         call fatal_error("Two or more surfaces use the same unique ID: " &
              // to_str(s%id))
       end if
@@ -1175,7 +1175,7 @@ contains
              &"' specified on surface " // trim(to_str(s%id)))
       end select
       ! Add surface to dictionary
-      call surface_dict % add_key(s%id, i)
+      call surface_dict % set(s%id, i)
     end do
 
     ! Check to make sure a boundary condition was applied to at least one
@@ -1201,7 +1201,7 @@ contains
                    &interior surface.")
             end if
           else
-            surf % i_periodic = surface_dict % get_key(surf % i_periodic)
+            surf % i_periodic = surface_dict % get(surf % i_periodic)
           end if
 
         type is (SurfaceYPlane)
@@ -1215,7 +1215,7 @@ contains
                    &interior surface.")
             end if
           else
-            surf % i_periodic = surface_dict % get_key(surf % i_periodic)
+            surf % i_periodic = surface_dict % get(surf % i_periodic)
           end if
 
         type is (SurfaceZPlane)
@@ -1229,7 +1229,7 @@ contains
                    &interior surface.")
             end if
           else
-            surf % i_periodic = surface_dict % get_key(surf % i_periodic)
+            surf % i_periodic = surface_dict % get(surf % i_periodic)
           end if
 
         type is (SurfacePlane)
@@ -1238,7 +1238,7 @@ contains
                  &periodic boundary condition on surface " // &
                  trim(to_str(surf % id)) // ".")
           else
-            surf % i_periodic = surface_dict % get_key(surf % i_periodic)
+            surf % i_periodic = surface_dict % get(surf % i_periodic)
           end if
 
         class default
@@ -1315,7 +1315,7 @@ contains
       end if
 
       ! Check to make sure 'id' hasn't been used
-      if (cell_dict % has_key(c % id)) then
+      if (cell_dict % has(c % id)) then
         call fatal_error("Two or more cells use the same unique ID: " &
              // to_str(c % id))
       end if
@@ -1390,8 +1390,8 @@ contains
         do j = 1, tokens % size()
           id = tokens % data(j)
           if (id < OP_UNION) then
-            if (surface_dict % has_key(abs(id))) then
-              k = surface_dict % get_key(abs(id))
+            if (surface_dict % has(abs(id))) then
+              k = surface_dict % get(abs(id))
               tokens % data(j) = sign(k, id)
             end if
           end if
@@ -1511,21 +1511,21 @@ contains
       end if
 
       ! Add cell to dictionary
-      call cell_dict % add_key(c % id, i)
+      call cell_dict % set(c % id, i)
 
       ! For cells, we also need to check if there's a new universe --
       ! also for every cell add 1 to the count of cells for the
       ! specified universe
       univ_id = c % universe
-      if (.not. cells_in_univ_dict % has_key(univ_id)) then
+      if (.not. cells_in_univ_dict % has(univ_id)) then
         n_universes = n_universes + 1
         n_cells_in_univ = 1
-        call universe_dict % add_key(univ_id, n_universes)
+        call universe_dict % set(univ_id, n_universes)
         call univ_ids % push_back(univ_id)
       else
-        n_cells_in_univ = 1 + cells_in_univ_dict % get_key(univ_id)
+        n_cells_in_univ = 1 + cells_in_univ_dict % get(univ_id)
       end if
-      call cells_in_univ_dict % add_key(univ_id, n_cells_in_univ)
+      call cells_in_univ_dict % set(univ_id, n_cells_in_univ)
 
     end do
 
@@ -1559,7 +1559,7 @@ contains
       end if
 
       ! Check to make sure 'id' hasn't been used
-      if (lattice_dict % has_key(lat % id)) then
+      if (lattice_dict % has(lat % id)) then
         call fatal_error("Two or more lattices use the same unique ID: " &
              // to_str(lat % id))
       end if
@@ -1669,7 +1669,7 @@ contains
       end if
 
       ! Add lattice to dictionary
-      call lattice_dict % add_key(lat % id, i)
+      call lattice_dict % set(lat % id, i)
 
       end select
     end do RECT_LATTICES
@@ -1691,7 +1691,7 @@ contains
       end if
 
       ! Check to make sure 'id' hasn't been used
-      if (lattice_dict % has_key(lat % id)) then
+      if (lattice_dict % has(lat % id)) then
         call fatal_error("Two or more lattices use the same unique ID: " &
              // to_str(lat % id))
       end if
@@ -1856,7 +1856,7 @@ contains
       end if
 
       ! Add lattice to dictionary
-      call lattice_dict % add_key(lat % id, n_rlats + i)
+      call lattice_dict % set(lat % id, n_rlats + i)
 
       end select
     end do HEX_LATTICES
@@ -1871,7 +1871,7 @@ contains
         u % id = univ_ids % data(i)
 
         ! Allocate cell list
-        n_cells_in_univ = cells_in_univ_dict % get_key(u % id)
+        n_cells_in_univ = cells_in_univ_dict % get(u % id)
         allocate(u % cells(n_cells_in_univ))
         u % cells(:) = 0
 
@@ -1890,7 +1890,7 @@ contains
 
     do i = 1, n_cells
       ! Get index in universes array
-      j = universe_dict % get_key(cells(i) % universe)
+      j = universe_dict % get(cells(i) % universe)
 
       ! Set the first zero entry in the universe cells array to the index in the
       ! global cells array
@@ -2007,14 +2007,14 @@ contains
     ! Creating dictionary that maps the name of the material to the entry
     do i = 1, size(libraries)
       do j = 1, size(libraries(i) % materials)
-        call library_dict % add_key(to_lower(libraries(i) % materials(j)), i)
+        call library_dict % set(to_lower(libraries(i) % materials(j)), i)
       end do
     end do
 
     ! Check that 0K nuclides are listed in the cross_sections.xml file
     if (allocated(res_scat_nuclides)) then
       do i = 1, size(res_scat_nuclides)
-        if (.not. library_dict % has_key(to_lower(res_scat_nuclides(i)))) then
+        if (.not. library_dict % has(to_lower(res_scat_nuclides(i)))) then
           call fatal_error("Could not find resonant scatterer " &
                // trim(res_scat_nuclides(i)) // " in cross_sections.xml file!")
         end if
@@ -2102,7 +2102,7 @@ contains
       end if
 
       ! Check to make sure 'id' hasn't been used
-      if (material_dict % has_key(mat % id)) then
+      if (material_dict % has(mat % id)) then
         call fatal_error("Two or more materials use the same unique ID: " &
              // to_str(mat % id))
       end if
@@ -2311,11 +2311,11 @@ contains
       ALL_NUCLIDES: do j = 1, mat % n_nuclides
         ! Check that this nuclide is listed in the cross_sections.xml file
         name = trim(names % data(j))
-        if (.not. library_dict % has_key(to_lower(name))) then
+        if (.not. library_dict % has(to_lower(name))) then
           call fatal_error("Could not find nuclide " // trim(name) &
                // " in cross_sections data file!")
         end if
-        i_library = library_dict % get_key(to_lower(name))
+        i_library = library_dict % get(to_lower(name))
 
         if (run_CE) then
           ! Check to make sure cross-section is continuous energy neutron table
@@ -2327,13 +2327,13 @@ contains
 
         ! If this nuclide hasn't been encountered yet, we need to add its name
         ! and alias to the nuclide_dict
-        if (.not. nuclide_dict % has_key(to_lower(name))) then
+        if (.not. nuclide_dict % has(to_lower(name))) then
           index_nuclide    = index_nuclide + 1
           mat % nuclide(j) = index_nuclide
 
-          call nuclide_dict % add_key(to_lower(name), index_nuclide)
+          call nuclide_dict % set(to_lower(name), index_nuclide)
         else
-          mat % nuclide(j) = nuclide_dict % get_key(to_lower(name))
+          mat % nuclide(j) = nuclide_dict % get(to_lower(name))
         end if
 
         ! Copy name and atom/weight percent
@@ -2406,14 +2406,14 @@ contains
             end if
 
             ! Check that this nuclide is listed in the cross_sections.xml file
-            if (.not. library_dict % has_key(to_lower(name))) then
+            if (.not. library_dict % has(to_lower(name))) then
               call fatal_error("Could not find S(a,b) table " // trim(name) &
                    // " in cross_sections.xml file!")
             end if
 
             ! Find index in xs_listing and set the name and alias according to the
             ! listing
-            i_library = library_dict % get_key(to_lower(name))
+            i_library = library_dict % get(to_lower(name))
 
             if (run_CE) then
               ! Check to make sure cross-section is continuous energy neutron table
@@ -2425,19 +2425,19 @@ contains
 
             ! If this S(a,b) table hasn't been encountered yet, we need to add its
             ! name and alias to the sab_dict
-            if (.not. sab_dict % has_key(to_lower(name))) then
+            if (.not. sab_dict % has(to_lower(name))) then
               index_sab = index_sab + 1
               mat % i_sab_tables(j) = index_sab
-              call sab_dict % add_key(to_lower(name), index_sab)
+              call sab_dict % set(to_lower(name), index_sab)
             else
-              mat % i_sab_tables(j) = sab_dict % get_key(to_lower(name))
+              mat % i_sab_tables(j) = sab_dict % get(to_lower(name))
             end if
           end do
         end if
       end if
 
       ! Add material to dictionary
-      call material_dict % add_key(mat % id, i)
+      call material_dict % set(mat % id, i)
     end do
 
     ! Set total number of nuclides and S(a,b) tables
@@ -2463,6 +2463,7 @@ contains
     integer :: filter_id     ! user-specified identifier for filter
     integer :: i_filt        ! index in filters array
     integer :: i_filter_mesh ! index of mesh filter
+    integer :: i_elem        ! index of entry in dictionary
     integer :: n             ! size of arrays in mesh specification
     integer :: n_words       ! number of words read
     integer :: n_filter      ! number of filters
@@ -2500,8 +2501,7 @@ contains
     type(XMLNode), allocatable :: node_filt_list(:)
     type(XMLNode), allocatable :: node_trigger_list(:)
     type(XMLNode), allocatable :: node_deriv_list(:)
-    type(ElemKeyValueCI), pointer :: scores
-    type(ElemKeyValueCI), pointer :: next
+    type(DictEntryCI) :: elem
 
     ! Check if tallies.xml exists
     filename = trim(path_input) // "tallies.xml"
@@ -2557,7 +2557,7 @@ contains
       call m % from_xml(node_mesh_list(i))
 
       ! Add mesh to dictionary
-      call mesh_dict % add_key(m % id, i_start + i - 1)
+      call mesh_dict % set(m % id, i_start + i - 1)
     end do
 
     ! We only need the mesh info for plotting
@@ -2586,7 +2586,7 @@ contains
       call tally_derivs(i) % from_xml(node_deriv_list(i))
 
       ! Update tally derivative dictionary
-      call tally_deriv_dict % add_key(tally_derivs(i) % id, i)
+      call tally_deriv_dict % set(tally_derivs(i) % id, i)
     end do
 
     ! ==========================================================================
@@ -2612,7 +2612,7 @@ contains
       end if
 
       ! Check to make sure 'id' hasn't been used
-      if (filter_dict % has_key(filter_id)) then
+      if (filter_dict % has(filter_id)) then
         call fatal_error("Two or more filters use the same unique ID: " &
              // to_str(filter_id))
       end if
@@ -2682,7 +2682,7 @@ contains
       end if
 
       ! Check to make sure 'id' hasn't been used
-      if (tally_dict % has_key(t % id)) then
+      if (tally_dict % has(t % id)) then
         call fatal_error("Two or more tallies use the same unique ID: " &
              // to_str(t % id))
       end if
@@ -2717,8 +2717,8 @@ contains
 
         do j = 1, n_filter
           ! Get pointer to filter
-          if (filter_dict % has_key(temp_filter(j))) then
-            i_filt = filter_dict % get_key(temp_filter(j))
+          if (filter_dict % has(temp_filter(j))) then
+            i_filt = filter_dict % get(temp_filter(j))
             f => filters(i_filt)
           else
             call fatal_error("Could not find filter " &
@@ -2774,14 +2774,14 @@ contains
             word = to_lower(sarray(j))
 
             ! Search through nuclides
-            if (.not. nuclide_dict % has_key(word)) then
+            if (.not. nuclide_dict % has(word)) then
               call fatal_error("Could not find the nuclide " &
                    // trim(word) // " specified in tally " &
                    // trim(to_str(t % id)) // " in any material.")
             end if
 
             ! Set bin to index in nuclides array
-            t % nuclide_bins(j) = nuclide_dict % get_key(word)
+            t % nuclide_bins(j) = nuclide_dict % get(word)
           end do
 
           ! Set number of nuclide bins
@@ -2819,7 +2819,7 @@ contains
           score_name = trim(sarray(j))
 
           ! Append the score to the list of possible trigger scores
-          if (trigger_on) call trigger_scores % add_key(trim(score_name), j)
+          if (trigger_on) call trigger_scores % set(trim(score_name), j)
 
           do imomstr = 1, size(MOMENT_STRS)
             if (starts_with(score_name,trim(MOMENT_STRS(imomstr)))) then
@@ -3399,15 +3399,7 @@ contains
             score_name = trim(to_lower(sarray(j)))
 
             if (score_name == "all") then
-              scores => trigger_scores % keys()
-
-              do while (associated(scores))
-                next => scores % next
-                deallocate(scores)
-                scores => next
-                t % n_triggers = t % n_triggers + 1
-              end do
-
+              t % n_triggers = t % n_triggers + trigger_scores % size()
             else
               t % n_triggers = t % n_triggers + 1
             end if
@@ -3466,16 +3458,19 @@ contains
 
             ! Expand "all" to include TriggerObjects for each score in tally
             if (score_name == "all") then
-              scores => trigger_scores % keys()
 
               ! Loop over all tally scores
-              do while (associated(scores))
-                score_name = trim(scores % key)
+              i_elem = 0
+              do
+                ! Move to next score
+                call trigger_scores % next_entry(elem, i_elem)
+                if (i_elem == 0) exit
+
+                score_name = trim(elem % key)
 
                 ! Store the score name and index in the trigger
-                t % triggers(trig_ind) % score_name = trim(score_name)
-                t % triggers(trig_ind) % score_index = &
-                     trigger_scores % get_key(trim(score_name))
+                t % triggers(trig_ind) % score_name = score_name
+                t % triggers(trig_ind) % score_index = elem % value
 
                 ! Set the trigger convergence threshold type
                 select case (temp_str)
@@ -3493,11 +3488,6 @@ contains
                 ! Store the trigger convergence threshold
                 t % triggers(trig_ind) % threshold = threshold
 
-                ! Move to next score
-                next => scores % next
-                deallocate(scores)
-                scores => next
-
                 ! Increment the overall trigger index
                 trig_ind = trig_ind + 1
               end do
@@ -3508,7 +3498,7 @@ contains
               ! Store the score name and index
               t % triggers(trig_ind) % score_name = trim(score_name)
               t % triggers(trig_ind) % score_index = &
-                   trigger_scores % get_key(trim(score_name))
+                   trigger_scores % get(trim(score_name))
 
               ! Check if an invalid score was set for the trigger
               if (t % triggers(trig_ind) % score_index == 0) then
@@ -3585,7 +3575,7 @@ contains
       end if
 
       ! Add tally to dictionary
-      call tally_dict % add_key(t % id, i)
+      call tally_dict % set(t % id, i)
 
       end associate
     end do READ_TALLIES
@@ -3657,7 +3647,7 @@ contains
       end if
 
       ! Check to make sure 'id' hasn't been used
-      if (plot_dict % has_key(pl % id)) then
+      if (plot_dict % has(pl % id)) then
         call fatal_error("Two or more plots use the same unique ID: " &
              // to_str(pl % id))
       end if
@@ -3842,8 +3832,8 @@ contains
           ! Add RGB
           if (pl % color_by == PLOT_COLOR_CELLS) then
 
-            if (cell_dict % has_key(col_id)) then
-              col_id = cell_dict % get_key(col_id)
+            if (cell_dict % has(col_id)) then
+              col_id = cell_dict % get(col_id)
               call get_node_array(node_col, "rgb", pl % colors(col_id) % rgb)
             else
               call fatal_error("Could not find cell " // trim(to_str(col_id)) &
@@ -3852,8 +3842,8 @@ contains
 
           else if (pl % color_by == PLOT_COLOR_MATS) then
 
-            if (material_dict % has_key(col_id)) then
-              col_id = material_dict % get_key(col_id)
+            if (material_dict % has(col_id)) then
+              col_id = material_dict % get(col_id)
               call get_node_array(node_col, "rgb", pl % colors(col_id) % rgb)
             else
               call fatal_error("Could not find material " &
@@ -3957,8 +3947,8 @@ contains
               end if
 
               ! Check if the specified tally mesh exists
-              if (mesh_dict % has_key(meshid)) then
-                pl % meshlines_mesh => meshes(mesh_dict % get_key(meshid))
+              if (mesh_dict % has(meshid)) then
+                pl % meshlines_mesh => meshes(mesh_dict % get(meshid))
                 if (meshes(meshid) % type /= LATTICE_RECT) then
                   call fatal_error("Non-rectangular mesh specified in &
                        &meshlines for plot " // trim(to_str(pl % id)))
@@ -4017,8 +4007,8 @@ contains
 
               if (pl % color_by == PLOT_COLOR_CELLS) then
 
-                if (cell_dict % has_key(col_id)) then
-                  iarray(j) = cell_dict % get_key(col_id)
+                if (cell_dict % has(col_id)) then
+                  iarray(j) = cell_dict % get(col_id)
                 else
                   call fatal_error("Could not find cell " &
                        // trim(to_str(col_id)) // " specified in the mask in &
@@ -4027,8 +4017,8 @@ contains
 
               else if (pl % color_by == PLOT_COLOR_MATS) then
 
-                if (material_dict % has_key(col_id)) then
-                  iarray(j) = material_dict % get_key(col_id)
+                if (material_dict % has(col_id)) then
+                  iarray(j) = material_dict % get(col_id)
                 else
                   call fatal_error("Could not find material " &
                        // trim(to_str(col_id)) // " specified in the mask in &
@@ -4056,7 +4046,7 @@ contains
       end if
 
       ! Add plot to dictionary
-      call plot_dict % add_key(pl % id, i)
+      call plot_dict % set(pl % id, i)
 
     end do READ_PLOTS
 
@@ -4437,8 +4427,8 @@ contains
         name = materials(i) % names(j)
 
         if (.not. already_read % contains(name)) then
-          i_library = library_dict % get_key(to_lower(name))
-          i_nuclide = nuclide_dict % get_key(to_lower(name))
+          i_library = library_dict % get(to_lower(name))
+          i_nuclide = nuclide_dict % get(to_lower(name))
 
           call write_message('Reading ' // trim(name) // ' from ' // &
                trim(libraries(i_library) % path), 6)
@@ -4497,8 +4487,8 @@ contains
         name = materials(i) % sab_names(j)
 
         if (.not. already_read % contains(name)) then
-          i_library = library_dict % get_key(to_lower(name))
-          i_sab  = sab_dict % get_key(to_lower(name))
+          i_library = library_dict % get(to_lower(name))
+          i_sab  = sab_dict % get(to_lower(name))
 
           call write_message('Reading ' // trim(name) // ' from ' // &
                trim(libraries(i_library) % path), 6)
@@ -4663,12 +4653,12 @@ contains
       ! ADJUST UNIVERSE INDEX FOR EACH CELL
       associate (c => cells(i))
 
-      id = c%universe
-      if (universe_dict%has_key(id)) then
-        c%universe = universe_dict%get_key(id)
+      id = c % universe
+      if (universe_dict % has(id)) then
+        c % universe = universe_dict % get(id)
       else
         call fatal_error("Could not find universe " // trim(to_str(id)) &
-             &// " specified on cell " // trim(to_str(c%id)))
+             &// " specified on cell " // trim(to_str(c % id)))
       end if
 
       ! =======================================================================
@@ -4676,11 +4666,11 @@ contains
 
       if (c % material(1) == NONE) then
         id = c % fill
-        if (universe_dict % has_key(id)) then
+        if (universe_dict % has(id)) then
           c % type = FILL_UNIVERSE
-          c % fill = universe_dict % get_key(id)
-        elseif (lattice_dict % has_key(id)) then
-          lid = lattice_dict % get_key(id)
+          c % fill = universe_dict % get(id)
+        elseif (lattice_dict % has(id)) then
+          lid = lattice_dict % get(id)
           c % type = FILL_LATTICE
           c % fill = lid
         else
@@ -4693,9 +4683,9 @@ contains
           id = c % material(j)
           if (id == MATERIAL_VOID) then
             c % type = FILL_MATERIAL
-          else if (material_dict % has_key(id)) then
+          else if (material_dict % has(id)) then
             c % type = FILL_MATERIAL
-            c % material(j) = material_dict % get_key(id)
+            c % material(j) = material_dict % get(id)
           else
             call fatal_error("Could not find material " // trim(to_str(id)) &
                  // " specified on cell " // trim(to_str(c % id)))
@@ -4709,41 +4699,41 @@ contains
     ! ADJUST UNIVERSE INDICES FOR EACH LATTICE
 
     do i = 1, n_lattices
-      lat => lattices(i)%obj
+      lat => lattices(i) % obj
       select type (lat)
 
       type is (RectLattice)
-        do m = 1, lat%n_cells(3)
-          do k = 1, lat%n_cells(2)
-            do j = 1, lat%n_cells(1)
-              id = lat%universes(j,k,m)
-              if (universe_dict%has_key(id)) then
-                lat%universes(j,k,m) = universe_dict%get_key(id)
+        do m = 1, lat % n_cells(3)
+          do k = 1, lat % n_cells(2)
+            do j = 1, lat % n_cells(1)
+              id = lat % universes(j,k,m)
+              if (universe_dict % has(id)) then
+                lat % universes(j,k,m) = universe_dict % get(id)
               else
                 call fatal_error("Invalid universe number " &
                      &// trim(to_str(id)) // " specified on lattice " &
-                     &// trim(to_str(lat%id)))
+                     &// trim(to_str(lat % id)))
               end if
             end do
           end do
         end do
 
       type is (HexLattice)
-        do m = 1, lat%n_axial
-          do k = 1, 2*lat%n_rings - 1
-            do j = 1, 2*lat%n_rings - 1
-              if (j + k < lat%n_rings + 1) then
+        do m = 1, lat % n_axial
+          do k = 1, 2*lat % n_rings - 1
+            do j = 1, 2*lat % n_rings - 1
+              if (j + k < lat % n_rings + 1) then
                 cycle
-              else if (j + k > 3*lat%n_rings - 1) then
+              else if (j + k > 3*lat % n_rings - 1) then
                 cycle
               end if
-              id = lat%universes(j, k, m)
-              if (universe_dict%has_key(id)) then
-                lat%universes(j, k, m) = universe_dict%get_key(id)
+              id = lat % universes(j, k, m)
+              if (universe_dict % has(id)) then
+                lat % universes(j, k, m) = universe_dict % get(id)
               else
                 call fatal_error("Invalid universe number " &
                      &// trim(to_str(id)) // " specified on lattice " &
-                     &// trim(to_str(lat%id)))
+                     &// trim(to_str(lat % id)))
               end if
             end do
           end do
@@ -4751,13 +4741,13 @@ contains
 
       end select
 
-      if (lat%outer /= NO_OUTER_UNIVERSE) then
-        if (universe_dict%has_key(lat%outer)) then
-          lat%outer = universe_dict%get_key(lat%outer)
+      if (lat % outer /= NO_OUTER_UNIVERSE) then
+        if (universe_dict % has(lat % outer)) then
+          lat % outer = universe_dict % get(lat % outer)
         else
           call fatal_error("Invalid universe number " &
-               &// trim(to_str(lat%outer)) &
-               &// " specified on lattice " // trim(to_str(lat%id)))
+               &// trim(to_str(lat % outer)) &
+               &// " specified on lattice " // trim(to_str(lat % id)))
         end if
       end if
 

@@ -204,7 +204,7 @@ contains
     if (index >= 1 .and. index <= n_filters) then
       if (allocated(filters(index) % obj)) then
         filters(index) % obj % id = id
-        call filter_dict % add_key(id, index)
+        call filter_dict % set(id, index)
 
         err = 0
       else
@@ -225,8 +225,8 @@ contains
     integer(C_INT) :: err
 
     if (allocated(filters)) then
-      if (filter_dict % has_key(id)) then
-        index = filter_dict % get_key(id)
+      if (filter_dict % has(id)) then
+        index = filter_dict % get(id)
         err = 0
       else
         err = E_INVALID_ID

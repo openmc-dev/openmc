@@ -9,7 +9,6 @@ module initialize
 
   use bank_header,     only: Bank
   use constants
-  use dict_header,     only: DictIntInt, ElemKeyValueII
   use set_header,      only: SetInt
   use error,           only: fatal_error, warning
   use geometry_header, only: Cell, Universe, Lattice, RectLattice, HexLattice,&

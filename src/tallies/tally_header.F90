@@ -455,8 +455,8 @@ contains
     integer(C_INT) :: err
 
     if (allocated(tallies)) then
-      if (tally_dict % has_key(id)) then
-        index = tally_dict % get_key(id)
+      if (tally_dict % has(id)) then
+        index = tally_dict % get(id)
         err = 0
       else
         err = E_INVALID_ID
@@ -592,7 +592,7 @@ contains
     if (index >= 1 .and. index <= n_tallies) then
       if (allocated(tallies(index) % obj)) then
         tallies(index) % obj % id = id
-        call tally_dict % add_key(id, index)
+        call tally_dict % set(id, index)
 
         err = 0
       else
@@ -633,8 +633,8 @@ contains
           case ('total')
             t % nuclide_bins(i) = -1
           case default
-            if (nuclide_dict % has_key(nuclide_)) then
-              t % nuclide_bins(i) = nuclide_dict % get_key(nuclide_)
+            if (nuclide_dict % has(nuclide_)) then
+              t % nuclide_bins(i) = nuclide_dict % get(nuclide_)
             else
               err = E_DATA
               call set_errmsg("Nuclide '" // trim(to_f_string(string)) // &

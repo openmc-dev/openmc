@@ -441,10 +441,7 @@ class IncidentPhoton(EqualityMixin):
         # Add stopping power data
         if Z < 99:
             data.stopping_powers['energy'] = _STOPPING_POWERS['energy']
-            S = _STOPPING_POWERS[Z]
-            keys = ['density', 'I', 's_collision', 's_radiative', 'density_effect']
-            for k in keys:
-                data.stopping_powers[k] = S[k]
+            data.stopping_powers.update(_STOPPING_POWERS[Z])
 
         # Load bremsstrahlung data if it has not yet been loaded
         if not _BREMSSTRAHLUNG:
@@ -459,17 +456,17 @@ class IncidentPhoton(EqualityMixin):
             j = 39
 
             # Get incident electron kinetic energy values
-            _BREMSSTRAHLUNG['electron_energy'] = [float(x) for x in brem[j:j+n]]
+            _BREMSSTRAHLUNG['electron_energy'] = np.fromiter(brem[j:j+n], float, n)
             j += n
 
             # Get reduced photon energy values
-            _BREMSSTRAHLUNG['photon_energy'] = [float(x) for x in brem[j:j+k]]
+            _BREMSSTRAHLUNG['photon_energy'] = np.fromiter(brem[j:j+k], float, k)
             j += k
 
             for i in range(1, 101):
                 # Get the scaled cross section values for each electron energy and
                 # reduced photon energy for this Z
-                dcs = np.reshape([float(x) for x in brem[j:j+k*n]], (n, k))
+                dcs = np.reshape(np.fromiter(brem[j:j+n*k], float, n*k), (n, k))
                 j += k*n
 
                 _BREMSSTRAHLUNG[i] = {'dcs': dcs}
@@ -602,13 +599,11 @@ class IncidentPhoton(EqualityMixin):
         if self.stopping_powers:
             s_group = group.create_group('stopping_powers')
 
-            S = self.stopping_powers
-            s_group.attrs['density'] = S['density']
-            s_group.attrs['I'] = S['I']
-
-            keys = ['energy', 's_collision', 's_radiative', 'density_effect']
-            for k in keys:
-                s_group.create_dataset(k, data=S[k])
+            for key, value in self.stopping_powers.items():
+                if key in ('density', 'I'):
+                    s_group.attrs[key] = value
+                else:
+                    s_group.create_dataset(key, data=value)
 
         # Write bremsstrahlung
         if self.bremsstrahlung:

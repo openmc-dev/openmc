@@ -37,7 +37,7 @@ kwargs = {'name': 'openmc',
           # Data files and librarries
           'package_data': {
               'openmc': ['_libopenmc.{}'.format(suffix)],
-              'openmc.data': ['mass.mas12', 'fission_Q_data_endfb71.h5']
+              'openmc.data': ['mass.mas12', '*.h5']
           },
 
           # Metadata
@@ -66,15 +66,6 @@ if have_setuptools:
             'plot': ['matplotlib', 'ipython'],
             'vtk': ['vtk', 'silomesh'],
             'validate': ['lxml']
-        },
-
-        # Data files
-        'package_data': {
-            'openmc.data': [
-                'mass.mas12',
-                'fission_Q_data_endfb71.h5',
-                'compton_profiles.h5'
-            ]
         },
     })
 

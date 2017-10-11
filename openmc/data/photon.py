@@ -80,6 +80,20 @@ _REACTION_NAME = {
 # is a 2D array with shape (n_shells, n_momentum_values) stored on the key Z
 _COMPTON_PROFILES = {}
 
+# Stopping powers are read from a pre-generated HDF5 file when they are first
+# needed. The dictionary stores an array of energy values at which the other
+# quantities are tabulated with the key 'energy' and for each element has the
+# mass density, the mean excitation energy, and arrays containing the collision
+# stopping powers, radiative stopping powers, and the density effect parameter
+# stored on the key 'Z'.
+_STOPPING_POWERS = {}
+
+# Scaled bremsstrahlung DCSs are read from a data file provided by Selzter and
+# Berger when they are first needed. The dictionary stores an array of n
+# incident electron kinetic energies with key 'electron_energies', an array of
+# k reduced photon energies with key 'photon_energies', and the cross sections
+# for each element are in a 2D array with shape (n, k) stored on the key 'Z'.
+_BREMSSTRAHLUNG = {}
 
 class AtomicRelaxation(EqualityMixin):
     """Atomic relaxation data.
@@ -257,11 +271,11 @@ class AtomicRelaxation(EqualityMixin):
 class IncidentPhoton(EqualityMixin):
     """Photon interaction data.
 
-    This class stores photo-atomic, photo-nuclear, atomic relaxation, and
-    Compton profile data assembled from different sources. To create an
-    instance, the factory method :meth:`IncidentPhoton.from_endf` can be
-    used. To add atomic relaxation or Compton profile data, set the
-    :attr:`IncidentPhoton.atomic_relaxation` and
+    This class stores photo-atomic, photo-nuclear, atomic relaxation, 
+    Compton profile, stopping power, and bremsstrahlung data assembled from
+    different sources. To create an instance, the factory method
+    :meth:`IncidentPhoton.from_endf` can be used. To add atomic relaxation or
+    Compton profile data, set the :attr:`IncidentPhoton.atomic_relaxation` and
     :attr:`IncidentPhoton.compton_profiles` attributes directly.
 
     Parameters
@@ -282,6 +296,19 @@ class IncidentPhoton(EqualityMixin):
         the projection of the electron momentum on the scattering vector,
         :math:`p_z` for each subshell). Note that subshell occupancies may not
         match the atomic relaxation data.
+    stopping_powers : dict
+        Dictionary of stopping power data with keys 'energy', 'density' (mass
+        density in g/cm:sup:`3`), 'I' (mean excitation energy), 's_collision'
+        (collision stopping power in MeV cm:sup:`2`/g), 's_radiative'
+        (radiative stopping power in MeV cm:sup:`2`/g), and 'density_effect'
+        (density effect parameter).
+    bremsstrahlung : dict
+        Dictionary of bremsstrahlung DCS data with keys 'electron_energy'
+        (incident electron kinetic energy values in MeV), 'photon_energy'
+        (ratio of the energy of the emitted photon to the incident electron
+        kinetic energy), and 'dcs' (cross sectin values). The cross sections
+        are in scaled form: :math:`(\beta^2/Z^2) E_k (d\sigma/dE_k)`, where
+        :math:`E_k` is the energy of the emitted photon.
     reactions : collections.OrderedDict
         Contains the cross sections for each photon reaction. The keys are MT
         values and the values are instances of :class:`PhotonReaction`.
@@ -297,6 +324,8 @@ class IncidentPhoton(EqualityMixin):
         self.reactions = OrderedDict()
         self.summed_reactions = OrderedDict()
         self.compton_profiles = {}
+        self.stopping_powers = {}
+        self.bremsstrahlung = {}
 
     def __contains__(self, mt):
         return mt in self.reactions or mt in self.summed_reactions
@@ -395,6 +424,57 @@ class IncidentPhoton(EqualityMixin):
         data.compton_profiles['num_electrons'] = profile['num_electrons']
         data.compton_profiles['binding_energy'] = profile['binding_energy']
         data.compton_profiles['J'] = [Tabulated1D(pz, J_k) for J_k in profile['J']]
+
+        # Load stopping power data if it has not yet been loaded
+        if not _STOPPING_POWERS:
+            filename = os.path.join(os.path.dirname(__file__), 'stopping_powers.h5')
+            with h5py.File(filename, 'r') as f:
+                _STOPPING_POWERS['energy'] = f['energy'].value
+                for i in range(1, 99):
+                    group = f['{:03}'.format(i)]
+                    _STOPPING_POWERS[i] = {'density': group.attrs['density'],
+                                           'I': group.attrs['I'],
+                                           's_collision': group['s_collision'].value,
+                                           's_radiative': group['s_radiative'].value,
+                                           'density_effect': group['density_effect'].value}
+
+        # Add stopping power data
+        if Z < 99:
+            data.stopping_powers['energy'] = _STOPPING_POWERS['energy']
+            data.stopping_powers.update(_STOPPING_POWERS[Z])
+
+        # Load bremsstrahlung data if it has not yet been loaded
+        if not _BREMSSTRAHLUNG:
+            filename = os.path.join(os.path.dirname(__file__), 'BREMX.DAT')
+            brem = open(filename, 'r').read().split()
+
+            # Get number of tabulated electron and photon energy values
+            n = int(brem[37])
+            k = int(brem[38])
+
+            # Index in data
+            j = 39
+
+            # Get incident electron kinetic energy values
+            _BREMSSTRAHLUNG['electron_energy'] = np.fromiter(brem[j:j+n], float, n)
+            j += n
+
+            # Get reduced photon energy values
+            _BREMSSTRAHLUNG['photon_energy'] = np.fromiter(brem[j:j+k], float, k)
+            j += k
+
+            for i in range(1, 101):
+                # Get the scaled cross section values for each electron energy and
+                # reduced photon energy for this Z
+                dcs = np.reshape(np.fromiter(brem[j:j+n*k], float, n*k), (n, k))
+                j += k*n
+
+                _BREMSSTRAHLUNG[i] = {'dcs': dcs}
+
+        # Add bremsstrahlung DCS data
+        data.bremsstrahlung['electron_energy'] = _BREMSSTRAHLUNG['electron_energy']
+        data.bremsstrahlung['photon_energy'] = _BREMSSTRAHLUNG['photon_energy']
+        data.bremsstrahlung['dcs'] = _BREMSSTRAHLUNG[Z]['dcs']
 
         return data
 
@@ -514,6 +594,27 @@ class IncidentPhoton(EqualityMixin):
             # Create/write 2D array of profiles
             J = np.array([Jk.y for Jk in profile['J']])
             compton_group.create_dataset('J', data=J)
+
+        # Write stopping powers
+        if self.stopping_powers:
+            s_group = group.create_group('stopping_powers')
+
+            for key, value in self.stopping_powers.items():
+                if key in ('density', 'I'):
+                    s_group.attrs[key] = value
+                else:
+                    s_group.create_dataset(key, data=value)
+
+        # Write bremsstrahlung
+        if self.bremsstrahlung:
+            brem_group = group.create_group('bremsstrahlung')
+
+            brem = self.bremsstrahlung
+            brem_group.create_dataset('electron_energy',
+                                      data=brem['electron_energy'])
+            brem_group.create_dataset('photon_energy',
+                                      data=brem['photon_energy'])
+            brem_group.create_dataset('dcs', data=brem['dcs'])
 
 
 class PhotonReaction(EqualityMixin):

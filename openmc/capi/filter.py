@@ -60,7 +60,7 @@ _dll.openmc_mesh_filter_set_mesh.errcheck = _error_handler
 class Filter(_FortranObjectWithID):
     __instances = WeakValueDictionary()
 
-    def __new__(cls, filter_type, uid=None, new=True, index=None):
+    def __new__(cls, obj=None, uid=None, new=True, index=None):
         mapping = filters
         if index is None:
             if new:
@@ -75,9 +75,13 @@ class Filter(_FortranObjectWithID):
                         raise AllocationError('A filter with ID={} has already '
                                               'been allocated.'.format(uid))
 
+                # Resize internal array
                 index = c_int32()
                 _dll.openmc_extend_filters(1, index, None)
-                _dll.openmc_filter_set_type(index, filter_type)
+
+                # Set the filter type -- note that the filter_type attribute
+                # only exists on subclasses!
+                _dll.openmc_filter_set_type(index, cls.filter_type.encode())
                 index = index.value
             else:
                 index = mapping[uid]._index
@@ -103,8 +107,7 @@ class Filter(_FortranObjectWithID):
 
 
 class EnergyFilter(Filter):
-    def __new__(cls, bins=None, uid=None, new=True, index=None):
-        return super(EnergyFilter, cls).__new__(cls, b'energy', uid, new, index)
+    filter_type = 'energy'
 
     def __init__(self, bins=None, uid=None, new=True, index=None):
         super(EnergyFilter, self).__init__(uid, new, index)
@@ -129,56 +132,39 @@ class EnergyFilter(Filter):
 
 
 class EnergyoutFilter(Filter):
-    def __new__(cls, bins=None, uid=None, new=True, index=None):
-        return super(EnergyoutFilter, cls).__new__(cls, b'energyout',
-                                                   uid, new, index)
+    filter_type = 'energyout'
 
 
 class AzimuthalFilter(Filter):
-    def __new__(cls, bins=None, uid=None, new=True, index=None):
-        return super(AzimuthalFilter, cls).__new__(cls, b'azimuthal',
-                                                   uid, new, index)
+    filter_type = 'azimuthal'
 
 
 class CellFilter(Filter):
-    def __new__(cls, bins=None, uid=None, new=True, index=None):
-        return super(CellFilter, cls).__new__(cls, b'cell', uid, new, index)
+    filter_type = 'cell'
 
 
 class CellbornFilter(Filter):
-    def __new__(cls, bins=None, uid=None, new=True, index=None):
-        return super(CellbornFilter, cls).__new__(cls, b'cellborn', uid,
-                                                  new, index)
+    filter_type = 'cellborn'
 
 
 class CellfromFilter(Filter):
-    def __new__(cls, bins=None, uid=None, new=True, index=None):
-        return super(CellfromFilter, cls).__new__(cls, b'cellfrom', uid,
-                                                  new, index)
+    filter_type = 'cellfrom'
 
 
 class DelayedGroupFilter(Filter):
-    def __new__(cls, bins=None, uid=None, new=True, index=None):
-        return super(DelayedGroupFilter, cls).__new__(cls, b'delayedgroup',
-                                                      uid, new, index)
+    filter_type = 'delayedgroup'
 
 
 class DistribcellFilter(Filter):
-    def __new__(cls, bins=None, uid=None, new=True, index=None):
-        return super(DistribcellFilter, cls).__new__(cls, b'distribcell',
-                                                     uid, new, index)
+    filter_type = 'distribcell'
 
 
 class EnergyFunctionFilter(Filter):
-    def __new__(cls, bins=None, uid=None, new=True, index=None):
-        return super(EnergyFunctionFilter, cls).__new__(
-            cls, b'energyfunction', uid, new, index)
+    filter_type = 'energyfunction'
 
 
 class MaterialFilter(Filter):
-    def __new__(cls, bins=None, uid=None, new=True, index=None):
-        return super(MaterialFilter, cls).__new__(cls, b'material',
-                                                   uid, new, index)
+    filter_type = 'material'
 
     def __init__(self, bins=None, uid=None, new=True, index=None):
         super(MaterialFilter, self).__init__(uid, new, index)
@@ -202,30 +188,23 @@ class MaterialFilter(Filter):
 
 
 class MeshFilter(Filter):
-    def __new__(cls, bins=None, uid=None, new=True, index=None):
-        return super(MeshFilter, cls).__new__(cls, b'mesh', uid, new, index)
+    filter_type = 'mesh'
 
 
 class MuFilter(Filter):
-    def __new__(cls, bins=None, uid=None, new=True, index=None):
-        return super(MuFilter, cls).__new__(cls, b'mu', uid, new, index)
+    filter_type = 'mu'
 
 
 class PolarFilter(Filter):
-    def __new__(cls, bins=None, uid=None, new=True, index=None):
-        return super(PolarFilter, cls).__new__(cls, b'polar', uid, new, index)
+    filter_type = 'polar'
 
 
 class SurfaceFilter(Filter):
-    def __new__(cls, bins=None, uid=None, new=True, index=None):
-        return super(SurfaceFilter, cls).__new__(cls, b'surface', uid,
-                                                 new, index)
+    filter_type = 'surface'
 
 
 class UniverseFilter(Filter):
-    def __new__(cls, bins=None, uid=None, new=True, index=None):
-        return super(UniverseFilter, cls).__new__(cls, b'universe', uid,
-                                                  new, index)
+    filter_type = 'universe'
 
 
 _FILTER_TYPE_MAP = {

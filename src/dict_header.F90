@@ -9,9 +9,13 @@ module dict_header
 !
 ! The implementation is based on Algorithm D from Knuth Vol. 3 Sec. 6.4 (open
 ! addressing with double hashing). Hash table sizes M are chosen such that M
-! and M - 2 are twin primes, which helps reduce clustering. An upper limit is
-! placed on the load factor to prevent exponential performance degradation as
-! the number of entries approaches the number of buckets.
+! and M - 2 are twin primes, which helps reduce clustering. The sequence of
+! twin primes used for the table sizes comes from
+! https://github.com/anholt/hash_table/blob/master/hash_table.c. These values
+! were selected so that the table would grow by approximately a factor of two
+! each time the maximum load factor is exceeded. An upper limit is placed on
+! the load factor to prevent exponential performance degradation as the number
+! of entries approaches the number of buckets.
 !===============================================================================
 
   implicit none

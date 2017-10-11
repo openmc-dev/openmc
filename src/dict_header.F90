@@ -8,7 +8,7 @@ module dict_header
 ! surfaces by name.
 !
 ! The implementation is based on Algorithm D from Knuth Vol. 3 Sec. 6.4 (open
-! addressing with double hashing). Hash tables sizes M are chosen such that M
+! addressing with double hashing). Hash table sizes M are chosen such that M
 ! and M - 2 are twin primes, which helps reduce clustering. An upper limit is
 ! placed on the load factor to prevent exponential performance degradation as
 ! the number of entries approaches the number of buckets.
@@ -142,8 +142,11 @@ contains
     c = 2 + mod(hash, this % capacity - 2)
 
     do
-      if (this % table(i) % hash == hash .and. &
-           this % table(i) % entry % key == key) exit
+      if (this % table(i) % hash == hash) then
+        if (allocated(this % table(i) % entry)) then
+          if (this % table(i) % entry % key == key) exit
+        end if
+      end if
 
       if (this % table(i) % hash == EMPTY) exit
 
@@ -408,7 +411,7 @@ contains
 ! NEXT_ENTRY finds the next (key,value) pair. The value of current_entry is
 ! updated with the (key,value) pair, and the value of i is updated with the
 ! index of the entry in the table. Passing in i = 0 will locate the first entry
-! in the dictionary. If there are no more entries, i will be set to 0. 
+! in the dictionary. If there are no more entries, i will be set to 0.
 !===============================================================================
 
   subroutine next_entry_ii(this, current_entry, i)
@@ -505,7 +508,7 @@ contains
 ! HASH returns the hash value for a given key
 !===============================================================================
 
-  function hash_ii(key) result(hash)
+  pure function hash_ii(key) result(hash)
 
     integer, intent(in) :: key
     integer             :: hash
@@ -514,7 +517,7 @@ contains
 
   end function hash_ii
 
-  function hash_ci(key) result(hash)
+  pure function hash_ci(key) result(hash)
 
     character(*), intent(in) :: key
     integer                  :: hash

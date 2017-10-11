@@ -6,11 +6,11 @@ import numpy as np
 from numpy.ctypeslib import as_array
 
 from . import _dll
-from .core import _View
-from .error import _error_handler
+from .core import _FortranObject
+from .error import _error_handler, DataError, AllocationError
 
 
-__all__ = ['NuclideView', 'nuclides', 'load_nuclide']
+__all__ = ['Nuclide', 'nuclides', 'load_nuclide']
 
 # Nuclide functions
 _dll.openmc_get_nuclide_index.argtypes = [c_char_p, POINTER(c_int)]
@@ -36,8 +36,8 @@ def load_nuclide(name):
     _dll.openmc_load_nuclide(name.encode())
 
 
-class NuclideView(_View):
-    """View of a nuclide.
+class Nuclide(_FortranObject):
+    """Nuclide stored internally.
 
     This class exposes a nuclide that is stored internally in the OpenMC
     solver. To obtain a view of a nuclide with a given name, use the
@@ -58,9 +58,12 @@ class NuclideView(_View):
 
     def __new__(cls, *args):
         if args not in cls.__instances:
-            instance = super().__new__(cls)
+            instance = super(Nuclide, cls).__new__(cls)
             cls.__instances[args] = instance
         return cls.__instances[args]
+
+    def __init__(self, index):
+        self._index = index
 
     @property
     def name(self):
@@ -78,12 +81,16 @@ class _NuclideMapping(Mapping):
     """Provide mapping from nuclide name to index in nuclides array."""
     def __getitem__(self, key):
         index = c_int()
-        _dll.openmc_get_nuclide_index(key.encode(), index)
-        return NuclideView(index.value)
+        try:
+            _dll.openmc_get_nuclide_index(key.encode(), index)
+        except (DataError, AllocationError) as e:
+            # __contains__ expects a KeyError to work correctly
+            raise KeyError(str(e))
+        return Nuclide(index.value)
 
     def __iter__(self):
         for i in range(len(self)):
-            yield NuclideView(i + 1).name
+            yield Nuclide(i + 1).name
 
     def __len__(self):
         return c_int.in_dll(_dll, 'n_nuclides').value

@@ -20,7 +20,7 @@ module initialize
   use message_passing
   use mgxs_data,       only: read_mgxs, create_macro_xs
   use output,          only: print_version, write_message, print_usage
-  use random_lcg,      only: initialize_prng
+  use random_lcg,      only: openmc_set_seed, seed
   use settings
 #ifdef _OPENMP
   use simulation_header, only: n_threads
@@ -43,6 +43,8 @@ contains
 
   subroutine openmc_init(intracomm) bind(C)
     integer, intent(in), optional :: intracomm  ! MPI intracommunicator
+
+    integer :: err
 
     ! Copy the communicator to a new variable. This is done to avoid changing
     ! the signature of this subroutine. If MPI is being used but no communicator
@@ -82,7 +84,7 @@ contains
 
     ! Initialize random number generator -- if the user specifies a seed, it
     ! will be re-initialized later
-    call initialize_prng()
+    err = openmc_set_seed(seed)
 
     ! Read XML input files
     call read_input_xml()

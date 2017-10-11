@@ -106,6 +106,11 @@ class EnergyFilter(Filter):
     def __new__(cls, bins=None, uid=None, new=True, index=None):
         return super(EnergyFilter, cls).__new__(cls, b'energy', uid, new, index)
 
+    def __init__(self, bins=None, uid=None, new=True, index=None):
+        super(EnergyFilter, self).__init__(uid, new, index)
+        if bins is not None:
+            self.bins = bins
+
     @property
     def bins(self):
         energies = POINTER(c_double)()
@@ -125,7 +130,7 @@ class EnergyFilter(Filter):
 
 class EnergyoutFilter(Filter):
     def __new__(cls, bins=None, uid=None, new=True, index=None):
-        return super(Energyoutfilter, cls).__new__(cls, b'energyout',
+        return super(EnergyoutFilter, cls).__new__(cls, b'energyout',
                                                    uid, new, index)
 
 

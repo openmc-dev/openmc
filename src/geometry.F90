@@ -1249,8 +1249,8 @@ contains
     class(Lattice), pointer :: lat         ! pointer to current lattice
 
     ! Don't research places already checked
-    if (found(universe_dict % get_key(univ % id), map)) then
-      count = counts(universe_dict % get_key(univ % id), map)
+    if (found(universe_dict % get(univ % id), map)) then
+      count = counts(universe_dict % get(univ % id), map)
       return
     end if
 
@@ -1258,8 +1258,8 @@ contains
     ! Count = 1, then quit
     if (univ % id == univ_id) then
       count = 1
-      counts(universe_dict % get_key(univ % id), map) = 1
-      found(universe_dict % get_key(univ % id), map) = .true.
+      counts(universe_dict % get(univ % id), map) = 1
+      found(universe_dict % get(univ % id), map) = .true.
       return
     end if
 
@@ -1355,8 +1355,8 @@ contains
       end if
     end do
 
-    counts(universe_dict % get_key(univ % id), map) = count
-    found(universe_dict % get_key(univ % id), map) = .true.
+    counts(universe_dict % get(univ % id), map) = count
+    found(universe_dict % get(univ % id), map) = .true.
 
   end function count_target
 

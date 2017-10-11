@@ -5,6 +5,7 @@ module tally_filter_distribcell
   use hdf5, only: HID_T
 
   use constants
+  use dict_header,     only: EMPTY
   use error
   use geometry_header
   use hdf5_interface
@@ -96,11 +97,13 @@ contains
     class(DistribcellFilter), intent(inout) :: this
 
     integer :: id
+    integer :: val
 
     ! Convert id to index.
     id = this % cell
-    if (cell_dict % has_key(id)) then
-      this % cell = cell_dict % get_key(id)
+    val = cell_dict % get(id)
+    if (val /= EMPTY) then
+      this % cell = val
       this % n_bins = cells(this % cell) % instances
     else
       call fatal_error("Could not find cell " // trim(to_str(id)) &
@@ -159,7 +162,7 @@ contains
     n = size(univ % cells)
 
     ! Write to the geometry stack
-    i_univ = universe_dict % get_key(univ % id)
+    i_univ = universe_dict % get(univ % id)
     if (i_univ == root_universe) then
       path = trim(path) // "u" // to_str(univ%id)
     else

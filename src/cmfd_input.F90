@@ -369,7 +369,7 @@ contains
     m % volume_frac = ONE/real(product(m % dimension),8)
 
     ! Add mesh to dictionary
-    call mesh_dict % add_key(m % id, i_start)
+    call mesh_dict % set(m % id, i_start)
 
     ! Determine number of filters
     energy_filters = check_for_node(node_mesh, "energy")
@@ -432,7 +432,7 @@ contains
       end if
       filt % current = .true.
       ! Add filter to dictionary
-      call filter_dict % add_key(filt % id, i_filt)
+      call filter_dict % set(filt % id, i_filt)
     end select
 
     ! Initialize filters

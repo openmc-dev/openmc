@@ -5,6 +5,7 @@ module tally_filter_cellborn
   use hdf5
 
   use constants,          only: ONE, MAX_LINE_LEN
+  use dict_header,        only: EMPTY
   use error,              only: fatal_error
   use hdf5_interface
   use geometry_header
@@ -54,8 +55,11 @@ contains
     integer,               intent(in)  :: estimator
     type(TallyFilterMatch),     intent(inout) :: match
 
-      if (this % map % has_key(p % cell_born)) then
-        call match % bins % push_back(this % map % get_key(p % cell_born))
+    integer :: val
+
+      val = this % map % get(p % cell_born)
+      if (val /= EMPTY) then
+        call match % bins % push_back(val)
         call match % weights % push_back(ONE)
       end if
 
@@ -81,12 +85,14 @@ contains
     class(CellbornFilter), intent(inout) :: this
 
     integer :: i, id
+    integer :: val
 
     ! Convert ids to indices.
     do i = 1, this % n_bins
       id = this % cells(i)
-      if (cell_dict % has_key(id)) then
-        this % cells(i) = cell_dict % get_key(id)
+      val = cell_dict % get(id)
+      if (val /= EMPTY) then
+        this % cells(i) = val
       else
         call fatal_error("Could not find cell " // trim(to_str(id)) &
              &// " specified on tally filter.")
@@ -95,7 +101,7 @@ contains
 
     ! Generate mapping from cell indices to filter bins.
     do i = 1, this % n_bins
-      call this % map % add_key(this % cells(i), i)
+      call this % map % set(this % cells(i), i)
     end do
   end subroutine initialize_cellborn
 

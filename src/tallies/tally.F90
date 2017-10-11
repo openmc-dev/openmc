@@ -5,6 +5,7 @@ module tally
   use algorithm,        only: binary_search
   use constants
   use cross_section,    only: multipole_deriv_eval
+  use dict_header,      only: EMPTY
   use error,            only: fatal_error
   use geometry_header
   use math,             only: t_percentile, calc_pn, calc_rn
@@ -246,8 +247,7 @@ contains
           ! multiplicities of one.
           score = p % last_wgt * flux
         else
-          m = nuclides(p % event_nuclide) % reaction_index % &
-               get_key(p % event_MT)
+          m = nuclides(p % event_nuclide) % reaction_index % get(p % event_MT)
 
           ! Get yield and apply to score
           associate (rxn => nuclides(p % event_nuclide) % reactions(m))
@@ -273,8 +273,7 @@ contains
           ! multiplicities of one.
           score = p % last_wgt * flux
         else
-          m = nuclides(p%event_nuclide)%reaction_index% &
-               get_key(p % event_MT)
+          m = nuclides(p % event_nuclide) % reaction_index % get(p % event_MT)
 
           ! Get yield and apply to score
           associate (rxn => nuclides(p % event_nuclide) % reactions(m))
@@ -300,8 +299,7 @@ contains
           ! multiplicities of one.
           score = p % last_wgt * flux
         else
-          m = nuclides(p%event_nuclide)%reaction_index% &
-               get_key(p % event_MT)
+          m = nuclides(p % event_nuclide) % reaction_index % get(p % event_MT)
 
           ! Get yield and apply to score
           associate (rxn => nuclides(p%event_nuclide)%reactions(m))
@@ -1150,9 +1148,8 @@ contains
             score = ZERO
 
             if (i_nuclide > 0) then
-              if (nuclides(i_nuclide)%reaction_index%has_key(score_bin)) then
-                m = nuclides(i_nuclide)%reaction_index%get_key(score_bin)
-
+              m = nuclides(i_nuclide) % reaction_index % get(score_bin)
+              if (m /= EMPTY) then
                 ! Retrieve temperature and energy grid index and interpolation
                 ! factor
                 i_temp = micro_xs(i_nuclide) % index_temp
@@ -1190,9 +1187,8 @@ contains
                   ! Get index in nuclides array
                   i_nuc = materials(p % material) % nuclide(l)
 
-                  if (nuclides(i_nuc)%reaction_index%has_key(score_bin)) then
-                    m = nuclides(i_nuc)%reaction_index%get_key(score_bin)
-
+                  m = nuclides(i_nuc) % reaction_index % get(score_bin)
+                  if (m /= EMPTY) then
                     ! Retrieve temperature and energy grid index and
                     ! interpolation factor
                     i_temp = micro_xs(i_nuc) % index_temp

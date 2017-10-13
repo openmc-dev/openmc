@@ -41,7 +41,7 @@ before_install:
   - conda update -q conda
   - conda info -a
   - if [[ $OPENMC_CONFIG != "check_source" ]]; then
-      conda create -q -n test-environment python=$TRAVIS_PYTHON_VERSION six numpy scipy h5py=2.5 pandas;
+      conda create -q -n test-environment python=$TRAVIS_PYTHON_VERSION pip numpy cython;
       source activate test-environment;
       sudo add-apt-repository ppa:nschloe/hdf5-backports -y;
       sudo apt-get update -q;
@@ -52,7 +52,8 @@ before_install:
       export HDF5_DIR=/usr;
     fi
 
-install: true
+install:
+  - pip install -e .[test]
 
 before_script:
   - if [[ $OPENMC_CONFIG != "check_source" ]]; then
@@ -73,4 +74,5 @@ script:
     else
       ./run_tests.py -C $OPENMC_CONFIG -j 2;
     fi
+  - pytest unit_tests/
   - cd ..

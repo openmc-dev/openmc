@@ -4,7 +4,7 @@ import glob
 import sys
 import numpy as np
 
-from setuptools import setup
+from setuptools import setup, find_packages
 try:
     from Cython.Build import cythonize
     have_cython = True
@@ -36,9 +36,9 @@ kwargs = {
     },
 
     # Metadata
-    'author': 'Will Boyd',
-    'author_email': 'wbinventor@gmail.com',
-    'description': 'OpenMC Python API',
+    'author': 'The OpenMC Development Team',
+    'author_email': 'openmc-dev@googlegroups.com',
+    'description': 'OpenMC',
     'url': 'https://github.com/mit-crpg/openmc',
     'classifiers': [
         'Development Status :: 4 - Beta',
@@ -59,13 +59,14 @@ kwargs = {
     ],
 
     # Required dependencies
-    'install_requires': ['six', 'numpy>=1.9', 'h5py', 'scipy',
-                         'pandas>=0.17.0', 'lxml'],
+    'install_requires': [
+        'six', 'numpy>=1.9', 'h5py', 'scipy', 'ipython', 'matplotlib',
+        'pandas>=0.17.0', 'lxml', 'uncertainties'
+    ],
 
     # Optional dependencies
     'extras_require': {
-        'decay': ['uncertainties'],
-        'plot': ['matplotlib', 'ipython'],
+        'test': ['pytest'],
         'vtk': ['vtk', 'silomesh'],
     },
 }

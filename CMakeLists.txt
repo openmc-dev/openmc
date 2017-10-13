@@ -468,6 +468,11 @@ file(GLOB_RECURSE TESTS ${CMAKE_CURRENT_SOURCE_DIR}/tests/test_*.py)
 
 # Loop through all the tests
 foreach(test ${TESTS})
+  # Remove unit tests
+  if(test MATCHES ".*unit_tests.*")
+    continue()
+  endif()
+
   # Get test information
   get_filename_component(TEST_NAME ${test} NAME)
   get_filename_component(TEST_PATH ${test} PATH)

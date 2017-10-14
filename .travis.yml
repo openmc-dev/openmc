@@ -28,21 +28,7 @@ matrix:
       env: OPENMC_CONFIG="check_source"
 
 before_install:
-  # ============== Handle Python third-party packages ==============
-  - if [[ "$TRAVIS_PYTHON_VERSION" == "2.7" ]]; then
-      wget https://repo.continuum.io/miniconda/Miniconda-latest-Linux-x86_64.sh -O miniconda.sh;
-    else
-      wget https://repo.continuum.io/miniconda/Miniconda3-latest-Linux-x86_64.sh -O miniconda.sh;
-    fi
-  - bash miniconda.sh -b -p $HOME/miniconda
-  - export PATH="$HOME/miniconda/bin:$PATH"
-  - hash -r
-  - conda config --set always_yes yes --set changeps1 no
-  - conda update -q conda
-  - conda info -a
   - if [[ $OPENMC_CONFIG != "check_source" ]]; then
-      conda create -q -n test-environment python=$TRAVIS_PYTHON_VERSION pip numpy cython;
-      source activate test-environment;
       sudo add-apt-repository ppa:nschloe/hdf5-backports -y;
       sudo apt-get update -q;
       sudo apt-get install libhdf5-serial-dev libhdf5-mpich-dev -y;
@@ -54,6 +40,7 @@ before_install:
 
 install:
   - if [[ $OPENMC_CONFIG != "check_source" ]]; then
+      pip install numpy cython;
       pip install -e .[test];
     fi
 

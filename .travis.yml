@@ -53,7 +53,9 @@ before_install:
     fi
 
 install:
-  - pip install -e .[test]
+  - if [[ $OPENMC_CONFIG != "check_source" ]]; then
+      pip install -e .[test];
+    fi
 
 before_script:
   - if [[ $OPENMC_CONFIG != "check_source" ]]; then
@@ -73,6 +75,6 @@ script:
       ./check_source.py;
     else
       ./run_tests.py -C $OPENMC_CONFIG -j 2;
+      pytest unit_tests/;
     fi
-  - pytest unit_tests/
   - cd ..

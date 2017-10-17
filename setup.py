@@ -66,7 +66,7 @@ kwargs = {
 
     # Optional dependencies
     'extras_require': {
-        'test': ['pytest'],
+        'test': ['pytest', 'pytest-cov'],
         'vtk': ['vtk', 'silomesh'],
     },
 }

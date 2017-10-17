@@ -62,6 +62,6 @@ script:
       ./check_source.py;
     else
       ./run_tests.py -C $OPENMC_CONFIG -j 2;
-      pytest unit_tests/;
+      pytest --cov=../openmc unit_tests/;
     fi
   - cd ..

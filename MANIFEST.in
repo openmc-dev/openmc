@@ -1,7 +1,6 @@
 include CMakeLists.txt
 include LICENSE
 include schemas.xml
-include tox.ini
 include openmc/data/reconstruct.pyx
 include docs/source/_templates/layout.html
 include docs/sphinxext/LICENSE

@@ -3146,7 +3146,9 @@ contains
               filters(i_filt_start) % obj % n_bins = product(m % dimension + 1)
 
               ! Set ID
-              err = openmc_filter_set_id(i_filt_start, i_filt_start)
+              call openmc_get_filter_next_id(filter_id)
+              err = openmc_filter_set_id(i_filt_start, filter_id)
+
 
               ! Add surface filter
               allocate(SurfaceFilter :: filters(i_filt_end) % obj)
@@ -3167,7 +3169,8 @@ contains
                 filt % current = .true.
 
                 ! Set ID
-                err = openmc_filter_set_id(i_filt_end, i_filt_end)
+                call openmc_get_filter_next_id(filter_id)
+                err = openmc_filter_set_id(i_filt_end, filter_id)
               end select
 
               ! Copy filter indices to resized array

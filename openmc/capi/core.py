@@ -172,9 +172,15 @@ class _DLLGlobal(object):
         self.ctype.in_dll(_dll, self.name).value = value
 
 
-class _View(object):
-    def __init__(self, index):
-        self._index = index
-
+class _FortranObject(object):
     def __repr__(self):
         return "{}[{}]".format(type(self).__name__, self._index)
+
+
+class _FortranObjectWithID(_FortranObject):
+    def __init__(self, uid=None, new=True, index=None):
+        # Creating the object has already been handled by __new__. In the
+        # initializer, all we do is make sure that the object returned has an ID
+        # assigned. If the array index of the object is out of bounds, an
+        # OutOfBoundsError will be raised here by virtue of referencing self.id
+        self.id

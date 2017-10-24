@@ -4,13 +4,13 @@ from weakref import WeakValueDictionary
 
 from numpy.ctypeslib import as_array
 
-from . import _dll, NuclideView
-from .core import _View
-from .error import _error_handler
+from . import _dll, Nuclide
+from .core import _FortranObjectWithID
+from .error import _error_handler, AllocationError, InvalidIDError
 from .filter import _get_filter
 
 
-__all__ = ['TallyView', 'tallies']
+__all__ = ['Tally', 'tallies']
 
 # Tally functions
 _dll.openmc_get_tally_index.argtypes = [c_int32, POINTER(c_int32)]
@@ -51,24 +51,29 @@ _dll.openmc_tally_set_type.restype = c_int
 _dll.openmc_tally_set_type.errcheck = _error_handler
 
 
-class TallyView(_View):
-    """View of a tally.
+class Tally(_FortranObjectWithID):
+    """Tally stored internally.
 
     This class exposes a tally that is stored internally in the OpenMC
-    solver. To obtain a view of a tally with a given ID, use the
+    library. To obtain a view of a tally with a given ID, use the
     :data:`openmc.capi.tallies` mapping.
 
     Parameters
     ----------
-    index : int
-         Index in the `tallies` array.
+    uid : int or None
+        Unique ID of the tally
+    new : bool
+        When `index` is None, this argument controls whether a new object is
+        created or a view of an existing object is returned.
+    index : int or None
+        Index in the `tallies` array.
 
     Attributes
     ----------
     id : int
         ID of the tally
     filters : list
-        List of views to tally filters
+        List of tally filters
     nuclides : list of str
         List of nuclides to score results for
     results : numpy.ndarray
@@ -77,11 +82,36 @@ class TallyView(_View):
     """
     __instances = WeakValueDictionary()
 
-    def __new__(cls, *args):
-        if args not in cls.__instances:
-            instance = super().__new__(cls)
-            cls.__instances[args] = instance
-        return cls.__instances[args]
+    def __new__(cls, uid=None, new=True, index=None):
+        mapping = tallies
+        if index is None:
+            if new:
+                # Determine ID to assign
+                if uid is None:
+                    try:
+                        uid = max(mapping) + 1
+                    except ValueError:
+                        uid = 1
+                else:
+                    if uid in mapping:
+                        raise AllocationError('A tally with ID={} has already '
+                                              'been allocated.'.format(uid))
+
+                index = c_int32()
+                _dll.openmc_extend_tallies(1, index, None)
+                _dll.openmc_tally_set_type(index, b'generic')
+                index = index.value
+            else:
+                index = mapping[uid]._index
+
+        if index not in cls.__instances:
+            instance = super(Tally, cls).__new__(cls)
+            instance._index = index
+            if uid is not None:
+                instance.id = uid
+            cls.__instances[index] = instance
+
+        return cls.__instances[index]
 
     @property
     def id(self):
@@ -105,7 +135,7 @@ class TallyView(_View):
         nucs = POINTER(c_int)()
         n = c_int()
         _dll.openmc_tally_get_nuclides(self._index, nucs, n)
-        return [NuclideView(nucs[i]).name if nucs[i] > 0 else 'total'
+        return [Nuclide(nucs[i]).name if nucs[i] > 0 else 'total'
                 for i in range(n.value)]
 
     @property
@@ -143,7 +173,10 @@ class TallyView(_View):
     def new(cls, tally_id=None):
         # Determine ID to assign
         if tally_id is None:
-            tally_id = max(tallies) + 1
+            try:
+                tally_id = max(tallies) + 1
+            except ValueError:
+                tally_id = 1
 
         index = c_int32()
         _dll.openmc_extend_tallies(1, index, None)
@@ -156,12 +189,16 @@ class TallyView(_View):
 class _TallyMapping(Mapping):
     def __getitem__(self, key):
         index = c_int32()
-        _dll.openmc_get_tally_index(key, index)
-        return TallyView(index.value)
+        try:
+            _dll.openmc_get_tally_index(key, index)
+        except (AllocationError, InvalidIDError) as e:
+            # __contains__ expects a KeyError to work correctly
+            raise KeyError(str(e))
+        return Tally(index=index.value)
 
     def __iter__(self):
         for i in range(len(self)):
-            yield TallyView(i + 1).id
+            yield Tally(index=i + 1).id
 
     def __len__(self):
         return c_int32.in_dll(_dll, 'n_tallies').value

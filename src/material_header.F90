@@ -277,8 +277,8 @@ contains
     integer(C_INT) :: err
 
     if (allocated(materials)) then
-      if (material_dict % has_key(id)) then
-        index = material_dict % get_key(id)
+      if (material_dict % has(id)) then
+        index = material_dict % get(id)
         err = 0
       else
         err = E_INVALID_ID
@@ -345,7 +345,7 @@ contains
             call move_alloc(FROM=new_p0, TO=m % p0)
 
             ! Append new nuclide/density
-            k = nuclide_dict % get_key(to_lower(name_))
+            k = nuclide_dict % get(to_lower(name_))
             m % nuclide(n + 1) = k
             m % atom_density(n + 1) = density
             m % density = m % density + density
@@ -415,7 +415,7 @@ contains
 
     if (index >= 1 .and. index <= n_materials) then
       materials(index) % id = id
-      call material_dict % add_key(id, index)
+      call material_dict % set(id, index)
       err = 0
     else
       err = E_OUT_OF_BOUNDS
@@ -469,12 +469,12 @@ contains
           call c_f_pointer(name(i), string, [10])
           name_ = to_lower(to_f_string(string))
 
-          if (.not. nuclide_dict % has_key(name_)) then
+          if (.not. nuclide_dict % has(name_)) then
             err = openmc_load_nuclide(string)
             if (err < 0) return
           end if
 
-          m % nuclide(i) = nuclide_dict % get_key(name_)
+          m % nuclide(i) = nuclide_dict % get(name_)
           m % atom_density(i) = density(i)
         end do
         m % n_nuclides = n

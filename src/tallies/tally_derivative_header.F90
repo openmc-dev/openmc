@@ -1,7 +1,7 @@
 module tally_derivative_header
 
   use constants
-  use dict_header, only: DictIntInt
+  use dict_header, only: DictIntInt, EMPTY
   use error, only: fatal_error
   use nuclide_header, only: nuclide_dict
   use string, only: to_str, to_lower
@@ -40,6 +40,7 @@ contains
 
     character(MAX_WORD_LEN) :: temp_str
     character(MAX_WORD_LEN) :: word
+    integer :: val
 
     ! Copy the derivative id.
     if (check_for_node(node, "id")) then
@@ -56,7 +57,7 @@ contains
     end if
 
     ! Make sure this id has not already been used.
-    if (tally_deriv_dict % has_key(this % id)) then
+    if (tally_deriv_dict % has(this % id)) then
       call fatal_error("Two or more <derivative>'s use the same unique &
            &ID: " // trim(to_str(this % id)))
     end if
@@ -74,12 +75,13 @@ contains
 
       call get_node_value(node, "nuclide", word)
       word = trim(to_lower(word))
-      if (.not. nuclide_dict % has_key(word)) then
+      val = nuclide_dict % get(word)
+      if (val == EMPTY) then
         call fatal_error("Could not find the nuclide " &
              // trim(word) // " specified in derivative " &
              // trim(to_str(this % id)) // " in any material.")
       end if
-      this % diff_nuclide = nuclide_dict % get_key(word)
+      this % diff_nuclide = val
 
     case("temperature")
       this % variable = DIFF_TEMPERATURE

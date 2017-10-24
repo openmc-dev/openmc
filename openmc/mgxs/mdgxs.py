@@ -71,7 +71,7 @@ class MDGXS(MGXS):
         Reaction type (e.g., 'chi-delayed', 'beta', etc.)
     by_nuclide : bool
         If true, computes cross sections for each nuclide in domain
-    domain : Material or Cell or Universe or Mesh
+    domain : openmc.Material or openmc.Cell or openmc.Universe or openmc.Mesh
         Domain for spatial homogenization
     domain_type : {'material', 'cell', 'distribcell', 'universe', 'mesh'}
         Domain type for spatial homogenization
@@ -948,7 +948,7 @@ class ChiDelayed(MDGXS):
         Reaction type (e.g., 'total', 'nu-fission', etc.)
     by_nuclide : bool
         If true, computes cross sections for each nuclide in domain
-    domain : Material or Cell or Universe or Mesh
+    domain : openmc.Material or openmc.Cell or openmc.Universe or openmc.Mesh
         Domain for spatial homogenization
     domain_type : {'material', 'cell', 'distribcell', 'universe', 'mesh'}
         Domain type for spatial homogenization
@@ -1462,7 +1462,7 @@ class DelayedNuFissionXS(MDGXS):
         Reaction type (e.g., 'total', 'nu-fission', etc.)
     by_nuclide : bool
         If true, computes cross sections for each nuclide in domain
-    domain : Material or Cell or Universe or Mesh
+    domain : openmc.Material or openmc.Cell or openmc.Universe or openmc.Mesh
         Domain for spatial homogenization
     domain_type : {'material', 'cell', 'distribcell', 'universe', 'mesh'}
         Domain type for spatial homogenization
@@ -1598,7 +1598,7 @@ class Beta(MDGXS):
         Reaction type (e.g., 'total', 'nu-fission', etc.)
     by_nuclide : bool
         If true, computes cross sections for each nuclide in domain
-    domain : Material or Cell or Universe or Mesh
+    domain : openmc.Material or openmc.Cell or openmc.Universe or openmc.Mesh
         Domain for spatial homogenization
     domain_type : {'material', 'cell', 'distribcell', 'universe', 'mesh'}
         Domain type for spatial homogenization
@@ -1782,7 +1782,7 @@ class DecayRate(MDGXS):
         Reaction type (e.g., 'total', 'nu-fission', etc.)
     by_nuclide : bool
         If true, computes cross sections for each nuclide in domain
-    domain : Material or Cell or Universe or Mesh
+    domain : openmc.Material or openmc.Cell or openmc.Universe or openmc.Mesh
         Domain for spatial homogenization
     domain_type : {'material', 'cell', 'distribcell', 'universe', 'mesh'}
         Domain type for spatial homogenization
@@ -1959,7 +1959,7 @@ class MatrixMDGXS(MDGXS):
         Reaction type (e.g., 'total', 'nu-fission', etc.)
     by_nuclide : bool
         If true, computes cross sections for each nuclide in domain
-    domain : Material or Cell or Universe or Mesh
+    domain : openmc.Material or openmc.Cell or openmc.Universe or openmc.Mesh
         Domain for spatial homogenization
     domain_type : {'material', 'cell', 'distribcell', 'universe', 'mesh'}
         Domain type for spatial homogenization
@@ -2551,7 +2551,7 @@ class DelayedNuFissionMatrixXS(MatrixMDGXS):
         Reaction type (e.g., 'total', 'nu-fission', etc.)
     by_nuclide : bool
         If true, computes cross sections for each nuclide in domain
-    domain : Material or Cell or Universe or Mesh
+    domain : openmc.Material or openmc.Cell or openmc.Universe or openmc.Mesh
         Domain for spatial homogenization
     domain_type : {'material', 'cell', 'distribcell', 'universe', 'mesh'}
         Domain type for spatial homogenization

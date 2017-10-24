@@ -261,7 +261,8 @@ contains
     integer :: i_filt_start, i_filt_end
     integer(C_INT32_T), allocatable :: filter_indices(:)
     integer(C_INT) :: err
-    integer :: i_filt      ! index in filters array
+    integer :: i_filt     ! index in filters array
+    integer :: filt_id
     integer :: iarray3(3) ! temp integer array
     real(8) :: rarray3(3) ! temp double array
     real(C_DOUBLE), allocatable :: energies(:)
@@ -381,14 +382,16 @@ contains
     ! Set up mesh filter
     i_filt = i_filt_start
     err = openmc_filter_set_type(i_filt, C_CHAR_'mesh' // C_NULL_CHAR)
-    err = openmc_filter_set_id(i_filt, i_filt)
+    call openmc_get_free_filter_id(filt_id)
+    err = openmc_filter_set_id(i_filt, filt_id)
     err = openmc_mesh_filter_set_mesh(i_filt, i_start)
 
     if (energy_filters) then
       ! Read and set incoming energy mesh filter
       i_filt = i_filt + 1
       err = openmc_filter_set_type(i_filt, C_CHAR_'energy' // C_NULL_CHAR)
-      err = openmc_filter_set_id(i_filt, i_filt)
+      call openmc_get_free_filter_id(filt_id)
+      err = openmc_filter_set_id(i_filt, filt_id)
 
       ! Get energies and set bins
       ng = node_word_count(node_mesh, "energy")
@@ -399,7 +402,8 @@ contains
       ! Read and set outgoing energy mesh filter
       i_filt = i_filt + 1
       err = openmc_filter_set_type(i_filt, C_CHAR_'energyout' // C_NULL_CHAR)
-      err = openmc_filter_set_id(i_filt, i_filt)
+      call openmc_get_free_filter_id(filt_id)
+      err = openmc_filter_set_id(i_filt, filt_id)
       err = openmc_energy_filter_set_bins(i_filt, ng, energies)
     end if
 
@@ -407,7 +411,8 @@ contains
     ! tallies use this filter and we need to change the dimension
     i_filt = i_filt + 1
     err = openmc_filter_set_type(i_filt, C_CHAR_'mesh' // C_NULL_CHAR)
-    err = openmc_filter_set_id(i_filt, i_filt)
+    call openmc_get_free_filter_id(filt_id)
+    err = openmc_filter_set_id(i_filt, filt_id)
     err = openmc_mesh_filter_set_mesh(i_filt, i_start)
 
     ! We need to increase the dimension by one since we also need

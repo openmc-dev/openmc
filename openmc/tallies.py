@@ -502,7 +502,7 @@ class Tally(IDManagerMixin):
 
         Parameters
         ----------
-        nuclide : str, Nuclide, CrossNuclide or AggregateNuclide
+        nuclide : str, openmc.Nuclide, CrossNuclide or AggregateNuclide
             Nuclide to add to the tally. The nuclide should be a Nuclide object
             when a user is adding nuclides to a Tally for input file generation.
             The nuclide is a str when a Tally is created from a StatePoint file

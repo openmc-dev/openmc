@@ -33,7 +33,9 @@ Classes
    :nosignatures:
    :template: myclass.rst
 
-   openmc.capi.CellView
-   openmc.capi.MaterialView
-   openmc.capi.NuclideView
-   openmc.capi.TallyView
+   openmc.capi.Cell
+   openmc.capi.EnergyFilter
+   openmc.capi.MaterialFilter
+   openmc.capi.Material
+   openmc.capi.Nuclide
+   openmc.capi.Tally

@@ -61,7 +61,7 @@ contains
       call get_node_value(node, "id", this % id)
 
       ! Check to make sure 'id' hasn't been used
-      if (mesh_dict % has_key(this % id)) then
+      if (mesh_dict % has(this % id)) then
         call fatal_error("Two or more meshes use the same unique ID: " &
              // to_str(this % id))
       end if

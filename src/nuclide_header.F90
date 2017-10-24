@@ -581,7 +581,7 @@ contains
 
     do i = 1, size(this % reactions)
       call MTs % push_back(this % reactions(i) % MT)
-      call this % reaction_index % add_key(this % reactions(i) % MT, i)
+      call this % reaction_index % set(this % reactions(i) % MT, i)
 
       associate (rx => this % reactions(i))
         ! Skip total inelastic level scattering, gas production cross sections
@@ -862,8 +862,8 @@ contains
     name_ = to_f_string(name)
 
     if (allocated(nuclides)) then
-      if (nuclide_dict % has_key(to_lower(name_))) then
-        index = nuclide_dict % get_key(to_lower(name_))
+      if (nuclide_dict % has(to_lower(name_))) then
+        index = nuclide_dict % get(to_lower(name_))
         err = 0
       else
         err = E_DATA
@@ -895,8 +895,8 @@ contains
     name_ = to_f_string(name)
 
     err = 0
-    if (.not. nuclide_dict % has_key(to_lower(name_))) then
-      if (library_dict % has_key(to_lower(name_))) then
+    if (.not. nuclide_dict % has(to_lower(name_))) then
+      if (library_dict % has(to_lower(name_))) then
         ! allocate extra space in nuclides array
         n = n_nuclides
         allocate(new_nuclides(n + 1))
@@ -904,7 +904,7 @@ contains
         call move_alloc(FROM=new_nuclides, TO=nuclides)
         n = n + 1
 
-        i_library = library_dict % get_key(to_lower(name_))
+        i_library = library_dict % get(to_lower(name_))
 
         ! Open file and make sure version is sufficient
         file_id = file_open(libraries(i_library) % path, 'r')
@@ -919,7 +919,7 @@ contains
         call file_close(file_id)
 
         ! Add entry to nuclide dictionary
-        call nuclide_dict % add_key(to_lower(name_), n)
+        call nuclide_dict % set(to_lower(name_), n)
         n_nuclides = n
 
         ! Assign resonant scattering data

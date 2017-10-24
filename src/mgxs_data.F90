@@ -26,7 +26,6 @@ contains
   subroutine read_mgxs()
     integer                 :: i              ! index in materials array
     integer                 :: j              ! index over nuclides in material
-    integer                 :: i_xsdata       ! index in <xsdata> list
     integer                 :: i_nuclide      ! index in nuclides array
     character(20)           :: name           ! name of library to load
     integer                 :: representation ! Data representation
@@ -36,7 +35,6 @@ contains
     integer(HID_T)          :: file_id
     integer(HID_T)          :: xsdata_group
     logical                 :: file_exists
-    type(DictCharInt)       :: xsdata_dict
     type(VectorReal), allocatable :: temps(:)
     character(MAX_WORD_LEN) :: word
     integer, allocatable    :: array(:)
@@ -86,7 +84,6 @@ contains
         name = mat % names(j)
 
         if (.not. already_read % contains(name)) then
-          i_xsdata = xsdata_dict % get_key(to_lower(name))
           i_nuclide = mat % nuclide(j)
 
           call write_message("Loading " // trim(name) // " data...", 6)

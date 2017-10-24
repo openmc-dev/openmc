@@ -7,17 +7,17 @@ import numpy as np
 from numpy.ctypeslib import as_array
 
 from . import _dll
-from .core import _View
-from .error import _error_handler
-from .material import MaterialView
+from .core import _FortranObjectWithID
+from .error import _error_handler, AllocationError, InvalidIDError
+from .material import Material
 
 
-__all__ = ['FilterView', 'AzimuthalFilterView', 'CellFilterView',
-           'CellbornFilterView', 'CellfromFilterView', 'DistribcellFilterView',
-           'DelayedGroupFilterView', 'EnergyFilterView', 'EnergyoutFilterView',
-           'EnergyFunctionFilterView', 'MaterialFilterView', 'MeshFilterView',
-           'MuFilterView', 'PolarFilterView', 'SurfaceFilterView',
-           'UniverseFilterView', 'filters']
+__all__ = ['Filter', 'AzimuthalFilter', 'CellFilter',
+           'CellbornFilter', 'CellfromFilter', 'DistribcellFilter',
+           'DelayedGroupFilter', 'EnergyFilter', 'EnergyoutFilter',
+           'EnergyFunctionFilter', 'MaterialFilter', 'MeshFilter',
+           'MuFilter', 'PolarFilter', 'SurfaceFilter',
+           'UniverseFilter', 'filters']
 
 # Tally functions
 _dll.openmc_energy_filter_get_bins.argtypes = [
@@ -57,14 +57,43 @@ _dll.openmc_mesh_filter_set_mesh.restype = c_int
 _dll.openmc_mesh_filter_set_mesh.errcheck = _error_handler
 
 
-class FilterView(_View):
+class Filter(_FortranObjectWithID):
     __instances = WeakValueDictionary()
 
-    def __new__(cls, *args):
-        if args not in cls.__instances:
-            instance = super().__new__(cls)
-            cls.__instances[args] = instance
-        return cls.__instances[args]
+    def __new__(cls, obj=None, uid=None, new=True, index=None):
+        mapping = filters
+        if index is None:
+            if new:
+                # Determine ID to assign
+                if uid is None:
+                    try:
+                        uid = max(mapping) + 1
+                    except ValueError:
+                        uid = 1
+                else:
+                    if uid in mapping:
+                        raise AllocationError('A filter with ID={} has already '
+                                              'been allocated.'.format(uid))
+
+                # Resize internal array
+                index = c_int32()
+                _dll.openmc_extend_filters(1, index, None)
+
+                # Set the filter type -- note that the filter_type attribute
+                # only exists on subclasses!
+                _dll.openmc_filter_set_type(index, cls.filter_type.encode())
+                index = index.value
+            else:
+                index = mapping[uid]._index
+
+        if index not in cls.__instances:
+            instance = super(Filter, cls).__new__(cls)
+            instance._index = index
+            if uid is not None:
+                instance.id = uid
+            cls.__instances[index] = instance
+
+        return cls.__instances[index]
 
     @property
     def id(self):
@@ -77,7 +106,14 @@ class FilterView(_View):
         _dll.openmc_filter_set_id(self._index, filter_id)
 
 
-class EnergyFilterView(FilterView):
+class EnergyFilter(Filter):
+    filter_type = 'energy'
+
+    def __init__(self, bins=None, uid=None, new=True, index=None):
+        super(EnergyFilter, self).__init__(uid, new, index)
+        if bins is not None:
+            self.bins = bins
+
     @property
     def bins(self):
         energies = POINTER(c_double)()
@@ -95,45 +131,52 @@ class EnergyFilterView(FilterView):
             self._index, len(energies), energies_p)
 
 
-class EnergyoutFilterView(FilterView):
-    pass
+class EnergyoutFilter(Filter):
+    filter_type = 'energyout'
 
 
-class AzimuthalFilterView(FilterView):
-    pass
+class AzimuthalFilter(Filter):
+    filter_type = 'azimuthal'
 
 
-class CellFilterView(FilterView):
-    pass
+class CellFilter(Filter):
+    filter_type = 'cell'
 
 
-class CellbornFilterView(FilterView):
-    pass
+class CellbornFilter(Filter):
+    filter_type = 'cellborn'
 
 
-class CellfromFilterView(FilterView):
-    pass
+class CellfromFilter(Filter):
+    filter_type = 'cellfrom'
 
 
-class DelayedGroupFilterView(FilterView):
-    pass
+class DelayedGroupFilter(Filter):
+    filter_type = 'delayedgroup'
 
 
-class DistribcellFilterView(FilterView):
-    pass
+class DistribcellFilter(Filter):
+    filter_type = 'distribcell'
 
 
-class EnergyFunctionFilterView(FilterView):
-    pass
+class EnergyFunctionFilter(Filter):
+    filter_type = 'energyfunction'
 
 
-class MaterialFilterView(FilterView):
+class MaterialFilter(Filter):
+    filter_type = 'material'
+
+    def __init__(self, bins=None, uid=None, new=True, index=None):
+        super(MaterialFilter, self).__init__(uid, new, index)
+        if bins is not None:
+            self.bins = bins
+
     @property
     def bins(self):
         materials = POINTER(c_int32)()
         n = c_int32()
         _dll.openmc_material_filter_get_bins(self._index, materials, n)
-        return [MaterialView(materials[i]) for i in range(n.value)]
+        return [Material(index=materials[i]) for i in range(n.value)]
 
     @bins.setter
     def bins(self, materials):
@@ -143,58 +186,43 @@ class MaterialFilterView(FilterView):
 
         _dll.openmc_material_filter_set_bins(self._index, n, bins)
 
-    @classmethod
-    def new(cls, bins=None, filter_id=None):
-        # Determine filter ID to assign
-        if filter_id is None:
-            filter_id = max(filters) + 1
 
-        index = c_int32()
-        _dll.openmc_extend_filters(1, index, None)
-        _dll.openmc_filter_set_type(index, b'material')
-        f = cls(index.value)
-        f.id = filter_id
-        if bins is not None:
-            f.bins = bins
-        return f
+class MeshFilter(Filter):
+    filter_type = 'mesh'
 
 
-class MeshFilterView(FilterView):
-    pass
+class MuFilter(Filter):
+    filter_type = 'mu'
 
 
-class MuFilterView(FilterView):
-    pass
+class PolarFilter(Filter):
+    filter_type = 'polar'
 
 
-class PolarFilterView(FilterView):
-    pass
+class SurfaceFilter(Filter):
+    filter_type = 'surface'
 
 
-class SurfaceFilterView(FilterView):
-    pass
+class UniverseFilter(Filter):
+    filter_type = 'universe'
 
 
-class UniverseFilterView(FilterView):
-    pass
-
-
-_filter_type_map = {
-    'azimuthal': AzimuthalFilterView,
-    'cell': CellFilterView,
-    'cellborn': CellbornFilterView,
-    'cellfrom': CellfromFilterView,
-    'delayedgroup': DelayedGroupFilterView,
-    'distribcell': DistribcellFilterView,
-    'energy': EnergyFilterView,
-    'energyout': EnergyoutFilterView,
-    'energyfunction': EnergyFunctionFilterView,
-    'material': MaterialFilterView,
-    'mesh': MeshFilterView,
-    'mu': MuFilterView,
-    'polar': PolarFilterView,
-    'surface': SurfaceFilterView,
-    'universe': UniverseFilterView,
+_FILTER_TYPE_MAP = {
+    'azimuthal': AzimuthalFilter,
+    'cell': CellFilter,
+    'cellborn': CellbornFilter,
+    'cellfrom': CellfromFilter,
+    'delayedgroup': DelayedGroupFilter,
+    'distribcell': DistribcellFilter,
+    'energy': EnergyFilter,
+    'energyout': EnergyoutFilter,
+    'energyfunction': EnergyFunctionFilter,
+    'material': MaterialFilter,
+    'mesh': MeshFilter,
+    'mu': MuFilter,
+    'polar': PolarFilter,
+    'surface': SurfaceFilter,
+    'universe': UniverseFilter,
 }
 
 
@@ -202,18 +230,22 @@ def _get_filter(index):
     filter_type = create_string_buffer(20)
     _dll.openmc_filter_get_type(index, filter_type)
     filter_type = filter_type.value.decode()
-    return _filter_type_map[filter_type](index)
+    return _FILTER_TYPE_MAP[filter_type](index=index)
 
 
 class _FilterMapping(Mapping):
     def __getitem__(self, key):
         index = c_int32()
-        _dll.openmc_get_filter_index(key, index)
+        try:
+            _dll.openmc_get_filter_index(key, index)
+        except (AllocationError, InvalidIDError) as e:
+            # __contains__ expects a KeyError to work correctly
+            raise KeyError(str(e))
         return _get_filter(index.value)
 
     def __iter__(self):
         for i in range(len(self)):
-            yield TallyView(i + 1).id
+            yield _get_filter(i + 1).id
 
     def __len__(self):
         return c_int32.in_dll(_dll, 'n_filters').value

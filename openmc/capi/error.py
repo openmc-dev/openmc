@@ -39,9 +39,6 @@ class InvalidTypeError(Error):
     """Tried to perform an operation on the wrong type."""
 
 
-_errmsg = (c_char*256).in_dll(_dll, 'openmc_err_msg')
-
-
 def _error_handler(err, func, args):
     """Raise exception according to error code."""
 
@@ -50,7 +47,8 @@ def _error_handler(err, func, args):
         return c_int.in_dll(_dll, s).value
 
     # Get error message set by OpenMC library
-    msg = _errmsg.value.decode()
+    errmsg = (c_char*256).in_dll(_dll, 'openmc_err_msg')
+    msg = errmsg.value.decode()
 
     # Raise exception type corresponding to error code
     if err == errcode('e_allocate'):

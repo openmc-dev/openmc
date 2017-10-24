@@ -652,7 +652,7 @@ contains
                  t_n3 * k_combined(2)
           end if
         end if
-        x(:) = mean_stdev(global_tallies(:, LEAKAGE), n)
+        x(:) = mean_stdev(r(:, LEAKAGE), n)
         write(ou,102) "Leakage Fraction", x(1), t_n1 * x(2)
       end associate
     else

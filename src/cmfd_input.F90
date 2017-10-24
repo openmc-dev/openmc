@@ -382,7 +382,7 @@ contains
     ! Set up mesh filter
     i_filt = i_filt_start
     err = openmc_filter_set_type(i_filt, C_CHAR_'mesh' // C_NULL_CHAR)
-    call openmc_get_free_filter_id(filt_id)
+    call openmc_get_filter_next_id(filt_id)
     err = openmc_filter_set_id(i_filt, filt_id)
     err = openmc_mesh_filter_set_mesh(i_filt, i_start)
 
@@ -390,7 +390,7 @@ contains
       ! Read and set incoming energy mesh filter
       i_filt = i_filt + 1
       err = openmc_filter_set_type(i_filt, C_CHAR_'energy' // C_NULL_CHAR)
-      call openmc_get_free_filter_id(filt_id)
+      call openmc_get_filter_next_id(filt_id)
       err = openmc_filter_set_id(i_filt, filt_id)
 
       ! Get energies and set bins
@@ -402,7 +402,7 @@ contains
       ! Read and set outgoing energy mesh filter
       i_filt = i_filt + 1
       err = openmc_filter_set_type(i_filt, C_CHAR_'energyout' // C_NULL_CHAR)
-      call openmc_get_free_filter_id(filt_id)
+      call openmc_get_filter_next_id(filt_id)
       err = openmc_filter_set_id(i_filt, filt_id)
       err = openmc_energy_filter_set_bins(i_filt, ng, energies)
     end if
@@ -411,7 +411,7 @@ contains
     ! tallies use this filter and we need to change the dimension
     i_filt = i_filt + 1
     err = openmc_filter_set_type(i_filt, C_CHAR_'mesh' // C_NULL_CHAR)
-    call openmc_get_free_filter_id(filt_id)
+    call openmc_get_filter_next_id(filt_id)
     err = openmc_filter_set_id(i_filt, filt_id)
     err = openmc_mesh_filter_set_mesh(i_filt, i_start)
 

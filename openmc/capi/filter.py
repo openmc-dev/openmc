@@ -45,8 +45,6 @@ _dll.openmc_filter_set_type.errcheck = _error_handler
 _dll.openmc_get_filter_index.argtypes = [c_int32, POINTER(c_int32)]
 _dll.openmc_get_filter_index.restype = c_int
 _dll.openmc_get_filter_index.errcheck = _error_handler
-_dll.openmc_get_free_filter_id.argtypes = [POINTER(c_int32)]
-_dll.openmc_get_free_filter_id.restype = None
 _dll.openmc_material_filter_get_bins.argtypes = [
     c_int32, POINTER(POINTER(c_int32)), POINTER(c_int32)]
 _dll.openmc_material_filter_get_bins.restype = c_int
@@ -255,12 +253,4 @@ class _FilterMapping(Mapping):
     def __repr__(self):
         return repr(dict(self))
 
-
 filters = _FilterMapping()
-
-
-def get_free_filter_id():
-    """Returns an ID number that has not been used by any other filters."""
-    id_ = c_int32()
-    _dll.openmc_get_free_filter_id(id_)
-    return id_.value

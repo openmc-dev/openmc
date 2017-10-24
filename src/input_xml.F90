@@ -3146,7 +3146,7 @@ contains
               filters(i_filt_start) % obj % n_bins = product(m % dimension + 1)
 
               ! Set ID
-              call openmc_get_free_filter_id(filter_id)
+              call openmc_get_filter_next_id(filter_id)
               err = openmc_filter_set_id(i_filt_start, filter_id)
 
 
@@ -3169,7 +3169,7 @@ contains
                 filt % current = .true.
 
                 ! Set ID
-                call openmc_get_free_filter_id(filter_id)
+                call openmc_get_filter_next_id(filter_id)
                 err = openmc_filter_set_id(i_filt_end, filter_id)
               end select
 

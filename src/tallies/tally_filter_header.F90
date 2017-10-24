@@ -19,6 +19,7 @@ module tally_filter_header
   public :: openmc_filter_get_id
   public :: openmc_filter_set_id
   public :: openmc_get_filter_index
+  public :: openmc_get_free_filter_id
 
 !===============================================================================
 ! TALLYFILTERMATCH stores every valid bin and weight for a filter
@@ -122,6 +123,10 @@ module tally_filter_header
   ! Dictionary that maps user IDs to indices in 'filters'
   type(DictIntInt), public :: filter_dict
 
+  ! The largest filter ID that has been specified in the system.  This is useful
+  ! in case the code needs to find an ID for a new filter.
+  integer :: largest_filter_id
+
 contains
 
 !===============================================================================
@@ -140,6 +145,7 @@ contains
     n_filters = 0
     if (allocated(filters)) deallocate(filters)
     call filter_dict % clear()
+    largest_filter_id = 0
   end subroutine free_memory_tally_filter
 
 !===============================================================================
@@ -205,6 +211,7 @@ contains
       if (allocated(filters(index) % obj)) then
         filters(index) % obj % id = id
         call filter_dict % set(id, index)
+        if (id > largest_filter_id) largest_filter_id = id
 
         err = 0
       else
@@ -237,5 +244,13 @@ contains
       call set_errmsg("Memory has not been allocated for filters.")
     end if
   end function openmc_get_filter_index
+
+
+  subroutine openmc_get_free_filter_id(id) bind(C)
+    ! Returns an ID number that has not been used by any other filters.
+    integer(C_INT32_T), intent(out) :: id
+
+    id = largest_filter_id + 1
+  end subroutine openmc_get_free_filter_id
 
 end module tally_filter_header

@@ -51,7 +51,7 @@ module openmc_api
   public :: openmc_get_cell_index
   public :: openmc_get_keff
   public :: openmc_get_filter_index
-  public :: openmc_get_free_filter_id
+  public :: openmc_get_filter_next_id
   public :: openmc_get_material_index
   public :: openmc_get_nuclide_index
   public :: openmc_get_tally_index

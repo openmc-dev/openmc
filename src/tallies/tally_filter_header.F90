@@ -19,7 +19,7 @@ module tally_filter_header
   public :: openmc_filter_get_id
   public :: openmc_filter_set_id
   public :: openmc_get_filter_index
-  public :: openmc_get_free_filter_id
+  public :: openmc_get_filter_next_id
 
 !===============================================================================
 ! TALLYFILTERMATCH stores every valid bin and weight for a filter
@@ -246,11 +246,11 @@ contains
   end function openmc_get_filter_index
 
 
-  subroutine openmc_get_free_filter_id(id) bind(C)
+  subroutine openmc_get_filter_next_id(id) bind(C)
     ! Returns an ID number that has not been used by any other filters.
     integer(C_INT32_T), intent(out) :: id
 
     id = largest_filter_id + 1
-  end subroutine openmc_get_free_filter_id
+  end subroutine openmc_get_filter_next_id
 
 end module tally_filter_header

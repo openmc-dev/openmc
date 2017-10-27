@@ -4,7 +4,7 @@ from collections import Iterable, MutableSequence
 import copy
 import re
 from functools import partial
-import itertools
+from itertools import product
 from numbers import Integral, Real
 import warnings
 from xml.etree import ElementTree as ET
@@ -1329,7 +1329,7 @@ class Tally(IDManagerMixin):
                     if isinstance(self_filter, openmc.MeshFilter):
                         dimension = self_filter.mesh.dimension
                         xyz = [range(1, x+1) for x in dimension]
-                        bins = list(itertools.product(*xyz))
+                        bins = list(product(*xyz))
 
                     # Create list of 2-tuples for energy boundary bins
                     elif isinstance(self_filter, (openmc.EnergyFilter,
@@ -1364,7 +1364,7 @@ class Tally(IDManagerMixin):
                     indices *= self_filter.num_bins
 
             # Apply outer product sum between all filter bin indices
-            filter_indices = list(map(sum, itertools.product(*filter_indices)))
+            filter_indices = list(map(sum, product(*filter_indices)))
 
         # If user did not specify any specific Filters, use them all
         else:
@@ -1880,7 +1880,7 @@ class Tally(IDManagerMixin):
                 new_tally.filters.append(self_filter)
         else:
             all_filters = [self_copy.filters, other_copy.filters]
-            for self_filter, other_filter in itertools.product(*all_filters):
+            for self_filter, other_filter in product(*all_filters):
                 new_filter = openmc.CrossFilter(self_filter, other_filter,
                                                 binary_op)
                 new_tally.filters.append(new_filter)
@@ -1891,20 +1891,31 @@ class Tally(IDManagerMixin):
                 new_tally.nuclides.append(self_nuclide)
         else:
             all_nuclides = [self_copy.nuclides, other_copy.nuclides]
-            for self_nuclide, other_nuclide in itertools.product(*all_nuclides):
-                new_nuclide = \
-                    openmc.CrossNuclide(self_nuclide, other_nuclide, binary_op)
+            for self_nuclide, other_nuclide in product(*all_nuclides):
+                new_nuclide = openmc.CrossNuclide(self_nuclide, other_nuclide,
+                                                  binary_op)
                 new_tally.nuclides.append(new_nuclide)
+
+        # Define helper function that handles score units appropriately
+        # depending on the binary operator
+        def cross_score(score1, score2, binary_op):
+            if binary_op == '+' or binary_op == '-':
+                if score1 == score2:
+                    return score1
+                else:
+                    return openmc.CrossScore(score1, score2, binary_op)
+            else:
+                return openmc.CrossScore(score1, score2, binary_op)
 
         # Add scores to the new tally
         if score_product == 'entrywise':
             for self_score in self_copy.scores:
-                new_tally.scores.append(self_score)
+                new_score = cross_score(self_score, self_score, binary_op)
+                new_tally.scores.append(new_score)
         else:
             all_scores = [self_copy.scores, other_copy.scores]
-            for self_score, other_score in itertools.product(*all_scores):
-                new_score = openmc.CrossScore(self_score, other_score,
-                                              binary_op)
+            for self_score, other_score in product(*all_scores):
+                new_score = cross_score(self_score, other_score, binary_op)
                 new_tally.scores.append(new_score)
 
         # Update the new tally's filter strides
@@ -2142,7 +2153,7 @@ class Tally(IDManagerMixin):
         std_dev = {}
 
         # Store the data from the misaligned structure
-        for i, (bin1, bin2) in enumerate(itertools.product(filter1_bins, filter2_bins)):
+        for i, (bin1, bin2) in enumerate(product(filter1_bins, filter2_bins)):
             filter_bins = [(bin1,), (bin2,)]
 
             if self.mean is not None:
@@ -2163,7 +2174,7 @@ class Tally(IDManagerMixin):
         self._update_filter_strides()
 
         # Realign the data
-        for i, (bin1, bin2) in enumerate(itertools.product(filter1_bins, filter2_bins)):
+        for i, (bin1, bin2) in enumerate(product(filter1_bins, filter2_bins)):
             filter_bins = [(bin1,), (bin2,)]
             indices = self.get_filter_indices(filters, filter_bins)
 

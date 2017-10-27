@@ -1,2 +1,2 @@
-   energyfunction nuclide      score     mean  std. dev.
-0  02180f5f310ee4   Am241  (n,gamma) 1.00e-01   9.97e-03
+   energyfunction nuclide                    score     mean  std. dev.
+0  02180f5f310ee4   Am241  ((n,gamma) / (n,gamma)) 1.00e-01   9.97e-03

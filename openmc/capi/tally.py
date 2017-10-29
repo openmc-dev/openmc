@@ -4,6 +4,7 @@ from weakref import WeakValueDictionary
 
 from numpy.ctypeslib import as_array
 
+from openmc.data.reaction import REACTION_NAME
 from . import _dll, Nuclide
 from .core import _FortranObjectWithID
 from .error import _error_handler, AllocationError, InvalidIDError
@@ -30,6 +31,10 @@ _dll.openmc_tally_get_nuclides.argtypes = [
     c_int32, POINTER(POINTER(c_int)), POINTER(c_int)]
 _dll.openmc_tally_get_nuclides.restype = c_int
 _dll.openmc_tally_get_nuclides.errcheck = _error_handler
+_dll.openmc_tally_get_scores.argtypes = [
+    c_int32, POINTER(POINTER(c_int)), POINTER(c_int)]
+_dll.openmc_tally_get_scores.restype = c_int
+_dll.openmc_tally_get_scores.errcheck = _error_handler
 _dll.openmc_tally_results.argtypes = [
     c_int32, POINTER(POINTER(c_double)), POINTER(c_int*3)]
 _dll.openmc_tally_results.restype = c_int
@@ -49,6 +54,15 @@ _dll.openmc_tally_set_scores.errcheck = _error_handler
 _dll.openmc_tally_set_type.argtypes = [c_int32, c_char_p]
 _dll.openmc_tally_set_type.restype = c_int
 _dll.openmc_tally_set_type.errcheck = _error_handler
+
+
+_SCORES = {
+    -1: 'flux', -2: 'total', -3: 'scatter', -4: 'nu-scatter',
+    -9: 'absorption', -10: 'fission', -11: 'nu-fission', -12: 'kappa-fission',
+    -13: 'current', -18: 'events', -19: 'delayed-nu-fission',
+    -20: 'prompt-nu-fission', -21: 'inverse-velocity', -22: 'fission-q-prompt',
+    -23: 'fission-q-recoverable', -24: 'decay-rate'
+}
 
 
 class Tally(_FortranObjectWithID):
@@ -161,7 +175,22 @@ class Tally(_FortranObjectWithID):
 
     @property
     def scores(self):
-        pass
+        scores_as_int = POINTER(c_int)()
+        n = c_int()
+        try:
+            _dll.openmc_tally_get_scores(self._index, scores_as_int, n)
+        except AllocationError:
+            return []
+        else:
+            scores = []
+            for i in range(n.value):
+                if scores_as_int[i] in _SCORES:
+                    scores.append(_SCORES[scores_as_int[i]])
+                elif scores_as_int[i] in REACTION_NAME:
+                    scores.append(REACTION_NAME[scores_as_int[i]])
+                else:
+                    scores.append(str(scores_as_int[i]))
+            return scores
 
     @scores.setter
     def scores(self, scores):

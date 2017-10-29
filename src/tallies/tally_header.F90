@@ -25,6 +25,7 @@ module tally_header
   public :: openmc_tally_get_id
   public :: openmc_tally_get_filters
   public :: openmc_tally_get_nuclides
+  public :: openmc_tally_get_scores
   public :: openmc_tally_results
   public :: openmc_tally_set_filters
   public :: openmc_tally_set_id
@@ -533,6 +534,31 @@ contains
       call set_errmsg('Index in tallies array is out of bounds.')
     end if
   end function openmc_tally_get_nuclides
+
+
+  function openmc_tally_get_scores(index, scores, n) result(err) bind(C)
+    ! Return the list of nuclides assigned to a tally
+    integer(C_INT32_T), value :: index
+    type(C_PTR), intent(out) :: scores
+    integer(C_INT), intent(out) :: n
+    integer(C_INT) :: err
+
+    if (index >= 1 .and. index <= size(tallies)) then
+      associate (t => tallies(index) % obj)
+        if (allocated(t % score_bins)) then
+          scores = C_LOC(t % score_bins(1))
+          n = size(t % score_bins)
+          err = 0
+        else
+          err = E_ALLOCATE
+          call set_errmsg("Tally scores have not been allocated yet.")
+        end if
+      end associate
+    else
+      err = E_OUT_OF_BOUNDS
+      call set_errmsg('Index in tallies array is out of bounds.')
+    end if
+  end function openmc_tally_get_scores
 
 
   function openmc_tally_results(index, ptr, shape_) result(err) bind(C)

@@ -10,21 +10,25 @@ interaction data is based on a native HDF5 format that can be generated from ACE
 files used by the MCNP and Serpent Monte Carlo codes.
 
 OpenMC was originally developed by members of the `Computational Reactor Physics
-Group`_ at the `Massachusetts Institute of Technology`_ starting
-in 2011. Various universities, laboratories, and other organizations now
-contribute to the development of OpenMC. For more information on OpenMC, feel
-free to send a message to the User's Group `mailing list`_.
+Group <http://crpg.mit.edu>`_ at the `Massachusetts Institute of Technology
+<http://web.mit.edu>`_ starting in 2011. Various universities, laboratories, and
+other organizations now contribute to the development of OpenMC. For more
+information on OpenMC, feel free to send a message to the User's Group `mailing
+list <https://groups.google.com/forum/?fromgroups=#!forum/openmc-users>`_.
 
-.. _Computational Reactor Physics Group: http://crpg.mit.edu
-.. _Massachusetts Institute of Technology: http://web.mit.edu
-.. _mailing list: https://groups.google.com/forum/?fromgroups=#!forum/openmc-users
-.. _Read the Docs: http://openmc.readthedocs.io/en/latest/
+.. admonition:: Recommended publication for citing
+   :class: tip
+
+   Paul K. Romano, Nicholas E. Horelik, Bryan R. Herman, Adam G. Nelson, Benoit
+   Forget, and Kord Smith, "`OpenMC: A State-of-the-Art Monte Carlo Code for
+   Research and Development <https://doi.org/10.1016/j.anucene.2014.07.048>`_,"
+   *Ann. Nucl. Energy*, **82**, 90--97 (2015).
 
 .. only:: html
 
-    --------
-    Contents
-    --------
+   --------
+   Contents
+   --------
 
 .. toctree::
     :maxdepth: 1

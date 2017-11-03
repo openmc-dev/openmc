@@ -58,10 +58,9 @@ contains
 
     call openmc_simulation_init()
 
-    BATCH_LOOP: do current_batch = 1, n_max_batches
-      call openmc_next_batch()
-      if (satisfy_triggers) exit BATCH_LOOP
-    end do BATCH_LOOP
+    do
+      if (openmc_next_batch() < 0) exit
+    end do
 
     call time_active % stop()
 
@@ -73,7 +72,8 @@ contains
 ! OPENMC_NEXT_BATCH
 !===============================================================================
 
-  subroutine openmc_next_batch() bind(C)
+  function openmc_next_batch() result(retval) bind(C)
+    integer(C_INT) :: retval
 
     type(Particle) :: p
     integer(8)     :: i_work
@@ -119,7 +119,16 @@ contains
 
     call finalize_batch()
 
-  end subroutine openmc_next_batch
+    ! Check simulation ending criteria
+    if (current_batch == n_max_batches) then
+      retval = -1
+    elseif (satisfy_triggers) then
+      retval = -2
+    else
+      retval = 0
+    end if
+
+  end function openmc_next_batch
 
 !===============================================================================
 ! INITIALIZE_HISTORY
@@ -173,6 +182,9 @@ contains
   subroutine initialize_batch()
 
     integer :: i
+
+    ! Increment current batch
+    current_batch = current_batch + 1
 
     if (run_mode == MODE_FIXEDSOURCE) then
       call write_message("Simulating batch " // trim(to_str(current_batch)) &
@@ -426,6 +438,9 @@ contains
         if (verbosity >= 7) call print_columns()
       end if
     end if
+
+    ! Reset current batch
+    current_batch = 0
 
   end subroutine openmc_simulation_init
 

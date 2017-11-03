@@ -43,6 +43,8 @@ module simulation
   implicit none
   private
   public :: openmc_run
+  public :: openmc_simulation_init
+  public :: openmc_simulation_finalize
 
 contains
 
@@ -54,74 +56,70 @@ contains
 
   subroutine openmc_run() bind(C)
 
-    type(Particle) :: p
-    integer(8)     :: i_work
+    call openmc_simulation_init()
 
-    call initialize_simulation()
-
-    ! Turn on inactive timer
-    call time_inactive % start()
-
-    ! ==========================================================================
-    ! LOOP OVER BATCHES
     BATCH_LOOP: do current_batch = 1, n_max_batches
-
-      call initialize_batch()
-
-      ! Handle restart runs
-      if (restart_run .and. current_batch <= restart_batch) then
-        call replay_batch_history()
-        cycle BATCH_LOOP
-      end if
-
-      ! =======================================================================
-      ! LOOP OVER GENERATIONS
-      GENERATION_LOOP: do current_gen = 1, gen_per_batch
-
-        call initialize_generation()
-
-        ! Start timer for transport
-        call time_transport % start()
-
-        ! ====================================================================
-        ! LOOP OVER PARTICLES
-!$omp parallel do schedule(static) firstprivate(p) copyin(tally_derivs)
-        PARTICLE_LOOP: do i_work = 1, work
-          current_work = i_work
-
-          ! grab source particle from bank
-          call initialize_history(p, current_work)
-
-          ! transport particle
-          call transport(p)
-
-        end do PARTICLE_LOOP
-!$omp end parallel do
-
-        ! Accumulate time for transport
-        call time_transport % stop()
-
-        call finalize_generation()
-
-      end do GENERATION_LOOP
-
-      call finalize_batch()
-
+      call openmc_next_batch()
       if (satisfy_triggers) exit BATCH_LOOP
-
     end do BATCH_LOOP
 
     call time_active % stop()
 
-    ! ==========================================================================
-    ! END OF RUN WRAPUP
-
-    call finalize_simulation()
-
-    ! Clear particle
-    call p % clear()
+    call openmc_simulation_finalize()
 
   end subroutine openmc_run
+
+!===============================================================================
+! OPENMC_NEXT_BATCH
+!===============================================================================
+
+  subroutine openmc_next_batch() bind(C)
+
+    type(Particle) :: p
+    integer(8)     :: i_work
+
+    call initialize_batch()
+
+    ! Handle restart runs
+    if (restart_run .and. current_batch <= restart_batch) then
+      call replay_batch_history()
+      return
+    end if
+
+    ! =======================================================================
+    ! LOOP OVER GENERATIONS
+    GENERATION_LOOP: do current_gen = 1, gen_per_batch
+
+      call initialize_generation()
+
+      ! Start timer for transport
+      call time_transport % start()
+
+      ! ====================================================================
+      ! LOOP OVER PARTICLES
+!$omp parallel do schedule(static) firstprivate(p) copyin(tally_derivs)
+      PARTICLE_LOOP: do i_work = 1, work
+        current_work = i_work
+
+        ! grab source particle from bank
+        call initialize_history(p, current_work)
+
+        ! transport particle
+        call transport(p)
+
+      end do PARTICLE_LOOP
+!$omp end parallel do
+
+      ! Accumulate time for transport
+      call time_transport % stop()
+
+      call finalize_generation()
+
+    end do GENERATION_LOOP
+
+    call finalize_batch()
+
+  end subroutine openmc_next_batch
 
 !===============================================================================
 ! INITIALIZE_HISTORY
@@ -184,7 +182,10 @@ contains
     ! Reset total starting particle weight used for normalizing tallies
     total_weight = ZERO
 
-    if (current_batch == n_inactive + 1) then
+    if (n_inactive > 0 .and. current_batch == 1) then
+      ! Turn on inactive timer
+      call time_inactive % start()
+    elseif (current_batch == n_inactive + 1) then
       ! Switch from inactive batch timer to active batch timer
       call time_inactive % stop()
       call time_active % start()
@@ -385,7 +386,7 @@ contains
 ! INITIALIZE_SIMULATION
 !===============================================================================
 
-  subroutine initialize_simulation()
+  subroutine openmc_simulation_init() bind(C)
 
     ! Set up tally procedure pointers
     call init_tally_routines()
@@ -426,14 +427,14 @@ contains
       end if
     end if
 
-  end subroutine initialize_simulation
+  end subroutine openmc_simulation_init
 
 !===============================================================================
 ! FINALIZE_SIMULATION calculates tally statistics, writes tallies, and displays
 ! execution time and results
 !===============================================================================
 
-  subroutine finalize_simulation()
+  subroutine openmc_simulation_finalize() bind(C)
 
 #ifdef MPI
     integer    :: i       ! loop index for tallies
@@ -496,7 +497,7 @@ contains
       if (check_overlaps) call print_overlap_check()
     end if
 
-  end subroutine finalize_simulation
+  end subroutine openmc_simulation_finalize
 
 !===============================================================================
 ! CALCULATE_WORK determines how many particles each processor should simulate

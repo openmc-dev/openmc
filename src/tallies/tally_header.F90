@@ -146,7 +146,7 @@ module tally_header
   type(VectorInt), public :: active_surface_tallies
 
   ! Normalization for statistics
-  integer, public :: n_realizations = 0 ! # of independent realizations
+  integer(C_INT32_T), public, bind(C) :: n_realizations = 0 ! # of independent realizations
   real(8), public :: total_weight       ! total starting particle weight in realization
 
 contains
@@ -468,6 +468,19 @@ contains
       call set_errmsg("Memory has not been allocated for tallies.")
     end if
   end function openmc_get_tally_index
+
+
+  function openmc_global_tallies(ptr) result(err) bind(C)
+    type(C_PTR), intent(out) :: ptr
+    integer(C_INT) :: err
+
+    if (.not. allocated(global_tallies)) then
+      err = E_ALLOCATE
+    else
+      err = 0
+      ptr = C_LOC(global_tallies)
+    end if
+  end function openmc_global_tallies
 
 
   function openmc_tally_get_id(index, id) result(err) bind(C)

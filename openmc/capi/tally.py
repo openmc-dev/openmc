@@ -2,6 +2,7 @@ from collections import Mapping
 from ctypes import c_int, c_int32, c_double, c_char_p, POINTER
 from weakref import WeakValueDictionary
 
+import numpy as np
 from numpy.ctypeslib import as_array
 
 from openmc.data.reaction import REACTION_NAME
@@ -11,15 +12,18 @@ from .error import _error_handler, AllocationError, InvalidIDError
 from .filter import _get_filter
 
 
-__all__ = ['Tally', 'tallies']
+__all__ = ['Tally', 'tallies', 'global_tallies']
 
 # Tally functions
-_dll.openmc_get_tally_index.argtypes = [c_int32, POINTER(c_int32)]
-_dll.openmc_get_tally_index.restype = c_int
-_dll.openmc_get_tally_index.errcheck = _error_handler
 _dll.openmc_extend_tallies.argtypes = [c_int32, POINTER(c_int32), POINTER(c_int32)]
 _dll.openmc_extend_tallies.restype = c_int
 _dll.openmc_extend_tallies.errcheck = _error_handler
+_dll.openmc_get_tally_index.argtypes = [c_int32, POINTER(c_int32)]
+_dll.openmc_get_tally_index.restype = c_int
+_dll.openmc_get_tally_index.errcheck = _error_handler
+_dll.openmc_global_tallies.argtypes = [POINTER(POINTER(c_double))]
+_dll.openmc_global_tallies.restype = c_int
+_dll.openmc_global_tallies.errcheck = _error_handler
 _dll.openmc_tally_get_id.argtypes = [c_int32, POINTER(c_int32)]
 _dll.openmc_tally_get_id.restype = c_int
 _dll.openmc_tally_get_id.errcheck = _error_handler
@@ -63,6 +67,27 @@ _SCORES = {
     -20: 'prompt-nu-fission', -21: 'inverse-velocity', -22: 'fission-q-prompt',
     -23: 'fission-q-recoverable', -24: 'decay-rate'
 }
+
+
+def global_tallies():
+    ptr = POINTER(c_double)()
+    _dll.openmc_global_tallies(ptr)
+    array = as_array(ptr, (4, 3))
+
+    # Get sum, sum-of-squares, and number of realizations
+    sum_ = array[:, 1]
+    sum_sq = array[:, 2]
+    n = c_int32.in_dll(_dll, 'n_realizations').value
+
+    # Determine mean
+    mean = sum_ / n
+
+    # Determine standard deviation
+    nonzero = np.abs(mean) > 0
+    stdev = np.zeros_like(mean)
+    stdev[nonzero] = np.sqrt((sum_sq[nonzero]/n - mean[nonzero]**2)/(n - 1))
+
+    return list(zip(mean, stdev))
 
 
 class Tally(_FortranObjectWithID):

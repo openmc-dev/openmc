@@ -15,38 +15,38 @@ from argparse import ArgumentParser
 # Command line parsing
 parser = ArgumentParser()
 parser.add_argument('-j', '--parallel', dest='n_procs', default='1',
-                  help="Number of parallel jobs.")
+                    help="Number of parallel jobs.")
 parser.add_argument('-R', '--tests-regex', dest='regex_tests',
-                  help="Run tests matching regular expression. \
-                  Test names are the directories present in tests folder.\
-                  This uses standard regex syntax to select tests.")
+                    help="Run tests matching regular expression. \
+                    Test names are the directories present in tests folder.\
+                    This uses standard regex syntax to select tests.")
 parser.add_argument('-C', '--build-config', dest='build_config',
-                  help="Build configurations matching regular expression. \
-                        Specific build configurations can be printed out with \
-                        optional argument -p, --print. This uses standard \
-                        regex syntax to select build configurations.")
+                    help="Build configurations matching regular expression. \
+                    Specific build configurations can be printed out with \
+                    optional argument -p, --print. This uses standard \
+                    regex syntax to select build configurations.")
 parser.add_argument('-l', '--list', action="store_true",
-                  dest="list_build_configs", default=False,
-                  help="List out build configurations.")
+                    dest="list_build_configs", default=False,
+                    help="List out build configurations.")
 parser.add_argument("-p", "--project", dest="project", default="",
-                  help="project name for build")
+                    help="project name for build")
 parser.add_argument("-D", "--dashboard", dest="dash",
-                  help="Dash name -- Experimental, Nightly, Continuous")
+                    help="Dash name -- Experimental, Nightly, Continuous")
 parser.add_argument("-u", "--update", action="store_true", dest="update",
-                  help="Allow CTest to update repo. (WARNING: may overwrite\
-                        changes that were not pushed.")
+                    help="Allow CTest to update repo. (WARNING: may overwrite\
+                    changes that were not pushed.")
 parser.add_argument("-s", "--script", action="store_true", dest="script",
-                  help="Activate CTest scripting mode for coverage, valgrind\
-                        and dashboard capability.")
+                    help="Activate CTest scripting mode for coverage, valgrind\
+                    and dashboard capability.")
 args = parser.parse_args()
 
 # Default compiler paths
-FC='gfortran'
-CC='gcc'
-CXX='g++'
-MPI_DIR='/opt/mpich/3.2-gnu'
-HDF5_DIR='/opt/hdf5/1.8.16-gnu'
-PHDF5_DIR='/opt/phdf5/1.8.16-gnu'
+FC = 'gfortran'
+CC = 'gcc'
+CXX = 'g++'
+MPI_DIR = '/opt/mpich/3.2-gnu'
+HDF5_DIR = '/opt/hdf5/1.8.16-gnu'
+PHDF5_DIR = '/opt/phdf5/1.8.16-gnu'
 
 # Script mode for extra capability
 script_mode = False
@@ -115,6 +115,7 @@ endif()
 # Define test data structure
 tests = OrderedDict()
 
+
 def cleanup(path):
     """Remove generated output files."""
     for dirpath, dirnames, filenames in os.walk(path):
@@ -173,7 +174,7 @@ class Test(object):
 
     # Sets the build name that will show up on the CDash
     def get_build_name(self):
-        self.build_name =  args.project + '_' + self.name
+        self.build_name = args.project + '_' + self.name
         return self.build_name
 
     # Sets up build options for various tests. It is used both
@@ -211,7 +212,7 @@ class Test(object):
             os.environ['HDF5_ROOT'] = PHDF5_DIR
         else:
             os.environ['HDF5_ROOT'] = HDF5_DIR
-        rc = call(['ctest', '-S', 'ctestscript.run','-V'])
+        rc = call(['ctest', '-S', 'ctestscript.run', '-V'])
         if rc != 0:
             self.success = False
             self.msg = 'Failed on ctest script.'
@@ -243,7 +244,7 @@ class Test(object):
             return
 
         # Default make string
-        make_list = ['make','-s']
+        make_list = ['make', '-s']
 
         # Check for parallel
         if args.n_procs is not None:
@@ -282,7 +283,7 @@ class Test(object):
 
 
 # Simple function to add a test to the global tests dictionary
-def add_test(name, debug=False, optimize=False, mpi=False, openmp=False,\
+def add_test(name, debug=False, optimize=False, mpi=False, openmp=False,
              phdf5=False, valgrind=False, coverage=False):
     tests.update({name: Test(name, debug, optimize, mpi, openmp, phdf5,
                              valgrind, coverage)})
@@ -363,7 +364,7 @@ ctest_vars = {
 
 # Check project name
 subprop = "set_property(GLOBAL PROPERTY SubProject {0})"
-if args.project == "" :
+if args.project == "":
     ctest_vars.update({'subproject': ''})
 elif args.project == 'develop':
     ctest_vars.update({'subproject': ''})
@@ -442,14 +443,14 @@ for key in iter(tests):
     # INCLUDE is a CTest command that allows for a subset
     # of tests to be executed. Only used in script mode.
     if args.regex_tests is None:
-        ctest_vars.update({'tests' : ''})
+        ctest_vars.update({'tests': ''})
 
         # No user tests, use default valgrind tests
         if test.valgrind:
-            ctest_vars.update({'tests' : 'INCLUDE {0}'.
+            ctest_vars.update({'tests': 'INCLUDE {0}'.
                               format(valgrind_default_tests)})
     else:
-        ctest_vars.update({'tests' : 'INCLUDE {0}'.
+        ctest_vars.update({'tests': 'INCLUDE {0}'.
                           format(args.regex_tests)})
 
     # Main part of code that does the ctest execution.

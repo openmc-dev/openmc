@@ -29,7 +29,7 @@ module simulation
   use settings
   use simulation_header
   use source,          only: initialize_source, sample_external_source
-  use state_point,     only: write_state_point, write_source_point, load_state_point
+  use state_point,     only: openmc_statepoint_write, write_source_point, load_state_point
   use string,          only: to_str
   use tally,           only: accumulate_tallies, setup_active_tallies, &
                              init_tally_routines
@@ -349,7 +349,7 @@ contains
 
     ! Write out state point if it's been specified for this batch
     if (statepoint_batch % contains(current_batch)) then
-      call write_state_point()
+      call openmc_statepoint_write()
     end if
 
     ! Write out source point if it's been specified for this batch

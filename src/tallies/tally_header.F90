@@ -22,6 +22,7 @@ module tally_header
   public :: free_memory_tally
   public :: openmc_extend_tallies
   public :: openmc_get_tally_index
+  public :: openmc_global_tallies
   public :: openmc_tally_get_id
   public :: openmc_tally_get_filters
   public :: openmc_tally_get_nuclides
@@ -476,6 +477,7 @@ contains
 
     if (.not. allocated(global_tallies)) then
       err = E_ALLOCATE
+      call set_errmsg("Global tallies have not been allocated yet.")
     else
       err = 0
       ptr = C_LOC(global_tallies)

@@ -1,9 +1,21 @@
 from contextlib import contextmanager
-from ctypes import CDLL, c_int, c_int32, c_double, POINTER
+from ctypes import CDLL, c_int, c_int32, c_int64, c_double, POINTER, Structure
 from warnings import warn
+
+import numpy as np
+from numpy.ctypeslib import as_array
 
 from . import _dll
 from .error import _error_handler
+
+
+class _Bank(Structure):
+    _fields_ = [('wgt', c_double),
+                ('xyz', c_double*3),
+                ('uvw', c_double*3),
+                ('E', c_double),
+                ('delayed_group', c_int)]
+
 
 
 _dll.openmc_calculate_volumes.restype = None
@@ -18,9 +30,16 @@ _dll.openmc_init.restype = None
 _dll.openmc_get_keff.argtypes = [POINTER(c_double*2)]
 _dll.openmc_get_keff.restype = c_int
 _dll.openmc_get_keff.errcheck = _error_handler
+_dll.openmc_next_batch.restype = c_int
 _dll.openmc_plot_geometry.restype = None
 _dll.openmc_run.restype = None
 _dll.openmc_reset.restype = None
+_dll.openmc_source_bank.argtypes = [POINTER(POINTER(_Bank)), POINTER(c_int64)]
+_dll.openmc_source_bank.restype = c_int
+_dll.openmc_source_bank.errcheck = _error_handler
+_dll.openmc_simulation_init.restype = None
+_dll.openmc_simulation_finalize.restype = None
+_dll.openmc_statepoint_write.restype = None
 
 
 def calculate_volumes():
@@ -102,6 +121,20 @@ def init(intracomm=None):
         _dll.openmc_init(None)
 
 
+def iter_batches():
+    """Iterator over batches."""
+    while True:
+        # Run next batch
+        retval = _dll.openmc_next_batch()
+
+        # Provide opportunity for user to perform action between batches
+        yield
+
+        # End the iteration
+        if retval < 0:
+            break
+
+
 def keff():
     """Return the calculated k-eigenvalue and its standard deviation.
 
@@ -114,6 +147,10 @@ def keff():
     k = (c_double*2)()
     _dll.openmc_get_keff(k)
     return tuple(k)
+
+def next_batch():
+    """Run next batch."""
+    return _dll.openmc_next_batch()
 
 
 def plot_geometry():
@@ -129,6 +166,40 @@ def reset():
 def run():
     """Run simulation"""
     _dll.openmc_run()
+
+
+def simulation_init():
+    """Initialize simulation"""
+    _dll.openmc_simulation_init()
+
+
+def simulation_finalize():
+    """Finalize simulation"""
+    _dll.openmc_simulation_finalize()
+
+
+def source_bank():
+    """Return source bank as NumPy array
+
+    Returns
+    -------
+    numpy.ndarray
+        Source sites
+
+    """
+    # Get pointer to source bank
+    ptr = POINTER(_Bank)()
+    n = c_int64()
+    _dll.openmc_source_bank(ptr, n)
+
+    # Convert to numpy array with appropriate datatype
+    bank_dtype = np.dtype(_Bank)
+    return as_array(ptr, (n.value,)).view(bank_dtype)
+
+
+def statepoint_write():
+    """Write a statepoint."""
+    _dll.openmc_statepoint_write()
 
 
 @contextmanager

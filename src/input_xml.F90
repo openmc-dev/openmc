@@ -4860,6 +4860,7 @@ contains
   subroutine read_urr_xml()
 #ifdef PURXS
     character(len=:), allocatable :: temp_str
+    character(MAX_LINE_LEN) :: temp_str_fixed_len
     character(len=:), allocatable :: filename
     integer :: i ! re-usable index
     character(len=:), allocatable :: zaid_str
@@ -4899,10 +4900,11 @@ contains
 
       ! Check that a path to ENDF data is specified
       if (check_for_node(settings_node, "endf_6_filepath")) then
-        call get_node_value(settings_node, "endf_6_filepath", temp_str)
-        temp_str = trim(adjustl(temp_str))
+        call get_node_value(settings_node, "endf_6_filepath", temp_str_fixed_len)
+        temp_str = trim(adjustl(temp_str_fixed_len))
         if (temp_str(len(temp_str):) /= '/') temp_str = temp_str // '/'
         URR_path_endf_files = temp_str
+        print*,URR_path_endf_files
       else
         call fatal_error('Specify path to ENDF-6 data files for URR treatment&
              & via endf_6_filepath in urr.xml')
@@ -4910,8 +4912,8 @@ contains
 
       ! Check that a path to averaged URR cross section values is specified
       if (check_for_node(settings_node, "avg_xs_filepath")) then
-        call get_node_value(settings_node, "avg_xs_filepath", temp_str)
-        temp_str = trim(adjustl(temp_str))
+        call get_node_value(settings_node, "avg_xs_filepath", temp_str_fixed_len)
+        temp_str = trim(adjustl(temp_str_fixed_len))
         if (temp_str(len(temp_str):) /= '/') temp_str = temp_str // '/'
         URR_path_avg_xs = temp_str
       else
@@ -4921,9 +4923,9 @@ contains
 
       ! Check which formalism for the on-the-fly URR treatment is specified
       if (check_for_node(settings_node, 'formalism')) then
-        call get_node_value(settings_node, 'formalism', temp_str)
+        call get_node_value(settings_node, 'formalism', temp_str_fixed_len)
 
-        select case (trim(adjustl(to_lower(temp_str))))
+        select case (trim(adjustl(to_lower(temp_str_fixed_len))))
         case ('slbw')
           URR_formalism = URR_SLBW
         case ('mlbw')
@@ -4944,9 +4946,9 @@ contains
 
       ! Determine which W function evaluation to use
       if (check_for_node(settings_node, "w_function_implementation")) then
-        call get_node_value(settings_node, "w_function_implementation", temp_str)
+        call get_node_value(settings_node, "w_function_implementation", temp_str_fixed_len)
 
-        select case (trim(adjustl(to_lower(temp_str))))
+        select case (trim(adjustl(to_lower(temp_str_fixed_len))))
         case ('mit_w')
           URR_faddeeva_method = URR_MIT_W
         case ('quick_w')
@@ -4983,9 +4985,9 @@ contains
 
       ! Check for resonance parameter energy dependence treatment
       if (check_for_node(settings_node, 'parameter_energy_dependence')) then
-        call get_node_value(settings_node, "parameter_energy_dependence", temp_str)
+        call get_node_value(settings_node, "parameter_energy_dependence", temp_str_fixed_len)
 
-        select case (trim(adjustl(to_lower(temp_str))))
+        select case (trim(adjustl(to_lower(temp_str_fixed_len))))
         case ('neutron')
           URR_parameter_energy_dependence = URR_E_NEUTRON
         case ('resonance')
@@ -5001,12 +5003,12 @@ contains
 
       ! Include resonance structure of competitive URR cross sections?
       if (check_for_node(settings_node, "competitive_structure")) then
-        call get_node_value(settings_node, "competitive_structure", temp_str)
-        if (trim(adjustl(to_lower(temp_str))) == 'false' &
-             .or. trim(adjustl(temp_str)) == '0') then
+        call get_node_value(settings_node, "competitive_structure", temp_str_fixed_len)
+        if (trim(adjustl(to_lower(temp_str_fixed_len))) == 'false' &
+             .or. trim(adjustl(temp_str_fixed_len)) == '0') then
           URR_competitive_structure = .false.
-        else if (trim(adjustl(to_lower(temp_str))) == 'true' &
-             .or. trim(adjustl(temp_str)) == '1') then
+        else if (trim(adjustl(to_lower(temp_str_fixed_len))) == 'true' &
+             .or. trim(adjustl(temp_str_fixed_len)) == '1') then
           URR_competitive_structure = .true.
         else
           call fatal_error('Modeling of competitive reaction cross section &
@@ -5038,8 +5040,8 @@ contains
 
           ! Check that an ENDF data file is given
           if (check_for_node(isotope_node, 'endf_6_file')) then
-            call get_node_value(isotope_node, 'endf_6_file', temp_str)
-            URR_endf_filenames(i) = trim(adjustl(temp_str))
+            call get_node_value(isotope_node, 'endf_6_file', temp_str_fixed_len)
+            URR_endf_filenames(i) = trim(adjustl(temp_str_fixed_len))
           else
             call fatal_error('No ENDF-6 data file specified for isotope ' &
                  // trim(to_str(i)) // ' in urr.xml file')
@@ -5081,8 +5083,8 @@ contains
       URR_num_urr_realizations = 1
       point_xs_node = root % child("pointwise")
       if (check_for_node(point_xs_node, 'source')) then
-        call get_node_value(point_xs_node, "source", temp_str)
-        select case (trim(adjustl(to_lower(temp_str))))
+        call get_node_value(point_xs_node, "source", temp_str_fixed_len)
+        select case (trim(adjustl(to_lower(temp_str_fixed_len))))
         case ('reconstruction')
           URR_xs_source_pointwise = URR_RECONSTRUCTION
         case ('hdf5')
@@ -5128,9 +5130,9 @@ contains
 
       ! Check if a xs calculation frequency is specified
       if (check_for_node(otf_xs_node, 'frequency')) then
-        call get_node_value(otf_xs_node, 'frequency', temp_str)
+        call get_node_value(otf_xs_node, 'frequency', temp_str_fixed_len)
 
-        select case (trim(adjustl(to_lower(temp_str))))
+        select case (trim(adjustl(to_lower(temp_str_fixed_len))))
         case ('event')
           URR_realization_frequency = URR_EVENT
 
@@ -5196,9 +5198,9 @@ contains
 
       ! load previously-generated tables?
       if (check_for_node(prob_table_node, 'read_tables')) then
-        call get_node_value(prob_table_node, 'read_tables', temp_str)
-        if (trim(adjustl(to_lower(temp_str))) == 'true'&
-             .or. trim(adjustl(temp_str)) == '1') then
+        call get_node_value(prob_table_node, 'read_tables', temp_str_fixed_len)
+        if (trim(adjustl(to_lower(temp_str_fixed_len))) == 'true'&
+             .or. trim(adjustl(temp_str_fixed_len)) == '1') then
           URR_pregenerated_prob_tables = .true.
           if (master) then
             call write_message('Loading probability tables from files. Any&
@@ -5206,16 +5208,16 @@ contains
                  & are being ignored.')
           end if
           if (check_for_node(prob_table_node, 'filepath')) then
-            call get_node_value(prob_table_node, 'filepath', temp_str)
-            temp_str = trim(adjustl(temp_str))
+            call get_node_value(prob_table_node, 'filepath', temp_str_fixed_len)
+            temp_str = trim(adjustl(temp_str_fixed_len))
             if (temp_str(len(temp_str):) /= '/') temp_str = temp_str // '/'
             URR_path_prob_tables = temp_str
           else
             call fatal_error('Must specify path to probability table files &
                  &in urr.xml')
           end if
-        else if (trim(adjustl(to_lower(temp_str))) == 'false'&
-             .or. trim(adjustl(temp_str)) == '0') then
+        else if (trim(adjustl(to_lower(temp_str_fixed_len))) == 'false'&
+             .or. trim(adjustl(temp_str_fixed_len)) == '0') then
           URR_pregenerated_prob_tables = .false.
         else
           call fatal_error('Loading probability tables must be true or false&
@@ -5229,8 +5231,8 @@ contains
       ! temperature interpolation scheme
       if (check_for_node(prob_table_node, 'temperature_interpolation_method')) then
         call get_node_value(prob_table_node, 'temperature_interpolation_method',&
-             temp_str)
-        select case(trim(adjustl(to_lower(temp_str))))
+             temp_str_fixed_len)
+        select case(trim(adjustl(to_lower(temp_str_fixed_len))))
         case('histogram')
           URR_temperature_interp_scheme = URR_HISTOGRAM
         case('lin-lin')
@@ -5321,12 +5323,12 @@ contains
 
         ! energy spacing scheme
         if (check_for_node(prob_table_node, "energy_spacing")) then
-          call get_node_value(prob_table_node, "energy_spacing", temp_str)
-          if (trim(adjustl(to_lower(temp_str))) == 'linear') then
+          call get_node_value(prob_table_node, "energy_spacing", temp_str_fixed_len)
+          if (trim(adjustl(to_lower(temp_str_fixed_len))) == 'linear') then
             URR_E_grid_scheme_prob_tables = URR_LINEAR
             call fatal_error('Linear probability table energy spacing not yet&
                  & supported in urr.xml')
-          else if (trim(adjustl(to_lower(temp_str))) == 'logarithmic') then
+          else if (trim(adjustl(to_lower(temp_str_fixed_len))) == 'logarithmic') then
             URR_E_grid_scheme_prob_tables = URR_LOGARITHMIC
             if (check_for_node(prob_table_node, "num_energies")) then
               call get_node_value(prob_table_node, "num_energies", URR_num_energies_prob_tables)
@@ -5334,9 +5336,9 @@ contains
               call fatal_error('Must specify number of logarithmic probability&
                    & table energies')
             end if
-          else if (trim(adjustl(to_lower(temp_str))) == 'endf') then
+          else if (trim(adjustl(to_lower(temp_str_fixed_len))) == 'endf') then
             URR_E_grid_scheme_prob_tables = URR_ENDF6
-          else if (trim(adjustl(to_lower(temp_str))) == 'user') then
+          else if (trim(adjustl(to_lower(temp_str_fixed_len))) == 'user') then
             URR_E_grid_scheme_prob_tables = URR_USER
             if (check_for_node(prob_table_node, "energy_grid")) then
               URR_num_energies_prob_tables = node_word_count(prob_table_node, "energy_grid")
@@ -5358,10 +5360,10 @@ contains
         ! background cross section component treatment
         URR_background_xs_treatment = URR_FALSE
         if (check_for_node(prob_table_node, "background_xs")) then
-          call get_node_value(prob_table_node, "background_xs", temp_str)
-          if (trim(adjustl(to_lower(temp_str))) == 'endf_6') then
+          call get_node_value(prob_table_node, "background_xs", temp_str_fixed_len)
+          if (trim(adjustl(to_lower(temp_str_fixed_len))) == 'endf_6') then
             URR_background_xs_treatment = URR_ENDFFILE
-          else if (trim(adjustl(to_lower(temp_str))) == 'false') then
+          else if (trim(adjustl(to_lower(temp_str_fixed_len))) == 'false') then
             URR_background_xs_treatment = URR_FALSE
           else
             call fatal_error('Unrecognized background cross section source&
@@ -5370,12 +5372,12 @@ contains
         end if
 
         if (check_for_node(prob_table_node, "write_tables")) then
-          call get_node_value(prob_table_node, "write_tables", temp_str)
-          if (trim(adjustl(to_lower(temp_str))) == 'false' &
-               .or. trim(adjustl(temp_str)) == '0') then
+          call get_node_value(prob_table_node, "write_tables", temp_str_fixed_len)
+          if (trim(adjustl(to_lower(temp_str_fixed_len))) == 'false' &
+               .or. trim(adjustl(temp_str_fixed_len)) == '0') then
             URR_write_prob_tables = .false.
-          else if (trim(adjustl(to_lower(temp_str))) == 'true' &
-               .or. trim(adjustl(temp_str)) == '1') then
+          else if (trim(adjustl(to_lower(temp_str_fixed_len))) == 'true' &
+               .or. trim(adjustl(temp_str_fixed_len)) == '1') then
             URR_write_prob_tables = .true.
           else
             call fatal_error('write_tables must be true or false in urr.xml')
@@ -5386,12 +5388,12 @@ contains
         end if
 
         if (check_for_node(prob_table_node, "write_avg_xs")) then
-          call get_node_value(prob_table_node, "write_avg_xs", temp_str)
-          if (trim(adjustl(to_lower(temp_str))) == 'false' &
-               .or. trim(adjustl(temp_str)) == '0') then
+          call get_node_value(prob_table_node, "write_avg_xs", temp_str_fixed_len)
+          if (trim(adjustl(to_lower(temp_str_fixed_len))) == 'false' &
+               .or. trim(adjustl(temp_str_fixed_len)) == '0') then
             URR_write_avg_xs = .false.
-          else if (trim(adjustl(to_lower(temp_str))) == 'true' &
-               .or. trim(adjustl(temp_str)) == '1') then
+          else if (trim(adjustl(to_lower(temp_str_fixed_len))) == 'true' &
+               .or. trim(adjustl(temp_str_fixed_len)) == '1') then
             URR_write_avg_xs = .true.
           else
             call fatal_error('write_avg_xs must be true or false in urr.xml')

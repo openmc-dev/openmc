@@ -61,7 +61,7 @@ kwargs = {
     # Required dependencies
     'install_requires': [
         'six', 'numpy>=1.9', 'h5py', 'scipy', 'ipython', 'matplotlib',
-        'pandas<0.21.0', 'lxml', 'uncertainties'
+        'pandas', 'lxml', 'uncertainties'
     ],
 
     # Optional dependencies

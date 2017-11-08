@@ -4904,7 +4904,6 @@ contains
         temp_str = trim(adjustl(temp_str_fixed_len))
         if (temp_str(len(temp_str):) /= '/') temp_str = temp_str // '/'
         URR_path_endf_files = temp_str
-        print*,URR_path_endf_files
       else
         call fatal_error('Specify path to ENDF-6 data files for URR treatment&
              & via endf_6_filepath in urr.xml')

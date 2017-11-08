@@ -40,10 +40,10 @@ module state_point
 contains
 
 !===============================================================================
-! WRITE_STATE_POINT
+! OPENMC_STATEPOINT_WRITE writes an HDF5 statepoint file to disk
 !===============================================================================
 
-  subroutine write_state_point()
+  subroutine openmc_statepoint_write() bind(C)
 
     integer :: i, j, k
     integer :: i_xs
@@ -433,7 +433,7 @@ contains
 
       call file_close(file_id)
     end if
-  end subroutine write_state_point
+  end subroutine openmc_statepoint_write
 
 !===============================================================================
 ! WRITE_SOURCE_POINT

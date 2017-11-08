@@ -61,7 +61,7 @@ script:
   - if [[ $OPENMC_CONFIG == "check_source" ]]; then
       ./check_source.py;
     else
-      ./run_tests.py -C $OPENMC_CONFIG -j 2;
+      ./run_tests.py -C $OPENMC_CONFIG -j 2 &&
       pytest --cov=../openmc unit_tests/;
     fi
   - cd ..

@@ -17,7 +17,6 @@ class _Bank(Structure):
                 ('delayed_group', c_int)]
 
 
-
 _dll.openmc_calculate_volumes.restype = None
 _dll.openmc_finalize.restype = None
 _dll.openmc_find.argtypes = [POINTER(c_double*3), c_int, POINTER(c_int32),
@@ -167,6 +166,7 @@ def keff():
     k = (c_double*2)()
     _dll.openmc_get_keff(k)
     return tuple(k)
+
 
 def next_batch():
     """Run next batch."""

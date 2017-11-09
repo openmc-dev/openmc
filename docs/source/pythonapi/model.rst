@@ -2,6 +2,16 @@
 :mod:`openmc.model` -- Model Building
 -------------------------------------
 
+Convenience Functions
+---------------------
+
+.. autosummary::
+   :toctree: generated
+   :nosignatures:
+   :template: myfunction.rst
+
+   openmc.model.subdivide
+
 TRISO Fuel Modeling
 -------------------
 

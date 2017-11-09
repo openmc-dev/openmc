@@ -57,13 +57,8 @@ contains
   subroutine openmc_run() bind(C)
 
     call openmc_simulation_init()
-
-    do
-      if (openmc_next_batch() < 0) exit
+    do while (openmc_next_batch() == 0)
     end do
-
-    call time_active % stop()
-
     call openmc_simulation_finalize()
 
   end subroutine openmc_run
@@ -459,12 +454,15 @@ contains
     real(8)    :: tempr(3) ! temporary array for communication
 #endif
 
+    ! Stop active batch timer
+    call time_active % stop()
+
 !$omp parallel
     deallocate(micro_xs, filter_matches)
 !$omp end parallel
 
     ! Increment total number of generations
-    total_gen = total_gen + n_batches*gen_per_batch
+    total_gen = total_gen + current_batch*gen_per_batch
 
     ! Start finalization timer
     call time_finalize % start()

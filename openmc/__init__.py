@@ -28,4 +28,7 @@ from openmc.mixin import *
 from openmc.plotter import *
 from openmc.search import *
 
+# Import a few convencience functions that used to be here
+from openmc.model import get_rectangular_prism, get_hexagonal_prism
+
 __version__ = '0.9.0'

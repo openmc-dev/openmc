@@ -121,8 +121,11 @@ contains
       if (run_mode == MODE_EIGENVALUE) then
         call write_dataset(file_id, "n_inactive", n_inactive)
         call write_dataset(file_id, "generations_per_batch", gen_per_batch)
-        call write_dataset(file_id, "k_generation", k_generation)
-        call write_dataset(file_id, "entropy", entropy)
+        k = k_generation % size()
+        call write_dataset(file_id, "k_generation", k_generation % data(1:k))
+        if (entropy_on) then
+          call write_dataset(file_id, "entropy", entropy % data(1:k))
+        end if
         call write_dataset(file_id, "k_col_abs", k_col_abs)
         call write_dataset(file_id, "k_col_tra", k_col_tra)
         call write_dataset(file_id, "k_abs_tra", k_abs_tra)
@@ -707,10 +710,12 @@ contains
     if (run_mode == MODE_EIGENVALUE) then
       call read_dataset(int_array(1), file_id, "n_inactive")
       call read_dataset(gen_per_batch, file_id, "generations_per_batch")
-      call read_dataset(k_generation(1:restart_batch*gen_per_batch), &
+      call read_dataset(k_generation % data(1:restart_batch*gen_per_batch), &
            file_id, "k_generation")
-      call read_dataset(entropy(1:restart_batch*gen_per_batch), &
-           file_id, "entropy")
+      if (entropy_on) then
+        call read_dataset(entropy % data(1:restart_batch*gen_per_batch), &
+             file_id, "entropy")
+      end if
       call read_dataset(k_col_abs, file_id, "k_col_abs")
       call read_dataset(k_col_tra, file_id, "k_col_tra")
       call read_dataset(k_abs_tra, file_id, "k_abs_tra")

@@ -78,6 +78,7 @@ contains
     ! Handle restart runs
     if (restart_run .and. current_batch <= restart_batch) then
       call replay_batch_history()
+      retval = 0
       return
     end if
 

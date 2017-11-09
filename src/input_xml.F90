@@ -863,7 +863,7 @@ contains
 
       ! Preallocate space for keff and entropy by generation
       call k_generation % reserve(n_max_batches*gen_per_batch)
-      call entropy % initialize(n_max_batches*gen_per_batch)
+      call entropy % reserve(n_max_batches*gen_per_batch)
 
       ! Get the trigger information for keff
       if (check_for_node(node_base, "keff_trigger")) then

@@ -632,6 +632,7 @@ contains
   subroutine load_state_point()
 
     integer :: i
+    integer :: n
     integer :: int_array(3)
     integer, allocatable :: array(:)
     integer(HID_T) :: file_id
@@ -710,11 +711,14 @@ contains
     if (run_mode == MODE_EIGENVALUE) then
       call read_dataset(int_array(1), file_id, "n_inactive")
       call read_dataset(gen_per_batch, file_id, "generations_per_batch")
-      call read_dataset(k_generation % data(1:restart_batch*gen_per_batch), &
-           file_id, "k_generation")
+
+      n = restart_batch*gen_per_batch
+      call k_generation % resize(n)
+      call read_dataset(k_generation % data(1:n), file_id, "k_generation")
+
       if (entropy_on) then
-        call read_dataset(entropy % data(1:restart_batch*gen_per_batch), &
-             file_id, "entropy")
+        call entropy % resize(n)
+        call read_dataset(entropy % data(1:n), file_id, "entropy")
       end if
       call read_dataset(k_col_abs, file_id, "k_col_abs")
       call read_dataset(k_col_tra, file_id, "k_col_tra")

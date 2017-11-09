@@ -18,12 +18,18 @@ Functions
    openmc.capi.find_material
    openmc.capi.hard_reset
    openmc.capi.init
+   openmc.capi.iter_batches
    openmc.capi.keff
    openmc.capi.load_nuclide
+   openmc.capi.next_batch
    openmc.capi.plot_geometry
    openmc.capi.reset
    openmc.capi.run
    openmc.capi.run_in_memory
+   openmc.capi.simulation_init
+   openmc.capi.simulation_finalize
+   openmc.capi.source_bank
+   openmc.capi.statepoint_write
 
 Classes
 -------

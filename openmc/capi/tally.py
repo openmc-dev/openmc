@@ -4,6 +4,7 @@ from weakref import WeakValueDictionary
 
 import numpy as np
 from numpy.ctypeslib import as_array
+import scipy.stats
 
 from openmc.data.reaction import REACTION_NAME
 from . import _dll, Nuclide
@@ -31,6 +32,9 @@ _dll.openmc_tally_get_filters.argtypes = [
     c_int32, POINTER(POINTER(c_int32)), POINTER(c_int)]
 _dll.openmc_tally_get_filters.restype = c_int
 _dll.openmc_tally_get_filters.errcheck = _error_handler
+_dll.openmc_tally_get_n_realizations.argtypes = [c_int32, POINTER(c_int32)]
+_dll.openmc_tally_get_n_realizations.restype = c_int
+_dll.openmc_tally_get_n_realizations.errcheck = _error_handler
 _dll.openmc_tally_get_nuclides.argtypes = [
     c_int32, POINTER(POINTER(c_int)), POINTER(c_int)]
 _dll.openmc_tally_get_nuclides.restype = c_int
@@ -70,6 +74,14 @@ _SCORES = {
 
 
 def global_tallies():
+    """Mean and standard deviation of the mean for each global tally.
+
+    Returns
+    -------
+    list of tuple
+        For each global tally, a tuple of (mean, standard deviation)
+
+    """
     ptr = POINTER(c_double)()
     _dll.openmc_global_tallies(ptr)
     array = as_array(ptr, (4, 3))
@@ -113,10 +125,16 @@ class Tally(_FortranObjectWithID):
         ID of the tally
     filters : list
         List of tally filters
+    mean : numpy.ndarray
+        An array containing the sample mean for each bin
     nuclides : list of str
         List of nuclides to score results for
+    num_realizations : int
+        Number of realizations
     results : numpy.ndarray
         Array of tally results
+    std_dev : numpy.ndarray
+        An array containing the sample standard deviation for each bin
 
     """
     __instances = WeakValueDictionary()
@@ -169,21 +187,6 @@ class Tally(_FortranObjectWithID):
         _dll.openmc_tally_get_filters(self._index, filt_idx, n)
         return [_get_filter(filt_idx[i]) for i in range(n.value)]
 
-    @property
-    def nuclides(self):
-        nucs = POINTER(c_int)()
-        n = c_int()
-        _dll.openmc_tally_get_nuclides(self._index, nucs, n)
-        return [Nuclide(nucs[i]).name if nucs[i] > 0 else 'total'
-                for i in range(n.value)]
-
-    @property
-    def results(self):
-        data = POINTER(c_double)()
-        shape = (c_int*3)()
-        _dll.openmc_tally_results(self._index, data, shape)
-        return as_array(data, tuple(shape[::-1]))
-
     @filters.setter
     def filters(self, filters):
         # Get filter indices as int32_t[]
@@ -192,11 +195,41 @@ class Tally(_FortranObjectWithID):
 
         _dll.openmc_tally_set_filters(self._index, n, indices)
 
+    @property
+    def mean(self):
+        n = self.num_realizations
+        sum_ = self.results[:, :, 1]
+        if n > 0:
+            return sum_ / n
+        else:
+            return sum_.copy()
+
+    @property
+    def nuclides(self):
+        nucs = POINTER(c_int)()
+        n = c_int()
+        _dll.openmc_tally_get_nuclides(self._index, nucs, n)
+        return [Nuclide(nucs[i]).name if nucs[i] > 0 else 'total'
+                for i in range(n.value)]
+
     @nuclides.setter
     def nuclides(self, nuclides):
         nucs = (c_char_p * len(nuclides))()
         nucs[:] = [x.encode() for x in nuclides]
         _dll.openmc_tally_set_nuclides(self._index, len(nuclides), nucs)
+
+    @property
+    def num_realizations(self):
+        n = c_int32()
+        _dll.openmc_tally_get_n_realizations(self._index, n)
+        return n.value
+
+    @property
+    def results(self):
+        data = POINTER(c_double)()
+        shape = (c_int*3)()
+        _dll.openmc_tally_results(self._index, data, shape)
+        return as_array(data, tuple(shape[::-1]))
 
     @property
     def scores(self):
@@ -223,21 +256,47 @@ class Tally(_FortranObjectWithID):
         scores_[:] = [x.encode() for x in scores]
         _dll.openmc_tally_set_scores(self._index, len(scores), scores_)
 
-    @classmethod
-    def new(cls, tally_id=None):
-        # Determine ID to assign
-        if tally_id is None:
-            try:
-                tally_id = max(tallies) + 1
-            except ValueError:
-                tally_id = 1
+    @property
+    def std_dev(self):
+        results = self.results
+        std_dev = np.empty(results.shape[:2])
+        std_dev.fill(np.nan)
 
-        index = c_int32()
-        _dll.openmc_extend_tallies(1, index, None)
-        _dll.openmc_tally_set_type(index, b'generic')
-        tally = cls(index.value)
-        tally.id = tally_id
-        return tally
+        n = self.num_realizations
+        if n > 1:
+            # Get sum and sum-of-squares from results
+            sum_ = results[:, :, 1]
+            sum_sq = results[:, :, 2]
+
+            # Determine non-zero entries
+            mean = sum_ / n
+            nonzero = np.abs(mean) > 0
+
+            # Calculate sample standard deviation of the mean
+            std_dev[nonzero] = np.sqrt(
+                (sum_sq[nonzero]/n - mean[nonzero]**2)/(n - 1))
+
+        return std_dev
+
+    def ci_width(self, alpha=0.05):
+        """Confidence interval half-width based on a Student t distribution
+
+        Parameters
+        ----------
+        alpha : float
+            Significance level (one minus the confidence level!)
+
+        Returns
+        -------
+        float
+            Half-width of a two-sided (1 - :math:`alpha`) confidence interval
+
+        """
+        half_width = self.std_dev.copy()
+        n = self.num_realizations
+        if n > 1:
+            half_width *= scipy.stats.t.ppf(1 - alpha/2, n - 1)
+        return half_width
 
 
 class _TallyMapping(Mapping):

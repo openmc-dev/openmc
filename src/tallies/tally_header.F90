@@ -526,6 +526,22 @@ contains
   end function openmc_tally_get_filters
 
 
+  function openmc_tally_get_n_realizations(index, n) result(err) bind(C)
+    ! Return the number of realizations for a tally
+    integer(C_INT32_T), value       :: index
+    integer(C_INT32_T), intent(out) :: n
+    integer(C_INT) :: err
+
+    if (index >= 1 .and. index <= size(tallies)) then
+      n = tallies(index) % obj % n_realizations
+      err = 0
+    else
+      err = E_OUT_OF_BOUNDS
+      call set_errmsg('Index in tallies array is out of bounds.')
+    end if
+  end function openmc_tally_get_n_realizations
+
+
   function openmc_tally_get_nuclides(index, nuclides, n) result(err) bind(C)
     ! Return the list of nuclides assigned to a tally
     integer(C_INT32_T), value :: index

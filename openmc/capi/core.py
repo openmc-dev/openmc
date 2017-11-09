@@ -122,7 +122,27 @@ def init(intracomm=None):
 
 
 def iter_batches():
-    """Iterator over batches."""
+    """Iterator over batches.
+
+    This function returns a generator-iterator that allows Python code to be run
+    between batches in an OpenMC simulation. It should be used in conjunction
+    with :func:`openmc.capi.simulation_init` and
+    :func:`openmc.capi.simulation_finalize`. For example:
+
+    .. code-block:: Python
+
+        with openmc.capi.run_in_memory():
+            openmc.capi.simulation_init()
+            for _ in openmc.capi.iter_batches():
+                # Look at convergence of tallies, for example
+                ...
+            openmc.capi.simulation_finalize()
+
+    See Also
+    --------
+    openmc.capi.next_batch
+
+    """
     while True:
         # Run next batch
         retval = _dll.openmc_next_batch()

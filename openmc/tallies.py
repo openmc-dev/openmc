@@ -3516,7 +3516,7 @@ class Tallies(cv.CheckedList):
                 if f not in already_written:
                     root_element.append(f.to_xml_element())
                     already_written[f] = f.id
-                else:
+                elif f.id != already_written[f]:
                     # Set the IDs of identical filters with different
                     # user-defined IDs to the same value
                     f.id = already_written[f]

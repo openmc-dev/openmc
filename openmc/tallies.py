@@ -1664,8 +1664,10 @@ class Tally(IDManagerMixin):
                     new_column.extend(['']*delta_len)
                     columns[i] = tuple(new_column)
 
-            # Create and set a MultiIndex for the DataFrame's columns
-            df.columns = pd.MultiIndex.from_tuples(columns)
+            # Create and set a MultiIndex for the DataFrame's columns, but only
+            # if any column actually is multi-level (e.g., a mesh filter)
+            if any(len(c) > 1 for c in columns):
+                df.columns = pd.MultiIndex.from_tuples(columns)
 
         # Modify the df.to_string method so that it prints formatted strings.
         # Credit to http://stackoverflow.com/users/3657742/chrisb for this trick

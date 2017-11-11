@@ -1,7 +1,10 @@
 module plot_header
 
+  use, intrinsic :: ISO_C_BINDING
+
   use constants
-  use mesh_header,  only: RegularMesh
+  use dict_header, only: DictIntInt
+  use mesh_header, only: RegularMesh
 
   implicit none
 
@@ -49,5 +52,24 @@ module plot_header
   ! Indicate whether color refers to unique cell or unique material
   integer, parameter :: PLOT_COLOR_CELLS = 1
   integer, parameter :: PLOT_COLOR_MATS = 2
+
+  integer(C_INT32_T), bind(C) :: n_plots     ! # of plots
+
+  type(ObjectPlot), allocatable, target :: plots(:)
+
+  ! Dictionary that maps user IDs to indices in 'plots'
+  type(DictIntInt) :: plot_dict
+
+contains
+
+!===============================================================================
+! FREE_MEMORY_PLOT deallocates global arrays defined in this module
+!===============================================================================
+
+  subroutine free_memory_plot()
+    n_plots = 0
+    if (allocated(plots)) deallocate(plots)
+    call plot_dict % clear()
+  end subroutine free_memory_plot
 
 end module plot_header

@@ -302,7 +302,8 @@ module constants
   ! Tally type
   integer, parameter :: &
        TALLY_VOLUME          = 1, &
-       TALLY_SURFACE_CURRENT = 2
+       TALLY_MESH_CURRENT    = 2, &
+       TALLY_SURFACE         = 3
 
   ! Tally estimator types
   integer, parameter :: &
@@ -332,7 +333,7 @@ module constants
        SCORE_FISSION            = -10, & ! fission rate
        SCORE_NU_FISSION         = -11, & ! neutron production rate
        SCORE_KAPPA_FISSION      = -12, & ! fission energy production rate
-       SCORE_CURRENT            = -13, & ! partial current
+       SCORE_CURRENT            = -13, & ! current
        SCORE_FLUX_YN            = -14, & ! angular moment of flux
        SCORE_TOTAL_YN           = -15, & ! angular moment of total reaction rate
        SCORE_SCATTER_YN         = -16, & ! angular flux-weighted scattering moment (0:N)
@@ -366,7 +367,7 @@ module constants
   integer, parameter :: NO_BIN_FOUND = -1
 
   ! Tally filter and map types
-  integer, parameter :: N_FILTER_TYPES = 15
+  integer, parameter :: N_FILTER_TYPES = 16
   integer, parameter :: &
        FILTER_UNIVERSE       = 1,  &
        FILTER_MATERIAL       = 2,  &
@@ -382,7 +383,8 @@ module constants
        FILTER_AZIMUTHAL      = 12, &
        FILTER_DELAYEDGROUP   = 13, &
        FILTER_ENERGYFUNCTION = 14, &
-       FILTER_PARTICLE       = 15
+       FILTER_CELLFROM       = 15, &
+       FILTER_PARTICLE       = 16
 
   ! Mesh types
   integer, parameter :: &

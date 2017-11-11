@@ -1,13 +1,56 @@
 module error
 
+  use, intrinsic :: ISO_C_BINDING
   use, intrinsic :: ISO_FORTRAN_ENV
-  use constants
 
+  use constants
   use message_passing
 
   implicit none
 
+  private
+  public :: fatal_error
+  public :: warning
+
+  ! Error codes
+  integer(C_INT), public, bind(C) :: E_UNASSIGNED = -1
+  integer(C_INT), public, bind(C) :: E_ALLOCATE = -2
+  integer(C_INT), public, bind(C) :: E_OUT_OF_BOUNDS = -3
+  integer(C_INT), public, bind(C) :: E_INVALID_SIZE = -4
+  integer(C_INT), public, bind(C) :: E_INVALID_ARGUMENT = -5
+  integer(C_INT), public, bind(C) :: E_INVALID_TYPE = -6
+  integer(C_INT), public, bind(C) :: E_INVALID_ID = -7
+  integer(C_INT), public, bind(C) :: E_GEOMETRY = -8
+  integer(C_INT), public, bind(C) :: E_DATA = -9
+  integer(C_INT), public, bind(C) :: E_PHYSICS = -10
+
+  ! Warning codes
+  integer(C_INT), public, bind(C) :: E_WARNING = 1
+
+  ! Error message
+  character(kind=C_CHAR), public, bind(C) :: openmc_err_msg(256)
+
+  public :: set_errmsg
+
 contains
+
+!===============================================================================
+! SET_ERRMSG sets the 'openmc_err_msg' module variable that is exposed via the C
+! API
+!===============================================================================
+
+  subroutine set_errmsg(f_string)
+    character(*), intent(in) :: f_string
+
+    integer :: i, n
+
+    ! Copy Fortran string to null-terminated C char array
+    n = len_trim(f_string)
+    do i = 1, n
+      openmc_err_msg(i) = f_string(i:i)
+    end do
+    openmc_err_msg(n + 1) = C_NULL_CHAR
+  end subroutine set_errmsg
 
 !===============================================================================
 ! WARNING issues a warning to the user in the log file and the standard output

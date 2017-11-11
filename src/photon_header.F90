@@ -3,7 +3,7 @@ module photon_header
   use hdf5, only: HID_T, HSIZE_T, SIZE_T
 
   use constants,   only: ZERO, HALF, SUBSHELLS
-  use dict_header, only: DictIntInt
+  use dict_header, only: DictIntInt, DictCharInt
   use endf_header, only: Tabulated1D
   use hdf5_interface
 
@@ -57,6 +57,11 @@ module photon_header
     procedure :: from_hdf5 => photon_from_hdf5
   end type PhotonInteraction
 
+  type(PhotonInteraction), allocatable :: elements(:)  ! Photon cross sections
+  integer :: n_elements       ! Number of photon cross section tables
+
+  type(DictCharInt) :: element_dict
+
 !===============================================================================
 ! ELEMENTMICROXS contains cached microscopic photon cross sections for a
 ! particular element at the current energy
@@ -72,6 +77,9 @@ module photon_header
     real(8) :: photoelectric   ! microscopic photoelectric xs
     real(8) :: pair_production ! microscopic pair production xs
   end type ElementMicroXS
+
+  type(ElementMicroXS), allocatable :: micro_photon_xs(:) ! Cache for each element
+!$omp threadprivate(micro_photon_xs)
 
 contains
 
@@ -167,7 +175,7 @@ contains
       ! Create mapping from designator to index
       do j = 1, size(SUBSHELLS)
         if (designators(i) == SUBSHELLS(j)) then
-          call this % shell_dict % add_key(j, i)
+          call this % shell_dict % set(j, i)
           this % shells(i) % index_subshell = j
           exit
         end if

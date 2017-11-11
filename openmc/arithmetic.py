@@ -108,9 +108,9 @@ class CrossNuclide(object):
 
     Parameters
     ----------
-    left_nuclide : Nuclide or CrossNuclide
+    left_nuclide : openmc.Nuclide or CrossNuclide
         The left nuclide in the outer product
-    right_nuclide : Nuclide or CrossNuclide
+    right_nuclide : openmc.Nuclide or CrossNuclide
         The right nuclide in the outer product
     binary_op : str
         The tally arithmetic binary operator (e.g., '+', '-', etc.) used to
@@ -118,9 +118,9 @@ class CrossNuclide(object):
 
     Attributes
     ----------
-    left_nuclide : Nuclide or CrossNuclide
+    left_nuclide : openmc.Nuclide or CrossNuclide
         The left nuclide in the outer product
-    right_nuclide : Nuclide or CrossNuclide
+    right_nuclide : openmc.Nuclide or CrossNuclide
         The right nuclide in the outer product
     binary_op : str
         The tally arithmetic binary operator (e.g., '+', '-', etc.) used to
@@ -510,7 +510,7 @@ class AggregateNuclide(object):
 
     Parameters
     ----------
-    nuclides : Iterable of str or Nuclide or CrossNuclide
+    nuclides : Iterable of str or openmc.Nuclide or CrossNuclide
         The nuclides included in the aggregation
     aggregate_op : str
         The tally aggregation operator (e.g., 'sum', 'avg', etc.) used
@@ -518,7 +518,7 @@ class AggregateNuclide(object):
 
     Attributes
     ----------
-    nuclides : Iterable of str or Nuclide or CrossNuclide
+    nuclides : Iterable of str or openmc.Nuclide or CrossNuclide
         The nuclides included in the aggregation
     aggregate_op : str
         The tally aggregation operator (e.g., 'sum', 'avg', etc.) used

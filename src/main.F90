@@ -1,16 +1,17 @@
 program main
 
   use constants
-  use finalize,          only: openmc_finalize
-  use global
-  use initialize,        only: openmc_init
   use message_passing
-  use particle_restart,  only: run_particle_restart
-  use plot,              only: openmc_plot_geometry
-  use simulation,        only: openmc_run
-  use volume_calc,       only: openmc_calculate_volumes
+  use openmc_api, only: openmc_init, openmc_finalize, openmc_run, &
+                        openmc_plot_geometry, openmc_calculate_volumes
+  use particle_restart, only: run_particle_restart
+  use settings, only: run_mode
 
   implicit none
+
+#ifdef MPI
+  integer :: mpi_err ! MPI error code
+#endif
 
   ! Initialize run -- when run with MPI, pass communicator
 #ifdef MPI

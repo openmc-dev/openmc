@@ -2,14 +2,16 @@ module mgxs_data
 
   use constants
   use algorithm,       only: find
+  use dict_header,     only: DictCharInt
   use error,           only: fatal_error
-  use geometry_header, only: get_temperatures
-  use global
+  use geometry_header, only: get_temperatures, cells
   use hdf5_interface
-  use material_header, only: Material
+  use material_header, only: Material, materials, n_materials
   use mgxs_header
+  use nuclide_header,  only: n_nuclides
   use output,          only: write_message
   use set_header,      only: SetChar
+  use settings
   use stl_vector,      only: VectorReal
   use string,          only: to_lower
   implicit none
@@ -24,7 +26,6 @@ contains
   subroutine read_mgxs()
     integer                 :: i              ! index in materials array
     integer                 :: j              ! index over nuclides in material
-    integer                 :: i_xsdata       ! index in <xsdata> list
     integer                 :: i_nuclide      ! index in nuclides array
     character(20)           :: name           ! name of library to load
     integer                 :: representation ! Data representation
@@ -34,7 +35,6 @@ contains
     integer(HID_T)          :: file_id
     integer(HID_T)          :: xsdata_group
     logical                 :: file_exists
-    type(DictCharInt)       :: xsdata_dict
     type(VectorReal), allocatable :: temps(:)
     character(MAX_WORD_LEN) :: word
     integer, allocatable    :: array(:)
@@ -51,8 +51,7 @@ contains
     call write_message("Loading cross section data...", 5)
 
     ! Get temperatures
-    call get_temperatures(cells, materials, material_dict, nuclide_dict, &
-                          n_nuclides_total, temps)
+    call get_temperatures(temps)
 
     ! Open file for reading
     file_id = file_open(path_cross_sections, 'r', parallel=.true.)
@@ -72,7 +71,7 @@ contains
     end if
 
     ! allocate arrays for MGXS storage and cross section cache
-    allocate(nuclides_MG(n_nuclides_total))
+    allocate(nuclides_MG(n_nuclides))
 
     ! ==========================================================================
     ! READ ALL MGXS CROSS SECTION TABLES
@@ -85,7 +84,6 @@ contains
         name = mat % names(j)
 
         if (.not. already_read % contains(name)) then
-          i_xsdata = xsdata_dict % get_key(to_lower(name))
           i_nuclide = mat % nuclide(j)
 
           call write_message("Loading " // trim(name) // " data...", 6)
@@ -234,7 +232,7 @@ contains
           kT = cells(i) % sqrtkT(1)**2
         end if
 
-        i_material = material_dict % get_key(cells(i) % material(j))
+        i_material = cells(i) % material(j)
 
         ! Add temperature if it hasn't already been added
         if (find(kTs(i_material), kT) == -1) then

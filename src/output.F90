@@ -1,24 +1,32 @@
 module output
 
+  use, intrinsic :: ISO_C_BINDING
   use, intrinsic :: ISO_FORTRAN_ENV
 
+  use cmfd_header
   use constants
+  use eigenvalue,      only: openmc_get_keff
   use endf,            only: reaction_name
   use error,           only: fatal_error, warning
-  use geometry_header, only: Cell, Universe, Lattice, RectLattice, &
-                             HexLattice
-  use global
+  use geometry_header
   use math,            only: t_percentile
-  use mesh_header,     only: RegularMesh
-  use mesh,            only: mesh_indices_to_bin, bin_to_mesh_indices
+  use mesh_header,     only: RegularMesh, meshes
   use message_passing, only: master, n_procs
+  use mgxs_header,     only: nuclides_MG
   use nuclide_header
   use particle_header, only: LocalCoord, Particle
   use plot_header
   use sab_header,      only: SAlphaBeta
+  use settings
+  use simulation_header
+  use surface_header,  only: surfaces
   use string,          only: to_upper, to_str
-  use tally_header,    only: TallyObject
+  use tally_header
+  use tally_derivative_header
   use tally_filter
+  use tally_filter_mesh, only: MeshFilter
+  use tally_filter_header, only: TallyFilterMatch
+  use timer_header
 
   implicit none
 
@@ -529,6 +537,7 @@ contains
 
   subroutine print_runtime()
 
+    integer       :: n_active
     real(8)       :: speed_inactive  ! # of neutrons/second in inactive batches
     real(8)       :: speed_active    ! # of neutrons/second in active batches
     character(15) :: string
@@ -561,6 +570,7 @@ contains
     write(ou,100) "Total time elapsed", time_total % elapsed
 
     ! Calculate particle rate in active/inactive batches
+    n_active = n_batches - n_inactive
     if (restart_run) then
       if (restart_batch < n_inactive) then
         speed_inactive = real(n_particles * (n_inactive - restart_batch) * &
@@ -608,6 +618,8 @@ contains
     real(8) :: t_n1    ! t-value with N-1 degrees of freedom
     real(8) :: t_n3    ! t-value with N-3 degrees of freedom
     real(8) :: x(2)    ! mean and standard deviation
+    real(C_DOUBLE) :: k_combined(2)
+    integer(C_INT) :: err
 
     ! display header block for results
     call header("Results", 4)
@@ -634,10 +646,13 @@ contains
           write(ou,102) "k-effective (Track-length)", x(1), t_n1 * x(2)
           x(:) = mean_stdev(r(:, K_ABSORPTION), n)
           write(ou,102) "k-effective (Absorption)", x(1), t_n1 * x(2)
-          if (n > 3) write(ou,102) "Combined k-effective", k_combined(1), &
-               t_n3 * k_combined(2)
+          if (n > 3) then
+            err = openmc_get_keff(k_combined)
+            write(ou,102) "Combined k-effective", k_combined(1), &
+                 t_n3 * k_combined(2)
+          end if
         end if
-        x(:) = mean_stdev(global_tallies(:, LEAKAGE), n)
+        x(:) = mean_stdev(r(:, LEAKAGE), n)
         write(ou,102) "Leakage Fraction", x(1), t_n1 * x(2)
       end associate
     else
@@ -722,10 +737,12 @@ contains
     character(36)           :: score_names(N_SCORE_TYPES)  ! names of scoring function
     character(36)           :: score_name                  ! names of scoring function
                                                            ! to be applied at write-time
-    type(TallyObject), pointer :: t
+    type(TallyFilterMatch), allocatable :: matches(:)
 
     ! Skip if there are no tallies
     if (n_tallies == 0) return
+
+    allocate(matches(n_filters))
 
     ! Initialize names for scores
     score_names(abs(SCORE_FLUX))               = "Flux"
@@ -751,6 +768,7 @@ contains
     score_names(abs(SCORE_INVERSE_VELOCITY))   = "Flux-Weighted Inverse Velocity"
     score_names(abs(SCORE_FISS_Q_PROMPT))      = "Prompt fission power"
     score_names(abs(SCORE_FISS_Q_RECOV))       = "Recoverable fission power"
+    score_names(abs(SCORE_CURRENT))            = "Current"
 
     ! Create filename for tally output
     filename = trim(path_output) // "tallies.out"
@@ -767,7 +785,7 @@ contains
     end if
 
     TALLY_LOOP: do i = 1, n_tallies
-      t => tallies(i)
+      associate (t => tallies(i) % obj)
       nr = t % n_realizations
 
       if (confidence_intervals) then
@@ -809,7 +827,7 @@ contains
       end if
 
       ! Handle surface current tallies separately
-      if (t % type == TALLY_SURFACE_CURRENT) then
+      if (t % type == TALLY_MESH_CURRENT) then
         call write_surface_current(t, unit_tally)
         cycle
       end if
@@ -822,8 +840,8 @@ contains
 
       ! Initialize bins, filter level, and indentation
       do h = 1, size(t % filter)
-        call filter_matches(t % filter(h)) % bins % clear()
-        call filter_matches(t % filter(h)) % bins % push_back(0)
+        call matches(t % filter(h)) % bins % clear()
+        call matches(t % filter(h)) % bins % push_back(0)
       end do
       j = 1
       indent = 0
@@ -834,18 +852,18 @@ contains
           if (size(t % filter) == 0) exit find_bin
 
           ! Increment bin combination
-          filter_matches(t % filter(j)) % bins % data(1) = &
-               filter_matches(t % filter(j)) % bins % data(1) + 1
+          matches(t % filter(j)) % bins % data(1) = &
+               matches(t % filter(j)) % bins % data(1) + 1
 
           ! =================================================================
           ! REACHED END OF BINS FOR THIS FILTER, MOVE TO NEXT FILTER
 
-          if (filter_matches(t % filter(j)) % bins % data(1) > &
+          if (matches(t % filter(j)) % bins % data(1) > &
                filters(t % filter(j)) % obj % n_bins) then
             ! If this is the first filter, then exit
             if (j == 1) exit print_bin
 
-            filter_matches(t % filter(j)) % bins % data(1) = 0
+            matches(t % filter(j)) % bins % data(1) = 0
             j = j - 1
             indent = indent - 2
 
@@ -859,7 +877,7 @@ contains
             ! Print current filter information
             write(UNIT=unit_tally, FMT='(1X,2A)') repeat(" ", indent), &
                  trim(filters(t % filter(j)) % obj % &
-                 text_label(filter_matches(t % filter(j)) % bins % data(1)))
+                 text_label(matches(t % filter(j)) % bins % data(1)))
             indent = indent + 2
             j = j + 1
           end if
@@ -870,7 +888,7 @@ contains
         if (size(t % filter) > 0) then
           write(UNIT=unit_tally, FMT='(1X,2A)') repeat(" ", indent), &
                trim(filters(t % filter(j)) % obj % &
-               text_label(filter_matches(t % filter(j)) % bins % data(1)))
+               text_label(matches(t % filter(j)) % bins % data(1)))
         end if
 
         ! Determine scoring index for this bin combination -- note that unlike
@@ -879,7 +897,7 @@ contains
 
         filter_index = 1
         do h = 1, size(t % filter)
-          filter_index = filter_index + (max(filter_matches(t % filter(h)) &
+          filter_index = filter_index + (max(matches(t % filter(h)) &
                % bins % data(1),1) - 1) * t % stride(h)
         end do
 
@@ -968,6 +986,7 @@ contains
 
       end do print_bin
 
+      end associate
     end do TALLY_LOOP
 
     close(UNIT=unit_tally)
@@ -1001,6 +1020,9 @@ contains
     logical :: energy_filters       ! energy filters present
     character(MAX_LINE_LEN) :: string
     type(RegularMesh), pointer :: m
+    type(TallyFilterMatch), allocatable :: matches(:)
+
+    allocate(matches(n_filters))
 
     nr = t % n_realizations
 
@@ -1017,8 +1039,8 @@ contains
 
     ! initialize bins array
     do j = 1, size(t % filter)
-      call filter_matches(t % filter(j)) % bins % clear()
-      call filter_matches(t % filter(j)) % bins % push_back(1)
+      call matches(t % filter(j)) % bins % clear()
+      call matches(t % filter(j)) % bins % push_back(1)
     end do
 
     ! determine how many energy in bins there are
@@ -1040,8 +1062,8 @@ contains
     do i = 1, n_cells
 
       ! Get the indices for this cell
-      call bin_to_mesh_indices(m, i, ijk)
-      filter_matches(i_filter_mesh) % bins % data(1) = i
+      call m % get_indices_from_bin(i, ijk)
+      matches(i_filter_mesh) % bins % data(1) = i
 
       ! Write the header for this cell
       if (n_dim == 1) then
@@ -1059,18 +1081,18 @@ contains
       do l = 1, n
         if (print_ebin) then
           ! Set incoming energy bin
-          filter_matches(i_filter_ein) % bins % data(1) = l
+          matches(i_filter_ein) % bins % data(1) = l
 
           ! Write incoming energy bin
           write(UNIT=unit_tally, FMT='(3X,A)') &
                trim(filters(i_filter_ein) % obj % text_label( &
-               filter_matches(i_filter_ein) % bins % data(1)))
+               matches(i_filter_ein) % bins % data(1)))
         end if
 
         filter_index = 1
         do j = 1, size(t % filter)
           if (t % filter(j) == i_filter_surf) cycle
-          filter_index = filter_index + (filter_matches(t % filter(j)) &
+          filter_index = filter_index + (matches(t % filter(j)) &
                % bins % data(1) - 1) * t % stride(j)
         end do
 

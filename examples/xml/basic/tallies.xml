@@ -1,21 +1,30 @@
 <?xml version="1.0"?>
 <tallies>
 
+  <filter id="1" type="cell">
+    <bins>100</bins>
+  </filter>
+
+  <filter id="2" type="energy">
+    <bins>0 20.0e6</bins>
+  </filter>
+
+  <filter id="3" type="energyout">
+    <bins>0 20.0e6</bins>
+  </filter>
+
   <tally id="1">
-    <filter type="cell" bins="100" />
+    <filters>1</filters>
     <scores>total scatter nu-scatter absorption fission nu-fission</scores>
   </tally>
 
   <tally id="2">
-    <filter type="cell" bins="100" />
-    <filter type="energy" bins="0 20.0e6" />
+    <filters>1 2</filters>
     <scores>total scatter nu-scatter absorption fission nu-fission</scores>
   </tally>
 
   <tally id="3">
-    <filter type="cell" bins="100" />
-    <filter type="energy" bins="0 20.0e6" />
-    <filter type="energyout" bins="0 20.0e6" />
+    <filters>1 2 3</filters>
     <scores>scatter nu-scatter nu-fission</scores>
   </tally>
 

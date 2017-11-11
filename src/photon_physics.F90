@@ -352,7 +352,7 @@ contains
       call p % create_secondary(uvw, E, ELECTRON, run_ce=.true.)
 
       ! Fill hole left by emitted auger electron
-      i_hole = elm % shell_dict % get_key(secondary)
+      i_hole = elm % shell_dict % get(secondary)
       call atomic_relaxation(p, elm, i_hole)
     else
       ! Radiative transition -- get X-ray energy
@@ -363,7 +363,7 @@ contains
     end if
 
     ! Fill hole created by electron transitioning to the photoelectron hole
-    i_hole = elm % shell_dict % get_key(primary)
+    i_hole = elm % shell_dict % get(primary)
     call atomic_relaxation(p, elm, i_hole)
 
   end subroutine atomic_relaxation

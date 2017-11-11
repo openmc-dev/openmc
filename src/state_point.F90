@@ -11,21 +11,29 @@ module state_point
 ! intervals, using the <state_point ... /> tag.
 !===============================================================================
 
-  use, intrinsic :: ISO_C_BINDING, only: c_loc, c_ptr
+  use, intrinsic :: ISO_C_BINDING
 
   use hdf5
 
+  use cmfd_header
   use constants
+  use eigenvalue,         only: openmc_get_keff
   use endf,               only: reaction_name
   use error,              only: fatal_error, warning
-  use global
   use hdf5_interface
-  use mesh_header,        only: RegularMesh
+  use mesh_header,        only: RegularMesh, meshes, n_meshes
   use message_passing
+  use mgxs_header,        only: nuclides_MG
+  use nuclide_header,     only: nuclides
   use output,             only: write_message, time_stamp
   use random_lcg,         only: seed
+  use settings
+  use simulation_header
   use string,             only: to_str, count_digits, zero_padded
-  use tally_header,       only: TallyObject
+  use tally_header
+  use tally_filter_header
+  use tally_derivative_header, only: tally_derivs
+  use timer_header
 
   implicit none
 
@@ -44,11 +52,12 @@ contains
     integer, allocatable :: id_array(:)
     integer(HID_T) :: file_id
     integer(HID_T) :: cmfd_group, tallies_group, tally_group, meshes_group, &
-                      mesh_group, filters_group, filter_group, derivs_group, &
+                      filters_group, filter_group, derivs_group, &
                       deriv_group, runtime_group
+    integer(C_INT) :: err
+    real(C_DOUBLE) :: k_combined(2)
     character(MAX_WORD_LEN), allocatable :: str_array(:)
     character(MAX_FILE_LEN)    :: filename
-    type(TallyObject), pointer    :: tally
 
     ! Set filename for state point
     filename = trim(path_output) // 'statepoint.' // &
@@ -117,6 +126,7 @@ contains
         call write_dataset(file_id, "k_col_abs", k_col_abs)
         call write_dataset(file_id, "k_col_tra", k_col_tra)
         call write_dataset(file_id, "k_abs_tra", k_abs_tra)
+        err = openmc_get_keff(k_combined)
         call write_dataset(file_id, "k_combined", k_combined)
 
         ! Write out CMFD info
@@ -154,21 +164,7 @@ contains
 
         ! Write information for meshes
         MESH_LOOP: do i = 1, n_meshes
-          associate (m => meshes(i))
-            mesh_group = create_group(meshes_group, "mesh " &
-                 // trim(to_str(m % id)))
-
-            select case (m % type)
-            case (MESH_REGULAR)
-              call write_dataset(mesh_group, "type", "regular")
-            end select
-            call write_dataset(mesh_group, "dimension", m % dimension)
-            call write_dataset(mesh_group, "lower_left", m % lower_left)
-            call write_dataset(mesh_group, "upper_right", m % upper_right)
-            call write_dataset(mesh_group, "width", m % width)
-
-            call close_group(mesh_group)
-          end associate
+          call meshes(i) % to_hdf5(meshes_group)
         end do MESH_LOOP
       end if
 
@@ -237,7 +233,7 @@ contains
         ! Write array of tally IDs
         allocate(id_array(n_tallies))
         do i = 1, n_tallies
-          id_array(i) = tallies(i) % id
+          id_array(i) = tallies(i) % obj % id
         end do
         call write_attribute(tallies_group, "ids", id_array)
         deallocate(id_array)
@@ -246,7 +242,7 @@ contains
         TALLY_METADATA: do i = 1, n_tallies
 
           ! Get pointer to tally
-          tally => tallies(i)
+          associate (tally => tallies(i) % obj)
           tally_group = create_group(tallies_group, "tally " // &
                trim(to_str(tally % id)))
 
@@ -351,6 +347,7 @@ contains
           deallocate(str_array)
 
           call close_group(tally_group)
+          end associate
         end do TALLY_METADATA
 
       end if
@@ -374,7 +371,7 @@ contains
       call write_dataset(file_id, "global_tallies", global_tallies)
 
       ! Write tallies
-      if (tallies_on) then
+      if (active_tallies % size() > 0) then
         ! Indicate that tallies are on
         call write_attribute(file_id, "tallies_present", 1)
 
@@ -382,14 +379,13 @@ contains
 
         ! Write all tally results
         TALLY_RESULTS: do i = 1, n_tallies
-          ! Set point to current tally
-          tally => tallies(i)
-
-          ! Write sum and sum_sq for each bin
-          tally_group = open_group(tallies_group, "tally " &
-               // to_str(tally % id))
-          call tally % write_results_hdf5(tally_group)
-          call close_group(tally_group)
+          associate (tally => tallies(i) % obj)
+            ! Write sum and sum_sq for each bin
+            tally_group = open_group(tallies_group, "tally " &
+                 // to_str(tally % id))
+            call tally % write_results_hdf5(tally_group)
+            call close_group(tally_group)
+          end associate
         end do TALLY_RESULTS
 
         call close_group(tallies_group)
@@ -518,7 +514,8 @@ contains
     real(8), allocatable :: tally_temp(:,:,:) ! contiguous array of results
     real(8), target :: global_temp(3,N_GLOBAL_TALLIES)
 #ifdef MPI
-    real(8) :: dummy  ! temporary receive buffer for non-root reduces
+    integer :: mpi_err ! MPI error code
+    real(8) :: dummy   ! temporary receive buffer for non-root reduces
 #endif
     type(TallyObject) :: dummy_tally
 
@@ -535,18 +532,15 @@ contains
       tallies_group = open_group(file_id, "tallies")
     end if
 
-    ! Copy global tallies into temporary array for reducing
-    n_bins = 3 * N_GLOBAL_TALLIES
-    global_temp(:,:) = global_tallies(:,:)
 
-    if (master) then
-      ! The MPI_IN_PLACE specifier allows the master to copy values into a
-      ! receive buffer without having a temporary variable
 #ifdef MPI
-      call MPI_REDUCE(MPI_IN_PLACE, global_temp, n_bins, MPI_REAL8, MPI_SUM, &
-           0, mpi_intracomm, mpi_err)
+    ! Reduce global tallies
+    n_bins = size(global_tallies)
+    call MPI_REDUCE(global_tallies, global_temp, n_bins, MPI_REAL8, MPI_SUM, &
+         0, mpi_intracomm, mpi_err)
 #endif
 
+    if (master) then
       ! Transfer values to value on master
       if (current_batch == n_max_batches .or. satisfy_triggers) then
         global_tallies(:,:) = global_temp(:,:)
@@ -554,15 +548,9 @@ contains
 
       ! Write out global tallies sum and sum_sq
       call write_dataset(file_id, "global_tallies", global_temp)
-    else
-      ! Receive buffer not significant at other processors
-#ifdef MPI
-      call MPI_REDUCE(global_temp, dummy, n_bins, MPI_REAL8, MPI_SUM, &
-           0, mpi_intracomm, mpi_err)
-#endif
     end if
 
-    if (tallies_on) then
+    if (active_tallies % size() > 0) then
       ! Indicate that tallies are on
       if (master) then
         call write_attribute(file_id, "tallies_present", 1)
@@ -570,7 +558,7 @@ contains
 
       ! Write all tally results
       TALLY_RESULTS: do i = 1, n_tallies
-        associate (t => tallies(i))
+        associate (t => tallies(i) % obj)
           ! Determine size of tally results array
           m = size(t % results, 2)
           n = size(t % results, 3)
@@ -647,7 +635,6 @@ contains
     integer(HID_T) :: cmfd_group
     integer(HID_T) :: tallies_group
     integer(HID_T) :: tally_group
-    real(8) :: real_array(3)
     logical :: source_present
     character(MAX_WORD_LEN) :: word
 
@@ -727,7 +714,6 @@ contains
       call read_dataset(k_col_abs, file_id, "k_col_abs")
       call read_dataset(k_col_tra, file_id, "k_col_tra")
       call read_dataset(k_abs_tra, file_id, "k_abs_tra")
-      call read_dataset(real_array(1:2), file_id, "k_combined")
 
       ! Take maximum of statepoint n_inactive and input n_inactive
       n_inactive = max(n_inactive, int_array(1))
@@ -781,7 +767,7 @@ contains
         tallies_group = open_group(file_id, "tallies")
 
         TALLY_RESULTS: do i = 1, n_tallies
-          associate (t => tallies(i))
+          associate (t => tallies(i) % obj)
             ! Read sum, sum_sq, and N for each bin
             tally_group = open_group(tallies_group, "tally " // &
                  trim(to_str(t % id)))
@@ -848,6 +834,7 @@ contains
 #else
     integer :: i
 #ifdef MPI
+    integer :: mpi_err ! MPI error code
     type(Bank), allocatable, target :: temp_source(:)
 #endif
 #endif

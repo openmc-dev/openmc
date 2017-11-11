@@ -9,14 +9,18 @@ module volume_calc
 
   use constants
   use geometry,     only: find_cell
-  use global
+  use geometry_header, only: universes, cells
   use hdf5_interface, only: file_create, file_close, write_attribute, &
        create_group, close_group, write_dataset
   use output,       only: write_message, header, time_stamp
+  use material_header, only: materials
   use message_passing
+  use nuclide_header, only: nuclides
   use particle_header, only: Particle
   use random_lcg,   only: prn, prn_set_stream, set_particle_seed
+  use settings,     only: path_output
   use stl_vector,   only: VectorInt, VectorReal
+  use string,       only: to_str
   use timer_header, only: Timer
   use volume_header
 
@@ -132,6 +136,7 @@ contains
     integer :: min_samples ! minimum number of samples per process
     integer :: remainder   ! leftover samples from uneven divide
 #ifdef MPI
+    integer :: mpi_err ! MPI error code
     integer :: m  ! index over materials
     integer :: n  ! number of materials
     integer, allocatable :: data(:) ! array used to send number of hits

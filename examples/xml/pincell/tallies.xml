@@ -1,15 +1,22 @@
 <?xml version="1.0"?>
 <tallies>
 
-  <mesh id="1" type="regular">
+  <mesh id="2" type="regular">
     <dimension>100 100 1</dimension>
     <lower_left>-0.62992 -0.62992 -1.e50</lower_left>
     <upper_right>0.62992  0.62992  1.e50</upper_right>
   </mesh>
 
+  <filter id="1" type="mesh">
+    <bins>1</bins>
+  </filter>
+
+  <filter id="2" type="energy">
+    <bins>0. 4. 20.0e6</bins>
+  </filter>
+
   <tally id="1">
-    <filter type="mesh" bins="1" />
-    <filter type="energy" bins="0. 4. 20.0e6" />
+    <filters>1 2</filters>
     <scores>flux fission nu-fission</scores>
   </tally>
 

@@ -119,8 +119,8 @@ if(CMAKE_Fortran_COMPILER_ID STREQUAL GNU)
   list(APPEND f90flags -cpp -std=f2008ts -fbacktrace -O2)
   if(debug)
     list(REMOVE_ITEM f90flags -O2)
-    list(APPEND f90flags -g -Wall -pedantic -fbounds-check
-      -ffpe-trap=invalid,overflow,underflow)
+    list(APPEND f90flags -g -Wall -Wno-unused-dummy-argument -pedantic
+      -fbounds-check -ffpe-trap=invalid,overflow,underflow)
     list(APPEND ldflags -g)
   endif()
   if(profile)
@@ -320,10 +320,8 @@ set(LIBOPENMC_FORTRAN_SRC
   src/endf_header.F90
   src/energy_distribution.F90
   src/error.F90
-  src/finalize.F90
   src/geometry.F90
   src/geometry_header.F90
-  src/global.F90
   src/hdf5_interface.F90
   src/initialize.F90
   src/input_xml.F90
@@ -362,6 +360,8 @@ set(LIBOPENMC_FORTRAN_SRC
   src/secondary_nbody.F90
   src/secondary_uncorrelated.F90
   src/set_header.F90
+  src/settings.F90
+  src/simulation_header.F90
   src/simulation.F90
   src/source.F90
   src/source_header.F90
@@ -370,21 +370,37 @@ set(LIBOPENMC_FORTRAN_SRC
   src/string.F90
   src/summary.F90
   src/surface_header.F90
-  src/tally.F90
-  src/tally_filter.F90
-  src/tally_filter_header.F90
-  src/tally_header.F90
-  src/tally_initialize.F90
   src/timer_header.F90
   src/tracking.F90
   src/track_output.F90
-  src/trigger.F90
-  src/trigger_header.F90
   src/urr_header.F90
   src/vector_header.F90
   src/volume_calc.F90
   src/volume_header.F90
-  src/xml_interface.F90)
+  src/xml_interface.F90
+  src/tallies/tally.F90
+  src/tallies/tally_derivative_header.F90
+  src/tallies/tally_filter.F90
+  src/tallies/tally_filter_header.F90
+  src/tallies/tally_filter_azimuthal.F90
+  src/tallies/tally_filter_cell.F90
+  src/tallies/tally_filter_cellborn.F90
+  src/tallies/tally_filter_cellfrom.F90
+  src/tallies/tally_filter_delayedgroup.F90
+  src/tallies/tally_filter_distribcell.F90
+  src/tallies/tally_filter_energy.F90
+  src/tallies/tally_filter_energyfunc.F90
+  src/tallies/tally_filter_material.F90
+  src/tallies/tally_filter_mesh.F90
+  src/tallies/tally_filter_mu.F90
+  src/tallies/tally_filter_particle.F90
+  src/tallies/tally_filter_polar.F90
+  src/tallies/tally_filter_surface.F90
+  src/tallies/tally_filter_universe.F90
+  src/tallies/tally_header.F90
+  src/tallies/trigger.F90
+  src/tallies/trigger_header.F90
+)
 add_library(libopenmc SHARED ${LIBOPENMC_FORTRAN_SRC})
 set_target_properties(libopenmc PROPERTIES OUTPUT_NAME openmc)
 add_executable(${program} src/main.F90)
@@ -415,7 +431,7 @@ target_link_libraries(${program} ${ldflags} libopenmc)
 add_custom_command(TARGET libopenmc POST_BUILD
   COMMAND ${CMAKE_COMMAND} -E copy
   $<TARGET_FILE:libopenmc>
-  ${CMAKE_CURRENT_SOURCE_DIR}/openmc/_$<TARGET_FILE_NAME:libopenmc>
+  ${CMAKE_CURRENT_SOURCE_DIR}/openmc/capi/$<TARGET_FILE_NAME:libopenmc>
   COMMENT "Copying libopenmc to Python module directory")
 
 #===============================================================================
@@ -455,6 +471,11 @@ file(GLOB_RECURSE TESTS ${CMAKE_CURRENT_SOURCE_DIR}/tests/test_*.py)
 
 # Loop through all the tests
 foreach(test ${TESTS})
+  # Remove unit tests
+  if(test MATCHES ".*unit_tests.*")
+    continue()
+  endif()
+
   # Get test information
   get_filename_component(TEST_NAME ${test} NAME)
   get_filename_component(TEST_PATH ${test} PATH)

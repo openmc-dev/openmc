@@ -209,7 +209,25 @@ module mgxs_header
     procedure :: calculate_xs => mgxsang_calculate_xs
   end type MgxsAngle
 
-  contains
+  ! Cross section arrays
+  type(MgxsContainer), allocatable, target :: nuclides_MG(:)
+
+  ! Cross section caches
+  type(MgxsContainer), target, allocatable :: macro_xs(:)
+
+  ! Number of energy groups
+  integer :: num_energy_groups
+
+  ! Number of delayed groups
+  integer :: num_delayed_groups
+
+  ! Energy group structure
+  real(8), allocatable :: energy_bins(:)
+
+  ! Midpoint of the energy group structure
+  real(8), allocatable :: energy_bin_avg(:)
+
+contains
 
 !===============================================================================
 ! MGXS*_FROM_HDF5 reads in the data from the HDF5 Library. At the point of entry
@@ -3532,5 +3550,16 @@ module mgxs_header
       i_azi  = floor((my_azi + PI) / dangle + ONE)
 
     end subroutine find_angle
+
+!===============================================================================
+! FREE_MEMORY_MGXS deallocates global arrays defined in this module
+!===============================================================================
+
+  subroutine free_memory_mgxs()
+    if (allocated(nuclides_MG)) deallocate(nuclides_MG)
+    if (allocated(macro_xs)) deallocate(macro_xs)
+    if (allocated(energy_bins)) deallocate(energy_bins)
+    if (allocated(energy_bin_avg)) deallocate(energy_bin_avg)
+  end subroutine free_memory_mgxs
 
 end module mgxs_header

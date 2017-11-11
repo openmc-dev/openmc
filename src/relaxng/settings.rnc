@@ -12,14 +12,7 @@ element settings {
 
   element energy_mode { ( "continuous-energy" | "ce" | "CE" | "multi-group" | "mg" | "MG" ) }? &
 
-  element entropy {
-    (element dimension { list { xsd:int+ } } |
-      attribute dimension { list { xsd:int+ } })? &
-    (element lower_left { list { xsd:double+ } } |
-      attribute lower_left { list { xsd:double+ } }) &
-    (element upper_right { list { xsd:double+ } } |
-      attribute upper_right { list { xsd:double+ } })
-  }? &
+  element entropy_mesh { xsd:positiveInteger }? &
 
   element generations_per_batch { xsd:positiveInteger }? &
 
@@ -33,6 +26,22 @@ element settings {
   element log_grid_bins { xsd:positiveInteger }? &
 
   element max_order { xsd:nonNegativeInteger }? &
+
+  element mesh {
+    (element id { xsd:int } | attribute id { xsd:int }) &
+    (element type { ( "regular" ) } |
+      attribute type { ( "regular" ) })? &
+    (element dimension { list { xsd:positiveInteger+ } } |
+      attribute dimension { list { xsd:positiveInteger+ } }) &
+    (element lower_left { list { xsd:double+ } } |
+      attribute lower_left { list { xsd:double+ } }) &
+    (
+      (element upper_right { list { xsd:double+ } } |
+        attribute upper_right { list { xsd:double+ } }) |
+      (element width { list { xsd:double+ } } |
+        attribute width { list { xsd:double+ } })
+    )
+  }* &
 
   element no_reduce { xsd:boolean }? &
 
@@ -133,6 +142,8 @@ element settings {
     (element batch_interval { xsd:positiveInteger } | attribute batch_interval { xsd:positiveInteger })?
   }? &
 
+  element ufs_mesh { xsd:positiveInteger }? &
+
   element verbosity { xsd:positiveInteger }? &
 
   element volume_calc {
@@ -147,15 +158,6 @@ element settings {
     (element upper_right { list { xsd:double+ } } |
       attribute upper_right { list { xsd:double+ } })
   }* &
-
-  element uniform_fs{
-    (element dimension { list { xsd:positiveInteger+ } } |
-      attribute dimension { list { xsd:positiveInteger+ } }) &
-    (element lower_left { list { xsd:double+ } } |
-      attribute lower_left { list { xsd:double+ } }) &
-    (element upper_right { list { xsd:double+ } } |
-      attribute upper_right { list { xsd:double+ } })
-  }? &
 
   element resonance_scattering {
     (element enable { xsd:boolean } | attribute enable { xsd:boolean })? &

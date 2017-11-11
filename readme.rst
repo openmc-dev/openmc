@@ -2,8 +2,7 @@
 OpenMC Monte Carlo Particle Transport Code
 ==========================================
 
-.. image:: https://travis-ci.org/mit-crpg/openmc.svg?branch=develop
-    :target: https://travis-ci.org/mit-crpg/openmc
+|licensebadge| |travisbadge|
 
 The OpenMC project aims to provide a fully-featured Monte Carlo particle
 transport code based on modern methods. It is a constructive solid geometry,
@@ -55,3 +54,11 @@ OpenMC is distributed under the MIT/X license_.
 .. _Troubleshooting section: http://openmc.readthedocs.io/en/stable/usersguide/troubleshoot.html
 .. _Issues: https://github.com/mit-crpg/openmc/issues
 .. _license: http://openmc.readthedocs.io/en/stable/license.html
+
+.. |licensebadge| image:: https://img.shields.io/github/license/mit-crpg/openmc.svg
+   :target: http://openmc.readthedocs.io/en/latest/license.html
+   :alt: License
+
+.. |travisbadge| image:: https://travis-ci.org/mit-crpg/openmc.svg?branch=develop
+   :target: https://travis-ci.org/mit-crpg/openmc
+   :alt: Travis CI build status (Linux)

@@ -1,10 +1,14 @@
 module geometry_header
 
+  use, intrinsic :: ISO_C_BINDING
+
   use algorithm,       only: find
   use constants,       only: HALF, TWO, THREE, INFINITY, K_BOLTZMANN, &
                              MATERIAL_VOID, NONE
   use dict_header,     only: DictCharInt, DictIntInt
-  use material_header, only: Material
+  use material_header, only: Material, materials, material_dict, n_materials
+  use nuclide_header
+  use sab_header
   use stl_vector,      only: VectorReal
   use string,          only: to_lower
 
@@ -154,6 +158,19 @@ module geometry_header
 
   ! array index of the root universe
   integer :: root_universe = -1
+
+  integer(C_INT32_T), bind(C) :: n_cells     ! # of cells
+  integer(C_INT32_T), bind(C) :: n_universes ! # of universes
+  integer(C_INT32_T), bind(C) :: n_lattices  ! # of lattices
+
+  type(Cell),             allocatable, target :: cells(:)
+  type(Universe),         allocatable, target :: universes(:)
+  type(LatticeContainer), allocatable, target :: lattices(:)
+
+  ! Dictionaries which map user IDs to indices in the global arrays
+  type(DictIntInt) :: cell_dict
+  type(DictIntInt) :: universe_dict
+  type(DictIntInt) :: lattice_dict
 
 contains
 
@@ -330,16 +347,8 @@ contains
 ! temperatures to read (which may be different if interpolation is used)
 !===============================================================================
 
-  subroutine get_temperatures(cells, materials, material_dict, nuclide_dict, &
-                              n_nucs, nuc_temps, sab_dict, n_sabs, sab_temps)
-    type(Cell),                  allocatable, intent(in)  :: cells(:)
-    type(Material),              allocatable, intent(in)  :: materials(:)
-    type(DictIntInt),                         intent(in)  :: material_dict
-    type(DictCharInt),                        intent(in)  :: nuclide_dict
-    integer,                                  intent(in)  :: n_nucs
+  subroutine get_temperatures(nuc_temps, sab_temps)
     type(VectorReal),            allocatable, intent(out) :: nuc_temps(:)
-    type(DictCharInt), optional,              intent(in)  :: sab_dict
-    integer,           optional,              intent(in)  :: n_sabs
     type(VectorReal),  optional, allocatable, intent(out) :: sab_temps(:)
 
     integer :: i, j, k
@@ -348,8 +357,8 @@ contains
     integer :: i_material
     real(8) :: temperature  ! temperature in Kelvin
 
-    allocate(nuc_temps(n_nucs))
-    if (present(n_sabs) .and. present(sab_temps)) allocate(sab_temps(n_sabs))
+    allocate(nuc_temps(n_nuclides))
+    if (present(sab_temps)) allocate(sab_temps(n_sab_tables))
 
     do i = 1, size(cells)
       do j = 1, size(cells(i) % material)
@@ -364,11 +373,12 @@ contains
           temperature = cells(i) % sqrtkT(1)**2 / K_BOLTZMANN
         end if
 
-        i_material = material_dict % get_key(cells(i) % material(j))
+        i_material = cells(i) % material(j)
+
         associate (mat => materials(i_material))
           NUC_NAMES_LOOP: do k = 1, size(mat % names)
             ! Get index in nuc_temps array
-            i_nuclide = nuclide_dict % get_key(to_lower(mat % names(k)))
+            i_nuclide = nuclide_dict % get(to_lower(mat % names(k)))
 
             ! Add temperature if it hasn't already been added
             if (find(nuc_temps(i_nuclide), temperature) == -1) then
@@ -376,11 +386,10 @@ contains
             end if
           end do NUC_NAMES_LOOP
 
-          if (present(sab_temps) .and. present(sab_dict) .and. &
-               mat % n_sab > 0) then
+          if (present(sab_temps) .and. mat % n_sab > 0) then
             SAB_NAMES_LOOP: do k = 1, size(mat % sab_names)
               ! Get index in nuc_temps array
-              i_sab = sab_dict % get_key(to_lower(mat % sab_names(k)))
+              i_sab = sab_dict % get(to_lower(mat % sab_names(k)))
 
               ! Add temperature if it hasn't already been added
               if (find(sab_temps(i_sab), temperature) == -1) then
@@ -393,5 +402,240 @@ contains
     end do
 
   end subroutine get_temperatures
+
+!===============================================================================
+! FREE_MEMORY_GEOMETRY deallocates global arrays defined in this module
+!===============================================================================
+
+  subroutine free_memory_geometry()
+
+    n_cells = 0
+    n_universes = 0
+    n_lattices = 0
+
+    if (allocated(cells)) deallocate(cells)
+    if (allocated(universes)) deallocate(universes)
+    if (allocated(lattices)) deallocate(lattices)
+
+    call cell_dict % clear()
+    call universe_dict % clear()
+    call lattice_dict % clear()
+
+  end subroutine free_memory_geometry
+
+!===============================================================================
+!                               C API FUNCTIONS
+!===============================================================================
+
+  function openmc_get_cell_index(id, index) result(err) bind(C)
+    ! Return the index in the cells array of a cell with a given ID
+    integer(C_INT32_T), value :: id
+    integer(C_INT32_T), intent(out) :: index
+    integer(C_INT) :: err
+
+    if (allocated(cells)) then
+      if (cell_dict % has(id)) then
+        index = cell_dict % get(id)
+        err = 0
+      else
+        err = E_INVALID_ID
+        call set_errmsg("No cell exists with ID=" // trim(to_str(id)) // ".")
+      end if
+    else
+      err = E_ALLOCATE
+      call set_errmsg("Memory has not been allocated for cells.")
+    end if
+  end function openmc_get_cell_index
+
+
+  function openmc_cell_get_fill(index, type, indices, n) result(err) bind(C)
+    integer(C_INT32_T), value, intent(in) :: index
+    integer(C_INT), intent(out) :: type
+    integer(C_INT32_T), intent(out) :: n
+    type(C_PTR), intent(out) :: indices
+    integer(C_INT) :: err
+
+    err = 0
+    if (index >= 1 .and. index <= size(cells)) then
+      associate (c => cells(index))
+        type = c % type
+        select case (type)
+        case (FILL_MATERIAL)
+          n = size(c % material)
+          indices = C_LOC(c % material(1))
+        case (FILL_UNIVERSE, FILL_LATTICE)
+          n = 1
+          indices = C_LOC(c % fill)
+        end select
+      end associate
+    else
+      err = E_OUT_OF_BOUNDS
+      call set_errmsg("Index in cells array is out of bounds.")
+    end if
+  end function openmc_cell_get_fill
+
+
+  function openmc_cell_get_id(index, id) result(err) bind(C)
+    ! Return the ID of a cell
+    integer(C_INT32_T), value       :: index
+    integer(C_INT32_T), intent(out) :: id
+    integer(C_INT) :: err
+
+    if (index >= 1 .and. index <= size(cells)) then
+      id = cells(index) % id
+      err = 0
+    else
+      err = E_OUT_OF_BOUNDS
+      call set_errmsg("Index in cells array is out of bounds.")
+    end if
+  end function openmc_cell_get_id
+
+
+  function openmc_cell_set_fill(index, type, n, indices) result(err) bind(C)
+    ! Set the fill for a fill
+    integer(C_INT32_T), value, intent(in) :: index    ! index in cells
+    integer(C_INT), value, intent(in)     :: type
+    integer(c_INT32_T), value, intent(in) :: n
+    integer(C_INT32_T), intent(in) :: indices(n)
+    integer(C_INT) :: err
+
+    integer :: i, j
+
+    err = 0
+    if (index >= 1 .and. index <= size(cells)) then
+      associate (c => cells(index))
+        select case (type)
+        case (FILL_MATERIAL)
+          if (allocated(c % material)) deallocate(c % material)
+          allocate(c % material(n))
+
+          c % type = FILL_MATERIAL
+          do i = 1, n
+            j = indices(i)
+            if (j == 0) then
+              c % material(i) = MATERIAL_VOID
+            else
+              if (j >= 1 .and. j <= n_materials) then
+                c % material(i) = j
+              else
+                err = E_OUT_OF_BOUNDS
+                call set_errmsg("Index " // trim(to_str(j)) // " in the &
+                     &materials array is out of bounds.")
+              end if
+            end if
+          end do
+        case (FILL_UNIVERSE)
+          c % type = FILL_UNIVERSE
+        case (FILL_LATTICE)
+          c % type = FILL_LATTICE
+        end select
+      end associate
+    else
+      err = E_OUT_OF_BOUNDS
+      call set_errmsg("Index in cells array is out of bounds.")
+    end if
+
+  end function openmc_cell_set_fill
+
+
+  function openmc_cell_set_temperature(index, T, instance) result(err) bind(C)
+    ! Set the temperature of a cell
+    integer(C_INT32_T), value, intent(in)    :: index    ! index in cells
+    real(C_DOUBLE), value, intent(in)        :: T        ! temperature
+    integer(C_INT32_T), optional, intent(in) :: instance ! cell instance
+
+    integer(C_INT) :: err     ! error code
+    integer :: j              ! looping variable
+    integer :: n              ! number of cell instances
+    integer :: material_index ! material index in materials array
+    integer :: num_nuclides   ! num nuclides in material
+    integer :: nuclide_index  ! index of nuclide in nuclides array
+    real(8) :: min_temp       ! min common-denominator avail temp
+    real(8) :: max_temp       ! max common-denominator avail temp
+    real(8) :: temp           ! actual temp we'll assign
+    logical :: outside_low    ! lower than available data
+    logical :: outside_high   ! higher than available data
+
+    outside_low = .false.
+    outside_high = .false.
+
+    err = E_UNASSIGNED
+
+    if (index >= 1 .and. index <= size(cells)) then
+
+      ! error if the cell is filled with another universe
+      if (cells(index) % fill /= NONE) then
+        err = E_GEOMETRY
+        call set_errmsg("Cannot set temperature on a cell filled &
+             &with a universe.")
+      else
+        ! find which material is associated with this cell (material_index
+        ! is the index into the materials array)
+        if (present(instance)) then
+          material_index = cells(index) % material(instance)
+        else
+          material_index = cells(index) % material(1)
+        end if
+
+        ! number of nuclides associated with this material
+        num_nuclides = size(materials(material_index) % nuclide)
+
+        min_temp = ZERO
+        max_temp = INFINITY
+
+        do j = 1, num_nuclides
+          nuclide_index = materials(material_index) % nuclide(j)
+          min_temp = max(min_temp, minval(nuclides(nuclide_index) % kTs))
+          max_temp = min(max_temp, maxval(nuclides(nuclide_index) % kTs))
+        end do
+
+        ! adjust the temperature to be within bounds if necessary
+        if (K_BOLTZMANN * T < min_temp) then
+          outside_low = .true.
+          temp = min_temp / K_BOLTZMANN
+        else if (K_BOLTZMANN * T > max_temp) then
+          outside_high = .true.
+          temp = max_temp / K_BOLTZMANN
+        else
+          temp = T
+        end if
+
+        associate (c => cells(index))
+          if (allocated(c % sqrtkT)) then
+            n = size(c % sqrtkT)
+            if (present(instance) .and. n > 1) then
+              if (instance >= 0 .and. instance < n) then
+                c % sqrtkT(instance + 1) = sqrt(K_BOLTZMANN * temp)
+                err = 0
+              end if
+            else
+              c % sqrtkT(:) = sqrt(K_BOLTZMANN * temp)
+              err = 0
+            end if
+          end if
+        end associate
+
+        ! Assign error codes for outside of temperature bounds provided the
+        ! temperature was changed correctly. This needs to be done after
+        ! changing the temperature based on the logical structure above.
+        if (err == 0) then
+          if (outside_low) then
+            err = E_WARNING
+            call set_errmsg("Nuclear data has not been loaded beyond lower &
+                 &bound of T=" // trim(to_str(T)) // " K.")
+          else if (outside_high) then
+            err = E_WARNING
+            call set_errmsg("Nuclear data has not been loaded beyond upper &
+                 &bound of T=" // trim(to_str(T)) // " K.")
+          end if
+        end if
+
+      end if
+
+    else
+      err = E_OUT_OF_BOUNDS
+      call set_errmsg("Index in cells array is out of bounds.")
+    end if
+  end function openmc_cell_set_temperature
 
 end module geometry_header

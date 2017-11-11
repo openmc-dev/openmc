@@ -11,12 +11,12 @@ class Nuclide(object):
     Parameters
     ----------
     name : str
-        Name of the nuclide, e.g. U235
+        Name of the nuclide, e.g. 'U235'
 
     Attributes
     ----------
     name : str
-        Name of the nuclide, e.g. U235
+        Name of the nuclide, e.g. 'U235'
     scattering : 'data' or 'iso-in-lab' or None
         The type of angular scattering distribution to use
 

@@ -3,7 +3,9 @@ module photon_physics
   use algorithm,       only: binary_search
   use constants
   use particle_header, only: Particle
-  use photon_header,   only: PhotonInteraction, compton_profile_pz
+  use photon_header,   only: PhotonInteraction, Bremsstrahlung, &
+                             compton_profile_pz, ttb_energy_electron, &
+                             ttb_energy_photon, ttb_energy_cutoff
   use random_lcg,      only: prn
 
 contains
@@ -367,5 +369,96 @@ contains
     call atomic_relaxation(p, elm, i_hole)
 
   end subroutine atomic_relaxation
+
+!===============================================================================
+! THICK_TARGET_BREMSSTRAHLUNG
+!===============================================================================
+
+  subroutine thick_target_bremsstrahlung(p)
+    type(Particle), intent(inout) :: p
+
+    integer :: i, j
+    integer :: i_e, i_k
+    integer :: n
+    integer :: n_e, n_k
+    real(8) :: c_max
+    real(8) :: pi
+    real(8) :: r
+    real(8) :: e, e_l, e_r
+    real(8) :: y, y_l, y_r
+    real(8) :: k, k_l, k_r
+    real(8) :: x, x_l, x_r
+    type(Bremsstrahlung), pointer :: mat
+
+    ! Get bremsstrahlung data for this material
+    mat => ttb(p % material)
+
+    e = log(p % E)
+    n_e = size(ttb_energy_electron)
+    n_k = size(ttb_energy_photon)
+
+    ! Find the lower bounding index of the incident electron energy
+    j = binary_search(ttb_energy_electron, n_e, e)
+
+    ! Get the interpolation bounds
+    e_l = ttb_energy_electron(j)
+    e_r = ttb_energy_electron(j+1)
+    y_l = mat % yield(j)
+    y_r = mat % yield(j+1)
+
+    ! Get the photon number yield for the given energy using linear
+    ! interpolation on a log-log scale
+    y = exp((y_l * (e_r - e) + y_r * (e - e_l)) / (e_r - e_l))
+
+    ! Sample number of secondary bremsstrahlung photons
+    n = floor(y + prn())
+
+    ! Calculate the interpolation weight pi_j of the bremsstrahlung energy PDF
+    ! interpolated in log energy, which can be interpreted as the probability
+    ! of index j
+    pi = (e_r - e) / (e_r - e_l)
+
+    ! Sample the energies of the emitted photons
+    do i = 1, n
+
+      ! Sample index of the tabulated PDF in the energy grid, j or j+1
+      i_e = j
+      if (prn() > pi)
+        i_e = i_e + 1
+      end if
+
+      ! Maximum value of the CDF
+      c_max = mat % cdf(n_k, i_e)
+
+      ! Sample reduced photon energy from the tabulated PDFs
+      do
+        ! Generate a random number r and determine the index i for which
+        ! cdf(i) <= r*cdf,max <= cdf(i+1)
+        r = prn()
+        i_k = binary_search(mat % cdf(:, i_e), n_k, r*c_max)
+
+        ! Get interpolation bounds
+        k_l = ttb_energy_photon(i_k)
+        k_r = ttb_energy_photon(i_k+1)
+        x_l = mat % dcs(i_k, i_e)
+        x_r = mat % dcs(i_k+1, i_e)
+
+        ! Sample the reduced photon energy k from the distribution k^-1 on the
+        ! interval (k(i), k(i+1))
+        k = k_l * (k_r / k_l)**r
+
+        ! Get the interpolated DCS
+        x = x_l + (k - k_l) * (x_r - x_l) / (k_r - k_l)
+
+        ! Determine whether to deliver k
+        if (prn()*max(x_l, x_r) < x) exit
+      end do
+
+      ! Create secondary photon
+      call p % create_secondary(p % coord(1) % uvw, k * p % E, PHOTON, &
+           run_ce=.true.)
+    end do
+
+  end subroutine thick_target_bremsstrahlung
 
 end module photon_physics

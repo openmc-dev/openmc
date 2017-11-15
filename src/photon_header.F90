@@ -415,7 +415,7 @@ contains
     ! higher-density compound is composed of elements that are in lower-density
     ! form at normal temperature and pressure (at which the NIST stopping
     ! powers are given). It will be used to approximate the collision stopping
-    ! powers for now, but should be fixed in the future. 
+    ! powers for now, but should be fixed in the future.
     do i = 1, size(mat % element)
       ! Get pointer to current element
       elm => mat % element(i)
@@ -438,7 +438,7 @@ contains
       beta = sqrt(e*(e + TWO*MASS_ELECTRON/1.e6)) / (e + MASS_ELECTRON/1.e6)
 
       ! Integration lower bound
-      k_c = ttb_energy_cutoff / e  
+      k_c = ttb_energy_cutoff / e
 
       ! Find the upper bounding index of the reduced photon cutoff energy
       i_k = binary_search(ttb_energy_photon, n_k, k_c) + 1

@@ -15,7 +15,7 @@ module global
   use mesh_header,      only: RegularMesh
   use mgxs_header,      only: Mgxs, MgxsContainer
   use nuclide_header
-  use photon_header,    only: PhotonInteraction, ElementMicroXS
+  use photon_header,    only: PhotonInteraction, Bremsstrahlung, ElementMicroXS
   use plot_header,      only: ObjectPlot
   use sab_header,       only: SAlphaBeta
   use set_header,       only: SetInt
@@ -97,6 +97,7 @@ module global
   type(Nuclide), allocatable, target :: nuclides(:)    ! Nuclide cross-sections
   type(PhotonInteraction), allocatable :: elements(:)  ! Photon cross sections
   type(SAlphaBeta), allocatable, target :: sab_tables(:)  ! S(a,b) tables
+  type(Bremsstrahlung), allocatable :: ttb(:) ! Bremsstrahlung cross sections
 
   integer :: n_sab_tables     ! Number of S(a,b) thermal scattering tables
 
@@ -497,6 +498,8 @@ contains
 
     if (allocated(sab_tables)) deallocate(sab_tables)
     if (allocated(micro_xs)) deallocate(micro_xs)
+
+    if (allocated(ttb)) deallocate(ttb)
 
     ! Deallocate external source
     if (allocated(external_source)) deallocate(external_source)

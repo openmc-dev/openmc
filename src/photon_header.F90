@@ -2,12 +2,16 @@ module photon_header
 
   use hdf5, only: HID_T, HSIZE_T, SIZE_T
 
+  use algorithm,   only: binary_search
   use constants,   only: ZERO, HALF, SUBSHELLS
   use dict_header, only: DictIntInt
   use endf_header, only: Tabulated1D
   use hdf5_interface
 
   real(8), allocatable :: compton_profile_pz(:)
+  real(8), allocatable :: ttb_energy_electron(:) ! incident electron energy grid
+  real(8), allocatable :: ttb_energy_photon(:)   ! reduced photon energy grid
+  real(8)              :: ttb_energy_cutoff
 
   type ElectronSubshell
     integer :: index_subshell  ! index in SUBSHELLS
@@ -53,9 +57,28 @@ module photon_header
     real(8), allocatable :: binding_energy(:)
     real(8), allocatable :: electron_pdf(:)
 
+    ! Stopping power data
+    real(8) :: density
+    real(8), allocatable :: stopping_power_collision(:)
+    real(8), allocatable :: stopping_power_radiative(:)
+
+    ! Bremsstrahlung scaled DCS
+    real(8), allocatable :: dcs(:,:)
+
   contains
     procedure :: from_hdf5 => photon_from_hdf5
   end type PhotonInteraction
+
+  type Bremsstrahlung
+    integer :: i_material ! Index in materials array
+
+    real(8), allocatable :: yield(:,:) ! Photon number yield
+    real(8), allocatable :: dcs(:,:)   ! Scaled bremsstrahlung DCS
+    real(8), allocatable :: cdf(:,:)   ! Bremsstrahlung energy CDF
+
+  contains
+    procedure :: init => bremsstrahlung_init
+  end type Bremsstrahlung
 
 !===============================================================================
 ! ELEMENTMICROXS contains cached microscopic photon cross sections for a
@@ -88,6 +111,8 @@ contains
     integer          :: n_shell
     integer          :: n_profile
     integer          :: n_transition
+    integer          :: n_k
+    integer          :: n_e
     character(3), allocatable :: designators(:)
     real(8)          :: c
     real(8), allocatable :: matrix(:,:)
@@ -266,6 +291,43 @@ contains
     this % pair_production_total(:) = this % pair_production_nuclear + &
          this % pair_production_electron
 
+    if (electron_treatment == ELECTRON_TTB) then
+      ! TODO: read in
+      ttb_energy_cutoff = 1.e-3
+
+      ! Read bremsstrahlung scaled DCS
+      rgroup = open_group(group_id, 'bremsstrahlung')
+      dset_id = open_dataset(rgroup, 'dcs')
+      call get_shape(dset_id, dims2)
+      n_k = int(dims2(1), 4)
+      n_e = int(dims2(2), 4)
+      allocate(this % dcs(n_k, n_e))
+      call read_dataset(this % dcs, dset_id)
+      call close_dataset(dset_id)
+
+      ! Get energy grids used for bremsstrahlung DCS and for stopping powers
+      if (.not. allocated(ttb_energy_electron)) then
+        allocate(ttb_energy_electron(n_e))
+        call read_dataset(ttb_energy_electron, rgroup, 'electron_energy')
+      end if
+      if (.not. allocated(ttb_energy_photon)) then
+        allocate(ttb_energy_photon(n_k))
+        call read_dataset(ttb_energy_photon, rgroup, 'photon_energy')
+      end if
+      call close_group(rgroup)
+
+      ! Read stopping power data
+      if (this % Z < 99) then
+        rgroup = open_group(group_id, 'stopping_powers')
+        allocate(this % stopping_power_collision(n_e))
+        allocate(this % stopping_power_radiative(n_e))
+        call read_dataset(this % stopping_power_collision, rgroup, 's_collision')
+        call read_dataset(this % stopping_power_radiative, rgroup, 's_radiative')
+        call read_attribute(this % density, rgroup, 'density')
+        call close_group(rgroup)
+      end if
+    end if
+
     ! Take logarithm of energies and cross sections since they are log-log
     ! interpolated
     this % energy = log(this % energy)
@@ -294,6 +356,123 @@ contains
       this % pair_production_total = -500.0_8
     end where
 
+    if (electron_treatment == ELECTRON_TTB) then
+      ttb_energy_electron = log(ttb_energy_electron)
+    end if
+
   end subroutine photon_from_hdf5
+
+  subroutine bremsstrahlung_init(this, i_material)
+    class(Bremsstrahlung), intent(inout) :: this
+    integer, intent(in) :: i_material
+
+    integer                 :: i, j
+    integer                 :: i_k
+    integer                 :: n_e, n_k
+    real(8)                 :: e
+    real(8)                 :: c
+    real(8)                 :: k, k_l, k_r, k_c
+    real(8)                 :: x_l, x_r, x_c
+    real(8)                 :: Z_eq_sq
+    real(8)                 :: beta
+    real(8), allocatable    :: mass_fraction(:)
+    real(8), allocatable    :: stopping_power(:)
+    real(8), allocatable    :: mfp_inv(:)
+    type(Material), pointer :: mat
+    type(PhotonInteraction), pointer :: elm
+
+    ! Get pointer to this material
+    mat => materials(i_material)
+    this % i_material = i_material
+
+    ! Allocate and initialize arrays
+    n_k = size(ttb_energy_photon)
+    n_e = size(ttb_energy_electron)
+    allocate(mass_fraction(size(mat % element)))
+    allocate(stopping_power(n_e))
+    allocate(mfp_inv(n_e))
+    allocate(this % yield(n_e))
+    allocate(this % dcs(n_k, n_e))
+    allocate(this % cdf(n_k, n_e))
+    stopping_power(:) = ZERO
+    mfp_inv(:) = ZERO
+    this % dcs(:,:) = ZERO
+    this % cdf(:,:) = ZERO
+
+    ! TODO
+    ! Calculate the "equivalent" atomic number Zeq and get the mass fraction of
+    ! each element
+    Z_eq_sq = 0
+    do i = 1, mat % n_nuclides
+      ! Zeq**2 = (atomic fraction of x)*Zx**2 + (atomic fraction of y)*Zy**2 + ...
+    end do
+
+    ! Calculate the molecular DCS and the molecular total stopping power using
+    ! Bragg's additivity rule. Note: the collision stopping power cannot be
+    ! accurately calculated using Bragg's additivity rule since the mean
+    ! excitation energies and the density effect corrections cannot simply be
+    ! summed together. Bragg's additivity rule fails especially when a
+    ! higher-density compound is composed of elements that are in lower-density
+    ! form at normal temperature and pressure (at which the NIST stopping
+    ! powers are given). It will be used to approximate the collision stopping
+    ! powers for now, but should be fixed in the future. 
+    do i = 1, size(mat % element)
+      ! Get pointer to current element
+      elm => mat % element(i)
+
+      ! TODO: n_atoms
+      ! Accumulate material DCS
+      this % dcs = this % dcs + n_atoms(i) * elm % Z**2 / Z_eq_sq * elm % dcs
+
+      ! Accumulate material total stopping power
+      stopping_power = stopping_power + mass_fraction(i) * elm % density * &
+           (elm % stopping_power_collision + elm % stopping_power_radiative)
+    end do
+
+    ! Calculate inverse bremsstrahlung mean free path
+    do i = 1, n_e
+      e = exp(ttb_energy_electron(i))
+      if (e <= ttb_energy_cutoff) cycle
+
+      ! Ratio of the velocity of the charged particle to the speed of light
+      beta = sqrt(e*(e + TWO*MASS_ELECTRON/1.e6)) / (e + MASS_ELECTRON/1.e6)
+
+      ! Integration lower bound
+      k_c = ttb_energy_cutoff / e  
+
+      ! Find the upper bounding index of the reduced photon cutoff energy
+      i_k = binary_search(ttb_energy_photon, n_k, k_c) + 1
+
+      ! Get the interpolation bounds
+      k_l = ttb_energy_photon(i_k-1)
+      k_r = ttb_energy_photon(i_k)
+      x_l = this % dcs(i_k-1, i)
+      x_r = this % dcs(i_k, i)
+
+      ! Use linear interpolation in reduced photon energy k to find value of
+      ! the DCS at the cutoff energy
+      x_c = (x_l * (k_r - k_c) + x_r * (k_c - k_l)) / (k_r - k_l)
+
+      ! Integrate using the trapezoidal rule in log-log space
+      c = HALF * (log(k_r) - log(k_c)) * (x_c + x_r)
+      this % cdf(i_k,i) = c
+      do j = i_k, n_k - 1
+        c = c + HALF * (log(ttb_energy_photon(j+1)) - &
+             log(ttb_energy_photon(j))) * (this % dcs(j,i) + this % dcs(j+1,i))
+        this % cdf(j+1,i) = c
+
+      ! TODO: density in atom/cm^3
+      mfp_inv(i) = c * mat % density * Z_eq_sq / beta**2 * 1.0e-27_8
+    end do
+
+    ! TODO:
+    ! Calculate photon number yield
+    ! cs = cubic_spline(exp(ttb_energy_electron), mfp_inv / stopping_power)
+    ! do i = 1, n_e
+    !   yield(i) = cs % integrate(ttb_energy_cutoff, exp(ttb_energy_electron(i)))
+    ! Use logarithm of number yield since it is log-log interpolated
+    ! yield = log(yield)
+
+  end subroutine bremsstrahlung_init
 
 end module photon_header

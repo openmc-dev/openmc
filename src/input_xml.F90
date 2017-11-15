@@ -5417,6 +5417,7 @@ contains
     allocate(nuclides(n_nuclides_total))
     allocate(elements(n_elements))
     allocate(sab_tables(n_sab_tables))
+    if (electron_treatment == ELECTRON_TTB) allocate(ttb(n_materials))
 
     ! Read cross sections
     do i = 1, size(materials)
@@ -5491,6 +5492,11 @@ contains
           materials(i) % fissionable = .true.
         end if
       end do
+
+      ! Generate material bremsstrahlung data
+      if (photon_transport .and. electron_treatment == ELECTRON_TTB) then
+        call ttb(i) % init(i)
+      end if
     end do
 
     ! Set up logarithmic grid for nuclides

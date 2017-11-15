@@ -448,26 +448,40 @@ class IncidentPhoton(EqualityMixin):
             filename = os.path.join(os.path.dirname(__file__), 'BREMX.DAT')
             brem = open(filename, 'r').read().split()
 
+            # Incident electron kinetic energy grid
+            _BREMSSTRAHLUNG['electron_energy'] = np.logspace(-3, 3, 200)
+            log_energy = np.log(_BREMSSTRAHLUNG['electron_energy'])
+    
             # Get number of tabulated electron and photon energy values
             n = int(brem[37])
             k = int(brem[38])
 
             # Index in data
-            j = 39
+            p = 39
 
-            # Get incident electron kinetic energy values
-            _BREMSSTRAHLUNG['electron_energy'] = np.fromiter(brem[j:j+n], float, n)
-            j += n
+            # Get log of incident electron kinetic energy values, used for cubic
+            # spline interpolation in log energy
+            logx = np.log(np.fromiter(brem[p:p+n], float, n))
+            p += n
 
             # Get reduced photon energy values
-            _BREMSSTRAHLUNG['photon_energy'] = np.fromiter(brem[j:j+k], float, k)
-            j += k
+            _BREMSSTRAHLUNG['photon_energy'] = np.fromiter(brem[p:p+k], float, k)
+            p += k
 
             for i in range(1, 101):
+                dcs = np.empty([len(log_energy), k])
+
                 # Get the scaled cross section values for each electron energy and
                 # reduced photon energy for this Z
-                dcs = np.reshape(np.fromiter(brem[j:j+n*k], float, n*k), (n, k))
-                j += k*n
+                logy = np.log(np.reshape(np.fromiter(brem[p:p+n*k], float, n*k), (n, k)))
+                p += k*n
+
+                for j in range(k):
+                    # Cubic spline log-log interpolation
+                    cs = CubicSpline(logx, logy[:,j])
+            
+                    # Get scaled DCS values (millibarns) on new energy grid
+                    dcs[:,j] = np.exp(cs(log_energy))
 
                 _BREMSSTRAHLUNG[i] = {'dcs': dcs}
 

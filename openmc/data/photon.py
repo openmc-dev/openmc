@@ -451,7 +451,7 @@ class IncidentPhoton(EqualityMixin):
             # Incident electron kinetic energy grid
             _BREMSSTRAHLUNG['electron_energy'] = np.logspace(-3, 3, 200)
             log_energy = np.log(_BREMSSTRAHLUNG['electron_energy'])
-    
+
             # Get number of tabulated electron and photon energy values
             n = int(brem[37])
             k = int(brem[38])
@@ -479,7 +479,7 @@ class IncidentPhoton(EqualityMixin):
                 for j in range(k):
                     # Cubic spline log-log interpolation
                     cs = CubicSpline(logx, logy[:,j])
-            
+
                     # Get scaled DCS values (millibarns) on new energy grid
                     dcs[:,j] = np.exp(cs(log_energy))
 

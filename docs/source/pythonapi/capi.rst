@@ -22,6 +22,7 @@ Functions
    openmc.capi.keff
    openmc.capi.load_nuclide
    openmc.capi.next_batch
+   openmc.capi.num_realizations
    openmc.capi.plot_geometry
    openmc.capi.reset
    openmc.capi.run

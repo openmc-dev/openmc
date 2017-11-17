@@ -570,7 +570,7 @@ contains
     write(ou,100) "Total time elapsed", time_total % elapsed
 
     ! Calculate particle rate in active/inactive batches
-    n_active = n_batches - n_inactive
+    n_active = current_batch - n_inactive
     if (restart_run) then
       if (restart_batch < n_inactive) then
         speed_inactive = real(n_particles * (n_inactive - restart_batch) * &

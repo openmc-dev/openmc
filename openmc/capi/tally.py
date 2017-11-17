@@ -13,7 +13,7 @@ from .error import _error_handler, AllocationError, InvalidIDError
 from .filter import _get_filter
 
 
-__all__ = ['Tally', 'tallies', 'global_tallies']
+__all__ = ['Tally', 'tallies', 'global_tallies', 'num_realizations']
 
 # Tally functions
 _dll.openmc_extend_tallies.argtypes = [c_int32, POINTER(c_int32), POINTER(c_int32)]
@@ -89,7 +89,7 @@ def global_tallies():
     # Get sum, sum-of-squares, and number of realizations
     sum_ = array[:, 1]
     sum_sq = array[:, 2]
-    n = c_int32.in_dll(_dll, 'n_realizations').value
+    n = num_realizations()
 
     # Determine mean
     mean = sum_ / n
@@ -100,6 +100,11 @@ def global_tallies():
     stdev[nonzero] = np.sqrt((sum_sq[nonzero]/n - mean[nonzero]**2)/(n - 1))
 
     return list(zip(mean, stdev))
+
+
+def num_realizations():
+    """Number of realizations of global tallies."""
+    return c_int32.in_dll(_dll, 'n_realizations').value
 
 
 class Tally(_FortranObjectWithID):

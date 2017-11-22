@@ -5230,6 +5230,17 @@ contains
       URR_xs_representation = URR_PROB_BANDS
       prob_table_node = root % child("probability_tables")
 
+      ! check that a filepath for probability table file I/O is specified
+      if (check_for_node(prob_table_node, 'filepath')) then
+        call get_node_value(prob_table_node, 'filepath', temp_str_fixed_len)
+        temp_str = trim(adjustl(temp_str_fixed_len))
+        if (temp_str(len(temp_str):) /= '/') temp_str = temp_str // '/'
+        URR_path_prob_tables = temp_str
+      else
+        call fatal_error('Must specify path to probability table files &
+             &in urr.xml')
+      end if
+
       ! load previously-generated tables?
       if (check_for_node(prob_table_node, 'read_tables')) then
         call get_node_value(prob_table_node, 'read_tables', temp_str_fixed_len)
@@ -5240,15 +5251,6 @@ contains
             call write_message('Loading probability tables from files. Any&
                  & probability table generation parameters specified in urr.xml&
                  & are being ignored.')
-          end if
-          if (check_for_node(prob_table_node, 'filepath')) then
-            call get_node_value(prob_table_node, 'filepath', temp_str_fixed_len)
-            temp_str = trim(adjustl(temp_str_fixed_len))
-            if (temp_str(len(temp_str):) /= '/') temp_str = temp_str // '/'
-            URR_path_prob_tables = temp_str
-          else
-            call fatal_error('Must specify path to probability table files &
-                 &in urr.xml')
           end if
         else if (trim(adjustl(to_lower(temp_str_fixed_len))) == 'false'&
              .or. trim(adjustl(temp_str_fixed_len)) == '0') then

@@ -240,6 +240,11 @@ coverage
 maxcoord
   Maximum number of nested coordinate levels in geometry. Defaults to 10.
 
+linkbin
+  Dynamically link the executable to the openmc shared library. Turning this on
+  will reduce compile time, but the LD_LIBRARY_PATH (or the equivalent on
+  non-linux systems) must be set, and some error messages will be less helpful.
+
 To set any of these options (e.g. turning on debug mode), the following form
 should be used:
 
@@ -318,6 +323,11 @@ OpenMC locally by specifying an install prefix when running cmake:
 
 The ``CMAKE_INSTALL_PREFIX`` variable can be changed to any path for which you
 have write-access.
+
+If the linkbin option was toggled on during the cmake process, then the
+LD_LIBRARY_PATH environment variable must be modified to include the location of
+libopenmc.so (/usr/local/lib by default, elsewhere if the
+``CMAKE_INSTALL_PREFIX`` was used).
 
 Compiling on Windows 10
 -----------------------

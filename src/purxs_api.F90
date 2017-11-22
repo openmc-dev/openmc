@@ -9,6 +9,7 @@ module purxs_api
   use URR_faddeeva,  only:&
        URR_tabulate_w => tabulate_w
   use URR_io,        only:&
+       URR_read_point_xs => read_point_xs,&
        URR_read_prob_tables => read_prob_tables,&
        URR_write_MF2 => write_MF2
   use URR_isotope,   only:&
@@ -51,7 +52,6 @@ module purxs_api
   use URR_settings,  only:&
        URR_num_isotopes => num_isotopes,&
        URR_parameter_energy_dependence => parameter_energy_dependence,&
-       URR_pregenerated_prob_tables => pregenerated_prob_tables,&
        URR_use_urr => use_urr,&
        URR_realization_frequency => realization_frequency,&
        URR_endf_filenames => endf_filenames,&
@@ -74,6 +74,7 @@ module purxs_api
        URR_num_histories_prob_tables => num_histories_prob_tables,&
        URR_rel_err_tolerance_avg_xs => rel_err_tolerance_avg_xs,&
        URR_realization_frequency => realization_frequency,&
+       URR_pregenerated_point_xs => pregenerated_point_xs,&
        URR_rel_err_tolerance_pointwise => rel_err_tolerance_pointwise,&
        URR_xs_representation => xs_representation,&
        URR_min_num_batches_prob_tables => min_num_batches_prob_tables,&
@@ -81,6 +82,7 @@ module purxs_api
        URR_min_delta_E_pointwise => min_delta_E_pointwise,&
        URR_num_urr_realizations => num_urr_realizations,&
        URR_path_avg_xs => path_avg_xs,&
+       URR_path_point_xs => path_point_xs,&
        URR_path_prob_tables => path_prob_tables,&
        URR_path_endf_files => path_endf_files,&
        URR_parameter_energy_dependence => parameter_energy_dependence,&

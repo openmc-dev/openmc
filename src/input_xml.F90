@@ -82,6 +82,7 @@ module input_xml
        URR_E_grid_scheme_prob_tables,&
        URR_i_realization_user,&
        URR_temperature_interp_scheme,&
+       URR_pregenerated_point_xs,&
        URR_pregenerated_prob_tables,&
        URR_num_energies_prob_tables,&
        URR_num_temperatures_prob_tables,&
@@ -96,6 +97,7 @@ module input_xml
        URR_min_delta_E_pointwise,&
        URR_num_urr_realizations,&
        URR_path_avg_xs,&
+       URR_path_point_xs,&
        URR_path_prob_tables,&
        URR_path_endf_files,&
        URR_parameter_energy_dependence,&
@@ -4878,6 +4880,7 @@ contains
 
     ! Check if urr.xml exists
     filename = trim(adjustl(path_input)) // "urr.xml"
+    print*,filename
     inquire(FILE=filename, EXIST=file_exists)
     if (.not. file_exists) then
       ! Since a urr.xml file is optional, no error is issued here
@@ -5074,13 +5077,36 @@ contains
 
     ! Check for pointwise cross section calculation
     if (check_for_node(root, "pointwise")) then
+      URR_xs_representation = URR_POINTWISE
+      URR_num_urr_realizations = 1
+      point_xs_node = root % child("pointwise")
       if (URR_xs_representation == URR_ON_THE_FLY .or. URR_xs_representation == URR_PROB_BANDS) then
         call fatal_error('Cannot represent URR cross sections as pointwise and&
              & on-the-fly and/or as probability bands')
       end if
-      URR_xs_representation = URR_POINTWISE
-      URR_num_urr_realizations = 1
-      point_xs_node = root % child("pointwise")
+
+      ! load previously-generated pointwise xs?
+      if (check_for_node(point_xs_node, 'read_xs')) then
+        call get_node_value(point_xs_node, 'read_xs', temp_str_fixed_len)
+        if (trim(adjustl(to_lower(temp_str_fixed_len))) == 'true'&
+             .or. trim(adjustl(temp_str_fixed_len)) == '1') then
+          URR_pregenerated_point_xs = .true.
+          if (master) then
+            call write_message('Loading pointwise URR cross sections from files. Any&
+                 & pointwise xs generation parameters specified in urr.xml&
+                 & are being ignored.')
+          end if
+        else if (trim(adjustl(to_lower(temp_str_fixed_len))) == 'false'&
+             .or. trim(adjustl(temp_str_fixed_len)) == '0') then
+          URR_pregenerated_point_xs = .false.
+        else
+          call fatal_error('read_xs must be true or false in urr.xml')
+        end if
+      else
+        call fatal_error('Must specify whether or not to load pointwise &
+             &cross sections in urr.xml')
+      end if
+
       if (check_for_node(point_xs_node, 'source')) then
         call get_node_value(point_xs_node, "source", temp_str_fixed_len)
         select case (trim(adjustl(to_lower(temp_str_fixed_len))))
@@ -5095,6 +5121,15 @@ contains
         call fatal_error('No pointwise xs source specified in urr.xml')
       end if
       if (URR_xs_source_pointwise == URR_RECONSTRUCTION) then
+        if (check_for_node(point_xs_node, 'filepath')) then
+          call get_node_value(point_xs_node, 'filepath', temp_str_fixed_len)
+          temp_str = trim(adjustl(temp_str_fixed_len))
+          if (temp_str(len(temp_str):) /= '/') temp_str = temp_str // '/'
+          URR_path_point_xs = temp_str
+        else
+          call fatal_error('Must specify path for read/write of pointwise xs files &
+               &in urr.xml')
+        end if
         if (check_for_node(point_xs_node, 'min_energy_spacing')) then
           call get_node_value(&
                point_xs_node, 'min_energy_spacing', URR_min_delta_E_pointwise)

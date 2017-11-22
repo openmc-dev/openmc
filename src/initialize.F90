@@ -38,6 +38,7 @@ module initialize
   use purxs_api, only:&
        URR_read_endf6,&
        URR_tabulate_w,&
+       URR_read_point_xs,&
        URR_read_prob_tables,&
        URR_write_MF2,&
        URR_isotopes,&
@@ -52,6 +53,7 @@ module initialize
        URR_xs_representation,&
        URR_num_isotopes,&
        URR_parameter_energy_dependence,&
+       URR_pregenerated_point_xs,&
        URR_pregenerated_prob_tables,&
        URR_use_urr,&
        URR_realization_frequency,&
@@ -229,41 +231,49 @@ contains
           end select
 
         case (URR_POINTWISE)
+          ! where to get pointwise URR xs from
           select case(URR_xs_source_pointwise)
+
+          ! use reconstructed xs (pre-generated or generated at initialization)
           case(URR_RECONSTRUCTION)
-            if (URR_parameter_energy_dependence /= URR_E_RESONANCE) then
-              call fatal_error('Generating &
-                   &a resonance ensemble with E_n-dependent parameters')
-            end if
             do i = 1, URR_num_isotopes
-              if (.not. allocated(URR_isotopes(i) % urr_resonances)) then
-                call URR_isotopes(i) % resonance_ladder_realization()
-                call URR_write_MF2(i)
-              end if
-              if (run_mode == MODE_PURXS) then
-                call URR_isotopes(i) % generate_pointwise_xs(URR_temperature_pointwise)
-              else
-                call fatal_error('Attempting to generate pointwise data before a transport simulation.&
-                     & Pointwise data should only be generated in purxs-only mode ([-- purxs] option).')
-                do i_nuc = 1, n_nuclides_total
-                  ZA = '000'
-                  ZA(4-len(trim(adjustl(to_str(nuclides(i_nuc) % A)))):3)&
-                       = trim(adjustl(to_str(nuclides(i_nuc) % A)))
-                  ZA = trim(adjustl(to_str(nuclides(i_nuc) % Z))) // ZA
-                  if ((ZA == trim(adjustl(to_str(URR_isotopes(i) % ZAI)))) .and.&
-                       (.not. allocated(URR_isotopes(i) % urr_resonances))) then
-                    do i_temperature = 1, size(nuclides(i_nuc) % kTs)
-                      if (i_temperature /= 1)&
-                           call fatal_error('Trying to generate pointwise PURXS cross sections&
-                           & at multiple temperatures for the same isotope: currently not&
-                           & implemented.')
-                      call URR_isotopes(i) % generate_pointwise_xs(nuclides(i_nuc) % kTs(i_temperature) / K_BOLTZMANN)
-                    end do
-                  end if
-                end do
+              if (URR_pregenerated_point_xs) then
+                call URR_read_point_xs(i)
+              else ! need to generate pointwise xs
+                if (URR_parameter_energy_dependence /= URR_E_RESONANCE) then
+                  call fatal_error('Generating &
+                       &a resonance ensemble with E_n-dependent parameters')
+                end if
+                if (.not. allocated(URR_isotopes(i) % urr_resonances)) then
+                  call URR_isotopes(i) % resonance_ladder_realization()
+                  call URR_write_MF2(i)
+                end if
+                if (run_mode == MODE_PURXS) then
+                  call URR_isotopes(i) % generate_pointwise_xs(URR_temperature_pointwise)
+                else
+                  call fatal_error('Attempting to generate pointwise data before a transport simulation.&
+                       & Pointwise data should only be generated in purxs-only mode ([-- purxs] option).')
+                  do i_nuc = 1, n_nuclides_total
+                    ZA = '000'
+                    ZA(4-len(trim(adjustl(to_str(nuclides(i_nuc) % A)))):3)&
+                         = trim(adjustl(to_str(nuclides(i_nuc) % A)))
+                    ZA = trim(adjustl(to_str(nuclides(i_nuc) % Z))) // ZA
+                    if ((ZA == trim(adjustl(to_str(URR_isotopes(i) % ZAI)))) .and.&
+                         (.not. allocated(URR_isotopes(i) % urr_resonances))) then
+                      do i_temperature = 1, size(nuclides(i_nuc) % kTs)
+                        if (i_temperature /= 1)&
+                             call fatal_error('Trying to generate pointwise PURXS cross sections&
+                             & at multiple temperatures for the same isotope: currently not&
+                             & implemented.')
+                        call URR_isotopes(i) % generate_pointwise_xs(nuclides(i_nuc) % kTs(i_temperature) / K_BOLTZMANN)
+                      end do
+                    end if
+                  end do
+                end if
               end if
             end do
 
+          ! use native hdf5 format data
           case(URR_HDF5)
             if (run_mode == MODE_PURXS) call fatal_error('Trying to use HDF5&
                  & nuclear data in purxs-only mode.  HDF5 data should only be&

@@ -172,6 +172,8 @@ contains
           call URR_isotopes(i) % alloc_local_realization()
           URR_isotopes(i) % EH(URR_isotopes(i) % i_urr)&
                = min(URR_isotopes(i) % EH(URR_isotopes(i)%i_urr), URR_isotopes(i) % max_E_urr)
+          URR_isotopes(i) % EL(URR_isotopes(i) % i_urr)&
+               = max(URR_isotopes(i) % EL(URR_isotopes(i)%i_urr), URR_isotopes(i) % min_E_urr)
         end do
 
         select case (URR_xs_representation)

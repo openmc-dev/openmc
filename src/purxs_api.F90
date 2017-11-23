@@ -25,6 +25,7 @@ module purxs_api
        URR_USER => USER,&
        URR_ENDFFILE => ENDFFILE,&
        URR_FALSE => FALSE,&
+       URR_ZERO => ZERO,&
        URR_INF => INF,&
        URR_LINEAR => LINEAR,&
        URR_LOGARITHMIC => LOGARITHMIC,&

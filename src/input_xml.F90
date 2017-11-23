@@ -49,6 +49,7 @@ module input_xml
        URR_USER,&
        URR_ENDFFILE,&
        URR_FALSE,&
+       URR_ZERO,&
        URR_INF,&
        URR_LINEAR,&
        URR_LOGARITHMIC,&
@@ -5054,6 +5055,13 @@ contains
             call get_node_value(isotope_node, 'max_energy', URR_isotopes(i) % max_E_urr)
           else
             URR_isotopes(i) % max_E_urr = URR_INF
+          end if
+
+          ! Check if a min energy is given
+          if (check_for_node(isotope_node, 'min_energy')) then
+            call get_node_value(isotope_node, 'min_energy', URR_isotopes(i) % min_E_urr)
+          else
+            URR_isotopes(i) % min_E_urr = URR_ZERO
           end if
         end do
 

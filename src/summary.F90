@@ -11,7 +11,7 @@ module summary
   use message_passing
   use mgxs_header,     only: nuclides_MG
   use nuclide_header
-  use output,          only: time_stamp
+  use output,          only: time_stamp, write_message
   use settings,        only: run_CE
   use surface_header
   use string,          only: to_str
@@ -32,6 +32,9 @@ contains
   subroutine write_summary()
 
     integer(HID_T) :: file_id
+
+    ! Display output message
+    call write_message("Writing summary.h5 file...", 5)
 
     ! Create a new file using default properties.
     file_id = file_create("summary.h5")

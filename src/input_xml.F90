@@ -1920,10 +1920,7 @@ contains
     type(XMLDocument)       :: doc
     type(XMLNode)           :: root
 
-    ! Display output message
-    call write_message("Reading materials XML file...", 5)
-
-    ! Check is materials.xml exists
+    ! Check if materials.xml exists
     filename = trim(path_input) // "materials.xml"
     inquire(FILE=filename, EXIST=file_exists)
     if (.not. file_exists) then
@@ -2057,7 +2054,10 @@ contains
     type(XMLNode), allocatable :: node_macro_list(:)
     type(XMLNode), allocatable :: node_sab_list(:)
 
-    ! Check is materials.xml exists
+    ! Display output message
+    call write_message("Reading materials XML file...", 5)
+
+    ! Check if materials.xml exists
     filename = trim(path_input) // "materials.xml"
     inquire(FILE=filename, EXIST=file_exists)
     if (.not. file_exists) then

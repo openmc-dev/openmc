@@ -87,7 +87,7 @@ class Geometry(object):
 
         # Write the XML Tree to the geometry.xml file
         tree = ET.ElementTree(root_element)
-        tree.write(path, xml_declaration=True, encoding='utf-8', method="xml")
+        tree.write(path, xml_declaration=True, encoding='utf-8')
 
     def find(self, point):
         """Find cells/universes/lattices which contain a given point

@@ -25,23 +25,6 @@ class Macroscopic(object):
         # Set the Macroscopic class attributes
         self.name = name
 
-    def __eq__(self, other):
-        if isinstance(other, Macroscopic):
-            if self.name != other.name:
-                return False
-            else:
-                return True
-        elif isinstance(other, string_types) and other == self.name:
-            return True
-        else:
-            return False
-
-    def __ne__(self, other):
-        return not self == other
-
-    def __hash__(self):
-        return hash((self._name))
-
     def __repr__(self):
         string = 'Macroscopic    -    {0}\n'.format(self._name)
         return string

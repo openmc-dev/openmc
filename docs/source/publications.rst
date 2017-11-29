@@ -171,6 +171,12 @@ Miscellaneous
 Multi-group Cross Section Generation
 ------------------------------------
 
+- Zhaoyuan Liu, Kord Smith, Benoit Forget, and Javier Ortensi, "`Cumulative
+  migration method for computing rigorous diffusion coefficients and transport
+  cross sections from Monte Carlo
+  <https://doi.org/10.1016/j.anucene.2017.10.039>`_," *Ann. Nucl. Energy*,
+  **112**, 507-516 (2018).
+
 - Gang Yang, Tongkyu Park, and Won Sik Yang, "Effects of Fuel Salt Velocity
   Field on Neutronics Performances in Molten Salt Reactors with Open Flow
   Channels," *Trans. Am. Nucl. Soc.*, **117**, 1339-1342 (2017).

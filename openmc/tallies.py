@@ -1971,10 +1971,8 @@ class Tally(IDManagerMixin):
         """
 
         # Get the set of filters that each tally is missing
-        other_missing_filters = \
-            set(self.filters).difference(set(other.filters))
-        self_missing_filters = \
-            set(other.filters).difference(set(self.filters))
+        other_missing_filters = set(self.filters) - set(other.filters)
+        self_missing_filters = set(other.filters) - set(self.filters)
 
         # Add filters present in self but not in other to other
         for other_filter in other_missing_filters:
@@ -2001,14 +1999,10 @@ class Tally(IDManagerMixin):
         # Repeat and tile the data by nuclide in preparation for performing
         # the tensor product across nuclides.
         if nuclide_product == 'tensor':
-            self._mean = \
-                np.repeat(self.mean, other.num_nuclides, axis=1)
-            self._std_dev = \
-                np.repeat(self.std_dev, other.num_nuclides, axis=1)
-            other._mean = \
-                np.tile(other.mean, (1, self.num_nuclides, 1))
-            other._std_dev = \
-                np.tile(other.std_dev, (1, self.num_nuclides, 1))
+            self._mean = np.repeat(self.mean, other.num_nuclides, axis=1)
+            self._std_dev = np.repeat(self.std_dev, other.num_nuclides, axis=1)
+            other._mean = np.tile(other.mean, (1, self.num_nuclides, 1))
+            other._std_dev = np.tile(other.std_dev, (1, self.num_nuclides, 1))
 
         # Add nuclides to each tally such that each tally contains the complete
         # set of nuclides necessary to perform an entrywise product. New
@@ -2016,25 +2010,21 @@ class Tally(IDManagerMixin):
         else:
 
             # Get the set of nuclides that each tally is missing
-            other_missing_nuclides = \
-                set(self.nuclides).difference(set(other.nuclides))
-            self_missing_nuclides = \
-                set(other.nuclides).difference(set(self.nuclides))
+            other_missing_nuclides = set(self.nuclides) - set(other.nuclides)
+            self_missing_nuclides = set(other.nuclides) - set(self.nuclides)
 
             # Add nuclides present in self but not in other to other
             for nuclide in other_missing_nuclides:
-                other._mean = \
-                    np.insert(other.mean, other.num_nuclides, 0, axis=1)
-                other._std_dev = \
-                    np.insert(other.std_dev, other.num_nuclides, 0, axis=1)
+                other._mean = np.insert(other.mean, other.num_nuclides, 0, axis=1)
+                other._std_dev = np.insert(other.std_dev, other.num_nuclides, 0,
+                                           axis=1)
                 other.nuclides.append(nuclide)
 
             # Add nuclides present in other but not in self to self
             for nuclide in self_missing_nuclides:
-                self._mean = \
-                    np.insert(self.mean, self.num_nuclides, 0, axis=1)
-                self._std_dev = \
-                    np.insert(self.std_dev, self.num_nuclides, 0, axis=1)
+                self._mean = np.insert(self.mean, self.num_nuclides, 0, axis=1)
+                self._std_dev = np.insert(self.std_dev, self.num_nuclides, 0,
+                                          axis=1)
                 self.nuclides.append(nuclide)
 
             # Align other nuclides with self nuclides
@@ -2059,10 +2049,8 @@ class Tally(IDManagerMixin):
         else:
 
             # Get the set of scores that each tally is missing
-            other_missing_scores = \
-                set(self.scores).difference(set(other.scores))
-            self_missing_scores = \
-                set(other.scores).difference(set(self.scores))
+            other_missing_scores = set(self.scores) - set(other.scores)
+            self_missing_scores = set(other.scores) - set(self.scores)
 
             # Add scores present in self but not in other to other
             for score in other_missing_scores:

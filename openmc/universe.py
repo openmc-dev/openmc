@@ -63,24 +63,6 @@ class Universe(IDManagerMixin):
         if cells is not None:
             self.add_cells(cells)
 
-    def __eq__(self, other):
-        if not isinstance(other, Universe):
-            return False
-        elif self.id != other.id:
-            return False
-        elif self.name != other.name:
-            return False
-        elif dict.__ne__(self.cells, other.cells):
-            return False
-        else:
-            return True
-
-    def __ne__(self, other):
-        return not self == other
-
-    def __hash__(self):
-        return hash(repr(self))
-
     def __repr__(self):
         string = 'Universe\n'
         string += '{0: <16}{1}{2}\n'.format('\tID', '=\t', self._id)

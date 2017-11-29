@@ -38,29 +38,6 @@ class Element(object):
         # Set class attributes
         self.name = name
 
-    def __eq__(self, other):
-        if isinstance(other, Element):
-            if self.name != other.name:
-                return False
-            else:
-                return True
-        elif isinstance(other, string_types) and other == self.name:
-            return True
-        else:
-            return False
-
-    def __ne__(self, other):
-        return not self == other
-
-    def __gt__(self, other):
-        return repr(self) > repr(other)
-
-    def __lt__(self, other):
-        return not self > other
-
-    def __hash__(self):
-        return hash(repr(self))
-
     def __repr__(self):
         string = 'Element    -    {0}\n'.format(self._name)
         if self.scattering is not None:

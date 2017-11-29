@@ -5,7 +5,7 @@ from xml.etree import ElementTree as ET
 from six import string_types
 
 import openmc
-from openmc.clean_xml import sort_xml_elements, clean_xml_indentation
+from openmc.clean_xml import clean_xml_indentation
 from openmc.checkvalue import check_type
 
 
@@ -81,8 +81,11 @@ class Geometry(object):
         root_element = ET.Element("geometry")
         self.root_universe.create_xml_subelement(root_element)
 
+        # Sort the elements in the file
+        root_element[:] = sorted(root_element, key=lambda x: (
+            x.tag, int(x.get('id'))))
+
         # Clean the indentation in the file to be user-readable
-        sort_xml_elements(root_element)
         clean_xml_indentation(root_element)
 
         # Write the XML Tree to the geometry.xml file

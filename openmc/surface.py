@@ -79,9 +79,6 @@ class Surface(IDManagerMixin):
     def __pos__(self):
         return Halfspace(self, '+')
 
-    def __hash__(self):
-        return hash(repr(self))
-
     def __repr__(self):
         string = 'Surface\n'
         string += '{0: <16}{1}{2}\n'.format('\tID', '=\t', self._id)

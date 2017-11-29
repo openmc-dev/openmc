@@ -968,20 +968,15 @@ class Settings(object):
                 subelement = ET.SubElement(element, key)
                 subelement.text = str(value)
 
-    def _create_entropy_subelement(self, root):
-        if self._entropy_mesh is not None:
-            element = ET.SubElement(root, "entropy")
+    def _create_entropy_mesh_subelement(self, root):
+        if self.entropy_mesh is not None:
+            # See if a <mesh> element already exists -- if not, add it
+            path = "./mesh[@id='{}']".format(self.entropy_mesh.id)
+            if root.find(path) is None:
+                root.append(self.entropy_mesh.to_xml_element())
 
-            if self._entropy_mesh.dimension is not None:
-                subelement = ET.SubElement(element, "dimension")
-                subelement.text = ' '.join(
-                    str(x) for x in self._entropy_mesh.dimension)
-            subelement = ET.SubElement(element, "lower_left")
-            subelement.text = ' '.join(
-                str(x) for x in self._entropy_mesh.lower_left)
-            subelement = ET.SubElement(element, "upper_right")
-            subelement.text = ' '.join(
-                str(x) for x in self._entropy_mesh.upper_right)
+            subelement = ET.SubElement(root, "entropy_mesh")
+            subelement.text = str(self.entropy_mesh.id)
 
     def _create_trigger_subelement(self, root):
         if self._trigger_active is not None:
@@ -1038,18 +1033,15 @@ class Settings(object):
             element = ET.SubElement(root, "track")
             element.text = ' '.join(map(str, self._track))
 
-    def _create_ufs_subelement(self, root):
-        if self._ufs_mesh is not None:
-            element = ET.SubElement(root, "uniform_fs")
-            subelement = ET.SubElement(element, "dimension")
-            subelement.text = ' '.join(str(x) for x in
-                                       self._ufs_mesh.dimension)
-            subelement = ET.SubElement(element, "lower_left")
-            subelement.text = ' '.join(str(x) for x in
-                                       self._ufs_mesh.lower_left)
-            subelement = ET.SubElement(element, "upper_right")
-            subelement.text = ' '.join(str(x) for x in
-                                       self._ufs_mesh.upper_right)
+    def _create_ufs_mesh_subelement(self, root):
+        if self.ufs_mesh is not None:
+            # See if a <mesh> element already exists -- if not, add it
+            path = "./mesh[@id='{}']".format(self.ufs_mesh.id)
+            if root.find(path) is None:
+                root.append(self.ufs_mesh.to_xml_element())
+
+            subelement = ET.SubElement(root, "ufs_mesh")
+            subelement.text = str(self.ufs_mesh.id)
 
     def _create_dd_subelement(self, root):
         if self._dd_mesh_lower_left is not None and \
@@ -1137,7 +1129,7 @@ class Settings(object):
         self._create_seed_subelement(root_element)
         self._create_survival_biasing_subelement(root_element)
         self._create_cutoff_subelement(root_element)
-        self._create_entropy_subelement(root_element)
+        self._create_entropy_mesh_subelement(root_element)
         self._create_trigger_subelement(root_element)
         self._create_no_reduce_subelement(root_element)
         self._create_threads_subelement(root_element)
@@ -1146,7 +1138,7 @@ class Settings(object):
         self._create_temperature_subelements(root_element)
         self._create_trace_subelement(root_element)
         self._create_track_subelement(root_element)
-        self._create_ufs_subelement(root_element)
+        self._create_ufs_mesh_subelement(root_element)
         self._create_dd_subelement(root_element)
         self._create_resonance_scattering_subelement(root_element)
         self._create_volume_calcs_subelement(root_element)

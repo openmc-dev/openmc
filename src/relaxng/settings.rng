@@ -62,59 +62,8 @@
       </element>
     </optional>
     <optional>
-      <element name="entropy">
-        <interleave>
-          <optional>
-            <choice>
-              <element name="dimension">
-                <list>
-                  <oneOrMore>
-                    <data type="int"/>
-                  </oneOrMore>
-                </list>
-              </element>
-              <attribute name="dimension">
-                <list>
-                  <oneOrMore>
-                    <data type="int"/>
-                  </oneOrMore>
-                </list>
-              </attribute>
-            </choice>
-          </optional>
-          <choice>
-            <element name="lower_left">
-              <list>
-                <oneOrMore>
-                  <data type="double"/>
-                </oneOrMore>
-              </list>
-            </element>
-            <attribute name="lower_left">
-              <list>
-                <oneOrMore>
-                  <data type="double"/>
-                </oneOrMore>
-              </list>
-            </attribute>
-          </choice>
-          <choice>
-            <element name="upper_right">
-              <list>
-                <oneOrMore>
-                  <data type="double"/>
-                </oneOrMore>
-              </list>
-            </element>
-            <attribute name="upper_right">
-              <list>
-                <oneOrMore>
-                  <data type="double"/>
-                </oneOrMore>
-              </list>
-            </attribute>
-          </choice>
-        </interleave>
+      <element name="entropy_mesh">
+        <data type="positiveInteger"/>
       </element>
     </optional>
     <optional>
@@ -159,6 +108,96 @@
         <data type="nonNegativeInteger"/>
       </element>
     </optional>
+    <zeroOrMore>
+      <element name="mesh">
+        <interleave>
+          <choice>
+            <element name="id">
+              <data type="int"/>
+            </element>
+            <attribute name="id">
+              <data type="int"/>
+            </attribute>
+          </choice>
+          <optional>
+            <choice>
+              <element name="type">
+                <value>regular</value>
+              </element>
+              <attribute name="type">
+                <value>regular</value>
+              </attribute>
+            </choice>
+          </optional>
+          <choice>
+            <element name="dimension">
+              <list>
+                <oneOrMore>
+                  <data type="positiveInteger"/>
+                </oneOrMore>
+              </list>
+            </element>
+            <attribute name="dimension">
+              <list>
+                <oneOrMore>
+                  <data type="positiveInteger"/>
+                </oneOrMore>
+              </list>
+            </attribute>
+          </choice>
+          <choice>
+            <element name="lower_left">
+              <list>
+                <oneOrMore>
+                  <data type="double"/>
+                </oneOrMore>
+              </list>
+            </element>
+            <attribute name="lower_left">
+              <list>
+                <oneOrMore>
+                  <data type="double"/>
+                </oneOrMore>
+              </list>
+            </attribute>
+          </choice>
+          <choice>
+            <choice>
+              <element name="upper_right">
+                <list>
+                  <oneOrMore>
+                    <data type="double"/>
+                  </oneOrMore>
+                </list>
+              </element>
+              <attribute name="upper_right">
+                <list>
+                  <oneOrMore>
+                    <data type="double"/>
+                  </oneOrMore>
+                </list>
+              </attribute>
+            </choice>
+            <choice>
+              <element name="width">
+                <list>
+                  <oneOrMore>
+                    <data type="double"/>
+                  </oneOrMore>
+                </list>
+              </element>
+              <attribute name="width">
+                <list>
+                  <oneOrMore>
+                    <data type="double"/>
+                  </oneOrMore>
+                </list>
+              </attribute>
+            </choice>
+          </choice>
+        </interleave>
+      </element>
+    </zeroOrMore>
     <optional>
       <element name="no_reduce">
         <data type="boolean"/>
@@ -596,6 +635,11 @@
       </element>
     </optional>
     <optional>
+      <element name="ufs_mesh">
+        <data type="positiveInteger"/>
+      </element>
+    </optional>
+    <optional>
       <element name="verbosity">
         <data type="positiveInteger"/>
       </element>
@@ -670,60 +714,6 @@
         </interleave>
       </element>
     </zeroOrMore>
-    <optional>
-      <element name="uniform_fs">
-        <interleave>
-          <choice>
-            <element name="dimension">
-              <list>
-                <oneOrMore>
-                  <data type="positiveInteger"/>
-                </oneOrMore>
-              </list>
-            </element>
-            <attribute name="dimension">
-              <list>
-                <oneOrMore>
-                  <data type="positiveInteger"/>
-                </oneOrMore>
-              </list>
-            </attribute>
-          </choice>
-          <choice>
-            <element name="lower_left">
-              <list>
-                <oneOrMore>
-                  <data type="double"/>
-                </oneOrMore>
-              </list>
-            </element>
-            <attribute name="lower_left">
-              <list>
-                <oneOrMore>
-                  <data type="double"/>
-                </oneOrMore>
-              </list>
-            </attribute>
-          </choice>
-          <choice>
-            <element name="upper_right">
-              <list>
-                <oneOrMore>
-                  <data type="double"/>
-                </oneOrMore>
-              </list>
-            </element>
-            <attribute name="upper_right">
-              <list>
-                <oneOrMore>
-                  <data type="double"/>
-                </oneOrMore>
-              </list>
-            </attribute>
-          </choice>
-        </interleave>
-      </element>
-    </optional>
     <optional>
       <element name="resonance_scattering">
         <interleave>

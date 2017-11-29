@@ -10,43 +10,43 @@ import glob
 import socket
 from subprocess import call, check_output
 from collections import OrderedDict
-from optparse import OptionParser
+from argparse import ArgumentParser
 
 # Command line parsing
-parser = OptionParser()
-parser.add_option('-j', '--parallel', dest='n_procs', default='1',
-                  help="Number of parallel jobs.")
-parser.add_option('-R', '--tests-regex', dest='regex_tests',
-                  help="Run tests matching regular expression. \
-                  Test names are the directories present in tests folder.\
-                  This uses standard regex syntax to select tests.")
-parser.add_option('-C', '--build-config', dest='build_config',
-                  help="Build configurations matching regular expression. \
-                        Specific build configurations can be printed out with \
-                        optional argument -p, --print. This uses standard \
-                        regex syntax to select build configurations.")
-parser.add_option('-l', '--list', action="store_true",
-                  dest="list_build_configs", default=False,
-                  help="List out build configurations.")
-parser.add_option("-p", "--project", dest="project", default="",
-                  help="project name for build")
-parser.add_option("-D", "--dashboard", dest="dash",
-                  help="Dash name -- Experimental, Nightly, Continuous")
-parser.add_option("-u", "--update", action="store_true", dest="update",
-                  help="Allow CTest to update repo. (WARNING: may overwrite\
-                        changes that were not pushed.")
-parser.add_option("-s", "--script", action="store_true", dest="script",
-                  help="Activate CTest scripting mode for coverage, valgrind\
-                        and dashboard capability.")
-(options, args) = parser.parse_args()
+parser = ArgumentParser()
+parser.add_argument('-j', '--parallel', dest='n_procs', default='1',
+                    help="Number of parallel jobs.")
+parser.add_argument('-R', '--tests-regex', dest='regex_tests',
+                    help="Run tests matching regular expression. \
+                    Test names are the directories present in tests folder.\
+                    This uses standard regex syntax to select tests.")
+parser.add_argument('-C', '--build-config', dest='build_config',
+                    help="Build configurations matching regular expression. \
+                    Specific build configurations can be printed out with \
+                    optional argument -p, --print. This uses standard \
+                    regex syntax to select build configurations.")
+parser.add_argument('-l', '--list', action="store_true",
+                    dest="list_build_configs", default=False,
+                    help="List out build configurations.")
+parser.add_argument("-p", "--project", dest="project", default="",
+                    help="project name for build")
+parser.add_argument("-D", "--dashboard", dest="dash",
+                    help="Dash name -- Experimental, Nightly, Continuous")
+parser.add_argument("-u", "--update", action="store_true", dest="update",
+                    help="Allow CTest to update repo. (WARNING: may overwrite\
+                    changes that were not pushed.")
+parser.add_argument("-s", "--script", action="store_true", dest="script",
+                    help="Activate CTest scripting mode for coverage, valgrind\
+                    and dashboard capability.")
+args = parser.parse_args()
 
 # Default compiler paths
-FC='gfortran'
-CC='gcc'
-CXX='g++'
-MPI_DIR='/opt/mpich/3.2-gnu'
-HDF5_DIR='/opt/hdf5/1.8.16-gnu'
-PHDF5_DIR='/opt/phdf5/1.8.16-gnu'
+FC = 'gfortran'
+CC = 'gcc'
+CXX = 'g++'
+MPI_DIR = '/opt/mpich/3.2-gnu'
+HDF5_DIR = '/opt/hdf5/1.8.16-gnu'
+PHDF5_DIR = '/opt/phdf5/1.8.16-gnu'
 
 # Script mode for extra capability
 script_mode = False
@@ -115,6 +115,7 @@ endif()
 # Define test data structure
 tests = OrderedDict()
 
+
 def cleanup(path):
     """Remove generated output files."""
     for dirpath, dirnames, filenames in os.walk(path):
@@ -173,7 +174,7 @@ class Test(object):
 
     # Sets the build name that will show up on the CDash
     def get_build_name(self):
-        self.build_name =  options.project + '_' + self.name
+        self.build_name = args.project + '_' + self.name
         return self.build_name
 
     # Sets up build options for various tests. It is used both
@@ -211,7 +212,7 @@ class Test(object):
             os.environ['HDF5_ROOT'] = PHDF5_DIR
         else:
             os.environ['HDF5_ROOT'] = HDF5_DIR
-        rc = call(['ctest', '-S', 'ctestscript.run','-V'])
+        rc = call(['ctest', '-S', 'ctestscript.run', '-V'])
         if rc != 0:
             self.success = False
             self.msg = 'Failed on ctest script.'
@@ -243,12 +244,12 @@ class Test(object):
             return
 
         # Default make string
-        make_list = ['make','-s']
+        make_list = ['make', '-s']
 
         # Check for parallel
-        if options.n_procs is not None:
+        if args.n_procs is not None:
             make_list.append('-j')
-            make_list.append(options.n_procs)
+            make_list.append(args.n_procs)
 
         # Run make
         rc = call(make_list)
@@ -265,14 +266,14 @@ class Test(object):
         ctest_list = ['ctest']
 
         # Check for parallel
-        if options.n_procs is not None:
+        if args.n_procs is not None:
             ctest_list.append('-j')
-            ctest_list.append(options.n_procs)
+            ctest_list.append(args.n_procs)
 
         # Check for subset of tests
-        if options.regex_tests is not None:
+        if args.regex_tests is not None:
             ctest_list.append('-R')
-            ctest_list.append(options.regex_tests)
+            ctest_list.append(args.regex_tests)
 
         # Run ctests
         rc = call(ctest_list)
@@ -282,7 +283,7 @@ class Test(object):
 
 
 # Simple function to add a test to the global tests dictionary
-def add_test(name, debug=False, optimize=False, mpi=False, openmp=False,\
+def add_test(name, debug=False, optimize=False, mpi=False, openmp=False,
              phdf5=False, valgrind=False, coverage=False):
     tests.update({name: Test(name, debug, optimize, mpi, openmp, phdf5,
                              valgrind, coverage)})
@@ -308,7 +309,7 @@ add_test('hdf5-debug_valgrind', debug=True, valgrind=True)
 add_test('hdf5-debug_coverage', debug=True, coverage=True)
 
 # Check to see if we should just print build configuration information to user
-if options.list_build_configs:
+if args.list_build_configs:
     for key in tests:
         print('Configuration Name: {0}'.format(key))
         print('  Debug Flags:..........{0}'.format(tests[key].debug))
@@ -320,10 +321,10 @@ if options.list_build_configs:
     exit()
 
 # Delete items of dictionary that don't match regular expression
-if options.build_config is not None:
+if args.build_config is not None:
     to_delete = []
     for key in tests:
-        if not re.search(options.build_config, key):
+        if not re.search(args.build_config, key):
             to_delete.append(key)
     for key in to_delete:
         del tests[key]
@@ -333,27 +334,21 @@ if options.build_config is not None:
 # Experimental, Nightly, Continuous. On the CDash end, these can be
 # reorganized into groups when a hostname, dashboard and build name
 # are matched.
-if options.dash is None:
+if args.dash is None:
     dash = 'Experimental'
     submit = ''
 else:
-    dash = options.dash
+    dash = args.dash
     submit = 'ctest_submit()'
 
 # Check for update command, which will run git fetch/merge and will delete
 # any changes to repo that were not pushed to remote origin
-if options.update:
-    update = 'ctest_update()'
-else:
-    update = ''
+update = 'ctest_update()' if args.update else ''
 
 # Check for CTest scipts mode
 # Sets up whether we should use just the basic ctest command or use
 # CTest scripting to perform tests.
-if not options.dash is None or options.script:
-    script_mode = True
-else:
-    script_mode = False
+script_mode = (args.dash is not None or args.script)
 
 # Setup CTest script vars. Not used in non-script mode
 pwd = os.getcwd()
@@ -364,17 +359,17 @@ ctest_vars = {
     'dashboard': dash,
     'submit': submit,
     'update': update,
-    'n_procs': options.n_procs
+    'n_procs': args.n_procs
 }
 
 # Check project name
-subprop = """set_property(GLOBAL PROPERTY SubProject {0})"""
-if options.project == "" :
-    ctest_vars.update({'subproject':''})
-elif options.project == 'develop':
-    ctest_vars.update({'subproject':''})
+subprop = "set_property(GLOBAL PROPERTY SubProject {0})"
+if args.project == "":
+    ctest_vars.update({'subproject': ''})
+elif args.project == 'develop':
+    ctest_vars.update({'subproject': ''})
 else:
-    ctest_vars.update({'subproject':subprop.format(options.project)})
+    ctest_vars.update({'subproject': subprop.format(args.project)})
 
 # Set up default valgrind tests (subset of all tests)
 # Currently takes too long to run all the tests with valgrind
@@ -396,8 +391,8 @@ if not script_mode:
 for key in to_delete:
     del tests[key]
 
-# Check if tests empty
-if len(list(tests.keys())) == 0:
+# Check if tests is empty
+if not tests:
     print('No tests to run.')
     exit()
 
@@ -416,16 +411,16 @@ for key in iter(tests):
 
     # Verify fortran compiler exists
     if which(test.fc) is None:
-        self.msg = 'Compiler not found: {0}'.format(test.fc)
-        self.success = False
+        test.msg = 'Compiler not found: {0}'.format(test.fc)
+        test.success = False
         continue
 
     # Verify valgrind command exists
     if test.valgrind:
         valgrind_cmd = which('valgrind')
         if valgrind_cmd is None:
-            self.msg = 'No valgrind executable found.'
-            self.success = False
+            test.msg = 'No valgrind executable found.'
+            test.success = False
             continue
     else:
         valgrind_cmd = ''
@@ -433,8 +428,8 @@ for key in iter(tests):
     # Verify gcov/lcov exist
     if test.coverage:
         if which('gcov') is None:
-            self.msg = 'No {} executable found.'.format(exe)
-            self.success = False
+            test.msg = 'No {} executable found.'.format(exe)
+            test.success = False
             continue
 
     # Set test specific CTest script vars. Not used in non-script mode
@@ -447,16 +442,16 @@ for key in iter(tests):
     # Check for user custom tests
     # INCLUDE is a CTest command that allows for a subset
     # of tests to be executed. Only used in script mode.
-    if options.regex_tests is None:
-        ctest_vars.update({'tests' : ''})
+    if args.regex_tests is None:
+        ctest_vars.update({'tests': ''})
 
         # No user tests, use default valgrind tests
         if test.valgrind:
-            ctest_vars.update({'tests' : 'INCLUDE {0}'.
+            ctest_vars.update({'tests': 'INCLUDE {0}'.
                               format(valgrind_default_tests)})
     else:
-        ctest_vars.update({'tests' : 'INCLUDE {0}'.
-                          format(options.regex_tests)})
+        ctest_vars.update({'tests': 'INCLUDE {0}'.
+                          format(args.regex_tests)})
 
     # Main part of code that does the ctest execution.
     # It is broken up by two modes, script and non-script

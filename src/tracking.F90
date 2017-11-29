@@ -1,21 +1,26 @@
 module tracking
 
-  use constants,          only: MODE_EIGENVALUE
+  use constants
   use cross_section,      only: calculate_xs
   use error,              only: fatal_error, warning
+  use geometry_header,    only: cells
   use geometry,           only: find_cell, distance_to_boundary, cross_surface, &
                                 cross_lattice, check_cell_overlap
-  use global
   use output,             only: write_message
   use message_passing
+  use mgxs_header
+  use nuclide_header
   use particle_header,    only: LocalCoord, Particle
   use physics,            only: collision
   use physics_mg,         only: collision_mg
   use random_lcg,         only: prn, prn_set_stream
+  use settings
+  use simulation_header
   use string,             only: to_str
+  use tally_header
   use tally,              only: score_analog_tally, score_tracklength_tally, &
                                 score_collision_tally, score_surface_current, &
-                                score_track_derivative, &
+                                score_track_derivative, score_surface_tally, &
                                 score_collision_derivative, zero_flux_derivs
   use track_output,       only: initialize_particle_track, write_particle_track, &
                                 add_particle_track, finalize_particle_track
@@ -36,7 +41,6 @@ contains
     integer :: next_level             ! next coordinate level to check
     integer :: surface_crossed        ! surface which particle is on
     integer :: lattice_translation(3) ! in-lattice translation vector
-    integer :: last_cell              ! most recent cell particle was in
     integer :: n_event                ! number of collisions/crossings
     real(8) :: d_boundary             ! distance to nearest boundary
     real(8) :: d_collision            ! sampled distance to collision
@@ -69,13 +73,18 @@ contains
     if (active_tallies % size() > 0) call zero_flux_derivs()
 
     EVENT_LOOP: do
-
       ! Set the random number stream
       if (p % type == NEUTRON) then
         call prn_set_stream(STREAM_TRACKING)
       else
         call prn_set_stream(STREAM_PHOTON)
       end if
+
+      ! Store pre-collision particle properties
+      p % last_wgt = p % wgt
+      p % last_E   = p % E
+      p % last_uvw = p % coord(1) % uvw
+      p % last_xyz = p % coord(1) % xyz
 
       ! If the cell hasn't been determined based on the particle's location,
       ! initiate a search for the current cell. This generally happens at the
@@ -115,6 +124,10 @@ contains
           material_xs % absorption = ZERO
           material_xs % nu_fission = ZERO
         end if
+
+        ! Finally, update the particle group while we have already checked for
+        ! if multi-group
+        p % last_g = p % g
       end if
 
       ! Find the distance to the nearest boundary
@@ -157,7 +170,13 @@ contains
         ! PARTICLE CROSSES SURFACE
 
         if (next_level > 0) p % n_coord = next_level
-        last_cell = p % coord(p % n_coord) % cell
+
+        ! Saving previous cell data
+        do j = 1, p % n_coord
+          p % last_cell(j) = p % coord(j) % cell
+        end do
+        p % last_n_coord = p % n_coord
+
         p % coord(p % n_coord) % cell = NONE
         if (any(lattice_translation /= 0)) then
           ! Particle crosses lattice boundary
@@ -167,9 +186,12 @@ contains
         else
           ! Particle crosses surface
           p % surface = surface_crossed
-          call cross_surface(p, last_cell)
+
+          call cross_surface(p)
           p % event = EVENT_SURFACE
         end if
+        ! Score cell to cell partial currents
+        if(active_surface_tallies % size() > 0) call score_surface_tally(p)
       else
         ! ====================================================================
         ! PARTICLE HAS COLLISION
@@ -232,9 +254,6 @@ contains
         ! Score flux derivative accumulators for differential tallies.
         if (active_tallies % size() > 0) call score_collision_derivative(p)
       end if
-
-      ! Save coordinates for tallying purposes
-      p % last_xyz = p % coord(1) % xyz
 
       ! If particle has too many events, display warning and kill it
       n_event = n_event + 1

@@ -2,16 +2,17 @@ module geometry
 
   use constants
   use error,                  only: fatal_error, warning
-  use geometry_header,        only: Cell, Universe, Lattice, &
-                                    &RectLattice, HexLattice
-  use global
+  use geometry_header
   use output,                 only: write_message
   use particle_header,        only: LocalCoord, Particle
   use particle_restart_write, only: write_particle_restart
+  use simulation_header
+  use settings
   use surface_header
   use stl_vector,             only: VectorInt
   use string,                 only: to_str
   use tally,                  only: score_surface_current
+  use tally_header
 
   implicit none
 
@@ -384,9 +385,8 @@ contains
 ! the geometry, is reflected, or crosses into a new lattice or cell
 !===============================================================================
 
-  subroutine cross_surface(p, last_cell)
+  subroutine cross_surface(p)
     type(Particle), intent(inout) :: p
-    integer,        intent(in)    :: last_cell  ! last cell particle was in
 
     real(8) :: u          ! x-component of direction
     real(8) :: v          ! y-component of direction
@@ -425,9 +425,7 @@ contains
       end if
 
       ! Score to global leakage tally
-      if (tallies_on) then
-        global_tally_leakage = global_tally_leakage + p % wgt
-      end if
+      global_tally_leakage = global_tally_leakage + p % wgt
 
       ! Display message
       if (verbosity >= 10 .or. trace) then
@@ -469,7 +467,7 @@ contains
       p%coord(1)%uvw(:) = [u, v, w] / norm
 
       ! Reassign particle's cell and surface
-      p % coord(1) % cell = last_cell
+      p % coord(1) % cell = p % last_cell(p % last_n_coord)
       p % surface = -p % surface
 
       ! If a reflective surface is coincident with a lattice or universe
@@ -1251,8 +1249,8 @@ contains
     class(Lattice), pointer :: lat         ! pointer to current lattice
 
     ! Don't research places already checked
-    if (found(universe_dict % get_key(univ % id), map)) then
-      count = counts(universe_dict % get_key(univ % id), map)
+    if (found(universe_dict % get(univ % id), map)) then
+      count = counts(universe_dict % get(univ % id), map)
       return
     end if
 
@@ -1260,8 +1258,8 @@ contains
     ! Count = 1, then quit
     if (univ % id == univ_id) then
       count = 1
-      counts(universe_dict % get_key(univ % id), map) = 1
-      found(universe_dict % get_key(univ % id), map) = .true.
+      counts(universe_dict % get(univ % id), map) = 1
+      found(universe_dict % get(univ % id), map) = .true.
       return
     end if
 
@@ -1357,8 +1355,8 @@ contains
       end if
     end do
 
-    counts(universe_dict % get_key(univ % id), map) = count
-    found(universe_dict % get_key(univ % id), map) = .true.
+    counts(universe_dict % get(univ % id), map) = count
+    found(universe_dict % get(univ % id), map) = .true.
 
   end function count_target
 

@@ -22,10 +22,11 @@
   <!-- To assess convergence of the source distribution, we need to define the
        bounds for a mesh over which the Shannon entropy should be
        calculated. The extent in the z direction is made arbitrarily large. -->
-  <entropy>
+  <mesh id="1">
     <lower_left>-0.39218 -0.39218 -1.e50</lower_left>
     <upper_right>0.39218  0.39218  1.e50</upper_right>
     <dimension>10 10 1</dimension>
-  </entropy>
+  </mesh>
+  <entropy_mesh>1</entropy_mesh>
 
 </settings>

@@ -7,15 +7,14 @@ module plot
   use constants
   use error,           only: fatal_error
   use geometry,        only: find_cell, check_cell_overlap
-  use geometry_header, only: Cell, root_universe
-  use global
+  use geometry_header, only: Cell, root_universe, cells
   use hdf5_interface
-  use mesh,            only: get_mesh_indices
-  use mesh_header,     only: RegularMesh
   use output,          only: write_message, time_stamp
+  use material_header, only: materials
   use particle_header, only: LocalCoord, Particle
   use plot_header
   use progress_header, only: ProgressBar
+  use settings,        only: check_overlaps
   use string,          only: to_str
 
   implicit none
@@ -241,8 +240,8 @@ contains
     width = xyz_ur_plot - xyz_ll_plot
 
     associate (m => pl % meshlines_mesh)
-      call get_mesh_indices(m, xyz_ll_plot, ijk_ll(:m % n_dimension), in_mesh)
-      call get_mesh_indices(m, xyz_ur_plot, ijk_ur(:m % n_dimension), in_mesh)
+      call m % get_indices(xyz_ll_plot, ijk_ll(:m % n_dimension), in_mesh)
+      call m % get_indices(xyz_ur_plot, ijk_ur(:m % n_dimension), in_mesh)
 
       ! sweep through all meshbins on this plane and draw borders
       do i = ijk_ll(outer), ijk_ur(outer)

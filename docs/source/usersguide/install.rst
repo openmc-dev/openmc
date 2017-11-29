@@ -414,16 +414,19 @@ distributions.
       various HDF5 files, h5py is needed to provide access to data within these
       files from Python.
 
-.. admonition:: Optional
-   :class: note
-
    `Matplotlib <http://matplotlib.org/>`_
       Matplotlib is used to providing plotting functionality in the API like the
       :meth:`Universe.plot` method and the :func:`openmc.plot_xs` function.
 
    `uncertainties <https://pythonhosted.org/uncertainties/>`_
-      Uncertainties are optionally used for decay data in the :mod:`openmc.data`
-      module.
+      Uncertainties are used for decay data in the :mod:`openmc.data` module.
+
+   `lxml <http://lxml.de/>`_
+      lxml is used for the :ref:`scripts_validate` script and various other
+      parts of the Python API.
+
+.. admonition:: Optional
+   :class: note
 
    `Cython <http://cython.org/>`_
       Cython is used for resonance reconstruction for ENDF data converted to
@@ -437,8 +440,8 @@ distributions.
       The silomesh package is needed to convert voxel and track files to SILO
       format.
 
-   `lxml <http://lxml.de/>`_
-      lxml is used for the :ref:`scripts_validate` script.
+   `pytest <https://docs.pytest.org>`_
+      The pytest framework is used for unit testing the Python API.
 
 .. _usersguide_nxml:
 

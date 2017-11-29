@@ -50,48 +50,45 @@ _THERMAL_DATA = {
     75: ThermalTuple('ouo2', [8016, 8017, 8018], 1),
 }
 
-
-_PENDF_TEMPLATE = """
+_TEMPLATE_RECONR = """
 reconr / %%%%%%%%%%%%%%%%%%% Reconstruct XS for neutrons %%%%%%%%%%%%%%%%%%%%%%%
-20 22
+{nendf} {npendf}
 '{library} PENDF for {zsymam}'/
 {mat} 2/
-0.001 0.0 0.003/ err tempr errmax
+{error}/ err
 '{library}: {zsymam}'/
 'Processed by NJOY'/
 0/
-stop
 """
 
-_ACE_TEMPLATE = """
-reconr / %%%%%%%%%%%%%%%%%%% Reconstruct XS for neutrons %%%%%%%%%%%%%%%%%%%%%%%
-20 21
-'{library} PENDF for {zsymam}'/
-{mat} 2/
-0.001 0.0 0.003/ err tempr errmax
-'{library}: {zsymam}'/
-'Processed by NJOY'/
-0/
+_TEMPLATE_BROADR = """
 broadr / %%%%%%%%%%%%%%%%%%%%%%% Doppler broaden XS %%%%%%%%%%%%%%%%%%%%%%%%%%%%
-20 21 22
+{nendf} {npendf} {nbroadr}
 {mat} {num_temp} 0 0 0. /
-0.001 1.0e6 0.003 /
+{error}/ errthn
 {temps}
 0/
+"""
+
+_TEMPLATE_HEATR = """
 heatr / %%%%%%%%%%%%%%%%%%%%%%%%% Add heating kerma %%%%%%%%%%%%%%%%%%%%%%%%%%%%
-20 22 23 /
+{nendf} {nheatr_in} {nheatr} /
 {mat} 3 /
 302 318 402 /
+"""
+
+_TEMPLATE_PURR = """
 purr / %%%%%%%%%%%%%%%%%%%%%%%% Add probability tables %%%%%%%%%%%%%%%%%%%%%%%%%
-20 23 24
+{nendf} {npurr_in} {npurr} /
 {mat} {num_temp} 1 20 64 /
 {temps}
 1.e10
 0/
 """
 
-_ACE_TEMPLATE_ACER = """acer /
-20 24 0 {nace} {ndir}
+_TEMPLATE_ACER = """
+acer / %%%%%%%%%%%%%%%%%%%%%%%% Write out in ACE format %%%%%%%%%%%%%%%%%%%%%%%%
+{nendf} {nacer_in} 0 {nace} {ndir}
 1 0 1 .{ext} /
 '{library}: {zsymam} at {temperature}'/
 {mat} {temperature}
@@ -99,35 +96,22 @@ _ACE_TEMPLATE_ACER = """acer /
 /
 """
 
-_ACE_THERMAL_TEMPLATE = """
-reconr / %%%%%%%%%%%%%%%%%%% Reconstruct XS for neutrons %%%%%%%%%%%%%%%%%%%%%%%
-20 22
-'{library} PENDF for {zsymam}'/
-{mat} 2/
-0.001 0. 0.001/ err tempr errmax
-'{library}: PENDF for {zsymam}'/
-'Processed by NJOY'/
-0/
-broadr / %%%%%%%%%%%%%%%%%%%%%%% Doppler broaden XS %%%%%%%%%%%%%%%%%%%%%%%%%%%%
-20 22 23
-{mat} {num_temp} 0 0 0./
-0.001 2.0e+6 0.001/ errthn thnmax errmax
-{temps}
-0/
+_THERMAL_TEMPLATE_THERMR = """
 thermr / %%%%%%%%%%%%%%%% Add thermal scattering data (free gas) %%%%%%%%%%%%%%%
-0 23 62
+0 {nthermr1_in} {nthermr1}
 0 {mat} 12 {num_temp} 1 0 {iform} 1 221 1/
 {temps}
-0.001 {energy_max}
+{error} {energy_max}
 thermr / %%%%%%%%%%%%%%%% Add thermal scattering data (bound) %%%%%%%%%%%%%%%%%%
-60 62 27
+{nthermal_endf} {nthermr2_in} {nthermr2}
 {mat_thermal} {mat} 16 {num_temp} {inelastic} {elastic} {iform} {natom} 222 1/
 {temps}
-0.001 {energy_max}
+{error} {energy_max}
 """
 
-_ACE_THERMAL_TEMPLATE_ACER = """acer /
-20 27 0 {nace} {ndir}
+_THERMAL_TEMPLATE_ACER = """
+acer / %%%%%%%%%%%%%%%%%%%%%%%% Write out in ACE format %%%%%%%%%%%%%%%%%%%%%%%%
+{nendf} {nthermal_acer_in} 0 {nace} {ndir}
 2 0 1 .{ext}/
 '{library}: {zsymam_thermal} processed by NJOY'/
 {mat} {temperature} '{data.name}' /
@@ -136,7 +120,8 @@ _ACE_THERMAL_TEMPLATE_ACER = """acer /
 """
 
 
-def run(commands, tapein, tapeout, stdout=False, njoy_exec='njoy'):
+def run(commands, tapein, tapeout, input_filename=None, stdout=False,
+        njoy_exec='njoy'):
     """Run NJOY with given commands
 
     Parameters
@@ -147,6 +132,8 @@ def run(commands, tapein, tapeout, stdout=False, njoy_exec='njoy'):
         Dictionary mapping tape numbers to paths for any input files
     tapeout : dict
         Dictionary mapping tape numbers to paths for any output files
+    input_filename : str, optional
+        File name to write out NJOY input commands
     stdout : bool, optional
         Whether to display output when running NJOY
     njoy_exec : str, optional
@@ -158,6 +145,10 @@ def run(commands, tapein, tapeout, stdout=False, njoy_exec='njoy'):
         Return code of NJOY process
 
     """
+
+    if input_filename is not None:
+        with open(input_filename, 'w') as f:
+            f.write(commands)
 
     # Create temporary directory -- it would be preferable to use
     # TemporaryDirectory(), but it is only available in Python 3.2
@@ -195,7 +186,7 @@ def run(commands, tapein, tapeout, stdout=False, njoy_exec='njoy'):
     return njoy.returncode
 
 
-def make_pendf(filename, pendf='pendf', stdout=False):
+def make_pendf(filename, pendf='pendf', error=0.001, stdout=False):
     """Generate ACE file from an ENDF file
 
     Parameters
@@ -204,6 +195,8 @@ def make_pendf(filename, pendf='pendf', stdout=False):
         Path to ENDF file
     pendf : str, optional
         Path of pointwise ENDF file to write
+    error : float, optional
+        Fractional error tolerance for NJOY processing
     stdout : bool
         Whether to display NJOY standard output
 
@@ -213,21 +206,14 @@ def make_pendf(filename, pendf='pendf', stdout=False):
         Return code of NJOY process
 
     """
-    ev = endf.Evaluation(filename)
-    mat = ev.material
-    zsymam = ev.target['zsymam']
 
-    # Determine name of library
-    library = '{}-{}.{}'.format(*ev.info['library'])
-
-    commands = _PENDF_TEMPLATE.format(**locals())
-    tapein = {20: filename}
-    tapeout = {22: pendf}
-    return run(commands, tapein, tapeout, stdout)
+    return make_ace(filename, pendf=pendf, error=error, broadr=False,
+                    heatr=False, purr=False, acer=False, stdout=stdout)
 
 
-def make_ace(filename, temperatures=None, ace='ace', xsdir='xsdir',
-             pendf=None, **kwargs):
+def make_ace(filename, temperatures=None, ace='ace', xsdir='xsdir', pendf=None,
+             error=0.001, broadr=True, heatr=True, purr=True, acer=True,
+             **kwargs):
     """Generate incident neutron ACE file from an ENDF file
 
     Parameters
@@ -243,6 +229,16 @@ def make_ace(filename, temperatures=None, ace='ace', xsdir='xsdir',
         Path of xsdir file to write
     pendf : str, optional
         Path of pendf file to write. If omitted, the pendf file is not saved.
+    error : float, optional
+        Fractional error tolerance for NJOY processing
+    broadr : bool, optional
+        Indicating whether to Doppler broaden XS when running NJOY
+    heatr : bool, optional
+        Indicating whether to add heating kerma when running NJOY
+    purr : bool, optional
+        Indicating whether to add probability table when running NJOY
+    acer : bool, optional
+        Indicating whether to generate ACE file when running NJOY 
     **kwargs
         Keyword arguments passed to :func:`openmc.data.njoy.run`
 
@@ -264,26 +260,59 @@ def make_ace(filename, temperatures=None, ace='ace', xsdir='xsdir',
     num_temp = len(temperatures)
     temps = ' '.join(str(i) for i in temperatures)
 
-    commands = _ACE_TEMPLATE.format(**locals())
-    tapein = {20: filename}
+    # Create njoy commands by modules
+    commands = ""
+
+    nendf, npendf = 20, 21
+    tapein = {nendf: filename}
     tapeout = {}
     if pendf is not None:
-        tapeout[21] = pendf
-    fname = '{}_{:.1f}'
-    for i, temperature in enumerate(temperatures):
-        # Extend input with an ACER run for each temperature
-        nace = 25 + 2*i
-        ndir = 25 + 2*i + 1
-        ext = '{:02}'.format(i + 1)
-        commands += _ACE_TEMPLATE_ACER.format(**locals())
+        tapeout[npendf] = pendf
 
-        # Indicate tapes to save for each ACER run
-        tapeout[nace] = fname.format(ace, temperature)
-        tapeout[ndir] = fname.format(xsdir, temperature)
+    # reconr
+    commands += _TEMPLATE_RECONR
+    nlast = npendf
+
+    # broadr
+    if broadr:
+        nbroadr = nlast + 1
+        commands += _TEMPLATE_BROADR
+        nlast = nbroadr
+
+    # heatr
+    if heatr:
+        nheatr_in = nlast
+        nheatr = nheatr_in + 1
+        commands += _TEMPLATE_HEATR
+        nlast = nheatr
+      
+    # purr
+    if purr:
+        npurr_in = nlast
+        npurr = npurr_in + 1
+        commands += _TEMPLATE_PURR
+        nlast = npurr
+
+    commands = commands.format(**locals())
+
+    # acer
+    if acer:
+        nacer_in = nlast
+        fname = '{}_{:.1f}'
+        for i, temperature in enumerate(temperatures):
+            # Extend input with an ACER run for each temperature
+            nace = nacer_in + 1 + 2*i
+            ndir = nace + 1
+            ext = '{:02}'.format(i + 1)
+            commands += _TEMPLATE_ACER.format(**locals())
+
+            # Indicate tapes to save for each ACER run
+            tapeout[nace] = fname.format(ace, temperature)
+            tapeout[ndir] = fname.format(xsdir, temperature)
     commands += 'stop\n'
     retcode = run(commands, tapein, tapeout, **kwargs)
 
-    if retcode == 0:
+    if acer and retcode == 0:
         with open(ace, 'w') as ace_file, open(xsdir, 'w') as xsdir_file:
             for temperature in temperatures:
                 # Get contents of ACE file
@@ -311,8 +340,8 @@ def make_ace(filename, temperatures=None, ace='ace', xsdir='xsdir',
     return retcode
 
 
-def make_ace_thermal(filename, filename_thermal, temperatures=None,
-                     ace='ace', xsdir='xsdir', **kwargs):
+def make_ace_thermal(filename, filename_thermal, temperatures=None,                     
+                     ace='ace', xsdir='xsdir', error=0.001, **kwargs):
     """Generate thermal scattering ACE file from ENDF files
 
     Parameters
@@ -328,6 +357,8 @@ def make_ace_thermal(filename, filename_thermal, temperatures=None,
         Path of ACE file to write
     xsdir : str, optional
         Path of xsdir file to write
+    error : float, optional
+        Fractional error tolerance for NJOY processing
     **kwargs
         Keyword arguments passed to :func:`openmc.data.njoy.run`
 
@@ -390,16 +421,41 @@ def make_ace_thermal(filename, filename_thermal, temperatures=None,
     num_temp = len(temperatures)
     temps = ' '.join(str(i) for i in temperatures)
 
-    commands = _ACE_THERMAL_TEMPLATE.format(**locals())
-    tapein = {20: filename, 60: filename_thermal}
+    # Create njoy commands by modules
+    commands = ""
+
+    nendf, nthermal_endf, npendf = 20, 21, 22
+    tapein = {nendf: filename, nthermal_endf:filename_thermal}
     tapeout = {}
+
+    # reconr
+    commands += _TEMPLATE_RECONR
+    nlast = npendf
+
+    # broadr
+    nbroadr = nlast + 1
+    commands += _TEMPLATE_BROADR
+    nlast = nbroadr
+
+    # thermr
+    nthermr1_in = nlast
+    nthermr1 = nthermr1_in + 1
+    nthermr2_in = nthermr1
+    nthermr2 = nthermr2_in + 1
+    commands += _THERMAL_TEMPLATE_THERMR
+    nlast = nthermr2
+
+    commands = commands.format(**locals())
+
+    # acer
+    nthermal_acer_in = nlast
     fname = '{}_{:.1f}'
     for i, temperature in enumerate(temperatures):
         # Extend input with an ACER run for each temperature
-        nace = 28 + 2*i
-        ndir = 28 + 2*i + 1
+        nace = nthermal_acer_in + 1 + 2*i
+        ndir = nace + 1
         ext = '{:02}'.format(i + 1)
-        commands += _ACE_THERMAL_TEMPLATE_ACER.format(**locals())
+        commands += _THERMAL_TEMPLATE_ACER.format(**locals())
 
         # Indicate tapes to save for each ACER run
         tapeout[nace] = fname.format(ace, temperature)

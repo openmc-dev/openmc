@@ -3,10 +3,11 @@ module multipole
   use hdf5
 
   use constants
-  use global
+  use error,            only: fatal_error
   use hdf5_interface
   use multipole_header, only: MultipoleArray, FIT_T, FIT_A, FIT_F, &
                               MP_FISS, FORM_MLBW, FORM_RM
+  use nuclide_header,   only: nuclides
 
   implicit none
 

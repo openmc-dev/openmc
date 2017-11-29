@@ -168,6 +168,7 @@
                 <element name="type">
                   <choice>
                     <value>cell</value>
+                    <value>cellfrom</value>
                     <value>cellborn</value>
                     <value>material</value>
                     <value>universe</value>
@@ -186,6 +187,7 @@
                 <attribute name="type">
                   <choice>
                     <value>cell</value>
+                    <value>cellfrom</value>
                     <value>cellborn</value>
                     <value>material</value>
                     <value>universe</value>

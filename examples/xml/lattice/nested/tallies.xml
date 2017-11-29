@@ -8,8 +8,12 @@
     <width>1.0 1.0</width>
   </mesh>
 
+  <filter id="1" type="mesh">
+    <bins>1</bins>
+  </filter>
+
   <tally id="1">
-    <filter type="mesh" bins="1" />
+    <filters>1</filters>
     <scores>total</scores>
   </tally>
 

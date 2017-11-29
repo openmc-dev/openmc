@@ -6,20 +6,23 @@ module source
 #endif
 
   use algorithm,        only: binary_search
-  use bank_header,      only: Bank
+  use bank_header,      only: Bank, source_bank
   use constants
   use distribution_univariate, only: Discrete
   use distribution_multivariate, only: SpatialBox
   use error,            only: fatal_error
   use geometry,         only: find_cell
-  use global
   use hdf5_interface,   only: file_create, file_open, file_close, read_dataset
+  use math
   use message_passing,  only: rank
+  use mgxs_header,      only: energy_bins, num_energy_groups
   use output,           only: write_message
   use particle_header,  only: Particle
   use random_lcg,       only: prn, set_particle_seed, prn_set_stream
+  use settings
+  use simulation_header
+  use source_header,    only: external_source
   use string,           only: to_str
-  use math
   use state_point,      only: read_source_bank, write_source_bank
 
   implicit none
@@ -103,14 +106,7 @@ contains
     integer :: i          ! dummy loop index
     integer :: n_source   ! number of source distributions
     real(8) :: c          ! cumulative frequency
-    real(8) :: r(3)       ! sampled coordinates
-    logical :: found      ! Does the source particle exist within geometry?
-    type(Particle) :: p   ! Temporary particle for using find_cell
-    integer, save :: n_accept = 0  ! Number of samples accepted
-    integer, save :: n_reject = 0  ! Number of samples rejected
-
-    ! Set weight to one by default
-    site % wgt = ONE
+    real(8) :: xi
 
     ! Set the random number generator to the source stream.
     call prn_set_stream(STREAM_SOURCE)
@@ -118,87 +114,18 @@ contains
     ! Sample from among multiple source distributions
     n_source = size(external_source)
     if (n_source > 1) then
-      r(1) = prn()*sum(external_source(:) % strength)
+      xi = prn()*sum(external_source(:) % strength)
       c = ZERO
       do i = 1, n_source
         c = c + external_source(i) % strength
-        if (r(1) < c) exit
+        if (xi < c) exit
       end do
     else
       i = 1
     end if
 
-    ! Repeat sampling source location until a good site has been found
-    found = .false.
-    do while (.not. found)
-      ! Set particle defaults
-      call p % initialize()
-
-      ! Set particle type
-      site % particle = external_source(i) % particle
-
-      ! Sample spatial distribution
-      site % xyz(:) = external_source(i) % space % sample()
-
-      ! Fill p with needed data
-      p % coord(1) % xyz(:) = site % xyz
-      p % coord(1) % uvw(:) = [ ONE, ZERO, ZERO ]
-
-      ! Now search to see if location exists in geometry
-      call find_cell(p, found)
-
-      ! Check if spatial site is in fissionable material
-      if (found) then
-        select type (space => external_source(i) % space)
-        type is (SpatialBox)
-          if (space % only_fissionable) then
-            if (p % material == MATERIAL_VOID) then
-              found = .false.
-            elseif (.not. materials(p % material) % fissionable) then
-              found = .false.
-            end if
-          end if
-        end select
-      end if
-
-      ! Check for rejection
-      if (.not. found) then
-        n_reject = n_reject + 1
-        if (n_reject >= EXTSRC_REJECT_THRESHOLD .and. &
-             real(n_accept, 8)/n_reject <= EXTSRC_REJECT_FRACTION) then
-          call fatal_error("More than 95% of external source sites sampled &
-               &were rejected. Please check your external source definition.")
-        end if
-      end if
-    end do
-
-    ! Increment number of accepted samples
-    n_accept = n_accept + 1
-
-    call p % clear()
-
-    ! Sample angle
-    site % uvw(:) = external_source(i) % angle % sample()
-
-    ! Check for monoenergetic source above maximum neutron energy
-    select type (energy => external_source(i) % energy)
-    type is (Discrete)
-      if (any(energy % x >= energy_max_neutron)) then
-        call fatal_error("Source energy above range of energies of at least &
-             &one cross section table")
-      end if
-    end select
-
-    do
-      ! Sample energy spectrum
-      site % E = external_source(i) % energy % sample()
-
-      ! resample if energy is greater than maximum neutron energy
-      if (site % E < energy_max_neutron) exit
-    end do
-
-    ! Set delayed group
-    site % delayed_group = 0
+    ! Sample source site from i-th source distribution
+    site = external_source(i) % sample()
 
     ! If running in MG, convert site % E to group
     if (.not. run_CE) then

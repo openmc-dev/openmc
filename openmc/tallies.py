@@ -129,49 +129,6 @@ class Tally(IDManagerMixin):
         self._sp_filename = None
         self._results_read = False
 
-    def __eq__(self, other):
-        if not isinstance(other, Tally):
-            return False
-
-        # Check all filters
-        if len(self.filters) != len(other.filters):
-            return False
-
-        for self_filter in self.filters:
-            if self_filter not in other.filters:
-                return False
-
-        # Check all nuclides
-        if len(self.nuclides) != len(other.nuclides):
-            return False
-
-        for nuclide in self.nuclides:
-            if nuclide not in other.nuclides:
-                return False
-
-        # Check derivatives
-        if self.derivative != other.derivative:
-            return False
-
-        # Check all scores
-        if len(self.scores) != len(other.scores):
-            return False
-
-        for score in self.scores:
-            if score not in other.scores:
-                return False
-
-        if self.estimator != other.estimator:
-            return False
-
-        return True
-
-    def __ne__(self, other):
-        return not self == other
-
-    def __hash__(self):
-        return hash(repr(self))
-
     def __repr__(self):
         string = 'Tally\n'
         string += '{: <16}=\t{}\n'.format('\tID', self.id)

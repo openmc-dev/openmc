@@ -11,7 +11,7 @@ import openmc
 from openmc.mixin import EqualityMixin, IDManagerMixin
 
 
-class Mesh(EqualityMixin, IDManagerMixin):
+class Mesh(IDManagerMixin):
     """A structured Cartesian mesh in one, two, or three dimensions
 
     Parameters
@@ -123,9 +123,6 @@ class Mesh(EqualityMixin, IDManagerMixin):
         cv.check_type('mesh width', width, Iterable, Real)
         cv.check_length('mesh width', width, 1, 3)
         self._width = width
-
-    def __hash__(self):
-        return hash(repr(self))
 
     def __repr__(self):
         string = 'Mesh\n'

@@ -115,33 +115,6 @@ class Material(IDManagerMixin):
         # If specified, this file will be used instead of composition values
         self._distrib_otf_file = None
 
-    def __eq__(self, other):
-        if not isinstance(other, Material):
-            return False
-        elif self.id != other.id:
-            return False
-        elif self.name != other.name:
-            return False
-        # FIXME: We cannot compare densities since OpenMC outputs densities
-        # in atom/b-cm in summary.h5 irregardless of input units, and we
-        # cannot compute the sum percent in Python since we lack AWR
-        #elif self.density != other.density:
-        #    return False
-        #elif self._nuclides != other._nuclides:
-        #    return False
-        #elif self._elements != other._elements:
-        #   return False
-        elif self._sab != other._sab:
-            return False
-        else:
-            return True
-
-    def __ne__(self, other):
-        return not self == other
-
-    def __hash__(self):
-        return hash(repr(self))
-
     def __repr__(self):
         string = 'Material\n'
         string += '{: <16}=\t{}\n'.format('\tID', self._id)

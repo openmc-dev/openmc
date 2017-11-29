@@ -63,6 +63,9 @@ class Material(IDManagerMixin):
         List in which each item is a 3-tuple consisting of an
         :class:`openmc.Nuclide` instance, the percent density, and the percent
         type ('ao' or 'wo').
+    isotropic : list of str
+        Nuclides for which elastic scattering should be treated as though it
+        were isotropic in the laboratory system.
     average_molar_mass : float
         The average molar mass of nuclides in the material in units of grams per
         mol.  For example, UO2 with 3 nuclides will have an average molar mass
@@ -95,6 +98,7 @@ class Material(IDManagerMixin):
         self._num_instances = None
         self._volume = None
         self._atoms = {}
+        self._isotropic = []
 
         # A list of tuples (nuclide, percent, percent type)
         self._nuclides = []
@@ -195,6 +199,10 @@ class Material(IDManagerMixin):
         return self._nuclides
 
     @property
+    def isotropic(self):
+        return self._isotropic
+
+    @property
     def convert_to_distrib_comps(self):
         return self._convert_to_distrib_comps
 
@@ -253,6 +261,12 @@ class Material(IDManagerMixin):
         if volume is not None:
             cv.check_type('material volume', volume, Real)
         self._volume = volume
+
+    @isotropic.setter
+    def isotropic(self, isotropic):
+        cv.check_iterable_type('Isotropic scattering nuclides', isotropic,
+                               string_types)
+        self._isotropic = list(isotropic)
 
     @classmethod
     def from_hdf5(cls, group):
@@ -629,10 +643,10 @@ class Material(IDManagerMixin):
         self._sab.append((new_name, fraction))
 
     def make_isotropic_in_lab(self):
-        for nuclide, percent, percent_type in self._nuclides:
-            nuclide.scattering = 'iso-in-lab'
-        for element, percent, percent_type, enrichment in self._elements:
-            element.scattering = 'iso-in-lab'
+        self.isotropic = [x[0].name for x in self._nuclides]
+        if self._elements:
+            raise NotImplementedError(
+                'Isotropic-in-lab scattering on elements is not supported.')
 
     def get_nuclides(self):
         """Returns all nuclides in the material
@@ -650,7 +664,6 @@ class Material(IDManagerMixin):
             nuclides.append(nuclide.name)
 
         for ele, ele_pct, ele_pct_type, enr in self._elements:
-
             # Expand natural element into isotopes
             isotopes = ele.expand(ele_pct, ele_pct_type, enr)
             for iso, iso_pct, iso_pct_type in isotopes:
@@ -808,9 +821,6 @@ class Material(IDManagerMixin):
             else:
                 xml_element.set("wo", str(nuclide[1]))
 
-        if not nuclide[0].scattering is None:
-            xml_element.set("scattering", nuclide[0].scattering)
-
         return xml_element
 
     def _get_macroscopic_xml(self, macroscopic):
@@ -951,12 +961,16 @@ class Material(IDManagerMixin):
                 subsubelement = self._get_macroscopic_xml(self._macroscopic)
                 subelement.append(subsubelement)
 
-        if len(self._sab) > 0:
+        if self._sab:
             for sab in self._sab:
                 subelement = ET.SubElement(element, "sab")
                 subelement.set("name", sab[0])
                 if sab[1] != 1.0:
                     subelement.set("fraction", str(sab[1]))
+
+        if self._isotropic:
+            subelement = ET.SubElement(element, "isotropic")
+            subelement.text = ' '.join(self._isotropic)
 
         return element
 

@@ -25,50 +25,28 @@ class Element(object):
     ----------
     name : str
         Chemical symbol of the element, e.g. Pu
-    scattering : {'data', 'iso-in-lab', None}
-        The type of angular scattering distribution to use
 
     """
 
     def __init__(self, name=''):
         # Initialize class attributes
         self._name = ''
-        self._scattering = None
 
         # Set class attributes
         self.name = name
 
     def __repr__(self):
-        string = 'Element    -    {0}\n'.format(self._name)
-        if self.scattering is not None:
-            string += '{0: <16}{1}{2}\n'.format('\tscattering', '=\t',
-                                                self.scattering)
-
-        return string
+        return 'Element    -    {0}\n'.format(self._name)
 
     @property
     def name(self):
         return self._name
-
-    @property
-    def scattering(self):
-        return self._scattering
 
     @name.setter
     def name(self, name):
         cv.check_type('element name', name, string_types)
         cv.check_length('element name', name, 1, 2)
         self._name = name
-
-    @scattering.setter
-    def scattering(self, scattering):
-
-        if not scattering in ['data', 'iso-in-lab', None]:
-            msg = 'Unable to set scattering for Element to {0} which ' \
-                  'is not "data", "iso-in-lab", or None'.format(scattering)
-            raise ValueError(msg)
-
-        self._scattering = scattering
 
     def expand(self, percent, percent_type, enrichment=None,
                cross_sections=None):
@@ -239,7 +217,6 @@ class Element(object):
         isotopes = []
         for nuclide, abundance in abundances.items():
             nuc = openmc.Nuclide(nuclide)
-            nuc.scattering = self.scattering
             isotopes.append((nuc, percent * abundance, percent_type))
 
         return isotopes

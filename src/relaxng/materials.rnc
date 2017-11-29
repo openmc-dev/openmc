@@ -14,13 +14,13 @@ element materials {
 
     element nuclide {
       (element name { xsd:string } | attribute name { xsd:string }) &
-      (element scattering { ( "data" | "iso-in-lab" ) } |
-        attribute scattering { ( "data" | "iso-in-lab" ) })? &
       (
         (element ao { xsd:double } | attribute ao { xsd:double }) |
         (element wo { xsd:double } | attribute wo { xsd:double })
       )
     }*  &
+
+    element isotropic { xsd:string }? &
 
     element macroscopic {
       (element name { xsd:string } |

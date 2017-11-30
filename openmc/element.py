@@ -10,7 +10,7 @@ import openmc.checkvalue as cv
 from openmc.data import NATURAL_ABUNDANCE, atomic_mass
 
 
-class Element(object):
+class Element(str):
     """A natural element that auto-expands to add the isotopes of an element to
     a material in their natural abundance. Internally, the OpenMC Python API
     expands the natural element into isotopes only when the materials.xml file
@@ -28,25 +28,14 @@ class Element(object):
 
     """
 
-    def __init__(self, name=''):
-        # Initialize class attributes
-        self._name = ''
-
-        # Set class attributes
-        self.name = name
-
-    def __repr__(self):
-        return 'Element    -    {0}\n'.format(self._name)
+    def __new__(cls, name):
+        cv.check_type('element name', name, string_types)
+        cv.check_length('element name', name, 1, 2)
+        return super(Element, cls).__new__(cls, name)
 
     @property
     def name(self):
-        return self._name
-
-    @name.setter
-    def name(self, name):
-        cv.check_type('element name', name, string_types)
-        cv.check_length('element name', name, 1, 2)
-        self._name = name
+        return self
 
     def expand(self, percent, percent_type, enrichment=None,
                cross_sections=None):
@@ -93,7 +82,7 @@ class Element(object):
         # Get the nuclides present in nature
         natural_nuclides = set()
         for nuclide in sorted(NATURAL_ABUNDANCE.keys()):
-            if re.match(r'{}\d+'.format(self.name), nuclide):
+            if re.match(r'{}\d+'.format(self), nuclide):
                 natural_nuclides.add(nuclide)
 
         # Create dict to store the expanded nuclides and abundances
@@ -113,7 +102,7 @@ class Element(object):
             root = tree.getroot()
             for child in root:
                 nuclide = child.attrib['materials']
-                if re.match(r'{}\d+'.format(self.name), nuclide) and \
+                if re.match(r'{}\d+'.format(self), nuclide) and \
                    '_m' not in nuclide:
                     library_nuclides.add(nuclide)
 
@@ -134,14 +123,14 @@ class Element(object):
             # 0 nuclide is present. If so, set the abundance to 1 for this
             # nuclide. Else, raise an error.
             elif len(mutual_nuclides) == 0:
-                nuclide_0 = self.name + '0'
+                nuclide_0 = self + '0'
                 if nuclide_0 in library_nuclides:
                     abundances[nuclide_0] = 1.0
                 else:
                     msg = 'Unable to expand element {0} because the cross '\
                           'section library provided does not contain any of '\
                           'the natural isotopes for that element.'\
-                          .format(self.name)
+                          .format(self)
                     raise ValueError(msg)
 
             # If some, but not all, natural nuclides are in the library, add

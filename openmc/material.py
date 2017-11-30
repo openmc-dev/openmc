@@ -136,7 +136,7 @@ class Material(IDManagerMixin):
         string += '{: <16}\n'.format('\tNuclides')
 
         for nuclide, percent, percent_type in self._nuclides:
-            string += '{0: <16}'.format('\t{0.name}'.format(nuclide))
+            string += '{: <16}'.format('\t{}'.format(nuclide))
             string += '=\t{: <12} [{}]\n'.format(percent, percent_type)
 
         if self._macroscopic is not None:
@@ -146,7 +146,7 @@ class Material(IDManagerMixin):
         string += '{: <16}\n'.format('\tElements')
 
         for element, percent, percent_type, enr in self._elements:
-            string += '{0: <16}'.format('\t{0.name}'.format(element))
+            string += '{: <16}'.format('\t{}'.format(element))
             if enr is None:
                 string += '=\t{: <12} [{}]\n'.format(percent, percent_type)
             else:
@@ -510,7 +510,7 @@ class Material(IDManagerMixin):
             raise ValueError(msg)
 
         # If the Material contains the Macroscopic, delete it
-        if macroscopic.name == self._macroscopic.name:
+        if macroscopic == self._macroscopic:
             self._macroscopic = None
 
     def add_element(self, element, percent, percent_type='ao', enrichment=None):
@@ -565,10 +565,9 @@ class Material(IDManagerMixin):
                       .format(self._id, enrichment)
                 raise ValueError(msg)
 
-            elif element.name != 'U':
+            elif element != 'U':
                 msg = 'Unable to use enrichment for element {} which is not ' \
-                      'uranium for Material ID="{}"'.format(element.name,
-                                                             self._id)
+                      'uranium for Material ID="{}"'.format(element, self._id)
                 raise ValueError(msg)
 
             # Check that the enrichment is in the valid range
@@ -643,7 +642,7 @@ class Material(IDManagerMixin):
         self._sab.append((new_name, fraction))
 
     def make_isotropic_in_lab(self):
-        self.isotropic = [x[0].name for x in self._nuclides]
+        self.isotropic = [x[0] for x in self._nuclides]
         if self._elements:
             raise NotImplementedError(
                 'Isotropic-in-lab scattering on elements is not supported.')
@@ -661,13 +660,13 @@ class Material(IDManagerMixin):
         nuclides = []
 
         for nuclide, percent, percent_type in self._nuclides:
-            nuclides.append(nuclide.name)
+            nuclides.append(nuclide)
 
         for ele, ele_pct, ele_pct_type, enr in self._elements:
             # Expand natural element into isotopes
             isotopes = ele.expand(ele_pct, ele_pct_type, enr)
             for iso, iso_pct, iso_pct_type in isotopes:
-                nuclides.append(iso.name)
+                nuclides.append(iso)
 
         return nuclides
 
@@ -685,14 +684,14 @@ class Material(IDManagerMixin):
         nuclides = OrderedDict()
 
         for nuclide, density, density_type in self._nuclides:
-            nuclides[nuclide.name] = (nuclide, density, density_type)
+            nuclides[nuclide] = (nuclide, density, density_type)
 
         for ele, ele_pct, ele_pct_type, enr in self._elements:
 
             # Expand natural element into isotopes
             isotopes = ele.expand(ele_pct, ele_pct_type, enr)
             for iso, iso_pct, iso_pct_type in isotopes:
-                nuclides[iso.name] = (iso, iso_pct, iso_pct_type)
+                nuclides[iso] = (iso, iso_pct, iso_pct_type)
 
         return nuclides
 
@@ -753,7 +752,7 @@ class Material(IDManagerMixin):
         if not percent_in_atom:
             for n, nuc in enumerate(nucs):
                 nuc_densities[n] *= self.average_molar_mass / \
-                                    openmc.data.atomic_mass(nuc.name)
+                                    openmc.data.atomic_mass(nuc)
 
         # Now that we have the atomic amounts, lets finish calculating densities
         sum_percent = np.sum(nuc_densities)
@@ -813,7 +812,7 @@ class Material(IDManagerMixin):
 
     def _get_nuclide_xml(self, nuclide, distrib=False):
         xml_element = ET.Element("nuclide")
-        xml_element.set("name", nuclide[0].name)
+        xml_element.set("name", nuclide[0])
 
         if not distrib:
             if nuclide[2] == 'ao':
@@ -825,7 +824,7 @@ class Material(IDManagerMixin):
 
     def _get_macroscopic_xml(self, macroscopic):
         xml_element = ET.Element("macroscopic")
-        xml_element.set("name", macroscopic.name)
+        xml_element.set("name", macroscopic)
 
         return xml_element
 

@@ -144,10 +144,7 @@ class Tally(IDManagerMixin):
         string += '{: <16}=\t'.format('\tNuclides')
 
         for nuclide in self.nuclides:
-            if isinstance(nuclide, openmc.Nuclide):
-                string += nuclide.name + ' '
-            else:
-                string += str(nuclide) + ' '
+            string += str(nuclide) + ' '
 
         string += '\n'
 
@@ -1012,16 +1009,9 @@ class Tally(IDManagerMixin):
             subelement.text = ' '.join(str(f.id) for f in self.filters)
 
         # Optional Nuclides
-        if len(self.nuclides) > 0:
-            nuclides = ''
-            for nuclide in self.nuclides:
-                if isinstance(nuclide, openmc.Nuclide):
-                    nuclides += '{0} '.format(nuclide.name)
-                else:
-                    nuclides += '{0} '.format(nuclide)
-
+        if self.nuclides:
             subelement = ET.SubElement(element, "nuclides")
-            subelement.text = nuclides.rstrip(' ')
+            subelement.text = ' '.join(str(n) for n in self.nuclides)
 
         # Scores
         if len(self.scores) == 0:

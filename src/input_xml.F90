@@ -2341,17 +2341,20 @@ contains
 
       if (run_CE) then
         ! By default, isotropic-in-lab is not used
-        allocate(mat % p0(n))
-        mat % p0(:) = .false.
+        if (list_iso_lab % size() > 0) then
+          mat % has_isotropic_nuclides = .true.
+          allocate(mat % p0(n))
+          mat % p0(:) = .false.
 
-        ! Apply isotropic-in-lab treatment to specified nuclides
-        do j = 1, list_iso_lab % size()
-          do k = 1, n
-            if (names % data(k) == list_iso_lab % data(j)) then
-              mat % p0(k) = .true.
-            end if
+          ! Apply isotropic-in-lab treatment to specified nuclides
+          do j = 1, list_iso_lab % size()
+            do k = 1, n
+              if (names % data(k) == list_iso_lab % data(j)) then
+                mat % p0(k) = .true.
+              end if
+            end do
           end do
-        end do
+        end if
       end if
 
       ! Check to make sure either all atom percents or all weight percents are

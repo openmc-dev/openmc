@@ -419,19 +419,22 @@ contains
     ! Set event component
     p % event = EVENT_SCATTER
 
-    ! Sample new outgoing angle for isotropic in lab scattering
-    if (materials(p % material) % p0(i_nuc_mat)) then
+    ! Sample new outgoing angle for isotropic-in-lab scattering
+    associate (mat => materials(p % material))
+      if (mat % has_isotropic_nuclides) then
+        if (materials(p % material) % p0(i_nuc_mat)) then
+          ! Sample isotropic-in-lab outgoing direction
+          uvw_new(1) = TWO * prn() - ONE
+          phi = TWO * PI * prn()
+          uvw_new(2) = cos(phi) * sqrt(ONE - uvw_new(1)*uvw_new(1))
+          uvw_new(3) = sin(phi) * sqrt(ONE - uvw_new(1)*uvw_new(1))
+          p % mu = dot_product(uvw_old, uvw_new)
 
-      ! Sample isotropic-in-lab outgoing direction
-      uvw_new(1) = TWO * prn() - ONE
-      phi = TWO * PI * prn()
-      uvw_new(2) = cos(phi) * sqrt(ONE - uvw_new(1)*uvw_new(1))
-      uvw_new(3) = sin(phi) * sqrt(ONE - uvw_new(1)*uvw_new(1))
-      p % mu = dot_product(uvw_old, uvw_new)
-
-      ! Change direction of particle
-      p % coord(1) % uvw = uvw_new
-    end if
+          ! Change direction of particle
+          p % coord(1) % uvw = uvw_new
+        end if
+      end if
+    end associate
 
   end subroutine scatter
 

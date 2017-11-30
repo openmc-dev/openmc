@@ -65,8 +65,8 @@ class Element(str):
         -------
         isotopes : list
             Naturally-occurring isotopes of the element. Each item of the list
-            is a tuple consisting of an openmc.Nuclide instance and the natural
-            abundance of the isotope.
+            is a tuple consisting of a nuclide string, the atom/weight percent,
+            and the string 'ao' or 'wo'.
 
         Notes
         -----
@@ -205,7 +205,6 @@ class Element(str):
         # Create a list of the isotopes in this element
         isotopes = []
         for nuclide, abundance in abundances.items():
-            nuc = openmc.Nuclide(nuclide)
-            isotopes.append((nuc, percent * abundance, percent_type))
+            isotopes.append((nuclide, percent * abundance, percent_type))
 
         return isotopes

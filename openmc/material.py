@@ -55,14 +55,9 @@ class Material(IDManagerMixin):
     depletable : bool
         Indicate whether the material is depletable. This attribute can be used
         by downstream depletion applications.
-    elements : list of tuple
-        List in which each item is a 4-tuple consisting of an
-        :class:`openmc.Element` instance, the percent density, the percent
-        type ('ao' or 'wo'), and enrichment.
     nuclides : list of tuple
-        List in which each item is a 3-tuple consisting of an
-        :class:`openmc.Nuclide` instance, the percent density, and the percent
-        type ('ao' or 'wo').
+        List in which each item is a 3-tuple consisting of a nuclide string, the
+        percent density, and the percent type ('ao' or 'wo').
     isotropic : list of str
         Nuclides for which elastic scattering should be treated as though it
         were isotropic in the laboratory system.
@@ -107,9 +102,6 @@ class Material(IDManagerMixin):
         # (only one is allowed, hence this is different than _nuclides, etc)
         self._macroscopic = None
 
-        # A list of tuples (element, percent, percent type, enrichment)
-        self._elements = []
-
         # If specified, a list of table names
         self._sab = []
 
@@ -142,16 +134,6 @@ class Material(IDManagerMixin):
         if self._macroscopic is not None:
             string += '{: <16}\n'.format('\tMacroscopic Data')
             string += '{: <16}'.format('\t{}'.format(self._macroscopic))
-
-        string += '{: <16}\n'.format('\tElements')
-
-        for element, percent, percent_type, enr in self._elements:
-            string += '{: <16}'.format('\t{}'.format(element))
-            if enr is None:
-                string += '=\t{: <12} [{}]\n'.format(percent, percent_type)
-            else:
-                string += '=\t{: <12} [{}] @ {} w/o enrichment\n'\
-                          .format(percent, percent_type, enr)
 
         return string
 
@@ -189,10 +171,6 @@ class Material(IDManagerMixin):
                 'Number of material instances have not been determined. Call '
                 'the Geometry.determine_paths() method.')
         return self._num_instances
-
-    @property
-    def elements(self):
-        return self._elements
 
     @property
     def nuclides(self):
@@ -387,7 +365,7 @@ class Material(IDManagerMixin):
 
         Parameters
         ----------
-        nuclide : str or openmc.Nuclide
+        nuclide : str
             Nuclide to add
         percent : float
             Atom or weight percent
@@ -401,9 +379,9 @@ class Material(IDManagerMixin):
                   'macroscopic data-set has already been added'.format(self._id)
             raise ValueError(msg)
 
-        if not isinstance(nuclide, string_types + (openmc.Nuclide,)):
+        if not isinstance(nuclide, string_types):
             msg = 'Unable to add a Nuclide to Material ID="{}" with a ' \
-                  'non-Nuclide value "{}"'.format(self._id, nuclide)
+                  'non-string value "{}"'.format(self._id, nuclide)
             raise ValueError(msg)
 
         elif not isinstance(percent, Real):
@@ -411,17 +389,10 @@ class Material(IDManagerMixin):
                   'non-floating point value "{}"'.format(self._id, percent)
             raise ValueError(msg)
 
-        elif percent_type not in ['ao', 'wo', 'at/g-cm']:
+        elif percent_type not in ('ao', 'wo'):
             msg = 'Unable to add a Nuclide to Material ID="{}" with a ' \
                   'percent type "{}"'.format(self._id, percent_type)
             raise ValueError(msg)
-
-        if isinstance(nuclide, openmc.Nuclide):
-            # Copy this Nuclide to separate it from the Nuclide in
-            # other Materials
-            nuclide = deepcopy(nuclide)
-        else:
-            nuclide = openmc.Nuclide(nuclide)
 
         self._nuclides.append((nuclide, percent, percent_type))
 
@@ -430,14 +401,11 @@ class Material(IDManagerMixin):
 
         Parameters
         ----------
-        nuclide : openmc.Nuclide
+        nuclide : str
             Nuclide to remove
 
         """
-        cv.check_type('nuclide', nuclide, string_types + (openmc.Nuclide,))
-
-        if isinstance(nuclide, string_types):
-            nuclide = openmc.Nuclide(nuclide)
+        cv.check_type('nuclide', nuclide, string_types)
 
         # If the Material contains the Nuclide, delete it
         for nuc in self._nuclides:
@@ -452,31 +420,24 @@ class Material(IDManagerMixin):
 
         Parameters
         ----------
-        macroscopic : str or openmc.Macroscopic
+        macroscopic : str
             Macroscopic to add
 
         """
 
         # Ensure no nuclides, elements, or sab are added since these would be
         # incompatible with macroscopics
-        if self._nuclides or self._elements or self._sab:
+        if self._nuclides or self._sab:
             msg = 'Unable to add a Macroscopic data set to Material ID="{}" ' \
                   'with a macroscopic value "{}" as an incompatible data ' \
-                  'member (i.e., nuclide, element, or S(a,b) table) ' \
+                  'member (i.e., nuclide or S(a,b) table) ' \
                   'has already been added'.format(self._id, macroscopic)
             raise ValueError(msg)
 
-        if not isinstance(macroscopic, string_types + (openmc.Macroscopic,)):
+        if not isinstance(macroscopic, string_types):
             msg = 'Unable to add a Macroscopic to Material ID="{}" with a ' \
-                  'non-Macroscopic value "{}"'.format(self._id, macroscopic)
+                  'non-string value "{}"'.format(self._id, macroscopic)
             raise ValueError(msg)
-
-        if isinstance(macroscopic, openmc.Macroscopic):
-            # Copy this Macroscopic to separate it from the Macroscopic in
-            # other Materials
-            macroscopic = deepcopy(macroscopic)
-        else:
-            macroscopic = openmc.Macroscopic(macroscopic)
 
         if self._macroscopic is None:
             self._macroscopic = macroscopic
@@ -499,14 +460,14 @@ class Material(IDManagerMixin):
 
         Parameters
         ----------
-        macroscopic : openmc.Macroscopic
+        macroscopic : str
             Macroscopic to remove
 
         """
 
-        if not isinstance(macroscopic, openmc.Macroscopic):
+        if not isinstance(macroscopic, string_types):
             msg = 'Unable to remove a Macroscopic "{}" in Material ID="{}" ' \
-                  'since it is not a Macroscopic'.format(self._id, macroscopic)
+                  'since it is not a string'.format(self._id, macroscopic)
             raise ValueError(msg)
 
         # If the Material contains the Macroscopic, delete it
@@ -518,7 +479,7 @@ class Material(IDManagerMixin):
 
         Parameters
         ----------
-        element : openmc.Element or str
+        element : str
             Element to add
         percent : float
             Atom or weight percent
@@ -537,9 +498,9 @@ class Material(IDManagerMixin):
                   'macroscopic data-set has already been added'.format(self._id)
             raise ValueError(msg)
 
-        if not isinstance(element, string_types + (openmc.Element,)):
+        if not isinstance(element, string_types):
             msg = 'Unable to add an Element to Material ID="{}" with a ' \
-                  'non-Element value "{}"'.format(self._id, element)
+                  'non-string value "{}"'.format(self._id, element)
             raise ValueError(msg)
 
         if not isinstance(percent, Real):
@@ -551,12 +512,6 @@ class Material(IDManagerMixin):
             msg = 'Unable to add an Element to Material ID="{}" with a ' \
                   'percent type "{}"'.format(self._id, percent_type)
             raise ValueError(msg)
-
-        # Copy this Element to separate it from same Element in other Materials
-        if isinstance(element, openmc.Element):
-            element = deepcopy(element)
-        else:
-            element = openmc.Element(element)
 
         if enrichment is not None:
             if not isinstance(enrichment, Real):
@@ -583,26 +538,10 @@ class Material(IDManagerMixin):
                       format(enrichment, self._id)
                 warnings.warn(msg)
 
-        self._elements.append((element, percent, percent_type, enrichment))
-
-    def remove_element(self, element):
-        """Remove a natural element from the material
-
-        Parameters
-        ----------
-        element : openmc.Element
-            Element to remove
-
-        """
-        cv.check_type('element', element, string_types + (openmc.Element,))
-
-        if isinstance(element, string_types):
-            element = openmc.Element(element)
-
-        # If the Material contains the Element, delete it
-        for elm in self._elements:
-            if element == elm[0]:
-                self._elements.remove(elm)
+        # Add naturally-occuring isotopes
+        element = openmc.Element(element)
+        for nuclide in element.expand(percent, percent_type, enrichment):
+            self._nuclides.append(nuclide)
 
     def add_s_alpha_beta(self, name, fraction=1.0):
         r"""Add an :math:`S(\alpha,\beta)` table to the material
@@ -643,9 +582,6 @@ class Material(IDManagerMixin):
 
     def make_isotropic_in_lab(self):
         self.isotropic = [x[0] for x in self._nuclides]
-        if self._elements:
-            raise NotImplementedError(
-                'Isotropic-in-lab scattering on elements is not supported.')
 
     def get_nuclides(self):
         """Returns all nuclides in the material
@@ -656,19 +592,7 @@ class Material(IDManagerMixin):
             List of nuclide names
 
         """
-
-        nuclides = []
-
-        for nuclide, percent, percent_type in self._nuclides:
-            nuclides.append(nuclide)
-
-        for ele, ele_pct, ele_pct_type, enr in self._elements:
-            # Expand natural element into isotopes
-            isotopes = ele.expand(ele_pct, ele_pct_type, enr)
-            for iso, iso_pct, iso_pct_type in isotopes:
-                nuclides.append(iso)
-
-        return nuclides
+        return [x[0] for x in self._nuclides]
 
     def get_nuclide_densities(self):
         """Returns all nuclides in the material and their densities
@@ -685,13 +609,6 @@ class Material(IDManagerMixin):
 
         for nuclide, density, density_type in self._nuclides:
             nuclides[nuclide] = (nuclide, density, density_type)
-
-        for ele, ele_pct, ele_pct_type, enr in self._elements:
-
-            # Expand natural element into isotopes
-            isotopes = ele.expand(ele_pct, ele_pct_type, enr)
-            for iso, iso_pct, iso_pct_type in isotopes:
-                nuclides[iso] = (iso, iso_pct, iso_pct_type)
 
         return nuclides
 
@@ -828,37 +745,10 @@ class Material(IDManagerMixin):
 
         return xml_element
 
-    def _get_element_xml(self, element, cross_sections, distrib=False):
-
-        # Get the nuclides in this element
-        nuclides = element[0].expand(element[1], element[2], element[3],
-                                     cross_sections)
-
-        xml_elements = []
-        for nuclide in nuclides:
-            xml_elements.append(self._get_nuclide_xml(nuclide, distrib))
-
-        return xml_elements
-
     def _get_nuclides_xml(self, nuclides, distrib=False):
-
         xml_elements = []
-
         for nuclide in nuclides:
             xml_elements.append(self._get_nuclide_xml(nuclide, distrib))
-
-        return xml_elements
-
-    def _get_elements_xml(self, elements, cross_sections, distrib=False):
-
-        xml_elements = []
-
-        for element in elements:
-            nuclide_elements = self._get_element_xml(element, cross_sections,
-                                                     distrib)
-            for nuclide_element in nuclide_elements:
-                xml_elements.append(nuclide_element)
-
         return xml_elements
 
     def to_xml_element(self, cross_sections=None):
@@ -907,12 +797,6 @@ class Material(IDManagerMixin):
                 subelements = self._get_nuclides_xml(self._nuclides)
                 for subelement in subelements:
                     element.append(subelement)
-
-                # Create element XML subelements
-                subelements = self._get_elements_xml(self._elements,
-                                                     cross_sections)
-                for subelement in subelements:
-                    element.append(subelement)
             else:
                 # Create macroscopic XML subelements
                 subelement = self._get_macroscopic_xml(self._macroscopic)
@@ -922,7 +806,7 @@ class Material(IDManagerMixin):
             subelement = ET.SubElement(element, "compositions")
 
             comps = []
-            allnucs = self._nuclides + self._elements
+            allnucs = self._nuclides
             dist_per_type = allnucs[0][2]
             for nuc in allnucs:
                 if nuc[2] != dist_per_type:
@@ -948,13 +832,6 @@ class Material(IDManagerMixin):
                                                      distrib=True)
                 for subelement_nuc in subelements:
                     subelement.append(subelement_nuc)
-
-                # Create element XML subelements
-                subelements = self._get_elements_xml(self._elements,
-                                                     cross_sections,
-                                                     distrib=True)
-                for subsubelement in subelements:
-                    subelement.append(subsubelement)
             else:
                 # Create macroscopic XML subelements
                 subsubelement = self._get_macroscopic_xml(self._macroscopic)

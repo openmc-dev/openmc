@@ -36,8 +36,8 @@ class TRISOTestHarness(PyAPITestHarness):
 
         sic = openmc.Material()
         sic.set_density('g/cm3', 3.20)
-        sic.add_element('Si', 1.0)
         sic.add_nuclide('C0', 1.0)
+        sic.add_element('Si', 1.0)
 
         opyc = openmc.Material()
         opyc.set_density('g/cm3', 1.87)

@@ -1,5 +1,6 @@
 from contextlib import contextmanager
-from ctypes import CDLL, c_int, c_int32, c_int64, c_double, POINTER, Structure
+from ctypes import (CDLL, c_int, c_int32, c_int64, c_double, c_char_p,
+                    POINTER, Structure)
 from warnings import warn
 
 import numpy as np
@@ -38,6 +39,7 @@ _dll.openmc_source_bank.restype = c_int
 _dll.openmc_source_bank.errcheck = _error_handler
 _dll.openmc_simulation_init.restype = None
 _dll.openmc_simulation_finalize.restype = None
+_dll.openmc_statepoint_write.argtypes = [POINTER(c_char_p)]
 _dll.openmc_statepoint_write.restype = None
 
 
@@ -217,9 +219,19 @@ def source_bank():
     return as_array(ptr, (n.value,)).view(bank_dtype)
 
 
-def statepoint_write():
-    """Write a statepoint."""
-    _dll.openmc_statepoint_write()
+def statepoint_write(filename=None):
+    """Write a statepoint file.
+
+    Parameters
+    ----------
+    filename : str or None
+        Path to the statepoint to write. If None is passed, a default name that
+        contains the current batch will be written.
+
+    """
+    if filename is not None:
+        filename = c_char_p(filename.encode())
+    _dll.openmc_statepoint_write(filename)
 
 
 @contextmanager

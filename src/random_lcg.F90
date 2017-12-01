@@ -17,7 +17,7 @@ module random_lcg
   integer(C_INT64_T), parameter :: prn_add = 1_8                    ! additive factor, c
   integer,            parameter :: prn_bits = 63                    ! number of bits, M
   integer(C_INT64_T), parameter :: prn_mod = ibset(0_8, prn_bits)   ! 2^M
-  integer(C_INT64_T), parameter :: prn_mask = not(prn_mod)          ! 2^M - 1
+  integer(C_INT64_T)            :: prn_mask = not(prn_mod)          ! 2^M - 1
   integer(C_INT64_T), parameter :: prn_stride = 152917_8            ! stride between particles
   real(C_DOUBLE),     parameter :: prn_norm = 2._8**(-prn_bits)     ! 2^(-M)
 

@@ -29,7 +29,7 @@ module state_point
   use random_lcg,         only: seed
   use settings
   use simulation_header
-  use string,             only: to_str, count_digits, zero_padded
+  use string,             only: to_str, count_digits, zero_padded, to_f_string
   use tally_header
   use tally_filter_header
   use tally_derivative_header, only: tally_derivs
@@ -43,7 +43,8 @@ contains
 ! OPENMC_STATEPOINT_WRITE writes an HDF5 statepoint file to disk
 !===============================================================================
 
-  subroutine openmc_statepoint_write() bind(C)
+  subroutine openmc_statepoint_write(filename) bind(C)
+    type(C_PTR), intent(in), optional :: filename
 
     integer :: i, j, k
     integer :: i_xs
@@ -57,19 +58,25 @@ contains
     integer(C_INT) :: err
     real(C_DOUBLE) :: k_combined(2)
     character(MAX_WORD_LEN), allocatable :: str_array(:)
-    character(MAX_FILE_LEN)    :: filename
+    character(C_CHAR), pointer :: string(:)
+    character(len=:, kind=C_CHAR), allocatable :: filename_
 
-    ! Set filename for state point
-    filename = trim(path_output) // 'statepoint.' // &
-         & zero_padded(current_batch, count_digits(n_max_batches))
-    filename = trim(filename) // '.h5'
+    if (present(filename)) then
+      call c_f_pointer(filename, string, [MAX_FILE_LEN])
+      filename_ = to_f_string(string)
+    else
+      ! Set filename for state point
+      filename_ = trim(path_output) // 'statepoint.' // &
+           & zero_padded(current_batch, count_digits(n_max_batches))
+      filename_ = trim(filename_) // '.h5'
+    end if
 
     ! Write message
-    call write_message("Creating state point " // trim(filename) // "...", 5)
+    call write_message("Creating state point " // trim(filename_) // "...", 5)
 
     if (master) then
       ! Create statepoint file
-      file_id = file_create(filename)
+      file_id = file_create(filename_)
 
       ! Write file type
       call write_attribute(file_id, "filetype", "statepoint")

@@ -11,10 +11,10 @@ const uint64_t prn_add    = 1;                       // additive factor, c
 const uint64_t prn_mod    = 0x8000000000000000;      // 2^63
 const uint64_t prn_mask   = 0x7fffffffffffffff;      // 2^63 - 1
 const uint64_t prn_stride = 152917LL;                // stride between particles
-const double   prn_norm = pow(2, -63);               // 2^-63
+const double   prn_norm   = pow(2, -63);             // 2^-63
 
 // Module constants
-const int N_STREAMS = 5;
+const int N_STREAMS         = 5;
 const int STREAM_TRACKING   = 0;
 const int STREAM_TALLIES    = 1;
 const int STREAM_SOURCE     = 2;
@@ -82,16 +82,8 @@ advance_prn_seed(uint64_t n)
 extern "C" uint64_t
 future_seed(uint64_t n, uint64_t seed)
 {
-  // In cases where we want to skip backwards, we add the period of the random
-  // number generator until the number of PRNs to skip is positive since
-  // skipping ahead that much is the same as skipping backwards by the original
-  // amount.
-
-  uint64_t nskip = n;
-  while (nskip > prn_mod) nskip += prn_mod;
-
   // Make sure nskip is less than 2^M.
-  nskip &= prn_mask;
+  n &= prn_mask;
 
   // The algorithm here to determine the parameters used to skip ahead is
   // described in F. Brown, "Random Number Generation with Arbitrary Stride,"
@@ -105,17 +97,17 @@ future_seed(uint64_t n, uint64_t seed)
   uint64_t g_new = 1;
   uint64_t c_new = 0;
 
-  while (nskip > 0) {
+  while (n > 0) {
     // Check if the least significant bit is 1.
-    if (nskip & 1) {
-      g_new = (g_new * g) & prn_mask;
-      c_new = (c_new * g + c) & prn_mask;
+    if (n & 1) {
+      g_new = g_new * g;
+      c_new = c_new * g + c;
     }
-    c = ((g + 1) * c) & prn_mask;
-    g = (g * g) & prn_mask;
+    c = (g + 1) * c;
+    g = g * g;
 
     // Move bits right, dropping least significant bit.
-    nskip >>= 1;
+    n >>= 1;
   }
 
   // With G and C, we can now find the new seed.

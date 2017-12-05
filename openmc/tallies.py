@@ -3437,12 +3437,12 @@ class Tallies(cv.CheckedList):
         for tally in self:
             for f in tally.filters:
                 if isinstance(f, openmc.MeshFilter):
-                    if f.mesh not in already_written:
+                    if f.mesh.id not in already_written:
                         if len(f.mesh.name) > 0:
                             root_element.append(ET.Comment(f.mesh.name))
 
                         root_element.append(f.mesh.to_xml_element())
-                        already_written.add(f.mesh)
+                        already_written.add(f.mesh.id)
 
     def _create_filter_subelements(self, root_element):
         already_written = dict()

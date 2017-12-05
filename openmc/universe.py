@@ -6,6 +6,7 @@ import random
 import sys
 
 from six import string_types
+import matplotlib.pyplot as plt
 import numpy as np
 
 import openmc
@@ -225,8 +226,6 @@ class Universe(IDManagerMixin):
             :func:`matplotlib.pyplot.imshow`.
 
         """
-        import matplotlib.pyplot as plt
-
         # Seed the random number generator
         if seed is not None:
             random.seed(seed)

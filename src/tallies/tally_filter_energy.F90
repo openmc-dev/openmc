@@ -75,7 +75,7 @@ contains
     ! ordering of the library and tallying systems).
     if (.not. run_CE) then
       if (n == num_energy_groups + 1) then
-        if (all(this % bins == energy_bins(num_energy_groups + 1:1:-1))) &
+        if (all(this % bins == energy_bins)) &
              then
           this % matches_transport_groups = .true.
         end if

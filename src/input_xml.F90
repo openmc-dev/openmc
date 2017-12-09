@@ -4172,7 +4172,6 @@ contains
     integer :: n_libraries
     logical :: file_exists ! does mgxs.h5 exist?
     integer(HID_T) :: file_id
-    real(8), allocatable :: rev_energy_bins(:)
     character(len=MAX_WORD_LEN), allocatable :: names(:)
 
     ! Check if MGXS Library exists
@@ -4202,7 +4201,6 @@ contains
       num_delayed_groups = 0
     end if
 
-    allocate(rev_energy_bins(num_energy_groups + 1))
     allocate(energy_bins(num_energy_groups + 1))
 
     if (attribute_exists(file_id, "group structure")) then
@@ -4211,9 +4209,6 @@ contains
     else
       call fatal_error("'group structure' attribute must exist!")
     end if
-
-    ! First reverse the order of energy_groups
-    energy_bins = energy_bins(num_energy_groups + 1:1:-1)
 
     allocate(energy_bin_avg(num_energy_groups))
     do i = 1, num_energy_groups

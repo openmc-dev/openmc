@@ -1,5 +1,7 @@
 module constants
 
+  use, intrinsic :: ISO_C_BINDING
+
   implicit none
 
   ! ============================================================================
@@ -419,6 +421,7 @@ module constants
   integer, parameter :: STREAM_SOURCE     = 3
   integer, parameter :: STREAM_URR_PTABLE = 4
   integer, parameter :: STREAM_VOLUME     = 5
+  integer(C_INT64_T), parameter :: DEFAULT_SEED = 1_8
 
   ! ============================================================================
   ! MISCELLANEOUS CONSTANTS

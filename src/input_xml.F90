@@ -4201,6 +4201,7 @@ contains
       num_delayed_groups = 0
     end if
 
+    allocate(rev_energy_bins(num_energy_groups + 1))
     allocate(energy_bins(num_energy_groups + 1))
 
     if (attribute_exists(file_id, "group structure")) then
@@ -4209,6 +4210,10 @@ contains
     else
       call fatal_error("'group structure' attribute must exist!")
     end if
+
+    ! First reverse the order of energy_groups
+    rev_energy_bins = energy_bins
+    energy_bins = energy_bins(num_energy_groups + 1:1:-1)
 
     allocate(energy_bin_avg(num_energy_groups))
     do i = 1, num_energy_groups

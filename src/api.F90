@@ -112,6 +112,7 @@ contains
     legendre_to_tabular = .true.
     legendre_to_tabular_points = 33
     n_batch_interval = 1
+    n_lost_particles = 0
     n_particles = 0
     n_source_points = 0
     n_state_points = 0

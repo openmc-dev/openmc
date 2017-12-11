@@ -1,12 +1,19 @@
 module particle_header
 
-  use bank_header,     only: Bank
-  use constants,       only: NEUTRON, ONE, NONE, ZERO, MAX_SECONDARY, &
-                             MAX_DELAYED_GROUPS, ERROR_REAL
-  use error,           only: fatal_error
+  use hdf5, only: HID_T
+
+  use bank_header,     only: Bank, source_bank
+  use constants
+  use error,           only: fatal_error, warning
   use geometry_header, only: root_universe
+  use hdf5_interface
+  use settings
+  use simulation_header
+  use string,          only: to_str
 
   implicit none
+
+  private
 
 !===============================================================================
 ! LOCALCOORD describes the location of a particle local to a single
@@ -14,7 +21,7 @@ module particle_header
 ! a list of coordinates in each level
 !===============================================================================
 
-  type LocalCoord
+  type, public :: LocalCoord
 
     ! Indices in various arrays for this level
     integer :: cell      = NONE
@@ -39,7 +46,7 @@ module particle_header
 ! geometry
 !===============================================================================
 
-  type Particle
+  type, public :: Particle
     ! Basic data
     integer(8) :: id            ! Unique ID
     integer    :: type          ! Particle type (n, p, e, etc)
@@ -107,10 +114,12 @@ module particle_header
     type(Bank) :: secondary_bank(MAX_SECONDARY)
 
   contains
-    procedure :: initialize => initialize_particle
-    procedure :: clear => clear_particle
-    procedure :: initialize_from_source
+    procedure :: clear
     procedure :: create_secondary
+    procedure :: initialize
+    procedure :: initialize_from_source
+    procedure :: mark_as_lost
+    procedure :: write_restart
   end type Particle
 
 contains
@@ -120,7 +129,7 @@ contains
 ! bank
 !===============================================================================
 
-  subroutine initialize_particle(this)
+  subroutine initialize(this)
 
     class(Particle) :: this
 
@@ -154,23 +163,22 @@ contains
     this % n_coord = 1
     this % last_n_coord = 1
 
-  end subroutine initialize_particle
+  end subroutine initialize
 
 !===============================================================================
 ! CLEAR_PARTICLE resets all coordinate levels for the particle
 !===============================================================================
 
-  subroutine clear_particle(this)
-
+  subroutine clear(this)
     class(Particle) :: this
+
     integer :: i
 
     ! remove any coordinate levels
     do i = 1, MAX_COORD
       call this % coord(i) % reset()
     end do
-
-  end subroutine clear_particle
+  end subroutine clear
 
 !===============================================================================
 ! RESET_COORD clears data from a single coordinate level
@@ -254,5 +262,92 @@ contains
     end if
 
   end subroutine create_secondary
+
+!===============================================================================
+! MARK_AS_LOST
+!===============================================================================
+
+  subroutine mark_as_lost(this, message)
+    class(Particle), intent(inout) :: this
+    character(*)                   :: message
+
+    integer(8) :: tot_n_particles
+
+    ! Print warning and write lost particle file
+    call warning(message)
+    call this % write_restart()
+
+    ! Increment number of lost particles
+    this % alive = .false.
+!$omp atomic
+    n_lost_particles = n_lost_particles + 1
+
+    ! Count the total number of simulated particles (on this processor)
+    tot_n_particles = current_batch * gen_per_batch * work
+
+    ! Abort the simulation if the maximum number of lost particles has been
+    ! reached
+    if (n_lost_particles >= MAX_LOST_PARTICLES .and. &
+         n_lost_particles >= REL_MAX_LOST_PARTICLES * tot_n_particles) then
+      call fatal_error("Maximum number of lost particles has been reached.")
+    end if
+
+  end subroutine mark_as_lost
+
+!===============================================================================
+! WRITE_RESTART creates a particle restart file
+!===============================================================================
+
+  subroutine write_restart(this)
+    class(Particle), intent(in) :: this
+
+    integer(HID_T) :: file_id
+    character(MAX_FILE_LEN) :: filename
+
+    ! Dont write another restart file if in particle restart mode
+    if (run_mode == MODE_PARTICLE) return
+
+    ! Set up file name
+    filename = trim(path_output) // 'particle_' // trim(to_str(current_batch)) &
+         // '_' // trim(to_str(this % id)) // '.h5'
+
+!$omp critical (WriteParticleRestart)
+    ! Create file
+    file_id = file_create(filename)
+
+    associate (src => source_bank(current_work))
+      ! Write filetype and version info
+      call write_attribute(file_id, 'filetype', 'particle restart')
+      call write_attribute(file_id, 'version', VERSION_PARTICLE_RESTART)
+      call write_attribute(file_id, "openmc_version", VERSION)
+#ifdef GIT_SHA1
+      call write_attribute(file_id, "git_sha1", GIT_SHA1)
+#endif
+
+      ! Write data to file
+      call write_dataset(file_id, 'current_batch', current_batch)
+      call write_dataset(file_id, 'generations_per_batch', gen_per_batch)
+      call write_dataset(file_id, 'current_generation', current_gen)
+      call write_dataset(file_id, 'n_particles', n_particles)
+      select case(run_mode)
+      case (MODE_FIXEDSOURCE)
+        call write_dataset(file_id, 'run_mode', 'fixed source')
+      case (MODE_EIGENVALUE)
+        call write_dataset(file_id, 'run_mode', 'eigenvalue')
+      case (MODE_PARTICLE)
+        call write_dataset(file_id, 'run_mode', 'particle restart')
+      end select
+      call write_dataset(file_id, 'id', this % id)
+      call write_dataset(file_id, 'weight', src % wgt)
+      call write_dataset(file_id, 'energy', src % E)
+      call write_dataset(file_id, 'xyz', src % xyz)
+      call write_dataset(file_id, 'uvw', src % uvw)
+    end associate
+
+    ! Close file
+    call file_close(file_id)
+!$omp end critical (WriteParticleRestart)
+
+  end subroutine write_restart
 
 end module particle_header

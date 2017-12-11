@@ -125,8 +125,70 @@ module particle_header
 contains
 
 !===============================================================================
-! INITIALIZE_PARTICLE sets default attributes for a particle from the source
-! bank
+! RESET_COORD clears data from a single coordinate level
+!===============================================================================
+
+  elemental subroutine reset_coord(this)
+    class(LocalCoord), intent(inout) :: this
+
+    this % cell = NONE
+    this % universe = NONE
+    this % lattice = NONE
+    this % lattice_x = NONE
+    this % lattice_y = NONE
+    this % lattice_z = NONE
+    this % rotated = .false.
+
+  end subroutine reset_coord
+
+!===============================================================================
+! CLEAR_PARTICLE resets all coordinate levels for the particle
+!===============================================================================
+
+  subroutine clear(this)
+    class(Particle) :: this
+
+    integer :: i
+
+    ! remove any coordinate levels
+    do i = 1, MAX_COORD
+      call this % coord(i) % reset()
+    end do
+  end subroutine clear
+
+!===============================================================================
+! CREATE_SECONDARY stores the current phase space attributes of the particle in
+! the secondary bank and increments the number of sites in the secondary bank.
+!===============================================================================
+
+  subroutine create_secondary(this, uvw, type, run_CE)
+    class(Particle), intent(inout) :: this
+    real(8),         intent(in)    :: uvw(3)
+    integer,         intent(in)    :: type
+    logical,         intent(in)    :: run_CE
+
+    integer(8) :: n
+
+    ! Check to make sure that the hard-limit on secondary particles is not
+    ! exceeded.
+    if (this % n_secondary == MAX_SECONDARY) then
+      call fatal_error("Too many secondary particles created.")
+    end if
+
+    n = this % n_secondary + 1
+    this % secondary_bank(n) % wgt    = this % wgt
+    this % secondary_bank(n) % xyz(:) = this % coord(1) % xyz
+    this % secondary_bank(n) % uvw(:) = uvw
+    this % n_secondary = n
+    this % secondary_bank(this % n_secondary) % E = this % E
+    if (.not. run_CE) then
+      this % secondary_bank(this % n_secondary) % E = real(this % g, 8)
+    end if
+
+  end subroutine create_secondary
+
+!===============================================================================
+! INITIALIZE sets default attributes for a particle from the source bank
 !===============================================================================
 
   subroutine initialize(this)
@@ -166,38 +228,6 @@ contains
   end subroutine initialize
 
 !===============================================================================
-! CLEAR_PARTICLE resets all coordinate levels for the particle
-!===============================================================================
-
-  subroutine clear(this)
-    class(Particle) :: this
-
-    integer :: i
-
-    ! remove any coordinate levels
-    do i = 1, MAX_COORD
-      call this % coord(i) % reset()
-    end do
-  end subroutine clear
-
-!===============================================================================
-! RESET_COORD clears data from a single coordinate level
-!===============================================================================
-
-  elemental subroutine reset_coord(this)
-    class(LocalCoord), intent(inout) :: this
-
-    this % cell = NONE
-    this % universe = NONE
-    this % lattice = NONE
-    this % lattice_x = NONE
-    this % lattice_y = NONE
-    this % lattice_z = NONE
-    this % rotated = .false.
-
-  end subroutine reset_coord
-
-!===============================================================================
 ! INITIALIZE_FROM_SOURCE initializes a particle from data stored in a source
 ! site. The source site may have been produced from an external source, from
 ! fission, or simply as a secondary particle.
@@ -231,37 +261,6 @@ contains
     this % last_E           = this % E
 
   end subroutine initialize_from_source
-
-!===============================================================================
-! CREATE_SECONDARY stores the current phase space attributes of the particle in
-! the secondary bank and increments the number of sites in the secondary bank.
-!===============================================================================
-
-  subroutine create_secondary(this, uvw, type, run_CE)
-    class(Particle), intent(inout) :: this
-    real(8),         intent(in)    :: uvw(3)
-    integer,         intent(in)    :: type
-    logical,         intent(in)    :: run_CE
-
-    integer(8) :: n
-
-    ! Check to make sure that the hard-limit on secondary particles is not
-    ! exceeded.
-    if (this % n_secondary == MAX_SECONDARY) then
-      call fatal_error("Too many secondary particles created.")
-    end if
-
-    n = this % n_secondary + 1
-    this % secondary_bank(n) % wgt    = this % wgt
-    this % secondary_bank(n) % xyz(:) = this % coord(1) % xyz
-    this % secondary_bank(n) % uvw(:) = uvw
-    this % n_secondary = n
-    this % secondary_bank(this % n_secondary) % E = this % E
-    if (.not. run_CE) then
-      this % secondary_bank(this % n_secondary) % E = real(this % g, 8)
-    end if
-
-  end subroutine create_secondary
 
 !===============================================================================
 ! MARK_AS_LOST

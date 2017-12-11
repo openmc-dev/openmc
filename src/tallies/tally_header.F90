@@ -9,7 +9,8 @@ module tally_header
   use dict_header,         only: DictIntInt
   use message_passing,     only: n_procs
   use nuclide_header,      only: nuclide_dict
-  use settings,            only: reduce_tallies
+  use settings,            only: reduce_tallies, run_mode
+  use source_header,       only: external_source
   use stl_vector,          only: VectorInt
   use string,              only: to_lower, to_f_string, str_to_int, to_str
   use tally_filter_header, only: TallyFilterContainer, filters, n_filters
@@ -161,6 +162,7 @@ contains
 
     integer :: i, j
     real(C_DOUBLE) :: val
+    real(C_DOUBLE) :: total_source
 
     ! Increment number of realizations
     if (reduce_tallies) then
@@ -169,10 +171,17 @@ contains
       this % n_realizations = this % n_realizations + n_procs
     end if
 
+    ! Calculate total source strength for normalization
+    if (run_mode == MODE_FIXEDSOURCE) then
+      total_source = sum(external_source(:) % strength)
+    else
+      total_source = ONE
+    end if
+
     ! Accumulate each result
     do j = 1, size(this % results, 3)
       do i = 1, size(this % results, 2)
-        val = this % results(RESULT_VALUE, i, j)/total_weight
+        val = this % results(RESULT_VALUE, i, j)/total_weight * total_source
         this % results(RESULT_VALUE, i, j) = ZERO
 
         this % results(RESULT_SUM, i, j) = &

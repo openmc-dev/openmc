@@ -5,17 +5,18 @@ import os
 import sys
 import numpy as np
 sys.path.insert(0, os.pardir)
-from testing_harness import TestHarness
-from openmc import StatePoint
+from testing_harness import PyAPITestHarness
+import openmc
+import openmc.stats
 
 
-class FixedSourceTestHarness(TestHarness):
+class FixedSourceTestHarness(PyAPITestHarness):
     def _get_results(self):
         """Digest info in the statepoint and return as a string."""
         # Read the statepoint file.
         statepoint = glob.glob(os.path.join(os.getcwd(), self._sp_name))[0]
         outstr = ''
-        with StatePoint(statepoint) as sp:
+        with openmc.StatePoint(statepoint) as sp:
             # Write out tally data.
             for i, tally_ind in enumerate(sp.tallies):
                 tally = sp.tallies[tally_ind]
@@ -36,5 +37,28 @@ class FixedSourceTestHarness(TestHarness):
 
 
 if __name__ == '__main__':
-    harness = FixedSourceTestHarness('statepoint.10.h5')
+    mat = openmc.Material()
+    mat.add_nuclide('O16', 1.0)
+    mat.add_nuclide('U238', 0.0001)
+    mat.set_density('g/cc', 7.5)
+
+    surf = openmc.Sphere(R=10.0, boundary_type='vacuum')
+    cell = openmc.Cell(fill=mat, region=-surf)
+
+    model = openmc.model.Model()
+    model.geometry.root_universe = openmc.Universe(cells=[cell])
+    model.materials.append(mat)
+
+    model.settings.run_mode = 'fixed source'
+    model.settings.batches = 10
+    model.settings.particles = 100
+    model.settings.temperature = {'default': 294}
+    model.settings.source = openmc.Source(space=openmc.stats.Point(),
+                                          strength=10.0)
+
+    tally = openmc.Tally()
+    tally.scores = ['flux']
+    model.tallies.append(tally)
+
+    harness = FixedSourceTestHarness('statepoint.10.h5', model)
     harness.main()

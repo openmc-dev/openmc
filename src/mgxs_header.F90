@@ -229,7 +229,7 @@ module mgxs_header
 
   ! Energy group structure with increasing energy
   real(8), allocatable :: rev_energy_bins(:)
-  
+
 contains
 
 !===============================================================================

@@ -5,7 +5,6 @@ module geometry
   use geometry_header
   use output,                 only: write_message
   use particle_header,        only: LocalCoord, Particle
-  use particle_restart_write, only: write_particle_restart
   use simulation_header
   use settings
   use surface_header
@@ -357,7 +356,7 @@ contains
             else
               ! Particle is outside the lattice.
               if (lat % outer == NO_OUTER_UNIVERSE) then
-                call handle_lost_particle(p, "Particle " // trim(to_str(p %id)) &
+                call p % mark_as_lost("Particle " // trim(to_str(p %id)) &
                      // " is outside lattice " // trim(to_str(lat % id)) &
                      // " but the lattice has no defined outer universe.")
                 return
@@ -440,8 +439,8 @@ contains
 
       ! Do not handle reflective boundary conditions on lower universes
       if (p % n_coord /= 1) then
-        call handle_lost_particle(p, "Cannot reflect particle " &
-             &// trim(to_str(p % id)) // " off surface in a lower universe.")
+        call p % mark_as_lost("Cannot reflect particle " &
+             // trim(to_str(p % id)) // " off surface in a lower universe.")
         return
       end if
 
@@ -477,8 +476,8 @@ contains
       p % n_coord = 1
       call find_cell(p, found)
       if (.not. found) then
-        call handle_lost_particle(p, "Couldn't find particle after reflecting&
-             & from surface " // trim(to_str(surf%id)) // ".")
+        call p % mark_as_lost("Couldn't find particle after reflecting&
+             & from surface " // trim(to_str(surf % id)) // ".")
         return
       end if
 
@@ -497,7 +496,7 @@ contains
 
       ! Do not handle periodic boundary conditions on lower universes
       if (p % n_coord /= 1) then
-        call handle_lost_particle(p, "Cannot transfer particle " &
+        call p % mark_as_lost("Cannot transfer particle " &
              // trim(to_str(p % id)) // " across surface in a lower universe.&
              & Boundary conditions must be applied to universe 0.")
         return
@@ -584,8 +583,8 @@ contains
       p % n_coord = 1
       call find_cell(p, found)
       if (.not. found) then
-        call handle_lost_particle(p, "Couldn't find particle after hitting &
-             &periodic boundary on surface " // trim(to_str(surf%id)) // ".")
+        call p % mark_as_lost("Couldn't find particle after hitting &
+             &periodic boundary on surface " // trim(to_str(surf % id)) // ".")
         return
       end if
 
@@ -641,8 +640,8 @@ contains
       ! undefined region in the geometry.
 
       if (.not. found) then
-        call handle_lost_particle(p, "After particle " // trim(to_str(p % id)) &
-             // " crossed surface " // trim(to_str(surf%id)) &
+        call p % mark_as_lost("After particle " // trim(to_str(p % id)) &
+             // " crossed surface " // trim(to_str(surf % id)) &
              // " it could not be located in any cell and it did not leak.")
         return
       end if
@@ -690,7 +689,7 @@ contains
       call find_cell(p, found)
       if (.not. found) then
         if (p % alive) then ! Particle may have been killed in find_cell
-          call handle_lost_particle(p, "Could not locate particle " &
+          call p % mark_as_lost("Could not locate particle " &
                // trim(to_str(p % id)) // " after crossing a lattice boundary.")
           return
         end if
@@ -713,9 +712,8 @@ contains
         ! Search for particle
         call find_cell(p, found)
         if (.not. found) then
-          call handle_lost_particle(p, "Could not locate particle " &
-               // trim(to_str(p % id)) &
-               // " after crossing a lattice boundary.")
+          call p % mark_as_lost("Could not locate particle " // &
+               trim(to_str(p % id)) // " after crossing a lattice boundary.")
           return
         end if
       end if
@@ -992,7 +990,7 @@ contains
         end select LAT_TYPE
 
         if (d_lat < ZERO) then
-          call handle_lost_particle(p, "Particle " // trim(to_str(p % id)) &
+          call p % mark_as_lost("Particle " // trim(to_str(p % id)) &
                //" had a negative distance to a lattice boundary. d = " &
                //trim(to_str(d_lat)))
         end if
@@ -1092,38 +1090,6 @@ contains
     end do
 
   end subroutine neighbor_lists
-
-!===============================================================================
-! HANDLE_LOST_PARTICLE
-!===============================================================================
-
-  subroutine handle_lost_particle(p, message)
-
-    type(Particle), intent(inout) :: p
-    character(*)                  :: message
-
-    integer(8) :: tot_n_particles
-
-    ! Print warning and write lost particle file
-    call warning(message)
-    call write_particle_restart(p)
-
-    ! Increment number of lost particles
-    p % alive = .false.
-!$omp atomic
-    n_lost_particles = n_lost_particles + 1
-
-    ! Count the total number of simulated particles (on this processor)
-    tot_n_particles = n_batches * gen_per_batch * work
-
-    ! Abort the simulation if the maximum number of lost particles has been
-    ! reached
-    if (n_lost_particles >= MAX_LOST_PARTICLES .and. &
-         n_lost_particles >= REL_MAX_LOST_PARTICLES * tot_n_particles) then
-      call fatal_error("Maximum number of lost particles has been reached.")
-    end if
-
-  end subroutine handle_lost_particle
 
 !===============================================================================
 ! CALC_OFFSETS calculates and stores the offsets in all fill cells. This

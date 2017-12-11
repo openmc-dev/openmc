@@ -2,11 +2,10 @@ module tracking
 
   use constants
   use cross_section,      only: calculate_xs
-  use error,              only: fatal_error, warning
+  use error,              only: fatal_error, warning, write_message
   use geometry_header,    only: cells
   use geometry,           only: find_cell, distance_to_boundary, cross_lattice, &
                                 check_cell_overlap
-  use output,             only: write_message
   use message_passing
   use mgxs_header
   use nuclide_header

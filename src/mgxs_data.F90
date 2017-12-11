@@ -3,13 +3,12 @@ module mgxs_data
   use constants
   use algorithm,       only: find
   use dict_header,     only: DictCharInt
-  use error,           only: fatal_error
+  use error,           only: fatal_error, write_message
   use geometry_header, only: get_temperatures, cells
   use hdf5_interface
   use material_header, only: Material, materials, n_materials
   use mgxs_header
   use nuclide_header,  only: n_nuclides
-  use output,          only: write_message
   use set_header,      only: SetChar
   use settings
   use stl_vector,      only: VectorReal

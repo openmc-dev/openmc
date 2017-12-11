@@ -644,7 +644,7 @@ contains
   subroutine compute_dhat()
 
     use constants, only: CMFD_NOACCEL, ZERO
-    use output,    only: write_message
+    use error,     only: write_message
     use string,    only: to_str
 
     integer :: nx             ! maximum number of cells in x direction

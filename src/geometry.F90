@@ -1,16 +1,14 @@
 module geometry
 
   use constants
-  use error,                  only: fatal_error, warning
+  use error,                  only: fatal_error, warning, write_message
   use geometry_header
-  use output,                 only: write_message
   use particle_header,        only: LocalCoord, Particle
   use simulation_header
   use settings
   use surface_header
   use stl_vector,             only: VectorInt
   use string,                 only: to_str
-  use tally_header
 
   implicit none
 

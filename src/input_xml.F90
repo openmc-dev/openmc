@@ -10,7 +10,7 @@ module input_xml
   use distribution_multivariate
   use distribution_univariate
   use endf,             only: reaction_name
-  use error,            only: fatal_error, warning
+  use error,            only: fatal_error, warning, write_message
   use geometry,         only: calc_offsets, maximum_levels, count_instance, &
                               neighbor_lists
   use geometry_header
@@ -23,7 +23,7 @@ module input_xml
   use mgxs_header
   use multipole,        only: multipole_read
   use nuclide_header
-  use output,           only: write_message, title, header, print_plot
+  use output,           only: title, header, print_plot
   use plot_header
   use random_lcg,       only: prn, openmc_set_seed
   use surface_header

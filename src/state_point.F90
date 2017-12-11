@@ -19,13 +19,13 @@ module state_point
   use constants
   use eigenvalue,         only: openmc_get_keff
   use endf,               only: reaction_name
-  use error,              only: fatal_error, warning
+  use error,              only: fatal_error, warning, write_message
   use hdf5_interface
   use mesh_header,        only: RegularMesh, meshes, n_meshes
   use message_passing
   use mgxs_header,        only: nuclides_MG
   use nuclide_header,     only: nuclides
-  use output,             only: write_message, time_stamp
+  use output,             only: time_stamp
   use random_lcg,         only: seed
   use settings
   use simulation_header

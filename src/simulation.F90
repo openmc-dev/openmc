@@ -16,12 +16,12 @@ module simulation
 #ifdef _OPENMP
   use eigenvalue,      only: join_bank_from_threads
 #endif
-  use error,           only: fatal_error
+  use error,           only: fatal_error, write_message
   use geometry_header, only: n_cells
   use message_passing
   use mgxs_header,     only: energy_bins, energy_bin_avg
   use nuclide_header,  only: micro_xs, n_nuclides
-  use output,          only: write_message, header, print_columns, &
+  use output,          only: header, print_columns, &
                              print_batch_keff, print_generation, print_runtime, &
                              print_results, print_overlap_check, write_tallies
   use particle_header, only: Particle

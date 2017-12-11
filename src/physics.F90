@@ -4,13 +4,12 @@ module physics
   use constants
   use cross_section,          only: elastic_xs_0K
   use endf,                   only: reaction_name
-  use error,                  only: fatal_error, warning
+  use error,                  only: fatal_error, warning, write_message
   use material_header,        only: Material, materials
   use math
   use mesh_header,            only: meshes
   use message_passing
   use nuclide_header
-  use output,                 only: write_message
   use particle_header,        only: Particle
   use physics_common
   use random_lcg,             only: prn, advance_prn_seed, prn_set_stream

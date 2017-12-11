@@ -270,7 +270,7 @@ endif()
 # Show flags being used
 message(STATUS "Fortran flags: ${f90flags}")
 message(STATUS "C flags: ${cflags}")
-message(STATUS "CXX flags: ${cxxflags}")
+message(STATUS "C++ flags: ${cxxflags}")
 message(STATUS "Linker flags: ${ldflags}")
 
 #===============================================================================

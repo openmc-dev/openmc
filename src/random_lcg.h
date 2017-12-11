@@ -14,21 +14,21 @@ extern "C" double prn();
 // current seed.
 //==============================================================================
 
-extern "C" double future_prn(uint64_t n);
+extern "C" double future_prn(int64_t n);
 
 //==============================================================================
 // SET_PARTICLE_SEED sets the seed to a unique value based on the ID of the
 // particle.
 //==============================================================================
 
-extern "C" void set_particle_seed(uint64_t id);
+extern "C" void set_particle_seed(int64_t id);
 
 //==============================================================================
 // ADVANCE_PRN_SEED advances the random number seed 'n' times from the current
 // seed.
 //==============================================================================
 
-extern "C" void advance_prn_seed(uint64_t n);
+extern "C" void advance_prn_seed(int64_t n);
 
 //==============================================================================
 // FUTURE_SEED advances the random number seed 'skip' times. This is usually
@@ -37,7 +37,7 @@ extern "C" void advance_prn_seed(uint64_t n);
 // are used.
 //==============================================================================
 
-extern "C" uint64_t future_seed(uint64_t n, uint64_t seed);
+uint64_t future_seed(uint64_t n, uint64_t seed);
 
 //==============================================================================
 // PRN_SET_STREAM changes the random number stream. If random numbers are needed

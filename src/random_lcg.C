@@ -15,11 +15,11 @@ const double   prn_norm   = pow(2, -63);             // 2^-63
 
 // Module constants
 const int N_STREAMS         = 5;
-const int STREAM_TRACKING   = 0;
-const int STREAM_TALLIES    = 1;
-const int STREAM_SOURCE     = 2;
-const int STREAM_URR_PTABLE = 3;
-const int STREAM_VOLUME     = 4;
+const int STREAM_TRACKING   = 1;
+const int STREAM_TALLIES    = 2;
+const int STREAM_SOURCE     = 3;
+const int STREAM_URR_PTABLE = 4;
+const int STREAM_VOLUME     = 5;
 
 // Current PRNG state
 uint64_t prn_seed[N_STREAMS];  // current seed
@@ -48,9 +48,9 @@ prn()
 //==============================================================================
 
 extern "C" double
-future_prn(uint64_t n)
+future_prn(int64_t n)
 {
-  return future_seed(n, prn_seed[stream]) * prn_norm;
+  return future_seed(static_cast<uint64_t>(n), prn_seed[stream]) * prn_norm;
 }
 
 //==============================================================================
@@ -58,10 +58,10 @@ future_prn(uint64_t n)
 //==============================================================================
 
 extern "C" void
-set_particle_seed(uint64_t id)
+set_particle_seed(int64_t id)
 {
   for (int i = 0; i < N_STREAMS; i++) {
-    prn_seed[i] = future_seed(id * prn_stride, seed + i);
+    prn_seed[i] = future_seed(static_cast<uint64_t>(id) * prn_stride, seed + i);
   }
 }
 
@@ -70,16 +70,16 @@ set_particle_seed(uint64_t id)
 //==============================================================================
 
 extern "C" void
-advance_prn_seed(uint64_t n)
+advance_prn_seed(int64_t n)
 {
-  prn_seed[stream] = future_seed(n, prn_seed[stream]);
+  prn_seed[stream] = future_seed(static_cast<uint64_t>(n), prn_seed[stream]);
 }
 
 //==============================================================================
 // FUTURE_SEED
 //==============================================================================
 
-extern "C" uint64_t
+uint64_t
 future_seed(uint64_t n, uint64_t seed)
 {
   // Make sure nskip is less than 2^M.
@@ -121,7 +121,7 @@ future_seed(uint64_t n, uint64_t seed)
 extern "C" void
 prn_set_stream(int i)
 {
-  stream = i - 1;
+  stream = i - 1;  // Shift by one to move from Fortran to C indexing.
 }
 
 //==============================================================================
@@ -136,7 +136,7 @@ openmc_set_seed(uint64_t new_seed)
   for (int i = 0; i < N_STREAMS; i++) {
     prn_seed[i] = seed + i;
   }
-  stream = STREAM_TRACKING;
+  prn_set_stream(STREAM_TRACKING);
 #pragma end omp parallel
   return 0;
 }

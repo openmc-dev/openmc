@@ -13,14 +13,6 @@ const uint64_t prn_mask   = 0x7fffffffffffffff;      // 2^63 - 1
 const uint64_t prn_stride = 152917LL;                // stride between particles
 const double   prn_norm   = pow(2, -63);             // 2^-63
 
-// Module constants
-const int N_STREAMS         = 5;
-const int STREAM_TRACKING   = 1;
-const int STREAM_TALLIES    = 2;
-const int STREAM_SOURCE     = 3;
-const int STREAM_URR_PTABLE = 4;
-const int STREAM_VOLUME     = 5;
-
 // Current PRNG state
 uint64_t prn_seed[N_STREAMS];  // current seed
 int      stream;               // current RNG stream
@@ -121,7 +113,7 @@ future_seed(uint64_t n, uint64_t seed)
 extern "C" void
 prn_set_stream(int i)
 {
-  stream = i - 1;  // Shift by one to move from Fortran to C indexing.
+  stream = i;  // Shift by one to move from Fortran to C indexing.
 }
 
 //==============================================================================
@@ -129,7 +121,7 @@ prn_set_stream(int i)
 //==============================================================================
 
 extern "C" int
-openmc_set_seed(uint64_t new_seed)
+openmc_set_seed(int64_t new_seed)
 {
   seed = new_seed;
 #pragma omp parallel

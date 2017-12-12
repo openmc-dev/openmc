@@ -7,12 +7,12 @@
 // Module constants.
 //==============================================================================
 
-extern "C" const int N_STREAMS         = 5;
-extern "C" const int STREAM_TRACKING   = 0;
-extern "C" const int STREAM_TALLIES    = 1;
-extern "C" const int STREAM_SOURCE     = 2;
-extern "C" const int STREAM_URR_PTABLE = 3;
-extern "C" const int STREAM_VOLUME     = 4;
+extern "C" const int N_STREAMS;
+extern "C" const int STREAM_TRACKING;
+extern "C" const int STREAM_TALLIES;
+extern "C" const int STREAM_SOURCE;
+extern "C" const int STREAM_URR_PTABLE;
+extern "C" const int STREAM_VOLUME;
 
 //==============================================================================
 // PRN generates a pseudo-random number using a linear congruential generator.

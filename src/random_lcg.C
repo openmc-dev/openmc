@@ -2,16 +2,26 @@
 #include <cmath>
 
 
+// Constants
+extern "C" const int N_STREAMS         {5};
+extern "C" const int STREAM_TRACKING   {0};
+extern "C" const int STREAM_TALLIES    {1};
+extern "C" const int STREAM_SOURCE     {2};
+extern "C" const int STREAM_URR_PTABLE {3};
+extern "C" const int STREAM_VOLUME     {4};
+
 // Starting seed
-int64_t seed = 1;
+int64_t seed {1};
 
 // LCG parameters
-const uint64_t prn_mult   = 2806196910506780709LL;   // multiplication factor, g
-const uint64_t prn_add    = 1;                       // additive factor, c
-const uint64_t prn_mod    = 0x8000000000000000;      // 2^63
-const uint64_t prn_mask   = 0x7fffffffffffffff;      // 2^63 - 1
-const uint64_t prn_stride = 152917LL;                // stride between particles
-const double   prn_norm   = pow(2, -63);             // 2^-63
+constexpr uint64_t prn_mult   {2806196910506780709LL};   // multiplication
+                                                         //   factor, g
+constexpr uint64_t prn_add    {1};                       // additive factor, c
+constexpr uint64_t prn_mod    {0x8000000000000000};      // 2^63
+constexpr uint64_t prn_mask   {0x7fffffffffffffff};      // 2^63 - 1
+constexpr uint64_t prn_stride {152917LL};                // stride between
+                                                         //   particles
+constexpr double   prn_norm   {pow(2, -63)};             // 2^-63
 
 // Current PRNG state
 uint64_t prn_seed[N_STREAMS];  // current seed
@@ -84,19 +94,19 @@ future_seed(uint64_t n, uint64_t seed)
   // and C which can then be used to find x_N = G*x_0 + C mod 2^M.
 
   // Initialize constants
-  uint64_t g     = prn_mult;
-  uint64_t c     = prn_add;
-  uint64_t g_new = 1;
-  uint64_t c_new = 0;
+  uint64_t g     {prn_mult};
+  uint64_t c     {prn_add};
+  uint64_t g_new {1};
+  uint64_t c_new {0};
 
   while (n > 0) {
     // Check if the least significant bit is 1.
     if (n & 1) {
-      g_new = g_new * g;
+      g_new *= g;
       c_new = c_new * g + c;
     }
-    c = (g + 1) * c;
-    g = g * g;
+    c *= (g + 1);
+    g *= g;
 
     // Move bits right, dropping least significant bit.
     n >>= 1;

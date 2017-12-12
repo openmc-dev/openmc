@@ -4,6 +4,17 @@
 #include <cstdint>
 
 //==============================================================================
+// Module constants.
+//==============================================================================
+
+extern "C" const int N_STREAMS         = 5;
+extern "C" const int STREAM_TRACKING   = 0;
+extern "C" const int STREAM_TALLIES    = 1;
+extern "C" const int STREAM_SOURCE     = 2;
+extern "C" const int STREAM_URR_PTABLE = 3;
+extern "C" const int STREAM_VOLUME     = 4;
+
+//==============================================================================
 // PRN generates a pseudo-random number using a linear congruential generator.
 //==============================================================================
 
@@ -51,6 +62,6 @@ extern "C" void prn_set_stream(int n);
 //                               API FUNCTIONS
 //==============================================================================
 
-extern "C" int openmc_set_seed(uint64_t new_seed);
+extern "C" int openmc_set_seed(int64_t new_seed);
 
 #endif // RANDOM_LCG_H

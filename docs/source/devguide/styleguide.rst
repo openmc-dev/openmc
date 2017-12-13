@@ -18,7 +18,7 @@ Miscellaneous
 Conform to the Fortran 2008 standard.
 
 Make sure code can be compiled with most common compilers, especially gfortran
-and the Intel Fortran compiler. This supercedes the previous rule --- if a
+and the Intel Fortran compiler. This supersedes the previous rule --- if a
 Fortran 2003/2008 feature is not implemented in a common compiler, do not use
 it.
 
@@ -171,7 +171,8 @@ Miscellaneous
 -------------
 
 Follow the `C++ Core Guidelines`_ except when they conflict with another
-guideline listed here.
+guideline listed here. For convenience, many important guidelines from that
+list are repeated here.
 
 Conform to the C++11 standard.
 
@@ -203,7 +204,7 @@ enhance code readability or otherwise.
 
 Struct and class names should be CamelCase, e.g. ``HexLattice``.
 
-Functions (including member fuctions) should be lower-case with underscores,
+Functions (including member functions) should be lower-case with underscores,
 e.g. ``get_indices``.
 
 Local variables, global variables, and struct/class attributes should be
@@ -216,7 +217,7 @@ Curly braces
 ------------
 
 For a function definition, the opening and closing braces should each be on
-their own lines.  This helps distinguish function code from the arugment list.
+their own lines.  This helps distinguish function code from the argument list.
 If the entire function fits on one line, then the braces can be on the same
 line. e.g.:
 

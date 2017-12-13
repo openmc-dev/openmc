@@ -21,7 +21,7 @@ constexpr uint64_t prn_mod    {0x8000000000000000};      // 2^63
 constexpr uint64_t prn_mask   {0x7fffffffffffffff};      // 2^63 - 1
 constexpr uint64_t prn_stride {152917LL};                // stride between
                                                          //   particles
-constexpr double   prn_norm   {pow(2, -63)};             // 2^-63
+constexpr double   prn_norm   {1.0 / prn_mod};           // 2^-63
 
 // Current PRNG state
 uint64_t prn_seed[N_STREAMS];  // current seed
@@ -135,10 +135,11 @@ openmc_set_seed(int64_t new_seed)
 {
   seed = new_seed;
 #pragma omp parallel
-  for (int i = 0; i < N_STREAMS; i++) {
-    prn_seed[i] = seed + i;
+  {
+    for (int i = 0; i < N_STREAMS; i++) {
+      prn_seed[i] = seed + i;
+    }
+    prn_set_stream(STREAM_TRACKING);
   }
-  prn_set_stream(STREAM_TRACKING);
-#pragma end omp parallel
   return 0;
 }

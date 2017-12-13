@@ -8,28 +8,32 @@ In order to keep the OpenMC code base consistent in style, this guide specifies
 a number of rules which should be adhered to when modified existing code or
 adding new code in OpenMC.
 
----------------
-Fortran and C++
----------------
+-------
+Fortran
+-------
 
 Miscellaneous
 -------------
 
-Make sure code can be compiled with most common compilers, especially the GCC
-and Intel compilers. This supersedes the rules about standards---if a Fortran
-2003/2008 feature is not implemented in a common compiler then do not use it.
+Conform to the Fortran 2008 standard.
+
+Make sure code can be compiled with most common compilers, especially gfortran
+and the Intel Fortran compiler. This supercedes the previous rule --- if a
+Fortran 2003/2008 feature is not implemented in a common compiler, do not use
+it.
 
 Do not use special extensions that can be only be used from certain compilers.
 
 Always include comments to describe what your code is doing. Do not be afraid of
 using copious amounts of comments.
 
+Use <, >, <=, >=, ==, and /= rather than .lt., .gt., .le., .ge., .eq., and .ne.
+
 Try to keep code within 80 columns when possible.
 
-Don't use ``print *``, ``write(*,*)``, ``fprintf()``, or ``std::cout``. If
-writing to a file, use a specific unit. Writing to standard output or standard
-error should be handled by the ``write_message`` subroutine or functionality in
-the error module.
+Don't use ``print *`` or ``write(*,*)``. If writing to a file, use a specific
+unit. Writing to standard output or standard error should be handled by the
+``write_message`` subroutine or functionality in the error module.
 
 Naming
 ------
@@ -49,8 +53,8 @@ Local variables, global variables, and type attributes should be lower-case
 with underscores (e.g. ``n_cells``) except for physics symbols that are written
 differently by convention (e.g. ``E`` for energy).
 
-Constant (parameter or const) variables should be in upper-case with
-underscores, e.g. ``SQRT_PI``. These should usually be defined in the
+Constant (parameter) variables should be in upper-case with underscores, e.g.
+``SQRT_PI``. If they are used by more than one module, define them in the
 constants.F90 module.
 
 Procedures
@@ -68,16 +72,19 @@ Variables
 ---------
 
 Never, under any circumstances, should implicit variables be used! Always
-include ``implicit none`` in Fortran source code and define all your variables.
+include ``implicit none`` and define all your variables.
 
-32-bit reals (``real(4)`` and ``float``) should never be used. Always use 64-bit
-reals (``real(8)`` and ``double``).
+32-bit reals (real(4)) should never be used. Always use 64-bit reals (real(8)).
 
 For arbitrary length character variables, use the pre-defined lengths
 ``MAX_LINE_LEN``, ``MAX_WORD_LEN``, and ``MAX_FILE_LEN`` if possible.
 
+Do not use old-style character/array length (e.g. character*80, real*8).
+
 Integer values being used to indicate a certain state should be defined as named
 constants (see the constants.F90 module for many examples).
+
+Always use a double colon :: when declaring a variable.
 
 Yes:
 
@@ -101,6 +108,8 @@ Shared/Module Variables
 Always put shared variables in modules. Access module variables through a
 ``use`` statement. Always use the ``only`` specifier on the ``use`` statement
 except for variables from the global, constants, and various header modules.
+
+Never use ``equivalence`` statements, ``common`` blocks, or ``data`` statements.
 
 Indentation
 -----------
@@ -154,30 +163,19 @@ each side.
 
 Do not leave trailing whitespace at the end of a line.
 
-----------------
-Fortran-Specific
-----------------
-
-Conform to the Fortran 2008 standard.
-
-Use <, >, <=, >=, ==, and /= rather than .lt., .gt., .le., .ge., .eq., and .ne.
-
-Do not use old-style character/array length (e.g. character*80, real*8).
-
-Always use a double colon :: when declaring a variable.
-
-Never use ``equivalence`` statements, ``common`` blocks, or ``data`` statements.
-
-------------
-C++-Specific
-------------
+---
+C++
+---
 
 Miscellaneous
 -------------
 
+Follow the `C++ Core Guidelines`_ except when they conflict with another
+guideline listed here.
+
 Conform to the C++11 standard.
 
-Always use C++-style comments (``//``) as opposed to C-style (``/**/``).  (It
+Always use C++-style comments (``//``) as opposed to C-style (``/**/``). (It
 is more difficult to comment out a large section of code that uses C-style
 comments.)
 
@@ -197,23 +195,42 @@ Do not use using-directives e.g. ``using namespace foobar;``
 Do not use C-style casting. Always use the C++-style casts ``static_cast``,
 ``const_cast``, or ``reinterpret_cast``.
 
+Naming
+------
+
+In general, write your code in lower-case. Having code in all caps does not
+enhance code readability or otherwise.
+
+Struct and class names should be CamelCase, e.g. ``HexLattice``.
+
+Functions (including member fuctions) should be lower-case with underscores,
+e.g. ``get_indices``.
+
+Local variables, global variables, and struct/class attributes should be
+lower-case with underscores (e.g. ``n_cells``) except for physics symbols that
+are written differently by convention (e.g. ``E`` for energy).
+
+Const variables should be in upper-case with underscores, e.g. ``SQRT_PI``.
+
 Curly braces
 ------------
 
-For a function definition, the opening brace should be on the same line as the
-end of the function definition. The closing brace should be on its own line.
-If the entire function fits on one line, then the closing brace can be on the
-same line. e.g.:
+For a function definition, the opening and closing braces should each be on
+their own lines.  This helps distinguish function code from the arugment list.
+If the entire function fits on one line, then the braces can be on the same
+line. e.g.:
 
 .. code-block:: C++
 
-    return_type function(type1 arg1, type2 arg2) {
+    return_type function(type1 arg1, type2 arg2)
+    {
       content();
     }
 
     return_type
     function_with_many_args(type1 arg1, type2 arg2, type3 arg3,
-                            type4 arg4) {
+                            type4 arg4)
+    {
       content();
     }
 
@@ -272,6 +289,7 @@ Use of third-party Python packages should be limited to numpy_, scipy_, and
 h5py_. Use of other third-party packages must be implemented as optional
 dependencies rather than required dependencies.
 
+.. _C++ Core Guidelines: http://isocpp.github.io/CppCoreGuidelines/CppCoreGuidelines
 .. _PEP8: https://www.python.org/dev/peps/pep-0008/
 .. _numpydoc: https://github.com/numpy/numpy/blob/master/doc/HOWTO_DOCUMENT.rst.txt
 .. _numpy: http://www.numpy.org/

@@ -1,6 +1,6 @@
 #!/usr/bin/env python
 
-from collections.abc import Mapping
+from collections import Mapping
 import os
 
 import numpy as np

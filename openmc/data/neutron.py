@@ -465,6 +465,8 @@ class IncidentNeutron(EqualityMixin):
             return [mt]
         elif mt in SUM_RULES:
             mts = SUM_RULES[mt]
+        else:
+            return []
         complete = False
         while not complete:
             new_mts = []

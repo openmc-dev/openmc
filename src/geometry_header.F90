@@ -570,6 +570,23 @@ contains
   end function openmc_cell_set_fill
 
 
+  function openmc_cell_set_id(index, id) result(err) bind(C)
+    ! Set the ID of a cell
+    integer(C_INT32_T), value, intent(in) :: index
+    integer(C_INT32_T), value, intent(in) :: id
+    integer(C_INT) :: err
+
+    if (index >= 1 .and. index <= n_cells) then
+      cells(index) % id = id
+      call cell_dict % set(id, index)
+      err = 0
+    else
+      err = E_OUT_OF_BOUNDS
+      call set_errmsg("Index in cells array is out of bounds.")
+    end if
+  end function openmc_cell_set_id
+
+
   function openmc_cell_set_temperature(index, T, instance) result(err) bind(C)
     ! Set the temperature of a cell
     integer(C_INT32_T), value, intent(in)    :: index    ! index in cells

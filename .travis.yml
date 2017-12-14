@@ -26,32 +26,18 @@ env:
     - OPENMC_MULTIPOLE_LIBRARY=$HOME/multipole_lib
     - PATH=$PATH:$HOME/NJOY2016/build
   matrix:
-    - OPENMC_CONFIG="check_source"
     - OPENMC_CONFIG="^hdf5-debug$"
     - OPENMC_CONFIG="^omp-hdf5-debug$"
     - OPENMC_CONFIG="^mpi-hdf5-debug$"
     - OPENMC_CONFIG="^phdf5-debug$"
 
-# We aren't testing the check_source script so just run it with Python 3.
-matrix:
-  exclude:
-    - python: "2.7"
-      env: OPENMC_CONFIG="check_source"
-
 before_install:
-  - if [[ $OPENMC_CONFIG != "check_source" ]]; then
-      sudo add-apt-repository ppa:nschloe/hdf5-backports -y;
-      sudo apt-get update -q;
-      sudo apt-get install libhdf5-serial-dev libhdf5-mpich-dev -y;
-    fi
+  - sudo add-apt-repository ppa:nschloe/hdf5-backports -y
+  - sudo apt-get update -q
+  - sudo apt-get install libhdf5-serial-dev libhdf5-mpich-dev -y
 
 install:
-  - if [[ $OPENMC_CONFIG != "check_source" ]]; then
-      ./tools/ci/travis-install-njoy.sh
-      pip install numpy cython;
-      pip install --upgrade pytest;
-      pip install -e .[test];
-    fi
+  - ./tools/ci/travis-install.sh
 
 before_script:
   - ./tools/ci/travis-before-script.sh

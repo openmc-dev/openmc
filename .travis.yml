@@ -41,6 +41,7 @@ before_install:
 install:
   - if [[ $OPENMC_CONFIG != "check_source" ]]; then
       pip install numpy cython;
+      pip install --upgrade pytest;
       pip install -e .[test];
     fi
 

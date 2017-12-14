@@ -8,6 +8,7 @@ from numpy.ctypeslib import as_array
 
 from . import _dll
 from .error import _error_handler
+import openmc.capi
 
 
 class _Bank(Structure):
@@ -63,8 +64,8 @@ def find_cell(xyz):
 
     Returns
     -------
-    int
-        ID of the cell.
+    openmc.capi.Cell
+        Cell containing the point
     int
         If the cell at the given point is repeated in the geometry, this
         indicates which instance it is, i.e., 0 would be the first instance.
@@ -73,7 +74,7 @@ def find_cell(xyz):
     uid = c_int32()
     instance = c_int32()
     _dll.openmc_find((c_double*3)(*xyz), 1, uid, instance)
-    return uid.value, instance.value
+    return openmc.capi.cells[uid.value], instance.value
 
 
 def find_material(xyz):
@@ -86,14 +87,14 @@ def find_material(xyz):
 
     Returns
     -------
-    int or None
-        ID of the material or None is no material is found
+    openmc.capi.Material or None
+        Material containing the point, or None is no material is found
 
     """
     uid = c_int32()
     instance = c_int32()
     _dll.openmc_find((c_double*3)(*xyz), 2, uid, instance)
-    return uid.value if uid != 0 else None
+    return openmc.capi.materials[uid.value] if uid != 0 else None
 
 
 def hard_reset():

@@ -25,6 +25,9 @@ _dll.openmc_cell_set_fill.argtypes = [
     c_int32, c_int, c_int32, POINTER(c_int32)]
 _dll.openmc_cell_set_fill.restype = c_int
 _dll.openmc_cell_set_fill.errcheck = _error_handler
+_dll.openmc_cell_set_id.argtypes = [c_int32, c_int32]
+_dll.openmc_cell_set_id.restype = c_int
+_dll.openmc_cell_set_id.errcheck = _error_handler
 _dll.openmc_cell_set_temperature.argtypes = [
     c_int32, c_double, POINTER(c_int32)]
 _dll.openmc_cell_set_temperature.restype = c_int
@@ -89,6 +92,10 @@ class Cell(_FortranObjectWithID):
         cell_id = c_int32()
         _dll.openmc_cell_get_id(self._index, cell_id)
         return cell_id.value
+
+    @id.setter
+    def id(self, cell_id):
+        _dll.openmc_cell_set_id(self._index, cell_id)
 
     @property
     def fill(self):

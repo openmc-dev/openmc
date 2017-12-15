@@ -1,5 +1,7 @@
 module simulation_header
 
+  use, intrinsic :: ISO_C_BINDING
+
   use bank_header
   use constants
   use settings, only: gen_per_batch
@@ -33,8 +35,8 @@ module simulation_header
 
   ! Temporary k-effective values
   type(VectorReal) :: k_generation ! single-generation estimates of k
-  real(8) :: keff = ONE       ! average k over active batches
-  real(8) :: keff_std         ! standard deviation of average k
+  real(C_DOUBLE), bind(C) :: keff = ONE  ! average k over active batches
+  real(C_DOUBLE), bind(C) :: keff_std    ! standard deviation of average k
   real(8) :: k_col_abs = ZERO ! sum over batches of k_collision * k_absorption
   real(8) :: k_col_tra = ZERO ! sum over batches of k_collision * k_tracklength
   real(8) :: k_abs_tra = ZERO ! sum over batches of k_absorption * k_tracklength

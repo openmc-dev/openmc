@@ -92,12 +92,17 @@ def global_tallies():
     n = num_realizations()
 
     # Determine mean
-    mean = sum_ / n
+    if n > 0:
+        mean = sum_ / n
+    else:
+        mean = sum_.copy()
 
     # Determine standard deviation
     nonzero = np.abs(mean) > 0
-    stdev = np.zeros_like(mean)
-    stdev[nonzero] = np.sqrt((sum_sq[nonzero]/n - mean[nonzero]**2)/(n - 1))
+    stdev = np.empty_like(mean)
+    stdev.fill(np.inf)
+    if n > 1:
+        stdev[nonzero] = np.sqrt((sum_sq[nonzero]/n - mean[nonzero]**2)/(n - 1))
 
     return list(zip(mean, stdev))
 
@@ -265,7 +270,7 @@ class Tally(_FortranObjectWithID):
     def std_dev(self):
         results = self.results
         std_dev = np.empty(results.shape[:2])
-        std_dev.fill(np.nan)
+        std_dev.fill(np.inf)
 
         n = self.num_realizations
         if n > 1:

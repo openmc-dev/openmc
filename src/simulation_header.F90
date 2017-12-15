@@ -18,11 +18,12 @@ module simulation_header
   real(8) :: log_spacing ! spacing on logarithmic grid
 
   ! ============================================================================
-  ! EIGENVALUE SIMULATION VARIABLES
+  ! SIMULATION VARIABLES
 
   integer    :: current_batch     ! current batch
   integer    :: current_gen       ! current generation within a batch
   integer    :: total_gen     = 0 ! total number of generations simulated
+  logical(C_BOOL), bind(C) :: simulation_initialized = .false.
 
   ! ============================================================================
   ! TALLY PRECISION TRIGGER VARIABLES
@@ -32,6 +33,9 @@ module simulation_header
   integer(8) :: work         ! number of particles per processor
   integer(8), allocatable :: work_index(:) ! starting index in source bank for each process
   integer(8) :: current_work ! index in source bank of current history simulated
+
+  ! ============================================================================
+  ! K-EIGENVALUE SIMULATION VARIABLES
 
   ! Temporary k-effective values
   type(VectorReal) :: k_generation ! single-generation estimates of k

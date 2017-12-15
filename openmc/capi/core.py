@@ -7,7 +7,7 @@ import numpy as np
 from numpy.ctypeslib import as_array
 
 from . import _dll
-from .error import _error_handler
+from .error import _error_handler, AllocationError
 import openmc.capi
 
 
@@ -147,7 +147,7 @@ def iter_batches():
     """
     while True:
         # Run next batch
-        retval = _dll.openmc_next_batch()
+        retval = next_batch()
 
         # Provide opportunity for user to perform action between batches
         yield
@@ -181,7 +181,11 @@ def keff():
 
 def next_batch():
     """Run next batch."""
-    return _dll.openmc_next_batch()
+    retval = _dll.openmc_next_batch()
+    if retval == -3:
+        raise AllocationError('Simulation has not been initialized. You must call '
+                              'openmc.capi.simulation_init() first.')
+    return retval
 
 
 def plot_geometry():

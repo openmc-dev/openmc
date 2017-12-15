@@ -251,9 +251,26 @@ elseif(CMAKE_C_COMPILER_ID MATCHES Clang)
 
 endif()
 
+list(APPEND cxxflags -std=c++11 -O2)
+if(debug)
+  list(REMOVE_ITEM cxxflags -O2)
+  list(APPEND cxxflags -g -O0)
+endif()
+if(profile)
+  list(APPEND cxxflags -pg)
+endif()
+if(optimize)
+  list(REMOVE_ITEM cxxflags -O2)
+  list(APPEND cxxflags -O3)
+endif()
+if(openmp)
+  list(APPEND cxxflags -fopenmp)
+endif()
+
 # Show flags being used
 message(STATUS "Fortran flags: ${f90flags}")
 message(STATUS "C flags: ${cflags}")
+message(STATUS "C++ flags: ${cxxflags}")
 message(STATUS "Linker flags: ${ldflags}")
 
 #===============================================================================
@@ -312,7 +329,7 @@ endif()
 add_library(faddeeva STATIC src/faddeeva/Faddeeva.c)
 
 #===============================================================================
-# Build OpenMC executable
+# List source files.  Define the libopenmc and the OpenMC executable
 #===============================================================================
 
 set(program "openmc")
@@ -418,18 +435,36 @@ set(LIBOPENMC_FORTRAN_SRC
   src/tallies/trigger.F90
   src/tallies/trigger_header.F90
 )
-add_library(libopenmc SHARED ${LIBOPENMC_FORTRAN_SRC})
+set(LIBOPENMC_CXX_SRC
+  src/random_lcg.h
+  src/random_lcg.cpp)
+add_library(libopenmc SHARED ${LIBOPENMC_FORTRAN_SRC} ${LIBOPENMC_CXX_SRC})
 set_target_properties(libopenmc PROPERTIES OUTPUT_NAME openmc)
 add_executable(${program} src/main.F90)
+
+#===============================================================================
+# Add compiler/linker flags
+#===============================================================================
+
 set_property(TARGET ${program} libopenmc pugixml_fortran
   PROPERTY LINKER_LANGUAGE Fortran)
 
 target_include_directories(libopenmc PUBLIC ${HDF5_INCLUDE_DIRS})
 
-# set compile flags via target_compile_options
+# The executable and the faddeeva package use only one language.  They can be
+# set via target_compile_options which accepts a list.
 target_compile_options(${program} PUBLIC ${f90flags})
-target_compile_options(libopenmc PUBLIC ${f90flags})
 target_compile_options(faddeeva PRIVATE ${cflags})
+
+# The libopenmc library has both F90 and C++ so the compile flags must be set
+# file-by-file via set_source_file_properties.  The compile flags must first be
+# converted from lists to strings.
+string(REPLACE ";" " " f90flags "${f90flags}")
+string(REPLACE ";" " " cxxflags "${cxxflags}")
+set_source_files_properties(${LIBOPENMC_FORTRAN_SRC} PROPERTIES COMPILE_FLAGS
+                            ${f90flags})
+set_source_files_properties(${LIBOPENMC_CXX_SRC} PROPERTIES COMPILE_FLAGS
+                            ${cxxflags})
 
 # Add HDF5 library directories to link line with -L
 foreach(LIBDIR ${HDF5_LIBRARY_DIRS})
@@ -438,7 +473,8 @@ endforeach()
 
 # target_link_libraries treats any arguments starting with - but not -l as
 # linker flags. Thus, we can pass both linker flags and libraries together.
-target_link_libraries(libopenmc ${ldflags} ${HDF5_LIBRARIES} pugixml_fortran faddeeva)
+target_link_libraries(libopenmc ${ldflags} ${HDF5_LIBRARIES} pugixml_fortran
+                      faddeeva)
 target_link_libraries(${program} ${ldflags} libopenmc)
 
 #===============================================================================

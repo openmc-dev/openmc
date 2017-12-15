@@ -20,7 +20,7 @@ module initialize
   use message_passing
   use mgxs_data,       only: read_mgxs, create_macro_xs
   use output,          only: print_version, write_message, print_usage
-  use random_lcg,      only: openmc_set_seed, seed
+  use random_lcg,      only: openmc_set_seed
   use settings
 #ifdef _OPENMP
   use simulation_header, only: n_threads
@@ -84,7 +84,7 @@ contains
 
     ! Initialize random number generator -- if the user specifies a seed, it
     ! will be re-initialized later
-    err = openmc_set_seed(seed)
+    err = openmc_set_seed(DEFAULT_SEED)
 
     ! Read XML input files
     call read_input_xml()

@@ -1,5 +1,7 @@
 module constants
 
+  use, intrinsic :: ISO_C_BINDING
+
   implicit none
 
   ! ============================================================================
@@ -413,12 +415,13 @@ module constants
   ! ============================================================================
   ! RANDOM NUMBER STREAM CONSTANTS
 
-  integer, parameter :: N_STREAMS = 5
-  integer, parameter :: STREAM_TRACKING   = 1
-  integer, parameter :: STREAM_TALLIES    = 2
-  integer, parameter :: STREAM_SOURCE     = 3
-  integer, parameter :: STREAM_URR_PTABLE = 4
-  integer, parameter :: STREAM_VOLUME     = 5
+  integer(C_INT), bind(C, name='N_STREAMS') :: N_STREAMS
+  integer(C_INT), bind(C, name='STREAM_TRACKING') :: STREAM_TRACKING
+  integer(C_INT), bind(C, name='STREAM_TALLIES') :: STREAM_TALLIES
+  integer(C_INT), bind(C, name='STREAM_SOURCE') :: STREAM_SOURCE
+  integer(C_INT), bind(C, name='STREAM_URR_PTABLE') :: STREAM_URR_PTABLE
+  integer(C_INT), bind(C, name='STREAM_VOLUME') :: STREAM_VOLUME
+  integer(C_INT64_T), parameter :: DEFAULT_SEED = 1_8
 
   ! ============================================================================
   ! MISCELLANEOUS CONSTANTS

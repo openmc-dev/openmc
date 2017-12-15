@@ -4215,11 +4215,16 @@ contains
     rev_energy_bins = energy_bins
     energy_bins = energy_bins(num_energy_groups + 1:1:-1)
 
+    ! Get the midpoint of the energy groups
     allocate(energy_bin_avg(num_energy_groups))
     do i = 1, num_energy_groups
       energy_bin_avg(i) = HALF * (energy_bins(i) + energy_bins(i + 1))
     end do
 
+    ! Get the minimum and maximum energies
+    energy_min_neutron = energy_bins(num_energy_groups + 1)
+    energy_max_neutron = energy_bins(1)
+    
     ! Get the datasets present in the library
     call get_groups(file_id, names)
     n_libraries = size(names)

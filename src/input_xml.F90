@@ -4224,7 +4224,7 @@ contains
     ! Get the minimum and maximum energies
     energy_min_neutron = energy_bins(num_energy_groups + 1)
     energy_max_neutron = energy_bins(1)
-    
+
     ! Get the datasets present in the library
     call get_groups(file_id, names)
     n_libraries = size(names)

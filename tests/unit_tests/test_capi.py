@@ -206,17 +206,20 @@ def test_source_bank(capi_run):
     assert np.all(source['wgt'] == 1.0)
 
 
-def test_keff(capi_run):
-    mean, std_dev = openmc.capi.keff()
-    assert 0.0 < mean < 2.5
-    assert std_dev > 0.0
-
-
 def test_by_batch(capi_run):
     openmc.capi.hard_reset()
+
+    # Running next batch before simulation is initialized should raise an
+    # exception
+    with pytest.raises(openmc.capi.AllocationError):
+        openmc.capi.next_batch()
+
     openmc.capi.simulation_init()
     for _ in openmc.capi.iter_batches():
-        pass
+        # Make sure we can get k-effective during inactive/active batches
+        mean, std_dev = openmc.capi.keff()
+        assert 0.0 < mean < 2.5
+        assert std_dev > 0.0
     assert openmc.capi.num_realizations() == 5
 
     for i in range(3):

@@ -73,6 +73,12 @@ contains
     type(Particle) :: p
     integer(8)     :: i_work
 
+    ! Make sure simulation has been initialized
+    if (.not. simulation_initialized) then
+      retval = -3
+      return
+    end if
+
     call initialize_batch()
 
     ! Handle restart runs
@@ -396,6 +402,9 @@ contains
 
   subroutine openmc_simulation_init() bind(C)
 
+    ! Skip if simulation has already been initialized
+    if (simulation_initialized) return
+
     ! Set up tally procedure pointers
     call init_tally_routines()
 
@@ -438,6 +447,9 @@ contains
     ! Reset current batch
     current_batch = 0
 
+    ! Set flag indicating initialization is done
+    simulation_initialized = .true.
+
   end subroutine openmc_simulation_init
 
 !===============================================================================
@@ -454,6 +466,9 @@ contains
     integer(8) :: temp
     real(8)    :: tempr(3) ! temporary array for communication
 #endif
+
+    ! Skip if simulation was never run
+    if (.not. simulation_initialized) return
 
     ! Stop active batch timer
     call time_active % stop()
@@ -510,6 +525,9 @@ contains
       if (verbosity >= 4) call print_results()
       if (check_overlaps) call print_overlap_check()
     end if
+
+    ! Reset initialization flag
+    simulation_initialized = .false.
 
   end subroutine openmc_simulation_finalize
 

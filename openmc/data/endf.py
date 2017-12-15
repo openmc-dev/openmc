@@ -288,7 +288,7 @@ class Evaluation(object):
     Attributes
     ----------
     info : dict
-        Miscallaneous information about the evaluation.
+        Miscellaneous information about the evaluation.
     target : dict
         Information about the target material, such as its mass, isomeric state,
         whether it's stable, and whether it's fissionable.

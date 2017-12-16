@@ -861,10 +861,9 @@ contains
         call get_node_value(node_base, "generations_per_batch", gen_per_batch)
       end if
 
-      ! Allocate array for batch keff and entropy
-      allocate(k_generation(n_max_batches*gen_per_batch))
-      allocate(entropy(n_max_batches*gen_per_batch))
-      entropy = ZERO
+      ! Preallocate space for keff and entropy by generation
+      call k_generation % reserve(n_max_batches*gen_per_batch)
+      call entropy % reserve(n_max_batches*gen_per_batch)
 
       ! Get the trigger information for keff
       if (check_for_node(node_base, "keff_trigger")) then
@@ -1921,10 +1920,7 @@ contains
     type(XMLDocument)       :: doc
     type(XMLNode)           :: root
 
-    ! Display output message
-    call write_message("Reading materials XML file...", 5)
-
-    ! Check is materials.xml exists
+    ! Check if materials.xml exists
     filename = trim(path_input) // "materials.xml"
     inquire(FILE=filename, EXIST=file_exists)
     if (.not. file_exists) then
@@ -2058,7 +2054,10 @@ contains
     type(XMLNode), allocatable :: node_macro_list(:)
     type(XMLNode), allocatable :: node_sab_list(:)
 
-    ! Check is materials.xml exists
+    ! Display output message
+    call write_message("Reading materials XML file...", 5)
+
+    ! Check if materials.xml exists
     filename = trim(path_input) // "materials.xml"
     inquire(FILE=filename, EXIST=file_exists)
     if (.not. file_exists) then

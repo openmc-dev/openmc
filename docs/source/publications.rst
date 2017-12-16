@@ -10,7 +10,7 @@ Overviews
 
 - Paul K. Romano, Nicholas E. Horelik, Bryan R. Herman, Adam G. Nelson, Benoit
   Forget, and Kord Smith, "`OpenMC: A State-of-the-Art Monte Carlo Code for
-  Research and Development <http://dx.doi.org/10.1016/j.anucene.2014.07.048>`_,"
+  Research and Development <https://doi.org/10.1016/j.anucene.2014.07.048>`_,"
   *Ann. Nucl. Energy*, **82**, 90--97 (2015).
 
 - Paul K. Romano, Bryan R. Herman, Nicholas E. Horelik, Benoit Forget, Kord
@@ -19,16 +19,19 @@ Overviews
   Nuclear Science and Engineering*, Sun Valley, Idaho, May 5--9 (2013).
 
 - Paul K. Romano and Benoit Forget, "`The OpenMC Monte Carlo Particle Transport
-  Code <http://dx.doi.org/10.1016/j.anucene.2012.06.040>`_,"
+  Code <https://doi.org/10.1016/j.anucene.2012.06.040>`_,"
   *Ann. Nucl. Energy*, **51**, 274--281 (2013).
 
 ------------
 Benchmarking
 ------------
 
+- Travis J. Labossiere-Hickman and Benoit Forget, "Selected VERA Core Physics
+  Benchmarks in OpenMC," *Trans. Am. Nucl. Soc.*, **117**, 1520-1523 (2017).
+
 - Khurrum S. Chaudri and Sikander M. Mirza, "`Burnup dependent Monte Carlo
   neutron physics calculations of IAEA MTR benchmark
-  <http://dx.doi.org/10.1016/j.pnucene.2014.12.018>`_," *Prog. Nucl. Energy*,
+  <https://doi.org/10.1016/j.pnucene.2014.12.018>`_," *Prog. Nucl. Energy*,
   **81**, 43-52 (2015).
 
 - Daniel J. Kelly, Brian N. Aviles, Paul K. Romano, Bryan R. Herman,
@@ -54,10 +57,15 @@ Benchmarking
 Coupling and Multi-physics
 --------------------------
 
+- Tianliang Hu, Liangzhu Cao, Hongchun Wu, Xianan Du, and Mingtao He, "`Coupled
+  neutrons and thermal-hydraulics simulation of molten salt reactors based on
+  OpenMC/TANSY <https://doi.org/10.1016/j.anucene.2017.05.002>`_,"
+  *Ann. Nucl. Energy*, **109**, 260-276 (2017).
+
 - Matthew Ellis, Derek Gaston, Benoit Forget, and Kord Smith, "`Preliminary
   Coupling of the Monte Carlo Code OpenMC and the Multiphysics Object-Oriented
   Simulation Environment for Analyzing Doppler Feedback in Monte Carlo
-  Simulations <http://dx.doi.org/10.13182/NSE16-26>`_," *Nucl. Sci. Eng.*,
+  Simulations <https://doi.org/10.13182/NSE16-26>`_," *Nucl. Sci. Eng.*,
   **185**, 184-193 (2017).
 
 - Matthew Ellis, Benoit Forget, Kord Smith, and Derek Gaston, "Continuous
@@ -79,7 +87,7 @@ Coupling and Multi-physics
 
 - Bryan R. Herman, Benoit Forget, and Kord Smith, "`Progress toward Monte
   Carlo-thermal hydraulic coupling using low-order nonlinear diffusion
-  acceleration methods <http://dx.doi.org/10.1016/j.anucene.2014.10.029>`_,"
+  acceleration methods <https://doi.org/10.1016/j.anucene.2014.10.029>`_,"
   *Ann. Nucl. Energy*, **84**, 63-72 (2015).
 
 - Bryan R. Herman, Benoit Forget, and Kord Smith, "Utilizing CMFD in OpenMC to
@@ -106,6 +114,15 @@ Geometry and Visualization
 Miscellaneous
 -------------
 
+- Adam G. Nelson, Samuel Shaner, William Boyd, and Paul K. Romano,
+  "Incorporation of a Multigroup Transport Capability in the OpenMC Monte Carlo
+  Particle Transport Code," *Trans. Am. Nucl. Soc.*, **117**, 679-681 (2017).
+
+- Youqi Zheng, Yunlong Xiao, and Hongchun Wu, "`Application of the virtual
+  density theory in fast reactor analysis based on the neutron transport
+  calculation <https://doi.org/10.1016/j.nucengdes.2017.05.020>`_,"
+  *Nucl. Eng. Des.*, **320**, 200-206 (2017).
+
 - Amanda L. Lund, Paul K. Romano, and Andrew R. Siegel, "Accelerating Source
   Convergence in Monte Carlo Criticality Calculations Using a Particle Ramp-Up
   Technique," *Proc. Int. Conf. Mathematics & Computational Methods Applied to
@@ -126,7 +143,7 @@ Miscellaneous
 
 - Yunzhao Li, Qingming He, Liangzhi Cao, Hongchun Wu, and Tiejun Zu, "`Resonance
   Elastic Scattering and Interference Effects Treatments in Subgroup Method
-  <http://dx.doi.org/10.1016/j.net.2015.12.015>`_," *Nucl. Eng. Tech.*, **48**,
+  <https://doi.org/10.1016/j.net.2015.12.015>`_," *Nucl. Eng. Tech.*, **48**,
   339-350 (2016).
 
 - William Boyd, Sterling Harper, and Paul K. Romano, "Equipping OpenMC for the
@@ -135,7 +152,7 @@ Miscellaneous
 - Michal Kostal, Vojtech Rypar, Jan Milcak, Vlastimil Juricek, Evzen Losa,
   Benoit Forget, and Sterling Harper, "`Study of graphite reactivity worth on
   well-defined cores assembled on LR-0 reactor
-  <http://dx.doi.org/10.1016/j.anucene.2015.10.010>`_," *Ann. Nucl. Energy*,
+  <https://doi.org/10.1016/j.anucene.2015.10.010>`_," *Ann. Nucl. Energy*,
   **87**, 601-611 (2016).
 
 - Qicang Shen, William Boyd, Benoit Forget, and Kord Smith, "Tally precision
@@ -154,9 +171,25 @@ Miscellaneous
 Multi-group Cross Section Generation
 ------------------------------------
 
+- Zhaoyuan Liu, Kord Smith, Benoit Forget, and Javier Ortensi, "`Cumulative
+  migration method for computing rigorous diffusion coefficients and transport
+  cross sections from Monte Carlo
+  <https://doi.org/10.1016/j.anucene.2017.10.039>`_," *Ann. Nucl. Energy*,
+  **112**, 507-516 (2018).
+
+- Gang Yang, Tongkyu Park, and Won Sik Yang, "Effects of Fuel Salt Velocity
+  Field on Neutronics Performances in Molten Salt Reactors with Open Flow
+  Channels," *Trans. Am. Nucl. Soc.*, **117**, 1339-1342 (2017).
+
+- William Boyd, Nathan Gibson, Benoit Forget, and Kord Smith, "`An analysis of
+  condensation errors in multi-group cross section generation for fine-mesh
+  neutron transport calculations
+  <https://doi.org/10.1016/j.anucene.2017.09.052>`_," *Ann. Nucl. Energy*,
+  **112**, 267-276 (2018).
+
 - Hong Shuang, Yang Yongwei, Zhang Lu, and Gao Yucui, "`Fabrication and
   validation of multigroup cross section library based on the OpenMC code
-  <http://dx.doi.org/10.11889/j.0253-3219.2017.hjs.40.040502>`_,"
+  <https://doi.org/10.11889/j.0253-3219.2017.hjs.40.040502>`_,"
   *Nucl. Techniques* **40** (4), 040504 (2017). (in Mandarin)
 
 - Nicholas E. Stauff, Changho Lee, Paul K. Romano, and Taek K. Kim,
@@ -207,7 +240,7 @@ Doppler Broadening
 
 - Colin Josey, Pablo Ducru, Benoit Forget, and Kord Smith, "`Windowed multipole
   for cross section Doppler broadening
-  <http://dx.doi.org/10.1016/j.jcp.2015.08.013>`_," *J. Comput. Phys.*, **307**,
+  <https://doi.org/10.1016/j.jcp.2015.08.013>`_," *J. Comput. Phys.*, **307**,
   715-727 (2016).
 
 - Jonathan A. Walsh, Benoit Forget, Kord S. Smith, and Forrest B. Brown,
@@ -217,12 +250,12 @@ Doppler Broadening
 
 - Colin Josey, Benoit Forget, and Kord Smith, "`Windowed multipole sensitivity
   to target accuracy of the optimization procedure
-  <http://dx.doi.org/10.1080/00223131.2015.1035353>`_,"
+  <https://doi.org/10.1080/00223131.2015.1035353>`_,"
   *J. Nucl. Sci. Technol.*, **52**, 987-992 (2015).
 
 - Paul K. Romano and Timothy H. Trumbull, "`Comparison of algorithms for Doppler
   broadening pointwise tabulated cross sections
-  <http://dx.doi.org/10.1016/j.anucene.2014.08.046>`_," *Ann. Nucl. Energy*,
+  <https://doi.org/10.1016/j.anucene.2014.08.046>`_," *Ann. Nucl. Energy*,
   **75**, 358--364 (2015).
 
 - Tuomas Viitanen, Jaakko Leppanen, and Benoit Forget, "Target motion sampling
@@ -231,12 +264,16 @@ Doppler Broadening
 
 - Benoit Forget, Sheng Xu, and Kord Smith, "`Direct Doppler broadening in Monte
   Carlo simulations using the multipole representation
-  <http://dx.doi.org/10.1016/j.anucene.2013.09.043>`_," *Ann. Nucl. Energy*,
+  <https://doi.org/10.1016/j.anucene.2013.09.043>`_," *Ann. Nucl. Energy*,
   **64**, 78--85 (2014).
 
 ------------
 Nuclear Data
 ------------
+
+- Jonathan A. Walsh, "Comparison of Unresolved Resonance Region Cross Section
+  Formalisms in Transport Simulations," *Trans. Am. Nucl. Soc.*, **117**,
+  749-752 (2017).
 
 - Jonathan A. Walsh, Benoit Forget, Kord S. Smith, and Forrest B. Brown,
   "`Uncertainty in Fast Reactor-Relevant Critical Benchmark Simulations Due to
@@ -255,13 +292,13 @@ Nuclear Data
 - Jonathan A. Walsh, Benoit Froget, Kord S. Smith, and Forrest B. Brown,
   "`Neutron Cross Section Processing Methods for Improved Integral Benchmarking
   of Unresolved Resonance Region Evaluations
-  <http://dx.doi.org/10.1051/epjconf/201611106001>`_," *Eur. Phys. J. Web Conf.*
+  <https://doi.org/10.1051/epjconf/201611106001>`_," *Eur. Phys. J. Web Conf.*
   **111**, 06001 (2016).
 
 - Jonathan A. Walsh, Paul K. Romano, Benoit Forget, and Kord S. Smith,
   "`Optimizations of the energy grid search algorithm in continuous-energy Monte
   Carlo particle transport codes
-  <http://dx.doi.org/10.1016/j.cpc.2015.05.025>`_", *Comput. Phys. Commun.*,
+  <https://doi.org/10.1016/j.cpc.2015.05.025>`_", *Comput. Phys. Commun.*,
   **196**, 134-142 (2015).
 
 - Jonathan A. Walsh, Benoit Forget, Kord S. Smith, Brian C. Kiedrowski, and
@@ -280,7 +317,7 @@ Nuclear Data
 
 - Jonathan A. Walsh, Benoit Forget, and Kord S. Smith, "`Accelerated sampling of
   the free gas resonance elastic scattering kernel
-  <http://dx.doi.org/10.1016/j.anucene.2014.01.017>`_," *Ann. Nucl. Energy*,
+  <https://doi.org/10.1016/j.anucene.2014.01.017>`_," *Ann. Nucl. Energy*,
   **69**, 116--124 (2014).
 
 -----------
@@ -325,45 +362,45 @@ Parallelism
 
 - Nicholas Horelik, Andrew Siegel, Benoit Forget, and Kord Smith, "`Monte Carlo
   domain decomposition for robust nuclear reactor analysis
-  <http://dx.doi.org/10.1016/j.parco.2014.10.001>`_," *Parallel Comput.*,
+  <https://doi.org/10.1016/j.parco.2014.10.001>`_," *Parallel Comput.*,
   **40**, 646--660 (2014).
 
 - Andrew Siegel, Kord Smith, Kyle Felker, Paul Romano, Benoit Forget, and Peter
   Beckman, "`Improved cache performance in Monte Carlo transport calculations
-  using energy banding <http://dx.doi.org/10.1016/j.cpc.2013.10.008>`_,"
+  using energy banding <https://doi.org/10.1016/j.cpc.2013.10.008>`_,"
   *Comput. Phys. Commun.*, **185** (4), 1195--1199 (2014).
 
 - Paul K. Romano, Benoit Forget, Kord Smith, and Andrew Siegel, "`On the use of
   tally servers in Monte Carlo simulations of light-water reactors
-  <http://dx.doi.org/10.1051/snamc/201404301>`_," *Proc. Joint International
+  <https://doi.org/10.1051/snamc/201404301>`_," *Proc. Joint International
   Conference on Supercomputing in Nuclear Applications and Monte Carlo*, Paris,
   France, Oct. 27--31 (2013).
 
 - Kyle G. Felker, Andrew R. Siegel, Kord S. Smith, Paul K. Romano, and Benoit
   Forget, "`The energy band memory server algorithm for parallel Monte Carlo
-  calculations <http://dx.doi.org/10.1051/snamc/201404207>`_," *Proc. Joint
+  calculations <https://doi.org/10.1051/snamc/201404207>`_," *Proc. Joint
   International Conference on Supercomputing in Nuclear Applications and Monte
   Carlo*, Paris, France, Oct. 27--31 (2013).
 
 - John R. Tramm and Andrew R. Siegel, "`Memory Bottlenecks and Memory Contention
   in Multi-Core Monte Carlo Transport Codes
-  <http://dx.doi.org/10.1051/snamc/201404208>`_," *Proc. Joint International
+  <https://doi.org/10.1051/snamc/201404208>`_," *Proc. Joint International
   Conference on Supercomputing in Nuclear Applications and Monte Carlo*, Paris,
   France, Oct. 27--31 (2013).
 
 - Andrew R. Siegel, Kord Smith, Paul K. Romano, Benoit Forget, and Kyle Felker,
   "`Multi-core performance studies of a Monte Carlo neutron transport code
-  <http://dx.doi.org/10.1177/1094342013492179>`_," *Int. J. High
+  <https://doi.org/10.1177/1094342013492179>`_," *Int. J. High
   Perform. Comput. Appl.*, **28** (1), 87--96 (2014).
 
 - Paul K. Romano, Andrew R. Siegel, Benoit Forget, and Kord Smith, "`Data
   decomposition of Monte Carlo particle transport simulations via tally servers
-  <http://dx.doi.org/10.1016/j.jcp.2013.06.011>`_," *J. Comput. Phys.*, **252**,
+  <https://doi.org/10.1016/j.jcp.2013.06.011>`_," *J. Comput. Phys.*, **252**,
   20--36 (2013).
 
 - Andrew R. Siegel, Kord Smith, Paul K. Romano, Benoit Forget, and Kyle Felker,
   "`The effect of load imbalances on the performance of Monte Carlo codes in LWR
-  analysis <http://dx.doi.org/10.1016/j.jcp.2012.06.012>`_," *J. Comput. Phys.*,
+  analysis <https://doi.org/10.1016/j.jcp.2012.06.012>`_," *J. Comput. Phys.*,
   **235**, 901--911 (2013).
 
 
@@ -372,12 +409,17 @@ Parallelism
   519--522 (2012).
 
 - Paul K. Romano and Benoit Forget, "`Parallel Fission Bank Algorithms in Monte
-  Carlo Criticality Calculations <http://dx.doi.org/10.13182/NSE10-98>`_,"
+  Carlo Criticality Calculations <https://doi.org/10.13182/NSE10-98>`_,"
   *Nucl. Sci. Eng.*, **170**, 125--135 (2012).
 
 ---------
 Depletion
 ---------
+
+- Colin Josey, Benoit Forget, and Kord Smith, "`High order methods for the
+  integration of the Bateman equations and other problems of the form of y' =
+  F(y,t)y <https://doi.org/10.1016/j.jcp.2017.08.025>`_," *J. Comput. Phys.*,
+  **350**, 296-313 (2017).
 
 - Matthew S. Ellis, Colin Josey, Benoit Forget, and Kord Smith, "`Spatially
   Continuous Depletion Algorithm for Monte Carlo Simulations
@@ -386,7 +428,7 @@ Depletion
 
 - Anas Gul, K. S. Chaudri, R. Khan, and M. Azeen, "`Development and verification
   of LOOP: A Linkage of ORIGEN2.2 and OpenMC
-  <http://dx.doi.org/10.1016/j.anucene.2016.09.016>`_," *Ann. Nucl. Energy*,
+  <https://doi.org/10.1016/j.anucene.2016.09.016>`_," *Ann. Nucl. Energy*,
   **99**, 321--327 (2017).
 
 - Kai Huang, Hongchun Wu, Yunzhao Li, and Liangzhi Cao, "Generalized depletion

@@ -306,7 +306,8 @@ module constants
        EVENT_SCATTER =  1, &
        EVENT_ABSORB  =  2
 
-  ! Tally score type
+  ! Tally score type -- if you change these, make sure you also update the
+  ! _SCORES dictionary in openmc/capi/tally.py
   integer, parameter :: N_SCORE_TYPES = 24
   integer, parameter :: &
        SCORE_FLUX               = -1,  & ! flux

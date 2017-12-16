@@ -2,6 +2,8 @@ module bank_header
 
   use, intrinsic :: ISO_C_BINDING
 
+  use error, only: E_ALLOCATE, set_errmsg
+
   implicit none
 
 !===============================================================================
@@ -47,5 +49,25 @@ contains
     if (allocated(source_bank)) deallocate(source_bank)
 
   end subroutine free_memory_bank
+
+!===============================================================================
+!                               C API FUNCTIONS
+!===============================================================================
+
+  function openmc_source_bank(ptr, n) result(err) bind(C)
+    ! Return a pointer to the source bank
+    type(C_PTR), intent(out) :: ptr
+    integer(C_INT64_T), intent(out) :: n
+    integer(C_INT) :: err
+
+    if (.not. allocated(source_bank)) then
+      err = E_ALLOCATE
+      call set_errmsg("Source bank has not been allocated.")
+    else
+      err = 0
+      ptr = C_LOC(source_bank)
+      n = size(source_bank)
+    end if
+  end function openmc_source_bank
 
 end module bank_header

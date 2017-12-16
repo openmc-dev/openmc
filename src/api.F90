@@ -36,10 +36,12 @@ module openmc_api
   public :: openmc_cell_get_id
   public :: openmc_cell_get_fill
   public :: openmc_cell_set_fill
+  public :: openmc_cell_set_id
   public :: openmc_cell_set_temperature
   public :: openmc_energy_filter_get_bins
   public :: openmc_energy_filter_set_bins
   public :: openmc_extend_filters
+  public :: openmc_extend_cells
   public :: openmc_extend_materials
   public :: openmc_extend_tallies
   public :: openmc_filter_get_id
@@ -74,6 +76,7 @@ module openmc_api
   public :: openmc_tally_get_id
   public :: openmc_tally_get_filters
   public :: openmc_tally_get_nuclides
+  public :: openmc_tally_get_scores
   public :: openmc_tally_results
   public :: openmc_tally_set_filters
   public :: openmc_tally_set_id

@@ -22,9 +22,11 @@ module tally_header
   public :: free_memory_tally
   public :: openmc_extend_tallies
   public :: openmc_get_tally_index
+  public :: openmc_global_tallies
   public :: openmc_tally_get_id
   public :: openmc_tally_get_filters
   public :: openmc_tally_get_nuclides
+  public :: openmc_tally_get_scores
   public :: openmc_tally_results
   public :: openmc_tally_set_filters
   public :: openmc_tally_set_id
@@ -145,7 +147,7 @@ module tally_header
   type(VectorInt), public :: active_surface_tallies
 
   ! Normalization for statistics
-  integer, public :: n_realizations = 0 ! # of independent realizations
+  integer(C_INT32_T), public, bind(C) :: n_realizations = 0 ! # of independent realizations
   real(8), public :: total_weight       ! total starting particle weight in realization
 
 contains
@@ -469,6 +471,20 @@ contains
   end function openmc_get_tally_index
 
 
+  function openmc_global_tallies(ptr) result(err) bind(C)
+    type(C_PTR), intent(out) :: ptr
+    integer(C_INT) :: err
+
+    if (.not. allocated(global_tallies)) then
+      err = E_ALLOCATE
+      call set_errmsg("Global tallies have not been allocated yet.")
+    else
+      err = 0
+      ptr = C_LOC(global_tallies)
+    end if
+  end function openmc_global_tallies
+
+
   function openmc_tally_get_id(index, id) result(err) bind(C)
     ! Return the ID of a tally
     integer(C_INT32_T), value       :: index
@@ -510,6 +526,22 @@ contains
   end function openmc_tally_get_filters
 
 
+  function openmc_tally_get_n_realizations(index, n) result(err) bind(C)
+    ! Return the number of realizations for a tally
+    integer(C_INT32_T), value       :: index
+    integer(C_INT32_T), intent(out) :: n
+    integer(C_INT) :: err
+
+    if (index >= 1 .and. index <= size(tallies)) then
+      n = tallies(index) % obj % n_realizations
+      err = 0
+    else
+      err = E_OUT_OF_BOUNDS
+      call set_errmsg('Index in tallies array is out of bounds.')
+    end if
+  end function openmc_tally_get_n_realizations
+
+
   function openmc_tally_get_nuclides(index, nuclides, n) result(err) bind(C)
     ! Return the list of nuclides assigned to a tally
     integer(C_INT32_T), value :: index
@@ -533,6 +565,31 @@ contains
       call set_errmsg('Index in tallies array is out of bounds.')
     end if
   end function openmc_tally_get_nuclides
+
+
+  function openmc_tally_get_scores(index, scores, n) result(err) bind(C)
+    ! Return the list of nuclides assigned to a tally
+    integer(C_INT32_T), value :: index
+    type(C_PTR), intent(out) :: scores
+    integer(C_INT), intent(out) :: n
+    integer(C_INT) :: err
+
+    if (index >= 1 .and. index <= size(tallies)) then
+      associate (t => tallies(index) % obj)
+        if (allocated(t % score_bins)) then
+          scores = C_LOC(t % score_bins(1))
+          n = size(t % score_bins)
+          err = 0
+        else
+          err = E_ALLOCATE
+          call set_errmsg("Tally scores have not been allocated yet.")
+        end if
+      end associate
+    else
+      err = E_OUT_OF_BOUNDS
+      call set_errmsg('Index in tallies array is out of bounds.')
+    end if
+  end function openmc_tally_get_scores
 
 
   function openmc_tally_results(index, ptr, shape_) result(err) bind(C)

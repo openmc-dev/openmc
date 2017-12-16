@@ -1,8 +1,11 @@
 module simulation_header
 
+  use, intrinsic :: ISO_C_BINDING
+
   use bank_header
   use constants
   use settings, only: gen_per_batch
+  use stl_vector, only: VectorReal
 
   implicit none
 
@@ -15,11 +18,12 @@ module simulation_header
   real(8) :: log_spacing ! spacing on logarithmic grid
 
   ! ============================================================================
-  ! EIGENVALUE SIMULATION VARIABLES
+  ! SIMULATION VARIABLES
 
   integer    :: current_batch     ! current batch
   integer    :: current_gen       ! current generation within a batch
   integer    :: total_gen     = 0 ! total number of generations simulated
+  logical(C_BOOL), bind(C) :: simulation_initialized = .false.
 
   ! ============================================================================
   ! TALLY PRECISION TRIGGER VARIABLES
@@ -30,16 +34,19 @@ module simulation_header
   integer(8), allocatable :: work_index(:) ! starting index in source bank for each process
   integer(8) :: current_work ! index in source bank of current history simulated
 
+  ! ============================================================================
+  ! K-EIGENVALUE SIMULATION VARIABLES
+
   ! Temporary k-effective values
-  real(8), allocatable :: k_generation(:) ! single-generation estimates of k
-  real(8) :: keff = ONE       ! average k over active batches
-  real(8) :: keff_std         ! standard deviation of average k
+  type(VectorReal) :: k_generation ! single-generation estimates of k
+  real(C_DOUBLE), bind(C) :: keff = ONE  ! average k over active batches
+  real(C_DOUBLE), bind(C) :: keff_std    ! standard deviation of average k
   real(8) :: k_col_abs = ZERO ! sum over batches of k_collision * k_absorption
   real(8) :: k_col_tra = ZERO ! sum over batches of k_collision * k_tracklength
   real(8) :: k_abs_tra = ZERO ! sum over batches of k_absorption * k_tracklength
 
   ! Shannon entropy
-  real(8), allocatable :: entropy(:)     ! shannon entropy at each generation
+  type(VectorReal)     :: entropy        ! shannon entropy at each generation
   real(8), allocatable :: entropy_p(:,:) ! % of source sites in each cell
 
   ! Uniform fission source weighting
@@ -85,11 +92,14 @@ contains
 
   subroutine free_memory_simulation()
     if (allocated(overlap_check_cnt)) deallocate(overlap_check_cnt)
-    if (allocated(k_generation)) deallocate(k_generation)
-    if (allocated(entropy)) deallocate(entropy)
     if (allocated(entropy_p)) deallocate(entropy_p)
     if (allocated(source_frac)) deallocate(source_frac)
     if (allocated(work_index)) deallocate(work_index)
+
+    call k_generation % clear()
+    call k_generation % shrink_to_fit()
+    call entropy % clear()
+    call entropy % shrink_to_fit()
   end subroutine free_memory_simulation
 
 end module simulation_header

@@ -553,14 +553,16 @@ class Universe(IDManagerMixin):
 
         for cell in self.cells.values():
             cell_path = '{}->c{}'.format(univ_path, cell.id)
+            fill = cell._fill
+            fill_type = cell.fill_type
 
             # If universe-filled, recursively count cells in filling universe
-            if cell.fill_type == 'universe':
-                cell.fill._determine_paths(cell_path + '->', instances_only)
+            if fill_type == 'universe':
+                fill._determine_paths(cell_path + '->', instances_only)
 
             # If lattice-filled, recursively call for all universes in lattice
-            elif cell.fill_type == 'lattice':
-                latt = cell.fill
+            elif fill_type == 'lattice':
+                latt = fill
 
                 # Count instances in each universe in the lattice
                 for index in latt._natural_indices:
@@ -570,10 +572,10 @@ class Universe(IDManagerMixin):
                     univ._determine_paths(latt_path, instances_only)
 
             else:
-                if cell.fill_type == 'material':
-                    mat = cell.fill
-                elif cell.fill_type == 'distribmat':
-                    mat = cell.fill[cell._num_instances]
+                if fill_type == 'material':
+                    mat = fill
+                elif fill_type == 'distribmat':
+                    mat = fill[cell._num_instances]
                 else:
                     mat = None
 

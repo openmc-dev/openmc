@@ -301,8 +301,8 @@ contains
 
   subroutine shannon_entropy()
 
-    integer :: ent_idx        ! entropy index
     integer :: i              ! index for mesh elements
+    real(8) :: entropy_gen    ! entropy at this generation
     logical :: sites_outside  ! were there sites outside entropy box?
 
     associate (m => meshes(index_entropy_mesh))
@@ -320,14 +320,16 @@ contains
         ! Normalize to total weight of bank sites
         entropy_p = entropy_p / sum(entropy_p)
 
-        ent_idx = current_gen + gen_per_batch*(current_batch - 1)
-        entropy(ent_idx) = ZERO
+        entropy_gen = ZERO
         do i = 1, size(entropy_p, 2)
           if (entropy_p(1,i) > ZERO) then
-            entropy(ent_idx) = entropy(ent_idx) - &
+            entropy_gen = entropy_gen - &
                  entropy_p(1,i) * log(entropy_p(1,i))/log(TWO)
           end if
         end do
+
+        ! Add value to vector
+        call entropy % push_back(entropy_gen)
       end if
     end associate
   end subroutine shannon_entropy
@@ -340,7 +342,7 @@ contains
 
   subroutine calculate_generation_keff()
 
-    integer :: i  ! overall generation
+    real(8) :: keff_reduced
 #ifdef MPI
     integer :: mpi_err ! MPI error code
 #endif
@@ -348,20 +350,18 @@ contains
     ! Get keff for this generation by subtracting off the starting value
     keff_generation = global_tallies(RESULT_VALUE, K_TRACKLENGTH) - keff_generation
 
-    ! Determine overall generation
-    i = overall_generation()
-
 #ifdef MPI
     ! Combine values across all processors
-    call MPI_ALLREDUCE(keff_generation, k_generation(i), 1, MPI_REAL8, &
+    call MPI_ALLREDUCE(keff_generation, keff_reduced, 1, MPI_REAL8, &
          MPI_SUM, mpi_intracomm, mpi_err)
 #else
-    k_generation(i) = keff_generation
+    keff_reduced = keff_generation
 #endif
 
     ! Normalize single batch estimate of k
     ! TODO: This should be normalized by total_weight, not by n_particles
-    k_generation(i) = k_generation(i) / n_particles
+    keff_reduced = keff_reduced / n_particles
+    call k_generation % push_back(keff_reduced)
 
   end subroutine calculate_generation_keff
 
@@ -385,12 +385,12 @@ contains
     if (n <= 0) then
       ! For inactive generations, use current generation k as estimate for next
       ! generation
-      keff = k_generation(i)
+      keff = k_generation % data(i)
 
     else
       ! Sample mean of keff
-      k_sum(1) = k_sum(1) + k_generation(i)
-      k_sum(2) = k_sum(2) + k_generation(i)**2
+      k_sum(1) = k_sum(1) + k_generation % data(i)
+      k_sum(2) = k_sum(2) + k_generation % data(i)**2
 
       ! Determine mean
       keff = k_sum(1) / n

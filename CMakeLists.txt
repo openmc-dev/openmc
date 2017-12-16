@@ -46,7 +46,7 @@ add_definitions(-DMAX_COORD=${maxcoord})
 #===============================================================================
 
 set(MPI_ENABLED FALSE)
-if($ENV{FC} MATCHES "mpi[^/]*$")
+if($ENV{FC} MATCHES "(mpi[^/]*|ftn)$")
   message("-- Detected MPI wrapper: $ENV{FC}")
   add_definitions(-DMPI)
   set(MPI_ENABLED TRUE)

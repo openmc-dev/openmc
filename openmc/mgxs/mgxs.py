@@ -1693,9 +1693,9 @@ class MGXS(object):
         filename = filename.replace(' ', '-')
 
         if append and os.path.isfile(filename):
-            xs_results = h5py.File(filename, 'a')
+            xs_results = h5py.File(filename, 'a', libver='earliest')
         else:
-            xs_results = h5py.File(filename, 'w')
+            xs_results = h5py.File(filename, 'w', libver='earliest')
 
         # Construct a collection of the subdomains to report
         if not isinstance(subdomains, string_types):

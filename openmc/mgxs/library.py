@@ -823,7 +823,7 @@ class Library(object):
         # Add an attribute for the number of energy groups to the HDF5 file
         full_filename = os.path.join(directory, filename)
         full_filename = full_filename.replace(' ', '-')
-        f = h5py.File(full_filename, 'w')
+        f = h5py.File(full_filename, 'w', libver='earliest')
         f.attrs['# groups'] = self.num_groups
         f.close()
 

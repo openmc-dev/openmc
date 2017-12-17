@@ -258,7 +258,7 @@ class ThermalScattering(EqualityMixin):
 
         """
         # Open file and write version
-        f = h5py.File(path, mode, libver='latest')
+        f = h5py.File(path, mode, libver='earliest')
         f.attrs['version'] = np.array(HDF5_VERSION)
 
         # Write basic data

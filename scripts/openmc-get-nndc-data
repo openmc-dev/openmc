@@ -33,9 +33,10 @@ parser = argparse.ArgumentParser(
 )
 parser.add_argument('-b', '--batch', action='store_true',
                     help='supresses standard in')
-parser.add_argument('--latest_hdf5', help='Use latest HDF5 format for '
-                    'performance over backwards compatibility',
-                    action='store_true')
+parser.add_argument('--libver', choices=['earliest', 'latest'],
+                    default='earliest', help="Output HDF5 versioning. Use "
+                    "'earliest' for backwards compatibility or 'latest' for "
+                    "performance")
 args = parser.parse_args()
 
 
@@ -160,8 +161,7 @@ fer_file = os.path.join(data_dir, 'fission_Q_data_endfb71.h5')
 # Call the ace-to-hdf5 conversion script
 pwd = os.path.dirname(os.path.realpath(__file__))
 ace2hdf5 = os.path.join(pwd, 'openmc-ace-to-hdf5')
-args_out = [ace2hdf5, '-d', 'nndc_hdf5', '--fission_energy_release', fer_file]
-if args.latest_hdf5:
-    args_out += ['--latest_hdf5']
-args_out += ace_files
-subprocess.call(args_out)
+subprocess.call([ace2hdf5,
+                 '-d', 'nndc_hdf5',
+                 '--fission_energy_release', fer_file,
+                 '--libver', args.libver] + ace_files)

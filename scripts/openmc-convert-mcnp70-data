@@ -26,9 +26,10 @@ parser = argparse.ArgumentParser(
 )
 parser.add_argument('-d', '--destination', default='mcnp_endfb70',
                     help='Directory to create new library in')
-parser.add_argument('--latest_hdf5', help='Use latest HDF5 format for '
-                    'performance over backwards compatibility',
-                    action='store_true')
+parser.add_argument('--libver', choices=['earliest', 'latest'],
+                    default='earliest', help="Output HDF5 versioning. Use "
+                    "'earliest' for backwards compatibility or 'latest' for "
+                    "performance")
 parser.add_argument('mcnpdata', help='Directory containing endf70[a-k] and endf70sab')
 args = parser.parse_args()
 assert os.path.isdir(args.mcnpdata)
@@ -41,10 +42,6 @@ if not os.path.isdir(args.destination):
     os.mkdir(args.destination)
 
 library = openmc.data.DataLibrary()
-if args.latest_hdf5:
-    libver = 'latest'
-else:
-    libver = 'earliest'
 
 for path in sorted(endf70):
     print('Loading data from {}...'.format(path))
@@ -69,7 +66,7 @@ for path in sorted(endf70):
         # Export HDF5 file
         h5_file = os.path.join(args.destination, data.name + '.h5')
         print('Writing {}...'.format(h5_file))
-        data.export_to_hdf5(h5_file, 'w', libver=libver)
+        data.export_to_hdf5(h5_file, 'w', libver=args.libver)
 
         # Register with library
         library.register_file(h5_file)
@@ -98,7 +95,7 @@ if os.path.exists(endf70sab):
         # Export HDF5 file
         h5_file = os.path.join(args.destination, data.name + '.h5')
         print('Writing {}...'.format(h5_file))
-        data.export_to_hdf5(h5_file, 'w', libver=libver)
+        data.export_to_hdf5(h5_file, 'w', libver=args.libver)
 
         # Register with library
         library.register_file(h5_file)

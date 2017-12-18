@@ -1,10 +1,8 @@
 #!/usr/bin/env python
 
-from collections import Callable
 import os
 
 import numpy as np
-import pandas as pd
 import pytest
 import openmc.data
 

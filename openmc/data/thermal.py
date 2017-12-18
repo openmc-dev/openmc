@@ -408,30 +408,27 @@ class ThermalScattering(EqualityMixin):
                 # Cross section
                 elastic_xs_type = elastic_group['xs'].attrs['type'].decode()
                 if elastic_xs_type == 'Tabulated1D':
-                    table.elastic_xs[T] = \
-                        Tabulated1D.from_hdf5(elastic_group['xs'])
+                    table.elastic_xs[T] = Tabulated1D.from_hdf5(
+                        elastic_group['xs'])
                 elif elastic_xs_type == 'bragg':
-                    table.elastic_xs[T] = \
-                        CoherentElastic.from_hdf5(elastic_group['xs'])
+                    table.elastic_xs[T] = CoherentElastic.from_hdf5(
+                        elastic_group['xs'])
 
                 # Angular distribution
                 if 'mu_out' in elastic_group:
-                    table.elastic_mu_out[T] = \
-                        elastic_group['mu_out'].value
+                    table.elastic_mu_out[T] = elastic_group['mu_out'].value
 
             # Read thermal inelastic scattering
             if 'inelastic' in Tgroup:
                 inelastic_group = Tgroup['inelastic']
-                table.inelastic_xs[T] = \
-                    Tabulated1D.from_hdf5(inelastic_group['xs'])
+                table.inelastic_xs[T] = Tabulated1D.from_hdf5(
+                    inelastic_group['xs'])
                 if table.secondary_mode in ('equal', 'skewed'):
-                    table.inelastic_e_out[T] = \
-                        inelastic_group['energy_out']
-                    table.inelastic_mu_out[T] = \
-                        inelastic_group['mu_out']
+                    table.inelastic_e_out[T] = inelastic_group['energy_out'].value
+                    table.inelastic_mu_out[T] = inelastic_group['mu_out'].value
                 elif table.secondary_mode == 'continuous':
-                    table.inelastic_dist[T] = \
-                        AngleEnergy.from_hdf5(inelastic_group)
+                    table.inelastic_dist[T] = AngleEnergy.from_hdf5(
+                        inelastic_group)
 
         return table
 

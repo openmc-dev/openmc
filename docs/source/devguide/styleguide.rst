@@ -174,13 +174,16 @@ Follow the `C++ Core Guidelines`_ except when they conflict with another
 guideline listed here. For convenience, many important guidelines from that
 list are repeated here.
 
-Conform to the C++11 standard.
+Conform to the C++11 standard. Note that this is a significant difference
+between our style and the C++ Core Guidelines.  Many suggestions in those
+Guidelines require C++14.
 
 Always use C++-style comments (``//``) as opposed to C-style (``/**/``). (It
 is more difficult to comment out a large section of code that uses C-style
 comments.)
 
-Header files should always use include guards with the following style:
+Header files should always use include guards with the following style (See
+`SF.8 <http://isocpp.github.io/CppCoreGuidelines/CppCoreGuidelines#sf8-use-include-guards-for-all-h-files>`_:
 
 .. code-block:: C++
 
@@ -191,10 +194,8 @@ Header files should always use include guards with the following style:
     ...
     #endif // MODULE_NAME_H
 
-Do not use using-directives e.g. ``using namespace foobar;``
-
 Do not use C-style casting. Always use the C++-style casts ``static_cast``,
-``const_cast``, or ``reinterpret_cast``.
+``const_cast``, or ``reinterpret_cast``. (See `ES.49 <http://isocpp.github.io/CppCoreGuidelines/CppCoreGuidelines#es49-if-you-must-use-a-cast-use-a-named-cast>`_)
 
 Naming
 ------

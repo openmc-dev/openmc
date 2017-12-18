@@ -245,7 +245,7 @@ class ThermalScattering(EqualityMixin):
     def temperatures(self):
         return ["{}K".format(int(round(kT / K_BOLTZMANN))) for kT in self.kTs]
 
-    def export_to_hdf5(self, path, mode='a'):
+    def export_to_hdf5(self, path, mode='a', libver='earliest'):
         """Export table to an HDF5 file.
 
         Parameters
@@ -255,10 +255,13 @@ class ThermalScattering(EqualityMixin):
         mode : {'r', r+', 'w', 'x', 'a'}
             Mode that is used to open the HDF5 file. This is the second argument
             to the :class:`h5py.File` constructor.
+        libver : {'earliest', 'latest'}
+            Compatibility mode for the HDF5 file. 'latest' will produce files
+            that are less backwards compatible but have performance benefits.
 
         """
         # Open file and write version
-        f = h5py.File(path, mode, libver='latest')
+        f = h5py.File(path, mode, libver=libver)
         f.attrs['version'] = np.array(HDF5_VERSION)
 
         # Write basic data

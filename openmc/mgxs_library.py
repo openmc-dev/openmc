@@ -2504,20 +2504,23 @@ class MGXSLibrary(object):
 
         return library
 
-    def export_to_hdf5(self, filename='mgxs.h5'):
+    def export_to_hdf5(self, filename='mgxs.h5', libver='earliest'):
         """Create an hdf5 file that can be used for a simulation.
 
         Parameters
         ----------
         filename : str
             Filename of file, default is mgxs.h5.
+        libver : {'earliest', 'latest'}
+            Compatibility mode for the HDF5 file. 'latest' will produce files
+            that are less backwards compatible but have performance benefits.
 
         """
 
         check_type('filename', filename, string_types)
 
         # Create and write to the HDF5 file
-        file = h5py.File(filename, "w")
+        file = h5py.File(filename, "w", libver=libver)
         file.attrs['filetype'] = np.string_(_FILETYPE_MGXS_LIBRARY)
         file.attrs['version'] = [_VERSION_MGXS_LIBRARY, 0]
         file.attrs['energy_groups'] = self.energy_groups.num_groups

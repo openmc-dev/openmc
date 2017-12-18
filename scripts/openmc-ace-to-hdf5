@@ -57,9 +57,10 @@ parser.add_argument('--xsdata', help='Serpent xsdata file that lists '
                     'ACE libraries')
 parser.add_argument('--fission_energy_release', help='HDF5 file containing '
                     'fission energy release data')
-parser.add_argument('--latest_hdf5', help='Use latest HDF5 format for '
-                    'performance over backwards compatibility',
-                    action='store_true')
+parser.add_argument('--libver', choices=['earliest', 'latest'],
+                    default='earliest', help="Output HDF5 versioning. Use "
+                    "'earliest' for backwards compatibility or 'latest' for "
+                    "performance")
 args = parser.parse_args()
 
 if not os.path.isdir(args.destination):
@@ -121,10 +122,6 @@ else:
 
 nuclides = {}
 library = openmc.data.DataLibrary()
-if args.latest_hdf5:
-    libver = 'latest'
-else:
-    libver = 'earliest'
 
 for filename in ace_libraries:
     # Check that ACE library exists
@@ -158,7 +155,7 @@ for filename in ace_libraries:
                 # Determine filename
                 outfile = os.path.join(args.destination,
                                        neutron.name.replace('.', '_') + '.h5')
-                neutron.export_to_hdf5(outfile, 'w', libver=libver)
+                neutron.export_to_hdf5(outfile, 'w', libver=args.libver)
 
                 # Register with library
                 library.register_file(outfile)
@@ -174,7 +171,7 @@ for filename in ace_libraries:
                           .format(table.name, neutron.name))
                     neutron.add_temperature_from_ace(table, args.metastable)
                     neutron.export_to_hdf5(nuclides[name] + '_1', 'w',
-                                           libver=libver)
+                                           libver=args.libver)
                     os.rename(nuclides[name] + '_1', nuclides[name])
                 except Exception as e:
                     print('Failed to convert {}: {}'.format(table.name, e))
@@ -196,7 +193,7 @@ for filename in ace_libraries:
                 # Determine filename
                 outfile = os.path.join(args.destination,
                                        thermal.name.replace('.', '_') + '.h5')
-                thermal.export_to_hdf5(outfile, 'w', libver=libver)
+                thermal.export_to_hdf5(outfile, 'w', libver=args.libver)
 
                 # Register with library
                 library.register_file(outfile)
@@ -213,7 +210,7 @@ for filename in ace_libraries:
                           .format(table.name,thermal.name))
                     thermal.add_temperature_from_ace(table)
                     thermal.export_to_hdf5(nuclides[name] + '_1', 'w',
-                                           libver=libver)
+                                           libver=args.libver)
                     os.rename(nuclides[name] + '_1', nuclides[name])
                 except Exception as e:
                     print('Failed to convert {}: {}'.format(table.name, e))

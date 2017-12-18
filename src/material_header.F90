@@ -455,8 +455,8 @@ contains
       associate (m => materials(index))
         ! If nuclide/density arrays are not correct size, reallocate
         if (n /= m % n_nuclides) then
-          deallocate(m % nuclide, m % atom_density, m % p0, STAT=stat)
-          allocate(m % nuclide(n), m % atom_density(n), m % p0(n))
+          deallocate(m % nuclide, m % atom_density, STAT=stat)
+          allocate(m % nuclide(n), m % atom_density(n))
         end if
 
         do i = 1, n
@@ -473,9 +473,6 @@ contains
           m % atom_density(i) = density(i)
         end do
         m % n_nuclides = n
-
-        ! Set isotropic flags to flags
-        m % p0(:) = .false.
 
         ! Set total density to the sum of the vector
         err = m % set_density(sum(density))

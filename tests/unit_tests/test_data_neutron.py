@@ -78,10 +78,23 @@ def na22():
 
 
 @pytest.fixture(scope='module')
+def be9():
+    """Be9 ENDF data (contains laboratory angle-energy distribution)."""
+    filename = os.path.join(_ENDF_DATA, 'neutrons', 'n-004_Be_009.endf')
+    return openmc.data.IncidentNeutron.from_endf(filename)
+
+
+@pytest.fixture(scope='module')
 def h2():
     endf_file = os.path.join(_ENDF_DATA, 'neutrons', 'n-001_H_002.endf')
     return openmc.data.IncidentNeutron.from_njoy(
         endf_file, temperatures=_TEMPERATURES)
+
+
+@pytest.fixture(scope='module')
+def am244():
+    endf_file = os.path.join(_ENDF_DATA, 'neutrons', 'n-095_Am_244.endf')
+    return openmc.data.IncidentNeutron.from_njoy(endf_file)
 
 
 def test_attributes(pu239):
@@ -100,6 +113,15 @@ def test_fission_energy(pu239):
                   'total', 'q_prompt', 'q_recoverable', 'q_total']
     for c in components:
         assert isinstance(getattr(fer, c), Callable)
+
+
+def test_compact_fission_energy(tmpdir):
+    files = [os.path.join(_ENDF_DATA, 'neutrons', 'n-090_Th_232.endf'),
+             os.path.join(_ENDF_DATA, 'neutrons', 'n-094_Pu_240.endf'),
+             os.path.join(_ENDF_DATA, 'neutrons', 'n-094_Pu_241.endf')]
+    output = str(tmpdir.join('compact_lib.h5'))
+    openmc.data.write_compact_458_library(files, output)
+    assert os.path.exists(output)
 
 
 def test_energy_grid(pu239):
@@ -153,6 +175,13 @@ def test_fission(pu239):
     assert sum(d.yield_(1.0) for d in delayed) == pytest.approx(0.00645)
     photon = fission.products[-1]
     assert photon.particle == 'photon'
+
+
+def test_derived_products(am244):
+    fission = am244.reactions[18]
+    total_neutron = fission.derived_products[0]
+    assert total_neutron.emission_mode == 'total'
+    assert total_neutron.yield_(6e6) == pytest.approx(4.2558)
 
 
 def test_urr(pu239):
@@ -275,3 +304,62 @@ def test_evaporation(na22):
     n2n = na22.reactions[16]
     dist = n2n.products[0].distribution[0].energy
     assert isinstance(dist, openmc.data.Evaporation)
+
+
+def test_laboratory(be9):
+    n2n = be9.reactions[16]
+    dist = n2n.products[0].distribution[0]
+    assert isinstance(dist, openmc.data.LaboratoryAngleEnergy)
+    assert list(dist.breakpoints) == [18]
+    assert list(dist.interpolation) == [2]
+    assert dist.energy[0] == pytest.approx(1748830.)
+    assert dist.energy[-1] == pytest.approx(20.e6)
+    assert len(dist.energy) == len(dist.energy_out) == len(dist.mu)
+    for eout, mu in zip(dist.energy_out, dist.mu):
+        assert len(eout) == len(mu)
+        assert np.all((-1. <= mu.x) & (mu.x <= 1.))
+
+
+def test_correlated(tmpdir):
+    endf_file = os.path.join(_ENDF_DATA, 'neutrons', 'n-014_Si_030.endf')
+    si30 = openmc.data.IncidentNeutron.from_njoy(endf_file, heatr=False)
+
+    # Convert to HDF5 and read back
+    filename = str(tmpdir.join('si30.h5'))
+    si30.export_to_hdf5(filename)
+    si30_copy = openmc.data.IncidentNeutron.from_hdf5(filename)
+
+
+def test_nbody(tmpdir, h2):
+    # Convert to HDF5 and read back
+    filename = str(tmpdir.join('h2.h5'))
+    h2.export_to_hdf5(filename)
+    h2_copy = openmc.data.IncidentNeutron.from_hdf5(filename)
+
+    # Compare distributions
+    nbody1 = h2[16].products[0].distribution[0]
+    nbody2 = h2_copy[16].products[0].distribution[0]
+    assert nbody1.total_mass == nbody2.total_mass
+    assert nbody1.n_particles == nbody2.n_particles
+    assert nbody1.q_value == nbody2.q_value
+
+
+def test_ace_convert(tmpdir):
+    filename = os.path.join(_ENDF_DATA, 'neutrons', 'n-001_H_001.endf')
+    ace_ascii = str(tmpdir.join('ace_ascii'))
+    ace_binary = str(tmpdir.join('ace_binary'))
+    retcode = openmc.data.njoy.make_ace(filename, ace=ace_ascii)
+    assert retcode == 0
+
+    # Convert to binary
+    openmc.data.ace.ascii_to_binary(ace_ascii, ace_binary)
+
+    # Make sure conversion worked
+    lib_ascii = openmc.data.ace.Library(ace_ascii)
+    lib_binary = openmc.data.ace.Library(ace_binary)
+    for tab_a, tab_b in zip(lib_ascii.tables, lib_binary.tables):
+        assert tab_a.name == tab_b.name
+        assert tab_a.atomic_weight_ratio == pytest.approx(tab_b.atomic_weight_ratio)
+        assert tab_a.temperature == pytest.approx(tab_b.temperature)
+        assert np.all(tab_a.nxs == tab_b.nxs)
+        assert np.all(tab_a.jxs == tab_b.jxs)

@@ -43,6 +43,9 @@ parser.add_argument('-b', '--batch', action='store_true',
                     help='supresses standard in')
 parser.add_argument('-d', '--destination', default='jeff-3.2-hdf5',
                     help='Directory to create new library in')
+parser.add_argument('--latest_hdf5', help='Use latest HDF5 format for '
+                    'performance over backwards compatibility',
+                    action='store_true')
 args = parser.parse_args()
 
 response = input(download_warning) if not args.batch else 'y'
@@ -165,6 +168,10 @@ if not os.path.isdir(args.destination):
     os.mkdir(args.destination)
 
 library = openmc.data.DataLibrary()
+if args.latest_hdf5:
+    libver = 'latest'
+else:
+    libver = 'earliest'
 
 for name, filenames in sorted(tables.items()):
     # Convert first temperature for the table
@@ -179,7 +186,7 @@ for name, filenames in sorted(tables.items()):
     # Export HDF5 file
     h5_file = os.path.join(args.destination, data.name + '.h5')
     print('Writing {}...'.format(h5_file))
-    data.export_to_hdf5(h5_file, 'w')
+    data.export_to_hdf5(h5_file, 'w', libver=libver)
 
     # Register with library
     library.register_file(h5_file)
@@ -222,7 +229,7 @@ for name, filenames in sorted(tables.items()):
     # Export HDF5 file
     h5_file = os.path.join(args.destination, data.name + '.h5')
     print('Writing {}...'.format(h5_file))
-    data.export_to_hdf5(h5_file, 'w')
+    data.export_to_hdf5(h5_file, 'w', libver=libver)
 
     # Register with library
     library.register_file(h5_file)

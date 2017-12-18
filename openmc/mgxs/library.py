@@ -760,7 +760,7 @@ class Library(object):
 
     def build_hdf5_store(self, filename='mgxs.h5', directory='mgxs',
                          subdomains='all', nuclides='all', xs_type='macro',
-                         row_column='inout'):
+                         row_column='inout', libver='earliest'):
         """Export the multi-group cross section library to an HDF5 binary file.
 
         This method constructs an HDF5 file which stores the library's
@@ -794,6 +794,9 @@ class Library(object):
             Store scattering matrices indexed first by incoming group and
             second by outgoing group ('inout'), or vice versa ('outin').
             Defaults to 'inout'.
+        libver : {'earliest', 'latest'}
+            Compatibility mode for the HDF5 file. 'latest' will produce files
+            that are less backwards compatible but have performance benefits.
 
         Raises
         ------
@@ -823,7 +826,7 @@ class Library(object):
         # Add an attribute for the number of energy groups to the HDF5 file
         full_filename = os.path.join(directory, filename)
         full_filename = full_filename.replace(' ', '-')
-        f = h5py.File(full_filename, 'w')
+        f = h5py.File(full_filename, 'w', libver=libver)
         f.attrs['# groups'] = self.num_groups
         f.close()
 

@@ -348,8 +348,7 @@ def test_ace_convert(tmpdir):
     filename = os.path.join(_ENDF_DATA, 'neutrons', 'n-001_H_001.endf')
     ace_ascii = str(tmpdir.join('ace_ascii'))
     ace_binary = str(tmpdir.join('ace_binary'))
-    retcode = openmc.data.njoy.make_ace(filename, ace=ace_ascii)
-    assert retcode == 0
+    openmc.data.njoy.make_ace(filename, ace=ace_ascii)
 
     # Convert to binary
     openmc.data.ace.ascii_to_binary(ace_ascii, ace_binary)

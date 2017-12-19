@@ -95,6 +95,7 @@ def test_get_thermal_name():
         # Names which can be guessed
         assert f('lw00') == 'c_H_in_H2O'
         assert f('graphite') == 'c_Graphite'
+        assert f('D_in_D2O') == 'c_D_in_D2O'
 
         # Names that don't remotely match anything
         assert f('boogie_monster') == 'c_boogie_monster'

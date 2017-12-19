@@ -2,8 +2,10 @@ from __future__ import division
 from abc import ABCMeta
 from collections import Iterable, OrderedDict
 import copy
+from functools import reduce
 import hashlib
 from numbers import Real, Integral
+import operator
 from xml.etree import ElementTree as ET
 
 from six import add_metaclass
@@ -95,7 +97,6 @@ class Filter(IDManagerMixin):
     def __init__(self, bins, filter_id=None):
         self.bins = bins
         self.id = filter_id
-        self._num_bins = 0
 
     def __eq__(self, other):
         if type(self) is not type(other):
@@ -170,7 +171,7 @@ class Filter(IDManagerMixin):
         # there is no overriden from_hdf5 method.  Pass the bins to __init__.
         if group['type'].value.decode() == cls.short_name.lower():
             out = cls(group['bins'].value, filter_id)
-            out.num_bins = group['n_bins'].value
+            out._num_bins = group['n_bins'].value
             return out
 
         # Search through all subclasses and find the one matching the HDF5
@@ -188,7 +189,7 @@ class Filter(IDManagerMixin):
 
     @property
     def num_bins(self):
-        return self._num_bins
+        return len(self.bins)
 
     @bins.setter
     def bins(self, bins):
@@ -199,12 +200,6 @@ class Filter(IDManagerMixin):
         self.check_bins(bins)
 
         self._bins = bins
-
-    @num_bins.setter
-    def num_bins(self, num_bins):
-        cv.check_type('filter num_bins', num_bins, Integral)
-        cv.check_greater_than('filter num_bins', num_bins, 0, equality=True)
-        self._num_bins = num_bins
 
     def check_bins(self, bins):
         """Make sure given bins are valid for this filter.
@@ -430,17 +425,6 @@ class Filter(IDManagerMixin):
 
 class WithIDFilter(Filter):
     """Abstract parent for filters of types with ids (Cell, Material, etc.)."""
-    @property
-    def num_bins(self):
-        return len(self.bins)
-
-    # Since num_bins property is declared, also need a num_bins.setter, but
-    # we don't want it to do anything since num_bins is completely determined
-    # by len(self.bins).  We also don't want to raise an error because that
-    # makes importing from HDF5 more complicated.
-    @num_bins.setter
-    def num_bins(self, num_bins): pass
-
     def _smart_set_bins(self, bins, bin_type):
         # Format the bins as a 1D numpy array.
         bins = np.atleast_1d(bins)
@@ -634,10 +618,6 @@ class SurfaceFilter(Filter):
     def bins(self):
         return self._bins
 
-    @property
-    def num_bins(self):
-        return len(self.bins)
-
     @bins.setter
     def bins(self, bins):
         # Format the bins as a 1D numpy array.
@@ -650,8 +630,12 @@ class SurfaceFilter(Filter):
 
         self._bins = bins
 
-    @num_bins.setter
-    def num_bins(self, num_bins): pass
+    @property
+    def num_bins(self):
+        # Need to handle number of bins carefully -- for surface current
+        # tallies, the number of bins depends on the mesh, which we don't have a
+        # reference to in this filter
+        return self._num_bins
 
     def get_pandas_dataframe(self, data_size, stride, **kwargs):
         """Builds a Pandas DataFrame for the Filter's bins.
@@ -737,7 +721,7 @@ class MeshFilter(Filter):
         filter_id = int(group.name.split('/')[-1].lstrip('filter '))
 
         out = cls(mesh_obj, filter_id)
-        out.num_bins = group['n_bins'].value
+        out._num_bins = group['n_bins'].value
 
         return out
 
@@ -750,6 +734,13 @@ class MeshFilter(Filter):
         cv.check_type('filter mesh', mesh, openmc.Mesh)
         self._mesh = mesh
         self.bins = mesh.id
+
+    @property
+    def num_bins(self):
+        try:
+            return self._num_bins
+        except AttributeError:
+            return reduce(operator.mul, self.mesh.dimension)
 
     def check_bins(self, bins):
         if not len(bins) == 1:
@@ -898,7 +889,7 @@ class RealFilter(Filter):
         A grid of bin values.
     id : int
         Unique identifier for the filter
-    num_bins : Integral
+    num_bins : int
         The number of filter bins
 
     """
@@ -914,12 +905,6 @@ class RealFilter(Filter):
     @property
     def num_bins(self):
         return len(self.bins) - 1
-
-    @num_bins.setter
-    def num_bins(self, num_bins):
-        cv.check_type('filter num_bins', num_bins, Integral)
-        cv.check_greater_than('filter num_bins', num_bins, 0, equality=True)
-        self._num_bins = num_bins
 
     def can_merge(self, other):
         if type(self) is not type(other):
@@ -1006,7 +991,7 @@ class EnergyFilter(RealFilter):
         A grid of energy values in eV.
     id : int
         Unique identifier for the filter
-    num_bins : Integral
+    num_bins : int
         The number of filter bins
 
     """
@@ -1104,7 +1089,7 @@ class EnergyoutFilter(EnergyFilter):
         A grid of energy values in eV.
     id : int
         Unique identifier for the filter
-    num_bins : Integral
+    num_bins : int
         The number of filter bins
 
     """
@@ -1163,7 +1148,7 @@ class DistribcellFilter(Filter):
         An iterable with one element---the ID of the distributed Cell.
     id : int
         Unique identifier for the filter
-    num_bins : Integral
+    num_bins : int
         The number of filter bins
     paths : list of str
         The paths traversed through the CSG tree to reach each distribcell
@@ -1185,13 +1170,19 @@ class DistribcellFilter(Filter):
         filter_id = int(group.name.split('/')[-1].lstrip('filter '))
 
         out = cls(group['bins'].value, filter_id)
-        out.num_bins = group['n_bins'].value
+        out._num_bins = group['n_bins'].value
 
         return out
 
     @property
     def bins(self):
         return self._bins
+
+    @property
+    def num_bins(self):
+        # Need to handle number of bins carefully -- for distribcell tallies, we
+        # need to know how many instances of the cell there are
+        return self._num_bins
 
     @property
     def paths(self):
@@ -1703,10 +1694,6 @@ class DelayedGroupFilter(Filter):
     def bins(self):
         return self._bins
 
-    @property
-    def num_bins(self):
-        return len(self.bins)
-
     @bins.setter
     def bins(self, bins):
         # Format the bins as a 1D numpy array.
@@ -1718,9 +1705,6 @@ class DelayedGroupFilter(Filter):
             cv.check_greater_than('filter bin', edge, 0, equality=True)
 
         self._bins = bins
-
-    @num_bins.setter
-    def num_bins(self, num_bins): pass
 
 
 class EnergyFunctionFilter(Filter):

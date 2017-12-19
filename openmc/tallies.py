@@ -3,9 +3,10 @@ from __future__ import division
 from collections import Iterable, MutableSequence
 import copy
 import re
-from functools import partial
+from functools import partial, reduce
 from itertools import product
 from numbers import Integral, Real
+import operator
 import warnings
 from xml.etree import ElementTree as ET
 
@@ -185,19 +186,11 @@ class Tally(IDManagerMixin):
 
     @property
     def num_filter_bins(self):
-        num_bins = 1
-
-        for self_filter in self.filters:
-            num_bins *= self_filter.num_bins
-
-        return num_bins
+        return reduce(operator.mul, (f.num_bins for f in self.filters), 1)
 
     @property
     def num_bins(self):
-        num_bins = self.num_filter_bins
-        num_bins *= self.num_nuclides
-        num_bins *= self.num_scores
-        return num_bins
+        return self.num_filter_bins * self.num_nuclides * self.num_scores
 
     @property
     def shape(self):
@@ -2842,7 +2835,7 @@ class Tally(IDManagerMixin):
                         num_bins += 1
 
                 find_filter.bins = np.unique(find_filter.bins[bin_indices])
-                find_filter.num_bins = num_bins
+                find_filter._num_bins = num_bins
 
         # If original tally was sparse, sparsify the sliced tally
         new_tally.sparse = self.sparse

@@ -78,6 +78,8 @@ class Tally(IDManagerMixin):
     shape : 3-tuple of int
         The shape of the tally data array ordered as the number of filter bins,
         nuclide bins and score bins
+    filter_strides : list of int
+        Stride in memory for each filter
     num_realizations : int
         Total number of realizations
     with_summary : bool
@@ -818,10 +820,6 @@ class Tally(IDManagerMixin):
         # Differentiate Tally with a new auto-generated Tally ID
         merged_tally.id = None
 
-        # If the two tallies are equal, simply return copy
-        if self == other:
-            return merged_tally
-
         # Create deep copy of other tally to use for array concatenation
         other_copy = copy.deepcopy(other)
 
@@ -876,9 +874,6 @@ class Tally(IDManagerMixin):
         # Otherwise, this is a derived tally which needs merged results arrays
         else:
             self._derived = True
-
-        # Update filter strides in merged tally
-        merged_tally._update_filter_strides()
 
         # Concatenate sum arrays if present in both tallies
         if self.sum is not None and other_copy.sum is not None:
@@ -1538,11 +1533,10 @@ class Tally(IDManagerMixin):
 
         # Build DataFrame columns for filters if user requested them
         if filters:
-
             # Append each Filter's DataFrame to the overall DataFrame
-            for self_filter in self.filters:
-                filter_df = self_filter.get_pandas_dataframe(
-                    data_size, paths=paths)
+            for f, stride in zip(self.filters, self.filter_strides):
+                filter_df = f.get_pandas_dataframe(
+                    data_size, stride, paths=paths)
                 df = pd.concat([df, filter_df], axis=1)
 
         # Include DataFrame column for nuclides if user requested it
@@ -1867,20 +1861,16 @@ class Tally(IDManagerMixin):
                 new_score = cross_score(self_score, other_score, binary_op)
                 new_tally.scores.append(new_score)
 
-        # Update the new tally's filter strides
-        new_tally._update_filter_strides()
-
         return new_tally
 
-    def _update_filter_strides(self):
-        """Update each filter's stride based on the tally's nuclides and scores
-        for derived tallies created by tally arithmetic.
-        """
-
+    @property
+    def filter_strides(self):
+        all_strides = []
         stride = self.num_nuclides * self.num_scores
         for self_filter in reversed(self.filters):
-            self_filter.stride = stride
+            all_strides.append(stride)
             stride *= self_filter.num_bins
+        return all_strides[::-1]
 
     def _align_tally_data(self, other, filter_product, nuclide_product,
                           score_product):
@@ -2019,10 +2009,6 @@ class Tally(IDManagerMixin):
                 if other_index != i:
                     other._swap_scores(score, other.scores[i])
 
-        # Update the tallies' filter strides
-        other._update_filter_strides()
-        self._update_filter_strides()
-
         data = {}
         data['self'] = {}
         data['other'] = {}
@@ -2106,9 +2092,6 @@ class Tally(IDManagerMixin):
         filter2_index = self.filters.index(filter2)
         self.filters[filter1_index] = filter2
         self.filters[filter2_index] = filter1
-
-        # Update the tally's filter strides
-        self._update_filter_strides()
 
         # Realign the data
         for i, (bin1, bin2) in enumerate(product(filter1_bins, filter2_bins)):
@@ -2861,9 +2844,6 @@ class Tally(IDManagerMixin):
                 find_filter.bins = np.unique(find_filter.bins[bin_indices])
                 find_filter.num_bins = num_bins
 
-        # Update the new tally's filter strides
-        new_tally._update_filter_strides()
-
         # If original tally was sparse, sparsify the sliced tally
         new_tally.sparse = self.sparse
         return new_tally
@@ -3009,9 +2989,6 @@ class Tally(IDManagerMixin):
         # Add a copy of this tally's scores to the tally sum
         else:
             tally_sum._scores = copy.deepcopy(self.scores)
-
-        # Update the tally sum's filter strides
-        tally_sum._update_filter_strides()
 
         # Reshape condensed data arrays with one dimension for all filters
         mean = np.reshape(mean, tally_sum.shape)
@@ -3170,9 +3147,6 @@ class Tally(IDManagerMixin):
         else:
             tally_avg._scores = copy.deepcopy(self.scores)
 
-        # Update the tally avg's filter strides
-        tally_avg._update_filter_strides()
-
         # Reshape condensed data arrays with one dimension for all filters
         mean = np.reshape(mean, tally_avg.shape)
         std_dev = np.reshape(std_dev, tally_avg.shape)
@@ -3245,9 +3219,6 @@ class Tally(IDManagerMixin):
         if self.std_dev is not None:
             new_tally._std_dev = np.zeros(new_tally.shape, dtype=np.float64)
             new_tally._std_dev[diag_indices, :, :] = self.std_dev
-
-        # Update the new tally's filter strides
-        new_tally._update_filter_strides()
 
         # If original tally was sparse, sparsify the diagonalized tally
         new_tally.sparse = self.sparse

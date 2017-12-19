@@ -86,9 +86,6 @@ class Filter(IDManagerMixin):
         Unique identifier for the filter
     num_bins : Integral
         The number of filter bins
-    stride : Integral
-        The number of filter, nuclide and score bins within each of this
-        filter's bins.
 
     """
 
@@ -99,7 +96,6 @@ class Filter(IDManagerMixin):
         self.bins = bins
         self.id = filter_id
         self._num_bins = 0
-        self._stride = None
 
     def __eq__(self, other):
         if type(self) is not type(other):
@@ -194,10 +190,6 @@ class Filter(IDManagerMixin):
     def num_bins(self):
         return self._num_bins
 
-    @property
-    def stride(self):
-        return self._stride
-
     @bins.setter
     def bins(self, bins):
         # Format the bins as a 1D numpy array.
@@ -213,16 +205,6 @@ class Filter(IDManagerMixin):
         cv.check_type('filter num_bins', num_bins, Integral)
         cv.check_greater_than('filter num_bins', num_bins, 0, equality=True)
         self._num_bins = num_bins
-
-    @stride.setter
-    def stride(self, stride):
-        cv.check_type('filter stride', stride, Integral)
-        if stride < 0:
-            msg = 'Unable to set stride "{0}" for a "{1}" since it ' \
-                  'is a negative value'.format(stride, type(self))
-            raise ValueError(msg)
-
-        self._stride = stride
 
     def check_bins(self, bins):
         """Make sure given bins are valid for this filter.
@@ -270,11 +252,7 @@ class Filter(IDManagerMixin):
             Whether the filter can be merged
 
         """
-
-        if type(self) is not type(other):
-            return False
-
-        return True
+        return type(self) is type(other)
 
     def merge(self, other):
         """Merge this filter with another.
@@ -402,7 +380,7 @@ class Filter(IDManagerMixin):
         # Return a 1-tuple of the bin.
         return (self.bins[bin_index],)
 
-    def get_pandas_dataframe(self, data_size, **kwargs):
+    def get_pandas_dataframe(self, data_size, stride, **kwargs):
         """Builds a Pandas DataFrame for the Filter's bins.
 
         This method constructs a Pandas DataFrame object for the filter with
@@ -411,13 +389,15 @@ class Filter(IDManagerMixin):
 
         Parameters
         ----------
-        data_size : Integral
+        data_size : int
             The total number of bins in the tally corresponding to this filter
+        stride : int
+            Stride in memory for the filter
 
         Keyword arguments
         -----------------
         paths : bool
-            Only used for DistirbcellFilter.  If True (default), expand
+            Only used for DistribcellFilter.  If True (default), expand
             distribcell indices into multi-index columns describing the path
             to that distribcell through the CSG tree.  NOTE: This option assumes
             that all distribcell paths are of the same length and do not have
@@ -431,11 +411,6 @@ class Filter(IDManagerMixin):
             the total number of bins in the corresponding tally, with the filter
             bin appropriately tiled to map to the corresponding tally bins.
 
-        Raises
-        ------
-        ImportError
-            When Pandas is not installed
-
         See also
         --------
         Tally.get_pandas_dataframe(), CrossFilter.get_pandas_dataframe()
@@ -444,7 +419,7 @@ class Filter(IDManagerMixin):
         # Initialize Pandas DataFrame
         df = pd.DataFrame()
 
-        filter_bins = np.repeat(self.bins, self.stride)
+        filter_bins = np.repeat(self.bins, stride)
         tile_factor = data_size // len(filter_bins)
         filter_bins = np.tile(filter_bins, tile_factor)
         df = pd.concat([df, pd.DataFrame(
@@ -502,9 +477,6 @@ class UniverseFilter(WithIDFilter):
         Unique identifier for the filter
     num_bins : Integral
         The number of filter bins
-    stride : Integral
-        The number of filter, nuclide and score bins within each of this
-        filter's bins.
 
     """
     @property
@@ -535,9 +507,6 @@ class MaterialFilter(WithIDFilter):
         Unique identifier for the filter
     num_bins : Integral
         The number of filter bins
-    stride : Integral
-        The number of filter, nuclide and score bins within each of this
-        filter's bins.
 
     """
     @property
@@ -568,15 +537,12 @@ class CellFilter(WithIDFilter):
         Unique identifier for the filter
     num_bins : Integral
         The number of filter bins
-    stride : Integral
-        The number of filter, nuclide and score bins within each of this
-        filter's bins.
 
     """
     @property
     def bins(self):
         return self._bins
-      
+
     @bins.setter
     def bins(self, bins):
         self._smart_set_bins(bins, openmc.Cell)
@@ -601,15 +567,12 @@ class CellFromFilter(WithIDFilter):
         Unique identifier for the filter
     num_bins : Integral
         The number of filter bins
-    stride : Integral
-        The number of filter, nuclide and score bins within each of this
-        filter's bins.
 
     """
     @property
     def bins(self):
         return self._bins
-      
+
     @bins.setter
     def bins(self, bins):
         self._smart_set_bins(bins, openmc.Cell)
@@ -634,9 +597,6 @@ class CellbornFilter(WithIDFilter):
         Unique identifier for the filter
     num_bins : Integral
         The number of filter bins
-    stride : Integral
-        The number of filter, nuclide and score bins within each of this
-        filter's bins.
 
     """
     @property
@@ -668,9 +628,6 @@ class SurfaceFilter(Filter):
         Unique identifier for the filter
     num_bins : Integral
         The number of filter bins
-    stride : Integral
-        The number of filter, nuclide and score bins within each of this
-        filter's bins.
 
     """
     @property
@@ -696,7 +653,7 @@ class SurfaceFilter(Filter):
     @num_bins.setter
     def num_bins(self, num_bins): pass
 
-    def get_pandas_dataframe(self, data_size, **kwargs):
+    def get_pandas_dataframe(self, data_size, stride, **kwargs):
         """Builds a Pandas DataFrame for the Filter's bins.
 
         This method constructs a Pandas DataFrame object for the filter with
@@ -705,8 +662,10 @@ class SurfaceFilter(Filter):
 
         Parameters
         ----------
-        data_size : Integral
+        data_size : int
             The total number of bins in the tally corresponding to this filter
+        stride : int
+            Stride in memory for the filter
 
         Returns
         -------
@@ -717,11 +676,6 @@ class SurfaceFilter(Filter):
             the corresponding tally, with the filter bin appropriately tiled to
             map to the corresponding tally bins.
 
-        Raises
-        ------
-        ImportError
-            When Pandas is not installed
-
         See also
         --------
         Tally.get_pandas_dataframe(), CrossFilter.get_pandas_dataframe()
@@ -730,7 +684,7 @@ class SurfaceFilter(Filter):
         # Initialize Pandas DataFrame
         df = pd.DataFrame()
 
-        filter_bins = np.repeat(self.bins, self.stride)
+        filter_bins = np.repeat(self.bins, stride)
         tile_factor = data_size // len(filter_bins)
         filter_bins = np.tile(filter_bins, tile_factor)
         filter_bins = [_CURRENT_NAMES[x] for x in filter_bins]
@@ -760,9 +714,6 @@ class MeshFilter(Filter):
         Unique identifier for the filter
     num_bins : Integral
         The number of filter bins
-    stride : Integral
-        The number of filter, nuclide and score bins within each of this
-        filter's bins.
 
     """
 
@@ -854,7 +805,7 @@ class MeshFilter(Filter):
             y = bin_index - (x * ny)
             return (x, y)
 
-    def get_pandas_dataframe(self, data_size, **kwargs):
+    def get_pandas_dataframe(self, data_size, stride, **kwargs):
         """Builds a Pandas DataFrame for the Filter's bins.
 
         This method constructs a Pandas DataFrame object for the filter with
@@ -863,8 +814,10 @@ class MeshFilter(Filter):
 
         Parameters
         ----------
-        data_size : Integral
+        data_size : int
             The total number of bins in the tally corresponding to this filter
+        stride : int
+            Stride in memory for the filter
 
         Returns
         -------
@@ -874,11 +827,6 @@ class MeshFilter(Filter):
             in the DataFrame is the same as the total number of bins in the
             corresponding tally, with the filter bin appropriately tiled to map
             to the corresponding tally bins.
-
-        Raises
-        ------
-        ImportError
-            When Pandas is not installed
 
         See also
         --------
@@ -906,7 +854,7 @@ class MeshFilter(Filter):
 
         # Generate multi-index sub-column for x-axis
         filter_bins = np.arange(1, nx + 1)
-        repeat_factor = ny * nz * self.stride
+        repeat_factor = ny * nz * stride
         filter_bins = np.repeat(filter_bins, repeat_factor)
         tile_factor = data_size // len(filter_bins)
         filter_bins = np.tile(filter_bins, tile_factor)
@@ -914,7 +862,7 @@ class MeshFilter(Filter):
 
         # Generate multi-index sub-column for y-axis
         filter_bins = np.arange(1, ny + 1)
-        repeat_factor = nz * self.stride
+        repeat_factor = nz * stride
         filter_bins = np.repeat(filter_bins, repeat_factor)
         tile_factor = data_size // len(filter_bins)
         filter_bins = np.tile(filter_bins, tile_factor)
@@ -922,7 +870,7 @@ class MeshFilter(Filter):
 
         # Generate multi-index sub-column for z-axis
         filter_bins = np.arange(1, nz + 1)
-        repeat_factor = self.stride
+        repeat_factor = stride
         filter_bins = np.repeat(filter_bins, repeat_factor)
         tile_factor = data_size // len(filter_bins)
         filter_bins = np.tile(filter_bins, tile_factor)
@@ -952,9 +900,6 @@ class RealFilter(Filter):
         Unique identifier for the filter
     num_bins : Integral
         The number of filter bins
-    stride : Integral
-        The number of filter, nuclide and score bins within each of this
-        filter's bins.
 
     """
 
@@ -1063,9 +1008,6 @@ class EnergyFilter(RealFilter):
         Unique identifier for the filter
     num_bins : Integral
         The number of filter bins
-    stride : Integral
-        The number of filter, nuclide and score bins within each of this
-        filter's bins.
 
     """
 
@@ -1100,7 +1042,7 @@ class EnergyFilter(RealFilter):
                       'increasing'.format(bins, type(self))
                 raise ValueError(msg)
 
-    def get_pandas_dataframe(self, data_size, **kwargs):
+    def get_pandas_dataframe(self, data_size, stride, **kwargs):
         """Builds a Pandas DataFrame for the Filter's bins.
 
         This method constructs a Pandas DataFrame object for the filter with
@@ -1109,8 +1051,10 @@ class EnergyFilter(RealFilter):
 
         Parameters
         ----------
-        data_size : Integral
+        data_size : int
             The total number of bins in the tally corresponding to this filter
+        stride : int
+            Stride in memory for the filter
 
         Returns
         -------
@@ -1120,11 +1064,6 @@ class EnergyFilter(RealFilter):
             rows in the DataFrame is the same as the total number of bins in the
             corresponding tally, with the filter bin appropriately tiled to map
             to the corresponding tally bins.
-
-        Raises
-        ------
-        ImportError
-            When Pandas is not installed
 
         See also
         --------
@@ -1136,8 +1075,8 @@ class EnergyFilter(RealFilter):
 
         # Extract the lower and upper energy bounds, then repeat and tile
         # them as necessary to account for other filters.
-        lo_bins = np.repeat(self.bins[:-1], self.stride)
-        hi_bins = np.repeat(self.bins[1:], self.stride)
+        lo_bins = np.repeat(self.bins[:-1], stride)
+        hi_bins = np.repeat(self.bins[1:], stride)
         tile_factor = data_size // len(lo_bins)
         lo_bins = np.tile(lo_bins, tile_factor)
         hi_bins = np.tile(hi_bins, tile_factor)
@@ -1167,9 +1106,6 @@ class EnergyoutFilter(EnergyFilter):
         Unique identifier for the filter
     num_bins : Integral
         The number of filter bins
-    stride : Integral
-        The number of filter, nuclide and score bins within each of this
-        filter's bins.
 
     """
 
@@ -1229,9 +1165,6 @@ class DistribcellFilter(Filter):
         Unique identifier for the filter
     num_bins : Integral
         The number of filter bins
-    stride : Integral
-        The number of filter, nuclide and score bins within each of this
-        filter's bins.
     paths : list of str
         The paths traversed through the CSG tree to reach each distribcell
         instance (for 'distribcell' filters only)
@@ -1296,7 +1229,7 @@ class DistribcellFilter(Filter):
         # the Cell in the Geometry (consecutive integers starting at 0).
         return filter_bin
 
-    def get_pandas_dataframe(self, data_size, **kwargs):
+    def get_pandas_dataframe(self, data_size, stride, **kwargs):
         """Builds a Pandas DataFrame for the Filter's bins.
 
         This method constructs a Pandas DataFrame object for the filter with
@@ -1305,8 +1238,10 @@ class DistribcellFilter(Filter):
 
         Parameters
         ----------
-        data_size : Integral
+        data_size : int
             The total number of bins in the tally corresponding to this filter
+        stride : int
+            Stride in memory for the filter
 
         Keyword arguments
         -----------------
@@ -1330,11 +1265,6 @@ class DistribcellFilter(Filter):
             The number of rows in the DataFrame is the same as the total number
             of bins in the corresponding tally, with the filter bin
             appropriately tiled to map to the corresponding tally bins.
-
-        Raises
-        ------
-        ImportError
-            When Pandas is not installed
 
         See also
         --------
@@ -1418,7 +1348,7 @@ class DistribcellFilter(Filter):
 
                 # Tile the Multi-index columns
                 for level_key, level_bins in level_dict.items():
-                    level_bins = np.repeat(level_bins, self.stride)
+                    level_bins = np.repeat(level_bins, stride)
                     tile_factor = data_size // len(level_bins)
                     level_bins = np.tile(level_bins, tile_factor)
                     level_dict[level_key] = level_bins
@@ -1434,7 +1364,7 @@ class DistribcellFilter(Filter):
         # NOTE: This is performed regardless of whether the user
         # requests Summary geometric information
         filter_bins = np.arange(self.num_bins)
-        filter_bins = np.repeat(filter_bins, self.stride)
+        filter_bins = np.repeat(filter_bins, stride)
         tile_factor = data_size // len(filter_bins)
         filter_bins = np.tile(filter_bins, tile_factor)
         df = pd.DataFrame({self.short_name.lower() : filter_bins})
@@ -1474,9 +1404,6 @@ class MuFilter(RealFilter):
         Unique identifier for the filter
     num_bins : Integral
         The number of filter bins
-    stride : Integral
-        The number of filter, nuclide and score bins within each of this
-        filter's bins.
 
     """
 
@@ -1504,7 +1431,7 @@ class MuFilter(RealFilter):
                       'increasing'.format(bins, type(self))
                 raise ValueError(msg)
 
-    def get_pandas_dataframe(self, data_size, **kwargs):
+    def get_pandas_dataframe(self, data_size, stride, **kwargs):
         """Builds a Pandas DataFrame for the Filter's bins.
 
         This method constructs a Pandas DataFrame object for the filter with
@@ -1513,8 +1440,10 @@ class MuFilter(RealFilter):
 
         Parameters
         ----------
-        data_size : Integral
+        data_size : int
             The total number of bins in the tally corresponding to this filter
+        stride : int
+            Stride in memory for the filter
 
         Returns
         -------
@@ -1524,11 +1453,6 @@ class MuFilter(RealFilter):
             rows in the DataFrame is the same as the total number of bins in the
             corresponding tally, with the filter bin appropriately tiled to map
             to the corresponding tally bins.
-
-        Raises
-        ------
-        ImportError
-            When Pandas is not installed
 
         See also
         --------
@@ -1540,8 +1464,8 @@ class MuFilter(RealFilter):
 
         # Extract the lower and upper energy bounds, then repeat and tile
         # them as necessary to account for other filters.
-        lo_bins = np.repeat(self.bins[:-1], self.stride)
-        hi_bins = np.repeat(self.bins[1:], self.stride)
+        lo_bins = np.repeat(self.bins[:-1], stride)
+        hi_bins = np.repeat(self.bins[1:], stride)
         tile_factor = data_size // len(lo_bins)
         lo_bins = np.tile(lo_bins, tile_factor)
         hi_bins = np.tile(hi_bins, tile_factor)
@@ -1579,9 +1503,6 @@ class PolarFilter(RealFilter):
         Unique identifier for the filter
     num_bins : Integral
         The number of filter bins
-    stride : Integral
-        The number of filter, nuclide and score bins within each of this
-        filter's bins.
 
     """
 
@@ -1609,7 +1530,7 @@ class PolarFilter(RealFilter):
                       'increasing'.format(bins, type(self))
                 raise ValueError(msg)
 
-    def get_pandas_dataframe(self, data_size, **kwargs):
+    def get_pandas_dataframe(self, data_size, stride, **kwargs):
         """Builds a Pandas DataFrame for the Filter's bins.
 
         This method constructs a Pandas DataFrame object for the filter with
@@ -1618,8 +1539,10 @@ class PolarFilter(RealFilter):
 
         Parameters
         ----------
-        data_size : Integral
+        data_size : int
             The total number of bins in the tally corresponding to this filter
+        stride : int
+            Stride in memory for the filter
 
         Returns
         -------
@@ -1629,11 +1552,6 @@ class PolarFilter(RealFilter):
             the DataFrame is the same as the total number of bins in the
             corresponding tally, with the filter bin appropriately tiled to map
             to the corresponding tally bins.
-
-        Raises
-        ------
-        ImportError
-            When Pandas is not installed
 
         See also
         --------
@@ -1645,8 +1563,8 @@ class PolarFilter(RealFilter):
 
         # Extract the lower and upper angle bounds, then repeat and tile
         # them as necessary to account for other filters.
-        lo_bins = np.repeat(self.bins[:-1], self.stride)
-        hi_bins = np.repeat(self.bins[1:], self.stride)
+        lo_bins = np.repeat(self.bins[:-1], stride)
+        hi_bins = np.repeat(self.bins[1:], stride)
         tile_factor = data_size // len(lo_bins)
         lo_bins = np.tile(lo_bins, tile_factor)
         hi_bins = np.tile(hi_bins, tile_factor)
@@ -1684,9 +1602,6 @@ class AzimuthalFilter(RealFilter):
         Unique identifier for the filter
     num_bins : Integral
         The number of filter bins
-    stride : Integral
-        The number of filter, nuclide and score bins within each of this
-        filter's bins.
 
     """
 
@@ -1714,7 +1629,7 @@ class AzimuthalFilter(RealFilter):
                       'increasing'.format(bins, type(self))
                 raise ValueError(msg)
 
-    def get_pandas_dataframe(self, data_size, paths=True):
+    def get_pandas_dataframe(self, data_size, stride, paths=True):
         """Builds a Pandas DataFrame for the Filter's bins.
 
         This method constructs a Pandas DataFrame object for the filter with
@@ -1723,8 +1638,10 @@ class AzimuthalFilter(RealFilter):
 
         Parameters
         ----------
-        data_size : Integral
+        data_size : int
             The total number of bins in the tally corresponding to this filter
+        stride : int
+            Stride in memory for the filter
 
         Returns
         -------
@@ -1734,11 +1651,6 @@ class AzimuthalFilter(RealFilter):
             rows in the DataFrame is the same as the total number of bins in the
             corresponding tally, with the filter bin appropriately tiled to map
             to the corresponding tally bins.
-
-        Raises
-        ------
-        ImportError
-            When Pandas is not installed
 
         See also
         --------
@@ -1750,8 +1662,8 @@ class AzimuthalFilter(RealFilter):
 
         # Extract the lower and upper angle bounds, then repeat and tile
         # them as necessary to account for other filters.
-        lo_bins = np.repeat(self.bins[:-1], self.stride)
-        hi_bins = np.repeat(self.bins[1:], self.stride)
+        lo_bins = np.repeat(self.bins[:-1], stride)
+        hi_bins = np.repeat(self.bins[1:], stride)
         tile_factor = data_size // len(lo_bins)
         lo_bins = np.tile(lo_bins, tile_factor)
         hi_bins = np.tile(hi_bins, tile_factor)
@@ -1785,9 +1697,6 @@ class DelayedGroupFilter(Filter):
         Unique identifier for the filter
     num_bins : Integral
         The number of filter bins
-    stride : Integral
-        The number of filter, nuclide and score bins within each of this
-        filter's bins.
 
     """
     @property
@@ -1840,9 +1749,6 @@ class EnergyFunctionFilter(Filter):
         Unique identifier for the filter
     num_bins : Integral
         The number of filter bins (always 1 for this filter)
-    stride : Integral
-        The number of filter, nuclide and score bins within each of this
-        filter's bins.
 
     """
 
@@ -1850,7 +1756,6 @@ class EnergyFunctionFilter(Filter):
         self.energy = energy
         self.y = y
         self.id = filter_id
-        self._stride = None
 
     def __eq__(self, other):
         if type(self) is not type(other):
@@ -2006,7 +1911,7 @@ class EnergyFunctionFilter(Filter):
         """This function is invalid for EnergyFunctionFilters."""
         raise RuntimeError('EnergyFunctionFilters have no get_bin() method')
 
-    def get_pandas_dataframe(self, data_size, **kwargs):
+    def get_pandas_dataframe(self, data_size, stride, **kwargs):
         """Builds a Pandas DataFrame for the Filter's bins.
 
         This method constructs a Pandas DataFrame object for the filter with
@@ -2015,8 +1920,10 @@ class EnergyFunctionFilter(Filter):
 
         Parameters
         ----------
-        data_size : Integral
+        data_size : int
             The total number of bins in the tally corresponding to this filter
+        stride : int
+            Stride in memory for the filter
 
         Returns
         -------
@@ -2026,11 +1933,6 @@ class EnergyFunctionFilter(Filter):
             DataFrame column is to differentiate the filter from other
             EnergyFunctionFilters. The number of rows in the DataFrame is the
             same as the total number of bins in the corresponding tally.
-
-        Raises
-        ------
-        ImportError
-            When Pandas is not installed
 
         See also
         --------
@@ -2052,7 +1954,7 @@ class EnergyFunctionFilter(Filter):
         # hex characters) of the digest are probably sufficient.
         out = out[:14]
 
-        filter_bins = np.repeat(out, self.stride)
+        filter_bins = np.repeat(out, stride)
         tile_factor = data_size // len(filter_bins)
         filter_bins = np.tile(filter_bins, tile_factor)
         df = pd.concat([df, pd.DataFrame(

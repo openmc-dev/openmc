@@ -237,9 +237,6 @@ class CrossFilter(object):
         left / right filters
     num_bins : Integral
         The number of filter bins (always 1 if aggregate_filter is defined)
-    stride : Integral
-        The number of filter, nuclide and score bins within each of this
-        crossfilter's bins.
 
     """
 
@@ -250,7 +247,6 @@ class CrossFilter(object):
         self._type = '({0} {1} {2})'.format(left_type, binary_op, right_type)
 
         self._bins = {}
-        self._stride = None
 
         self._left_filter = None
         self._right_filter = None
@@ -314,10 +310,6 @@ class CrossFilter(object):
         else:
             return 0
 
-    @property
-    def stride(self):
-        return self._stride
-
     @type.setter
     def type(self, filter_type):
         if filter_type not in _FILTER_TYPES:
@@ -346,10 +338,6 @@ class CrossFilter(object):
         cv.check_type('binary_op', binary_op, string_types)
         cv.check_value('binary_op', binary_op, _TALLY_ARITHMETIC_OPS)
         self._binary_op = binary_op
-
-    @stride.setter
-    def stride(self, stride):
-        self._stride = stride
 
     def get_bin_index(self, filter_bin):
         """Returns the index in the CrossFilter for some bin.
@@ -611,9 +599,6 @@ class AggregateFilter(object):
         The filter bins included in the aggregation
     num_bins : Integral
         The number of filter bins (always 1 if aggregate_filter is defined)
-    stride : Integral
-        The number of filter, nuclide and score bins within each of this
-        aggregatefilter's bins.
 
     """
 
@@ -622,7 +607,6 @@ class AggregateFilter(object):
         self._type = '{0}({1})'.format(aggregate_op,
                                        aggregate_filter.short_name.lower())
         self._bins = None
-        self._stride = None
 
         self._aggregate_filter = None
         self._aggregate_op = None
@@ -684,10 +668,6 @@ class AggregateFilter(object):
     def num_bins(self):
         return len(self.bins) if self.aggregate_filter else 0
 
-    @property
-    def stride(self):
-        return self._stride
-
     @type.setter
     def type(self, filter_type):
         if filter_type not in _FILTER_TYPES:
@@ -713,10 +693,6 @@ class AggregateFilter(object):
         cv.check_type('aggregate_op', aggregate_op, string_types)
         cv.check_value('aggregate_op', aggregate_op, _TALLY_AGGREGATE_OPS)
         self._aggregate_op = aggregate_op
-
-    @stride.setter
-    def stride(self, stride):
-        self._stride = stride
 
     def get_bin_index(self, filter_bin):
         """Returns the index in the AggregateFilter for some bin.
@@ -753,7 +729,7 @@ class AggregateFilter(object):
         else:
             return self.bins.index(filter_bin)
 
-    def get_pandas_dataframe(self, data_size, summary=None, **kwargs):
+    def get_pandas_dataframe(self, data_size, stride, summary=None, **kwargs):
         """Builds a Pandas DataFrame for the AggregateFilter's bins.
 
         This method constructs a Pandas DataFrame object for the AggregateFilter
@@ -762,8 +738,10 @@ class AggregateFilter(object):
 
         Parameters
         ----------
-        data_size : Integral
+        data_size : int
             The total number of bins in the tally corresponding to this filter
+        stride : int
+            Stride in memory for the filter
         summary : None or Summary
             An optional Summary object to be used to construct columns for
             distribcell tally filters (default is None). NOTE: This parameter
@@ -793,7 +771,7 @@ class AggregateFilter(object):
             filter_bins[i] = bin
 
         # Repeat and tile bins as needed for DataFrame
-        filter_bins = np.repeat(filter_bins, self.stride)
+        filter_bins = np.repeat(filter_bins, stride)
         tile_factor = data_size / len(filter_bins)
         filter_bins = np.tile(filter_bins, tile_factor)
 

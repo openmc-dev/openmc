@@ -27,8 +27,8 @@ except ImportError:
 MOCK_MODULES = ['numpy', 'numpy.polynomial', 'numpy.polynomial.polynomial',
                 'numpy.ctypeslib', 'scipy', 'scipy.sparse', 'scipy.interpolate',
                 'scipy.integrate', 'scipy.optimize', 'scipy.special',
-                'scipy.stats','h5py', 'pandas', 'uncertainties', 'openmoc',
-                'openmc.data.reconstruct']
+                'scipy.stats', 'h5py', 'pandas', 'uncertainties',
+                'matplotlib.pyplot','openmoc', 'openmc.data.reconstruct']
 sys.modules.update((mod_name, MagicMock()) for mod_name in MOCK_MODULES)
 
 import numpy as np

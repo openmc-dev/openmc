@@ -9,7 +9,7 @@ import numpy as np
 
 from openmc.clean_xml import clean_xml_indentation
 import openmc.checkvalue as cv
-from openmc import Nuclide, VolumeCalculation, Source, Mesh
+from openmc import VolumeCalculation, Source, Mesh
 
 _RUN_MODES = ['eigenvalue', 'fixed source', 'plot', 'volume', 'particle restart']
 _RES_SCAT_METHODS = ['dbrc', 'wcm', 'ares']

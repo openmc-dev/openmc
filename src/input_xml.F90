@@ -2025,6 +2025,7 @@ contains
 
     integer :: i              ! loop index for materials
     integer :: j              ! loop index for nuclides
+    integer :: k              ! loop index
     integer :: n              ! number of nuclides
     integer :: n_sab          ! number of sab tables for a material
     integer :: i_library      ! index in libraries array
@@ -2035,11 +2036,12 @@ contains
     character(MAX_WORD_LEN) :: units        ! units on density
     character(MAX_LINE_LEN) :: filename     ! absolute path to materials.xml
     character(MAX_LINE_LEN) :: temp_str     ! temporary string when reading
+    character(MAX_WORD_LEN), allocatable :: sarray(:)
     real(8)                 :: val          ! value entered for density
     real(8)                 :: temp_dble    ! temporary double prec. real
     logical                 :: sum_density  ! density is sum of nuclide densities
     type(VectorChar)        :: names        ! temporary list of nuclide names
-    type(VectorInt)         :: list_iso_lab ! temporary list of isotropic lab scatterers
+    type(VectorChar)        :: list_iso_lab ! temporary list of isotropic lab scatterers
     type(VectorReal)        :: densities    ! temporary list of nuclide densities
     type(Material), pointer :: mat => null()
     type(XMLDocument) :: doc
@@ -2246,23 +2248,6 @@ contains
                  // trim(to_str(mat % id)))
           end if
 
-          ! Check enforced isotropic lab scattering
-          if (run_CE) then
-            if (check_for_node(node_nuc, "scattering")) then
-              call get_node_value(node_nuc, "scattering", temp_str)
-              if (adjustl(to_lower(temp_str)) == "iso-in-lab") then
-                call list_iso_lab % push_back(1)
-              else if (adjustl(to_lower(temp_str)) == "data") then
-                call list_iso_lab % push_back(0)
-              else
-                call fatal_error("Scattering must be isotropic in lab or follow&
-                     & the ACE file data")
-              end if
-            else
-              call list_iso_lab % push_back(0)
-            end if
-          end if
-
           ! store nuclide name
           call get_node_value(node_nuc, "name", name)
           name = trim(name)
@@ -2297,6 +2282,19 @@ contains
         end do INDIVIDUAL_NUCLIDES
       end if
 
+      ! =======================================================================
+      ! READ AND PARSE <isotropic> element
+
+      if (check_for_node(node_mat, "isotropic")) then
+        n = node_word_count(node_mat, "isotropic")
+        allocate(sarray(n))
+        call get_node_array(node_mat, "isotropic", sarray)
+        do j = 1, n
+          call list_iso_lab % push_back(sarray(j))
+        end do
+        deallocate(sarray)
+      end if
+
       ! ========================================================================
       ! COPY NUCLIDES TO ARRAYS IN MATERIAL
 
@@ -2306,7 +2304,6 @@ contains
       allocate(mat % names(n))
       allocate(mat % nuclide(n))
       allocate(mat % atom_density(n))
-      allocate(mat % p0(n))
 
       ALL_NUCLIDES: do j = 1, mat % n_nuclides
         ! Check that this nuclide is listed in the cross_sections.xml file
@@ -2340,16 +2337,25 @@ contains
         mat % names(j) = name
         mat % atom_density(j) = densities % data(j)
 
-        ! Cast integer isotropic lab scattering flag to boolean
-        if (run_CE) then
-          if (list_iso_lab % data(j) == 1) then
-            mat % p0(j) = .true.
-          else
-            mat % p0(j) = .false.
-          end if
-        end if
-
       end do ALL_NUCLIDES
+
+      if (run_CE) then
+        ! By default, isotropic-in-lab is not used
+        if (list_iso_lab % size() > 0) then
+          mat % has_isotropic_nuclides = .true.
+          allocate(mat % p0(n))
+          mat % p0(:) = .false.
+
+          ! Apply isotropic-in-lab treatment to specified nuclides
+          do j = 1, list_iso_lab % size()
+            do k = 1, n
+              if (names % data(k) == list_iso_lab % data(j)) then
+                mat % p0(k) = .true.
+              end if
+            end do
+          end do
+        end if
+      end if
 
       ! Check to make sure either all atom percents or all weight percents are
       ! given

@@ -517,24 +517,6 @@ class RectLattice(Lattice):
         # Initialize Lattice class attributes
         self._lower_left = None
 
-    def __eq__(self, other):
-        if not isinstance(other, RectLattice):
-            return False
-        elif not super(RectLattice, self).__eq__(other):
-            return False
-        elif self.shape != other.shape:
-            return False
-        elif np.any(self.lower_left != other.lower_left):
-            return False
-        else:
-            return True
-
-    def __ne__(self, other):
-        return not self == other
-
-    def __hash__(self):
-        return hash(repr(self))
-
     def __repr__(self):
         string = 'RectLattice\n'
         string += '{0: <16}{1}{2}\n'.format('\tID', '=\t', self._id)
@@ -863,26 +845,6 @@ class HexLattice(Lattice):
         self._num_rings = None
         self._num_axial = None
         self._center = None
-
-    def __eq__(self, other):
-        if not isinstance(other, HexLattice):
-            return False
-        elif not super(HexLattice, self).__eq__(other):
-            return False
-        elif self.num_rings != other.num_rings:
-            return False
-        elif self.num_axial != other.num_axial:
-            return False
-        elif self.center != other.center:
-            return False
-        else:
-            return True
-
-    def __ne__(self, other):
-        return not self == other
-
-    def __hash__(self):
-        return hash(repr(self))
 
     def __repr__(self):
         string = 'HexLattice\n'

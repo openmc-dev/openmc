@@ -57,7 +57,8 @@ module material_header
     logical :: fissionable = .false.
     logical :: depletable = .false.
 
-    ! enforce isotropic scattering in lab
+    ! enforce isotropic scattering in lab for specific nuclides
+    logical :: has_isotropic_nuclides = .false.
     logical, allocatable :: p0(:)
 
   contains
@@ -302,7 +303,6 @@ contains
     real(8) :: awr
     integer, allocatable :: new_nuclide(:)
     real(8), allocatable :: new_density(:)
-    logical, allocatable :: new_p0(:)
     character(:), allocatable :: name_
 
     name_ = to_f_string(name)
@@ -338,11 +338,6 @@ contains
             allocate(new_density(n + 1))
             if (n > 0) new_density(1:n) = m % atom_density
             call move_alloc(FROM=new_density, TO=m % atom_density)
-
-            allocate(new_p0(n + 1))
-            if (n > 0) new_p0(1:n) = m % p0
-            new_p0(n + 1) = .false.
-            call move_alloc(FROM=new_p0, TO=m % p0)
 
             ! Append new nuclide/density
             k = nuclide_dict % get(to_lower(name_))
@@ -460,8 +455,8 @@ contains
       associate (m => materials(index))
         ! If nuclide/density arrays are not correct size, reallocate
         if (n /= m % n_nuclides) then
-          deallocate(m % nuclide, m % atom_density, m % p0, STAT=stat)
-          allocate(m % nuclide(n), m % atom_density(n), m % p0(n))
+          deallocate(m % nuclide, m % atom_density, STAT=stat)
+          allocate(m % nuclide(n), m % atom_density(n))
         end if
 
         do i = 1, n
@@ -478,9 +473,6 @@ contains
           m % atom_density(i) = density(i)
         end do
         m % n_nuclides = n
-
-        ! Set isotropic flags to flags
-        m % p0(:) = .false.
 
         ! Set total density to the sum of the vector
         err = m % set_density(sum(density))

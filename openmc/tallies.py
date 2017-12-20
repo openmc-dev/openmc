@@ -237,10 +237,10 @@ class Tally(IDManagerMixin):
 
             # Convert NumPy arrays to SciPy sparse LIL matrices
             if self.sparse:
-                self._sum = \
-                    sps.lil_matrix(self._sum.flatten(), self._sum.shape)
-                self._sum_sq = \
-                    sps.lil_matrix(self._sum_sq.flatten(), self._sum_sq.shape)
+                self._sum = sps.lil_matrix(self._sum.flatten(),
+                                           self._sum.shape)
+                self._sum_sq = sps.lil_matrix(self._sum_sq.flatten(),
+                                              self._sum_sq.shape)
 
             # Indicate that Tally results have been read
             self._results_read = True
@@ -2817,25 +2817,33 @@ class Tally(IDManagerMixin):
 
                 # Remove and/or reorder filter bins to user specifications
                 bin_indices = []
-                num_bins = 0
 
                 for filter_bin in filter_bins[i]:
                     bin_index = find_filter.get_bin_index(filter_bin)
-                    if filter_type in [openmc.EnergyFilter,
-                                       openmc.EnergyoutFilter]:
-                        bin_indices.extend([bin_index])
+                    if issubclass(filter_type, openmc.RealFilter):
                         bin_indices.extend([bin_index, bin_index+1])
-                        num_bins += 1
-                    elif filter_type in [openmc.DistribcellFilter,
-                                         openmc.MeshFilter]:
-                        bin_indices = [0]
-                        num_bins = find_filter.num_bins
                     else:
                         bin_indices.append(bin_index)
-                        num_bins += 1
 
-                find_filter.bins = np.unique(find_filter.bins[bin_indices])
-                find_filter._num_bins = num_bins
+                # Set bins for mesh/distribcell filters apart from others
+                if filter_type is openmc.MeshFilter:
+                    bins = find_filter.mesh
+                elif filter_type is openmc.DistribcellFilter:
+                    bins = find_filter.bins
+                else:
+                    bins = np.unique(find_filter.bins[bin_indices])
+
+                # Create new filter
+                new_filter = filter_type(bins)
+
+                # Set number of bins manually for mesh/distribcell filters
+                if filter_type in (openmc.DistribcellFilter, openmc.MeshFilter):
+                    new_filter._num_bins = find_filter._num_bins
+
+                # Replace existing filter with new one
+                for j, test_filter in enumerate(new_tally.filters):
+                    if isinstance(test_filter, filter_type):
+                        new_tally.filters[j] = new_filter
 
         # If original tally was sparse, sparsify the sliced tally
         new_tally.sparse = self.sparse

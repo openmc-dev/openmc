@@ -14,7 +14,10 @@ import pandas as pd
 
 import openmc
 import openmc.checkvalue as cv
+from .cell import Cell
+from .material import Material
 from .mixin import IDManagerMixin
+from .universe import Universe
 
 
 _FILTER_TYPES = ['universe', 'material', 'cell', 'cellborn', 'surface',
@@ -170,7 +173,7 @@ class Filter(IDManagerMixin):
         # If the HDF5 'type' variable matches this class's short_name, then
         # there is no overriden from_hdf5 method.  Pass the bins to __init__.
         if group['type'].value.decode() == cls.short_name.lower():
-            out = cls(group['bins'].value, filter_id)
+            out = cls(group['bins'].value, filter_id=filter_id)
             out._num_bins = group['n_bins'].value
             return out
 
@@ -425,12 +428,15 @@ class Filter(IDManagerMixin):
 
 class WithIDFilter(Filter):
     """Abstract parent for filters of types with ids (Cell, Material, etc.)."""
-    def _smart_set_bins(self, bins, bin_type):
+
+    @Filter.bins.setter
+    def bins(self, bins):
         # Format the bins as a 1D numpy array.
         bins = np.atleast_1d(bins)
 
         # Check the bin values.
-        cv.check_iterable_type('filter bins', bins, (Integral, bin_type))
+        cv.check_iterable_type('filter bins', bins,
+                               (Integral, self.expected_type))
         for edge in bins:
             if isinstance(edge, Integral):
                 cv.check_greater_than('filter bin', edge, 0, equality=True)
@@ -463,13 +469,7 @@ class UniverseFilter(WithIDFilter):
         The number of filter bins
 
     """
-    @property
-    def bins(self):
-        return self._bins
-
-    @bins.setter
-    def bins(self, bins):
-        self._smart_set_bins(bins, openmc.Universe)
+    expected_type = Universe
 
 
 class MaterialFilter(WithIDFilter):
@@ -493,13 +493,7 @@ class MaterialFilter(WithIDFilter):
         The number of filter bins
 
     """
-    @property
-    def bins(self):
-        return self._bins
-
-    @bins.setter
-    def bins(self, bins):
-        self._smart_set_bins(bins, openmc.Material)
+    expected_type = Material
 
 
 class CellFilter(WithIDFilter):
@@ -523,13 +517,7 @@ class CellFilter(WithIDFilter):
         The number of filter bins
 
     """
-    @property
-    def bins(self):
-        return self._bins
-
-    @bins.setter
-    def bins(self, bins):
-        self._smart_set_bins(bins, openmc.Cell)
+    expected_type = Cell
 
 
 class CellFromFilter(WithIDFilter):
@@ -553,13 +541,7 @@ class CellFromFilter(WithIDFilter):
         The number of filter bins
 
     """
-    @property
-    def bins(self):
-        return self._bins
-
-    @bins.setter
-    def bins(self, bins):
-        self._smart_set_bins(bins, openmc.Cell)
+    expected_type = Cell
 
 
 class CellbornFilter(WithIDFilter):
@@ -583,13 +565,7 @@ class CellbornFilter(WithIDFilter):
         The number of filter bins
 
     """
-    @property
-    def bins(self):
-        return self._bins
-
-    @bins.setter
-    def bins(self, bins):
-        self._smart_set_bins(bins, openmc.Cell)
+    expected_type = Cell
 
 
 class SurfaceFilter(Filter):
@@ -614,11 +590,7 @@ class SurfaceFilter(Filter):
         The number of filter bins
 
     """
-    @property
-    def bins(self):
-        return self._bins
-
-    @bins.setter
+    @Filter.bins.setter
     def bins(self, bins):
         # Format the bins as a 1D numpy array.
         bins = np.atleast_1d(bins)
@@ -720,7 +692,7 @@ class MeshFilter(Filter):
         mesh_obj = kwargs['meshes'][mesh_id]
         filter_id = int(group.name.split('/')[-1].lstrip('filter '))
 
-        out = cls(mesh_obj, filter_id)
+        out = cls(mesh_obj, filter_id=filter_id)
         out._num_bins = group['n_bins'].value
 
         return out
@@ -1169,14 +1141,10 @@ class DistribcellFilter(Filter):
 
         filter_id = int(group.name.split('/')[-1].lstrip('filter '))
 
-        out = cls(group['bins'].value, filter_id)
+        out = cls(group['bins'].value, filter_id=filter_id)
         out._num_bins = group['n_bins'].value
 
         return out
-
-    @property
-    def bins(self):
-        return self._bins
 
     @property
     def num_bins(self):
@@ -1188,7 +1156,7 @@ class DistribcellFilter(Filter):
     def paths(self):
         return self._paths
 
-    @bins.setter
+    @Filter.bins.setter
     def bins(self, bins):
         # Format the bins as a 1D numpy array.
         bins = np.atleast_1d(bins)
@@ -1690,11 +1658,7 @@ class DelayedGroupFilter(Filter):
         The number of filter bins
 
     """
-    @property
-    def bins(self):
-        return self._bins
-
-    @bins.setter
+    @Filter.bins.setter
     def bins(self, bins):
         # Format the bins as a 1D numpy array.
         bins = np.atleast_1d(bins)
@@ -1799,7 +1763,7 @@ class EnergyFunctionFilter(Filter):
         y = group['y'].value
         filter_id = int(group.name.split('/')[-1].lstrip('filter '))
 
-        return cls(energy, y, filter_id)
+        return cls(energy, y, filter_id=filter_id)
 
     @classmethod
     def from_tabulated1d(cls, tab1d):
@@ -1836,7 +1800,7 @@ class EnergyFunctionFilter(Filter):
 
     @property
     def bins(self):
-        raise RuntimeError('EnergyFunctionFilters have no bins.')
+        raise AttributeError('EnergyFunctionFilters have no bins.')
 
     @property
     def num_bins(self):

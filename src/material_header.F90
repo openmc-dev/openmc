@@ -32,10 +32,15 @@ module material_header
     character(len=104)   :: name = ""       ! User-defined name
     integer              :: n_nuclides = 0  ! number of nuclides
     integer, allocatable :: nuclide(:)      ! index in nuclides array
-    integer, allocatable :: mat_nuclide_list(:) 
     real(8)              :: density         ! total atom density in atom/b-cm
     real(8), allocatable :: atom_density(:) ! nuclide atom density in atom/b-cm
     real(8)              :: density_gpcc    ! total density in g/cm^3
+
+    ! To improve performance of tallying, we store an array (direct address
+    ! table) that indicates for each nuclide in the global nuclides(:) array the
+    ! index of the corresponding nuclide in the Material % nuclide(:) array. If
+    ! it is not present in the material, the entry is set to zero.
+    integer, allocatable :: mat_nuclide_index(:)
 
     ! Energy grid information
     integer              :: n_grid    ! # of union material grid points

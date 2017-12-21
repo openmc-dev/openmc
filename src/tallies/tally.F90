@@ -2377,10 +2377,6 @@ contains
       i_tally = active_analog_tallies % data(i)
       associate (t => tallies(i_tally) % obj)
 
-      ! Get pointer to current material. We need this in order to determine what
-      ! nuclides are in the material
-      mat => materials(p % material)
-
       ! Find all valid bins in each filter if they have not already been found
       ! for a previous tally.
       do j = 1, size(t % filter)
@@ -2423,33 +2419,28 @@ contains
         ! Nuclide logic
 
         ! Check for nuclide bins
-        k = 0
-        NUCLIDE_LOOP: do while (k < t % n_nuclide_bins)
-
-          ! Increment the index in the list of nuclide bins
-          k = k + 1
-
+        NUCLIDE_LOOP: do k = 1, t % n_nuclide_bins
+          ! Get index of nuclide in nuclides array
           i_nuclide = t % nuclide_bins(k)
 
           if (i_nuclide > 0) then
-            atom_density = -ONE
-            ! Check to see if this nuclide was in the material of our collision
-            do m = 1, mat % n_nuclides
-              if (mat % nuclide(m) == i_nuclide) then
-                atom_density = mat % atom_density(m)
-                exit
-              end if
-            end do
+            if (p % material /= MATERIAL_VOID) then
+              ! Get pointer to current material
+              mat => materials(p % material)
+
+              ! Determine index of nuclide in Material % atom_density array
+              j = mat % mat_nuclide_index(i_nuclide)
+              if (j == 0) cycle NUCLIDE_LOOP
+
+              ! Copy corresponding atom density
+              atom_density = mat % atom_density(j)
+            end if
           else
             atom_density = ZERO
           end if
 
-          ! If we found the nuclide, determine the score for each bin
-          if (atom_density >= ZERO) then
-            call score_general(p, t, (k-1)*t % n_score_bins, filter_index, &
-                 i_nuclide, atom_density, filter_weight)
-          end if
-
+          call score_general(p, t, (k-1)*t % n_score_bins, filter_index, &
+               i_nuclide, atom_density, filter_weight)
         end do NUCLIDE_LOOP
 
         ! ======================================================================
@@ -2730,7 +2721,7 @@ contains
 
     type(Particle), intent(in) :: p
     real(8),        intent(in) :: distance
-    integer :: check_value
+
     integer :: i
     integer :: i_tally
     integer :: i_filt
@@ -2744,7 +2735,7 @@ contains
     real(8) :: filter_weight        ! combined weight of all filters
     logical :: finished             ! found all valid bin combinations
     type(Material),    pointer :: mat
-    
+
     ! Determine track-length estimate of flux
     flux = p % wgt * distance
 
@@ -2811,17 +2802,18 @@ contains
               if (p % material /= MATERIAL_VOID) then
                 ! Get pointer to current material
                 mat => materials(p % material)
-                check_value= mat % mat_nuclide_list(i_nuclide)
-                
-                if (check_value == 0) then 
-                  cycle NUCLIDE_BIN_LOOP
-                end if
 
-                atom_density = mat % atom_density(check_value)
+                ! Determine index of nuclide in Material % atom_density array
+                j = mat % mat_nuclide_index(i_nuclide)
+                if (j == 0) cycle NUCLIDE_BIN_LOOP
+
+                ! Copy corresponding atom density
+                atom_density = mat % atom_density(j)
               else
                 atom_density = ZERO
               end if
             end if
+
             ! Determine score for each bin
             call score_general(p, t, (k-1)*t % n_score_bins, filter_index, &
                  i_nuclide, atom_density, flux * filter_weight)
@@ -2968,19 +2960,11 @@ contains
                 ! Get pointer to current material
                 mat => materials(p % material)
 
-                ! Determine if nuclide is actually in material
-                NUCLIDE_MAT_LOOP: do j = 1, mat % n_nuclides
-                  ! If index of nuclide matches the j-th nuclide listed in the
-                  ! material, break out of the loop
-                  if (i_nuclide == mat % nuclide(j)) exit
+                ! Determine index of nuclide in Material % atom_density array
+                j = mat % mat_nuclide_index(i_nuclide)
+                if (j == 0) cycle NUCLIDE_BIN_LOOP
 
-                  ! If we've reached the last nuclide in the material, it means
-                  ! the specified nuclide to be tallied is not in this material
-                  if (j == mat % n_nuclides) then
-                    cycle NUCLIDE_BIN_LOOP
-                  end if
-                end do NUCLIDE_MAT_LOOP
-
+                ! Copy corresponding atom density
                 atom_density = mat % atom_density(j)
               else
                 atom_density = ZERO

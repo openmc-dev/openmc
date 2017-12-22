@@ -69,6 +69,7 @@ module material_header
 
   contains
     procedure :: set_density => material_set_density
+    procedure :: init_nuclide_index => material_init_nuclide_index
     procedure :: assign_sab_tables => material_assign_sab_tables
   end type Material
 
@@ -85,8 +86,8 @@ contains
 ! MATERIAL_SET_DENSITY sets the total density of a material in atom/b-cm.
 !===============================================================================
 
-  function material_set_density(m, density) result(err)
-    class(Material), intent(inout) :: m
+  function material_set_density(this, density) result(err)
+    class(Material), intent(inout) :: this
     real(8), intent(in) :: density
     integer :: err
 
@@ -94,23 +95,23 @@ contains
     real(8) :: sum_percent
     real(8) :: awr
 
-    if (allocated(m % atom_density)) then
+    if (allocated(this % atom_density)) then
       ! Set total density based on value provided
-      m % density = density
+      this % density = density
 
       ! Determine normalized atom percents
-      sum_percent = sum(m % atom_density)
-      m % atom_density(:) = m % atom_density / sum_percent
+      sum_percent = sum(this % atom_density)
+      this % atom_density(:) = this % atom_density / sum_percent
 
       ! Recalculate nuclide atom densities based on given density
-      m % atom_density(:) = density * m % atom_density
+      this % atom_density(:) = density * this % atom_density
 
       ! Calculate density in g/cm^3.
-      m % density_gpcc = ZERO
-      do i = 1, m % n_nuclides
-        awr = nuclides(m % nuclide(i)) % awr
-        m % density_gpcc = m % density_gpcc &
-             + m % atom_density(i) * awr * MASS_NEUTRON / N_AVOGADRO
+      this % density_gpcc = ZERO
+      do i = 1, this % n_nuclides
+        awr = nuclides(this % nuclide(i)) % awr
+        this % density_gpcc = this % density_gpcc &
+             + this % atom_density(i) * awr * MASS_NEUTRON / N_AVOGADRO
       end do
       err = 0
     else
@@ -118,6 +119,28 @@ contains
       call set_errmsg("Material atom density array hasn't been allocated.")
     end if
   end function material_set_density
+
+!===============================================================================
+! INIT_NUCLIDE_INDEX creates a mapping from indices in the global nuclides(:)
+! array to the Material % nuclides array
+!===============================================================================
+
+  subroutine material_init_nuclide_index(this)
+    class(Material), intent(inout) :: this
+
+    integer :: i
+
+    ! Allocate nuclide index array and set to zeros
+    if (allocated(this % mat_nuclide_index)) &
+         deallocate(this % mat_nuclide_index)
+    allocate(this % mat_nuclide_index(n_nuclides))
+    this % mat_nuclide_index(:) = 0
+
+    ! Assign entries in the index array
+    do i = 1, this % n_nuclides
+      this % mat_nuclide_index(this % nuclide(i)) = i
+    end do
+  end subroutine material_init_nuclide_index
 
 !===============================================================================
 ! ASSIGN_SAB_TABLES assigns S(alpha,beta) tables to specific nuclides within

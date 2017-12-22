@@ -15,6 +15,7 @@ module cross_section
   use sab_header,       only: SAlphaBeta, sab_tables
   use settings
   use simulation_header
+  use tally_header,     only: active_tallies
 
   implicit none
 
@@ -38,6 +39,9 @@ contains
     real(8) :: atom_density  ! atom density of a nuclide
     real(8) :: sab_frac      ! fraction of atoms affected by S(a,b)
     logical :: check_sab     ! should we check for S(a,b) table?
+    logical :: in_active     ! are we in active batches?
+
+    in_active = (active_tallies % size() > 0)
 
     ! Set all material macroscopic cross sections to zero
     material_xs % total          = ZERO
@@ -107,7 +111,7 @@ contains
              .or. i_sab /= micro_xs(i_nuclide) % index_sab &
              .or. sab_frac /= micro_xs(i_nuclide) % sab_frac) then
           call calculate_nuclide_xs(i_nuclide, i_sab, p % E, i_grid, &
-                                    p % sqrtkT, sab_frac)
+                                    p % sqrtkT, sab_frac, in_active)
         end if
 
         ! ======================================================================
@@ -136,29 +140,31 @@ contains
         material_xs % nu_fission = material_xs % nu_fission + &
              atom_density * micro_xs(i_nuclide) % nu_fission
 
-        ! Add contributions to material macroscopic n2n cross section
-        material_xs % n2n = material_xs % n2n + &
-             atom_density * micro_xs(i_nuclide) % n2n
+        if (in_active) then
+          ! Add contributions to material macroscopic n2n cross section
+          material_xs % n2n = material_xs % n2n + &
+               atom_density * micro_xs(i_nuclide) % n2n
 
-        ! Add contributions to material macroscopic n3n cross section
-        material_xs % n3n = material_xs % n3n + &
-             atom_density * micro_xs(i_nuclide) % n3n
+          ! Add contributions to material macroscopic n3n cross section
+          material_xs % n3n = material_xs % n3n + &
+               atom_density * micro_xs(i_nuclide) % n3n
 
-        ! Add contributions to material macroscopic n4n cross section
-        material_xs % n4n = material_xs % n4n + &
-             atom_density * micro_xs(i_nuclide) % n4n
+          ! Add contributions to material macroscopic n4n cross section
+          material_xs % n4n = material_xs % n4n + &
+               atom_density * micro_xs(i_nuclide) % n4n
 
-        ! Add contributions to material macroscopic ngamma cross section
-        material_xs % ngamma = material_xs % ngamma + &
-             atom_density * micro_xs(i_nuclide) % ngamma
+          ! Add contributions to material macroscopic ngamma cross section
+          material_xs % ngamma = material_xs % ngamma + &
+               atom_density * micro_xs(i_nuclide) % ngamma
 
-        ! Add contributions to material macroscopic np cross section
-        material_xs % np = material_xs % np + &
-             atom_density * micro_xs(i_nuclide) % np
+          ! Add contributions to material macroscopic np cross section
+          material_xs % np = material_xs % np + &
+               atom_density * micro_xs(i_nuclide) % np
 
-        ! Add contributions to material macroscopic nalpha cross section
-        material_xs % nalpha = material_xs % nalpha + &
-             atom_density * micro_xs(i_nuclide) % nalpha
+          ! Add contributions to material macroscopic nalpha cross section
+          material_xs % nalpha = material_xs % nalpha + &
+               atom_density * micro_xs(i_nuclide) % nalpha
+        end if
       end do
     end associate
 
@@ -170,7 +176,7 @@ contains
 !===============================================================================
 
   subroutine calculate_nuclide_xs(i_nuclide, i_sab, E, i_log_union, sqrtkT, &
-                                  sab_frac)
+                                  sab_frac, in_active)
     integer, intent(in) :: i_nuclide   ! index into nuclides array
     integer, intent(in) :: i_sab       ! index into sab_tables array
     real(8), intent(in) :: E           ! energy
@@ -178,6 +184,7 @@ contains
                                        ! material union energy grid
     real(8), intent(in) :: sqrtkT      ! square root of kT, material dependent
     real(8), intent(in) :: sab_frac    ! fraction of atoms affected by S(a,b)
+    logical, intent(in) :: in_active
 
     logical :: use_mp ! true if XS can be calculated with windowed multipole
     integer :: i_temp ! index for temperature
@@ -185,19 +192,14 @@ contains
     integer :: i_low  ! lower logarithmic mapping index
     integer :: i_high ! upper logarithmic mapping index
     integer :: i_rxn  ! reaction index
-    integer :: j
-    real(8) :: val
+    integer :: j      ! index in DEPLETION_RX
+    real(8) :: val    ! temporary xs value
     real(8) :: f      ! interp factor on nuclide energy grid
     real(8) :: kT     ! temperature in eV
     real(8) :: sigT, sigA, sigF ! Intermediate multipole variables
     integer, parameter :: DEPLETION_RX(6) = [N_2N, N_3N, N_4N, N_GAMMA, N_P, N_A]
 
     ! Initialize cached cross sections to zero
-    micro_xs(i_nuclide) % n2n             = ZERO
-    micro_xs(i_nuclide) % n3n             = ZERO
-    micro_xs(i_nuclide) % n4n             = ZERO
-    micro_xs(i_nuclide) % np              = ZERO
-    micro_xs(i_nuclide) % nalpha          = ZERO
     micro_xs(i_nuclide) % thermal         = ZERO
     micro_xs(i_nuclide) % thermal_elastic = ZERO
 
@@ -227,7 +229,15 @@ contains
           micro_xs(i_nuclide) % fission    = ZERO
           micro_xs(i_nuclide) % nu_fission = ZERO
         end if
-        micro_xs(i_nuclide) % ngamma = sigF - sigA
+
+        if (in_active) then
+          micro_xs(i_nuclide) % ngamma = sigA - sigF
+          micro_xs(i_nuclide) % n2n    = ZERO
+          micro_xs(i_nuclide) % n3n    = ZERO
+          micro_xs(i_nuclide) % n4n    = ZERO
+          micro_xs(i_nuclide) % np     = ZERO
+          micro_xs(i_nuclide) % nalpha = ZERO
+        end if
 
         ! Ensure these values are set
         ! Note, the only time either is used is in one of 4 places:
@@ -321,31 +331,39 @@ contains
         end associate
 
         ! Depletion-related reactions
-        do j = 1, 6
-          i_rxn = nuc % rxn_index_MT(DEPLETION_RX(j))
-          if (i_rxn > 0) then
-            associate (xs => nuc % reactions(i_rxn) % xs(i_temp))
-              if (i_grid >= xs % threshold) then
-                val = (ONE - f) * xs % value(i_grid - xs % threshold + 1) + &
-                     f * xs % value(i_grid - xs % threshold + 2)
-                select case (DEPLETION_RX(j))
-                case (N_2N)
-                  micro_xs(i_nuclide) % n2n = val
-                case (N_3N)
-                  micro_xs(i_nuclide) % n3n = val
-                case (N_4N)
-                  micro_xs(i_nuclide) % n4n = val
-                case (N_GAMMA)
-                  micro_xs(i_nuclide) % ngamma = val
-                case (N_P)
-                  micro_xs(i_nuclide) % np = val
-                case (N_A)
-                  micro_xs(i_nuclide) % nalpha = val
-                end select
-              end if
-            end associate
-          end if
-        end do
+        if (in_active) then
+          do j = 1, 6
+            i_rxn = nuc % rxn_index_MT(DEPLETION_RX(j))
+            if (i_rxn > 0) then
+              associate (xs => nuc % reactions(i_rxn) % xs(i_temp))
+                if (i_grid >= xs % threshold) then
+                  val = (ONE - f) * xs % value(i_grid - xs % threshold + 1) + &
+                       f * xs % value(i_grid - xs % threshold + 2)
+                else
+                  val = ZERO
+                end if
+              end associate
+            else
+              val = ZERO
+            end if
+
+            select case (DEPLETION_RX(j))
+            case (N_2N)
+              micro_xs(i_nuclide) % n2n = val
+            case (N_3N)
+              micro_xs(i_nuclide) % n3n = val
+            case (N_4N)
+              micro_xs(i_nuclide) % n4n = val
+            case (N_GAMMA)
+              micro_xs(i_nuclide) % ngamma = val
+            case (N_P)
+              micro_xs(i_nuclide) % np = val
+            case (N_A)
+              micro_xs(i_nuclide) % nalpha = val
+            end select
+          end do
+        end if
+
       end if
 
       ! Initialize sab treatment to false

@@ -90,7 +90,7 @@ module nuclide_header
 
     ! Array that maps MT values to index in reactions; used at tally-time. Note
     ! that ENDF-102 does not assign any MT values above 891.
-    integer :: rxn_index_MT(891)
+    integer :: reaction_index(891)
 
     ! Fission energy release
     class(Function1D), allocatable :: fission_q_prompt ! prompt neutrons, gammas
@@ -575,7 +575,7 @@ contains
 
     n_temperature = size(this % kTs)
     allocate(this % sum_xs(n_temperature))
-    this % rxn_index_MT(:) = 0
+    this % reaction_index(:) = 0
     do i = 1, n_temperature
       ! Allocate and initialize derived cross sections
       n_grid = size(this % grid(i) % energy)
@@ -594,9 +594,8 @@ contains
     i_fission = 0
 
     do i = 1, size(this % reactions)
-
       call MTs % push_back(this % reactions(i) % MT)
-      this % rxn_index_MT(this % reactions(i) % MT) = i
+      this % reaction_index(this % reactions(i) % MT) = i
 
       associate (rx => this % reactions(i))
         ! Skip total inelastic level scattering, gas production cross sections

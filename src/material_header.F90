@@ -42,13 +42,6 @@ module material_header
     ! it is not present in the material, the entry is set to zero.
     integer, allocatable :: mat_nuclide_index(:)
 
-    ! Energy grid information
-    integer              :: n_grid    ! # of union material grid points
-    real(8), allocatable :: e_grid(:) ! union material grid energies
-
-    ! Unionized energy grid information
-    integer, allocatable :: nuclide_grid_index(:,:) ! nuclide e_grid pointers
-
     ! S(a,b) data
     integer              :: n_sab = 0         ! number of S(a,b) tables
     integer, allocatable :: i_sab_nuclides(:) ! index of corresponding nuclide

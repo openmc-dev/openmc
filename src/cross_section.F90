@@ -574,28 +574,6 @@ contains
   end subroutine calculate_urr_xs
 
 !===============================================================================
-! FIND_ENERGY_INDEX determines the index on the union energy grid at a certain
-! energy
-!===============================================================================
-
-  pure function find_energy_index(mat, E) result(i)
-    type(Material), intent(in) :: mat ! pointer to current material
-    real(8),        intent(in) :: E   ! energy of particle
-    integer                    :: i   ! energy grid index
-
-    ! if the energy is outside of energy grid range, set to first or last
-    ! index. Otherwise, do a binary search through the union energy grid.
-    if (E <= mat % e_grid(1)) then
-      i = 1
-    elseif (E > mat % e_grid(mat % n_grid)) then
-      i = mat % n_grid - 1
-    else
-      i = binary_search(mat % e_grid, mat % n_grid, E)
-    end if
-
-  end function find_energy_index
-
-!===============================================================================
 ! MULTIPOLE_EVAL evaluates the windowed multipole equations for cross
 ! sections in the resolved resonance regions
 !===============================================================================

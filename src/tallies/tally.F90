@@ -247,7 +247,7 @@ contains
           ! multiplicities of one.
           score = p % last_wgt * flux
         else
-          m = nuclides(p % event_nuclide) % rxn_index_MT(p % event_MT)
+          m = nuclides(p % event_nuclide) % reaction_index(p % event_MT)
 
           ! Get yield and apply to score
           associate (rxn => nuclides(p % event_nuclide) % reactions(m))
@@ -273,7 +273,7 @@ contains
           ! multiplicities of one.
           score = p % last_wgt * flux
         else
-          m = nuclides(p % event_nuclide) % rxn_index_MT(p % event_MT)
+          m = nuclides(p % event_nuclide) % reaction_index(p % event_MT)
 
           ! Get yield and apply to score
           associate (rxn => nuclides(p % event_nuclide) % reactions(m))
@@ -299,7 +299,7 @@ contains
           ! multiplicities of one.
           score = p % last_wgt * flux
         else
-          m = nuclides(p % event_nuclide) % rxn_index_MT(p % event_MT)
+          m = nuclides(p % event_nuclide) % reaction_index(p % event_MT)
 
           ! Get yield and apply to score
           associate (rxn => nuclides(p%event_nuclide)%reactions(m))
@@ -1232,7 +1232,7 @@ contains
             score = ZERO
 
             if (i_nuclide > 0) then
-              m = nuclides(i_nuclide) % rxn_index_MT(score_bin)
+              m = nuclides(i_nuclide) % reaction_index(score_bin)
               if (m /= 0) then
                 ! Retrieve temperature and energy grid index and interpolation
                 ! factor
@@ -1265,7 +1265,7 @@ contains
                   ! Get index in nuclides array
                   i_nuc = materials(p % material) % nuclide(l)
 
-                  m = nuclides(i_nuc) % rxn_index_MT(score_bin)
+                  m = nuclides(i_nuc) % reaction_index(score_bin)
                   if (m /= 0) then
                     ! Retrieve temperature and energy grid index and
                     ! interpolation factor

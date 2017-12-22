@@ -333,7 +333,7 @@ contains
         ! Depletion-related reactions
         if (in_active) then
           do j = 1, 6
-            i_rxn = nuc % rxn_index_MT(DEPLETION_RX(j))
+            i_rxn = nuc % reaction_index(DEPLETION_RX(j))
             if (i_rxn > 0) then
               associate (xs => nuc % reactions(i_rxn) % xs(i_temp))
                 if (i_grid >= xs % threshold) then

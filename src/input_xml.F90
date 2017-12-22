@@ -2450,17 +2450,6 @@ contains
     n_nuclides = index_nuclide
     n_sab_tables = index_sab
 
-    ! Create direct address tables for tally optimization purposes
-    do i = 1, n_materials
-      mat => materials(i)
-      allocate(mat % mat_nuclide_index(n_nuclides))
-      mat % mat_nuclide_index(:) = 0
-
-      do j = 1, mat % n_nuclides
-        mat % mat_nuclide_index(mat % nuclide(j)) = j
-      end do
-    end do
-
     ! Close materials XML file
     call doc % clear()
 

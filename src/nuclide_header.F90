@@ -43,14 +43,6 @@ module nuclide_header
     real(8), allocatable :: nu_fission(:) ! neutron production
     real(8), allocatable :: absorption(:) ! absorption (MT > 100)
     real(8), allocatable :: heating(:)    ! heating
-    real(8), allocatable :: ngamma(:)
-    real(8), allocatable :: n2n(:)
-    real(8), allocatable :: n3n(:)
-    real(8), allocatable :: n4n(:)
-
-    real(8), allocatable :: np(:)
-    real(8), allocatable :: nalpha(:)
-
   end type SumXS
 
   type :: Nuclide
@@ -127,9 +119,9 @@ module nuclide_header
     real(8) :: fission
     real(8) :: nu_fission
     real(8) :: n2n
-    real(8) :: ngamma
     real(8) :: n3n
     real(8) :: n4n
+    real(8) :: ngamma
     real(8) :: np
     real(8) :: nalpha
     real(8) :: thermal          ! Bound thermal elastic & inelastic scattering
@@ -162,13 +154,12 @@ module nuclide_header
     real(8) :: absorption    ! macroscopic absorption xs
     real(8) :: fission       ! macroscopic fission xs
     real(8) :: nu_fission    ! macroscopic production xs
-    real(8) :: n2n
-    real(8) :: n3n
-    real(8) :: n4n
-    real(8) :: ngamma
-    real(8) :: np
-    real(8) :: nalpha
-
+    real(8) :: n2n           ! macroscopic (n,2n) xs
+    real(8) :: n3n           ! macroscopic (n,3n) xs
+    real(8) :: n4n           ! macroscopic (n,4n) xs
+    real(8) :: ngamma        ! macroscopic (n,gamma) xs
+    real(8) :: np            ! macroscopic (n,p) xs
+    real(8) :: nalpha        ! macroscopic (n,alpha) xs
   end type MaterialMacroXS
 
 !===============================================================================

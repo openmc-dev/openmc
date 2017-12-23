@@ -115,15 +115,15 @@ module nuclide_header
     real(8) :: total
     real(8) :: elastic          ! If sab_frac is not 1 or 0, then this value is
                                 !   averaged over bound and non-bound nuclei
-    real(8) :: absorption
-    real(8) :: fission
-    real(8) :: nu_fission
-    real(8) :: n2n
-    real(8) :: n3n
-    real(8) :: n4n
-    real(8) :: ngamma
-    real(8) :: np
-    real(8) :: nalpha
+    real(8) :: absorption       ! absorption (disappearance)
+    real(8) :: fission          ! fission
+    real(8) :: nu_fission       ! neutron production from fission
+    real(8) :: n2n              ! (n,2n)
+    real(8) :: n3n              ! (n,3n)
+    real(8) :: n4n              ! (n,4n)
+    real(8) :: ngamma           ! (n,gamma)
+    real(8) :: np               ! (n,p)
+    real(8) :: nalpha           ! (n,alpha)
     real(8) :: thermal          ! Bound thermal elastic & inelastic scattering
     real(8) :: thermal_elastic  ! Bound thermal elastic scattering
 
@@ -154,12 +154,6 @@ module nuclide_header
     real(8) :: absorption    ! macroscopic absorption xs
     real(8) :: fission       ! macroscopic fission xs
     real(8) :: nu_fission    ! macroscopic production xs
-    real(8) :: n2n           ! macroscopic (n,2n) xs
-    real(8) :: n3n           ! macroscopic (n,3n) xs
-    real(8) :: n4n           ! macroscopic (n,4n) xs
-    real(8) :: ngamma        ! macroscopic (n,gamma) xs
-    real(8) :: np            ! macroscopic (n,p) xs
-    real(8) :: nalpha        ! macroscopic (n,alpha) xs
   end type MaterialMacroXS
 
 !===============================================================================

@@ -49,12 +49,6 @@ contains
     material_xs % absorption     = ZERO
     material_xs % fission        = ZERO
     material_xs % nu_fission     = ZERO
-    material_xs % n2n            = ZERO
-    material_xs % n3n            = ZERO
-    material_xs % n4n            = ZERO
-    material_xs % ngamma         = ZERO
-    material_xs % np             = ZERO
-    material_xs % nalpha         = ZERO
 
     ! Exit subroutine if material is void
     if (p % material == MATERIAL_VOID) return
@@ -139,32 +133,6 @@ contains
         ! Add contributions to material macroscopic nu-fission cross section
         material_xs % nu_fission = material_xs % nu_fission + &
              atom_density * micro_xs(i_nuclide) % nu_fission
-
-        if (in_active) then
-          ! Add contributions to material macroscopic n2n cross section
-          material_xs % n2n = material_xs % n2n + &
-               atom_density * micro_xs(i_nuclide) % n2n
-
-          ! Add contributions to material macroscopic n3n cross section
-          material_xs % n3n = material_xs % n3n + &
-               atom_density * micro_xs(i_nuclide) % n3n
-
-          ! Add contributions to material macroscopic n4n cross section
-          material_xs % n4n = material_xs % n4n + &
-               atom_density * micro_xs(i_nuclide) % n4n
-
-          ! Add contributions to material macroscopic ngamma cross section
-          material_xs % ngamma = material_xs % ngamma + &
-               atom_density * micro_xs(i_nuclide) % ngamma
-
-          ! Add contributions to material macroscopic np cross section
-          material_xs % np = material_xs % np + &
-               atom_density * micro_xs(i_nuclide) % np
-
-          ! Add contributions to material macroscopic nalpha cross section
-          material_xs % nalpha = material_xs % nalpha + &
-               atom_density * micro_xs(i_nuclide) % nalpha
-        end if
       end do
     end associate
 

@@ -48,6 +48,7 @@ module tally_header
     integer :: estimator = ESTIMATOR_TRACKLENGTH ! collision, track-length
     real(8) :: volume               ! volume of region
     logical :: active = .false.
+    logical :: depletion_rx = .false. ! has depletion reactions, e.g. (n,2n)
     integer, allocatable :: filter(:) ! index in filters array
 
     ! The stride attribute is used for determining the index in the results

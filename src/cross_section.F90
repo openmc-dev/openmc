@@ -165,7 +165,6 @@ contains
     real(8) :: f      ! interp factor on nuclide energy grid
     real(8) :: kT     ! temperature in eV
     real(8) :: sigT, sigA, sigF ! Intermediate multipole variables
-    integer, parameter :: DEPLETION_RX(6) = [N_2N, N_3N, N_4N, N_GAMMA, N_P, N_A]
 
     ! Initialize cached cross sections to zero
     micro_xs(i_nuclide) % thermal         = ZERO
@@ -199,12 +198,11 @@ contains
         end if
 
         if (in_active) then
-          micro_xs(i_nuclide) % ngamma = sigA - sigF
-          micro_xs(i_nuclide) % n2n    = ZERO
-          micro_xs(i_nuclide) % n3n    = ZERO
-          micro_xs(i_nuclide) % n4n    = ZERO
-          micro_xs(i_nuclide) % np     = ZERO
-          micro_xs(i_nuclide) % nalpha = ZERO
+          ! Initialize all reaction cross sections to zero
+          micro_xs(i_nuclide) % reaction(:) = ZERO
+
+          ! Only non-zero reaction is (n,gamma)
+          micro_xs(i_nuclide) % reaction(4) = sigA - sigF
         end if
 
         ! Ensure these values are set
@@ -301,34 +299,21 @@ contains
         ! Depletion-related reactions
         if (in_active) then
           do j = 1, 6
+            ! Initialize reaction xs to zero
+            micro_xs(i_nuclide) % reaction(j) = ZERO
+
+            ! If reaction is present and energy is greater than threshold, set
+            ! the reaction xs appropriately
             i_rxn = nuc % reaction_index(DEPLETION_RX(j))
             if (i_rxn > 0) then
               associate (xs => nuc % reactions(i_rxn) % xs(i_temp))
                 if (i_grid >= xs % threshold) then
-                  val = (ONE - f) * xs % value(i_grid - xs % threshold + 1) + &
+                  micro_xs(i_nuclide) % reaction(j) = (ONE - f) * &
+                       xs % value(i_grid - xs % threshold + 1) + &
                        f * xs % value(i_grid - xs % threshold + 2)
-                else
-                  val = ZERO
                 end if
               end associate
-            else
-              val = ZERO
             end if
-
-            select case (DEPLETION_RX(j))
-            case (N_2N)
-              micro_xs(i_nuclide) % n2n = val
-            case (N_3N)
-              micro_xs(i_nuclide) % n3n = val
-            case (N_4N)
-              micro_xs(i_nuclide) % n4n = val
-            case (N_GAMMA)
-              micro_xs(i_nuclide) % ngamma = val
-            case (N_P)
-              micro_xs(i_nuclide) % np = val
-            case (N_A)
-              micro_xs(i_nuclide) % nalpha = val
-            end select
           end do
         end if
 

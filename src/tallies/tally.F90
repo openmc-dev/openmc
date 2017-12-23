@@ -1131,15 +1131,31 @@ contains
           end if
         end if
 
-      case (N_2N)
+      case (N_2N, N_3N, N_4N, N_GAMMA, N_P, N_A)
         if (t % estimator == ESTIMATOR_ANALOG) then
           ! Check if event MT matches
-          if (p % event_MT /= N_2N) cycle SCORE_LOOP
+          if (p % event_MT /= score_bin) cycle SCORE_LOOP
           score = p % last_wgt * flux
 
         else
+          ! Determine index in NuclideMicroXS % reaction array
+          select case (score_bin)
+          case (N_2N)
+            m = 1
+          case (N_3N)
+            m = 2
+          case (N_4N)
+            m = 3
+          case (N_GAMMA)
+            m = 4
+          case (N_P)
+            m = 5
+          case (N_A)
+            m = 6
+          end select
+
           if (i_nuclide > 0) then
-            score = micro_xs(i_nuclide) % n2n * atom_density * flux
+            score = micro_xs(i_nuclide) % reaction(m) * atom_density * flux
           else
             score = ZERO
             if (p % material /= MATERIAL_VOID) then
@@ -1147,122 +1163,7 @@ contains
                 do l = 1, materials(p % material) % n_nuclides
                   i_nuc = mat % nuclide(l)
                   atom_density_ = mat % atom_density(l)
-                  score = score + micro_xs(i_nuc) % n2n * atom_density_ * flux
-                end do
-              end associate
-            end if
-          end if
-        end if
-
-      case (N_3N)
-        if (t % estimator == ESTIMATOR_ANALOG) then
-          ! Check if event MT matches
-          if (p % event_MT /= N_3N) cycle SCORE_LOOP
-          score = p % last_wgt * flux
-
-        else
-          if (i_nuclide > 0) then
-            score = micro_xs(i_nuclide) % n3n * atom_density * flux
-          else
-            score = ZERO
-            if (p % material /= MATERIAL_VOID) then
-              associate (mat => materials(p % material))
-                do l = 1, materials(p % material) % n_nuclides
-                  i_nuc = mat % nuclide(l)
-                  atom_density_ = mat % atom_density(l)
-                  score = score + micro_xs(i_nuc) % n3n * atom_density_ * flux
-                end do
-              end associate
-            end if
-          end if
-        end if
-
-      case (N_4N)
-        if (t % estimator == ESTIMATOR_ANALOG) then
-          ! Check if event MT matches
-          if (p % event_MT /= N_4N) cycle SCORE_LOOP
-          score = p % last_wgt * flux
-
-        else
-          if (i_nuclide > 0) then
-            score = micro_xs(i_nuclide) % n4n * atom_density * flux
-          else
-            score = ZERO
-            if (p % material /= MATERIAL_VOID) then
-              associate (mat => materials(p % material))
-                do l = 1, materials(p % material) % n_nuclides
-                  i_nuc = mat % nuclide(l)
-                  atom_density_ = mat % atom_density(l)
-                  score = score + micro_xs(i_nuc) % n4n * atom_density_ * flux
-                end do
-              end associate
-            end if
-          end if
-        end if
-
-      case (N_P)
-        if (t % estimator == ESTIMATOR_ANALOG) then
-          ! Check if event MT matches
-          if (p % event_MT /= N_P) cycle SCORE_LOOP
-          score = p % last_wgt * flux
-
-        else
-          if (i_nuclide > 0) then
-            score = micro_xs(i_nuclide) % np * atom_density * flux
-          else
-            score = ZERO
-            if (p % material /= MATERIAL_VOID) then
-              associate (mat => materials(p % material))
-                do l = 1, materials(p % material) % n_nuclides
-                  i_nuc = mat % nuclide(l)
-                  atom_density_ = mat % atom_density(l)
-                  score = score + micro_xs(i_nuc) % np * atom_density_ * flux
-                end do
-              end associate
-            end if
-          end if
-        end if
-
-      case (N_A)
-        if (t % estimator == ESTIMATOR_ANALOG) then
-          ! Check if event MT matches
-          if (p % event_MT /= N_A) cycle SCORE_LOOP
-          score = p % last_wgt * flux
-
-        else
-          if (i_nuclide > 0) then
-            score = micro_xs(i_nuclide) % nalpha * atom_density * flux
-          else
-            score = ZERO
-            if (p % material /= MATERIAL_VOID) then
-              associate (mat => materials(p % material))
-                do l = 1, materials(p % material) % n_nuclides
-                  i_nuc = mat % nuclide(l)
-                  atom_density_ = mat % atom_density(l)
-                  score = score + micro_xs(i_nuc) % nalpha * atom_density_ * flux
-                end do
-              end associate
-            end if
-          end if
-        end if
-
-      case (N_GAMMA)
-        if (t % estimator == ESTIMATOR_ANALOG) then
-          ! Check if event MT matches
-          if (p % event_MT /= N_GAMMA) cycle SCORE_LOOP
-          score = p % last_wgt * flux
-
-        else
-          if (i_nuclide > 0) then
-            score = micro_xs(i_nuclide) % ngamma * atom_density * flux
-          else
-            score = ZERO
-            if (p % material /= MATERIAL_VOID) then
-              associate (mat => materials(p % material))
-                do l = 1, materials(p % material) % n_nuclides
-                  i_nuc = mat % nuclide(l)
-                  atom_density_ = mat % atom_density(l)
-                  score = score + micro_xs(i_nuc) % ngamma * atom_density_ * flux
+                  score = score + micro_xs(i_nuc) % reaction(m) * atom_density_ * flux
                 end do
               end associate
             end if

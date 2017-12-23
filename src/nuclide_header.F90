@@ -118,14 +118,12 @@ module nuclide_header
     real(8) :: absorption       ! absorption (disappearance)
     real(8) :: fission          ! fission
     real(8) :: nu_fission       ! neutron production from fission
-    real(8) :: n2n              ! (n,2n)
-    real(8) :: n3n              ! (n,3n)
-    real(8) :: n4n              ! (n,4n)
-    real(8) :: ngamma           ! (n,gamma)
-    real(8) :: np               ! (n,p)
-    real(8) :: nalpha           ! (n,alpha)
     real(8) :: thermal          ! Bound thermal elastic & inelastic scattering
     real(8) :: thermal_elastic  ! Bound thermal elastic scattering
+
+    ! Cross sections for depletion reactions (note that these are not stored in
+    ! macroscopic cache)
+    real(8) :: reaction(size(DEPLETION_RX))
 
     ! Indicies and factors needed to compute cross sections from the data tables
     integer :: index_grid        ! Index on nuclide energy grid

@@ -4381,6 +4381,9 @@ contains
           elseif (t % type == TALLY_SURFACE) then
             call active_surface_tallies % push_back(i)
           end if
+
+          ! Check if tally contains depletion reactions and if so, set flag
+          if (t % depletion_rx) need_depletion_rx = .true.
         end if
       end associate
     end do

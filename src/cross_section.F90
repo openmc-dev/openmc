@@ -39,9 +39,6 @@ contains
     real(8) :: atom_density  ! atom density of a nuclide
     real(8) :: sab_frac      ! fraction of atoms affected by S(a,b)
     logical :: check_sab     ! should we check for S(a,b) table?
-    logical :: in_active     ! are we in active batches?
-
-    in_active = (active_tallies % size() > 0)
 
     ! Set all material macroscopic cross sections to zero
     material_xs % total          = ZERO
@@ -105,7 +102,7 @@ contains
              .or. i_sab /= micro_xs(i_nuclide) % index_sab &
              .or. sab_frac /= micro_xs(i_nuclide) % sab_frac) then
           call calculate_nuclide_xs(i_nuclide, i_sab, p % E, i_grid, &
-                                    p % sqrtkT, sab_frac, in_active)
+                                    p % sqrtkT, sab_frac)
         end if
 
         ! ======================================================================
@@ -144,7 +141,7 @@ contains
 !===============================================================================
 
   subroutine calculate_nuclide_xs(i_nuclide, i_sab, E, i_log_union, sqrtkT, &
-                                  sab_frac, in_active)
+                                  sab_frac)
     integer, intent(in) :: i_nuclide   ! index into nuclides array
     integer, intent(in) :: i_sab       ! index into sab_tables array
     real(8), intent(in) :: E           ! energy
@@ -152,7 +149,6 @@ contains
                                        ! material union energy grid
     real(8), intent(in) :: sqrtkT      ! square root of kT, material dependent
     real(8), intent(in) :: sab_frac    ! fraction of atoms affected by S(a,b)
-    logical, intent(in) :: in_active
 
     logical :: use_mp ! true if XS can be calculated with windowed multipole
     integer :: i_temp ! index for temperature
@@ -197,7 +193,7 @@ contains
           micro_xs(i_nuclide) % nu_fission = ZERO
         end if
 
-        if (in_active) then
+        if (need_depletion_rx) then
           ! Initialize all reaction cross sections to zero
           micro_xs(i_nuclide) % reaction(:) = ZERO
 
@@ -297,7 +293,7 @@ contains
         end associate
 
         ! Depletion-related reactions
-        if (in_active) then
+        if (need_depletion_rx) then
           do j = 1, 6
             ! Initialize reaction xs to zero
             micro_xs(i_nuclide) % reaction(j) = ZERO

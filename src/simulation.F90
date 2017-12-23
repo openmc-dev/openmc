@@ -451,8 +451,9 @@ contains
       end if
     end if
 
-    ! Reset current batch
+    ! Reset global variables
     current_batch = 0
+    need_depletion_rx = .false.
 
     ! Set flag indicating initialization is done
     simulation_initialized = .true.
@@ -535,7 +536,8 @@ contains
       if (check_overlaps) call print_overlap_check()
     end if
 
-    ! Reset initialization flag
+    ! Reset flags
+    need_depletion_rx = .false.
     simulation_initialized = .false.
 
   end subroutine openmc_simulation_finalize

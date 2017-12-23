@@ -1141,7 +1141,16 @@ contains
           if (i_nuclide > 0) then
             score = micro_xs(i_nuclide) % n2n * atom_density * flux
           else
-            score = material_xs % n2n * flux
+            score = ZERO
+            if (p % material /= MATERIAL_VOID) then
+              associate (mat => materials(p % material))
+                do l = 1, materials(p % material) % n_nuclides
+                  i_nuc = mat % nuclide(l)
+                  atom_density_ = mat % atom_density(l)
+                  score = score + micro_xs(i_nuc) % n2n * atom_density_ * flux
+                end do
+              end associate
+            end if
           end if
         end if
 
@@ -1155,7 +1164,16 @@ contains
           if (i_nuclide > 0) then
             score = micro_xs(i_nuclide) % n3n * atom_density * flux
           else
-            score = material_xs % n3n * flux
+            score = ZERO
+            if (p % material /= MATERIAL_VOID) then
+              associate (mat => materials(p % material))
+                do l = 1, materials(p % material) % n_nuclides
+                  i_nuc = mat % nuclide(l)
+                  atom_density_ = mat % atom_density(l)
+                  score = score + micro_xs(i_nuc) % n3n * atom_density_ * flux
+                end do
+              end associate
+            end if
           end if
         end if
 
@@ -1169,7 +1187,16 @@ contains
           if (i_nuclide > 0) then
             score = micro_xs(i_nuclide) % n4n * atom_density * flux
           else
-            score = material_xs % n4n * flux
+            score = ZERO
+            if (p % material /= MATERIAL_VOID) then
+              associate (mat => materials(p % material))
+                do l = 1, materials(p % material) % n_nuclides
+                  i_nuc = mat % nuclide(l)
+                  atom_density_ = mat % atom_density(l)
+                  score = score + micro_xs(i_nuc) % n4n * atom_density_ * flux
+                end do
+              end associate
+            end if
           end if
         end if
 
@@ -1183,7 +1210,16 @@ contains
           if (i_nuclide > 0) then
             score = micro_xs(i_nuclide) % np * atom_density * flux
           else
-            score = material_xs % np * flux
+            score = ZERO
+            if (p % material /= MATERIAL_VOID) then
+              associate (mat => materials(p % material))
+                do l = 1, materials(p % material) % n_nuclides
+                  i_nuc = mat % nuclide(l)
+                  atom_density_ = mat % atom_density(l)
+                  score = score + micro_xs(i_nuc) % np * atom_density_ * flux
+                end do
+              end associate
+            end if
           end if
         end if
 
@@ -1197,7 +1233,16 @@ contains
           if (i_nuclide > 0) then
             score = micro_xs(i_nuclide) % nalpha * atom_density * flux
           else
-            score = material_xs % nalpha * flux
+            score = ZERO
+            if (p % material /= MATERIAL_VOID) then
+              associate (mat => materials(p % material))
+                do l = 1, materials(p % material) % n_nuclides
+                  i_nuc = mat % nuclide(l)
+                  atom_density_ = mat % atom_density(l)
+                  score = score + micro_xs(i_nuc) % nalpha * atom_density_ * flux
+                end do
+              end associate
+            end if
           end if
         end if
 
@@ -1211,7 +1256,16 @@ contains
           if (i_nuclide > 0) then
             score = micro_xs(i_nuclide) % ngamma * atom_density * flux
           else
-            score = material_xs % ngamma * flux
+            score = ZERO
+            if (p % material /= MATERIAL_VOID) then
+              associate (mat => materials(p % material))
+                do l = 1, materials(p % material) % n_nuclides
+                  i_nuc = mat % nuclide(l)
+                  atom_density_ = mat % atom_density(l)
+                  score = score + micro_xs(i_nuc) % ngamma * atom_density_ * flux
+                end do
+              end associate
+            end if
           end if
         end if
 

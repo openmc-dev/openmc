@@ -840,10 +840,7 @@ class IncidentNeutron(EqualityMixin):
             Incident neutron continuous-energy data
 
         """
-        # Create temporary directory -- it would be preferable to use
-        # TemporaryDirectory(), but it is only available in Python 3.2
-        tmpdir = tempfile.mkdtemp()
-        try:
+        with tempfile.TemporaryDirectory() as tmpdir:
             # Run NJOY to create an ACE library
             ace_file = os.path.join(tmpdir, 'ace')
             xsdir_file = os.path.join(tmpdir, 'xsdir')
@@ -870,9 +867,5 @@ class IncidentNeutron(EqualityMixin):
                 params, xs = get_tab1_record(file_obj)
                 data.energy['0K'] = xs.x
                 data[2].xs['0K'] = xs
-
-        finally:
-            # Get rid of temporary files
-            shutil.rmtree(tmpdir)
 
         return data

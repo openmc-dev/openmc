@@ -149,10 +149,7 @@ def run(commands, tapein, tapeout, input_filename=None, stdout=False,
         with open(input_filename, 'w') as f:
             f.write(commands)
 
-    # Create temporary directory -- it would be preferable to use
-    # TemporaryDirectory(), but it is only available in Python 3.2
-    tmpdir = tempfile.mkdtemp()
-    try:
+    with tempfile.TemporaryDirectory() as tmpdir:
         # Copy evaluations to appropriates 'tapes'
         for tape_num, filename in tapein.items():
             tmpfilename = os.path.join(tmpdir, 'tape{}'.format(tape_num))
@@ -186,8 +183,6 @@ def run(commands, tapein, tapeout, input_filename=None, stdout=False,
             tmpfilename = os.path.join(tmpdir, 'tape{}'.format(tape_num))
             if os.path.isfile(tmpfilename):
                 shutil.move(tmpfilename, filename)
-    finally:
-        shutil.rmtree(tmpdir)
 
 
 def make_pendf(filename, pendf='pendf', error=0.001, stdout=False):

@@ -1,5 +1,3 @@
-from __future__ import division
-
 from collections import Iterable, MutableSequence
 import copy
 import re
@@ -10,7 +8,6 @@ import operator
 import warnings
 from xml.etree import ElementTree as ET
 
-from six import string_types
 import numpy as np
 import pandas as pd
 import scipy.sparse as sps
@@ -31,9 +28,8 @@ _PRODUCT_TYPES = ['tensor', 'entrywise']
 
 # The following indicate acceptable types when setting Tally.scores,
 # Tally.nuclides, and Tally.filters
-_SCORE_CLASSES = string_types + (openmc.CrossScore, openmc.AggregateScore)
-_NUCLIDE_CLASSES = string_types + (openmc.Nuclide, openmc.CrossNuclide,
-                                   openmc.AggregateNuclide)
+_SCORE_CLASSES = (str, openmc.CrossScore, openmc.AggregateScore)
+_NUCLIDE_CLASSES = (str, openmc.CrossNuclide, openmc.AggregateNuclide)
 _FILTER_CLASSES = (openmc.Filter, openmc.CrossFilter, openmc.AggregateFilter)
 
 # Valid types of estimators
@@ -359,7 +355,7 @@ class Tally(IDManagerMixin):
     @name.setter
     def name(self, name):
         if name is not None:
-            cv.check_type('tally name', name, string_types)
+            cv.check_type('tally name', name, str)
             self._name = name
         else:
             self._name = ''
@@ -412,7 +408,7 @@ class Tally(IDManagerMixin):
                 raise ValueError(msg)
 
             # If score is a string, strip whitespace
-            if isinstance(score, string_types):
+            if isinstance(score, str):
                 scores[i] = score.strip()
 
         self._scores = cv.CheckedList(_SCORE_CLASSES, 'tally scores', scores)
@@ -1327,7 +1323,7 @@ class Tally(IDManagerMixin):
 
         """
 
-        cv.check_iterable_type('nuclides', nuclides, string_types)
+        cv.check_iterable_type('nuclides', nuclides, str)
 
         # Determine the score indices from any of the requested scores
         if nuclides:
@@ -1362,7 +1358,7 @@ class Tally(IDManagerMixin):
         """
 
         for score in scores:
-            if not isinstance(score, string_types + (openmc.CrossScore,)):
+            if not isinstance(score, (str, openmc.CrossScore)):
                 msg = 'Unable to get score indices for score "{0}" in Tally ' \
                       'ID="{1}" since it is not a string or CrossScore'\
                       .format(score, self.id)
@@ -1555,7 +1551,7 @@ class Tally(IDManagerMixin):
             column_name = 'score'
 
             for score in self.scores:
-                if isinstance(score, string_types + (openmc.CrossScore,)):
+                if isinstance(score, (str, openmc.CrossScore)):
                     scores.append(str(score))
                 elif isinstance(score, openmc.AggregateScore):
                     scores.append(score.name)
@@ -2192,11 +2188,11 @@ class Tally(IDManagerMixin):
             raise ValueError(msg)
 
         # Check that the scores are valid
-        if not isinstance(score1, string_types + (openmc.CrossScore,)):
+        if not isinstance(score1, (str, openmc.CrossScore)):
             msg = 'Unable to swap score1 "{0}" in Tally ID="{1}" since it is ' \
                   'not a string or CrossScore'.format(score1, self.id)
             raise ValueError(msg)
-        elif not isinstance(score2, string_types + (openmc.CrossScore,)):
+        elif not isinstance(score2, (str, openmc.CrossScore)):
             msg = 'Unable to swap score2 "{0}" in Tally ID="{1}" since it is ' \
                   'not a string or CrossScore'.format(score2, self.id)
             raise ValueError(msg)

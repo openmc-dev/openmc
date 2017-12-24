@@ -1,6 +1,5 @@
-#!/usr/bin/env python
+#!/usr/bin/env python3
 
-from __future__ import print_function
 import os
 from collections import defaultdict
 import sys
@@ -9,9 +8,7 @@ import zipfile
 import glob
 import argparse
 from string import digits
-
-from six.moves import input
-from six.moves.urllib.request import urlopen
+from urllib.request import urlopen
 
 import openmc.data
 

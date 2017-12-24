@@ -1,4 +1,3 @@
-from __future__ import division
 import copy
 import warnings
 import itertools
@@ -10,7 +9,6 @@ from heapq import heappush, heappop
 from math import pi, sin, cos, floor, log10, sqrt
 from abc import ABCMeta, abstractproperty, abstractmethod
 
-from six import add_metaclass
 import numpy as np
 import scipy.spatial
 
@@ -92,8 +90,7 @@ class TRISO(openmc.Cell):
                 k_min:k_max+1, j_min:j_max+1, i_min:i_max+1]))
 
 
-@add_metaclass(ABCMeta)
-class _Domain(object):
+class _Domain(metaclass=ABCMeta):
     """Container in which to pack particles.
 
     Parameters

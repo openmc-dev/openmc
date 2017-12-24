@@ -2,14 +2,12 @@ from abc import ABCMeta, abstractmethod
 from collections import Iterable, OrderedDict, MutableSequence
 from copy import deepcopy
 
-from six import add_metaclass
 import numpy as np
 
 from openmc.checkvalue import check_type
 
 
-@add_metaclass(ABCMeta)
-class Region(object):
+class Region(metaclass=ABCMeta):
     """Region of space that can be assigned to a cell.
 
     Region is an abstract base class that is inherited by

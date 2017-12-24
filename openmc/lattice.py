@@ -1,5 +1,3 @@
-from __future__ import division
-
 from abc import ABCMeta
 from collections import OrderedDict, Iterable
 from copy import deepcopy
@@ -7,7 +5,6 @@ from math import sqrt, floor
 from numbers import Real, Integral
 from xml.etree import ElementTree as ET
 
-from six import add_metaclass, string_types
 import numpy as np
 
 import openmc.checkvalue as cv
@@ -15,8 +12,7 @@ import openmc
 from openmc.mixin import IDManagerMixin
 
 
-@add_metaclass(ABCMeta)
-class Lattice(IDManagerMixin):
+class Lattice(IDManagerMixin, metaclass=ABCMeta):
     """A repeating structure wherein each element is a universe.
 
     Parameters
@@ -73,7 +69,7 @@ class Lattice(IDManagerMixin):
     @name.setter
     def name(self, name):
         if name is not None:
-            cv.check_type('lattice name', name, string_types)
+            cv.check_type('lattice name', name, str)
             self._name = name
         else:
             self._name = ''

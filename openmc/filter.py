@@ -1,4 +1,3 @@
-from __future__ import division
 from abc import ABCMeta
 from collections import Iterable, OrderedDict
 import copy
@@ -8,7 +7,6 @@ from numbers import Real, Integral
 import operator
 from xml.etree import ElementTree as ET
 
-from six import add_metaclass
 import numpy as np
 import pandas as pd
 
@@ -70,8 +68,7 @@ class FilterMeta(ABCMeta):
                                               **kwargs)
 
 
-@add_metaclass(FilterMeta)
-class Filter(IDManagerMixin):
+class Filter(IDManagerMixin, metaclass=FilterMeta):
     """Tally modifier that describes phase-space and other characteristics.
 
     Parameters

@@ -1,10 +1,6 @@
-from __future__ import division
-
 import sys
 from numbers import Integral
 from xml.etree import ElementTree as ET
-
-from six import string_types
 
 import openmc.checkvalue as cv
 from openmc.mixin import EqualityMixin, IDManagerMixin
@@ -81,7 +77,7 @@ class TallyDerivative(EqualityMixin, IDManagerMixin):
     @variable.setter
     def variable(self, var):
         if var is not None:
-            cv.check_type('derivative variable', var, string_types)
+            cv.check_type('derivative variable', var, str)
             cv.check_value('derivative variable', var,
                            ('density', 'nuclide_density', 'temperature'))
         self._variable = var
@@ -95,7 +91,7 @@ class TallyDerivative(EqualityMixin, IDManagerMixin):
     @nuclide.setter
     def nuclide(self, nuc):
         if nuc is not None:
-            cv.check_type('derivative nuclide', nuc, string_types)
+            cv.check_type('derivative nuclide', nuc, str)
         self._nuclide = nuc
 
     def to_xml_element(self):

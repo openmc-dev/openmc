@@ -1,4 +1,3 @@
-from __future__ import division
 from abc import ABCMeta
 from collections import OrderedDict
 from copy import deepcopy
@@ -6,7 +5,6 @@ from functools import partial
 from numbers import Real, Integral
 from xml.etree import ElementTree as ET
 
-from six import add_metaclass, string_types
 import numpy as np
 
 from openmc.checkvalue import check_type, check_value
@@ -115,14 +113,14 @@ class Surface(IDManagerMixin):
     @name.setter
     def name(self, name):
         if name is not None:
-            check_type('surface name', name, string_types)
+            check_type('surface name', name, str)
             self._name = name
         else:
             self._name = ''
 
     @boundary_type.setter
     def boundary_type(self, boundary_type):
-        check_type('boundary type', boundary_type, string_types)
+        check_type('boundary type', boundary_type, str)
         check_value('boundary type', boundary_type, _BOUNDARY_TYPES)
         self._boundary_type = boundary_type
 
@@ -738,8 +736,7 @@ class ZPlane(Plane):
         return point[2] - self.z0
 
 
-@add_metaclass(ABCMeta)
-class Cylinder(Surface):
+class Cylinder(Surface, metaclass=ABCMeta):
     """A cylinder whose length is parallel to the x-, y-, or z-axis.
 
     Parameters
@@ -1305,8 +1302,7 @@ class Sphere(Surface):
         return x**2 + y**2 + z**2 - self.r**2
 
 
-@add_metaclass(ABCMeta)
-class Cone(Surface):
+class Cone(Surface, metaclass=ABCMeta):
     """A conical surface parallel to the x-, y-, or z-axis.
 
     Parameters

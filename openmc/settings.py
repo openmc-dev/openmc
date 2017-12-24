@@ -4,7 +4,6 @@ import warnings
 from xml.etree import ElementTree as ET
 import sys
 
-from six import string_types
 import numpy as np
 
 from openmc.clean_xml import clean_xml_indentation
@@ -459,7 +458,7 @@ class Settings(object):
             if key in ('summary', 'tallies'):
                 cv.check_type("output['{}']".format(key), value, bool)
             else:
-                cv.check_type("output['path']", value, string_types)
+                cv.check_type("output['path']", value, str)
         self._output = output
 
     @verbosity.setter
@@ -511,7 +510,7 @@ class Settings(object):
         warnings.warn('Settings.cross_sections has been deprecated and will be '
                       'removed in a future version. Materials.cross_sections '
                       'should defined instead.', DeprecationWarning)
-        cv.check_type('cross sections', cross_sections, string_types)
+        cv.check_type('cross sections', cross_sections, str)
         self._cross_sections = cross_sections
 
     @multipole_library.setter
@@ -520,7 +519,7 @@ class Settings(object):
                       'be removed in a future version. '
                       'Materials.multipole_library should defined instead.',
                       DeprecationWarning)
-        cv.check_type('multipole library', multipole_library, string_types)
+        cv.check_type('multipole library', multipole_library, str)
         self._multipole_library = multipole_library
 
     @ptables.setter
@@ -692,7 +691,7 @@ class Settings(object):
                 cv.check_greater_than(name, value, 0)
             elif key == 'nuclides':
                 cv.check_type('resonance scattering nuclides', value,
-                              Iterable, string_types)
+                              Iterable, str)
         self._resonance_scattering = res
 
     @volume_calculations.setter

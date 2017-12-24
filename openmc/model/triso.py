@@ -45,7 +45,7 @@ class TRISO(openmc.Cell):
 
     def __init__(self, outer_radius, fill, center=(0., 0., 0.)):
         self._surface = openmc.Sphere(R=outer_radius)
-        super(TRISO, self).__init__(fill=fill, region=-self._surface)
+        super().__init__(fill=fill, region=-self._surface)
         self.center = np.asarray(center)
 
     @property
@@ -245,7 +245,7 @@ class _CubicDomain(_Domain):
     """
 
     def __init__(self, length, particle_radius, center=[0., 0., 0.]):
-        super(_CubicDomain, self).__init__(particle_radius, center)
+        super().__init__(particle_radius, center)
         self.length = length
 
     @property
@@ -324,7 +324,7 @@ class _CylindricalDomain(_Domain):
     """
 
     def __init__(self, length, radius, particle_radius, center=[0., 0., 0.]):
-        super(_CylindricalDomain, self).__init__(particle_radius, center)
+        super().__init__(particle_radius, center)
         self.length = length
         self.radius = radius
 
@@ -414,7 +414,7 @@ class _SphericalDomain(_Domain):
     """
 
     def __init__(self, radius, particle_radius, center=[0., 0., 0.]):
-        super(_SphericalDomain, self).__init__(particle_radius, center)
+        super().__init__(particle_radius, center)
         self.radius = radius
 
     @property

@@ -3242,7 +3242,7 @@ class Tallies(cv.CheckedList):
     """
 
     def __init__(self, tallies=None):
-        super(Tallies, self).__init__(Tally, 'tallies collection')
+        super().__init__(Tally, 'tallies collection')
         if tallies is not None:
             self += tallies
 
@@ -3299,10 +3299,10 @@ class Tallies(cv.CheckedList):
 
             # If no mergeable tally was found, simply add this tally
             if not merged:
-                super(Tallies, self).append(tally)
+                super().append(tally)
 
         else:
-            super(Tallies, self).append(tally)
+            super().append(tally)
 
     def insert(self, index, item):
         """Insert tally before index
@@ -3315,7 +3315,7 @@ class Tallies(cv.CheckedList):
             Tally to insert
 
         """
-        super(Tallies, self).insert(index, item)
+        super().insert(index, item)
 
     def remove_tally(self, tally):
         """Remove a tally from the collection

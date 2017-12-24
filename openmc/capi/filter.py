@@ -87,7 +87,7 @@ class Filter(_FortranObjectWithID):
                 index = mapping[uid]._index
 
         if index not in cls.__instances:
-            instance = super(Filter, cls).__new__(cls)
+            instance = super().__new__(cls)
             instance._index = index
             if uid is not None:
                 instance.id = uid
@@ -110,7 +110,7 @@ class EnergyFilter(Filter):
     filter_type = 'energy'
 
     def __init__(self, bins=None, uid=None, new=True, index=None):
-        super(EnergyFilter, self).__init__(uid, new, index)
+        super().__init__(uid, new, index)
         if bins is not None:
             self.bins = bins
 
@@ -167,7 +167,7 @@ class MaterialFilter(Filter):
     filter_type = 'material'
 
     def __init__(self, bins=None, uid=None, new=True, index=None):
-        super(MaterialFilter, self).__init__(uid, new, index)
+        super().__init__(uid, new, index)
         if bins is not None:
             self.bins = bins
 

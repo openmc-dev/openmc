@@ -58,7 +58,7 @@ class Nuclide(_FortranObject):
 
     def __new__(cls, *args):
         if args not in cls.__instances:
-            instance = super(Nuclide, cls).__new__(cls)
+            instance = super().__new__(cls)
             cls.__instances[args] = instance
         return cls.__instances[args]
 

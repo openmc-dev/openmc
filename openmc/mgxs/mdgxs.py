@@ -129,8 +129,8 @@ class MDGXS(MGXS):
     def __init__(self, domain=None, domain_type=None, energy_groups=None,
                  delayed_groups=None, by_nuclide=False, name='',
                  num_polar=1, num_azimuthal=1):
-        super(MDGXS, self).__init__(domain, domain_type, energy_groups,
-                                    by_nuclide, name, num_polar, num_azimuthal)
+        super().__init__(domain, domain_type, energy_groups, by_nuclide, name,
+                         num_polar, num_azimuthal)
 
         self._delayed_groups = None
 
@@ -547,7 +547,7 @@ class MDGXS(MGXS):
 
         """
 
-        merged_mdgxs = super(MDGXS, self).merge(other)
+        merged_mdgxs = super().merge(other)
 
         # Merge delayed groups
         if self.delayed_groups != other.delayed_groups:
@@ -577,7 +577,7 @@ class MDGXS(MGXS):
         """
 
         if self.delayed_groups is None:
-            super(MDGXS, self).print_xs(subdomains, nuclides, xs_type)
+            super().print_xs(subdomains, nuclides, xs_type)
             return
 
         # Construct a collection of the subdomains to report
@@ -1007,9 +1007,8 @@ class ChiDelayed(MDGXS):
     def __init__(self, domain=None, domain_type=None, energy_groups=None,
                  delayed_groups=None, by_nuclide=False, name='',
                  num_polar=1, num_azimuthal=1):
-        super(ChiDelayed, self).__init__(domain, domain_type, energy_groups,
-                                         delayed_groups, by_nuclide, name,
-                                         num_polar, num_azimuthal)
+        super().__init__(domain, domain_type, energy_groups, delayed_groups,
+                         by_nuclide, name, num_polar, num_azimuthal)
         self._rxn_type = 'chi-delayed'
         self._estimator = 'analog'
 
@@ -1055,7 +1054,7 @@ class ChiDelayed(MDGXS):
 
             # Compute chi
             self._xs_tally = self.rxn_rate_tally / delayed_nu_fission_in
-            super(ChiDelayed, self)._compute_xs()
+            super()._compute_xs()
 
             # Add the coarse energy filter back to the nu-fission tally
             delayed_nu_fission_in.filters.append(energy_filter)
@@ -1127,8 +1126,7 @@ class ChiDelayed(MDGXS):
         delayed_nu_fission_in.remove_filter(energy_filter)
 
         # Call super class method and null out derived tallies
-        slice_xs = super(ChiDelayed, self).get_slice(nuclides, groups,
-                                                     delayed_groups)
+        slice_xs = super().get_slice(nuclides, groups, delayed_groups)
         slice_xs._rxn_rate_tally = None
         slice_xs._xs_tally = None
 
@@ -1521,10 +1519,8 @@ class DelayedNuFissionXS(MDGXS):
     def __init__(self, domain=None, domain_type=None, energy_groups=None,
                  delayed_groups=None, by_nuclide=False, name='',
                  num_polar=1, num_azimuthal=1):
-        super(DelayedNuFissionXS, self).__init__(domain, domain_type,
-                                                 energy_groups, delayed_groups,
-                                                 by_nuclide, name, num_polar,
-                                                 num_azimuthal)
+        super().__init__(domain, domain_type, energy_groups, delayed_groups,
+                         by_nuclide, name, num_polar, num_azimuthal)
         self._rxn_type = 'delayed-nu-fission'
 
 
@@ -1657,9 +1653,8 @@ class Beta(MDGXS):
     def __init__(self, domain=None, domain_type=None, energy_groups=None,
                  delayed_groups=None, by_nuclide=False, name='',
                  num_polar=1, num_azimuthal=1):
-        super(Beta, self).__init__(domain, domain_type, energy_groups,
-                                   delayed_groups, by_nuclide, name, num_polar,
-                                   num_azimuthal)
+        super().__init__(domain, domain_type, energy_groups, delayed_groups,
+                         by_nuclide, name, num_polar, num_azimuthal)
         self._rxn_type = 'beta'
 
     @property
@@ -1685,7 +1680,7 @@ class Beta(MDGXS):
 
             # Compute beta
             self._xs_tally = self.rxn_rate_tally / nu_fission
-            super(Beta, self)._compute_xs()
+            super()._compute_xs()
 
         return self._xs_tally
 
@@ -1841,9 +1836,8 @@ class DecayRate(MDGXS):
     def __init__(self, domain=None, domain_type=None, energy_groups=None,
                  delayed_groups=None, by_nuclide=False, name='',
                  num_polar=1, num_azimuthal=1):
-        super(DecayRate, self).__init__(domain, domain_type, energy_groups,
-                                        delayed_groups, by_nuclide, name,
-                                        num_polar, num_azimuthal)
+        super().__init__(domain, domain_type, energy_groups, delayed_groups,
+                         by_nuclide, name, num_polar, num_azimuthal)
         self._rxn_type = 'decay-rate'
 
     @property
@@ -1878,7 +1872,7 @@ class DecayRate(MDGXS):
 
             # Compute the decay rate
             self._xs_tally = self.rxn_rate_tally / delayed_nu_fission
-            super(DecayRate, self)._compute_xs()
+            super()._compute_xs()
 
         return self._xs_tally
 
@@ -2261,8 +2255,7 @@ class MatrixMDGXS(MDGXS):
         """
 
         # Call super class method and null out derived tallies
-        slice_xs = super(MatrixMDGXS, self).get_slice(nuclides, in_groups,
-                                                      delayed_groups)
+        slice_xs = super().get_slice(nuclides, in_groups, delayed_groups)
         slice_xs._rxn_rate_tally = None
         slice_xs._xs_tally = None
 
@@ -2609,12 +2602,8 @@ class DelayedNuFissionMatrixXS(MatrixMDGXS):
     def __init__(self, domain=None, domain_type=None, energy_groups=None,
                  delayed_groups=None, by_nuclide=False, name='',
                  num_polar=1, num_azimuthal=1):
-        super(DelayedNuFissionMatrixXS, self).__init__(domain, domain_type,
-                                                       energy_groups,
-                                                       delayed_groups,
-                                                       by_nuclide, name,
-                                                       num_polar,
-                                                       num_azimuthal)
+        super().__init__(domain, domain_type, energy_groups, delayed_groups,
+                         by_nuclide, name, num_polar, num_azimuthal)
         self._rxn_type = 'delayed-nu-fission'
         self._hdf5_key = 'delayed-nu-fission matrix'
         self._estimator = 'analog'

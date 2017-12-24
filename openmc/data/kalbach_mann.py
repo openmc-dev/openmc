@@ -53,7 +53,7 @@ class KalbachMann(AngleEnergy):
 
     def __init__(self, breakpoints, interpolation, energy, energy_out,
                  precompound, slope):
-        super(KalbachMann, self).__init__()
+        super().__init__()
         self.breakpoints = breakpoints
         self.interpolation = interpolation
         self.energy = energy

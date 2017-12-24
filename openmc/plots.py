@@ -673,7 +673,7 @@ class Plots(cv.CheckedList):
     """
 
     def __init__(self, plots=None):
-        super(Plots, self).__init__(Plot, 'plots collection')
+        super().__init__(Plot, 'plots collection')
         self._plots_file = ET.Element("plots")
         if plots is not None:
             self += plots
@@ -704,7 +704,7 @@ class Plots(cv.CheckedList):
             Plot to append
 
         """
-        super(Plots, self).append(plot)
+        super().append(plot)
 
     def insert(self, index, plot):
         """Insert plot before index
@@ -717,7 +717,7 @@ class Plots(cv.CheckedList):
             Plot to insert
 
         """
-        super(Plots, self).insert(index, plot)
+        super().insert(index, plot)
 
     def remove_plot(self, plot):
         """Remove a plot from the file.

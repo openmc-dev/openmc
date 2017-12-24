@@ -885,7 +885,7 @@ class Materials(cv.CheckedList):
     """
 
     def __init__(self, materials=None):
-        super(Materials, self).__init__(Material, 'materials collection')
+        super().__init__(Material, 'materials collection')
         self._cross_sections = None
         self._multipole_library = None
 
@@ -954,7 +954,7 @@ class Materials(cv.CheckedList):
             Material to append
 
         """
-        super(Materials, self).append(material)
+        super().append(material)
 
     def insert(self, index, material):
         """Insert material before index
@@ -967,7 +967,7 @@ class Materials(cv.CheckedList):
             Material to insert
 
         """
-        super(Materials, self).insert(index, material)
+        super().insert(index, material)
 
     def remove_material(self, material):
         """Remove a material from the file

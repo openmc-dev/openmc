@@ -40,7 +40,7 @@ on your computer as well as Inkscape_, which is used to convert .svg files to
 
 .. code-block:: sh
 
-    sudo apt-get install inkscape
+    sudo apt install inkscape
 
 One the pre-requisites are installed, simply go to the ``docs`` directory and
 run:
@@ -50,6 +50,5 @@ run:
      make latexpdf
 
 .. _Sphinx: http://sphinx-doc.org
-.. _sphinxcontrib-tikz: https://bitbucket.org/philexander/tikz
 .. _Numfig: https://pypi.python.org/pypi/sphinx_numfig
 .. _Inkscape: https://inkscape.org

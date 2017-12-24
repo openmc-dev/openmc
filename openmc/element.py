@@ -29,7 +29,7 @@ class Element(str):
     def __new__(cls, name):
         cv.check_type('element name', name, str)
         cv.check_length('element name', name, 1, 2)
-        return super(Element, cls).__new__(cls, name)
+        return super().__new__(cls, name)
 
     @property
     def name(self):

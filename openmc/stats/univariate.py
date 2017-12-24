@@ -57,7 +57,7 @@ class Discrete(Univariate):
     """
 
     def __init__(self, x, p):
-        super(Discrete, self).__init__()
+        super().__init__()
         self.x = x
         self.p = p
 
@@ -131,7 +131,7 @@ class Uniform(Univariate):
     """
 
     def __init__(self, a=0.0, b=1.0):
-        super(Uniform, self).__init__()
+        super().__init__()
         self.a = a
         self.b = b
 
@@ -202,7 +202,7 @@ class Maxwell(Univariate):
     """
 
     def __init__(self, theta):
-        super(Maxwell, self).__init__()
+        super().__init__()
         self.theta = theta
 
     def __len__(self):
@@ -262,7 +262,7 @@ class Watt(Univariate):
     """
 
     def __init__(self, a=0.988e6, b=2.249e-6):
-        super(Watt, self).__init__()
+        super().__init__()
         self.a = a
         self.b = b
 
@@ -342,7 +342,7 @@ class Tabular(Univariate):
 
     def __init__(self, x, p, interpolation='linear-linear',
                  ignore_negative=False):
-        super(Tabular, self).__init__()
+        super().__init__()
         self._ignore_negative = ignore_negative
         self.x = x
         self.p = p
@@ -470,7 +470,7 @@ class Mixture(Univariate):
     """
 
     def __init__(self, probability, distribution):
-        super(Mixture, self).__init__()
+        super().__init__()
         self.probability = probability
         self.distribution = distribution
 

@@ -75,7 +75,7 @@ class PolarAzimuthal(UnitSphere):
     """
 
     def __init__(self, mu=None, phi=None, reference_uvw=[0., 0., 1.]):
-        super(PolarAzimuthal, self).__init__(reference_uvw)
+        super().__init__(reference_uvw)
         if mu is not None:
             self.mu = mu
         else:
@@ -128,7 +128,7 @@ class Isotropic(UnitSphere):
     """
 
     def __init__(self):
-        super(Isotropic, self).__init__()
+        super().__init__()
 
     def to_xml_element(self):
         """Return XML representation of the isotropic distribution
@@ -161,7 +161,7 @@ class Monodirectional(UnitSphere):
 
 
     def __init__(self, reference_uvw=[1., 0., 0.]):
-        super(Monodirectional, self).__init__(reference_uvw)
+        super().__init__(reference_uvw)
 
     def to_xml_element(self):
         """Return XML representation of the monodirectional distribution
@@ -222,7 +222,7 @@ class CartesianIndependent(Spatial):
 
 
     def __init__(self, x, y, z):
-        super(CartesianIndependent, self).__init__()
+        super().__init__()
         self.x = x
         self.y = y
         self.z = z
@@ -298,7 +298,7 @@ class Box(Spatial):
 
 
     def __init__(self, lower_left, upper_right, only_fissionable=False):
-        super(Box, self).__init__()
+        super().__init__()
         self.lower_left = lower_left
         self.upper_right = upper_right
         self.only_fissionable = only_fissionable
@@ -371,7 +371,7 @@ class Point(Spatial):
     """
 
     def __init__(self, xyz=(0., 0., 0.)):
-        super(Point, self).__init__()
+        super().__init__()
         self.xyz = xyz
 
     @property

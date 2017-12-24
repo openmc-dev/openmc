@@ -326,7 +326,7 @@ class Plane(Surface):
 
     def __init__(self, surface_id=None, boundary_type='transmission',
                  A=1., B=0., C=0., D=0., name=''):
-        super(Plane, self).__init__(surface_id, boundary_type, name=name)
+        super().__init__(surface_id, boundary_type, name=name)
 
         self._type = 'plane'
         self._coeff_keys = ['A', 'B', 'C', 'D']
@@ -410,7 +410,7 @@ class Plane(Surface):
             XML element containing source data
 
         """
-        element = super(Plane, self).to_xml_element()
+        element = super().to_xml_element()
 
         # Add periodic surface pair information
         if self.boundary_type == 'periodic':
@@ -460,7 +460,7 @@ class XPlane(Plane):
 
     def __init__(self, surface_id=None, boundary_type='transmission',
                  x0=0., name=''):
-        super(XPlane, self).__init__(surface_id, boundary_type, name=name)
+        super().__init__(surface_id, boundary_type, name=name)
 
         self._type = 'x-plane'
         self._coeff_keys = ['x0']
@@ -566,7 +566,7 @@ class YPlane(Plane):
     def __init__(self, surface_id=None, boundary_type='transmission',
                  y0=0., name=''):
         # Initialize YPlane class attributes
-        super(YPlane, self).__init__(surface_id, boundary_type, name=name)
+        super().__init__(surface_id, boundary_type, name=name)
 
         self._type = 'y-plane'
         self._coeff_keys = ['y0']
@@ -672,7 +672,7 @@ class ZPlane(Plane):
     def __init__(self, surface_id=None, boundary_type='transmission',
                  z0=0., name=''):
         # Initialize ZPlane class attributes
-        super(ZPlane, self).__init__(surface_id, boundary_type, name=name)
+        super().__init__(surface_id, boundary_type, name=name)
 
         self._type = 'z-plane'
         self._coeff_keys = ['z0']
@@ -773,7 +773,7 @@ class Cylinder(Surface, metaclass=ABCMeta):
     """
     def __init__(self, surface_id=None, boundary_type='transmission',
                  R=1., name=''):
-        super(Cylinder, self).__init__(surface_id, boundary_type, name=name)
+        super().__init__(surface_id, boundary_type, name=name)
 
         self._coeff_keys = ['R']
         self.r = R
@@ -833,7 +833,7 @@ class XCylinder(Cylinder):
 
     def __init__(self, surface_id=None, boundary_type='transmission',
                  y0=0., z0=0., R=1., name=''):
-        super(XCylinder, self).__init__(surface_id, boundary_type, R, name=name)
+        super().__init__(surface_id, boundary_type, R, name=name)
 
         self._type = 'x-cylinder'
         self._coeff_keys = ['y0', 'z0', 'R']
@@ -955,7 +955,7 @@ class YCylinder(Cylinder):
 
     def __init__(self, surface_id=None, boundary_type='transmission',
                  x0=0., z0=0., R=1., name=''):
-        super(YCylinder, self).__init__(surface_id, boundary_type, R, name=name)
+        super().__init__(surface_id, boundary_type, R, name=name)
 
         self._type = 'y-cylinder'
         self._coeff_keys = ['x0', 'z0', 'R']
@@ -1077,7 +1077,7 @@ class ZCylinder(Cylinder):
 
     def __init__(self, surface_id=None, boundary_type='transmission',
                  x0=0., y0=0., R=1., name=''):
-        super(ZCylinder, self).__init__(surface_id, boundary_type, R, name=name)
+        super().__init__(surface_id, boundary_type, R, name=name)
 
         self._type = 'z-cylinder'
         self._coeff_keys = ['x0', 'y0', 'R']
@@ -1203,7 +1203,7 @@ class Sphere(Surface):
 
     def __init__(self, surface_id=None, boundary_type='transmission',
                  x0=0., y0=0., z0=0., R=1., name=''):
-        super(Sphere, self).__init__(surface_id, boundary_type, name=name)
+        super().__init__(surface_id, boundary_type, name=name)
 
         self._type = 'sphere'
         self._coeff_keys = ['x0', 'y0', 'z0', 'R']
@@ -1350,7 +1350,7 @@ class Cone(Surface, metaclass=ABCMeta):
     """
     def __init__(self, surface_id=None, boundary_type='transmission',
                  x0=0., y0=0., z0=0., R2=1., name=''):
-        super(Cone, self).__init__(surface_id, boundary_type, name=name)
+        super().__init__(surface_id, boundary_type, name=name)
 
         self._coeff_keys = ['x0', 'y0', 'z0', 'R2']
         self.x0 = x0
@@ -1445,7 +1445,7 @@ class XCone(Cone):
 
     def __init__(self, surface_id=None, boundary_type='transmission',
                  x0=0., y0=0., z0=0., R2=1., name=''):
-        super(XCone, self).__init__(surface_id, boundary_type, x0, y0,
+        super().__init__(surface_id, boundary_type, x0, y0,
                                     z0, R2, name=name)
 
         self._type = 'x-cone'
@@ -1521,7 +1521,7 @@ class YCone(Cone):
 
     def __init__(self, surface_id=None, boundary_type='transmission',
                  x0=0., y0=0., z0=0., R2=1., name=''):
-        super(YCone, self).__init__(surface_id, boundary_type, x0, y0, z0,
+        super().__init__(surface_id, boundary_type, x0, y0, z0,
                                     R2, name=name)
 
         self._type = 'y-cone'
@@ -1597,7 +1597,7 @@ class ZCone(Cone):
 
     def __init__(self, surface_id=None, boundary_type='transmission',
                  x0=0., y0=0., z0=0., R2=1., name=''):
-        super(ZCone, self).__init__(surface_id, boundary_type, x0, y0, z0,
+        super().__init__(surface_id, boundary_type, x0, y0, z0,
                                     R2, name=name)
 
         self._type = 'z-cone'
@@ -1662,7 +1662,7 @@ class Quadric(Surface):
     def __init__(self, surface_id=None, boundary_type='transmission',
                  a=0., b=0., c=0., d=0., e=0., f=0., g=0.,
                  h=0., j=0., k=0., name=''):
-        super(Quadric, self).__init__(surface_id, boundary_type, name=name)
+        super().__init__(surface_id, boundary_type, name=name)
 
         self._type = 'quadric'
         self._coeff_keys = ['a', 'b', 'c', 'd', 'e', 'f', 'g', 'h', 'j', 'k']

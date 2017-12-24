@@ -81,7 +81,7 @@ class Cell(_FortranObjectWithID):
                 index = mapping[uid]._index
 
         if index not in cls.__instances:
-            instance = super(Cell, cls).__new__(cls)
+            instance = super().__new__(cls)
             instance._index = index
             if uid is not None:
                 instance.id = uid

@@ -34,7 +34,7 @@ class AngleDistribution(EqualityMixin):
     """
 
     def __init__(self, energy, mu):
-        super(AngleDistribution, self).__init__()
+        super().__init__()
         self.energy = energy
         self.mu = mu
 

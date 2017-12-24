@@ -489,7 +489,7 @@ class RectLattice(Lattice):
     """
 
     def __init__(self, lattice_id=None, name=''):
-        super(RectLattice, self).__init__(lattice_id, name)
+        super().__init__(lattice_id, name)
 
         # Initialize Lattice class attributes
         self._lower_left = None
@@ -820,7 +820,7 @@ class HexLattice(Lattice):
     """
 
     def __init__(self, lattice_id=None, name=''):
-        super(HexLattice, self).__init__(lattice_id, name)
+        super().__init__(lattice_id, name)
 
         # Initialize Lattice class attributes
         self._num_rings = None

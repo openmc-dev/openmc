@@ -1,7 +1,5 @@
 import warnings
 
-from six import string_types
-
 import openmc.checkvalue as cv
 
 

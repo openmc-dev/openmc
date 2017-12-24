@@ -1,9 +1,6 @@
-from __future__ import print_function
 from collections import Iterable
 import subprocess
 from numbers import Integral
-
-from six import string_types
 
 import openmc
 from openmc import VolumeCalculation
@@ -203,7 +200,7 @@ def run(particles=None, threads=None, geometry_debug=False,
     if geometry_debug:
         args.append('-g')
 
-    if isinstance(restart_file, string_types):
+    if isinstance(restart_file, str):
         args += ['-r', restart_file]
 
     if tracks:

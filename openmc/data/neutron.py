@@ -1,4 +1,3 @@
-from __future__ import division, unicode_literals
 import sys
 from collections import OrderedDict, Iterable, Mapping, MutableMapping
 from io import StringIO
@@ -10,7 +9,6 @@ import shutil
 import tempfile
 from warnings import warn
 
-from six import string_types
 import numpy as np
 import h5py
 
@@ -245,7 +243,7 @@ class IncidentNeutron(EqualityMixin):
 
     @name.setter
     def name(self, name):
-        cv.check_type('name', name, string_types)
+        cv.check_type('name', name, str)
         self._name = name
 
     @property
@@ -301,7 +299,7 @@ class IncidentNeutron(EqualityMixin):
     def urr(self, urr):
         cv.check_type('probability table dictionary', urr, MutableMapping)
         for key, value in urr:
-            cv.check_type('probability table temperature', key, string_types)
+            cv.check_type('probability table temperature', key, str)
             cv.check_type('probability tables', value, ProbabilityTables)
         self._urr = urr
 

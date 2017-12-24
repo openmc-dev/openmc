@@ -48,11 +48,7 @@ kwargs = {
         'License :: OSI Approved :: MIT License',
         'Natural Language :: English',
         'Topic :: Scientific/Engineering'
-        'Programming Language :: Python :: 2',
-        'Programming Language :: Python :: 2.7',
         'Programming Language :: Python :: 3',
-        'Programming Language :: Python :: 3.2',
-        'Programming Language :: Python :: 3.3',
         'Programming Language :: Python :: 3.4',
         'Programming Language :: Python :: 3.5',
         'Programming Language :: Python :: 3.6',
@@ -60,7 +56,7 @@ kwargs = {
 
     # Required dependencies
     'install_requires': [
-        'six', 'numpy>=1.9', 'h5py', 'scipy', 'ipython', 'matplotlib',
+        'numpy>=1.9', 'h5py', 'scipy', 'ipython', 'matplotlib',
         'pandas', 'lxml', 'uncertainties'
     ],
 

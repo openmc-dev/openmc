@@ -1,4 +1,3 @@
-from __future__ import division
 from collections import Iterable, OrderedDict
 from math import sqrt
 from numbers import Real

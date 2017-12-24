@@ -3,7 +3,6 @@ from numbers import Real, Integral
 from xml.etree import ElementTree as ET
 import sys
 
-from six import string_types
 import numpy as np
 
 import openmc.checkvalue as cv
@@ -87,7 +86,7 @@ class Mesh(IDManagerMixin):
     def name(self, name):
         if name is not None:
             cv.check_type('name for mesh ID="{0}"'.format(self._id),
-                          name, string_types)
+                          name, str)
             self._name = name
         else:
             self._name = ''
@@ -95,7 +94,7 @@ class Mesh(IDManagerMixin):
     @type.setter
     def type(self, meshtype):
         cv.check_type('type for mesh ID="{0}"'.format(self._id),
-                      meshtype, string_types)
+                      meshtype, str)
         cv.check_value('type for mesh ID="{0}"'.format(self._id),
                        meshtype, ['regular'])
         self._type = meshtype

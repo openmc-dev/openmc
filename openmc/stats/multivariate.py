@@ -5,15 +5,13 @@ from numbers import Real
 import sys
 from xml.etree import ElementTree as ET
 
-from six import add_metaclass
 import numpy as np
 
 import openmc.checkvalue as cv
 from openmc.stats.univariate import Univariate, Uniform
 
 
-@add_metaclass(ABCMeta)
-class UnitSphere(object):
+class UnitSphere(metaclass=ABCMeta):
     """Distribution of points on the unit sphere.
 
     This abstract class is used for angular distributions, since a direction is
@@ -181,8 +179,7 @@ class Monodirectional(UnitSphere):
         return element
 
 
-@add_metaclass(ABCMeta)
-class Spatial(object):
+class Spatial(metaclass=ABCMeta):
     """Distribution of locations in three-dimensional Euclidean space.
 
     Classes derived from this abstract class can be used for spatial

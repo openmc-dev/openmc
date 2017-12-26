@@ -10,7 +10,7 @@ module initialize
   use bank_header,     only: Bank
   use constants
   use set_header,      only: SetInt
-  use error,           only: fatal_error, warning
+  use error,           only: fatal_error, warning, write_message
   use geometry_header, only: Cell, Universe, Lattice, RectLattice, HexLattice,&
                              root_universe
   use hdf5_interface,  only: file_open, read_attribute, file_close, &
@@ -19,7 +19,7 @@ module initialize
   use material_header, only: Material
   use message_passing
   use mgxs_data,       only: read_mgxs, create_macro_xs
-  use output,          only: print_version, write_message, print_usage
+  use output,          only: print_version, print_usage
   use random_lcg,      only: openmc_set_seed
   use settings
 #ifdef _OPENMP

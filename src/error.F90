@@ -5,12 +5,14 @@ module error
 
   use constants
   use message_passing
+  use settings, only: verbosity
 
   implicit none
 
   private
   public :: fatal_error
   public :: warning
+  public :: write_message
 
   ! Error codes
   integer(C_INT), public, bind(C) :: E_UNASSIGNED = -1
@@ -191,5 +193,60 @@ contains
 #endif
 
   end subroutine fatal_error
+
+!===============================================================================
+! WRITE_MESSAGE displays an informational message to the log file and the
+! standard output stream.
+!===============================================================================
+
+  subroutine write_message(message, level)
+    character(*), intent(in)           :: message ! message to write
+    integer,      intent(in), optional :: level   ! verbosity level
+
+    integer :: i_start    ! starting position
+    integer :: i_end      ! ending position
+    integer :: line_wrap  ! length of line
+    integer :: length     ! length of message
+    integer :: last_space ! index of last space (relative to start)
+
+    ! Set length of line
+    line_wrap = 80
+
+    ! Only allow master to print to screen
+    if (.not. master .and. present(level)) return
+
+    if (.not. present(level) .or. level <= verbosity) then
+      ! Determine length of message
+      length = len_trim(message)
+
+      i_start = 0
+      do
+        if (length - i_start < line_wrap + 1) then
+          ! Remainder of message will fit on line
+          write(OUTPUT_UNIT, fmt='(1X,A)') message(i_start+1:length)
+          exit
+
+        else
+          ! Determine last space in current line
+          last_space = index(message(i_start+1:i_start+line_wrap), &
+               ' ', BACK=.true.)
+          if (last_space == 0) then
+            i_end = min(length + 1, i_start+line_wrap) - 1
+            write(OUTPUT_UNIT, fmt='(1X,A)') message(i_start+1:i_end)
+          else
+            i_end = i_start + last_space
+            write(OUTPUT_UNIT, fmt='(1X,A)') message(i_start+1:i_end-1)
+          end if
+
+          ! Write up to last space
+
+          ! Advance starting position
+          i_start = i_end
+          if (i_start > length) exit
+        end if
+      end do
+    end if
+
+  end subroutine write_message
 
 end module error

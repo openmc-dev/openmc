@@ -13,7 +13,7 @@ module simulation_header
   ! GEOMETRY-RELATED VARIABLES
 
   ! Number of lost particles
-  integer :: n_lost_particles
+  integer :: n_lost_particles = 0
 
   real(8) :: log_spacing ! spacing on logarithmic grid
 

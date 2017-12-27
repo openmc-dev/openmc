@@ -18,6 +18,7 @@ module simulation
 #endif
   use error,           only: fatal_error, write_message
   use geometry_header, only: n_cells
+  use material_header, only: n_materials, materials
   use message_passing
   use mgxs_header,     only: energy_bins, energy_bin_avg
   use nuclide_header,  only: micro_xs, n_nuclides
@@ -401,6 +402,7 @@ contains
 !===============================================================================
 
   subroutine openmc_simulation_init() bind(C)
+    integer :: i
 
     ! Skip if simulation has already been initialized
     if (simulation_initialized) return
@@ -417,6 +419,11 @@ contains
 
     ! Allocate tally results arrays if they're not allocated yet
     call configure_tallies()
+
+    ! Set up material nuclide index mapping
+    do i = 1, n_materials
+      call materials(i) % init_nuclide_index()
+    end do
 
 !$omp parallel
     ! Allocate array for microscopic cross section cache
@@ -444,8 +451,9 @@ contains
       end if
     end if
 
-    ! Reset current batch
+    ! Reset global variables
     current_batch = 0
+    need_depletion_rx = .false.
 
     ! Set flag indicating initialization is done
     simulation_initialized = .true.
@@ -459,8 +467,8 @@ contains
 
   subroutine openmc_simulation_finalize() bind(C)
 
+    integer    :: i       ! loop index
 #ifdef MPI
-    integer    :: i       ! loop index for tallies
     integer    :: n       ! size of arrays
     integer    :: mpi_err  ! MPI error code
     integer(8) :: temp
@@ -470,18 +478,20 @@ contains
     ! Skip if simulation was never run
     if (.not. simulation_initialized) return
 
-    ! Stop active batch timer
+    ! Stop active batch timer and start finalization timer
     call time_active % stop()
+    call time_finalize % start()
 
+    ! Free up simulation-specific memory
+    do i = 1, n_materials
+      deallocate(materials(i) % mat_nuclide_index)
+    end do
 !$omp parallel
     deallocate(micro_xs, filter_matches)
 !$omp end parallel
 
     ! Increment total number of generations
     total_gen = total_gen + current_batch*gen_per_batch
-
-    ! Start finalization timer
-    call time_finalize % start()
 
 #ifdef MPI
     ! Broadcast tally results so that each process has access to results
@@ -526,7 +536,8 @@ contains
       if (check_overlaps) call print_overlap_check()
     end if
 
-    ! Reset initialization flag
+    ! Reset flags
+    need_depletion_rx = .false.
     simulation_initialized = .false.
 
   end subroutine openmc_simulation_finalize

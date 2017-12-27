@@ -247,7 +247,7 @@ contains
           ! multiplicities of one.
           score = p % last_wgt * flux
         else
-          m = nuclides(p % event_nuclide) % reaction_index % get(p % event_MT)
+          m = nuclides(p % event_nuclide) % reaction_index(p % event_MT)
 
           ! Get yield and apply to score
           associate (rxn => nuclides(p % event_nuclide) % reactions(m))
@@ -273,7 +273,7 @@ contains
           ! multiplicities of one.
           score = p % last_wgt * flux
         else
-          m = nuclides(p % event_nuclide) % reaction_index % get(p % event_MT)
+          m = nuclides(p % event_nuclide) % reaction_index(p % event_MT)
 
           ! Get yield and apply to score
           associate (rxn => nuclides(p % event_nuclide) % reactions(m))
@@ -299,7 +299,7 @@ contains
           ! multiplicities of one.
           score = p % last_wgt * flux
         else
-          m = nuclides(p % event_nuclide) % reaction_index % get(p % event_MT)
+          m = nuclides(p % event_nuclide) % reaction_index(p % event_MT)
 
           ! Get yield and apply to score
           associate (rxn => nuclides(p%event_nuclide)%reactions(m))
@@ -1131,6 +1131,45 @@ contains
           end if
         end if
 
+      case (N_2N, N_3N, N_4N, N_GAMMA, N_P, N_A)
+        if (t % estimator == ESTIMATOR_ANALOG) then
+          ! Check if event MT matches
+          if (p % event_MT /= score_bin) cycle SCORE_LOOP
+          score = p % last_wgt * flux
+
+        else
+          ! Determine index in NuclideMicroXS % reaction array
+          select case (score_bin)
+          case (N_2N)
+            m = 1
+          case (N_3N)
+            m = 2
+          case (N_4N)
+            m = 3
+          case (N_GAMMA)
+            m = 4
+          case (N_P)
+            m = 5
+          case (N_A)
+            m = 6
+          end select
+
+          if (i_nuclide > 0) then
+            score = micro_xs(i_nuclide) % reaction(m) * atom_density * flux
+          else
+            score = ZERO
+            if (p % material /= MATERIAL_VOID) then
+              associate (mat => materials(p % material))
+                do l = 1, materials(p % material) % n_nuclides
+                  i_nuc = mat % nuclide(l)
+                  atom_density_ = mat % atom_density(l)
+                  score = score + micro_xs(i_nuc) % reaction(m) * atom_density_ * flux
+                end do
+              end associate
+            end if
+          end if
+        end if
+
       case default
         if (t % estimator == ESTIMATOR_ANALOG) then
           ! Any other score is assumed to be a MT number. Thus, we just need
@@ -1148,8 +1187,8 @@ contains
             score = ZERO
 
             if (i_nuclide > 0) then
-              m = nuclides(i_nuclide) % reaction_index % get(score_bin)
-              if (m /= EMPTY) then
+              m = nuclides(i_nuclide) % reaction_index(score_bin)
+              if (m /= 0) then
                 ! Retrieve temperature and energy grid index and interpolation
                 ! factor
                 i_temp = micro_xs(i_nuclide) % index_temp
@@ -1167,14 +1206,8 @@ contains
                   end associate
                 else
                   ! This block is reached if multipole is turned on and we're in
-                  ! the resolved range. For (n,gamma), use absorption -
-                  ! fission. For everything else, assume it's zero.
-                  if (score_bin == N_GAMMA) then
-                    score = (micro_xs(i_nuclide) % absorption - &
-                         micro_xs(i_nuclide) % fission) * atom_density * flux
-                  else
-                    score = ZERO
-                  end if
+                  ! the resolved range. Assume xs is zero.
+                  score = ZERO
                 end if
               end if
 
@@ -1187,8 +1220,8 @@ contains
                   ! Get index in nuclides array
                   i_nuc = materials(p % material) % nuclide(l)
 
-                  m = nuclides(i_nuc) % reaction_index % get(score_bin)
-                  if (m /= EMPTY) then
+                  m = nuclides(i_nuc) % reaction_index(score_bin)
+                  if (m /= 0) then
                     ! Retrieve temperature and energy grid index and
                     ! interpolation factor
                     i_temp = micro_xs(i_nuc) % index_temp
@@ -1206,16 +1239,8 @@ contains
                       end associate
                     else
                       ! This block is reached if multipole is turned on and
-                      ! we're in the resolved range. For (n,gamma), use
-                      ! absorption - fission. For everything else, assume it's
-                      ! zero.
-                      if (score_bin == N_GAMMA) then
-                        score = (micro_xs(i_nuc) % absorption &
-                                 - micro_xs(i_nuc) % fission) &
-                                * atom_density_ * flux
-                      else
-                        score = ZERO
-                      end if
+                      ! we're in the resolved range. Assume xs is zero.
+                      score = ZERO
                     end if
                   end if
                 end do
@@ -2377,10 +2402,6 @@ contains
       i_tally = active_analog_tallies % data(i)
       associate (t => tallies(i_tally) % obj)
 
-      ! Get pointer to current material. We need this in order to determine what
-      ! nuclides are in the material
-      mat => materials(p % material)
-
       ! Find all valid bins in each filter if they have not already been found
       ! for a previous tally.
       do j = 1, size(t % filter)
@@ -2423,33 +2444,28 @@ contains
         ! Nuclide logic
 
         ! Check for nuclide bins
-        k = 0
-        NUCLIDE_LOOP: do while (k < t % n_nuclide_bins)
-
-          ! Increment the index in the list of nuclide bins
-          k = k + 1
-
+        NUCLIDE_LOOP: do k = 1, t % n_nuclide_bins
+          ! Get index of nuclide in nuclides array
           i_nuclide = t % nuclide_bins(k)
 
           if (i_nuclide > 0) then
-            atom_density = -ONE
-            ! Check to see if this nuclide was in the material of our collision
-            do m = 1, mat % n_nuclides
-              if (mat % nuclide(m) == i_nuclide) then
-                atom_density = mat % atom_density(m)
-                exit
-              end if
-            end do
+            if (p % material /= MATERIAL_VOID) then
+              ! Get pointer to current material
+              mat => materials(p % material)
+
+              ! Determine index of nuclide in Material % atom_density array
+              j = mat % mat_nuclide_index(i_nuclide)
+              if (j == 0) cycle NUCLIDE_LOOP
+
+              ! Copy corresponding atom density
+              atom_density = mat % atom_density(j)
+            end if
           else
             atom_density = ZERO
           end if
 
-          ! If we found the nuclide, determine the score for each bin
-          if (atom_density >= ZERO) then
-            call score_general(p, t, (k-1)*t % n_score_bins, filter_index, &
-                 i_nuclide, atom_density, filter_weight)
-          end if
-
+          call score_general(p, t, (k-1)*t % n_score_bins, filter_index, &
+               i_nuclide, atom_density, filter_weight)
         end do NUCLIDE_LOOP
 
         ! ======================================================================
@@ -2812,19 +2828,11 @@ contains
                 ! Get pointer to current material
                 mat => materials(p % material)
 
-                ! Determine if nuclide is actually in material
-                NUCLIDE_MAT_LOOP: do j = 1, mat % n_nuclides
-                  ! If index of nuclide matches the j-th nuclide listed in the
-                  ! material, break out of the loop
-                  if (i_nuclide == mat % nuclide(j)) exit
+                ! Determine index of nuclide in Material % atom_density array
+                j = mat % mat_nuclide_index(i_nuclide)
+                if (j == 0) cycle NUCLIDE_BIN_LOOP
 
-                  ! If we've reached the last nuclide in the material, it means
-                  ! the specified nuclide to be tallied is not in this material
-                  if (j == mat % n_nuclides) then
-                    cycle NUCLIDE_BIN_LOOP
-                  end if
-                end do NUCLIDE_MAT_LOOP
-
+                ! Copy corresponding atom density
                 atom_density = mat % atom_density(j)
               else
                 atom_density = ZERO
@@ -2977,19 +2985,11 @@ contains
                 ! Get pointer to current material
                 mat => materials(p % material)
 
-                ! Determine if nuclide is actually in material
-                NUCLIDE_MAT_LOOP: do j = 1, mat % n_nuclides
-                  ! If index of nuclide matches the j-th nuclide listed in the
-                  ! material, break out of the loop
-                  if (i_nuclide == mat % nuclide(j)) exit
+                ! Determine index of nuclide in Material % atom_density array
+                j = mat % mat_nuclide_index(i_nuclide)
+                if (j == 0) cycle NUCLIDE_BIN_LOOP
 
-                  ! If we've reached the last nuclide in the material, it means
-                  ! the specified nuclide to be tallied is not in this material
-                  if (j == mat % n_nuclides) then
-                    cycle NUCLIDE_BIN_LOOP
-                  end if
-                end do NUCLIDE_MAT_LOOP
-
+                ! Copy corresponding atom density
                 atom_density = mat % atom_density(j)
               else
                 atom_density = ZERO
@@ -4381,6 +4381,9 @@ contains
           elseif (t % type == TALLY_SURFACE) then
             call active_surface_tallies % push_back(i)
           end if
+
+          ! Check if tally contains depletion reactions and if so, set flag
+          if (t % depletion_rx) need_depletion_rx = .true.
         end if
       end associate
     end do

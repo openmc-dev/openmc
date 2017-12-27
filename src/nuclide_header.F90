@@ -87,8 +87,10 @@ module nuclide_header
 
     ! Reactions
     type(Reaction), allocatable :: reactions(:)
-    type(DictIntInt) :: reaction_index ! map MT values to index in reactions
-                                       ! array; used at tally-time
+
+    ! Array that maps MT values to index in reactions; used at tally-time. Note
+    ! that ENDF-102 does not assign any MT values above 891.
+    integer :: reaction_index(891)
 
     ! Fission energy release
     class(Function1D), allocatable :: fission_q_prompt ! prompt neutrons, gammas
@@ -113,11 +115,15 @@ module nuclide_header
     real(8) :: total
     real(8) :: elastic          ! If sab_frac is not 1 or 0, then this value is
                                 !   averaged over bound and non-bound nuclei
-    real(8) :: absorption
-    real(8) :: fission
-    real(8) :: nu_fission
+    real(8) :: absorption       ! absorption (disappearance)
+    real(8) :: fission          ! fission
+    real(8) :: nu_fission       ! neutron production from fission
     real(8) :: thermal          ! Bound thermal elastic & inelastic scattering
     real(8) :: thermal_elastic  ! Bound thermal elastic scattering
+
+    ! Cross sections for depletion reactions (note that these are not stored in
+    ! macroscopic cache)
+    real(8) :: reaction(size(DEPLETION_RX))
 
     ! Indicies and factors needed to compute cross sections from the data tables
     integer :: index_grid        ! Index on nuclide energy grid
@@ -561,7 +567,7 @@ contains
 
     n_temperature = size(this % kTs)
     allocate(this % sum_xs(n_temperature))
-
+    this % reaction_index(:) = 0
     do i = 1, n_temperature
       ! Allocate and initialize derived cross sections
       n_grid = size(this % grid(i) % energy)
@@ -581,7 +587,7 @@ contains
 
     do i = 1, size(this % reactions)
       call MTs % push_back(this % reactions(i) % MT)
-      call this % reaction_index % set(this % reactions(i) % MT, i)
+      this % reaction_index(this % reactions(i) % MT) = i
 
       associate (rx => this % reactions(i))
         ! Skip total inelastic level scattering, gas production cross sections

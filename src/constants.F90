@@ -219,6 +219,9 @@ module constants
        N_D0    = 650, N_DC    = 699, N_T0   = 700, N_TC    = 749, N_3HE0  = 750, &
        N_3HEC  = 799, N_A0    = 800, N_AC   = 849, N_2N0   = 875, N_2NC   = 891
 
+  ! Depletion reactions
+  integer, parameter :: DEPLETION_RX(6) = [N_2N, N_3N, N_4N, N_GAMMA, N_P, N_A]
+
   ! ACE table types
   integer, parameter :: &
        ACE_NEUTRON   = 1, & ! continuous-energy neutron

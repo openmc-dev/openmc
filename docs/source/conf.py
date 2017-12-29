@@ -52,6 +52,7 @@ extensions = ['sphinx.ext.autodoc',
               'sphinx.ext.autosummary',
               'sphinx.ext.intersphinx',
               'sphinx.ext.viewcode',
+              'sphinx.ext.imgconverter',
               'sphinx_numfig',
               'notebook_sphinxext']
 
@@ -253,5 +254,5 @@ intersphinx_mapping = {
     'python': ('https://docs.python.org/3', None),
     'numpy': ('https://docs.scipy.org/doc/numpy/', None),
     'pandas': ('http://pandas.pydata.org/pandas-docs/stable/', None),
-    'matplotlib': ('http://matplotlib.org/', None)
+    'matplotlib': ('https://matplotlib.org/', None)
 }

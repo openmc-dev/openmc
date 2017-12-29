@@ -47,7 +47,7 @@ dividing space into two half-spaces.
 
 .. _fig-halfspace:
 
-.. figure:: ../_images/halfspace.*
+.. figure:: ../_images/halfspace.svg
    :align: center
    :figclass: align-center
 
@@ -63,7 +63,7 @@ defined as the intersection of an ellipse and two planes.
 
 .. _fig-union:
 
-.. figure:: ../_images/union.*
+.. figure:: ../_images/union.svg
    :align: center
    :figclass: align-center
 
@@ -482,7 +482,7 @@ upper-right tiles, respectively.
 
 .. _fig-rect-lat:
 
-.. figure:: ../_images/rect_lat.*
+.. figure:: ../_images/rect_lat.svg
    :align: center
    :figclass: align-center
    :width: 400px
@@ -521,7 +521,7 @@ right side.
 
 .. _fig-hex-lat:
 
-.. figure:: ../_images/hex_lat.*
+.. figure:: ../_images/hex_lat.svg
    :align: center
    :figclass: align-center
    :width: 400px

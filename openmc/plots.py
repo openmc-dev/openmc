@@ -678,23 +678,6 @@ class Plots(cv.CheckedList):
         if plots is not None:
             self += plots
 
-    def add_plot(self, plot):
-        """Add a plot to the file.
-
-        .. deprecated:: 0.8
-            Use :meth:`Plots.append` instead.
-
-        Parameters
-        ----------
-        plot : openmc.Plot
-            Plot to add
-
-        """
-        warnings.warn("Plots.add_plot(...) has been deprecated and may be "
-                      "removed in a future version. Use Plots.append(...) "
-                      "instead.", DeprecationWarning)
-        self.append(plot)
-
     def append(self, plot):
         """Append plot to collection
 
@@ -718,23 +701,6 @@ class Plots(cv.CheckedList):
 
         """
         super().insert(index, plot)
-
-    def remove_plot(self, plot):
-        """Remove a plot from the file.
-
-        .. deprecated:: 0.8
-            Use :meth:`Plots.remove` instead.
-
-        Parameters
-        ----------
-        plot : openmc.Plot
-            Plot to remove
-
-        """
-        warnings.warn("Plots.remove_plot(...) has been deprecated and may be "
-                      "removed in a future version. Use Plots.remove(...) "
-                      "instead.", DeprecationWarning)
-        self.remove(plot)
 
     def colorize(self, geometry, seed=1):
         """Generate a consistent color scheme for each domain in each plot.

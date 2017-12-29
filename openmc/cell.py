@@ -283,50 +283,6 @@ class Cell(IDManagerMixin):
             cv.check_type('cell volume', volume, Real)
         self._volume = volume
 
-    def add_surface(self, surface, halfspace):
-        """Add a half-space to the list of half-spaces whose intersection defines the
-        cell.
-
-        .. deprecated:: 0.7.1
-            Use the :attr:`Cell.region` property to directly specify a Region
-            expression.
-
-        Parameters
-        ----------
-        surface : openmc.Surface
-            Quadric surface dividing space
-        halfspace : {-1, 1}
-            Indicate whether the negative or positive half-space is to be used
-
-        """
-
-        warnings.warn("Cell.add_surface(...) has been deprecated and may be "
-                      "removed in a future version. The region for a Cell "
-                      "should be defined using the region property directly.",
-                      DeprecationWarning)
-
-        if not isinstance(surface, openmc.Surface):
-            msg = 'Unable to add Surface "{0}" to Cell ID="{1}" since it is ' \
-                        'not a Surface object'.format(surface, self._id)
-            raise ValueError(msg)
-
-        if halfspace not in [-1, +1]:
-            msg = 'Unable to add Surface "{0}" to Cell ID="{1}" with halfspace ' \
-                  '"{2}" since it is not +/-1'.format(surface, self._id, halfspace)
-            raise ValueError(msg)
-
-        # If no region has been assigned, simply use the half-space. Otherwise,
-        # take the intersection of the current region and the half-space
-        # specified
-        region = +surface if halfspace == 1 else -surface
-        if self.region is None:
-            self.region = region
-        else:
-            if isinstance(self.region, Intersection):
-                self.region &= region
-            else:
-                self.region = Intersection(self.region, region)
-
     def add_volume_information(self, volume_calc):
         """Add volume information to a cell.
 

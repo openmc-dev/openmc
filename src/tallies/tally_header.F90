@@ -26,6 +26,7 @@ module tally_header
   public :: openmc_global_tallies
   public :: openmc_tally_get_id
   public :: openmc_tally_get_filters
+  public :: openmc_tally_get_n_realizations
   public :: openmc_tally_get_nuclides
   public :: openmc_tally_get_scores
   public :: openmc_tally_results

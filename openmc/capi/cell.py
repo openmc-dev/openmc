@@ -21,6 +21,8 @@ _dll.openmc_cell_get_id.restype = c_int
 _dll.openmc_cell_get_id.errcheck = _error_handler
 _dll.openmc_cell_get_fill.argtypes = [
     c_int32, POINTER(c_int), POINTER(POINTER(c_int32)), POINTER(c_int32)]
+_dll.openmc_cell_get_fill.restype = c_int
+_dll.openmc_cell_get_fill.errcheck = _error_handler
 _dll.openmc_cell_set_fill.argtypes = [
     c_int32, c_int, c_int32, POINTER(c_int32)]
 _dll.openmc_cell_set_fill.restype = c_int

@@ -43,6 +43,7 @@ module simulation
 
   implicit none
   private
+  public :: openmc_next_batch
   public :: openmc_run
   public :: openmc_simulation_init
   public :: openmc_simulation_finalize

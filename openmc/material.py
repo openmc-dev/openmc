@@ -910,41 +910,6 @@ class Materials(cv.CheckedList):
         cv.check_type('cross sections', multipole_library, str)
         self._multipole_library = multipole_library
 
-    def add_material(self, material):
-        """Append material to collection
-
-        .. deprecated:: 0.8
-            Use :meth:`Materials.append` instead.
-
-        Parameters
-        ----------
-        material : openmc.Material
-            Material to add
-
-        """
-        warnings.warn("Materials.add_material(...) has been deprecated and may be "
-                      "removed in a future version. Use Material.append(...) "
-                      "instead.", DeprecationWarning)
-        self.append(material)
-
-    def add_materials(self, materials):
-        """Add multiple materials to the collection
-
-        .. deprecated:: 0.8
-            Use compound assignment instead.
-
-        Parameters
-        ----------
-        materials : Iterable of openmc.Material
-            Materials to add
-
-        """
-        warnings.warn("Materials.add_materials(...) has been deprecated and may be "
-                      "removed in a future version. Use compound assignment "
-                      "instead.", DeprecationWarning)
-        for material in materials:
-            self.append(material)
-
     def append(self, material):
         """Append material to collection
 
@@ -968,23 +933,6 @@ class Materials(cv.CheckedList):
 
         """
         super().insert(index, material)
-
-    def remove_material(self, material):
-        """Remove a material from the file
-
-        .. deprecated:: 0.8
-            Use :meth:`Materials.remove` instead.
-
-        Parameters
-        ----------
-        material : openmc.Material
-            Material to remove
-
-        """
-        warnings.warn("Materials.remove_material(...) has been deprecated and "
-                      "may be removed in a future version. Use "
-                      "Materials.remove(...) instead.", DeprecationWarning)
-        self.remove(material)
 
     def make_isotropic_in_lab(self):
         for material in self:

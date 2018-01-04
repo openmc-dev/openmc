@@ -24,6 +24,7 @@ module tally_filter
   use tally_filter_mu
   use tally_filter_polar
   use tally_filter_sph_harm
+  use tally_filter_sptl_legendre
   use tally_filter_surface
   use tally_filter_universe
 
@@ -80,6 +81,8 @@ contains
           type_ = 'polar'
         type is (SphericalHarmonicsFilter)
           type_ = 'sphericalharmonics'
+        type is (SpatialLegendreFilter)
+          type_ = 'spatiallegendre'
         type is (SurfaceFilter)
           type_ = 'surface'
         type is (UniverseFilter)
@@ -155,6 +158,8 @@ contains
           allocate(PolarFilter :: filters(index) % obj)
         case ('sphericalharmonics')
           allocate(SphericalHarmonicsFilter :: filters(index) % obj)
+        case ('spatiallegendre')
+          allocate(SpatialLegendreFilter :: filters(index) % obj)
         case ('surface')
           allocate(SurfaceFilter :: filters(index) % obj)
         case ('universe')

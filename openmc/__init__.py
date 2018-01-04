@@ -16,6 +16,7 @@ from openmc.universe import *
 from openmc.lattice import *
 from openmc.filter import *
 from openmc.filter_legendre import *
+from openmc.filter_spatial_legendre import *
 from openmc.filter_spherical_harmonics import *
 from openmc.trigger import *
 from openmc.tally_derivative import *

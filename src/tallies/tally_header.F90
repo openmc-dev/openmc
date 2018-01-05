@@ -361,6 +361,7 @@ contains
         j = FILTER_SPH_HARMONICS
       type is (SpatialLegendreFilter)
         j = FILTER_SPTL_LEGENDRE
+        this % estimator = ESTIMATOR_COLLISION
       end select
       this % find_filter(j) = i
     end do

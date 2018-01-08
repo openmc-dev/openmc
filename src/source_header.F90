@@ -17,6 +17,8 @@ module source_header
   implicit none
   private
   public :: free_memory_source
+  public :: openmc_extend_sources
+  public :: openmc_source_set_strength
 
   integer :: n_accept = 0  ! Number of samples accepted
   integer :: n_reject = 0  ! Number of samples rejected

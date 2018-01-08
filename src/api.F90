@@ -4,6 +4,7 @@ module openmc_api
 
   use hdf5, only: HID_T, h5tclose_f, h5close_f
 
+  use bank_header,     only: openmc_source_bank
   use constants,       only: K_BOLTZMANN
   use eigenvalue,      only: k_sum, openmc_get_keff
   use error
@@ -20,11 +21,13 @@ module openmc_api
   use random_lcg,      only: seed, openmc_set_seed
   use settings
   use simulation_header
+  use source_header,   only: openmc_extend_sources, openmc_source_set_strength
+  use state_point,     only: openmc_statepoint_write
   use tally_header
   use tally_filter_header
   use tally_filter
   use tally,           only: openmc_tally_set_type
-  use simulation,      only: openmc_run
+  use simulation
   use string,          only: to_f_string
   use timer_header
   use volume_calc,     only: openmc_calculate_volumes
@@ -43,6 +46,7 @@ module openmc_api
   public :: openmc_extend_filters
   public :: openmc_extend_cells
   public :: openmc_extend_materials
+  public :: openmc_extend_sources
   public :: openmc_extend_tallies
   public :: openmc_filter_get_id
   public :: openmc_filter_get_type
@@ -57,6 +61,7 @@ module openmc_api
   public :: openmc_get_material_index
   public :: openmc_get_nuclide_index
   public :: openmc_get_tally_index
+  public :: openmc_global_tallies
   public :: openmc_hard_reset
   public :: openmc_init
   public :: openmc_load_nuclide
@@ -69,12 +74,18 @@ module openmc_api
   public :: openmc_material_filter_get_bins
   public :: openmc_material_filter_set_bins
   public :: openmc_mesh_filter_set_mesh
+  public :: openmc_next_batch
   public :: openmc_nuclide_name
   public :: openmc_plot_geometry
   public :: openmc_reset
   public :: openmc_run
+  public :: openmc_simulation_finalize
+  public :: openmc_simulation_init
+  public :: openmc_source_bank
+  public :: openmc_source_set_strength
   public :: openmc_tally_get_id
   public :: openmc_tally_get_filters
+  public :: openmc_tally_get_n_realizations
   public :: openmc_tally_get_nuclides
   public :: openmc_tally_get_scores
   public :: openmc_tally_results

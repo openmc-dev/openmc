@@ -222,6 +222,13 @@ named ``njoy`` available on your path. If you want to explicitly name the
 executable, the ``njoy_exec`` optional argument can be used. Additionally, the
 ``stdout`` argument can be used to show the progress of the NJOY run.
 
+To generate a thermal scattering file, you need to specify both an ENDF incident
+neutron sub-library file as well as a thermal neutron scattering sub-library
+file; for example::
+
+  light_water = openmc.data.ThermalScattering.from_njoy(
+      'neutrons/n-001_H_001.endf', 'thermal_scatt/tsl-HinH2O.endf')
+
 Once you have instances of :class:`IncidentNeutron` and
 :class:`ThermalScattering`, a library can be created by using the
 ``export_to_hdf5()`` methods and the :class:`DataLibrary` class as described in

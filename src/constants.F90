@@ -9,7 +9,7 @@ module constants
 
   ! OpenMC major, minor, and release numbers
   integer, parameter :: VERSION_MAJOR   = 0
-  integer, parameter :: VERSION_MINOR   = 9
+  integer, parameter :: VERSION_MINOR   = 10
   integer, parameter :: VERSION_RELEASE = 0
   integer, parameter :: &
        VERSION(3) = [VERSION_MAJOR, VERSION_MINOR, VERSION_RELEASE]

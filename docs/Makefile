@@ -13,10 +13,6 @@ PAPEROPT_a4     = -D latex_paper_size=a4
 PAPEROPT_letter = -D latex_paper_size=letter
 ALLSPHINXOPTS   = -d $(BUILDDIR)/doctrees $(PAPEROPT_$(PAPER)) $(SPHINXOPTS) source
 
-# SVG to PDF conversion
-SVG2PDF = inkscape
-PDFS    = $(patsubst %.svg,%.pdf,$(wildcard $(IMAGEDIR)/*.svg))
-
 # Tikz to PNG conversion
 PNGS = $(patsubst %.tex,%.png,$(wildcard $(IMAGEDIR)/*.tex))
 
@@ -41,21 +37,13 @@ help:
 	@echo "  linkcheck  to check all external links for integrity"
 	@echo "  doctest    to run all doctests embedded in the documentation (if enabled)"
 
-# Pattern rule for converting SVG to PDF
-%.pdf: %.svg
-	$(SVG2PDF) -f $< -A $@
-
 %.png: %.tex
 	pdflatex --interaction=nonstopmode --output-directory=$(IMAGEDIR) $<
 	pdftoppm -r 120 -singlefile $(patsubst %.tex,%.pdf, $<) $(basename $<)
 	convert -trim -fuzz 2% -transparent white $(patsubst %.tex,%.ppm,$<) $@
 
-# Rule to build PDFs
-images: $(PDFS) $(PNGS)
-
 clean:
 	-rm -rf $(BUILDDIR)/*
-	-rm -rf $(PDFS)
 	-rm -rf source/pythonapi/generated/
 
 html:

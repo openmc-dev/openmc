@@ -45,6 +45,9 @@ contains
     integer, intent(in), optional :: intracomm  ! MPI intracommunicator
 
     integer :: err
+#ifdef _OPENMP
+    character(MAX_WORD_LEN) :: envvar
+#endif
 
     ! Copy the communicator to a new variable. This is done to avoid changing
     ! the signature of this subroutine. If MPI is being used but no communicator
@@ -74,6 +77,14 @@ contains
 #ifdef MPI
     ! Setup MPI
     call initialize_mpi(comm)
+#endif
+
+#ifdef _OPENMP
+    ! Change schedule of main parallel-do loop if OMP_SCHEDULE is set
+    call get_environment_variable("OMP_SCHEDULE", envvar)
+    if (len_trim(envvar) == 0) then
+      call omp_set_schedule(omp_sched_static, 0)
+    end if
 #endif
 
     ! Initialize HDF5 interface

@@ -26,6 +26,9 @@ of:
     mat.add_nuclide('H1', 1.0)
     mat.isotropic = ['H1']
 
+  To treat all nuclides in a material this way, the
+  :meth:`Material.make_isotropic_in_lab` method can still be used.
+
 - The initializers for :class:`openmc.Intersection` and :class:`openmc.Union`
   now expect an iterable.
 

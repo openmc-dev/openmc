@@ -116,21 +116,27 @@ Prerequisites
       OpenMC uses HDF5 for many input/output files. As such, you will need to
       have HDF5 installed on your computer. The installed version will need to
       have been compiled with the same compiler you intend to compile OpenMC
-      with. On Debian derivatives, HDF5 and/or parallel HDF5 can be installed
-      through the APT package manager:
-
-      .. code-block:: sh
+      with. If compiling with gcc from the APT repositories, users of Debian
+      derivatives can install HDF5 and/or parallel HDF5 through the package
+      manager::
 
           sudo apt install libhdf5-dev
 
+      Parallel versions of the HDF5 library called `libhdf5-mpich-dev` and
+      `libhdf5-openmpi-dev` exist which are built against MPICH and OpenMPI,
+      respectively. To link against a parallel HDF5 library, make sure to set
+      the HDF5_PREFER_PARALLEL CMake option, e.g.::
+
+          FC=mpifort.mpich cmake -DHDF5_PREFER_PARALLEL=on ..
+
       Note that the exact package names may vary depending on your particular
-      distribution and version. If you are using HDF5 in conjunction with MPI,
-      we recommend that your HDF5 installation be built with parallel I/O
+      distribution and version.
+
+      If you are using building HDF5 from source in conjunction with MPI, we
+      recommend that your HDF5 installation be built with parallel I/O
       features. An example of configuring HDF5_ is listed below::
 
-           FC=/opt/mpich/3.2/bin/mpif90 CC=/opt/mpich/3.2/bin/mpicc \
-           ./configure --prefix=/opt/hdf5/1.10.1 --enable-fortran \
-                       --enable-parallel
+           FC=mpifort ./configure --enable-fortran --enable-parallel
 
       You may omit ``--enable-parallel`` if you want to compile HDF5_ in serial.
 

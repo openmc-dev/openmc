@@ -1,6 +1,6 @@
----------------------------------------------------
-:data:`openmc.capi` -- Python bindings to the C API
----------------------------------------------------
+--------------------------------------------------
+:mod:`openmc.capi` -- Python bindings to the C API
+--------------------------------------------------
 
 .. automodule:: openmc.capi
 
@@ -12,25 +12,25 @@ Functions
    :nosignatures:
    :template: myfunction.rst
 
-   openmc.capi.calculate_volumes
-   openmc.capi.finalize
-   openmc.capi.find_cell
-   openmc.capi.find_material
-   openmc.capi.hard_reset
-   openmc.capi.init
-   openmc.capi.iter_batches
-   openmc.capi.keff
-   openmc.capi.load_nuclide
-   openmc.capi.next_batch
-   openmc.capi.num_realizations
-   openmc.capi.plot_geometry
-   openmc.capi.reset
-   openmc.capi.run
-   openmc.capi.run_in_memory
-   openmc.capi.simulation_init
-   openmc.capi.simulation_finalize
-   openmc.capi.source_bank
-   openmc.capi.statepoint_write
+   calculate_volumes
+   finalize
+   find_cell
+   find_material
+   hard_reset
+   init
+   iter_batches
+   keff
+   load_nuclide
+   next_batch
+   num_realizations
+   plot_geometry
+   reset
+   run
+   run_in_memory
+   simulation_init
+   simulation_finalize
+   source_bank
+   statepoint_write
 
 Classes
 -------
@@ -40,9 +40,9 @@ Classes
    :nosignatures:
    :template: myclass.rst
 
-   openmc.capi.Cell
-   openmc.capi.EnergyFilter
-   openmc.capi.MaterialFilter
-   openmc.capi.Material
-   openmc.capi.Nuclide
-   openmc.capi.Tally
+   Cell
+   EnergyFilter
+   MaterialFilter
+   Material
+   Nuclide
+   Tally

@@ -524,7 +524,7 @@ contains
 
 
   function openmc_cell_set_fill(index, type, n, indices) result(err) bind(C)
-    ! Set the fill for a fill
+    ! Set the fill for a cell
     integer(C_INT32_T), value, intent(in) :: index    ! index in cells
     integer(C_INT), value, intent(in)     :: type
     integer(c_INT32_T), value, intent(in) :: n

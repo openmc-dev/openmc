@@ -32,4 +32,4 @@ from . import examples
 # Import a few convencience functions that used to be here
 from openmc.model import get_rectangular_prism, get_hexagonal_prism
 
-__version__ = '0.9.0'
+__version__ = '0.10.0'

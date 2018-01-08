@@ -95,10 +95,10 @@ Prerequisites
 
     * A C/C++ compiler such as gcc_
 
-      OpenMC includes two libraries written in C and C++, respectively. These
-      libraries have been tested to work with a wide variety of compilers. If
-      you are using a Debian-based distribution, you can install the g++
-      compiler using the following command::
+      OpenMC includes various source files written in C and C++,
+      respectively. These source files have been tested to work with a wide
+      variety of compilers. If you are using a Debian-based distribution, you
+      can install the g++ compiler using the following command::
 
           sudo apt install g++
 
@@ -113,34 +113,38 @@ Prerequisites
 
     * HDF5_ Library for portable binary output format
 
-      OpenMC uses HDF5 for binary output files. As such, you will need to have
-      HDF5 installed on your computer. The installed version will need to have
-      been compiled with the same compiler you intend to compile OpenMC with. If
-      you are using HDF5 in conjunction with MPI, we recommend that your HDF5
-      installation be built with parallel I/O features. An example of
-      configuring HDF5_ is listed below::
+      OpenMC uses HDF5 for many input/output files. As such, you will need to
+      have HDF5 installed on your computer. The installed version will need to
+      have been compiled with the same compiler you intend to compile OpenMC
+      with. If compiling with gcc from the APT repositories, users of Debian
+      derivatives can install HDF5 and/or parallel HDF5 through the package
+      manager::
 
-           FC=/opt/mpich/3.1/bin/mpif90 CC=/opt/mpich/3.1/bin/mpicc \
-           ./configure --prefix=/opt/hdf5/1.8.12 --enable-fortran \
-                       --enable-fortran2003 --enable-parallel
+          sudo apt install libhdf5-dev
+
+      Parallel versions of the HDF5 library called `libhdf5-mpich-dev` and
+      `libhdf5-openmpi-dev` exist which are built against MPICH and OpenMPI,
+      respectively. To link against a parallel HDF5 library, make sure to set
+      the HDF5_PREFER_PARALLEL CMake option, e.g.::
+
+          FC=mpifort.mpich cmake -DHDF5_PREFER_PARALLEL=on ..
+
+      Note that the exact package names may vary depending on your particular
+      distribution and version.
+
+      If you are using building HDF5 from source in conjunction with MPI, we
+      recommend that your HDF5 installation be built with parallel I/O
+      features. An example of configuring HDF5_ is listed below::
+
+           FC=mpifort ./configure --enable-fortran --enable-parallel
 
       You may omit ``--enable-parallel`` if you want to compile HDF5_ in serial.
 
       .. important::
 
-          OpenMC uses various parts of the HDF5 Fortran 2003 API; as such you
-          must include ``--enable-fortran2003`` or else OpenMC will not be able
-          to compile.
-
-      On Debian derivatives, HDF5 and/or parallel HDF5 can be installed through
-      the APT package manager:
-
-      .. code-block:: sh
-
-          sudo apt install libhdf5-dev hdf5-helpers
-
-      Note that the exact package names may vary depending on your particular
-      distribution and version.
+          If you are building HDF5 version 1.8.x or earlier, you must include
+          ``--enable-fortran2003`` when configuring HDF5 or else OpenMC will not
+          be able to compile.
 
 .. admonition:: Optional
    :class: note
@@ -163,7 +167,7 @@ Prerequisites
 .. _CMake: http://www.cmake.org
 .. _OpenMPI: http://www.open-mpi.org
 .. _MPICH: http://www.mpich.org
-.. _HDF5: http://www.hdfgroup.org/HDF5/
+.. _HDF5: https://www.hdfgroup.org/solutions/hdf5/
 
 Obtaining the Source
 --------------------
@@ -358,26 +362,9 @@ workarounds.
 Testing Build
 -------------
 
-If you have ENDF/B-VII.1 cross sections from NNDC_ you can test your build.
-Make sure the **OPENMC_CROSS_SECTIONS** environmental variable is set to the
-*cross_sections.xml* file in the *data/nndc* directory.
-There are two ways to run tests. The first is to use the Makefile present in
-the source directory and run the following:
-
-.. code-block:: sh
-
-    make test
-
-If you want more options for testing you can use ctest_ command. For example,
-if we wanted to run only the plot tests with 4 processors, we run:
-
-.. code-block:: sh
-
-    cd build
-    ctest -j 4 -R plot
-
-If you want to run the full test suite with different build options please
-refer to our :ref:`test suite` documentation.
+To run the test suite, you will first need to download a pre-generated cross
+section library along with windowed multipole data. Please refer to our
+:ref:`test suite` documentation for further details.
 
 --------------------
 Python Prerequisites

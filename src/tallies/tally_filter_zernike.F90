@@ -61,12 +61,10 @@ contains
     integer,             intent(in)  :: estimator
     type(TallyFilterMatch),   intent(inout) :: match
 
-    integer :: n
-    integer :: j
     integer :: i
-    real(8) :: wgt
-    real(8) :: tmp(this % order + 1)
+    integer :: n
     real(8) :: x, y, r, theta
+    real(8) :: zn(this % n_bins)
 
     ! Determine normalized (r,theta) positions
     x = p % coord(1) % xyz(1) - this % x
@@ -74,17 +72,12 @@ contains
     r = sqrt(x*x + y*y)/this % r
     theta = atan2(y, x)
 
-    i = 0
-    do n = 0, this % order
-      ! Get moments for n-th order Zernike polynomial
-      tmp(1:n+1) = calc_zn(n, r, theta) / SQRT_PI
+    ! Get moments for Zernike polynomial orders 0..n
+    call calc_zn(this % order, r, theta, zn)
 
-      ! Indicate matching bins/weights
-      do j = 1, n + 1
-        call match % bins % push_back(i + j)
-        call match % weights % push_back(tmp(j))
-      end do
-      i = i + n + 1
+    do i = 1, this % n_bins
+      call match % bins % push_back(i)
+      call match % weights % push_back(zn(i) / SQRT_PI)
     end do
   end subroutine get_all_bins
 

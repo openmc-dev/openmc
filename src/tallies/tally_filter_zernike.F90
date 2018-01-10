@@ -51,7 +51,7 @@ contains
     ! Get specified order
     call get_node_value(node, "order", n)
     this % order = n
-    this % n_bins = (n + 1)*(n + 2)/2
+    this % n_bins = ((n + 1)*(n + 2))/2
   end subroutine from_xml
 
   subroutine get_all_bins(this, p, estimator, match)
@@ -112,7 +112,7 @@ contains
       if (bin <= last) then
         first = last - n
         m = -n + (bin - first)*2
-        label = "Zernike expansion, Y" // trim(to_str(n)) // "," &
+        label = "Zernike expansion, Z" // trim(to_str(n)) // "," &
              // trim(to_str(m))
         exit
       end if

@@ -27,6 +27,7 @@ module tally_filter
   use tally_filter_sptl_legendre
   use tally_filter_surface
   use tally_filter_universe
+  use tally_filter_zernike
 
   implicit none
 
@@ -87,6 +88,8 @@ contains
           type_ = 'surface'
         type is (UniverseFilter)
           type_ = 'universe'
+        type is (ZernikeFilter)
+          type_ = 'zernike'
         end select
 
         ! Convert Fortran string to null-terminated C string. We assume the
@@ -164,6 +167,8 @@ contains
           allocate(SurfaceFilter :: filters(index) % obj)
         case ('universe')
           allocate(UniverseFilter :: filters(index) % obj)
+        case ('zernike')
+          allocate(ZernikeFilter :: filters(index) % obj)
         case default
           err = E_UNASSIGNED
           call set_errmsg("Unknown filter type: " // trim(type_))

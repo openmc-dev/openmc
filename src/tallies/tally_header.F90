@@ -362,6 +362,9 @@ contains
       type is (SpatialLegendreFilter)
         j = FILTER_SPTL_LEGENDRE
         this % estimator = ESTIMATOR_COLLISION
+      type is (ZernikeFilter)
+        j = FILTER_ZERNIKE
+        this % estimator = ESTIMATOR_COLLISION
       end select
       this % find_filter(j) = i
     end do

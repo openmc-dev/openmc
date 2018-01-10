@@ -430,6 +430,7 @@ set(LIBOPENMC_FORTRAN_SRC
   src/tallies/tally_filter_sptl_legendre.F90
   src/tallies/tally_filter_surface.F90
   src/tallies/tally_filter_universe.F90
+  src/tallies/tally_filter_zernike.F90
   src/tallies/tally_header.F90
   src/tallies/trigger.F90
   src/tallies/trigger_header.F90

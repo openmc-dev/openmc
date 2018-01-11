@@ -21,6 +21,9 @@ def linearize(x, f, tolerance=0.001):
         Tabulated values of the dependent variable
 
     """
+    # Make sure x is a numpy array
+    x = np.asarray(x)
+
     # Initialize output arrays
     x_out = []
     y_out = []

@@ -1,6 +1,7 @@
 from collections import Iterable
 from difflib import get_close_matches
 from numbers import Real
+import itertools
 import os
 import re
 import shutil
@@ -25,37 +26,37 @@ from openmc.stats import Discrete, Tabular
 _THERMAL_NAMES = {
     'c_Al27': ('al', 'al27'),
     'c_Be': ('be', 'be-metal'),
-    'c_BeO': ('beo',),
+    'c_BeO': ('beo'),
     'c_Be_in_BeO': ('bebeo', 'be-o', 'be/o'),
     'c_C6H6': ('benz', 'c6h6'),
     'c_C_in_SiC': ('csic',),
-    'c_Ca_in_CaH2': ('cah',),
+    'c_Ca_in_CaH2': ('cah'),
     'c_D_in_D2O': ('dd2o', 'hwtr', 'hw'),
     'c_Fe56': ('fe', 'fe56'),
     'c_Graphite': ('graph', 'grph', 'gr'),
-    'c_H_in_CaH2': ('hcah2',),
+    'c_H_in_CaH2': ('hcah2'),
     'c_H_in_CH2': ('hch2', 'poly', 'pol'),
     'c_H_in_CH4_liquid': ('lch4', 'lmeth'),
     'c_H_in_CH4_solid': ('sch4', 'smeth'),
     'c_H_in_H2O': ('hh2o', 'lwtr', 'lw'),
     'c_H_in_H2O_solid': ('hice',),
     'c_H_in_C5O2H8': ('lucite', 'c5o2h8'),
-    'c_H_in_YH2': ('hyh2',),
+    'c_H_in_YH2': ('hyh2'),
     'c_H_in_ZrH': ('hzrh', 'h-zr', 'h/zr', 'hzr'),
     'c_Mg24': ('mg', 'mg24'),
     'c_O_in_BeO': ('obeo', 'o-be', 'o/be'),
-    'c_O_in_D2O': ('od2o',),
-    'c_O_in_H2O_ice': ('oice',),
+    'c_O_in_D2O': ('od2o'),
+    'c_O_in_H2O_ice': ('oice'),
     'c_O_in_UO2': ('ouo2', 'o2-u', 'o2/u'),
     'c_ortho_D': ('orthod', 'dortho'),
     'c_ortho_H': ('orthoh', 'hortho'),
-    'c_Si_in_SiC': ('sisic',),
+    'c_Si_in_SiC': ('sisic'),
     'c_SiO2_alpha': ('sio2', 'sio2a'),
     'c_SiO2_beta': ('sio2b'),
     'c_para_D': ('parad', 'dpara'),
     'c_para_H': ('parah', 'hpara'),
     'c_U_in_UO2': ('uuo2', 'u-o2', 'u/o2'),
-    'c_Y_in_YH2': ('yyh2',),
+    'c_Y_in_YH2': ('yyh2'),
     'c_Zr_in_ZrH': ('zrzrh', 'zr-h', 'zr/h')
 }
 
@@ -84,13 +85,25 @@ def get_thermal_name(name):
             # Make an educated guess?? This actually works well for
             # JEFF-3.2 which stupidly uses names like lw00.32t,
             # lw01.32t, etc. for different temperatures
-            for proper_name, names in _THERMAL_NAMES.items():
-                matches = get_close_matches(
-                    name.lower(), names, cutoff=0.5)
-                if len(matches) > 0:
-                    warn('Thermal scattering material "{}" is not recognized. '
-                         'Assigning a name of {}.'.format(name, proper_name))
-                    return proper_name
+
+            # First, construct a list of all the values/keys in the names
+            # dictionary
+            all_names = itertools.chain(_THERMAL_NAMES.keys(),
+                                        *_THERMAL_NAMES.values())
+
+            matches = get_close_matches(name, all_names, cutoff=0.5)
+            if len(matches) > 0:
+                # Figure out the key for the corresponding match
+                match = matches[0]
+                if match not in _THERMAL_NAMES:
+                    for key, value_list in _THERMAL_NAMES.items():
+                        if match in value_list:
+                            match = key
+                            break
+
+                warn('Thermal scattering material "{}" is not recognized. '
+                     'Assigning a name of {}.'.format(name, match))
+                return match
             else:
                 # OK, we give up. Just use the ACE name.
                 warn('Thermal scattering material "{0}" is not recognized. '
@@ -408,30 +421,27 @@ class ThermalScattering(EqualityMixin):
                 # Cross section
                 elastic_xs_type = elastic_group['xs'].attrs['type'].decode()
                 if elastic_xs_type == 'Tabulated1D':
-                    table.elastic_xs[T] = \
-                        Tabulated1D.from_hdf5(elastic_group['xs'])
+                    table.elastic_xs[T] = Tabulated1D.from_hdf5(
+                        elastic_group['xs'])
                 elif elastic_xs_type == 'bragg':
-                    table.elastic_xs[T] = \
-                        CoherentElastic.from_hdf5(elastic_group['xs'])
+                    table.elastic_xs[T] = CoherentElastic.from_hdf5(
+                        elastic_group['xs'])
 
                 # Angular distribution
                 if 'mu_out' in elastic_group:
-                    table.elastic_mu_out[T] = \
-                        elastic_group['mu_out'].value
+                    table.elastic_mu_out[T] = elastic_group['mu_out'].value
 
             # Read thermal inelastic scattering
             if 'inelastic' in Tgroup:
                 inelastic_group = Tgroup['inelastic']
-                table.inelastic_xs[T] = \
-                    Tabulated1D.from_hdf5(inelastic_group['xs'])
+                table.inelastic_xs[T] = Tabulated1D.from_hdf5(
+                    inelastic_group['xs'])
                 if table.secondary_mode in ('equal', 'skewed'):
-                    table.inelastic_e_out[T] = \
-                        inelastic_group['energy_out']
-                    table.inelastic_mu_out[T] = \
-                        inelastic_group['mu_out']
+                    table.inelastic_e_out[T] = inelastic_group['energy_out'].value
+                    table.inelastic_mu_out[T] = inelastic_group['mu_out'].value
                 elif table.secondary_mode == 'continuous':
-                    table.inelastic_dist[T] = \
-                        AngleEnergy.from_hdf5(inelastic_group)
+                    table.inelastic_dist[T] = AngleEnergy.from_hdf5(
+                        inelastic_group)
 
         return table
 

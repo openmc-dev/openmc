@@ -44,7 +44,7 @@ class LaboratoryAngleEnergy(AngleEnergy):
     """
 
     def __init__(self, breakpoints, interpolation, energy, mu, energy_out):
-        super(LaboratoryAngleEnergy).__init__()
+        super(LaboratoryAngleEnergy, self).__init__()
         self.breakpoints = breakpoints
         self.interpolation = interpolation
         self.energy = energy

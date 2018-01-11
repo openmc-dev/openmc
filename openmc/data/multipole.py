@@ -531,7 +531,8 @@ class WindowedMultipole(EqualityMixin):
         sqrtkT = sqrt(K_BOLTZMANN * T)
         sqrtE = sqrt(E)
         invE = 1.0 / E
-        dopp = self.sqrtAWR / sqrtkT
+        if sqrtkT > 0.0:
+            dopp = self.sqrtAWR / sqrtkT
 
         # Locate us.  The i_window calc omits a + 1 present in F90 because of
         # the 1-based vs. 0-based indexing.  Similarly startw needs to be

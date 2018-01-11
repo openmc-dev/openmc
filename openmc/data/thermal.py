@@ -1,6 +1,7 @@
 from collections import Iterable
 from difflib import get_close_matches
 from numbers import Real
+import itertools
 import os
 import re
 import shutil
@@ -23,40 +24,40 @@ from openmc.stats import Discrete, Tabular
 
 
 _THERMAL_NAMES = {
-    'c_Al27': ['al', 'al27'],
-    'c_Be': ['be', 'be-metal'],
-    'c_BeO': ['beo'],
-    'c_Be_in_BeO': ['bebeo', 'be-o', 'be/o'],
-    'c_C6H6': ['benz', 'c6h6'],
-    'c_C_in_SiC': ['csic',],
-    'c_Ca_in_CaH2': ['cah'],
-    'c_D_in_D2O': ['dd2o', 'hwtr', 'hw'],
-    'c_Fe56': ['fe', 'fe56'],
-    'c_Graphite': ['graph', 'grph', 'gr'],
-    'c_H_in_CaH2': ['hcah2'],
-    'c_H_in_CH2': ['hch2', 'poly', 'pol'],
-    'c_H_in_CH4_liquid': ['lch4', 'lmeth'],
-    'c_H_in_CH4_solid': ['sch4', 'smeth'],
-    'c_H_in_H2O': ['hh2o', 'lwtr', 'lw'],
-    'c_H_in_H2O_solid': ['hice',],
-    'c_H_in_C5O2H8': ['lucite', 'c5o2h8'],
-    'c_H_in_YH2': ['hyh2'],
-    'c_H_in_ZrH': ['hzrh', 'h-zr', 'h/zr', 'hzr'],
-    'c_Mg24': ['mg', 'mg24'],
-    'c_O_in_BeO': ['obeo', 'o-be', 'o/be'],
-    'c_O_in_D2O': ['od2o'],
-    'c_O_in_H2O_ice': ['oice'],
-    'c_O_in_UO2': ['ouo2', 'o2-u', 'o2/u'],
-    'c_ortho_D': ['orthod', 'dortho'],
-    'c_ortho_H': ['orthoh', 'hortho'],
-    'c_Si_in_SiC': ['sisic'],
-    'c_SiO2_alpha': ['sio2', 'sio2a'],
-    'c_SiO2_beta': ['sio2b'],
-    'c_para_D': ['parad', 'dpara'],
-    'c_para_H': ['parah', 'hpara'],
-    'c_U_in_UO2': ['uuo2', 'u-o2', 'u/o2'],
-    'c_Y_in_YH2': ['yyh2'],
-    'c_Zr_in_ZrH': ['zrzrh', 'zr-h', 'zr/h']
+    'c_Al27': ('al', 'al27'),
+    'c_Be': ('be', 'be-metal'),
+    'c_BeO': ('beo'),
+    'c_Be_in_BeO': ('bebeo', 'be-o', 'be/o'),
+    'c_C6H6': ('benz', 'c6h6'),
+    'c_C_in_SiC': ('csic',),
+    'c_Ca_in_CaH2': ('cah'),
+    'c_D_in_D2O': ('dd2o', 'hwtr', 'hw'),
+    'c_Fe56': ('fe', 'fe56'),
+    'c_Graphite': ('graph', 'grph', 'gr'),
+    'c_H_in_CaH2': ('hcah2'),
+    'c_H_in_CH2': ('hch2', 'poly', 'pol'),
+    'c_H_in_CH4_liquid': ('lch4', 'lmeth'),
+    'c_H_in_CH4_solid': ('sch4', 'smeth'),
+    'c_H_in_H2O': ('hh2o', 'lwtr', 'lw'),
+    'c_H_in_H2O_solid': ('hice',),
+    'c_H_in_C5O2H8': ('lucite', 'c5o2h8'),
+    'c_H_in_YH2': ('hyh2'),
+    'c_H_in_ZrH': ('hzrh', 'h-zr', 'h/zr', 'hzr'),
+    'c_Mg24': ('mg', 'mg24'),
+    'c_O_in_BeO': ('obeo', 'o-be', 'o/be'),
+    'c_O_in_D2O': ('od2o'),
+    'c_O_in_H2O_ice': ('oice'),
+    'c_O_in_UO2': ('ouo2', 'o2-u', 'o2/u'),
+    'c_ortho_D': ('orthod', 'dortho'),
+    'c_ortho_H': ('orthoh', 'hortho'),
+    'c_Si_in_SiC': ('sisic'),
+    'c_SiO2_alpha': ('sio2', 'sio2a'),
+    'c_SiO2_beta': ('sio2b'),
+    'c_para_D': ('parad', 'dpara'),
+    'c_para_H': ('parah', 'hpara'),
+    'c_U_in_UO2': ('uuo2', 'u-o2', 'u/o2'),
+    'c_Y_in_YH2': ('yyh2'),
+    'c_Zr_in_ZrH': ('zrzrh', 'zr-h', 'zr/h')
 }
 
 
@@ -87,8 +88,8 @@ def get_thermal_name(name):
 
             # First, construct a list of all the values/keys in the names
             # dictionary
-            all_names = sum(_THERMAL_NAMES.values(), [])
-            all_names += _THERMAL_NAMES.keys()
+            all_names = itertools.chain(_THERMAL_NAMES.keys(),
+                                        *_THERMAL_NAMES.values())
 
             matches = get_close_matches(name, all_names, cutoff=0.5)
             if len(matches) > 0:

@@ -11,7 +11,7 @@ import pandas as pd
 from openmc.mixin import EqualityMixin
 import openmc.checkvalue as cv
 from . import HDF5_VERSION
-from .data import ATOMIC_SYMBOL
+from .data import ATOMIC_SYMBOL, EV_PER_MEV
 from .endf import Evaluation, get_head_record, get_tab1_record, get_list_record
 from .function import Tabulated1D
 
@@ -297,18 +297,18 @@ class IncidentPhoton(EqualityMixin):
         :math:`p_z` for each subshell). Note that subshell occupancies may not
         match the atomic relaxation data.
     stopping_powers : dict
-        Dictionary of stopping power data with keys 'energy', 'density' (mass
-        density in g/cm:sup:`3`), 'I' (mean excitation energy), 's_collision'
-        (collision stopping power in MeV cm:sup:`2`/g), 's_radiative'
-        (radiative stopping power in MeV cm:sup:`2`/g), and 'density_effect'
-        (density effect parameter).
+        Dictionary of stopping power data with keys 'energy' (in eV), 'density'
+        (mass density in g/cm:sup:`3`), 'I' (mean excitation energy),
+        's_collision' (collision stopping power in eV cm:sup:`2`/g),
+        's_radiative' (radiative stopping power in eV cm:sup:`2`/g), and
+        'density_effect' (density effect parameter).
     bremsstrahlung : dict
         Dictionary of bremsstrahlung DCS data with keys 'electron_energy'
-        (incident electron kinetic energy values in MeV), 'photon_energy'
+        (incident electron kinetic energy values in eV), 'photon_energy'
         (ratio of the energy of the emitted photon to the incident electron
-        kinetic energy), and 'dcs' (cross sectin values). The cross sections
-        are in scaled form: :math:`(\beta^2/Z^2) E_k (d\sigma/dE_k)`, where
-        :math:`E_k` is the energy of the emitted photon.
+        kinetic energy), and 'dcs' (cross sectin values in mb). The cross
+        sections are in scaled form: :math:`(\beta^2/Z^2) E_k (d\sigma/dE_k)`,
+        where :math:`E_k` is the energy of the emitted photon.
     reactions : collections.OrderedDict
         Contains the cross sections for each photon reaction. The keys are MT
         values and the values are instances of :class:`PhotonReaction`.
@@ -429,7 +429,8 @@ class IncidentPhoton(EqualityMixin):
         if not _STOPPING_POWERS:
             filename = os.path.join(os.path.dirname(__file__), 'stopping_powers.h5')
             with h5py.File(filename, 'r') as f:
-                _STOPPING_POWERS['energy'] = f['energy'].value
+                # Units are in MeV; convert to eV
+                _STOPPING_POWERS['energy'] = f['energy'].value*EV_PER_MEV
                 for i in range(1, 99):
                     group = f['{:03}'.format(i)]
                     _STOPPING_POWERS[i] = {'density': group.attrs['density'],
@@ -437,6 +438,10 @@ class IncidentPhoton(EqualityMixin):
                                            's_collision': group['s_collision'].value,
                                            's_radiative': group['s_radiative'].value,
                                            'density_effect': group['density_effect'].value}
+
+                    # Units are in MeV cm^2/g; convert to eV cm^2/g
+                    _STOPPING_POWERS[i]['s_collision'] *= EV_PER_MEV
+                    _STOPPING_POWERS[i]['s_radiative'] *= EV_PER_MEV
 
         # Add stopping power data
         if Z < 99:
@@ -448,8 +453,8 @@ class IncidentPhoton(EqualityMixin):
             filename = os.path.join(os.path.dirname(__file__), 'BREMX.DAT')
             brem = open(filename, 'r').read().split()
 
-            # Incident electron kinetic energy grid
-            _BREMSSTRAHLUNG['electron_energy'] = np.logspace(-3, 3, 200)
+            # Incident electron kinetic energy grid in eV
+            _BREMSSTRAHLUNG['electron_energy'] = np.logspace(3, 9, 200)
             log_energy = np.log(_BREMSSTRAHLUNG['electron_energy'])
 
             # Get number of tabulated electron and photon energy values
@@ -460,8 +465,8 @@ class IncidentPhoton(EqualityMixin):
             p = 39
 
             # Get log of incident electron kinetic energy values, used for cubic
-            # spline interpolation in log energy
-            logx = np.log(np.fromiter(brem[p:p+n], float, n))
+            # spline interpolation in log energy. Units are in MeV, so convert to eV.
+            logx = np.log(np.fromiter(brem[p:p+n], float, n)*EV_PER_MEV)
             p += n
 
             # Get reduced photon energy values

@@ -2,6 +2,7 @@ module math
 
   use, intrinsic :: ISO_C_BINDING
 
+  use algorithm, only: binary_search
   use constants
   use random_lcg, only: prn
 
@@ -826,5 +827,149 @@ contains
       end if
     end do
   end subroutine broaden_wmp_polynomials
+
+!===============================================================================
+! SPLINE
+!===============================================================================
+
+  subroutine spline(x, y, z, n)
+
+    integer,  intent(in) :: n
+    real(8),  intent(in) :: x(n)
+    real(8),  intent(in) :: y(n)
+    real(8), intent(out) :: z(n)
+
+    integer :: i
+    real(8) :: a, b, c, d
+    real(8), allocatable :: c_new(:)
+
+    allocate(c_new(n-1))
+
+    ! Set natural boundary conditions
+    c_new(1) = ZERO
+    z(1) = ZERO
+    z(n) = ZERO
+
+    ! Solve using tridiagonal matrix algorithm; first do forward sweep
+    do i = 2, n - 1
+      a = x(i) - x(i-1)
+      c = x(i+1) - x(i)
+      b = TWO * (a + c)
+      d = 6.0_8 * ((y(i+1) - y(i)) / c - (y(i) - y(i-1)) / a)
+
+      c_new(i) = c / (b - a * c_new(i-1))
+      z(i) = (d - a * z(i-1)) / (b - a * c_new(i-1))
+    end do
+
+    ! Back substitution
+    do i = n - 1, 1, -1
+      z(i) = z(i) - c_new(i) * z(i+1)
+    end do
+
+    deallocate(c_new)
+
+  end subroutine spline
+
+!===============================================================================
+! SPLINE_INTERPOLATE
+!===============================================================================
+
+  function spline_interpolate(x, y, z, n, xint) result(yint)
+
+    integer,  intent(in) :: n
+    real(8),  intent(in) :: x(n)
+    real(8),  intent(in) :: y(n)
+    real(8),  intent(in) :: z(n)
+    real(8),  intent(in) :: xint
+    real(8)              :: yint
+
+    integer :: i
+    real(8) :: h, r
+    real(8) :: b, c, d
+
+    ! Find the lower bounding index in x of xint
+    if (xint < x(1)) then
+      i = 1
+    else if (xint > x(n)) then
+      i = n - 1
+    else
+      i = binary_search(x, n, xint)
+    end if
+
+    h = x(i+1) - x(i)
+    r = xint - x(i)
+
+    ! Compute the coefficients
+    b = (y(i+1) - y(i)) / h - (h / 6.0_8) * (z(i+1) + TWO * z(i))
+    c = HALF * z(i)
+    d = (z(i+1) - z(i)) / (h * 6.0_8)
+
+    yint = y(i) + b * r + c * r**2 + d * r**3
+
+  end function spline_interpolate
+
+!===============================================================================
+! SPLINE_INTEGRATE
+!===============================================================================
+
+  function spline_integrate(x, y, z, n, xa, xb) result(s)
+
+    integer, intent(in) :: n
+    real(8), intent(in) :: x(n)
+    real(8), intent(in) :: y(n)
+    real(8), intent(in) :: z(n)
+    real(8), intent(in) :: xa   ! Lower limit of integration
+    real(8), intent(in) :: xb   ! Upper limit of integration
+    real(8)             :: s
+
+    integer :: i
+    integer :: ia, ib
+    real(8) :: h, r
+    real(8) :: a, b, c, d
+
+    ! Find the lower bounding index in x of the lower limit of integration.
+    if (xa < x(1)) then
+      ia = 1
+    else if (xa > x(n)) then
+      ia = n - 1
+    else
+      ia = binary_search(x, n, xa)
+    end if
+
+    ! Find the lower bounding index in x of the upper limit of integration.
+    if (xb < x(1)) then
+      ib = 1
+    else if (xb > x(n)) then
+      ib = n - 1
+    else
+      ib = binary_search(x, n, xb)
+    end if
+
+    ! Evaluate the integral
+    s = ZERO
+    do i = ia, ib
+      h = x(i+1) - x(i)
+
+      ! Compute the coefficients
+      b = (y(i+1) - y(i)) / h - (h / 6.0_8) * (z(i+1) + TWO * z(i))
+      c = HALF * z(i)
+      d = (z(i+1) - z(i)) / (h * 6.0_8)
+
+      ! Subtract the integral from x(ia) to xa
+      if (i == ia) then
+        r = xa - x(ia)
+        s = s - (y(i) * r + b * r**2 * HALF + c * r**3 / THREE + d * r**4 / FOUR)
+      end if
+
+      ! Integrate from x(ib) to xb in final interval
+      if (i == ib) then
+        h = xb - x(ib)
+      end if
+
+      ! Accumulate the integral
+      s = s + y(i) * h + b * h**2 * HALF + c * h**3 / THREE + d * h**4 / FOUR
+    end do
+
+  end function spline_integrate
 
 end module math

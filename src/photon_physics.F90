@@ -5,7 +5,7 @@ module photon_physics
   use particle_header, only: Particle
   use photon_header,   only: PhotonInteraction, Bremsstrahlung, &
                              compton_profile_pz, ttb_energy_electron, &
-                             ttb_energy_photon, ttb_energy_cutoff
+                             ttb_energy_photon, ttb
   use random_lcg,      only: prn
 
 contains
@@ -382,7 +382,7 @@ contains
     integer :: n
     integer :: n_e, n_k
     real(8) :: c_max
-    real(8) :: pi
+    real(8) :: w
     real(8) :: r
     real(8) :: e, e_l, e_r
     real(8) :: y, y_l, y_r
@@ -413,17 +413,17 @@ contains
     ! Sample number of secondary bremsstrahlung photons
     n = floor(y + prn())
 
-    ! Calculate the interpolation weight pi_j of the bremsstrahlung energy PDF
+    ! Calculate the interpolation weight w_j of the bremsstrahlung energy PDF
     ! interpolated in log energy, which can be interpreted as the probability
     ! of index j
-    pi = (e_r - e) / (e_r - e_l)
+    w = (e_r - e) / (e_r - e_l)
 
     ! Sample the energies of the emitted photons
     do i = 1, n
 
       ! Sample index of the tabulated PDF in the energy grid, j or j+1
       i_e = j
-      if (prn() > pi)
+      if (prn() > w) then
         i_e = i_e + 1
       end if
 
@@ -451,7 +451,7 @@ contains
         x = x_l + (k - k_l) * (x_r - x_l) / (k_r - k_l)
 
         ! Determine whether to deliver k
-        if (prn()*max(x_l, x_r) < x) exit
+        if (prn() * max(x_l, x_r) < x) exit
       end do
 
       ! Create secondary photon

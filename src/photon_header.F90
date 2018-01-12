@@ -2,16 +2,19 @@ module photon_header
 
   use hdf5, only: HID_T, HSIZE_T, SIZE_T
 
-  use algorithm,   only: binary_search
-  use constants,   only: ZERO, HALF, SUBSHELLS
-  use dict_header, only: DictIntInt, DictCharInt
-  use endf_header, only: Tabulated1D
+  use algorithm,        only: binary_search
+  use constants,        only: ZERO, HALF, SUBSHELLS
+  use dict_header,      only: DictIntInt, DictCharInt
+  use endf_header,      only: Tabulated1D
   use hdf5_interface
+  use math,             only: spline, spline_integrate
+  use material_header,  only: Material, materials
+  use nuclide_header,   only: nuclides
+  use settings
 
   real(8), allocatable :: compton_profile_pz(:)
   real(8), allocatable :: ttb_energy_electron(:) ! incident electron energy grid
   real(8), allocatable :: ttb_energy_photon(:)   ! reduced photon energy grid
-  real(8)              :: ttb_energy_cutoff
 
   type ElectronSubshell
     integer :: index_subshell  ! index in SUBSHELLS
@@ -72,7 +75,7 @@ module photon_header
   type Bremsstrahlung
     integer :: i_material ! Index in materials array
 
-    real(8), allocatable :: yield(:,:) ! Photon number yield
+    real(8), allocatable :: yield(:)   ! Photon number yield
     real(8), allocatable :: dcs(:,:)   ! Scaled bremsstrahlung DCS
     real(8), allocatable :: cdf(:,:)   ! Bremsstrahlung energy CDF
 
@@ -80,12 +83,12 @@ module photon_header
     procedure :: init => bremsstrahlung_init
   end type Bremsstrahlung
 
-  type(PhotonInteraction), allocatable :: elements(:)  ! Photon cross sections
+  type(PhotonInteraction), allocatable, target :: elements(:) ! Photon cross sections
   integer :: n_elements       ! Number of photon cross section tables
 
   type(DictCharInt) :: element_dict
 
-  type(Bremsstrahlung), allocatable :: ttb(:) ! Bremsstrahlung cross sections
+  type(Bremsstrahlung), allocatable, target :: ttb(:) ! Bremsstrahlung cross sections
 
 !===============================================================================
 ! ELEMENTMICROXS contains cached microscopic photon cross sections for a
@@ -302,9 +305,6 @@ contains
          this % pair_production_electron
 
     if (electron_treatment == ELECTRON_TTB) then
-      ! TODO: read in
-      ttb_energy_cutoff = 1.e-3
-
       ! Read bremsstrahlung scaled DCS
       rgroup = open_group(group_id, 'bremsstrahlung')
       dset_id = open_dataset(rgroup, 'dcs')
@@ -385,9 +385,14 @@ contains
     real(8)                 :: x_l, x_r, x_c
     real(8)                 :: Z_eq_sq
     real(8)                 :: beta
+    real(8)                 :: atom_fraction
     real(8), allocatable    :: mass_fraction(:)
     real(8), allocatable    :: stopping_power(:)
     real(8), allocatable    :: mfp_inv(:)
+    real(8), allocatable    :: x(:)
+    real(8), allocatable    :: y(:)
+    real(8), allocatable    :: z(:)
+    type(DictIntInt)        :: nuc_dict 
     type(Material), pointer :: mat
     type(PhotonInteraction), pointer :: elm
 
@@ -398,24 +403,29 @@ contains
     ! Allocate and initialize arrays
     n_k = size(ttb_energy_photon)
     n_e = size(ttb_energy_electron)
-    allocate(mass_fraction(size(mat % element)))
+    allocate(mass_fraction(mat % n_nuclides))
     allocate(stopping_power(n_e))
     allocate(mfp_inv(n_e))
     allocate(this % yield(n_e))
     allocate(this % dcs(n_k, n_e))
     allocate(this % cdf(n_k, n_e))
+    allocate(x(n_e))
+    allocate(y(n_e))
+    allocate(z(n_e))
     stopping_power(:) = ZERO
     mfp_inv(:) = ZERO
     this % dcs(:,:) = ZERO
     this % cdf(:,:) = ZERO
 
-    ! TODO
-    ! Calculate the "equivalent" atomic number Zeq and get the mass fraction of
+    ! Calculate the "equivalent" atomic number Zeq and the mass fraction of
     ! each element
-    Z_eq_sq = 0
+    Z_eq_sq = ZERO
     do i = 1, mat % n_nuclides
-      ! Zeq**2 = (atomic fraction of x)*Zx**2 + (atomic fraction of y)*Zy**2 + ...
+      atom_fraction = mat % atom_density(i) / mat % density
+      mass_fraction(i) = atom_fraction * nuclides(mat % nuclide(i)) % awr
+      Z_eq_sq = Z_eq_sq + atom_fraction * nuclides(mat % nuclide(i)) % Z**2
     end do
+    mass_fraction = mass_fraction / sum(mass_fraction)
 
     ! Calculate the molecular DCS and the molecular total stopping power using
     ! Bragg's additivity rule. Note: the collision stopping power cannot be
@@ -426,13 +436,17 @@ contains
     ! form at normal temperature and pressure (at which the NIST stopping
     ! powers are given). It will be used to approximate the collision stopping
     ! powers for now, but should be fixed in the future.
-    do i = 1, size(mat % element)
+    do i = 1, mat % n_nuclides
       ! Get pointer to current element
-      elm => mat % element(i)
+      elm => elements(mat % element(i))
 
-      ! TODO: n_atoms
+      ! Get atomic fraction
+      atom_fraction = mat % atom_density(i) / mat % density
+
+      ! TODO: for molecular DCS, atom_fraction should actually be the number of
+      ! atoms in the molecule.
       ! Accumulate material DCS
-      this % dcs = this % dcs + n_atoms(i) * elm % Z**2 / Z_eq_sq * elm % dcs
+      this % dcs = this % dcs + atom_fraction * elm % Z**2 / Z_eq_sq * elm % dcs
 
       ! Accumulate material total stopping power
       stopping_power = stopping_power + mass_fraction(i) * elm % density * &
@@ -442,13 +456,13 @@ contains
     ! Calculate inverse bremsstrahlung mean free path
     do i = 1, n_e
       e = exp(ttb_energy_electron(i))
-      if (e <= ttb_energy_cutoff) cycle
+      if (e <= energy_cutoff(PHOTON)) cycle
 
       ! Ratio of the velocity of the charged particle to the speed of light
-      beta = sqrt(e*(e + TWO*MASS_ELECTRON/1.e6)) / (e + MASS_ELECTRON/1.e6)
+      beta = sqrt(e*(e + TWO*MASS_ELECTRON/1.e6_8)) / (e + MASS_ELECTRON/1.e6_8)
 
       ! Integration lower bound
-      k_c = ttb_energy_cutoff / e
+      k_c = energy_cutoff(PHOTON) / e
 
       ! Find the upper bounding index of the reduced photon cutoff energy
       i_k = binary_search(ttb_energy_photon, n_k, k_c) + 1
@@ -470,18 +484,24 @@ contains
         c = c + HALF * (log(ttb_energy_photon(j+1)) - &
              log(ttb_energy_photon(j))) * (this % dcs(j,i) + this % dcs(j+1,i))
         this % cdf(j+1,i) = c
+      end do
 
-      ! TODO: density in atom/cm^3
-      mfp_inv(i) = c * mat % density * Z_eq_sq / beta**2 * 1.0e-27_8
+      ! Calculate the inverse bremsstrahlung mean free path
+      mfp_inv(i) = c * mat % density * Z_eq_sq / beta**2 * 1.0e-3_8
     end do
 
-    ! TODO:
     ! Calculate photon number yield
-    ! cs = cubic_spline(exp(ttb_energy_electron), mfp_inv / stopping_power)
-    ! do i = 1, n_e
-    !   yield(i) = cs % integrate(ttb_energy_cutoff, exp(ttb_energy_electron(i)))
+    x = exp(ttb_energy_electron)
+    y = mfp_inv / stopping_power
+    call spline(x, y, z, n_e)
+    do i = 1, n_e
+      this % yield(i) = spline_integrate(x, y, z, n_e, energy_cutoff(PHOTON), x(i))
+    end do
+
     ! Use logarithm of number yield since it is log-log interpolated
-    ! yield = log(yield)
+    this % yield = log(this % yield)
+
+    deallocate(mass_fraction, stopping_power, mfp_inv, x, y, z)
 
   end subroutine bremsstrahlung_init
 

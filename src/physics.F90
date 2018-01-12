@@ -15,7 +15,8 @@ module physics
   use particle_restart_write, only: write_particle_restart
   use photon_header
   use photon_physics,         only: rayleigh_scatter, compton_scatter, &
-                                    atomic_relaxation
+                                    atomic_relaxation, &
+                                    thick_target_bremsstrahlung
   use physics_common
   use random_lcg,             only: prn, advance_prn_seed, prn_set_stream
   use reaction_header,        only: Reaction
@@ -304,9 +305,7 @@ contains
     ! TODO: create reaction types
 
     if (electron_treatment == ELECTRON_TTB) then
-      ! TODO: implement thick-target bremsstrahlung model
-      call fatal_error("Thick-target bremsstrahlung treatment of electrons &
-           &is not yet implemented.")
+      call thick_target_bremsstrahlung(p)
     end if
 
     p % E = ZERO
@@ -333,7 +332,7 @@ contains
 
     if (electron_treatment == ELECTRON_TTB) then
       ! TODO: implement thick-target bremsstrahlung model
-      call fatal_error("Thick-target bremsstrahlung treatment of electrons &
+      call fatal_error("Thick-target bremsstrahlung treatment of positrons &
            &is not yet implemented.")
     end if
 

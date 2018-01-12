@@ -266,29 +266,29 @@ contains
           micro_xs(i_nuclide) % interp_factor = f
 
           ! Calculate microscopic nuclide total cross section
-          micro_xs(i_nuclide) % total = (ONE - f) * xs % total(i_grid) &
-               + f * xs % total(i_grid + 1)
+          micro_xs(i_nuclide) % total = (ONE - f) * xs % value(SUM_XS_TOTAL,i_grid) &
+               + f * xs % value(SUM_XS_TOTAL,i_grid + 1)
 
           ! Calculate microscopic nuclide elastic cross section
-          micro_xs(i_nuclide) % elastic = (ONE - f) * xs % elastic(i_grid) &
-               + f * xs % elastic(i_grid + 1)
-
-          ! Calculate microscopic nuclide absorption cross section
-          micro_xs(i_nuclide) % absorption = (ONE - f) * xs % absorption( &
-               i_grid) + f * xs % absorption(i_grid + 1)
+          micro_xs(i_nuclide) % elastic = (ONE - f) * xs % value(SUM_XS_ELASTIC,i_grid) &
+               + f * xs % value(SUM_XS_ELASTIC,i_grid + 1)
 
           if (nuc % fissionable) then
             ! Calculate microscopic nuclide total cross section
-            micro_xs(i_nuclide) % fission = (ONE - f) * xs % fission(i_grid) &
-                 + f * xs % fission(i_grid + 1)
+            micro_xs(i_nuclide) % fission = (ONE - f) * xs % value(SUM_XS_FISSION,i_grid) &
+                 + f * xs % value(SUM_XS_FISSION,i_grid + 1)
 
             ! Calculate microscopic nuclide nu-fission cross section
-            micro_xs(i_nuclide) % nu_fission = (ONE - f) * xs % nu_fission( &
-                 i_grid) + f * xs % nu_fission(i_grid + 1)
+            micro_xs(i_nuclide) % nu_fission = (ONE - f) * xs % value(SUM_XS_NU_FISSION, &
+                 i_grid) + f * xs % value(SUM_XS_NU_FISSION,i_grid + 1)
           else
             micro_xs(i_nuclide) % fission         = ZERO
             micro_xs(i_nuclide) % nu_fission      = ZERO
           end if
+
+          ! Calculate microscopic nuclide absorption cross section
+          micro_xs(i_nuclide) % absorption = (ONE - f) * xs % value(SUM_XS_ABSORPTION, &
+               i_grid) + f * xs % value(SUM_XS_ABSORPTION,i_grid + 1)
         end associate
 
         ! Depletion-related reactions

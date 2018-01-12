@@ -181,14 +181,13 @@ contains
         call multipole_eval(nuc % multipole, E, sqrtkT, sig_t, sig_a, sig_f)
 
         micro_xs(i_nuclide) % total = sig_t
-        micro_xs(i_nuclide) % absorption = sig_a
         micro_xs(i_nuclide) % elastic = sig_t - sig_a
+        micro_xs(i_nuclide) % absorption = sig_a
+        micro_xs(i_nuclide) % fission = sig_f
 
         if (nuc % fissionable) then
-          micro_xs(i_nuclide) % fission = sig_f
           micro_xs(i_nuclide) % nu_fission = sig_f * nuc % nu(E, EMISSION_TOTAL)
         else
-          micro_xs(i_nuclide) % fission    = ZERO
           micro_xs(i_nuclide) % nu_fission = ZERO
         end if
 

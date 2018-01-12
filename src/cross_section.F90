@@ -233,7 +233,7 @@ contains
           if (f > prn()) i_temp = i_temp + 1
         end select
 
-        associate (grid => nuc % grid(i_temp), xs => nuc % sum_xs(i_temp))
+        associate (grid => nuc % grid(i_temp), xs => nuc % xs(i_temp))
           ! Determine the energy grid index using a logarithmic mapping to
           ! reduce the energy range over which a binary search needs to be
           ! performed
@@ -266,29 +266,29 @@ contains
           micro_xs(i_nuclide) % interp_factor = f
 
           ! Calculate microscopic nuclide total cross section
-          micro_xs(i_nuclide) % total = (ONE - f) * xs % value(SUM_XS_TOTAL,i_grid) &
-               + f * xs % value(SUM_XS_TOTAL,i_grid + 1)
+          micro_xs(i_nuclide) % total = (ONE - f) * xs % value(XS_TOTAL,i_grid) &
+               + f * xs % value(XS_TOTAL,i_grid + 1)
 
           ! Calculate microscopic nuclide elastic cross section
-          micro_xs(i_nuclide) % elastic = (ONE - f) * xs % value(SUM_XS_ELASTIC,i_grid) &
-               + f * xs % value(SUM_XS_ELASTIC,i_grid + 1)
+          micro_xs(i_nuclide) % elastic = (ONE - f) * xs % value(XS_ELASTIC,i_grid) &
+               + f * xs % value(XS_ELASTIC,i_grid + 1)
 
           if (nuc % fissionable) then
             ! Calculate microscopic nuclide total cross section
-            micro_xs(i_nuclide) % fission = (ONE - f) * xs % value(SUM_XS_FISSION,i_grid) &
-                 + f * xs % value(SUM_XS_FISSION,i_grid + 1)
+            micro_xs(i_nuclide) % fission = (ONE - f) * xs % value(XS_FISSION,i_grid) &
+                 + f * xs % value(XS_FISSION,i_grid + 1)
 
             ! Calculate microscopic nuclide nu-fission cross section
-            micro_xs(i_nuclide) % nu_fission = (ONE - f) * xs % value(SUM_XS_NU_FISSION, &
-                 i_grid) + f * xs % value(SUM_XS_NU_FISSION,i_grid + 1)
+            micro_xs(i_nuclide) % nu_fission = (ONE - f) * xs % value(XS_NU_FISSION, &
+                 i_grid) + f * xs % value(XS_NU_FISSION,i_grid + 1)
           else
             micro_xs(i_nuclide) % fission         = ZERO
             micro_xs(i_nuclide) % nu_fission      = ZERO
           end if
 
           ! Calculate microscopic nuclide absorption cross section
-          micro_xs(i_nuclide) % absorption = (ONE - f) * xs % value(SUM_XS_ABSORPTION, &
-               i_grid) + f * xs % value(SUM_XS_ABSORPTION,i_grid + 1)
+          micro_xs(i_nuclide) % absorption = (ONE - f) * xs % value(XS_ABSORPTION, &
+               i_grid) + f * xs % value(XS_ABSORPTION,i_grid + 1)
         end associate
 
         ! Depletion-related reactions

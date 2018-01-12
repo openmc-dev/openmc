@@ -36,22 +36,20 @@ module nuclide_header
     real(8), allocatable :: energy(:)     ! energy values corresponding to xs
   end type EnergyGrid
 
+  ! Positions for first dimension of Nuclide % xs
   integer, parameter :: &
-       SUM_XS_TOTAL      = 1, &
-       SUM_XS_ELASTIC    = 2, &
-       SUM_XS_FISSION    = 3, &
-       SUM_XS_NU_FISSION = 4, &
-       SUM_XS_ABSORPTION = 5, &
-       SUM_XS_HEATING    = 6
+       XS_TOTAL      = 1, &
+       XS_ELASTIC    = 2, &
+       XS_FISSION    = 3, &
+       XS_NU_FISSION = 4, &
+       XS_ABSORPTION = 5, &
+       XS_HEATING    = 6
 
+  ! The array within SumXS is of shape (6, n_energy) where the first dimension
+  ! corresponds to the following values: 1) total, 2) elastic scattering, 3)
+  ! fission, 4) neutron production, 5) absorption (MT > 100), 6) heating
   type SumXS
     real(8), allocatable :: value(:,:)
-!!$    real(8), allocatable :: total(:)      ! total cross section
-!!$    real(8), allocatable :: elastic(:)    ! elastic scattering
-!!$    real(8), allocatable :: fission(:)    ! fission
-!!$    real(8), allocatable :: nu_fission(:) ! neutron production
-!!$    real(8), allocatable :: absorption(:) ! absorption (MT > 100)
-!!$    real(8), allocatable :: heating(:)    ! heating
   end type SumXS
 
   type :: Nuclide
@@ -70,7 +68,7 @@ module nuclide_header
     type(EnergyGrid), allocatable :: grid(:)
 
     ! Microscopic cross sections
-    type(SumXS), allocatable :: sum_xs(:)
+    type(SumXS), allocatable :: xs(:)
 
     ! Resonance scattering info
     logical              :: resonant = .false. ! resonant scatterer?
@@ -575,13 +573,13 @@ contains
     type(VectorInt) :: MTs
 
     n_temperature = size(this % kTs)
-    allocate(this % sum_xs(n_temperature))
+    allocate(this % xs(n_temperature))
     this % reaction_index(:) = 0
     do i = 1, n_temperature
       ! Allocate and initialize derived cross sections
       n_grid = size(this % grid(i) % energy)
-      allocate(this % sum_xs(i) % value(6,n_grid))
-      this % sum_xs(i) % value(:,:) = ZERO
+      allocate(this % xs(i) % value(6,n_grid))
+      this % xs(i) % value(:,:) = ZERO
     end do
 
     i_fission = 0
@@ -609,17 +607,17 @@ contains
           n = size(rx % xs(t) % value)
 
           ! Copy elastic
-          if (rx % MT == ELASTIC) this % sum_xs(t) % value(SUM_XS_ELASTIC,:) = &
+          if (rx % MT == ELASTIC) this % xs(t) % value(XS_ELASTIC,:) = &
                rx % xs(t) % value
 
           ! Add contribution to total cross section
-          this % sum_xs(t) % value(SUM_XS_TOTAL,j:j+n-1) = this % sum_xs(t) % &
-               value(SUM_XS_TOTAL,j:j+n-1) + rx % xs(t) % value
+          this % xs(t) % value(XS_TOTAL,j:j+n-1) = this % xs(t) % &
+               value(XS_TOTAL,j:j+n-1) + rx % xs(t) % value
 
           ! Add contribution to absorption cross section
           if (is_disappearance(rx % MT)) then
-            this % sum_xs(t) % value(SUM_XS_ABSORPTION,j:j+n-1) = this % sum_xs(t) % &
-                 value(SUM_XS_ABSORPTION,j:j+n-1) + rx % xs(t) % value
+            this % xs(t) % value(XS_ABSORPTION,j:j+n-1) = this % xs(t) % &
+                 value(XS_ABSORPTION,j:j+n-1) + rx % xs(t) % value
           end if
 
           ! Information about fission reactions
@@ -635,12 +633,12 @@ contains
           ! Add contribution to fission cross section
           if (is_fission(rx % MT)) then
             this % fissionable = .true.
-            this % sum_xs(t) % value(SUM_XS_FISSION,j:j+n-1) = this % sum_xs(t) % &
-                 value(SUM_XS_FISSION,j:j+n-1) + rx % xs(t) % value
+            this % xs(t) % value(XS_FISSION,j:j+n-1) = this % xs(t) % &
+                 value(XS_FISSION,j:j+n-1) + rx % xs(t) % value
 
             ! Also need to add fission cross sections to absorption
-            this % sum_xs(t) % value(SUM_XS_ABSORPTION,j:j+n-1) = this % sum_xs(t) % &
-                 value(SUM_XS_ABSORPTION,j:j+n-1) + rx % xs(t) % value
+            this % xs(t) % value(XS_ABSORPTION,j:j+n-1) = this % xs(t) % &
+                 value(XS_ABSORPTION,j:j+n-1) + rx % xs(t) % value
 
             ! If total fission reaction is present, there's no need to store the
             ! reaction cross-section since it was copied to this % fission
@@ -692,8 +690,9 @@ contains
     do t = 1, n_temperature
       if (this % fissionable) then
         do i = 1, n_grid
-          this % sum_xs(t) % value(SUM_XS_NU_FISSION,i) = this % nu(this % grid(t) % energy(i), &
-               EMISSION_TOTAL) * this % sum_xs(t) % value(SUM_XS_FISSION,i)
+          this % xs(t) % value(XS_NU_FISSION,i) = &
+               this % nu(this % grid(t) % energy(i), EMISSION_TOTAL) * &
+               this % xs(t) % value(XS_FISSION,i)
         end do
       end if
     end do

@@ -338,6 +338,18 @@ contains
          micro_xs(i_nuclide) % absorption)
     sampled = .false.
 
+    ! Calculate elastic cross section if need be
+    if (micro_xs(i_nuclide) % elastic == ZERO) then
+      if (i_temp > 0) then
+        associate (xs => nuc % reactions(1) % xs(i_temp) % value)
+          micro_xs(i_nuclide) % elastic = (ONE - f)*xs(i_grid) + f*xs(i_grid + 1)
+        end associate
+      else
+        micro_xs(i_nuclide) % elastic = micro_xs(i_nuclide) % total - &
+             micro_xs(i_nuclide) % absorption
+      end if
+    end if
+
     prob = micro_xs(i_nuclide) % elastic - micro_xs(i_nuclide) % thermal
     if (prob > cutoff) then
       ! =======================================================================

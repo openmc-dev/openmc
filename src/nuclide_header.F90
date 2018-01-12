@@ -39,11 +39,9 @@ module nuclide_header
   ! Positions for first dimension of Nuclide % xs
   integer, parameter :: &
        XS_TOTAL      = 1, &
-       XS_ELASTIC    = 2, &
+       XS_ABSORPTION = 2, &
        XS_FISSION    = 3, &
-       XS_NU_FISSION = 4, &
-       XS_ABSORPTION = 5, &
-       XS_HEATING    = 6
+       XS_NU_FISSION = 4
 
   ! The array within SumXS is of shape (6, n_energy) where the first dimension
   ! corresponds to the following values: 1) total, 2) elastic scattering, 3)
@@ -120,11 +118,12 @@ module nuclide_header
   type NuclideMicroXS
     ! Microscopic cross sections in barns
     real(8) :: total
-    real(8) :: elastic          ! If sab_frac is not 1 or 0, then this value is
-                                !   averaged over bound and non-bound nuclei
     real(8) :: absorption       ! absorption (disappearance)
     real(8) :: fission          ! fission
     real(8) :: nu_fission       ! neutron production from fission
+
+    real(8) :: elastic          ! If sab_frac is not 1 or 0, then this value is
+                                !   averaged over bound and non-bound nuclei
     real(8) :: thermal          ! Bound thermal elastic & inelastic scattering
     real(8) :: thermal_elastic  ! Bound thermal elastic scattering
 
@@ -155,7 +154,6 @@ module nuclide_header
 
   type MaterialMacroXS
     real(8) :: total         ! macroscopic total xs
-    real(8) :: elastic       ! macroscopic elastic scattering xs
     real(8) :: absorption    ! macroscopic absorption xs
     real(8) :: fission       ! macroscopic fission xs
     real(8) :: nu_fission    ! macroscopic production xs
@@ -605,10 +603,6 @@ contains
         do t = 1, n_temperature
           j = rx % xs(t) % threshold
           n = size(rx % xs(t) % value)
-
-          ! Copy elastic
-          if (rx % MT == ELASTIC) this % xs(t) % value(XS_ELASTIC,:) = &
-               rx % xs(t) % value
 
           ! Add contribution to total cross section
           this % xs(t) % value(XS_TOTAL,j:j+n-1) = this % xs(t) % &

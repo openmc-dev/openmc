@@ -42,7 +42,6 @@ contains
 
     ! Set all material macroscopic cross sections to zero
     material_xs % total          = ZERO
-    material_xs % elastic        = ZERO
     material_xs % absorption     = ZERO
     material_xs % fission        = ZERO
     material_xs % nu_fission     = ZERO
@@ -115,10 +114,6 @@ contains
         material_xs % total = material_xs % total + &
              atom_density * micro_xs(i_nuclide) % total
 
-        ! Add contributions to material macroscopic scattering cross section
-        material_xs % elastic = material_xs % elastic + &
-             atom_density * micro_xs(i_nuclide) % elastic
-
         ! Add contributions to material macroscopic absorption cross section
         material_xs % absorption = material_xs % absorption + &
              atom_density * micro_xs(i_nuclide) % absorption
@@ -162,6 +157,7 @@ contains
     real(8) :: sig_t, sig_a, sig_f ! Intermediate multipole variables
 
     ! Initialize cached cross sections to zero
+    micro_xs(i_nuclide) % elastic         = ZERO
     micro_xs(i_nuclide) % thermal         = ZERO
     micro_xs(i_nuclide) % thermal_elastic = ZERO
 
@@ -181,7 +177,6 @@ contains
         call multipole_eval(nuc % multipole, E, sqrtkT, sig_t, sig_a, sig_f)
 
         micro_xs(i_nuclide) % total = sig_t
-        micro_xs(i_nuclide) % elastic = sig_t - sig_a
         micro_xs(i_nuclide) % absorption = sig_a
         micro_xs(i_nuclide) % fission = sig_f
 
@@ -268,9 +263,9 @@ contains
           micro_xs(i_nuclide) % total = (ONE - f) * xs % value(XS_TOTAL,i_grid) &
                + f * xs % value(XS_TOTAL,i_grid + 1)
 
-          ! Calculate microscopic nuclide elastic cross section
-          micro_xs(i_nuclide) % elastic = (ONE - f) * xs % value(XS_ELASTIC,i_grid) &
-               + f * xs % value(XS_ELASTIC,i_grid + 1)
+          ! Calculate microscopic nuclide absorption cross section
+          micro_xs(i_nuclide) % absorption = (ONE - f) * xs % value(XS_ABSORPTION, &
+               i_grid) + f * xs % value(XS_ABSORPTION,i_grid + 1)
 
           if (nuc % fissionable) then
             ! Calculate microscopic nuclide total cross section
@@ -284,10 +279,6 @@ contains
             micro_xs(i_nuclide) % fission         = ZERO
             micro_xs(i_nuclide) % nu_fission      = ZERO
           end if
-
-          ! Calculate microscopic nuclide absorption cross section
-          micro_xs(i_nuclide) % absorption = (ONE - f) * xs % value(XS_ABSORPTION, &
-               i_grid) + f * xs % value(XS_ABSORPTION,i_grid + 1)
         end associate
 
         ! Depletion-related reactions
@@ -449,6 +440,18 @@ contains
     ! Store the S(a,b) cross sections.
     micro_xs(i_nuclide) % thermal = sab_frac * (elastic + inelastic)
     micro_xs(i_nuclide) % thermal_elastic = sab_frac * elastic
+
+    ! Calculate free atom elastic cross section
+    f = micro_xs(i_nuclide) % interp_factor
+    i_grid = micro_xs(i_nuclide) % index_grid
+    i_temp = micro_xs(i_nuclide) % index_temp
+    if (i_temp > 0) then
+      associate (xs => nuclides(i_nuclide) % reactions(1) % xs(i_temp) % value)
+        micro_xs(i_nuclide) % elastic = (ONE - f)*xs(i_grid) + f*xs(i_grid + 1)
+      end associate
+    else
+      micro_xs(i_nuclide) % elastic = ZERO
+    end if
 
     ! Correct total and elastic cross sections
     micro_xs(i_nuclide) % total = micro_xs(i_nuclide) % total &

@@ -101,7 +101,7 @@ contains
 
       ! ====================================================================
       ! LOOP OVER PARTICLES
-!$omp parallel do schedule(static) firstprivate(p) copyin(tally_derivs)
+!$omp parallel do schedule(runtime) firstprivate(p) copyin(tally_derivs)
       PARTICLE_LOOP: do i_work = 1, work
         current_work = i_work
 

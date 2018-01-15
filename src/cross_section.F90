@@ -157,7 +157,7 @@ contains
     real(8) :: sig_t, sig_a, sig_f ! Intermediate multipole variables
 
     ! Initialize cached cross sections to zero
-    micro_xs(i_nuclide) % elastic         = ZERO
+    micro_xs(i_nuclide) % elastic         = -ONE
     micro_xs(i_nuclide) % thermal         = ZERO
     micro_xs(i_nuclide) % thermal_elastic = ZERO
 
@@ -442,16 +442,7 @@ contains
     micro_xs(i_nuclide) % thermal_elastic = sab_frac * elastic
 
     ! Calculate free atom elastic cross section
-    f = micro_xs(i_nuclide) % interp_factor
-    i_grid = micro_xs(i_nuclide) % index_grid
-    i_temp = micro_xs(i_nuclide) % index_temp
-    if (i_temp > 0) then
-      associate (xs => nuclides(i_nuclide) % reactions(1) % xs(i_temp) % value)
-        micro_xs(i_nuclide) % elastic = (ONE - f)*xs(i_grid) + f*xs(i_grid + 1)
-      end associate
-    else
-      micro_xs(i_nuclide) % elastic = ZERO
-    end if
+    call calculate_elastic_xs(i_nuclide)
 
     ! Correct total and elastic cross sections
     micro_xs(i_nuclide) % total = micro_xs(i_nuclide) % total &
@@ -581,6 +572,7 @@ contains
 
       ! Multiply by smooth cross-section if needed
       if (urr % multiply_smooth) then
+        call calculate_elastic_xs(i_nuclide)
         elastic = elastic * micro_xs(i_nuclide) % elastic
         capture = capture * (micro_xs(i_nuclide) % absorption - &
              micro_xs(i_nuclide) % fission)
@@ -608,6 +600,36 @@ contains
     end associate
 
   end subroutine calculate_urr_xs
+
+!===============================================================================
+! CALCULATE_ELASTIC_XS precalculates the free atom elastic scattering cross
+! section. Normally it is not needed until a collision actually occurs in a
+! material. However, in the thermal and unresolved resonance regions, we have to
+! calculate it early to adjust the total cross section correctly.
+!===============================================================================
+
+  subroutine calculate_elastic_xs(i_nuclide)
+    integer, intent(in) :: i_nuclide
+
+    integer :: i_temp
+    integer :: i_grid
+    real(8) :: f
+
+    ! Get temperature index, grid index, and interpolation factor
+    i_temp =  micro_xs(i_nuclide) % index_temp
+    i_grid =  micro_xs(i_nuclide) % index_grid
+    f      =  micro_xs(i_nuclide) % interp_factor
+
+    if (i_temp > 0) then
+      associate (xs => nuclides(i_nuclide) % reactions(1) % xs(i_temp) % value)
+        micro_xs(i_nuclide) % elastic = (ONE - f)*xs(i_grid) + f*xs(i_grid + 1)
+      end associate
+    else
+      ! For multipole, elastic is total - absorption
+      micro_xs(i_nuclide) % elastic = micro_xs(i_nuclide) % total - &
+           micro_xs(i_nuclide) % absorption
+    end if
+  end subroutine calculate_elastic_xs
 
 !===============================================================================
 ! MULTIPOLE_EVAL evaluates the windowed multipole equations for cross

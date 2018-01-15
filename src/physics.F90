@@ -2,7 +2,7 @@ module physics
 
   use algorithm,              only: binary_search
   use constants
-  use cross_section,          only: elastic_xs_0K
+  use cross_section,          only: elastic_xs_0K, calculate_elastic_xs
   use endf,                   only: reaction_name
   use error,                  only: fatal_error, warning, write_message
   use material_header,        only: Material, materials
@@ -338,16 +338,9 @@ contains
          micro_xs(i_nuclide) % absorption)
     sampled = .false.
 
-    ! Calculate elastic cross section if need be
-    if (micro_xs(i_nuclide) % elastic == ZERO) then
-      if (i_temp > 0) then
-        associate (xs => nuc % reactions(1) % xs(i_temp) % value)
-          micro_xs(i_nuclide) % elastic = (ONE - f)*xs(i_grid) + f*xs(i_grid + 1)
-        end associate
-      else
-        micro_xs(i_nuclide) % elastic = micro_xs(i_nuclide) % total - &
-             micro_xs(i_nuclide) % absorption
-      end if
+    ! Calculate elastic cross section if it wasn't precalculated
+    if (micro_xs(i_nuclide) % elastic < ZERO) then
+      call calculate_elastic_xs(i_nuclide)
     end if
 
     prob = micro_xs(i_nuclide) % elastic - micro_xs(i_nuclide) % thermal

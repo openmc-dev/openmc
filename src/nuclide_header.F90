@@ -43,9 +43,9 @@ module nuclide_header
        XS_FISSION    = 3, &
        XS_NU_FISSION = 4
 
-  ! The array within SumXS is of shape (6, n_energy) where the first dimension
-  ! corresponds to the following values: 1) total, 2) elastic scattering, 3)
-  ! fission, 4) neutron production, 5) absorption (MT > 100), 6) heating
+  ! The array within SumXS is of shape (4, n_energy) where the first dimension
+  ! corresponds to the following values: 1) total, 2) absorption (MT > 100), 3)
+  ! fission, 4) neutron production
   type SumXS
     real(8), allocatable :: value(:,:)
   end type SumXS
@@ -576,7 +576,7 @@ contains
     do i = 1, n_temperature
       ! Allocate and initialize derived cross sections
       n_grid = size(this % grid(i) % energy)
-      allocate(this % xs(i) % value(6,n_grid))
+      allocate(this % xs(i) % value(4,n_grid))
       this % xs(i) % value(:,:) = ZERO
     end do
 

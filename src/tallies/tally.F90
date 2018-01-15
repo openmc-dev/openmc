@@ -4,7 +4,7 @@ module tally
 
   use algorithm,        only: binary_search
   use constants
-  use cross_section,    only: multipole_deriv_eval
+  use cross_section,    only: multipole_deriv_eval, calculate_elastic_xs
   use dict_header,      only: EMPTY
   use error,            only: fatal_error
   use geometry_header
@@ -1008,6 +1008,37 @@ contains
       case (SCORE_EVENTS)
         ! Simply count number of scoring events
         score = ONE
+
+      case (ELASTIC)
+        if (t % estimator == ESTIMATOR_ANALOG) then
+          ! Check if event MT matches
+          if (p % event_MT /= ELASTIC) cycle SCORE_LOOP
+          score = p % last_wgt * flux
+
+        else
+          if (i_nuclide > 0) then
+            if (micro_xs(i_nuclide) % elastic < ZERO) then
+              call calculate_elastic_xs(i_nuclide)
+            end if
+            score = micro_xs(i_nuclide) % elastic * atom_density * flux
+          else
+            score = ZERO
+            if (p % material /= MATERIAL_VOID) then
+              do l = 1, materials(p % material) % n_nuclides
+                ! Get atom density
+                atom_density_ = materials(p % material) % atom_density(l)
+
+                ! Get index in nuclides array
+                i_nuc = materials(p % material) % nuclide(l)
+                if (micro_xs(i_nuc) % elastic < ZERO) then
+                  call calculate_elastic_xs(i_nuc)
+                end if
+
+                score = score + micro_xs(i_nuc) % elastic * atom_density_ * flux
+              end do
+            end if
+          end if
+        end if
 
       case (SCORE_FISS_Q_PROMPT)
         score = ZERO

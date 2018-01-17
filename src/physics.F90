@@ -339,7 +339,7 @@ contains
     sampled = .false.
 
     ! Calculate elastic cross section if it wasn't precalculated
-    if (micro_xs(i_nuclide) % elastic < ZERO) then
+    if (micro_xs(i_nuclide) % elastic == CACHE_INVALID) then
       call calculate_elastic_xs(i_nuclide)
     end if
 

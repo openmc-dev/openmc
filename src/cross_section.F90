@@ -157,7 +157,7 @@ contains
     real(8) :: sig_t, sig_a, sig_f ! Intermediate multipole variables
 
     ! Initialize cached cross sections to zero
-    micro_xs(i_nuclide) % elastic         = -ONE
+    micro_xs(i_nuclide) % elastic         = CACHE_INVALID
     micro_xs(i_nuclide) % thermal         = ZERO
     micro_xs(i_nuclide) % thermal_elastic = ZERO
 

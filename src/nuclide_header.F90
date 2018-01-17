@@ -115,6 +115,10 @@ module nuclide_header
 ! nuclide at the current energy
 !===============================================================================
 
+  ! Arbitrary value to indicate invalid cache state for elastic scattering
+  ! (NuclideMicroXS % elastic)
+  real(8), parameter :: CACHE_INVALID = dble(Z"FFE0000000000000")
+
   type NuclideMicroXS
     ! Microscopic cross sections in barns
     real(8) :: total

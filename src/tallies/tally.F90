@@ -1017,7 +1017,7 @@ contains
 
         else
           if (i_nuclide > 0) then
-            if (micro_xs(i_nuclide) % elastic < ZERO) then
+            if (micro_xs(i_nuclide) % elastic == CACHE_INVALID) then
               call calculate_elastic_xs(i_nuclide)
             end if
             score = micro_xs(i_nuclide) % elastic * atom_density * flux
@@ -1030,7 +1030,7 @@ contains
 
                 ! Get index in nuclides array
                 i_nuc = materials(p % material) % nuclide(l)
-                if (micro_xs(i_nuc) % elastic < ZERO) then
+                if (micro_xs(i_nuc) % elastic == CACHE_INVALID) then
                   call calculate_elastic_xs(i_nuc)
                 end if
 

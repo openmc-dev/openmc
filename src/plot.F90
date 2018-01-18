@@ -5,11 +5,11 @@ module plot
   use hdf5
 
   use constants
-  use error,           only: fatal_error
+  use error,           only: fatal_error, write_message
   use geometry,        only: find_cell, check_cell_overlap
   use geometry_header, only: Cell, root_universe, cells
   use hdf5_interface
-  use output,          only: write_message, time_stamp
+  use output,          only: time_stamp
   use material_header, only: materials
   use particle_header, only: LocalCoord, Particle
   use plot_header

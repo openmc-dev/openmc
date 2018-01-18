@@ -20,6 +20,18 @@ Installation
 
 Detailed `installation instructions`_ can be found in the User's Guide.
 
+------
+Citing
+------
+
+If you use OpenMC in your research, please consider giving proper attribution by
+citing the following publication:
+
+- Paul K. Romano, Nicholas E. Horelik, Bryan R. Herman, Adam G. Nelson, Benoit
+  Forget, and Kord Smith, "`OpenMC: A State-of-the-Art Monte Carlo Code for
+  Research and Development <https://doi.org/10.1016/j.anucene.2014.07.048>`_,"
+  *Ann. Nucl. Energy*, **82**, 90--97 (2015).
+
 ---------------
 Troubleshooting
 ---------------

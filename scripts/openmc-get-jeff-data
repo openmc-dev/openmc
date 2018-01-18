@@ -43,6 +43,10 @@ parser.add_argument('-b', '--batch', action='store_true',
                     help='supresses standard in')
 parser.add_argument('-d', '--destination', default='jeff-3.2-hdf5',
                     help='Directory to create new library in')
+parser.add_argument('--libver', choices=['earliest', 'latest'],
+                    default='earliest', help="Output HDF5 versioning. Use "
+                    "'earliest' for backwards compatibility or 'latest' for "
+                    "performance")
 args = parser.parse_args()
 
 response = input(download_warning) if not args.batch else 'y'
@@ -179,7 +183,7 @@ for name, filenames in sorted(tables.items()):
     # Export HDF5 file
     h5_file = os.path.join(args.destination, data.name + '.h5')
     print('Writing {}...'.format(h5_file))
-    data.export_to_hdf5(h5_file, 'w')
+    data.export_to_hdf5(h5_file, 'w', libver=args.libver)
 
     # Register with library
     library.register_file(h5_file)
@@ -222,7 +226,7 @@ for name, filenames in sorted(tables.items()):
     # Export HDF5 file
     h5_file = os.path.join(args.destination, data.name + '.h5')
     print('Writing {}...'.format(h5_file))
-    data.export_to_hdf5(h5_file, 'w')
+    data.export_to_hdf5(h5_file, 'w', libver=args.libver)
 
     # Register with library
     library.register_file(h5_file)

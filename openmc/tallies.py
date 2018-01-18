@@ -3,9 +3,10 @@ from __future__ import division
 from collections import Iterable, MutableSequence
 import copy
 import re
-from functools import partial
+from functools import partial, reduce
 from itertools import product
 from numbers import Integral, Real
+import operator
 import warnings
 from xml.etree import ElementTree as ET
 
@@ -78,6 +79,8 @@ class Tally(IDManagerMixin):
     shape : 3-tuple of int
         The shape of the tally data array ordered as the number of filter bins,
         nuclide bins and score bins
+    filter_strides : list of int
+        Stride in memory for each filter
     num_realizations : int
         Total number of realizations
     with_summary : bool
@@ -129,49 +132,6 @@ class Tally(IDManagerMixin):
         self._sp_filename = None
         self._results_read = False
 
-    def __eq__(self, other):
-        if not isinstance(other, Tally):
-            return False
-
-        # Check all filters
-        if len(self.filters) != len(other.filters):
-            return False
-
-        for self_filter in self.filters:
-            if self_filter not in other.filters:
-                return False
-
-        # Check all nuclides
-        if len(self.nuclides) != len(other.nuclides):
-            return False
-
-        for nuclide in self.nuclides:
-            if nuclide not in other.nuclides:
-                return False
-
-        # Check derivatives
-        if self.derivative != other.derivative:
-            return False
-
-        # Check all scores
-        if len(self.scores) != len(other.scores):
-            return False
-
-        for score in self.scores:
-            if score not in other.scores:
-                return False
-
-        if self.estimator != other.estimator:
-            return False
-
-        return True
-
-    def __ne__(self, other):
-        return not self == other
-
-    def __hash__(self):
-        return hash(repr(self))
-
     def __repr__(self):
         string = 'Tally\n'
         string += '{: <16}=\t{}\n'.format('\tID', self.id)
@@ -187,10 +147,7 @@ class Tally(IDManagerMixin):
         string += '{: <16}=\t'.format('\tNuclides')
 
         for nuclide in self.nuclides:
-            if isinstance(nuclide, openmc.Nuclide):
-                string += nuclide.name + ' '
-            else:
-                string += str(nuclide) + ' '
+            string += str(nuclide) + ' '
 
         string += '\n'
 
@@ -229,19 +186,11 @@ class Tally(IDManagerMixin):
 
     @property
     def num_filter_bins(self):
-        num_bins = 1
-
-        for self_filter in self.filters:
-            num_bins *= self_filter.num_bins
-
-        return num_bins
+        return reduce(operator.mul, (f.num_bins for f in self.filters), 1)
 
     @property
     def num_bins(self):
-        num_bins = self.num_filter_bins
-        num_bins *= self.num_nuclides
-        num_bins *= self.num_scores
-        return num_bins
+        return self.num_filter_bins * self.num_nuclides * self.num_scores
 
     @property
     def shape(self):
@@ -288,10 +237,10 @@ class Tally(IDManagerMixin):
 
             # Convert NumPy arrays to SciPy sparse LIL matrices
             if self.sparse:
-                self._sum = \
-                    sps.lil_matrix(self._sum.flatten(), self._sum.shape)
-                self._sum_sq = \
-                    sps.lil_matrix(self._sum_sq.flatten(), self._sum_sq.shape)
+                self._sum = sps.lil_matrix(self._sum.flatten(),
+                                           self._sum.shape)
+                self._sum_sq = sps.lil_matrix(self._sum_sq.flatten(),
+                                              self._sum_sq.shape)
 
             # Indicate that Tally results have been read
             self._results_read = True
@@ -864,10 +813,6 @@ class Tally(IDManagerMixin):
         # Differentiate Tally with a new auto-generated Tally ID
         merged_tally.id = None
 
-        # If the two tallies are equal, simply return copy
-        if self == other:
-            return merged_tally
-
         # Create deep copy of other tally to use for array concatenation
         other_copy = copy.deepcopy(other)
 
@@ -922,9 +867,6 @@ class Tally(IDManagerMixin):
         # Otherwise, this is a derived tally which needs merged results arrays
         else:
             self._derived = True
-
-        # Update filter strides in merged tally
-        merged_tally._update_filter_strides()
 
         # Concatenate sum arrays if present in both tallies
         if self.sum is not None and other_copy.sum is not None:
@@ -1055,16 +997,9 @@ class Tally(IDManagerMixin):
             subelement.text = ' '.join(str(f.id) for f in self.filters)
 
         # Optional Nuclides
-        if len(self.nuclides) > 0:
-            nuclides = ''
-            for nuclide in self.nuclides:
-                if isinstance(nuclide, openmc.Nuclide):
-                    nuclides += '{0} '.format(nuclide.name)
-                else:
-                    nuclides += '{0} '.format(nuclide)
-
+        if self.nuclides:
             subelement = ET.SubElement(element, "nuclides")
-            subelement.text = nuclides.rstrip(' ')
+            subelement.text = ' '.join(str(n) for n in self.nuclides)
 
         # Scores
         if len(self.scores) == 0:
@@ -1591,11 +1526,10 @@ class Tally(IDManagerMixin):
 
         # Build DataFrame columns for filters if user requested them
         if filters:
-
             # Append each Filter's DataFrame to the overall DataFrame
-            for self_filter in self.filters:
-                filter_df = self_filter.get_pandas_dataframe(
-                    data_size, paths=paths)
+            for f, stride in zip(self.filters, self.filter_strides):
+                filter_df = f.get_pandas_dataframe(
+                    data_size, stride, paths=paths)
                 df = pd.concat([df, filter_df], axis=1)
 
         # Include DataFrame column for nuclides if user requested it
@@ -1920,20 +1854,16 @@ class Tally(IDManagerMixin):
                 new_score = cross_score(self_score, other_score, binary_op)
                 new_tally.scores.append(new_score)
 
-        # Update the new tally's filter strides
-        new_tally._update_filter_strides()
-
         return new_tally
 
-    def _update_filter_strides(self):
-        """Update each filter's stride based on the tally's nuclides and scores
-        for derived tallies created by tally arithmetic.
-        """
-
+    @property
+    def filter_strides(self):
+        all_strides = []
         stride = self.num_nuclides * self.num_scores
         for self_filter in reversed(self.filters):
-            self_filter.stride = stride
+            all_strides.append(stride)
             stride *= self_filter.num_bins
+        return all_strides[::-1]
 
     def _align_tally_data(self, other, filter_product, nuclide_product,
                           score_product):
@@ -1971,10 +1901,8 @@ class Tally(IDManagerMixin):
         """
 
         # Get the set of filters that each tally is missing
-        other_missing_filters = \
-            set(self.filters).difference(set(other.filters))
-        self_missing_filters = \
-            set(other.filters).difference(set(self.filters))
+        other_missing_filters = set(self.filters) - set(other.filters)
+        self_missing_filters = set(other.filters) - set(self.filters)
 
         # Add filters present in self but not in other to other
         for other_filter in other_missing_filters:
@@ -2001,14 +1929,10 @@ class Tally(IDManagerMixin):
         # Repeat and tile the data by nuclide in preparation for performing
         # the tensor product across nuclides.
         if nuclide_product == 'tensor':
-            self._mean = \
-                np.repeat(self.mean, other.num_nuclides, axis=1)
-            self._std_dev = \
-                np.repeat(self.std_dev, other.num_nuclides, axis=1)
-            other._mean = \
-                np.tile(other.mean, (1, self.num_nuclides, 1))
-            other._std_dev = \
-                np.tile(other.std_dev, (1, self.num_nuclides, 1))
+            self._mean = np.repeat(self.mean, other.num_nuclides, axis=1)
+            self._std_dev = np.repeat(self.std_dev, other.num_nuclides, axis=1)
+            other._mean = np.tile(other.mean, (1, self.num_nuclides, 1))
+            other._std_dev = np.tile(other.std_dev, (1, self.num_nuclides, 1))
 
         # Add nuclides to each tally such that each tally contains the complete
         # set of nuclides necessary to perform an entrywise product. New
@@ -2016,25 +1940,21 @@ class Tally(IDManagerMixin):
         else:
 
             # Get the set of nuclides that each tally is missing
-            other_missing_nuclides = \
-                set(self.nuclides).difference(set(other.nuclides))
-            self_missing_nuclides = \
-                set(other.nuclides).difference(set(self.nuclides))
+            other_missing_nuclides = set(self.nuclides) - set(other.nuclides)
+            self_missing_nuclides = set(other.nuclides) - set(self.nuclides)
 
             # Add nuclides present in self but not in other to other
             for nuclide in other_missing_nuclides:
-                other._mean = \
-                    np.insert(other.mean, other.num_nuclides, 0, axis=1)
-                other._std_dev = \
-                    np.insert(other.std_dev, other.num_nuclides, 0, axis=1)
+                other._mean = np.insert(other.mean, other.num_nuclides, 0, axis=1)
+                other._std_dev = np.insert(other.std_dev, other.num_nuclides, 0,
+                                           axis=1)
                 other.nuclides.append(nuclide)
 
             # Add nuclides present in other but not in self to self
             for nuclide in self_missing_nuclides:
-                self._mean = \
-                    np.insert(self.mean, self.num_nuclides, 0, axis=1)
-                self._std_dev = \
-                    np.insert(self.std_dev, self.num_nuclides, 0, axis=1)
+                self._mean = np.insert(self.mean, self.num_nuclides, 0, axis=1)
+                self._std_dev = np.insert(self.std_dev, self.num_nuclides, 0,
+                                          axis=1)
                 self.nuclides.append(nuclide)
 
             # Align other nuclides with self nuclides
@@ -2059,10 +1979,8 @@ class Tally(IDManagerMixin):
         else:
 
             # Get the set of scores that each tally is missing
-            other_missing_scores = \
-                set(self.scores).difference(set(other.scores))
-            self_missing_scores = \
-                set(other.scores).difference(set(self.scores))
+            other_missing_scores = set(self.scores) - set(other.scores)
+            self_missing_scores = set(other.scores) - set(self.scores)
 
             # Add scores present in self but not in other to other
             for score in other_missing_scores:
@@ -2083,10 +2001,6 @@ class Tally(IDManagerMixin):
                 # If necessary, swap other score
                 if other_index != i:
                     other._swap_scores(score, other.scores[i])
-
-        # Update the tallies' filter strides
-        other._update_filter_strides()
-        self._update_filter_strides()
 
         data = {}
         data['self'] = {}
@@ -2171,9 +2085,6 @@ class Tally(IDManagerMixin):
         filter2_index = self.filters.index(filter2)
         self.filters[filter1_index] = filter2
         self.filters[filter2_index] = filter1
-
-        # Update the tally's filter strides
-        self._update_filter_strides()
 
         # Realign the data
         for i, (bin1, bin2) in enumerate(product(filter1_bins, filter2_bins)):
@@ -2906,28 +2817,33 @@ class Tally(IDManagerMixin):
 
                 # Remove and/or reorder filter bins to user specifications
                 bin_indices = []
-                num_bins = 0
 
                 for filter_bin in filter_bins[i]:
                     bin_index = find_filter.get_bin_index(filter_bin)
-                    if filter_type in [openmc.EnergyFilter,
-                                       openmc.EnergyoutFilter]:
-                        bin_indices.extend([bin_index])
+                    if issubclass(filter_type, openmc.RealFilter):
                         bin_indices.extend([bin_index, bin_index+1])
-                        num_bins += 1
-                    elif filter_type in [openmc.DistribcellFilter,
-                                         openmc.MeshFilter]:
-                        bin_indices = [0]
-                        num_bins = find_filter.num_bins
                     else:
                         bin_indices.append(bin_index)
-                        num_bins += 1
 
-                find_filter.bins = np.unique(find_filter.bins[bin_indices])
-                find_filter.num_bins = num_bins
+                # Set bins for mesh/distribcell filters apart from others
+                if filter_type is openmc.MeshFilter:
+                    bins = find_filter.mesh
+                elif filter_type is openmc.DistribcellFilter:
+                    bins = find_filter.bins
+                else:
+                    bins = np.unique(find_filter.bins[bin_indices])
 
-        # Update the new tally's filter strides
-        new_tally._update_filter_strides()
+                # Create new filter
+                new_filter = filter_type(bins)
+
+                # Set number of bins manually for mesh/distribcell filters
+                if filter_type in (openmc.DistribcellFilter, openmc.MeshFilter):
+                    new_filter._num_bins = find_filter._num_bins
+
+                # Replace existing filter with new one
+                for j, test_filter in enumerate(new_tally.filters):
+                    if isinstance(test_filter, filter_type):
+                        new_tally.filters[j] = new_filter
 
         # If original tally was sparse, sparsify the sliced tally
         new_tally.sparse = self.sparse
@@ -3074,9 +2990,6 @@ class Tally(IDManagerMixin):
         # Add a copy of this tally's scores to the tally sum
         else:
             tally_sum._scores = copy.deepcopy(self.scores)
-
-        # Update the tally sum's filter strides
-        tally_sum._update_filter_strides()
 
         # Reshape condensed data arrays with one dimension for all filters
         mean = np.reshape(mean, tally_sum.shape)
@@ -3235,9 +3148,6 @@ class Tally(IDManagerMixin):
         else:
             tally_avg._scores = copy.deepcopy(self.scores)
 
-        # Update the tally avg's filter strides
-        tally_avg._update_filter_strides()
-
         # Reshape condensed data arrays with one dimension for all filters
         mean = np.reshape(mean, tally_avg.shape)
         std_dev = np.reshape(std_dev, tally_avg.shape)
@@ -3310,9 +3220,6 @@ class Tally(IDManagerMixin):
         if self.std_dev is not None:
             new_tally._std_dev = np.zeros(new_tally.shape, dtype=np.float64)
             new_tally._std_dev[diag_indices, :, :] = self.std_dev
-
-        # Update the new tally's filter strides
-        new_tally._update_filter_strides()
 
         # If original tally was sparse, sparsify the diagonalized tally
         new_tally.sparse = self.sparse
@@ -3502,12 +3409,12 @@ class Tallies(cv.CheckedList):
         for tally in self:
             for f in tally.filters:
                 if isinstance(f, openmc.MeshFilter):
-                    if f.mesh not in already_written:
+                    if f.mesh.id not in already_written:
                         if len(f.mesh.name) > 0:
                             root_element.append(ET.Comment(f.mesh.name))
 
                         root_element.append(f.mesh.to_xml_element())
-                        already_written.add(f.mesh)
+                        already_written.add(f.mesh.id)
 
     def _create_filter_subelements(self, root_element):
         already_written = dict()

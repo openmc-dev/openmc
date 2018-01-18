@@ -427,6 +427,38 @@ contains
 !                               C API FUNCTIONS
 !===============================================================================
 
+  function openmc_extend_cells(n, index_start, index_end) result(err) bind(C)
+    ! Extend the cells array by n elements
+    integer(C_INT32_T), value, intent(in) :: n
+    integer(C_INT32_T), optional, intent(out) :: index_start
+    integer(C_INT32_T), optional, intent(out) :: index_end
+    integer(C_INT) :: err
+
+    type(Cell), allocatable :: temp(:) ! temporary cells array
+
+    if (n_cells == 0) then
+      ! Allocate cells array
+      allocate(cells(n))
+    else
+      ! Allocate cells array with increased size
+      allocate(temp(n_cells + n))
+
+      ! Copy original cells to temporary array
+      temp(1:n_cells) = cells
+
+      ! Move allocation from temporary array
+      call move_alloc(FROM=temp, TO=cells)
+    end if
+
+    ! Return indices in cells array
+    if (present(index_start)) index_start = n_cells + 1
+    if (present(index_end)) index_end = n_cells + n
+    n_cells = n_cells + n
+
+    err = 0
+  end function openmc_extend_cells
+
+
   function openmc_get_cell_index(id, index) result(err) bind(C)
     ! Return the index in the cells array of a cell with a given ID
     integer(C_INT32_T), value :: id
@@ -492,7 +524,7 @@ contains
 
 
   function openmc_cell_set_fill(index, type, n, indices) result(err) bind(C)
-    ! Set the fill for a fill
+    ! Set the fill for a cell
     integer(C_INT32_T), value, intent(in) :: index    ! index in cells
     integer(C_INT), value, intent(in)     :: type
     integer(c_INT32_T), value, intent(in) :: n
@@ -536,6 +568,23 @@ contains
     end if
 
   end function openmc_cell_set_fill
+
+
+  function openmc_cell_set_id(index, id) result(err) bind(C)
+    ! Set the ID of a cell
+    integer(C_INT32_T), value, intent(in) :: index
+    integer(C_INT32_T), value, intent(in) :: id
+    integer(C_INT) :: err
+
+    if (index >= 1 .and. index <= n_cells) then
+      cells(index) % id = id
+      call cell_dict % set(id, index)
+      err = 0
+    else
+      err = E_OUT_OF_BOUNDS
+      call set_errmsg("Index in cells array is out of bounds.")
+    end if
+  end function openmc_cell_set_id
 
 
   function openmc_cell_set_temperature(index, T, instance) result(err) bind(C)

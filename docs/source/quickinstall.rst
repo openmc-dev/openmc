@@ -44,13 +44,13 @@ Next, resynchronize the package index files:
 
 .. code-block:: sh
 
-    sudo apt-get update
+    sudo apt update
 
 Now OpenMC should be recognized within the repository and can be installed:
 
 .. code-block:: sh
 
-    sudo apt-get install openmc
+    sudo apt install openmc
 
 Binary packages from this PPA may exist for earlier versions of Ubuntu, but they
 are no longer supported.
@@ -69,9 +69,7 @@ installed directly from the package manager.
 
 .. code-block:: sh
 
-    sudo apt-get install gfortran
-    sudo apt-get install cmake
-    sudo apt-get install libhdf5-dev
+    sudo apt install gfortran g++ cmake libhdf5-dev
 
 After the packages have been installed, follow the instructions below for
 building and installing OpenMC from source.

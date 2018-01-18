@@ -4,10 +4,11 @@ module particle_restart
 
   use bank_header,      only: Bank
   use constants
+  use error,            only: write_message
   use hdf5_interface,   only: file_open, file_close, read_dataset
   use mgxs_header,      only: energy_bin_avg
   use nuclide_header,   only: micro_xs, n_nuclides
-  use output,           only: write_message, print_particle
+  use output,           only: print_particle
   use particle_header,  only: Particle
   use random_lcg,       only: set_particle_seed
   use settings

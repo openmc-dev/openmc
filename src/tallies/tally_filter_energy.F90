@@ -8,7 +8,7 @@ module tally_filter_energy
   use constants
   use error
   use hdf5_interface
-  use mgxs_header,         only: num_energy_groups, energy_bins
+  use mgxs_header,         only: num_energy_groups, rev_energy_bins
   use particle_header,     only: Particle
   use settings,            only: run_CE
   use string,              only: to_str
@@ -75,7 +75,7 @@ contains
     ! ordering of the library and tallying systems).
     if (.not. run_CE) then
       if (n == num_energy_groups + 1) then
-        if (all(this % bins == energy_bins(num_energy_groups + 1:1:-1))) &
+        if (all(this % bins == rev_energy_bins)) &
              then
           this % matches_transport_groups = .true.
         end if

@@ -19,17 +19,17 @@ module state_point
   use constants
   use eigenvalue,         only: openmc_get_keff
   use endf,               only: reaction_name
-  use error,              only: fatal_error, warning
+  use error,              only: fatal_error, warning, write_message
   use hdf5_interface
   use mesh_header,        only: RegularMesh, meshes, n_meshes
   use message_passing
   use mgxs_header,        only: nuclides_MG
   use nuclide_header,     only: nuclides
-  use output,             only: write_message, time_stamp
+  use output,             only: time_stamp
   use random_lcg,         only: seed
   use settings
   use simulation_header
-  use string,             only: to_str, count_digits, zero_padded
+  use string,             only: to_str, count_digits, zero_padded, to_f_string
   use tally_header
   use tally_filter_header
   use tally_derivative_header, only: tally_derivs
@@ -40,10 +40,11 @@ module state_point
 contains
 
 !===============================================================================
-! WRITE_STATE_POINT
+! OPENMC_STATEPOINT_WRITE writes an HDF5 statepoint file to disk
 !===============================================================================
 
-  subroutine write_state_point()
+  subroutine openmc_statepoint_write(filename) bind(C)
+    type(C_PTR), intent(in), optional :: filename
 
     integer :: i, j, k
     integer :: i_xs
@@ -57,19 +58,25 @@ contains
     integer(C_INT) :: err
     real(C_DOUBLE) :: k_combined(2)
     character(MAX_WORD_LEN), allocatable :: str_array(:)
-    character(MAX_FILE_LEN)    :: filename
+    character(C_CHAR), pointer :: string(:)
+    character(len=:, kind=C_CHAR), allocatable :: filename_
 
-    ! Set filename for state point
-    filename = trim(path_output) // 'statepoint.' // &
-         & zero_padded(current_batch, count_digits(n_max_batches))
-    filename = trim(filename) // '.h5'
+    if (present(filename)) then
+      call c_f_pointer(filename, string, [MAX_FILE_LEN])
+      filename_ = to_f_string(string)
+    else
+      ! Set filename for state point
+      filename_ = trim(path_output) // 'statepoint.' // &
+           & zero_padded(current_batch, count_digits(n_max_batches))
+      filename_ = trim(filename_) // '.h5'
+    end if
 
     ! Write message
-    call write_message("Creating state point " // trim(filename) // "...", 5)
+    call write_message("Creating state point " // trim(filename_) // "...", 5)
 
     if (master) then
       ! Create statepoint file
-      file_id = file_create(filename)
+      file_id = file_create(filename_)
 
       ! Write file type
       call write_attribute(file_id, "filetype", "statepoint")
@@ -121,8 +128,11 @@ contains
       if (run_mode == MODE_EIGENVALUE) then
         call write_dataset(file_id, "n_inactive", n_inactive)
         call write_dataset(file_id, "generations_per_batch", gen_per_batch)
-        call write_dataset(file_id, "k_generation", k_generation)
-        call write_dataset(file_id, "entropy", entropy)
+        k = k_generation % size()
+        call write_dataset(file_id, "k_generation", k_generation % data(1:k))
+        if (entropy_on) then
+          call write_dataset(file_id, "entropy", entropy % data(1:k))
+        end if
         call write_dataset(file_id, "k_col_abs", k_col_abs)
         call write_dataset(file_id, "k_col_tra", k_col_tra)
         call write_dataset(file_id, "k_abs_tra", k_abs_tra)
@@ -433,7 +443,7 @@ contains
 
       call file_close(file_id)
     end if
-  end subroutine write_state_point
+  end subroutine openmc_statepoint_write
 
 !===============================================================================
 ! WRITE_SOURCE_POINT
@@ -629,6 +639,7 @@ contains
   subroutine load_state_point()
 
     integer :: i
+    integer :: n
     integer :: int_array(3)
     integer, allocatable :: array(:)
     integer(HID_T) :: file_id
@@ -707,10 +718,15 @@ contains
     if (run_mode == MODE_EIGENVALUE) then
       call read_dataset(int_array(1), file_id, "n_inactive")
       call read_dataset(gen_per_batch, file_id, "generations_per_batch")
-      call read_dataset(k_generation(1:restart_batch*gen_per_batch), &
-           file_id, "k_generation")
-      call read_dataset(entropy(1:restart_batch*gen_per_batch), &
-           file_id, "entropy")
+
+      n = restart_batch*gen_per_batch
+      call k_generation % resize(n)
+      call read_dataset(k_generation % data(1:n), file_id, "k_generation")
+
+      if (entropy_on) then
+        call entropy % resize(n)
+        call read_dataset(entropy % data(1:n), file_id, "entropy")
+      end if
       call read_dataset(k_col_abs, file_id, "k_col_abs")
       call read_dataset(k_col_tra, file_id, "k_col_tra")
       call read_dataset(k_abs_tra, file_id, "k_abs_tra")

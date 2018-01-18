@@ -108,32 +108,6 @@ class Cell(IDManagerMixin):
         else:
             return point in self.region
 
-    def __eq__(self, other):
-        if not isinstance(other, Cell):
-            return False
-        elif self.id != other.id:
-            return False
-        elif self.name != other.name:
-            return False
-        elif self.fill != other.fill:
-            return False
-        elif self.region != other.region:
-            return False
-        elif self.rotation != other.rotation:
-            return False
-        elif self.temperature != other.temperature:
-            return False
-        elif self.translation != other.translation:
-            return False
-        else:
-            return True
-
-    def __ne__(self, other):
-        return not self == other
-
-    def __hash__(self):
-        return hash(repr(self))
-
     def __repr__(self):
         string = 'Cell\n'
         string += '{: <16}=\t{}\n'.format('\tID', self.id)

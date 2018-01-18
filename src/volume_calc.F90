@@ -8,11 +8,12 @@ module volume_calc
 #endif
 
   use constants
+  use error,        only: write_message
   use geometry,     only: find_cell
   use geometry_header, only: universes, cells
   use hdf5_interface, only: file_create, file_close, write_attribute, &
        create_group, close_group, write_dataset
-  use output,       only: write_message, header, time_stamp
+  use output,       only: header, time_stamp
   use material_header, only: materials
   use message_passing
   use nuclide_header, only: nuclides

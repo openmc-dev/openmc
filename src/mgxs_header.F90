@@ -221,11 +221,14 @@ module mgxs_header
   ! Number of delayed groups
   integer :: num_delayed_groups
 
-  ! Energy group structure
+  ! Energy group structure with decreasing energy
   real(8), allocatable :: energy_bins(:)
 
   ! Midpoint of the energy group structure
   real(8), allocatable :: energy_bin_avg(:)
+
+  ! Energy group structure with increasing energy
+  real(8), allocatable :: rev_energy_bins(:)
 
 contains
 

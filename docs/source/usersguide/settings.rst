@@ -39,7 +39,7 @@ be specified:
 'plot'
   Generates slice or voxel plots (see :ref:`usersguide_plots`).
 
-'particle_restart'
+'particle restart'
   Simulate a single source particle using a particle restart file.
 
 

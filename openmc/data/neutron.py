@@ -477,6 +477,8 @@ class IncidentNeutron(EqualityMixin):
             return [mt]
         elif mt in SUM_RULES:
             mts = SUM_RULES[mt]
+        else:
+            return []
         complete = False
         while not complete:
             new_mts = []
@@ -490,7 +492,7 @@ class IncidentNeutron(EqualityMixin):
             mts = new_mts
         return mts
 
-    def export_to_hdf5(self, path, mode='a'):
+    def export_to_hdf5(self, path, mode='a', libver='earliest'):
         """Export incident neutron data to an HDF5 file.
 
         Parameters
@@ -500,6 +502,9 @@ class IncidentNeutron(EqualityMixin):
         mode : {'r', r+', 'w', 'x', 'a'}
             Mode that is used to open the HDF5 file. This is the second argument
             to the :class:`h5py.File` constructor.
+        libver : {'earliest', 'latest'}
+            Compatibility mode for the HDF5 file. 'latest' will produce files
+            that are less backwards compatible but have performance benefits.
 
         """
         # If data come from ENDF, don't allow exporting to HDF5
@@ -508,7 +513,7 @@ class IncidentNeutron(EqualityMixin):
                                       'originated from an ENDF file.')
 
         # Open file and write version
-        f = h5py.File(path, mode, libver='latest')
+        f = h5py.File(path, mode, libver=libver)
         f.attrs['version'] = np.array(HDF5_VERSION)
 
         # Write basic data
@@ -535,12 +540,6 @@ class IncidentNeutron(EqualityMixin):
         for rx in self.reactions.values():
             rx_group = rxs_group.create_group('reaction_{:03}'.format(rx.mt))
             rx.to_hdf5(rx_group)
-
-            # Write 0K elastic scattering if needed
-            if '0K' in rx.xs and '0K' not in rx_group:
-                group = rx_group.create_group('0K')
-                dset = group.create_dataset('xs', data=rx.xs['0K'].y)
-                dset.attrs['threshold_idx'] = 1
 
             # Write total nu data if available
             if len(rx.derived_products) > 0 and 'total_nu' not in g:

@@ -42,7 +42,6 @@ contains
 
     ! Set all material macroscopic cross sections to zero
     material_xs % total          = ZERO
-    material_xs % elastic        = ZERO
     material_xs % absorption     = ZERO
     material_xs % fission        = ZERO
     material_xs % nu_fission     = ZERO
@@ -115,10 +114,6 @@ contains
         material_xs % total = material_xs % total + &
              atom_density * micro_xs(i_nuclide) % total
 
-        ! Add contributions to material macroscopic scattering cross section
-        material_xs % elastic = material_xs % elastic + &
-             atom_density * micro_xs(i_nuclide) % elastic
-
         ! Add contributions to material macroscopic absorption cross section
         material_xs % absorption = material_xs % absorption + &
              atom_density * micro_xs(i_nuclide) % absorption
@@ -162,6 +157,7 @@ contains
     real(8) :: sig_t, sig_a, sig_f ! Intermediate multipole variables
 
     ! Initialize cached cross sections to zero
+    micro_xs(i_nuclide) % elastic         = CACHE_INVALID
     micro_xs(i_nuclide) % thermal         = ZERO
     micro_xs(i_nuclide) % thermal_elastic = ZERO
 
@@ -182,13 +178,11 @@ contains
 
         micro_xs(i_nuclide) % total = sig_t
         micro_xs(i_nuclide) % absorption = sig_a
-        micro_xs(i_nuclide) % elastic = sig_t - sig_a
+        micro_xs(i_nuclide) % fission = sig_f
 
         if (nuc % fissionable) then
-          micro_xs(i_nuclide) % fission = sig_f
           micro_xs(i_nuclide) % nu_fission = sig_f * nuc % nu(E, EMISSION_TOTAL)
         else
-          micro_xs(i_nuclide) % fission    = ZERO
           micro_xs(i_nuclide) % nu_fission = ZERO
         end if
 
@@ -233,7 +227,7 @@ contains
           if (f > prn()) i_temp = i_temp + 1
         end select
 
-        associate (grid => nuc % grid(i_temp), xs => nuc % sum_xs(i_temp))
+        associate (grid => nuc % grid(i_temp), xs => nuc % xs(i_temp))
           ! Determine the energy grid index using a logarithmic mapping to
           ! reduce the energy range over which a binary search needs to be
           ! performed
@@ -266,25 +260,21 @@ contains
           micro_xs(i_nuclide) % interp_factor = f
 
           ! Calculate microscopic nuclide total cross section
-          micro_xs(i_nuclide) % total = (ONE - f) * xs % total(i_grid) &
-               + f * xs % total(i_grid + 1)
-
-          ! Calculate microscopic nuclide elastic cross section
-          micro_xs(i_nuclide) % elastic = (ONE - f) * xs % elastic(i_grid) &
-               + f * xs % elastic(i_grid + 1)
+          micro_xs(i_nuclide) % total = (ONE - f) * xs % value(XS_TOTAL,i_grid) &
+               + f * xs % value(XS_TOTAL,i_grid + 1)
 
           ! Calculate microscopic nuclide absorption cross section
-          micro_xs(i_nuclide) % absorption = (ONE - f) * xs % absorption( &
-               i_grid) + f * xs % absorption(i_grid + 1)
+          micro_xs(i_nuclide) % absorption = (ONE - f) * xs % value(XS_ABSORPTION, &
+               i_grid) + f * xs % value(XS_ABSORPTION,i_grid + 1)
 
           if (nuc % fissionable) then
             ! Calculate microscopic nuclide total cross section
-            micro_xs(i_nuclide) % fission = (ONE - f) * xs % fission(i_grid) &
-                 + f * xs % fission(i_grid + 1)
+            micro_xs(i_nuclide) % fission = (ONE - f) * xs % value(XS_FISSION,i_grid) &
+                 + f * xs % value(XS_FISSION,i_grid + 1)
 
             ! Calculate microscopic nuclide nu-fission cross section
-            micro_xs(i_nuclide) % nu_fission = (ONE - f) * xs % nu_fission( &
-                 i_grid) + f * xs % nu_fission(i_grid + 1)
+            micro_xs(i_nuclide) % nu_fission = (ONE - f) * xs % value(XS_NU_FISSION, &
+                 i_grid) + f * xs % value(XS_NU_FISSION,i_grid + 1)
           else
             micro_xs(i_nuclide) % fission         = ZERO
             micro_xs(i_nuclide) % nu_fission      = ZERO
@@ -451,6 +441,9 @@ contains
     micro_xs(i_nuclide) % thermal = sab_frac * (elastic + inelastic)
     micro_xs(i_nuclide) % thermal_elastic = sab_frac * elastic
 
+    ! Calculate free atom elastic cross section
+    call calculate_elastic_xs(i_nuclide)
+
     ! Correct total and elastic cross sections
     micro_xs(i_nuclide) % total = micro_xs(i_nuclide) % total &
          + micro_xs(i_nuclide) % thermal &
@@ -579,6 +572,7 @@ contains
 
       ! Multiply by smooth cross-section if needed
       if (urr % multiply_smooth) then
+        call calculate_elastic_xs(i_nuclide)
         elastic = elastic * micro_xs(i_nuclide) % elastic
         capture = capture * (micro_xs(i_nuclide) % absorption - &
              micro_xs(i_nuclide) % fission)
@@ -606,6 +600,36 @@ contains
     end associate
 
   end subroutine calculate_urr_xs
+
+!===============================================================================
+! CALCULATE_ELASTIC_XS precalculates the free atom elastic scattering cross
+! section. Normally it is not needed until a collision actually occurs in a
+! material. However, in the thermal and unresolved resonance regions, we have to
+! calculate it early to adjust the total cross section correctly.
+!===============================================================================
+
+  subroutine calculate_elastic_xs(i_nuclide)
+    integer, intent(in) :: i_nuclide
+
+    integer :: i_temp
+    integer :: i_grid
+    real(8) :: f
+
+    ! Get temperature index, grid index, and interpolation factor
+    i_temp =  micro_xs(i_nuclide) % index_temp
+    i_grid =  micro_xs(i_nuclide) % index_grid
+    f      =  micro_xs(i_nuclide) % interp_factor
+
+    if (i_temp > 0) then
+      associate (xs => nuclides(i_nuclide) % reactions(1) % xs(i_temp) % value)
+        micro_xs(i_nuclide) % elastic = (ONE - f)*xs(i_grid) + f*xs(i_grid + 1)
+      end associate
+    else
+      ! For multipole, elastic is total - absorption
+      micro_xs(i_nuclide) % elastic = micro_xs(i_nuclide) % total - &
+           micro_xs(i_nuclide) % absorption
+    end if
+  end subroutine calculate_elastic_xs
 
 !===============================================================================
 ! MULTIPOLE_EVAL evaluates the windowed multipole equations for cross

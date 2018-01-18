@@ -2,7 +2,7 @@ module physics
 
   use algorithm,              only: binary_search
   use constants
-  use cross_section,          only: elastic_xs_0K
+  use cross_section,          only: elastic_xs_0K, calculate_elastic_xs
   use endf,                   only: reaction_name
   use error,                  only: fatal_error, warning, write_message
   use material_header,        only: Material, materials
@@ -337,6 +337,11 @@ contains
     cutoff = prn() * (micro_xs(i_nuclide) % total - &
          micro_xs(i_nuclide) % absorption)
     sampled = .false.
+
+    ! Calculate elastic cross section if it wasn't precalculated
+    if (micro_xs(i_nuclide) % elastic == CACHE_INVALID) then
+      call calculate_elastic_xs(i_nuclide)
+    end if
 
     prob = micro_xs(i_nuclide) % elastic - micro_xs(i_nuclide) % thermal
     if (prob > cutoff) then

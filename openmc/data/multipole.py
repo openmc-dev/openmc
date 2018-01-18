@@ -404,7 +404,7 @@ class WindowedMultipole(EqualityMixin):
             cv.check_type('curvefit', curvefit, np.ndarray)
             if len(curvefit.shape) != 3:
                 raise ValueError('Multipole curvefit arrays must be 3D')
-            if curvefit.shape[2] not in (2, 3):  # sigT, sigA (and maybe sigF)
+            if curvefit.shape[2] not in (2, 3):  # sig_t, sig_a (maybe sig_f)
                 raise ValueError('The third dimension of multipole curvefit'
                                  ' arrays must have a length of 2 or 3')
             if not np.issubdtype(curvefit.dtype, float):
@@ -531,7 +531,6 @@ class WindowedMultipole(EqualityMixin):
         sqrtkT = sqrt(K_BOLTZMANN * T)
         sqrtE = sqrt(E)
         invE = 1.0 / E
-        dopp = self.sqrtAWR / sqrtkT
 
         # Locate us.  The i_window calc omits a + 1 present in F90 because of
         # the 1-based vs. 0-based indexing.  Similarly startw needs to be
@@ -546,7 +545,7 @@ class WindowedMultipole(EqualityMixin):
         # not appear in the absorption and fission equations.
         if startw <= endw:
             twophi = np.zeros(self.num_l, dtype=np.float)
-            sigT_factor = np.zeros(self.num_l, dtype=np.cfloat)
+            sig_t_factor = np.zeros(self.num_l, dtype=np.cfloat)
 
             for iL in range(self.num_l):
                 twophi[iL] = self.pseudo_k0RS[iL] * sqrtE
@@ -561,35 +560,36 @@ class WindowedMultipole(EqualityMixin):
                     twophi[iL] = twophi[iL] - np.arctan(arg)
 
             twophi = 2.0 * twophi
-            sigT_factor = np.cos(twophi) - 1j*np.sin(twophi)
+            sig_t_factor = np.cos(twophi) - 1j*np.sin(twophi)
 
         # Initialize the ouptut cross sections.
-        sigT = 0.0
-        sigA = 0.0
-        sigF = 0.0
+        sig_t = 0.0
+        sig_a = 0.0
+        sig_f = 0.0
 
         # ======================================================================
         # Add the contribution from the curvefit polynomial.
 
         if sqrtkT != 0 and self.broaden_poly[i_window]:
             # Broaden the curvefit.
+            dopp = self.sqrtAWR / sqrtkT
             broadened_polynomials = _broaden_wmp_polynomials(E, dopp,
                                                              self.fit_order + 1)
             for i_poly in range(self.fit_order+1):
-                sigT += (self.curvefit[i_window, i_poly, _FIT_T]
-                         * broadened_polynomials[i_poly])
-                sigA += (self.curvefit[i_window, i_poly, _FIT_A]
-                         * broadened_polynomials[i_poly])
+                sig_t += (self.curvefit[i_window, i_poly, _FIT_T]
+                          * broadened_polynomials[i_poly])
+                sig_a += (self.curvefit[i_window, i_poly, _FIT_A]
+                          * broadened_polynomials[i_poly])
                 if self.fissionable:
-                    sigF += (self.curvefit[i_window, i_poly, _FIT_F]
-                             * broadened_polynomials[i_poly])
+                    sig_f += (self.curvefit[i_window, i_poly, _FIT_F]
+                              * broadened_polynomials[i_poly])
         else:
             temp = invE
             for i_poly in range(self.fit_order+1):
-                sigT += self.curvefit[i_window, i_poly, _FIT_T] * temp
-                sigA += self.curvefit[i_window, i_poly, _FIT_A] * temp
+                sig_t += self.curvefit[i_window, i_poly, _FIT_T] * temp
+                sig_a += self.curvefit[i_window, i_poly, _FIT_A] * temp
                 if self.fissionable:
-                    sigF += self.curvefit[i_window, i_poly, _FIT_F] * temp
+                    sig_f += self.curvefit[i_window, i_poly, _FIT_F] * temp
                 temp *= sqrtE
 
         # ======================================================================
@@ -601,45 +601,46 @@ class WindowedMultipole(EqualityMixin):
                 psi_chi = -1j / (self.data[i_pole, _MP_EA] - sqrtE)
                 c_temp = psi_chi / E
                 if self.formalism == 'MLBW':
-                    sigT += ((self.data[i_pole, _MLBW_RT] * c_temp *
-                              sigT_factor[self.l_value[i_pole]-1]).real
-                             + (self.data[i_pole, _MLBW_RX] * c_temp).real)
-                    sigA += (self.data[i_pole, _MLBW_RA] * c_temp).real
+                    sig_t += ((self.data[i_pole, _MLBW_RT] * c_temp *
+                               sig_t_factor[self.l_value[i_pole]-1]).real
+                              + (self.data[i_pole, _MLBW_RX] * c_temp).real)
+                    sig_a += (self.data[i_pole, _MLBW_RA] * c_temp).real
                     if self.fissionable:
-                        sigF += (self.data[i_pole, _MLBW_RF] * c_temp).real
+                        sig_f += (self.data[i_pole, _MLBW_RF] * c_temp).real
                 elif self.formalism == 'RM':
-                    sigT += (self.data[i_pole, _RM_RT] * c_temp *
-                             sigT_factor[self.l_value[i_pole]-1]).real
-                    sigA += (self.data[i_pole, _RM_RA] * c_temp).real
+                    sig_t += (self.data[i_pole, _RM_RT] * c_temp *
+                              sig_t_factor[self.l_value[i_pole]-1]).real
+                    sig_a += (self.data[i_pole, _RM_RA] * c_temp).real
                     if self.fissionable:
-                        sigF += (self.data[i_pole, _RM_RF] * c_temp).real
+                        sig_f += (self.data[i_pole, _RM_RF] * c_temp).real
                 else:
                     raise ValueError('Unrecognized/Unsupported R-matrix'
                                      ' formalism')
 
         else:
             # At temperature, use Faddeeva function-based form.
+            dopp = self.sqrtAWR / sqrtkT
             for i_pole in range(startw, endw):
                 Z = (sqrtE - self.data[i_pole, _MP_EA]) * dopp
                 w_val = _faddeeva(Z) * dopp * invE * sqrt(pi)
                 if self.formalism == 'MLBW':
-                    sigT += ((self.data[i_pole, _MLBW_RT] *
-                              sigT_factor[self.l_value[i_pole]-1] +
-                              self.data[i_pole, _MLBW_RX]) * w_val).real
-                    sigA += (self.data[i_pole, _MLBW_RA] * w_val).real
+                    sig_t += ((self.data[i_pole, _MLBW_RT] *
+                               sig_t_factor[self.l_value[i_pole]-1] +
+                               self.data[i_pole, _MLBW_RX]) * w_val).real
+                    sig_a += (self.data[i_pole, _MLBW_RA] * w_val).real
                     if self.fissionable:
-                        sigF += (self.data[i_pole, _MLBW_RF] * w_val).real
+                        sig_f += (self.data[i_pole, _MLBW_RF] * w_val).real
                 elif self.formalism == 'RM':
-                    sigT += (self.data[i_pole, _RM_RT] * w_val *
-                             sigT_factor[self.l_value[i_pole]-1]).real
-                    sigA += (self.data[i_pole, _RM_RA] * w_val).real
+                    sig_t += (self.data[i_pole, _RM_RT] * w_val *
+                              sig_t_factor[self.l_value[i_pole]-1]).real
+                    sig_a += (self.data[i_pole, _RM_RA] * w_val).real
                     if self.fissionable:
-                        sigF += (self.data[i_pole, _RM_RF] * w_val).real
+                        sig_f += (self.data[i_pole, _RM_RF] * w_val).real
                 else:
                     raise ValueError('Unrecognized/Unsupported R-matrix'
                                      ' formalism')
 
-        return sigT, sigA, sigF
+        return sig_t, sig_a, sig_f
 
     def __call__(self, E, T):
         """Compute total, absorption, and fission cross sections.

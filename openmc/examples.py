@@ -573,16 +573,16 @@ def slab_mg(reps=None, as_macro=True):
     for mat in mat_names:
         for rep in reps:
             i += 1
+            name = mat + '_' + rep
+            xs.append(name)
             if as_macro:
-                xs.append(openmc.Macroscopic(mat + '_' + rep))
                 m = openmc.Material(name=str(i))
                 m.set_density('macro', 1.)
-                m.add_macroscopic(xs[-1])
+                m.add_macroscopic(name)
             else:
-                xs.append(openmc.Nuclide(mat + '_' + rep))
                 m = openmc.Material(name=str(i))
                 m.set_density('atom/b-cm', 1.)
-                m.add_nuclide(xs[-1].name, 1.0, 'ao')
+                m.add_nuclide(name, 1.0, 'ao')
             model.materials.append(m)
 
     # Define the materials file

@@ -4,6 +4,7 @@ module summary
 
   use constants
   use endf,            only: reaction_name
+  use error,           only: write_message
   use geometry_header
   use hdf5_interface
   use material_header, only: Material, n_materials
@@ -32,6 +33,9 @@ contains
   subroutine write_summary()
 
     integer(HID_T) :: file_id
+
+    ! Display output message
+    call write_message("Writing summary.h5 file...", 5)
 
     ! Create a new file using default properties.
     file_id = file_create("summary.h5")

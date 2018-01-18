@@ -28,10 +28,10 @@ if __name__ == '__main__':
 
     mat_filter = openmc.MaterialFilter(model.materials)
 
-    nuclides = [xs.name for xs in model.xs_data]
+    nuclides = model.xs_data
 
-    scores= {False: ['total', 'absorption', 'flux', 'fission', 'nu-fission'],
-             True: ['total', 'absorption', 'fission', 'nu-fission']}
+    scores = {False: ['total', 'absorption', 'flux', 'fission', 'nu-fission'],
+              True: ['total', 'absorption', 'fission', 'nu-fission']}
 
     for do_nuclides in [False, True]:
         t = openmc.Tally()

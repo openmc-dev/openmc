@@ -107,7 +107,7 @@ def write_compact_458_library(endf_files, output_name='fission_Q_data.h5',
 
     """
     # Open the output file.
-    out = h5py.File(output_name, 'w', libver='latest')
+    out = h5py.File(output_name, 'w', libver='earliest')
 
     # Write comments, if given.  This commented out comment is the one used for
     # the library distributed with OpenMC.

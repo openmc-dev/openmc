@@ -10,7 +10,7 @@ module input_xml
   use distribution_multivariate
   use distribution_univariate
   use endf,             only: reaction_name
-  use error,            only: fatal_error, warning
+  use error,            only: fatal_error, warning, write_message
   use geometry,         only: calc_offsets, maximum_levels, count_instance, &
                               neighbor_lists
   use geometry_header
@@ -23,7 +23,7 @@ module input_xml
   use mgxs_header
   use multipole,        only: multipole_read
   use nuclide_header
-  use output,           only: write_message, title, header, print_plot
+  use output,           only: title, header, print_plot
   use plot_header
   use random_lcg,       only: prn, openmc_set_seed
   use surface_header
@@ -861,10 +861,9 @@ contains
         call get_node_value(node_base, "generations_per_batch", gen_per_batch)
       end if
 
-      ! Allocate array for batch keff and entropy
-      allocate(k_generation(n_max_batches*gen_per_batch))
-      allocate(entropy(n_max_batches*gen_per_batch))
-      entropy = ZERO
+      ! Preallocate space for keff and entropy by generation
+      call k_generation % reserve(n_max_batches*gen_per_batch)
+      call entropy % reserve(n_max_batches*gen_per_batch)
 
       ! Get the trigger information for keff
       if (check_for_node(node_base, "keff_trigger")) then
@@ -1921,10 +1920,7 @@ contains
     type(XMLDocument)       :: doc
     type(XMLNode)           :: root
 
-    ! Display output message
-    call write_message("Reading materials XML file...", 5)
-
-    ! Check is materials.xml exists
+    ! Check if materials.xml exists
     filename = trim(path_input) // "materials.xml"
     inquire(FILE=filename, EXIST=file_exists)
     if (.not. file_exists) then
@@ -2029,6 +2025,7 @@ contains
 
     integer :: i              ! loop index for materials
     integer :: j              ! loop index for nuclides
+    integer :: k              ! loop index
     integer :: n              ! number of nuclides
     integer :: n_sab          ! number of sab tables for a material
     integer :: i_library      ! index in libraries array
@@ -2039,11 +2036,12 @@ contains
     character(MAX_WORD_LEN) :: units        ! units on density
     character(MAX_LINE_LEN) :: filename     ! absolute path to materials.xml
     character(MAX_LINE_LEN) :: temp_str     ! temporary string when reading
+    character(MAX_WORD_LEN), allocatable :: sarray(:)
     real(8)                 :: val          ! value entered for density
     real(8)                 :: temp_dble    ! temporary double prec. real
     logical                 :: sum_density  ! density is sum of nuclide densities
     type(VectorChar)        :: names        ! temporary list of nuclide names
-    type(VectorInt)         :: list_iso_lab ! temporary list of isotropic lab scatterers
+    type(VectorChar)        :: list_iso_lab ! temporary list of isotropic lab scatterers
     type(VectorReal)        :: densities    ! temporary list of nuclide densities
     type(Material), pointer :: mat => null()
     type(XMLDocument) :: doc
@@ -2058,7 +2056,10 @@ contains
     type(XMLNode), allocatable :: node_macro_list(:)
     type(XMLNode), allocatable :: node_sab_list(:)
 
-    ! Check is materials.xml exists
+    ! Display output message
+    call write_message("Reading materials XML file...", 5)
+
+    ! Check if materials.xml exists
     filename = trim(path_input) // "materials.xml"
     inquire(FILE=filename, EXIST=file_exists)
     if (.not. file_exists) then
@@ -2247,23 +2248,6 @@ contains
                  // trim(to_str(mat % id)))
           end if
 
-          ! Check enforced isotropic lab scattering
-          if (run_CE) then
-            if (check_for_node(node_nuc, "scattering")) then
-              call get_node_value(node_nuc, "scattering", temp_str)
-              if (adjustl(to_lower(temp_str)) == "iso-in-lab") then
-                call list_iso_lab % push_back(1)
-              else if (adjustl(to_lower(temp_str)) == "data") then
-                call list_iso_lab % push_back(0)
-              else
-                call fatal_error("Scattering must be isotropic in lab or follow&
-                     & the ACE file data")
-              end if
-            else
-              call list_iso_lab % push_back(0)
-            end if
-          end if
-
           ! store nuclide name
           call get_node_value(node_nuc, "name", name)
           name = trim(name)
@@ -2298,6 +2282,19 @@ contains
         end do INDIVIDUAL_NUCLIDES
       end if
 
+      ! =======================================================================
+      ! READ AND PARSE <isotropic> element
+
+      if (check_for_node(node_mat, "isotropic")) then
+        n = node_word_count(node_mat, "isotropic")
+        allocate(sarray(n))
+        call get_node_array(node_mat, "isotropic", sarray)
+        do j = 1, n
+          call list_iso_lab % push_back(sarray(j))
+        end do
+        deallocate(sarray)
+      end if
+
       ! ========================================================================
       ! COPY NUCLIDES TO ARRAYS IN MATERIAL
 
@@ -2307,7 +2304,6 @@ contains
       allocate(mat % names(n))
       allocate(mat % nuclide(n))
       allocate(mat % atom_density(n))
-      allocate(mat % p0(n))
 
       ALL_NUCLIDES: do j = 1, mat % n_nuclides
         ! Check that this nuclide is listed in the cross_sections.xml file
@@ -2341,16 +2337,25 @@ contains
         mat % names(j) = name
         mat % atom_density(j) = densities % data(j)
 
-        ! Cast integer isotropic lab scattering flag to boolean
-        if (run_CE) then
-          if (list_iso_lab % data(j) == 1) then
-            mat % p0(j) = .true.
-          else
-            mat % p0(j) = .false.
-          end if
-        end if
-
       end do ALL_NUCLIDES
+
+      if (run_CE) then
+        ! By default, isotropic-in-lab is not used
+        if (list_iso_lab % size() > 0) then
+          mat % has_isotropic_nuclides = .true.
+          allocate(mat % p0(n))
+          mat % p0(:) = .false.
+
+          ! Apply isotropic-in-lab treatment to specified nuclides
+          do j = 1, list_iso_lab % size()
+            do k = 1, n
+              if (names % data(k) == list_iso_lab % data(j)) then
+                mat % p0(k) = .true.
+              end if
+            end do
+          end do
+        end if
+      end if
 
       ! Check to make sure either all atom percents or all weight percents are
       ! given
@@ -3043,12 +3048,15 @@ contains
                  &please remove")
           case ('n2n', '(n,2n)')
             t % score_bins(j) = N_2N
+            t % depletion_rx = .true.
 
           case ('n3n', '(n,3n)')
             t % score_bins(j) = N_3N
+            t % depletion_rx = .true.
 
           case ('n4n', '(n,4n)')
             t % score_bins(j) = N_4N
+            t % depletion_rx = .true.
 
           case ('absorption')
             t % score_bins(j) = SCORE_ABSORPTION
@@ -3234,8 +3242,10 @@ contains
             t % score_bins(j) = N_NC
           case ('(n,gamma)')
             t % score_bins(j) = N_GAMMA
+            t % depletion_rx = .true.
           case ('(n,p)')
             t % score_bins(j) = N_P
+            t % depletion_rx = .true.
           case ('(n,d)')
             t % score_bins(j) = N_D
           case ('(n,t)')
@@ -3244,6 +3254,7 @@ contains
             t % score_bins(j) = N_3HE
           case ('(n,a)')
             t % score_bins(j) = N_A
+            t % depletion_rx = .true.
           case ('(n,2a)')
             t % score_bins(j) = N_2A
           case ('(n,3a)')
@@ -4172,7 +4183,6 @@ contains
     integer :: n_libraries
     logical :: file_exists ! does mgxs.h5 exist?
     integer(HID_T) :: file_id
-    real(8), allocatable :: rev_energy_bins(:)
     character(len=MAX_WORD_LEN), allocatable :: names(:)
 
     ! Check if MGXS Library exists
@@ -4213,12 +4223,18 @@ contains
     end if
 
     ! First reverse the order of energy_groups
+    rev_energy_bins = energy_bins
     energy_bins = energy_bins(num_energy_groups + 1:1:-1)
 
+    ! Get the midpoint of the energy groups
     allocate(energy_bin_avg(num_energy_groups))
     do i = 1, num_energy_groups
       energy_bin_avg(i) = HALF * (energy_bins(i) + energy_bins(i + 1))
     end do
+
+    ! Get the minimum and maximum energies
+    energy_min_neutron = energy_bins(num_energy_groups + 1)
+    energy_max_neutron = energy_bins(1)
 
     ! Get the datasets present in the library
     call get_groups(file_id, names)

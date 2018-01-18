@@ -76,10 +76,10 @@ contains
     write(UNIT=OUTPUT_UNIT, FMT=*) &
          '                  | The OpenMC Monte Carlo Code'
     write(UNIT=OUTPUT_UNIT, FMT=*) &
-         '        Copyright | 2011-2017 Massachusetts Institute of Technology'
+         '        Copyright | 2011-2018 Massachusetts Institute of Technology'
     write(UNIT=OUTPUT_UNIT, FMT=*) &
          '          License | http://openmc.readthedocs.io/en/latest/license.html'
-    write(UNIT=OUTPUT_UNIT, FMT='(11X,"Version | ",I1,".",I1,".",I1)') &
+    write(UNIT=OUTPUT_UNIT, FMT='(11X,"Version | ",I1,".",I2,".",I1)') &
          VERSION_MAJOR, VERSION_MINOR, VERSION_RELEASE
 #ifdef GIT_SHA1
     write(UNIT=OUTPUT_UNIT, FMT='(10X,"Git SHA1 | ",A)') GIT_SHA1
@@ -201,61 +201,6 @@ contains
     end if
 
   end subroutine print_usage
-
-!===============================================================================
-! WRITE_MESSAGE displays an informational message to the log file and the
-! standard output stream.
-!===============================================================================
-
-  subroutine write_message(message, level)
-    character(*), intent(in)           :: message ! message to write
-    integer,      intent(in), optional :: level   ! verbosity level
-
-    integer :: i_start    ! starting position
-    integer :: i_end      ! ending position
-    integer :: line_wrap  ! length of line
-    integer :: length     ! length of message
-    integer :: last_space ! index of last space (relative to start)
-
-    ! Set length of line
-    line_wrap = 80
-
-    ! Only allow master to print to screen
-    if (.not. master .and. present(level)) return
-
-    if (.not. present(level) .or. level <= verbosity) then
-      ! Determine length of message
-      length = len_trim(message)
-
-      i_start = 0
-      do
-        if (length - i_start < line_wrap + 1) then
-          ! Remainder of message will fit on line
-          write(ou, fmt='(1X,A)') message(i_start+1:length)
-          exit
-
-        else
-          ! Determine last space in current line
-          last_space = index(message(i_start+1:i_start+line_wrap), &
-               ' ', BACK=.true.)
-          if (last_space == 0) then
-            i_end = min(length + 1, i_start+line_wrap) - 1
-            write(ou, fmt='(1X,A)') message(i_start+1:i_end)
-          else
-            i_end = i_start + last_space
-            write(ou, fmt='(1X,A)') message(i_start+1:i_end-1)
-          end if
-
-          ! Write up to last space
-
-          ! Advance starting position
-          i_start = i_end
-          if (i_start > length) exit
-        end if
-      end do
-    end if
-
-  end subroutine write_message
 
 !===============================================================================
 ! PRINT_PARTICLE displays the attributes of a particle
@@ -384,11 +329,11 @@ contains
     ! write out information about batch and generation
     write(UNIT=OUTPUT_UNIT, FMT='(2X,A9)', ADVANCE='NO') &
          trim(to_str(current_batch)) // "/" // trim(to_str(current_gen))
-    write(UNIT=OUTPUT_UNIT, FMT='(3X,F8.5)', ADVANCE='NO') k_generation(i)
+    write(UNIT=OUTPUT_UNIT, FMT='(3X,F8.5)', ADVANCE='NO') k_generation % data(i)
 
     ! write out entropy info
     if (entropy_on) write(UNIT=OUTPUT_UNIT, FMT='(3X, F8.5)', ADVANCE='NO') &
-         entropy(i)
+         entropy % data(i)
 
     if (n > 1) then
       write(UNIT=OUTPUT_UNIT, FMT='(3X, F8.5," +/-",F8.5)', ADVANCE='NO') &
@@ -418,11 +363,11 @@ contains
     write(UNIT=OUTPUT_UNIT, FMT='(2X,A9)', ADVANCE='NO') &
          trim(to_str(current_batch)) // "/" // trim(to_str(gen_per_batch))
     write(UNIT=OUTPUT_UNIT, FMT='(3X,F8.5)', ADVANCE='NO') &
-         k_generation(i)
+         k_generation % data(i)
 
     ! write out entropy info
     if (entropy_on) write(UNIT=OUTPUT_UNIT, FMT='(3X, F8.5)', ADVANCE='NO') &
-         entropy(i)
+         entropy % data(i)
 
     ! write out accumulated k-effective if after first active batch
     if (n > 1) then
@@ -570,7 +515,7 @@ contains
     write(ou,100) "Total time elapsed", time_total % elapsed
 
     ! Calculate particle rate in active/inactive batches
-    n_active = n_batches - n_inactive
+    n_active = current_batch - n_inactive
     if (restart_run) then
       if (restart_batch < n_inactive) then
         speed_inactive = real(n_particles * (n_inactive - restart_batch) * &

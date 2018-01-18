@@ -28,6 +28,10 @@ parser.add_argument('-d', '--destination', default='mcnp_endfb71',
                     help='Directory to create new library in')
 parser.add_argument('-f', '--fission_energy_release',
                     help='HDF5 file containing fission energy release data')
+parser.add_argument('--libver', choices=['earliest', 'latest'],
+                    default='earliest', help="Output HDF5 versioning. Use "
+                    "'earliest' for backwards compatibility or 'latest' for "
+                    "performance")
 parser.add_argument('mcnpdata', help='Directory containing endf71x and ENDF71SaB')
 args = parser.parse_args()
 assert os.path.isdir(args.mcnpdata)
@@ -80,7 +84,7 @@ for basename, xs_list in sorted(suffixes.items()):
     # Export HDF5 file
     h5_file = os.path.join(args.destination, data.name + '.h5')
     print('Writing {}...'.format(h5_file))
-    data.export_to_hdf5(h5_file, 'w')
+    data.export_to_hdf5(h5_file, 'w', libver=args.libver)
 
     # Register with library
     library.register_file(h5_file)

@@ -12,7 +12,6 @@ as debugging.
     :numbered:
     :maxdepth: 3
 
-    structures
     styleguide
     workflow
     user-input

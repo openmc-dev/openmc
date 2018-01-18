@@ -2,23 +2,29 @@ from collections import Mapping
 from ctypes import c_int, c_int32, c_double, c_char_p, POINTER
 from weakref import WeakValueDictionary
 
+import numpy as np
 from numpy.ctypeslib import as_array
+import scipy.stats
 
+from openmc.data.reaction import REACTION_NAME
 from . import _dll, Nuclide
 from .core import _FortranObjectWithID
 from .error import _error_handler, AllocationError, InvalidIDError
 from .filter import _get_filter
 
 
-__all__ = ['Tally', 'tallies']
+__all__ = ['Tally', 'tallies', 'global_tallies', 'num_realizations']
 
 # Tally functions
-_dll.openmc_get_tally_index.argtypes = [c_int32, POINTER(c_int32)]
-_dll.openmc_get_tally_index.restype = c_int
-_dll.openmc_get_tally_index.errcheck = _error_handler
 _dll.openmc_extend_tallies.argtypes = [c_int32, POINTER(c_int32), POINTER(c_int32)]
 _dll.openmc_extend_tallies.restype = c_int
 _dll.openmc_extend_tallies.errcheck = _error_handler
+_dll.openmc_get_tally_index.argtypes = [c_int32, POINTER(c_int32)]
+_dll.openmc_get_tally_index.restype = c_int
+_dll.openmc_get_tally_index.errcheck = _error_handler
+_dll.openmc_global_tallies.argtypes = [POINTER(POINTER(c_double))]
+_dll.openmc_global_tallies.restype = c_int
+_dll.openmc_global_tallies.errcheck = _error_handler
 _dll.openmc_tally_get_id.argtypes = [c_int32, POINTER(c_int32)]
 _dll.openmc_tally_get_id.restype = c_int
 _dll.openmc_tally_get_id.errcheck = _error_handler
@@ -26,10 +32,17 @@ _dll.openmc_tally_get_filters.argtypes = [
     c_int32, POINTER(POINTER(c_int32)), POINTER(c_int)]
 _dll.openmc_tally_get_filters.restype = c_int
 _dll.openmc_tally_get_filters.errcheck = _error_handler
+_dll.openmc_tally_get_n_realizations.argtypes = [c_int32, POINTER(c_int32)]
+_dll.openmc_tally_get_n_realizations.restype = c_int
+_dll.openmc_tally_get_n_realizations.errcheck = _error_handler
 _dll.openmc_tally_get_nuclides.argtypes = [
     c_int32, POINTER(POINTER(c_int)), POINTER(c_int)]
 _dll.openmc_tally_get_nuclides.restype = c_int
 _dll.openmc_tally_get_nuclides.errcheck = _error_handler
+_dll.openmc_tally_get_scores.argtypes = [
+    c_int32, POINTER(POINTER(c_int)), POINTER(c_int)]
+_dll.openmc_tally_get_scores.restype = c_int
+_dll.openmc_tally_get_scores.errcheck = _error_handler
 _dll.openmc_tally_results.argtypes = [
     c_int32, POINTER(POINTER(c_double)), POINTER(c_int*3)]
 _dll.openmc_tally_results.restype = c_int
@@ -49,6 +62,54 @@ _dll.openmc_tally_set_scores.errcheck = _error_handler
 _dll.openmc_tally_set_type.argtypes = [c_int32, c_char_p]
 _dll.openmc_tally_set_type.restype = c_int
 _dll.openmc_tally_set_type.errcheck = _error_handler
+
+
+_SCORES = {
+    -1: 'flux', -2: 'total', -3: 'scatter', -4: 'nu-scatter',
+    -9: 'absorption', -10: 'fission', -11: 'nu-fission', -12: 'kappa-fission',
+    -13: 'current', -18: 'events', -19: 'delayed-nu-fission',
+    -20: 'prompt-nu-fission', -21: 'inverse-velocity', -22: 'fission-q-prompt',
+    -23: 'fission-q-recoverable', -24: 'decay-rate'
+}
+
+
+def global_tallies():
+    """Mean and standard deviation of the mean for each global tally.
+
+    Returns
+    -------
+    list of tuple
+        For each global tally, a tuple of (mean, standard deviation)
+
+    """
+    ptr = POINTER(c_double)()
+    _dll.openmc_global_tallies(ptr)
+    array = as_array(ptr, (4, 3))
+
+    # Get sum, sum-of-squares, and number of realizations
+    sum_ = array[:, 1]
+    sum_sq = array[:, 2]
+    n = num_realizations()
+
+    # Determine mean
+    if n > 0:
+        mean = sum_ / n
+    else:
+        mean = sum_.copy()
+
+    # Determine standard deviation
+    nonzero = np.abs(mean) > 0
+    stdev = np.empty_like(mean)
+    stdev.fill(np.inf)
+    if n > 1:
+        stdev[nonzero] = np.sqrt((sum_sq[nonzero]/n - mean[nonzero]**2)/(n - 1))
+
+    return list(zip(mean, stdev))
+
+
+def num_realizations():
+    """Number of realizations of global tallies."""
+    return c_int32.in_dll(_dll, 'n_realizations').value
 
 
 class Tally(_FortranObjectWithID):
@@ -74,10 +135,16 @@ class Tally(_FortranObjectWithID):
         ID of the tally
     filters : list
         List of tally filters
+    mean : numpy.ndarray
+        An array containing the sample mean for each bin
     nuclides : list of str
         List of nuclides to score results for
+    num_realizations : int
+        Number of realizations
     results : numpy.ndarray
         Array of tally results
+    std_dev : numpy.ndarray
+        An array containing the sample standard deviation for each bin
 
     """
     __instances = WeakValueDictionary()
@@ -130,21 +197,6 @@ class Tally(_FortranObjectWithID):
         _dll.openmc_tally_get_filters(self._index, filt_idx, n)
         return [_get_filter(filt_idx[i]) for i in range(n.value)]
 
-    @property
-    def nuclides(self):
-        nucs = POINTER(c_int)()
-        n = c_int()
-        _dll.openmc_tally_get_nuclides(self._index, nucs, n)
-        return [Nuclide(nucs[i]).name if nucs[i] > 0 else 'total'
-                for i in range(n.value)]
-
-    @property
-    def results(self):
-        data = POINTER(c_double)()
-        shape = (c_int*3)()
-        _dll.openmc_tally_results(self._index, data, shape)
-        return as_array(data, tuple(shape[::-1]))
-
     @filters.setter
     def filters(self, filters):
         # Get filter indices as int32_t[]
@@ -153,6 +205,23 @@ class Tally(_FortranObjectWithID):
 
         _dll.openmc_tally_set_filters(self._index, n, indices)
 
+    @property
+    def mean(self):
+        n = self.num_realizations
+        sum_ = self.results[:, :, 1]
+        if n > 0:
+            return sum_ / n
+        else:
+            return sum_.copy()
+
+    @property
+    def nuclides(self):
+        nucs = POINTER(c_int)()
+        n = c_int()
+        _dll.openmc_tally_get_nuclides(self._index, nucs, n)
+        return [Nuclide(nucs[i]).name if nucs[i] > 0 else 'total'
+                for i in range(n.value)]
+
     @nuclides.setter
     def nuclides(self, nuclides):
         nucs = (c_char_p * len(nuclides))()
@@ -160,8 +229,36 @@ class Tally(_FortranObjectWithID):
         _dll.openmc_tally_set_nuclides(self._index, len(nuclides), nucs)
 
     @property
+    def num_realizations(self):
+        n = c_int32()
+        _dll.openmc_tally_get_n_realizations(self._index, n)
+        return n.value
+
+    @property
+    def results(self):
+        data = POINTER(c_double)()
+        shape = (c_int*3)()
+        _dll.openmc_tally_results(self._index, data, shape)
+        return as_array(data, tuple(shape[::-1]))
+
+    @property
     def scores(self):
-        pass
+        scores_as_int = POINTER(c_int)()
+        n = c_int()
+        try:
+            _dll.openmc_tally_get_scores(self._index, scores_as_int, n)
+        except AllocationError:
+            return []
+        else:
+            scores = []
+            for i in range(n.value):
+                if scores_as_int[i] in _SCORES:
+                    scores.append(_SCORES[scores_as_int[i]])
+                elif scores_as_int[i] in REACTION_NAME:
+                    scores.append(REACTION_NAME[scores_as_int[i]])
+                else:
+                    scores.append(str(scores_as_int[i]))
+            return scores
 
     @scores.setter
     def scores(self, scores):
@@ -169,21 +266,47 @@ class Tally(_FortranObjectWithID):
         scores_[:] = [x.encode() for x in scores]
         _dll.openmc_tally_set_scores(self._index, len(scores), scores_)
 
-    @classmethod
-    def new(cls, tally_id=None):
-        # Determine ID to assign
-        if tally_id is None:
-            try:
-                tally_id = max(tallies) + 1
-            except ValueError:
-                tally_id = 1
+    @property
+    def std_dev(self):
+        results = self.results
+        std_dev = np.empty(results.shape[:2])
+        std_dev.fill(np.inf)
 
-        index = c_int32()
-        _dll.openmc_extend_tallies(1, index, None)
-        _dll.openmc_tally_set_type(index, b'generic')
-        tally = cls(index.value)
-        tally.id = tally_id
-        return tally
+        n = self.num_realizations
+        if n > 1:
+            # Get sum and sum-of-squares from results
+            sum_ = results[:, :, 1]
+            sum_sq = results[:, :, 2]
+
+            # Determine non-zero entries
+            mean = sum_ / n
+            nonzero = np.abs(mean) > 0
+
+            # Calculate sample standard deviation of the mean
+            std_dev[nonzero] = np.sqrt(
+                (sum_sq[nonzero]/n - mean[nonzero]**2)/(n - 1))
+
+        return std_dev
+
+    def ci_width(self, alpha=0.05):
+        """Confidence interval half-width based on a Student t distribution
+
+        Parameters
+        ----------
+        alpha : float
+            Significance level (one minus the confidence level!)
+
+        Returns
+        -------
+        float
+            Half-width of a two-sided (1 - :math:`alpha`) confidence interval
+
+        """
+        half_width = self.std_dev.copy()
+        n = self.num_realizations
+        if n > 1:
+            half_width *= scipy.stats.t.ppf(1 - alpha/2, n - 1)
+        return half_width
 
 
 class _TallyMapping(Mapping):

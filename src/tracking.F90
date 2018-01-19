@@ -5,7 +5,8 @@ module tracking
   use error,              only: fatal_error, warning, write_message
   use geometry_header,    only: cells
   use geometry,           only: find_cell, distance_to_boundary, cross_lattice, &
-                                check_cell_overlap, surface_periodic_c
+                                check_cell_overlap, surface_reflect_c, &
+                                surface_periodic_c
   use message_passing
   use mgxs_header
   use nuclide_header
@@ -354,7 +355,7 @@ contains
       end if
 
       ! Reflect particle off surface
-      call surf%reflect(p%coord(1)%xyz, p%coord(1)%uvw)
+      call surface_reflect_c(i_surface-1, p%coord(1)%xyz, p%coord(1)%uvw)
 
       ! Make sure new particle direction is normalized
       u = p%coord(1)%uvw(1)

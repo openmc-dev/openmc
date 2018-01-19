@@ -233,8 +233,8 @@ class SurfaceXPlane : public PeriodicSurface
 public:
   SurfaceXPlane(pugi::xml_node surf_node);
   double evaluate(const double xyz[3]) const;
-  double distance(const double xyz[3], const double uvw[3],
-                  const bool coincident) const;
+  double distance(const double xyz[3], const double uvw[3], bool coincident)
+         const;
   void normal(const double xyz[3], double uvw[3]) const;
   bool periodic_translate(PeriodicSurface *other, double xyz[3], double uvw[3])
        const;
@@ -416,8 +416,8 @@ class SurfacePlane : public PeriodicSurface
 public:
   SurfacePlane(pugi::xml_node surf_node);
   double evaluate(const double xyz[3]) const;
-  double distance(const double xyz[3], const double uvw[3],
-                  const bool coincident) const;
+  double distance(const double xyz[3], const double uvw[3], bool coincident)
+         const;
   void normal(const double xyz[3], double uvw[3]) const;
   bool periodic_translate(PeriodicSurface *other, double xyz[3], double uvw[3])
        const;
@@ -1136,6 +1136,12 @@ extern "C" bool
 surface_sense(int surf_ind, double xyz[3], double uvw[3])
 {
   return surfaces_c[surf_ind]->sense(xyz, uvw);
+}
+
+extern "C" void
+surface_reflect(int surf_ind, double xyz[3], double uvw[3])
+{
+  surfaces_c[surf_ind]->reflect(xyz, uvw);
 }
 
 extern "C" double

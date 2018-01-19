@@ -537,7 +537,6 @@ contains
     real(8) :: surf_uvw(3)        ! surface normal direction
     logical :: coincident         ! is particle on surface?
     type(Cell),       pointer :: c
-    class(Surface),   pointer :: surf
     class(Lattice),   pointer :: lat
 
     ! inialize distance to infinity (huge)

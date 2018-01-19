@@ -9,13 +9,13 @@ program main
 
   implicit none
 
-#ifdef MPI
+#ifdef OPENMC_MPI
   integer :: mpi_err ! MPI error code
 #endif
 
   ! Initialize run -- when run with MPI, pass communicator
-#ifdef MPI
-#ifdef MPIF08
+#ifdef OPENMC_MPI
+#ifdef OPENMC_MPIF08
   call openmc_init(MPI_COMM_WORLD % MPI_VAL)
 #else
   call openmc_init(MPI_COMM_WORLD)
@@ -39,7 +39,7 @@ program main
   ! finalize run
   call openmc_finalize()
 
-#ifdef MPI
+#ifdef OPENMC_MPI
   ! If MPI is in use and enabled, terminate it
   call MPI_FINALIZE(mpi_err)
 #endif

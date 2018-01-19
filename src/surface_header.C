@@ -1,8 +1,12 @@
+#include <array>  // For std::array
 #include <cstring>  // For strcmp
 #include <limits>  // For numeric_limits
 #include <math.h>  // For fabs
 
 #include "pugixml/pugixml.hpp"
+#include "hdf5.h"
+
+#include "hdf5_interface.h"
 
 // DEBUGGING
 #include <typeinfo>
@@ -14,6 +18,11 @@
 
 const double FP_COINCIDENT = 1e-12;
 const double INFTY = std::numeric_limits<double>::max();
+
+const int BC_TRANSMIT{0};
+const int BC_VACUUM{1};
+const int BC_REFLECT{2};
+const int BC_PERIODIC{3};
 
 //==============================================================================
 // Global array of surfaces
@@ -127,6 +136,13 @@ public:
   //! @param xyz[3] A 3D Cartesian coordinate.
   //! @param uvw[3] This output argument provides the normal.
   virtual void normal(const double xyz[3], double uvw[3]) const = 0;
+
+  //! Write all information needed to reconstruct the surface to an HDF5 group.
+  //! @param group_id An HDF5 group id.
+  virtual void to_hdf5(hid_t group_id) const = 0;
+
+protected:
+  void write_bc_to_hdf5(hid_t group_id) const;
 };
 
 bool
@@ -162,6 +178,25 @@ Surface::reflect(const double xyz[3], double uvw[3]) const
   uvw[0] -= 2.0 * projection / magnitude * norm[0];
   uvw[1] -= 2.0 * projection / magnitude * norm[1];
   uvw[2] -= 2.0 * projection / magnitude * norm[2];
+}
+
+void
+Surface::write_bc_to_hdf5(hid_t group_id) const
+{
+  switch(bc) {
+    case BC_TRANSMIT :
+      write_string(group_id, "boundary_type", "transmission");
+      break;
+    case BC_VACUUM :
+      write_string(group_id, "boundary_type", "vacuum");
+      break;
+    case BC_REFLECT :
+      write_string(group_id, "boundary_type", "reflective");
+      break;
+    case BC_PERIODIC :
+      write_string(group_id, "boundary_type", "periodic");
+      break;
+  }
 }
 
 //==============================================================================
@@ -236,6 +271,7 @@ public:
   double distance(const double xyz[3], const double uvw[3], bool coincident)
          const;
   void normal(const double xyz[3], double uvw[3]) const;
+  void to_hdf5(hid_t group_id) const;
   bool periodic_translate(PeriodicSurface *other, double xyz[3], double uvw[3])
        const;
 };
@@ -259,6 +295,14 @@ inline double SurfaceXPlane::distance(const double xyz[3], const double uvw[3],
 inline void SurfaceXPlane::normal(const double xyz[3], double uvw[3]) const
 {
   axis_aligned_plane_normal<0, 1, 2>(xyz, uvw);
+}
+
+void SurfaceXPlane::to_hdf5(hid_t group_id) const
+{
+  write_string(group_id, "type", "x-plane");
+  std::array<double, 1> coeffs{{x0}};
+  write_double_1D(group_id, "coefficients", coeffs);
+  write_bc_to_hdf5(group_id);
 }
 
 bool SurfaceXPlane::periodic_translate(PeriodicSurface *other, double xyz[3],
@@ -285,7 +329,7 @@ bool SurfaceXPlane::periodic_translate(PeriodicSurface *other, double xyz[3],
 
     return true;
   }
-};
+}
 
 //==============================================================================
 // SurfaceYPlane
@@ -303,6 +347,7 @@ public:
   double distance(const double xyz[3], const double uvw[3],
                   bool coincident) const;
   void normal(const double xyz[3], double uvw[3]) const;
+  void to_hdf5(hid_t group_id) const;
   bool periodic_translate(PeriodicSurface *other, double xyz[3], double uvw[3])
        const;
 };
@@ -326,6 +371,14 @@ inline double SurfaceYPlane::distance(const double xyz[3], const double uvw[3],
 inline void SurfaceYPlane::normal(const double xyz[3], double uvw[3]) const
 {
   axis_aligned_plane_normal<1, 0, 2>(xyz, uvw);
+}
+
+void SurfaceYPlane::to_hdf5(hid_t group_id) const
+{
+  write_string(group_id, "type", "y-plane");
+  std::array<double, 1> coeffs{{y0}};
+  write_double_1D(group_id, "coefficients", coeffs);
+  write_bc_to_hdf5(group_id);
 }
 
 bool SurfaceYPlane::periodic_translate(PeriodicSurface *other, double xyz[3],
@@ -352,7 +405,7 @@ bool SurfaceYPlane::periodic_translate(PeriodicSurface *other, double xyz[3],
 
     return true;
   }
-};
+}
 
 //==============================================================================
 // SurfaceZPlane
@@ -370,6 +423,7 @@ public:
   double distance(const double xyz[3], const double uvw[3],
                   bool coincident) const;
   void normal(const double xyz[3], double uvw[3]) const;
+  void to_hdf5(hid_t group_id) const;
   bool periodic_translate(PeriodicSurface *other, double xyz[3], double uvw[3])
        const;
 };
@@ -395,13 +449,21 @@ inline void SurfaceZPlane::normal(const double xyz[3], double uvw[3]) const
   axis_aligned_plane_normal<2, 0, 1>(xyz, uvw);
 }
 
+void SurfaceZPlane::to_hdf5(hid_t group_id) const
+{
+  write_string(group_id, "type", "z-plane");
+  std::array<double, 1> coeffs{{z0}};
+  write_double_1D(group_id, "coefficients", coeffs);
+  write_bc_to_hdf5(group_id);
+}
+
 bool SurfaceZPlane::periodic_translate(PeriodicSurface *other, double xyz[3],
                                        double uvw[3]) const
 {
   // Assume the other plane is aligned along z.  Just change the z coord.
   xyz[2] = z0;
   return false;
-};
+}
 
 //==============================================================================
 // SurfacePlane
@@ -419,6 +481,7 @@ public:
   double distance(const double xyz[3], const double uvw[3], bool coincident)
          const;
   void normal(const double xyz[3], double uvw[3]) const;
+  void to_hdf5(hid_t group_id) const;
   bool periodic_translate(PeriodicSurface *other, double xyz[3], double uvw[3])
        const;
 };
@@ -455,6 +518,14 @@ SurfacePlane::normal(const double xyz[3], double uvw[3]) const
   uvw[0] = A;
   uvw[1] = B;
   uvw[2] = C;
+}
+
+void SurfacePlane::to_hdf5(hid_t group_id) const
+{
+  write_string(group_id, "type", "plane");
+  std::array<double, 4> coeffs{{A, B, C, D}};
+  write_double_1D(group_id, "coefficients", coeffs);
+  write_bc_to_hdf5(group_id);
 }
 
 bool SurfacePlane::periodic_translate(PeriodicSurface *other, double xyz[3],
@@ -564,6 +635,7 @@ public:
   double distance(const double xyz[3], const double uvw[3],
                   bool coincident) const;
   void normal(const double xyz[3], double uvw[3]) const;
+  void to_hdf5(hid_t group_id) const;
 };
 
 SurfaceXCylinder::SurfaceXCylinder(pugi::xml_node surf_node)
@@ -588,6 +660,15 @@ inline void SurfaceXCylinder::normal(const double xyz[3], double uvw[3]) const
   axis_aligned_cylinder_normal<0, 1, 2>(xyz, uvw, y0, z0);
 }
 
+
+void SurfaceXCylinder::to_hdf5(hid_t group_id) const
+{
+  write_string(group_id, "type", "x-cylinder");
+  std::array<double, 3> coeffs{{y0, z0, r}};
+  write_double_1D(group_id, "coefficients", coeffs);
+  write_bc_to_hdf5(group_id);
+}
+
 //==============================================================================
 // SurfaceYCylinder
 //! A cylinder aligned along the y-axis.
@@ -605,6 +686,7 @@ public:
   double distance(const double xyz[3], const double uvw[3],
                   bool coincident) const;
   void normal(const double xyz[3], double uvw[3]) const;
+  void to_hdf5(hid_t group_id) const;
 };
 
 SurfaceYCylinder::SurfaceYCylinder(pugi::xml_node surf_node)
@@ -629,6 +711,14 @@ inline void SurfaceYCylinder::normal(const double xyz[3], double uvw[3]) const
   axis_aligned_cylinder_normal<1, 0, 2>(xyz, uvw, x0, z0);
 }
 
+void SurfaceYCylinder::to_hdf5(hid_t group_id) const
+{
+  write_string(group_id, "type", "y-cylinder");
+  std::array<double, 3> coeffs{{x0, z0, r}};
+  write_double_1D(group_id, "coefficients", coeffs);
+  write_bc_to_hdf5(group_id);
+}
+
 //==============================================================================
 // SurfaceZCylinder
 //! A cylinder aligned along the z-axis.
@@ -646,6 +736,7 @@ public:
   double distance(const double xyz[3], const double uvw[3],
                   bool coincident) const;
   void normal(const double xyz[3], double uvw[3]) const;
+  void to_hdf5(hid_t group_id) const;
 };
 
 SurfaceZCylinder::SurfaceZCylinder(pugi::xml_node surf_node)
@@ -670,6 +761,14 @@ inline void SurfaceZCylinder::normal(const double xyz[3], double uvw[3]) const
   axis_aligned_cylinder_normal<2, 0, 1>(xyz, uvw, x0, y0);
 }
 
+void SurfaceZCylinder::to_hdf5(hid_t group_id) const
+{
+  write_string(group_id, "type", "z-cylinder");
+  std::array<double, 3> coeffs{{x0, y0, r}};
+  write_double_1D(group_id, "coefficients", coeffs);
+  write_bc_to_hdf5(group_id);
+}
+
 //==============================================================================
 // SurfaceSphere
 //! A sphere.
@@ -687,6 +786,7 @@ public:
   double distance(const double xyz[3], const double uvw[3],
                   bool coincident) const;
   void normal(const double xyz[3], double uvw[3]) const;
+  void to_hdf5(hid_t group_id) const;
 };
 
 SurfaceSphere::SurfaceSphere(pugi::xml_node surf_node)
@@ -746,6 +846,14 @@ inline void SurfaceSphere::normal(const double xyz[3], double uvw[3]) const
   uvw[0] = 2.0 * (xyz[0] - x0);
   uvw[1] = 2.0 * (xyz[1] - y0);
   uvw[2] = 2.0 * (xyz[2] - z0);
+}
+
+void SurfaceSphere::to_hdf5(hid_t group_id) const
+{
+  write_string(group_id, "type", "sphere");
+  std::array<double, 4> coeffs{{x0, y0, z0, r}};
+  write_double_1D(group_id, "coefficients", coeffs);
+  write_bc_to_hdf5(group_id);
 }
 
 //==============================================================================
@@ -848,6 +956,7 @@ public:
   double distance(const double xyz[3], const double uvw[3],
                   bool coincident) const;
   void normal(const double xyz[3], double uvw[3]) const;
+  void to_hdf5(hid_t group_id) const;
 };
 
 SurfaceXCone::SurfaceXCone(pugi::xml_node surf_node)
@@ -872,6 +981,14 @@ inline void SurfaceXCone::normal(const double xyz[3], double uvw[3]) const
   axis_aligned_cone_normal<0, 1, 2>(xyz, uvw, x0, y0, z0, r_sq);
 }
 
+void SurfaceXCone::to_hdf5(hid_t group_id) const
+{
+  write_string(group_id, "type", "x-cone");
+  std::array<double, 4> coeffs{{x0, y0, z0, r_sq}};
+  write_double_1D(group_id, "coefficients", coeffs);
+  write_bc_to_hdf5(group_id);
+}
+
 //==============================================================================
 // SurfaceYCone
 //! A cone aligned along the y-axis.
@@ -889,6 +1006,7 @@ public:
   double distance(const double xyz[3], const double uvw[3],
                   bool coincident) const;
   void normal(const double xyz[3], double uvw[3]) const;
+  void to_hdf5(hid_t group_id) const;
 };
 
 SurfaceYCone::SurfaceYCone(pugi::xml_node surf_node)
@@ -913,6 +1031,14 @@ inline void SurfaceYCone::normal(const double xyz[3], double uvw[3]) const
   axis_aligned_cone_normal<1, 0, 2>(xyz, uvw, y0, x0, z0, r_sq);
 }
 
+void SurfaceYCone::to_hdf5(hid_t group_id) const
+{
+  write_string(group_id, "type", "y-cone");
+  std::array<double, 4> coeffs{{x0, y0, z0, r_sq}};
+  write_double_1D(group_id, "coefficients", coeffs);
+  write_bc_to_hdf5(group_id);
+}
+
 //==============================================================================
 // SurfaceZCone
 //! A cone aligned along the z-axis.
@@ -930,6 +1056,7 @@ public:
   double distance(const double xyz[3], const double uvw[3],
                   bool coincident) const;
   void normal(const double xyz[3], double uvw[3]) const;
+  void to_hdf5(hid_t group_id) const;
 };
 
 SurfaceZCone::SurfaceZCone(pugi::xml_node surf_node)
@@ -954,6 +1081,14 @@ inline void SurfaceZCone::normal(const double xyz[3], double uvw[3]) const
   axis_aligned_cone_normal<2, 0, 1>(xyz, uvw, z0, x0, y0, r_sq);
 }
 
+void SurfaceZCone::to_hdf5(hid_t group_id) const
+{
+  write_string(group_id, "type", "z-cone");
+  std::array<double, 4> coeffs{{x0, y0, z0, r_sq}};
+  write_double_1D(group_id, "coefficients", coeffs);
+  write_bc_to_hdf5(group_id);
+}
+
 //==============================================================================
 // SurfaceQuadric
 //! A general surface described by a quadratic equation.
@@ -971,6 +1106,7 @@ public:
   double distance(const double xyz[3], const double uvw[3],
                   bool coincident) const;
   void normal(const double xyz[3], double uvw[3]) const;
+  void to_hdf5(hid_t group_id) const;
 };
 
 SurfaceQuadric::SurfaceQuadric(pugi::xml_node surf_node)
@@ -1055,6 +1191,14 @@ SurfaceQuadric::normal(const double xyz[3], double uvw[3]) const
   uvw[2] = 2.0*C*z + E*y + F*x + J;
 }
 
+void SurfaceQuadric::to_hdf5(hid_t group_id) const
+{
+  write_string(group_id, "type", "quadric");
+  std::array<double, 10> coeffs{{A, B, C, D, E, F, G, H, J, K}};
+  write_double_1D(group_id, "coefficients", coeffs);
+  write_bc_to_hdf5(group_id);
+}
+
 //==============================================================================
 
 extern "C" void
@@ -1084,6 +1228,7 @@ read_surfaces(pugi::xml_node *node)
       } else {
         std::cout << "ERROR: Found a surface with no type attribute/node"
              << std::endl;
+        //TODO: call fatal_error
       }
 
       if (strcmp(surf_type, "x-plane") == 0) {
@@ -1125,6 +1270,33 @@ read_surfaces(pugi::xml_node *node)
       } else {
         std::cout << "Call error or handle uppercase here!" << std::endl;
         std::cout << surf_type << std::endl;
+        //TODO: call fatal_error
+      }
+
+      const pugi::char_t *surf_bc{""};
+      if (surf_node.attribute("boundary")) {
+        surf_bc = surf_node.attribute("boundary").value();
+      } else if (surf_node.child("boundary")) {
+        surf_bc = surf_node.attribute("boundary").value();
+      }
+
+      if (strcmp(surf_bc, "transmission") == 0
+           or strcmp(surf_bc, "transmit") == 0
+           or strcmp(surf_bc, "") == 0) {
+        surfaces_c[i_surf]->bc = BC_TRANSMIT;
+
+      } else if (strcmp(surf_bc, "vacuum") == 0) {
+        surfaces_c[i_surf]->bc = BC_VACUUM;
+
+      } else if (strcmp(surf_bc, "reflective") == 0
+                 or strcmp(surf_bc, "reflect") == 0
+                 or strcmp(surf_bc, "reflecting") == 0) {
+        surfaces_c[i_surf]->bc = BC_REFLECT;
+      } else if (strcmp(surf_bc, "periodic") == 0) {
+        surfaces_c[i_surf]->bc = BC_PERIODIC;
+      } else {
+        std::cout << "Unknown boundary condition" << std::endl;
+        //TODO: call fatal_error
       }
     }
   }
@@ -1154,6 +1326,12 @@ extern "C" void
 surface_normal(int surf_ind, double xyz[3], double uvw[3])
 {
   return surfaces_c[surf_ind]->normal(xyz, uvw);
+}
+
+extern "C" void
+surface_to_hdf5(int surf_ind, hid_t group)
+{
+  surfaces_c[surf_ind]->to_hdf5(group);
 }
 
 extern "C" bool

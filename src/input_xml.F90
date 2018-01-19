@@ -54,7 +54,7 @@ module input_xml
       implicit none
       type(C_PTR) :: node_ptr
     end subroutine read_surfaces
-  end interface 
+  end interface
 
 contains
 
@@ -1081,77 +1081,23 @@ contains
 
       select type(s)
       type is (SurfaceXPlane)
-        s%x0 = coeffs(1)
-
         ! Determine outer surfaces
-        xmin = min(xmin, s % x0)
-        xmax = max(xmax, s % x0)
-        if (xmin == s % x0) i_xmin = i
-        if (xmax == s % x0) i_xmax = i
+        xmin = min(xmin, coeffs(1))
+        xmax = max(xmax, coeffs(1))
+        if (xmin == coeffs(1)) i_xmin = i
+        if (xmax == coeffs(1)) i_xmax = i
       type is (SurfaceYPlane)
-        s%y0 = coeffs(1)
-
         ! Determine outer surfaces
-        ymin = min(ymin, s % y0)
-        ymax = max(ymax, s % y0)
-        if (ymin == s % y0) i_ymin = i
-        if (ymax == s % y0) i_ymax = i
+        ymin = min(ymin, coeffs(1))
+        ymax = max(ymax, coeffs(1))
+        if (ymin == coeffs(1)) i_ymin = i
+        if (ymax == coeffs(1)) i_ymax = i
       type is (SurfaceZPlane)
-        s%z0 = coeffs(1)
-
         ! Determine outer surfaces
-        zmin = min(zmin, s % z0)
-        zmax = max(zmax, s % z0)
-        if (zmin == s % z0) i_zmin = i
-        if (zmax == s % z0) i_zmax = i
-      type is (SurfacePlane)
-        s%A = coeffs(1)
-        s%B = coeffs(2)
-        s%C = coeffs(3)
-        s%D = coeffs(4)
-      type is (SurfaceXCylinder)
-        s%y0 = coeffs(1)
-        s%z0 = coeffs(2)
-        s%r = coeffs(3)
-      type is (SurfaceYCylinder)
-        s%x0 = coeffs(1)
-        s%z0 = coeffs(2)
-        s%r = coeffs(3)
-      type is (SurfaceZCylinder)
-        s%x0 = coeffs(1)
-        s%y0 = coeffs(2)
-        s%r = coeffs(3)
-      type is (SurfaceSphere)
-        s%x0 = coeffs(1)
-        s%y0 = coeffs(2)
-        s%z0 = coeffs(3)
-        s%r = coeffs(4)
-      type is (SurfaceXCone)
-        s%x0 = coeffs(1)
-        s%y0 = coeffs(2)
-        s%z0 = coeffs(3)
-        s%r2 = coeffs(4)
-      type is (SurfaceYCone)
-        s%x0 = coeffs(1)
-        s%y0 = coeffs(2)
-        s%z0 = coeffs(3)
-        s%r2 = coeffs(4)
-      type is (SurfaceZCone)
-        s%x0 = coeffs(1)
-        s%y0 = coeffs(2)
-        s%z0 = coeffs(3)
-        s%r2 = coeffs(4)
-      type is (SurfaceQuadric)
-        s%A = coeffs(1)
-        s%B = coeffs(2)
-        s%C = coeffs(3)
-        s%D = coeffs(4)
-        s%E = coeffs(5)
-        s%F = coeffs(6)
-        s%G = coeffs(7)
-        s%H = coeffs(8)
-        s%J = coeffs(9)
-        s%K = coeffs(10)
+        zmin = min(zmin, coeffs(1))
+        zmax = max(zmax, coeffs(1))
+        if (zmin == coeffs(1)) i_zmin = i
+        if (zmax == coeffs(1)) i_zmax = i
       end select
 
       ! No longer need coefficients

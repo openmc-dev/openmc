@@ -124,7 +124,7 @@ contains
       ! Setup file access property list with parallel I/O access
       call h5pcreate_f(H5P_FILE_ACCESS_F, plist, hdf5_err)
 #ifdef PHDF5
-#ifdef MPIF08
+#ifdef OPENMC_MPIF08
       call h5pset_fapl_mpio_f(plist, mpi_intracomm%MPI_VAL, &
            MPI_INFO_NULL%MPI_VAL, hdf5_err)
 #else
@@ -174,7 +174,7 @@ contains
       ! Setup file access property list with parallel I/O access
       call h5pcreate_f(H5P_FILE_ACCESS_F, plist, hdf5_err)
 #ifdef PHDF5
-#ifdef MPIF08
+#ifdef OPENMC_MPIF08
       call h5pset_fapl_mpio_f(plist, mpi_intracomm%MPI_VAL, &
            MPI_INFO_NULL%MPI_VAL, hdf5_err)
 #else

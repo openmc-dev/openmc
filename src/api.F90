@@ -171,7 +171,7 @@ contains
     ! Close FORTRAN interface.
     call h5close_f(err)
 
-#ifdef MPI
+#ifdef OPENMC_MPI
     ! Free all MPI types
     call MPI_TYPE_FREE(MPI_BANK, err)
 #endif

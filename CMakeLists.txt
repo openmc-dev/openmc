@@ -48,14 +48,14 @@ add_definitions(-DMAX_COORD=${maxcoord})
 set(MPI_ENABLED FALSE)
 if($ENV{FC} MATCHES "(mpi[^/]*|ftn)$")
   message("-- Detected MPI wrapper: $ENV{FC}")
-  add_definitions(-DMPI)
+  add_definitions(-DOPENMC_MPI)
   set(MPI_ENABLED TRUE)
 endif()
 
 # Check for Fortran 2008 MPI interface
 if(MPI_ENABLED AND mpif08)
   message("-- Using Fortran 2008 MPI bindings")
-  add_definitions(-DMPIF08)
+  add_definitions(-DOPENMC_MPIF08)
 endif()
 
 #===============================================================================
@@ -435,6 +435,7 @@ set(LIBOPENMC_FORTRAN_SRC
   src/tallies/trigger_header.F90
 )
 set(LIBOPENMC_CXX_SRC
+  src/hdf5_interface.h
   src/random_lcg.h
   src/random_lcg.cpp
   src/surface_header.C

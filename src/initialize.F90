@@ -52,8 +52,8 @@ contains
     ! Copy the communicator to a new variable. This is done to avoid changing
     ! the signature of this subroutine. If MPI is being used but no communicator
     ! was passed, assume MPI_COMM_WORLD.
-#ifdef MPI
-#ifdef MPIF08
+#ifdef OPENMC_MPI
+#ifdef OPENMC_MPIF08
     type(MPI_Comm), intent(in) :: comm     ! MPI intracommunicator
     if (present(intracomm)) then
       comm % MPI_VAL = intracomm
@@ -74,7 +74,7 @@ contains
     call time_total%start()
     call time_initialize%start()
 
-#ifdef MPI
+#ifdef OPENMC_MPI
     ! Setup MPI
     call initialize_mpi(comm)
 #endif
@@ -108,7 +108,7 @@ contains
 
   end subroutine openmc_init
 
-#ifdef MPI
+#ifdef OPENMC_MPI
 !===============================================================================
 ! INITIALIZE_MPI starts up the Message Passing Interface (MPI) and determines
 ! the number of processors the problem is being run with as well as the rank of
@@ -116,7 +116,7 @@ contains
 !===============================================================================
 
   subroutine initialize_mpi(intracomm)
-#ifdef MPIF08
+#ifdef OPENMC_MPIF08
     type(MPI_Comm), intent(in) :: intracomm  ! MPI intracommunicator
 #else
     integer, intent(in) :: intracomm         ! MPI intracommunicator
@@ -124,7 +124,7 @@ contains
 
     integer                   :: mpi_err          ! MPI error code
     integer                   :: bank_blocks(5)   ! Count for each datatype
-#ifdef MPIF08
+#ifdef OPENMC_MPIF08
     type(MPI_Datatype)        :: bank_types(5)
 #else
     integer                   :: bank_types(5)    ! Datatypes

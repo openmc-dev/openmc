@@ -128,7 +128,7 @@ contains
     integer :: line_wrap ! length of line
     integer :: length    ! length of message
     integer :: indent    ! length of indentation
-#ifdef MPI
+#ifdef OPENMC_MPI
     integer :: mpi_err
 #endif
 
@@ -180,7 +180,7 @@ contains
       end if
     end do
 
-#ifdef MPI
+#ifdef OPENMC_MPI
     ! Abort MPI
     call MPI_ABORT(mpi_intracomm, code, mpi_err)
 #endif

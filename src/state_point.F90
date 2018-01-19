@@ -523,7 +523,7 @@ contains
     integer(HID_T) :: tallies_group, tally_group
     real(8), allocatable :: tally_temp(:,:,:) ! contiguous array of results
     real(8), target :: global_temp(3,N_GLOBAL_TALLIES)
-#ifdef MPI
+#ifdef OPENMC_MPI
     integer :: mpi_err ! MPI error code
     real(8) :: dummy   ! temporary receive buffer for non-root reduces
 #endif
@@ -543,7 +543,7 @@ contains
     end if
 
 
-#ifdef MPI
+#ifdef OPENMC_MPI
     ! Reduce global tallies
     n_bins = size(global_tallies)
     call MPI_REDUCE(global_tallies, global_temp, n_bins, MPI_REAL8, MPI_SUM, &
@@ -586,7 +586,7 @@ contains
 
             ! The MPI_IN_PLACE specifier allows the master to copy values into
             ! a receive buffer without having a temporary variable
-#ifdef MPI
+#ifdef OPENMC_MPI
             call MPI_REDUCE(MPI_IN_PLACE, tally_temp, n_bins, MPI_REAL8, &
                  MPI_SUM, 0, mpi_intracomm, mpi_err)
 #endif
@@ -610,7 +610,7 @@ contains
             deallocate(dummy_tally % results)
           else
             ! Receive buffer not significant at other processors
-#ifdef MPI
+#ifdef OPENMC_MPI
             call MPI_REDUCE(tally_temp, dummy, n_bins, MPI_REAL8, MPI_SUM, &
                  0, mpi_intracomm, mpi_err)
 #endif
@@ -849,7 +849,7 @@ contains
     integer(HID_T) :: plist    ! property list
 #else
     integer :: i
-#ifdef MPI
+#ifdef OPENMC_MPI
     integer :: mpi_err ! MPI error code
     type(Bank), allocatable, target :: temp_source(:)
 #endif
@@ -897,7 +897,7 @@ contains
            dspace, dset, hdf5_err)
 
       ! Save source bank sites since the souce_bank array is overwritten below
-#ifdef MPI
+#ifdef OPENMC_MPI
       allocate(temp_source(work))
       temp_source(:) = source_bank(:)
 #endif
@@ -907,7 +907,7 @@ contains
         dims(1) = work_index(i+1) - work_index(i)
         call h5screate_simple_f(1, dims, memspace, hdf5_err)
 
-#ifdef MPI
+#ifdef OPENMC_MPI
         ! Receive source sites from other processes
         if (i > 0) then
           call MPI_RECV(source_bank, int(dims(1)), MPI_BANK, i, i, &
@@ -933,12 +933,12 @@ contains
       call h5dclose_f(dset, hdf5_err)
 
       ! Restore state of source bank
-#ifdef MPI
+#ifdef OPENMC_MPI
       source_bank(:) = temp_source(:)
       deallocate(temp_source)
 #endif
     else
-#ifdef MPI
+#ifdef OPENMC_MPI
       call MPI_SEND(source_bank, int(work), MPI_BANK, 0, rank, &
            mpi_intracomm, mpi_err)
 #endif

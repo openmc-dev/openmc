@@ -22,18 +22,10 @@ module surface_header
     character(len=104) :: name = ""   ! User-defined name
   contains
     procedure :: reflect
-    procedure(surface_evaluate_), deferred :: evaluate
     procedure(surface_normal_),   deferred :: normal
   end type Surface
 
   abstract interface
-    pure function surface_evaluate_(this, xyz) result(f)
-      import Surface
-      class(Surface), intent(in) :: this
-      real(8), intent(in) :: xyz(3)
-      real(8) :: f
-    end function surface_evaluate_
-
     pure function surface_normal_(this, xyz) result(uvw)
       import Surface
       class(Surface), intent(in) :: this
@@ -52,15 +44,13 @@ module surface_header
 
 !===============================================================================
 ! All the derived types below are extensions of the abstract Surface type. They
-! inherent the reflect() type-bound procedure and must implement evaluate(),
-! and normal()
+! inherent the reflect() type-bound procedure and must implement normal()
 !===============================================================================
 
   type, extends(Surface) :: SurfaceXPlane
     ! x = x0
     real(8) :: x0
   contains
-    procedure :: evaluate => x_plane_evaluate
     procedure :: normal => x_plane_normal
   end type SurfaceXPlane
 
@@ -68,7 +58,6 @@ module surface_header
     ! y = y0
     real(8) :: y0
   contains
-    procedure :: evaluate => y_plane_evaluate
     procedure :: normal => y_plane_normal
   end type SurfaceYPlane
 
@@ -76,7 +65,6 @@ module surface_header
     ! z = z0
     real(8) :: z0
   contains
-    procedure :: evaluate => z_plane_evaluate
     procedure :: normal => z_plane_normal
   end type SurfaceZPlane
 
@@ -87,7 +75,6 @@ module surface_header
     real(8) :: C
     real(8) :: D
   contains
-    procedure :: evaluate => plane_evaluate
     procedure :: normal => plane_normal
   end type SurfacePlane
 
@@ -97,7 +84,6 @@ module surface_header
     real(8) :: z0
     real(8) :: r
   contains
-    procedure :: evaluate => x_cylinder_evaluate
     procedure :: normal => x_cylinder_normal
   end type SurfaceXCylinder
 
@@ -107,7 +93,6 @@ module surface_header
     real(8) :: z0
     real(8) :: r
   contains
-    procedure :: evaluate => y_cylinder_evaluate
     procedure :: normal => y_cylinder_normal
   end type SurfaceYCylinder
 
@@ -117,7 +102,6 @@ module surface_header
     real(8) :: y0
     real(8) :: r
   contains
-    procedure :: evaluate => z_cylinder_evaluate
     procedure :: normal => z_cylinder_normal
   end type SurfaceZCylinder
 
@@ -128,7 +112,6 @@ module surface_header
     real(8) :: z0
     real(8) :: r
   contains
-    procedure :: evaluate => sphere_evaluate
     procedure :: normal => sphere_normal
   end type SurfaceSphere
 
@@ -139,7 +122,6 @@ module surface_header
     real(8) :: z0
     real(8) :: r2
   contains
-    procedure :: evaluate => x_cone_evaluate
     procedure :: normal => x_cone_normal
   end type SurfaceXCone
 
@@ -150,7 +132,6 @@ module surface_header
     real(8) :: z0
     real(8) :: r2
   contains
-    procedure :: evaluate => y_cone_evaluate
     procedure :: normal => y_cone_normal
   end type SurfaceYCone
 
@@ -161,7 +142,6 @@ module surface_header
     real(8) :: z0
     real(8) :: r2
   contains
-    procedure :: evaluate => z_cone_evaluate
     procedure :: normal => z_cone_normal
   end type SurfaceZCone
 
@@ -169,7 +149,6 @@ module surface_header
     ! Ax^2 + By^2 + Cz^2 + Dxy + Eyz + Fxz + Gx + Hy + Jz + K = 0
     real(8) :: A, B, C, D, E, F, G, H, J, K
   contains
-    procedure :: evaluate => quadric_evaluate
     procedure :: normal => quadric_normal
   end type SurfaceQuadric
 
@@ -214,14 +193,6 @@ contains
 ! SurfaceXPlane Implementation
 !===============================================================================
 
-  pure function x_plane_evaluate(this, xyz) result(f)
-    class(SurfaceXPlane), intent(in) :: this
-    real(8), intent(in) :: xyz(3)
-    real(8) :: f
-
-    f = xyz(1) - this%x0
-  end function x_plane_evaluate
-
   pure function x_plane_normal(this, xyz) result(uvw)
     class(SurfaceXPlane), intent(in) :: this
     real(8), intent(in) :: xyz(3)
@@ -233,14 +204,6 @@ contains
 !===============================================================================
 ! SurfaceYPlane Implementation
 !===============================================================================
-
-  pure function y_plane_evaluate(this, xyz) result(f)
-    class(SurfaceYPlane), intent(in) :: this
-    real(8), intent(in) :: xyz(3)
-    real(8) :: f
-
-    f = xyz(2) - this%y0
-  end function y_plane_evaluate
 
   pure function y_plane_normal(this, xyz) result(uvw)
     class(SurfaceYPlane), intent(in) :: this
@@ -254,16 +217,6 @@ contains
 ! SurfaceZPlane Implementation
 !===============================================================================
 
-  pure function z_plane_evaluate(this, xyz) result(f)
-
-    class(SurfaceZPlane), intent(in) :: this
-    real(8),        intent(in) :: xyz(3)
-    real(8)             :: f
-
-    f = xyz(3) - this%z0
-
-  end function z_plane_evaluate
-
   pure function z_plane_normal(this, xyz) result(uvw)
     class(SurfaceZPlane), intent(in) :: this
     real(8), intent(in) :: xyz(3)
@@ -276,14 +229,6 @@ contains
 ! SurfacePlane Implementation
 !===============================================================================
 
-  pure function plane_evaluate(this, xyz) result(f)
-    class(SurfacePlane), intent(in) :: this
-    real(8), intent(in) :: xyz(3)
-    real(8) :: f
-
-    f = this%A*xyz(1) + this%B*xyz(2) + this%C*xyz(3) - this%D
-  end function plane_evaluate
-
   pure function plane_normal(this, xyz) result(uvw)
     class(SurfacePlane), intent(in) :: this
     real(8), intent(in) :: xyz(3)
@@ -295,18 +240,6 @@ contains
 !===============================================================================
 ! SurfaceXCylinder Implementation
 !===============================================================================
-
-  pure function x_cylinder_evaluate(this, xyz) result(f)
-    class(SurfaceXCylinder), intent(in) :: this
-    real(8), intent(in) :: xyz(3)
-    real(8) :: f
-
-    real(8) :: y, z
-
-    y = xyz(2) - this%y0
-    z = xyz(3) - this%z0
-    f = y*y + z*z - this%r*this%r
-  end function x_cylinder_evaluate
 
   pure function x_cylinder_normal(this, xyz) result(uvw)
     class(SurfaceXCylinder), intent(in) :: this
@@ -322,18 +255,6 @@ contains
 ! SurfaceYCylinder Implementation
 !===============================================================================
 
-  pure function y_cylinder_evaluate(this, xyz) result(f)
-    class(SurfaceYCylinder), intent(in) :: this
-    real(8), intent(in) :: xyz(3)
-    real(8) :: f
-
-    real(8) :: x, z
-
-    x = xyz(1) - this%x0
-    z = xyz(3) - this%z0
-    f = x*x + z*z - this%r*this%r
-  end function y_cylinder_evaluate
-
   pure function y_cylinder_normal(this, xyz) result(uvw)
     class(SurfaceYCylinder), intent(in) :: this
     real(8), intent(in) :: xyz(3)
@@ -347,18 +268,6 @@ contains
 !===============================================================================
 ! SurfaceZCylinder Implementation
 !===============================================================================
-
-  pure function z_cylinder_evaluate(this, xyz) result(f)
-    class(SurfaceZCylinder), intent(in) :: this
-    real(8), intent(in) :: xyz(3)
-    real(8) :: f
-
-    real(8) :: x, y
-
-    x = xyz(1) - this%x0
-    y = xyz(2) - this%y0
-    f = x*x + y*y - this%r*this%r
-  end function z_cylinder_evaluate
 
   pure function z_cylinder_normal(this, xyz) result(uvw)
     class(SurfaceZCylinder), intent(in) :: this
@@ -374,19 +283,6 @@ contains
 ! SurfaceSphere Implementation
 !===============================================================================
 
-  pure function sphere_evaluate(this, xyz) result(f)
-    class(SurfaceSphere), intent(in) :: this
-    real(8), intent(in) :: xyz(3)
-    real(8) :: f
-
-    real(8) :: x, y, z
-
-    x = xyz(1) - this%x0
-    y = xyz(2) - this%y0
-    z = xyz(3) - this%z0
-    f = x*x + y*y + z*z - this%r*this%r
-  end function sphere_evaluate
-
   pure function sphere_normal(this, xyz) result(uvw)
     class(SurfaceSphere), intent(in) :: this
     real(8), intent(in) :: xyz(3)
@@ -398,19 +294,6 @@ contains
 !===============================================================================
 ! SurfaceXCone Implementation
 !===============================================================================
-
-  pure function x_cone_evaluate(this, xyz) result(f)
-    class(SurfaceXCone), intent(in) :: this
-    real(8), intent(in) :: xyz(3)
-    real(8) :: f
-
-    real(8) :: x, y, z
-
-    x = xyz(1) - this%x0
-    y = xyz(2) - this%y0
-    z = xyz(3) - this%z0
-    f = y*y + z*z - this%r2*x*x
-  end function x_cone_evaluate
 
   pure function x_cone_normal(this, xyz) result(uvw)
     class(SurfaceXCone), intent(in) :: this
@@ -426,19 +309,6 @@ contains
 ! SurfaceYCone Implementation
 !===============================================================================
 
-  pure function y_cone_evaluate(this, xyz) result(f)
-    class(SurfaceYCone), intent(in) :: this
-    real(8), intent(in) :: xyz(3)
-    real(8) :: f
-
-    real(8) :: x, y, z
-
-    x = xyz(1) - this%x0
-    y = xyz(2) - this%y0
-    z = xyz(3) - this%z0
-    f = x*x + z*z - this%r2*y*y
-  end function y_cone_evaluate
-
   pure function y_cone_normal(this, xyz) result(uvw)
     class(SurfaceYCone), intent(in) :: this
     real(8), intent(in) :: xyz(3)
@@ -453,19 +323,6 @@ contains
 ! SurfaceZCone Implementation
 !===============================================================================
 
-  pure function z_cone_evaluate(this, xyz) result(f)
-    class(SurfaceZCone), intent(in) :: this
-    real(8), intent(in) :: xyz(3)
-    real(8) :: f
-
-    real(8) :: x, y, z
-
-    x = xyz(1) - this%x0
-    y = xyz(2) - this%y0
-    z = xyz(3) - this%z0
-    f = x*x + y*y - this%r2*z*z
-  end function z_cone_evaluate
-
   pure function z_cone_normal(this, xyz) result(uvw)
     class(SurfaceZCone), intent(in) :: this
     real(8), intent(in) :: xyz(3)
@@ -479,18 +336,6 @@ contains
 !===============================================================================
 ! SurfaceQuadric Implementation
 !===============================================================================
-
-  pure function quadric_evaluate(this, xyz) result(f)
-    class(SurfaceQuadric), intent(in) :: this
-    real(8), intent(in) :: xyz(3)
-    real(8) :: f
-
-    associate (x => xyz(1), y => xyz(2), z => xyz(3))
-      f = x*(this%A*x + this%D*y + this%G) + &
-           y*(this%B*y + this%E*z + this%H) + &
-           z*(this%C*z + this%F*x + this%J) + this%K
-    end associate
-  end function quadric_evaluate
 
   pure function quadric_normal(this, xyz) result(uvw)
     class(SurfaceQuadric), intent(in) :: this

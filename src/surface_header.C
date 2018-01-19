@@ -5,6 +5,7 @@
 #include "pugixml/pugixml.hpp"
 
 // DEBUGGING
+#include <typeinfo>
 #include <iostream>
 
 //==============================================================================
@@ -89,14 +90,14 @@ public:
       neighbor_neg[];        //!< List of cells on negative side
   int bc;                    //!< Boundary condition
   //TODO: switch that zero to a NONE constant.
-  int i_periodic = 0;        //!< Index of corresponding periodic surface
+  //int i_periodic = 0;        //!< Index of corresponding periodic surface
   char name[104];            //!< User-defined name
 
   //! Determine which side of a surface a point lies on.
   //! @param xyz[3] The 3D Cartesian coordinate of a point.
   //! @param uvw[3] A direction used to "break ties" and pick a sense when the
   //!   point is very close to the surface.
-  //! @return True if the point is on the "positive" side of the surface and
+  //! @return true if the point is on the "positive" side of the surface and
   //!   false otherwise.
   bool sense(const double xyz[3], const double uvw[3]) const;
 
@@ -164,6 +165,29 @@ Surface::reflect(const double xyz[3], double uvw[3]) const
 }
 
 //==============================================================================
+//! A `Surface` that supports periodic boundary conditions.
+//!
+//! Translational periodicity is supported for the `XPlane`, `YPlane`, `ZPlane`,
+//! and `Plane` types.  Rotational periodicity is supported for
+//! `XPlane`-`YPlane` pairs.
+//==============================================================================
+
+class PeriodicSurface : public Surface
+{
+public:
+  //! Translate a particle onto this surface from a periodic partner surface.
+  //! @param other A pointer to the partner surface in this periodic BC.
+  //! @param xyz[3] A point on the partner surface that will be translated onto
+  //!   this surface.
+  //! @param uvw[3] A direction that will be rotated for systems with rotational
+  //!   periodicity.
+  //! @return true if this surface and its partner make a rotationally-periodic
+  //!   boundary condition.
+  virtual bool periodic_translate(PeriodicSurface *other, double xyz[3],
+                                  double uvw[3]) const = 0;
+};
+
+//==============================================================================
 // Generic functions for x-, y-, and z-, planes.
 //==============================================================================
 
@@ -203,7 +227,7 @@ axis_aligned_plane_normal(const double xyz[3], double uvw[3])
 //! The plane is described by the equation \f$x - x_0 = 0\f$
 //==============================================================================
 
-class SurfaceXPlane : public Surface
+class SurfaceXPlane : public PeriodicSurface
 {
   double x0;
 public:
@@ -212,6 +236,8 @@ public:
   double distance(const double xyz[3], const double uvw[3],
                   const bool coincident) const;
   void normal(const double xyz[3], double uvw[3]) const;
+  bool periodic_translate(PeriodicSurface *other, double xyz[3], double uvw[3])
+       const;
 };
 
 SurfaceXPlane::SurfaceXPlane(pugi::xml_node surf_node)
@@ -235,6 +261,32 @@ inline void SurfaceXPlane::normal(const double xyz[3], double uvw[3]) const
   axis_aligned_plane_normal<0, 1, 2>(xyz, uvw);
 }
 
+bool SurfaceXPlane::periodic_translate(PeriodicSurface *other, double xyz[3],
+     double uvw[3]) const
+{
+  double other_norm[3];
+  other->normal(xyz, other_norm);
+  if (other_norm[0] == 1 and other_norm[1] == 0 and other_norm[2] == 0) {
+    xyz[0] = x0;
+    return false;
+  } else {
+    // Assume the partner is an YPlane (the only supported partner).  Use the
+    // evaluate function to find y0, then adjust xyz and uvw for rotational
+    // symmetry.
+    double xyz_test[3] {0, 0, 0};
+    double y0 = -other->evaluate(xyz_test);
+    xyz[1] = xyz[0] - x0 + y0;
+    xyz[0] = x0;
+    xyz[2] = xyz[2];
+
+    double u = uvw[0];
+    uvw[0] = -uvw[1];
+    uvw[1] = u;
+
+    return true;
+  }
+};
+
 //==============================================================================
 // SurfaceYPlane
 //! A plane perpendicular to the y-axis.
@@ -242,7 +294,7 @@ inline void SurfaceXPlane::normal(const double xyz[3], double uvw[3]) const
 //! The plane is described by the equation \f$y - y_0 = 0\f$
 //==============================================================================
 
-class SurfaceYPlane : public Surface
+class SurfaceYPlane : public PeriodicSurface
 {
   double y0;
 public:
@@ -251,6 +303,8 @@ public:
   double distance(const double xyz[3], const double uvw[3],
                   bool coincident) const;
   void normal(const double xyz[3], double uvw[3]) const;
+  bool periodic_translate(PeriodicSurface *other, double xyz[3], double uvw[3])
+       const;
 };
 
 SurfaceYPlane::SurfaceYPlane(pugi::xml_node surf_node)
@@ -274,6 +328,32 @@ inline void SurfaceYPlane::normal(const double xyz[3], double uvw[3]) const
   axis_aligned_plane_normal<1, 0, 2>(xyz, uvw);
 }
 
+bool SurfaceYPlane::periodic_translate(PeriodicSurface *other, double xyz[3],
+                                       double uvw[3]) const
+{
+  double other_norm[3];
+  other->normal(xyz, other_norm);
+  if (other_norm[0] == 0 and other_norm[1] == 1 and other_norm[2] == 0) {
+    // The periodic partner is also aligned along y.  Just change the y coord.
+    xyz[1] = y0;
+    return false;
+  } else {
+    // Assume the partner is an XPlane (the only supported partner).  Use the
+    // evaluate function to find x0, then adjust xyz and uvw for rotational
+    // symmetry.
+    double xyz_test[3] {0, 0, 0};
+    double x0 = -other->evaluate(xyz_test);
+    xyz[0] = xyz[1] - y0 + x0;
+    xyz[1] = y0;
+
+    double u = uvw[0];
+    uvw[0] = uvw[1];
+    uvw[1] = -u;
+
+    return true;
+  }
+};
+
 //==============================================================================
 // SurfaceZPlane
 //! A plane perpendicular to the z-axis.
@@ -281,7 +361,7 @@ inline void SurfaceYPlane::normal(const double xyz[3], double uvw[3]) const
 //! The plane is described by the equation \f$z - z_0 = 0\f$
 //==============================================================================
 
-class SurfaceZPlane : public Surface
+class SurfaceZPlane : public PeriodicSurface
 {
   double z0;
 public:
@@ -290,6 +370,8 @@ public:
   double distance(const double xyz[3], const double uvw[3],
                   bool coincident) const;
   void normal(const double xyz[3], double uvw[3]) const;
+  bool periodic_translate(PeriodicSurface *other, double xyz[3], double uvw[3])
+       const;
 };
 
 SurfaceZPlane::SurfaceZPlane(pugi::xml_node surf_node)
@@ -313,6 +395,14 @@ inline void SurfaceZPlane::normal(const double xyz[3], double uvw[3]) const
   axis_aligned_plane_normal<2, 0, 1>(xyz, uvw);
 }
 
+bool SurfaceZPlane::periodic_translate(PeriodicSurface *other, double xyz[3],
+                                       double uvw[3]) const
+{
+  // Assume the other plane is aligned along z.  Just change the z coord.
+  xyz[2] = z0;
+  return false;
+};
+
 //==============================================================================
 // SurfacePlane
 //! A general plane.
@@ -320,7 +410,7 @@ inline void SurfaceZPlane::normal(const double xyz[3], double uvw[3]) const
 //! The plane is described by the equation \f$A x + B y + C z - D = 0\f$
 //==============================================================================
 
-class SurfacePlane : public Surface
+class SurfacePlane : public PeriodicSurface
 {
   double A, B, C, D;
 public:
@@ -329,6 +419,8 @@ public:
   double distance(const double xyz[3], const double uvw[3],
                   const bool coincident) const;
   void normal(const double xyz[3], double uvw[3]) const;
+  bool periodic_translate(PeriodicSurface *other, double xyz[3], double uvw[3])
+       const;
 };
 
 SurfacePlane::SurfacePlane(pugi::xml_node surf_node)
@@ -363,6 +455,22 @@ SurfacePlane::normal(const double xyz[3], double uvw[3]) const
   uvw[0] = A;
   uvw[1] = B;
   uvw[2] = C;
+}
+
+bool SurfacePlane::periodic_translate(PeriodicSurface *other, double xyz[3],
+                                      double uvw[3]) const
+{
+  // This function assumes the other plane shares this plane's normal direction.
+
+  // Determine the distance to intersection.
+  double d = evaluate(xyz) / (A*A + B*B + C*C);
+
+  // Move the particle that distance along the normal vector.
+  xyz[0] -= d * A;
+  xyz[1] -= d * B;
+  xyz[2] -= d * C;
+
+  return false;
 }
 
 //==============================================================================
@@ -1040,4 +1148,20 @@ extern "C" void
 surface_normal(int surf_ind, double xyz[3], double uvw[3])
 {
   return surfaces_c[surf_ind]->normal(xyz, uvw);
+}
+
+extern "C" bool
+surface_periodic(int surf_ind1, int surf_ind2, double xyz[3], double uvw[3])
+{
+  // Hopefully this function has only been called on a pair of surfaces that
+  // support periodic BCs (checking should have been done when reading the
+  // geometry XML).  Downcast the surfaces to the PeriodicSurface type so we
+  // can call the periodic_translate method.
+  Surface *surf1_gen = surfaces_c[surf_ind1];
+  PeriodicSurface *surf1 = dynamic_cast<PeriodicSurface *>(surf1_gen);
+  Surface *surf2_gen = surfaces_c[surf_ind2];
+  PeriodicSurface *surf2 = dynamic_cast<PeriodicSurface *>(surf2_gen);
+
+  // Call the type-bound methods.
+  return surf2->periodic_translate(surf1, xyz, uvw);
 }

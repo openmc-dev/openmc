@@ -44,6 +44,17 @@ module geometry
       real(C_DOUBLE), intent(in)        :: xyz(3);
       real(C_DOUBLE), intent(out)       :: uvw(3);
     end subroutine surface_normal_c
+
+    function surface_periodic_c(surf_ind1, surf_ind2, xyz, uvw) &
+         bind(C, name="surface_periodic") result(rotational)
+      use ISO_C_BINDING
+      implicit none
+      integer(C_INT), intent(in), value :: surf_ind1;
+      integer(C_INT), intent(in), value :: surf_ind2;
+      real(C_DOUBLE), intent(inout)     :: xyz(3);
+      real(C_DOUBLE), intent(inout)     :: uvw(3);
+      logical(C_BOOL)                   :: rotational
+    end function surface_periodic_c
   end interface
 
 contains

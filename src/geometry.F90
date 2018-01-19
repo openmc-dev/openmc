@@ -25,6 +25,15 @@ module geometry
       logical(C_BOOL)                   :: sense;
     end function surface_sense_c
 
+    pure subroutine surface_reflect_c(surf_ind, xyz, uvw) &
+         bind(C, name='surface_reflect')
+      use ISO_C_BINDING
+      implicit none
+      integer(C_INT), intent(in), value :: surf_ind;
+      real(C_DOUBLE), intent(in)        :: xyz(3);
+      real(C_DOUBLE), intent(inout)     :: uvw(3);
+    end subroutine surface_reflect_c
+
     pure function surface_distance_c(surf_ind, xyz, uvw, coincident) &
          bind(C, name='surface_distance') result(d)
       use ISO_C_BINDING
@@ -525,6 +534,7 @@ contains
     real(8) :: d_surf             ! distance to surface
     real(8) :: x0,y0,z0           ! coefficients for surface
     real(8) :: xyz_cross(3)       ! coordinates at projected surface crossing
+    real(8) :: surf_uvw(3)        ! surface normal direction
     logical :: coincident         ! is particle on surface?
     type(Cell),       pointer :: c
     class(Surface),   pointer :: surf
@@ -782,9 +792,8 @@ contains
           ! traveling into if the surface is crossed
           if (.not. c % simple) then
             xyz_cross(:) = p % coord(j) % xyz + d_surf*p % coord(j) % uvw
-            surf => surfaces(abs(level_surf_cross)) % obj
-            if (dot_product(p % coord(j) % uvw, &
-                 surf % normal(xyz_cross)) > ZERO) then
+            call surface_normal_c(abs(level_surf_cross)-1, xyz_cross, surf_uvw)
+            if (dot_product(p % coord(j) % uvw, surf_uvw) > ZERO) then
               surface_crossed = abs(level_surf_cross)
             else
               surface_crossed = -abs(level_surf_cross)

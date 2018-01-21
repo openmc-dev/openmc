@@ -30,7 +30,7 @@ endif()
 # Command line options
 #===============================================================================
 
-option(openmp   "Enable shared-memory parallelism with OpenMP"   ON)
+option(openmp   "Enable shared-memory parallelism with OpenMP"   OFF)
 option(profile  "Compile with profiling flags"                   OFF)
 option(debug    "Compile with debug flags"                       OFF)
 option(optimize "Turn on all compiler optimization flags"        OFF)
@@ -116,12 +116,12 @@ if(CMAKE_Fortran_COMPILER_ID STREQUAL GNU)
   endif()
 
   # GCC compiler options
-  list(APPEND f90flags -cpp -std=f2008ts -fbacktrace -O2)
+  list(APPEND f90flags -cpp -std=f2008ts -fbacktrace -O2 -fstack-arrays -g)
   if(debug)
     list(REMOVE_ITEM f90flags -O2)
-    list(APPEND f90flags -g -Wall -Wno-unused-dummy-argument -pedantic
+    list(APPEND f90flags -g -enable-checking -fbacktrace -Wall -Wno-unused-dummy-argument -pedantic
       -fbounds-check -ffpe-trap=invalid,overflow,underflow)
-    list(APPEND ldflags -g)
+    list(APPEND ldflags -g -v -da -Q)
   endif()
   if(profile)
     list(APPEND f90flags -pg)

@@ -54,16 +54,24 @@ module geometry
       real(C_DOUBLE), intent(out)       :: uvw(3);
     end subroutine surface_normal_c
 
-    function surface_periodic_c(surf_ind1, surf_ind2, xyz, uvw) &
+    function surface_periodic_c(surf_ind1, xyz, uvw) &
          bind(C, name="surface_periodic") result(rotational)
       use ISO_C_BINDING
       implicit none
       integer(C_INT), intent(in), value :: surf_ind1;
-      integer(C_INT), intent(in), value :: surf_ind2;
       real(C_DOUBLE), intent(inout)     :: xyz(3);
       real(C_DOUBLE), intent(inout)     :: uvw(3);
       logical(C_BOOL)                   :: rotational
     end function surface_periodic_c
+
+    function surface_i_periodic_c(surf_ind) bind(C, name="surface_i_periodic") &
+         result(i_periodic)
+      use ISO_C_BINDING
+      implicit none
+      integer(C_INT), intent(in), value :: surf_ind
+      integer(C_INT)                    :: i_periodic
+    end function
+
   end interface
 
 contains
@@ -857,15 +865,15 @@ contains
       ! Copy positive neighbors to Surface instance
       n = neighbor_pos(i)%size()
       if (n > 0) then
-        allocate(surfaces(i)%obj%neighbor_pos(n))
-        surfaces(i)%obj%neighbor_pos(:) = neighbor_pos(i)%data(1:n)
+        allocate(surfaces(i)%neighbor_pos(n))
+        surfaces(i)%neighbor_pos(:) = neighbor_pos(i)%data(1:n)
       end if
 
       ! Copy negative neighbors to Surface instance
       n = neighbor_neg(i)%size()
       if (n > 0) then
-        allocate(surfaces(i)%obj%neighbor_neg(n))
-        surfaces(i)%obj%neighbor_neg(:) = neighbor_neg(i)%data(1:n)
+        allocate(surfaces(i)%neighbor_neg(n))
+        surfaces(i)%neighbor_neg(:) = neighbor_neg(i)%data(1:n)
       end if
     end do
 

@@ -1,7 +1,8 @@
 #include <algorithm>  // for std::transform
-#include <array>  // For std::array
+#include <array>
 #include <cstring>  // For strcmp
 #include <limits>  // For numeric_limits
+#include <map>
 #include <math.h>  // For fabs
 
 #include "pugixml/pugixml.hpp"
@@ -45,6 +46,7 @@ get_node_value(const pugi::xml_node &node, const char *name)
 
   std::string value(value_char);
   std::transform(value.begin(), value.end(), value.begin(), ::tolower);
+  //TODO: trim whitespace
   return value;
 }
 
@@ -57,6 +59,7 @@ get_node_value(const pugi::xml_node &node, const char *name)
 extern "C" double FP_COINCIDENT;
 //extern "C" double INFTY;
 const double INFTY{std::numeric_limits<double>::max()};
+const int C_NONE{-1};
 
 extern "C" const int BC_TRANSMIT{0};
 extern "C" const int BC_VACUUM{1};
@@ -69,6 +72,8 @@ extern "C" const int BC_PERIODIC{3};
 
 class Surface;
 Surface **surfaces_c;
+
+std::map<int, int> surface_dict;
 
 //==============================================================================
 // Helper functions for reading the "coeffs" node of an XML surface element
@@ -183,6 +188,19 @@ void read_coeffs(pugi::xml_node surf_node, int surf_id, double &c1, double &c2,
 }
 
 //==============================================================================
+//==============================================================================
+
+struct BoundingBox
+{
+  double xmin;
+  double xmax;
+  double ymin;
+  double ymax;
+  double zmin;
+  double zmax;
+};
+
+//==============================================================================
 //! A geometry primitive used to define regions of 3D space.
 //==============================================================================
 
@@ -193,8 +211,6 @@ public:
   //int neighbor_pos[],        //!< List of cells on positive side
   //    neighbor_neg[];        //!< List of cells on negative side
   int bc;                    //!< Boundary condition
-  //TODO: switch that zero to a NONE constant.
-  //int i_periodic = 0;        //!< Index of corresponding periodic surface
   std::string name{""};      //!< User-defined name
 
   Surface(pugi::xml_node surf_node);
@@ -249,7 +265,6 @@ Surface::Surface(pugi::xml_node surf_node)
   } else {
     fatal_error("Must specify id of surface in geometry XML file.");
   }
-  //TODO: check for duplicate IDs
 
   if (check_for_node(surf_node, "name")) {
     name = get_node_value(surf_node, "name");
@@ -362,7 +377,9 @@ Surface::to_hdf5(hid_t group_id) const
 class PeriodicSurface : public Surface
 {
 public:
-  PeriodicSurface(pugi::xml_node surf_node) : Surface(surf_node) {}
+  int i_periodic{C_NONE};    //!< Index of corresponding periodic surface
+
+  PeriodicSurface(pugi::xml_node surf_node);
 
   //! Translate a particle onto this surface from a periodic partner surface.
   //! @param other A pointer to the partner surface in this periodic BC.
@@ -374,7 +391,17 @@ public:
   //!   boundary condition.
   virtual bool periodic_translate(PeriodicSurface *other, double xyz[3],
                                   double uvw[3]) const = 0;
+
+  virtual struct BoundingBox bounding_box() const = 0;
 };
+
+PeriodicSurface::PeriodicSurface(pugi::xml_node surf_node)
+  : Surface(surf_node)
+{
+  if (check_for_node(surf_node, "periodic_surface_id")) {
+    i_periodic = stoi(get_node_value(surf_node, "periodic_surface_id"));
+  }
+}
 
 //==============================================================================
 // Generic functions for x-, y-, and z-, planes.
@@ -428,6 +455,7 @@ public:
   void to_hdf5_inner(hid_t group_id) const;
   bool periodic_translate(PeriodicSurface *other, double xyz[3], double uvw[3])
        const;
+  struct BoundingBox bounding_box() const;
 };
 
 SurfaceXPlane::SurfaceXPlane(pugi::xml_node surf_node)
@@ -485,6 +513,13 @@ bool SurfaceXPlane::periodic_translate(PeriodicSurface *other, double xyz[3],
   }
 }
 
+struct BoundingBox
+SurfaceXPlane::bounding_box() const
+{
+  struct BoundingBox out{x0, x0, -INFTY, INFTY, -INFTY, INFTY};
+  return out;
+}
+
 //==============================================================================
 // SurfaceYPlane
 //! A plane perpendicular to the y-axis.
@@ -504,6 +539,7 @@ public:
   void to_hdf5_inner(hid_t group_id) const;
   bool periodic_translate(PeriodicSurface *other, double xyz[3], double uvw[3])
        const;
+  struct BoundingBox bounding_box() const;
 };
 
 SurfaceYPlane::SurfaceYPlane(pugi::xml_node surf_node)
@@ -561,6 +597,13 @@ bool SurfaceYPlane::periodic_translate(PeriodicSurface *other, double xyz[3],
   }
 }
 
+struct BoundingBox
+SurfaceYPlane::bounding_box() const
+{
+  struct BoundingBox out{-INFTY, INFTY, y0, y0, -INFTY, INFTY};
+  return out;
+}
+
 //==============================================================================
 // SurfaceZPlane
 //! A plane perpendicular to the z-axis.
@@ -580,6 +623,7 @@ public:
   void to_hdf5_inner(hid_t group_id) const;
   bool periodic_translate(PeriodicSurface *other, double xyz[3], double uvw[3])
        const;
+  struct BoundingBox bounding_box() const;
 };
 
 SurfaceZPlane::SurfaceZPlane(pugi::xml_node surf_node)
@@ -619,6 +663,13 @@ bool SurfaceZPlane::periodic_translate(PeriodicSurface *other, double xyz[3],
   return false;
 }
 
+struct BoundingBox
+SurfaceZPlane::bounding_box() const
+{
+  struct BoundingBox out{-INFTY, INFTY, -INFTY, INFTY, z0, z0};
+  return out;
+}
+
 //==============================================================================
 // SurfacePlane
 //! A general plane.
@@ -638,6 +689,7 @@ public:
   void to_hdf5_inner(hid_t group_id) const;
   bool periodic_translate(PeriodicSurface *other, double xyz[3], double uvw[3])
        const;
+  struct BoundingBox bounding_box() const;
 };
 
 SurfacePlane::SurfacePlane(pugi::xml_node surf_node)
@@ -696,6 +748,13 @@ bool SurfacePlane::periodic_translate(PeriodicSurface *other, double xyz[3],
   xyz[2] -= d * C;
 
   return false;
+}
+
+struct BoundingBox
+SurfacePlane::bounding_box() const
+{
+  struct BoundingBox out{-INFTY, INFTY, -INFTY, INFTY, -INFTY, INFTY};
+  return out;
 }
 
 //==============================================================================
@@ -1359,10 +1418,10 @@ extern "C" void
 read_surfaces(pugi::xml_node *node)
 {
   // Count the number of surfaces.
-  int n_surfaces = 0;
+  int n_surfaces{0};
   for (pugi::xml_node surf_node = node->child("surface"); surf_node;
        surf_node = surf_node.next_sibling("surface")) {
-    n_surfaces += 1;
+    n_surfaces++;
   }
 
   // Allocate the array of Surface pointers.
@@ -1413,9 +1472,122 @@ read_surfaces(pugi::xml_node *node)
         surfaces_c[i_surf] = new SurfaceQuadric(surf_node);
 
       } else {
-        std::cout << "Call error or handle uppercase here!" << std::endl;
+        std::cout << "Call error here!" << std::endl;
         std::cout << surf_type << std::endl;
         //TODO: call fatal_error
+      }
+    }
+  }
+
+  // Fill the surface dictionary.
+  for (int i_surf = 0; i_surf < n_surfaces; i_surf++) {
+    int id = surfaces_c[i_surf]->id;
+    auto in_dict = surface_dict.find(id);
+    if (in_dict == surface_dict.end()) {
+      surface_dict[id] = i_surf;
+    } else {
+      std::string err_msg{"Two or more surfaces use the same unique ID: "};
+      err_msg += std::to_string(id);
+      fatal_error(err_msg);
+    }
+  }
+
+  // Find the global bounding box (of periodic BC surfaces).
+  double xmin{INFTY}, xmax{-INFTY}, ymin{INFTY}, ymax{-INFTY},
+         zmin{INFTY}, zmax{-INFTY};
+  int i_xmin, i_xmax, i_ymin, i_ymax, i_zmin, i_zmax;
+  for (int i_surf = 0; i_surf < n_surfaces; i_surf++) {
+    if (surfaces_c[i_surf]->bc == BC_PERIODIC) {
+      // Downcast to the PeriodicSurface type.
+      Surface *surf_base = surfaces_c[i_surf];
+      PeriodicSurface *surf = dynamic_cast<PeriodicSurface *>(surf_base);
+      //TODO: check for null pointer
+
+      // See if this surface makes part of the global bounding box.
+      struct BoundingBox bb = surf->bounding_box();
+      if (bb.xmin > -INFTY and bb.xmin < xmin) {
+        xmin = bb.xmin;
+        i_xmin = i_surf;
+      }
+      if (bb.xmax < INFTY and bb.xmax > xmax) {
+        xmax = bb.xmax;
+        i_xmax = i_surf;
+      }
+      if (bb.ymin > -INFTY and bb.ymin < ymin) {
+        ymin = bb.ymin;
+        i_ymin = i_surf;
+      }
+      if (bb.ymax < INFTY and bb.ymax > ymax) {
+        ymax = bb.ymax;
+        i_ymax = i_surf;
+      }
+      if (bb.zmin > -INFTY and bb.zmin < zmin) {
+        zmin = bb.zmin;
+        i_zmin = i_surf;
+      }
+      if (bb.zmax < INFTY and bb.zmax > zmax) {
+        zmax = bb.zmax;
+        i_zmax = i_surf;
+      }
+    }
+  }
+
+  // Set i_periodic for periodic BC surfaces.
+  for (int i_surf = 0; i_surf < n_surfaces; i_surf++) {
+    if (surfaces_c[i_surf]->bc == BC_PERIODIC) {
+      // Downcast to the PeriodicSurface type.
+      Surface *surf_base = surfaces_c[i_surf];
+      PeriodicSurface *surf = dynamic_cast<PeriodicSurface *>(surf_base);
+
+      // Also try downcasting to the SurfacePlane type (which must be handled
+      // differently).
+      SurfacePlane *surf_p = dynamic_cast<SurfacePlane *>(surf);
+
+      if (surf_p == NULL) {
+        // This is not a SurfacePlane.
+        if (surf->i_periodic == C_NONE) {
+          // The user did not specify the matching periodic surface.  See if we
+          // can find the partnered surface from the bounding box information.
+          if (i_surf == i_xmin) {
+            surf->i_periodic = i_xmax;
+          } else if (i_surf == i_xmax) {
+            surf->i_periodic = i_xmin;
+          } else if (i_surf == i_ymin) {
+            surf->i_periodic = i_ymax;
+          } else if (i_surf == i_ymax) {
+            surf->i_periodic = i_ymin;
+          } else if (i_surf == i_zmin) {
+            surf->i_periodic = i_zmax;
+          } else if (i_surf == i_zmax) {
+            surf->i_periodic = i_zmin;
+          } else {
+            fatal_error("Periodic boundary condition applied to interior "
+                        "surface");
+          }
+        } else {
+          // Convert the surface id to an index.
+          surf->i_periodic = surface_dict[surf->i_periodic];
+        }
+      } else {
+        // This is a SurfacePlane.  We won't try to find it's partner if the
+        // user didn't specify one.
+        if (surf->i_periodic == C_NONE) {
+          std::string err_msg{"No matching periodic surface specified for "
+                              "periodic boundary condition on surface "};
+          err_msg += std::to_string(surf->id);
+          fatal_error(err_msg);
+        } else {
+          // Convert the surface id to an index.
+          surf->i_periodic = surface_dict[surf->i_periodic];
+        }
+      }
+
+      // Make sure the opposite surface is also periodic.
+      if (surfaces_c[surf->i_periodic]->bc != BC_PERIODIC) {
+        std::string err_msg{"Could not find matching surface for periodic "
+                            "boundary condition on surface "};
+        err_msg += std::to_string(surf->id);
+        fatal_error(err_msg);
       }
     }
   }
@@ -1454,17 +1626,24 @@ surface_to_hdf5(int surf_ind, hid_t group)
 }
 
 extern "C" bool
-surface_periodic(int surf_ind1, int surf_ind2, double xyz[3], double uvw[3])
+surface_periodic(int surf_ind1, double xyz[3], double uvw[3])
 {
-  // Hopefully this function has only been called on a pair of surfaces that
+  // Hopefully this function has only been called for a pair of surfaces that
   // support periodic BCs (checking should have been done when reading the
   // geometry XML).  Downcast the surfaces to the PeriodicSurface type so we
   // can call the periodic_translate method.
   Surface *surf1_gen = surfaces_c[surf_ind1];
   PeriodicSurface *surf1 = dynamic_cast<PeriodicSurface *>(surf1_gen);
-  Surface *surf2_gen = surfaces_c[surf_ind2];
+  Surface *surf2_gen = surfaces_c[surf1->i_periodic];
   PeriodicSurface *surf2 = dynamic_cast<PeriodicSurface *>(surf2_gen);
 
   // Call the type-bound methods.
   return surf2->periodic_translate(surf1, xyz, uvw);
+}
+
+extern "C" int
+surface_i_periodic(int surf_ind)
+{
+  PeriodicSurface *surf = dynamic_cast<PeriodicSurface *>(surfaces_c[surf_ind]);
+  return surf->i_periodic;
 }

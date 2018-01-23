@@ -133,12 +133,11 @@ contains
     real(8), allocatable :: cell_temperatures(:)
     integer(HID_T) :: geom_group
     integer(HID_T) :: cells_group, cell_group
-    integer(HID_T) :: surfaces_group, surface_group
+    integer(HID_T) :: surfaces_group
     integer(HID_T) :: universes_group, univ_group
     integer(HID_T) :: lattices_group, lattice_group
     character(:), allocatable :: region_spec
     type(Cell),     pointer :: c
-    class(Surface), pointer :: s
     class(Lattice), pointer :: lat
 
     ! Use H5LT interface to write number of geometry objects
@@ -233,7 +232,7 @@ contains
           region_spec = trim(region_spec) // " |"
         case default
           region_spec = trim(region_spec) // " " // to_str(&
-               sign(surfaces(abs(k))%obj%id, k))
+               sign(surfaces(abs(k))%id, k))
         end select
       end do
       call write_dataset(cell_group, "region", adjustl(region_spec))

@@ -12,68 +12,17 @@ module surface_header
 ! construct closed volumes (cells)
 !===============================================================================
 
-  type, abstract :: Surface
+  type :: Surface
     integer :: id                     ! Unique ID
     integer, allocatable :: &
          neighbor_pos(:), &           ! List of cells on positive side
          neighbor_neg(:)              ! List of cells on negative side
     integer :: bc                     ! Boundary condition
-    integer :: i_periodic = NONE      ! Index of corresponding periodic surface
-    character(len=104) :: name = ""   ! User-defined name
   end type Surface
-
-!===============================================================================
-! SURFACECONTAINER allows us to store an array of different types of surfaces
-!===============================================================================
-
-  type :: SurfaceContainer
-    class(Surface), allocatable :: obj
-  end type SurfaceContainer
-
-!===============================================================================
-! All the derived types below are extensions of the abstract Surface type. They
-! inherent the reflect() type-bound procedure and must implement normal()
-!===============================================================================
-
-  type, extends(Surface) :: SurfaceXPlane
-  end type SurfaceXPlane
-
-  type, extends(Surface) :: SurfaceYPlane
-  end type SurfaceYPlane
-
-  type, extends(Surface) :: SurfaceZPlane
-  end type SurfaceZPlane
-
-  type, extends(Surface) :: SurfacePlane
-  end type SurfacePlane
-
-  type, extends(Surface) :: SurfaceXCylinder
-  end type SurfaceXCylinder
-
-  type, extends(Surface) :: SurfaceYCylinder
-  end type SurfaceYCylinder
-
-  type, extends(Surface) :: SurfaceZCylinder
-  end type SurfaceZCylinder
-
-  type, extends(Surface) :: SurfaceSphere
-  end type SurfaceSphere
-
-  type, extends(Surface) :: SurfaceXCone
-  end type SurfaceXCone
-
-  type, extends(Surface) :: SurfaceYCone
-  end type SurfaceYCone
-
-  type, extends(Surface) :: SurfaceZCone
-  end type SurfaceZCone
-
-  type, extends(Surface) :: SurfaceQuadric
-  end type SurfaceQuadric
 
   integer(C_INT32_T), bind(C) :: n_surfaces  ! # of surfaces
 
-  type(SurfaceContainer), allocatable, target :: surfaces(:)
+  type(Surface), allocatable, target :: surfaces(:)
 
   ! Dictionary that maps user IDs to indices in 'surfaces'
   type(DictIntInt) :: surface_dict

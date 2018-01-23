@@ -74,55 +74,111 @@ Surface **surfaces_c;
 // Helper functions for reading the "coeffs" node of an XML surface element
 //==============================================================================
 
-const char* get_coeff_str(pugi::xml_node surf_node)
+int word_count(const std::string &text)
 {
-  if (surf_node.attribute("coeffs")) {
-    return surf_node.attribute("coeffs").value();
-  } else if (surf_node.child("coeffs")) {
-    return surf_node.child_value("coeffs");
-  } else {
-    std::cout << "ERROR: Found a surface with no coefficients" << std::endl;
-    return nullptr;
+  bool in_word = false;
+  int count{0};
+  for (auto c = text.begin(); c != text.end(); c++) {
+    switch(*c) {
+      case ' ' :
+      case '\t' :
+      case '\r' :
+      case '\n' :
+        if (in_word) {
+          in_word = false;
+          count++;
+        }
+        break;
+      default :
+        in_word = true;
+    }
   }
+  if (in_word) count++;
+  return count;
 }
 
-void read_coeffs(pugi::xml_node surf_node, double &c1)
+void read_coeffs(pugi::xml_node surf_node, int surf_id, double &c1)
 {
-  const char *coeffs = get_coeff_str(surf_node);
-  int stat = sscanf(coeffs, "%lf", &c1);
+  // Check the given number of coefficients.
+  std::string coeffs = get_node_value(surf_node, "coeffs");
+  int n_words = word_count(coeffs);
+  if (n_words != 1) {
+    std::string err_msg{"Surface "};
+    err_msg += std::to_string(surf_id);
+    err_msg += " expects 1 coeff but was given ";
+    err_msg += std::to_string(n_words);
+    fatal_error(err_msg);
+  }
+
+  // Parse the coefficients.
+  int stat = sscanf(coeffs.c_str(), "%lf", &c1);
   if (stat != 1) {
-    std::cout << "Something went wrong reading surface coeffs!" << std::endl;
+    fatal_error("Something went wrong reading surface coeffs");
   }
 }
 
-void read_coeffs(pugi::xml_node surf_node, double &c1, double &c2, double &c3)
+void read_coeffs(pugi::xml_node surf_node, int surf_id, double &c1, double &c2,
+                 double &c3)
 {
-  const char *coeffs = get_coeff_str(surf_node);
-  int stat = sscanf(coeffs, "%lf %lf %lf", &c1, &c2, &c3);
+  // Check the given number of coefficients.
+  std::string coeffs = get_node_value(surf_node, "coeffs");
+  int n_words = word_count(coeffs);
+  if (n_words != 3) {
+    std::string err_msg{"Surface "};
+    err_msg += std::to_string(surf_id);
+    err_msg += " expects 3 coeffs but was given ";
+    err_msg += std::to_string(n_words);
+    fatal_error(err_msg);
+  }
+
+  // Parse the coefficients.
+  int stat = sscanf(coeffs.c_str(), "%lf %lf %lf", &c1, &c2, &c3);
   if (stat != 3) {
-    std::cout << "Something went wrong reading surface coeffs!" << std::endl;
+    fatal_error("Something went wrong reading surface coeffs");
   }
 }
 
-void read_coeffs(pugi::xml_node surf_node, double &c1, double &c2, double &c3,
-                 double &c4)
+void read_coeffs(pugi::xml_node surf_node, int surf_id, double &c1, double &c2,
+                 double &c3, double &c4)
 {
-  const char *coeffs = get_coeff_str(surf_node);
-  int stat = sscanf(coeffs, "%lf %lf %lf %lf", &c1, &c2, &c3, &c4);
+  // Check the given number of coefficients.
+  std::string coeffs = get_node_value(surf_node, "coeffs");
+  int n_words = word_count(coeffs);
+  if (n_words != 4) {
+    std::string err_msg{"Surface "};
+    err_msg += std::to_string(surf_id);
+    err_msg += " expects 4 coeffs but was given ";
+    err_msg += std::to_string(n_words);
+    fatal_error(err_msg);
+  }
+
+  // Parse the coefficients.
+  int stat = sscanf(coeffs.c_str(), "%lf %lf %lf %lf", &c1, &c2, &c3, &c4);
   if (stat != 4) {
-    std::cout << "Something went wrong reading surface coeffs!" << std::endl;
+    fatal_error("Something went wrong reading surface coeffs");
   }
 }
 
-void read_coeffs(pugi::xml_node surf_node, double &c1, double &c2, double &c3,
-                 double &c4, double &c5, double &c6, double &c7, double &c8,
-                 double &c9, double &c10)
+void read_coeffs(pugi::xml_node surf_node, int surf_id, double &c1, double &c2,
+                 double &c3, double &c4, double &c5, double &c6, double &c7,
+                 double &c8, double &c9, double &c10)
 {
-  const char *coeffs = get_coeff_str(surf_node);
-  int stat = sscanf(coeffs, "%lf %lf %lf %lf %lf %lf %lf %lf %lf %lf",
+  // Check the given number of coefficients.
+  std::string coeffs = get_node_value(surf_node, "coeffs");
+  int n_words = word_count(coeffs);
+  if (n_words != 10) {
+    std::string err_msg{"Surface "};
+    err_msg += std::to_string(surf_id);
+    err_msg += " expects 10 coeffs but was given ";
+    err_msg += std::to_string(n_words);
+    fatal_error(err_msg);
+  }
+
+  // Parse the coefficients.
+  int stat = sscanf(coeffs.c_str(), "%lf %lf %lf %lf %lf %lf %lf %lf %lf %lf",
                     &c1, &c2, &c3, &c4, &c5, &c6, &c7, &c8, &c9, &c10);
   if (stat != 10) {
-    std::cout << "Something went wrong reading surface coeffs!" << std::endl;
+    fatal_error("Something went wrong reading surface coeffs");
   }
 }
 
@@ -377,7 +433,7 @@ public:
 SurfaceXPlane::SurfaceXPlane(pugi::xml_node surf_node)
   : PeriodicSurface(surf_node)
 {
-  read_coeffs(surf_node, x0);
+  read_coeffs(surf_node, id, x0);
 }
 
 inline double SurfaceXPlane::evaluate(const double xyz[3]) const
@@ -453,7 +509,7 @@ public:
 SurfaceYPlane::SurfaceYPlane(pugi::xml_node surf_node)
   : PeriodicSurface(surf_node)
 {
-  read_coeffs(surf_node, y0);
+  read_coeffs(surf_node, id, y0);
 }
 
 inline double SurfaceYPlane::evaluate(const double xyz[3]) const
@@ -529,7 +585,7 @@ public:
 SurfaceZPlane::SurfaceZPlane(pugi::xml_node surf_node)
   : PeriodicSurface(surf_node)
 {
-  read_coeffs(surf_node, z0);
+  read_coeffs(surf_node, id, z0);
 }
 
 inline double SurfaceZPlane::evaluate(const double xyz[3]) const
@@ -587,7 +643,7 @@ public:
 SurfacePlane::SurfacePlane(pugi::xml_node surf_node)
   : PeriodicSurface(surf_node)
 {
-  read_coeffs(surf_node, A, B, C, D);
+  read_coeffs(surf_node, id, A, B, C, D);
 }
 
 double
@@ -739,7 +795,7 @@ public:
 SurfaceXCylinder::SurfaceXCylinder(pugi::xml_node surf_node)
   : Surface(surf_node)
 {
-  read_coeffs(surf_node, y0, z0, r);
+  read_coeffs(surf_node, id, y0, z0, r);
 }
 
 inline double SurfaceXCylinder::evaluate(const double xyz[3]) const
@@ -790,7 +846,7 @@ public:
 SurfaceYCylinder::SurfaceYCylinder(pugi::xml_node surf_node)
   : Surface(surf_node)
 {
-  read_coeffs(surf_node, x0, z0, r);
+  read_coeffs(surf_node, id, x0, z0, r);
 }
 
 inline double SurfaceYCylinder::evaluate(const double xyz[3]) const
@@ -840,7 +896,7 @@ public:
 SurfaceZCylinder::SurfaceZCylinder(pugi::xml_node surf_node)
   : Surface(surf_node)
 {
-  read_coeffs(surf_node, x0, y0, r);
+  read_coeffs(surf_node, id, x0, y0, r);
 }
 
 inline double SurfaceZCylinder::evaluate(const double xyz[3]) const
@@ -890,7 +946,7 @@ public:
 SurfaceSphere::SurfaceSphere(pugi::xml_node surf_node)
   : Surface(surf_node)
 {
-  read_coeffs(surf_node, x0, y0, z0, r);
+  read_coeffs(surf_node, id, x0, y0, z0, r);
 }
 
 double SurfaceSphere::evaluate(const double xyz[3]) const
@@ -1060,7 +1116,7 @@ public:
 SurfaceXCone::SurfaceXCone(pugi::xml_node surf_node)
   : Surface(surf_node)
 {
-  read_coeffs(surf_node, x0, y0, z0, r_sq);
+  read_coeffs(surf_node, id, x0, y0, z0, r_sq);
 }
 
 inline double SurfaceXCone::evaluate(const double xyz[3]) const
@@ -1110,7 +1166,7 @@ public:
 SurfaceYCone::SurfaceYCone(pugi::xml_node surf_node)
   : Surface(surf_node)
 {
-  read_coeffs(surf_node, x0, y0, z0, r_sq);
+  read_coeffs(surf_node, id, x0, y0, z0, r_sq);
 }
 
 inline double SurfaceYCone::evaluate(const double xyz[3]) const
@@ -1160,7 +1216,7 @@ public:
 SurfaceZCone::SurfaceZCone(pugi::xml_node surf_node)
   : Surface(surf_node)
 {
-  read_coeffs(surf_node, x0, y0, z0, r_sq);
+  read_coeffs(surf_node, id, x0, y0, z0, r_sq);
 }
 
 inline double SurfaceZCone::evaluate(const double xyz[3]) const
@@ -1210,7 +1266,7 @@ public:
 SurfaceQuadric::SurfaceQuadric(pugi::xml_node surf_node)
   : Surface(surf_node)
 {
-  read_coeffs(surf_node, A, B, C, D, E, F, G, H, J, K);
+  read_coeffs(surf_node, id, A, B, C, D, E, F, G, H, J, K);
 }
 
 double

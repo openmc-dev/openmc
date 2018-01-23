@@ -1068,13 +1068,6 @@ contains
       ! surface coordinates.
 
       n = node_word_count(node_surf, "coeffs")
-      if (n < coeffs_reqd) then
-        call fatal_error("Not enough coefficients specified for surface: " &
-             // trim(to_str(s%id)))
-      elseif (n > coeffs_reqd) then
-        call fatal_error("Too many coefficients specified for surface: " &
-             // trim(to_str(s%id)))
-      end if
 
       allocate(coeffs(n))
       call get_node_array(node_surf, "coeffs", coeffs)

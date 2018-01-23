@@ -251,16 +251,7 @@ contains
 
     ! Write information on each surface
     SURFACE_LOOP: do i = 1, n_surfaces
-      s => surfaces(i)%obj
-      surface_group = create_group(surfaces_group, "surface " // &
-           trim(to_str(s%id)))
-
-      call surface_to_hdf5_c(i-1, surface_group)
-
-      ! Write name for this surface
-      call write_dataset(surface_group, "name", s%name)
-
-      call close_group(surface_group)
+      call surface_to_hdf5_c(i-1, surfaces_group)
     end do SURFACE_LOOP
 
     call close_group(surfaces_group)

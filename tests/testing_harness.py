@@ -62,14 +62,10 @@ class TestHarness(object):
 
     def _run_openmc(self):
         if self._opts.mpi_exec is not None:
-            returncode = openmc.run(
-                openmc_exec=self._opts.exe,
-                mpi_args=[self._opts.mpi_exec, '-n', self._opts.mpi_np])
-
+            openmc.run(openmc_exec=self._opts.exe,
+                       mpi_args=[self._opts.mpi_exec, '-n', self._opts.mpi_np])
         else:
-            returncode = openmc.run(openmc_exec=self._opts.exe)
-
-        assert returncode == 0, 'OpenMC did not exit successfully.'
+            openmc.run(openmc_exec=self._opts.exe)
 
     def _test_output_created(self):
         """Make sure statepoint.* and tallies.out have been created."""
@@ -189,13 +185,11 @@ class ParticleRestartTestHarness(TestHarness):
             args['mpi_args'] = [self._opts.mpi_exec, '-n', self._opts.mpi_np]
 
         # Initial run
-        returncode = openmc.run(**args)
-        assert returncode == 0, 'OpenMC did not exit successfully.'
+        openmc.run(**args)
 
         # Run particle restart
         args.update({'restart_file': self._sp_name})
-        returncode = openmc.run(**args)
-        assert returncode == 0, 'OpenMC did not exit successfully.'
+        openmc.run(**args)
 
     def _test_output_created(self):
         """Make sure the restart file has been created."""

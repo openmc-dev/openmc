@@ -45,6 +45,11 @@ def plot_geometry(output=True, openmc_exec='openmc', cwd='.'):
     cwd : str, optional
         Path to working directory to run in
 
+    Raises
+    ------
+    subprocess.CalledProcessError
+        If the `openmc` executable returns a non-zero status
+
     """
     _run([openmc_exec, '-p'], output, cwd)
 
@@ -66,6 +71,11 @@ def plot_inline(plots, openmc_exec='openmc', cwd='.', convert_exec='convert'):
         Path to working directory to run in
     convert_exec : str, optional
         Command that can convert PPM files into PNG files
+
+    Raises
+    ------
+    subprocess.CalledProcessError
+        If the `openmc` executable returns a non-zero status
 
     """
     from IPython.display import Image, display
@@ -125,6 +135,11 @@ def calculate_volumes(threads=None, output=True, cwd='.',
         Path to working directory to run in. Defaults to the current working
         directory.
 
+    Raises
+    ------
+    subprocess.CalledProcessError
+        If the `openmc` executable returns a non-zero status
+
     See Also
     --------
     openmc.VolumeCalculation
@@ -171,8 +186,12 @@ def run(particles=None, threads=None, geometry_debug=False,
         MPI execute command and any additional MPI arguments to pass,
         e.g. ['mpiexec', '-n', '8'].
 
-    """
+    Raises
+    ------
+    subprocess.CalledProcessError
+        If the `openmc` executable returns a non-zero status
 
+    """
     args = [openmc_exec]
 
     if isinstance(particles, Integral) and particles > 0:

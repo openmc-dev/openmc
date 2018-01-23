@@ -1,10 +1,43 @@
 #ifndef HDF5_INTERFACE_H
 #define HDF5_INTERFACE_H
 
-#include <array>  // For std::array
-#include <string.h>  // For strlen
+#include <array>
+#include <string.h>
 
 #include "hdf5.h"
+
+#include "error.h"
+
+
+hid_t
+create_group(hid_t parent_id, char const *name)
+{
+  hid_t out = H5Gcreate(parent_id, name, H5P_DEFAULT, H5P_DEFAULT, H5P_DEFAULT);
+  if (out < 0) {
+    std::string err_msg{"Failed to create HDF5 group \""};
+    err_msg += name;
+    err_msg += "\"";
+    fatal_error(err_msg);
+  }
+  return out;
+}
+
+
+hid_t
+create_group(hid_t parent_id, const std::string &name)
+{
+  return create_group(parent_id, name.c_str());
+}
+
+
+void
+close_group(hid_t group_id)
+{
+  herr_t err = H5Gclose(group_id);
+  if (err < 0) {
+    fatal_error("Failed to close HDF5 group");
+  }
+}
 
 
 template<std::size_t array_len> void
@@ -42,6 +75,13 @@ write_string(hid_t group_id, char const *name, char const *buffer)
   H5Tclose(datatype);
   H5Sclose(dataspace);
   H5Dclose(dataset);
+}
+
+
+void
+write_string(hid_t group_id, char const *name, const std::string &buffer)
+{
+  write_string(group_id, name, buffer.c_str());
 }
 
 #endif //HDF5_INTERFACE_H

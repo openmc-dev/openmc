@@ -435,6 +435,7 @@ set(LIBOPENMC_FORTRAN_SRC
   src/tallies/trigger_header.F90
 )
 set(LIBOPENMC_CXX_SRC
+  src/error.h
   src/hdf5_interface.h
   src/random_lcg.h
   src/random_lcg.cpp

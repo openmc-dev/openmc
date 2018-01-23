@@ -919,12 +919,8 @@ contains
     integer :: id
     integer :: univ_id
     integer :: n_cells_in_univ
-    integer :: coeffs_reqd
-    integer :: i_xmin, i_xmax, i_ymin, i_ymax, i_zmin, i_zmax
-    real(8) :: xmin, xmax, ymin, ymax, zmin, zmax
     integer, allocatable :: temp_int_array(:)
     real(8) :: phi, theta, psi
-    real(8), allocatable :: coeffs(:)
     logical :: file_exists
     logical :: boundary_exists
     character(MAX_LINE_LEN) :: filename
@@ -984,13 +980,6 @@ contains
       call fatal_error("No surfaces found in geometry.xml!")
     end if
 
-    xmin = INFINITY
-    xmax = -INFINITY
-    ymin = INFINITY
-    ymax = -INFINITY
-    zmin = INFINITY
-    zmax = -INFINITY
-
     ! Allocate cells array
     allocate(surfaces(n_surfaces))
 
@@ -998,52 +987,7 @@ contains
       ! Get pointer to i-th surface node
       node_surf = node_surf_list(i)
 
-      ! Copy and interpret surface type
-      word = ''
-      if (check_for_node(node_surf, "type")) &
-           call get_node_value(node_surf, "type", word)
-      select case(to_lower(word))
-      case ('x-plane')
-        coeffs_reqd  = 1
-        allocate(SurfaceXPlane :: surfaces(i)%obj)
-      case ('y-plane')
-        coeffs_reqd  = 1
-        allocate(SurfaceYPlane :: surfaces(i)%obj)
-      case ('z-plane')
-        coeffs_reqd  = 1
-        allocate(SurfaceZPlane :: surfaces(i)%obj)
-      case ('plane')
-        coeffs_reqd  = 4
-        allocate(SurfacePlane :: surfaces(i)%obj)
-      case ('x-cylinder')
-        coeffs_reqd  = 3
-        allocate(SurfaceXCylinder :: surfaces(i)%obj)
-      case ('y-cylinder')
-        coeffs_reqd  = 3
-        allocate(SurfaceYCylinder :: surfaces(i)%obj)
-      case ('z-cylinder')
-        coeffs_reqd  = 3
-        allocate(SurfaceZCylinder :: surfaces(i)%obj)
-      case ('sphere')
-        coeffs_reqd  = 4
-        allocate(SurfaceSphere :: surfaces(i)%obj)
-      case ('x-cone')
-        coeffs_reqd  = 4
-        allocate(SurfaceXCone :: surfaces(i)%obj)
-      case ('y-cone')
-        coeffs_reqd  = 4
-        allocate(SurfaceYCone :: surfaces(i)%obj)
-      case ('z-cone')
-        coeffs_reqd  = 4
-        allocate(SurfaceZCone :: surfaces(i)%obj)
-      case ('quadric')
-        coeffs_reqd  = 10
-        allocate(SurfaceQuadric :: surfaces(i)%obj)
-      case default
-        call fatal_error("Invalid surface type: " // trim(word))
-      end select
-
-      s => surfaces(i)%obj
+      s => surfaces(i)
 
       ! Copy data into cells
       if (check_for_node(node_surf, "id")) then
@@ -1058,43 +1002,9 @@ contains
              // to_str(s%id))
       end if
 
-      ! Copy surface name
-      if (check_for_node(node_surf, "name")) then
-        call get_node_value(node_surf, "name", s%name)
-      end if
-
       ! Check to make sure that the proper number of coefficients
       ! have been specified for the given type of surface. Then copy
       ! surface coordinates.
-
-      n = node_word_count(node_surf, "coeffs")
-
-      allocate(coeffs(n))
-      call get_node_array(node_surf, "coeffs", coeffs)
-
-      select type(s)
-      type is (SurfaceXPlane)
-        ! Determine outer surfaces
-        xmin = min(xmin, coeffs(1))
-        xmax = max(xmax, coeffs(1))
-        if (xmin == coeffs(1)) i_xmin = i
-        if (xmax == coeffs(1)) i_xmax = i
-      type is (SurfaceYPlane)
-        ! Determine outer surfaces
-        ymin = min(ymin, coeffs(1))
-        ymax = max(ymax, coeffs(1))
-        if (ymin == coeffs(1)) i_ymin = i
-        if (ymax == coeffs(1)) i_ymax = i
-      type is (SurfaceZPlane)
-        ! Determine outer surfaces
-        zmin = min(zmin, coeffs(1))
-        zmax = max(zmax, coeffs(1))
-        if (zmin == coeffs(1)) i_zmin = i
-        if (zmax == coeffs(1)) i_zmax = i
-      end select
-
-      ! No longer need coefficients
-      deallocate(coeffs)
 
       ! Boundary conditions
       word = ''
@@ -1112,12 +1022,6 @@ contains
       case ('periodic')
         s%bc = BC_PERIODIC
         boundary_exists = .true.
-
-        ! Check for specification of periodic surface
-        if (check_for_node(node_surf, "periodic_surface_id")) then
-          call get_node_value(node_surf, "periodic_surface_id", &
-               s % i_periodic)
-        end if
       case default
         call fatal_error("Unknown boundary condition '" // trim(word) // &
              &"' specified on surface " // trim(to_str(s%id)))
@@ -1133,76 +1037,6 @@ contains
         call fatal_error("No boundary conditions were applied to any surfaces!")
       end if
     end if
-
-    ! Determine opposite side for periodic boundaries
-    do i = 1, size(surfaces)
-      if (surfaces(i) % obj % bc == BC_PERIODIC) then
-        select type (surf => surfaces(i) % obj)
-        type is (SurfaceXPlane)
-          if (surf % i_periodic == NONE) then
-            if (i == i_xmin) then
-              surf % i_periodic = i_xmax
-            elseif (i == i_xmax) then
-              surf % i_periodic = i_xmin
-            else
-              call fatal_error("Periodic boundary condition applied to &
-                   &interior surface.")
-            end if
-          else
-            surf % i_periodic = surface_dict % get(surf % i_periodic)
-          end if
-
-        type is (SurfaceYPlane)
-          if (surf % i_periodic == NONE) then
-            if (i == i_ymin) then
-              surf % i_periodic = i_ymax
-            elseif (i == i_ymax) then
-              surf % i_periodic = i_ymin
-            else
-              call fatal_error("Periodic boundary condition applied to &
-                   &interior surface.")
-            end if
-          else
-            surf % i_periodic = surface_dict % get(surf % i_periodic)
-          end if
-
-        type is (SurfaceZPlane)
-          if (surf % i_periodic == NONE) then
-            if (i == i_zmin) then
-              surf % i_periodic = i_zmax
-            elseif (i == i_zmax) then
-              surf % i_periodic = i_zmin
-            else
-              call fatal_error("Periodic boundary condition applied to &
-                   &interior surface.")
-            end if
-          else
-            surf % i_periodic = surface_dict % get(surf % i_periodic)
-          end if
-
-        type is (SurfacePlane)
-          if (surf % i_periodic == NONE) then
-            call fatal_error("No matching periodic surface specified for &
-                 &periodic boundary condition on surface " // &
-                 trim(to_str(surf % id)) // ".")
-          else
-            surf % i_periodic = surface_dict % get(surf % i_periodic)
-          end if
-
-        class default
-          call fatal_error("Periodic boundary condition applied to &
-               &non-planar surface.")
-        end select
-
-        ! Make sure opposite surface is also periodic
-        associate (surf => surfaces(i) % obj)
-          if (surfaces(surf % i_periodic) % obj % bc /= BC_PERIODIC) then
-            call fatal_error("Could not find matching surface for periodic &
-                 &boundary on surface " // trim(to_str(surf % id)) // ".")
-          end if
-        end associate
-      end if
-    end do
 
     ! ==========================================================================
     ! READ CELLS FROM GEOMETRY.XML

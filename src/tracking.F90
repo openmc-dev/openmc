@@ -6,7 +6,7 @@ module tracking
   use geometry_header,    only: cells
   use geometry,           only: find_cell, distance_to_boundary, cross_lattice, &
                                 check_cell_overlap, surface_reflect_c, &
-                                surface_periodic_c
+                                surface_periodic_c, surface_i_periodic_c
   use message_passing
   use mgxs_header
   use nuclide_header
@@ -298,7 +298,7 @@ contains
     class(Surface), pointer :: surf
 
     i_surface = abs(p % surface)
-    surf => surfaces(i_surface)%obj
+    surf => surfaces(i_surface)
     if (verbosity >= 10 .or. trace) then
       call write_message("    Crossing surface " // trim(to_str(surf % id)))
     end if
@@ -412,14 +412,14 @@ contains
         p % coord(1) % xyz = xyz
       end if
 
-      rotational = surface_periodic_c(i_surface-1, surf % i_periodic-1, &
-                                       p % coord(1) % xyz, p % coord(1) % uvw)
+      rotational = surface_periodic_c(i_surface-1, p % coord(1) % xyz, &
+                                      p % coord(1) % uvw)
 
       ! Reassign particle's surface
       if (rotational) then
-        p % surface = surf % i_periodic
+        p % surface = surface_i_periodic_c(i_surface-1) + 1
       else
-        p % surface = sign(surf % i_periodic, p % surface)
+        p % surface = sign(surface_i_periodic_c(i_surface-1) + 1, p % surface)
       end if
 
       ! Figure out what cell particle is in now

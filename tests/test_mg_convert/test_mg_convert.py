@@ -139,13 +139,10 @@ class MGXSTestHarness(PyAPITestHarness):
 
             if self._opts.mpi_exec is not None:
                 mpi_args = [self._opts.mpi_exec, '-n', self._opts.mpi_np]
-                returncode = openmc.run(openmc_exec=self._opts.exe,
-                                        mpi_args=mpi_args)
+                openmc.run(openmc_exec=self._opts.exe, mpi_args=mpi_args)
 
             else:
-                returncode = openmc.run(openmc_exec=self._opts.exe)
-
-            assert returncode == 0, 'OpenMC did not exit successfully.'
+                openmc.run(openmc_exec=self._opts.exe)
 
             sp = openmc.StatePoint('statepoint.' + str(batches) + '.h5')
 

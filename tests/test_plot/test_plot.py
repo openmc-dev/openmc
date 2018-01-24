@@ -19,8 +19,7 @@ class PlotTestHarness(TestHarness):
         self._plot_names = plot_names
 
     def _run_openmc(self):
-        returncode = openmc.plot_geometry(openmc_exec=self._opts.exe)
-        assert returncode == 0, 'OpenMC did not exit successfully.'
+        openmc.plot_geometry(openmc_exec=self._opts.exe)
 
     def _test_output_created(self):
         """Make sure *.ppm has been created."""

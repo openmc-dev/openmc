@@ -50,14 +50,10 @@ class StatepointRestartTestHarness(TestHarness):
         # Run OpenMC
         if self._opts.mpi_exec is not None:
             mpi_args = [self._opts.mpi_exec, '-n', self._opts.mpi_np]
-            returncode = openmc.run(restart_file=statepoint,
-                                    openmc_exec=self._opts.exe,
-                                    mpi_args=mpi_args)
+            openmc.run(restart_file=statepoint, openmc_exec=self._opts.exe,
+                       mpi_args=mpi_args)
         else:
-            returncode = openmc.run(openmc_exec=self._opts.exe,
-                                    restart_file=statepoint)
-
-        assert returncode == 0, 'OpenMC did not exit successfully.'
+            openmc.run(openmc_exec=self._opts.exe, restart_file=statepoint)
 
 
 if __name__ == '__main__':

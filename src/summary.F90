@@ -24,17 +24,6 @@ module summary
 
   public :: write_summary
 
-  interface
-    subroutine surface_to_hdf5_c(surf_ind, group) &
-         bind(C, name='surface_to_hdf5')
-      use ISO_C_BINDING
-      use hdf5
-      implicit none
-      integer(C_INT), intent(in), value :: surf_ind
-      integer(HID_T), intent(in), value :: group
-    end subroutine surface_to_hdf5_c
-  end interface
-
 contains
 
 !===============================================================================
@@ -232,7 +221,7 @@ contains
           region_spec = trim(region_spec) // " |"
         case default
           region_spec = trim(region_spec) // " " // to_str(&
-               sign(surfaces(abs(k))%id, k))
+               sign(surfaces(abs(k))%id(), k))
         end select
       end do
       call write_dataset(cell_group, "region", adjustl(region_spec))
@@ -250,7 +239,7 @@ contains
 
     ! Write information on each surface
     SURFACE_LOOP: do i = 1, n_surfaces
-      call surface_to_hdf5_c(i-1, surfaces_group)
+      call surfaces(i) % to_hdf5(surfaces_group)
     end do SURFACE_LOOP
 
     call close_group(surfaces_group)

@@ -1053,10 +1053,12 @@ extern "C" void
 read_surfaces(pugi::xml_node *node)
 {
   // Count the number of surfaces.
-  int n_surfaces{0};
   for (pugi::xml_node surf_node = node->child("surface"); surf_node;
        surf_node = surf_node.next_sibling("surface")) {
     n_surfaces++;
+  }
+  if (n_surfaces == 0) {
+    fatal_error("No surfaces found in geometry.xml!");
   }
 
   // Allocate the array of Surface pointers.
@@ -1137,7 +1139,14 @@ read_surfaces(pugi::xml_node *node)
       // Downcast to the PeriodicSurface type.
       Surface *surf_base = surfaces_c[i_surf];
       PeriodicSurface *surf = dynamic_cast<PeriodicSurface *>(surf_base);
-      //TODO: check for null pointer
+
+      // Make sure this surface inherits from PeriodicSurface.
+      if (surf == NULL) {
+        std::string err_msg{"Periodic boundary condition not supported for "
+                            "surface "};
+        err_msg += std::to_string(surf_base->id);
+        err_msg += ". Periodic BCs are only supported for planar surfaces.";
+      }
 
       // See if this surface makes part of the global bounding box.
       struct BoundingBox bb = surf->bounding_box();

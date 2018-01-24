@@ -924,19 +924,15 @@ contains
     logical :: file_exists
     logical :: boundary_exists
     character(MAX_LINE_LEN) :: filename
-    character(MAX_WORD_LEN) :: word
     character(MAX_WORD_LEN), allocatable :: sarray(:)
     character(:), allocatable :: region_spec
     type(Cell),     pointer :: c
-    class(Surface), pointer :: s
     class(Lattice), pointer :: lat
     type(XMLDocument) :: doc
     type(XMLNode) :: root
     type(XMLNode) :: node_cell
-    type(XMLNode) :: node_surf
     type(XMLNode) :: node_lat
     type(XMLNode), allocatable :: node_cell_list(:)
-    type(XMLNode), allocatable :: node_surf_list(:)
     type(XMLNode), allocatable :: node_rlat_list(:)
     type(XMLNode), allocatable :: node_hlat_list(:)
     type(VectorInt) :: tokens
@@ -968,66 +964,18 @@ contains
     ! applied to a surface
     boundary_exists = .false.
 
-    ! get pointer to list of xml <surface>
-    call get_node_list(root, "surface", node_surf_list)
     call read_surfaces(root % ptr)
 
-    ! Get number of <surface> tags
-    n_surfaces = size(node_surf_list)
-
-    ! Check for no surfaces
-    if (n_surfaces == 0) then
-      call fatal_error("No surfaces found in geometry.xml!")
-    end if
-
-    ! Allocate cells array
+    ! Allocate surfaces array
     allocate(surfaces(n_surfaces))
 
     do i = 1, n_surfaces
-      ! Get pointer to i-th surface node
-      node_surf = node_surf_list(i)
+      surfaces(i) % ptr = surface_pointer_c(i - 1);
 
-      s => surfaces(i)
+      if (surfaces(i) % bc() /= BC_TRANSMIT) boundary_exists = .true.
 
-      ! Copy data into cells
-      if (check_for_node(node_surf, "id")) then
-        call get_node_value(node_surf, "id", s%id)
-      else
-        call fatal_error("Must specify id of surface in geometry XML file.")
-      end if
-
-      ! Check to make sure 'id' hasn't been used
-      if (surface_dict % has(s%id)) then
-        call fatal_error("Two or more surfaces use the same unique ID: " &
-             // to_str(s%id))
-      end if
-
-      ! Check to make sure that the proper number of coefficients
-      ! have been specified for the given type of surface. Then copy
-      ! surface coordinates.
-
-      ! Boundary conditions
-      word = ''
-      if (check_for_node(node_surf, "boundary")) &
-           call get_node_value(node_surf, "boundary", word)
-      select case (to_lower(word))
-      case ('transmission', 'transmit', '')
-        s%bc = BC_TRANSMIT
-      case ('vacuum')
-        s%bc = BC_VACUUM
-        boundary_exists = .true.
-      case ('reflective', 'reflect', 'reflecting')
-        s%bc = BC_REFLECT
-        boundary_exists = .true.
-      case ('periodic')
-        s%bc = BC_PERIODIC
-        boundary_exists = .true.
-      case default
-        call fatal_error("Unknown boundary condition '" // trim(word) // &
-             &"' specified on surface " // trim(to_str(s%id)))
-      end select
       ! Add surface to dictionary
-      call surface_dict % set(s%id, i)
+      call surface_dict % set(surfaces(i) % id(), i)
     end do
 
     ! Check to make sure a boundary condition was applied to at least one

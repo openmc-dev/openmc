@@ -28,6 +28,8 @@ const int C_NONE{-1};
 // Global variables
 //==============================================================================
 
+int n_surfaces{0};
+
 class Surface;
 Surface **surfaces_c;
 
@@ -375,57 +377,43 @@ public:
 // Fortran compatibility functions
 //==============================================================================
 
-extern "C" bool
-surface_sense(int surf_ind, double xyz[3], double uvw[3])
-{
-  return surfaces_c[surf_ind]->sense(xyz, uvw);
-}
+extern "C" Surface* surface_pointer(int surf_ind) {return surfaces_c[surf_ind];}
 
-extern "C" void
-surface_reflect(int surf_ind, double xyz[3], double uvw[3])
-{
-  surfaces_c[surf_ind]->reflect(xyz, uvw);
-}
+extern "C" int surface_id(Surface *surf) {return surf->id;}
+
+extern "C" int surface_bc(Surface *surf) {return surf->bc;}
+
+extern "C" bool surface_sense(Surface *surf, double xyz[3], double uvw[3])
+{return surf->sense(xyz, uvw);}
+
+extern "C" void surface_reflect(Surface *surf, double xyz[3], double uvw[3])
+{surf->reflect(xyz, uvw);}
 
 extern "C" double
-surface_distance(int surf_ind, double xyz[3], double uvw[3], bool coincident)
-{
-  return surfaces_c[surf_ind]->distance(xyz, uvw, coincident);
-}
+surface_distance(Surface *surf, double xyz[3], double uvw[3], bool coincident)
+{return surf->distance(xyz, uvw, coincident);}
 
-extern "C" void
-surface_normal(int surf_ind, double xyz[3], double uvw[3])
-{
-  return surfaces_c[surf_ind]->normal(xyz, uvw);
-}
+extern "C" void surface_normal(Surface *surf, double xyz[3], double uvw[3])
+{return surf->normal(xyz, uvw);}
 
-extern "C" void
-surface_to_hdf5(int surf_ind, hid_t group)
-{
-  surfaces_c[surf_ind]->to_hdf5(group);
-}
+extern "C" void surface_to_hdf5(Surface *surf, hid_t group)
+{surf->to_hdf5(group);}
+
+extern "C" int surface_i_periodic(PeriodicSurface *surf)
+{return surf->i_periodic;}
 
 extern "C" bool
-surface_periodic(int surf_ind1, double xyz[3], double uvw[3])
-{
-  // Hopefully this function has only been called for a pair of surfaces that
-  // support periodic BCs (checking should have been done when reading the
-  // geometry XML).  Downcast the surfaces to the PeriodicSurface type so we
-  // can call the periodic_translate method.
-  Surface *surf1_gen = surfaces_c[surf_ind1];
-  PeriodicSurface *surf1 = dynamic_cast<PeriodicSurface *>(surf1_gen);
-  Surface *surf2_gen = surfaces_c[surf1->i_periodic];
-  PeriodicSurface *surf2 = dynamic_cast<PeriodicSurface *>(surf2_gen);
+surface_periodic(PeriodicSurface *surf, PeriodicSurface *other, double xyz[3],
+                 double uvw[3])
+{return surf->periodic_translate(other, xyz, uvw);}
 
-  // Call the type-bound methods.
-  return surf2->periodic_translate(surf1, xyz, uvw);
-}
-
-extern "C" int
-surface_i_periodic(int surf_ind)
+extern "C" void free_memory_surfaces_c()
 {
-  PeriodicSurface *surf = dynamic_cast<PeriodicSurface *>(surfaces_c[surf_ind]);
-  return surf->i_periodic;
+  for (int i = 0; i < n_surfaces; i++) {delete surfaces_c[i];}
+  delete surfaces_c;
+  surfaces_c = NULL;
+  n_surfaces = 0;
+  surface_dict.clear();
 }
 
 #endif // SURFACE_H

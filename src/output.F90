@@ -259,7 +259,7 @@ contains
 
     ! Print surface
     if (p % surface /= NONE) then
-      write(ou,*) '  Surface = ' // to_str(sign(surfaces(i)%id, p % surface))
+      write(ou,*) '  Surface = ' // to_str(sign(surfaces(i)%id(), p % surface))
     end if
 
     ! Display weight, energy, grid index, and interpolation factor

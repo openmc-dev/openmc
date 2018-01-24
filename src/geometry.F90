@@ -14,66 +14,6 @@ module geometry
 
   implicit none
 
-  interface
-    pure function surface_sense_c(surf_ind, xyz, uvw) &
-         bind(C, name='surface_sense') result(sense)
-      use ISO_C_BINDING
-      implicit none
-      integer(C_INT), intent(in), value :: surf_ind;
-      real(C_DOUBLE), intent(in)        :: xyz(3);
-      real(C_DOUBLE), intent(in)        :: uvw(3);
-      logical(C_BOOL)                   :: sense;
-    end function surface_sense_c
-
-    pure subroutine surface_reflect_c(surf_ind, xyz, uvw) &
-         bind(C, name='surface_reflect')
-      use ISO_C_BINDING
-      implicit none
-      integer(C_INT), intent(in), value :: surf_ind;
-      real(C_DOUBLE), intent(in)        :: xyz(3);
-      real(C_DOUBLE), intent(inout)     :: uvw(3);
-    end subroutine surface_reflect_c
-
-    pure function surface_distance_c(surf_ind, xyz, uvw, coincident) &
-         bind(C, name='surface_distance') result(d)
-      use ISO_C_BINDING
-      implicit none
-      integer(C_INT),  intent(in), value :: surf_ind;
-      real(C_DOUBLE),  intent(in)        :: xyz(3);
-      real(C_DOUBLE),  intent(in)        :: uvw(3);
-      logical(C_BOOL), intent(in), value :: coincident;
-      real(C_DOUBLE)                     :: d;
-    end function surface_distance_c
-
-    pure subroutine surface_normal_c(surf_ind, xyz, uvw) &
-         bind(C, name='surface_normal')
-      use ISO_C_BINDING
-      implicit none
-      integer(C_INT), intent(in), value :: surf_ind;
-      real(C_DOUBLE), intent(in)        :: xyz(3);
-      real(C_DOUBLE), intent(out)       :: uvw(3);
-    end subroutine surface_normal_c
-
-    function surface_periodic_c(surf_ind1, xyz, uvw) &
-         bind(C, name="surface_periodic") result(rotational)
-      use ISO_C_BINDING
-      implicit none
-      integer(C_INT), intent(in), value :: surf_ind1;
-      real(C_DOUBLE), intent(inout)     :: xyz(3);
-      real(C_DOUBLE), intent(inout)     :: uvw(3);
-      logical(C_BOOL)                   :: rotational
-    end function surface_periodic_c
-
-    function surface_i_periodic_c(surf_ind) bind(C, name="surface_i_periodic") &
-         result(i_periodic)
-      use ISO_C_BINDING
-      implicit none
-      integer(C_INT), intent(in), value :: surf_ind
-      integer(C_INT)                    :: i_periodic
-    end function
-
-  end interface
-
 contains
 
 !===============================================================================
@@ -125,7 +65,7 @@ contains
           in_cell = .false.
           exit
         else
-          actual_sense = surface_sense_c(abs(token)-1, &
+          actual_sense = surfaces(abs(token)) % sense( &
                p%coord(p%n_coord)%xyz, p%coord(p%n_coord)%uvw)
           if (actual_sense .neqv. (token > 0)) then
             in_cell = .false.
@@ -174,7 +114,7 @@ contains
         elseif (-token == p%surface) then
           stack(i_stack) = .false.
         else
-          actual_sense = surface_sense_c(abs(token)-1, &
+          actual_sense = surfaces(abs(token)) % sense( &
                p%coord(p%n_coord)%xyz, p%coord(p%n_coord)%uvw)
           stack(i_stack) = (actual_sense .eqv. (token > 0))
         end if
@@ -579,7 +519,7 @@ contains
         if (index_surf >= OP_UNION) cycle
 
         ! Calculate distance to surface
-        d = surface_distance_c(index_surf-1, p % coord(j) % xyz, &
+        d = surfaces(index_surf) % distance(p % coord(j) % xyz, &
              p % coord(j) % uvw, logical(coincident, kind=C_BOOL))
 
         ! Check if calculated distance is new minimum
@@ -799,7 +739,7 @@ contains
           ! traveling into if the surface is crossed
           if (.not. c % simple) then
             xyz_cross(:) = p % coord(j) % xyz + d_surf*p % coord(j) % uvw
-            call surface_normal_c(abs(level_surf_cross)-1, xyz_cross, surf_uvw)
+            call surfaces(abs(level_surf_cross)) % normal(xyz_cross, surf_uvw)
             if (dot_product(p % coord(j) % uvw, surf_uvw) > ZERO) then
               surface_crossed = abs(level_surf_cross)
             else

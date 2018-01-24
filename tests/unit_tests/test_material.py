@@ -1,6 +1,7 @@
 import openmc
 import openmc.model
 import openmc.stats
+import openmc.examples
 import pytest
 
 
@@ -101,7 +102,7 @@ def test_repr():
     repr(m)
 
 
-def test_macroscopic():
+def test_macroscopic(run_in_tmpdir):
     m = openmc.Material(name='UO2')
     m.add_macroscopic('UO2')
     with pytest.raises(ValueError):
@@ -116,17 +117,37 @@ def test_macroscopic():
     with pytest.raises(ValueError):
         m2.add_macroscopic('UO2')
 
+    # Make sure we can remove/add macroscopic
     m.remove_macroscopic('UO2')
+    m.add_macroscopic('UO2')
+    repr(m)
+
+    # Make sure we can export a material with macroscopic data
+    mats = openmc.Materials([m])
+    mats.export_to_xml()
+
+
+def test_paths():
+    model = openmc.examples.pwr_assembly()
+    model.geometry.determine_paths()
+    fuel = model.materials[0]
+    assert fuel.num_instances == 264
+    assert len(fuel.paths) == 264
 
 
 def test_isotropic():
-    m = openmc.Material()
-    m.add_nuclide('U235', 1.0)
-    m.add_nuclide('O16', 2.0)
-    m.make_isotropic_in_lab()
-    assert m.isotropic == ['U235', 'O16']
-    m.isotropic = ['O16']
-    assert m.isotropic == ['O16']
+    m1 = openmc.Material()
+    m1.add_nuclide('U235', 1.0)
+    m1.add_nuclide('O16', 2.0)
+    m1.isotropic = ['O16']
+    assert m1.isotropic == ['O16']
+
+    m2 = openmc.Material()
+    m2.add_nuclide('H1', 1.0)
+    mats = openmc.Materials([m1, m2])
+    mats.make_isotropic_in_lab()
+    assert m1.isotropic == ['U235', 'O16']
+    assert m2.isotropic == ['H1']
 
 
 def test_volume(run_in_tmpdir, sphere_model):

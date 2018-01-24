@@ -1,4 +1,6 @@
 import openmc
+import openmc.model
+import openmc.stats
 import pytest
 
 
@@ -10,6 +12,40 @@ def uo2():
     m.set_density('g/cm3', 10.0)
     m.depletable = True
     return m
+
+
+@pytest.fixture(scope='module')
+def sphere_model():
+    model = openmc.model.Model()
+
+    m = openmc.Material()
+    m.add_nuclide('U235', 1.0)
+    m.set_density('g/cm3', 1.0)
+    model.materials.append(m)
+
+    sph = openmc.Sphere(boundary_type='vacuum')
+    c = openmc.Cell(fill=m, region=-sph)
+    model.geometry.root_universe = openmc.Universe(cells=[c])
+
+    model.settings.particles = 100
+    model.settings.batches = 10
+    model.settings.run_mode = 'fixed source'
+    model.settings.source = openmc.Source(space=openmc.stats.Point())
+    ll, ur = c.region.bounding_box
+    model.settings.volume_calculations = [
+        openmc.VolumeCalculation(domains=[m], samples=1000,
+                                 lower_left=ll, upper_right=ur)
+    ]
+    return model
+
+
+@pytest.fixture
+def run_in_tmpdir(tmpdir):
+    orig = tmpdir.chdir()
+    try:
+        yield
+    finally:
+        orig.chdir()
 
 
 def test_attributes(uo2):
@@ -93,6 +129,14 @@ def test_isotropic():
     assert m.isotropic == ['O16']
 
 
+def test_volume(run_in_tmpdir, sphere_model):
+    """Test adding volume information from a volume calculation."""
+    sphere_model.export_to_xml()
+    openmc.calculate_volumes()
+    volume_calc = openmc.VolumeCalculation.from_hdf5('volume_1.h5')
+    sphere_model.materials[0].add_volume_information(volume_calc)
+
+
 def test_get_nuclide_densities(uo2):
     nucs = uo2.get_nuclide_densities()
     for nuc, density, density_type in nucs.values():
@@ -108,7 +152,7 @@ def test_get_nuclide_atom_densities(uo2):
         assert density > 0
 
 
-def test_materials(tmpdir):
+def test_materials(run_in_tmpdir):
     m1 = openmc.Material()
     m1.add_nuclide('U235', 1.0, 'wo')
     m1.add_nuclide('O16', 2.0, 'wo')
@@ -125,4 +169,4 @@ def test_materials(tmpdir):
     mats = openmc.Materials([m1, m2])
     mats.cross_sections = '/some/fake/cross_sections.xml'
     mats.multipole_library = '/some/awesome/mp_lib/'
-    mats.export_to_xml(str(tmpdir.join('materials.xml')))
+    mats.export_to_xml()

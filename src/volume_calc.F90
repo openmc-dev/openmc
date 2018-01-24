@@ -194,7 +194,7 @@ contains
       if (this % domain_type == FILTER_MATERIAL) then
         i_material = p % material
         do i_domain = 1, size(this % domain_id)
-          if (i_material == materials(i_domain) % id) then
+          if (materials(i_material) % id == this % domain_id(i_domain)) then
             call check_hit(i_domain, i_material, indices, hits, n_mat)
           end if
         end do

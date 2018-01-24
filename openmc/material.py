@@ -15,7 +15,7 @@ from .mixin import IDManagerMixin
 
 
 # Units for density supported by OpenMC
-DENSITY_UNITS = ['g/cm3', 'g/cc', 'kg/cm3', 'atom/b-cm', 'atom/cm3', 'sum',
+DENSITY_UNITS = ['g/cm3', 'g/cc', 'kg/m3', 'atom/b-cm', 'atom/cm3', 'sum',
                  'macro']
 
 
@@ -49,7 +49,7 @@ class Material(IDManagerMixin):
     density : float
         Density of the material (units defined separately)
     density_units : str
-        Units used for `density`. Can be one of 'g/cm3', 'g/cc', 'kg/cm3',
+        Units used for `density`. Can be one of 'g/cm3', 'g/cc', 'kg/m3',
         'atom/b-cm', 'atom/cm3', 'sum', or 'macro'.  The 'macro' unit only
         applies in the case of a multi-group calculation.
     depletable : bool
@@ -312,7 +312,7 @@ class Material(IDManagerMixin):
 
         Parameters
         ----------
-        units : {'g/cm3', 'g/cc', 'kg/cm3', 'atom/b-cm', 'atom/cm3', 'sum', 'macro'}
+        units : {'g/cm3', 'g/cc', 'kg/m3', 'atom/b-cm', 'atom/cm3', 'sum', 'macro'}
             Physical units of density.
         density : float, optional
             Value of the density. Must be specified unless units is given as

@@ -39,10 +39,8 @@ class Region(object):
     def __eq__(self, other):
         if not isinstance(other, type(self)):
             return False
-        elif str(self) != str(other):
-            return False
         else:
-            return True
+            return str(self) == str(other)
 
     def __ne__(self, other):
         return not self == other
@@ -463,7 +461,7 @@ class Union(Region, MutableSequence):
         if memo is None:
             memo = {}
 
-        clone = copy.deepcopy(self)
+        clone = deepcopy(self)
         clone[:] = [n.clone(memo) for n in self]
         return clone
 
@@ -584,6 +582,6 @@ class Complement(Region):
         if memo is None:
             memo = {}
 
-        clone = copy.deepcopy(self)
+        clone = deepcopy(self)
         clone.node = self.node.clone(memo)
         return clone

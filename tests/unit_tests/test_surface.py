@@ -80,6 +80,7 @@ def test_yplane():
     # evaluate method
     assert s.evaluate((0., 0., 0.)) == pytest.approx(-3.)
 
+
 def test_zplane():
     s = openmc.ZPlane(z0=3.)
     assert s.z0 == 3.

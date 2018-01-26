@@ -1,8 +1,15 @@
 #!/bin/bash
 set -ex
-cd tests
-if [[ $TRAVIS_PYTHON_VERSION == "3.4" && $OPENMC_CONFIG == '^hdf5-debug$' ]]; then
+
+# Run regression test suite
+cd build
+ctest
+
+# Run source check
+cd ../tests
+if [[ $TRAVIS_PYTHON_VERSION == "3.4" && $OMP == 'n' && $MPI == 'n' ]]; then
     ./check_source.py
 fi
-./run_tests.py -C $OPENMC_CONFIG -j 2
+
+# Run unit tests
 pytest --cov=../openmc -v unit_tests/

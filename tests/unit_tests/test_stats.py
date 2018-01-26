@@ -1,3 +1,5 @@
+from math import pi
+
 import numpy as np
 import pytest
 import openmc
@@ -77,6 +79,7 @@ def test_legendre():
     with pytest.raises(NotImplementedError):
         d.to_xml_element('distribution')
 
+
 def test_mixture():
     d1 = openmc.stats.Uniform(0, 5)
     d2 = openmc.stats.Uniform(3, 7)
@@ -88,3 +91,89 @@ def test_mixture():
 
     with pytest.raises(NotImplementedError):
         mix.to_xml_element('distribution')
+
+
+def test_polar_azimuthal():
+    # default polar-azimuthal should be uniform in mu and phi
+    d = openmc.stats.PolarAzimuthal()
+    assert isinstance(d.mu, openmc.stats.Uniform)
+    assert d.mu.a == -1.
+    assert d.mu.b == 1.
+    assert isinstance(d.phi, openmc.stats.Uniform)
+    assert d.phi.a == 0.
+    assert d.phi.b == 2*pi
+
+    mu = openmc.stats.Discrete(1., 1.)
+    phi = openmc.stats.Discrete(0., 1.)
+    d = openmc.stats.PolarAzimuthal(mu, phi)
+    assert d.mu == mu
+    assert d.phi == phi
+
+    elem = d.to_xml_element()
+    assert elem.tag == 'angle'
+    assert elem.attrib['type'] == 'mu-phi'
+    assert elem.find('mu') is not None
+    assert elem.find('phi') is not None
+
+
+def test_isotropic():
+    d = openmc.stats.Isotropic()
+    elem = d.to_xml_element()
+    assert elem.tag == 'angle'
+    assert elem.attrib['type'] == 'isotropic'
+
+
+def test_monodirectional():
+    d = openmc.stats.Monodirectional((1., 0., 0.))
+    assert d.reference_uvw == pytest.approx((1., 0., 0.))
+
+    elem = d.to_xml_element()
+    assert elem.tag == 'angle'
+    assert elem.attrib['type'] == 'monodirectional'
+
+
+def test_cartesian():
+    x = openmc.stats.Uniform(-10., 10.)
+    y = openmc.stats.Uniform(-10., 10.)
+    z = openmc.stats.Uniform(0., 20.)
+    d = openmc.stats.CartesianIndependent(x, y, z)
+    assert d.x == x
+    assert d.y == y
+    assert d.z == z
+
+    elem = d.to_xml_element()
+    assert elem.tag == 'space'
+    assert elem.attrib['type'] == 'cartesian'
+    assert elem.find('x') is not None
+    assert elem.find('y') is not None
+
+
+def test_box():
+    lower_left = (-10., -10., -10.)
+    upper_right = (10., 10., 10.)
+    d = openmc.stats.Box(lower_left, upper_right)
+    assert d.lower_left == pytest.approx(lower_left)
+    assert d.upper_right == pytest.approx(upper_right)
+    assert not d.only_fissionable
+
+    elem = d.to_xml_element()
+    assert elem.tag == 'space'
+    assert elem.attrib['type'] == 'box'
+    assert elem.find('parameters') is not None
+
+    # only fissionable parameter
+    d2 = openmc.stats.Box(lower_left, upper_right, True)
+    assert d2.only_fissionable
+    elem = d2.to_xml_element()
+    assert elem.attrib['type'] == 'fission'
+
+
+def test_point():
+    p = (-4., 2., 10.)
+    d = openmc.stats.Point(p)
+    assert d.xyz == pytest.approx(p)
+
+    elem = d.to_xml_element()
+    assert elem.tag == 'space'
+    assert elem.attrib['type'] == 'point'
+    assert elem.find('parameters') is not None

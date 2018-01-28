@@ -531,7 +531,7 @@ endif()
 include(CTest)
 
 # Get a list of all the tests to run
-file(GLOB_RECURSE TESTS ${CMAKE_CURRENT_SOURCE_DIR}/tests/test_*.py)
+file(GLOB_RECURSE TESTS ${CMAKE_CURRENT_SOURCE_DIR}/tests/test.py)
 
 # Loop through all the tests
 foreach(test ${TESTS})
@@ -552,20 +552,20 @@ foreach(test ${TESTS})
     endif()
 
     # Add serial test
-    add_test(NAME ${TEST_NAME}
+    add_test(NAME ${TEST_PATH}
       WORKING_DIRECTORY ${TEST_PATH}
       COMMAND $<TARGET_FILE:openmc>)
   else()
     # Check serial/parallel
     if (${MPI_ENABLED})
       # Preform a parallel test
-      add_test(NAME ${TEST_NAME}
+      add_test(NAME ${TEST_PATH}
         WORKING_DIRECTORY ${TEST_PATH}
         COMMAND ${PYTHON_EXECUTABLE} ${TEST_NAME} --exe $<TARGET_FILE:openmc>
         --mpi_exec ${MPI_DIR}/mpiexec)
     else()
       # Perform a serial test
-      add_test(NAME ${TEST_NAME}
+      add_test(NAME ${TEST_PATH}
         WORKING_DIRECTORY ${TEST_PATH}
         COMMAND ${PYTHON_EXECUTABLE} ${TEST_NAME} --exe $<TARGET_FILE:openmc>)
     endif()

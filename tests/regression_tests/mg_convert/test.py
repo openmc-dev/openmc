@@ -5,6 +5,7 @@ import numpy as np
 import openmc
 
 from tests.testing_harness import PyAPITestHarness
+from tests.regression_tests import config
 
 # OpenMC simulation parameters
 batches = 10
@@ -133,24 +134,18 @@ class MGXSTestHarness(PyAPITestHarness):
         for case in cases:
             build_mgxs_library(case)
 
-            if self._opts.mpi_exec is not None:
-                mpi_args = [self._opts.mpi_exec, '-n', self._opts.mpi_np]
-                openmc.run(openmc_exec=self._opts.exe, mpi_args=mpi_args)
+            if config['mpi']:
+                mpi_args = [config['mpiexec'], '-n', config['mpi_np']]
+                openmc.run(openmc_exec=config['exe'], mpi_args=mpi_args)
 
             else:
-                openmc.run(openmc_exec=self._opts.exe)
+                openmc.run(openmc_exec=config['exe'])
 
-            sp = openmc.StatePoint('statepoint.' + str(batches) + '.h5')
-
-            # Write out k-combined.
-            outstr += 'k-combined:\n'
-            form = '{0:12.6E} {1:12.6E}\n'
-            outstr += form.format(sp.k_combined[0], sp.k_combined[1])
-
-            # Enforce closing statepoint and summary files so HDF5
-            # does not throw an error during the next OpenMC execution
-            sp._f.close()
-            sp._summary._f.close()
+            with openmc.StatePoint('statepoint.{}.h5'.format(batches)) as sp:
+                # Write out k-combined.
+                outstr += 'k-combined:\n'
+                form = '{0:12.6E} {1:12.6E}\n'
+                outstr += form.format(sp.k_combined[0], sp.k_combined[1])
 
         return outstr
 

@@ -6,6 +6,7 @@ import h5py
 import openmc
 
 from tests.testing_harness import TestHarness
+from tests.regression_tests import config
 
 
 class PlotTestHarness(TestHarness):
@@ -15,20 +16,18 @@ class PlotTestHarness(TestHarness):
         self._plot_names = plot_names
 
     def _run_openmc(self):
-        openmc.plot_geometry(openmc_exec=self._opts.exe)
+        openmc.plot_geometry(openmc_exec=config['exe'])
 
     def _test_output_created(self):
         """Make sure *.ppm has been created."""
         for fname in self._plot_names:
-            assert os.path.exists(os.path.join(os.getcwd(), fname)), \
-                 'Plot output file does not exist.'
+            assert os.path.exists(fname), 'Plot output file does not exist.'
 
     def _cleanup(self):
         super(PlotTestHarness, self)._cleanup()
         for fname in self._plot_names:
-            path = os.path.join(os.getcwd(), fname)
-            if os.path.exists(path):
-                os.remove(path)
+            if os.path.exists(fname):
+                os.remove(fname)
 
     def _get_results(self):
         """Return a string hash of the plot files."""

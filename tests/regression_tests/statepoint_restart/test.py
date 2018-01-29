@@ -4,6 +4,7 @@ import os
 import openmc
 
 from tests.testing_harness import TestHarness
+from tests.regression_tests import config
 
 
 class StatepointRestartTestHarness(TestHarness):
@@ -46,12 +47,12 @@ class StatepointRestartTestHarness(TestHarness):
         statepoint = statepoint[0]
 
         # Run OpenMC
-        if self._opts.mpi_exec is not None:
-            mpi_args = [self._opts.mpi_exec, '-n', self._opts.mpi_np]
-            openmc.run(restart_file=statepoint, openmc_exec=self._opts.exe,
+        if config['mpi']:
+            mpi_args = [config['mpiexec'], '-n', config['mpi_np']]
+            openmc.run(restart_file=statepoint, openmc_exec=config['exe'],
                        mpi_args=mpi_args)
         else:
-            openmc.run(openmc_exec=self._opts.exe, restart_file=statepoint)
+            openmc.run(openmc_exec=config['exe'], restart_file=statepoint)
 
 
 def test_statepoint_restart():

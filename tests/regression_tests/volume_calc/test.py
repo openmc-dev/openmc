@@ -1,11 +1,10 @@
-#!/usr/bin/env python
-
 import os
 import glob
 import sys
-sys.path.insert(0, os.path.join(os.pardir, os.pardir))
-from testing_harness import PyAPITestHarness
+
 import openmc
+
+from tests.testing_harness import PyAPITestHarness
 
 
 class VolumeTest(PyAPITestHarness):
@@ -57,8 +56,7 @@ class VolumeTest(PyAPITestHarness):
 
     def _get_results(self):
         outstr = ''
-        for i, filename in enumerate(sorted(glob.glob(os.path.join(
-                os.getcwd(), 'volume_*.h5')))):
+        for i, filename in enumerate(sorted(glob.glob('volume_*.h5'))):
             outstr += 'Volume calculation {}\n'.format(i)
 
             # Read volume calculation results
@@ -75,6 +73,7 @@ class VolumeTest(PyAPITestHarness):
     def _test_output_created(self):
         pass
 
-if __name__ == '__main__':
+def test_volume_calc(request):
     harness = VolumeTest('')
+    harness.request = request
     harness.main()

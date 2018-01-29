@@ -1,11 +1,6 @@
-#!/usr/bin/env python
-
-import os
-import sys
-import glob
-sys.path.insert(0, os.path.join(os.pardir, os.pardir))
-from testing_harness import PyAPITestHarness
 import openmc
+
+from tests.testing_harness import PyAPITestHarness
 
 
 class FilterEnergyFunHarness(PyAPITestHarness):
@@ -38,8 +33,7 @@ class FilterEnergyFunHarness(PyAPITestHarness):
 
     def _get_results(self):
         # Read the statepoint file.
-        statepoint = glob.glob(os.path.join(os.getcwd(), self._sp_name))[0]
-        sp = openmc.StatePoint(statepoint)
+        sp = openmc.StatePoint(self._sp_name)
 
         # Use tally arithmetic to compute the branching ratio.
         br_tally = sp.tallies[2] / sp.tallies[1]
@@ -48,6 +42,7 @@ class FilterEnergyFunHarness(PyAPITestHarness):
         return br_tally.get_pandas_dataframe().to_string() + '\n'
 
 
-if __name__ == '__main__':
+def test_filter_energyfun(request):
     harness = FilterEnergyFunHarness('statepoint.10.h5')
+    harness.request = request
     harness.main()

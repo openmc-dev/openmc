@@ -1,10 +1,7 @@
-#!/usr/bin/env python
-
-import glob
 import os
-import sys
-sys.path.insert(0, os.path.join(os.pardir, os.pardir))
-from testing_harness import TestHarness
+import glob
+
+from tests.testing_harness import TestHarness
 
 
 class OutputTestHarness(TestHarness):
@@ -21,13 +18,12 @@ class OutputTestHarness(TestHarness):
 
     def _cleanup(self):
         TestHarness._cleanup(self)
-        output = glob.glob(os.path.join(os.getcwd(), 'summary.*'))
-        output.append(os.path.join(os.getcwd(), 'cross_sections.out'))
-        for f in output:
-            if os.path.exists(f):
-                os.remove(f)
+        f = 'summary.h5'
+        if os.path.exists(f):
+            os.remove(f)
 
 
-if __name__ == '__main__':
+def test_output(request):
     harness = OutputTestHarness('statepoint.10.h5')
+    harness.request = request
     harness.main()

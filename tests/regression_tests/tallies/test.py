@@ -1,16 +1,12 @@
-#!/usr/bin/env python
-
-import os
-import sys
-sys.path.insert(0, os.path.join(os.pardir, os.pardir))
-
-from testing_harness import HashedPyAPITestHarness
 from openmc.filter import *
 from openmc import Mesh, Tally, Tallies
 
+from tests.testing_harness import HashedPyAPITestHarness
 
-if __name__ == '__main__':
+
+def test_tallies(request):
     harness = HashedPyAPITestHarness('statepoint.5.h5')
+    harness.request = request
     model = harness._model
 
     # Set settings explicitly

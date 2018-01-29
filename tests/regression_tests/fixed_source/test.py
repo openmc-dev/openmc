@@ -1,22 +1,17 @@
-#!/usr/bin/env python
-
-import glob
-import os
-import sys
 import numpy as np
-sys.path.insert(0, os.path.join(os.pardir, os.pardir))
-from testing_harness import PyAPITestHarness
+
 import openmc
 import openmc.stats
+
+from tests.testing_harness import PyAPITestHarness
 
 
 class FixedSourceTestHarness(PyAPITestHarness):
     def _get_results(self):
         """Digest info in the statepoint and return as a string."""
         # Read the statepoint file.
-        statepoint = glob.glob(os.path.join(os.getcwd(), self._sp_name))[0]
         outstr = ''
-        with openmc.StatePoint(statepoint) as sp:
+        with openmc.StatePoint(self._sp_name) as sp:
             # Write out tally data.
             for i, tally_ind in enumerate(sp.tallies):
                 tally = sp.tallies[tally_ind]
@@ -36,7 +31,7 @@ class FixedSourceTestHarness(PyAPITestHarness):
         return outstr
 
 
-if __name__ == '__main__':
+def test_fixed_source(request):
     mat = openmc.Material()
     mat.add_nuclide('O16', 1.0)
     mat.add_nuclide('U238', 0.0001)
@@ -61,4 +56,5 @@ if __name__ == '__main__':
     model.tallies.append(tally)
 
     harness = FixedSourceTestHarness('statepoint.10.h5', model)
+    harness.request = request
     harness.main()

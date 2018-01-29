@@ -1,15 +1,11 @@
-#!/usr/bin/env python
-
 import glob
 import hashlib
 import os
-import sys
-sys.path.insert(0, os.path.join(os.pardir, os.pardir))
-from testing_harness import TestHarness
 
 import h5py
-
 import openmc
+
+from tests.testing_harness import TestHarness
 
 
 class PlotTestHarness(TestHarness):
@@ -60,7 +56,8 @@ class PlotTestHarness(TestHarness):
         return outstr
 
 
-if __name__ == '__main__':
+def test_plot(request):
     harness = PlotTestHarness(('plot_1.ppm', 'plot_2.ppm', 'plot_3.ppm',
                                'plot_4.h5'))
+    harness.request = request
     harness.main()

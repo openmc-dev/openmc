@@ -1,12 +1,10 @@
-#!/usr/bin/env python
-
 import os
-import sys
 import glob
 import hashlib
-sys.path.insert(0, os.path.join(os.pardir, os.pardir))
-from testing_harness import PyAPITestHarness
+
 import openmc
+
+from tests.testing_harness import PyAPITestHarness
 
 
 class AsymmetricLatticeTestHarness(PyAPITestHarness):
@@ -90,6 +88,7 @@ class AsymmetricLatticeTestHarness(PyAPITestHarness):
         return outstr
 
 
-if __name__ == '__main__':
+def test_asymmetric_lattice(request):
     harness = AsymmetricLatticeTestHarness('statepoint.10.h5')
+    harness.request = request
     harness.main()

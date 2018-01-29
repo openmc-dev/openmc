@@ -1,11 +1,9 @@
-#!/usr/bin/env python
-
 import glob
 import os
-import sys
-sys.path.insert(0, os.path.join(os.pardir, os.pardir))
-from testing_harness import TestHarness
+
 import openmc
+
+from tests.testing_harness import TestHarness
 
 
 class StatepointRestartTestHarness(TestHarness):
@@ -56,7 +54,8 @@ class StatepointRestartTestHarness(TestHarness):
             openmc.run(openmc_exec=self._opts.exe, restart_file=statepoint)
 
 
-if __name__ == '__main__':
+def test_statepoint_restart(request):
     harness = StatepointRestartTestHarness('statepoint.10.h5',
                                            'statepoint.07.h5')
+    harness.request = request
     harness.main()

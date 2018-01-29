@@ -1,15 +1,11 @@
-#!/usr/bin/env python
-
 from __future__ import division
 
-import os
-import sys
-import glob
 import hashlib
 import itertools
-sys.path.insert(0, os.path.join(os.pardir, os.pardir))
-from testing_harness import PyAPITestHarness
+
 import openmc
+
+from tests.testing_harness import PyAPITestHarness
 
 
 class TallySliceMergeTestHarness(PyAPITestHarness):
@@ -85,8 +81,7 @@ class TallySliceMergeTestHarness(PyAPITestHarness):
         """Digest info in the statepoint and return as a string."""
 
         # Read the statepoint file.
-        statepoint = glob.glob(os.path.join(os.getcwd(), self._sp_name))[0]
-        sp = openmc.StatePoint(statepoint)
+        sp = openmc.StatePoint(self._sp_name)
 
         # Extract the cell tally
         tallies = [sp.get_tally(name='cell tally')]
@@ -171,6 +166,7 @@ class TallySliceMergeTestHarness(PyAPITestHarness):
         return outstr
 
 
-if __name__ == '__main__':
+def test_tally_slice_merge(request):
     harness = TallySliceMergeTestHarness('statepoint.10.h5')
+    harness.request = request
     harness.main()

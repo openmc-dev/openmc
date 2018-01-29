@@ -11,7 +11,6 @@ import sys
 
 import numpy as np
 
-sys.path.insert(0, os.path.join(os.pardir, os.pardir))
 import openmc
 from openmc.examples import pwr_core
 
@@ -33,10 +32,14 @@ class TestHarness(object):
     def main(self):
         """Accept commandline arguments and either run or update tests."""
         (self._opts, self._args) = self.parser.parse_args()
-        if self._opts.update:
-            self.update_results()
-        else:
-            self.execute_test()
+        try:
+            olddir = self.request.fspath.dirpath().chdir()
+            if self._opts.update:
+                self.update_results()
+            else:
+                self.execute_test()
+        finally:
+            olddir.chdir()
 
     def execute_test(self):
         """Run OpenMC with the appropriate arguments and check the outputs."""
@@ -234,6 +237,7 @@ class PyAPITestHarness(TestHarness):
         super(PyAPITestHarness, self).__init__(statepoint_name)
         self.parser.add_option('-b', '--build-inputs', dest='build_only',
                                action='store_true', default=False)
+        openmc.reset_auto_ids()
         if model is None:
             self._model = pwr_core()
         else:
@@ -244,12 +248,16 @@ class PyAPITestHarness(TestHarness):
     def main(self):
         """Accept commandline arguments and either run or update tests."""
         (self._opts, self._args) = self.parser.parse_args()
-        if self._opts.build_only:
-            self._build_inputs()
-        elif self._opts.update:
-            self.update_results()
-        else:
-            self.execute_test()
+        try:
+            olddir = self.request.fspath.dirpath().chdir()
+            if self._opts.build_only:
+                self._build_inputs()
+            elif self._opts.update:
+                self.update_results()
+            else:
+                self.execute_test()
+        finally:
+            olddir.chdir()
 
     def execute_test(self):
         """Build input XMLs, run OpenMC, and verify correct results."""

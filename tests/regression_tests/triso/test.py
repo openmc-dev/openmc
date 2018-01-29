@@ -1,17 +1,11 @@
-#!/usr/bin/env python
-
-import os
-import sys
-import glob
 import random
 from math import sqrt
 
 import numpy as np
-
-sys.path.insert(0, os.path.join(os.pardir, os.pardir))
-from testing_harness import PyAPITestHarness
 import openmc
 import openmc.model
+
+from tests.testing_harness import PyAPITestHarness
 
 
 class TRISOTestHarness(PyAPITestHarness):
@@ -96,6 +90,7 @@ class TRISOTestHarness(PyAPITestHarness):
         mats.export_to_xml()
 
 
-if __name__ == '__main__':
+def test_triso(request):
     harness = TRISOTestHarness('statepoint.5.h5')
+    harness.request = request
     harness.main()

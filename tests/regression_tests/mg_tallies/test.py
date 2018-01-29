@@ -1,14 +1,10 @@
-#!/usr/bin/env python
-
-import os
-import sys
-sys.path.insert(0, os.path.join(os.pardir, os.pardir))
-from testing_harness import HashedPyAPITestHarness
 import openmc
 from openmc.examples import slab_mg
 
+from tests.testing_harness import HashedPyAPITestHarness
 
-if __name__ == '__main__':
+
+def test_mg_tallies(request):
     model = slab_mg(as_macro=False)
 
     # Instantiate a tally mesh
@@ -92,4 +88,5 @@ if __name__ == '__main__':
             model.tallies.append(t)
 
     harness = HashedPyAPITestHarness('statepoint.10.h5', model)
+    harness.request = request
     harness.main()

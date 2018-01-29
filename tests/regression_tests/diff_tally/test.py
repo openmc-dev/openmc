@@ -1,14 +1,11 @@
-#!/usr/bin/env python
-
 import glob
 import os
-import sys
 
 import pandas as pd
-
-sys.path.insert(0, os.path.join(os.pardir, os.pardir))
-from testing_harness import PyAPITestHarness
 import openmc
+
+from tests.testing_harness import PyAPITestHarness
+
 
 class DiffTallyTestHarness(PyAPITestHarness):
     def __init__(self, *args, **kwargs):
@@ -125,6 +122,7 @@ class DiffTallyTestHarness(PyAPITestHarness):
         return df.to_csv(None, columns=cols, index=False, float_format='%.7e')
 
 
-if __name__ == '__main__':
+def test_diff_tally(request):
     harness = DiffTallyTestHarness('statepoint.3.h5')
+    harness.request = request
     harness.main()

@@ -1,12 +1,8 @@
-#!/usr/bin/env python
-
-import os
-import sys
-import glob
 import hashlib
-sys.path.insert(0, os.path.join(os.pardir, os.pardir))
-from testing_harness import PyAPITestHarness
+
 import openmc
+
+from tests.testing_harness import PyAPITestHarness
 
 
 class TallyArithmeticTestHarness(PyAPITestHarness):
@@ -43,8 +39,7 @@ class TallyArithmeticTestHarness(PyAPITestHarness):
         """Digest info in the statepoint and return as a string."""
 
         # Read the statepoint file.
-        statepoint = glob.glob(os.path.join(os.getcwd(), self._sp_name))[0]
-        sp = openmc.StatePoint(statepoint)
+        sp = openmc.StatePoint(self._sp_name)
 
         # Load the tallies
         tally_1 = sp.get_tally(name='tally 1')
@@ -80,6 +75,7 @@ class TallyArithmeticTestHarness(PyAPITestHarness):
         return outstr
 
 
-if __name__ == '__main__':
+def test_tally_arithmetic(request):
     harness = TallyArithmeticTestHarness('statepoint.10.h5')
+    harness.request = request
     harness.main()

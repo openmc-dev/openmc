@@ -1,16 +1,13 @@
-#!/usr/bin/env python
-
 import os
 import sys
 
 import numpy as np
 
-sys.path.insert(0, os.path.join(os.pardir, os.pardir))
 from openmc import Material
 from openmc.data import NATURAL_ABUNDANCE, atomic_mass
 
 
-if __name__ == '__main__':
+def test_enrichment():
     # This test doesn't require an OpenMC run.  We just need to make sure the
     # element.expand() method expands Uranium to the proper enrichment.
 

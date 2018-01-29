@@ -23,7 +23,7 @@ def test_discrete():
 
 
 def test_uniform():
-    a, b = 10, 20
+    a, b = 10.0, 20.0
     d = openmc.stats.Uniform(a, b)
     assert d.a == a
     assert d.b == b

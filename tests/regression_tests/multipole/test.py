@@ -80,7 +80,7 @@ class MultipoleTestHarness(PyAPITestHarness):
         return outstr
 
 
-def test_multipole(request):
+def test_multipole(request, reset_ids):
     model = make_model()
     harness = MultipoleTestHarness('statepoint.5.h5', model)
     harness.request = request

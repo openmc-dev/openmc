@@ -3,7 +3,7 @@ from openmc.examples import slab_mg
 from tests.testing_harness import PyAPITestHarness
 
 
-def test_mg_legendre(request):
+def test_mg_legendre(request, reset_ids):
     model = slab_mg(reps=['iso'])
     model.settings.tabular_legendre = {'enable': False}
 

@@ -53,7 +53,8 @@ class MGXSTestHarness(PyAPITestHarness):
         return outstr
 
 
-if __name__ == '__main__':
+def test_mgxs_library_nuclides(request, reset_ids):
     model = pwr_pin_cell()
     harness = MGXSTestHarness('statepoint.10.h5', model)
+    harness.request = request
     harness.main()

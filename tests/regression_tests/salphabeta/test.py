@@ -73,7 +73,7 @@ def make_model():
     return model
 
 
-def test_salphabeta(request):
+def test_salphabeta(request, reset_ids):
     model = make_model()
     harness = PyAPITestHarness('statepoint.5.h5', model)
     harness.request = request

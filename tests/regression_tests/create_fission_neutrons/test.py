@@ -1,10 +1,6 @@
-#!/usr/bin/env python
-
-import os
-import sys
-sys.path.insert(0, os.path.join(os.pardir, os.pardir))
-from testing_harness import PyAPITestHarness
 import openmc
+
+from tests.testing_harness import PyAPITestHarness
 
 
 class CreateFissionNeutronsTestHarness(PyAPITestHarness):
@@ -69,6 +65,7 @@ class CreateFissionNeutronsTestHarness(PyAPITestHarness):
         return outstr
 
 
-if __name__ == '__main__':
+def test_create_fission_neutrons(request):
     harness = CreateFissionNeutronsTestHarness('statepoint.10.h5')
+    harness.request = request
     harness.main()

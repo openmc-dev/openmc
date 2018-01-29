@@ -1,11 +1,7 @@
-#!/usr/bin/env python
-
-import os
-import sys
-sys.path.insert(0, os.path.join(os.pardir, os.pardir))
-from testing_harness import ParticleRestartTestHarness
+from tests.testing_harness import ParticleRestartTestHarness
 
 
-if __name__ == '__main__':
+def test_particle_restart_eigval(request):
     harness = ParticleRestartTestHarness('particle_10_1030.h5')
+    harness.request = request
     harness.main()

@@ -1,14 +1,9 @@
-#!/usr/bin/env python
-
 from math import pi
-import os
-import sys
 
 import numpy as np
-
-sys.path.insert(0, os.path.join(os.pardir, os.pardir))
-from testing_harness import PyAPITestHarness
 import openmc
+
+from tests.testing_harness import PyAPITestHarness
 
 
 class SourceTestHarness(PyAPITestHarness):
@@ -63,6 +58,7 @@ class SourceTestHarness(PyAPITestHarness):
         settings.export_to_xml()
 
 
-if __name__ == '__main__':
+def test_source(request):
     harness = SourceTestHarness('statepoint.10.h5')
+    harness.request = request
     harness.main()

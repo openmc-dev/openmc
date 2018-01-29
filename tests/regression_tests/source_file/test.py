@@ -2,9 +2,8 @@
 
 import glob
 import os
-import sys
-sys.path.insert(0, os.path.join(os.pardir, os.pardir))
-from testing_harness import *
+
+from tests.testing_harness import *
 
 
 settings1="""<?xml version="1.0"?>
@@ -97,6 +96,7 @@ class SourceFileTestHarness(TestHarness):
             fh.write(settings1)
 
 
-if __name__ == '__main__':
+def test_source_file(request):
     harness = SourceFileTestHarness('statepoint.10.h5')
+    harness.request = request
     harness.main()

@@ -1,12 +1,8 @@
-#!/usr/bin/env python
-
-import os
-import sys
-sys.path.insert(0, os.path.join(os.pardir, os.pardir))
-from testing_harness import PyAPITestHarness
 import numpy as np
 import openmc
 import pandas as pd
+
+from tests.testing_harness import PyAPITestHarness
 
 
 class SurfaceTallyTestHarness(PyAPITestHarness):
@@ -178,6 +174,7 @@ class SurfaceTallyTestHarness(PyAPITestHarness):
         return outstr
 
 
-if __name__ == '__main__':
+def test_surface_tally(request):
     harness = SurfaceTallyTestHarness('statepoint.10.h5')
+    harness.request = request
     harness.main()

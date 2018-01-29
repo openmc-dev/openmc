@@ -1,18 +1,13 @@
-#!/usr/bin/env python
-
 import os
-import sys
-import glob
 import hashlib
 
 import numpy as np
 import h5py
-
-sys.path.insert(0, os.path.join(os.pardir, os.pardir))
-from testing_harness import PyAPITestHarness
 import openmc
 import openmc.mgxs
 from openmc.examples import pwr_pin_cell
+
+from tests.testing_harness import PyAPITestHarness
 
 
 np.set_printoptions(formatter={'float_kind': '{:.8e}'.format})
@@ -46,8 +41,7 @@ class MGXSTestHarness(PyAPITestHarness):
         """Digest info in the statepoint and return as a string."""
 
         # Read the statepoint file.
-        statepoint = glob.glob(os.path.join(os.getcwd(), self._sp_name))[0]
-        sp = openmc.StatePoint(statepoint)
+        sp = openmc.StatePoint(self._sp_name)
 
         # Load the MGXS library from the statepoint
         self.mgxs_lib.load_from_statepoint(sp)
@@ -77,12 +71,13 @@ class MGXSTestHarness(PyAPITestHarness):
 
     def _cleanup(self):
         super(MGXSTestHarness, self)._cleanup()
-        f = os.path.join(os.getcwd(), 'mgxs.h5')
+        f = 'mgxs.h5'
         if os.path.exists(f):
             os.remove(f)
 
 
-if __name__ == '__main__':
+def test_mgxs_library_hdf5(request):
     model = pwr_pin_cell()
     harness = MGXSTestHarness('statepoint.10.h5', model)
+    harness.request = request
     harness.main()

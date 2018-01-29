@@ -1,12 +1,8 @@
-#!/usr/bin/env python
-
-import os
-import sys
-import glob
 import hashlib
-sys.path.insert(0, os.path.join(os.pardir, os.pardir))
-from testing_harness import PyAPITestHarness
+
 import openmc
+
+from tests.testing_harness import PyAPITestHarness
 
 
 class TallyAggregationTestHarness(PyAPITestHarness):
@@ -28,8 +24,7 @@ class TallyAggregationTestHarness(PyAPITestHarness):
         """Digest info in the statepoint and return as a string."""
 
         # Read the statepoint file.
-        statepoint = glob.glob(os.path.join(os.getcwd(), self._sp_name))[0]
-        sp = openmc.StatePoint(statepoint)
+        sp = openmc.StatePoint(self._sp_name)
 
         # Extract the tally of interest
         tally = sp.get_tally(name='distribcell tally')
@@ -66,6 +61,7 @@ class TallyAggregationTestHarness(PyAPITestHarness):
         return outstr
 
 
-if __name__ == '__main__':
+def test_tally_aggregation(request):
     harness = TallyAggregationTestHarness('statepoint.10.h5')
+    harness.request = request
     harness.main()

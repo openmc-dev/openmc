@@ -1,13 +1,8 @@
-#!/usr/bin/env python
-
-import os
-import sys
-import glob
-sys.path.insert(0, os.path.join(os.pardir, os.pardir))
-from testing_harness import PyAPITestHarness
 import openmc
 import openmc.mgxs
 from openmc.examples import pwr_pin_cell
+
+from tests.testing_harness import PyAPITestHarness
 
 
 class MGXSTestHarness(PyAPITestHarness):
@@ -42,8 +37,7 @@ class MGXSTestHarness(PyAPITestHarness):
 
         # Build MG Inputs
         # Get data needed to execute Library calculations.
-        statepoint = glob.glob(os.path.join(os.getcwd(), self._sp_name))[0]
-        sp = openmc.StatePoint(statepoint)
+        sp = openmc.StatePoint(self._sp_name)
         self.mgxs_lib.load_from_statepoint(sp)
         self._model.mgxs_file, self._model.materials, \
             self._model.geometry = self.mgxs_lib.create_mg_mode()
@@ -80,9 +74,10 @@ class MGXSTestHarness(PyAPITestHarness):
             os.remove(f)
 
 
-if __name__ == '__main__':
+def test_mgxs_library_ce_to_mg(request):
     # Set the input set to use the pincell model
     model = pwr_pin_cell()
 
     harness = MGXSTestHarness('statepoint.10.h5', model)
+    harness.request = request
     harness.main()

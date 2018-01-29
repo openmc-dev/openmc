@@ -1,14 +1,10 @@
-#!/usr/bin/env python
-
 import os
-import sys
 import hashlib
-sys.path.insert(0, os.path.join(os.pardir, os.pardir))
 
 import numpy as np
-
-from testing_harness import PyAPITestHarness
 import openmc
+
+from tests.testing_harness import PyAPITestHarness
 
 # OpenMC simulation parameters
 batches = 10
@@ -202,6 +198,7 @@ class MGXSTestHarness(PyAPITestHarness):
             self._cleanup()
 
 
-if __name__ == '__main__':
+def test_mg_convert(request):
     harness = MGXSTestHarness('statepoint.10.h5')
+    harness.request = request
     harness.main()

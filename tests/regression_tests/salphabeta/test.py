@@ -1,12 +1,7 @@
-#!/usr/bin/env python
-
-import os
-import sys
-sys.path.insert(0, os.path.join(os.pardir, os.pardir))
-
-from testing_harness import PyAPITestHarness
 import openmc
 import openmc.model
+
+from tests.testing_harness import PyAPITestHarness
 
 
 def make_model():
@@ -78,7 +73,8 @@ def make_model():
     return model
 
 
-if __name__ == '__main__':
+def test_salphabeta(request):
     model = make_model()
     harness = PyAPITestHarness('statepoint.5.h5', model)
+    harness.request = request
     harness.main()

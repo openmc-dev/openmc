@@ -1,11 +1,7 @@
-#!/usr/bin/env python
-
-import os
-import sys
-sys.path.insert(0, os.path.join(os.pardir, os.pardir))
-from testing_harness import CMFDTestHarness
+from tests.testing_harness import CMFDTestHarness
 
 
-if __name__ == '__main__':
+def test_cmfd_nofeed(request):
     harness = CMFDTestHarness('statepoint.20.h5')
+    harness.request = request
     harness.main()

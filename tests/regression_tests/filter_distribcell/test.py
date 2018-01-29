@@ -1,11 +1,7 @@
-#!/usr/bin/env python
-
 import glob
-import hashlib
 import os
-import sys
-sys.path.insert(0, os.path.join(os.pardir, os.pardir))
-from testing_harness import *
+
+from tests.testing_harness import *
 
 
 class DistribcellTestHarness(TestHarness):
@@ -72,6 +68,7 @@ class DistribcellTestHarness(TestHarness):
                  'Tally output file does not exist.'
 
 
-if __name__ == '__main__':
+def test_filter_distribcell(request):
     harness = DistribcellTestHarness()
+    harness.request = request
     harness.main()

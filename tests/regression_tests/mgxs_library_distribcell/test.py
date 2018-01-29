@@ -1,14 +1,10 @@
-#!/usr/bin/env python
-
-import os
-import sys
-import glob
 import hashlib
-sys.path.insert(0, os.path.join(os.pardir, os.pardir))
-from testing_harness import PyAPITestHarness
+
 import openmc
 import openmc.mgxs
 from openmc.examples import pwr_assembly
+
+from tests.testing_harness import PyAPITestHarness
 
 
 class MGXSTestHarness(PyAPITestHarness):
@@ -43,8 +39,7 @@ class MGXSTestHarness(PyAPITestHarness):
         """Digest info in the statepoint and return as a string."""
 
         # Read the statepoint file.
-        statepoint = glob.glob(os.path.join(os.getcwd(), self._sp_name))[0]
-        sp = openmc.StatePoint(statepoint)
+        sp = openmc.StatePoint(self._sp_name)
 
         # Load the MGXS library from the statepoint
         self.mgxs_lib.load_from_statepoint(sp)
@@ -69,7 +64,8 @@ class MGXSTestHarness(PyAPITestHarness):
         return outstr
 
 
-if __name__ == '__main__':
+def test_mgxs_library_distribcell(request):
     model = pwr_assembly()
     harness = MGXSTestHarness('statepoint.10.h5', model)
+    harness.request = request
     harness.main()

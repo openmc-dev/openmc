@@ -1,11 +1,9 @@
-#!/usr/bin/env python
-
 import glob
 import os
-import sys
-sys.path.insert(0, os.path.join(os.pardir, os.pardir))
-from testing_harness import TestHarness
+
 from openmc import StatePoint
+
+from tests.testing_harness import TestHarness
 
 
 class EntropyTestHarness(TestHarness):
@@ -26,6 +24,7 @@ class EntropyTestHarness(TestHarness):
         return outstr
 
 
-if __name__ == '__main__':
+def test_entropy(request):
     harness = EntropyTestHarness('statepoint.10.h5')
+    harness.request = request
     harness.main()

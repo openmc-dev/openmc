@@ -1,12 +1,11 @@
-#!/usr/bin/env python
-
 import glob
 import os
 from subprocess import call
 import shutil
-import sys
-sys.path.insert(0, os.path.join(os.pardir, os.pardir))
-from testing_harness import TestHarness
+
+import pytest
+
+from tests.testing_harness import TestHarness
 
 
 class TrackTestHarness(TestHarness):
@@ -39,14 +38,10 @@ class TrackTestHarness(TestHarness):
                 os.remove(f)
 
 
-if __name__ == '__main__':
+def test_track_output(request):
     # If vtk python module is not available, we can't run track.py so skip this
     # test.
-    try:
-        import vtk
-    except ImportError:
-        print('----------------Skipping test-------------')
-        shutil.copy('results_true.dat', 'results_test.dat')
-        exit()
+    vtk = pytest.importerskip('vtk')
     harness = TrackTestHarness('statepoint.2.h5')
+    harness.request = request
     harness.main()

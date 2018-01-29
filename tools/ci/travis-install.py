@@ -49,9 +49,9 @@ def install(omp=False, mpi=False, phdf5=False):
     # Build and install
     cmake_cmd.append('..')
     print(' '.join(cmake_cmd))
-    subprocess.call(cmake_cmd)
-    subprocess.call(['make', '-j'])
-    subprocess.call(['sudo', 'make', 'install'])
+    subprocess.check_call(cmake_cmd)
+    subprocess.check_call(['make', '-j'])
+    subprocess.check_call(['sudo', 'make', 'install'])
 
 
 def main():

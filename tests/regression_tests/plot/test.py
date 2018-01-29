@@ -56,8 +56,7 @@ class PlotTestHarness(TestHarness):
         return outstr
 
 
-def test_plot(request):
+def test_plot():
     harness = PlotTestHarness(('plot_1.ppm', 'plot_2.ppm', 'plot_3.ppm',
                                'plot_4.h5'))
-    harness.request = request
     harness.main()

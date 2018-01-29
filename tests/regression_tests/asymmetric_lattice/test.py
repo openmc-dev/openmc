@@ -88,7 +88,6 @@ class AsymmetricLatticeTestHarness(PyAPITestHarness):
         return outstr
 
 
-def test_asymmetric_lattice(request):
+def test_asymmetric_lattice():
     harness = AsymmetricLatticeTestHarness('statepoint.10.h5')
-    harness.request = request
     harness.main()

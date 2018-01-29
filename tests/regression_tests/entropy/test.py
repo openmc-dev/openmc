@@ -24,7 +24,6 @@ class EntropyTestHarness(TestHarness):
         return outstr
 
 
-def test_entropy(request):
+def test_entropy():
     harness = EntropyTestHarness('statepoint.10.h5')
-    harness.request = request
     harness.main()

@@ -13,7 +13,6 @@ class StatepointTestHarness(TestHarness):
             TestHarness._test_output_created(self)
 
 
-def test_statepoint_batch(request):
+def test_statepoint_batch():
     harness = StatepointTestHarness()
-    harness.request = request
     harness.main()

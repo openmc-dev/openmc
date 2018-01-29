@@ -65,7 +65,6 @@ class MGXSTestHarness(PyAPITestHarness):
         return outstr
 
 
-def test_mgxs_library_mesh(request):
+def test_mgxs_library_mesh():
     harness = MGXSTestHarness('statepoint.10.h5')
-    harness.request = request
     harness.main()

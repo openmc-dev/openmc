@@ -4,9 +4,8 @@ from openmc import Mesh, Tally, Tallies
 from tests.testing_harness import HashedPyAPITestHarness
 
 
-def test_tallies(request, reset_ids):
+def test_tallies():
     harness = HashedPyAPITestHarness('statepoint.5.h5')
-    harness.request = request
     model = harness._model
 
     # Set settings explicitly

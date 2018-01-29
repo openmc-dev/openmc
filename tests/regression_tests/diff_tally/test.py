@@ -122,7 +122,6 @@ class DiffTallyTestHarness(PyAPITestHarness):
         return df.to_csv(None, columns=cols, index=False, float_format='%.7e')
 
 
-def test_diff_tally(request):
+def test_diff_tally():
     harness = DiffTallyTestHarness('statepoint.3.h5')
-    harness.request = request
     harness.main()

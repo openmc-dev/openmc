@@ -73,7 +73,6 @@ class VolumeTest(PyAPITestHarness):
     def _test_output_created(self):
         pass
 
-def test_volume_calc(request):
+def test_volume_calc():
     harness = VolumeTest('')
-    harness.request = request
     harness.main()

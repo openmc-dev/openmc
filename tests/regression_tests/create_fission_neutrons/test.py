@@ -65,7 +65,6 @@ class CreateFissionNeutronsTestHarness(PyAPITestHarness):
         return outstr
 
 
-def test_create_fission_neutrons(request):
+def test_create_fission_neutrons():
     harness = CreateFissionNeutronsTestHarness('statepoint.10.h5')
-    harness.request = request
     harness.main()

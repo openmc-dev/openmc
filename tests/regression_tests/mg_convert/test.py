@@ -198,7 +198,6 @@ class MGXSTestHarness(PyAPITestHarness):
             self._cleanup()
 
 
-def test_mg_convert(request):
+def test_mg_convert():
     harness = MGXSTestHarness('statepoint.10.h5')
-    harness.request = request
     harness.main()

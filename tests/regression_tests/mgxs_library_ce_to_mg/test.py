@@ -76,10 +76,9 @@ class MGXSTestHarness(PyAPITestHarness):
             os.remove(f)
 
 
-def test_mgxs_library_ce_to_mg(request, reset_ids):
+def test_mgxs_library_ce_to_mg():
     # Set the input set to use the pincell model
     model = pwr_pin_cell()
 
     harness = MGXSTestHarness('statepoint.10.h5', model)
-    harness.request = request
     harness.main()

@@ -90,7 +90,6 @@ class TRISOTestHarness(PyAPITestHarness):
         mats.export_to_xml()
 
 
-def test_triso(request):
+def test_triso():
     harness = TRISOTestHarness('statepoint.5.h5')
-    harness.request = request
     harness.main()

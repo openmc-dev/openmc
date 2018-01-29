@@ -61,7 +61,6 @@ class TallyAggregationTestHarness(PyAPITestHarness):
         return outstr
 
 
-def test_tally_aggregation(request):
+def test_tally_aggregation():
     harness = TallyAggregationTestHarness('statepoint.10.h5')
-    harness.request = request
     harness.main()

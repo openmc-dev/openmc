@@ -174,7 +174,6 @@ class SurfaceTallyTestHarness(PyAPITestHarness):
         return outstr
 
 
-def test_surface_tally(request):
+def test_surface_tally():
     harness = SurfaceTallyTestHarness('statepoint.10.h5')
-    harness.request = request
     harness.main()

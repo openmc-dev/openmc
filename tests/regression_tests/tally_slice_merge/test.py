@@ -166,7 +166,6 @@ class TallySliceMergeTestHarness(PyAPITestHarness):
         return outstr
 
 
-def test_tally_slice_merge(request):
+def test_tally_slice_merge():
     harness = TallySliceMergeTestHarness('statepoint.10.h5')
-    harness.request = request
     harness.main()

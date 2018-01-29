@@ -96,7 +96,6 @@ class SourceFileTestHarness(TestHarness):
             fh.write(settings1)
 
 
-def test_source_file(request):
+def test_source_file():
     harness = SourceFileTestHarness('statepoint.10.h5')
-    harness.request = request
     harness.main()

@@ -26,7 +26,6 @@ class SourcepointTestHarness(TestHarness):
         return outstr
 
 
-def test_sourcepoint_batch(request):
+def test_sourcepoint_batch():
     harness = SourcepointTestHarness('statepoint.08.h5')
-    harness.request = request
     harness.main()

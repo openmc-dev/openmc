@@ -99,7 +99,6 @@ class DistribmatTestHarness(PyAPITestHarness):
         return outstr
 
 
-def test_distribmat(request):
+def test_distribmat():
     harness = DistribmatTestHarness('statepoint.5.h5')
-    harness.request = request
     harness.main()

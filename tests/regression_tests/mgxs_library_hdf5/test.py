@@ -73,12 +73,11 @@ class MGXSTestHarness(PyAPITestHarness):
             os.remove(f)
 
 
-def test_mgxs_library_hdf5(request, reset_ids):
+def test_mgxs_library_hdf5():
     try:
         np.set_printoptions(formatter={'float_kind': '{:.8e}'.format})
         model = pwr_pin_cell()
         harness = MGXSTestHarness('statepoint.10.h5', model)
-        harness.request = request
         harness.main()
     finally:
         np.set_printoptions(formatter=None)

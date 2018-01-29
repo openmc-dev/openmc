@@ -20,7 +20,6 @@ class SourcepointTestHarness(TestHarness):
                 os.remove(f)
 
 
-def test_statepoint_sourcesep(request):
+def test_statepoint_sourcesep():
     harness = SourcepointTestHarness('statepoint.10.h5')
-    harness.request = request
     harness.main()

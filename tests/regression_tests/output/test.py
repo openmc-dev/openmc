@@ -23,7 +23,6 @@ class OutputTestHarness(TestHarness):
             os.remove(f)
 
 
-def test_output(request):
+def test_output():
     harness = OutputTestHarness('statepoint.10.h5')
-    harness.request = request
     harness.main()

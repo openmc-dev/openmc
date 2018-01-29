@@ -4,7 +4,7 @@ from openmc.examples import slab_mg
 from tests.testing_harness import HashedPyAPITestHarness
 
 
-def test_mg_tallies(request, reset_ids):
+def test_mg_tallies():
     model = slab_mg(as_macro=False)
 
     # Instantiate a tally mesh
@@ -88,5 +88,4 @@ def test_mg_tallies(request, reset_ids):
             model.tallies.append(t)
 
     harness = HashedPyAPITestHarness('statepoint.10.h5', model)
-    harness.request = request
     harness.main()

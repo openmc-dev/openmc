@@ -13,7 +13,6 @@ class SourcepointTestHarness(TestHarness):
              'exist.'
 
 
-def test_sourcepoint_latest(request):
+def test_sourcepoint_latest():
     harness = TestHarness('statepoint.10.h5')
-    harness.request = request
     harness.main()

@@ -54,8 +54,7 @@ class StatepointRestartTestHarness(TestHarness):
             openmc.run(openmc_exec=self._opts.exe, restart_file=statepoint)
 
 
-def test_statepoint_restart(request):
+def test_statepoint_restart():
     harness = StatepointRestartTestHarness('statepoint.10.h5',
                                            'statepoint.07.h5')
-    harness.request = request
     harness.main()

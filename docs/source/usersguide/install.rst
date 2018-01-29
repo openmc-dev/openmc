@@ -364,7 +364,7 @@ Testing Build
 
 To run the test suite, you will first need to download a pre-generated cross
 section library along with windowed multipole data. Please refer to our
-:ref:`test suite` documentation for further details.
+:ref:`devguide_tests` documentation for further details.
 
 --------------------
 Python Prerequisites

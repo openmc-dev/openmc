@@ -5,6 +5,7 @@ import openmc.mgxs
 from openmc.examples import pwr_pin_cell
 
 from tests.testing_harness import PyAPITestHarness
+from tests.regression_tests import config
 
 
 class MGXSTestHarness(PyAPITestHarness):
@@ -31,11 +32,11 @@ class MGXSTestHarness(PyAPITestHarness):
 
     def _run_openmc(self):
         # Initial run
-        if self._opts.mpi_exec is not None:
-            mpi_args = [self._opts.mpi_exec, '-n', self._opts.mpi_np]
-            openmc.run(openmc_exec=self._opts.exe, mpi_args=mpi_args)
+        if config['mpi']:
+            mpi_args = [config['mpiexec'], '-n', config['mpi_np']]
+            openmc.run(openmc_exec=config['exe'], mpi_args=mpi_args)
         else:
-            openmc.run(openmc_exec=self._opts.exe)
+            openmc.run(openmc_exec=config['exe'])
 
         # Build MG Inputs
         # Get data needed to execute Library calculations.
@@ -63,11 +64,11 @@ class MGXSTestHarness(PyAPITestHarness):
         sp._summary._f.close()
 
         # Re-run MG mode.
-        if self._opts.mpi_exec is not None:
-            mpi_args = [self._opts.mpi_exec, '-n', self._opts.mpi_np]
-            openmc.run(openmc_exec=self._opts.exe, mpi_args=mpi_args)
+        if config['mpi']:
+            mpi_args = [config['mpiexec'], '-n', config['mpi_np']]
+            openmc.run(openmc_exec=config['exe'], mpi_args=mpi_args)
         else:
-            openmc.run(openmc_exec=self._opts.exe)
+            openmc.run(openmc_exec=config['exe'])
 
     def _cleanup(self):
         super(MGXSTestHarness, self)._cleanup()

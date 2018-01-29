@@ -69,7 +69,6 @@ class EnergyCutoffTestHarness(PyAPITestHarness):
         return outstr
 
 
-def test_energy_cutoff(request):
+def test_energy_cutoff():
     harness = EnergyCutoffTestHarness('statepoint.10.h5')
-    harness.request = request
     harness.main()

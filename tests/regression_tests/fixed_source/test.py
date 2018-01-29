@@ -31,7 +31,7 @@ class FixedSourceTestHarness(PyAPITestHarness):
         return outstr
 
 
-def test_fixed_source(request, reset_ids):
+def test_fixed_source():
     mat = openmc.Material()
     mat.add_nuclide('O16', 1.0)
     mat.add_nuclide('U238', 0.0001)
@@ -56,5 +56,4 @@ def test_fixed_source(request, reset_ids):
     model.tallies.append(tally)
 
     harness = FixedSourceTestHarness('statepoint.10.h5', model)
-    harness.request = request
     harness.main()

@@ -42,7 +42,6 @@ class FilterEnergyFunHarness(PyAPITestHarness):
         return br_tally.get_pandas_dataframe().to_string() + '\n'
 
 
-def test_filter_energyfun(request):
+def test_filter_energyfun():
     harness = FilterEnergyFunHarness('statepoint.10.h5')
-    harness.request = request
     harness.main()

@@ -68,7 +68,6 @@ class DistribcellTestHarness(TestHarness):
                  'Tally output file does not exist.'
 
 
-def test_filter_distribcell(request):
+def test_filter_distribcell():
     harness = DistribcellTestHarness()
-    harness.request = request
     harness.main()

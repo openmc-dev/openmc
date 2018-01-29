@@ -19,7 +19,6 @@ that use linear-linear interpolation.
 from tests.testing_harness import TestHarness
 
 
-def test_energy_laws(request):
+def test_energy_laws():
     harness = TestHarness('statepoint.10.h5')
-    harness.request = request
     harness.main()

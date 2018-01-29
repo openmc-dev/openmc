@@ -51,7 +51,6 @@ class PeriodicTest(PyAPITestHarness):
         settings.export_to_xml()
 
 
-def test_periodic(request):
+def test_periodic():
     harness = PeriodicTest('statepoint.4.h5')
-    harness.request = request
     harness.main()

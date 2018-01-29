@@ -42,7 +42,6 @@ class ResonanceScatteringTestHarness(PyAPITestHarness):
         settings.export_to_xml()
 
 
-def test_resonance_scattering(request):
+def test_resonance_scattering():
     harness = ResonanceScatteringTestHarness('statepoint.10.h5')
-    harness.request = request
     harness.main()

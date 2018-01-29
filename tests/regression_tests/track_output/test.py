@@ -38,10 +38,9 @@ class TrackTestHarness(TestHarness):
                 os.remove(f)
 
 
-def test_track_output(request):
+def test_track_output():
     # If vtk python module is not available, we can't run track.py so skip this
     # test.
     vtk = pytest.importorskip('vtk')
     harness = TrackTestHarness('statepoint.2.h5')
-    harness.request = request
     harness.main()

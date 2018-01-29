@@ -75,7 +75,6 @@ class TallyArithmeticTestHarness(PyAPITestHarness):
         return outstr
 
 
-def test_tally_arithmetic(request):
+def test_tally_arithmetic():
     harness = TallyArithmeticTestHarness('statepoint.10.h5')
-    harness.request = request
     harness.main()

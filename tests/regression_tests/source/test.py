@@ -58,7 +58,6 @@ class SourceTestHarness(PyAPITestHarness):
         settings.export_to_xml()
 
 
-def test_source(request):
+def test_source():
     harness = SourceTestHarness('statepoint.10.h5')
-    harness.request = request
     harness.main()

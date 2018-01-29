@@ -63,7 +63,6 @@ class FilterMeshTestHarness(HashedPyAPITestHarness):
         self._model.tallies.append(tally)
 
 
-def test_filter_mesh(request):
+def test_filter_mesh():
     harness = FilterMeshTestHarness('statepoint.10.h5')
-    harness.request = request
     harness.main()

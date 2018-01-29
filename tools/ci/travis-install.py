@@ -42,13 +42,16 @@ def install(omp=False, mpi=False, phdf5=False):
         if not mpi:
             raise ValueError('Parallel HDF5 must be used in '
                              'conjunction with MPI.')
-        cmake_cmd.append('-DHDF5_PREFER_PARALLEL=on')
+        cmake_cmd.append('-DHDF5_PREFER_PARALLEL=ON')
+    else:
+        cmake_cmd.append('-DHDF5_PREFER_PARALLEL=OFF')
 
     # Build and install
     cmake_cmd.append('..')
+    print(' '.join(cmake_cmd))
     subprocess.call(cmake_cmd)
     subprocess.call(['make', '-j'])
-    subprocess.call(['make', 'install'])
+    subprocess.call(['sudo', 'make', 'install'])
 
 
 def main():

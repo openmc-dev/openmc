@@ -1,3 +1,5 @@
+import os
+
 import openmc
 import openmc.mgxs
 from openmc.examples import pwr_pin_cell
@@ -52,8 +54,8 @@ class MGXSTestHarness(PyAPITestHarness):
         self._model.materials.export_to_xml()
         self._model.mgxs_file.export_to_hdf5()
         # Dont need tallies.xml, so remove the file
-        if os.path.exists('./tallies.xml'):
-            os.remove('./tallies.xml')
+        if os.path.exists('tallies.xml'):
+            os.remove('tallies.xml')
 
         # Enforce closing statepoint and summary files so HDF5
         # does not throw an error during the next OpenMC execution
@@ -69,12 +71,12 @@ class MGXSTestHarness(PyAPITestHarness):
 
     def _cleanup(self):
         super(MGXSTestHarness, self)._cleanup()
-        f = os.path.join(os.getcwd(), 'mgxs.h5')
+        f = 'mgxs.h5'
         if os.path.exists(f):
             os.remove(f)
 
 
-def test_mgxs_library_ce_to_mg(request):
+def test_mgxs_library_ce_to_mg(request, reset_ids):
     # Set the input set to use the pincell model
     model = pwr_pin_cell()
 

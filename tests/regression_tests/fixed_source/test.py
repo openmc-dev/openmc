@@ -31,7 +31,7 @@ class FixedSourceTestHarness(PyAPITestHarness):
         return outstr
 
 
-def test_fixed_source(request):
+def test_fixed_source(request, reset_ids):
     mat = openmc.Material()
     mat.add_nuclide('O16', 1.0)
     mat.add_nuclide('U238', 0.0001)

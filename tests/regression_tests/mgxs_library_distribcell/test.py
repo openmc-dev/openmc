@@ -64,7 +64,7 @@ class MGXSTestHarness(PyAPITestHarness):
         return outstr
 
 
-def test_mgxs_library_distribcell(request):
+def test_mgxs_library_distribcell(request, reset_ids):
     model = pwr_assembly()
     harness = MGXSTestHarness('statepoint.10.h5', model)
     harness.request = request

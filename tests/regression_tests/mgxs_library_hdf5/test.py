@@ -10,9 +10,6 @@ from openmc.examples import pwr_pin_cell
 from tests.testing_harness import PyAPITestHarness
 
 
-np.set_printoptions(formatter={'float_kind': '{:.8e}'.format})
-
-
 class MGXSTestHarness(PyAPITestHarness):
     def __init__(self, *args, **kwargs):
         # Generate inputs using parent class routine
@@ -76,8 +73,12 @@ class MGXSTestHarness(PyAPITestHarness):
             os.remove(f)
 
 
-def test_mgxs_library_hdf5(request):
-    model = pwr_pin_cell()
-    harness = MGXSTestHarness('statepoint.10.h5', model)
-    harness.request = request
-    harness.main()
+def test_mgxs_library_hdf5(request, reset_ids):
+    try:
+        np.set_printoptions(formatter={'float_kind': '{:.8e}'.format})
+        model = pwr_pin_cell()
+        harness = MGXSTestHarness('statepoint.10.h5', model)
+        harness.request = request
+        harness.main()
+    finally:
+        np.set_printoptions(formatter=None)

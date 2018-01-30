@@ -1,4 +1,4 @@
-cmake_minimum_required(VERSION 2.8.12 FATAL_ERROR)
+cmake_minimum_required(VERSION 3.0 FATAL_ERROR)
 project(openmc Fortran C CXX)
 
 # Setup output directories
@@ -19,11 +19,6 @@ include_directories(${CMAKE_BINARY_DIR}/include)
 
 if (${UNIX})
   add_definitions(-DUNIX)
-endif()
-
-# Set MACOSX_RPATH
-if(POLICY CMP0042)
-  cmake_policy(SET CMP0042 NEW)
 endif()
 
 #===============================================================================

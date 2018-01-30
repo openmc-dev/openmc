@@ -23,5 +23,5 @@ fi
 # Build and install OpenMC executable
 python tools/ci/travis-install.py
 
-# Install Python API
-pip install .[test]
+# Install Python API in editable mode
+pip install -e .[test]

@@ -40,15 +40,6 @@ def sphere_model():
     return model
 
 
-@pytest.fixture
-def run_in_tmpdir(tmpdir):
-    orig = tmpdir.chdir()
-    try:
-        yield
-    finally:
-        orig.chdir()
-
-
 def test_attributes(uo2):
     assert uo2.name == 'UO2'
     assert uo2.id == 100

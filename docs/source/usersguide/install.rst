@@ -6,17 +6,18 @@ Installation and Configuration
 
 .. currentmodule:: openmc
 
+.. _install_conda:
+
 ----------------------------------------
 Installing on Linux/Mac with conda-forge
 ----------------------------------------
 
-`Conda <http://conda.pydata.org/docs/>`_ is an open source package management
-system and environment management system for installing multiple versions of
-software packages and their dependencies and switching easily between
-them. `conda-forge <https://conda-forge.github.io/>`_ is a community-led conda
-channel of installable packages. For instructions on installing conda, please
-consult their `documentation
-<http://conda.pydata.org/docs/install/quick.html>`_.
+Conda_ is an open source package management system and environment management
+system for installing multiple versions of software packages and their
+dependencies and switching easily between them. `conda-forge
+<https://conda-forge.github.io/>`_ is a community-led conda channel of
+installable packages. For instructions on installing conda, please consult their
+`documentation <http://conda.pydata.org/docs/install/quick.html>`_.
 
 Once you have `conda` installed on your system, add the `conda-forge` channel to
 your configuration with:
@@ -37,6 +38,8 @@ It is possible to list all of the versions of OpenMC available on your platform 
 .. code-block:: sh
 
     conda search openmc --channel conda-forge
+
+.. _install_ppa:
 
 -----------------------------
 Installing on Ubuntu with PPA
@@ -68,9 +71,11 @@ are no longer supported.
 .. _Personal Package Archive: https://launchpad.net/~paulromano/+archive/staging
 .. _APT package manager: https://help.ubuntu.com/community/AptGet/Howto
 
---------------------
-Building from Source
---------------------
+.. _install_source:
+
+----------------------
+Installing from Source
+----------------------
 
 .. _prerequisites:
 
@@ -191,8 +196,8 @@ switch to the source of the latest stable release, run the following commands::
     git checkout master
 
 .. _GitHub: https://github.com/mit-crpg/openmc
-.. _git: http://git-scm.com
-.. _ssh: http://en.wikipedia.org/wiki/Secure_Shell
+.. _git: https://git-scm.com
+.. _ssh: https://en.wikipedia.org/wiki/Secure_Shell
 
 .. _usersguide_build:
 
@@ -366,16 +371,52 @@ To run the test suite, you will first need to download a pre-generated cross
 section library along with windowed multipole data. Please refer to our
 :ref:`devguide_tests` documentation for further details.
 
---------------------
-Python Prerequisites
---------------------
+---------------------
+Installing Python API
+---------------------
 
-OpenMC's :ref:`Python API <pythonapi>` works with either Python 2.7 or Python
-3.2+. In addition to Python itself, the API relies on a number of third-party
-packages. All prerequisites can be installed using `conda
-<http://conda.pydata.org/docs/>`_ (recommended), `pip
-<https://pip.pypa.io/en/stable/>`_, or through the package manager in most Linux
-distributions.
+If you installed OpenMC using :ref:`Conda <install_conda>` or :ref:`PPA
+<install_ppa>`, no further steps are necessary in order to use OpenMC's
+:ref:`Python API <pythonapi>`. However, if you are :ref:`installing from source
+<install_source>`, the Python API is not installed by default when ``make
+install`` is run because in many situations it doesn't make sense to install a
+Python package in the same location as the ``openmc`` executable (for example,
+if you are installing the package into a `virtual environment
+<https://docs.python.org/3/tutorial/venv.html>`_). The easiest way to install
+the :mod:`openmc` Python package is to use pip_, which is included by default in
+Python 2.7 and Python 3.4+. From the root directory of the OpenMC
+distribution/repository, run:
+
+.. code-block:: sh
+
+    pip install .
+
+pip will first check that all :ref:`required third-party packages
+<usersguide_python_prereqs>` have been installed, and if they are not present,
+they will be installed by downloading the appropriate packages from the Python
+Package Index (`PyPI <https://pypi.org/>`_). However, do note that since pip
+runs the ``setup.py`` script which requires NumPy, you will have to first
+install NumPy:
+
+.. code-block:: sh
+
+    pip install numpy
+
+Installing in "Development" Mode
+--------------------------------
+
+If you are primarily doing development with OpenMC, it is strongly recommended
+to install the Python package in :ref:`"editable" mode <devguide_editable>`.
+
+.. _usersguide_python_prereqs:
+
+Prerequisites
+-------------
+
+The Python API works with either Python 2.7 or Python 3.2+. In addition to
+Python itself, the API relies on a number of third-party packages. All
+prerequisites can be installed using Conda_ (recommended), pip_, or through the
+package manager in most Linux distributions.
 
 .. admonition:: Required
    :class: error
@@ -457,3 +498,5 @@ schemas.xml file in your own OpenMC source directory.
 .. _RELAX NG: http://relaxng.org/
 .. _NNDC: http://www.nndc.bnl.gov/endf/b7.1/acefiles.html
 .. _ctest: http://www.cmake.org/cmake/help/v2.8.12/ctest.html
+.. _Conda: https://conda.io/docs/
+.. _pip: https://pip.pypa.io/en/stable/

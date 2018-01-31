@@ -3,6 +3,9 @@
 
 #include <cstdint>
 
+
+namespace openmc {
+
 //==============================================================================
 // Module constants.
 //==============================================================================
@@ -82,4 +85,5 @@ extern "C" void prn_set_stream(int n);
 
 extern "C" int openmc_set_seed(int64_t new_seed);
 
+} // namespace openmc
 #endif // RANDOM_LCG_H

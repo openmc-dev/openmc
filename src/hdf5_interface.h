@@ -9,6 +9,9 @@
 #include "error.h"
 
 
+namespace openmc {
+
+
 hid_t
 create_group(hid_t parent_id, char const *name)
 {
@@ -84,4 +87,5 @@ write_string(hid_t group_id, char const *name, const std::string &buffer)
   write_string(group_id, name, buffer.c_str());
 }
 
+} // namespace openmc
 #endif //HDF5_INTERFACE_H

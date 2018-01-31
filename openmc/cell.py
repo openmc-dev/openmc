@@ -211,14 +211,7 @@ class Cell(IDManagerMixin):
     @fill.setter
     def fill(self, fill):
         if fill is not None:
-            if isinstance(fill, string_types):
-                if fill.strip().lower() != 'void':
-                    msg = 'Unable to set Cell ID="{0}" to use a non-Material ' \
-                          'or Universe fill "{1}"'.format(self._id, fill)
-                    raise ValueError(msg)
-                fill = None
-
-            elif isinstance(fill, Iterable):
+            if isinstance(fill, Iterable):
                 for i, f in enumerate(fill):
                     if f is not None:
                         cv.check_type('cell.fill[i]', f, openmc.Material)

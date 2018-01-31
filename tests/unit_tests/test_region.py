@@ -2,16 +2,12 @@ import numpy as np
 import pytest
 import openmc
 
+from tests.unit_tests import assert_unbounded
+
 
 @pytest.fixture
 def reset():
     openmc.reset_auto_ids()
-
-
-def assert_unbounded(region):
-    ll, ur = region.bounding_box
-    assert ll == pytest.approx((-np.inf, -np.inf, -np.inf))
-    assert ur == pytest.approx((np.inf, np.inf, np.inf))
 
 
 def test_union(reset):

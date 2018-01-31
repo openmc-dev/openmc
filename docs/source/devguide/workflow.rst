@@ -103,6 +103,27 @@ changes you've made in your private repository back to mit-crpg/openmc
 repository, simply follow the steps above with an extra step of pulling a branch
 from your private repository into a public fork.
 
+.. _devguide_editable:
+
+Working in "Development" Mode
+-----------------------------
+
+If you are making changes to the Python API during development, it is highly
+suggested to install the Python API in development/editable mode using
+pip_. From the root directory of the OpenMC repository, run:
+
+.. code-block:: sh
+
+    pip install -e .[test]
+
+This installs the OpenMC Python package in `"editable" mode
+<https://pip.pypa.io/en/stable/reference/pip_install/#editable-installs>`_ so
+that 1) it can be imported from a Python interpreter and 2) any changes made are
+immediately reflected in the installed version (that is, you don't need to keep
+reinstalling it). While the same effect can be achieved using the
+:envvar:`PYTHONPATH` environment variable, this is generally discouraged as it
+can interfere with virtual environments.
+
 .. _git: http://git-scm.com/
 .. _GitHub: https://github.com/
 .. _git flow: http://nvie.com/git-model
@@ -114,3 +135,4 @@ from your private repository into a public fork.
 .. _Bitbucket: https://bitbucket.org
 .. _ctest: http://www.cmake.org/cmake/help/v2.8.12/ctest.html
 .. _NNDC:  http://www.nndc.bnl.gov/endf/b7.1/acefiles.html
+.. _pip: https://pip.pypa.io/en/stable/

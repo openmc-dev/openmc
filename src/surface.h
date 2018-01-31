@@ -3,32 +3,37 @@
 
 #include <map>
 #include <limits>  // For numeric_limits
+#include <string>
 
 #include "hdf5.h"
 #include "pugixml/pugixml.hpp"
+
+
+namespace openmc {
 
 //==============================================================================
 // Module constants
 //==============================================================================
 
-extern "C" const int BC_TRANSMIT{0};
-extern "C" const int BC_VACUUM{1};
-extern "C" const int BC_REFLECT{2};
-extern "C" const int BC_PERIODIC{3};
+extern "C" const int BC_TRANSMIT {0};
+extern "C" const int BC_VACUUM {1};
+extern "C" const int BC_REFLECT {2};
+extern "C" const int BC_PERIODIC {3};
 
 //==============================================================================
 // Constants that should eventually be moved out of this file
 //==============================================================================
 
 extern "C" double FP_COINCIDENT;
-const double INFTY{std::numeric_limits<double>::max()};
-const int C_NONE{-1};
+constexpr double INFTY{std::numeric_limits<double>::max()};
+constexpr int C_NONE {-1};
 
 //==============================================================================
 // Global variables
 //==============================================================================
 
-int n_surfaces{0};
+// Braces force n_surfaces to be defined here, not just declared.
+extern "C" {int32_t n_surfaces {0};}
 
 class Surface;
 Surface **surfaces_c;
@@ -63,6 +68,8 @@ public:
   std::string name{""};      //!< User-defined name
 
   Surface(pugi::xml_node surf_node);
+
+  virtual ~Surface() {}
 
   //! Determine which side of a surface a point lies on.
   //! @param xyz[3] The 3D Cartesian coordinate of a point.
@@ -411,9 +418,10 @@ extern "C" void free_memory_surfaces_c()
 {
   for (int i = 0; i < n_surfaces; i++) {delete surfaces_c[i];}
   delete surfaces_c;
-  surfaces_c = NULL;
+  surfaces_c = nullptr;
   n_surfaces = 0;
   surface_dict.clear();
 }
 
+} // namespace openmc
 #endif // SURFACE_H

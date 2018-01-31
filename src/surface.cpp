@@ -1,11 +1,15 @@
+#include "surface.h"
+
 #include <array>
-#include <math.h>  // For fabs
+#include <sstream>
 
 #include "error.h"
 #include "hdf5_interface.h"
 #include "xml_interface.h"
+#include <iostream>
 
-#include "surface.h"
+
+namespace openmc {
 
 //==============================================================================
 // Helper functions for reading the "coeffs" node of an XML surface element
@@ -14,7 +18,7 @@
 int word_count(const std::string &text)
 {
   bool in_word = false;
-  int count{0};
+  int count {0};
   for (auto c = text.begin(); c != text.end(); c++) {
     if (std::isspace(*c)) {
       if (in_word) {
@@ -35,10 +39,9 @@ void read_coeffs(pugi::xml_node surf_node, int surf_id, double &c1)
   std::string coeffs = get_node_value(surf_node, "coeffs");
   int n_words = word_count(coeffs);
   if (n_words != 1) {
-    std::string err_msg{"Surface "};
-    err_msg += std::to_string(surf_id);
-    err_msg += " expects 1 coeff but was given ";
-    err_msg += std::to_string(n_words);
+    std::stringstream err_msg;
+    err_msg << "Surface " << surf_id << " expects 1 coeff but was given "
+            << n_words;
     fatal_error(err_msg);
   }
 
@@ -56,10 +59,9 @@ void read_coeffs(pugi::xml_node surf_node, int surf_id, double &c1, double &c2,
   std::string coeffs = get_node_value(surf_node, "coeffs");
   int n_words = word_count(coeffs);
   if (n_words != 3) {
-    std::string err_msg{"Surface "};
-    err_msg += std::to_string(surf_id);
-    err_msg += " expects 3 coeffs but was given ";
-    err_msg += std::to_string(n_words);
+    std::stringstream err_msg;
+    err_msg << "Surface " << surf_id << " expects 3 coeffs but was given "
+            << n_words;
     fatal_error(err_msg);
   }
 
@@ -77,10 +79,9 @@ void read_coeffs(pugi::xml_node surf_node, int surf_id, double &c1, double &c2,
   std::string coeffs = get_node_value(surf_node, "coeffs");
   int n_words = word_count(coeffs);
   if (n_words != 4) {
-    std::string err_msg{"Surface "};
-    err_msg += std::to_string(surf_id);
-    err_msg += " expects 4 coeffs but was given ";
-    err_msg += std::to_string(n_words);
+    std::stringstream err_msg;
+    err_msg << "Surface " << surf_id << " expects 4 coeffs but was given "
+            << n_words;
     fatal_error(err_msg);
   }
 
@@ -99,10 +100,9 @@ void read_coeffs(pugi::xml_node surf_node, int surf_id, double &c1, double &c2,
   std::string coeffs = get_node_value(surf_node, "coeffs");
   int n_words = word_count(coeffs);
   if (n_words != 10) {
-    std::string err_msg{"Surface "};
-    err_msg += std::to_string(surf_id);
-    err_msg += " expects 10 coeffs but was given ";
-    err_msg += std::to_string(n_words);
+    std::stringstream err_msg;
+    err_msg << "Surface " << surf_id << " expects 10 coeffs but was given "
+            << n_words;
     fatal_error(err_msg);
   }
 
@@ -133,23 +133,21 @@ Surface::Surface(pugi::xml_node surf_node)
   if (check_for_node(surf_node, "boundary")) {
     std::string surf_bc = get_node_value(surf_node, "boundary");
 
-    if (surf_bc.compare("transmission") == 0
-         or surf_bc.compare("transmit") == 0
-         or surf_bc.compare("") == 0) {
+    if (surf_bc == "transmission" || surf_bc == "transmit" ||surf_bc.empty()) {
       bc = BC_TRANSMIT;
 
-    } else if (surf_bc.compare("vacuum") == 0) {
+    } else if (surf_bc == "vacuum") {
       bc = BC_VACUUM;
 
-    } else if (surf_bc.compare("reflective") == 0
-               or surf_bc.compare("reflect") == 0
-               or surf_bc.compare("reflecting") == 0) {
+    } else if (surf_bc == "reflective" || surf_bc == "reflect"
+               || surf_bc == "reflecting") {
       bc = BC_REFLECT;
-    } else if (surf_bc.compare("periodic") == 0) {
+    } else if (surf_bc == "periodic") {
       bc = BC_PERIODIC;
     } else {
-      std::string err_msg("Unknown boundary condition \"");
-      err_msg += surf_bc + "\" specified on surface " + std::to_string(id);
+      std::stringstream err_msg;
+      err_msg << "Unknown boundary condition \"" << surf_bc
+              << "\" specified on surface " << id;
       fatal_error(err_msg);
     }
 
@@ -167,7 +165,7 @@ Surface::sense(const double xyz[3], const double uvw[3]) const
   const double f = evaluate(xyz);
 
   // Check which side of surface the point is on.
-  if (fabs(f) < FP_COINCIDENT) {
+  if (std::abs(f) < FP_COINCIDENT) {
     // Particle may be coincident with this surface. To determine the sense, we
     // look at the direction of the particle relative to the surface normal (by
     // default in the positive direction) via their dot product.
@@ -197,7 +195,7 @@ Surface::reflect(const double xyz[3], double uvw[3]) const
 void
 Surface::to_hdf5(hid_t group_id) const
 {
-  std::string group_name{"surface "};
+  std::string group_name {"surface "};
   group_name += std::to_string(id);
 
   hid_t surf_group = create_group(group_id, group_name);
@@ -217,7 +215,7 @@ Surface::to_hdf5(hid_t group_id) const
       break;
   }
 
-  if (name.compare("")) {
+  if (!name.empty()) {
     write_string(surf_group, "name", name);
   }
 
@@ -231,7 +229,7 @@ Surface::to_hdf5(hid_t group_id) const
 //==============================================================================
 
 PeriodicSurface::PeriodicSurface(pugi::xml_node surf_node)
-  : Surface(surf_node)
+  : Surface {surf_node}
 {
   if (check_for_node(surf_node, "periodic_surface_id")) {
     i_periodic = stoi(get_node_value(surf_node, "periodic_surface_id"));
@@ -255,7 +253,7 @@ axis_aligned_plane_distance(const double xyz[3], const double uvw[3],
                             bool coincident, double offset)
 {
   const double f = offset - xyz[i];
-  if (coincident or fabs(f) < FP_COINCIDENT or uvw[i] == 0.0) return INFTY;
+  if (coincident or std::abs(f) < FP_COINCIDENT or uvw[i] == 0.0) return INFTY;
   const double d = f / uvw[i];
   if (d < 0.0) return INFTY;
   return d;
@@ -300,7 +298,7 @@ inline void SurfaceXPlane::normal(const double xyz[3], double uvw[3]) const
 void SurfaceXPlane::to_hdf5_inner(hid_t group_id) const
 {
   write_string(group_id, "type", "x-plane");
-  std::array<double, 1> coeffs{{x0}};
+  std::array<double, 1> coeffs {{x0}};
   write_double_1D(group_id, "coefficients", coeffs);
 }
 
@@ -320,7 +318,6 @@ bool SurfaceXPlane::periodic_translate(PeriodicSurface *other, double xyz[3],
     double y0 = -other->evaluate(xyz_test);
     xyz[1] = xyz[0] - x0 + y0;
     xyz[0] = x0;
-    xyz[2] = xyz[2];
 
     double u = uvw[0];
     uvw[0] = -uvw[1];
@@ -330,10 +327,10 @@ bool SurfaceXPlane::periodic_translate(PeriodicSurface *other, double xyz[3],
   }
 }
 
-struct BoundingBox
+BoundingBox
 SurfaceXPlane::bounding_box() const
 {
-  struct BoundingBox out{x0, x0, -INFTY, INFTY, -INFTY, INFTY};
+  BoundingBox out {x0, x0, -INFTY, INFTY, -INFTY, INFTY};
   return out;
 }
 
@@ -366,7 +363,7 @@ inline void SurfaceYPlane::normal(const double xyz[3], double uvw[3]) const
 void SurfaceYPlane::to_hdf5_inner(hid_t group_id) const
 {
   write_string(group_id, "type", "y-plane");
-  std::array<double, 1> coeffs{{y0}};
+  std::array<double, 1> coeffs {{y0}};
   write_double_1D(group_id, "coefficients", coeffs);
 }
 
@@ -396,10 +393,10 @@ bool SurfaceYPlane::periodic_translate(PeriodicSurface *other, double xyz[3],
   }
 }
 
-struct BoundingBox
+BoundingBox
 SurfaceYPlane::bounding_box() const
 {
-  struct BoundingBox out{-INFTY, INFTY, y0, y0, -INFTY, INFTY};
+  BoundingBox out {-INFTY, INFTY, y0, y0, -INFTY, INFTY};
   return out;
 }
 
@@ -432,7 +429,7 @@ inline void SurfaceZPlane::normal(const double xyz[3], double uvw[3]) const
 void SurfaceZPlane::to_hdf5_inner(hid_t group_id) const
 {
   write_string(group_id, "type", "z-plane");
-  std::array<double, 1> coeffs{{z0}};
+  std::array<double, 1> coeffs {{z0}};
   write_double_1D(group_id, "coefficients", coeffs);
 }
 
@@ -444,10 +441,10 @@ bool SurfaceZPlane::periodic_translate(PeriodicSurface *other, double xyz[3],
   return false;
 }
 
-struct BoundingBox
+BoundingBox
 SurfaceZPlane::bounding_box() const
 {
-  struct BoundingBox out{-INFTY, INFTY, -INFTY, INFTY, z0, z0};
+  BoundingBox out {-INFTY, INFTY, -INFTY, INFTY, z0, z0};
   return out;
 }
 
@@ -473,7 +470,7 @@ SurfacePlane::distance(const double xyz[3], const double uvw[3],
 {
   const double f = A*xyz[0] + B*xyz[1] + C*xyz[2] - D;
   const double projection = A*uvw[0] + B*uvw[1] + C*uvw[2];
-  if (coincident or fabs(f) < FP_COINCIDENT or projection == 0.0) {
+  if (coincident or std::abs(f) < FP_COINCIDENT or projection == 0.0) {
     return INFTY;
   } else {
     const double d = -f / projection;
@@ -493,7 +490,7 @@ SurfacePlane::normal(const double xyz[3], double uvw[3]) const
 void SurfacePlane::to_hdf5_inner(hid_t group_id) const
 {
   write_string(group_id, "type", "plane");
-  std::array<double, 4> coeffs{{A, B, C, D}};
+  std::array<double, 4> coeffs {{A, B, C, D}};
   write_double_1D(group_id, "coefficients", coeffs);
 }
 
@@ -513,10 +510,10 @@ bool SurfacePlane::periodic_translate(PeriodicSurface *other, double xyz[3],
   return false;
 }
 
-struct BoundingBox
+BoundingBox
 SurfacePlane::bounding_box() const
 {
-  struct BoundingBox out{-INFTY, INFTY, -INFTY, INFTY, -INFTY, INFTY};
+  BoundingBox out {-INFTY, INFTY, -INFTY, INFTY, -INFTY, INFTY};
   return out;
 }
 
@@ -556,7 +553,7 @@ axis_aligned_cylinder_distance(const double xyz[3], const double uvw[3],
     // No intersection with cylinder.
     return INFTY;
 
-  } else if (coincident or fabs(c) < FP_COINCIDENT) {
+  } else if (coincident or std::abs(c) < FP_COINCIDENT) {
     // Particle is on the cylinder, thus one distance is positive/negative
     // and the other is zero. The sign of k determines if we are facing in or
     // out.
@@ -625,7 +622,7 @@ inline void SurfaceXCylinder::normal(const double xyz[3], double uvw[3]) const
 void SurfaceXCylinder::to_hdf5_inner(hid_t group_id) const
 {
   write_string(group_id, "type", "x-cylinder");
-  std::array<double, 3> coeffs{{y0, z0, r}};
+  std::array<double, 3> coeffs {{y0, z0, r}};
   write_double_1D(group_id, "coefficients", coeffs);
 }
 
@@ -659,7 +656,7 @@ inline void SurfaceYCylinder::normal(const double xyz[3], double uvw[3]) const
 void SurfaceYCylinder::to_hdf5_inner(hid_t group_id) const
 {
   write_string(group_id, "type", "y-cylinder");
-  std::array<double, 3> coeffs{{x0, z0, r}};
+  std::array<double, 3> coeffs {{x0, z0, r}};
   write_double_1D(group_id, "coefficients", coeffs);
 }
 
@@ -693,7 +690,7 @@ inline void SurfaceZCylinder::normal(const double xyz[3], double uvw[3]) const
 void SurfaceZCylinder::to_hdf5_inner(hid_t group_id) const
 {
   write_string(group_id, "type", "z-cylinder");
-  std::array<double, 3> coeffs{{x0, y0, r}};
+  std::array<double, 3> coeffs {{x0, y0, r}};
   write_double_1D(group_id, "coefficients", coeffs);
 }
 
@@ -729,7 +726,7 @@ double SurfaceSphere::distance(const double xyz[3], const double uvw[3],
     // No intersection with sphere.
     return INFTY;
 
-  } else if (coincident or fabs(c) < FP_COINCIDENT) {
+  } else if (coincident or std::abs(c) < FP_COINCIDENT) {
     // Particle is on the sphere, thus one distance is positive/negative and
     // the other is zero. The sign of k determines if we are facing in or out.
     if (k >= 0.0) {
@@ -764,7 +761,7 @@ inline void SurfaceSphere::normal(const double xyz[3], double uvw[3]) const
 void SurfaceSphere::to_hdf5_inner(hid_t group_id) const
 {
   write_string(group_id, "type", "sphere");
-  std::array<double, 4> coeffs{{x0, y0, z0, r}};
+  std::array<double, 4> coeffs {{x0, y0, z0, r}};
   write_double_1D(group_id, "coefficients", coeffs);
 }
 
@@ -808,7 +805,7 @@ axis_aligned_cone_distance(const double xyz[3], const double uvw[3],
     // No intersection with cone.
     return INFTY;
 
-  } else if (coincident or fabs(c) < FP_COINCIDENT) {
+  } else if (coincident or std::abs(c) < FP_COINCIDENT) {
     // Particle is on the cone, thus one distance is positive/negative
     // and the other is zero. The sign of k determines if we are facing in or
     // out.
@@ -881,7 +878,7 @@ inline void SurfaceXCone::normal(const double xyz[3], double uvw[3]) const
 void SurfaceXCone::to_hdf5_inner(hid_t group_id) const
 {
   write_string(group_id, "type", "x-cone");
-  std::array<double, 4> coeffs{{x0, y0, z0, r_sq}};
+  std::array<double, 4> coeffs {{x0, y0, z0, r_sq}};
   write_double_1D(group_id, "coefficients", coeffs);
 }
 
@@ -915,7 +912,7 @@ inline void SurfaceYCone::normal(const double xyz[3], double uvw[3]) const
 void SurfaceYCone::to_hdf5_inner(hid_t group_id) const
 {
   write_string(group_id, "type", "y-cone");
-  std::array<double, 4> coeffs{{x0, y0, z0, r_sq}};
+  std::array<double, 4> coeffs {{x0, y0, z0, r_sq}};
   write_double_1D(group_id, "coefficients", coeffs);
 }
 
@@ -949,7 +946,7 @@ inline void SurfaceZCone::normal(const double xyz[3], double uvw[3]) const
 void SurfaceZCone::to_hdf5_inner(hid_t group_id) const
 {
   write_string(group_id, "type", "z-cone");
-  std::array<double, 4> coeffs{{x0, y0, z0, r_sq}};
+  std::array<double, 4> coeffs {{x0, y0, z0, r_sq}};
   write_double_1D(group_id, "coefficients", coeffs);
 }
 
@@ -998,7 +995,7 @@ SurfaceQuadric::distance(const double xyz[3],
     // No intersection with surface.
     return INFTY;
 
-  } else if (coincident or fabs(c) < FP_COINCIDENT) {
+  } else if (coincident or std::abs(c) < FP_COINCIDENT) {
     // Particle is on the surface, thus one distance is positive/negative and
     // the other is zero. The sign of k determines which distance is zero and
     // which is not.
@@ -1043,7 +1040,7 @@ SurfaceQuadric::normal(const double xyz[3], double uvw[3]) const
 void SurfaceQuadric::to_hdf5_inner(hid_t group_id) const
 {
   write_string(group_id, "type", "quadric");
-  std::array<double, 10> coeffs{{A, B, C, D, E, F, G, H, J, K}};
+  std::array<double, 10> coeffs {{A, B, C, D, E, F, G, H, J, K}};
   write_double_1D(group_id, "coefficients", coeffs);
 }
 
@@ -1053,10 +1050,7 @@ extern "C" void
 read_surfaces(pugi::xml_node *node)
 {
   // Count the number of surfaces.
-  for (pugi::xml_node surf_node = node->child("surface"); surf_node;
-       surf_node = surf_node.next_sibling("surface")) {
-    n_surfaces++;
-  }
+  for (pugi::xml_node surf_node: node->children("surface")) {n_surfaces++;}
   if (n_surfaces == 0) {
     fatal_error("No surfaces found in geometry.xml!");
   }
@@ -1072,46 +1066,45 @@ read_surfaces(pugi::xml_node *node)
          surf_node = surf_node.next_sibling("surface"), i_surf++) {
       std::string surf_type = get_node_value(surf_node, "type");
 
-      if (surf_type.compare("x-plane") == 0) {
+      if (surf_type == "x-plane") {
         surfaces_c[i_surf] = new SurfaceXPlane(surf_node);
 
-      } else if (surf_type.compare("y-plane") == 0) {
+      } else if (surf_type == "y-plane") {
         surfaces_c[i_surf] = new SurfaceYPlane(surf_node);
 
-      } else if (surf_type.compare("z-plane") == 0) {
+      } else if (surf_type == "z-plane") {
         surfaces_c[i_surf] = new SurfaceZPlane(surf_node);
 
-      } else if (surf_type.compare("plane") == 0) {
+      } else if (surf_type == "plane") {
         surfaces_c[i_surf] = new SurfacePlane(surf_node);
 
-      } else if (surf_type.compare("x-cylinder") == 0) {
+      } else if (surf_type == "x-cylinder") {
         surfaces_c[i_surf] = new SurfaceXCylinder(surf_node);
 
-      } else if (surf_type.compare("y-cylinder") == 0) {
+      } else if (surf_type == "y-cylinder") {
         surfaces_c[i_surf] = new SurfaceYCylinder(surf_node);
 
-      } else if (surf_type.compare("z-cylinder") == 0) {
+      } else if (surf_type == "z-cylinder") {
         surfaces_c[i_surf] = new SurfaceZCylinder(surf_node);
 
-      } else if (surf_type.compare("sphere") == 0) {
+      } else if (surf_type == "sphere") {
         surfaces_c[i_surf] = new SurfaceSphere(surf_node);
 
-      } else if (surf_type.compare("x-cone") == 0) {
+      } else if (surf_type == "x-cone") {
         surfaces_c[i_surf] = new SurfaceXCone(surf_node);
 
-      } else if (surf_type.compare("y-cone") == 0) {
+      } else if (surf_type == "y-cone") {
         surfaces_c[i_surf] = new SurfaceYCone(surf_node);
 
-      } else if (surf_type.compare("z-cone") == 0) {
+      } else if (surf_type == "z-cone") {
         surfaces_c[i_surf] = new SurfaceZCone(surf_node);
 
-      } else if (surf_type.compare("quadric") == 0) {
+      } else if (surf_type == "quadric") {
         surfaces_c[i_surf] = new SurfaceQuadric(surf_node);
 
       } else {
-        std::string err_msg{"Invalid surface type, \""};
-        err_msg += surf_type;
-        err_msg += "\"";
+        std::stringstream err_msg;
+        err_msg << "Invalid surface type, \"" << surf_type << "\"";
         fatal_error(err_msg);
       }
     }
@@ -1124,15 +1117,15 @@ read_surfaces(pugi::xml_node *node)
     if (in_dict == surface_dict.end()) {
       surface_dict[id] = i_surf;
     } else {
-      std::string err_msg{"Two or more surfaces use the same unique ID: "};
-      err_msg += std::to_string(id);
+      std::stringstream err_msg;
+      err_msg << "Two or more surfaces use the same unique ID: " << id;
       fatal_error(err_msg);
     }
   }
 
   // Find the global bounding box (of periodic BC surfaces).
-  double xmin{INFTY}, xmax{-INFTY}, ymin{INFTY}, ymax{-INFTY},
-         zmin{INFTY}, zmax{-INFTY};
+  double xmin {INFTY}, xmax {-INFTY}, ymin {INFTY}, ymax {-INFTY},
+         zmin {INFTY}, zmax {-INFTY};
   int i_xmin, i_xmax, i_ymin, i_ymax, i_zmin, i_zmax;
   for (int i_surf = 0; i_surf < n_surfaces; i_surf++) {
     if (surfaces_c[i_surf]->bc == BC_PERIODIC) {
@@ -1141,15 +1134,16 @@ read_surfaces(pugi::xml_node *node)
       PeriodicSurface *surf = dynamic_cast<PeriodicSurface *>(surf_base);
 
       // Make sure this surface inherits from PeriodicSurface.
-      if (surf == NULL) {
-        std::string err_msg{"Periodic boundary condition not supported for "
-                            "surface "};
-        err_msg += std::to_string(surf_base->id);
-        err_msg += ". Periodic BCs are only supported for planar surfaces.";
+      if (!surf) {
+        std::stringstream err_msg;
+        err_msg << "Periodic boundary condition not supported for surface "
+                << surf_base->id
+                << ". Periodic BCs are only supported for planar surfaces.";
+        fatal_error(err_msg);
       }
 
       // See if this surface makes part of the global bounding box.
-      struct BoundingBox bb = surf->bounding_box();
+      BoundingBox bb = surf->bounding_box();
       if (bb.xmin > -INFTY and bb.xmin < xmin) {
         xmin = bb.xmin;
         i_xmin = i_surf;
@@ -1188,7 +1182,7 @@ read_surfaces(pugi::xml_node *node)
       // differently).
       SurfacePlane *surf_p = dynamic_cast<SurfacePlane *>(surf);
 
-      if (surf_p == NULL) {
+      if (!surf_p) {
         // This is not a SurfacePlane.
         if (surf->i_periodic == C_NONE) {
           // The user did not specify the matching periodic surface.  See if we
@@ -1217,9 +1211,9 @@ read_surfaces(pugi::xml_node *node)
         // This is a SurfacePlane.  We won't try to find it's partner if the
         // user didn't specify one.
         if (surf->i_periodic == C_NONE) {
-          std::string err_msg{"No matching periodic surface specified for "
-                              "periodic boundary condition on surface "};
-          err_msg += std::to_string(surf->id);
+          std::stringstream err_msg;
+          err_msg << "No matching periodic surface specified for periodic "
+                     "boundary condition on surface " << surf->id;
           fatal_error(err_msg);
         } else {
           // Convert the surface id to an index.
@@ -1229,11 +1223,13 @@ read_surfaces(pugi::xml_node *node)
 
       // Make sure the opposite surface is also periodic.
       if (surfaces_c[surf->i_periodic]->bc != BC_PERIODIC) {
-        std::string err_msg{"Could not find matching surface for periodic "
-                            "boundary condition on surface "};
-        err_msg += std::to_string(surf->id);
+        std::stringstream err_msg;
+        err_msg << "Could not find matching surface for periodic boundary "
+                   "condition on surface " << surf->id;
         fatal_error(err_msg);
       }
     }
   }
 }
+
+} // namespace openmc

@@ -2,6 +2,9 @@
 #include <cmath>
 
 
+namespace openmc {
+
+
 // Constants
 extern "C" const int N_STREAMS         {5};
 extern "C" const int STREAM_TRACKING   {0};
@@ -143,3 +146,5 @@ openmc_set_seed(int64_t new_seed)
   }
   return 0;
 }
+
+} // namespace openmc

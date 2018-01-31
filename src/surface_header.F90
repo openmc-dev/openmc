@@ -126,7 +126,7 @@ module surface_header
 
   end type Surface
 
-  integer(C_INT), bind(C) :: n_surfaces  ! # of surfaces
+  integer(C_INT32_T), bind(C) :: n_surfaces  ! # of surfaces
 
   type(Surface), allocatable, target :: surfaces(:)
 

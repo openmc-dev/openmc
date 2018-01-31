@@ -26,7 +26,7 @@ module state_point
   use mgxs_header,        only: nuclides_MG
   use nuclide_header,     only: nuclides
   use output,             only: time_stamp
-  use random_lcg,         only: seed
+  use random_lcg,         only: openmc_get_seed, openmc_set_seed
   use settings
   use simulation_header
   use string,             only: to_str, count_digits, zero_padded, to_f_string
@@ -97,7 +97,7 @@ contains
       call write_attribute(file_id, "path", path_input)
 
       ! Write out random number seed
-      call write_dataset(file_id, "seed", seed)
+      call write_dataset(file_id, "seed", openmc_get_seed())
 
       ! Write run information
       if (run_CE) then
@@ -642,6 +642,7 @@ contains
     integer :: n
     integer :: int_array(3)
     integer, allocatable :: array(:)
+    integer(C_INT64_T) :: seed
     integer(HID_T) :: file_id
     integer(HID_T) :: cmfd_group
     integer(HID_T) :: tallies_group
@@ -672,6 +673,7 @@ contains
 
     ! Read and overwrite random number seed
     call read_dataset(seed, file_id, "seed")
+    call openmc_set_seed(seed)
 
     ! It is not impossible for a state point to be generated from a CE run but
     ! to be loaded in to an MG run (or vice versa), check to prevent that.

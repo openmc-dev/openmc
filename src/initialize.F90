@@ -44,7 +44,6 @@ contains
   subroutine openmc_init(intracomm) bind(C)
     integer, intent(in), optional :: intracomm  ! MPI intracommunicator
 
-    integer :: err
 #ifdef _OPENMP
     character(MAX_WORD_LEN) :: envvar
 #endif
@@ -95,7 +94,7 @@ contains
 
     ! Initialize random number generator -- if the user specifies a seed, it
     ! will be re-initialized later
-    err = openmc_set_seed(DEFAULT_SEED)
+    call openmc_set_seed(DEFAULT_SEED)
 
     ! Read XML input files
     call read_input_xml()

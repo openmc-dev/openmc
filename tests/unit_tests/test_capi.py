@@ -29,11 +29,11 @@ def pincell_model():
     yield
 
     # Delete generated files
-    files = ['geometry.xml', 'materials.xml', 'settings.xml', 'tallies.xml',
-             'statepoint.10.h5', 'summary.h5', 'test_sp.h5']
-    for f in files:
-        if os.path.exists(f):
-            os.remove(f)
+    #files = ['geometry.xml', 'materials.xml', 'settings.xml', 'tallies.xml',
+    #         'statepoint.10.h5', 'summary.h5', 'test_sp.h5']
+    #for f in files:
+    #    if os.path.exists(f):
+    #        os.remove(f)
 
 
 @pytest.fixture(scope='module')

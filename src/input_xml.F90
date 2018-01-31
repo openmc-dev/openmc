@@ -349,7 +349,7 @@ contains
     ! Copy random number seed if specified
     if (check_for_node(root, "seed")) then
       call get_node_value(root, "seed", seed)
-      err = openmc_set_seed(seed)
+      call openmc_set_seed(seed)
     end if
 
     ! Number of bins for logarithmic grid

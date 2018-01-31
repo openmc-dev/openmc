@@ -5,41 +5,6 @@ import openmc.examples
 import pytest
 
 
-@pytest.fixture(scope='module')
-def uo2():
-    m = openmc.Material(material_id=100, name='UO2')
-    m.add_nuclide('U235', 1.0)
-    m.add_nuclide('O16', 2.0)
-    m.set_density('g/cm3', 10.0)
-    m.depletable = True
-    return m
-
-
-@pytest.fixture(scope='module')
-def sphere_model():
-    model = openmc.model.Model()
-
-    m = openmc.Material()
-    m.add_nuclide('U235', 1.0)
-    m.set_density('g/cm3', 1.0)
-    model.materials.append(m)
-
-    sph = openmc.Sphere(boundary_type='vacuum')
-    c = openmc.Cell(fill=m, region=-sph)
-    model.geometry.root_universe = openmc.Universe(cells=[c])
-
-    model.settings.particles = 100
-    model.settings.batches = 10
-    model.settings.run_mode = 'fixed source'
-    model.settings.source = openmc.Source(space=openmc.stats.Point())
-    ll, ur = c.region.bounding_box
-    model.settings.volume_calculations = [
-        openmc.VolumeCalculation(domains=[m], samples=1000,
-                                 lower_left=ll, upper_right=ur)
-    ]
-    return model
-
-
 def test_attributes(uo2):
     assert uo2.name == 'UO2'
     assert uo2.id == 100
@@ -143,6 +108,11 @@ def test_isotropic():
 
 def test_volume(run_in_tmpdir, sphere_model):
     """Test adding volume information from a volume calculation."""
+    ll, ur = sphere_model.geometry.bounding_box
+    sphere_model.settings.volume_calculations = [
+        openmc.VolumeCalculation(domains=sphere_model.materials, samples=1000,
+                                 lower_left=ll, upper_right=ur)
+    ]
     sphere_model.export_to_xml()
     openmc.calculate_volumes()
     volume_calc = openmc.VolumeCalculation.from_hdf5('volume_1.h5')

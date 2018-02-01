@@ -560,7 +560,11 @@ class RectLattice(Lattice):
 
     @property
     def ndim(self):
-        return len(self.pitch)
+        if self.pitch is not None:
+            return len(self.pitch)
+        else:
+            raise ValueError('Number of dimensions cannot be determined until '
+                             'the lattice pitch has been set.')
 
     @property
     def shape(self):

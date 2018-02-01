@@ -213,6 +213,7 @@ def test_export_to_hdf5(tmpdir, pu239, gd154):
     with pytest.raises(NotImplementedError):
         gd154.export_to_hdf5('gd154.h5')
 
+
 def test_slbw(xe135):
     res = xe135.resonances
     assert isinstance(res, openmc.data.Resonances)

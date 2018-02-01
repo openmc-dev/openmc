@@ -22,9 +22,18 @@ def uo2():
 
 
 @pytest.fixture(scope='module')
+def water():
+    m = openmc.Material(name='light water')
+    m.add_nuclide('H1', 2.0)
+    m.add_nuclide('O16', 1.0)
+    m.set_density('g/cm3', 1.0)
+    m.add_s_alpha_beta('c_H_in_H2O')
+    return m
+
+
+@pytest.fixture(scope='module')
 def sphere_model():
     model = openmc.model.Model()
-
     m = openmc.Material()
     m.add_nuclide('U235', 1.0)
     m.set_density('g/cm3', 1.0)
@@ -54,7 +63,6 @@ def cell_with_lattice():
     lattice = openmc.RectLattice(name='My Lattice')
     lattice.lower_left = (-4.0, -4.0)
     lattice.pitch = (4.0, 4.0)
-    lattice.dimension = (2, 2)
     lattice.universes = [[univ, univ], [univ, univ]]
     main_cell = openmc.Cell(fill=lattice)
 

@@ -128,3 +128,35 @@ def test_extend_clone():
 
     r5 = ~r1
     r6 = r5.clone()
+
+
+def test_from_expression(reset):
+    # Create surface dictionary
+    s1 = openmc.ZCylinder(surface_id=1)
+    s2 = openmc.ZPlane(surface_id=2, z0=-10.)
+    s3 = openmc.ZPlane(surface_id=3, z0=10.)
+    surfs = {1: s1, 2: s2, 3: s3}
+
+    r = openmc.Region.from_expression('-1 2 -3', surfs)
+    assert isinstance(r, openmc.Intersection)
+    assert r[:] == [-s1, +s2, -s3]
+
+    r = openmc.Region.from_expression('+1 | -2 | +3', surfs)
+    assert isinstance(r, openmc.Union)
+    assert r[:] == [+s1, -s2, +s3]
+
+    r = openmc.Region.from_expression('~(-1)', surfs)
+    assert r == +s1
+
+    # Since & has higher precendence than |, the resulting region should be an
+    # instance of Union
+    r = openmc.Region.from_expression('1 -2 | 3', surfs)
+    assert isinstance(r, openmc.Union)
+    assert isinstance(r[0], openmc.Intersection)
+    assert r[0][:] == [+s1, -s2]
+
+    # ...but not if we use parentheses
+    r = openmc.Region.from_expression('1 (-2 | 3)', surfs)
+    assert isinstance(r, openmc.Intersection)
+    assert isinstance(r[1], openmc.Union)
+    assert r[1][:] == [-s2, +s3]

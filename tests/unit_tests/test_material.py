@@ -106,19 +106,6 @@ def test_isotropic():
     assert m2.isotropic == ['H1']
 
 
-def test_volume(run_in_tmpdir, sphere_model):
-    """Test adding volume information from a volume calculation."""
-    ll, ur = sphere_model.geometry.bounding_box
-    sphere_model.settings.volume_calculations = [
-        openmc.VolumeCalculation(domains=sphere_model.materials, samples=1000,
-                                 lower_left=ll, upper_right=ur)
-    ]
-    sphere_model.export_to_xml()
-    openmc.calculate_volumes()
-    volume_calc = openmc.VolumeCalculation.from_hdf5('volume_1.h5')
-    sphere_model.materials[0].add_volume_information(volume_calc)
-
-
 def test_get_nuclide_densities(uo2):
     nucs = uo2.get_nuclide_densities()
     for nuc, density, density_type in nucs.values():

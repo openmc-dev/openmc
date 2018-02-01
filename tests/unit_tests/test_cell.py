@@ -94,20 +94,6 @@ def test_rotation():
     ])
 
 
-def test_volume(run_in_tmpdir, sphere_model):
-    """Test adding volume information from a volume calculation."""
-    ll, ur = sphere_model.geometry.bounding_box
-    cells = list(sphere_model.geometry.root_universe.cells.values())
-    sphere_model.settings.volume_calculations = [
-        openmc.VolumeCalculation(domains=cells, samples=1000,
-                                 lower_left=ll, upper_right=ur)
-    ]
-    sphere_model.export_to_xml()
-    openmc.calculate_volumes()
-    volume_calc = openmc.VolumeCalculation.from_hdf5('volume_1.h5')
-    cells[0].add_volume_information(volume_calc)
-
-
 def test_get_nuclides(uo2):
     c = openmc.Cell(fill=uo2)
     nucs = c.get_nuclides()

@@ -54,25 +54,6 @@ class Lattice(IDManagerMixin):
         self._outer = None
         self._universes = None
 
-    def __eq__(self, other):
-        if not isinstance(other, Lattice):
-            return False
-        elif self.id != other.id:
-            return False
-        elif self.name != other.name:
-            return False
-        elif np.any(self.pitch != other.pitch):
-            return False
-        elif self.outer != other.outer:
-            return False
-        elif np.any(self.universes != other.universes):
-            return False
-        else:
-            return True
-
-    def __ne__(self, other):
-        return not self == other
-
     @property
     def name(self):
         return self._name

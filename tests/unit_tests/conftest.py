@@ -39,3 +39,25 @@ def sphere_model():
     model.settings.run_mode = 'fixed source'
     model.settings.source = openmc.Source(space=openmc.stats.Point())
     return model
+
+
+@pytest.fixture
+def cell_with_lattice():
+    m_inside = [openmc.Material(), openmc.Material(), None, openmc.Material()]
+    m_outside = openmc.Material()
+
+    cyl = openmc.ZCylinder(R=1.0)
+    inside_cyl = openmc.Cell(fill=m_inside, region=-cyl)
+    outside_cyl = openmc.Cell(fill=m_outside, region=+cyl)
+    univ = openmc.Universe(cells=[inside_cyl, outside_cyl])
+
+    lattice = openmc.RectLattice()
+    lattice.lower_left = (-4.0, -4.0)
+    lattice.pitch = (4.0, 4.0)
+    lattice.dimension = (2, 2)
+    lattice.universes = [[univ, univ], [univ, univ]]
+    main_cell = openmc.Cell(fill=lattice)
+
+    return ([inside_cyl, outside_cyl, main_cell],
+            [m_inside[0], m_inside[1], m_inside[3], m_outside],
+            univ, lattice)

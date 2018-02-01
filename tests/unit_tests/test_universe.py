@@ -67,24 +67,6 @@ def test_find(uo2):
     assert seq[-1] == c4
 
 
-def test_volume(run_in_tmpdir, sphere_model):
-    """Test adding volume information from a volume calculation."""
-    univ = sphere_model.geometry.root_universe
-    ll, ur = univ.bounding_box
-    sphere_model.settings.volume_calculations = [
-        openmc.VolumeCalculation(domains=[univ], samples=1000,
-                                 lower_left=ll, upper_right=ur)
-    ]
-    sphere_model.export_to_xml()
-    openmc.calculate_volumes()
-    volume_calc = openmc.VolumeCalculation.from_hdf5('volume_1.h5')
-    univ.add_volume_information(volume_calc)
-
-    # get_nuclide_densities relies on volume information
-    nucs = set(univ.get_nuclide_densities())
-    assert not (nucs ^ {'U235'})
-
-
 def test_plot(run_in_tmpdir, sphere_model):
     m = sphere_model.materials[0]
     univ = sphere_model.geometry.root_universe

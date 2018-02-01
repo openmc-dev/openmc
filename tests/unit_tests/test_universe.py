@@ -48,25 +48,6 @@ def test_bounding_box():
     assert_unbounded(u)
 
 
-def test_find(uo2):
-    xp = openmc.XPlane()
-    c1 = openmc.Cell(fill=uo2, region=+xp)
-    c2 = openmc.Cell(region=-xp)
-    u1 = openmc.Universe(cells=(c1, c2))
-
-    cyl = openmc.ZCylinder()
-    c3 = openmc.Cell(fill=u1, region=-cyl)
-    c4 = openmc.Cell(region=+cyl)
-    u = openmc.Universe(cells=(c3, c4))
-
-    seq = u.find((0.5, 0., 0.))
-    assert seq[-1] == c1
-    seq = u.find((-0.5, 0., 0.))
-    assert seq[-1] == c2
-    seq = u.find((-1.5, 0., 0.))
-    assert seq[-1] == c4
-
-
 def test_plot(run_in_tmpdir, sphere_model):
     m = sphere_model.materials[0]
     univ = sphere_model.geometry.root_universe
@@ -117,16 +98,6 @@ def test_get_all_universes():
 
     univs = set(u3.get_all_universes().values())
     assert not (univs ^ {u1, u2})
-
-
-def test_clone():
-    c1 = openmc.Cell()
-    c2 = openmc.Cell()
-    u = openmc.Universe(cells=[c1, c2])
-
-    u_clone = u.clone()
-    assert u_clone.id != u.id
-    assert not (set(u.cells) & set(u_clone.cells))
 
 
 def test_create_xml(cell_with_lattice):

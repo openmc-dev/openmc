@@ -51,7 +51,7 @@ def cell_with_lattice():
     outside_cyl = openmc.Cell(fill=m_outside, region=+cyl)
     univ = openmc.Universe(cells=[inside_cyl, outside_cyl])
 
-    lattice = openmc.RectLattice()
+    lattice = openmc.RectLattice(name='My Lattice')
     lattice.lower_left = (-4.0, -4.0)
     lattice.pitch = (4.0, 4.0)
     lattice.dimension = (2, 2)

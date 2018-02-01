@@ -6,7 +6,7 @@ from numpy.polynomial import Polynomial
 import pandas as pd
 
 from .data import NEUTRON_MASS
-from .endf import get_head_record, get_cont_record, get_tab1_record, get_list_record
+from .endf import get_head_record, get_cont_record, get_tab1_record, get_list_record, get_intg_record
 import openmc.checkvalue as cv
 from .resonance import ResonanceRange
 
@@ -80,7 +80,7 @@ class ResonanceCovariance(object):
                 formalism = items[3]  # resonance formalism
 
                 # Throw error for unsupported formalisms
-                if formalism in [0,1,7]:
+                if formalism in [0,7]:
                     raise TypeError('LRF= ', formalism,
                                     'covariance not supported for this formalism')
 
@@ -213,7 +213,44 @@ class MultiLevelBreitWignerCovariance(ResonanceRange):
 
             return mlbw
 
-        elif LCOMP in [0,2]:
+        elif LCOMP == 2: #Compact format - Resonances and individual
+                         #uncertainties followed by compact correlations
+            items, values = get_list_record(file_obj)
+            num_res = items[5] 
+            energy = values[0::12]
+            spin = values[1::12]
+            gt = values[2::12]
+            gn = values[3::12]
+            gg = values[4::12]
+            gf = values[5::12]
+            par_unc = []
+            for i in range(num_res):
+                res_unc = values[i*12+6:i*12+12]
+                #Delete 0 values (not provided in evaluation)
+                res_unc = [x for x in res_unc if x != 0.0]
+                par_unc.extend(res_unc)
+
+            records = []
+            for i, E in enumerate(energy):
+                records.append([energy[i], spin[i], gt[i], gn[i],
+                                gg[i], gf[i]])
+
+            corr = get_intg_record(file_obj)
+            cov = np.diag(par_unc).dot(corr).dot(np.diag(par_unc))
+
+            # Create pandas DataFrame with resonacne data
+            columns = ['energy', 'J', 'totalWidth', 'neutronWidth',
+                       'captureWidth', 'fissionWidth']
+            parameters = pd.DataFrame.from_records(records, columns=columns)
+
+            # Create instance of ReichMooreCovariance
+            mlbw = cls(energy_min, energy_max)
+            mlbw.parameters = parameters
+            mlbw.covariance = cov
+
+            return mlbw
+
+        elif LCOMP == 0 :
             raise TypeError('LCOMP = ' + str(LCOMP) + ' not supported')
 
 class SingleLevelBreitWignerCovariance(MultiLevelBreitWignerCovariance):
@@ -388,7 +425,44 @@ class ReichMooreCovariance(ResonanceRange):
 
             return rmc
 
-        elif LCOMP in [0,2]:
+        elif LCOMP == 2: #Compact format - Resonances and individual
+                         #uncertainties followed by compact correlations
+            items, values = get_list_record(file_obj)
+            num_res = items[5] 
+            energy = values[0::12]
+            spin = values[1::12]
+            gn = values[2::12]
+            gfa = values[3::12]
+            gfb = values[4::12]
+            par_unc = []
+            for i in range(num_res):
+                res_unc = values[i*12+6:i*12+12]
+                #Delete 0 values (not provided in evaluation)
+                res_unc = [x for x in res_unc if x != 0.0]
+                par_unc.extend(res_unc)
+
+            records = []
+            for i, E in enumerate(energy):
+                records.append([energy[i], spin[i], gn[i],
+                                gfa[i], gfb[i]])
+
+            corr = get_intg_record(file_obj)
+            cov = np.diag(par_unc).dot(corr).dot(np.diag(par_unc))
+
+            # Create pandas DataFrame with resonacne data
+            columns = ['energy', 'J', 'neutronWidth', 
+                       'fissionWidthA', 'fissionWidthB']
+            parameters = pd.DataFrame.from_records(records, columns=columns)
+
+            # Create instance of ReichMooreCovariance
+            rmc = cls(energy_min, energy_max)
+            rmc.parameters = parameters
+            rmc.covariance = cov
+
+            return rmc
+
+
+        elif LCOMP == 0:
             raise TypeError('LCOMP = ' + str(LCOMP) + ' not supported')
 
 

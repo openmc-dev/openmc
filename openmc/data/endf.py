@@ -72,6 +72,24 @@ def float_endf(s):
     return float(ENDF_FLOAT_RE.sub(r'\1e\2', s))
 
 
+def int_endf(s):
+    """Conver string to int. Used for INTG records where blank entries
+    indicate a 0.
+
+    Parameters
+    ----------
+    s : str
+        Integer or spaces
+
+    Returns
+    -------
+    integer
+        The number or 0
+    """
+    s = s.strip()
+    return int(s) if s else 0
+
+
 def get_text_record(file_obj):
     """Return data from a TEXT record in an ENDF-6 file.
 
@@ -249,6 +267,50 @@ def get_tab2_record(file_obj):
             m += 1
 
     return params, Tabulated2D(breakpoints, interpolation)
+
+def get_intg_record(file_obj):
+    """
+    Return data from an INTG record in an ENDF-6 file.
+
+    Parameters
+    ----------
+    file_obj : file-like object
+        ENDF-6 file to read from
+
+    Returns
+    -------
+    array
+        The correlation matrix described in the INTG record
+    """
+    # determine how many items are in list and NDIGIT
+    items = get_cont_record(file_obj)
+    NDIGIT = int(items[2])
+    NNN = int(items[3]) # Number of parameters
+    NM = int(items[4]) # Lines to read
+    NROW_RULES = {2: 18,3: 12,4: 11,5: 9,6: 8}
+    NROW = NROW_RULES[NDIGIT]
+
+    # read lines and build correlation matrix
+    corr = np.identity(NNN)
+    for i in range(NM):
+        line = file_obj.readline()
+        ii = int_endf(line[:5]) - 1 #-1 to account for 0 indexing
+        jj = int_endf(line[5:10]) - 1
+        factor = 10**NDIGIT
+        for j in range(NROW):
+            if jj+j >= ii:
+                break
+            element = int_endf(line[11+(NDIGIT+1)*j:11+(NDIGIT+1)*(j+1)])
+            if element > 0:
+                corr[ii,jj] = (element+0.5)/factor
+            elif element < 0:
+                corr[ii,jj] = (element-0.5)/factor
+
+    #Symmetrize the correlation matrix
+    corr = corr + corr.T - np.diag(corr.diagonal())
+    return corr
+
+
 
 def get_evaluations(filename):
     """Return a list of all evaluations within an ENDF file.

@@ -1,6 +1,10 @@
 #!/bin/bash
 set -ex
 
+# Allow tests that require GUI as described at:
+# https://docs.travis-ci.com/user/gui-and-headless-browsers/#Using-xvfb-to-Run-Tests-That-Require-a-GUI
+sh -e /etc/init.d/xvfb start
+
 # Download NNDC HDF5 data
 if [[ ! -e $HOME/nndc_hdf5/cross_sections.xml ]]; then
     wget https://anl.box.com/shared/static/a6sw2cep34wlz6b9i9jwiotaqoayxcxt.xz -O - | tar -C $HOME -xvJ

@@ -24,6 +24,7 @@ env:
     - OPENMC_ENDF_DATA=$HOME/endf-b-vii.1
     - OPENMC_MULTIPOLE_LIBRARY=$HOME/multipole_lib
     - PATH=$PATH:$HOME/NJOY2016/build
+    - DISPLAY=:99.0
   matrix:
     - OMP=n MPI=n PHDF5=n
     - OMP=y MPI=n PHDF5=n

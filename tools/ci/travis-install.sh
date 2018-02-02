@@ -25,3 +25,6 @@ python tools/ci/travis-install.py
 
 # Install Python API in editable mode
 pip install -e .[test]
+
+# For uploading to coveralls
+pip install python-coveralls

@@ -10,6 +10,7 @@ import itertools
 
 from six import add_metaclass, string_types
 import numpy as np
+import h5py
 
 import openmc
 import openmc.checkvalue as cv
@@ -1682,13 +1683,8 @@ class MGXS(object):
         ValueError
             When this method is called before the multi-group cross section is
             computed from tally data.
-        ImportError
-            When h5py is not installed.
 
         """
-
-        import h5py
-
         # Make directory if it does not exist
         if not os.path.exists(directory):
             os.makedirs(directory)

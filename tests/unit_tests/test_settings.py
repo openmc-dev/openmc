@@ -49,6 +49,7 @@ def test_export_to_xml(run_in_tmpdir):
         domains=[openmc.Cell()], samples=1000, lower_left=(-10., -10., -10.),
         upper_right = (10., 10., 10.))
     s.create_fission_neutrons = True
+    s.log_grid_bins = 2000
 
     # Make sure exporting XML works
     s.export_to_xml()

@@ -1,4 +1,5 @@
-from collections import defaultdict, MutableSequence, Iterable
+from collections import defaultdict
+from collections.abc import MutableSequence, Iterable
 import io
 
 import numpy as np

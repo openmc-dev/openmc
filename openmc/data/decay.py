@@ -1,4 +1,5 @@
-from collections import Iterable, namedtuple
+from collections import namedtuple
+from collections.abc import Iterable
 from io import StringIO
 from math import log
 from numbers import Real

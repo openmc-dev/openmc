@@ -1,4 +1,4 @@
-from collections import Iterable, MutableSequence
+from collections.abc import Iterable, MutableSequence
 import copy
 import re
 from functools import partial, reduce

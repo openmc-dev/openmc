@@ -10,7 +10,7 @@ References
 
 """
 
-from collections import Iterable
+from collections.abc import Iterable
 from numbers import Real, Integral
 from xml.etree import ElementTree as ET
 import sys

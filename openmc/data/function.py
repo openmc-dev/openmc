@@ -1,5 +1,5 @@
 from abc import ABCMeta, abstractmethod
-from collections import Iterable, Callable
+from collections.abc import Iterable, Callable
 from numbers import Real, Integral
 
 import numpy as np

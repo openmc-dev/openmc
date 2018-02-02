@@ -1,4 +1,4 @@
-from collections import Iterable, Mapping
+from collections.abc import Iterable, Mapping
 from numbers import Real, Integral
 from xml.etree import ElementTree as ET
 import sys

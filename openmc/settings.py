@@ -1,4 +1,4 @@
-from collections import Iterable, MutableSequence, Mapping
+from collections.abc import Iterable, MutableSequence, Mapping
 from numbers import Real, Integral
 import warnings
 from xml.etree import ElementTree as ET

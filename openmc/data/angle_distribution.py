@@ -1,4 +1,4 @@
-from collections import Iterable
+from collections.abc import Iterable
 from io import StringIO
 from numbers import Real
 from warnings import warn

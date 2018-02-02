@@ -2,7 +2,7 @@ from numbers import Real
 from xml.etree import ElementTree as ET
 import sys
 import warnings
-from collections import Iterable
+from collections.abc import Iterable
 
 import openmc.checkvalue as cv
 

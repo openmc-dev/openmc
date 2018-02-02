@@ -3,7 +3,8 @@ import os
 import copy
 import pickle
 from numbers import Integral
-from collections import OrderedDict, Iterable
+from collections import OrderedDict
+from collections.abc import Iterable
 from warnings import warn
 
 import numpy as np

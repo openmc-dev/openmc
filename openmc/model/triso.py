@@ -2,7 +2,8 @@ import copy
 import warnings
 import itertools
 import random
-from collections import Iterable, defaultdict
+from collections import defaultdict
+from collections.abc import Iterable
 from numbers import Real
 from random import uniform, gauss
 from heapq import heappush, heappop

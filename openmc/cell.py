@@ -1,4 +1,5 @@
-from collections import OrderedDict, Iterable
+from collections import OrderedDict
+from collections.abc import Iterable
 from copy import deepcopy
 from math import cos, sin, pi
 from numbers import Real, Integral

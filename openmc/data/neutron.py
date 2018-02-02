@@ -1,5 +1,6 @@
 import sys
-from collections import OrderedDict, Iterable, Mapping, MutableMapping
+from collections import OrderedDict
+from collections.abc import Iterable, Mapping, MutableMapping
 from io import StringIO
 from itertools import chain
 from math import log10

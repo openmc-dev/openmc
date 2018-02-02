@@ -1,5 +1,5 @@
 from abc import ABCMeta, abstractmethod
-from collections import Iterable
+from collections.abc import Iterable
 from math import pi
 from numbers import Real
 import sys

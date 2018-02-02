@@ -1,4 +1,5 @@
-from collections import Iterable, OrderedDict
+from collections import OrderedDict
+from collections.abc import Iterable
 import itertools
 from numbers import Integral
 import warnings

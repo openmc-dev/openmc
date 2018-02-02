@@ -1,4 +1,4 @@
-from collections import Iterable, Callable, MutableMapping
+from collections.abc import Iterable, Callable, MutableMapping
 from copy import deepcopy
 from numbers import Real, Integral
 from warnings import warn

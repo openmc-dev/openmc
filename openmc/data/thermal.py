@@ -1,4 +1,4 @@
-from collections import Iterable
+from collections.abc import Iterable
 from difflib import get_close_matches
 from numbers import Real
 import itertools

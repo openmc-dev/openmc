@@ -1,5 +1,6 @@
 from abc import ABCMeta
-from collections import OrderedDict, Iterable
+from collections import OrderedDict
+from collections.abc import Iterable
 from copy import deepcopy
 from math import sqrt, floor
 from numbers import Real, Integral

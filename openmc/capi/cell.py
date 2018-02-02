@@ -1,4 +1,4 @@
-from collections import Mapping, Iterable
+from collections.abc import Mapping, Iterable
 from ctypes import c_int, c_int32, c_double, c_char_p, POINTER
 from weakref import WeakValueDictionary
 

@@ -10,7 +10,8 @@ import io
 import re
 import os
 from math import pi
-from collections import OrderedDict, Iterable
+from collections import OrderedDict
+from collections.abc import Iterable
 
 import numpy as np
 from numpy.polynomial.polynomial import Polynomial

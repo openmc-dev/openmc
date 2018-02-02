@@ -1,4 +1,4 @@
-from collections import Mapping
+from collections.abc import Mapping
 from ctypes import c_int, c_int32, c_double, c_char_p, POINTER, \
     create_string_buffer
 from weakref import WeakValueDictionary

@@ -41,4 +41,4 @@ before_script:
 script:
   - ./tools/ci/travis-script.sh
 after_success:
-  - coveralls -d tests/.coverage
+  - coveralls

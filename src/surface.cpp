@@ -1,12 +1,12 @@
 #include "surface.h"
 
 #include <array>
+#include <cmath>
 #include <sstream>
 
 #include "error.h"
 #include "hdf5_interface.h"
 #include "xml_interface.h"
-#include <iostream>
 
 
 namespace openmc {

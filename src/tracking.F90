@@ -4,7 +4,7 @@ module tracking
   use cross_section,      only: calculate_xs
   use error,              only: warning, write_message
   use geometry_header,    only: cells
-  use geometry,           only: find_cell, distance_to_boundary, cross_lattice, &
+  use geometry,           only: find_cell, distance_to_boundary, cross_lattice,&
                                 check_cell_overlap
   use message_passing
   use mgxs_header
@@ -292,20 +292,20 @@ contains
     real(8) :: v          ! y-component of direction
     real(8) :: w          ! z-component of direction
     real(8) :: norm       ! "norm" of surface normal
-    real(8) :: d          ! distance between point and plane
     real(8) :: xyz(3)     ! Saved global coordinate
     integer :: i_surface  ! index in surfaces
     logical :: rotational ! if rotational periodic BC applied
     logical :: found      ! particle found in universe?
     class(Surface), pointer :: surf
+    class(Surface), pointer :: surf2 ! periodic partner surface
 
     i_surface = abs(p % surface)
-    surf => surfaces(i_surface)%obj
+    surf => surfaces(i_surface)
     if (verbosity >= 10 .or. trace) then
-      call write_message("    Crossing surface " // trim(to_str(surf % id)))
+      call write_message("    Crossing surface " // trim(to_str(surf % id())))
     end if
 
-    if (surf % bc == BC_VACUUM .and. (run_mode /= MODE_PLOTTING)) then
+    if (surf % bc() == BC_VACUUM .and. (run_mode /= MODE_PLOTTING)) then
       ! =======================================================================
       ! PARTICLE LEAKS OUT OF PROBLEM
 
@@ -330,11 +330,11 @@ contains
       ! Display message
       if (verbosity >= 10 .or. trace) then
         call write_message("    Leaked out of surface " &
-             &// trim(to_str(surf % id)))
+             &// trim(to_str(surf % id())))
       end if
       return
 
-    elseif (surf % bc == BC_REFLECT .and. (run_mode /= MODE_PLOTTING)) then
+    elseif (surf % bc() == BC_REFLECT .and. (run_mode /= MODE_PLOTTING)) then
       ! =======================================================================
       ! PARTICLE REFLECTS FROM SURFACE
 
@@ -357,7 +357,7 @@ contains
       end if
 
       ! Reflect particle off surface
-      call surf%reflect(p%coord(1)%xyz, p%coord(1)%uvw)
+      call surf % reflect(p%coord(1)%xyz, p%coord(1)%uvw)
 
       ! Make sure new particle direction is normalized
       u = p%coord(1)%uvw(1)
@@ -378,7 +378,7 @@ contains
       call find_cell(p, found)
       if (.not. found) then
         call p % mark_as_lost("Couldn't find particle after reflecting&
-             & from surface " // trim(to_str(surf % id)) // ".")
+             & from surface " // trim(to_str(surf % id())) // ".")
         return
       end if
 
@@ -388,10 +388,10 @@ contains
       ! Diagnostic message
       if (verbosity >= 10 .or. trace) then
         call write_message("    Reflected from surface " &
-             &// trim(to_str(surf%id)))
+             &// trim(to_str(surf%id())))
       end if
       return
-    elseif (surf % bc == BC_PERIODIC .and. run_mode /= MODE_PLOTTING) then
+    elseif (surf % bc() == BC_PERIODIC .and. run_mode /= MODE_PLOTTING) then
       ! =======================================================================
       ! PERIODIC BOUNDARY
 
@@ -406,7 +406,6 @@ contains
       ! Score surface currents since reflection causes the direction of the
       ! particle to change -- artificially move the particle slightly back in
       ! case the surface crossing is coincident with a mesh boundary
-
       if (active_current_tallies % size() > 0) then
         xyz = p % coord(1) % xyz
         p % coord(1) % xyz = p % coord(1) % xyz - TINY_BIT * p % coord(1) % uvw
@@ -414,70 +413,19 @@ contains
         p % coord(1) % xyz = xyz
       end if
 
-      rotational = .false.
-      select type (surf)
-      type is (SurfaceXPlane)
-        select type (opposite => surfaces(surf % i_periodic) % obj)
-        type is (SurfaceXPlane)
-          p % coord(1) % xyz(1) = opposite % x0
-        type is (SurfaceYPlane)
-          rotational = .true.
+      ! Get a pointer to the partner periodic surface.  Offset the index to
+      ! correct for C vs. Fortran indexing.
+      surf2 => surfaces(surf % i_periodic() + 1)
 
-          ! Rotate direction
-          u = p % coord(1) % uvw(1)
-          v = p % coord(1) % uvw(2)
-          p % coord(1) % uvw(1) = v
-          p % coord(1) % uvw(2) = -u
-
-          ! Rotate position
-          p % coord(1) % xyz(1) = surf % x0 + p % coord(1) % xyz(2) - opposite % y0
-          p % coord(1) % xyz(2) = opposite % y0
-        end select
-
-      type is (SurfaceYPlane)
-        select type (opposite => surfaces(surf % i_periodic) % obj)
-        type is (SurfaceYPlane)
-          p % coord(1) % xyz(2) = opposite % y0
-        type is (SurfaceXPlane)
-          rotational = .true.
-
-          ! Rotate direction
-          u = p % coord(1) % uvw(1)
-          v = p % coord(1) % uvw(2)
-          p % coord(1) % uvw(1) = -v
-          p % coord(1) % uvw(2) = u
-
-          ! Rotate position
-          p % coord(1) % xyz(2) = surf % y0 + p % coord(1) % xyz(1) - opposite % x0
-          p % coord(1) % xyz(1) = opposite % x0
-        end select
-
-      type is (SurfaceZPlane)
-        select type (opposite => surfaces(surf % i_periodic) % obj)
-        type is (SurfaceZPlane)
-          p % coord(1) % xyz(3) = opposite % z0
-        end select
-
-      type is (SurfacePlane)
-        select type (opposite => surfaces(surf % i_periodic) % obj)
-        type is (SurfacePlane)
-          ! Get surface normal for opposite plane
-          xyz(:) = opposite % normal(p % coord(1) % xyz)
-
-          ! Determine distance to plane
-          norm = xyz(1)*xyz(1) + xyz(2)*xyz(2) + xyz(3)*xyz(3)
-          d = opposite % evaluate(p % coord(1) % xyz) / norm
-
-          ! Move particle along normal vector based on distance
-          p % coord(1) % xyz(:) = p % coord(1) % xyz(:) - d*xyz
-        end select
-      end select
+      ! Adjust the particle's location and direction.
+      rotational = surf2 % periodic_translate(surf, p % coord(1) % xyz, &
+                                              p % coord(1) % uvw)
 
       ! Reassign particle's surface
       if (rotational) then
-        p % surface = surf % i_periodic
+        p % surface = surf % i_periodic() + 1
       else
-        p % surface = sign(surf % i_periodic, p % surface)
+        p % surface = sign(surf % i_periodic() + 1, p % surface)
       end if
 
       ! Figure out what cell particle is in now
@@ -485,7 +433,8 @@ contains
       call find_cell(p, found)
       if (.not. found) then
         call p % mark_as_lost("Couldn't find particle after hitting &
-             &periodic boundary on surface " // trim(to_str(surf % id)) // ".")
+             &periodic boundary on surface " // trim(to_str(surf % id())) &
+             // ".")
         return
       end if
 
@@ -495,7 +444,7 @@ contains
       ! Diagnostic message
       if (verbosity >= 10 .or. trace) then
         call write_message("    Hit periodic boundary on surface " &
-             // trim(to_str(surf%id)))
+             // trim(to_str(surf%id())))
       end if
       return
     end if
@@ -542,7 +491,7 @@ contains
 
       if (.not. found) then
         call p % mark_as_lost("After particle " // trim(to_str(p % id)) &
-             // " crossed surface " // trim(to_str(surf % id)) &
+             // " crossed surface " // trim(to_str(surf % id())) &
              // " it could not be located in any cell and it did not leak.")
         return
       end if

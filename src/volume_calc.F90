@@ -136,7 +136,7 @@ contains
     integer :: total_hits  ! total hits for a single domain (summed over materials)
     integer :: min_samples ! minimum number of samples per process
     integer :: remainder   ! leftover samples from uneven divide
-#ifdef MPI
+#ifdef OPENMC_MPI
     integer :: mpi_err ! MPI error code
     integer :: m  ! index over materials
     integer :: n  ! number of materials
@@ -279,7 +279,7 @@ contains
       total_hits = 0
 
       if (master) then
-#ifdef MPI
+#ifdef OPENMC_MPI
         do j = 1, n_procs - 1
           call MPI_RECV(n, 1, MPI_INTEGER, j, 0, mpi_intracomm, &
                MPI_STATUS_IGNORE, mpi_err)
@@ -341,7 +341,7 @@ contains
         end do
 
       else
-#ifdef MPI
+#ifdef OPENMC_MPI
         n = master_indices(i_domain) % size()
         allocate(data(2*n))
         do k = 0, n - 1

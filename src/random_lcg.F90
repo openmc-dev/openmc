@@ -4,8 +4,6 @@ module random_lcg
 
   implicit none
 
-  integer(C_INT64_T), bind(C) :: seed
-
   interface
     function prn() result(pseudo_rn) bind(C)
       use ISO_C_BINDING
@@ -38,11 +36,16 @@ module random_lcg
       integer(C_INT), value :: n
     end subroutine prn_set_stream
 
-    function openmc_set_seed(new_seed) result(err) bind(C)
+    function openmc_get_seed() result(seed) bind(C)
+      use ISO_C_BINDING
+      implicit none
+      integer(C_INT64_T) :: seed
+    end function openmc_get_seed
+
+    subroutine openmc_set_seed(new_seed) bind(C)
       use ISO_C_BINDING
       implicit none
       integer(C_INT64_T), value :: new_seed
-      integer(C_INT)            :: err
-    end function openmc_set_seed
+    end subroutine openmc_set_seed
   end interface
 end module random_lcg

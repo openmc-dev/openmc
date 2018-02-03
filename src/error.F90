@@ -128,7 +128,7 @@ contains
     integer :: line_wrap ! length of line
     integer :: length    ! length of message
     integer :: indent    ! length of indentation
-#ifdef MPI
+#ifdef OPENMC_MPI
     integer :: mpi_err
 #endif
 
@@ -180,7 +180,7 @@ contains
       end if
     end do
 
-#ifdef MPI
+#ifdef OPENMC_MPI
     ! Abort MPI
     call MPI_ABORT(mpi_intracomm, code, mpi_err)
 #endif
@@ -193,6 +193,14 @@ contains
 #endif
 
   end subroutine fatal_error
+
+  subroutine fatal_error_from_c(message, message_len) bind(C)
+    integer(C_INT),         intent(in), value :: message_len
+    character(kind=C_CHAR), intent(in)        :: message(message_len)
+    character(message_len+1)                  :: message_out
+    write(message_out, *) message
+    call fatal_error(message_out)
+  end subroutine
 
 !===============================================================================
 ! WRITE_MESSAGE displays an informational message to the log file and the

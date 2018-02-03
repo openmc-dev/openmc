@@ -48,14 +48,14 @@ add_definitions(-DMAX_COORD=${maxcoord})
 set(MPI_ENABLED FALSE)
 if($ENV{FC} MATCHES "(mpi[^/]*|ftn)$")
   message("-- Detected MPI wrapper: $ENV{FC}")
-  add_definitions(-DMPI)
+  add_definitions(-DOPENMC_MPI)
   set(MPI_ENABLED TRUE)
 endif()
 
 # Check for Fortran 2008 MPI interface
 if(MPI_ENABLED AND mpif08)
   message("-- Using Fortran 2008 MPI bindings")
-  add_definitions(-DMPIF08)
+  add_definitions(-DOPENMC_MPIF08)
 endif()
 
 #===============================================================================
@@ -435,8 +435,15 @@ set(LIBOPENMC_FORTRAN_SRC
   src/tallies/trigger_header.F90
 )
 set(LIBOPENMC_CXX_SRC
+  src/error.h
+  src/hdf5_interface.h
+  src/random_lcg.cpp
   src/random_lcg.h
-  src/random_lcg.cpp)
+  src/surface.cpp
+  src/surface.h
+  src/xml_interface.h
+  src/pugixml/pugixml.cpp
+  src/pugixml/pugixml.hpp)
 add_library(libopenmc SHARED ${LIBOPENMC_FORTRAN_SRC} ${LIBOPENMC_CXX_SRC})
 set_target_properties(libopenmc PROPERTIES OUTPUT_NAME openmc)
 add_executable(${program} src/main.F90)

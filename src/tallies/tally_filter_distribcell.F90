@@ -90,7 +90,7 @@ contains
 
     call write_dataset(filter_group, "type", "distribcell")
     call write_dataset(filter_group, "n_bins", this % n_bins)
-    call write_dataset(filter_group, "bins", cells(this % cell) % id)
+    call write_dataset(filter_group, "bins", cells(this % cell) % id())
   end subroutine to_statepoint_distribcell
 
   subroutine initialize_distribcell(this)
@@ -175,7 +175,7 @@ contains
       ! geometry stack
       if (univ % cells(i) == i_cell .and. offset == target_offset) then
         c => cells(univ % cells(i))
-        path = trim(path) // "->c" // to_str(c % id)
+        path = trim(path) // "->c" // to_str(c % id())
         return
       end if
     end do
@@ -243,7 +243,7 @@ contains
         cell_index = univ % cells(i)
         c => cells(cell_index)
 
-        path = trim(path) // "->c" // to_str(c%id)
+        path = trim(path) // "->c" // to_str(c%id())
 
         ! ====================================================================
         ! CELL CONTAINS LOWER UNIVERSE, RECURSIVELY FIND CELL

@@ -101,7 +101,7 @@ contains
       else if (pl % color_by == PLOT_COLOR_CELLS) then
         ! Assign color based on cell
         rgb = pl % colors(p % coord(j) % cell) % rgb
-        id = cells(p % coord(j) % cell) % id
+        id = cells(p % coord(j) % cell) % id()
       else
         rgb = 0
         id = -1

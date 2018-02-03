@@ -14,6 +14,29 @@ module geometry_header
 
   implicit none
 
+  interface
+    function cell_pointer_c(cell_ind) bind(C, name='cell_pointer') result(ptr)
+      use ISO_C_BINDING
+      implicit none
+      integer(C_INT), intent(in), value :: cell_ind
+      type(C_PTR)                       :: ptr
+    end function cell_pointer_c
+
+    function cell_id_c(cell_ptr) bind(C, name='cell_id') result(id)
+      use ISO_C_BINDING
+      implicit none
+      type(C_PTR), intent(in), value :: cell_ptr
+      integer(C_INT32_T)             :: id
+    end function cell_id_c
+
+    subroutine cell_set_id_c(cell_ptr, id) bind(C, name='cell_set_id')
+      use ISO_C_BINDING
+      implicit none
+      type(C_PTR),        intent(in), value :: cell_ptr
+      integer(C_INT32_T), intent(in), value :: id
+    end subroutine cell_set_id_c
+  end interface
+
 !===============================================================================
 ! UNIVERSE defines a geometry that fills all phase space
 !===============================================================================
@@ -125,7 +148,8 @@ module geometry_header
 !===============================================================================
 
   type Cell
-    integer :: id                          ! Unique ID
+    type(C_PTR) :: ptr
+
     character(len=104) :: name = ""        ! User-defined name
     integer :: type                        ! Type of cell (normal, universe,
                                            !  lattice)
@@ -154,6 +178,12 @@ module geometry_header
     real(8), allocatable :: translation(:)
     real(8), allocatable :: rotation(:)
     real(8), allocatable :: rotation_matrix(:,:)
+
+  contains
+
+    procedure :: id => cell_id
+    procedure :: set_id => cell_set_id
+
   end type Cell
 
   ! array index of the root universe
@@ -342,6 +372,20 @@ contains
   end function get_local_hex
 
 !===============================================================================
+
+  function cell_id(this) result(id)
+    class(Cell), intent(in) :: this
+    integer(C_INT32_T)      :: id
+    id = cell_id_c(this % ptr)
+  end function cell_id
+
+  subroutine cell_set_id(this, id)
+    class(Cell),        intent(in) :: this
+    integer(C_INT32_T), intent(in) :: id
+    call cell_set_id_c(this % ptr, id)
+  end subroutine cell_set_id
+
+!===============================================================================
 ! GET_TEMPERATURES returns a list of temperatures that each nuclide/S(a,b) table
 ! appears at in the model. Later, this list is used to determine the actual
 ! temperatures to read (which may be different if interpolation is used)
@@ -514,7 +558,7 @@ contains
     integer(C_INT) :: err
 
     if (index >= 1 .and. index <= size(cells)) then
-      id = cells(index) % id
+      id = cells(index) % id()
       err = 0
     else
       err = E_OUT_OF_BOUNDS
@@ -577,7 +621,7 @@ contains
     integer(C_INT) :: err
 
     if (index >= 1 .and. index <= n_cells) then
-      cells(index) % id = id
+      call cells(index) % set_id(id)
       call cell_dict % set(id, index)
       err = 0
     else

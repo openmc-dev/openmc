@@ -166,8 +166,8 @@ contains
           ! the particle should only be contained in one cell per level
           if (index_cell /= p % coord(j) % cell) then
             call fatal_error("Overlapping cells detected: " &
-                 &// trim(to_str(cells(index_cell) % id)) // ", " &
-                 &// trim(to_str(cells(p % coord(j) % cell) % id)) &
+                 &// trim(to_str(cells(index_cell) % id())) // ", " &
+                 &// trim(to_str(cells(p % coord(j) % cell) % id())) &
                  &// " on universe " // trim(to_str(univ % id)))
           end if
 
@@ -236,7 +236,7 @@ contains
         ! Show cell information on trace
         if (verbosity >= 10 .or. trace) then
           call write_message("    Entering cell " // trim(to_str(&
-               cells(i_cell) % id)))
+               cells(i_cell) % id())))
         end if
 
         found = .true.

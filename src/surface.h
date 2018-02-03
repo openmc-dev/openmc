@@ -108,6 +108,7 @@ public:
 
   //! Write all information needed to reconstruct the surface to an HDF5 group.
   //! @param group_id An HDF5 group id.
+  //TODO: this probably needs to include i_periodic for PeriodicSurface
   void to_hdf5(hid_t group_id) const;
 
 protected:
@@ -383,6 +384,8 @@ public:
 //==============================================================================
 // Fortran compatibility functions
 //==============================================================================
+
+extern "C" void read_surfaces(pugi::xml_node *node);
 
 extern "C" Surface* surface_pointer(int surf_ind) {return surfaces_c[surf_ind];}
 

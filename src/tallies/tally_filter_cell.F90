@@ -81,7 +81,7 @@ contains
 
     allocate(cell_ids(size(this % cells)))
     do i = 1, size(this % cells)
-      cell_ids(i) = cells(this % cells(i)) % id
+      cell_ids(i) = cells(this % cells(i)) % id()
     end do
     call write_dataset(filter_group, "bins", cell_ids)
   end subroutine to_statepoint_cell
@@ -115,7 +115,7 @@ contains
     integer,           intent(in) :: bin
     character(MAX_LINE_LEN)       :: label
 
-    label = "Cell " // to_str(cells(this % cells(bin)) % id)
+    label = "Cell " // to_str(cells(this % cells(bin)) % id())
   end function text_label_cell
 
 end module tally_filter_cell

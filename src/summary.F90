@@ -145,7 +145,7 @@ contains
     ! Write information on each cell
     CELL_LOOP: do i = 1, n_cells
       c => cells(i)
-      cell_group = create_group(cells_group, "cell " // trim(to_str(c%id)))
+      cell_group = create_group(cells_group, "cell " // trim(to_str(c%id())))
 
       ! Write name for this cell
       call write_dataset(cell_group, "name", c%name)
@@ -260,7 +260,7 @@ contains
         if (size(u % cells) > 0) then
           allocate(cell_ids(size(u % cells)))
           do j = 1, size(u % cells)
-            cell_ids(j) = cells(u % cells(j)) % id
+            cell_ids(j) = cells(u % cells(j)) % id()
           end do
           call write_dataset(univ_group, "cells", cell_ids)
           deallocate(cell_ids)

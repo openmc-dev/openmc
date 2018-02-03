@@ -49,11 +49,17 @@ module input_xml
   save
 
   interface
-    subroutine read_surfaces(node_ptr) bind(C, name='read_surfaces')
+    subroutine read_surfaces(node_ptr) bind(C)
       use ISO_C_BINDING
       implicit none
       type(C_PTR) :: node_ptr
     end subroutine read_surfaces
+
+    subroutine read_cells(node_ptr) bind(C)
+      use ISO_C_BINDING
+      implicit none
+      type(C_PTR) :: node_ptr
+    end subroutine read_cells
   end interface
 
 contains
@@ -989,6 +995,8 @@ contains
     ! ==========================================================================
     ! READ CELLS FROM GEOMETRY.XML
 
+    call read_cells(root % ptr)
+
     ! Get pointer to list of XML <cell>
     call get_node_list(root, "cell", node_cell_list)
 
@@ -1012,19 +1020,14 @@ contains
     do i = 1, n_cells
       c => cells(i)
 
+      c % ptr = cell_pointer_c(i - 1)
+
       ! Initialize distribcell instances and distribcell index
       c % instances = 0
       c % distribcell_index = NONE
 
       ! Get pointer to i-th cell node
       node_cell = node_cell_list(i)
-
-      ! Copy data into cells
-      if (check_for_node(node_cell, "id")) then
-        call get_node_value(node_cell, "id", c % id)
-      else
-        call fatal_error("Must specify id of cell in geometry XML file.")
-      end if
 
       ! Copy cell name
       if (check_for_node(node_cell, "name")) then
@@ -1045,9 +1048,9 @@ contains
       end if
 
       ! Check to make sure 'id' hasn't been used
-      if (cell_dict % has(c % id)) then
+      if (cell_dict % has(c % id())) then
         call fatal_error("Two or more cells use the same unique ID: " &
-             // to_str(c % id))
+             // to_str(c % id()))
       end if
 
       ! Read material
@@ -1069,7 +1072,7 @@ contains
               ! Check for error
               if (c % material(j) == ERROR_INT) then
                 call fatal_error("Invalid material specified on cell " &
-                     // to_str(c % id))
+                     // to_str(c % id()))
               end if
             end select
           end do
@@ -1089,7 +1092,7 @@ contains
       ! Check to make sure that either material or fill was specified
       if (c % material(1) == NONE .and. c % fill == NONE) then
         call fatal_error("Neither material nor fill was specified for cell " &
-             // trim(to_str(c % id)))
+             // trim(to_str(c % id())))
       end if
 
       ! Check to make sure that both material and fill haven't been
@@ -1128,7 +1131,7 @@ contains
         end do
 
         ! Use shunting-yard algorithm to determine RPN for surface algorithm
-        call generate_rpn(c%id, tokens, rpn)
+        call generate_rpn(c%id(), tokens, rpn)
 
         ! Copy region spec and RPN form to cell arrays
         allocate(c % region(tokens%size()))
@@ -1155,14 +1158,14 @@ contains
         ! another universe
         if (c % fill == NONE) then
           call fatal_error("Cannot apply a rotation to cell " // trim(to_str(&
-               &c % id)) // " because it is not filled with another universe")
+               &c % id())) // " because it is not filled with another universe")
         end if
 
         ! Read number of rotation parameters
         n = node_word_count(node_cell, "rotation")
         if (n /= 3) then
           call fatal_error("Incorrect number of rotation parameters on cell " &
-               // to_str(c % id))
+               // to_str(c % id()))
         end if
 
         ! Copy rotation angles in x,y,z directions
@@ -1190,7 +1193,7 @@ contains
         ! another universe
         if (c % fill == NONE) then
           call fatal_error("Cannot apply a translation to cell " &
-               // trim(to_str(c % id)) // " because it is not filled with &
+               // trim(to_str(c % id())) // " because it is not filled with &
                &another universe")
         end if
 
@@ -1198,7 +1201,7 @@ contains
         n = node_word_count(node_cell, "translation")
         if (n /= 3) then
           call fatal_error("Incorrect number of translation parameters on &
-               &cell " // to_str(c % id))
+               &cell " // to_str(c % id()))
         end if
 
         ! Copy translation vector
@@ -1214,7 +1217,7 @@ contains
         if (n > 0) then
           ! Make sure this is a "normal" cell.
           if (c % material(1) == NONE) call fatal_error("Cell " &
-               // trim(to_str(c % id)) // " was specified with a temperature &
+               // trim(to_str(c % id())) // " was specified with a temperature &
                &but no material. Temperature specification is only valid for &
                &cells filled with a material.")
 
@@ -1225,7 +1228,7 @@ contains
           ! Make sure all temperatues are positive
           do j = 1, size(c % sqrtkT)
             if (c % sqrtkT(j) < ZERO) call fatal_error("Cell " &
-                 // trim(to_str(c % id)) // " was specified with a negative &
+                 // trim(to_str(c % id())) // " was specified with a negative &
                  &temperature. All cell temperatures must be non-negative.")
           end do
 
@@ -1241,7 +1244,7 @@ contains
       end if
 
       ! Add cell to dictionary
-      call cell_dict % set(c % id, i)
+      call cell_dict % set(c % id(), i)
 
       ! For cells, we also need to check if there's a new universe --
       ! also for every cell add 1 to the count of cells for the
@@ -4408,7 +4411,7 @@ contains
         c % universe = universe_dict % get(id)
       else
         call fatal_error("Could not find universe " // trim(to_str(id)) &
-             &// " specified on cell " // trim(to_str(c % id)))
+             &// " specified on cell " // trim(to_str(c % id())))
       end if
 
       ! =======================================================================
@@ -4425,7 +4428,7 @@ contains
           c % fill = lid
         else
           call fatal_error("Specified fill " // trim(to_str(id)) // " on cell "&
-               // trim(to_str(c % id)) // " is neither a universe nor a &
+               // trim(to_str(c % id())) // " is neither a universe nor a &
                &lattice.")
         end if
       else
@@ -4438,7 +4441,7 @@ contains
             c % material(j) = material_dict % get(id)
           else
             call fatal_error("Could not find material " // trim(to_str(id)) &
-                 // " specified on cell " // trim(to_str(c % id)))
+                 // " specified on cell " // trim(to_str(c % id())))
           end if
         end do
       end if
@@ -4551,7 +4554,7 @@ contains
       associate (c => cells(i))
         if (size(c % material) > 1) then
           if (size(c % material) /= c % instances) then
-            call fatal_error("Cell " // trim(to_str(c % id)) // " was &
+            call fatal_error("Cell " // trim(to_str(c % id())) // " was &
                  &specified with " // trim(to_str(size(c % material))) &
                  // " materials but has " // trim(to_str(c % instances)) &
                  // " distributed instances. The number of materials must &
@@ -4560,7 +4563,7 @@ contains
         end if
         if (size(c % sqrtkT) > 1) then
           if (size(c % sqrtkT) /= c % instances) then
-            call fatal_error("Cell " // trim(to_str(c % id)) // " was &
+            call fatal_error("Cell " // trim(to_str(c % id())) // " was &
                  &specified with " // trim(to_str(size(c % sqrtkT))) &
                  // " temperatures but has " // trim(to_str(c % instances)) &
                  // " distributed instances. The number of temperatures must &

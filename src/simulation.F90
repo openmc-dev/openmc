@@ -320,7 +320,7 @@ contains
 
   subroutine finalize_batch()
 
-#ifdef MPI
+#ifdef OPENMC_MPI
     integer :: mpi_err ! MPI error code
 #endif
 
@@ -342,7 +342,7 @@ contains
 
     ! Check_triggers
     if (master) call check_triggers()
-#ifdef MPI
+#ifdef OPENMC_MPI
     call MPI_BCAST(satisfy_triggers, 1, MPI_LOGICAL, 0, &
          mpi_intracomm, mpi_err)
 #endif
@@ -469,7 +469,7 @@ contains
   subroutine openmc_simulation_finalize() bind(C)
 
     integer    :: i       ! loop index
-#ifdef MPI
+#ifdef OPENMC_MPI
     integer    :: n       ! size of arrays
     integer    :: mpi_err  ! MPI error code
     integer(8) :: temp
@@ -494,7 +494,7 @@ contains
     ! Increment total number of generations
     total_gen = total_gen + current_batch*gen_per_batch
 
-#ifdef MPI
+#ifdef OPENMC_MPI
     ! Broadcast tally results so that each process has access to results
     if (allocated(tallies)) then
       do i = 1, size(tallies)

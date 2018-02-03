@@ -475,7 +475,7 @@ contains
     integer    :: count_per_filter ! number of result values for one filter bin
     integer(8) :: temp
     real(8)    :: tempr(3) ! temporary array for communication
-#ifdef MPIF08
+#ifdef OPENMC_MPIF08
     type(MPI_Datatype) :: result_block
 #else
     integer :: result_block

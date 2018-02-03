@@ -88,7 +88,7 @@ contains
     ! Write the date and time
     write(UNIT=OUTPUT_UNIT, FMT='(9X,"Date/Time | ",A)') time_stamp()
 
-#ifdef MPI
+#ifdef OPENMC_MPI
     ! Write number of processors
     write(UNIT=OUTPUT_UNIT, FMT='(5X,"MPI Processes | ",A)') &
          trim(to_str(n_procs))
@@ -259,7 +259,7 @@ contains
 
     ! Print surface
     if (p % surface /= NONE) then
-      write(ou,*) '  Surface = ' // to_str(sign(surfaces(i)%obj%id, p % surface))
+      write(ou,*) '  Surface = ' // to_str(sign(surfaces(i)%id(), p % surface))
     end if
 
     ! Display weight, energy, grid index, and interpolation factor

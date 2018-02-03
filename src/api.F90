@@ -18,7 +18,7 @@ module openmc_api
   use initialize,      only: openmc_init
   use particle_header, only: Particle
   use plot,            only: openmc_plot_geometry
-  use random_lcg,      only: seed, openmc_set_seed
+  use random_lcg,      only: openmc_get_seed, openmc_set_seed
   use settings
   use simulation_header
   use source_header,   only: openmc_extend_sources, openmc_source_set_strength
@@ -60,6 +60,7 @@ module openmc_api
   public :: openmc_get_filter_next_id
   public :: openmc_get_material_index
   public :: openmc_get_nuclide_index
+  public :: openmc_get_seed
   public :: openmc_get_tally_index
   public :: openmc_global_tallies
   public :: openmc_hard_reset
@@ -79,6 +80,7 @@ module openmc_api
   public :: openmc_plot_geometry
   public :: openmc_reset
   public :: openmc_run
+  public :: openmc_set_seed
   public :: openmc_simulation_finalize
   public :: openmc_simulation_init
   public :: openmc_source_bank
@@ -142,7 +144,7 @@ contains
     run_CE = .true.
     run_mode = NONE
     satisfy_triggers = .false.
-    seed = 1_8
+    call openmc_set_seed(DEFAULT_SEED)
     source_latest = .false.
     source_separate = .false.
     source_write = .true.
@@ -171,7 +173,7 @@ contains
     ! Close FORTRAN interface.
     call h5close_f(err)
 
-#ifdef MPI
+#ifdef OPENMC_MPI
     ! Free all MPI types
     call MPI_TYPE_FREE(MPI_BANK, err)
 #endif
@@ -228,8 +230,6 @@ contains
 !===============================================================================
 
   subroutine openmc_hard_reset() bind(C)
-    integer :: err
-
     ! Reset all tallies and timers
     call openmc_reset()
 
@@ -238,7 +238,7 @@ contains
     total_gen = 0
 
     ! Reset the random number generator state
-    err = openmc_set_seed(1_8)
+    call openmc_set_seed(DEFAULT_SEED)
   end subroutine openmc_hard_reset
 
 !===============================================================================

@@ -10,14 +10,14 @@
 
 namespace openmc {
 
-bool
+inline bool
 check_for_node(pugi::xml_node node, const char *name)
 {
   return node.attribute(name) || node.child(name);
 }
 
 
-std::string
+inline std::string
 get_node_value(pugi::xml_node node, const char *name)
 {
   // Search for either an attribute or child tag and get the data as a char*.

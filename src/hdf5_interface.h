@@ -12,7 +12,7 @@
 namespace openmc {
 
 
-hid_t
+inline hid_t
 create_group(hid_t parent_id, char const *name)
 {
   hid_t out = H5Gcreate(parent_id, name, H5P_DEFAULT, H5P_DEFAULT, H5P_DEFAULT);
@@ -26,14 +26,14 @@ create_group(hid_t parent_id, char const *name)
 }
 
 
-hid_t
+inline hid_t
 create_group(hid_t parent_id, const std::string &name)
 {
   return create_group(parent_id, name.c_str());
 }
 
 
-void
+inline void
 close_group(hid_t group_id)
 {
   herr_t err = H5Gclose(group_id);
@@ -43,7 +43,7 @@ close_group(hid_t group_id)
 }
 
 
-template<std::size_t array_len> void
+template<std::size_t array_len> inline void
 write_double_1D(hid_t group_id, char const *name,
                 std::array<double, array_len> &buffer)
 {
@@ -61,7 +61,7 @@ write_double_1D(hid_t group_id, char const *name,
 }
 
 
-void
+inline void
 write_string(hid_t group_id, char const *name, char const *buffer)
 {
   size_t buffer_len = strlen(buffer);
@@ -81,7 +81,7 @@ write_string(hid_t group_id, char const *name, char const *buffer)
 }
 
 
-void
+inline void
 write_string(hid_t group_id, char const *name, const std::string &buffer)
 {
   write_string(group_id, name, buffer.c_str());

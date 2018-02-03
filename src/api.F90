@@ -205,7 +205,7 @@ contains
 
     if (found) then
       if (rtype == 1) then
-        id = cells(p % coord(p % n_coord) % cell) % id
+        id = cells(p % coord(p % n_coord) % cell) % id()
       elseif (rtype == 2) then
         if (p % material == MATERIAL_VOID) then
           id = 0

@@ -12,6 +12,26 @@
 namespace openmc {
 
 //==============================================================================
+// Module constant definitions
+//==============================================================================
+
+extern "C" const int BC_TRANSMIT {0};
+extern "C" const int BC_VACUUM {1};
+extern "C" const int BC_REFLECT {2};
+extern "C" const int BC_PERIODIC {3};
+
+//==============================================================================
+// Global variables
+//==============================================================================
+
+// Braces force n_surfaces to be defined here, not just declared.
+extern "C" {int32_t n_surfaces {0};}
+
+Surface **surfaces_c;
+
+std::map<int, int> surface_dict;
+
+//==============================================================================
 // Helper functions for reading the "coeffs" node of an XML surface element
 //==============================================================================
 
@@ -1229,6 +1249,46 @@ read_surfaces(pugi::xml_node *node)
         fatal_error(err_msg);
       }
     }
+  }
+}
+
+//==============================================================================
+// Fortran compatibility functions
+//==============================================================================
+
+extern "C" {
+  Surface* surface_pointer(int surf_ind) {return surfaces_c[surf_ind];}
+
+  int surface_id(Surface *surf) {return surf->id;}
+
+  int surface_bc(Surface *surf) {return surf->bc;}
+
+  void surface_reflect(Surface *surf, double xyz[3], double uvw[3])
+  {surf->reflect(xyz, uvw);}
+
+  double
+  surface_distance(Surface *surf, double xyz[3], double uvw[3], bool coincident)
+  {return surf->distance(xyz, uvw, coincident);}
+
+  void surface_normal(Surface *surf, double xyz[3], double uvw[3])
+  {return surf->normal(xyz, uvw);}
+
+  void surface_to_hdf5(Surface *surf, hid_t group) {surf->to_hdf5(group);}
+
+  int surface_i_periodic(PeriodicSurface *surf) {return surf->i_periodic;}
+
+  bool
+  surface_periodic(PeriodicSurface *surf, PeriodicSurface *other, double xyz[3],
+                   double uvw[3])
+  {return surf->periodic_translate(other, xyz, uvw);}
+
+  void free_memory_surfaces_c()
+  {
+    for (int i = 0; i < n_surfaces; i++) {delete surfaces_c[i];}
+    delete surfaces_c;
+    surfaces_c = nullptr;
+    n_surfaces = 0;
+    surface_dict.clear();
   }
 }
 

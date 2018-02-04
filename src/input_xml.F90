@@ -942,7 +942,6 @@ contains
     type(XMLNode), allocatable :: node_rlat_list(:)
     type(XMLNode), allocatable :: node_hlat_list(:)
     type(VectorInt) :: tokens
-    type(VectorInt) :: rpn
     type(VectorInt) :: fill_univ_ids ! List of fill universe IDs
     type(VectorInt) :: univ_ids      ! List of all universe IDs
     type(DictIntInt) :: cells_in_univ_dict ! Used to count how many cells each
@@ -1120,27 +1119,13 @@ contains
           end if
         end do
 
-        ! Use shunting-yard algorithm to determine RPN for surface algorithm
-        call generate_rpn(c%id(), tokens, rpn)
-
         ! Copy region spec and RPN form to cell arrays
         allocate(c % region(tokens%size()))
-        allocate(c % rpn(rpn%size()))
         c % region(:) = tokens%data(1:tokens%size())
-        c % rpn(:) = rpn%data(1:rpn%size())
 
         call tokens%clear()
-        call rpn%clear()
       end if
       if (.not. allocated(c%region)) allocate(c%region(0))
-      if (.not. allocated(c%rpn)) allocate(c%rpn(0))
-
-      ! Check if this is a simple cell
-      if (any(c%rpn == OP_COMPLEMENT) .or. any(c%rpn == OP_UNION)) then
-        c%simple = .false.
-      else
-        c%simple = .true.
-      end if
 
       ! Rotation matrix
       if (check_for_node(node_cell, "rotation")) then
@@ -3981,93 +3966,6 @@ contains
     call file_close(file_id)
 
   end subroutine read_mg_cross_sections_header
-
-!===============================================================================
-! GENERATE_RPN implements the shunting-yard algorithm to generate a Reverse
-! Polish notation (RPN) expression for the region specification of a cell given
-! the infix notation.
-!===============================================================================
-
-  subroutine generate_rpn(cell_id, tokens, output)
-    integer, intent(in) :: cell_id
-    type(VectorInt), intent(in) :: tokens    ! infix notation
-    type(VectorInt), intent(inout) :: output ! RPN notation
-
-    integer :: i
-    integer :: token
-    integer :: op
-    type(VectorInt) :: stack
-
-    do i = 1, tokens%size()
-      token = tokens%data(i)
-
-      if (token < OP_UNION) then
-        ! If token is not an operator, add it to output
-        call output%push_back(token)
-
-      elseif (token < OP_RIGHT_PAREN) then
-        ! Regular operators union, intersection, complement
-        do while (stack%size() > 0)
-          op = stack%data(stack%size())
-
-          if (op < OP_RIGHT_PAREN .and. &
-               ((token == OP_COMPLEMENT .and. token < op) .or. &
-               (token /= OP_COMPLEMENT .and. token <= op))) then
-            ! While there is an operator, op, on top of the stack, if the token
-            ! is left-associative and its precedence is less than or equal to
-            ! that of op or if the token is right-associative and its precedence
-            ! is less than that of op, move op to the output queue and push the
-            ! token on to the stack. Note that only complement is
-            ! right-associative.
-            call output%push_back(op)
-            call stack%pop_back()
-          else
-            exit
-          end if
-        end do
-
-        call stack%push_back(token)
-
-      elseif (token == OP_LEFT_PAREN) then
-        ! If the token is a left parenthesis, push it onto the stack
-        call stack%push_back(token)
-
-      else
-        ! If the token is a right parenthesis, move operators from the stack to
-        ! the output queue until reaching the left parenthesis.
-        do
-          ! If we run out of operators without finding a left parenthesis, it
-          ! means there are mismatched parentheses.
-          if (stack%size() == 0) then
-            call fatal_error('Mimatched parentheses in region specification &
-                 &for cell ' // trim(to_str(cell_id)) // '.')
-          end if
-
-          op = stack%data(stack%size())
-          if (op == OP_LEFT_PAREN) exit
-          call output%push_back(op)
-          call stack%pop_back()
-        end do
-
-        ! Pop the left parenthesis.
-        call stack%pop_back()
-      end if
-    end do
-
-    ! While there are operators on the stack, move them to the output queue
-    do while (stack%size() > 0)
-      op = stack%data(stack%size())
-
-      ! If the operator is a parenthesis, it is mismatched
-      if (op >= OP_RIGHT_PAREN) then
-        call fatal_error('Mimatched parentheses in region specification &
-             &for cell ' // trim(to_str(cell_id)) // '.')
-      end if
-
-      call output%push_back(op)
-      call stack%pop_back()
-    end do
-  end subroutine generate_rpn
 
 !===============================================================================
 ! NORMALIZE_AO Normalize the nuclide atom percents

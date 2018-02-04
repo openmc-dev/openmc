@@ -147,11 +147,10 @@ contains
       c => cells(i)
       cell_group = create_group(cells_group, "cell " // trim(to_str(c%id())))
 
-      ! Write name for this cell
-      call write_dataset(cell_group, "name", c%name)
+      call c % to_hdf5(cell_group)
 
       ! Write universe for this cell
-      call write_dataset(cell_group, "universe", universes(c%universe)%id)
+      call write_dataset(cell_group, "universe", universes(c%universe())%id)
 
       ! Write information on what fills this cell
       select case (c%type)

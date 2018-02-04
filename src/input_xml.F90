@@ -1029,16 +1029,6 @@ contains
       ! Get pointer to i-th cell node
       node_cell = node_cell_list(i)
 
-      ! Copy cell name
-      if (check_for_node(node_cell, "name")) then
-        call get_node_value(node_cell, "name", c % name)
-      end if
-
-      if (check_for_node(node_cell, "universe")) then
-        call get_node_value(node_cell, "universe", c % universe)
-      else
-        c % universe = 0
-      end if
       if (check_for_node(node_cell, "fill")) then
         call get_node_value(node_cell, "fill", c % fill)
         if (find(fill_univ_ids, c % fill) == -1) &
@@ -1249,7 +1239,7 @@ contains
       ! For cells, we also need to check if there's a new universe --
       ! also for every cell add 1 to the count of cells for the
       ! specified universe
-      univ_id = c % universe
+      univ_id = c % universe()
       if (.not. cells_in_univ_dict % has(univ_id)) then
         n_universes = n_universes + 1
         n_cells_in_univ = 1
@@ -1623,7 +1613,7 @@ contains
 
     do i = 1, n_cells
       ! Get index in universes array
-      j = universe_dict % get(cells(i) % universe)
+      j = universe_dict % get(cells(i) % universe())
 
       ! Set the first zero entry in the universe cells array to the index in the
       ! global cells array
@@ -4406,9 +4396,9 @@ contains
       ! ADJUST UNIVERSE INDEX FOR EACH CELL
       associate (c => cells(i))
 
-      id = c % universe
+      id = c % universe()
       if (universe_dict % has(id)) then
-        c % universe = universe_dict % get(id)
+        call c % set_universe(universe_dict % get(id))
       else
         call fatal_error("Could not find universe " // trim(to_str(id)) &
              &// " specified on cell " // trim(to_str(c % id())))

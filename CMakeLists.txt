@@ -50,6 +50,9 @@ if($ENV{FC} MATCHES "(mpi[^/]*|ftn)$")
   message("-- Detected MPI wrapper: $ENV{FC}")
   add_definitions(-DOPENMC_MPI)
   set(MPI_ENABLED TRUE)
+
+  # Get directory containing MPI wrapper
+  get_filename_component(MPI_DIR $ENV{FC} DIRECTORY)
 endif()
 
 # Check for Fortran 2008 MPI interface
@@ -559,7 +562,7 @@ foreach(test ${TESTS})
       add_test(NAME ${TEST_NAME}
         WORKING_DIRECTORY ${TEST_PATH}
         COMMAND ${PYTHON_EXECUTABLE} ${TEST_NAME} --exe $<TARGET_FILE:openmc>
-        --mpi_exec $ENV{MPI_DIR}/bin/mpiexec)
+        --mpi_exec ${MPI_DIR}/mpiexec)
     else()
       # Perform a serial test
       add_test(NAME ${TEST_NAME}

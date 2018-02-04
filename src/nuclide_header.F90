@@ -64,6 +64,7 @@ module nuclide_header
     integer       :: A       ! mass number
     integer       :: metastable ! metastable state
     real(8)       :: awr     ! Atomic Weight Ratio
+    integer       :: i_nuclide ! The nuclides index in the nuclides array
     real(8), allocatable :: kTs(:) ! temperature in eV (k*T)
 
     ! Fission information
@@ -268,7 +269,7 @@ contains
   end subroutine nuclide_clear
 
   subroutine nuclide_from_hdf5(this, group_id, temperature, method, tolerance, &
-                               minmax, master)
+                               minmax, master, i_nuclide)
     class(Nuclide),   intent(inout) :: this
     integer(HID_T),   intent(in)    :: group_id
     type(VectorReal), intent(in)    :: temperature ! list of desired temperatures
@@ -276,6 +277,7 @@ contains
     real(8),          intent(in)    :: tolerance
     real(8),          intent(in)    :: minmax(2)  ! range of temperatures
     logical,          intent(in)    :: master     ! if this is the master proc
+    integer,          intent(in)    :: i_nuclide  ! Nuclide index in nuclides
 
     integer :: i
     integer :: i_closest
@@ -569,6 +571,9 @@ contains
     ! Create derived cross section data
     call this % create_derived()
 
+    ! Finalize with the nuclide index
+    this % i_nuclide = i_nuclide
+
   end subroutine nuclide_from_hdf5
 
   subroutine nuclide_create_derived(this)
@@ -815,7 +820,7 @@ contains
 !===============================================================================
 
   subroutine nuclide_calculate_xs(this, i_sab, E, i_log_union, sqrtkT, &
-                                  sab_frac, i_nuclide, micro_xs)
+                                  sab_frac, micro_xs)
     class(Nuclide), intent(in) :: this ! Nuclide object
     integer, intent(in) :: i_sab       ! index into sab_tables array
     real(8), intent(in) :: E           ! energy
@@ -823,10 +828,6 @@ contains
                                        ! material union energy grid
     real(8), intent(in) :: sqrtkT      ! square root of kT, material dependent
     real(8), intent(in) :: sab_frac    ! fraction of atoms affected by S(a,b)
-    !!!TODO: i_nuclide is only needed to keep the URR prn stream consistent
-    !!! to ensure tests pass; this can be removed when this requirement can be
-    !!! relaxed
-    integer, intent(in) :: i_nuclide   ! Index of this in the nuclides array
     type(NuclideMicroXS), intent(inout) :: micro_xs ! Cross section cache
 
     logical :: use_mp ! true if XS can be calculated with windowed multipole
@@ -882,7 +883,7 @@ contains
       ! 1. physics.F90 - scatter - For inelastic scatter.
       ! 2. physics.F90 - sample_fission - For partial fissions.
       ! 3. tally.F90 - score_general - For tallying on MTxxx reactions.
-      ! 4. cross_section.F90 - calculate_urr_xs - For unresolved purposes.
+      ! 4. nuclide_header.F90 - calculate_urr_xs - For unresolved purposes.
       ! It is worth noting that none of these occur in the resolved
       ! resonance range, so the value here does not matter.  index_temp is
       ! set to -1 to force a segfault in case a developer messes up and tries
@@ -1008,7 +1009,7 @@ contains
     if (urr_ptables_on .and. this % urr_present .and. .not. use_mp) then
       if (E > this % urr_data(i_temp) % energy(1) .and. E < this % &
            urr_data(i_temp) % energy(this % urr_data(i_temp) % n_energy)) then
-        call calculate_urr_xs(this, i_temp, E, i_nuclide, micro_xs)
+        call calculate_urr_xs(this, i_temp, E, micro_xs)
       end if
     end if
 
@@ -1397,14 +1398,10 @@ contains
 ! from probability tables
 !===============================================================================
 
-  subroutine calculate_urr_xs(this, i_temp, E, i_nuclide, micro_xs)
+  subroutine calculate_urr_xs(this, i_temp, E, micro_xs)
     class(Nuclide), intent(in)        :: this     ! Nuclide object
     integer, intent(in)               :: i_temp   ! temperature index
     real(8), intent(in)               :: E        ! energy
-    !!!TODO: i_nuclide is only needed to keep the URR prn stream consistent
-    !!! to ensure tests pass; this can be removed when this requirement can be
-    !!! relaxed
-    integer, intent(in) :: i_nuclide   ! Index of this in the nuclides array
     type(NuclideMicroXS), intent(inout) :: micro_xs ! Cross section cache
 
     integer :: i_energy     ! index for energy
@@ -1438,7 +1435,7 @@ contains
       ! random number for the same nuclide at different temperatures, therefore
       ! preserving correlation of temperature in probability tables.
       call prn_set_stream(STREAM_URR_PTABLE)
-      r = future_prn(int(i_nuclide, 8))
+      r = future_prn(int(this % i_nuclide, 8))
       call prn_set_stream(STREAM_TRACKING)
 
       i_low = 1
@@ -1657,7 +1654,7 @@ contains
         group_id = open_group(file_id, name_)
         call nuclides(n) % from_hdf5(group_id, temperature, &
              temperature_method, temperature_tolerance, minmax, &
-             master)
+             master, n)
         call close_group(group_id)
         call file_close(file_id)
 

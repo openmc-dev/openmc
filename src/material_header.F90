@@ -331,7 +331,7 @@ contains
            .or. i_sab /= micro_xs(i_nuclide) % index_sab &
            .or. sab_frac /= micro_xs(i_nuclide) % sab_frac) then
         call nuclides(i_nuclide) % calculate_xs(i_sab, E, i_grid, &
-             sqrtkT, sab_frac, i_nuclide, micro_xs(i_nuclide))
+             sqrtkT, sab_frac, micro_xs(i_nuclide))
       end if
 
       ! ======================================================================

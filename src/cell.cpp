@@ -1,6 +1,7 @@
 #include "cell.h"
 
 #include <sstream>
+#include <string>
 
 #include "error.h"
 #include "hdf5_interface.h"
@@ -28,40 +29,31 @@ Cell::Cell(pugi::xml_node cell_node)
   if (check_for_node(cell_node, "name")) {
     name = get_node_value(cell_node, "name");
   }
+
+  if (check_for_node(cell_node, "universe")) {
+    universe = stoi(get_node_value(cell_node, "universe"));
+  } else {
+    universe = 0;
+  }
 }
 
 void
-Cell::to_hdf5(hid_t group_id) const
+//Cell::to_hdf5(hid_t group_id) const
+Cell::to_hdf5(hid_t cell_group) const
 {
-/*
-  std::string group_name {"surface "};
-  group_name += std::to_string(id);
-
-  hid_t surf_group = create_group(group_id, group_name);
-
-  switch(bc) {
-    case BC_TRANSMIT :
-      write_string(surf_group, "boundary_type", "transmission");
-      break;
-    case BC_VACUUM :
-      write_string(surf_group, "boundary_type", "vacuum");
-      break;
-    case BC_REFLECT :
-      write_string(surf_group, "boundary_type", "reflective");
-      break;
-    case BC_PERIODIC :
-      write_string(surf_group, "boundary_type", "periodic");
-      break;
-  }
+//  std::string group_name {"surface "};
+//  group_name += std::to_string(id);
+//
+//  hid_t surf_group = create_group(group_id, group_name);
 
   if (!name.empty()) {
-    write_string(surf_group, "name", name);
+    write_string(cell_group, "name", name);
   }
 
-  to_hdf5_inner(surf_group);
+  //TODO: Lookup universe id in universe_dict
+  //write_int(cell_group, "universe", universe);
 
-  close_group(surf_group);
-*/
+//  close_group(cell_group);
 }
 
 //==============================================================================

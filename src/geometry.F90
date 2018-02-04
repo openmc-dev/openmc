@@ -223,7 +223,7 @@ contains
       if (use_search_cells) then
         i_cell = search_cells(i)
         ! check to make sure search cell is in same universe
-        if (cells(i_cell) % universe /= i_universe) cycle
+        if (cells(i_cell) % universe() /= i_universe) cycle
       else
         i_cell = universes(i_universe) % cells(i)
       end if

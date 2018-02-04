@@ -38,6 +38,7 @@ class Cell
 public:
   int32_t id;                //!< Unique ID
   std::string name{""};      //!< User-defined name
+  int32_t universe;          //!< Universe # this cell is in
 
   explicit Cell(pugi::xml_node cell_node);
 
@@ -57,6 +58,13 @@ extern "C" Cell* cell_pointer(int cell_ind) {return &cells_c[cell_ind];}
 extern "C" int32_t cell_id(Cell *c) {return c->id;}
 
 extern "C" void cell_set_id(Cell *c, int32_t id) {c->id = id;}
+
+extern "C" int32_t cell_universe(Cell *c) {return c->universe;}
+
+extern "C" void cell_set_universe(Cell *c, int32_t universe)
+{c->universe = universe;}
+
+extern "C" void cell_to_hdf5(Cell *c, hid_t group) {c->to_hdf5(group);}
 
 //extern "C" void free_memory_cells_c()
 //{

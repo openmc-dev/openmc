@@ -1,6 +1,7 @@
 module geometry_header
 
   use, intrinsic :: ISO_C_BINDING
+  use hdf5
 
   use algorithm,       only: find
   use constants,       only: HALF, TWO, THREE, INFINITY, K_BOLTZMANN, &
@@ -35,6 +36,30 @@ module geometry_header
       type(C_PTR),        intent(in), value :: cell_ptr
       integer(C_INT32_T), intent(in), value :: id
     end subroutine cell_set_id_c
+
+    function cell_universe_c(cell_ptr) bind(C, name='cell_universe') &
+         result(universe)
+      use ISO_C_BINDING
+      implicit none
+      type(C_PTR), intent(in), value :: cell_ptr
+      integer(C_INT32_T)             :: universe
+    end function cell_universe_c
+
+    subroutine cell_set_universe_c(cell_ptr, universe) &
+         bind(C, name='cell_set_universe')
+      use ISO_C_BINDING
+      implicit none
+      type(C_PTR),        intent(in), value :: cell_ptr
+      integer(C_INT32_T), intent(in), value :: universe
+    end subroutine cell_set_universe_c
+
+    subroutine cell_to_hdf5_c(cell_ptr, group) bind(C, name='cell_to_hdf5')
+      use ISO_C_BINDING
+      use hdf5
+      implicit none
+      type(C_PTR),    intent(in), value :: cell_ptr
+      integer(HID_T), intent(in), value :: group
+    end subroutine cell_to_hdf5_c
   end interface
 
 !===============================================================================
@@ -150,10 +175,8 @@ module geometry_header
   type Cell
     type(C_PTR) :: ptr
 
-    character(len=104) :: name = ""        ! User-defined name
     integer :: type                        ! Type of cell (normal, universe,
                                            !  lattice)
-    integer :: universe                    ! universe # this cell is in
     integer :: fill                        ! universe # filling this cell
     integer :: instances                   ! number of instances of this cell in
                                            !  the geom
@@ -183,6 +206,9 @@ module geometry_header
 
     procedure :: id => cell_id
     procedure :: set_id => cell_set_id
+    procedure :: universe => cell_universe
+    procedure :: set_universe => cell_set_universe
+    procedure :: to_hdf5 => cell_to_hdf5
 
   end type Cell
 
@@ -384,6 +410,24 @@ contains
     integer(C_INT32_T), intent(in) :: id
     call cell_set_id_c(this % ptr, id)
   end subroutine cell_set_id
+
+  function cell_universe(this) result(universe)
+    class(Cell), intent(in) :: this
+    integer(C_INT32_T)      :: universe
+    universe = cell_universe_c(this % ptr)
+  end function cell_universe
+
+  subroutine cell_set_universe(this, universe)
+    class(Cell),        intent(in) :: this
+    integer(C_INT32_T), intent(in) :: universe
+    call cell_set_universe_c(this % ptr, universe)
+  end subroutine cell_set_universe
+
+  subroutine cell_to_hdf5(this, group)
+    class(Cell),    intent(in) :: this
+    integer(HID_T), intent(in) :: group
+    call cell_to_hdf5_c(this % ptr, group)
+  end subroutine cell_to_hdf5
 
 !===============================================================================
 ! GET_TEMPERATURES returns a list of temperatures that each nuclide/S(a,b) table

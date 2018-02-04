@@ -43,6 +43,36 @@ close_group(hid_t group_id)
 }
 
 
+inline void
+write_int(hid_t group_id, char const *name, int32_t buffer)
+{
+  hid_t dataspace = H5Screate(H5S_SCALAR);
+
+  hid_t dataset = H5Dcreate(group_id, name, H5T_NATIVE_INT32, dataspace,
+                            H5P_DEFAULT, H5P_DEFAULT, H5P_DEFAULT);
+
+  H5Dwrite(dataset, H5T_NATIVE_INT32, H5S_ALL, H5S_ALL, H5P_DEFAULT, &buffer);
+
+  H5Sclose(dataspace);
+  H5Dclose(dataset);
+}
+
+
+//inline void
+//write_double(hid_t group_id, char const *name, double buffer)
+//{
+//  hid_t dataspace = H5Screate(H5S_SCALAR);
+//
+//  hid_t dataset = H5Dcreate(group_id, name, H5T_NATIVE_DOUBLE, dataspace,
+//                            H5P_DEFAULT, H5P_DEFAULT, H5P_DEFAULT);
+//
+//  H5Dwrite(dataset, H5T_NATIVE_DOUBLE, H5S_ALL, H5S_ALL, H5P_DEFAULT, &buffer);
+//
+//  H5Sclose(dataspace);
+//  H5Dclose(dataset);
+//}
+
+
 template<std::size_t array_len> inline void
 write_double_1D(hid_t group_id, char const *name,
                 std::array<double, array_len> &buffer)

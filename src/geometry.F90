@@ -14,124 +14,28 @@ module geometry
 
   implicit none
 
+  interface
+    function cell_contains_c(cell_ptr, xyz, uvw, on_surface) &
+         bind(C, name="cell_contains") result(in_cell)
+      use ISO_C_BINDING
+      implicit none
+      type(C_PTR),    intent(in), value :: cell_ptr
+      real(C_DOUBLE), intent(in)        :: xyz(3)
+      real(C_DOUBLE), intent(in)        :: uvw(3)
+      integer(C_INT), intent(in), value :: on_surface
+      logical(C_BOOL)                   :: in_cell
+    end function cell_contains_c
+  end interface
+
 contains
 
-!===============================================================================
-! CELL_CONTAINS determines if a cell contains the particle at a given
-! location. The bounds of the cell are detemined by a logical expression
-! involving surface half-spaces. At initialization, the expression was converted
-! to RPN notation.
-!
-! The function is split into two cases, one for simple cells (those involving
-! only the intersection of half-spaces) and one for complex cells. Simple cells
-! can be evaluated with short circuit evaluation, i.e., as soon as we know that
-! one half-space is not satisfied, we can exit. This provides a performance
-! benefit for the common case. In complex_cell_contains, we evaluate the RPN
-! expression using a stack, similar to how a RPN calculator would work.
-!===============================================================================
-
-  pure function cell_contains(c, p) result(in_cell)
+  function cell_contains(c, p) result(in_cell)
     type(Cell), intent(in) :: c
     type(Particle), intent(in) :: p
     logical :: in_cell
-
-    if (c%simple) then
-      in_cell = simple_cell_contains(c, p)
-    else
-      in_cell = complex_cell_contains(c, p)
-    end if
+    in_cell = cell_contains_c(c%ptr, p%coord(p%n_coord)%xyz, &
+                              p%coord(p%n_coord)%uvw, p%surface)
   end function cell_contains
-
-  pure function simple_cell_contains(c, p) result(in_cell)
-    type(Cell), intent(in) :: c
-    type(Particle), intent(in) :: p
-    logical :: in_cell
-
-    integer :: i
-    integer :: token
-    logical :: actual_sense    ! sense of particle wrt surface
-
-    in_cell = .true.
-    do i = 1, size(c%rpn)
-      token = c%rpn(i)
-      if (token < OP_UNION) then
-        ! If the token is not an operator, evaluate the sense of particle with
-        ! respect to the surface and see if the token matches the sense. If the
-        ! particle's surface attribute is set and matches the token, that
-        ! overrides the determination based on sense().
-        if (token == p%surface) then
-          cycle
-        elseif (-token == p%surface) then
-          in_cell = .false.
-          exit
-        else
-          actual_sense = surfaces(abs(token)) % sense( &
-               p%coord(p%n_coord)%xyz, p%coord(p%n_coord)%uvw)
-          if (actual_sense .neqv. (token > 0)) then
-            in_cell = .false.
-            exit
-          end if
-        end if
-      end if
-    end do
-  end function simple_cell_contains
-
-  pure function complex_cell_contains(c, p) result(in_cell)
-    type(Cell), intent(in) :: c
-    type(Particle), intent(in) :: p
-    logical :: in_cell
-
-    integer :: i
-    integer :: token
-    integer :: i_stack
-    logical :: actual_sense    ! sense of particle wrt surface
-    logical :: stack(size(c%rpn))
-
-    i_stack = 0
-    do i = 1, size(c%rpn)
-      token = c%rpn(i)
-
-      ! If the token is a binary operator (intersection/union), apply it to
-      ! the last two items on the stack. If the token is a unary operator
-      ! (complement), apply it to the last item on the stack.
-      select case (token)
-      case (OP_UNION)
-        stack(i_stack - 1) = stack(i_stack - 1) .or. stack(i_stack)
-        i_stack = i_stack - 1
-      case (OP_INTERSECTION)
-        stack(i_stack - 1) = stack(i_stack - 1) .and. stack(i_stack)
-        i_stack = i_stack - 1
-      case (OP_COMPLEMENT)
-        stack(i_stack) = .not. stack(i_stack)
-      case default
-        ! If the token is not an operator, evaluate the sense of particle with
-        ! respect to the surface and see if the token matches the sense. If the
-        ! particle's surface attribute is set and matches the token, that
-        ! overrides the determination based on sense().
-        i_stack = i_stack + 1
-        if (token == p%surface) then
-          stack(i_stack) = .true.
-        elseif (-token == p%surface) then
-          stack(i_stack) = .false.
-        else
-          actual_sense = surfaces(abs(token)) % sense( &
-               p%coord(p%n_coord)%xyz, p%coord(p%n_coord)%uvw)
-          stack(i_stack) = (actual_sense .eqv. (token > 0))
-        end if
-      end select
-
-    end do
-
-    if (i_stack == 1) then
-      ! The one remaining logical on the stack indicates whether the particle is
-      ! in the cell.
-      in_cell = stack(i_stack)
-    else
-      ! This case occurs if there is no region specification since i_stack will
-      ! still be zero.
-      in_cell = .true.
-    end if
-  end function complex_cell_contains
 
 !===============================================================================
 ! CHECK_CELL_OVERLAP checks for overlapping cells at the current particle's
@@ -737,7 +641,7 @@ contains
           ! positive half-space were given in the region specification. Thus, we
           ! have to explicitly check which half-space the particle would be
           ! traveling into if the surface is crossed
-          if (.not. c % simple) then
+          if (.not. c % simple()) then
             xyz_cross(:) = p % coord(j) % xyz + d_surf*p % coord(j) % uvw
             call surfaces(abs(level_surf_cross)) % normal(xyz_cross, surf_uvw)
             if (dot_product(p % coord(j) % uvw, surf_uvw) > ZERO) then

@@ -258,7 +258,7 @@ contains
     end do
 
     ! Print surface
-    if (p % surface /= NONE) then
+    if (p % surface /= ERROR_INT) then
       write(ou,*) '  Surface = ' // to_str(sign(surfaces(i)%id(), p % surface))
     end if
 

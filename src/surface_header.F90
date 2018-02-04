@@ -30,16 +30,6 @@ module surface_header
       integer(C_INT)                 :: bc
     end function surface_bc_c
 
-    pure function surface_sense_c(surf_ptr, xyz, uvw) &
-         bind(C, name='surface_sense') result(sense)
-      use ISO_C_BINDING
-      implicit none
-      type(C_PTR),    intent(in), value :: surf_ptr
-      real(C_DOUBLE), intent(in)        :: xyz(3)
-      real(C_DOUBLE), intent(in)        :: uvw(3)
-      logical(C_BOOL)                   :: sense
-    end function surface_sense_c
-
     pure subroutine surface_reflect_c(surf_ptr, xyz, uvw) &
          bind(C, name='surface_reflect')
       use ISO_C_BINDING
@@ -116,7 +106,6 @@ module surface_header
 
     procedure :: id => surface_id
     procedure :: bc => surface_bc
-    procedure :: sense => surface_sense
     procedure :: reflect => surface_reflect
     procedure :: distance => surface_distance
     procedure :: normal => surface_normal
@@ -146,14 +135,6 @@ contains
     integer(C_INT)             :: bc
     bc = surface_bc_c(this % ptr)
   end function surface_bc
-
-  pure function surface_sense(this, xyz, uvw) result(sense)
-    class(Surface), intent(in) :: this
-    real(C_DOUBLE), intent(in) :: xyz(3)
-    real(C_DOUBLE), intent(in) :: uvw(3)
-    logical(C_BOOL)            :: sense
-    sense = surface_sense_c(this % ptr, xyz, uvw)
-  end function surface_sense
 
   pure subroutine surface_reflect(this, xyz, uvw)
     class(Surface), intent(in)    :: this

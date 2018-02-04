@@ -53,6 +53,13 @@ module geometry_header
       integer(C_INT32_T), intent(in), value :: universe
     end subroutine cell_set_universe_c
 
+    function cell_simple_c(cell_ptr) bind(C, name='cell_simple') result(simple)
+      use ISO_C_BINDING
+      implicit none
+      type(C_PTR), intent(in), value :: cell_ptr
+      logical(C_BOOL)                :: simple
+    end function cell_simple_c
+
     subroutine cell_to_hdf5_c(cell_ptr, group) bind(C, name='cell_to_hdf5')
       use ISO_C_BINDING
       use hdf5
@@ -187,10 +194,6 @@ module geometry_header
                                            !  counter
     integer, allocatable :: region(:)      ! Definition of spatial region as
                                            !  Boolean expression of half-spaces
-    integer, allocatable :: rpn(:)         ! Reverse Polish notation for region
-                                           !  expression
-    logical :: simple                      ! Is the region simple (intersections
-                                           !  only)
     integer :: distribcell_index           ! Index corresponding to this cell in
                                            !  distribcell arrays
     real(8), allocatable :: sqrtkT(:)      ! Square root of k_Boltzmann *
@@ -208,6 +211,7 @@ module geometry_header
     procedure :: set_id => cell_set_id
     procedure :: universe => cell_universe
     procedure :: set_universe => cell_set_universe
+    procedure :: simple => cell_simple
     procedure :: to_hdf5 => cell_to_hdf5
 
   end type Cell
@@ -428,6 +432,12 @@ contains
     integer(HID_T), intent(in) :: group
     call cell_to_hdf5_c(this % ptr, group)
   end subroutine cell_to_hdf5
+
+  function cell_simple(this) result(simple)
+    class(Cell), intent(in) :: this
+    logical(C_BOOL)         :: simple
+    simple = cell_simple_c(this % ptr)
+  end function cell_simple
 
 !===============================================================================
 ! GET_TEMPERATURES returns a list of temperatures that each nuclide/S(a,b) table

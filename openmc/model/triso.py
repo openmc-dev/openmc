@@ -12,11 +12,7 @@ from abc import ABCMeta, abstractproperty, abstractmethod
 
 from six import add_metaclass
 import numpy as np
-try:
-    import scipy.spatial
-    _SCIPY_AVAILABLE = True
-except ImportError:
-    _SCIPY_AVAILABLE = False
+import scipy.spatial
 
 import openmc
 import openmc.checkvalue as cv
@@ -742,7 +738,7 @@ def _close_random_pack(domain, particles, contraction_rate):
         outer_pf = (4/3 * pi * (outer_diameter[0]/2)**3 * n_particles /
                     domain.volume)
 
-        j = floor(-log10(outer_pf - inner_pf))
+        j = int(floor(-log10(outer_pf - inner_pf)))
         outer_diameter[0] = (outer_diameter[0] - 0.5**j * contraction_rate *
                              initial_outer_diameter / n_particles)
 
@@ -836,10 +832,6 @@ def _close_random_pack(domain, particles, contraction_rate):
         # centers
         if rods:
             inner_diameter[0] = rods[0][0]
-
-    if not _SCIPY_AVAILABLE:
-        raise ImportError('SciPy must be installed to perform '
-                          'close random packing.')
 
     n_particles = len(particles)
     diameter = 2*domain.particle_radius

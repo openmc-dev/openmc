@@ -1508,8 +1508,6 @@ class Tally(IDManagerMixin):
         ------
         KeyError
             When this method is called before the Tally is populated with data
-        ImportError
-            When Pandas can not be found on the caller's system
 
         """
 

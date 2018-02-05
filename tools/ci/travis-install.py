@@ -33,9 +33,11 @@ def install(omp=False, mpi=False, phdf5=False):
     if not omp:
         cmake_cmd.append('-Dopenmp=off')
 
-    # For MPI, we just need to change the Fortran compiler
+    # Use MPI wrappers when building in parallel
     if mpi:
         os.environ['FC'] = 'mpifort' if which('mpifort') else 'mpif90'
+        os.environ['CC'] = 'mpicc'
+        os.environ['CXX'] = 'mpicxx'
 
     # Tell CMake to prefer parallel HDF5 if specified
     if phdf5:

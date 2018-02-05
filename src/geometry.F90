@@ -260,7 +260,7 @@ contains
               ! Particle is outside the lattice.
               if (lat % outer == NO_OUTER_UNIVERSE) then
                 call p % mark_as_lost("Particle " // trim(to_str(p %id)) &
-                     // " is outside lattice " // trim(to_str(lat % id)) &
+                     // " is outside lattice " // trim(to_str(lat % id())) &
                      // " but the lattice has no defined outer universe.")
                 return
               else
@@ -299,7 +299,7 @@ contains
     lat => lattices(p % coord(j) % lattice) % obj
 
     if (verbosity >= 10 .or. trace) then
-      call write_message("    Crossing lattice " // trim(to_str(lat % id)) &
+      call write_message("    Crossing lattice " // trim(to_str(lat % id())) &
            &// ". Current position (" // trim(to_str(p % coord(j) % lattice_x)) &
            &// "," // trim(to_str(p % coord(j) % lattice_y)) // "," &
            &// trim(to_str(p % coord(j) % lattice_z)) // ")")

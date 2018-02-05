@@ -301,23 +301,25 @@ Cell::to_hdf5(hid_t cell_group) const
   //write_int(cell_group, "universe", universe);
 
   // Write the region specification.
-  std::stringstream region_spec {};
-  for (int32_t token : region) {
-    if (token == OP_LEFT_PAREN) {
-      region_spec << " (";
-    } else if (token == OP_RIGHT_PAREN) {
-      region_spec << " )";
-    } else if (token == OP_COMPLEMENT) {
-      region_spec << " ~";
-    } else if (token == OP_INTERSECTION) {
-    } else if (token == OP_UNION) {
-      region_spec << " |";
-    } else {
-      // Note the off-by-one indexing
-      region_spec << " " << copysign(surfaces_c[abs(token)-1]->id, token);
+  if (!region.empty()) {
+    std::stringstream region_spec {};
+    for (int32_t token : region) {
+      if (token == OP_LEFT_PAREN) {
+        region_spec << " (";
+      } else if (token == OP_RIGHT_PAREN) {
+        region_spec << " )";
+      } else if (token == OP_COMPLEMENT) {
+        region_spec << " ~";
+      } else if (token == OP_INTERSECTION) {
+      } else if (token == OP_UNION) {
+        region_spec << " |";
+      } else {
+        // Note the off-by-one indexing
+        region_spec << " " << copysign(surfaces_c[abs(token)-1]->id, token);
+      }
     }
+    write_string(cell_group, "region", region_spec.str());
   }
-  write_string(cell_group, "region", region_spec.str());
 
 //  close_group(cell_group);
 }

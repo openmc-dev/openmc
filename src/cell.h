@@ -26,6 +26,19 @@ std::vector<Cell> cells_c;
 std::map<int, int> cell_dict;
 
 //==============================================================================
+//! A geometry primitive that fills all space and contains cells.
+//==============================================================================
+
+class Universe
+{
+  public:
+  int32_t id;                  //! Unique ID
+  int32_t type;
+  std::vector<int32_t> cells;  //! Cells within this universe
+  double x0, y0, z0;           //! Translation coordinates.
+};
+
+//==============================================================================
 //! A geometry primitive that links surfaces, universes, and materials
 //==============================================================================
 

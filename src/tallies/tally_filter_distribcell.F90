@@ -270,7 +270,7 @@ contains
           type is (RectLattice)
 
             ! Write to the geometry stack
-            path = trim(path) // "->l" // to_str(lat%id)
+            path = trim(path) // "->l" // to_str(lat%id())
 
             n_x = lat % n_cells(1)
             n_y = lat % n_cells(2)
@@ -332,7 +332,7 @@ contains
           type is (HexLattice)
 
             ! Write to the geometry stack
-            path = trim(path) // "->l" // to_str(lat%id)
+            path = trim(path) // "->l" // to_str(lat%id())
 
             n_z = lat % n_axial
             n_y = 2 * lat % n_rings - 1

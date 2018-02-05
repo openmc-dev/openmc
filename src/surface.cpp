@@ -1266,10 +1266,6 @@ extern "C" {
   void surface_reflect(Surface *surf, double xyz[3], double uvw[3])
   {surf->reflect(xyz, uvw);}
 
-  double
-  surface_distance(Surface *surf, double xyz[3], double uvw[3], bool coincident)
-  {return surf->distance(xyz, uvw, coincident);}
-
   void surface_normal(Surface *surf, double xyz[3], double uvw[3])
   {return surf->normal(xyz, uvw);}
 

@@ -125,7 +125,6 @@ contains
     integer(HID_T) :: surfaces_group
     integer(HID_T) :: universes_group, univ_group
     integer(HID_T) :: lattices_group, lattice_group
-    character(:), allocatable :: region_spec
     type(Cell),     pointer :: c
     class(Lattice), pointer :: lat
 
@@ -203,27 +202,6 @@ contains
         call write_dataset(cell_group, "fill_type", "lattice")
         call write_dataset(cell_group, "lattice", lattices(c%fill)%obj%id)
       end select
-
-      ! Write list of bounding surfaces
-      region_spec = ""
-      do j = 1, size(c%region)
-        k = c%region(j)
-        select case(k)
-        case (OP_LEFT_PAREN)
-          region_spec = trim(region_spec) // " ("
-        case (OP_RIGHT_PAREN)
-          region_spec = trim(region_spec) // " )"
-        case (OP_COMPLEMENT)
-          region_spec = trim(region_spec) // " ~"
-        case (OP_INTERSECTION)
-        case (OP_UNION)
-          region_spec = trim(region_spec) // " |"
-        case default
-          region_spec = trim(region_spec) // " " // to_str(&
-               sign(surfaces(abs(k))%id(), k))
-        end select
-      end do
-      call write_dataset(cell_group, "region", adjustl(region_spec))
 
       call close_group(cell_group)
     end do CELL_LOOP

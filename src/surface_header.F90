@@ -39,17 +39,6 @@ module surface_header
       real(C_DOUBLE), intent(inout)     :: uvw(3);
     end subroutine surface_reflect_c
 
-    pure function surface_distance_c(surf_ptr, xyz, uvw, coincident) &
-         bind(C, name='surface_distance') result(d)
-      use ISO_C_BINDING
-      implicit none
-      type(C_PTR),     intent(in), value :: surf_ptr
-      real(C_DOUBLE),  intent(in)        :: xyz(3);
-      real(C_DOUBLE),  intent(in)        :: uvw(3);
-      logical(C_BOOL), intent(in), value :: coincident;
-      real(C_DOUBLE)                     :: d;
-    end function surface_distance_c
-
     pure subroutine surface_normal_c(surf_ptr, xyz, uvw) &
          bind(C, name='surface_normal')
       use ISO_C_BINDING
@@ -107,7 +96,6 @@ module surface_header
     procedure :: id => surface_id
     procedure :: bc => surface_bc
     procedure :: reflect => surface_reflect
-    procedure :: distance => surface_distance
     procedure :: normal => surface_normal
     procedure :: to_hdf5 => surface_to_hdf5
     procedure :: i_periodic => surface_i_periodic
@@ -142,15 +130,6 @@ contains
     real(C_DOUBLE), intent(inout) :: uvw(3);
     call surface_reflect_c(this % ptr, xyz, uvw)
   end subroutine surface_reflect
-
-  pure function surface_distance(this, xyz, uvw, coincident) result(d)
-    class(Surface),  intent(in) :: this
-    real(C_DOUBLE),  intent(in) :: xyz(3);
-    real(C_DOUBLE),  intent(in) :: uvw(3);
-    logical(C_BOOL), intent(in) :: coincident;
-    real(C_DOUBLE)              :: d;
-    d = surface_distance_c(this % ptr, xyz, uvw, coincident)
-  end function surface_distance
 
   pure subroutine surface_normal(this, xyz, uvw)
     class(Surface), intent(in)  :: this

@@ -21,11 +21,13 @@ namespace openmc {
 // Constants
 //==============================================================================
 
-constexpr int32_t OP_LEFT_PAREN   {std::numeric_limits<int>::max()};
-constexpr int32_t OP_RIGHT_PAREN  {std::numeric_limits<int>::max() - 1};
-constexpr int32_t OP_COMPLEMENT   {std::numeric_limits<int>::max() - 2};
-constexpr int32_t OP_INTERSECTION {std::numeric_limits<int>::max() - 3};
-constexpr int32_t OP_UNION        {std::numeric_limits<int>::max() - 4};
+constexpr int32_t OP_LEFT_PAREN   {std::numeric_limits<int32_t>::max()};
+constexpr int32_t OP_RIGHT_PAREN  {std::numeric_limits<int32_t>::max() - 1};
+constexpr int32_t OP_COMPLEMENT   {std::numeric_limits<int32_t>::max() - 2};
+constexpr int32_t OP_INTERSECTION {std::numeric_limits<int32_t>::max() - 3};
+constexpr int32_t OP_UNION        {std::numeric_limits<int32_t>::max() - 4};
+
+extern "C" double FP_PRECISION;
 
 //==============================================================================
 //! Convert region specification string to integer tokens.
@@ -125,7 +127,7 @@ generate_rpn(int32_t cell_id, std::vector<int32_t> infix)
     } else if (token < OP_RIGHT_PAREN) {
       // Regular operators union, intersection, complement
       while (stack.size() > 0) {
-        int op = stack.back();
+        int32_t op = stack.back();
 
         if (op < OP_RIGHT_PAREN &&
              ((token == OP_COMPLEMENT && token < op) ||
@@ -172,7 +174,7 @@ generate_rpn(int32_t cell_id, std::vector<int32_t> infix)
   }
 
   while (stack.size() > 0) {
-    int op = stack.back();
+    int32_t op = stack.back();
 
     // If the operator is a parenthesis it is mismatched.
     if (op >= OP_RIGHT_PAREN) {
@@ -235,7 +237,7 @@ Cell::Cell(pugi::xml_node cell_node)
 
   // Check if this is a simple cell.
   simple = true;
-  for (int token : rpn) {
+  for (int32_t token : rpn) {
     if ((token == OP_COMPLEMENT) || (token == OP_UNION)) {
       simple = false;
       break;
@@ -244,13 +246,43 @@ Cell::Cell(pugi::xml_node cell_node)
 }
 
 bool
-Cell::contains(const double xyz[3], const double uvw[3], int on_surface) const
+Cell::contains(const double xyz[3], const double uvw[3],
+               int32_t on_surface) const
 {
   if (simple) {
     return contains_simple(xyz, uvw, on_surface);
   } else {
     return contains_complex(xyz, uvw, on_surface);
   }
+}
+
+std::pair<double, int32_t>
+Cell::distance(const double xyz[3], const double uvw[3],
+               int32_t on_surface) const
+{
+  double min_dist {INFTY};
+  int32_t i_surf {std::numeric_limits<int32_t>::max()};
+
+  for (int32_t token : rpn) {
+    // Ignore this token if it corresponds to an operator rather than a region.
+    if (token >= OP_UNION) {continue;}
+
+    // Calculate the distance to this surface.
+    // Note the off-by-one indexing
+    bool coincident {token == on_surface};
+    double d {surfaces_c[abs(token)-1]->distance(xyz, uvw, coincident)};
+    //std::cout << token << " " << on_surface << " " << coincident << std::endl;
+
+    // Check if this distance is the new minimum.
+    if (d < min_dist) {
+      if (std::abs(d - min_dist) / min_dist >= FP_PRECISION) {
+        min_dist = d;
+        i_surf = -token;
+      }
+    }
+  }
+
+  return {min_dist, i_surf};
 }
 
 void
@@ -268,14 +300,33 @@ Cell::to_hdf5(hid_t cell_group) const
   //TODO: Lookup universe id in universe_dict
   //write_int(cell_group, "universe", universe);
 
+  // Write the region specification.
+  std::stringstream region_spec {};
+  for (int32_t token : region) {
+    if (token == OP_LEFT_PAREN) {
+      region_spec << " (";
+    } else if (token == OP_RIGHT_PAREN) {
+      region_spec << " )";
+    } else if (token == OP_COMPLEMENT) {
+      region_spec << " ~";
+    } else if (token == OP_INTERSECTION) {
+    } else if (token == OP_UNION) {
+      region_spec << " |";
+    } else {
+      // Note the off-by-one indexing
+      region_spec << " " << copysign(surfaces_c[abs(token)-1]->id, token);
+    }
+  }
+  write_string(cell_group, "region", region_spec.str());
+
 //  close_group(cell_group);
 }
 
 bool
-Cell::contains_simple(const double xyz[3], const double uvw[3], int on_surface)
-const
+Cell::contains_simple(const double xyz[3], const double uvw[3],
+                      int32_t on_surface) const
 {
-  for (int token : rpn) {
+  for (int32_t token : rpn) {
     if (token < OP_UNION) {
       // If the token is not an operator, evaluate the sense of particle with
       // respect to the surface and see if the token matches the sense. If the
@@ -295,15 +346,15 @@ const
 }
 
 bool
-Cell::contains_complex(const double xyz[3], const double uvw[3], int on_surface)
-const
+Cell::contains_complex(const double xyz[3], const double uvw[3],
+                       int32_t on_surface) const
 {
   // Make a stack of booleans.  We don't know how big it needs to be, but we do
   // know that rpn.size() is an upper-bound.
   bool stack[rpn.size()];
   int i_stack = -1;
 
-  for (int token : rpn) {
+  for (int32_t token : rpn) {
     // If the token is a binary operator (intersection/union), apply it to
     // the last two items on the stack. If the token is a unary operator
     // (complement), apply it to the last item on the stack.
@@ -369,7 +420,7 @@ read_cells(pugi::xml_node *node)
 //==============================================================================
 
 extern "C" {
-  Cell* cell_pointer(int cell_ind) {return &cells_c[cell_ind];}
+  Cell* cell_pointer(int32_t cell_ind) {return &cells_c[cell_ind];}
 
   int32_t cell_id(Cell *c) {return c->id;}
 
@@ -381,8 +432,16 @@ extern "C" {
 
   bool cell_simple(Cell *c) {return c->simple;}
 
-  bool cell_contains(Cell *c, double xyz[3], double uvw[3], int on_surface)
+  bool cell_contains(Cell *c, double xyz[3], double uvw[3], int32_t on_surface)
   {return c->contains(xyz, uvw, on_surface);}
+
+  void cell_distance(Cell *c, double xyz[3], double uvw[3], int32_t on_surface,
+                     double &min_dist, int32_t &i_surf)
+  {
+    std::pair<double, int32_t> out = c->distance(xyz, uvw, on_surface);
+    min_dist = out.first;
+    i_surf = out.second;
+  }
 
   void cell_to_hdf5(Cell *c, hid_t group) {c->to_hdf5(group);}
 }

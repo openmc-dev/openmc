@@ -13,10 +13,6 @@
 namespace openmc {
 
 //==============================================================================
-// Module constants
-//==============================================================================
-
-//==============================================================================
 // Global variables
 //==============================================================================
 
@@ -66,7 +62,11 @@ public:
   //! @param on_surface The signed index of a surface that the coordinate is
   //!   known to be on.  This index takes precedence over surface sense
   //!   calculations.
-  bool contains(const double xyz[3], const double uvw[3], int on_surface) const;
+  bool
+  contains(const double xyz[3], const double uvw[3], int32_t on_surface) const;
+
+  std::pair<double, int32_t>
+  distance(const double xyz[3], const double uvw[3], int32_t on_surface) const;
 
   //! Write all information needed to reconstruct the cell to an HDF5 group.
   //! @param group_id An HDF5 group id.
@@ -74,9 +74,9 @@ public:
 
 protected:
   bool contains_simple(const double xyz[3], const double uvw[3],
-                       int on_surface) const;
+                       int32_t on_surface) const;
   bool contains_complex(const double xyz[3], const double uvw[3],
-                        int on_surface) const;
+                        int32_t on_surface) const;
 };
 
 } // namespace openmc

@@ -19,8 +19,8 @@ module geometry_header
     function cell_pointer_c(cell_ind) bind(C, name='cell_pointer') result(ptr)
       use ISO_C_BINDING
       implicit none
-      integer(C_INT), intent(in), value :: cell_ind
-      type(C_PTR)                       :: ptr
+      integer(C_INT32_T), intent(in), value :: cell_ind
+      type(C_PTR)                           :: ptr
     end function cell_pointer_c
 
     function cell_id_c(cell_ptr) bind(C, name='cell_id') result(id)
@@ -59,6 +59,18 @@ module geometry_header
       type(C_PTR), intent(in), value :: cell_ptr
       logical(C_BOOL)                :: simple
     end function cell_simple_c
+
+    subroutine cell_distance_c(cell_ptr, xyz, uvw, on_surface, min_dist, &
+                               i_surf) bind(C, name="cell_distance")
+      use ISO_C_BINDING
+      implicit none
+      type(C_PTR),        intent(in), value :: cell_ptr
+      real(C_DOUBLE),     intent(in)        :: xyz(3)
+      real(C_DOUBLE),     intent(in)        :: uvw(3)
+      integer(C_INT32_T), intent(in), value :: on_surface
+      real(C_DOUBLE),     intent(out)       :: min_dist
+      integer(C_INT32_T), intent(out)       :: i_surf
+    end subroutine cell_distance_c
 
     subroutine cell_to_hdf5_c(cell_ptr, group) bind(C, name='cell_to_hdf5')
       use ISO_C_BINDING
@@ -212,6 +224,7 @@ module geometry_header
     procedure :: universe => cell_universe
     procedure :: set_universe => cell_set_universe
     procedure :: simple => cell_simple
+    procedure :: distance => cell_distance
     procedure :: to_hdf5 => cell_to_hdf5
 
   end type Cell
@@ -427,17 +440,27 @@ contains
     call cell_set_universe_c(this % ptr, universe)
   end subroutine cell_set_universe
 
-  subroutine cell_to_hdf5(this, group)
-    class(Cell),    intent(in) :: this
-    integer(HID_T), intent(in) :: group
-    call cell_to_hdf5_c(this % ptr, group)
-  end subroutine cell_to_hdf5
-
   function cell_simple(this) result(simple)
     class(Cell), intent(in) :: this
     logical(C_BOOL)         :: simple
     simple = cell_simple_c(this % ptr)
   end function cell_simple
+
+  subroutine cell_distance(this, xyz, uvw, on_surface, min_dist, i_surf)
+    class(Cell),        intent(in)  :: this
+    real(C_DOUBLE),     intent(in)  :: xyz(3)
+    real(C_DOUBLE),     intent(in)  :: uvw(3)
+    integer(C_INT32_T), intent(in)  :: on_surface
+    real(C_DOUBLE),     intent(out) :: min_dist
+    integer(C_INT32_T), intent(out) :: i_surf
+    call cell_distance_c(this % ptr, xyz, uvw, on_surface, min_dist, i_surf)
+  end subroutine cell_distance
+
+  subroutine cell_to_hdf5(this, group)
+    class(Cell),    intent(in) :: this
+    integer(HID_T), intent(in) :: group
+    call cell_to_hdf5_c(this % ptr, group)
+  end subroutine cell_to_hdf5
 
 !===============================================================================
 ! GET_TEMPERATURES returns a list of temperatures that each nuclide/S(a,b) table

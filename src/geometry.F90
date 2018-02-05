@@ -19,11 +19,11 @@ module geometry
          bind(C, name="cell_contains") result(in_cell)
       use ISO_C_BINDING
       implicit none
-      type(C_PTR),    intent(in), value :: cell_ptr
-      real(C_DOUBLE), intent(in)        :: xyz(3)
-      real(C_DOUBLE), intent(in)        :: uvw(3)
-      integer(C_INT), intent(in), value :: on_surface
-      logical(C_BOOL)                   :: in_cell
+      type(C_PTR),        intent(in), value :: cell_ptr
+      real(C_DOUBLE),     intent(in)        :: xyz(3)
+      real(C_DOUBLE),     intent(in)        :: uvw(3)
+      integer(C_INT32_T), intent(in), value :: on_surface
+      logical(C_BOOL)                       :: in_cell
     end function cell_contains_c
   end interface
 
@@ -368,9 +368,7 @@ contains
     integer,        intent(out)   :: lattice_translation(3)
     integer,        intent(out)   :: next_level
 
-    integer :: i                  ! index for surface in cell
     integer :: j
-    integer :: index_surf         ! index in surfaces array (with sign)
     integer :: i_xyz(3)           ! lattice indices
     integer :: level_surf_cross   ! surface crossed on current level
     integer :: level_lat_trans(3) ! lattice translation on current level
@@ -387,7 +385,6 @@ contains
     real(8) :: x0,y0,z0           ! coefficients for surface
     real(8) :: xyz_cross(3)       ! coordinates at projected surface crossing
     real(8) :: surf_uvw(3)        ! surface normal direction
-    logical :: coincident         ! is particle on surface?
     type(Cell),       pointer :: c
     class(Lattice),   pointer :: lat
 
@@ -413,27 +410,8 @@ contains
       ! =======================================================================
       ! FIND MINIMUM DISTANCE TO SURFACE IN THIS CELL
 
-      SURFACE_LOOP: do i = 1, size(c % region)
-        index_surf = c % region(i)
-        coincident = (index_surf == p % surface)
-
-        ! ignore this token if it corresponds to an operator rather than a
-        ! region.
-        index_surf = abs(index_surf)
-        if (index_surf >= OP_UNION) cycle
-
-        ! Calculate distance to surface
-        d = surfaces(index_surf) % distance(p % coord(j) % xyz, &
-             p % coord(j) % uvw, logical(coincident, kind=C_BOOL))
-
-        ! Check if calculated distance is new minimum
-        if (d < d_surf) then
-          if (abs(d - d_surf)/d_surf >= FP_PRECISION) then
-            d_surf = d
-            level_surf_cross = -c % region(i)
-          end if
-        end if
-      end do SURFACE_LOOP
+      call c % distance(p % coord(j) % xyz, p % coord(j) % uvw, p % surface, &
+                        d_surf, level_surf_cross)
 
       ! =======================================================================
       ! FIND MINIMUM DISTANCE TO LATTICE SURFACES

@@ -92,7 +92,7 @@ class Universe(IDManagerMixin):
             return openmc.Union(regions).bounding_box
         else:
             # Infinite bounding box
-            return openmc.Intersection().bounding_box
+            return openmc.Intersection([]).bounding_box
 
     @name.setter
     def name(self, name):
@@ -322,7 +322,7 @@ class Universe(IDManagerMixin):
         if not isinstance(cell, openmc.Cell):
             msg = 'Unable to add a Cell to Universe ID="{0}" since "{1}" is not ' \
                   'a Cell'.format(self._id, cell)
-            raise ValueError(msg)
+            raise TypeError(msg)
 
         cell_id = cell.id
 
@@ -342,7 +342,7 @@ class Universe(IDManagerMixin):
         if not isinstance(cells, Iterable):
             msg = 'Unable to add Cells to Universe ID="{0}" since "{1}" is not ' \
                   'iterable'.format(self._id, cells)
-            raise ValueError(msg)
+            raise TypeError(msg)
 
         for cell in cells:
             self.add_cell(cell)
@@ -360,7 +360,7 @@ class Universe(IDManagerMixin):
         if not isinstance(cell, openmc.Cell):
             msg = 'Unable to remove a Cell from Universe ID="{0}" since "{1}" is ' \
                   'not a Cell'.format(self._id, cell)
-            raise ValueError(msg)
+            raise TypeError(msg)
 
         # If the Cell is in the Universe's list of Cells, delete it
         if cell.id in self._cells:

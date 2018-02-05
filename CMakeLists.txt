@@ -1,4 +1,4 @@
-cmake_minimum_required(VERSION 2.8.12 FATAL_ERROR)
+cmake_minimum_required(VERSION 3.0 FATAL_ERROR)
 project(openmc Fortran C CXX)
 
 # Setup output directories
@@ -19,11 +19,6 @@ include_directories(${CMAKE_BINARY_DIR}/include)
 
 if (${UNIX})
   add_definitions(-DUNIX)
-endif()
-
-# Set MACOSX_RPATH
-if(POLICY CMP0042)
-  cmake_policy(SET CMP0042 NEW)
 endif()
 
 #===============================================================================
@@ -506,68 +501,3 @@ install(TARGETS ${program} libopenmc
 install(DIRECTORY src/relaxng DESTINATION share/openmc)
 install(FILES man/man1/openmc.1 DESTINATION share/man/man1)
 install(FILES LICENSE DESTINATION "share/doc/${program}" RENAME copyright)
-
-find_package(PythonInterp)
-if(PYTHONINTERP_FOUND)
-  if(debian)
-    install(CODE "execute_process(
-                    COMMAND ${PYTHON_EXECUTABLE} setup.py install
-                    --root=debian/openmc --install-layout=deb
-                    WORKING_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR})")
-  else()
-    install(CODE "set(ENV{PYTHONPATH} \"${CMAKE_INSTALL_PREFIX}/lib/python${PYTHON_VERSION_MAJOR}.${PYTHON_VERSION_MINOR}/site-packages\")")
-    install(CODE "execute_process(
-                    COMMAND ${PYTHON_EXECUTABLE} setup.py install
-                    --prefix=${CMAKE_INSTALL_PREFIX}
-                    WORKING_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR})")
-  endif()
-endif()
-
-#===============================================================================
-# Regression tests
-#===============================================================================
-
-# This allows for dashboard configuration
-include(CTest)
-
-# Get a list of all the tests to run
-file(GLOB_RECURSE TESTS ${CMAKE_CURRENT_SOURCE_DIR}/tests/test_*.py)
-
-# Loop through all the tests
-foreach(test ${TESTS})
-  # Remove unit tests
-  if(test MATCHES ".*unit_tests.*")
-    continue()
-  endif()
-
-  # Get test information
-  get_filename_component(TEST_NAME ${test} NAME)
-  get_filename_component(TEST_PATH ${test} PATH)
-
-  if (DEFINED ENV{MEM_CHECK})
-    # Generate input files if needed
-    if (NOT EXISTS "${TEST_PATH}/geometry.xml")
-      execute_process(COMMAND ${PYTHON_EXECUTABLE} ${TEST_NAME} --build-inputs
-        WORKING_DIRECTORY ${TEST_PATH})
-    endif()
-
-    # Add serial test
-    add_test(NAME ${TEST_NAME}
-      WORKING_DIRECTORY ${TEST_PATH}
-      COMMAND $<TARGET_FILE:openmc>)
-  else()
-    # Check serial/parallel
-    if (${MPI_ENABLED})
-      # Preform a parallel test
-      add_test(NAME ${TEST_NAME}
-        WORKING_DIRECTORY ${TEST_PATH}
-        COMMAND ${PYTHON_EXECUTABLE} ${TEST_NAME} --exe $<TARGET_FILE:openmc>
-        --mpi_exec ${MPI_DIR}/mpiexec)
-    else()
-      # Perform a serial test
-      add_test(NAME ${TEST_NAME}
-        WORKING_DIRECTORY ${TEST_PATH}
-        COMMAND ${PYTHON_EXECUTABLE} ${TEST_NAME} --exe $<TARGET_FILE:openmc>)
-    endif()
-  endif()
-endforeach(test)

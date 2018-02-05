@@ -101,3 +101,5 @@ examples/jupyter/plots
 .cache/
 .tox/
 .python-version
+.coverage
+htmlcov

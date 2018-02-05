@@ -10,10 +10,10 @@ import shutil
 import sys
 
 import numpy as np
-
-sys.path.insert(0, os.path.join(os.pardir, os.pardir))
 import openmc
 from openmc.examples import pwr_core
+
+from tests.regression_tests import config
 
 
 class TestHarness(object):
@@ -21,19 +21,10 @@ class TestHarness(object):
 
     def __init__(self, statepoint_name):
         self._sp_name = statepoint_name
-        self.parser = OptionParser()
-        self.parser.add_option('--exe', dest='exe', default='openmc')
-        self.parser.add_option('--mpi_exec', dest='mpi_exec', default=None)
-        self.parser.add_option('--mpi_np', dest='mpi_np', default='2')
-        self.parser.add_option('--update', dest='update', action='store_true',
-                               default=False)
-        self._opts = None
-        self._args = None
 
     def main(self):
         """Accept commandline arguments and either run or update tests."""
-        (self._opts, self._args) = self.parser.parse_args()
-        if self._opts.update:
+        if config['update']:
             self.update_results()
         else:
             self.execute_test()
@@ -61,11 +52,11 @@ class TestHarness(object):
             self._cleanup()
 
     def _run_openmc(self):
-        if self._opts.mpi_exec is not None:
-            openmc.run(openmc_exec=self._opts.exe,
-                       mpi_args=[self._opts.mpi_exec, '-n', self._opts.mpi_np])
+        if config['mpi']:
+            mpi_args = [config['mpiexec'], '-n', config['mpi_np']]
+            openmc.run(openmc_exec=config['exe'], mpi_args=mpi_args)
         else:
-            openmc.run(openmc_exec=self._opts.exe)
+            openmc.run(openmc_exec=config['exe'])
 
     def _test_output_created(self):
         """Make sure statepoint.* and tallies.out have been created."""
@@ -180,9 +171,9 @@ class ParticleRestartTestHarness(TestHarness):
 
     def _run_openmc(self):
         # Set arguments
-        args = {'openmc_exec': self._opts.exe}
-        if self._opts.mpi_exec is not None:
-            args['mpi_args'] = [self._opts.mpi_exec, '-n', self._opts.mpi_np]
+        args = {'openmc_exec': config['exe']}
+        if config['mpi']:
+            args['mpi_args'] = [config['mpiexec'], '-n', config['mpi_np']]
 
         # Initial run
         openmc.run(**args)
@@ -232,8 +223,6 @@ class ParticleRestartTestHarness(TestHarness):
 class PyAPITestHarness(TestHarness):
     def __init__(self, statepoint_name, model=None):
         super(PyAPITestHarness, self).__init__(statepoint_name)
-        self.parser.add_option('-b', '--build-inputs', dest='build_only',
-                               action='store_true', default=False)
         if model is None:
             self._model = pwr_core()
         else:
@@ -243,10 +232,9 @@ class PyAPITestHarness(TestHarness):
 
     def main(self):
         """Accept commandline arguments and either run or update tests."""
-        (self._opts, self._args) = self.parser.parse_args()
-        if self._opts.build_only:
+        if config['build_inputs']:
             self._build_inputs()
-        elif self._opts.update:
+        elif config['update']:
             self.update_results()
         else:
             self.execute_test()

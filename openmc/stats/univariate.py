@@ -194,12 +194,12 @@ class Maxwell(Univariate):
     Parameters
     ----------
     theta : float
-        Effective temperature for distribution
+        Effective temperature for distribution in eV
 
     Attributes
     ----------
     theta : float
-        Effective temperature for distribution
+        Effective temperature for distribution in eV
 
     """
 
@@ -250,16 +250,16 @@ class Watt(Univariate):
     Parameters
     ----------
     a : float
-        First parameter of distribution
+        First parameter of distribution in units of eV
     b : float
-        Second parameter of distribution
+        Second parameter of distribution in units of 1/eV
 
     Attributes
     ----------
     a : float
-        First parameter of distribution
+        First parameter of distribution in units of eV
     b : float
-        Second parameter of distribution
+        Second parameter of distribution in units of 1/eV
 
     """
 
@@ -444,10 +444,9 @@ class Legendre(Univariate):
     def coefficients(self, coefficients):
         cv.check_type('Legendre expansion coefficients', coefficients,
                       Iterable, Real)
-        for l in range(len(coefficients)):
-            coefficients[l] *= (2.*l + 1.)/2.
-        self._legendre_polynomial = np.polynomial.legendre.Legendre(
-            coefficients)
+        l = np.arange(len(coefficients))
+        coeffs = (2.*l + 1.)/2. * np.array(coefficients)
+        self._legendre_polynomial = np.polynomial.Legendre(coeffs)
 
     def to_xml_element(self, element_name):
         raise NotImplementedError

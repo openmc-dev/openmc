@@ -193,11 +193,13 @@ contains
 
       if (this % domain_type == FILTER_MATERIAL) then
         i_material = p % material
-        do i_domain = 1, size(this % domain_id)
-          if (i_material == materials(i_domain) % id) then
-            call check_hit(i_domain, i_material, indices, hits, n_mat)
-          end if
-        end do
+        if (i_material /= MATERIAL_VOID) then
+          do i_domain = 1, size(this % domain_id)
+            if (materials(i_material) % id == this % domain_id(i_domain)) then
+              call check_hit(i_domain, i_material, indices, hits, n_mat)
+            end if
+          end do
+        end if
 
       elseif (this % domain_type == FILTER_CELL) THEN
         do level = 1, p % n_coord

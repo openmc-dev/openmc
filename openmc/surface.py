@@ -1376,7 +1376,7 @@ class Cone(Surface):
 
     @property
     def r2(self):
-        return self.coefficients['r2']
+        return self.coefficients['R2']
 
     @x0.setter
     def x0(self, x0):

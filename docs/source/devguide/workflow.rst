@@ -89,139 +89,6 @@ features and bug fixes. The general steps for contributing are as follows:
 6. After the pull request has been thoroughly vetted, it is merged back into the
    *develop* branch of mit-crpg/openmc.
 
-.. _test suite:
-
-OpenMC Test Suite
------------------
-
-The purpose of this test suite is to ensure that OpenMC compiles using various
-combinations of compiler flags and options, and that all user input options can
-be used successfully without breaking the code. The test suite is comprised of
-regression tests where different types of input files are configured and the
-full OpenMC code is executed. Results from simulations are compared with
-expected results. The test suite is comprised of many build configurations
-(e.g. debug, mpi, hdf5) and the actual tests which reside in sub-directories
-in the tests directory. We recommend to developers to test their branches
-before submitting a formal pull request using gfortran and Intel compilers
-if available.
-
-The test suite is designed to integrate with cmake using ctest_.  It is
-configured to run with cross sections from NNDC_ augmented with 0 K elastic
-scattering data for select nuclides as well as multipole data. To download the
-proper data, run the following commands:
-
-.. code-block:: sh
-
-    wget -O nndc_hdf5.tar.xz $(cat <openmc_root>/.travis.yml | grep anl.box | awk '{print $2}')
-    tar xJvf nndc_hdf5.tar.xz
-    export OPENMC_CROSS_SECTIONS=$(pwd)/nndc_hdf5/cross_sections.xml
-
-    git clone --branch=master git://github.com/smharper/windowed_multipole_library.git wmp_lib
-    tar xzvf wmp_lib/multipole_lib.tar.gz
-    export OPENMC_MULTIPOLE_LIBRARY=$(pwd)/multipole_lib
-
-The test suite can be run on an already existing build using:
-
-.. code-block:: sh
-
-    cd build
-    make test
-
-or
-
-.. code-block:: sh
-
-    cd build
-    ctest
-
-There are numerous ctest_ command line options that can be set to have
-more control over which tests are executed.
-
-Before running the test suite python script, the following environmental
-variables should be set if the default paths are incorrect:
-
-    * **FC** - The command for a Fortran compiler (e.g. gfotran, ifort).
-
-        * Default - *gfortran*
-
-    * **CC** - The command for a C compiler (e.g. gcc, icc).
-
-        * Default - *gcc*
-
-    * **CXX** - The command for a C++ compiler (e.g. g++, icpc).
-
-        * Default - *g++*
-
-    * **MPI_DIR** - The path to the MPI directory.
-
-        * Default - */opt/mpich/3.2-gnu*
-
-    * **HDF5_DIR** - The path to the HDF5 directory.
-
-        * Default - */opt/hdf5/1.8.16-gnu*
-
-    * **PHDF5_DIR** - The path to the parallel HDF5 directory.
-
-        * Default - */opt/phdf5/1.8.16-gnu*
-
-To run the full test suite, the following command can be executed in the
-tests directory:
-
-.. code-block:: sh
-
-    python run_tests.py
-
-A subset of build configurations and/or tests can be run. To see how to use
-the script run:
-
-.. code-block:: sh
-
-    python run_tests.py --help
-
-As an example, say we want to run all tests with debug flags only on tests
-that have cone and plot in their name. Also, we would like to run this on
-4 processors. We can run:
-
-.. code-block:: sh
-
-    python run_tests.py -j 4 -C debug -R "cone|plot"
-
-Note that standard regular expression syntax is used for selecting build
-configurations and tests. To print out a list of build configurations, we
-can run:
-
-.. code-block:: sh
-
-    python run_tests.py -p
-
-Adding tests to test suite
-++++++++++++++++++++++++++
-
-To add a new test to the test suite, create a sub-directory in the tests
-directory that conforms to the regular expression *test_*. To configure
-a test you need to add the following files to your new test directory,
-*test_name* for example:
-
-    * OpenMC input XML files
-    * **test_name.py** - Python test driver script, please refer to other
-      tests to see how to construct. Any output files that are generated
-      during testing must be removed at the end of this script.
-    * **inputs_true.dat** - ASCII file that contains Python API-generated XML
-      files concatenated together. When the test is run, inputs that are
-      generated are compared to this file.
-    * **results_true.dat** - ASCII file that contains the expected results
-      from the test. The file *results_test.dat* is compared to this file
-      during the execution of the python test driver script. When the
-      above files have been created, generate a *results_test.dat* file and
-      copy it to this name and commit. It should be noted that this file
-      should be generated with basic compiler options during openmc
-      configuration and build (e.g., no MPI/HDF5, no debug/optimization).
-
-In addition to this description, please see the various types of tests that
-are already included in the test suite to see how to create them. If all is
-implemented correctly, the new test directory will automatically be added
-to the CTest framework.
-
 Private Development
 -------------------
 
@@ -236,6 +103,27 @@ changes you've made in your private repository back to mit-crpg/openmc
 repository, simply follow the steps above with an extra step of pulling a branch
 from your private repository into a public fork.
 
+.. _devguide_editable:
+
+Working in "Development" Mode
+-----------------------------
+
+If you are making changes to the Python API during development, it is highly
+suggested to install the Python API in development/editable mode using
+pip_. From the root directory of the OpenMC repository, run:
+
+.. code-block:: sh
+
+    pip install -e .[test]
+
+This installs the OpenMC Python package in `"editable" mode
+<https://pip.pypa.io/en/stable/reference/pip_install/#editable-installs>`_ so
+that 1) it can be imported from a Python interpreter and 2) any changes made are
+immediately reflected in the installed version (that is, you don't need to keep
+reinstalling it). While the same effect can be achieved using the
+:envvar:`PYTHONPATH` environment variable, this is generally discouraged as it
+can interfere with virtual environments.
+
 .. _git: http://git-scm.com/
 .. _GitHub: https://github.com/
 .. _git flow: http://nvie.com/git-model
@@ -247,3 +135,4 @@ from your private repository into a public fork.
 .. _Bitbucket: https://bitbucket.org
 .. _ctest: http://www.cmake.org/cmake/help/v2.8.12/ctest.html
 .. _NNDC:  http://www.nndc.bnl.gov/endf/b7.1/acefiles.html
+.. _pip: https://pip.pypa.io/en/stable/

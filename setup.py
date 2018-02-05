@@ -26,7 +26,7 @@ with open('openmc/__init__.py', 'r') as f:
 kwargs = {
     'name': 'openmc',
     'version': version,
-    'packages': find_packages(),
+    'packages': find_packages(exclude=['tests*']),
     'scripts': glob.glob('scripts/openmc-*'),
 
     # Data files and librarries

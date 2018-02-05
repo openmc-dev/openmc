@@ -103,7 +103,7 @@ contains
       if (p % material /= MATERIAL_VOID) then
         if (run_CE) then
           if (p % material /= p % last_material .or. &
-             p % sqrtkT /= p % last_sqrtkT) then
+               p % sqrtkT /= p % last_sqrtkT) then
             ! If the material is the same as the last material and the
             ! temperature hasn't changed, we don't need to lookup cross
             ! sections again.

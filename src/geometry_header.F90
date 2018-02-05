@@ -79,6 +79,29 @@ module geometry_header
       type(C_PTR),    intent(in), value :: cell_ptr
       integer(HID_T), intent(in), value :: group
     end subroutine cell_to_hdf5_c
+
+    function lattice_pointer_c(lat_ind) bind(C, name='lattice_pointer') &
+         result(ptr)
+      use ISO_C_BINDING
+      implicit none
+      integer(C_INT32_T), intent(in), value :: lat_ind
+      type(C_PTR)                           :: ptr
+    end function lattice_pointer_c
+
+    function lattice_id_c(lat_ptr) bind(C, name='lattice_id') result(id)
+      use ISO_C_BINDING
+      implicit none
+      type(C_PTR), intent(in), value :: lat_ptr
+      integer(C_INT32_T)             :: id
+    end function lattice_id_c
+
+    subroutine lattice_to_hdf5_c(lat_ptr, group) bind(C, name='lattice_to_hdf5')
+      use ISO_C_BINDING
+      use hdf5
+      implicit none
+      type(C_PTR),    intent(in), value :: lat_ptr
+      integer(HID_T), intent(in), value :: group
+    end subroutine lattice_to_hdf5_c
   end interface
 
 !===============================================================================
@@ -99,8 +122,9 @@ module geometry_header
 !===============================================================================
 
   type, abstract :: Lattice
-    integer              :: id               ! Universe number for lattice
-    character(len=104)   :: name = ""        ! User-defined name
+    type(C_PTR) :: ptr
+
+    !integer              :: id               ! Universe number for lattice
     real(8), allocatable :: pitch(:)         ! Pitch along each axis
     integer, allocatable :: universes(:,:,:) ! Specified universes
     integer              :: outside          ! Material to fill area outside
@@ -108,6 +132,10 @@ module geometry_header
     logical              :: is_3d            ! Lattice has cells on z axis
     integer, allocatable :: offset(:,:,:,:)  ! Distribcell offsets
   contains
+
+    procedure :: id => lattice_id
+    procedure :: to_hdf5 => lattice_to_hdf5
+
     procedure(lattice_are_valid_indices_), deferred :: are_valid_indices
     procedure(lattice_get_indices_),       deferred :: get_indices
     procedure(lattice_get_local_xyz_),     deferred :: get_local_xyz
@@ -246,6 +274,18 @@ module geometry_header
   type(DictIntInt) :: lattice_dict
 
 contains
+
+  function lattice_id(this) result(id)
+    class(Lattice), intent(in) :: this
+    integer(C_INT32_T)         :: id
+    id = lattice_id_c(this % ptr)
+  end function lattice_id
+
+  subroutine lattice_to_hdf5(this, group)
+    class(Lattice), intent(in) :: this
+    integer(HID_T), intent(in) :: group
+    call lattice_to_hdf5_c(this % ptr, group)
+  end subroutine lattice_to_hdf5
 
 !===============================================================================
 

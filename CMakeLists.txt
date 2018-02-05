@@ -439,6 +439,8 @@ set(LIBOPENMC_CXX_SRC
   src/cell.h
   src/error.h
   src/hdf5_interface.h
+  src/lattice.cpp
+  src/lattice.h
   src/random_lcg.cpp
   src/random_lcg.h
   src/surface.cpp

@@ -200,7 +200,7 @@ contains
 
       case (FILL_LATTICE)
         call write_dataset(cell_group, "fill_type", "lattice")
-        call write_dataset(cell_group, "lattice", lattices(c%fill)%obj%id)
+        call write_dataset(cell_group, "lattice", lattices(c%fill)%obj%id())
       end select
 
       call close_group(cell_group)
@@ -258,10 +258,11 @@ contains
     ! Write information on each lattice
     LATTICE_LOOP: do i = 1, n_lattices
       lat => lattices(i)%obj
-      lattice_group = create_group(lattices_group, "lattice " // trim(to_str(lat%id)))
+      lattice_group = create_group(lattices_group, "lattice " // trim(to_str(lat%id())))
+
+      call lat % to_hdf5(lattice_group)
 
       ! Write name, pitch, and outer universe
-      call write_dataset(lattice_group, "name", lat%name)
       call write_dataset(lattice_group, "pitch", lat%pitch)
       if (lat % outer > 0) then
         call write_dataset(lattice_group, "outer", universes(lat % outer) % id)

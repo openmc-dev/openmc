@@ -60,6 +60,12 @@ module input_xml
       implicit none
       type(C_PTR) :: node_ptr
     end subroutine read_cells
+
+    subroutine read_lattices(node_ptr) bind(C)
+      use ISO_C_BINDING
+      implicit none
+      type(C_PTR) :: node_ptr
+    end subroutine read_lattices
   end interface
 
 contains
@@ -1240,6 +1246,8 @@ contains
     ! ==========================================================================
     ! READ LATTICES FROM GEOMETRY.XML
 
+    call read_lattices(root % ptr)
+
     ! Get pointer to list of XML <lattice>
     call get_node_list(root, "lattice", node_rlat_list)
     call get_node_list(root, "hex_lattice", node_hlat_list)
@@ -1253,29 +1261,12 @@ contains
     RECT_LATTICES: do i = 1, n_rlats
       allocate(RectLattice::lattices(i) % obj)
       lat => lattices(i) % obj
+      lat % ptr = lattice_pointer_c(i - 1)
       select type(lat)
       type is (RectLattice)
 
       ! Get pointer to i-th lattice
       node_lat = node_rlat_list(i)
-
-      ! ID of lattice
-      if (check_for_node(node_lat, "id")) then
-        call get_node_value(node_lat, "id", lat % id)
-      else
-        call fatal_error("Must specify id of lattice in geometry XML file.")
-      end if
-
-      ! Check to make sure 'id' hasn't been used
-      if (lattice_dict % has(lat % id)) then
-        call fatal_error("Two or more lattices use the same unique ID: " &
-             // to_str(lat % id))
-      end if
-
-      ! Copy lattice name
-      if (check_for_node(node_lat, "name")) then
-        call get_node_value(node_lat, "name", lat % name)
-      end if
 
       ! Read number of lattice cells in each dimension
       n = node_word_count(node_lat, "dimension")
@@ -1341,7 +1332,7 @@ contains
       n = node_word_count(node_lat, "universes")
       if (n /= n_x*n_y*n_z) then
         call fatal_error("Number of universes on <universes> does not match &
-             &size of lattice " // trim(to_str(lat % id)) // ".")
+             &size of lattice " // trim(to_str(lat % id())) // ".")
       end if
 
       allocate(temp_int_array(n))
@@ -1377,7 +1368,7 @@ contains
       end if
 
       ! Add lattice to dictionary
-      call lattice_dict % set(lat % id, i)
+      call lattice_dict % set(lat % id(), i)
 
       end select
     end do RECT_LATTICES
@@ -1385,29 +1376,12 @@ contains
     HEX_LATTICES: do i = 1, n_hlats
       allocate(HexLattice::lattices(n_rlats + i) % obj)
       lat => lattices(n_rlats + i) % obj
+      lat % ptr = lattice_pointer_c(n_rlats + i - 1)
       select type (lat)
       type is (HexLattice)
 
       ! Get pointer to i-th lattice
       node_lat = node_hlat_list(i)
-
-      ! ID of lattice
-      if (check_for_node(node_lat, "id")) then
-        call get_node_value(node_lat, "id", lat % id)
-      else
-        call fatal_error("Must specify id of lattice in geometry XML file.")
-      end if
-
-      ! Check to make sure 'id' hasn't been used
-      if (lattice_dict % has(lat % id)) then
-        call fatal_error("Two or more lattices use the same unique ID: " &
-             // to_str(lat % id))
-      end if
-
-      ! Copy lattice name
-      if (check_for_node(node_lat, "name")) then
-        call get_node_value(node_lat, "name", lat % name)
-      end if
 
       ! Read number of lattice cells in each dimension
       call get_node_value(node_lat, "n_rings", lat % n_rings)
@@ -1454,7 +1428,7 @@ contains
       n = node_word_count(node_lat, "universes")
       if (n /= (3*n_rings**2 - 3*n_rings + 1)*n_z) then
         call fatal_error("Number of universes on <universes> does not match &
-             &size of lattice " // trim(to_str(lat % id)) // ".")
+             &size of lattice " // trim(to_str(lat % id())) // ".")
       end if
 
       allocate(temp_int_array(n))
@@ -1564,7 +1538,7 @@ contains
       end if
 
       ! Add lattice to dictionary
-      call lattice_dict % set(lat % id, n_rlats + i)
+      call lattice_dict % set(lat % id(), n_rlats + i)
 
       end select
     end do HEX_LATTICES
@@ -4353,7 +4327,7 @@ contains
               else
                 call fatal_error("Invalid universe number " &
                      &// trim(to_str(id)) // " specified on lattice " &
-                     &// trim(to_str(lat % id)))
+                     &// trim(to_str(lat % id())))
               end if
             end do
           end do
@@ -4374,7 +4348,7 @@ contains
               else
                 call fatal_error("Invalid universe number " &
                      &// trim(to_str(id)) // " specified on lattice " &
-                     &// trim(to_str(lat % id)))
+                     &// trim(to_str(lat % id())))
               end if
             end do
           end do
@@ -4388,7 +4362,7 @@ contains
         else
           call fatal_error("Invalid universe number " &
                &// trim(to_str(lat % outer)) &
-               &// " specified on lattice " // trim(to_str(lat % id)))
+               &// " specified on lattice " // trim(to_str(lat % id())))
         end if
       end if
 

@@ -123,6 +123,8 @@ class MultiLevelBreitWignerCovariance(ResonanceRange):
         The parameters that are included in the covariance matrix
     covariance_matrix : array
         The covariance matrix contained within the ENDF evaluation
+    lcomp : int
+        Flag indicating the format of the covariance matrix
 
     """
 
@@ -210,6 +212,7 @@ class MultiLevelBreitWignerCovariance(ResonanceRange):
             mlbw = cls(energy_min, energy_max)
             mlbw.parameters = parameters
             mlbw.covariance = cov
+            mlbw.lcomp = LCOMP
 
             return mlbw
 
@@ -243,15 +246,63 @@ class MultiLevelBreitWignerCovariance(ResonanceRange):
                        'captureWidth', 'fissionWidth']
             parameters = pd.DataFrame.from_records(records, columns=columns)
 
-            # Create instance of ReichMooreCovariance
+            # Create instance of MultiLevelBreitWignerCovariance
             mlbw = cls(energy_min, energy_max)
             mlbw.parameters = parameters
             mlbw.covariance = cov
+            mlbw.lcomp = LCOMP
 
             return mlbw
 
         elif LCOMP == 0 :
-            raise TypeError('LCOMP = ' + str(LCOMP) + ' not supported')
+            cov = np.zeros([5,5])
+#            test2 = np.pad(test,((0,2),(0,2)),'constant',constant_values=0)
+            records = []
+            cov_index = 0
+            for i in range(NLS):
+                items, values = get_list_record(file_obj)
+                num_res = items[5]
+                for j in range(num_res):
+                    one_res = values[18*j:18*(j+1)]
+                    res_values = one_res[:6]
+                    cov_values = one_res[6:]
+
+                    energy = res_values[0]
+                    spin = res_values[1]
+                    gt = res_values[2]
+                    gn = res_values[3]
+                    gg = res_values[4]
+                    gf = res_values[5]
+                    records.append([energy, spin, gn, gg, gf])
+
+                    #Populate the coviariance matrix for this resonance
+                    #There are no covariances between resonances in LCOMP=0
+                    cov[cov_index,cov_index]=cov_values[0]
+                    cov[cov_index+1,cov_index+1]=cov_values[10]
+                    cov[cov_index+2,cov_index+2:cov_index+3]=cov_values[1:2]
+                    cov[cov_index+2,cov_index+4]=cov_values[4]
+                    cov[cov_index+3,cov_index+3] = cov_values[3]
+                    cov[cov_index+3,cov_index+4] = cov_values[5]
+                    cov[cov_index+4,cov_index+4] = cov_values[6]
+                    cov_index += 5
+                    if j < num_res: #Pad matrix for additional values
+                        cov = np.pad(cov,((0,5),(0,5)),'constant',
+                                constant_values=0)
+
+
+            #Create pandas DataFrame with resonance data, currently 
+            #redundant with data.IncidentNeutron.resonance
+            columns = ['energy', 'J', 'neutronWidth',
+                       'captureWidth', 'fissionWidth']
+            parameters = pd.DataFrame.from_records(records, columns=columns)
+
+            # Create instance of class
+            mlbw = cls(energy_min, energy_max)
+            mlbw.parameters = parameters
+            mlbw.covariance = cov
+            mlbw.lcomp = LCOMP
+
+            return mlbw
 
 class SingleLevelBreitWignerCovariance(MultiLevelBreitWignerCovariance):
     """Single-level Breit-Wigner resolved resonance formalism covariance data.
@@ -460,11 +511,6 @@ class ReichMooreCovariance(ResonanceRange):
             rmc.covariance = cov
 
             return rmc
-
-
-        elif LCOMP == 0:
-            raise TypeError('LCOMP = ' + str(LCOMP) + ' not supported')
-
 
 # _FORMALISMS = {0: ResonanceRange,
 #                1: SingleLevelBreitWigner,

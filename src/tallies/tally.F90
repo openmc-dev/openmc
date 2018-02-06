@@ -4258,7 +4258,7 @@ contains
     real(C_DOUBLE) :: k_tra ! Copy of batch tracklength estimate of keff
     real(C_DOUBLE) :: val
 
-#ifdef MPI
+#ifdef OPENMC_MPI
     ! Combine tally results onto master process
     if (reduce_tallies) call reduce_tally_results()
 #endif
@@ -4306,7 +4306,7 @@ contains
 ! REDUCE_TALLY_RESULTS collects all the results from tallies onto one processor
 !===============================================================================
 
-#ifdef MPI
+#ifdef OPENMC_MPI
   subroutine reduce_tally_results()
 
     integer :: i

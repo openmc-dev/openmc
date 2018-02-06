@@ -1,4 +1,4 @@
-from collections import Iterable
+from collections.abc import Iterable
 from io import StringIO
 from numbers import Real
 from warnings import warn
@@ -34,7 +34,7 @@ class AngleDistribution(EqualityMixin):
     """
 
     def __init__(self, energy, mu):
-        super(AngleDistribution, self).__init__()
+        super().__init__()
         self.energy = energy
         self.mu = mu
 

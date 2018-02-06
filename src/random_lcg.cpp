@@ -2,6 +2,9 @@
 #include <cmath>
 
 
+namespace openmc {
+
+
 // Constants
 extern "C" const int N_STREAMS         {5};
 extern "C" const int STREAM_TRACKING   {0};
@@ -130,7 +133,9 @@ prn_set_stream(int i)
 //                               API FUNCTIONS
 //==============================================================================
 
-extern "C" int
+extern "C" int64_t openmc_get_seed() {return seed;}
+
+extern "C" void
 openmc_set_seed(int64_t new_seed)
 {
   seed = new_seed;
@@ -141,5 +146,6 @@ openmc_set_seed(int64_t new_seed)
     }
     prn_set_stream(STREAM_TRACKING);
   }
-  return 0;
 }
+
+} // namespace openmc

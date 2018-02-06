@@ -1,7 +1,7 @@
 module source
 
   use hdf5, only: HID_T
-#ifdef MPI
+#ifdef OPENMC_MPI
   use message_passing
 #endif
 

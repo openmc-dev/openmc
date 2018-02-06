@@ -2,8 +2,6 @@ from numbers import Real
 import sys
 from xml.etree import ElementTree as ET
 
-from six import string_types
-
 from openmc.stats.univariate import Univariate
 from openmc.stats.multivariate import UnitSphere, Spatial
 import openmc.checkvalue as cv
@@ -78,7 +76,7 @@ class Source(object):
 
     @file.setter
     def file(self, filename):
-        cv.check_type('source file', filename, string_types)
+        cv.check_type('source file', filename, str)
         self._file = filename
 
     @space.setter

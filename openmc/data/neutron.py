@@ -1,6 +1,6 @@
-from __future__ import division, unicode_literals
 import sys
-from collections import OrderedDict, Iterable, Mapping, MutableMapping
+from collections import OrderedDict
+from collections.abc import Iterable, Mapping, MutableMapping
 from io import StringIO
 from itertools import chain
 from math import log10
@@ -10,7 +10,6 @@ import shutil
 import tempfile
 from warnings import warn
 
-from six import string_types
 import numpy as np
 import h5py
 
@@ -252,7 +251,7 @@ class IncidentNeutron(EqualityMixin):
 
     @name.setter
     def name(self, name):
-        cv.check_type('name', name, string_types)
+        cv.check_type('name', name, str)
         self._name = name
 
     @property
@@ -313,7 +312,7 @@ class IncidentNeutron(EqualityMixin):
     def urr(self, urr):
         cv.check_type('probability table dictionary', urr, MutableMapping)
         for key, value in urr:
-            cv.check_type('probability table temperature', key, string_types)
+            cv.check_type('probability table temperature', key, str)
             cv.check_type('probability tables', value, ProbabilityTables)
         self._urr = urr
 
@@ -861,10 +860,7 @@ class IncidentNeutron(EqualityMixin):
             Incident neutron continuous-energy data
 
         """
-        # Create temporary directory -- it would be preferable to use
-        # TemporaryDirectory(), but it is only available in Python 3.2
-        tmpdir = tempfile.mkdtemp()
-        try:
+        with tempfile.TemporaryDirectory() as tmpdir:
             # Run NJOY to create an ACE library
             ace_file = os.path.join(tmpdir, 'ace')
             xsdir_file = os.path.join(tmpdir, 'xsdir')
@@ -891,9 +887,5 @@ class IncidentNeutron(EqualityMixin):
                 params, xs = get_tab1_record(file_obj)
                 data.energy['0K'] = xs.x
                 data[2].xs['0K'] = xs
-
-        finally:
-            # Get rid of temporary files
-            shutil.rmtree(tmpdir)
 
         return data

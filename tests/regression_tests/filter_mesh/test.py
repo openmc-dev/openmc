@@ -5,7 +5,7 @@ from tests.testing_harness import HashedPyAPITestHarness
 
 class FilterMeshTestHarness(HashedPyAPITestHarness):
     def __init__(self, *args, **kwargs):
-        super(FilterMeshTestHarness, self).__init__(*args, **kwargs)
+        super().__init__(*args, **kwargs)
 
         # Initialize Meshes
         mesh_1d = openmc.Mesh(mesh_id=1)

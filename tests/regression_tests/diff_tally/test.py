@@ -9,7 +9,7 @@ from tests.testing_harness import PyAPITestHarness
 
 class DiffTallyTestHarness(PyAPITestHarness):
     def __init__(self, *args, **kwargs):
-        super(DiffTallyTestHarness, self).__init__(*args, **kwargs)
+        super().__init__(*args, **kwargs)
 
         # Set settings explicitly
         self._model.settings.batches = 3

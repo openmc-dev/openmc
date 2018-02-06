@@ -159,7 +159,7 @@ class MGXSTestHarness(PyAPITestHarness):
         return outstr
 
     def _cleanup(self):
-        super(MGXSTestHarness, self)._cleanup()
+        super()._cleanup()
         f = os.path.join(os.getcwd(), 'mgxs.h5')
         if os.path.exists(f):
             os.remove(f)

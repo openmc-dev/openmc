@@ -71,10 +71,10 @@ class MultipoleTestHarness(PyAPITestHarness):
             raise RuntimeError("The 'OPENMC_MULTIPOLE_LIBRARY' environment "
                  "variable must be specified for this test.")
         else:
-            super(MultipoleTestHarness, self).execute_test()
+            super().execute_test()
 
     def _get_results(self):
-        outstr = super(MultipoleTestHarness, self)._get_results()
+        outstr = super()._get_results()
         su = openmc.Summary('summary.h5')
         outstr += str(su.geometry.get_all_cells()[11])
         return outstr

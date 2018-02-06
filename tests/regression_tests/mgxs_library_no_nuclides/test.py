@@ -10,7 +10,7 @@ from tests.testing_harness import PyAPITestHarness
 class MGXSTestHarness(PyAPITestHarness):
     def __init__(self, *args, **kwargs):
         # Generate inputs using parent class routine
-        super(MGXSTestHarness, self).__init__(*args, **kwargs)
+        super().__init__(*args, **kwargs)
 
         # Initialize a two-group structure
         energy_groups = openmc.mgxs.EnergyGroups(group_edges=[0, 0.625, 20.e6])

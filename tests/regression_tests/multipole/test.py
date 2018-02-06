@@ -2,6 +2,7 @@ import os
 
 import openmc
 import openmc.model
+import pytest
 
 from tests.testing_harness import TestHarness, PyAPITestHarness
 
@@ -66,13 +67,6 @@ def make_model():
 
 
 class MultipoleTestHarness(PyAPITestHarness):
-    def execute_test(self):
-        if not 'OPENMC_MULTIPOLE_LIBRARY' in os.environ:
-            raise RuntimeError("The 'OPENMC_MULTIPOLE_LIBRARY' environment "
-                 "variable must be specified for this test.")
-        else:
-            super().execute_test()
-
     def _get_results(self):
         outstr = super()._get_results()
         su = openmc.Summary('summary.h5')
@@ -80,6 +74,9 @@ class MultipoleTestHarness(PyAPITestHarness):
         return outstr
 
 
+@pytest.mark.skipif('OPENMC_MULTIPOLE_LIBRARY' not in os.environ,
+                    reason='OPENMC_MULTIPOLE_LIBRARY environment variable '
+                    'must be set')
 def test_multipole():
     model = make_model()
     harness = MultipoleTestHarness('statepoint.5.h5', model)

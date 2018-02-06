@@ -42,11 +42,11 @@ contains
     type(Bank), save, allocatable :: &
          & temp_sites(:)       ! local array of extra sites on each node
 
-#ifdef MPI
+#ifdef OPENMC_MPI
     integer    :: mpi_err      ! MPI error code
     integer(8) :: n            ! number of sites to send/recv
     integer    :: neighbor     ! processor to send/recv data from
-#ifdef MPIF08
+#ifdef OPENMC_MPIF08
     type(MPI_Request) :: request(20)
 #else
     integer    :: request(20)  ! communication request for send/recving sites
@@ -66,7 +66,7 @@ contains
     ! fission bank its own sites starts in order to ensure reproducibility by
     ! skipping ahead to the proper seed.
 
-#ifdef MPI
+#ifdef OPENMC_MPI
     start = 0_8
     call MPI_EXSCAN(n_bank, start, 1, MPI_INTEGER8, MPI_SUM, &
          mpi_intracomm, mpi_err)
@@ -148,7 +148,7 @@ contains
     ! neighboring processors, we have to perform an ALLGATHER to determine the
     ! indices for all processors
 
-#ifdef MPI
+#ifdef OPENMC_MPI
     ! First do an exclusive scan to get the starting indices for
     start = 0_8
     call MPI_EXSCAN(index_temp, start, 1, MPI_INTEGER8, MPI_SUM, &
@@ -191,7 +191,7 @@ contains
     call time_bank_sample % stop()
     call time_bank_sendrecv % start()
 
-#ifdef MPI
+#ifdef OPENMC_MPI
     ! ==========================================================================
     ! SEND BANK SITES TO NEIGHBORS
 
@@ -343,14 +343,14 @@ contains
   subroutine calculate_generation_keff()
 
     real(8) :: keff_reduced
-#ifdef MPI
+#ifdef OPENMC_MPI
     integer :: mpi_err ! MPI error code
 #endif
 
     ! Get keff for this generation by subtracting off the starting value
     keff_generation = global_tallies(RESULT_VALUE, K_TRACKLENGTH) - keff_generation
 
-#ifdef MPI
+#ifdef OPENMC_MPI
     ! Combine values across all processors
     call MPI_ALLREDUCE(keff_generation, keff_reduced, 1, MPI_REAL8, &
          MPI_SUM, mpi_intracomm, mpi_err)
@@ -584,7 +584,7 @@ contains
 
     real(8) :: total         ! total weight in source bank
     logical :: sites_outside ! were there sites outside the ufs mesh?
-#ifdef MPI
+#ifdef OPENMC_MPI
     integer :: n             ! total number of ufs mesh cells
     integer :: mpi_err       ! MPI error code
 #endif
@@ -608,7 +608,7 @@ contains
         call fatal_error("Source sites outside of the UFS mesh!")
       end if
 
-#ifdef MPI
+#ifdef OPENMC_MPI
       ! Send source fraction to all processors
       n = product(m % dimension)
       call MPI_BCAST(source_frac, n, MPI_REAL8, 0, mpi_intracomm, mpi_err)

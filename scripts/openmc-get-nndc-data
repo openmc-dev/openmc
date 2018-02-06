@@ -1,6 +1,5 @@
 #!/usr/bin/env python
 
-from __future__ import print_function
 import os
 import shutil
 import subprocess
@@ -9,9 +8,7 @@ import tarfile
 import glob
 import hashlib
 import argparse
-
-from six.moves import input
-from six.moves.urllib.request import urlopen
+from urllib.request import urlopen
 
 import openmc.data
 

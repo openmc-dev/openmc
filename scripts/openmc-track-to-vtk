@@ -1,4 +1,4 @@
-#!/usr/bin/env python
+#!/usr/bin/env python3
 
 """Convert HDF5 particle track to VTK poly data.
 

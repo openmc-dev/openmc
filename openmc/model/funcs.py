@@ -1,5 +1,5 @@
-from __future__ import division
-from collections import Iterable, OrderedDict
+from collections import OrderedDict
+from collections.abc import Iterable
 from math import sqrt
 from numbers import Real
 

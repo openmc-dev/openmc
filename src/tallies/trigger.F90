@@ -2,7 +2,7 @@ module trigger
 
   use, intrinsic :: ISO_C_BINDING
 
-#ifdef MPI
+#ifdef OPENMC_MPI
   use message_passing
 #endif
 

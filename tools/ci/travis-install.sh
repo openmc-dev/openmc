@@ -15,5 +15,11 @@ if [[ "$TRAVIS_PYTHON_VERSION" == "3.4" ]]; then
     pip install pandas==0.20.3
 fi
 
-# Install OpenMC in editable mode
+# Build and install OpenMC executable
+python tools/ci/travis-install.py
+
+# Install Python API in editable mode
 pip install -e .[test]
+
+# For uploading to coveralls
+pip install python-coveralls

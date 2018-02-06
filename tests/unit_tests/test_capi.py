@@ -12,6 +12,7 @@ import openmc.capi
 @pytest.fixture(scope='module')
 def pincell_model():
     """Set up a model to test with and delete files when done"""
+    openmc.reset_auto_ids()
     pincell = openmc.examples.pwr_pin_cell()
 
     # Add a tally

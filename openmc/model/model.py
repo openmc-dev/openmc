@@ -1,4 +1,4 @@
-from collections import Iterable
+from collections.abc import Iterable
 
 import openmc
 from openmc.checkvalue import check_type

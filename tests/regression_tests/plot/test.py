@@ -12,7 +12,7 @@ from tests.regression_tests import config
 class PlotTestHarness(TestHarness):
     """Specialized TestHarness for running OpenMC plotting tests."""
     def __init__(self, plot_names):
-        super(PlotTestHarness, self).__init__(None)
+        super().__init__(None)
         self._plot_names = plot_names
 
     def _run_openmc(self):
@@ -24,7 +24,7 @@ class PlotTestHarness(TestHarness):
             assert os.path.exists(fname), 'Plot output file does not exist.'
 
     def _cleanup(self):
-        super(PlotTestHarness, self)._cleanup()
+        super()._cleanup()
         for fname in self._plot_names:
             if os.path.exists(fname):
                 os.remove(fname)

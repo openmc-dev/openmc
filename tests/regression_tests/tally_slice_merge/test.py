@@ -8,7 +8,7 @@ from tests.testing_harness import PyAPITestHarness
 
 class TallySliceMergeTestHarness(PyAPITestHarness):
     def __init__(self, *args, **kwargs):
-        super(TallySliceMergeTestHarness, self).__init__(*args, **kwargs)
+        super().__init__(*args, **kwargs)
 
         # Define nuclides and scores to add to both tallies
         self.nuclides = ['U235', 'U238']

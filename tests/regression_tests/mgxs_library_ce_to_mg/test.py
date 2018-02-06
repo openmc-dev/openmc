@@ -11,7 +11,7 @@ from tests.regression_tests import config
 class MGXSTestHarness(PyAPITestHarness):
     def __init__(self, *args, **kwargs):
         # Generate inputs using parent class routine
-        super(MGXSTestHarness, self).__init__(*args, **kwargs)
+        super().__init__(*args, **kwargs)
 
         # Initialize a two-group structure
         energy_groups = openmc.mgxs.EnergyGroups(group_edges=[0, 0.625, 20.e6])
@@ -71,7 +71,7 @@ class MGXSTestHarness(PyAPITestHarness):
             openmc.run(openmc_exec=config['exe'])
 
     def _cleanup(self):
-        super(MGXSTestHarness, self)._cleanup()
+        super()._cleanup()
         f = 'mgxs.h5'
         if os.path.exists(f):
             os.remove(f)

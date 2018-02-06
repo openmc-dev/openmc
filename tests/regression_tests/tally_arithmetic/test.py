@@ -7,7 +7,7 @@ from tests.testing_harness import PyAPITestHarness
 
 class TallyArithmeticTestHarness(PyAPITestHarness):
     def __init__(self, *args, **kwargs):
-        super(TallyArithmeticTestHarness, self).__init__(*args, **kwargs)
+        super().__init__(*args, **kwargs)
 
         # Initialize Mesh
         mesh = openmc.Mesh(mesh_id=1)

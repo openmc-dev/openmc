@@ -9,7 +9,7 @@ from tests.testing_harness import PyAPITestHarness
 
 class AsymmetricLatticeTestHarness(PyAPITestHarness):
     def __init__(self, *args, **kwargs):
-        super(AsymmetricLatticeTestHarness, self).__init__(*args, **kwargs)
+        super().__init__(*args, **kwargs)
 
         # Extract universes encapsulating fuel and water assemblies
         geometry = self._model.geometry

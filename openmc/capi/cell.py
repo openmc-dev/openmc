@@ -1,4 +1,4 @@
-from collections import Mapping, Iterable
+from collections.abc import Mapping, Iterable
 from ctypes import c_int, c_int32, c_double, c_char_p, POINTER
 from weakref import WeakValueDictionary
 
@@ -65,10 +65,7 @@ class Cell(_FortranObjectWithID):
             if new:
                 # Determine ID to assign
                 if uid is None:
-                    try:
-                        uid = max(mapping) + 1
-                    except ValueError:
-                        uid = 1
+                    uid = max(mapping, default=0) + 1
                 else:
                     if uid in mapping:
                         raise AllocationError('A cell with ID={} has already '
@@ -81,7 +78,7 @@ class Cell(_FortranObjectWithID):
                 index = mapping[uid]._index
 
         if index not in cls.__instances:
-            instance = super(Cell, cls).__new__(cls)
+            instance = super().__new__(cls)
             instance._index = index
             if uid is not None:
                 instance.id = uid

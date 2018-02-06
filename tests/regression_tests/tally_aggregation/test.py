@@ -7,7 +7,7 @@ from tests.testing_harness import PyAPITestHarness
 
 class TallyAggregationTestHarness(PyAPITestHarness):
     def __init__(self, *args, **kwargs):
-        super(TallyAggregationTestHarness, self).__init__(*args, **kwargs)
+        super().__init__(*args, **kwargs)
 
         # Initialize the filters
         energy_filter = openmc.EnergyFilter([0.0, 0.253, 1.0e3, 1.0e6, 20.0e6])

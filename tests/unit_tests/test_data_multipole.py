@@ -1,10 +1,13 @@
-#!/usr/bin/env python
-
 import os
 
 import numpy as np
 import pytest
 import openmc.data
+
+
+pytestmark = pytest.mark.skipif(
+    'OPENMC_MULTIPOLE_LIBRARY' not in os.environ,
+    reason='OPENMC_MULTIPOLE_LIBRARY environment variable must be set')
 
 
 @pytest.fixture(scope='module')

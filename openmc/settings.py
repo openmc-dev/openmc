@@ -1,10 +1,9 @@
-from collections import Iterable, MutableSequence, Mapping
+from collections.abc import Iterable, MutableSequence, Mapping
 from numbers import Real, Integral
 import warnings
 from xml.etree import ElementTree as ET
 import sys
 
-from six import string_types
 import numpy as np
 
 from openmc.clean_xml import clean_xml_indentation
@@ -29,13 +28,6 @@ class Settings(object):
         deviation.
     create_fission_neutrons : bool
         Indicate whether fission neutrons should be created or not.
-    cross_sections : str
-        Indicates the path to an XML cross section listing file (usually named
-        cross_sections.xml). If it is not set, the
-        :envvar:`OPENMC_CROSS_SECTIONS` environment variable will be used for
-        continuous-energy calculations and
-        :envvar:`OPENMC_MG_CROSS_SECTIONS` will be used for multi-group
-        calculations to find the path to the XML cross section file.
     cutoff : dict
         Dictionary defining weight cutoff and energy cutoff. The dictionary may
         have three keys, 'weight', 'weight_avg' and 'energy'. Value for 'weight'
@@ -64,11 +56,6 @@ class Settings(object):
         Number of bins for logarithmic energy grid search
     max_order : None or int
         Maximum scattering order to apply globally when in multi-group mode.
-    multipole_library : str
-        Indicates the path to a directory containing a windowed multipole
-        cross section library. If it is not set, the
-        :envvar:`OPENMC_MULTIPOLE_LIBRARY` environment variable will be used. A
-        multipole library is optional.
     no_reduce : bool
         Indicate that all user-defined and global tallies should not be reduced
         across processes in a parallel calculation.
@@ -270,14 +257,6 @@ class Settings(object):
         return self._confidence_intervals
 
     @property
-    def cross_sections(self):
-        return self._cross_sections
-
-    @property
-    def multipole_library(self):
-        return self._multipole_library
-
-    @property
     def ptables(self):
         return self._ptables
 
@@ -459,7 +438,7 @@ class Settings(object):
             if key in ('summary', 'tallies'):
                 cv.check_type("output['{}']".format(key), value, bool)
             else:
-                cv.check_type("output['path']", value, string_types)
+                cv.check_type("output['path']", value, str)
         self._output = output
 
     @verbosity.setter
@@ -505,23 +484,6 @@ class Settings(object):
     def confidence_intervals(self, confidence_intervals):
         cv.check_type('confidence interval', confidence_intervals, bool)
         self._confidence_intervals = confidence_intervals
-
-    @cross_sections.setter
-    def cross_sections(self, cross_sections):
-        warnings.warn('Settings.cross_sections has been deprecated and will be '
-                      'removed in a future version. Materials.cross_sections '
-                      'should defined instead.', DeprecationWarning)
-        cv.check_type('cross sections', cross_sections, string_types)
-        self._cross_sections = cross_sections
-
-    @multipole_library.setter
-    def multipole_library(self, multipole_library):
-        warnings.warn('Settings.multipole_library has been deprecated and will '
-                      'be removed in a future version. '
-                      'Materials.multipole_library should defined instead.',
-                      DeprecationWarning)
-        cv.check_type('multipole library', multipole_library, string_types)
-        self._multipole_library = multipole_library
 
     @ptables.setter
     def ptables(self, ptables):
@@ -692,7 +654,7 @@ class Settings(object):
                 cv.check_greater_than(name, value, 0)
             elif key == 'nuclides':
                 cv.check_type('resonance scattering nuclides', value,
-                              Iterable, string_types)
+                              Iterable, str)
         self._resonance_scattering = res
 
     @volume_calculations.setter
@@ -814,16 +776,6 @@ class Settings(object):
         if self._confidence_intervals is not None:
             element = ET.SubElement(root, "confidence_intervals")
             element.text = str(self._confidence_intervals).lower()
-
-    def _create_cross_sections_subelement(self, root):
-        if self._cross_sections is not None:
-            element = ET.SubElement(root, "cross_sections")
-            element.text = str(self._cross_sections)
-
-    def _create_multipole_library_subelement(self, root):
-        if self._multipole_library is not None:
-            element = ET.SubElement(root, "multipole_library")
-            element.text = str(self._multipole_library)
 
     def _create_ptables_subelement(self, root):
         if self._ptables is not None:
@@ -989,8 +941,6 @@ class Settings(object):
         self._create_statepoint_subelement(root_element)
         self._create_sourcepoint_subelement(root_element)
         self._create_confidence_intervals(root_element)
-        self._create_cross_sections_subelement(root_element)
-        self._create_multipole_library_subelement(root_element)
         self._create_energy_mode_subelement(root_element)
         self._create_max_order_subelement(root_element)
         self._create_ptables_subelement(root_element)

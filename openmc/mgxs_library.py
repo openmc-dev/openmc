@@ -2,7 +2,6 @@ import copy
 from numbers import Real, Integral
 import os
 
-from six import string_types
 import numpy as np
 import h5py
 from scipy.interpolate import interp1d
@@ -381,7 +380,7 @@ class XSdata(object):
     @name.setter
     def name(self, name):
 
-        check_type('name for XSdata', name, string_types)
+        check_type('name for XSdata', name, str)
         self._name = name
 
     @energy_groups.setter
@@ -2517,7 +2516,7 @@ class MGXSLibrary(object):
 
         """
 
-        check_type('filename', filename, string_types)
+        check_type('filename', filename, str)
 
         # Create and write to the HDF5 file
         file = h5py.File(filename, "w", libver=libver)

@@ -3,7 +3,6 @@ from math import exp, erf, pi, sqrt
 
 import h5py
 import numpy as np
-from six import string_types
 
 from . import WMP_VERSION
 from .data import K_BOLTZMANN
@@ -300,7 +299,7 @@ class WindowedMultipole(EqualityMixin):
     @formalism.setter
     def formalism(self, formalism):
         if formalism is not None:
-            cv.check_type('formalism', formalism, string_types)
+            cv.check_type('formalism', formalism, str)
             cv.check_value('formalism', formalism, ('MLBW', 'RM'))
         self._formalism = formalism
 

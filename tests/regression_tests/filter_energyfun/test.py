@@ -5,7 +5,7 @@ from tests.testing_harness import PyAPITestHarness
 
 class FilterEnergyFunHarness(PyAPITestHarness):
     def __init__(self, *args, **kwargs):
-        super(FilterEnergyFunHarness, self).__init__(*args, **kwargs)
+        super().__init__(*args, **kwargs)
 
         # Add Am241 to the fuel.
         self._model.materials[1].add_nuclide('Am241', 1e-7)

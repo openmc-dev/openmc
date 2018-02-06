@@ -1,6 +1,5 @@
-#!/usr/bin/env python
+#!/usr/bin/env python3
 
-from __future__ import division, print_function
 import struct
 import sys
 from argparse import ArgumentParser

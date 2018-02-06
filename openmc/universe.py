@@ -1,11 +1,9 @@
-from __future__ import division
 from collections import OrderedDict, Iterable
 from copy import copy, deepcopy
 from numbers import Integral, Real
 import random
 import sys
 
-from six import string_types
 import matplotlib.pyplot as plt
 import numpy as np
 
@@ -97,7 +95,7 @@ class Universe(IDManagerMixin):
     @name.setter
     def name(self, name):
         if name is not None:
-            cv.check_type('universe name', name, string_types)
+            cv.check_type('universe name', name, str)
             self._name = name
         else:
             self._name = ''
@@ -237,7 +235,7 @@ class Universe(IDManagerMixin):
             # Convert to RGBA if necessary
             colors = copy(colors)
             for obj, color in colors.items():
-                if isinstance(color, string_types):
+                if isinstance(color, str):
                     if color.lower() not in _SVG_COLORS:
                         raise ValueError("'{}' is not a valid color."
                                          .format(color))

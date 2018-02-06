@@ -1,4 +1,5 @@
-from collections import Iterable, Mapping, OrderedDict
+from collections import OrderedDict
+from collections.abc import Iterable, Mapping
 from numbers import Real, Integral
 from xml.etree import ElementTree as ET
 import warnings

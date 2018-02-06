@@ -736,7 +736,7 @@ def _close_random_pack(domain, particles, contraction_rate):
         outer_pf = (4/3 * pi * (outer_diameter[0]/2)**3 * n_particles /
                     domain.volume)
 
-        j = int(floor(-log10(outer_pf - inner_pf)))
+        j = floor(-log10(outer_pf - inner_pf))
         outer_diameter[0] = (outer_diameter[0] - 0.5**j * contraction_rate *
                              initial_outer_diameter / n_particles)
 

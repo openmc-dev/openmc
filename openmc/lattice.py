@@ -604,12 +604,12 @@ class RectLattice(Lattice):
             element coordinate system
 
         """
-        ix = int(floor((point[0] - self.lower_left[0])/self.pitch[0]))
-        iy = int(floor((point[1] - self.lower_left[1])/self.pitch[1]))
+        ix = floor((point[0] - self.lower_left[0])/self.pitch[0])
+        iy = floor((point[1] - self.lower_left[1])/self.pitch[1])
         if self.ndim == 2:
             idx = (ix, iy)
         else:
-            iz = int(floor((point[2] - self.lower_left[2])/self.pitch[2]))
+            iz = floor((point[2] - self.lower_left[2])/self.pitch[2])
             idx = (ix, iy, iz)
         return idx, self.get_local_coordinates(point, idx)
 
@@ -1016,10 +1016,10 @@ class HexLattice(Lattice):
             iz = 1
         else:
             z = point[2] - self.center[2]
-            iz = int(floor(z/self.pitch[1] + 0.5*self.num_axial))
+            iz = floor(z/self.pitch[1] + 0.5*self.num_axial)
         alpha = y - x/sqrt(3.)
-        ix = int(floor(x/(sqrt(0.75) * self.pitch[0])))
-        ia = int(floor(alpha/self.pitch[0]))
+        ix = floor(x/(sqrt(0.75) * self.pitch[0]))
+        ia = floor(alpha/self.pitch[0])
 
         # Check four lattice elements to see which one is closest based on local
         # coordinates

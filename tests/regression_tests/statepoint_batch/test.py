@@ -3,7 +3,7 @@ from tests.testing_harness import TestHarness
 
 class StatepointTestHarness(TestHarness):
     def __init__(self):
-        super(StatepointTestHarness, self).__init__(None)
+        super().__init__(None)
 
     def _test_output_created(self):
         """Make sure statepoint files have been created."""

@@ -1,8 +1,7 @@
-from collections import OrderedDict, Iterable
+from collections import OrderedDict
+from collections.abc import Iterable
 from copy import deepcopy
 from xml.etree import ElementTree as ET
-
-from six import string_types
 
 import openmc
 from openmc.clean_xml import clean_xml_indentation
@@ -139,7 +138,7 @@ class Geometry(object):
         """
         # Make sure we are working with an iterable
         return_list = (isinstance(paths, Iterable) and
-                       not isinstance(paths, string_types))
+                       not isinstance(paths, str))
         path_list = paths if return_list else [paths]
 
         indices = []

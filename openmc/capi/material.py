@@ -1,4 +1,4 @@
-from collections import Mapping
+from collections.abc import Mapping
 from ctypes import c_int, c_int32, c_double, c_char_p, POINTER
 from weakref import WeakValueDictionary
 
@@ -78,10 +78,7 @@ class Material(_FortranObjectWithID):
             if new:
                 # Determine ID to assign
                 if uid is None:
-                    try:
-                        uid = max(mapping) + 1
-                    except ValueError:
-                        uid = 1
+                    uid = max(mapping, default=0) + 1
                 else:
                     if uid in mapping:
                         raise AllocationError('A material with ID={} has already '

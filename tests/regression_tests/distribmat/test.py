@@ -93,7 +93,7 @@ class DistribmatTestHarness(PyAPITestHarness):
         plots.export_to_xml()
 
     def _get_results(self):
-        outstr = super(DistribmatTestHarness, self)._get_results()
+        outstr = super()._get_results()
         su = openmc.Summary('summary.h5')
         outstr += str(su.geometry.get_all_cells()[11])
         return outstr

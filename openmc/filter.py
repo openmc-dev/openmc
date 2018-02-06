@@ -1,4 +1,3 @@
-from __future__ import division
 from abc import ABCMeta
 from collections import Iterable, OrderedDict
 import copy
@@ -8,7 +7,6 @@ from numbers import Real, Integral
 import operator
 from xml.etree import ElementTree as ET
 
-from six import add_metaclass
 import numpy as np
 import pandas as pd
 
@@ -66,12 +64,10 @@ class FilterMeta(ABCMeta):
                             namespace[func_name].__doc__ = old_doc
 
         # Make the class.
-        return super(FilterMeta, cls).__new__(cls, name, bases, namespace,
-                                              **kwargs)
+        return super().__new__(cls, name, bases, namespace, **kwargs)
 
 
-@add_metaclass(FilterMeta)
-class Filter(IDManagerMixin):
+class Filter(IDManagerMixin, metaclass=FilterMeta):
     """Tally modifier that describes phase-space and other characteristics.
 
     Parameters
@@ -675,7 +671,7 @@ class MeshFilter(Filter):
 
     def __init__(self, mesh, filter_id=None):
         self.mesh = mesh
-        super(MeshFilter, self).__init__(mesh.id, filter_id)
+        super().__init__(mesh.id, filter_id)
 
     @classmethod
     def from_hdf5(cls, group, **kwargs):
@@ -872,7 +868,7 @@ class RealFilter(Filter):
             # This logic is used when merging tallies with real filters
             return self.bins[0] >= other.bins[-1]
         else:
-            return super(RealFilter, self).__gt__(other)
+            return super().__gt__(other)
 
     @property
     def num_bins(self):
@@ -1130,7 +1126,7 @@ class DistribcellFilter(Filter):
 
     def __init__(self, cell, filter_id=None):
         self._paths = None
-        super(DistribcellFilter, self).__init__(cell, filter_id)
+        super().__init__(cell, filter_id)
 
     @classmethod
     def from_hdf5(cls, group, **kwargs):

@@ -3,10 +3,10 @@ import os
 import copy
 import pickle
 from numbers import Integral
-from collections import OrderedDict, Iterable
+from collections import OrderedDict
+from collections.abc import Iterable
 from warnings import warn
 
-from six import string_types
 import numpy as np
 
 import openmc
@@ -271,7 +271,7 @@ class Library(object):
 
     @name.setter
     def name(self, name):
-        cv.check_type('name', name, string_types)
+        cv.check_type('name', name, str)
         self._name = name
 
     @mgxs_types.setter
@@ -280,7 +280,7 @@ class Library(object):
         if mgxs_types == 'all':
             self._mgxs_types = all_mgxs_types
         else:
-            cv.check_iterable_type('mgxs_types', mgxs_types, string_types)
+            cv.check_iterable_type('mgxs_types', mgxs_types, str)
             for mgxs_type in mgxs_types:
                 cv.check_value('mgxs_type', mgxs_type, all_mgxs_types)
             self._mgxs_types = mgxs_types
@@ -814,8 +814,8 @@ class Library(object):
                   'since a statepoint has not yet been loaded'
             raise ValueError(msg)
 
-        cv.check_type('filename', filename, string_types)
-        cv.check_type('directory', directory, string_types)
+        cv.check_type('filename', filename, str)
+        cv.check_type('directory', directory, str)
 
         import h5py
 
@@ -857,8 +857,8 @@ class Library(object):
 
         """
 
-        cv.check_type('filename', filename, string_types)
-        cv.check_type('directory', directory, string_types)
+        cv.check_type('filename', filename, str)
+        cv.check_type('directory', directory, str)
 
         # Make directory if it does not exist
         if not os.path.exists(directory):
@@ -892,8 +892,8 @@ class Library(object):
 
         """
 
-        cv.check_type('filename', filename, string_types)
-        cv.check_type('directory', directory, string_types)
+        cv.check_type('filename', filename, str)
+        cv.check_type('directory', directory, str)
 
         # Make directory if it does not exist
         if not os.path.exists(directory):
@@ -953,8 +953,8 @@ class Library(object):
 
         cv.check_type('domain', domain, (openmc.Material, openmc.Cell,
                                          openmc.Universe, openmc.Mesh))
-        cv.check_type('xsdata_name', xsdata_name, string_types)
-        cv.check_type('nuclide', nuclide, string_types)
+        cv.check_type('xsdata_name', xsdata_name, str)
+        cv.check_type('nuclide', nuclide, str)
         cv.check_value('xs_type', xs_type, ['macro', 'micro'])
         if subdomain is not None:
             cv.check_iterable_type('subdomain', subdomain, Integral,
@@ -1213,7 +1213,7 @@ class Library(object):
 
         cv.check_value('xs_type', xs_type, ['macro', 'micro'])
         if xsdata_names is not None:
-            cv.check_iterable_type('xsdata_names', xsdata_names, string_types)
+            cv.check_iterable_type('xsdata_names', xsdata_names, str)
 
         # If gathering material-specific data, set the xs_type to macro
         if not self.by_nuclide:

@@ -9,7 +9,7 @@ from tests.regression_tests import config
 
 class StatepointRestartTestHarness(TestHarness):
     def __init__(self, final_sp, restart_sp):
-        super(StatepointRestartTestHarness, self).__init__(final_sp)
+        super().__init__(final_sp)
         self._restart_sp = restart_sp
 
     def execute_test(self):

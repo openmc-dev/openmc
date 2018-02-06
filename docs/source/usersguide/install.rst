@@ -385,8 +385,7 @@ Python package in the same location as the ``openmc`` executable (for example,
 if you are installing the package into a `virtual environment
 <https://docs.python.org/3/tutorial/venv.html>`_). The easiest way to install
 the :mod:`openmc` Python package is to use pip_, which is included by default in
-Python 2.7 and Python 3.4+. From the root directory of the OpenMC
-distribution/repository, run:
+Python 3.4+. From the root directory of the OpenMC distribution/repository, run:
 
 .. code-block:: sh
 
@@ -414,17 +413,13 @@ to install the Python package in :ref:`"editable" mode <devguide_editable>`.
 Prerequisites
 -------------
 
-The Python API works with either Python 2.7 or Python 3.2+. In addition to
-Python itself, the API relies on a number of third-party packages. All
-prerequisites can be installed using Conda_ (recommended), pip_, or through the
-package manager in most Linux distributions.
+The Python API works with Python 3.4+. In addition to Python itself, the API
+relies on a number of third-party packages. All prerequisites can be installed
+using Conda_ (recommended), pip_, or through the package manager in most Linux
+distributions.
 
 .. admonition:: Required
    :class: error
-
-   `six <https://pythonhosted.org/six/>`_
-      The Python API works with both Python 2.7+ and 3.2+. To do so, the six
-      compatibility library is used.
 
    `NumPy <http://www.numpy.org/>`_
       NumPy is used extensively within the Python API for its powerful

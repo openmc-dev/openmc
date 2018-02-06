@@ -1,5 +1,3 @@
-from __future__ import print_function
-
 from difflib import unified_diff
 import filecmp
 import glob
@@ -129,7 +127,7 @@ class HashedTestHarness(TestHarness):
 
     def _get_results(self):
         """Digest info in the statepoint and return as a string."""
-        return super(HashedTestHarness, self)._get_results(True)
+        return super()._get_results(True)
 
 
 class CMFDTestHarness(TestHarness):
@@ -139,7 +137,7 @@ class CMFDTestHarness(TestHarness):
         """Digest info in the statepoint and return as a string."""
 
         # Write out the eigenvalue and tallies.
-        outstr = super(CMFDTestHarness, self)._get_results()
+        outstr = super()._get_results()
 
         # Read the statepoint file.
         statepoint = glob.glob(self._sp_name)[0]
@@ -222,7 +220,7 @@ class ParticleRestartTestHarness(TestHarness):
 
 class PyAPITestHarness(TestHarness):
     def __init__(self, statepoint_name, model=None):
-        super(PyAPITestHarness, self).__init__(statepoint_name)
+        super().__init__(statepoint_name)
         if model is None:
             self._model = pwr_core()
         else:
@@ -302,7 +300,7 @@ class PyAPITestHarness(TestHarness):
 
     def _cleanup(self):
         """Delete XMLs, statepoints, tally, and test files."""
-        super(PyAPITestHarness, self)._cleanup()
+        super()._cleanup()
         output = ['materials.xml', 'geometry.xml', 'settings.xml',
                   'tallies.xml', 'plots.xml', 'inputs_test.dat']
         for f in output:
@@ -313,4 +311,4 @@ class PyAPITestHarness(TestHarness):
 class HashedPyAPITestHarness(PyAPITestHarness):
     def _get_results(self):
         """Digest info in the statepoint and return as a string."""
-        return super(HashedPyAPITestHarness, self)._get_results(True)
+        return super()._get_results(True)

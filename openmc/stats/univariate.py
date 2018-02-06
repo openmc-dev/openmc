@@ -1,10 +1,9 @@
 from abc import ABCMeta, abstractmethod
-from collections import Iterable
+from collections.abc import Iterable
 from numbers import Real
 import sys
 from xml.etree import ElementTree as ET
 
-from six import add_metaclass
 import numpy as np
 
 import openmc.checkvalue as cv
@@ -15,8 +14,7 @@ _INTERPOLATION_SCHEMES = ['histogram', 'linear-linear', 'linear-log',
                           'log-linear', 'log-log']
 
 
-@add_metaclass(ABCMeta)
-class Univariate(EqualityMixin):
+class Univariate(EqualityMixin, metaclass=ABCMeta):
     """Probability distribution of a single random variable.
 
     The Univariate class is an abstract class that can be derived to implement a
@@ -59,7 +57,7 @@ class Discrete(Univariate):
     """
 
     def __init__(self, x, p):
-        super(Discrete, self).__init__()
+        super().__init__()
         self.x = x
         self.p = p
 
@@ -133,7 +131,7 @@ class Uniform(Univariate):
     """
 
     def __init__(self, a=0.0, b=1.0):
-        super(Uniform, self).__init__()
+        super().__init__()
         self.a = a
         self.b = b
 
@@ -204,7 +202,7 @@ class Maxwell(Univariate):
     """
 
     def __init__(self, theta):
-        super(Maxwell, self).__init__()
+        super().__init__()
         self.theta = theta
 
     def __len__(self):
@@ -264,7 +262,7 @@ class Watt(Univariate):
     """
 
     def __init__(self, a=0.988e6, b=2.249e-6):
-        super(Watt, self).__init__()
+        super().__init__()
         self.a = a
         self.b = b
 
@@ -344,7 +342,7 @@ class Tabular(Univariate):
 
     def __init__(self, x, p, interpolation='linear-linear',
                  ignore_negative=False):
-        super(Tabular, self).__init__()
+        super().__init__()
         self._ignore_negative = ignore_negative
         self.x = x
         self.p = p
@@ -472,7 +470,7 @@ class Mixture(Univariate):
     """
 
     def __init__(self, probability, distribution):
-        super(Mixture, self).__init__()
+        super().__init__()
         self.probability = probability
         self.distribution = distribution
 

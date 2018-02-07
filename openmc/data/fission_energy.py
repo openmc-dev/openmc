@@ -1,4 +1,4 @@
-from collections import Callable
+from collections.abc import Callable
 from copy import deepcopy
 from io import StringIO
 import sys

@@ -1,5 +1,5 @@
 import copy
-from collections import Iterable
+from collections.abc import Iterable
 
 import numpy as np
 
@@ -288,7 +288,7 @@ class CheckedList(list):
     """
 
     def __init__(self, expected_type, name, items=[]):
-        super(CheckedList, self).__init__()
+        super().__init__()
         self.expected_type = expected_type
         self.name = name
         for item in items:
@@ -319,7 +319,7 @@ class CheckedList(list):
 
         """
         check_type(self.name, item, self.expected_type)
-        super(CheckedList, self).append(item)
+        super().append(item)
 
     def insert(self, index, item):
         """Insert item before index
@@ -333,4 +333,4 @@ class CheckedList(list):
 
         """
         check_type(self.name, item, self.expected_type)
-        super(CheckedList, self).insert(index, item)
+        super().insert(index, item)

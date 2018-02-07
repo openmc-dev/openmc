@@ -587,7 +587,7 @@ def slab_mg(reps=None, as_macro=True):
 
     # Define the materials file
     model.xs_data = xs
-    model.materials.cross_sections = "../1d_mgxs.h5"
+    model.materials.cross_sections = "../../1d_mgxs.h5"
 
     # Define surfaces.
     # Assembly/Problem Boundary

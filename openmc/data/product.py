@@ -1,9 +1,8 @@
-from collections import Iterable
+from collections.abc import Iterable
 from io import StringIO
 from numbers import Real
 import sys
 
-from six import string_types
 import numpy as np
 
 import openmc.checkvalue as cv
@@ -113,7 +112,7 @@ class Product(EqualityMixin):
 
     @particle.setter
     def particle(self, particle):
-        cv.check_type('product particle type', particle, string_types)
+        cv.check_type('product particle type', particle, str)
         self._particle = particle
 
     @yield_.setter

@@ -45,14 +45,24 @@ class IDManagerMixin(object):
 
     @id.setter
     def id(self, uid):
-        cls = type(self)
-        name = cls.__name__
+        # The first time this is called for a class, we search through the MRO
+        # to determine which class actually holds next_id and used_ids. Since
+        # next_id is an integer (immutable), we can't modify it directly through
+        # the instance without just creating a new attribute
+        try:
+            cls = self._id_class
+        except AttributeError:
+            for cls in self.__class__.__mro__:
+                if 'next_id' in cls.__dict__:
+                    break
+
         if uid is None:
             while cls.next_id in cls.used_ids:
                 cls.next_id += 1
             self._id = cls.next_id
             cls.used_ids.add(cls.next_id)
         else:
+            name = cls.__name__
             cv.check_type('{} ID'.format(name), uid, Integral)
             cv.check_greater_than('{} ID'.format(name), uid, 0, equality=True)
             if uid in cls.used_ids:

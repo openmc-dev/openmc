@@ -1,4 +1,5 @@
-from collections import defaultdict, MutableSequence, Iterable
+from collections import defaultdict
+from collections.abc import MutableSequence, Iterable
 import io
 
 import numpy as np
@@ -288,8 +289,8 @@ class MultiLevelBreitWigner(ResonanceRange):
     """
 
     def __init__(self, target_spin, energy_min, energy_max, channel, scattering):
-        super(MultiLevelBreitWigner, self).__init__(
-            target_spin, energy_min, energy_max, channel, scattering)
+        super().__init__(target_spin, energy_min, energy_max, channel,
+                         scattering)
         self.parameters = None
         self.q_value = {}
         self.atomic_weight_ratio = None
@@ -490,8 +491,8 @@ class SingleLevelBreitWigner(MultiLevelBreitWigner):
     """
 
     def __init__(self, target_spin, energy_min, energy_max, channel, scattering):
-        super(SingleLevelBreitWigner, self).__init__(
-            target_spin, energy_min, energy_max, channel, scattering)
+        super().__init__(target_spin, energy_min, energy_max, channel,
+                         scattering)
 
         # Set resonance reconstruction function
         if _reconstruct:
@@ -549,8 +550,8 @@ class ReichMoore(ResonanceRange):
     """
 
     def __init__(self, target_spin, energy_min, energy_max, channel, scattering):
-        super(ReichMoore, self).__init__(
-            target_spin, energy_min, energy_max, channel, scattering)
+        super().__init__(target_spin, energy_min, energy_max, channel,
+                         scattering)
         self.parameters = None
         self.angle_distribution = False
         self.num_l_convergence = 0
@@ -724,8 +725,7 @@ class RMatrixLimited(ResonanceRange):
     """
 
     def __init__(self, energy_min, energy_max, particle_pairs, spin_groups):
-        super(RMatrixLimited, self).__init__(0.0, energy_min, energy_max,
-                                             None, None)
+        super().__init__(0.0, energy_min, energy_max, None, None)
         self.reduced_width = False
         self.formalism = 3
         self.particle_pairs = particle_pairs
@@ -931,8 +931,7 @@ class Unresolved(ResonanceRange):
     """
 
     def __init__(self, target_spin, energy_min, energy_max, scatter):
-        super(Unresolved, self).__init__(
-            target_spin, energy_min, energy_max, None, scatter)
+        super().__init__(target_spin, energy_min, energy_max, None, scatter)
         self.energies = None
         self.parameters = None
         self.add_to_background = False

@@ -1,15 +1,14 @@
 from abc import ABCMeta, abstractmethod
-from collections import Iterable, OrderedDict, MutableSequence
+from collections import OrderedDict
+from collections.abc import Iterable, MutableSequence
 from copy import deepcopy
 
-from six import add_metaclass
 import numpy as np
 
 from openmc.checkvalue import check_type
 
 
-@add_metaclass(ABCMeta)
-class Region(object):
+class Region(metaclass=ABCMeta):
     """Region of space that can be assigned to a cell.
 
     Region is an abstract base class that is inherited by
@@ -39,10 +38,8 @@ class Region(object):
     def __eq__(self, other):
         if not isinstance(other, type(self)):
             return False
-        elif str(self) != str(other):
-            return False
         else:
-            return True
+            return str(self) == str(other)
 
     def __ne__(self, other):
         return not self == other
@@ -463,7 +460,7 @@ class Union(Region, MutableSequence):
         if memo is None:
             memo = {}
 
-        clone = copy.deepcopy(self)
+        clone = deepcopy(self)
         clone[:] = [n.clone(memo) for n in self]
         return clone
 
@@ -584,6 +581,6 @@ class Complement(Region):
         if memo is None:
             memo = {}
 
-        clone = copy.deepcopy(self)
+        clone = deepcopy(self)
         clone.node = self.node.clone(memo)
         return clone

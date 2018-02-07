@@ -6,15 +6,13 @@ Data File ENDF-6". The latest version from June 2009 can be found at
 http://www-nds.iaea.org/ndspub/documents/endf/endf102/endf102.pdf
 
 """
-from __future__ import print_function, division, unicode_literals
-
 import io
 import re
 import os
 from math import pi
-from collections import OrderedDict, Iterable
+from collections import OrderedDict
+from collections.abc import Iterable
 
-from six import string_types
 import numpy as np
 from numpy.polynomial.polynomial import Polynomial
 
@@ -301,7 +299,7 @@ class Evaluation(object):
 
     """
     def __init__(self, filename_or_obj):
-        if isinstance(filename_or_obj, string_types):
+        if isinstance(filename_or_obj, str):
             fh = open(filename_or_obj, 'r')
         else:
             fh = filename_or_obj

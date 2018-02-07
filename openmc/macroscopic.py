@@ -1,5 +1,3 @@
-from six import string_types
-
 from openmc.checkvalue import check_type
 
 
@@ -19,8 +17,8 @@ class Macroscopic(str):
     """
 
     def __new__(cls, name):
-        check_type('name', name, string_types)
-        return super(Macroscopic, cls).__new__(cls, name)
+        check_type('name', name, str)
+        return super().__new__(cls, name)
 
     @property
     def name(self):

@@ -474,9 +474,9 @@ contains
       ! Add the reaction index to the scattering array if this is an inelastic
       ! scatter reaction
       if (MTs % data(i) /= N_FISSION .and. MTs % data(i) /= N_F .and. &
-          MTs % data(i) /= N_NF .and. MTs % data(i) /= N_2NF .and. &
-          MTs % data(i) /= N_3NF .and. MTs % data(i) < 200 .and. &
-          MTs % data(i) /= N_LEVEL .and. MTs % data(i) /= ELASTIC) then
+           MTs % data(i) /= N_NF .and. MTs % data(i) /= N_2NF .and. &
+           MTs % data(i) /= N_3NF .and. MTs % data(i) < 200 .and. &
+           MTs % data(i) /= N_LEVEL .and. MTs % data(i) /= ELASTIC) then
 
         call index_inelastic_scatter_vector % push_back(i)
       end if

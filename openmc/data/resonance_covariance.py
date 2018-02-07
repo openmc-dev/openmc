@@ -229,9 +229,15 @@ class MultiLevelBreitWignerCovariance(ResonanceRange):
             par_unc = []
             for i in range(num_res):
                 res_unc = values[i*12+6:i*12+12]
-                #Delete 0 values (not provided in evaluation)
-                res_unc = [x for x in res_unc if x != 0.0]
-                par_unc.extend(res_unc)
+                #Delete 0 values (not provided, no fission width)
+                # DAJ/DGT always zero, DGF sometimes none zero [1,2,5]
+                res_unc_nonzero = []
+                for j in range(6):
+                    if j in [1,2,5] and res_unc[j] != 0.0 :
+                        res_unc_nonzero.append(res_unc[j])
+                    elif j in [0,3,4]:
+                        res_unc_nonzero.append(res_unc[j])
+                par_unc.extend(res_unc_nonzero)
 
             records = []
             for i, E in enumerate(energy):
@@ -285,7 +291,7 @@ class MultiLevelBreitWignerCovariance(ResonanceRange):
                     cov[cov_index+3,cov_index+4] = cov_values[5]
                     cov[cov_index+4,cov_index+4] = cov_values[6]
                     cov_index += 5
-                    if j < num_res: #Pad matrix for additional values
+                    if j < num_res-1: #Pad matrix for additional values
                         cov = np.pad(cov,((0,5),(0,5)),'constant',
                                 constant_values=0)
 
@@ -473,6 +479,7 @@ class ReichMooreCovariance(ResonanceRange):
             rmc = cls(energy_min, energy_max)
             rmc.parameters = parameters
             rmc.covariance = cov
+            rmc.lcomp = LCOMP
 
             return rmc
 
@@ -509,6 +516,7 @@ class ReichMooreCovariance(ResonanceRange):
             rmc = cls(energy_min, energy_max)
             rmc.parameters = parameters
             rmc.covariance = cov
+            rmc.lcomp = LCOMP
 
             return rmc
 

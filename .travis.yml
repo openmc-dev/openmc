@@ -7,13 +7,10 @@ python:
   - "3.6"
 addons:
   apt:
-    sources:
-    - ubuntu-toolchain-r-test
     packages:
     - gfortran
     - mpich
     - libmpich-dev
-    - g++-5
 cache:
   directories:
   - $HOME/nndc_hdf5

@@ -2,7 +2,6 @@
 
 #include <cmath>
 #include <limits>
-#include <regex>
 #include <sstream>
 #include <string>
 
@@ -39,55 +38,41 @@ extern "C" double FP_PRECISION;
 std::vector<int32_t>
 tokenize(const std::string region_spec) {
   // Check for an empty region_spec first.
+  std::vector<int32_t> tokens;
   if (region_spec.empty()) {
-    std::vector<int32_t> tokens;
     return tokens;
   }
 
-  // Make a regex expression that matches halfspace tokens and every operator
-  // except for intersection (whitespace).
-  std::string re {"\\+?-?\\d+"  // Matches halfspaces like 1, -13, and +42
-                  "|\\(|\\)"    // Matches left and right parentheses
-                  "|\\||~"};    // Matches | and ~
+  // Split the region_spec into words delimited by whitespace.  This removes
+  // intersection operators but we'll add them back later.
+  std::vector<std::string> words{split(region_spec)};
 
-  // Make another regex that includes whitespce, and use it to make sure there
-  // are no invalid characters.
-  {
-    std::string re_invalid {re + "|\\s+"};
-    std::regex re_invalid_ {re_invalid};
-    auto words_begin = std::sregex_token_iterator(region_spec.begin(),
-         region_spec.end(), re_invalid_, -1);
-    auto words_end = std::sregex_token_iterator();
-    for (auto it = words_begin; it != words_end; it++) {
-      std::string match = it->str();
-      if (match.length() > 0) {
-        std::stringstream err_msg;
-        err_msg << "Region specification contains invalid character(s): \""
-                << match << "\"";
-        fatal_error(err_msg);
-      }
-    }
-  }
-
-  // Use the regex to parse the string and convert all halfspaces and operators
-  // (except intersection) into integer tokens.
-  std::vector<int32_t> tokens;
-  std::regex re_(re);
-  auto words_begin = std::sregex_iterator(region_spec.begin(),
-                                          region_spec.end(), re_);
-  auto words_end = std::sregex_iterator();
-  for (auto it = words_begin; it != words_end; it++) {
-    std::regex re_half("\\+?-?\\d+");
-    if (std::regex_match(it->str(), re_half)) {
-      tokens.push_back(stoi(it->str()));
-    } else if (it->str() == "(") {
+  // Iterate over words in the region_spec.
+  for (std::string word : words) {
+    // First check to see if this word represents an operator token.
+    if (word == "(") {
       tokens.push_back(OP_LEFT_PAREN);
-    } else if (it->str() == ")") {
+    } else if (word == ")") {
       tokens.push_back(OP_RIGHT_PAREN);
-    } else if (it->str() == "|") {
+    } else if (word == "|") {
       tokens.push_back(OP_UNION);
-    } else if (it->str() == "~") {
+    } else if (word == "~") {
       tokens.push_back(OP_COMPLEMENT);
+
+    } else {
+      // This word might represent a halfspace.  Check to make sure we recognize
+      // all the characters in it.
+      for (char c : word) {
+        if (!std::isdigit(c) && c != '-') {
+          std::stringstream err_msg;
+          err_msg << "Region specification contains invalid character, \""
+                  << c << "\"";
+          fatal_error(err_msg);
+        }
+      }
+
+      // It's a halfspace.  Convert to integer token.
+      tokens.push_back(stoi(word));
     }
   }
 

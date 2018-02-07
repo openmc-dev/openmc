@@ -2,13 +2,28 @@
 #define XML_INTERFACE_H
 
 #include <algorithm>  // for std::transform
+#include <regex>
 #include <sstream>
 #include <string>
+#include <vector>
 
 #include "pugixml/pugixml.hpp"
 
 
 namespace openmc {
+
+inline std::vector<std::string>
+split(const std::string in)
+{
+  std::vector<std::string> out;
+  std::regex re("\\S+");
+  for (auto it = std::sregex_iterator(in.begin(), in.end(), re);
+       it != std::sregex_iterator();
+       it++) {
+    out.push_back(it->str());
+  }
+  return out;
+}
 
 inline bool
 check_for_node(pugi::xml_node node, const char *name)

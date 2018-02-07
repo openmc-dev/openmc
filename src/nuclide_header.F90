@@ -100,6 +100,7 @@ module nuclide_header
 
     ! Reactions
     type(Reaction), allocatable :: reactions(:)
+    integer, allocatable :: index_inelastic_scatter(:)
 
     ! Array that maps MT values to index in reactions; used at tally-time. Note
     ! that ENDF-102 does not assign any MT values above 891.
@@ -302,6 +303,7 @@ contains
     real(8) :: temp_actual
     type(VectorInt) :: MTs
     type(VectorInt) :: temps_to_read
+    type(VectorInt) :: index_inelastic_scatter_vector
 
     ! Get name of nuclide from group
     name_len = len(this % name)
@@ -469,9 +471,25 @@ contains
         end if
       end if
 
+      ! Add the reaction index to the scattering array if this is an inelastic
+      ! scatter reaction
+      if (MTs % data(i) /= N_FISSION .and. MTs % data(i) /= N_F .and. &
+          MTs % data(i) /= N_NF .and. MTs % data(i) /= N_2NF .and. &
+          MTs % data(i) /= N_3NF .and. MTs % data(i) < 200 .and. &
+          MTs % data(i) /= N_LEVEL .and. MTs % data(i) /= ELASTIC) then
+
+        call index_inelastic_scatter_vector % push_back(i)
+      end if
+
       call close_group(rx_group)
     end do
     call close_group(rxs_group)
+
+    ! Recast to a regular array to save space
+    allocate(this % index_inelastic_scatter( &
+         index_inelastic_scatter_vector % size()))
+    this % index_inelastic_scatter = index_inelastic_scatter_vector % data(:)
+    call index_inelastic_scatter_vector % clear()
 
     ! Read unresolved resonance probability tables if present
     if (object_exists(group_id, 'urr')) then

@@ -2,7 +2,6 @@ from numbers import Integral, Real
 from itertools import chain
 import string
 
-from six import string_types
 import matplotlib.pyplot as plt
 import numpy as np
 
@@ -137,7 +136,7 @@ def plot_xs(this, types, divisor_types=None, temperature=294., data_type=None,
             data_type = 'material'
         elif isinstance(this, openmc.Macroscopic):
             data_type = 'macroscopic'
-        elif isinstance(this, string_types):
+        elif isinstance(this, str):
             if this[-1] in string.digits:
                 data_type = 'nuclide'
             else:
@@ -275,7 +274,7 @@ def calculate_cexs(this, data_type, types, temperature=294., sab_name=None,
     # Check types
     cv.check_type('temperature', temperature, Real)
     if sab_name:
-        cv.check_type('sab_name', sab_name, string_types)
+        cv.check_type('sab_name', sab_name, str)
     if enrichment:
         cv.check_type('enrichment', enrichment, Real)
 
@@ -648,7 +647,7 @@ def calculate_mgxs(this, data_type, types, orders=None, temperature=294.,
     cv.check_type('temperature', temperature, Real)
     if enrichment:
         cv.check_type('enrichment', enrichment, Real)
-    cv.check_iterable_type('types', types, string_types)
+    cv.check_iterable_type('types', types, str)
 
     cv.check_type("cross_sections", cross_sections, str)
     library = openmc.MGXSLibrary.from_hdf5(cross_sections)

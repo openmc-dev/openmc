@@ -1,4 +1,4 @@
-from collections import Iterable
+from collections.abc import Iterable
 from difflib import get_close_matches
 from numbers import Real
 import itertools
@@ -623,10 +623,7 @@ class ThermalScattering(EqualityMixin):
             Thermal scattering data
 
         """
-        # Create temporary directory -- it would be preferable to use
-        # TemporaryDirectory(), but it is only available in Python 3.2
-        tmpdir = tempfile.mkdtemp()
-        try:
+        with tempfile.TemporaryDirectory() as tmpdir:
             # Run NJOY to create an ACE library
             ace_file = os.path.join(tmpdir, 'ace')
             xsdir_file = os.path.join(tmpdir, 'xsdir')
@@ -638,8 +635,5 @@ class ThermalScattering(EqualityMixin):
             data = cls.from_ace(lib.tables[0])
             for table in lib.tables[1:]:
                 data.add_temperature_from_ace(table)
-        finally:
-            # Get rid of temporary files
-            shutil.rmtree(tmpdir)
 
         return data

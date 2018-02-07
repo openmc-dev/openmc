@@ -1,6 +1,4 @@
-from __future__ import division
-
-from collections import Iterable, MutableSequence
+from collections.abc import Iterable, MutableSequence
 import copy
 import re
 from functools import partial, reduce
@@ -10,7 +8,6 @@ import operator
 import warnings
 from xml.etree import ElementTree as ET
 
-from six import string_types
 import numpy as np
 import pandas as pd
 import scipy.sparse as sps
@@ -31,9 +28,8 @@ _PRODUCT_TYPES = ['tensor', 'entrywise']
 
 # The following indicate acceptable types when setting Tally.scores,
 # Tally.nuclides, and Tally.filters
-_SCORE_CLASSES = string_types + (openmc.CrossScore, openmc.AggregateScore)
-_NUCLIDE_CLASSES = string_types + (openmc.Nuclide, openmc.CrossNuclide,
-                                   openmc.AggregateNuclide)
+_SCORE_CLASSES = (str, openmc.CrossScore, openmc.AggregateScore)
+_NUCLIDE_CLASSES = (str, openmc.CrossNuclide, openmc.AggregateNuclide)
 _FILTER_CLASSES = (openmc.Filter, openmc.CrossFilter, openmc.AggregateFilter)
 
 # Valid types of estimators
@@ -336,30 +332,10 @@ class Tally(IDManagerMixin):
         self._triggers = cv.CheckedList(openmc.Trigger, 'tally triggers',
                                         triggers)
 
-    def add_trigger(self, trigger):
-        """Add a tally trigger to the tally
-
-        .. deprecated:: 0.8
-            Use the Tally.triggers property directly, i.e.,
-            Tally.triggers.append(...)
-
-        Parameters
-        ----------
-        trigger : openmc.Trigger
-            Trigger to add
-
-        """
-
-        warnings.warn('Tally.add_trigger(...) has been deprecated and may be '
-                      'removed in a future version. Tally triggers should be '
-                      'defined using the triggers property directly.',
-                      DeprecationWarning)
-        self.triggers.append(trigger)
-
     @name.setter
     def name(self, name):
         if name is not None:
-            cv.check_type('tally name', name, string_types)
+            cv.check_type('tally name', name, str)
             self._name = name
         else:
             self._name = ''
@@ -412,84 +388,10 @@ class Tally(IDManagerMixin):
                 raise ValueError(msg)
 
             # If score is a string, strip whitespace
-            if isinstance(score, string_types):
+            if isinstance(score, str):
                 scores[i] = score.strip()
 
         self._scores = cv.CheckedList(_SCORE_CLASSES, 'tally scores', scores)
-
-    def add_filter(self, new_filter):
-        """Add a filter to the tally
-
-        .. deprecated:: 0.8
-            Use the Tally.filters property directly, i.e.,
-            Tally.filters.append(...)
-
-        Parameters
-        ----------
-        new_filter : Filter, CrossFilter or AggregateFilter
-            A filter to specify a discretization of the tally across some
-            dimension (e.g., 'energy', 'cell'). The filter should be a Filter
-            object when a user is adding filters to a Tally for input file
-            generation or when the Tally is created from a StatePoint. The
-            filter may be a CrossFilter or AggregateFilter for derived tallies
-            created by tally arithmetic.
-
-        """
-
-        warnings.warn('Tally.add_filter(...) has been deprecated and may be '
-                      'removed in a future version. Tally filters should be '
-                      'defined using the filters property directly.',
-                      DeprecationWarning)
-        self.filters.append(new_filter)
-
-    def add_nuclide(self, nuclide):
-        """Specify that scores for a particular nuclide should be accumulated
-
-        .. deprecated:: 0.8
-            Use the Tally.nuclides property directly, i.e.,
-            Tally.nuclides.append(...)
-
-        Parameters
-        ----------
-        nuclide : str, openmc.Nuclide, CrossNuclide or AggregateNuclide
-            Nuclide to add to the tally. The nuclide should be a Nuclide object
-            when a user is adding nuclides to a Tally for input file generation.
-            The nuclide is a str when a Tally is created from a StatePoint file
-            (e.g., 'H1', 'U235') unless a Summary has been linked with the
-            StatePoint. The nuclide may be a CrossNuclide or AggregateNuclide
-            for derived tallies created by tally arithmetic.
-
-        """
-
-        warnings.warn('Tally.add_nuclide(...) has been deprecated and may be '
-                      'removed in a future version. Tally nuclides should be '
-                      'defined using the nuclides property directly.',
-                      DeprecationWarning)
-        self.nuclides.append(nuclide)
-
-    def add_score(self, score):
-        """Specify a quantity to be scored
-
-        .. deprecated:: 0.8
-            Use the Tally.scores property directly, i.e.,
-            Tally.scores.append(...)
-
-        Parameters
-        ----------
-        score : str, CrossScore or AggregateScore
-            A score to be accumulated (e.g., 'flux', 'nu-fission'). The score
-            should be a str when a user is adding scores to a Tally for input
-            file generation or when the Tally is created from a StatePoint. The
-            score may be a CrossScore or AggregateScore for derived tallies
-            created by tally arithmetic.
-
-        """
-
-        warnings.warn('Tally.add_score(...) has been deprecated and may be '
-                      'removed in a future version. Tally scores should be '
-                      'defined using the scores property directly.',
-                      DeprecationWarning)
-        self.scores.append(score)
 
     @num_realizations.setter
     def num_realizations(self, num_realizations):
@@ -1327,7 +1229,7 @@ class Tally(IDManagerMixin):
 
         """
 
-        cv.check_iterable_type('nuclides', nuclides, string_types)
+        cv.check_iterable_type('nuclides', nuclides, str)
 
         # Determine the score indices from any of the requested scores
         if nuclides:
@@ -1362,7 +1264,7 @@ class Tally(IDManagerMixin):
         """
 
         for score in scores:
-            if not isinstance(score, string_types + (openmc.CrossScore,)):
+            if not isinstance(score, (str, openmc.CrossScore)):
                 msg = 'Unable to get score indices for score "{0}" in Tally ' \
                       'ID="{1}" since it is not a string or CrossScore'\
                       .format(score, self.id)
@@ -1508,8 +1410,6 @@ class Tally(IDManagerMixin):
         ------
         KeyError
             When this method is called before the Tally is populated with data
-        ImportError
-            When Pandas can not be found on the caller's system
 
         """
 
@@ -1557,7 +1457,7 @@ class Tally(IDManagerMixin):
             column_name = 'score'
 
             for score in self.scores:
-                if isinstance(score, string_types + (openmc.CrossScore,)):
+                if isinstance(score, (str, openmc.CrossScore)):
                     scores.append(str(score))
                 elif isinstance(score, openmc.AggregateScore):
                     scores.append(score.name)
@@ -2194,11 +2094,11 @@ class Tally(IDManagerMixin):
             raise ValueError(msg)
 
         # Check that the scores are valid
-        if not isinstance(score1, string_types + (openmc.CrossScore,)):
+        if not isinstance(score1, (str, openmc.CrossScore)):
             msg = 'Unable to swap score1 "{0}" in Tally ID="{1}" since it is ' \
                   'not a string or CrossScore'.format(score1, self.id)
             raise ValueError(msg)
-        elif not isinstance(score2, string_types + (openmc.CrossScore,)):
+        elif not isinstance(score2, (str, openmc.CrossScore)):
             msg = 'Unable to swap score2 "{0}" in Tally ID="{1}" since it is ' \
                   'not a string or CrossScore'.format(score2, self.id)
             raise ValueError(msg)
@@ -3248,29 +3148,9 @@ class Tallies(cv.CheckedList):
     """
 
     def __init__(self, tallies=None):
-        super(Tallies, self).__init__(Tally, 'tallies collection')
+        super().__init__(Tally, 'tallies collection')
         if tallies is not None:
             self += tallies
-
-    def add_tally(self, tally, merge=False):
-        """Append tally to collection
-
-        .. deprecated:: 0.8
-            Use :meth:`Tallies.append` instead.
-
-        Parameters
-        ----------
-        tally : openmc.Tally
-            Tally to add
-        merge : bool
-            Indicate whether the tally should be merged with an existing tally,
-            if possible. Defaults to False.
-
-        """
-        warnings.warn("Tallies.add_tally(...) has been deprecated and may be "
-                      "removed in a future version. Use Tallies.append(...) "
-                      "instead.", DeprecationWarning)
-        self.append(tally, merge)
 
     def append(self, tally, merge=False):
         """Append tally to collection
@@ -3305,10 +3185,10 @@ class Tallies(cv.CheckedList):
 
             # If no mergeable tally was found, simply add this tally
             if not merged:
-                super(Tallies, self).append(tally)
+                super().append(tally)
 
         else:
-            super(Tallies, self).append(tally)
+            super().append(tally)
 
     def insert(self, index, item):
         """Insert tally before index
@@ -3321,25 +3201,7 @@ class Tallies(cv.CheckedList):
             Tally to insert
 
         """
-        super(Tallies, self).insert(index, item)
-
-    def remove_tally(self, tally):
-        """Remove a tally from the collection
-
-        .. deprecated:: 0.8
-            Use :meth:`Tallies.remove` instead.
-
-        Parameters
-        ----------
-        tally : openmc.Tally
-            Tally to remove
-
-        """
-        warnings.warn("Tallies.remove_tally(...) has been deprecated and may "
-                      "be removed in a future version. Use Tallies.remove(...) "
-                      "instead.", DeprecationWarning)
-
-        self.remove(tally)
+        super().insert(index, item)
 
     def merge_tallies(self):
         """Merge any mergeable tallies together. Note that n-way merges are
@@ -3364,41 +3226,6 @@ class Tallies(cv.CheckedList):
 
                     # Continue iterating from the first loop
                     break
-
-    def add_mesh(self, mesh):
-        """Add a mesh to the file
-
-        .. deprecated:: 0.8
-            Meshes that appear in a tally are automatically added to the
-            collection.
-
-        Parameters
-        ----------
-        mesh : openmc.Mesh
-            Mesh to add to the file
-
-        """
-
-        warnings.warn("Tallies.add_mesh(...) has been deprecated and may be "
-                      "removed in a future version. Meshes that appear in a "
-                      "tally are automatically added to the collection.",
-                      DeprecationWarning)
-
-    def remove_mesh(self, mesh):
-        """Remove a mesh from the file
-
-        .. deprecated:: 0.8
-            Meshes do not need to be managed explicitly.
-
-        Parameters
-        ----------
-        mesh : openmc.Mesh
-            Mesh to remove from the file
-
-        """
-        warnings.warn("Tallies.remove_mesh(...) has been deprecated and may be "
-                      "removed in a future version. Meshes do not need to be "
-                      "managed explicitly.", DeprecationWarning)
 
     def _create_tally_subelements(self, root_element):
         for tally in self:

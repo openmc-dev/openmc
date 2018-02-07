@@ -1,7 +1,5 @@
 import warnings
 
-from six import string_types
-
 import openmc.checkvalue as cv
 
 
@@ -34,7 +32,7 @@ class Nuclide(str):
                   '"{}" is being renamed as "{}".'.format(orig_name, name)
             warnings.warn(msg)
 
-        return super(Nuclide, cls).__new__(cls, name)
+        return super().__new__(cls, name)
 
     @property
     def name(self):

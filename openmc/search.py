@@ -1,4 +1,4 @@
-from collections import Callable
+from collections.abc import Callable
 from numbers import Real
 
 import scipy.optimize as sopt

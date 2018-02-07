@@ -1,4 +1,4 @@
-from collections import Iterable
+from collections.abc import Iterable
 from numbers import Real, Integral
 from warnings import warn
 
@@ -45,7 +45,7 @@ class CorrelatedAngleEnergy(AngleEnergy):
     """
 
     def __init__(self, breakpoints, interpolation, energy, energy_out, mu):
-        super(CorrelatedAngleEnergy, self).__init__()
+        super().__init__()
         self.breakpoints = breakpoints
         self.interpolation = interpolation
         self.energy = energy

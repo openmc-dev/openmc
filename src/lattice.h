@@ -1,6 +1,7 @@
 #ifndef LATTICE_H
 #define LATTICE_H
 
+#include <array>
 #include <cstdint>
 #include <map>
 #include <string>
@@ -11,6 +12,12 @@
 
 
 namespace openmc {
+
+//==============================================================================
+// Constants
+//==============================================================================
+
+constexpr int32_t NO_OUTER_UNIVERSE{-1};
 
 //==============================================================================
 // Global variables
@@ -31,12 +38,12 @@ extern std::map<int32_t, int32_t> lattice_dict;
 class Lattice
 {
 public:
-  int32_t id;                     //! Universe ID number
-  std::string name;               //! User-defined name
-  //std::vector<double> pitch;      //! Pitch along each basis
-  //std::vector<int32_t> universes; //! Universes filling each lattice tile
-  //int32_t outer;                  //! Universe tiled outside the lattice
-  //std::vector<int32_t> offset;    //! Distribcell offsets
+  int32_t id;                        //! Universe ID number
+  std::string name;                  //! User-defined name
+  //std::vector<double> pitch;         //! Pitch along each basis
+  std::vector<int32_t> universes;    //! Universes filling each lattice tile
+  int32_t outer{NO_OUTER_UNIVERSE};  //! Universe tiled outside the lattice
+  //std::vector<int32_t> offset;       //! Distribcell offsets
 
   explicit Lattice(pugi::xml_node lat_node);
 
@@ -52,6 +59,9 @@ public:
   //! Write all information needed to reconstruct the lattice to an HDF5 group.
   //! @param group_id An HDF5 group id.
   void to_hdf5(hid_t group_id) const;
+
+protected:
+  bool is_3d;  //! Has divisions along the z-axis
 };
 
 //==============================================================================
@@ -63,6 +73,11 @@ public:
   explicit RectLattice(pugi::xml_node lat_node);
 
   virtual ~RectLattice() {}
+
+protected:
+  std::array<int, 3> n_cells;     //! Number of cells along each axis
+  std::array<int, 3> lower_left;  //! Global lower-left corner of the lattice
+  std::array<int, 3> pitch;       //! Lattice tile width along each axis
 };
 
 class HexLattice : public Lattice

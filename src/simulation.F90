@@ -454,6 +454,8 @@ contains
 
     ! Reset global variables
     current_batch = 0
+    call k_generation % clear()
+    call entropy % clear()
     need_depletion_rx = .false.
 
     ! Set flag indicating initialization is done

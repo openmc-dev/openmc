@@ -3,9 +3,13 @@
 from collections import OrderedDict
 import os
 import unittest
+from pathlib import Path
 
 import numpy as np
 from openmc.deplete import comm, depletion_chain, reaction_rates, nuclide
+
+
+_test_filename = str(Path(__file__).parents[2] / 'chains' / 'chain_test.xml')
 
 
 class TestDepletionChain(unittest.TestCase):
@@ -38,7 +42,7 @@ class TestDepletionChain(unittest.TestCase):
         # the components external to depletion_chain.py are simple storage
         # types.
 
-        dep = depletion_chain.DepletionChain.xml_read("chains/chain_test.xml")
+        dep = depletion_chain.DepletionChain.xml_read(_test_filename)
 
         # Basic checks
         self.assertEqual(dep.n_nuclides, 3)
@@ -124,7 +128,7 @@ class TestDepletionChain(unittest.TestCase):
         chain.nuclides = [A, B, C]
         chain.xml_write(filename)
 
-        original = open('chains/chain_test.xml', 'r').read()
+        original = open(_test_filename, 'r').read()
         chain_xml = open(filename, 'r').read()
         self.assertEqual(original, chain_xml)
 
@@ -134,7 +138,7 @@ class TestDepletionChain(unittest.TestCase):
         """ Using chain_test, and a dummy reaction rate, compute the matrix. """
         # Relies on test_xml_read passing.
 
-        dep = depletion_chain.DepletionChain.xml_read("chains/chain_test.xml")
+        dep = depletion_chain.DepletionChain.xml_read(_test_filename)
 
         cell_ind = {"10000": 0, "10001": 1}
         nuc_ind = {"A": 0, "B": 1, "C": 2}

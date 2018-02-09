@@ -1,16 +1,11 @@
-""" The OpenMC wrapper module.
-
-This module implements the OpenDeplete -> OpenMC linkage.
-"""
-
 import numpy as np
 import scipy.sparse as sp
+from openmc.deplete.reaction_rates import ReactionRates
+from openmc.deplete.function import Operator
 
-from opendeplete.reaction_rates import ReactionRates
-from opendeplete.function import Operator
 
 class DummyGeometry(Operator):
-    """ This is a dummy geometry class with no statistical uncertainty.
+    """This is a dummy geometry class with no statistical uncertainty.
 
     y_1' = sin(y_2) y_1 + cos(y_1) y_2
     y_2' = -cos(y_2) y_1 + sin(y_1) y_2
@@ -24,14 +19,14 @@ class DummyGeometry(Operator):
     """
 
     def __init__(self, settings):
-        Operator.__init__(self, settings)
+        super().__init__(settings)
 
     @property
     def chain(self):
         return self
 
     def eval(self, vec, print_out=False):
-        """ Evaluates F(y)
+        """Evaluates F(y)
 
         Parameters
         ----------
@@ -60,11 +55,10 @@ class DummyGeometry(Operator):
         reaction_rates[0, 1, 0] = vec[0][1]
 
         # Create a fake rates object
-
         return 0.0, reaction_rates, 0
 
     def form_matrix(self, rates):
-        """ Forms the f(y) matrix in y' = f(y)y.
+        """Forms the f(y) matrix in y' = f(y)y.
 
         Nominally a depletion matrix, this is abstracted on the off chance
         that the function f has nothing to do with depletion at all.
@@ -137,7 +131,7 @@ class DummyGeometry(Operator):
         return ReactionRates(cell_to_ind, nuc_to_ind, react_to_ind)
 
     def initial_condition(self):
-        """ Returns initial vector.
+        """Returns initial vector.
 
         Returns
         -------
@@ -148,7 +142,7 @@ class DummyGeometry(Operator):
         return [np.array((1.0, 1.0))]
 
     def get_results_info(self):
-        """ Returns volume list, cell lists, and nuc lists.
+        """Returns volume list, cell lists, and nuc lists.
 
         Returns
         -------

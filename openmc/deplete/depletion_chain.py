@@ -11,9 +11,6 @@ import math
 import re
 import os
 
-from tqdm import tqdm
-import scipy.sparse as sp
-import openmc.data
 # Try to use lxml if it is available. It preserves the order of attributes and
 # provides a pretty-printer by default. If not available, use OpenMC function to
 # pretty print.
@@ -22,9 +19,12 @@ try:
     _have_lxml = True
 except ImportError:
     import xml.etree.ElementTree as ET
-    from openmc.clean_xml import clean_xml_indentation
     _have_lxml = False
+from tqdm import tqdm
+import scipy.sparse as sp
 
+import openmc.data
+from openmc.clean_xml import clean_xml_indentation
 from .nuclide import Nuclide, DecayTuple, ReactionTuple
 
 
@@ -109,7 +109,7 @@ def replace_missing(product, decay_data):
 
 
 class DepletionChain(object):
-    """ The DepletionChain class.
+    """The DepletionChain class.
 
     This class contains a full representation of a depletion chain.
 
@@ -334,7 +334,7 @@ class DepletionChain(object):
         # Load XML tree
         try:
             root = ET.parse(filename)
-        except:
+        except Exception:
             if filename is None:
                 print("No chain specified, either manually or in environment variable OPENDEPLETE_CHAIN.")
             else:
@@ -374,11 +374,11 @@ class DepletionChain(object):
         if _have_lxml:
             tree.write(filename, encoding='utf-8', pretty_print=True)
         else:
-            clean_xml_indentation(root_elem, spaces_per_level=2)
+            clean_xml_indentation(root_elem)
             tree.write(filename, encoding='utf-8')
 
     def form_matrix(self, rates):
-        """ Forms depletion matrix.
+        """Forms depletion matrix.
 
         Parameters
         ----------
@@ -457,7 +457,7 @@ class DepletionChain(object):
         return matrix_dok.tocsr()
 
     def nuc_by_ind(self, ind):
-        """ Extracts nuclides from the list by dictionary key.
+        """Extracts nuclides from the list by dictionary key.
 
         Parameters
         ----------

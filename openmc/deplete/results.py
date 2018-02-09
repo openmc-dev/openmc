@@ -1,4 +1,4 @@
-""" The results module.
+"""The results module.
 
 Contains results generation and saving capabilities.
 """
@@ -14,8 +14,9 @@ from .reaction_rates import ReactionRates
 
 RESULTS_VERSION = 2
 
+
 class Results(object):
-    """ Contains output of opendeplete.
+    """Contains output of opendeplete.
 
     Attributes
     ----------
@@ -62,7 +63,7 @@ class Results(object):
         self.data = None
 
     def allocate(self, volume, nuc_list, burn_list, full_burn_dict, stages):
-        """ Allocates memory of Results.
+        """Allocates memory of Results.
 
         Parameters
         ----------
@@ -113,7 +114,7 @@ class Results(object):
         return self.data.shape[0]
 
     def __getitem__(self, pos):
-        """ Retrieves an item from results.
+        """Retrieves an item from results.
 
         Parameters
         ----------
@@ -137,7 +138,7 @@ class Results(object):
         return self.data[stage, mat, nuc]
 
     def __setitem__(self, pos, val):
-        """ Sets an item from results.
+        """Sets an item from results.
 
         Parameters
         ----------
@@ -159,7 +160,7 @@ class Results(object):
         self.data[stage, mat, nuc] = val
 
     def create_hdf5(self, handle):
-        """ Creates file structure for a blank HDF5 file.
+        """Creates file structure for a blank HDF5 file.
 
         Parameters
         ----------
@@ -232,7 +233,7 @@ class Results(object):
         handle.create_dataset("time", (1, 2), maxshape=(None, 2), dtype='float64')
 
     def to_hdf5(self, handle, index):
-        """ Converts results object into an hdf5 object.
+        """Converts results object into an hdf5 object.
 
         Parameters
         ----------
@@ -302,7 +303,7 @@ class Results(object):
             time_dset[index, :] = self.time
 
     def from_hdf5(self, handle, index):
-        """ Loads results object from HDF5.
+        """Loads results object from HDF5.
 
         Parameters
         ----------
@@ -360,7 +361,7 @@ class Results(object):
 
 
 def get_dict(number):
-    """ Given an operator nested dictionary, output indexing dictionaries.
+    """Given an operator nested dictionary, output indexing dictionaries.
 
     These indexing dictionaries map mat IDs and nuclide names to indices
     inside of Results.data.
@@ -394,7 +395,7 @@ def get_dict(number):
 
 
 def write_results(result, filename, index):
-    """ Outputs result to an .hdf5 file.
+    """Outputs result to an .hdf5 file.
 
     Parameters
     ----------
@@ -418,7 +419,7 @@ def write_results(result, filename, index):
 
 
 def read_results(filename):
-    """ Reads out a list of results objects from an hdf5 file.
+    """Reads out a list of results objects from an hdf5 file.
 
     Parameters
     ----------

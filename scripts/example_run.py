@@ -1,7 +1,7 @@
 """An example file showing how to run a simulation."""
 
 import numpy as np
-import opendeplete
+import openmc.deplete
 
 import example_geometry
 
@@ -16,7 +16,7 @@ N = np.floor(dt2/dt1)
 dt = np.repeat([dt1], N)
 
 # Create settings variable
-settings = opendeplete.OpenMCSettings()
+settings = openmc.deplete.OpenMCSettings()
 
 settings.openmc_call = "openmc"
 # An example for mpiexec:
@@ -33,7 +33,7 @@ settings.power = 2.337e15*4*joule_per_mev  # MeV/second cm from CASMO
 settings.dt_vec = dt
 settings.output_dir = 'test'
 
-op = opendeplete.OpenMCOperator(geometry, settings)
+op = openmc.deplete.OpenMCOperator(geometry, settings)
 
 # Perform simulation using the MCNPX/MCNP6 algorithm
-opendeplete.integrator.cecm(op)
+openmc.deplete.integrator.cecm(op)

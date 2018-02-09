@@ -6,8 +6,7 @@ import unittest
 from unittest.mock import MagicMock
 
 import numpy as np
-
-from opendeplete import integrator, ReactionRates, results, comm
+from openmc.deplete import integrator, ReactionRates, results, comm
 
 
 class TestIntegrator(unittest.TestCase):

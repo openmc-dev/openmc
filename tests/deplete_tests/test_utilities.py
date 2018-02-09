@@ -1,11 +1,11 @@
 """ Full system test suite. """
 
 import unittest
+from os.path import join, dirname
 
 import numpy as np
-
-from opendeplete import results
-from opendeplete import utilities
+from openmc.deplete import results
+from openmc.deplete import utilities
 
 
 class TestUtilities(unittest.TestCase):
@@ -19,7 +19,8 @@ class TestUtilities(unittest.TestCase):
         """
 
         # Load the reference
-        res = results.read_results("test/test_reference.h5")
+        filename = join(dirname(__file__), 'test_reference.h5')
+        res = results.read_results(filename)
 
         x, y = utilities.evaluate_single_nuclide(res, "1", "Xe135")
 
@@ -35,7 +36,8 @@ class TestUtilities(unittest.TestCase):
         """
 
         # Load the reference
-        res = results.read_results("test/test_reference.h5")
+        filename = join(dirname(__file__), 'test_reference.h5')
+        res = results.read_results(filename)
 
         x, y = utilities.evaluate_reaction_rate(res, "1", "Xe135", "(n,gamma)")
 
@@ -53,7 +55,8 @@ class TestUtilities(unittest.TestCase):
         """
 
         # Load the reference
-        res = results.read_results("test/test_reference.h5")
+        filename = join(dirname(__file__), 'test_reference.h5')
+        res = results.read_results(filename)
 
         x, y = utilities.evaluate_eigenvalue(res)
 

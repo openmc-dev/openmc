@@ -6,8 +6,9 @@ to run a full depletion simulation.
 
 from abc import ABCMeta, abstractmethod
 
+
 class Settings(object):
-    """ The Settings class.
+    """The Settings class.
 
     Contains all parameters necessary for the integrator.
 
@@ -24,8 +25,9 @@ class Settings(object):
         self.dt_vec = None
         self.output_dir = None
 
+
 class Operator(metaclass=ABCMeta):
-    """ The Operator metaclass.
+    """The Operator metaclass.
 
     This defines all functions that the integrator needs to operate.
 
@@ -40,7 +42,7 @@ class Operator(metaclass=ABCMeta):
 
     @abstractmethod
     def initial_condition(self):
-        """ Performs final setup and returns initial condition.
+        """Performs final setup and returns initial condition.
 
         Returns
         -------
@@ -52,7 +54,7 @@ class Operator(metaclass=ABCMeta):
 
     @abstractmethod
     def eval(self, vec, print_out=True):
-        """ Runs a simulation.
+        """Runs a simulation.
 
         Parameters
         ----------
@@ -75,7 +77,7 @@ class Operator(metaclass=ABCMeta):
 
     @abstractmethod
     def get_results_info(self):
-        """ Returns volume list, cell lists, and nuc lists.
+        """Returns volume list, cell lists, and nuc lists.
 
         Returns
         -------
@@ -93,7 +95,7 @@ class Operator(metaclass=ABCMeta):
 
     @abstractmethod
     def form_matrix(self, y, mat):
-        """ Forms the f(y) matrix in y' = f(y)y.
+        """Forms the f(y) matrix in y' = f(y)y.
 
         Nominally a depletion matrix, this is abstracted on the off chance
         that the function f has nothing to do with depletion at all.

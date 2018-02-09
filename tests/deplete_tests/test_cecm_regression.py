@@ -4,11 +4,11 @@ import os
 import unittest
 
 import numpy as np
+import openmc.deplete
+from openmc.deplete import results
+from openmc.deplete import utilities
 
-import opendeplete
-from opendeplete import results
-from opendeplete import utilities
-import test.dummy_geometry as dummy_geometry
+from . import dummy_geometry
 
 
 class TestCECMRegression(unittest.TestCase):
@@ -26,14 +26,14 @@ class TestCECMRegression(unittest.TestCase):
     def test_cecm(self):
         """ Integral regression test of integrator algorithm using CE/CM. """
 
-        settings = opendeplete.Settings()
+        settings = openmc.deplete.Settings()
         settings.dt_vec = [0.75, 0.75]
         settings.output_dir = self.results
 
         op = dummy_geometry.DummyGeometry(settings)
 
         # Perform simulation using the MCNPX/MCNP6 algorithm
-        opendeplete.cecm(op, print_out=False)
+        openmc.deplete.cecm(op, print_out=False)
 
         # Load the files
         res = results.read_results(settings.output_dir + "/results.h5")
@@ -59,8 +59,8 @@ class TestCECMRegression(unittest.TestCase):
 
         os.chdir(cls.cwd)
 
-        opendeplete.comm.barrier()
-        if opendeplete.comm.rank == 0:
+        openmc.deplete.comm.barrier()
+        if openmc.deplete.comm.rank == 0:
             os.remove(os.path.join(cls.results, "results.h5"))
             os.rmdir(cls.results)
 

@@ -3,7 +3,7 @@
 import unittest
 import xml.etree.ElementTree as ET
 
-from opendeplete import nuclide
+from openmc.deplete import nuclide
 
 
 class TestNuclide(unittest.TestCase):

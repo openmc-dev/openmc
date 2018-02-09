@@ -1,4 +1,4 @@
-""" The utilities module.
+"""The utilities module.
 
 Contains functions that can be used to post-process objects that come out of
 the results module.
@@ -6,8 +6,9 @@ the results module.
 
 import numpy as np
 
+
 def evaluate_single_nuclide(results, cell, nuc):
-    """ Evaluates a single nuclide in a single cell from a results list.
+    """Evaluates a single nuclide in a single cell from a results list.
 
     Parameters
     ----------
@@ -38,7 +39,7 @@ def evaluate_single_nuclide(results, cell, nuc):
     return time, concentration
 
 def evaluate_reaction_rate(results, cell, nuc, rxn):
-    """ Evaluates a single nuclide reaction rate in a single cell from a results list.
+    """Evaluates a single nuclide reaction rate in a single cell from a results list.
 
     Parameters
     ----------
@@ -69,8 +70,9 @@ def evaluate_reaction_rate(results, cell, nuc, rxn):
 
     return time, rate
 
+
 def evaluate_eigenvalue(results):
-    """ Evaluates the eigenvalue from a results list.
+    """Evaluates the eigenvalue from a results list.
 
     Parameters
     ----------

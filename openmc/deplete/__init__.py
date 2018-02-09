@@ -1,8 +1,8 @@
 """
-OpenDeplete
-===========
+openmc.deplete
+==============
 
-A simple depletion front-end tool.
+A depletion front-end tool.
 """
 
 from .dummy_comm import DummyCommunicator

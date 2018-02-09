@@ -1,11 +1,8 @@
 """An example file showing how to plot data from a simulation."""
 
 import matplotlib.pyplot as plt
-
-from opendeplete import read_results, \
-                        evaluate_single_nuclide, \
-                        evaluate_reaction_rate, \
-                        evaluate_eigenvalue
+from openmc.deplete import (read_results, evaluate_single_nuclide,
+                            evaluate_reaction_rate, evaluate_eigenvalue)
 
 # Set variables for where the data is, and what we want to read out.
 result_folder = "test"

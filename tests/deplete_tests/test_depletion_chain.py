@@ -5,8 +5,7 @@ import os
 import unittest
 
 import numpy as np
-
-from opendeplete import comm, depletion_chain, reaction_rates, nuclide
+from openmc.deplete import comm, depletion_chain, reaction_rates, nuclide
 
 
 class TestDepletionChain(unittest.TestCase):

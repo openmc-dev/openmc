@@ -6,7 +6,7 @@ from zipfile import ZipFile
 
 import requests
 from tqdm import tqdm
-import opendeplete
+import openmc.deplete
 
 
 urls = [
@@ -52,7 +52,7 @@ def main():
     nfy_files = glob.glob(os.path.join('nfy', '*.endf'))
     neutron_files = glob.glob(os.path.join('neutrons', '*.endf'))
 
-    chain = opendeplete.DepletionChain.from_endf(decay_files, nfy_files, neutron_files)
+    chain = openmc.deplete.DepletionChain.from_endf(decay_files, nfy_files, neutron_files)
     chain.xml_write('chain_endfb71.xml')
 
 

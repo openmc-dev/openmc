@@ -98,3 +98,6 @@ def predictor(operator, print_out=True):
 
     # Return to origin
     os.chdir(dir_home)
+
+    # Release resources
+    operator.finalize()

@@ -392,13 +392,13 @@ contains
         end if
 
         associate (rx => nuc % reactions(i), &
-                   xs => nuc % reactions(i) % xs(i_temp))
-            ! if energy is below threshold for this reaction, skip it
-            if (i_grid < xs % threshold) cycle
+             xs => nuc % reactions(i) % xs(i_temp))
+          ! if energy is below threshold for this reaction, skip it
+          if (i_grid < xs % threshold) cycle
 
-            ! add to cumulative probability
-            prob = prob + ((ONE - f)*xs % value(i_grid - xs % threshold + 1) &
-                 + f*(xs % value(i_grid - xs % threshold + 2)))
+          ! add to cumulative probability
+          prob = prob + ((ONE - f)*xs % value(i_grid - xs % threshold + 1) &
+               + f*(xs % value(i_grid - xs % threshold + 2)))
         end associate
       end do
 

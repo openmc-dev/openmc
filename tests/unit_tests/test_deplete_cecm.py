@@ -8,7 +8,7 @@ import openmc.deplete
 from openmc.deplete import results
 from openmc.deplete import utilities
 
-from . import dummy_geometry
+from tests import dummy_geometry
 
 
 class TestCECMRegression(unittest.TestCase):

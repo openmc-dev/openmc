@@ -3,11 +3,11 @@
 import unittest
 
 import numpy as np
+from openmc.deplete import atom_number
 
-from opendeplete import atom_number
 
 class TestAtomNumber(unittest.TestCase):
-    """ Tests for the AtomNumber class. """
+    """Tests for the AtomNumber class."""
 
     def test_indexing(self):
         """Tests the __getitem__ and __setitem__ routines simultaneously."""
@@ -41,7 +41,7 @@ class TestAtomNumber(unittest.TestCase):
         self.assertEqual(number["10000", "U238"], 5.0)
 
     def test_n_mat(self):
-        """ Test number of materials property. """
+        """Test number of materials property. """
         mat_to_ind = {"10000" : 0, "10001" : 1}
         nuc_to_ind = {"U238" : 0, "U235" : 1, "Gd157" : 2}
         volume = {"10000" : 0.38, "10001" : 0.21}
@@ -51,7 +51,7 @@ class TestAtomNumber(unittest.TestCase):
         self.assertEqual(number.n_mat, 2)
 
     def test_n_nuc(self):
-        """ Test number of nuclides property. """
+        """Test number of nuclides property."""
         mat_to_ind = {"10000" : 0, "10001" : 1}
         nuc_to_ind = {"U238" : 0, "U235" : 1, "Gd157" : 2}
         volume = {"10000" : 0.38, "10001" : 0.21}
@@ -61,7 +61,7 @@ class TestAtomNumber(unittest.TestCase):
         self.assertEqual(number.n_nuc, 3)
 
     def test_burn_nuc_list(self):
-        """ Test the list of burned nuclides property """
+        """Test the list of burned nuclides property"""
         mat_to_ind = {"10000" : 0, "10001" : 1}
         nuc_to_ind = {"U238" : 0, "U235" : 1, "Gd157" : 2}
         volume = {"10000" : 0.38, "10001" : 0.21}
@@ -71,7 +71,7 @@ class TestAtomNumber(unittest.TestCase):
         self.assertEqual(number.burn_nuc_list, ["U238", "U235"])
 
     def test_burn_mat_list(self):
-        """ Test the list of burned nuclides property """
+        """Test the list of burned nuclides property"""
         mat_to_ind = {"10000" : 0, "10001" : 1, "10002" : 2}
         nuc_to_ind = {"U238" : 0, "U235" : 1, "Gd157" : 2}
         volume = {"10000" : 0.38, "10001" : 0.21}

@@ -9,8 +9,7 @@ import math
 
 import numpy as np
 import openmc
-
-from opendeplete import density_to_mat
+from openmc.deplete import density_to_mat
 
 
 def generate_initial_number_density():

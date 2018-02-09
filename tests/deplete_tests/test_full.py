@@ -2,13 +2,14 @@
 
 import shutil
 import unittest
+from os.path import join, dirname
 
 import numpy as np
+import openmc.deplete
+from openmc.deplete import results
+from openmc.deplete import utilities
 
-import opendeplete
-from opendeplete import results
-from opendeplete import utilities
-import test.example_geometry as example_geometry
+from . import example_geometry
 
 
 class TestFull(unittest.TestCase):
@@ -40,7 +41,7 @@ class TestFull(unittest.TestCase):
         dt = np.repeat([dt1], N)
 
         # Create settings variable
-        settings = opendeplete.OpenMCSettings()
+        settings = openmc.deplete.OpenMCSettings()
 
         settings.chain_file = "chains/chain_simple.xml"
         settings.openmc_call = "openmc"
@@ -60,16 +61,17 @@ class TestFull(unittest.TestCase):
         settings.dt_vec = dt
         settings.output_dir = "test_full"
 
-        op = opendeplete.OpenMCOperator(geometry, settings)
+        op = openmc.deplete.OpenMCOperator(geometry, settings)
 
         # Perform simulation using the predictor algorithm
-        opendeplete.integrator.predictor(op)
+        openmc.deplete.integrator.predictor(op)
 
         # Load the files
         res_test = results.read_results(settings.output_dir + "/results.h5")
 
         # Load the reference
-        res_old = results.read_results("test/test_reference.h5")
+        filename = join(dirname(__file__), 'test_reference.h5')
+        res_old = results.read_results(filename)
 
         # Assert same mats
         for mat in res_old[0].mat_to_ind:
@@ -110,8 +112,8 @@ class TestFull(unittest.TestCase):
 
     def tearDown(self):
         """ Clean up files"""
-        opendeplete.comm.barrier()
-        if opendeplete.comm.rank == 0:
+        openmc.deplete.comm.barrier()
+        if openmc.deplete.comm.rank == 0:
             shutil.rmtree("test_full", ignore_errors=True)
 
 

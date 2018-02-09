@@ -7,7 +7,7 @@ import numpy as np
 
 
 class AtomNumber(object):
-    """ AtomNumber module.
+    """AtomNumber module.
 
     An ndarray to store atom densities with string, integer, or slice indexing.
 
@@ -71,7 +71,7 @@ class AtomNumber(object):
         self._burn_mat_list = None
 
     def __getitem__(self, pos):
-        """ Retrieves total atom number from AtomNumber.
+        """Retrieves total atom number from AtomNumber.
 
         Parameters
         ----------
@@ -95,7 +95,7 @@ class AtomNumber(object):
         return self.number[mat, nuc]
 
     def __setitem__(self, pos, val):
-        """ Sets total atom number into AtomNumber.
+        """Sets total atom number into AtomNumber.
 
         Parameters
         ----------
@@ -116,7 +116,7 @@ class AtomNumber(object):
         self.number[mat, nuc] = val
 
     def get_atom_density(self, mat, nuc):
-        """ Accesses atom density instead of total number.
+        """Accesses atom density instead of total number.
 
         Parameters
         ----------
@@ -139,7 +139,7 @@ class AtomNumber(object):
         return self[mat, nuc] / self.volume[mat]
 
     def set_atom_density(self, mat, nuc, val):
-        """ Sets atom density instead of total number.
+        """Sets atom density instead of total number.
 
         Parameters
         ----------
@@ -159,7 +159,7 @@ class AtomNumber(object):
         self[mat, nuc] = val * self.volume[mat]
 
     def get_mat_slice(self, mat):
-        """ Gets atom quantity indexed by mats for all burned nuclides
+        """Gets atom quantity indexed by mats for all burned nuclides
 
         Parameters
         ----------
@@ -178,7 +178,7 @@ class AtomNumber(object):
         return self[mat, 0:self.n_nuc_burn]
 
     def set_mat_slice(self, mat, val):
-        """ Sets atom quantity indexed by mats for all burned nuclides
+        """Sets atom quantity indexed by mats for all burned nuclides
 
         Parameters
         ----------
@@ -205,7 +205,7 @@ class AtomNumber(object):
 
     @property
     def burn_nuc_list(self):
-        """ burn_nuc_list : list of str
+        """burn_nuc_list : list of str
         A list of all nuclide material names. Used for sorting the simulation.
         """
 
@@ -221,7 +221,7 @@ class AtomNumber(object):
 
     @property
     def burn_mat_list(self):
-        """ burn_mat_list : list of str
+        """burn_mat_list : list of str
         A list of all burning material names. Used for sorting the simulation.
         """
 

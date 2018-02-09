@@ -7,7 +7,7 @@ import numpy as np
 
 
 class ReactionRates(object):
-    """ ReactionRates class.
+    """ReactionRates class.
 
     An ndarray to store reaction rates with string, integer, or slice indexing.
 
@@ -47,7 +47,7 @@ class ReactionRates(object):
         self.rates = np.zeros((self.n_mat, self.n_nuc, self.n_react))
 
     def __getitem__(self, pos):
-        """ Retrieves an item from reaction_rates.
+        """Retrieves an item from reaction_rates.
 
         Parameters
         ----------
@@ -74,7 +74,7 @@ class ReactionRates(object):
         return self.rates[mat, nuc, react]
 
     def __setitem__(self, pos, val):
-        """ Sets an item from reaction_rates.
+        """Sets an item from reaction_rates.
 
         Parameters
         ----------

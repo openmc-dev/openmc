@@ -1,7 +1,8 @@
 """ Generic result saving code for integrators.
 
 """
-from opendeplete.results import Results, write_results
+from ..results import Results, write_results
+
 
 def save_results(op, x, rates, eigvls, seeds, t, step_ind):
     """ Creates and writes results to disk

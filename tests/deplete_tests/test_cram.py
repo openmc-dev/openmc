@@ -4,8 +4,8 @@ import unittest
 
 import numpy as np
 import scipy.sparse as sp
+from openmc.deplete.integrator import CRAM16, CRAM48
 
-from opendeplete.integrator import CRAM16, CRAM48
 
 class TestCram(unittest.TestCase):
     """ Tests for cram.py

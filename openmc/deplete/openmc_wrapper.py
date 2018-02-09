@@ -1,6 +1,6 @@
-""" The OpenMC wrapper module.
+"""The OpenMC wrapper module.
 
-This module implements the OpenDeplete -> OpenMC linkage.
+This module implements the depletion -> OpenMC linkage.
 """
 
 import copy
@@ -14,14 +14,13 @@ try:
     _have_lxml = True
 except ImportError:
     import xml.etree.ElementTree as ET
-    from openmc.clean_xml import clean_xml_indentation
     _have_lxml = False
 
 import h5py
 import numpy as np
+
 import openmc
 import openmc.capi
-
 from . import comm
 from .atom_number import AtomNumber
 from .depletion_chain import DepletionChain
@@ -194,7 +193,7 @@ class OpenMCOperator(Operator):
 
         # Clear out OpenMC, create task lists, distribute
         if comm.rank == 0:
-            clean_up_openmc()
+            openmc.reset_auto_ids()
             mat_burn_list, mat_not_burn_list, volume, self.mat_tally_ind, \
                 nuc_dict = self.extract_mat_ids()
         else:
@@ -224,7 +223,7 @@ class OpenMCOperator(Operator):
         openmc.capi.finalize()
 
     def extract_mat_ids(self):
-        """ Extracts materials and assigns them to processes.
+        """Extracts materials and assigns them to processes.
 
         Returns
         -------
@@ -308,7 +307,7 @@ class OpenMCOperator(Operator):
         return mat_burn_lists, mat_not_burn_lists, volume, mat_tally_ind, nuc_dict
 
     def extract_number(self, mat_burn, mat_not_burn, volume, nuc_dict):
-        """ Construct self.number read from geometry
+        """Construct self.number read from geometry
 
         Parameters
         ----------
@@ -356,7 +355,7 @@ class OpenMCOperator(Operator):
                         self.set_number_from_mat(mat)
 
     def set_number_from_mat(self, mat):
-        """ Extracts material and number densities from openmc.Material
+        """Extracts material and number densities from openmc.Material
 
         Parameters
         ----------
@@ -369,12 +368,11 @@ class OpenMCOperator(Operator):
 
         nuc_dens = mat.get_nuclide_atom_densities()
         for nuclide in nuc_dens:
-            name = nuclide.name
             number = nuc_dens[nuclide][1] * 1.0e24
-            self.number.set_atom_density(mat_id, name, number)
+            self.number.set_atom_density(mat_id, nuclide, number)
 
     def initialize_reaction_rates(self):
-        """ Create reaction rates object. """
+        """Create reaction rates object. """
         self.reaction_rates = ReactionRates(
             self.burn_mat_to_ind,
             self.burn_nuc_to_ind,
@@ -383,7 +381,7 @@ class OpenMCOperator(Operator):
         self.chain.nuc_to_react_ind = self.burn_nuc_to_ind
 
     def eval(self, vec, print_out=True):
-        """ Runs a simulation.
+        """Runs a simulation.
 
         Parameters
         ----------
@@ -405,7 +403,7 @@ class OpenMCOperator(Operator):
         """
 
         # Prevent OpenMC from complaining about re-creating tallies
-        clean_up_openmc()
+        openmc.reset_auto_ids()
 
         # Update status
         self.set_density(vec)
@@ -435,7 +433,7 @@ class OpenMCOperator(Operator):
         return k, copy.deepcopy(self.reaction_rates), self.seed
 
     def form_matrix(self, y, mat):
-        """ Forms the depletion matrix.
+        """Forms the depletion matrix.
 
         Parameters
         ----------
@@ -453,7 +451,7 @@ class OpenMCOperator(Operator):
         return copy.deepcopy(self.chain.form_matrix(y[mat, :, :]))
 
     def initial_condition(self):
-        """ Performs final setup and returns initial condition.
+        """Performs final setup and returns initial condition.
 
         Returns
         -------
@@ -513,7 +511,7 @@ class OpenMCOperator(Operator):
                 mat_internal.set_densities(nuclides, densities)
 
     def generate_materials_xml(self):
-        """ Creates materials.xml from self.number.
+        """Creates materials.xml from self.number.
 
         Due to uncertainty with how MPI interacts with OpenMC API, this
         constructs the XML manually.  The long term goal is to do this
@@ -531,7 +529,7 @@ class OpenMCOperator(Operator):
         materials.export_to_xml()
 
     def generate_settings_xml(self):
-        """ Generates settings.xml.
+        """Generates settings.xml.
 
         This function creates settings.xml using the value of the settings
         variable.
@@ -625,7 +623,7 @@ class OpenMCOperator(Operator):
         tally_dep.filters = [mat_filter]
 
     def total_density_list(self):
-        """ Returns a list of total density lists.
+        """Returns a list of total density lists.
 
         This list is in the exact same order as depletion_matrix_list, so that
         matrix exponentiation can be done easily.
@@ -641,7 +639,7 @@ class OpenMCOperator(Operator):
         return total_density
 
     def set_density(self, total_density):
-        """ Sets density.
+        """Sets density.
 
         Sets the density in the exact same order as total_density_list outputs,
         allowing for internal consistency
@@ -657,7 +655,7 @@ class OpenMCOperator(Operator):
             self.number.set_mat_slice(i, total_density[i])
 
     def unpack_tallies_and_normalize(self):
-        """ Unpack tallies from OpenMC
+        """Unpack tallies from OpenMC
 
         This function reads the tallies generated by OpenMC (from the tally.xml
         file generated in generate_tally_xml) normalizes them so that the total
@@ -754,7 +752,7 @@ class OpenMCOperator(Operator):
         return k_combined
 
     def load_participating(self):
-        """ Loads a cross_sections.xml file to find participating nuclides.
+        """Loads a cross_sections.xml file to find participating nuclides.
 
         This allows for nuclides that are important in the decay chain but not
         important neutronically, or have no cross section data.
@@ -772,7 +770,7 @@ class OpenMCOperator(Operator):
 
         try:
             tree = ET.parse(filename)
-        except:
+        except Exception:
             if filename is None:
                 msg = "No cross_sections.xml specified in materials."
             else:
@@ -802,7 +800,7 @@ class OpenMCOperator(Operator):
         return len(self.chain.nuclides)
 
     def get_results_info(self):
-        """ Returns volume list, cell lists, and nuc lists.
+        """Returns volume list, cell lists, and nuc lists.
 
         Returns
         -------
@@ -829,8 +827,10 @@ class OpenMCOperator(Operator):
 
         return volume, nuc_list, burn_list, self.mat_tally_ind
 
+
 def density_to_mat(dens_dict):
-    """ Generates an OpenMC material from a cell ID and self.number_density.
+    """Generates an OpenMC material from a cell ID and self.number_density.
+
     Parameters
     ----------
     m_id : int
@@ -847,7 +847,3 @@ def density_to_mat(dens_dict):
     mat.set_density('sum')
 
     return mat
-
-def clean_up_openmc():
-    """ Resets all automatic indexing in OpenMC, as these get in the way. """
-    openmc.reset_auto_ids()

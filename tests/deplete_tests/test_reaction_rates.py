@@ -2,7 +2,7 @@
 
 import unittest
 
-from opendeplete import reaction_rates
+from openmc.deplete import reaction_rates
 
 
 class TestReactionRates(unittest.TestCase):

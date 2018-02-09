@@ -219,9 +219,6 @@ class OpenMCOperator(Operator):
         # Create reaction rate tables
         self.initialize_reaction_rates()
 
-    def __del__(self):
-        openmc.capi.finalize()
-
     def extract_mat_ids(self):
         """Extracts materials and assigns them to processes.
 
@@ -474,6 +471,10 @@ class OpenMCOperator(Operator):
 
         # Return number density vector
         return self.total_density_list()
+
+    def finalize(self):
+        """Finalize a depletion simulation and release resources."""
+        openmc.capi.finalize()
 
     def _update_materials(self):
         """Updates material compositions in OpenMC on all processes."""

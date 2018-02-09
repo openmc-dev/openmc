@@ -21,6 +21,9 @@ class DummyGeometry(Operator):
     def __init__(self, settings):
         super().__init__(settings)
 
+    def finalize(self):
+        pass
+
     @property
     def chain(self):
         return self

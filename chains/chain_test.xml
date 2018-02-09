@@ -1,0 +1,23 @@
+<depletion>
+  <nuclide_table name="A" half_life="23652.0" decay_modes="2" decay_energy="0.0" reactions="1">
+    <decay_type type="beta1" target="B" branching_ratio="0.6"/>
+    <decay_type type="beta2" target="C" branching_ratio="0.4"/>
+    <reaction_type type="(n,gamma)" Q="0.0" target="C"/>
+  </nuclide_table>
+  <nuclide_table name="B" half_life="32904.0" decay_modes="1" decay_energy="0.0" reactions="1">
+    <decay_type type="beta" target="A" branching_ratio="1.0"/>
+    <reaction_type type="(n,gamma)" Q="0.0" target="C"/>
+  </nuclide_table>
+  <nuclide_table name="C" reactions="3">
+    <reaction_type type="fission" Q="200000000.0"/>
+    <reaction_type type="(n,gamma)" Q="0.0" target="A" branching_ratio="0.7"/>
+    <reaction_type type="(n,gamma)" Q="0.0" target="B" branching_ratio="0.3"/>
+    <neutron_fission_yields>
+      <energies>0.0253</energies>
+      <fission_yields energy="0.0253">
+        <products>A B</products>
+        <data>0.0292737 0.002566345</data>
+      </fission_yields>
+    </neutron_fission_yields>
+  </nuclide_table>
+</depletion>

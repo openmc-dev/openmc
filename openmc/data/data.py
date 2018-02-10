@@ -1,6 +1,9 @@
 import itertools
 import os
 import re
+from warnings import warn
+
+from numpy import sqrt
 
 
 # Isotopic abundances from Meija J, Coplen T B, et al, "Isotopic compositions
@@ -206,6 +209,110 @@ def atomic_weight(element):
         if re.match(r'{}\d+'.format(element), nuclide):
             weight += atomic_mass(nuclide) * abundance
     return None if weight == 0. else weight
+
+
+def water_density(temperature, pressure=0.1013):
+    """Return the density of liquid water at a given temperature and pressure.
+
+    The density is calculated from a polynomial fit using equations and values
+    from the 2012 version of the IAPWS-IF97 formulation.  Only the equations
+    for region 1 are implemented here.
+
+    Results are invalid for water vapor; pressures above 100 [MPa]; and
+    temperatures below 273.15 [K], above 623.15 [K], or above saturation.
+
+    Reference: International Association for the Properties of Water and Steam,
+    "Revised Release on the IAPWS Industrial Formulation 1997 for the
+    Thermodynamic Properties of Water and Steam", IAPWS R7-97(2012).
+
+    Parameters
+    ----------
+    temperature : float
+        Water temperature in units of [K]
+    pressure : float
+        Water pressure in units of [MPa]
+
+    Returns
+    -------
+    float
+        Water density in units of [g / cm^3]
+
+    """
+
+    # Make sure the temperature and pressure are inside the min/max region 1
+    # bounds.  (Relax the 273.15 bound to 273 in case a user wants 0 deg C data
+    # but they only use 3 digits for their conversion to K.)
+    if pressure > 100.0:
+        warn("Results are not valid for pressures above 100 MPa.")
+    if pressure < 0.0:
+        warn("Results are not valid for pressures below zero.")
+    if temperature < 273:
+        warn("Results are not valid for temperatures below 273.15 K.")
+    if temperature > 623.15:
+        warn("Results are not valid for temperatures above 623.15 K.")
+
+    # IAPWS region 4 parameters
+    _n4 = [0.11670521452767e4, -0.72421316703206e6, -0.17073846940092e2,
+           0.12020824702470e5, -0.32325550322333e7, 0.14915108613530e2,
+           -0.48232657361591e4, 0.40511340542057e6, -0.23855557567849,
+           0.65017534844798e3]
+
+    # Compute the saturation temperature at the given pressure.
+    beta = pressure**(0.25)
+    E = beta**2 + _n4[2] * beta + _n4[5]
+    F = _n4[0] * beta**2 + _n4[3] * beta + _n4[6]
+    G = _n4[1] * beta**2 + _n4[4] * beta + _n4[7]
+    D = 2.0 * G / (-F - sqrt(F**2 - 4 * E * G))
+    T_sat = 0.5 * (_n4[9] + D
+                   - sqrt((_n4[9] + D)**2  - 4.0 * (_n4[8] + _n4[9] * D)))
+
+    # Make sure we aren't above saturation.  (Relax this bound by .2 degrees
+    # for deg C to K conversions.)
+    if temperature > T_sat + 0.2:
+        warn("Results are not valid for temperatures above saturation "
+             "(above the boiling point).")
+
+    # IAPWS region 1 parameters
+    R_GAS_CONSTANT = 0.461526  # kJ / kg / K
+    _ref_p = 16.53  # MPa
+    _ref_T = 1386  # K
+    _n1f = [0.14632971213167, -0.84548187169114, -0.37563603672040e1,
+            0.33855169168385e1, -0.95791963387872, 0.15772038513228,
+            -0.16616417199501e-1, 0.81214629983568e-3, 0.28319080123804e-3,
+            -0.60706301565874e-3, -0.18990068218419e-1, -0.32529748770505e-1,
+            -0.21841717175414e-1, -0.52838357969930e-4, -0.47184321073267e-3,
+            -0.30001780793026e-3, 0.47661393906987e-4, -0.44141845330846e-5,
+            -0.72694996297594e-15, -0.31679644845054e-4, -0.28270797985312e-5,
+            -0.85205128120103e-9, -0.22425281908000e-5, -0.65171222895601e-6,
+            -0.14341729937924e-12, -0.40516996860117e-6, -0.12734301741641e-8,
+            -0.17424871230634e-9, -0.68762131295531e-18, 0.14478307828521e-19,
+            0.26335781662795e-22, -0.11947622640071e-22, 0.18228094581404e-23,
+            -0.93537087292458e-25]
+    _I1f = [0, 0, 0, 0, 0, 0, 0, 0, 1, 1, 1, 1, 1, 1, 2, 2, 2, 2, 2, 3, 3, 3, 4,
+            4, 4, 5, 8, 8, 21, 23, 29, 30, 31, 32]
+    _J1f = [-2, -1, 0, 1, 2, 3, 4, 5, -9, -7, -1, 0, 1, 3, -3, 0, 1, 3, 17, -4,
+            0, 6, -5, -2, 10, -8, -11, -6, -29, -31, -38, -39, -40, -41]
+
+    # Nondimensionalize the pressure and temperature.
+    pi = pressure / _ref_p
+    tau = _ref_T / temperature
+
+    # Compute the derivative of gamma (dimensionless Gibbs free energy) with
+    # respect to pi.
+    gamma1_pi = 0.0
+    for i in range(34):
+        gamma1_pi -= (_n1f[i] * _I1f[i] * (7.1 - pi)**(_I1f[i] - 1)
+                      * (tau - 1.222)**_J1f[i])
+
+    # Compute the leading coefficient.  This sets the units at
+    #   1 [MPa] * [kg K / kJ] / [1 / K]
+    # = 1e6 [N / m^2] * 1e-3 [kg K / N / m] * [1 / K]
+    # = 1e3 [kg / m^3]
+    # = 1 [g / cm^3]
+    coeff = pressure / R_GAS_CONSTANT / temperature
+
+    # Compute and return the density.
+    return coeff / pi / gamma1_pi
 
 
 # Values here are from the Committee on Data for Science and Technology

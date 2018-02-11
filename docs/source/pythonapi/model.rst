@@ -10,9 +10,9 @@ Convenience Functions
    :nosignatures:
    :template: myfunction.rst
 
+   openmc.model.borated_water
    openmc.model.get_hexagonal_prism
    openmc.model.get_rectangular_prism
-   openmc.model.make_borated_water
    openmc.model.subdivide
 
 TRISO Fuel Modeling

@@ -54,7 +54,7 @@ def test_water_density():
     dens = openmc.data.water_density
     # These test values are from IAPWS R7-97(2012).  They are actually specific
     # volumes so they need to be inverted.  They also need to be divided by 1000
-    # to convert from [kg / m^3] to [g / cm^2].
+    # to convert from [kg / m^3] to [g / cm^3].
     assert dens(300.0, 3.0) == pytest.approx(1e-3/0.100215168e-2, 1e-6)
     assert dens(300.0, 80.0) == pytest.approx(1e-3/0.971180894e-3, 1e-6)
     assert dens(500.0, 3.0) == pytest.approx(1e-3/0.120241800e-2, 1e-6)

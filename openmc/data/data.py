@@ -216,10 +216,9 @@ def water_density(temperature, pressure=0.1013):
 
     The density is calculated from a polynomial fit using equations and values
     from the 2012 version of the IAPWS-IF97 formulation.  Only the equations
-    for region 1 are implemented here.
-
-    Results are invalid for water vapor; pressures above 100 [MPa]; and
-    temperatures below 273.15 [K], above 623.15 [K], or above saturation.
+    for region 1 are implemented here.  Region 1 is limited to liquid water
+    below 100 [MPa] with a temperature above 273.15 [K], below 623.15 [K], and
+    below saturation.
 
     Reference: International Association for the Properties of Water and Steam,
     "Revised Release on the IAPWS Industrial Formulation 1997 for the

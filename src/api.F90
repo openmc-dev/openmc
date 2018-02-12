@@ -121,6 +121,8 @@ contains
     energy_min_neutron = ZERO
     entropy_on = .false.
     gen_per_batch = 1
+    index_entropy_mesh = -1
+    index_ufs_mesh = -1
     keff = ONE
     legendre_to_tabular = .true.
     legendre_to_tabular_points = 33

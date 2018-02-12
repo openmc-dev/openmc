@@ -139,3 +139,29 @@ def test_materials(run_in_tmpdir):
     mats.cross_sections = '/some/fake/cross_sections.xml'
     mats.multipole_library = '/some/awesome/mp_lib/'
     mats.export_to_xml()
+
+
+def test_borated_water():
+    # Test against reference values from the BEAVRS benchmark.
+    m = openmc.model.borated_water(975, 566.5, 15.51, material_id=50)
+    assert m.density == pytest.approx(0.7405, 1e-3)
+    assert m.temperature == pytest.approx(566.5)
+    assert m._sab[0][0] == 'c_H_in_H2O'
+    ref_dens = {'B10':8.0023e-06, 'B11':3.2210e-05, 'H1':4.9458e-02,
+                'O16':2.4672e-02}
+    nuc_dens = m.get_nuclide_atom_densities()
+    for nuclide in ref_dens:
+        assert nuc_dens[nuclide][1] == pytest.approx(ref_dens[nuclide], 1e-2)
+    assert m.id == 50
+
+    # Test the Celsius conversion.
+    m = openmc.model.borated_water(975, 293.35, 15.51, 'C')
+    assert m.density == pytest.approx(0.7405, 1e-3)
+
+    # Test Fahrenheit and psi conversions.
+    m = openmc.model.borated_water(975, 560.0, 2250.0, 'F', 'psi')
+    assert m.density == pytest.approx(0.7405, 1e-3)
+
+    # Test the density override
+    m = openmc.model.borated_water(975, 566.5, 15.51, density=0.9)
+    assert m.density == pytest.approx(0.9, 1e-3)

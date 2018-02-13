@@ -303,7 +303,7 @@ contains
     real(8) :: temp_actual
     type(VectorInt) :: MTs
     type(VectorInt) :: temps_to_read
-    type(VectorInt) :: index_inelastic_scatter_vector
+    type(VectorInt) :: index_inelastic_scatter
 
     ! Get name of nuclide from group
     name_len = len(this % name)
@@ -478,7 +478,7 @@ contains
            MTs % data(i) /= N_3NF .and. MTs % data(i) < 200 .and. &
            MTs % data(i) /= N_LEVEL .and. MTs % data(i) /= ELASTIC) then
 
-        call index_inelastic_scatter_vector % push_back(i)
+        call index_inelastic_scatter % push_back(i)
       end if
 
       call close_group(rx_group)
@@ -486,10 +486,9 @@ contains
     call close_group(rxs_group)
 
     ! Recast to a regular array to save space
-    allocate(this % index_inelastic_scatter( &
-         index_inelastic_scatter_vector % size()))
-    this % index_inelastic_scatter = index_inelastic_scatter_vector % data(:)
-    call index_inelastic_scatter_vector % clear()
+    allocate(this % index_inelastic_scatter(index_inelastic_scatter % size()))
+    this % index_inelastic_scatter = &
+         index_inelastic_scatter % data(1: index_inelastic_scatter % size())
 
     ! Read unresolved resonance probability tables if present
     if (object_exists(group_id, 'urr')) then

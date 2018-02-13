@@ -163,10 +163,11 @@ module mgxs_header
       real(8),        intent(inout) :: wgt    ! Particle weight
     end subroutine mgxs_sample_scatter_
 
-    subroutine mgxs_calculate_xs_(this, gin, uvw, xs)
+    subroutine mgxs_calculate_xs_(this, gin, sqrtkT, uvw, xs)
       import Mgxs, MaterialMacroXS
-      class(Mgxs),           intent(in)    :: this
+      class(Mgxs),           intent(inout) :: this
       integer,               intent(in)    :: gin    ! Incoming neutron group
+      real(8),               intent(in)    :: sqrtkT ! Material temperature
       real(8),               intent(in)    :: uvw(3) ! Incoming neutron direction
       type(MaterialMacroXS), intent(inout) :: xs     ! Resultant Mgxs Data
     end subroutine mgxs_calculate_xs_
@@ -3481,11 +3482,15 @@ contains
 ! for the material the particle is currently traveling through.
 !===============================================================================
 
-    subroutine mgxsiso_calculate_xs(this, gin, uvw, xs)
-      class(MgxsIso),        intent(in)    :: this
+    subroutine mgxsiso_calculate_xs(this, gin, sqrtkT, uvw, xs)
+      class(MgxsIso),        intent(inout) :: this
       integer,               intent(in)    :: gin    ! Incoming neutron group
+      real(8),               intent(in)    :: sqrtkT ! Material temperature
       real(8),               intent(in)    :: uvw(3) ! Incoming neutron direction
       type(MaterialMacroXS), intent(inout) :: xs     ! Resultant Mgxs Data
+
+      ! Update the temperature index
+      call this % find_temperature(sqrtkT)
 
       xs % total         = this % xs(this % index_temp) % total(gin)
       xs % absorption    = this % xs(this % index_temp) % absorption(gin)
@@ -3495,15 +3500,19 @@ contains
 
     end subroutine mgxsiso_calculate_xs
 
-    subroutine mgxsang_calculate_xs(this, gin, uvw, xs)
-      class(MgxsAngle),      intent(in)    :: this
+    subroutine mgxsang_calculate_xs(this, gin, sqrtkT, uvw, xs)
+      class(MgxsAngle),      intent(inout) :: this
       integer,               intent(in)    :: gin    ! Incoming neutron group
+      real(8),               intent(in)    :: sqrtkT ! Material temperature
       real(8),               intent(in)    :: uvw(3) ! Incoming neutron direction
       type(MaterialMacroXS), intent(inout) :: xs     ! Resultant Mgxs Data
 
       integer :: iazi, ipol
 
+      ! Update the temperature and angle indices
+      call this % find_temperature(sqrtkT)
       call find_angle(this % polar, this % azimuthal, uvw, iazi, ipol)
+
       xs % total         = this % xs(this % index_temp) % &
            total(gin, iazi, ipol)
       xs % absorption    = this % xs(this % index_temp) % &

@@ -345,7 +345,6 @@ set(LIBOPENMC_FORTRAN_SRC
   src/cmfd_prod_operator.F90
   src/cmfd_solver.F90
   src/constants.F90
-  src/cross_section.F90
   src/dict_header.F90
   src/distribution_multivariate.F90
   src/distribution_univariate.F90

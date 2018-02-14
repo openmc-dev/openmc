@@ -61,7 +61,7 @@ def test_full(run_in_tmpdir):
     openmc.deplete.integrator.predictor(op)
 
     # Load the files
-    res_test = results.read_results(settings.output_dir + "/results.h5")
+    res_test = results.read_results(settings.output_dir + "/depletion_results.h5")
 
     # Load the reference
     filename = str(Path(__file__).with_name('test_reference.h5'))

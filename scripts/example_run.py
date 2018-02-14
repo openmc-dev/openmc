@@ -28,7 +28,6 @@ settings.particles = 1000
 settings.batches = 100
 settings.inactive = 40
 settings.source = openmc.Source(space=openmc.stats.Box(lower_left, upper_right))
-settings.verbosity = 3
 
 op = openmc.deplete.OpenMCOperator(geometry, settings)
 

@@ -5,6 +5,8 @@ import shutil
 from pathlib import Path
 
 import numpy as np
+import openmc
+from openmc.data import JOULE_PER_EV
 import openmc.deplete
 from openmc.deplete import results
 from openmc.deplete import utilities
@@ -35,26 +37,23 @@ def test_full(run_in_tmpdir):
     N = floor(dt2/dt1)
     dt = np.full(N, dt1)
 
-    # Create settings variable
+    # Depletion settings
     settings = openmc.deplete.OpenMCSettings()
+    settings.chain_file = str(Path(__file__).parents[2] / 'chains' /
+                              'chain_simple.xml')
+    settings.power = 2.337e15*4*JOULE_PER_EV*1e6  # MeV/second cm from CASMO
+    settings.dt_vec = dt
+    settings.output_dir = "test_full"
+    settings.round_number = True
 
-
-    chain_file = str(Path(__file__).parents[2] / 'chains' / 'chain_simple.xml')
-    settings.chain_file = chain_file
+    # Add OpenMC-specific settings
     settings.particles = 100
     settings.batches = 100
     settings.inactive = 40
-    settings.lower_left = lower_left
-    settings.upper_right = upper_right
-    settings.entropy_dimension = [10, 10, 1]
-
-    settings.round_number = True
-    settings.constant_seed = 1
-
-    joule_per_mev = 1.6021766208e-13
-    settings.power = 2.337e15*4*joule_per_mev  # MeV/second cm from CASMO
-    settings.dt_vec = dt
-    settings.output_dir = "test_full"
+    space = openmc.stats.Box(lower_left, upper_right)
+    settings.source = openmc.Source(space=space)
+    settings.seed = 1
+    settings.verbosity = 3
 
     op = openmc.deplete.OpenMCOperator(geometry, settings)
 

@@ -31,7 +31,7 @@ from .function import Settings, Operator
 
 
 
-def chunks(items, n):
+def _chunks(items, n):
     min_size, extra = divmod(len(items), n)
     j = 0
     chunk_list = []
@@ -43,69 +43,60 @@ def chunks(items, n):
 
 
 class OpenMCSettings(Settings):
-    """The OpenMCSettings class.
-
-    Extends Settings to provide information OpenMC needs to run.
+    """Extends Settings to provide information OpenMC needs to run.
 
     Attributes
     ----------
     dt_vec : numpy.array
-        Array of time steps to take. (From Settings)
-    tol : float
-        Tolerance for adaptive time stepping. (From Settings)
+        Array of time steps to in units of [s]
     output_dir : str
-        Path to output directory to save results. (From Settings)
+        Path to output directory to save results.
     chain_file : str
-        Path to the depletion chain xml file.  Defaults to the environment
-        variable "OPENDEPLETE_CHAIN" if it exists.
-    particles : int
-        Number of particles to simulate per batch.
-    batches : int
-        Number of batches.
-    inactive : int
-        Number of inactive batches.
-    lower_left : list of float
-        Coordinate of lower left of bounding box of geometry.
-    upper_right : list of float
-        Coordinate of upper right of bounding box of geometry.
-    entropy_dimension : list of int
-        Grid size of entropy.
-    dilute_initial : float, default 1.0e3
+        Path to the depletion chain xml file.  Defaults to the
+        :envvar:`OPENDEPLETE_CHAIN` environment variable if it exists.
+    dilute_initial : float
         Initial atom density to add for nuclides that are zero in initial
         condition to ensure they exist in the decay chain.  Only done for
-        nuclides with reaction rates.
+        nuclides with reaction rates. Defaults to 1.0e3.
     round_number : bool
         Whether or not to round output to OpenMC to 8 digits.
         Useful in testing, as OpenMC is incredibly sensitive to exact values.
-    constant_seed : int
-        If present, all runs will be performed with this seed.
     power : float
-        Power of the reactor in W. For a 2D problem, the power can be given in
+        Power of the reactor in [W]. For a 2D problem, the power can be given in
         W/cm as long as the "volume" assigned to a depletion material is
         actually an area in cm^2.
+    settings : openmc.Settings
+        Settings for OpenMC simulations
+
     """
+
+    _depletion_attrs = {'dt_vec', 'output_dir', 'chain_file', 'dilute_initial',
+                        'round_number', 'power'}
 
     def __init__(self):
         super().__init__()
-        # OpenMC specific
         try:
             self.chain_file = os.environ["OPENDEPLETE_CHAIN"]
         except KeyError:
             self.chain_file = None
-        self.particles = None
-        self.batches = None
-        self.inactive = None
-        self.lower_left = None
-        self.upper_right = None
-        self.entropy_dimension = None
         self.dilute_initial = 1.0e3
-
-        # OpenMC testing specific
         self.round_number = False
-        self.constant_seed = None
-
-        # Depletion problem specific
         self.power = None
+
+        # Avoid setattr to create OpenMC settings
+        self.__dict__['settings'] = openmc.Settings()
+
+    def __setattr__(self, name, value):
+        if name in self._depletion_attrs:
+            self.__dict__[name] = value
+        else:
+            setattr(self.__dict__['settings'], name, value)
+
+    def __getattr__(self, name):
+        if name in self._depletion_attrs:
+            return self.__dict__[name]
+        else:
+            return getattr(self.__dict__['settings'], name)
 
 
 class Materials(object):
@@ -290,8 +281,8 @@ class OpenMCOperator(Operator):
                 i += 1
 
         # Decompose geometry
-        mat_burn_lists = chunks(mat_burn, comm.size)
-        mat_not_burn_lists = chunks(mat_not_burn, comm.size)
+        mat_burn_lists = _chunks(mat_burn, comm.size)
+        mat_not_burn_lists = _chunks(mat_not_burn, comm.size)
 
         mat_tally_ind = OrderedDict()
 
@@ -456,7 +447,7 @@ class OpenMCOperator(Operator):
         # Create XML files
         if comm.rank == 0:
             self.geometry.export_to_xml()
-            self.generate_settings_xml()
+            self.settings.settings.export_to_xml()
             self.generate_materials_xml()
 
         # Initialize OpenMC library
@@ -526,46 +517,6 @@ class OpenMCOperator(Operator):
 
         materials.export_to_xml()
 
-    def generate_settings_xml(self):
-        """Generates settings.xml.
-
-        This function creates settings.xml using the value of the settings
-        variable.
-
-        Todo
-        ----
-            Rewrite to generalize source box.
-        """
-
-        batches = self.settings.batches
-        inactive = self.settings.inactive
-        particles = self.settings.particles
-
-        # Just a generic settings file to get it running.
-        settings_file = openmc.Settings()
-        settings_file.batches = batches
-        settings_file.inactive = inactive
-        settings_file.particles = particles
-        settings_file.source = openmc.Source(space=openmc.stats.Box(
-            self.settings.lower_left, self.settings.upper_right))
-
-        if self.settings.entropy_dimension is not None:
-            entropy_mesh = openmc.Mesh()
-            entropy_mesh.lower_left = self.settings.lower_left
-            entropy_mesh.upper_right = self.settings.upper_right
-            entropy_mesh.dimension = self.settings.entropy_dimension
-            settings_file.entropy_mesh = entropy_mesh
-
-        # Set seed
-        if self.settings.constant_seed is not None:
-            seed = self.settings.constant_seed
-        else:
-            seed = random.randint(1, sys.maxsize-1)
-
-        settings_file.seed = self.seed = seed
-
-        settings_file.export_to_xml()
-
     def _get_tally_nuclides(self):
         nuc_set = set()
 
@@ -581,7 +532,6 @@ class OpenMCOperator(Operator):
             for i in range(1, comm.size):
                 nuc_newset = comm.recv(source=i, tag=i)
                 nuc_set |= nuc_newset
-
         else:
             comm.send(nuc_set, dest=0, tag=comm.rank)
 

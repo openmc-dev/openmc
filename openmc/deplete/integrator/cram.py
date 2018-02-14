@@ -1,6 +1,6 @@
-""" Chebyshev Rational Approximation Method module
+"""Chebyshev Rational Approximation Method module
 
-Implements two different forms of CRAM for use in opendeplete.
+Implements two different forms of CRAM for use in openmc.deplete.
 """
 
 import numpy as np

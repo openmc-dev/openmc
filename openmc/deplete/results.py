@@ -16,7 +16,7 @@ RESULTS_VERSION = 2
 
 
 class Results(object):
-    """Contains output of opendeplete.
+    """Contains output of a depletion run.
 
     Attributes
     ----------

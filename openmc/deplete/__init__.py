@@ -15,7 +15,7 @@ except ImportError:
     have_mpi = False
 
 from .nuclide import *
-from .depletion_chain import *
+from .chain import *
 from .openmc_wrapper import *
 from .reaction_rates import *
 from .function import *

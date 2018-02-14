@@ -1,6 +1,6 @@
 integrator\.save_results
 ========================
 
-.. currentmodule:: opendeplete.integrator
+.. currentmodule:: openmc.deplete.integrator
 
 .. autofunction:: save_results

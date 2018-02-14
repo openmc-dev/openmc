@@ -1,4 +1,4 @@
-""" Tests for depletion_chain.py"""
+"""Tests for depletion chains"""
 
 from collections import OrderedDict
 import os
@@ -6,18 +6,18 @@ import unittest
 from pathlib import Path
 
 import numpy as np
-from openmc.deplete import comm, depletion_chain, reaction_rates, nuclide
+from openmc.deplete import comm, Chain, reaction_rates, nuclide
 
 
 _test_filename = str(Path(__file__).parents[2] / 'chains' / 'chain_test.xml')
 
 
-class TestDepletionChain(unittest.TestCase):
-    """ Tests for DepletionChain class."""
+class TestChain(unittest.TestCase):
+    """ Tests for Chain class."""
 
     def test__init__(self):
         """ Test depletion chain initialization."""
-        dep = depletion_chain.DepletionChain()
+        dep = Chain()
 
         self.assertIsInstance(dep.nuclides, list)
         self.assertIsInstance(dep.nuclide_dict, OrderedDict)
@@ -25,7 +25,7 @@ class TestDepletionChain(unittest.TestCase):
 
     def test_n_nuclides(self):
         """ Test depletion chain n_nuclides parameter. """
-        dep = depletion_chain.DepletionChain()
+        dep = Chain()
 
         dep.nuclides = ["NucA", "NucB", "NucC"]
 
@@ -42,7 +42,7 @@ class TestDepletionChain(unittest.TestCase):
         # the components external to depletion_chain.py are simple storage
         # types.
 
-        dep = depletion_chain.DepletionChain.from_xml(_test_filename)
+        dep = Chain.from_xml(_test_filename)
 
         # Basic checks
         self.assertEqual(dep.n_nuclides, 3)
@@ -124,7 +124,7 @@ class TestDepletionChain(unittest.TestCase):
         C.yield_energies = [0.0253]
         C.yield_data = {0.0253: [("A", 0.0292737), ("B", 0.002566345)]}
 
-        chain = depletion_chain.DepletionChain()
+        chain = Chain()
         chain.nuclides = [A, B, C]
         chain.export_to_xml(filename)
 
@@ -138,7 +138,7 @@ class TestDepletionChain(unittest.TestCase):
         """ Using chain_test, and a dummy reaction rate, compute the matrix. """
         # Relies on test_from_xml passing.
 
-        dep = depletion_chain.DepletionChain.from_xml(_test_filename)
+        dep = Chain.from_xml(_test_filename)
 
         cell_ind = {"10000": 0, "10001": 1}
         nuc_ind = {"A": 0, "B": 1, "C": 2}
@@ -187,7 +187,7 @@ class TestDepletionChain(unittest.TestCase):
 
     def test_nuc_by_ind(self):
         """ Test nuc_by_ind converter function. """
-        dep = depletion_chain.DepletionChain()
+        dep = Chain()
 
         dep.nuclides = ["NucA", "NucB", "NucC"]
         dep.nuclide_dict = {"NucA" : 0, "NucB" : 1, "NucC" : 2}

@@ -36,13 +36,13 @@ class TestDepletionChain(unittest.TestCase):
         out a good way to unit-test this."""
         pass
 
-    def test_xml_read(self):
+    def test_from_xml(self):
         """ Read chain_test.xml and ensure all values are correct. """
         # Unfortunately, this routine touches a lot of the code, but most of
         # the components external to depletion_chain.py are simple storage
         # types.
 
-        dep = depletion_chain.DepletionChain.xml_read(_test_filename)
+        dep = depletion_chain.DepletionChain.from_xml(_test_filename)
 
         # Basic checks
         self.assertEqual(dep.n_nuclides, 3)
@@ -93,11 +93,11 @@ class TestDepletionChain(unittest.TestCase):
         self.assertEqual(nuc.yield_data[0.0253],
                          [("A", 0.0292737), ("B", 0.002566345)])
 
-    def test_xml_write(self):
+    def test_export_to_xml(self):
         """Test writing a depletion chain to XML."""
 
         # Prevent different MPI ranks from conflicting
-        filename = 'test%u.xml' % comm.rank
+        filename = 'test{}.xml'.format(comm.rank)
 
         A = nuclide.Nuclide()
         A.name = "A"
@@ -126,7 +126,7 @@ class TestDepletionChain(unittest.TestCase):
 
         chain = depletion_chain.DepletionChain()
         chain.nuclides = [A, B, C]
-        chain.xml_write(filename)
+        chain.export_to_xml(filename)
 
         original = open(_test_filename, 'r').read()
         chain_xml = open(filename, 'r').read()
@@ -136,9 +136,9 @@ class TestDepletionChain(unittest.TestCase):
 
     def test_form_matrix(self):
         """ Using chain_test, and a dummy reaction rate, compute the matrix. """
-        # Relies on test_xml_read passing.
+        # Relies on test_from_xml passing.
 
-        dep = depletion_chain.DepletionChain.xml_read(_test_filename)
+        dep = depletion_chain.DepletionChain.from_xml(_test_filename)
 
         cell_ind = {"10000": 0, "10001": 1}
         nuc_ind = {"A": 0, "B": 1, "C": 2}
@@ -195,6 +195,7 @@ class TestDepletionChain(unittest.TestCase):
         self.assertEqual("NucA", dep.nuc_by_ind("NucA"))
         self.assertEqual("NucB", dep.nuc_by_ind("NucB"))
         self.assertEqual("NucC", dep.nuc_by_ind("NucC"))
+
 
 if __name__ == '__main__':
     unittest.main()

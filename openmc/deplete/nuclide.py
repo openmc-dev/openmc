@@ -71,7 +71,7 @@ class Nuclide(object):
         return len(self.reactions)
 
     @classmethod
-    def xml_read(cls, element):
+    def from_xml(cls, element):
         """Read nuclide from an XML element.
 
         Parameters
@@ -129,7 +129,7 @@ class Nuclide(object):
 
         return nuc
 
-    def xml_write(self):
+    def to_xml_element(self):
         """Write nuclide to XML element.
 
         Returns

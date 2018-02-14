@@ -317,7 +317,7 @@ class DepletionChain(object):
         return depl_chain
 
     @classmethod
-    def xml_read(cls, filename):
+    def from_xml(cls, filename):
         """Reads a depletion chain XML file.
 
         Parameters
@@ -343,7 +343,7 @@ class DepletionChain(object):
 
         reaction_index = 0
         for i, nuclide_elem in enumerate(root.findall('nuclide_table')):
-            nuc = Nuclide.xml_read(nuclide_elem)
+            nuc = Nuclide.from_xml(nuclide_elem)
             depl_chain.nuclide_dict[nuc.name] = i
 
             # Check for reaction paths
@@ -356,7 +356,7 @@ class DepletionChain(object):
 
         return depl_chain
 
-    def xml_write(self, filename):
+    def export_to_xml(self, filename):
         """Writes a depletion chain XML file.
 
         Parameters
@@ -368,7 +368,7 @@ class DepletionChain(object):
 
         root_elem = ET.Element('depletion')
         for nuclide in self.nuclides:
-            root_elem.append(nuclide.xml_write())
+            root_elem.append(nuclide.to_xml_element())
 
         tree = ET.ElementTree(root_elem)
         if _have_lxml:

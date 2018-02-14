@@ -21,14 +21,7 @@ class DummyGeometry(Operator):
     def __init__(self, settings):
         super().__init__(settings)
 
-    def finalize(self):
-        pass
-
-    @property
-    def chain(self):
-        return self
-
-    def eval(self, vec, print_out=False):
+    def __call__(self, vec, print_out=False):
         """Evaluates F(y)
 
         Parameters
@@ -59,6 +52,13 @@ class DummyGeometry(Operator):
 
         # Create a fake rates object
         return 0.0, reaction_rates, 0
+
+    def finalize(self):
+        pass
+
+    @property
+    def chain(self):
+        return self
 
     def form_matrix(self, rates):
         """Forms the f(y) matrix in y' = f(y)y.

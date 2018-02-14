@@ -53,7 +53,7 @@ def predictor(operator, print_out=True):
         eigvls = []
         rates_array = []
 
-        eigvl, rates, seed = operator.eval(x[0])
+        eigvl, rates, seed = operator(x[0])
 
         eigvls.append(eigvl)
         seeds.append(seed)
@@ -86,7 +86,7 @@ def predictor(operator, print_out=True):
     seeds = []
     eigvls = []
     rates_array = []
-    eigvl, rates, seed = operator.eval(x[0])
+    eigvl, rates, seed = operator(x[0])
 
     eigvls.append(eigvl)
     seeds.append(seed)

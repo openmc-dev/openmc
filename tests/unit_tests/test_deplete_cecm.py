@@ -1,9 +1,9 @@
-""" Regression tests for cecm.py"""
+"""Regression tests for openmc.deplete.integrator.cecm algorithm.
 
-import os
-import unittest
+These tests integrate a simple test problem described in dummy_geometry.py.
+"""
 
-import numpy as np
+from pytest import approx
 import openmc.deplete
 from openmc.deplete import results
 from openmc.deplete import utilities
@@ -11,59 +11,30 @@ from openmc.deplete import utilities
 from tests import dummy_geometry
 
 
-class TestCECMRegression(unittest.TestCase):
-    """ Regression tests for opendeplete.integrator.cecm algorithm.
+def test_cecm(run_in_tmpdir):
+    """Integral regression test of integrator algorithm using CE/CM."""
 
-    These tests integrate a simple test problem described in dummy_geometry.py.
-    """
+    settings = openmc.deplete.Settings()
+    settings.dt_vec = [0.75, 0.75]
+    settings.output_dir = "test_integrator_regression"
 
-    @classmethod
-    def setUpClass(cls):
-        """ Save current directory in case integrator crashes."""
-        cls.cwd = os.getcwd()
-        cls.results = "test_integrator_regression"
+    op = dummy_geometry.DummyGeometry(settings)
 
-    def test_cecm(self):
-        """ Integral regression test of integrator algorithm using CE/CM. """
+    # Perform simulation using the MCNPX/MCNP6 algorithm
+    openmc.deplete.cecm(op, print_out=False)
 
-        settings = openmc.deplete.Settings()
-        settings.dt_vec = [0.75, 0.75]
-        settings.output_dir = self.results
+    # Load the files
+    res = results.read_results(settings.output_dir + "/results.h5")
 
-        op = dummy_geometry.DummyGeometry(settings)
+    _, y1 = utilities.evaluate_single_nuclide(res, "1", "1")
+    _, y2 = utilities.evaluate_single_nuclide(res, "1", "2")
 
-        # Perform simulation using the MCNPX/MCNP6 algorithm
-        openmc.deplete.cecm(op, print_out=False)
+    # Mathematica solution
+    s1 = [1.86872629872102, 1.395525772416039]
+    s2 = [2.18097439443550, 2.69429754646747]
 
-        # Load the files
-        res = results.read_results(settings.output_dir + "/results.h5")
+    assert y1[1] == approx(s1[0])
+    assert y2[1] == approx(s1[1])
 
-        _, y1 = utilities.evaluate_single_nuclide(res, "1", "1")
-        _, y2 = utilities.evaluate_single_nuclide(res, "1", "2")
-
-        # Mathematica solution
-        s1 = [1.86872629872102, 1.395525772416039]
-        s2 = [2.18097439443550, 2.69429754646747]
-
-        tol = 1.0e-13
-
-        self.assertLess(np.absolute(y1[1] - s1[0]), tol)
-        self.assertLess(np.absolute(y2[1] - s1[1]), tol)
-
-        self.assertLess(np.absolute(y1[2] - s2[0]), tol)
-        self.assertLess(np.absolute(y2[2] - s2[1]), tol)
-
-    @classmethod
-    def tearDownClass(cls):
-        """ Clean up files"""
-
-        os.chdir(cls.cwd)
-
-        openmc.deplete.comm.barrier()
-        if openmc.deplete.comm.rank == 0:
-            os.remove(os.path.join(cls.results, "results.h5"))
-            os.rmdir(cls.results)
-
-
-if __name__ == '__main__':
-    unittest.main()
+    assert y1[2] == approx(s2[0])
+    assert y2[2] == approx(s2[1])

@@ -2,7 +2,6 @@
 
 from math import floor
 import shutil
-import unittest
 from pathlib import Path
 
 import numpy as np

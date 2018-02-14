@@ -62,7 +62,7 @@ def cecm(operator, print_out=True):
         eigvls = []
         rates_array = []
 
-        eigvl, rates, seed = operator.eval(x[0])
+        eigvl, rates, seed = operator(x[0])
 
         eigvls.append(eigvl)
         seeds.append(seed)
@@ -86,7 +86,7 @@ def cecm(operator, print_out=True):
 
         x.append(x_result)
 
-        eigvl, rates, seed = operator.eval(x[1])
+        eigvl, rates, seed = operator(x[1])
 
         eigvls.append(eigvl)
         seeds.append(seed)
@@ -119,7 +119,7 @@ def cecm(operator, print_out=True):
     seeds = []
     eigvls = []
     rates_array = []
-    eigvl, rates, seed = operator.eval(x[0])
+    eigvl, rates, seed = operator(x[0])
 
     eigvls.append(eigvl)
     seeds.append(seed)

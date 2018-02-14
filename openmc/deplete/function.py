@@ -27,33 +27,19 @@ class Settings(object):
 
 
 class Operator(metaclass=ABCMeta):
-    """The Operator metaclass.
-
-    This defines all functions that the integrator needs to operate.
+    """Abstract class defining all methods needed for the integrator.
 
     Attributes
     ----------
     settings : Settings
         Settings object.
-    """
 
+    """
     def __init__(self, settings):
         self.settings = settings
 
     @abstractmethod
-    def initial_condition(self):
-        """Performs final setup and returns initial condition.
-
-        Returns
-        -------
-        list of numpy.array
-            Total density for initial conditions.
-        """
-
-        pass
-
-    @abstractmethod
-    def eval(self, vec, print_out=True):
+    def __call__(self, vec, print_out=True):
         """Runs a simulation.
 
         Parameters
@@ -71,6 +57,17 @@ class Operator(metaclass=ABCMeta):
             Reaction rates from this simulation.
         seed : int
             Seed for this simulation.
+        """
+        pass
+
+    @abstractmethod
+    def initial_condition(self):
+        """Performs final setup and returns initial condition.
+
+        Returns
+        -------
+        list of numpy.array
+            Total density for initial conditions.
         """
 
         pass
@@ -113,4 +110,8 @@ class Operator(metaclass=ABCMeta):
             Sparse matrix representing f(y).
         """
 
+        pass
+
+    @abstractmethod
+    def finalize(self):
         pass

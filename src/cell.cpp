@@ -43,36 +43,41 @@ tokenize(const std::string region_spec) {
     return tokens;
   }
 
-  // Split the region_spec into words delimited by whitespace.  This removes
-  // intersection operators but we'll add them back later.
-  std::vector<std::string> words{split(region_spec)};
-
-  // Iterate over words in the region_spec.
-  for (std::string word : words) {
-    // First check to see if this word represents an operator token.
-    if (word == "(") {
+  // Parse all halfspaces and operators except for intersection (whitespace).
+  for (int i = 0; i < region_spec.size(); ) {
+    if (region_spec[i] == '(') {
       tokens.push_back(OP_LEFT_PAREN);
-    } else if (word == ")") {
+      i++;
+
+    } else if (region_spec[i] == ')') {
       tokens.push_back(OP_RIGHT_PAREN);
-    } else if (word == "|") {
+      i++;
+
+    } else if (region_spec[i] == '|') {
       tokens.push_back(OP_UNION);
-    } else if (word == "~") {
+      i++;
+
+    } else if (region_spec[i] == '~') {
       tokens.push_back(OP_COMPLEMENT);
+      i++;
+
+    } else if (region_spec[i] == '-' || region_spec[i] == '+'
+               || std::isdigit(region_spec[i])) {
+      // This is the start of a halfspace specification.  Iterate j until we
+      // find the end, then push-back everything between i and j.
+      int j = i + 1;
+      while (j < region_spec.size() && std::isdigit(region_spec[j])) {j++;}
+      tokens.push_back(std::stoi(region_spec.substr(i, j-i)));
+      i = j;
+
+    } else if (std::isspace(region_spec[i])) {
+      i++;
 
     } else {
-      // This word might represent a halfspace.  Check to make sure we recognize
-      // all the characters in it.
-      for (char c : word) {
-        if (!std::isdigit(c) && c != '-') {
-          std::stringstream err_msg;
-          err_msg << "Region specification contains invalid character, \""
-                  << c << "\"";
-          fatal_error(err_msg);
-        }
-      }
-
-      // It's a halfspace.  Convert to integer token.
-      tokens.push_back(stoi(word));
+      std::stringstream err_msg;
+      err_msg << "Region specification contains invalid character, \""
+              << region_spec[i] << "\"";
+      fatal_error(err_msg);
     }
   }
 

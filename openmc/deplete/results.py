@@ -302,7 +302,8 @@ class Results(object):
         if comm.rank == 0:
             time_dset[index, :] = self.time
 
-    def from_hdf5(self, handle, index):
+    @classmethod
+    def from_hdf5(cls, handle, index):
         """Loads results object from HDF5.
 
         Parameters
@@ -312,6 +313,7 @@ class Results(object):
         index : int
             What step is this?
         """
+        results = cls()
 
         # Grab handles
         number_dset = handle["/number"]
@@ -319,15 +321,15 @@ class Results(object):
         seeds_dset = handle["/seeds"]
         time_dset = handle["/time"]
 
-        self.data = number_dset[index, :, :, :]
-        self.k = eigenvalues_dset[index, :]
-        self.seeds = seeds_dset[index, :]
-        self.time = time_dset[index, :]
+        results.data = number_dset[index, :, :, :]
+        results.k = eigenvalues_dset[index, :]
+        results.seeds = seeds_dset[index, :]
+        results.time = time_dset[index, :]
 
         # Reconstruct dictionaries
-        self.volume = OrderedDict()
-        self.mat_to_ind = OrderedDict()
-        self.nuc_to_ind = OrderedDict()
+        results.volume = OrderedDict()
+        results.mat_to_ind = OrderedDict()
+        results.nuc_to_ind = OrderedDict()
         rxn_nuc_to_ind = OrderedDict()
         rxn_to_ind = OrderedDict()
 
@@ -336,13 +338,13 @@ class Results(object):
             vol = mat_handle.attrs["volume"]
             ind = mat_handle.attrs["index"]
 
-            self.volume[mat] = vol
-            self.mat_to_ind[mat] = ind
+            results.volume[mat] = vol
+            results.mat_to_ind[mat] = ind
 
         for nuc in handle["/nuclides"]:
             nuc_handle = handle["/nuclides/" + nuc]
             ind_atom = nuc_handle.attrs["atom number index"]
-            self.nuc_to_ind[nuc] = ind_atom
+            results.nuc_to_ind[nuc] = ind_atom
 
             if "reaction rate index" in nuc_handle.attrs:
                 rxn_nuc_to_ind[nuc] = nuc_handle.attrs["reaction rate index"]
@@ -351,13 +353,15 @@ class Results(object):
             rxn_handle = handle["/reactions/" + rxn]
             rxn_to_ind[rxn] = rxn_handle.attrs["index"]
 
-        self.rates = []
+        results.rates = []
         # Reconstruct reactions
-        for i in range(self.n_stages):
-            rate = ReactionRates(self.mat_to_ind, rxn_nuc_to_ind, rxn_to_ind)
+        for i in range(results.n_stages):
+            rate = ReactionRates(results.mat_to_ind, rxn_nuc_to_ind, rxn_to_ind)
 
             rate.rates = handle["/reaction rates"][index, i, :, :, :]
-            self.rates.append(rate)
+            results.rates.append(rate)
+
+        return results
 
 
 def get_dict(number):
@@ -419,7 +423,7 @@ def write_results(result, filename, index):
 
 
 def read_results(filename):
-    """Reads out a list of results objects from an hdf5 file.
+    """Return a list of Results objects from an HDF5 file.
 
     Parameters
     ----------
@@ -430,26 +434,12 @@ def read_results(filename):
     -------
     results : list of Results
         The result objects.
+
     """
+    with h5py.File(filename, "r") as fh:
+        assert fh["version"].value == RESULTS_VERSION
 
-    file = h5py.File(filename, "r")
+        # Get number of results stored
+        n = fh["number"].value.shape[0]
 
-    assert file["/version"].value == RESULTS_VERSION
-
-    # Grab handles
-    number_dset = file["/number"]
-
-    # Get number of results stored
-    number_shape = list(number_dset.shape)
-    number_results = number_shape[0]
-
-    results = []
-
-    for i in range(number_results):
-        result = Results()
-        result.from_hdf5(file, i)
-        results.append(result)
-
-    file.close()
-
-    return results
+        return [Results.from_hdf5(fh, i) for i in range(n)]

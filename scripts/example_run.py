@@ -18,9 +18,6 @@ dt = np.repeat([dt1], N)
 # Create settings variable
 settings = openmc.deplete.OpenMCSettings()
 
-settings.openmc_call = "openmc"
-# An example for mpiexec:
-# settings.openmc_call = ["mpiexec", "openmc"]
 settings.particles = 1000
 settings.batches = 100
 settings.inactive = 40

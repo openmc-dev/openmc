@@ -42,8 +42,6 @@ def test_full(run_in_tmpdir):
 
     chain_file = str(Path(__file__).parents[2] / 'chains' / 'chain_simple.xml')
     settings.chain_file = chain_file
-    settings.openmc_call = "openmc"
-    settings.openmc_npernode = 2
     settings.particles = 100
     settings.batches = 100
     settings.inactive = 40

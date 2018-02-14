@@ -58,8 +58,6 @@ class OpenMCSettings(Settings):
     chain_file : str
         Path to the depletion chain xml file.  Defaults to the environment
         variable "OPENDEPLETE_CHAIN" if it exists.
-    openmc_call : str
-        OpenMC executable path.  Defaults to "openmc".
     particles : int
         Number of particles to simulate per batch.
     batches : int
@@ -94,7 +92,6 @@ class OpenMCSettings(Settings):
             self.chain_file = os.environ["OPENDEPLETE_CHAIN"]
         except KeyError:
             self.chain_file = None
-        self.openmc_call = "openmc"
         self.particles = None
         self.batches = None
         self.inactive = None

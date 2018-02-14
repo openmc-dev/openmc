@@ -52,7 +52,6 @@ class Results(object):
         self.k = None
         self.seeds = None
         self.time = None
-        self.p_terms = None
         self.rates = None
         self.volume = None
 
@@ -192,7 +191,7 @@ class Results(object):
         n_rxn = len(rxn_list)
         n_stages = self.n_stages
 
-        mat_group = handle.create_group("cells")
+        mat_group = handle.create_group("materials")
 
         for mat in mat_list:
             mat_single_group = mat_group.create_group(mat)
@@ -333,24 +332,21 @@ class Results(object):
         rxn_nuc_to_ind = OrderedDict()
         rxn_to_ind = OrderedDict()
 
-        for mat in handle["/cells"]:
-            mat_handle = handle["/cells/" + mat]
+        for mat, mat_handle in handle["/materials"].items():
             vol = mat_handle.attrs["volume"]
             ind = mat_handle.attrs["index"]
 
             results.volume[mat] = vol
             results.mat_to_ind[mat] = ind
 
-        for nuc in handle["/nuclides"]:
-            nuc_handle = handle["/nuclides/" + nuc]
+        for nuc, nuc_handle in handle["/nuclides"].items():
             ind_atom = nuc_handle.attrs["atom number index"]
             results.nuc_to_ind[nuc] = ind_atom
 
             if "reaction rate index" in nuc_handle.attrs:
                 rxn_nuc_to_ind[nuc] = nuc_handle.attrs["reaction rate index"]
 
-        for rxn in handle["/reactions"]:
-            rxn_handle = handle["/reactions/" + rxn]
+        for rxn, rxn_handle in handle["/reactions"].items():
             rxn_to_ind[rxn] = rxn_handle.attrs["index"]
 
         results.rates = []

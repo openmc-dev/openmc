@@ -8,7 +8,7 @@ from openmc.deplete import (read_results, evaluate_single_nuclide,
 result_folder = "test"
 
 # Load data
-results = read_results(result_folder + "/results.h5")
+results = read_results(result_folder + "/deplete_results.h5")
 
 cell = "5"
 nuc = "Gd157"

@@ -422,70 +422,8 @@ contains
         LAT_TYPE: select type(lat)
 
         type is (RectLattice)
-          ! copy local coordinates
-          x = p % coord(j) % xyz(1)
-          y = p % coord(j) % xyz(2)
-          z = p % coord(j) % xyz(3)
-
-          ! determine oncoming edge
-          x0 = sign(lat % pitch(1) * HALF, u)
-          y0 = sign(lat % pitch(2) * HALF, v)
-
-          ! left and right sides
-          if (abs(x - x0) < FP_PRECISION) then
-            d = INFINITY
-          elseif (u == ZERO) then
-            d = INFINITY
-          else
-            d = (x0 - x)/u
-          end if
-
-          d_lat = d
-          if (u > 0) then
-            level_lat_trans(:) = [1, 0, 0]
-          else
-            level_lat_trans(:) = [-1, 0, 0]
-          end if
-
-          ! front and back sides
-          if (abs(y - y0) < FP_PRECISION) then
-            d = INFINITY
-          elseif (v == ZERO) then
-            d = INFINITY
-          else
-            d = (y0 - y)/v
-          end if
-
-          if (d < d_lat) then
-            d_lat = d
-            if (v > 0) then
-              level_lat_trans(:) = [0, 1, 0]
-            else
-              level_lat_trans(:) = [0, -1, 0]
-            end if
-          end if
-
-          if (lat % is_3d) then
-            z0 = sign(lat % pitch(3) * HALF, w)
-
-            ! top and bottom sides
-            if (abs(z - z0) < FP_PRECISION) then
-              d = INFINITY
-            elseif (w == ZERO) then
-              d = INFINITY
-            else
-              d = (z0 - z)/w
-            end if
-
-            if (d < d_lat) then
-              d_lat = d
-              if (w > 0) then
-                level_lat_trans(:) = [0, 0, 1]
-              else
-                level_lat_trans(:) = [0, 0, -1]
-              end if
-            end if
-          end if
+          call lat % distance(p % coord(j) % xyz, p % coord(j) % uvw, &
+                              d_lat, level_lat_trans)
 
         type is (HexLattice) LAT_TYPE
           ! Copy local coordinates.

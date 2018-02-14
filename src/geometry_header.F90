@@ -95,6 +95,17 @@ module geometry_header
       integer(C_INT32_T)             :: id
     end function lattice_id_c
 
+    subroutine lattice_distance_c(lat_ptr, xyz, uvw, d, lattice_trans) &
+         bind(C, name='lattice_distance')
+      use ISO_C_BINDING
+      implicit none
+      type(C_PTR),    intent(in), value :: lat_ptr
+      real(C_DOUBLE), intent(in)        :: xyz(3)
+      real(C_DOUBLE), intent(in)        :: uvw(3)
+      real(C_DOUBLE), intent(out)       :: d
+      integer(C_INT), intent(out)       :: lattice_trans(3)
+    end subroutine lattice_distance_c
+
     subroutine lattice_to_hdf5_c(lat_ptr, group) bind(C, name='lattice_to_hdf5')
       use ISO_C_BINDING
       use hdf5
@@ -134,6 +145,7 @@ module geometry_header
   contains
 
     procedure :: id => lattice_id
+    procedure :: distance => lattice_distance
     procedure :: to_hdf5 => lattice_to_hdf5
 
     procedure(lattice_are_valid_indices_), deferred :: are_valid_indices
@@ -280,6 +292,15 @@ contains
     integer(C_INT32_T)         :: id
     id = lattice_id_c(this % ptr)
   end function lattice_id
+
+  subroutine lattice_distance(this, xyz, uvw, d, lattice_trans)
+    class(Lattice), intent(in)  :: this
+    real(C_DOUBLE), intent(in)  :: xyz(3)
+    real(C_DOUBLE), intent(in)  :: uvw(3)
+    real(C_DOUBLE), intent(out) :: d
+    integer(C_INT), intent(out) :: lattice_trans(3)
+    call lattice_distance_c(this % ptr, xyz, uvw, d, lattice_trans)
+  end subroutine lattice_distance
 
   subroutine lattice_to_hdf5(this, group)
     class(Lattice), intent(in) :: this

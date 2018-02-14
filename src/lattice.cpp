@@ -7,6 +7,9 @@
 #include "hdf5_interface.h"
 #include "xml_interface.h"
 
+//TODO: this is only inlcuded for constants that should be moved elsewhere
+//#include "surface.h"
+
 //TODO: remove this include
 #include <iostream>
 
@@ -81,9 +84,9 @@ RectLattice::RectLattice(pugi::xml_node lat_node)
     fatal_error("Number of entries on <lower_left> must be the same as the "
                 "number of entries on <dimension>.");
   }
-  lower_left[0] = stoi(ll_words[0]);
-  lower_left[1] = stoi(ll_words[1]);
-  if (is_3d) {lower_left[2] = stoi(ll_words[2]);}
+  lower_left[0] = stod(ll_words[0]);
+  lower_left[1] = stod(ll_words[1]);
+  if (is_3d) {lower_left[2] = stod(ll_words[2]);}
 
   // Read the lattice pitches.
   std::string pitch_str{get_node_value(lat_node, "pitch")};
@@ -92,9 +95,9 @@ RectLattice::RectLattice(pugi::xml_node lat_node)
     fatal_error("Number of entries on <pitch> must be the same as the "
                 "number of entries on <dimension>.");
   }
-  pitch[0] = stoi(pitch_words[0]);
-  pitch[1] = stoi(pitch_words[1]);
-  if (is_3d) {pitch[2] = stoi(pitch_words[2]);}
+  pitch[0] = stod(pitch_words[0]);
+  pitch[1] = stod(pitch_words[1]);
+  if (is_3d) {pitch[2] = stod(pitch_words[2]);}
 
   // Read the universes and make sure the correct number was specified.
   int nx = n_cells[0];
@@ -129,12 +132,76 @@ RectLattice::RectLattice(pugi::xml_node lat_node)
   }
 }
 
+std::pair<double, std::array<int, 3>>
+RectLattice::distance(const double xyz[3], const double uvw[3]) const
+{
+  // Get short aliases to the coordinates.
+  double x {xyz[0]};
+  double y {xyz[1]};
+  double z {xyz[2]};
+  double u {uvw[0]};
+  double v {uvw[1]};
+
+  // Determine the oncoming edge.
+  double x0 {copysign(0.5 * pitch[0], u)};
+  double y0 {copysign(0.5 * pitch[1], v)};
+
+  // Left and right sides
+  double d {INFTY};
+  std::array<int, 3> lattice_trans;
+  if ((std::abs(x - x0) > FP_PRECISION) && u != 0) {
+    d = (x0 - x) / u;
+    if (u > 0) {
+      lattice_trans = {1, 0, 0};
+    } else {
+      lattice_trans = {-1, 0, 0};
+    }
+  }
+
+  // Front and back sides
+  if ((std::abs(y - y0) > FP_PRECISION) && v != 0) {
+    double this_d = (y0 - y) / v;
+    if (this_d < d) {
+      d = this_d;
+      if (v > 0) {
+        lattice_trans = {0, 1, 0};
+      } else {
+        lattice_trans = {0, -1, 0};
+      }
+    }
+  }
+
+  // Top and bottom sides
+  if (is_3d) {
+    double w {uvw[2]};
+    double z0 {copysign(0.5 * pitch[2], w)};
+    if ((std::abs(z - z0) > FP_PRECISION) && w != 0) {
+      double this_d = (z0 - z) / w;
+      if (this_d < d) {
+        d = this_d;
+        if (w > 0) {
+          lattice_trans = {0, 0, 1};
+        } else {
+          lattice_trans = {0, 0, -1};
+        }
+      }
+    }
+  }
+
+  return {d, lattice_trans};
+}
+
 //==============================================================================
 // HexLattice implementation
 //==============================================================================
 
 HexLattice::HexLattice(pugi::xml_node lat_node)
   : Lattice {lat_node}
+{
+}
+
+std::pair<double, std::array<int, 3>>
+HexLattice::distance(const double xyz[3], const double uvw[3]) const
 {
 }
 
@@ -172,6 +239,16 @@ extern "C" {
   Lattice* lattice_pointer(int lat_ind) {return lattices_c[lat_ind];}
 
   int32_t lattice_id(Lattice *lat) {return lat->id;}
+
+  void lattice_distance(Lattice *lat, const double xyz[3], const double uvw[3],
+                        double *d, int lattice_trans[3])
+  {
+    std::pair<double, std::array<int, 3>> ld {lat->distance(xyz, uvw)};
+    *d = ld.first;
+    lattice_trans[0] = ld.second[0];
+    lattice_trans[1] = ld.second[1];
+    lattice_trans[2] = ld.second[2];
+  }
 
   void lattice_to_hdf5(Lattice *lat, hid_t group) {lat->to_hdf5(group);}
 }

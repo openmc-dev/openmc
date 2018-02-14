@@ -35,7 +35,7 @@ class TestNuclide(unittest.TestCase):
 
         self.assertEqual(nuc.n_reaction_paths, 3)
 
-    def test_xml_read(self):
+    def test_from_xml(self):
         """Test reading nuclide data from an XML element."""
 
         data = """
@@ -58,7 +58,7 @@ class TestNuclide(unittest.TestCase):
         """
 
         element = ET.fromstring(data)
-        u235 = nuclide.Nuclide.xml_read(element)
+        u235 = nuclide.Nuclide.from_xml(element)
 
         self.assertEqual(u235.decay_modes, [
             nuclide.DecayTuple('sf', 'U235', 7.2e-11),
@@ -77,7 +77,7 @@ class TestNuclide(unittest.TestCase):
                      ('Xe138', 0.0481413)]
         })
 
-    def test_xml_write(self):
+    def test_to_xml_element(self):
         """Test writing nuclide data to an XML element."""
 
         C = nuclide.Nuclide()
@@ -93,7 +93,7 @@ class TestNuclide(unittest.TestCase):
         ]
         C.yield_energies = [0.0253]
         C.yield_data = {0.0253: [("A", 0.0292737), ("B", 0.002566345)]}
-        element = C.xml_write()
+        element = C.to_xml_element()
 
         self.assertEqual(element.get("half_life"), "0.123")
 

@@ -53,7 +53,7 @@ def main():
     neutron_files = glob.glob(os.path.join('neutrons', '*.endf'))
 
     chain = openmc.deplete.DepletionChain.from_endf(decay_files, nfy_files, neutron_files)
-    chain.xml_write('chain_endfb71.xml')
+    chain.export_to_xml('chain_endfb71.xml')
 
 
 if __name__ == '__main__':

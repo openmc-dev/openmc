@@ -186,7 +186,7 @@ class OpenMCOperator(Operator):
         self.burn_nuc_to_ind = None
 
         # Read depletion chain
-        self.chain = DepletionChain.xml_read(settings.chain_file)
+        self.chain = DepletionChain.from_xml(settings.chain_file)
 
         # Clear out OpenMC, create task lists, distribute
         if comm.rank == 0:

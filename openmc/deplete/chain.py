@@ -1,4 +1,4 @@
-"""depletion_chain module.
+"""chain module.
 
 This module contains information about a depletion chain.  A depletion chain is
 loaded from an .xml file and all the nuclides are linked together.
@@ -108,10 +108,8 @@ def replace_missing(product, decay_data):
     return product
 
 
-class DepletionChain(object):
-    """The DepletionChain class.
-
-    This class contains a full representation of a depletion chain.
+class Chain(object):
+    """Full representation of a depletion chain.
 
     Attributes
     ----------

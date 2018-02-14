@@ -17,7 +17,7 @@ Integrator Helper Functions
 ---------------------------
 .. toctree::
     :maxdepth: 2
-    
+
     integrator.CRAM16
     integrator.CRAM48
     integrator.save_results
@@ -29,8 +29,8 @@ Metaclasses
    :toctree: generated
    :nosignatures:
 
-   opendeplete.Settings
-   opendeplete.Operator
+   openmc.deplete.Settings
+   openmc.deplete.Operator
 
 OpenMC Classes
 --------------
@@ -39,18 +39,18 @@ OpenMC Classes
    :toctree: generated
    :nosignatures:
 
-   opendeplete.OpenMCSettings
-   opendeplete.Materials
-   opendeplete.OpenMCOperator
+   openmc.deplete.OpenMCSettings
+   openmc.deplete.Materials
+   openmc.deplete.OpenMCOperator
 
 Data Classes
 ------------
 .. autosummary::
    :toctree: generated
    :nosignatures:
-   
-   opendeplete.AtomNumber
-   opendeplete.DepletionChain
-   opendeplete.Nuclide
-   opendeplete.ReactionRates
-   opendeplete.Results
+
+   openmc.deplete.AtomNumber
+   openmc.deplete.Chain
+   openmc.deplete.Nuclide
+   openmc.deplete.ReactionRates
+   openmc.deplete.Results

@@ -1,6 +1,6 @@
 integrator\.CRAM16
 ==================
 
-.. currentmodule:: opendeplete.integrator
+.. currentmodule:: openmc.deplete.integrator
 
 .. autofunction:: CRAM16

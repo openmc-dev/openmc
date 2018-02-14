@@ -1,6 +1,6 @@
 integrator\.predictor
 =====================
 
-.. currentmodule:: opendeplete.integrator
+.. currentmodule:: openmc.deplete.integrator
 
 .. autofunction:: predictor

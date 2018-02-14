@@ -1,6 +1,6 @@
 integrator\.cecm
 =================
 
-.. currentmodule:: opendeplete.integrator
+.. currentmodule:: openmc.deplete.integrator
 
 .. autofunction:: cecm

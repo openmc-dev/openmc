@@ -319,8 +319,9 @@ def water_density(temperature, pressure=0.1013):
 # The value of the Boltzman constant in units of eV / K
 K_BOLTZMANN = 8.6173303e-5
 
-# Used for converting units in ACE data
+# Unit conversions
 EV_PER_MEV = 1.0e6
+JOULE_PER_EV = 1.6021766208e-19
 
 # Avogadro's constant
 AVOGADRO = 6.022140857e23

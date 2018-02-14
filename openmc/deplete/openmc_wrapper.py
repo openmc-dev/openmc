@@ -21,14 +21,14 @@ import numpy as np
 
 import openmc
 import openmc.capi
+from openmc.data import JOULE_PER_EV
 from . import comm
 from .atom_number import AtomNumber
-from .depletion_chain import DepletionChain
+from .chain import Chain
 from .reaction_rates import ReactionRates
 from .function import Settings, Operator
 
 
-_JOULE_PER_EV = 1.6021766208e-19
 
 
 def chunks(items, n):
@@ -149,13 +149,13 @@ class OpenMCOperator(Operator):
         Materials to be used for this simulation.
     seed : int
         The RNG seed used in last OpenMC run.
-    number : AtomNumber
+    number : openmc.deplete.AtomNumber
         Total number of atoms in simulation.
     participating_nuclides : set of str
         A set listing all unique nuclides available from cross_sections.xml.
-    chain : DepletionChain
+    chain : openmc.deplete.Chain
         The depletion chain information necessary to form matrices and tallies.
-    reaction_rates : ReactionRates
+    reaction_rates : openmc.deplete.ReactionRates
         Reaction rates from the last operator step.
     power : OrderedDict of str to float
         Material-by-Material power.  Indexed by material ID.
@@ -186,7 +186,7 @@ class OpenMCOperator(Operator):
         self.burn_nuc_to_ind = None
 
         # Read depletion chain
-        self.chain = DepletionChain.from_xml(settings.chain_file)
+        self.chain = Chain.from_xml(settings.chain_file)
 
         # Clear out OpenMC, create task lists, distribute
         if comm.rank == 0:
@@ -390,7 +390,7 @@ class OpenMCOperator(Operator):
             Matrices for the next step.
         k : float
             Eigenvalue of the problem.
-        rates : ReactionRates
+        rates : openmc.deplete.ReactionRates
             Reaction rates from this simulation.
         seed : int
             Seed for this simulation.
@@ -602,11 +602,11 @@ class OpenMCOperator(Operator):
     def generate_tallies(self):
         """Generates depletion tallies.
 
-        Using information from self.depletion_chain as well as the nuclides
+        Using information from the depletion chain as well as the nuclides
         currently in the problem, this function automatically generates a
         tally.xml for the simulation.
-        """
 
+        """
         # Create tallies for depleting regions
         materials = [openmc.capi.materials[int(i)]
                      for i in self.mat_tally_ind]
@@ -742,7 +742,7 @@ class OpenMCOperator(Operator):
         energy = comm.allreduce(energy)
 
         # Determine power in eV/s
-        power = self.settings.power / _JOULE_PER_EV
+        power = self.settings.power / JOULE_PER_EV
 
         # Scale reaction rates to obtain units of reactions/sec
         rates[:, :, :] *= power / energy

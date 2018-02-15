@@ -328,7 +328,7 @@ class OpenMCOperator(Operator):
             i += 1
 
         n_mat_burn = len(mat_burn)
-        n_nuc_burn = len(self.chain.nuclide_dict)
+        n_nuc_burn = len(self.chain)
 
         self.number = AtomNumber(mat_dict, nuc_dict, volume, n_mat_burn, n_nuc_burn)
 
@@ -500,8 +500,7 @@ class OpenMCOperator(Operator):
 
         # Store list of tally nuclides on each process
         nuc_list = comm.bcast(nuc_list, root=0)
-        tally_nuclides = [nuc for nuc in nuc_list
-                          if nuc in self.chain.nuclide_dict]
+        tally_nuclides = [nuc for nuc in nuc_list if nuc in self.chain]
 
         return tally_nuclides
 
@@ -690,14 +689,14 @@ class OpenMCOperator(Operator):
                 # and nuclides in depletion chain.
                 if name not in self.participating_nuclides:
                     self.participating_nuclides.add(name)
-                    if name in self.chain.nuclide_dict:
+                    if name in self.chain:
                         self.burn_nuc_to_ind[name] = nuc_ind
                         nuc_ind += 1
 
     @property
     def n_nuc(self):
         """Number of nuclides considered in the decay chain."""
-        return len(self.chain.nuclides)
+        return len(self.chain)
 
     def get_results_info(self):
         """Returns volume list, cell lists, and nuc lists.

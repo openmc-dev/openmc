@@ -20,12 +20,12 @@ def test_init():
     assert isinstance(dep.react_to_ind, Mapping)
 
 
-def test_n_nuclides():
-    """Test depletion chain n_nuclides parameter."""
+def test_len():
+    """Test depletion chain length."""
     dep = Chain()
     dep.nuclides = ["NucA", "NucB", "NucC"]
 
-    assert dep.n_nuclides == 3
+    assert len(dep) == 3
 
 
 def test_from_endf():
@@ -43,10 +43,10 @@ def test_from_xml():
     dep = Chain.from_xml(_test_filename)
 
     # Basic checks
-    assert dep.n_nuclides == 3
+    assert len(dep) == 3
 
     # A tests
-    nuc = dep.nuclides[dep.nuclide_dict["A"]]
+    nuc = dep["A"]
 
     assert nuc.name == "A"
     assert nuc.half_life == 2.36520E+04
@@ -61,7 +61,7 @@ def test_from_xml():
     assert [r.branching_ratio for r in nuc.reactions] == [1.0]
 
     # B tests
-    nuc = dep.nuclides[dep.nuclide_dict["B"]]
+    nuc = dep["B"]
 
     assert nuc.name == "B"
     assert nuc.half_life == 3.29040E+04
@@ -76,7 +76,7 @@ def test_from_xml():
     assert [r.branching_ratio for r in nuc.reactions] == [1.0]
 
     # C tests
-    nuc = dep.nuclides[dep.nuclide_dict["C"]]
+    nuc = dep["C"]
 
     assert nuc.name == "C"
     assert nuc.n_decay_modes == 0
@@ -183,12 +183,13 @@ def test_form_matrix():
     assert mat[2, 2] == mat22
 
 
-def test_nuc_by_ind():
+def test_getitem():
     """ Test nuc_by_ind converter function. """
     dep = Chain()
     dep.nuclides = ["NucA", "NucB", "NucC"]
-    dep.nuclide_dict = {"NucA" : 0, "NucB" : 1, "NucC" : 2}
+    dep.nuclide_dict = {nuc: dep.nuclides.index(nuc)
+                        for nuc in dep.nuclides}
 
-    assert "NucA" == dep.nuc_by_ind("NucA")
-    assert "NucB" == dep.nuc_by_ind("NucB")
-    assert "NucC" == dep.nuc_by_ind("NucC")
+    assert "NucA" == dep["NucA"]
+    assert "NucB" == dep["NucB"]
+    assert "NucC" == dep["NucC"]

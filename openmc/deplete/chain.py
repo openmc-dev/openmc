@@ -113,8 +113,6 @@ class Chain(object):
 
     Attributes
     ----------
-    n_nuclides : int
-        Number of nuclides in chain.
     nuclides : list of Nuclide
         List of nuclides in chain.
     nuclide_dict : OrderedDict of str to int
@@ -132,8 +130,14 @@ class Chain(object):
         self.nuc_to_react_ind = OrderedDict()
         self.react_to_ind = OrderedDict()
 
-    @property
-    def n_nuclides(self):
+    def __contains__(self, nuclide):
+        return nuclide in self.nuclide_dict
+
+    def __getitem__(self, name):
+        """Get a Nuclide by name."""
+        return self.nuclides[self.nuclide_dict[name]]
+
+    def __len__(self):
         """Number of nuclides in chain."""
         return len(self.nuclides)
 
@@ -381,14 +385,14 @@ class Chain(object):
         Parameters
         ----------
         rates : numpy.ndarray
-            2D array indexed by nuclide then by cell.
+            2D array indexed by (nuclide, reaction)
 
         Returns
         -------
         scipy.sparse.csr_matrix
             Sparse matrix representing depletion.
-        """
 
+        """
         matrix = defaultdict(float)
         reactions = set()
 
@@ -450,21 +454,7 @@ class Chain(object):
                 reactions.clear()
 
         # Use DOK matrix as intermediate representation, then convert to CSR and return
-        matrix_dok = sp.dok_matrix((self.n_nuclides, self.n_nuclides))
+        n = len(self)
+        matrix_dok = sp.dok_matrix((n, n))
         dict.update(matrix_dok, matrix)
         return matrix_dok.tocsr()
-
-    def nuc_by_ind(self, ind):
-        """Extracts nuclides from the list by dictionary key.
-
-        Parameters
-        ----------
-        ind : str
-            Name of nuclide.
-
-        Returns
-        -------
-        Nuclide
-            Nuclide object that corresponds to ind.
-        """
-        return self.nuclides[self.nuclide_dict[ind]]

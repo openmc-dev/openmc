@@ -24,7 +24,7 @@ def test_cecm(run_in_tmpdir):
     openmc.deplete.cecm(op, print_out=False)
 
     # Load the files
-    res = results.read_results(settings.output_dir + "/depletion_results.h5")
+    res = results.read_results(settings.output_dir / "depletion_results.h5")
 
     _, y1 = utilities.evaluate_single_nuclide(res, "1", "1")
     _, y2 = utilities.evaluate_single_nuclide(res, "1", "2")

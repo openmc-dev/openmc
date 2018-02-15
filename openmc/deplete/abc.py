@@ -4,6 +4,9 @@ This module contains the Operator class, which is then passed to an integrator
 to run a full depletion simulation.
 """
 
+import os
+from pathlib import Path
+
 from abc import ABCMeta, abstractmethod
 
 
@@ -16,14 +19,22 @@ class Settings(object):
     ----------
     dt_vec : numpy.array
         Array of time steps to take.
-    output_dir : str
+    output_dir : pathlib.Path
         Path to output directory to save results.
-    """
 
+    """
     def __init__(self):
         # Integrator specific
         self.dt_vec = None
-        self.output_dir = None
+        self.output_dir = Path('.')
+
+    @property
+    def output_dir(self):
+        return self._output_dir
+
+    @output_dir.setter
+    def output_dir(self, output_dir):
+        self._output_dir = Path(output_dir)
 
 
 class Operator(metaclass=ABCMeta):
@@ -59,6 +70,20 @@ class Operator(metaclass=ABCMeta):
             Seed for this simulation.
         """
         pass
+
+    def __enter__(self):
+        # Save current directory and move to specific output directory
+        self._orig_dir = os.getcwd()
+        self.settings.output_dir.mkdir(exist_ok=True)
+
+        # In Python 3.6+, chdir accepts a Path directly
+        os.chdir(str(self.settings.output_dir))
+
+        return self.initial_condition()
+
+    def __exit__(self, exc_type, exc_value, traceback):
+        self.finalize()
+        os.chdir(self._orig_dir)
 
     @abstractmethod
     def initial_condition(self):
@@ -112,6 +137,5 @@ class Operator(metaclass=ABCMeta):
 
         pass
 
-    @abstractmethod
     def finalize(self):
         pass

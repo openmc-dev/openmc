@@ -23,7 +23,7 @@ import openmc
 import openmc.capi
 from openmc.data import JOULE_PER_EV
 from . import comm
-from .abc import Settings, Operator
+from .abc import Settings, Operator, OperatorResult
 from .atom_number import AtomNumber
 from .chain import Chain
 from .reaction_rates import ReactionRates
@@ -255,7 +255,7 @@ class OpenMCOperator(Operator):
                 print("Time to openmc: ", time_openmc - time_start)
                 print("Time to unpack: ", time_unpack - time_openmc)
 
-        return k, copy.deepcopy(self.reaction_rates), self.seed
+        return OperatorResult(k, copy.deepcopy(self.reaction_rates), self.seed)
 
     def extract_mat_ids(self):
         """Extracts materials and assigns them to processes.

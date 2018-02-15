@@ -4,6 +4,7 @@ This module contains the Operator class, which is then passed to an integrator
 to run a full depletion simulation.
 """
 
+from collections import namedtuple
 import os
 from pathlib import Path
 
@@ -51,6 +52,9 @@ class Settings(object):
     @output_dir.setter
     def output_dir(self, output_dir):
         self._output_dir = Path(output_dir)
+
+
+OperatorResult = namedtuple('OperatorResult', ['k', 'rates', 'seed'])
 
 
 class Operator(metaclass=ABCMeta):

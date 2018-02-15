@@ -11,7 +11,8 @@ import os
 from unittest.mock import MagicMock
 
 import numpy as np
-from openmc.deplete import integrator, ReactionRates, results, comm
+from openmc.deplete import (integrator, ReactionRates, results, comm,
+                            OperatorResult)
 
 
 def test_save_results(run_in_tmpdir):
@@ -49,8 +50,8 @@ def test_save_results(run_in_tmpdir):
         x2.append([np.random.rand(2), np.random.rand(2)])
 
     # Construct r
-    cell_dict = {s:i for i, s in enumerate(burn_list)}
-    r1 = ReactionRates(cell_dict, {"na":0, "nb":1}, {"ra":0, "rb":1})
+    cell_dict = {s: i for i, s in enumerate(burn_list)}
+    r1 = ReactionRates(cell_dict, {"na": 0, "nb": 1}, {"ra": 0, "rb": 1})
     r1.rates = np.random.rand(2, 2, 2)
 
     rate1 = []
@@ -76,8 +77,12 @@ def test_save_results(run_in_tmpdir):
     t1 = [0.0, 1.0]
     t2 = [1.0, 2.0]
 
-    integrator.save_results(op, x1, rate1, eigvl1, seed1, t1, 0)
-    integrator.save_results(op, x2, rate2, eigvl2, seed2, t2, 1)
+    op_result1 = [OperatorResult(k, rates, seed)
+                  for k, rates, seed in zip(eigvl1, rate1, seed1)]
+    op_result2 = [OperatorResult(k, rates, seed)
+                  for k, rates, seed in zip(eigvl2, rate2, seed2)]
+    integrator.save_results(op, x1, op_result1, t1, 0)
+    integrator.save_results(op, x2, op_result2, t2, 1)
 
     # Load the files
     res = results.read_results("depletion_results.h5")

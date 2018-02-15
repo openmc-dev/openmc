@@ -36,7 +36,6 @@ def save_results(op, x, op_results, t, step_ind):
             results[i, mat_i, :] = x[i][mat_i][:]
 
     results.k = [r.k for r in op_results]
-    results.seeds = [r.seed for r in op_results]
     results.rates = [r.rates for r in op_results]
     results.time = t
 

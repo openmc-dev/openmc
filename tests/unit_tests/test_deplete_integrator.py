@@ -66,21 +66,15 @@ def test_save_results(run_in_tmpdir):
     # Create global terms
     eigvl1 = np.random.rand(stages)
     eigvl2 = np.random.rand(stages)
-    seed1 = [np.random.randint(100) for i in range(stages)]
-    seed2 = [np.random.randint(100) for i in range(stages)]
 
     eigvl1 = comm.bcast(eigvl1, root=0)
     eigvl2 = comm.bcast(eigvl2, root=0)
-    seed1 = comm.bcast(seed1, root=0)
-    seed2 = comm.bcast(seed2, root=0)
 
     t1 = [0.0, 1.0]
     t2 = [1.0, 2.0]
 
-    op_result1 = [OperatorResult(k, rates, seed)
-                  for k, rates, seed in zip(eigvl1, rate1, seed1)]
-    op_result2 = [OperatorResult(k, rates, seed)
-                  for k, rates, seed in zip(eigvl2, rate2, seed2)]
+    op_result1 = [OperatorResult(k, rates) for k, rates in zip(eigvl1, rate1)]
+    op_result2 = [OperatorResult(k, rates) for k, rates in zip(eigvl2, rate2)]
     integrator.save_results(op, x1, op_result1, t1, 0)
     integrator.save_results(op, x2, op_result2, t2, 1)
 
@@ -98,9 +92,7 @@ def test_save_results(run_in_tmpdir):
                                               rate2[i][mat, nuc, :])
 
     np.testing.assert_array_equal(res[0].k, eigvl1)
-    np.testing.assert_array_equal(res[0].seeds, seed1)
     np.testing.assert_array_equal(res[0].time, t1)
 
     np.testing.assert_array_equal(res[1].k, eigvl2)
-    np.testing.assert_array_equal(res[1].seeds, seed2)
     np.testing.assert_array_equal(res[1].time, t2)

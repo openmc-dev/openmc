@@ -115,8 +115,6 @@ class OpenMCOperator(Operator):
         Settings object. (From Operator)
     geometry : openmc.Geometry
         The OpenMC geometry object.
-    seed : int
-        The RNG seed used in last OpenMC run.
     number : openmc.deplete.AtomNumber
         Total number of atoms in simulation.
     participating_nuclides : set of str
@@ -125,10 +123,6 @@ class OpenMCOperator(Operator):
         The depletion chain information necessary to form matrices and tallies.
     reaction_rates : openmc.deplete.ReactionRates
         Reaction rates from the last operator step.
-    power : OrderedDict of str to float
-        Material-by-Material power.  Indexed by material ID.
-    mat_name : OrderedDict of str to int
-        The name of region each material is set to.  Indexed by material ID.
     burn_mat_to_id : OrderedDict of str to int
         Dictionary mapping material ID (as a string) to an index in reaction_rates.
     burn_nuc_to_id : OrderedDict of str to int
@@ -144,12 +138,9 @@ class OpenMCOperator(Operator):
         super().__init__(settings)
 
         self.geometry = geometry
-        self.seed = 0
         self.number = None
         self.participating_nuclides = None
         self.reaction_rates = None
-        self.power = None
-        self.mat_name = OrderedDict()
         self.burn_mat_to_ind = OrderedDict()
         self.burn_nuc_to_ind = None
 
@@ -196,16 +187,10 @@ class OpenMCOperator(Operator):
 
         Returns
         -------
-        mat : list of scipy.sparse.csr_matrix
-            Matrices for the next step.
-        k : float
-            Eigenvalue of the problem.
-        rates : openmc.deplete.ReactionRates
-            Reaction rates from this simulation.
-        seed : int
-            Seed for this simulation.
-        """
+        openmc.deplete.OperatorResult
+            Eigenvalue and reaction rates resulting from transport operator
 
+        """
         # Prevent OpenMC from complaining about re-creating tallies
         openmc.reset_auto_ids()
 
@@ -234,7 +219,7 @@ class OpenMCOperator(Operator):
                 print("Time to openmc: ", time_openmc - time_start)
                 print("Time to unpack: ", time_unpack - time_openmc)
 
-        return OperatorResult(k, copy.deepcopy(self.reaction_rates), self.seed)
+        return OperatorResult(k, copy.deepcopy(self.reaction_rates))
 
     def extract_mat_ids(self):
         """Extracts materials and assigns them to processes.
@@ -262,8 +247,6 @@ class OpenMCOperator(Operator):
         # Iterate once through the geometry to get dictionaries
         cells = self.geometry.get_all_material_cells()
         for cell in cells.values():
-            name = cell.name
-
             if isinstance(cell.fill, openmc.Material):
                 mat = cell.fill
                 for nuclide in mat.get_nuclide_densities():
@@ -273,7 +256,6 @@ class OpenMCOperator(Operator):
                     volume[str(mat.id)] = mat.volume
                 else:
                     mat_not_burn.add(str(mat.id))
-                self.mat_name[mat.id] = name
             else:
                 for mat in cell.fill:
                     for nuclide in mat.get_nuclide_densities():
@@ -283,7 +265,6 @@ class OpenMCOperator(Operator):
                         volume[str(mat.id)] = mat.volume
                     else:
                         mat_not_burn.add(str(mat.id))
-                    self.mat_name[mat.id] = name
 
         need_vol = []
 

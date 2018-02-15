@@ -22,8 +22,6 @@ class Results(object):
     ----------
     k : list of float
         Eigenvalue for each substep.
-    seeds : list of int
-        Seeds for each substep.
     time : list of float
         Time at beginning, end of step, in seconds.
     n_mat : int
@@ -46,11 +44,10 @@ class Results(object):
         Number of stages in simulation.
     data : numpy.array
         Atom quantity, stored by stage, mat, then by nuclide.
-    """
 
+    """
     def __init__(self):
         self.k = None
-        self.seeds = None
         self.time = None
         self.rates = None
         self.volume = None
@@ -227,8 +224,6 @@ class Results(object):
         handle.create_dataset("eigenvalues", (1, n_stages),
                               maxshape=(None, n_stages), dtype='float64')
 
-        handle.create_dataset("seeds", (1, n_stages), maxshape=(None, n_stages), dtype='int64')
-
         handle.create_dataset("time", (1, 2), maxshape=(None, 2), dtype='float64')
 
     def to_hdf5(self, handle, index):
@@ -252,7 +247,6 @@ class Results(object):
         number_dset = handle["/number"]
         rxn_dset = handle["/reaction rates"]
         eigenvalues_dset = handle["/eigenvalues"]
-        seeds_dset = handle["/seeds"]
         time_dset = handle["/time"]
 
         # Get number of results stored
@@ -274,10 +268,6 @@ class Results(object):
             eigenvalues_shape[0] = new_shape
             eigenvalues_dset.resize(eigenvalues_shape)
 
-            seeds_shape = list(seeds_dset.shape)
-            seeds_shape[0] = new_shape
-            seeds_dset.resize(seeds_shape)
-
             time_shape = list(time_dset.shape)
             time_shape[0] = new_shape
             time_dset.resize(time_shape)
@@ -297,7 +287,6 @@ class Results(object):
             rxn_dset[index, i, low:high+1, :, :] = self.rates[i][:, :, :]
             if comm.rank == 0:
                 eigenvalues_dset[index, i] = self.k[i]
-                seeds_dset[index, i] = self.seeds[i]
         if comm.rank == 0:
             time_dset[index, :] = self.time
 
@@ -317,12 +306,10 @@ class Results(object):
         # Grab handles
         number_dset = handle["/number"]
         eigenvalues_dset = handle["/eigenvalues"]
-        seeds_dset = handle["/seeds"]
         time_dset = handle["/time"]
 
         results.data = number_dset[index, :, :, :]
         results.k = eigenvalues_dset[index, :]
-        results.seeds = seeds_dset[index, :]
         results.time = time_dset[index, :]
 
         # Reconstruct dictionaries

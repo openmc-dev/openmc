@@ -51,7 +51,7 @@ class DummyGeometry(Operator):
         reaction_rates[0, 1, 0] = vec[0][1]
 
         # Create a fake rates object
-        return OperatorResult(0.0, reaction_rates, 0)
+        return OperatorResult(0.0, reaction_rates)
 
     @property
     def chain(self):

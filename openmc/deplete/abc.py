@@ -54,7 +54,7 @@ class Settings(object):
         self._output_dir = Path(output_dir)
 
 
-OperatorResult = namedtuple('OperatorResult', ['k', 'rates', 'seed'])
+OperatorResult = namedtuple('OperatorResult', ['k', 'rates'])
 
 
 class Operator(metaclass=ABCMeta):

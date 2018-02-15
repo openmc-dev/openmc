@@ -91,7 +91,8 @@ class Operator(metaclass=ABCMeta):
     def __enter__(self):
         # Save current directory and move to specific output directory
         self._orig_dir = os.getcwd()
-        self.settings.output_dir.mkdir(exist_ok=True)
+        if not self.settings.output_dir.exists():
+            self.settings.output_dir.mkdir()  # exist_ok parameter is 3.5+
 
         # In Python 3.6+, chdir accepts a Path directly
         os.chdir(str(self.settings.output_dir))

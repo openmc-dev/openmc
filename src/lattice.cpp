@@ -43,6 +43,10 @@ Lattice::Lattice(pugi::xml_node lat_node)
   if (check_for_node(lat_node, "name")) {
     name = get_node_value(lat_node, "name");
   }
+
+  if (check_for_node(lat_node, "outer")) {
+    outer = stoi(get_node_value(lat_node, "outer"));
+  }
 }
 
 void
@@ -61,8 +65,8 @@ RectLattice::RectLattice(pugi::xml_node lat_node)
   : Lattice {lat_node}
 {
   // Read the number of lattice cells in each dimension.
-  std::string dimension_str{get_node_value(lat_node, "dimension")};
-  std::vector<std::string> dimension_words{split(dimension_str)};
+  std::string dimension_str {get_node_value(lat_node, "dimension")};
+  std::vector<std::string> dimension_words {split(dimension_str)};
   if (dimension_words.size() == 2) {
     n_cells[0] = stoi(dimension_words[0]);
     n_cells[1] = stoi(dimension_words[1]);
@@ -78,8 +82,8 @@ RectLattice::RectLattice(pugi::xml_node lat_node)
   }
 
   // Read the lattice lower-left location.
-  std::string ll_str{get_node_value(lat_node, "lower_left")};
-  std::vector<std::string> ll_words{split(ll_str)};
+  std::string ll_str {get_node_value(lat_node, "lower_left")};
+  std::vector<std::string> ll_words {split(ll_str)};
   if (ll_words.size() != dimension_words.size()) {
     fatal_error("Number of entries on <lower_left> must be the same as the "
                 "number of entries on <dimension>.");
@@ -89,8 +93,8 @@ RectLattice::RectLattice(pugi::xml_node lat_node)
   if (is_3d) {lower_left[2] = stod(ll_words[2]);}
 
   // Read the lattice pitches.
-  std::string pitch_str{get_node_value(lat_node, "pitch")};
-  std::vector<std::string> pitch_words{split(pitch_str)};
+  std::string pitch_str {get_node_value(lat_node, "pitch")};
+  std::vector<std::string> pitch_words {split(pitch_str)};
   if (pitch_words.size() != dimension_words.size()) {
     fatal_error("Number of entries on <pitch> must be the same as the "
                 "number of entries on <dimension>.");
@@ -103,8 +107,8 @@ RectLattice::RectLattice(pugi::xml_node lat_node)
   int nx = n_cells[0];
   int ny = n_cells[1];
   int nz = n_cells[2];
-  std::string univ_str{get_node_value(lat_node, "universes")};
-  std::vector<std::string> univ_words{split(univ_str)};
+  std::string univ_str {get_node_value(lat_node, "universes")};
+  std::vector<std::string> univ_words {split(univ_str)};
   if (univ_words.size() != nx*ny*nz) {
     std::stringstream err_msg;
     err_msg << "Expected " << nx*ny*nz
@@ -124,11 +128,6 @@ RectLattice::RectLattice(pugi::xml_node lat_node)
         universes[indx1] = stoi(univ_words[indx2]);
       }
     }
-  }
-
-  // Read the outer universe for the area outside the lattice.
-  if (check_for_node(lat_node, "outer")) {
-    outer = stoi(get_node_value(lat_node, "outer"));
   }
 }
 
@@ -198,6 +197,148 @@ RectLattice::distance(const double xyz[3], const double uvw[3]) const
 HexLattice::HexLattice(pugi::xml_node lat_node)
   : Lattice {lat_node}
 {
+  // Read the number of lattice cells in each dimension.
+  n_rings = stoi(get_node_value(lat_node, "n_rings"));
+  if (check_for_node(lat_node, "n_axial")) {
+    n_axial = stoi(get_node_value(lat_node, "n_axial"));
+    is_3d = true;
+  } else {
+    n_axial = 1;
+    is_3d = false;
+  }
+
+  // Read the lattice center.
+  std::string center_str {get_node_value(lat_node, "center")};
+  std::vector<std::string> center_words {split(center_str)};
+  if (is_3d && (center_words.size() != 3)) {
+    fatal_error("A hexagonal lattice with <n_axial> must have <center> "
+                "specified by 3 numbers.");
+  } else if (!is_3d && center_words.size() != 2) {
+    fatal_error("A hexagonal lattice without <n_axial> must have <center> "
+                "specified by 2 numbers.");
+  }
+  center[0] = stod(center_words[0]);
+  center[1] = stod(center_words[1]);
+  if (is_3d) {center[2] = stod(center_words[2]);}
+
+  // Read the lattice pitches.
+  std::string pitch_str {get_node_value(lat_node, "pitch")};
+  std::vector<std::string> pitch_words {split(pitch_str)};
+  if (is_3d && (pitch_words.size() != 2)) {
+    fatal_error("A hexagonal lattice with <n_axial> must have <pitch> "
+                "specified by 2 numbers.");
+  } else if (!is_3d && (pitch_words.size() != 1)) {
+    fatal_error("A hexagonal lattice without <n_axial> must have <center> "
+                "specified by 1 number.");
+  }
+  pitch[0] = stod(pitch_words[0]);
+  if (is_3d) {pitch[1] = stod(pitch_words[1]);}
+
+  // Read the universes and make sure the correct number was specified.
+  //int n_univ = (2*n_rings - 1) * (2*n_rings - 1) * n_axial;
+  int n_univ = (3*n_rings*n_rings - 3*n_rings + 1) * n_axial;
+  std::string univ_str {get_node_value(lat_node, "universes")};
+  std::vector<std::string> univ_words {split(univ_str)};
+  if (univ_words.size() != n_univ) {
+    std::stringstream err_msg;
+    err_msg << "Expected " << n_univ
+            << " universes for a hexagonal lattice with " << n_rings
+            << " rings and " << n_axial << " axial levels" << " but "
+            << univ_words.size() << " were specified.";
+    fatal_error(err_msg);
+  }
+
+  // Parse the universes.
+  // Universes in hexagonal lattices are stored in a manner that represents
+  // a skewed coordinate system: (x, alpha) rather than (x, y).  There is
+  // no obvious, direct relationship between the order of universes in the
+  // input and the order that they will be stored in the skewed array so
+  // the following code walks a set of index values across the skewed array
+  // in a manner that matches the input order.  Note that i_x = 0, i_a = 0
+  // corresponds to the center of the hexagonal lattice.
+
+  universes.resize((2*n_rings-1) * (2*n_rings-1) * n_axial, -1);
+  int input_index = 0;
+  for (int m = 0; m < n_axial; m++) {
+    // Initialize lattice indecies.
+    int i_x = 1;
+    int i_a = n_rings - 1;
+
+    // Map upper triangular region of hexagonal lattice which is found in the
+    // first n_rings-1 rows of the input.
+    for (int k = 0; k < n_rings-1; k++) {
+      // Walk the index to lower-left neighbor of last row start.
+      i_x -= 1;
+
+      // Iterate over the input columns.
+      for (int j = 0; j < k+1; j++) {
+        int indx = (2*n_rings-1)*(2*n_rings-1) * m
+                    + (2*n_rings-1) * (i_a+n_rings-1)
+                    + (i_x+n_rings-1);
+        universes[indx] = stoi(univ_words[input_index]);
+        input_index++;
+        // Walk the index to the right neighbor (which is not adjacent).
+        i_x += 2;
+        i_a -= 1;
+      }
+
+      // Return the lattice index to the start of the current row.
+      i_x -= 2 * (k+1);
+      i_a += (k+1);
+    }
+
+    // Map the middle square region of the hexagonal lattice which is found in
+    // the next 2*n_rings-1 rows of the input.
+    for (int k = 0; k < 2*n_rings-1; k++) {
+      if ((k % 2) == 0) {
+        // Walk the index to the lower-left neighbor of the last row start.
+        i_x -= 1;
+      } else {
+        // Walk the index to the lower-right neighbor of the last row start.
+        i_x += 1;
+        i_a -= 1;
+      }
+
+      // Iterate over the input columns.
+      for (int j = 0; j < n_rings - (k % 2); j++) {
+        int indx = (2*n_rings-1)*(2*n_rings-1) * m
+                    + (2*n_rings-1) * (i_a+n_rings-1)
+                    + (i_x+n_rings-1);
+        universes[indx] = stoi(univ_words[input_index]);
+        input_index++;
+        // Walk the index to the right neighbor (which is not adjacent).
+        i_x += 2;
+        i_a -= 1;
+      }
+
+      // Return the lattice index to the start of the current row.
+      i_x -= 2*(n_rings - (k % 2));
+      i_a += n_rings - (k % 2);
+    }
+
+    // Map the lower triangular region of the hexagonal lattice.
+    for (int k = 0; k < n_rings-1; k++) {
+      // Walk the index to the lower-right neighbor of the last row start.
+      i_x += 1;
+      i_a -= 1;
+
+      // Iterate over the input columns.
+      for (int j = 0; j < n_rings-k-1; j++) {
+        int indx = (2*n_rings-1)*(2*n_rings-1) * m
+                    + (2*n_rings-1) * (i_a+n_rings-1)
+                    + (i_x+n_rings-1);
+        universes[indx] = stoi(univ_words[input_index]);
+        input_index++;
+        // Walk the index to the right neighbor (which is not adjacent).
+        i_x += 2;
+        i_a -= 1;
+      }
+
+      // Return lattice index to start of current row.
+      i_x -= 2*(n_rings - k - 1);
+      i_a += n_rings - k - 1;
+    }
+  }
 }
 
 std::pair<double, std::array<int, 3>>

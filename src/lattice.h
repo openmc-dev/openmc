@@ -104,6 +104,12 @@ public:
 
   std::pair<double, std::array<int, 3>>
   distance(const double xyz[3], const double uvw[3]) const;
+
+protected:
+  int n_rings;                   //! Number of radial tile positions
+  int n_axial;                   //! Number of axial tile positions
+  std::array<double, 3> center;  //! Global center of lattice
+  std::array<double, 2> pitch;   //! Lattice tile width and height
 };
 
 } //  namespace openmc

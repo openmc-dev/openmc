@@ -12,7 +12,7 @@ from .save_results import save_results
 
 
 def predictor(operator, print_out=True):
-    """The basic predictor integrator.
+    r"""The basic predictor integrator.
 
     Implements the first order predictor algorithm. This algorithm is
     mathematically defined as:
@@ -22,68 +22,50 @@ def predictor(operator, print_out=True):
 
         A_p &= A(y_n, t_n)
 
-        y_{n+1} &= \\text{expm}(A_p h) y_n
+        y_{n+1} &= \text{expm}(A_p h) y_n
 
     Parameters
     ----------
-    operator : Operator
+    operator : openmc.deplete.Operator
         The operator object to simulate on.
     print_out : bool, optional
         Whether or not to print out time.
-    """
 
+    """
     # Generate initial conditions
     with operator as vec:
         n_mats = len(vec)
 
         t = 0.0
-
         for i, dt in enumerate(operator.settings.dt_vec):
-            # Create vectors
+            # Get beginning-of-timestep reaction rates
             x = [copy.deepcopy(vec)]
-            seeds = []
-            eigvls = []
-            rates_array = []
-
-            eigvl, rates, seed = operator(x[0])
-
-            eigvls.append(eigvl)
-            seeds.append(seed)
-            rates_array.append(rates)
+            results = [operator(x[0])]
 
             # Create results, write to disk
-            save_results(operator, x, rates_array, eigvls, seeds, [t, t + dt], i)
+            save_results(operator, x, results, [t, t + dt], i)
 
+            # Deplete for full timestep
             t_start = time.time()
-
             chains = repeat(operator.chain, n_mats)
             vecs = (x[0][i] for i in range(n_mats))
-            rates = (rates_array[0][i, :, :] for i in range(n_mats))
+            rates = (results[0].rates[i, :, :] for i in range(n_mats))
             dts = repeat(dt, n_mats)
-
             with Pool() as pool:
                 iters = zip(chains, vecs, rates, dts)
                 x_result = list(pool.starmap(cram_wrapper, iters))
-
             t_end = time.time()
             if comm.rank == 0:
                 if print_out:
                     print("Time to matexp: ", t_end - t_start)
 
+            # Advance time, update vector
             t += dt
             vec = copy.deepcopy(x_result)
 
         # Perform one last simulation
         x = [copy.deepcopy(vec)]
-        seeds = []
-        eigvls = []
-        rates_array = []
-        eigvl, rates, seed = operator(x[0])
-
-        eigvls.append(eigvl)
-        seeds.append(seed)
-        rates_array.append(rates)
+        results = [operator(x[0])]
 
         # Create results, write to disk
-        save_results(operator, x, rates_array, eigvls, seeds, [t, t],
-                     len(operator.settings.dt_vec))
+        save_results(operator, x, results, [t, t], len(operator.settings.dt_vec))

@@ -23,7 +23,7 @@ class ReactionRates(object):
     Attributes
     ----------
     mat_to_ind : OrderedDict of str to int
-        A dictionary mapping cell ID as string to index.
+        A dictionary mapping material ID as string to index.
     nuc_to_ind : OrderedDict of str to int
         A dictionary mapping nuclide name as string to index.
     react_to_ind : OrderedDict of str to int

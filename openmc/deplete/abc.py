@@ -58,7 +58,7 @@ OperatorResult = namedtuple('OperatorResult', ['k', 'rates'])
 
 
 class Operator(metaclass=ABCMeta):
-    """Abstract class defining all methods needed for the integrator.
+    """Abstract class defining a transport operator
 
     Attributes
     ----------
@@ -82,12 +82,9 @@ class Operator(metaclass=ABCMeta):
 
         Returns
         -------
-        k : float
-            Eigenvalue of the problem.
-        rates : ReactionRates
-            Reaction rates from this simulation.
-        seed : int
-            Seed for this simulation.
+        openmc.deplete.OperatorResult
+            Eigenvalue and reaction rates resulting from transport operator
+
         """
         pass
 

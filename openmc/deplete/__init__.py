@@ -18,7 +18,7 @@ from .nuclide import *
 from .chain import *
 from .openmc_wrapper import *
 from .reaction_rates import *
-from .function import *
+from .abc import *
 from .results import *
 from .integrator import *
 from .utilities import *

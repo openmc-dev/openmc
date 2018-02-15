@@ -1,7 +1,7 @@
 import numpy as np
 import scipy.sparse as sp
 from openmc.deplete.reaction_rates import ReactionRates
-from openmc.deplete.function import Operator
+from openmc.deplete.abc import Operator
 
 
 class DummyGeometry(Operator):
@@ -52,9 +52,6 @@ class DummyGeometry(Operator):
 
         # Create a fake rates object
         return 0.0, reaction_rates, 0
-
-    def finalize(self):
-        pass
 
     @property
     def chain(self):

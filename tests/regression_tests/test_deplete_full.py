@@ -43,7 +43,6 @@ def test_full(run_in_tmpdir):
                               'chain_simple.xml')
     settings.power = 2.337e15*4*JOULE_PER_EV*1e6  # MeV/second cm from CASMO
     settings.dt_vec = dt
-    settings.output_dir = "test_full"
     settings.round_number = True
 
     # Add OpenMC-specific settings
@@ -61,7 +60,7 @@ def test_full(run_in_tmpdir):
     openmc.deplete.integrator.predictor(op)
 
     # Load the files
-    res_test = results.read_results(settings.output_dir + "/depletion_results.h5")
+    res_test = results.read_results(settings.output_dir / "depletion_results.h5")
 
     # Load the reference
     filename = str(Path(__file__).with_name('test_reference.h5'))

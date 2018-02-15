@@ -23,12 +23,10 @@ import openmc
 import openmc.capi
 from openmc.data import JOULE_PER_EV
 from . import comm
+from .abc import Settings, Operator
 from .atom_number import AtomNumber
 from .chain import Chain
 from .reaction_rates import ReactionRates
-from .function import Settings, Operator
-
-
 
 
 def _chunks(items, n):
@@ -49,7 +47,7 @@ class OpenMCSettings(Settings):
     ----------
     dt_vec : numpy.array
         Array of time steps to in units of [s]
-    output_dir : str
+    output_dir : pathlib.Path
         Path to output directory to save results.
     chain_file : str
         Path to the depletion chain xml file.  Defaults to the
@@ -70,7 +68,7 @@ class OpenMCSettings(Settings):
 
     """
 
-    _depletion_attrs = {'dt_vec', 'output_dir', 'chain_file', 'dilute_initial',
+    _depletion_attrs = {'dt_vec', '_output_dir', 'chain_file', 'dilute_initial',
                         'round_number', 'power'}
 
     def __init__(self):
@@ -87,7 +85,10 @@ class OpenMCSettings(Settings):
         self.__dict__['settings'] = openmc.Settings()
 
     def __setattr__(self, name, value):
-        if name in self._depletion_attrs:
+        if hasattr(self.__class__, name):
+            prop = getattr(self.__class__, name)
+            prop.fset(self, value)
+        elif name in self._depletion_attrs:
             self.__dict__[name] = value
         else:
             setattr(self.__dict__['settings'], name, value)

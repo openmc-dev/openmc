@@ -56,13 +56,13 @@ class OpenMCSettings(Settings):
         Initial atom density to add for nuclides that are zero in initial
         condition to ensure they exist in the decay chain.  Only done for
         nuclides with reaction rates. Defaults to 1.0e3.
-    round_number : bool
-        Whether or not to round output to OpenMC to 8 digits.
-        Useful in testing, as OpenMC is incredibly sensitive to exact values.
     power : float
         Power of the reactor in [W]. For a 2D problem, the power can be given in
         W/cm as long as the "volume" assigned to a depletion material is
         actually an area in cm^2.
+    round_number : bool
+        Whether or not to round output to OpenMC to 8 digits.
+        Useful in testing, as OpenMC is incredibly sensitive to exact values.
     settings : openmc.Settings
         Settings for OpenMC simulations
 
@@ -73,24 +73,21 @@ class OpenMCSettings(Settings):
 
     def __init__(self):
         super().__init__()
-        try:
-            self.chain_file = os.environ["OPENDEPLETE_CHAIN"]
-        except KeyError:
-            self.chain_file = None
-        self.dilute_initial = 1.0e3
         self.round_number = False
-        self.power = None
 
         # Avoid setattr to create OpenMC settings
         self.__dict__['settings'] = openmc.Settings()
 
     def __setattr__(self, name, value):
         if hasattr(self.__class__, name):
+            # Use properties when appropriate
             prop = getattr(self.__class__, name)
             prop.fset(self, value)
         elif name in self._depletion_attrs:
+            # For known attributes, store in dictionary
             self.__dict__[name] = value
         else:
+            # otherwise, delegate to openmc.Settings
             setattr(self.__dict__['settings'], name, value)
 
     def __getattr__(self, name):

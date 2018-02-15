@@ -21,12 +21,28 @@ class Settings(object):
         Array of time steps to take.
     output_dir : pathlib.Path
         Path to output directory to save results.
+    chain_file : str
+        Path to the depletion chain xml file.  Defaults to the
+        :envvar:`OPENDEPLETE_CHAIN` environment variable if it exists.
+    dilute_initial : float
+        Initial atom density to add for nuclides that are zero in initial
+        condition to ensure they exist in the decay chain.  Only done for
+        nuclides with reaction rates. Defaults to 1.0e3.
+    power : float
+        Power of the reactor in [W]. For a 2D problem, the power can be given in
+        W/cm as long as the "volume" assigned to a depletion material is
+        actually an area in cm^2.
 
     """
     def __init__(self):
-        # Integrator specific
+        try:
+            self.chain_file = os.environ["OPENDEPLETE_CHAIN"]
+        except KeyError:
+            self.chain_file = None
         self.dt_vec = None
-        self.output_dir = Path('.')
+        self.output_dir = '.'
+        self.power = None
+        self.dilute_initial = 1.0e3
 
     @property
     def output_dir(self):

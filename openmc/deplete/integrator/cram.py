@@ -3,9 +3,59 @@
 Implements two different forms of CRAM for use in openmc.deplete.
 """
 
+from itertools import repeat
+from multiprocessing import Pool
+import time
+
 import numpy as np
 import scipy.sparse as sp
 import scipy.sparse.linalg as sla
+
+from .. import comm
+
+
+def deplete(chain, x, op_result, dt, print_out):
+    """Deplete materials using given reaction rates for a specified time
+
+    Parameters
+    ----------
+    chain : openmc.deplete.Chain
+        Depletion chain
+    x : list of numpy.ndarray
+        Atom number vectors for each material
+    op_result : openmc.deplete.OperatorResult
+        Result of applying transport operator (contains reaction rates)
+    dt : float
+        Time in [s] to deplete for
+    print_out : bool
+        Whether to show elapsed time
+
+    Returns
+    -------
+    x_result : list of numpy.ndarray
+        Updated atom number vectors for each material
+
+    """
+    t_start = time.time()
+
+    # Set up iterators
+    n_mats = len(x)
+    chains = repeat(chain, n_mats)
+    vecs = (x[i] for i in range(n_mats))
+    rates = (op_result.rates[i, :, :] for i in range(n_mats))
+    dts = repeat(dt, n_mats)
+
+    # Use multiprocessing pool to distribute work
+    with Pool() as pool:
+        iters = zip(chains, vecs, rates, dts)
+        x_result = list(pool.starmap(cram_wrapper, iters))
+
+    t_end = time.time()
+    if comm.rank == 0:
+        if print_out:
+            print("Time to matexp: ", t_end - t_start)
+
+    return x_result
 
 
 def cram_wrapper(chain, n0, rates, dt):

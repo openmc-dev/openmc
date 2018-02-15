@@ -1,20 +1,15 @@
-""" The Predictor algorithm."""
+"""The Predictor algorithm."""
 
 import copy
-from itertools import repeat
-import os
-from multiprocessing import Pool
-import time
 
-from .. import comm
-from .cram import CRAM48, cram_wrapper
+from .cram import deplete
 from .save_results import save_results
 
 
 def predictor(operator, print_out=True):
     r"""The basic predictor integrator.
 
-    Implements the first order predictor algorithm. This algorithm is
+    Implements the first-order predictor algorithm. This algorithm is
     mathematically defined as:
 
     .. math::
@@ -34,8 +29,7 @@ def predictor(operator, print_out=True):
     """
     # Generate initial conditions
     with operator as vec:
-        n_mats = len(vec)
-
+        chain = operator.chain
         t = 0.0
         for i, dt in enumerate(operator.settings.dt_vec):
             # Get beginning-of-timestep reaction rates
@@ -46,22 +40,11 @@ def predictor(operator, print_out=True):
             save_results(operator, x, results, [t, t + dt], i)
 
             # Deplete for full timestep
-            t_start = time.time()
-            chains = repeat(operator.chain, n_mats)
-            vecs = (x[0][i] for i in range(n_mats))
-            rates = (results[0].rates[i, :, :] for i in range(n_mats))
-            dts = repeat(dt, n_mats)
-            with Pool() as pool:
-                iters = zip(chains, vecs, rates, dts)
-                x_result = list(pool.starmap(cram_wrapper, iters))
-            t_end = time.time()
-            if comm.rank == 0:
-                if print_out:
-                    print("Time to matexp: ", t_end - t_start)
+            x_end = deplete(chain, x[0], results[0], dt, print_out)
 
             # Advance time, update vector
             t += dt
-            vec = copy.deepcopy(x_result)
+            vec = copy.deepcopy(x_end)
 
         # Perform one last simulation
         x = [copy.deepcopy(vec)]

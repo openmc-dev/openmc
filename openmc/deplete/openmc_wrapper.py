@@ -97,25 +97,6 @@ class OpenMCSettings(Settings):
             return getattr(self.__dict__['settings'], name)
 
 
-class Materials(object):
-    """The Materials class.
-
-    Contains information about cross sections for a cell.
-
-    Attributes
-    ----------
-    temperature : float
-        Temperature in Kelvin for each region.
-    sab : str or list of str
-        ENDF S(a,b) name for a region that needs S(a,b) data.  Not set if no
-        S(a,b) needed for region.
-    """
-
-    def __init__(self):
-        self.temperature = None
-        self.sab = None
-
-
 class OpenMCOperator(Operator):
     """The OpenMC Operator class.
 
@@ -134,8 +115,6 @@ class OpenMCOperator(Operator):
         Settings object. (From Operator)
     geometry : openmc.Geometry
         The OpenMC geometry object.
-    materials : list of Materials
-        Materials to be used for this simulation.
     seed : int
         The RNG seed used in last OpenMC run.
     number : openmc.deplete.AtomNumber

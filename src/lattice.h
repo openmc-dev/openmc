@@ -61,7 +61,8 @@ public:
   //virtual bool are_valid_indices(const int i_xyz[3]) const = 0;
 
   virtual std::pair<double, std::array<int, 3>>
-  distance(const double xyz[3], const double uvw[3]) const = 0;
+  distance(const double xyz[3], const double uvw[3], const int i_xyz[3]) const
+       = 0;
 
   //virtual void get_indices(const double global_xyz[3], int i_xyz[3]) const = 0;
 
@@ -87,7 +88,7 @@ public:
   virtual ~RectLattice() {}
 
   std::pair<double, std::array<int, 3>>
-  distance(const double xyz[3], const double uvw[3]) const;
+  distance(const double xyz[3], const double uvw[3], const int i_xyz[3]) const;
 
 protected:
   std::array<int, 3> n_cells;        //! Number of cells along each axis
@@ -103,7 +104,10 @@ public:
   virtual ~HexLattice() {}
 
   std::pair<double, std::array<int, 3>>
-  distance(const double xyz[3], const double uvw[3]) const;
+  distance(const double xyz[3], const double uvw[3], const int i_xyz[3]) const;
+
+  std::array<double, 3>
+  get_local_xyz(const double global_xyz[3], const int i_xyz[3]) const;
 
 protected:
   int n_rings;                   //! Number of radial tile positions

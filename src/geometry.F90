@@ -372,17 +372,9 @@ contains
     integer :: i_xyz(3)           ! lattice indices
     integer :: level_surf_cross   ! surface crossed on current level
     integer :: level_lat_trans(3) ! lattice translation on current level
-    real(8) :: x,y,z              ! particle coordinates
     real(8) :: xyz_t(3)           ! local particle coordinates
-    real(8) :: beta, gama         ! skewed particle coordiantes
-    real(8) :: u,v,w              ! particle directions
-    real(8) :: beta_dir           ! skewed particle direction
-    real(8) :: gama_dir           ! skewed particle direction
-    real(8) :: edge               ! distance to oncoming edge
-    real(8) :: d                  ! evaluated distance
     real(8) :: d_lat              ! distance to lattice boundary
     real(8) :: d_surf             ! distance to surface
-    real(8) :: x0,y0,z0           ! coefficients for surface
     real(8) :: xyz_cross(3)       ! coordinates at projected surface crossing
     real(8) :: surf_uvw(3)        ! surface normal direction
     type(Cell),       pointer :: c
@@ -402,11 +394,6 @@ contains
       ! get pointer to cell on this level
       c => cells(p % coord(j) % cell)
 
-      ! copy directional cosines
-      u = p % coord(j) % uvw(1)
-      v = p % coord(j) % uvw(2)
-      w = p % coord(j) % uvw(3)
-
       ! =======================================================================
       ! FIND MINIMUM DISTANCE TO SURFACE IN THIS CELL
 
@@ -419,123 +406,22 @@ contains
       LAT_COORD: if (p % coord(j) % lattice /= NONE) then
         lat => lattices(p % coord(j) % lattice) % obj
 
+        i_xyz(1) = p % coord(j) % lattice_x
+        i_xyz(2) = p % coord(j) % lattice_y
+        i_xyz(3) = p % coord(j) % lattice_z
+
         LAT_TYPE: select type(lat)
 
         type is (RectLattice)
           call lat % distance(p % coord(j) % xyz, p % coord(j) % uvw, &
-                              d_lat, level_lat_trans)
+                              i_xyz, d_lat, level_lat_trans)
 
         type is (HexLattice) LAT_TYPE
-          ! Copy local coordinates.
-          z = p % coord(j) % xyz(3)
-          i_xyz(1) = p % coord(j) % lattice_x
-          i_xyz(2) = p % coord(j) % lattice_y
-          i_xyz(3) = p % coord(j) % lattice_z
-
-          ! Compute velocities along the hexagonal axes.
-          beta_dir = u*sqrt(THREE)/TWO + v/TWO
-          gama_dir = u*sqrt(THREE)/TWO - v/TWO
-
-          ! Note that hexagonal lattice distance calculations are performed
-          ! using the particle's coordinates relative to the neighbor lattice
-          ! cells, not relative to the particle's current cell.  This is done
-          ! because there is significant disagreement between neighboring cells
-          ! on where the lattice boundary is due to the worse finite precision
-          ! of hex lattices.
-
-          ! Upper right and lower left sides.
-          edge = -sign(lat % pitch(1)/TWO, beta_dir)  ! Oncoming edge
-          if (beta_dir > ZERO) then
-            xyz_t = lat % get_local_xyz(p % coord(j - 1) % xyz, i_xyz+[1, 0, 0])
-          else
-            xyz_t = lat % get_local_xyz(p % coord(j - 1) % xyz, i_xyz+[-1, 0, 0])
-          end if
-          beta = xyz_t(1)*sqrt(THREE)/TWO + xyz_t(2)/TWO
-          if (abs(beta - edge) < FP_PRECISION) then
-            d = INFINITY
-          else if (beta_dir == ZERO) then
-            d = INFINITY
-          else
-            d = (edge - beta)/beta_dir
-          end if
-
-          d_lat = d
-          if (beta_dir > 0) then
-            level_lat_trans(:) = [1, 0, 0]
-          else
-            level_lat_trans(:) = [-1, 0, 0]
-          end if
-
-          ! Lower right and upper left sides.
-          edge = -sign(lat % pitch(1)/TWO, gama_dir)  ! Oncoming edge
-          if (gama_dir > ZERO) then
-            xyz_t = lat % get_local_xyz(p % coord(j - 1) % xyz, i_xyz+[1, -1, 0])
-          else
-            xyz_t = lat % get_local_xyz(p % coord(j - 1) % xyz, i_xyz+[-1, 1, 0])
-          end if
-          gama = xyz_t(1)*sqrt(THREE)/TWO - xyz_t(2)/TWO
-          if (abs(gama - edge) < FP_PRECISION) then
-            d = INFINITY
-          else if (gama_dir == ZERO) then
-            d = INFINITY
-          else
-            d = (edge - gama)/gama_dir
-          end if
-
-          if (d < d_lat) then
-            d_lat = d
-            if (gama_dir > 0) then
-              level_lat_trans(:) = [1, -1, 0]
-            else
-              level_lat_trans(:) = [-1, 1, 0]
-            end if
-          end if
-
-          ! Upper and lower sides.
-          edge = -sign(lat % pitch(1)/TWO, v)  ! Oncoming edge
-          if (v > ZERO) then
-            xyz_t = lat % get_local_xyz(p % coord(j - 1) % xyz, i_xyz+[0, 1, 0])
-          else
-            xyz_t = lat % get_local_xyz(p % coord(j - 1) % xyz, i_xyz+[0, -1, 0])
-          end if
-          if (abs(xyz_t(2) - edge) < FP_PRECISION) then
-            d = INFINITY
-          else if (v == ZERO) then
-            d = INFINITY
-          else
-            d = (edge - xyz_t(2))/v
-          end if
-
-          if (d < d_lat) then
-            d_lat = d
-            if (v > 0) then
-              level_lat_trans(:) = [0, 1, 0]
-            else
-              level_lat_trans(:) = [0, -1, 0]
-            end if
-          end if
-
-          ! Top and bottom sides.
-          if (lat % is_3d) then
-            z0 = sign(lat % pitch(2) * HALF, w)
-
-            if (abs(z - z0) < FP_PRECISION) then
-              d = INFINITY
-            elseif (w == ZERO) then
-              d = INFINITY
-            else
-              d = (z0 - z)/w
-            end if
-
-            if (d < d_lat) then
-              d_lat = d
-              if (w > 0) then
-                level_lat_trans(:) = [0, 0, 1]
-              else
-                level_lat_trans(:) = [0, 0, -1]
-              end if
-            end if
-          end if
+          xyz_t(1) = p % coord(j-1) % xyz(1)
+          xyz_t(2) = p % coord(j-1) % xyz(2)
+          xyz_t(3) = p % coord(j) % xyz(3)
+          call lat % distance(xyz_t, p % coord(j) % uvw, &
+                              i_xyz, d_lat, level_lat_trans)
         end select LAT_TYPE
 
         if (d_lat < ZERO) then

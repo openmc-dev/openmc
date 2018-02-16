@@ -132,7 +132,8 @@ RectLattice::RectLattice(pugi::xml_node lat_node)
 }
 
 std::pair<double, std::array<int, 3>>
-RectLattice::distance(const double xyz[3], const double uvw[3]) const
+RectLattice::distance(const double xyz[3], const double uvw[3],
+                      const int i_xyz[3]) const
 {
   // Get short aliases to the coordinates.
   double x {xyz[0]};
@@ -342,8 +343,126 @@ HexLattice::HexLattice(pugi::xml_node lat_node)
 }
 
 std::pair<double, std::array<int, 3>>
-HexLattice::distance(const double xyz[3], const double uvw[3]) const
+HexLattice::distance(const double xyz[3], const double uvw[3],
+                     const int i_xyz[3]) const
 {
+  // Compute the direction on the hexagonal basis.
+  double beta_dir = uvw[0] * std::sqrt(3.0) / 2.0 + uvw[1] / 2.0;
+  double gamma_dir = uvw[0] * std::sqrt(3.0) / 2.0 - uvw[1] / 2.0;
+
+  // Note that hexagonal lattice distance calculations are performed
+  // using the particle's coordinates relative to the neighbor lattice
+  // cells, not relative to the particle's current cell.  This is done
+  // because there is significant disagreement between neighboring cells
+  // on where the lattice boundary is due to finite precision issues.
+
+  // Upper-right and lower-left sides.
+  double d {INFTY};
+  std::array<int, 3> lattice_trans;
+  double edge = -copysign(0.5*pitch[0], beta_dir);  // Oncoming edge
+  std::array<double, 3> xyz_t;
+  if (beta_dir > 0) {
+    const int i_xyz_t[3] {i_xyz[0]+1, i_xyz[1], i_xyz[2]};
+    xyz_t = get_local_xyz(xyz, i_xyz_t);
+  } else {
+    const int i_xyz_t[3] {i_xyz[0]-1, i_xyz[1], i_xyz[2]};
+    xyz_t = get_local_xyz(xyz, i_xyz_t);
+  }
+  double beta = xyz_t[0] * std::sqrt(3.0) / 2.0 + xyz_t[1] / 2.0;
+  if ((std::abs(beta - edge) > FP_PRECISION) && beta_dir != 0) {
+    d = (edge - beta) / beta_dir;
+    if (beta_dir > 0) {
+      lattice_trans = {1, 0, 0};
+    } else {
+      lattice_trans = {-1, 0, 0};
+    }
+  }
+
+  // Lower-right and upper-left sides.
+  edge = -copysign(0.5*pitch[0], gamma_dir);
+  if (gamma_dir > 0) {
+    const int i_xyz_t[3] {i_xyz[0]+1, i_xyz[1]-1, i_xyz[2]};
+    xyz_t = get_local_xyz(xyz, i_xyz_t);
+  } else {
+    const int i_xyz_t[3] {i_xyz[0]-1, i_xyz[1]+1, i_xyz[2]};
+    xyz_t = get_local_xyz(xyz, i_xyz_t);
+  }
+  double gamma = xyz_t[0] * std::sqrt(3.0) / 2.0 - xyz_t[1] / 2.0;
+  if ((std::abs(gamma - edge) > FP_PRECISION) && gamma_dir != 0) {
+    double this_d = (edge - gamma) / gamma_dir;
+    if (this_d < d) {
+      if (gamma_dir > 0) {
+        lattice_trans = {1, -1, 0};
+      } else {
+        lattice_trans = {-1, 1, 0};
+      }
+      d = this_d;
+    }
+  }
+
+  // Upper and lower sides.
+  edge = -copysign(0.5*pitch[0], uvw[1]);
+  if (uvw[1] > 0) {
+    const int i_xyz_t[3] {i_xyz[0], i_xyz[1]+1, i_xyz[2]};
+    xyz_t = get_local_xyz(xyz, i_xyz_t);
+  } else {
+    const int i_xyz_t[3] {i_xyz[0], i_xyz[1]-1, i_xyz[2]};
+    xyz_t = get_local_xyz(xyz, i_xyz_t);
+  }
+  if ((std::abs(xyz_t[1] - edge) > FP_PRECISION) && uvw[1] != 0) {
+    double this_d = (edge - xyz_t[1]) / uvw[1];
+    if (this_d < d) {
+      if (uvw[1] > 0) {
+        lattice_trans = {0, 1, 0};
+      } else {
+        lattice_trans = {0, -1, 0};
+      }
+      d = this_d;
+    }
+  }
+
+  // Top and bottom sides
+  if (is_3d) {
+    double z {xyz[2]};
+    double w {uvw[2]};
+    double z0 {copysign(0.5 * pitch[1], w)};
+    if ((std::abs(z - z0) > FP_PRECISION) && w != 0) {
+      double this_d = (z0 - z) / w;
+      if (this_d < d) {
+        d = this_d;
+        if (w > 0) {
+          lattice_trans = {0, 0, 1};
+        } else {
+          lattice_trans = {0, 0, -1};
+        }
+        d = this_d;
+      }
+    }
+  }
+
+  return {d, lattice_trans};
+}
+
+std::array<double, 3>
+HexLattice::get_local_xyz(const double global_xyz[3], const int i_xyz[3]) const
+{
+  std::array<double, 3> local_xyz;
+
+  // x_l = x_g - (center + pitch_x*cos(30)*index_x)
+  local_xyz[0] = global_xyz[0] - (center[0]
+       + std::sqrt(3.0)/2.0 * (i_xyz[0] - n_rings) * pitch[0]);
+  // y_l = y_g - (center + pitch_x*index_x + pitch_y*sin(30)*index_y)
+  local_xyz[1] = global_xyz[1] - (center[1]
+       + (i_xyz[1] - n_rings) * pitch[0]
+       + (i_xyz[0] - n_rings) * pitch[0] / 2.0);
+  if (is_3d) {
+    local_xyz[2] = global_xyz[2] - center[2]
+         + (0.5 * n_axial - i_xyz[2] + 0.5) * pitch[1];
+  } else {
+    local_xyz[2] = global_xyz[2];
+  }
+
+  return local_xyz;
 }
 
 //==============================================================================
@@ -382,9 +501,9 @@ extern "C" {
   int32_t lattice_id(Lattice *lat) {return lat->id;}
 
   void lattice_distance(Lattice *lat, const double xyz[3], const double uvw[3],
-                        double *d, int lattice_trans[3])
+                        const int i_xyz[3], double *d, int lattice_trans[3])
   {
-    std::pair<double, std::array<int, 3>> ld {lat->distance(xyz, uvw)};
+    std::pair<double, std::array<int, 3>> ld {lat->distance(xyz, uvw, i_xyz)};
     *d = ld.first;
     lattice_trans[0] = ld.second[0];
     lattice_trans[1] = ld.second[1];

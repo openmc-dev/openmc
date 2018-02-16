@@ -131,6 +131,18 @@ RectLattice::RectLattice(pugi::xml_node lat_node)
   }
 }
 
+//==============================================================================
+
+bool
+RectLattice::are_valid_indices(const int i_xyz[3]) const
+{
+  return (   (i_xyz[0] > 0) && (i_xyz[0] <= n_cells[0])
+          && (i_xyz[1] > 0) && (i_xyz[1] <= n_cells[1])
+          && (i_xyz[2] > 0) && (i_xyz[2] <= n_cells[2]));
+}
+
+//==============================================================================
+
 std::pair<double, std::array<int, 3>>
 RectLattice::distance(const double xyz[3], const double uvw[3],
                       const int i_xyz[3]) const
@@ -192,6 +204,22 @@ RectLattice::distance(const double xyz[3], const double uvw[3],
 }
 
 //==============================================================================
+
+std::array<int, 3>
+RectLattice::get_indices(const double xyz[3]) const
+{
+  int ix {static_cast<int>(std::ceil((xyz[0] - lower_left[0]) / pitch[0]))};
+  int iy {static_cast<int>(std::ceil((xyz[1] - lower_left[1]) / pitch[1]))};
+  int iz;
+  if (is_3d) {
+    iz = static_cast<int>(std::ceil((xyz[2] - lower_left[2]) / pitch[2]));
+  } else {
+    iz = 1;
+  }
+  return {ix, iy, iz};
+}
+
+//==============================================================================
 // HexLattice implementation
 //==============================================================================
 
@@ -229,7 +257,7 @@ HexLattice::HexLattice(pugi::xml_node lat_node)
     fatal_error("A hexagonal lattice with <n_axial> must have <pitch> "
                 "specified by 2 numbers.");
   } else if (!is_3d && (pitch_words.size() != 1)) {
-    fatal_error("A hexagonal lattice without <n_axial> must have <center> "
+    fatal_error("A hexagonal lattice without <n_axial> must have <pitch> "
                 "specified by 1 number.");
   }
   pitch[0] = stod(pitch_words[0]);
@@ -342,6 +370,18 @@ HexLattice::HexLattice(pugi::xml_node lat_node)
   }
 }
 
+//==============================================================================
+
+bool
+HexLattice::are_valid_indices(const int i_xyz[3]) const
+{
+  return ((i_xyz[0] > 0) && (i_xyz[1] > 0) && (i_xyz[2] > 0)
+          && (i_xyz[0] < 2*n_rings) && (i_xyz[1] < 2*n_rings)
+          && (i_xyz[0] + i_xyz[1] > n_rings)
+          && (i_xyz[0] + i_xyz[1] < 3*n_rings)
+          && (i_xyz[2] <= n_axial));
+}
+
 std::pair<double, std::array<int, 3>>
 HexLattice::distance(const double xyz[3], const double uvw[3],
                      const int i_xyz[3]) const
@@ -443,6 +483,74 @@ HexLattice::distance(const double xyz[3], const double uvw[3],
   return {d, lattice_trans};
 }
 
+//==============================================================================
+
+std::array<int, 3>
+HexLattice::get_indices(const double xyz[3]) const
+{
+  // Offset the xyz by the lattice center.
+  double xyz_o[3] {xyz[0] - center[0], xyz[1] - center[1], xyz[2]};
+  if (is_3d) {xyz_o[2] -= center[2];}
+
+  // Index the z direction.
+  std::array<int, 3> out;
+  if (is_3d) {
+    out[2] = static_cast<int>(std::ceil(xyz_o[2] / pitch[1] + 0.5 * n_axial));
+  } else {
+    out[2] = 1;
+  }
+
+  // Convert coordinates into skewed bases.  The (x, alpha) basis is used to
+  // find the index of the global coordinates to within 4 cells.
+  double alpha = xyz_o[1] - xyz_o[0] / std::sqrt(3.0);
+  out[0] = static_cast<int>(std::floor(xyz_o[0]
+                                       / (0.5*std::sqrt(3.0) * pitch[0])));
+  out[1] = static_cast<int>(std::floor(alpha / pitch[0]));
+
+  // Add offset to indices (the center cell is (i_x, i_alpha) = (0, 0) but
+  // the array is offset so that the indices never go below 1).
+  out[0] += n_rings;
+  out[1] += n_rings;
+
+  // Calculate the (squared) distance between the particle and the centers of
+  // the four possible cells.  Regular hexagonal tiles form a Voronoi
+  // tessellation so the xyz should be in the hexagonal cell that it is closest
+  // to the center of.  This method is used over a method that uses the
+  // remainders of the floor divisions above because it provides better finite
+  // precision performance.  Squared distances are used becasue they are more
+  // computationally efficient than normal distances.
+  int k {1};
+  int k_min {1};
+  double d_min {INFTY};
+  for (int i = 0; i < 2; i++) {
+    for (int j = 0; j < 2; j++) {
+      int i_xyz[3] {out[0] + j, out[1] + i, 0};
+      std::array<double, 3> xyz_t = get_local_xyz(xyz, i_xyz);
+      double d = xyz_t[0]*xyz_t[0] + xyz_t[1]*xyz_t[1];
+      if (d < d_min) {
+        d_min = d;
+        k_min = k;
+      }
+      k++;
+    }
+  }
+
+  // Select the minimum squared distance which corresponds to the cell the
+  // coordinates are in.
+  if (k_min == 2) {
+    out[0] += 1;
+  } else if (k_min == 3) {
+    out[1] += 1;
+  } else if (k_min == 4) {
+    out[0] += 1;
+    out[1] += 1;
+  }
+
+  return out;
+}
+
+//==============================================================================
+
 std::array<double, 3>
 HexLattice::get_local_xyz(const double global_xyz[3], const int i_xyz[3]) const
 {
@@ -500,6 +608,9 @@ extern "C" {
 
   int32_t lattice_id(Lattice *lat) {return lat->id;}
 
+  bool lattice_are_valid_indices(Lattice *lat, const int i_xyz[3])
+  {return lat->are_valid_indices(i_xyz);}
+
   void lattice_distance(Lattice *lat, const double xyz[3], const double uvw[3],
                         const int i_xyz[3], double *d, int lattice_trans[3])
   {
@@ -508,6 +619,14 @@ extern "C" {
     lattice_trans[0] = ld.second[0];
     lattice_trans[1] = ld.second[1];
     lattice_trans[2] = ld.second[2];
+  }
+
+  void lattice_get_indices(Lattice *lat, const double xyz[3], int i_xyz[3])
+  {
+    std::array<int, 3> inds {lat->get_indices(xyz)};
+    i_xyz[0] = inds[0];
+    i_xyz[1] = inds[1];
+    i_xyz[2] = inds[2];
   }
 
   void lattice_to_hdf5(Lattice *lat, hid_t group) {lat->to_hdf5(group);}

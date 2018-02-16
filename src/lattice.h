@@ -58,13 +58,26 @@ public:
 
   virtual ~Lattice() {}
 
-  //virtual bool are_valid_indices(const int i_xyz[3]) const = 0;
+  //! Check lattice indices.
+  //! @param i_xyz[3] The indices for a lattice tile.
+  //! @return true if the given indices fit within the lattice bounds.  False
+  //!   otherwise.
+  virtual bool are_valid_indices(const int i_xyz[3]) const = 0;
 
+  //! Find the next lattice surface crossing
+  //! @param xyz[3] A 3D Cartesian coordinate.
+  //! @param uvw[3] A 3D Cartesian direction.
+  //! @param i_xyz[3] The indices for a lattice tile.
+  //! @return The distance to the next crossing and an array indicating how the
+  //!   lattice indices would change after crossing that boundary.
   virtual std::pair<double, std::array<int, 3>>
   distance(const double xyz[3], const double uvw[3], const int i_xyz[3]) const
-       = 0;
+  = 0;
 
-  //virtual void get_indices(const double global_xyz[3], int i_xyz[3]) const = 0;
+  //! Find the lattice tile indices for a given point.
+  //! @param xyz[3] A 3D Cartesian coordinate.
+  //! @return An array containing the indices of a lattice tile.
+  virtual std::array<int, 3> get_indices(const double xyz[3]) const = 0;
 
   //virtual void get_local_xyz(const double global_xyz[3], const int i_xyz[3],
   //                           double local_xyz[3]) const = 0;
@@ -87,8 +100,12 @@ public:
 
   virtual ~RectLattice() {}
 
+  bool are_valid_indices(const int i_xyz[3]) const;
+
   std::pair<double, std::array<int, 3>>
   distance(const double xyz[3], const double uvw[3], const int i_xyz[3]) const;
+
+  std::array<int, 3> get_indices(const double xyz[3]) const;
 
 protected:
   std::array<int, 3> n_cells;        //! Number of cells along each axis
@@ -103,8 +120,12 @@ public:
 
   virtual ~HexLattice() {}
 
+  bool are_valid_indices(const int i_xyz[3]) const;
+
   std::pair<double, std::array<int, 3>>
   distance(const double xyz[3], const double uvw[3], const int i_xyz[3]) const;
+
+  std::array<int, 3> get_indices(const double xyz[3]) const;
 
   std::array<double, 3>
   get_local_xyz(const double global_xyz[3], const int i_xyz[3]) const;

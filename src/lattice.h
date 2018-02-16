@@ -79,8 +79,12 @@ public:
   //! @return An array containing the indices of a lattice tile.
   virtual std::array<int, 3> get_indices(const double xyz[3]) const = 0;
 
-  //virtual void get_local_xyz(const double global_xyz[3], const int i_xyz[3],
-  //                           double local_xyz[3]) const = 0;
+  //! Get coordinates local to a lattice tile.
+  //! @param global_xyz[3] A 3D Cartesian coordinate.
+  //! @param i_xyz[3] The indices for a lattice tile.
+  //! @return Local 3D Cartesian coordinates.
+  virtual std::array<double, 3>
+  get_local_xyz(const double global_xyz[3], const int i_xyz[3]) const = 0;
 
   //! Write all information needed to reconstruct the lattice to an HDF5 group.
   //! @param group_id An HDF5 group id.
@@ -106,6 +110,9 @@ public:
   distance(const double xyz[3], const double uvw[3], const int i_xyz[3]) const;
 
   std::array<int, 3> get_indices(const double xyz[3]) const;
+
+  std::array<double, 3>
+  get_local_xyz(const double global_xyz[3], const int i_xyz[3]) const;
 
 protected:
   std::array<int, 3> n_cells;        //! Number of cells along each axis

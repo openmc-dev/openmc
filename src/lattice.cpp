@@ -220,6 +220,22 @@ RectLattice::get_indices(const double xyz[3]) const
 }
 
 //==============================================================================
+
+std::array<double, 3>
+RectLattice::get_local_xyz(const double global_xyz[3], const int i_xyz[3]) const
+{
+  std::array<double, 3> local_xyz;
+  local_xyz[0] = global_xyz[0] - (lower_left[0] + (i_xyz[0] - 0.5)*pitch[0]);
+  local_xyz[1] = global_xyz[1] - (lower_left[1] + (i_xyz[1] - 0.5)*pitch[1]);
+  if (is_3d) {
+    local_xyz[2] = global_xyz[2] - (lower_left[2] + (i_xyz[2] - 0.5)*pitch[2]);
+  } else {
+    local_xyz[2] = global_xyz[2];
+  }
+  return local_xyz;
+}
+
+//==============================================================================
 // HexLattice implementation
 //==============================================================================
 
@@ -574,6 +590,8 @@ HexLattice::get_local_xyz(const double global_xyz[3], const int i_xyz[3]) const
 }
 
 //==============================================================================
+// Non-method functions
+//==============================================================================
 
 extern "C" void
 read_lattices(pugi::xml_node *node)
@@ -627,6 +645,15 @@ extern "C" {
     i_xyz[0] = inds[0];
     i_xyz[1] = inds[1];
     i_xyz[2] = inds[2];
+  }
+
+  void lattice_get_local_xyz(Lattice *lat, const double global_xyz[3],
+                             const int i_xyz[3], double local_xyz[3])
+  {
+    std::array<double, 3> xyz {lat->get_local_xyz(global_xyz, i_xyz)};
+    local_xyz[0] = xyz[0];
+    local_xyz[1] = xyz[1];
+    local_xyz[2] = xyz[2];
   }
 
   void lattice_to_hdf5(Lattice *lat, hid_t group) {lat->to_hdf5(group);}

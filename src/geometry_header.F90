@@ -125,6 +125,16 @@ module geometry_header
       integer(C_INT), intent(out)       :: i_xyz(3)
     end subroutine lattice_get_indices_c
 
+    subroutine lattice_get_local_xyz_c(lat_ptr, global_xyz, i_xyz, local_xyz) &
+         bind(C, name='lattice_get_local_xyz')
+      use ISO_C_BINDING
+      implicit none
+      type(C_PTR),    intent(in), value :: lat_ptr
+      real(C_DOUBLE), intent(in)        :: global_xyz(3)
+      integer(C_INT), intent(in)        :: i_xyz(3)
+      real(C_DOUBLE), intent(out)       :: local_xyz(3)
+    end subroutine lattice_get_local_xyz_c
+
     subroutine lattice_to_hdf5_c(lat_ptr, group) bind(C, name='lattice_to_hdf5')
       use ISO_C_BINDING
       use hdf5
@@ -167,24 +177,9 @@ module geometry_header
     procedure :: are_valid_indices => lattice_are_valid_indices
     procedure :: distance => lattice_distance
     procedure :: get_indices => lattice_get_indices
+    procedure :: get_local_xyz => lattice_get_local_xyz
     procedure :: to_hdf5 => lattice_to_hdf5
-
-    procedure(lattice_get_local_xyz_),     deferred :: get_local_xyz
   end type Lattice
-
-  abstract interface
-
-!===============================================================================
-! GET_LOCAL_XYZ returns the translated local version of the given global xyz.
-
-    function lattice_get_local_xyz_(this, global_xyz, i_xyz) result(local_xyz)
-      import Lattice
-      class(Lattice), intent(in) :: this
-      real(8),        intent(in) :: global_xyz(3)
-      integer,        intent(in) :: i_xyz(3)
-      real(8)                    :: local_xyz(3)
-    end function lattice_get_local_xyz_
-  end interface
 
 !===============================================================================
 ! RECTLATTICE extends LATTICE for rectilinear arrays.
@@ -193,10 +188,6 @@ module geometry_header
   type, extends(Lattice) :: RectLattice
     integer              :: n_cells(3)     ! Number of cells along each axis
     real(8), allocatable :: lower_left(:)  ! Global lower-left corner of lat
-
-    contains
-
-    procedure :: get_local_xyz => get_local_rect
   end type RectLattice
 
 !===============================================================================
@@ -207,10 +198,6 @@ module geometry_header
     integer              :: n_rings   ! Number of radial ring cell positoins
     integer              :: n_axial   ! Number of axial cell positions
     real(8), allocatable :: center(:) ! Global center of lattice
-
-    contains
-
-    procedure :: get_local_xyz => get_local_hex
   end type HexLattice
 
 !===============================================================================
@@ -311,62 +298,20 @@ contains
     call lattice_get_indices_c(this % ptr, xyz, i_xyz)
   end function lattice_get_indices
 
+  function lattice_get_local_xyz(this, global_xyz, i_xyz) &
+       result(local_xyz)
+    class(Lattice), intent(in) :: this
+    real(C_DOUBLE), intent(in) :: global_xyz(3)
+    integer(C_INT), intent(in) :: i_xyz(3)
+    real(C_DOUBLE)             :: local_xyz(3)
+    call lattice_get_local_xyz_c(this % ptr, global_xyz, i_xyz, local_xyz)
+  end function lattice_get_local_xyz
+
   subroutine lattice_to_hdf5(this, group)
     class(Lattice), intent(in) :: this
     integer(HID_T), intent(in) :: group
     call lattice_to_hdf5_c(this % ptr, group)
   end subroutine lattice_to_hdf5
-
-!===============================================================================
-
-  function get_local_rect(this, global_xyz, i_xyz) result(local_xyz)
-    class(RectLattice), intent(in) :: this
-    real(8),            intent(in) :: global_xyz(3)
-    integer,            intent(in) :: i_xyz(3)
-    real(8)                        :: local_xyz(3)
-
-    real(8) :: xyz(3)  ! global_xyz alias
-
-    xyz = global_xyz
-
-    local_xyz(1) = xyz(1) - (this % lower_left(1) + &
-         (i_xyz(1) - HALF)*this % pitch(1))
-    local_xyz(2) = xyz(2) - (this % lower_left(2) + &
-         (i_xyz(2) - HALF)*this % pitch(2))
-    if (this % is_3d) then
-      local_xyz(3) = xyz(3) - (this % lower_left(3) + &
-           (i_xyz(3) - HALF)*this % pitch(3))
-    else
-      local_xyz(3) = xyz(3)
-    end if
-  end function get_local_rect
-
-!===============================================================================
-
-  function get_local_hex(this, global_xyz, i_xyz) result(local_xyz)
-    class(HexLattice), intent(in) :: this
-    real(8),           intent(in) :: global_xyz(3)
-    integer,           intent(in) :: i_xyz(3)
-    real(8)                       :: local_xyz(3)
-
-    real(8) :: xyz(3)  ! global_xyz alias
-
-    xyz = global_xyz
-
-    ! x_l = x_g - (center + pitch_x*cos(30)*index_x)
-    local_xyz(1) = xyz(1) - (this % center(1) + &
-         sqrt(THREE) / TWO * (i_xyz(1) - this % n_rings) * this % pitch(1))
-    ! y_l = y_g - (center + pitch_x*index_x + pitch_y*sin(30)*index_y)
-    local_xyz(2) = xyz(2) - (this % center(2) + &
-         (i_xyz(2) - this % n_rings) * this % pitch(1) + &
-         (i_xyz(1) - this % n_rings) * this % pitch(1) / TWO)
-    if (this % is_3d) then
-      local_xyz(3) = xyz(3) - this % center(3) &
-           + (HALF*this % n_axial - i_xyz(3) + HALF) * this % pitch(2)
-    else
-      local_xyz(3) = xyz(3)
-    end if
-  end function get_local_hex
 
 !===============================================================================
 

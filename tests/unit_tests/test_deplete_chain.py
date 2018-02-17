@@ -13,19 +13,18 @@ _test_filename = str(Path(__file__).parents[2] / 'chains' / 'chain_test.xml')
 
 def test_init():
     """Test depletion chain initialization."""
-    dep = Chain()
+    chain = Chain()
 
-    assert isinstance(dep.nuclides, list)
-    assert isinstance(dep.nuclide_dict, Mapping)
-    assert isinstance(dep.react_to_ind, Mapping)
+    assert isinstance(chain.nuclides, list)
+    assert isinstance(chain.nuclide_dict, Mapping)
 
 
 def test_len():
     """Test depletion chain length."""
-    dep = Chain()
-    dep.nuclides = ["NucA", "NucB", "NucC"]
+    chain = Chain()
+    chain.nuclides = ["NucA", "NucB", "NucC"]
 
-    assert len(dep) == 3
+    assert len(chain) == 3
 
 
 def test_from_endf():
@@ -40,13 +39,13 @@ def test_from_xml():
     # the components external to depletion_chain.py are simple storage
     # types.
 
-    dep = Chain.from_xml(_test_filename)
+    chain = Chain.from_xml(_test_filename)
 
     # Basic checks
-    assert len(dep) == 3
+    assert len(chain) == 3
 
     # A tests
-    nuc = dep["A"]
+    nuc = chain["A"]
 
     assert nuc.name == "A"
     assert nuc.half_life == 2.36520E+04
@@ -61,7 +60,7 @@ def test_from_xml():
     assert [r.branching_ratio for r in nuc.reactions] == [1.0]
 
     # B tests
-    nuc = dep["B"]
+    nuc = chain["B"]
 
     assert nuc.name == "B"
     assert nuc.half_life == 3.29040E+04
@@ -76,7 +75,7 @@ def test_from_xml():
     assert [r.branching_ratio for r in nuc.reactions] == [1.0]
 
     # C tests
-    nuc = dep["C"]
+    nuc = chain["C"]
 
     assert nuc.name == "C"
     assert nuc.n_decay_modes == 0
@@ -135,22 +134,20 @@ def test_form_matrix():
     """ Using chain_test, and a dummy reaction rate, compute the matrix. """
     # Relies on test_from_xml passing.
 
-    dep = Chain.from_xml(_test_filename)
+    chain = Chain.from_xml(_test_filename)
 
-    cell_ind = {"10000": 0, "10001": 1}
+    mat_ind = {"10000": 0, "10001": 1}
     nuc_ind = {"A": 0, "B": 1, "C": 2}
-    react_ind = dep.react_to_ind
+    react_ind = {rx: i for i, rx in enumerate(chain.reactions)}
 
-    react = reaction_rates.ReactionRates(cell_ind, nuc_ind, react_ind)
+    react = reaction_rates.ReactionRates(mat_ind, nuc_ind, react_ind)
 
-    dep.nuc_to_react_ind = nuc_ind
+    react.set("10000", "C", "fission", 1.0)
+    react.set("10000", "A", "(n,gamma)", 2.0)
+    react.set("10000", "B", "(n,gamma)", 3.0)
+    react.set("10000", "C", "(n,gamma)", 4.0)
 
-    react["10000", "C", "fission"] = 1.0
-    react["10000", "A", "(n,gamma)"] = 2.0
-    react["10000", "B", "(n,gamma)"] = 3.0
-    react["10000", "C", "(n,gamma)"] = 4.0
-
-    mat = dep.form_matrix(react[0, :, :])
+    mat = chain.form_matrix(react[0, :, :])
     # Loss A, decay, (n, gamma)
     mat00 = -np.log(2) / 2.36520E+04 - 2
     # A -> B, decay, 0.6 branching ratio
@@ -185,11 +182,11 @@ def test_form_matrix():
 
 def test_getitem():
     """ Test nuc_by_ind converter function. """
-    dep = Chain()
-    dep.nuclides = ["NucA", "NucB", "NucC"]
-    dep.nuclide_dict = {nuc: dep.nuclides.index(nuc)
-                        for nuc in dep.nuclides}
+    chain = Chain()
+    chain.nuclides = ["NucA", "NucB", "NucC"]
+    chain.nuclide_dict = {nuc: chain.nuclides.index(nuc)
+                        for nuc in chain.nuclides}
 
-    assert "NucA" == dep["NucA"]
-    assert "NucB" == dep["NucB"]
-    assert "NucC" == dep["NucC"]
+    assert "NucA" == chain["NucA"]
+    assert "NucB" == chain["NucB"]
+    assert "NucC" == chain["NucC"]

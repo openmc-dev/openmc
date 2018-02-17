@@ -366,10 +366,11 @@ class OpenMCOperator(Operator):
 
     def initialize_reaction_rates(self):
         """Create reaction rates object. """
+        # Create dictionary to map reactions to indices
+        index_rx = {rx: i for i, rx in enumerate(self.chain.reactions)}
+
         self.reaction_rates = ReactionRates(
-            self.burn_mat_to_ind,
-            self.burn_nuc_to_ind,
-            self.chain.index_reaction)
+            self.burn_mat_to_ind, self.burn_nuc_to_ind, index_rx)
 
     def form_matrix(self, y, mat):
         """Forms the depletion matrix.
@@ -520,7 +521,7 @@ class OpenMCOperator(Operator):
         # transmutation. The nuclides for the tally are set later when eval() is
         # called.
         tally_dep = openmc.capi.Tally(1)
-        tally_dep.scores = self.chain.index_reaction.keys()
+        tally_dep.scores = self.chain.reactions
         tally_dep.filters = [mat_filter]
 
     def total_density_list(self):
@@ -577,11 +578,10 @@ class OpenMCOperator(Operator):
         # Extract tally bins
         materials = list(self.mat_tally_ind.keys())
         nuclides = openmc.capi.tallies[1].nuclides
-        reactions = list(self.chain.index_reaction.keys())
 
         # Form fast map
         nuc_ind = [rates.index_nuc[nuc] for nuc in nuclides]
-        react_ind = [rates.index_rx[react] for react in reactions]
+        react_ind = [rates.index_rx[react] for react in self.chain.reactions]
 
         # Compute fission power
         # TODO : improve this calculation

@@ -13,20 +13,20 @@ class ReactionRates(np.ndarray):
 
     Parameters
     ----------
-    mat_to_ind : OrderedDict of str to int
+    index_mat : OrderedDict of str to int
         A dictionary mapping material ID as string to index.
-    nuc_to_ind : OrderedDict of str to int
+    index_nuc : OrderedDict of str to int
         A dictionary mapping nuclide name as string to index.
-    react_to_ind : OrderedDict of str to int
+    index_rx : OrderedDict of str to int
         A dictionary mapping reaction name as string to index.
 
     Attributes
     ----------
-    mat_to_ind : OrderedDict of str to int
+    index_mat : OrderedDict of str to int
         A dictionary mapping material ID as string to index.
-    nuc_to_ind : OrderedDict of str to int
+    index_nuc : OrderedDict of str to int
         A dictionary mapping nuclide name as string to index.
-    react_to_ind : OrderedDict of str to int
+    index_rx : OrderedDict of str to int
         A dictionary mapping reaction name as string to index.
     n_mat : int
         Number of materials.
@@ -34,10 +34,8 @@ class ReactionRates(np.ndarray):
         Number of nucs.
     n_react : int
         Number of reactions.
-    rates : numpy.array
-        Array storing rates indexed by the above dictionaries.
-    """
 
+    """
     def __new__(cls, index_mat, index_nuc, index_rx):
         # Create appropriately-sized zeroed-out ndarray
         shape = (len(index_mat), len(index_nuc), len(index_rx))
@@ -83,3 +81,46 @@ class ReactionRates(np.ndarray):
     def n_react(self):
         """Number of reactions."""
         return len(self.index_rx)
+
+    def get(self, mat, nuc, rx):
+        """Get reaction rate by material/nuclide/reaction
+
+        Parameters
+        ----------
+        mat : str
+            Material ID as a string
+        nuc : str
+            Nuclide name
+        rx : str
+            Name of the reaction
+
+        Returns
+        -------
+        float
+            Reaction rate corresponding to given material, nuclide, and reaction
+
+        """
+        mat = self.index_mat[mat]
+        nuc = self.index_nuc[nuc]
+        rx = self.index_rx[rx]
+        return self[mat, nuc, rx]
+
+    def set(self, mat, nuc, rx, value):
+        """Set reaction rate by material/nuclide/reaction
+
+        Parameters
+        ----------
+        mat : str
+            Material ID as a string
+        nuc : str
+            Nuclide name
+        rx : str
+            Name of the reaction
+        value : float
+            Corresponding reaction rate to set
+
+        """
+        mat = self.index_mat[mat]
+        nuc = self.index_nuc[nuc]
+        rx = self.index_rx[rx]
+        self[mat, nuc, rx] = value

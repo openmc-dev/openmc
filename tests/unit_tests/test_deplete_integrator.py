@@ -86,10 +86,8 @@ def test_save_results(run_in_tmpdir):
             for nuc_i, nuc in enumerate(nuc_list):
                 assert res[0][i, mat, nuc] == x1[i][mat_i][nuc_i]
                 assert res[1][i, mat, nuc] == x2[i][mat_i][nuc_i]
-                np.testing.assert_array_equal(res[0].rates[i][mat, nuc, :],
-                                              rate1[i][mat, nuc, :])
-                np.testing.assert_array_equal(res[1].rates[i][mat, nuc, :],
-                                              rate2[i][mat, nuc, :])
+        np.testing.assert_array_equal(res[0].rates[i], rate1[i])
+        np.testing.assert_array_equal(res[1].rates[i], rate2[i])
 
     np.testing.assert_array_equal(res[0].k, eigvl1)
     np.testing.assert_array_equal(res[0].time, t1)

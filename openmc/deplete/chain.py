@@ -113,19 +113,19 @@ class Chain(object):
 
     Attributes
     ----------
-    nuclides : list of Nuclide
-        List of nuclides in chain.
+    nuclides : list of openmc.deplete.Nuclide
+        Nuclides present in the chain.
+    reactions : list of str
+        Reactions that are tracked in the depletion chain
     nuclide_dict : OrderedDict of str to int
         Maps a nuclide name to an index in nuclides.
-    index_reaction : OrderedDict of str to int
-        Dictionary mapping a reaction name to an index in ReactionRates.
 
     """
 
     def __init__(self):
         self.nuclides = []
+        self.reactions = []
         self.nuclide_dict = OrderedDict()
-        self.index_reaction = OrderedDict()
 
     def __contains__(self, nuclide):
         return nuclide in self.nuclide_dict
@@ -190,7 +190,6 @@ class Chain(object):
         missing_fpy = []
         missing_fp = []
 
-        reaction_index = 0
         for idx, parent in enumerate(sorted(decay_data, key=_get_zai)):
             data = decay_data[parent]
 
@@ -232,9 +231,8 @@ class Chain(object):
                         Z = data.nuclide['atomic_number'] + delta_Z
                         daughter = '{}{}'.format(openmc.data.ATOMIC_SYMBOL[Z], A)
 
-                        if name not in chain.index_reaction:
-                            chain.index_reaction[name] = reaction_index
-                            reaction_index += 1
+                        if name not in chain.reactions:
+                            chain.reactions.append(name)
 
                         if daughter not in decay_data:
                             missing_rx_product.append((parent, name, daughter))
@@ -256,9 +254,8 @@ class Chain(object):
                         nuclide.reactions.append(
                             ReactionTuple('fission', 0, q_value, 1.0))
 
-                        if 'fission' not in chain.index_reaction:
-                            chain.index_reaction['fission'] = reaction_index
-                            reaction_index += 1
+                        if 'fission' not in chain.reactions:
+                            chain.reactions.append('fission')
                     else:
                         missing_fpy.append(parent)
 
@@ -340,16 +337,14 @@ class Chain(object):
                 print('Decay chain "', filename, '" is invalid.')
             raise
 
-        reaction_index = 0
         for i, nuclide_elem in enumerate(root.findall('nuclide_table')):
             nuc = Nuclide.from_xml(nuclide_elem)
             chain.nuclide_dict[nuc.name] = i
 
             # Check for reaction paths
             for rx in nuc.reactions:
-                if rx.type not in chain.index_reaction:
-                    chain.index_reaction[rx.type] = reaction_index
-                    reaction_index += 1
+                if rx.type not in chain.reactions:
+                    chain.reactions.append(rx.type)
 
             chain.nuclides.append(nuc)
 

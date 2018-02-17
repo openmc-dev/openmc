@@ -931,7 +931,7 @@ contains
               E_rel = dot_product((v_neut - v_target), (v_neut - v_target))
               if (E_rel < E_up) exit TARGET_ENERGY_LOOP
             end do TARGET_ENERGY_LOOP
-            
+
             ! perform Doppler broadening rejection correction (dbrc)
             xs_0K = elastic_xs_0K(E_rel, nuc)
             R = xs_0K / xs_max

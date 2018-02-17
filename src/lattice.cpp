@@ -1,14 +1,12 @@
 #include "lattice.h"
 
+#include <cmath>
 #include <sstream>
 #include <vector>
 
 #include "error.h"
 #include "hdf5_interface.h"
 #include "xml_interface.h"
-
-//TODO: this is only inlcuded for constants that should be moved elsewhere
-//#include "surface.h"
 
 //TODO: remove this include
 #include <iostream>
@@ -641,7 +639,7 @@ extern "C" {
 
   void lattice_get_indices(Lattice *lat, const double xyz[3], int i_xyz[3])
   {
-    std::array<int, 3> inds {lat->get_indices(xyz)};
+    std::array<int, 3> inds = lat->get_indices(xyz);
     i_xyz[0] = inds[0];
     i_xyz[1] = inds[1];
     i_xyz[2] = inds[2];
@@ -650,7 +648,7 @@ extern "C" {
   void lattice_get_local_xyz(Lattice *lat, const double global_xyz[3],
                              const int i_xyz[3], double local_xyz[3])
   {
-    std::array<double, 3> xyz {lat->get_local_xyz(global_xyz, i_xyz)};
+    std::array<double, 3> xyz = lat->get_local_xyz(global_xyz, i_xyz);
     local_xyz[0] = xyz[0];
     local_xyz[1] = xyz[1];
     local_xyz[2] = xyz[2];

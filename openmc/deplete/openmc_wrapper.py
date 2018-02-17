@@ -369,9 +369,7 @@ class OpenMCOperator(Operator):
         self.reaction_rates = ReactionRates(
             self.burn_mat_to_ind,
             self.burn_nuc_to_ind,
-            self.chain.react_to_ind)
-
-        self.chain.nuc_to_react_ind = self.burn_nuc_to_ind
+            self.chain.index_reaction)
 
     def form_matrix(self, y, mat):
         """Forms the depletion matrix.
@@ -522,7 +520,7 @@ class OpenMCOperator(Operator):
         # transmutation. The nuclides for the tally are set later when eval() is
         # called.
         tally_dep = openmc.capi.Tally(1)
-        tally_dep.scores = self.chain.react_to_ind.keys()
+        tally_dep.scores = self.chain.index_reaction.keys()
         tally_dep.filters = [mat_filter]
 
     def total_density_list(self):
@@ -579,11 +577,11 @@ class OpenMCOperator(Operator):
         # Extract tally bins
         materials = list(self.mat_tally_ind.keys())
         nuclides = openmc.capi.tallies[1].nuclides
-        reactions = list(self.chain.react_to_ind.keys())
+        reactions = list(self.chain.index_reaction.keys())
 
         # Form fast map
-        nuc_ind = [rates.nuc_to_ind[nuc] for nuc in nuclides]
-        react_ind = [rates.react_to_ind[react] for react in reactions]
+        nuc_ind = [rates.index_nuc[nuc] for nuc in nuclides]
+        react_ind = [rates.index_rx[react] for react in reactions]
 
         # Compute fission power
         # TODO : improve this calculation
@@ -598,13 +596,13 @@ class OpenMCOperator(Operator):
         rates_expanded = np.zeros((rates.n_nuc, rates.n_react))
         number = np.zeros(rates.n_nuc)
 
-        fission_ind = rates.react_to_ind["fission"]
+        fission_ind = rates.index_rx["fission"]
 
         for nuclide in self.chain.nuclides:
-            if nuclide.name in rates.nuc_to_ind:
+            if nuclide.name in rates.index_nuc:
                 for rx in nuclide.reactions:
                     if rx.type == 'fission':
-                        ind = rates.nuc_to_ind[nuclide.name]
+                        ind = rates.index_nuc[nuclide.name]
                         fission_Q[ind] = rx.Q
                         break
 
@@ -637,7 +635,7 @@ class OpenMCOperator(Operator):
                     for react in react_ind:
                         rates_expanded[i_nuc_results, react] /= number[i_nuc_results]
 
-            rates.rates[i, :, :] = rates_expanded
+            rates[i, :, :] = rates_expanded
 
         # Reduce energy produced from all processes
         energy = comm.allreduce(energy)

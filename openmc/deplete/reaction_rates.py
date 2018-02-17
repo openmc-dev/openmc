@@ -6,7 +6,7 @@ An ndarray to store reaction rates with string, integer, or slice indexing.
 import numpy as np
 
 
-class ReactionRates(object):
+class ReactionRates(np.ndarray):
     """ReactionRates class.
 
     An ndarray to store reaction rates with string, integer, or slice indexing.
@@ -38,76 +38,48 @@ class ReactionRates(object):
         Array storing rates indexed by the above dictionaries.
     """
 
-    def __init__(self, mat_to_ind, nuc_to_ind, react_to_ind):
+    def __new__(cls, index_mat, index_nuc, index_rx):
+        # Create appropriately-sized zeroed-out ndarray
+        shape = (len(index_mat), len(index_nuc), len(index_rx))
+        obj = super().__new__(cls, shape)
+        obj[:] = 0.0
 
-        self.mat_to_ind = mat_to_ind
-        self.nuc_to_ind = nuc_to_ind
-        self.react_to_ind = react_to_ind
+        # Add mapping attributes
+        obj.index_mat = index_mat
+        obj.index_nuc = index_nuc
+        obj.index_rx = index_rx
 
-        self.rates = np.zeros((self.n_mat, self.n_nuc, self.n_react))
+        return obj
 
-    def __getitem__(self, pos):
-        """Retrieves an item from reaction_rates.
+    def __array_finalize__(self, obj):
+        if obj is None:
+            return
+        self.index_mat = getattr(obj, 'index_mat', None)
+        self.index_nuc = getattr(obj, 'index_nuc', None)
+        self.index_rx = getattr(obj, 'index_rx', None)
 
-        Parameters
-        ----------
-        pos : tuple
-            A three-length tuple containing a material index, a nuc index, and a
-            reaction index.  These indexes can be strings (which get converted
-            to integers via the dictionaries), integers used directly, or
-            slices.
+    def __reduce__(self):
+        state = super().__reduce__()
+        new_state = state[2] + (self.index_mat, self.index_nuc, self.index_rx)
+        return (state[0], state[1], new_state)
 
-        Returns
-        -------
-        numpy.array
-            The value indexed from self.rates.
-        """
-
-        mat, nuc, react = pos
-        if isinstance(mat, str):
-            mat = self.mat_to_ind[mat]
-        if isinstance(nuc, str):
-            nuc = self.nuc_to_ind[nuc]
-        if isinstance(react, str):
-            react = self.react_to_ind[react]
-
-        return self.rates[mat, nuc, react]
-
-    def __setitem__(self, pos, val):
-        """Sets an item from reaction_rates.
-
-        Parameters
-        ----------
-        pos : tuple
-            A three-length tuple containing a material index, a nuc index, and a
-            reaction index.  These indexes can be strings (which get converted
-            to integers via the dictionaries), integers used directly, or
-            slices.
-        val : float
-            The value to set the array to.
-        """
-
-        mat, nuc, react = pos
-        if isinstance(mat, str):
-            mat = self.mat_to_ind[mat]
-        if isinstance(nuc, str):
-            nuc = self.nuc_to_ind[nuc]
-        if isinstance(react, str):
-            react = self.react_to_ind[react]
-
-        self.rates[mat, nuc, react] = val
+    def __setstate__(self, state):
+        self.index_mat = state[-3]
+        self.index_nuc = state[-2]
+        self.index_rx = state[-1]
+        super().__setstate__(state[0:-3])
 
     @property
     def n_mat(self):
         """Number of cells."""
-        return len(self.mat_to_ind)
+        return len(self.index_mat)
 
     @property
     def n_nuc(self):
         """Number of nucs."""
-        return len(self.nuc_to_ind)
+        return len(self.index_nuc)
 
     @property
     def n_react(self):
         """Number of reactions."""
-        return len(self.react_to_ind)
+        return len(self.index_rx)

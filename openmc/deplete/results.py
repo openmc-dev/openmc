@@ -180,11 +180,11 @@ class Results(object):
         mat_int = sorted([int(mat) for mat in self.mat_to_hdf5_ind])
         mat_list = [str(mat) for mat in mat_int]
         nuc_list = sorted(self.nuc_to_ind.keys())
-        rxn_list = sorted(self.rates[0].react_to_ind.keys())
+        rxn_list = sorted(self.rates[0].index_rx.keys())
 
         n_mats = self.n_hdf5_mats
         n_nuc_number = len(nuc_list)
-        n_nuc_rxn = len(self.rates[0].nuc_to_ind)
+        n_nuc_rxn = len(self.rates[0].index_nuc)
         n_rxn = len(rxn_list)
         n_stages = self.n_stages
 
@@ -200,14 +200,14 @@ class Results(object):
         for nuc in nuc_list:
             nuc_single_group = nuc_group.create_group(nuc)
             nuc_single_group.attrs["atom number index"] = self.nuc_to_ind[nuc]
-            if nuc in self.rates[0].nuc_to_ind:
-                nuc_single_group.attrs["reaction rate index"] = self.rates[0].nuc_to_ind[nuc]
+            if nuc in self.rates[0].index_nuc:
+                nuc_single_group.attrs["reaction rate index"] = self.rates[0].index_nuc[nuc]
 
         rxn_group = handle.create_group("reactions")
 
         for rxn in rxn_list:
             rxn_single_group = rxn_group.create_group(rxn)
-            rxn_single_group.attrs["index"] = self.rates[0].react_to_ind[rxn]
+            rxn_single_group.attrs["index"] = self.rates[0].index_rx[rxn]
 
         # Construct array storage
 
@@ -341,7 +341,7 @@ class Results(object):
         for i in range(results.n_stages):
             rate = ReactionRates(results.mat_to_ind, rxn_nuc_to_ind, rxn_to_ind)
 
-            rate.rates = handle["/reaction rates"][index, i, :, :, :]
+            rate[:] = handle["/reaction rates"][index, i, :, :, :]
             results.rates.append(rate)
 
         return results

@@ -117,9 +117,7 @@ class Chain(object):
         List of nuclides in chain.
     nuclide_dict : OrderedDict of str to int
         Maps a nuclide name to an index in nuclides.
-    nuc_to_react_ind : OrderedDict of str to int
-        Dictionary mapping a nuclide name to an index in ReactionRates.
-    react_to_ind : OrderedDict of str to int
+    index_reaction : OrderedDict of str to int
         Dictionary mapping a reaction name to an index in ReactionRates.
 
     """
@@ -127,8 +125,7 @@ class Chain(object):
     def __init__(self):
         self.nuclides = []
         self.nuclide_dict = OrderedDict()
-        self.nuc_to_react_ind = OrderedDict()
-        self.react_to_ind = OrderedDict()
+        self.index_reaction = OrderedDict()
 
     def __contains__(self, nuclide):
         return nuclide in self.nuclide_dict
@@ -155,7 +152,7 @@ class Chain(object):
             List of ENDF neutron reaction sub-library files
 
         """
-        depl_chain = cls()
+        chain = cls()
 
         # Create dictionary mapping target to filename
         reactions = {}
@@ -200,8 +197,8 @@ class Chain(object):
             nuclide = Nuclide()
             nuclide.name = parent
 
-            depl_chain.nuclides.append(nuclide)
-            depl_chain.nuclide_dict[parent] = idx
+            chain.nuclides.append(nuclide)
+            chain.nuclide_dict[parent] = idx
 
             if not data.nuclide['stable'] and data.half_life.nominal_value != 0.0:
                 nuclide.half_life = data.half_life.nominal_value
@@ -235,8 +232,8 @@ class Chain(object):
                         Z = data.nuclide['atomic_number'] + delta_Z
                         daughter = '{}{}'.format(openmc.data.ATOMIC_SYMBOL[Z], A)
 
-                        if name not in depl_chain.react_to_ind:
-                            depl_chain.react_to_ind[name] = reaction_index
+                        if name not in chain.index_reaction:
+                            chain.index_reaction[name] = reaction_index
                             reaction_index += 1
 
                         if daughter not in decay_data:
@@ -259,8 +256,8 @@ class Chain(object):
                         nuclide.reactions.append(
                             ReactionTuple('fission', 0, q_value, 1.0))
 
-                        if 'fission' not in depl_chain.react_to_ind:
-                            depl_chain.react_to_ind['fission'] = reaction_index
+                        if 'fission' not in chain.index_reaction:
+                            chain.index_reaction['fission'] = reaction_index
                             reaction_index += 1
                     else:
                         missing_fpy.append(parent)
@@ -316,7 +313,7 @@ class Chain(object):
             for vals in missing_fp:
                 print('  {}, E={} eV (total yield={})'.format(*vals))
 
-        return depl_chain
+        return chain
 
     @classmethod
     def from_xml(cls, filename):
@@ -331,7 +328,7 @@ class Chain(object):
         ----
             Allow for branching on capture, etc.
         """
-        depl_chain = cls()
+        chain = cls()
 
         # Load XML tree
         try:
@@ -346,17 +343,17 @@ class Chain(object):
         reaction_index = 0
         for i, nuclide_elem in enumerate(root.findall('nuclide_table')):
             nuc = Nuclide.from_xml(nuclide_elem)
-            depl_chain.nuclide_dict[nuc.name] = i
+            chain.nuclide_dict[nuc.name] = i
 
             # Check for reaction paths
             for rx in nuc.reactions:
-                if rx.type not in depl_chain.react_to_ind:
-                    depl_chain.react_to_ind[rx.type] = reaction_index
+                if rx.type not in chain.index_reaction:
+                    chain.index_reaction[rx.type] = reaction_index
                     reaction_index += 1
 
-            depl_chain.nuclides.append(nuc)
+            chain.nuclides.append(nuc)
 
-        return depl_chain
+        return chain
 
     def export_to_xml(self, filename):
         """Writes a depletion chain XML file.
@@ -416,14 +413,14 @@ class Chain(object):
                             k = self.nuclide_dict[target]
                             matrix[k, i] += branch_val
 
-            if nuc.name in self.nuc_to_react_ind:
+            if nuc.name in rates.index_nuc:
                 # Extract all reactions for this nuclide in this cell
-                nuc_ind = self.nuc_to_react_ind[nuc.name]
+                nuc_ind = rates.index_nuc[nuc.name]
                 nuc_rates = rates[nuc_ind, :]
 
                 for r_type, target, _, br in nuc.reactions:
                     # Extract reaction index, and then final reaction rate
-                    r_id = self.react_to_ind[r_type]
+                    r_id = rates.index_rx[r_type]
                     path_rate = nuc_rates[r_id]
 
                     # Loss term -- make sure we only count loss once for

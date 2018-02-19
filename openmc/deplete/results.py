@@ -419,7 +419,7 @@ def read_results(filename):
         The result objects.
 
     """
-    with h5py.File(filename, "r") as fh:
+    with h5py.File(str(filename), "r") as fh:
         assert fh["version"].value == RESULTS_VERSION
 
         # Get number of results stored

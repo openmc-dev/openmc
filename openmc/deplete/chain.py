@@ -332,9 +332,9 @@ class Chain(object):
             root = ET.parse(filename)
         except Exception:
             if filename is None:
-                print("No chain specified, either manually or in environment variable OPENDEPLETE_CHAIN.")
+                print("No chain specified, either manually or in environment variable OPENMC_DEPLETE_CHAIN.")
             else:
-                print('Decay chain "', filename, '" is invalid.')
+                print('Decay chain "{}" is invalid.'.format(filename))
             raise
 
         for i, nuclide_elem in enumerate(root.findall('nuclide_table')):

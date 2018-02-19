@@ -121,10 +121,10 @@ class OpenMCOperator(Operator):
         The depletion chain information necessary to form matrices and tallies.
     reaction_rates : openmc.deplete.ReactionRates
         Reaction rates from the last operator step.
-    burn_mat_to_ind : OrderedDict of str to int
-        Dictionary mapping material ID (as a string) to an index in reaction_rates.
     burnable_mats : list of str
         All burnable material IDs
+    local_mats : list of str
+        All burnable material IDs being managed by a single process
 
     """
     def __init__(self, geometry, settings):
@@ -136,8 +136,8 @@ class OpenMCOperator(Operator):
 
         # Clear out OpenMC, create task lists, distribute
         openmc.reset_auto_ids()
-        self.burnable_mats, volume, nuc_dict = self._get_burnable_mats()
-        local_mats = _distribute(self.burnable_mats)
+        self.burnable_mats, volume, nuclides = self._get_burnable_mats()
+        self.local_mats = _distribute(self.burnable_mats)
 
         # Determine which nuclides have incident neutron data
         self.nuclides_with_data = self._get_nuclides_with_data()
@@ -145,12 +145,12 @@ class OpenMCOperator(Operator):
                                if nuc in self.chain]
 
         # Extract number densities from the geometry
-        self._extract_number(local_mats, volume, nuc_dict)
+        self._extract_number(self.local_mats, volume, nuclides)
 
         # Create reaction rates array
         index_rx = {rx: i for i, rx in enumerate(self.chain.reactions)}
         self.reaction_rates = ReactionRates(
-            self.burn_mat_to_ind, self._burnable_nucs, index_rx)
+            self.local_mats, self._burnable_nucs, index_rx)
 
     def __call__(self, vec, print_out=True):
         """Runs a simulation.
@@ -207,7 +207,7 @@ class OpenMCOperator(Operator):
             List of burnable material IDs
         volume : OrderedDict of str to float
             Volume of each material in [cm^3]
-        nuc_dict : OrderedDict of str to int
+        nuclides : list of str
             Nuclides in order of how they'll appear in the simulation.
 
         """
@@ -231,16 +231,14 @@ class OpenMCOperator(Operator):
         model_nuclides = sorted(model_nuclides)
 
         # Construct a global nuclide dictionary, burned first
-        nuc_dict = copy.deepcopy(self.chain.nuclide_dict)
-        i = len(nuc_dict)
+        nuclides = list(self.chain.nuclide_dict)
         for nuc in model_nuclides:
-            if nuc not in nuc_dict:
-                nuc_dict[nuc] = i
-                i += 1
+            if nuc not in nuclides:
+                nuclides.append(nuc)
 
-        return burnable_mats, volume, nuc_dict
+        return burnable_mats, volume, nuclides
 
-    def _extract_number(self, local_mats, volume, nuc_dict):
+    def _extract_number(self, local_mats, volume, nuclides):
         """Construct AtomNumber using geometry
 
         Parameters
@@ -249,17 +247,11 @@ class OpenMCOperator(Operator):
             Material IDs to be managed by this process
         volume : OrderedDict of str to float
             Volumes for the above materials in [cm^3]
-        nuc_dict : OrderedDict of str to int
+        nuclides : list of str
             Nuclides to be used in the simulation.
 
         """
-        # Same with materials
-        self.burn_mat_to_ind = OrderedDict()
-        for i, mat in enumerate(local_mats):
-            self.burn_mat_to_ind[mat] = i
-
-        self.number = AtomNumber(self.burn_mat_to_ind, nuc_dict, volume,
-                                 len(self.chain))
+        self.number = AtomNumber(local_mats, nuclides, volume, len(self.chain))
 
         if self.settings.dilute_initial != 0.0:
             for nuc in self._burnable_nucs:
@@ -268,7 +260,7 @@ class OpenMCOperator(Operator):
 
         # Now extract the number densities and store
         for mat in self.geometry.get_all_materials().values():
-            if str(mat.id) in self.burn_mat_to_ind:
+            if str(mat.id) in local_mats:
                 self._set_number_from_mat(mat)
 
     def _set_number_from_mat(self, mat):
@@ -281,7 +273,6 @@ class OpenMCOperator(Operator):
 
         """
         mat_id = str(mat.id)
-        mat_ind = self.number.mat_to_ind[mat_id]
 
         for nuclide, density in mat.get_nuclide_atom_densities().values():
             number = density * 1.0e24
@@ -293,7 +284,7 @@ class OpenMCOperator(Operator):
         Parameters
         ----------
         y : numpy.ndarray
-            An array representing reaction rates for this cell.
+            An array representing reaction rates for this material.
         mat : int
             Material id.
 
@@ -340,10 +331,10 @@ class OpenMCOperator(Operator):
         for rank in range(comm.size):
             number_i = comm.bcast(self.number, root=rank)
 
-            for mat in number_i.mat_to_ind:
+            for mat in number_i.materials:
                 nuclides = []
                 densities = []
-                for nuc in number_i.nuc_to_ind:
+                for nuc in number_i.nuclides:
                     if nuc in self.nuclides_with_data:
                         val = 1.0e-24 * number_i.get_atom_density(mat, nuc)
 
@@ -381,7 +372,7 @@ class OpenMCOperator(Operator):
                                      .values())
 
         # Sort nuclides according to order in AtomNumber object
-        nuclides = list(self.number.nuc_to_ind.keys())
+        nuclides = list(self.number.nuclides)
         for mat in materials:
             mat._nuclides.sort(key=lambda x: nuclides.index(x[0]))
 
@@ -404,9 +395,9 @@ class OpenMCOperator(Operator):
         """
         nuc_set = set()
 
-        # Create the set of all nuclides in the decay chain in cells marked for
-        # burning in which the number density is greater than zero.
-        for nuc in self.number.nuc_to_ind:
+        # Create the set of all nuclides in the decay chain in materials marked
+        # for burning in which the number density is greater than zero.
+        for nuc in self.number.nuclides:
             if nuc in self.nuclides_with_data:
                 if np.sum(self.number[:, nuc]) > 0.0:
                     nuc_set.add(nuc)
@@ -421,7 +412,7 @@ class OpenMCOperator(Operator):
 
         if comm.rank == 0:
             # Sort nuclides in the same order as self.number
-            nuc_list = [nuc for nuc in self.number.nuc_to_ind
+            nuc_list = [nuc for nuc in self.number.nuclides
                         if nuc in nuc_set]
         else:
             nuc_list = None
@@ -502,7 +493,7 @@ class OpenMCOperator(Operator):
                         break
 
         # Extract results
-        for i, mat in enumerate(self.burn_mat_to_ind):
+        for i, mat in enumerate(self.local_mats):
             # Get tally index
             slab = materials.index(mat)
 
@@ -583,7 +574,7 @@ class OpenMCOperator(Operator):
         return nuclides
 
     def get_results_info(self):
-        """Returns volume list, cell lists, and nuc lists.
+        """Returns volume list, material lists, and nuc lists.
 
         Returns
         -------
@@ -592,13 +583,13 @@ class OpenMCOperator(Operator):
         nuc_list : list of str
             A list of all nuclide names. Used for sorting the simulation.
         burn_list : list of int
-            A list of all cell IDs to be burned.  Used for sorting the simulation.
+            A list of all material IDs to be burned.  Used for sorting the simulation.
         full_burn_list : list
             List of all burnable material IDs
 
         """
-        nuc_list = self.number.burn_nuc_list
-        burn_list = list(self.burn_mat_to_ind)
+        nuc_list = self.number.burnable_nuclides
+        burn_list = self.local_mats
 
         volume = {}
         for i, mat in enumerate(burn_list):

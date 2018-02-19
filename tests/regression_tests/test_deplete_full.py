@@ -11,6 +11,7 @@ import openmc.deplete
 from openmc.deplete import results
 from openmc.deplete import utilities
 
+from tests.regression_tests import config
 from .example_geometry import generate_problem
 
 
@@ -59,33 +60,39 @@ def test_full(run_in_tmpdir):
     # Perform simulation using the predictor algorithm
     openmc.deplete.integrator.predictor(op)
 
-    # Load the files
-    res_test = results.read_results(settings.output_dir / "depletion_results.h5")
+    # Get path to test and reference results
+    path_test = settings.output_dir / 'depletion_results.h5'
+    path_reference = Path(__file__).with_name('test_reference.h5')
 
-    # Load the reference
-    filename = str(Path(__file__).with_name('test_reference.h5'))
-    res_old = results.read_results(filename)
+    # If updating results, do so and return
+    if config['update']:
+        shutil.copyfile(str(path_test), str(path_reference))
+        return
+
+    # Load the reference/test results
+    res_test = results.read_results(path_test)
+    res_ref = results.read_results(path_reference)
 
     # Assert same mats
-    for mat in res_old[0].mat_to_ind:
+    for mat in res_ref[0].mat_to_ind:
         assert mat in res_test[0].mat_to_ind, \
             "Material {} not in new results.".format(mat)
-    for nuc in res_old[0].nuc_to_ind:
+    for nuc in res_ref[0].nuc_to_ind:
         assert nuc in res_test[0].nuc_to_ind, \
             "Nuclide {} not in new results.".format(nuc)
 
     for mat in res_test[0].mat_to_ind:
-        assert mat in res_old[0].mat_to_ind, \
+        assert mat in res_ref[0].mat_to_ind, \
             "Material {} not in old results.".format(mat)
     for nuc in res_test[0].nuc_to_ind:
-        assert nuc in res_old[0].nuc_to_ind, \
+        assert nuc in res_ref[0].nuc_to_ind, \
             "Nuclide {} not in old results.".format(nuc)
 
     tol = 1.0e-6
     for mat in res_test[0].mat_to_ind:
         for nuc in res_test[0].nuc_to_ind:
             _, y_test = utilities.evaluate_single_nuclide(res_test, mat, nuc)
-            _, y_old = utilities.evaluate_single_nuclide(res_old, mat, nuc)
+            _, y_old = utilities.evaluate_single_nuclide(res_ref, mat, nuc)
 
             # Test each point
             correct = True

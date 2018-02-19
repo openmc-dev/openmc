@@ -7,11 +7,11 @@ from openmc.deplete import atom_number
 def test_indexing():
     """Tests the __getitem__ and __setitem__ routines simultaneously."""
 
-    mat_to_ind = {"10000" : 0, "10001" : 1, "10002" : 2}
+    mat_to_ind = {"10000" : 0, "10001" : 1}
     nuc_to_ind = {"U238" : 0, "U235" : 1, "U234" : 2}
     volume = {"10000" : 0.38, "10001" : 0.21}
 
-    number = atom_number.AtomNumber(mat_to_ind, nuc_to_ind, volume, 2, 2)
+    number = atom_number.AtomNumber(mat_to_ind, nuc_to_ind, volume, 2)
 
     number["10000", "U238"] = 1.0
     number["10001", "U238"] = 2.0
@@ -42,7 +42,7 @@ def test_n_mat():
     nuc_to_ind = {"U238" : 0, "U235" : 1, "Gd157" : 2}
     volume = {"10000" : 0.38, "10001" : 0.21}
 
-    number = atom_number.AtomNumber(mat_to_ind, nuc_to_ind, volume, 2, 2)
+    number = atom_number.AtomNumber(mat_to_ind, nuc_to_ind, volume, 2)
 
     assert number.n_mat == 2
 
@@ -53,7 +53,7 @@ def test_n_nuc():
     nuc_to_ind = {"U238" : 0, "U235" : 1, "Gd157" : 2}
     volume = {"10000" : 0.38, "10001" : 0.21}
 
-    number = atom_number.AtomNumber(mat_to_ind, nuc_to_ind, volume, 2, 2)
+    number = atom_number.AtomNumber(mat_to_ind, nuc_to_ind, volume, 2)
 
     assert number.n_nuc == 3
 
@@ -64,20 +64,9 @@ def test_burn_nuc_list():
     nuc_to_ind = {"U238" : 0, "U235" : 1, "Gd157" : 2}
     volume = {"10000" : 0.38, "10001" : 0.21}
 
-    number = atom_number.AtomNumber(mat_to_ind, nuc_to_ind, volume, 2, 2)
+    number = atom_number.AtomNumber(mat_to_ind, nuc_to_ind, volume, 2)
 
     assert number.burn_nuc_list == ["U238", "U235"]
-
-
-def test_burn_mat_list():
-    """Test the list of burned nuclides property"""
-    mat_to_ind = {"10000" : 0, "10001" : 1, "10002" : 2}
-    nuc_to_ind = {"U238" : 0, "U235" : 1, "Gd157" : 2}
-    volume = {"10000" : 0.38, "10001" : 0.21}
-
-    number = atom_number.AtomNumber(mat_to_ind, nuc_to_ind, volume, 2, 2)
-
-    assert number.burn_mat_list == ["10000", "10001"]
 
 
 def test_density_indexing():
@@ -87,7 +76,7 @@ def test_density_indexing():
     nuc_to_ind = {"U238" : 0, "U235" : 1, "U234" : 2}
     volume = {"10000" : 0.38, "10001" : 0.21}
 
-    number = atom_number.AtomNumber(mat_to_ind, nuc_to_ind, volume, 2, 2)
+    number = atom_number.AtomNumber(mat_to_ind, nuc_to_ind, volume, 2)
 
     number.set_atom_density("10000", "U238", 1.0)
     number.set_atom_density("10001", "U238", 2.0)
@@ -144,7 +133,7 @@ def test_get_mat_slice():
     nuc_to_ind = {"U238" : 0, "U235" : 1, "U234" : 2}
     volume = {"10000" : 0.38, "10001" : 0.21}
 
-    number = atom_number.AtomNumber(mat_to_ind, nuc_to_ind, volume, 2, 2)
+    number = atom_number.AtomNumber(mat_to_ind, nuc_to_ind, volume, 2)
 
     number.number = np.array([[1.0, 2.0, 3.0], [4.0, 5.0, 6.0], [7.0, 8.0, 9.0]])
 
@@ -164,7 +153,7 @@ def test_set_mat_slice():
     nuc_to_ind = {"U238" : 0, "U235" : 1, "U234" : 2}
     volume = {"10000" : 0.38, "10001" : 0.21}
 
-    number = atom_number.AtomNumber(mat_to_ind, nuc_to_ind, volume, 2, 2)
+    number = atom_number.AtomNumber(mat_to_ind, nuc_to_ind, volume, 2)
 
     number.set_mat_slice(0, [1.0, 2.0])
 

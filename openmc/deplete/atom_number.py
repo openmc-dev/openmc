@@ -96,9 +96,9 @@ class AtomNumber(object):
             These indexes can be strings (which get converted to integers via
             the dictionaries), integers used directly, or slices.
         val : float
-            The value to set the array to.
-        """
+            The value [atom] to set the array to.
 
+        """
         mat, nuc = pos
         if isinstance(mat, str):
             mat = self.mat_to_ind[mat]
@@ -119,10 +119,10 @@ class AtomNumber(object):
 
         Returns
         -------
-        numpy.array
-            The density indexed.
-        """
+        numpy.ndarray
+            Density in [atom/cm^3]
 
+        """
         if isinstance(mat, str):
             mat = self.mat_to_ind[mat]
         if isinstance(nuc, str):
@@ -140,9 +140,9 @@ class AtomNumber(object):
         nuc : str, int or slice
             Nuclide index.
         val : numpy.array
-            Array of values to set.
-        """
+            Array of densities to set in [atom/cm^3]
 
+        """
         if isinstance(mat, str):
             mat = self.mat_to_ind[mat]
         if isinstance(nuc, str):

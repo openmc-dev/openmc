@@ -116,7 +116,7 @@ class OpenMCOperator(Operator):
         The OpenMC geometry object.
     number : openmc.deplete.AtomNumber
         Total number of atoms in simulation.
-    participating_nuclides : set of str
+    nuclides_with_data : set of str
         A set listing all unique nuclides available from cross_sections.xml.
     chain : openmc.deplete.Chain
         The depletion chain information necessary to form matrices and tallies.
@@ -126,7 +126,8 @@ class OpenMCOperator(Operator):
         Dictionary mapping material ID (as a string) to an index in reaction_rates.
     burn_nuc_to_ind : OrderedDict of str to int
         Dictionary mapping nuclide name (as a string) to an index in
-        reaction_rates.
+        reaction_rates. Consists of all nuclides with neutron data and appearing
+        in the depletion chain.
     burnable_mats : list of str
         All burnable material IDs
 
@@ -136,7 +137,6 @@ class OpenMCOperator(Operator):
 
         self.geometry = geometry
         self.number = None
-        self.participating_nuclides = None
         self.burn_mat_to_ind = OrderedDict()
         self.burn_nuc_to_ind = None
 
@@ -146,7 +146,7 @@ class OpenMCOperator(Operator):
         # Clear out OpenMC, create task lists, distribute
         if comm.rank == 0:
             openmc.reset_auto_ids()
-            mat_burn_list, volume, nuc_dict = self.extract_mat_ids()
+            mat_burn_list, volume, nuc_dict = self._extract_mat_ids()
         else:
             # Dummy variables
             mat_burn_list = None
@@ -160,10 +160,10 @@ class OpenMCOperator(Operator):
         self.burnable_mats = list(chain(*mat_burn_list))
 
         # Load participating nuclides
-        self.load_participating()
+        self._load_participating()
 
         # Extract number densities from the geometry
-        self.extract_number(mat_burn, volume, nuc_dict)
+        self._extract_number(mat_burn, volume, nuc_dict)
 
         # Create reaction rates array
         index_rx = {rx: i for i, rx in enumerate(self.chain.reactions)}
@@ -190,7 +190,7 @@ class OpenMCOperator(Operator):
         openmc.reset_auto_ids()
 
         # Update status
-        self.set_density(vec)
+        self._set_density(vec)
 
         time_start = time.time()
 
@@ -205,7 +205,7 @@ class OpenMCOperator(Operator):
         time_openmc = time.time()
 
         # Extract results
-        op_result = self.unpack_tallies_and_normalize()
+        op_result = self._unpack_tallies_and_normalize()
 
         if comm.rank == 0:
             time_unpack = time.time()
@@ -216,7 +216,7 @@ class OpenMCOperator(Operator):
 
         return copy.deepcopy(op_result)
 
-    def extract_mat_ids(self):
+    def _extract_mat_ids(self):
         """Extracts materials and assigns them to processes.
 
         Returns
@@ -229,15 +229,15 @@ class OpenMCOperator(Operator):
             Volume of each cell
         nuc_dict : OrderedDict of str to int
             Nuclides in order of how they'll appear in the simulation.
-        """
 
+        """
         mat_burn = set()
         nuc_set = set()
         volume = OrderedDict()
 
         # Iterate once through the geometry to get dictionaries
         for mat in self.geometry.get_all_materials().values():
-            for nuclide in mat.get_nuclide_densities():
+            for nuclide in mat.get_nuclides():
                 nuc_set.add(nuclide)
             if mat.depletable:
                 mat_burn.add(str(mat.id))
@@ -263,7 +263,7 @@ class OpenMCOperator(Operator):
 
         return mat_burn_lists, volume, nuc_dict
 
-    def extract_number(self, mat_burn, volume, nuc_dict):
+    def _extract_number(self, mat_burn, volume, nuc_dict):
         """Construct self.number read from geometry
 
         Parameters
@@ -281,10 +281,8 @@ class OpenMCOperator(Operator):
         for i, mat in enumerate(mat_burn):
             self.burn_mat_to_ind[mat] = i
 
-        n_nuc_burn = len(self.chain)
-
         self.number = AtomNumber(self.burn_mat_to_ind, nuc_dict, volume,
-                                 n_nuc_burn)
+                                 len(self.chain))
 
         if self.settings.dilute_initial != 0.0:
             for nuc in self.burn_nuc_to_ind:
@@ -294,23 +292,22 @@ class OpenMCOperator(Operator):
         # Now extract the number densities and store
         for mat in self.geometry.get_all_materials().values():
             if str(mat.id) in self.burn_mat_to_ind:
-                self.set_number_from_mat(mat)
+                self._set_number_from_mat(mat)
 
-    def set_number_from_mat(self, mat):
+    def _set_number_from_mat(self, mat):
         """Extracts material and number densities from openmc.Material
 
         Parameters
         ----------
-        mat : openmc.Materials
+        mat : openmc.Material
             The material to read from
-        """
 
+        """
         mat_id = str(mat.id)
         mat_ind = self.number.mat_to_ind[mat_id]
 
-        nuc_dens = mat.get_nuclide_atom_densities()
-        for nuclide in nuc_dens:
-            number = nuc_dens[nuclide][1] * 1.0e24
+        for nuclide, density in mat.get_nuclide_atom_densities().values():
+            number = density * 1.0e24
             self.number.set_atom_density(mat_id, nuclide, number)
 
     def form_matrix(self, y, mat):
@@ -344,17 +341,17 @@ class OpenMCOperator(Operator):
         if comm.rank == 0:
             self.geometry.export_to_xml()
             self.settings.settings.export_to_xml()
-            self.generate_materials_xml()
+            self._generate_materials_xml()
 
         # Initialize OpenMC library
         comm.barrier()
         openmc.capi.init(comm)
 
         # Generate tallies in memory
-        self.generate_tallies()
+        self._generate_tallies()
 
         # Return number density vector
-        return self.total_density_list()
+        return list(self.number.get_mat_slice(np.s_[:]))
 
     def finalize(self):
         """Finalize a depletion simulation and release resources."""
@@ -370,7 +367,7 @@ class OpenMCOperator(Operator):
                 nuclides = []
                 densities = []
                 for nuc in number_i.nuc_to_ind:
-                    if nuc in self.participating_nuclides:
+                    if nuc in self.nuclides_with_data:
                         val = 1.0e-24 * number_i.get_atom_density(mat, nuc)
 
                         # If nuclide is zero, do not add to the problem.
@@ -395,14 +392,14 @@ class OpenMCOperator(Operator):
                 mat_internal = openmc.capi.materials[int(mat)]
                 mat_internal.set_densities(nuclides, densities)
 
-    def generate_materials_xml(self):
+    def _generate_materials_xml(self):
         """Creates materials.xml from self.number.
 
         Due to uncertainty with how MPI interacts with OpenMC API, this
         constructs the XML manually.  The long term goal is to do this
         through direct memory writing.
-        """
 
+        """
         materials = openmc.Materials(self.geometry.get_all_materials()
                                      .values())
 
@@ -414,12 +411,26 @@ class OpenMCOperator(Operator):
         materials.export_to_xml()
 
     def _get_tally_nuclides(self):
+        """Determine nuclides that should be tallied for reaction rates.
+
+        This method returns a list of all nuclides that have neutron data and
+        are listed in the depletion chain. Technically, we should tally nuclides
+        that may not appear in the depletion chain because we still need to get
+        the fission reaction rate for these nuclides in order to normalize
+        power, but that is left as a future exercise.
+
+        Returns
+        -------
+        list of str
+            Tally nuclides
+
+        """
         nuc_set = set()
 
         # Create the set of all nuclides in the decay chain in cells marked for
         # burning in which the number density is greater than zero.
         for nuc in self.number.nuc_to_ind:
-            if nuc in self.participating_nuclides:
+            if nuc in self.nuclides_with_data:
                 if np.sum(self.number[:, nuc]) > 0.0:
                     nuc_set.add(nuc)
 
@@ -439,12 +450,10 @@ class OpenMCOperator(Operator):
             nuc_list = None
 
         # Store list of tally nuclides on each process
-        nuc_list = comm.bcast(nuc_list, root=0)
-        tally_nuclides = [nuc for nuc in nuc_list if nuc in self.chain]
+        nuc_list = comm.bcast(nuc_list)
+        return [nuc for nuc in nuc_list if nuc in self.chain]
 
-        return tally_nuclides
-
-    def generate_tallies(self):
+    def _generate_tallies(self):
         """Generates depletion tallies.
 
         Using information from the depletion chain as well as the nuclides
@@ -465,21 +474,7 @@ class OpenMCOperator(Operator):
         tally_dep.scores = self.chain.reactions
         tally_dep.filters = [mat_filter]
 
-    def total_density_list(self):
-        """Returns a list of total density lists.
-
-        This list is in the exact same order as depletion_matrix_list, so that
-        matrix exponentiation can be done easily.
-
-        Returns
-        -------
-        list of numpy.array
-            A list of arrays containing total atoms of each material
-
-        """
-        return list(self.number.get_mat_slice(np.s_[:]))
-
-    def set_density(self, total_density):
+    def _set_density(self, total_density):
         """Sets density.
 
         Sets the density in the exact same order as total_density_list outputs,
@@ -495,7 +490,7 @@ class OpenMCOperator(Operator):
         for i in range(self.number.n_mat):
             self.number.set_mat_slice(i, total_density[i])
 
-    def unpack_tallies_and_normalize(self):
+    def _unpack_tallies_and_normalize(self):
         """Unpack tallies from OpenMC and return an operator result
 
         This method uses OpenMC's C API bindings to determine the k-effective
@@ -587,7 +582,7 @@ class OpenMCOperator(Operator):
 
         return OperatorResult(k_combined, rates)
 
-    def load_participating(self):
+    def _load_participating(self):
         """Loads a cross_sections.xml file to find participating nuclides.
 
         This allows for nuclides that are important in the decay chain but not
@@ -602,7 +597,7 @@ class OpenMCOperator(Operator):
         except KeyError:
             filename = None
 
-        self.participating_nuclides = set()
+        self.nuclides_with_data = set()
 
         try:
             tree = ET.parse(filename)
@@ -624,8 +619,8 @@ class OpenMCOperator(Operator):
             for name in mats.split():
                 # Make a burn list of the union of nuclides in cross_sections.xml
                 # and nuclides in depletion chain.
-                if name not in self.participating_nuclides:
-                    self.participating_nuclides.add(name)
+                if name not in self.nuclides_with_data:
+                    self.nuclides_with_data.add(name)
                     if name in self.chain:
                         self.burn_nuc_to_ind[name] = nuc_ind
                         nuc_ind += 1

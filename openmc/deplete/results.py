@@ -58,7 +58,7 @@ class Results(object):
 
         self.data = None
 
-    def allocate(self, volume, nuc_list, burn_list, full_burn_dict, stages):
+    def allocate(self, volume, nuc_list, burn_list, full_burn_list, stages):
         """Allocates memory of Results.
 
         Parameters
@@ -69,16 +69,16 @@ class Results(object):
             A list of all nuclide names. Used for sorting the simulation.
         burn_list : list of int
             A list of all mat IDs to be burned.  Used for sorting the simulation.
-        full_burn_dict : dict of str to int
-            Map of material name to id in global geometry.
+        full_burn_list : list of str
+            List of all burnable material IDs
         stages : int
             Number of stages in simulation.
-        """
 
+        """
         self.volume = copy.deepcopy(volume)
         self.nuc_to_ind = OrderedDict()
         self.mat_to_ind = OrderedDict()
-        self.mat_to_hdf5_ind = copy.deepcopy(full_burn_dict)
+        self.mat_to_hdf5_ind = {mat: i for i, mat in enumerate(full_burn_list)}
 
         for i, mat in enumerate(burn_list):
             self.mat_to_ind[mat] = i
@@ -177,10 +177,9 @@ class Results(object):
 
         handle.create_dataset("version", data=RESULTS_VERSION)
 
-        mat_int = sorted([int(mat) for mat in self.mat_to_hdf5_ind])
-        mat_list = [str(mat) for mat in mat_int]
-        nuc_list = sorted(self.nuc_to_ind.keys())
-        rxn_list = sorted(self.rates[0].index_rx.keys())
+        mat_list = sorted(self.mat_to_hdf5_ind, key=int)
+        nuc_list = sorted(self.nuc_to_ind)
+        rxn_list = sorted(self.rates[0].index_rx)
 
         n_mats = self.n_hdf5_mats
         n_nuc_number = len(nuc_list)

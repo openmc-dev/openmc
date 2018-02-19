@@ -107,6 +107,32 @@ class AtomNumber(object):
 
         self.number[mat, nuc] = val
 
+    @property
+    def n_mat(self):
+        """Number of materials."""
+        return len(self.mat_to_ind)
+
+    @property
+    def n_nuc(self):
+        """Number of nuclides."""
+        return len(self.nuc_to_ind)
+
+    @property
+    def burn_nuc_list(self):
+        """burn_nuc_list : list of str
+        A list of all nuclide material names. Used for sorting the simulation.
+        """
+
+        if self._burn_nuc_list is None:
+            self._burn_nuc_list = [None] * self.n_nuc_burn
+
+            for nuc in self.nuc_to_ind:
+                ind = self.nuc_to_ind[nuc]
+                if ind < self.n_nuc_burn:
+                    self._burn_nuc_list[ind] = nuc
+
+        return self._burn_nuc_list
+
     def get_atom_density(self, mat, nuc):
         """Accesses atom density instead of total number.
 
@@ -160,10 +186,10 @@ class AtomNumber(object):
 
         Returns
         -------
-        numpy.array
-            The slice requested.
-        """
+        numpy.ndarray
+            The slice requested in [atom].
 
+        """
         if isinstance(mat, str):
             mat = self.mat_to_ind[mat]
 
@@ -177,36 +203,25 @@ class AtomNumber(object):
         mat : str, int or slice
             Material index.
         val : numpy.array
-            The slice to set.
-        """
+            The slice to set in [atom]
 
+        """
         if isinstance(mat, str):
             mat = self.mat_to_ind[mat]
 
         self[mat, :self.n_nuc_burn] = val
 
-    @property
-    def n_mat(self):
-        """Number of materials."""
-        return len(self.mat_to_ind)
+    def set_density(self, total_density):
+        """Sets density.
 
-    @property
-    def n_nuc(self):
-        """Number of nuclides."""
-        return len(self.nuc_to_ind)
+        Sets the density in the exact same order as total_density_list outputs,
+        allowing for internal consistency
 
-    @property
-    def burn_nuc_list(self):
-        """burn_nuc_list : list of str
-        A list of all nuclide material names. Used for sorting the simulation.
+        Parameters
+        ----------
+        total_density : list of numpy.ndarray
+            Total atoms.
+
         """
-
-        if self._burn_nuc_list is None:
-            self._burn_nuc_list = [None] * self.n_nuc_burn
-
-            for nuc in self.nuc_to_ind:
-                ind = self.nuc_to_ind[nuc]
-                if ind < self.n_nuc_burn:
-                    self._burn_nuc_list[ind] = nuc
-
-        return self._burn_nuc_list
+        for i in range(self.n_mat):
+            self.set_mat_slice(i, total_density[i])

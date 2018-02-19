@@ -196,7 +196,7 @@ class OpenMCOperator(Operator):
 
         # Update material compositions and tally nuclides
         self._update_materials()
-        openmc.capi.tallies[1].nuclides = self._get_tally_nuclides()
+        self._tally.nuclides = self._get_tally_nuclides()
 
         # Run OpenMC
         openmc.capi.reset()
@@ -464,15 +464,15 @@ class OpenMCOperator(Operator):
         # Create tallies for depleting regions
         materials = [openmc.capi.materials[int(i)]
                      for i in self.burnable_mats]
-        mat_filter = openmc.capi.MaterialFilter(materials, 1)
+        mat_filter = openmc.capi.MaterialFilter(materials)
 
         # Set up a tally that has a material filter covering each depletable
         # material and scores corresponding to all reactions that cause
         # transmutation. The nuclides for the tally are set later when eval() is
         # called.
-        tally_dep = openmc.capi.Tally(1)
-        tally_dep.scores = self.chain.reactions
-        tally_dep.filters = [mat_filter]
+        self._tally = openmc.capi.Tally()
+        self._tally.scores = self.chain.reactions
+        self._tally.filters = [mat_filter]
 
     def _unpack_tallies_and_normalize(self):
         """Unpack tallies from OpenMC and return an operator result
@@ -495,7 +495,7 @@ class OpenMCOperator(Operator):
 
         # Extract tally bins
         materials = self.burnable_mats
-        nuclides = openmc.capi.tallies[1].nuclides
+        nuclides = self._tally.nuclides
 
         # Form fast map
         nuc_ind = [rates.index_nuc[nuc] for nuc in nuclides]
@@ -530,7 +530,7 @@ class OpenMCOperator(Operator):
             slab = materials.index(mat)
 
             # Get material results hyperslab
-            results = openmc.capi.tallies[1].results[slab, :, 1]
+            results = self._tally.results[slab, :, 1]
 
             # Zero out reaction rates and nuclide numbers
             rates_expanded[:] = 0.0

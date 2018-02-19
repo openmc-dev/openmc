@@ -7,44 +7,9 @@ to run a full depletion simulation.
 from collections import namedtuple
 import os
 from pathlib import Path
-
 from abc import ABCMeta, abstractmethod
 
-
-class Settings(object):
-    """The Settings class.
-
-    Contains all parameters necessary for the integrator.
-
-    Attributes
-    ----------
-    output_dir : pathlib.Path
-        Path to output directory to save results.
-    chain_file : str
-        Path to the depletion chain XML file.  Defaults to the
-        :envvar:`OPENMC_DEPLETE_CHAIN` environment variable if it exists.
-    dilute_initial : float
-        Initial atom density to add for nuclides that are zero in initial
-        condition to ensure they exist in the decay chain.  Only done for
-        nuclides with reaction rates. Defaults to 1.0e3.
-
-    """
-    def __init__(self):
-        try:
-            self.chain_file = os.environ["OPENMC_DEPLETE_CHAIN"]
-        except KeyError:
-            self.chain_file = None
-        self.output_dir = '.'
-        self.dilute_initial = 1.0e3
-
-    @property
-    def output_dir(self):
-        return self._output_dir
-
-    @output_dir.setter
-    def output_dir(self, output_dir):
-        self._output_dir = Path(output_dir)
-
+from .chain import Chain
 
 OperatorResult = namedtuple('OperatorResult', ['k', 'rates'])
 
@@ -52,14 +17,30 @@ OperatorResult = namedtuple('OperatorResult', ['k', 'rates'])
 class Operator(metaclass=ABCMeta):
     """Abstract class defining a transport operator
 
+    Parameters
+    ----------
+    chain_file : str, optional
+
+
     Attributes
     ----------
-    settings : Settings
-        Settings object.
+    dilute_initial : float
+        Initial atom density to add for nuclides that are zero in initial
+        condition to ensure they exist in the decay chain.  Only done for
+        nuclides with reaction rates. Defaults to 1.0e3.
 
     """
-    def __init__(self, settings):
-        self.settings = settings
+    def __init__(self, chain_file=None):
+        self.dilute_initial = 1.0e3
+        self.output_dir = '.'
+
+        # Read depletion chain
+        if chain_file is None:
+            chain_file = os.environ.get("OPENMC_DEPLETE_CHAIN", None)
+            if chain_file is None:
+                raise IOError("No chain specified, either manually or in "
+                              "environment variable OPENMC_DEPLETE_CHAIN.")
+        self.chain = Chain.from_xml(chain_file)
 
     @abstractmethod
     def __call__(self, vec, print_out=True):
@@ -83,17 +64,25 @@ class Operator(metaclass=ABCMeta):
     def __enter__(self):
         # Save current directory and move to specific output directory
         self._orig_dir = os.getcwd()
-        if not self.settings.output_dir.exists():
-            self.settings.output_dir.mkdir()  # exist_ok parameter is 3.5+
+        if not self.output_dir.exists():
+            self.output_dir.mkdir()  # exist_ok parameter is 3.5+
 
         # In Python 3.6+, chdir accepts a Path directly
-        os.chdir(str(self.settings.output_dir))
+        os.chdir(str(self.output_dir))
 
         return self.initial_condition()
 
     def __exit__(self, exc_type, exc_value, traceback):
         self.finalize()
         os.chdir(self._orig_dir)
+
+    @property
+    def output_dir(self):
+        return self._output_dir
+
+    @output_dir.setter
+    def output_dir(self, output_dir):
+        self._output_dir = Path(output_dir)
 
     @abstractmethod
     def initial_condition(self):

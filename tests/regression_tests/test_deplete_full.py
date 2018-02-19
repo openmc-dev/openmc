@@ -32,13 +32,8 @@ def test_full(run_in_tmpdir):
     # Load geometry from example
     geometry, lower_left, upper_right = generate_problem(n_rings, n_wedges)
 
-    # Depletion settings
-    settings = openmc.deplete.OpenMCSettings()
-    settings.chain_file = str(Path(__file__).parents[2] / 'chains' /
-                              'chain_simple.xml')
-    settings.round_number = True
-
-    # Add OpenMC-specific settings
+    # OpenMC-specific settings
+    settings = openmc.Settings()
     settings.particles = 100
     settings.batches = 100
     settings.inactive = 40
@@ -47,7 +42,10 @@ def test_full(run_in_tmpdir):
     settings.seed = 1
     settings.verbosity = 3
 
-    op = openmc.deplete.OpenMCOperator(geometry, settings)
+    # Create operator
+    chain_file = Path(__file__).parents[2] / 'chains' / 'chain_simple.xml'
+    op = openmc.deplete.OpenMCOperator(geometry, settings, chain_file)
+    op.round_number = True
 
     # Power and timesteps
     dt1 = 15.*24*60*60  # 15 days
@@ -60,7 +58,7 @@ def test_full(run_in_tmpdir):
     openmc.deplete.integrator.predictor(op, dt, power)
 
     # Get path to test and reference results
-    path_test = settings.output_dir / 'depletion_results.h5'
+    path_test = op.output_dir / 'depletion_results.h5'
     path_reference = Path(__file__).with_name('test_reference.h5')
 
     # If updating results, do so and return

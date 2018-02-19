@@ -24,9 +24,8 @@ import openmc
 import openmc.capi
 from openmc.data import JOULE_PER_EV
 from . import comm
-from .abc import Settings, Operator, OperatorResult
+from .abc import Operator, OperatorResult
 from .atom_number import AtomNumber
-from .chain import Chain
 from .reaction_rates import ReactionRates
 
 
@@ -40,77 +39,34 @@ def _distribute(items):
         j += chunk_size
 
 
-class OpenMCSettings(Settings):
-    """Extends Settings to provide information OpenMC needs to run.
-
-    Attributes
-    ----------
-    output_dir : pathlib.Path
-        Path to output directory to save results.
-    chain_file : str
-        Path to the depletion chain XML file.  Defaults to the
-        :envvar:`OPENMC_DEPLETE_CHAIN` environment variable if it exists.
-    dilute_initial : float
-        Initial atom density to add for nuclides that are zero in initial
-        condition to ensure they exist in the decay chain.  Only done for
-        nuclides with reaction rates. Defaults to 1.0e3.
-    power : float
-        Power of the reactor in [W]. For a 2D problem, the power can be given in
-        W/cm as long as the "volume" assigned to a depletion material is
-        actually an area in cm^2.
-    round_number : bool
-        Whether or not to round output to OpenMC to 8 digits.
-        Useful in testing, as OpenMC is incredibly sensitive to exact values.
-    settings : openmc.Settings
-        Settings for OpenMC simulations
-
-    """
-
-    _depletion_attrs = {'_output_dir', 'chain_file', 'dilute_initial',
-                        'round_number'}
-
-    def __init__(self):
-        super().__init__()
-        self.round_number = False
-
-        # Avoid setattr to create OpenMC settings
-        self.__dict__['settings'] = openmc.Settings()
-
-    def __setattr__(self, name, value):
-        if hasattr(self.__class__, name):
-            # Use properties when appropriate
-            prop = getattr(self.__class__, name)
-            prop.fset(self, value)
-        elif name in self._depletion_attrs:
-            # For known attributes, store in dictionary
-            self.__dict__[name] = value
-        else:
-            # otherwise, delegate to openmc.Settings
-            setattr(self.__dict__['settings'], name, value)
-
-    def __getattr__(self, name):
-        if name in self._depletion_attrs:
-            return self.__dict__[name]
-        else:
-            return getattr(self.__dict__['settings'], name)
-
-
 class OpenMCOperator(Operator):
     """OpenMC transport operator
 
     Parameters
     ----------
     geometry : openmc.Geometry
-        The OpenMC geometry object.
-    settings : openmc.deplete.OpenMCSettings
-        Settings object.
+        OpenMC geometry object
+    settings : openmc.Settings
+        OpenMC Settings object
+    chain_file : str, optional
+        Path to the depletion chain XML file.  Defaults to the
+        :envvar:`OPENMC_DEPLETE_CHAIN` environment variable if it exists.
 
     Attributes
     ----------
-    settings : OpenMCSettings
-        Settings object. (From Operator)
     geometry : openmc.Geometry
-        The OpenMC geometry object.
+        OpenMC geometry object
+    settings : openmc.Settings
+        OpenMC settings object
+    dilute_initial : float
+        Initial atom density to add for nuclides that are zero in initial
+        condition to ensure they exist in the decay chain.  Only done for
+        nuclides with reaction rates. Defaults to 1.0e3.
+    output_dir : pathlib.Path
+        Path to output directory to save results.
+    round_number : bool
+        Whether or not to round output to OpenMC to 8 digits.
+        Useful in testing, as OpenMC is incredibly sensitive to exact values.
     number : openmc.deplete.AtomNumber
         Total number of atoms in simulation.
     nuclides_with_data : set of str
@@ -125,12 +81,11 @@ class OpenMCOperator(Operator):
         All burnable material IDs being managed by a single process
 
     """
-    def __init__(self, geometry, settings):
-        super().__init__(settings)
+    def __init__(self, geometry, settings, chain_file=None):
+        super().__init__(chain_file)
+        self.round_number = False
+        self.settings = settings
         self.geometry = geometry
-
-        # Read depletion chain
-        self.chain = Chain.from_xml(settings.chain_file)
 
         # Clear out OpenMC, create task lists, distribute
         openmc.reset_auto_ids()
@@ -253,10 +208,9 @@ class OpenMCOperator(Operator):
         """
         self.number = AtomNumber(local_mats, nuclides, volume, len(self.chain))
 
-        if self.settings.dilute_initial != 0.0:
+        if self.dilute_initial != 0.0:
             for nuc in self._burnable_nucs:
-                self.number.set_atom_density(np.s_[:], nuc,
-                                             self.settings.dilute_initial)
+                self.number.set_atom_density(np.s_[:], nuc, self.dilute_initial)
 
         # Now extract the number densities and store
         for mat in self.geometry.get_all_materials().values():
@@ -290,7 +244,7 @@ class OpenMCOperator(Operator):
         # Create XML files
         if comm.rank == 0:
             self.geometry.export_to_xml()
-            self.settings.settings.export_to_xml()
+            self.settings.export_to_xml()
             self._generate_materials_xml()
 
         # Initialize OpenMC library
@@ -322,7 +276,7 @@ class OpenMCOperator(Operator):
 
                         # If nuclide is zero, do not add to the problem.
                         if val > 0.0:
-                            if self.settings.round_number:
+                            if self.round_number:
                                 val_magnitude = np.floor(np.log10(val))
                                 val_scaled = val / 10**val_magnitude
                                 val_round = round(val_scaled, 8)

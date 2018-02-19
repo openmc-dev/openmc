@@ -29,7 +29,6 @@ Metaclasses
    :toctree: generated
    :nosignatures:
 
-   openmc.deplete.Settings
    openmc.deplete.Operator
 
 OpenMC Classes
@@ -39,7 +38,6 @@ OpenMC Classes
    :toctree: generated
    :nosignatures:
 
-   openmc.deplete.OpenMCSettings
    openmc.deplete.Materials
    openmc.deplete.OpenMCOperator
 

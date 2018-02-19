@@ -30,15 +30,14 @@ from .chain import Chain
 from .reaction_rates import ReactionRates
 
 
-def _chunks(items, n):
-    min_size, extra = divmod(len(items), n)
+def _distribute(items):
+    min_size, extra = divmod(len(items), comm.size)
     j = 0
-    chunk_list = []
-    for i in range(n):
+    for i in range(comm.size):
         chunk_size = min_size + int(i < extra)
-        chunk_list.append(items[j:j + chunk_size])
+        if comm.rank == i:
+            return items[j:j + chunk_size]
         j += chunk_size
-    return chunk_list
 
 
 class OpenMCSettings(Settings):
@@ -134,36 +133,21 @@ class OpenMCOperator(Operator):
     """
     def __init__(self, geometry, settings):
         super().__init__(settings)
-
         self.geometry = geometry
-        self.number = None
-        self.burn_mat_to_ind = OrderedDict()
-        self.burn_nuc_to_ind = None
 
         # Read depletion chain
         self.chain = Chain.from_xml(settings.chain_file)
 
         # Clear out OpenMC, create task lists, distribute
-        if comm.rank == 0:
-            openmc.reset_auto_ids()
-            mat_burn_list, volume, nuc_dict = self._extract_mat_ids()
-        else:
-            # Dummy variables
-            mat_burn_list = None
-            volume = None
-            nuc_dict = None
+        openmc.reset_auto_ids()
+        self.burnable_mats, volume, nuc_dict = self._get_burnable_mats()
+        local_mats = _distribute(self.burnable_mats)
 
-        mat_burn_list = comm.bcast(mat_burn_list)
-        nuc_dict = comm.bcast(nuc_dict)
-        volume = comm.bcast(volume)
-        mat_burn = mat_burn_list[comm.rank]
-        self.burnable_mats = list(chain(*mat_burn_list))
-
-        # Load participating nuclides
+        # Determine which nuclides have incident neutron data
         self._load_participating()
 
         # Extract number densities from the geometry
-        self._extract_number(mat_burn, volume, nuc_dict)
+        self._extract_number(local_mats, volume, nuc_dict)
 
         # Create reaction rates array
         index_rx = {rx: i for i, rx in enumerate(self.chain.reactions)}
@@ -216,69 +200,64 @@ class OpenMCOperator(Operator):
 
         return copy.deepcopy(op_result)
 
-    def _extract_mat_ids(self):
-        """Extracts materials and assigns them to processes.
+    def _get_burnable_mats(self):
+        """Determine depletable materials, volumes, and nuclids
 
         Returns
         -------
-        mat_burn_lists : list of list of int
-            List of burnable materials indexed by rank.
-        mat_not_burn_lists : list of list of int
-            List of non-burnable materials indexed by rank.
+        burnable_mats : list of str
+            List of burnable material IDs
         volume : OrderedDict of str to float
-            Volume of each cell
+            Volume of each material in [cm^3]
         nuc_dict : OrderedDict of str to int
             Nuclides in order of how they'll appear in the simulation.
 
         """
-        mat_burn = set()
-        nuc_set = set()
+        burnable_mats = set()
+        model_nuclides = set()
         volume = OrderedDict()
 
         # Iterate once through the geometry to get dictionaries
         for mat in self.geometry.get_all_materials().values():
             for nuclide in mat.get_nuclides():
-                nuc_set.add(nuclide)
+                model_nuclides.add(nuclide)
             if mat.depletable:
-                mat_burn.add(str(mat.id))
+                burnable_mats.add(str(mat.id))
                 if mat.volume is None:
                     raise RuntimeError("Volume not specified for depletable "
                                        "material with ID={}.".format(mat.id))
                 volume[str(mat.id)] = mat.volume
 
         # Sort the sets
-        mat_burn = sorted(mat_burn, key=int)
-        nuc_set = sorted(nuc_set)
+        burnable_mats = sorted(burnable_mats, key=int)
+        model_nuclides = sorted(model_nuclides)
 
         # Construct a global nuclide dictionary, burned first
         nuc_dict = copy.deepcopy(self.chain.nuclide_dict)
         i = len(nuc_dict)
-        for nuc in nuc_set:
+        for nuc in model_nuclides:
             if nuc not in nuc_dict:
                 nuc_dict[nuc] = i
                 i += 1
 
-        # Decompose geometry
-        mat_burn_lists = _chunks(mat_burn, comm.size)
+        return burnable_mats, volume, nuc_dict
 
-        return mat_burn_lists, volume, nuc_dict
-
-    def _extract_number(self, mat_burn, volume, nuc_dict):
-        """Construct self.number read from geometry
+    def _extract_number(self, local_mats, volume, nuc_dict):
+        """Construct AtomNumber using geometry
 
         Parameters
         ----------
-        mat_burn : list of int
-            Materials to be burned managed by this thread.
+        local_mats : list of str
+            Material IDs to be managed by this process
         volume : OrderedDict of str to float
-            Volumes for the above materials.
+            Volumes for the above materials in [cm^3]
         nuc_dict : OrderedDict of str to int
             Nuclides to be used in the simulation.
 
         """
         # Same with materials
         self.burn_mat_to_ind = OrderedDict()
-        for i, mat in enumerate(mat_burn):
+        for i, mat in enumerate(local_mats):
             self.burn_mat_to_ind[mat] = i
 
         self.number = AtomNumber(self.burn_mat_to_ind, nuc_dict, volume,

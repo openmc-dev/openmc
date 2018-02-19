@@ -1,12 +1,13 @@
 """The CE/CM integrator."""
 
 import copy
+from collections.abc import Iterable
 
 from .cram import deplete
 from .save_results import save_results
 
 
-def cecm(operator, print_out=True):
+def cecm(operator, timesteps, power, print_out=True):
     r"""The CE/CM integrator.
 
     Implements the second order CE/CM Predictor-Corrector algorithm [ref]_.
@@ -32,25 +33,36 @@ def cecm(operator, print_out=True):
     ----------
     operator : openmc.deplete.Operator
         The operator object to simulate on.
+    timesteps : iterable of float
+        Array of timesteps in units of [s]
+    power : float or iterable of float
+        Power of the reactor in [W]. A single value indicates that the power is
+        constant over all timesteps. An iterable indicates potentially different
+        power levels for each timestep. For a 2D problem, the power can be given
+        in [W/cm] as long as the "volume" assigned to a depletion material is
+        actually an area in [cm^2].
     print_out : bool, optional
         Whether or not to print out time.
 
     """
+    if not isinstance(power, Iterable):
+        power = [power]*len(timesteps)
+
     # Generate initial conditions
     with operator as vec:
         chain = operator.chain
         t = 0.0
-        for i, dt in enumerate(operator.settings.dt_vec):
+        for i, (dt, p) in enumerate(zip(timesteps, power)):
             # Get beginning-of-timestep reaction rates
             x = [copy.deepcopy(vec)]
-            results = [operator(x[0])]
+            results = [operator(x[0], p)]
 
             # Deplete for first half of timestep
             x_middle = deplete(chain, x[0], results[0], dt/2, print_out)
 
             # Get middle-of-timestep reaction rates
             x.append(x_middle)
-            results.append(operator(x_middle))
+            results.append(operator(x_middle, p))
 
             # Deplete for full timestep using beginning-of-step materials
             x_end = deplete(chain, x[0], results[1], dt, print_out)
@@ -64,7 +76,7 @@ def cecm(operator, print_out=True):
 
         # Perform one last simulation
         x = [copy.deepcopy(vec)]
-        results = [operator(x[0])]
+        results = [operator(x[0], power[-1])]
 
         # Create results, write to disk
-        save_results(operator, x, results, [t, t], len(operator.settings.dt_vec))
+        save_results(operator, x, results, [t, t], len(timesteps))

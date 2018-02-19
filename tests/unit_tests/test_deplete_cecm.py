@@ -15,13 +15,14 @@ def test_cecm(run_in_tmpdir):
     """Integral regression test of integrator algorithm using CE/CM."""
 
     settings = openmc.deplete.Settings()
-    settings.dt_vec = [0.75, 0.75]
     settings.output_dir = "test_integrator_regression"
 
     op = dummy_geometry.DummyGeometry(settings)
 
     # Perform simulation using the MCNPX/MCNP6 algorithm
-    openmc.deplete.cecm(op, print_out=False)
+    dt = [0.75, 0.75]
+    power = 1.0
+    openmc.deplete.cecm(op, dt, power, print_out=False)
 
     # Load the files
     res = results.read_results(settings.output_dir / "depletion_results.h5")

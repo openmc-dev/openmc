@@ -32,18 +32,10 @@ def test_full(run_in_tmpdir):
     # Load geometry from example
     geometry, lower_left, upper_right = generate_problem(n_rings, n_wedges)
 
-    # Create dt vector for 3 steps with 15 day timesteps
-    dt1 = 15.*24*60*60  # 15 days
-    dt2 = 1.5*30*24*60*60  # 1.5 months
-    N = floor(dt2/dt1)
-    dt = np.full(N, dt1)
-
     # Depletion settings
     settings = openmc.deplete.OpenMCSettings()
     settings.chain_file = str(Path(__file__).parents[2] / 'chains' /
                               'chain_simple.xml')
-    settings.power = 2.337e15*4*JOULE_PER_EV*1e6  # MeV/second cm from CASMO
-    settings.dt_vec = dt
     settings.round_number = True
 
     # Add OpenMC-specific settings
@@ -57,8 +49,15 @@ def test_full(run_in_tmpdir):
 
     op = openmc.deplete.OpenMCOperator(geometry, settings)
 
+    # Power and timesteps
+    dt1 = 15.*24*60*60  # 15 days
+    dt2 = 1.5*30*24*60*60  # 1.5 months
+    N = floor(dt2/dt1)
+    dt = np.full(N, dt1)
+    power = 2.337e15*4*JOULE_PER_EV*1e6  # MeV/second cm from CASMO
+
     # Perform simulation using the predictor algorithm
-    openmc.deplete.integrator.predictor(op)
+    openmc.deplete.integrator.predictor(op, dt, power)
 
     # Get path to test and reference results
     path_test = settings.output_dir / 'depletion_results.h5'

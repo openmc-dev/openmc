@@ -45,8 +45,6 @@ class OpenMCSettings(Settings):
 
     Attributes
     ----------
-    dt_vec : numpy.array
-        Array of time steps to in units of [s]
     output_dir : pathlib.Path
         Path to output directory to save results.
     chain_file : str
@@ -68,8 +66,8 @@ class OpenMCSettings(Settings):
 
     """
 
-    _depletion_attrs = {'dt_vec', '_output_dir', 'chain_file', 'dilute_initial',
-                        'round_number', 'power'}
+    _depletion_attrs = {'_output_dir', 'chain_file', 'dilute_initial',
+                        'round_number'}
 
     def __init__(self):
         super().__init__()
@@ -152,13 +150,15 @@ class OpenMCOperator(Operator):
         self.reaction_rates = ReactionRates(
             self.local_mats, self._burnable_nucs, index_rx)
 
-    def __call__(self, vec, print_out=True):
+    def __call__(self, vec, power, print_out=True):
         """Runs a simulation.
 
         Parameters
         ----------
         vec : list of numpy.array
             Total atoms to be used in function.
+        power : float
+            Power of the reactor in [W]
         print_out : bool, optional
             Whether or not to print out time.
 
@@ -187,7 +187,7 @@ class OpenMCOperator(Operator):
         time_openmc = time.time()
 
         # Extract results
-        op_result = self._unpack_tallies_and_normalize()
+        op_result = self._unpack_tallies_and_normalize(power)
 
         if comm.rank == 0:
             time_unpack = time.time()
@@ -424,13 +424,18 @@ class OpenMCOperator(Operator):
         self._tally.scores = self.chain.reactions
         self._tally.filters = [mat_filter]
 
-    def _unpack_tallies_and_normalize(self):
+    def _unpack_tallies_and_normalize(self, power):
         """Unpack tallies from OpenMC and return an operator result
 
         This method uses OpenMC's C API bindings to determine the k-effective
         value and reaction rates from the simulation. The reaction rates are
         normalized by the user-specified power, summing the product of the
         fission reaction rate times the fission Q value for each material.
+
+        Parameters
+        ----------
+        power : float
+            Power of the reactor in [W]
 
         Returns
         -------
@@ -509,10 +514,10 @@ class OpenMCOperator(Operator):
         energy = comm.allreduce(energy)
 
         # Determine power in eV/s
-        power = self.settings.power / JOULE_PER_EV
+        power /= JOULE_PER_EV
 
         # Scale reaction rates to obtain units of reactions/sec
-        rates[:, :, :] *= power / energy
+        rates *= power / energy
 
         return OperatorResult(k_combined, rates)
 

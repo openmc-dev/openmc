@@ -190,7 +190,7 @@ class OpenMCOperator(Operator):
         openmc.reset_auto_ids()
 
         # Update status
-        self._set_density(vec)
+        self.number.set_density(vec)
 
         time_start = time.time()
 
@@ -473,22 +473,6 @@ class OpenMCOperator(Operator):
         tally_dep = openmc.capi.Tally(1)
         tally_dep.scores = self.chain.reactions
         tally_dep.filters = [mat_filter]
-
-    def _set_density(self, total_density):
-        """Sets density.
-
-        Sets the density in the exact same order as total_density_list outputs,
-        allowing for internal consistency
-
-        Parameters
-        ----------
-        total_density : list of numpy.ndarray
-            Total atoms.
-
-        """
-        # Fill in values
-        for i in range(self.number.n_mat):
-            self.number.set_mat_slice(i, total_density[i])
 
     def _unpack_tallies_and_normalize(self):
         """Unpack tallies from OpenMC and return an operator result

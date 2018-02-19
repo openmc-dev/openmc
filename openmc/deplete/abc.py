@@ -23,8 +23,8 @@ class Settings(object):
     output_dir : pathlib.Path
         Path to output directory to save results.
     chain_file : str
-        Path to the depletion chain xml file.  Defaults to the
-        :envvar:`OPENDEPLETE_CHAIN` environment variable if it exists.
+        Path to the depletion chain XML file.  Defaults to the
+        :envvar:`OPENMC_DEPLETE_CHAIN` environment variable if it exists.
     dilute_initial : float
         Initial atom density to add for nuclides that are zero in initial
         condition to ensure they exist in the decay chain.  Only done for
@@ -37,7 +37,7 @@ class Settings(object):
     """
     def __init__(self):
         try:
-            self.chain_file = os.environ["OPENDEPLETE_CHAIN"]
+            self.chain_file = os.environ["OPENMC_DEPLETE_CHAIN"]
         except KeyError:
             self.chain_file = None
         self.dt_vec = None

@@ -9,7 +9,28 @@ import math
 
 import numpy as np
 import openmc
-from openmc.deplete import density_to_mat
+
+
+def density_to_mat(dens_dict):
+    """Generates an OpenMC material from a cell ID and self.number_density.
+
+    Parameters
+    ----------
+    dens_dict : dict
+        Dictionary mapping nuclide names to densities
+
+    Returns
+    -------
+    openmc.Material
+        The OpenMC material filled with nuclides.
+
+    """
+    mat = openmc.Material()
+    for key in dens_dict:
+        mat.add_nuclide(key, 1.0e-24*dens_dict[key])
+    mat.set_density('sum')
+
+    return mat
 
 
 def generate_initial_number_density():

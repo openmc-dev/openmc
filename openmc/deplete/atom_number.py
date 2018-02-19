@@ -18,7 +18,7 @@ class AtomNumber(object):
     nuc_to_ind : OrderedDict of str to int
         A dictionary mapping nuclide name as string to index.
     volume : OrderedDict of int to float
-        Volume of geometry.
+        Volume of each material in [cm^3]
     n_nuc_burn : int
         Number of nuclides to be burned.
 

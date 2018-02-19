@@ -397,6 +397,9 @@ class OpenMCOperator(Operator):
             number_i = comm.bcast(self.number, root=rank)
 
             for mat in number_i.mat_to_ind:
+                if number_i.mat_to_ind[mat] >= number_i.n_mat_burn:
+                    continue
+
                 nuclides = []
                 densities = []
                 for nuc in number_i.nuc_to_ind:

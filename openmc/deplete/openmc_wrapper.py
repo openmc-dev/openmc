@@ -278,24 +278,6 @@ class OpenMCOperator(Operator):
             number = density * 1.0e24
             self.number.set_atom_density(mat_id, nuclide, number)
 
-    def form_matrix(self, y, mat):
-        """Forms the depletion matrix.
-
-        Parameters
-        ----------
-        y : numpy.ndarray
-            An array representing reaction rates for this material.
-        mat : int
-            Material id.
-
-        Returns
-        -------
-        scipy.sparse.csr_matrix
-            Sparse matrix representing the depletion matrix.
-        """
-
-        return copy.deepcopy(self.chain.form_matrix(y[mat, :, :]))
-
     def initial_condition(self):
         """Performs final setup and returns initial condition.
 

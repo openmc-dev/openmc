@@ -133,27 +133,5 @@ class Operator(metaclass=ABCMeta):
 
         pass
 
-    @abstractmethod
-    def form_matrix(self, y, mat):
-        """Forms the f(y) matrix in y' = f(y)y.
-
-        Nominally a depletion matrix, this is abstracted on the off chance
-        that the function f has nothing to do with depletion at all.
-
-        Parameters
-        ----------
-        y : numpy.ndarray
-            An array representing y.
-        mat : int
-            Material id.
-
-        Returns
-        -------
-        scipy.sparse.csr_matrix
-            Sparse matrix representing f(y).
-        """
-
-        pass
-
     def finalize(self):
         pass

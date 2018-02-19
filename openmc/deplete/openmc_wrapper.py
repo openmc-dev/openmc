@@ -104,7 +104,7 @@ class OpenMCOperator(Operator):
     ----------
     geometry : openmc.Geometry
         The OpenMC geometry object.
-    settings : OpenMCSettings
+    settings : openmc.deplete.OpenMCSettings
         Settings object.
 
     Attributes
@@ -130,8 +130,8 @@ class OpenMCOperator(Operator):
         Number of nuclides considered in the decay chain.
     mat_tally_ind : OrderedDict of str to int
         Dictionary mapping material ID to index in tally.
-    """
 
+    """
     def __init__(self, geometry, settings):
         super().__init__(settings)
 
@@ -170,8 +170,10 @@ class OpenMCOperator(Operator):
         # Extract number densities from the geometry
         self.extract_number(mat_burn, mat_not_burn, volume, nuc_dict)
 
-        # Create reaction rate tables
-        self.initialize_reaction_rates()
+        # Create reaction rates array
+        index_rx = {rx: i for i, rx in enumerate(self.chain.reactions)}
+        self.reaction_rates = ReactionRates(
+            self.burn_mat_to_ind, self.burn_nuc_to_ind, index_rx)
 
     def __call__(self, vec, print_out=True):
         """Runs a simulation.
@@ -243,35 +245,17 @@ class OpenMCOperator(Operator):
         volume = OrderedDict()
 
         # Iterate once through the geometry to get dictionaries
-        cells = self.geometry.get_all_material_cells()
-        for cell in cells.values():
-            if isinstance(cell.fill, openmc.Material):
-                mat = cell.fill
-                for nuclide in mat.get_nuclide_densities():
-                    nuc_set.add(nuclide)
-                if mat.depletable:
-                    mat_burn.add(str(mat.id))
-                    volume[str(mat.id)] = mat.volume
-                else:
-                    mat_not_burn.add(str(mat.id))
+        for mat in self.geometry.get_all_materials().values():
+            for nuclide in mat.get_nuclide_densities():
+                nuc_set.add(nuclide)
+            if mat.depletable:
+                mat_burn.add(str(mat.id))
+                if mat.volume is None:
+                    raise RuntimeError("Volume not specified for depletable "
+                                       "material with ID={}.".format(mat.id))
+                volume[str(mat.id)] = mat.volume
             else:
-                for mat in cell.fill:
-                    for nuclide in mat.get_nuclide_densities():
-                        nuc_set.add(nuclide)
-                    if mat.depletable:
-                        mat_burn.add(str(mat.id))
-                        volume[str(mat.id)] = mat.volume
-                    else:
-                        mat_not_burn.add(str(mat.id))
-
-        need_vol = []
-
-        for mat_id in volume:
-            if volume[mat_id] is None:
-                need_vol.append(mat_id)
-
-        if need_vol:
-            exit("Need volumes for materials: " + str(need_vol))
+                mat_not_burn.add(str(mat.id))
 
         # Sort the sets
         mat_burn = sorted(mat_burn, key=int)
@@ -334,18 +318,13 @@ class OpenMCOperator(Operator):
 
         if self.settings.dilute_initial != 0.0:
             for nuc in self.burn_nuc_to_ind:
-                self.number.set_atom_density(np.s_[:], nuc, self.settings.dilute_initial)
+                self.number.set_atom_density(np.s_[:], nuc,
+                                             self.settings.dilute_initial)
 
         # Now extract the number densities and store
-        cells = self.geometry.get_all_material_cells()
-        for cell in cells.values():
-            if isinstance(cell.fill, openmc.Material):
-                if str(cell.fill.id) in mat_dict:
-                    self.set_number_from_mat(cell.fill)
-            else:
-                for mat in cell.fill:
-                    if str(mat.id) in mat_dict:
-                        self.set_number_from_mat(mat)
+        for mat in self.geometry.get_all_materials().values():
+            if str(mat.id) in mat_dict:
+                self.set_number_from_mat(mat)
 
     def set_number_from_mat(self, mat):
         """Extracts material and number densities from openmc.Material
@@ -363,14 +342,6 @@ class OpenMCOperator(Operator):
         for nuclide in nuc_dens:
             number = nuc_dens[nuclide][1] * 1.0e24
             self.number.set_atom_density(mat_id, nuclide, number)
-
-    def initialize_reaction_rates(self):
-        """Create reaction rates object. """
-        # Create dictionary to map reactions to indices
-        index_rx = {rx: i for i, rx in enumerate(self.chain.reactions)}
-
-        self.reaction_rates = ReactionRates(
-            self.burn_mat_to_ind, self.burn_nuc_to_ind, index_rx)
 
     def form_matrix(self, y, mat):
         """Forms the depletion matrix.

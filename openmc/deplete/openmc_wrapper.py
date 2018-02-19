@@ -5,6 +5,7 @@ This module implements the depletion -> OpenMC linkage.
 
 import copy
 from collections import OrderedDict
+from itertools import chain
 import os
 import random
 import sys
@@ -126,10 +127,8 @@ class OpenMCOperator(Operator):
     burn_nuc_to_ind : OrderedDict of str to int
         Dictionary mapping nuclide name (as a string) to an index in
         reaction_rates.
-    n_nuc : int
-        Number of nuclides considered in the decay chain.
-    mat_tally_ind : OrderedDict of str to int
-        Dictionary mapping material ID to index in tally.
+    burnable_mats : list of str
+        All burnable material IDs
 
     """
     def __init__(self, geometry, settings):
@@ -138,7 +137,6 @@ class OpenMCOperator(Operator):
         self.geometry = geometry
         self.number = None
         self.participating_nuclides = None
-        self.reaction_rates = None
         self.burn_mat_to_ind = OrderedDict()
         self.burn_nuc_to_ind = None
 
@@ -148,19 +146,18 @@ class OpenMCOperator(Operator):
         # Clear out OpenMC, create task lists, distribute
         if comm.rank == 0:
             openmc.reset_auto_ids()
-            mat_burn_list, volume, self.mat_tally_ind, \
-                nuc_dict = self.extract_mat_ids()
+            mat_burn_list, volume, nuc_dict = self.extract_mat_ids()
         else:
             # Dummy variables
             mat_burn_list = None
             volume = None
             nuc_dict = None
-            self.mat_tally_ind = None
 
-        mat_burn = comm.scatter(mat_burn_list)
+        mat_burn_list = comm.bcast(mat_burn_list)
         nuc_dict = comm.bcast(nuc_dict)
         volume = comm.bcast(volume)
-        self.mat_tally_ind = comm.bcast(self.mat_tally_ind)
+        mat_burn = mat_burn_list[comm.rank]
+        self.burnable_mats = list(chain(*mat_burn_list))
 
         # Load participating nuclides
         self.load_participating()
@@ -230,8 +227,6 @@ class OpenMCOperator(Operator):
             List of non-burnable materials indexed by rank.
         volume : OrderedDict of str to float
             Volume of each cell
-        mat_tally_ind : OrderedDict of str to int
-            Dictionary mapping material ID to index in tally.
         nuc_dict : OrderedDict of str to int
             Nuclides in order of how they'll appear in the simulation.
         """
@@ -266,11 +261,7 @@ class OpenMCOperator(Operator):
         # Decompose geometry
         mat_burn_lists = _chunks(mat_burn, comm.size)
 
-        mat_tally_ind = OrderedDict()
-        for i, mat in enumerate(mat_burn):
-            mat_tally_ind[mat] = i
-
-        return mat_burn_lists, volume, mat_tally_ind, nuc_dict
+        return mat_burn_lists, volume, nuc_dict
 
     def extract_number(self, mat_burn, volume, nuc_dict):
         """Construct self.number read from geometry
@@ -463,7 +454,7 @@ class OpenMCOperator(Operator):
         """
         # Create tallies for depleting regions
         materials = [openmc.capi.materials[int(i)]
-                     for i in self.mat_tally_ind]
+                     for i in self.burnable_mats]
         mat_filter = openmc.capi.MaterialFilter(materials, 1)
 
         # Set up a tally that has a material filter covering each depletable
@@ -524,7 +515,7 @@ class OpenMCOperator(Operator):
         k_combined = openmc.capi.keff()[0]
 
         # Extract tally bins
-        materials = list(self.mat_tally_ind.keys())
+        materials = self.burnable_mats
         nuclides = openmc.capi.tallies[1].nuclides
 
         # Form fast map
@@ -639,11 +630,6 @@ class OpenMCOperator(Operator):
                         self.burn_nuc_to_ind[name] = nuc_ind
                         nuc_ind += 1
 
-    @property
-    def n_nuc(self):
-        """Number of nuclides considered in the decay chain."""
-        return len(self.chain)
-
     def get_results_info(self):
         """Returns volume list, cell lists, and nuc lists.
 
@@ -655,10 +641,10 @@ class OpenMCOperator(Operator):
             A list of all nuclide names. Used for sorting the simulation.
         burn_list : list of int
             A list of all cell IDs to be burned.  Used for sorting the simulation.
-        full_burn_dict : OrderedDict of str to int
-            Maps cell name to index in global geometry.
-        """
+        full_burn_list : list
+            List of all burnable material IDs
 
+        """
         nuc_list = self.number.burn_nuc_list
         burn_list = list(self.burn_mat_to_ind)
 
@@ -670,7 +656,7 @@ class OpenMCOperator(Operator):
         volume_list = comm.allgather(volume)
         volume = {k: v for d in volume_list for k, v in d.items()}
 
-        return volume, nuc_list, burn_list, self.mat_tally_ind
+        return volume, nuc_list, burn_list, self.burnable_mats
 
 
 def density_to_mat(dens_dict):

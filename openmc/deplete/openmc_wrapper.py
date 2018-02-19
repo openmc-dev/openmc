@@ -657,24 +657,3 @@ class OpenMCOperator(Operator):
         volume = {k: v for d in volume_list for k, v in d.items()}
 
         return volume, nuc_list, burn_list, self.burnable_mats
-
-
-def density_to_mat(dens_dict):
-    """Generates an OpenMC material from a cell ID and self.number_density.
-
-    Parameters
-    ----------
-    m_id : int
-        Cell ID.
-    Returns
-    -------
-    openmc.Material
-        The OpenMC material filled with nuclides.
-    """
-
-    mat = openmc.Material()
-    for key in dens_dict:
-        mat.add_nuclide(key, 1.0e-24*dens_dict[key])
-    mat.set_density('sum')
-
-    return mat

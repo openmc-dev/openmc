@@ -7,60 +7,55 @@ import numpy as np
 
 
 class AtomNumber(object):
-    """AtomNumber module.
-
-    An ndarray to store atom densities with string, integer, or slice indexing.
+    """Stores local material compositions (atoms of each nuclide).
 
     Parameters
     ----------
-    mat_to_ind : OrderedDict of str to int
-        A dictionary mapping material ID as string to index.
-    nuc_to_ind : OrderedDict of str to int
-        A dictionary mapping nuclide name as string to index.
-    volume : OrderedDict of int to float
+    local_mats : list of str
+        Material IDs
+    nuclides : list of str
+        Nuclides to be tracked
+    volume : dict
         Volume of each material in [cm^3]
     n_nuc_burn : int
         Number of nuclides to be burned.
 
     Attributes
     ----------
-    mat_to_ind : OrderedDict of str to int
-        A dictionary mapping cell ID as string to index.
-    nuc_to_ind : OrderedDict of str to int
-        A dictionary mapping nuclide name as string to index.
-    volume : numpy.array
-        Volume of geometry indexed by mat_to_ind.  If a volume is not found,
-        it defaults to 1 so that reading density still works correctly.
+    index_mat : dict
+        A dictionary mapping material ID as string to index.
+    index_nuc : dict
+        A dictionary mapping nuclide name to index.
+    volume : numpy.ndarray
+        Volume of each material in [cm^3]. If a volume is not found, it defaults
+        to 1 so that reading density still works correctly.
+    number : numpy.ndarray
+        Array storing total atoms for each material/nuclide
+    materials : list of str
+        Material IDs as strings
+    nuclides : list of str
+        All nuclide names
+    burnable_nuclides : list of str
+        Burnable nuclides names. Used for sorting the simulation.
     n_nuc_burn : int
-        Number of nuclides to be burned.
-    n_mat : int
-        Number of materials.
+        Number of burnable nuclides.
     n_nuc : int
-        Number of nucs.
-    number : numpy.array
-        Array storing total atoms indexed by the above dictionaries.
-    burn_nuc_list : list of str
-        A list of all nuclide material names. Used for sorting the simulation.
+        Number of nuclidess.
 
     """
-    def __init__(self, mat_to_ind, nuc_to_ind, volume, n_nuc_burn):
+    def __init__(self, local_mats, nuclides, volume, n_nuc_burn):
+        self.index_mat = {mat: i for i, mat in enumerate(local_mats)}
+        self.index_nuc = {nuc: i for i, nuc in enumerate(nuclides)}
 
-        self.mat_to_ind = mat_to_ind
-        self.nuc_to_ind = nuc_to_ind
-
-        self.volume = np.ones(len(mat_to_ind))
-
-        for mat in volume:
-            if mat in self.mat_to_ind:
-                ind = self.mat_to_ind[mat]
-                self.volume[ind] = volume[mat]
+        self.volume = np.ones(len(local_mats))
+        for mat, val in volume.items():
+            if mat in self.index_mat:
+                ind = self.index_mat[mat]
+                self.volume[ind] = val
 
         self.n_nuc_burn = n_nuc_burn
 
-        self.number = np.zeros((self.n_mat, self.n_nuc))
-
-        # For performance, create storage for burn_nuc_list, burn_mat_list
-        self._burn_nuc_list = None
+        self.number = np.zeros((len(local_mats), self.n_nuc))
 
     def __getitem__(self, pos):
         """Retrieves total atom number from AtomNumber.
@@ -80,9 +75,9 @@ class AtomNumber(object):
 
         mat, nuc = pos
         if isinstance(mat, str):
-            mat = self.mat_to_ind[mat]
+            mat = self.index_mat[mat]
         if isinstance(nuc, str):
-            nuc = self.nuc_to_ind[nuc]
+            nuc = self.index_nuc[nuc]
 
         return self.number[mat, nuc]
 
@@ -101,37 +96,30 @@ class AtomNumber(object):
         """
         mat, nuc = pos
         if isinstance(mat, str):
-            mat = self.mat_to_ind[mat]
+            mat = self.index_mat[mat]
         if isinstance(nuc, str):
-            nuc = self.nuc_to_ind[nuc]
+            nuc = self.index_nuc[nuc]
 
         self.number[mat, nuc] = val
 
     @property
-    def n_mat(self):
-        """Number of materials."""
-        return len(self.mat_to_ind)
+    def materials(self):
+        return self.index_mat.keys()
+
+    @property
+    def nuclides(self):
+        return self.index_nuc.keys()
 
     @property
     def n_nuc(self):
         """Number of nuclides."""
-        return len(self.nuc_to_ind)
+        return len(self.index_nuc)
 
     @property
-    def burn_nuc_list(self):
-        """burn_nuc_list : list of str
-        A list of all nuclide material names. Used for sorting the simulation.
-        """
-
-        if self._burn_nuc_list is None:
-            self._burn_nuc_list = [None] * self.n_nuc_burn
-
-            for nuc in self.nuc_to_ind:
-                ind = self.nuc_to_ind[nuc]
-                if ind < self.n_nuc_burn:
-                    self._burn_nuc_list[ind] = nuc
-
-        return self._burn_nuc_list
+    def burnable_nuclides(self):
+        """All burnable nuclide names. Used for sorting the simulation."""
+        return [nuc for nuc, ind in self.index_nuc.items()
+                if ind < self.n_nuc_burn]
 
     def get_atom_density(self, mat, nuc):
         """Accesses atom density instead of total number.
@@ -150,9 +138,9 @@ class AtomNumber(object):
 
         """
         if isinstance(mat, str):
-            mat = self.mat_to_ind[mat]
+            mat = self.index_mat[mat]
         if isinstance(nuc, str):
-            nuc = self.nuc_to_ind[nuc]
+            nuc = self.index_nuc[nuc]
 
         return self[mat, nuc] / self.volume[mat]
 
@@ -170,9 +158,9 @@ class AtomNumber(object):
 
         """
         if isinstance(mat, str):
-            mat = self.mat_to_ind[mat]
+            mat = self.index_mat[mat]
         if isinstance(nuc, str):
-            nuc = self.nuc_to_ind[nuc]
+            nuc = self.index_nuc[nuc]
 
         self[mat, nuc] = val * self.volume[mat]
 
@@ -191,7 +179,7 @@ class AtomNumber(object):
 
         """
         if isinstance(mat, str):
-            mat = self.mat_to_ind[mat]
+            mat = self.index_mat[mat]
 
         return self[mat, :self.n_nuc_burn]
 
@@ -207,7 +195,7 @@ class AtomNumber(object):
 
         """
         if isinstance(mat, str):
-            mat = self.mat_to_ind[mat]
+            mat = self.index_mat[mat]
 
         self[mat, :self.n_nuc_burn] = val
 
@@ -223,5 +211,5 @@ class AtomNumber(object):
             Total atoms.
 
         """
-        for i in range(self.n_mat):
-            self.set_mat_slice(i, total_density[i])
+        for i, density_slice in enumerate(total_density):
+            self.set_mat_slice(i, density_slice)

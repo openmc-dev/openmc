@@ -346,40 +346,6 @@ class Results(object):
         return results
 
 
-def get_dict(number):
-    """Given an operator nested dictionary, output indexing dictionaries.
-
-    These indexing dictionaries map mat IDs and nuclide names to indices
-    inside of Results.data.
-
-    Parameters
-    ----------
-    number : AtomNumber
-        The object to extract dictionaries from
-
-    Returns
-    -------
-    mat_to_ind : OrderedDict of str to int
-        Maps mat strings to index in array.
-    nuc_to_ind : OrderedDict of str to int
-        Maps nuclide strings to index in array.
-    """
-    mat_to_ind = OrderedDict()
-    nuc_to_ind = OrderedDict()
-
-    for nuc in number.nuc_to_ind:
-        nuc_ind = number.nuc_to_ind[nuc]
-        if nuc_ind < number.n_nuc_burn:
-            nuc_to_ind[nuc] = nuc_ind
-
-    for mat in number.mat_to_ind:
-        mat_ind = number.mat_to_ind[mat]
-        if mat_ind < number.n_mat_burn:
-            mat_to_ind[mat] = mat_ind
-
-    return mat_to_ind, nuc_to_ind
-
-
 def write_results(result, filename, index):
     """Outputs result to an .hdf5 file.
 

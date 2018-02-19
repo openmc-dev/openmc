@@ -15,8 +15,8 @@ class ReactionRates(np.ndarray):
     ----------
     index_mat : OrderedDict of str to int
         A dictionary mapping material ID as string to index.
-    index_nuc : OrderedDict of str to int
-        A dictionary mapping nuclide name as string to index.
+    nuclides : list of str
+        Depletable nuclides
     index_rx : OrderedDict of str to int
         A dictionary mapping reaction name as string to index.
 
@@ -36,15 +36,15 @@ class ReactionRates(np.ndarray):
         Number of reactions.
 
     """
-    def __new__(cls, index_mat, index_nuc, index_rx):
+    def __new__(cls, index_mat, nuclides, index_rx):
         # Create appropriately-sized zeroed-out ndarray
-        shape = (len(index_mat), len(index_nuc), len(index_rx))
+        shape = (len(index_mat), len(nuclides), len(index_rx))
         obj = super().__new__(cls, shape)
         obj[:] = 0.0
 
         # Add mapping attributes
         obj.index_mat = index_mat
-        obj.index_nuc = index_nuc
+        obj.index_nuc = {nuc: i for i, nuc in enumerate(nuclides)}
         obj.index_rx = index_rx
 
         return obj

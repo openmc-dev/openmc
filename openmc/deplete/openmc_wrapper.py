@@ -123,10 +123,6 @@ class OpenMCOperator(Operator):
         Reaction rates from the last operator step.
     burn_mat_to_ind : OrderedDict of str to int
         Dictionary mapping material ID (as a string) to an index in reaction_rates.
-    burn_nuc_to_ind : OrderedDict of str to int
-        Dictionary mapping nuclide name (as a string) to an index in
-        reaction_rates. Consists of all nuclides with neutron data and appearing
-        in the depletion chain.
     burnable_mats : list of str
         All burnable material IDs
 
@@ -144,7 +140,9 @@ class OpenMCOperator(Operator):
         local_mats = _distribute(self.burnable_mats)
 
         # Determine which nuclides have incident neutron data
-        self._load_participating()
+        self.nuclides_with_data = self._get_nuclides_with_data()
+        self._burnable_nucs = [nuc for nuc in self.nuclides_with_data
+                               if nuc in self.chain]
 
         # Extract number densities from the geometry
         self._extract_number(local_mats, volume, nuc_dict)
@@ -152,7 +150,7 @@ class OpenMCOperator(Operator):
         # Create reaction rates array
         index_rx = {rx: i for i, rx in enumerate(self.chain.reactions)}
         self.reaction_rates = ReactionRates(
-            self.burn_mat_to_ind, self.burn_nuc_to_ind, index_rx)
+            self.burn_mat_to_ind, self._burnable_nucs, index_rx)
 
     def __call__(self, vec, print_out=True):
         """Runs a simulation.
@@ -264,7 +262,7 @@ class OpenMCOperator(Operator):
                                  len(self.chain))
 
         if self.settings.dilute_initial != 0.0:
-            for nuc in self.burn_nuc_to_ind:
+            for nuc in self._burnable_nucs:
                 self.number.set_atom_density(np.s_[:], nuc,
                                              self.settings.dilute_initial)
 
@@ -545,7 +543,7 @@ class OpenMCOperator(Operator):
 
         return OperatorResult(k_combined, rates)
 
-    def _load_participating(self):
+    def _get_nuclides_with_data(self):
         """Loads a cross_sections.xml file to find participating nuclides.
 
         This allows for nuclides that are important in the decay chain but not
@@ -560,7 +558,7 @@ class OpenMCOperator(Operator):
         except KeyError:
             filename = None
 
-        self.nuclides_with_data = set()
+        nuclides = set()
 
         try:
             tree = ET.parse(filename)
@@ -572,9 +570,6 @@ class OpenMCOperator(Operator):
             raise IOError(msg)
 
         root = tree.getroot()
-        self.burn_nuc_to_ind = OrderedDict()
-        nuc_ind = 0
-
         for nuclide_node in root.findall('library'):
             mats = nuclide_node.get('materials')
             if not mats:
@@ -582,11 +577,10 @@ class OpenMCOperator(Operator):
             for name in mats.split():
                 # Make a burn list of the union of nuclides in cross_sections.xml
                 # and nuclides in depletion chain.
-                if name not in self.nuclides_with_data:
-                    self.nuclides_with_data.add(name)
-                    if name in self.chain:
-                        self.burn_nuc_to_ind[name] = nuc_ind
-                        nuc_ind += 1
+                if name not in nuclides:
+                    nuclides.add(name)
+
+        return nuclides
 
     def get_results_info(self):
         """Returns volume list, cell lists, and nuc lists.

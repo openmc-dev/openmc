@@ -21,13 +21,15 @@ class DummyGeometry(Operator):
     def __init__(self, settings):
         super().__init__(settings)
 
-    def __call__(self, vec, print_out=False):
+    def __call__(self, vec, power, print_out=False):
         """Evaluates F(y)
 
         Parameters
         ----------
         vec : list of numpy.array
             Total atoms to be used in function.
+        power : float
+            Power in [W]
         print_out : bool, optional, ignored
             Whether or not to print out time.
 

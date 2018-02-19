@@ -328,15 +328,7 @@ class Chain(object):
         chain = cls()
 
         # Load XML tree
-        try:
-            root = ET.parse(filename)
-        except Exception:
-            if filename is None:
-                msg = ("No chain specified, either manually or in environment "
-                       "variable OPENMC_DEPLETE_CHAIN.")
-            else:
-                msg = 'Decay chain "{}" is invalid.'.format(filename)
-            raise IOError(msg)
+        root = ET.parse(str(filename))
 
         for i, nuclide_elem in enumerate(root.findall('nuclide_table')):
             nuc = Nuclide.from_xml(nuclide_elem)
@@ -367,10 +359,10 @@ class Chain(object):
 
         tree = ET.ElementTree(root_elem)
         if _have_lxml:
-            tree.write(filename, encoding='utf-8', pretty_print=True)
+            tree.write(str(filename), encoding='utf-8', pretty_print=True)
         else:
             clean_xml_indentation(root_elem)
-            tree.write(filename, encoding='utf-8')
+            tree.write(str(filename), encoding='utf-8')
 
     def form_matrix(self, rates):
         """Forms depletion matrix.

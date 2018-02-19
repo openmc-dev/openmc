@@ -14,10 +14,8 @@ from tests import dummy_geometry
 def test_predictor(run_in_tmpdir):
     """Integral regression test of integrator algorithm using predictor/corrector"""
 
-    settings = openmc.deplete.Settings()
-    settings.output_dir = "test_integrator_regression"
-
-    op = dummy_geometry.DummyGeometry(settings)
+    op = dummy_geometry.DummyGeometry()
+    op.output_dir = "test_integrator_regression"
 
     # Perform simulation using the predictor algorithm
     dt = [0.75, 0.75]
@@ -25,7 +23,7 @@ def test_predictor(run_in_tmpdir):
     openmc.deplete.predictor(op, dt, power, print_out=False)
 
     # Load the files
-    res = results.read_results(settings.output_dir / "depletion_results.h5")
+    res = results.read_results(op.output_dir / "depletion_results.h5")
 
     _, y1 = utilities.evaluate_single_nuclide(res, "1", "1")
     _, y2 = utilities.evaluate_single_nuclide(res, "1", "2")

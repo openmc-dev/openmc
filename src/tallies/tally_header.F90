@@ -339,6 +339,8 @@ contains
         j = FILTER_AZIMUTHAL
       type is (EnergyFunctionFilter)
         j = FILTER_ENERGYFUNCTION
+      type is (ParticleFilter)
+        j = FILTER_PARTICLE
       end select
       this % find_filter(j) = i
     end do

@@ -45,6 +45,9 @@ class Settings(object):
         weight assigned to particles that are not killed after Russian
         roulette. Value of energy should be a float indicating energy in eV
         below which particle type will be killed.
+    electron_treatment : {'led', 'ttb'}
+        Whether to deposit all energy from electrons locally ('led') or create
+        secondary bremsstrahlung photons ('ttb').
     energy_mode : {'continuous-energy', 'multi-group'}
         Set whether the calculation should be continuous-energy or multi-group.
     entropy_mesh : openmc.Mesh
@@ -185,6 +188,7 @@ class Settings(object):
 
         self._confidence_intervals = None
         self._cross_sections = None
+        self._electron_treatment = None
         self._multipole_library = None
         self._photon_transport = None
         self._ptables = None
@@ -281,6 +285,10 @@ class Settings(object):
     @property
     def cross_sections(self):
         return self._cross_sections
+
+    @property
+    def electron_treatment(self):
+        return self._electron_treatment
 
     @property
     def multipole_library(self):
@@ -546,6 +554,11 @@ class Settings(object):
                       'should defined instead.', DeprecationWarning)
         cv.check_type('cross sections', cross_sections, string_types)
         self._cross_sections = cross_sections
+
+    @electron_treatment.setter
+    def electron_treatment(self, electron_treatment):
+        cv.check_value('electron treatment', electron_treatment, ['led', 'ttb'])
+        self._electron_treatment = electron_treatment
 
     @multipole_library.setter
     def multipole_library(self, multipole_library):
@@ -931,6 +944,11 @@ class Settings(object):
             element = ET.SubElement(root, "cross_sections")
             element.text = str(self._cross_sections)
 
+    def _create_electron_treatment_subelement(self, root):
+        if self._electron_treatment is not None:
+            element = ET.SubElement(root, "electron_treatment")
+            element.text = str(self._electron_treatment)
+
     def _create_multipole_library_subelement(self, root):
         if self._multipole_library is not None:
             element = ET.SubElement(root, "multipole_library")
@@ -1121,6 +1139,7 @@ class Settings(object):
         self._create_confidence_intervals(root_element)
         self._create_cross_sections_subelement(root_element)
         self._create_multipole_library_subelement(root_element)
+        self._create_electron_treatment_subelement(root_element)
         self._create_energy_mode_subelement(root_element)
         self._create_max_order_subelement(root_element)
         self._create_photon_transport_subelement(root_element)

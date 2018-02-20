@@ -302,10 +302,12 @@ contains
   subroutine sample_electron_reaction(p)
     type(Particle), intent(inout) :: p
 
+    real(8) :: E_lost  ! energy lost to bremsstrahlung photons
+
     ! TODO: create reaction types
 
     if (electron_treatment == ELECTRON_TTB) then
-      call thick_target_bremsstrahlung(p)
+      call thick_target_bremsstrahlung(p, E_lost)
     end if
 
     p % E = ZERO
@@ -324,16 +326,17 @@ contains
   subroutine sample_positron_reaction(p)
     type(Particle), intent(inout) :: p
 
-    real(8) :: mu           ! scattering cosine
-    real(8) :: phi          ! azimuthal angle
-    real(8) :: uvw(3)       ! new direction
+    real(8) :: mu     ! scattering cosine
+    real(8) :: phi    ! azimuthal angle
+    real(8) :: uvw(3) ! new direction
+
+    real(8) :: E_lost  ! energy lost to bremsstrahlung photons
 
     ! TODO: create reaction types
 
     if (electron_treatment == ELECTRON_TTB) then
-      ! TODO: implement thick-target bremsstrahlung model
-      call fatal_error("Thick-target bremsstrahlung treatment of positrons &
-           &is not yet implemented.")
+      ! TODO: implement thick-target bremsstrahlung model for positrons
+      call thick_target_bremsstrahlung(p, E_lost)
     end if
 
     ! Sample angle isotropically

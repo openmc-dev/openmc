@@ -76,15 +76,9 @@ class Results(object):
 
         """
         self.volume = copy.deepcopy(volume)
-        self.nuc_to_ind = OrderedDict()
-        self.mat_to_ind = OrderedDict()
+        self.nuc_to_ind = {nuc: i for i, nuc in enumerate(nuc_list)}
+        self.mat_to_ind = {mat: i for i, mat in enumerate(burn_list)}
         self.mat_to_hdf5_ind = {mat: i for i, mat in enumerate(full_burn_list)}
-
-        for i, mat in enumerate(burn_list):
-            self.mat_to_ind[mat] = i
-
-        for i, nuc in enumerate(nuc_list):
-            self.nuc_to_ind[nuc] = i
 
         # Create storage array
         self.data = np.zeros((stages, self.n_mat, self.n_nuc))
@@ -123,8 +117,8 @@ class Results(object):
         -------
         float
             The atoms for stage, mat, nuc
-        """
 
+        """
         stage, mat, nuc = pos
         if isinstance(mat, str):
             mat = self.mat_to_ind[mat]
@@ -145,8 +139,8 @@ class Results(object):
 
         val : float
             The value to set data to.
-        """
 
+        """
         stage, mat, nuc = pos
         if isinstance(mat, str):
             mat = self.mat_to_ind[mat]
@@ -162,8 +156,8 @@ class Results(object):
         ----------
         handle : h5py.File or h5py.Group
             An hdf5 file or group type to store this in.
-        """
 
+        """
         # Create and save the 5 dictionaries:
         # quantities
         #   self.mat_to_ind -> self.volume (TODO: support for changing volumes)
@@ -234,8 +228,8 @@ class Results(object):
             An hdf5 file or group type to store this in.
         index : int
             What step is this?
-        """
 
+        """
         if "/number" not in handle:
             comm.barrier()
             self.create_hdf5(handle)
@@ -299,6 +293,7 @@ class Results(object):
             An hdf5 file or group type to load from.
         index : int
             What step is this?
+
         """
         results = cls()
 
@@ -357,8 +352,8 @@ def write_results(result, filename, index):
         Target filename.
     index : int
         What step is this?
-    """
 
+    """
     if have_mpi and h5py.get_config().mpi:
         kwargs = {'driver': 'mpio', 'comm': comm}
     else:

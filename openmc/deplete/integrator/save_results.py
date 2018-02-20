@@ -22,12 +22,12 @@ def save_results(op, x, op_results, t, step_ind):
 
     """
     # Get indexing terms
-    vol_list, nuc_list, burn_list, full_burn_list = op.get_results_info()
+    vol_dict, nuc_list, burn_list, full_burn_list = op.get_results_info()
 
     # Create results
     stages = len(x)
     results = Results()
-    results.allocate(vol_list, nuc_list, burn_list, full_burn_list, stages)
+    results.allocate(vol_dict, nuc_list, burn_list, full_burn_list, stages)
 
     n_mat = len(burn_list)
 

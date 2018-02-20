@@ -7,11 +7,11 @@ from openmc.deplete import ReactionRates
 def test_get_set():
     """Tests the get/set methods."""
 
-    mat_to_ind = {"10000" : 0, "10001" : 1}
-    nuc_to_ind = {"U238" : 0, "U235" : 1}
-    react_to_ind = {"fission" : 0, "(n,gamma)" : 1}
+    local_mats = ["10000", "10001"]
+    nuclides = ["U238", "U235"]
+    react_to_ind = {"fission": 0, "(n,gamma)": 1}
 
-    rates = ReactionRates(mat_to_ind, nuc_to_ind, react_to_ind)
+    rates = ReactionRates(local_mats, nuclides, react_to_ind)
     assert rates.shape == (2, 2, 2)
     assert np.all(rates == 0.0)
 
@@ -50,34 +50,14 @@ def test_get_set():
     assert rates.get("10000", "U238", "fission") == 5.0
 
 
-def test_n_mat():
+def test_properties():
     """Test number of materials property."""
-    mat_to_ind = {"10000" : 0, "10001" : 1}
-    nuc_to_ind = {"U238" : 0, "U235" : 1, "Gd157" : 2}
-    react_to_ind = {"fission" : 0, "(n,gamma)" : 1, "(n,2n)" : 2, "(n,3n)" : 3}
+    local_mats = ["10000", "10001"]
+    nuclides = ["U238", "U235", "Gd157"]
+    react_to_ind = {"fission": 0, "(n,gamma)": 1, "(n,2n)": 2, "(n,3n)": 3}
 
-    rates = ReactionRates(mat_to_ind, nuc_to_ind, react_to_ind)
+    rates = ReactionRates(local_mats, nuclides, react_to_ind)
 
     assert rates.n_mat == 2
-
-
-def test_n_nuc():
-    """Test number of nuclides property."""
-    mat_to_ind = {"10000" : 0, "10001" : 1}
-    nuc_to_ind = {"U238" : 0, "U235" : 1, "Gd157" : 2}
-    react_to_ind = {"fission" : 0, "(n,gamma)" : 1, "(n,2n)" : 2, "(n,3n)" : 3}
-
-    rates = ReactionRates(mat_to_ind, nuc_to_ind, react_to_ind)
-
     assert rates.n_nuc == 3
-
-
-def test_n_react():
-    """ Test number of reactions property. """
-    mat_to_ind = {"10000" : 0, "10001" : 1}
-    nuc_to_ind = {"U238" : 0, "U235" : 1, "Gd157" : 2}
-    react_to_ind = {"fission" : 0, "(n,gamma)" : 1, "(n,2n)" : 2, "(n,3n)" : 3}
-
-    rates = ReactionRates(mat_to_ind, nuc_to_ind, react_to_ind)
-
     assert rates.n_react == 4

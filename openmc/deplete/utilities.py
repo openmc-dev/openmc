@@ -38,6 +38,7 @@ def evaluate_single_nuclide(results, mat, nuc):
 
     return time, concentration
 
+
 def evaluate_reaction_rate(results, mat, nuc, rx):
     """Return reaction rate in a single material/nuclide from a results list.
 

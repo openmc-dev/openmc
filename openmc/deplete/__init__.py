@@ -16,7 +16,7 @@ except ImportError:
 
 from .nuclide import *
 from .chain import *
-from .openmc_wrapper import *
+from .operator import *
 from .reaction_rates import *
 from .abc import *
 from .results import *

@@ -7,14 +7,16 @@ import numpy as np
 
 
 class ReactionRates(np.ndarray):
-    """ReactionRates class.
+    """Reaction rates resulting from a transport operator call
 
-    An ndarray to store reaction rates with string, integer, or slice indexing.
+    This class is a subclass of :class:`numpy.ndarray` with a few custom
+    attributes that make it easy to determine what index corresponds to a given
+    material, nuclide, and reaction rate.
 
     Parameters
     ----------
-    index_mat : OrderedDict of str to int
-        A dictionary mapping material ID as string to index.
+    local_mats : list of str
+        Material IDs
     nuclides : list of str
         Depletable nuclides
     index_rx : OrderedDict of str to int
@@ -36,14 +38,22 @@ class ReactionRates(np.ndarray):
         Number of reactions.
 
     """
-    def __new__(cls, index_mat, nuclides, index_rx):
+
+    # NumPy arrays can be created 1) explicitly 2) using view casting, and 3) by
+    # slicing an existing array. Because of these possibilities, it's necessary
+    # to put initialization logic in __new__ rather than __init__. Additionally,
+    # subclasses need to handle the multiple ways of creating arrays by using
+    # the __array_finalize__ method (discussed here:
+    # https://docs.scipy.org/doc/numpy/user/basics.subclassing.html)
+
+    def __new__(cls, local_mats, nuclides, index_rx):
         # Create appropriately-sized zeroed-out ndarray
-        shape = (len(index_mat), len(nuclides), len(index_rx))
+        shape = (len(local_mats), len(nuclides), len(index_rx))
         obj = super().__new__(cls, shape)
         obj[:] = 0.0
 
         # Add mapping attributes
-        obj.index_mat = index_mat
+        obj.index_mat = {mat: i for i, mat in enumerate(local_mats)}
         obj.index_nuc = {nuc: i for i, nuc in enumerate(nuclides)}
         obj.index_rx = index_rx
 
@@ -55,6 +65,11 @@ class ReactionRates(np.ndarray):
         self.index_mat = getattr(obj, 'index_mat', None)
         self.index_nuc = getattr(obj, 'index_nuc', None)
         self.index_rx = getattr(obj, 'index_rx', None)
+
+    # Reaction rates are distributed to other processes via multiprocessing,
+    # which entails pickling the objects. In order to preserve the custom
+    # attributes, we have to modify how the ndarray is pickled as described
+    # here: https://stackoverflow.com/a/26599346/1572453
 
     def __reduce__(self):
         state = super().__reduce__()
@@ -69,7 +84,7 @@ class ReactionRates(np.ndarray):
 
     @property
     def n_mat(self):
-        """Number of cells."""
+        """Number of materials."""
         return len(self.index_mat)
 
     @property

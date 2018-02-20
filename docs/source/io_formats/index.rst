@@ -12,7 +12,7 @@ Input Files
 
 .. toctree::
    :numbered:
-   :maxdepth: 2
+   :maxdepth: 1
 
    geometry
    materials
@@ -27,7 +27,7 @@ Data Files
 
 .. toctree::
    :numbered:
-   :maxdepth: 2
+   :maxdepth: 1
 
    cross_sections
    depletion_chain
@@ -42,11 +42,12 @@ Output Files
 
 .. toctree::
    :numbered:
-   :maxdepth: 2
+   :maxdepth: 1
 
    statepoint
    source
    summary
+   depletion_results
    particle_restart
    track
    voxel

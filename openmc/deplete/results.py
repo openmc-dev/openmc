@@ -11,12 +11,13 @@ import h5py
 
 from . import comm, have_mpi
 from .reaction_rates import ReactionRates
+from openmc.checkvalue import check_filetype_version
 
-RESULTS_VERSION = 2
+_VERSION_RESULTS = (1, 0)
 
 
 class Results(object):
-    """Contains output of a depletion run.
+    """Output of a depletion run
 
     Attributes
     ----------
@@ -145,8 +146,8 @@ class Results(object):
         # Create storage array
         self.data = np.zeros((stages, self.n_mat, self.n_nuc))
 
-    def create_hdf5(self, handle):
-        """Creates file structure for a blank HDF5 file.
+    def _write_hdf5_metadata(self, handle):
+        """Writes result metadata in HDF5 file
 
         Parameters
         ----------
@@ -165,7 +166,8 @@ class Results(object):
 
         # Store concentration mat and nuclide dictionaries (along with volumes)
 
-        handle.create_dataset("version", data=RESULTS_VERSION)
+        handle.attrs['version'] = np.array(_VERSION_RESULTS)
+        handle.attrs['filetype'] = np.string_('depletion results')
 
         mat_list = sorted(self.mat_to_hdf5_ind, key=int)
         nuc_list = sorted(self.nuc_to_ind)
@@ -221,14 +223,14 @@ class Results(object):
         Parameters
         ----------
         handle : h5py.File or h5py.Group
-            An hdf5 file or group type to store this in.
+            An HDF5 file or group type to store this in.
         index : int
             What step is this?
 
         """
         if "/number" not in handle:
             comm.barrier()
-            self.create_hdf5(handle)
+            self._write_hdf5_metadata(handle)
 
         comm.barrier()
 
@@ -280,14 +282,14 @@ class Results(object):
             time_dset[index, :] = self.time
 
     @classmethod
-    def from_hdf5(cls, handle, index):
+    def from_hdf5(cls, handle, step):
         """Loads results object from HDF5.
 
         Parameters
         ----------
         handle : h5py.File or h5py.Group
-            An hdf5 file or group type to load from.
-        index : int
+            An HDF5 file or group type to load from.
+        step : int
             What step is this?
 
         """
@@ -298,9 +300,9 @@ class Results(object):
         eigenvalues_dset = handle["/eigenvalues"]
         time_dset = handle["/time"]
 
-        results.data = number_dset[index, :, :, :]
-        results.k = eigenvalues_dset[index, :]
-        results.time = time_dset[index, :]
+        results.data = number_dset[step, :, :, :]
+        results.k = eigenvalues_dset[step, :]
+        results.time = time_dset[step, :]
 
         # Reconstruct dictionaries
         results.volume = OrderedDict()
@@ -331,14 +333,14 @@ class Results(object):
         for i in range(results.n_stages):
             rate = ReactionRates(results.mat_to_ind, rxn_nuc_to_ind, rxn_to_ind)
 
-            rate[:] = handle["/reaction rates"][index, i, :, :, :]
+            rate[:] = handle["/reaction rates"][step, i, :, :, :]
             results.rates.append(rate)
 
         return results
 
 
-def write_results(result, filename, index):
-    """Outputs result to an .hdf5 file.
+def write_results(result, filename, step):
+    """Outputs result to an HDF5 file.
 
     Parameters
     ----------
@@ -346,7 +348,7 @@ def write_results(result, filename, index):
         Object to be stored in a file.
     filename : String
         Target filename.
-    index : int
+    step : int
         What step is this?
 
     """
@@ -355,10 +357,10 @@ def write_results(result, filename, index):
     else:
         kwargs = {}
 
-    kwargs['mode'] = "w" if index == 0 else "a"
+    kwargs['mode'] = "w" if step == 0 else "a"
 
     with h5py.File(filename, **kwargs) as handle:
-        result.to_hdf5(handle, index)
+        result.to_hdf5(handle, step)
 
 
 def read_results(filename):
@@ -371,12 +373,12 @@ def read_results(filename):
 
     Returns
     -------
-    results : list of Results
+    results : list of openmc.deplete.Results
         The result objects.
 
     """
     with h5py.File(str(filename), "r") as fh:
-        assert fh["version"].value == RESULTS_VERSION
+        check_filetype_version(fh, 'depletion results', _VERSION_RESULTS[0])
 
         # Get number of results stored
         n = fh["number"].value.shape[0]

@@ -246,9 +246,9 @@ def check_filetype_version(obj, expected_type, expected_version):
     ----------
     obj : h5py.File
         HDF5 file to check
-    expected_type
+    expected_type : str
         Expected file type, e.g. 'statepoint'
-    expected_version
+    expected_version : int
         Expected major version number.
 
     """

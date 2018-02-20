@@ -1,4 +1,4 @@
-.. _io_chain:
+.. _io_depletion_chain:
 
 ============================
 Depletion Chain -- chain.xml

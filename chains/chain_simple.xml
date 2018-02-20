@@ -1,23 +1,23 @@
 <?xml version="1.0"?>
-<depletion>
-  <nuclide_table name="I135" decay_modes="1" reactions="1" half_life="2.36520E+04">
-    <decay_type type="beta" target="Xe135" branching_ratio="1.0" />
-    <reaction_type type="(n,gamma)" Q="0.0" target="Xe136" /> <!-- Not precisely true, but whatever -->
-  </nuclide_table>
-  <nuclide_table name="Xe135" decay_modes="1" reactions="1" half_life="3.29040E+04">
-    <decay_type type=" beta" target="Cs135" branching_ratio="1.0" />
-    <reaction_type type="(n,gamma)" Q="0.0" target="Xe136" />
-  </nuclide_table>
-  <nuclide_table name="Xe136" decay_modes="0" reactions="0" />
-  <nuclide_table name="Cs135" decay_modes="0" reactions="0" />
-  <nuclide_table name="Gd157" decay_modes="0" reactions="1"  >
-    <reaction_type type="(n,gamma)" Q="0.0" target="Nothing" />
-  </nuclide_table>
-  <nuclide_table name="Gd156" decay_modes="0" reactions="1">
-    <reaction_type type="(n,gamma)" Q="0.0" target="Gd157" />
-  </nuclide_table>
-  <nuclide_table name="U234" decay_modes="0" reactions="1">
-    <reaction_type type="fission" Q="191840000."/>
+<depletion_chain>
+  <nuclide name="I135" decay_modes="1" reactions="1" half_life="2.36520E+04">
+    <decay type="beta" target="Xe135" branching_ratio="1.0" />
+    <reaction type="(n,gamma)" Q="0.0" target="Xe136" /> <!-- Not precisely true, but whatever -->
+  </nuclide>
+  <nuclide name="Xe135" decay_modes="1" reactions="1" half_life="3.29040E+04">
+    <decay type=" beta" target="Cs135" branching_ratio="1.0" />
+    <reaction type="(n,gamma)" Q="0.0" target="Xe136" />
+  </nuclide>
+  <nuclide name="Xe136" decay_modes="0" reactions="0" />
+  <nuclide name="Cs135" decay_modes="0" reactions="0" />
+  <nuclide name="Gd157" decay_modes="0" reactions="1"  >
+    <reaction type="(n,gamma)" Q="0.0" target="Nothing" />
+  </nuclide>
+  <nuclide name="Gd156" decay_modes="0" reactions="1">
+    <reaction type="(n,gamma)" Q="0.0" target="Gd157" />
+  </nuclide>
+  <nuclide name="U234" decay_modes="0" reactions="1">
+    <reaction type="fission" Q="191840000."/>
     <neutron_fission_yields>
       <energies>2.53000e-02</energies>
       <fission_yields energy="2.53000e-02">
@@ -25,9 +25,9 @@
         <data>1.093250e-04 2.087260e-04 2.780820e-02 6.759540e-03 2.392300e-02 4.356330e-05</data>
       </fission_yields>
     </neutron_fission_yields>
-  </nuclide_table>
-  <nuclide_table name="U235" decay_modes="0" reactions="1">
-    <reaction_type type="fission" Q="193410000."/>
+  </nuclide>
+  <nuclide name="U235" decay_modes="0" reactions="1">
+    <reaction type="fission" Q="193410000."/>
     <neutron_fission_yields>
       <energies>2.53000e-02</energies>
       <fission_yields energy="2.53000e-02">
@@ -35,9 +35,9 @@
         <data>6.142710e-5 1.483250e-04 0.0292737 0.002566345 0.0219242 4.9097e-6</data>
       </fission_yields>
     </neutron_fission_yields>
-  </nuclide_table>
-  <nuclide_table name="U238" decay_modes="0" reactions="1">
-    <reaction_type type="fission" Q="197790000."/>
+  </nuclide>
+  <nuclide name="U238" decay_modes="0" reactions="1">
+    <reaction type="fission" Q="197790000."/>
     <neutron_fission_yields>
       <energies>2.53000e-02</energies>
       <fission_yields energy="2.53000e-02">
@@ -45,5 +45,5 @@
         <data>4.141120e-04 7.605360e-04 0.0135457 0.00026864 0.0024432 3.7100E-07</data>
       </fission_yields>
     </neutron_fission_yields>
-  </nuclide_table>
-</depletion>
+  </nuclide>
+</depletion_chain>

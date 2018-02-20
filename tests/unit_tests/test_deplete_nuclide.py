@@ -37,14 +37,14 @@ def test_from_xml():
     """Test reading nuclide data from an XML element."""
 
     data = """
-<nuclide_table name="U235" reactions="2">
-  <decay_type type="sf" target="U235" branching_ratio="7.2e-11"/>
-  <decay_type type="alpha" target="Th231" branching_ratio="0.999999999928"/>
-  <reaction_type type="(n,2n)" target="U234" Q="-5297781.0"/>
-  <reaction_type type="(n,3n)" target="U233" Q="-12142300.0"/>
-  <reaction_type type="(n,4n)" target="U232" Q="-17885600.0"/>
-  <reaction_type type="(n,gamma)" target="U236" Q="6545200.0"/>
-  <reaction_type type="fission" Q="193405400.0"/>
+<nuclide name="U235" reactions="2">
+  <decay type="sf" target="U235" branching_ratio="7.2e-11"/>
+  <decay type="alpha" target="Th231" branching_ratio="0.999999999928"/>
+  <reaction type="(n,2n)" target="U234" Q="-5297781.0"/>
+  <reaction type="(n,3n)" target="U233" Q="-12142300.0"/>
+  <reaction type="(n,4n)" target="U232" Q="-17885600.0"/>
+  <reaction type="(n,gamma)" target="U236" Q="6545200.0"/>
+  <reaction type="fission" Q="193405400.0"/>
   <neutron_fission_yields>
     <energies>0.0253</energies>
     <fission_yields energy="0.0253">
@@ -52,7 +52,7 @@ def test_from_xml():
       <data>0.062155 0.0497641 0.0481413</data>
     </fission_yields>
   </neutron_fission_yields>
-</nuclide_table>
+</nuclide>
     """
 
     element = ET.fromstring(data)
@@ -96,7 +96,7 @@ def test_to_xml_element():
 
     assert element.get("half_life") == "0.123"
 
-    decay_elems = element.findall("decay_type")
+    decay_elems = element.findall("decay")
     assert len(decay_elems) == 2
     assert decay_elems[0].get("type") == "beta-"
     assert decay_elems[0].get("target") == "B"
@@ -105,7 +105,7 @@ def test_to_xml_element():
     assert decay_elems[1].get("target") == "D"
     assert decay_elems[1].get("branching_ratio") == "0.01"
 
-    rx_elems = element.findall("reaction_type")
+    rx_elems = element.findall("reaction")
     assert len(rx_elems) == 2
     assert rx_elems[0].get("type") == "fission"
     assert float(rx_elems[0].get("Q")) == 2.0e8

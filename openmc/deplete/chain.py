@@ -327,7 +327,7 @@ class Chain(object):
         # Load XML tree
         root = ET.parse(str(filename))
 
-        for i, nuclide_elem in enumerate(root.findall('nuclide_table')):
+        for i, nuclide_elem in enumerate(root.findall('nuclide')):
             nuc = Nuclide.from_xml(nuclide_elem)
             chain.nuclide_dict[nuc.name] = i
 
@@ -350,7 +350,7 @@ class Chain(object):
 
         """
 
-        root_elem = ET.Element('depletion')
+        root_elem = ET.Element('depletion_chain')
         for nuclide in self.nuclides:
             root_elem.append(nuclide.to_xml_element())
 

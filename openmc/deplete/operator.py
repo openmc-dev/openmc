@@ -111,9 +111,8 @@ class Operator(TransportOperator):
         self._extract_number(self.local_mats, volume, nuclides)
 
         # Create reaction rates array
-        index_rx = {rx: i for i, rx in enumerate(self.chain.reactions)}
         self.reaction_rates = ReactionRates(
-            self.local_mats, self._burnable_nucs, index_rx)
+            self.local_mats, self._burnable_nucs, self.chain.reactions)
 
     def __call__(self, vec, power, print_out=True):
         """Runs a simulation.

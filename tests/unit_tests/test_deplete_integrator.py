@@ -26,20 +26,18 @@ def test_save_results(run_in_tmpdir):
     op = MagicMock()
 
     vol_dict = {}
-    full_burn_dict = {}
+    full_burn_list = []
 
-    j = 0
     for i in range(comm.size):
         vol_dict[str(2*i)] = 1.2
         vol_dict[str(2*i + 1)] = 1.2
-        full_burn_dict[str(2*i)] = j
-        full_burn_dict[str(2*i + 1)] = j + 1
-        j += 2
+        full_burn_list.append(str(2*i))
+        full_burn_list.append(str(2*i + 1))
 
-    burn_list = [str(i) for i in range(2*comm.rank, 2*comm.rank + 2)]
+    burn_list = full_burn_list[2*comm.rank : 2*comm.rank + 2]
     nuc_list = ["na", "nb"]
 
-    op.get_results_info.return_value = vol_dict, nuc_list, burn_list, full_burn_dict
+    op.get_results_info.return_value = vol_dict, nuc_list, burn_list, full_burn_list
 
     # Construct x
     x1 = []
@@ -50,18 +48,17 @@ def test_save_results(run_in_tmpdir):
         x2.append([np.random.rand(2), np.random.rand(2)])
 
     # Construct r
-    cell_dict = {s: i for i, s in enumerate(burn_list)}
-    r1 = ReactionRates(cell_dict, {"na": 0, "nb": 1}, {"ra": 0, "rb": 1})
-    r1.rates = np.random.rand(2, 2, 2)
+    r1 = ReactionRates(burn_list, ["na", "nb"], ["ra", "rb"])
+    r1[:] = np.random.rand(2, 2, 2)
 
     rate1 = []
     rate2 = []
 
     for i in range(stages):
         rate1.append(copy.deepcopy(r1))
-        r1.rates = np.random.rand(2, 2, 2)
+        r1[:] = np.random.rand(2, 2, 2)
         rate2.append(copy.deepcopy(r1))
-        r1.rates = np.random.rand(2, 2, 2)
+        r1[:] = np.random.rand(2, 2, 2)
 
     # Create global terms
     eigvl1 = np.random.rand(stages)

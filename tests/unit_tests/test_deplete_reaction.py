@@ -9,9 +9,9 @@ def test_get_set():
 
     local_mats = ["10000", "10001"]
     nuclides = ["U238", "U235"]
-    react_to_ind = {"fission": 0, "(n,gamma)": 1}
+    reactions = ["fission", "(n,gamma)"]
 
-    rates = ReactionRates(local_mats, nuclides, react_to_ind)
+    rates = ReactionRates(local_mats, nuclides, reactions)
     assert rates.shape == (2, 2, 2)
     assert np.all(rates == 0.0)
 
@@ -54,9 +54,9 @@ def test_properties():
     """Test number of materials property."""
     local_mats = ["10000", "10001"]
     nuclides = ["U238", "U235", "Gd157"]
-    react_to_ind = {"fission": 0, "(n,gamma)": 1, "(n,2n)": 2, "(n,3n)": 3}
+    reactions = ["fission", "(n,gamma)", "(n,2n)", "(n,3n)"]
 
-    rates = ReactionRates(local_mats, nuclides, react_to_ind)
+    rates = ReactionRates(local_mats, nuclides, reactions)
 
     assert rates.n_mat == 2
     assert rates.n_nuc == 3

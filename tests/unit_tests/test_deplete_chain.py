@@ -136,11 +136,10 @@ def test_form_matrix():
 
     chain = Chain.from_xml(_test_filename)
 
-    mat_ind = {"10000": 0, "10001": 1}
-    nuc_ind = {"A": 0, "B": 1, "C": 2}
-    react_ind = {rx: i for i, rx in enumerate(chain.reactions)}
+    mats = ["10000", "10001"]
+    nuclides = ["A", "B", "C"]
 
-    react = reaction_rates.ReactionRates(mat_ind, nuc_ind, react_ind)
+    react = reaction_rates.ReactionRates(mats, nuclides, chain.reactions)
 
     react.set("10000", "C", "fission", 1.0)
     react.set("10000", "A", "(n,gamma)", 2.0)

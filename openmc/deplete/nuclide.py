@@ -23,9 +23,9 @@ class Nuclide(object):
     name : str
         Name of nuclide.
     half_life : float
-        Half life of nuclide in s^-1.
+        Half life of nuclide in [s].
     decay_energy : float
-        Energy deposited from decay in eV.
+        Energy deposited from decay in [eV].
     n_decay_modes : int
         Number of decay pathways.
     decay_modes : list of DecayTuple
@@ -94,14 +94,14 @@ class Nuclide(object):
             nuc.decay_energy = float(element.get('decay_energy', '0'))
 
         # Check for decay paths
-        for decay_elem in element.iter('decay_type'):
+        for decay_elem in element.iter('decay'):
             d_type = decay_elem.get('type')
             target = decay_elem.get('target')
             branching_ratio = float(decay_elem.get('branching_ratio'))
             nuc.decay_modes.append(DecayTuple(d_type, target, branching_ratio))
 
         # Check for reaction paths
-        for reaction_elem in element.iter('reaction_type'):
+        for reaction_elem in element.iter('reaction'):
             r_type = reaction_elem.get('type')
             Q = float(reaction_elem.get('Q', '0'))
             branching_ratio = float(reaction_elem.get('branching_ratio', '1'))
@@ -138,7 +138,7 @@ class Nuclide(object):
             XML element to write nuclide data to
 
         """
-        elem = ET.Element('nuclide_table')
+        elem = ET.Element('nuclide')
         elem.set('name', self.name)
 
         if self.half_life is not None:
@@ -146,14 +146,14 @@ class Nuclide(object):
             elem.set('decay_modes', str(len(self.decay_modes)))
             elem.set('decay_energy', str(self.decay_energy))
             for mode, daughter, br in self.decay_modes:
-                mode_elem = ET.SubElement(elem, 'decay_type')
+                mode_elem = ET.SubElement(elem, 'decay')
                 mode_elem.set('type', mode)
                 mode_elem.set('target', daughter)
                 mode_elem.set('branching_ratio', str(br))
 
         elem.set('reactions', str(len(self.reactions)))
         for rx, daughter, Q, br in self.reactions:
-            rx_elem = ET.SubElement(elem, 'reaction_type')
+            rx_elem = ET.SubElement(elem, 'reaction')
             rx_elem.set('type', rx)
             rx_elem.set('Q', str(Q))
             if rx != 'fission':

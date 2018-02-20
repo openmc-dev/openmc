@@ -30,6 +30,7 @@ Data Files
    :maxdepth: 2
 
    cross_sections
+   depletion_chain
    nuclear_data
    mgxs_library
    data_wmp

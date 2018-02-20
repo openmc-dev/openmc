@@ -10,7 +10,7 @@ from .save_results import save_results
 def cecm(operator, timesteps, power, print_out=True):
     r"""Deplete using the CE/CM algorithm.
 
-    Implements the second order `CE/CM Predictor-Corrector algorithm
+    Implements the second order `CE/CM predictor-corrector algorithm
     <https://doi.org/10.13182/NSE14-92>`_.  This algorithm is mathematically
     defined as:
 

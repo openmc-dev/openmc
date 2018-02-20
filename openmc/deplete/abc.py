@@ -23,6 +23,8 @@ rates : openmc.deplete.ReactionRates
     Resulting reaction rates
 
 """
+OperatorResult.k.__doc__ = None
+OperatorResult.rates.__doc__ = None
 
 
 class TransportOperator(metaclass=ABCMeta):

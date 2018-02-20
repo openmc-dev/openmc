@@ -50,7 +50,12 @@ def _distribute(items):
 
 
 class Operator(TransportOperator):
-    """OpenMC transport operator for depletion
+    """OpenMC transport operator for depletion.
+
+    Instances of this class can be used to perform depletion using OpenMC as the
+    transport operator. Normally, a user needn't call methods of this class
+    directly. Instead, an instance of this class is passed to an integrator
+    function, such as :func:`openmc.deplete.integrator.cecm`.
 
     Parameters
     ----------

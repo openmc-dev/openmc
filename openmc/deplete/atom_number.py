@@ -113,12 +113,10 @@ class AtomNumber(object):
 
     @property
     def n_nuc(self):
-        """Number of nuclides."""
         return len(self.index_nuc)
 
     @property
     def burnable_nuclides(self):
-        """All burnable nuclide names. Used for sorting the simulation."""
         return [nuc for nuc, ind in self.index_nuc.items()
                 if ind < self.n_nuc_burn]
 

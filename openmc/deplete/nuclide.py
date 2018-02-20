@@ -9,14 +9,50 @@ try:
 except ImportError:
     import xml.etree.ElementTree as ET
 
+
 DecayTuple = namedtuple('DecayTuple', 'type target branching_ratio')
+DecayTuple.__doc__ = """\
+Decay mode information
+
+Parameters
+----------
+type : str
+    Type of the decay mode, e.g., 'beta-'
+target : str
+    Nuclide resulting from decay
+branching_ratio : float
+    Branching ratio of the decay mode
+
+"""
+DecayTuple.type.__doc__ = None
+DecayTuple.target.__doc__ = None
+DecayTuple.branching_ratio.__doc__ = None
+
+
 ReactionTuple = namedtuple('ReactionTuple', 'type target Q branching_ratio')
+ReactionTuple.__doc__ = """\
+Transmutation reaction information
+
+Parameters
+----------
+type : str
+    Type of the reaction, e.g., 'fission'
+target : str
+    nuclide resulting from reaction
+Q : float
+    Q value of the reaction in [eV]
+branching_ratio : float
+    Branching ratio of the reaction
+
+"""
+ReactionTuple.type.__doc__ = None
+ReactionTuple.target.__doc__ = None
+ReactionTuple.Q.__doc__ = None
+ReactionTuple.branching_ratio.__doc__ = None
 
 
 class Nuclide(object):
-    """The Nuclide class.
-
-    Contains everything in a depletion chain relating to a single nuclide.
+    """Decay modes, reactions, and fission yields for a single nuclide.
 
     Attributes
     ----------
@@ -28,12 +64,12 @@ class Nuclide(object):
         Energy deposited from decay in [eV].
     n_decay_modes : int
         Number of decay pathways.
-    decay_modes : list of DecayTuple
+    decay_modes : list of openmc.deplete.DecayTuple
         Decay mode information. Each element of the list is a named tuple with
         attributes 'type', 'target', and 'branching_ratio'.
     n_reaction_paths : int
         Number of possible reaction pathways.
-    reactions : list of ReactionTuple
+    reactions : list of openmc.deplete.ReactionTuple
         Reaction information. Each element of the list is a named tuple with
         attribute 'type', 'target', 'Q', and 'branching_ratio'.
     yield_data : dict of float to list
@@ -62,12 +98,10 @@ class Nuclide(object):
 
     @property
     def n_decay_modes(self):
-        """Number of decay modes."""
         return len(self.decay_modes)
 
     @property
     def n_reaction_paths(self):
-        """Number of possible reaction pathways."""
         return len(self.reactions)
 
     @classmethod
@@ -81,7 +115,7 @@ class Nuclide(object):
 
         Returns
         -------
-        nuc : Nuclide
+        nuc : openmc.deplete.Nuclide
             Instance of a nuclide
 
         """

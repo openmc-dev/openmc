@@ -66,7 +66,7 @@ class TransportOperator(metaclass=ABCMeta):
 
         Parameters
         ----------
-        vec : list of numpy.array
+        vec : list of numpy.ndarray
             Total atoms to be used in function.
         print_out : bool, optional
             Whether or not to print out time.
@@ -108,7 +108,7 @@ class TransportOperator(metaclass=ABCMeta):
 
         Returns
         -------
-        list of numpy.array
+        list of numpy.ndarray
             Total density for initial conditions.
         """
 

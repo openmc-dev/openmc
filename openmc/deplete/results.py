@@ -42,7 +42,7 @@ class Results(object):
         Number of materials in entire geometry.
     n_stages : int
         Number of stages in simulation.
-    data : numpy.array
+    data : numpy.ndarray
         Atom quantity, stored by stage, mat, then by nuclide.
 
     """

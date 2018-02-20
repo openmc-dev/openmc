@@ -11,15 +11,8 @@ import copy
 from collections import OrderedDict
 from itertools import chain
 import os
-import random
-import sys
 import time
-try:
-    import lxml.etree as ET
-    _have_lxml = True
-except ImportError:
-    import xml.etree.ElementTree as ET
-    _have_lxml = False
+import xml.etree.ElementTree as ET
 
 import h5py
 import numpy as np
@@ -34,6 +27,19 @@ from .reaction_rates import ReactionRates
 
 
 def _distribute(items):
+    """Distribute items across MPI communicator
+
+    Parameters
+    ----------
+    items : list
+        List of items of distribute
+
+    Returns
+    -------
+    list
+        Items assigned to process that called
+
+    """
     min_size, extra = divmod(len(items), comm.size)
     j = 0
     for i in range(comm.size):
@@ -114,7 +120,7 @@ class Operator(TransportOperator):
 
         Parameters
         ----------
-        vec : list of numpy.array
+        vec : list of numpy.ndarray
             Total atoms to be used in function.
         power : float
             Power of the reactor in [W]
@@ -241,7 +247,7 @@ class Operator(TransportOperator):
 
         Returns
         -------
-        list of numpy.array
+        list of numpy.ndarray
             Total density for initial conditions.
         """
 

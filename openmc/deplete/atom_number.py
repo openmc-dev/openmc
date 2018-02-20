@@ -55,7 +55,7 @@ class AtomNumber(object):
 
         self.n_nuc_burn = n_nuc_burn
 
-        self.number = np.zeros((len(local_mats), self.n_nuc))
+        self.number = np.zeros((len(local_mats), len(nuclides)))
 
     def __getitem__(self, pos):
         """Retrieves total atom number from AtomNumber.
@@ -69,7 +69,7 @@ class AtomNumber(object):
 
         Returns
         -------
-        numpy.array
+        numpy.ndarray
             The value indexed from self.number.
         """
 
@@ -153,7 +153,7 @@ class AtomNumber(object):
             Material index.
         nuc : str, int or slice
             Nuclide index.
-        val : numpy.array
+        val : numpy.ndarray
             Array of densities to set in [atom/cm^3]
 
         """
@@ -190,7 +190,7 @@ class AtomNumber(object):
         ----------
         mat : str, int or slice
             Material index.
-        val : numpy.array
+        val : numpy.ndarray
             The slice to set in [atom]
 
         """

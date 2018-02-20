@@ -925,11 +925,14 @@ contains
                maxval(nuc % elastic_0K(i_E_low + 1 : i_E_up)), xs_up)
 
           DBRC_REJECT_LOOP: do
-            ! sample target velocity with the constant cross section (cxs) approx.
-            call sample_cxs_target_velocity(nuc, v_target, E, uvw, kT)
+            TARGET_ENERGY_LOOP: do
+              ! sample target velocity with the constant cross section (cxs) approx.
+              call sample_cxs_target_velocity(nuc, v_target, E, uvw, kT)
+              E_rel = dot_product((v_neut - v_target), (v_neut - v_target))
+              if (E_rel < E_up) exit TARGET_ENERGY_LOOP
+            end do TARGET_ENERGY_LOOP
 
             ! perform Doppler broadening rejection correction (dbrc)
-            E_rel = dot_product((v_neut - v_target), (v_neut - v_target))
             xs_0K = elastic_xs_0K(E_rel, nuc)
             R = xs_0K / xs_max
             if (prn() < R) exit DBRC_REJECT_LOOP

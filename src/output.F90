@@ -368,7 +368,7 @@ contains
     ! write out entropy info
     if (entropy_on) write(UNIT=OUTPUT_UNIT, FMT='(3X, F8.5)', ADVANCE='NO') &
          entropy % data(i)
-
+    
     ! write out accumulated k-effective if after first active batch
     if (n > 1) then
       write(UNIT=OUTPUT_UNIT, FMT='(3X, F8.5," +/-",F8.5)', ADVANCE='NO') &
@@ -376,6 +376,15 @@ contains
     else
       write(UNIT=OUTPUT_UNIT, FMT='(23X)', ADVANCE='NO')
     end if
+      
+  end subroutine print_batch_keff
+
+!===============================================================================
+! PRINT_BATCH_KEFF displays the last batch's tallied value of the neutron
+! multiplication factor as well as the average value if we're in active batches
+!===============================================================================
+
+  subroutine print_cmfd()
 
     ! write out cmfd keff if it is active and other display info
     if (cmfd_on) then
@@ -396,11 +405,10 @@ contains
                cmfd % dom(current_batch)
       end select
     end if
-
     ! next line
     write(UNIT=OUTPUT_UNIT, FMT=*)
-
-  end subroutine print_batch_keff
+      
+  end subroutine print_cmfd
 
 !===============================================================================
 ! PRINT_PLOT displays selected options for plotting

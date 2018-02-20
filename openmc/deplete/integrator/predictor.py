@@ -22,10 +22,10 @@ def predictor(operator, timesteps, power, print_out=True):
 
     Parameters
     ----------
-    operator : openmc.deplete.Operator
+    operator : openmc.deplete.TransportOperator
         The operator object to simulate on.
     timesteps : iterable of float
-        Array of timesteps in units of [s]
+        Array of timesteps in units of [s]. Note that values are not cumulative.
     power : float or iterable of float
         Power of the reactor in [W]. A single value indicates that the power is
         constant over all timesteps. An iterable indicates potentially different

@@ -44,7 +44,7 @@ def test_full(run_in_tmpdir):
 
     # Create operator
     chain_file = Path(__file__).parents[2] / 'chains' / 'chain_simple.xml'
-    op = openmc.deplete.OpenMCOperator(geometry, settings, chain_file)
+    op = openmc.deplete.Operator(geometry, settings, chain_file)
     op.round_number = True
 
     # Power and timesteps

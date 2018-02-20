@@ -321,9 +321,6 @@ class Chain(object):
         filename : str
             The path to the depletion chain XML file.
 
-        Todo
-        ----
-            Allow for branching on capture, etc.
         """
         chain = cls()
 

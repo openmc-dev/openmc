@@ -8,13 +8,13 @@ import openmc.deplete
 from openmc.deplete import results
 from openmc.deplete import utilities
 
-from tests import dummy_geometry
+from tests import dummy_operator
 
 
 def test_predictor(run_in_tmpdir):
     """Integral regression test of integrator algorithm using predictor/corrector"""
 
-    op = dummy_geometry.DummyGeometry()
+    op = dummy_operator.DummyOperator()
     op.output_dir = "test_integrator_regression"
 
     # Perform simulation using the predictor algorithm

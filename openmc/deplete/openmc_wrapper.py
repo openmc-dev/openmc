@@ -1,6 +1,10 @@
-"""The OpenMC wrapper module.
+"""OpenMC transport operator
 
-This module implements the depletion -> OpenMC linkage.
+This module implements a transport operator for OpenMC so that it can be used by
+depletion integrators. The implementation makes use of the Python bindings to
+OpenMC's C API so that reading tally results and updating material number
+densities is all done in-memory instead of through the filesystem.
+
 """
 
 import copy
@@ -24,7 +28,7 @@ import openmc
 import openmc.capi
 from openmc.data import JOULE_PER_EV
 from . import comm
-from .abc import Operator, OperatorResult
+from .abc import TransportOperator, OperatorResult
 from .atom_number import AtomNumber
 from .reaction_rates import ReactionRates
 
@@ -39,8 +43,8 @@ def _distribute(items):
         j += chunk_size
 
 
-class OpenMCOperator(Operator):
-    """OpenMC transport operator
+class Operator(TransportOperator):
+    """OpenMC transport operator for depletion
 
     Parameters
     ----------

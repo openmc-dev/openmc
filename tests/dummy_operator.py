@@ -1,11 +1,11 @@
 import numpy as np
 import scipy.sparse as sp
 from openmc.deplete.reaction_rates import ReactionRates
-from openmc.deplete.abc import Operator, OperatorResult
+from openmc.deplete.abc import TransportOperator, OperatorResult
 
 
-class DummyGeometry(Operator):
-    """This is a dummy geometry class with no statistical uncertainty.
+class DummyOperator(TransportOperator):
+    """This is a dummy operator class with no statistical uncertainty.
 
     y_1' = sin(y_2) y_1 + cos(y_1) y_2
     y_2' = -cos(y_2) y_1 + sin(y_1) y_2

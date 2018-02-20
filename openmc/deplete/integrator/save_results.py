@@ -9,7 +9,7 @@ def save_results(op, x, op_results, t, step_ind):
 
     Parameters
     ----------
-    op : openmc.deplete.Operator
+    op : openmc.deplete.TransportOperator
         The operator used to generate these results.
     x : list of list of numpy.array
         The prior x vectors.  Indexed [i][cell] using the above equation.

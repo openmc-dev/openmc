@@ -85,17 +85,14 @@ class ReactionRates(np.ndarray):
 
     @property
     def n_mat(self):
-        """Number of materials."""
         return len(self.index_mat)
 
     @property
     def n_nuc(self):
-        """Number of nucs."""
         return len(self.index_nuc)
 
     @property
     def n_react(self):
-        """Number of reactions."""
         return len(self.index_rx)
 
     def get(self, mat, nuc, rx):

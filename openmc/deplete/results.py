@@ -58,51 +58,6 @@ class Results(object):
 
         self.data = None
 
-    def allocate(self, volume, nuc_list, burn_list, full_burn_list, stages):
-        """Allocates memory of Results.
-
-        Parameters
-        ----------
-        volume : dict of str float
-            Volumes corresponding to materials in full_burn_dict
-        nuc_list : list of str
-            A list of all nuclide names. Used for sorting the simulation.
-        burn_list : list of int
-            A list of all mat IDs to be burned.  Used for sorting the simulation.
-        full_burn_list : list of str
-            List of all burnable material IDs
-        stages : int
-            Number of stages in simulation.
-
-        """
-        self.volume = copy.deepcopy(volume)
-        self.nuc_to_ind = {nuc: i for i, nuc in enumerate(nuc_list)}
-        self.mat_to_ind = {mat: i for i, mat in enumerate(burn_list)}
-        self.mat_to_hdf5_ind = {mat: i for i, mat in enumerate(full_burn_list)}
-
-        # Create storage array
-        self.data = np.zeros((stages, self.n_mat, self.n_nuc))
-
-    @property
-    def n_mat(self):
-        """Number of mats."""
-        return len(self.mat_to_ind)
-
-    @property
-    def n_nuc(self):
-        """Number of nuclides."""
-        return len(self.nuc_to_ind)
-
-    @property
-    def n_hdf5_mats(self):
-        """Number of materials in entire geometry."""
-        return len(self.mat_to_hdf5_ind)
-
-    @property
-    def n_stages(self):
-        """Number of stages in simulation."""
-        return self.data.shape[0]
-
     def __getitem__(self, pos):
         """Retrieves an item from results.
 
@@ -148,6 +103,47 @@ class Results(object):
             nuc = self.nuc_to_ind[nuc]
 
         self.data[stage, mat, nuc] = val
+
+    @property
+    def n_mat(self):
+        return len(self.mat_to_ind)
+
+    @property
+    def n_nuc(self):
+        return len(self.nuc_to_ind)
+
+    @property
+    def n_hdf5_mats(self):
+        return len(self.mat_to_hdf5_ind)
+
+    @property
+    def n_stages(self):
+        return self.data.shape[0]
+
+    def allocate(self, volume, nuc_list, burn_list, full_burn_list, stages):
+        """Allocates memory of Results.
+
+        Parameters
+        ----------
+        volume : dict of str float
+            Volumes corresponding to materials in full_burn_dict
+        nuc_list : list of str
+            A list of all nuclide names. Used for sorting the simulation.
+        burn_list : list of int
+            A list of all mat IDs to be burned.  Used for sorting the simulation.
+        full_burn_list : list of str
+            List of all burnable material IDs
+        stages : int
+            Number of stages in simulation.
+
+        """
+        self.volume = copy.deepcopy(volume)
+        self.nuc_to_ind = {nuc: i for i, nuc in enumerate(nuc_list)}
+        self.mat_to_ind = {mat: i for i, mat in enumerate(burn_list)}
+        self.mat_to_hdf5_ind = {mat: i for i, mat in enumerate(full_burn_list)}
+
+        # Create storage array
+        self.data = np.zeros((stages, self.n_mat, self.n_nuc))
 
     def create_hdf5(self, handle):
         """Creates file structure for a blank HDF5 file.

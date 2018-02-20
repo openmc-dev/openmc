@@ -4,59 +4,71 @@
 :mod:`openmc.deplete` -- Depletion
 ----------------------------------
 
-Integrators
------------
+.. module:: openmc.deplete
+
+Two functions are provided that implement different time-integration algorithms
+for depletion calculations.
 
 .. autosummary::
    :toctree: generated
    :nosignatures:
    :template: myfunction.rst
 
-   openmc.deplete.integrator.predictor
-   openmc.deplete.integrator.cecm
+   integrator.predictor
+   integrator.cecm
 
-Integrator Helper Functions
----------------------------
+Each of these functions expects a "transport operator" to be passed. An operator
+specific to OpenMC is available using the following class:
+
+.. autosummary::
+   :toctree: generated
+   :nosignatures:
+   :template: myclass.rst
+
+   Operator
+
+Internal Classes and Functions
+------------------------------
+
+During a depletion calculation, the depletion chain, reaction rates, and number
+densities are managed through a series of internal classes that are not normally
+visible to a user. However, should you find yourself wondering about these
+classes (e.g., if you want to know what decay modes or reactions are present in
+a depletion chain), they are documented here. The following classes store data
+for a depletion chain:
+
+.. autosummary::
+   :toctree: generated
+   :nosignatures:
+   :template: myclass.rst
+
+   Chain
+   DecayTuple
+   Nuclide
+   ReactionTuple
+
+The following classes are used during a depletion simulation and store auxiliary
+data, such as number densities and reaction rates for each material.
+
+.. autosummary::
+   :toctree: generated
+   :nosignatures:
+   :template: myclass.rst
+
+   AtomNumber
+   OperatorResult
+   ReactionRates
+   Results
+   TransportOperator
+
+Each of the integrator functions also relies on a number of "helper" functions
+as follows:
 
 .. autosummary::
    :toctree: generated
    :nosignatures:
    :template: myfunction.rst
 
-   openmc.deplete.integrator.CRAM16
-   openmc.deplete.integrator.CRAM48
-   openmc.deplete.integrator.save_results
-
-Metaclasses
------------
-
-.. autosummary::
-   :toctree: generated
-   :nosignatures:
-   :template: myclass.rst
-
-   openmc.deplete.TransportOperator
-
-OpenMC Classes
---------------
-
-.. autosummary::
-   :toctree: generated
-   :nosignatures:
-   :template: myclass.rst
-
-   openmc.deplete.Operator
-   openmc.deplete.OperatorResult
-
-Data Classes
-------------
-.. autosummary::
-   :toctree: generated
-   :nosignatures:
-   :template: myclass.rst
-
-   openmc.deplete.AtomNumber
-   openmc.deplete.Chain
-   openmc.deplete.Nuclide
-   openmc.deplete.ReactionRates
-   openmc.deplete.Results
+   integrator.CRAM16
+   integrator.CRAM48
+   integrator.save_results

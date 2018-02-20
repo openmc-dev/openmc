@@ -111,6 +111,13 @@ def replace_missing(product, decay_data):
 class Chain(object):
     """Full representation of a depletion chain.
 
+    A depletion chain can be created by using the :meth:`from_endf` method which
+    requires a list of ENDF incident neutron, decay, and neutron fission product
+    yield sublibrary files. The depletion chain used during a depletion
+    simulation is indicated by either an argument to
+    :class:`openmc.deplete.Operator` or through the
+    :envvar:`OPENMC_DEPLETE_CHAIN` environment variable.
+
     Attributes
     ----------
     nuclides : list of openmc.deplete.Nuclide

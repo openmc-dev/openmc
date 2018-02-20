@@ -24,7 +24,8 @@ module simulation
   use nuclide_header,  only: micro_xs, n_nuclides
   use output,          only: header, print_columns, &
                              print_batch_keff, print_generation, print_runtime, &
-                             print_results, print_overlap_check, write_tallies
+                             print_results, print_overlap_check, write_tallies, &
+                             print_cmfd
   use particle_header, only: Particle
   use random_lcg,      only: set_particle_seed
   use settings
@@ -338,6 +339,7 @@ contains
     if (run_mode == MODE_EIGENVALUE) then
       ! Perform CMFD calculation if on
       if (cmfd_on) call execute_cmfd()
+      call print_cmfd()
     end if
 
     ! Check_triggers

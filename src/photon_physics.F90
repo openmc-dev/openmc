@@ -7,6 +7,7 @@ module photon_physics
                              compton_profile_pz, ttb_energy_electron, &
                              ttb_energy_photon, ttb
   use random_lcg,      only: prn
+  use settings
 
 contains
 
@@ -374,24 +375,30 @@ contains
 ! THICK_TARGET_BREMSSTRAHLUNG
 !===============================================================================
 
-  subroutine thick_target_bremsstrahlung(p)
+  subroutine thick_target_bremsstrahlung(p, E_lost)
     type(Particle), intent(inout) :: p
+    real(8),        intent(inout) :: E_lost
 
     integer :: i, j
     integer :: i_e, i_k
     integer :: n
     integer :: n_e, n_k
     real(8) :: c_max
+    real(8) :: f
     real(8) :: w
     real(8) :: r
     real(8) :: e, e_l, e_r
     real(8) :: y, y_l, y_r
-    real(8) :: k, k_l, k_r
+    real(8) :: k, k_l, k_r, k_c
     real(8) :: x, x_l, x_r
     type(Bremsstrahlung), pointer :: mat
 
+    if (p % E < energy_cutoff(PHOTON)) return
+
     ! Get bremsstrahlung data for this material
     mat => ttb(p % material)
+
+    k_c = energy_cutoff(PHOTON) / p % E
 
     e = log(p % E)
     n_e = size(ttb_energy_electron)
@@ -411,19 +418,20 @@ contains
     y = exp((y_l * (e_r - e) + y_r * (e - e_l)) / (e_r - e_l))
 
     ! Sample number of secondary bremsstrahlung photons
-    n = floor(y + prn())
+    n = int(y + prn())
 
     ! Calculate the interpolation weight w_j of the bremsstrahlung energy PDF
     ! interpolated in log energy, which can be interpreted as the probability
     ! of index j
-    w = (e_r - e) / (e_r - e_l)
+    f = (e_r - e) / (e_r - e_l)
+
+    E_lost = ZERO
 
     ! Sample the energies of the emitted photons
     do i = 1, n
-
       ! Sample index of the tabulated PDF in the energy grid, j or j+1
       i_e = j
-      if (prn() > w) then
+      if (prn() > f) then
         i_e = i_e + 1
       end if
 
@@ -442,8 +450,12 @@ contains
         k_r = ttb_energy_photon(i_k+1)
         x_l = mat % dcs(i_k, i_e)
         x_r = mat % dcs(i_k+1, i_e)
+        if (k_l < k_c) then
+          x_l = (x_l * (k_r - k_c) + x_r * (k_c - k_l)) / (k_r - k_l)
+          k_l = k_c
+        end if
 
-        ! Sample the reduced photon energy k from the distribution k^-1 on the
+        ! Sample the reduced photon energy k from the distribution 1/k on the
         ! interval (k(i), k(i+1))
         k = k_l * (k_r / k_l)**r
 
@@ -454,9 +466,13 @@ contains
         if (prn() * max(x_l, x_r) < x) exit
       end do
 
+      w = k * p % E
+      E_lost = E_lost + w
+
+      if (w < energy_cutoff(PHOTON)) cycle
+
       ! Create secondary photon
-      call p % create_secondary(p % coord(1) % uvw, k * p % E, PHOTON, &
-           run_ce=.true.)
+      call p % create_secondary(p % coord(1) % uvw, w, PHOTON, run_ce=.true.)
     end do
 
   end subroutine thick_target_bremsstrahlung

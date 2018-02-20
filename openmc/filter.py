@@ -565,7 +565,7 @@ class ParticleFilter(WithIDFilter):
     Attributes
     ----------
     bins : Iterable of Integral
-        openmc.Materi IDs.
+        openmc.Material IDs.
     id : int
         Unique identifier for the filter
     num_bins : Integral
@@ -582,7 +582,12 @@ class ParticleFilter(WithIDFilter):
     @bins.setter
     def bins(self, bins):
         bins = np.atleast_1d(bins)
-        cv.check_iterable_type('filter bins', bins, str)
+        cv.check_iterable_type('filter bins', bins, (Integral, str))
+        for edge in bins:
+            if isinstance(edge, Integral):
+                cv.check_value('filter bin', edge, _PARTICLE_IDS.values())
+            else:
+                cv.check_value('filter bin', edge, _PARTICLE_IDS.keys())
         bins = np.atleast_1d([b if isinstance(b, Integral) else _PARTICLE_IDS[b]
                               for b in bins])
         self._bins = bins

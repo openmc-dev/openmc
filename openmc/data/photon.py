@@ -7,6 +7,7 @@ import os
 import h5py
 import numpy as np
 import pandas as pd
+from scipy.interpolate import CubicSpline
 
 from openmc.mixin import EqualityMixin
 import openmc.checkvalue as cv

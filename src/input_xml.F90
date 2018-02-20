@@ -4620,6 +4620,21 @@ contains
       end if
     end do
 
+    if (photon_transport .and. electron_treatment == ELECTRON_TTB) then
+      ! Deallocate element bremsstrahlung DCS and stopping power data since
+      ! only the material bremsstrahlung data is needed
+      do i = 1, size(elements)
+        if (allocated(elements(i) % stopping_power_collision)) &
+             deallocate(elements(i) % stopping_power_collision)
+        if (allocated(elements(i) % stopping_power_radiative)) &
+             deallocate(elements(i) % stopping_power_radiative)
+        if (allocated(elements(i) % dcs)) deallocate(elements(i) % dcs)
+      end do
+
+      ! Take logarithm of electron energies since they are log-log interpolated
+      ttb_energy_electron = log(ttb_energy_electron)
+    end if
+
     ! Set up logarithmic grid for nuclides
     do i = 1, size(nuclides)
       call nuclides(i) % init_grid(energy_min_neutron, &

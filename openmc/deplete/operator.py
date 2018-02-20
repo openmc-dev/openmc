@@ -195,6 +195,11 @@ class Operator(TransportOperator):
                                        "material with ID={}.".format(mat.id))
                 volume[str(mat.id)] = mat.volume
 
+        # Make sure there are burnable materials
+        if not burnable_mats:
+            raise RuntimeError(
+                "No depletable materials were found in the model.")
+
         # Sort the sets
         burnable_mats = sorted(burnable_mats, key=int)
         model_nuclides = sorted(model_nuclides)

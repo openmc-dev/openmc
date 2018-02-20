@@ -8,10 +8,11 @@ from .save_results import save_results
 
 
 def cecm(operator, timesteps, power, print_out=True):
-    r"""The CE/CM integrator.
+    r"""Deplete using the CE/CM algorithm.
 
-    Implements the second order CE/CM Predictor-Corrector algorithm [ref]_.
-    This algorithm is mathematically defined as:
+    Implements the second order `CE/CM Predictor-Corrector algorithm
+    <https://doi.org/10.13182/NSE14-92>`_.  This algorithm is mathematically
+    defined as:
 
     .. math::
         y' &= A(y, t) y(t)
@@ -24,17 +25,12 @@ def cecm(operator, timesteps, power, print_out=True):
 
         y_{n+1} &= \text{expm}(A_c h) y_n
 
-    .. [ref]
-        Isotalo, Aarno. "Comparison of Neutronics-Depletion Coupling Schemes
-        for Burnup Calculations-Continued Study." Nuclear Science and
-        Engineering 180.3 (2015): 286-300.
-
     Parameters
     ----------
-    operator : openmc.deplete.Operator
+    operator : openmc.deplete.TransportOperator
         The operator object to simulate on.
     timesteps : iterable of float
-        Array of timesteps in units of [s]
+        Array of timesteps in units of [s]. Note that values are not cumulative.
     power : float or iterable of float
         Power of the reactor in [W]. A single value indicates that the power is
         constant over all timesteps. An iterable indicates potentially different

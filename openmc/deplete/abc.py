@@ -12,15 +12,33 @@ from abc import ABCMeta, abstractmethod
 from .chain import Chain
 
 OperatorResult = namedtuple('OperatorResult', ['k', 'rates'])
+OperatorResult.__doc__ = """\
+Result of applying transport operator
+
+Parameters
+----------
+k : float
+    Resulting eigenvalue
+rates : openmc.deplete.ReactionRates
+    Resulting reaction rates
+
+"""
 
 
-class Operator(metaclass=ABCMeta):
+class TransportOperator(metaclass=ABCMeta):
     """Abstract class defining a transport operator
+
+    Each depletion integrator is written to work with a generic transport
+    operator that takes a vector of material compositions and returns an
+    eigenvalue and reaction rates. This abstract class sets the requirements for
+    such a transport operator. Users should instantiate
+    :class:`openmc.deplete.Operator` rather than this class.
 
     Parameters
     ----------
     chain_file : str, optional
-
+        Path to the depletion chain XML file.  Defaults to the
+        :envvar:`OPENMC_DEPLETE_CHAIN` environment variable if it exists.
 
     Attributes
     ----------

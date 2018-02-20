@@ -48,7 +48,7 @@ def deplete(chain, x, op_result, dt, print_out):
     # Use multiprocessing pool to distribute work
     with Pool() as pool:
         iters = zip(chains, vecs, rates, dts)
-        x_result = list(pool.starmap(cram_wrapper, iters))
+        x_result = list(pool.starmap(_cram_wrapper, iters))
 
     t_end = time.time()
     if comm.rank == 0:
@@ -58,7 +58,7 @@ def deplete(chain, x, op_result, dt, print_out):
     return x_result
 
 
-def cram_wrapper(chain, n0, rates, dt):
+def _cram_wrapper(chain, n0, rates, dt):
     """Wraps depletion matrix creation / CRAM solve for multiprocess execution
 
     Parameters
@@ -82,16 +82,11 @@ def cram_wrapper(chain, n0, rates, dt):
 
 
 def CRAM16(A, n0, dt):
-    """ Chebyshev Rational Approximation Method, order 16
+    """Chebyshev Rational Approximation Method, order 16
 
     Algorithm is the 16th order Chebyshev Rational Approximation Method,
-    implemented in the more stable incomplete partial fraction (IPF) form
-    [cram16]_.
-
-    .. [cram16]
-        Pusa, Maria. "Higher-Order Chebyshev Rational Approximation Method and
-        Application to Burnup Equations." Nuclear Science and Engineering 182.3
-        (2016).
+    implemented in the more stable `incomplete partial fraction (IPF)
+    <https://doi.org/10.13182/NSE15-26>`_ form.
 
     Parameters
     ----------
@@ -106,6 +101,7 @@ def CRAM16(A, n0, dt):
     -------
     numpy.array
         Results of the matrix exponent.
+
     """
 
     alpha = np.array([+2.124853710495224e-16,
@@ -144,16 +140,11 @@ def CRAM16(A, n0, dt):
 
 
 def CRAM48(A, n0, dt):
-    """ Chebyshev Rational Approximation Method, order 48
+    """Chebyshev Rational Approximation Method, order 48
 
     Algorithm is the 48th order Chebyshev Rational Approximation Method,
-    implemented in the more stable incomplete partial fraction (IPF) form
-    [cram48]_.
-
-    .. [cram48]
-        Pusa, Maria. "Higher-Order Chebyshev Rational Approximation Method and
-        Application to Burnup Equations." Nuclear Science and Engineering 182.3
-        (2016).
+    implemented in the more stable `incomplete partial fraction (IPF)
+    <https://doi.org/10.13182/NSE15-26>`_ form.
 
     Parameters
     ----------
@@ -168,6 +159,7 @@ def CRAM48(A, n0, dt):
     -------
     numpy.array
         Results of the matrix exponent.
+
     """
 
     theta_r = np.array([-4.465731934165702e+1, -5.284616241568964e+0,

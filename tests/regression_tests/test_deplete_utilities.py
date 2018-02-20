@@ -14,7 +14,7 @@ from openmc.deplete import utilities
 @pytest.fixture
 def res():
     """Load the reference results"""
-    filename = str(Path(__file__).with_name('test_reference.h5'))
+    filename = Path(__file__).with_name('test_reference.h5')
     return results.read_results(filename)
 
 

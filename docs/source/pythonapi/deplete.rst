@@ -59,6 +59,7 @@ data, such as number densities and reaction rates for each material.
    OperatorResult
    ReactionRates
    Results
+   ResultsList
    TransportOperator
 
 Each of the integrator functions also relies on a number of "helper" functions
@@ -71,4 +72,3 @@ as follows:
 
    integrator.CRAM16
    integrator.CRAM48
-   integrator.save_results

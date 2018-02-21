@@ -5,8 +5,6 @@ These tests integrate a simple test problem described in dummy_geometry.py.
 
 from pytest import approx
 import openmc.deplete
-from openmc.deplete import results
-from openmc.deplete import utilities
 
 from tests import dummy_operator
 
@@ -23,10 +21,10 @@ def test_cecm(run_in_tmpdir):
     openmc.deplete.cecm(op, dt, power, print_out=False)
 
     # Load the files
-    res = results.read_results(op.output_dir / "depletion_results.h5")
+    res = openmc.deplete.ResultsList(op.output_dir / "depletion_results.h5")
 
-    _, y1 = utilities.evaluate_single_nuclide(res, "1", "1")
-    _, y2 = utilities.evaluate_single_nuclide(res, "1", "2")
+    _, y1 = res.get_atoms("1", "1")
+    _, y2 = res.get_atoms("1", "2")
 
     # Mathematica solution
     s1 = [1.86872629872102, 1.395525772416039]

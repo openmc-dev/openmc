@@ -4,7 +4,7 @@ import copy
 from collections.abc import Iterable
 
 from .cram import deplete
-from .save_results import save_results
+from ..results import Results
 
 
 def cecm(operator, timesteps, power, print_out=True):
@@ -51,20 +51,20 @@ def cecm(operator, timesteps, power, print_out=True):
         for i, (dt, p) in enumerate(zip(timesteps, power)):
             # Get beginning-of-timestep reaction rates
             x = [copy.deepcopy(vec)]
-            results = [operator(x[0], p)]
+            op_results = [operator(x[0], p)]
 
             # Deplete for first half of timestep
-            x_middle = deplete(chain, x[0], results[0], dt/2, print_out)
+            x_middle = deplete(chain, x[0], op_results[0], dt/2, print_out)
 
             # Get middle-of-timestep reaction rates
             x.append(x_middle)
-            results.append(operator(x_middle, p))
+            op_results.append(operator(x_middle, p))
 
             # Deplete for full timestep using beginning-of-step materials
-            x_end = deplete(chain, x[0], results[1], dt, print_out)
+            x_end = deplete(chain, x[0], op_results[1], dt, print_out)
 
             # Create results, write to disk
-            save_results(operator, x, results, [t, t + dt], i)
+            Results.save(operator, x, op_results, [t, t + dt], i)
 
             # Advance time, update vector
             t += dt
@@ -72,7 +72,7 @@ def cecm(operator, timesteps, power, print_out=True):
 
         # Perform one last simulation
         x = [copy.deepcopy(vec)]
-        results = [operator(x[0], power[-1])]
+        op_results = [operator(x[0], power[-1])]
 
         # Create results, write to disk
-        save_results(operator, x, results, [t, t], len(timesteps))
+        Results.save(operator, x, op_results, [t, t], len(timesteps))

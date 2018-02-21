@@ -1,4 +1,4 @@
-"""Tests for integrator.py
+"""Tests for saving results
 
 It is worth noting that openmc.deplete.integrate is extremely complex, to the
 point I am unsure if it can be reasonably unit-tested.  For the time being, it
@@ -11,11 +11,11 @@ import os
 from unittest.mock import MagicMock
 
 import numpy as np
-from openmc.deplete import (integrator, ReactionRates, results, comm,
+from openmc.deplete import (ReactionRates, Results, ResultsList, comm,
                             OperatorResult)
 
 
-def test_save_results(run_in_tmpdir):
+def test_results_save(run_in_tmpdir):
     """Test data save module"""
 
     stages = 3
@@ -72,11 +72,11 @@ def test_save_results(run_in_tmpdir):
 
     op_result1 = [OperatorResult(k, rates) for k, rates in zip(eigvl1, rate1)]
     op_result2 = [OperatorResult(k, rates) for k, rates in zip(eigvl2, rate2)]
-    integrator.save_results(op, x1, op_result1, t1, 0)
-    integrator.save_results(op, x2, op_result2, t2, 1)
+    Results.save(op, x1, op_result1, t1, 0)
+    Results.save(op, x2, op_result2, t2, 1)
 
     # Load the files
-    res = results.read_results("depletion_results.h5")
+    res = ResultsList("depletion_results.h5")
 
     for i in range(stages):
         for mat_i, mat in enumerate(burn_list):

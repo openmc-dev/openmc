@@ -34,19 +34,15 @@ class DummyOperator(TransportOperator):
 
         Returns
         -------
-        k : float
-            Zero.
-        rates : ReactionRates
-            Reaction rates from this simulation.
-        seed : int
-            Zero.
+        openmc.deplete.OperatorResult
+            Result of transport operator
+
         """
+        mats = ["1"]
+        nuclides = ["1", "2"]
+        reactions = ["1"]
 
-        cell_to_ind = {"1" : 0}
-        nuc_to_ind = {"1" : 0, "2" : 1}
-        react_to_ind = {"1" : 0}
-
-        reaction_rates = ReactionRates(cell_to_ind, nuc_to_ind, react_to_ind)
+        reaction_rates = ReactionRates(mats, nuclides, reactions)
 
         reaction_rates[0, 0, 0] = vec[0][0]
         reaction_rates[0, 1, 0] = vec[0][1]
@@ -105,18 +101,18 @@ class DummyOperator(TransportOperator):
         return ["1", "2"]
 
     @property
-    def burn_list(self):
+    def local_mats(self):
         """
-        burn_list : list of str
-            A list of all cell IDs to be burned.  Used for sorting the simulation.
+        local_mats : list of str
+            A list of all material IDs to be burned.  Used for sorting the simulation.
         """
 
         return ["1"]
 
     @property
-    def mat_tally_ind(self):
+    def burnable_mats(self):
         """Maps cell name to index in global geometry."""
-        return {"1": 0}
+        return self.local_mats
 
 
     @property
@@ -125,11 +121,11 @@ class DummyOperator(TransportOperator):
         reaction_rates : ReactionRates
             Reaction rates from the last operator step.
         """
-        cell_to_ind = {"1" : 0}
-        nuc_to_ind = {"1" : 0, "2" : 1}
-        react_to_ind = {"1" : 0}
+        mats = ["1"]
+        nuclides = ["1", "2"]
+        reactions = ["1"]
 
-        return ReactionRates(cell_to_ind, nuc_to_ind, react_to_ind)
+        return ReactionRates(mats, nuclides, reactions)
 
     def initial_condition(self):
         """Returns initial vector.
@@ -153,8 +149,8 @@ class DummyOperator(TransportOperator):
             A list of all nuclide names. Used for sorting the simulation.
         burn_list : list of int
             A list of all cell IDs to be burned.  Used for sorting the simulation.
-        full_burn_dict : OrderedDict of str to int
+        full_burn_list : OrderedDict of str to int
             Maps cell name to index in global geometry.
-        """
 
-        return self.volume, self.nuc_list, self.burn_list, self.mat_tally_ind
+        """
+        return self.volume, self.nuc_list, self.local_mats, self.burnable_mats

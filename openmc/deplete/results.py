@@ -11,7 +11,6 @@ import h5py
 
 from . import comm, have_mpi
 from .reaction_rates import ReactionRates
-from openmc.checkvalue import check_filetype_version
 
 _VERSION_RESULTS = (1, 0)
 
@@ -146,6 +145,27 @@ class Results(object):
         # Create storage array
         self.data = np.zeros((stages, self.n_mat, self.n_nuc))
 
+    def export_to_hdf5(self, filename, step):
+        """Export results to an HDF5 file
+
+        Parameters
+        ----------
+        filename : str
+            The filename to write to
+        step : int
+            What step is this?
+
+        """
+        if have_mpi and h5py.get_config().mpi:
+            kwargs = {'driver': 'mpio', 'comm': comm}
+        else:
+            kwargs = {}
+
+        kwargs['mode'] = "w" if step == 0 else "a"
+
+        with h5py.File(filename, **kwargs) as handle:
+            self._to_hdf5(handle, step)
+
     def _write_hdf5_metadata(self, handle):
         """Writes result metadata in HDF5 file
 
@@ -217,7 +237,7 @@ class Results(object):
 
         handle.create_dataset("time", (1, 2), maxshape=(None, 2), dtype='float64')
 
-    def to_hdf5(self, handle, index):
+    def _to_hdf5(self, handle, index):
         """Converts results object into an hdf5 object.
 
         Parameters
@@ -338,49 +358,40 @@ class Results(object):
 
         return results
 
+    @staticmethod
+    def save(op, x, op_results, t, step_ind):
+        """Creates and writes depletion results to disk
 
-def write_results(result, filename, step):
-    """Outputs result to an HDF5 file.
+        Parameters
+        ----------
+        op : openmc.deplete.TransportOperator
+            The operator used to generate these results.
+        x : list of list of numpy.array
+            The prior x vectors.  Indexed [i][cell] using the above equation.
+        op_results : list of openmc.deplete.OperatorResult
+            Results of applying transport operator
+        t : list of float
+            Time indices.
+        step_ind : int
+            Step index.
 
-    Parameters
-    ----------
-    result : Results
-        Object to be stored in a file.
-    filename : String
-        Target filename.
-    step : int
-        What step is this?
+        """
+        # Get indexing terms
+        vol_dict, nuc_list, burn_list, full_burn_list = op.get_results_info()
 
-    """
-    if have_mpi and h5py.get_config().mpi:
-        kwargs = {'driver': 'mpio', 'comm': comm}
-    else:
-        kwargs = {}
+        # Create results
+        stages = len(x)
+        results = Results()
+        results.allocate(vol_dict, nuc_list, burn_list, full_burn_list, stages)
 
-    kwargs['mode'] = "w" if step == 0 else "a"
+        n_mat = len(burn_list)
 
-    with h5py.File(filename, **kwargs) as handle:
-        result.to_hdf5(handle, step)
+        for i in range(stages):
+            for mat_i in range(n_mat):
+                results[i, mat_i, :] = x[i][mat_i][:]
 
+        results.k = [r.k for r in op_results]
+        results.rates = [r.rates for r in op_results]
+        results.time = t
 
-def read_results(filename):
-    """Return a list of Results objects from an HDF5 file.
-
-    Parameters
-    ----------
-    filename : str
-        The filename to read from.
-
-    Returns
-    -------
-    results : list of openmc.deplete.Results
-        The result objects.
-
-    """
-    with h5py.File(str(filename), "r") as fh:
-        check_filetype_version(fh, 'depletion results', _VERSION_RESULTS[0])
-
-        # Get number of results stored
-        n = fh["number"].value.shape[0]
-
-        return [Results.from_hdf5(fh, i) for i in range(n)]
+        results.export_to_hdf5("depletion_results.h5", step_ind)

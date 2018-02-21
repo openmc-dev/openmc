@@ -8,8 +8,6 @@ import numpy as np
 import openmc
 from openmc.data import JOULE_PER_EV
 import openmc.deplete
-from openmc.deplete import results
-from openmc.deplete import utilities
 
 from tests.regression_tests import config
 from .example_geometry import generate_problem
@@ -67,8 +65,8 @@ def test_full(run_in_tmpdir):
         return
 
     # Load the reference/test results
-    res_test = results.read_results(path_test)
-    res_ref = results.read_results(path_reference)
+    res_test = openmc.deplete.ResultsList(path_test)
+    res_ref = openmc.deplete.ResultsList(path_reference)
 
     # Assert same mats
     for mat in res_ref[0].mat_to_ind:
@@ -88,8 +86,8 @@ def test_full(run_in_tmpdir):
     tol = 1.0e-6
     for mat in res_test[0].mat_to_ind:
         for nuc in res_test[0].nuc_to_ind:
-            _, y_test = utilities.evaluate_single_nuclide(res_test, mat, nuc)
-            _, y_old = utilities.evaluate_single_nuclide(res_ref, mat, nuc)
+            _, y_test = res_test.get_atoms(mat, nuc)
+            _, y_old = res_ref.get_atoms(mat, nuc)
 
             # Test each point
             correct = True

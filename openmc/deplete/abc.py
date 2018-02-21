@@ -23,8 +23,12 @@ rates : openmc.deplete.ReactionRates
     Resulting reaction rates
 
 """
-OperatorResult.k.__doc__ = None
-OperatorResult.rates.__doc__ = None
+try:
+    OperatorResult.k.__doc__ = None
+    OperatorResult.rates.__doc__ = None
+except AttributeError:
+    # Can't set __doc__ on properties on Python 3.4
+    pass
 
 
 class TransportOperator(metaclass=ABCMeta):

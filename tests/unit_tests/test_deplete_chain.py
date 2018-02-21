@@ -6,9 +6,44 @@ from pathlib import Path
 
 import numpy as np
 from openmc.deplete import comm, Chain, reaction_rates, nuclide
+import pytest
+
+from tests import cdtemp
 
 
-_test_filename = str(Path(__file__).parents[1] / 'chain_test.xml')
+_TEST_CHAIN = """\
+<depletion_chain>
+  <nuclide name="A" half_life="23652.0" decay_modes="2" decay_energy="0.0" reactions="1">
+    <decay type="beta1" target="B" branching_ratio="0.6"/>
+    <decay type="beta2" target="C" branching_ratio="0.4"/>
+    <reaction type="(n,gamma)" Q="0.0" target="C"/>
+  </nuclide>
+  <nuclide name="B" half_life="32904.0" decay_modes="1" decay_energy="0.0" reactions="1">
+    <decay type="beta" target="A" branching_ratio="1.0"/>
+    <reaction type="(n,gamma)" Q="0.0" target="C"/>
+  </nuclide>
+  <nuclide name="C" reactions="3">
+    <reaction type="fission" Q="200000000.0"/>
+    <reaction type="(n,gamma)" Q="0.0" target="A" branching_ratio="0.7"/>
+    <reaction type="(n,gamma)" Q="0.0" target="B" branching_ratio="0.3"/>
+    <neutron_fission_yields>
+      <energies>0.0253</energies>
+      <fission_yields energy="0.0253">
+        <products>A B</products>
+        <data>0.0292737 0.002566345</data>
+      </fission_yields>
+    </neutron_fission_yields>
+  </nuclide>
+</depletion_chain>
+"""
+
+
+@pytest.fixture(scope='module')
+def simple_chain():
+    with cdtemp():
+        with open('chain_test.xml', 'w') as fh:
+            fh.write(_TEST_CHAIN)
+        yield Chain.from_xml('chain_test.xml')
 
 
 def test_init():
@@ -33,13 +68,13 @@ def test_from_endf():
     pass
 
 
-def test_from_xml():
+def test_from_xml(simple_chain):
     """Read chain_test.xml and ensure all values are correct."""
     # Unfortunately, this routine touches a lot of the code, but most of
     # the components external to depletion_chain.py are simple storage
     # types.
 
-    chain = Chain.from_xml(_test_filename)
+    chain = simple_chain
 
     # Basic checks
     assert len(chain) == 3
@@ -125,16 +160,15 @@ def test_export_to_xml(run_in_tmpdir):
     chain.nuclides = [A, B, C]
     chain.export_to_xml(filename)
 
-    original = open(_test_filename, 'r').read()
     chain_xml = open(filename, 'r').read()
-    assert original == chain_xml
+    assert _TEST_CHAIN == chain_xml
 
 
-def test_form_matrix():
+def test_form_matrix(simple_chain):
     """ Using chain_test, and a dummy reaction rate, compute the matrix. """
     # Relies on test_from_xml passing.
 
-    chain = Chain.from_xml(_test_filename)
+    chain = simple_chain
 
     mats = ["10000", "10001"]
     nuclides = ["A", "B", "C"]

@@ -24,9 +24,13 @@ branching_ratio : float
     Branching ratio of the decay mode
 
 """
-DecayTuple.type.__doc__ = None
-DecayTuple.target.__doc__ = None
-DecayTuple.branching_ratio.__doc__ = None
+try:
+    DecayTuple.type.__doc__ = None
+    DecayTuple.target.__doc__ = None
+    DecayTuple.branching_ratio.__doc__ = None
+except AttributeError:
+    # Can't set __doc__ on properties on Python 3.4
+    pass
 
 
 ReactionTuple = namedtuple('ReactionTuple', 'type target Q branching_ratio')
@@ -45,10 +49,13 @@ branching_ratio : float
     Branching ratio of the reaction
 
 """
-ReactionTuple.type.__doc__ = None
-ReactionTuple.target.__doc__ = None
-ReactionTuple.Q.__doc__ = None
-ReactionTuple.branching_ratio.__doc__ = None
+try:
+    ReactionTuple.type.__doc__ = None
+    ReactionTuple.target.__doc__ = None
+    ReactionTuple.Q.__doc__ = None
+    ReactionTuple.branching_ratio.__doc__ = None
+except AttributeError:
+    pass
 
 
 class Nuclide(object):

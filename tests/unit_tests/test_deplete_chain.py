@@ -8,7 +8,7 @@ import numpy as np
 from openmc.deplete import comm, Chain, reaction_rates, nuclide
 
 
-_test_filename = str(Path(__file__).parents[2] / 'chains' / 'chain_test.xml')
+_test_filename = str(Path(__file__).parents[1] / 'chain_test.xml')
 
 
 def test_init():

@@ -43,7 +43,7 @@ def test_full(run_in_tmpdir):
     settings.verbosity = 3
 
     # Create operator
-    chain_file = Path(__file__).parents[2] / 'chains' / 'chain_simple.xml'
+    chain_file = Path(__file__).parents[1] / 'chain_simple.xml'
     op = openmc.deplete.Operator(geometry, settings, chain_file)
     op.round_number = True
 

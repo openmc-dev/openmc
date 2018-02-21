@@ -14,22 +14,20 @@ geometry, lower_left, upper_right = example_geometry.generate_problem()
 dt1 = 15*24*60*60  # 15 days
 dt2 = 5.5*30*24*60*60  # 5.5 months
 N = np.floor(dt2/dt1)
-
 dt = np.repeat([dt1], N)
 
-# Depletion settings
-settings = openmc.deplete.OpenMCSettings()
-settings.power = 2.337e15*4*JOULE_PER_EV*1e6  # MeV/second cm from CASMO
-settings.dt_vec = dt
-settings.output_dir = 'test'
+# Power for simulation
+power = 2.337e15*4*JOULE_PER_EV*1e6  # MeV/second cm from CASMO
 
-# OpenMC-delegated settings
+# OpenMC settings
+settings = openmc.Settings()
 settings.particles = 1000
 settings.batches = 100
 settings.inactive = 40
 settings.source = openmc.Source(space=openmc.stats.Box(lower_left, upper_right))
 
-op = openmc.deplete.OpenMCOperator(geometry, settings)
+op = openmc.deplete.Operator(geometry, settings)
+op.output_dir = 'test'
 
 # Perform simulation using the MCNPX/MCNP6 algorithm
-openmc.deplete.integrator.cecm(op)
+openmc.deplete.integrator.cecm(op, dt, power)

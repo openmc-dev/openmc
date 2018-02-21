@@ -42,11 +42,8 @@ results_error.dat
 inputs_error.dat
 results_test.dat
 
-# Test build files
-tests/build/
-tests/coverage/
-tests/memcheck/
-tests/ctestscript.run
+# Test
+.pytest_cache/
 
 # HDF5 files
 *.h5

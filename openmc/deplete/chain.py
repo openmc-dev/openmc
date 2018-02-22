@@ -40,15 +40,6 @@ _REACTIONS = [
 ]
 
 
-def _get_zai(s):
-    """Get ZAI value (10000*z + 10*A + metastable state) for sorting purposes"""
-    symbol, A, state = re.match(r'([A-Zn][a-z]*)(\d+)((?:_[em]\d+)?)', s).groups()
-    Z = openmc.data.ATOMIC_NUMBER[symbol]
-    A = int(A)
-    state = int(state[2:]) if state else 0
-    return 10000*Z + 10*A + state
-
-
 def replace_missing(product, decay_data):
     """Replace missing product with suitable decay daughter.
 
@@ -197,7 +188,7 @@ class Chain(object):
         missing_fpy = []
         missing_fp = []
 
-        for idx, parent in enumerate(sorted(decay_data, key=_get_zai)):
+        for idx, parent in enumerate(sorted(decay_data, key=openmc.data.zam)):
             data = decay_data[parent]
 
             nuclide = Nuclide()
@@ -290,7 +281,7 @@ class Chain(object):
                         missing_fp.append((parent, E, yield_replace))
 
                     nuclide.yield_data[E] = []
-                    for k in sorted(yields, key=_get_zai):
+                    for k in sorted(yields, key=openmc.data.zam):
                         nuclide.yield_data[E].append((k, yields[k]))
 
         # Display warnings

@@ -52,8 +52,7 @@ class Material(IDManagerMixin):
         'atom/b-cm', 'atom/cm3', 'sum', or 'macro'.  The 'macro' unit only
         applies in the case of a multi-group calculation.
     depletable : bool
-        Indicate whether the material is depletable. This attribute can be used
-        by downstream depletion applications.
+        Indicate whether the material is depletable.
     nuclides : list of tuple
         List in which each item is a 3-tuple consisting of a nuclide string, the
         percent density, and the percent type ('ao' or 'wo').
@@ -74,6 +73,9 @@ class Material(IDManagerMixin):
         :meth:`Geometry.determine_paths` method.
     num_instances : int
         The number of instances of this material throughout the geometry.
+    fissionable_mass : float
+        Mass of fissionable nuclides in the material in [g]. Requires that the
+        :attr:`volume` attribute is set.
 
     """
 
@@ -244,6 +246,18 @@ class Material(IDManagerMixin):
         cv.check_iterable_type('Isotropic scattering nuclides', isotropic,
                                str)
         self._isotropic = list(isotropic)
+
+    @property
+    def fissionable_mass(self):
+        if self.volume is None:
+            raise ValueError("Volume must be set in order to determine mass.")
+        density = 0.0
+        for nuc, atoms_per_cc in self.get_nuclide_atom_densities().values():
+            Z = openmc.data.zam(nuc)[0]
+            if Z >= 90:
+                density += 1e24 * atoms_per_cc * openmc.data.atomic_mass(nuc) \
+                           / openmc.data.AVOGADRO
+        return density*self.volume
 
     @classmethod
     def from_hdf5(cls, group):
@@ -687,7 +701,53 @@ class Material(IDManagerMixin):
 
         return nuclides
 
+    def get_mass_density(self, nuclide=None):
+        """Return mass density of one or all nuclides
+
+        Parameters
+        ----------
+        nuclides : str, optional
+            Nuclide for which density is desired. If not specified, the density
+            for the entire material is given.
+
+        Returns
+        -------
+        float
+            Density of the nuclide/material in [g/cm^3]
+
+        """
+        mass_density = 0.0
+        for nuc, atoms_per_cc in self.get_nuclide_atom_densities().values():
+            density_i = 1e24 * atoms_per_cc * openmc.data.atomic_mass(nuc) \
+                        / openmc.data.AVOGADRO
+            if nuclide is None or nuclide == nuc:
+                mass_density += density_i
+        return mass_density
+
+    def get_mass(self, nuclide=None):
+        """Return mass of one or all nuclides.
+
+        Note that this method requires that the :attr:`Material.volume` has
+        already been set.
+
+        Parameters
+        ----------
+        nuclides : str, optional
+            Nuclide for which mass is desired. If not specified, the density
+            for the entire material is given.
+
+        Returns
+        -------
+        float
+            Mass of the nuclide/material in [g]
+
+        """
+        if self.volume is None:
+            raise ValueError("Volume must be set in order to determine mass.")
+        return self.volume*self.get_mass_density(nuclide)
+
     def clone(self, memo=None):
+
         """Create a copy of this material with a new unique ID.
 
         Parameters

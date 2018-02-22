@@ -58,3 +58,11 @@ def test_water_density():
     assert dens(300.0, 3.0) == pytest.approx(1e-3/0.100215168e-2, 1e-6)
     assert dens(300.0, 80.0) == pytest.approx(1e-3/0.971180894e-3, 1e-6)
     assert dens(500.0, 3.0) == pytest.approx(1e-3/0.120241800e-2, 1e-6)
+
+
+def test_zam():
+    assert openmc.data.zam('H1') == (1, 1, 0)
+    assert openmc.data.zam('Zr90') == (40, 90, 0)
+    assert openmc.data.zam('Am242') == (95, 242, 0)
+    assert openmc.data.zam('Am242_m1') == (95, 242, 1)
+    assert openmc.data.zam('Am242_m10') == (95, 242, 10)

@@ -7,6 +7,7 @@ module material_header
   use error
   use nuclide_header
   use sab_header
+  use simulation_header, only: log_spacing
   use stl_vector, only: VectorReal, VectorInt
   use string, only: to_str
 
@@ -64,6 +65,7 @@ module material_header
     procedure :: set_density => material_set_density
     procedure :: init_nuclide_index => material_init_nuclide_index
     procedure :: assign_sab_tables => material_assign_sab_tables
+    procedure :: calculate_xs => material_calculate_xs
   end type Material
 
   integer(C_INT32_T), public, bind(C) :: n_materials ! # of materials
@@ -247,6 +249,115 @@ contains
     ! Deallocate temporary arrays for names of nuclides and S(a,b) tables
     if (allocated(this % names)) deallocate(this % names)
   end subroutine material_assign_sab_tables
+
+!===============================================================================
+! MATERIAL_CALCULATE_XS determines the macroscopic cross sections for the material the
+! particle is currently traveling through.
+!===============================================================================
+
+  subroutine material_calculate_xs(this, E, sqrtkT, micro_xs, nuclides, &
+                                   material_xs)
+    class(Material), intent(in) :: this
+    real(8),         intent(in) :: E       ! Particle energy
+    real(8),         intent(in) :: sqrtkT  ! Last temperature sampled
+    type(Nuclide), allocatable, intent(in)           :: nuclides(:)
+    type(NuclideMicroXS), allocatable, intent(inout) :: micro_xs(:)  ! Cache for each nuclide
+    type(MaterialMacroXS), intent(inout)             :: material_xs  ! Cache for current material
+
+    integer :: i             ! loop index over nuclides
+    integer :: i_nuclide     ! index into nuclides array
+    integer :: i_sab         ! index into sab_tables array
+    integer :: j             ! index in this % i_sab_nuclides
+    integer :: i_grid        ! index into logarithmic mapping array or material
+                             ! union grid
+    real(8) :: atom_density  ! atom density of a nuclide
+    real(8) :: sab_frac      ! fraction of atoms affected by S(a,b)
+    logical :: check_sab     ! should we check for S(a,b) table?
+
+    ! Set all material macroscopic cross sections to zero
+    material_xs % total          = ZERO
+    material_xs % absorption     = ZERO
+    material_xs % fission        = ZERO
+    material_xs % nu_fission     = ZERO
+
+    ! Find energy index on energy grid
+    i_grid = int(log(E/energy_min_neutron)/log_spacing)
+
+    ! Determine if this material has S(a,b) tables
+    check_sab = (this % n_sab > 0)
+
+    ! Initialize position in i_sab_nuclides
+    j = 1
+
+    ! Add contribution from each nuclide in material
+    do i = 1, this % n_nuclides
+      ! ======================================================================
+      ! CHECK FOR S(A,B) TABLE
+
+      i_sab = 0
+      sab_frac = ZERO
+
+      ! Check if this nuclide matches one of the S(a,b) tables specified.
+      ! This relies on i_sab_nuclides being in sorted order
+      if (check_sab) then
+        if (i == this % i_sab_nuclides(j)) then
+          ! Get index in sab_tables
+          i_sab = this % i_sab_tables(j)
+          sab_frac = this % sab_fracs(j)
+
+          ! If particle energy is greater than the highest energy for the
+          ! S(a,b) table, then don't use the S(a,b) table
+          if (E > sab_tables(i_sab) % data(1) % threshold_inelastic) then
+            i_sab = 0
+          end if
+
+          ! Increment position in i_sab_nuclides
+          j = j + 1
+
+          ! Don't check for S(a,b) tables if there are no more left
+          if (j > size(this % i_sab_tables)) check_sab = .false.
+        end if
+      end if
+
+      ! ======================================================================
+      ! CALCULATE MICROSCOPIC CROSS SECTION
+
+      ! Determine microscopic cross sections for this nuclide
+      i_nuclide = this % nuclide(i)
+
+      ! Calculate microscopic cross section for this nuclide
+      if (E /= micro_xs(i_nuclide) % last_E &
+           .or. sqrtkT /= micro_xs(i_nuclide) % last_sqrtkT &
+           .or. i_sab /= micro_xs(i_nuclide) % index_sab &
+           .or. sab_frac /= micro_xs(i_nuclide) % sab_frac) then
+        call nuclides(i_nuclide) % calculate_xs(i_sab, E, i_grid, &
+             sqrtkT, sab_frac, micro_xs(i_nuclide))
+      end if
+
+      ! ======================================================================
+      ! ADD TO MACROSCOPIC CROSS SECTION
+
+      ! Copy atom density of nuclide in material
+      atom_density = this % atom_density(i)
+
+      ! Add contributions to material macroscopic total cross section
+      material_xs % total = material_xs % total + &
+           atom_density * micro_xs(i_nuclide) % total
+
+      ! Add contributions to material macroscopic absorption cross section
+      material_xs % absorption = material_xs % absorption + &
+           atom_density * micro_xs(i_nuclide) % absorption
+
+      ! Add contributions to material macroscopic fission cross section
+      material_xs % fission = material_xs % fission + &
+           atom_density * micro_xs(i_nuclide) % fission
+
+      ! Add contributions to material macroscopic nu-fission cross section
+      material_xs % nu_fission = material_xs % nu_fission + &
+           atom_density * micro_xs(i_nuclide) % nu_fission
+    end do
+
+  end subroutine material_calculate_xs
 
 !===============================================================================
 ! FREE_MEMORY_MATERIAL deallocates global arrays defined in this module

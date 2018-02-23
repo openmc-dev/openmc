@@ -4,7 +4,6 @@ module tally
 
   use algorithm,        only: binary_search
   use constants
-  use cross_section,    only: multipole_deriv_eval, calculate_elastic_xs
   use dict_header,      only: EMPTY
   use error,            only: fatal_error
   use geometry_header
@@ -1018,7 +1017,7 @@ contains
         else
           if (i_nuclide > 0) then
             if (micro_xs(i_nuclide) % elastic == CACHE_INVALID) then
-              call calculate_elastic_xs(i_nuclide)
+              call nuclides(i_nuclide) % calculate_elastic_xs(micro_xs(i_nuclide))
             end if
             score = micro_xs(i_nuclide) % elastic * atom_density * flux
           else
@@ -1031,7 +1030,7 @@ contains
                 ! Get index in nuclides array
                 i_nuc = materials(p % material) % nuclide(l)
                 if (micro_xs(i_nuc) % elastic == CACHE_INVALID) then
-                  call calculate_elastic_xs(i_nuc)
+                  call nuclides(i_nuc) % calculate_elastic_xs(micro_xs(i_nuc))
                 end if
 
                 score = score + micro_xs(i_nuc) % elastic * atom_density_ * flux

@@ -4191,7 +4191,7 @@ contains
           group_id = open_group(file_id, name)
           call nuclides(i_nuclide) % from_hdf5(group_id, nuc_temps(i_nuclide), &
                temperature_method, temperature_tolerance, temperature_range, &
-               master)
+               master, i_nuclide)
           call close_group(group_id)
           call file_close(file_id)
 

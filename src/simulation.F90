@@ -434,6 +434,13 @@ contains
     allocate(filter_matches(n_filters))
 !$omp end parallel
 
+    ! Reset global variables -- this is done before loading state point (as that
+    ! will potentially populate k_generation and entropy)
+    current_batch = 0
+    call k_generation % clear()
+    call entropy % clear()
+    need_depletion_rx = .false.
+
     ! If this is a restart run, load the state point data and binary source
     ! file
     if (restart_run) then
@@ -451,10 +458,6 @@ contains
         if (verbosity >= 7) call print_columns()
       end if
     end if
-
-    ! Reset global variables
-    current_batch = 0
-    need_depletion_rx = .false.
 
     ! Set flag indicating initialization is done
     simulation_initialized = .true.

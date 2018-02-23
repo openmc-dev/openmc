@@ -1,5 +1,17 @@
 
 #include "cad.h"
 
-moab::DagMC* DAGMC;
 
+namespace moab {
+  
+DagMC* DAGMC;
+
+void load_geometry() {
+  if(!DAGMC) { DAGMC = new DagMC(); }
+
+  ErrorCode rval;
+
+  return;
+}
+  
+}

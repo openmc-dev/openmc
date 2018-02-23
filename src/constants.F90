@@ -429,7 +429,12 @@ module constants
        MODE_EIGENVALUE  = 2, & ! K eigenvalue mode
        MODE_PLOTTING    = 3, & ! Plotting mode
        MODE_PARTICLE    = 4, & ! Particle restart mode
+#ifdef CAD
+       MODE_VOLUME      = 5, & ! Volume calculation mode
+       MODE_CAD         = 6    ! CAD-based Geometry mode
+#else
        MODE_VOLUME      = 5    ! Volume calculation mode
+#endif
 
   ! Electron treatments
   integer, parameter :: &

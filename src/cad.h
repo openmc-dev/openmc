@@ -5,7 +5,9 @@
 #include "cell.h"
 #include "surface.h"
 
+extern moab::DagMC* DAGMC;
+
 extern "C" void load_cad_geometry_c();
-extern "C" void dealloc_cad_c();
+extern "C" void free_memory_cad_c();
 
 #endif // CAD_H

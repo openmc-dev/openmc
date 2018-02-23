@@ -42,7 +42,7 @@ void load_cad_geometry_c()
   return;
 }
 
-void dealloc_cad_c()
+void free_memory_cad_c()
 {
   delete DAGMC;
 }

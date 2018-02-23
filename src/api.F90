@@ -29,6 +29,10 @@ module openmc_api
   use timer_header
   use volume_calc,     only: openmc_calculate_volumes
 
+#ifdef CAD
+  use cad_header,      only: free_memory_cad
+#endif
+  
   implicit none
 
   private
@@ -149,6 +153,7 @@ contains
     root_universe = -1
     run_CE = .true.
     run_mode = -1
+    dagmc = .false.
     satisfy_triggers = .false.
     call openmc_set_seed(DEFAULT_SEED)
     source_latest = .false.
@@ -325,7 +330,10 @@ contains
     call free_memory_tally_filter()
     call free_memory_tally_derivative()
     call free_memory_bank()
-
+#ifdef CAD
+    call free_memory_cad()
+#endif
+    
     ! Deallocate CMFD
     call deallocate_cmfd(cmfd)
 

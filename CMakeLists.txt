@@ -9,6 +9,8 @@ set(CMAKE_RUNTIME_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}/bin)
 # Set module path
 set(CMAKE_MODULE_PATH ${CMAKE_CURRENT_SOURCE_DIR}/cmake/Modules)
 
+# Make sure Fortran module directory is included when building
+include_directories(${CMAKE_BINARY_DIR}/include)
 #===============================================================================
 # Command line options
 #===============================================================================
@@ -394,6 +396,8 @@ add_library(libopenmc SHARED
   src/tallies/tally_header.F90
   src/tallies/trigger.F90
   src/tallies/trigger_header.F90
+  src/cad.h
+  src/cad.cpp
   src/cell.cpp
   src/cmfd_execute.cpp
   src/distribution.cpp
@@ -490,7 +494,7 @@ target_link_libraries(libopenmc ${ldflags} ${HDF5_LIBRARIES} pugixml
 
 add_executable(openmc src/main.cpp)
 target_compile_options(openmc PRIVATE ${cxxflags})
-target_link_libraries(openmc libopenmc)
+target_link_libraries(openmc ${ldflags} libopenmc ${DAGMC_LINK_LIBS})
 
 #===============================================================================
 # Python package

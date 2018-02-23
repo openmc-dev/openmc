@@ -1,4 +1,4 @@
-# Try to find MOAB
+# Try to find DAGMC
 #
 # Once done this will define
 #

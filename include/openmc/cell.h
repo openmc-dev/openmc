@@ -13,7 +13,9 @@
 #include "openmc/constants.h"
 #include "openmc/position.h"
 
+#ifdef CAD
 #include "DagMC.hpp"
+#endif
 
 namespace openmc {
 
@@ -150,14 +152,15 @@ protected:
   bool contains_complex(Position r, Direction u, int32_t on_surface) const;
 };
 
+#ifdef CAD
 class CADCell : public Cell
 {
   moab::DagMC *dagmc_ptr;
 
  public:
-  explicit CADCell();
-  
+  explicit CADCell();  
 };
+#endif
  
 } // namespace openmc
 #endif // OPENMC_CELL_H

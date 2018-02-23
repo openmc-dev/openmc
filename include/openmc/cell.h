@@ -150,10 +150,11 @@ protected:
   bool contains_complex(Position r, Direction u, int32_t on_surface) const;
 };
 
- class CADCell : public Cell
+class CADCell : public Cell
 {
   moab::DagMC *dagmc_ptr;
-  
+
+ public:
   explicit CADCell();
   
 };

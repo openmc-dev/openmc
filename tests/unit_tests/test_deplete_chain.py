@@ -5,11 +5,13 @@ import os
 from pathlib import Path
 
 import numpy as np
+from openmc.data import zam, ATOMIC_SYMBOL
 from openmc.deplete import comm, Chain, reaction_rates, nuclide
 import pytest
 
 from tests import cdtemp
 
+_ENDF_DATA = Path(os.environ['OPENMC_ENDF_DATA'])
 
 _TEST_CHAIN = """\
 <depletion_chain>
@@ -63,9 +65,15 @@ def test_len():
 
 
 def test_from_endf():
-    """Test depletion chain building from ENDF. Empty at the moment until we figure
-    out a good way to unit-test this."""
-    pass
+    """Test depletion chain building from ENDF files"""
+    decay_data = (_ENDF_DATA / 'decay').glob('*.endf')
+    fpy_data = (_ENDF_DATA / 'nfy').glob('*.endf')
+    neutron_data = (_ENDF_DATA / 'neutrons').glob('*.endf')
+    chain = Chain.from_endf(decay_data, fpy_data, neutron_data)
+
+    assert len(chain) == len(chain.nuclides) == len(chain.nuclide_dict) == 3821
+    for nuc in chain.nuclides:
+        assert nuc == chain[nuc.name]
 
 
 def test_from_xml(simple_chain):

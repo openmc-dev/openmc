@@ -10,6 +10,7 @@ import io
 import re
 import os
 from math import pi
+from pathlib import PurePath
 from collections import OrderedDict
 from collections.abc import Iterable
 
@@ -299,8 +300,8 @@ class Evaluation(object):
 
     """
     def __init__(self, filename_or_obj):
-        if isinstance(filename_or_obj, str):
-            fh = open(filename_or_obj, 'r')
+        if isinstance(filename_or_obj, (str, PurePath)):
+            fh = open(str(filename_or_obj), 'r')
         else:
             fh = filename_or_obj
         self.section = {}

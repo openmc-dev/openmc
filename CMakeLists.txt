@@ -21,6 +21,9 @@ option(debug    "Compile with debug flags"                       OFF)
 option(optimize "Turn on all compiler optimization flags"        OFF)
 option(coverage "Compile with coverage analysis flags"           OFF)
 option(mpif08   "Use Fortran 2008 MPI interface"                 OFF)
+option(cad      "Enable support for CAD-based geometry"          OFF)
+
+# Maximum number of nested coordinates levels
 set(maxcoord 10 CACHE STRING "Maximum number of nested coordinate levels")
 
 #===============================================================================

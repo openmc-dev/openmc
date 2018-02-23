@@ -12,6 +12,7 @@
 #include "openmc/constants.h"
 #include "openmc/position.h"
 
+#include "DagMC.hpp"
 
 namespace openmc {
 
@@ -117,6 +118,7 @@ protected:
 
 class CADSurface : public Surface
 {
+  moab::DagMC* dagmc_ptr;
  public:
   explicit CADSurface();
   double evaluate(const double xyz[3]) const;

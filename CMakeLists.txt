@@ -37,6 +37,17 @@ if(MPI_ENABLED AND mpif08)
 endif()
 
 #===============================================================================
+# CAD Geometry Support - need DAGMC/MOAB
+#===============================================================================
+if(cad)
+  find_package(DAGMC REQUIRED)
+  if(NOT DAGMC_FOUND)
+    message(FATAL_ERROR "Could not find DAGMC installation")
+  endif()
+  include_directories(${DAGMC_INCLUDE_DIRS})
+endif()
+
+#===============================================================================
 # HDF5 for binary output
 #===============================================================================
 

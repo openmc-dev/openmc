@@ -452,6 +452,11 @@ distributions.
 .. admonition:: Optional
    :class: note
 
+   `mpi4py <http://mpi4py.scipy.org/>`_
+      mpi4py provides Python bindings to MPI for running distributed-memory
+      parallel runs. This package is needed if you plan on running depletion
+      simulations in parallel using MPI.
+
    `Cython <http://cython.org/>`_
       Cython is used for resonance reconstruction for ENDF data converted to
       :class:`openmc.data.IncidentNeutron`.

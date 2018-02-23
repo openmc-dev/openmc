@@ -26,7 +26,7 @@ MOCK_MODULES = [
     'numpy.ctypeslib', 'scipy', 'scipy.sparse', 'scipy.sparse.linalg',
     'scipy.interpolate', 'scipy.integrate', 'scipy.optimize', 'scipy.special',
     'scipy.stats', 'scipy.spatial', 'h5py', 'pandas', 'uncertainties',
-    'matplotlib', 'matplotlib.pyplot', 'tqdm', 'openmoc',
+    'matplotlib', 'matplotlib.pyplot', 'openmoc',
     'openmc.data.reconstruct'
 ]
 sys.modules.update((mod_name, MagicMock()) for mod_name in MOCK_MODULES)

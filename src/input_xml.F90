@@ -390,6 +390,8 @@ contains
     if (dagmc) then
        call write_message("Reading CAD geometry...", 5)
        call load_cad_geometry()
+       call allocate_surfaces()
+       call allocate_cells()
        return
     end if
 
@@ -417,16 +419,12 @@ contains
 
     call read_surfaces(root % ptr)
 
+    call allocate_surfaces()
     ! Allocate surfaces array
-    allocate(surfaces(n_surfaces))
-
     do i = 1, n_surfaces
       surfaces(i) % ptr = surface_pointer(i - 1);
 
       if (surfaces(i) % bc() /= BC_TRANSMIT) boundary_exists = .true.
-
-      ! Add surface to dictionary
-      call surface_dict % set(surfaces(i) % id(), i)
     end do
 
     ! Check to make sure a boundary condition was applied to at least one
@@ -453,8 +451,6 @@ contains
       call fatal_error("No cells found in geometry.xml!")
     end if
 
-    ! Allocate cells array
-    allocate(cells(n_cells))
 
     n_universes = 0
     do i = 1, n_cells
@@ -576,6 +572,29 @@ contains
     call doc % clear()
 
   end subroutine read_geometry_xml
+
+  subroutine allocate_surfaces()
+    integer :: i
+
+    ! Allocate surfaces array
+    allocate(surfaces(n_surfaces))
+
+    do i = 1, n_surfaces
+      surfaces(i) % ptr = surface_pointer_c(i - 1);
+      ! Add surface to dictionary
+      call surface_dict % set(surfaces(i) % id(), i)
+    end do
+
+    end subroutine allocate_surfaces
+
+  subroutine allocate_cells()
+    integer :: i
+    ! Allocate cells array
+    allocate(cells(n_cells))
+    do i = 1, n_cells
+       cells(i) % ptr = cell_pointer_c(i - 1)
+    end do
+  end subroutine allocate_cells
 
 !===============================================================================
 ! READ_MATERIAL_XML reads data from a materials.xml file and parses it, checking

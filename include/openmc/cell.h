@@ -155,10 +155,9 @@ protected:
 #ifdef CAD
 class CADCell : public Cell
 {
-  moab::DagMC *dagmc_ptr;
-
  public:
-  explicit CADCell();  
+  moab::DagMC *dagmc_ptr;
+  explicit CADCell();
 };
 #endif
  

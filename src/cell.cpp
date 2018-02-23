@@ -601,7 +601,7 @@ Cell::contains_complex(Position r, Direction u, int32_t on_surface) const
 #ifdef CAD
 CADCell::CADCell() : Cell{} {};
 #endif
-  
+
 //==============================================================================
 // Non-method functions
 extern "C" void

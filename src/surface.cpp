@@ -138,6 +138,8 @@ void read_coeffs(pugi::xml_node surf_node, int surf_id, double &c1, double &c2,
 // Surface implementation
 //==============================================================================
 
+Surface::Surface() {}
+  
 Surface::Surface(pugi::xml_node surf_node)
 {
   if (check_for_node(surf_node, "id")) {
@@ -243,7 +245,7 @@ Surface::to_hdf5(hid_t group_id) const
 // CADSurface implementation
 //==============================================================================
 
-  CADSurface::CADSurface(pugi::xml_node surf_node) : Surface {surf_node} {} // empty constructor
+CADSurface::CADSurface() :Surface{} {} // empty constructor
 
 double CADSurface::evaluate(const double xyz[3]) const
 {

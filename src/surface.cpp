@@ -244,7 +244,7 @@ Surface::to_hdf5(hid_t group_id) const
 //==============================================================================
 // CADSurface implementation
 //==============================================================================
-
+#ifdef CAD
 CADSurface::CADSurface() :Surface{} {} // empty constructor
 
 double CADSurface::evaluate(const double xyz[3]) const
@@ -261,7 +261,7 @@ void CADSurface::normal(const double xyz[3], double uvw[3]) const {
 }
 
 BoundingBox CADSurface::bounding_box() const { return BoundingBox(); }
-
+#endif
 //==============================================================================
 // PeriodicSurface implementation
 //==============================================================================

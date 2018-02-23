@@ -12,7 +12,9 @@
 #include "openmc/constants.h"
 #include "openmc/position.h"
 
+#ifdef CAD
 #include "DagMC.hpp"
+#endif
 
 namespace openmc {
 
@@ -115,7 +117,7 @@ protected:
 //==============================================================================
 //! A `Surface` representing a CAD-based surface in DAGMC.
 //==============================================================================
-
+#ifdef CAD
 class CADSurface : public Surface
 {
   moab::DagMC* dagmc_ptr;
@@ -128,7 +130,7 @@ class CADSurface : public Surface
   //! Get the bounding box of this surface.
   BoundingBox bounding_box() const;
 };
- 
+#endif 
 //==============================================================================
 //! A `Surface` that supports periodic boundary conditions.
 //!

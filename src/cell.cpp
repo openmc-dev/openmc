@@ -15,8 +15,16 @@
 #include "openmc/surface.h"
 #include "openmc/xml_interface.h"
 
+//TODO: remove this include
+#include <iostream>
+
+extern "C" {int32_t n_cells {0};}
 
 namespace openmc {
+
+std::vector<Cell> cells_c;
+
+std::map<int,int> cell_dict;
 
 //==============================================================================
 // Global variables
@@ -590,8 +598,9 @@ Cell::contains_complex(Position r, Direction u, int32_t on_surface) const
 //==============================================================================
 // CAD Cell implementation
 //==============================================================================
-
+#ifdef CAD
 CADCell::CADCell() : Cell{} {};
+#endif
   
 //==============================================================================
 // Non-method functions

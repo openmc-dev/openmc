@@ -111,7 +111,10 @@ public:
 
   explicit Cell(pugi::xml_node cell_node);
 
-  //! \brief Determine if a cell contains the particle at a given location.
+  explicit Cell();
+  
+  //! \brief Determine if a cell contains the particle at a given location.  
+  //! Determine if a cell contains the particle at a given location.
   //!
   //! The bounds of the cell are detemined by a logical expression involving
   //! surface half-spaces. At initialization, the expression was converted
@@ -146,5 +149,11 @@ protected:
   bool contains_complex(Position r, Direction u, int32_t on_surface) const;
 };
 
+ class CADCell : public Cell
+{
+  explicit CADCell();
+  
+};
+ 
 } // namespace openmc
 #endif // OPENMC_CELL_H

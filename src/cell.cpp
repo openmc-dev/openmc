@@ -209,6 +209,8 @@ Universe::to_hdf5(hid_t universes_group) const
 // Cell implementation
 //==============================================================================
 
+Cell::Cell() {} // empty constructor
+  
 Cell::Cell(pugi::xml_node cell_node)
 {
   if (check_for_node(cell_node, "id")) {
@@ -586,9 +588,13 @@ Cell::contains_complex(Position r, Direction u, int32_t on_surface) const
 }
 
 //==============================================================================
-// Non-method functions
+// CAD Cell implementation
 //==============================================================================
 
+CADCell::CADCell() : Cell{} {};
+  
+//==============================================================================
+// Non-method functions
 extern "C" void
 read_cells(pugi::xml_node* node)
 {

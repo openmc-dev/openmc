@@ -138,7 +138,7 @@ void read_coeffs(pugi::xml_node surf_node, int surf_id, double &c1, double &c2,
 // Surface implementation
 //==============================================================================
 
-Surface::Surface() {}
+Surface::Surface() {} // empty constructor
   
 Surface::Surface(pugi::xml_node surf_node)
 {

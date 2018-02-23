@@ -179,6 +179,7 @@ Surface::Surface(pugi::xml_node surf_node)
 
 }
 
+  
 bool
 Surface::sense(Position r, Direction u) const
 {
@@ -209,8 +210,11 @@ Surface::reflect(Position r, Direction u) const
   return u -= (2.0 * projection / magnitude) * n;
 }
 
+CSGSurface::CSGSurface() : Surface{} {};
+CSGSurface::CSGSurface(pugi::xml_node surf_node) : Surface{surf_node} {};
+
 void
-Surface::to_hdf5(hid_t group_id) const
+CSGSurface::to_hdf5(hid_t group_id) const
 {
   std::string group_name {"surface "};
   group_name += std::to_string(id_);
@@ -267,7 +271,7 @@ BoundingBox CADSurface::bounding_box() const { return BoundingBox(); }
 //==============================================================================
 
 PeriodicSurface::PeriodicSurface(pugi::xml_node surf_node)
-  : Surface {surf_node}
+  : CSGSurface {surf_node}
 {
   if (check_for_node(surf_node, "periodic_surface_id")) {
     i_periodic_ = std::stoi(get_node_value(surf_node, "periodic_surface_id"));
@@ -603,7 +607,7 @@ axis_aligned_cylinder_normal(Position r, double offset1, double offset2)
 //==============================================================================
 
 SurfaceXCylinder::SurfaceXCylinder(pugi::xml_node surf_node)
-  : Surface(surf_node)
+  : CSGSurface(surf_node)
 {
   read_coeffs(surf_node, id_, y0_, z0_, radius_);
 }
@@ -637,7 +641,7 @@ void SurfaceXCylinder::to_hdf5_inner(hid_t group_id) const
 //==============================================================================
 
 SurfaceYCylinder::SurfaceYCylinder(pugi::xml_node surf_node)
-  : Surface(surf_node)
+  : CSGSurface(surf_node)
 {
   read_coeffs(surf_node, id_, x0_, z0_, radius_);
 }
@@ -670,7 +674,7 @@ void SurfaceYCylinder::to_hdf5_inner(hid_t group_id) const
 //==============================================================================
 
 SurfaceZCylinder::SurfaceZCylinder(pugi::xml_node surf_node)
-  : Surface(surf_node)
+  : CSGSurface(surf_node)
 {
   read_coeffs(surf_node, id_, x0_, y0_, radius_);
 }
@@ -703,7 +707,7 @@ void SurfaceZCylinder::to_hdf5_inner(hid_t group_id) const
 //==============================================================================
 
 SurfaceSphere::SurfaceSphere(pugi::xml_node surf_node)
-  : Surface(surf_node)
+  : CSGSurface(surf_node)
 {
   read_coeffs(surf_node, id_, x0_, y0_, z0_, radius_);
 }
@@ -856,7 +860,7 @@ axis_aligned_cone_normal(Position r, double offset1, double offset2,
 //==============================================================================
 
 SurfaceXCone::SurfaceXCone(pugi::xml_node surf_node)
-  : Surface(surf_node)
+  : CSGSurface(surf_node)
 {
   read_coeffs(surf_node, id_, x0_, y0_, z0_, radius_sq_);
 }
@@ -889,7 +893,7 @@ void SurfaceXCone::to_hdf5_inner(hid_t group_id) const
 //==============================================================================
 
 SurfaceYCone::SurfaceYCone(pugi::xml_node surf_node)
-  : Surface(surf_node)
+  : CSGSurface(surf_node)
 {
   read_coeffs(surf_node, id_, x0_, y0_, z0_, radius_sq_);
 }
@@ -922,7 +926,7 @@ void SurfaceYCone::to_hdf5_inner(hid_t group_id) const
 //==============================================================================
 
 SurfaceZCone::SurfaceZCone(pugi::xml_node surf_node)
-  : Surface(surf_node)
+  : CSGSurface(surf_node)
 {
   read_coeffs(surf_node, id_, x0_, y0_, z0_, radius_sq_);
 }
@@ -955,7 +959,7 @@ void SurfaceZCone::to_hdf5_inner(hid_t group_id) const
 //==============================================================================
 
 SurfaceQuadric::SurfaceQuadric(pugi::xml_node surf_node)
-  : Surface(surf_node)
+  : CSGSurface(surf_node)
 {
   read_coeffs(surf_node, id_, A_, B_, C_, D_, E_, F_, G_, H_, J_, K_);
 }
@@ -1252,6 +1256,17 @@ extern "C" {
   }
 
   int surface_i_periodic(PeriodicSurface* surf) {return surf->i_periodic_;}
+
+  void surface_normal(Surface* surf, double xyz[3], double uvw[3])
+  {
+    Position r {xyz};
+    Direction u = surf->normal(r);
+    uvw[0] = u.x;
+    uvw[1] = u.y;
+    uvw[2] = u.z;
+  }
+
+  void surface_to_hdf5(CSGSurface* surf, hid_t group) {surf->to_hdf5(group);}
 
   bool
   surface_periodic(PeriodicSurface* surf, PeriodicSurface* other, double xyz[3],

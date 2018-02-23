@@ -3,6 +3,7 @@
 
 #include "DagMC.hpp"
 #include "cell.h"
+#include "surface.h"
 
 extern "C" void load_cad_geometry_c();
 

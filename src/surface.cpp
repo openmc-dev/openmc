@@ -240,6 +240,27 @@ Surface::to_hdf5(hid_t group_id) const
 }
 
 //==============================================================================
+// CADSurface implementation
+//==============================================================================
+
+  CADSurface::CADSurface(pugi::xml_node surf_node) : Surface {surf_node} {} // empty constructor
+
+double CADSurface::evaluate(const double xyz[3]) const
+{
+  return 0.0;
+}
+
+double CADSurface::distance(const double xyz[3], const double uvw[3], bool coincident) const {
+  return 0.0;
+}
+
+void CADSurface::normal(const double xyz[3], double uvw[3]) const {
+    return;
+}
+
+BoundingBox CADSurface::bounding_box() const { return BoundingBox(); }
+
+//==============================================================================
 // PeriodicSurface implementation
 //==============================================================================
 

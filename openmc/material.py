@@ -747,7 +747,6 @@ class Material(IDManagerMixin):
         return self.volume*self.get_mass_density(nuclide)
 
     def clone(self, memo=None):
-
         """Create a copy of this material with a new unique ID.
 
         Parameters

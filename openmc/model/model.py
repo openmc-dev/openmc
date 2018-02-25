@@ -209,9 +209,7 @@ class Model(object):
         """
         self.export_to_xml()
 
-        return_code = openmc.run(**kwargs)
-
-        assert (return_code == 0), "OpenMC did not execute successfully"
+        openmc.run(**kwargs)
 
         n = self.settings.batches
         if self.settings.statepoint is not None:

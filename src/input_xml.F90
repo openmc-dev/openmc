@@ -11,7 +11,9 @@ module input_xml
   use error,            only: fatal_error, warning, write_message, openmc_err_msg
   use geometry,         only: neighbor_lists
   use geometry_header
+#ifdef CAD
   use cad_header
+#endif
   use hdf5_interface
   use list_header,      only: ListChar, ListInt, ListReal
   use material_header
@@ -386,7 +388,7 @@ contains
     type(VectorInt) :: univ_ids      ! List of all universe IDs
     type(DictIntInt) :: cells_in_univ_dict ! Used to count how many cells each
                                            ! universe contains
-
+#ifdef CAD
     if (dagmc) then
        call write_message("Reading CAD geometry...", 5)
        call load_cad_geometry()
@@ -394,7 +396,8 @@ contains
        call allocate_cells()
        return
     end if
-
+#endif
+    
     ! Display output message
     call write_message("Reading geometry XML file...", 5)
 
@@ -439,6 +442,8 @@ contains
     ! READ CELLS FROM GEOMETRY.XML
 
     call read_cells(root % ptr)
+
+    call allocate_cells()
 
     ! Get pointer to list of XML <cell>
     call get_node_list(root, "cell", node_cell_list)
@@ -589,10 +594,25 @@ contains
 
   subroutine allocate_cells()
     integer :: i
+    type(Cell), pointer :: c
+    
     ! Allocate cells array
     allocate(cells(n_cells))
+    
     do i = 1, n_cells
-       cells(i) % ptr = cell_pointer_c(i - 1)
+       c => cells(i)
+       
+       c % ptr = cell_pointer_c(i - 1)
+
+       ! Check to make sure 'id' hasn't been used
+       if (cell_dict % has(c % id())) then
+          call fatal_error("Two or more cells use the same unique ID: " &
+               // to_str(c % id()))
+       end if
+       
+       ! Add cell to dictionary
+       call cell_dict % set(c % id(), i)
+
     end do
   end subroutine allocate_cells
 

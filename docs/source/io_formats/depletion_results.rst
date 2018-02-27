@@ -12,23 +12,23 @@ The current version of the depletion results file format is 1.0.
              - **version** (*int[2]*) -- Major and minor version of the
                statepoint file format.
 
-:Datasets: - **eigenvalues** (*float[][]*) -- k-eigenvalues at each
+:Datasets: - **eigenvalues** (*double[][]*) -- k-eigenvalues at each
              time/stage. This array has shape (number of timesteps, number of
              stages).
-           - **number** (*float[][][][]*) -- Total number of atoms. This array
+           - **number** (*double[][][][]*) -- Total number of atoms. This array
              has shape (number of timesteps, number of stages, number of
              materials, number of nuclides).
-           - **reaction rates** (*float[][][][][]*) -- Reaction rates used to
+           - **reaction rates** (*double[][][][][]*) -- Reaction rates used to
              build depletion matrices. This array has shape (number of
              timesteps, number of stages, number of materials, number of
              nuclides, number of reactions).
-           - **time** (*float[][2]*) -- Time in [s] at beginning/end of each
+           - **time** (*double[][2]*) -- Time in [s] at beginning/end of each
              step.
 
 **/materials/<id>/**
 
 :Attributes: - **index** (*int*) -- Index used in results for this material
-             - **volume** (*float*) -- Volume of this material in [cm^3]
+             - **volume** (*double*) -- Volume of this material in [cm^3]
 
 **/nuclides/<name>/**
 

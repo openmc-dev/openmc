@@ -41,7 +41,7 @@ class AtomNumber(object):
     n_nuc_burn : int
         Number of burnable nuclides.
     n_nuc : int
-        Number of nuclidess.
+        Number of nuclides.
 
     """
     def __init__(self, local_mats, nuclides, volume, n_nuc_burn):

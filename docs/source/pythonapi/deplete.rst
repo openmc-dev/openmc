@@ -27,6 +27,17 @@ specific to OpenMC is available using the following class:
 
    Operator
 
+When running in parallel using `mpi4py <http://mpi4py.scipy.org>`_, the MPI
+intercommunicator used can be changed by modifying the following module
+variable. If it is not explicitly modified, it defaults to
+``mpi4py.MPI.COMM_WORLD``.
+
+.. data:: comm
+
+   MPI intercommunicator used to call OpenMC library
+
+   :type: mpi4py.MPI.Comm
+
 Internal Classes and Functions
 ------------------------------
 

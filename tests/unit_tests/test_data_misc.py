@@ -66,3 +66,5 @@ def test_zam():
     assert openmc.data.zam('Am242') == (95, 242, 0)
     assert openmc.data.zam('Am242_m1') == (95, 242, 1)
     assert openmc.data.zam('Am242_m10') == (95, 242, 10)
+    with pytest.raises(ValueError):
+        openmc.data.zam('garbage')

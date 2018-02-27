@@ -55,15 +55,12 @@ def replace_missing(product, decay_data):
         Replacement for missing product in GND format.
 
     """
-
-    symbol, A, state = re.match(r'([A-Zn][a-z]*)(\d+)((?:_m\d+)?)',
-                                product).groups()
-    Z = openmc.data.ATOMIC_NUMBER[symbol]
-    A = int(A)
+    # Determine atomic number, mass number, and metastable state
+    Z, A, state = openmc.data.zam(product)
+    symbol = openmc.data.ATOMIC_SYMBOL[Z]
 
     # First check if ground state is available
     if state:
-        metastable_state = int(state[2:])
         product = '{}{}'.format(symbol, A)
 
     # Find isotope with longest half-life

@@ -327,8 +327,12 @@ def zam(name):
         Atomic number, mass number, and metastable state
 
     """
-    symbol, A, state = re.match(r'([A-Zn][a-z]*)(\d+)((?:_[em]\d+)?)',
-                                name).groups()
+    try:
+        symbol, A, state = re.match(r'([A-Zn][a-z]*)(\d+)((?:_[em]\d+)?)',
+                                    name).groups()
+    except AttributeError:
+        raise ValueError("'{}' does not appear to be a nuclide name in GND "
+                         "format.".format(name))
     metastable = int(state[2:]) if state else 0
     return (ATOMIC_NUMBER[symbol], int(A), metastable)
 

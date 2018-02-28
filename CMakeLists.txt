@@ -50,6 +50,7 @@ if(cad)
     message(FATAL_ERROR "Could not find DAGMC installation")
   endif()
   add_definitions(-DCAD)
+  link_directories(${DAGMC_LIBRARY_DIRS})
   include_directories(${DAGMC_INCLUDE_DIRS})
 endif()
 
@@ -497,15 +498,15 @@ endif()
 
 # target_link_libraries treats any arguments starting with - but not -l as
 # linker flags. Thus, we can pass both linker flags and libraries together.
-target_link_libraries(libopenmc ${ldflags} ${HDF5_LIBRARIES} pugixml
-                      faddeeva xtensor ${DAGMC_LINK_LIBS})
+target_link_libraries(libopenmc ${ldflags} ${HDF5_LIBRARIES} pugixml_fortran
+                      faddeeva xtensor ${DAGMC_LIBRARIES})
 
 #===============================================================================
 # openmc executable
 #===============================================================================
 add_executable(openmc src/main.cpp)
 target_compile_options(openmc PRIVATE ${cxxflags})
-target_link_libraries(openmc ${ldflags} libopenmc ${DAGMC_LINK_LIBS})
+target_link_libraries(openmc ${ldflags} libopenmc ${DAGMC_LIBRARIES})
 
 #===============================================================================
 # Python package

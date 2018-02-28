@@ -403,7 +403,7 @@ read_cells(pugi::xml_node *node)
 
   // Loop over XML cell elements and populate the array.
   for (pugi::xml_node cell_node: node->children("cell")) {
-    cells_c.push_back(Cell(cell_node));
+    cells_c.push_back(new Cell(cell_node));
   }
 }
 
@@ -412,7 +412,7 @@ read_cells(pugi::xml_node *node)
 //==============================================================================
 
 extern "C" {
-  Cell* cell_pointer(int32_t cell_ind) {return &cells_c[cell_ind];}
+  Cell* cell_pointer(int32_t cell_ind) {return cells_c[cell_ind];}
 
   int32_t cell_id(Cell *c) {return c->id;}
 
@@ -436,6 +436,15 @@ extern "C" {
   }
 
   void cell_to_hdf5(Cell *c, hid_t group) {c->to_hdf5(group);}
+
+  void extend_cells_c(int32_t n)
+  {
+    cells_c.reserve(cells_c.size() + n);
+    for (int32_t i = 0; i < n; i++) {
+      cells_c.push_back(new Cell());
+    }
+    n_cells = cells_c.size();
+  }
 }
 
 //extern "C" void free_memory_cells_c()

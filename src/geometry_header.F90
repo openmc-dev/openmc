@@ -142,6 +142,12 @@ module geometry_header
       type(C_PTR),    intent(in), value :: lat_ptr
       integer(HID_T), intent(in), value :: group
     end subroutine lattice_to_hdf5_c
+
+    subroutine extend_cells_c(n) bind(C)
+      use ISO_C_BINDING
+      implicit none
+      integer(C_INT32_T), intent(in), value :: n
+    end subroutine extend_cells_c
   end interface
 
 !===============================================================================
@@ -452,6 +458,7 @@ contains
     integer(C_INT32_T), value, intent(in) :: n
     integer(C_INT32_T), optional, intent(out) :: index_start
     integer(C_INT32_T), optional, intent(out) :: index_end
+    integer(C_INT32_T) :: i
     integer(C_INT) :: err
 
     type(Cell), allocatable :: temp(:) ! temporary cells array
@@ -473,7 +480,12 @@ contains
     ! Return indices in cells array
     if (present(index_start)) index_start = n_cells + 1
     if (present(index_end)) index_end = n_cells + n
-    n_cells = n_cells + n
+
+    ! Extend the C++ cells array and get pointers to the C++ objects
+    call extend_cells_c(n)
+    do i = n_cells - n, n_cells
+      cells(i) % ptr = cell_pointer_c(i - 1)
+    end do
 
     err = 0
   end function openmc_extend_cells

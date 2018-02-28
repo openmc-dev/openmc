@@ -20,8 +20,7 @@ namespace openmc {
 extern "C" {int32_t n_cells {0};}
 
 class Cell;
-//Cell *cells_c;
-std::vector<Cell> cells_c;
+std::vector<Cell*> cells_c;
 
 std::map<int, int> cell_dict;
 
@@ -54,6 +53,8 @@ public:
   //! Reverse Polish notation for region expression
   std::vector<std::int32_t> rpn;
   bool simple;  //!< Does the region contain only intersections?
+
+  Cell() {};
 
   explicit Cell(pugi::xml_node cell_node);
 

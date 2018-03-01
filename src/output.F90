@@ -356,9 +356,9 @@ contains
     integer :: n  ! number of active generations
 
     ! Determine overall generation and number of active generations
-    i = overall_generation()
+    i = overall_generation() - 1
     n = i - n_inactive*gen_per_batch
-
+    
     ! write out information batch and option independent output
     write(UNIT=OUTPUT_UNIT, FMT='(2X,A9)', ADVANCE='NO') &
          trim(to_str(current_batch)) // "/" // trim(to_str(gen_per_batch))
@@ -377,16 +377,6 @@ contains
       write(UNIT=OUTPUT_UNIT, FMT='(23X)', ADVANCE='NO')
     end if
       
-  end subroutine print_batch_keff
-
-!===============================================================================
-! PRINT_CMFD displays the CMFD related information to output after CMFD is 
-! executed. Will print blank line if CMFD is not on, to ensure consistent 
-! formatting of output columns
-!===============================================================================
-
-  subroutine print_cmfd()
-
     ! write out cmfd keff if it is active and other display info
     if (cmfd_on) then
       write(UNIT=OUTPUT_UNIT, FMT='(3X, F8.5)', ADVANCE='NO') &
@@ -410,7 +400,7 @@ contains
     ! next line
     write(UNIT=OUTPUT_UNIT, FMT=*)
 
-  end subroutine print_cmfd
+  end subroutine print_batch_keff
 
 !===============================================================================
 ! PRINT_PLOT displays selected options for plotting

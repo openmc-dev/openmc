@@ -358,7 +358,7 @@ contains
     ! Determine overall generation and number of active generations
     i = overall_generation() - 1
     n = i - n_inactive*gen_per_batch
-    
+
     ! write out information batch and option independent output
     write(UNIT=OUTPUT_UNIT, FMT='(2X,A9)', ADVANCE='NO') &
          trim(to_str(current_batch)) // "/" // trim(to_str(gen_per_batch))

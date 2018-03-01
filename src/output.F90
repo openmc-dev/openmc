@@ -376,7 +376,7 @@ contains
     else
       write(UNIT=OUTPUT_UNIT, FMT='(23X)', ADVANCE='NO')
     end if
-      
+
     ! write out cmfd keff if it is active and other display info
     if (cmfd_on) then
       write(UNIT=OUTPUT_UNIT, FMT='(3X, F8.5)', ADVANCE='NO') &

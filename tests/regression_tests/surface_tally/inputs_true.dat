@@ -11,7 +11,7 @@
 </geometry>
 <?xml version='1.0' encoding='utf-8'?>
 <materials>
-  <material id="13" name="UO2 fuel at 2.4% wt enrichment">
+  <material depletable="true" id="13" name="UO2 fuel at 2.4% wt enrichment">
     <density units="g/cc" value="10.0" />
     <nuclide ao="1.0" name="U238" />
     <nuclide ao="0.02" name="U235" />

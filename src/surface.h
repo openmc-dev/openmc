@@ -8,6 +8,8 @@
 #include "hdf5.h"
 #include "pugixml/pugixml.hpp"
 
+#include "constants.h"
+
 
 namespace openmc {
 
@@ -19,14 +21,6 @@ extern "C" const int BC_TRANSMIT;
 extern "C" const int BC_VACUUM;
 extern "C" const int BC_REFLECT;
 extern "C" const int BC_PERIODIC;
-
-//==============================================================================
-// Constants that should eventually be moved out of this file
-//==============================================================================
-
-extern "C" double FP_COINCIDENT;
-constexpr double INFTY{std::numeric_limits<double>::max()};
-constexpr int C_NONE {-1};
 
 //==============================================================================
 // Global variables

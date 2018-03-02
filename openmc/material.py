@@ -88,7 +88,7 @@ class Material(IDManagerMixin):
         self.name = name
         self.temperature = temperature
         self._density = None
-        self._density_units = ''
+        self._density_units = 'sum'
         self._depletable = False
         self._paths = None
         self._num_instances = None
@@ -397,9 +397,13 @@ class Material(IDManagerMixin):
 
         # If nuclide name doesn't look valid, give a warning
         try:
-            openmc.data.zam(nuclide)
+            Z, _, _ = openmc.data.zam(nuclide)
         except ValueError as e:
             warnings.warn(str(e))
+        else:
+            # For actinides, have the material be depletable by default
+            if Z >= 89:
+                self.depletable = True
 
         self._nuclides.append((nuclide, percent, percent_type))
 
@@ -541,7 +545,7 @@ class Material(IDManagerMixin):
         # Add naturally-occuring isotopes
         element = openmc.Element(element)
         for nuclide in element.expand(percent, percent_type, enrichment):
-            self._nuclides.append(nuclide)
+            self.add_nuclide(*nuclide)
 
     def add_s_alpha_beta(self, name, fraction=1.0):
         r"""Add an :math:`S(\alpha,\beta)` table to the material

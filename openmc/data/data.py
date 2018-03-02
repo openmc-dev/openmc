@@ -136,6 +136,8 @@ ATOMIC_NUMBER = {value: key for key, value in ATOMIC_SYMBOL.items()}
 
 _ATOMIC_MASS = {}
 
+_GND_NAME_RE = re.compile(r'([A-Zn][a-z]*)(\d+)((?:_[em]\d+)?)')
+
 
 def atomic_mass(isotope):
     """Return atomic mass of isotope in atomic mass units.
@@ -352,8 +354,7 @@ def zam(name):
 
     """
     try:
-        symbol, A, state = re.match(r'([A-Zn][a-z]*)(\d+)((?:_[em]\d+)?)',
-                                    name).groups()
+        symbol, A, state = _GND_NAME_RE.match(name).groups()
     except AttributeError:
         raise ValueError("'{}' does not appear to be a nuclide name in GND "
                          "format.".format(name))

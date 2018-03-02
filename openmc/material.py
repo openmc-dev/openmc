@@ -379,33 +379,27 @@ class Material(IDManagerMixin):
         Parameters
         ----------
         nuclide : str
-            Nuclide to add
+            Nuclide to add, e.g., 'Mo95'
         percent : float
             Atom or weight percent
         percent_type : {'ao', 'wo'}
             'ao' for atom percent and 'wo' for weight percent
 
         """
+        cv.check_type('nuclide', nuclide, str)
+        cv.check_type('percent', percent, Real)
+        cv.check_value('percent type', percent_type, {'ao', 'wo'})
 
         if self._macroscopic is not None:
             msg = 'Unable to add a Nuclide to Material ID="{}" as a ' \
                   'macroscopic data-set has already been added'.format(self._id)
             raise ValueError(msg)
 
-        if not isinstance(nuclide, str):
-            msg = 'Unable to add a Nuclide to Material ID="{}" with a ' \
-                  'non-string value "{}"'.format(self._id, nuclide)
-            raise ValueError(msg)
-
-        elif not isinstance(percent, Real):
-            msg = 'Unable to add a Nuclide to Material ID="{}" with a ' \
-                  'non-floating point value "{}"'.format(self._id, percent)
-            raise ValueError(msg)
-
-        elif percent_type not in ('ao', 'wo'):
-            msg = 'Unable to add a Nuclide to Material ID="{}" with a ' \
-                  'percent type "{}"'.format(self._id, percent_type)
-            raise ValueError(msg)
+        # If nuclide name doesn't look valid, give a warning
+        try:
+            openmc.data.zam(nuclide)
+        except ValueError as e:
+            warnings.warn(str(e))
 
         self._nuclides.append((nuclide, percent, percent_type))
 
@@ -493,7 +487,7 @@ class Material(IDManagerMixin):
         Parameters
         ----------
         element : str
-            Element to add
+            Element to add, e.g., 'Zr'
         percent : float
             Atom or weight percent
         percent_type : {'ao', 'wo'}, optional
@@ -505,25 +499,13 @@ class Material(IDManagerMixin):
             (natural composition).
 
         """
+        cv.check_type('nuclide', element, str)
+        cv.check_type('percent', percent, Real)
+        cv.check_value('percent type', percent_type, {'ao', 'wo'})
 
         if self._macroscopic is not None:
             msg = 'Unable to add an Element to Material ID="{}" as a ' \
                   'macroscopic data-set has already been added'.format(self._id)
-            raise ValueError(msg)
-
-        if not isinstance(element, str):
-            msg = 'Unable to add an Element to Material ID="{}" with a ' \
-                  'non-string value "{}"'.format(self._id, element)
-            raise ValueError(msg)
-
-        if not isinstance(percent, Real):
-            msg = 'Unable to add an Element to Material ID="{}" with a ' \
-                  'non-floating point value "{}"'.format(self._id, percent)
-            raise ValueError(msg)
-
-        if percent_type not in ['ao', 'wo']:
-            msg = 'Unable to add an Element to Material ID="{}" with a ' \
-                  'percent type "{}"'.format(self._id, percent_type)
             raise ValueError(msg)
 
         if enrichment is not None:
@@ -550,6 +532,11 @@ class Material(IDManagerMixin):
                       'composition manually for enrichments over 5%.'.\
                       format(enrichment, self._id)
                 warnings.warn(msg)
+
+        # Make sure element name is just that
+        if not element.isalpha():
+            raise ValueError("Element name should be given by the "
+                             "element's symbol, e.g., 'Zr'")
 
         # Add naturally-occuring isotopes
         element = openmc.Element(element)

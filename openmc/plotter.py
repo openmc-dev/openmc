@@ -2,7 +2,6 @@ from numbers import Integral, Real
 from itertools import chain
 import string
 
-import matplotlib.pyplot as plt
 import numpy as np
 
 import openmc.checkvalue as cv
@@ -125,6 +124,8 @@ def plot_xs(this, types, divisor_types=None, temperature=294., data_type=None,
         generated.
 
     """
+    import matplotlib.pyplot as plt
+
     cv.check_type("plot_CE", plot_CE, bool)
 
     if data_type is None:

@@ -313,13 +313,37 @@ def water_density(temperature, pressure=0.1013):
     return coeff / pi / gamma1_pi
 
 
+def gnd_name(Z, A, m=0):
+    """Return nuclide name using GND convention
+
+    Parameters
+    ----------
+    Z : int
+        Atomic number
+    A : int
+        Mass number
+    m : int, optional
+        Metastable state
+
+    Returns
+    -------
+    str
+        Nuclide name in GND convention, e.g., 'Am242_m1'
+
+    """
+    if m > 0:
+        return '{}{}_m{}'.format(ATOMIC_SYMBOL[Z], A, m)
+    else:
+        return '{}{}'.format(ATOMIC_SYMBOL[Z], A)
+
+
 def zam(name):
     """Return tuple of (atomic number, mass number, metastable state)
 
     Parameters
     ----------
     name : str
-        Name of nuclide using GND convention, e.g., 'Am242m1'
+        Name of nuclide using GND convention, e.g., 'Am242_m1'
 
     Returns
     -------

@@ -32,6 +32,7 @@ Core Functions
     :template: myfunction.rst
 
     openmc.data.atomic_mass
+    openmc.data.gnd_name
     openmc.data.linearize
     openmc.data.thin
     openmc.data.water_density

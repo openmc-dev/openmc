@@ -144,8 +144,8 @@ class MGXSTestHarness(PyAPITestHarness):
             with openmc.StatePoint('statepoint.{}.h5'.format(batches)) as sp:
                 # Write out k-combined.
                 outstr += 'k-combined:\n'
-                form = '{0:12.6E} {1:12.6E}\n'
-                outstr += form.format(sp.k_combined[0], sp.k_combined[1])
+                form = '{:12.6E} {:12.6E}\n'
+                outstr += form.format(sp.k_combined.n, sp.k_combined.s)
 
         return outstr
 

@@ -59,6 +59,10 @@ def replace_missing(product, decay_data):
     Z, A, state = openmc.data.zam(product)
     symbol = openmc.data.ATOMIC_SYMBOL[Z]
 
+    # Replace neutron with proton
+    if Z == 0 and A == 1:
+        return 'H1'
+
     # First check if ground state is available
     if state:
         product = '{}{}'.format(symbol, A)
@@ -167,6 +171,9 @@ class Chain(object):
         decay_data = {}
         for f in decay_files:
             data = openmc.data.Decay(f)
+            # Skip decay data for neutron itself
+            if data.nuclide['atomic_number'] == 0:
+                continue
             decay_data[data.nuclide['name']] = data
 
         print('Processing fission product yield sub-library files...')

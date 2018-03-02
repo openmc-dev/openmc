@@ -5,6 +5,7 @@
 #include <sstream>
 #include <string>
 
+#include "constants.h"
 #include "error.h"
 #include "hdf5_interface.h"
 #include "surface.h"
@@ -202,6 +203,12 @@ Cell::Cell(pugi::xml_node cell_node)
     universe = stoi(get_node_value(cell_node, "universe"));
   } else {
     universe = 0;
+  }
+
+  if (check_for_node(cell_node, "fill")) {
+    fill = stoi(get_node_value(cell_node, "fill"));
+  } else {
+    fill = C_NONE;
   }
 
   std::string region_spec {""};
@@ -404,6 +411,20 @@ read_cells(pugi::xml_node *node)
   // Loop over XML cell elements and populate the array.
   for (pugi::xml_node cell_node: node->children("cell")) {
     cells_c.push_back(new Cell(cell_node));
+  }
+
+  // Populate the Universe vector and dictionary.
+  for (Cell *c : cells_c) {
+    int32_t uid = c->universe;
+    auto it = universe_dict.find(uid);
+    if (it == universe_dict.end()) {
+      universes_c.push_back(new Universe());
+      universes_c.back()->id = uid;
+      universes_c.back()->cells.push_back(c);
+      universe_dict[uid] = universes_c.size() - 1;
+    } else {
+      universes_c[it->second]->cells.push_back(c);
+    }
   }
 }
 

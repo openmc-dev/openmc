@@ -21,8 +21,11 @@ extern "C" {int32_t n_cells {0};}
 
 class Cell;
 std::vector<Cell*> cells_c;
+std::map<int32_t, int32_t> cell_dict;
 
-std::map<int, int> cell_dict;
+class Universe;
+std::vector<Universe*> universes_c;
+std::map<int32_t, int32_t> universe_dict;
 
 //==============================================================================
 //! A geometry primitive that fills all space and contains cells.
@@ -30,10 +33,10 @@ std::map<int, int> cell_dict;
 
 class Universe
 {
-  public:
+public:
   int32_t id;                  //! Unique ID
   int32_t type;
-  std::vector<int32_t> cells;  //! Cells within this universe
+  std::vector<Cell*> cells;    //! Cells within this universe
   double x0, y0, z0;           //! Translation coordinates.
 };
 
@@ -47,6 +50,7 @@ public:
   int32_t id;                //!< Unique ID
   std::string name{""};      //!< User-defined name
   int32_t universe;          //!< Universe # this cell is in
+  int32_t fill;              //!< Universe # filling this cell
 
   //! Definition of spatial region as Boolean expression of half-spaces
   std::vector<std::int32_t> region;

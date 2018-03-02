@@ -71,7 +71,7 @@ def test_from_endf():
     neutron_data = (_ENDF_DATA / 'neutrons').glob('*.endf')
     chain = Chain.from_endf(decay_data, fpy_data, neutron_data)
 
-    assert len(chain) == len(chain.nuclides) == len(chain.nuclide_dict) == 3821
+    assert len(chain) == len(chain.nuclides) == len(chain.nuclide_dict) == 3820
     for nuc in chain.nuclides:
         assert nuc == chain[nuc.name]
 

@@ -165,12 +165,12 @@ contains
   subroutine print_version()
 
     if (master) then
-      write(UNIT=OUTPUT_UNIT, FMT='(1X,A,1X,I1,".",I1,".",I1)') &
+      write(UNIT=OUTPUT_UNIT, FMT='(1X,A,1X,I1,".",I2,".",I1)') &
            "OpenMC version", VERSION_MAJOR, VERSION_MINOR, VERSION_RELEASE
 #ifdef GIT_SHA1
       write(UNIT=OUTPUT_UNIT, FMT='(1X,A,A)') "Git SHA1: ", GIT_SHA1
 #endif
-      write(UNIT=OUTPUT_UNIT, FMT=*) "Copyright (c) 2011-2015 &
+      write(UNIT=OUTPUT_UNIT, FMT=*) "Copyright (c) 2011-2018 &
            &Massachusetts Institute of Technology"
       write(UNIT=OUTPUT_UNIT, FMT=*) "MIT/X license at &
            &<http://openmc.readthedocs.io/en/latest/license.html>"

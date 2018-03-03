@@ -313,14 +313,63 @@ def water_density(temperature, pressure=0.1013):
     return coeff / pi / gamma1_pi
 
 
+def gnd_name(Z, A, m=0):
+    """Return nuclide name using GND convention
+
+    Parameters
+    ----------
+    Z : int
+        Atomic number
+    A : int
+        Mass number
+    m : int, optional
+        Metastable state
+
+    Returns
+    -------
+    str
+        Nuclide name in GND convention, e.g., 'Am242_m1'
+
+    """
+    if m > 0:
+        return '{}{}_m{}'.format(ATOMIC_SYMBOL[Z], A, m)
+    else:
+        return '{}{}'.format(ATOMIC_SYMBOL[Z], A)
+
+
+def zam(name):
+    """Return tuple of (atomic number, mass number, metastable state)
+
+    Parameters
+    ----------
+    name : str
+        Name of nuclide using GND convention, e.g., 'Am242_m1'
+
+    Returns
+    -------
+    3-tuple of int
+        Atomic number, mass number, and metastable state
+
+    """
+    try:
+        symbol, A, state = re.match(r'([A-Zn][a-z]*)(\d+)((?:_[em]\d+)?)',
+                                    name).groups()
+    except AttributeError:
+        raise ValueError("'{}' does not appear to be a nuclide name in GND "
+                         "format.".format(name))
+    metastable = int(state[2:]) if state else 0
+    return (ATOMIC_NUMBER[symbol], int(A), metastable)
+
+
 # Values here are from the Committee on Data for Science and Technology
 # (CODATA) 2014 recommendation (doi:10.1103/RevModPhys.88.035009).
 
 # The value of the Boltzman constant in units of eV / K
 K_BOLTZMANN = 8.6173303e-5
 
-# Used for converting units in ACE data
+# Unit conversions
 EV_PER_MEV = 1.0e6
+JOULE_PER_EV = 1.6021766208e-19
 
 # Avogadro's constant
 AVOGADRO = 6.022140857e23

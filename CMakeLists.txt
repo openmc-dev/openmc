@@ -496,7 +496,8 @@ add_custom_command(TARGET libopenmc POST_BUILD
 
 install(TARGETS ${program} libopenmc
   RUNTIME DESTINATION bin
-  LIBRARY DESTINATION lib)
+  LIBRARY DESTINATION lib
+  ARCHIVE DESTINATION lib)
 install(DIRECTORY src/relaxng DESTINATION share/openmc)
 install(FILES man/man1/openmc.1 DESTINATION share/man/man1)
 install(FILES LICENSE DESTINATION "share/doc/${program}" RENAME copyright)

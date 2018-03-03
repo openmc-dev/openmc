@@ -2,15 +2,6 @@ import openmc
 import pytest
 
 
-@pytest.fixture
-def run_in_tmpdir(tmpdir):
-    orig = tmpdir.chdir()
-    try:
-        yield
-    finally:
-        orig.chdir()
-
-
 @pytest.fixture(scope='module')
 def uo2():
     m = openmc.Material(material_id=100, name='UO2')

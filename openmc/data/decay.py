@@ -457,6 +457,7 @@ class Decay(EqualityMixin):
             items, values = get_list_record(file_obj)
             self.nuclide['spin'] = items[0]
             self.nuclide['parity'] = items[1]
+            self.half_life = ufloat(float('inf'), float('inf'))
 
     @property
     def decay_constant(self):

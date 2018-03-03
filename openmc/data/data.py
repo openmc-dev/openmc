@@ -1,9 +1,8 @@
 import itertools
+from math import sqrt
 import os
 import re
 from warnings import warn
-
-from numpy import sqrt
 
 
 # Isotopic abundances from Meija J, Coplen T B, et al, "Isotopic compositions
@@ -142,19 +141,18 @@ _GND_NAME_RE = re.compile(r'([A-Zn][a-z]*)(\d+)((?:_[em]\d+)?)')
 def atomic_mass(isotope):
     """Return atomic mass of isotope in atomic mass units.
 
-    Atomic mass data comes from the Atomic Mass Evaluation 2012, published in
-    Chinese Physics C 36 (2012), 1287--1602.
+    Atomic mass data comes from the `Atomic Mass Evaluation 2012
+    <https://www-nds.iaea.org/amdc/ame2012/AME2012-1.pdf>`_.
 
     Parameters
     ----------
     isotope : str
-        Name of isotope, e.g. 'Pu239'
+        Name of isotope, e.g., 'Pu239'
 
     Returns
     -------
-    float or None
-        Atomic mass of isotope in atomic mass units. If the isotope listed does
-        not have a known atomic mass, None is returned.
+    float
+        Atomic mass of isotope in [amu]
 
     """
     if not _ATOMIC_MASS:
@@ -185,7 +183,7 @@ def atomic_mass(isotope):
     if '_' in isotope:
         isotope = isotope[:isotope.find('_')]
 
-    return _ATOMIC_MASS.get(isotope.lower())
+    return _ATOMIC_MASS[isotope.lower()]
 
 
 def atomic_weight(element):
@@ -201,16 +199,19 @@ def atomic_weight(element):
 
     Returns
     -------
-    float or None
-        Atomic weight of element in atomic mass units. If the element listed does
-        not exist, None is returned.
+    float
+        Atomic weight of element in [amu]
 
     """
     weight = 0.
     for nuclide, abundance in NATURAL_ABUNDANCE.items():
         if re.match(r'{}\d+'.format(element), nuclide):
             weight += atomic_mass(nuclide) * abundance
-    return None if weight == 0. else weight
+    if weight > 0.:
+        return weight
+    else:
+        raise ValueError("No naturally-occurring isotopes for element '{}'."
+                         .format(element))
 
 
 def water_density(temperature, pressure=0.1013):
@@ -236,7 +237,7 @@ def water_density(temperature, pressure=0.1013):
     Returns
     -------
     float
-        Water density in units of [g / cm^3]
+        Water density in units of [g/cm^3]
 
     """
 

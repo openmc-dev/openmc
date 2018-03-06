@@ -294,8 +294,6 @@ contains
       if (master .and. verbosity >= 7) then
         if (current_gen /= gen_per_batch) then
           call print_generation()
-        else
-          call print_batch_keff()
         end if
       end if
 
@@ -338,6 +336,8 @@ contains
     if (run_mode == MODE_EIGENVALUE) then
       ! Perform CMFD calculation if on
       if (cmfd_on) call execute_cmfd()
+      ! Write batch output
+      if (master .and. verbosity >= 7) call print_batch_keff()
     end if
 
     ! Check_triggers

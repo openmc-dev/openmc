@@ -356,7 +356,7 @@ contains
     integer :: n  ! number of active generations
 
     ! Determine overall generation and number of active generations
-    i = overall_generation()
+    i = current_batch*gen_per_batch
     n = i - n_inactive*gen_per_batch
 
     ! write out information batch and option independent output

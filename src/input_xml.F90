@@ -4265,12 +4265,16 @@ contains
 
     ! Show which nuclide results in lowest energy for neutron transport
     do i = 1, size(nuclides)
-      if (nuclides(i) % grid(1) % energy(size(nuclides(i) % grid(1) % energy)) &
-           == energy_max_neutron) then
-        call write_message("Maximum neutron transport energy: " // &
-             trim(to_str(energy_max_neutron)) // " eV for " // &
-             trim(adjustl(nuclides(i) % name)), 7)
-        exit
+      ! If a nuclide is present in a material that's not used in the model, its
+      ! grid has not been allocated
+      if (size(nuclides(i) % grid) > 0) then
+        if (nuclides(i) % grid(1) % energy(size(nuclides(i) % grid(1) % energy)) &
+             == energy_max_neutron) then
+          call write_message("Maximum neutron transport energy: " // &
+               trim(to_str(energy_max_neutron)) // " eV for " // &
+               trim(adjustl(nuclides(i) % name)), 7)
+          exit
+        end if
       end if
     end do
 

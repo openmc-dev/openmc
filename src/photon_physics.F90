@@ -4,8 +4,7 @@ module photon_physics
   use constants
   use particle_header, only: Particle
   use photon_header,   only: PhotonInteraction, Bremsstrahlung, &
-                             compton_profile_pz, ttb_energy_electron, &
-                             ttb_energy_photon, ttb
+                             compton_profile_pz, ttb_e_grid, ttb_k_grid, ttb
   use random_lcg,      only: prn
   use settings
 
@@ -401,38 +400,41 @@ contains
     k_c = energy_cutoff(PHOTON) / p % E
 
     e = log(p % E)
-    n_e = size(ttb_energy_electron)
-    n_k = size(ttb_energy_photon)
+    n_e = size(ttb_e_grid)
+    n_k = size(ttb_k_grid)
 
     ! Find the lower bounding index of the incident electron energy
-    j = binary_search(ttb_energy_electron, n_e, e)
+    j = binary_search(ttb_e_grid, n_e, e)
 
     ! Get the interpolation bounds
-    e_l = ttb_energy_electron(j)
-    e_r = ttb_energy_electron(j+1)
+    e_l = ttb_e_grid(j)
+    e_r = ttb_e_grid(j+1)
     y_l = mat % yield(j)
     y_r = mat % yield(j+1)
 
+    ! Calculate the interpolation weight w_j+1 of the bremsstrahlung energy PDF
+    ! interpolated in log energy, which can be interpreted as the probability
+    ! of index j+1
+    f = (e - e_l) / (e_r - e_l)
+
     ! Get the photon number yield for the given energy using linear
     ! interpolation on a log-log scale
-    y = exp((y_l * (e_r - e) + y_r * (e - e_l)) / (e_r - e_l))
+    y = exp(y_l + (y_r - y_l) * f)
 
     ! Sample number of secondary bremsstrahlung photons
     n = int(y + prn())
-
-    ! Calculate the interpolation weight w_j of the bremsstrahlung energy PDF
-    ! interpolated in log energy, which can be interpreted as the probability
-    ! of index j
-    f = (e_r - e) / (e_r - e_l)
 
     E_lost = ZERO
 
     ! Sample the energies of the emitted photons
     do i = 1, n
       ! Sample index of the tabulated PDF in the energy grid, j or j+1
-      i_e = j
       if (prn() > f) then
-        i_e = i_e + 1
+        i_e = j
+      else
+        i_e = j + 1
+
+        ! TODO: interpolate maximum value of the CDF
       end if
 
       ! Maximum value of the CDF
@@ -446,12 +448,12 @@ contains
         i_k = binary_search(mat % cdf(:, i_e), n_k, r*c_max)
 
         ! Get interpolation bounds
-        k_l = ttb_energy_photon(i_k)
-        k_r = ttb_energy_photon(i_k+1)
+        k_l = ttb_k_grid(i_k)
+        k_r = ttb_k_grid(i_k+1)
         x_l = mat % dcs(i_k, i_e)
         x_r = mat % dcs(i_k+1, i_e)
         if (k_l < k_c) then
-          x_l = (x_l * (k_r - k_c) + x_r * (k_c - k_l)) / (k_r - k_l)
+          x_l = x_l + (k_c - k_l) * (x_r - x_l) / (k_r - k_l)
           k_l = k_c
         end if
 
@@ -467,12 +469,11 @@ contains
       end do
 
       w = k * p % E
-      E_lost = E_lost + w
-
       if (w < energy_cutoff(PHOTON)) cycle
 
       ! Create secondary photon
       call p % create_secondary(p % coord(1) % uvw, w, PHOTON, run_ce=.true.)
+      E_lost = E_lost + w
     end do
 
   end subroutine thick_target_bremsstrahlung

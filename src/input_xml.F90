@@ -4632,7 +4632,7 @@ contains
       end do
 
       ! Take logarithm of electron energies since they are log-log interpolated
-      ttb_energy_electron = log(ttb_energy_electron)
+      ttb_e_grid = log(ttb_e_grid)
     end if
 
     ! Set up logarithmic grid for nuclides

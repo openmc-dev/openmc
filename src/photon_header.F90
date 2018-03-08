@@ -13,8 +13,8 @@ module photon_header
   use settings
 
   real(8), allocatable :: compton_profile_pz(:)
-  real(8), allocatable :: ttb_energy_electron(:) ! incident electron energy grid
-  real(8), allocatable :: ttb_energy_photon(:)   ! reduced photon energy grid
+  real(8), allocatable :: ttb_e_grid(:)  ! incident electron energy grid
+  real(8), allocatable :: ttb_k_grid(:)  ! reduced photon energy grid
 
   type ElectronSubshell
     integer :: index_subshell  ! index in SUBSHELLS
@@ -316,13 +316,13 @@ contains
       call close_dataset(dset_id)
 
       ! Get energy grids used for bremsstrahlung DCS and for stopping powers
-      if (.not. allocated(ttb_energy_electron)) then
-        allocate(ttb_energy_electron(n_e))
-        call read_dataset(ttb_energy_electron, rgroup, 'electron_energy')
+      if (.not. allocated(ttb_e_grid)) then
+        allocate(ttb_e_grid(n_e))
+        call read_dataset(ttb_e_grid, rgroup, 'electron_energy')
       end if
-      if (.not. allocated(ttb_energy_photon)) then
-        allocate(ttb_energy_photon(n_k))
-        call read_dataset(ttb_energy_photon, rgroup, 'photon_energy')
+      if (.not. allocated(ttb_k_grid)) then
+        allocate(ttb_k_grid(n_k))
+        call read_dataset(ttb_k_grid, rgroup, 'photon_energy')
       end if
       call close_group(rgroup)
 
@@ -381,6 +381,7 @@ contains
     real(8)                 :: x_l, x_r, x_c
     real(8)                 :: awr
     real(8)                 :: density
+    real(8)                 :: density_gpcc
     real(8)                 :: Z_eq_sq
     real(8)                 :: beta
     real(8)                 :: atom_sum
@@ -398,8 +399,8 @@ contains
     this % i_material = i_material
 
     ! Allocate and initialize arrays
-    n_k = size(ttb_energy_photon)
-    n_e = size(ttb_energy_electron)
+    n_k = size(ttb_k_grid)
+    n_e = size(ttb_e_grid)
     allocate(atom_fraction(mat % n_nuclides))
     allocate(mass_fraction(mat % n_nuclides))
     allocate(stopping_power(n_e))
@@ -414,7 +415,8 @@ contains
     this % cdf(:,:) = ZERO
 
     ! Calculate the "equivalent" atomic number Zeq, the atomic fraction and the
-    ! mass fraction of each element, and the material density in atom/b-cm
+    ! mass fraction of each element, and the material density in atom/b-cm and
+    ! in g/cm^3
     Z_eq_sq = ZERO
     do i = 1, mat % n_nuclides
       awr = nuclides(mat % nuclide(i)) % awr
@@ -423,6 +425,7 @@ contains
       if (mat % atom_density(1) > ZERO) then
         atom_fraction(i) = mat % atom_density(i)
         mass_fraction(i) = mat % atom_density(i) * awr
+
       ! Given weight percent
       else
         atom_fraction(i) = -mat % atom_density(i) / awr
@@ -436,11 +439,16 @@ contains
 
     ! Given material density in g/cm^3
     if (mat % density < ZERO) then
-      density = -mat % density * N_AVOGADRO / MASS_NEUTRON * (atom_sum / mass_sum)
+      density = -mat % density * (atom_sum / mass_sum) * N_AVOGADRO / MASS_NEUTRON
+      density_gpcc = -mat % density
+
     ! Given material density in atom/b-cm
     else
       density = mat % density
+      density_gpcc = mat % density * (mass_sum / atom_sum) * MASS_NEUTRON / &
+           N_AVOGADRO
     end if
+
     Z_eq_sq = Z_eq_sq / atom_sum
     atom_fraction = atom_fraction / atom_sum
     mass_fraction = mass_fraction / mass_sum
@@ -464,13 +472,13 @@ contains
       this % dcs = this % dcs + atom_fraction(i) * elm % Z**2 / Z_eq_sq * elm % dcs
 
       ! Accumulate material total stopping power
-      stopping_power = stopping_power + mass_fraction(i) * elm % density * &
+      stopping_power = stopping_power + mass_fraction(i) * density_gpcc * &
            (elm % stopping_power_collision + elm % stopping_power_radiative)
     end do
 
     ! Calculate inverse bremsstrahlung mean free path
     do i = 1, n_e
-      e = ttb_energy_electron(i)
+      e = ttb_e_grid(i)
       if (e <= energy_cutoff(PHOTON)) cycle
 
       ! Ratio of the velocity of the charged particle to the speed of light
@@ -480,11 +488,11 @@ contains
       k_c = energy_cutoff(PHOTON) / e
 
       ! Find the upper bounding index of the reduced photon cutoff energy
-      i_k = binary_search(ttb_energy_photon, n_k, k_c) + 1
+      i_k = binary_search(ttb_k_grid, n_k, k_c) + 1
 
       ! Get the interpolation bounds
-      k_l = ttb_energy_photon(i_k-1)
-      k_r = ttb_energy_photon(i_k)
+      k_l = ttb_k_grid(i_k-1)
+      k_r = ttb_k_grid(i_k)
       x_l = this % dcs(i_k-1, i)
       x_r = this % dcs(i_k, i)
 
@@ -492,15 +500,12 @@ contains
       ! the DCS at the cutoff energy
       x_c = (x_l * (k_r - k_c) + x_r * (k_c - k_l)) / (k_r - k_l)
 
-      ! Calculate the CDF
-      c = x_r - x_c + (log(k_r)-log(k_c))*(x_c - (k_c*(x_r-x_c)/(k_r-k_c)))
+      ! Calculate the CDF using the trapezoidal rule in log-log space
+      c = HALF * (log(k_r) - log(k_c)) * (x_c + x_r)
       this % cdf(i_k,i) = c
       do j = i_k, n_k - 1
-        k_l = ttb_energy_photon(j)
-        k_r = ttb_energy_photon(j+1)
-        x_l = this % dcs(j, i)
-        x_r = this % dcs(j+1, i)
-        c = c + x_r - x_l + (log(k_r)-log(k_l))*(x_l - (k_l*(x_r-x_l)/(k_r-k_l)))
+        c = c + HALF * (log(ttb_k_grid(j+1)) - log(ttb_k_grid(j))) * &
+             (this % dcs(j,i) + this % dcs(j+1,i))
         this % cdf(j+1,i) = c
       end do
 
@@ -510,10 +515,10 @@ contains
 
     ! Calculate photon number yield
     mfp_inv(:) = mfp_inv(:) / stopping_power(:)
-    call spline(ttb_energy_electron, mfp_inv, z, n_e)
+    call spline(ttb_e_grid, mfp_inv, z, n_e)
     do i = 1, n_e
-      this % yield(i) = spline_integrate(ttb_energy_electron, mfp_inv, z, &
-           n_e, energy_cutoff(PHOTON), ttb_energy_electron(i))
+      this % yield(i) = spline_integrate(ttb_e_grid, mfp_inv, z, n_e, &
+           energy_cutoff(PHOTON), ttb_e_grid(i))
     end do
 
     ! Use logarithm of number yield since it is log-log interpolated

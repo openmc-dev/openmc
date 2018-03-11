@@ -415,9 +415,6 @@ class StatePoint(object):
 
                         tally.scores.append(score)
 
-                    # Compute and set the filter strides
-                    tally._update_filter_strides()
-
                     # Add Tally to the global dictionary of all Tallies
                     tally.sparse = self.sparse
                     self._tallies[tally_id] = tally

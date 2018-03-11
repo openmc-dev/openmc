@@ -1,7 +1,7 @@
 module message_passing
 
-#ifdef MPI
-#ifdef MPIF08
+#ifdef OPENMC_MPI
+#ifdef OPENMC_MPIF08
   use mpi_f08
 #else
   use mpi
@@ -16,7 +16,7 @@ module message_passing
   integer :: rank        = 0       ! rank of process
   logical :: master      = .true.  ! master process?
   logical :: mpi_enabled = .false. ! is MPI in use and initialized?
-#ifdef MPIF08
+#ifdef OPENMC_MPIF08
   type(MPI_Datatype) :: MPI_BANK   ! MPI datatype for fission bank
   type(MPI_Comm) :: mpi_intracomm  ! MPI intra-communicator
 #else

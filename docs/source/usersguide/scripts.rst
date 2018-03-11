@@ -168,8 +168,8 @@ ENDF/B-VII.1. It has the following optional arguments:
 
 This script downloads `ENDF/B-VII.1 ACE data
 <http://www.nndc.bnl.gov/endf/b7.1/acefiles.html>`_ from NNDC and converts it to
-an HDF5 library for use with OpenMC. This data is used for OpenMC's regression
-test suite. This script has the following optional arguments:
+an HDF5 library for use with OpenMC. This script has the following optional
+arguments:
 
 -b, --batch     Suppress standard in
 

@@ -1,8 +1,6 @@
 from collections import OrderedDict
 import re
 import os
-
-from six import string_types
 from xml.etree import ElementTree as ET
 
 import openmc
@@ -10,7 +8,7 @@ import openmc.checkvalue as cv
 from openmc.data import NATURAL_ABUNDANCE, atomic_mass
 
 
-class Element(object):
+class Element(str):
     """A natural element that auto-expands to add the isotopes of an element to
     a material in their natural abundance. Internally, the OpenMC Python API
     expands the natural element into isotopes only when the materials.xml file
@@ -25,73 +23,17 @@ class Element(object):
     ----------
     name : str
         Chemical symbol of the element, e.g. Pu
-    scattering : {'data', 'iso-in-lab', None}
-        The type of angular scattering distribution to use
 
     """
 
-    def __init__(self, name=''):
-        # Initialize class attributes
-        self._name = ''
-        self._scattering = None
-
-        # Set class attributes
-        self.name = name
-
-    def __eq__(self, other):
-        if isinstance(other, Element):
-            if self.name != other.name:
-                return False
-            else:
-                return True
-        elif isinstance(other, string_types) and other == self.name:
-            return True
-        else:
-            return False
-
-    def __ne__(self, other):
-        return not self == other
-
-    def __gt__(self, other):
-        return repr(self) > repr(other)
-
-    def __lt__(self, other):
-        return not self > other
-
-    def __hash__(self):
-        return hash(repr(self))
-
-    def __repr__(self):
-        string = 'Element    -    {0}\n'.format(self._name)
-        if self.scattering is not None:
-            string += '{0: <16}{1}{2}\n'.format('\tscattering', '=\t',
-                                                self.scattering)
-
-        return string
+    def __new__(cls, name):
+        cv.check_type('element name', name, str)
+        cv.check_length('element name', name, 1, 2)
+        return super().__new__(cls, name)
 
     @property
     def name(self):
-        return self._name
-
-    @property
-    def scattering(self):
-        return self._scattering
-
-    @name.setter
-    def name(self, name):
-        cv.check_type('element name', name, string_types)
-        cv.check_length('element name', name, 1, 2)
-        self._name = name
-
-    @scattering.setter
-    def scattering(self, scattering):
-
-        if not scattering in ['data', 'iso-in-lab', None]:
-            msg = 'Unable to set scattering for Element to {0} which ' \
-                  'is not "data", "iso-in-lab", or None'.format(scattering)
-            raise ValueError(msg)
-
-        self._scattering = scattering
+        return self
 
     def expand(self, percent, percent_type, enrichment=None,
                cross_sections=None):
@@ -121,8 +63,8 @@ class Element(object):
         -------
         isotopes : list
             Naturally-occurring isotopes of the element. Each item of the list
-            is a tuple consisting of an openmc.Nuclide instance and the natural
-            abundance of the isotope.
+            is a tuple consisting of a nuclide string, the atom/weight percent,
+            and the string 'ao' or 'wo'.
 
         Notes
         -----
@@ -138,7 +80,7 @@ class Element(object):
         # Get the nuclides present in nature
         natural_nuclides = set()
         for nuclide in sorted(NATURAL_ABUNDANCE.keys()):
-            if re.match(r'{}\d+'.format(self.name), nuclide):
+            if re.match(r'{}\d+'.format(self), nuclide):
                 natural_nuclides.add(nuclide)
 
         # Create dict to store the expanded nuclides and abundances
@@ -158,7 +100,7 @@ class Element(object):
             root = tree.getroot()
             for child in root:
                 nuclide = child.attrib['materials']
-                if re.match(r'{}\d+'.format(self.name), nuclide) and \
+                if re.match(r'{}\d+'.format(self), nuclide) and \
                    '_m' not in nuclide:
                     library_nuclides.add(nuclide)
 
@@ -179,14 +121,14 @@ class Element(object):
             # 0 nuclide is present. If so, set the abundance to 1 for this
             # nuclide. Else, raise an error.
             elif len(mutual_nuclides) == 0:
-                nuclide_0 = self.name + '0'
+                nuclide_0 = self + '0'
                 if nuclide_0 in library_nuclides:
                     abundances[nuclide_0] = 1.0
                 else:
                     msg = 'Unable to expand element {0} because the cross '\
                           'section library provided does not contain any of '\
                           'the natural isotopes for that element.'\
-                          .format(self.name)
+                          .format(self)
                     raise ValueError(msg)
 
             # If some, but not all, natural nuclides are in the library, add
@@ -261,8 +203,6 @@ class Element(object):
         # Create a list of the isotopes in this element
         isotopes = []
         for nuclide, abundance in abundances.items():
-            nuc = openmc.Nuclide(nuclide)
-            nuc.scattering = self.scattering
-            isotopes.append((nuc, percent * abundance, percent_type))
+            isotopes.append((nuclide, percent * abundance, percent_type))
 
         return isotopes

@@ -3,7 +3,7 @@ module sab_header
   use, intrinsic :: ISO_C_BINDING
   use, intrinsic :: ISO_FORTRAN_ENV
 
-  use algorithm, only: find, sort
+  use algorithm, only: find, sort, binary_search
   use constants
   use dict_header, only: DictIntInt, DictCharInt
   use distribution_univariate, only: Tabular
@@ -12,7 +12,9 @@ module sab_header
   use hdf5_interface, only: read_attribute, get_shape, open_group, close_group, &
        open_dataset, read_dataset, close_dataset, get_datasets, object_exists, &
        get_name
+  use random_lcg,  only: prn
   use secondary_correlated, only: CorrelatedAngleEnergy
+  use settings
   use stl_vector, only: VectorInt, VectorReal
   use string, only: to_str, str_to_int
 
@@ -77,6 +79,7 @@ module sab_header
     type(SabData), allocatable :: data(:)
   contains
     procedure :: from_hdf5 => salphabeta_from_hdf5
+    procedure :: calculate_xs => sab_calculate_xs
   end type SAlphaBeta
 
   ! S(a,b) tables
@@ -359,6 +362,104 @@ contains
 
     call close_group(kT_group)
   end subroutine salphabeta_from_hdf5
+
+!===============================================================================
+! SAB_CALCULATE_XS determines the elastic and inelastic scattering
+! cross-sections in the thermal energy range.
+!===============================================================================
+
+  subroutine sab_calculate_xs(this, E, sqrtkT, i_temp, elastic, inelastic)
+    class(SAlphaBeta), intent(in) :: this ! S(a,b) object
+    real(8), intent(in) :: E          ! energy
+    real(8), intent(in) :: sqrtkT     ! temperature
+    integer, intent(out) :: i_temp    ! index in the S(a,b)'s temperature
+    real(8), intent(out) :: elastic   ! thermal elastic cross section
+    real(8), intent(out) :: inelastic ! thermal inelastic cross section
+
+    integer :: i_grid    ! index on S(a,b) energy grid
+    real(8) :: f         ! interp factor on S(a,b) energy grid
+    real(8) :: kT
+
+    ! Determine temperature for S(a,b) table
+    kT = sqrtkT**2
+    if (temperature_method == TEMPERATURE_NEAREST) then
+      ! If using nearest temperature, do linear search on temperature
+      do i_temp = 1, size(this % kTs)
+        if (abs(this % kTs(i_temp) - kT) < &
+             K_BOLTZMANN*temperature_tolerance) exit
+      end do
+    else
+      ! Find temperatures that bound the actual temperature
+      do i_temp = 1, size(this % kTs) - 1
+        if (this % kTs(i_temp) <= kT .and. &
+             kT < this % kTs(i_temp + 1)) exit
+      end do
+
+      ! Randomly sample between temperature i and i+1
+      f = (kT - this % kTs(i_temp)) / &
+           (this % kTs(i_temp + 1) - this % kTs(i_temp))
+      if (f > prn()) i_temp = i_temp + 1
+    end if
+
+
+    ! Get pointer to S(a,b) table
+    associate (sab => this % data(i_temp))
+
+      ! Get index and interpolation factor for inelastic grid
+      if (E < sab % inelastic_e_in(1)) then
+        i_grid = 1
+        f = ZERO
+      else
+        i_grid = binary_search(sab % inelastic_e_in, sab % n_inelastic_e_in, E)
+        f = (E - sab%inelastic_e_in(i_grid)) / &
+             (sab%inelastic_e_in(i_grid+1) - sab%inelastic_e_in(i_grid))
+      end if
+
+      ! Calculate S(a,b) inelastic scattering cross section
+      inelastic = (ONE - f) * sab % inelastic_sigma(i_grid) + &
+           f * sab % inelastic_sigma(i_grid + 1)
+
+      ! Check for elastic data
+      if (E < sab % threshold_elastic) then
+        ! Determine whether elastic scattering is given in the coherent or
+        ! incoherent approximation. For coherent, the cross section is
+        ! represented as P/E whereas for incoherent, it is simply P
+
+        if (sab % elastic_mode == SAB_ELASTIC_EXACT) then
+          if (E < sab % elastic_e_in(1)) then
+            ! If energy is below that of the lowest Bragg peak, the elastic
+            ! cross section will be zero
+            elastic = ZERO
+          else
+            i_grid = binary_search(sab % elastic_e_in, &
+                 sab % n_elastic_e_in, E)
+            elastic = sab % elastic_P(i_grid) / E
+          end if
+        else
+          ! Determine index on elastic energy grid
+          if (E < sab % elastic_e_in(1)) then
+            i_grid = 1
+          else
+            i_grid = binary_search(sab % elastic_e_in, &
+                 sab % n_elastic_e_in, E)
+          end if
+
+          ! Get interpolation factor for elastic grid
+          f = (E - sab%elastic_e_in(i_grid))/(sab%elastic_e_in(i_grid+1) - &
+               sab%elastic_e_in(i_grid))
+
+          ! Calculate S(a,b) elastic scattering cross section
+          elastic = (ONE - f) * sab % elastic_P(i_grid) + &
+               f * sab % elastic_P(i_grid + 1)
+        end if
+      else
+        ! No elastic data
+        elastic = ZERO
+      end if
+    end associate
+
+  end subroutine sab_calculate_xs
+
 
 !===============================================================================
 ! FREE_MEMORY_SAB deallocates global arrays defined in this module

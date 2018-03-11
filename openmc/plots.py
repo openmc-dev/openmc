@@ -1,10 +1,9 @@
-from collections import Iterable, Mapping
+from collections.abc import Iterable, Mapping
 from numbers import Real, Integral
 from xml.etree import ElementTree as ET
 import sys
 import warnings
 
-from six import string_types
 import numpy as np
 
 import openmc
@@ -297,7 +296,7 @@ class Plot(IDManagerMixin):
 
     @name.setter
     def name(self, name):
-        cv.check_type('plot name', name, string_types)
+        cv.check_type('plot name', name, str)
         self._name = name
 
     @width.setter
@@ -322,7 +321,7 @@ class Plot(IDManagerMixin):
 
     @filename.setter
     def filename(self, filename):
-        cv.check_type('filename', filename, string_types)
+        cv.check_type('filename', filename, str)
         self._filename = filename
 
     @color_by.setter
@@ -343,7 +342,7 @@ class Plot(IDManagerMixin):
     @background.setter
     def background(self, background):
         cv.check_type('plot background', background, Iterable)
-        if isinstance(background, string_types):
+        if isinstance(background, str):
             if background.lower() not in _SVG_COLORS:
                 raise ValueError("'{}' is not a valid color.".format(background))
         else:
@@ -359,7 +358,7 @@ class Plot(IDManagerMixin):
         for key, value in colors.items():
             cv.check_type('plot color key', key, (openmc.Cell, openmc.Material))
             cv.check_type('plot color value', value, Iterable)
-            if isinstance(value, string_types):
+            if isinstance(value, str):
                 if value.lower() not in _SVG_COLORS:
                     raise ValueError("'{}' is not a valid color.".format(value))
             else:
@@ -380,7 +379,7 @@ class Plot(IDManagerMixin):
     @mask_background.setter
     def mask_background(self, mask_background):
         cv.check_type('plot mask background', mask_background, Iterable)
-        if isinstance(mask_background, string_types):
+        if isinstance(mask_background, str):
             if mask_background.lower() not in _SVG_COLORS:
                 raise ValueError("'{}' is not a valid color.".format(mask_background))
         else:
@@ -439,7 +438,7 @@ class Plot(IDManagerMixin):
         string += '{: <16}=\t{}\n'.format('\tWidth', self._width)
         string += '{: <16}=\t{}\n'.format('\tOrigin', self._origin)
         string += '{: <16}=\t{}\n'.format('\tPixels', self._origin)
-        string += '{: <16}=\t{}\n'.format('\tColor by', self._color)
+        string += '{: <16}=\t{}\n'.format('\tColor by', self._color_by)
         string += '{: <16}=\t{}\n'.format('\tBackground', self._background)
         string += '{: <16}=\t{}\n'.format('\tMask components',
                                             self._mask_components)
@@ -558,7 +557,7 @@ class Plot(IDManagerMixin):
         cv.check_type('background', background, Iterable)
 
         # Get a background (R,G,B) tuple to apply in alpha compositing
-        if isinstance(background, string_types):
+        if isinstance(background, str):
             if background.lower() not in _SVG_COLORS:
                 raise ValueError("'{}' is not a valid color.".format(background))
             background = _SVG_COLORS[background.lower()]
@@ -570,7 +569,7 @@ class Plot(IDManagerMixin):
         # other than those the user wishes to highlight
         for domain, color in self.colors.items():
             if domain not in domains:
-                if isinstance(color, string_types):
+                if isinstance(color, str):
                     color = _SVG_COLORS[color.lower()]
                 r, g, b = color
                 r = int(((1-alpha) * background[0]) + (alpha * r))
@@ -610,7 +609,7 @@ class Plot(IDManagerMixin):
         if self._background is not None:
             subelement = ET.SubElement(element, "background")
             color = self._background
-            if isinstance(color, string_types):
+            if isinstance(color, str):
                 color = _SVG_COLORS[color.lower()]
             subelement.text = ' '.join(str(x) for x in color)
 
@@ -619,7 +618,7 @@ class Plot(IDManagerMixin):
                                         key=lambda x: x[0].id):
                 subelement = ET.SubElement(element, "color")
                 subelement.set("id", str(domain.id))
-                if isinstance(color, string_types):
+                if isinstance(color, str):
                     color = _SVG_COLORS[color.lower()]
                 subelement.set("rgb", ' '.join(str(x) for x in color))
 
@@ -629,7 +628,7 @@ class Plot(IDManagerMixin):
                 str(d.id) for d in self._mask_components))
             color = self._mask_background
             if color is not None:
-                if isinstance(color, string_types):
+                if isinstance(color, str):
                     color = _SVG_COLORS[color.lower()]
                 subelement.set("background", ' '.join(
                     str(x) for x in color))
@@ -674,27 +673,10 @@ class Plots(cv.CheckedList):
     """
 
     def __init__(self, plots=None):
-        super(Plots, self).__init__(Plot, 'plots collection')
+        super().__init__(Plot, 'plots collection')
         self._plots_file = ET.Element("plots")
         if plots is not None:
             self += plots
-
-    def add_plot(self, plot):
-        """Add a plot to the file.
-
-        .. deprecated:: 0.8
-            Use :meth:`Plots.append` instead.
-
-        Parameters
-        ----------
-        plot : openmc.Plot
-            Plot to add
-
-        """
-        warnings.warn("Plots.add_plot(...) has been deprecated and may be "
-                      "removed in a future version. Use Plots.append(...) "
-                      "instead.", DeprecationWarning)
-        self.append(plot)
 
     def append(self, plot):
         """Append plot to collection
@@ -705,7 +687,7 @@ class Plots(cv.CheckedList):
             Plot to append
 
         """
-        super(Plots, self).append(plot)
+        super().append(plot)
 
     def insert(self, index, plot):
         """Insert plot before index
@@ -718,24 +700,7 @@ class Plots(cv.CheckedList):
             Plot to insert
 
         """
-        super(Plots, self).insert(index, plot)
-
-    def remove_plot(self, plot):
-        """Remove a plot from the file.
-
-        .. deprecated:: 0.8
-            Use :meth:`Plots.remove` instead.
-
-        Parameters
-        ----------
-        plot : openmc.Plot
-            Plot to remove
-
-        """
-        warnings.warn("Plots.remove_plot(...) has been deprecated and may be "
-                      "removed in a future version. Use Plots.remove(...) "
-                      "instead.", DeprecationWarning)
-        self.remove(plot)
+        super().insert(index, plot)
 
     def colorize(self, geometry, seed=1):
         """Generate a consistent color scheme for each domain in each plot.

@@ -1,9 +1,8 @@
 from abc import ABCMeta, abstractmethod
-from collections import Iterable
+from collections.abc import Iterable
 from numbers import Integral, Real
 from warnings import warn
 
-from six import add_metaclass
 import numpy as np
 
 from .function import Tabulated1D, INTERPOLATION_SCHEME
@@ -14,8 +13,7 @@ from .data import EV_PER_MEV
 from .endf import get_tab1_record, get_tab2_record
 
 
-@add_metaclass(ABCMeta)
-class EnergyDistribution(EqualityMixin):
+class EnergyDistribution(EqualityMixin, metaclass=ABCMeta):
     """Abstract superclass for all energy distributions."""
     def __init__(self):
         pass
@@ -116,7 +114,7 @@ class ArbitraryTabulated(EnergyDistribution):
     """
 
     def __init__(self, energy, pdf):
-        super(ArbitraryTabulated, self).__init__()
+        super().__init__()
         self.energy = energy
         self.pdf = pdf
 
@@ -184,7 +182,7 @@ class GeneralEvaporation(EnergyDistribution):
     """
 
     def __init__(self, theta, g, u):
-        super(GeneralEvaporation, self).__init__()
+        super().__init__()
         self.theta = theta
         self.g = g
         self.u = u
@@ -247,7 +245,7 @@ class MaxwellEnergy(EnergyDistribution):
     """
 
     def __init__(self, theta, u):
-        super(MaxwellEnergy, self).__init__()
+        super().__init__()
         self.theta = theta
         self.u = u
 
@@ -380,7 +378,7 @@ class Evaporation(EnergyDistribution):
     """
 
     def __init__(self, theta, u):
-        super(Evaporation, self).__init__()
+        super().__init__()
         self.theta = theta
         self.u = u
 
@@ -516,7 +514,7 @@ class WattEnergy(EnergyDistribution):
     """
 
     def __init__(self, a, b, u):
-        super(WattEnergy, self).__init__()
+        super().__init__()
         self.a = a
         self.b = b
         self.u = u
@@ -684,7 +682,7 @@ class MadlandNix(EnergyDistribution):
     """
 
     def __init__(self, efl, efh, tm):
-        super(MadlandNix, self).__init__()
+        super().__init__()
         self.efl = efl
         self.efh = efh
         self.tm = tm
@@ -807,7 +805,7 @@ class DiscretePhoton(EnergyDistribution):
     """
 
     def __init__(self, primary_flag, energy, atomic_weight_ratio):
-        super(DiscretePhoton, self).__init__()
+        super().__init__()
         self.primary_flag = primary_flag
         self.energy = energy
         self.atomic_weight_ratio = atomic_weight_ratio
@@ -916,7 +914,7 @@ class LevelInelastic(EnergyDistribution):
     """
 
     def __init__(self, threshold, mass_ratio):
-        super(LevelInelastic, self).__init__()
+        super().__init__()
         self.threshold = threshold
         self.mass_ratio = mass_ratio
 
@@ -1021,7 +1019,7 @@ class ContinuousTabular(EnergyDistribution):
     """
 
     def __init__(self, breakpoints, interpolation, energy, energy_out):
-        super(ContinuousTabular, self).__init__()
+        super().__init__()
         self.breakpoints = breakpoints
         self.interpolation = interpolation
         self.energy = energy

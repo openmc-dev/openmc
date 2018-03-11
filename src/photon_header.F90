@@ -70,6 +70,7 @@ module photon_header
 
   contains
     procedure :: from_hdf5 => photon_from_hdf5
+    procedure :: calculate_xs => photon_calculate_xs
   end type PhotonInteraction
 
   type Bremsstrahlung
@@ -367,6 +368,71 @@ contains
     end where
 
   end subroutine photon_from_hdf5
+
+!===============================================================================
+! CALCULATE_ELEMENT_XS determines microscopic photon cross sections for an
+! element of a given index in the elements array at the energy of the given
+! particle
+!===============================================================================
+
+  subroutine photon_calculate_xs(this, E, xs)
+    class(PhotonInteraction), intent(in)    :: this ! index into nuclides array
+    real(8),                  intent(in)    :: E ! energy
+    type(ElementMicroXS),     intent(inout) :: xs
+
+    integer :: i_grid ! index on nuclide energy grid
+    integer :: n_grid ! number of grid points
+    real(8) :: f      ! interp factor on nuclide energy grid
+    real(8) :: log_E  ! logarithm of the energy
+
+    ! Perform binary search on the element energy grid in order to determine
+    ! which points to interpolate between
+    n_grid = size(this % energy)
+    log_E = log(E)
+    if (log_E <= this % energy(1)) then
+      i_grid = 1
+    elseif (log_E > this % energy(n_grid)) then
+      i_grid = n_grid - 1
+    else
+      i_grid = binary_search(this % energy, n_grid, log_E)
+    end if
+
+    ! check for case where two energy points are the same
+    if (this % energy(i_grid) == this % energy(i_grid+1)) i_grid = i_grid + 1
+
+    ! calculate interpolation factor
+    f = (log_E - this % energy(i_grid)) / &
+         (this % energy(i_grid+1) - this % energy(i_grid))
+
+    xs % index_grid    = i_grid
+    xs % interp_factor = f
+
+    ! Calculate microscopic coherent cross section
+    xs % coherent = exp(this % coherent(i_grid) + f * &
+         (this % coherent(i_grid+1) - this % coherent(i_grid)))
+
+    ! Calculate microscopic incoherent cross section
+    xs % incoherent = exp(this % incoherent(i_grid) + &
+         f*(this % incoherent(i_grid+1) - this % incoherent(i_grid)))
+
+    ! Calculate microscopic photoelectric cross section
+    xs % photoelectric = exp(this % photoelectric_total(&
+         i_grid) + f*(this % photoelectric_total(i_grid+1) - &
+         this % photoelectric_total(i_grid)))
+
+    ! Calculate microscopic pair production cross section
+    xs % pair_production = exp(&
+         this % pair_production_total(i_grid) + f*(&
+         this % pair_production_total(i_grid+1) - &
+         this % pair_production_total(i_grid)))
+
+    ! Calculate microscopic total cross section
+    xs % total = xs % coherent + xs % incoherent + xs % photoelectric + &
+         xs % pair_production
+
+    xs % last_E = E
+
+  end subroutine calculate_element_xs
 
   subroutine bremsstrahlung_init(this, i_material)
     class(Bremsstrahlung), intent(inout) :: this

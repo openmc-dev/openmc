@@ -11,8 +11,7 @@ _RUN_MODES = {1: 'fixed source',
               5: 'volume'}
 
 _dll.openmc_set_seed.argtypes = [c_int64]
-_dll.openmc_set_seed.restype = c_int
-_dll.openmc_set_seed.errcheck = _error_handler
+_dll.openmc_get_seed.restype = c_int64
 
 
 class _Settings(object):
@@ -43,7 +42,7 @@ class _Settings(object):
 
     @property
     def seed(self):
-        return c_int64.in_dll(_dll, 'seed').value
+        return _dll.openmc_get_seed()
 
     @seed.setter
     def seed(self, seed):

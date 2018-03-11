@@ -3,7 +3,7 @@
 import os
 import sys
 
-import numpy as np
+import pytest
 
 from openmc import Material
 from openmc.data import NATURAL_ABUNDANCE, atomic_mass
@@ -31,11 +31,11 @@ def test_element_wo():
 
         if nuc in ('H1', 'H2'):
             val = 2 * NATURAL_ABUNDANCE[nuc] * atomic_mass(nuc) / water_am
-            assert np.isclose(densities[nuc][1], val, rtol=1.e-8)
+            assert densities[nuc][1] == pytest.approx(val)
         if nuc == 'O16':
             val = (NATURAL_ABUNDANCE[nuc] + NATURAL_ABUNDANCE['O18']) \
                   * atomic_mass(nuc) / water_am
-            assert np.isclose(densities[nuc][1], val, rtol=1.e-8)
+            assert densities[nuc][1] == pytest.approx(val)
         if nuc == 'O17':
             val = NATURAL_ABUNDANCE[nuc] * atomic_mass(nuc) / water_am
-            assert np.isclose(densities[nuc][1], val, rtol=1.e-8)
+            assert densities[nuc][1] == pytest.approx(val)

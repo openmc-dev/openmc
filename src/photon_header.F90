@@ -179,14 +179,18 @@ contains
     call close_group(rgroup)
 
     ! Read pair production
-    rgroup = open_group(group_id, 'pair_production')
-    call read_dataset(this % pair_production_nuclear, rgroup, 'xs')
+    rgroup = open_group(group_id, 'pair_production_electron')
+    call read_dataset(this % pair_production_electron, rgroup, 'xs')
     call close_group(rgroup)
 
     ! Read pair production
-    rgroup = open_group(group_id, 'triplet_production')
-    call read_dataset(this % pair_production_electron, rgroup, 'xs')
-    call close_group(rgroup)
+    if (object_exists(group_id, 'pair_production_nuclear')) then
+      rgroup = open_group(group_id, 'pair_production_nuclear')
+      call read_dataset(this % pair_production_nuclear, rgroup, 'xs')
+      call close_group(rgroup)
+    else
+      this % pair_production_nuclear(:) = ZERO
+    end if
 
     ! Read photoelectric
     rgroup = open_group(group_id, 'photoelectric')

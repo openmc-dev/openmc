@@ -439,7 +439,7 @@ contains
 
         ! Check to make sure that a nuclide was sampled
         if (i > mat % n_nuclides) then
-          call write_particle_restart(p)
+          call p % write_restart()
           call fatal_error("Did not sample any element during collision.")
         end if
 

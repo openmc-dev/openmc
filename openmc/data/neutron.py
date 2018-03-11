@@ -14,7 +14,7 @@ import numpy as np
 import h5py
 
 from . import HDF5_VERSION, HDF5_VERSION_MAJOR
-from .ace import Library, Table, get_table
+from .ace import Library, Table, get_table, get_metadata
 from .data import ATOMIC_SYMBOL, K_BOLTZMANN, EV_PER_MEV
 from .endf import Evaluation, SUM_RULES, get_head_record, get_tab1_record
 from .fission_energy import FissionEnergyRelease
@@ -31,73 +31,6 @@ from openmc.mixin import EqualityMixin
 
 # Fractions of resonance widths used for reconstructing resonances
 _RESONANCE_ENERGY_GRID = np.logspace(-3, 3, 61)
-
-
-def _get_metadata(zaid, metastable_scheme='nndc'):
-    """Return basic identifying data for a nuclide with a given ZAID.
-
-    Parameters
-    ----------
-    zaid : int
-        ZAID (1000*Z + A) obtained from a library
-    metastable_scheme : {'nndc', 'mcnp'}
-        Determine how ZAID identifiers are to be interpreted in the case of
-        a metastable nuclide. Because the normal ZAID (=1000*Z + A) does not
-        encode metastable information, different conventions are used among
-        different libraries. In MCNP libraries, the convention is to add 400
-        for a metastable nuclide except for Am242m, for which 95242 is
-        metastable and 95642 (or 1095242 in newer libraries) is the ground
-        state. For NNDC libraries, ZAID is given as 1000*Z + A + 100*m.
-
-    Returns
-    -------
-    name : str
-        Name of the table
-    element : str
-        The atomic symbol of the isotope in the table; e.g., Zr.
-    Z : int
-        Number of protons in the nucleus
-    mass_number : int
-        Number of nucleons in the nucleus
-    metastable : int
-        Metastable state of the nucleus. A value of zero indicates ground state.
-
-    """
-
-    cv.check_type('zaid', zaid, int)
-    cv.check_value('metastable_scheme', metastable_scheme, ['nndc', 'mcnp'])
-
-    Z = zaid // 1000
-    mass_number = zaid % 1000
-
-    if metastable_scheme == 'mcnp':
-        if zaid > 1000000:
-            # New SZA format
-            Z = Z % 1000
-            if zaid == 1095242:
-                metastable = 0
-            else:
-                metastable = zaid // 1000000
-        else:
-            if zaid == 95242:
-                metastable = 1
-            elif zaid == 95642:
-                metastable = 0
-            else:
-                metastable = 1 if mass_number > 300 else 0
-    elif metastable_scheme == 'nndc':
-        metastable = 1 if mass_number > 300 else 0
-
-    while mass_number > 3 * Z:
-        mass_number -= 100
-
-    # Determine name
-    element = ATOMIC_SYMBOL[Z]
-    name = '{}{}'.format(element, mass_number)
-    if metastable > 0:
-        name += '_m{}'.format(metastable)
-
-    return (name, element, Z, mass_number, metastable)
 
 
 class IncidentNeutron(EqualityMixin):
@@ -676,7 +609,7 @@ class IncidentNeutron(EqualityMixin):
         # If mass number hasn't been specified, make an educated guess
         zaid, xs = ace.name.split('.')
         name, element, Z, mass_number, metastable = \
-            _get_metadata(int(zaid), metastable_scheme)
+            get_metadata(int(zaid), metastable_scheme)
 
         # Assign temperature to the running list
         kTs = [ace.temperature*EV_PER_MEV]

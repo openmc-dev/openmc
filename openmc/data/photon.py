@@ -12,6 +12,7 @@ from scipy.interpolate import CubicSpline
 from openmc.mixin import EqualityMixin
 import openmc.checkvalue as cv
 from . import HDF5_VERSION
+from .ace import Table, get_metadata, get_table
 from .data import ATOMIC_SYMBOL, EV_PER_MEV
 from .endf import Evaluation, get_head_record, get_tab1_record, get_list_record
 from .function import Tabulated1D
@@ -95,6 +96,7 @@ _STOPPING_POWERS = {}
 # k reduced photon energies with key 'photon_energies', and the cross sections
 # for each element are in a 2D array with shape (n, k) stored on the key 'Z'.
 _BREMSSTRAHLUNG = {}
+
 
 class AtomicRelaxation(EqualityMixin):
     """Atomic relaxation data.
@@ -272,7 +274,7 @@ class AtomicRelaxation(EqualityMixin):
 class IncidentPhoton(EqualityMixin):
     """Photon interaction data.
 
-    This class stores photo-atomic, photo-nuclear, atomic relaxation, 
+    This class stores photo-atomic, photo-nuclear, atomic relaxation,
     Compton profile, stopping power, and bremsstrahlung data assembled from
     different sources. To create an instance, the factory method
     :meth:`IncidentPhoton.from_endf` can be used. To add atomic relaxation or
@@ -368,6 +370,68 @@ class IncidentPhoton(EqualityMixin):
         cv.check_type('atomic relaxation data', atomic_relaxation,
                       AtomicRelaxation)
         self._atomic_relaxation = atomic_relaxation
+
+    @classmethod
+    def from_ace(cls, ace_or_filename):
+        """Generate incident photon data from an ACE table
+
+        Parameters
+        ----------
+        ace_or_filename : str or openmc.data.ace.Table
+            ACE table to read from. If given as a string, it is assumed to be
+            the filename for the ACE file.
+
+        Returns
+        -------
+        openmc.data.IncidentPhoton
+            Photon interaction data
+
+        """
+        # First obtain the data for the first provided ACE table/file
+        if isinstance(ace_or_filename, Table):
+            ace = ace_or_filename
+        else:
+            ace = get_table(ace_or_filename)
+
+        # Get atomic number based on name of ACE table
+        zaid = ace.name.split('.')[0]
+        Z = get_metadata(int(zaid))[2]
+
+        # Read each reaction
+        data = cls(Z)
+        for mt in (502, 504, 515, 522):
+            data.reactions[mt] = PhotonReaction.from_ace(ace, mt)
+
+        # Compton profiles
+        n_shell = ace.nxs[5]
+        if n_shell != 0:
+            # Get number of electrons in each shell
+            idx = ace.jxs[6]
+            data.compton_profiles['num_electrons'] = ace.xss[idx : idx+n_shell]
+
+            # Get binding energy for each shell
+            idx = ace.jxs[7]
+            data.compton_profiles['binding_energy'] = ace.xss[idx : idx+n_shell]
+
+            # Create Compton profile for each electron shell
+            profiles = []
+            for k in range(n_shell):
+                # Get number of momentum values and interpolation scheme
+                loca = int(ace.xss[ace.jxs[9] + k])
+                jj = int(ace.xss[ace.jxs[10] + loca - 1])
+                m = int(ace.xss[ace.jxs[10] + loca])
+
+                # Read momentum and PDF
+                idx = ace.jxs[10] + loca + 1
+                pz = ace.xss[idx : idx+m]
+                pdf = ace.xss[idx+m : idx+2*m]
+
+                # Create proflie function
+                J_k = Tabulated1D(pz, pdf, [m], [jj])
+                profiles.append(J_k)
+            data.compton_profiles['J'] = profiles
+
+        return data
 
     @classmethod
     def from_endf(cls, photoatomic, relaxation=None):
@@ -548,15 +612,15 @@ class IncidentPhoton(EqualityMixin):
         if rx.scattering_factor is not None:
             rx.scattering_factor.to_hdf5(incoh_group, 'scattering_factor')
 
-        # Write pair production cross section
+        # Write electron-field pair production cross section
         if 515 in self:
-            pair_group = group.create_group('pair_production')
+            pair_group = group.create_group('pair_production_electron')
             pair_group.create_dataset('xs', data=self[515].xs(union_grid))
 
-        # Write triplet production cross section
+        # Write nuclear-field pair production cross section
         if 517 in self:
-            triplet_group = group.create_group('triplet_production')
-            triplet_group.create_dataset('xs', data=self[517].xs(union_grid))
+            pair_group = group.create_group('pair_production_nuclear')
+            pair_group.create_dataset('xs', data=self[517].xs(union_grid))
 
         # Write photoelectric cross section
         photoelec_group = group.create_group('photoelectric')
@@ -713,7 +777,89 @@ class PhotonReaction(EqualityMixin):
         self._xs = xs
 
     @classmethod
-    def from_endf(self, ev, mt):
+    def from_ace(cls, ace, mt):
+        """Generate photon reaction from an ACE table
+
+        Parameters
+        ----------
+        ace : openmc.data.ace.Table
+            ACE table to read from
+        mt : int
+            The MT value of the reaction to get data for
+
+        Returns
+        -------
+        openmc.data.PhotonReaction
+            Photon reaction data
+
+        """
+        # Create instance
+        rx = cls(mt)
+
+        # Get energy grid (stored as logarithms)
+        n = ace.nxs[3]
+        idx = ace.jxs[1]
+        energy = np.exp(ace.xss[idx : idx+n])*EV_PER_MEV
+
+        # Get index for appropriate reaction
+        if mt == 502:
+            # Coherent scattering
+            idx = ace.jxs[1] + 2*n
+        elif mt == 504:
+            # Incoherent scattering
+            idx = ace.jxs[1] + n
+        elif mt == 515:
+            # Pair production
+            idx = ace.jxs[1] + 4*n
+        elif mt == 522:
+            # Photoelectric
+            idx = ace.jxs[1] + 3*n
+        else:
+            raise ValueError('ACE photoatomic cross sections do not have '
+                             'data for MT={}.'.format(mt))
+
+        # Store cross section
+        xs = np.exp(ace.xss[idx : idx+n])
+        rx.xs = Tabulated1D(energy, xs, [n], [5])
+
+        # Get form factors for incoherent/coherent scattering
+        if mt == 502:
+            idx = ace.jxs[3]
+            if ace.nxs[6] > 0:
+                n = (ace.jxs[4] - ace.jxs[3]) // 2
+                x = ace.xss[idx : idx+n]
+                idx += n
+            else:
+                x = np.array([
+                    0.0, 0.01, 0.02, 0.03, 0.04, 0.05, 0.06, 0.08, 0.1, 0.12,
+                    0.15, 0.18, 0.2, 0.25, 0.3, 0.35, 0.4, 0.45, 0.5, 0.55,
+                    0.6, 0.7, 0.8, 0.9, 1.0, 1.1, 1.2, 1.3, 1.4, 1.5, 1.6,
+                    1.7, 1.8, 1.9, 2.0, 2.2, 2.4, 2.6, 2.8, 3.0, 3.2, 3.4,
+                    3.6, 3.8, 4.0, 4.2, 4.4, 4.6, 4.8, 5.0, 5.2, 5.4, 5.6,
+                    5.8, 6.0])
+                n = x.size
+            ff = ace.xss[idx+n : idx+2*n]
+            rx.scattering_factor = Tabulated1D(x, ff)
+
+        elif mt == 504:
+            idx = ace.jxs[2]
+            if ace.nxs[6] > 0:
+                n = (ace.jxs[3] - ace.jxs[2]) // 2
+                x = ace.xss[idx : idx+n]
+                idx += n
+            else:
+                x = np.array([
+                    0.0, 0.005, 0.01, 0.05, 0.1, 0.15, 0.2, 0.3, 0.4, 0.5, 0.6,
+                    0.7, 0.8, 0.9, 1.0, 1.5, 2.0, 3.0, 4.0, 5.0, 8.0
+                ])
+                n = x.size
+            ff = ace.xss[idx : idx+n]
+            rx.scattering_factor = Tabulated1D(x, ff)
+
+        return rx
+
+    @classmethod
+    def from_endf(cls, ev, mt):
         """Generate photon reaction from an ENDF evaluation
 
         Parameters
@@ -729,7 +875,7 @@ class PhotonReaction(EqualityMixin):
             Photon reaction data
 
         """
-        rx = PhotonReaction(mt)
+        rx = cls(mt)
 
         # Read photon cross section
         if (23, mt) in ev.section:

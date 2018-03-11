@@ -11,8 +11,7 @@ module initialize
   use constants
   use set_header,      only: SetInt
   use error,           only: fatal_error, warning, write_message
-  use geometry_header, only: Cell, Universe, Lattice, RectLattice, HexLattice,&
-                             root_universe
+  use geometry_header, only: Cell, Universe, Lattice, RectLattice, HexLattice
   use hdf5_interface,  only: file_open, read_attribute, file_close, &
                              hdf5_bank_t, hdf5_integer8_t
   use input_xml,       only: read_input_xml

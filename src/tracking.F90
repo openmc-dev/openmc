@@ -114,8 +114,7 @@ contains
             ! If the material is the same as the last material and the
             ! temperature hasn't changed, we don't need to lookup cross
             ! sections again.
-            call materials(p % material) % calculate_xs(p % E, p % sqrtkT, &
-                 micro_xs, nuclides, material_xs)
+            call materials(p % material) % calculate_xs(p)
           end if
         else
           ! Get the MG data

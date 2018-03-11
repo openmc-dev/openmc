@@ -4362,7 +4362,7 @@ contains
 
       ! Generate material bremsstrahlung data
       if (photon_transport .and. electron_treatment == ELECTRON_TTB) then
-        call ttb(i) % init(i)
+        call bremsstrahlung_init(ttb(i), i)
       end if
     end do
 

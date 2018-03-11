@@ -206,8 +206,11 @@ contains
     end do
     j = p % n_coord
 
-    ! set size of list to search
+    ! Determine universe (if not set, use root universe
     i_universe = p % coord(j) % universe
+    if (i_universe == NONE) i_universe = root_universe
+
+    ! set size of list to search
     if (present(search_cells)) then
       use_search_cells = .true.
       n = size(search_cells)

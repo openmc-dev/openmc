@@ -10,7 +10,7 @@ module initialize
   use bank_header,     only: Bank
   use constants
   use set_header,      only: SetInt
-  use error,           only: fatal_error, warning
+  use error,           only: fatal_error, warning, write_message
   use geometry_header, only: Cell, Universe, Lattice, RectLattice, HexLattice,&
                              root_universe
   use hdf5_interface,  only: file_open, read_attribute, file_close, &
@@ -19,8 +19,8 @@ module initialize
   use material_header, only: Material
   use message_passing
   use mgxs_data,       only: read_mgxs, create_macro_xs
-  use output,          only: print_version, write_message, print_usage
-  use random_lcg,      only: openmc_set_seed, seed
+  use output,          only: print_version, print_usage
+  use random_lcg,      only: openmc_set_seed
   use settings
 #ifdef _OPENMP
   use simulation_header, only: n_threads
@@ -44,13 +44,15 @@ contains
   subroutine openmc_init(intracomm) bind(C)
     integer, intent(in), optional :: intracomm  ! MPI intracommunicator
 
-    integer :: err
+#ifdef _OPENMP
+    character(MAX_WORD_LEN) :: envvar
+#endif
 
     ! Copy the communicator to a new variable. This is done to avoid changing
     ! the signature of this subroutine. If MPI is being used but no communicator
     ! was passed, assume MPI_COMM_WORLD.
-#ifdef MPI
-#ifdef MPIF08
+#ifdef OPENMC_MPI
+#ifdef OPENMC_MPIF08
     type(MPI_Comm), intent(in) :: comm     ! MPI intracommunicator
     if (present(intracomm)) then
       comm % MPI_VAL = intracomm
@@ -71,9 +73,17 @@ contains
     call time_total%start()
     call time_initialize%start()
 
-#ifdef MPI
+#ifdef OPENMC_MPI
     ! Setup MPI
     call initialize_mpi(comm)
+#endif
+
+#ifdef _OPENMP
+    ! Change schedule of main parallel-do loop if OMP_SCHEDULE is set
+    call get_environment_variable("OMP_SCHEDULE", envvar)
+    if (len_trim(envvar) == 0) then
+      call omp_set_schedule(omp_sched_static, 0)
+    end if
 #endif
 
     ! Initialize HDF5 interface
@@ -84,7 +94,7 @@ contains
 
     ! Initialize random number generator -- if the user specifies a seed, it
     ! will be re-initialized later
-    err = openmc_set_seed(seed)
+    call openmc_set_seed(DEFAULT_SEED)
 
     ! Read XML input files
     call read_input_xml()
@@ -97,7 +107,7 @@ contains
 
   end subroutine openmc_init
 
-#ifdef MPI
+#ifdef OPENMC_MPI
 !===============================================================================
 ! INITIALIZE_MPI starts up the Message Passing Interface (MPI) and determines
 ! the number of processors the problem is being run with as well as the rank of
@@ -105,7 +115,7 @@ contains
 !===============================================================================
 
   subroutine initialize_mpi(intracomm)
-#ifdef MPIF08
+#ifdef OPENMC_MPIF08
     type(MPI_Comm), intent(in) :: intracomm  ! MPI intracommunicator
 #else
     integer, intent(in) :: intracomm         ! MPI intracommunicator
@@ -113,7 +123,7 @@ contains
 
     integer                   :: mpi_err          ! MPI error code
     integer                   :: bank_blocks(6)   ! Count for each datatype
-#ifdef MPIF08
+#ifdef OPENMC_MPIF08
     type(MPI_Datatype)        :: bank_types(6)
 #else
     integer                   :: bank_types(6)    ! Datatypes

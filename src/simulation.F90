@@ -16,12 +16,13 @@ module simulation
 #ifdef _OPENMP
   use eigenvalue,      only: join_bank_from_threads
 #endif
-  use error,           only: fatal_error
+  use error,           only: fatal_error, write_message
   use geometry_header, only: n_cells
+  use material_header, only: n_materials, materials
   use message_passing
   use mgxs_header,     only: energy_bins, energy_bin_avg
   use nuclide_header,  only: micro_xs, n_nuclides
-  use output,          only: write_message, header, print_columns, &
+  use output,          only: header, print_columns, &
                              print_batch_keff, print_generation, print_runtime, &
                              print_results, print_overlap_check, write_tallies
   use particle_header, only: Particle
@@ -30,7 +31,7 @@ module simulation
   use settings
   use simulation_header
   use source,          only: initialize_source, sample_external_source
-  use state_point,     only: write_state_point, write_source_point, load_state_point
+  use state_point,     only: openmc_statepoint_write, write_source_point, load_state_point
   use string,          only: to_str
   use tally,           only: accumulate_tallies, setup_active_tallies, &
                              init_tally_routines
@@ -43,7 +44,10 @@ module simulation
 
   implicit none
   private
+  public :: openmc_next_batch
   public :: openmc_run
+  public :: openmc_simulation_init
+  public :: openmc_simulation_finalize
 
 contains
 
@@ -55,74 +59,81 @@ contains
 
   subroutine openmc_run() bind(C)
 
+    call openmc_simulation_init()
+    do while (openmc_next_batch() == 0)
+    end do
+    call openmc_simulation_finalize()
+
+  end subroutine openmc_run
+
+!===============================================================================
+! OPENMC_NEXT_BATCH
+!===============================================================================
+
+  function openmc_next_batch() result(retval) bind(C)
+    integer(C_INT) :: retval
+
     type(Particle) :: p
     integer(8)     :: i_work
 
-    call initialize_simulation()
+    ! Make sure simulation has been initialized
+    if (.not. simulation_initialized) then
+      retval = -3
+      return
+    end if
 
-    ! Turn on inactive timer
-    call time_inactive % start()
+    call initialize_batch()
 
-    ! ==========================================================================
-    ! LOOP OVER BATCHES
-    BATCH_LOOP: do current_batch = 1, n_max_batches
+    ! Handle restart runs
+    if (restart_run .and. current_batch <= restart_batch) then
+      call replay_batch_history()
+      retval = 0
+      return
+    end if
 
-      call initialize_batch()
+    ! =======================================================================
+    ! LOOP OVER GENERATIONS
+    GENERATION_LOOP: do current_gen = 1, gen_per_batch
 
-      ! Handle restart runs
-      if (restart_run .and. current_batch <= restart_batch) then
-        call replay_batch_history()
-        cycle BATCH_LOOP
-      end if
+      call initialize_generation()
 
-      ! =======================================================================
-      ! LOOP OVER GENERATIONS
-      GENERATION_LOOP: do current_gen = 1, gen_per_batch
+      ! Start timer for transport
+      call time_transport % start()
 
-        call initialize_generation()
+      ! ====================================================================
+      ! LOOP OVER PARTICLES
+!$omp parallel do schedule(runtime) firstprivate(p) copyin(tally_derivs)
+      PARTICLE_LOOP: do i_work = 1, work
+        current_work = i_work
 
-        ! Start timer for transport
-        call time_transport % start()
+        ! grab source particle from bank
+        call initialize_history(p, current_work)
 
-        ! ====================================================================
-        ! LOOP OVER PARTICLES
-!$omp parallel do schedule(static) firstprivate(p) copyin(tally_derivs)
-        PARTICLE_LOOP: do i_work = 1, work
-          current_work = i_work
+        ! transport particle
+        call transport(p)
 
-          ! grab source particle from bank
-          call initialize_history(p, current_work)
-
-          ! transport particle
-          call transport(p)
-
-        end do PARTICLE_LOOP
+      end do PARTICLE_LOOP
 !$omp end parallel do
 
-        ! Accumulate time for transport
-        call time_transport % stop()
+      ! Accumulate time for transport
+      call time_transport % stop()
 
-        call finalize_generation()
+      call finalize_generation()
 
-      end do GENERATION_LOOP
+    end do GENERATION_LOOP
 
-      call finalize_batch()
+    call finalize_batch()
 
-      if (satisfy_triggers) exit BATCH_LOOP
+    ! Check simulation ending criteria
+    if (current_batch == n_max_batches) then
+      retval = -1
+    elseif (satisfy_triggers) then
+      retval = -2
+    else
+      retval = 0
+    end if
 
-    end do BATCH_LOOP
-
-    call time_active % stop()
-
-    ! ==========================================================================
-    ! END OF RUN WRAPUP
-
-    call finalize_simulation()
-
-    ! Clear particle
-    call p % clear()
-
-  end subroutine openmc_run
+  end function openmc_next_batch
 
 !===============================================================================
 ! INITIALIZE_HISTORY
@@ -177,6 +188,9 @@ contains
 
     integer :: i
 
+    ! Increment current batch
+    current_batch = current_batch + 1
+
     if (run_mode == MODE_FIXEDSOURCE) then
       call write_message("Simulating batch " // trim(to_str(current_batch)) &
            // "...", 6)
@@ -185,7 +199,10 @@ contains
     ! Reset total starting particle weight used for normalizing tallies
     total_weight = ZERO
 
-    if (current_batch == n_inactive + 1) then
+    if (n_inactive > 0 .and. current_batch == 1) then
+      ! Turn on inactive timer
+      call time_inactive % start()
+    elseif (current_batch == n_inactive + 1) then
       ! Switch from inactive batch timer to active batch timer
       call time_inactive % stop()
       call time_active % start()
@@ -278,8 +295,6 @@ contains
       if (master .and. verbosity >= 7) then
         if (current_gen /= gen_per_batch) then
           call print_generation()
-        else
-          call print_batch_keff()
         end if
       end if
 
@@ -304,7 +319,7 @@ contains
 
   subroutine finalize_batch()
 
-#ifdef MPI
+#ifdef OPENMC_MPI
     integer :: mpi_err ! MPI error code
 #endif
 
@@ -322,11 +337,13 @@ contains
     if (run_mode == MODE_EIGENVALUE) then
       ! Perform CMFD calculation if on
       if (cmfd_on) call execute_cmfd()
+      ! Write batch output
+      if (master .and. verbosity >= 7) call print_batch_keff()
     end if
 
     ! Check_triggers
     if (master) call check_triggers()
-#ifdef MPI
+#ifdef OPENMC_MPI
     call MPI_BCAST(satisfy_triggers, 1, MPI_LOGICAL, 0, &
          mpi_intracomm, mpi_err)
 #endif
@@ -337,7 +354,7 @@ contains
 
     ! Write out state point if it's been specified for this batch
     if (statepoint_batch % contains(current_batch)) then
-      call write_state_point()
+      call openmc_statepoint_write()
     end if
 
     ! Write out source point if it's been specified for this batch
@@ -386,7 +403,11 @@ contains
 ! INITIALIZE_SIMULATION
 !===============================================================================
 
-  subroutine initialize_simulation()
+  subroutine openmc_simulation_init() bind(C)
+    integer :: i
+
+    ! Skip if simulation has already been initialized
+    if (simulation_initialized) return
 
     ! Set up tally procedure pointers
     call init_tally_routines()
@@ -401,6 +422,11 @@ contains
     ! Allocate tally results arrays if they're not allocated yet
     call configure_tallies()
 
+    ! Set up material nuclide index mapping
+    do i = 1, n_materials
+      call materials(i) % init_nuclide_index()
+    end do
+
 !$omp parallel
     ! Allocate array for microscopic cross section cache
     allocate(micro_xs(n_nuclides))
@@ -409,6 +435,13 @@ contains
     ! Allocate array for matching filter bins
     allocate(filter_matches(n_filters))
 !$omp end parallel
+
+    ! Reset global variables -- this is done before loading state point (as that
+    ! will potentially populate k_generation and entropy)
+    current_batch = 0
+    call k_generation % clear()
+    call entropy % clear()
+    need_depletion_rx = .false.
 
     ! If this is a restart run, load the state point data and binary source
     ! file
@@ -428,40 +461,66 @@ contains
       end if
     end if
 
-  end subroutine initialize_simulation
+    ! Set flag indicating initialization is done
+    simulation_initialized = .true.
+
+  end subroutine openmc_simulation_init
 
 !===============================================================================
 ! FINALIZE_SIMULATION calculates tally statistics, writes tallies, and displays
 ! execution time and results
 !===============================================================================
 
-  subroutine finalize_simulation()
+  subroutine openmc_simulation_finalize() bind(C)
 
-#ifdef MPI
-    integer    :: i       ! loop index for tallies
+    integer    :: i       ! loop index
+#ifdef OPENMC_MPI
     integer    :: n       ! size of arrays
     integer    :: mpi_err  ! MPI error code
+    integer    :: count_per_filter ! number of result values for one filter bin
     integer(8) :: temp
     real(8)    :: tempr(3) ! temporary array for communication
+#ifdef OPENMC_MPIF08
+    type(MPI_Datatype) :: result_block
+#else
+    integer :: result_block
+#endif
 #endif
 
+    ! Skip if simulation was never run
+    if (.not. simulation_initialized) return
+
+    ! Stop active batch timer and start finalization timer
+    call time_active % stop()
+    call time_finalize % start()
+
+    ! Free up simulation-specific memory
+    do i = 1, n_materials
+      deallocate(materials(i) % mat_nuclide_index)
+    end do
 !$omp parallel
     deallocate(micro_xs, micro_photon_xs, filter_matches)
 !$omp end parallel
 
     ! Increment total number of generations
-    total_gen = total_gen + n_batches*gen_per_batch
+    total_gen = total_gen + current_batch*gen_per_batch
 
-    ! Start finalization timer
-    call time_finalize % start()
-
-#ifdef MPI
+#ifdef OPENMC_MPI
     ! Broadcast tally results so that each process has access to results
     if (allocated(tallies)) then
       do i = 1, size(tallies)
-        n = size(tallies(i) % obj % results)
-        call MPI_BCAST(tallies(i) % obj % results, n, MPI_DOUBLE, 0, &
-             mpi_intracomm, mpi_err)
+        associate (results => tallies(i) % obj % results)
+          ! Create a new datatype that consists of all values for a given filter
+          ! bin and then use that to broadcast. This is done to minimize the
+          ! chance of the 'count' argument of MPI_BCAST exceeding 2**31
+          n = size(results, 3)
+          count_per_filter = size(results, 1) * size(results, 2)
+          call MPI_TYPE_CONTIGUOUS(count_per_filter, MPI_DOUBLE, &
+               result_block, mpi_err)
+          call MPI_TYPE_COMMIT(result_block, mpi_err)
+          call MPI_BCAST(results, n, result_block, 0, mpi_intracomm, mpi_err)
+          call MPI_TYPE_FREE(result_block, mpi_err)
+        end associate
       end do
     end if
 
@@ -498,7 +557,11 @@ contains
       if (check_overlaps) call print_overlap_check()
     end if
 
-  end subroutine finalize_simulation
+    ! Reset flags
+    need_depletion_rx = .false.
+    simulation_initialized = .false.
+
+  end subroutine openmc_simulation_finalize
 
 !===============================================================================
 ! CALCULATE_WORK determines how many particles each processor should simulate

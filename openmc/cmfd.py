@@ -10,12 +10,10 @@ References
 
 """
 
-from collections import Iterable
+from collections.abc import Iterable
 from numbers import Real, Integral
 from xml.etree import ElementTree as ET
 import sys
-
-from six import string_types
 
 from openmc.clean_xml import clean_xml_indentation
 from openmc.checkvalue import (check_type, check_length, check_value,
@@ -338,7 +336,7 @@ class CMFD(object):
 
     @display.setter
     def display(self, display):
-        check_type('CMFD display', display, string_types)
+        check_type('CMFD display', display, str)
         check_value('CMFD display', display,
                     ['balance', 'dominance', 'entropy', 'source'])
         self._display = display

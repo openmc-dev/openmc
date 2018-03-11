@@ -105,7 +105,7 @@ contains
     real(8) :: hxyz(3) ! cell dimensions of current ijk cell
     real(8) :: vol     ! volume of cell
     real(8),allocatable :: source(:,:,:,:)  ! tmp source array for entropy
-#ifdef MPI
+#ifdef OPENMC_MPI
     integer :: mpi_err ! MPI error code
 #endif
 
@@ -197,7 +197,7 @@ contains
 
     end if
 
-#ifdef MPI
+#ifdef OPENMC_MPI
     ! Broadcast full source to all procs
     call MPI_BCAST(cmfd % cmfd_src, n, MPI_REAL8, 0, mpi_intracomm, mpi_err)
 #endif
@@ -234,7 +234,7 @@ contains
     real(8) :: norm     ! normalization factor
     logical :: outside  ! any source sites outside mesh
     logical :: in_mesh  ! source site is inside mesh
-#ifdef MPI
+#ifdef OPENMC_MPI
     integer :: mpi_err
 #endif
 
@@ -291,7 +291,7 @@ contains
       if (.not. cmfd_feedback) return
 
       ! Broadcast weight factors to all procs
-#ifdef MPI
+#ifdef OPENMC_MPI
       call MPI_BCAST(cmfd % weightfactors, ng*nx*ny*nz, MPI_REAL8, 0, &
            mpi_intracomm, mpi_err)
 #endif
@@ -366,7 +366,7 @@ contains
 
   subroutine cmfd_tally_reset()
 
-    use output,  only: write_message
+    use error,  only: write_message
 
     integer :: i ! loop counter
 

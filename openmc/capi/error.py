@@ -1,41 +1,42 @@
 from ctypes import c_int, c_char
+from warnings import warn
 
 from . import _dll
 
 
-class Error(Exception):
+class OpenMCError(Exception):
     """Root exception class for OpenMC."""
 
 
-class GeometryError(Error):
+class GeometryError(OpenMCError):
     """Geometry-related error"""
 
 
-class InvalidIDError(Error):
+class InvalidIDError(OpenMCError):
     """Use of an ID that is invalid."""
 
 
-class AllocationError(Error):
+class AllocationError(OpenMCError):
     """Error related to memory allocation."""
 
 
-class OutOfBoundsError(Error):
+class OutOfBoundsError(OpenMCError):
     """Index in array out of bounds."""
 
 
-class DataError(Error):
+class DataError(OpenMCError):
     """Error relating to nuclear data."""
 
 
-class PhysicsError(Error):
+class PhysicsError(OpenMCError):
     """Error relating to performing physics."""
 
 
-class InvalidArgumentError(Error):
+class InvalidArgumentError(OpenMCError):
     """Argument passed was invalid."""
 
 
-class InvalidTypeError(Error):
+class InvalidTypeError(OpenMCError):
     """Tried to perform an operation on the wrong type."""
 
 
@@ -70,4 +71,4 @@ def _error_handler(err, func, args):
     elif err == errcode('e_warning'):
         warn(msg)
     elif err < 0:
-        raise Exception("Unknown error encountered (code {}).".format(err))
+        raise OpenMCError("Unknown error encountered (code {}).".format(err))

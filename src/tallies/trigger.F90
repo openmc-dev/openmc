@@ -2,14 +2,14 @@ module trigger
 
   use, intrinsic :: ISO_C_BINDING
 
-#ifdef MPI
+#ifdef OPENMC_MPI
   use message_passing
 #endif
 
   use constants
   use eigenvalue,     only: openmc_get_keff
+  use error,          only: warning, write_message
   use string,         only: to_str
-  use output,         only: warning, write_message
   use mesh_header,    only: RegularMesh, meshes
   use message_passing, only: master
   use settings

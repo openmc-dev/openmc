@@ -10,7 +10,7 @@ module input_xml
   use distribution_multivariate
   use distribution_univariate
   use endf,             only: reaction_name
-  use error,            only: fatal_error, warning
+  use error,            only: fatal_error, warning, write_message
   use geometry,         only: calc_offsets, maximum_levels, count_instance, &
                               neighbor_lists
   use geometry_header
@@ -23,7 +23,7 @@ module input_xml
   use mgxs_header
   use multipole,        only: multipole_read
   use nuclide_header
-  use output,           only: write_message, title, header, print_plot
+  use output,           only: title, header, print_plot
   use photon_header
   use plot_header
   use random_lcg,       only: prn, openmc_set_seed
@@ -48,6 +48,14 @@ module input_xml
 
   implicit none
   save
+
+  interface
+    subroutine read_surfaces(node_ptr) bind(C, name='read_surfaces')
+      use ISO_C_BINDING
+      implicit none
+      type(C_PTR) :: node_ptr
+    end subroutine read_surfaces
+  end interface
 
 contains
 
@@ -342,7 +350,7 @@ contains
     ! Copy random number seed if specified
     if (check_for_node(root, "seed")) then
       call get_node_value(root, "seed", seed)
-      err = openmc_set_seed(seed)
+      call openmc_set_seed(seed)
     end if
 
     ! Check for electron treatment
@@ -900,10 +908,9 @@ contains
         call get_node_value(node_base, "generations_per_batch", gen_per_batch)
       end if
 
-      ! Allocate array for batch keff and entropy
-      allocate(k_generation(n_max_batches*gen_per_batch))
-      allocate(entropy(n_max_batches*gen_per_batch))
-      entropy = ZERO
+      ! Preallocate space for keff and entropy by generation
+      call k_generation % reserve(n_max_batches*gen_per_batch)
+      call entropy % reserve(n_max_batches*gen_per_batch)
 
       ! Get the trigger information for keff
       if (check_for_node(node_base, "keff_trigger")) then
@@ -951,28 +958,20 @@ contains
     integer :: id
     integer :: univ_id
     integer :: n_cells_in_univ
-    integer :: coeffs_reqd
-    integer :: i_xmin, i_xmax, i_ymin, i_ymax, i_zmin, i_zmax
-    real(8) :: xmin, xmax, ymin, ymax, zmin, zmax
     integer, allocatable :: temp_int_array(:)
     real(8) :: phi, theta, psi
-    real(8), allocatable :: coeffs(:)
     logical :: file_exists
     logical :: boundary_exists
     character(MAX_LINE_LEN) :: filename
-    character(MAX_WORD_LEN) :: word
     character(MAX_WORD_LEN), allocatable :: sarray(:)
     character(:), allocatable :: region_spec
     type(Cell),     pointer :: c
-    class(Surface), pointer :: s
     class(Lattice), pointer :: lat
     type(XMLDocument) :: doc
     type(XMLNode) :: root
     type(XMLNode) :: node_cell
-    type(XMLNode) :: node_surf
     type(XMLNode) :: node_lat
     type(XMLNode), allocatable :: node_cell_list(:)
-    type(XMLNode), allocatable :: node_surf_list(:)
     type(XMLNode), allocatable :: node_rlat_list(:)
     type(XMLNode), allocatable :: node_hlat_list(:)
     type(VectorInt) :: tokens
@@ -1004,218 +1003,18 @@ contains
     ! applied to a surface
     boundary_exists = .false.
 
-    ! get pointer to list of xml <surface>
-    call get_node_list(root, "surface", node_surf_list)
+    call read_surfaces(root % ptr)
 
-    ! Get number of <surface> tags
-    n_surfaces = size(node_surf_list)
-
-    ! Check for no surfaces
-    if (n_surfaces == 0) then
-      call fatal_error("No surfaces found in geometry.xml!")
-    end if
-
-    xmin = INFINITY
-    xmax = -INFINITY
-    ymin = INFINITY
-    ymax = -INFINITY
-    zmin = INFINITY
-    zmax = -INFINITY
-
-    ! Allocate cells array
+    ! Allocate surfaces array
     allocate(surfaces(n_surfaces))
 
     do i = 1, n_surfaces
-      ! Get pointer to i-th surface node
-      node_surf = node_surf_list(i)
+      surfaces(i) % ptr = surface_pointer_c(i - 1);
 
-      ! Copy and interpret surface type
-      word = ''
-      if (check_for_node(node_surf, "type")) &
-           call get_node_value(node_surf, "type", word)
-      select case(to_lower(word))
-      case ('x-plane')
-        coeffs_reqd  = 1
-        allocate(SurfaceXPlane :: surfaces(i)%obj)
-      case ('y-plane')
-        coeffs_reqd  = 1
-        allocate(SurfaceYPlane :: surfaces(i)%obj)
-      case ('z-plane')
-        coeffs_reqd  = 1
-        allocate(SurfaceZPlane :: surfaces(i)%obj)
-      case ('plane')
-        coeffs_reqd  = 4
-        allocate(SurfacePlane :: surfaces(i)%obj)
-      case ('x-cylinder')
-        coeffs_reqd  = 3
-        allocate(SurfaceXCylinder :: surfaces(i)%obj)
-      case ('y-cylinder')
-        coeffs_reqd  = 3
-        allocate(SurfaceYCylinder :: surfaces(i)%obj)
-      case ('z-cylinder')
-        coeffs_reqd  = 3
-        allocate(SurfaceZCylinder :: surfaces(i)%obj)
-      case ('sphere')
-        coeffs_reqd  = 4
-        allocate(SurfaceSphere :: surfaces(i)%obj)
-      case ('x-cone')
-        coeffs_reqd  = 4
-        allocate(SurfaceXCone :: surfaces(i)%obj)
-      case ('y-cone')
-        coeffs_reqd  = 4
-        allocate(SurfaceYCone :: surfaces(i)%obj)
-      case ('z-cone')
-        coeffs_reqd  = 4
-        allocate(SurfaceZCone :: surfaces(i)%obj)
-      case ('quadric')
-        coeffs_reqd  = 10
-        allocate(SurfaceQuadric :: surfaces(i)%obj)
-      case default
-        call fatal_error("Invalid surface type: " // trim(word))
-      end select
+      if (surfaces(i) % bc() /= BC_TRANSMIT) boundary_exists = .true.
 
-      s => surfaces(i)%obj
-
-      ! Copy data into cells
-      if (check_for_node(node_surf, "id")) then
-        call get_node_value(node_surf, "id", s%id)
-      else
-        call fatal_error("Must specify id of surface in geometry XML file.")
-      end if
-
-      ! Check to make sure 'id' hasn't been used
-      if (surface_dict % has(s%id)) then
-        call fatal_error("Two or more surfaces use the same unique ID: " &
-             // to_str(s%id))
-      end if
-
-      ! Copy surface name
-      if (check_for_node(node_surf, "name")) then
-        call get_node_value(node_surf, "name", s%name)
-      end if
-
-      ! Check to make sure that the proper number of coefficients
-      ! have been specified for the given type of surface. Then copy
-      ! surface coordinates.
-
-      n = node_word_count(node_surf, "coeffs")
-      if (n < coeffs_reqd) then
-        call fatal_error("Not enough coefficients specified for surface: " &
-             // trim(to_str(s%id)))
-      elseif (n > coeffs_reqd) then
-        call fatal_error("Too many coefficients specified for surface: " &
-             // trim(to_str(s%id)))
-      end if
-
-      allocate(coeffs(n))
-      call get_node_array(node_surf, "coeffs", coeffs)
-
-      select type(s)
-      type is (SurfaceXPlane)
-        s%x0 = coeffs(1)
-
-        ! Determine outer surfaces
-        xmin = min(xmin, s % x0)
-        xmax = max(xmax, s % x0)
-        if (xmin == s % x0) i_xmin = i
-        if (xmax == s % x0) i_xmax = i
-      type is (SurfaceYPlane)
-        s%y0 = coeffs(1)
-
-        ! Determine outer surfaces
-        ymin = min(ymin, s % y0)
-        ymax = max(ymax, s % y0)
-        if (ymin == s % y0) i_ymin = i
-        if (ymax == s % y0) i_ymax = i
-      type is (SurfaceZPlane)
-        s%z0 = coeffs(1)
-
-        ! Determine outer surfaces
-        zmin = min(zmin, s % z0)
-        zmax = max(zmax, s % z0)
-        if (zmin == s % z0) i_zmin = i
-        if (zmax == s % z0) i_zmax = i
-      type is (SurfacePlane)
-        s%A = coeffs(1)
-        s%B = coeffs(2)
-        s%C = coeffs(3)
-        s%D = coeffs(4)
-      type is (SurfaceXCylinder)
-        s%y0 = coeffs(1)
-        s%z0 = coeffs(2)
-        s%r = coeffs(3)
-      type is (SurfaceYCylinder)
-        s%x0 = coeffs(1)
-        s%z0 = coeffs(2)
-        s%r = coeffs(3)
-      type is (SurfaceZCylinder)
-        s%x0 = coeffs(1)
-        s%y0 = coeffs(2)
-        s%r = coeffs(3)
-      type is (SurfaceSphere)
-        s%x0 = coeffs(1)
-        s%y0 = coeffs(2)
-        s%z0 = coeffs(3)
-        s%r = coeffs(4)
-      type is (SurfaceXCone)
-        s%x0 = coeffs(1)
-        s%y0 = coeffs(2)
-        s%z0 = coeffs(3)
-        s%r2 = coeffs(4)
-      type is (SurfaceYCone)
-        s%x0 = coeffs(1)
-        s%y0 = coeffs(2)
-        s%z0 = coeffs(3)
-        s%r2 = coeffs(4)
-      type is (SurfaceZCone)
-        s%x0 = coeffs(1)
-        s%y0 = coeffs(2)
-        s%z0 = coeffs(3)
-        s%r2 = coeffs(4)
-      type is (SurfaceQuadric)
-        s%A = coeffs(1)
-        s%B = coeffs(2)
-        s%C = coeffs(3)
-        s%D = coeffs(4)
-        s%E = coeffs(5)
-        s%F = coeffs(6)
-        s%G = coeffs(7)
-        s%H = coeffs(8)
-        s%J = coeffs(9)
-        s%K = coeffs(10)
-      end select
-
-      ! No longer need coefficients
-      deallocate(coeffs)
-
-      ! Boundary conditions
-      word = ''
-      if (check_for_node(node_surf, "boundary")) &
-           call get_node_value(node_surf, "boundary", word)
-      select case (to_lower(word))
-      case ('transmission', 'transmit', '')
-        s%bc = BC_TRANSMIT
-      case ('vacuum')
-        s%bc = BC_VACUUM
-        boundary_exists = .true.
-      case ('reflective', 'reflect', 'reflecting')
-        s%bc = BC_REFLECT
-        boundary_exists = .true.
-      case ('periodic')
-        s%bc = BC_PERIODIC
-        boundary_exists = .true.
-
-        ! Check for specification of periodic surface
-        if (check_for_node(node_surf, "periodic_surface_id")) then
-          call get_node_value(node_surf, "periodic_surface_id", &
-               s % i_periodic)
-        end if
-      case default
-        call fatal_error("Unknown boundary condition '" // trim(word) // &
-             &"' specified on surface " // trim(to_str(s%id)))
-      end select
       ! Add surface to dictionary
-      call surface_dict % set(s%id, i)
+      call surface_dict % set(surfaces(i) % id(), i)
     end do
 
     ! Check to make sure a boundary condition was applied to at least one
@@ -1225,76 +1024,6 @@ contains
         call fatal_error("No boundary conditions were applied to any surfaces!")
       end if
     end if
-
-    ! Determine opposite side for periodic boundaries
-    do i = 1, size(surfaces)
-      if (surfaces(i) % obj % bc == BC_PERIODIC) then
-        select type (surf => surfaces(i) % obj)
-        type is (SurfaceXPlane)
-          if (surf % i_periodic == NONE) then
-            if (i == i_xmin) then
-              surf % i_periodic = i_xmax
-            elseif (i == i_xmax) then
-              surf % i_periodic = i_xmin
-            else
-              call fatal_error("Periodic boundary condition applied to &
-                   &interior surface.")
-            end if
-          else
-            surf % i_periodic = surface_dict % get(surf % i_periodic)
-          end if
-
-        type is (SurfaceYPlane)
-          if (surf % i_periodic == NONE) then
-            if (i == i_ymin) then
-              surf % i_periodic = i_ymax
-            elseif (i == i_ymax) then
-              surf % i_periodic = i_ymin
-            else
-              call fatal_error("Periodic boundary condition applied to &
-                   &interior surface.")
-            end if
-          else
-            surf % i_periodic = surface_dict % get(surf % i_periodic)
-          end if
-
-        type is (SurfaceZPlane)
-          if (surf % i_periodic == NONE) then
-            if (i == i_zmin) then
-              surf % i_periodic = i_zmax
-            elseif (i == i_zmax) then
-              surf % i_periodic = i_zmin
-            else
-              call fatal_error("Periodic boundary condition applied to &
-                   &interior surface.")
-            end if
-          else
-            surf % i_periodic = surface_dict % get(surf % i_periodic)
-          end if
-
-        type is (SurfacePlane)
-          if (surf % i_periodic == NONE) then
-            call fatal_error("No matching periodic surface specified for &
-                 &periodic boundary condition on surface " // &
-                 trim(to_str(surf % id)) // ".")
-          else
-            surf % i_periodic = surface_dict % get(surf % i_periodic)
-          end if
-
-        class default
-          call fatal_error("Periodic boundary condition applied to &
-               &non-planar surface.")
-        end select
-
-        ! Make sure opposite surface is also periodic
-        associate (surf => surfaces(i) % obj)
-          if (surfaces(surf % i_periodic) % obj % bc /= BC_PERIODIC) then
-            call fatal_error("Could not find matching surface for periodic &
-                 &boundary on surface " // trim(to_str(surf % id)) // ".")
-          end if
-        end associate
-      end if
-    end do
 
     ! ==========================================================================
     ! READ CELLS FROM GEOMETRY.XML
@@ -1960,10 +1689,7 @@ contains
     type(XMLDocument)       :: doc
     type(XMLNode)           :: root
 
-    ! Display output message
-    call write_message("Reading materials XML file...", 5)
-
-    ! Check is materials.xml exists
+    ! Check if materials.xml exists
     filename = trim(path_input) // "materials.xml"
     inquire(FILE=filename, EXIST=file_exists)
     if (.not. file_exists) then
@@ -2068,6 +1794,7 @@ contains
 
     integer :: i              ! loop index for materials
     integer :: j              ! loop index for nuclides
+    integer :: k              ! loop index
     integer :: n              ! number of nuclides
     integer :: n_sab          ! number of sab tables for a material
     integer :: i_library      ! index in libraries array
@@ -2080,11 +1807,12 @@ contains
     character(MAX_WORD_LEN) :: units        ! units on density
     character(MAX_LINE_LEN) :: filename     ! absolute path to materials.xml
     character(MAX_LINE_LEN) :: temp_str     ! temporary string when reading
+    character(MAX_WORD_LEN), allocatable :: sarray(:)
     real(8)                 :: val          ! value entered for density
     real(8)                 :: temp_dble    ! temporary double prec. real
     logical                 :: sum_density  ! density is sum of nuclide densities
     type(VectorChar)        :: names        ! temporary list of nuclide names
-    type(VectorInt)         :: list_iso_lab ! temporary list of isotropic lab scatterers
+    type(VectorChar)        :: list_iso_lab ! temporary list of isotropic lab scatterers
     type(VectorReal)        :: densities    ! temporary list of nuclide densities
     type(Material), pointer :: mat => null()
     type(XMLDocument) :: doc
@@ -2099,7 +1827,10 @@ contains
     type(XMLNode), allocatable :: node_macro_list(:)
     type(XMLNode), allocatable :: node_sab_list(:)
 
-    ! Check is materials.xml exists
+    ! Display output message
+    call write_message("Reading materials XML file...", 5)
+
+    ! Check if materials.xml exists
     filename = trim(path_input) // "materials.xml"
     inquire(FILE=filename, EXIST=file_exists)
     if (.not. file_exists) then
@@ -2289,23 +2020,6 @@ contains
                  // trim(to_str(mat % id)))
           end if
 
-          ! Check enforced isotropic lab scattering
-          if (run_CE) then
-            if (check_for_node(node_nuc, "scattering")) then
-              call get_node_value(node_nuc, "scattering", temp_str)
-              if (adjustl(to_lower(temp_str)) == "iso-in-lab") then
-                call list_iso_lab % push_back(1)
-              else if (adjustl(to_lower(temp_str)) == "data") then
-                call list_iso_lab % push_back(0)
-              else
-                call fatal_error("Scattering must be isotropic in lab or follow&
-                     & the ACE file data")
-              end if
-            else
-              call list_iso_lab % push_back(0)
-            end if
-          end if
-
           ! store nuclide name
           call get_node_value(node_nuc, "name", name)
           name = trim(name)
@@ -2340,6 +2054,19 @@ contains
         end do INDIVIDUAL_NUCLIDES
       end if
 
+      ! =======================================================================
+      ! READ AND PARSE <isotropic> element
+
+      if (check_for_node(node_mat, "isotropic")) then
+        n = node_word_count(node_mat, "isotropic")
+        allocate(sarray(n))
+        call get_node_array(node_mat, "isotropic", sarray)
+        do j = 1, n
+          call list_iso_lab % push_back(sarray(j))
+        end do
+        deallocate(sarray)
+      end if
+
       ! ========================================================================
       ! COPY NUCLIDES TO ARRAYS IN MATERIAL
 
@@ -2350,7 +2077,6 @@ contains
       allocate(mat % nuclide(n))
       allocate(mat % element(n))
       allocate(mat % atom_density(n))
-      allocate(mat % p0(n))
 
       ALL_NUCLIDES: do j = 1, mat % n_nuclides
         ! Check that this nuclide is listed in the cross_sections.xml file
@@ -2405,16 +2131,25 @@ contains
         mat % names(j) = name
         mat % atom_density(j) = densities % data(j)
 
-        ! Cast integer isotropic lab scattering flag to boolean
-        if (run_CE) then
-          if (list_iso_lab % data(j) == 1) then
-            mat % p0(j) = .true.
-          else
-            mat % p0(j) = .false.
-          end if
-        end if
-
       end do ALL_NUCLIDES
+
+      if (run_CE) then
+        ! By default, isotropic-in-lab is not used
+        if (list_iso_lab % size() > 0) then
+          mat % has_isotropic_nuclides = .true.
+          allocate(mat % p0(n))
+          mat % p0(:) = .false.
+
+          ! Apply isotropic-in-lab treatment to specified nuclides
+          do j = 1, list_iso_lab % size()
+            do k = 1, n
+              if (names % data(k) == list_iso_lab % data(j)) then
+                mat % p0(k) = .true.
+              end if
+            end do
+          end do
+        end if
+      end if
 
       ! Check to make sure either all atom percents or all weight percents are
       ! given
@@ -3108,12 +2843,15 @@ contains
                  &please remove")
           case ('n2n', '(n,2n)')
             t % score_bins(j) = N_2N
+            t % depletion_rx = .true.
 
           case ('n3n', '(n,3n)')
             t % score_bins(j) = N_3N
+            t % depletion_rx = .true.
 
           case ('n4n', '(n,4n)')
             t % score_bins(j) = N_4N
+            t % depletion_rx = .true.
 
           case ('absorption')
             t % score_bins(j) = SCORE_ABSORPTION
@@ -3299,8 +3037,10 @@ contains
             t % score_bins(j) = N_NC
           case ('(n,gamma)')
             t % score_bins(j) = N_GAMMA
+            t % depletion_rx = .true.
           case ('(n,p)')
             t % score_bins(j) = N_P
+            t % depletion_rx = .true.
           case ('(n,d)')
             t % score_bins(j) = N_D
           case ('(n,t)')
@@ -3309,6 +3049,7 @@ contains
             t % score_bins(j) = N_3HE
           case ('(n,a)')
             t % score_bins(j) = N_A
+            t % depletion_rx = .true.
           case ('(n,2a)')
             t % score_bins(j) = N_2A
           case ('(n,3a)')
@@ -4282,7 +4023,6 @@ contains
     integer :: n_libraries
     logical :: file_exists ! does mgxs.h5 exist?
     integer(HID_T) :: file_id
-    real(8), allocatable :: rev_energy_bins(:)
     character(len=MAX_WORD_LEN), allocatable :: names(:)
 
     ! Check if MGXS Library exists
@@ -4323,12 +4063,18 @@ contains
     end if
 
     ! First reverse the order of energy_groups
+    rev_energy_bins = energy_bins
     energy_bins = energy_bins(num_energy_groups + 1:1:-1)
 
+    ! Get the midpoint of the energy groups
     allocate(energy_bin_avg(num_energy_groups))
     do i = 1, num_energy_groups
       energy_bin_avg(i) = HALF * (energy_bins(i) + energy_bins(i + 1))
     end do
+
+    ! Get the minimum and maximum energies
+    energy_min_neutron = energy_bins(num_energy_groups + 1)
+    energy_max_neutron = energy_bins(1)
 
     ! Get the datasets present in the library
     call get_groups(file_id, names)
@@ -4560,7 +4306,7 @@ contains
           group_id = open_group(file_id, name)
           call nuclides(i_nuclide) % from_hdf5(group_id, nuc_temps(i_nuclide), &
                temperature_method, temperature_tolerance, temperature_range, &
-               master)
+               master, i_nuclide)
           call close_group(group_id)
           call file_close(file_id)
 
@@ -4679,12 +4425,16 @@ contains
 
     ! Show which nuclide results in lowest energy for neutron transport
     do i = 1, size(nuclides)
-      if (nuclides(i) % grid(1) % energy(size(nuclides(i) % grid(1) % energy)) &
-           == energy_max_neutron) then
-        call write_message("Maximum neutron transport energy: " // &
-             trim(to_str(energy_max_neutron)) // " eV for " // &
-             trim(adjustl(nuclides(i) % name)), 7)
-        exit
+      ! If a nuclide is present in a material that's not used in the model, its
+      ! grid has not been allocated
+      if (size(nuclides(i) % grid) > 0) then
+        if (nuclides(i) % grid(1) % energy(size(nuclides(i) % grid(1) % energy)) &
+             == energy_max_neutron) then
+          call write_message("Maximum neutron transport energy: " // &
+               trim(to_str(energy_max_neutron)) // " eV for " // &
+               trim(adjustl(nuclides(i) % name)), 7)
+          exit
+        end if
       end if
     end do
 

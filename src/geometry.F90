@@ -1,18 +1,16 @@
 module geometry
 
   use constants
-  use error,                  only: fatal_error, warning
+  use error,                  only: fatal_error, warning, write_message
   use geometry_header
-  use output,                 only: write_message
   use particle_header,        only: LocalCoord, Particle
-  use particle_restart_write, only: write_particle_restart
   use simulation_header
   use settings
   use surface_header
   use stl_vector,             only: VectorInt
   use string,                 only: to_str
-  use tally,                  only: score_surface_current
-  use tally_header
+
+  use, intrinsic :: ISO_C_BINDING
 
   implicit none
 
@@ -67,7 +65,7 @@ contains
           in_cell = .false.
           exit
         else
-          actual_sense = surfaces(abs(token))%obj%sense(&
+          actual_sense = surfaces(abs(token)) % sense( &
                p%coord(p%n_coord)%xyz, p%coord(p%n_coord)%uvw)
           if (actual_sense .neqv. (token > 0)) then
             in_cell = .false.
@@ -116,7 +114,7 @@ contains
         elseif (-token == p%surface) then
           stack(i_stack) = .false.
         else
-          actual_sense = surfaces(abs(token))%obj%sense(&
+          actual_sense = surfaces(abs(token)) % sense( &
                p%coord(p%n_coord)%xyz, p%coord(p%n_coord)%uvw)
           stack(i_stack) = (actual_sense .eqv. (token > 0))
         end if
@@ -357,7 +355,7 @@ contains
             else
               ! Particle is outside the lattice.
               if (lat % outer == NO_OUTER_UNIVERSE) then
-                call handle_lost_particle(p, "Particle " // trim(to_str(p %id)) &
+                call p % mark_as_lost("Particle " // trim(to_str(p %id)) &
                      // " is outside lattice " // trim(to_str(lat % id)) &
                      // " but the lattice has no defined outer universe.")
                 return
@@ -379,276 +377,6 @@ contains
     end if
 
   end subroutine find_cell
-
-!===============================================================================
-! CROSS_SURFACE handles all surface crossings, whether the particle leaks out of
-! the geometry, is reflected, or crosses into a new lattice or cell
-!===============================================================================
-
-  subroutine cross_surface(p)
-    type(Particle), intent(inout) :: p
-
-    real(8) :: u          ! x-component of direction
-    real(8) :: v          ! y-component of direction
-    real(8) :: w          ! z-component of direction
-    real(8) :: norm       ! "norm" of surface normal
-    real(8) :: d          ! distance between point and plane
-    real(8) :: xyz(3)     ! Saved global coordinate
-    integer :: i_surface  ! index in surfaces
-    logical :: rotational ! if rotational periodic BC applied
-    logical :: found      ! particle found in universe?
-    class(Surface), pointer :: surf
-
-    i_surface = abs(p % surface)
-    surf => surfaces(i_surface)%obj
-    if (verbosity >= 10 .or. trace) then
-      call write_message("    Crossing surface " // trim(to_str(surf % id)))
-    end if
-
-    if (surf % bc == BC_VACUUM .and. (run_mode /= MODE_PLOTTING)) then
-      ! =======================================================================
-      ! PARTICLE LEAKS OUT OF PROBLEM
-
-      ! Kill particle
-      p % alive = .false.
-
-      ! Score any surface current tallies -- note that the particle is moved
-      ! forward slightly so that if the mesh boundary is on the surface, it is
-      ! still processed
-
-      if (active_current_tallies % size() > 0) then
-        ! TODO: Find a better solution to score surface currents than
-        ! physically moving the particle forward slightly
-
-        p % coord(1) % xyz = p % coord(1) % xyz + TINY_BIT * p % coord(1) % uvw
-        call score_surface_current(p)
-      end if
-
-      ! Score to global leakage tally
-      global_tally_leakage = global_tally_leakage + p % wgt
-
-      ! Display message
-      if (verbosity >= 10 .or. trace) then
-        call write_message("    Leaked out of surface " &
-             &// trim(to_str(surf % id)))
-      end if
-      return
-
-    elseif (surf % bc == BC_REFLECT .and. (run_mode /= MODE_PLOTTING)) then
-      ! =======================================================================
-      ! PARTICLE REFLECTS FROM SURFACE
-
-      ! Do not handle reflective boundary conditions on lower universes
-      if (p % n_coord /= 1) then
-        call handle_lost_particle(p, "Cannot reflect particle " &
-             &// trim(to_str(p % id)) // " off surface in a lower universe.")
-        return
-      end if
-
-      ! Score surface currents since reflection causes the direction of the
-      ! particle to change -- artificially move the particle slightly back in
-      ! case the surface crossing is coincident with a mesh boundary
-
-      if (active_current_tallies % size() > 0) then
-        xyz = p % coord(1) % xyz
-        p % coord(1) % xyz = p % coord(1) % xyz - TINY_BIT * p % coord(1) % uvw
-        call score_surface_current(p)
-        p % coord(1) % xyz = xyz
-      end if
-
-      ! Reflect particle off surface
-      call surf%reflect(p%coord(1)%xyz, p%coord(1)%uvw)
-
-      ! Make sure new particle direction is normalized
-      u = p%coord(1)%uvw(1)
-      v = p%coord(1)%uvw(2)
-      w = p%coord(1)%uvw(3)
-      norm = sqrt(u*u + v*v + w*w)
-      p%coord(1)%uvw(:) = [u, v, w] / norm
-
-      ! Reassign particle's cell and surface
-      p % coord(1) % cell = p % last_cell(p % last_n_coord)
-      p % surface = -p % surface
-
-      ! If a reflective surface is coincident with a lattice or universe
-      ! boundary, it is necessary to redetermine the particle's coordinates in
-      ! the lower universes.
-
-      p % n_coord = 1
-      call find_cell(p, found)
-      if (.not. found) then
-        call handle_lost_particle(p, "Couldn't find particle after reflecting&
-             & from surface " // trim(to_str(surf%id)) // ".")
-        return
-      end if
-
-      ! Set previous coordinate going slightly past surface crossing
-      p % last_xyz_current = p % coord(1) % xyz + TINY_BIT * p % coord(1) % uvw
-
-      ! Diagnostic message
-      if (verbosity >= 10 .or. trace) then
-        call write_message("    Reflected from surface " &
-             &// trim(to_str(surf%id)))
-      end if
-      return
-    elseif (surf % bc == BC_PERIODIC .and. run_mode /= MODE_PLOTTING) then
-      ! =======================================================================
-      ! PERIODIC BOUNDARY
-
-      ! Do not handle periodic boundary conditions on lower universes
-      if (p % n_coord /= 1) then
-        call handle_lost_particle(p, "Cannot transfer particle " &
-             // trim(to_str(p % id)) // " across surface in a lower universe.&
-             & Boundary conditions must be applied to universe 0.")
-        return
-      end if
-
-      ! Score surface currents since reflection causes the direction of the
-      ! particle to change -- artificially move the particle slightly back in
-      ! case the surface crossing is coincident with a mesh boundary
-
-      if (active_current_tallies % size() > 0) then
-        xyz = p % coord(1) % xyz
-        p % coord(1) % xyz = p % coord(1) % xyz - TINY_BIT * p % coord(1) % uvw
-        call score_surface_current(p)
-        p % coord(1) % xyz = xyz
-      end if
-
-      rotational = .false.
-      select type (surf)
-      type is (SurfaceXPlane)
-        select type (opposite => surfaces(surf % i_periodic) % obj)
-        type is (SurfaceXPlane)
-          p % coord(1) % xyz(1) = opposite % x0
-        type is (SurfaceYPlane)
-          rotational = .true.
-
-          ! Rotate direction
-          u = p % coord(1) % uvw(1)
-          v = p % coord(1) % uvw(2)
-          p % coord(1) % uvw(1) = v
-          p % coord(1) % uvw(2) = -u
-
-          ! Rotate position
-          p % coord(1) % xyz(1) = surf % x0 + p % coord(1) % xyz(2) - opposite % y0
-          p % coord(1) % xyz(2) = opposite % y0
-        end select
-
-      type is (SurfaceYPlane)
-        select type (opposite => surfaces(surf % i_periodic) % obj)
-        type is (SurfaceYPlane)
-          p % coord(1) % xyz(2) = opposite % y0
-        type is (SurfaceXPlane)
-          rotational = .true.
-
-          ! Rotate direction
-          u = p % coord(1) % uvw(1)
-          v = p % coord(1) % uvw(2)
-          p % coord(1) % uvw(1) = -v
-          p % coord(1) % uvw(2) = u
-
-          ! Rotate position
-          p % coord(1) % xyz(2) = surf % y0 + p % coord(1) % xyz(1) - opposite % x0
-          p % coord(1) % xyz(1) = opposite % x0
-        end select
-
-      type is (SurfaceZPlane)
-        select type (opposite => surfaces(surf % i_periodic) % obj)
-        type is (SurfaceZPlane)
-          p % coord(1) % xyz(3) = opposite % z0
-        end select
-
-      type is (SurfacePlane)
-        select type (opposite => surfaces(surf % i_periodic) % obj)
-        type is (SurfacePlane)
-          ! Get surface normal for opposite plane
-          xyz(:) = opposite % normal(p % coord(1) % xyz)
-
-          ! Determine distance to plane
-          norm = xyz(1)*xyz(1) + xyz(2)*xyz(2) + xyz(3)*xyz(3)
-          d = opposite % evaluate(p % coord(1) % xyz) / norm
-
-          ! Move particle along normal vector based on distance
-          p % coord(1) % xyz(:) = p % coord(1) % xyz(:) - d*xyz
-        end select
-      end select
-
-      ! Reassign particle's surface
-      if (rotational) then
-        p % surface = surf % i_periodic
-      else
-        p % surface = sign(surf % i_periodic, p % surface)
-      end if
-
-      ! Figure out what cell particle is in now
-      p % n_coord = 1
-      call find_cell(p, found)
-      if (.not. found) then
-        call handle_lost_particle(p, "Couldn't find particle after hitting &
-             &periodic boundary on surface " // trim(to_str(surf%id)) // ".")
-        return
-      end if
-
-      ! Set previous coordinate going slightly past surface crossing
-      p % last_xyz_current = p % coord(1) % xyz + TINY_BIT * p % coord(1) % uvw
-
-      ! Diagnostic message
-      if (verbosity >= 10 .or. trace) then
-        call write_message("    Hit periodic boundary on surface " &
-             // trim(to_str(surf%id)))
-      end if
-      return
-    end if
-
-    ! ==========================================================================
-    ! SEARCH NEIGHBOR LISTS FOR NEXT CELL
-
-    if (p % surface > 0 .and. allocated(surf%neighbor_pos)) then
-      ! If coming from negative side of surface, search all the neighboring
-      ! cells on the positive side
-
-      call find_cell(p, found, surf%neighbor_pos)
-      if (found) return
-
-    elseif (p % surface < 0  .and. allocated(surf%neighbor_neg)) then
-      ! If coming from positive side of surface, search all the neighboring
-      ! cells on the negative side
-
-      call find_cell(p, found, surf%neighbor_neg)
-      if (found) return
-
-    end if
-
-    ! ==========================================================================
-    ! COULDN'T FIND PARTICLE IN NEIGHBORING CELLS, SEARCH ALL CELLS
-
-    ! Remove lower coordinate levels and assignment of surface
-    p % surface = NONE
-    p % n_coord = 1
-    call find_cell(p, found)
-
-    if (run_mode /= MODE_PLOTTING .and. (.not. found)) then
-      ! If a cell is still not found, there are two possible causes: 1) there is
-      ! a void in the model, and 2) the particle hit a surface at a tangent. If
-      ! the particle is really traveling tangent to a surface, if we move it
-      ! forward a tiny bit it should fix the problem.
-
-      p % n_coord = 1
-      p % coord(1) % xyz = p % coord(1) % xyz + TINY_BIT * p % coord(1) % uvw
-      call find_cell(p, found)
-
-      ! Couldn't find next cell anywhere! This probably means there is an actual
-      ! undefined region in the geometry.
-
-      if (.not. found) then
-        call handle_lost_particle(p, "After particle " // trim(to_str(p % id)) &
-             // " crossed surface " // trim(to_str(surf%id)) &
-             // " it could not be located in any cell and it did not leak.")
-        return
-      end if
-    end if
-
-  end subroutine cross_surface
 
 !===============================================================================
 ! CROSS_LATTICE moves a particle into a new lattice element
@@ -690,7 +418,7 @@ contains
       call find_cell(p, found)
       if (.not. found) then
         if (p % alive) then ! Particle may have been killed in find_cell
-          call handle_lost_particle(p, "Could not locate particle " &
+          call p % mark_as_lost("Could not locate particle " &
                // trim(to_str(p % id)) // " after crossing a lattice boundary.")
           return
         end if
@@ -713,9 +441,8 @@ contains
         ! Search for particle
         call find_cell(p, found)
         if (.not. found) then
-          call handle_lost_particle(p, "Could not locate particle " &
-               // trim(to_str(p % id)) &
-               // " after crossing a lattice boundary.")
+          call p % mark_as_lost("Could not locate particle " // &
+               trim(to_str(p % id)) // " after crossing a lattice boundary.")
           return
         end if
       end if
@@ -755,9 +482,9 @@ contains
     real(8) :: d_surf             ! distance to surface
     real(8) :: x0,y0,z0           ! coefficients for surface
     real(8) :: xyz_cross(3)       ! coordinates at projected surface crossing
+    real(8) :: surf_uvw(3)        ! surface normal direction
     logical :: coincident         ! is particle on surface?
     type(Cell),       pointer :: c
-    class(Surface),   pointer :: surf
     class(Lattice),   pointer :: lat
 
     ! inialize distance to infinity (huge)
@@ -792,8 +519,8 @@ contains
         if (index_surf >= OP_UNION) cycle
 
         ! Calculate distance to surface
-        surf => surfaces(index_surf) % obj
-        d = surf % distance(p % coord(j) % xyz, p % coord(j) % uvw, coincident)
+        d = surfaces(index_surf) % distance(p % coord(j) % xyz, &
+             p % coord(j) % uvw, logical(coincident, kind=C_BOOL))
 
         ! Check if calculated distance is new minimum
         if (d < d_surf) then
@@ -992,7 +719,7 @@ contains
         end select LAT_TYPE
 
         if (d_lat < ZERO) then
-          call handle_lost_particle(p, "Particle " // trim(to_str(p % id)) &
+          call p % mark_as_lost("Particle " // trim(to_str(p % id)) &
                //" had a negative distance to a lattice boundary. d = " &
                //trim(to_str(d_lat)))
         end if
@@ -1012,9 +739,8 @@ contains
           ! traveling into if the surface is crossed
           if (.not. c % simple) then
             xyz_cross(:) = p % coord(j) % xyz + d_surf*p % coord(j) % uvw
-            surf => surfaces(abs(level_surf_cross)) % obj
-            if (dot_product(p % coord(j) % uvw, &
-                 surf % normal(xyz_cross)) > ZERO) then
+            call surfaces(abs(level_surf_cross)) % normal(xyz_cross, surf_uvw)
+            if (dot_product(p % coord(j) % uvw, surf_uvw) > ZERO) then
               surface_crossed = abs(level_surf_cross)
             else
               surface_crossed = -abs(level_surf_cross)
@@ -1079,51 +805,19 @@ contains
       ! Copy positive neighbors to Surface instance
       n = neighbor_pos(i)%size()
       if (n > 0) then
-        allocate(surfaces(i)%obj%neighbor_pos(n))
-        surfaces(i)%obj%neighbor_pos(:) = neighbor_pos(i)%data(1:n)
+        allocate(surfaces(i)%neighbor_pos(n))
+        surfaces(i)%neighbor_pos(:) = neighbor_pos(i)%data(1:n)
       end if
 
       ! Copy negative neighbors to Surface instance
       n = neighbor_neg(i)%size()
       if (n > 0) then
-        allocate(surfaces(i)%obj%neighbor_neg(n))
-        surfaces(i)%obj%neighbor_neg(:) = neighbor_neg(i)%data(1:n)
+        allocate(surfaces(i)%neighbor_neg(n))
+        surfaces(i)%neighbor_neg(:) = neighbor_neg(i)%data(1:n)
       end if
     end do
 
   end subroutine neighbor_lists
-
-!===============================================================================
-! HANDLE_LOST_PARTICLE
-!===============================================================================
-
-  subroutine handle_lost_particle(p, message)
-
-    type(Particle), intent(inout) :: p
-    character(*)                  :: message
-
-    integer(8) :: tot_n_particles
-
-    ! Print warning and write lost particle file
-    call warning(message)
-    call write_particle_restart(p)
-
-    ! Increment number of lost particles
-    p % alive = .false.
-!$omp atomic
-    n_lost_particles = n_lost_particles + 1
-
-    ! Count the total number of simulated particles (on this processor)
-    tot_n_particles = n_batches * gen_per_batch * work
-
-    ! Abort the simulation if the maximum number of lost particles has been
-    ! reached
-    if (n_lost_particles >= MAX_LOST_PARTICLES .and. &
-         n_lost_particles >= REL_MAX_LOST_PARTICLES * tot_n_particles) then
-      call fatal_error("Maximum number of lost particles has been reached.")
-    end if
-
-  end subroutine handle_lost_particle
 
 !===============================================================================
 ! CALC_OFFSETS calculates and stores the offsets in all fill cells. This

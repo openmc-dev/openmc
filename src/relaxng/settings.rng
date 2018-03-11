@@ -12,6 +12,11 @@
       </element>
     </optional>
     <optional>
+      <element name="create_fission_neutrons">
+        <data type="boolean"/>
+      </element>
+    </optional>
+    <optional>
       <element name="cutoff">
         <interleave>
           <optional>

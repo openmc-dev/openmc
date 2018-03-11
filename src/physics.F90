@@ -451,6 +451,7 @@ contains
     real(8) :: v_cm(3)   ! velocity of center-of-mass
     real(8) :: v_t(3)    ! velocity of target nucleus
     real(8) :: uvw_cm(3) ! directional cosines in center-of-mass
+    real(8) :: E_rel
     type(Nuclide), pointer :: nuc
 
     ! get pointer to nuclide
@@ -470,6 +471,8 @@ contains
       v_t = ZERO
     end if
 
+    E_rel = dot_product((v_n - v_t), (v_n - v_t))
+
     ! Velocity of center-of-mass
     v_cm = (v_n + awr*v_t)/(awr + ONE)
 
@@ -483,7 +486,7 @@ contains
     select type (dist => rxn % products(1) % distribution(1) % obj)
     type is (UncorrelatedAngleEnergy)
       if (allocated(dist % angle % energy)) then
-        mu_cm = dist % angle % sample(E)
+        mu_cm = dist % angle % sample(E_rel)
       else
         mu_cm = TWO*prn() - ONE
       end if

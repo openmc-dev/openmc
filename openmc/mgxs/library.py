@@ -3,10 +3,10 @@ import os
 import copy
 import pickle
 from numbers import Integral
-from collections import OrderedDict, Iterable
+from collections import OrderedDict
+from collections.abc import Iterable
 from warnings import warn
 
-from six import string_types
 import numpy as np
 
 import openmc
@@ -271,7 +271,7 @@ class Library(object):
 
     @name.setter
     def name(self, name):
-        cv.check_type('name', name, string_types)
+        cv.check_type('name', name, str)
         self._name = name
 
     @mgxs_types.setter
@@ -280,7 +280,7 @@ class Library(object):
         if mgxs_types == 'all':
             self._mgxs_types = all_mgxs_types
         else:
-            cv.check_iterable_type('mgxs_types', mgxs_types, string_types)
+            cv.check_iterable_type('mgxs_types', mgxs_types, str)
             for mgxs_type in mgxs_types:
                 cv.check_value('mgxs_type', mgxs_type, all_mgxs_types)
             self._mgxs_types = mgxs_types
@@ -760,7 +760,7 @@ class Library(object):
 
     def build_hdf5_store(self, filename='mgxs.h5', directory='mgxs',
                          subdomains='all', nuclides='all', xs_type='macro',
-                         row_column='inout'):
+                         row_column='inout', libver='earliest'):
         """Export the multi-group cross section library to an HDF5 binary file.
 
         This method constructs an HDF5 file which stores the library's
@@ -794,6 +794,9 @@ class Library(object):
             Store scattering matrices indexed first by incoming group and
             second by outgoing group ('inout'), or vice versa ('outin').
             Defaults to 'inout'.
+        libver : {'earliest', 'latest'}
+            Compatibility mode for the HDF5 file. 'latest' will produce files
+            that are less backwards compatible but have performance benefits.
 
         Raises
         ------
@@ -811,8 +814,8 @@ class Library(object):
                   'since a statepoint has not yet been loaded'
             raise ValueError(msg)
 
-        cv.check_type('filename', filename, string_types)
-        cv.check_type('directory', directory, string_types)
+        cv.check_type('filename', filename, str)
+        cv.check_type('directory', directory, str)
 
         import h5py
 
@@ -823,7 +826,7 @@ class Library(object):
         # Add an attribute for the number of energy groups to the HDF5 file
         full_filename = os.path.join(directory, filename)
         full_filename = full_filename.replace(' ', '-')
-        f = h5py.File(full_filename, 'w')
+        f = h5py.File(full_filename, 'w', libver=libver)
         f.attrs['# groups'] = self.num_groups
         f.close()
 
@@ -854,8 +857,8 @@ class Library(object):
 
         """
 
-        cv.check_type('filename', filename, string_types)
-        cv.check_type('directory', directory, string_types)
+        cv.check_type('filename', filename, str)
+        cv.check_type('directory', directory, str)
 
         # Make directory if it does not exist
         if not os.path.exists(directory):
@@ -889,8 +892,8 @@ class Library(object):
 
         """
 
-        cv.check_type('filename', filename, string_types)
-        cv.check_type('directory', directory, string_types)
+        cv.check_type('filename', filename, str)
+        cv.check_type('directory', directory, str)
 
         # Make directory if it does not exist
         if not os.path.exists(directory):
@@ -950,8 +953,8 @@ class Library(object):
 
         cv.check_type('domain', domain, (openmc.Material, openmc.Cell,
                                          openmc.Universe, openmc.Mesh))
-        cv.check_type('xsdata_name', xsdata_name, string_types)
-        cv.check_type('nuclide', nuclide, string_types)
+        cv.check_type('xsdata_name', xsdata_name, str)
+        cv.check_type('nuclide', nuclide, str)
         cv.check_value('xs_type', xs_type, ['macro', 'micro'])
         if subdomain is not None:
             cv.check_iterable_type('subdomain', subdomain, Integral,
@@ -1210,7 +1213,7 @@ class Library(object):
 
         cv.check_value('xs_type', xs_type, ['macro', 'micro'])
         if xsdata_names is not None:
-            cv.check_iterable_type('xsdata_names', xsdata_names, string_types)
+            cv.check_iterable_type('xsdata_names', xsdata_names, str)
 
         # If gathering material-specific data, set the xs_type to macro
         if not self.by_nuclide:

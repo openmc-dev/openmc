@@ -1,6 +1,5 @@
-from __future__ import division
-
-from collections import Iterable, OrderedDict
+from collections import OrderedDict
+from collections.abc import Iterable
 import itertools
 from numbers import Integral
 import warnings
@@ -9,7 +8,6 @@ import sys
 import copy
 from abc import ABCMeta
 
-from six import add_metaclass, string_types
 import numpy as np
 
 import openmc
@@ -29,7 +27,6 @@ MDGXS_TYPES = ['delayed-nu-fission',
 MAX_DELAYED_GROUPS = 8
 
 
-@add_metaclass(ABCMeta)
 class MDGXS(MGXS):
     """An abstract multi-delayed-group cross section for some energy and delayed
     group structures within some spatial domain.
@@ -133,8 +130,8 @@ class MDGXS(MGXS):
     def __init__(self, domain=None, domain_type=None, energy_groups=None,
                  delayed_groups=None, by_nuclide=False, name='',
                  num_polar=1, num_azimuthal=1):
-        super(MDGXS, self).__init__(domain, domain_type, energy_groups,
-                                    by_nuclide, name, num_polar, num_azimuthal)
+        super().__init__(domain, domain_type, energy_groups, by_nuclide, name,
+                         num_polar, num_azimuthal)
 
         self._delayed_groups = None
 
@@ -355,7 +352,7 @@ class MDGXS(MGXS):
         filter_bins = []
 
         # Construct a collection of the domain filter bins
-        if not isinstance(subdomains, string_types):
+        if not isinstance(subdomains, str):
             cv.check_iterable_type('subdomains', subdomains, Integral,
                                    max_depth=3)
             for subdomain in subdomains:
@@ -363,7 +360,7 @@ class MDGXS(MGXS):
                 filter_bins.append((subdomain,))
 
         # Construct list of energy group bounds tuples for all requested groups
-        if not isinstance(groups, string_types):
+        if not isinstance(groups, str):
             cv.check_iterable_type('groups', groups, Integral)
             for group in groups:
                 filters.append(openmc.EnergyFilter)
@@ -371,7 +368,7 @@ class MDGXS(MGXS):
                     (self.energy_groups.get_group_bounds(group),))
 
         # Construct list of delayed group tuples for all requested groups
-        if not isinstance(delayed_groups, string_types):
+        if not isinstance(delayed_groups, str):
             cv.check_type('delayed groups', delayed_groups, list, int)
             for delayed_group in delayed_groups:
                 filters.append(openmc.DelayedGroupFilter)
@@ -475,7 +472,7 @@ class MDGXS(MGXS):
 
         """
 
-        cv.check_iterable_type('nuclides', nuclides, string_types)
+        cv.check_iterable_type('nuclides', nuclides, str)
         cv.check_iterable_type('energy_groups', groups, Integral)
         cv.check_type('delayed groups', delayed_groups, list, int)
 
@@ -551,7 +548,7 @@ class MDGXS(MGXS):
 
         """
 
-        merged_mdgxs = super(MDGXS, self).merge(other)
+        merged_mdgxs = super().merge(other)
 
         # Merge delayed groups
         if self.delayed_groups != other.delayed_groups:
@@ -581,11 +578,11 @@ class MDGXS(MGXS):
         """
 
         if self.delayed_groups is None:
-            super(MDGXS, self).print_xs(subdomains, nuclides, xs_type)
+            super().print_xs(subdomains, nuclides, xs_type)
             return
 
         # Construct a collection of the subdomains to report
-        if not isinstance(subdomains, string_types):
+        if not isinstance(subdomains, str):
             cv.check_iterable_type('subdomains', subdomains, Integral)
         elif self.domain_type == 'distribcell':
             subdomains = np.arange(self.num_subdomains, dtype=np.int)
@@ -602,7 +599,7 @@ class MDGXS(MGXS):
             elif nuclides == 'sum':
                 nuclides = ['sum']
             else:
-                cv.check_iterable_type('nuclides', nuclides, string_types)
+                cv.check_iterable_type('nuclides', nuclides, str)
         else:
             nuclides = ['sum']
 
@@ -725,8 +722,8 @@ class MDGXS(MGXS):
 
         """
 
-        cv.check_type('filename', filename, string_types)
-        cv.check_type('directory', directory, string_types)
+        cv.check_type('filename', filename, str)
+        cv.check_type('directory', directory, str)
         cv.check_value('format', format, ['csv', 'excel', 'pickle', 'latex'])
         cv.check_value('xs_type', xs_type, ['macro', 'micro'])
 
@@ -816,11 +813,11 @@ class MDGXS(MGXS):
 
         """
 
-        if not isinstance(groups, string_types):
+        if not isinstance(groups, str):
             cv.check_iterable_type('groups', groups, Integral)
         if nuclides != 'all' and nuclides != 'sum':
-            cv.check_iterable_type('nuclides', nuclides, string_types)
-        if not isinstance(delayed_groups, string_types):
+            cv.check_iterable_type('nuclides', nuclides, str)
+        if not isinstance(delayed_groups, str):
             cv.check_type('delayed groups', delayed_groups, list, int)
 
         cv.check_value('xs_type', xs_type, ['macro', 'micro'])
@@ -858,7 +855,7 @@ class MDGXS(MGXS):
         columns = self._df_convert_columns_to_bins(df)
 
         # Select out those groups the user requested
-        if not isinstance(groups, string_types):
+        if not isinstance(groups, str):
             if 'group in' in df:
                 df = df[df['group in'].isin(groups)]
             if 'group out' in df:
@@ -1011,9 +1008,8 @@ class ChiDelayed(MDGXS):
     def __init__(self, domain=None, domain_type=None, energy_groups=None,
                  delayed_groups=None, by_nuclide=False, name='',
                  num_polar=1, num_azimuthal=1):
-        super(ChiDelayed, self).__init__(domain, domain_type, energy_groups,
-                                         delayed_groups, by_nuclide, name,
-                                         num_polar, num_azimuthal)
+        super().__init__(domain, domain_type, energy_groups, delayed_groups,
+                         by_nuclide, name, num_polar, num_azimuthal)
         self._rxn_type = 'chi-delayed'
         self._estimator = 'analog'
 
@@ -1059,7 +1055,7 @@ class ChiDelayed(MDGXS):
 
             # Compute chi
             self._xs_tally = self.rxn_rate_tally / delayed_nu_fission_in
-            super(ChiDelayed, self)._compute_xs()
+            super()._compute_xs()
 
             # Add the coarse energy filter back to the nu-fission tally
             delayed_nu_fission_in.filters.append(energy_filter)
@@ -1131,8 +1127,7 @@ class ChiDelayed(MDGXS):
         delayed_nu_fission_in.remove_filter(energy_filter)
 
         # Call super class method and null out derived tallies
-        slice_xs = super(ChiDelayed, self).get_slice(nuclides, groups,
-                                                     delayed_groups)
+        slice_xs = super().get_slice(nuclides, groups, delayed_groups)
         slice_xs._rxn_rate_tally = None
         slice_xs._xs_tally = None
 
@@ -1288,7 +1283,7 @@ class ChiDelayed(MDGXS):
         filter_bins = []
 
         # Construct a collection of the domain filter bins
-        if not isinstance(subdomains, string_types):
+        if not isinstance(subdomains, str):
             cv.check_iterable_type('subdomains', subdomains, Integral,
                                    max_depth=3)
             for subdomain in subdomains:
@@ -1296,7 +1291,7 @@ class ChiDelayed(MDGXS):
                 filter_bins.append((subdomain,))
 
         # Construct list of energy group bounds tuples for all requested groups
-        if not isinstance(groups, string_types):
+        if not isinstance(groups, str):
             cv.check_iterable_type('groups', groups, Integral)
             for group in groups:
                 filters.append(openmc.EnergyoutFilter)
@@ -1304,7 +1299,7 @@ class ChiDelayed(MDGXS):
                     (self.energy_groups.get_group_bounds(group),))
 
         # Construct list of delayed group tuples for all requested groups
-        if not isinstance(delayed_groups, string_types):
+        if not isinstance(delayed_groups, str):
             cv.check_type('delayed groups', delayed_groups, list, int)
             for delayed_group in delayed_groups:
                 filters.append(openmc.DelayedGroupFilter)
@@ -1352,7 +1347,7 @@ class ChiDelayed(MDGXS):
 
             # Get chi delayed for user-specified nuclides in the domain
             else:
-                cv.check_iterable_type('nuclides', nuclides, string_types)
+                cv.check_iterable_type('nuclides', nuclides, str)
                 xs = self.xs_tally.get_values(filters=filters,
                                               filter_bins=filter_bins,
                                               nuclides=nuclides, value=value)
@@ -1525,10 +1520,8 @@ class DelayedNuFissionXS(MDGXS):
     def __init__(self, domain=None, domain_type=None, energy_groups=None,
                  delayed_groups=None, by_nuclide=False, name='',
                  num_polar=1, num_azimuthal=1):
-        super(DelayedNuFissionXS, self).__init__(domain, domain_type,
-                                                 energy_groups, delayed_groups,
-                                                 by_nuclide, name, num_polar,
-                                                 num_azimuthal)
+        super().__init__(domain, domain_type, energy_groups, delayed_groups,
+                         by_nuclide, name, num_polar, num_azimuthal)
         self._rxn_type = 'delayed-nu-fission'
 
 
@@ -1661,9 +1654,8 @@ class Beta(MDGXS):
     def __init__(self, domain=None, domain_type=None, energy_groups=None,
                  delayed_groups=None, by_nuclide=False, name='',
                  num_polar=1, num_azimuthal=1):
-        super(Beta, self).__init__(domain, domain_type, energy_groups,
-                                   delayed_groups, by_nuclide, name, num_polar,
-                                   num_azimuthal)
+        super().__init__(domain, domain_type, energy_groups, delayed_groups,
+                         by_nuclide, name, num_polar, num_azimuthal)
         self._rxn_type = 'beta'
 
     @property
@@ -1689,7 +1681,7 @@ class Beta(MDGXS):
 
             # Compute beta
             self._xs_tally = self.rxn_rate_tally / nu_fission
-            super(Beta, self)._compute_xs()
+            super()._compute_xs()
 
         return self._xs_tally
 
@@ -1845,9 +1837,8 @@ class DecayRate(MDGXS):
     def __init__(self, domain=None, domain_type=None, energy_groups=None,
                  delayed_groups=None, by_nuclide=False, name='',
                  num_polar=1, num_azimuthal=1):
-        super(DecayRate, self).__init__(domain, domain_type, energy_groups,
-                                        delayed_groups, by_nuclide, name,
-                                        num_polar, num_azimuthal)
+        super().__init__(domain, domain_type, energy_groups, delayed_groups,
+                         by_nuclide, name, num_polar, num_azimuthal)
         self._rxn_type = 'decay-rate'
 
     @property
@@ -1882,7 +1873,7 @@ class DecayRate(MDGXS):
 
             # Compute the decay rate
             self._xs_tally = self.rxn_rate_tally / delayed_nu_fission
-            super(DecayRate, self)._compute_xs()
+            super()._compute_xs()
 
         return self._xs_tally
 
@@ -1914,7 +1905,6 @@ class DecayRate(MDGXS):
         return self._get_homogenized_mgxs(other_mgxs, 'delayed-nu-fission')
 
 
-@add_metaclass(ABCMeta)
 class MatrixMDGXS(MDGXS):
     """An abstract multi-delayed-group cross section for some energy group and
     delayed group structure within some spatial domain. This class is
@@ -2117,7 +2107,7 @@ class MatrixMDGXS(MDGXS):
         filter_bins = []
 
         # Construct a collection of the domain filter bins
-        if not isinstance(subdomains, string_types):
+        if not isinstance(subdomains, str):
             cv.check_iterable_type('subdomains', subdomains, Integral,
                                    max_depth=3)
             for subdomain in subdomains:
@@ -2125,7 +2115,7 @@ class MatrixMDGXS(MDGXS):
                 filter_bins.append((subdomain,))
 
         # Construct list of energy group bounds tuples for all requested groups
-        if not isinstance(in_groups, string_types):
+        if not isinstance(in_groups, str):
             cv.check_iterable_type('groups', in_groups, Integral)
             for group in in_groups:
                 filters.append(openmc.EnergyFilter)
@@ -2133,7 +2123,7 @@ class MatrixMDGXS(MDGXS):
                     self.energy_groups.get_group_bounds(group),))
 
         # Construct list of energy group bounds tuples for all requested groups
-        if not isinstance(out_groups, string_types):
+        if not isinstance(out_groups, str):
             cv.check_iterable_type('groups', out_groups, Integral)
             for group in out_groups:
                 filters.append(openmc.EnergyoutFilter)
@@ -2141,7 +2131,7 @@ class MatrixMDGXS(MDGXS):
                     self.energy_groups.get_group_bounds(group),))
 
         # Construct list of delayed group tuples for all requested groups
-        if not isinstance(delayed_groups, string_types):
+        if not isinstance(delayed_groups, str):
             cv.check_type('delayed groups', delayed_groups, list, int)
             for delayed_group in delayed_groups:
                 filters.append(openmc.DelayedGroupFilter)
@@ -2266,8 +2256,7 @@ class MatrixMDGXS(MDGXS):
         """
 
         # Call super class method and null out derived tallies
-        slice_xs = super(MatrixMDGXS, self).get_slice(nuclides, in_groups,
-                                                      delayed_groups)
+        slice_xs = super().get_slice(nuclides, in_groups, delayed_groups)
         slice_xs._rxn_rate_tally = None
         slice_xs._xs_tally = None
 
@@ -2312,7 +2301,7 @@ class MatrixMDGXS(MDGXS):
         """
 
         # Construct a collection of the subdomains to report
-        if not isinstance(subdomains, string_types):
+        if not isinstance(subdomains, str):
             cv.check_iterable_type('subdomains', subdomains, Integral)
         elif self.domain_type == 'distribcell':
             subdomains = np.arange(self.num_subdomains, dtype=np.int)
@@ -2329,7 +2318,7 @@ class MatrixMDGXS(MDGXS):
             if nuclides == 'sum':
                 nuclides = ['sum']
             else:
-                cv.check_iterable_type('nuclides', nuclides, string_types)
+                cv.check_iterable_type('nuclides', nuclides, str)
         else:
             nuclides = ['sum']
 
@@ -2614,12 +2603,8 @@ class DelayedNuFissionMatrixXS(MatrixMDGXS):
     def __init__(self, domain=None, domain_type=None, energy_groups=None,
                  delayed_groups=None, by_nuclide=False, name='',
                  num_polar=1, num_azimuthal=1):
-        super(DelayedNuFissionMatrixXS, self).__init__(domain, domain_type,
-                                                       energy_groups,
-                                                       delayed_groups,
-                                                       by_nuclide, name,
-                                                       num_polar,
-                                                       num_azimuthal)
+        super().__init__(domain, domain_type, energy_groups, delayed_groups,
+                         by_nuclide, name, num_polar, num_azimuthal)
         self._rxn_type = 'delayed-nu-fission'
         self._hdf5_key = 'delayed-nu-fission matrix'
         self._estimator = 'analog'

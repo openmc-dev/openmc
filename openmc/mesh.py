@@ -3,7 +3,6 @@ from numbers import Real, Integral
 from xml.etree import ElementTree as ET
 import sys
 
-from six import string_types
 import numpy as np
 
 import openmc.checkvalue as cv
@@ -11,7 +10,7 @@ import openmc
 from openmc.mixin import EqualityMixin, IDManagerMixin
 
 
-class Mesh(EqualityMixin, IDManagerMixin):
+class Mesh(IDManagerMixin):
     """A structured Cartesian mesh in one, two, or three dimensions
 
     Parameters
@@ -87,7 +86,7 @@ class Mesh(EqualityMixin, IDManagerMixin):
     def name(self, name):
         if name is not None:
             cv.check_type('name for mesh ID="{0}"'.format(self._id),
-                          name, string_types)
+                          name, str)
             self._name = name
         else:
             self._name = ''
@@ -95,7 +94,7 @@ class Mesh(EqualityMixin, IDManagerMixin):
     @type.setter
     def type(self, meshtype):
         cv.check_type('type for mesh ID="{0}"'.format(self._id),
-                      meshtype, string_types)
+                      meshtype, str)
         cv.check_value('type for mesh ID="{0}"'.format(self._id),
                        meshtype, ['regular'])
         self._type = meshtype
@@ -123,9 +122,6 @@ class Mesh(EqualityMixin, IDManagerMixin):
         cv.check_type('mesh width', width, Iterable, Real)
         cv.check_length('mesh width', width, 1, 3)
         self._width = width
-
-    def __hash__(self):
-        return hash(repr(self))
 
     def __repr__(self):
         string = 'Mesh\n'

@@ -1,7 +1,7 @@
 module source
 
   use hdf5, only: HID_T
-#ifdef MPI
+#ifdef OPENMC_MPI
   use message_passing
 #endif
 
@@ -15,7 +15,7 @@ module source
   use hdf5_interface,   only: file_create, file_open, file_close, read_dataset
   use math
   use message_passing,  only: rank
-  use mgxs_header,      only: energy_bins, num_energy_groups
+  use mgxs_header,      only: rev_energy_bins, num_energy_groups
   use output,           only: write_message
   use particle_header,  only: Particle
   use random_lcg,       only: prn, set_particle_seed, prn_set_stream
@@ -129,14 +129,9 @@ contains
 
     ! If running in MG, convert site % E to group
     if (.not. run_CE) then
-      if (site % E <= energy_bins(1)) then
-        site % E = real(1, 8)
-      else if (site % E > energy_bins(num_energy_groups + 1)) then
-        site % E = real(num_energy_groups, 8)
-      else
-        site % E = real(binary_search(energy_bins, num_energy_groups + 1, &
-             site % E), 8)
-      end if
+      site % E = real(binary_search(rev_energy_bins, num_energy_groups + 1, &
+           site % E), 8)
+      site % E = num_energy_groups + 1 - site % E
     end if
 
     ! Set the random number generator back to the tracking stream.

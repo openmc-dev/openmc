@@ -2,6 +2,19 @@
 :mod:`openmc.model` -- Model Building
 -------------------------------------
 
+Convenience Functions
+---------------------
+
+.. autosummary::
+   :toctree: generated
+   :nosignatures:
+   :template: myfunction.rst
+
+   openmc.model.borated_water
+   openmc.model.get_hexagonal_prism
+   openmc.model.get_rectangular_prism
+   openmc.model.subdivide
+
 TRISO Fuel Modeling
 -------------------
 

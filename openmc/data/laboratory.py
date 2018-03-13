@@ -1,4 +1,4 @@
-from collections import Iterable
+from collections.abc import Iterable
 from numbers import Real, Integral
 
 import numpy as np
@@ -44,7 +44,7 @@ class LaboratoryAngleEnergy(AngleEnergy):
     """
 
     def __init__(self, breakpoints, interpolation, energy, mu, energy_out):
-        super(LaboratoryAngleEnergy).__init__()
+        super().__init__()
         self.breakpoints = breakpoints
         self.interpolation = interpolation
         self.energy = energy

@@ -1,11 +1,7 @@
 from collections.abc import Iterable
 
 import openmc
-from openmc.checkvalue import check_type
-import openmc.deplete as dep
-
-_DEPLETE_METHODS = {'predictor': dep.integrator.predictor,
-                    'cecm': dep.integrator.cecm}
+from openmc.checkvalue import check_type, check_value
 
 
 class Model(object):
@@ -140,7 +136,8 @@ class Model(object):
             for plot in plots:
                 self._plots.append(plot)
 
-    def deplete(self, timesteps, power, chain_file=None, method='cecm', **kwargs):
+    def deplete(self, timesteps, power, chain_file=None, method='cecm',
+                **kwargs):
         """Deplete model using specified timesteps/power
 
         Parameters
@@ -164,11 +161,21 @@ class Model(object):
             :func:`openmc.deplete.integrator.cecm`)
 
         """
+        # Import the depletion module.  This is done here rather than the module
+        # header to delay importing openmc.capi (through openmc.deplete) which
+        # can be tough to install properly.
+        import openmc.deplete as dep
+
         # Create OpenMC transport operator
         op = dep.Operator(self.geometry, self.settings, chain_file)
 
         # Perform depletion
-        _DEPLETE_METHODS[method](op, timesteps, power, **kwargs)
+        if method == 'predictor':
+            dep.integrator.predictor(op, timesteps, power, **kwargs)
+        elif method == 'cecm':
+            dep.integrator.cecm(op, timesteps, power, **kwargs)
+        else:
+            check_value('method', method, ('cecm', 'predictor'))
 
     def export_to_xml(self):
         """Export model to XML files."""

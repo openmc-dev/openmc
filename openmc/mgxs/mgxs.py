@@ -1,5 +1,3 @@
-from __future__ import division
-
 from collections import OrderedDict
 from numbers import Integral
 import warnings
@@ -8,8 +6,8 @@ import copy
 from abc import ABCMeta
 import itertools
 
-from six import add_metaclass, string_types
 import numpy as np
+import h5py
 
 import openmc
 import openmc.checkvalue as cv
@@ -115,8 +113,7 @@ def _df_column_convert_to_bin(df, current_name, new_name, values_to_bin,
     df.rename(columns={current_name: new_name}, inplace=True)
 
 
-@add_metaclass(ABCMeta)
-class MGXS(object):
+class MGXS(metaclass=ABCMeta):
     """An abstract multi-group cross section for some energy group structure
     within some spatial domain.
 
@@ -579,7 +576,7 @@ class MGXS(object):
 
     @name.setter
     def name(self, name):
-        cv.check_type('name', name, string_types)
+        cv.check_type('name', name, str)
         self._name = name
 
     @by_nuclide.setter
@@ -589,7 +586,7 @@ class MGXS(object):
 
     @nuclides.setter
     def nuclides(self, nuclides):
-        cv.check_iterable_type('nuclides', nuclides, string_types)
+        cv.check_iterable_type('nuclides', nuclides, str)
         self._nuclides = nuclides
 
     @estimator.setter
@@ -805,7 +802,7 @@ class MGXS(object):
 
         """
 
-        cv.check_type('nuclide', nuclide, string_types)
+        cv.check_type('nuclide', nuclide, str)
 
         # Get list of all nuclides in the spatial domain
         nuclides = self.domain.get_nuclide_densities()
@@ -1032,7 +1029,7 @@ class MGXS(object):
         filter_bins = []
 
         # Construct a collection of the domain filter bins
-        if not isinstance(subdomains, string_types):
+        if not isinstance(subdomains, str):
             cv.check_iterable_type('subdomains', subdomains, Integral,
                                    max_depth=3)
 
@@ -1043,7 +1040,7 @@ class MGXS(object):
             filter_bins.append(tuple(subdomain_bins))
 
         # Construct list of energy group bounds tuples for all requested groups
-        if not isinstance(groups, string_types):
+        if not isinstance(groups, str):
             cv.check_iterable_type('groups', groups, Integral)
             filters.append(openmc.EnergyFilter)
             energy_bins = []
@@ -1218,7 +1215,7 @@ class MGXS(object):
         """
 
         # Construct a collection of the subdomain filter bins to average across
-        if not isinstance(subdomains, string_types):
+        if not isinstance(subdomains, str):
             cv.check_iterable_type('subdomains', subdomains, Integral)
             subdomains = [(subdomain,) for subdomain in subdomains]
             subdomains = [tuple(subdomains)]
@@ -1375,7 +1372,7 @@ class MGXS(object):
 
         """
 
-        cv.check_iterable_type('nuclides', nuclides, string_types)
+        cv.check_iterable_type('nuclides', nuclides, str)
         cv.check_iterable_type('energy_groups', groups, Integral)
 
         # Build lists of filters and filter bins to slice
@@ -1529,7 +1526,7 @@ class MGXS(object):
         """
 
         # Construct a collection of the subdomains to report
-        if not isinstance(subdomains, string_types):
+        if not isinstance(subdomains, str):
             cv.check_iterable_type('subdomains', subdomains, Integral)
         elif self.domain_type == 'distribcell':
             subdomains = np.arange(self.num_subdomains, dtype=np.int)
@@ -1546,7 +1543,7 @@ class MGXS(object):
             elif nuclides == 'sum':
                 nuclides = ['sum']
             else:
-                cv.check_iterable_type('nuclides', nuclides, string_types)
+                cv.check_iterable_type('nuclides', nuclides, str)
         else:
             nuclides = ['sum']
 
@@ -1636,7 +1633,8 @@ class MGXS(object):
 
     def build_hdf5_store(self, filename='mgxs.h5', directory='mgxs',
                          subdomains='all', nuclides='all',
-                         xs_type='macro', row_column='inout', append=True):
+                         xs_type='macro', row_column='inout', append=True,
+                         libver='earliest'):
         """Export the multi-group cross section data to an HDF5 binary file.
 
         This method constructs an HDF5 file which stores the multi-group
@@ -1672,19 +1670,17 @@ class MGXS(object):
         append : bool
             If true, appends to an existing HDF5 file with the same filename
             directory (if one exists). Defaults to True.
+        libver : {'earliest', 'latest'}
+            Compatibility mode for the HDF5 file. 'latest' will produce files
+            that are less backwards compatible but have performance benefits.
 
         Raises
         ------
         ValueError
             When this method is called before the multi-group cross section is
             computed from tally data.
-        ImportError
-            When h5py is not installed.
 
         """
-
-        import h5py
-
         # Make directory if it does not exist
         if not os.path.exists(directory):
             os.makedirs(directory)
@@ -1695,10 +1691,10 @@ class MGXS(object):
         if append and os.path.isfile(filename):
             xs_results = h5py.File(filename, 'a')
         else:
-            xs_results = h5py.File(filename, 'w')
+            xs_results = h5py.File(filename, 'w', libver=libver)
 
         # Construct a collection of the subdomains to report
-        if not isinstance(subdomains, string_types):
+        if not isinstance(subdomains, str):
             cv.check_iterable_type('subdomains', subdomains, Integral)
         elif self.domain_type == 'distribcell':
             subdomains = np.arange(self.num_subdomains, dtype=np.int)
@@ -1719,7 +1715,7 @@ class MGXS(object):
             elif nuclides == 'sum':
                 nuclides = ['sum']
             else:
-                cv.check_iterable_type('nuclides', nuclides, string_types)
+                cv.check_iterable_type('nuclides', nuclides, str)
         else:
             nuclides = ['sum']
 
@@ -1797,8 +1793,8 @@ class MGXS(object):
 
         """
 
-        cv.check_type('filename', filename, string_types)
-        cv.check_type('directory', directory, string_types)
+        cv.check_type('filename', filename, str)
+        cv.check_type('directory', directory, str)
         cv.check_value('format', format, ['csv', 'excel', 'pickle', 'latex'])
         cv.check_value('xs_type', xs_type, ['macro', 'micro'])
 
@@ -1884,10 +1880,10 @@ class MGXS(object):
 
         """
 
-        if not isinstance(groups, string_types):
+        if not isinstance(groups, str):
             cv.check_iterable_type('groups', groups, Integral)
         if nuclides != 'all' and nuclides != 'sum':
-            cv.check_iterable_type('nuclides', nuclides, string_types)
+            cv.check_iterable_type('nuclides', nuclides, str)
         cv.check_value('xs_type', xs_type, ['macro', 'micro'])
 
         # Get a Pandas DataFrame from the derived xs tally
@@ -1923,7 +1919,7 @@ class MGXS(object):
         columns = self._df_convert_columns_to_bins(df)
 
         # Select out those groups the user requested
-        if not isinstance(groups, string_types):
+        if not isinstance(groups, str):
             if 'group in' in df:
                 df = df[df['group in'].isin(groups)]
             if 'group out' in df:
@@ -1976,7 +1972,6 @@ class MGXS(object):
         return 'cm^-1' if xs_type == 'macro' else 'barns'
 
 
-@add_metaclass(ABCMeta)
 class MatrixMGXS(MGXS):
     """An abstract multi-group cross section for some energy group structure
     within some spatial domain. This class is specifically intended for
@@ -2164,7 +2159,7 @@ class MatrixMGXS(MGXS):
         filter_bins = []
 
         # Construct a collection of the domain filter bins
-        if not isinstance(subdomains, string_types):
+        if not isinstance(subdomains, str):
             cv.check_iterable_type('subdomains', subdomains, Integral,
                                    max_depth=3)
             filters.append(_DOMAIN_TO_FILTER[self.domain_type])
@@ -2174,7 +2169,7 @@ class MatrixMGXS(MGXS):
             filter_bins.append(tuple(subdomain_bins))
 
         # Construct list of energy group bounds tuples for all requested groups
-        if not isinstance(in_groups, string_types):
+        if not isinstance(in_groups, str):
             cv.check_iterable_type('groups', in_groups, Integral)
             filters.append(openmc.EnergyFilter)
             for group in in_groups:
@@ -2182,7 +2177,7 @@ class MatrixMGXS(MGXS):
             filter_bins.append(tuple(energy_bins))
 
         # Construct list of energy group bounds tuples for all requested groups
-        if not isinstance(out_groups, string_types):
+        if not isinstance(out_groups, str):
             cv.check_iterable_type('groups', out_groups, Integral)
             for group in out_groups:
                 filters.append(openmc.EnergyoutFilter)
@@ -2297,7 +2292,7 @@ class MatrixMGXS(MGXS):
         """
 
         # Call super class method and null out derived tallies
-        slice_xs = super(MatrixMGXS, self).get_slice(nuclides, in_groups)
+        slice_xs = super().get_slice(nuclides, in_groups)
         slice_xs._rxn_rate_tally = None
         slice_xs._xs_tally = None
 
@@ -2342,7 +2337,7 @@ class MatrixMGXS(MGXS):
         """
 
         # Construct a collection of the subdomains to report
-        if not isinstance(subdomains, string_types):
+        if not isinstance(subdomains, str):
             cv.check_iterable_type('subdomains', subdomains, Integral)
         elif self.domain_type == 'distribcell':
             subdomains = np.arange(self.num_subdomains, dtype=np.int)
@@ -2359,7 +2354,7 @@ class MatrixMGXS(MGXS):
             if nuclides == 'sum':
                 nuclides = ['sum']
             else:
-                cv.check_iterable_type('nuclides', nuclides, string_types)
+                cv.check_iterable_type('nuclides', nuclides, str)
         else:
             nuclides = ['sum']
 
@@ -2572,9 +2567,8 @@ class TotalXS(MGXS):
 
     def __init__(self, domain=None, domain_type=None, groups=None,
                  by_nuclide=False, name='', num_polar=1, num_azimuthal=1):
-        super(TotalXS, self).__init__(domain, domain_type,
-                                      groups, by_nuclide, name, num_polar,
-                                      num_azimuthal)
+        super().__init__(domain, domain_type, groups, by_nuclide, name,
+                         num_polar, num_azimuthal)
         self._rxn_type = 'total'
 
 
@@ -2709,9 +2703,8 @@ class TransportXS(MGXS):
 
     def __init__(self, domain=None, domain_type=None, groups=None, nu=False,
                  by_nuclide=False, name='', num_polar=1, num_azimuthal=1):
-        super(TransportXS, self).__init__(domain, domain_type,
-                                          groups, by_nuclide, name, num_polar,
-                                          num_azimuthal)
+        super().__init__(domain, domain_type, groups, by_nuclide, name,
+                         num_polar, num_azimuthal)
 
         # Use tracklength estimators for the total MGXS term, and
         # analog estimators for the transport correction term
@@ -2720,7 +2713,7 @@ class TransportXS(MGXS):
         self.nu = nu
 
     def __deepcopy__(self, memo):
-        clone = super(TransportXS, self).__deepcopy__(memo)
+        clone = super().__deepcopy__(memo)
         clone._nu = self.nu
         return clone
 
@@ -2751,7 +2744,6 @@ class TransportXS(MGXS):
             # Switch EnergyoutFilter to EnergyFilter.
             old_filt = self.tallies['scatter-1'].filters[-1]
             new_filt = openmc.EnergyFilter(old_filt.bins)
-            new_filt.stride = old_filt.stride
             self.tallies['scatter-1'].filters[-1] = new_filt
 
             self._rxn_rate_tally = \
@@ -2771,7 +2763,6 @@ class TransportXS(MGXS):
             # Switch EnergyoutFilter to EnergyFilter.
             old_filt = self.tallies['scatter-1'].filters[-1]
             new_filt = openmc.EnergyFilter(old_filt.bins)
-            new_filt.stride = old_filt.stride
             self.tallies['scatter-1'].filters[-1] = new_filt
 
             # Compute total cross section
@@ -2919,9 +2910,8 @@ class AbsorptionXS(MGXS):
 
     def __init__(self, domain=None, domain_type=None, groups=None,
                  by_nuclide=False, name='', num_polar=1, num_azimuthal=1):
-        super(AbsorptionXS, self).__init__(domain, domain_type,
-                                           groups, by_nuclide, name, num_polar,
-                                           num_azimuthal)
+        super().__init__(domain, domain_type, groups, by_nuclide, name,
+                         num_polar, num_azimuthal)
         self._rxn_type = 'absorption'
 
 
@@ -3046,9 +3036,8 @@ class CaptureXS(MGXS):
 
     def __init__(self, domain=None, domain_type=None, groups=None,
                  by_nuclide=False, name='', num_polar=1, num_azimuthal=1):
-        super(CaptureXS, self).__init__(domain, domain_type,
-                                        groups, by_nuclide, name, num_polar,
-                                        num_azimuthal)
+        super().__init__(domain, domain_type, groups, by_nuclide, name,
+                         num_polar, num_azimuthal)
         self._rxn_type = 'capture'
 
     @property
@@ -3201,16 +3190,15 @@ class FissionXS(MGXS):
     def __init__(self, domain=None, domain_type=None, groups=None, nu=False,
                  prompt=False, by_nuclide=False, name='', num_polar=1,
                  num_azimuthal=1):
-        super(FissionXS, self).__init__(domain, domain_type,
-                                        groups, by_nuclide, name, num_polar,
-                                        num_azimuthal)
+        super().__init__(domain, domain_type, groups, by_nuclide, name,
+                         num_polar, num_azimuthal)
         self._nu = False
         self._prompt = False
         self.nu = nu
         self.prompt = prompt
 
     def __deepcopy__(self, memo):
-        clone = super(FissionXS, self).__deepcopy__(memo)
+        clone = super().__deepcopy__(memo)
         clone._nu = self.nu
         clone._prompt = self.prompt
         return clone
@@ -3369,9 +3357,8 @@ class KappaFissionXS(MGXS):
 
     def __init__(self, domain=None, domain_type=None, groups=None,
                  by_nuclide=False, name='', num_polar=1, num_azimuthal=1):
-        super(KappaFissionXS, self).__init__(domain, domain_type,
-                                             groups, by_nuclide, name,
-                                             num_polar, num_azimuthal)
+        super().__init__(domain, domain_type, groups, by_nuclide, name,
+                         num_polar, num_azimuthal)
         self._rxn_type = 'kappa-fission'
 
 
@@ -3502,13 +3489,12 @@ class ScatterXS(MGXS):
     def __init__(self, domain=None, domain_type=None, groups=None,
                  by_nuclide=False, name='', num_polar=1,
                  num_azimuthal=1, nu=False):
-        super(ScatterXS, self).__init__(domain, domain_type,
-                                        groups, by_nuclide, name,
-                                        num_polar, num_azimuthal)
+        super().__init__(domain, domain_type, groups, by_nuclide, name,
+                         num_polar, num_azimuthal)
         self.nu = nu
 
     def __deepcopy__(self, memo):
-        clone = super(ScatterXS, self).__deepcopy__(memo)
+        clone = super().__deepcopy__(memo)
         clone._nu = self.nu
         return clone
 
@@ -3719,9 +3705,8 @@ class ScatterMatrixXS(MatrixMGXS):
     def __init__(self, domain=None, domain_type=None, groups=None,
                  by_nuclide=False, name='', num_polar=1,
                  num_azimuthal=1, nu=False):
-        super(ScatterMatrixXS, self).__init__(domain, domain_type,
-                                              groups, by_nuclide, name,
-                                              num_polar, num_azimuthal)
+        super().__init__(domain, domain_type, groups, by_nuclide, name,
+                         num_polar, num_azimuthal)
         self._formulation = 'simple'
         self._correction = 'P0'
         self._scatter_format = 'legendre'
@@ -3732,7 +3717,7 @@ class ScatterMatrixXS(MatrixMGXS):
         self.nu = nu
 
     def __deepcopy__(self, memo):
-        clone = super(ScatterMatrixXS, self).__deepcopy__(memo)
+        clone = super().__deepcopy__(memo)
         clone._formulation = self.formulation
         clone._correction = self.correction
         clone._scatter_format = self.scatter_format
@@ -3823,7 +3808,7 @@ class ScatterMatrixXS(MatrixMGXS):
     @property
     def tally_keys(self):
         if self.formulation == 'simple':
-            return super(ScatterMatrixXS, self).tally_keys
+            return super().tally_keys
         else:
             # Add keys for groupwise scattering cross section
             tally_keys = ['flux (tracklength)', 'scatter']
@@ -4153,7 +4138,7 @@ class ScatterMatrixXS(MatrixMGXS):
                         [score_prefix + '{}'.format(i)
                          for i in range(self.legendre_order + 1)]
 
-        super(ScatterMatrixXS, self).load_from_statepoint(statepoint)
+        super().load_from_statepoint(statepoint)
 
     def get_slice(self, nuclides=[], in_groups=[], out_groups=[],
                   legendre_order='same'):
@@ -4193,7 +4178,7 @@ class ScatterMatrixXS(MatrixMGXS):
         """
 
         # Call super class method and null out derived tallies
-        slice_xs = super(ScatterMatrixXS, self).get_slice(nuclides, in_groups)
+        slice_xs = super().get_slice(nuclides, in_groups)
         slice_xs._rxn_rate_tally = None
         slice_xs._xs_tally = None
 
@@ -4309,7 +4294,7 @@ class ScatterMatrixXS(MatrixMGXS):
         filter_bins = []
 
         # Construct a collection of the domain filter bins
-        if not isinstance(subdomains, string_types):
+        if not isinstance(subdomains, str):
             cv.check_iterable_type('subdomains', subdomains, Integral, max_depth=3)
             filters.append(_DOMAIN_TO_FILTER[self.domain_type])
             subdomain_bins = []
@@ -4318,7 +4303,7 @@ class ScatterMatrixXS(MatrixMGXS):
             filter_bins.append(tuple(subdomain_bins))
 
         # Construct list of energy group bounds tuples for all requested groups
-        if not isinstance(in_groups, string_types):
+        if not isinstance(in_groups, str):
             cv.check_iterable_type('groups', in_groups, Integral)
             filters.append(openmc.EnergyFilter)
             energy_bins = []
@@ -4328,7 +4313,7 @@ class ScatterMatrixXS(MatrixMGXS):
             filter_bins.append(tuple(energy_bins))
 
         # Construct list of energy group bounds tuples for all requested groups
-        if not isinstance(out_groups, string_types):
+        if not isinstance(out_groups, str):
             cv.check_iterable_type('groups', out_groups, Integral)
             for group in out_groups:
                 filters.append(openmc.EnergyoutFilter)
@@ -4484,8 +4469,7 @@ class ScatterMatrixXS(MatrixMGXS):
 
         """
 
-        df = super(ScatterMatrixXS, self).get_pandas_dataframe(
-            groups, nuclides, xs_type, paths)
+        df = super().get_pandas_dataframe(groups, nuclides, xs_type, paths)
 
         if self.scatter_format == 'legendre':
             # Add a moment column to dataframe
@@ -4541,7 +4525,7 @@ class ScatterMatrixXS(MatrixMGXS):
         """
 
         # Construct a collection of the subdomains to report
-        if not isinstance(subdomains, string_types):
+        if not isinstance(subdomains, str):
             cv.check_iterable_type('subdomains', subdomains, Integral)
         elif self.domain_type == 'distribcell':
             subdomains = np.arange(self.num_subdomains, dtype=np.int)
@@ -4558,7 +4542,7 @@ class ScatterMatrixXS(MatrixMGXS):
             if nuclides == 'sum':
                 nuclides = ['sum']
             else:
-                cv.check_iterable_type('nuclides', nuclides, string_types)
+                cv.check_iterable_type('nuclides', nuclides, str)
         else:
             nuclides = ['sum']
 
@@ -4809,9 +4793,8 @@ class MultiplicityMatrixXS(MatrixMGXS):
 
     def __init__(self, domain=None, domain_type=None, groups=None,
                  by_nuclide=False, name='', num_polar=1, num_azimuthal=1):
-        super(MultiplicityMatrixXS, self).__init__(domain, domain_type, groups,
-                                                   by_nuclide, name, num_polar,
-                                                   num_azimuthal)
+        super().__init__(domain, domain_type, groups, by_nuclide, name,
+                         num_polar, num_azimuthal)
         self._rxn_type = 'multiplicity matrix'
         self._estimator = 'analog'
         self._valid_estimators = ['analog']
@@ -4846,7 +4829,7 @@ class MultiplicityMatrixXS(MatrixMGXS):
 
             # Compute the multiplicity
             self._xs_tally = self.rxn_rate_tally / scatter
-            super(MultiplicityMatrixXS, self)._compute_xs()
+            super()._compute_xs()
 
         return self._xs_tally
 
@@ -4975,9 +4958,8 @@ class ScatterProbabilityMatrix(MatrixMGXS):
 
     def __init__(self, domain=None, domain_type=None, groups=None,
                  by_nuclide=False, name='', num_polar=1, num_azimuthal=1):
-        super(ScatterProbabilityMatrix, self).__init__(
-            domain, domain_type, groups, by_nuclide,
-            name, num_polar, num_azimuthal)
+        super().__init__(domain, domain_type, groups, by_nuclide,
+                         name, num_polar, num_azimuthal)
 
         self._rxn_type = 'scatter'
         self._hdf5_key = 'scatter probability matrix'
@@ -5019,7 +5001,7 @@ class ScatterProbabilityMatrix(MatrixMGXS):
 
             # Compute the group-to-group probabilities
             self._xs_tally = self.tallies[self.rxn_type] / norm
-            super(ScatterProbabilityMatrix, self)._compute_xs()
+            super()._compute_xs()
 
         return self._xs_tally
 
@@ -5149,9 +5131,8 @@ class NuFissionMatrixXS(MatrixMGXS):
     def __init__(self, domain=None, domain_type=None, groups=None,
                  by_nuclide=False, name='', num_polar=1,
                  num_azimuthal=1, prompt=False):
-        super(NuFissionMatrixXS, self).__init__(domain, domain_type,
-                                                groups, by_nuclide, name,
-                                                num_polar, num_azimuthal)
+        super().__init__(domain, domain_type, groups, by_nuclide, name,
+                         num_polar, num_azimuthal)
         if not prompt:
             self._rxn_type = 'nu-fission'
             self._hdf5_key = 'nu-fission matrix'
@@ -5172,7 +5153,7 @@ class NuFissionMatrixXS(MatrixMGXS):
         self._prompt = prompt
 
     def __deepcopy__(self, memo):
-        clone = super(NuFissionMatrixXS, self).__deepcopy__(memo)
+        clone = super().__deepcopy__(memo)
         clone._prompt = self.prompt
         return clone
 
@@ -5306,8 +5287,8 @@ class Chi(MGXS):
     def __init__(self, domain=None, domain_type=None, groups=None,
                  prompt=False, by_nuclide=False, name='', num_polar=1,
                  num_azimuthal=1):
-        super(Chi, self).__init__(domain, domain_type, groups, by_nuclide,
-                                  name, num_polar, num_azimuthal)
+        super().__init__(domain, domain_type, groups, by_nuclide, name,
+                         num_polar, num_azimuthal)
         if not prompt:
             self._rxn_type = 'chi'
         else:
@@ -5317,7 +5298,7 @@ class Chi(MGXS):
         self.prompt = prompt
 
     def __deepcopy__(self, memo):
-        clone = super(Chi, self).__deepcopy__(memo)
+        clone = super().__deepcopy__(memo)
         clone._prompt = self.prompt
         return clone
 
@@ -5447,7 +5428,7 @@ class Chi(MGXS):
         nu_fission_in.remove_filter(energy_filter)
 
         # Call super class method and null out derived tallies
-        slice_xs = super(Chi, self).get_slice(nuclides, groups)
+        slice_xs = super().get_slice(nuclides, groups)
         slice_xs._rxn_rate_tally = None
         slice_xs._xs_tally = None
 
@@ -5584,7 +5565,7 @@ class Chi(MGXS):
         filter_bins = []
 
         # Construct a collection of the domain filter bins
-        if not isinstance(subdomains, string_types):
+        if not isinstance(subdomains, str):
             cv.check_iterable_type('subdomains', subdomains, Integral,
                                    max_depth=3)
             filters.append(_DOMAIN_TO_FILTER[self.domain_type])
@@ -5594,7 +5575,7 @@ class Chi(MGXS):
             filter_bins.append(tuple(subdomain_bins))
 
         # Construct list of energy group bounds tuples for all requested groups
-        if not isinstance(groups, string_types):
+        if not isinstance(groups, str):
             cv.check_iterable_type('groups', groups, Integral)
             filters.append(openmc.EnergyoutFilter)
             energy_bins = []
@@ -5642,7 +5623,7 @@ class Chi(MGXS):
 
             # Get chi for user-specified nuclides in the domain
             else:
-                cv.check_iterable_type('nuclides', nuclides, string_types)
+                cv.check_iterable_type('nuclides', nuclides, str)
                 xs = self.xs_tally.get_values(filters=filters,
                                               filter_bins=filter_bins,
                                               nuclides=nuclides, value=value)
@@ -5725,8 +5706,7 @@ class Chi(MGXS):
         """
 
         # Build the dataframe using the parent class method
-        df = super(Chi, self).get_pandas_dataframe(
-            groups, nuclides, xs_type, paths=paths)
+        df = super().get_pandas_dataframe(groups, nuclides, xs_type, paths=paths)
 
         # If user requested micro cross sections, multiply by the atom
         # densities to cancel out division made by the parent class method
@@ -5884,9 +5864,8 @@ class InverseVelocity(MGXS):
 
     def __init__(self, domain=None, domain_type=None, groups=None,
                  by_nuclide=False, name='', num_polar=1, num_azimuthal=1):
-        super(InverseVelocity, self).__init__(domain, domain_type,
-                                              groups, by_nuclide, name,
-                                              num_polar, num_azimuthal)
+        super().__init__(domain, domain_type, groups, by_nuclide, name,
+                         num_polar, num_azimuthal)
         self._rxn_type = 'inverse-velocity'
 
     def get_units(self, xs_type='macro'):

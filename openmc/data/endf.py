@@ -6,19 +6,18 @@ Data File ENDF-6". The latest version from June 2009 can be found at
 http://www-nds.iaea.org/ndspub/documents/endf/endf102/endf102.pdf
 
 """
-from __future__ import print_function, division, unicode_literals
-
 import io
 import re
 import os
 from math import pi
-from collections import OrderedDict, Iterable
+from pathlib import PurePath
+from collections import OrderedDict
+from collections.abc import Iterable
 
-from six import string_types
 import numpy as np
 from numpy.polynomial.polynomial import Polynomial
 
-from .data import ATOMIC_SYMBOL
+from .data import ATOMIC_SYMBOL, gnd_name
 from .function import Tabulated1D, INTERPOLATION_SCHEME
 from openmc.stats.univariate import Uniform, Tabular, Legendre
 
@@ -270,6 +269,7 @@ def get_tab2_record(file_obj):
 
     return params, Tabulated2D(breakpoints, interpolation)
 
+
 def get_evaluations(filename):
     """Return a list of all evaluations within an ENDF file.
 
@@ -321,8 +321,8 @@ class Evaluation(object):
 
     """
     def __init__(self, filename_or_obj):
-        if isinstance(filename_or_obj, string_types):
-            fh = open(filename_or_obj, 'r')
+        if isinstance(filename_or_obj, (str, PurePath)):
+            fh = open(str(filename_or_obj), 'r')
         else:
             fh = filename_or_obj
         self.section = {}
@@ -452,13 +452,9 @@ class Evaluation(object):
 
     @property
     def gnd_name(self):
-        symbol = ATOMIC_SYMBOL[self.target['atomic_number']]
-        A = self.target['mass_number']
-        m = self.target['isomeric_state']
-        if m > 0:
-            return '{}{}_m{}'.format(symbol, A, m)
-        else:
-            return '{}{}'.format(symbol, A)
+        return gnd_name(self.target['atomic_number'],
+                        self.target['mass_number'],
+                        self.target['isomeric_state'])
 
 
 class Tabulated2D(object):

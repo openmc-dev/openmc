@@ -1,11 +1,10 @@
-from __future__ import division
 from collections import OrderedDict, Iterable
 from copy import copy, deepcopy
 from numbers import Integral, Real
 import random
 import sys
 
-from six import string_types
+import matplotlib.pyplot as plt
 import numpy as np
 
 import openmc
@@ -63,24 +62,6 @@ class Universe(IDManagerMixin):
         if cells is not None:
             self.add_cells(cells)
 
-    def __eq__(self, other):
-        if not isinstance(other, Universe):
-            return False
-        elif self.id != other.id:
-            return False
-        elif self.name != other.name:
-            return False
-        elif dict.__ne__(self.cells, other.cells):
-            return False
-        else:
-            return True
-
-    def __ne__(self, other):
-        return not self == other
-
-    def __hash__(self):
-        return hash(repr(self))
-
     def __repr__(self):
         string = 'Universe\n'
         string += '{0: <16}{1}{2}\n'.format('\tID', '=\t', self._id)
@@ -109,12 +90,12 @@ class Universe(IDManagerMixin):
             return openmc.Union(regions).bounding_box
         else:
             # Infinite bounding box
-            return openmc.Intersection().bounding_box
+            return openmc.Intersection([]).bounding_box
 
     @name.setter
     def name(self, name):
         if name is not None:
-            cv.check_type('universe name', name, string_types)
+            cv.check_type('universe name', name, str)
             self._name = name
         else:
             self._name = ''
@@ -243,8 +224,6 @@ class Universe(IDManagerMixin):
             :func:`matplotlib.pyplot.imshow`.
 
         """
-        import matplotlib.pyplot as plt
-
         # Seed the random number generator
         if seed is not None:
             random.seed(seed)
@@ -256,7 +235,7 @@ class Universe(IDManagerMixin):
             # Convert to RGBA if necessary
             colors = copy(colors)
             for obj, color in colors.items():
-                if isinstance(color, string_types):
+                if isinstance(color, str):
                     if color.lower() not in _SVG_COLORS:
                         raise ValueError("'{}' is not a valid color."
                                          .format(color))
@@ -341,7 +320,7 @@ class Universe(IDManagerMixin):
         if not isinstance(cell, openmc.Cell):
             msg = 'Unable to add a Cell to Universe ID="{0}" since "{1}" is not ' \
                   'a Cell'.format(self._id, cell)
-            raise ValueError(msg)
+            raise TypeError(msg)
 
         cell_id = cell.id
 
@@ -361,7 +340,7 @@ class Universe(IDManagerMixin):
         if not isinstance(cells, Iterable):
             msg = 'Unable to add Cells to Universe ID="{0}" since "{1}" is not ' \
                   'iterable'.format(self._id, cells)
-            raise ValueError(msg)
+            raise TypeError(msg)
 
         for cell in cells:
             self.add_cell(cell)
@@ -379,7 +358,7 @@ class Universe(IDManagerMixin):
         if not isinstance(cell, openmc.Cell):
             msg = 'Unable to remove a Cell from Universe ID="{0}" since "{1}" is ' \
                   'not a Cell'.format(self._id, cell)
-            raise ValueError(msg)
+            raise TypeError(msg)
 
         # If the Cell is in the Universe's list of Cells, delete it
         if cell.id in self._cells:
@@ -553,14 +532,16 @@ class Universe(IDManagerMixin):
 
         for cell in self.cells.values():
             cell_path = '{}->c{}'.format(univ_path, cell.id)
+            fill = cell._fill
+            fill_type = cell.fill_type
 
             # If universe-filled, recursively count cells in filling universe
-            if cell.fill_type == 'universe':
-                cell.fill._determine_paths(cell_path + '->', instances_only)
+            if fill_type == 'universe':
+                fill._determine_paths(cell_path + '->', instances_only)
 
             # If lattice-filled, recursively call for all universes in lattice
-            elif cell.fill_type == 'lattice':
-                latt = cell.fill
+            elif fill_type == 'lattice':
+                latt = fill
 
                 # Count instances in each universe in the lattice
                 for index in latt._natural_indices:
@@ -570,10 +551,10 @@ class Universe(IDManagerMixin):
                     univ._determine_paths(latt_path, instances_only)
 
             else:
-                if cell.fill_type == 'material':
-                    mat = cell.fill
-                elif cell.fill_type == 'distribmat':
-                    mat = cell.fill[cell._num_instances]
+                if fill_type == 'material':
+                    mat = fill
+                elif fill_type == 'distribmat':
+                    mat = fill[cell._num_instances]
                 else:
                     mat = None
 

@@ -42,11 +42,11 @@ contains
     type(Bank), save, allocatable :: &
          & temp_sites(:)       ! local array of extra sites on each node
 
-#ifdef MPI
+#ifdef OPENMC_MPI
     integer    :: mpi_err      ! MPI error code
     integer(8) :: n            ! number of sites to send/recv
     integer    :: neighbor     ! processor to send/recv data from
-#ifdef MPIF08
+#ifdef OPENMC_MPIF08
     type(MPI_Request) :: request(20)
 #else
     integer    :: request(20)  ! communication request for send/recving sites
@@ -66,7 +66,7 @@ contains
     ! fission bank its own sites starts in order to ensure reproducibility by
     ! skipping ahead to the proper seed.
 
-#ifdef MPI
+#ifdef OPENMC_MPI
     start = 0_8
     call MPI_EXSCAN(n_bank, start, 1, MPI_INTEGER8, MPI_SUM, &
          mpi_intracomm, mpi_err)
@@ -148,7 +148,7 @@ contains
     ! neighboring processors, we have to perform an ALLGATHER to determine the
     ! indices for all processors
 
-#ifdef MPI
+#ifdef OPENMC_MPI
     ! First do an exclusive scan to get the starting indices for
     start = 0_8
     call MPI_EXSCAN(index_temp, start, 1, MPI_INTEGER8, MPI_SUM, &
@@ -191,7 +191,7 @@ contains
     call time_bank_sample % stop()
     call time_bank_sendrecv % start()
 
-#ifdef MPI
+#ifdef OPENMC_MPI
     ! ==========================================================================
     ! SEND BANK SITES TO NEIGHBORS
 
@@ -301,8 +301,8 @@ contains
 
   subroutine shannon_entropy()
 
-    integer :: ent_idx        ! entropy index
     integer :: i              ! index for mesh elements
+    real(8) :: entropy_gen    ! entropy at this generation
     logical :: sites_outside  ! were there sites outside entropy box?
 
     associate (m => meshes(index_entropy_mesh))
@@ -320,14 +320,16 @@ contains
         ! Normalize to total weight of bank sites
         entropy_p = entropy_p / sum(entropy_p)
 
-        ent_idx = current_gen + gen_per_batch*(current_batch - 1)
-        entropy(ent_idx) = ZERO
+        entropy_gen = ZERO
         do i = 1, size(entropy_p, 2)
           if (entropy_p(1,i) > ZERO) then
-            entropy(ent_idx) = entropy(ent_idx) - &
+            entropy_gen = entropy_gen - &
                  entropy_p(1,i) * log(entropy_p(1,i))/log(TWO)
           end if
         end do
+
+        ! Add value to vector
+        call entropy % push_back(entropy_gen)
       end if
     end associate
   end subroutine shannon_entropy
@@ -340,28 +342,26 @@ contains
 
   subroutine calculate_generation_keff()
 
-    integer :: i  ! overall generation
-#ifdef MPI
+    real(8) :: keff_reduced
+#ifdef OPENMC_MPI
     integer :: mpi_err ! MPI error code
 #endif
 
     ! Get keff for this generation by subtracting off the starting value
     keff_generation = global_tallies(RESULT_VALUE, K_TRACKLENGTH) - keff_generation
 
-    ! Determine overall generation
-    i = overall_generation()
-
-#ifdef MPI
+#ifdef OPENMC_MPI
     ! Combine values across all processors
-    call MPI_ALLREDUCE(keff_generation, k_generation(i), 1, MPI_REAL8, &
+    call MPI_ALLREDUCE(keff_generation, keff_reduced, 1, MPI_REAL8, &
          MPI_SUM, mpi_intracomm, mpi_err)
 #else
-    k_generation(i) = keff_generation
+    keff_reduced = keff_generation
 #endif
 
     ! Normalize single batch estimate of k
     ! TODO: This should be normalized by total_weight, not by n_particles
-    k_generation(i) = k_generation(i) / n_particles
+    keff_reduced = keff_reduced / n_particles
+    call k_generation % push_back(keff_reduced)
 
   end subroutine calculate_generation_keff
 
@@ -385,12 +385,12 @@ contains
     if (n <= 0) then
       ! For inactive generations, use current generation k as estimate for next
       ! generation
-      keff = k_generation(i)
+      keff = k_generation % data(i)
 
     else
       ! Sample mean of keff
-      k_sum(1) = k_sum(1) + k_generation(i)
-      k_sum(2) = k_sum(2) + k_generation(i)**2
+      k_sum(1) = k_sum(1) + k_generation % data(i)
+      k_sum(2) = k_sum(2) + k_generation % data(i)**2
 
       ! Determine mean
       keff = k_sum(1) / n
@@ -584,7 +584,7 @@ contains
 
     real(8) :: total         ! total weight in source bank
     logical :: sites_outside ! were there sites outside the ufs mesh?
-#ifdef MPI
+#ifdef OPENMC_MPI
     integer :: n             ! total number of ufs mesh cells
     integer :: mpi_err       ! MPI error code
 #endif
@@ -608,7 +608,7 @@ contains
         call fatal_error("Source sites outside of the UFS mesh!")
       end if
 
-#ifdef MPI
+#ifdef OPENMC_MPI
       ! Send source fraction to all processors
       n = product(m % dimension)
       call MPI_BCAST(source_frac, n, MPI_REAL8, 0, mpi_intracomm, mpi_err)

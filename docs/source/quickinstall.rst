@@ -44,20 +44,19 @@ Next, resynchronize the package index files:
 
 .. code-block:: sh
 
-    sudo apt-get update
+    sudo apt update
 
 Now OpenMC should be recognized within the repository and can be installed:
 
 .. code-block:: sh
 
-    sudo apt-get install openmc
+    sudo apt install openmc
 
 Binary packages from this PPA may exist for earlier versions of Ubuntu, but they
 are no longer supported.
 
 .. _Personal Package Archive: https://launchpad.net/~paulromano/+archive/staging
 .. _APT package manager: https://help.ubuntu.com/community/AptGet/Howto
-.. _HDF5: http://www.hdfgroup.org/HDF5/
 
 ---------------------------------------
 Installing from Source on Ubuntu 15.04+
@@ -69,9 +68,7 @@ installed directly from the package manager.
 
 .. code-block:: sh
 
-    sudo apt-get install gfortran
-    sudo apt-get install cmake
-    sudo apt-get install libhdf5-dev
+    sudo apt install gfortran g++ cmake libhdf5-dev
 
 After the packages have been installed, follow the instructions below for
 building and installing OpenMC from source.
@@ -85,9 +82,12 @@ building and installing OpenMC from source.
 Installing from Source on Linux or Mac OS X
 -------------------------------------------
 
-All OpenMC source code is hosted on GitHub_. If you have git_, the gfortran_
-compiler, CMake_, and HDF5_ installed, you can download and install OpenMC be
-entering the following commands in a terminal:
+All OpenMC source code is hosted on `GitHub
+<https://github.com/mit-crpg/openmc>`_. If you have `git
+<https://git-scm.com>`_, the `gcc <https://gcc.gnu.org/>`_ compiler suite,
+`CMake <http://www.cmake.org>`_, and `HDF5 <https://www.hdfgroup.org/HDF5/>`_
+installed, you can download and install OpenMC be entering the following
+commands in a terminal:
 
 .. code-block:: sh
 
@@ -106,11 +106,15 @@ should specify an installation directory where you have write access, e.g.
 
     cmake -DCMAKE_INSTALL_PREFIX=$HOME/.local ..
 
+The :mod:`openmc` Python package must be installed separately. The easiest way
+to install it is using `pip <https://pip.pypa.io/en/stable/>`_, which is
+included by default in Python 2.7 and Python 3.4+. From the root directory of
+the OpenMC distribution/repository, run:
+
+.. code-block:: sh
+
+    pip install .
+
 If you want to build a parallel version of OpenMC (using OpenMP or MPI),
 directions can be found in the :ref:`detailed installation instructions
 <usersguide_build>`.
-
-.. _GitHub: https://github.com/mit-crpg/openmc
-.. _git: http://git-scm.com
-.. _gfortran: http://gcc.gnu.org/wiki/GFortran
-.. _CMake: http://www.cmake.org

@@ -9,7 +9,8 @@ module tally_header
   use dict_header,         only: DictIntInt
   use message_passing,     only: n_procs
   use nuclide_header,      only: nuclide_dict
-  use settings,            only: reduce_tallies
+  use settings,            only: reduce_tallies, run_mode
+  use source_header,       only: external_source
   use stl_vector,          only: VectorInt
   use string,              only: to_lower, to_f_string, str_to_int, to_str
   use tally_filter_header, only: TallyFilterContainer, filters, n_filters
@@ -22,9 +23,12 @@ module tally_header
   public :: free_memory_tally
   public :: openmc_extend_tallies
   public :: openmc_get_tally_index
+  public :: openmc_global_tallies
   public :: openmc_tally_get_id
   public :: openmc_tally_get_filters
+  public :: openmc_tally_get_n_realizations
   public :: openmc_tally_get_nuclides
+  public :: openmc_tally_get_scores
   public :: openmc_tally_results
   public :: openmc_tally_set_filters
   public :: openmc_tally_set_id
@@ -46,6 +50,7 @@ module tally_header
     integer :: estimator = ESTIMATOR_TRACKLENGTH ! collision, track-length
     real(8) :: volume               ! volume of region
     logical :: active = .false.
+    logical :: depletion_rx = .false. ! has depletion reactions, e.g. (n,2n)
     integer, allocatable :: filter(:) ! index in filters array
 
     ! The stride attribute is used for determining the index in the results
@@ -145,7 +150,7 @@ module tally_header
   type(VectorInt), public :: active_surface_tallies
 
   ! Normalization for statistics
-  integer, public :: n_realizations = 0 ! # of independent realizations
+  integer(C_INT32_T), public, bind(C) :: n_realizations = 0 ! # of independent realizations
   real(8), public :: total_weight       ! total starting particle weight in realization
 
 contains
@@ -159,6 +164,7 @@ contains
 
     integer :: i, j
     real(C_DOUBLE) :: val
+    real(C_DOUBLE) :: total_source
 
     ! Increment number of realizations
     if (reduce_tallies) then
@@ -167,10 +173,17 @@ contains
       this % n_realizations = this % n_realizations + n_procs
     end if
 
+    ! Calculate total source strength for normalization
+    if (run_mode == MODE_FIXEDSOURCE) then
+      total_source = sum(external_source(:) % strength)
+    else
+      total_source = ONE
+    end if
+
     ! Accumulate each result
     do j = 1, size(this % results, 3)
       do i = 1, size(this % results, 2)
-        val = this % results(RESULT_VALUE, i, j)/total_weight
+        val = this % results(RESULT_VALUE, i, j)/total_weight * total_source
         this % results(RESULT_VALUE, i, j) = ZERO
 
         this % results(RESULT_SUM, i, j) = &
@@ -471,6 +484,20 @@ contains
   end function openmc_get_tally_index
 
 
+  function openmc_global_tallies(ptr) result(err) bind(C)
+    type(C_PTR), intent(out) :: ptr
+    integer(C_INT) :: err
+
+    if (.not. allocated(global_tallies)) then
+      err = E_ALLOCATE
+      call set_errmsg("Global tallies have not been allocated yet.")
+    else
+      err = 0
+      ptr = C_LOC(global_tallies)
+    end if
+  end function openmc_global_tallies
+
+
   function openmc_tally_get_id(index, id) result(err) bind(C)
     ! Return the ID of a tally
     integer(C_INT32_T), value       :: index
@@ -512,6 +539,22 @@ contains
   end function openmc_tally_get_filters
 
 
+  function openmc_tally_get_n_realizations(index, n) result(err) bind(C)
+    ! Return the number of realizations for a tally
+    integer(C_INT32_T), value       :: index
+    integer(C_INT32_T), intent(out) :: n
+    integer(C_INT) :: err
+
+    if (index >= 1 .and. index <= size(tallies)) then
+      n = tallies(index) % obj % n_realizations
+      err = 0
+    else
+      err = E_OUT_OF_BOUNDS
+      call set_errmsg('Index in tallies array is out of bounds.')
+    end if
+  end function openmc_tally_get_n_realizations
+
+
   function openmc_tally_get_nuclides(index, nuclides, n) result(err) bind(C)
     ! Return the list of nuclides assigned to a tally
     integer(C_INT32_T), value :: index
@@ -535,6 +578,31 @@ contains
       call set_errmsg('Index in tallies array is out of bounds.')
     end if
   end function openmc_tally_get_nuclides
+
+
+  function openmc_tally_get_scores(index, scores, n) result(err) bind(C)
+    ! Return the list of nuclides assigned to a tally
+    integer(C_INT32_T), value :: index
+    type(C_PTR), intent(out) :: scores
+    integer(C_INT), intent(out) :: n
+    integer(C_INT) :: err
+
+    if (index >= 1 .and. index <= size(tallies)) then
+      associate (t => tallies(index) % obj)
+        if (allocated(t % score_bins)) then
+          scores = C_LOC(t % score_bins(1))
+          n = size(t % score_bins)
+          err = 0
+        else
+          err = E_ALLOCATE
+          call set_errmsg("Tally scores have not been allocated yet.")
+        end if
+      end associate
+    else
+      err = E_OUT_OF_BOUNDS
+      call set_errmsg('Index in tallies array is out of bounds.')
+    end if
+  end function openmc_tally_get_scores
 
 
   function openmc_tally_results(index, ptr, shape_) result(err) bind(C)
@@ -666,8 +734,10 @@ contains
     integer :: MT
     character(C_CHAR), pointer :: string(:)
     character(len=:, kind=C_CHAR), allocatable :: score_
+    logical :: depletion_rx
 
     err = E_UNASSIGNED
+    depletion_rx = .false.
     if (index >= 1 .and. index <= size(tallies)) then
       associate (t => tallies(index) % obj)
         if (allocated(t % score_bins)) deallocate(t % score_bins)
@@ -691,10 +761,13 @@ contains
             t % score_bins(i) = SCORE_NU_SCATTER
           case ('(n,2n)')
             t % score_bins(i) = N_2N
+            depletion_rx = .true.
           case ('(n,3n)')
             t % score_bins(i) = N_3N
+            depletion_rx = .true.
           case ('(n,4n)')
             t % score_bins(i) = N_4N
+            depletion_rx = .true.
           case ('absorption')
             t % score_bins(i) = SCORE_ABSORPTION
           case ('fission', '18')
@@ -763,8 +836,10 @@ contains
             t % score_bins(i) = N_NC
           case ('(n,gamma)')
             t % score_bins(i) = N_GAMMA
+            depletion_rx = .true.
           case ('(n,p)')
             t % score_bins(i) = N_P
+            depletion_rx = .true.
           case ('(n,d)')
             t % score_bins(i) = N_D
           case ('(n,t)')
@@ -773,6 +848,7 @@ contains
             t % score_bins(i) = N_3HE
           case ('(n,a)')
             t % score_bins(i) = N_A
+            depletion_rx = .true.
           case ('(n,2a)')
             t % score_bins(i) = N_2A
           case ('(n,3a)')
@@ -813,6 +889,7 @@ contains
         end do
 
         err = 0
+        t % depletion_rx = depletion_rx
       end associate
     else
       err = E_OUT_OF_BOUNDS

@@ -4,6 +4,7 @@ module summary
 
   use constants
   use endf,            only: reaction_name
+  use error,           only: write_message
   use geometry_header
   use hdf5_interface
   use material_header, only: Material, n_materials
@@ -32,6 +33,9 @@ contains
   subroutine write_summary()
 
     integer(HID_T) :: file_id
+
+    ! Display output message
+    call write_message("Writing summary.h5 file...", 5)
 
     ! Create a new file using default properties.
     file_id = file_create("summary.h5")
@@ -118,13 +122,11 @@ contains
     real(8), allocatable :: cell_temperatures(:)
     integer(HID_T) :: geom_group
     integer(HID_T) :: cells_group, cell_group
-    integer(HID_T) :: surfaces_group, surface_group
+    integer(HID_T) :: surfaces_group
     integer(HID_T) :: universes_group, univ_group
     integer(HID_T) :: lattices_group, lattice_group
-    real(8), allocatable :: coeffs(:)
     character(:), allocatable :: region_spec
     type(Cell),     pointer :: c
-    class(Surface), pointer :: s
     class(Lattice), pointer :: lat
 
     ! Use H5LT interface to write number of geometry objects
@@ -219,7 +221,7 @@ contains
           region_spec = trim(region_spec) // " |"
         case default
           region_spec = trim(region_spec) // " " // to_str(&
-               sign(surfaces(abs(k))%obj%id, k))
+               sign(surfaces(abs(k))%id(), k))
         end select
       end do
       call write_dataset(cell_group, "region", adjustl(region_spec))
@@ -237,92 +239,7 @@ contains
 
     ! Write information on each surface
     SURFACE_LOOP: do i = 1, n_surfaces
-      s => surfaces(i)%obj
-      surface_group = create_group(surfaces_group, "surface " // &
-           trim(to_str(s%id)))
-
-      ! Write name for this surface
-      call write_dataset(surface_group, "name", s%name)
-
-      ! Write surface type
-      select type (s)
-      type is (SurfaceXPlane)
-        call write_dataset(surface_group, "type", "x-plane")
-        allocate(coeffs(1))
-        coeffs(1) = s%x0
-
-      type is (SurfaceYPlane)
-        call write_dataset(surface_group, "type", "y-plane")
-        allocate(coeffs(1))
-        coeffs(1) = s%y0
-
-      type is (SurfaceZPlane)
-        call write_dataset(surface_group, "type", "z-plane")
-        allocate(coeffs(1))
-        coeffs(1) = s%z0
-
-      type is (SurfacePlane)
-        call write_dataset(surface_group, "type", "plane")
-        allocate(coeffs(4))
-        coeffs(:) = [s%A, s%B, s%C, s%D]
-
-      type is (SurfaceXCylinder)
-        call write_dataset(surface_group, "type", "x-cylinder")
-        allocate(coeffs(3))
-        coeffs(:) = [s%y0, s%z0, s%r]
-
-      type is (SurfaceYCylinder)
-        call write_dataset(surface_group, "type", "y-cylinder")
-        allocate(coeffs(3))
-        coeffs(:) = [s%x0, s%z0, s%r]
-
-      type is (SurfaceZCylinder)
-        call write_dataset(surface_group, "type", "z-cylinder")
-        allocate(coeffs(3))
-        coeffs(:) = [s%x0, s%y0, s%r]
-
-      type is (SurfaceSphere)
-        call write_dataset(surface_group, "type", "sphere")
-        allocate(coeffs(4))
-        coeffs(:) = [s%x0, s%y0, s%z0, s%r]
-
-      type is (SurfaceXCone)
-        call write_dataset(surface_group, "type", "x-cone")
-        allocate(coeffs(4))
-        coeffs(:) = [s%x0, s%y0, s%z0, s%r2]
-
-      type is (SurfaceYCone)
-        call write_dataset(surface_group, "type", "y-cone")
-        allocate(coeffs(4))
-        coeffs(:) = [s%x0, s%y0, s%z0, s%r2]
-
-      type is (SurfaceZCone)
-        call write_dataset(surface_group, "type", "z-cone")
-        allocate(coeffs(4))
-        coeffs(:) = [s%x0, s%y0, s%z0, s%r2]
-
-      type is (SurfaceQuadric)
-        call write_dataset(surface_group, "type", "quadric")
-        allocate(coeffs(10))
-        coeffs(:) = [s%A, s%B, s%C, s%D, s%E, s%F, s%G, s%H, s%J, s%K]
-
-      end select
-      call write_dataset(surface_group, "coefficients", coeffs)
-      deallocate(coeffs)
-
-      ! Write boundary type
-      select case (s%bc)
-      case (BC_TRANSMIT)
-        call write_dataset(surface_group, "boundary_type", "transmission")
-      case (BC_VACUUM)
-        call write_dataset(surface_group, "boundary_type", "vacuum")
-      case (BC_REFLECT)
-        call write_dataset(surface_group, "boundary_type", "reflective")
-      case (BC_PERIODIC)
-        call write_dataset(surface_group, "boundary_type", "periodic")
-      end select
-
-      call close_group(surface_group)
+      call surfaces(i) % to_hdf5(surfaces_group)
     end do SURFACE_LOOP
 
     call close_group(surfaces_group)

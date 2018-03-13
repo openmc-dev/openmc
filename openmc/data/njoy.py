@@ -1,10 +1,9 @@
-from __future__ import print_function
 import argparse
 from collections import namedtuple
 from io import StringIO
 import os
 import shutil
-from subprocess import Popen, PIPE, STDOUT
+from subprocess import Popen, PIPE, STDOUT, CalledProcessError
 import sys
 import tempfile
 
@@ -139,10 +138,10 @@ def run(commands, tapein, tapeout, input_filename=None, stdout=False,
     njoy_exec : str, optional
         Path to NJOY executable
 
-    Returns
-    -------
-    int
-        Return code of NJOY process
+    Raises
+    ------
+    subprocess.CalledProcessError
+        If the NJOY process returns with a non-zero status
 
     """
 
@@ -150,10 +149,7 @@ def run(commands, tapein, tapeout, input_filename=None, stdout=False,
         with open(input_filename, 'w') as f:
             f.write(commands)
 
-    # Create temporary directory -- it would be preferable to use
-    # TemporaryDirectory(), but it is only available in Python 3.2
-    tmpdir = tempfile.mkdtemp()
-    try:
+    with tempfile.TemporaryDirectory() as tmpdir:
         # Copy evaluations to appropriates 'tapes'
         for tape_num, filename in tapein.items():
             tmpfilename = os.path.join(tmpdir, 'tape{}'.format(tape_num))
@@ -165,25 +161,28 @@ def run(commands, tapein, tapeout, input_filename=None, stdout=False,
 
         njoy.stdin.write(commands)
         njoy.stdin.flush()
+        lines = []
         while True:
             # If process is finished, break loop
             line = njoy.stdout.readline()
             if not line and njoy.poll() is not None:
                 break
 
+            lines.append(line)
             if stdout:
                 # If user requested output, print to screen
                 print(line, end='')
+
+        # Check for error
+        if njoy.returncode != 0:
+            raise CalledProcessError(njoy.returncode, njoy_exec,
+                                     ''.join(lines))
 
         # Copy output files back to original directory
         for tape_num, filename in tapeout.items():
             tmpfilename = os.path.join(tmpdir, 'tape{}'.format(tape_num))
             if os.path.isfile(tmpfilename):
                 shutil.move(tmpfilename, filename)
-    finally:
-        shutil.rmtree(tmpdir)
-
-    return njoy.returncode
 
 
 def make_pendf(filename, pendf='pendf', error=0.001, stdout=False):
@@ -200,15 +199,15 @@ def make_pendf(filename, pendf='pendf', error=0.001, stdout=False):
     stdout : bool
         Whether to display NJOY standard output
 
-    Returns
-    -------
-    int
-        Return code of NJOY process
+    Raises
+    ------
+    subprocess.CalledProcessError
+        If the NJOY process returns with a non-zero status
 
     """
 
-    return make_ace(filename, pendf=pendf, error=error, broadr=False,
-                    heatr=False, purr=False, acer=False, stdout=stdout)
+    make_ace(filename, pendf=pendf, error=error, broadr=False,
+             heatr=False, purr=False, acer=False, stdout=stdout)
 
 
 def make_ace(filename, temperatures=None, ace='ace', xsdir='xsdir', pendf=None,
@@ -238,14 +237,14 @@ def make_ace(filename, temperatures=None, ace='ace', xsdir='xsdir', pendf=None,
     purr : bool, optional
         Indicating whether to add probability table when running NJOY
     acer : bool, optional
-        Indicating whether to generate ACE file when running NJOY 
+        Indicating whether to generate ACE file when running NJOY
     **kwargs
         Keyword arguments passed to :func:`openmc.data.njoy.run`
 
-    Returns
-    -------
-    int
-        Return code of NJOY process
+    Raises
+    ------
+    subprocess.CalledProcessError
+        If the NJOY process returns with a non-zero status
 
     """
     ev = endf.Evaluation(filename)
@@ -285,7 +284,7 @@ def make_ace(filename, temperatures=None, ace='ace', xsdir='xsdir', pendf=None,
         nheatr = nheatr_in + 1
         commands += _TEMPLATE_HEATR
         nlast = nheatr
-      
+
     # purr
     if purr:
         npurr_in = nlast
@@ -310,9 +309,9 @@ def make_ace(filename, temperatures=None, ace='ace', xsdir='xsdir', pendf=None,
             tapeout[nace] = fname.format(ace, temperature)
             tapeout[ndir] = fname.format(xsdir, temperature)
     commands += 'stop\n'
-    retcode = run(commands, tapein, tapeout, **kwargs)
+    run(commands, tapein, tapeout, **kwargs)
 
-    if acer and retcode == 0:
+    if acer:
         with open(ace, 'w') as ace_file, open(xsdir, 'w') as xsdir_file:
             for temperature in temperatures:
                 # Get contents of ACE file
@@ -337,10 +336,8 @@ def make_ace(filename, temperatures=None, ace='ace', xsdir='xsdir', pendf=None,
             os.remove(fname.format(ace, temperature))
             os.remove(fname.format(xsdir, temperature))
 
-    return retcode
 
-
-def make_ace_thermal(filename, filename_thermal, temperatures=None,                     
+def make_ace_thermal(filename, filename_thermal, temperatures=None,
                      ace='ace', xsdir='xsdir', error=0.001, **kwargs):
     """Generate thermal scattering ACE file from ENDF files
 
@@ -362,10 +359,10 @@ def make_ace_thermal(filename, filename_thermal, temperatures=None,
     **kwargs
         Keyword arguments passed to :func:`openmc.data.njoy.run`
 
-    Returns
-    -------
-    int
-        Return code of NJOY process
+    Raises
+    ------
+    subprocess.CalledProcessError
+        If the NJOY process returns with a non-zero status
 
     """
     ev = endf.Evaluation(filename)
@@ -461,21 +458,18 @@ def make_ace_thermal(filename, filename_thermal, temperatures=None,
         tapeout[nace] = fname.format(ace, temperature)
         tapeout[ndir] = fname.format(xsdir, temperature)
     commands += 'stop\n'
-    retcode = run(commands, tapein, tapeout, **kwargs)
+    run(commands, tapein, tapeout, **kwargs)
 
-    if retcode == 0:
-        with open(ace, 'w') as ace_file, open(xsdir, 'w') as xsdir_file:
-            # Concatenate ACE and xsdir files together
-            for temperature in temperatures:
-                text = open(fname.format(ace, temperature), 'r').read()
-                ace_file.write(text)
-
-                text = open(fname.format(xsdir, temperature), 'r').read()
-                xsdir_file.write(text)
-
-        # Remove ACE/xsdir files for each temperature
+    with open(ace, 'w') as ace_file, open(xsdir, 'w') as xsdir_file:
+        # Concatenate ACE and xsdir files together
         for temperature in temperatures:
-            os.remove(fname.format(ace, temperature))
-            os.remove(fname.format(xsdir, temperature))
+            text = open(fname.format(ace, temperature), 'r').read()
+            ace_file.write(text)
 
-    return retcode
+            text = open(fname.format(xsdir, temperature), 'r').read()
+            xsdir_file.write(text)
+
+    # Remove ACE/xsdir files for each temperature
+    for temperature in temperatures:
+        os.remove(fname.format(ace, temperature))
+        os.remove(fname.format(xsdir, temperature))

@@ -24,6 +24,15 @@ _SUBSHELLS = ['K', 'L1', 'L2', 'L3', 'M1', 'M2', 'M3', 'M4', 'M5',
               'P3', 'P4', 'P5', 'P6', 'P7', 'P8', 'P9', 'P10', 'P11',
               'Q1', 'Q2', 'Q3']
 
+
+# Helper function to map designator to subshell string or None
+def _subshell(i):
+    if i == 0:
+        return None
+    else:
+        return _SUBSHELLS[i - 1]
+
+
 _REACTION_NAME = {
     501: 'Total photon interaction',
     502: 'Photon coherent scattering',
@@ -197,6 +206,65 @@ class AtomicRelaxation(EqualityMixin):
         self._transitions = transitions
 
     @classmethod
+    def from_ace(cls, ace):
+        """Generate atomic relaxation data from an ACE file
+
+        Parameters
+        ----------
+        ace : openmc.data.ace.Table
+            ACE table to read from
+
+        Returns
+        -------
+        openmc.data.AtomicRelaxation
+            Atomic relaxation data
+
+        """
+        # Create data dictionaries
+        binding_energy = {}
+        num_electrons = {}
+        transitions = {}
+
+        # Get shell designators
+        n = ace.nxs[7]
+        idx = ace.jxs[11]
+        shells = [_subshell(int(i)) for i in ace.xss[idx : idx+n]]
+
+        # Get number of electrons for each shell
+        idx = ace.jxs[12]
+        for shell, num in zip(shells, ace.xss[idx : idx+n]):
+            num_electrons[shell] = num
+
+        # Get binding energy for each shell
+        idx = ace.jxs[13]
+        for shell, e in zip(shells, ace.xss[idx : idx+n]):
+            binding_energy[shell] = e*EV_PER_MEV
+
+        # Get transition table
+        columns = ['secondary', 'tertiary', 'energy (eV)', 'probability']
+        idx = ace.jxs[18]
+        for i, subi in enumerate(shells):
+            n_transitions = int(ace.xss[ace.jxs[15] + i])
+            if n_transitions > 0:
+                records = []
+                for j in range(n_transitions):
+                    subj = _subshell(int(ace.xss[idx]))
+                    subk = _subshell(int(ace.xss[idx + 1]))
+                    etr = ace.xss[idx + 2]*EV_PER_MEV
+                    if j == 0:
+                        ftr = ace.xss[idx + 3]
+                    else:
+                        ftr = ace.xss[idx + 3] - ace.xss[idx - 1]
+                    records.append((subj, subk, etr, ftr))
+                    idx += 4
+
+                # Create dataframe for transitions
+                transitions[subi] = pd.DataFrame.from_records(
+                    records, columns=columns)
+
+        return cls(binding_energy, num_electrons, transitions)
+
+    @classmethod
     def from_endf(cls, ev_or_filename):
         """Generate atomic relaxation data from an ENDF evaluation
 
@@ -227,13 +295,6 @@ class AtomicRelaxation(EqualityMixin):
         params = get_head_record(file_obj)
         n_subshells = params[4]
 
-        # Helper function to map designator to subshell string or None
-        def subshell(i):
-            if i == 0:
-                return None
-            else:
-                return _SUBSHELLS[i - 1]
-
         # Create data dictionaries
         binding_energy = {}
         num_electrons = {}
@@ -243,7 +304,7 @@ class AtomicRelaxation(EqualityMixin):
         # Read data for each subshell
         for i in range(n_subshells):
             params, list_items = get_list_record(file_obj)
-            subi = subshell(int(params[0]))
+            subi = _subshell(int(params[0]))
             n_transitions = int(params[5])
             binding_energy[subi] = list_items[0]
             num_electrons[subi] = list_items[1]
@@ -252,8 +313,8 @@ class AtomicRelaxation(EqualityMixin):
                 # Read transition data
                 records = []
                 for j in range(n_transitions):
-                    subj = subshell(int(list_items[6*(j+1)]))
-                    subk = subshell(int(list_items[6*(j+1) + 1]))
+                    subj = _subshell(int(list_items[6*(j+1)]))
+                    subk = _subshell(int(list_items[6*(j+1) + 1]))
                     etr = list_items[6*(j+1) + 2]
                     ftr = list_items[6*(j+1) + 3]
                     records.append((subj, subk, etr, ftr))
@@ -263,9 +324,7 @@ class AtomicRelaxation(EqualityMixin):
                     records, columns=columns)
 
         # Return instance of class
-        data = cls(binding_energy, num_electrons, transitions)
-
-        return data
+        return cls(binding_energy, num_electrons, transitions)
 
     def to_hdf5(self, group):
         raise NotImplementedError
@@ -430,6 +489,40 @@ class IncidentPhoton(EqualityMixin):
                 J_k = Tabulated1D(pz, pdf, [m], [jj])
                 profiles.append(J_k)
             data.compton_profiles['J'] = profiles
+
+        # Subshell photoelectric xs and atomic relaxation data
+        if ace.nxs[7] > 0:
+            data.atomic_relaxation = AtomicRelaxation.from_ace(ace)
+
+            # Get subshell designators
+            n_subshells = ace.nxs[7]
+            idx = ace.jxs[11]
+            designators = [int(i) for i in ace.xss[idx : idx+n_subshells]]
+
+            # Get energy grid for subshell photoionization
+            n_energy = ace.nxs[3]
+            idx = ace.jxs[1]
+            energy = np.exp(ace.xss[idx : idx+n_energy])*EV_PER_MEV
+
+            # Get cross section for each subshell
+            idx = ace.jxs[16]
+            for d in designators:
+                # Create photon reaction
+                mt = 533 + d
+                rx = PhotonReaction(mt)
+                data.reactions[mt] = rx
+
+                # Store cross section
+                xs = ace.xss[idx : idx+n_energy].copy()
+                nonzero = (xs != 0.0)
+                xs[nonzero] = np.exp(xs[nonzero])
+                rx.xs = Tabulated1D(energy, xs, [n_energy], [5])
+                idx += n_energy
+
+                # Copy binding energy
+                shell = _subshell(d)
+                e = data.atomic_relaxation.binding_energy[shell]
+                rx.subshell_binding_energy = e
 
         return data
 
@@ -819,14 +912,17 @@ class PhotonReaction(EqualityMixin):
                              'data for MT={}.'.format(mt))
 
         # Store cross section
-        xs = np.exp(ace.xss[idx : idx+n])
+        xs = ace.xss[idx : idx+n].copy()
+        nonzero = (xs != 0.0)
+        xs[nonzero] = np.exp(xs[nonzero])
         rx.xs = Tabulated1D(energy, xs, [n], [5])
 
         # Get form factors for incoherent/coherent scattering
+        new_format = (ace.nxs[6] > 0)
         if mt == 502:
             idx = ace.jxs[3]
-            if ace.nxs[6] > 0:
-                n = (ace.jxs[4] - ace.jxs[3]) // 2
+            if new_format:
+                n = (ace.jxs[4] - ace.jxs[3]) // 3
                 x = ace.xss[idx : idx+n]
                 idx += n
             else:
@@ -843,7 +939,7 @@ class PhotonReaction(EqualityMixin):
 
         elif mt == 504:
             idx = ace.jxs[2]
-            if ace.nxs[6] > 0:
+            if new_format:
                 n = (ace.jxs[3] - ace.jxs[2]) // 2
                 x = ace.xss[idx : idx+n]
                 idx += n

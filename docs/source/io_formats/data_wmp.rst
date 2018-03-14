@@ -28,8 +28,6 @@ Windowed Multipole Library Format
         ":math:`r`" and ":math:`i`" identifiers, similar to how `h5py`_ does it.
     - **end_E** (*double*)
         Highest energy the windowed multipole part of the library is valid for.
-    - **energy_points** (*double[]*)
-        Energy grid for the pointwise library in the reaction group.
     - **formalism** (*int*)
         The formalism of the underlying data. Uses the `ENDF-6`_ format
         formalism numbers.
@@ -47,12 +45,6 @@ Windowed Multipole Library Format
     - **l_value** (*int[]*)
         The index for a corresponding pole. Equivalent to the :math:`l` quantum
         number of the resonance the pole comes from :math:`+1`.
-    - **max_w** (*int*)
-        Maximum number of poles in a window.
-    - **MT_count** (*int*)
-        Number of pointwise tables in the library.
-    - **MT_list** (*int[]*)
-        A list of available MT identifiers. See `ENDF-6`_ for meaning.
     - **pseudo_K0RS** (*double[]*)
         :math:`l` dependent value of
 

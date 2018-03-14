@@ -332,7 +332,7 @@ class WindowedMultipole(EqualityMixin):
                     raise ValueError('For the Multi-level Breit-Wigner '
                          'formalism, data.shape[1] must be 4 or 5.  One value '
                          'for the pole. One each for the total, competitive, '
-                         'and absorption residues. Possibly one mor efor a '
+                         'and absorption residues. Possibly one more for a '
                          'fission residue.')
             if not np.issubdtype(data.dtype, complex):
                 raise TypeError('Multipole data arrays must be complex dtype')
@@ -428,6 +428,7 @@ class WindowedMultipole(EqualityMixin):
             format.
 
         """
+
         if isinstance(group_or_filename, h5py.Group):
             group = group_or_filename
         else:
@@ -442,7 +443,7 @@ class WindowedMultipole(EqualityMixin):
                     'Python API expects version ' + WMP_VERSION)
             group = h5file['nuclide']
 
-        # Read scalar values.  Note that group['max_w'] is ignored.
+        # Read scalars.
 
         if group['formalism'].value == _FORM_MLBW:
             out = cls('MLBW')
@@ -488,8 +489,6 @@ class WindowedMultipole(EqualityMixin):
         if out.fit_order < 2:
             raise ValueError("Windowed multipole is only supported for "
                              "curvefits with 3 or more terms.")
-
-        # Note that all the file 3 data (group['reactions/MT...']) are ignored.
 
         return out
 
@@ -652,3 +651,48 @@ class WindowedMultipole(EqualityMixin):
 
         fun = np.vectorize(lambda x: self._evaluate(x, T))
         return fun(E)
+
+    def to_hdf5(self, path, libver='earliest'):
+        """Export windowed multipole data to an HDF5 file.
+
+        Parameters
+        ----------
+        path : str
+            Path to write HDF5 file to
+        libver : {'earliest', 'latest'}
+            Compatibility mode for the HDF5 file. 'latest' will produce files
+            that are less backwards compatible but have performance benefits.
+
+        """
+
+        # Open file and write version.
+        f = h5py.File(path, 'w', libver=libver)
+        f.create_dataset('version', (1, ), dtype='S10')
+        f['version'][:] = WMP_VERSION.encode('ASCII')
+
+        # Make a nuclide group.
+        g = f.create_group('nuclide')
+
+        # Write scalars.
+        if self.formalism == 'MLBW':
+            g.create_dataset('formalism',
+                             data=np.array(_FORM_MLBW, dtype=np.int32))
+        else:
+            # Assume RM.
+            g.create_dataset('formalism',
+                             data=np.array(_FORM_RM, dtype=np.int32))
+        g.create_dataset('spacing', data=np.array(self.spacing))
+        g.create_dataset('sqrtAWR', data=np.array(self.sqrtAWR))
+        g.create_dataset('start_E', data=np.array(self.start_E))
+        g.create_dataset('end_E', data=np.array(self.end_E))
+
+        # Write arrays.
+        g.create_dataset('data', data=self.data)
+        g.create_dataset('l_value', data=self.l_value)
+        g.create_dataset('pseudo_K0RS', data=self.pseudo_k0RS)
+        g.create_dataset('w_start', data=self.w_start)
+        g.create_dataset('w_end', data=self.w_end)
+        g.create_dataset('broaden_poly', data=self.broaden_poly)
+        g.create_dataset('curvefit', data=self.curvefit)
+
+        f.close()

@@ -461,8 +461,8 @@ module constants
        MODE_PARTICLE    = 4, & ! Particle restart mode
        MODE_VOLUME      = 5    ! Volume calculation mode
 
-   ! Electron treatments
-   integer, parameter :: &
+  ! Electron treatments
+  integer, parameter :: &
        ELECTRON_LED     = 1, & ! Local Energy Deposition
        ELECTRON_TTB     = 2    ! Thick Target Bremsstrahlung
 

@@ -147,7 +147,7 @@ contains
     ! Figure out the number of unique l values in the l_value array.
     do i = 1, n_poles
       if (.not. l_val_dict % has(this % l_value(i))) then
-        call l_val_dict % set(i, 0)
+        call l_val_dict % set(this % l_value(i), 0)
       end if
     end do
     this % num_l = l_val_dict % size()

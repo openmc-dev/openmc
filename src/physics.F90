@@ -128,17 +128,17 @@ contains
     ! exiting neutron
     call scatter(p, i_nuclide, i_nuc_mat)
 
-    ! Play russian roulette if survival biasing is turned on
-    if (survival_biasing) then
-      call russian_roulette(p)
-      if (.not. p % alive) return
-    end if
-
     ! Advance URR seed stream 'N' times after energy changes
     if (p % E /= p % last_E) then
       call prn_set_stream(STREAM_URR_PTABLE)
       call advance_prn_seed(size(nuclides, kind=8))
       call prn_set_stream(STREAM_TRACKING)
+    end if
+
+    ! Play russian roulette if survival biasing is turned on
+    if (survival_biasing) then
+      call russian_roulette(p)
+      if (.not. p % alive) return
     end if
 
   end subroutine sample_neutron_reaction

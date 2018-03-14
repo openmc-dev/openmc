@@ -21,7 +21,6 @@ module input_xml
   use message_passing
   use mgxs_data,        only: create_macro_xs, read_mgxs
   use mgxs_header
-  use multipole,        only: multipole_read
   use nuclide_header
   use output,           only: title, header, print_plot
   use plot_header
@@ -4377,7 +4376,7 @@ contains
       allocate(nuc % multipole)
 
       ! Call the read routine
-      call multipole_read(filename, nuc % multipole, i_table)
+      call nuc % multipole % from_hdf5(filename)
       nuc % mp_present = .true.
 
     end associate

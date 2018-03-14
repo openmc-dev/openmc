@@ -434,4 +434,21 @@ contains
 
   end subroutine photon_calculate_xs
 
+!===============================================================================
+! FREE_MEMORY_PHOTON deallocates/resets global variables in this module
+!===============================================================================
+
+  subroutine free_memory_photon()
+    ! Deallocate photon cross section data
+    if (allocated(elements)) deallocate(elements)
+    if (allocated(compton_profile_pz)) deallocate(compton_profile_pz)
+    n_elements = 0
+    call element_dict % clear()
+
+    ! Clear TTB-related arrays
+    if (allocated(ttb_e_grid)) deallocate(ttb_e_grid)
+    if (allocated(ttb_k_grid)) deallocate(ttb_k_grid)
+    if (allocated(ttb)) deallocate(ttb)
+  end subroutine free_memory_photon
+
 end module photon_header

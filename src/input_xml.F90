@@ -10,7 +10,7 @@ module input_xml
   use distribution_multivariate
   use distribution_univariate
   use endf,             only: reaction_name
-  use error,            only: fatal_error, warning, write_message
+  use error,            only: fatal_error, warning, write_message, openmc_err_msg
   use geometry,         only: calc_offsets, maximum_levels, count_instance, &
                               neighbor_lists
   use geometry_header
@@ -2358,13 +2358,13 @@ contains
            call get_node_value(node_filt, "type", temp_str)
       temp_str = to_lower(temp_str)
 
-      ! Determine number of bins
+      ! Make sure bins have been set
       select case(temp_str)
       case ("energy", "energyout", "mu", "polar", "azimuthal")
         if (.not. check_for_node(node_filt, "bins")) then
           call fatal_error("Bins not set in filter " // trim(to_str(filter_id)))
         end if
-      case ("mesh", "universe", "material", "cell", "distribcell", &
+      case ("mesh", "meshsurface", "universe", "material", "cell", "distribcell", &
             "cellborn", "cellfrom", "surface", "delayedgroup")
         if (.not. check_for_node(node_filt, "bins")) then
           call fatal_error("Bins not set in filter " // trim(to_str(filter_id)))
@@ -2373,6 +2373,9 @@ contains
 
       ! Allocate according to the filter type
       err = openmc_filter_set_type(i_start + i - 1, to_c_string(temp_str))
+      if (err /= 0) then
+        call fatal_error(to_f_string(openmc_err_msg))
+      end if
 
       ! Read filter data from XML
       call f % obj % from_xml(node_filt)
@@ -2923,6 +2926,8 @@ contains
               ! Set filters
               err = openmc_tally_set_filters(i_start + i - 1, n_filter, temp_filter)
               deallocate(temp_filter)
+            else
+              t % score_bins(j) = SCORE_CURRENT
             end if
 
           case ('events')

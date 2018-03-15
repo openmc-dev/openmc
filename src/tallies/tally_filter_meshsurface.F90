@@ -64,7 +64,7 @@ contains
 
     ! Determine number of bins
     n_dim = meshes(i_mesh) % n_dimension
-    this % n_bins = 4*n_dim*product(meshes(i_mesh) % dimension + 1)
+    this % n_bins = 4*n_dim*product(meshes(i_mesh) % dimension)
 
     ! Store the index of the mesh
     this % mesh = i_mesh
@@ -79,8 +79,6 @@ contains
     integer :: j                    ! loop indices
     integer :: n_dim                ! num dimensions of the mesh
     integer :: d1                   ! dimension index
-    integer :: d2                   ! dimension index
-    integer :: d3                   ! dimension index
     integer :: ijk0(3)              ! indices of starting coordinates
     integer :: ijk1(3)              ! indices of ending coordinates
     integer :: n_cross              ! number of surface crossings
@@ -95,7 +93,6 @@ contains
     real(8) :: distance             ! actual distance traveled
     logical :: start_in_mesh        ! particle's starting xyz in mesh?
     logical :: end_in_mesh          ! particle's ending xyz in mesh?
-    logical :: cross_surface        ! whether the particle crosses a surface
 
     ! Copy starting and ending location of particle
     xyz0 = p % last_xyz_current
@@ -153,15 +150,6 @@ contains
         ! Loop over the dimensions
         do d1 = 1, n_dim
 
-          ! Get the other dimensions.
-          if (d1 == 1) then
-            d2 = mod(d1, 3) + 1
-            d3 = mod(d1 + 1, 3) + 1
-          else
-            d2 = mod(d1 + 1, 3) + 1
-            d3 = mod(d1, 3) + 1
-          end if
-
           ! Check whether distance is the shortest distance
           if (distance == d(d1)) then
 
@@ -173,103 +161,57 @@ contains
                    all(ijk0(:n_dim) <= m % dimension)) then
                 i_surf = d1 * 4 - 1
                 i_mesh = m % get_bin_from_indices(ijk0)
-                i_bin = 4*n_dim*i_mesh + i_surf + 1
+                i_bin = 4*n_dim*(i_mesh - 1) + i_surf
 
                 call match % bins % push_back(i_bin)
                 call match % weights % push_back(ONE)
               end if
 
-              ! Inward current on d1 min surface
-              cross_surface = .false.
-              select case(n_dim)
-
-              case (1)
-                if (ijk0(d1) >= 0 .and. ijk0(d1) <  m % dimension(d1)) then
-                  cross_surface = .true.
-                end if
-
-              case (2)
-                if (ijk0(d1) >= 0 .and. ijk0(d1) <  m % dimension(d1) .and. &
-                     ijk0(d2) >= 1 .and. ijk0(d2) <= m % dimension(d2)) then
-                  cross_surface = .true.
-                end if
-
-              case (3)
-                if (ijk0(d1) >= 0 .and. ijk0(d1) <  m % dimension(d1) .and. &
-                     ijk0(d2) >= 1 .and. ijk0(d2) <= m % dimension(d2) .and. &
-                     ijk0(d3) >= 1 .and. ijk0(d3) <= m % dimension(d3)) then
-                  cross_surface = .true.
-                end if
-              end select
-
-              ! If the particle crossed the surface, tally the current
-              if (cross_surface) then
-                ijk0(d1) = ijk0(d1) + 1
-                i_surf = d1 * 4 - 2
-                i_mesh = m % get_bin_from_indices(ijk0)
-                i_bin = 4*n_dim*i_mesh + i_surf + 1
-
-                call match % bins % push_back(i_bin)
-                call match % weights % push_back(ONE)
-
-                ijk0(d1) = ijk0(d1) - 1
-              end if
-
+              ! Advance position
               ijk0(d1) = ijk0(d1) + 1
               xyz_cross(d1) = xyz_cross(d1) + m % width(d1)
 
-              ! The particle is moving in the negative d1 direction
+              ! If the particle crossed the surface, tally the inward current on
+              ! d1 min surface
+              if (all(ijk0(:n_dim) >= 1) .and. &
+                   all(ijk0(:n_dim) <= m % dimension)) then
+                i_surf = d1 * 4 - 2
+                i_mesh = m % get_bin_from_indices(ijk0)
+                i_bin = 4*n_dim*(i_mesh - 1) + i_surf
+
+                call match % bins % push_back(i_bin)
+                call match % weights % push_back(ONE)
+              end if
+
             else
+              ! The particle is moving in the negative d1 direction
 
               ! Outward current on d1 min surface
               if (all(ijk0(:n_dim) >= 1) .and. &
                    all(ijk0(:n_dim) <= m % dimension)) then
                 i_surf = d1 * 4 - 3
                 i_mesh = m % get_bin_from_indices(ijk0)
-                i_bin = 4*n_dim*i_mesh + i_surf + 1
+                i_bin = 4*n_dim*(i_mesh - 1) + i_surf
 
                 call match % bins % push_back(i_bin)
                 call match % weights % push_back(ONE)
               end if
 
-              ! Inward current on d1 max surface
-              cross_surface = .false.
-              select case(n_dim)
-
-              case (1)
-                if (ijk0(d1) >  1 .and. ijk0(d1) <= m % dimension(d1) + 1) then
-                  cross_surface = .true.
-                end if
-
-              case (2)
-                if (ijk0(d1) >  1 .and. ijk0(d1) <= m % dimension(d1) + 1 .and.&
-                     ijk0(d2) >= 1 .and. ijk0(d2) <= m % dimension(d2)) then
-                  cross_surface = .true.
-                end if
-
-              case (3)
-                if (ijk0(d1) >  1 .and. ijk0(d1) <= m % dimension(d1) + 1 .and.&
-                     ijk0(d2) >= 1 .and. ijk0(d2) <= m % dimension(d2) .and. &
-                     ijk0(d3) >= 1 .and. ijk0(d3) <= m % dimension(d3)) then
-                  cross_surface = .true.
-                end if
-              end select
-
-              ! If the particle crossed the surface, tally the current
-              if (cross_surface) then
-                ijk0(d1) = ijk0(d1) - 1
-                i_surf = d1 * 4
-                i_mesh = m % get_bin_from_indices(ijk0)
-                i_bin = 4*n_dim*i_mesh + i_surf + 1
-
-                call match % bins % push_back(i_bin)
-                call match % weights % push_back(ONE)
-
-                ijk0(d1) = ijk0(d1) + 1
-              end if
-
+              ! Advance position
               ijk0(d1) = ijk0(d1) - 1
               xyz_cross(d1) = xyz_cross(d1) - m % width(d1)
+
+              ! If the particle crossed the surface, tally the inward current on
+              ! d1 max surface
+              if (all(ijk0(:n_dim) >= 1) .and. &
+                   all(ijk0(:n_dim) <= m % dimension)) then
+                i_surf = d1 * 4
+                i_mesh = m % get_bin_from_indices(ijk0)
+                i_bin = 4*n_dim*(i_mesh - 1) + i_surf
+
+                call match % bins % push_back(i_bin)
+                call match % weights % push_back(ONE)
+              end if
             end if
           end if
         end do
@@ -305,7 +247,7 @@ contains
       allocate(ijk(n_dim))
 
       ! Get flattend mesh index and surface index
-      i_mesh = (bin - 1) / (4*n_dim)
+      i_mesh = (bin - 1) / (4*n_dim) + 1
       i_surf = mod(bin - 1, 4*n_dim) + 1
 
       ! Get mesh index part of label
@@ -370,7 +312,7 @@ contains
           if (index_mesh >= 1 .and. index_mesh <= n_meshes) then
             f % mesh = index_mesh
             n_dim = meshes(index_mesh) % n_dimension
-            f % n_bins = 4*n_dim*product(meshes(index_mesh) % dimension + 1)
+            f % n_bins = 4*n_dim*product(meshes(index_mesh) % dimension)
           else
             err = E_OUT_OF_BOUNDS
             call set_errmsg("Index in 'meshes' array is out of bounds.")

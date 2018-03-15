@@ -771,12 +771,6 @@ contains
         end associate
       end if
 
-      ! Handle surface current tallies separately
-      if (t % type == TALLY_MESH_CURRENT) then
-        call write_surface_current(t, unit_tally)
-        cycle
-      end if
-
       ! WARNING: Admittedly, the logic for moving for printing results is
       ! extremely confusing and took quite a bit of time to get correct. The
       ! logic is structured this way since it is not practical to have a do

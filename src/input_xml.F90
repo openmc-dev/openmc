@@ -2927,6 +2927,7 @@ contains
               err = openmc_tally_set_filters(i_start + i - 1, n_filter, temp_filter)
               deallocate(temp_filter)
             else
+              t % type = TALLY_MESH_CURRENT
               t % score_bins(j) = SCORE_CURRENT
             end if
 

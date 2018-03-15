@@ -336,6 +336,8 @@ contains
         j = FILTER_SURFACE
       type is (MeshFilter)
         j = FILTER_MESH
+      type is (MeshSurfaceFilter)
+        j = FILTER_MESHSURFACE
       type is (EnergyFilter)
         j = FILTER_ENERGYIN
       type is (EnergyoutFilter)

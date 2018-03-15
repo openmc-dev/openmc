@@ -422,6 +422,7 @@ set(LIBOPENMC_FORTRAN_SRC
   src/tallies/tally_filter_energyfunc.F90
   src/tallies/tally_filter_material.F90
   src/tallies/tally_filter_mesh.F90
+  src/tallies/tally_filter_meshsurface.F90
   src/tallies/tally_filter_mu.F90
   src/tallies/tally_filter_polar.F90
   src/tallies/tally_filter_surface.F90

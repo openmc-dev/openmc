@@ -75,6 +75,7 @@ module openmc_api
   public :: openmc_material_filter_get_bins
   public :: openmc_material_filter_set_bins
   public :: openmc_mesh_filter_set_mesh
+  public :: openmc_meshsurface_filter_set_mesh
   public :: openmc_next_batch
   public :: openmc_nuclide_name
   public :: openmc_plot_geometry

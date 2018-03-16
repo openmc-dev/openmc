@@ -292,7 +292,7 @@ module constants
   ! Tally type
   integer, parameter :: &
        TALLY_VOLUME          = 1, &
-       TALLY_MESH_CURRENT    = 2, &
+       TALLY_MESH_SURFACE    = 2, &
        TALLY_SURFACE         = 3
 
   ! Tally estimator types

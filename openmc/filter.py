@@ -845,6 +845,10 @@ class MeshFilter(Filter):
         return df
 
 
+class MeshSurfaceFilter(MeshFilter):
+    pass
+
+
 class RealFilter(Filter):
     """Tally modifier that describes phase-space and other characteristics
 

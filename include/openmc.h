@@ -52,6 +52,7 @@ extern "C" {
   int openmc_material_filter_get_bins(int32_t index, int32_t** bins, int32_t* n);
   int openmc_material_filter_set_bins(int32_t index, int32_t n, const int32_t* bins);
   int openmc_mesh_filter_set_mesh(int32_t index, int32_t index_mesh);
+  int openmc_meshsurface_filter_set_mesh(int32_t index, int32_t index_mesh);
   int openmc_next_batch();
   int openmc_nuclide_name(int index, char** name);
   void openmc_plot_geometry();

@@ -2197,7 +2197,6 @@ contains
     integer :: l             ! another loop index
     integer :: filter_id     ! user-specified identifier for filter
     integer :: i_filt        ! index in filters array
-    integer :: i_filter_mesh ! index of mesh filter
     integer :: i_elem        ! index of entry in dictionary
     integer :: n             ! size of arrays in mesh specification
     integer :: n_words       ! number of words read
@@ -2209,7 +2208,6 @@ contains
     integer :: trig_ind      ! index of triggers array for each tally
     integer :: user_trig_ind ! index of user-specified triggers for each tally
     integer :: i_start, i_end
-    integer :: i_filt_start, i_filt_end
     integer(C_INT) :: err
     real(8) :: threshold     ! trigger convergence threshold
     integer :: n_order       ! moment order requested
@@ -2838,18 +2836,18 @@ contains
                  &t % find_filter(FILTER_CELL) > 0 .or. &
                  &t % find_filter(FILTER_CELLFROM) > 0) then
 
-              ! Check to make sure that mesh currents are not desired as well
-              if (t % find_filter(FILTER_MESH) > 0) then
-                call fatal_error("Cannot tally other mesh currents &
-                     &in the same tally as surface currents")
+              ! Check to make sure that mesh surface currents are not desired as well
+              if (t % find_filter(FILTER_MESHSURFACE) > 0) then
+                call fatal_error("Cannot tally mesh surface currents &
+                     &in the same tally as normal surface currents")
               end if
 
               t % type = TALLY_SURFACE
               t % score_bins(j) = SCORE_CURRENT
 
-            else if (t % find_filter(FILTER_MESH) > 0) then
+            else if (t % find_filter(FILTER_MESHSURFACE) > 0) then
               t % score_bins(j) = SCORE_CURRENT
-              t % type = TALLY_MESH_CURRENT
+              t % type = TALLY_MESH_SURFACE
 
               ! Check to make sure that current is the only desired response
               ! for this tally
@@ -2857,78 +2855,6 @@ contains
                 call fatal_error("Cannot tally other scores in the &
                      &same tally as surface currents")
               end if
-
-              ! Get index of mesh filter
-              i_filter_mesh = t % filter(t % find_filter(FILTER_MESH))
-
-              ! Check to make sure mesh filter was specified
-              if (i_filter_mesh == 0) then
-                call fatal_error("Cannot tally surface current without a mesh &
-                     &filter.")
-              end if
-
-              ! Get pointer to mesh
-              select type(filt => filters(i_filter_mesh) % obj)
-              type is (MeshFilter)
-                m => meshes(filt % mesh)
-              end select
-
-              ! Extend the filters array so we can add a surface filter and
-              ! mesh filter
-              err = openmc_extend_filters(2, i_filt_start, i_filt_end)
-
-              ! Duplicate the mesh filter since other tallies might use this
-              ! filter and we need to change the dimension
-              filters(i_filt_start) = filters(i_filter_mesh)
-
-              ! We need to increase the dimension by one since we also need
-              ! currents coming into and out of the boundary mesh cells.
-              filters(i_filt_start) % obj % n_bins = product(m % dimension + 1)
-
-              ! Set ID
-              call openmc_get_filter_next_id(filter_id)
-              err = openmc_filter_set_id(i_filt_start, filter_id)
-
-
-              ! Add surface filter
-              allocate(SurfaceFilter :: filters(i_filt_end) % obj)
-              select type (filt => filters(i_filt_end) % obj)
-              type is (SurfaceFilter)
-                filt % n_bins = 4 * m % n_dimension
-                allocate(filt % surfaces(4 * m % n_dimension))
-                if (m % n_dimension == 1) then
-                  filt % surfaces = (/ OUT_LEFT, IN_LEFT, OUT_RIGHT, IN_RIGHT /)
-                elseif (m % n_dimension == 2) then
-                  filt % surfaces = (/ OUT_LEFT, IN_LEFT, OUT_RIGHT, IN_RIGHT, &
-                       OUT_BACK, IN_BACK, OUT_FRONT, IN_FRONT /)
-                elseif (m % n_dimension == 3) then
-                  filt % surfaces = (/ OUT_LEFT, IN_LEFT, OUT_RIGHT, IN_RIGHT, &
-                       OUT_BACK, IN_BACK, OUT_FRONT, IN_FRONT, OUT_BOTTOM, &
-                       IN_BOTTOM, OUT_TOP, IN_TOP /)
-                end if
-                filt % current = .true.
-
-                ! Set ID
-                call openmc_get_filter_next_id(filter_id)
-                err = openmc_filter_set_id(i_filt_end, filter_id)
-              end select
-
-              ! Copy filter indices to resized array
-              n_filter = size(t % filter)
-              allocate(temp_filter(n_filter + 1))
-              temp_filter(1:size(t % filter)) = t % filter
-              n_filter = n_filter + 1
-
-              ! Set mesh and surface filters
-              temp_filter(t % find_filter(FILTER_MESH)) = i_filt_start
-              temp_filter(n_filter) = i_filt_end
-
-              ! Set filters
-              err = openmc_tally_set_filters(i_start + i - 1, n_filter, temp_filter)
-              deallocate(temp_filter)
-            else
-              t % type = TALLY_MESH_CURRENT
-              t % score_bins(j) = SCORE_CURRENT
             end if
 
           case ('events')

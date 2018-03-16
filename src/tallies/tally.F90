@@ -4236,7 +4236,7 @@ contains
             elseif (t % estimator == ESTIMATOR_COLLISION) then
               call active_collision_tallies % push_back(i)
             end if
-          elseif (t % type == TALLY_MESH_CURRENT) then
+          elseif (t % type == TALLY_MESH_SURFACE) then
             call active_current_tallies % push_back(i)
           elseif (t % type == TALLY_SURFACE) then
             call active_surface_tallies % push_back(i)

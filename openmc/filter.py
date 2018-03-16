@@ -865,10 +865,25 @@ class MeshSurfaceFilter(MeshFilter):
         return 4*n_dim*reduce(operator.mul, self.mesh.dimension)
 
     def get_bin_index(self, filter_bin):
-        raise NotImplementedError
+        # Split bin into mesh/surface parts
+        *mesh_tuple, surf = filter_bin
+
+        # Get index for mesh alone
+        mesh_index = super().get_bin_index(mesh_tuple)
+
+        # Combine surface and mesh index
+        n_dim = len(self.mesh.dimension)
+        for surf_index, name in _CURRENT_NAMES.items():
+            if surf == name:
+                return 4*n_dim*mesh_index + surf_index - 1
+        else:
+            raise ValueError("'{}' is not a valid mesh surface.".format(surf))
 
     def get_bin(self, bin_index):
-        raise NotImplementedError
+        n_dim = len(self.mesh.dimension)
+        mesh_index, surf_index = divmod(bin_index, 4*n_dim)
+        mesh_bin = super().get_bin(mesh_index)
+        return mesh_bin + (_CURRENT_NAMES[surf_index + 1],)
 
     def get_pandas_dataframe(self, data_size, stride, **kwargs):
         """Builds a Pandas DataFrame for the Filter's bins.

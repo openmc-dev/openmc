@@ -30,6 +30,9 @@ class FilterMeshTestHarness(HashedPyAPITestHarness):
         mesh_1d_filter = openmc.MeshFilter(mesh_1d)
         mesh_2d_filter = openmc.MeshFilter(mesh_2d)
         mesh_3d_filter = openmc.MeshFilter(mesh_3d)
+        meshsurf_1d_filter = openmc.MeshSurfaceFilter(mesh_1d)
+        meshsurf_2d_filter = openmc.MeshSurfaceFilter(mesh_2d)
+        meshsurf_3d_filter = openmc.MeshSurfaceFilter(mesh_3d)
 
         # Initialized the tallies
         tally = openmc.Tally(name='tally 1')
@@ -38,7 +41,7 @@ class FilterMeshTestHarness(HashedPyAPITestHarness):
         self._model.tallies.append(tally)
 
         tally = openmc.Tally(name='tally 2')
-        tally.filters = [mesh_1d_filter]
+        tally.filters = [meshsurf_1d_filter]
         tally.scores = ['current']
         self._model.tallies.append(tally)
 
@@ -48,7 +51,7 @@ class FilterMeshTestHarness(HashedPyAPITestHarness):
         self._model.tallies.append(tally)
 
         tally = openmc.Tally(name='tally 4')
-        tally.filters = [mesh_2d_filter]
+        tally.filters = [meshsurf_2d_filter]
         tally.scores = ['current']
         self._model.tallies.append(tally)
 
@@ -58,7 +61,7 @@ class FilterMeshTestHarness(HashedPyAPITestHarness):
         self._model.tallies.append(tally)
 
         tally = openmc.Tally(name='tally 6')
-        tally.filters = [mesh_3d_filter]
+        tally.filters = [meshsurf_3d_filter]
         tally.scores = ['current']
         self._model.tallies.append(tally)
 

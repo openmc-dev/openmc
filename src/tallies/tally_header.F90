@@ -144,7 +144,7 @@ module tally_header
   ! Active tally lists
   type(VectorInt), public :: active_analog_tallies
   type(VectorInt), public :: active_tracklength_tallies
-  type(VectorInt), public :: active_current_tallies
+  type(VectorInt), public :: active_meshsurf_tallies
   type(VectorInt), public :: active_collision_tallies
   type(VectorInt), public :: active_tallies
   type(VectorInt), public :: active_surface_tallies
@@ -418,7 +418,7 @@ contains
     ! Deallocate tally node lists
     call active_analog_tallies % clear()
     call active_tracklength_tallies % clear()
-    call active_current_tallies % clear()
+    call active_meshsurf_tallies % clear()
     call active_collision_tallies % clear()
     call active_surface_tallies % clear()
     call active_tallies % clear()

@@ -276,8 +276,9 @@ contains
     ! Clear active tally lists
     call active_analog_tallies % clear()
     call active_tracklength_tallies % clear()
-    call active_current_tallies % clear()
+    call active_meshsurf_tallies % clear()
     call active_collision_tallies % clear()
+    call active_surface_tallies % clear()
     call active_tallies % clear()
 
     ! Reset timers

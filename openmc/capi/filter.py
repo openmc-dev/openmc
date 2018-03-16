@@ -55,6 +55,9 @@ _dll.openmc_material_filter_set_bins.errcheck = _error_handler
 _dll.openmc_mesh_filter_set_mesh.argtypes = [c_int32, c_int32]
 _dll.openmc_mesh_filter_set_mesh.restype = c_int
 _dll.openmc_mesh_filter_set_mesh.errcheck = _error_handler
+_dll.openmc_meshsurface_filter_set_mesh.argtypes = [c_int32, c_int32]
+_dll.openmc_meshsurface_filter_set_mesh.restype = c_int
+_dll.openmc_meshsurface_filter_set_mesh.errcheck = _error_handler
 
 
 class Filter(_FortranObjectWithID):
@@ -188,6 +191,10 @@ class MeshFilter(Filter):
     filter_type = 'mesh'
 
 
+class MeshSurfaceFilter(Filter):
+    filter_type = 'meshsurface'
+
+
 class MuFilter(Filter):
     filter_type = 'mu'
 
@@ -216,6 +223,7 @@ _FILTER_TYPE_MAP = {
     'energyfunction': EnergyFunctionFilter,
     'material': MaterialFilter,
     'mesh': MeshFilter,
+    'meshsurface': MeshSurfaceFilter,
     'mu': MuFilter,
     'polar': PolarFilter,
     'surface': SurfaceFilter,

@@ -51,6 +51,13 @@ contains
       call sample_positron_reaction(p)
     end if
 
+    ! Kill particle if energy falls below cutoff
+    if (p % E < energy_cutoff(p % type)) then
+      p % alive = .false.
+      p % wgt = ZERO
+      p % last_wgt = ZERO
+    end if
+
     ! Display information about collision
     if (verbosity >= 10 .or. trace) then
       if (p % type == NEUTRON) then
@@ -128,17 +135,17 @@ contains
     ! exiting neutron
     call scatter(p, i_nuclide, i_nuc_mat)
 
-    ! Play russian roulette if survival biasing is turned on
-    if (survival_biasing) then
-      call russian_roulette(p)
-      if (.not. p % alive) return
-    end if
-
     ! Advance URR seed stream 'N' times after energy changes
     if (p % E /= p % last_E) then
       call prn_set_stream(STREAM_URR_PTABLE)
       call advance_prn_seed(size(nuclides, kind=8))
       call prn_set_stream(STREAM_TRACKING)
+    end if
+
+    ! Play russian roulette if survival biasing is turned on
+    if (survival_biasing) then
+      call russian_roulette(p)
+      if (.not. p % alive) return
     end if
 
   end subroutine sample_neutron_reaction
@@ -170,7 +177,9 @@ contains
     real(8) :: uvw(3)       ! new direction
     real(8) :: rel_vel      ! relative velocity of electron
 
-    ! Kill photon if below energy cutoff
+    ! Kill photon if below energy cutoff -- an extra check is made here because
+    ! photons with energy below the cutoff may have been produced by neutrons
+    ! reactions or atomic relaxation
     if (p % E < energy_cutoff(PHOTON)) then
       p % E = ZERO
       p % alive = .false.

@@ -6,7 +6,6 @@ relaxation data and convert it to an HDF5 library for use with OpenMC.
 This data is used for photon transport in OpenMC.
 """
 
-from __future__ import print_function
 import os
 import sys
 import shutil

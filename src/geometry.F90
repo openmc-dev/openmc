@@ -206,9 +206,12 @@ contains
     end do
     j = p % n_coord
 
-    ! Determine universe (if not set, use root universe
+    ! Determine universe (if not yet set, use root universe)
     i_universe = p % coord(j) % universe
-    if (i_universe == NONE) i_universe = root_universe
+    if (i_universe == NONE) then
+      p % coord(j) % universe = root_universe
+      i_universe = root_universe
+    end if
 
     ! set size of list to search
     if (present(search_cells)) then

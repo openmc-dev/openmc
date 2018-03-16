@@ -1,8 +1,8 @@
 .. _io_nuclear_data:
 
-========================
-Nuclear Data File Format
-========================
+=========================
+Nuclear Data File Formats
+=========================
 
 ---------------------
 Incident Neutron Data
@@ -10,7 +10,7 @@ Incident Neutron Data
 
 **/**
 
-:Attributes:
+:Attributes: - **filetype** (*char[]*) -- String indicating the type of file
              - **version** (*int[2]*) -- Major and minor version of the data
 
 **/<nuclide name>/**
@@ -22,7 +22,9 @@ Incident Neutron Data
              - **atomic_weight_ratio** (*double*) -- Mass in units of neutron masses
              - **n_reaction** (*int*) -- Number of reactions
 
-:Datasets: - **energy** (*double[]*) -- Energy points at which cross sections are tabulated
+:Datasets:
+           - **energy** (*double[]*) -- Energies in [eV] at which cross sections
+             are tabulated
 
 **/<nuclide name>/kTs/**
 
@@ -31,7 +33,7 @@ temperature-dependent data set.  For example, the data set corresponding to
 300 Kelvin would be located at `300K`.
 
 :Datasets:
-           - **<TTT>K** (*double*) -- kT values (in eV) for each temperature
+           - **<TTT>K** (*double*) -- kT values in [eV] for each temperature
              TTT (in Kelvin)
 
 **/<nuclide name>/reactions/reaction_<mt>/**
@@ -112,6 +114,92 @@ temperature-dependent data set.  For example, the data set corresponding to
            - **q_recoverable** (:ref:`polynomial <1d_polynomial>` or
              :ref:`tabulated <1d_tabulated>`) -- The recoverable fission Q-value
              (Q_prompt + delayed neutrons + delayed photons + betas)
+
+--------------------
+Incident Photon Data
+--------------------
+
+**/**
+
+:Attributes: - **filetype** (*char[]*) -- String indicating the type of file
+             - **version** (*int[2]*) -- Major and minor version of the data
+
+**/<element>/**
+
+:Attributes: - **Z** (*int*) -- Atomic number
+
+:Datasets:
+           - **energy** (*double[]*) -- Energies in [eV] at which cross sections
+             are tabulated
+
+**/<element>/bremsstrahlung/**
+
+:Datasets: - **electron_energy** (*double[]*) -- Incident electron energy in [eV]
+           - **photon_energy** (*double[]*) -- Outgoing photon energy as
+             fraction of incident electron energy
+           - **dcs** (*double[][]*) -- Bremsstrahlung differential cross section
+             at each incident energy in [mb/eV]
+
+**/<element>/coherent/**
+
+:Datasets: - **xs** (*double[]*) -- Coherent scattering cross section in [b]
+           - **integrated_scattering_factor** (:ref:`tabulated <1d_tabulated>`)
+             -- Integrated coherent scattering form factor
+           - **anomalous_real** (:ref:`tabulated <1d_tabulated>`) -- Real part
+             of the anomalous scattering factor
+           - **anomalous_imag** (:ref:`tabulated <1d_tabulated>`) -- Imaginary
+             part of the anomalous scattering factor
+
+**/<element>/compton_profiles/**
+
+:Datasets: - **binding_energy** (*double[]*) -- Binding energy for each subshell in [eV]
+           - **num_electrons** (*double[]*) -- Number of electrons in each subshell
+           - **pz** (*double[]*) -- Projection of the electron momentum on the
+             scattering vector in units of :math:`me^2 / \hbar` where :math:`m`
+             is the electron rest mass and :math:`e` is the electron charge
+           - **J** (*double[][]*) -- Compton profile for each subshell in units
+             of :math:`\hbar / (me^2)`
+
+**/<element>/incoherent/**
+
+:Datasets: - **xs** (*double[]*) -- Incoherent scattering cross section in [b]
+           - **scattering_factor** (:ref:`tabulated <1d_tabulated>`) --
+
+**/<element>/pair_production_electron/**
+
+:Datasets: - **xs** (*double[]*) -- Pair production (electron field) cross section in [b]
+
+**/<element>/pair_production_nuclear/**
+
+:Datasets: - **xs** (*double[]*) -- Pair production (nuclear field) cross section in [b]
+
+**/<element>/photoelectric/**
+
+:Datasets: - **xs** (*double[]*) -- Total photoionization cross section in [b]
+
+**/<element>/stopping_powers/**
+
+:Datasets: - **density_effect** (*double[]*) -- Density effect parameter
+           - **energy** (*double[]*) -- Energies in [eV]
+           - **s_collision** (*double[]*) -- Collisiong stopping power in [eV-cm\ :sup:`2`\ /g]
+           - **s_radiative** (*double[]*) -- Radiative stopping power in [eV-cm\ :sup:`2`\ /g]
+
+**/<element>/subshells/**
+
+:Attributes: - **designators** (*char[][]*) -- Designator for each shell, e.g. 'M2'
+
+**/<element>/subshells/<designator>/**
+
+:Attributes: - **binding_energy** (*double*) -- Binding energy of the subshell in [eV]
+             - **num_electrons** (*double*) -- Number of electrons in the subshell
+
+:Datasets: - **transitions** (*double[][]*) -- Atomic relaxation data
+           - **xs** (*double[]*) -- Photoionization cross section for subshell
+             in [b] tabulated against the main energy grid
+
+             :Attributes:
+                          - **threshold_idx** (*int*) -- Index on the energy
+                            grid that the reaction threshold
 
 -------------------------------
 Thermal Neutron Scattering Data

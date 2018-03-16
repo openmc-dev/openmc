@@ -179,14 +179,18 @@ contains
     call close_group(rgroup)
 
     ! Read pair production
-    rgroup = open_group(group_id, 'pair_production')
-    call read_dataset(this % pair_production_nuclear, rgroup, 'xs')
+    rgroup = open_group(group_id, 'pair_production_electron')
+    call read_dataset(this % pair_production_electron, rgroup, 'xs')
     call close_group(rgroup)
 
     ! Read pair production
-    rgroup = open_group(group_id, 'triplet_production')
-    call read_dataset(this % pair_production_electron, rgroup, 'xs')
-    call close_group(rgroup)
+    if (object_exists(group_id, 'pair_production_nuclear')) then
+      rgroup = open_group(group_id, 'pair_production_nuclear')
+      call read_dataset(this % pair_production_nuclear, rgroup, 'xs')
+      call close_group(rgroup)
+    else
+      this % pair_production_nuclear(:) = ZERO
+    end if
 
     ! Read photoelectric
     rgroup = open_group(group_id, 'photoelectric')
@@ -429,5 +433,22 @@ contains
     xs % last_E = E
 
   end subroutine photon_calculate_xs
+
+!===============================================================================
+! FREE_MEMORY_PHOTON deallocates/resets global variables in this module
+!===============================================================================
+
+  subroutine free_memory_photon()
+    ! Deallocate photon cross section data
+    if (allocated(elements)) deallocate(elements)
+    if (allocated(compton_profile_pz)) deallocate(compton_profile_pz)
+    n_elements = 0
+    call element_dict % clear()
+
+    ! Clear TTB-related arrays
+    if (allocated(ttb_e_grid)) deallocate(ttb_e_grid)
+    if (allocated(ttb_k_grid)) deallocate(ttb_k_grid)
+    if (allocated(ttb)) deallocate(ttb)
+  end subroutine free_memory_photon
 
 end module photon_header

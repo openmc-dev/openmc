@@ -1164,9 +1164,7 @@ class Tally(IDManagerMixin):
                 if not user_filter:
                     # Create list of 2- or 3-tuples tuples for mesh cell bins
                     if isinstance(self_filter, openmc.MeshFilter):
-                        dimension = self_filter.mesh.dimension
-                        xyz = [range(1, x+1) for x in dimension]
-                        bins = list(product(*xyz))
+                        bins = list(self_filter.mesh.indices)
 
                     # Create list of 2-tuples for energy boundary bins
                     elif isinstance(self_filter, (openmc.EnergyFilter,

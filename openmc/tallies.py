@@ -1674,19 +1674,22 @@ class Tally(IDManagerMixin):
             new_tally._std_dev = np.sqrt(data['self']['std. dev.']**2 +
                                          data['other']['std. dev.']**2)
         elif binary_op == '*':
-            self_rel_err = data['self']['std. dev.'] / data['self']['mean']
-            other_rel_err = data['other']['std. dev.'] / data['other']['mean']
+            with np.errstate(divide='ignore', invalid='ignore'):
+                self_rel_err = data['self']['std. dev.'] / data['self']['mean']
+                other_rel_err = data['other']['std. dev.'] / data['other']['mean']
             new_tally._mean = data['self']['mean'] * data['other']['mean']
             new_tally._std_dev = np.abs(new_tally.mean) * \
                                  np.sqrt(self_rel_err**2 + other_rel_err**2)
         elif binary_op == '/':
-            self_rel_err = data['self']['std. dev.'] / data['self']['mean']
-            other_rel_err = data['other']['std. dev.'] / data['other']['mean']
-            new_tally._mean = data['self']['mean'] / data['other']['mean']
+            with np.errstate(divide='ignore', invalid='ignore'):
+                self_rel_err = data['self']['std. dev.'] / data['self']['mean']
+                other_rel_err = data['other']['std. dev.'] / data['other']['mean']
+                new_tally._mean = data['self']['mean'] / data['other']['mean']
             new_tally._std_dev = np.abs(new_tally.mean) * \
                                  np.sqrt(self_rel_err**2 + other_rel_err**2)
         elif binary_op == '^':
-            mean_ratio = data['other']['mean'] / data['self']['mean']
+            with np.errstate(divide='ignore', invalid='ignore'):
+                mean_ratio = data['other']['mean'] / data['self']['mean']
             first_term = mean_ratio * data['self']['std. dev.']
             second_term = \
                 np.log(data['self']['mean']) * data['other']['std. dev.']

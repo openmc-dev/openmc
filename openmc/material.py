@@ -313,7 +313,7 @@ class Material(IDManagerMixin):
         """
         if volume_calc.domain_type == 'material':
             if self.id in volume_calc.volumes:
-                self._volume = volume_calc.volumes[self.id][0]
+                self._volume = volume_calc.volumes[self.id].n
                 self._atoms = volume_calc.atoms[self.id]
             else:
                 raise ValueError('No volume information found for this material.')

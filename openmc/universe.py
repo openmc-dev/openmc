@@ -145,7 +145,7 @@ class Universe(IDManagerMixin):
         """
         if volume_calc.domain_type == 'universe':
             if self.id in volume_calc.volumes:
-                self._volume = volume_calc.volumes[self.id][0]
+                self._volume = volume_calc.volumes[self.id].n
                 self._atoms = volume_calc.atoms[self.id]
             else:
                 raise ValueError('No volume information found for this universe.')
@@ -406,7 +406,7 @@ class Universe(IDManagerMixin):
             volume = self.volume
             for name, atoms in self._atoms.items():
                 nuclide = openmc.Nuclide(name)
-                density = 1.0e-24 * atoms[0]/volume  # density in atoms/b-cm
+                density = 1.0e-24 * atoms.n/volume  # density in atoms/b-cm
                 nuclides[name] = (nuclide, density)
         else:
             raise RuntimeError(

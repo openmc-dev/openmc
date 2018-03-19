@@ -15,6 +15,7 @@ import openmc.checkvalue as cv
 from .cell import Cell
 from .material import Material
 from .mixin import IDManagerMixin
+from .surface import Surface
 from .universe import Universe
 
 
@@ -22,14 +23,11 @@ _FILTER_TYPES = ['universe', 'material', 'cell', 'cellborn', 'surface',
                  'mesh', 'energy', 'energyout', 'mu', 'polar', 'azimuthal',
                  'distribcell', 'delayedgroup', 'energyfunction', 'cellfrom']
 
-_CURRENT_NAMES = OrderedDict([
-    (1, 'x-min out'), (2, 'x-min in'),
-    (3, 'x-max out'), (4, 'x-max in'),
-    (5, 'y-min out'), (6, 'y-min in'),
-    (7, 'y-max out'), (8, 'y-max in'),
-    (9, 'z-min out'), (10, 'z-min in'),
-    (11, 'z-max out'), (12, 'z-max in')
-])
+_CURRENT_NAMES = (
+    'x-min out', 'x-min in', 'x-max out', 'x-max in',
+    'y-min out', 'y-min in', 'y-max out', 'y-max in',
+    'z-min out', 'z-min in', 'z-max out', 'z-max in'
+)
 
 
 class FilterMeta(ABCMeta):
@@ -566,7 +564,7 @@ class CellbornFilter(WithIDFilter):
     expected_type = Cell
 
 
-class SurfaceFilter(Filter):
+class SurfaceFilter(WithIDFilter):
     """Filters particles by surface crossing
 
     Parameters
@@ -588,57 +586,7 @@ class SurfaceFilter(Filter):
         The number of filter bins
 
     """
-    @Filter.bins.setter
-    def bins(self, bins):
-        # Format the bins as a 1D numpy array.
-        bins = np.atleast_1d(bins)
-
-        # Check the bin values.
-        cv.check_iterable_type('filter bins', bins, Integral)
-        for edge in bins:
-            cv.check_greater_than('filter bin', edge, 0, equality=True)
-
-        self._bins = bins
-
-    def get_pandas_dataframe(self, data_size, stride, **kwargs):
-        """Builds a Pandas DataFrame for the Filter's bins.
-
-        This method constructs a Pandas DataFrame object for the filter with
-        columns annotated by filter bin information. This is a helper method for
-        :meth:`Tally.get_pandas_dataframe`.
-
-        Parameters
-        ----------
-        data_size : int
-            The total number of bins in the tally corresponding to this filter
-        stride : int
-            Stride in memory for the filter
-
-        Returns
-        -------
-        pandas.DataFrame
-            A Pandas DataFrame with a column of strings describing which surface
-            the current is crossing and which direction it points.  The number
-            of rows in the DataFrame is the same as the total number of bins in
-            the corresponding tally, with the filter bin appropriately tiled to
-            map to the corresponding tally bins.
-
-        See also
-        --------
-        Tally.get_pandas_dataframe(), CrossFilter.get_pandas_dataframe()
-
-        """
-        # Initialize Pandas DataFrame
-        df = pd.DataFrame()
-
-        filter_bins = np.repeat(self.bins, stride)
-        tile_factor = data_size // len(filter_bins)
-        filter_bins = np.tile(filter_bins, tile_factor)
-        filter_bins = [_CURRENT_NAMES[x] for x in filter_bins]
-        df = pd.concat([df, pd.DataFrame(
-            {self.short_name.lower(): filter_bins})])
-
-        return df
+    expected_type = Surface
 
 
 class MeshFilter(Filter):
@@ -873,9 +821,9 @@ class MeshSurfaceFilter(MeshFilter):
 
         # Combine surface and mesh index
         n_dim = len(self.mesh.dimension)
-        for surf_index, name in _CURRENT_NAMES.items():
+        for surf_index, name in enumerate(_CURRENT_NAMES):
             if surf == name:
-                return 4*n_dim*mesh_index + surf_index - 1
+                return 4*n_dim*mesh_index + surf_index
         else:
             raise ValueError("'{}' is not a valid mesh surface.".format(surf))
 
@@ -883,7 +831,7 @@ class MeshSurfaceFilter(MeshFilter):
         n_dim = len(self.mesh.dimension)
         mesh_index, surf_index = divmod(bin_index, 4*n_dim)
         mesh_bin = super().get_bin(mesh_index)
-        return mesh_bin + (_CURRENT_NAMES[surf_index + 1],)
+        return mesh_bin + (_CURRENT_NAMES[surf_index],)
 
     def get_pandas_dataframe(self, data_size, stride, **kwargs):
         """Builds a Pandas DataFrame for the Filter's bins.
@@ -957,17 +905,14 @@ class MeshSurfaceFilter(MeshFilter):
         filter_dict[(mesh_key, 'z')] = filter_bins
 
         # Generate multi-index sub-column for surface
-        filter_bins = list(_CURRENT_NAMES.values())
         repeat_factor = stride
-        filter_bins = np.repeat(filter_bins, repeat_factor)
+        filter_bins = np.repeat(_CURRENT_NAMES, repeat_factor)
         tile_factor = data_size // len(filter_bins)
         filter_bins = np.tile(filter_bins, tile_factor)
         filter_dict[(mesh_key, 'surf')] = filter_bins
 
         # Initialize a Pandas DataFrame from the mesh dictionary
-        df = pd.concat([df, pd.DataFrame(filter_dict)])
-
-        return df
+        return pd.concat([df, pd.DataFrame(filter_dict)])
 
 
 class RealFilter(Filter):

@@ -58,7 +58,7 @@ def test_high_l(fe56):
     assert total[0] == pytest.approx(27.85535792368082)
 
 
-def test_to_hdf5(tmpdir, u235):
+def test_export_to_hdf5(tmpdir, u235):
     filename = str(tmpdir.join('092235.h5'))
-    u235.to_hdf5(filename)
+    u235.export_to_hdf5(filename)
     assert os.path.exists(filename)

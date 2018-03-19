@@ -652,7 +652,7 @@ class WindowedMultipole(EqualityMixin):
         fun = np.vectorize(lambda x: self._evaluate(x, T))
         return fun(E)
 
-    def to_hdf5(self, path, libver='earliest'):
+    def export_to_hdf5(self, path, libver='earliest'):
         """Export windowed multipole data to an HDF5 file.
 
         Parameters
@@ -666,33 +666,32 @@ class WindowedMultipole(EqualityMixin):
         """
 
         # Open file and write version.
-        f = h5py.File(path, 'w', libver=libver)
-        f.create_dataset('version', (1, ), dtype='S10')
-        f['version'][:] = WMP_VERSION.encode('ASCII')
+        with h5py.File(path, 'w', libver=libver) as f:
+            f.create_dataset('version', (1, ), dtype='S10')
+            f['version'][:] = WMP_VERSION.encode('ASCII')
 
-        # Make a nuclide group.
-        g = f.create_group('nuclide')
+            # Make a nuclide group.
+            g = f.create_group('nuclide')
 
-        # Write scalars.
-        if self.formalism == 'MLBW':
-            g.create_dataset('formalism',
-                             data=np.array(_FORM_MLBW, dtype=np.int32))
-        else:
-            # Assume RM.
-            g.create_dataset('formalism',
-                             data=np.array(_FORM_RM, dtype=np.int32))
-        g.create_dataset('spacing', data=np.array(self.spacing))
-        g.create_dataset('sqrtAWR', data=np.array(self.sqrtAWR))
-        g.create_dataset('start_E', data=np.array(self.start_E))
-        g.create_dataset('end_E', data=np.array(self.end_E))
+            # Write scalars.
+            if self.formalism == 'MLBW':
+                g.create_dataset('formalism',
+                                 data=np.array(_FORM_MLBW, dtype=np.int32))
+            else:
+                # Assume RM.
+                g.create_dataset('formalism',
+                                 data=np.array(_FORM_RM, dtype=np.int32))
+            g.create_dataset('spacing', data=np.array(self.spacing))
+            g.create_dataset('sqrtAWR', data=np.array(self.sqrtAWR))
+            g.create_dataset('start_E', data=np.array(self.start_E))
+            g.create_dataset('end_E', data=np.array(self.end_E))
 
-        # Write arrays.
-        g.create_dataset('data', data=self.data)
-        g.create_dataset('l_value', data=self.l_value)
-        g.create_dataset('pseudo_K0RS', data=self.pseudo_k0RS)
-        g.create_dataset('w_start', data=self.w_start)
-        g.create_dataset('w_end', data=self.w_end)
-        g.create_dataset('broaden_poly', data=self.broaden_poly)
-        g.create_dataset('curvefit', data=self.curvefit)
-
-        f.close()
+            # Write arrays.
+            g.create_dataset('data', data=self.data)
+            g.create_dataset('l_value', data=self.l_value)
+            g.create_dataset('pseudo_K0RS', data=self.pseudo_k0RS)
+            g.create_dataset('w_start', data=self.w_start)
+            g.create_dataset('w_end', data=self.w_end)
+            g.create_dataset('broaden_poly',
+                             data=self.broaden_poly.astype(np.int8))
+            g.create_dataset('curvefit', data=self.curvefit)

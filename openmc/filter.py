@@ -753,7 +753,7 @@ class MeshFilter(Filter):
         if n_dim == 3:
             # Construct 3-tuple of x,y,z cell indices for a 3D mesh
             nx, ny, nz = self.mesh.dimension
-            x = bin_index % nx + 1
+            x = (bin_index % nx) + 1
             y = (bin_index % (nx * ny)) // nx + 1
             z = bin_index // (nx * ny) + 1
             return (x, y, z)
@@ -761,7 +761,7 @@ class MeshFilter(Filter):
         elif n_dim == 2:
             # Construct 2-tuple of x,y cell indices for a 2D mesh
             nx, ny = self.mesh.dimension
-            x = bin_index % nx + 1
+            x = (bin_index % nx) + 1
             y = bin_index // nx + 1
             return (x, y)
         else:

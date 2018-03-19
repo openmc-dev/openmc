@@ -651,8 +651,15 @@ class Plot(IDManagerMixin):
 
         return element
 
-    def to_image(self, openmc_exec='openmc', cwd='.', convert_exec='convert'):
+    def to_ipython_image(self, openmc_exec='openmc', cwd='.',
+                         convert_exec='convert'):
         """Render plot as an image
+
+        This method runs OpenMC in plotting mode to produce a bitmap image which
+        is then converted to a .png file and loaded in as an
+        :class:`IPython.display.Image` object. As such, it requires that your
+        model geometry, materials, and settings have already been exported to
+        XML.
 
         Parameters
         ----------

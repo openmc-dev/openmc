@@ -1,6 +1,7 @@
 from collections.abc import Iterable, Mapping
 from numbers import Real, Integral
 from xml.etree import ElementTree as ET
+import subprocess
 import sys
 import warnings
 
@@ -649,6 +650,49 @@ class Plot(IDManagerMixin):
                     str, self._meshlines['color'])))
 
         return element
+
+    def to_ipython_image(self, openmc_exec='openmc', cwd='.',
+                         convert_exec='convert'):
+        """Render plot as an image
+
+        This method runs OpenMC in plotting mode to produce a bitmap image which
+        is then converted to a .png file and loaded in as an
+        :class:`IPython.display.Image` object. As such, it requires that your
+        model geometry, materials, and settings have already been exported to
+        XML.
+
+        Parameters
+        ----------
+        openmc_exec : str
+            Path to OpenMC executable
+        cwd : str, optional
+            Path to working directory to run in
+        convert_exec : str, optional
+            Command that can convert PPM files into PNG files
+
+        Returns
+        -------
+        IPython.display.Image
+            Image generated
+
+        """
+        from IPython.display import Image
+
+        # Create plots.xml
+        Plots([self]).export_to_xml()
+
+        # Run OpenMC in geometry plotting mode
+        openmc.plot_geometry(False, openmc_exec, cwd)
+
+        # Convert to .png
+        if self.filename is not None:
+            ppm_file = '{}.ppm'.format(self.filename)
+        else:
+            ppm_file = 'plot_{}.ppm'.format(self.id)
+        png_file = ppm_file.replace('.ppm', '.png')
+        subprocess.check_call([convert_exec, ppm_file, png_file])
+
+        return Image(png_file)
 
 
 class Plots(cv.CheckedList):

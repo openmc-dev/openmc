@@ -50,6 +50,19 @@ def test_thin():
     assert f(1.0) == pytest.approx(np.sin(1.0), 0.001)
 
 
+def test_atomic_mass():
+    assert openmc.data.atomic_mass('H1') == 1.00782503223
+    assert openmc.data.atomic_mass('U235') == 235.043930131
+    with pytest.raises(KeyError):
+        openmc.data.atomic_mass('U100')
+
+
+def test_atomic_weight():
+    assert openmc.data.atomic_weight('C') == 12.011115164862904
+    with pytest.raises(ValueError):
+        openmc.data.atomic_weight('Qt')
+
+
 def test_water_density():
     dens = openmc.data.water_density
     # These test values are from IAPWS R7-97(2012).  They are actually specific

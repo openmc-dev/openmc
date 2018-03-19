@@ -45,7 +45,7 @@ SUM_RULES = {1: [2, 3],
              106: list(range(750, 800)),
              107: list(range(800, 850))}
 
-ENDF_FLOAT_RE = re.compile(r'([\s\-\+]?\d*\.\d+)([\+\-]\d+)')
+_ENDF_FLOAT_RE = re.compile(r'([\s\-\+]?\d*\.\d+)([\+\-]\d+)')
 
 
 def float_endf(s):
@@ -68,7 +68,7 @@ def float_endf(s):
         The number
 
     """
-    return float(ENDF_FLOAT_RE.sub(r'\1e\2', s))
+    return float(_ENDF_FLOAT_RE.sub(r'\1e\2', s))
 
 
 def get_text_record(file_obj):

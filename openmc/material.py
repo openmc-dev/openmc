@@ -88,7 +88,7 @@ class Material(IDManagerMixin):
         self.name = name
         self.temperature = temperature
         self._density = None
-        self._density_units = ''
+        self._density_units = 'sum'
         self._depletable = False
         self._paths = None
         self._num_instances = None
@@ -313,7 +313,7 @@ class Material(IDManagerMixin):
         """
         if volume_calc.domain_type == 'material':
             if self.id in volume_calc.volumes:
-                self._volume = volume_calc.volumes[self.id][0]
+                self._volume = volume_calc.volumes[self.id].n
                 self._atoms = volume_calc.atoms[self.id]
             else:
                 raise ValueError('No volume information found for this material.')
@@ -379,33 +379,31 @@ class Material(IDManagerMixin):
         Parameters
         ----------
         nuclide : str
-            Nuclide to add
+            Nuclide to add, e.g., 'Mo95'
         percent : float
             Atom or weight percent
         percent_type : {'ao', 'wo'}
             'ao' for atom percent and 'wo' for weight percent
 
         """
+        cv.check_type('nuclide', nuclide, str)
+        cv.check_type('percent', percent, Real)
+        cv.check_value('percent type', percent_type, {'ao', 'wo'})
 
         if self._macroscopic is not None:
             msg = 'Unable to add a Nuclide to Material ID="{}" as a ' \
                   'macroscopic data-set has already been added'.format(self._id)
             raise ValueError(msg)
 
-        if not isinstance(nuclide, str):
-            msg = 'Unable to add a Nuclide to Material ID="{}" with a ' \
-                  'non-string value "{}"'.format(self._id, nuclide)
-            raise ValueError(msg)
-
-        elif not isinstance(percent, Real):
-            msg = 'Unable to add a Nuclide to Material ID="{}" with a ' \
-                  'non-floating point value "{}"'.format(self._id, percent)
-            raise ValueError(msg)
-
-        elif percent_type not in ('ao', 'wo'):
-            msg = 'Unable to add a Nuclide to Material ID="{}" with a ' \
-                  'percent type "{}"'.format(self._id, percent_type)
-            raise ValueError(msg)
+        # If nuclide name doesn't look valid, give a warning
+        try:
+            Z, _, _ = openmc.data.zam(nuclide)
+        except ValueError as e:
+            warnings.warn(str(e))
+        else:
+            # For actinides, have the material be depletable by default
+            if Z >= 89:
+                self.depletable = True
 
         self._nuclides.append((nuclide, percent, percent_type))
 
@@ -493,7 +491,7 @@ class Material(IDManagerMixin):
         Parameters
         ----------
         element : str
-            Element to add
+            Element to add, e.g., 'Zr'
         percent : float
             Atom or weight percent
         percent_type : {'ao', 'wo'}, optional
@@ -505,25 +503,13 @@ class Material(IDManagerMixin):
             (natural composition).
 
         """
+        cv.check_type('nuclide', element, str)
+        cv.check_type('percent', percent, Real)
+        cv.check_value('percent type', percent_type, {'ao', 'wo'})
 
         if self._macroscopic is not None:
             msg = 'Unable to add an Element to Material ID="{}" as a ' \
                   'macroscopic data-set has already been added'.format(self._id)
-            raise ValueError(msg)
-
-        if not isinstance(element, str):
-            msg = 'Unable to add an Element to Material ID="{}" with a ' \
-                  'non-string value "{}"'.format(self._id, element)
-            raise ValueError(msg)
-
-        if not isinstance(percent, Real):
-            msg = 'Unable to add an Element to Material ID="{}" with a ' \
-                  'non-floating point value "{}"'.format(self._id, percent)
-            raise ValueError(msg)
-
-        if percent_type not in ['ao', 'wo']:
-            msg = 'Unable to add an Element to Material ID="{}" with a ' \
-                  'percent type "{}"'.format(self._id, percent_type)
             raise ValueError(msg)
 
         if enrichment is not None:
@@ -551,10 +537,15 @@ class Material(IDManagerMixin):
                       format(enrichment, self._id)
                 warnings.warn(msg)
 
+        # Make sure element name is just that
+        if not element.isalpha():
+            raise ValueError("Element name should be given by the "
+                             "element's symbol, e.g., 'Zr'")
+
         # Add naturally-occuring isotopes
         element = openmc.Element(element)
         for nuclide in element.expand(percent, percent_type, enrichment):
-            self._nuclides.append(nuclide)
+            self.add_nuclide(*nuclide)
 
     def add_s_alpha_beta(self, name, fraction=1.0):
         r"""Add an :math:`S(\alpha,\beta)` table to the material

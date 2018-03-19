@@ -126,10 +126,10 @@ class TallySliceMergeTestHarness(PyAPITestHarness):
 
         # Sum up a few subdomains from the distribcell tally
         sum1 = distribcell_tally.summation(filter_type=openmc.DistribcellFilter,
-                                           filter_bins=[0,100,2000,30000])
+                                           filter_bins=[0, 100, 2000, 30000])
         # Sum up a few subdomains from the distribcell tally
         sum2 = distribcell_tally.summation(filter_type=openmc.DistribcellFilter,
-                                           filter_bins=[500,5000,50000])
+                                           filter_bins=[500, 5000, 50000])
 
         # Merge the distribcell tally slices
         merge_tally = sum1.merge(sum2)
@@ -143,10 +143,10 @@ class TallySliceMergeTestHarness(PyAPITestHarness):
 
         # Sum up a few subdomains from the mesh tally
         sum1 = mesh_tally.summation(filter_type=openmc.MeshFilter,
-                                    filter_bins=[(1,1,1), (1,2,1)])
+                                    filter_bins=[(1, 1), (1, 2)])
         # Sum up a few subdomains from the mesh tally
         sum2 = mesh_tally.summation(filter_type=openmc.MeshFilter,
-                                    filter_bins=[(2,1,1), (2,2,1)])
+                                    filter_bins=[(2, 1), (2, 2)])
 
         # Merge the mesh tally slices
         merge_tally = sum1.merge(sum2)

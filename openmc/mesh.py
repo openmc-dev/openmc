@@ -82,6 +82,24 @@ class Mesh(IDManagerMixin):
     def num_mesh_cells(self):
         return np.prod(self._dimension)
 
+    @property
+    def indices(self):
+        ndim = len(self._dimension)
+        if ndim == 3:
+            nx, ny, nz = self.dimension
+            return ((x, y, z)
+                    for z in range(1, nz + 1)
+                    for y in range(1, ny + 1)
+                    for x in range(1, nx + 1))
+        elif ndim == 2:
+            nx, ny = self.dimension
+            return ((x, y)
+                    for y in range(1, ny + 1)
+                    for x in range(1, nx + 1))
+        else:
+            nx, = self.dimension
+            return ((x,) for x in range(1, nx + 1))
+
     @name.setter
     def name(self, name):
         if name is not None:

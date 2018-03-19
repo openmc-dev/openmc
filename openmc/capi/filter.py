@@ -128,7 +128,7 @@ class EnergyFilter(Filter):
             self._index, len(energies), energies_p)
 
 
-class EnergyoutFilter(Filter):
+class EnergyoutFilter(EnergyFilter):
     filter_type = 'energyout'
 
 

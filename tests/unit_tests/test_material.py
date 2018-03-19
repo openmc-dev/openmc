@@ -15,9 +15,9 @@ def test_nuclides(uo2):
     """Test adding/removing nuclides."""
     m = openmc.Material()
     m.add_nuclide('U235', 1.0)
-    with pytest.raises(ValueError):
+    with pytest.raises(TypeError):
         m.add_nuclide('H1', '1.0')
-    with pytest.raises(ValueError):
+    with pytest.raises(TypeError):
         m.add_nuclide(1.0, 'H1')
     with pytest.raises(ValueError):
         m.add_nuclide('H1', 1.0, 'oa')

@@ -7,6 +7,7 @@ import warnings
 import numpy as np
 import pandas as pd
 import h5py
+from uncertainties import ufloat
 
 import openmc
 import openmc.checkvalue as cv
@@ -137,11 +138,10 @@ class VolumeCalculation(object):
     @property
     def atoms_dataframe(self):
         items = []
-        columns = [self.domain_type.capitalize(), 'Nuclide', 'Atoms',
-                   'Uncertainty']
+        columns = [self.domain_type.capitalize(), 'Nuclide', 'Atoms']
         for uid, atoms_dict in self.atoms.items():
             for name, atoms in atoms_dict.items():
-                items.append((uid, name, atoms[0], atoms[1]))
+                items.append((uid, name, atoms))
 
         return pd.DataFrame.from_records(items, columns=columns)
 
@@ -211,13 +211,13 @@ class VolumeCalculation(object):
                     domain_id = int(obj_name[7:])
                     ids.append(domain_id)
                     group = f[obj_name]
-                    volume = tuple(group['volume'].value)
+                    volume = ufloat(*group['volume'].value)
                     nucnames = group['nuclides'].value
                     atoms_ = group['atoms'].value
 
                     atom_dict = OrderedDict()
                     for name_i, atoms_i in zip(nucnames, atoms_):
-                        atom_dict[name_i.decode()] = tuple(atoms_i)
+                        atom_dict[name_i.decode()] = ufloat(*atoms_i)
                     volumes[domain_id] = volume
                     atoms[domain_id] = atom_dict
 

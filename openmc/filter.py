@@ -732,37 +732,40 @@ class MeshFilter(Filter):
         # Filter bins for a mesh are an (x,y,z) tuple. Convert (x,y,z) to a
         # single bin -- this is similar to subroutine mesh_indices_to_bin in
         # openmc/src/mesh.F90.
-        if len(self.mesh.dimension) == 3:
+        n_dim = len(self.mesh.dimension)
+        if n_dim == 3:
+            i, j, k = filter_bin
             nx, ny, nz = self.mesh.dimension
-            val = (filter_bin[0] - 1) * ny * nz + \
-                  (filter_bin[1] - 1) * nz + \
-                  (filter_bin[2] - 1)
-        else:
+            return (i - 1) + (j - 1)*nx + (k - 1)*nx*ny
+        elif n_dim == 2:
+            i, j, *_ = filter_bin
             nx, ny = self.mesh.dimension
-            val = (filter_bin[0] - 1) * ny + \
-                  (filter_bin[1] - 1)
-
-        return val
+            return (i - 1) + (j - 1)*nx
+        else:
+            return filter_bin[0] - 1
 
     def get_bin(self, bin_index):
         cv.check_type('bin_index', bin_index, Integral)
         cv.check_greater_than('bin_index', bin_index, 0, equality=True)
         cv.check_less_than('bin_index', bin_index, self.num_bins)
 
-        # Construct 3-tuple of x,y,z cell indices for a 3D mesh
-        if len(self.mesh.dimension) == 3:
+        n_dim = len(self.mesh.dimension)
+        if n_dim == 3:
+            # Construct 3-tuple of x,y,z cell indices for a 3D mesh
             nx, ny, nz = self.mesh.dimension
-            x = bin_index / (ny * nz)
-            y = (bin_index - (x * ny * nz)) / nz
-            z = bin_index - (x * ny * nz) - (y * nz)
+            x = (bin_index % nx) + 1
+            y = (bin_index % (nx * ny)) // nx + 1
+            z = bin_index // (nx * ny) + 1
             return (x, y, z)
 
-        # Construct 2-tuple of x,y cell indices for a 2D mesh
-        else:
+        elif n_dim == 2:
+            # Construct 2-tuple of x,y cell indices for a 2D mesh
             nx, ny = self.mesh.dimension
-            x = bin_index / ny
-            y = bin_index - (x * ny)
+            x = (bin_index % nx) + 1
+            y = bin_index // nx + 1
             return (x, y)
+        else:
+            return (bin_index + 1,)
 
     def get_pandas_dataframe(self, data_size, stride, **kwargs):
         """Builds a Pandas DataFrame for the Filter's bins.
@@ -802,9 +805,10 @@ class MeshFilter(Filter):
         mesh_key = 'mesh {0}'.format(self.mesh.id)
 
         # Find mesh dimensions - use 3D indices for simplicity
-        if len(self.mesh.dimension) == 3:
+        n_dim = len(self.mesh.dimension)
+        if n_dim == 3:
             nx, ny, nz = self.mesh.dimension
-        elif len(self.mesh.dimension) == 2:
+        elif n_dim == 2:
             nx, ny = self.mesh.dimension
             nz = 1
         else:
@@ -813,7 +817,7 @@ class MeshFilter(Filter):
 
         # Generate multi-index sub-column for x-axis
         filter_bins = np.arange(1, nx + 1)
-        repeat_factor = ny * nz * stride
+        repeat_factor = stride
         filter_bins = np.repeat(filter_bins, repeat_factor)
         tile_factor = data_size // len(filter_bins)
         filter_bins = np.tile(filter_bins, tile_factor)
@@ -821,7 +825,7 @@ class MeshFilter(Filter):
 
         # Generate multi-index sub-column for y-axis
         filter_bins = np.arange(1, ny + 1)
-        repeat_factor = nz * stride
+        repeat_factor = nx * stride
         filter_bins = np.repeat(filter_bins, repeat_factor)
         tile_factor = data_size // len(filter_bins)
         filter_bins = np.tile(filter_bins, tile_factor)
@@ -829,7 +833,7 @@ class MeshFilter(Filter):
 
         # Generate multi-index sub-column for z-axis
         filter_bins = np.arange(1, nz + 1)
-        repeat_factor = stride
+        repeat_factor = nx * ny * stride
         filter_bins = np.repeat(filter_bins, repeat_factor)
         tile_factor = data_size // len(filter_bins)
         filter_bins = np.tile(filter_bins, tile_factor)

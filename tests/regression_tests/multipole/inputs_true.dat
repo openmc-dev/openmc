@@ -27,7 +27,7 @@
     <nuclide ao="1.0" name="O16" />
     <sab name="c_H_in_H2O" />
   </material>
-  <material id="2">
+  <material depletable="true" id="2">
     <density units="g/cc" value="4.5" />
     <nuclide ao="1.0" name="U235" />
   </material>

@@ -210,7 +210,7 @@ class Model(object):
 
         Returns
         -------
-        2-tuple of float
+        uncertainties.UFloat
             Combined estimator of k-effective from the statepoint
 
         """

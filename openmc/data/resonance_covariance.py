@@ -25,10 +25,13 @@ def sample_resonance_parameters(nuclide, n_samples):
     """
     nparams,params = nuclide.res_covariance.ranges[0].parameters.shape
     cov = nuclide.res_covariance.ranges[0].covariance
+    cov = cov + cov.T - np.diag(cov.diagonal()) #symmetrizing covariance matrix
     covsize = cov.shape[0]
     formalism = nuclide.res_covariance.ranges[0].formalism
     samples = []
-    if formalism == 'mlbw':
+
+    ### Handling MLBW Sampling ###
+    if formalism == 'mlbw' or formalism == 'slbw':
         if covsize/nparams == 3:
             param_list = ['energy','neutronWidth','captureWidth']
             mean_array = pd.DataFrame.as_matrix(nuclide.res_covariance.ranges[0].parameters[param_list])
@@ -47,6 +50,70 @@ def sample_resonance_parameters(nuclide, n_samples):
                                     gg[j], gf[j]])
                 columns = ['energy', 'J', 'totalWidth', 'neutronWidth',
                        'captureWidth', 'fissionWidth']
+                sample_params = pd.DataFrame.from_records(records, columns=columns)
+                samples.append(sample_params)
+
+        elif covsize/nparams == 4:
+            param_list = ['energy','neutronWidth','captureWidth','fissionWidth']
+            mean_array = pd.DataFrame.as_matrix(nuclide.res_covariance.ranges[0].parameters[param_list])
+            spin = pd.DataFrame.as_matrix(nuclide.res_covariance.ranges[0].parameters['J'])
+            mean = mean_array.flatten()
+            for i in range(n_samples):
+                sample = np.random.multivariate_normal(mean,cov)
+                energy = sample[0::4]
+                gn = sample[1::4]
+                gg = sample[2::4]
+                gf = sample[3::4]
+                gt = gn + gg + gf
+                records = []
+                for j, E in enumerate(energy):
+                    records.append([energy[j], spin[j], gt[j], gn[j],
+                                    gg[j], gf[j]])
+                columns = ['energy', 'J', 'totalWidth', 'neutronWidth',
+                       'captureWidth', 'fissionWidth']
+                sample_params = pd.DataFrame.from_records(records, columns=columns)
+                samples.append(sample_params)
+
+        elif covsize/nparams == 5:
+            param_list = ['energy','neutronWidth','captureWidth','fissionWidth']
+            mean_array = pd.DataFrame.as_matrix(nuclide.res_covariance.ranges[0].parameters[param_list])
+            spin = pd.DataFrame.as_matrix(nuclide.res_covariance.ranges[0].parameters['J'])
+            mean = mean_array.flatten()
+            for i in range(n_samples):
+                sample = np.random.multivariate_normal(mean,cov)
+                energy = sample[0::4]
+                gn = sample[1::4]
+                gg = sample[2::4]
+                gf = sample[3::4]
+                gt = gn + gg + gf
+                records = []
+                for j, E in enumerate(energy):
+                    records.append([energy[j], spin[j], gt[j], gn[j],
+                                    gg[j], gf[j]])
+                columns = ['energy', 'J', 'totalWidth', 'neutronWidth',
+                       'captureWidth', 'fissionWidth']
+                sample_params = pd.DataFrame.from_records(records, columns=columns)
+                samples.append(sample_params)
+    ### Handling RM Sampling ###
+    if formalism == 'rm':
+        if covsize/nparams == 3:
+            param_list = ['energy','neutronWidth','captureWidth']
+            mean_array = pd.DataFrame.as_matrix(nuclide.res_covariance.ranges[0].parameters[param_list])
+            spin = pd.DataFrame.as_matrix(nuclide.res_covariance.ranges[0].parameters['J'])
+            gfa = pd.DataFrame.as_matrix(nuclide.res_covariance.ranges[0].parameters['fissionWidthA'])
+            gfb = pd.DataFrame.as_matrix(nuclide.res_covariance.ranges[0].parameters['fissionWidthB'])
+            mean = mean_array.flatten()
+            for i in range(n_samples):
+                sample = np.random.multivariate_normal(mean,cov)
+                energy = sample[0::3]
+                gn = sample[1::3]
+                gg = sample[2::3]
+                records = []
+                for j, E in enumerate(energy):
+                    records.append([energy[j], spin[j], gn[j],
+                                    gg[j], gfa[j], gfb[j]])
+                columns = ['energy', 'J', 'neutronWidth',
+                       'captureWidth', 'fissionWidthA','fissionWidthB']
                 sample_params = pd.DataFrame.from_records(records, columns=columns)
                 samples.append(sample_params)
 
@@ -258,7 +325,7 @@ class MultiLevelBreitWignerCovariance(ResonanceRange):
             mlbw.parameters = parameters
             mlbw.covariance = cov
             mlbw.lcomp = LCOMP
-            mlbw.num_paramaters = num_paramaters
+            mlbw.num_parameters = num_parameters
 
             return mlbw
 
@@ -308,8 +375,7 @@ class MultiLevelBreitWignerCovariance(ResonanceRange):
             return mlbw
 
         elif LCOMP == 0 :
-            cov = np.zeros([5,5])
-#            test2 = np.pad(test,((0,2),(0,2)),'constant',constant_values=0)
+            cov = np.zeros([4,4])
             records = []
             cov_index = 0
             for i in range(NLS):
@@ -326,26 +392,26 @@ class MultiLevelBreitWignerCovariance(ResonanceRange):
                     gn = res_values[3]
                     gg = res_values[4]
                     gf = res_values[5]
-                    records.append([energy, spin, gn, gg, gf])
+                    records.append([energy, spin, gt, gn, gg, gf])
 
                     #Populate the coviariance matrix for this resonance
                     #There are no covariances between resonances in LCOMP=0
                     cov[cov_index,cov_index]=cov_values[0]
-                    cov[cov_index+1,cov_index+1]=cov_values[10]
-                    cov[cov_index+2,cov_index+2:cov_index+3]=cov_values[1:2]
-                    cov[cov_index+2,cov_index+4]=cov_values[4]
-                    cov[cov_index+3,cov_index+3] = cov_values[3]
-                    cov[cov_index+3,cov_index+4] = cov_values[5]
-                    cov[cov_index+4,cov_index+4] = cov_values[6]
-                    cov_index += 5
+                    cov[cov_index+1,cov_index+1:cov_index+2]=cov_values[1:2]
+                    cov[cov_index+1,cov_index+3]=cov_values[4]
+                    cov[cov_index+2,cov_index+2] = cov_values[3]
+                    cov[cov_index+2,cov_index+3] = cov_values[5]
+                    cov[cov_index+3,cov_index+3] = cov_values[6]
+
+                    cov_index += 4
                     if j < num_res-1: #Pad matrix for additional values
-                        cov = np.pad(cov,((0,5),(0,5)),'constant',
+                        cov = np.pad(cov,((0,4),(0,4)),'constant',
                                 constant_values=0)
 
 
             #Create pandas DataFrame with resonance data, currently 
             #redundant with data.IncidentNeutron.resonance
-            columns = ['energy', 'J', 'neutronWidth',
+            columns = ['energy', 'J', 'totalWidth','neutronWidth',
                        'captureWidth', 'fissionWidth']
             parameters = pd.DataFrame.from_records(records, columns=columns)
 

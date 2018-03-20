@@ -48,7 +48,7 @@ contains
     n = node_word_count(node, "bins")
 
     if (n /= 1) call fatal_error("Only one mesh can be &
-         &specified per mesh filter.")
+         &specified per meshsurface filter.")
 
     ! Determine id of mesh
     call get_node_value(node, "bins", id)
@@ -297,7 +297,7 @@ contains
 !===============================================================================
 
   function openmc_meshsurface_filter_set_mesh(index, index_mesh) result(err) bind(C)
-    ! Set the mesh for a mesh filter
+    ! Set the mesh for a mesh surface filter
     integer(C_INT32_T), value, intent(in) :: index
     integer(C_INT32_T), value, intent(in) :: index_mesh
     integer(C_INT) :: err

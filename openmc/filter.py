@@ -570,7 +570,7 @@ class SurfaceFilter(WithIDFilter):
     Parameters
     ----------
     bins : openmc.Surface, int, or iterable of Integral
-        The surfaces to tally over. Either openmc.Surface objects of their ID
+        The surfaces to tally over. Either openmc.Surface objects or their ID
         numbers can be used.
     filter_id : int
         Unique identifier for the filter
@@ -578,7 +578,7 @@ class SurfaceFilter(WithIDFilter):
     Attributes
     ----------
     bins : Iterable of Integral
-        The surfaces to tally over. Either openmc.Surface objects of their ID
+        The surfaces to tally over. Either openmc.Surface objects or their ID
         numbers can be used.
     id : int
         Unique identifier for the filter

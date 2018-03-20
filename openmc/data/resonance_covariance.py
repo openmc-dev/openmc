@@ -10,6 +10,49 @@ from .endf import get_head_record, get_cont_record, get_tab1_record, get_list_re
 import openmc.checkvalue as cv
 from .resonance import ResonanceRange
 
+### Under Construction START
+def sample_resonance_parameters(nuclide, n_samples):
+    """Return a IncidentNeutron object with n_samples of xs
+
+    Parameters
+    ----------
+    nuclide: IncidentNeutron object with resonance covariance data
+
+    Returns
+    -------
+    ev : openmc.data.endf.Evaluation
+
+    """
+    nparams,params = nuclide.res_covariance.ranges[0].parameters.shape
+    cov = nuclide.res_covariance.ranges[0].covariance
+    covsize = cov.shape[0]
+    formalism = nuclide.res_covariance.ranges[0].formalism
+    samples = []
+    if formalism == 'mlbw':
+        if covsize/nparams == 3:
+            param_list = ['energy','neutronWidth','captureWidth']
+            mean_array = pd.DataFrame.as_matrix(nuclide.res_covariance.ranges[0].parameters[param_list])
+            spin = pd.DataFrame.as_matrix(nuclide.res_covariance.ranges[0].parameters['J'])
+            gf = pd.DataFrame.as_matrix(nuclide.res_covariance.ranges[0].parameters['fissionWidth'])
+            mean = mean_array.flatten()
+            for i in range(n_samples):
+                sample = np.random.multivariate_normal(mean,cov)
+                energy = sample[0::3]
+                gn = sample[1::3]
+                gg = sample[2::3]
+                gt = gn + gg + gf
+                records = []
+                for j, E in enumerate(energy):
+                    records.append([energy[j], spin[j], gt[j], gn[j],
+                                    gg[j], gf[j]])
+                columns = ['energy', 'J', 'totalWidth', 'neutronWidth',
+                       'captureWidth', 'fissionWidth']
+                sample_params = pd.DataFrame.from_records(records, columns=columns)
+                samples.append(sample_params)
+
+    return samples
+### Under Construction END
+
 class ResonanceCovariance(object):
     """Resolved resonance covariance data
 
@@ -131,6 +174,8 @@ class MultiLevelBreitWignerCovariance(ResonanceRange):
     def __init__(self, energy_min, energy_max):
         self.parameters = None
         self.covariance = None
+        self.num_parameters = None
+        self.formalism = 'mlbw'
 
     @classmethod
     def from_endf(cls, ev, file_obj, items):
@@ -213,12 +258,14 @@ class MultiLevelBreitWignerCovariance(ResonanceRange):
             mlbw.parameters = parameters
             mlbw.covariance = cov
             mlbw.lcomp = LCOMP
+            mlbw.num_paramaters = num_paramaters
 
             return mlbw
 
         elif LCOMP == 2: #Compact format - Resonances and individual
                          #uncertainties followed by compact correlations
             items, values = get_list_record(file_obj)
+            mean = items
             num_res = items[5] 
             energy = values[0::12]
             spin = values[1::12]
@@ -358,6 +405,8 @@ class SingleLevelBreitWignerCovariance(MultiLevelBreitWignerCovariance):
 
     """
 
+    def __init__(self, energy_min, energy_max):
+        self.formalism = 'slbw'
 
 class ReichMooreCovariance(ResonanceRange):
     """Reich-Moore resolved resonance formalism covariance data.
@@ -397,6 +446,8 @@ class ReichMooreCovariance(ResonanceRange):
         self.num_parameters = None
         self.parameters = None
         self.covariance = None
+        self.num_paramaters = None
+        self.formalism = 'rm'
 
     @classmethod
     def from_endf(cls, ev, file_obj, items):
@@ -480,6 +531,7 @@ class ReichMooreCovariance(ResonanceRange):
             rmc.parameters = parameters
             rmc.covariance = cov
             rmc.lcomp = LCOMP
+            rmc.num_parameters = num_parameters
 
             return rmc
 

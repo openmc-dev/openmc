@@ -2371,9 +2371,7 @@ contains
 
       ! Allocate according to the filter type
       err = openmc_filter_set_type(i_start + i - 1, to_c_string(temp_str))
-      if (err /= 0) then
-        call fatal_error(to_f_string(openmc_err_msg))
-      end if
+      if (err /= 0) call fatal_error(to_f_string(openmc_err_msg))
 
       ! Read filter data from XML
       call f % obj % from_xml(node_filt)

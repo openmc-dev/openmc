@@ -155,8 +155,8 @@ contains
       ! Sample electron shell
       rn = prn()
       c = ZERO
-      do i_shell = 1, size(el % electron_pdf) - 1
-        c = c + el % electron_pdf(i_shell + 1)
+      do i_shell = 1, size(el % electron_pdf)
+        c = c + el % electron_pdf(i_shell)
         if (rn < c) exit
       end do
 
@@ -217,6 +217,7 @@ contains
       end if
 
       ! Determine outgoing photon energy corresponding to electron momentum
+      ! (solve Eq. 39 in LA-UR-04-0487 for E')
       momentum_sq = (pz/FINE_STRUCTURE)**2
       f = ONE + alpha*(ONE - mu)
       a = momentum_sq - f*f
@@ -232,8 +233,10 @@ contains
       e_out1 = -(b + quad)/(TWO*a)
       e_out2 = -(b - quad)/(TWO*a)
 
+      ! Determine solution to quadratic equation that is positive
       if (e_out1 > ZERO) then
         if (e_out2 > ZERO) then
+          ! If both are positive, pick one at random
           if (prn() < HALF) then
             e_out = e_out1
           else
@@ -243,7 +246,12 @@ contains
           e_out = e_out1
         end if
       else
-        if (e_out2 > ZERO) e_out = e_out2
+        if (e_out2 > ZERO) then
+          e_out = e_out2
+        else
+          ! No positive solution -- resample
+          cycle
+        end if
       end if
       if (e_out < e - e_b) exit
     end do

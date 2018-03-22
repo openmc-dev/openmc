@@ -3064,9 +3064,9 @@ contains
 ! tally total or partial currents between two cells
 !===============================================================================
 
-    subroutine  score_surface_tally(p)
-
-    type(Particle), intent(in)    :: p
+  subroutine score_surface_tally(p, tally_vec)
+    type(Particle), intent(in)  :: p
+    type(VectorInt), intent(in) :: tally_vec
 
     integer :: i
     integer :: i_tally
@@ -3086,9 +3086,9 @@ contains
     ! No collision, so no weight change when survival biasing
     flux = p % wgt
 
-    TALLY_LOOP: do i = 1, active_surface_tallies % size()
+    TALLY_LOOP: do i = 1, tally_vec % size()
       ! Get index of tally and pointer to tally
-      i_tally = active_surface_tallies % data(i)
+      i_tally = tally_vec % data(i)
       associate (t => tallies(i_tally) % obj)
 
       ! Find all valid bins in each filter if they have not already been found
@@ -3187,290 +3187,6 @@ contains
     filter_matches(:) % bins_present = .false.
 
   end subroutine score_surface_tally
-
-!===============================================================================
-! SCORE_SURFACE_CURRENT tallies surface crossings in a mesh tally by manually
-! determining which mesh surfaces were crossed
-!===============================================================================
-
-  subroutine score_surface_current(p)
-
-    type(Particle), intent(in) :: p
-
-    integer :: i
-    integer :: i_tally
-    integer :: j, k                 ! loop indices
-    integer :: n_dim                ! num dimensions of the mesh
-    integer :: d1                   ! dimension index
-    integer :: d2                   ! dimension index
-    integer :: d3                   ! dimension index
-    integer :: ijk0(3)              ! indices of starting coordinates
-    integer :: ijk1(3)              ! indices of ending coordinates
-    integer :: n_cross              ! number of surface crossings
-    integer :: filter_index         ! index of scoring bin
-    integer :: i_filter_mesh        ! index of mesh filter in filters array
-    integer :: i_filter_surf        ! index of surface filter in filters
-    integer :: i_filter_energy      ! index of energy filter in filters
-    real(8) :: uvw(3)               ! cosine of angle of particle
-    real(8) :: xyz0(3)              ! starting/intermediate coordinates
-    real(8) :: xyz1(3)              ! ending coordinates of particle
-    real(8) :: xyz_cross(3)         ! coordinates of bounding surfaces
-    real(8) :: d(3)                 ! distance to each bounding surface
-    real(8) :: distance             ! actual distance traveled
-    integer :: matching_bin         ! next valid filter bin
-    logical :: start_in_mesh        ! particle's starting xyz in mesh?
-    logical :: end_in_mesh          ! particle's ending xyz in mesh?
-    logical :: cross_surface        ! whether the particle crosses a surface
-    logical :: energy_filter        ! energy filter present
-    type(RegularMesh), pointer :: m
-
-    TALLY_LOOP: do i = 1, active_current_tallies % size()
-      ! Copy starting and ending location of particle
-      xyz0 = p % last_xyz_current
-      xyz1 = p % coord(1) % xyz
-
-      ! Get pointer to tally
-      i_tally = active_current_tallies % data(i)
-      associate (t => tallies(i_tally) % obj)
-
-      ! Check for energy filter
-      energy_filter = (t % find_filter(FILTER_ENERGYIN) > 0)
-
-      ! Get index for mesh, surface, and energy filters
-      i_filter_mesh = t % filter(t % find_filter(FILTER_MESH))
-      i_filter_surf = t % filter(t % find_filter(FILTER_SURFACE))
-      if (energy_filter) then
-        i_filter_energy = t % filter(t % find_filter(FILTER_ENERGYIN))
-      end if
-
-      ! Reset the matching bins arrays
-      call filter_matches(i_filter_mesh) % bins % resize(1)
-      call filter_matches(i_filter_surf) % bins % resize(1)
-      if (energy_filter) then
-        call filter_matches(i_filter_energy) % bins % resize(1)
-      end if
-
-      ! Get pointer to mesh
-      select type(filt => filters(i_filter_mesh) % obj)
-      type is (MeshFilter)
-        m => meshes(filt % mesh)
-      end select
-
-      n_dim = m % n_dimension
-
-      ! Determine indices for starting and ending location
-      call m % get_indices(xyz0, ijk0, start_in_mesh)
-      call m % get_indices(xyz1, ijk1, end_in_mesh)
-
-      ! Check to see if start or end is in mesh -- if not, check if track still
-      ! intersects with mesh
-      if ((.not. start_in_mesh) .and. (.not. end_in_mesh)) then
-        if (.not. m % intersects(xyz0, xyz1)) cycle
-      end if
-
-      ! Calculate number of surface crossings
-      n_cross = sum(abs(ijk1(:n_dim) - ijk0(:n_dim)))
-      if (n_cross == 0) then
-        cycle
-      end if
-
-      ! Copy particle's direction
-      uvw = p % coord(1) % uvw
-
-      ! Determine incoming energy bin.  We need to tell the energy filter this
-      ! is a tracklength tally so it uses the pre-collision energy.
-      if (energy_filter) then
-        call filter_matches(i_filter_energy) % bins % clear()
-        call filter_matches(i_filter_energy) % weights % clear()
-        call filters(i_filter_energy) % obj % get_all_bins(p, &
-             ESTIMATOR_TRACKLENGTH, filter_matches(i_filter_energy))
-        if (filter_matches(i_filter_energy) % bins % size() == 0) cycle
-        matching_bin = filter_matches(i_filter_energy) % bins % data(1)
-        filter_matches(i_filter_energy) % bins % data(1) = matching_bin
-      end if
-
-      ! Bounding coordinates
-      do d1 = 1, n_dim
-        if (uvw(d1) > 0) then
-          xyz_cross(d1) = m % lower_left(d1) + ijk0(d1) * m % width(d1)
-        else
-          xyz_cross(d1) = m % lower_left(d1) + (ijk0(d1) - 1) * m % width(d1)
-        end if
-      end do
-
-      do j = 1, n_cross
-        ! Reset scoring bin index
-        filter_matches(i_filter_surf) % bins % data(1) = 0
-
-        ! Set the distances to infinity
-        d = INFINITY
-
-        ! Calculate distance to each bounding surface. We need to treat
-        ! special case where the cosine of the angle is zero since this would
-        ! result in a divide-by-zero.
-        do d1 = 1, n_dim
-          if (uvw(d1) == 0) then
-            d(d1) = INFINITY
-          else
-            d(d1) = (xyz_cross(d1) - xyz0(d1))/uvw(d1)
-          end if
-        end do
-
-        ! Determine the closest bounding surface of the mesh cell by
-        ! calculating the minimum distance. Then use the minimum distance and
-        ! direction of the particle to determine which surface was crossed.
-        distance = minval(d)
-
-        ! Loop over the dimensions
-        do d1 = 1, n_dim
-
-          ! Get the other dimensions.
-          if (d1 == 1) then
-            d2 = mod(d1, 3) + 1
-            d3 = mod(d1 + 1, 3) + 1
-          else
-            d2 = mod(d1 + 1, 3) + 1
-            d3 = mod(d1, 3) + 1
-          end if
-
-          ! Check whether distance is the shortest distance
-          if (distance == d(d1)) then
-
-            ! Check whether particle is moving in positive d1 direction
-            if (uvw(d1) > 0) then
-
-              ! Outward current on d1 max surface
-              if (all(ijk0(:n_dim) >= 1) .and. &
-                   all(ijk0(:n_dim) <= m % dimension)) then
-                filter_matches(i_filter_surf) % bins % data(1) = d1 * 4 - 1
-                filter_matches(i_filter_mesh) % bins % data(1) = &
-                     m % get_bin_from_indices(ijk0)
-                filter_index = 1
-                do k = 1, size(t % filter)
-                  filter_index = filter_index + (filter_matches(t % &
-                       filter(k)) % bins % data(1) - 1) * t % stride(k)
-                end do
-!$omp atomic
-                t % results(RESULT_VALUE, 1, filter_index) = &
-                     t % results(RESULT_VALUE, 1, filter_index) + p % wgt
-              end if
-
-              ! Inward current on d1 min surface
-              cross_surface = .false.
-              select case(n_dim)
-
-              case (1)
-                if (ijk0(d1) >= 0 .and. ijk0(d1) <  m % dimension(d1)) then
-                  cross_surface = .true.
-                end if
-
-              case (2)
-                if (ijk0(d1) >= 0 .and. ijk0(d1) <  m % dimension(d1) .and. &
-                     ijk0(d2) >= 1 .and. ijk0(d2) <= m % dimension(d2)) then
-                  cross_surface = .true.
-                end if
-
-              case (3)
-                if (ijk0(d1) >= 0 .and. ijk0(d1) <  m % dimension(d1) .and. &
-                     ijk0(d2) >= 1 .and. ijk0(d2) <= m % dimension(d2) .and. &
-                     ijk0(d3) >= 1 .and. ijk0(d3) <= m % dimension(d3)) then
-                  cross_surface = .true.
-                end if
-              end select
-
-              ! If the particle crossed the surface, tally the current
-              if (cross_surface) then
-                ijk0(d1) = ijk0(d1) + 1
-                filter_matches(i_filter_surf) % bins % data(1) = d1 * 4 - 2
-                filter_matches(i_filter_mesh) % bins % data(1) = &
-                     m % get_bin_from_indices(ijk0)
-                filter_index = 1
-                do k = 1, size(t % filter)
-                  filter_index = filter_index + (filter_matches(t % &
-                       filter(k)) % bins % data(1) - 1) * t % stride(k)
-                end do
-!$omp atomic
-                t % results(RESULT_VALUE, 1, filter_index) = &
-                     t % results(RESULT_VALUE, 1, filter_index) + p % wgt
-                ijk0(d1) = ijk0(d1) - 1
-              end if
-
-              ijk0(d1) = ijk0(d1) + 1
-              xyz_cross(d1) = xyz_cross(d1) + m % width(d1)
-
-              ! The particle is moving in the negative d1 direction
-            else
-
-              ! Outward current on d1 min surface
-              if (all(ijk0(:n_dim) >= 1) .and. &
-                   all(ijk0(:n_dim) <= m % dimension)) then
-                filter_matches(i_filter_surf) % bins % data(1) = d1 * 4 - 3
-                filter_matches(i_filter_mesh) % bins % data(1) = &
-                     m % get_bin_from_indices(ijk0)
-                filter_index = 1
-                do k = 1, size(t % filter)
-                  filter_index = filter_index + (filter_matches(t % &
-                       filter(k)) % bins % data(1) - 1) * t % stride(k)
-                end do
-!$omp atomic
-                t % results(RESULT_VALUE, 1, filter_index) = &
-                     t % results(RESULT_VALUE, 1, filter_index) + p % wgt
-              end if
-
-              ! Inward current on d1 max surface
-              cross_surface = .false.
-              select case(n_dim)
-
-              case (1)
-                if (ijk0(d1) >  1 .and. ijk0(d1) <= m % dimension(d1) + 1) then
-                  cross_surface = .true.
-                end if
-
-              case (2)
-                if (ijk0(d1) >  1 .and. ijk0(d1) <= m % dimension(d1) + 1 .and.&
-                     ijk0(d2) >= 1 .and. ijk0(d2) <= m % dimension(d2)) then
-                  cross_surface = .true.
-                end if
-
-              case (3)
-                if (ijk0(d1) >  1 .and. ijk0(d1) <= m % dimension(d1) + 1 .and.&
-                     ijk0(d2) >= 1 .and. ijk0(d2) <= m % dimension(d2) .and. &
-                     ijk0(d3) >= 1 .and. ijk0(d3) <= m % dimension(d3)) then
-                  cross_surface = .true.
-                end if
-              end select
-
-              ! If the particle crossed the surface, tally the current
-              if (cross_surface) then
-                ijk0(d1) = ijk0(d1) - 1
-                filter_matches(i_filter_surf) % bins % data(1) = d1 * 4
-                filter_matches(i_filter_mesh) % bins % data(1) = &
-                     m % get_bin_from_indices(ijk0)
-                filter_index = 1
-                do k = 1, size(t % filter)
-                  filter_index = filter_index + (filter_matches(t % &
-                       filter(k)) % bins % data(1) - 1) * t % stride(k)
-                end do
-!$omp atomic
-                t % results(RESULT_VALUE, 1, filter_index) = &
-                     t % results(RESULT_VALUE, 1, filter_index) + p % wgt
-                ijk0(d1) = ijk0(d1) + 1
-              end if
-
-              ijk0(d1) = ijk0(d1) - 1
-              xyz_cross(d1) = xyz_cross(d1) - m % width(d1)
-            end if
-          end if
-        end do
-
-        ! Calculate new coordinates
-        xyz0 = xyz0 + distance * uvw
-      end do
-
-      end associate
-    end do TALLY_LOOP
-
-  end subroutine score_surface_current
 
 !===============================================================================
 ! APPLY_DERIVATIVE_TO_SCORE multiply the given score by its relative derivative
@@ -4375,7 +4091,7 @@ contains
     call active_collision_tallies % clear()
     call active_tracklength_tallies % clear()
     call active_surface_tallies % clear()
-    call active_current_tallies % clear()
+    call active_meshsurf_tallies % clear()
 
     do i = 1, n_tallies
       associate (t => tallies(i) % obj)
@@ -4392,8 +4108,8 @@ contains
             elseif (t % estimator == ESTIMATOR_COLLISION) then
               call active_collision_tallies % push_back(i)
             end if
-          elseif (t % type == TALLY_MESH_CURRENT) then
-            call active_current_tallies % push_back(i)
+          elseif (t % type == TALLY_MESH_SURFACE) then
+            call active_meshsurf_tallies % push_back(i)
           elseif (t % type == TALLY_SURFACE) then
             call active_surface_tallies % push_back(i)
           end if

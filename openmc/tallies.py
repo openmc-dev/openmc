@@ -2738,7 +2738,7 @@ class Tally(IDManagerMixin):
                 new_filter = filter_type(bins)
 
                 # Set number of bins manually for mesh/distribcell filters
-                if filter_type in (openmc.DistribcellFilter, openmc.MeshFilter):
+                if filter_type is openmc.DistribcellFilter:
                     new_filter._num_bins = find_filter._num_bins
 
                 # Replace existing filter with new one

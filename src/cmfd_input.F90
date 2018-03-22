@@ -373,7 +373,7 @@ contains
 
     ! Determine number of filters
     energy_filters = check_for_node(node_mesh, "energy")
-    n = merge(5, 3, energy_filters)
+    n = merge(4, 2, energy_filters)
 
     ! Extend filters array so we can add CMFD filters
     err = openmc_extend_filters(n, i_filt_start, i_filt_end)
@@ -409,44 +409,15 @@ contains
     ! Duplicate the mesh filter for the mesh current tally since other
     ! tallies use this filter and we need to change the dimension
     i_filt = i_filt + 1
-    err = openmc_filter_set_type(i_filt, C_CHAR_'mesh' // C_NULL_CHAR)
+    err = openmc_filter_set_type(i_filt, C_CHAR_'meshsurface' // C_NULL_CHAR)
     call openmc_get_filter_next_id(filt_id)
     err = openmc_filter_set_id(i_filt, filt_id)
-    err = openmc_mesh_filter_set_mesh(i_filt, i_start)
+    err = openmc_meshsurface_filter_set_mesh(i_filt, i_start)
 
-    ! We need to increase the dimension by one since we also need
-    ! currents coming into and out of the boundary mesh cells.
-    filters(i_filt) % obj % n_bins = product(m % dimension + 1)
-
-    ! Set up surface filter
-    i_filt = i_filt + 1
-    allocate(SurfaceFilter :: filters(i_filt) % obj)
-    select type(filt => filters(i_filt) % obj)
-    type is(SurfaceFilter)
-      filt % id = i_filt
-      filt % n_bins = 4 * m % n_dimension
-      allocate(filt % surfaces(4 * m % n_dimension))
-      if (m % n_dimension == 2) then
-        filt % surfaces = (/ OUT_LEFT, IN_LEFT, IN_RIGHT, OUT_RIGHT, &
-             OUT_BACK, IN_BACK, IN_FRONT, OUT_FRONT /)
-      elseif (m % n_dimension == 3) then
-        filt % surfaces = (/ OUT_LEFT, IN_LEFT, IN_RIGHT, OUT_RIGHT, &
-             OUT_BACK, IN_BACK, IN_FRONT, OUT_FRONT, &
-             OUT_BOTTOM, IN_BOTTOM, IN_TOP, OUT_TOP /)
-      end if
-      filt % current = .true.
-      ! Add filter to dictionary
-      call filter_dict % set(filt % id, i_filt)
-    end select
 
     ! Initialize filters
     do i = i_filt_start, i_filt_end
-      select type (filt => filters(i) % obj)
-      type is (SurfaceFilter)
-        ! Don't do anything
-      class default
-        call filt % initialize()
-      end select
+      call filters(i) % obj % initialize()
     end do
 
     ! Allocate tallies
@@ -564,13 +535,9 @@ contains
         ! Set tally estimator to analog
         t % estimator = ESTIMATOR_ANALOG
 
-        ! Set the surface filter index in the tally find_filter array
-        n_filter = n_filter + 1
-
         ! Allocate and set filters
         allocate(filter_indices(n_filter))
-        filter_indices(1) = i_filt_end - 1
-        filter_indices(n_filter) = i_filt_end
+        filter_indices(1) = i_filt_end
         if (energy_filters) then
           filter_indices(2) = i_filt_start + 1
         end if
@@ -588,7 +555,7 @@ contains
 
         ! Set macro bins
         t % score_bins(1) = SCORE_CURRENT
-        t % type = TALLY_MESH_CURRENT
+        t % type = TALLY_MESH_SURFACE
       end if
 
       ! Make CMFD tallies active from the start

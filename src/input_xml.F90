@@ -4375,9 +4375,10 @@ contains
         if (allocated(elements(i) % stopping_power_radiative)) &
              deallocate(elements(i) % stopping_power_radiative)
         if (allocated(elements(i) % dcs)) deallocate(elements(i) % dcs)
+        if (allocated(ttb_k_grid)) deallocate(ttb_k_grid)
       end do
 
-      ! Take logarithm of electron energies since they are log-log interpolated
+      ! Take logarithm of energies since they are log-log interpolated
       ttb_e_grid = log(ttb_e_grid)
     end if
 

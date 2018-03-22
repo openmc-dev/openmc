@@ -636,15 +636,15 @@ class IncidentPhoton(EqualityMixin):
 
                 # Get the scaled cross section values for each electron energy and
                 # reduced photon energy for this Z
-                logy = np.log(np.reshape(np.fromiter(brem[p:p+n*k], float, n*k), (n, k)))
+                y = np.reshape(np.fromiter(brem[p:p+n*k], float, n*k), (n, k))
                 p += k*n
 
                 for j in range(k):
-                    # Cubic spline log-log interpolation
-                    cs = CubicSpline(logx, logy[:,j])
+                    # Cubic spline interpolation in log energy and linear DCS
+                    cs = CubicSpline(logx, y[:,j])
 
                     # Get scaled DCS values (millibarns) on new energy grid
-                    dcs[:,j] = np.exp(cs(log_energy))
+                    dcs[:,j] = cs(log_energy)
 
                 _BREMSSTRAHLUNG[i] = {'dcs': dcs}
 

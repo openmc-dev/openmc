@@ -12,8 +12,8 @@ module photon_header
   use settings
 
   real(8), allocatable :: compton_profile_pz(:)
-  real(8), allocatable :: ttb_e_grid(:)  ! incident electron energy grid
-  real(8), allocatable :: ttb_k_grid(:)  ! reduced photon energy grid
+  real(8), allocatable :: ttb_e_grid(:) ! energy T of incident electron
+  real(8), allocatable :: ttb_k_grid(:) ! reduced energy W/T of emitted photon
 
   type ElectronSubshell
     integer :: index_subshell  ! index in SUBSHELLS
@@ -60,7 +60,7 @@ module photon_header
     real(8), allocatable :: electron_pdf(:)
 
     ! Stopping power data
-    real(8) :: density
+    real(8) :: I ! mean excitation energy
     real(8), allocatable :: stopping_power_collision(:)
     real(8), allocatable :: stopping_power_radiative(:)
 
@@ -75,9 +75,9 @@ module photon_header
   type Bremsstrahlung
     integer :: i_material ! Index in materials array
 
-    real(8), allocatable :: yield(:) ! Photon number yield
-    real(8), allocatable :: dcs(:,:) ! Bremsstrahlung scaled DCS
+    real(8), allocatable :: pdf(:,:) ! Bremsstrahlung energy PDF
     real(8), allocatable :: cdf(:,:) ! Bremsstrahlung energy CDF
+    real(8), allocatable :: yield(:) ! Photon number yield
   end type Bremsstrahlung
 
   type(PhotonInteraction), allocatable, target :: elements(:) ! Photon cross sections
@@ -334,7 +334,7 @@ contains
         allocate(this % stopping_power_radiative(n_e))
         call read_dataset(this % stopping_power_collision, rgroup, 's_collision')
         call read_dataset(this % stopping_power_radiative, rgroup, 's_radiative')
-        call read_attribute(this % density, rgroup, 'density')
+        call read_attribute(this % I, rgroup, 'I')
         call close_group(rgroup)
       end if
     end if

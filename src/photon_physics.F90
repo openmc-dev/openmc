@@ -387,17 +387,16 @@ contains
     real(8),        intent(inout) :: E_lost
 
     integer :: i, j
-    integer :: i_e, i_k
+    integer :: i_e, i_w
     integer :: n
-    integer :: n_e, n_k
-    real(8) :: c_max
+    integer :: n_e
+    real(8) :: a
     real(8) :: f
-    real(8) :: w
-    real(8) :: r
     real(8) :: e, e_l, e_r
     real(8) :: y, y_l, y_r
-    real(8) :: k, k_l, k_r, k_c
-    real(8) :: x, x_l, x_r
+    real(8) :: w, w_l, w_r
+    real(8) :: p_l, p_r
+    real(8) :: c, c_l, c_max
     type(Bremsstrahlung), pointer :: mat
 
     if (p % E < energy_cutoff(PHOTON)) return
@@ -405,11 +404,8 @@ contains
     ! Get bremsstrahlung data for this material
     mat => ttb(p % material)
 
-    k_c = energy_cutoff(PHOTON) / p % E
-
     e = log(p % E)
     n_e = size(ttb_e_grid)
-    n_k = size(ttb_k_grid)
 
     ! Find the lower bounding index of the incident electron energy
     j = binary_search(ttb_e_grid, n_e, e)
@@ -433,50 +429,45 @@ contains
     n = int(y + prn())
 
     E_lost = ZERO
+    if (n == 0) return
+
+    ! Sample index of the tabulated PDF in the energy grid, j or j+1
+    if (prn() > f) then
+      i_e = j
+
+      ! Maximum value of the CDF
+      c_max = mat % cdf(i_e, i_e)
+    else
+      i_e = j + 1
+
+      ! Interpolate the maximum value of the CDF at the incoming particle
+      ! energy on a log-log scale
+      p_l = mat % pdf(i_e, i_e-1)
+      p_r = mat % pdf(i_e, i_e)
+      c_l = mat % cdf(i_e, i_e-1)
+write(*,*) "p_r: ", p_r, "p_l: ", p_l, "p_r/p_l: ", p_r/p_l
+write(*,*) "e_r: ", e_r, "e_l: ", e_l, "e_r/e_l: ", e_r/e_l
+      a = (log(p_r/p_l)) / (e_r - e_l) + ONE
+      c_max = c_l + (exp(e_l) * p_l)/a * (exp(a*(e - e_l)) - ONE)
+    end if
 
     ! Sample the energies of the emitted photons
     do i = 1, n
-      ! Sample index of the tabulated PDF in the energy grid, j or j+1
-      if (prn() > f) then
-        i_e = j
-      else
-        i_e = j + 1
+      ! Generate a random number r and determine the index i for which
+      ! cdf(i) <= r*cdf,max <= cdf(i+1)
+      c = prn()*c_max
+      i_w = binary_search(mat % cdf(:i_e,i_e), i_e, c)
 
-        ! TODO: interpolate maximum value of the CDF
-      end if
+      ! Sample the photon energy
+      w_l = ttb_e_grid(i_w)
+      w_r = ttb_e_grid(i_w+1)
+      p_l = mat % pdf(i_w, i_e)
+      p_r = mat % pdf(i_w+1, i_e)
+      c_l = mat % cdf(i_w, i_e)
+      a = (log(p_r/p_l)) / (w_r - w_l) + ONE
+      w = exp(w_l) * (a*(c - c_l)/(exp(w_l) * p_l) + ONE)**(ONE/a)
 
-      ! Maximum value of the CDF
-      c_max = mat % cdf(n_k, i_e)
 
-      ! Sample reduced photon energy from the tabulated PDFs
-      do
-        ! Generate a random number r and determine the index i for which
-        ! cdf(i) <= r*cdf,max <= cdf(i+1)
-        r = prn()
-        i_k = binary_search(mat % cdf(:, i_e), n_k, r*c_max)
-
-        ! Get interpolation bounds
-        k_l = ttb_k_grid(i_k)
-        k_r = ttb_k_grid(i_k+1)
-        x_l = mat % dcs(i_k, i_e)
-        x_r = mat % dcs(i_k+1, i_e)
-        if (k_l < k_c) then
-          x_l = x_l + (k_c - k_l) * (x_r - x_l) / (k_r - k_l)
-          k_l = k_c
-        end if
-
-        ! Sample the reduced photon energy k from the distribution 1/k on the
-        ! interval (k(i), k(i+1))
-        k = k_l * (k_r / k_l)**r
-
-        ! Get the interpolated DCS
-        x = x_l + (k - k_l) * (x_r - x_l) / (k_r - k_l)
-
-        ! Determine whether to deliver k
-        if (prn() * max(x_l, x_r) < x) exit
-      end do
-
-      w = k * p % E
       if (w < energy_cutoff(PHOTON)) cycle
 
       ! Create secondary photon

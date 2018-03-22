@@ -705,11 +705,12 @@ contains
 
     integer                 :: i, j
     integer                 :: i_k
-    integer                 :: n_e, n_k
-    real(8)                 :: e
+    integer                 :: n, n_e, n_k
     real(8)                 :: c
-    real(8)                 :: k, k_l, k_r, k_c
-    real(8)                 :: x_l, x_r, x_c
+    real(8)                 :: k, k_l, k_r
+    real(8)                 :: e, e_l, e_r
+    real(8)                 :: w, w_l, w_r
+    real(8)                 :: x, x_l, x_r
     real(8)                 :: awr
     real(8)                 :: density
     real(8)                 :: density_gpcc
@@ -720,7 +721,8 @@ contains
     real(8), allocatable    :: atom_fraction(:)
     real(8), allocatable    :: mass_fraction(:)
     real(8), allocatable    :: stopping_power(:)
-    real(8), allocatable    :: mfp_inv(:)
+    real(8), allocatable    :: dcs(:,:)
+    real(8), allocatable    :: f(:)
     real(8), allocatable    :: z(:)
     type(Material), pointer :: mat
     type(PhotonInteraction), pointer :: elm
@@ -732,18 +734,19 @@ contains
     ! Allocate and initialize arrays
     n_k = size(ttb_k_grid)
     n_e = size(ttb_e_grid)
+    allocate(this % pdf(n_e, n_e))
+    allocate(this % cdf(n_e, n_e))
+    allocate(this % yield(n_e))
     allocate(atom_fraction(mat % n_nuclides))
     allocate(mass_fraction(mat % n_nuclides))
     allocate(stopping_power(n_e))
-    allocate(mfp_inv(n_e))
-    allocate(this % yield(n_e))
-    allocate(this % dcs(n_k, n_e))
-    allocate(this % cdf(n_k, n_e))
+    allocate(dcs(n_k, n_e))
+    allocate(f(n_e))
     allocate(z(n_e))
-    stopping_power(:) = ZERO
-    mfp_inv(:) = ZERO
-    this % dcs(:,:) = ZERO
+    this % pdf(:,:) = ZERO
     this % cdf(:,:) = ZERO
+    stopping_power(:) = ZERO
+    dcs(:,:) = ZERO
 
     ! Calculate the "equivalent" atomic number Zeq, the atomic fraction and the
     ! mass fraction of each element, and the material density in atom/b-cm and
@@ -800,64 +803,99 @@ contains
       ! TODO: for molecular DCS, atom_fraction should actually be the number of
       ! atoms in the molecule.
       ! Accumulate material DCS
-      this % dcs = this % dcs + atom_fraction(i) * elm % Z**2 / Z_eq_sq * elm % dcs
+      dcs = dcs + atom_fraction(i) * elm % Z**2 / Z_eq_sq * elm % dcs
 
       ! Accumulate material total stopping power
       stopping_power = stopping_power + mass_fraction(i) * density_gpcc * &
            (elm % stopping_power_collision + elm % stopping_power_radiative)
     end do
 
-    ! Calculate inverse bremsstrahlung mean free path
-    do i = 1, n_e
-      e = ttb_e_grid(i)
-      if (e <= energy_cutoff(PHOTON)) cycle
+    ! Loop over photon energies
+    do i = 1, n_e - 1
+      w = ttb_e_grid(i)
 
-      ! Ratio of the velocity of the charged particle to the speed of light
-      beta = sqrt(e*(e + TWO*MASS_ELECTRON)) / (e + MASS_ELECTRON)
+      ! Loop over incident particle energies
+      do j = i, n_e
+        e = ttb_e_grid(j)
 
-      ! Integration lower bound
-      k_c = energy_cutoff(PHOTON) / e
+        ! Reduced photon energy
+        k = w / e
 
-      ! Find the upper bounding index of the reduced photon cutoff energy
-      i_k = binary_search(ttb_k_grid, n_k, k_c) + 1
+        ! Find the lower bounding index of the reduced photon energy
+        i_k = binary_search(ttb_k_grid, n_k, k)
 
-      ! Get the interpolation bounds
-      k_l = ttb_k_grid(i_k-1)
-      k_r = ttb_k_grid(i_k)
-      x_l = this % dcs(i_k-1, i)
-      x_r = this % dcs(i_k, i)
+        ! Get the interpolation bounds
+        k_l = ttb_k_grid(i_k)
+        k_r = ttb_k_grid(i_k+1)
+        x_l = dcs(i_k, j)
+        x_r = dcs(i_k+1, j)
 
-      ! Use linear interpolation in reduced photon energy k to find value of
-      ! the DCS at the cutoff energy
-      x_c = (x_l * (k_r - k_c) + x_r * (k_c - k_l)) / (k_r - k_l)
+        ! Find the value of the DCS using linear interpolation in reduced
+        ! photon energy k
+        x = x_l + (k - k_l) * (x_r - x_l) / (k_r - k_l)
 
-      ! Calculate the CDF using the trapezoidal rule in log-log space
-      c = HALF * (log(k_r) - log(k_c)) * (x_c + x_r)
-      this % cdf(i_k,i) = c
-      do j = i_k, n_k - 1
-        c = c + HALF * (log(ttb_k_grid(j+1)) - log(ttb_k_grid(j))) * &
-             (this % dcs(j,i) + this % dcs(j+1,i))
-        this % cdf(j+1,i) = c
+        ! Ratio of the velocity of the charged particle to the speed of light
+        beta = sqrt(e*(e + TWO*MASS_ELECTRON)) / (e + MASS_ELECTRON)
+
+        ! Compute the integrand of the PDF
+        f(j) = (density * 1.0e-3_8 * Z_eq_sq * x) / (beta**2 * &
+             stopping_power(j) * w)
       end do
 
-      ! Calculate the inverse bremsstrahlung mean free path
-      mfp_inv(i) = c * density * Z_eq_sq / beta**2 * 1.0e-3_8
+      ! Number of points to integrate
+      n = n_e - i + 1
+
+      ! Integrate the PDF using cubic spline integration over the incident
+      ! particle energy
+      if (n > 2) then
+        call spline(ttb_e_grid(i:), f(i:), z(i:), n)
+
+        c = ZERO
+        do j = i, n_e - 1
+          c = c + spline_integrate(ttb_e_grid(i:), f(i:), z(i:), n, &
+               ttb_e_grid(j), ttb_e_grid(j+1))
+          this % pdf(i,j+1) = c
+        end do
+
+      ! Integrate the last two points using trapezoidal rule in log-log space
+      else
+        e_l = log(ttb_e_grid(i))
+        e_r = log(ttb_e_grid(i+1))
+        x_l = log(f(i))
+        x_r = log(f(i+1))
+
+        this % pdf(i,i+1) = HALF * (e_r - e_l) * (exp(e_l + x_l) + exp(e_r + x_r))
+      end if
     end do
 
-    ! Calculate photon number yield
-    mfp_inv(:) = mfp_inv(:) / stopping_power(:)
-    call spline(ttb_e_grid, mfp_inv, z, n_e)
-    do i = 1, n_e
-      this % yield(i) = spline_integrate(ttb_e_grid, mfp_inv, z, n_e, &
-           energy_cutoff(PHOTON), ttb_e_grid(i))
+    ! Loop over incident particle energies
+    do j = 2, n_e
+      ! Set last element of PDF to small non-zero value to enable log-log
+      ! interpolation
+      this % pdf(j,j) = 1.0e-9_8 * this % pdf(j-1,j)
+
+      ! Loop over photon energies
+      c = ZERO
+      do i = 1, j - 1
+        ! Integrate the CDF from the PDF using the trapezoidal rule in log-log
+        ! space
+        w_l = log(ttb_e_grid(i))
+        w_r = log(ttb_e_grid(i+1))
+        x_l = log(this % pdf(i,j))
+        x_r = log(this % pdf(i+1,j))
+
+        c = c + HALF * (w_r - w_l) * (exp(w_l + x_l) + exp(w_r + x_r))
+        this % cdf(i+1,j) = c
+      end do
+
+      ! Use logarithm of number yield since it is log-log interpolated
+      if (c > ZERO) then
+        c = log(c)
+      end if
+      this % yield(j) = c
     end do
 
-    ! Use logarithm of number yield since it is log-log interpolated
-    where (this % yield > ZERO)
-      this % yield = log(this % yield)
-    end where
-
-    deallocate(atom_fraction, mass_fraction, stopping_power, mfp_inv, z)
+    deallocate(atom_fraction, mass_fraction, stopping_power, dcs, f, z)
 
   end subroutine bremsstrahlung_init
 

@@ -12,11 +12,11 @@ particles = 1000
 
 # Depletion simulation parameters
 time_step = 1.*24*60*60 # s
-final_time = 45.*24*60*60 # s
+final_time = 15.*24*60*60 # s
 time_steps = np.full(np.int(final_time / time_step), time_step)
 
 chain_file = './chain_simple.xml'
-power = 174.1 # W/cm, for 2D simulations only
+power = 174 # W/cm, for 2D simulations only (use W for 3D)
 
 ###############################################################################
 #                              Define materials
@@ -134,7 +134,7 @@ settings_file.entropy_mesh = entropy_mesh
 settings_file.export_to_xml()
 
 ###############################################################################
-#                         Run depletion calculation
+#                   Initialize and run depletion calculation
 ###############################################################################
 
 op = openmc.deplete.Operator(geometry, settings_file, chain_file)
@@ -158,4 +158,4 @@ nuc_to_ind = results[0].nuc_to_ind
 time, keff = results.get_eigenvalue()
                                                                                                                                                                                                                                                                                                                                                                                                                                                         
 # Obtain U235 concentration as a function of time
-time, U5 = results.get_atoms(mat_id_to_ind['1'], nuc_to_ind['U235'])
+time, n_U235 = results.get_atoms(mat_id_to_ind['1'], nuc_to_ind['U235'])

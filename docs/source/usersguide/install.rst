@@ -417,7 +417,8 @@ The Python API works with Python 3.4+. In addition to Python itself, the API
 relies on a number of third-party packages. All prerequisites can be installed
 using Conda_ (recommended), pip_, or through the package manager in most Linux
 distributions. To run simulations in parallel using MPI, it is recommended to
-build mpi4py, hdf5, h5py from source, in that order, using the same compilers.
+build mpi4py, hdf5, h5py from source, in that order, using the same compilers
+as for openmc.
 
 .. admonition:: Required
    :class: error

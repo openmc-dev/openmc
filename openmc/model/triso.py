@@ -113,8 +113,7 @@ class _Domain(metaclass=ABCMeta):
         Length in x-, y-, and z- directions of each cell in mesh overlaid on
         domain.
     limits : list of float
-        Minimum and maximum position in x-, y-, and z-directions where particle
-        center can be placed.
+        Constraint on where particle center can be placed.
     volume : float
         Volume of the container.
 
@@ -158,8 +157,6 @@ class _Domain(metaclass=ABCMeta):
             raise ValueError('Unable to set domain center to {} since it must '
                              'be of length 3'.format(center))
         self._center = [float(x) for x in center]
-        self._limits = None
-        self._cell_length = None
 
     def mesh_cell(self, p):
         """Calculate the index of the cell in a mesh overlaid on the domain in
@@ -211,6 +208,19 @@ class _Domain(metaclass=ABCMeta):
         """
         pass
 
+    @abstractmethod
+    def enforce_boundary(self, particle):
+        """Update the position of the particle if necessary to ensure that the
+        particle remains entirely within the domain.
+
+        Parameters
+        ----------
+        particle : numpy.ndarray
+            Cartesian coordinates of particle center.
+
+        """
+        pass
+
 
 class _CubicDomain(_Domain):
     """Cubic container in which to pack particles.
@@ -238,7 +248,7 @@ class _CubicDomain(_Domain):
         Length in x-, y-, and z- directions of each cell in mesh overlaid on
         domain.
     limits : list of float
-        Minimum and maximum position in x-, y-, and z-directions where particle
+        Maximum distance from center in x-, y-, or z-direction where particle
         center can be placed.
     volume : float
         Volume of the container.
@@ -256,9 +266,7 @@ class _CubicDomain(_Domain):
     @property
     def limits(self):
         if self._limits is None:
-            xlim = self.length/2 - self.particle_radius
-            self._limits = [[x - xlim for x in self.center],
-                            [x + xlim for x in self.center]]
+            self._limits = [self.length/2 - self.particle_radius]
         return self._limits
 
     @property
@@ -284,9 +292,14 @@ class _CubicDomain(_Domain):
         self._limits = limits
 
     def random_point(self):
-        return [uniform(self.limits[0][0], self.limits[1][0]),
-                uniform(self.limits[0][1], self.limits[1][1]),
-                uniform(self.limits[0][2], self.limits[1][2])]
+        x_max = self.limits[0]
+        return [uniform(-x_max, x_max),
+                uniform(-x_max, x_max),
+                uniform(-x_max, x_max)]
+
+    def enforce_boundary(self, particle):
+        x_max = self.limits[0]
+        particle[:] = np.clip(particle, -x_max, x_max)
 
 
 class _CylindricalDomain(_Domain):
@@ -317,8 +330,8 @@ class _CylindricalDomain(_Domain):
         Length in x-, y-, and z- directions of each cell in mesh overlaid on
         domain.
     limits : list of float
-        Minimum and maximum position in x-, y-, and z-directions where particle
-        center can be placed.
+        Maximum radial distance and maximum distance from center in z-direction
+        where particle center can be placed.
     volume : float
         Volume of the container.
 
@@ -340,12 +353,8 @@ class _CylindricalDomain(_Domain):
     @property
     def limits(self):
         if self._limits is None:
-            xlim = self.length/2 - self.particle_radius
-            rlim = self.radius - self.particle_radius
-            self._limits = [[self.center[0] - rlim, self.center[1] - rlim,
-                             self.center[2] - xlim],
-                            [self.center[0] + rlim, self.center[1] + rlim,
-                             self.center[2] + xlim]]
+            self._limits = [self.radius - self.particle_radius,
+                            self.length/2 - self.particle_radius]
         return self._limits
 
     @property
@@ -377,10 +386,20 @@ class _CylindricalDomain(_Domain):
         self._limits = limits
 
     def random_point(self):
-        r = sqrt(uniform(0, (self.radius - self.particle_radius)**2))
+        r_max = self.limits[0]
+        z_max = self.limits[1]
+        r = sqrt(uniform(0, r_max**2))
         t = uniform(0, 2*pi)
-        return [r*cos(t) + self.center[0], r*sin(t) + self.center[1],
-                uniform(self.limits[0][2], self.limits[1][2])]
+        return [r*cos(t), r*sin(t), uniform(-z_max, z_max)]
+
+    def enforce_boundary(self, particle):
+        r_max = self.limits[0]
+        z_max = self.limits[1]
+        d = sqrt(particle[0]**2 + particle[1]**2)
+        if d > r_max:
+            particle[0] *= r_max / d
+            particle[1] *= r_max / d
+        particle[2] = np.clip(particle[2], -z_max, z_max)
 
 
 class _SphericalDomain(_Domain):
@@ -407,8 +426,7 @@ class _SphericalDomain(_Domain):
         Length in x-, y-, and z- directions of each cell in mesh overlaid on
         domain.
     limits : list of float
-        Minimum and maximum position in x-, y-, and z-directions where particle
-        center can be placed.
+        Maximum radial distance where particle center can be placed.
     volume : float
         Volume of the container.
 
@@ -425,9 +443,7 @@ class _SphericalDomain(_Domain):
     @property
     def limits(self):
         if self._limits is None:
-            rlim = self.radius - self.particle_radius
-            self._limits = [[x - rlim for x in self.center],
-                            [x + rlim for x in self.center]]
+            self._limits = [self.radius - self.particle_radius]
         return self._limits
 
     @property
@@ -453,10 +469,18 @@ class _SphericalDomain(_Domain):
         self._limits = limits
 
     def random_point(self):
+        r_max = self.limits[0]
         x = (gauss(0, 1), gauss(0, 1), gauss(0, 1))
-        r = (uniform(0, (self.radius - self.particle_radius)**3)**(1/3) /
-             sqrt(x[0]**2 + x[1]**2 + x[2]**2))
-        return [r*x[i] + self.center[i] for i in range(3)]
+        r = (uniform(0, r_max**3)**(1/3) / sqrt(x[0]**2 + x[1]**2 + x[2]**2))
+        return [r*s for s in x]
+
+    def enforce_boundary(self, particle):
+        r_max = self.limits[0]
+        d = sqrt(particle[0]**2 + particle[1]**2 + particle[2]**2)
+        if d > r_max:
+            particle[0] *= r_max / d
+            particle[1] *= r_max / d
+            particle[2] *= r_max / d
 
 
 def create_triso_lattice(trisos, lower_left, pitch, shape, background):
@@ -767,9 +791,9 @@ def _close_random_pack(domain, particles, contraction_rate):
         particles[i] += r*v
         particles[j] -= r*v
 
-        # Apply reflective boundary conditions
-        particles[i] = particles[i].clip(domain.limits[0], domain.limits[1])
-        particles[j] = particles[j].clip(domain.limits[0], domain.limits[1])
+        # Apply boundary conditions
+        domain.enforce_boundary(particles[i])
+        domain.enforce_boundary(particles[j])
 
         update_mesh(i)
         update_mesh(j)
@@ -1008,8 +1032,7 @@ def pack_trisos(radius, fill, domain_shape='cylinder', domain_length=None,
     # Recalculate the limits for the initial random sequential packing using
     # the desired final particle radius to ensure particles are fully contained
     # within the domain during the close random pack
-    domain.limits = [[x - initial_radius + radius for x in domain.limits[0]],
-                     [x + initial_radius - radius for x in domain.limits[1]]]
+    domain.limits = [x + initial_radius - radius for x in domain.limits]
 
     # Generate non-overlapping particles for an initial inner radius using
     # random sequential packing algorithm
@@ -1024,5 +1047,5 @@ def pack_trisos(radius, fill, domain_shape='cylinder', domain_length=None,
 
     trisos = []
     for p in particles:
-        trisos.append(TRISO(radius, fill, p))
+        trisos.append(TRISO(radius, fill, [x + c for x, c in zip(p, domain.center)]))
     return trisos

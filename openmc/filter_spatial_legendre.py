@@ -44,6 +44,7 @@ class SpatialLegendreFilter(Filter):
         self.axis = axis
         self.minimum = minimum
         self.maximum = maximum
+        self.bins = ['P{}'.format(i) for i in range(order + 1)]
         self.id = filter_id
 
     def __hash__(self):
@@ -117,42 +118,6 @@ class SpatialLegendreFilter(Filter):
         min_, max_ = group['min'].value, group['max'].value
 
         return cls(order, axis, min_, max_, filter_id)
-
-    def get_pandas_dataframe(self, data_size, stride, **kwargs):
-        """Builds a Pandas DataFrame for the Filter's bins.
-
-        This method constructs a Pandas DataFrame object for the filter with
-        columns annotated by filter bin information. This is a helper method for
-        :meth:`Tally.get_pandas_dataframe`.
-
-        Parameters
-        ----------
-        data_size : Integral
-            The total number of bins in the tally corresponding to this filter
-
-        Returns
-        -------
-        pandas.DataFrame
-            A Pandas DataFrame with a column that is filled with strings
-            indicating Legendre orders. The number of rows in the DataFrame is
-            the same as the total number of bins in the corresponding tally.
-
-        See also
-        --------
-        Tally.get_pandas_dataframe(), CrossFilter.get_pandas_dataframe()
-
-        """
-        # Initialize Pandas DataFrame
-        df = pd.DataFrame()
-
-        bins = np.array(['P{}'.format(i) for i in range(self.order + 1)])
-        filter_bins = np.repeat(bins, stride)
-        tile_factor = data_size // len(filter_bins)
-        filter_bins = np.tile(filter_bins, tile_factor)
-        df = pd.concat([df, pd.DataFrame(
-            {self.short_name.lower(): filter_bins})])
-
-        return df
 
     def to_xml_element(self):
         """Return XML Element representing the filter.

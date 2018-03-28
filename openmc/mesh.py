@@ -38,6 +38,9 @@ class Mesh(IDManagerMixin):
         are given, it is assumed that the mesh is an x-y mesh.
     width : Iterable of float
         The width of mesh cells in each direction.
+    indices : list of tuple
+        A list of mesh indices for each mesh element, e.g. [(1, 1, 1), (2, 1,
+        1), ...]
 
     """
 

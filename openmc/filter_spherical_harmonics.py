@@ -34,6 +34,9 @@ class SphericalHarmonicsFilter(Filter):
     def __init__(self, order, filter_id=None):
         self.order = order
         self.id = filter_id
+        self.bins = ['Y{},{}'.format(n, m)
+                     for n in range(order + 1)
+                     for m in range(-n, n + 1)]
         self._cosine = 'particle'
 
     def __hash__(self):
@@ -86,49 +89,6 @@ class SphericalHarmonicsFilter(Filter):
         out.cosine = group['cosine'].value.decode()
 
         return out
-
-    def get_pandas_dataframe(self, data_size, stride, **kwargs):
-        """Builds a Pandas DataFrame for the Filter's bins.
-
-        This method constructs a Pandas DataFrame object for the filter with
-        columns annotated by filter bin information. This is a helper method for
-        :meth:`Tally.get_pandas_dataframe`.
-
-        Parameters
-        ----------
-        data_size : Integral
-            The total number of bins in the tally corresponding to this filter
-        stride : int
-            Stride in memory for the filter
-
-        Returns
-        -------
-        pandas.DataFrame
-            A Pandas DataFrame with a column that is filled with strings
-            indicating spherical harmonics orders. The number of rows in the
-            DataFrame is the same as the total number of bins in the
-            corresponding tally.
-
-        See also
-        --------
-        Tally.get_pandas_dataframe(), CrossFilter.get_pandas_dataframe()
-
-        """
-        # Initialize Pandas DataFrame
-        df = pd.DataFrame()
-
-        bins = []
-        for n in range(self.order + 1):
-            bins.extend('Y{},{}'.format(n, m) for m in range(-n, n + 1))
-        bins = np.array(bins)
-
-        filter_bins = np.repeat(bins, stride)
-        tile_factor = data_size // len(filter_bins)
-        filter_bins = np.tile(filter_bins, tile_factor)
-        df = pd.concat([df, pd.DataFrame(
-            {self.short_name.lower(): filter_bins})])
-
-        return df
 
     def to_xml_element(self):
         """Return XML Element representing the filter.

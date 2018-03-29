@@ -507,11 +507,6 @@ contains
     ! Broadcast tally results so that each process has access to results
     if (allocated(tallies)) then
       do i = 1, size(tallies)
-<<<<<<< HEAD
-        n = size(tallies(i) % obj % results)
-        call MPI_BCAST(tallies(i) % obj % results, n, MPI_DOUBLE, 0, &
-             mpi_intracomm, mpi_err)
-=======
         associate (results => tallies(i) % obj % results)
           ! Create a new datatype that consists of all values for a given filter
           ! bin and then use that to broadcast. This is done to minimize the
@@ -524,7 +519,6 @@ contains
           call MPI_BCAST(results, n, result_block, 0, mpi_intracomm, mpi_err)
           call MPI_TYPE_FREE(result_block, mpi_err)
         end associate
->>>>>>> 47fbf8282ea94c138f75219bd10fdb31501d3fb7
       end do
     end if
 

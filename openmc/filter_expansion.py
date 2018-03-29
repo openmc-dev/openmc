@@ -8,7 +8,42 @@ import openmc.checkvalue as cv
 from . import Filter
 
 
-class LegendreFilter(Filter):
+class ExpansionFilter(Filter):
+    """Abstract filter class for functional expansions."""
+    def __init__(self, order, filter_id=None):
+        self.order = order
+        self.id = filter_id
+
+    @property
+    def order(self):
+        return self._order
+
+    @order.setter
+    def order(self, order):
+        cv.check_type('expansion order', order, Integral)
+        cv.check_greater_than('expansion order', order, 0, equality=True)
+        self._order = order
+
+    def to_xml_element(self):
+        """Return XML Element representing the filter.
+
+        Returns
+        -------
+        element : xml.etree.ElementTree.Element
+            XML element containing Legendre filter data
+
+        """
+        element = ET.Element('filter')
+        element.set('id', str(self.id))
+        element.set('type', self.short_name.lower())
+
+        subelement = ET.SubElement(element, 'order')
+        subelement.text = str(self.order)
+
+        return element
+
+
+class LegendreFilter(ExpansionFilter):
     r"""Score Legendre expansion moments up to specified order.
 
     This filter allows scores to be multiplied by Legendre polynomials of the
@@ -32,11 +67,6 @@ class LegendreFilter(Filter):
 
     """
 
-    def __init__(self, order, filter_id=None):
-        self.order = order
-        self.bins = ['P{}'.format(i) for i in range(order + 1)]
-        self.id = filter_id
-
     def __hash__(self):
         string = type(self).__name__ + '\n'
         string += '{: <16}=\t{}\n'.format('\tOrder', self.order)
@@ -48,15 +78,10 @@ class LegendreFilter(Filter):
         string += '{: <16}=\t{}\n'.format('\tID', self.id)
         return string
 
-    @property
-    def order(self):
-        return self._order
-
-    @order.setter
+    @ExpansionFilter.order.setter
     def order(self, order):
-        cv.check_type('Legendre order', order, Integral)
-        cv.check_greater_than('Legendre order', order, 0, equality=True)
-        self._order = order
+        ExpansionFilter.order.__set__(self, order)
+        self.bins = ['P{}'.format(i) for i in range(order + 1)]
 
     @classmethod
     def from_hdf5(cls, group, **kwargs):
@@ -71,26 +96,8 @@ class LegendreFilter(Filter):
 
         return out
 
-    def to_xml_element(self):
-        """Return XML Element representing the filter.
 
-        Returns
-        -------
-        element : xml.etree.ElementTree.Element
-            XML element containing Legendre filter data
-
-        """
-        element = ET.Element('filter')
-        element.set('id', str(self.id))
-        element.set('type', self.short_name.lower())
-
-        subelement = ET.SubElement(element, 'order')
-        subelement.text = str(self.order)
-
-        return element
-
-
-class SpatialLegendreFilter(Filter):
+class SpatialLegendreFilter(ExpansionFilter):
     r"""Score Legendre expansion moments in space up to specified order.
 
     This filter allows scores to be multiplied by Legendre polynomials of the
@@ -128,12 +135,10 @@ class SpatialLegendreFilter(Filter):
     """
 
     def __init__(self, order, axis, minimum, maximum, filter_id=None):
-        self.order = order
+        super().__init__(order, filter_id)
         self.axis = axis
         self.minimum = minimum
         self.maximum = maximum
-        self.bins = ['P{}'.format(i) for i in range(order + 1)]
-        self.id = filter_id
 
     def __hash__(self):
         string = type(self).__name__ + '\n'
@@ -152,15 +157,10 @@ class SpatialLegendreFilter(Filter):
         string += '{: <16}=\t{}\n'.format('\tID', self.id)
         return string
 
-    @property
-    def order(self):
-        return self._order
-
-    @order.setter
+    @ExpansionFilter.order.setter
     def order(self, order):
-        cv.check_type('Legendre order', order, Integral)
-        cv.check_greater_than('Legendre order', order, 0, equality=True)
-        self._order = order
+        ExpansionFilter.order.__set__(self, order)
+        self.bins = ['P{}'.format(i) for i in range(order + 1)]
 
     @property
     def axis(self):
@@ -212,12 +212,7 @@ class SpatialLegendreFilter(Filter):
             XML element containing Legendre filter data
 
         """
-        element = ET.Element('filter')
-        element.set('id', str(self.id))
-        element.set('type', self.short_name.lower())
-
-        subelement = ET.SubElement(element, 'order')
-        subelement.text = str(self.order)
+        element = super().to_xml_element()
         subelement = ET.SubElement(element, 'axis')
         subelement.text = self.axis
         subelement = ET.SubElement(element, 'min')
@@ -228,7 +223,7 @@ class SpatialLegendreFilter(Filter):
         return element
 
 
-class SphericalHarmonicsFilter(Filter):
+class SphericalHarmonicsFilter(ExpansionFilter):
     r"""Score spherical harmonic expansion moments up to specified order.
 
     Parameters
@@ -252,11 +247,7 @@ class SphericalHarmonicsFilter(Filter):
     """
 
     def __init__(self, order, filter_id=None):
-        self.order = order
-        self.id = filter_id
-        self.bins = ['Y{},{}'.format(n, m)
-                     for n in range(order + 1)
-                     for m in range(-n, n + 1)]
+        super().__init__(order, filter_id)
         self._cosine = 'particle'
 
     def __hash__(self):
@@ -272,15 +263,12 @@ class SphericalHarmonicsFilter(Filter):
         string += '{: <16}=\t{}\n'.format('\tID', self.id)
         return string
 
-    @property
-    def order(self):
-        return self._order
-
-    @order.setter
+    @ExpansionFilter.order.setter
     def order(self, order):
-        cv.check_type('spherical harmonics order', order, Integral)
-        cv.check_greater_than('spherical harmonics order', order, 0, equality=True)
-        self._order = order
+        ExpansionFilter.order.__set__(self, order)
+        self.bins = ['Y{},{}'.format(n, m)
+                     for n in range(order + 1)
+                     for m in range(-n, n + 1)]
 
     @property
     def cosine(self):
@@ -315,18 +303,12 @@ class SphericalHarmonicsFilter(Filter):
             XML element containing spherical harmonics filter data
 
         """
-        element = ET.Element('filter')
-        element.set('id', str(self.id))
-        element.set('type', self.short_name.lower())
+        element = super().to_xml_element()
         element.set('cosine', self.cosine)
-
-        subelement = ET.SubElement(element, 'order')
-        subelement.text = str(self.order)
-
         return element
 
 
-class ZernikeFilter(Filter):
+class ZernikeFilter(ExpansionFilter):
     r"""Score Zernike expansion moments in space up to specified order.
 
     This filter allows scores to be multiplied by Zernike polynomials of the the
@@ -361,15 +343,11 @@ class ZernikeFilter(Filter):
 
     """
 
-    def __init__(self, order, x, y, r, filter_id=None):
-        self.order = order
+    def __init__(self, order, x=0.0, y=0.0, r=1.0, filter_id=None):
+        super().__init__(order, filter_id)
         self.x = x
         self.y = y
         self.r = r
-        self.bins = ['Z{},{}'.format(n, m)
-                     for n in range(order + 1)
-                     for m in range(-n, n + 1, 2)]
-        self.id = filter_id
 
     def __hash__(self):
         string = type(self).__name__ + '\n'
@@ -382,15 +360,12 @@ class ZernikeFilter(Filter):
         string += '{: <16}=\t{}\n'.format('\tID', self.id)
         return string
 
-    @property
-    def order(self):
-        return self._order
-
-    @order.setter
+    @ExpansionFilter.order.setter
     def order(self, order):
-        cv.check_type('Zernike order', order, Integral)
-        cv.check_greater_than('Zernike order', order, 0, equality=True)
-        self._order = order
+        ExpansionFilter.order.__set__(self, order)
+        self.bins = ['Z{},{}'.format(n, m)
+                     for n in range(order + 1)
+                     for m in range(-n, n + 1, 2)]
 
     @property
     def x(self):
@@ -441,12 +416,7 @@ class ZernikeFilter(Filter):
             XML element containing Zernike filter data
 
         """
-        element = ET.Element('filter')
-        element.set('id', str(self.id))
-        element.set('type', self.short_name.lower())
-
-        subelement = ET.SubElement(element, 'order')
-        subelement.text = str(self.order)
+        element = super().to_xml_element()
         subelement = ET.SubElement(element, 'x')
         subelement.text = str(self.x)
         subelement = ET.SubElement(element, 'y')

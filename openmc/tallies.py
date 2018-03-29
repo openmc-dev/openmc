@@ -2763,9 +2763,7 @@ class Tally(IDManagerMixin):
                 elif isinstance(find_filter, openmc.EnergyFunctionFilter):
                     filter_bins = [None]
                 else:
-                    num_bins = find_filter.num_bins
-                    filter_bins = \
-                        [(find_filter.get_bin(i)) for i in range(num_bins)]
+                    filter_bins = find_filter.bins
 
             # Only sum across bins specified by the user
             else:
@@ -2917,9 +2915,7 @@ class Tally(IDManagerMixin):
                 elif isinstance(find_filter, openmc.EnergyFunctionFilter):
                     filter_bins = [None]
                 else:
-                    num_bins = find_filter.num_bins
-                    filter_bins = \
-                        [(find_filter.get_bin(i)) for i in range(num_bins)]
+                    filter_bins = find_filter.bins
 
             # Only average across bins specified by the user
             else:

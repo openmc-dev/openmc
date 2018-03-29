@@ -19,6 +19,7 @@ module tally_filter
   use tally_filter_energyfunc
   use tally_filter_material
   use tally_filter_mesh
+  use tally_filter_meshsurface
   use tally_filter_mu
   use tally_filter_polar
   use tally_filter_surface
@@ -67,6 +68,8 @@ contains
           type_ = 'material'
         type is (MeshFilter)
           type_ = 'mesh'
+        type is (MeshSurfaceFilter)
+          type_ = 'meshsurface'
         type is (MuFilter)
           type_ = 'mu'
         type is (PolarFilter)
@@ -136,6 +139,8 @@ contains
           allocate(MaterialFilter :: filters(index) % obj)
         case ('mesh')
           allocate(MeshFilter :: filters(index) % obj)
+        case ('meshsurface')
+          allocate(MeshSurfaceFilter :: filters(index) % obj)
         case ('mu')
           allocate(MuFilter :: filters(index) % obj)
         case ('polar')

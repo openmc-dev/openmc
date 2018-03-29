@@ -3,6 +3,9 @@
 
 #include <cstdint>
 
+
+namespace openmc {
+
 //==============================================================================
 // Module constants.
 //==============================================================================
@@ -75,11 +78,18 @@ extern "C" void prn_set_stream(int n);
 //==============================================================================
 
 //==============================================================================
+//! Get OpenMC's master seed.
+//==============================================================================
+
+extern "C" int64_t openmc_get_seed();
+
+//==============================================================================
 //! Set OpenMC's master seed.
 //! @param new_seed The master seed. All other seeds will be derived from this
 //! one.
 //==============================================================================
 
-extern "C" int openmc_set_seed(int64_t new_seed);
+extern "C" void openmc_set_seed(int64_t new_seed);
 
+} // namespace openmc
 #endif // RANDOM_LCG_H

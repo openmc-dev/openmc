@@ -1,13 +1,11 @@
-from __future__ import division
-
 from abc import ABCMeta
-from collections import OrderedDict, Iterable
+from collections import OrderedDict
+from collections.abc import Iterable
 from copy import deepcopy
 from math import sqrt, floor
 from numbers import Real, Integral
 from xml.etree import ElementTree as ET
 
-from six import add_metaclass, string_types
 import numpy as np
 
 import openmc.checkvalue as cv
@@ -15,8 +13,7 @@ import openmc
 from openmc.mixin import IDManagerMixin
 
 
-@add_metaclass(ABCMeta)
-class Lattice(IDManagerMixin):
+class Lattice(IDManagerMixin, metaclass=ABCMeta):
     """A repeating structure wherein each element is a universe.
 
     Parameters
@@ -54,25 +51,6 @@ class Lattice(IDManagerMixin):
         self._outer = None
         self._universes = None
 
-    def __eq__(self, other):
-        if not isinstance(other, Lattice):
-            return False
-        elif self.id != other.id:
-            return False
-        elif self.name != other.name:
-            return False
-        elif np.any(self.pitch != other.pitch):
-            return False
-        elif self.outer != other.outer:
-            return False
-        elif np.any(self.universes != other.universes):
-            return False
-        else:
-            return True
-
-    def __ne__(self, other):
-        return not self == other
-
     @property
     def name(self):
         return self._name
@@ -92,7 +70,7 @@ class Lattice(IDManagerMixin):
     @name.setter
     def name(self, name):
         if name is not None:
-            cv.check_type('lattice name', name, string_types)
+            cv.check_type('lattice name', name, str)
             self._name = name
         else:
             self._name = ''
@@ -512,7 +490,7 @@ class RectLattice(Lattice):
     """
 
     def __init__(self, lattice_id=None, name=''):
-        super(RectLattice, self).__init__(lattice_id, name)
+        super().__init__(lattice_id, name)
 
         # Initialize Lattice class attributes
         self._lower_left = None
@@ -579,7 +557,11 @@ class RectLattice(Lattice):
 
     @property
     def ndim(self):
-        return len(self.pitch)
+        if self.pitch is not None:
+            return len(self.pitch)
+        else:
+            raise ValueError('Number of dimensions cannot be determined until '
+                             'the lattice pitch has been set.')
 
     @property
     def shape(self):
@@ -839,7 +821,7 @@ class HexLattice(Lattice):
     """
 
     def __init__(self, lattice_id=None, name=''):
-        super(HexLattice, self).__init__(lattice_id, name)
+        super().__init__(lattice_id, name)
 
         # Initialize Lattice class attributes
         self._num_rings = None

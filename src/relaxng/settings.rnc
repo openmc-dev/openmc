@@ -3,6 +3,8 @@ element settings {
 
   element confidence_intervals { xsd:boolean }? &
 
+  element create_fission_neutrons { xsd:boolean }? &
+
   element cutoff {
     (element weight { xsd:double } | attribute weight { xsd:double })? &
     (element weight_avg { xsd:double } | attribute weight_avg { xsd:double })?

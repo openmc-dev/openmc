@@ -1,0 +1,31 @@
+<?xml version='1.0' encoding='utf-8'?>
+<geometry>
+  <cell id="1" material="1" region="-1" universe="1" />
+  <surface boundary="vacuum" coeffs="0.0 0.0 0.0 10.0" id="1" type="sphere" />
+</geometry>
+<?xml version='1.0' encoding='utf-8'?>
+<materials>
+  <material depletable="true" id="1">
+    <density units="g/cc" value="7.5" />
+    <nuclide ao="1.0" name="O16" />
+    <nuclide ao="0.0001" name="U238" />
+  </material>
+</materials>
+<?xml version='1.0' encoding='utf-8'?>
+<settings>
+  <run_mode>fixed source</run_mode>
+  <particles>100</particles>
+  <batches>10</batches>
+  <source strength="10.0">
+    <space type="point">
+      <parameters>0.0 0.0 0.0</parameters>
+    </space>
+  </source>
+  <temperature_default>294</temperature_default>
+</settings>
+<?xml version='1.0' encoding='utf-8'?>
+<tallies>
+  <tally id="1">
+    <scores>flux</scores>
+  </tally>
+</tallies>

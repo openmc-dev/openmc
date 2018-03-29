@@ -1,22 +1,17 @@
-from __future__ import division
 import copy
 import warnings
 import itertools
 import random
-from collections import Iterable, defaultdict
+from collections import defaultdict
+from collections.abc import Iterable
 from numbers import Real
 from random import uniform, gauss
 from heapq import heappush, heappop
 from math import pi, sin, cos, floor, log10, sqrt
 from abc import ABCMeta, abstractproperty, abstractmethod
 
-from six import add_metaclass
 import numpy as np
-try:
-    import scipy.spatial
-    _SCIPY_AVAILABLE = True
-except ImportError:
-    _SCIPY_AVAILABLE = False
+import scipy.spatial
 
 import openmc
 import openmc.checkvalue as cv
@@ -51,7 +46,7 @@ class TRISO(openmc.Cell):
 
     def __init__(self, outer_radius, fill, center=(0., 0., 0.)):
         self._surface = openmc.Sphere(R=outer_radius)
-        super(TRISO, self).__init__(fill=fill, region=-self._surface)
+        super().__init__(fill=fill, region=-self._surface)
         self.center = np.asarray(center)
 
     @property
@@ -96,8 +91,7 @@ class TRISO(openmc.Cell):
                 k_min:k_max+1, j_min:j_max+1, i_min:i_max+1]))
 
 
-@add_metaclass(ABCMeta)
-class _Domain(object):
+class _Domain(metaclass=ABCMeta):
     """Container in which to pack particles.
 
     Parameters
@@ -252,7 +246,7 @@ class _CubicDomain(_Domain):
     """
 
     def __init__(self, length, particle_radius, center=[0., 0., 0.]):
-        super(_CubicDomain, self).__init__(particle_radius, center)
+        super().__init__(particle_radius, center)
         self.length = length
 
     @property
@@ -331,7 +325,7 @@ class _CylindricalDomain(_Domain):
     """
 
     def __init__(self, length, radius, particle_radius, center=[0., 0., 0.]):
-        super(_CylindricalDomain, self).__init__(particle_radius, center)
+        super().__init__(particle_radius, center)
         self.length = length
         self.radius = radius
 
@@ -421,7 +415,7 @@ class _SphericalDomain(_Domain):
     """
 
     def __init__(self, radius, particle_radius, center=[0., 0., 0.]):
-        super(_SphericalDomain, self).__init__(particle_radius, center)
+        super().__init__(particle_radius, center)
         self.radius = radius
 
     @property
@@ -836,10 +830,6 @@ def _close_random_pack(domain, particles, contraction_rate):
         # centers
         if rods:
             inner_diameter[0] = rods[0][0]
-
-    if not _SCIPY_AVAILABLE:
-        raise ImportError('SciPy must be installed to perform '
-                          'close random packing.')
 
     n_particles = len(particles)
     diameter = 2*domain.particle_radius

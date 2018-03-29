@@ -84,7 +84,6 @@ contains
     integer :: ijk1(3)              ! indices of ending coordinates
     integer :: search_iter          ! loop count for intersection search
     integer :: bin
-    real(8) :: weight               ! weight to be pushed back
     real(8) :: uvw(3)               ! cosine of angle of particle
     real(8) :: xyz0(3)              ! starting/intermediate coordinates
     real(8) :: xyz1(3)              ! ending coordinates of particle
@@ -95,8 +94,6 @@ contains
     logical :: start_in_mesh        ! starting coordinates inside mesh?
     logical :: end_in_mesh          ! ending coordinates inside mesh?
     type(RegularMesh), pointer :: m
-
-    weight = ERROR_REAL
 
     ! Get a pointer to the mesh.
     m => meshes(this % mesh)

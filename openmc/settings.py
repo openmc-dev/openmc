@@ -1,10 +1,9 @@
-from collections import Iterable, MutableSequence, Mapping
+from collections.abc import Iterable, MutableSequence, Mapping
 from numbers import Real, Integral
 import warnings
 from xml.etree import ElementTree as ET
 import sys
 
-from six import string_types
 import numpy as np
 
 from openmc.clean_xml import clean_xml_indentation
@@ -29,13 +28,6 @@ class Settings(object):
         deviation.
     create_fission_neutrons : bool
         Indicate whether fission neutrons should be created or not.
-    cross_sections : str
-        Indicates the path to an XML cross section listing file (usually named
-        cross_sections.xml). If it is not set, the
-        :envvar:`OPENMC_CROSS_SECTIONS` environment variable will be used for
-        continuous-energy calculations and
-        :envvar:`OPENMC_MG_CROSS_SECTIONS` will be used for multi-group
-        calculations to find the path to the XML cross section file.
     cutoff : dict
         Dictionary defining weight cutoff and energy cutoff. The dictionary may
         have three keys, 'weight', 'weight_avg' and 'energy'. Value for 'weight'
@@ -60,13 +52,10 @@ class Settings(object):
         type are 'variance', 'std_dev', and 'rel_err'. The threshold value
         should be a float indicating the variance, standard deviation, or
         relative error used.
+    log_grid_bins : int
+        Number of bins for logarithmic energy grid search
     max_order : None or int
         Maximum scattering order to apply globally when in multi-group mode.
-    multipole_library : str
-        Indicates the path to a directory containing a windowed multipole
-        cross section library. If it is not set, the
-        :envvar:`OPENMC_MULTIPOLE_LIBRARY` environment variable will be used. A
-        multipole library is optional.
     no_reduce : bool
         Indicate that all user-defined and global tallies should not be reduced
         across processes in a parallel calculation.
@@ -220,19 +209,12 @@ class Settings(object):
         # Uniform fission source subelement
         self._ufs_mesh = None
 
-        # Domain decomposition subelement
-        self._dd_mesh_dimension = None
-        self._dd_mesh_lower_left = None
-        self._dd_mesh_upper_right = None
-        self._dd_nodemap = None
-        self._dd_allow_leakage = False
-        self._dd_count_interactions = False
-
         self._resonance_scattering = {}
         self._volume_calculations = cv.CheckedList(
             VolumeCalculation, 'volume calculations')
 
         self._create_fission_neutrons = None
+        self._log_grid_bins = None
 
     @property
     def run_mode(self):
@@ -273,14 +255,6 @@ class Settings(object):
     @property
     def confidence_intervals(self):
         return self._confidence_intervals
-
-    @property
-    def cross_sections(self):
-        return self._cross_sections
-
-    @property
-    def multipole_library(self):
-        return self._multipole_library
 
     @property
     def ptables(self):
@@ -363,30 +337,6 @@ class Settings(object):
         return self._ufs_mesh
 
     @property
-    def dd_mesh_dimension(self):
-        return self._dd_mesh_dimension
-
-    @property
-    def dd_mesh_lower_left(self):
-        return self._dd_mesh_lower_left
-
-    @property
-    def dd_mesh_upper_right(self):
-        return self._dd_mesh_upper_right
-
-    @property
-    def dd_nodemap(self):
-        return self._dd_nodemap
-
-    @property
-    def dd_allow_leakage(self):
-        return self._dd_allow_leakage
-
-    @property
-    def dd_count_interactions(self):
-        return self._dd_count_interactions
-
-    @property
     def resonance_scattering(self):
         return self._resonance_scattering
 
@@ -397,6 +347,10 @@ class Settings(object):
     @property
     def create_fission_neutrons(self):
         return self._create_fission_neutrons
+
+    @property
+    def log_grid_bins(self):
+        return self._log_grid_bins
 
     @run_mode.setter
     def run_mode(self, run_mode):
@@ -484,7 +438,7 @@ class Settings(object):
             if key in ('summary', 'tallies'):
                 cv.check_type("output['{}']".format(key), value, bool)
             else:
-                cv.check_type("output['path']", value, string_types)
+                cv.check_type("output['path']", value, str)
         self._output = output
 
     @verbosity.setter
@@ -530,23 +484,6 @@ class Settings(object):
     def confidence_intervals(self, confidence_intervals):
         cv.check_type('confidence interval', confidence_intervals, bool)
         self._confidence_intervals = confidence_intervals
-
-    @cross_sections.setter
-    def cross_sections(self, cross_sections):
-        warnings.warn('Settings.cross_sections has been deprecated and will be '
-                      'removed in a future version. Materials.cross_sections '
-                      'should defined instead.', DeprecationWarning)
-        cv.check_type('cross sections', cross_sections, string_types)
-        self._cross_sections = cross_sections
-
-    @multipole_library.setter
-    def multipole_library(self, multipole_library):
-        warnings.warn('Settings.multipole_library has been deprecated and will '
-                      'be removed in a future version. '
-                      'Materials.multipole_library should defined instead.',
-                      DeprecationWarning)
-        cv.check_type('multipole library', multipole_library, string_types)
-        self._multipole_library = multipole_library
 
     @ptables.setter
     def ptables(self, ptables):
@@ -696,85 +633,6 @@ class Settings(object):
         cv.check_length('UFS mesh upper-right corner', ufs_mesh.upper_right, 3)
         self._ufs_mesh = ufs_mesh
 
-    @dd_mesh_dimension.setter
-    def dd_mesh_dimension(self, dimension):
-        # TODO: remove this when domain decomposition is merged
-        warnings.warn('This feature is not yet implemented in a release '
-                      'version of openmc')
-
-        cv.check_type('DD mesh dimension', dimension, Iterable, Integral)
-        cv.check_length('DD mesh dimension', dimension, 3)
-
-        self._dd_mesh_dimension = dimension
-
-    @dd_mesh_lower_left.setter
-    def dd_mesh_lower_left(self, lower_left):
-        # TODO: remove this when domain decomposition is merged
-        warnings.warn('This feature is not yet implemented in a release '
-                      'version of openmc')
-
-        cv.check_type('DD mesh lower left corner', lower_left, Iterable, Real)
-        cv.check_length('DD mesh lower left corner', lower_left, 3)
-
-        self._dd_mesh_lower_left = lower_left
-
-    @dd_mesh_upper_right.setter
-    def dd_mesh_upper_right(self, upper_right):
-        # TODO: remove this when domain decomposition is merged
-        warnings.warn('This feature is not yet implemented in a release '
-                      'version of openmc')
-
-        cv.check_type('DD mesh upper right corner', upper_right, Iterable, Real)
-        cv.check_length('DD mesh upper right corner', upper_right, 3)
-
-        self._dd_mesh_upper_right = upper_right
-
-    @dd_nodemap.setter
-    def dd_nodemap(self, nodemap):
-        # TODO: remove this when domain decomposition is merged
-        warnings.warn('This feature is not yet implemented in a release '
-                      'version of openmc')
-
-        cv.check_type('DD nodemap', nodemap, Iterable)
-
-        nodemap = np.array(nodemap).flatten()
-
-        if self._dd_mesh_dimension is None:
-            msg = 'Must set DD mesh dimension before setting the nodemap'
-            raise ValueError(msg)
-        else:
-            len_nodemap = np.prod(self._dd_mesh_dimension)
-
-        if len(nodemap) < len_nodemap or len(nodemap) > len_nodemap:
-            msg = 'Unable to set DD nodemap with length "{0}" which ' \
-                  'does not have the same dimensionality as the domain ' \
-                  'mesh'.format(len(nodemap))
-            raise ValueError(msg)
-
-        self._dd_nodemap = nodemap
-
-    @dd_allow_leakage.setter
-    def dd_allow_leakage(self, allow):
-
-        # TODO: remove this when domain decomposition is merged
-        warnings.warn('This feature is not yet implemented in a release '
-                      'version of openmc')
-
-        cv.check_type('DD allow leakage', allow, bool)
-
-        self._dd_allow_leakage = allow
-
-    @dd_count_interactions.setter
-    def dd_count_interactions(self, interactions):
-
-        # TODO: remove this when domain decomposition is merged
-        warnings.warn('This feature is not yet implemented in a release '
-                      'version of openmc')
-
-        cv.check_type('DD count interactions', interactions, bool)
-
-        self._dd_count_interactions = interactions
-
     @resonance_scattering.setter
     def resonance_scattering(self, res):
         cv.check_type('resonance scattering settings', res, Mapping)
@@ -796,7 +654,7 @@ class Settings(object):
                 cv.check_greater_than(name, value, 0)
             elif key == 'nuclides':
                 cv.check_type('resonance scattering nuclides', value,
-                              Iterable, string_types)
+                              Iterable, str)
         self._resonance_scattering = res
 
     @volume_calculations.setter
@@ -811,6 +669,12 @@ class Settings(object):
         cv.check_type('Whether create fission neutrons',
                       create_fission_neutrons, bool)
         self._create_fission_neutrons = create_fission_neutrons
+
+    @log_grid_bins.setter
+    def log_grid_bins(self, log_grid_bins):
+        cv.check_type('log grid bins', log_grid_bins, Real)
+        cv.check_greater_than('log grid bins', log_grid_bins, 0)
+        self._log_grid_bins = log_grid_bins
 
     def _create_run_mode_subelement(self, root):
         elem = ET.SubElement(root, "run_mode")
@@ -912,16 +776,6 @@ class Settings(object):
         if self._confidence_intervals is not None:
             element = ET.SubElement(root, "confidence_intervals")
             element.text = str(self._confidence_intervals).lower()
-
-    def _create_cross_sections_subelement(self, root):
-        if self._cross_sections is not None:
-            element = ET.SubElement(root, "cross_sections")
-            element.text = str(self._cross_sections)
-
-    def _create_multipole_library_subelement(self, root):
-        if self._multipole_library is not None:
-            element = ET.SubElement(root, "multipole_library")
-            element.text = str(self._multipole_library)
 
     def _create_ptables_subelement(self, root):
         if self._ptables is not None:
@@ -1033,33 +887,6 @@ class Settings(object):
             subelement = ET.SubElement(root, "ufs_mesh")
             subelement.text = str(self.ufs_mesh.id)
 
-    def _create_dd_subelement(self, root):
-        if self._dd_mesh_lower_left is not None and \
-           self._dd_mesh_upper_right is not None and \
-           self._dd_mesh_dimension is not None:
-
-            element = ET.SubElement(root, "domain_decomposition")
-
-            subelement = ET.SubElement(element, "mesh")
-            subsubelement = ET.SubElement(subelement, "dimension")
-            subsubelement.text = ' '.join(map(str, self._dd_mesh_dimension))
-
-            subsubelement = ET.SubElement(subelement, "lower_left")
-            subsubelement.text = ' '.join(map(str, self._dd_mesh_lower_left))
-
-            subsubelement = ET.SubElement(subelement, "upper_right")
-            subsubelement.text = ' '.join(map(str, self._dd_mesh_upper_right))
-
-            if self._dd_nodemap is not None:
-                subelement = ET.SubElement(element, "nodemap")
-                subelement.text = ' '.join(map(str, self._dd_nodemap))
-
-            subelement = ET.SubElement(element, "allow_leakage")
-            subelement.text = str(self._dd_allow_leakage).lower()
-
-            subelement = ET.SubElement(element, "count_interactions")
-            subelement.text = str(self._dd_count_interactions).lower()
-
     def _create_resonance_scattering_subelement(self, root):
         res = self.resonance_scattering
         if res:
@@ -1085,6 +912,11 @@ class Settings(object):
             elem = ET.SubElement(root, "create_fission_neutrons")
             elem.text = str(self._create_fission_neutrons).lower()
 
+    def _create_log_grid_bins_subelement(self, root):
+        if self._log_grid_bins is not None:
+            elem = ET.SubElement(root, "log_grid_bins")
+            elem.text = str(self._log_grid_bins)
+
     def export_to_xml(self, path='settings.xml'):
         """Export simulation settings to an XML file.
 
@@ -1109,8 +941,6 @@ class Settings(object):
         self._create_statepoint_subelement(root_element)
         self._create_sourcepoint_subelement(root_element)
         self._create_confidence_intervals(root_element)
-        self._create_cross_sections_subelement(root_element)
-        self._create_multipole_library_subelement(root_element)
         self._create_energy_mode_subelement(root_element)
         self._create_max_order_subelement(root_element)
         self._create_ptables_subelement(root_element)
@@ -1128,10 +958,10 @@ class Settings(object):
         self._create_trace_subelement(root_element)
         self._create_track_subelement(root_element)
         self._create_ufs_mesh_subelement(root_element)
-        self._create_dd_subelement(root_element)
         self._create_resonance_scattering_subelement(root_element)
         self._create_volume_calcs_subelement(root_element)
         self._create_create_fission_neutrons_subelement(root_element)
+        self._create_log_grid_bins_subelement(root_element)
 
         # Clean the indentation in the file to be user-readable
         clean_xml_indentation(root_element)

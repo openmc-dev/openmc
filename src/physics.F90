@@ -2,7 +2,6 @@ module physics
 
   use algorithm,              only: binary_search
   use constants
-  use cross_section,          only: elastic_xs_0K
   use endf,                   only: reaction_name
   use error,                  only: fatal_error, warning, write_message
   use material_header,        only: Material, materials
@@ -311,6 +310,7 @@ contains
     integer,        intent(in)    :: i_nuc_mat
 
     integer :: i
+    integer :: j
     integer :: i_temp
     integer :: i_grid
     real(8) :: f
@@ -337,6 +337,11 @@ contains
     cutoff = prn() * (micro_xs(i_nuclide) % total - &
          micro_xs(i_nuclide) % absorption)
     sampled = .false.
+
+    ! Calculate elastic cross section if it wasn't precalculated
+    if (micro_xs(i_nuclide) % elastic == CACHE_INVALID) then
+      call nuc % calculate_elastic_xs(micro_xs(i_nuclide))
+    end if
 
     prob = micro_xs(i_nuclide) % elastic - micro_xs(i_nuclide) % thermal
     if (prob > cutoff) then
@@ -374,11 +379,10 @@ contains
       ! =======================================================================
       ! INELASTIC SCATTERING
 
-      ! note that indexing starts from 2 since nuc % reactions(1) is elastic
-      ! scattering
-      i = 1
+      j = 0
       do while (prob < cutoff)
-        i = i + 1
+        j = j + 1
+        i = nuc % index_inelastic_scatter(j)
 
         ! Check to make sure inelastic scattering reaction sampled
         if (i > size(nuc % reactions)) then
@@ -387,24 +391,14 @@ contains
                &// trim(nuc % name))
         end if
 
-        associate (rx => nuc % reactions(i))
-          ! Skip fission reactions
-          if (rx % MT == N_FISSION .or. rx % MT == N_F .or. rx % MT == N_NF &
-               .or. rx % MT == N_2NF .or. rx % MT == N_3NF) cycle
+        associate (rx => nuc % reactions(i), &
+             xs => nuc % reactions(i) % xs(i_temp))
+          ! if energy is below threshold for this reaction, skip it
+          if (i_grid < xs % threshold) cycle
 
-          ! Some materials have gas production cross sections with MT > 200 that
-          ! are duplicates. Also MT=4 is total level inelastic scattering which
-          ! should be skipped
-          if (rx % MT >= 200 .or. rx % MT == N_LEVEL) cycle
-
-          associate (xs => rx % xs(i_temp))
-            ! if energy is below threshold for this reaction, skip it
-            if (i_grid < xs % threshold) cycle
-
-            ! add to cumulative probability
-            prob = prob + ((ONE - f)*xs % value(i_grid - xs % threshold + 1) &
-                 + f*(xs % value(i_grid - xs % threshold + 2)))
-          end associate
+          ! add to cumulative probability
+          prob = prob + ((ONE - f)*xs % value(i_grid - xs % threshold + 1) &
+               + f*(xs % value(i_grid - xs % threshold + 2)))
         end associate
       end do
 
@@ -931,11 +925,14 @@ contains
                maxval(nuc % elastic_0K(i_E_low + 1 : i_E_up)), xs_up)
 
           DBRC_REJECT_LOOP: do
-            ! sample target velocity with the constant cross section (cxs) approx.
-            call sample_cxs_target_velocity(nuc, v_target, E, uvw, kT)
+            TARGET_ENERGY_LOOP: do
+              ! sample target velocity with the constant cross section (cxs) approx.
+              call sample_cxs_target_velocity(nuc, v_target, E, uvw, kT)
+              E_rel = dot_product((v_neut - v_target), (v_neut - v_target))
+              if (E_rel < E_up) exit TARGET_ENERGY_LOOP
+            end do TARGET_ENERGY_LOOP
 
             ! perform Doppler broadening rejection correction (dbrc)
-            E_rel = dot_product((v_neut - v_target), (v_neut - v_target))
             xs_0K = elastic_xs_0K(E_rel, nuc)
             R = xs_0K / xs_max
             if (prn() < R) exit DBRC_REJECT_LOOP

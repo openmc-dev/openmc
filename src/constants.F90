@@ -43,9 +43,9 @@ module constants
   real(8), parameter :: TINY_BIT = 1e-8_8
 
   ! User for precision in geometry
-  real(8), parameter :: FP_PRECISION = 1e-14_8
-  real(8), parameter :: FP_REL_PRECISION = 1e-5_8
-  real(8), parameter :: FP_COINCIDENT = 1e-12_8
+  real(C_DOUBLE), bind(C, name='FP_PRECISION') :: FP_PRECISION = 1e-14_8
+  real(C_DOUBLE), bind(C, name='FP_REL_PRECISION') :: FP_REL_PRECISION = 1e-5_8
+  real(C_DOUBLE), bind(C, name='FP_COINCIDENT') :: FP_COINCIDENT = 1e-12_8
 
   ! Maximum number of collisions/crossings
   integer, parameter :: MAX_EVENTS = 1000000
@@ -95,11 +95,10 @@ module constants
   ! GEOMETRY-RELATED CONSTANTS
 
   ! Boundary conditions
-  integer, parameter ::  &
-       BC_TRANSMIT = 0,  & ! Transmission boundary condition (default)
-       BC_VACUUM   = 1,  & ! Vacuum boundary condition
-       BC_REFLECT  = 2,  & ! Reflecting boundary condition
-       BC_PERIODIC = 3     ! Periodic boundary condition
+  integer(C_INT), bind(C, name="BC_TRANSMIT") :: BC_TRANSMIT
+  integer(C_INT), bind(C, name="BC_VACUUM") :: BC_VACUUM
+  integer(C_INT), bind(C, name="BC_REFLECT") :: BC_REFLECT
+  integer(C_INT), bind(C, name="BC_PERIODIC") :: BC_PERIODIC
 
   ! Logical operators for cell definitions
   integer, parameter ::              &
@@ -293,7 +292,7 @@ module constants
   ! Tally type
   integer, parameter :: &
        TALLY_VOLUME          = 1, &
-       TALLY_MESH_CURRENT    = 2, &
+       TALLY_MESH_SURFACE    = 2, &
        TALLY_SURFACE         = 3
 
   ! Tally estimator types
@@ -359,7 +358,7 @@ module constants
   integer, parameter :: NO_BIN_FOUND = -1
 
   ! Tally filter and map types
-  integer, parameter :: N_FILTER_TYPES = 15
+  integer, parameter :: N_FILTER_TYPES = 16
   integer, parameter :: &
        FILTER_UNIVERSE       = 1,  &
        FILTER_MATERIAL       = 2,  &
@@ -375,7 +374,8 @@ module constants
        FILTER_AZIMUTHAL      = 12, &
        FILTER_DELAYEDGROUP   = 13, &
        FILTER_ENERGYFUNCTION = 14, &
-       FILTER_CELLFROM       = 15
+       FILTER_CELLFROM       = 15, &
+       FILTER_MESHSURFACE    = 16
 
   ! Mesh types
   integer, parameter :: &

@@ -34,7 +34,7 @@ contains
     integer :: n        ! number of energy groups / size
     integer :: mesh_bin ! mesh bin
     integer :: e_bin    ! energy bin
-#ifdef MPI
+#ifdef OPENMC_MPI
     integer :: mpi_err  ! MPI error code
 #endif
     logical :: outside  ! was any site outside mesh?
@@ -86,7 +86,7 @@ contains
       cnt_(e_bin, mesh_bin) = cnt_(e_bin, mesh_bin) + bank_array(i) % wgt
     end do FISSION_SITES
 
-#ifdef MPI
+#ifdef OPENMC_MPI
     ! collect values from all processors
     n = size(cnt_)
     call MPI_REDUCE(cnt_, cnt, n, MPI_REAL8, MPI_SUM, 0, mpi_intracomm, mpi_err)

@@ -399,7 +399,15 @@ contains
     real(8) :: c, c_l, c_max
     type(Bremsstrahlung), pointer :: mat
 
-    if (p % E < energy_cutoff(PHOTON)) return
+    real(8) :: photon_energies(100)
+
+    !p % E = 100.0e6_8
+
+    !if (p % E < energy_cutoff(PHOTON)) return
+    if (p % E < energy_cutoff(PHOTON)) then
+      write(13,*) p % E, 0
+      return
+    end if
 
     ! Get bremsstrahlung data for this material
     mat => ttb(p % material)
@@ -409,6 +417,7 @@ contains
 
     ! Find the lower bounding index of the incident electron energy
     j = binary_search(ttb_e_grid, n_e, e)
+    if (j == n_e) j = j - 1
 
     ! Get the interpolation bounds
     e_l = ttb_e_grid(j)
@@ -419,36 +428,38 @@ contains
     ! Calculate the interpolation weight w_j+1 of the bremsstrahlung energy PDF
     ! interpolated in log energy, which can be interpreted as the probability
     ! of index j+1
-    f = (e - e_l) / (e_r - e_l)
+    f = (e - e_l)/(e_r - e_l)
 
     ! Get the photon number yield for the given energy using linear
     ! interpolation on a log-log scale
-    y = exp(y_l + (y_r - y_l) * f)
+    y = exp(y_l + (y_r - y_l)*f)
 
     ! Sample number of secondary bremsstrahlung photons
     n = int(y + prn())
 
     E_lost = ZERO
-    if (n == 0) return
+    !if (n == 0) return
+    if (n == 0) then
+      write(13,*) p % E, n
+      return
+    end if
 
     ! Sample index of the tabulated PDF in the energy grid, j or j+1
-    if (prn() > f) then
-      i_e = j
-
-      ! Maximum value of the CDF
-      c_max = mat % cdf(i_e, i_e)
-    else
+    if (prn() <= f .or. j == 1) then
       i_e = j + 1
 
       ! Interpolate the maximum value of the CDF at the incoming particle
       ! energy on a log-log scale
-      p_l = mat % pdf(i_e, i_e-1)
+      p_l = mat % pdf(i_e-1, i_e)
       p_r = mat % pdf(i_e, i_e)
-      c_l = mat % cdf(i_e, i_e-1)
-write(*,*) "p_r: ", p_r, "p_l: ", p_l, "p_r/p_l: ", p_r/p_l
-write(*,*) "e_r: ", e_r, "e_l: ", e_l, "e_r/e_l: ", e_r/e_l
-      a = (log(p_r/p_l)) / (e_r - e_l) + ONE
-      c_max = c_l + (exp(e_l) * p_l)/a * (exp(a*(e - e_l)) - ONE)
+      c_l = mat % cdf(i_e-1, i_e)
+      a = log(p_r/p_l)/(e_r - e_l) + ONE
+      c_max = c_l + exp(e_l)*p_l/a*(exp(a*(e - e_l)) - ONE)
+    else
+      i_e = j
+
+      ! Maximum value of the CDF
+      c_max = mat % cdf(i_e, i_e)
     end if
 
     ! Sample the energies of the emitted photons
@@ -464,16 +475,25 @@ write(*,*) "e_r: ", e_r, "e_l: ", e_l, "e_r/e_l: ", e_r/e_l
       p_l = mat % pdf(i_w, i_e)
       p_r = mat % pdf(i_w+1, i_e)
       c_l = mat % cdf(i_w, i_e)
-      a = (log(p_r/p_l)) / (w_r - w_l) + ONE
-      w = exp(w_l) * (a*(c - c_l)/(exp(w_l) * p_l) + ONE)**(ONE/a)
+      a = log(p_r/p_l)/(w_r - w_l) + ONE
+      ! Temporary fix
+      if (i_w == i_e - 1) then
+        w = exp(w_l)
+      else
+        w = exp(w_l)*(a*(c - c_l)/(exp(w_l)*p_l) + ONE)**(ONE/a)
+      end if
 
-
-      if (w < energy_cutoff(PHOTON)) cycle
-
-      ! Create secondary photon
-      call p % create_secondary(p % coord(1) % uvw, w, PHOTON, run_ce=.true.)
-      E_lost = E_lost + w
+      photon_energies(i) = w
+      if (w > energy_cutoff(PHOTON)) then
+        ! Create secondary photon
+        call p % create_secondary(p % coord(1) % uvw, w, PHOTON, run_ce=.true.)
+        E_lost = E_lost + w
+      end if
     end do
+
+    open(unit=13, file="energies.txt", action="write", position="append")
+    write(13,*) p % E, n, photon_energies(:n)
+    close(13)
 
   end subroutine thick_target_bremsstrahlung
 

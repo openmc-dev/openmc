@@ -872,7 +872,7 @@ contains
     do j = 2, n_e
       ! Set last element of PDF to small non-zero value to enable log-log
       ! interpolation
-      this % pdf(j,j) = 1.0e-9_8 * this % pdf(j-1,j)
+      this % pdf(j,j) = 1.0e-6_8 * this % pdf(j-1,j)
 
       ! Loop over photon energies
       c = ZERO
@@ -888,12 +888,44 @@ contains
         this % cdf(i+1,j) = c
       end do
 
-      ! Use logarithm of number yield since it is log-log interpolated
-      if (c > ZERO) then
-        c = log(c)
-      end if
+      ! Set photon number yield
       this % yield(j) = c
     end do
+
+    open(unit=13, file="energies.txt", action="write", status="replace")
+    close(13)
+
+    open(unit=15, file="e_grid.txt", action="write")
+    write(15,*) ttb_e_grid
+    close(15)
+
+    open(unit=16, file="pdf.txt", action="write")
+    do i = 1, n_e
+      write(16,*) this % pdf(:,i)
+    end do
+    close(16)
+
+    open(unit=17, file="cdf.txt", action="write")
+    do i = 1, n_e
+      write(17,*) this % cdf(:,i)
+    end do
+    close(17)
+
+    open(unit=14, file="yield.txt", action="write")
+    write(14,*) this % yield
+    close(14)
+
+    ! Set small non-zero value at lowest energy
+    this % yield(1) = 1.0e-6_8 * this % yield(2)
+
+    open(unit=14, file="yield.txt", action="write")
+    write(14,*) this % yield
+    close(14)
+
+    ! Use logarithm of number yield since it is log-log interpolated
+    where (this % yield > ZERO)
+      this % yield = log(this % yield)
+    end where
 
     deallocate(atom_fraction, mass_fraction, stopping_power, dcs, f, z)
 

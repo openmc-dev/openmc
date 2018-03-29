@@ -1,11 +1,9 @@
 from abc import ABCMeta
 from collections import Iterable, OrderedDict
 import copy
-from functools import reduce
 import hashlib
 from itertools import product
 from numbers import Real, Integral
-import operator
 from xml.etree import ElementTree as ET
 
 import numpy as np
@@ -20,9 +18,12 @@ from .surface import Surface
 from .universe import Universe
 
 
-_FILTER_TYPES = ['universe', 'material', 'cell', 'cellborn', 'surface',
-                 'mesh', 'energy', 'energyout', 'mu', 'polar', 'azimuthal',
-                 'distribcell', 'delayedgroup', 'energyfunction', 'cellfrom']
+_FILTER_TYPES = (
+    'universe', 'material', 'cell', 'cellborn', 'surface', 'mesh', 'energy',
+    'energyout', 'mu', 'polar', 'azimuthal', 'distribcell', 'delayedgroup',
+    'energyfunction', 'cellfrom', 'legendre', 'spatiallegendre',
+    'sphericalharmonics', 'zernike'
+)
 
 _CURRENT_NAMES = (
     'x-min out', 'x-min in', 'x-max out', 'x-max in',
@@ -187,16 +188,14 @@ class Filter(IDManagerMixin, metaclass=FilterMeta):
     def bins(self):
         return self._bins
 
+    @bins.setter
+    def bins(self, bins):
+        self.check_bins(bins)
+        self._bins = bins
+
     @property
     def num_bins(self):
         return len(self.bins)
-
-    @bins.setter
-    def bins(self, bins):
-        # Check the bin values.
-        self.check_bins(bins)
-
-        self._bins = bins
 
     def check_bins(self, bins):
         """Make sure given bins are valid for this filter.
@@ -303,7 +302,7 @@ class Filter(IDManagerMixin, metaclass=FilterMeta):
 
         Parameters
         ----------
-        filter_bin : Integral or tuple
+        filter_bin : int or tuple
             The bin is the integer ID for 'material', 'surface', 'cell',
             'cellborn', and 'universe' Filters. The bin is an integer for the
             cell instance ID for 'distribcell' Filters. The bin is a 2-tuple of
@@ -314,12 +313,8 @@ class Filter(IDManagerMixin, metaclass=FilterMeta):
 
         Returns
         -------
-        filter_index : Integral
+        filter_index : int
              The index in the Tally data array for this filter bin.
-
-        See also
-        --------
-        Filter.get_bin()
 
         """
 
@@ -332,46 +327,6 @@ class Filter(IDManagerMixin, metaclass=FilterMeta):
             return np.where(self.bins == filter_bin)[0][0]
         else:
             return self.bins.index(filter_bin)
-
-    def get_bin(self, bin_index):
-        """Returns the filter bin for some filter bin index.
-
-        Parameters
-        ----------
-        bin_index : Integral
-            The zero-based index into the filter's array of bins. The bin
-            index for 'material', 'surface', 'cell', 'cellborn', and 'universe'
-            filters corresponds to the ID in the filter's list of bins. For
-            'distribcell' tallies the bin index necessarily can only be zero
-            since only one cell can be tracked per tally. The bin index for
-            'energy' and 'energyout' filters corresponds to the energy range of
-            interest in the filter bins of energies. The bin index for 'mesh'
-            filters is the index into the flattened array of (x,y) or (x,y,z)
-            mesh cell bins.
-
-        Returns
-        -------
-        bin : 1-, 2-, or 3-tuple of Real
-            The bin in the Tally data array. The bin for 'material', surface',
-            'cell', 'cellborn', 'universe' and 'distribcell' filters is a
-            1-tuple of the ID corresponding to the appropriate filter bin.
-            The bin for 'energy' and 'energyout' filters is a 2-tuple of the
-            lower and upper energies bounding the energy interval for the filter
-            bin. The bin for 'mesh' tallies is a 2-tuple or 3-tuple of the x,y
-            or x,y,z mesh cell indices corresponding to the bin in a 2D/3D mesh.
-
-        See also
-        --------
-        Filter.get_bin_index()
-
-        """
-
-        cv.check_type('bin_index', bin_index, Integral)
-        cv.check_greater_than('bin_index', bin_index, 0, equality=True)
-        cv.check_less_than('bin_index', bin_index, self.num_bins)
-
-        # Return a 1-tuple of the bin.
-        return (self.bins[bin_index],)
 
     def get_pandas_dataframe(self, data_size, stride, **kwargs):
         """Builds a Pandas DataFrame for the Filter's bins.
@@ -447,7 +402,7 @@ class UniverseFilter(WithIDFilter):
 
     Parameters
     ----------
-    bins : openmc.Universe, Integral, or iterable thereof
+    bins : openmc.Universe, int, or iterable thereof
         The Universes to tally. Either openmc.Universe objects or their
         Integral ID numbers can be used.
     filter_id : int
@@ -615,6 +570,12 @@ class MeshFilter(Filter):
         self.mesh = mesh
         self.id = filter_id
 
+    def __repr__(self):
+        string = type(self).__name__ + '\n'
+        string += '{: <16}=\t{}\n'.format('\tMesh ID', self.mesh.id)
+        string += '{: <16}=\t{}\n'.format('\tID', self.id)
+        return string
+
     @classmethod
     def from_hdf5(cls, group, **kwargs):
         if group['type'].value.decode() != cls.short_name.lower():
@@ -647,9 +608,6 @@ class MeshFilter(Filter):
     def can_merge(self, other):
         # Mesh filters cannot have more than one bin
         return False
-
-    def get_bin(self, bin_index):
-        return self.bins[bin_index]
 
     def get_pandas_dataframe(self, data_size, stride, **kwargs):
         """Builds a Pandas DataFrame for the Filter's bins.
@@ -899,6 +857,12 @@ class RealFilter(Filter):
             return self.values[0] >= other.values[-1]
         else:
             return super().__gt__(other)
+
+    def __repr__(self):
+        string = type(self).__name__ + '\n'
+        string += '{: <16}=\t{}\n'.format('\tValues', self.values)
+        string += '{: <16}=\t{}\n'.format('\tID', self.id)
+        return string
 
     @Filter.bins.setter
     def bins(self, bins):
@@ -1739,10 +1703,6 @@ class EnergyFunctionFilter(Filter):
     def get_bin_index(self, filter_bin):
         # This filter only has one bin.  Always return 0.
         return 0
-
-    def get_bin(self, bin_index):
-        """This function is invalid for EnergyFunctionFilters."""
-        raise RuntimeError('EnergyFunctionFilters have no get_bin() method')
 
     def get_pandas_dataframe(self, data_size, stride, **kwargs):
         """Builds a Pandas DataFrame for the Filter's bins.

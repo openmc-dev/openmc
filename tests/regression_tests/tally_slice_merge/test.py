@@ -87,13 +87,13 @@ class TallySliceMergeTestHarness(PyAPITestHarness):
         # Slice the tallies by cell filter bins
         cell_filter_prod = itertools.product(tallies, self.cell_filters)
         tallies = map(lambda tf: tf[0].get_slice(filters=[type(tf[1])],
-                                                 filter_bins=[tf[1].get_bin(0)]),
+                                                 filter_bins=[(tf[1].bins[0],)]),
                       cell_filter_prod)
 
         # Slice the tallies by energy filter bins
         energy_filter_prod = itertools.product(tallies, self.energy_filters)
         tallies = map(lambda tf: tf[0].get_slice(filters=[type(tf[1])],
-                                                 filter_bins=[tf[1].get_bin(0)]),
+                                                 filter_bins=[(tf[1].bins[0],)]),
                       energy_filter_prod)
 
         # Slice the tallies by nuclide

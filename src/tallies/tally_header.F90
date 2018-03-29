@@ -144,7 +144,7 @@ module tally_header
   ! Active tally lists
   type(VectorInt), public :: active_analog_tallies
   type(VectorInt), public :: active_tracklength_tallies
-  type(VectorInt), public :: active_current_tallies
+  type(VectorInt), public :: active_meshsurf_tallies
   type(VectorInt), public :: active_collision_tallies
   type(VectorInt), public :: active_tallies
   type(VectorInt), public :: active_surface_tallies
@@ -336,6 +336,8 @@ contains
         j = FILTER_SURFACE
       type is (MeshFilter)
         j = FILTER_MESH
+      type is (MeshSurfaceFilter)
+        j = FILTER_MESHSURFACE
       type is (EnergyFilter)
         j = FILTER_ENERGYIN
       type is (EnergyoutFilter)
@@ -416,7 +418,7 @@ contains
     ! Deallocate tally node lists
     call active_analog_tallies % clear()
     call active_tracklength_tallies % clear()
-    call active_current_tallies % clear()
+    call active_meshsurf_tallies % clear()
     call active_collision_tallies % clear()
     call active_surface_tallies % clear()
     call active_tallies % clear()
@@ -732,8 +734,10 @@ contains
     integer :: MT
     character(C_CHAR), pointer :: string(:)
     character(len=:, kind=C_CHAR), allocatable :: score_
+    logical :: depletion_rx
 
     err = E_UNASSIGNED
+    depletion_rx = .false.
     if (index >= 1 .and. index <= size(tallies)) then
       associate (t => tallies(index) % obj)
         if (allocated(t % score_bins)) deallocate(t % score_bins)
@@ -757,10 +761,13 @@ contains
             t % score_bins(i) = SCORE_NU_SCATTER
           case ('(n,2n)')
             t % score_bins(i) = N_2N
+            depletion_rx = .true.
           case ('(n,3n)')
             t % score_bins(i) = N_3N
+            depletion_rx = .true.
           case ('(n,4n)')
             t % score_bins(i) = N_4N
+            depletion_rx = .true.
           case ('absorption')
             t % score_bins(i) = SCORE_ABSORPTION
           case ('fission', '18')
@@ -829,8 +836,10 @@ contains
             t % score_bins(i) = N_NC
           case ('(n,gamma)')
             t % score_bins(i) = N_GAMMA
+            depletion_rx = .true.
           case ('(n,p)')
             t % score_bins(i) = N_P
+            depletion_rx = .true.
           case ('(n,d)')
             t % score_bins(i) = N_D
           case ('(n,t)')
@@ -839,6 +848,7 @@ contains
             t % score_bins(i) = N_3HE
           case ('(n,a)')
             t % score_bins(i) = N_A
+            depletion_rx = .true.
           case ('(n,2a)')
             t % score_bins(i) = N_2A
           case ('(n,3a)')
@@ -879,6 +889,7 @@ contains
         end do
 
         err = 0
+        t % depletion_rx = depletion_rx
       end associate
     else
       err = E_OUT_OF_BOUNDS

@@ -15,16 +15,14 @@ generates ACE-format cross sections.
 
 """
 
-from __future__ import division, unicode_literals
 from os import SEEK_CUR
 import struct
 import sys
 
-from six import string_types
 import numpy as np
 
 from openmc.mixin import EqualityMixin
-from openmc.data.endf import ENDF_FLOAT_RE
+from openmc.data.endf import _ENDF_FLOAT_RE
 
 def ascii_to_binary(ascii_file, binary_file):
     """Convert an ACE file in ASCII format (type 1) to binary format (type 2).
@@ -153,7 +151,7 @@ class Library(EqualityMixin):
     """
 
     def __init__(self, filename, table_names=None, verbose=False):
-        if isinstance(table_names, string_types):
+        if isinstance(table_names, str):
             table_names = [table_names]
         if table_names is not None:
             table_names = set(table_names)
@@ -351,7 +349,7 @@ class Library(EqualityMixin):
             # after it). If it's too short, then we apply the ENDF float regular
             # expression. We don't do this by default because it's expensive!
             if xss.size != nxs[1] + 1:
-                datastr = ENDF_FLOAT_RE.sub(r'\1e\2', datastr)
+                datastr = _ENDF_FLOAT_RE.sub(r'\1e\2', datastr)
                 xss = np.fromstring(datastr, sep=' ')
                 assert xss.size == nxs[1] + 1
 

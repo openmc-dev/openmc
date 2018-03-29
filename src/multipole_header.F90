@@ -1,5 +1,12 @@
 module multipole_header
 
+  use hdf5
+
+  use constants
+  use dict_header,      only: DictIntInt
+  use error,            only: fatal_error
+  use hdf5_interface
+
   implicit none
 
   !========================================================================
@@ -29,9 +36,6 @@ module multipole_header
                         FIT_A = 2, &    ! Absorption
                         FIT_F = 3       ! Fission
 
-  ! Value of 'true' when checking if nuclide is fissionable
-  integer, parameter :: MP_FISS = 1
-
 !===============================================================================
 ! MULTIPOLE contains all the components needed for the windowed multipole
 ! temperature dependent cross section libraries for the resolved resonance
@@ -42,87 +46,142 @@ module multipole_header
 
     !=========================================================================
     ! Isotope Properties
-    logical                 :: fissionable = .false.  ! Is this isotope fissionable?
-    integer                 :: length                 ! Number of poles
-    integer, allocatable    :: l_value(:)             ! The l index of the pole
-    real(8), allocatable    :: pseudo_k0RS(:)         ! The value (sqrt(2*mass neutron)/reduced planck constant)
-                                                      ! * AWR/(AWR + 1) * scattering radius for each l
-    complex(8), allocatable :: data(:,:)              ! Contains all of the pole-residue data
-    real(8)                 :: sqrtAWR                ! Square root of the atomic weight ratio
+
+    logical                 :: fissionable     ! Is this isotope fissionable?
+    integer, allocatable    :: l_value(:)      ! The l index of the pole
+    integer                 :: num_l           ! Number of unique l values
+    real(8), allocatable    :: pseudo_k0RS(:)  ! The value (sqrt(2*mass neutron
+                                               !   /reduced planck constant)
+                                               !   * AWR/(AWR + 1)
+                                               !   * scattering radius for
+                                               !    each l
+    complex(8), allocatable :: data(:,:)       ! Poles and residues
+    real(8)                 :: sqrtAWR         ! Square root of the atomic
+                                               ! weight ratio
+    integer                 :: formalism       ! R-matrix formalism
 
     !=========================================================================
     ! Windows
 
-    integer :: windows                      ! Number of windows
-    integer :: fit_order                    ! Order of the fit. 1 linear, 2 quadratic, etc.
+    integer :: fit_order                    ! Order of the fit. 1 linear,
+                                            !   2 quadratic, etc.
     real(8) :: start_E                      ! Start energy for the windows
     real(8) :: end_E                        ! End energy for the windows
-    real(8) :: spacing                      ! The actual spacing in sqrt(E) space.
-    ! spacing = sqrt(multipole_w%endE - multipole_w%startE)/multipole_w%windows
-    integer, allocatable :: w_start(:)      ! Contains the index of the pole at the start of the window
-    integer, allocatable :: w_end(:)        ! Contains the index of the pole at the end of the window
-    real(8), allocatable :: curvefit(:,:,:) ! Contains the fitting function.  (reaction type, coeff index, window index)
+    real(8) :: spacing                      ! The actual spacing in sqrt(E)
+                                            !   space.
+    ! spacing = sqrt(multipole_w % endE - multipole_w % startE)
+    !           / multipole_w % windows
+    integer, allocatable :: w_start(:)      ! Contains the index of the pole at
+                                            !   the start of the window
+    integer, allocatable :: w_end(:)        ! Contains the index of the pole at
+                                            !   the end of the window
+    real(8), allocatable :: curvefit(:,:,:) ! Contains the fitting function.
+                                            !   (reaction type, coeff index,
+                                            !   window index)
 
     integer, allocatable :: broaden_poly(:) ! if 1, broaden, if 0, don't.
 
-    !=========================================================================
-    ! Storage Helpers
-    integer :: num_l
-    integer :: max_w
+  contains
 
-    integer :: formalism
+    procedure :: from_hdf5 => multipole_from_hdf5
 
-    contains
-      procedure :: allocate => multipole_allocate ! Allocates Multipole
   end type MultipoleArray
 
 contains
 
 !===============================================================================
-! MULTIPOLE_ALLOCATE allocates necessary data for Multipole.
+! FROM_HDF5 loads multipole data from an HDF5 file.
 !===============================================================================
 
-    subroutine multipole_allocate(multipole)
-      class(MultipoleArray), intent(inout)        :: multipole   ! Multipole object to allocate.
+  subroutine multipole_from_hdf5(this, filename)
+    class(MultipoleArray), intent(inout) :: this
+    character(len=*),      intent(in)    :: filename
 
-      ! This function assumes length, numL, fissionable, windows, fitorder,
-      ! and formalism are known
+    character(len=10) :: version
+    integer :: i, n_poles, n_residue_types, n_windows
+    integer(HSIZE_T) :: dims_1d(1), dims_2d(2), dims_3d(3)
+    integer(HID_T) :: file_id
+    integer(HID_T) :: group_id
+    integer(HID_T) :: dset
+    type(DictIntInt) :: l_val_dict
 
-      ! Allocate the pole-residue storage.
-      ! MLBW has one more pole than Reich-Moore, and fissionable nuclides
-      ! have further one more.
-      if (multipole % formalism == FORM_MLBW) then
-        if (multipole % fissionable) then
-          allocate(multipole % data(5, multipole % length))
-        else
-          allocate(multipole % data(4, multipole % length))
-        end if
-      else if (multipole % formalism == FORM_RM) then
-        if (multipole % fissionable) then
-          allocate(multipole % data(4, multipole % length))
-        else
-          allocate(multipole % data(3, multipole % length))
-        end if
+    ! Open file for reading and move into the /isotope group
+    file_id = file_open(filename, 'r', parallel=.true.)
+    group_id = open_group(file_id, "/nuclide")
+
+    ! Check the file version number.
+    call read_dataset(version, file_id, "version")
+    if (version /= VERSION_MULTIPOLE) call fatal_error("The current multipole&
+         & format version is " // trim(VERSION_MULTIPOLE) // " but the file "&
+         // trim(filename) // " uses version " // trim(version) // ".")
+
+    ! Read scalar values.
+    call read_dataset(this % formalism, group_id, "formalism")
+    call read_dataset(this % spacing, group_id, "spacing")
+    call read_dataset(this % sqrtAWR, group_id, "sqrtAWR")
+    call read_dataset(this % start_E, group_id, "start_E")
+    call read_dataset(this % end_E, group_id, "end_E")
+
+    ! Read the "data" array.  Use its shape to figure out the number of poles
+    ! and residue types in this data.
+    dset = open_dataset(group_id, "data")
+    call get_shape(dset, dims_2d)
+    n_residue_types = int(dims_2d(1), 4) - 1
+    n_poles = int(dims_2d(2), 4)
+    allocate(this % data(n_residue_types+1, n_poles))
+    call read_dataset(this % data, dset)
+    call close_dataset(dset)
+
+    ! Check to see if this data includes fission residues.
+    if (this % formalism == FORM_RM) then
+      this % fissionable = (n_residue_types == 3)
+    else
+      ! Assume FORM_MLBW.
+      this % fissionable = (n_residue_types == 4)
+    end if
+
+    ! Read the "l_value" array.
+    allocate(this % l_value(n_poles))
+    call read_dataset(this % l_value, group_id, "l_value")
+
+    ! Figure out the number of unique l values in the l_value array.
+    do i = 1, n_poles
+      if (.not. l_val_dict % has(this % l_value(i))) then
+        call l_val_dict % set(this % l_value(i), 0)
       end if
+    end do
+    this % num_l = l_val_dict % size()
+    call l_val_dict % clear()
 
-      ! Allocate the l value table for each pole-residue set.
-      allocate(multipole % l_value(multipole % length))
+    ! Read the "pseudo_K0RS" array.
+    allocate(this % pseudo_k0RS(this % num_l))
+    call read_dataset(this % pseudo_k0RS, group_id, "pseudo_K0RS")
 
-      ! Allocate the table of pseudo_k0RS values at each l.
-      allocate(multipole % pseudo_k0RS(multipole % num_l))
+    ! Read the "w_start" array and use its shape to figure out the number of
+    ! windows.
+    dset = open_dataset(group_id, "w_start")
+    call get_shape(dset, dims_1d)
+    n_windows = int(dims_1d(1), 4)
+    allocate(this % w_start(n_windows))
+    call read_dataset(this % w_start, dset)
+    call close_dataset(dset)
 
-      ! Allocate window start, window end
-      allocate(multipole % w_start(multipole % windows))
-      allocate(multipole % w_end(multipole % windows))
+    ! Read the "w_end" and "broaden_poly" arrays.
+    allocate(this % w_end(n_windows))
+    call read_dataset(this % w_end, group_id, "w_end")
+    allocate(this % broaden_poly(n_windows))
+    call read_dataset(this % broaden_poly, group_id, "broaden_poly")
 
-      ! Allocate broaden_poly
-      allocate(multipole % broaden_poly(multipole % windows))
+    ! Read the "curvefit" array.
+    dset = open_dataset(group_id, "curvefit")
+    call get_shape(dset, dims_3d)
+    allocate(this % curvefit(dims_3d(1), dims_3d(2), dims_3d(3)))
+    call read_dataset(this % curvefit, dset)
+    call close_dataset(dset)
+    this % fit_order = int(dims_3d(2), 4) - 1
 
-      ! Allocate curvefit
-      if(multipole % fissionable) then
-        allocate(multipole % curvefit(FIT_F, multipole % fit_order+1, multipole % windows))
-      else
-        allocate(multipole % curvefit(FIT_A, multipole % fit_order+1, multipole % windows))
-      end if
-    end subroutine
+    ! Close the group and file.
+    call close_group(group_id)
+    call file_close(file_id)
+  end subroutine multipole_from_hdf5
 end module multipole_header

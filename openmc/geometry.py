@@ -1,8 +1,7 @@
-from collections import OrderedDict, Iterable
+from collections import OrderedDict
+from collections.abc import Iterable
 from copy import deepcopy
 from xml.etree import ElementTree as ET
-
-from six import string_types
 
 import openmc
 from openmc.clean_xml import clean_xml_indentation
@@ -14,8 +13,9 @@ class Geometry(object):
 
     Parameters
     ----------
-    root_universe : openmc.Universe, optional
-        Root universe which contains all others
+    root : openmc.Universe or Iterable of openmc.Cell, optional
+        Root universe which contains all others, or an iterable of cells that
+        should be used to create a root universe.
 
     Attributes
     ----------
@@ -27,11 +27,17 @@ class Geometry(object):
 
     """
 
-    def __init__(self, root_universe=None):
+    def __init__(self, root=None):
         self._root_universe = None
         self._offsets = {}
-        if root_universe is not None:
-            self.root_universe = root_universe
+        if root is not None:
+            if isinstance(root, openmc.Universe):
+                self.root_universe = root
+            else:
+                univ = openmc.Universe()
+                for cell in root:
+                    univ.add_cell(cell)
+                self._root_universe = univ
 
     @property
     def root_universe(self):
@@ -132,7 +138,7 @@ class Geometry(object):
         """
         # Make sure we are working with an iterable
         return_list = (isinstance(paths, Iterable) and
-                       not isinstance(paths, string_types))
+                       not isinstance(paths, str))
         path_list = paths if return_list else [paths]
 
         indices = []
@@ -249,7 +255,7 @@ class Geometry(object):
 
         for cell in self.get_all_cells().values():
             if cell.fill_type == 'lattice':
-                if cell.fill not in lattices:
+                if cell.fill.id not in lattices:
                     lattices[cell.fill.id] = cell.fill
 
         return lattices
@@ -306,9 +312,7 @@ class Geometry(object):
             elif not matching and name in material_name:
                 materials.add(material)
 
-        materials = list(materials)
-        materials.sort(key=lambda x: x.id)
-        return materials
+        return sorted(materials, key=lambda x: x.id)
 
     def get_cells_by_name(self, name, case_sensitive=False, matching=False):
         """Return a list of cells with matching names.
@@ -346,9 +350,7 @@ class Geometry(object):
             elif not matching and name in cell_name:
                 cells.add(cell)
 
-        cells = list(cells)
-        cells.sort(key=lambda x: x.id)
-        return cells
+        return sorted(cells, key=lambda x: x.id)
 
     def get_cells_by_fill_name(self, name, case_sensitive=False, matching=False):
         """Return a list of cells with fills with matching names.
@@ -393,9 +395,7 @@ class Geometry(object):
                 elif not matching and name in fill_name:
                     cells.add(cell)
 
-        cells = list(cells)
-        cells.sort(key=lambda x: x.id)
-        return cells
+        return sorted(cells, key=lambda x: x.id)
 
     def get_universes_by_name(self, name, case_sensitive=False, matching=False):
         """Return a list of universes with matching names.
@@ -433,9 +433,7 @@ class Geometry(object):
             elif not matching and name in universe_name:
                 universes.add(universe)
 
-        universes = list(universes)
-        universes.sort(key=lambda x: x.id)
-        return universes
+        return sorted(universes, key=lambda x: x.id)
 
     def get_lattices_by_name(self, name, case_sensitive=False, matching=False):
         """Return a list of lattices with matching names.
@@ -473,9 +471,7 @@ class Geometry(object):
             elif not matching and name in lattice_name:
                 lattices.add(lattice)
 
-        lattices = list(lattices)
-        lattices.sort(key=lambda x: x.id)
-        return lattices
+        return sorted(lattices, key=lambda x: x.id)
 
     def determine_paths(self, instances_only=False):
         """Determine paths through CSG tree for cells and materials.

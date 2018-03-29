@@ -1,11 +1,11 @@
 module tracking
 
   use constants
-  use cross_section,      only: calculate_xs
-  use error,              only: fatal_error, warning, write_message
+  use error,              only: warning, write_message
   use geometry_header,    only: cells
-  use geometry,           only: find_cell, distance_to_boundary, cross_lattice, &
+  use geometry,           only: find_cell, distance_to_boundary, cross_lattice,&
                                 check_cell_overlap
+  use material_header,    only: materials, Material
   use message_passing
   use mgxs_header
   use nuclide_header
@@ -19,9 +19,9 @@ module tracking
   use surface_header
   use tally_header
   use tally,              only: score_analog_tally, score_tracklength_tally, &
-                                score_collision_tally, score_surface_current, &
-                                score_track_derivative, score_surface_tally, &
-                                score_collision_derivative, zero_flux_derivs
+                                score_collision_tally, score_surface_tally, &
+                                score_track_derivative, zero_flux_derivs, &
+                                score_collision_derivative
   use track_output,       only: initialize_particle_track, write_particle_track, &
                                 add_particle_track, finalize_particle_track
 
@@ -85,7 +85,9 @@ contains
       if (p % coord(p % n_coord) % cell == NONE) then
         call find_cell(p, found_cell)
         if (.not. found_cell) then
-          call fatal_error("Could not locate particle " // trim(to_str(p % id)))
+          call p % mark_as_lost("Could not find the cell containing" &
+                     // " particle " // trim(to_str(p %id)))
+          return
         end if
 
         ! set birth cell attribute
@@ -98,29 +100,30 @@ contains
       if (check_overlaps) call check_cell_overlap(p)
 
       ! Calculate microscopic and macroscopic cross sections
-      if (run_CE) then
-        ! If the material is the same as the last material and the temperature
-        ! hasn't changed, we don't need to lookup cross sections again.
-        if (p % material /= p % last_material .or. &
-             p % sqrtkT /= p % last_sqrtkT) call calculate_xs(p)
-      else
-        ! Since the MGXS can be angle dependent, this needs to be done
-        ! After every collision for the MGXS mode
-        if (p % material /= MATERIAL_VOID) then
-          ! Update the temperature index
-          call macro_xs(p % material) % obj % find_temperature(p % sqrtkT)
-          ! Get the data
-          call macro_xs(p % material) % obj % calculate_xs(p % g, &
-               p % coord(p % n_coord) % uvw, material_xs)
+      if (p % material /= MATERIAL_VOID) then
+        if (run_CE) then
+          if (p % material /= p % last_material .or. &
+               p % sqrtkT /= p % last_sqrtkT) then
+            ! If the material is the same as the last material and the
+            ! temperature hasn't changed, we don't need to lookup cross
+            ! sections again.
+            call materials(p % material) % calculate_xs(p % E, p % sqrtkT, &
+                 micro_xs, nuclides, material_xs)
+          end if
         else
-          material_xs % total      = ZERO
-          material_xs % absorption = ZERO
-          material_xs % nu_fission = ZERO
-        end if
+          ! Get the MG data
+          call macro_xs(p % material) % obj % calculate_xs(p % g, p % sqrtkT, &
+               p % coord(p % n_coord) % uvw, material_xs)
 
-        ! Finally, update the particle group while we have already checked for
-        ! if multi-group
-        p % last_g = p % g
+          ! Finally, update the particle group while we have already checked
+          ! for if multi-group
+          p % last_g = p % g
+        end if
+      else
+        material_xs % total      = ZERO
+        material_xs % absorption = ZERO
+        material_xs % fission    = ZERO
+        material_xs % nu_fission = ZERO
       end if
 
       ! Find the distance to the nearest boundary
@@ -182,7 +185,8 @@ contains
           p % event = EVENT_SURFACE
         end if
         ! Score cell to cell partial currents
-        if(active_surface_tallies % size() > 0) call score_surface_tally(p)
+        if(active_surface_tallies % size() > 0) &
+             call score_surface_tally(p, active_surface_tallies)
       else
         ! ====================================================================
         ! PARTICLE HAS COLLISION
@@ -197,7 +201,8 @@ contains
         ! since the direction of the particle will change and we need to use the
         ! pre-collision direction to figure out what mesh surfaces were crossed
 
-        if (active_current_tallies % size() > 0) call score_surface_current(p)
+        if (active_meshsurf_tallies % size() > 0) &
+             call score_surface_tally(p, active_meshsurf_tallies)
 
         ! Clear surface component
         p % surface = NONE
@@ -290,20 +295,20 @@ contains
     real(8) :: v          ! y-component of direction
     real(8) :: w          ! z-component of direction
     real(8) :: norm       ! "norm" of surface normal
-    real(8) :: d          ! distance between point and plane
     real(8) :: xyz(3)     ! Saved global coordinate
     integer :: i_surface  ! index in surfaces
     logical :: rotational ! if rotational periodic BC applied
     logical :: found      ! particle found in universe?
     class(Surface), pointer :: surf
+    class(Surface), pointer :: surf2 ! periodic partner surface
 
     i_surface = abs(p % surface)
-    surf => surfaces(i_surface)%obj
+    surf => surfaces(i_surface)
     if (verbosity >= 10 .or. trace) then
-      call write_message("    Crossing surface " // trim(to_str(surf % id)))
+      call write_message("    Crossing surface " // trim(to_str(surf % id())))
     end if
 
-    if (surf % bc == BC_VACUUM .and. (run_mode /= MODE_PLOTTING)) then
+    if (surf % bc() == BC_VACUUM .and. (run_mode /= MODE_PLOTTING)) then
       ! =======================================================================
       ! PARTICLE LEAKS OUT OF PROBLEM
 
@@ -314,12 +319,12 @@ contains
       ! forward slightly so that if the mesh boundary is on the surface, it is
       ! still processed
 
-      if (active_current_tallies % size() > 0) then
+      if (active_meshsurf_tallies % size() > 0) then
         ! TODO: Find a better solution to score surface currents than
         ! physically moving the particle forward slightly
 
         p % coord(1) % xyz = p % coord(1) % xyz + TINY_BIT * p % coord(1) % uvw
-        call score_surface_current(p)
+        call score_surface_tally(p, active_meshsurf_tallies)
       end if
 
       ! Score to global leakage tally
@@ -328,11 +333,11 @@ contains
       ! Display message
       if (verbosity >= 10 .or. trace) then
         call write_message("    Leaked out of surface " &
-             &// trim(to_str(surf % id)))
+             &// trim(to_str(surf % id())))
       end if
       return
 
-    elseif (surf % bc == BC_REFLECT .and. (run_mode /= MODE_PLOTTING)) then
+    elseif (surf % bc() == BC_REFLECT .and. (run_mode /= MODE_PLOTTING)) then
       ! =======================================================================
       ! PARTICLE REFLECTS FROM SURFACE
 
@@ -347,15 +352,15 @@ contains
       ! particle to change -- artificially move the particle slightly back in
       ! case the surface crossing is coincident with a mesh boundary
 
-      if (active_current_tallies % size() > 0) then
+      if (active_meshsurf_tallies % size() > 0) then
         xyz = p % coord(1) % xyz
         p % coord(1) % xyz = p % coord(1) % xyz - TINY_BIT * p % coord(1) % uvw
-        call score_surface_current(p)
+        call score_surface_tally(p, active_meshsurf_tallies)
         p % coord(1) % xyz = xyz
       end if
 
       ! Reflect particle off surface
-      call surf%reflect(p%coord(1)%xyz, p%coord(1)%uvw)
+      call surf % reflect(p%coord(1)%xyz, p%coord(1)%uvw)
 
       ! Make sure new particle direction is normalized
       u = p%coord(1)%uvw(1)
@@ -376,7 +381,7 @@ contains
       call find_cell(p, found)
       if (.not. found) then
         call p % mark_as_lost("Couldn't find particle after reflecting&
-             & from surface " // trim(to_str(surf % id)) // ".")
+             & from surface " // trim(to_str(surf % id())) // ".")
         return
       end if
 
@@ -386,10 +391,10 @@ contains
       ! Diagnostic message
       if (verbosity >= 10 .or. trace) then
         call write_message("    Reflected from surface " &
-             &// trim(to_str(surf%id)))
+             &// trim(to_str(surf%id())))
       end if
       return
-    elseif (surf % bc == BC_PERIODIC .and. run_mode /= MODE_PLOTTING) then
+    elseif (surf % bc() == BC_PERIODIC .and. run_mode /= MODE_PLOTTING) then
       ! =======================================================================
       ! PERIODIC BOUNDARY
 
@@ -404,78 +409,26 @@ contains
       ! Score surface currents since reflection causes the direction of the
       ! particle to change -- artificially move the particle slightly back in
       ! case the surface crossing is coincident with a mesh boundary
-
-      if (active_current_tallies % size() > 0) then
+      if (active_meshsurf_tallies % size() > 0) then
         xyz = p % coord(1) % xyz
         p % coord(1) % xyz = p % coord(1) % xyz - TINY_BIT * p % coord(1) % uvw
-        call score_surface_current(p)
+        call score_surface_tally(p, active_meshsurf_tallies)
         p % coord(1) % xyz = xyz
       end if
 
-      rotational = .false.
-      select type (surf)
-      type is (SurfaceXPlane)
-        select type (opposite => surfaces(surf % i_periodic) % obj)
-        type is (SurfaceXPlane)
-          p % coord(1) % xyz(1) = opposite % x0
-        type is (SurfaceYPlane)
-          rotational = .true.
+      ! Get a pointer to the partner periodic surface.  Offset the index to
+      ! correct for C vs. Fortran indexing.
+      surf2 => surfaces(surf % i_periodic() + 1)
 
-          ! Rotate direction
-          u = p % coord(1) % uvw(1)
-          v = p % coord(1) % uvw(2)
-          p % coord(1) % uvw(1) = v
-          p % coord(1) % uvw(2) = -u
-
-          ! Rotate position
-          p % coord(1) % xyz(1) = surf % x0 + p % coord(1) % xyz(2) - opposite % y0
-          p % coord(1) % xyz(2) = opposite % y0
-        end select
-
-      type is (SurfaceYPlane)
-        select type (opposite => surfaces(surf % i_periodic) % obj)
-        type is (SurfaceYPlane)
-          p % coord(1) % xyz(2) = opposite % y0
-        type is (SurfaceXPlane)
-          rotational = .true.
-
-          ! Rotate direction
-          u = p % coord(1) % uvw(1)
-          v = p % coord(1) % uvw(2)
-          p % coord(1) % uvw(1) = -v
-          p % coord(1) % uvw(2) = u
-
-          ! Rotate position
-          p % coord(1) % xyz(2) = surf % y0 + p % coord(1) % xyz(1) - opposite % x0
-          p % coord(1) % xyz(1) = opposite % x0
-        end select
-
-      type is (SurfaceZPlane)
-        select type (opposite => surfaces(surf % i_periodic) % obj)
-        type is (SurfaceZPlane)
-          p % coord(1) % xyz(3) = opposite % z0
-        end select
-
-      type is (SurfacePlane)
-        select type (opposite => surfaces(surf % i_periodic) % obj)
-        type is (SurfacePlane)
-          ! Get surface normal for opposite plane
-          xyz(:) = opposite % normal(p % coord(1) % xyz)
-
-          ! Determine distance to plane
-          norm = xyz(1)*xyz(1) + xyz(2)*xyz(2) + xyz(3)*xyz(3)
-          d = opposite % evaluate(p % coord(1) % xyz) / norm
-
-          ! Move particle along normal vector based on distance
-          p % coord(1) % xyz(:) = p % coord(1) % xyz(:) - d*xyz
-        end select
-      end select
+      ! Adjust the particle's location and direction.
+      rotational = surf2 % periodic_translate(surf, p % coord(1) % xyz, &
+                                              p % coord(1) % uvw)
 
       ! Reassign particle's surface
       if (rotational) then
-        p % surface = surf % i_periodic
+        p % surface = surf % i_periodic() + 1
       else
-        p % surface = sign(surf % i_periodic, p % surface)
+        p % surface = sign(surf % i_periodic() + 1, p % surface)
       end if
 
       ! Figure out what cell particle is in now
@@ -483,7 +436,8 @@ contains
       call find_cell(p, found)
       if (.not. found) then
         call p % mark_as_lost("Couldn't find particle after hitting &
-             &periodic boundary on surface " // trim(to_str(surf % id)) // ".")
+             &periodic boundary on surface " // trim(to_str(surf % id())) &
+             // ".")
         return
       end if
 
@@ -493,7 +447,7 @@ contains
       ! Diagnostic message
       if (verbosity >= 10 .or. trace) then
         call write_message("    Hit periodic boundary on surface " &
-             // trim(to_str(surf%id)))
+             // trim(to_str(surf%id())))
       end if
       return
     end if
@@ -540,7 +494,7 @@ contains
 
       if (.not. found) then
         call p % mark_as_lost("After particle " // trim(to_str(p % id)) &
-             // " crossed surface " // trim(to_str(surf % id)) &
+             // " crossed surface " // trim(to_str(surf % id())) &
              // " it could not be located in any cell and it did not leak.")
         return
       end if

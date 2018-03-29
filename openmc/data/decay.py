@@ -1,16 +1,13 @@
-from collections import Iterable, namedtuple
+from collections import namedtuple
+from collections.abc import Iterable
 from io import StringIO
 from math import log
 from numbers import Real
 import re
 from warnings import warn
 
-from six import string_types
 import numpy as np
-try:
-    from uncertainties import ufloat, unumpy, UFloat
-except ImportError:
-    ufloat = UFloat = namedtuple('UFloat', ['nominal_value', 'std_dev'])
+from uncertainties import ufloat, unumpy, UFloat
 
 import openmc.checkvalue as cv
 from openmc.mixin import EqualityMixin
@@ -278,12 +275,12 @@ class DecayMode(EqualityMixin):
 
     @modes.setter
     def modes(self, modes):
-        cv.check_type('decay modes', modes, Iterable, string_types)
+        cv.check_type('decay modes', modes, Iterable, str)
         self._modes = modes
 
     @parent.setter
     def parent(self, parent):
-        cv.check_type('parent nuclide', parent, string_types)
+        cv.check_type('parent nuclide', parent, str)
         self._parent = parent
 
 
@@ -457,6 +454,7 @@ class Decay(EqualityMixin):
             items, values = get_list_record(file_obj)
             self.nuclide['spin'] = items[0]
             self.nuclide['parity'] = items[1]
+            self.half_life = ufloat(float('inf'), float('inf'))
 
     @property
     def decay_constant(self):

@@ -294,8 +294,6 @@ contains
       if (master .and. verbosity >= 7) then
         if (current_gen /= gen_per_batch) then
           call print_generation()
-        else
-          call print_batch_keff()
         end if
       end if
 
@@ -320,7 +318,7 @@ contains
 
   subroutine finalize_batch()
 
-#ifdef MPI
+#ifdef OPENMC_MPI
     integer :: mpi_err ! MPI error code
 #endif
 
@@ -338,11 +336,13 @@ contains
     if (run_mode == MODE_EIGENVALUE) then
       ! Perform CMFD calculation if on
       if (cmfd_on) call execute_cmfd()
+      ! Write batch output
+      if (master .and. verbosity >= 7) call print_batch_keff()
     end if
 
     ! Check_triggers
     if (master) call check_triggers()
-#ifdef MPI
+#ifdef OPENMC_MPI
     call MPI_BCAST(satisfy_triggers, 1, MPI_LOGICAL, 0, &
          mpi_intracomm, mpi_err)
 #endif
@@ -434,6 +434,13 @@ contains
     allocate(filter_matches(n_filters))
 !$omp end parallel
 
+    ! Reset global variables -- this is done before loading state point (as that
+    ! will potentially populate k_generation and entropy)
+    current_batch = 0
+    call k_generation % clear()
+    call entropy % clear()
+    need_depletion_rx = .false.
+
     ! If this is a restart run, load the state point data and binary source
     ! file
     if (restart_run) then
@@ -452,10 +459,6 @@ contains
       end if
     end if
 
-    ! Reset global variables
-    current_batch = 0
-    need_depletion_rx = .false.
-
     ! Set flag indicating initialization is done
     simulation_initialized = .true.
 
@@ -469,11 +472,17 @@ contains
   subroutine openmc_simulation_finalize() bind(C)
 
     integer    :: i       ! loop index
-#ifdef MPI
+#ifdef OPENMC_MPI
     integer    :: n       ! size of arrays
     integer    :: mpi_err  ! MPI error code
+    integer    :: count_per_filter ! number of result values for one filter bin
     integer(8) :: temp
     real(8)    :: tempr(3) ! temporary array for communication
+#ifdef OPENMC_MPIF08
+    type(MPI_Datatype) :: result_block
+#else
+    integer :: result_block
+#endif
 #endif
 
     ! Skip if simulation was never run
@@ -494,13 +503,28 @@ contains
     ! Increment total number of generations
     total_gen = total_gen + current_batch*gen_per_batch
 
-#ifdef MPI
+#ifdef OPENMC_MPI
     ! Broadcast tally results so that each process has access to results
     if (allocated(tallies)) then
       do i = 1, size(tallies)
-        !n = size(tallies(i) % obj % results)
-        !call MPI_BCAST(tallies(i) % obj % results, n, MPI_DOUBLE, 0, &
-        !     mpi_intracomm, mpi_err)
+<<<<<<< HEAD
+        n = size(tallies(i) % obj % results)
+        call MPI_BCAST(tallies(i) % obj % results, n, MPI_DOUBLE, 0, &
+             mpi_intracomm, mpi_err)
+=======
+        associate (results => tallies(i) % obj % results)
+          ! Create a new datatype that consists of all values for a given filter
+          ! bin and then use that to broadcast. This is done to minimize the
+          ! chance of the 'count' argument of MPI_BCAST exceeding 2**31
+          n = size(results, 3)
+          count_per_filter = size(results, 1) * size(results, 2)
+          call MPI_TYPE_CONTIGUOUS(count_per_filter, MPI_DOUBLE, &
+               result_block, mpi_err)
+          call MPI_TYPE_COMMIT(result_block, mpi_err)
+          call MPI_BCAST(results, n, result_block, 0, mpi_intracomm, mpi_err)
+          call MPI_TYPE_FREE(result_block, mpi_err)
+        end associate
+>>>>>>> 47fbf8282ea94c138f75219bd10fdb31501d3fb7
       end do
     end if
 

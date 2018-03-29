@@ -10,7 +10,7 @@ module input_xml
   use distribution_multivariate
   use distribution_univariate
   use endf,             only: reaction_name
-  use error,            only: fatal_error, warning, write_message
+  use error,            only: fatal_error, warning, write_message, openmc_err_msg
   use geometry,         only: calc_offsets, maximum_levels, count_instance, &
                               neighbor_lists
   use geometry_header
@@ -21,7 +21,6 @@ module input_xml
   use message_passing
   use mgxs_data,        only: create_macro_xs, read_mgxs
   use mgxs_header
-  use multipole,        only: multipole_read
   use nuclide_header
   use output,           only: title, header, print_plot
   use plot_header
@@ -47,6 +46,14 @@ module input_xml
 
   implicit none
   save
+
+  interface
+    subroutine read_surfaces(node_ptr) bind(C, name='read_surfaces')
+      use ISO_C_BINDING
+      implicit none
+      type(C_PTR) :: node_ptr
+    end subroutine read_surfaces
+  end interface
 
 contains
 
@@ -341,7 +348,7 @@ contains
     ! Copy random number seed if specified
     if (check_for_node(root, "seed")) then
       call get_node_value(root, "seed", seed)
-      err = openmc_set_seed(seed)
+      call openmc_set_seed(seed)
     end if
 
     ! Number of bins for logarithmic grid
@@ -911,28 +918,20 @@ contains
     integer :: id
     integer :: univ_id
     integer :: n_cells_in_univ
-    integer :: coeffs_reqd
-    integer :: i_xmin, i_xmax, i_ymin, i_ymax, i_zmin, i_zmax
-    real(8) :: xmin, xmax, ymin, ymax, zmin, zmax
     integer, allocatable :: temp_int_array(:)
     real(8) :: phi, theta, psi
-    real(8), allocatable :: coeffs(:)
     logical :: file_exists
     logical :: boundary_exists
     character(MAX_LINE_LEN) :: filename
-    character(MAX_WORD_LEN) :: word
     character(MAX_WORD_LEN), allocatable :: sarray(:)
     character(:), allocatable :: region_spec
     type(Cell),     pointer :: c
-    class(Surface), pointer :: s
     class(Lattice), pointer :: lat
     type(XMLDocument) :: doc
     type(XMLNode) :: root
     type(XMLNode) :: node_cell
-    type(XMLNode) :: node_surf
     type(XMLNode) :: node_lat
     type(XMLNode), allocatable :: node_cell_list(:)
-    type(XMLNode), allocatable :: node_surf_list(:)
     type(XMLNode), allocatable :: node_rlat_list(:)
     type(XMLNode), allocatable :: node_hlat_list(:)
     type(VectorInt) :: tokens
@@ -964,218 +963,18 @@ contains
     ! applied to a surface
     boundary_exists = .false.
 
-    ! get pointer to list of xml <surface>
-    call get_node_list(root, "surface", node_surf_list)
+    call read_surfaces(root % ptr)
 
-    ! Get number of <surface> tags
-    n_surfaces = size(node_surf_list)
-
-    ! Check for no surfaces
-    if (n_surfaces == 0) then
-      call fatal_error("No surfaces found in geometry.xml!")
-    end if
-
-    xmin = INFINITY
-    xmax = -INFINITY
-    ymin = INFINITY
-    ymax = -INFINITY
-    zmin = INFINITY
-    zmax = -INFINITY
-
-    ! Allocate cells array
+    ! Allocate surfaces array
     allocate(surfaces(n_surfaces))
 
     do i = 1, n_surfaces
-      ! Get pointer to i-th surface node
-      node_surf = node_surf_list(i)
+      surfaces(i) % ptr = surface_pointer_c(i - 1);
 
-      ! Copy and interpret surface type
-      word = ''
-      if (check_for_node(node_surf, "type")) &
-           call get_node_value(node_surf, "type", word)
-      select case(to_lower(word))
-      case ('x-plane')
-        coeffs_reqd  = 1
-        allocate(SurfaceXPlane :: surfaces(i)%obj)
-      case ('y-plane')
-        coeffs_reqd  = 1
-        allocate(SurfaceYPlane :: surfaces(i)%obj)
-      case ('z-plane')
-        coeffs_reqd  = 1
-        allocate(SurfaceZPlane :: surfaces(i)%obj)
-      case ('plane')
-        coeffs_reqd  = 4
-        allocate(SurfacePlane :: surfaces(i)%obj)
-      case ('x-cylinder')
-        coeffs_reqd  = 3
-        allocate(SurfaceXCylinder :: surfaces(i)%obj)
-      case ('y-cylinder')
-        coeffs_reqd  = 3
-        allocate(SurfaceYCylinder :: surfaces(i)%obj)
-      case ('z-cylinder')
-        coeffs_reqd  = 3
-        allocate(SurfaceZCylinder :: surfaces(i)%obj)
-      case ('sphere')
-        coeffs_reqd  = 4
-        allocate(SurfaceSphere :: surfaces(i)%obj)
-      case ('x-cone')
-        coeffs_reqd  = 4
-        allocate(SurfaceXCone :: surfaces(i)%obj)
-      case ('y-cone')
-        coeffs_reqd  = 4
-        allocate(SurfaceYCone :: surfaces(i)%obj)
-      case ('z-cone')
-        coeffs_reqd  = 4
-        allocate(SurfaceZCone :: surfaces(i)%obj)
-      case ('quadric')
-        coeffs_reqd  = 10
-        allocate(SurfaceQuadric :: surfaces(i)%obj)
-      case default
-        call fatal_error("Invalid surface type: " // trim(word))
-      end select
+      if (surfaces(i) % bc() /= BC_TRANSMIT) boundary_exists = .true.
 
-      s => surfaces(i)%obj
-
-      ! Copy data into cells
-      if (check_for_node(node_surf, "id")) then
-        call get_node_value(node_surf, "id", s%id)
-      else
-        call fatal_error("Must specify id of surface in geometry XML file.")
-      end if
-
-      ! Check to make sure 'id' hasn't been used
-      if (surface_dict % has(s%id)) then
-        call fatal_error("Two or more surfaces use the same unique ID: " &
-             // to_str(s%id))
-      end if
-
-      ! Copy surface name
-      if (check_for_node(node_surf, "name")) then
-        call get_node_value(node_surf, "name", s%name)
-      end if
-
-      ! Check to make sure that the proper number of coefficients
-      ! have been specified for the given type of surface. Then copy
-      ! surface coordinates.
-
-      n = node_word_count(node_surf, "coeffs")
-      if (n < coeffs_reqd) then
-        call fatal_error("Not enough coefficients specified for surface: " &
-             // trim(to_str(s%id)))
-      elseif (n > coeffs_reqd) then
-        call fatal_error("Too many coefficients specified for surface: " &
-             // trim(to_str(s%id)))
-      end if
-
-      allocate(coeffs(n))
-      call get_node_array(node_surf, "coeffs", coeffs)
-
-      select type(s)
-      type is (SurfaceXPlane)
-        s%x0 = coeffs(1)
-
-        ! Determine outer surfaces
-        xmin = min(xmin, s % x0)
-        xmax = max(xmax, s % x0)
-        if (xmin == s % x0) i_xmin = i
-        if (xmax == s % x0) i_xmax = i
-      type is (SurfaceYPlane)
-        s%y0 = coeffs(1)
-
-        ! Determine outer surfaces
-        ymin = min(ymin, s % y0)
-        ymax = max(ymax, s % y0)
-        if (ymin == s % y0) i_ymin = i
-        if (ymax == s % y0) i_ymax = i
-      type is (SurfaceZPlane)
-        s%z0 = coeffs(1)
-
-        ! Determine outer surfaces
-        zmin = min(zmin, s % z0)
-        zmax = max(zmax, s % z0)
-        if (zmin == s % z0) i_zmin = i
-        if (zmax == s % z0) i_zmax = i
-      type is (SurfacePlane)
-        s%A = coeffs(1)
-        s%B = coeffs(2)
-        s%C = coeffs(3)
-        s%D = coeffs(4)
-      type is (SurfaceXCylinder)
-        s%y0 = coeffs(1)
-        s%z0 = coeffs(2)
-        s%r = coeffs(3)
-      type is (SurfaceYCylinder)
-        s%x0 = coeffs(1)
-        s%z0 = coeffs(2)
-        s%r = coeffs(3)
-      type is (SurfaceZCylinder)
-        s%x0 = coeffs(1)
-        s%y0 = coeffs(2)
-        s%r = coeffs(3)
-      type is (SurfaceSphere)
-        s%x0 = coeffs(1)
-        s%y0 = coeffs(2)
-        s%z0 = coeffs(3)
-        s%r = coeffs(4)
-      type is (SurfaceXCone)
-        s%x0 = coeffs(1)
-        s%y0 = coeffs(2)
-        s%z0 = coeffs(3)
-        s%r2 = coeffs(4)
-      type is (SurfaceYCone)
-        s%x0 = coeffs(1)
-        s%y0 = coeffs(2)
-        s%z0 = coeffs(3)
-        s%r2 = coeffs(4)
-      type is (SurfaceZCone)
-        s%x0 = coeffs(1)
-        s%y0 = coeffs(2)
-        s%z0 = coeffs(3)
-        s%r2 = coeffs(4)
-      type is (SurfaceQuadric)
-        s%A = coeffs(1)
-        s%B = coeffs(2)
-        s%C = coeffs(3)
-        s%D = coeffs(4)
-        s%E = coeffs(5)
-        s%F = coeffs(6)
-        s%G = coeffs(7)
-        s%H = coeffs(8)
-        s%J = coeffs(9)
-        s%K = coeffs(10)
-      end select
-
-      ! No longer need coefficients
-      deallocate(coeffs)
-
-      ! Boundary conditions
-      word = ''
-      if (check_for_node(node_surf, "boundary")) &
-           call get_node_value(node_surf, "boundary", word)
-      select case (to_lower(word))
-      case ('transmission', 'transmit', '')
-        s%bc = BC_TRANSMIT
-      case ('vacuum')
-        s%bc = BC_VACUUM
-        boundary_exists = .true.
-      case ('reflective', 'reflect', 'reflecting')
-        s%bc = BC_REFLECT
-        boundary_exists = .true.
-      case ('periodic')
-        s%bc = BC_PERIODIC
-        boundary_exists = .true.
-
-        ! Check for specification of periodic surface
-        if (check_for_node(node_surf, "periodic_surface_id")) then
-          call get_node_value(node_surf, "periodic_surface_id", &
-               s % i_periodic)
-        end if
-      case default
-        call fatal_error("Unknown boundary condition '" // trim(word) // &
-             &"' specified on surface " // trim(to_str(s%id)))
-      end select
       ! Add surface to dictionary
-      call surface_dict % set(s%id, i)
+      call surface_dict % set(surfaces(i) % id(), i)
     end do
 
     ! Check to make sure a boundary condition was applied to at least one
@@ -1185,76 +984,6 @@ contains
         call fatal_error("No boundary conditions were applied to any surfaces!")
       end if
     end if
-
-    ! Determine opposite side for periodic boundaries
-    do i = 1, size(surfaces)
-      if (surfaces(i) % obj % bc == BC_PERIODIC) then
-        select type (surf => surfaces(i) % obj)
-        type is (SurfaceXPlane)
-          if (surf % i_periodic == NONE) then
-            if (i == i_xmin) then
-              surf % i_periodic = i_xmax
-            elseif (i == i_xmax) then
-              surf % i_periodic = i_xmin
-            else
-              call fatal_error("Periodic boundary condition applied to &
-                   &interior surface.")
-            end if
-          else
-            surf % i_periodic = surface_dict % get(surf % i_periodic)
-          end if
-
-        type is (SurfaceYPlane)
-          if (surf % i_periodic == NONE) then
-            if (i == i_ymin) then
-              surf % i_periodic = i_ymax
-            elseif (i == i_ymax) then
-              surf % i_periodic = i_ymin
-            else
-              call fatal_error("Periodic boundary condition applied to &
-                   &interior surface.")
-            end if
-          else
-            surf % i_periodic = surface_dict % get(surf % i_periodic)
-          end if
-
-        type is (SurfaceZPlane)
-          if (surf % i_periodic == NONE) then
-            if (i == i_zmin) then
-              surf % i_periodic = i_zmax
-            elseif (i == i_zmax) then
-              surf % i_periodic = i_zmin
-            else
-              call fatal_error("Periodic boundary condition applied to &
-                   &interior surface.")
-            end if
-          else
-            surf % i_periodic = surface_dict % get(surf % i_periodic)
-          end if
-
-        type is (SurfacePlane)
-          if (surf % i_periodic == NONE) then
-            call fatal_error("No matching periodic surface specified for &
-                 &periodic boundary condition on surface " // &
-                 trim(to_str(surf % id)) // ".")
-          else
-            surf % i_periodic = surface_dict % get(surf % i_periodic)
-          end if
-
-        class default
-          call fatal_error("Periodic boundary condition applied to &
-               &non-planar surface.")
-        end select
-
-        ! Make sure opposite surface is also periodic
-        associate (surf => surfaces(i) % obj)
-          if (surfaces(surf % i_periodic) % obj % bc /= BC_PERIODIC) then
-            call fatal_error("Could not find matching surface for periodic &
-                 &boundary on surface " // trim(to_str(surf % id)) // ".")
-          end if
-        end associate
-      end if
-    end do
 
     ! ==========================================================================
     ! READ CELLS FROM GEOMETRY.XML
@@ -2468,7 +2197,6 @@ contains
     integer :: l             ! another loop index
     integer :: filter_id     ! user-specified identifier for filter
     integer :: i_filt        ! index in filters array
-    integer :: i_filter_mesh ! index of mesh filter
     integer :: i_elem        ! index of entry in dictionary
     integer :: n             ! size of arrays in mesh specification
     integer :: n_words       ! number of words read
@@ -2480,7 +2208,6 @@ contains
     integer :: trig_ind      ! index of triggers array for each tally
     integer :: user_trig_ind ! index of user-specified triggers for each tally
     integer :: i_start, i_end
-    integer :: i_filt_start, i_filt_end
     integer(C_INT) :: err
     real(8) :: threshold     ! trigger convergence threshold
     integer :: n_order       ! moment order requested
@@ -2629,13 +2356,13 @@ contains
            call get_node_value(node_filt, "type", temp_str)
       temp_str = to_lower(temp_str)
 
-      ! Determine number of bins
+      ! Make sure bins have been set
       select case(temp_str)
       case ("energy", "energyout", "mu", "polar", "azimuthal")
         if (.not. check_for_node(node_filt, "bins")) then
           call fatal_error("Bins not set in filter " // trim(to_str(filter_id)))
         end if
-      case ("mesh", "universe", "material", "cell", "distribcell", &
+      case ("mesh", "meshsurface", "universe", "material", "cell", "distribcell", &
             "cellborn", "cellfrom", "surface", "delayedgroup")
         if (.not. check_for_node(node_filt, "bins")) then
           call fatal_error("Bins not set in filter " // trim(to_str(filter_id)))
@@ -2644,6 +2371,7 @@ contains
 
       ! Allocate according to the filter type
       err = openmc_filter_set_type(i_start + i - 1, to_c_string(temp_str))
+      if (err /= 0) call fatal_error(to_f_string(openmc_err_msg))
 
       ! Read filter data from XML
       call f % obj % from_xml(node_filt)
@@ -3106,18 +2834,18 @@ contains
                  &t % find_filter(FILTER_CELL) > 0 .or. &
                  &t % find_filter(FILTER_CELLFROM) > 0) then
 
-              ! Check to make sure that mesh currents are not desired as well
-              if (t % find_filter(FILTER_MESH) > 0) then
-                call fatal_error("Cannot tally other mesh currents &
-                     &in the same tally as surface currents")
+              ! Check to make sure that mesh surface currents are not desired as well
+              if (t % find_filter(FILTER_MESHSURFACE) > 0) then
+                call fatal_error("Cannot tally mesh surface currents &
+                     &in the same tally as normal surface currents")
               end if
 
               t % type = TALLY_SURFACE
               t % score_bins(j) = SCORE_CURRENT
 
-            else if (t % find_filter(FILTER_MESH) > 0) then
+            else if (t % find_filter(FILTER_MESHSURFACE) > 0) then
               t % score_bins(j) = SCORE_CURRENT
-              t % type = TALLY_MESH_CURRENT
+              t % type = TALLY_MESH_SURFACE
 
               ! Check to make sure that current is the only desired response
               ! for this tally
@@ -3125,75 +2853,6 @@ contains
                 call fatal_error("Cannot tally other scores in the &
                      &same tally as surface currents")
               end if
-
-              ! Get index of mesh filter
-              i_filter_mesh = t % filter(t % find_filter(FILTER_MESH))
-
-              ! Check to make sure mesh filter was specified
-              if (i_filter_mesh == 0) then
-                call fatal_error("Cannot tally surface current without a mesh &
-                     &filter.")
-              end if
-
-              ! Get pointer to mesh
-              select type(filt => filters(i_filter_mesh) % obj)
-              type is (MeshFilter)
-                m => meshes(filt % mesh)
-              end select
-
-              ! Extend the filters array so we can add a surface filter and
-              ! mesh filter
-              err = openmc_extend_filters(2, i_filt_start, i_filt_end)
-
-              ! Duplicate the mesh filter since other tallies might use this
-              ! filter and we need to change the dimension
-              filters(i_filt_start) = filters(i_filter_mesh)
-
-              ! We need to increase the dimension by one since we also need
-              ! currents coming into and out of the boundary mesh cells.
-              filters(i_filt_start) % obj % n_bins = product(m % dimension + 1)
-
-              ! Set ID
-              call openmc_get_filter_next_id(filter_id)
-              err = openmc_filter_set_id(i_filt_start, filter_id)
-
-
-              ! Add surface filter
-              allocate(SurfaceFilter :: filters(i_filt_end) % obj)
-              select type (filt => filters(i_filt_end) % obj)
-              type is (SurfaceFilter)
-                filt % n_bins = 4 * m % n_dimension
-                allocate(filt % surfaces(4 * m % n_dimension))
-                if (m % n_dimension == 1) then
-                  filt % surfaces = (/ OUT_LEFT, IN_LEFT, OUT_RIGHT, IN_RIGHT /)
-                elseif (m % n_dimension == 2) then
-                  filt % surfaces = (/ OUT_LEFT, IN_LEFT, OUT_RIGHT, IN_RIGHT, &
-                       OUT_BACK, IN_BACK, OUT_FRONT, IN_FRONT /)
-                elseif (m % n_dimension == 3) then
-                  filt % surfaces = (/ OUT_LEFT, IN_LEFT, OUT_RIGHT, IN_RIGHT, &
-                       OUT_BACK, IN_BACK, OUT_FRONT, IN_FRONT, OUT_BOTTOM, &
-                       IN_BOTTOM, OUT_TOP, IN_TOP /)
-                end if
-                filt % current = .true.
-
-                ! Set ID
-                call openmc_get_filter_next_id(filter_id)
-                err = openmc_filter_set_id(i_filt_end, filter_id)
-              end select
-
-              ! Copy filter indices to resized array
-              n_filter = size(t % filter)
-              allocate(temp_filter(n_filter + 1))
-              temp_filter(1:size(t % filter)) = t % filter
-              n_filter = n_filter + 1
-
-              ! Set mesh and surface filters
-              temp_filter(t % find_filter(FILTER_MESH)) = i_filt_start
-              temp_filter(n_filter) = i_filt_end
-
-              ! Set filters
-              err = openmc_tally_set_filters(i_start + i - 1, n_filter, temp_filter)
-              deallocate(temp_filter)
             end if
 
           case ('events')
@@ -4461,7 +4120,7 @@ contains
           group_id = open_group(file_id, name)
           call nuclides(i_nuclide) % from_hdf5(group_id, nuc_temps(i_nuclide), &
                temperature_method, temperature_tolerance, temperature_range, &
-               master)
+               master, i_nuclide)
           call close_group(group_id)
           call file_close(file_id)
 
@@ -4535,12 +4194,16 @@ contains
 
     ! Show which nuclide results in lowest energy for neutron transport
     do i = 1, size(nuclides)
-      if (nuclides(i) % grid(1) % energy(size(nuclides(i) % grid(1) % energy)) &
-           == energy_max_neutron) then
-        call write_message("Maximum neutron transport energy: " // &
-             trim(to_str(energy_max_neutron)) // " eV for " // &
-             trim(adjustl(nuclides(i) % name)), 7)
-        exit
+      ! If a nuclide is present in a material that's not used in the model, its
+      ! grid has not been allocated
+      if (size(nuclides(i) % grid) > 0) then
+        if (nuclides(i) % grid(1) % energy(size(nuclides(i) % grid(1) % energy)) &
+             == energy_max_neutron) then
+          call write_message("Maximum neutron transport energy: " // &
+               trim(to_str(energy_max_neutron)) // " eV for " // &
+               trim(adjustl(nuclides(i) % name)), 7)
+          exit
+        end if
       end if
     end do
 
@@ -4643,7 +4306,7 @@ contains
       allocate(nuc % multipole)
 
       ! Call the read routine
-      call multipole_read(filename, nuc % multipole, i_table)
+      call nuc % multipole % from_hdf5(filename)
       nuc % mp_present = .true.
 
     end associate

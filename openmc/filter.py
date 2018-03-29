@@ -1,4 +1,3 @@
-from __future__ import division
 from abc import ABCMeta
 from collections import Iterable, OrderedDict
 import copy
@@ -8,7 +7,6 @@ from numbers import Real, Integral
 import operator
 from xml.etree import ElementTree as ET
 
-from six import add_metaclass
 import numpy as np
 import pandas as pd
 
@@ -17,6 +15,7 @@ import openmc.checkvalue as cv
 from .cell import Cell
 from .material import Material
 from .mixin import IDManagerMixin
+from .surface import Surface
 from .universe import Universe
 
 
@@ -24,12 +23,11 @@ _FILTER_TYPES = ['universe', 'material', 'cell', 'cellborn', 'surface',
                  'mesh', 'energy', 'energyout', 'mu', 'polar', 'azimuthal',
                  'distribcell', 'delayedgroup', 'energyfunction', 'cellfrom']
 
-_CURRENT_NAMES = {1:  'x-min out', 2:  'x-min in',
-                  3:  'x-max out', 4:  'x-max in',
-                  5:  'y-min out', 6:  'y-min in',
-                  7:  'y-max out', 8:  'y-max in',
-                  9:  'z-min out', 10: 'z-min in',
-                  11: 'z-max out', 12: 'z-max in'}
+_CURRENT_NAMES = (
+    'x-min out', 'x-min in', 'x-max out', 'x-max in',
+    'y-min out', 'y-min in', 'y-max out', 'y-max in',
+    'z-min out', 'z-min in', 'z-max out', 'z-max in'
+)
 
 
 class FilterMeta(ABCMeta):
@@ -66,12 +64,10 @@ class FilterMeta(ABCMeta):
                             namespace[func_name].__doc__ = old_doc
 
         # Make the class.
-        return super(FilterMeta, cls).__new__(cls, name, bases, namespace,
-                                              **kwargs)
+        return super().__new__(cls, name, bases, namespace, **kwargs)
 
 
-@add_metaclass(FilterMeta)
-class Filter(IDManagerMixin):
+class Filter(IDManagerMixin, metaclass=FilterMeta):
     """Tally modifier that describes phase-space and other characteristics.
 
     Parameters
@@ -501,9 +497,9 @@ class CellFilter(WithIDFilter):
 
     Parameters
     ----------
-    bins : openmc.Cell, Integral, or iterable thereof
-        The Cells to tally. Either openmc.Cell objects or their
-        Integral ID numbers can be used.
+    bins : openmc.Cell, int, or iterable thereof
+        The cells to tally. Either openmc.Cell objects or their ID numbers can
+        be used.
     filter_id : int
         Unique identifier for the filter
 
@@ -568,86 +564,29 @@ class CellbornFilter(WithIDFilter):
     expected_type = Cell
 
 
-class SurfaceFilter(Filter):
-    """Bins particle currents on Mesh surfaces.
+class SurfaceFilter(WithIDFilter):
+    """Filters particles by surface crossing
 
     Parameters
     ----------
-    bins : Iterable of Integral
-        Indices corresponding to which face of a mesh cell the current is
-        crossing.
+    bins : openmc.Surface, int, or iterable of Integral
+        The surfaces to tally over. Either openmc.Surface objects or their ID
+        numbers can be used.
     filter_id : int
         Unique identifier for the filter
 
     Attributes
     ----------
     bins : Iterable of Integral
-        Indices corresponding to which face of a mesh cell the current is
-        crossing.
+        The surfaces to tally over. Either openmc.Surface objects or their ID
+        numbers can be used.
     id : int
         Unique identifier for the filter
     num_bins : Integral
         The number of filter bins
 
     """
-    @Filter.bins.setter
-    def bins(self, bins):
-        # Format the bins as a 1D numpy array.
-        bins = np.atleast_1d(bins)
-
-        # Check the bin values.
-        cv.check_iterable_type('filter bins', bins, Integral)
-        for edge in bins:
-            cv.check_greater_than('filter bin', edge, 0, equality=True)
-
-        self._bins = bins
-
-    @property
-    def num_bins(self):
-        # Need to handle number of bins carefully -- for surface current
-        # tallies, the number of bins depends on the mesh, which we don't have a
-        # reference to in this filter
-        return self._num_bins
-
-    def get_pandas_dataframe(self, data_size, stride, **kwargs):
-        """Builds a Pandas DataFrame for the Filter's bins.
-
-        This method constructs a Pandas DataFrame object for the filter with
-        columns annotated by filter bin information. This is a helper method for
-        :meth:`Tally.get_pandas_dataframe`.
-
-        Parameters
-        ----------
-        data_size : int
-            The total number of bins in the tally corresponding to this filter
-        stride : int
-            Stride in memory for the filter
-
-        Returns
-        -------
-        pandas.DataFrame
-            A Pandas DataFrame with a column of strings describing which surface
-            the current is crossing and which direction it points.  The number
-            of rows in the DataFrame is the same as the total number of bins in
-            the corresponding tally, with the filter bin appropriately tiled to
-            map to the corresponding tally bins.
-
-        See also
-        --------
-        Tally.get_pandas_dataframe(), CrossFilter.get_pandas_dataframe()
-
-        """
-        # Initialize Pandas DataFrame
-        df = pd.DataFrame()
-
-        filter_bins = np.repeat(self.bins, stride)
-        tile_factor = data_size // len(filter_bins)
-        filter_bins = np.tile(filter_bins, tile_factor)
-        filter_bins = [_CURRENT_NAMES[x] for x in filter_bins]
-        df = pd.concat([df, pd.DataFrame(
-            {self.short_name.lower(): filter_bins})])
-
-        return df
+    expected_type = Surface
 
 
 class MeshFilter(Filter):
@@ -675,7 +614,7 @@ class MeshFilter(Filter):
 
     def __init__(self, mesh, filter_id=None):
         self.mesh = mesh
-        super(MeshFilter, self).__init__(mesh.id, filter_id)
+        super().__init__(mesh.id, filter_id)
 
     @classmethod
     def from_hdf5(cls, group, **kwargs):
@@ -693,7 +632,6 @@ class MeshFilter(Filter):
         filter_id = int(group.name.split('/')[-1].lstrip('filter '))
 
         out = cls(mesh_obj, filter_id=filter_id)
-        out._num_bins = group['n_bins'].value
 
         return out
 
@@ -709,10 +647,7 @@ class MeshFilter(Filter):
 
     @property
     def num_bins(self):
-        try:
-            return self._num_bins
-        except AttributeError:
-            return reduce(operator.mul, self.mesh.dimension)
+        return reduce(operator.mul, self.mesh.dimension)
 
     def check_bins(self, bins):
         if not len(bins) == 1:
@@ -736,37 +671,40 @@ class MeshFilter(Filter):
         # Filter bins for a mesh are an (x,y,z) tuple. Convert (x,y,z) to a
         # single bin -- this is similar to subroutine mesh_indices_to_bin in
         # openmc/src/mesh.F90.
-        if len(self.mesh.dimension) == 3:
+        n_dim = len(self.mesh.dimension)
+        if n_dim == 3:
+            i, j, k = filter_bin
             nx, ny, nz = self.mesh.dimension
-            val = (filter_bin[0] - 1) * ny * nz + \
-                  (filter_bin[1] - 1) * nz + \
-                  (filter_bin[2] - 1)
-        else:
+            return (i - 1) + (j - 1)*nx + (k - 1)*nx*ny
+        elif n_dim == 2:
+            i, j, *_ = filter_bin
             nx, ny = self.mesh.dimension
-            val = (filter_bin[0] - 1) * ny + \
-                  (filter_bin[1] - 1)
-
-        return val
+            return (i - 1) + (j - 1)*nx
+        else:
+            return filter_bin[0] - 1
 
     def get_bin(self, bin_index):
         cv.check_type('bin_index', bin_index, Integral)
         cv.check_greater_than('bin_index', bin_index, 0, equality=True)
         cv.check_less_than('bin_index', bin_index, self.num_bins)
 
-        # Construct 3-tuple of x,y,z cell indices for a 3D mesh
-        if len(self.mesh.dimension) == 3:
+        n_dim = len(self.mesh.dimension)
+        if n_dim == 3:
+            # Construct 3-tuple of x,y,z cell indices for a 3D mesh
             nx, ny, nz = self.mesh.dimension
-            x = bin_index / (ny * nz)
-            y = (bin_index - (x * ny * nz)) / nz
-            z = bin_index - (x * ny * nz) - (y * nz)
+            x = (bin_index % nx) + 1
+            y = (bin_index % (nx * ny)) // nx + 1
+            z = bin_index // (nx * ny) + 1
             return (x, y, z)
 
-        # Construct 2-tuple of x,y cell indices for a 2D mesh
-        else:
+        elif n_dim == 2:
+            # Construct 2-tuple of x,y cell indices for a 2D mesh
             nx, ny = self.mesh.dimension
-            x = bin_index / ny
-            y = bin_index - (x * ny)
+            x = (bin_index % nx) + 1
+            y = bin_index // nx + 1
             return (x, y)
+        else:
+            return (bin_index + 1,)
 
     def get_pandas_dataframe(self, data_size, stride, **kwargs):
         """Builds a Pandas DataFrame for the Filter's bins.
@@ -803,7 +741,134 @@ class MeshFilter(Filter):
         filter_dict = {}
 
         # Append Mesh ID as outermost index of multi-index
-        mesh_key = 'mesh {0}'.format(self.mesh.id)
+        mesh_key = 'mesh {}'.format(self.mesh.id)
+
+        # Find mesh dimensions - use 3D indices for simplicity
+        n_dim = len(self.mesh.dimension)
+        if n_dim == 3:
+            nx, ny, nz = self.mesh.dimension
+        elif n_dim == 2:
+            nx, ny = self.mesh.dimension
+            nz = 1
+        else:
+            nx = self.mesh.dimension
+            ny = nz = 1
+
+        # Generate multi-index sub-column for x-axis
+        filter_bins = np.arange(1, nx + 1)
+        repeat_factor = stride
+        filter_bins = np.repeat(filter_bins, repeat_factor)
+        tile_factor = data_size // len(filter_bins)
+        filter_bins = np.tile(filter_bins, tile_factor)
+        filter_dict[(mesh_key, 'x')] = filter_bins
+
+        # Generate multi-index sub-column for y-axis
+        filter_bins = np.arange(1, ny + 1)
+        repeat_factor = nx * stride
+        filter_bins = np.repeat(filter_bins, repeat_factor)
+        tile_factor = data_size // len(filter_bins)
+        filter_bins = np.tile(filter_bins, tile_factor)
+        filter_dict[(mesh_key, 'y')] = filter_bins
+
+        # Generate multi-index sub-column for z-axis
+        filter_bins = np.arange(1, nz + 1)
+        repeat_factor = nx * ny * stride
+        filter_bins = np.repeat(filter_bins, repeat_factor)
+        tile_factor = data_size // len(filter_bins)
+        filter_bins = np.tile(filter_bins, tile_factor)
+        filter_dict[(mesh_key, 'z')] = filter_bins
+
+        # Initialize a Pandas DataFrame from the mesh dictionary
+        df = pd.concat([df, pd.DataFrame(filter_dict)])
+
+        return df
+
+
+class MeshSurfaceFilter(MeshFilter):
+    """Filter events by surface crossings on a regular, rectangular mesh.
+
+    Parameters
+    ----------
+    mesh : openmc.Mesh
+        The Mesh object that events will be tallied onto
+    filter_id : int
+        Unique identifier for the filter
+
+    Attributes
+    ----------
+    bins : Integral
+        The Mesh ID
+    mesh : openmc.Mesh
+        The Mesh object that events will be tallied onto
+    id : int
+        Unique identifier for the filter
+    num_bins : Integral
+        The number of filter bins
+
+    """
+
+    @property
+    def num_bins(self):
+        n_dim = len(self.mesh.dimension)
+        return 4*n_dim*reduce(operator.mul, self.mesh.dimension)
+
+    def get_bin_index(self, filter_bin):
+        # Split bin into mesh/surface parts
+        *mesh_tuple, surf = filter_bin
+
+        # Get index for mesh alone
+        mesh_index = super().get_bin_index(mesh_tuple)
+
+        # Combine surface and mesh index
+        n_dim = len(self.mesh.dimension)
+        for surf_index, name in enumerate(_CURRENT_NAMES):
+            if surf == name:
+                return 4*n_dim*mesh_index + surf_index
+        else:
+            raise ValueError("'{}' is not a valid mesh surface.".format(surf))
+
+    def get_bin(self, bin_index):
+        n_dim = len(self.mesh.dimension)
+        mesh_index, surf_index = divmod(bin_index, 4*n_dim)
+        mesh_bin = super().get_bin(mesh_index)
+        return mesh_bin + (_CURRENT_NAMES[surf_index],)
+
+    def get_pandas_dataframe(self, data_size, stride, **kwargs):
+        """Builds a Pandas DataFrame for the Filter's bins.
+
+        This method constructs a Pandas DataFrame object for the filter with
+        columns annotated by filter bin information. This is a helper method for
+        :meth:`Tally.get_pandas_dataframe`.
+
+        Parameters
+        ----------
+        data_size : int
+            The total number of bins in the tally corresponding to this filter
+        stride : int
+            Stride in memory for the filter
+
+        Returns
+        -------
+        pandas.DataFrame
+            A Pandas DataFrame with three columns describing the x,y,z mesh
+            cell indices corresponding to each filter bin.  The number of rows
+            in the DataFrame is the same as the total number of bins in the
+            corresponding tally, with the filter bin appropriately tiled to map
+            to the corresponding tally bins.
+
+        See also
+        --------
+        Tally.get_pandas_dataframe(), CrossFilter.get_pandas_dataframe()
+
+        """
+        # Initialize Pandas DataFrame
+        df = pd.DataFrame()
+
+        # Initialize dictionary to build Pandas Multi-index column
+        filter_dict = {}
+
+        # Append Mesh ID as outermost index of multi-index
+        mesh_key = 'mesh {}'.format(self.mesh.id)
 
         # Find mesh dimensions - use 3D indices for simplicity
         if len(self.mesh.dimension) == 3:
@@ -817,7 +882,7 @@ class MeshFilter(Filter):
 
         # Generate multi-index sub-column for x-axis
         filter_bins = np.arange(1, nx + 1)
-        repeat_factor = ny * nz * stride
+        repeat_factor = 12 * stride
         filter_bins = np.repeat(filter_bins, repeat_factor)
         tile_factor = data_size // len(filter_bins)
         filter_bins = np.tile(filter_bins, tile_factor)
@@ -825,7 +890,7 @@ class MeshFilter(Filter):
 
         # Generate multi-index sub-column for y-axis
         filter_bins = np.arange(1, ny + 1)
-        repeat_factor = nz * stride
+        repeat_factor = 12 * nx * stride
         filter_bins = np.repeat(filter_bins, repeat_factor)
         tile_factor = data_size // len(filter_bins)
         filter_bins = np.tile(filter_bins, tile_factor)
@@ -833,16 +898,21 @@ class MeshFilter(Filter):
 
         # Generate multi-index sub-column for z-axis
         filter_bins = np.arange(1, nz + 1)
-        repeat_factor = stride
+        repeat_factor = 12 * nx * ny * stride
         filter_bins = np.repeat(filter_bins, repeat_factor)
         tile_factor = data_size // len(filter_bins)
         filter_bins = np.tile(filter_bins, tile_factor)
         filter_dict[(mesh_key, 'z')] = filter_bins
 
-        # Initialize a Pandas DataFrame from the mesh dictionary
-        df = pd.concat([df, pd.DataFrame(filter_dict)])
+        # Generate multi-index sub-column for surface
+        repeat_factor = stride
+        filter_bins = np.repeat(_CURRENT_NAMES, repeat_factor)
+        tile_factor = data_size // len(filter_bins)
+        filter_bins = np.tile(filter_bins, tile_factor)
+        filter_dict[(mesh_key, 'surf')] = filter_bins
 
-        return df
+        # Initialize a Pandas DataFrame from the mesh dictionary
+        return pd.concat([df, pd.DataFrame(filter_dict)])
 
 
 class RealFilter(Filter):
@@ -872,7 +942,7 @@ class RealFilter(Filter):
             # This logic is used when merging tallies with real filters
             return self.bins[0] >= other.bins[-1]
         else:
-            return super(RealFilter, self).__gt__(other)
+            return super().__gt__(other)
 
     @property
     def num_bins(self):
@@ -1130,7 +1200,7 @@ class DistribcellFilter(Filter):
 
     def __init__(self, cell, filter_id=None):
         self._paths = None
-        super(DistribcellFilter, self).__init__(cell, filter_id)
+        super().__init__(cell, filter_id)
 
     @classmethod
     def from_hdf5(cls, group, **kwargs):

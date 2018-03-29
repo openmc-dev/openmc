@@ -1,6 +1,4 @@
-#!/usr/bin/env python
-
-from collections import Mapping
+from collections.abc import Mapping
 import os
 
 import numpy as np
@@ -8,11 +6,15 @@ import pytest
 import openmc
 import openmc.capi
 
+from tests import cdtemp
+
 
 @pytest.fixture(scope='module')
 def pincell_model():
     """Set up a model to test with and delete files when done"""
+    openmc.reset_auto_ids()
     pincell = openmc.examples.pwr_pin_cell()
+    pincell.settings.verbosity = 1
 
     # Add a tally
     filter1 = openmc.MaterialFilter(pincell.materials)
@@ -23,17 +25,10 @@ def pincell_model():
     mat_tally.scores = ['total', 'elastic', '(n,gamma)']
     pincell.tallies.append(mat_tally)
 
-    # Write XML files
-    pincell.export_to_xml()
-
-    yield
-
-    # Delete generated files
-    files = ['geometry.xml', 'materials.xml', 'settings.xml', 'tallies.xml',
-             'statepoint.10.h5', 'summary.h5', 'test_sp.h5']
-    for f in files:
-        if os.path.exists(f):
-            os.remove(f)
+    # Write XML files in tmpdir
+    with cdtemp():
+        pincell.export_to_xml()
+        yield
 
 
 @pytest.fixture(scope='module')
@@ -226,6 +221,19 @@ def test_by_batch(capi_run):
         openmc.capi.next_batch()
     assert openmc.capi.num_realizations() == 8
     openmc.capi.simulation_finalize()
+
+
+def test_reproduce_keff(capi_init):
+    # Get k-effective after run
+    openmc.capi.hard_reset()
+    openmc.capi.run()
+    keff0 = openmc.capi.keff()
+
+    # Reset, run again, and get k-effective again. they should match
+    openmc.capi.hard_reset()
+    openmc.capi.run()
+    keff1 = openmc.capi.keff()
+    assert keff0 == pytest.approx(keff1)
 
 
 def test_find_cell(capi_init):

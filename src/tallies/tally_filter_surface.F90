@@ -105,7 +105,7 @@ contains
     integer,              intent(in) :: bin
     character(MAX_LINE_LEN)          :: label
 
-    label = "Surface " // to_str(surfaces(this % surfaces(bin)) % obj % id)
+    label = "Surface " // to_str(surfaces(this % surfaces(bin)) % id())
   end function text_label_surface
 
 end module tally_filter_surface

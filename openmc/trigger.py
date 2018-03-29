@@ -2,9 +2,7 @@ from numbers import Real
 from xml.etree import ElementTree as ET
 import sys
 import warnings
-from collections import Iterable
-
-from six import string_types
+from collections.abc import Iterable
 
 import openmc.checkvalue as cv
 
@@ -76,30 +74,13 @@ class Trigger(object):
 
     @scores.setter
     def scores(self, scores):
-        cv.check_type('trigger scores', scores, Iterable, string_types)
+        cv.check_type('trigger scores', scores, Iterable, str)
 
         # Set scores making sure not to have duplicates
         self._scores = []
         for score in scores:
             if score not in self._scores:
                 self._scores.append(score)
-
-
-    def add_score(self, score):
-        """Add a score to the list of scores to be checked against the trigger.
-
-        Parameters
-        ----------
-        score : str
-            Score to append
-
-        """
-
-        warnings.warn('Trigger.add_score(...) has been deprecated and may be '
-                      'removed in a future version. Tally trigger scores should '
-                      'be defined using the scores property directly.',
-                      DeprecationWarning)
-        self.scores.append(score)
 
     def get_trigger_xml(self, element):
         """Return XML representation of the trigger

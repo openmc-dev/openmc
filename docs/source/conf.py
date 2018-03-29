@@ -18,20 +18,21 @@ on_rtd = os.environ.get('READTHEDOCS', None) == 'True'
 
 # On Read the Docs, we need to mock a few third-party modules so we don't get
 # ImportErrors when building documentation
-try:
-    from unittest.mock import MagicMock
-except ImportError:
-    from mock import Mock as MagicMock
+from unittest.mock import MagicMock
 
 
-MOCK_MODULES = ['numpy', 'numpy.polynomial', 'numpy.polynomial.polynomial',
-                'numpy.ctypeslib', 'scipy', 'scipy.sparse', 'scipy.interpolate',
-                'scipy.integrate', 'scipy.optimize', 'scipy.special',
-                'scipy.stats', 'h5py', 'pandas', 'uncertainties', 'matplotlib',
-                'matplotlib.pyplot','openmoc', 'openmc.data.reconstruct']
+MOCK_MODULES = [
+    'numpy', 'numpy.polynomial', 'numpy.polynomial.polynomial',
+    'numpy.ctypeslib', 'scipy', 'scipy.sparse', 'scipy.sparse.linalg',
+    'scipy.interpolate', 'scipy.integrate', 'scipy.optimize', 'scipy.special',
+    'scipy.stats', 'scipy.spatial', 'h5py', 'pandas', 'uncertainties',
+    'matplotlib', 'matplotlib.pyplot', 'openmoc',
+    'openmc.data.reconstruct'
+]
 sys.modules.update((mod_name, MagicMock()) for mod_name in MOCK_MODULES)
 
 import numpy as np
+np.ndarray = MagicMock
 np.polynomial.Polynomial = MagicMock
 
 
@@ -253,6 +254,6 @@ napoleon_use_ivar = True
 intersphinx_mapping = {
     'python': ('https://docs.python.org/3', None),
     'numpy': ('https://docs.scipy.org/doc/numpy/', None),
-    'pandas': ('http://pandas.pydata.org/pandas-docs/stable/', None),
+    'pandas': ('https://pandas.pydata.org/pandas-docs/stable/', None),
     'matplotlib': ('https://matplotlib.org/', None)
 }

@@ -1,10 +1,9 @@
-#!/usr/bin/env python
+#!/usr/bin/env python3
 """Update OpenMC's deprecated multi-group cross section XML files to the latest
 HDF5-based format.
 
 """
 
-from __future__ import print_function
 import os
 import warnings
 import xml.etree.ElementTree as ET

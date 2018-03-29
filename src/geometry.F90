@@ -10,6 +10,8 @@ module geometry
   use stl_vector,             only: VectorInt
   use string,                 only: to_str
 
+  use, intrinsic :: ISO_C_BINDING
+
   implicit none
 
 contains
@@ -63,7 +65,7 @@ contains
           in_cell = .false.
           exit
         else
-          actual_sense = surfaces(abs(token))%obj%sense(&
+          actual_sense = surfaces(abs(token)) % sense( &
                p%coord(p%n_coord)%xyz, p%coord(p%n_coord)%uvw)
           if (actual_sense .neqv. (token > 0)) then
             in_cell = .false.
@@ -112,7 +114,7 @@ contains
         elseif (-token == p%surface) then
           stack(i_stack) = .false.
         else
-          actual_sense = surfaces(abs(token))%obj%sense(&
+          actual_sense = surfaces(abs(token)) % sense( &
                p%coord(p%n_coord)%xyz, p%coord(p%n_coord)%uvw)
           stack(i_stack) = (actual_sense .eqv. (token > 0))
         end if
@@ -480,9 +482,9 @@ contains
     real(8) :: d_surf             ! distance to surface
     real(8) :: x0,y0,z0           ! coefficients for surface
     real(8) :: xyz_cross(3)       ! coordinates at projected surface crossing
+    real(8) :: surf_uvw(3)        ! surface normal direction
     logical :: coincident         ! is particle on surface?
     type(Cell),       pointer :: c
-    class(Surface),   pointer :: surf
     class(Lattice),   pointer :: lat
 
     ! inialize distance to infinity (huge)
@@ -517,8 +519,8 @@ contains
         if (index_surf >= OP_UNION) cycle
 
         ! Calculate distance to surface
-        surf => surfaces(index_surf) % obj
-        d = surf % distance(p % coord(j) % xyz, p % coord(j) % uvw, coincident)
+        d = surfaces(index_surf) % distance(p % coord(j) % xyz, &
+             p % coord(j) % uvw, logical(coincident, kind=C_BOOL))
 
         ! Check if calculated distance is new minimum
         if (d < d_surf) then
@@ -737,9 +739,8 @@ contains
           ! traveling into if the surface is crossed
           if (.not. c % simple) then
             xyz_cross(:) = p % coord(j) % xyz + d_surf*p % coord(j) % uvw
-            surf => surfaces(abs(level_surf_cross)) % obj
-            if (dot_product(p % coord(j) % uvw, &
-                 surf % normal(xyz_cross)) > ZERO) then
+            call surfaces(abs(level_surf_cross)) % normal(xyz_cross, surf_uvw)
+            if (dot_product(p % coord(j) % uvw, surf_uvw) > ZERO) then
               surface_crossed = abs(level_surf_cross)
             else
               surface_crossed = -abs(level_surf_cross)
@@ -804,15 +805,15 @@ contains
       ! Copy positive neighbors to Surface instance
       n = neighbor_pos(i)%size()
       if (n > 0) then
-        allocate(surfaces(i)%obj%neighbor_pos(n))
-        surfaces(i)%obj%neighbor_pos(:) = neighbor_pos(i)%data(1:n)
+        allocate(surfaces(i)%neighbor_pos(n))
+        surfaces(i)%neighbor_pos(:) = neighbor_pos(i)%data(1:n)
       end if
 
       ! Copy negative neighbors to Surface instance
       n = neighbor_neg(i)%size()
       if (n > 0) then
-        allocate(surfaces(i)%obj%neighbor_neg(n))
-        surfaces(i)%obj%neighbor_neg(:) = neighbor_neg(i)%data(1:n)
+        allocate(surfaces(i)%neighbor_neg(n))
+        surfaces(i)%neighbor_neg(:) = neighbor_neg(i)%data(1:n)
       end if
     end do
 

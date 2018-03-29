@@ -1,0 +1,31 @@
+<?xml version="1.0"?>
+<tallies>
+
+  <mesh id="1">
+    <type>regular</type>
+    <lower_left>-182.07 -182.07 -183.00</lower_left>
+    <upper_right>182.07 182.07 183.00</upper_right>
+    <dimension>17 17 17</dimension>
+  </mesh>
+
+  <filter id="1">
+    <type>meshsurface</type>
+    <bins>1</bins>
+  </filter>
+
+  <filter id="2">
+    <type>energy</type>
+    <bins>0. 0.253 20.0e6</bins>
+  </filter>
+
+  <tally id="1">
+    <filters>1</filters>
+    <scores>current</scores>
+  </tally>
+
+  <tally id="2">
+    <filters>1 2</filters>
+    <scores>current</scores>
+  </tally>
+
+</tallies>

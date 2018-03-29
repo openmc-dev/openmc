@@ -1,4 +1,4 @@
-cmake_minimum_required(VERSION 2.8.12 FATAL_ERROR)
+cmake_minimum_required(VERSION 3.0 FATAL_ERROR)
 project(openmc Fortran C CXX)
 
 # Setup output directories
@@ -19,11 +19,6 @@ include_directories(${CMAKE_BINARY_DIR}/include)
 
 if (${UNIX})
   add_definitions(-DUNIX)
-endif()
-
-# Set MACOSX_RPATH
-if(POLICY CMP0042)
-  cmake_policy(SET CMP0042 NEW)
 endif()
 
 #===============================================================================
@@ -48,14 +43,17 @@ add_definitions(-DMAX_COORD=${maxcoord})
 set(MPI_ENABLED FALSE)
 if($ENV{FC} MATCHES "(mpi[^/]*|ftn)$")
   message("-- Detected MPI wrapper: $ENV{FC}")
-  add_definitions(-DMPI)
+  add_definitions(-DOPENMC_MPI)
   set(MPI_ENABLED TRUE)
+
+  # Get directory containing MPI wrapper
+  get_filename_component(MPI_DIR $ENV{FC} DIRECTORY)
 endif()
 
 # Check for Fortran 2008 MPI interface
 if(MPI_ENABLED AND mpif08)
   message("-- Using Fortran 2008 MPI bindings")
-  add_definitions(-DMPIF08)
+  add_definitions(-DOPENMC_MPIF08)
 endif()
 
 #===============================================================================
@@ -116,10 +114,17 @@ if(CMAKE_Fortran_COMPILER_ID STREQUAL GNU)
   endif()
 
   # GCC compiler options
-  list(APPEND f90flags -cpp -std=f2008ts -fbacktrace -O2 -fstack-arrays -g)
+<<<<<<< HEAD
+  list(APPEND f90flags -cpp -std=f2008ts -fbacktrace -O2 -g)
   if(debug)
     list(REMOVE_ITEM f90flags -O2)
     list(APPEND f90flags -g -enable-checking -fbacktrace -Wall -Wno-unused-dummy-argument -pedantic
+=======
+  list(APPEND f90flags -cpp -std=f2008ts -fbacktrace -O2 -fstack-arrays)
+  if(debug)
+    list(REMOVE_ITEM f90flags -O2 -fstack-arrays)
+    list(APPEND f90flags -g -Wall -Wno-unused-dummy-argument -pedantic
+>>>>>>> 47fbf8282ea94c138f75219bd10fdb31501d3fb7
       -fbounds-check -ffpe-trap=invalid,overflow,underflow)
     list(APPEND ldflags -g -v -da -Q)
   endif()
@@ -347,7 +352,6 @@ set(LIBOPENMC_FORTRAN_SRC
   src/cmfd_prod_operator.F90
   src/cmfd_solver.F90
   src/constants.F90
-  src/cross_section.F90
   src/dict_header.F90
   src/distribution_multivariate.F90
   src/distribution_univariate.F90
@@ -371,7 +375,6 @@ set(LIBOPENMC_FORTRAN_SRC
   src/message_passing.F90
   src/mgxs_data.F90
   src/mgxs_header.F90
-  src/multipole.F90
   src/multipole_header.F90
   src/nuclide_header.F90
   src/output.F90
@@ -426,6 +429,7 @@ set(LIBOPENMC_FORTRAN_SRC
   src/tallies/tally_filter_energyfunc.F90
   src/tallies/tally_filter_material.F90
   src/tallies/tally_filter_mesh.F90
+  src/tallies/tally_filter_meshsurface.F90
   src/tallies/tally_filter_mu.F90
   src/tallies/tally_filter_polar.F90
   src/tallies/tally_filter_surface.F90
@@ -435,8 +439,15 @@ set(LIBOPENMC_FORTRAN_SRC
   src/tallies/trigger_header.F90
 )
 set(LIBOPENMC_CXX_SRC
+  src/error.h
+  src/hdf5_interface.h
+  src/random_lcg.cpp
   src/random_lcg.h
-  src/random_lcg.cpp)
+  src/surface.cpp
+  src/surface.h
+  src/xml_interface.h
+  src/pugixml/pugixml.cpp
+  src/pugixml/pugixml.hpp)
 add_library(libopenmc SHARED ${LIBOPENMC_FORTRAN_SRC} ${LIBOPENMC_CXX_SRC})
 set_target_properties(libopenmc PROPERTIES OUTPUT_NAME openmc)
 add_executable(${program} src/main.F90)
@@ -492,72 +503,8 @@ add_custom_command(TARGET libopenmc POST_BUILD
 
 install(TARGETS ${program} libopenmc
   RUNTIME DESTINATION bin
-  LIBRARY DESTINATION lib)
+  LIBRARY DESTINATION lib
+  ARCHIVE DESTINATION lib)
 install(DIRECTORY src/relaxng DESTINATION share/openmc)
 install(FILES man/man1/openmc.1 DESTINATION share/man/man1)
 install(FILES LICENSE DESTINATION "share/doc/${program}" RENAME copyright)
-
-find_package(PythonInterp)
-if(PYTHONINTERP_FOUND)
-  if(debian)
-    install(CODE "execute_process(
-                    COMMAND ${PYTHON_EXECUTABLE} setup.py install
-                    --root=debian/openmc --install-layout=deb
-                    WORKING_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR})")
-  else()
-    install(CODE "set(ENV{PYTHONPATH} \"${CMAKE_INSTALL_PREFIX}/lib/python${PYTHON_VERSION_MAJOR}.${PYTHON_VERSION_MINOR}/site-packages\")")
-    install(CODE "execute_process(
-                    COMMAND ${PYTHON_EXECUTABLE} setup.py install
-                    --prefix=${CMAKE_INSTALL_PREFIX}
-                    WORKING_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR})")
-  endif()
-endif()
-
-#===============================================================================
-# Regression tests
-#===============================================================================
-
-# This allows for dashboard configuration
-include(CTest)
-
-# Get a list of all the tests to run
-file(GLOB_RECURSE TESTS ${CMAKE_CURRENT_SOURCE_DIR}/tests/test_*.py)
-
-# Loop through all the tests
-foreach(test ${TESTS})
-  # Remove unit tests
-  if(test MATCHES ".*unit_tests.*")
-    continue()
-  endif()
-
-  # Get test information
-  get_filename_component(TEST_NAME ${test} NAME)
-  get_filename_component(TEST_PATH ${test} PATH)
-
-  if (DEFINED ENV{MEM_CHECK})
-    # Generate input files if needed
-    if (NOT EXISTS "${TEST_PATH}/geometry.xml")
-      execute_process(COMMAND ${PYTHON_EXECUTABLE} ${TEST_NAME} --build-inputs
-        WORKING_DIRECTORY ${TEST_PATH})
-    endif()
-
-    # Add serial test
-    add_test(NAME ${TEST_NAME}
-      WORKING_DIRECTORY ${TEST_PATH}
-      COMMAND $<TARGET_FILE:openmc>)
-  else()
-    # Check serial/parallel
-    if (${MPI_ENABLED})
-      # Preform a parallel test
-      add_test(NAME ${TEST_NAME}
-        WORKING_DIRECTORY ${TEST_PATH}
-        COMMAND ${PYTHON_EXECUTABLE} ${TEST_NAME} --exe $<TARGET_FILE:openmc>
-        --mpi_exec $ENV{MPI_DIR}/bin/mpiexec)
-    else()
-      # Perform a serial test
-      add_test(NAME ${TEST_NAME}
-        WORKING_DIRECTORY ${TEST_PATH}
-        COMMAND ${PYTHON_EXECUTABLE} ${TEST_NAME} --exe $<TARGET_FILE:openmc>)
-    endif()
-  endif()
-endforeach(test)

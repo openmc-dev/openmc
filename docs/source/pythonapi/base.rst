@@ -119,6 +119,9 @@ Constructing Tallies
    openmc.DelayedGroupFilter
    openmc.EnergyFunctionFilter
    openmc.LegendreFilter
+   openmc.SpatialLegendreFilter
+   openmc.SphericalHarmonicsFilter
+   openmc.ZernikeFilter
    openmc.Mesh
    openmc.Trigger
    openmc.TallyDerivative

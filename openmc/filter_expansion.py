@@ -311,9 +311,16 @@ class SphericalHarmonicsFilter(ExpansionFilter):
 class ZernikeFilter(ExpansionFilter):
     r"""Score Zernike expansion moments in space up to specified order.
 
-    This filter allows scores to be multiplied by Zernike polynomials of the the
+    This filter allows scores to be multiplied by Zernike polynomials of the
     particle's position along a particular axis, normalized to a given unit
-    circle, up to a user-specified order.
+    circle, up to a user-specified order. Specifying a filter with order N
+    tallies moments for all radial orders from 0 to N and each azimuthal order
+    for a given radial order. The ordering of the Zernike polynomial moments
+    follows the ANSI Z80.28 standard, where bin :math:`j` corresponds to the
+    radial index :math:`n` and the azimuthal index :math:`m` by
+
+    .. math::
+        j = \frac{n(n + 2) + m}{2}.
 
     Parameters
     ----------

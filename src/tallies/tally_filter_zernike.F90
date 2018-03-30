@@ -117,5 +117,88 @@ contains
 !                               C API FUNCTIONS
 !===============================================================================
 
+  function openmc_zernike_filter_get_order(index, order) result(err) bind(C)
+    ! Get the order of an expansion filter
+    integer(C_INT32_T), value       :: index
+    integer(C_INT),     intent(out) :: order
+    integer(C_INT) :: err
+
+    err = verify_filter(index)
+    if (err == 0) then
+      select type (f => filters(index) % obj)
+      type is (ZernikeFilter)
+        order = f % order
+      class default
+        err = E_INVALID_TYPE
+        call set_errmsg("Tried to get order on a non-expansion filter.")
+      end select
+    end if
+  end function openmc_zernike_filter_get_order
+
+
+  function openmc_zernike_filter_get_params(index, x, y, r) result(err) bind(C)
+    ! Get the Zernike filter parameters
+    integer(C_INT32_T), value :: index
+    real(C_DOUBLE), intent(out) :: x
+    real(C_DOUBLE), intent(out) :: y
+    real(C_DOUBLE), intent(out) :: r
+    integer(C_INT) :: err
+
+    err = verify_filter(index)
+    if (err == 0) then
+      select type (f => filters(index) % obj)
+      type is (ZernikeFilter)
+        x = f % x
+        y = f % y
+        r = f % r
+      class default
+        err = E_INVALID_TYPE
+        call set_errmsg("Tried to get order on a non-expansion filter.")
+      end select
+    end if
+  end function openmc_zernike_filter_get_params
+
+
+  function openmc_zernike_filter_set_order(index, order) result(err) bind(C)
+    ! Set the order of an expansion filter
+    integer(C_INT32_T), value :: index
+    integer(C_INT),     value :: order
+    integer(C_INT) :: err
+
+    err = verify_filter(index)
+    if (err == 0) then
+      select type (f => filters(index) % obj)
+      type is (ZernikeFilter)
+        f % order = order
+        f % n_bins = ((order + 1)*(order + 2))/2
+      class default
+        err = E_INVALID_TYPE
+        call set_errmsg("Tried to set order on a non-expansion filter.")
+      end select
+    end if
+  end function openmc_zernike_filter_set_order
+
+
+  function openmc_zernike_filter_set_params(index, x, y, r) result(err) bind(C)
+    ! Set the Zernike filter parameters
+    integer(C_INT32_T), value :: index
+    real(C_DOUBLE), intent(in), optional :: x
+    real(C_DOUBLE), intent(in), optional :: y
+    real(C_DOUBLE), intent(in), optional :: r
+    integer(C_INT) :: err
+
+    err = verify_filter(index)
+    if (err == 0) then
+      select type (f => filters(index) % obj)
+      type is (ZernikeFilter)
+        if (present(x)) f % x = x
+        if (present(y)) f % y = y
+        if (present(r)) f % r = r
+      class default
+        err = E_INVALID_TYPE
+        call set_errmsg("Tried to get order on a non-expansion filter.")
+      end select
+    end if
+  end function openmc_zernike_filter_set_params
 
 end module tally_filter_zernike

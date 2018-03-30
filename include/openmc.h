@@ -38,10 +38,12 @@ extern "C" {
   void openmc_get_filter_next_id(int32_t* id);
   int openmc_get_keff(double k_combined[]);
   int openmc_get_material_index(int32_t id, int32_t* index);
-  int openmc_get_nuclide_index(char name[], int* index);
+  int openmc_get_nuclide_index(const char name[], int* index);
   int openmc_get_tally_index(int32_t id, int32_t* index);
   void openmc_hard_reset();
   void openmc_init(const int* intracomm);
+  int openmc_legendre_filter_get_order(int32_t index, int* order);
+  int openmc_legendre_filter_set_order(int32_t index, int order);
   int openmc_load_nuclide(char name[]);
   int openmc_material_add_nuclide(int32_t index, const char name[], double density);
   int openmc_material_get_densities(int32_t index, int** nuclides, double** densities, int* n);
@@ -62,6 +64,15 @@ extern "C" {
   void openmc_simulation_init();
   int openmc_source_bank(struct Bank** ptr, int64_t* n);
   int openmc_source_set_strength(int32_t index, double strength);
+  int openmc_spatial_legendre_filter_get_order(int32_t index, int* order);
+  int openmc_spatial_legendre_filter_get_params(int32_t index, int* axis, double* min, double* max);
+  int openmc_spatial_legendre_filter_set_order(int32_t index, int order);
+  int openmc_spatial_legendre_filter_set_params(int32_t index, const int* axis,
+                                                const double* min, const double* max);
+  int openmc_sphharm_filter_get_order(int32_t index, int* order);
+  int openmc_sphharm_filter_get_cosine(int32_t index, char cosine[]);
+  int openmc_sphharm_filter_set_order(int32_t index, int order);
+  int openmc_sphharm_filter_set_cosine(int32_t index, const char cosine[]);
   void openmc_statepoint_write(const char filename[]);
   int openmc_tally_get_id(int32_t index, int32_t* id);
   int openmc_tally_get_filters(int32_t index, int32_t** indices, int* n);
@@ -73,6 +84,11 @@ extern "C" {
   int openmc_tally_set_id(int32_t index, int32_t id);
   int openmc_tally_set_nuclides(int32_t index, int n, const char** nuclides);
   int openmc_tally_set_scores(int32_t index, int n, const int* scores);
+  int openmc_zernike_filter_get_order(int32_t index, int* order);
+  int openmc_zernike_filter_get_params(int32_t index, double* x, double* y, double* r);
+  int openmc_zernike_filter_set_order(int32_t index, int order);
+  int openmc_zernike_filter_set_params(int32_t index, const double* x,
+                                       const double* y, const double* r);
 
   // Error codes
   extern int E_UNASSIGNED;

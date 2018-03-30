@@ -1,4 +1,25 @@
+from math import sqrt, pi
+
 import openmc
+from pytest import fixture, approx
+
+
+@fixture(scope='module')
+def box_model():
+    model = openmc.model.Model()
+    m = openmc.Material()
+    m.add_nuclide('U235', 1.0)
+    m.set_density('g/cm3', 1.0)
+
+    box = openmc.model.get_rectangular_prism(10., 10., boundary_type='vacuum')
+    c = openmc.Cell(fill=m, region=box)
+    model.geometry.root_universe = openmc.Universe(cells=[c])
+
+    model.settings.particles = 100
+    model.settings.batches = 10
+    model.settings.inactive = 0
+    model.settings.source = openmc.Source(space=openmc.stats.Point())
+    return model
 
 
 def test_legendre():
@@ -78,3 +99,50 @@ def test_zernike():
     assert elem.tag == 'filter'
     assert elem.attrib['type'] == 'zernike'
     assert elem.find('order').text == str(n)
+
+
+def test_first_moment(run_in_tmpdir, box_model):
+    plain_tally = openmc.Tally()
+    plain_tally.scores = ['flux', 'scatter']
+
+    # Create tallies with expansion filters
+    leg_tally = openmc.Tally()
+    leg_tally.filters = [openmc.LegendreFilter(3)]
+    leg_tally.scores = ['scatter']
+    leg_sptl_tally = openmc.Tally()
+    leg_sptl_tally.filters = [openmc.SpatialLegendreFilter(3, 'x', -5., 5.)]
+    leg_sptl_tally.scores = ['scatter']
+    sph_scat_filter = openmc.SphericalHarmonicsFilter(5)
+    sph_scat_filter.cosine = 'scatter'
+    sph_scat_tally = openmc.Tally()
+    sph_scat_tally.filters = [sph_scat_filter]
+    sph_scat_tally.scores = ['scatter']
+    sph_flux_filter = openmc.SphericalHarmonicsFilter(5)
+    sph_flux_filter.cosine = 'particle'
+    sph_flux_tally = openmc.Tally()
+    sph_flux_tally.filters = [sph_flux_filter]
+    sph_flux_tally.scores = ['flux']
+    zernike_tally = openmc.Tally()
+    zernike_tally.filters = [openmc.ZernikeFilter(3, r=10.)]
+    zernike_tally.scores = ['scatter']
+
+    # Add tallies to model and ensure they all use the same estimator
+    box_model.tallies = [plain_tally, leg_tally, leg_sptl_tally,
+                         sph_scat_tally, sph_flux_tally, zernike_tally]
+    for t in box_model.tallies:
+        t.estimator = 'analog'
+
+    box_model.run()
+
+    # Check that first moment matches the score from the plain tally
+    with openmc.StatePoint('statepoint.10.h5') as sp:
+        # Get scores from tally without expansion filters
+        flux, scatter = sp.tallies[plain_tally.id].mean.ravel()
+
+        # Check that first moment matches
+        first_score = lambda t: sp.tallies[t.id].mean.ravel()[0]
+        assert first_score(leg_tally) == scatter
+        assert first_score(leg_sptl_tally) == scatter
+        assert first_score(sph_scat_tally) == scatter
+        assert first_score(sph_flux_tally) == approx(flux)
+        assert first_score(zernike_tally)*sqrt(pi) == approx(scatter)

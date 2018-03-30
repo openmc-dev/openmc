@@ -15,6 +15,10 @@ module tally_filter_sptl_legendre
 
   implicit none
   private
+  public :: openmc_spatial_legendre_filter_get_order
+  public :: openmc_spatial_legendre_filter_get_params
+  public :: openmc_spatial_legendre_filter_set_order
+  public :: openmc_spatial_legendre_filter_set_params
 
   integer, parameter :: AXIS_X = 1
   integer, parameter :: AXIS_Y = 2
@@ -25,10 +29,10 @@ module tally_filter_sptl_legendre
 !===============================================================================
 
   type, public, extends(TallyFilter) :: SpatialLegendreFilter
-    integer :: order
-    integer :: axis
-    real(8) :: min
-    real(8) :: max
+    integer(C_INT) :: order
+    integer(C_INT) :: axis
+    real(C_DOUBLE) :: min
+    real(C_DOUBLE) :: max
   contains
     procedure :: from_xml
     procedure :: get_all_bins
@@ -121,5 +125,90 @@ contains
 !                               C API FUNCTIONS
 !===============================================================================
 
+  function openmc_spatial_legendre_filter_get_order(index, order) result(err) bind(C)
+    ! Get the order of an expansion filter
+    integer(C_INT32_T), value       :: index
+    integer(C_INT),     intent(out) :: order
+    integer(C_INT) :: err
+
+    err = verify_filter(index)
+    if (err == 0) then
+      select type (f => filters(index) % obj)
+      type is (SpatialLegendreFilter)
+        order = f % order
+      class default
+        err = E_INVALID_TYPE
+        call set_errmsg("Tried to get order on a non-expansion filter.")
+      end select
+    end if
+  end function openmc_spatial_legendre_filter_get_order
+
+
+  function openmc_spatial_legendre_filter_set_order(index, order) result(err) bind(C)
+    ! Set the order of an expansion filter
+    integer(C_INT32_T), value :: index
+    integer(C_INT),     value :: order
+    integer(C_INT) :: err
+
+    err = verify_filter(index)
+    if (err == 0) then
+      select type (f => filters(index) % obj)
+      type is (SpatialLegendreFilter)
+        f % order = order
+        f % n_bins = order + 1
+      class default
+        err = E_INVALID_TYPE
+        call set_errmsg("Tried to set order on a non-expansion filter.")
+      end select
+    end if
+  end function openmc_spatial_legendre_filter_set_order
+
+
+  function openmc_spatial_legendre_filter_get_params(index, axis, min, max) &
+       result(err) bind(C)
+    ! Get the parameters for a spatial Legendre filter
+    integer(C_INT32_T), value :: index
+    integer(C_INT), intent(out) :: axis
+    real(C_DOUBLE), intent(out) :: min
+    real(C_DOUBLE), intent(out) :: max
+    integer(C_INT) :: err
+
+    err = verify_filter(index)
+    if (err == 0) then
+      select type(f => filters(index) % obj)
+      type is (SpatialLegendreFilter)
+        axis = f % axis
+        min = f % min
+        max = f % max
+      class default
+        err = E_INVALID_TYPE
+        call set_errmsg("Tried to set order on a non-expansion filter.")
+      end select
+    end if
+  end function openmc_spatial_legendre_filter_get_params
+
+
+  function openmc_spatial_legendre_filter_set_params(index, axis, min, max) &
+       result(err) bind(C)
+    ! Set the parameters for a spatial Legendre filter
+    integer(C_INT32_T), value :: index
+    integer(C_INT), intent(in), optional :: axis
+    real(C_DOUBLE), intent(in), optional :: min
+    real(C_DOUBLE), intent(in), optional :: max
+    integer(C_INT) :: err
+
+    err = verify_filter(index)
+    if (err == 0) then
+      select type(f => filters(index) % obj)
+      type is (SpatialLegendreFilter)
+        if (present(axis)) f % axis = axis
+        if (present(min)) f % min = min
+        if (present(max)) f % max = max
+      class default
+        err = E_INVALID_TYPE
+        call set_errmsg("Tried to set order on a non-expansion filter.")
+      end select
+    end if
+  end function openmc_spatial_legendre_filter_set_params
 
 end module tally_filter_sptl_legendre

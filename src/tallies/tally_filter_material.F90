@@ -126,25 +126,18 @@ contains
     integer(C_INT32_T), intent(out) :: n
     integer(C_INT) :: err
 
-    if (index >= 1 .and. index <= n_filters) then
-      if (allocated(filters(index) % obj)) then
-        select type (f => filters(index) % obj)
-        type is (MaterialFilter)
-          bins = C_LOC(f % materials)
-          n = size(f % materials)
-          err = 0
+    err = verify_filter(index)
+    if (err == 0) then
+      select type (f => filters(index) % obj)
+      type is (MaterialFilter)
+        bins = C_LOC(f % materials)
+        n = size(f % materials)
+        err = 0
         class default
-          err = E_INVALID_TYPE
-          call set_errmsg("Tried to get material filter bins on a &
-               &non-material filter.")
-        end select
-      else
-        err = E_ALLOCATE
-        call set_errmsg("Filter type has not been set yet.")
-      end if
-    else
-      err = E_OUT_OF_BOUNDS
-      call set_errmsg("Index in filters array out of bounds.")
+        err = E_INVALID_TYPE
+        call set_errmsg("Tried to get material filter bins on a &
+             &non-material filter.")
+      end select
     end if
   end function openmc_material_filter_get_bins
 
@@ -158,34 +151,26 @@ contains
 
     integer :: i
 
-    err = 0
-    if (index >= 1 .and. index <= n_filters) then
-      if (allocated(filters(index) % obj)) then
-        select type (f => filters(index) % obj)
-        type is (MaterialFilter)
-          f % n_bins = n
-          if (allocated(f % materials)) deallocate(f % materials)
-          allocate(f % materials(n))
-          f % materials(:) = bins
+    err = verify_filter(index)
+    if (err == 0) then
+      select type (f => filters(index) % obj)
+      type is (MaterialFilter)
+        f % n_bins = n
+        if (allocated(f % materials)) deallocate(f % materials)
+        allocate(f % materials(n))
+        f % materials(:) = bins
 
-          ! Generate mapping from material indices to filter bins.
-          call f % map % clear()
-          do i = 1, n
-            call f % map % set(f % materials(i), i)
-          end do
+        ! Generate mapping from material indices to filter bins.
+        call f % map % clear()
+        do i = 1, n
+          call f % map % set(f % materials(i), i)
+        end do
 
         class default
-          err = E_INVALID_TYPE
-          call set_errmsg("Tried to set material filter bins on a &
-               &non-material filter.")
-        end select
-      else
-        err = E_ALLOCATE
-        call set_errmsg("Filter type has not been set yet.")
-      end if
-    else
-      err = E_OUT_OF_BOUNDS
-      call set_errmsg("Index in filters array out of bounds.")
+        err = E_INVALID_TYPE
+        call set_errmsg("Tried to set material filter bins on a &
+             &non-material filter.")
+      end select
     end if
   end function openmc_material_filter_set_bins
 

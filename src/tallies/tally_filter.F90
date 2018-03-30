@@ -46,68 +46,60 @@ contains
     integer :: i
     character(20) :: type_
 
-    if (index >= 1 .and. index <= n_filters) then
-      if (allocated(filters(index) % obj)) then
-        ! Get type as a Fortran string
-        select type (f => filters(index) % obj)
-        type is (AzimuthalFilter)
-          type_ = 'azimuthal'
-        type is (CellFilter)
-          type_ = 'cell'
-        type is (CellbornFilter)
-          type_ = 'cellborn'
-        type is (CellfromFilter)
-          type_ = 'cellfrom'
-        type is (DelayedGroupFilter)
-          type_ = 'delayedgroup'
-        type is (DistribcellFilter)
-          type_ = 'distribcell'
-        type is (EnergyFilter)
-          type_ = 'energy'
-        type is (EnergyoutFilter)
-          type_ = 'energyout'
-        type is (EnergyFunctionFilter)
-          type_ = 'energyfunction'
-        type is (LegendreFilter)
-          type_ = 'legendre'
-        type is (MaterialFilter)
-          type_ = 'material'
-        type is (MeshFilter)
-          type_ = 'mesh'
-        type is (MeshSurfaceFilter)
-          type_ = 'meshsurface'
-        type is (MuFilter)
-          type_ = 'mu'
-        type is (PolarFilter)
-          type_ = 'polar'
-        type is (SphericalHarmonicsFilter)
-          type_ = 'sphericalharmonics'
-        type is (SpatialLegendreFilter)
-          type_ = 'spatiallegendre'
-        type is (SurfaceFilter)
-          type_ = 'surface'
-        type is (UniverseFilter)
-          type_ = 'universe'
-        type is (ZernikeFilter)
-          type_ = 'zernike'
-        end select
+    err = verify_filter(index)
+    if (err == 0) then
+      ! Get type as a Fortran string
+      select type (f => filters(index) % obj)
+      type is (AzimuthalFilter)
+        type_ = 'azimuthal'
+      type is (CellFilter)
+        type_ = 'cell'
+      type is (CellbornFilter)
+        type_ = 'cellborn'
+      type is (CellfromFilter)
+        type_ = 'cellfrom'
+      type is (DelayedGroupFilter)
+        type_ = 'delayedgroup'
+      type is (DistribcellFilter)
+        type_ = 'distribcell'
+      type is (EnergyFilter)
+        type_ = 'energy'
+      type is (EnergyoutFilter)
+        type_ = 'energyout'
+      type is (EnergyFunctionFilter)
+        type_ = 'energyfunction'
+      type is (LegendreFilter)
+        type_ = 'legendre'
+      type is (MaterialFilter)
+        type_ = 'material'
+      type is (MeshFilter)
+        type_ = 'mesh'
+      type is (MeshSurfaceFilter)
+        type_ = 'meshsurface'
+      type is (MuFilter)
+        type_ = 'mu'
+      type is (PolarFilter)
+        type_ = 'polar'
+      type is (SphericalHarmonicsFilter)
+        type_ = 'sphericalharmonics'
+      type is (SpatialLegendreFilter)
+        type_ = 'spatiallegendre'
+      type is (SurfaceFilter)
+        type_ = 'surface'
+      type is (UniverseFilter)
+        type_ = 'universe'
+      type is (ZernikeFilter)
+        type_ = 'zernike'
+      end select
 
-        ! Convert Fortran string to null-terminated C string. We assume the
-        ! caller has allocated a char array buffer
-        do i = 1, len_trim(type_)
-          type(i) = type_(i:i)
-        end do
-        type(len_trim(type_) + 1) = C_NULL_CHAR
-
-        err = 0
-      else
-        err = E_ALLOCATE
-        call set_errmsg("Filter type has not been set yet.")
-      end if
-    else
-      err = E_OUT_OF_BOUNDS
-      call set_errmsg("Index in filters array is out of bounds.")
+      ! Convert Fortran string to null-terminated C string. We assume the
+      ! caller has allocated a char array buffer
+      do i = 1, len_trim(type_)
+        type(i) = type_(i:i)
+      end do
+      type(len_trim(type_) + 1) = C_NULL_CHAR
     end if
+
   end function openmc_filter_get_type
 
 

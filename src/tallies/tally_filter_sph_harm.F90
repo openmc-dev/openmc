@@ -9,12 +9,16 @@ module tally_filter_sph_harm
   use hdf5_interface
   use math,                only: calc_pn, calc_rn
   use particle_header,     only: Particle
-  use string,              only: to_str, to_lower
+  use string,              only: to_str, to_lower, to_f_string
   use tally_filter_header
   use xml_interface
 
   implicit none
   private
+  public :: openmc_sphharm_filter_get_order
+  public :: openmc_sphharm_filter_get_cosine
+  public :: openmc_sphharm_filter_set_order
+  public :: openmc_sphharm_filter_set_cosine
 
   integer, parameter :: COSINE_SCATTER = 1
   integer, parameter :: COSINE_PARTICLE = 2
@@ -131,5 +135,107 @@ contains
 !===============================================================================
 !                               C API FUNCTIONS
 !===============================================================================
+
+  function openmc_sphharm_filter_get_order(index, order) result(err) bind(C)
+    ! Get the order of an expansion filter
+    integer(C_INT32_T), value       :: index
+    integer(C_INT),     intent(out) :: order
+    integer(C_INT) :: err
+
+    err = verify_filter(index)
+    if (err == 0) then
+      select type (f => filters(index) % obj)
+      type is (SphericalHarmonicsFilter)
+        order = f % order
+      class default
+        err = E_INVALID_TYPE
+        call set_errmsg("Tried to get order on a non-expansion filter.")
+      end select
+    end if
+  end function openmc_sphharm_filter_get_order
+
+
+  function openmc_sphharm_filter_get_cosine(index, cosine) result(err) bind(C)
+    ! Get the order of an expansion filter
+    integer(C_INT32_T), value :: index
+    character(kind=C_CHAR), intent(out) :: cosine(*)
+    integer(C_INT) :: err
+
+    integer :: i
+    character(10) :: cosine_
+
+    err = verify_filter(index)
+    if (err == 0) then
+      select type (f => filters(index) % obj)
+      type is (SphericalHarmonicsFilter)
+        select case (f % cosine)
+        case (COSINE_SCATTER)
+          cosine_ = 'scatter'
+        case (COSINE_PARTICLE)
+          cosine_ = 'particle'
+        end select
+
+        ! Convert to C string
+        do i = 1, len_trim(cosine_)
+          cosine(i) = cosine_(i:i)
+        end do
+        cosine(len_trim(cosine_) + 1) = C_NULL_CHAR
+
+      class default
+        err = E_INVALID_TYPE
+        call set_errmsg("Tried to get order on a non-expansion filter.")
+      end select
+    end if
+  end function openmc_sphharm_filter_get_cosine
+
+
+  function openmc_sphharm_filter_set_order(index, order) result(err) bind(C)
+    ! Set the order of an expansion filter
+    integer(C_INT32_T), value :: index
+    integer(C_INT),     value :: order
+    integer(C_INT) :: err
+
+    err = verify_filter(index)
+    if (err == 0) then
+      select type (f => filters(index) % obj)
+      type is (SphericalHarmonicsFilter)
+        f % order = order
+        f % n_bins = (order + 1)**2
+      class default
+        err = E_INVALID_TYPE
+        call set_errmsg("Tried to set order on a non-expansion filter.")
+      end select
+    end if
+  end function openmc_sphharm_filter_set_order
+
+
+  function openmc_sphharm_filter_set_cosine(index, cosine) result(err) bind(C)
+    ! Set the cosine parameter
+    integer(C_INT32_T), value :: index
+    character(kind=C_CHAR), intent(in) :: cosine(*)
+    integer(C_INT) :: err
+
+    character(:), allocatable :: cosine_
+
+    ! Convert C string to Fortran string
+    cosine_ = to_f_string(cosine)
+
+    err = verify_filter(index)
+    if (err == 0) then
+      select type (f => filters(index) % obj)
+      type is (SphericalHarmonicsFilter)
+        select case (cosine_)
+        case ('scatter')
+          f % cosine = COSINE_SCATTER
+        case ('particle')
+          f % cosine = COSINE_PARTICLE
+        end select
+
+      class default
+        err = E_INVALID_TYPE
+        call set_errmsg("Tried to get order on a non-expansion filter.")
+      end select
+    end if
+  end function openmc_sphharm_filter_set_cosine
 
 end module tally_filter_sph_harm

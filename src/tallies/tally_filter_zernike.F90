@@ -62,7 +62,6 @@ contains
     type(TallyFilterMatch),   intent(inout) :: match
 
     integer :: i
-    integer :: n
     real(8) :: x, y, r, theta
     real(8) :: zn(this % n_bins)
 

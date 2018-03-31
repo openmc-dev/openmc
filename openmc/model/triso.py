@@ -314,7 +314,9 @@ class _CubicDomain(_Domain):
         p += r*v
         q -= r*v
 
-        # Apply boundary conditions
+        # Enforce the rigid boundary by moving each particle back along the
+        # surface normal until it is completely within the container if it
+        # overlaps the surface
         x_max = self.limits[0]
         p[:] = np.clip(p, -x_max, x_max)
         q[:] = np.clip(q, -x_max, x_max)
@@ -420,7 +422,9 @@ class _CylindricalDomain(_Domain):
         p += r*v
         q -= r*v
 
-        # Apply boundary conditions
+        # Enforce the rigid boundary by moving each particle back along the
+        # surface normal until it is completely within the container if it
+        # overlaps the surface
         r_max = self.limits[0]
         z_max = self.limits[1]
 
@@ -517,7 +521,9 @@ class _SphericalDomain(_Domain):
         p += r*v
         q -= r*v
 
-        # Apply boundary conditions
+        # Enforce the rigid boundary by moving each particle back along the
+        # surface normal until it is completely within the container if it
+        # overlaps the surface
         r_max = self.limits[0]
 
         d = sqrt(p[0]**2 + p[1]**2 + p[2]**2)

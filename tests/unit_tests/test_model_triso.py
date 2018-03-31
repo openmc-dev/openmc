@@ -11,49 +11,75 @@ import scipy.spatial
 
 
 _PACKING_FRACTION = 0.35
-_RADIUS = 1.
-_PARAMS = [{'shape' : 'cube', 'length' : 20., 'radius' : 0.},
-           {'shape' : 'cylinder', 'length' : 10., 'radius' : 10.},
-           {'shape' : 'sphere', 'length' : 0., 'radius' : 10.}]
+_RADIUS = 4.25e-2
 
 
-@pytest.fixture(scope='module', params=_PARAMS)
+@pytest.fixture(scope='module',
+                params=[{'shape': 'cube',
+                         'length': 0.75,
+                         'radius': 0.,
+                         'volume': 0.75**3},
+                        {'shape': 'cylinder',
+                         'length': 0.5,
+                         'radius': 0.5,
+                         'volume': 0.5*pi*0.5**2},
+                        {'shape': 'sphere',
+                         'length': 0.,
+                         'radius': 0.5,
+                         'volume': 4/3*pi*0.5**3}])
 def domain(request):
     return request.param
 
 
 @pytest.fixture(scope='module')
-def trisos(domain):
-    return openmc.model.pack_trisos(
+def triso_universe():
+    sphere = openmc.Sphere(R=_RADIUS)
+    cell = openmc.Cell(region=-sphere)
+    univ = openmc.Universe(cells=[cell])
+    return univ
+
+
+@pytest.fixture(scope='module')
+def trisos(domain, triso_universe):
+    trisos = openmc.model.pack_trisos(
         radius=_RADIUS,
-        fill=openmc.Universe(),
+        fill=triso_universe,
         domain_shape=domain['shape'],
         domain_length=domain['length'],
         domain_radius=domain['radius'],
-        domain_center=[0., 0., 0.],
+        domain_center=(0., 0., 0.),
         initial_packing_fraction=0.2,
         packing_fraction=_PACKING_FRACTION
     )
+    return trisos
 
 
 def test_overlap(trisos):
     """Check that no TRISO particles overlap."""
-    tree = scipy.spatial.cKDTree([t.center for t in trisos])
-    r = min(tree.query([t.center for t in trisos], k=2)[0][:,1])/2
-    assert r > _RADIUS or r == pytest.approx(_RADIUS)
+    centers = [t.center for t in trisos]
+
+    # Create KD tree for quick nearest neighbor search
+    tree = scipy.spatial.cKDTree(centers)
+
+    # Find distance to nearest neighbor for all particles
+    d = tree.query(centers, k=2)[0]
+
+    # Get the smallest distance between any two particles
+    d_min = min(d[:,1])
+    assert d_min > 2*_RADIUS or d_min == pytest.approx(2*_RADIUS)
 
 
 def test_contained(trisos, domain):
     """Make sure all particles are entirely contained within the domain."""
     if domain['shape'] == 'cube':
-        x = 2*(max(np.hstack([abs(t.center) for t in trisos])) + _RADIUS)
-        assert x < domain['length'] or x == pytest.approx(domain['length'])
+        x = max(np.hstack([abs(t.center) for t in trisos])) + _RADIUS
+        assert x < 0.5*domain['length'] or x == pytest.approx(0.5*domain['length'])
 
     elif domain['shape'] == 'cylinder':
         r = max([norm(t.center[0:2]) for t in trisos]) + _RADIUS
-        z = 2*(max([abs(t.center[2]) for t in trisos]) + _RADIUS)
+        z = max([abs(t.center[2]) for t in trisos]) + _RADIUS
         assert r < domain['radius'] or r == pytest.approx(domain['radius'])
-        assert z < domain['length'] or z == pytest.approx(domain['length'])
+        assert z < 0.5*domain['length'] or z == pytest.approx(0.5*domain['length'])
 
     elif domain['shape'] == 'sphere':
         r = max([norm(t.center) for t in trisos]) + _RADIUS
@@ -62,14 +88,80 @@ def test_contained(trisos, domain):
 
 def test_packing_fraction(trisos, domain):
     """Check that the actual PF is close to the requested PF."""
-    if domain['shape'] == 'cube':
-        volume = domain['length']**3
-
-    elif domain['shape'] == 'cylinder':
-        volume = domain['length']*pi*domain['radius']**2
-
-    elif domain['shape'] == 'sphere':
-        volume = 4/3*pi*domain['radius']**3
-
-    pf = len(trisos)*4/3*pi*_RADIUS**3/volume
+    pf = len(trisos)*4/3*pi*_RADIUS**3/domain['volume']
     assert pf == pytest.approx(_PACKING_FRACTION, rel=1e-2)
+
+
+def test_n_particles(triso_universe):
+    """Check that the function returns the correct number of particles"""
+    trisos = openmc.model.pack_trisos(
+        radius=_RADIUS, fill=triso_universe, domain_shape='cube',
+        domain_length=1.0, n_particles=800
+    )
+    assert len(trisos) == 800
+    
+
+def test_triso_lattice(triso_universe):
+    trisos = openmc.model.pack_trisos(
+        radius=_RADIUS, fill=triso_universe, domain_shape='cube',
+        domain_length=1.0, domain_center=(0., 0., 0.), packing_fraction=0.2
+    )
+
+    lower_left = np.array((-.5, -.5, -.5))
+    upper_right = np.array((.5, .5, .5))
+    shape = (3, 3, 3)
+    pitch = (upper_right - lower_left)/shape
+    background = openmc.Material()
+
+    lattice = openmc.model.create_triso_lattice(
+        trisos, lower_left, pitch, shape, background
+    )
+
+
+def test_domain_input(triso_universe):
+    # Invalid domain shape
+    with pytest.raises(ValueError):
+        trisos = openmc.model.pack_trisos(
+            radius=1, fill=triso_universe, n_particles=100,
+            domain_shape='circle'
+        )
+    # Don't specify domain length on a cube
+    with pytest.raises(ValueError):
+        trisos = openmc.model.pack_trisos(
+            radius=1, fill=triso_universe, n_particles=100,
+            domain_shape='cube'
+        )
+    # Don't specify domain radius on a sphere
+    with pytest.raises(ValueError):
+        trisos = openmc.model.pack_trisos(
+            radius=1, fill=triso_universe, n_particles=100,
+            domain_shape='sphere'
+        )
+    
+
+def test_packing_fraction_input(triso_universe):
+    # Provide neither packing fraction nor number of particles
+    with pytest.raises(ValueError):
+        trisos = openmc.model.pack_trisos(
+            radius=1, fill=triso_universe, domain_shape='cube',
+            domain_length=10
+        )
+    # Provide both packing fraction and number of particles
+    with pytest.raises(ValueError):
+        trisos = openmc.model.pack_trisos(
+            radius=1, fill=triso_universe, domain_shape='cube',
+            domain_length=10, n_particles=100, packing_fraction=0.2
+        )
+    # Specify a packing fraction that is too high for CRP
+    with pytest.raises(ValueError):
+        trisos = openmc.model.pack_trisos(
+            radius=1, fill=triso_universe, domain_shape='cube',
+            domain_length=10, packing_fraction=1
+        )
+    # Specify a packing fraction that is too high for RSP
+    with pytest.raises(ValueError):
+        trisos = openmc.model.pack_trisos(
+            radius=1, fill=triso_universe, domain_shape='cube',
+            domain_length=10, packing_fraction=0.5,
+            initial_packing_fraction=0.4
+        )

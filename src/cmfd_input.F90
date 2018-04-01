@@ -278,7 +278,7 @@ contains
     m % id = i_start
 
     ! Set mesh type to rectangular
-    m % type = LATTICE_RECT
+    m % type = MESH_REGULAR
 
     ! Get pointer to mesh XML node
     node_mesh = root % child("mesh")

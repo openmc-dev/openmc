@@ -16,6 +16,7 @@ module tally_filter_mesh
 
   implicit none
   private
+  public :: openmc_mesh_filter_get_mesh
   public :: openmc_mesh_filter_set_mesh
 
 !===============================================================================
@@ -280,35 +281,46 @@ contains
 !                               C API FUNCTIONS
 !===============================================================================
 
+  function openmc_mesh_filter_get_mesh(index, index_mesh) result(err) bind(C)
+    ! Get the mesh for a mesh filter
+    integer(C_INT32_T), value, intent(in) :: index
+    integer(C_INT32_T), intent(out)       :: index_mesh
+    integer(C_INT) :: err
+
+    err = verify_filter(index)
+    if (err == 0) then
+      select type (f => filters(index) % obj)
+      type is (MeshFilter)
+        index_mesh = f % mesh
+      class default
+        err = E_INVALID_TYPE
+        call set_errmsg("Tried to set mesh on a non-mesh filter.")
+      end select
+    end if
+  end function openmc_mesh_filter_get_mesh
+
+
   function openmc_mesh_filter_set_mesh(index, index_mesh) result(err) bind(C)
     ! Set the mesh for a mesh filter
     integer(C_INT32_T), value, intent(in) :: index
     integer(C_INT32_T), value, intent(in) :: index_mesh
     integer(C_INT) :: err
 
-    err = 0
-    if (index >= 1 .and. index <= n_filters) then
-      if (allocated(filters(index) % obj)) then
-        select type (f => filters(index) % obj)
-        type is (MeshFilter)
-          if (index_mesh >= 1 .and. index_mesh <= n_meshes) then
-            f % mesh = index_mesh
-            f % n_bins = product(meshes(index_mesh) % dimension)
-          else
-            err = E_OUT_OF_BOUNDS
-            call set_errmsg("Index in 'meshes' array is out of bounds.")
-          end if
+    err = verify_filter(index)
+    if (err == 0) then
+      select type (f => filters(index) % obj)
+      type is (MeshFilter)
+        if (index_mesh >= 1 .and. index_mesh <= n_meshes) then
+          f % mesh = index_mesh
+          f % n_bins = product(meshes(index_mesh) % dimension)
+        else
+          err = E_OUT_OF_BOUNDS
+          call set_errmsg("Index in 'meshes' array is out of bounds.")
+        end if
         class default
-          err = E_INVALID_TYPE
-          call set_errmsg("Tried to set mesh on a non-mesh filter.")
-        end select
-      else
-        err = E_ALLOCATE
-        call set_errmsg("Filter type has not been set yet.")
-      end if
-    else
-      err = E_OUT_OF_BOUNDS
-      call set_errmsg("Index in filters array out of bounds.")
+        err = E_INVALID_TYPE
+        call set_errmsg("Tried to set mesh on a non-mesh filter.")
+      end select
     end if
   end function openmc_mesh_filter_set_mesh
 

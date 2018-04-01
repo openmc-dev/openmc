@@ -250,3 +250,38 @@ def test_find_material(capi_init):
     assert mat is openmc.capi.materials[1]
     mat = openmc.capi.find_material((0.4, 0., 0.))
     assert mat is openmc.capi.materials[2]
+
+
+def test_mesh(capi_init):
+    mesh = openmc.capi.Mesh()
+    mesh.dimension = (2, 3, 4)
+    assert mesh.dimension == (2, 3, 4)
+    with pytest.raises(openmc.capi.AllocationError):
+        mesh2 = openmc.capi.Mesh(mesh.id)
+
+    # Make sure each combination of parameters works
+    ll = (0., 0., 0.)
+    ur = (10., 10., 10.)
+    width = (1., 1., 1.)
+    mesh.set_parameters(lower_left=ll, upper_right=ur)
+    assert mesh.lower_left == pytest.approx(ll)
+    assert mesh.upper_right == pytest.approx(ur)
+    mesh.set_parameters(lower_left=ll, width=width)
+    assert mesh.lower_left == pytest.approx(ll)
+    assert mesh.width == pytest.approx(width)
+    mesh.set_parameters(upper_right=ur, width=width)
+    assert mesh.upper_right == pytest.approx(ur)
+    assert mesh.width == pytest.approx(width)
+
+    meshes = openmc.capi.meshes
+    assert isinstance(meshes, Mapping)
+    assert len(meshes) == 1
+    for mesh_id, mesh in meshes.items():
+        assert isinstance(mesh, openmc.capi.Mesh)
+        assert mesh_id == mesh.id
+
+    mf = openmc.capi.MeshFilter(mesh)
+    assert mf.mesh == mesh
+
+    msf = openmc.capi.MeshSurfaceFilter(mesh)
+    assert msf.mesh == mesh

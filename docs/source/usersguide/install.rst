@@ -417,8 +417,8 @@ The Python API works with Python 3.4+. In addition to Python itself, the API
 relies on a number of third-party packages. All prerequisites can be installed
 using Conda_ (recommended), pip_, or through the package manager in most Linux
 distributions. To run simulations in parallel using MPI, it is recommended to
-build mpi4py, hdf5, h5py from source, in that order, using the same compilers
-as for openmc.
+build mpi4py, HDF5, h5py from source, in that order, using the same compilers
+as for openMC.
 
 .. admonition:: Required
    :class: error
@@ -457,7 +457,7 @@ as for openmc.
    `mpi4py <http://mpi4py.scipy.org/>`_
       mpi4py provides Python bindings to MPI for running distributed-memory
       parallel runs. This package is needed if you plan on running depletion
-      simulations.
+      simulations in parallel using MPI.
 
    `Cython <http://cython.org/>`_
       Cython is used for resonance reconstruction for ENDF data converted to

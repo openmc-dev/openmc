@@ -1,4 +1,5 @@
 import openmc
+import openmc.deplete
 import numpy as np
 
 ###############################################################################
@@ -11,9 +12,9 @@ inactive = 10
 particles = 1000
 
 # Depletion simulation parameters
-time_step = 1.*24*60*60 # s
-final_time = 15.*24*60*60 # s
-time_steps = np.full(np.int(final_time / time_step), time_step)
+time_step = 1*24*60*60 # s
+final_time = 15*24*60*60 # s
+time_steps = np.full(final_time // time_step, time_step)
 
 chain_file = './chain_simple.xml'
 power = 174 # W/cm, for 2D simulations only (use W for 3D)
@@ -32,7 +33,6 @@ uo2.depletable = True
 helium = openmc.Material(material_id=2, name='Helium for gap')
 helium.set_density('g/cm3', 0.001598)
 helium.add_element('He', 2.4044e-4)
-helium.depletable = False
 
 zircaloy = openmc.Material(material_id=3, name='Zircaloy 4')
 zircaloy.set_density('g/cm3', 6.55)
@@ -40,7 +40,6 @@ zircaloy.add_element('Sn', 0.014  , 'wo')
 zircaloy.add_element('Fe', 0.00165, 'wo')
 zircaloy.add_element('Cr', 0.001  , 'wo')
 zircaloy.add_element('Zr', 0.98335, 'wo')
-zircaloy.depletable = False
 
 borated_water = openmc.Material(material_id=4, name='Borated water')
 borated_water.set_density('g/cm3', 0.740582)
@@ -48,7 +47,6 @@ borated_water.add_element('B', 4.0e-5)
 borated_water.add_element('H', 5.0e-2)
 borated_water.add_element('O', 2.4e-2)
 borated_water.add_s_alpha_beta('c_H_in_H2O')
-borated_water.depletable = False
 
 ###############################################################################
 #                 Exporting to OpenMC geometry.xml file
@@ -92,9 +90,8 @@ root = openmc.Universe(universe_id=0, name='root universe')
 # Register Cells with Universe
 root.add_cells([fuel, gap, clad, water])
 
-# Instantiate a Geometry, register the root Universe, and export to XML
+# Instantiate a Geometry, register the root Universe
 geometry = openmc.Geometry(root)
-geometry.export_to_xml()
 
 ###############################################################################
 #                   Exporting to OpenMC materials.xml file
@@ -106,10 +103,6 @@ area[fuel] = np.pi * fuel_or.coefficients['R'] ** 2
 
 # Set materials volume for depletion. Set to an area for 2D simulations
 uo2.volume = area[fuel]
-
-# Instantiate a Materials collection and export to XML
-materials_file = openmc.Materials([uo2, helium, zircaloy, borated_water])
-materials_file.export_to_xml()
 
 ###############################################################################
 #                   Exporting to OpenMC settings.xml file
@@ -131,14 +124,12 @@ entropy_mesh.lower_left = [-0.39218, -0.39218, -1.e50]
 entropy_mesh.upper_right = [0.39218, 0.39218, 1.e50]
 entropy_mesh.dimension = [10, 10, 1]
 settings_file.entropy_mesh = entropy_mesh
-settings_file.export_to_xml()
 
 ###############################################################################
 #                   Initialize and run depletion calculation
 ###############################################################################
 
 op = openmc.deplete.Operator(geometry, settings_file, chain_file)
-op.round_number = True
 
 # Perform simulation using the predictor algorithm
 openmc.deplete.integrator.predictor(op, time_steps, power)
@@ -150,12 +141,8 @@ openmc.deplete.integrator.predictor(op, time_steps, power)
 # Open results file
 results = openmc.deplete.ResultsList("depletion_results.h5")
 
-# Dictionnary of materials and burned nuclides
-mat_id_to_ind = results[0].mat_to_ind
-nuc_to_ind = results[0].nuc_to_ind
-
 # Obtain K_eff as a function of time
 time, keff = results.get_eigenvalue()
                                                                                                                                                                                                                                                                                                                                                                                                                                                         
 # Obtain U235 concentration as a function of time
-time, n_U235 = results.get_atoms(mat_id_to_ind['1'], nuc_to_ind['U235'])
+time, n_U235 = results.get_atoms('1', 'U235')

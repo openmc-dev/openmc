@@ -716,9 +716,9 @@ contains
     if (index >= 1 .and. index <= n_meshes) then
       associate (m => meshes(index))
         if (allocated(m % lower_left)) then
-          ll = C_LOC(m % lower_left)
-          ur = C_LOC(m % upper_right)
-          width = C_LOC(m % width)
+          ll = C_LOC(m % lower_left(1))
+          ur = C_LOC(m % upper_right(1))
+          width = C_LOC(m % width(1))
           n = m % n_dimension
         else
           err = E_ALLOCATE

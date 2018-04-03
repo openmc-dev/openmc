@@ -25,7 +25,8 @@ module tally_filter_sptl_legendre
   integer, parameter :: AXIS_Z = 3
 
 !===============================================================================
-! SpatialLEGENDREFILTER gives Legendre moments
+! SPATIALLEGENDREFILTER gives Legendre moments of the particle's normalized
+! position along an axis
 !===============================================================================
 
   type, public, extends(TallyFilter) :: SpatialLegendreFilter
@@ -97,18 +98,20 @@ contains
   subroutine to_statepoint(this, filter_group)
     class(SpatialLegendreFilter), intent(in) :: this
     integer(HID_T),      intent(in) :: filter_group
+    character(kind=C_CHAR) :: axis
 
     call write_dataset(filter_group, "type", "spatiallegendre")
     call write_dataset(filter_group, "n_bins", this % n_bins)
     call write_dataset(filter_group, "order", this % order)
     select case (this % axis)
     case (AXIS_X)
-      call write_dataset(filter_group, 'axis', 'x')
+      axis = 'x'
     case (AXIS_Y)
-      call write_dataset(filter_group, 'axis', 'y')
+      axis = 'y'
     case (AXIS_Z)
-      call write_dataset(filter_group, 'axis', 'z')
+      axis = 'z'
     end select
+    call write_dataset(filter_group, 'axis', axis)
     call write_dataset(filter_group, 'min', this % min)
     call write_dataset(filter_group, 'max', this % max)
   end subroutine to_statepoint
@@ -118,7 +121,18 @@ contains
     integer,             intent(in) :: bin
     character(MAX_LINE_LEN)         :: label
 
-    label = "Legendre expansion, P" // trim(to_str(bin - 1))
+    character(1) :: axis
+
+    select case (this % axis)
+    case (AXIS_X)
+      axis = 'x'
+    case (AXIS_Y)
+      axis = 'y'
+    case (AXIS_Z)
+      axis = 'z'
+    end select
+    label = "Legendre expansion, " // axis // " axis, P" // &
+         trim(to_str(bin - 1))
   end function text_label
 
 !===============================================================================
@@ -138,7 +152,7 @@ contains
         order = f % order
       class default
         err = E_INVALID_TYPE
-        call set_errmsg("Tried to get order on a non-expansion filter.")
+        call set_errmsg("Not a spatial Legendre filter.")
       end select
     end if
   end function openmc_spatial_legendre_filter_get_order
@@ -158,7 +172,7 @@ contains
         f % n_bins = order + 1
       class default
         err = E_INVALID_TYPE
-        call set_errmsg("Tried to set order on a non-expansion filter.")
+        call set_errmsg("Not a spatial Legendre filter.")
       end select
     end if
   end function openmc_spatial_legendre_filter_set_order
@@ -182,7 +196,7 @@ contains
         max = f % max
       class default
         err = E_INVALID_TYPE
-        call set_errmsg("Tried to set order on a non-expansion filter.")
+        call set_errmsg("Not a spatial Legendre filter.")
       end select
     end if
   end function openmc_spatial_legendre_filter_get_params
@@ -206,7 +220,7 @@ contains
         if (present(max)) f % max = max
       class default
         err = E_INVALID_TYPE
-        call set_errmsg("Tried to set order on a non-expansion filter.")
+        call set_errmsg("Not a spatial Legendre filter.")
       end select
     end if
   end function openmc_spatial_legendre_filter_set_params

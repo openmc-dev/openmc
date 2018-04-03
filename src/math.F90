@@ -181,7 +181,7 @@ contains
   end function calc_pn
 
 !===============================================================================
-! CALC_RN calculates the n-th order spherical harmonics for a given angle
+! CALC_RN calculates the n-th order real spherical harmonics for a given angle
 ! (in terms of (u,v,w)).  All Rn,m values are provided (where -n<=m<=n)
 !===============================================================================
 

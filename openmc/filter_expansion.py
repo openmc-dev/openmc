@@ -226,17 +226,22 @@ class SpatialLegendreFilter(ExpansionFilter):
 class SphericalHarmonicsFilter(ExpansionFilter):
     r"""Score spherical harmonic expansion moments up to specified order.
 
+    This filter allows you to obtain real spherical harmonic moments of either
+    the particle's direction or the cosine of the scattering angle. Specifying a
+    filter with order :math:`\ell` tallies moments for all orders from 0 to
+    :math:`\ell`.
+
     Parameters
     ----------
     order : int
-        Maximum spherical harmonics order
+        Maximum spherical harmonics order, :math:`\ell`
     filter_id : int or None
         Unique identifier for the filter
 
     Attributes
     ----------
     order : int
-        Maximum spherical harmonics order
+        Maximum spherical harmonics order, :math:`\ell`
     id : int
         Unique identifier for the filter
     cosine : {'scatter', 'particle'}

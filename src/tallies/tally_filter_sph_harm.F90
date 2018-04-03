@@ -24,7 +24,8 @@ module tally_filter_sph_harm
   integer, parameter :: COSINE_PARTICLE = 2
 
 !===============================================================================
-! LEGENDREFILTER gives Legendre moments of the change in scattering angle
+! SPHERICALHARMONICSFILTER gives spherical harmonics expansion moments of a
+! tally score
 !===============================================================================
 
   type, public, extends(TallyFilter) :: SphericalHarmonicsFilter
@@ -149,7 +150,7 @@ contains
         order = f % order
       class default
         err = E_INVALID_TYPE
-        call set_errmsg("Tried to get order on a non-expansion filter.")
+        call set_errmsg("Not a spherical harmonics filter.")
       end select
     end if
   end function openmc_sphharm_filter_get_order
@@ -183,7 +184,7 @@ contains
 
       class default
         err = E_INVALID_TYPE
-        call set_errmsg("Tried to get order on a non-expansion filter.")
+        call set_errmsg("Not a spherical harmonics filter.")
       end select
     end if
   end function openmc_sphharm_filter_get_cosine
@@ -203,7 +204,7 @@ contains
         f % n_bins = (order + 1)**2
       class default
         err = E_INVALID_TYPE
-        call set_errmsg("Tried to set order on a non-expansion filter.")
+        call set_errmsg("Not a spherical harmonics filter.")
       end select
     end if
   end function openmc_sphharm_filter_set_order
@@ -233,7 +234,7 @@ contains
 
       class default
         err = E_INVALID_TYPE
-        call set_errmsg("Tried to get order on a non-expansion filter.")
+        call set_errmsg("Not a spherical harmonics filter.")
       end select
     end if
   end function openmc_sphharm_filter_set_cosine

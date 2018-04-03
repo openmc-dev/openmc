@@ -129,7 +129,7 @@ contains
         order = f % order
       class default
         err = E_INVALID_TYPE
-        call set_errmsg("Tried to get order on a non-expansion filter.")
+        call set_errmsg("Not a Zernike filter.")
       end select
     end if
   end function openmc_zernike_filter_get_order
@@ -152,7 +152,7 @@ contains
         r = f % r
       class default
         err = E_INVALID_TYPE
-        call set_errmsg("Tried to get order on a non-expansion filter.")
+        call set_errmsg("Not a Zernike filter.")
       end select
     end if
   end function openmc_zernike_filter_get_params
@@ -172,7 +172,7 @@ contains
         f % n_bins = ((order + 1)*(order + 2))/2
       class default
         err = E_INVALID_TYPE
-        call set_errmsg("Tried to set order on a non-expansion filter.")
+        call set_errmsg("Not a Zernike filter.")
       end select
     end if
   end function openmc_zernike_filter_set_order
@@ -195,7 +195,7 @@ contains
         if (present(r)) f % r = r
       class default
         err = E_INVALID_TYPE
-        call set_errmsg("Tried to get order on a non-expansion filter.")
+        call set_errmsg("Not a Zernike filter.")
       end select
     end if
   end function openmc_zernike_filter_set_params

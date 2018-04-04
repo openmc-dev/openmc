@@ -30,7 +30,9 @@ extern "C" {
   int openmc_extend_sources(int32_t n, int32_t* index_start, int32_t* index_end);
   int openmc_extend_tallies(int32_t n, int32_t* index_start, int32_t* index_end);
   int openmc_filter_get_id(int32_t index, int32_t* id);
+  int openmc_filter_get_type(int32_t index, const char** type);
   int openmc_filter_set_id(int32_t index, int32_t id);
+  int openmc_filter_set_type(int32_t index, const char* type);
   void openmc_finalize();
   int openmc_find(double* xyz, int rtype, int32_t* id, int32_t* instance);
   int openmc_get_cell_index(int32_t id, int32_t* index);
@@ -91,7 +93,8 @@ extern "C" {
   int openmc_tally_set_filters(int32_t index, int n, const int32_t* indices);
   int openmc_tally_set_id(int32_t index, int32_t id);
   int openmc_tally_set_nuclides(int32_t index, int n, const char** nuclides);
-  int openmc_tally_set_scores(int32_t index, int n, const int* scores);
+  int openmc_tally_set_scores(int32_t index, int n, const char** scores);
+  int openmc_tally_set_type(int32_t index, const char* type);
   int openmc_zernike_filter_get_order(int32_t index, int* order);
   int openmc_zernike_filter_get_params(int32_t index, double* x, double* y, double* r);
   int openmc_zernike_filter_set_order(int32_t index, int order);

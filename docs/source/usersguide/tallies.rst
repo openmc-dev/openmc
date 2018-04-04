@@ -261,7 +261,7 @@ The following tables show all valid scores:
     +----------------------+---------------------------------------------------+
     |Score                 | Description                                       |
     +======================+===================================================+
-    |current               |Used in combination with a mesh filter:            |
+    |current               |Used in combination with a meshsurface filter:     |
     |                      |Partial currents on the boundaries of each cell in |
     |                      |a mesh. It may not be used in conjunction with any |
     |                      |other score. Only energy and mesh filters may be   |
@@ -269,7 +269,7 @@ The following tables show all valid scores:
     |                      |Used in combination with a surface filter:         |
     |                      |Net currents on any surface previously defined in  |
     |                      |the geometry. It may be used along with any other  |
-    |                      |filter, except mesh filters.                       |
+    |                      |filter, except meshsurface filters.                |
     |                      |Surfaces can alternatively be defined with cell    |
     |                      |from and cell filters thereby resulting in tallying|
     |                      |partial currents.                                  |

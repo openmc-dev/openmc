@@ -2853,6 +2853,9 @@ contains
                 call fatal_error("Cannot tally other scores in the &
                      &same tally as surface currents")
               end if
+            else
+                call fatal_error("Cannot tally currents without surface &
+                     &type filters")
             end if
 
           case ('events')

@@ -115,14 +115,15 @@ class Cell(_FortranObjectWithID):
     def fill(self, fill):
         if isinstance(fill, Iterable):
             n = len(fill)
-            indices = (c_int*n)(*(m._index for m in fill))
-            _dll.openmc_cell_set_fill(self._index, 1, 1, indices)
+            indices = (c_int32*n)(*(m._index if m is not None else -1
+                                    for m in fill))
+            _dll.openmc_cell_set_fill(self._index, 1, n, indices)
         elif isinstance(fill, Material):
-            materials = [fill]
-            indices = (c_int*1)(fill._index)
+            indices = (c_int32*1)(fill._index)
             _dll.openmc_cell_set_fill(self._index, 1, 1, indices)
-        else:
-            raise NotImplementedError
+        elif fill is None:
+            indices = (c_int32*1)(-1)
+            _dll.openmc_cell_set_fill(self._index, 1, 1, indices)
 
     def set_temperature(self, T, instance=None):
         """Set the temperature of a cell

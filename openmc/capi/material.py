@@ -89,6 +89,9 @@ class Material(_FortranObjectWithID):
                 index = index.value
             else:
                 index = mapping[uid]._index
+        elif index == -1:
+            # Special value indicates void material
+            return None
 
         if index not in cls.__instances:
             instance = super(Material, cls).__new__(cls)

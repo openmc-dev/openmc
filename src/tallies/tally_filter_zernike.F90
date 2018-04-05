@@ -76,7 +76,7 @@ contains
 
     do i = 1, this % n_bins
       call match % bins % push_back(i)
-      call match % weights % push_back(zn(i) / SQRT_PI)
+      call match % weights % push_back(zn(i))
     end do
   end subroutine get_all_bins
 

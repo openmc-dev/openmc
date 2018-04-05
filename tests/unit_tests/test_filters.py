@@ -145,4 +145,4 @@ def test_first_moment(run_in_tmpdir, box_model):
         assert first_score(leg_sptl_tally) == scatter
         assert first_score(sph_scat_tally) == scatter
         assert first_score(sph_flux_tally) == approx(flux)
-        assert first_score(zernike_tally)*sqrt(pi) == approx(scatter)
+        assert first_score(zernike_tally) == approx(scatter)

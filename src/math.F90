@@ -575,8 +575,10 @@ contains
   end function calc_rn
 
 !===============================================================================
-! CALC_ZN calculates the n-th order Zernike polynomial moment for a given angle
-! (rho, theta) location in the unit disk.
+! CALC_ZN calculates the n-th order modified Zernike polynomial moment for a
+! given angle (rho, theta) location in the unit disk. The normlization of the
+! polynomials is such that the integral of Z_pq*Z_pq over the unit disk is
+! exactly pi
 !===============================================================================
 
   subroutine calc_zn(n, rho, phi, zn)

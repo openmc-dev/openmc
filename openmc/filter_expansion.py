@@ -317,12 +317,27 @@ class ZernikeFilter(ExpansionFilter):
     r"""Score Zernike expansion moments in space up to specified order.
 
     This filter allows scores to be multiplied by Zernike polynomials of the
-    particle's position along a particular axis, normalized to a given unit
-    circle, up to a user-specified order. Specifying a filter with order N
-    tallies moments for all radial orders from 0 to N and each azimuthal order
-    for a given radial order. The ordering of the Zernike polynomial moments
-    follows the ANSI Z80.28 standard, where bin :math:`j` corresponds to the
-    radial index :math:`n` and the azimuthal index :math:`m` by
+    particle's position normalized to a given unit circle, up to a
+    user-specified order. The Zernike polynomials are defined as
+
+    .. math::
+        Z_n^m(\rho, \theta) = R_n^m(\rho) \cos (m\theta)
+
+    and
+
+    .. math::
+        Z_n^{-m}(\rho, \theta) = R_n^{-m}(\rho) \sin (m\theta)
+
+    where the radial polynomials are
+
+    .. math::
+        R_n^m(\rho) = \sum\limits_{k=0}^{(n-m)/2} \frac{(-1)^k (n-k)!}{k! (
+        \frac{n+m}{2} - k)! (\frac{n-m}{2} - k)!} \rho^{n-2k}.
+
+    Specifying a filter with order N tallies moments for all :math:`n` from 0 to
+    N and each value of :math:`m`. The ordering of the Zernike polynomial
+    moments follows the ANSI Z80.28 standard, where the one-dimensional index
+    :math:`j` corresponds to the :math:`n` and :math:`m` by
 
     .. math::
         j = \frac{n(n + 2) + m}{2}.

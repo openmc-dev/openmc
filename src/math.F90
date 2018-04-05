@@ -580,10 +580,10 @@ contains
 !===============================================================================
 
   subroutine calc_zn(n, rho, phi, zn)
-    ! This efficient method for calculation R(m,n) is taken from
-    ! Chong, C. W., Raveendran, P., & Mukundan, R. (2003). A comparative
-    ! analysis of algorithms for fast computation of Zernike moments.
-    ! Pattern Recognition, 36(3), 731-742.
+    ! This procedure uses the modified Kintner's method for calculating Zernike
+    ! polynomials as outlined in Chong, C. W., Raveendran, P., & Mukundan,
+    ! R. (2003). A comparative analysis of algorithms for fast computation of
+    ! Zernike moments. Pattern Recognition, 36(3), 731-742.
 
     integer, intent(in) :: n           ! Maximum order
     real(8), intent(in) :: rho         ! Radial location in the unit disk
@@ -608,7 +608,14 @@ contains
     ! n == radial degree
     ! m == azimuthal frequency
 
-    ! Deterine vector of sin(n*phi) and cos(n*phi)
+    ! ==========================================================================
+    ! Determine vector of sin(n*phi) and cos(n*phi). This takes advantage of the
+    ! following recurrence relations so that only a single sin/cos have to be
+    ! evaluated (http://mathworld.wolfram.com/Multiple-AngleFormulas.html)
+    !
+    ! sin(nx) = 2 cos(x) sin((n-1)x) - sin((n-2)x)
+    ! cos(nx) = 2 cos(x) cos((n-1)x) - cos((n-2)x)
+
     sin_phi = sin(phi)
     cos_phi = cos(phi)
 
@@ -627,17 +634,20 @@ contains
       sin_phi_vec(i) = sin_phi_vec(i) * sin_phi
     end do
 
-    ! Calculate R_m_n(rho)
-    ! Fill the main diagonal first
+    ! ==========================================================================
+    ! Calculate R_pq(rho)
+
+    ! Fill the main diagonal first (Eq. 3.9 in Chong)
     do p = 0, n
       zn_mat(p+1, p+1) = rho**p
     end do
 
-    ! Fill in the second diagonal
+    ! Fill in the second diagonal (Eq. 3.10 in Chong)
     do q = 0, n-2
       zn_mat(q+2+1, q+1) = (q+2) * zn_mat(q+2+1, q+2+1) - (q+1) * zn_mat(q+1, q+1)
     end do
-    ! Fill in the rest of the values using the original results
+
+    ! Fill in the rest of the values using the original results (Eq. 3.8 in Chong)
     do p = 4, n
       k2 = 2 * p * (p - 1) * (p - 2)
       do q = p-4, 0, -2
@@ -651,18 +661,18 @@ contains
     ! Roll into a single vector for easier computation later
     ! The vector is ordered (0,0), (1,-1), (1,1), (2,-2), (2,0),
     ! (2, 2), ....   in (n,m) indices
-    ! Note that the cos and sin vectors are offest by one
+    ! Note that the cos and sin vectors are offset by one
     ! sin_phi_vec = [sin(x), sin(2x), sin(3x) ...]
     ! cos_phi_vec = [1.0, cos(x), cos(2x)... ]
     i = 1
     do p = 0, n
       do q = -p, p, 2
         if (q < 0) then
-          zn(i) = zn_mat(p+1, abs(q)+1) * sin_phi_vec(p) * SQRT_2N_2(p)
+          zn(i) = zn_mat(p+1, abs(q)+1) * sin_phi_vec(abs(q)) * SQRT_2N_2(p)
         else if (q == 0) then
           zn(i) = zn_mat(p+1, q+1) * SQRT_N_1(p)
         else
-          zn(i) = zn_mat(p+1, q+1) * cos_phi_vec(p+1) * SQRT_2N_2(p)
+          zn(i) = zn_mat(p+1, q+1) * cos_phi_vec(abs(q)+1) * SQRT_2N_2(p)
         end if
         i = i + 1
       end do

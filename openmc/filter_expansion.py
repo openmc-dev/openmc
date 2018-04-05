@@ -318,21 +318,24 @@ class ZernikeFilter(ExpansionFilter):
 
     This filter allows scores to be multiplied by Zernike polynomials of the
     particle's position normalized to a given unit circle, up to a
-    user-specified order. The Zernike polynomials are defined as
+    user-specified order. The Zernike polynomials follow the definition by `Noll
+    <https://doi.org/10.1364/JOSA.66.000207>`_ and are defined as
 
     .. math::
-        Z_n^m(\rho, \theta) = R_n^m(\rho) \cos (m\theta)
+        Z_n^m(\rho, \theta) = \sqrt{2n + 2} R_n^m(\rho) \cos (m\theta), \quad m > 0
 
-    and
+        Z_n^{m}(\rho, \theta) = \sqrt{2n + 2} R_n^{m}(\rho) \sin (m\theta), \quad m < 0
 
-    .. math::
-        Z_n^{-m}(\rho, \theta) = R_n^{-m}(\rho) \sin (m\theta)
+        Z_n^{m}(\rho, \theta) = \sqrt{n + 1} R_n^{m}(\rho), \quad m = 0
 
     where the radial polynomials are
 
     .. math::
         R_n^m(\rho) = \sum\limits_{k=0}^{(n-m)/2} \frac{(-1)^k (n-k)!}{k! (
         \frac{n+m}{2} - k)! (\frac{n-m}{2} - k)!} \rho^{n-2k}.
+
+    With this definition, the integral of :math:`(Z_n^m)^2` over the unit disk
+    is exactly :math:`\pi` for each polynomial.
 
     Specifying a filter with order N tallies moments for all :math:`n` from 0 to
     N and each value of :math:`m`. The ordering of the Zernike polynomial

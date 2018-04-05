@@ -65,11 +65,11 @@ extern "C" {
   int openmc_mesh_set_params(int32_t index, const double* ll, const double* ur, const double* width, int n);
   int openmc_meshsurface_filter_get_mesh(int32_t index, int32_t* index_mesh);
   int openmc_meshsurface_filter_set_mesh(int32_t index, int32_t index_mesh);
-  int openmc_next_batch();
+  int openmc_next_batch(int* status);
   int openmc_nuclide_name(int index, char** name);
   void openmc_plot_geometry();
   void openmc_reset();
-  void openmc_run();
+  int openmc_run();
   void openmc_simulation_finalize();
   void openmc_simulation_init();
   int openmc_source_bank(struct Bank** ptr, int64_t* n);
@@ -102,17 +102,17 @@ extern "C" {
                                        const double* y, const double* r);
 
   // Error codes
-  extern int E_UNASSIGNED;
-  extern int E_ALLOCATE;
-  extern int E_OUT_OF_BOUNDS;
-  extern int E_INVALID_SIZE;
-  extern int E_INVALID_ARGUMENT;
-  extern int E_INVALID_TYPE;
-  extern int E_INVALID_ID;
-  extern int E_GEOMETRY;
-  extern int E_DATA;
-  extern int E_PHYSICS;
-  extern int E_WARNING;
+  extern int OPENMC_E_UNASSIGNED;
+  extern int OPENMC_E_ALLOCATE;
+  extern int OPENMC_E_OUT_OF_BOUNDS;
+  extern int OPENMC_E_INVALID_SIZE;
+  extern int OPENMC_E_INVALID_ARGUMENT;
+  extern int OPENMC_E_INVALID_TYPE;
+  extern int OPENMC_E_INVALID_ID;
+  extern int OPENMC_E_GEOMETRY;
+  extern int OPENMC_E_DATA;
+  extern int OPENMC_E_PHYSICS;
+  extern int OPENMC_E_WARNING;
 
   // Global variables
   extern char openmc_err_msg[256];

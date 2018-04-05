@@ -5,9 +5,10 @@ from weakref import WeakValueDictionary
 import numpy as np
 from numpy.ctypeslib import as_array
 
+from openmc.exceptions import AllocationError, InvalidIDError
 from . import _dll
 from .core import _FortranObjectWithID
-from .error import _error_handler, AllocationError, InvalidIDError
+from .error import _error_handler
 from .material import Material
 
 __all__ = ['Cell', 'cells']

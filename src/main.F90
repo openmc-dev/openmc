@@ -1,5 +1,7 @@
 program main
 
+  use, intrinsic :: ISO_C_BINDING
+
   use constants
   use message_passing
   use openmc_api, only: openmc_init, openmc_finalize, openmc_run, &
@@ -9,6 +11,7 @@ program main
 
   implicit none
 
+  integer(C_INT) :: err
 #ifdef OPENMC_MPI
   integer :: mpi_err ! MPI error code
 #endif
@@ -27,7 +30,7 @@ program main
   ! start problem based on mode
   select case (run_mode)
   case (MODE_FIXEDSOURCE, MODE_EIGENVALUE)
-    call openmc_run()
+    err = openmc_run()
   case (MODE_PLOTTING)
     call openmc_plot_geometry()
   case (MODE_PARTICLE)

@@ -15,19 +15,19 @@ module error
   public :: write_message
 
   ! Error codes
-  integer(C_INT), public, bind(C) :: E_UNASSIGNED = -1
-  integer(C_INT), public, bind(C) :: E_ALLOCATE = -2
-  integer(C_INT), public, bind(C) :: E_OUT_OF_BOUNDS = -3
-  integer(C_INT), public, bind(C) :: E_INVALID_SIZE = -4
-  integer(C_INT), public, bind(C) :: E_INVALID_ARGUMENT = -5
-  integer(C_INT), public, bind(C) :: E_INVALID_TYPE = -6
-  integer(C_INT), public, bind(C) :: E_INVALID_ID = -7
-  integer(C_INT), public, bind(C) :: E_GEOMETRY = -8
-  integer(C_INT), public, bind(C) :: E_DATA = -9
-  integer(C_INT), public, bind(C) :: E_PHYSICS = -10
+  integer(C_INT), public, bind(C, name='OPENMC_E_UNASSIGNED') :: E_UNASSIGNED = -1
+  integer(C_INT), public, bind(C, name='OPENMC_E_ALLOCATE') :: E_ALLOCATE = -2
+  integer(C_INT), public, bind(C, name='OPENMC_E_OUT_OF_BOUNDS') :: E_OUT_OF_BOUNDS = -3
+  integer(C_INT), public, bind(C, name='OPENMC_E_INVALID_SIZE') :: E_INVALID_SIZE = -4
+  integer(C_INT), public, bind(C, name='OPENMC_E_INVALID_ARGUMENT') :: E_INVALID_ARGUMENT = -5
+  integer(C_INT), public, bind(C, name='OPENMC_E_INVALID_TYPE') :: E_INVALID_TYPE = -6
+  integer(C_INT), public, bind(C, name='OPENMC_E_INVALID_ID') :: E_INVALID_ID = -7
+  integer(C_INT), public, bind(C, name='OPENMC_E_GEOMETRY') :: E_GEOMETRY = -8
+  integer(C_INT), public, bind(C, name='OPENMC_E_DATA') :: E_DATA = -9
+  integer(C_INT), public, bind(C, name='OPENMC_E_PHYSICS') :: E_PHYSICS = -10
 
   ! Warning codes
-  integer(C_INT), public, bind(C) :: E_WARNING = 1
+  integer(C_INT), public, bind(C, name='OPENMC_E_WARNING') :: E_WARNING = 1
 
   ! Error message
   character(kind=C_CHAR), public, bind(C) :: openmc_err_msg(256)

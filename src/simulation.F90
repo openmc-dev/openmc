@@ -48,6 +48,10 @@ module simulation
   public :: openmc_simulation_init
   public :: openmc_simulation_finalize
 
+  integer(C_INT), parameter :: STATUS_EXIT_NORMAL = 0
+  integer(C_INT), parameter :: STATUS_EXIT_MAX_BATCH = 1
+  integer(C_INT), parameter :: STATUS_EXIT_ON_TRIGGER = 2
+
 contains
 
 !===============================================================================
@@ -56,28 +60,36 @@ contains
 ! calculation.
 !===============================================================================
 
-  subroutine openmc_run() bind(C)
+  function openmc_run() result(err) bind(C)
+    integer(C_INT) :: err
+    integer(C_INT) :: status
 
     call openmc_simulation_init()
-    do while (openmc_next_batch() == 0)
+    do
+      err = openmc_next_batch(status)
+      if (status /= 0 .or. err < 0) exit
     end do
     call openmc_simulation_finalize()
 
-  end subroutine openmc_run
+  end function openmc_run
 
 !===============================================================================
 ! OPENMC_NEXT_BATCH
 !===============================================================================
 
-  function openmc_next_batch() result(retval) bind(C)
-    integer(C_INT) :: retval
+  function openmc_next_batch(status) result(err) bind(C)
+    integer(C_INT), intent(out), optional :: status
+    integer(C_INT) :: err
 
     type(Particle) :: p
     integer(8)     :: i_work
 
+    err = 0
+
     ! Make sure simulation has been initialized
     if (.not. simulation_initialized) then
-      retval = -3
+      err = E_ALLOCATE
+      call set_errmsg("Simulation has not been initialized yet.")
       return
     end if
 
@@ -86,7 +98,7 @@ contains
     ! Handle restart runs
     if (restart_run .and. current_batch <= restart_batch) then
       call replay_batch_history()
-      retval = 0
+      status = STATUS_EXIT_NORMAL
       return
     end if
 
@@ -124,12 +136,14 @@ contains
     call finalize_batch()
 
     ! Check simulation ending criteria
-    if (current_batch == n_max_batches) then
-      retval = -1
-    elseif (satisfy_triggers) then
-      retval = -2
-    else
-      retval = 0
+    if (present(status)) then
+      if (current_batch == n_max_batches) then
+        status = STATUS_EXIT_MAX_BATCH
+      elseif (satisfy_triggers) then
+        status = STATUS_EXIT_ON_TRIGGER
+      else
+        status = STATUS_EXIT_NORMAL
+      end if
     end if
 
   end function openmc_next_batch

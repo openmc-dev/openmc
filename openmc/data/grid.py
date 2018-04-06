@@ -31,7 +31,6 @@ def linearize(x, f, tolerance=0.001):
     # Initialize stack
     x_stack = [x[0]]
     y_stack = [f(x[0])]
-    print(y_stack)
 
     for i in range(x.shape[0] - 1):
         x_stack.insert(0, x[i + 1])
@@ -145,16 +144,12 @@ def linearizeIter(x, f, tolerance=0.001, unified=True):
         for item in y_dict:
             #Initialize output
             x_out = []
-            y_out = []
-            print(str(item))
+
             #Initialize stacks
             x_stack = [x[0]]
-            print(y_dict)
             y_stack = [y_dict[item]]
             for i in range(x.shape[0] - 1):
-                print(x_stack)
                 x_stack.insert(0, x[i + 1])
-                print(x_stack)
                 y_stack.insert(0, f(x[i + 1])[item])
         
                 while True:
@@ -170,12 +165,11 @@ def linearizeIter(x, f, tolerance=0.001, unified=True):
                         y_stack.insert(-1, y_mid)
                     else:
                         x_out.append(x_stack.pop())
-                        y_out.append(y_stack.pop())
+                        y_stack.pop()
                         if len(x_stack) == 1:
                             break
         
             x_out.append(x_stack.pop())
-            y_out.append(y_stack.pop())
             x=np.array(x_out) #Use x_out for initial x values in next item
 
         y_dict_out = f(np.array(x_out))

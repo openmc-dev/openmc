@@ -1164,9 +1164,7 @@ class Tally(IDManagerMixin):
                 if not user_filter:
                     # Create list of 2- or 3-tuples tuples for mesh cell bins
                     if isinstance(self_filter, openmc.MeshFilter):
-                        dimension = self_filter.mesh.dimension
-                        xyz = [range(1, x+1) for x in dimension]
-                        bins = list(product(*xyz))
+                        bins = list(self_filter.mesh.indices)
 
                     # Create list of 2-tuples for energy boundary bins
                     elif isinstance(self_filter, (openmc.EnergyFilter,
@@ -1676,19 +1674,22 @@ class Tally(IDManagerMixin):
             new_tally._std_dev = np.sqrt(data['self']['std. dev.']**2 +
                                          data['other']['std. dev.']**2)
         elif binary_op == '*':
-            self_rel_err = data['self']['std. dev.'] / data['self']['mean']
-            other_rel_err = data['other']['std. dev.'] / data['other']['mean']
+            with np.errstate(divide='ignore', invalid='ignore'):
+                self_rel_err = data['self']['std. dev.'] / data['self']['mean']
+                other_rel_err = data['other']['std. dev.'] / data['other']['mean']
             new_tally._mean = data['self']['mean'] * data['other']['mean']
             new_tally._std_dev = np.abs(new_tally.mean) * \
                                  np.sqrt(self_rel_err**2 + other_rel_err**2)
         elif binary_op == '/':
-            self_rel_err = data['self']['std. dev.'] / data['self']['mean']
-            other_rel_err = data['other']['std. dev.'] / data['other']['mean']
-            new_tally._mean = data['self']['mean'] / data['other']['mean']
+            with np.errstate(divide='ignore', invalid='ignore'):
+                self_rel_err = data['self']['std. dev.'] / data['self']['mean']
+                other_rel_err = data['other']['std. dev.'] / data['other']['mean']
+                new_tally._mean = data['self']['mean'] / data['other']['mean']
             new_tally._std_dev = np.abs(new_tally.mean) * \
                                  np.sqrt(self_rel_err**2 + other_rel_err**2)
         elif binary_op == '^':
-            mean_ratio = data['other']['mean'] / data['self']['mean']
+            with np.errstate(divide='ignore', invalid='ignore'):
+                mean_ratio = data['other']['mean'] / data['self']['mean']
             first_term = mean_ratio * data['self']['std. dev.']
             second_term = \
                 np.log(data['self']['mean']) * data['other']['std. dev.']
@@ -2737,7 +2738,7 @@ class Tally(IDManagerMixin):
                 new_filter = filter_type(bins)
 
                 # Set number of bins manually for mesh/distribcell filters
-                if filter_type in (openmc.DistribcellFilter, openmc.MeshFilter):
+                if filter_type is openmc.DistribcellFilter:
                     new_filter._num_bins = find_filter._num_bins
 
                 # Replace existing filter with new one

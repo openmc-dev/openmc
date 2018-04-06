@@ -56,7 +56,7 @@
 </geometry>
 <?xml version='1.0' encoding='utf-8'?>
 <materials>
-  <material id="1" name="UOX fuel">
+  <material depletable="true" id="1" name="UOX fuel">
     <density units="g/cm3" value="10.062" />
     <nuclide ao="4.9476e-06" name="U234" />
     <nuclide ao="0.00048218" name="U235" />

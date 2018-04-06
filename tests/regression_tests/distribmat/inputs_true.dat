@@ -26,11 +26,11 @@
     <nuclide ao="2.0" name="H1" />
     <nuclide ao="1.0" name="O16" />
   </material>
-  <material id="2">
+  <material depletable="true" id="2">
     <density units="g/cc" value="4.5" />
     <nuclide ao="1.0" name="U235" />
   </material>
-  <material id="3">
+  <material depletable="true" id="3">
     <density units="g/cc" value="2.0" />
     <nuclide ao="1.0" name="U235" />
   </material>

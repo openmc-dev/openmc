@@ -1,4 +1,5 @@
 from collections import defaultdict, MutableSequence, Iterable
+import warnings
 import io
 
 import numpy as np
@@ -29,6 +30,10 @@ def sample_resonance_parameters(nuclide, n_samples):
     covsize = cov.shape[0]
     formalism = nuclide.res_covariance.ranges[0].formalism
     samples = []
+
+    print("nparams,params:",nparams, params)
+    print("covsize",covsize)
+    print("formalism:",formalism)
 
     ### Handling MLBW Sampling ###
     if formalism == 'mlbw' or formalism == 'slbw':
@@ -117,6 +122,27 @@ def sample_resonance_parameters(nuclide, n_samples):
                 sample_params = pd.DataFrame.from_records(records, columns=columns)
                 samples.append(sample_params)
 
+        elif covsize/nparams == 5:
+            param_list = ['energy','neutronWidth','captureWidth','fissionWidthA','fissionWidthB']
+            mean_array = pd.DataFrame.as_matrix(nuclide.res_covariance.ranges[0].parameters[param_list])
+            spin = pd.DataFrame.as_matrix(nuclide.res_covariance.ranges[0].parameters['J'])
+            mean = mean_array.flatten()
+            for i in range(n_samples):
+                sample = np.random.multivariate_normal(mean,cov)
+                energy = sample[0::5]
+                gn = sample[1::5]
+                gg = sample[2::5]
+                gfa = sample[3::5]
+                gfb = sample[4::5]
+                records = []
+                for j, E in enumerate(energy):
+                    records.append([energy[j], spin[j], gn[j],
+                                    gg[j], gfa[j], gfb[j]])
+                columns = ['energy', 'J', 'neutronWidth',
+                       'captureWidth', 'fissionWidthA','fissionWidthB']
+                sample_params = pd.DataFrame.from_records(records, columns=columns)
+                samples.append(sample_params)
+
     return samples
 ### Under Construction END
 
@@ -181,11 +207,13 @@ class ResonanceCovariance(object):
         for iso in range(n_isotope):
             items = get_cont_record(file_obj)
             abundance = items[1]
-            fission_widths = (items[3] == 1) # fission widths are given?
+            fission_widths = (items[3] == 1) # Flag for fission widths
             n_ranges = items[4] # number of resonance energy ranges
+            print('there are',n_ranges,'ranges')
 
             for j in range(n_ranges):
                 items = get_cont_record(file_obj)
+                print("Line with unresovled flag:",items)
                 resonance_flag = items[2]  # flag for resolved (1)/unresolved (2)
                 formalism = items[3]  # resonance formalism
 
@@ -199,9 +227,9 @@ class ResonanceCovariance(object):
                     erange = _FORMALISMS[formalism].from_endf(ev, file_obj, items)
 
                 elif resonance_flag == 2:
-                    raise TypeError('Unresolved resonance not supported')
-
-                #erange.material = self
+                    warnings.warn('Unresolved resonance not supported.' 
+                                  'Covariance values for the'
+                                  'unresolved region not imported.')
                 ranges.append(erange)
 
         return cls(ranges)
@@ -554,6 +582,7 @@ class ReichMooreCovariance(ResonanceRange):
         # Build covariance matrix for General Resolved Resonance Formats
         if LCOMP == 1:
             items = get_cont_record(file_obj)
+            print("in resonance_covariance.py", items)
             num_short_range = items[4] #Number of short range type resonance 
                                        #covariances
             num_long_range = items[5] #Number of long range type resonance

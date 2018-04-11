@@ -1,13 +1,12 @@
 .. _examples:
 
-=================
-Example Notebooks
-=================
+========
+Examples
+========
 
-The following series of Jupyter_ Notebooks provide examples for usage of OpenMC
-features via the :ref:`pythonapi`.
-
-.. _Jupyter: https://jupyter.org/
+The following series of `Jupyter <https://jupyter.org/>`_ Notebooks provide
+examples for how to use various features of OpenMC by leveraging the
+:ref:`pythonapi`.
 
 -----------
 Basic Usage
@@ -20,6 +19,7 @@ Basic Usage
     post-processing
     pandas-dataframes
     tally-arithmetic
+    expansion-filters
     search
     triso
     candu

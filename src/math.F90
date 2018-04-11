@@ -181,7 +181,7 @@ contains
   end function calc_pn
 
 !===============================================================================
-! CALC_RN calculates the n-th order spherical harmonics for a given angle
+! CALC_RN calculates the n-th order real spherical harmonics for a given angle
 ! (in terms of (u,v,w)).  All Rn,m values are provided (where -n<=m<=n)
 !===============================================================================
 
@@ -573,6 +573,113 @@ contains
     end select
 
   end function calc_rn
+
+!===============================================================================
+! CALC_ZN calculates the n-th order modified Zernike polynomial moment for a
+! given angle (rho, theta) location in the unit disk. The normlization of the
+! polynomials is such that the integral of Z_pq*Z_pq over the unit disk is
+! exactly pi
+!===============================================================================
+
+  subroutine calc_zn(n, rho, phi, zn)
+    ! This procedure uses the modified Kintner's method for calculating Zernike
+    ! polynomials as outlined in Chong, C. W., Raveendran, P., & Mukundan,
+    ! R. (2003). A comparative analysis of algorithms for fast computation of
+    ! Zernike moments. Pattern Recognition, 36(3), 731-742.
+
+    integer, intent(in) :: n           ! Maximum order
+    real(8), intent(in) :: rho         ! Radial location in the unit disk
+    real(8), intent(in) :: phi         ! Theta (radians) location in the unit disk
+    real(8), intent(out) :: zn(:)      ! The resulting list of coefficients
+
+    real(8) :: sin_phi, cos_phi        ! Sine and Cosine of phi
+    real(8) :: sin_phi_vec(n+1)        ! Contains sin(n*phi)
+    real(8) :: cos_phi_vec(n+1)        ! Contains cos(n*phi)
+    real(8) :: zn_mat(n+1, n+1)        ! Matrix form of the coefficients which is
+                                       ! easier to work with
+    real(8) :: k1, k2, k3, k4          ! Variables for R_m_n calculation
+    real(8) :: sqrt_norm               ! normalization for radial moments
+    integer :: i,p,q                   ! Loop counters
+
+    real(8), parameter :: SQRT_N_1(0:10) = [&
+         sqrt(1.0_8), sqrt(2.0_8), sqrt(3.0_8), sqrt(4.0_8), &
+         sqrt(5.0_8), sqrt(6.0_8), sqrt(7.0_8), sqrt(8.0_8), &
+         sqrt(9.0_8), sqrt(10.0_8), sqrt(11.0_8)]
+    real(8), parameter :: SQRT_2N_2(0:10) = SQRT_N_1*sqrt(2.0_8)
+
+    ! n == radial degree
+    ! m == azimuthal frequency
+
+    ! ==========================================================================
+    ! Determine vector of sin(n*phi) and cos(n*phi). This takes advantage of the
+    ! following recurrence relations so that only a single sin/cos have to be
+    ! evaluated (http://mathworld.wolfram.com/Multiple-AngleFormulas.html)
+    !
+    ! sin(nx) = 2 cos(x) sin((n-1)x) - sin((n-2)x)
+    ! cos(nx) = 2 cos(x) cos((n-1)x) - cos((n-2)x)
+
+    sin_phi = sin(phi)
+    cos_phi = cos(phi)
+
+    sin_phi_vec(1) = 1.0_8
+    cos_phi_vec(1) = 1.0_8
+
+    sin_phi_vec(2) = 2.0_8 * cos_phi
+    cos_phi_vec(2) = cos_phi
+
+    do i = 3, n+1
+      sin_phi_vec(i) = 2.0_8 * cos_phi * sin_phi_vec(i-1) - sin_phi_vec(i-2)
+      cos_phi_vec(i) = 2.0_8 * cos_phi * cos_phi_vec(i-1) - cos_phi_vec(i-2)
+    end do
+
+    do i = 1, n+1
+      sin_phi_vec(i) = sin_phi_vec(i) * sin_phi
+    end do
+
+    ! ==========================================================================
+    ! Calculate R_pq(rho)
+
+    ! Fill the main diagonal first (Eq. 3.9 in Chong)
+    do p = 0, n
+      zn_mat(p+1, p+1) = rho**p
+    end do
+
+    ! Fill in the second diagonal (Eq. 3.10 in Chong)
+    do q = 0, n-2
+      zn_mat(q+2+1, q+1) = (q+2) * zn_mat(q+2+1, q+2+1) - (q+1) * zn_mat(q+1, q+1)
+    end do
+
+    ! Fill in the rest of the values using the original results (Eq. 3.8 in Chong)
+    do p = 4, n
+      k2 = 2 * p * (p - 1) * (p - 2)
+      do q = p-4, 0, -2
+        k1 = (p + q) * (p - q) * (p - 2) / 2
+        k3 = -q**2*(p - 1) - p * (p - 1) * (p - 2)
+        k4 = -p * (p + q - 2) * (p - q - 2) / 2
+        zn_mat(p+1, q+1) = ((k2 * rho**2 + k3) * zn_mat(p-2+1, q+1) + k4 * zn_mat(p-4+1, q+1)) / k1
+      end do
+    end do
+
+    ! Roll into a single vector for easier computation later
+    ! The vector is ordered (0,0), (1,-1), (1,1), (2,-2), (2,0),
+    ! (2, 2), ....   in (n,m) indices
+    ! Note that the cos and sin vectors are offset by one
+    ! sin_phi_vec = [sin(x), sin(2x), sin(3x) ...]
+    ! cos_phi_vec = [1.0, cos(x), cos(2x)... ]
+    i = 1
+    do p = 0, n
+      do q = -p, p, 2
+        if (q < 0) then
+          zn(i) = zn_mat(p+1, abs(q)+1) * sin_phi_vec(abs(q)) * SQRT_2N_2(p)
+        else if (q == 0) then
+          zn(i) = zn_mat(p+1, q+1) * SQRT_N_1(p)
+        else
+          zn(i) = zn_mat(p+1, q+1) * cos_phi_vec(abs(q)+1) * SQRT_2N_2(p)
+        end if
+        i = i + 1
+      end do
+    end do
+  end subroutine calc_zn
 
 !===============================================================================
 ! EXPAND_HARMONIC expands a given series of real spherical harmonics

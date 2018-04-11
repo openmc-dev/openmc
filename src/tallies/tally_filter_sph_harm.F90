@@ -20,8 +20,8 @@ module tally_filter_sph_harm
   public :: openmc_sphharm_filter_set_order
   public :: openmc_sphharm_filter_set_cosine
 
-  integer, parameter :: COSINE_SCATTER = 1
-  integer, parameter :: COSINE_PARTICLE = 2
+  integer, public, parameter :: COSINE_SCATTER = 1
+  integer, public, parameter :: COSINE_PARTICLE = 2
 
 !===============================================================================
 ! SPHERICALHARMONICSFILTER gives spherical harmonics expansion moments of a

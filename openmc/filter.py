@@ -1,10 +1,9 @@
 from abc import ABCMeta
 from collections import Iterable, OrderedDict
 import copy
-from functools import reduce
 import hashlib
+from itertools import product
 from numbers import Real, Integral
-import operator
 from xml.etree import ElementTree as ET
 
 import numpy as np
@@ -19,9 +18,12 @@ from .surface import Surface
 from .universe import Universe
 
 
-_FILTER_TYPES = ['universe', 'material', 'cell', 'cellborn', 'surface',
-                 'mesh', 'energy', 'energyout', 'mu', 'polar', 'azimuthal',
-                 'distribcell', 'delayedgroup', 'energyfunction', 'cellfrom']
+_FILTER_TYPES = (
+    'universe', 'material', 'cell', 'cellborn', 'surface', 'mesh', 'energy',
+    'energyout', 'mu', 'polar', 'azimuthal', 'distribcell', 'delayedgroup',
+    'energyfunction', 'cellfrom', 'legendre', 'spatiallegendre',
+    'sphericalharmonics', 'zernike'
+)
 
 _CURRENT_NAMES = (
     'x-min out', 'x-min in', 'x-max out', 'x-max in',
@@ -186,19 +188,14 @@ class Filter(IDManagerMixin, metaclass=FilterMeta):
     def bins(self):
         return self._bins
 
+    @bins.setter
+    def bins(self, bins):
+        self.check_bins(bins)
+        self._bins = bins
+
     @property
     def num_bins(self):
         return len(self.bins)
-
-    @bins.setter
-    def bins(self, bins):
-        # Format the bins as a 1D numpy array.
-        bins = np.atleast_1d(bins)
-
-        # Check the bin values.
-        self.check_bins(bins)
-
-        self._bins = bins
 
     def check_bins(self, bins):
         """Make sure given bins are valid for this filter.
@@ -221,8 +218,6 @@ class Filter(IDManagerMixin, metaclass=FilterMeta):
             XML element containing filter data
 
         """
-
-
         element = ET.Element('filter')
         element.set('id', str(self.id))
         element.set('type', self.short_name.lower())
@@ -307,7 +302,7 @@ class Filter(IDManagerMixin, metaclass=FilterMeta):
 
         Parameters
         ----------
-        filter_bin : Integral or tuple
+        filter_bin : int or tuple
             The bin is the integer ID for 'material', 'surface', 'cell',
             'cellborn', and 'universe' Filters. The bin is an integer for the
             cell instance ID for 'distribcell' Filters. The bin is a 2-tuple of
@@ -318,12 +313,8 @@ class Filter(IDManagerMixin, metaclass=FilterMeta):
 
         Returns
         -------
-        filter_index : Integral
+        filter_index : int
              The index in the Tally data array for this filter bin.
-
-        See also
-        --------
-        Filter.get_bin()
 
         """
 
@@ -332,47 +323,10 @@ class Filter(IDManagerMixin, metaclass=FilterMeta):
                   'is not one of the bins'.format(filter_bin)
             raise ValueError(msg)
 
-        return np.where(self.bins == filter_bin)[0][0]
-
-    def get_bin(self, bin_index):
-        """Returns the filter bin for some filter bin index.
-
-        Parameters
-        ----------
-        bin_index : Integral
-            The zero-based index into the filter's array of bins. The bin
-            index for 'material', 'surface', 'cell', 'cellborn', and 'universe'
-            filters corresponds to the ID in the filter's list of bins. For
-            'distribcell' tallies the bin index necessarily can only be zero
-            since only one cell can be tracked per tally. The bin index for
-            'energy' and 'energyout' filters corresponds to the energy range of
-            interest in the filter bins of energies. The bin index for 'mesh'
-            filters is the index into the flattened array of (x,y) or (x,y,z)
-            mesh cell bins.
-
-        Returns
-        -------
-        bin : 1-, 2-, or 3-tuple of Real
-            The bin in the Tally data array. The bin for 'material', surface',
-            'cell', 'cellborn', 'universe' and 'distribcell' filters is a
-            1-tuple of the ID corresponding to the appropriate filter bin.
-            The bin for 'energy' and 'energyout' filters is a 2-tuple of the
-            lower and upper energies bounding the energy interval for the filter
-            bin. The bin for 'mesh' tallies is a 2-tuple or 3-tuple of the x,y
-            or x,y,z mesh cell indices corresponding to the bin in a 2D/3D mesh.
-
-        See also
-        --------
-        Filter.get_bin_index()
-
-        """
-
-        cv.check_type('bin_index', bin_index, Integral)
-        cv.check_greater_than('bin_index', bin_index, 0, equality=True)
-        cv.check_less_than('bin_index', bin_index, self.num_bins)
-
-        # Return a 1-tuple of the bin.
-        return (self.bins[bin_index],)
+        if isinstance(self.bins, np.ndarray):
+            return np.where(self.bins == filter_bin)[0][0]
+        else:
+            return self.bins.index(filter_bin)
 
     def get_pandas_dataframe(self, data_size, stride, **kwargs):
         """Builds a Pandas DataFrame for the Filter's bins.
@@ -423,25 +377,24 @@ class Filter(IDManagerMixin, metaclass=FilterMeta):
 
 
 class WithIDFilter(Filter):
-    """Abstract parent for filters of types with ids (Cell, Material, etc.)."""
-
-    @Filter.bins.setter
-    def bins(self, bins):
-        # Format the bins as a 1D numpy array.
+    """Abstract parent for filters of types with IDs (Cell, Material, etc.)."""
+    def __init__(self, bins, filter_id=None):
         bins = np.atleast_1d(bins)
 
-        # Check the bin values.
+        # Make sure bins are either integers or appropriate objects
         cv.check_iterable_type('filter bins', bins,
                                (Integral, self.expected_type))
+
+        # Extract ID values
+        bins = np.array([b if isinstance(b, Integral) else b.id
+                         for b in bins])
+        self.bins = bins
+        self.id = filter_id
+
+    def check_bins(self, bins):
+        # Check the bin values.
         for edge in bins:
-            if isinstance(edge, Integral):
-                cv.check_greater_than('filter bin', edge, 0, equality=True)
-
-        # Extract id values.
-        bins = np.atleast_1d([b if isinstance(b, Integral) else b.id
-                              for b in bins])
-
-        self._bins = bins
+            cv.check_greater_than('filter bin', edge, 0, equality=True)
 
 
 class UniverseFilter(WithIDFilter):
@@ -449,7 +402,7 @@ class UniverseFilter(WithIDFilter):
 
     Parameters
     ----------
-    bins : openmc.Universe, Integral, or iterable thereof
+    bins : openmc.Universe, int, or iterable thereof
         The Universes to tally. Either openmc.Universe objects or their
         Integral ID numbers can be used.
     filter_id : int
@@ -601,12 +554,13 @@ class MeshFilter(Filter):
 
     Attributes
     ----------
-    bins : Integral
-        The Mesh ID
     mesh : openmc.Mesh
         The Mesh object that events will be tallied onto
     id : int
         Unique identifier for the filter
+    bins : list of tuple
+        A list of mesh indices for each filter bin, e.g. [(1, 1, 1), (2, 1, 1),
+        ...]
     num_bins : Integral
         The number of filter bins
 
@@ -614,7 +568,13 @@ class MeshFilter(Filter):
 
     def __init__(self, mesh, filter_id=None):
         self.mesh = mesh
-        super().__init__(mesh.id, filter_id)
+        self.id = filter_id
+
+    def __repr__(self):
+        string = type(self).__name__ + '\n'
+        string += '{: <16}=\t{}\n'.format('\tMesh ID', self.mesh.id)
+        string += '{: <16}=\t{}\n'.format('\tID', self.id)
+        return string
 
     @classmethod
     def from_hdf5(cls, group, **kwargs):
@@ -643,68 +603,11 @@ class MeshFilter(Filter):
     def mesh(self, mesh):
         cv.check_type('filter mesh', mesh, openmc.Mesh)
         self._mesh = mesh
-        self.bins = mesh.id
-
-    @property
-    def num_bins(self):
-        return reduce(operator.mul, self.mesh.dimension)
-
-    def check_bins(self, bins):
-        if not len(bins) == 1:
-            msg = 'Unable to add bins "{0}" to a MeshFilter since ' \
-                  'only a single mesh can be used per tally'.format(bins)
-            raise ValueError(msg)
-        elif not isinstance(bins[0], Integral):
-            msg = 'Unable to add bin "{0}" to MeshFilter since it ' \
-                  'is a non-integer'.format(bins[0])
-            raise ValueError(msg)
-        elif bins[0] < 0:
-            msg = 'Unable to add bin "{0}" to MeshFilter since it ' \
-                  'is a negative integer'.format(bins[0])
-            raise ValueError(msg)
+        self.bins = list(mesh.indices)
 
     def can_merge(self, other):
         # Mesh filters cannot have more than one bin
         return False
-
-    def get_bin_index(self, filter_bin):
-        # Filter bins for a mesh are an (x,y,z) tuple. Convert (x,y,z) to a
-        # single bin -- this is similar to subroutine mesh_indices_to_bin in
-        # openmc/src/mesh.F90.
-        n_dim = len(self.mesh.dimension)
-        if n_dim == 3:
-            i, j, k = filter_bin
-            nx, ny, nz = self.mesh.dimension
-            return (i - 1) + (j - 1)*nx + (k - 1)*nx*ny
-        elif n_dim == 2:
-            i, j, *_ = filter_bin
-            nx, ny = self.mesh.dimension
-            return (i - 1) + (j - 1)*nx
-        else:
-            return filter_bin[0] - 1
-
-    def get_bin(self, bin_index):
-        cv.check_type('bin_index', bin_index, Integral)
-        cv.check_greater_than('bin_index', bin_index, 0, equality=True)
-        cv.check_less_than('bin_index', bin_index, self.num_bins)
-
-        n_dim = len(self.mesh.dimension)
-        if n_dim == 3:
-            # Construct 3-tuple of x,y,z cell indices for a 3D mesh
-            nx, ny, nz = self.mesh.dimension
-            x = (bin_index % nx) + 1
-            y = (bin_index % (nx * ny)) // nx + 1
-            z = bin_index // (nx * ny) + 1
-            return (x, y, z)
-
-        elif n_dim == 2:
-            # Construct 2-tuple of x,y cell indices for a 2D mesh
-            nx, ny = self.mesh.dimension
-            x = (bin_index % nx) + 1
-            y = bin_index // nx + 1
-            return (x, y)
-        else:
-            return (bin_index + 1,)
 
     def get_pandas_dataframe(self, data_size, stride, **kwargs):
         """Builds a Pandas DataFrame for the Filter's bins.
@@ -783,6 +686,19 @@ class MeshFilter(Filter):
 
         return df
 
+    def to_xml_element(self):
+        """Return XML Element representing the Filter.
+
+        Returns
+        -------
+        element : xml.etree.ElementTree.Element
+            XML element containing filter data
+
+        """
+        element = super().to_xml_element()
+        element[0].text = str(self.mesh.id)
+        return element
+
 
 class MeshSurfaceFilter(MeshFilter):
     """Filter events by surface crossings on a regular, rectangular mesh.
@@ -802,36 +718,25 @@ class MeshSurfaceFilter(MeshFilter):
         The Mesh object that events will be tallied onto
     id : int
         Unique identifier for the filter
+    bins : list of tuple
+
+        A list of mesh indices / surfaces for each filter bin, e.g. [(1, 1,
+        'x-min out'), (1, 1, 'x-min in'), ...]
+
     num_bins : Integral
         The number of filter bins
 
     """
 
-    @property
-    def num_bins(self):
-        n_dim = len(self.mesh.dimension)
-        return 4*n_dim*reduce(operator.mul, self.mesh.dimension)
+    @MeshFilter.mesh.setter
+    def mesh(self, mesh):
+        cv.check_type('filter mesh', mesh, openmc.Mesh)
+        self._mesh = mesh
 
-    def get_bin_index(self, filter_bin):
-        # Split bin into mesh/surface parts
-        *mesh_tuple, surf = filter_bin
-
-        # Get index for mesh alone
-        mesh_index = super().get_bin_index(mesh_tuple)
-
-        # Combine surface and mesh index
-        n_dim = len(self.mesh.dimension)
-        for surf_index, name in enumerate(_CURRENT_NAMES):
-            if surf == name:
-                return 4*n_dim*mesh_index + surf_index
-        else:
-            raise ValueError("'{}' is not a valid mesh surface.".format(surf))
-
-    def get_bin(self, bin_index):
-        n_dim = len(self.mesh.dimension)
-        mesh_index, surf_index = divmod(bin_index, 4*n_dim)
-        mesh_bin = super().get_bin(mesh_index)
-        return mesh_bin + (_CURRENT_NAMES[surf_index],)
+        # Take the product of mesh indices and current names
+        n_dim = len(mesh.dimension)
+        self.bins = [mesh_tuple + (surf,) for mesh_tuple, surf in
+                     product(mesh.indices, _CURRENT_NAMES[:4*n_dim])]
 
     def get_pandas_dataframe(self, data_size, stride, **kwargs):
         """Builds a Pandas DataFrame for the Filter's bins.
@@ -920,42 +825,74 @@ class RealFilter(Filter):
 
     Parameters
     ----------
-    bins : Iterable of Real
-        A grid of bin values.
+    values : iterable of float
+        A list of values for which each successive pair constitutes a range of
+        values for a single bin
     filter_id : int
         Unique identifier for the filter
 
     Attributes
     ----------
-    bins : Iterable of Real
-        A grid of bin values.
+    values : numpy.ndarray
+        An array of values for which each successive pair constitutes a range of
+        values for a single bin
     id : int
         Unique identifier for the filter
+    bins : numpy.ndarray
+        An array of shape (N, 2) where each row is a pair of values indicating a
+        filter bin range
     num_bins : int
         The number of filter bins
 
     """
+    def __init__(self, values, filter_id=None):
+        self.values = np.asarray(values)
+        self.bins = np.vstack((self.values[:-1], self.values[1:])).T
+        self.id = filter_id
 
     def __gt__(self, other):
         if type(self) is type(other):
             # Compare largest/smallest bin edges in filters
             # This logic is used when merging tallies with real filters
-            return self.bins[0] >= other.bins[-1]
+            return self.values[0] >= other.values[-1]
         else:
             return super().__gt__(other)
 
-    @property
-    def num_bins(self):
-        return len(self.bins) - 1
+    def __repr__(self):
+        string = type(self).__name__ + '\n'
+        string += '{: <16}=\t{}\n'.format('\tValues', self.values)
+        string += '{: <16}=\t{}\n'.format('\tID', self.id)
+        return string
+
+    @Filter.bins.setter
+    def bins(self, bins):
+        Filter.bins.__set__(self, np.asarray(bins))
+
+    def check_bins(self, bins):
+        for v0, v1 in bins:
+            # Values should be real
+            cv.check_type('filter value', v0, Real)
+            cv.check_type('filter value', v1, Real)
+
+            # Make sure that each tuple has values that are increasing
+            if v1 < v0:
+                raise ValueError('Values {} and {} appear to be out of order'
+                                 .format(v0, v1))
+
+        for pair0, pair1 in zip(bins[:-1], bins[1:]):
+            # Successive pairs should be ordered
+            if pair1[1] < pair0[1]:
+                raise ValueError('Values {} and {} appear to be out of order'
+                                 .format(pair1[1], pair0[1]))
 
     def can_merge(self, other):
         if type(self) is not type(other):
             return False
 
-        if self.bins[0] == other.bins[-1]:
+        if self.bins[0, 0] == other.bins[-1][1]:
             # This low edge coincides with other's high edge
             return True
-        elif self.bins[-1] == other.bins[0]:
+        elif self.bins[-1][1] == other.bins[0, 0]:
             # This high edge coincides with other's low edge
             return True
         else:
@@ -968,11 +905,11 @@ class RealFilter(Filter):
             raise ValueError(msg)
 
         # Merge unique filter bins
-        merged_bins = np.concatenate((self.bins, other.bins))
-        merged_bins = np.unique(merged_bins)
+        merged_values = np.concatenate((self.values, other.values))
+        merged_values = np.unique(merged_values)
 
         # Create a new filter with these bins and a new auto-generated ID
-        return type(self)(sorted(merged_bins))
+        return type(self)(sorted(merged_values))
 
     def is_subset(self, other):
         """Determine if another filter is a subset of this filter.
@@ -994,80 +931,19 @@ class RealFilter(Filter):
 
         if type(self) is not type(other):
             return False
-        elif len(self.bins) != len(other.bins):
+        elif self.num_bins != other.num_bins:
             return False
         else:
-            return np.allclose(self.bins, other.bins)
+            return np.allclose(self.values, other.values)
 
     def get_bin_index(self, filter_bin):
-        i = np.where(self.bins == filter_bin[1])[0]
+        i = np.where(self.bins[:, 1] == filter_bin[1])[0]
         if len(i) == 0:
             msg = 'Unable to get the bin index for Filter since "{0}" ' \
                   'is not one of the bins'.format(filter_bin)
             raise ValueError(msg)
         else:
-            return i[0] - 1
-
-    def get_bin(self, bin_index):
-        cv.check_type('bin_index', bin_index, Integral)
-        cv.check_greater_than('bin_index', bin_index, 0, equality=True)
-        cv.check_less_than('bin_index', bin_index, self.num_bins)
-
-        # Construct 2-tuple of lower, upper bins for real-valued filters
-        return (self.bins[bin_index], self.bins[bin_index + 1])
-
-
-class EnergyFilter(RealFilter):
-    """Bins tally events based on incident particle energy.
-
-    Parameters
-    ----------
-    bins : Iterable of Real
-        A grid of energy values in eV.
-    filter_id : int
-        Unique identifier for the filter
-
-    Attributes
-    ----------
-    bins : Iterable of Real
-        A grid of energy values in eV.
-    id : int
-        Unique identifier for the filter
-    num_bins : int
-        The number of filter bins
-
-    """
-
-    def get_bin_index(self, filter_bin):
-        # Use lower energy bound to find index for RealFilters
-        deltas = np.abs(self.bins - filter_bin[1]) / filter_bin[1]
-        min_delta = np.min(deltas)
-        if min_delta < 1E-3:
-            return deltas.argmin() - 1
-        else:
-            msg = 'Unable to get the bin index for Filter since "{0}" ' \
-                  'is not one of the bins'.format(filter_bin)
-            raise ValueError(msg)
-
-    def check_bins(self, bins):
-        for edge in bins:
-            if not isinstance(edge, Real):
-                msg = 'Unable to add bin edge "{0}" to a "{1}" ' \
-                      'since it is a non-integer or floating point ' \
-                      'value'.format(edge, type(self))
-                raise ValueError(msg)
-            elif edge < 0.:
-                msg = 'Unable to add bin edge "{0}" to a "{1}" ' \
-                      'since it is a negative value'.format(edge, type(self))
-                raise ValueError(msg)
-
-        # Check that bin edges are monotonically increasing
-        for index in range(1, len(bins)):
-            if bins[index] < bins[index-1]:
-                msg = 'Unable to add bin edges "{0}" to a "{1}" Filter ' \
-                      'since they are not monotonically ' \
-                      'increasing'.format(bins, type(self))
-                raise ValueError(msg)
+            return i[0]
 
     def get_pandas_dataframe(self, data_size, stride, **kwargs):
         """Builds a Pandas DataFrame for the Filter's bins.
@@ -1102,17 +978,80 @@ class EnergyFilter(RealFilter):
 
         # Extract the lower and upper energy bounds, then repeat and tile
         # them as necessary to account for other filters.
-        lo_bins = np.repeat(self.bins[:-1], stride)
-        hi_bins = np.repeat(self.bins[1:], stride)
+        lo_bins = np.repeat(self.bins[:, 0], stride)
+        hi_bins = np.repeat(self.bins[:, 1], stride)
         tile_factor = data_size // len(lo_bins)
         lo_bins = np.tile(lo_bins, tile_factor)
         hi_bins = np.tile(hi_bins, tile_factor)
 
         # Add the new energy columns to the DataFrame.
-        df.loc[:, self.short_name.lower() + ' low [eV]'] = lo_bins
-        df.loc[:, self.short_name.lower() + ' high [eV]'] = hi_bins
+        if hasattr(self, 'units'):
+            units = ' [{}]'.format(self.units)
+        else:
+            units = ''
+
+        df.loc[:, self.short_name.lower() + ' low' + units] = lo_bins
+        df.loc[:, self.short_name.lower() + ' high' + units] = hi_bins
 
         return df
+
+    def to_xml_element(self):
+        """Return XML Element representing the Filter.
+
+        Returns
+        -------
+        element : xml.etree.ElementTree.Element
+            XML element containing filter data
+
+        """
+        element = super().to_xml_element()
+        element[0].text = ' '.join(str(x) for x in self.values)
+        return element
+
+
+class EnergyFilter(RealFilter):
+    """Bins tally events based on incident particle energy.
+
+    Parameters
+    ----------
+    values : Iterable of Real
+        A list of values for which each successive pair constitutes a range of
+        energies in [eV] for a single bin
+    filter_id : int
+        Unique identifier for the filter
+
+    Attributes
+    ----------
+    values : numpy.ndarray
+        An array of values for which each successive pair constitutes a range of
+        energies in [eV] for a single bin
+    id : int
+        Unique identifier for the filter
+    bins : numpy.ndarray
+        An array of shape (N, 2) where each row is a pair of energies in [eV]
+        for a single filter bin
+    num_bins : int
+        The number of filter bins
+
+    """
+    units = 'eV'
+
+    def get_bin_index(self, filter_bin):
+        # Use lower energy bound to find index for RealFilters
+        deltas = np.abs(self.bins[:, 1] - filter_bin[1]) / filter_bin[1]
+        min_delta = np.min(deltas)
+        if min_delta < 1E-3:
+            return deltas.argmin()
+        else:
+            msg = 'Unable to get the bin index for Filter since "{0}" ' \
+                  'is not one of the bins'.format(filter_bin)
+            raise ValueError(msg)
+
+    def check_bins(self, bins):
+        super().check_bins(bins)
+        for v0, v1 in bins:
+            cv.check_greater_than('filter value', v0, 0., equality=True)
+            cv.check_greater_than('filter value', v1, 0., equality=True)
 
 
 class EnergyoutFilter(EnergyFilter):
@@ -1120,17 +1059,22 @@ class EnergyoutFilter(EnergyFilter):
 
     Parameters
     ----------
-    bins : Iterable of Real
-        A grid of energy values in eV.
+    values : Iterable of Real
+        A list of values for which each successive pair constitutes a range of
+        energies in [eV] for a single bin
     filter_id : int
         Unique identifier for the filter
 
     Attributes
     ----------
-    bins : Iterable of Real
-        A grid of energy values in eV.
+    values : numpy.ndarray
+        An array of values for which each successive pair constitutes a range of
+        energies in [eV] for a single bin
     id : int
         Unique identifier for the filter
+    bins : numpy.ndarray
+        An array of shape (N, 2) where each row is a pair of energies in [eV]
+        for a single filter bin
     num_bins : int
         The number of filter bins
 
@@ -1412,98 +1356,41 @@ class MuFilter(RealFilter):
 
     Parameters
     ----------
-    bins : Iterable of Real or Integral
-        A grid of scattering angles which events will binned into.  Values
-        represent the cosine of the scattering angle.  If an Iterable is given,
-        the values will be used explicitly as grid points.  If a single Integral
-        is given, the range [-1, 1] will be divided up equally into that number
-        of bins.
+    values : int or Iterable of Real
+        A grid of scattering angles which events will binned into. Values
+        represent the cosine of the scattering angle. If an iterable is given,
+        the values will be used explicitly as grid points. If a single int is
+        given, the range [-1, 1] will be divided up equally into that number of
+        bins.
     filter_id : int
         Unique identifier for the filter
 
     Attributes
     ----------
-    bins : Integral
-        A grid of scattering angles which events will binned into.  Values
-        represent the cosine of the scattering angle.  If an Iterable is given,
-        the values will be used explicitly as grid points.  If a single Integral
-        is given, the range [-1, 1] will be divided up equally into that number
-        of bins.
+    values : numpy.ndarray
+        An array of values for which each successive pair constitutes a range of
+        scattering angle cosines for a single bin
     id : int
         Unique identifier for the filter
+    bins : numpy.ndarray
+        An array of shape (N, 2) where each row is a pair of scattering angle
+        cosines for a single filter bin
     num_bins : Integral
         The number of filter bins
 
     """
+    def __init__(self, values, filter_id=None):
+        if isinstance(values, Integral):
+            values = np.linspace(-1., 1., values + 1)
+        super().__init__(values, filter_id)
 
     def check_bins(self, bins):
-        for edge in bins:
-            if not isinstance(edge, Real):
-                msg = 'Unable to add bin edge "{0}" to a "{1}" ' \
-                      'since it is a non-integer or floating point ' \
-                      'value'.format(edge, type(self))
-                raise ValueError(msg)
-            elif edge < -1.:
-                msg = 'Unable to add bin edge "{0}" to a "{1}" ' \
-                      'since it is less than -1'.format(edge, type(self))
-                raise ValueError(msg)
-            elif edge > 1.:
-                msg = 'Unable to add bin edge "{0}" to a "{1}" ' \
-                      'since it is greater than 1'.format(edge, type(self))
-                raise ValueError(msg)
-
-        # Check that bin edges are monotonically increasing
-        for index in range(1, len(bins)):
-            if bins[index] < bins[index-1]:
-                msg = 'Unable to add bin edges "{0}" to a "{1}" Filter ' \
-                      'since they are not monotonically ' \
-                      'increasing'.format(bins, type(self))
-                raise ValueError(msg)
-
-    def get_pandas_dataframe(self, data_size, stride, **kwargs):
-        """Builds a Pandas DataFrame for the Filter's bins.
-
-        This method constructs a Pandas DataFrame object for the filter with
-        columns annotated by filter bin information. This is a helper method
-        for :meth:`Tally.get_pandas_dataframe`.
-
-        Parameters
-        ----------
-        data_size : int
-            The total number of bins in the tally corresponding to this filter
-        stride : int
-            Stride in memory for the filter
-
-        Returns
-        -------
-        pandas.DataFrame
-            A Pandas DataFrame with one column of the lower energy bound and one
-            column of upper energy bound for each filter bin.  The number of
-            rows in the DataFrame is the same as the total number of bins in the
-            corresponding tally, with the filter bin appropriately tiled to map
-            to the corresponding tally bins.
-
-        See also
-        --------
-        Tally.get_pandas_dataframe(), CrossFilter.get_pandas_dataframe()
-
-        """
-        # Initialize Pandas DataFrame
-        df = pd.DataFrame()
-
-        # Extract the lower and upper energy bounds, then repeat and tile
-        # them as necessary to account for other filters.
-        lo_bins = np.repeat(self.bins[:-1], stride)
-        hi_bins = np.repeat(self.bins[1:], stride)
-        tile_factor = data_size // len(lo_bins)
-        lo_bins = np.tile(lo_bins, tile_factor)
-        hi_bins = np.tile(hi_bins, tile_factor)
-
-        # Add the new energy columns to the DataFrame.
-        df.loc[:, self.short_name.lower() + ' low'] = lo_bins
-        df.loc[:, self.short_name.lower() + ' high'] = hi_bins
-
-        return df
+        super().check_bins(bins)
+        for x in np.ravel(bins):
+            if not np.isclose(x, -1.):
+                cv.check_greater_than('filter value', x, -1., equality=True)
+            if not np.isclose(x, 1.):
+                cv.check_less_than('filter value', x, 1., equality=True)
 
 
 class PolarFilter(RealFilter):
@@ -1511,98 +1398,44 @@ class PolarFilter(RealFilter):
 
     Parameters
     ----------
-    bins : Iterable of Real or Integral
-        A grid of polar angles which events will binned into.  Values represent
-        an angle in radians relative to the z-axis.  If an Iterable is given,
-        the values will be used explicitly as grid points.  If a single Integral
-        is given, the range [0, pi] will be divided up equally into that number
-        of bins.
+    values : int or Iterable of Real
+        A grid of polar angles which events will binned into. Values represent
+        an angle in radians relative to the z-axis. If an iterable is given, the
+        values will be used explicitly as grid points. If a single int is given,
+        the range [0, pi] will be divided up equally into that number of bins.
     filter_id : int
         Unique identifier for the filter
 
     Attributes
     ----------
-    bins : Iterable of Real or Integral
-        A grid of polar angles which events will binned into.  Values represent
-        an angle in radians relative to the z-axis.  If an Iterable is given,
-        the values will be used explicitly as grid points.  If a single Integral
-        is given, the range [0, pi] will be divided up equally into that number
-        of bins.
+    values : numpy.ndarray
+        An array of values for which each successive pair constitutes a range of
+        polar angles in [rad] for a single bin
+    id : int
+        Unique identifier for the filter
+    bins : numpy.ndarray
+        An array of shape (N, 2) where each row is a pair of polar angles for a
+        single filter bin
     id : int
         Unique identifier for the filter
     num_bins : Integral
         The number of filter bins
 
     """
+    units = 'rad'
+
+    def __init__(self, values, filter_id=None):
+        if isinstance(values, Integral):
+            values = np.linspace(0., np.pi, values + 1)
+        super().__init__(values, filter_id)
 
     def check_bins(self, bins):
-        for edge in bins:
-            if not isinstance(edge, Real):
-                msg = 'Unable to add bin edge "{0}" to a "{1}" ' \
-                      'since it is a non-integer or floating point ' \
-                      'value'.format(edge, type(self))
-                raise ValueError(msg)
-            elif edge < 0.:
-                msg = 'Unable to add bin edge "{0}" to a "{1}" ' \
-                      'since it is less than 0'.format(edge, type(self))
-                raise ValueError(msg)
-            elif not np.isclose(edge, np.pi) and edge > np.pi:
-                msg = 'Unable to add bin edge "{0}" to a "{1}" ' \
-                      'since it is greater than pi'.format(edge, type(self))
-                raise ValueError(msg)
-
-        # Check that bin edges are monotonically increasing
-        for index in range(1, len(bins)):
-            if bins[index] < bins[index-1]:
-                msg = 'Unable to add bin edges "{0}" to a "{1}" Filter ' \
-                      'since they are not monotonically ' \
-                      'increasing'.format(bins, type(self))
-                raise ValueError(msg)
-
-    def get_pandas_dataframe(self, data_size, stride, **kwargs):
-        """Builds a Pandas DataFrame for the Filter's bins.
-
-        This method constructs a Pandas DataFrame object for the filter with
-        columns annotated by filter bin information. This is a helper method for
-        :meth:`Tally.get_pandas_dataframe`.
-
-        Parameters
-        ----------
-        data_size : int
-            The total number of bins in the tally corresponding to this filter
-        stride : int
-            Stride in memory for the filter
-
-        Returns
-        -------
-        pandas.DataFrame
-            A Pandas DataFrame with a column corresponding to the lower polar
-            angle bound for each of the filter's bins.  The number of rows in
-            the DataFrame is the same as the total number of bins in the
-            corresponding tally, with the filter bin appropriately tiled to map
-            to the corresponding tally bins.
-
-        See also
-        --------
-        Tally.get_pandas_dataframe(), CrossFilter.get_pandas_dataframe()
-
-        """
-        # Initialize Pandas DataFrame
-        df = pd.DataFrame()
-
-        # Extract the lower and upper angle bounds, then repeat and tile
-        # them as necessary to account for other filters.
-        lo_bins = np.repeat(self.bins[:-1], stride)
-        hi_bins = np.repeat(self.bins[1:], stride)
-        tile_factor = data_size // len(lo_bins)
-        lo_bins = np.tile(lo_bins, tile_factor)
-        hi_bins = np.tile(hi_bins, tile_factor)
-
-        # Add the new angle columns to the DataFrame.
-        df.loc[:, 'polar low'] = lo_bins
-        df.loc[:, 'polar high'] = hi_bins
-
-        return df
+        super().check_bins(bins)
+        for x in np.ravel(bins):
+            if not np.isclose(x, 0.):
+                cv.check_greater_than('filter value', x, 0., equality=True)
+            if not np.isclose(x, np.pi):
+                cv.check_less_than('filter value', x, np.pi, equality=True)
 
 
 class AzimuthalFilter(RealFilter):
@@ -1610,98 +1443,43 @@ class AzimuthalFilter(RealFilter):
 
     Parameters
     ----------
-    bins : Iterable of Real or Integral
-        A grid of azimuthal angles which events will binned into.  Values
+    values : int or Iterable of Real
+        A grid of azimuthal angles which events will binned into. Values
         represent an angle in radians relative to the x-axis and perpendicular
-        to the z-axis.  If an Iterable is given, the values will be used
-        explicitly as grid points.  If a single Integral is given, the range
+        to the z-axis. If an iterable is given, the values will be used
+        explicitly as grid points. If a single int is given, the range
         [-pi, pi) will be divided up equally into that number of bins.
     filter_id : int
         Unique identifier for the filter
 
     Attributes
     ----------
-    bins : Iterable of Real or Integral
-        A grid of azimuthal angles which events will binned into.  Values
-        represent an angle in radians relative to the x-axis and perpendicular
-        to the z-axis.  If an Iterable is given, the values will be used
-        explicitly as grid points.  If a single Integral is given, the range
-        [-pi, pi) will be divided up equally into that number of bins.
+    values : numpy.ndarray
+        An array of values for which each successive pair constitutes a range of
+        azimuthal angles in [rad] for a single bin
     id : int
         Unique identifier for the filter
+    bins : numpy.ndarray
+        An array of shape (N, 2) where each row is a pair of azimuthal angles
+        for a single filter bin
     num_bins : Integral
         The number of filter bins
 
     """
+    units = 'rad'
+
+    def __init__(self, values, filter_id=None):
+        if isinstance(values, Integral):
+            values = np.linspace(-np.pi, np.pi, values + 1)
+        super().__init__(values, filter_id)
 
     def check_bins(self, bins):
-        for edge in bins:
-            if not isinstance(edge, Real):
-                msg = 'Unable to add bin edge "{0}" to a "{1}" ' \
-                      'since it is a non-integer or floating point ' \
-                      'value'.format(edge, type(self))
-                raise ValueError(msg)
-            elif not np.isclose(edge, -np.pi) and edge < -np.pi:
-                msg = 'Unable to add bin edge "{0}" to a "{1}" ' \
-                      'since it is less than -pi'.format(edge, type(self))
-                raise ValueError(msg)
-            elif not np.isclose(edge, np.pi) and edge > np.pi:
-                msg = 'Unable to add bin edge "{0}" to a "{1}" ' \
-                      'since it is greater than pi'.format(edge, type(self))
-                raise ValueError(msg)
-
-        # Check that bin edges are monotonically increasing
-        for index in range(1, len(bins)):
-            if bins[index] < bins[index-1]:
-                msg = 'Unable to add bin edges "{0}" to a "{1}" Filter ' \
-                      'since they are not monotonically ' \
-                      'increasing'.format(bins, type(self))
-                raise ValueError(msg)
-
-    def get_pandas_dataframe(self, data_size, stride, paths=True):
-        """Builds a Pandas DataFrame for the Filter's bins.
-
-        This method constructs a Pandas DataFrame object for the filter with
-        columns annotated by filter bin information. This is a helper method for
-        :meth:`Tally.get_pandas_dataframe`.
-
-        Parameters
-        ----------
-        data_size : int
-            The total number of bins in the tally corresponding to this filter
-        stride : int
-            Stride in memory for the filter
-
-        Returns
-        -------
-        pandas.DataFrame
-            A Pandas DataFrame with a column corresponding to the lower
-            azimuthal angle bound for each of the filter's bins.  The number of
-            rows in the DataFrame is the same as the total number of bins in the
-            corresponding tally, with the filter bin appropriately tiled to map
-            to the corresponding tally bins.
-
-        See also
-        --------
-        Tally.get_pandas_dataframe(), CrossFilter.get_pandas_dataframe()
-
-        """
-        # Initialize Pandas DataFrame
-        df = pd.DataFrame()
-
-        # Extract the lower and upper angle bounds, then repeat and tile
-        # them as necessary to account for other filters.
-        lo_bins = np.repeat(self.bins[:-1], stride)
-        hi_bins = np.repeat(self.bins[1:], stride)
-        tile_factor = data_size // len(lo_bins)
-        lo_bins = np.tile(lo_bins, tile_factor)
-        hi_bins = np.tile(hi_bins, tile_factor)
-
-        # Add the new angle columns to the DataFrame.
-        df.loc[:, 'azimuthal low'] = lo_bins
-        df.loc[:, 'azimuthal high'] = hi_bins
-
-        return df
+        super().check_bins(bins)
+        for x in np.ravel(bins):
+            if not np.isclose(x, -np.pi):
+                cv.check_greater_than('filter value', x, -np.pi, equality=True)
+            if not np.isclose(x, np.pi):
+                cv.check_less_than('filter value', x, np.pi, equality=True)
 
 
 class DelayedGroupFilter(Filter):
@@ -1709,7 +1487,7 @@ class DelayedGroupFilter(Filter):
 
     Parameters
     ----------
-    bins : Integral or Iterable of Integral
+    bins : iterable of int
         The delayed neutron precursor groups.  For example, ENDF/B-VII.1 uses
         6 precursor groups so a tally with all groups will have bins =
         [1, 2, 3, 4, 5, 6].
@@ -1718,7 +1496,7 @@ class DelayedGroupFilter(Filter):
 
     Attributes
     ----------
-    bins : Integral or Iterable of Integral
+    bins : iterable of int
         The delayed neutron precursor groups.  For example, ENDF/B-VII.1 uses
         6 precursor groups so a tally with all groups will have bins =
         [1, 2, 3, 4, 5, 6].
@@ -1728,17 +1506,10 @@ class DelayedGroupFilter(Filter):
         The number of filter bins
 
     """
-    @Filter.bins.setter
-    def bins(self, bins):
-        # Format the bins as a 1D numpy array.
-        bins = np.atleast_1d(bins)
-
+    def check_bins(self, bins):
         # Check the bin values.
-        cv.check_iterable_type('filter bins', bins, Integral)
-        for edge in bins:
-            cv.check_greater_than('filter bin', edge, 0, equality=True)
-
-        self._bins = bins
+        for g in bins:
+            cv.check_greater_than('delayed group', g, 0)
 
 
 class EnergyFunctionFilter(Filter):
@@ -1751,18 +1522,18 @@ class EnergyFunctionFilter(Filter):
     Parameters
     ----------
     energy : Iterable of Real
-        A grid of energy values in eV.
+        A grid of energy values in [eV]
     y : iterable of Real
-        A grid of interpolant values in eV.
+        A grid of interpolant values in [eV]
     filter_id : int
         Unique identifier for the filter
 
     Attributes
     ----------
     energy : Iterable of Real
-        A grid of energy values in eV.
+        A grid of energy values in [eV]
     y : iterable of Real
-        A grid of interpolant values in eV.
+        A grid of interpolant values in [eV]
     id : int
         Unique identifier for the filter
     num_bins : Integral
@@ -1903,6 +1674,14 @@ class EnergyFunctionFilter(Filter):
         raise RuntimeError('EnergyFunctionFilters have no bins.')
 
     def to_xml_element(self):
+        """Return XML Element representing the Filter.
+
+        Returns
+        -------
+        element : xml.etree.ElementTree.Element
+            XML element containing filter data
+
+        """
         element = ET.Element('filter')
         element.set('id', str(self.id))
         element.set('type', self.short_name.lower())
@@ -1924,10 +1703,6 @@ class EnergyFunctionFilter(Filter):
     def get_bin_index(self, filter_bin):
         # This filter only has one bin.  Always return 0.
         return 0
-
-    def get_bin(self, bin_index):
-        """This function is invalid for EnergyFunctionFilters."""
-        raise RuntimeError('EnergyFunctionFilters have no get_bin() method')
 
     def get_pandas_dataframe(self, data_size, stride, **kwargs):
         """Builds a Pandas DataFrame for the Filter's bins.

@@ -440,6 +440,7 @@ set(LIBOPENMC_CXX_SRC
   src/hdf5_interface.h
   src/random_lcg.cpp
   src/random_lcg.h
+  src/simulation.cpp
   src/surface.cpp
   src/surface.h
   src/xml_interface.h
@@ -447,9 +448,7 @@ set(LIBOPENMC_CXX_SRC
   src/pugixml/pugixml.hpp)
 add_library(libopenmc SHARED ${LIBOPENMC_FORTRAN_SRC} ${LIBOPENMC_CXX_SRC})
 set_target_properties(libopenmc PROPERTIES OUTPUT_NAME openmc)
-
 add_executable(${program} src/main.cpp)
-target_include_directories(${program} PUBLIC include)
 
 #===============================================================================
 # Add compiler/linker flags
@@ -458,7 +457,7 @@ target_include_directories(${program} PUBLIC include)
 set_property(TARGET ${program} libopenmc pugixml_fortran
   PROPERTY LINKER_LANGUAGE Fortran)
 
-target_include_directories(libopenmc PUBLIC ${HDF5_INCLUDE_DIRS})
+target_include_directories(libopenmc PUBLIC include ${HDF5_INCLUDE_DIRS})
 
 # The executable and the faddeeva package use only one language.  They can be
 # set via target_compile_options which accepts a list.

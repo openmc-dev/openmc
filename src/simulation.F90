@@ -44,7 +44,6 @@ module simulation
   implicit none
   private
   public :: openmc_next_batch
-  public :: openmc_run
   public :: openmc_simulation_init
   public :: openmc_simulation_finalize
 
@@ -53,25 +52,6 @@ module simulation
   integer(C_INT), parameter :: STATUS_EXIT_ON_TRIGGER = 2
 
 contains
-
-!===============================================================================
-! OPENMC_RUN encompasses all the main logic where iterations are performed
-! over the batches, generations, and histories in a fixed source or k-eigenvalue
-! calculation.
-!===============================================================================
-
-  function openmc_run() result(err) bind(C)
-    integer(C_INT) :: err
-    integer(C_INT) :: status
-
-    call openmc_simulation_init()
-    do
-      err = openmc_next_batch(status)
-      if (status /= 0 .or. err < 0) exit
-    end do
-    call openmc_simulation_finalize()
-
-  end function openmc_run
 
 !===============================================================================
 ! OPENMC_NEXT_BATCH

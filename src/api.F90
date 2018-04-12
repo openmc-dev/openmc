@@ -80,7 +80,6 @@ module openmc_api
   public :: openmc_nuclide_name
   public :: openmc_plot_geometry
   public :: openmc_reset
-  public :: openmc_run
   public :: openmc_set_seed
   public :: openmc_simulation_finalize
   public :: openmc_simulation_init

@@ -511,13 +511,13 @@ contains
           ! Create a new datatype that consists of all values for a given filter
           ! bin and then use that to broadcast. This is done to minimize the
           ! chance of the 'count' argument of MPI_BCAST exceeding 2**31
-          n = size(results, 3)
-          count_per_filter = size(results, 1) * size(results, 2)
-          call MPI_TYPE_CONTIGUOUS(count_per_filter, MPI_DOUBLE, &
-               result_block, mpi_err)
-          call MPI_TYPE_COMMIT(result_block, mpi_err)
-          call MPI_BCAST(results, n, result_block, 0, mpi_intracomm, mpi_err)
-          call MPI_TYPE_FREE(result_block, mpi_err)
+          !n = size(results, 3)
+          !count_per_filter = size(results, 1) * size(results, 2)
+          !call MPI_TYPE_CONTIGUOUS(count_per_filter, MPI_DOUBLE, &
+          !     result_block, mpi_err)
+          !call MPI_TYPE_COMMIT(result_block, mpi_err)
+          !call MPI_BCAST(results, n, result_block, 0, mpi_intracomm, mpi_err)
+          !call MPI_TYPE_FREE(result_block, mpi_err)
         end associate
       end do
     end if

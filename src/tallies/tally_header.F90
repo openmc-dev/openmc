@@ -354,6 +354,20 @@ contains
         j = FILTER_AZIMUTHAL
       type is (EnergyFunctionFilter)
         j = FILTER_ENERGYFUNCTION
+      type is (LegendreFilter)
+        j = FILTER_LEGENDRE
+        this % estimator = ESTIMATOR_ANALOG
+      type is (SphericalHarmonicsFilter)
+        j = FILTER_SPH_HARMONICS
+        if (filt % cosine == COSINE_SCATTER) then
+          this % estimator = ESTIMATOR_ANALOG
+        end if
+      type is (SpatialLegendreFilter)
+        j = FILTER_SPTL_LEGENDRE
+        this % estimator = ESTIMATOR_COLLISION
+      type is (ZernikeFilter)
+        j = FILTER_ZERNIKE
+        this % estimator = ESTIMATOR_COLLISION
       end select
       this % find_filter(j) = i
     end do

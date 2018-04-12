@@ -15,6 +15,7 @@ module tally_filter_header
   implicit none
   private
   public :: free_memory_tally_filter
+  public :: verify_filter
   public :: openmc_extend_filters
   public :: openmc_filter_get_id
   public :: openmc_filter_set_id
@@ -147,6 +148,27 @@ contains
     call filter_dict % clear()
     largest_filter_id = 0
   end subroutine free_memory_tally_filter
+
+!===============================================================================
+! VERIFY_FILTER makes sure that given a filter index, the size of the filters
+! array is sufficient and a filter object has already been allocated.
+!===============================================================================
+
+  function verify_filter(index) result(err)
+    integer(C_INT32_T), intent(in) :: index
+    integer(C_INT) :: err
+
+    err = 0
+    if (index >= 1 .and. index <= n_filters) then
+      if (.not. allocated(filters(index) % obj)) then
+        err = E_ALLOCATE
+        call set_errmsg("Filter type has not been set yet.")
+      end if
+    else
+      err = E_OUT_OF_BOUNDS
+      call set_errmsg("Index in filters array out of bounds.")
+    end if
+  end function verify_filter
 
 !===============================================================================
 !                               C API FUNCTIONS

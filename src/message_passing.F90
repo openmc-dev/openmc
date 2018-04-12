@@ -1,5 +1,7 @@
 module message_passing
 
+  use, intrinsic :: ISO_C_BINDING
+
 #ifdef OPENMC_MPI
 #ifdef OPENMC_MPIF08
   use mpi_f08
@@ -14,7 +16,7 @@ module message_passing
 
   integer :: n_procs     = 1       ! number of processes
   integer :: rank        = 0       ! rank of process
-  logical :: master      = .true.  ! master process?
+  logical(C_BOOL), bind(C, name='openmc_master') :: master  = .true.  ! master process?
   logical :: mpi_enabled = .false. ! is MPI in use and initialized?
 #ifdef OPENMC_MPIF08
   type(MPI_Datatype) :: MPI_BANK   ! MPI datatype for fission bank

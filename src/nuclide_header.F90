@@ -277,7 +277,7 @@ contains
     integer,          intent(inout) :: method
     real(8),          intent(in)    :: tolerance
     real(8),          intent(in)    :: minmax(2)  ! range of temperatures
-    logical,          intent(in)    :: master     ! if this is the master proc
+    logical(C_BOOL),  intent(in)    :: master     ! if this is the master proc
     integer,          intent(in)    :: i_nuclide  ! Nuclide index in nuclides
 
     integer :: i

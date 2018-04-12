@@ -447,7 +447,9 @@ set(LIBOPENMC_CXX_SRC
   src/pugixml/pugixml.hpp)
 add_library(libopenmc SHARED ${LIBOPENMC_FORTRAN_SRC} ${LIBOPENMC_CXX_SRC})
 set_target_properties(libopenmc PROPERTIES OUTPUT_NAME openmc)
-add_executable(${program} src/main.F90)
+
+add_executable(${program} src/main.cpp)
+target_include_directories(${program} PUBLIC include)
 
 #===============================================================================
 # Add compiler/linker flags
@@ -460,7 +462,7 @@ target_include_directories(libopenmc PUBLIC ${HDF5_INCLUDE_DIRS})
 
 # The executable and the faddeeva package use only one language.  They can be
 # set via target_compile_options which accepts a list.
-target_compile_options(${program} PUBLIC ${f90flags})
+target_compile_options(${program} PUBLIC ${cxxflags})
 target_compile_options(faddeeva PRIVATE ${cflags})
 
 # The libopenmc library has both F90 and C++ so the compile flags must be set

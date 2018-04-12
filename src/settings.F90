@@ -75,14 +75,14 @@ module settings
   real(8) :: weight_survive = ONE
 
   ! Mode to run in (fixed source, eigenvalue, plotting, etc)
-  integer(C_INT), bind(C) :: run_mode = NONE
+  integer(C_INT), bind(C, name='openmc_run_mode') :: run_mode = NONE
 
   ! Restart run
   logical :: restart_run = .false.
 
   ! The verbosity controls how much information will be printed to the screen
   ! and in logs
-  integer(C_INT), bind(C) :: verbosity = 7
+  integer(C_INT), bind(C, name='openmc_verbosity') :: verbosity = 7
 
   logical :: check_overlaps = .false.
 

@@ -514,7 +514,7 @@ contains
           !n = size(results, 3)
           !count_per_filter = size(results, 1) * size(results, 2)
           !call MPI_TYPE_CONTIGUOUS(count_per_filter, MPI_DOUBLE, &
-          !     result_block, mpi_err)
+          !    result_block, mpi_err)
           !call MPI_TYPE_COMMIT(result_block, mpi_err)
           !call MPI_BCAST(results, n, result_block, 0, mpi_intracomm, mpi_err)
           !call MPI_TYPE_FREE(result_block, mpi_err)

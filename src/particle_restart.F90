@@ -20,19 +20,22 @@ module particle_restart
 
   implicit none
   private
-  public ::  run_particle_restart
+  public ::  openmc_particle_restart
 
 contains
 
 !===============================================================================
-! RUN_PARTICLE_RESTART is the main routine that runs the particle restart
+! OPENMC_PARTICLE_RESTART is the main routine that runs the particle restart
 !===============================================================================
 
-  subroutine run_particle_restart()
+  function openmc_particle_restart() result(err) bind(C)
+    integer(C_INT) :: err
 
     integer(8) :: particle_seed
     integer :: previous_run_mode
     type(Particle) :: p
+
+    err = 0
 
     ! Set verbosity high
     verbosity = 10
@@ -66,7 +69,7 @@ contains
 
     deallocate(micro_xs)
 
-  end subroutine run_particle_restart
+  end function openmc_particle_restart
 
 !===============================================================================
 ! READ_PARTICLE_RESTART reads the particle restart file

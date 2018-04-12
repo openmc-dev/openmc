@@ -70,6 +70,7 @@ extern "C" {
   int openmc_meshsurface_filter_set_mesh(int32_t index, int32_t index_mesh);
   int openmc_next_batch(int* status);
   int openmc_nuclide_name(int index, char** name);
+  int openmc_particle_restart();
   void openmc_plot_geometry();
   void openmc_reset();
   int openmc_run();
@@ -122,8 +123,9 @@ extern "C" {
 
   // Global variables
   extern char openmc_err_msg[256];
-  extern double keff;
-  extern double keff_std;
+  extern double openmc_keff;
+  extern double openmc_keff_std;
+  extern bool openmc_master;
   extern int32_t n_batches;
   extern int32_t n_cells;
   extern int32_t n_filters;
@@ -139,9 +141,16 @@ extern "C" {
   extern int32_t n_surfaces;
   extern int32_t n_tallies;
   extern int32_t n_universes;
-  extern int run_mode;
-  extern bool simulation_initialized;
-  extern int verbosity;
+  extern int openmc_run_mode;
+  extern bool openmc_simulation_initialized;
+  extern int openmc_verbosity;
+
+  // Run modes
+  constexpr int RUN_MODE_FIXEDSOURCE {1};
+  constexpr int RUN_MODE_EIGENVALUE {2};
+  constexpr int RUN_MODE_PLOTTING {3};
+  constexpr int RUN_MODE_PARTICLE {4};
+  constexpr int RUN_MODE_VOLUME {5};
 
 #ifdef __cplusplus
 }

@@ -247,11 +247,12 @@ Functions
    :return: Return status (negative if an error occurs)
    :rtype: int
 
-.. c:function:: int openmc_get_nuclide_index(char name[], int* index)
+.. c:function:: int openmc_get_nuclide_index(const char name[], int* index)
 
    Get the index in the nuclides array for a nuclide with a given name
 
-   :param char[] name: Name of the nuclide
+   :param name: Name of the nuclide
+   :type name: const char[]
    :param int* index: Index in the nuclides array
    :return: Return status (negative if an error occurs)
    :rtype: int

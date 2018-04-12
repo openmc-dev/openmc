@@ -196,7 +196,7 @@ def check_less_than(name, value, maximum, equality=False):
     maximum : object
         Maximum value to check against
     equality : bool, optional
-        Whether equality is allowed. Defaluts to False.
+        Whether equality is allowed. Defaults to False.
 
     """
 
@@ -223,7 +223,7 @@ def check_greater_than(name, value, minimum, equality=False):
     minimum : object
         Minimum value to check against
     equality : bool, optional
-        Whether equality is allowed. Defaluts to False.
+        Whether equality is allowed. Defaults to False.
 
     """
 

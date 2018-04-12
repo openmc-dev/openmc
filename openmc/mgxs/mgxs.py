@@ -1164,12 +1164,14 @@ class MGXS(metaclass=ABCMeta):
                 if not isinstance(tally_filter, (openmc.EnergyFilter,
                                                  openmc.EnergyoutFilter)):
                     continue
-                elif len(tally_filter.bins) != len(fine_edges):
+                elif len(tally_filter.bins) != len(fine_edges) - 1:
                     continue
-                elif not np.allclose(tally_filter.bins, fine_edges):
+                elif not np.allclose(tally_filter.bins[:, 0], fine_edges[:-1]):
                     continue
                 else:
-                    tally_filter.bins = coarse_groups.group_edges
+                    cedge = coarse_groups.group_edges
+                    tally_filter.values = cedge
+                    tally_filter.bins = np.vstack((cedge[:-1], cedge[1:])).T
                     mean = np.add.reduceat(mean, energy_indices, axis=i)
                     std_dev = np.add.reduceat(std_dev**2, energy_indices,
                                               axis=i)
@@ -2738,7 +2740,7 @@ class TransportXS(MGXS):
         if self._rxn_rate_tally is None:
             # Switch EnergyoutFilter to EnergyFilter.
             old_filt = self.tallies['scatter-1'].filters[-1]
-            new_filt = openmc.EnergyFilter(old_filt.bins)
+            new_filt = openmc.EnergyFilter(old_filt.values)
             self.tallies['scatter-1'].filters[-1] = new_filt
 
             self._rxn_rate_tally = \
@@ -2757,7 +2759,7 @@ class TransportXS(MGXS):
 
             # Switch EnergyoutFilter to EnergyFilter.
             old_filt = self.tallies['scatter-1'].filters[-1]
-            new_filt = openmc.EnergyFilter(old_filt.bins)
+            new_filt = openmc.EnergyFilter(old_filt.values)
             self.tallies['scatter-1'].filters[-1] = new_filt
 
             # Compute total cross section

@@ -10,9 +10,6 @@ set(CMAKE_Fortran_MODULE_DIRECTORY ${CMAKE_BINARY_DIR}/include)
 # Set module path
 set(CMAKE_MODULE_PATH ${CMAKE_CURRENT_SOURCE_DIR}/cmake/Modules)
 
-# Make sure Fortran module directory is included when building
-include_directories(${CMAKE_BINARY_DIR}/include)
-
 #===============================================================================
 # Architecture specific definitions
 #===============================================================================
@@ -457,7 +454,10 @@ add_executable(${program} src/main.cpp)
 set_property(TARGET ${program} libopenmc pugixml_fortran
   PROPERTY LINKER_LANGUAGE Fortran)
 
-target_include_directories(libopenmc PUBLIC include ${HDF5_INCLUDE_DIRS})
+target_include_directories(libopenmc
+  PUBLIC include ${HDF5_INCLUDE_DIRS}
+  PRIVATE ${CMAKE_BINARY_DIR}/include
+  )
 
 # The executable and the faddeeva package use only one language.  They can be
 # set via target_compile_options which accepts a list.

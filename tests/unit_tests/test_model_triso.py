@@ -12,21 +12,15 @@ import scipy.spatial
 
 _PACKING_FRACTION = 0.35
 _RADIUS = 4.25e-2
+domain_params = [
+    {'shape': 'cube', 'length': 0.75, 'radius': 0., 'volume': 0.75**3},
+    {'shape': 'cylinder', 'length': 0.5, 'radius': 0.5, 'volume': 0.5*pi*0.5**2},
+    {'shape': 'sphere', 'length': 0., 'radius': 0.5, 'volume': 4/3*pi*0.5**3}
+]
 
 
-@pytest.fixture(scope='module',
-                params=[{'shape': 'cube',
-                         'length': 0.75,
-                         'radius': 0.,
-                         'volume': 0.75**3},
-                        {'shape': 'cylinder',
-                         'length': 0.5,
-                         'radius': 0.5,
-                         'volume': 0.5*pi*0.5**2},
-                        {'shape': 'sphere',
-                         'length': 0.,
-                         'radius': 0.5,
-                         'volume': 4/3*pi*0.5**3}])
+@pytest.fixture(scope='module', params=domain_params,
+                ids=['cube', 'cylinder', 'sphere'])
 def domain(request):
     return request.param
 
@@ -65,7 +59,7 @@ def test_overlap(trisos):
     d = tree.query(centers, k=2)[0]
 
     # Get the smallest distance between any two particles
-    d_min = min(d[:,1])
+    d_min = min(d[:, 1])
     assert d_min > 2*_RADIUS or d_min == pytest.approx(2*_RADIUS)
 
 

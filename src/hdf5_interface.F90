@@ -99,6 +99,13 @@ module hdf5_interface
   public :: get_datasets
   public :: get_name
 
+  interface
+    subroutine file_close(file_id) bind(C)
+      import HID_T
+      integer(HID_T), value :: file_id
+    end subroutine file_close
+  end interface
+
 contains
 
 !===============================================================================
@@ -132,18 +139,6 @@ contains
 
     file_id = file_open_c(to_c_string(filename), mode, parallel_)
   end function file_open
-
-!===============================================================================
-! FILE_CLOSE closes HDF5 file
-!===============================================================================
-
-  subroutine file_close(file_id)
-    integer(HID_T), intent(in) :: file_id
-
-    integer :: hdf5_err
-
-    call h5fclose_f(file_id, hdf5_err)
-  end subroutine file_close
 
 !===============================================================================
 ! GET_GROUPS Gets a list of all the groups in a given location.

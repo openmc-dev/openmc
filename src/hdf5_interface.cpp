@@ -155,7 +155,7 @@ open_group(hid_t group_id, const char* name){
 
 void
 write_double(hid_t group_id, int ndim, const hsize_t* dims, const char* name,
-             double* buffer, bool indep) {
+             const double* buffer, bool indep) {
   hid_t dspace = H5Screate_simple(ndim, dims, nullptr);
   hid_t dset = H5Dcreate(group_id, name, H5T_NATIVE_DOUBLE, dspace,
                          H5P_DEFAULT, H5P_DEFAULT, H5P_DEFAULT);

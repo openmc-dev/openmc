@@ -18,7 +18,7 @@ void close_dataset(hid_t dataset_id);
 void close_group(hid_t group_id);
 extern "C" hid_t file_open(const char* filename, char mode, bool parallel);
 hid_t file_open(const std::string& filename, char mode, bool parallel);
-void file_close(hid_t file_id);
+extern "C" void file_close(hid_t file_id);
 bool object_exists(hid_t object_id, const char* name);
 hid_t open_dataset(hid_t group_id, const char* name);
 hid_t open_group(hid_t group_id, const char* name);

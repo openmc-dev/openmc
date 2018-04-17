@@ -4,6 +4,7 @@ import io
 
 import numpy as np
 from numpy.polynomial import Polynomial
+from scipy import sparse
 import pandas as pd
 
 from .data import NEUTRON_MASS
@@ -11,7 +12,6 @@ from .endf import get_head_record, get_cont_record, get_tab1_record, get_list_re
 import openmc.checkvalue as cv
 from .resonance import ResonanceRange
 
-### Under Construction START
 def sample_resonance_parameters(nuclide, n_samples):
     """Return a IncidentNeutron object with n_samples of xs
 
@@ -24,6 +24,7 @@ def sample_resonance_parameters(nuclide, n_samples):
     ev : openmc.data.endf.Evaluation
 
     """
+    print('begin sampling')
     nparams,params = nuclide.res_covariance.ranges[0].parameters.shape
     cov = nuclide.res_covariance.ranges[0].covariance
     cov = cov + cov.T - np.diag(cov.diagonal()) #symmetrizing covariance matrix
@@ -128,6 +129,7 @@ def sample_resonance_parameters(nuclide, n_samples):
             spin = pd.DataFrame.as_matrix(nuclide.res_covariance.ranges[0].parameters['J'])
             mean = mean_array.flatten()
             for i in range(n_samples):
+                print("On sample",i)
                 sample = np.random.multivariate_normal(mean,cov)
                 energy = sample[0::5]
                 gn = sample[1::5]
@@ -144,7 +146,6 @@ def sample_resonance_parameters(nuclide, n_samples):
                 samples.append(sample_params)
 
     return samples
-### Under Construction END
 
 class ResonanceCovariance(object):
     """Resolved resonance covariance data
@@ -209,11 +210,9 @@ class ResonanceCovariance(object):
             abundance = items[1]
             fission_widths = (items[3] == 1) # Flag for fission widths
             n_ranges = items[4] # number of resonance energy ranges
-            print('there are',n_ranges,'ranges')
 
             for j in range(n_ranges):
                 items = get_cont_record(file_obj)
-                print("Line with unresovled flag:",items)
                 resonance_flag = items[2]  # flag for resolved (1)/unresolved (2)
                 formalism = items[3]  # resonance formalism
 
@@ -582,7 +581,6 @@ class ReichMooreCovariance(ResonanceRange):
         # Build covariance matrix for General Resolved Resonance Formats
         if LCOMP == 1:
             items = get_cont_record(file_obj)
-            print("in resonance_covariance.py", items)
             num_short_range = items[4] #Number of short range type resonance 
                                        #covariances
             num_long_range = items[5] #Number of long range type resonance

@@ -67,7 +67,13 @@ def float_endf(s):
         The number
 
     """
-    return float(ENDF_FLOAT_RE.sub(r'\1e\2', s))
+    try:
+        return float(ENDF_FLOAT_RE.sub(r'\1e\2', s))
+    except:
+        if ENDF_FLOAT_RE.sub(r'\1e\2', s).isspace():
+            return 0
+        else:
+            raise TypeError('Expected float value or blank entry')
 
 
 def int_endf(s):

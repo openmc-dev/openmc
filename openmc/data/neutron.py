@@ -1,6 +1,6 @@
+from __future__ import division, unicode_literals
 import sys
-from collections import OrderedDict
-from collections.abc import Iterable, Mapping, MutableMapping
+from collections import OrderedDict, Iterable, Mapping, MutableMapping
 from io import StringIO
 from itertools import chain
 from math import log10
@@ -10,6 +10,7 @@ import shutil
 import tempfile
 from warnings import warn
 
+from six import string_types
 import numpy as np
 import h5py
 
@@ -109,7 +110,6 @@ class IncidentNeutron(EqualityMixin):
     :meth:`IncidentNeutron.from_ace`.
 
     Parameters
-    ----------
     name : str
         Name of the nuclide using the GND naming convention
     atomic_number : int
@@ -889,3 +889,10 @@ class IncidentNeutron(EqualityMixin):
                 data[2].xs['0K'] = xs
 
         return data
+import sys
+from collections import OrderedDict
+from collections.abc import Iterable, Mapping, MutableMapping
+from io import StringIO
+from itertools import chain
+from math import log10
+from numbers import Integral, Real

@@ -371,7 +371,7 @@ contains
     p % coord(1) % universe = root_universe
 
     ! Open binary plot file for writing
-    file_id = file_create(pl%path_plot)
+    file_id = file_open(pl%path_plot, 'w')
 
     ! write header info
     call write_attribute(file_id, "filetype", 'voxel')

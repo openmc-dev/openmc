@@ -12,18 +12,19 @@ namespace openmc {
 extern "C" void fatal_error_from_c(const char *message, int message_len);
 
 
+inline
 void fatal_error(const char *message)
 {
   fatal_error_from_c(message, strlen(message));
 }
 
-
+inline
 void fatal_error(const std::string &message)
 {
   fatal_error_from_c(message.c_str(), message.length());
 }
 
-
+inline
 void fatal_error(const std::stringstream &message)
 {
   std::string out {message.str()};

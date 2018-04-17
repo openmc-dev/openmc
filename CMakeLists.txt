@@ -435,6 +435,7 @@ set(LIBOPENMC_FORTRAN_SRC
 set(LIBOPENMC_CXX_SRC
   src/error.h
   src/hdf5_interface.h
+  src/hdf5_interface.cpp
   src/random_lcg.cpp
   src/random_lcg.h
   src/simulation.cpp

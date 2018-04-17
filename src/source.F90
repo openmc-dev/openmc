@@ -12,7 +12,7 @@ module source
   use distribution_multivariate, only: SpatialBox
   use error,            only: fatal_error
   use geometry,         only: find_cell
-  use hdf5_interface,   only: file_create, file_open, file_close, read_dataset
+  use hdf5_interface,   only: file_open, file_close, read_dataset
   use math
   use message_passing,  only: rank
   use mgxs_header,      only: rev_energy_bins, num_energy_groups
@@ -88,7 +88,7 @@ contains
     if (write_initial_source) then
       call write_message('Writing out initial source...', 5)
       filename = trim(path_output) // 'initial_source.h5'
-      file_id = file_create(filename, parallel=.true.)
+      file_id = file_open(filename, 'w', parallel=.true.)
       call write_source_bank(file_id)
       call file_close(file_id)
     end if

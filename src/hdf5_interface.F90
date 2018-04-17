@@ -19,6 +19,7 @@ module hdf5_interface
 #ifdef PHDF5
   use message_passing, only: mpi_intracomm, MPI_INFO_NULL
 #endif
+  use string, only: to_c_string
 
   implicit none
   private
@@ -84,7 +85,6 @@ module hdf5_interface
   public :: attribute_exists
   public :: write_attribute
   public :: read_attribute
-  public :: file_create
   public :: file_open
   public :: file_close
   public :: create_group
@@ -102,97 +102,35 @@ module hdf5_interface
 contains
 
 !===============================================================================
-! FILE_CREATE creates HDF5 file
-!===============================================================================
-
-  function file_create(filename, parallel) result(file_id)
-    character(*),      intent(in)    :: filename ! name of file
-    logical, optional, intent(in)    :: parallel ! whether to write in serial
-    integer(HID_T) :: file_id
-
-    integer(HID_T) :: plist      ! property list handle
-    integer        :: hdf5_err   ! HDF5 error code
-    logical :: parallel_
-
-    ! Check for serial option
-    parallel_ = .false.
-#ifdef PHDF5
-    if (present(parallel)) parallel_ = parallel
-#endif
-
-    if (parallel_) then
-      ! Setup file access property list with parallel I/O access
-      call h5pcreate_f(H5P_FILE_ACCESS_F, plist, hdf5_err)
-#ifdef PHDF5
-#ifdef OPENMC_MPIF08
-      call h5pset_fapl_mpio_f(plist, mpi_intracomm%MPI_VAL, &
-           MPI_INFO_NULL%MPI_VAL, hdf5_err)
-#else
-      call h5pset_fapl_mpio_f(plist, mpi_intracomm, MPI_INFO_NULL, hdf5_err)
-#endif
-#endif
-
-      ! Create the file collectively
-      call h5fcreate_f(trim(filename), H5F_ACC_TRUNC_F, file_id, hdf5_err, &
-                       access_prp = plist)
-
-      ! Close the property list
-      call h5pclose_f(plist, hdf5_err)
-    else
-      ! Create the file
-      call h5fcreate_f(trim(filename), H5F_ACC_TRUNC_F, file_id, hdf5_err)
-    end if
-
-  end function file_create
-
-!===============================================================================
 ! FILE_OPEN opens HDF5 file
 !===============================================================================
 
   function file_open(filename, mode, parallel) result(file_id)
-    character(*),      intent(in)    :: filename ! name of file
-    character(*),      intent(in)    :: mode     ! access mode to file
-    logical, optional, intent(in)    :: parallel ! whether to write in serial
+    character(*),      intent(in) :: filename ! name of file
+    character,         value :: mode     ! access mode to file
+    logical, optional, intent(in) :: parallel ! whether to write in serial
     integer(HID_T) :: file_id
 
-    logical :: parallel_
-    integer(HID_T) :: plist     ! property list handle
-    integer        :: hdf5_err  ! HDF5 error code
-    integer        :: open_mode ! HDF5 open mode
+    character(kind=C_CHAR) :: mode_
+    logical(C_BOOL) :: parallel_
 
-    ! Check for serial option
+    interface
+      function file_open_c(name, mode, parallel) bind(C, name='file_open') result(file_id)
+        import HID_T, C_CHAR, C_BOOL, C_INT
+        character(kind=C_CHAR) :: name(*)
+        character(kind=C_CHAR), value :: mode
+        logical(C_BOOL), value :: parallel
+        integer(HID_T) :: file_id
+      end function file_open_c
+    end interface
+
+    mode_ = mode
     parallel_ = .false.
 #ifdef PHDF5
     if (present(parallel)) parallel_ = parallel
 #endif
 
-    ! Determine access type
-    open_mode = H5F_ACC_RDONLY_F
-    if (mode == 'w') open_mode = H5F_ACC_RDWR_F
-
-    if (parallel_) then
-      ! Setup file access property list with parallel I/O access
-      call h5pcreate_f(H5P_FILE_ACCESS_F, plist, hdf5_err)
-#ifdef PHDF5
-#ifdef OPENMC_MPIF08
-      call h5pset_fapl_mpio_f(plist, mpi_intracomm%MPI_VAL, &
-           MPI_INFO_NULL%MPI_VAL, hdf5_err)
-#else
-      call h5pset_fapl_mpio_f(plist, mpi_intracomm, MPI_INFO_NULL, hdf5_err)
-#endif
-#endif
-
-      ! Open the file collectively
-      call h5fopen_f(trim(filename), open_mode, file_id, hdf5_err, &
-                     access_prp = plist)
-
-      ! Close the property list
-      call h5pclose_f(plist, hdf5_err)
-    else
-      ! Open file
-      call h5fopen_f(trim(filename), open_mode, file_id, hdf5_err)
-    end if
-
+    file_id = file_open_c(to_c_string(filename), mode, parallel_)
   end function file_open
 
 !===============================================================================

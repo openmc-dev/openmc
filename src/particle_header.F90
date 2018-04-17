@@ -312,7 +312,7 @@ contains
 
 !$omp critical (WriteParticleRestart)
     ! Create file
-    file_id = file_create(filename)
+    file_id = file_open(filename, 'w')
 
     associate (src => source_bank(current_work))
       ! Write filetype and version info

@@ -104,6 +104,17 @@ module hdf5_interface
       import HID_T
       integer(HID_T), value :: file_id
     end subroutine file_close
+
+    subroutine write_double_c(group_id, ndim, dims, name, buffer, indep) &
+         bind(C, name='write_double')
+      import HID_T, HSIZE_T, C_INT, C_DOUBLE, C_CHAR, C_BOOL, C_PTR
+      integer(HID_T), value :: group_id
+      integer(C_INT), value :: ndim
+      integer(HSIZE_T), intent(in) :: dims(*)
+      character(kind=C_CHAR), intent(in) :: name(*)
+      real(C_DOUBLE), intent(in) :: buffer(*)
+      logical(C_BOOL), intent(in) :: indep
+    end subroutine write_double_c
   end interface
 
 contains
@@ -472,56 +483,14 @@ contains
     logical,      intent(in), optional :: indep   ! independent I/O
 
     integer(HSIZE_T) :: dims(1)
+    logical(C_BOOL) :: indep_
 
     dims(:) = shape(buffer)
-    if (present(indep)) then
-      call write_double_1D_explicit(group_id, dims, name, buffer, indep)
-    else
-      call write_double_1D_explicit(group_id, dims, name, buffer)
-    end if
+    indep_ = .false.
+    if (present(indep)) indep_ = indep
+
+    call write_double_c(group_id, 1, dims, to_c_string(name), buffer, indep_)
   end subroutine write_double_1D
-
-  subroutine write_double_1D_explicit(group_id, dims, name, buffer, indep)
-    integer(HID_T), intent(in) :: group_id
-    integer(HSIZE_T), intent(in) :: dims(1)
-    character(*), intent(in)           :: name      ! name of data
-    real(8),      intent(in), target   :: buffer(dims(1)) ! data to write
-    logical,      intent(in), optional :: indep   ! independent I/O
-
-    integer :: hdf5_err
-    integer :: data_xfer_mode
-#ifdef PHDF5
-    integer(HID_T) :: plist    ! property list
-#endif
-    integer(HID_T) :: dset     ! data set handle
-    integer(HID_T) :: dspace   ! data or file space handle
-    type(c_ptr) :: f_ptr
-
-    ! Set up collective vs. independent I/O
-    data_xfer_mode = H5FD_MPIO_COLLECTIVE_F
-    if (present(indep)) then
-      if (indep) data_xfer_mode = H5FD_MPIO_INDEPENDENT_F
-    end if
-
-    call h5screate_simple_f(1, dims, dspace, hdf5_err)
-    call h5dcreate_f(group_id, trim(name), H5T_NATIVE_DOUBLE, &
-         dspace, dset, hdf5_err)
-    f_ptr = c_loc(buffer)
-
-    if (using_mpio_device(group_id)) then
-#ifdef PHDF5
-      call h5pcreate_f(H5P_DATASET_XFER_F, plist, hdf5_err)
-      call h5pset_dxpl_mpio_f(plist, data_xfer_mode, hdf5_err)
-      call h5dwrite_f(dset, H5T_NATIVE_DOUBLE, f_ptr, hdf5_err, xfer_prp=plist)
-      call h5pclose_f(plist, hdf5_err)
-#endif
-    else
-      call h5dwrite_f(dset, H5T_NATIVE_DOUBLE, f_ptr, hdf5_err)
-    end if
-
-    call h5dclose_f(dset, hdf5_err)
-    call h5sclose_f(dspace, hdf5_err)
-  end subroutine write_double_1D_explicit
 
 !===============================================================================
 ! READ_DOUBLE_1D reads double precision 1-D array data
@@ -600,56 +569,14 @@ contains
     logical,      intent(in), optional :: indep   ! independent I/O
 
     integer(HSIZE_T) :: dims(2)
+    logical(C_BOOL) :: indep_
 
     dims(:) = shape(buffer)
-    if (present(indep)) then
-      call write_double_2D_explicit(group_id, dims, name, buffer, indep)
-    else
-      call write_double_2D_explicit(group_id, dims, name, buffer)
-    end if
+    indep_ = .false.
+    if (present(indep)) indep_ = indep
+
+    call write_double_c(group_id, 2, dims, to_c_string(name), buffer, indep_)
   end subroutine write_double_2D
-
-  subroutine write_double_2D_explicit(group_id, dims, name, buffer, indep)
-    integer(HID_T), intent(in) :: group_id
-    integer(HSIZE_T), intent(in)       :: dims(2)
-    character(*), intent(in)           :: name      ! name of data
-    real(8),      intent(in), target   :: buffer(dims(1),dims(2))
-    logical,      intent(in), optional :: indep   ! independent I/O
-
-    integer :: hdf5_err
-    integer :: data_xfer_mode
-#ifdef PHDF5
-    integer(HID_T) :: plist    ! property list
-#endif
-    integer(HID_T) :: dset     ! data set handle
-    integer(HID_T) :: dspace   ! data or file space handle
-    type(c_ptr) :: f_ptr
-
-    ! Set up collective vs. independent I/O
-    data_xfer_mode = H5FD_MPIO_COLLECTIVE_F
-    if (present(indep)) then
-      if (indep) data_xfer_mode = H5FD_MPIO_INDEPENDENT_F
-    end if
-
-    call h5screate_simple_f(2, dims, dspace, hdf5_err)
-    call h5dcreate_f(group_id, trim(name), H5T_NATIVE_DOUBLE, &
-         dspace, dset, hdf5_err)
-    f_ptr = c_loc(buffer)
-
-    if (using_mpio_device(group_id)) then
-#ifdef PHDF5
-      call h5pcreate_f(H5P_DATASET_XFER_F, plist, hdf5_err)
-      call h5pset_dxpl_mpio_f(plist, data_xfer_mode, hdf5_err)
-      call h5dwrite_f(dset, H5T_NATIVE_DOUBLE, f_ptr, hdf5_err, xfer_prp=plist)
-      call h5pclose_f(plist, hdf5_err)
-#endif
-    else
-      call h5dwrite_f(dset, H5T_NATIVE_DOUBLE, f_ptr, hdf5_err)
-    end if
-
-    call h5dclose_f(dset, hdf5_err)
-    call h5sclose_f(dspace, hdf5_err)
-  end subroutine write_double_2D_explicit
 
 !===============================================================================
 ! READ_DOUBLE_2D reads double precision 2-D array data
@@ -728,56 +655,14 @@ contains
     logical,      intent(in), optional :: indep   ! independent I/O
 
     integer(HSIZE_T) :: dims(3)
+    logical(C_BOOL) :: indep_
 
     dims(:) = shape(buffer)
-    if (present(indep)) then
-      call write_double_3D_explicit(group_id, dims, name, buffer, indep)
-    else
-      call write_double_3D_explicit(group_id, dims, name, buffer)
-    end if
+    indep_ = .false.
+    if (present(indep)) indep_ = indep
+
+    call write_double_c(group_id, 3, dims, to_c_string(name), buffer, indep_)
   end subroutine write_double_3D
-
-  subroutine write_double_3D_explicit(group_id, dims, name, buffer, indep)
-    integer(HID_T), intent(in) :: group_id
-    integer(HSIZE_T), intent(in) :: dims(3)
-    character(*), intent(in)           :: name      ! name of data
-    real(8),      intent(in), target   :: buffer(dims(1),dims(2),dims(3))
-    logical,      intent(in), optional :: indep   ! independent I/O
-
-    integer :: hdf5_err
-    integer :: data_xfer_mode
-#ifdef PHDF5
-    integer(HID_T) :: plist    ! property list
-#endif
-    integer(HID_T) :: dset     ! data set handle
-    integer(HID_T) :: dspace   ! data or file space handle
-    type(c_ptr) :: f_ptr
-
-    ! Set up collective vs. independent I/O
-    data_xfer_mode = H5FD_MPIO_COLLECTIVE_F
-    if (present(indep)) then
-      if (indep) data_xfer_mode = H5FD_MPIO_INDEPENDENT_F
-    end if
-
-    call h5screate_simple_f(3, dims, dspace, hdf5_err)
-    call h5dcreate_f(group_id, trim(name), H5T_NATIVE_DOUBLE, &
-         dspace, dset, hdf5_err)
-    f_ptr = c_loc(buffer)
-
-    if (using_mpio_device(group_id)) then
-#ifdef PHDF5
-      call h5pcreate_f(H5P_DATASET_XFER_F, plist, hdf5_err)
-      call h5pset_dxpl_mpio_f(plist, data_xfer_mode, hdf5_err)
-      call h5dwrite_f(dset, H5T_NATIVE_DOUBLE, f_ptr, hdf5_err, xfer_prp=plist)
-      call h5pclose_f(plist, hdf5_err)
-#endif
-    else
-      call h5dwrite_f(dset, H5T_NATIVE_DOUBLE, f_ptr, hdf5_err)
-    end if
-
-    call h5dclose_f(dset, hdf5_err)
-    call h5sclose_f(dspace, hdf5_err)
-  end subroutine write_double_3D_explicit
 
 !===============================================================================
 ! READ_DOUBLE_3D reads double precision 3-D array data
@@ -856,56 +741,14 @@ contains
     logical,      intent(in), optional :: indep   ! independent I/O
 
     integer(HSIZE_T) :: dims(4)
+    logical(C_BOOL) :: indep_
 
     dims(:) = shape(buffer)
-    if (present(indep)) then
-      call write_double_4D_explicit(group_id, dims, name, buffer, indep)
-    else
-      call write_double_4D_explicit(group_id, dims, name, buffer)
-    end if
+    indep_ = .false.
+    if (present(indep)) indep_ = indep
+
+    call write_double_c(group_id, 1, dims, to_c_string(name), buffer, indep_)
   end subroutine write_double_4D
-
-  subroutine write_double_4D_explicit(group_id, dims, name, buffer, indep)
-    integer(HID_T), intent(in) :: group_id
-    integer(HSIZE_T), intent(in) :: dims(4)
-    character(*), intent(in)           :: name      ! name of data
-    real(8),      intent(in), target   :: buffer(dims(1),dims(2),dims(3),dims(4))
-    logical,      intent(in), optional :: indep   ! independent I/O
-
-    integer :: hdf5_err
-    integer :: data_xfer_mode
-#ifdef PHDF5
-    integer(HID_T) :: plist    ! property list
-#endif
-    integer(HID_T) :: dset     ! data set handle
-    integer(HID_T) :: dspace   ! data or file space handle
-    type(c_ptr) :: f_ptr
-
-    ! Set up collective vs. independent I/O
-    data_xfer_mode = H5FD_MPIO_COLLECTIVE_F
-    if (present(indep)) then
-      if (indep) data_xfer_mode = H5FD_MPIO_INDEPENDENT_F
-    end if
-
-    call h5screate_simple_f(4, dims, dspace, hdf5_err)
-    call h5dcreate_f(group_id, trim(name), H5T_NATIVE_DOUBLE, &
-         dspace, dset, hdf5_err)
-    f_ptr = c_loc(buffer)
-
-    if (using_mpio_device(group_id)) then
-#ifdef PHDF5
-      call h5pcreate_f(H5P_DATASET_XFER_F, plist, hdf5_err)
-      call h5pset_dxpl_mpio_f(plist, data_xfer_mode, hdf5_err)
-      call h5dwrite_f(dset, H5T_NATIVE_DOUBLE, f_ptr, hdf5_err, xfer_prp=plist)
-      call h5pclose_f(plist, hdf5_err)
-#endif
-    else
-      call h5dwrite_f(dset, H5T_NATIVE_DOUBLE, f_ptr, hdf5_err)
-    end if
-
-    call h5dclose_f(dset, hdf5_err)
-    call h5sclose_f(dspace, hdf5_err)
-  end subroutine write_double_4D_explicit
 
 !===============================================================================
 ! READ_DOUBLE_4D reads double precision 4-D array data

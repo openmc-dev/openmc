@@ -41,8 +41,8 @@ write_double_1D(hid_t group_id, char const *name,
   H5Dclose(dataset);
 }
 
-void write_double(hid_t group_id, int ndim, const hsize_t* dims, const char* name,
-                  double* buffer, bool indep);
+extern "C" void write_double(hid_t group_id, int ndim, const hsize_t* dims, const char* name,
+                             const double* buffer, bool indep);
 
 void write_string(hid_t group_id, char const *name, char const *buffer);
 void write_string(hid_t group_id, char const *name, const std::string &buffer);

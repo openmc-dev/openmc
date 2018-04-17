@@ -76,7 +76,7 @@ contains
 
     if (master) then
       ! Create statepoint file
-      file_id = file_create(filename_)
+      file_id = file_open(filename_, 'w')
 
       ! Write file type
       call write_attribute(file_id, "filetype", "statepoint")
@@ -476,7 +476,7 @@ contains
 
         ! Create separate source file
         if (master .or. parallel) then
-          file_id = file_create(filename, parallel=.true.)
+          file_id = file_open(filename, 'w', parallel=.true.)
           call write_dataset(file_id, "filetype", 'source')
         end if
       else
@@ -485,7 +485,7 @@ contains
         filename = trim(filename) // '.h5'
 
         if (master .or. parallel) then
-          file_id = file_open(filename, 'w', parallel=.true.)
+          file_id = file_open(filename, 'a', parallel=.true.)
         end if
       end if
 
@@ -498,7 +498,7 @@ contains
       filename = trim(path_output) // 'source' // '.h5'
       call write_message("Creating source file " // trim(filename) // "...", 5)
       if (master .or. parallel) then
-        file_id = file_create(filename, parallel=.true.)
+        file_id = file_open(filename, 'w', parallel=.true.)
         call write_dataset(file_id, "filetype", 'source')
       end if
 

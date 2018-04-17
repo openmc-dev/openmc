@@ -11,7 +11,7 @@ module volume_calc
   use error,        only: write_message
   use geometry,     only: find_cell
   use geometry_header, only: universes, cells
-  use hdf5_interface, only: file_create, file_close, write_attribute, &
+  use hdf5_interface, only: file_open, file_close, write_attribute, &
        create_group, close_group, write_dataset
   use output,       only: header, time_stamp
   use material_header, only: materials
@@ -435,7 +435,7 @@ contains
     character(MAX_WORD_LEN), allocatable :: nucnames(:) ! names of nuclides
 
     ! Create HDF5 file
-    file_id = file_create(filename)
+    file_id = file_open(filename, 'w')
 
     ! Write header info
     call write_attribute(file_id, "filetype", "volume")

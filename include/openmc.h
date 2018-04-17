@@ -27,6 +27,7 @@ extern "C" {
   int openmc_extend_cells(int32_t n, int32_t* index_start, int32_t* index_end);
   int openmc_extend_filters(int32_t n, int32_t* index_start, int32_t* index_end);
   int openmc_extend_materials(int32_t n, int32_t* index_start, int32_t* index_end);
+  int openmc_extend_meshes(int32_t n, int32_t* index_start, int32_t* index_end);
   int openmc_extend_sources(int32_t n, int32_t* index_start, int32_t* index_end);
   int openmc_extend_tallies(int32_t n, int32_t* index_start, int32_t* index_end);
   int openmc_filter_get_id(int32_t index, int32_t* id);
@@ -40,7 +41,9 @@ extern "C" {
   void openmc_get_filter_next_id(int32_t* id);
   int openmc_get_keff(double k_combined[]);
   int openmc_get_material_index(int32_t id, int32_t* index);
+  int openmc_get_mesh_index(int32_t id, int32_t* index);
   int openmc_get_nuclide_index(const char name[], int* index);
+  int64_t openmc_get_seed();
   int openmc_get_tally_index(int32_t id, int32_t* index);
   void openmc_hard_reset();
   void openmc_init(const int* intracomm);
@@ -70,6 +73,7 @@ extern "C" {
   void openmc_plot_geometry();
   void openmc_reset();
   int openmc_run();
+  void openmc_set_seed(int64_t new_seed);
   void openmc_simulation_finalize();
   void openmc_simulation_init();
   int openmc_source_bank(struct Bank** ptr, int64_t* n);

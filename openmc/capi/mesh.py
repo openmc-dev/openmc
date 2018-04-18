@@ -59,6 +59,16 @@ class Mesh(_FortranObjectWithID):
     ----------
     id : int
         ID of the mesh
+    dimension : iterable of int
+        The number of mesh cells in each direction.
+    lower_left : numpy.ndarray
+        The lower-left corner of the structured mesh. If only two coordinate are
+        given, it is assumed that the mesh is an x-y mesh.
+    upper_right : numpy.ndarray
+        The upper-right corner of the structrued mesh. If only two coordinate
+        are given, it is assumed that the mesh is an x-y mesh.
+    width : numpy.ndarray
+        The width of mesh cells in each direction.
 
     """
     __instances = WeakValueDictionary()

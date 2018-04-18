@@ -41,8 +41,12 @@ write_double_1D(hid_t group_id, char const *name,
   H5Dclose(dataset);
 }
 
+void read_array(hid_t obj_id, const char* name, double* buffer,
+                hid_t mem_type_id, bool indep);
 extern "C" void read_double(hid_t obj_id, const char* name, double* buffer,
                             bool indep);
+extern "C" void read_int(hid_t obj_id, const char* name, int* buffer,
+                         bool indep);
 
 void write_array(hid_t group_id, int ndim, const hsize_t* dims, const char* name,
                  hid_t mem_type_id, const void* buffer, bool indep);

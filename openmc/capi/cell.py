@@ -5,9 +5,10 @@ from weakref import WeakValueDictionary
 import numpy as np
 from numpy.ctypeslib import as_array
 
+from openmc.exceptions import AllocationError, InvalidIDError
 from . import _dll
 from .core import _FortranObjectWithID
-from .error import _error_handler, AllocationError, InvalidIDError
+from .error import _error_handler
 from .material import Material
 
 __all__ = ['Cell', 'cells']
@@ -44,7 +45,7 @@ class Cell(_FortranObjectWithID):
 
     This class exposes a cell that is stored internally in the OpenMC
     library. To obtain a view of a cell with a given ID, use the
-    :data:`openmc.capi.nuclides` mapping.
+    :data:`openmc.capi.cells` mapping.
 
     Parameters
     ----------
@@ -115,14 +116,15 @@ class Cell(_FortranObjectWithID):
     def fill(self, fill):
         if isinstance(fill, Iterable):
             n = len(fill)
-            indices = (c_int*n)(*(m._index for m in fill))
-            _dll.openmc_cell_set_fill(self._index, 1, 1, indices)
+            indices = (c_int32*n)(*(m._index if m is not None else -1
+                                    for m in fill))
+            _dll.openmc_cell_set_fill(self._index, 1, n, indices)
         elif isinstance(fill, Material):
-            materials = [fill]
-            indices = (c_int*1)(fill._index)
+            indices = (c_int32*1)(fill._index)
             _dll.openmc_cell_set_fill(self._index, 1, 1, indices)
-        else:
-            raise NotImplementedError
+        elif fill is None:
+            indices = (c_int32*1)(-1)
+            _dll.openmc_cell_set_fill(self._index, 1, 1, indices)
 
     def set_temperature(self, T, instance=None):
         """Set the temperature of a cell

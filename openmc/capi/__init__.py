@@ -43,6 +43,7 @@ from .core import *
 from .nuclide import *
 from .material import *
 from .cell import *
+from .mesh import *
 from .filter import *
 from .tally import *
 from .settings import settings

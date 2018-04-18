@@ -6,10 +6,11 @@ import numpy as np
 from numpy.ctypeslib import as_array
 import scipy.stats
 
+from openmc.exceptions import AllocationError, InvalidIDError
 from openmc.data.reaction import REACTION_NAME
 from . import _dll, Nuclide
 from .core import _FortranObjectWithID
-from .error import _error_handler, AllocationError, InvalidIDError
+from .error import _error_handler
 from .filter import _get_filter
 
 

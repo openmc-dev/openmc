@@ -5,6 +5,7 @@
 #include "hdf5_hl.h"
 
 #include <array>
+#include <cstring>
 #include <string>
 #include <sstream>
 
@@ -160,7 +161,7 @@ open_group(hid_t group_id, const char* name)
 
 
 void
-read_array(hid_t obj_id, const char* name, hid_t mem_type_id,
+read_data(hid_t obj_id, const char* name, hid_t mem_type_id,
            void* buffer, bool indep)
 {
   hid_t dset = obj_id;
@@ -190,26 +191,26 @@ read_array(hid_t obj_id, const char* name, hid_t mem_type_id,
 void
 read_double(hid_t obj_id, const char* name, double* buffer, bool indep)
 {
-  read_array(obj_id, name, H5T_NATIVE_DOUBLE, buffer, indep);
+  read_data(obj_id, name, H5T_NATIVE_DOUBLE, buffer, indep);
 }
 
 
 void
 read_int(hid_t obj_id, const char* name, int* buffer, bool indep)
 {
-  read_array(obj_id, name, H5T_NATIVE_INT, buffer, indep);
+  read_data(obj_id, name, H5T_NATIVE_INT, buffer, indep);
 }
 
 
 void
 read_llong(hid_t obj_id, const char* name, long long* buffer, bool indep)
 {
-  read_array(obj_id, name, H5T_NATIVE_LLONG, buffer, indep);
+  read_data(obj_id, name, H5T_NATIVE_LLONG, buffer, indep);
 }
 
 
 void
-write_array(hid_t group_id, int ndim, const hsize_t* dims, const char* name,
+write_data(hid_t group_id, int ndim, const hsize_t* dims, const char* name,
             hid_t mem_type_id, const void* buffer, bool indep)
 {
   // If array is given, create a simple dataspace. Otherwise, create a scalar
@@ -251,7 +252,7 @@ void
 write_double(hid_t group_id, int ndim, const hsize_t* dims, const char* name,
              const double* buffer, bool indep)
 {
-  write_array(group_id, ndim, dims, name, H5T_NATIVE_DOUBLE, buffer, indep);
+  write_data(group_id, ndim, dims, name, H5T_NATIVE_DOUBLE, buffer, indep);
 }
 
 
@@ -259,7 +260,7 @@ void
 write_int(hid_t group_id, int ndim, const hsize_t* dims, const char* name,
           const int* buffer, bool indep)
 {
-  write_array(group_id, ndim, dims, name, H5T_NATIVE_INT, buffer, indep);
+  write_data(group_id, ndim, dims, name, H5T_NATIVE_INT, buffer, indep);
 }
 
 
@@ -267,34 +268,31 @@ void
 write_llong(hid_t group_id, int ndim, const hsize_t* dims, const char* name,
             const long long* buffer, bool indep)
 {
-  write_array(group_id, ndim, dims, name, H5T_NATIVE_LLONG, buffer, indep);
+  write_data(group_id, ndim, dims, name, H5T_NATIVE_LLONG, buffer, indep);
 }
 
 
 void
-write_string(hid_t group_id, char const *name, char const *buffer)
+write_string(hid_t group_id, char const* name, const char* buffer, bool indep)
 {
   size_t buffer_len = strlen(buffer);
-  hid_t datatype = H5Tcopy(H5T_C_S1);
-  H5Tset_size(datatype, buffer_len);
+  if (buffer_len > 0) {
+    // Set up appropriate datatype for a fixed-length string
+    hid_t datatype = H5Tcopy(H5T_C_S1);
+    H5Tset_size(datatype, buffer_len);
 
-  hid_t dataspace = H5Screate(H5S_SCALAR);
+    write_data(group_id, 0, nullptr, name, datatype, buffer, indep);
 
-  hid_t dataset = H5Dcreate(group_id, name, datatype, dataspace,
-                            H5P_DEFAULT, H5P_DEFAULT, H5P_DEFAULT);
-
-  H5Dwrite(dataset, datatype, H5S_ALL, H5S_ALL, H5P_DEFAULT, buffer);
-
-  H5Tclose(datatype);
-  H5Sclose(dataspace);
-  H5Dclose(dataset);
+    // Free resources
+    H5Tclose(datatype);
+  }
 }
 
 
 void
-write_string(hid_t group_id, char const *name, const std::string &buffer)
+write_string(hid_t group_id, char const* name, const std::string& buffer, bool indep)
 {
-  write_string(group_id, name, buffer.c_str());
+  write_string(group_id, name, buffer.c_str(), indep);
 }
 
 }

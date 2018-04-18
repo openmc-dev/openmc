@@ -202,6 +202,13 @@ read_int(hid_t obj_id, const char* name, int* buffer, bool indep)
 
 
 void
+read_llong(hid_t obj_id, const char* name, long long* buffer, bool indep)
+{
+  read_array(obj_id, name, H5T_NATIVE_LLONG, buffer, indep);
+}
+
+
+void
 write_array(hid_t group_id, int ndim, const hsize_t* dims, const char* name,
             hid_t mem_type_id, const void* buffer, bool indep)
 {
@@ -253,6 +260,14 @@ write_int(hid_t group_id, int ndim, const hsize_t* dims, const char* name,
           const int* buffer, bool indep)
 {
   write_array(group_id, ndim, dims, name, H5T_NATIVE_INT, buffer, indep);
+}
+
+
+void
+write_llong(hid_t group_id, int ndim, const hsize_t* dims, const char* name,
+            const long long* buffer, bool indep)
+{
+  write_array(group_id, ndim, dims, name, H5T_NATIVE_LLONG, buffer, indep);
 }
 
 

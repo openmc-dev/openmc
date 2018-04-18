@@ -11,7 +11,8 @@
 namespace openmc {
 
 bool
-using_mpio_device(hid_t obj_id) {
+using_mpio_device(hid_t obj_id)
+{
   // Determine file that this object is part of
   hid_t file_id = H5Iget_file_id(obj_id);
 
@@ -109,16 +110,19 @@ file_open(const char* filename, char mode, bool parallel)
 }
 
 hid_t
-file_open(const std::string& filename, char mode, bool parallel=false) {
+file_open(const std::string& filename, char mode, bool parallel=false)
+{
   file_open(filename.c_str(), mode, parallel);
 }
 
-void file_close(hid_t file_id) {
+void file_close(hid_t file_id)
+{
   H5Fclose(file_id);
 }
 
 bool
-object_exists(hid_t object_id, const char* name) {
+object_exists(hid_t object_id, const char* name)
+{
   htri_t out = H5LTpath_valid(object_id, name, true);
   if (out < 0) {
     std::stringstream err_msg;
@@ -130,7 +134,8 @@ object_exists(hid_t object_id, const char* name) {
 
 
 hid_t
-open_dataset(hid_t group_id, const char* name){
+open_dataset(hid_t group_id, const char* name)
+{
   if (object_exists(group_id, name)) {
     return H5Dopen(group_id, name, H5P_DEFAULT);
   } else {
@@ -142,7 +147,8 @@ open_dataset(hid_t group_id, const char* name){
 
 
 hid_t
-open_group(hid_t group_id, const char* name){
+open_group(hid_t group_id, const char* name)
+{
   if (object_exists(group_id, name)) {
     return H5Gopen(group_id, name, H5P_DEFAULT);
   } else {
@@ -154,9 +160,45 @@ open_group(hid_t group_id, const char* name){
 
 
 void
+read_double(hid_t obj_id, const char* name, double* buffer, bool indep)
+{
+  hid_t dset = obj_id;
+  if (name) dset = H5Dopen(obj_id, name, H5P_DEFAULT);
+
+  if (using_mpio_device(dset)) {
+#ifdef PHDF5
+    // Set up collective vs independent I/O
+    auto data_xfer_mode {indep ? H5FD_MPIO_INDEPENDENT : H5FD_MPIO_COLLECTIVE};
+
+    // Create dataset transfer property list
+    hid_t plist = H5Pcreate(H5P_DATASET_XFER);
+    H5Pset_dxpl_mpio(plist, data_xfer_mode);
+
+    // Write data
+    H5Dread(dset, H5T_NATIVE_DOUBLE, H5S_ALL, H5S_ALL, plist, buffer);
+    H5Pclose(plist);
+#endif
+  } else {
+    H5Dread(dset, H5T_NATIVE_DOUBLE, H5S_ALL, H5S_ALL, H5P_DEFAULT, buffer);
+  }
+
+  if (name) H5Dclose(dset);
+}
+
+
+void
 write_double(hid_t group_id, int ndim, const hsize_t* dims, const char* name,
-             const double* buffer, bool indep) {
-  hid_t dspace = H5Screate_simple(ndim, dims, nullptr);
+             const double* buffer, bool indep)
+{
+  // If array is given, create a simple dataspace. Otherwise, create a scalar
+  // datascape.
+  hid_t dspace;
+  if (ndim > 0) {
+    dspace = H5Screate_simple(ndim, dims, nullptr);
+  } else {
+    dspace = H5Screate(H5S_SCALAR);
+  }
+
   hid_t dset = H5Dcreate(group_id, name, H5T_NATIVE_DOUBLE, dspace,
                          H5P_DEFAULT, H5P_DEFAULT, H5P_DEFAULT);
 

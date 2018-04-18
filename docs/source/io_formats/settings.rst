@@ -93,29 +93,13 @@ or ``multi-group``.
 
   *Default*: continuous-energy
 
----------------------
-``<entropy>`` Element
----------------------
+--------------------------
+``<entropy_mesh>`` Element
+--------------------------
 
-The ``<entropy>`` element describes a mesh that is used for calculating Shannon
-entropy. This mesh should cover all possible fissionable materials in the
-problem. It has the following attributes/sub-elements:
-
-  :dimension:
-    The number of mesh cells in the x, y, and z directions, respectively.
-
-    *Default*: If this tag is not present, the number of mesh cells is
-     automatically determined by the code.
-
-  :lower_left:
-    The Cartesian coordinates of the lower-left corner of the mesh.
-
-    *Default*: None
-
-  :upper_right:
-    The Cartesian coordinates of the upper-right corner of the mesh.
-
-    *Default*: None
+The ``<entropy_mesh>`` element indicates the ID of a mesh that is to be used for
+calculating Shannon entropy. The mesh should cover all possible fissionable
+materials in the problem and is specified using a :ref:`mesh_element`.
 
 -----------------------------------
 ``<generations_per_batch>`` Element
@@ -198,6 +182,36 @@ then, OpenMC will only use up to the :math:`P_1` data.
 
   .. note:: This element is not used in the continuous-energy
     :ref:`energy_mode`.
+
+.. _mesh_element:
+
+------------------
+``<mesh>`` Element
+------------------
+
+The ``<mesh>`` element describes a mesh that is used either for calculating
+Shannon entropy, applying the uniform fission site method, or in tallies. For
+Shannon entropy meshes, the mesh should cover all possible fissionable materials
+in the problem. It has the following attributes/sub-elements:
+
+  :id:
+    A unique integer that is used to identify the mesh.
+
+  :dimension:
+    The number of mesh cells in the x, y, and z directions, respectively.
+
+    *Default*: If this tag is not present, the number of mesh cells is
+    automatically determined by the code.
+
+  :lower_left:
+    The Cartesian coordinates of the lower-left corner of the mesh.
+
+    *Default*: None
+
+  :upper_right:
+    The Cartesian coordinates of the upper-right corner of the mesh.
+
+    *Default*: None
 
 -----------------------
 ``<no_reduce>`` Element
@@ -765,30 +779,15 @@ has the following attributes/sub-elements:
 
 
 ------------------------
-``<uniform_fs>`` Element
+``<ufs_mesh>`` Element
 ------------------------
 
-The ``<uniform_fs>`` element describes a mesh that is used for re-weighting
-source sites at every generation based on the uniform fission site methodology
-described in Kelly et al., "MC21 Analysis of the Nuclear Energy Agency Monte
-Carlo Performance Benchmark Problem," Proceedings of *Physor 2012*, Knoxville,
-TN (2012). This mesh should cover all possible fissionable materials in the
-problem. It has the following attributes/sub-elements:
-
-  :dimension:
-    The number of mesh cells in the x, y, and z directions, respectively.
-
-    *Default*: None
-
-  :lower_left:
-    The Cartesian coordinates of the lower-left corner of the mesh.
-
-    *Default*: None
-
-  :upper_right:
-    The Cartesian coordinates of the upper-right corner of the mesh.
-
-    *Default*: None
+The ``<ufs_mesh>`` element indicates the ID of a mesh that is used for
+re-weighting source sites at every generation based on the uniform fission site
+methodology described in Kelly et al., "MC21 Analysis of the Nuclear Energy
+Agency Monte Carlo Performance Benchmark Problem," Proceedings of *Physor 2012*,
+Knoxville, TN (2012). The mesh should cover all possible fissionable materials
+in the problem and is specified using a :ref:`mesh_element`.
 
 .. _verbosity:
 

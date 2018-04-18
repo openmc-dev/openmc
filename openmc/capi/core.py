@@ -6,8 +6,9 @@ from warnings import warn
 import numpy as np
 from numpy.ctypeslib import as_array
 
+from openmc.exceptions import AllocationError
 from . import _dll
-from .error import _error_handler, AllocationError
+from .error import _error_handler
 import openmc.capi
 
 
@@ -31,9 +32,12 @@ _dll.openmc_init.restype = None
 _dll.openmc_get_keff.argtypes = [POINTER(c_double*2)]
 _dll.openmc_get_keff.restype = c_int
 _dll.openmc_get_keff.errcheck = _error_handler
+_dll.openmc_next_batch.argtypes = [POINTER(c_int)]
 _dll.openmc_next_batch.restype = c_int
+_dll.openmc_next_batch.errcheck = _error_handler
 _dll.openmc_plot_geometry.restype = None
-_dll.openmc_run.restype = None
+_dll.openmc_run.restype = c_int
+_dll.openmc_run.errcheck = _error_handler
 _dll.openmc_reset.restype = None
 _dll.openmc_source_bank.argtypes = [POINTER(POINTER(_Bank)), POINTER(c_int64)]
 _dll.openmc_source_bank.restype = c_int
@@ -147,13 +151,13 @@ def iter_batches():
     """
     while True:
         # Run next batch
-        retval = next_batch()
+        status = next_batch()
 
         # Provide opportunity for user to perform action between batches
         yield
 
         # End the iteration
-        if retval < 0:
+        if status != 0:
             break
 
 
@@ -180,12 +184,18 @@ def keff():
 
 
 def next_batch():
-    """Run next batch."""
-    retval = _dll.openmc_next_batch()
-    if retval == -3:
-        raise AllocationError('Simulation has not been initialized. You must call '
-                              'openmc.capi.simulation_init() first.')
-    return retval
+    """Run next batch.
+
+    Returns
+    -------
+    int
+        Status after running a batch (0=normal, 1=reached maximum number of
+        batches, 2=tally triggers reached)
+
+    """
+    status = c_int()
+    _dll.openmc_next_batch(status)
+    return status.value
 
 
 def plot_geometry():

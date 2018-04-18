@@ -4,6 +4,7 @@ import os
 import numpy as np
 import pytest
 import openmc
+import openmc.exceptions as exc
 import openmc.capi
 
 from tests import cdtemp
@@ -60,7 +61,7 @@ def test_cell(capi_init):
 
 
 def test_new_cell(capi_init):
-    with pytest.raises(openmc.capi.AllocationError):
+    with pytest.raises(exc.AllocationError):
         openmc.capi.Cell(1)
     new_cell = openmc.capi.Cell()
     new_cell_with_id = openmc.capi.Cell(10)
@@ -91,7 +92,7 @@ def test_material(capi_init):
 
 
 def test_new_material(capi_init):
-    with pytest.raises(openmc.capi.AllocationError):
+    with pytest.raises(exc.AllocationError):
         openmc.capi.Material(1)
     new_mat = openmc.capi.Material()
     new_mat_with_id = openmc.capi.Material(10)
@@ -109,7 +110,7 @@ def test_nuclide_mapping(capi_init):
 
 def test_load_nuclide(capi_init):
     openmc.capi.load_nuclide('Pu239')
-    with pytest.raises(openmc.capi.DataError):
+    with pytest.raises(exc.DataError):
         openmc.capi.load_nuclide('Pu3')
 
 
@@ -145,7 +146,7 @@ def test_tally(capi_init):
     assert isinstance(t.filters[1], openmc.capi.EnergyFilter)
 
     # Create new filter and replace existing
-    with pytest.raises(openmc.capi.AllocationError):
+    with pytest.raises(exc.AllocationError):
         openmc.capi.MaterialFilter(uid=1)
     mats = openmc.capi.materials
     f = openmc.capi.MaterialFilter([mats[2], mats[1]])
@@ -153,7 +154,7 @@ def test_tally(capi_init):
     assert t.filters == [f]
 
     assert t.nuclides == ['U235', 'U238']
-    with pytest.raises(openmc.capi.DataError):
+    with pytest.raises(exc.DataError):
         t.nuclides = ['Zr2']
     t.nuclides = ['U234', 'Zr90']
     assert t.nuclides == ['U234', 'Zr90']
@@ -165,7 +166,7 @@ def test_tally(capi_init):
 
 
 def test_new_tally(capi_init):
-    with pytest.raises(openmc.capi.AllocationError):
+    with pytest.raises(exc.AllocationError):
         openmc.capi.Material(1)
     new_tally = openmc.capi.Tally()
     new_tally.scores = ['flux']
@@ -206,7 +207,7 @@ def test_by_batch(capi_run):
 
     # Running next batch before simulation is initialized should raise an
     # exception
-    with pytest.raises(openmc.capi.AllocationError):
+    with pytest.raises(exc.AllocationError):
         openmc.capi.next_batch()
 
     openmc.capi.simulation_init()
@@ -241,7 +242,7 @@ def test_find_cell(capi_init):
     assert cell is openmc.capi.cells[1]
     cell, instance = openmc.capi.find_cell((0.4, 0., 0.))
     assert cell is openmc.capi.cells[2]
-    with pytest.raises(openmc.capi.GeometryError):
+    with pytest.raises(exc.GeometryError):
         openmc.capi.find_cell((100., 100., 100.))
 
 
@@ -250,3 +251,38 @@ def test_find_material(capi_init):
     assert mat is openmc.capi.materials[1]
     mat = openmc.capi.find_material((0.4, 0., 0.))
     assert mat is openmc.capi.materials[2]
+
+
+def test_mesh(capi_init):
+    mesh = openmc.capi.Mesh()
+    mesh.dimension = (2, 3, 4)
+    assert mesh.dimension == (2, 3, 4)
+    with pytest.raises(exc.AllocationError):
+        mesh2 = openmc.capi.Mesh(mesh.id)
+
+    # Make sure each combination of parameters works
+    ll = (0., 0., 0.)
+    ur = (10., 10., 10.)
+    width = (1., 1., 1.)
+    mesh.set_parameters(lower_left=ll, upper_right=ur)
+    assert mesh.lower_left == pytest.approx(ll)
+    assert mesh.upper_right == pytest.approx(ur)
+    mesh.set_parameters(lower_left=ll, width=width)
+    assert mesh.lower_left == pytest.approx(ll)
+    assert mesh.width == pytest.approx(width)
+    mesh.set_parameters(upper_right=ur, width=width)
+    assert mesh.upper_right == pytest.approx(ur)
+    assert mesh.width == pytest.approx(width)
+
+    meshes = openmc.capi.meshes
+    assert isinstance(meshes, Mapping)
+    assert len(meshes) == 1
+    for mesh_id, mesh in meshes.items():
+        assert isinstance(mesh, openmc.capi.Mesh)
+        assert mesh_id == mesh.id
+
+    mf = openmc.capi.MeshFilter(mesh)
+    assert mf.mesh == mesh
+
+    msf = openmc.capi.MeshSurfaceFilter(mesh)
+    assert msf.mesh == mesh

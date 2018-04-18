@@ -273,15 +273,15 @@ write_llong(hid_t group_id, int ndim, const hsize_t* dims, const char* name,
 
 
 void
-write_string(hid_t group_id, char const* name, const char* buffer, bool indep)
+write_string(hid_t group_id, int ndim, const hsize_t* dims, size_t slen,
+             const char* name, const char* buffer, bool indep)
 {
-  size_t buffer_len = strlen(buffer);
-  if (buffer_len > 0) {
+  if (slen > 0) {
     // Set up appropriate datatype for a fixed-length string
     hid_t datatype = H5Tcopy(H5T_C_S1);
-    H5Tset_size(datatype, buffer_len);
+    H5Tset_size(datatype, slen);
 
-    write_data(group_id, 0, nullptr, name, datatype, buffer, indep);
+    write_data(group_id, ndim, dims, name, datatype, buffer, indep);
 
     // Free resources
     H5Tclose(datatype);
@@ -292,7 +292,7 @@ write_string(hid_t group_id, char const* name, const char* buffer, bool indep)
 void
 write_string(hid_t group_id, char const* name, const std::string& buffer, bool indep)
 {
-  write_string(group_id, name, buffer.c_str(), indep);
+  write_string(group_id, 0, nullptr, buffer.length(), name, buffer.c_str(), indep);
 }
 
 }

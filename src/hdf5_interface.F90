@@ -165,10 +165,13 @@ module hdf5_interface
       logical(C_BOOL), intent(in) :: indep
     end subroutine write_llong_c
 
-    subroutine write_string_c(group_id, name, buffer, indep) &
+    subroutine write_string_c(group_id, ndim, dims, slen, name, buffer, indep) &
          bind(C, name='write_string')
-      import HID_T, HSIZE_T, C_CHAR, C_BOOL
+      import HID_T, HSIZE_T, C_INT, C_CHAR, C_BOOL, C_SIZE_T
       integer(HID_T), value :: group_id
+      integer(C_INT), value :: ndim
+      integer(HSIZE_T), intent(in) :: dims(*)
+      integer(C_SIZE_T), value :: slen
       character(kind=C_CHAR), intent(in) :: name(*)
       character(kind=C_CHAR), intent(in) :: buffer(*)
       logical(C_BOOL), intent(in) :: indep
@@ -466,7 +469,7 @@ contains
     integer(HSIZE_T) :: dims(1)
     logical(C_BOOL) :: indep_
 
-    dims(:) = shape(buffer)
+    dims(1) = size(buffer)
     indep_ = .false.
     if (present(indep)) indep_ = indep
 
@@ -482,7 +485,10 @@ contains
     integer(HSIZE_T) :: dims(2)
     logical(C_BOOL) :: indep_
 
-    dims(:) = shape(buffer)
+    ! Reverse shape of array since it will be written from C
+    dims(1) = size(buffer, 2)
+    dims(2) = size(buffer, 1)
+
     indep_ = .false.
     if (present(indep)) indep_ = indep
 
@@ -498,7 +504,11 @@ contains
     integer(HSIZE_T) :: dims(3)
     logical(C_BOOL) :: indep_
 
-    dims(:) = shape(buffer)
+    ! Reverse shape of array since it will be written from C
+    dims(1) = size(buffer, 3)
+    dims(2) = size(buffer, 2)
+    dims(3) = size(buffer, 1)
+
     indep_ = .false.
     if (present(indep)) indep_ = indep
 
@@ -514,7 +524,12 @@ contains
     integer(HSIZE_T) :: dims(4)
     logical(C_BOOL) :: indep_
 
-    dims(:) = shape(buffer)
+    ! Reverse shape of array since it will be written from C
+    dims(1) = size(buffer, 4)
+    dims(2) = size(buffer, 3)
+    dims(3) = size(buffer, 2)
+    dims(4) = size(buffer, 1)
+
     indep_ = .false.
     if (present(indep)) indep_ = indep
 
@@ -667,7 +682,7 @@ contains
     integer(HSIZE_T) :: dims(1)
     logical(C_BOOL) :: indep_
 
-    dims(:) = shape(buffer)
+    dims(1) = size(buffer)
     indep_ = .false.
     if (present(indep)) indep_ = indep
 
@@ -683,7 +698,10 @@ contains
     integer(HSIZE_T) :: dims(2)
     logical(C_BOOL) :: indep_
 
-    dims(:) = shape(buffer)
+    ! Reverse shape of array since it will be written from C
+    dims(1) = size(buffer, 2)
+    dims(2) = size(buffer, 1)
+
     indep_ = .false.
     if (present(indep)) indep_ = indep
 
@@ -699,7 +717,11 @@ contains
     integer(HSIZE_T) :: dims(3)
     logical(C_BOOL) :: indep_
 
-    dims(:) = shape(buffer)
+    ! Reverse shape of array since it will be written from C
+    dims(1) = size(buffer, 3)
+    dims(2) = size(buffer, 2)
+    dims(3) = size(buffer, 1)
+
     indep_ = .false.
     if (present(indep)) indep_ = indep
 
@@ -715,7 +737,12 @@ contains
     integer(HSIZE_T) :: dims(4)
     logical(C_BOOL) :: indep_
 
-    dims(:) = shape(buffer)
+    ! Reverse shape of array since it will be written from C
+    dims(1) = size(buffer, 4)
+    dims(2) = size(buffer, 3)
+    dims(3) = size(buffer, 2)
+    dims(4) = size(buffer, 1)
+
     indep_ = .false.
     if (present(indep)) indep_ = indep
 
@@ -897,12 +924,16 @@ contains
     character(*), intent(in), target   :: buffer  ! read data to here
     logical,      intent(in), optional :: indep ! independent I/O
 
+    integer(HSIZE_T) :: dims(0)
+    integer(C_SIZE_T) :: slen
     logical(C_BOOL) :: indep_
 
     indep_ = .false.
     if (present(indep)) indep_ = indep
+    slen = len_trim(buffer)
 
-    call write_string_c(group_id, to_c_string(name), to_c_string(buffer), indep_)
+    call write_string_c(group_id, 0, dims, slen, to_c_string(name), &
+         to_c_string(buffer), indep_)
   end subroutine write_string
 
 !===============================================================================
@@ -988,73 +1019,27 @@ contains
     character(*), intent(in), target   :: buffer(:)  ! read data to here
     logical,      intent(in), optional :: indep ! independent I/O
 
+    integer :: i
     integer(HSIZE_T) :: dims(1)
+    integer(C_SIZE_T) :: m
+    logical(C_BOOL) :: indep_
+    character(kind=C_CHAR), allocatable :: buffer_(:)
 
-    dims(:) = shape(buffer)
-    if (present(indep)) then
-      call write_string_1D_explicit(group_id, dims, name, buffer, indep)
-    else
-      call write_string_1D_explicit(group_id, dims, name, buffer)
-    end if
+    indep_ = .false.
+    if (present(indep)) indep_ = indep
+
+    ! Copy array of characters into an array of C chars with the right memory
+    ! layout
+    dims(1) = size(buffer)
+    m = maxval(len_trim(buffer)) + 1
+    allocate(buffer_(dims(1)*m))
+    do i = 0, dims(1) - 1
+      buffer_(i*m+1 : (i+1)*m) = to_c_string(buffer(i+1))
+    end do
+
+    call write_string_c(group_id, 1, dims, m, to_c_string(name), &
+         buffer_, indep_)
   end subroutine write_string_1D
-
-  subroutine write_string_1D_explicit(group_id, dims, name, buffer, indep)
-    integer(HID_T), intent(in) :: group_id
-    integer(HSIZE_T), intent(in) :: dims(1)
-    character(*), intent(in)           :: name
-    character(*), intent(in), target   :: buffer(dims(1))
-    logical,      intent(in), optional :: indep ! independent I/O
-
-    integer :: hdf5_err
-    integer :: data_xfer_mode
-#ifdef PHDF5
-    integer(HID_T) :: plist   ! property list
-#endif
-    integer(HID_T) :: dset    ! data set handle
-    integer(HID_T) :: dspace  ! data or file space handle
-    integer(HID_T) :: filetype
-    integer(HID_T) :: memtype
-    integer(SIZE_T) :: n
-    type(c_ptr) :: f_ptr
-
-    ! Set up collective vs. independent I/O
-    data_xfer_mode = H5FD_MPIO_COLLECTIVE_F
-    if (present(indep)) then
-      if (indep) data_xfer_mode = H5FD_MPIO_INDEPENDENT_F
-    end if
-
-    ! Create datatype for HDF5 file based on C char
-    n = maxval(len_trim(buffer))
-    call h5tcopy_f(H5T_C_S1, filetype, hdf5_err)
-    call h5tset_size_f(filetype, n + 1, hdf5_err)
-
-    ! Create datatype in memory based on Fortran character
-    call h5tcopy_f(H5T_FORTRAN_S1, memtype, hdf5_err)
-    call h5tset_size_f(memtype, int(len(buffer(1)), SIZE_T), hdf5_err)
-
-    ! Create dataspace/dataset
-    call h5screate_simple_f(1, dims, dspace, hdf5_err)
-    call h5dcreate_f(group_id, trim(name), filetype, dspace, dset, hdf5_err)
-
-    ! Get pointer to start of string
-    f_ptr = c_loc(buffer(1)(1:1))
-
-    if (using_mpio_device(group_id)) then
-#ifdef PHDF5
-      call h5pcreate_f(H5P_DATASET_XFER_F, plist, hdf5_err)
-      call h5pset_dxpl_mpio_f(plist, data_xfer_mode, hdf5_err)
-      if (n > 0) call h5dwrite_f(dset, memtype, f_ptr, hdf5_err, xfer_prp=plist)
-      call h5pclose_f(plist, hdf5_err)
-#endif
-    else
-      if (n > 0) call h5dwrite_f(dset, memtype, f_ptr, hdf5_err)
-    end if
-
-    call h5dclose_f(dset, hdf5_err)
-    call h5sclose_f(dspace, hdf5_err)
-    call h5tclose_f(memtype, hdf5_err)
-    call h5tclose_f(filetype, hdf5_err)
-  end subroutine write_string_1D_explicit
 
 !===============================================================================
 ! READ_STRING_1D reads string 1-D array data

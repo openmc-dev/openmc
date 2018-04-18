@@ -160,7 +160,8 @@ open_group(hid_t group_id, const char* name)
 
 
 void
-read_double(hid_t obj_id, const char* name, double* buffer, bool indep)
+read_array(hid_t obj_id, const char* name, hid_t mem_type_id,
+           void* buffer, bool indep)
 {
   hid_t dset = obj_id;
   if (name) dset = H5Dopen(obj_id, name, H5P_DEFAULT);
@@ -175,14 +176,28 @@ read_double(hid_t obj_id, const char* name, double* buffer, bool indep)
     H5Pset_dxpl_mpio(plist, data_xfer_mode);
 
     // Write data
-    H5Dread(dset, H5T_NATIVE_DOUBLE, H5S_ALL, H5S_ALL, plist, buffer);
+    H5Dread(dset, mem_type_id, H5S_ALL, H5S_ALL, plist, buffer);
     H5Pclose(plist);
 #endif
   } else {
-    H5Dread(dset, H5T_NATIVE_DOUBLE, H5S_ALL, H5S_ALL, H5P_DEFAULT, buffer);
+    H5Dread(dset, mem_type_id, H5S_ALL, H5S_ALL, H5P_DEFAULT, buffer);
   }
 
   if (name) H5Dclose(dset);
+}
+
+
+void
+read_double(hid_t obj_id, const char* name, double* buffer, bool indep)
+{
+  read_array(obj_id, name, H5T_NATIVE_DOUBLE, buffer, indep);
+}
+
+
+void
+read_int(hid_t obj_id, const char* name, int* buffer, bool indep)
+{
+  read_array(obj_id, name, H5T_NATIVE_INT, buffer, indep);
 }
 
 

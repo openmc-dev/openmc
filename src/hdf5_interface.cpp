@@ -187,8 +187,8 @@ read_double(hid_t obj_id, const char* name, double* buffer, bool indep)
 
 
 void
-write_double(hid_t group_id, int ndim, const hsize_t* dims, const char* name,
-             const double* buffer, bool indep)
+write_array(hid_t group_id, int ndim, const hsize_t* dims, const char* name,
+            hid_t mem_type_id, const void* buffer, bool indep)
 {
   // If array is given, create a simple dataspace. Otherwise, create a scalar
   // datascape.
@@ -199,7 +199,7 @@ write_double(hid_t group_id, int ndim, const hsize_t* dims, const char* name,
     dspace = H5Screate(H5S_SCALAR);
   }
 
-  hid_t dset = H5Dcreate(group_id, name, H5T_NATIVE_DOUBLE, dspace,
+  hid_t dset = H5Dcreate(group_id, name, mem_type_id, dspace,
                          H5P_DEFAULT, H5P_DEFAULT, H5P_DEFAULT);
 
   if (using_mpio_device(group_id)) {
@@ -212,16 +212,32 @@ write_double(hid_t group_id, int ndim, const hsize_t* dims, const char* name,
     H5Pset_dxpl_mpio(plist, data_xfer_mode);
 
     // Write data
-    H5Dwrite(dset, H5T_NATIVE_DOUBLE, H5S_ALL, H5S_ALL, plist, buffer);
+    H5Dwrite(dset, mem_type_id, H5S_ALL, H5S_ALL, plist, buffer);
     H5Pclose(plist);
 #endif
   } else {
-    H5Dwrite(dset, H5T_NATIVE_DOUBLE, H5S_ALL, H5S_ALL, H5P_DEFAULT, buffer);
+    H5Dwrite(dset, mem_type_id, H5S_ALL, H5S_ALL, H5P_DEFAULT, buffer);
   }
 
   // Free resources
   H5Dclose(dset);
   H5Sclose(dspace);
+}
+
+
+void
+write_double(hid_t group_id, int ndim, const hsize_t* dims, const char* name,
+             const double* buffer, bool indep)
+{
+  write_array(group_id, ndim, dims, name, H5T_NATIVE_DOUBLE, buffer, indep);
+}
+
+
+void
+write_int(hid_t group_id, int ndim, const hsize_t* dims, const char* name,
+          const int* buffer, bool indep)
+{
+  write_array(group_id, ndim, dims, name, H5T_NATIVE_INT, buffer, indep);
 }
 
 

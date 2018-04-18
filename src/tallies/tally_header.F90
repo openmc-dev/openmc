@@ -24,12 +24,14 @@ module tally_header
   public :: openmc_extend_tallies
   public :: openmc_get_tally_index
   public :: openmc_global_tallies
+  public :: openmc_tally_get_active
   public :: openmc_tally_get_id
   public :: openmc_tally_get_filters
   public :: openmc_tally_get_n_realizations
   public :: openmc_tally_get_nuclides
   public :: openmc_tally_get_scores
   public :: openmc_tally_results
+  public :: openmc_tally_set_active
   public :: openmc_tally_set_filters
   public :: openmc_tally_set_id
   public :: openmc_tally_set_nuclides
@@ -512,6 +514,22 @@ contains
   end function openmc_global_tallies
 
 
+  function openmc_tally_get_active(index, active) result(err) bind(C)
+    ! Return whether a tally is active
+    integer(C_INT32_T), value    :: index
+    logical(C_BOOL), intent(out) :: active
+    integer(C_INT) :: err
+
+    if (index >= 1 .and. index <= size(tallies)) then
+      active = tallies(index) % obj % active
+      err = 0
+    else
+      err = E_OUT_OF_BOUNDS
+      call set_errmsg('Index in tallies array is out of bounds.')
+    end if
+  end function openmc_tally_get_active
+
+
   function openmc_tally_get_id(index, id) result(err) bind(C)
     ! Return the ID of a tally
     integer(C_INT32_T), value       :: index
@@ -665,6 +683,27 @@ contains
       call set_errmsg('Index in tallies array is out of bounds.')
     end if
   end function openmc_tally_set_filters
+
+
+  function openmc_tally_set_active(index, active) result(err) bind(C)
+    ! Set the ID of a tally
+    integer(C_INT32_T), value, intent(in) :: index
+    logical(C_BOOL),    value, intent(in) :: active
+    integer(C_INT) :: err
+
+    if (index >= 1 .and. index <= n_tallies) then
+      if (allocated(tallies(index) % obj)) then
+        tallies(index) % obj % active = active
+        err = 0
+      else
+        err = E_ALLOCATE
+        call set_errmsg("Tally type has not been set yet.")
+      end if
+    else
+      err = E_OUT_OF_BOUNDS
+      call set_errmsg('Index in tallies array is out of bounds.')
+    end if
+  end function openmc_tally_set_active
 
 
   function openmc_tally_set_id(index, id) result(err) bind(C)

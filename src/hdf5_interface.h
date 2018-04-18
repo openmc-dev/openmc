@@ -59,8 +59,9 @@ extern "C" void write_int(hid_t group_id, int ndim, const hsize_t* dims,
 extern "C" void write_llong(hid_t group_id, int ndim, const hsize_t* dims,
                             const char* name, const long long* buffer, bool indep);
 
-extern "C" void write_string(hid_t group_id, char const *name, char const *buffer, bool indep);
-void write_string(hid_t group_id, char const *name, const std::string &buffer, bool indep);
+extern "C" void write_string(hid_t group_id, int ndim, const hsize_t* dims, size_t slen,
+                             const char* name, char const* buffer, bool indep);
+void write_string(hid_t group_id, const char* name, const std::string& buffer, bool indep);
 
 } // namespace openmc
 #endif //HDF5_INTERFACE_H

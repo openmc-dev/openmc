@@ -28,7 +28,7 @@ module hdf5_interface
   integer(HID_T), public :: hdf5_integer8_t    ! type for integer(8)
 
   interface write_dataset
-    module procedure write_double
+    module procedure write_double_0D
     module procedure write_double_1D
     module procedure write_double_2D
     module procedure write_double_3D
@@ -388,27 +388,6 @@ contains
   end subroutine close_dataset
 
 !===============================================================================
-! WRITE_DOUBLE writes double precision scalar data
-!===============================================================================
-
-  subroutine write_double(group_id, name, buffer, indep)
-    integer(HID_T), intent(in) :: group_id
-    character(*), intent(in)           :: name    ! name for data
-    real(8),      intent(in), target   :: buffer  ! data to write
-    logical,      intent(in), optional :: indep   ! independent I/O
-
-    integer(HSIZE_T) :: dims(0)
-    logical(C_BOOL) :: indep_
-    real(C_DOUBLE) :: value(1)
-
-    indep_ = .false.
-    if (present(indep)) indep_ = indep
-    value(1) = buffer
-
-    call write_double_c(group_id, 0, dims, to_c_string(name), value, indep_)
-  end subroutine write_double
-
-!===============================================================================
 ! READ_DOUBLE reads double precision scalar data
 !===============================================================================
 
@@ -457,8 +436,25 @@ contains
   end subroutine read_double
 
 !===============================================================================
-! WRITE_DOUBLE_1D writes double precision 1-D array data
+! WRITE_DOUBLE_ND writes double precision N-D array data
 !===============================================================================
+
+  subroutine write_double_0D(group_id, name, buffer, indep)
+    integer(HID_T), intent(in) :: group_id
+    character(*), intent(in)           :: name    ! name for data
+    real(8),      intent(in), target   :: buffer  ! data to write
+    logical,      intent(in), optional :: indep   ! independent I/O
+
+    integer(HSIZE_T) :: dims(0)
+    logical(C_BOOL) :: indep_
+    real(C_DOUBLE) :: value(1)
+
+    indep_ = .false.
+    if (present(indep)) indep_ = indep
+    value(1) = buffer
+
+    call write_double_c(group_id, 0, dims, to_c_string(name), value, indep_)
+  end subroutine write_double_0D
 
   subroutine write_double_1D(group_id, name, buffer, indep)
     integer(HID_T), intent(in) :: group_id
@@ -476,8 +472,56 @@ contains
     call write_double_c(group_id, 1, dims, to_c_string(name), buffer, indep_)
   end subroutine write_double_1D
 
+  subroutine write_double_2D(group_id, name, buffer, indep)
+    integer(HID_T), intent(in) :: group_id
+    character(*), intent(in)           :: name      ! name of data
+    real(8),      intent(in), target   :: buffer(:,:) ! data to write
+    logical,      intent(in), optional :: indep   ! independent I/O
+
+    integer(HSIZE_T) :: dims(2)
+    logical(C_BOOL) :: indep_
+
+    dims(:) = shape(buffer)
+    indep_ = .false.
+    if (present(indep)) indep_ = indep
+
+    call write_double_c(group_id, 2, dims, to_c_string(name), buffer, indep_)
+  end subroutine write_double_2D
+
+  subroutine write_double_3D(group_id, name, buffer, indep)
+    integer(HID_T), intent(in) :: group_id
+    character(*), intent(in)           :: name      ! name of data
+    real(8),      intent(in), target   :: buffer(:,:,:) ! data to write
+    logical,      intent(in), optional :: indep   ! independent I/O
+
+    integer(HSIZE_T) :: dims(3)
+    logical(C_BOOL) :: indep_
+
+    dims(:) = shape(buffer)
+    indep_ = .false.
+    if (present(indep)) indep_ = indep
+
+    call write_double_c(group_id, 3, dims, to_c_string(name), buffer, indep_)
+  end subroutine write_double_3D
+
+  subroutine write_double_4D(group_id, name, buffer, indep)
+    integer(HID_T), intent(in) :: group_id
+    character(*), intent(in)           :: name      ! name of data
+    real(8),      intent(in), target   :: buffer(:,:,:,:) ! data to write
+    logical,      intent(in), optional :: indep   ! independent I/O
+
+    integer(HSIZE_T) :: dims(4)
+    logical(C_BOOL) :: indep_
+
+    dims(:) = shape(buffer)
+    indep_ = .false.
+    if (present(indep)) indep_ = indep
+
+    call write_double_c(group_id, 1, dims, to_c_string(name), buffer, indep_)
+  end subroutine write_double_4D
+
 !===============================================================================
-! READ_DOUBLE_1D reads double precision 1-D array data
+! READ_DOUBLE_ND reads double precision N-D array data
 !===============================================================================
 
   subroutine read_double_1D(buffer, obj_id, name, indep)
@@ -502,30 +546,6 @@ contains
     end if
   end subroutine read_double_1D
 
-!===============================================================================
-! WRITE_DOUBLE_2D writes double precision 2-D array data
-!===============================================================================
-
-  subroutine write_double_2D(group_id, name, buffer, indep)
-    integer(HID_T), intent(in) :: group_id
-    character(*), intent(in)           :: name      ! name of data
-    real(8),      intent(in), target   :: buffer(:,:) ! data to write
-    logical,      intent(in), optional :: indep   ! independent I/O
-
-    integer(HSIZE_T) :: dims(2)
-    logical(C_BOOL) :: indep_
-
-    dims(:) = shape(buffer)
-    indep_ = .false.
-    if (present(indep)) indep_ = indep
-
-    call write_double_c(group_id, 2, dims, to_c_string(name), buffer, indep_)
-  end subroutine write_double_2D
-
-!===============================================================================
-! READ_DOUBLE_2D reads double precision 2-D array data
-!===============================================================================
-
   subroutine read_double_2D(buffer, obj_id, name, indep)
     real(8), target,        intent(inout) :: buffer(:,:)
     integer(HID_T),         intent(in)    :: obj_id
@@ -548,30 +568,6 @@ contains
     end if
   end subroutine read_double_2D
 
-!===============================================================================
-! WRITE_DOUBLE_3D writes double precision 3-D array data
-!===============================================================================
-
-  subroutine write_double_3D(group_id, name, buffer, indep)
-    integer(HID_T), intent(in) :: group_id
-    character(*), intent(in)           :: name      ! name of data
-    real(8),      intent(in), target   :: buffer(:,:,:) ! data to write
-    logical,      intent(in), optional :: indep   ! independent I/O
-
-    integer(HSIZE_T) :: dims(3)
-    logical(C_BOOL) :: indep_
-
-    dims(:) = shape(buffer)
-    indep_ = .false.
-    if (present(indep)) indep_ = indep
-
-    call write_double_c(group_id, 3, dims, to_c_string(name), buffer, indep_)
-  end subroutine write_double_3D
-
-!===============================================================================
-! READ_DOUBLE_3D reads double precision 3-D array data
-!===============================================================================
-
   subroutine read_double_3D(buffer, obj_id, name, indep)
     real(8), target,        intent(inout) :: buffer(:,:,:)
     integer(HID_T),         intent(in)    :: obj_id
@@ -593,30 +589,6 @@ contains
       call read_double_c(obj_id, C_NULL_PTR, buffer, indep_)
     end if
   end subroutine read_double_3D
-
-!===============================================================================
-! WRITE_DOUBLE_4D writes double precision 4-D array data
-!===============================================================================
-
-  subroutine write_double_4D(group_id, name, buffer, indep)
-    integer(HID_T), intent(in) :: group_id
-    character(*), intent(in)           :: name      ! name of data
-    real(8),      intent(in), target   :: buffer(:,:,:,:) ! data to write
-    logical,      intent(in), optional :: indep   ! independent I/O
-
-    integer(HSIZE_T) :: dims(4)
-    logical(C_BOOL) :: indep_
-
-    dims(:) = shape(buffer)
-    indep_ = .false.
-    if (present(indep)) indep_ = indep
-
-    call write_double_c(group_id, 1, dims, to_c_string(name), buffer, indep_)
-  end subroutine write_double_4D
-
-!===============================================================================
-! READ_DOUBLE_4D reads double precision 4-D array data
-!===============================================================================
 
   subroutine read_double_4D(buffer, obj_id, name, indep)
     real(8), target,        intent(inout) :: buffer(:,:,:,:)

@@ -518,7 +518,7 @@ contains
     indep_ = .false.
     if (present(indep)) indep_ = indep
 
-    call write_double_c(group_id, 1, dims, to_c_string(name), buffer, indep_)
+    call write_double_c(group_id, 4, dims, to_c_string(name), buffer, indep_)
   end subroutine write_double_4D
 
 !===============================================================================

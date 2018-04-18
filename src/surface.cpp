@@ -202,21 +202,21 @@ Surface::to_hdf5(hid_t group_id) const
 
   switch(bc) {
     case BC_TRANSMIT :
-      write_string(surf_group, "boundary_type", "transmission");
+      write_string(surf_group, "boundary_type", "transmission", false);
       break;
     case BC_VACUUM :
-      write_string(surf_group, "boundary_type", "vacuum");
+      write_string(surf_group, "boundary_type", "vacuum", false);
       break;
     case BC_REFLECT :
-      write_string(surf_group, "boundary_type", "reflective");
+      write_string(surf_group, "boundary_type", "reflective", false);
       break;
     case BC_PERIODIC :
-      write_string(surf_group, "boundary_type", "periodic");
+      write_string(surf_group, "boundary_type", "periodic", false);
       break;
   }
 
   if (!name.empty()) {
-    write_string(surf_group, "name", name);
+    write_string(surf_group, "name", name, false);
   }
 
   to_hdf5_inner(surf_group);
@@ -297,7 +297,7 @@ inline void SurfaceXPlane::normal(const double xyz[3], double uvw[3]) const
 
 void SurfaceXPlane::to_hdf5_inner(hid_t group_id) const
 {
-  write_string(group_id, "type", "x-plane");
+  write_string(group_id, "type", "x-plane", false);
   std::array<double, 1> coeffs {{x0}};
   write_double_1D(group_id, "coefficients", coeffs);
 }
@@ -362,7 +362,7 @@ inline void SurfaceYPlane::normal(const double xyz[3], double uvw[3]) const
 
 void SurfaceYPlane::to_hdf5_inner(hid_t group_id) const
 {
-  write_string(group_id, "type", "y-plane");
+  write_string(group_id, "type", "y-plane", false);
   std::array<double, 1> coeffs {{y0}};
   write_double_1D(group_id, "coefficients", coeffs);
 }
@@ -428,7 +428,7 @@ inline void SurfaceZPlane::normal(const double xyz[3], double uvw[3]) const
 
 void SurfaceZPlane::to_hdf5_inner(hid_t group_id) const
 {
-  write_string(group_id, "type", "z-plane");
+  write_string(group_id, "type", "z-plane", false);
   std::array<double, 1> coeffs {{z0}};
   write_double_1D(group_id, "coefficients", coeffs);
 }
@@ -489,7 +489,7 @@ SurfacePlane::normal(const double xyz[3], double uvw[3]) const
 
 void SurfacePlane::to_hdf5_inner(hid_t group_id) const
 {
-  write_string(group_id, "type", "plane");
+  write_string(group_id, "type", "plane", false);
   std::array<double, 4> coeffs {{A, B, C, D}};
   write_double_1D(group_id, "coefficients", coeffs);
 }
@@ -621,7 +621,7 @@ inline void SurfaceXCylinder::normal(const double xyz[3], double uvw[3]) const
 
 void SurfaceXCylinder::to_hdf5_inner(hid_t group_id) const
 {
-  write_string(group_id, "type", "x-cylinder");
+  write_string(group_id, "type", "x-cylinder", false);
   std::array<double, 3> coeffs {{y0, z0, r}};
   write_double_1D(group_id, "coefficients", coeffs);
 }
@@ -655,7 +655,7 @@ inline void SurfaceYCylinder::normal(const double xyz[3], double uvw[3]) const
 
 void SurfaceYCylinder::to_hdf5_inner(hid_t group_id) const
 {
-  write_string(group_id, "type", "y-cylinder");
+  write_string(group_id, "type", "y-cylinder", false);
   std::array<double, 3> coeffs {{x0, z0, r}};
   write_double_1D(group_id, "coefficients", coeffs);
 }
@@ -689,7 +689,7 @@ inline void SurfaceZCylinder::normal(const double xyz[3], double uvw[3]) const
 
 void SurfaceZCylinder::to_hdf5_inner(hid_t group_id) const
 {
-  write_string(group_id, "type", "z-cylinder");
+  write_string(group_id, "type", "z-cylinder", false);
   std::array<double, 3> coeffs {{x0, y0, r}};
   write_double_1D(group_id, "coefficients", coeffs);
 }
@@ -760,7 +760,7 @@ inline void SurfaceSphere::normal(const double xyz[3], double uvw[3]) const
 
 void SurfaceSphere::to_hdf5_inner(hid_t group_id) const
 {
-  write_string(group_id, "type", "sphere");
+  write_string(group_id, "type", "sphere", false);
   std::array<double, 4> coeffs {{x0, y0, z0, r}};
   write_double_1D(group_id, "coefficients", coeffs);
 }
@@ -877,7 +877,7 @@ inline void SurfaceXCone::normal(const double xyz[3], double uvw[3]) const
 
 void SurfaceXCone::to_hdf5_inner(hid_t group_id) const
 {
-  write_string(group_id, "type", "x-cone");
+  write_string(group_id, "type", "x-cone", false);
   std::array<double, 4> coeffs {{x0, y0, z0, r_sq}};
   write_double_1D(group_id, "coefficients", coeffs);
 }
@@ -911,7 +911,7 @@ inline void SurfaceYCone::normal(const double xyz[3], double uvw[3]) const
 
 void SurfaceYCone::to_hdf5_inner(hid_t group_id) const
 {
-  write_string(group_id, "type", "y-cone");
+  write_string(group_id, "type", "y-cone", false);
   std::array<double, 4> coeffs {{x0, y0, z0, r_sq}};
   write_double_1D(group_id, "coefficients", coeffs);
 }
@@ -945,7 +945,7 @@ inline void SurfaceZCone::normal(const double xyz[3], double uvw[3]) const
 
 void SurfaceZCone::to_hdf5_inner(hid_t group_id) const
 {
-  write_string(group_id, "type", "z-cone");
+  write_string(group_id, "type", "z-cone", false);
   std::array<double, 4> coeffs {{x0, y0, z0, r_sq}};
   write_double_1D(group_id, "coefficients", coeffs);
 }
@@ -1039,7 +1039,7 @@ SurfaceQuadric::normal(const double xyz[3], double uvw[3]) const
 
 void SurfaceQuadric::to_hdf5_inner(hid_t group_id) const
 {
-  write_string(group_id, "type", "quadric");
+  write_string(group_id, "type", "quadric", false);
   std::array<double, 10> coeffs {{A, B, C, D, E, F, G, H, J, K}};
   write_double_1D(group_id, "coefficients", coeffs);
 }

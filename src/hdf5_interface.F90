@@ -164,6 +164,15 @@ module hdf5_interface
       integer(C_LONG_LONG), intent(in) :: buffer(*)
       logical(C_BOOL), intent(in) :: indep
     end subroutine write_llong_c
+
+    subroutine write_string_c(group_id, name, buffer, indep) &
+         bind(C, name='write_string')
+      import HID_T, HSIZE_T, C_CHAR, C_BOOL
+      integer(HID_T), value :: group_id
+      character(kind=C_CHAR), intent(in) :: name(*)
+      character(kind=C_CHAR), intent(in) :: buffer(*)
+      logical(C_BOOL), intent(in) :: indep
+    end subroutine write_string_c
   end interface
 
 contains
@@ -888,58 +897,12 @@ contains
     character(*), intent(in), target   :: buffer  ! read data to here
     logical,      intent(in), optional :: indep ! independent I/O
 
-    integer :: hdf5_err
-    integer :: data_xfer_mode
-#ifdef PHDF5
-    integer(HID_T) :: plist   ! property list
-#endif
-    integer(HID_T) :: dset    ! data set handle
-    integer(HID_T) :: dspace  ! data or file space handle
-    integer(HID_T) :: filetype
-    integer(SIZE_T) :: i, n
-    character(kind=C_CHAR), allocatable, target :: temp_buffer(:)
-    type(c_ptr) :: f_ptr
+    logical(C_BOOL) :: indep_
 
-    ! Set up collective vs. independent I/O
-    data_xfer_mode = H5FD_MPIO_COLLECTIVE_F
-    if (present(indep)) then
-      if (indep) data_xfer_mode = H5FD_MPIO_INDEPENDENT_F
-    end if
+    indep_ = .false.
+    if (present(indep)) indep_ = indep
 
-    ! Create datatype for HDF5 file based on C char
-    n = len_trim(buffer)
-    if (n > 0) then
-      call h5tcopy_f(H5T_C_S1, filetype, hdf5_err)
-      call h5tset_size_f(filetype, n, hdf5_err)
-
-      ! Create dataspace/dataset
-      call h5screate_f(H5S_SCALAR_F, dspace, hdf5_err)
-      call h5dcreate_f(group_id, trim(name), filetype, dspace, dset, hdf5_err)
-
-      ! Copy string to temporary buffer
-      allocate(temp_buffer(n))
-      do i = 1, n
-        temp_buffer(i) = buffer(i:i)
-      end do
-
-      ! Get pointer to start of string
-      f_ptr = c_loc(temp_buffer(1))
-
-      if (using_mpio_device(group_id)) then
-#ifdef PHDF5
-        call h5pcreate_f(H5P_DATASET_XFER_F, plist, hdf5_err)
-        call h5pset_dxpl_mpio_f(plist, data_xfer_mode, hdf5_err)
-        call h5dwrite_f(dset, filetype, f_ptr, hdf5_err, xfer_prp=plist)
-        call h5pclose_f(plist, hdf5_err)
-#endif
-      else
-        call h5dwrite_f(dset, filetype, f_ptr, hdf5_err)
-      end if
-
-      call h5dclose_f(dset, hdf5_err)
-      call h5sclose_f(dspace, hdf5_err)
-      call h5tclose_f(filetype, hdf5_err)
-    end if
+    call write_string_c(group_id, to_c_string(name), to_c_string(buffer), indep_)
   end subroutine write_string
 
 !===============================================================================

@@ -2,8 +2,6 @@ module mesh_header
 
   use, intrinsic :: ISO_C_BINDING
 
-  use hdf5
-
   use constants
   use dict_header, only: DictIntInt
   use error

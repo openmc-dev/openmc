@@ -1,7 +1,5 @@
 module summary
 
-  use hdf5
-
   use constants
   use endf,            only: reaction_name
   use error,           only: write_message

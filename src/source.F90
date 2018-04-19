@@ -1,6 +1,5 @@
 module source
 
-  use hdf5, only: HID_T
 #ifdef OPENMC_MPI
   use message_passing
 #endif
@@ -12,7 +11,7 @@ module source
   use distribution_multivariate, only: SpatialBox
   use error,            only: fatal_error
   use geometry,         only: find_cell
-  use hdf5_interface,   only: file_open, file_close, read_dataset
+  use hdf5_interface,   only: file_open, file_close, read_dataset, HID_T
   use math
   use message_passing,  only: rank
   use mgxs_header,      only: rev_energy_bins, num_energy_groups

@@ -1,7 +1,5 @@
 module particle_header
 
-  use hdf5, only: HID_T
-
   use bank_header,     only: Bank, source_bank
   use constants
   use error,           only: fatal_error, warning

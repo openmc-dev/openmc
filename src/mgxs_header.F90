@@ -3,8 +3,6 @@ module mgxs_header
   use, intrinsic :: ISO_FORTRAN_ENV
   use, intrinsic :: ISO_C_BINDING
 
-  use hdf5, only: HID_T, HSIZE_T, SIZE_T
-
   use algorithm,       only: find, sort
   use constants,       only: MAX_WORD_LEN, ZERO, ONE, TWO, PI
   use error,           only: fatal_error

@@ -3,8 +3,6 @@ module nuclide_header
   use, intrinsic :: ISO_FORTRAN_ENV
   use, intrinsic :: ISO_C_BINDING
 
-  use hdf5,                   only: HID_T, HSIZE_T, SIZE_T
-
   use algorithm,              only: sort, find, binary_search
   use constants
   use dict_header,            only: DictIntInt, DictCharInt

@@ -8,10 +8,7 @@ module sab_header
   use dict_header, only: DictIntInt, DictCharInt
   use distribution_univariate, only: Tabular
   use error,       only: warning, fatal_error
-  use hdf5, only: HID_T, HSIZE_T, SIZE_T
-  use hdf5_interface, only: read_attribute, get_shape, open_group, close_group, &
-       open_dataset, read_dataset, close_dataset, get_datasets, object_exists, &
-       get_name
+  use hdf5_interface
   use random_lcg,  only: prn
   use secondary_correlated, only: CorrelatedAngleEnergy
   use settings

@@ -2,8 +2,6 @@ module tally_filter_energyfunc
 
   use, intrinsic :: ISO_C_BINDING
 
-  use hdf5
-
   use algorithm,          only: binary_search
   use constants
   use error,              only: fatal_error

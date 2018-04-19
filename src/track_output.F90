@@ -5,8 +5,6 @@
 
 module track_output
 
-  use hdf5
-
   use constants
   use hdf5_interface
   use particle_header, only: Particle

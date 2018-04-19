@@ -164,6 +164,10 @@ def test_tally(capi_init):
     t.scores = new_scores
     assert t.scores == new_scores
 
+    assert not t.active
+    t.active = True
+    assert t.active
+
 
 def test_new_tally(capi_init):
     with pytest.raises(exc.AllocationError):
@@ -177,7 +181,7 @@ def test_new_tally(capi_init):
 
 def test_tally_results(capi_run):
     t = openmc.capi.tallies[1]
-    assert t.num_realizations == 5
+    assert t.num_realizations == 10  # t was made active in test_tally
     assert np.all(t.mean >= 0)
     nonzero = (t.mean > 0.0)
     assert np.all(t.std_dev[nonzero] >= 0)

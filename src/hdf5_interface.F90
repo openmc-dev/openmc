@@ -422,18 +422,17 @@ contains
     character(*),   intent(in) :: name ! name of group
     integer(HID_T) :: newgroup_id
 
-    logical :: exists   ! does the group exist
-    integer :: hdf5_err ! HDF5 error code
+    interface
+      function open_group_c(group_id, name) result(newgroup_id) &
+           bind(C, name='open_group')
+        import HID_T, C_CHAR
+        integer(HID_T), value :: group_id
+        character(kind=C_CHAR), intent(in) :: name(*)
+        integer(HID_T) :: newgroup_id
+      end function open_group_c
+    end interface
 
-    ! Check if group exists
-    exists = object_exists(group_id, name)
-
-    ! open group if it exists
-    if (exists) then
-      call h5gopen_f(group_id, trim(name), newgroup_id, hdf5_err)
-    else
-      call fatal_error("The group '" // trim(name) // "' does not exist.")
-    end if
+    newgroup_id = open_group_c(group_id, to_c_string(name))
   end function open_group
 
 !===============================================================================
@@ -445,18 +444,17 @@ contains
     character(*),   intent(in) :: name ! name of group
     integer(HID_T) :: newgroup_id
 
-    integer :: hdf5_err ! HDF5 error code
-    logical :: exists   ! does the group exist
+    interface
+      function create_group_c(group_id, name) result(newgroup_id) &
+           bind(C, name='create_group')
+        import HID_T, C_CHAR
+        integer(HID_T), value :: group_id
+        character(kind=C_CHAR), intent(in) :: name(*)
+        integer(HID_T) :: newgroup_id
+      end function create_group_c
+    end interface
 
-    ! Check if group exists
-    exists = object_exists(group_id, name)
-
-    ! create group
-    if (exists) then
-      call fatal_error("The group '" // trim(name) // "' already exists.")
-    else
-      call h5gcreate_f(group_id, trim(name), newgroup_id, hdf5_err)
-    end if
+    newgroup_id = create_group_c(group_id, to_c_string(name))
   end function create_group
 
 !===============================================================================
@@ -465,13 +463,14 @@ contains
 
   subroutine close_group(group_id)
     integer(HID_T), intent(inout) :: group_id
+    interface
+      subroutine close_group_c(group_id) bind(C, name='close_group')
+        import HID_T
+        integer(HID_T), value :: group_id
+      end subroutine close_group_c
+    end interface
 
-    integer :: hdf5_err ! HDF5 error code
-
-    call h5gclose_f(group_id, hdf5_err)
-    if (hdf5_err < 0) then
-      call fatal_error("Unable to close HDF5 group.")
-    end if
+    call close_group_c(group_id)
   end subroutine close_group
 
 !===============================================================================
@@ -483,33 +482,34 @@ contains
     character(*),   intent(in) :: name ! name of dataset
     integer(HID_T)             :: dataset_id
 
-    logical :: exists   ! does the dataset exist
-    integer :: hdf5_err ! HDF5 error code
+    interface
+      function open_dataset_c(group_id, name) result(dset_id) &
+           bind(C, name='open_dataset')
+        import HID_T, C_CHAR
+        integer(HID_T), value :: group_id
+        character(kind=C_CHAR), intent(in) :: name(*)
+        integer(HID_T) :: dset_id
+      end function open_dataset_c
+    end interface
 
-    ! Check if group exists
-    exists = object_exists(group_id, name)
-
-    ! open group if it exists
-    if (exists) then
-      call h5dopen_f(group_id, trim(name), dataset_id, hdf5_err)
-    else
-      call fatal_error("The dataset '" // trim(name) // "' does not exist.")
-    end if
+    dataset_id = open_dataset_c(group_id, to_c_string(name))
   end function open_dataset
 
 !===============================================================================
-! CLOSE_GROUP closes HDF5 temp_group
+! CLOSE_DATASET closes an HDF5 dataset
 !===============================================================================
 
   subroutine close_dataset(dataset_id)
     integer(HID_T), intent(inout) :: dataset_id
 
-    integer :: hdf5_err ! HDF5 error code
+    interface
+      subroutine close_dataset_c(dset_id) bind(C, name='close_dataset')
+        import HID_T
+        integer(HID_T), value :: dset_id
+      end subroutine close_dataset_c
+    end interface
 
-    call h5dclose_f(dataset_id, hdf5_err)
-    if (hdf5_err < 0) then
-      call fatal_error("Unable to close HDF5 dataset.")
-    end if
+    call close_dataset_c(dataset_id)
   end subroutine close_dataset
 
 !===============================================================================

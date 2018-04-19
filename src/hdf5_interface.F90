@@ -1111,86 +1111,38 @@ contains
     character(*), optional, intent(in)    :: name
     logical,      optional, intent(in)    :: indep ! independent I/O
 
-    integer          :: hdf5_err
-    integer(HID_T)   :: dset_id
-    integer(HSIZE_T) :: dims(1)
+    integer(HID_T) :: dset_id
+    integer(SIZE_T) :: i, j, k, n, m
+    logical(C_BOOL) :: indep_
+    character(kind=C_CHAR), allocatable, target :: buffer_(:)
 
-    ! If 'name' argument is passed, obj_id is interpreted to be a group and
-    ! 'name' is the name of the dataset we should read from
     if (present(name)) then
-      call h5dopen_f(obj_id, trim(name), dset_id, hdf5_err)
+      dset_id = open_dataset(obj_id, name)
     else
       dset_id = obj_id
     end if
 
-    dims(:) = shape(buffer)
+    ! Allocate a C char array to get strings
+    n = dataset_typesize(dset_id)
+    m = size(buffer)
+    allocate(buffer_(n*m))
 
-    if (present(indep)) then
-      call read_string_1D_explicit(dset_id, dims, buffer, indep)
-    else
-      call read_string_1D_explicit(dset_id, dims, buffer)
-    end if
+    indep_ = .false.
+    if (present(indep)) indep_ = indep
+    call read_string_c(dset_id, C_NULL_PTR, n, buffer_, indep_)
+
+    ! Convert null-terminated C strings into Fortran strings
+    do i = 1, m
+      buffer(i) = ''
+      do j = 1, n
+        k = (i-1)*n + j
+        if (buffer_(k) == C_NULL_CHAR) exit
+        buffer(i)(j:j) = buffer_(k)
+      end do
+    end do
+
+    call close_dataset(dset_id)
   end subroutine read_string_1D
-
-  subroutine read_string_1D_explicit(dset_id, dims, buffer, indep)
-    integer(HID_T),       intent(in)    :: dset_id
-    integer(HSIZE_T),     intent(in)    :: dims(1)
-    character(*), target, intent(inout) :: buffer(dims(1))
-    logical, optional,    intent(in)    :: indep   ! independent I/O
-
-    integer :: hdf5_err
-    integer :: data_xfer_mode
-#ifdef PHDF5
-    integer(HID_T) :: plist   ! property list
-#endif
-    integer(HID_T) :: space_id
-    integer(HID_T) :: filetype
-    integer(HID_T) :: memtype
-    integer(SIZE_T) :: size
-    integer(SIZE_T) :: n
-    type(c_ptr) :: f_ptr
-
-    ! Set up collective vs. independent I/O
-    data_xfer_mode = H5FD_MPIO_COLLECTIVE_F
-    if (present(indep)) then
-      if (indep) data_xfer_mode = H5FD_MPIO_INDEPENDENT_F
-    end if
-
-    ! Get dataset and dataspace
-    call h5dget_space_f(dset_id, space_id, hdf5_err)
-
-    ! Make sure buffer is large enough
-    call h5dget_type_f(dset_id, filetype, hdf5_err)
-    call h5tget_size_f(filetype, size, hdf5_err)
-    if (size > len(buffer(1)) + 1) then
-      call fatal_error("Character buffer is not long enough to &
-           &read HDF5 string array.")
-    end if
-
-    ! Get datatype in memory based on Fortran character
-    n = len(buffer(1))
-    call h5tcopy_f(H5T_FORTRAN_S1, memtype, hdf5_err)
-    call h5tset_size_f(memtype, n, hdf5_err)
-
-    ! Get pointer to start of string
-    f_ptr = c_loc(buffer(1)(1:1))
-
-    if (using_mpio_device(dset_id)) then
-#ifdef PHDF5
-      call h5pcreate_f(H5P_DATASET_XFER_F, plist, hdf5_err)
-      call h5pset_dxpl_mpio_f(plist, data_xfer_mode, hdf5_err)
-      call h5dread_f(dset_id, memtype, f_ptr, hdf5_err, mem_space_id=space_id, &
-           xfer_prp=plist)
-      call h5pclose_f(plist, hdf5_err)
-#endif
-    else
-      call h5dread_f(dset_id, memtype, f_ptr, hdf5_err, mem_space_id=space_id)
-    end if
-
-    call h5sclose_f(space_id, hdf5_err)
-    call h5tclose_f(filetype, hdf5_err)
-    call h5tclose_f(memtype, hdf5_err)
-  end subroutine read_string_1D_explicit
 
 !===============================================================================
 ! WRITE_ATTRIBUTE_STRING

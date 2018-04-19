@@ -100,6 +100,13 @@ module hdf5_interface
   public :: get_name
 
   interface
+    function attribute_typesize(obj_id, name) result(sz) bind(C)
+      import HID_T, C_CHAR, SIZE_T
+      integer(HID_T), value :: obj_id
+      character(kind=C_CHAR), intent(in) :: name(*)
+      integer(SIZE_T) :: sz
+    end function attribute_typesize
+
     function dataset_typesize(dset) result(sz) bind(C)
       import HID_T, SIZE_T
       integer(HID_T), value :: dset
@@ -148,6 +155,15 @@ module hdf5_interface
       character(kind=C_CHAR), intent(in) :: name(*)
       real(C_DOUBLE), intent(out) :: buffer(*)
     end subroutine read_attr_double_c
+
+    subroutine read_attr_string_c(obj_id, name, slen, buffer) &
+         bind(C, name='read_attr_string')
+      import HID_T, C_CHAR, C_SIZE_T
+      integer(HID_T), value :: obj_id
+      character(kind=C_CHAR), intent(in) :: name(*)
+      integer(C_SIZE_T), value :: slen
+      character(kind=C_CHAR), intent(out) :: buffer(*)
+    end subroutine read_attr_string_c
 
     subroutine read_int_c(obj_id, name, buffer, indep) &
          bind(C, name='read_int')
@@ -1290,44 +1306,22 @@ contains
     integer(HID_T), intent(in)    :: obj_id
     character(*),   intent(in)    :: name    ! name for data
 
-    integer         :: hdf5_err
-    integer(HID_T)  :: attr_id ! data set handle
-    integer(HID_T)  :: filetype
-    integer(HID_T)  :: memtype
-    integer(SIZE_T) :: i
-    integer(SIZE_T) :: size
-    character(kind=C_CHAR), allocatable, target :: temp_buffer(:)
-    type(c_ptr)     :: f_ptr
+    integer(C_SIZE_T) :: i, n
+    character(kind=C_CHAR), allocatable, target :: buffer_(:)
 
-    ! Get dataset and dataspace
-    call h5aopen_f(obj_id, trim(name), attr_id, hdf5_err)
+    ! Allocate a C char array to get string
+    n = attribute_typesize(obj_id, to_c_string(name))
+    allocate(buffer_(n))
 
-    ! Make sure buffer is large enough
-    call h5aget_type_f(attr_id, filetype, hdf5_err)
-    call h5tget_size_f(filetype, size, hdf5_err)
-    allocate(temp_buffer(size))
-    if (size > len(buffer)) then
-      call fatal_error("Character buffer is not long enough to &
-           &read HDF5 string.")
-    end if
+    ! Read attribute
+    call read_attr_string_c(obj_id, to_c_string(name), n, buffer_)
 
-    ! Get datatype in memory based on Fortran character
-    call h5tcopy_f(H5T_C_S1, memtype, hdf5_err)
-    call h5tset_size_f(memtype, size + 1, hdf5_err)
-
-    ! Get pointer to start of string
-    f_ptr = c_loc(temp_buffer(1))
-
-    call h5aread_f(attr_id, memtype, f_ptr, hdf5_err)
+    ! Copy back to Fortran string
     buffer = ''
-    do i = 1, size
-      if (temp_buffer(i) == C_NULL_CHAR) cycle
-      buffer(i:i) = temp_buffer(i)
+    do i = 1, n
+      if (buffer_(i) == C_NULL_CHAR) cycle
+      buffer(i:i) = buffer_(i)
     end do
-
-    call h5aclose_f(attr_id, hdf5_err)
-    call h5tclose_f(filetype, hdf5_err)
-    call h5tclose_f(memtype, hdf5_err)
   end subroutine read_attribute_string
 
   subroutine read_attribute_string_1D(buffer, obj_id, name)
@@ -1335,82 +1329,43 @@ contains
     integer(HID_T), intent(in) :: obj_id
     character(*),   intent(in) :: name
 
-    integer          :: hdf5_err
-    integer(HID_T)   :: space_id
-    integer(HID_T)   :: attr_id
+    integer(C_SIZE_T) :: i, j, k, n, m
     integer(HSIZE_T) :: dims(1)
-    integer(HSIZE_T) :: maxdims(1)
+    character(kind=C_CHAR), allocatable, target :: buffer_(:)
 
-    call h5aopen_f(obj_id, trim(name), attr_id, hdf5_err)
-
-    if (allocated(buffer)) then
-      dims(:) = shape(buffer)
-    else
-      call h5aget_space_f(attr_id, space_id, hdf5_err)
-      call h5sget_simple_extent_dims_f(space_id, dims, maxdims, hdf5_err)
+    if (.not. allocated(buffer)) then
+      call get_shape_attr(obj_id, to_c_string(name), dims)
       allocate(buffer(dims(1)))
-      call h5sclose_f(space_id, hdf5_err)
     end if
 
-    call read_attribute_string_1D_explicit(attr_id, dims, buffer)
-    call h5aclose_f(attr_id, hdf5_err)
+    ! Allocate a C char array to get strings
+    n = attribute_typesize(obj_id, to_c_string(name))
+    m = size(buffer)
+    allocate(buffer_(n*m))
+
+    ! Read attribute
+    call read_attr_string_c(obj_id, to_c_string(name), n, buffer_)
+
+    ! Convert null-terminated C strings into Fortran strings
+    do i = 1, m
+      buffer(i) = ''
+      do j = 1, n
+        k = (i-1)*n + j
+        if (buffer_(k) == C_NULL_CHAR) exit
+        buffer(i)(j:j) = buffer_(k)
+      end do
+    end do
   end subroutine read_attribute_string_1D
-
-  subroutine read_attribute_string_1D_explicit(attr_id, dims, buffer)
-    integer(HID_T),       intent(in)    :: attr_id
-    integer(HSIZE_T),     intent(in)    :: dims(1)
-    character(*), target, intent(inout) :: buffer(dims(1))
-
-    integer :: hdf5_err
-    integer(HID_T) :: filetype
-    integer(HID_T) :: memtype
-    integer(SIZE_T) :: size
-    integer(SIZE_T) :: n
-    type(c_ptr) :: f_ptr
-
-    ! Make sure buffer is large enough
-    call h5aget_type_f(attr_id, filetype, hdf5_err)
-    call h5tget_size_f(filetype, size, hdf5_err)
-    if (size > len(buffer(1)) + 1) then
-      call fatal_error("Character buffer is not long enough to &
-           &read HDF5 string array.")
-    end if
-
-    ! Get datatype in memory based on Fortran character
-    n = len(buffer(1))
-    call h5tcopy_f(H5T_FORTRAN_S1, memtype, hdf5_err)
-    call h5tset_size_f(memtype, n, hdf5_err)
-
-    ! Get pointer to start of string
-    f_ptr = c_loc(buffer(1)(1:1))
-
-    call h5aread_f(attr_id, memtype, f_ptr, hdf5_err)
-
-    call h5tclose_f(filetype, hdf5_err)
-    call h5tclose_f(memtype, hdf5_err)
-  end subroutine read_attribute_string_1D_explicit
 
   subroutine read_attribute_logical(buffer, obj_id, name)
     logical,        intent(inout), target :: buffer
     integer(HID_T), intent(in)            :: obj_id
     character(*),   intent(in)            :: name
 
-    integer, target :: int_buffer
-    integer         :: hdf5_err
-    integer(HID_T)  :: attr_id
-    type(c_ptr)     :: f_ptr
+    integer :: tmp
 
-    call h5aopen_f(obj_id, trim(name), attr_id, hdf5_err)
-    f_ptr = c_loc(int_buffer)
-    call h5aread_f(attr_id, H5T_NATIVE_INTEGER, f_ptr, hdf5_err)
-    call h5aclose_f(attr_id, hdf5_err)
-
-    ! Convert to Fortran logical
-    if (int_buffer == 0) then
-      buffer = .false.
-    else
-      buffer = .true.
-    end if
+    call read_attribute_integer(tmp, obj_id, name)
+    buffer = (tmp /= 0)
   end subroutine read_attribute_logical
 
   subroutine get_shape(obj_id, dims)

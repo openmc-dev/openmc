@@ -19,6 +19,18 @@ attribute_exists(hid_t obj_id, const char* name)
 }
 
 
+size_t
+attribute_typesize(hid_t obj_id, const char* name)
+{
+  hid_t attr = H5Aopen(obj_id, name, H5P_DEFAULT);
+  hid_t filetype = H5Aget_type(attr);
+  size_t n = H5Tget_size(filetype);
+  H5Tclose(filetype);
+  H5Aclose(attr);
+  return n;
+}
+
+
 bool
 using_mpio_device(hid_t obj_id)
 {
@@ -235,6 +247,21 @@ void
 read_attr_int(hid_t obj_id, const char* name, int* buffer)
 {
   read_attr(obj_id, name, H5T_NATIVE_INT, buffer);
+}
+
+
+void
+read_attr_string(hid_t obj_id, const char* name, size_t slen, char* buffer)
+{
+  // Create datatype for a string
+  hid_t datatype = H5Tcopy(H5T_C_S1);
+  H5Tset_size(datatype, slen + 1);
+
+  // Read data into buffer
+  read_attr(obj_id, name, datatype, buffer);
+
+  // Free resources
+  H5Tclose(datatype);
 }
 
 

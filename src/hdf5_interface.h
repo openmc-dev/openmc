@@ -13,6 +13,7 @@
 namespace openmc {
 
 extern "C" bool attribute_exists(hid_t obj_id, const char* name);
+extern "C" size_t attribute_typesize(hid_t obj_id, const char* name);
 extern "C" hid_t create_group(hid_t parent_id, const char* name);
 hid_t create_group(hid_t parent_id, const std::string& name);
 extern "C" void close_dataset(hid_t dataset_id);
@@ -51,6 +52,8 @@ void read_attr(hid_t obj_id, const char* name, hid_t mem_type_id,
                const void* buffer);
 extern "C" void read_attr_double(hid_t obj_id, const char* name, double* buffer);
 extern "C" void read_attr_int(hid_t obj_id, const char* name, int* buffer);
+extern "C" void read_attr_string(hid_t obj_id, const char* name, size_t slen,
+                                 char* buffer);
 
 void read_dataset(hid_t obj_id, const char* name, hid_t mem_type_id,
                   void* buffer, bool indep);

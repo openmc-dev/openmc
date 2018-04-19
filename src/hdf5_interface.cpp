@@ -69,11 +69,13 @@ create_group(hid_t parent_id, char const *name)
   return out;
 }
 
+
 hid_t
 create_group(hid_t parent_id, const std::string &name)
 {
   return create_group(parent_id, name.c_str());
 }
+
 
 void
 close_dataset(hid_t dataset_id)
@@ -86,6 +88,16 @@ void
 close_group(hid_t group_id)
 {
   if (H5Gclose(group_id) < 0) fatal_error("Failed to close group");
+}
+
+
+int
+dataset_ndims(hid_t dset)
+{
+  hid_t dspace = H5Dget_space(dset);
+  int ndims = H5Sget_simple_extent_ndims(dspace);
+  H5Sclose(dspace);
+  return ndims;
 }
 
 

@@ -331,11 +331,18 @@ contains
     character(*),   intent(in) :: name ! name of group
     logical :: exists
 
-    integer :: hdf5_err ! HDF5 error code
+    interface
+      function object_exists_c(obj_id, name) result(exists) &
+           bind(C, name='object_exists')
+        import HID_T, C_CHAR, C_BOOL
+        integer(HID_T), value :: obj_id
+        character(kind=C_CHAR), intent(in) :: name(*)
+        logical(C_BOOL) :: exists
+      end function object_exists_c
+    end interface
 
     ! Check if group exists
-    call h5ltpath_valid_f(object_id, trim(name), .true., exists, hdf5_err)
-
+    exists = object_exists_c(object_id, to_c_string(name))
   end function object_exists
 
 !===============================================================================
@@ -1475,20 +1482,15 @@ contains
     integer(HID_T), intent(in)  :: obj_id
     integer,        intent(out) :: ndims
 
-    integer          :: hdf5_err
-    integer          :: type
-    integer(HID_T)   :: space_id
+    interface
+      function dataset_ndims(dset) result(ndims) bind(C)
+        import HID_T, C_INT
+        integer(HID_T), value :: dset
+        integer(C_INT) :: ndims
+      end function dataset_ndims
+    end interface
 
-    call h5iget_type_f(obj_id, type, hdf5_err)
-    if (type == H5I_DATASET_F) then
-      call h5dget_space_f(obj_id, space_id, hdf5_err)
-      call h5sget_simple_extent_ndims_f(space_id, ndims, hdf5_err)
-      call h5sclose_f(space_id, hdf5_err)
-    elseif (type == H5I_ATTR_F) then
-      call h5aget_space_f(obj_id, space_id, hdf5_err)
-      call h5sget_simple_extent_ndims_f(space_id, ndims, hdf5_err)
-      call h5sclose_f(space_id, hdf5_err)
-    end if
+    ndims = dataset_ndims(obj_id)
   end subroutine get_ndims
 
   function using_mpio_device(obj_id) result(mpio)

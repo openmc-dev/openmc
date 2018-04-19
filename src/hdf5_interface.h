@@ -17,6 +17,7 @@ hid_t create_group(hid_t parent_id, const std::string& name);
 extern "C" void close_dataset(hid_t dataset_id);
 extern "C" void close_group(hid_t group_id);
 extern "C" int dataset_ndims(hid_t dset);
+extern "C" size_t dataset_typesize(hid_t dset);
 extern "C" hid_t file_open(const char* filename, char mode, bool parallel);
 hid_t file_open(const std::string& filename, char mode, bool parallel);
 extern "C" void file_close(hid_t file_id);
@@ -58,6 +59,8 @@ extern "C" void read_int(hid_t obj_id, const char* name, int* buffer,
                          bool indep);
 extern "C" void read_llong(hid_t obj_id, const char* name, long long* buffer,
                            bool indep);
+extern "C" void read_string(hid_t obj_id, const char* name, size_t slen,
+                            char* buffer, bool indep);
 extern "C" void read_complex(hid_t obj_id, const char* name,
                              double _Complex* buffer, bool indep);
 

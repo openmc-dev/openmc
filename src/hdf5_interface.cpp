@@ -101,6 +101,16 @@ dataset_ndims(hid_t dset)
 }
 
 
+size_t
+dataset_typesize(hid_t dset)
+{
+  hid_t filetype = H5Dget_type(dset);
+  size_t n = H5Tget_size(filetype);
+  H5Tclose(filetype);
+  return n;
+}
+
+
 hid_t
 file_open(const char* filename, char mode, bool parallel)
 {
@@ -225,7 +235,7 @@ read_dataset(hid_t obj_id, const char* name, hid_t mem_type_id,
              void* buffer, bool indep)
 {
   hid_t dset = obj_id;
-  if (name) dset = H5Dopen(obj_id, name, H5P_DEFAULT);
+  if (name) dset = open_dataset(obj_id, name);
 
   if (using_mpio_device(dset)) {
 #ifdef PHDF5
@@ -266,6 +276,21 @@ void
 read_llong(hid_t obj_id, const char* name, long long* buffer, bool indep)
 {
   read_dataset(obj_id, name, H5T_NATIVE_LLONG, buffer, indep);
+}
+
+
+void
+read_string(hid_t obj_id, const char* name, size_t slen, char* buffer, bool indep)
+{
+  // Create datatype for a string
+  hid_t datatype = H5Tcopy(H5T_C_S1);
+  H5Tset_size(datatype, slen + 1);
+
+  // Read data into buffer
+  read_dataset(obj_id, name, datatype, buffer, indep);
+
+  // Free resources
+  H5Tclose(datatype);
 }
 
 

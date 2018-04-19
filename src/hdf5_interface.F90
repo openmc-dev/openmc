@@ -100,6 +100,12 @@ module hdf5_interface
   public :: get_name
 
   interface
+    function dataset_typesize(dset) result(sz) bind(C)
+      import HID_T, SIZE_T
+      integer(HID_T), value :: dset
+      integer(SIZE_T) :: sz
+    end function dataset_typesize
+
     subroutine file_close(file_id) bind(C)
       import HID_T
       integer(HID_T), value :: file_id
@@ -123,7 +129,7 @@ module hdf5_interface
       import HID_T, C_DOUBLE, C_BOOL, C_PTR
       integer(HID_T), value :: obj_id
       type(C_PTR), value :: name
-      real(C_DOUBLE), intent(in) :: buffer(*)
+      real(C_DOUBLE), intent(out) :: buffer(*)
       logical(C_BOOL), intent(in) :: indep
     end subroutine read_double_c
 
@@ -132,7 +138,7 @@ module hdf5_interface
       import HID_T, C_CHAR, C_INT
       integer(HID_T), value :: obj_id
       character(kind=C_CHAR), intent(in) :: name(*)
-      integer(C_INT), intent(in) :: buffer(*)
+      integer(C_INT), intent(out) :: buffer(*)
     end subroutine read_attr_int_c
 
     subroutine read_attr_double_c(obj_id, name, buffer) &
@@ -140,7 +146,7 @@ module hdf5_interface
       import HID_T, C_CHAR, C_DOUBLE
       integer(HID_T), value :: obj_id
       character(kind=C_CHAR), intent(in) :: name(*)
-      real(C_DOUBLE), intent(in) :: buffer(*)
+      real(C_DOUBLE), intent(out) :: buffer(*)
     end subroutine read_attr_double_c
 
     subroutine read_int_c(obj_id, name, buffer, indep) &
@@ -148,7 +154,7 @@ module hdf5_interface
       import HID_T, C_INT, C_BOOL, C_PTR
       integer(HID_T), value :: obj_id
       type(C_PTR), value :: name
-      integer(C_INT), intent(in) :: buffer(*)
+      integer(C_INT), intent(out) :: buffer(*)
       logical(C_BOOL), intent(in) :: indep
     end subroutine read_int_c
 
@@ -157,16 +163,26 @@ module hdf5_interface
       import HID_T, C_INT, C_BOOL, C_PTR, C_LONG_LONG
       integer(HID_T), value :: obj_id
       type(C_PTR), value :: name
-      integer(C_LONG_LONG), intent(in) :: buffer(*)
+      integer(C_LONG_LONG), intent(out) :: buffer(*)
       logical(C_BOOL), intent(in) :: indep
     end subroutine read_llong_c
+
+    subroutine read_string_c(obj_id, name, slen, buffer, indep) &
+         bind(C, name='read_string')
+      import HID_T, C_PTR, C_SIZE_T, C_CHAR, C_BOOL
+      integer(HID_T), value :: obj_id
+      type(C_PTR), value :: name
+      integer(C_SIZE_T), value :: slen
+      character(kind=C_CHAR), intent(out) :: buffer(*)
+      logical(C_BOOL), intent(in) :: indep
+    end subroutine read_string_c
 
     subroutine read_complex_c(obj_id, name, buffer, indep) &
          bind(C, name='read_complex')
       import HID_T, C_PTR, C_DOUBLE_COMPLEX, C_BOOL
       integer(HID_T), value :: obj_id
       type(C_PTR), value :: name
-      complex(C_DOUBLE_COMPLEX), intent(in) :: buffer(*)
+      complex(C_DOUBLE_COMPLEX), intent(out) :: buffer(*)
       logical(C_BOOL), intent(in) :: indep
     end subroutine read_complex_c
 
@@ -1019,67 +1035,32 @@ contains
     character(*), optional, intent(in)    :: name
     logical,      optional, intent(in)    :: indep ! independent I/O
 
-    integer :: hdf5_err
-    integer :: data_xfer_mode
-#ifdef PHDF5
-    integer(HID_T) :: plist   ! property list
-#endif
     integer(HID_T) :: dset_id
-    integer(HID_T) :: filetype
-    integer(HID_T) :: memtype
     integer(SIZE_T) :: i, n
-    character(kind=C_CHAR), allocatable, target :: temp_buffer(:)
-    type(c_ptr) :: f_ptr
+    logical(C_BOOL) :: indep_
+    character(kind=C_CHAR), allocatable, target :: buffer_(:)
 
     if (present(name)) then
-      call h5dopen_f(obj_id, trim(name), dset_id, hdf5_err)
+      dset_id = open_dataset(obj_id, name)
     else
       dset_id = obj_id
     end if
 
-    ! Set up collective vs. independent I/O
-    data_xfer_mode = H5FD_MPIO_COLLECTIVE_F
-    if (present(indep)) then
-      if (indep) data_xfer_mode = H5FD_MPIO_INDEPENDENT_F
-    end if
+    ! Allocate a C char array to get string
+    n = dataset_typesize(dset_id)
+    allocate(buffer_(n))
 
-    ! Make sure buffer is large enough
-    call h5dget_type_f(dset_id, filetype, hdf5_err)
-    call h5tget_size_f(filetype, n, hdf5_err)
-    if (n > len(buffer)) then
-      call fatal_error("Character buffer is not long enough to &
-           &read HDF5 string.")
-    end if
-
-    ! Get datatype in memory based on Fortran character
-    call h5tcopy_f(H5T_C_S1, memtype, hdf5_err)
-    call h5tset_size_f(memtype, n + 1, hdf5_err)
-
-    ! Get pointer to start of string
-    allocate(temp_buffer(n))
-    f_ptr = c_loc(temp_buffer(1))
-
-    if (using_mpio_device(dset_id)) then
-#ifdef PHDF5
-      call h5pcreate_f(H5P_DATASET_XFER_F, plist, hdf5_err)
-      call h5pset_dxpl_mpio_f(plist, data_xfer_mode, hdf5_err)
-      call h5dread_f(dset_id, memtype, f_ptr, hdf5_err, xfer_prp=plist)
-      call h5pclose_f(plist, hdf5_err)
-#endif
-    else
-      call h5dread_f(dset_id, memtype, f_ptr, hdf5_err)
-    end if
+    indep_ = .false.
+    if (present(indep)) indep_ = indep
+    call read_string_c(dset_id, C_NULL_PTR, n, buffer_, indep_)
 
     buffer = ''
     do i = 1, n
-      if (temp_buffer(i) == C_NULL_CHAR) cycle
-      buffer(i:i) = temp_buffer(i)
+      if (buffer_(i) == C_NULL_CHAR) cycle
+      buffer(i:i) = buffer_(i)
     end do
 
-    if (present(name)) call h5dclose_f(dset_id, hdf5_err)
-
-    call h5tclose_f(filetype, hdf5_err)
-    call h5tclose_f(memtype, hdf5_err)
+    call close_dataset(dset_id)
   end subroutine read_string
 
 !===============================================================================
@@ -1343,7 +1324,7 @@ contains
       allocate(buffer(dims(2), dims(1)))
     end if
 
-    call read_attr_int_C(obj_id, to_c_string(name), buffer)
+    call read_attr_int_c(obj_id, to_c_string(name), buffer)
   end subroutine read_attribute_integer_2D
 
   subroutine read_attribute_string(buffer, obj_id, name)

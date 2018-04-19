@@ -1396,34 +1396,6 @@ contains
     ndims = dataset_ndims(obj_id)
   end subroutine get_ndims
 
-  function using_mpio_device(obj_id) result(mpio)
-    integer(HID_T), intent(in) :: obj_id
-    logical :: mpio
-
-    integer :: hdf5_err
-    integer(HID_T) :: driver
-    integer(HID_T) :: file_id
-    integer(HID_T) :: fapl_id
-
-    ! Determine file that this object is part of
-    call h5iget_file_id_f(obj_id, file_id, hdf5_err)
-
-    ! Get file access property list
-    call h5fget_access_plist_f(file_id, fapl_id, hdf5_err)
-
-    ! Get low-level driver identifier
-    call h5pget_driver_f(fapl_id, driver, hdf5_err)
-
-    ! Close file access property list access
-    call h5pclose_f(fapl_id, hdf5_err)
-
-    ! Close file access -- note that this only decreases the reference count so
-    ! that the file is not actually closed
-    call h5fclose_f(file_id, hdf5_err)
-
-    mpio = (driver == H5FD_MPIO_F)
-  end function using_mpio_device
-
 !===============================================================================
 ! READ_COMPLEX_2D reads double precision complex 2-D array data as output by
 ! the h5py HDF5 python module.

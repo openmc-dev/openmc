@@ -161,7 +161,7 @@ open_group(hid_t group_id, const char* name)
 
 
 void
-read_data(hid_t obj_id, const char* name, hid_t mem_type_id,
+read_dataset(hid_t obj_id, const char* name, hid_t mem_type_id,
            void* buffer, bool indep)
 {
   hid_t dset = obj_id;
@@ -191,27 +191,84 @@ read_data(hid_t obj_id, const char* name, hid_t mem_type_id,
 void
 read_double(hid_t obj_id, const char* name, double* buffer, bool indep)
 {
-  read_data(obj_id, name, H5T_NATIVE_DOUBLE, buffer, indep);
+  read_dataset(obj_id, name, H5T_NATIVE_DOUBLE, buffer, indep);
 }
 
 
 void
 read_int(hid_t obj_id, const char* name, int* buffer, bool indep)
 {
-  read_data(obj_id, name, H5T_NATIVE_INT, buffer, indep);
+  read_dataset(obj_id, name, H5T_NATIVE_INT, buffer, indep);
 }
 
 
 void
 read_llong(hid_t obj_id, const char* name, long long* buffer, bool indep)
 {
-  read_data(obj_id, name, H5T_NATIVE_LLONG, buffer, indep);
+  read_dataset(obj_id, name, H5T_NATIVE_LLONG, buffer, indep);
 }
 
 
 void
-write_data(hid_t group_id, int ndim, const hsize_t* dims, const char* name,
-            hid_t mem_type_id, const void* buffer, bool indep)
+write_attr(hid_t obj_id, int ndim, const hsize_t* dims, const char* name,
+           hid_t mem_type_id, const void* buffer)
+{
+  // If array is given, create a simple dataspace. Otherwise, create a scalar
+  // datascape.
+  hid_t dspace;
+  if (ndim > 0) {
+    dspace = H5Screate_simple(ndim, dims, nullptr);
+  } else {
+    dspace = H5Screate(H5S_SCALAR);
+  }
+
+  // Create attribute and Write data
+  hid_t attr = H5Acreate(obj_id, name, mem_type_id, dspace,
+                         H5P_DEFAULT, H5P_DEFAULT);
+  H5Awrite(attr, mem_type_id, buffer);
+
+  // Free resources
+  H5Aclose(attr);
+  H5Sclose(dspace);
+}
+
+
+void
+write_attr_double(hid_t obj_id, int ndim, const hsize_t* dims, const char* name,
+                  const double* buffer)
+{
+  write_attr(obj_id, ndim, dims, name, H5T_NATIVE_DOUBLE, buffer);
+}
+
+
+void
+write_attr_int(hid_t obj_id, int ndim, const hsize_t* dims, const char* name,
+               const int* buffer)
+{
+  write_attr(obj_id, ndim, dims, name, H5T_NATIVE_INT, buffer);
+}
+
+
+void
+write_attr_string(hid_t obj_id, const char* name, const char* buffer)
+{
+  size_t n = strlen(buffer);
+  if (n > 0) {
+    // Set up appropriate datatype for a fixed-length string
+    hid_t datatype = H5Tcopy(H5T_C_S1);
+    H5Tset_size(datatype, n);
+
+    write_attr(obj_id, 0, nullptr, name, datatype, buffer);
+
+    // Free resources
+    H5Tclose(datatype);
+  }
+}
+
+
+void
+write_dataset(hid_t group_id, int ndim, const hsize_t* dims, const char* name,
+              hid_t mem_type_id, const void* buffer, bool indep)
 {
   // If array is given, create a simple dataspace. Otherwise, create a scalar
   // datascape.
@@ -252,7 +309,7 @@ void
 write_double(hid_t group_id, int ndim, const hsize_t* dims, const char* name,
              const double* buffer, bool indep)
 {
-  write_data(group_id, ndim, dims, name, H5T_NATIVE_DOUBLE, buffer, indep);
+  write_dataset(group_id, ndim, dims, name, H5T_NATIVE_DOUBLE, buffer, indep);
 }
 
 
@@ -260,7 +317,7 @@ void
 write_int(hid_t group_id, int ndim, const hsize_t* dims, const char* name,
           const int* buffer, bool indep)
 {
-  write_data(group_id, ndim, dims, name, H5T_NATIVE_INT, buffer, indep);
+  write_dataset(group_id, ndim, dims, name, H5T_NATIVE_INT, buffer, indep);
 }
 
 
@@ -268,7 +325,7 @@ void
 write_llong(hid_t group_id, int ndim, const hsize_t* dims, const char* name,
             const long long* buffer, bool indep)
 {
-  write_data(group_id, ndim, dims, name, H5T_NATIVE_LLONG, buffer, indep);
+  write_dataset(group_id, ndim, dims, name, H5T_NATIVE_LLONG, buffer, indep);
 }
 
 
@@ -281,7 +338,7 @@ write_string(hid_t group_id, int ndim, const hsize_t* dims, size_t slen,
     hid_t datatype = H5Tcopy(H5T_C_S1);
     H5Tset_size(datatype, slen);
 
-    write_data(group_id, ndim, dims, name, datatype, buffer, indep);
+    write_dataset(group_id, ndim, dims, name, datatype, buffer, indep);
 
     // Free resources
     H5Tclose(datatype);

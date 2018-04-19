@@ -41,8 +41,8 @@ write_double_1D(hid_t group_id, char const *name,
   H5Dclose(dataset);
 }
 
-void read_data(hid_t obj_id, const char* name, double* buffer,
-               hid_t mem_type_id, bool indep);
+void read_dataset(hid_t obj_id, const char* name, double* buffer,
+                  hid_t mem_type_id, bool indep);
 extern "C" void read_double(hid_t obj_id, const char* name, double* buffer,
                             bool indep);
 extern "C" void read_int(hid_t obj_id, const char* name, int* buffer,
@@ -50,8 +50,17 @@ extern "C" void read_int(hid_t obj_id, const char* name, int* buffer,
 extern "C" void read_llong(hid_t obj_id, const char* name, long long* buffer,
                            bool indep);
 
-void write_data(hid_t group_id, int ndim, const hsize_t* dims, const char* name,
-                hid_t mem_type_id, const void* buffer, bool indep);
+void write_attr(hid_t obj_id, int ndim, const hsize_t* dims, const char* name,
+                hid_t mem_type_id, const void* buffer);
+extern "C" void write_attr_double(hid_t obj_id, int ndim, const hsize_t* dims,
+                                  const char* name, const double* buffer);
+extern "C" void write_attr_int(hid_t obj_id, int ndim, const hsize_t* dims,
+                               const char* name, const int* buffer);
+extern "C" void write_attr_string(hid_t obj_id, const char* name, const char* buffer);
+
+
+void write_dataset(hid_t group_id, int ndim, const hsize_t* dims, const char* name,
+                   hid_t mem_type_id, const void* buffer, bool indep);
 extern "C" void write_double(hid_t group_id, int ndim, const hsize_t* dims,
                              const char* name, const double* buffer, bool indep);
 extern "C" void write_int(hid_t group_id, int ndim, const hsize_t* dims,

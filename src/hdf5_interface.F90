@@ -161,6 +161,15 @@ module hdf5_interface
       logical(C_BOOL), intent(in) :: indep
     end subroutine read_llong_c
 
+    subroutine read_complex_c(obj_id, name, buffer, indep) &
+         bind(C, name='read_complex')
+      import HID_T, C_PTR, C_DOUBLE_COMPLEX, C_BOOL
+      integer(HID_T), value :: obj_id
+      type(C_PTR), value :: name
+      complex(C_DOUBLE_COMPLEX), intent(in) :: buffer(*)
+      logical(C_BOOL), intent(in) :: indep
+    end subroutine read_complex_c
+
     subroutine write_attr_double_c(obj_id, ndim, dims, name, buffer) &
          bind(C, name='write_attr_double')
       import HID_T, HSIZE_T, C_INT, C_DOUBLE, C_CHAR
@@ -1527,94 +1536,25 @@ contains
 !===============================================================================
 
   subroutine read_complex_2D(buffer, obj_id, name, indep)
-    complex(8),   target,   intent(inout) :: buffer(:,:)
+    complex(C_DOUBLE_COMPLEX), target, intent(inout) :: buffer(:,:)
     integer(HID_T),         intent(in)    :: obj_id
     character(*), optional, intent(in)    :: name
     logical,      optional, intent(in)    :: indep  ! independent I/O
 
-    integer          :: hdf5_err
-    integer(HID_T)   :: dset_id
-    integer(HSIZE_T) :: dims(2)
+    logical(C_BOOL) :: indep_
+    character(kind=C_CHAR), target, allocatable :: name_(:)
+
+    indep_ = .false.
+    if (present(indep)) indep_ = indep
 
     ! If 'name' argument is passed, obj_id is interpreted to be a group and
     ! 'name' is the name of the dataset we should read from
     if (present(name)) then
-      call h5dopen_f(obj_id, trim(name), dset_id, hdf5_err)
+      name_ = to_c_string(name)
+      call read_complex_c(obj_id, c_loc(name_), buffer, indep_)
     else
-      dset_id = obj_id
+      call read_complex_c(obj_id, C_NULL_PTR, buffer, indep_)
     end if
-
-    dims(:) = shape(buffer)
-
-    if (present(indep)) then
-      call read_complex_2D_explicit(dset_id, dims, buffer, indep)
-    else
-      call read_complex_2D_explicit(dset_id, dims, buffer)
-    end if
-
-    if (present(name)) call h5dclose_f(dset_id, hdf5_err)
   end subroutine read_complex_2D
-
-  subroutine read_complex_2D_explicit(dset_id, dims, buffer, indep)
-    integer(HID_T),     intent(in)    :: dset_id
-    integer(HSIZE_T),   intent(in)    :: dims(2)
-    complex(8), target, intent(inout) :: buffer(dims(1), dims(2))
-    logical, optional, intent(in)     :: indep   ! independent I/O
-
-    real(8), target :: buffer_r(dims(1), dims(2))
-    real(8), target :: buffer_i(dims(1), dims(2))
-
-    integer(HSIZE_T) :: i, j
-
-    integer :: hdf5_err
-    integer :: data_xfer_mode
-#ifdef PHDF5
-    integer(HID_T) :: plist   ! property list
-#endif
-    type(c_ptr) :: f_ptr_r, f_ptr_i
-
-    ! Components needed for complex type support
-    integer(HID_T)   :: dtype_real
-    integer(HID_T)   :: dtype_imag
-    integer(SIZE_T)  :: size_double
-
-    ! Create the complex type
-    call h5tget_size_f(H5T_NATIVE_DOUBLE, size_double, hdf5_err)
-
-    ! Insert the 'r' and 'i' identifiers
-    call h5tcreate_f(H5T_COMPOUND_F, size_double, dtype_real, hdf5_err)
-    call h5tcreate_f(H5T_COMPOUND_F, size_double, dtype_imag, hdf5_err)
-    call h5tinsert_f(dtype_real, "r", 0_SIZE_T, H5T_NATIVE_DOUBLE, hdf5_err)
-    call h5tinsert_f(dtype_imag, "i", 0_SIZE_T, H5T_NATIVE_DOUBLE, hdf5_err)
-
-    ! Set up collective vs. independent I/O
-    data_xfer_mode = H5FD_MPIO_COLLECTIVE_F
-    if (present(indep)) then
-      if (indep) data_xfer_mode = H5FD_MPIO_INDEPENDENT_F
-    end if
-
-    f_ptr_r = c_loc(buffer_r)
-    f_ptr_i = c_loc(buffer_i)
-
-    if (using_mpio_device(dset_id)) then
-#ifdef PHDF5
-      call h5pcreate_f(H5P_DATASET_XFER_F, plist, hdf5_err)
-      call h5pset_dxpl_mpio_f(plist, data_xfer_mode, hdf5_err)
-      call h5dread_f(dset_id, dtype_real, f_ptr_r, hdf5_err, xfer_prp=plist)
-      call h5dread_f(dset_id, dtype_imag, f_ptr_i, hdf5_err, xfer_prp=plist)
-      call h5pclose_f(plist, hdf5_err)
-#endif
-    else
-      call h5dread_f(dset_id, dtype_real, f_ptr_r, hdf5_err)
-      call h5dread_f(dset_id, dtype_imag, f_ptr_i, hdf5_err)
-    end if
-
-    ! Reconstitute the complex numbers
-    do i = 1, dims(1)
-      do j = 1, dims(2)
-        buffer(i, j) = cmplx(buffer_r(i,j), buffer_i(i,j), kind=8)
-      end do
-    end do
-  end subroutine read_complex_2D_explicit
 
 end module hdf5_interface

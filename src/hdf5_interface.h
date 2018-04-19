@@ -68,6 +68,9 @@ extern "C" void read_string(hid_t obj_id, const char* name, size_t slen,
 extern "C" void read_complex(hid_t obj_id, const char* name,
                              double _Complex* buffer, bool indep);
 
+extern "C" void read_tally_results(hid_t group_id, hsize_t n_filter,
+                                   hsize_t n_score, double* results);
+
 void write_attr(hid_t obj_id, int ndim, const hsize_t* dims, const char* name,
                 hid_t mem_type_id, const void* buffer);
 extern "C" void write_attr_double(hid_t obj_id, int ndim, const hsize_t* dims,
@@ -89,6 +92,10 @@ extern "C" void write_llong(hid_t group_id, int ndim, const hsize_t* dims,
 extern "C" void write_string(hid_t group_id, int ndim, const hsize_t* dims, size_t slen,
                              const char* name, char const* buffer, bool indep);
 void write_string(hid_t group_id, const char* name, const std::string& buffer, bool indep);
+
+
+extern "C" void write_tally_results(hid_t group_id, hsize_t n_filter, hsize_t n_score,
+                                    const double* results);
 
 } // namespace openmc
 #endif //HDF5_INTERFACE_H

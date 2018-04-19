@@ -351,6 +351,26 @@ read_complex(hid_t obj_id, const char* name, double _Complex* buffer, bool indep
 
 
 void
+read_tally_results(hid_t group_id, hsize_t n_filter, hsize_t n_score, double* results)
+{
+  // Create dataspace for hyperslab in memory
+  hsize_t dims[] {n_filter, n_score, 3};
+  hsize_t start[] {0, 0, 1};
+  hsize_t count[] {n_filter, n_score, 2};
+  hid_t memspace = H5Screate_simple(3, dims, nullptr);
+  H5Sselect_hyperslab(memspace, H5S_SELECT_SET, start, nullptr, count, nullptr);
+
+  // Create and write dataset
+  hid_t dset = H5Dopen(group_id, "results", H5P_DEFAULT);
+  H5Dread(dset, H5T_NATIVE_DOUBLE, memspace, H5S_ALL, H5P_DEFAULT, results);
+
+  // Free resources
+  H5Dclose(dset);
+  H5Sclose(memspace);
+}
+
+
+void
 write_attr(hid_t obj_id, int ndim, const hsize_t* dims, const char* name,
            hid_t mem_type_id, const void* buffer)
 {
@@ -488,9 +508,34 @@ write_string(hid_t group_id, int ndim, const hsize_t* dims, size_t slen,
 
 
 void
-write_string(hid_t group_id, char const* name, const std::string& buffer, bool indep)
+write_string(hid_t group_id, const char* name, const std::string& buffer, bool indep)
 {
   write_string(group_id, 0, nullptr, buffer.length(), name, buffer.c_str(), indep);
+}
+
+
+void
+write_tally_results(hid_t group_id, hsize_t n_filter, hsize_t n_score, const double* results)
+{
+  // Set dimensions of sum/sum_sq hyperslab to store
+  hsize_t count[] {n_filter, n_score, 2};
+  hid_t dspace = H5Screate_simple(3, count, nullptr);
+
+  // Set dimensions of results array
+  hsize_t dims[] {n_filter, n_score, 3};
+  hsize_t start[] {0, 0, 1};
+  hid_t memspace = H5Screate_simple(3, dims, nullptr);
+  H5Sselect_hyperslab(memspace, H5S_SELECT_SET, start, nullptr, count, nullptr);
+
+  // Create and write dataset
+  hid_t dset = H5Dcreate(group_id, "results", H5T_NATIVE_DOUBLE, dspace,
+                         H5P_DEFAULT, H5P_DEFAULT, H5P_DEFAULT);
+  H5Dwrite(dset, H5T_NATIVE_DOUBLE, memspace, H5S_ALL, H5P_DEFAULT, results);
+
+  // Free resources
+  H5Dclose(dset);
+  H5Sclose(memspace);
+  H5Sclose(dspace);
 }
 
 } // namespace openmc

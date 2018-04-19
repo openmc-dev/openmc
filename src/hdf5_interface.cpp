@@ -275,7 +275,7 @@ read_dataset(hid_t obj_id, const char* name, hid_t mem_type_id,
   if (using_mpio_device(dset)) {
 #ifdef PHDF5
     // Set up collective vs independent I/O
-    auto data_xfer_mode {indep ? H5FD_MPIO_INDEPENDENT : H5FD_MPIO_COLLECTIVE};
+    auto data_xfer_mode = indep ? H5FD_MPIO_INDEPENDENT : H5FD_MPIO_COLLECTIVE;
 
     // Create dataset transfer property list
     hid_t plist = H5Pcreate(H5P_DATASET_XFER);

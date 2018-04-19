@@ -132,6 +132,34 @@ module hdf5_interface
       logical(C_BOOL), intent(in) :: indep
     end subroutine read_llong_c
 
+    subroutine write_attr_double_c(obj_id, ndim, dims, name, buffer) &
+         bind(C, name='write_attr_double')
+      import HID_T, HSIZE_T, C_INT, C_DOUBLE, C_CHAR
+      integer(HID_T), value :: obj_id
+      integer(C_INT), value :: ndim
+      integer(HSIZE_T), intent(in) :: dims(*)
+      character(kind=C_CHAR), intent(in) :: name(*)
+      real(C_DOUBLE), intent(in) :: buffer(*)
+    end subroutine write_attr_double_c
+
+    subroutine write_attr_int_c(obj_id, ndim, dims, name, buffer) &
+         bind(C, name='write_attr_int')
+      import HID_T, HSIZE_T, C_INT, C_CHAR
+      integer(HID_T), value :: obj_id
+      integer(C_INT), value :: ndim
+      integer(HSIZE_T), intent(in) :: dims(*)
+      character(kind=C_CHAR), intent(in) :: name(*)
+      integer(C_INT), intent(in) :: buffer(*)
+    end subroutine write_attr_int_c
+
+    subroutine write_attr_string_c(obj_id, name, buffer) &
+         bind(C, name='write_attr_string')
+      import HID_T, C_CHAR
+      integer(HID_T), value :: obj_id
+      character(kind=C_CHAR), intent(in) :: name(*)
+      character(kind=C_CHAR), intent(in) :: buffer(*)
+    end subroutine write_attr_string_c
+
     subroutine write_double_c(group_id, ndim, dims, name, buffer, indep) &
          bind(C, name='write_double')
       import HID_T, HSIZE_T, C_INT, C_DOUBLE, C_CHAR, C_BOOL
@@ -1141,41 +1169,8 @@ contains
     character(*), intent(in)         :: name      ! name of attribute
     character(*), intent(in), target :: buffer    ! string to write
 
-    integer        :: hdf5_err
-    integer(HID_T) :: dspace_id
-    integer(HID_T) :: attr_id
-    integer(HID_T) :: filetype
-    integer(SIZE_T) :: i
-    integer(SIZE_T) :: n
-    character(kind=C_CHAR), allocatable, target :: temp_buffer(:)
-    type(c_ptr) :: f_ptr
 
-    ! Create datatype for HDF5 file based on C char
-    n = len_trim(buffer)
-    if (n > 0) then
-      call h5tcopy_f(H5T_C_S1, filetype, hdf5_err)
-      call h5tset_size_f(filetype, n, hdf5_err)
-
-      ! Create memory space and attribute
-      call h5screate_f(H5S_SCALAR_F, dspace_id, hdf5_err)
-      call h5acreate_f(obj_id, trim(name), filetype, dspace_id, &
-           attr_id, hdf5_err)
-
-      ! Copy string to temporary buffer
-      allocate(temp_buffer(n))
-      do i = 1, n
-        temp_buffer(i) = buffer(i:i)
-      end do
-
-      ! Write attribute
-      f_ptr = c_loc(buffer(1:1))
-      call h5awrite_f(attr_id, filetype, f_ptr, hdf5_err)
-
-      ! Close attribute
-      call h5aclose_f(attr_id, hdf5_err)
-      call h5sclose_f(dspace_id, hdf5_err)
-      call h5tclose_f(filetype, hdf5_err)
-    end if
+    call write_attr_string_c(obj_id, to_c_string(name), to_c_string(buffer))
   end subroutine write_attribute_string
 
   subroutine read_attribute_double(buffer, obj_id, name)
@@ -1198,18 +1193,11 @@ contains
     character(*),   intent(in)  :: name
     real(8), intent(in), target :: buffer
 
-    integer        :: hdf5_err
-    integer(HID_T) :: dspace_id
-    integer(HID_T) :: attr_id
-    type(C_PTR)    :: f_ptr
+    integer(HSIZE_T) :: dims(0)
+    real(C_DOUBLE) :: buffer_(1)
 
-    call h5screate_f(H5S_SCALAR_F, dspace_id, hdf5_err)
-    call h5acreate_f(obj_id, trim(name), H5T_NATIVE_DOUBLE, dspace_id, &
-         attr_id, hdf5_err)
-    f_ptr = c_loc(buffer)
-    call h5awrite_f(attr_id, H5T_NATIVE_DOUBLE, f_ptr, hdf5_err)
-    call h5aclose_f(attr_id, hdf5_err)
-    call h5sclose_f(dspace_id, hdf5_err)
+    buffer_(1) = buffer
+    call write_attr_double_c(obj_id, 0, dims, to_c_string(name), buffer_)
   end subroutine write_attribute_double
 
   subroutine read_attribute_double_1D(buffer, obj_id, name)
@@ -1257,29 +1245,9 @@ contains
 
     integer(HSIZE_T) :: dims(1)
 
-    dims(:) = shape(buffer)
-    call write_attribute_double_1D_explicit(obj_id, dims, name, buffer)
+    dims(1) = size(buffer)
+    call write_attr_double_c(obj_id, 1, dims, to_c_string(name), buffer)
   end subroutine write_attribute_double_1D
-
-  subroutine write_attribute_double_1D_explicit(obj_id, dims, name, buffer)
-    integer(HID_T),   intent(in) :: obj_id
-    integer(HSIZE_T), intent(in) :: dims(1)
-    character(*),     intent(in) :: name
-    real(8), target,  intent(in) :: buffer(dims(1))
-
-    integer        :: hdf5_err
-    integer(HID_T) :: dspace_id
-    integer(HID_T) :: attr_id
-    type(C_PTR)    :: f_ptr
-
-    call h5screate_simple_f(1, dims, dspace_id, hdf5_err)
-    call h5acreate_f(obj_id, trim(name), H5T_NATIVE_DOUBLE, dspace_id, &
-         attr_id, hdf5_err)
-    f_ptr = c_loc(buffer)
-    call h5awrite_f(attr_id, H5T_NATIVE_DOUBLE, f_ptr, hdf5_err)
-    call h5aclose_f(attr_id, hdf5_err)
-    call h5sclose_f(dspace_id, hdf5_err)
-  end subroutine write_attribute_double_1D_explicit
 
   subroutine read_attribute_double_2D(buffer, obj_id, name)
     real(8), target, allocatable, intent(inout) :: buffer(:,:)
@@ -1339,18 +1307,11 @@ contains
     character(*),   intent(in)  :: name
     integer, intent(in), target :: buffer
 
-    integer        :: hdf5_err
-    integer(HID_T) :: dspace_id
-    integer(HID_T) :: attr_id
-    type(C_PTR)    :: f_ptr
+    integer(HSIZE_T) :: dims(0)
+    integer(C_INT) :: buffer_(1)
 
-    call h5screate_f(H5S_SCALAR_F, dspace_id, hdf5_err)
-    call h5acreate_f(obj_id, trim(name), H5T_NATIVE_INTEGER, dspace_id, &
-         attr_id, hdf5_err)
-    f_ptr = c_loc(buffer)
-    call h5awrite_f(attr_id, H5T_NATIVE_INTEGER, f_ptr, hdf5_err)
-    call h5aclose_f(attr_id, hdf5_err)
-    call h5sclose_f(dspace_id, hdf5_err)
+    buffer_(1) = buffer
+    call write_attr_int_c(obj_id, 0, dims, to_c_string(name), buffer_)
   end subroutine write_attribute_integer
 
   subroutine read_attribute_integer_1D(buffer, obj_id, name)
@@ -1398,29 +1359,9 @@ contains
 
     integer(HSIZE_T) :: dims(1)
 
-    dims(:) = shape(buffer)
-    call write_attribute_integer_1D_explicit(obj_id, dims, name, buffer)
+    dims(1) = size(buffer)
+    call write_attr_int_c(obj_id, 1, dims, to_c_string(name), buffer)
   end subroutine write_attribute_integer_1D
-
-  subroutine write_attribute_integer_1D_explicit(obj_id, dims, name, buffer)
-    integer(HID_T),   intent(in) :: obj_id
-    integer(HSIZE_T), intent(in) :: dims(1)
-    character(*),     intent(in) :: name
-    integer, target,  intent(in) :: buffer(dims(1))
-
-    integer        :: hdf5_err
-    integer(HID_T) :: dspace_id
-    integer(HID_T) :: attr_id
-    type(C_PTR)    :: f_ptr
-
-    call h5screate_simple_f(1, dims, dspace_id, hdf5_err)
-    call h5acreate_f(obj_id, trim(name), H5T_NATIVE_INTEGER, dspace_id, &
-         attr_id, hdf5_err)
-    f_ptr = c_loc(buffer)
-    call h5awrite_f(attr_id, H5T_NATIVE_INTEGER, f_ptr, hdf5_err)
-    call h5aclose_f(attr_id, hdf5_err)
-    call h5sclose_f(dspace_id, hdf5_err)
-  end subroutine write_attribute_integer_1D_explicit
 
   subroutine read_attribute_integer_2D(buffer, obj_id, name)
     integer, target, allocatable, intent(inout) :: buffer(:,:)

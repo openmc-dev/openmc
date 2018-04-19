@@ -105,6 +105,19 @@ module hdf5_interface
       integer(HID_T), value :: file_id
     end subroutine file_close
 
+    subroutine get_shape_c(obj_id, dims) bind(C, name='get_shape')
+      import HID_T, HSIZE_T
+      integer(HID_T), value :: obj_id
+      integer(HSIZE_T), intent(out) :: dims(*)
+    end subroutine get_shape_c
+
+    subroutine get_shape_attr(obj_id, name, dims) bind(C)
+      import HID_T, HSIZE_T, C_CHAR
+      integer(HID_T), value :: obj_id
+      character(kind=C_CHAR), intent(in) :: name(*)
+      integer(HSIZE_T), intent(out) :: dims(*)
+    end subroutine get_shape_attr
+
     subroutine read_double_c(obj_id, name, buffer, indep) &
          bind(C, name='read_double')
       import HID_T, C_DOUBLE, C_BOOL, C_PTR
@@ -113,6 +126,22 @@ module hdf5_interface
       real(C_DOUBLE), intent(in) :: buffer(*)
       logical(C_BOOL), intent(in) :: indep
     end subroutine read_double_c
+
+    subroutine read_attr_int_c(obj_id, name, buffer) &
+         bind(C, name='read_attr_int')
+      import HID_T, C_CHAR, C_INT
+      integer(HID_T), value :: obj_id
+      character(kind=C_CHAR), intent(in) :: name(*)
+      integer(C_INT), intent(in) :: buffer(*)
+    end subroutine read_attr_int_c
+
+    subroutine read_attr_double_c(obj_id, name, buffer) &
+         bind(C, name='read_attr_double')
+      import HID_T, C_CHAR, C_DOUBLE
+      integer(HID_T), value :: obj_id
+      character(kind=C_CHAR), intent(in) :: name(*)
+      real(C_DOUBLE), intent(in) :: buffer(*)
+    end subroutine read_attr_double_c
 
     subroutine read_int_c(obj_id, name, buffer, indep) &
          bind(C, name='read_int')
@@ -1178,14 +1207,10 @@ contains
     integer(HID_T), intent(in)            :: obj_id
     character(*),   intent(in)            :: name
 
-    integer        :: hdf5_err
-    integer(HID_T) :: attr_id
-    type(c_ptr)    :: f_ptr
+    real(C_DOUBLE) :: buffer_(1)
 
-    call h5aopen_f(obj_id, trim(name), attr_id, hdf5_err)
-    f_ptr = c_loc(buffer)
-    call h5aread_f(attr_id, H5T_NATIVE_DOUBLE, f_ptr, hdf5_err)
-    call h5aclose_f(attr_id, hdf5_err)
+    call read_attr_double_c(obj_id, to_c_string(name), buffer_)
+    buffer = buffer_(1)
   end subroutine read_attribute_double
 
   subroutine write_attribute_double(obj_id, name, buffer)
@@ -1205,38 +1230,15 @@ contains
     integer(HID_T),  intent(in)    :: obj_id
     character(*),    intent(in)    :: name
 
-    integer          :: hdf5_err
-    integer(HID_T)   :: space_id
-    integer(HID_T)   :: attr_id
     integer(HSIZE_T) :: dims(1)
-    integer(HSIZE_T) :: maxdims(1)
 
-    call h5aopen_f(obj_id, trim(name), attr_id, hdf5_err)
-
-    if (allocated(buffer)) then
-      dims(:) = shape(buffer)
-    else
-      call h5aget_space_f(attr_id, space_id, hdf5_err)
-      call h5sget_simple_extent_dims_f(space_id, dims, maxdims, hdf5_err)
+    if (.not. allocated(buffer)) then
+      call get_shape_attr(obj_id, to_c_string(name), dims)
       allocate(buffer(dims(1)))
-      call h5sclose_f(space_id, hdf5_err)
     end if
 
-    call read_attribute_double_1D_explicit(attr_id, dims, buffer)
-    call h5aclose_f(attr_id, hdf5_err)
+    call read_attr_double_c(obj_id, to_c_string(name), buffer)
   end subroutine read_attribute_double_1D
-
-  subroutine read_attribute_double_1D_explicit(attr_id, dims, buffer)
-    integer(HID_T),   intent(in)    :: attr_id
-    integer(HSIZE_T), intent(in)    :: dims(1)
-    real(8), target,  intent(inout) :: buffer(dims(1))
-
-    integer        :: hdf5_err
-    type(c_ptr)    :: f_ptr
-
-    f_ptr = c_loc(buffer)
-    call h5aread_f(attr_id, H5T_NATIVE_DOUBLE, f_ptr, hdf5_err)
-  end subroutine read_attribute_double_1D_explicit
 
   subroutine write_attribute_double_1D(obj_id, name, buffer)
     integer(HID_T),  intent(in) :: obj_id
@@ -1254,52 +1256,25 @@ contains
     integer(HID_T),  intent(in)    :: obj_id
     character(*),    intent(in)    :: name
 
-    integer          :: hdf5_err
-    integer(HID_T)   :: space_id
-    integer(HID_T)   :: attr_id
     integer(HSIZE_T) :: dims(2)
-    integer(HSIZE_T) :: maxdims(2)
 
-    call h5aopen_f(obj_id, trim(name), attr_id, hdf5_err)
-
-    if (allocated(buffer)) then
-      dims(:) = shape(buffer)
-    else
-      call h5aget_space_f(attr_id, space_id, hdf5_err)
-      call h5sget_simple_extent_dims_f(space_id, dims, maxdims, hdf5_err)
-      allocate(buffer(dims(1), dims(2)))
-      call h5sclose_f(space_id, hdf5_err)
+    if (.not. allocated(buffer)) then
+      call get_shape_attr(obj_id, to_c_string(name), dims)
+      allocate(buffer(dims(2), dims(1)))
     end if
 
-    call read_attribute_double_2D_explicit(attr_id, dims, buffer)
-    call h5aclose_f(attr_id, hdf5_err)
+    call read_attr_double_c(obj_id, to_c_string(name), buffer)
   end subroutine read_attribute_double_2D
-
-  subroutine read_attribute_double_2D_explicit(attr_id, dims, buffer)
-    integer(HID_T),   intent(in)    :: attr_id
-    integer(HSIZE_T), intent(in)    :: dims(2)
-    real(8), target,  intent(inout) :: buffer(dims(1),dims(2))
-
-    integer        :: hdf5_err
-    type(c_ptr)    :: f_ptr
-
-    f_ptr = c_loc(buffer)
-    call h5aread_f(attr_id, H5T_NATIVE_DOUBLE, f_ptr, hdf5_err)
-  end subroutine read_attribute_double_2D_explicit
 
   subroutine read_attribute_integer(buffer, obj_id, name)
     integer,        intent(inout), target :: buffer
     integer(HID_T), intent(in)            :: obj_id
     character(*),   intent(in)            :: name
 
-    integer        :: hdf5_err
-    integer(HID_T) :: attr_id
-    type(c_ptr)    :: f_ptr
+    integer(C_INT) :: buffer_(1)
 
-    call h5aopen_f(obj_id, trim(name), attr_id, hdf5_err)
-    f_ptr = c_loc(buffer)
-    call h5aread_f(attr_id, H5T_NATIVE_INTEGER, f_ptr, hdf5_err)
-    call h5aclose_f(attr_id, hdf5_err)
+    call read_attr_int_c(obj_id, to_c_string(name), buffer_)
+    buffer = buffer_(1)
   end subroutine read_attribute_integer
 
   subroutine write_attribute_integer(obj_id, name, buffer)
@@ -1319,38 +1294,15 @@ contains
     integer(HID_T),  intent(in)    :: obj_id
     character(*),    intent(in)    :: name
 
-    integer          :: hdf5_err
-    integer(HID_T)   :: space_id
-    integer(HID_T)   :: attr_id
     integer(HSIZE_T) :: dims(1)
-    integer(HSIZE_T) :: maxdims(1)
 
-    call h5aopen_f(obj_id, trim(name), attr_id, hdf5_err)
-
-    if (allocated(buffer)) then
-      dims(:) = shape(buffer)
-    else
-      call h5aget_space_f(attr_id, space_id, hdf5_err)
-      call h5sget_simple_extent_dims_f(space_id, dims, maxdims, hdf5_err)
+    if (.not. allocated(buffer)) then
+      call get_shape_attr(obj_id, to_c_string(name), dims)
       allocate(buffer(dims(1)))
-      call h5sclose_f(space_id, hdf5_err)
     end if
 
-    call read_attribute_integer_1D_explicit(attr_id, dims, buffer)
-    call h5aclose_f(attr_id, hdf5_err)
+    call read_attr_int_c(obj_id, to_c_string(name), buffer)
   end subroutine read_attribute_integer_1D
-
-  subroutine read_attribute_integer_1D_explicit(attr_id, dims, buffer)
-    integer(HID_T),   intent(in)    :: attr_id
-    integer(HSIZE_T), intent(in)    :: dims(1)
-    integer, target,  intent(inout) :: buffer(dims(1))
-
-    integer        :: hdf5_err
-    type(c_ptr)    :: f_ptr
-
-    f_ptr = c_loc(buffer)
-    call h5aread_f(attr_id, H5T_NATIVE_INTEGER, f_ptr, hdf5_err)
-  end subroutine read_attribute_integer_1D_explicit
 
   subroutine write_attribute_integer_1D(obj_id, name, buffer)
     integer(HID_T),  intent(in) :: obj_id
@@ -1368,38 +1320,15 @@ contains
     integer(HID_T),  intent(in)    :: obj_id
     character(*),    intent(in)    :: name
 
-    integer          :: hdf5_err
-    integer(HID_T)   :: space_id
-    integer(HID_T)   :: attr_id
     integer(HSIZE_T) :: dims(2)
-    integer(HSIZE_T) :: maxdims(2)
 
-    call h5aopen_f(obj_id, trim(name), attr_id, hdf5_err)
-
-    if (allocated(buffer)) then
-      dims(:) = shape(buffer)
-    else
-      call h5aget_space_f(attr_id, space_id, hdf5_err)
-      call h5sget_simple_extent_dims_f(space_id, dims, maxdims, hdf5_err)
-      allocate(buffer(dims(1), dims(2)))
-      call h5sclose_f(space_id, hdf5_err)
+    if (.not. allocated(buffer)) then
+      call get_shape_attr(obj_id, to_c_string(name), dims)
+      allocate(buffer(dims(2), dims(1)))
     end if
 
-    call read_attribute_integer_2D_explicit(attr_id, dims, buffer)
-    call h5aclose_f(attr_id, hdf5_err)
+    call read_attr_int_C(obj_id, to_c_string(name), buffer)
   end subroutine read_attribute_integer_2D
-
-  subroutine read_attribute_integer_2D_explicit(attr_id, dims, buffer)
-    integer(HID_T),   intent(in)    :: attr_id
-    integer(HSIZE_T), intent(in)    :: dims(2)
-    integer, target,  intent(inout) :: buffer(dims(1),dims(2))
-
-    integer        :: hdf5_err
-    type(c_ptr)    :: f_ptr
-
-    f_ptr = c_loc(buffer)
-    call h5aread_f(attr_id, H5T_NATIVE_INTEGER, f_ptr, hdf5_err)
-  end subroutine read_attribute_integer_2D_explicit
 
   subroutine read_attribute_string(buffer, obj_id, name)
     character(*),   intent(inout) :: buffer  ! read data to here
@@ -1533,21 +1462,13 @@ contains
     integer(HID_T),   intent(in)  :: obj_id
     integer(HSIZE_T), intent(out) :: dims(:)
 
-    integer          :: hdf5_err
-    integer          :: type
-    integer(HID_T)   :: space_id
-    integer(HSIZE_T) :: maxdims(size(dims))
+    integer :: i
+    integer(HSIZE_T) :: dims_c(size(dims))
 
-    call h5iget_type_f(obj_id, type, hdf5_err)
-    if (type == H5I_DATASET_F) then
-      call h5dget_space_f(obj_id, space_id, hdf5_err)
-      call h5sget_simple_extent_dims_f(space_id, dims, maxdims, hdf5_err)
-      call h5sclose_f(space_id, hdf5_err)
-    elseif (type == H5I_ATTR_F) then
-      call h5aget_space_f(obj_id, space_id, hdf5_err)
-      call h5sget_simple_extent_dims_f(space_id, dims, maxdims, hdf5_err)
-      call h5sclose_f(space_id, hdf5_err)
-    end if
+    call get_shape_c(obj_id, dims_c)
+    do i = 1, size(dims)
+      dims(i) = dims_c(size(dims) - i + 1)
+    end do
   end subroutine get_shape
 
   subroutine get_ndims(obj_id, ndims)

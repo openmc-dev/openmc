@@ -11,7 +11,6 @@
 
 namespace openmc {
 
-bool using_mpio_device(hid_t obj_id);
 hid_t create_group(hid_t parent_id, const char* name);
 hid_t create_group(hid_t parent_id, const std::string& name);
 void close_dataset(hid_t dataset_id);
@@ -19,9 +18,12 @@ void close_group(hid_t group_id);
 extern "C" hid_t file_open(const char* filename, char mode, bool parallel);
 hid_t file_open(const std::string& filename, char mode, bool parallel);
 extern "C" void file_close(hid_t file_id);
+extern "C" void get_shape(hid_t obj_if, hsize_t* dims);
+extern "C" void get_shape_attr(hid_t obj_if, const char* name, hsize_t* dims);
 bool object_exists(hid_t object_id, const char* name);
 hid_t open_dataset(hid_t group_id, const char* name);
 hid_t open_group(hid_t group_id, const char* name);
+bool using_mpio_device(hid_t obj_id);
 
 
 template<std::size_t array_len> void
@@ -41,8 +43,13 @@ write_double_1D(hid_t group_id, char const *name,
   H5Dclose(dataset);
 }
 
-void read_dataset(hid_t obj_id, const char* name, double* buffer,
-                  hid_t mem_type_id, bool indep);
+void read_attr(hid_t obj_id, const char* name, hid_t mem_type_id,
+               const void* buffer);
+extern "C" void read_attr_double(hid_t obj_id, const char* name, double* buffer);
+extern "C" void read_attr_int(hid_t obj_id, const char* name, int* buffer);
+
+void read_dataset(hid_t obj_id, const char* name, hid_t mem_type_id,
+                  void* buffer, bool indep);
 extern "C" void read_double(hid_t obj_id, const char* name, double* buffer,
                             bool indep);
 extern "C" void read_int(hid_t obj_id, const char* name, int* buffer,

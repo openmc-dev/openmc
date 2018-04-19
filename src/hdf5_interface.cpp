@@ -31,6 +31,32 @@ using_mpio_device(hid_t obj_id)
 }
 
 
+void
+get_shape(hid_t obj_id, hsize_t* dims)
+{
+  auto type = H5Iget_type(obj_id);
+  hid_t dspace;
+  if (type == H5I_DATASET) {
+    dspace = H5Dget_space(obj_id);
+  } else if (type == H5I_ATTR) {
+    dspace = H5Aget_space(obj_id);
+  }
+  H5Sget_simple_extent_dims(dspace, dims, nullptr);
+  H5Sclose(dspace);
+}
+
+
+void
+get_shape_attr(hid_t obj_id, const char* name, hsize_t* dims)
+{
+  hid_t attr = H5Aopen(obj_id, name, H5P_DEFAULT);
+  hid_t dspace = H5Aget_space(attr);
+  H5Sget_simple_extent_dims(dspace, dims, nullptr);
+  H5Sclose(dspace);
+  H5Aclose(attr);
+}
+
+
 hid_t
 create_group(hid_t parent_id, char const *name)
 {
@@ -159,10 +185,32 @@ open_group(hid_t group_id, const char* name)
   }
 }
 
+void
+read_attr(hid_t obj_id, const char* name, hid_t mem_type_id, void* buffer)
+{
+  hid_t attr = H5Aopen(obj_id, name, H5P_DEFAULT);
+  H5Aread(attr, mem_type_id, buffer);
+  H5Aclose(attr);
+}
+
+
+void
+read_attr_double(hid_t obj_id, const char* name, double* buffer)
+{
+  read_attr(obj_id, name, H5T_NATIVE_DOUBLE, buffer);
+}
+
+
+void
+read_attr_int(hid_t obj_id, const char* name, int* buffer)
+{
+  read_attr(obj_id, name, H5T_NATIVE_INT, buffer);
+}
+
 
 void
 read_dataset(hid_t obj_id, const char* name, hid_t mem_type_id,
-           void* buffer, bool indep)
+             void* buffer, bool indep)
 {
   hid_t dset = obj_id;
   if (name) dset = H5Dopen(obj_id, name, H5P_DEFAULT);
@@ -176,7 +224,7 @@ read_dataset(hid_t obj_id, const char* name, hid_t mem_type_id,
     hid_t plist = H5Pcreate(H5P_DATASET_XFER);
     H5Pset_dxpl_mpio(plist, data_xfer_mode);
 
-    // Write data
+    // Read data
     H5Dread(dset, mem_type_id, H5S_ALL, H5S_ALL, plist, buffer);
     H5Pclose(plist);
 #endif

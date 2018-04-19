@@ -101,16 +101,16 @@ module hdf5_interface
 
   interface
     function attribute_typesize(obj_id, name) result(sz) bind(C)
-      import HID_T, C_CHAR, SIZE_T
+      import HID_T, C_CHAR, C_SIZE_T
       integer(HID_T), value :: obj_id
       character(kind=C_CHAR), intent(in) :: name(*)
-      integer(SIZE_T) :: sz
+      integer(C_SIZE_T) :: sz
     end function attribute_typesize
 
     function dataset_typesize(dset) result(sz) bind(C)
-      import HID_T, SIZE_T
+      import HID_T, C_SIZE_T
       integer(HID_T), value :: dset
-      integer(SIZE_T) :: sz
+      integer(C_SIZE_T) :: sz
     end function dataset_typesize
 
     subroutine file_close(file_id) bind(C)
@@ -1058,7 +1058,7 @@ contains
     logical,      optional, intent(in)    :: indep ! independent I/O
 
     integer(HID_T) :: dset_id
-    integer(SIZE_T) :: i, n
+    integer(C_SIZE_T) :: i, n
     logical(C_BOOL) :: indep_
     character(kind=C_CHAR), allocatable, target :: buffer_(:)
 
@@ -1128,7 +1128,7 @@ contains
     logical,      optional, intent(in)    :: indep ! independent I/O
 
     integer(HID_T) :: dset_id
-    integer(SIZE_T) :: i, j, k, n, m
+    integer(C_SIZE_T) :: i, j, k, n, m
     logical(C_BOOL) :: indep_
     character(kind=C_CHAR), allocatable, target :: buffer_(:)
 

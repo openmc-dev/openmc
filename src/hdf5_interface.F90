@@ -98,6 +98,7 @@ module hdf5_interface
   public :: get_groups
   public :: get_datasets
   public :: get_name
+  public :: HID_T, HSIZE_T, SIZE_T
 
   interface
     function attribute_typesize(obj_id, name) result(sz) bind(C)

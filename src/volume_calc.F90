@@ -2,7 +2,6 @@ module volume_calc
 
   use, intrinsic :: ISO_C_BINDING
 
-  use hdf5, only: HID_T
 #ifdef _OPENMP
   use omp_lib
 #endif
@@ -12,7 +11,7 @@ module volume_calc
   use geometry,     only: find_cell
   use geometry_header, only: universes, cells
   use hdf5_interface, only: file_open, file_close, write_attribute, &
-       create_group, close_group, write_dataset
+       create_group, close_group, write_dataset, HID_T
   use output,       only: header, time_stamp
   use material_header, only: materials
   use message_passing

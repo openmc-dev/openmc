@@ -332,7 +332,7 @@ contains
   end subroutine get_groups
 
 !===============================================================================
-! CHECK_ATTRIBUTE Checks to see if an attribute exists in the object
+! ATTRIBUTE_EXISTS checks to see if an attribute exists in the object
 !===============================================================================
 
   function attribute_exists(object_id, name) result(exists)
@@ -340,11 +340,17 @@ contains
     character(*),   intent(in) :: name ! name of group
     logical :: exists
 
-    integer :: hdf5_err ! HDF5 error code
+    interface
+      function attribute_exists_c(obj_id, name) result(exists) &
+           bind(C, name='attribute_exists')
+        import HID_T, C_CHAR, C_BOOL
+        integer(HID_T), value :: obj_id
+        character(kind=C_CHAR), intent(in) :: name(*)
+        logical(C_BOOL) :: exists
+      end function attribute_exists_c
+    end interface
 
-    ! Check if attribute exists
-    call h5aexists_by_name_f(object_id, '.', trim(name), exists, hdf5_err)
-
+    exists = attribute_exists_c(object_id, to_c_string(name))
   end function attribute_exists
 
 !===============================================================================

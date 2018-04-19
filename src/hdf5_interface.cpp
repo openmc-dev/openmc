@@ -12,6 +12,14 @@
 namespace openmc {
 
 bool
+attribute_exists(hid_t obj_id, const char* name)
+{
+  htri_t out = H5Aexists_by_name(obj_id, ".", name, H5P_DEFAULT);
+  return out > 0;
+}
+
+
+bool
 using_mpio_device(hid_t obj_id)
 {
   // Determine file that this object is part of

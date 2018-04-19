@@ -12,6 +12,7 @@
 
 namespace openmc {
 
+extern "C" bool attribute_exists(hid_t obj_id, const char* name);
 extern "C" hid_t create_group(hid_t parent_id, const char* name);
 hid_t create_group(hid_t parent_id, const std::string& name);
 extern "C" void close_dataset(hid_t dataset_id);

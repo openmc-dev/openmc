@@ -270,6 +270,27 @@ read_llong(hid_t obj_id, const char* name, long long* buffer, bool indep)
 
 
 void
+read_complex(hid_t obj_id, const char* name, double _Complex* buffer, bool indep)
+{
+  // Create compound datatype for complex numbers
+  struct complex_t {
+    double re;
+    double im;
+  };
+  complex_t tmp;
+  hid_t complex_id = H5Tcreate(H5T_COMPOUND, sizeof tmp);
+  H5Tinsert(complex_id, "r", HOFFSET(complex_t, re), H5T_NATIVE_DOUBLE);
+  H5Tinsert(complex_id, "i", HOFFSET(complex_t, im), H5T_NATIVE_DOUBLE);
+
+  // Read data
+  read_dataset(obj_id, name, complex_id, buffer, indep);
+
+  // Free resources
+  H5Tclose(complex_id);
+}
+
+
+void
 write_attr(hid_t obj_id, int ndim, const hsize_t* dims, const char* name,
            hid_t mem_type_id, const void* buffer)
 {
@@ -412,4 +433,4 @@ write_string(hid_t group_id, char const* name, const std::string& buffer, bool i
   write_string(group_id, 0, nullptr, buffer.length(), name, buffer.c_str(), indep);
 }
 
-}
+} // namespace openmc

@@ -7,6 +7,7 @@
 #include <array>
 #include <string>
 #include <sstream>
+#include <complex.h>
 
 
 namespace openmc {
@@ -57,6 +58,8 @@ extern "C" void read_int(hid_t obj_id, const char* name, int* buffer,
                          bool indep);
 extern "C" void read_llong(hid_t obj_id, const char* name, long long* buffer,
                            bool indep);
+extern "C" void read_complex(hid_t obj_id, const char* name,
+                             double _Complex* buffer, bool indep);
 
 void write_attr(hid_t obj_id, int ndim, const hsize_t* dims, const char* name,
                 hid_t mem_type_id, const void* buffer);

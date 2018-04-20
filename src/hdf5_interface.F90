@@ -24,9 +24,6 @@ module hdf5_interface
   implicit none
   private
 
-  integer(HID_T), public :: hdf5_bank_t        ! Compound type for Bank
-  integer(HID_T), public :: hdf5_integer8_t    ! type for integer(8)
-
   interface write_dataset
     module procedure write_double_0D
     module procedure write_double_1D

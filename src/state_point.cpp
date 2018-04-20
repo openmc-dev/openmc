@@ -3,7 +3,9 @@
 #include <algorithm>
 #include <vector>
 
+#ifdef OPENMC_MPI
 #include "mpi.h"
+#endif
 #include "error.h"
 #include "message_passing.h"
 #include "openmc.h"
@@ -30,7 +32,7 @@ hid_t h5banktype() {
 
 
 void
-write_source_bank(hid_t group_id, int64_t* work_index, const Bank* source_bank)
+write_source_bank(hid_t group_id, int64_t* work_index, Bank* source_bank)
 {
   hid_t banktype = h5banktype();
 
@@ -73,7 +75,7 @@ write_source_bank(hid_t group_id, int64_t* work_index, const Bank* source_bank)
 
     // Save source bank sites since the souce_bank array is overwritten below
 #ifdef OPENMC_MPI
-    std::vector<double> temp_source {source_bank, source_bank + openmc_work};
+    std::vector<Bank> temp_source {source_bank, source_bank + openmc_work};
 #endif
 
     for (int i = 0; i < openmc::mpi::n_procs; ++i) {
@@ -110,7 +112,7 @@ write_source_bank(hid_t group_id, int64_t* work_index, const Bank* source_bank)
   } else {
 #ifdef OPENMC_MPI
     MPI_Send(source_bank, openmc_work, openmc::mpi::bank, 0, openmc::mpi::rank,
-             openmc::mpi::mpi_intracomm);
+             openmc::mpi::intracomm);
 #endif
   }
 #endif
@@ -119,7 +121,7 @@ write_source_bank(hid_t group_id, int64_t* work_index, const Bank* source_bank)
 }
 
 
-void read_source_bank(hid_t group_id, int64_t* work_index, struct Bank* source_bank)
+void read_source_bank(hid_t group_id, int64_t* work_index, Bank* source_bank)
 {
   hid_t banktype = h5banktype();
 

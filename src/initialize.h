@@ -1,7 +1,9 @@
 #ifndef INITIALIZE_H
 #define INITIALIZE_H
 
+#ifdef OPENMC_MPI
 #include "mpi.h"
+#endif
 
 namespace openmc {
 

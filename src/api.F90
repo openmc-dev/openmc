@@ -15,7 +15,7 @@ module openmc_api
   use mesh_header
   use message_passing
   use nuclide_header
-  use initialize,      only: openmc_init
+  use initialize,      only: openmc_init_f
   use particle_header, only: Particle
   use plot,            only: openmc_plot_geometry
   use random_lcg,      only: openmc_get_seed, openmc_set_seed
@@ -64,7 +64,7 @@ module openmc_api
   public :: openmc_get_tally_index
   public :: openmc_global_tallies
   public :: openmc_hard_reset
-  public :: openmc_init
+  public :: openmc_init_f
   public :: openmc_load_nuclide
   public :: openmc_material_add_nuclide
   public :: openmc_material_get_id

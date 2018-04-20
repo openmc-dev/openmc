@@ -41,8 +41,9 @@ contains
 ! setting up timers, etc.
 !===============================================================================
 
-  subroutine openmc_init(intracomm) bind(C)
+  function openmc_init_f(intracomm) result(err) bind(C)
     integer, intent(in), optional :: intracomm  ! MPI intracommunicator
+    integer(C_INT) :: err
 
 #ifdef _OPENMP
     character(MAX_WORD_LEN) :: envvar
@@ -105,7 +106,8 @@ contains
     ! Stop initialization timer
     call time_initialize%stop()
 
-  end subroutine openmc_init
+    err = 0
+  end function openmc_init_f
 
 #ifdef OPENMC_MPI
 !===============================================================================

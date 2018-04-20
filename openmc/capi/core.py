@@ -1,6 +1,6 @@
 from contextlib import contextmanager
 from ctypes import (CDLL, c_int, c_int32, c_int64, c_double, c_char_p,
-                    POINTER, Structure)
+                    POINTER, Structure, c_void_p)
 from warnings import warn
 
 import numpy as np
@@ -27,7 +27,7 @@ _dll.openmc_find.argtypes = [POINTER(c_double*3), c_int, POINTER(c_int32),
 _dll.openmc_find.restype = c_int
 _dll.openmc_find.errcheck = _error_handler
 _dll.openmc_hard_reset.restype = None
-_dll.openmc_init.argtypes = [POINTER(c_int)]
+_dll.openmc_init.argtypes = [c_void_p]
 _dll.openmc_init.restype = None
 _dll.openmc_get_keff.argtypes = [POINTER(c_double*2)]
 _dll.openmc_get_keff.restype = c_int
@@ -116,13 +116,11 @@ def init(intracomm=None):
 
     """
     if intracomm is not None:
-        # If an mpi4py communicator was passed, convert it to an integer to
-        # be passed to openmc_init
-        try:
-            intracomm = intracomm.py2f()
-        except AttributeError:
-            pass
-        _dll.openmc_init(c_int(intracomm))
+        # If an mpi4py communicator was passed, convert it to void* to be passed
+        # to openmc_init
+        from mpi4py import MPI
+        address = MPI._addressof(intracomm)
+        _dll.openmc_init(c_void_p(address))
     else:
         _dll.openmc_init(None)
 

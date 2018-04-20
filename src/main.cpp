@@ -1,17 +1,15 @@
 #include "openmc.h"
 
-#ifdef MPI
-#include <mpi.h>
-#else
-#define MPI_COMM_WORLD nullptr
-#endif
-
-
 int main(int argc, char** argv) {
   int err;
 
   // Initialize run -- when run with MPI, pass communicator
-  openmc_init(MPI_COMM_WORLD);
+#ifdef OPENMC_MPI
+  MPI_Comm world {MPI_COMM_WORLD};
+  openmc_init(&world);
+#else
+  openmc_init(nullptr);
+#endif
 
   // start problem based on mode
   switch (openmc_run_mode) {

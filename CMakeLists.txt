@@ -437,6 +437,7 @@ set(LIBOPENMC_CXX_SRC
   src/initialize.cpp
   src/hdf5_interface.h
   src/hdf5_interface.cpp
+  src/message_passing.cpp
   src/random_lcg.cpp
   src/random_lcg.h
   src/simulation.cpp

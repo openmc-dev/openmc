@@ -9,7 +9,7 @@
 #include "hdf5_hl.h"
 #ifdef OPENMC_MPI
 #include "mpi.h"
-#include "openmc.h"
+#include "message_passing.h"
 #endif
 #include "error.h"
 
@@ -163,7 +163,7 @@ file_open(const char* filename, char mode, bool parallel)
   if (parallel) {
     // Setup file access property list with parallel I/O access
     plist = H5Pcreate(H5P_FILE_ACCESS);
-    H5Pset_fapl_mpio(plist, openmc_intracomm, MPI_INFO_NULL);
+    H5Pset_fapl_mpio(plist, openmc::mpi::intracomm, MPI_INFO_NULL);
   }
 #endif
 

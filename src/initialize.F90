@@ -13,8 +13,7 @@ module initialize
   use error,           only: fatal_error, warning, write_message
   use geometry_header, only: Cell, Universe, Lattice, RectLattice, HexLattice,&
                              root_universe
-  use hdf5_interface,  only: file_open, read_attribute, file_close, &
-                             hdf5_bank_t, hdf5_integer8_t
+  use hdf5_interface,  only: file_open, read_attribute, file_close
   use input_xml,       only: read_input_xml
   use material_header, only: Material
   use message_passing
@@ -45,6 +44,7 @@ contains
     integer, intent(in), optional :: intracomm  ! MPI intracommunicator
     integer(C_INT) :: err
 
+    integer :: hdf5_err
 #ifdef _OPENMP
     character(MAX_WORD_LEN) :: envvar
 #endif
@@ -87,8 +87,8 @@ contains
     end if
 #endif
 
-    ! Initialize HDF5 interface
-    call hdf5_initialize()
+    ! Initialize HDF5 Fortran interface.
+    call h5open_f(hdf5_err)
 
     ! Read command line arguments
     call read_command_line()
@@ -159,42 +159,6 @@ contains
 
   end subroutine initialize_mpi
 #endif
-
-!===============================================================================
-! HDF5_INITIALIZE
-!===============================================================================
-
-  subroutine hdf5_initialize()
-
-    type(Bank),        target :: tmpb(2)         ! temporary Bank
-    integer                   :: hdf5_err
-    integer(HID_T)            :: coordinates_t   ! HDF5 type for 3 reals
-    integer(HSIZE_T)          :: dims(1) = (/3/) ! size of coordinates
-
-    ! Initialize FORTRAN interface.
-    call h5open_f(hdf5_err)
-
-    ! Create compound type for xyz and uvw
-    call h5tarray_create_f(H5T_NATIVE_DOUBLE, 1, dims, coordinates_t, hdf5_err)
-
-    ! Create the compound datatype for Bank
-    call h5tcreate_f(H5T_COMPOUND_F, h5offsetof(c_loc(tmpb(1)), &
-         c_loc(tmpb(2))), hdf5_bank_t, hdf5_err)
-    call h5tinsert_f(hdf5_bank_t, "wgt", h5offsetof(c_loc(tmpb(1)), &
-         c_loc(tmpb(1)%wgt)), H5T_NATIVE_DOUBLE, hdf5_err)
-    call h5tinsert_f(hdf5_bank_t, "xyz", h5offsetof(c_loc(tmpb(1)), &
-         c_loc(tmpb(1)%xyz)), coordinates_t, hdf5_err)
-    call h5tinsert_f(hdf5_bank_t, "uvw", h5offsetof(c_loc(tmpb(1)), &
-         c_loc(tmpb(1)%uvw)), coordinates_t, hdf5_err)
-    call h5tinsert_f(hdf5_bank_t, "E", h5offsetof(c_loc(tmpb(1)), &
-         c_loc(tmpb(1)%E)), H5T_NATIVE_DOUBLE, hdf5_err)
-    call h5tinsert_f(hdf5_bank_t, "delayed_group", h5offsetof(c_loc(tmpb(1)), &
-         c_loc(tmpb(1)%delayed_group)), H5T_NATIVE_INTEGER, hdf5_err)
-
-    ! Determine type for integer(8)
-    hdf5_integer8_t = h5kind_to_type(8, H5_INTEGER_KIND)
-
-  end subroutine hdf5_initialize
 
 !===============================================================================
 ! READ_COMMAND_LINE reads all parameters from the command line

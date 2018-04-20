@@ -12,6 +12,12 @@
 namespace openmc {
 
 //==============================================================================
+// Global variables
+//==============================================================================
+
+int32_t n_surfaces;
+
+//==============================================================================
 // Helper functions for reading the "coeffs" node of an XML surface element
 //==============================================================================
 
@@ -1230,6 +1236,49 @@ read_surfaces(pugi::xml_node *node)
       }
     }
   }
+}
+
+//==============================================================================
+// Fortran compatibility functions
+//==============================================================================
+
+extern "C" Surface* surface_pointer(int surf_ind) {return surfaces_c[surf_ind];}
+
+extern "C" int surface_id(Surface *surf) {return surf->id;}
+
+extern "C" int surface_bc(Surface *surf) {return surf->bc;}
+
+extern "C" bool surface_sense(Surface *surf, double xyz[3], double uvw[3])
+{return surf->sense(xyz, uvw);}
+
+extern "C" void surface_reflect(Surface *surf, double xyz[3], double uvw[3])
+{surf->reflect(xyz, uvw);}
+
+extern "C" double
+surface_distance(Surface *surf, double xyz[3], double uvw[3], bool coincident)
+{return surf->distance(xyz, uvw, coincident);}
+
+extern "C" void surface_normal(Surface *surf, double xyz[3], double uvw[3])
+{return surf->normal(xyz, uvw);}
+
+extern "C" void surface_to_hdf5(Surface *surf, hid_t group)
+{surf->to_hdf5(group);}
+
+extern "C" int surface_i_periodic(PeriodicSurface *surf)
+{return surf->i_periodic;}
+
+extern "C" bool
+surface_periodic(PeriodicSurface *surf, PeriodicSurface *other, double xyz[3],
+                 double uvw[3])
+{return surf->periodic_translate(other, xyz, uvw);}
+
+extern "C" void free_memory_surfaces_c()
+{
+  for (int i = 0; i < n_surfaces; i++) {delete surfaces_c[i];}
+  delete surfaces_c;
+  surfaces_c = nullptr;
+  n_surfaces = 0;
+  surface_dict.clear();
 }
 
 } // namespace openmc

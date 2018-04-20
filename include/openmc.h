@@ -4,9 +4,6 @@
 #include <stdint.h>
 #include <stdbool.h>
 
-#ifdef OPENMC_MPI
-#include "mpi.h"
-#endif
 
 #ifdef __cplusplus
 extern "C" {
@@ -149,11 +146,6 @@ extern "C" {
   extern int openmc_run_mode;
   extern bool openmc_simulation_initialized;
   extern int openmc_verbosity;
-
-#ifdef OPENMC_MPI
-  // MPI variables
-  extern MPI_Comm openmc_intracomm;
-#endif
 
   // Run modes
   constexpr int RUN_MODE_FIXEDSOURCE {1};

@@ -15,6 +15,7 @@ module state_point
 
   use hdf5
 
+  use bank_header,        only: Bank
   use cmfd_header
   use constants
   use eigenvalue,         only: openmc_get_keff
@@ -36,6 +37,15 @@ module state_point
   use timer_header
 
   implicit none
+
+  interface
+    subroutine write_source_bank(group_id, work_index, bank_) bind(C)
+      import HID_T, C_INT64_T, Bank
+      integer(HID_T), value :: group_id
+      integer(C_INT64_T), intent(in) :: work_index(*)
+      type(Bank), intent(in) :: bank_(*)
+    end subroutine write_source_bank
+  end interface
 
 contains
 
@@ -489,7 +499,7 @@ contains
         end if
       end if
 
-      call write_source_bank(file_id)
+      call write_source_bank(file_id, work_index, source_bank)
       if (master .or. parallel) call file_close(file_id)
     end if
 
@@ -502,7 +512,7 @@ contains
         call write_dataset(file_id, "filetype", 'source')
       end if
 
-      call write_source_bank(file_id)
+      call write_source_bank(file_id, work_index, source_bank)
 
       if (master .or. parallel) call file_close(file_id)
     end if
@@ -832,131 +842,10 @@ contains
   end subroutine load_state_point
 
 !===============================================================================
-! WRITE_SOURCE_BANK writes OpenMC source_bank data
-!===============================================================================
-
-  subroutine write_source_bank(group_id)
-    use bank_header, only: Bank
-
-    integer(HID_T), intent(in) :: group_id
-
-    integer :: hdf5_err
-    integer(HID_T) :: dset     ! data set handle
-    integer(HID_T) :: dspace   ! data or file space handle
-    integer(HID_T) :: memspace ! memory space handle
-    integer(HSIZE_T) :: offset(1) ! source data offset
-    integer(HSIZE_T) :: dims(1)
-    type(c_ptr) :: f_ptr
-#ifdef PHDF5
-    integer(HID_T) :: plist    ! property list
-#else
-    integer :: i
-#ifdef OPENMC_MPI
-    integer :: mpi_err ! MPI error code
-    type(Bank), allocatable, target :: temp_source(:)
-#endif
-#endif
-
-#ifdef PHDF5
-    ! Set size of total dataspace for all procs and rank
-    dims(1) = n_particles
-    call h5screate_simple_f(1, dims, dspace, hdf5_err)
-    call h5dcreate_f(group_id, "source_bank", hdf5_bank_t, dspace, dset, hdf5_err)
-
-    ! Create another data space but for each proc individually
-    dims(1) = work
-    call h5screate_simple_f(1, dims, memspace, hdf5_err)
-
-    ! Select hyperslab for this dataspace
-    offset(1) = work_index(rank)
-    call h5sselect_hyperslab_f(dspace, H5S_SELECT_SET_F, offset, dims, hdf5_err)
-
-    ! Set up the property list for parallel writing
-    call h5pcreate_f(H5P_DATASET_XFER_F, plist, hdf5_err)
-    call h5pset_dxpl_mpio_f(plist, H5FD_MPIO_COLLECTIVE_F, hdf5_err)
-
-    ! Set up pointer to data
-    f_ptr = c_loc(source_bank)
-
-    ! Write data to file in parallel
-    call h5dwrite_f(dset, hdf5_bank_t, f_ptr, hdf5_err, &
-         file_space_id=dspace, mem_space_id=memspace, &
-         xfer_prp=plist)
-
-    ! Close all ids
-    call h5sclose_f(dspace, hdf5_err)
-    call h5sclose_f(memspace, hdf5_err)
-    call h5dclose_f(dset, hdf5_err)
-    call h5pclose_f(plist, hdf5_err)
-
-#else
-
-    if (master) then
-      ! Create dataset big enough to hold all source sites
-      dims(1) = n_particles
-      call h5screate_simple_f(1, dims, dspace, hdf5_err)
-      call h5dcreate_f(group_id, "source_bank", hdf5_bank_t, &
-           dspace, dset, hdf5_err)
-
-      ! Save source bank sites since the souce_bank array is overwritten below
-#ifdef OPENMC_MPI
-      allocate(temp_source(work))
-      temp_source(:) = source_bank(:)
-#endif
-
-      do i = 0, n_procs - 1
-        ! Create memory space
-        dims(1) = work_index(i+1) - work_index(i)
-        call h5screate_simple_f(1, dims, memspace, hdf5_err)
-
-#ifdef OPENMC_MPI
-        ! Receive source sites from other processes
-        if (i > 0) then
-          call MPI_RECV(source_bank, int(dims(1)), MPI_BANK, i, i, &
-               mpi_intracomm, MPI_STATUS_IGNORE, mpi_err)
-        end if
-#endif
-
-        ! Select hyperslab for this dataspace
-        call h5dget_space_f(dset, dspace, hdf5_err)
-        offset(1) = work_index(i)
-        call h5sselect_hyperslab_f(dspace, H5S_SELECT_SET_F, offset, dims, hdf5_err)
-
-        ! Set up pointer to data and write data to hyperslab
-        f_ptr = c_loc(source_bank)
-        call h5dwrite_f(dset, hdf5_bank_t, f_ptr, hdf5_err, &
-             file_space_id=dspace, mem_space_id=memspace)
-
-        call h5sclose_f(memspace, hdf5_err)
-        call h5sclose_f(dspace, hdf5_err)
-      end do
-
-      ! Close all ids
-      call h5dclose_f(dset, hdf5_err)
-
-      ! Restore state of source bank
-#ifdef OPENMC_MPI
-      source_bank(:) = temp_source(:)
-      deallocate(temp_source)
-#endif
-    else
-#ifdef OPENMC_MPI
-      call MPI_SEND(source_bank, int(work), MPI_BANK, 0, rank, &
-           mpi_intracomm, mpi_err)
-#endif
-    end if
-
-#endif
-
-  end subroutine write_source_bank
-
-!===============================================================================
 ! READ_SOURCE_BANK reads OpenMC source_bank data
 !===============================================================================
 
   subroutine read_source_bank(group_id)
-    use bank_header, only: Bank
-
     integer(HID_T), intent(in) :: group_id
 
     integer :: hdf5_err

@@ -118,11 +118,15 @@ def init(intracomm=None):
     if intracomm is not None:
         # If an mpi4py communicator was passed, convert it to void* to be passed
         # to openmc_init
-        from mpi4py import MPI
-        address = MPI._addressof(intracomm)
-        _dll.openmc_init(c_void_p(address))
-    else:
-        _dll.openmc_init(None)
+        try:
+            from mpi4py import MPI
+        except ImportError:
+            intracomm = None
+        else:
+            address = MPI._addressof(intracomm)
+            intracomm = c_void_p(address)
+
+    _dll.openmc_init(intracomm)
 
 
 def iter_batches():

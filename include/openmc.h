@@ -127,7 +127,6 @@ extern "C" {
   extern char openmc_err_msg[256];
   extern double openmc_keff;
   extern double openmc_keff_std;
-  extern bool openmc_master;
   extern int32_t n_batches;
   extern int32_t n_cells;
   extern int32_t n_filters;
@@ -146,6 +145,12 @@ extern "C" {
   extern int openmc_run_mode;
   extern bool openmc_simulation_initialized;
   extern int openmc_verbosity;
+
+  // Variables that are shared by necessity (can be removed later)
+  extern bool openmc_master;
+  extern int openmc_n_procs;
+  extern int openmc_rank;
+  extern int64_t openmc_work;
 
   // Run modes
   constexpr int RUN_MODE_FIXEDSOURCE {1};

@@ -88,7 +88,7 @@ contains
       call write_message('Writing out initial source...', 5)
       filename = trim(path_output) // 'initial_source.h5'
       file_id = file_open(filename, 'w', parallel=.true.)
-      call write_source_bank(file_id)
+      call write_source_bank(file_id, work_index, source_bank)
       call file_close(file_id)
     end if
 
